@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juanjo García — Cata con Juanjo</title>
+  <meta name="description" content="Ingeniero & WSET3 · Catas en Málaga · Aprende a entender el vino, no solo beberlo">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0C0C0C;
+      --bg-card: #141414;
+      --bg-subtle: #1C1C1C;
+      --gold: #C8A86A;
+      --gold-light: #E2C88A;
+      --wine: #7C2535;
+      --text: #F0EBE3;
+      --text-muted: #8A8480;
+      --border: rgba(200,168,106,0.14);
+      --radius: 16px;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+
+    h1, h2, h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 400;
+      line-height: 1.15;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed; top: 0; width: 100%; z-index: 100;
+      padding: 22px 52px;
+      display: flex; justify-content: space-between; align-items: center;
+      transition: background .4s, backdrop-filter .4s, padding .3s, border-color .4s;
+      border-bottom: 1px solid transparent;
+    }
+    nav.scrolled {
+      background: rgba(12,12,12,.92);
+      backdrop-filter: blur(20px);
+      padding: 14px 52px;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.15rem;
+      letter-spacing: .06em;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .nav-logo span { color: var(--gold); }
+    .nav-links { display: flex; gap: 36px; list-style: none; }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: .75rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      transition: color .3s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+
+    /* ─── SHARED ─── */
+    .section-inner { max-width: 1080px; margin: 0 auto; }
+    section { padding: 100px 52px; }
+
+    .label {
+      display: block;
+      font-size: .68rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 18px;
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 13px 26px;
+      border-radius: 8px;
+      font-size: .82rem;
+      letter-spacing: .04em;
+      text-decoration: none;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      border: none;
+      transition: all .3s;
+    }
+    .btn-gold {
+      background: var(--gold);
+      color: #0C0C0C;
+      font-weight: 500;
+    }
+    .btn-gold:hover { background: var(--gold-light); transform: translateY(-2px); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ─── HERO ─── */
+    #hero {
+      min-height: 100vh;
+      padding-top: 130px;
+      padding-bottom: 80px;
+      display: flex; align-items: center;
+      position: relative; overflow: hidden;
+    }
+    #hero::before {
+      content: '';
+      position: absolute; top: -150px; right: -150px;
+      width: 550px; height: 550px;
+      background: radial-gradient(circle, rgba(124,37,53,.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    #hero::after {
+      content: '';
+      position: absolute; bottom: -100px; left: -100px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(200,168,106,.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 72px;
+      align-items: center;
+    }
+    .hero-eyebrow {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 28px;
+    }
+    .hero-eyebrow-line {
+      width: 32px; height: 1px;
+      background: var(--gold);
+    }
+    .hero-eyebrow span {
+      font-size: .7rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+    .hero-left h1 {
+      font-size: clamp(2.8rem, 4.5vw, 4.2rem);
+      font-weight: 300;
+      margin-bottom: 28px;
+    }
+    .hero-left h1 em { font-style: italic; color: var(--gold); }
+    .hero-left p {
+      font-size: .98rem;
+      color: var(--text-muted);
+      max-width: 440px;
+      margin-bottom: 40px;
+      line-height: 1.8;
+    }
+    .hero-cta { display: flex; gap: 14px; flex-wrap: wrap; }
+
+    /* Instagram card */
+    .ig-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 26px;
+      position: relative;
+    }
+    .ig-card-shine {
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(200,168,106,.5), transparent);
+      border-radius: 22px 22px 0 0;
+    }
+
+    .ig-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+    .ig-avatar-ring {
+      width: 68px; height: 68px;
+      border-radius: 50%;
+      padding: 2.5px;
+      background: linear-gradient(135deg, #C8A86A 0%, #E8C98A 50%, #9A6A30 100%);
+      background-size: 300% 300%;
+      animation: ringAnim 4s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes ringAnim {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .ig-avatar-ring img {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+      border: 2.5px solid var(--bg-card);
+    }
+    .ig-name-block .name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.12rem;
+      font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 2px;
+    }
+    .ig-badge {
+      width: 17px; height: 17px;
+      background: linear-gradient(135deg, #C8A86A, #E2C88A);
+      border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .ig-badge svg { width: 9px; height: 9px; }
+    .ig-handle-link {
+      font-size: .78rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color .3s;
+    }
+    .ig-handle-link:hover { color: var(--gold); }
+
+    .ig-stats {
+      display: flex;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin: 16px 0;
+      padding: 14px 0;
+    }
+    .ig-stat { flex: 1; text-align: center; }
+    .ig-stat-num {
+      display: block;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .ig-stat-lbl {
+      font-size: .68rem;
+      color: var(--text-muted);
+      letter-spacing: .04em;
+    }
+
+    .ig-bio {
+      font-size: .8rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 16px;
+      white-space: pre-line;
+    }
+    .ig-bio strong { color: var(--text); }
+
+    .ig-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .ig-mini-grid img {
+      width: 100%; aspect-ratio: 1;
+      object-fit: cover;
+      display: block;
+      transition: opacity .3s;
+    }
+    .ig-mini-grid img:hover { opacity: .7; }
+
+    /* ─── ABOUT ─── */
+    #about { border-top: 1px solid var(--border); }
+    .about-cols {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 80px;
+      align-items: start;
+    }
+    .about-col-left h2 {
+      font-size: clamp(2rem, 3.2vw, 3rem);
+      margin-top: 8px;
+    }
+    .about-col-left h2 em { color: var(--gold); font-style: italic; }
+    .about-col-right p { font-size: .92rem; color: var(--text-muted); margin-bottom: 14px; }
+
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+    .pill {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 15px;
+      font-size: .74rem;
+      color: var(--text-muted);
+      letter-spacing: .04em;
+    }
+    .pill.highlight { border-color: var(--gold); color: var(--gold); }
+
+    /* ─── SERVICES ─── */
+    #servicios {
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .services-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 52px;
+      gap: 24px;
+    }
+    .services-head h2 { font-size: clamp(1.9rem, 3vw, 2.8rem); }
+
+    .svc-list { display: flex; flex-direction: column; }
+    .svc-row {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 48px;
+      padding: 28px 0;
+      border-bottom: 1px solid var(--border);
+      align-items: baseline;
+      transition: background .2s;
+    }
+    .svc-row:first-child { border-top: 1px solid var(--border); }
+    .svc-row-left {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+    }
+    .svc-num {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: .85rem;
+      color: var(--text-muted);
+      letter-spacing: .08em;
+      flex-shrink: 0;
+    }
+    .svc-row h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.15rem;
+      font-weight: 400;
+      color: var(--text);
+    }
+    .svc-row-right p {
+      font-size: .85rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+    .svc-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: .75rem; color: var(--gold);
+      text-decoration: none;
+      margin-top: 12px;
+      letter-spacing: .04em;
+      transition: gap .3s;
+    }
+    .svc-link:hover { gap: 10px; }
+
+    /* ─── PODCAST ─── */
+    #podcast { border-top: 1px solid var(--border); }
+    .podcast-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+    .spotify-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #1DB954;
+      color: #000;
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: .72rem;
+      font-weight: 500;
+      letter-spacing: .06em;
+      margin-bottom: 24px;
+    }
+    .podcast-text h2 { font-size: clamp(1.8rem, 2.8vw, 2.6rem); margin-bottom: 20px; }
+    .podcast-text h2 em { color: var(--gold); font-style: italic; }
+    .podcast-text p { font-size: .9rem; color: var(--text-muted); margin-bottom: 14px; }
+
+    .podcast-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 44px 36px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; gap: 18px;
+      min-height: 290px;
+      position: relative; overflow: hidden;
+    }
+    .podcast-card::before {
+      content: '';
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      width: 280px; height: 280px;
+      background: radial-gradient(circle, rgba(29,185,84,.07), transparent 70%);
+      pointer-events: none;
+    }
+    .waveform {
+      display: flex; align-items: center; gap: 4px; height: 60px;
+    }
+    .waveform span {
+      display: block; width: 4px;
+      background: var(--gold);
+      border-radius: 2px;
+      animation: waveAnim 1.3s ease-in-out infinite;
+    }
+    .waveform span:nth-child(2)  { animation-delay: .1s; }
+    .waveform span:nth-child(3)  { animation-delay: .2s; }
+    .waveform span:nth-child(4)  { animation-delay: .3s; }
+    .waveform span:nth-child(5)  { animation-delay: .4s; }
+    .waveform span:nth-child(6)  { animation-delay: .5s; }
+    .waveform span:nth-child(7)  { animation-delay: .4s; }
+    .waveform span:nth-child(8)  { animation-delay: .3s; }
+    .waveform span:nth-child(9)  { animation-delay: .2s; }
+    .waveform span:nth-child(10) { animation-delay: .1s; }
+    .waveform span:nth-child(11) { animation-delay: 0s; }
+    .waveform span:nth-child(12) { animation-delay: .15s; }
+    @keyframes waveAnim {
+      0%, 100% { height: 16px; opacity: .5; }
+      50%       { height: 52px; opacity: 1; }
+    }
+    .podcast-card-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.25rem;
+      font-style: italic;
+    }
+    .podcast-card-sub { font-size: .74rem; color: var(--text-muted); }
+
+    /* ─── CONTACT ─── */
+    #contacto {
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+    }
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+    }
+    .contact-text h2 { font-size: clamp(1.9rem, 3vw, 2.8rem); margin-bottom: 20px; }
+    .contact-text h2 em { color: var(--gold); font-style: italic; }
+    .contact-text > p { font-size: .9rem; color: var(--text-muted); margin-bottom: 36px; }
+
+    .contact-items { display: flex; flex-direction: column; gap: 0; }
+    .contact-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: .88rem;
+      transition: color .3s;
+    }
+    .contact-item:hover { color: var(--gold); }
+    .contact-item-ico {
+      width: 38px; height: 38px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+      transition: border-color .3s;
+    }
+    .contact-item:hover .contact-item-ico { border-color: var(--gold); }
+
+    .contact-form {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 38px;
+    }
+    .contact-form h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.35rem;
+      margin-bottom: 26px;
+    }
+    .fg { margin-bottom: 18px; }
+    .fg label {
+      display: block;
+      font-size: .7rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 7px;
+    }
+    .fg input, .fg textarea, .fg select {
+      width: 100%;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 15px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: .88rem;
+      font-weight: 300;
+      outline: none;
+      transition: border-color .3s;
+    }
+    .fg input:focus, .fg textarea:focus, .fg select:focus { border-color: var(--gold); }
+    .fg select option { background: #1C1C1C; }
+    .fg textarea { resize: vertical; min-height: 96px; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      padding: 36px 52px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    footer p { font-size: .76rem; color: var(--text-muted); }
+    .footer-link {
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: .76rem;
+      transition: color .3s;
+    }
+    .footer-link:hover { color: var(--gold); }
+
+    /* ─── REVEAL ─── */
+    .r {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity .7s ease, transform .7s ease;
+    }
+    .r.in { opacity: 1; transform: translateY(0); }
+    .d1 { transition-delay: .1s; }
+    .d2 { transition-delay: .2s; }
+    .d3 { transition-delay: .3s; }
+    .d4 { transition-delay: .4s; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 960px) {
+      section { padding: 72px 28px; }
+      nav { padding: 16px 28px; }
+      nav.scrolled { padding: 12px 28px; }
+      .nav-links { display: none; }
+      footer { padding: 28px; }
+      .hero-grid { grid-template-columns: 1fr; gap: 48px; }
+      .about-cols { grid-template-columns: 1fr; gap: 24px; }
+      .svc-row { grid-template-columns: 1fr; gap: 10px; }
+      .svc-row-left { flex-direction: row; }
+      .services-head { flex-direction: column; align-items: flex-start; }
+      .podcast-grid { grid-template-columns: 1fr; gap: 44px; }
+.contact-grid { grid-template-columns: 1fr; gap: 44px; }
+    }
+    @media (max-width: 560px) {
+      .hero-grid h1 { font-size: 2.4rem; }
+      .services-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav id="nav">
+  <a href="#hero" class="nav-logo">Cata con <span>Juanjo</span></a>
+  <ul class="nav-links">
+    <li><a href="#about">Sobre mí</a></li>
+    <li><a href="#servicios">Servicios</a></li>
+    <li><a href="#podcast">Podcast</a></li>
+    <li><a href="#contacto">Contacto</a></li>
+  </ul>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section id="hero">
+  <div class="section-inner">
+    <div class="hero-grid">
+
+      <div class="hero-left r">
+        <div class="hero-eyebrow">
+          <div class="hero-eyebrow-line"></div>
+          <span>Ingeniero · WSET3 · Málaga</span>
+        </div>
+        <h1>Aprende a entender<br>el vino, <em>no solo<br>beberlo</em></h1>
+        <p>Ingeniero de formación, apasionado del vino por vocación. Catas, cursos y consultoría en Málaga — para quien quiere entender lo que tiene en la copa.</p>
+        <div class="hero-cta">
+          <a href="#contacto" class="btn btn-gold">Reserva una cata →</a>
+          <a href="#servicios" class="btn btn-outline">Ver servicios</a>
+        </div>
+      </div>
+
+      <div class="r d2">
+        <div class="ig-card">
+          <div class="ig-card-shine"></div>
+
+          <div class="ig-header">
+            <div class="ig-avatar-ring">
+              <img src="assets/instagram/profile.jpg" alt="Juanjo García"
+                   onerror="this.style.display='none'">
+            </div>
+            <div class="ig-name-block">
+              <div class="name">
+                Juanjo García
+                <span class="ig-badge" title="WSET3 certificado">
+                  <svg viewBox="0 0 10 10" fill="none"><path d="M2 5L4 7L8 3" stroke="#0C0C0C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+              </div>
+              <a href="https://instagram.com/cataconjuanjo" target="_blank" class="ig-handle-link">@cataconjuanjo</a>
+            </div>
+          </div>
+
+          <div class="ig-stats">
+            <div class="ig-stat">
+              <span class="ig-stat-num">29</span>
+              <span class="ig-stat-lbl">posts</span>
+            </div>
+            <div class="ig-stat">
+              <span class="ig-stat-num">93</span>
+              <span class="ig-stat-lbl">seguidores</span>
+            </div>
+            <div class="ig-stat">
+              <span class="ig-stat-num">509</span>
+              <span class="ig-stat-lbl">seguidos</span>
+            </div>
+          </div>
+
+          <div class="ig-bio"><strong>Ingeniero &amp; WSET3</strong> (@wsetglobal)
+Catas en Málaga
+Aprende a entender el vino, no solo beberlo
+📩 +info por DM</div>
+
+          <div class="ig-mini-grid">
+            <img src="assets/instagram/post-4.jpg" alt="Post Instagram">
+            <img src="assets/instagram/post-5.jpg" alt="Post Instagram">
+            <img src="assets/instagram/post-6.jpg" alt="Post Instagram">
+            <img src="assets/instagram/post-7.jpg" alt="Post Instagram">
+            <img src="assets/instagram/post-8.jpg" alt="Post Instagram">
+            <img src="assets/instagram/post-9.jpg" alt="Post Instagram">
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ABOUT ═══ -->
+<section id="about">
+  <div class="section-inner">
+    <div class="about-simple r">
+      <div class="about-cols">
+        <div class="about-col-left">
+          <span class="label">Sobre mí</span>
+          <h2>Ingeniero con<br>demasiado <em>vino</em><br>en la cabeza</h2>
+        </div>
+        <div class="about-col-right">
+          <p>Soy Juanjo García. Ingeniero de formación y apasionado del vino por vocación — un día decidí que "me gusta" no era suficiente respuesta y me puse a estudiar en serio. El WSET Level 3 lo hice con la Iberian Wine Academy y fue lo mejor que pude hacer por mi paladar.</p>
+          <p>Mi forma de acercarme al vino viene directa de la ingeniería: entender antes de opinar. En mis catas no hay frases poéticas de relleno — hay contexto, hay criterio y hay conversación real sobre lo que estás bebiendo.</p>
+          <p>Hago catas en Málaga, asesoro a restaurantes con sus cartas y tengo un podcast sobre vino hecho con IA que resulta más útil de lo que parece.</p>
+          <div class="pills">
+            <span class="pill highlight">WSET Level 3</span>
+            <span class="pill">Catas en Málaga</span>
+            <span class="pill">Hostelería</span>
+            <span class="pill">Formación</span>
+            <span class="pill">Podcast</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SERVICES ═══ -->
+<section id="servicios">
+  <div class="section-inner">
+    <div class="services-head">
+      <div>
+        <span class="label">¿Qué puedo hacer por ti?</span>
+        <h2>Servicios</h2>
+      </div>
+      <a href="#contacto" class="btn btn-outline">Contactar →</a>
+    </div>
+    <div class="svc-list">
+
+      <div class="svc-row r">
+        <div class="svc-row-left">
+          <span class="svc-num">01</span>
+          <h3>Catas privadas</h3>
+        </div>
+        <div class="svc-row-right">
+          <p>Para amigos, familia o cualquier excusa que necesites. Sin protocolo innecesario — con contexto real sobre lo que estás probando.</p>
+          <a href="#contacto" class="svc-link">Consultar →</a>
+        </div>
+      </div>
+
+      <div class="svc-row r d1">
+        <div class="svc-row-left">
+          <span class="svc-num">02</span>
+          <h3>Catas para empresas</h3>
+        </div>
+        <div class="svc-row-right">
+          <p>Teambuilding, bienvenida a clientes, cierre de acuerdos con algo memorable. Lo adapto al número de personas y al tono del evento.</p>
+          <a href="#contacto" class="svc-link">Consultar →</a>
+        </div>
+      </div>
+
+      <div class="svc-row r d1">
+        <div class="svc-row-left">
+          <span class="svc-num">03</span>
+          <h3>Catas a domicilio</h3>
+        </div>
+        <div class="svc-row-right">
+          <p>Me desplazo a tu casa, oficina o local. Llevo el material, los vinos y la dinámica. Solo tienes que poner los invitados.</p>
+          <a href="#contacto" class="svc-link">Consultar →</a>
+        </div>
+      </div>
+
+      <div class="svc-row r">
+        <div class="svc-row-left">
+          <span class="svc-num">04</span>
+          <h3>Catas temáticas</h3>
+        </div>
+        <div class="svc-row-right">
+          <p>Por región, por uva, por precio, por maridaje. Hay muchas formas de organizar una cata y cada formato enseña cosas distintas.</p>
+          <a href="#contacto" class="svc-link">Consultar →</a>
+        </div>
+      </div>
+
+      <div class="svc-row r d1">
+        <div class="svc-row-left">
+          <span class="svc-num">05</span>
+          <h3>Cursos de introducción al vino</h3>
+        </div>
+        <div class="svc-row-right">
+          <p>Para quien quiere ir más allá de "me gusta o no me gusta". Aprende a leer una etiqueta, identificar defectos, entender regiones y elegir bien.</p>
+          <a href="#contacto" class="svc-link">Consultar →</a>
+        </div>
+      </div>
+
+      <div class="svc-row r d1">
+        <div class="svc-row-left">
+          <span class="svc-num">06</span>
+          <h3>Maridajes para eventos</h3>
+        </div>
+        <div class="svc-row-right">
+          <p>Bodas, cumpleaños, cenas de empresa. Selecciono los vinos que van bien con tu menú y explico el porqué a quien quiera escuchar.</p>
+          <a href="#contacto" class="svc-link">Consultar →</a>
+        </div>
+      </div>
+
+      <div class="svc-row r">
+        <div class="svc-row-left">
+          <span class="svc-num">07</span>
+          <h3>Selección y compra de vinos</h3>
+        </div>
+        <div class="svc-row-right">
+          <p>Para regalo, para tu bodega personal o para una ocasión concreta. Te digo qué comprar, dónde y por qué — sin que tengas que confiar en que el dependiente sabe más que tú.</p>
+          <a href="#contacto" class="svc-link">Consultar →</a>
+        </div>
+      </div>
+
+      <div class="svc-row r d1">
+        <div class="svc-row-left">
+          <span class="svc-num">08</span>
+          <h3>Consultoría de vinos</h3>
+        </div>
+        <div class="svc-row-right">
+          <p>¿Quieres explorar una región en profundidad, entender cómo funciona el mercado o saber qué guardar y qué abrir ya? Hablamos.</p>
+          <a href="#contacto" class="svc-link">Consultar →</a>
+        </div>
+      </div>
+
+      <div class="svc-row r">
+        <div class="svc-row-left">
+          <span class="svc-num">09</span>
+          <h3>Cartas de vinos para restaurantes</h3>
+        </div>
+        <div class="svc-row-right">
+          <p>Diseño la carta teniendo en cuenta tu cocina, tu ticket medio y tus márgenes. Selección de proveedores y, si hace falta, formación básica para el equipo de sala.</p>
+          <a href="#contacto" class="svc-link">Consultar →</a>
+        </div>
+      </div>
+
+      <div class="svc-row r d1">
+        <div class="svc-row-left">
+          <span class="svc-num">10</span>
+          <h3>Formación para hostelería</h3>
+        </div>
+        <div class="svc-row-right">
+          <p>Camareros y personal de sala que saben hablar de vino venden más y mejor. Talleres prácticos adaptados al nivel y al tipo de local.</p>
+          <a href="#contacto" class="svc-link">Consultar →</a>
+        </div>
+      </div>
+
+      <div class="svc-row r d1">
+        <div class="svc-row-left">
+          <span class="svc-num">11</span>
+          <h3>Visitas a bodegas</h3>
+        </div>
+        <div class="svc-row-right">
+          <p>Organizo escapadas enológicas por Málaga y otras denominaciones. Selección de bodegas, logística y contexto antes de cada visita para que aproveches mejor la experiencia.</p>
+          <a href="#contacto" class="svc-link">Consultar →</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PODCAST ═══ -->
+<section id="podcast">
+  <div class="section-inner">
+    <div class="podcast-grid">
+
+      <div class="podcast-text r">
+        <span class="spotify-badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+          Spotify Podcast
+        </span>
+        <h2><em>El manual sonoro</em><br>del vino</h2>
+        <p>Un podcast sobre vino creado con inteligencia artificial. Cada episodio explora una región, una variedad o un concepto enológico de forma accesible y rigurosa.</p>
+        <p style="font-size:.82rem;">Disponible en Spotify.</p>
+        <a href="https://open.spotify.com/search/El%20manual%20sonoro%20del%20vino" target="_blank"
+           class="btn btn-outline" style="margin-top:20px; border-color:#1DB954; color:#1DB954;">
+          Escuchar en Spotify ↗
+        </a>
+      </div>
+
+      <div class="r d2">
+        <div class="podcast-card">
+          <div class="waveform">
+            <span style="height:14px"></span>
+            <span style="height:28px"></span>
+            <span style="height:42px"></span>
+            <span style="height:50px"></span>
+            <span style="height:38px"></span>
+            <span style="height:52px"></span>
+            <span style="height:44px"></span>
+            <span style="height:36px"></span>
+            <span style="height:50px"></span>
+            <span style="height:40px"></span>
+            <span style="height:30px"></span>
+            <span style="height:18px"></span>
+          </div>
+          <div class="podcast-card-title">"El manual sonoro del vino"</div>
+          <div class="podcast-card-sub">Podcast · Inteligencia Artificial · Enología</div>
+          <a href="https://open.spotify.com/search/El%20manual%20sonoro%20del%20vino" target="_blank"
+             class="btn" style="background:#1DB954; color:#000; font-weight:500; font-size:.8rem; margin-top:4px;">
+            ▶ &nbsp;Escuchar ahora
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CONTACT ═══ -->
+<section id="contacto">
+  <div class="section-inner">
+    <div class="contact-grid">
+
+      <div class="contact-text r">
+        <span class="label">Contacto</span>
+        <h2>¿Empezamos<br>una <em>cata</em>?</h2>
+        <p>Cuéntame qué tienes en mente. Te respondo rápido y adaptamos el servicio exactamente a lo que necesitas.</p>
+        <div class="contact-items">
+          <a href="mailto:cataconjuanjo@gmail.com" class="contact-item">
+            <span class="contact-item-ico">✉️</span>
+            cataconjuanjo@gmail.com
+          </a>
+          <a href="https://instagram.com/cataconjuanjo" target="_blank" class="contact-item">
+            <span class="contact-item-ico">📸</span>
+            @cataconjuanjo en Instagram
+          </a>
+          <a href="https://open.spotify.com/search/El%20manual%20sonoro%20del%20vino" target="_blank" class="contact-item">
+            <span class="contact-item-ico" style="background:#1DB954; border-color:#1DB954; color:#000; font-size:.8rem; font-weight:600;">▶</span>
+            El manual sonoro del vino (Podcast)
+          </a>
+        </div>
+      </div>
+
+      <div class="r d2">
+        <div class="contact-form">
+          <h3>Reserva o consulta</h3>
+          <form onsubmit="submitForm(event)">
+            <div class="fg">
+              <label>Nombre</label>
+              <input type="text" placeholder="Tu nombre" required>
+            </div>
+            <div class="fg">
+              <label>Email</label>
+              <input type="email" placeholder="tu@email.com" required>
+            </div>
+            <div class="fg">
+              <label>Servicio de interés</label>
+              <select>
+                <option value="">Selecciona...</option>
+                <option>Cata privada</option>
+                <option>Cata para empresa</option>
+                <option>Cata a domicilio</option>
+                <option>Cata temática</option>
+                <option>Curso de introducción al vino</option>
+                <option>Maridaje para evento</option>
+                <option>Selección y compra de vinos</option>
+                <option>Consultoría de vinos</option>
+                <option>Carta de vinos para restaurante</option>
+                <option>Formación para hostelería</option>
+                <option>Visita a bodegas</option>
+                <option>Otra consulta</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Mensaje</label>
+              <textarea placeholder="Cuéntame qué tienes en mente..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-gold" style="width:100%; justify-content:center;">
+              Enviar consulta →
+            </button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <p>© 2026 Juanjo García · Cata con Juanjo · Málaga</p>
+  <a href="https://instagram.com/cataconjuanjo" target="_blank" class="footer-link">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+    @cataconjuanjo
+  </a>
+</footer>
+
+<script>
+  // Nav scroll
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 60);
+  }, { passive: true });
+
+  // Reveal on scroll
+  const reveals = document.querySelectorAll('.r');
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); });
+  }, { threshold: 0.1 });
+  reveals.forEach(el => revealObserver.observe(el));
+
+  // Form submit
+  function submitForm(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.textContent = '✓ Enviado — te respondo pronto';
+    btn.style.background = '#2a6e47';
+    btn.disabled = true;
+  }
+</script>
+</body>
+</html>
