@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Start-Process \"c:\\\\Users\\\\jjgar\\\\Desktop\\\\10 SKILLS ADRI Y JUANPE\\\\kit-instagram-web\\\\web-cataconjuanjo.html\")",
+      "PowerShell(Start-Process \"c:\\\\Users\\\\jjgar\\\\Desktop\\\\10 SKILLS ADRI Y JUANPE\\\\kit-instagram-web\\\\web-cataconjuanjo.html\")"
+    ]
+  }
+}
