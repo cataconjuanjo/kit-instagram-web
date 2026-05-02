@@ -64,13 +64,19 @@
   }
   </script>
 
-  <!-- Google Analytics 4 -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-FVZ2XZJ40G"></script>
+  <!-- Google Analytics 4 (carga solo con consentimiento) -->
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-FVZ2XZJ40G');
+    function initGA() {
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=G-FVZ2XZJ40G';
+      document.head.appendChild(s);
+      gtag('js', new Date());
+      gtag('config', 'G-FVZ2XZJ40G');
+    }
+    if (localStorage.getItem('ccj_cookie_consent') === 'accepted') { initGA(); }
   </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -943,6 +949,10 @@ Aprende a entender el vino, no solo beberlo
             <span class="contact-item-ico">✉️</span>
             cataconjuanjo@gmail.com
           </a>
+          <a href="https://wa.me/34601502868" target="_blank" rel="noopener noreferrer" class="contact-item">
+            <span class="contact-item-ico">💬</span>
+            WhatsApp
+          </a>
           <a href="https://instagram.com/cataconjuanjo" target="_blank" rel="noopener noreferrer" class="contact-item">
             <span class="contact-item-ico">📸</span>
             @cataconjuanjo en Instagram
@@ -1001,12 +1011,47 @@ Aprende a entender el vino, no solo beberlo
 
 <!-- ═══ FOOTER ═══ -->
 <footer>
-  <p>© 2026 Juanjo García · Cata con Juanjo · Málaga</p>
+  <p>© 2026 Juanjo García · Cata con Juanjo · Málaga &nbsp;·&nbsp; <a href="/aviso-legal.html" style="color:var(--text-muted); text-decoration:none; font-size:.76rem;">Aviso legal</a> &nbsp;·&nbsp; <a href="/privacidad.html" style="color:var(--text-muted); text-decoration:none; font-size:.76rem;">Privacidad y cookies</a></p>
   <a href="https://instagram.com/cataconjuanjo" target="_blank" rel="noopener noreferrer" class="footer-link">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
     @cataconjuanjo
   </a>
 </footer>
+
+<style>
+  #cookie-banner {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 999;
+    background: rgba(12,12,12,.97);
+    border-top: 1px solid rgba(200,168,106,0.2);
+    backdrop-filter: blur(20px);
+    padding: 18px 52px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 24px; flex-wrap: wrap;
+  }
+  #cookie-banner p { font-size: .82rem; color: #8A8480; max-width: 680px; line-height: 1.6; }
+  #cookie-banner p a { color: #C8A86A; text-decoration: none; }
+  .cookie-btns { display: flex; gap: 10px; flex-shrink: 0; }
+  .btn-accept-cookies {
+    background: #C8A86A; color: #0C0C0C; border: none;
+    padding: 10px 22px; border-radius: 8px; font-size: .82rem;
+    font-weight: 500; cursor: pointer; font-family: 'Inter', sans-serif;
+  }
+  .btn-reject-cookies {
+    background: transparent; color: #8A8480;
+    border: 1px solid rgba(200,168,106,0.2);
+    padding: 10px 22px; border-radius: 8px; font-size: .82rem;
+    cursor: pointer; font-family: 'Inter', sans-serif;
+  }
+  @media(max-width:700px) { #cookie-banner { padding: 18px 20px; } }
+</style>
+
+<div id="cookie-banner" style="display:none;">
+  <p>Usamos cookies analíticas (Google Analytics) para entender cómo se usa la web y mejorarla. Puedes aceptarlas o rechazarlas. <a href="/privacidad.html">Más información</a></p>
+  <div class="cookie-btns">
+    <button class="btn-reject-cookies" onclick="rejectCookies()">Rechazar</button>
+    <button class="btn-accept-cookies" onclick="acceptCookies()">Aceptar cookies</button>
+  </div>
+</div>
 
 <script>
   // Nav scroll
@@ -1021,6 +1066,24 @@ Aprende a entender el vino, no solo beberlo
     entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); });
   }, { threshold: 0.1 });
   reveals.forEach(el => revealObserver.observe(el));
+
+  // Cookie consent
+  function acceptCookies() {
+    localStorage.setItem('ccj_cookie_consent', 'accepted');
+    document.getElementById('cookie-banner').style.display = 'none';
+    initGA();
+  }
+  function rejectCookies() {
+    localStorage.setItem('ccj_cookie_consent', 'rejected');
+    document.getElementById('cookie-banner').style.display = 'none';
+  }
+  window.resetCookieConsent = function() {
+    localStorage.removeItem('ccj_cookie_consent');
+    document.getElementById('cookie-banner').style.display = 'flex';
+  };
+  if (!localStorage.getItem('ccj_cookie_consent')) {
+    document.getElementById('cookie-banner').style.display = 'flex';
+  }
 
   // Form submit
   function submitForm(e) {
