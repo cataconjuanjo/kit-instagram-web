@@ -237,6 +237,19 @@ setPerfiles(nuevosPerfiles)
   const colorPrimario = restaurante?.color_primario || '#111111'
   const colorAcento = restaurante?.color_acento || colorPrimario
   const fontTitulo = restaurante?.tipografia === 'sans' ? 'system-ui, sans-serif' : 'Georgia, serif'
+
+  function heroStyle() {
+    if (!restaurante?.banner_url) return { background: colorPrimario }
+    const h = parseInt(colorPrimario.slice(1, 3), 16)
+    const e = parseInt(colorPrimario.slice(3, 5), 16)
+    const r = parseInt(colorPrimario.slice(5, 7), 16)
+    const overlay = `rgba(${h},${e},${r},0.72)`
+    return {
+      backgroundImage: `linear-gradient(${overlay}, ${overlay}), url(${restaurante.banner_url})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }
+  }
   const categoriasBase = ['Entrantes fríos', 'Entrantes calientes', 'Cuchara', 'De la tierra', 'Del mar', 'Tablas']
   const categoriasPlatos = [
     ...categoriasBase.filter(categoria => platos.some(plato => plato.categoria === categoria)),
@@ -498,7 +511,7 @@ setPerfiles(nuevosPerfiles)
 
   if (vista === 'carta') return (
     <div className={styles.shell} style={{ paddingBottom: vinosComparador.length > 0 ? 96 : 34 }}>
-      <header className={styles.hero} style={{ background: colorPrimario }}>
+      <header className={styles.hero} style={heroStyle()}>
         <div className={styles.heroTop}>
           <div>
             {restaurante.logo_url && (
@@ -720,7 +733,7 @@ setPerfiles(nuevosPerfiles)
 
   if (vista === 'sommelier') return (
     <div className={styles.shell}>
-      <header className={styles.hero} style={{ background: colorPrimario }}>
+      <header className={styles.hero} style={heroStyle()}>
         <div className={styles.heroTop}>
           <div>
             {restaurante.logo_url && (

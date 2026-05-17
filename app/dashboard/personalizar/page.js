@@ -26,9 +26,12 @@ export default function Personalizar() {
   const [colorAcento, setColorAcento] = useState('#4A8C6F')
   const [tipografia, setTipografia] = useState('serif')
   const [logoUrl, setLogoUrl] = useState(null)
+  const [bannerUrl, setBannerUrl] = useState(null)
   const [subiendoLogo, setSubiendoLogo] = useState(false)
+  const [subiendoBanner, setSubiendoBanner] = useState(false)
   const [guardado, setGuardado] = useState(false)
   const fileRef = useRef(null)
+  const bannerRef = useRef(null)
 
   useEffect(() => {
     async function cargar() {
@@ -42,6 +45,7 @@ export default function Personalizar() {
         setColorAcento(rest.color_acento || '#4A8C6F')
         setTipografia(rest.tipografia || 'serif')
         setLogoUrl(rest.logo_url || null)
+        setBannerUrl(rest.banner_url || null)
       }
       setLoading(false)
     }
@@ -53,6 +57,22 @@ export default function Personalizar() {
     setColorFondo(p.fondo)
     setColorAcento(p.acento)
     setTipografia(p.tipografia)
+  }
+
+  async function subirBanner(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setSubiendoBanner(true)
+    const ext = file.name.split('.').pop()
+    const fileName = `banner-${restaurante.slug}.${ext}`
+    const { error } = await supabase.storage.from('logos').upload(fileName, file, { upsert: true })
+    if (!error) {
+      const { data } = supabase.storage.from('logos').getPublicUrl(fileName)
+      const url = data.publicUrl
+      await supabase.from('restaurantes').update({ banner_url: url }).eq('id', restaurante.id)
+      setBannerUrl(url)
+    }
+    setSubiendoBanner(false)
   }
 
   async function subirLogo(e) {
@@ -78,6 +98,7 @@ export default function Personalizar() {
       color_fondo: colorFondo,
       color_acento: colorAcento,
       tipografia,
+      banner_url: bannerUrl,
     }).eq('id', restaurante.id)
     setGuardado(true)
     setTimeout(() => setGuardado(false), 2000)
@@ -215,7 +236,13 @@ export default function Personalizar() {
           <div className={styles.panelBody}>
             <div className={styles.previewCard} style={{ background: colorFondo, overflow: 'hidden' }}>
               {/* Header */}
-              <div style={{ background: colorPrimario, padding: '14px 16px' }}>
+              <div style={{
+                padding: '14px 16px',
+                ...(bannerUrl
+                  ? { backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  : { background: colorPrimario }
+                )
+              }}>
                 {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: 28, objectFit: 'contain', display: 'block', marginBottom: 8 }} />}
                 <p style={{ margin: '0 0 2px', color: 'rgba(255,255,255,0.55)', fontSize: 9, fontWeight: 850, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Carta de vinos</p>
                 <p style={{ margin: 0, color: '#fff', fontSize: 18, fontFamily: fontPreview }}>{restaurante?.nombre}</p>
@@ -252,29 +279,59 @@ export default function Personalizar() {
         </div>
       </section>
 
-      {/* Logo */}
+      {/* Banner + Logo */}
       <section className={styles.panel} style={{ marginTop: 16 }}>
         <div className={styles.panelHead}>
           <div>
-            <h2 className={styles.panelTitle}>Logo del restaurante</h2>
-            <p className={styles.panelSub}>Aparece en la cabecera de la carta pública. PNG con fondo transparente funciona mejor.</p>
+            <h2 className={styles.panelTitle}>Banner y logo</h2>
+            <p className={styles.panelSub}>El banner aparece como fondo de la cabecera. El logo se muestra encima.</p>
           </div>
         </div>
-        <div className={styles.panelBody}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <div style={{ width: 92, height: 92, border: '1px solid #dfddd6', borderRadius: 8, display: 'grid', placeItems: 'center', background: colorPrimario, overflow: 'hidden', flexShrink: 0 }}>
-              {logoUrl
-                ? <img src={logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                : <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Sin logo</span>
+        <div className={styles.panelBody} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* Banner */}
+          <div>
+            <p className={styles.label}>Banner de cabecera</p>
+            <p className={styles.tiny} style={{ marginTop: 0, marginBottom: 10 }}>Foto de la fachada, interior o ambiente. Recomendado: 1200×400 px o similar apaisado.</p>
+            <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid #e8e8e8', marginBottom: 10, height: 100, background: bannerUrl ? undefined : '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              {bannerUrl
+                ? <img src={bannerUrl} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span className={styles.tiny} style={{ color: '#bbb' }}>Sin banner</span>
               }
             </div>
-            <div>
-              <input type="file" accept="image/*" ref={fileRef} onChange={subirLogo} style={{ display: 'none' }} />
-              <button className={styles.secondary} onClick={() => fileRef.current.click()} disabled={subiendoLogo}>
-                {subiendoLogo ? 'Subiendo...' : logoUrl ? 'Cambiar logo' : 'Subir logo'}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input type="file" accept="image/*" ref={bannerRef} onChange={subirBanner} style={{ display: 'none' }} />
+              <button className={styles.secondary} onClick={() => bannerRef.current.click()} disabled={subiendoBanner}>
+                {subiendoBanner ? 'Subiendo...' : bannerUrl ? 'Cambiar banner' : 'Subir banner'}
               </button>
+              {bannerUrl && (
+                <button className={styles.secondary} onClick={() => setBannerUrl(null)} style={{ color: '#c00', borderColor: '#c00' }}>
+                  Quitar
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Logo */}
+          <div>
+            <p className={styles.label}>Logo del restaurante</p>
+            <p className={styles.tiny} style={{ marginTop: 0, marginBottom: 10 }}>PNG con fondo transparente funciona mejor sobre banners y fondos oscuros.</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 72, height: 72, border: '1px solid #dfddd6', borderRadius: 8, display: 'grid', placeItems: 'center', background: colorPrimario, overflow: 'hidden', flexShrink: 0 }}>
+                {logoUrl
+                  ? <img src={logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  : <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Sin logo</span>
+                }
+              </div>
+              <div>
+                <input type="file" accept="image/*" ref={fileRef} onChange={subirLogo} style={{ display: 'none' }} />
+                <button className={styles.secondary} onClick={() => fileRef.current.click()} disabled={subiendoLogo}>
+                  {subiendoLogo ? 'Subiendo...' : logoUrl ? 'Cambiar logo' : 'Subir logo'}
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
