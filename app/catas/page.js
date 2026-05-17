@@ -127,9 +127,15 @@ export default function CatasPage() {
             Dime fecha aproximada, numero de personas, lugar y tipo de cata. Te respondo con una propuesta clara.
           </p>
           <div className="contact-links">
-            <a href="mailto:cataconjuanjo@gmail.com">cataconjuanjo@gmail.com</a>
-            <a href="https://wa.me/34601502868">WhatsApp</a>
-            <a href="https://instagram.com/cataconjuanjo">@cataconjuanjo</a>
+            <a href="mailto:cataconjuanjo@gmail.com" title="Email" aria-label="Enviar email">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
+            </a>
+            <a href="https://wa.me/34601502868" title="WhatsApp" aria-label="Contactar por WhatsApp" target="_blank" rel="noopener noreferrer">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.975-1.418A9.956 9.956 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2Zm5.006 13.76c-.207.583-1.215 1.114-1.656 1.154-.44.04-.854.207-2.877-.598-2.437-.977-3.99-3.458-4.11-3.617-.12-.16-.978-1.3-.978-2.48 0-1.18.617-1.762.836-2.002.22-.24.48-.3.64-.3l.46.008c.147.006.344-.056.54.41.2.48.68 1.66.74 1.78.06.12.1.26.02.42-.08.16-.12.26-.24.4-.12.14-.252.31-.36.417-.12.12-.244.25-.105.49.14.24.62.98 1.33 1.59.915.79 1.687 1.033 1.927 1.153.24.12.38.1.52-.06.14-.16.6-.7.76-.94.16-.24.32-.2.54-.12.22.08 1.4.66 1.64.78.24.12.4.18.46.28.06.1.06.56-.148 1.14Z"/></svg>
+            </a>
+            <a href="https://instagram.com/cataconjuanjo" title="Instagram @cataconjuanjo" aria-label="Perfil de Instagram" target="_blank" rel="noopener noreferrer">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+            </a>
           </div>
         </div>
         <LeadForm source="Servicios de cata" />
