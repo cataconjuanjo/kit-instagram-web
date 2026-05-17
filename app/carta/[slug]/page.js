@@ -240,14 +240,13 @@ setPerfiles(nuevosPerfiles)
 
   function heroStyle() {
     if (!restaurante?.banner_url) return { background: colorPrimario }
-    const h = parseInt(colorPrimario.slice(1, 3), 16)
-    const e = parseInt(colorPrimario.slice(3, 5), 16)
-    const r = parseInt(colorPrimario.slice(5, 7), 16)
-    const overlay = `rgba(${h},${e},${r},0.72)`
+    const zoom = restaurante.banner_zoom || 100
+    const x = restaurante.banner_x ?? 50
+    const y = restaurante.banner_y ?? 50
     return {
-      backgroundImage: `linear-gradient(${overlay}, ${overlay}), url(${restaurante.banner_url})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
+      backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url(${restaurante.banner_url})`,
+      backgroundSize: `${zoom}%`,
+      backgroundPosition: `${x}% ${y}%`,
     }
   }
   const categoriasBase = ['Entrantes fríos', 'Entrantes calientes', 'Cuchara', 'De la tierra', 'Del mar', 'Tablas']
@@ -1016,7 +1015,7 @@ border: '1px solid rgba(255,255,255,0.15)',
     </div>
 
     {/* Vinos */}
-    {seleccion.map((s, idx) => (
+    {seleccion.map((s) => (
       <div key={s.id}
         onClick={() => setVinoSeleccionado(s.vinos)}
         style={{ background: '#f5f2ee', borderRadius: 12, padding: '16px', marginBottom: 10, cursor: 'pointer', border: `1px solid ${colorPrimario}22` }}>
