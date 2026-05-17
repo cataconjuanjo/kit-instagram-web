@@ -6,3 +6,4 @@ dev-server*.log
 .next-dev.pid
 demo-output/
 web-*.html
+.vercel

@@ -283,6 +283,16 @@
   cursor: not-allowed;
 }
 
+.shortcutActive {
+  background: var(--color-acento, #171416);
+  border-color: var(--color-acento, #171416);
+  color: #fff;
+}
+
+.shortcutActive small {
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .shortcut span {
   display: block;
   font-size: 13px;

@@ -285,6 +285,14 @@ setPerfiles(nuevosPerfiles)
   }
 
   function aplicarAtajo(id) {
+    const yaActivo =
+      (id === 'copa' && soloCopa) ||
+      (id === 'menos30' && precioMax === 30) ||
+      (id === 'frescos' && filtro === 'blanco') ||
+      (id === 'espumosos' && filtro === 'espumoso')
+
+    if (yaActivo) { limpiarFiltrosCarta(); return }
+
     setBusqueda('')
     setSoloInternacional(false)
     setSoloCopa(false)
@@ -615,17 +623,23 @@ setPerfiles(nuevosPerfiles)
 
         {!busqueda && (
           <section className={styles.shortcutPanel}>
-            <button className={styles.shortcut} onClick={() => aplicarAtajo('copa')} disabled={!vinosPorCopa}>
+            <button
+              className={`${styles.shortcut} ${soloCopa ? styles.shortcutActive : ''}`}
+              onClick={() => aplicarAtajo('copa')} disabled={!vinosPorCopa}>
               <span>Por copa</span>
-              <small>{vinosPorCopa} vinos</small>
+              <small>{soloCopa ? 'Toca para quitar' : `${vinosPorCopa} vinos`}</small>
             </button>
-            <button className={styles.shortcut} onClick={() => aplicarAtajo('menos30')} disabled={!vinosMenos30}>
+            <button
+              className={`${styles.shortcut} ${precioMax === 30 ? styles.shortcutActive : ''}`}
+              onClick={() => aplicarAtajo('menos30')} disabled={!vinosMenos30}>
               <span>Menos de 30 €</span>
-              <small>{vinosMenos30} vinos</small>
+              <small>{precioMax === 30 ? 'Toca para quitar' : `${vinosMenos30} vinos`}</small>
             </button>
-            <button className={styles.shortcut} onClick={() => aplicarAtajo('frescos')} disabled={!vinosFrescos}>
+            <button
+              className={`${styles.shortcut} ${filtro === 'blanco' ? styles.shortcutActive : ''}`}
+              onClick={() => aplicarAtajo('frescos')} disabled={!vinosFrescos}>
               <span>Frescos</span>
-              <small>Blancos y afines</small>
+              <small>{filtro === 'blanco' ? 'Toca para quitar' : 'Blancos y afines'}</small>
             </button>
             <button className={styles.shortcut} onClick={() => setVista('sommelier')}>
               <span>Para mi comida</span>
