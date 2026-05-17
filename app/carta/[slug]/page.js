@@ -139,6 +139,8 @@ const [cargandoPerfiles, setCargandoPerfiles] = useState(false)
       setRestaurante(rest)
       if (rest.color_primario) document.documentElement.style.setProperty('--color-primario', rest.color_primario)
       if (rest.color_fondo) document.documentElement.style.setProperty('--color-fondo', rest.color_fondo)
+      if (rest.color_acento) document.documentElement.style.setProperty('--color-acento', rest.color_acento)
+      document.documentElement.style.setProperty('--font-titulo', rest.tipografia === 'sans' ? 'system-ui, sans-serif' : 'Georgia, serif')
       const { data: vinosData } = await supabase.from('vinos').select('*').eq('restaurante_id', rest.id).eq('activo', true).gt('stock', 0)
       setVinos(vinosData || [])
       const { data: platosData } = await supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true)
@@ -233,6 +235,8 @@ setPerfiles(nuevosPerfiles)
 
   const tipos = ['todos', ...new Set(vinos.map(v => v.tipo))]
   const colorPrimario = restaurante?.color_primario || '#111111'
+  const colorAcento = restaurante?.color_acento || colorPrimario
+  const fontTitulo = restaurante?.tipografia === 'sans' ? 'system-ui, sans-serif' : 'Georgia, serif'
   const categoriasBase = ['Entrantes fríos', 'Entrantes calientes', 'Cuchara', 'De la tierra', 'Del mar', 'Tablas']
   const categoriasPlatos = [
     ...categoriasBase.filter(categoria => platos.some(plato => plato.categoria === categoria)),
@@ -457,7 +461,7 @@ setPerfiles(nuevosPerfiles)
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: tipoDot[vinoSeleccionado.tipo] }} />
           <span style={{ fontSize: 12, color: '#999', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{i.tipoLabel[vinoSeleccionado.tipo]}</span>
         </div>
-        <h1 style={{ fontSize: 30, fontWeight: 300, color: '#111', margin: '0 0 8px', fontFamily: 'Georgia, serif', lineHeight: 1.3 }}>{vinoSeleccionado.nombre}</h1>
+        <h1 style={{ fontSize: 30, fontWeight: 300, color: '#111', margin: '0 0 8px', fontFamily: fontTitulo, lineHeight: 1.3 }}>{vinoSeleccionado.nombre}</h1>
         <p style={{ fontSize: 16, color: '#888', margin: '0 0 32px', fontWeight: 300 }}>{vinoSeleccionado.bodega}</p>
         <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0f0', overflow: 'hidden', marginBottom: 20 }}>
           {[
@@ -540,7 +544,7 @@ setPerfiles(nuevosPerfiles)
                     key={tipo}
                     className={`${styles.chip} ${filtro === tipo ? styles.chipActive : ''}`}
                     onClick={() => setFiltro(tipo)}
-                    style={filtro === tipo ? { background: colorPrimario, borderColor: colorPrimario } : undefined}
+                    style={filtro === tipo ? { background: colorAcento, borderColor: colorAcento } : undefined}
                   >
                     {tipo === 'todos' ? i.todos : i.tipoLabel[tipo]}
                   </button>
@@ -802,7 +806,7 @@ setPerfiles(nuevosPerfiles)
               className={styles.recommendButton}
               onClick={preguntarSommelier}
               disabled={cargandoIA}
-              style={{ background: cargandoIA ? '#8d8578' : colorPrimario }}
+              style={{ background: cargandoIA ? '#8d8578' : colorAcento }}
             >
               {cargandoIA ? i.consultando : i.pedirRecomendacion}
             </button>
@@ -1108,7 +1112,7 @@ border: '1px solid rgba(255,255,255,0.15)',
                   ))}
                 </div>
                 <button onClick={preguntarSommelier} disabled={cargandoIA} style={{
-                  width: '100%', padding: '15px', background: cargandoIA ? '#ccc' : colorPrimario,
+                  width: '100%', padding: '15px', background: cargandoIA ? '#ccc' : colorAcento,
                   color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, letterSpacing: '0.1em',
                   textTransform: 'uppercase', cursor: cargandoIA ? 'not-allowed' : 'pointer'
                 }}>

@@ -1,6 +1,6 @@
 .shell {
   min-height: 100vh;
-  background: #f4f1eb;
+  background: var(--color-fondo, #f4f1eb);
   color: #171416;
   padding-bottom: 88px;
   font-family: var(--font-geist-sans), system-ui, sans-serif;
@@ -64,7 +64,7 @@
 .title {
   margin: 0;
   color: #fffaf3;
-  font-family: Georgia, serif;
+  font-family: var(--font-titulo, Georgia, serif);
   font-size: 32px;
   font-weight: 400;
   line-height: 1.05;
@@ -154,10 +154,10 @@
 
 .filterButton {
   min-height: 44px;
-  border: 1px solid #d4c6aa;
+  border: 1px solid var(--color-primario, #d4c6aa);
   border-radius: 8px;
   background: #fffaf3;
-  color: #531827;
+  color: var(--color-primario, #531827);
   padding: 0 13px;
   cursor: pointer;
   font-size: 12px;
@@ -195,6 +195,8 @@
 }
 
 .chipActive {
+  background: var(--color-acento, #171416);
+  border-color: var(--color-acento, #171416);
   color: #fffaf3;
 }
 
