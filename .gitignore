@@ -1,2 +1,8 @@
 node_modules/
+.next/
+.env*
+dev-server*.log
+.next-*.log
+.next-dev.pid
+demo-output/
 web-*.html

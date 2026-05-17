@@ -1,0 +1,2588 @@
+{
+  "version": "2.0",
+  "source": "Papilas y Moléculas - François Chartier (2010)",
+  "methodology_note": "Cada ficha distingue entre citas textuales del libro (campos con sufijo _chartier_textual) y extrapolaciones razonables marcadas como NOT_in_book. Cuando el campo termina en '_chartier_explicitly_named', significa que SOLO contiene elementos nombrados literalmente por Chartier en el capítulo.",
+  "principles": {
+    "core_idea_chartier_textual": "He constatado que los alimentos pueden reunirse en grandes familias aromáticas; de este modo se consigue mayor precisión en la búsqueda de la armonía con los vinos y en la creación de platos en la cocina.",
+    "method_summary": "Identificar la molécula dominante o familia aromática del plato, buscar vinos con la misma molécula o moléculas complementarias, priorizar afinidad molecular sobre tópicos regionales.",
+    "anti_topics_extrapolation_NOT_in_book": [
+      "No recomendar Rioja/Ribera por defecto",
+      "No razonar 'carne roja → tinto'",
+      "Considerar guarnición y salsa como dictantes del vino"
+    ]
+  },
+  "chapters": [
+    {
+      "id": "anisado",
+      "title": "Familia anisada — Menta y Sauvignon Blanc",
+      "chapter_source": "Capítulo 1: Menta y Sauvignon Blanc",
+      "epigraph": {
+        "quote": "El arte del buen investigador es, ante todo, elegir las preguntas adecuadas. En eso Einstein fue un maestro.",
+        "author": "Hubert Reeves"
+      },
+      "origin_story_chartier_textual": "Tras tratar de entender el universo aromático del vino joven y del curri, el maridaje entre menta y sauvignon blanc fue la primera pista aromática que exploré cuando empecé mi trabajo de investigación sobre armonías moleculares en 2006. Desde hace años venía observando que cuando la menta domina en un plato, como algunas ensaladas típicas de Oriente Próximo, elaboradas con cuscús a la menta y perejil fresco, o un bocadillo de queso de cabra con menta fresca y rodajas de pepino y manzana verde, la armonía con los vinos de tipo sauvignon blanc, normalmente marcados por un aroma anisado del universo de la menta, siempre era justa y precisa.",
+      "key_principle_chartier_textual": "A lo largo de mis trabajos, con la construcción de esquemas por grupos tipo de compuestos volátiles, comprendí que esos ingredientes estaban relacionados por un ensamblaje de moléculas aromáticas que se asemejan y se ensamblan gracias a un potente poder de atracción.",
+      "molecular_structure": {
+        "source": "Chartier, textual, sección 'MOLÉCULAS ANISADAS'",
+        "dominant_molecules_quote": "Las moléculas dominantes de aromas anisados son, ante todo, el anetol y el estragol, que están fundamentalmente en el anís estrellado de China (badiana), la albahaca verde, el hinojo fresco, el apio, el perifollo y el estragón, además de una pequeña proporción en las manzanas frescas.",
+        "molecule_to_food_map_chartier_textual": {
+          "anetol": "anís verde, anís estrellado, albahaca verde, apio, perifollo, hinojo fresco",
+          "R-carvona": "menta",
+          "S-carvona": "alcaravea",
+          "estragol": "anís, albahaca, estragón, hinojo fresco, manzana",
+          "eugenol": "albahaca tailandesa, albahaca verde, clavo",
+          "apigenina": "perejil",
+          "mentol": "albahaca, cilantro fresco, hinojo fresco, melisa, menta, hortalizas subterráneas"
+        },
+        "extra_chartier_textual": "Como hecho curioso, y más bien raro, la R-carvona y la S-carvona tienen olores distintos a pesar de que son moléculas con una composición química idéntica, pero con una estructura ligeramente diferente."
+      },
+      "botanical_families_chartier_textual": "Las hierbas y las hortalizas con sabor anisado proceden, en su mayoría, de tres familias: las apiáceas (umbelíferas), como el perifollo y el hinojo; las asteráceas (compuestas), como el estragón; y las lamiáceas (labiadas), de las que forman parte la albahaca y la menta piperita.",
+      "rhizomes_chartier_textual": "Los rizomas (daikon, rábano negro, galangal, cúrcuma, jengibre, raíz de achicoria, ñame, raíz de perejil, topinambur) también tienen un sabor a anís/regaliz, lo que los vincula con el regaliz y con otros ingredientes de la familia de los anisados.",
+      "foods_chartier_explicitly_named": [
+        "Menta",
+        "Cuscús a la menta y perejil fresco",
+        "Queso de cabra (con menta, pepino, manzana verde)",
+        "Albahaca verde",
+        "Albahaca tailandesa",
+        "Bulbo de hinojo fresco",
+        "Hojas de hinojo",
+        "Apio",
+        "Perifollo",
+        "Perejil",
+        "Estragón",
+        "Anís verde",
+        "Anís estrellado de China (badiana)",
+        "Cilantro fresco",
+        "Eneldo",
+        "Melisa",
+        "Verbena",
+        "Hierba luisa",
+        "Citronela",
+        "Daikon",
+        "Rábano negro",
+        "Galangal",
+        "Cúrcuma",
+        "Jengibre",
+        "Raíz de achicoria",
+        "Ñame",
+        "Topinambur",
+        "Raíz de perejil",
+        "Manzana verde",
+        "Manzana fresca (pequeña proporción)",
+        "Pepino",
+        "Pimiento verde",
+        "Pimiento amarillo",
+        "Zanahoria amarilla",
+        "Remolacha amarilla (NO la roja, que tiene geosmina)",
+        "Chirivía",
+        "Apionabo",
+        "Alcachofa china",
+        "Salsifí",
+        "Tirabeques",
+        "Ralladura de lima",
+        "Pastís",
+        "Extracto de regaliz negro (rico en estragol y ácido glicirricínico)",
+        "Apio de monte",
+        "Shiso (perilla, púrpura, japonica)",
+        "Aceite de oliva arbequina (recién prensada)",
+        "Té verde japonés gyokuro tamahomare",
+        "Té verde chino bi luo chun",
+        "Té verde chino gunpowder con menta",
+        "Wasabi",
+        "Mostaza",
+        "Salvia",
+        "Laurel"
+      ],
+      "wines_white_chartier_explicitly_named": {
+        "primary_quote": "Sauvignon blanc o verdejo. También es compatible con vinos a base de albariño, greco di Tuffo, vermentino, pinot blanco, furmint, chenin blanco o romorantin.",
+        "additional_chartier_quote_riesling_chardonnay": "En la compleja paleta aromática de algunos vinos blancos de riesling y chardonnay, se suelen observar notas de verbena y melisa, lo que permite otras posibilidades con estas dos hierbas.",
+        "moscatel_quote_chartier": "También encontramos citral en vinos moscatel jóvenes y en gewürztraminer, en los que actúa como intermediario metabólico que conduce a la aparición del linalol",
+        "specific_wine_named_by_chartier": "Silex 2000 Blanc Fumé de Pouilly, del difunto Didier Dagueneau (descrito como 'muy refrescante, aéreo y extrovertido, con sutiles toques anisados y una textura sedosa única')",
+        "list": [
+          "Sauvignon Blanc (sin madera, joven, seco)",
+          "Verdejo",
+          "Albariño",
+          "Greco di Tufo",
+          "Vermentino",
+          "Pinot Blanc",
+          "Furmint",
+          "Chenin Blanc",
+          "Romorantin",
+          "Riesling joven",
+          "Chardonnay joven sin madera",
+          "Moscatel seco de Alsacia",
+          "Sauvignon Blanc de cosecha tardía (Errazuriz Late Harvest, Chile) — para chocolate negro con albahaca/hinojo/menta"
+        ]
+      },
+      "wines_red_chartier_explicitly_named": {
+        "principle_chartier_textual": "Cuando los elementos de la receta que acompañan a los ingredientes anisados (como hinojo, anís estrellado, menta, pastís, chirivías, extracto de regaliz negro, pataca y otros rizomas) requieren un vino tinto, piense en vinos de syrah, o shiraz, y mezclas de garnacha-syrah-monastrell que suelen tener aromas anisados, como los del regaliz, el anís, la menta y el estragón.",
+        "list": [
+          "Syrah / Shiraz (Ródano, Sudáfrica)",
+          "Mezclas garnacha-syrah-monastrell",
+          "Mezclas cabernet-syrah"
+        ],
+        "regaliz_role_chartier_textual": "El extracto del regaliz negro mejora cualitativamente los vinos tintos menores y se convierte en un amplificador de alta fidelidad para los vinos tintos mayores. El extracto de regaliz negro, añadido a una salsa al final de la cocción, suaviza los taninos de los vinos tintos por excelencia."
+      },
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Salmón confitado regado con aceite de perejil + ensalada de bulbo de hinojo crudo escaldado con aceite de menta + puré de chirivías o topinambur",
+          "wine_chartier": "Sauvignon Blanc",
+          "source_quote": "Conseguirá fácilmente una unión casi perfecta entre todos los elementos de un plato y el vino servido de tipo sauvignon blanc."
+        },
+        {
+          "dish_chartier": "Sándwich de queso de cabra con manzana verde o roja, juliana de hinojo fresco (o remolacha amarilla), pepino, menta fresca, mayonesa con alcaravea (o wasabi), opcionalmente trucha ahumada",
+          "wine_chartier": "Sauvignon Blanc o Verdejo",
+          "label": "Receta TRUCO DE SUMILLER-COCINERO de Chartier"
+        },
+        {
+          "dish_chartier": "Gargouillou de hortalizas jóvenes en modo anisado (recomposición del plato de Michel Bras)",
+          "wine_chartier": "Vino blanco joven seco sin madera de sauvignon blanc o verdejo, también albariño, greco di Tufo, vermentino, pinot blanco, furmint, chenin blanco o romorantin"
+        },
+        {
+          "dish_chartier": "Rollito de primavera con gambas salteadas, daikon, apio, hinojo, tirabeques, pepino, pimiento verde y rojo, menta, ralladura de lima escaldada",
+          "wine_chartier": "Sauvignon Blanc — específicamente Silex 2000 Blanc Fumé de Pouilly de Didier Dagueneau"
+        },
+        {
+          "dish_chartier": "Volován de gambas con pastís",
+          "wine_chartier": "Vinos blancos anisados (línea sauvignon blanc)"
+        },
+        {
+          "dish_chartier": "Estofado de jarrete de cordero con tomates, pastís e hinojo",
+          "wine_chartier": "Syrah del valle del Ródano o de Sudáfrica",
+          "source_quote": "Ambos expresan el mismo tono anisado que está en este plato dominado por el pastís y el hinojo, con alto contenido en anetol."
+        },
+        {
+          "dish_chartier": "Chocolate negro con albahaca, hinojo o menta",
+          "wine_chartier": "Sauvignon Blanc de cosechas tardías (ej. Errazuriz Late Harvest, Chile)"
+        },
+        {
+          "dish_chartier": "Sopa thai con citronela",
+          "wine_chartier": "Riesling joven y tonificante"
+        },
+        {
+          "dish_chartier": "Pescado blanco cocido al vapor de verbena seca",
+          "wine_chartier": "Chardonnay joven sin madera con un punto anisado, o moscatel seco de Alsacia"
+        },
+        {
+          "dish_chartier": "Queso munster al ajowan (o al comino/alcaravea tradicional)",
+          "wine_chartier": "Implícito en la familia anisada — Chartier no nombra vino específico aquí pero el plato está en el capítulo"
+        }
+      ],
+      "ideas_explicit_in_chapter": [
+        "Ceviche de ostras con wasabi y cilantro",
+        "Caracoles con champiñones y crema de perejil",
+        "Filete de trucha salmonada a la parrilla con aceite de albahaca",
+        "Mejillones con zumo de perejil",
+        "Pasta con limón, espárragos y albahaca fresca",
+        "Pasta con pesto",
+        "Pasta con salmón ahumado en salsa de eneldo",
+        "Vieiras a la parrilla y anguila ahumada con crema de apio",
+        "Vieiras salteadas con zumo de perejil",
+        "Puerros a la brasa con menta",
+        "Pechugas de pollo rellenas de queso brie y alcaravea",
+        "Risotto de gambas con albahaca",
+        "Trucha y puré de apionabo"
+      ],
+      "cold_taste_concept_chartier_textual": {
+        "definition": "La menta forma parte del grupo de alimentos con sabor a frío, que he bautizado así por la presencia de diferentes compuestos aromáticos, como el mentol, que, al igual que el estragol, aporta su fresca identidad a la menta.",
+        "mechanism": "El mentol está en todas las variedades de la menta. En dosis bajas activa receptores térmicos del frío y en dosis altas tiene un efecto abrasador, como la capsaicina de las guindillas. Al igual que la manzana, los pimientos y los pepinos, la menta contiene otras moléculas que, como el mentol, despiertan los receptores que también se activan con temperaturas de entre 8 y 28 °C. Estos ingredientes simulan el frío, de ahí la sensación de frescor en la boca, especialmente cuando se toman crudos.",
+        "wine_implication": "Se debe tener en cuenta esta sensación de frío a la hora de elegir un vino para el maridaje. Según los componentes del plato, su presencia puede tener un efecto amortiguador para, por ejemplo, calmar el calor de las especias, así como de la temperatura a la que se sirve el plato. Esto orienta hacia la elección de un vino con alto contenido en alcohol o incluso que se sirva un vino menos frío, ya que el frescor ya está muy presente en boca por los ingredientes con sabor a frío."
+      },
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Lo siguiente NO está literalmente en el capítulo. Son extrapolaciones razonables que pueden usarse pero deben presentarse como inferencia, no como cita de Chartier.",
+        "items": [
+          "Sushi → Sauvignon Blanc o Riesling (lógica: jengibre + wasabi + pepino son anisados, pero Chartier no lo afirma directamente)",
+          "Ceviche → Albariño (lógica: cítrico + cilantro fresco encajan en familia anisada)",
+          "Pesto → Vermentino (lógica: albahaca dominante, pero Chartier menciona pasta con pesto sin nombrar vino específico)",
+          "Sancerre / Pouilly-Fumé como sub-tipos del Sauvignon Blanc (Chartier menciona Pouilly Fumé al citar a Dagueneau, pero no nombra Sancerre por su nombre en este capítulo)",
+          "Cabernet Franc del Loira (Chinon, Bourgueil) como vino tinto anisado — Chartier NO lo nombra en este capítulo, aparece después"
+        ]
+      }
+    },
+    {
+      "id": "sotolon",
+      "title": "Sotolón — El enlace entre Vin Jaune, Curri, Arce y Sauternes",
+      "chapter_source": "Capítulo 2: Sotolón",
+      "epigraph": {
+        "quote": "La investigación es un largo proceso de adquisición de la información",
+        "author": "Dr. Richard Béliveau"
+      },
+      "discovery_story_chartier_textual": "Tras horas y horas descifrando compuestos volátiles de vinos, me di cuenta de que el origen de la principal nota aromática (curri y nuez) del vino jaune del Jura era el hidroxi-3-dimetil-4,5-(5H)-furanona-2, más conocido como sotolón. Esta molécula volátil le da al curri y a la nuez, entre otros, su particular sabor. Poco después, descubrí que esta misma molécula aromática es la dominante en la fenogreco, en concreto en las semillas tostadas de fenogreco, que forman parte de algunos curris y que aporta una de las tonalidades aromáticas más importantes al jarabe de arce.",
+      "molecular_structure": {
+        "key_molecule": "Sotolón (hidroxi-3-dimetil-4,5-(5H)-furanona-2)",
+        "related_molecules_chartier_textual": "Las semillas tostadas de fenogreco poseen moléculas de la familia del cicloteno, que encontramos en las hortalizas y en el jarabe de arce. El cicloteno, con un potente olor que recuerda al jarabe de arce y, en menor medida, al regaliz, también se parece, en cuanto al aroma, a la furanona (aún más potente que el sotolón, con un aroma caramelizado y dominante en la salsa de soja) y al maltol (azúcar quemado).",
+        "formation_principle_chartier_textual": "Un calentamiento por encima de los 37 °C pone en marcha grandes transformaciones químicas que producen aromas de la familia del sotolón.",
+        "rancio_principle_chartier_textual": "El sotolón es responsable del famoso aroma rancio, a menudo asociado con el de nuez rancia, característico de los vinos dulces naturales añejos. Cuanto más se note el aroma rancio en una cata de vinos dulces naturales añejos, mayor será el contenido de sotolón.",
+        "minerality_principle_chartier_textual": "El cicloteno también es responsable del sabor mineral a pedernal, similar al sílex, que encontramos en algunos vinos blancos."
+      },
+      "foods_chartier_explicitly_named": [
+        "Curri (con semillas tostadas de fenogreco)",
+        "Fenogreco (semillas tostadas)",
+        "Nuez",
+        "Jarabe de arce",
+        "Caramelo",
+        "Semillas de lino (sobre todo el aceite)",
+        "Sake (especialmente Nigori)",
+        "Salsa de soja",
+        "Cervezas de alta fermentación tostadas y negras",
+        "Caldo de ternera",
+        "Setas Lactarius deshidratadas",
+        "Habanos (hojas infusionadas)",
+        "Apio de monte",
+        "Melaza",
+        "Té negros ahumados y envejecidos (wulong y pu-erh)",
+        "Ron añejo",
+        "Manzana confitada",
+        "Higos secos",
+        "Ciruela",
+        "Almendra tostada",
+        "Cacao tostado",
+        "Café",
+        "Raíz de achicoria asada",
+        "Miel",
+        "Canela",
+        "Frutos secos",
+        "Vainilla",
+        "Maíz inflado al caramelo",
+        "Vieiras Princess y su coral (en composición con espuma de fenogreco/sake/arce)",
+        "Foie gras de pato",
+        "Ostra (con espuma de fenogreco — adaptación elBulli)",
+        "Panceta ahumada",
+        "Agua de mar (espuma)"
+      ],
+      "wines_chartier_explicitly_named": {
+        "primary_list_chartier_textual": "Sus compuestos volátiles están presentes, en diferente concentración, en los vinos ricos en aldehídos, como los vinos amarillos, los vinos de paja, el jerez y los vinos dulces naturales a base de garnacha negra y blanca. También están en los licorosos de tipo sauternes, para cuya vendimia se espera a la podredumbre noble (Botrytis cinerea), lo que incluye los tokaji aszú (especialmente los añejos de crianza más oxidativa o los más recientes, pero con más de diez años de edad, como los de 1996, muy marcados por este perfil), los oportos añejos de tipo tawny, los oportos blancos envejecidos, los madeira añejos de tipo bual y malmsey, así como algunos champagnes envejecidos criados en lías.",
+        "list": [
+          "Vin Jaune del Jura",
+          "Sauternes envejecido (más de 10-15 años)",
+          "Sauternes añejo (Château Rieussec 1979 nombrado por Chartier)",
+          "Tokaji Aszú añejo (especialmente cosechas como 1996+)",
+          "Vinos amarillos",
+          "Vinos de paja",
+          "Jerez Fino",
+          "Jerez Manzanilla pasada",
+          "Jerez Oloroso",
+          "Jerez Amontillado (Montilla-Moriles equivalentes)",
+          "Vinos dulces naturales rancios (Banyuls, Maury, Rivesaltes — a base de garnacha negra/gris/blanca, sin moscatel)",
+          "Macabeo y Tourbat (en menor medida) en VDN",
+          "Oporto Tawny añejo",
+          "Oporto blanco envejecido",
+          "Madeira añejo Bual y Malmsey",
+          "Champagne envejecido criado sobre lías",
+          "Pedro Ximénez (Solera) de Montilla-Moriles",
+          "Vino Santo (semiseco)",
+          "Sake Nigori",
+          "Ron añejo",
+          "Jurançon Sec — Marie 2004 de Charles Hours (con maceración de fenogreco — experimento de Chartier)"
+        ],
+        "vdn_oxidation_principle_chartier_textual": "Las concentraciones de sotolón son mucho mayores en los vinos dulces naturales criados en presencia de oxígeno que en los criados en su ausencia (tipo vintage o rimage). El vino dulce natural rancio de siete años de edad y conservado en un entorno muy oxidativo (en madera y, en caso necesario, en cristal y en el exterior) tiene una concentración de sotolón muy superior."
+      },
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Tatin de manzana al curri coronada con escalope de foie gras de pato salteado (servido como postre)",
+          "wine_chartier": "Sauternes maduro Château Rieussec 1979",
+          "context": "Maridaje empírico de Chartier en 2002, gala Montréal Passion Vin",
+          "source_quote": "Diseñé este plato desde cero por y para este vino. Los aromas a nuez y a curri, así, como a manzana confitada y caramelo de este sauternes me indicaron esta senda armónica del universo aromático del sotolón."
+        },
+        {
+          "dish_chartier": "Tres vieiras Princess y tres espumas (sake/agua de mar; fenogreco tostada macerada en vino; jarabe de arce) acompañadas de cardamina de shiso rojo",
+          "wine_chartier": "Cosecha Sotolón — base jurançon seco joven con maceración de semillas tostadas de fenogreco (creación de Chartier, restaurante Anise Montreal, febrero-marzo 2007)"
+        },
+        {
+          "dish_chartier": "Ostra merengada de elBulli transformada (con segunda espuma de fenogreco)",
+          "wine_chartier": "La Bota de Manzanilla Pasada 10",
+          "source_quote": "¿Y por qué no divertirse transformando la icónica ostra merengada de elBulli añadiéndole semillas tostadas de fenogreco para maridar así ese plato con una manzanilla pasada, como la grandísima cosecha La Bota de Manzanilla Pasada 10?"
+        },
+        {
+          "dish_chartier": "Plato de pescado yodado con aroma a fenogreco o arce (o soja, sake, lino)",
+          "wine_chartier": "Vin jaune muy mineral con olor a pedernal"
+        },
+        {
+          "dish_chartier": "Receta dominada por el curri",
+          "wine_chartier": "Vino jaune o sauternes envejecido"
+        },
+        {
+          "dish_chartier": "Platos endulzados con jarabe de arce",
+          "wine_chartier": "Tokaji aszú envejecido, vino santo (semiseco), sake Nigori, jerez oloroso o un montilla-moriles Pedro Ximénez solera"
+        },
+        {
+          "dish_chartier": "Platos salados con jarabe de arce",
+          "wine_chartier": "Vino santo (el menos dulce posible), sake, ron añejo o jerez oloroso. Si el foie gras es el pilar del plato, sauternes añejo"
+        },
+        {
+          "dish_chartier": "Salmón laqueado con soja/balsámico",
+          "wine_chartier": "Montilla-Moriles amontillado o manzanilla pasada"
+        },
+        {
+          "dish_chartier": "Platos con higo seco, ciruela, almendra tostada, miel, canela, frutos secos, vainilla",
+          "wine_chartier": "Vinos dulces naturales añejos sin moscatel, de crianza oxidativa"
+        }
+      ],
+      "ideas_explicit_in_chapter": [
+        "Piña caramelizada y reducción de soja/sake/azúcar moreno, virutas de chocolate negro y polvo de regaliz",
+        "Algodón de azúcar al jarabe de arce aromatizado con semillas tostadas de fenogreco",
+        "Ternera ahumada y laqueada con soja/sake/azúcar moreno",
+        "Ternera a la brasa y reducción de soja/arce",
+        "Maíz inflado al caramelo con aroma de semillas tostadas de fenogreco"
+      ],
+      "historical_anecdote_chartier_textual": "En la antigua Roma, los vinos más apreciados eran los blancos licorosos muy envejecidos, que adoptaban un sabor rancio (marcado por el sotolón). Estos vinos eran raros y costosos por aquel entonces, por lo que se pusieron a añadir especias a los blancos licorosos, como la fenogreco, y también agua de mar, para obtener ese sabor a añejo tan buscado en los vinos de crianza oxidativa.",
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO presentes literalmente en este capítulo",
+        "items": [
+          "Mole mexicano poblano → vino oxidativo (lógica: cacao + canela + frutos secos están en lista de Chartier, pero el mole no se menciona)",
+          "Jamón ibérico → Manzanilla pasada o Fino añejo (Chartier menciona que el sotolón está en el Fino, pero el ibérico se desarrolla más en otro capítulo)",
+          "Setas con salsa de nuez → Vin Jaune (Chartier menciona Lactarius deshidratada, no esta receta)"
+        ]
+      }
+    },
+    {
+      "id": "fino_oloroso",
+      "title": "Fino y Oloroso — Un velo de aromas con los vinos de Jerez",
+      "chapter_source": "Capítulo 3: Fino y Oloroso",
+      "epigraph": {
+        "quote": "La afirmación del sabor individual es una búsqueda de la libertad",
+        "author": "Jacques Puisais"
+      },
+      "regions_chartier_textual": "La cálida y hechicera Andalucía, situada en el confín meridional de España, alberga dos áreas de denominación de origen que producen vinos con varias personalidades. Una de ellas es la denominación Jerez, conocida en todo el mundo, cuyos vinos se denominan jerez o sherry y que está en la provincia de Cádiz; la otra es Montilla-Moriles, en la provincia de Córdoba.",
+      "grape_varieties_chartier_textual": "Todos los montilla-moriles se hacen a base de Pedro Ximénez, incluso los secos como puedan serlo los finos y los amontillados. Los vinos de Jerez están hechos de palomino, excepto los jereces que llevan en la etiqueta la mención Pedro Ximénez.",
+      "molecular_structure": {
+        "compounds_count_chartier_textual": "Se han identificado aproximadamente 307 compuestos volátiles en los diferentes tipos de jereces y montilla-moriles.",
+        "fino_dominant_molecules_chartier_textual": "Los compuestos volátiles dominantes en el fino y la manzanilla nos conducen a inspiradoras pistas armónicas para la cocina. Lo primero que descubrimos es acetaldehído (presente también en la nuez, la manzana verde y el jamón ibérico), acetoína (sabores grasos, cremosos y mantequillosos; mantequilla y yogur), lactonas (albaricoque, melocotón, coco), diacetilo (mantequilla y queso), solerona (higos secos) y terpenos (cítricos y flores).",
+        "acetoina_foods_chartier_textual": "La acetoína [...] La encontramos en las manzanas cocidas, las frescas, los puerros frescos o cocidos, los espárragos, el brócoli, las coles de Bruselas, los granos tostados de café, el membrillo, el melón cantalupo, el jarabe de maíz y el té fermentado, sin olvidar por supuesto la mantequilla, el queso, la leche y el yogur.",
+        "sherry_lactonas_chartier_textual": "Las sherry lactonas, que también encontramos en el albaricoque, el coco, el melocotón, el cerdo (jamón ibérico) y la vainilla. Curiosamente, una de estas sherry lactonas, llamada solerona, familia del sotolón, también configura el perfil aromático de los higos secos, así como de los dátiles y el té negro ahumado Lapsang Souchong.",
+        "terpenos_chartier_textual": "Los muy florales terpenos, con olor a lavanda y a muguete, que encontramos en una gran cantidad de alimentos que se convierten en ingredientes complementarios: albahaca dulce europea, bergamota, palo de rosa, canela de Ceilán, cilantro, higo seco, jengibre, menta, nuez moscada, aceituna, uva, arroz, romero, azafrán y ralladura de cítricos.",
+        "oloroso_phenolics_chartier_textual": "Dominan cuatro compuestos fenólicos: el ácido benzoico (olor a almendra), el ácido cinámico (olor a canela), el aldehído fenólico (olor a nuez) y la cumarina (olor a vainilla, haba tonka, heno cortado).",
+        "oloroso_extras_chartier_textual": "También encontramos el aromático y complejo sotolón (olores a curri, nuez, semillas tostadas de fenogreco, jarabe de arce, salsa de soja), sherry lactonas (olor a dátil, higo seco, coco, té negro ahumado, vainilla), así como piperonal (olores dulces, florales).",
+        "piperonal_foods_chartier_textual": "El piperonal también está en el aroma del eneldo, el arándano, el alcanfor, el melón, el pimiento, el pollo cocinado, la violeta y el sasafrás.",
+        "cumarina_foods_chartier_textual": "En el oloroso encontramos cumarina, que también está en el haba tonka, la lavanda, el clavo, la canela (principalmente la canela de China o cassia), el regaliz, la angélica, el tabaco y el extracto de vainilla artificial, así como en la hierba de bisonte, utilizada para la elaboración del vodka polaco żubrówka."
+      },
+      "styles_explained_chartier_textual": {
+        "fino": "El jerez de tipo fino se elabora a partir de vinos hechos de palomino, los más pálidos y ligeros [...] fortificación al 15,5%. Se conserva en barriles en la parte más fría de la bodega, favoreciendo el desarrollo del velo de levaduras. La acción de los microorganismos del velo de la levadura consume el oxígeno y protege el vino de la oxidación. De ahí procede la frescura aromática del fino y su amarillo tan pálido.",
+        "manzanilla": "La manzanilla es una variación regional del fino, elaborada a partir de uvas cultivadas en la costa atlántica del municipio de Sanlúcar de Barrameda. Suele ser un fino más ligero que el que tiene la denominación Jerez, con tonos amargos y yodados más marcados.",
+        "manzanilla_pasada": "La manzanilla pasada, es un jerez de tipo amontillado procedente del mismo lugar [Sanlúcar de Barrameda].",
+        "amontillado": "El amontillado es un vino criado bajo velo de flor, como el fino, fortificado hasta el 15,5% [...] el velo desaparece. El vino se vuelve a fortificar para alcanzar entre el 17 y el 18% [...] en un entorno oxidativo. Su color pálido inicial se transforma en un color más ambarino. Los aromas de manzana y almendra fresca del fino [...] se transforman en notas de nueces tostadas. El amontillado está, en términos aromáticos y armónicos, a medio camino entre el fino y el oloroso.",
+        "oloroso": "El jerez de tipo oloroso se elabora con los vinos de base más coloridos, con más compuestos fenólicos que el fino (más del doble) [...]. No hay crianza bajo velo de flor, el vino de base se fortifica para llegar a entre el 18,5 y el 20% [...]. Las barricas se llenan hasta el 95% [...] colocadas en la parte más caliente de la bodega [...]. El oloroso, ya sea seco o dulce, siempre da la impresión de ser dulce y semiseco debido a su riqueza en alcohol y glicerol [...]. Está, aproximadamente, de 8 a 12 años en barrica.",
+        "cream_y_dry_styles": "Generalmente, estos tipos [Medium Dry, Medium, Cream, Pale Cream] de vinos de Jerez se elaboran con una base de oloroso a la que se añade un toque de fino para hacer palidecer el color y aromatizar el conjunto, así como una punta de amontillado para darle mayor complejidad."
+      },
+      "fino_revelation_chartier_textual": "Estaba convencido desde hacía tiempo de que los jereces de tipo amontillado y oloroso eran el mejor acompañamiento para los higos. Pero el fino, con notas aromáticas muy frescas y con color amarillo pálido, es, para mi gran sorpresa, el compañero con mayúsculas del higo seco. Destrona, sin duda alguna, al amontillado y al oloroso. [...] el maridaje es más que nunca molecular, por su complementariedad en boca (el vino aligera el azúcar del higo) y, especialmente, por el encuentro de las moléculas de solerona que comparten el vino y el higo seco.",
+      "fino_versatility_chartier_textual": "Aunque suelen servirse como aperitivo, el jerez fino y el jerez manzanilla merecen un lugar destacado en la mesa; incluso diría que hay que situarlos entre los vinos más polivalentes a la hora de maridar con los platos. ¿No se lo cree? ¿Le parece que es imposible que haya un vino capaz de realzar con estilo los sabores salinos y yodados de las ostras, de los crustáceos y del caviar, así como los complejos sabores del sushi y sus condimentos (salsa de soja, jengibre marinado, daikon, wakame) y que acompañe a su vez sin apagarse a los espárragos verdes, las aceitunas, las alcachofas, los pescados ahumados y el queso de cabra curado?",
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Higos secos solos",
+          "wine_chartier": "Fino (preferido sobre amontillado y oloroso, descubrimiento de Chartier)"
+        },
+        {
+          "dish_chartier": "Plato de jamón ibérico (o prosciutto) con higos secos",
+          "wine_chartier": "Fino o Manzanilla"
+        },
+        {
+          "dish_chartier": "Brochetas de higos secos enrolladas con jamón ibérico",
+          "wine_chartier": "Fino o Manzanilla"
+        },
+        {
+          "dish_chartier": "Queso de cabra semicurado y romero macerado en el interior",
+          "wine_chartier": "Fino o Manzanilla"
+        },
+        {
+          "dish_chartier": "Puerro en frío/caliente y manzanas frescas y cocidas, aromatizadas con cilantro fresco",
+          "wine_chartier": "Fino o Manzanilla"
+        },
+        {
+          "dish_chartier": "Vieiras a la parrilla y cuscús de nuez de Brasil y virutas de coco tostadas, salsa de yogur, jengibre y cítrico",
+          "wine_chartier": "Fino o Manzanilla"
+        },
+        {
+          "dish_chartier": "Ensalada de queso de cabra seco marinado en aceite de oliva aromatizado con romero",
+          "wine_chartier": "Fino o Manzanilla — TRUCO DE SUMILLER-COCINERO de Chartier"
+        },
+        {
+          "dish_chartier": "Ostras, crustáceos, caviar",
+          "wine_chartier": "Fino o Manzanilla"
+        },
+        {
+          "dish_chartier": "Sushi con sus condimentos (salsa de soja, jengibre marinado, daikon, wakame)",
+          "wine_chartier": "Fino o Manzanilla"
+        },
+        {
+          "dish_chartier": "Espárragos verdes, aceitunas, alcachofas, pescados ahumados, queso de cabra curado",
+          "wine_chartier": "Fino o Manzanilla"
+        },
+        {
+          "dish_chartier": "Plato Homenaje a François Chartier — cigala en tempura de almendras tiernas, compota de manzana, curri y setas (creación de los hermanos Roca)",
+          "wine_chartier": "Fino — base molecular acetaldehído, solerona, sotolón, acetoína, terpenos, lactonas"
+        },
+        {
+          "dish_chartier": "Postre con cacao, semillas tostadas de fenogreco, dátiles",
+          "wine_chartier": "Tokaji Aszú (vino dulce de Hungría)"
+        },
+        {
+          "dish_chartier": "Pescado ahumado sin ahumar al té Lapsang Souchong (infusión en salsa de nata, opcional sifón con espuma de ahumado sobre huevas)",
+          "wine_chartier": "Oloroso más seco que dulce — TRUCO DE SUMILLER-COCINERO"
+        },
+        {
+          "dish_chartier": "Receta de higos secos + scotch envejecido en barricas de jerez + vainilla + coco tostado (opcional dátiles, jarabe de arce, semillas tostadas de fenogreco)",
+          "wine_chartier": "Fino, Manzanilla o Amontillado, también Sauternes o Tokaji Aszú con más de 10 años"
+        }
+      ],
+      "scotch_connection_chartier_textual": "El scotch envejecido en barricas de jerez (como el Macallan Fine Oak de 10 años y el Macallan Cask Strength de 10 años) también está marcado por las lactonas, entre las que destacan las famosas whisky lactonas, así como las sherry lactonas, como la solerona del jerez y del higo seco.",
+      "service_advice_oloroso_chartier_textual": "Por su estructura [...] el oloroso requiere alimentos con textura y grasos, que pueden jugar con elementos amargos, y debe, idealmente, servirse a una temperatura moderada para que el calor no intensifique el alcohol.",
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO presentes literalmente en este capítulo",
+        "items": [
+          "Almendras tostadas → Fino (lógica clara: ácido benzoico=almendra y acetaldehído=nuez ya están descritos como compuestos del fino, pero Chartier no afirma este pairing literal aquí)",
+          "Tortilla de patatas → Fino (sentido común español, no en Chartier)",
+          "Mole → Oloroso (sentido común mexicano, no en Chartier)",
+          "Quesos azules → Pedro Ximénez (clásico, pero Chartier no lo afirma en este capítulo)"
+        ]
+      }
+    },
+    {
+      "id": "roble_barrica",
+      "title": "Roble y Barrica — El maestro de los aromas",
+      "chapter_source": "Capítulo 4: Roble y Barrica",
+      "epigraph": {
+        "quote": "Las partituras lo dicen todo, excepto lo esencial",
+        "author": "Gustav Mahler"
+      },
+      "thesis_chartier_textual": "Hay un estrecho vínculo entre los aromas de los vinos criados en barrica y los que emanan de los alimentos cocinados mediante fuego de carbón de leña. Esto explica, en parte, los aromas a vainilla que encontramos en los vinos, scotchs y coñacs y en todos los alimentos cocinados o ahumados en fuego de leña, como el pan, los pescados y algunas verduras y carnes. Esos alimentos desarrollan también notas caramelizadas/especiadas/torrefactadas por contaminación aromática del humo liberado durante el cocinado, lo que explica la armonía casi perfecta entre vinos con madera y las carnes a la parrilla.",
+      "molecular_structure": {
+        "raw_oak_chartier_textual": "Los aromas del roble nuevo, antes de tostarlo, están ligeramente marcados por compuestos volátiles con notas de vainilla, clavo, coco, especias y cuero, así como por tonos aromáticos terrosos y vegetales.",
+        "toasted_oak_compounds_chartier_textual": "Una vez tostado por la acción del fuego, aparecen nuevos compuestos aromáticos. La degradación de las ligninas del roble genera numerosos aldehídos fenólicos muy volátiles, como la vainillina [...] Aparecen otros fenoles, con matices ahumados (smoky), como en el guayacol, así como notas de especias/madera, como en el caso del eugenol (compuesto aromático del clavo). También están las dominantes metiloctalactonas, más conocidas como whisky lactonas, con sus olores tostados que se enmarcan en el universo, entre otros, de la nuez y el coco. Se añaden también los aldehídos furánicos (almendra tostada), los furfurales (olores a serrín/arce/pan tostado/almendra tostada/café/caramelo) y el 5-metil-furfural (almendra tostada). También encontramos cicloteno (arce, regaliz, tostado y asado), maltol e isomaltol (tonos de azúcar quemado/caramelo).",
+        "siringol_chartier_textual": "El siringol es un fenol procedente de la quema de la madera [...] aromas especiados, ahumados, avainillados y medicinales. También se encuentra en estado natural en la cebolla, el ajo, el puerro y la cebolleta, hortalizas que, al cocinarlas, se convierten (por la caramelización de sus azúcares) en ingredientes de enlace muy interesantes con determinados vinos criados en barrica.",
+        "maillard_chartier_textual": "En el roble, los azúcares y los aminoácidos de la madera, al calentarlos, se transforman en notas empireumáticas, como el caramelo, cacao, pan tostado vainillina y vainillato de etilo (un derivado de la vainillina).",
+        "metiloctalactonas_quote": "Las lactonas, con olor a coco, así como a albaricoque y melocotón, con tonos que pueden ser avainillados, balsámicos, de madera y azucarados, transforman considerablemente el conjunto aromático de los vinos durante su maduración en barrica.",
+        "cumarina_quote": "La cumarina, que también es una lactona, es otro compuesto aromático procedente del roble, con aromas complejos de vainilla, haba tonka y heno cortado, con un sabor ácido y amargo. Como también es uno de los compuestos aromáticos del regaliz, aporta un aspecto a regaliz con los taninos de los vinos tintos criados en barricas de roble nuevo.",
+        "furfurales_quote": "Los furfurales [...] alcanzan una concentración significativa en los vinos criados en barricas de roble. Su penetrante olor se mueve entre complejos tonos de dulce/madera/caramelo/avellana, con matices de pan tostado, quemado, café y astringencia."
+      },
+      "oak_origin_differences_chartier_textual": {
+        "centro_francia_y_ruso": "El roble francés de los bosques de la región Centro (Francia), así como el roble ruso, son las variedades más ricas en eugenol (clavo).",
+        "americano": "El roble americano [...] está marcado fundamentalmente por las metiloctalactonas (whisky lactonas) — ocurre lo mismo con el roble francés del bosque de los Vosgos —, con aroma dominante de coco.",
+        "borgona_limousin": "Los robles de los bosques de Borgoña y del Limousin —donde predomina el roble común Quercus robur— [...] dan más presencia física, y liberan más taninos y otros polifenoles. Por eso se utilizan habitualmente los últimos para la maduración de los aguardientes.",
+        "lignina_escobajo_chartier_textual": "Las ligninas de la estructura del roble utilizado para las barricas están compuestas por las mismas moléculas que las ligninas que estructuran el escobajo (la estructura leñosa que sostiene el racimo). De este modo tenemos una primera explicación del vínculo natural entre la barrica de roble y el vino."
+      },
+      "foods_chartier_explicitly_named": [
+        "Cebolla, ajo, puerro, cebolleta caramelizadas (siringol)",
+        "Carne a la parrilla (Maillard)",
+        "Pan tostado",
+        "Pescado ahumado/cocinado al fuego de leña",
+        "Almendra tostada",
+        "Avellana",
+        "Café",
+        "Caramelo",
+        "Cacao",
+        "Chocolate",
+        "Coco fresco / tostado / leche de coco (especialmente con barrica americana)",
+        "Albaricoque",
+        "Melocotón",
+        "Hierba fresca",
+        "Cuero",
+        "Algodón de azúcar (maltol)",
+        "Jarabe de arce (mismas moléculas que la barrica)",
+        "Habas tonka",
+        "Lavanda",
+        "Clavo",
+        "Canela",
+        "Angélica",
+        "Tabaco",
+        "Hierba de bisonte (vodka żubrówka)",
+        "Regaliz",
+        "Cebada malteada (cerveza, scotch)",
+        "Mango fresco",
+        "Piña",
+        "Fresa",
+        "Romero",
+        "Patata",
+        "Espárrago cocido",
+        "Mozzarella",
+        "Ternera a la parrilla",
+        "Albahaca tailandesa, albahaca silvestre",
+        "Pimienta negra (β-cariofileno)"
+      ],
+      "wines_chartier_explicitly_named_with_eugenol": {
+        "principle_chartier_textual": "Con su potente y sensual aroma, el clavo casa con tintos suaves y penetrantes, especialmente determinados vinos de España, ricos en eugenol.",
+        "list": [
+          "Garnacha de Priorat",
+          "Garnacha de Rioja Baja, Campo de Borja, Cariñena",
+          "Tempranillo de Rioja, Toro, Ribera del Duero",
+          "Mencía del Bierzo",
+          "Touriga Nacional del Douro",
+          "Pinot Noir de Borgoña",
+          "Pinot Noir de Nueva Zelanda"
+        ]
+      },
+      "wines_chartier_explicitly_named_with_coconut_lactones": {
+        "principle_chartier_textual": "El chardonnay criado en barricas de roble y las recetas a base de coco (fresco, tostado o leche de coco) van de la mano.",
+        "list": [
+          "Chardonnay con barrica (especialmente americana)",
+          "Tintos californianos con barrica americana",
+          "Rioja con roble americano",
+          "Ribera del Duero con roble americano",
+          "Vinos australianos en barrica americana"
+        ]
+      },
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Carnes a la parrilla",
+          "wine_chartier": "Vinos con barrica (afinidad Maillard)"
+        },
+        {
+          "dish_chartier": "Recetas a base de coco (fresco, tostado o leche de coco)",
+          "wine_chartier": "Chardonnay con barrica"
+        },
+        {
+          "dish_chartier": "Postres con vainilla, nuez, caramelo",
+          "wine_chartier": "Jerez Oloroso o Pedro Ximénez"
+        },
+        {
+          "dish_chartier": "Cebolla/ajo/puerro caramelizados",
+          "wine_chartier": "Vinos criados en barrica (afinidad siringol)"
+        },
+        {
+          "dish_chartier": "Composiciones a base de jarabe de arce (saladas, dulces o ambas)",
+          "wine_chartier": "Coñac, Armañac, Bourbon americano, Scotch escocés (aguardientes con larga crianza en barrica)"
+        },
+        {
+          "dish_chartier": "Postres dulces con jarabe de arce",
+          "wine_chartier": "Sauternes, Oporto Tawny, Madeira, Jerez Oloroso"
+        },
+        {
+          "dish_chartier": "Recetas saladas realzadas con arce",
+          "wine_chartier": "Vinos secos blancos o tintos con roble tostado"
+        }
+      ],
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO presentes literalmente en este capítulo",
+        "items": [
+          "Burdeos clasificados como mejor maridaje con solomillo a la parrilla (Chartier explica el principio Maillard pero no nombra Burdeos en este capítulo)",
+          "Brunello, Barolo, Toscana DOCG (Chartier no los nombra en este capítulo)",
+          "Champagne con larga crianza sobre lías (Chartier menciona aromas de envejecimiento del champagne en punta, pero no como pairing concreto)"
+        ]
+      }
+    },
+    {
+      "id": "carne_vacuno",
+      "title": "Carne de Vacuno, Cordero y Cerdo",
+      "chapter_source": "Capítulo 5: Carne de Vacuno",
+      "epigraph": {
+        "quote": "El conocimiento científico es el conocimiento más seguro y útil que poseen los seres humanos",
+        "author": "Albert Einstein"
+      },
+      "principle_chartier_textual": "El sabor animal, caracterizado por una sensación de plenitud (umami) y ricos aromas, procede fundamentalmente de la carne de animales con fibras rojas sometidos a ejercicio. Esto explica, en parte, que generalmente se elijan vinos más aromáticos y suculentos, con más textura y amplitud, para las carnes rojas que para las carnes blancas.",
+      "fat_principle_chartier_textual": "Las moléculas sápidas, disueltas en la grasa del animal, son las que proporcionan buena parte del sabor de la carne de vacuno, y también de la de cordero, de cerdo y de pollo. Cabe destacar que la grasa es un soporte de sabores. Al cocinarla por el calor, la grasa calentada aporta a la carne sabores procedentes de sus moléculas afrutadas, florales, avellanadas y vegetales.",
+      "vacuno_grass_fed_chartier_textual": {
+        "molecular_explanation": "La carne roja procedente de animales con una dieta a base de hierba en verano y de forraje en invierno es mucho más sabrosa y aromática que la de los alimentados con pienso. Esta carne contiene mayor cantidad de ácidos grasos poliinsaturados y clorofila, que los animales transforman en terpenos, una familia de moléculas aromáticas muy presentes en los vinos con notas, entre otras, de especias y hierbas. La carne de los animales criados en pastos contiene también más escatol, una molécula que, en pequeñas cantidades, aporta aroma a flores [...] El escatol forma parte de la familia del indol, una molécula aromática con esencias de azahar, jazmín, remolacha y ciruela india.",
+        "wine_recommendation": "Con este tipo de carne hay que optar por vinos tintos con un buen volumen en boca, que generen sabores que se muevan en el mismo ámbito (especias, flores, hierbas), como ocurre, entre otros, con los vinos australianos de shiraz.",
+        "complementary_foods": "Hay que cocinar este tipo de carne con especias y hierbas [...] pero también con azahar, jazmín o remolacha (el zumo o la hortaliza en todas sus formas)."
+      },
+      "vacuno_grain_fed_chartier_textual": {
+        "molecular_explanation": "La carne roja procedente de reses alimentadas con pienso tiene menos sabor que la de las alimentadas con hierba, pero, en cambio, está más marcada por la robustez típica de la carne de vacuno.",
+        "wine_recommendation": "Eso apela a que se sirvan vinos bastante enriquecidos y generosos, incluso una pizca rústicos, para realzar este sabor. Es el caso de las mezclas de garnacha, syrah y monastrell procedente de Languedoc, así como los malbec, ya sean argentinos o de Cahors."
+      },
+      "vacuno_aged_chartier_textual": {
+        "molecular_explanation": "Cuanto más vieja, más sabores desarrollarán las moléculas aromáticas de su grasa. La presencia de aminoácidos aumenta significativamente durante la maduración, lo que le da mayor presencia en boca (sabor umami) y, por tanto, mayor amplitud y textura.",
+        "wine_recommendation": "Esto nos lleva a una selección de vinos más aromáticos y voluminosos, que pueden moverse también en el ámbito de los sabores más animales, lo que se corresponde con vinos de taninos cálidos, es decir, de clima de tipo mediterráneo, como algunos cabernet sauvignon de Australia, California y Chile, al igual que los de la región francesa de Midi, sin olvidar la petite sirah y la zinfandel de California y México."
+      },
+      "vacuno_angus_chartier_textual": {
+        "specific_pairing": "Filete de carne de Angus, acompañado por unas setas matsutake salteadas (ricas en umami) recogidas en los bosques de la provincia canadiense de Columbia Británica.",
+        "wine_named": "Pinot Noir Le Grand Clos, Niagara Peninsula VQA, Le Clos Jordanne, Canadá (elaborado por Thomas Bachelder)",
+        "rationale_chartier_textual": "La mejor respuesta la dan los pinot noir de gran envergadura, idealmente del Nuevo Mundo [...] que se sitúa a medio camino entre la elegancia de los borgoñas y la amplitud del Nuevo Mundo."
+      },
+      "preparation_methods_chartier_textual": {
+        "raw_meat": "La carne cruda admite tanto un vino tinto ligero como un vino blanco seco con cuerpo moderado. Simplemente, porque desarrolla muchos menos aromas. Por tanto, no es tan rica y en boca, es más salada y ácida [...]. La próxima vez que pida un tartar, no dude en acompañarlo con un vino blanco, de cuerpo moderado, pero muy perfumado, como algunos muscadets maduros, que ya llevan varios años de botella en el cuerpo.",
+        "grilled_roasted": "A la parrilla y asada es como la carne de vacuno desarrolla más compuestos aromáticos procedentes de la reacción de pardeamiento. A los sabores ya presentes en la carne se añaden tonos de asado, parrilla, ahumado, especias y cebolla cocinada. Hay que servir un vino tinto con un perfil aromático similar, con bastante cuerpo y criado idealmente en barrica de roble. [...] Opte por vinos a base de cabernet sauvignon, syrah, malbec, tempranillo, nebbiolo y sangiovese, y seleccione los más sostenidos y tánicos.",
+        "boiled": "Estructuralmente hablando, la carne cocida ya no tiene la capacidad para suavizar los taninos de los vinos tintos. Así pues, no queda otra que servir un vino tinto fresco con taninos suaves, o bien un blanco bastante generoso con acidez moderada.",
+        "stewed": "Este tipo de carne está hecha para los vinos tintos muy aromáticos, envolventes, generosos y casi embriagadores, con textura densa y aterciopelada. Es a lo que responden los múltiples vinos del Nuevo Mundo, en concreto las mezclas de garnacha-syrah-monastrell y la de cabernet-shiraz, así como los de las regiones bañadas por el sol y el calor de la cuenca mediterránea, sin olvidar el mordaz amarone del Véneto."
+      },
+      "complementary_foods_chartier_textual": "Es raro encontrar composiciones culinarias que casen la carne de vacuno con el caviar, las algas, las anchoas o el azahar. Sin embargo, todos estos ingredientes entran en el mismo ámbito molecular que la carne de vacuno [...]. Otros ingredientes [...] espárragos asados con aceite de oliva, arroz silvestre, coco tostado, setas salteadas, cacao, chocolate negro, café, malta, cerveza tostada y negra, scotch y nueces tostadas.",
+      "umami_foods_chartier_textual": "Algas japonesas kombu y nori, algunos quesos curados (parmigiano reggiano, emmental y cheddar), jamones curados (jamón serrano, jamón de Bayona), atún rojo, tomate de larga cocción, vieiras y setas (shiitake, enoki y matsutake). [...] Con tasa de umami un poco inferior: kétchup, salsa de soja, caviar, miso, embutidos (como el chorizo), las anchoas, los quesos roquefort y gruyer (añejo), las cebollas, las espinacas cocidas, la cerveza tostada y negra, y el scotch single malt.",
+      "cordero_chartier_textual": {
+        "molecular_principle": "Un hecho curioso es que el timol —compuesto volátil que aporta la mayor parte de la impronta aromática del tomillo— es también la principal molécula sápida de sabor que contiene la carne de cordero. De ahí el uso desde hace siglos del tomillo en las recetas con cordero.",
+        "wine_recommendation_chartier_textual": "Sacude un poco la idea del maridaje clásico entre el cordero y el vino tinto de Burdeos, en concreto, el vino de Pauillac. Así pues, para que la armonía no sea solo de texturas —como ocurre con el pauillac—, es mejor servir vinos tintos de la cuenca mediterránea, marcados por aromas de hierbas del Mediterráneo, entre otros, el tomillo; hágalo, aunque la receta de cordero no incluya tomillo: ¡ya lo tiene el cordero!",
+        "implication": "Tintos mediterráneos > Burdeos para cordero, según Chartier. Decisión molecular, no regional."
+      },
+      "cerdo_chartier_textual": {
+        "molecular_principle": "El sabor natural afrutado de la carne de cerdo se debe a la presencia de lactonas, una familia de moléculas activas que se expresan mediante tonos de albaricoque, melocotón y coco, lo que explica que los cocineros rellenen el cerdo asado de albaricoques.",
+        "wine_recommendation_chartier_textual": "Eso confirma también la perfecta unión entre esta carne y los vinos blancos con aromas de este ámbito, como son los vinos del Ródano y de California a base de roussanne, así como los más exóticos, a base de viognier, y también algunos tintos con mucha madera —los aromas de la barrica están marcados, entre otras, por moléculas de lactonas— a base de merlot o de tempranillo.",
+        "iberico_pairing": "El conocimiento de la estructura molecular de la carne de cerdo también refuerza la armonía regional entre el jamón ibérico y una copa de fino, ambos provistos de lactonas."
+      },
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Vacuno alimentado con pasto (con notas terpénicas y escatol-floral)",
+          "wine_chartier": "Shiraz australiano"
+        },
+        {
+          "dish_chartier": "Vacuno alimentado con pienso",
+          "wine_chartier": "Mezclas garnacha-syrah-monastrell del Languedoc, Malbec argentino o de Cahors"
+        },
+        {
+          "dish_chartier": "Vacuno mayor envejecido",
+          "wine_chartier": "Cabernet Sauvignon de Australia/California/Chile, Cabernet del Midi francés, Petite Sirah, Zinfandel"
+        },
+        {
+          "dish_chartier": "Filete de Angus con setas matsutake",
+          "wine_chartier": "Pinot Noir Le Grand Clos del Clos Jordanne (Niagara, Canadá) — Thomas Bachelder"
+        },
+        {
+          "dish_chartier": "Tartar de carne",
+          "wine_chartier": "Vino blanco perfumado con cuerpo moderado, ej. Muscadet maduro con varios años de botella"
+        },
+        {
+          "dish_chartier": "Carne a la parrilla y asada",
+          "wine_chartier": "Cabernet Sauvignon, Syrah, Malbec, Tempranillo, Nebbiolo, Sangiovese — los más sostenidos y tánicos, criados en barrica"
+        },
+        {
+          "dish_chartier": "Carne cocida (pot-au-feu)",
+          "wine_chartier": "Tinto fresco con taninos suaves o blanco generoso de acidez moderada"
+        },
+        {
+          "dish_chartier": "Carne estofada",
+          "wine_chartier": "Mezclas garnacha-syrah-monastrell, cabernet-shiraz, vinos mediterráneos, Amarone del Véneto"
+        },
+        {
+          "dish_chartier": "Cordero (cualquier preparación)",
+          "wine_chartier": "Tintos mediterráneos con tomillo molecular — NO Pauillac/Burdeos como tradición"
+        },
+        {
+          "dish_chartier": "Cerdo asado (con albaricoques)",
+          "wine_chartier": "Roussanne del Ródano o California, Viognier, Merlot o Tempranillo con mucha madera"
+        },
+        {
+          "dish_chartier": "Jamón ibérico",
+          "wine_chartier": "Fino (lactonas compartidas)"
+        }
+      ],
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO presentes literalmente en este capítulo",
+        "items": [
+          "Wagyu/Kobe → vinos específicos (Chartier no aborda estas razas)",
+          "Solomillo Wellington → Burdeos (Chartier critica el binomio Burdeos-cordero, pero no menciona el Wellington)",
+          "Albariño con jamón ibérico (Chartier menciona Fino, no otros blancos para ibérico en este capítulo)"
+        ]
+      }
+    },
+    {
+      "id": "gewurztraminer_lichi_jengibre_scheurebe",
+      "title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares",
+      "chapter_source": "Capítulo 6",
+      "epigraph": {
+        "quote": "Cuantas más interacciones establecemos, mejor conocemos el objeto estudiado",
+        "author": "John Dewey"
+      },
+      "tema_I_lichi_gewurztraminer_chartier_textual": "Si hay un aroma inconfundible en los vinos, es el del lichi, que encontramos en los gewürztraminers. [...] Estas similitudes hacen que el lichi y la gewürztraminer sean prácticamente gemelos univitelinos, idénticos.",
+      "molecular_structure": {
+        "shared_molecules_lichi_gewurztraminer_chartier_textual": "El lichi y la uva gewürztraminer comparten una docena de compuestos volátiles: acetato de fenilo (chocolate, flores, miel de flores silvestres), alcohol fenetílico (cacao, flores), β-damascenona (pomelo, tequila), butirato de etilo, óxido de cis-rose, citronelol, furaneol, geraniol, hexonato de etilo/isohexanoato de etilo, isobutirato de etilo, linalol, vainillina.",
+        "dominant_molecule_chartier_textual": "El óxido de cis-rose (con un potente olor a rosa/lichi) es la mayor impronta aromática del lichi y del gewürztraminer.",
+        "supporting_molecules_chartier_textual": "Le sigue de cerca el linalol [...] y el geraniol [...]. También está la β-damascenona [...] el furaneol [...] el alcohol fenetílico [...] y el hexonato de etilo (piña/plátano).",
+        "vendimia_tardia_chartier_textual": "Los vinos de vendimias tardías de uva gewürztraminer suelen estar marcados por aromas procedentes del cinamaldehído (canela), del eugenol (clavo), del linalol (flores), del cineol (eucalipto) y del alcanfor."
+      },
+      "scheurebe_chartier_textual": {
+        "origin": "La variedad austriaca scheurebe (también llamada sämling 88) nace del cruce entre la uva riesling y una variedad desconocida. Al hacer este cruce, en 1916, los alemanes querían originar una variedad más aromática.",
+        "shared_with_gewurz_compounds": "Acetato de isoamilo (plátano/manzana madura), β-damascenona (frutas exóticas, rosa, tabaco, té negro), butirato de etilo (piña/manzana/tutti frutti), Hexanoato de etilo (piña, plátano verde), Isobutirato de etilo (ron/ponche de huevo), Linalol (lavanda/muguete/bergamota/rosa/menta/cítricos/canela), Octanoato de etilo (plátano/albaricoque/pera/brandi), Wine lactona (madera/coco/albaricoque/melocotón).",
+        "scheurebe_unique_marker": "La scheurebe muestra su identidad con la presencia del 4-mercapto-4-metil-2-pentanona [...] un compuesto azufrado de la familia de los tioles, con un aroma complejo que se mueve en el ámbito del boj, casis, pomelo rosa y fruta de la pasión.",
+        "dual_personality": "Cuando los demás compuestos aromáticos de la scheurebe dominan sobre el 4-mercapto-4-metil-2-pentanona, se vuelve más floral/lichi, lo que la convierte en la gemela de la gewürztraminer. La scheurebe se convierte en prima hermana de la sauvignon blanc si el 4-mercapto-4-metil-2-pentanona domina sobre el resto de los componentes."
+      },
+      "tema_IV_jengibre_chartier_textual": "El jengibre contiene numerosos compuestos volátiles, que le aportan, fundamentalmente, tonos florales, cítricos, de madera y alcanfor, como la gewürztraminer y su gemela la scheurebe, al menos cuando está en modo lichi/rosa. Los tres comparten los compuestos aromáticos dominantes siguientes: linalol, geraniol, canfeno, geranial, neral y limoneno.",
+      "wines_chartier_explicitly_named": [
+        "Gewürztraminer Clos Windsbuhl Vendanges Tardives 2005, Domaine Zind Humbrecht (Alsacia)",
+        "Gewürztraminer Wintzenheim 2005, Domaine Zind Humbrecht (Alsacia)",
+        "Scheurebe TBA No 4 «zwischen den seen» 2001 Burgenland, Kracher (Austria) — 203,6 g azúcares residuales, 11% alc.",
+        "Scheurebe TBA No 9 «zwischen den seen» 2001 Burgenland, Kracher (Austria) — 317 g azúcares, 5,5% alc.",
+        "Sauternes (Yquem como referencia)",
+        "Riesling de Mosela (Egon Müller como referencia)",
+        "Tokaji (István Szepsy como referencia)"
+      ],
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Pollo con guindillas y lichis",
+          "wine_chartier": "Gewürztraminer Wintzenheim 2005 Zind Humbrecht (descrito como potente, mineral, especiado, con sabor a lichi/piña/rosa, integrándose con el fuego de la guindilla)"
+        },
+        {
+          "dish_chartier": "Tartar de lichis con especias",
+          "wine_chartier": "Scheurebe TBA No 9 Kracher 2001"
+        },
+        {
+          "dish_chartier": "Algodón de azúcar al jengibre cristalizado servido sobre sopa de lichis",
+          "wine_chartier": "Gewürztraminer (seco o vendimia tardía)"
+        },
+        {
+          "dish_chartier": "Lichis al jengibre y salsa de cítricos",
+          "wine_chartier": "Gewürztraminer (seco o vendimia tardía)"
+        },
+        {
+          "dish_chartier": "Panna cotta al lichi y ralladura de lima",
+          "wine_chartier": "Gewürztraminer (seco o vendimia tardía)"
+        },
+        {
+          "dish_chartier": "Ensalada de piña y lichi aromatizada al romero",
+          "wine_chartier": "Gewürztraminer (seco o vendimia tardía)"
+        },
+        {
+          "dish_chartier": "Granita de lichis, cremoso de yogur con chocolate marfil, pomelo, Campari e hibisco (receta de Patrice Demers)",
+          "wine_chartier": "Gewürztraminer Clos Windsbuhl Vendanges Tardives 2005 Zind Humbrecht — descrito como sinfonía pensada para el perfil del vino"
+        },
+        {
+          "dish_chartier": "Panna cotta al roquefort con tres frutas en masa acidulada y caramelo al vino añejo (Stéphane Modat)",
+          "wine_chartier": "Scheurebe TBA No 4 Kracher 2001",
+          "context": "Los quesos azules tienen algunos compuestos químicos presentes en gewürztraminer y scheurebe"
+        },
+        {
+          "dish_chartier": "Plato dominado por jengibre + cúrcuma + cardamomo + galangal",
+          "wine_chartier": "Gewürztraminer o Scheurebe (en modo lichi/rosa)"
+        },
+        {
+          "dish_chartier": "Plato con la pareja jengibre+lichi",
+          "wine_chartier": "Gewürztraminer (atracción molecular triple: jengibre comparte linalol, geraniol, canfeno, geranial, neral, limoneno)"
+        }
+      ],
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO presentes literalmente en este capítulo",
+        "items": [
+          "Pato pekinés → Gewürztraminer (Chartier no lo menciona explícitamente; la lógica viene de canela y especias dulces)",
+          "Munster con Gewürztraminer (clásico alsaciano, pero Chartier no lo afirma en este capítulo concreto)",
+          "Curry tikka masala → Gewürztraminer (extrapolación de la idea, no literal)"
+        ]
+      }
+    },
+    {
+      "id": "pina_fresa",
+      "title": "Piña y Fresa — Gemelas moleculares",
+      "chapter_source": "Capítulo 7: Piña y Fresa",
+      "epigraph": {
+        "quote": "Las nuevas opiniones siempre son sospechosas y se suelen rechazar sin más razón que el hecho de no ser comunes",
+        "author": "John Locke"
+      },
+      "core_finding_chartier_textual": "Las investigaciones en biología molecular han demostrado que la piña y la fresa, a pesar de sus grandes diferencias de color y estructura, comparten varios compuestos volátiles que se expresan mediante numerosas moléculas aromáticas idénticas.",
+      "molecular_structure": {
+        "pina_compounds_chartier_textual": "En primer lugar, tenemos el eugenol, con olor a clavo, la vainillina, con aroma a vainilla, ésteres afrutados, con olor a piña y albahaca, compuestos oxigenados de carbono cíclico, como el furaneol [...] y otros compuestos con un perfil aromático ajerezado, que recuerdan a los amontillados y olorosos. A estos compuestos aromáticos dominantes se añade, cuando la fruta está pasada de maduración, un toque casi animal, con un perfil cárnico.",
+        "shared_pina_fresa_chartier_textual": "La piña comparte con la fresa los compuestos volátiles responsables de diferentes notas aromáticas: el furaneol (olor a caramelo), el eugenol (clavo) y algunos ésteres afrutados (piña/fresa).",
+        "key_implication_chartier_textual": "Las moléculas volátiles de la piña y la fresa, como las de la vainilla y las del romero, también tienen una buena dosis de eugenol, lo que las acerca al clavo y a los vinos que le sientan bien. El tono del clavo se percibe muy bien cuando la piña y la fresa están muy maduras.",
+        "fresa_compounds_chartier_textual": "La nota aromática a piña que se suele encontrar en la fresa madura procede de los ésteres afrutados, de compuestos de azufre y de un compuesto oxigenado: el furaneol. La molécula responsable del aroma de la fresa muy madura es el furaneol [...] La composición aromática de la fresa está marcada, al igual que la de la piña, por notas de hoja verde, caramelo, piña, clavo y uva silvestre (concord).",
+        "cinamato_chartier_textual": "El cinamato de etilo es un éster del ácido cinámico, presente en la canela, con olor a canela/balsámico/miel y con un sabor dulce de albaricoque/melocotón, también presente en la galanga, la fresa y la piña, la pimienta de Sichuan, algunas variedades de albahaca y el eucalipto olida (strawberry gum)."
+      },
+      "pina_curri_connection_chartier_textual": "Existe un vínculo natural entre la piña y el curri, de ahí su presencia en algunos curris indios. Al cocinarla, en concreto cuando se carameliza, la piña desarrolla moléculas volátiles de la familia del sotolón, a la que pertenece también el curri, las semillas tostadas de fenogreco, la salsa de soja y los vinos licorosos nacidos de la acción de la podredumbre noble (Botrytis cinerea), como el sauternes.",
+      "wines_chartier_explicitly_named": {
+        "licorosos": [
+          "Sauternes",
+          "Cadillac",
+          "Loupiac",
+          "Sainte-Croix-du-Mont"
+        ],
+        "blancos_secos_pina": [
+          "Chardonnay (climas fríos como Chablis = piña fresca; climas cálidos como Australia/California/Chile = piña madura)",
+          "Jurançon seco",
+          "Pacherenc-du-Vic-Bilh seco",
+          "Vinos del Jura (Chardonnay, Savagnin)",
+          "Marsanne y Roussanne del Ródano"
+        ],
+        "tintos_para_pina_fresa": [
+          "Garnacha (Priorat, Campo de Borja, Cariñena)",
+          "Mezcla tempranillo-garnacha (Rioja Baja)",
+          "Mencía (Bierzo)",
+          "Touriga Nacional (Portugal)",
+          "Pinot Noir del Nuevo Mundo (California, Nueva Zelanda)",
+          "Zinfandel (California)",
+          "Petite Sirah (México)"
+        ],
+        "vinos_postre_eugenol": [
+          "Banyuls, Maury, Rasteau, Rivesaltes (amarillos)",
+          "Monastrell dulce de Jumilla (amarillo)",
+          "Pedro Ximénez Solera Montilla-Moriles",
+          "Pineau des Charentes tintos de 5 a 10 años",
+          "Porto Vintage joven"
+        ],
+        "specific_named": "Symphonie de Noviembre 2004 Jurançon, Domaine de Cauhapé, Francia"
+      },
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Magret de pato con duxelles de piña caramelizada a la vainilla (o al clavo)",
+          "wine_chartier": "Sauternes y vecinos"
+        },
+        {
+          "dish_chartier": "Postres con piña realzados con fresa, vainilla o clavo",
+          "wine_chartier": "Sauternes y vecinos"
+        },
+        {
+          "dish_chartier": "Tarta Tatin con piña (o fresas) realzada con clavo o vainilla",
+          "wine_chartier": "Amontillado u Oloroso (caramelo + jerez)"
+        },
+        {
+          "dish_chartier": "Jamón con piña glaseado con azúcar moreno o arce",
+          "wine_chartier": "Jerez Oloroso, Montilla-Moriles oloroso, Jurançon semiseco — válido también si se sustituye piña por fresa"
+        },
+        {
+          "dish_chartier": "Bastoncillos de piña perfumados al hinojo y anís estrellado (técnica Ferran Adrià)",
+          "wine_chartier": "Symphonie de Noviembre 2004 Jurançon Domaine de Cauhapé"
+        },
+        {
+          "dish_chartier": "Plato cocinado con piña/fresa/romero/vainilla/clavo (cualquier combinación)",
+          "wine_chartier": "Vinos marcados por eugenol"
+        },
+        {
+          "dish_chartier": "Salteado de cerdo con fresas",
+          "wine_chartier": "Mismos vinos que para piña — Roussanne/Viognier o tintos con barrica"
+        },
+        {
+          "dish_chartier": "Shortcake de piña y chantillí al romero",
+          "wine_chartier": "Mismos vinos — afinidad eugenol"
+        }
+      ],
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO presentes literalmente en este capítulo",
+        "items": [
+          "Salmón con salsa de fresa y balsámico → Chardonnay con barrica (lógica eugenol+barrica, no afirmado literalmente)"
+        ]
+      }
+    },
+    {
+      "id": "clavo",
+      "title": "Clavo — La especia de la barrica",
+      "chapter_source": "Capítulo 8: Clavo",
+      "epigraph": {
+        "quote": "Toda ciencia es un conocimiento cierto y evidente",
+        "author": "René Descartes"
+      },
+      "molecular_structure": {
+        "clove_compounds_chartier_textual": "El clavo es la especia que tiene la mayor concentración de compuestos aromáticos. Puede tener, cuando está muy fresco y es de origen noble, hasta el 20% de su peso molecular en aceites esenciales. Encontramos entre el 70 y el 90% de eugenol (olor principal del clavo) y del 3 al 12% de β-cariofileno (olor a madera). A eso se le añade entre el 2 y el 3% de acetileugenol (olor cálido y dulce), el 2% de ácido oleánico (familia de los triterpenos, con olor a conífera) y trazas de vainillina (olor a vainilla) y furfurales.",
+        "eugenol_in_other_foods_chartier_textual": "El eugenol (clavo) es también un compuesto volátil que domina en la albahaca tailandesa (70% de su contenido volátil), la albahaca silvestre (60%), la cebada malteada —también en la cerveza y el scotch—, el albaricoque, la piña, el espárrago cocinado, la carne de vacuno a la parrilla, la fresa, el mango fresco, la mozzarella, la patata y el romero."
+      },
+      "barrel_connection_chartier_textual": "El eugenol, el compuesto volátil que domina en el clavo, es una de las principales improntas aromáticas que aporta el roble de las barricas, previamente tostadas y de las más características, ¡al menos para mi nariz! Domina especialmente en vinos madurados en roble francés de los bosques de la región Centro, así como en roble ruso. Aunque el roble americano produce menos eugenol, los vinos que acoge suelen expresar notas aromáticas de clavo.",
+      "wines_chartier_explicitly_named": [
+        "Garnacha de Priorat",
+        "Garnacha de Rioja Baja, Campo de Borja, Cariñena",
+        "Tempranillo de Rioja, Toro, Ribera del Duero",
+        "Mencía del Bierzo (especialmente Villa de Corullón 2001 de Descendientes de J. Palacios)",
+        "Touriga Nacional del Douro (Portugal)",
+        "Pinot Noir de Borgoña",
+        "Pinot Noir de Nueva Zelanda",
+        "Mezclas del Ródano (garnacha/syrah)",
+        "Garnacha/Monastrell/Syrah australianos",
+        "Zinfandel de California",
+        "Petite Sirah de México y California",
+        "Château de Beaucastel 2005 Châteauneuf-du-Pape (creación con Pascal Chatonnet)"
+      ],
+      "spice_blends_chartier_textual": "El clavo lo encontramos en recetas clásicas como el pan de jengibre, el chucrut, el jamón con piña, el tradicional guiso de manitas de cerdo de Quebec, los curris indios, así como los sabrosos guisos de carne, como el pot-au-feu. También se encuentra en la muy asiática y mundialmente conocida mezcla de cinco especias chinas, compuesta por anís estrellado, pimienta de Sichuan, canela, semillas de hinojo y clavo. [...] También en otras mezclas como ras al-janut (Marruecos), garam masala (India), recado rojo (México) y cuatro-especias (Francia: pimienta, nuez moscada, canela, clavo). Los capullos de rosa secos tienen sabor a pimienta y clavo.",
+      "molecular_relatives_chartier_textual": "La piña, la fresa, el romero y la vainilla contienen eugenol —especialmente perceptible, en el caso de la piña y la fresa, cuando están muy maduras o cocinadas—, lo que los acerca al clavo y a los vinos que le sientan bien.",
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Pot-au-foie: foie gras de pato con clavo, infusión de anís estrellado, hojas de curri y pimienta de Sichuan, arroz al té wulong Ali Shan 1993",
+          "wine_chartier": "Villa de Corullón 2001 Bierzo, Descendientes de J. Palacios"
+        },
+        {
+          "dish_chartier": "Caribú de los inuit, jugo de carne perlada con semillas de moras, purés de apionabo (con regaliz y con clavo), armillaria de miel al grué de cacao y hoja de albahaca tailandesa",
+          "wine_chartier": "Château de Beaucastel 2005 Châteauneuf-du-Pape (creación Chartier-Chatonnet, Quebec marzo 2009)"
+        },
+        {
+          "dish_chartier": "Queso de corteza floral con clavos molidos macerado",
+          "wine_chartier": "Cualquier tinto preferido — TRUCO DE SUMILLER-COCINERO para que tinto+queso funcione"
+        },
+        {
+          "dish_chartier": "Pato cocinado en grasa macerada al clavo (con sus patatas salteadas)",
+          "wine_chartier": "Vinos con clavo molecular — TRUCO DE SUMILLER-COCINERO"
+        },
+        {
+          "dish_chartier": "Ragú de cordero a las cuatro-especias",
+          "wine_chartier": "Priorat, Rioja, Zinfandel, Petite Sirah"
+        },
+        {
+          "dish_chartier": "Tayín de ragú de cordero a las cinco especias con cebolla cippolini caramelizada",
+          "wine_chartier": "Priorat, Rioja, Zinfandel, Petite Sirah"
+        },
+        {
+          "dish_chartier": "Filete de salmón con café y cinco especias chinas",
+          "wine_chartier": "Priorat, Rioja, Zinfandel, Petite Sirah"
+        },
+        {
+          "dish_chartier": "Pot-au-feu de cordero con té y especias (anís estrellado, regaliz, canela, cardamomo, clavo, té negro)",
+          "wine_chartier": "Priorat, Rioja, Zinfandel, Petite Sirah"
+        },
+        {
+          "dish_chartier": "Chili de Cincinnati",
+          "wine_chartier": "Priorat, Rioja, Zinfandel, Petite Sirah"
+        },
+        {
+          "dish_chartier": "Filete de salmón a la parrilla con concassé de cuatro-especias",
+          "wine_chartier": "Bierzo, Campo de Borja, Cariñena, Pinot Noir Nuevo Mundo, Garnacha del Ródano y Languedoc"
+        },
+        {
+          "dish_chartier": "Risotto con zumo de remolacha aromatizado al clavo",
+          "wine_chartier": "Tintos moderados a con cuerpo (mismas categorías)"
+        },
+        {
+          "dish_chartier": "Codorniz lacada con miel y cinco especias",
+          "wine_chartier": "Tintos moderados"
+        },
+        {
+          "dish_chartier": "Pollo asado con sésamo y cinco especias",
+          "wine_chartier": "Tintos moderados"
+        },
+        {
+          "dish_chartier": "Pavo de Navidad con risotto de remolacha al clavo",
+          "wine_chartier": "Tintos moderados"
+        },
+        {
+          "dish_chartier": "Ensalada de remolachas rojas a las cuatro-especias",
+          "wine_chartier": "Tintos moderados"
+        },
+        {
+          "dish_chartier": "Postres con fresa/piña + romero + vainilla o clavo",
+          "wine_chartier": "Banyuls, Maury, Rasteau, Rivesaltes, Monastrell dulce de Jumilla, Pedro Ximénez, Pineau des Charentes 5-10 años, Porto Vintage joven"
+        }
+      ],
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO presentes literalmente en este capítulo",
+        "items": []
+      }
+    },
+    {
+      "id": "romero",
+      "title": "Romero — Aires alsacianos desde el sur",
+      "chapter_source": "Capítulo 9: Romero",
+      "epigraph": {
+        "quote": "La introducción en el campo del conocimiento de nuevos elementos debe considerarse primero como provisional",
+        "author": "Hubert Reeves"
+      },
+      "core_thesis_chartier_textual": "Los compuestos volátiles del romero son de la familia de los terpenos, que son sustancias de origen varietal con capacidad para caracterizar los aromas de algunos vinos, especialmente los de uva muscat y, en menor medida, los de gewürztraminer y los de riesling. [...] La próxima vez que tenga una rama de romero en las manos, huélala intensamente. Unas veces descubrirá notas de madera y florales, y otras, tonos que recuerdan a las coníferas, al clavo y al eucalipto.",
+      "anti_topic_chartier_textual": "El romero se utiliza en la cocina para realzar platos de carne, como el cordero que, inevitablemente, muchos aficionados y profesionales maridan con vinos tintos. [...] Sin embargo, los blancos de riesling y de gewürztraminer no están en las zonas de cultivo de la región francesa de Midi. [...] Eso explica la simbiosis entre el romero y estos vinos, no solo en la teoría, sino también en la nariz y la boca.",
+      "molecular_structure": {
+        "terpenos_chartier_textual": "Los terpenos solo están presentes en las variedades de blancos, excepto en la de black muscat. Se trata de características aromáticas que se encuentran en las hojas y la corteza de las coníferas y los cítricos. Se expresan con tonos frescos de pícea, cítricos, flores y hojas verdes (carácter vegetal).",
+        "aromas_terpenicos_listados_chartier_textual": "Cítricos, bergamota, palo de rosa, alcanfor, canela, madera, especias, citronela, agua de rosas, pícea, eucalipto, jengibre, hibisco, lavanda, menta, muguete, nuez moscada, melocotón dulce, petróleo, pino, romero, rosa, azafrán, salvia, tomillo, ylang-ylang.",
+        "rosemary_varieties_chartier_textual": "El romero de Córcega es más rico en borneol (olor a alcanfor, madera, tónico y casi farmacológico), suave y afrutado, con notas de incienso. El continental, de la Provenza, del Ródano meridional y de Languedoc-Rosellón, está marcado por la verbenona (olor a verbena común).",
+        "wine_terpenes_chartier_textual": "Los terpenos expresan el aroma a flores y cítricos que dominan en la familia de las muscat, pero también en la de gewürztraminer y de scheurebe [...] aromas a los que se añade la familia de los hidrocarburos, con notas de pícea, abeto, romero, pino y petróleo, que se perciben en los vinos de riesling. Otras variedades también desarrollan, de forma más o menos pronunciada, e incluso sutil en algunos casos, notas terpénicas. Es el caso de las uvas albariño y viura españolas, la müller-thurgau austriaca y las francesas chardonnay, muscadelle, roussanne y sauvignon."
+      },
+      "wines_chartier_explicitly_named": [
+        "Riesling (Alsacia, especialmente Grand Cru)",
+        "Gewürztraminer (Alsacia, seco o vendimia tardía)",
+        "Muscat seco de Alsacia",
+        "Muscat de Rivesaltes (vino dulce natural)",
+        "Albariño",
+        "Viura",
+        "Müller-Thurgau austriaco",
+        "Chardonnay",
+        "Muscadelle",
+        "Roussanne",
+        "Sauvignon Blanc",
+        "Fino (por linalol/nerolidol/farnesol)",
+        "Cabernets chilenos, californianos o australianos con notas de eucalipto"
+      ],
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Fricasé de gambas con piña y pimientos dulces coronada con chantillí al romero",
+          "wine_chartier": "Riesling alemán, alsaciano o australiano"
+        },
+        {
+          "dish_chartier": "Fricasé de gambas con piña y pimientos dulces coronada con chantillí al curri, aromas de romero",
+          "wine_chartier": "Gewürztraminer seco alsaciano"
+        },
+        {
+          "dish_chartier": "Guiso de cordero aromatizado al romero",
+          "wine_chartier": "Riesling seco Alsace Grand Cru — anti-tópico contra el binomio cordero-tinto"
+        },
+        {
+          "dish_chartier": "Queso de corteza lavada (munster) macerado con romero + sopa tibia de piña y fresas al romero",
+          "wine_chartier": "Gewürztraminer Vendimia Tardía — guiño modernista al clásico Munster con comino"
+        },
+        {
+          "dish_chartier": "Shortcake de fresa y piña con chantillí al romero",
+          "wine_chartier": "Muscat de Rivesaltes u otro VDN de muscat"
+        },
+        {
+          "dish_chartier": "Tarta al sifón (tarta de limón con merengue al sifón aromatizado al romero)",
+          "wine_chartier": "Riesling de Vendimia Tardía"
+        },
+        {
+          "dish_chartier": "Prismas de gelatina de Campari y agua de rosas, piña, fresa, zumo de cítricos al clavo, tofu al vapor de romero, sorbete de eucalipto y bastoncillos de jengibre (creación de Chartier)",
+          "wine_chartier": "Riesling vendimia tardía, Gewürztraminer o Muscat dulce — 100% terpénico"
+        },
+        {
+          "dish_chartier": "Semillas de granada al muscat, confit de cítricos y helado de eucalipto (con romero, jazmín, hierba luisa)",
+          "wine_chartier": "Mismas opciones terpénicas"
+        },
+        {
+          "dish_chartier": "Ensalada de quesos de cabra secos marinados en aceite de oliva con aroma de romero",
+          "wine_chartier": "Fino"
+        },
+        {
+          "dish_chartier": "Platos con eucalipto, laurel o romero (gemelos moleculares por cineol y borneol)",
+          "wine_chartier": "Cabernets chilenos, californianos o australianos con notas de eucalipto"
+        }
+      ],
+      "shrimp_recipe_technique_chartier_textual": "Para crear un vínculo aromático más evidente entre los aromas plurales del romero y el vino, sirva este plato en un bol, que colocará dentro de un plato hondo más grande, en el que pondrá varias ramas enteras de romero fresco. Cuando esté listo para servir, delante de sus invitados, vierta un poco de agua hirviendo en ese plato hondo. Eso hará que los aromas del romero suban hacia los nervios olfatorios de sus invitados, como en un hammam con vapor de romero.",
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO presentes literalmente en este capítulo",
+        "items": [
+          "Cordero a la mediterránea con romero → Tinto provenzal o de Languedoc (Chartier propone explícitamente el riesling, NO el tinto regional)",
+          "Patatas asadas con romero → vino blanco terpénico (extrapolación de la familia)"
+        ]
+      }
+    },
+    {
+      "id": "azafran",
+      "title": "Azafrán — La reina de las especias",
+      "chapter_source": "Capítulo 10: Azafrán",
+      "epigraph": {
+        "quote": "Solo una reflexión audaz puede hacernos progresar, y no una acumulación de hechos",
+        "author": "Albert Einstein"
+      },
+      "molecular_structure": {
+        "compounds_count_chartier_textual": "A su olor único contribuyen más de ciento cincuenta moléculas volátiles, entre ellas una treintena de componentes principales, dominados por menos de diez compuestos, como el pineno (olor a pino/abeto), cineol (también conocido como eucaliptol, principal compuesto del eucalipto y el cardamomo) y, particularmente, el safranal (azafrán).",
+        "safranal_chartier_textual": "El safranal: 2,6,6-trimetilciclohexa-1,3-dien-1-carbaldehído, un terpeno volátil, menos amargo que la picrocrocina, que da su olor singular al azafrán y que es un potente antioxidante. El safranal supone el 70% de su peso aromático. También está presente en el té negro, el mate, la paprika, el pimentón, el pomelo rosa y la flor de Osmanto.",
+        "carotenoids_in_other_foods_chartier_textual": "Encontramos los mismos carotenoides que los del azafrán en las manzanas amarillas, el membrillo, la uva, el tabaco, la rosa (así como en los capullos de rosa secos y el agua de rosas), la flor de boronia (una flor de Australia) y el osmanto.",
+        "pineno_chartier_textual": "El α-pineno (jengibre, lavanda, menta, azafrán, salvia y tomillo) y el β-pineno (milenrama, albahaca, perejil, romero y rosa). Estos dos compuestos forman parte también, entre otros, del perfil aromático de las bayas de enebro, la cerveza de pícea, la canela y, por supuesto, el azafrán.",
+        "iodo_principle_chartier_textual": "El pineno (en concreto, el α-pineno) es muy reactivo en contacto con el yodo, cuyo sabor consigue realzar. Si cocina un marisco, que tiene sabor yodado, con azafrán [...] la nota yodada dominará el sabor del plato ya que el α-pineno tiene la capacidad de realzar el sabor del yodo. Al maridarlo con un vino, un marisco yodado se lo parecerá aún más si el vino servido está marcado por un aroma de la familia del pineno. Así se explica el bello romance entre un riesling y las ostras o cigalas."
+      },
+      "wines_chartier_explicitly_named": [
+        "Riesling (especialmente alsaciano de Léon Beyer 'Les Ecaillers' 2003)",
+        "Sauvignon Blanc",
+        "Chardonnay (especialmente con barrica para azafrán + café)",
+        "Moscatel seco (especialmente Muscat Pierre Sparr Réserve, Alsacia)",
+        "Fino (especialmente Tío Pepe de González Byass)",
+        "Manzanilla",
+        "Rosados de comida con estructura (especialmente Rosé de Malartic, Bordeaux Rosé)",
+        "Sauternes (proporción alta de Sauvignon Blanc en mezcla)",
+        "Sauvignon Blanc Late Harvest de Chile",
+        "Jurançon (petit manseng o gros manseng, secos o licorosos)",
+        "Condrieu (Viognier del Ródano) — solución tradicional, ahora considerada superable",
+        "Té verde gyokuro como bebida alternativa"
+      ],
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Brocheta de rape al azafrán / rape con cebolla, limón y azafrán",
+          "wine_chartier": "Riesling Les Ecaillers Beyer 2003 Alsacia, Léon Beyer (descrito como con notas de pomelo rosa, romero, azafrán, pícea y cítricos, mineral)"
+        },
+        {
+          "dish_chartier": "Canapés de gambas y mayonesa al azafrán; crema de zanahoria al azafrán con mejillones",
+          "wine_chartier": "Muscat Pierre Sparr Réserve, Alsacia"
+        },
+        {
+          "dish_chartier": "Crema de azafrán con vieiras y cigalas",
+          "wine_chartier": "Fino Tío Pepe de González Byass"
+        },
+        {
+          "dish_chartier": "Chuletillas de cordero con canela y azafrán",
+          "wine_chartier": "Rosé de Malartic, Bordeaux Rosé (servido fresco pero no frío)"
+        },
+        {
+          "dish_chartier": "Risotto con guisantes y azafrán (los guisantes contienen metoxipirazinas como el té gyokuro)",
+          "wine_chartier": "Té verde gyokuro como bebida"
+        },
+        {
+          "dish_chartier": "Costillar de cerdo con manzanas golden y azafrán",
+          "wine_chartier": "Chardonnay seco de añada cálida poco madurado en barrica (australiano o californiano)"
+        },
+        {
+          "dish_chartier": "Tarta de pera nashi y azafrán",
+          "wine_chartier": "Sauvignon Blanc Late Harvest de Chile, o Sauternes con alta proporción de Sauvignon, o Jurançon"
+        },
+        {
+          "dish_chartier": "Albaricoque con vainilla y azafrán, emulsión de pistachos verdes (elBulli 2008)",
+          "wine_chartier": "Sauternes"
+        },
+        {
+          "dish_chartier": "Gnocchi de polenta con café y azafrán (elBulli 2008)",
+          "wine_chartier": "Chardonnay con madera (notas tostadas + carotenoides)"
+        }
+      ],
+      "rose_wines_principle_chartier_textual": "Sobre todo durante la temporada de verano, muchos vinos rosados también tienen una alta concentración de carotenoides, como el azafrán. Esto explica, científicamente, la buena pareja que hacen los rosados y los platos con azafrán.",
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO presentes literalmente en este capítulo",
+        "items": [
+          "Paella valenciana → Rosado de Navarra (sentido común regional, no afirmado por Chartier; él propone vinos terpénicos)",
+          "Bullabesa marsellesa → Rosado de Provenza (Chartier menciona la bullabesa pero no el pairing regional; sí menciona rosados ricos en carotenoides en general)"
+        ]
+      }
+    },
+    {
+      "id": "jengibre",
+      "title": "Jengibre — Un seductor con gran poder de atracción",
+      "chapter_source": "Capítulo 11: Jengibre",
+      "epigraph": {
+        "quote": "Non cogitat qui non experitur / No hay pensamiento sin experimentación",
+        "author": "Marguerite Yourcenar"
+      },
+      "molecular_structure_chartier_textual": "El jengibre contiene numerosos compuestos volátiles que le aportan, fundamentalmente, tonos florales, cítricos, de madera, alcanfor y con sabor a frío, como los vinos a base de gewürztraminer y su gemela la scheurebe.",
+      "key_compounds_chartier_textual": {
+        "beta_bisaboleno": "Sesquiterpeno con olor balsámico, cítricos y especias. También en anís estrellado, aguacate, albahaca, cardamomo, bergamota, lima, agujas de pino y madera de sándalo.",
+        "beta_sesquifelandreno": "Uno de los principales compuestos volátiles del jengibre. Sesquiterpeno con olor a madera, hierbas y fruta. También en galangal, cúrcuma, flor de boronia y perejil.",
+        "canfeno": "Monoterpeno bicíclico con sabor a frío. En alcanfor, bergamota y citronela.",
+        "citral": "Junto con nerolidol y β-sesquifelandreno, principal compuesto. Es el elemento principal de la citronela. También en verbena, naranja, limón. α-citral=geranial (limón fuerte), β-citral=neral (limón suave).",
+        "curcumeno": "Directamente relacionado con la cúrcuma.",
+        "eucaliptol_cineol": "Monoterpeno principal del eucalipto, sabor a frío. También en romero, salvia, ajenjo y albahaca.",
+        "gingerol": "Compuesto fenólico del jengibre con sabor picante (pseudo-calor). Pariente cercano de la capsaicina. Abundante en jengibre fresco. Una vez seco, disminuye en beneficio del shogaol (doble de picante). Con calor, se degrada en zingerona (más suave).",
+        "linalol": "Alcohol terpénico con olor a lavanda/muguete. Bergamota, palo de rosa, menta.",
+        "nerolidol": "Notas de madera. En cerveza, citronela, azahar, fresa, jazmín, lavanda, té verde.",
+        "paradol": "Compuesto fenólico picante, cercano a zingerona. En pimienta de Guinea.",
+        "shogaol": "Compuesto del jengibre seco, doble de picante que el gingerol.",
+        "zingerona": "Cuando se aplica calor al jengibre, el gingerol se degrada en zingerona, más suave.",
+        "otros": "α-pineno, limoneno, borneol, farneseno, geraniol, paracimeno, mirceno, zingibereno"
+      },
+      "galangal_chartier_textual": "El galangal, un rizoma de la misma familia que el jengibre, está marcado por el cinamato de etilo, un éster del ácido cinámico, presente en la canela, con olor a canela/balsámico/miel y con un sabor dulce de albaricoque/melocotón. Por tanto, el galangal puede utilizarse como una variación del jengibre, con canela, fresa, piña, pimienta de Sichuan, albahaca y eucalipto.",
+      "preparation_principle_chartier_textual": "Al cocinarlo, el jengibre tiene un sabor más suave que cuando está crudo. Si se añade en el último momento, o directamente en el plato al servir, es más incisivo. Así pues, hay que tener esa característica en cuenta a la hora de elegir los vinos que acompañarán a los platos realzados con jengibre.",
+      "cold_taste_chartier_textual": "El jengibre forma parte del grupo de alimentos con sabor a frío. Estas moléculas activan los receptores del gusto con temperaturas entre 8 y 28 °C y simulan así el frío —a diferencia de la capsaicina de las guindillas. [...] Los compuestos aromáticos del sabor a frío del jengibre [...] aumentarán la percepción del frío y harán que el vino esté, por decirlo de alguna manera, más frío. [...] Es importante servir un vino blanco menos frío que de costumbre con estos alimentos y hay que evitar los vinos blancos con una acidez incisiva y los que tengan un amargor demasiado marcado.",
+      "cold_taste_complementary_foods_chartier_textual": "Albahaca verde y silvestre, apio crudo y sal de apio, chirivía, citronela, cilantro fresco, estragón, eucalipto, hinojo, lima, manzana, melisa, menta, pepino, perejil y su raíz, pimiento verde, rábano, verbena, wasabi, zanahoria amarilla.",
+      "wines_chartier_textual_reference": "Para completar sus conocimientos sobre el jengibre y su poder de atracción sobre los vinos, no deje de revisar el capítulo «Gewürztraminer/Jengibre/Lichi/Scheurebe».",
+      "wines_implied": [
+        "Gewürztraminer (especialmente)",
+        "Scheurebe (en modo lichi/rosa)",
+        "Riesling",
+        "Vinos terpénicos en general"
+      ],
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Bellini Ginger (cerveza rubia + néctar de mango + yuzu + jengibre fresco rallado, borde de vaso con sal de jengibre)",
+          "wine_chartier": "Cóctel de Chartier — alternativa con vino espumoso. Variación con arándano agrio + citronela + galangal."
+        },
+        {
+          "dish_chartier": "Sushi (jengibre + wasabi + daikon + arroz)",
+          "wine_chartier": "Inferencia: vinos terpénicos por la familia molecular"
+        },
+        {
+          "dish_chartier": "Pan de jengibre, ginger ale, cerveza de jengibre",
+          "wine_chartier": "Mencionados como usos clásicos"
+        }
+      ],
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO presentes literalmente en este capítulo",
+        "items": [
+          "Sushi → Riesling o Gewürztraminer (Chartier menciona el sushi como uso del jengibre pero no afirma maridaje específico aquí; sí lo afirma en capítulo Fino para sushi)",
+          "Tarta de jengibre → vino dulce alsaciano (extrapolación de la familia terpénica)"
+        ]
+      }
+    },
+    {
+      "id": "jarabe_arce",
+      "title": "Jarabe de Arce — La savia aromática de Quebec",
+      "chapter_source": "Capítulo 12: Jarabe de Arce",
+      "epigraph": {
+        "quote": "Hay que poder experimentar todo lo que es real, y todo lo que se puede experimentar debe ser real",
+        "author": "William James"
+      },
+      "molecular_structure": {
+        "maple_furanone_chartier_textual": "En el complejo aroma del jarabe de arce domina una molécula aromática llamada Maple furanone (furanona del arce, 5-etil-3-hidroxi-4-metil-2-furanona), también llamada Ethyl fenugreek lactone (etilactona de la fenogreco), una lactona aún más potente que el sotolón, con el olor caramelizado del arce y de las semillas tostadas de fenogreco. Recuerde: el jarabe de arce y las semillas tostadas de fenogreco son prácticamente gemelos.",
+        "maple_furanone_in_soy_chartier_textual": "La Maple furanone del jarabe de arce se encuentra en estado natural en la salsa de soja y le da su particular bouquet, lo que explica científicamente la frecuente unión en cocina entre la soja y el jarabe de arce para laquear pescados y carnes.",
+        "strawberry_furanone_chartier_textual": "Encontramos otra furanona, 2,5-dimetil-4-hidroxi-3(2H)-furanona, un compuesto activo conocido como Strawberry furanone, con olor caramelizado y afrutado de piña quemada y fresa cocinada, también presente, entre otros, en la avellana y la almendra tostada, el café, la soja, el maíz inflado y los tacos cocinados, la malta, la cerveza, el queso suizo y la ternera cocida.",
+        "sotolon_arce_chartier_textual": "El jarabe de arce está marcado también por una molécula llamada sotolón, con un complejo aroma que se mueve en el ámbito de la nuez/curri/fenogreco/caramelo/arce.",
+        "cicloteno_amplifier_chartier_textual": "En el café, el cicloteno de etilo funciona como un potenciador del sabor. Por tanto, si marida el jarabe de arce, que ya es rico en cicloteno, con café, que tiene cicloteno de etilo, el café provocará que se amplifiquen los sabores y la presencia del jarabe de arce."
+      },
+      "barrel_arce_parallel_chartier_textual": "Si analizamos la lista de compuestos activos del jarabe de arce, vemos que hay una gran similitud con los compuestos encontrados en los vinos criados en barrica de roble. El roble y el arce son dos especies que al transformarlas mediante calor [...] hacen que sus compuestos volátiles se magnifiquen en un abanico de nuevas moléculas aún más complejas y aromáticas. En los vinos criados en barrica de roble y en el jarabe de arce encontramos lactonas [...] las furanonas [...] el maltol [...] el cicloteno [...] el furfural [...] la vainillina [...] el eugenol [...] el sotolón [...] el β-cariofileno.",
+      "main_aromas_listed_chartier_textual": "Almendra, avena, mantequilla, trigo, madera quemada, café, canela, azúcar moreno, cedro, champiñón, achicoria, chocolate, nata, fenogreco tostada, flores, heno cortado, clavo, malvavisco, leche, melaza, miel, avellana, nueces, pan tostado, regaliz, abeto, centeno, azúcar dorado, esponja de toffe, vainilla.",
+      "wines_chartier_explicitly_named": [
+        "Sake Nigori Gekkeikan (10% alc., cremoso)",
+        "Vino Jaune del Jura (Rolet, Stéphane Tissot, Château-Chalon Henri Maire 1985)",
+        "Sauternes envejecidos (más de 10 años)",
+        "Tokaji Aszú envejecido (especialmente 5 puttonyos Disnoko)",
+        "Tokaji Aszú envejecido (10+ años)",
+        "Monbazillac",
+        "Sainte-Croix-du-Mont",
+        "Vino Santo",
+        "Oporto Tawny (Warre's Otima 10 años)",
+        "Madeira (Bual y Malmsey)",
+        "Vinos Dulces Naturales tintos y blancos oxidativos (Cazes Ambré 1995 Rivesaltes — garnacha blanca)",
+        "Champagne añejo",
+        "Cerveza tostada y negra (Boréale Noire Stout)",
+        "Vino Jaune del Jura",
+        "Jerez Oloroso (especialmente Asuncion Oloroso de Alvear, Montilla-Moriles)",
+        "Jerez Amontillado",
+        "Sidra de hielo de Quebec",
+        "Gewürztraminer Vendimias Tardías o Selección de Uvas Nobles",
+        "Garnacha",
+        "Pinot Noir",
+        "Chardonnay del Nuevo Mundo (con barrica americana)",
+        "Tintos californianos con barrica americana",
+        "Rioja con barrica americana",
+        "Ribera del Duero con barrica americana",
+        "Ron tostado añejo",
+        "Bourbon americano",
+        "Coñac, Armañac, Scotch (aguardientes en barrica)",
+        "Kirsch y Amaretto (benzaldehído en común)"
+      ],
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Salmón con arce y cerveza negra",
+          "wine_chartier": "Sake Nigori Gekkeikan (10% alc.)"
+        },
+        {
+          "dish_chartier": "Jamón al arce",
+          "wine_chartier": "Cerveza Boréale Noire Stout (5,5% alc.)"
+        },
+        {
+          "dish_chartier": "Medallones de cerdo al arce y boniato con guarnición de pecanas especiadas (adobo arce + vinagre sidra)",
+          "wine_chartier": "Vin Jaune del Jura (Rolet, Stéphane Tissot)"
+        },
+        {
+          "dish_chartier": "Oreilles de crisse (carrilleras de cerdo fritas)",
+          "wine_chartier": "Vin Jaune del Jura"
+        },
+        {
+          "dish_chartier": "Comida de cabaña azucarera tradicional",
+          "wine_chartier": "Oporto Tawny 10 años (servido fresco), Sauternes ligero, Sake Nigori, Monbazillac, Sainte-Croix-du-Mont"
+        },
+        {
+          "dish_chartier": "Salmón laqueado con arce, reducción balsámico-soja, salteado de setas",
+          "wine_chartier": "Asuncion Oloroso, Montilla-Moriles, Alvear"
+        },
+        {
+          "dish_chartier": "Mar y montaña catalán/indio/quebequés: foie gras salteado y vieiras a la plancha intensa, reducción de curri-arce",
+          "wine_chartier": "Vin Jaune 1985 Château-Chalon, Henri Maire"
+        },
+        {
+          "dish_chartier": "Crujiente de foie gras con manzanas, pan de jengibre, arce y curri",
+          "wine_chartier": "Tokaji Aszú 5 puttonyos, Disnoko"
+        }
+      ],
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO en este capítulo",
+        "items": [
+          "Pancakes con arce → Bourbon (sentido común norteamericano, Chartier no lo afirma explícitamente)",
+          "Foie gras con arce → Sauternes (afirmado en otros capítulos pero no aquí)"
+        ]
+      }
+    },
+    {
+      "id": "quesos",
+      "title": "Quesos — Tras su huella aromática",
+      "chapter_source": "Capítulo 13: Quesos de Quebec",
+      "epigraph_main": {
+        "quote": "Desde mi infancia, había tenido por verdaderas numerosas opiniones falsas",
+        "author": "René Descartes"
+      },
+      "epigraph_blue": {
+        "quote": "El queso es la inmortalidad de la leche",
+        "author": "Ramón Gómez de la Serna"
+      },
+      "core_thesis_chartier_textual": "Cuanto más indago en la estructura molecular de los quesos, más se confirma la perfecta unión con los vinos blancos que propongo desde hace años. Por tanto, no es habitual que los tintos estén presentes en esta experiencia organoléptica ni en la descripción científica de estos dos protagonistas, a menos que se truquen los quesos.",
+      "molecular_structure_general_chartier_textual": "En la mayoría de los quesos encontramos, entre otras cosas, carotenoides, que aportan un color amarillo más o menos marcado, así como péptidos y ácidos grasos. Estos últimos potencian el sabor de la leche de oveja, lo que provoca un efecto de pimienta en la lengua al catar quesos azules. A los carotenoides se añaden las cetonas metiladas, que dan ese sabor tan característico al queso azul, así como numerosos aminoácidos (que participan en el sabor umami), como la putrescina, la trimetilamina, así como compuestos sulfurados y con amoniaco.",
+      "diacetilo_principle_chartier_textual": "El diacetilo, con un potente y penetrante olor a mantequilla, reconocido como una de las improntas aromáticas con más peso en los quesos y en algunos productos lácteos. Curiosamente, también encontramos el diacetilo en varios productos, como el aceite de lavanda, algunas flores (narciso/tulipán), algunos vinos, como el fino de Jerez y los vinos blancos de países cálidos criados en barrica sobre lías, la cerveza de alta fermentación, el café, el té, el coñac, el scotch.",
+      "tema_I_pasta_semidura_dura_chartier_textual": {
+        "molecular_basis": "Los quesos de pasta semidura y dura, afinados de dos a tres meses, se expresan a estas alturas del año con notas de hierba y flores procedentes de moléculas aromáticas de la familia de los terpenos, como el muy floral linalol (lavanda/muguete). Suelen tener un color amarillo más o menos marcado procedente de los pigmentos de los carotenoides, estructura molecular que se parece sospechosamente a la del azafrán, también rica en linalol (flores) y en carotenoides.",
+        "wine_recommendation": "Con los quesos de pasta semidura y dura, decántese por rieslings florales, moscateles o gewürztraminers secos o dulces, un jerez de tipo fino y manzanilla, algunos chardonnays sin madera, en modo floral, así como los rosados.",
+        "wines_named": [
+          "Riesling Réserve, Alsace, Domaine Fernand Engel",
+          "Cuvée Marie 2006 Jurançon Sec, Charles Hours (servido a 14-15°C en jarra)",
+          "Manzanilla Papirusa, Jerez, Emilio Lustau (para quesos afinados largos)",
+          "Warre's Otima 10 años Porto Tawny (para queso Cru des Erables al arce)",
+          "Cazes Ambré 1995 Rivesaltes (garnacha blanca, sotolón)"
+        ]
+      },
+      "tema_II_corteza_floral_chartier_textual": {
+        "molecular_basis": "Los sabores de estos quesos están dominados por numerosos compuestos volátiles, incluidos algunos aminoácidos, que aportan volumen y presencia en boca (es el umami de los japoneses), así como el diacetilo. El diacetilo es una molécula aromática que también está en los vinos, lo que le da al chardonnay criado en barrica de roble y sobre lías su nota característica a mantequilla, especialmente a los chardonnays procedentes de climas cálidos, como los de California y Australia. Cuanto mayor es el grado de alcohol, más sabor hay a mantequilla.",
+        "wine_recommendation": "Chardonnay del Nuevo Mundo con barrica y sobre lías. También cervezas de alta fermentación inglesas (pale ale, brown ale) y belgas oscuras (diacetilo + umami).",
+        "wines_named": [
+          "Chardonnay Le Bonheur, Simonsberg-Stellenbosch, Sudáfrica (para quesos tipo camembert)",
+          "Swan Bay Scotchmans Hill, Victoria, Australia (chardonnay para queso Champayeur compacto)",
+          "Chardonnay Cloudy Bay, Marlborough, Nueva Zelanda (para Riopelle triple crema)"
+        ],
+        "trick_for_red_wine_chartier_textual": "Cortar el queso en dos partes horizontalmente. Espolvorear clavos molidos muy finos sobre el primer trozo de queso. Volver a juntar las dos mitades, embalar y dejar macerar durante varios días al fresco. Un maridaje a medida para un tinto criado en barrica, con una estructura generosa, como son los españoles del Bierzo, de La Rioja y de La Ribera del Duero, así como los californianos de la variedad zinfandel. Se puede sustituir el clavo por una olivada y unirse a un vino de syrah, o por un puré de tomates secos, que casará con un pinot noir del Nuevo Mundo."
+      },
+      "tema_III_azules_chartier_textual": {
+        "molecular_basis": "Encontramos moléculas aromáticas como el diacetilo, con olor a mantequilla; cetonas metiladas, con sabores picantes/especiados/afrutados/a carne; tioles, afrutados a más no poder; terpenos, como el linalol que es floral y otras cetonas, con efluvios de oxidación controlada; acetona, que recuerda al esmalte de uñas y algunas dimetilpiracinas, con olor torrefactado a café/cacao. También hay algunos ácidos grasos, como el glutamato (umami).",
+        "wine_recommendation_chartier_textual": "El peso del umami en los quesos azules obliga a seleccionar un vino con volumen y con una fuerte presencia en boca, que es lo que encontramos en los licorosos, los vinos dulces naturales, los oportos, los chardonnays de países cálidos criados en barrica sobre lías durante mucho tiempo y las cervezas de alta fermentación.",
+        "tioles_explanation_chartier_textual": "Las notas afrutadas de la familia de los tioles que hay en el queso azul son las principales improntas aromáticas de los vinos de sauvignon blanc. Por tanto, hay que decantarse por licorosos de tipo sauternes —también dominados por la presencia de acetonas—, especialmente los que tengan una buena proporción de sauvignon blanc, al igual que las vendimias tardías del Nuevo Mundo a base de esta última. El maridaje entre los vinos de tipo sauternes y el potente roquefort no siempre encajan, es más, muy pocas veces.",
+        "wines_named": [
+          "Cerveza Samichlaus, Schlossbrauerei Eggenberg (Austria, 14% alc.)",
+          "Smith Woodhouse Vintage 1994 Porto",
+          "Dow's Vintage 1985 Porto",
+          "Graham's Vintage 1970 Porto"
+        ],
+        "wine_summary_chartier_textual": "Hay que servir un sauternes y sus similares, bien un sauvignon blanc de vendimias tardías, un gewürztraminer de vendimias tardías o selecciones de uvas nobles, o bien un scheurebe austriaco (su gemelo molecular), un vino dulce natural de moscatel, un jerez fino, una manzanilla o incluso un chardonnay con madera del Nuevo Mundo.",
+        "porto_strategy_chartier_textual": "Un oporto vintage será la mejor opción cuando toque un queso azul. Para esta categoría, si se opta por quesos azules fuertes, como el roquefort o el stilton, es mejor servir un joven vintage de más o menos 15 años de edad. Por el contrario, si elige otros quesos azules, en general menos penetrantes, como el Fourme d'Ambert, dese el gustazo y saque de su bodega un reserva temperado de oporto vintage, de más de 20 años."
+      },
+      "swiss_mimolette_parmigiano_chartier_textual": "Estos quesos están especialmente marcados por las dimetilpiracinas (olor a café, cacao, achicoria y jarabe de arce), así como por ácidos grasos, como los ésteres frutales (tonos de piña/fresa) y por las lactonas (coco/melocotón/albaricoque). De ahí su gran capacidad para casar con un gran abanico de vinos.",
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Quesos pasta semidura/dura recubiertos con semillas de cilantro o con ensalada mesclun + cilantro/albahaca + manzana/pera + zanahorias al azafrán",
+          "wine_chartier": "Riesling joven floral"
+        },
+        {
+          "dish_chartier": "Queso Cru des Erables (afinado 60 días en cabaña azucarera con aperitivo Charles-Aimé Robert)",
+          "wine_chartier": "Warre's Otima 10 años Porto Tawny, o Cazes Ambré 1995 Rivesaltes"
+        },
+        {
+          "dish_chartier": "Quesos azules suaves (Fourme d'Ambert, Rassembleu)",
+          "wine_chartier": "Oporto Vintage 20+ años (Dow's 1985, Graham's 1970)"
+        },
+        {
+          "dish_chartier": "Quesos azules fuertes (Roquefort, Stilton)",
+          "wine_chartier": "Oporto Vintage joven ~15 años (Smith Woodhouse 1994)"
+        },
+        {
+          "dish_chartier": "Queso brie/camembert trucado con clavo molido",
+          "wine_chartier": "Tinto del Bierzo, Rioja, Ribera del Duero, o Zinfandel californiano"
+        }
+      ],
+      "key_principle_chartier_textual": "La comprensión científica de los maridajes abre la puerta a una elección más informada y sabia de los vinos blancos y las cervezas que se desea maridar con los quesos, al igual que nuevas ideas para trucar algunos quesos para facilitar el maridaje con los tintos.",
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO en este capítulo",
+        "items": [
+          "Pedro Ximénez con quesos azules (clásico, pero Chartier prioriza Oporto Vintage)",
+          "Manchego con Rioja (binomio español tradicional, Chartier ofrece blancos terpénicos para pasta dura)"
+        ]
+      }
+    },
+    {
+      "id": "canela",
+      "title": "Canela — La cálida y sensual especia",
+      "chapter_source": "Capítulo 14: Canela",
+      "epigraph": {
+        "quote": "La ciencia confiere sus conocimientos a quien los busca",
+        "author": "Hubert Reeves"
+      },
+      "molecular_structure": {
+        "dominant_compound_chartier_textual": "El aldehído cinámico (o cinamaldehído) es el compuesto dominante de la canela.",
+        "cinamato_etilo_chartier_textual": "El cinamato de etilo, un éster con olor afrutado balsámico que recuerda a la canela. El cinamato de etilo también está en la fresa, la pimienta de Sichuan, algunas variedades de albahaca y el Eucalyptus olida (strawberry gum). El cinamato de etilo se desarrolla también en los vinos tintos de maceración carbónica, como el beaujolais nouveau.",
+        "complete_compounds_chartier_textual": "Algunos sesquiterpenos, como el α-cariofileno (madera) y el humuleno (lúpulo, cilantro vietnamita). Encontramos también alcoholes terpénicos, como el g-terpineol (agujas de pino/naranja amarga), el borneol (alcanfor/madera presente en la chartreuse, el cilantro, el eucalipto, el laurel, el romero, la ajedrea) y el linalol (lavanda/muguete), así como el benzaldehído (almendra amarga). Por último, encontramos en menor cantidad cumarina (aroma de vainillina), acetato de eugenilo (aroma anisado), dihidrocapsaicina (una de las moléculas abrasadoras de la guindilla) y el safrol (sasafrás)."
+      },
+      "two_varieties_chartier_textual": {
+        "china_cassia": "La canela de China (Cinnamomum cassia) está marcada por una fuerte presencia del aldehído cinámico (del 50 al 75%), así como de la cumarina, pero no contiene nada o muy poco eugenol. Los conocedores la encuentran más basta que la de Ceilán. Destaca más por su sabor picante que por su aroma.",
+        "ceilan_zeylanicum": "La canela de Ceilán (Cinnamomum zeylanicum), también llamada canela verdadera, contiene menos compuestos fenólicos que la variedad de China, además de muy poca cumarina. Es más sutil y compleja, tiene notas de linalol (flores) y eugenol (clavo; del 4 al 10% de su peso molecular), dos compuestos prácticamente ausentes en la variedad china."
+      },
+      "wine_origins_chartier_textual": "En el vino, el aroma a canela procede o bien del roble de las barricas, en el caso de los vinos madurados en barriles, o bien de las ligninas de los escobajos (las ramas que sostienen el racimo de uvas) de la vid, en el caso de los vinos procedentes de vendimias que no se han desrapado antes de la fermentación. Las ligninas de los escobajos de la garnacha, especialmente la del Ródano y la del Languedoc-Rosellón, tienen una alta concentración en compuestos aromáticos que pueden generar alcohol y aldehído cinámico, aromas del ámbito de la canela.",
+      "potenciador_chartier_textual": "La canela, cuando se utiliza con mesura, es un potenciador del sabor, amplifica los demás sabores, exactamente como hacen en cocina el jerez, el café, la capsaicina, los espárragos y el glutamato.",
+      "wines_chartier_explicitly_named": [
+        "Pinot Noir (Australia, California, especialmente Coldstream Hills 2007 Yarra Valley)",
+        "Pinot Noir Kim Crawford 2007 Marlborough (Nueva Zelanda)",
+        "Tintos de Ribera del Duero, Rioja (con barrica nueva)",
+        "Garnacha del Ródano (Monasterio de Las Viñas Gran Reserva 2001 Cariñena: 50% garnacha, 30% tempranillo, 20% mazuelo)",
+        "Beaujolais Nouveau (maceración carbónica = cinamato de etilo)",
+        "Gewürztraminer Vendimia Tardía (Alsacia)",
+        "Pinot Gris Vendimia Tardía",
+        "Moscatel Vendimia Tardía",
+        "Vinos Dulces Naturales de Moscatel del Mediterráneo",
+        "Sauternes (semillón con Botrytis)",
+        "Coteaux-du-Layon (chenin blanc del Loira con Botrytis)",
+        "Selección de Uvas Nobles de Alsacia",
+        "Tokaji Aszú (Hungría)",
+        "Constancia (Sudáfrica)",
+        "Sidra de hielo de Quebec",
+        "Jerez Oloroso (con cinamato + benzaldehído + cumarina)",
+        "Jerez Amontillado",
+        "Château Bel Air 2004 Sainte-Croix-du-Mont (vecino de Sauternes)"
+      ],
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Filetes de cerdo a la canela con arándanos rojos con miel",
+          "wine_chartier": "Pinot Noir Coldstream Hills 2007 Yarra Valley, o californiano"
+        },
+        {
+          "dish_chartier": "Pollo asado al sésamo y a las cinco especias / Salteado de cerdo vietnamita a las cinco especias",
+          "wine_chartier": "Pinot Noir Kim Crawford 2007 Marlborough"
+        },
+        {
+          "dish_chartier": "Tayín de ragú de cordero a las cinco especias con cebollas cipollini caramelizadas / Costillas de cerdo a la canela y al curri de vino tinto",
+          "wine_chartier": "Monasterio de Las Viñas Gran Reserva 2001 Cariñena (garnacha-tempranillo-mazuelo)"
+        },
+        {
+          "dish_chartier": "Quesos + higos asados con canela y miel + milhojas de pan de jengibre con manzana",
+          "wine_chartier": "Château Bel Air 2004 Sainte-Croix-du-Mont, o sidra de hielo de Quebec"
+        },
+        {
+          "dish_chartier": "Higos asados con canela y miel (rellenos con pomada de mantequilla, miel y canela, horneados 5 min a 200°C)",
+          "wine_chartier": "Vino blanco licoroso con Botrytis o Jerez Oloroso"
+        },
+        {
+          "dish_chartier": "Aceite de oliva Cornicabra infusionado con canela",
+          "wine_chartier": "Para postres o caza, técnica TRUCO DE SUMILLER-COCINERO"
+        }
+      ],
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO en este capítulo",
+        "items": [
+          "Tarta de manzana con canela → Sidra de hielo (Chartier menciona la sidra de hielo de Quebec en general, no este pairing concreto)",
+          "Vino caliente especiado → infusión teórica del hipocrás medieval (mencionado pero sin pairing moderno)"
+        ]
+      }
+    },
+    {
+      "id": "capsaicina",
+      "title": "Capsaicina — La molécula del fuego de las guindillas",
+      "chapter_source": "Capítulo 15: Capsaicina",
+      "epigraph": {
+        "quote": "La ausencia de pruebas no es la prueba de la ausencia",
+        "author": "Hubert Reeves"
+      },
+      "molecular_structure_chartier_textual": "La capsaicina y la dihidrocapsaicina —esta última también está en la canela— son dos alcaloides de la familia de las capsaicinoides, las principales moléculas de fuego de las distintas variedades de guindillas. Le dan a la guindilla su singular sensación de ardor en la boca. Están, fundamentalmente, en la pulpa y en las semillas de la guindilla.",
+      "scoville_potency_chartier_textual": "En la escala de Scoville, en solución pura, la capsaicina tiene un valor de 16.000.000 de unidades Scoville (SHU), lo que contrasta con el shogaol del jengibre (160.000 SHU), la piperina de la pimienta (100.000 SHU) y el gingerol del jengibre (60.000 SHU).",
+      "neurological_mechanism_chartier_textual": "Al contrario de lo que se piensa, la capsaicina no tiene efecto químico en las papilas, como los taninos del vino tinto, por ejemplo. Es decir, que no quema de forma física. Su efecto es neurológico, a través de las terminaciones nerviosas (nervio trigémino), y provoca que se secreten endorfinas, las hormonas de la felicidad. Así se explica por qué los humanos sentimos tanto placer al consumir guindillas.",
+      "opposite_to_cold_taste_chartier_textual": "La capsaicina tiene un efecto opuesto al percibido cuando se prueba un alimento con moléculas como el anetol (anís estrellado y el hinojo), el estragol (estragón) y el mentol (menta), las cuales activan los receptores del gusto con temperaturas frescas que van de los 8 a los 28°C, simulando el sabor a frío. La capsaicina puede llegar a simular una temperatura superior a los 42°C, e incluso llegar a la quemadura.",
+      "potenciador_paradox_chartier_textual": "La creencia popular es que el fuerte sabor de la guindilla tapa el resto de los sabores. En dosis muy altas, es realmente difícil enterarse de algo. Pero no siempre es así: incluso la capsaicina, en dosis moderadas, al excitar unos nervios concretos, aumenta un poco la sensibilidad a otros sabores. Es lo que explica la perfecta unión entre la guindilla y el chocolate negro.",
+      "smoke_pairings_chartier_textual": "Algunos se secan y ahúman, como el chipotle mexicano y el pimentón español [...]. Estas notas ahumadas se alían de maravilla con los vinos. En concreto, con los blancos dotados de una gran mineralidad, así como los tintos marcados por la crianza en barrica de roble.",
+      "key_principles_chartier_textual": {
+        "agua_no_funciona": "La capsaicina de las guindillas es soluble en cuerpos grasos y en alcohol y no en el agua. Por eso, los vinos con poco alcohol y suaves (ácidos), no apagan el fuego de las papilas. Pero la grasa, como la que contiene la leche, la mantequilla y el helado, lo hace de maravilla.",
+        "azucar_calma": "Con la cocina picante, especialmente con la tailandesa, atrévase con vinos azucarados, así como con vinos secos y poco ácidos, pero generosos en alcohol (el alcohol tendrá un sabor azucarado). De esta forma, queda demostrado que el azúcar calma mucho más la capsaicina que lo ácido, que el frío y, sobre todo, que el gas carbónico de las bebidas gaseosas, ¡que la aumenta!",
+        "no_cerveza": "Olvídese de la cerveza y de las bebidas gaseosas con los platos realzados con guindillas picantes, ya que el gas carbónico realza y prolonga el efecto de quemazón de la capsaicina, así como de la piperina de la pimienta y del shogaol del jengibre.",
+        "limite_alcohol": "Por encima del 14,5% de alcohol hay que servir el vino más frío o elegir uno que no sobrepase ese porcentaje. Pasado cierto límite, su calor se une al de las guindillas y aumenta su efecto.",
+        "vainilla_amortigua": "La vainilla tiene un efecto amortiguador, tanto en perfumería como en la cocina, para calmar la fuerza de otros productos demasiado volátiles o demasiado presentes en boca. Un plato muy especiado puede suavizarse con vainilla o con un vino muy avainillado.",
+        "temperatura_servicio": "Un tinto graso y generoso tendrá que servirse fresco (entre 14 y 15°C) en aquellos platos con capsaicina y gracias a su presencia, le parecerá que está casi helado. Lo mismo ocurre con los vinos blancos. [...] si está muy marcado por el alcohol, habrá que bajar la temperatura de servicio hasta unos 10°C.",
+        "temperatura_plato": "Si un plato picante se sirve muy caliente, el calor, al ser un potenciador de la capsaicina, hará que aumente la sensibilidad a la acción del fuego. Sin embargo, con el mismo plato en frío o tibio, la quemadura le parecerá más suave."
+      },
+      "wines_chartier_explicitly_named": [
+        "Sake Nigori (10% alc., poco filtrado, rico en aminoácidos, lechoso)",
+        "Tintos españoles con barrica americana (Rioja, Ribera del Duero, Jumilla)",
+        "Merlot del Nuevo Mundo (vainilla amortiguadora)",
+        "Zinfandel del Nuevo Mundo",
+        "Petite Sirah del Nuevo Mundo",
+        "Vinos blancos minerales con tinte ahumado (para chiles ahumados como chipotle/pimentón)",
+        "Tintos con barrica de roble (para chiles ahumados)"
+      ],
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Platos tailandeses, indonesios, indios o mexicanos picantes",
+          "wine_chartier": "Sake Nigori (10% alc.) — refrescante, lácteo, calma la capsaicina"
+        },
+        {
+          "dish_chartier": "Cocina con capsaicina en general",
+          "wine_chartier": "Vinos españoles con barrica americana (vainilla = amortiguador): Rioja, Ribera del Duero, Jumilla; o Merlot/Zinfandel/Petite Sirah del Nuevo Mundo"
+        },
+        {
+          "dish_chartier": "Chocolate negro + guindilla",
+          "wine_chartier": "Implícito: la capsaicina realza el chocolate"
+        }
+      ],
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO en este capítulo",
+        "items": [
+          "Curry indio fuerte → Riesling vendimia tardía (extrapolación; Chartier propone Sake Nigori y vinos con vainilla)",
+          "Tex-Mex con jalapeños → Zinfandel (Chartier sí menciona el zinfandel como opción genérica)"
+        ]
+      }
+    },
+    {
+      "id": "sabor_frio",
+      "title": "Sabor a Frío — La manzana y otros alimentos refrescantes",
+      "chapter_source": "Capítulo 16: Sabor a Frío",
+      "epigraph": {
+        "quote": "La ciencia es una de las pocas actividades humanas en la cual los errores son criticados sistemáticamente y muy a menudo, con el tiempo, corregidos",
+        "author": "Karl Popper"
+      },
+      "core_concept_chartier_textual": "La manzana forma parte del grupo de alimentos con sabor a frío, que he bautizado así por la presencia de diferentes compuestos volátiles, como el estragol en la manzana, que, al igual que el mentol de la menta, da su fresca identidad a la manzana. El estragol, molécula del sabor a frío en la manzana, también está en el anís estrellado, la albahaca verde, la canela, el clavo, el estragón, el jengibre, las semillas de hinojo, el laurel, la mostaza, la salvia y el extracto de regaliz negro. Estas moléculas activan los receptores del sabor con temperaturas de entre 8 y 28°C y simulan así el frío, a diferencia de la capsaicina de las guindillas, que simula un aumento de la temperatura de las papilas gustativas.",
+      "complete_food_list_chartier_textual": "Anís estrellado de China, albahaca verde y silvestre, zanahoria amarilla, apio y apionabo, citronela, pepino, cilantro fresco, daikon, estragón, eucalipto, hinojo fresco, jengibre, lima, melisa, chirivía, perejil y su raíz, pimiento verde, rábano negro, rábano picante, verbena, wasabi.",
+      "wine_principles_chartier_textual": {
+        "principle_amortiguador": "Según los componentes del plato, la presencia de alimentos con sabor a frío puede tener un efecto amortiguador. Es lo que ocurre, por ejemplo, con el calor de las especias y la temperatura de los platos. Eso nos lleva a elegir un vino con alto contenido en alcohol (el alcohol provoca una sensación de calor en las mucosas), si procede, o bien servir el vino menos frío.",
+        "principle_acidez": "Estos alimentos con sabor a frío refuerzan la percepción de la acidez y el amargor en el vino debido al frío momentáneo de las papilas. Hay que evitar los vinos blancos con una acidez incisiva y los que tengan un amargor demasiado marcado.",
+        "principle_dulces": "Como el sabor a frío reduce la sensación dulce de los vinos licorosos realzando su acidez y amargor, se frena el azúcar de estos vinos, que por desgracia casi nunca se sirven durante las comidas. Elija un blanco licoroso a base de las mismas variedades que los vinos secos."
+      },
+      "wines_chartier_explicitly_named": {
+        "blancos_secos_recomendados": [
+          "Sauvignon Blanc",
+          "Riesling",
+          "Romorantin",
+          "Grüner Veltliner",
+          "Albariño (especialmente Pazo de Señorans, Rías Baixas)",
+          "Verdejo (especialmente Verdejo Bribón, Rueda, Prado Rey)",
+          "Chardonnay de climas frescos en acero (Chablis, Nueva Zelanda — Chardonnay Oyster Bay 2007 Marlborough)",
+          "Burdeos blanco (Château Haut Mouleyre 2005 Bordeaux, Bernard Magrez)"
+        ],
+        "tintos_excepcionales": [
+          "Cabernet Franc fresco (especialmente La Coulée Automnale, Chinon, Couly-Dutheil — Loira)",
+          "Vino Verde portugués (algunos, marcados por sabor a frío)"
+        ],
+        "blancos_licorosos": [
+          "Sauternes (frenado en azúcar por sabor a frío)",
+          "Sidra de hielo de Quebec (La Face Cachée de la Pomme, Cidrerie du Minot, Michel Jodoin)"
+        ],
+        "te": [
+          "Té verde gyokuro (carotenoides + sabor a frío en perifollo)"
+        ]
+      },
+      "summary_chartier_textual": [
+        "Un vino licoroso muy frío parece menos dulce de lo que es en realidad.",
+        "Un vino blanco seco y vivo parece más fuerte (ácido) si se sirve frío.",
+        "Un vino tinto tánico servido demasiado frío parece más tenaz de lo que es en realidad (más tánico).",
+        "Un plato compuesto únicamente por ingredientes con sabor a frío reforzará la percepción de la acidez y amargor del vino.",
+        "Si un plato se sirve muy frío, habrá que dosificar suavemente la acidez, la sal y el amargor.",
+        "Si se sirve un vino demasiado frío, en el plato habrá que acentuar los ácidos, la sal y el amargor, atenuando la suavidad de los azúcares."
+      ],
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Sándwich de queso de cabra fresco, manzana verde, pimiento, pepino, menta fresca, mayonesa con wasabi, opcional trucha ahumada",
+          "wine_chartier": "Verdejo Bribón Rueda o Sauvignon Blanc, también Chinon La Coulée Automnale (Cabernet Franc del Loira)"
+        },
+        {
+          "dish_chartier": "Crema fría de pepino, manzana y ralladura de lima (poca nata)",
+          "wine_chartier": "Albariño Pazo de Señorans, Rías Baixas"
+        },
+        {
+          "dish_chartier": "Costillar de cerdo con manzanas golden y azafrán (sustituto navideño del pavo)",
+          "wine_chartier": "Chardonnay Oyster Bay 2007 Marlborough, o Burdeos blanco Château Haut Mouleyre 2005"
+        },
+        {
+          "dish_chartier": "Pastel invertido de manzana amarilla y azafrán",
+          "wine_chartier": "Sidra de hielo de Quebec (La Face Cachée de la Pomme, Minot, Michel Jodoin)"
+        }
+      ],
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO en este capítulo",
+        "items": [
+          "Gazpacho andaluz → Albariño o Verdejo (extrapolación natural; Chartier propone crema fría de pepino+manzana, no gazpacho)",
+          "Carpaccio de pepino → Sauvignon Blanc Sancerre (Chartier no nombra Sancerre aquí)"
+        ]
+      }
+    },
+    {
+      "id": "experiencias_armonias",
+      "title": "Experiencias de Armonía y Sumillería Moleculares",
+      "chapter_source": "Capítulo 17: Experiencias",
+      "epigraph": {
+        "quote": "El método es necesario para buscar la verdad",
+        "author": "René Descartes"
+      },
+      "context_chartier_textual": "El 12 y 13 de marzo de 2009 estrené, con la ayuda de Stéphane Modat, del restaurante Utopie, las aplicaciones prácticas de algunas de mis investigaciones en armonías y sumillería molecular. Se trató de un gran estreno tras más de tres años de investigación intensiva en la materia. Invité para la ocasión al enólogo de Burdeos Pascal Chatonnet [...] así como Thomas Perrin, del famoso Château de Beaucastel, acompañado por su chef Laurent Deconinck.",
+      "methodology_chartier_textual": "Con la ayuda de Pascal Chatonnet, identificamos para cada servicio una o varias moléculas volátiles (la base de los aromas). Así pues, me dediqué a buscar alimentos complementarios con una impronta molecular similar [...] De este modo, el chef Stéphane Modat, y su invitado de las cocinas de Beaucastel, pudieron contar con una serie de esquemas de ingredientes con un gran poder de atracción armónica entre sí y con el vino elegido.",
+      "menu_executed_chartier_textual": [
+        {
+          "course": 1,
+          "wine": "Coudoulet de Beaucastel Blanc 2006",
+          "dominant_molecules": [
+            "Lactonas (albaricoque/melocotón)",
+            "Hotrienol (tilo/miel)"
+          ],
+          "complementary_ingredients_listed": "leche de coco, rosa, jengibre, almendra tostada, capullos de rosa secos, manzanilla, cangrejo de las nieves, agua de rosas, hinojo, aceite de hueso de ciruela, jazmín, lavanda, maíz, miel, pastís, vieira, cerdo, queso suizo añejo y parmigiano reggiano, ralladura de cítricos",
+          "dish_executed": "Lubina pochada con leche de coco a la rosa, jengibre maridado y guisantes crujientes"
+        },
+        {
+          "course": 2,
+          "wine": "Château de Beaucastel Blanc 2006 (Châteauneuf-du-Pape)",
+          "dominant_molecules": [
+            "Mismas que curso 1",
+            "+ Fenil acetaldehído (miel)"
+          ],
+          "rationale": "Es un vino más denso y estructurado, optamos por un molusco rico en umami, para obtener presencia y volumen en boca y respaldar al vino",
+          "dish_executed": "Vieira templada con aceite de almendras amargas, ensalada tibia de hinojo a la mandarina imperial y mirin, polvo de maíz salado/seco, aire de flor de osmanto",
+          "discovery": "Flor de osmanto: aromatiza el té chino, expresa notas de albaricoque/melocotón por sus lactonas. Descubrimiento de Chartier durante este menú."
+        },
+        {
+          "course": 3,
+          "wine": "Les Christins 2006 Vacqueyras (Perrin et Fils)",
+          "dominant_molecules": [
+            "Rotundona (pimienta)",
+            "β-ionona (violeta)"
+          ],
+          "complementary_ingredients_listed": "Carnes a la parrilla prolongada e ingredientes ricos en umami (vino graso y animal): algas kombu o nori, bonito seco, zanahoria, setas shiitake y matsutake, enebro, hierbas secas de Midi, pimienta, azafrán, salvia, atún rojo, jamón curado",
+          "dish_executed": "Atún rojo frotado con bayas de enebro, aceitunas negras, habas, confeti de alga nori torrefactada, dados de grasa de jamón fundida, pipeta lúdica de aceite de pepitas de uva con pistilos de azafrán marroquí",
+          "technique_note": "El alga nori tiene en su estructura β-ionona (violeta), que solo es soluble en materia grasa, de ahí la pipeta rellena de aceite de oliva que los comensales deben poner sobre las algas para liberar el preciado sabor a violeta."
+        },
+        {
+          "course": 4,
+          "wine_a": "Château Haut Chaigneau 2003 Lalande-de-Pomerol (Pascal Chatonnet)",
+          "wine_a_molecules": [
+            "β-ionona (violeta)",
+            "Frambinona (frambuesa)",
+            "Extracto de habano (tabaco negro)"
+          ],
+          "wine_b": "Château La Sergue 2006 Lalande-de-Pomerol (Pascal Chatonnet)",
+          "wine_b_molecules": [
+            "Maltol (madera torrefacta)",
+            "Guayacol (madera ahumada)",
+            "Mercaptohexanol (brotes de cassis)"
+          ],
+          "dish_a_executed": "Sobre una gelatina de agua de frambuesa abrillantada con aceite de violeta, esfera de pimientos rojos quemados con aceite de sésamo, aire de alga kombu al regaliz, flor de sal ahumada de habano y empapada en coñac 1914",
+          "dish_b_executed": "Ternera ahumada en frío con madera de arce, setas con mantequilla de coco y achicoria, col roja molida con grosella negra a la nuez moscada boreal, jugo de adobo"
+        },
+        {
+          "course": 5,
+          "wine": "Château L'Archange 2001 Saint-Émilion (Pascal Chatonnet)",
+          "dominant_molecules": [
+            "Mismas que curso 4",
+            "+ α-ionona (mora)"
+          ],
+          "dish_executed": "Magret de pato cocinado en su grasa ahumada al té wulong, con la carne marinada a la flor de zanahoria silvestre y pétalos de rosa, granos de arroz salvaje inflados, arándanos a la violeta desmenuzados",
+          "carrot_note_chartier_textual": "La zanahoria, al cocinarla, genera moléculas sápidas, como la β-ionona con olor a violeta, lo que explica su presencia en el servicio."
+        },
+        {
+          "course": 6,
+          "wine": "Château de Beaucastel 2005 Châteauneuf-du-Pape (Perrin et Fils)",
+          "dominant_molecules": [
+            "Eugenol (clavo)",
+            "Dimetilpirazina (cacao)"
+          ],
+          "complementary_ingredients_listed": "Albahaca tailandesa, remolacha roja, café, canela de Ceilán, carne de caza (caribú), semillas tostadas de sésamo, licor de moras, avellana, coco tostado, cebada, pimienta, patata regaliz, cerveza de raíz, scotch, espárragos asados, jerez amontillado/oloroso",
+          "dish_executed": "Caribú de los inuit, jugo de carne perlada con semillas de moras, purés de apionabo en dos versiones (con regaliz de fantasía y con clavo), armillaria de miel al grué de cacao y hoja de albahaca tailandesa",
+          "regaliz_technique_chartier_textual": "El concentrado de extracto de regaliz negro, gracias a su singular estructura, alarga el vino y suaviza los taninos, especialmente los de añadas jóvenes como este 2005. Por eso añadimos el concentrado de extracto de regaliz negro en uno de los dos purés de apionabo que acompañaban al caribú y al Beaucastel."
+        },
+        {
+          "course": 7,
+          "wine": "Muscat de Beaumes-de-Venise 2006 (familia Perrin)",
+          "dominant_molecules": [
+            "Geraniol (geranio/rosa/eucalipto)",
+            "Linalol (lavanda/cítricos)",
+            "Hotrienol (miel)"
+          ],
+          "dish_executed": "Bavarois de mascarpone endulzado con miel de naranja, aromatizado en tres versiones: geranio/lavanda, citronela/menta y eucalipto",
+          "rationale": "Insté a los chefs a recrear desde cero, en forma de postre, el perfil del moscatel"
+        }
+      ],
+      "key_principles_demonstrated_chartier_textual": [
+        "Las moléculas como puente: cada plato se construye a partir de las moléculas dominantes del vino, buscando alimentos que las contengan también.",
+        "Solubilidad como técnica: la β-ionona es soluble en grasa, no en agua → pipeta de aceite que el comensal añade en mesa.",
+        "Regaliz como amplificador de tintos jóvenes: el concentrado de regaliz negro alarga y suaviza taninos.",
+        "α-pineno + yodo: el enebro y el azafrán amplifican sabores yodados de algas.",
+        "Recreación inversa de un vino: a partir de moléculas, se construye un postre que es una caja de resonancia perfecta del vino."
+      ],
+      "explicit_pairings_in_chapter": [
+        {
+          "dish_chartier": "Lubina con leche de coco, rosa, jengibre, guisantes crujientes",
+          "wine_chartier": "Coudoulet de Beaucastel Blanc 2006"
+        },
+        {
+          "dish_chartier": "Vieira templada, hinojo a la mandarina, polvo de maíz, aire de osmanto",
+          "wine_chartier": "Beaucastel Blanc 2006"
+        },
+        {
+          "dish_chartier": "Atún rojo con enebro, nori, jamón, azafrán",
+          "wine_chartier": "Vacqueyras Les Christins 2006"
+        },
+        {
+          "dish_chartier": "Frambuesa+violeta+pimientos+sésamo+kombu+regaliz+habano+coñac",
+          "wine_chartier": "Château Haut Chaigneau 2003"
+        },
+        {
+          "dish_chartier": "Ternera ahumada con arce, setas con coco, col roja con grosella",
+          "wine_chartier": "Château La Sergue 2006"
+        },
+        {
+          "dish_chartier": "Magret de pato al té wulong + flor de zanahoria + rosa + arándano violeta",
+          "wine_chartier": "Château L'Archange 2001"
+        },
+        {
+          "dish_chartier": "Caribú con apionabo (regaliz+clavo), grué de cacao, albahaca tailandesa",
+          "wine_chartier": "Beaucastel 2005"
+        },
+        {
+          "dish_chartier": "Bavarois de mascarpone con miel: geranio/lavanda + citronela/menta + eucalipto",
+          "wine_chartier": "Muscat de Beaumes-de-Venise 2006"
+        },
+        {
+          "dish_chartier": "Pasta de pimientos rojos al aceite de sésamo tostado con atún rojo a la parrilla (canapé)",
+          "wine_chartier": "Tinto del Ródano (octubre 2008, La Sélection Chartier)"
+        }
+      ],
+      "interpretation_extrapolation_NOT_in_book": {
+        "label": "Inferencias razonables NO en este capítulo",
+        "items": [
+          "Aplicación del método molecular a vinos no nombrados aquí (Burdeos clásico, vinos italianos): el método es replicable pero estos casos no se ejecutan en el libro."
+        ]
+      }
+    }
+  ],
+  "cross_index_by_molecule": {
+    "citral": {
+      "name": "citral",
+      "descriptor": "Limón (verbena, melisa, citronela)",
+      "family": "aldehído terpénico",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "anisado",
+          "chapter_title": "Familia anisada — Menta y Sauvignon Blanc"
+        },
+        {
+          "chapter_id": "sotolon",
+          "chapter_title": "Sotolón — El enlace entre Vin Jaune, Curri, Arce y Sauternes"
+        },
+        {
+          "chapter_id": "fino_oloroso",
+          "chapter_title": "Fino y Oloroso — Un velo de aromas con los vinos de Jerez"
+        },
+        {
+          "chapter_id": "carne_vacuno",
+          "chapter_title": "Carne de Vacuno, Cordero y Cerdo"
+        },
+        {
+          "chapter_id": "gewurztraminer_lichi_jengibre_scheurebe",
+          "chapter_title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares"
+        },
+        {
+          "chapter_id": "azafran",
+          "chapter_title": "Azafrán — La reina de las especias"
+        },
+        {
+          "chapter_id": "jengibre",
+          "chapter_title": "Jengibre — Un seductor con gran poder de atracción"
+        },
+        {
+          "chapter_id": "quesos",
+          "chapter_title": "Quesos — Tras su huella aromática"
+        },
+        {
+          "chapter_id": "canela",
+          "chapter_title": "Canela — La cálida y sensual especia"
+        },
+        {
+          "chapter_id": "capsaicina",
+          "chapter_title": "Capsaicina — La molécula del fuego de las guindillas"
+        }
+      ],
+      "count": 10
+    },
+    "eugenol": {
+      "name": "eugenol",
+      "descriptor": "Clavo (compuesto principal), madera, especias",
+      "family": "fenol",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "anisado",
+          "chapter_title": "Familia anisada — Menta y Sauvignon Blanc"
+        },
+        {
+          "chapter_id": "roble_barrica",
+          "chapter_title": "Roble y Barrica — El maestro de los aromas"
+        },
+        {
+          "chapter_id": "gewurztraminer_lichi_jengibre_scheurebe",
+          "chapter_title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares"
+        },
+        {
+          "chapter_id": "pina_fresa",
+          "chapter_title": "Piña y Fresa — Gemelas moleculares"
+        },
+        {
+          "chapter_id": "clavo",
+          "chapter_title": "Clavo — La especia de la barrica"
+        },
+        {
+          "chapter_id": "jarabe_arce",
+          "chapter_title": "Jarabe de Arce — La savia aromática de Quebec"
+        },
+        {
+          "chapter_id": "canela",
+          "chapter_title": "Canela — La cálida y sensual especia"
+        },
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 8
+    },
+    "linalol": {
+      "name": "linalol",
+      "descriptor": "Lavanda, muguete, flores, bergamota, rosa",
+      "family": "alcohol terpénico",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "anisado",
+          "chapter_title": "Familia anisada — Menta y Sauvignon Blanc"
+        },
+        {
+          "chapter_id": "gewurztraminer_lichi_jengibre_scheurebe",
+          "chapter_title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares"
+        },
+        {
+          "chapter_id": "romero",
+          "chapter_title": "Romero — Aires alsacianos desde el sur"
+        },
+        {
+          "chapter_id": "jengibre",
+          "chapter_title": "Jengibre — Un seductor con gran poder de atracción"
+        },
+        {
+          "chapter_id": "quesos",
+          "chapter_title": "Quesos — Tras su huella aromática"
+        },
+        {
+          "chapter_id": "canela",
+          "chapter_title": "Canela — La cálida y sensual especia"
+        },
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 7
+    },
+    "vainillina": {
+      "name": "vainillina",
+      "descriptor": "Vainilla, dulce, balsámico",
+      "family": "aldehído fenólico",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "roble_barrica",
+          "chapter_title": "Roble y Barrica — El maestro de los aromas"
+        },
+        {
+          "chapter_id": "gewurztraminer_lichi_jengibre_scheurebe",
+          "chapter_title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares"
+        },
+        {
+          "chapter_id": "pina_fresa",
+          "chapter_title": "Piña y Fresa — Gemelas moleculares"
+        },
+        {
+          "chapter_id": "clavo",
+          "chapter_title": "Clavo — La especia de la barrica"
+        },
+        {
+          "chapter_id": "jarabe_arce",
+          "chapter_title": "Jarabe de Arce — La savia aromática de Quebec"
+        },
+        {
+          "chapter_id": "canela",
+          "chapter_title": "Canela — La cálida y sensual especia"
+        }
+      ],
+      "count": 6
+    },
+    "sotolon": {
+      "name": "sotolón",
+      "descriptor": "Curri, nuez, fenogreco tostada, jarabe de arce, salsa de soja, caramelo",
+      "family": "lactona / furanona",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "sotolon",
+          "chapter_title": "Sotolón — El enlace entre Vin Jaune, Curri, Arce y Sauternes"
+        },
+        {
+          "chapter_id": "fino_oloroso",
+          "chapter_title": "Fino y Oloroso — Un velo de aromas con los vinos de Jerez"
+        },
+        {
+          "chapter_id": "pina_fresa",
+          "chapter_title": "Piña y Fresa — Gemelas moleculares"
+        },
+        {
+          "chapter_id": "jarabe_arce",
+          "chapter_title": "Jarabe de Arce — La savia aromática de Quebec"
+        },
+        {
+          "chapter_id": "quesos",
+          "chapter_title": "Quesos — Tras su huella aromática"
+        }
+      ],
+      "count": 5
+    },
+    "capsaicina": {
+      "name": "capsaicina",
+      "descriptor": "Picante neurológico (no quema físicamente; activa nervio trigémino)",
+      "family": "alcaloide capsaicinoide",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "anisado",
+          "chapter_title": "Familia anisada — Menta y Sauvignon Blanc"
+        },
+        {
+          "chapter_id": "jengibre",
+          "chapter_title": "Jengibre — Un seductor con gran poder de atracción"
+        },
+        {
+          "chapter_id": "canela",
+          "chapter_title": "Canela — La cálida y sensual especia"
+        },
+        {
+          "chapter_id": "capsaicina",
+          "chapter_title": "Capsaicina — La molécula del fuego de las guindillas"
+        },
+        {
+          "chapter_id": "sabor_frio",
+          "chapter_title": "Sabor a Frío — La manzana y otros alimentos refrescantes"
+        }
+      ],
+      "count": 5
+    },
+    "maltol": {
+      "name": "maltol",
+      "descriptor": "Azúcar quemado, algodón de azúcar",
+      "family": "potenciador del sabor",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "sotolon",
+          "chapter_title": "Sotolón — El enlace entre Vin Jaune, Curri, Arce y Sauternes"
+        },
+        {
+          "chapter_id": "roble_barrica",
+          "chapter_title": "Roble y Barrica — El maestro de los aromas"
+        },
+        {
+          "chapter_id": "jarabe_arce",
+          "chapter_title": "Jarabe de Arce — La savia aromática de Quebec"
+        },
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 4
+    },
+    "cineol_eucaliptol": {
+      "name": "cineol",
+      "descriptor": "Eucalipto, sabor a frío",
+      "family": "monoterpeno",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "gewurztraminer_lichi_jengibre_scheurebe",
+          "chapter_title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares"
+        },
+        {
+          "chapter_id": "romero",
+          "chapter_title": "Romero — Aires alsacianos desde el sur"
+        },
+        {
+          "chapter_id": "azafran",
+          "chapter_title": "Azafrán — La reina de las especias"
+        },
+        {
+          "chapter_id": "jengibre",
+          "chapter_title": "Jengibre — Un seductor con gran poder de atracción"
+        }
+      ],
+      "count": 4
+    },
+    "beta_cariofileno": {
+      "name": "β-cariofileno",
+      "descriptor": "Madera (clavo, pimienta negra)",
+      "family": "sesquiterpeno",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "roble_barrica",
+          "chapter_title": "Roble y Barrica — El maestro de los aromas"
+        },
+        {
+          "chapter_id": "clavo",
+          "chapter_title": "Clavo — La especia de la barrica"
+        },
+        {
+          "chapter_id": "jarabe_arce",
+          "chapter_title": "Jarabe de Arce — La savia aromática de Quebec"
+        },
+        {
+          "chapter_id": "canela",
+          "chapter_title": "Canela — La cálida y sensual especia"
+        }
+      ],
+      "count": 4
+    },
+    "cumarina": {
+      "name": "cumarina",
+      "descriptor": "Vainilla, haba tonka, heno cortado",
+      "family": "lactona",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "fino_oloroso",
+          "chapter_title": "Fino y Oloroso — Un velo de aromas con los vinos de Jerez"
+        },
+        {
+          "chapter_id": "roble_barrica",
+          "chapter_title": "Roble y Barrica — El maestro de los aromas"
+        },
+        {
+          "chapter_id": "canela",
+          "chapter_title": "Canela — La cálida y sensual especia"
+        }
+      ],
+      "count": 3
+    },
+    "estragol": {
+      "name": "estragol",
+      "descriptor": "Anisado, sabor a frío (manzana, estragón)",
+      "family": "fenilpropanoide",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "anisado",
+          "chapter_title": "Familia anisada — Menta y Sauvignon Blanc"
+        },
+        {
+          "chapter_id": "capsaicina",
+          "chapter_title": "Capsaicina — La molécula del fuego de las guindillas"
+        },
+        {
+          "chapter_id": "sabor_frio",
+          "chapter_title": "Sabor a Frío — La manzana y otros alimentos refrescantes"
+        }
+      ],
+      "count": 3
+    },
+    "mentol": {
+      "name": "mentol",
+      "descriptor": "Menta, sabor a frío (8-28°C)",
+      "family": "monoterpeno",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "anisado",
+          "chapter_title": "Familia anisada — Menta y Sauvignon Blanc"
+        },
+        {
+          "chapter_id": "capsaicina",
+          "chapter_title": "Capsaicina — La molécula del fuego de las guindillas"
+        },
+        {
+          "chapter_id": "sabor_frio",
+          "chapter_title": "Sabor a Frío — La manzana y otros alimentos refrescantes"
+        }
+      ],
+      "count": 3
+    },
+    "geraniol": {
+      "name": "geraniol",
+      "descriptor": "Rosa, geranio, citronela, limón",
+      "family": "alcohol terpénico",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "gewurztraminer_lichi_jengibre_scheurebe",
+          "chapter_title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares"
+        },
+        {
+          "chapter_id": "jengibre",
+          "chapter_title": "Jengibre — Un seductor con gran poder de atracción"
+        },
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 3
+    },
+    "cicloteno": {
+      "name": "cicloteno",
+      "descriptor": "Arce, regaliz, tostado",
+      "family": "ciclopentenolona",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "sotolon",
+          "chapter_title": "Sotolón — El enlace entre Vin Jaune, Curri, Arce y Sauternes"
+        },
+        {
+          "chapter_id": "roble_barrica",
+          "chapter_title": "Roble y Barrica — El maestro de los aromas"
+        },
+        {
+          "chapter_id": "jarabe_arce",
+          "chapter_title": "Jarabe de Arce — La savia aromática de Quebec"
+        }
+      ],
+      "count": 3
+    },
+    "pineno": {
+      "name": "pineno",
+      "descriptor": "Pino, abeto, enebro; reactivo con yodo",
+      "family": "monoterpeno",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "azafran",
+          "chapter_title": "Azafrán — La reina de las especias"
+        },
+        {
+          "chapter_id": "jengibre",
+          "chapter_title": "Jengibre — Un seductor con gran poder de atracción"
+        },
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 3
+    },
+    "borneol": {
+      "name": "borneol",
+      "descriptor": "Alcanfor, madera",
+      "family": "alcohol terpénico",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "romero",
+          "chapter_title": "Romero — Aires alsacianos desde el sur"
+        },
+        {
+          "chapter_id": "jengibre",
+          "chapter_title": "Jengibre — Un seductor con gran poder de atracción"
+        },
+        {
+          "chapter_id": "canela",
+          "chapter_title": "Canela — La cálida y sensual especia"
+        }
+      ],
+      "count": 3
+    },
+    "furfural": {
+      "name": "furfural",
+      "descriptor": "Serrín, arce, pan tostado, almendra tostada, café, caramelo",
+      "family": "aldehído furánico",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "roble_barrica",
+          "chapter_title": "Roble y Barrica — El maestro de los aromas"
+        },
+        {
+          "chapter_id": "clavo",
+          "chapter_title": "Clavo — La especia de la barrica"
+        },
+        {
+          "chapter_id": "jarabe_arce",
+          "chapter_title": "Jarabe de Arce — La savia aromática de Quebec"
+        }
+      ],
+      "count": 3
+    },
+    "cinamato_etilo": {
+      "name": "cinamato de etilo",
+      "descriptor": "Canela, balsámico, miel, albaricoque/melocotón (Beaujolais Nouveau por maceración carbónica)",
+      "family": "éster",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "pina_fresa",
+          "chapter_title": "Piña y Fresa — Gemelas moleculares"
+        },
+        {
+          "chapter_id": "jengibre",
+          "chapter_title": "Jengibre — Un seductor con gran poder de atracción"
+        },
+        {
+          "chapter_id": "canela",
+          "chapter_title": "Canela — La cálida y sensual especia"
+        }
+      ],
+      "count": 3
+    },
+    "cinamaldehido": {
+      "name": "cinamaldehído",
+      "descriptor": "Canela (compuesto principal)",
+      "family": "aldehído fenólico",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "gewurztraminer_lichi_jengibre_scheurebe",
+          "chapter_title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares"
+        },
+        {
+          "chapter_id": "canela",
+          "chapter_title": "Canela — La cálida y sensual especia"
+        }
+      ],
+      "count": 2
+    },
+    "metiloctalactona": {
+      "name": "metiloctalactona",
+      "descriptor": "Coco, lácteo, balsámico, madera",
+      "family": "lactona (impronta del roble americano)",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "fino_oloroso",
+          "chapter_title": "Fino y Oloroso — Un velo de aromas con los vinos de Jerez"
+        },
+        {
+          "chapter_id": "roble_barrica",
+          "chapter_title": "Roble y Barrica — El maestro de los aromas"
+        }
+      ],
+      "count": 2
+    },
+    "anetol": {
+      "name": "anetol",
+      "descriptor": "Anís, regaliz, pastís",
+      "family": "fenilpropanoide",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "anisado",
+          "chapter_title": "Familia anisada — Menta y Sauvignon Blanc"
+        },
+        {
+          "chapter_id": "capsaicina",
+          "chapter_title": "Capsaicina — La molécula del fuego de las guindillas"
+        }
+      ],
+      "count": 2
+    },
+    "furaneol": {
+      "name": "furaneol",
+      "descriptor": "Caramelo, fresa cocinada, piña quemada",
+      "family": "furanona",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "gewurztraminer_lichi_jengibre_scheurebe",
+          "chapter_title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares"
+        },
+        {
+          "chapter_id": "pina_fresa",
+          "chapter_title": "Piña y Fresa — Gemelas moleculares"
+        }
+      ],
+      "count": 2
+    },
+    "diacetilo": {
+      "name": "diacetilo",
+      "descriptor": "Mantequilla, queso, lácteo",
+      "family": "cetona",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "fino_oloroso",
+          "chapter_title": "Fino y Oloroso — Un velo de aromas con los vinos de Jerez"
+        },
+        {
+          "chapter_id": "quesos",
+          "chapter_title": "Quesos — Tras su huella aromática"
+        }
+      ],
+      "count": 2
+    },
+    "acetaldehido": {
+      "name": "acetaldehído",
+      "descriptor": "Manzana verde, nuez (Fino, Vin Jaune, jamón ibérico)",
+      "family": "aldehído",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "fino_oloroso",
+          "chapter_title": "Fino y Oloroso — Un velo de aromas con los vinos de Jerez"
+        },
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 2
+    },
+    "guayacol": {
+      "name": "guayacol",
+      "descriptor": "Humo, ahumado",
+      "family": "fenol",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "roble_barrica",
+          "chapter_title": "Roble y Barrica — El maestro de los aromas"
+        },
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 2
+    },
+    "gingerol": {
+      "name": "gingerol",
+      "descriptor": "Picante del jengibre (gingerol fresco → shogaol seco doble picante → zingerona suave con calor)",
+      "family": "fenol picante",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "jengibre",
+          "chapter_title": "Jengibre — Un seductor con gran poder de atracción"
+        },
+        {
+          "chapter_id": "capsaicina",
+          "chapter_title": "Capsaicina — La molécula del fuego de las guindillas"
+        }
+      ],
+      "count": 2
+    },
+    "dimetilpirazina": {
+      "name": "dimetilpirazina",
+      "descriptor": "Cacao, café, achicoria, jarabe de arce",
+      "family": "pirazina",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "quesos",
+          "chapter_title": "Quesos — Tras su huella aromática"
+        },
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 2
+    },
+    "benzaldehido": {
+      "name": "benzaldehído",
+      "descriptor": "Almendra amarga (kirsch, amaretto)",
+      "family": "aldehído",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "jarabe_arce",
+          "chapter_title": "Jarabe de Arce — La savia aromática de Quebec"
+        },
+        {
+          "chapter_id": "canela",
+          "chapter_title": "Canela — La cálida y sensual especia"
+        }
+      ],
+      "count": 2
+    },
+    "carvona": {
+      "name": "carvona",
+      "descriptor": "R-carvona = menta; S-carvona = alcaravea",
+      "family": "monoterpeno",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "anisado",
+          "chapter_title": "Familia anisada — Menta y Sauvignon Blanc"
+        }
+      ],
+      "count": 1
+    },
+    "oxido_cis_rose": {
+      "name": "óxido de cis-rose",
+      "descriptor": "Rosa/lichi (impronta única del Gewürztraminer)",
+      "family": "óxido terpénico",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "gewurztraminer_lichi_jengibre_scheurebe",
+          "chapter_title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares"
+        }
+      ],
+      "count": 1
+    },
+    "beta_damascenona": {
+      "name": "β-damascenona",
+      "descriptor": "Frutas exóticas, rosa, tabaco, té negro",
+      "family": "carotenoide derivado",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "gewurztraminer_lichi_jengibre_scheurebe",
+          "chapter_title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares"
+        }
+      ],
+      "count": 1
+    },
+    "acetoina": {
+      "name": "acetoína",
+      "descriptor": "Mantequilla, yogur, cremoso",
+      "family": "cetona",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "fino_oloroso",
+          "chapter_title": "Fino y Oloroso — Un velo de aromas con los vinos de Jerez"
+        }
+      ],
+      "count": 1
+    },
+    "solerona": {
+      "name": "solerona",
+      "descriptor": "Higos secos, dátiles, té Lapsang Souchong",
+      "family": "sherry lactona (familia del sotolón)",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "fino_oloroso",
+          "chapter_title": "Fino y Oloroso — Un velo de aromas con los vinos de Jerez"
+        }
+      ],
+      "count": 1
+    },
+    "safranal": {
+      "name": "safranal",
+      "descriptor": "Azafrán (70% del peso aromático)",
+      "family": "terpeno",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "azafran",
+          "chapter_title": "Azafrán — La reina de las especias"
+        }
+      ],
+      "count": 1
+    },
+    "siringol": {
+      "name": "siringol",
+      "descriptor": "Especiado, ahumado, medicinal (cebolla/ajo/puerro caramelizados)",
+      "family": "fenol",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "roble_barrica",
+          "chapter_title": "Roble y Barrica — El maestro de los aromas"
+        }
+      ],
+      "count": 1
+    },
+    "rotundona": {
+      "name": "rotundona",
+      "descriptor": "Pimienta negra (Syrah, Vacqueyras)",
+      "family": "sesquiterpeno",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 1
+    },
+    "beta_ionona": {
+      "name": "β-ionona",
+      "descriptor": "Violeta (algas nori, zanahoria cocinada)",
+      "family": "carotenoide derivado",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 1
+    },
+    "alfa_ionona": {
+      "name": "α-ionona",
+      "descriptor": "Mora",
+      "family": "carotenoide derivado",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 1
+    },
+    "frambinona": {
+      "name": "frambinona",
+      "descriptor": "Frambuesa",
+      "family": "cetona",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 1
+    },
+    "mercaptohexanol": {
+      "name": "mercaptohexanol",
+      "descriptor": "Brotes de cassis, fruta de la pasión",
+      "family": "tiol",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 1
+    },
+    "mercapto_pentanona": {
+      "name": "4-mercapto-4-metil-2-pentanona",
+      "descriptor": "Boj, casis, pomelo rosa, fruta de la pasión (impronta única de Sauvignon Blanc y Scheurebe)",
+      "family": "tiol",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "gewurztraminer_lichi_jengibre_scheurebe",
+          "chapter_title": "Gewürztraminer / Jengibre / Lichi / Scheurebe — Familias moleculares"
+        }
+      ],
+      "count": 1
+    },
+    "hotrienol": {
+      "name": "hotrienol",
+      "descriptor": "Tilo, miel, lavanda, jengibre, hinojo",
+      "family": "alcohol terpénico",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 1
+    },
+    "fenil_acetaldehido": {
+      "name": "fenil acetaldehído",
+      "descriptor": "Miel",
+      "family": "aldehído",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "experiencias_armonias",
+          "chapter_title": "Experiencias de Armonía y Sumillería Moleculares"
+        }
+      ],
+      "count": 1
+    },
+    "metoxipirazina": {
+      "name": "metoxipirazina",
+      "descriptor": "Boj, pimiento verde (Sauvignon Blanc, Cabernet, guisantes, té gyokuro)",
+      "family": "pirazina",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "azafran",
+          "chapter_title": "Azafrán — La reina de las especias"
+        }
+      ],
+      "count": 1
+    },
+    "maple_furanone": {
+      "name": "maple furanone",
+      "descriptor": "Caramelo de arce, fenogreco (más potente que el sotolón)",
+      "family": "lactona",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "jarabe_arce",
+          "chapter_title": "Jarabe de Arce — La savia aromática de Quebec"
+        }
+      ],
+      "count": 1
+    },
+    "indol_escatol": {
+      "name": "indol",
+      "descriptor": "Azahar, jazmín, remolacha (en carne de pasto)",
+      "family": "indol",
+      "appears_in_chapters": [
+        {
+          "chapter_id": "carne_vacuno",
+          "chapter_title": "Carne de Vacuno, Cordero y Cerdo"
+        }
+      ],
+      "count": 1
+    }
+  },
+  "index_summary": {
+    "total_molecules_indexed": 46,
+    "most_cross_referenced": [
+      {
+        "molecule": "citral",
+        "name": "citral",
+        "appearances": 10
+      },
+      {
+        "molecule": "eugenol",
+        "name": "eugenol",
+        "appearances": 8
+      },
+      {
+        "molecule": "linalol",
+        "name": "linalol",
+        "appearances": 7
+      },
+      {
+        "molecule": "vainillina",
+        "name": "vainillina",
+        "appearances": 6
+      },
+      {
+        "molecule": "sotolon",
+        "name": "sotolón",
+        "appearances": 5
+      },
+      {
+        "molecule": "capsaicina",
+        "name": "capsaicina",
+        "appearances": 5
+      },
+      {
+        "molecule": "maltol",
+        "name": "maltol",
+        "appearances": 4
+      },
+      {
+        "molecule": "cineol_eucaliptol",
+        "name": "cineol",
+        "appearances": 4
+      },
+      {
+        "molecule": "beta_cariofileno",
+        "name": "β-cariofileno",
+        "appearances": 4
+      },
+      {
+        "molecule": "cumarina",
+        "name": "cumarina",
+        "appearances": 3
+      },
+      {
+        "molecule": "estragol",
+        "name": "estragol",
+        "appearances": 3
+      },
+      {
+        "molecule": "mentol",
+        "name": "mentol",
+        "appearances": 3
+      },
+      {
+        "molecule": "geraniol",
+        "name": "geraniol",
+        "appearances": 3
+      },
+      {
+        "molecule": "cicloteno",
+        "name": "cicloteno",
+        "appearances": 3
+      },
+      {
+        "molecule": "pineno",
+        "name": "pineno",
+        "appearances": 3
+      }
+    ]
+  }
+}

@@ -1,0 +1,53 @@
+import Anthropic from '@anthropic-ai/sdk'
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+export async function POST(req) {
+  try {
+    const { pdfBase64 } = await req.json()
+    if (!pdfBase64) {
+      return Response.json({ texto: '', error: 'PDF no recibido' }, { status: 400 })
+    }
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      system: 'Eres un extractor de cartas de restaurante. Tu trabajo es leer PDFs de cartas de comida y devolver platos limpios para importar en una aplicación. No inventes platos. No incluyas vinos, bebidas, menús legales, alérgenos sueltos, horarios ni texto promocional. Responde solo en texto plano.',
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: {
+              type: 'base64',
+              media_type: 'application/pdf',
+              data: pdfBase64
+            }
+          },
+          {
+            type: 'text',
+            text: `Extrae solo la carta de comidas de este PDF.
+
+Devuelve un plato por línea con este formato:
+Nombre del plato | precio | descripcion breve
+
+Reglas:
+Si no aparece precio, usa 0.
+Usa precio en euros como numero, por ejemplo 12.50.
+No incluyas numeración.
+No incluyas alérgenos salvo que formen parte natural de la descripción.
+No incluyas vinos, cervezas, refrescos, cócteles, cafés ni bebidas.
+No incluyas encabezados de secciones como Entrantes o Carnes, solo platos.
+Mantén los nombres reales de la carta.
+Si hay variantes de un mismo plato que se venden como platos distintos, mantenlas en líneas separadas.`
+          }
+        ]
+      }]
+    })
+
+    return Response.json({ texto: message.content?.[0]?.text || '' })
+  } catch (error) {
+    console.error('Error importando platos desde PDF:', error)
+    return Response.json({ texto: '', error: 'No se pudo leer el PDF' }, { status: 500 })
+  }
+}
