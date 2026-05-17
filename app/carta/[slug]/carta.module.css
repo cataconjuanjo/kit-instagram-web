@@ -712,9 +712,46 @@
   font-weight: 850;
 }
 
-@media (max-width: 420px) {
+@media (max-width: 560px) {
+  .hero {
+    padding: 22px 14px 14px;
+  }
+
+  .modeGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
   .title {
-    font-size: 28px;
+    font-size: 26px;
+  }
+
+  .kicker {
+    font-size: 9px;
+  }
+
+  .tabs {
+    margin-top: 16px;
+    gap: 6px;
+  }
+
+  .tab {
+    min-height: 38px;
+    font-size: 10px;
+  }
+
+  .content {
+    padding: 12px 10px 0;
+  }
+
+  .shortcutPanel {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .shortcut {
+    min-height: 56px;
+    padding: 8px 10px;
   }
 
   .wineCard {
@@ -729,10 +766,27 @@
   }
 
   .modeGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 
-  .shortcutPanel {
-    grid-template-columns: 1fr 1fr;
+  .modeButton {
+    min-height: 60px;
+    padding: 8px 4px;
+  }
+
+  .sommelierTitle {
+    font-size: 21px;
+  }
+
+  .compareBar {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .compareText {
+    font-size: 12px;
   }
 }

@@ -185,7 +185,7 @@ export default function Personalizar() {
           </div>
         </div>
         <div className={styles.panelBody}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 10 }}>
             {PALETTES.map(p => {
               const activa = colorPrimario === p.primario && colorFondo === p.fondo && colorAcento === p.acento
               return (

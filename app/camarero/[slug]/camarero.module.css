@@ -708,3 +708,54 @@
     min-width: 54px;
   }
 }
+
+@media (max-width: 420px) {
+  .topbar {
+    padding: 10px 12px;
+  }
+
+  .title {
+    font-size: 15px;
+  }
+
+  .workspace {
+    padding: 10px;
+  }
+
+  .panelHeader {
+    padding: 12px 14px;
+  }
+
+  .panelBody {
+    padding: 10px 14px 14px;
+  }
+
+  .panelTitle {
+    font-size: 16px;
+  }
+
+  .recommendCard {
+    min-height: 190px;
+    padding: 11px;
+  }
+
+  .wineName {
+    font-size: 14px;
+  }
+
+  .feedbackGrid {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+  }
+
+  .compareBar {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    padding: 10px 12px;
+  }
+
+  .wineRowPrice {
+    min-width: 48px;
+  }
+}

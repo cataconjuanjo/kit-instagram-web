@@ -1495,6 +1495,61 @@ h3 {
   }
 }
 
+@media (max-width: 520px) {
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 18px;
+    min-height: auto;
+  }
+
+  .navlinks {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .navlinks a:not(.nav-cta) {
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 620px) {
+  .login-page {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .login-brand-panel {
+    min-height: auto;
+    padding: 20px clamp(18px, 5vw, 28px);
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .login-brand-copy,
+  .login-proof {
+    display: none;
+  }
+
+  .login-form-panel {
+    min-height: calc(100vh - 80px);
+    padding: 24px 18px;
+    align-items: flex-start;
+    padding-top: 32px;
+  }
+
+  .login-card {
+    width: 100%;
+    padding: 24px 20px;
+    box-shadow: none;
+    border-radius: 8px;
+  }
+}
+
 @media (max-width: 760px) {
   .topbar {
     align-items: flex-start;
