@@ -126,7 +126,9 @@ export default function CartaPublica({ params }) {
   const [vinosComparador, setVinosComparador] = useState([])
   const [mostrarComparador, setMostrarComparador] = useState(false)
   const [perfiles, setPerfiles] = useState({})
-const [cargandoPerfiles, setCargandoPerfiles] = useState(false)
+  const [cargandoPerfiles, setCargandoPerfiles] = useState(false)
+  const [historialSommelier, setHistorialSommelier] = useState([])
+  const [inputSeguimiento, setInputSeguimiento] = useState('')
 
   const i = t[idioma]
   const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30' }
@@ -158,17 +160,42 @@ const [cargandoPerfiles, setCargandoPerfiles] = useState(false)
     cargar()
   }, [])
 
+  async function leerStream(res, onChunk, onDone) {
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop()
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        if (!data) continue
+        try {
+          const parsed = JSON.parse(data)
+          if (parsed.text !== undefined) onChunk(parsed.text)
+          if (parsed.done) onDone(parsed.prefill || '')
+        } catch {}
+      }
+    }
+  }
+
   async function preguntarSommelier() {
     if (!platosSeleccionados.length) return
     setCargandoIA(true)
     setRespuesta('')
+    setHistorialSommelier([])
+    setInputSeguimiento('')
     const consultaPlatos = platosSeleccionados
       .map(p => `${p.nombre}${p.precio ? ` (${p.precio}€)` : ''}${p.descripcion ? `: ${p.descripcion}` : ''}`)
       .join(', ')
     const modosTexto = {
       botella: idioma === 'en' ? 'a single bottle that works well for the whole table' : 'una sola botella que funcione bien para toda la mesa',
       copa: idioma === 'en' ? 'a different glass for each dish' : 'una copa diferente para cada plato',
-      progresion: idioma === 'en' ? 'a wine progression from lighter to fuller body' : 'una progresión de vinos para toda la comida de menos a más cuerpo'
+      progresion: idioma === 'en' ? 'a wine progression from lighter to fuller body' : 'una progresion de vinos para toda la comida de menos a mas cuerpo',
     }
     const res = await fetch('/api/maridaje', {
       method: 'POST',
@@ -178,12 +205,63 @@ const [cargandoPerfiles, setCargandoPerfiles] = useState(false)
         modo: 'mesa',
         modoMesa: modosTexto[modoMesa],
         restaurante_id: restaurante.id,
-        idioma
-      })
+        idioma,
+        historial: [],
+      }),
     })
-    const data = await res.json()
-    setRespuesta(data.respuesta)
-    await supabase.from('estadisticas').insert([{ restaurante_id: restaurante.id, tipo: 'sommelier', detalle: consultaPlatos }])
+    if (!res.ok) {
+      setRespuesta(idioma === 'en' ? 'Error contacting the sommelier. Please try again.' : 'Error al consultar el sommelier. Inténtalo de nuevo.')
+      setCargandoIA(false)
+      return
+    }
+    let textoAcumulado = ''
+    const promptUsuario = `El cliente va a pedir: ${consultaPlatos}. Quiere: ${modosTexto[modoMesa]}.`
+    await leerStream(
+      res,
+      chunk => { textoAcumulado += chunk; setRespuesta(textoAcumulado) },
+      prefill => {
+        setHistorialSommelier([
+          { role: 'user', content: promptUsuario },
+          { role: 'assistant', content: prefill + textoAcumulado },
+        ])
+      }
+    )
+    setCargandoIA(false)
+  }
+
+  async function preguntarSeguimiento() {
+    const msg = inputSeguimiento.trim()
+    if (!msg || cargandoIA || !historialSommelier.length) return
+    setInputSeguimiento('')
+    setCargandoIA(true)
+    setRespuesta('')
+    const res = await fetch('/api/maridaje', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mensajeSeguimiento: msg,
+        restaurante_id: restaurante.id,
+        idioma,
+        historial: historialSommelier,
+      }),
+    })
+    if (!res.ok) {
+      setRespuesta(idioma === 'en' ? 'Error contacting the sommelier. Please try again.' : 'Error al consultar el sommelier. Inténtalo de nuevo.')
+      setCargandoIA(false)
+      return
+    }
+    let textoAcumulado = ''
+    await leerStream(
+      res,
+      chunk => { textoAcumulado += chunk; setRespuesta(textoAcumulado) },
+      () => {
+        setHistorialSommelier(prev => [
+          ...prev,
+          { role: 'user', content: msg },
+          { role: 'assistant', content: textoAcumulado },
+        ])
+      }
+    )
     setCargandoIA(false)
   }
 
@@ -841,9 +919,10 @@ setPerfiles(nuevosPerfiles)
               <div className={styles.answerBox}>
                 <p className={styles.selectedHead}>{i.sommelier}</p>
                 <p className={styles.answerText}>{respuesta}</p>
+
                 <button
                   className={styles.clearButton}
-                  onClick={() => { setRespuesta(''); setPlatosSeleccionados([]) }}
+                  onClick={() => { setRespuesta(''); setPlatosSeleccionados([]); setHistorialSommelier([]) }}
                   style={{ color: '#fffaf3', borderColor: 'rgba(255,250,243,0.2)', marginTop: 14 }}
                 >
                   {i.nuevaConsulta}
@@ -1149,8 +1228,8 @@ border: '1px solid rgba(255,255,255,0.15)',
                 <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #f0f0f0' }}>
                   <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 12px' }}>{i.sommelier}</p>
                   <p style={{ fontSize: 16, color: '#333', lineHeight: 1.8, margin: 0, fontWeight: 300, whiteSpace: 'pre-wrap' }}>{respuesta}</p>
-                  <button onClick={() => { setRespuesta(''); setPlatosSeleccionados([]) }} style={{
-                    marginTop: 16, background: 'none', border: '1px solid #e8e8e8', borderRadius: 8,
+                  <button onClick={() => { setRespuesta(''); setPlatosSeleccionados([]); setHistorialSommelier([]) }} style={{
+                    marginTop: 12, background: 'none', border: '1px solid #e8e8e8', borderRadius: 8,
                     padding: '10px 20px', fontSize: 12, color: '#aaa', cursor: 'pointer', letterSpacing: '0.05em'
                   }}>
                     {i.nuevaConsulta}

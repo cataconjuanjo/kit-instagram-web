@@ -233,17 +233,17 @@ export default function Platos() {
         const res = await fetch('/api/importar-platos-pdf', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pdfBase64: base64 })
+          body: JSON.stringify({ fileBase64: base64, mediaType: file.type || 'application/pdf' })
         })
         const data = await res.json()
         if (!res.ok || !data.texto) {
-          setErrorPdf(data.error || 'No se encontraron platos en el PDF.')
+          setErrorPdf(data.error || 'No se encontraron platos en el archivo.')
         } else {
           setTextoImportar(data.texto)
           setPlatosImportar(analizarCartaTexto(data.texto, platos))
         }
       } catch (error) {
-        setErrorPdf('Error leyendo el PDF. Revisa que sea un PDF de texto y vuelve a intentarlo.')
+        setErrorPdf('Error leyendo el archivo. Revisa que sea PDF, JPG o PNG y vuelve a intentarlo.')
       }
       setLeyendoPdf(false)
     }
@@ -383,12 +383,12 @@ export default function Platos() {
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
             <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>Importar carta</p>
             <p style={{ fontSize: 13, color: '#999', lineHeight: 1.6, margin: '0 0 16px' }}>
-              Sube un PDF o pega una lista de platos, uno por línea. La app intentará detectar categoría y rasgos de maridaje antes de guardar.
+              Sube un PDF, JPG o PNG, o pega una lista de platos, uno por línea. La app intentará detectar categoría y rasgos de maridaje antes de guardar.
             </p>
-            <input ref={inputPdfRef} type="file" accept="application/pdf" onChange={archivoPdfSeleccionado} style={{ display: 'none' }} />
+            <input ref={inputPdfRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={archivoPdfSeleccionado} style={{ display: 'none' }} />
             <button onClick={() => inputPdfRef.current?.click()} disabled={leyendoPdf}
               style={{ width: '100%', background: leyendoPdf ? '#f3f3f3' : '#fafafa', color: leyendoPdf ? '#aaa' : '#111', border: '1px dashed #d8d8d8', padding: '18px', fontSize: 13, cursor: leyendoPdf ? 'not-allowed' : 'pointer', marginBottom: 12 }}>
-              {leyendoPdf ? 'Leyendo PDF...' : pdfNombre ? `PDF cargado: ${pdfNombre}` : 'Subir carta en PDF'}
+              {leyendoPdf ? 'Leyendo archivo...' : pdfNombre ? `Archivo cargado: ${pdfNombre}` : 'Subir carta en PDF, JPG o PNG'}
             </button>
             {errorPdf && (
               <p style={{ fontSize: 12, color: '#c07070', margin: '0 0 12px' }}>{errorPdf}</p>

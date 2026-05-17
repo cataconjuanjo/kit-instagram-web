@@ -1396,6 +1396,119 @@ h3 {
   max-width: 680px;
 }
 
+.admin-create {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.78fr) minmax(0, 1.22fr);
+  gap: 26px;
+  align-items: start;
+  margin-bottom: 34px;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.78);
+}
+
+.admin-create h2 {
+  margin: 0 0 10px;
+}
+
+.admin-create p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.admin-create-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-create-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-create-form input {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf0;
+  color: var(--ink);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  text-transform: none;
+  outline: none;
+}
+
+.admin-create-form input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(190, 154, 94, 0.16);
+}
+
+.admin-create-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-create-form button {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  border: 1px solid var(--wine);
+  border-radius: 8px;
+  background: var(--wine);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-create-form button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-alert {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 0.9rem;
+}
+
+.admin-alert-error {
+  border: 1px solid #e0bbbb;
+  background: #fff4f4;
+  color: #9b3535;
+}
+
+.admin-alert-ok {
+  border: 1px solid #d7c799;
+  background: #fff8e9;
+  color: var(--ink);
+}
+
+.admin-alert-ok strong {
+  color: var(--wine);
+}
+
+.admin-alert-ok span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 .admin-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1426,6 +1539,66 @@ h3 {
   font-size: 0.86rem;
 }
 
+.admin-slug {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-edit-form {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-edit-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-edit-form input,
+.admin-edit-form select {
+  width: 100%;
+  min-height: 38px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf0;
+  color: var(--ink);
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 0.9rem;
+  letter-spacing: 0;
+  text-transform: none;
+  outline: none;
+}
+
+.admin-edit-form input[type="color"] {
+  padding: 3px;
+}
+
+.admin-color-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-inline-error {
+  margin: 0;
+  border: 1px solid #e0bbbb;
+  border-radius: 8px;
+  background: #fff4f4;
+  color: #9b3535;
+  padding: 10px;
+  font-size: 0.82rem;
+}
+
 .admin-card-actions {
   display: grid;
   gap: 8px;
@@ -1450,6 +1623,13 @@ h3 {
   color: #fff;
   border-color: var(--wine);
   font-weight: 700;
+}
+
+.admin-card-actions .admin-plain-button {
+  background: #fffaf0;
+  color: var(--ink);
+  border-color: var(--line);
+  font-weight: 500;
 }
 
 .admin-empty {
@@ -1484,6 +1664,10 @@ h3 {
 
   .admin-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-create {
+    grid-template-columns: 1fr;
   }
 
   .phone-stage {
@@ -1600,6 +1784,14 @@ h3 {
   .admin-topbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .admin-create {
+    padding: 18px;
+  }
+
+  .admin-create-form {
+    grid-template-columns: 1fr;
   }
 
   .cv-flow article {

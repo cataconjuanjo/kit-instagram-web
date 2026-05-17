@@ -1,5 +1,103 @@
-import papilasKb from '../data/papilas_kb_v2_completo_1.json'
+import papilasKb from '../data/papilas_maridajes_final_1.json'
 import { buscarPlatoKb } from '../data/platos_kb'
+
+// Estima el perfil estructural de un vino (1-5) a partir de sus datos.
+// Permite matching estructural directo: taninos, acidez, cuerpo, etc.
+export function estimarPerfil(vino) {
+  const texto = normalizar(
+    `${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.nombre || ''} ${vino.notas_cata || ''}`
+  )
+
+  const base = {
+    tinto:    { taninos: 3, acidez: 3, alcohol: 3, dulzor: 1, cuerpo: 3 },
+    blanco:   { taninos: 1, acidez: 4, alcohol: 3, dulzor: 2, cuerpo: 2 },
+    rosado:   { taninos: 1, acidez: 3, alcohol: 3, dulzor: 2, cuerpo: 2 },
+    espumoso: { taninos: 1, acidez: 5, alcohol: 2, dulzor: 2, cuerpo: 2 },
+    generoso: { taninos: 1, acidez: 4, alcohol: 5, dulzor: 2, cuerpo: 3 },
+    dulce:    { taninos: 1, acidez: 3, alcohol: 3, dulzor: 5, cuerpo: 3 },
+    naranja:  { taninos: 3, acidez: 4, alcohol: 3, dulzor: 1, cuerpo: 3 },
+  }[vino.tipo] || { taninos: 3, acidez: 3, alcohol: 3, dulzor: 2, cuerpo: 3 }
+
+  const p = { ...base }
+
+  // Ajustes por uva / región
+  const alta_acidez = ['albarin', 'riesling', 'verdejo', 'godello', 'txakoli', 'champagne', 'cava', 'rueda', 'rias baixas', 'galicia', 'green', 'vinho']
+  const alta_taninos = ['monastrell', 'petit verdot', 'cabernet', 'priorat', 'jumilla', 'toro', 'ribera', 'bierzo', 'mencia']
+  const bajo_taninos = ['pinot', 'grenache', 'garnacha', 'gamay', 'beaujolais']
+  const mucho_cuerpo = ['monastrell', 'cabernet', 'syrah', 'shiraz', 'malbec', 'priorat', 'toro', 'rioja reserva', 'gran reserva']
+  const poco_cuerpo  = ['pinot', 'txakoli', 'fino', 'manzanilla', 'albarin', 'frizzante']
+  const alcohol_alto = ['monastrell', 'grenache', 'garnacha', 'jerez', 'oloroso', 'brandy', 'oporto', 'porto', 'tawny']
+
+  if (alta_acidez.some(g => texto.includes(g)))  p.acidez  = Math.min(5, p.acidez + 1)
+  if (alta_taninos.some(g => texto.includes(g)))  p.taninos = Math.min(5, p.taninos + 1)
+  if (bajo_taninos.some(g => texto.includes(g)))  p.taninos = Math.max(1, p.taninos - 1)
+  if (mucho_cuerpo.some(g => texto.includes(g)))  p.cuerpo  = Math.min(5, p.cuerpo + 1)
+  if (poco_cuerpo.some(g => texto.includes(g)))   p.cuerpo  = Math.max(1, p.cuerpo - 1)
+  if (alcohol_alto.some(g => texto.includes(g)))  p.alcohol = Math.min(5, p.alcohol + 1)
+
+  // Ajustes por notas de cata
+  if (['alta acidez', 'muy acido', 'vivo', 'vibrante', 'tenso', 'tension'].some(t => texto.includes(t)))        p.acidez  = Math.min(5, p.acidez + 1)
+  if (['tanino amable', 'tanino suave', 'tanino redondo', 'sedoso'].some(t => texto.includes(t)))                p.taninos = Math.max(1, p.taninos - 1)
+  if (['tanino potente', 'tanino firme', 'tanino marcado', 'astringente'].some(t => texto.includes(t)))          p.taninos = Math.min(5, p.taninos + 1)
+  if (['ligero', 'ligereza', 'delicado', 'fino y delicado'].some(t => texto.includes(t)))                       p.cuerpo  = Math.max(1, p.cuerpo - 1)
+  if (['potente', 'con cuerpo', 'corpulento', 'voluminoso'].some(t => texto.includes(t)))                       p.cuerpo  = Math.min(5, p.cuerpo + 1)
+  if (['salino', 'mineral', 'yodado', 'marino'].some(t => texto.includes(t)))                                   p.acidez  = Math.min(5, p.acidez + 1)
+  if (['reserva', 'gran reserva', 'crianza', 'barrica', 'roble'].some(t => texto.includes(t)) && vino.tipo === 'tinto') p.taninos = Math.min(5, p.taninos + 1)
+  if (['fresco', 'frescura', 'jovial', 'joven y fresco'].some(t => texto.includes(t)))                          p.dulzor  = Math.max(1, p.dulzor - 1)
+
+  // Generosos específicos
+  if (texto.includes('fino') || texto.includes('manzanilla'))               { p.taninos = 1; p.acidez = 4; p.dulzor = 1; p.alcohol = 4; p.cuerpo = 2 }
+  if (texto.includes('oloroso') || texto.includes('amontillado'))           { p.taninos = 1; p.acidez = 3; p.dulzor = 2; p.alcohol = 5; p.cuerpo = 4 }
+  if (texto.includes('pedro ximenez') || texto.includes(' px ') || texto.includes('px,')) { p.dulzor = 5; p.cuerpo = 5; p.alcohol = 4; p.acidez = 2 }
+  if (texto.includes('tawny') || texto.includes('oporto') || texto.includes('porto'))     { p.dulzor = 4; p.cuerpo = 4; p.alcohol = 5; p.taninos = 2 }
+
+  // Clamp 1-5
+  for (const k of Object.keys(p)) p[k] = Math.max(1, Math.min(5, p[k]))
+
+  return p
+}
+
+// Calcula las necesidades estructurales de un plato/mesa para el matching.
+function necesidadesEstructurales(consulta) {
+  const texto = normalizar(consulta)
+  const contexto = contextoVenta(texto)
+  const metodo = metodosPlato(texto)
+  const n = {}
+
+  if (contexto === 'pescado' && !metodo.brasa && !metodo.ahumado && !metodo.setasTrufa && !metodo.dulce) {
+    n.taninosMax = 2; n.acidezMin = 3
+  }
+  if (contexto === 'fritura' || metodo.frito) {
+    n.acidezMin = 4; n.taninosMax = 2; n.cuerpoMax = 3
+  }
+  if (contexto === 'carne') {
+    // WSET L3: la grasa suaviza el tanino, la proteina se une al tanino.
+    // Tanino maduro es el eje principal; acidez limpia entre bocados; cuerpo suficiente para igualar intensidad.
+    n.taninosMin = 3
+    n.cuerpoMin = 3
+    n.acidezMin = 2
+  }
+  if (contexto === 'queso') {
+    n.taninosMax = 2; n.acidezMin = 3
+  }
+  if (metodo.picante) {
+    n.alcoholMax = 3; n.taninosMax = 2
+  }
+  if (metodo.gratinado) {
+    n.acidezMin = 3
+  }
+  if (metodo.vegetalVerde) {
+    n.taninosMax = 2; n.acidezMin = 3
+  }
+  if (metodo.umami || metodo.setasTrufa) {
+    n.acidezMin = 3
+  }
+  if (contexto === 'aperitivo') {
+    n.alcoholMax = 4; n.taninosMax = 2; n.cuerpoMax = 3
+  }
+
+  return n
+}
 
 export function normalizar(texto = '') {
   return String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -32,7 +130,12 @@ function contextoVenta(consultaNormalizada) {
   if (consultaNormalizada.includes('queso')) return 'queso'
   if (consultaNormalizada.includes('fritura') || consultaNormalizada.includes('frito') || consultaNormalizada.includes('croqueta') || consultaNormalizada.includes('flamenquin')) return 'fritura'
   if (consultaNormalizada.includes('aperitivo') || consultaNormalizada.includes('entrante') || consultaNormalizada.includes('compartir')) return 'aperitivo'
-  if (consultaNormalizada.includes('carne') || consultaNormalizada.includes('rabo') || consultaNormalizada.includes('codillo') || consultaNormalizada.includes('cordero') || consultaNormalizada.includes('ternera') || consultaNormalizada.includes('iberico')) return 'carne'
+  if (['carne', 'rabo', 'codillo', 'cordero', 'ternera', 'iberico',
+       'vaca', 'buey', 'chuleton', 'txuleton', 'chuleta', 'entrecot', 't-bone', 'tbone',
+       'solomillo', 'costillar', 'costilla de', 'carrillera', 'carrillada',
+       'secreto', 'presa', 'pluma iberica',
+       'magret', 'pichon', 'caza', 'liebre', 'venado', 'jabali',
+       'lomo de cerdo', 'lomo iberico'].some(t => consultaNormalizada.includes(t))) return 'carne'
   if (consultaNormalizada.includes('pescado') || consultaNormalizada.includes('marisco') || consultaNormalizada.includes('gamba') || consultaNormalizada.includes('lubina') || consultaNormalizada.includes('salmon') || consultaNormalizada.includes('bacalao') || consultaNormalizada.includes('chipiron')) return 'pescado'
   if (consultaNormalizada.includes('picante') || consultaNormalizada.includes('curry') || consultaNormalizada.includes('pil pil')) return 'picante'
   return 'general'
@@ -132,43 +235,28 @@ export function criteriosEstructurales(consulta = '') {
 }
 
 function terminosVinoDesdeCapitulo(capitulo) {
-  const camposVino = Object.entries(capitulo)
-    .filter(([key]) => key.includes('wine') || key.includes('wines'))
-    .map(([, value]) => textoPlano(value))
-    .join(' ')
-  const pairings = textoPlano((capitulo.explicit_pairings_in_chapter || []).map(p => p.wine_chartier))
-  return unique(palabrasClave(`${camposVino} ${pairings}`), 40)
-}
-
-function tiposInferidosDesdeCapitulo(capitulo) {
-  const textoVinos = normalizar(Object.entries(capitulo)
-    .filter(([key]) => key.includes('wine') || key.includes('wines'))
-    .map(([, value]) => textoPlano(value))
-    .join(' '))
-  const tipos = new Set()
-  if (['blanco', 'sauvignon', 'verdejo', 'riesling', 'albari', 'chenin', 'chardonnay', 'moscatel'].some(t => textoVinos.includes(t))) tipos.add('blanco')
-  if (['tinto', 'syrah', 'shiraz', 'garnacha', 'monastrell', 'pinot', 'cabernet', 'merlot', 'tempranillo'].some(t => textoVinos.includes(t))) tipos.add('tinto')
-  if (['fino', 'oloroso', 'amontillado', 'jerez', 'manzanilla'].some(t => textoVinos.includes(t))) tipos.add('generoso')
-  if (['espumoso', 'champagne', 'cava', 'prosecco'].some(t => textoVinos.includes(t))) tipos.add('espumoso')
-  if (['sauternes', 'dulce', 'tokaji', 'vendimia tardia'].some(t => textoVinos.includes(t))) tipos.add('dulce')
-  if (['rosado', 'rose'].some(t => textoVinos.includes(t))) tipos.add('rosado')
-  return [...tipos]
+  const partes = [
+    textoPlano(capitulo.wines_specific || []),
+    textoPlano(capitulo.wine_style_descriptors || []),
+    textoPlano((capitulo.pairings || []).map(p => p.wine)),
+  ].join(' ')
+  return unique(palabrasClave(partes), 40)
 }
 
 function capitulosParaConsulta(consultaNormalizada) {
   const platoKb = buscarPlatoKb(consultaNormalizada)
   const atajos = {
-    aperitivo: ['anisado', 'fino_oloroso', 'sabor_frio'],
-    pescado: ['anisado', 'romero', 'azafran', 'sabor_frio', 'experiencias_armonias'],
-    carne: ['carne_vacuno', 'roble_barrica', 'canela', 'clavo'],
-    queso: ['quesos', 'anisado', 'fino_oloroso'],
-    fritura: ['fino_oloroso', 'sabor_frio'],
-    fresco: ['sabor_frio', 'anisado', 'jengibre'],
-    picante: ['capsaicina', 'gewurztraminer_lichi_jengibre_scheurebe', 'jengibre'],
-    curry: ['sotolon', 'capsaicina'],
-    postre: ['sotolon', 'pina_fresa', 'jarabe_arce', 'canela'],
+    aperitivo: ['fino_manzanilla_versatil', 'anisado_blanco_herbaceo', 'sabor_frio_manzana_sauvignon'],
+    pescado:   ['anisado_blanco_herbaceo', 'romero_blancos_alsacianos', 'azafran_riesling_chardonnay', 'sabor_frio_manzana_sauvignon'],
+    carne:     ['roble_barrica_carnes_parrilla', 'carne_estofada', 'carne_vacuno_pasto_terpenos', 'clavo_tintos_espanoles'],
+    queso:     ['quesos_pasta_semidura_blancos', 'quesos_corteza_floral_chardonnay', 'quesos_azules_oporto_sauternes', 'fino_manzanilla_versatil'],
+    fritura:   ['fino_manzanilla_versatil', 'sabor_frio_manzana_sauvignon'],
+    fresco:    ['sabor_frio_manzana_sauvignon', 'anisado_blanco_herbaceo'],
+    picante:   ['capsaicina_guindilla_vinos_amortiguadores', 'gewurztraminer_lichi_jengibre', 'jengibre_gewurztraminer_scheurebe'],
+    curry:     ['sotolon_vino_jaune_curri', 'capsaicina_guindilla_vinos_amortiguadores'],
+    postre:    ['jarabe_arce_dulces_licorosos', 'pina_fresa_licorosos', 'canela_pinot_noir_garnacha'],
   }
-  const capitulos = papilasKb.chapters || []
+  const capitulos = papilasKb
   const idsAtajo = [
     ...(platoKb?.capitulos || []),
     ...Object.entries(atajos)
@@ -180,8 +268,8 @@ function capitulosParaConsulta(consultaNormalizada) {
     const textoCapitulo = normalizar([
       capitulo.id,
       capitulo.title,
-      textoPlano(capitulo.foods_chartier_explicitly_named),
-      textoPlano(capitulo.explicit_pairings_in_chapter?.map(p => p.dish_chartier)),
+      textoPlano(capitulo.foods || []),
+      textoPlano((capitulo.pairings || []).map(p => p.dish)),
     ].join(' '))
     let score = idsAtajo.includes(capitulo.id) ? 12 : 0
     palabrasClave(consultaNormalizada).forEach(palabra => {
@@ -191,19 +279,19 @@ function capitulosParaConsulta(consultaNormalizada) {
       capitulo,
       score,
       terminosVino: terminosVinoDesdeCapitulo(capitulo),
-      tipos: tiposInferidosDesdeCapitulo(capitulo),
+      tipos: capitulo.wine_types_primary || [],
     }
   }).filter(match => match.score > 0)
 
   if (matches.length) return matches.sort((a, b) => b.score - a.score).slice(0, 4)
 
   return capitulos
-    .filter(capitulo => ['sabor_frio', 'anisado', 'fino_oloroso'].includes(capitulo.id))
+    .filter(capitulo => ['fino_manzanilla_versatil', 'anisado_blanco_herbaceo', 'sabor_frio_manzana_sauvignon'].includes(capitulo.id))
     .map(capitulo => ({
       capitulo,
       score: 2,
       terminosVino: terminosVinoDesdeCapitulo(capitulo),
-      tipos: tiposInferidosDesdeCapitulo(capitulo),
+      tipos: capitulo.wine_types_primary || [],
     }))
 }
 
@@ -215,6 +303,16 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
 
   if (contexto === 'queso' && vino.tipo === 'tinto' && !quesoTrucadoParaTinto) {
     return { compatible: false, penalizacion: 80, razon: 'En quesos se priorizan blancos, finos/manzanillas, rosados, dulces u oxidativos; el tinto queda como excepcion si el acompanamiento lo justifica.' }
+  }
+
+  // Carne roja potente: el blanco no es la lectura correcta según WSET L3
+  // (la grasa y la proteina de la carne interactuan con el tanino, no con la acidez del blanco)
+  // Excepciones: salsas cremosas/gratinadas, servicio frio, o preparaciones muy suaves
+  if (contexto === 'carne' && vino.tipo === 'blanco' && !metodo.gratinado && !metodo.frio) {
+    return { compatible: false, penalizacion: 75, razon: 'Para carne roja la grasa infiltrada suaviza el tanino y la proteina se une a el; el blanco no tiene esa interaccion estructural. Excepciones: salsas cremosas o gratinados.' }
+  }
+  if (contexto === 'carne' && vino.tipo === 'espumoso' && !metodo.frio && !metodo.frito) {
+    return { compatible: false, penalizacion: 50, razon: 'El espumoso no es la primera lectura para carne roja intensa.' }
   }
   if (contexto === 'fritura') {
     if (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto) return { compatible: false, penalizacion: 90, razon: 'Para fritura conviene tension, salinidad o burbuja; tinto potente, dulce o tawny no es la primera lectura.' }
@@ -265,7 +363,9 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
     let matchScore = match.score
     const terminosCoincidentes = match.terminosVino.filter(termino => textoVino.includes(termino))
     const coincideTipo = match.tipos.includes(vino.tipo)
+    const tipoEvitado = (match.capitulo.wine_types_avoid || []).includes(vino.tipo)
     if (coincideTipo) matchScore += 8
+    if (tipoEvitado) matchScore -= 20
     matchScore += Math.min(terminosCoincidentes.length, 6) * 5
     if (matchScore > score) {
       motivo = terminosCoincidentes.length
@@ -299,6 +399,32 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
   if (metodo.picante && ['perfil fresco', 'floral', 'dulce', 'baja graduacion'].some(t => textoVino.includes(t))) score += 5
   if (contexto === 'queso' && ['oxidativo', 'dulce', 'salino', 'floral', 'alta acidez'].some(t => textoVino.includes(t))) score += 6
   if ((contexto === 'aperitivo' || metodo.frio) && ['perfil fresco', 'alta acidez', 'salino', 'mineral', 'floral'].some(t => textoVino.includes(t))) score += 5
+
+  // Matching estructural por perfil numérico estimado — más preciso que text-matching
+  const perfil = estimarPerfil(vino)
+  const necesidades = necesidadesEstructurales(consulta)
+  if (necesidades.acidezMin !== undefined) {
+    if (perfil.acidez >= necesidades.acidezMin) score += 6
+    else score -= 4
+  }
+  if (necesidades.taninosMax !== undefined) {
+    if (perfil.taninos <= necesidades.taninosMax) score += 4
+    else score -= 5
+  }
+  if (necesidades.taninosMin !== undefined) {
+    if (perfil.taninos >= necesidades.taninosMin) score += 4
+    else score -= 3
+  }
+  if (necesidades.cuerpoMin !== undefined) {
+    if (perfil.cuerpo >= necesidades.cuerpoMin) score += 3
+    else score -= 2
+  }
+  if (necesidades.cuerpoMax !== undefined) {
+    if (perfil.cuerpo > necesidades.cuerpoMax) score -= 4
+  }
+  if (necesidades.alcoholMax !== undefined) {
+    if (perfil.alcohol > necesidades.alcoholMax) score -= 5
+  }
 
   score -= compatibilidad.penalizacion
   if (!compatibilidad.compatible) {

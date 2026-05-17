@@ -32,6 +32,8 @@ export default function Camarero({ params }) {
   const [vistaServicio, setVistaServicio] = useState('venta')
   const [busquedaPlatoVenta, setBusquedaPlatoVenta] = useState('')
   const [categoriaPlatoVenta, setCategoriaPlatoVenta] = useState('todos')
+  const [mostrarPlatosVenta, setMostrarPlatosVenta] = useState(false)
+  const [tipoVinoAbierto, setTipoVinoAbierto] = useState(null)
 
   const PIN = '1234'
   const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30' }
@@ -781,6 +783,7 @@ export default function Camarero({ params }) {
     const matchBusqueda = !busquedaPlatoVenta || texto.includes(normalizar(busquedaPlatoVenta))
     return matchCategoria && matchBusqueda
   })
+  const platosPanelAbierto = mostrarPlatosVenta || busquedaPlatoVenta.length > 0 || categoriaPlatoVenta !== 'todos'
 
   const vinosFiltrados = vinos.filter(v => {
     const matchBusqueda = !busqueda || busqueda.length < 2 ||
@@ -1059,7 +1062,12 @@ export default function Camarero({ params }) {
 
                 {platosVenta.length > 0 && (
                   <>
-                    <p className={styles.sectionLabel}>Platos</p>
+                    <div className={styles.sectionHeaderLine}>
+                      <p className={styles.sectionLabel}>Platos</p>
+                      <button type="button" onClick={() => setMostrarPlatosVenta(!mostrarPlatosVenta)} className={styles.textButton}>
+                        {platosPanelAbierto ? 'Ocultar' : `Mostrar (${platosVenta.length})`}
+                      </button>
+                    </div>
                     <input
                       type="text"
                       placeholder="Buscar plato"
@@ -1070,24 +1078,26 @@ export default function Camarero({ params }) {
                     />
                     <div className={styles.scrollChips} style={{ marginBottom: 10 }}>
                       {categoriasPlatosVenta.map(categoria => (
-                        <button key={categoria} type="button" onClick={() => setCategoriaPlatoVenta(categoria)}
+                        <button key={categoria} type="button" onClick={() => { setCategoriaPlatoVenta(categoria); setMostrarPlatosVenta(true) }}
                           className={`${styles.chip} ${categoriaPlatoVenta === categoria ? styles.chipActive : ''}`}>
                           {categoria === 'todos' ? 'Todos' : categoria}
                         </button>
                       ))}
                     </div>
-                    <div className={styles.dishGrid}>
-                      {platosVentaFiltrados.map(plato => {
-                        const seleccionado = platosMesaVenta.some(p => p.id === plato.id)
-                        return (
-                          <button key={plato.id} type="button" onClick={() => alternarPlatoMesa(plato)}
-                            className={`${styles.dishButton} ${seleccionado ? styles.dishSelected : ''}`}>
-                            <span className={styles.dishName}>{plato.nombre}</span>
-                            <span className={styles.dishPrice}>{plato.precio ? `${Number(plato.precio).toFixed(2)} EUR` : plato.categoria || 'Carta'}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
+                    {platosPanelAbierto && (
+                      <div className={styles.dishGrid}>
+                        {platosVentaFiltrados.map(plato => {
+                          const seleccionado = platosMesaVenta.some(p => p.id === plato.id)
+                          return (
+                            <button key={plato.id} type="button" onClick={() => alternarPlatoMesa(plato)}
+                              className={`${styles.dishButton} ${seleccionado ? styles.dishSelected : ''}`}>
+                              <span className={styles.dishName}>{plato.nombre}</span>
+                              <span className={styles.dishPrice}>{plato.precio ? `${Number(plato.precio).toFixed(2)} EUR` : plato.categoria || 'Carta'}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -1165,7 +1175,7 @@ export default function Camarero({ params }) {
               />
               <div className={styles.typeFilters}>
                 {tipos.map(t => (
-                  <button key={t} type="button" onClick={() => setFiltro(t)}
+                  <button key={t} type="button" onClick={() => { setFiltro(t); setTipoVinoAbierto(t === 'todos' ? null : t) }}
                     className={`${styles.chip} ${filtro === t ? styles.chipActive : ''}`}>
                     {t === 'todos' ? 'Todos' : tipoLabel[t]}
                   </button>
@@ -1187,12 +1197,16 @@ export default function Camarero({ params }) {
               ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja'].map(tipo => {
                 const grupo = vinosFiltrados.filter(v => v.tipo === tipo)
                 if (!grupo.length) return null
+                const abierto = filtro !== 'todos' || tipoVinoAbierto === tipo
                 return (
                   <div key={tipo} className={styles.wineSection}>
-                    <p className={styles.wineSectionTitle}>{tipoPlural[tipo]}</p>
-                    {grupo.map(v => (
-                      <VinoRow key={v.id} v={v} tipoDot={tipoDot} tipoLabel={tipoLabel} enComparador={!!vinosComparador.find(vc => vc.id === v.id)} onSelect={setVinoSeleccionado} onComparador={toggleComparador} comparadorLleno={vinosComparador.length >= 4} />
-                    ))}
+                    <button type="button" className={styles.wineSectionButton} onClick={() => setTipoVinoAbierto(abierto ? null : tipo)}>
+                      <span>{tipoPlural[tipo]}</span>
+                      <small>{grupo.length} referencias · {abierto ? 'Cerrar' : 'Abrir'}</small>
+                    </button>
+                    {abierto && grupo.map(v => (
+                        <VinoRow key={v.id} v={v} tipoDot={tipoDot} tipoLabel={tipoLabel} enComparador={!!vinosComparador.find(vc => vc.id === v.id)} onSelect={setVinoSeleccionado} onComparador={toggleComparador} comparadorLleno={vinosComparador.length >= 4} />
+                      ))}
                   </div>
                 )
               })
@@ -1231,7 +1245,7 @@ export default function Camarero({ params }) {
         {/* Filtros por tipo */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {tipos.map(t => (
-            <button key={t} onClick={() => setFiltro(t)} style={{
+            <button key={t} onClick={() => { setFiltro(t); setTipoVinoAbierto(t === 'todos' ? null : t) }} style={{
               padding: '4px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: 'none',
               background: filtro === t ? '#fff' : '#222',
               color: filtro === t ? '#111' : '#666',
@@ -1317,17 +1331,22 @@ export default function Camarero({ params }) {
 
         {platosVenta.length > 0 && (
           <div style={{ marginBottom: recomendacionesVenta.length ? 12 : 0 }}>
-            <p style={{ fontSize: 10, color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 8px' }}>Platos de la carta</p>
-            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
-              {platosVenta.map(plato => {
-                return (
-                  <button key={plato.id} onClick={() => alternarPlatoMesa(plato)}
-                    style={{ flexShrink: 0, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: platosMesaVenta.some(p => p.id === plato.id) ? '#fff' : '#222', color: platosMesaVenta.some(p => p.id === plato.id) ? '#111' : '#888', border: 'none', borderRadius: 20, padding: '7px 12px', fontSize: 11, cursor: 'pointer' }}>
-                    {platosMesaVenta.some(p => p.id === plato.id) ? '✓ ' : ''}{plato.nombre}
-                  </button>
-                )
-              })}
-            </div>
+            <button onClick={() => setMostrarPlatosVenta(!mostrarPlatosVenta)}
+              style={{ width: '100%', background: '#222', color: '#aaa', border: '1px solid #333', borderRadius: 10, padding: '9px 12px', fontSize: 12, cursor: 'pointer', marginBottom: mostrarPlatosVenta ? 10 : 0 }}>
+              {mostrarPlatosVenta ? 'Ocultar platos' : `Mostrar platos de la carta (${platosVenta.length})`}
+            </button>
+            {mostrarPlatosVenta && (
+              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
+                {platosVenta.map(plato => {
+                  return (
+                    <button key={plato.id} onClick={() => alternarPlatoMesa(plato)}
+                      style={{ flexShrink: 0, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: platosMesaVenta.some(p => p.id === plato.id) ? '#fff' : '#222', color: platosMesaVenta.some(p => p.id === plato.id) ? '#111' : '#888', border: 'none', borderRadius: 20, padding: '7px 12px', fontSize: 11, cursor: 'pointer' }}>
+                      {platosMesaVenta.some(p => p.id === plato.id) ? '✓ ' : ''}{plato.nombre}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -1386,12 +1405,17 @@ export default function Camarero({ params }) {
           ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja'].map(tipo => {
             const grupo = vinosFiltrados.filter(v => v.tipo === tipo)
             if (!grupo.length) return null
+            const abierto = filtro !== 'todos' || tipoVinoAbierto === tipo
             return (
               <div key={tipo}>
-                <p style={{ fontSize: 10, color: '#444', letterSpacing: '0.15em', textTransform: 'uppercase', padding: '16px 20px 8px', margin: 0 }}>{tipoPlural[tipo]}</p>
-                {grupo.map(v => (
-                  <VinoRow key={v.id} v={v} tipoDot={tipoDot} tipoLabel={tipoLabel} enComparador={!!vinosComparador.find(vc => vc.id === v.id)} onSelect={setVinoSeleccionado} onComparador={toggleComparador} comparadorLleno={vinosComparador.length >= 4} />
-                ))}
+                <button onClick={() => setTipoVinoAbierto(abierto ? null : tipo)}
+                  style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, background: '#151515', color: '#aaa', border: 'none', borderTop: '1px solid #242424', padding: '15px 20px', cursor: 'pointer' }}>
+                  <span style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase' }}>{tipoPlural[tipo]}</span>
+                  <span style={{ fontSize: 11, color: '#555' }}>{grupo.length} · {abierto ? 'Cerrar' : 'Abrir'}</span>
+                </button>
+                {abierto && grupo.map(v => (
+                    <VinoRow key={v.id} v={v} tipoDot={tipoDot} tipoLabel={tipoLabel} enComparador={!!vinosComparador.find(vc => vc.id === v.id)} onSelect={setVinoSeleccionado} onComparador={toggleComparador} comparadorLleno={vinosComparador.length >= 4} />
+                  ))}
               </div>
             )
           })

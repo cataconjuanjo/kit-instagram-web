@@ -193,6 +193,28 @@
   text-transform: uppercase;
 }
 
+.sectionHeaderLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.sectionHeaderLine .sectionLabel {
+  margin: 0 0 8px;
+}
+
+.textButton {
+  border: none;
+  background: transparent;
+  color: #1f7a61;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+  padding: 0 0 8px;
+}
+
 .selectedBox {
   margin-top: 10px;
   padding: 10px;
@@ -548,7 +570,7 @@
 }
 
 .wineSection {
-  padding: 14px 0 6px;
+  padding: 0;
 }
 
 .wineSectionTitle {
@@ -559,6 +581,36 @@
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.wineSectionButton {
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  border-top: 1px solid #e3e7e1;
+  background: #ffffff;
+  color: #17191d;
+  cursor: pointer;
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.wineSectionButton span {
+  color: #4a5057;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.wineSectionButton small {
+  color: #8a9298;
+  font-size: 11px;
+  font-weight: 650;
 }
 
 .wineRow {

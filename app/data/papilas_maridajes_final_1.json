@@ -1,0 +1,2149 @@
+[
+  {
+    "id": "anisado_blanco_herbaceo",
+    "title": "Platos con hierbas y hortalizas anisadas — vino blanco",
+    "foods": [
+      "menta fresca",
+      "albahaca verde",
+      "hinojo fresco",
+      "apio",
+      "perifollo",
+      "perejil",
+      "estragón",
+      "eneldo",
+      "alcaravea",
+      "anís estrellado",
+      "pastís",
+      "pernod",
+      "regaliz",
+      "chirivía",
+      "topinambur",
+      "apionabo",
+      "daikon",
+      "remolacha amarilla",
+      "zanahoria amarilla",
+      "citronela",
+      "melisa",
+      "verbena",
+      "shiso",
+      "pepino",
+      "pimiento verde",
+      "wasabi",
+      "cuscús a la menta",
+      "gargouillou de hortalizas anisadas",
+      "salmón confitado con perejil e hinojo",
+      "rollitos de primavera con gambas y hortalizas anisadas",
+      "sándwich de queso de cabra con menta, pepino y manzana verde",
+      "pasta con pesto",
+      "pasta con limón y albahaca",
+      "vieiras con zumo de perejil",
+      "mejillones con zumo de perejil",
+      "caracoles con crema de perejil",
+      "trucha con puré de apionabo",
+      "risotto de gambas con albahaca",
+      "ceviche de ostras con wasabi y cilantro",
+      "volován de gambas con pastís",
+      "estofado de jarrete de cordero con pastís e hinojo"
+    ],
+    "wine_types_primary": [
+      "blanco"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "sauvignon blanc",
+      "verdejo de Rueda",
+      "albariño",
+      "greco di Tufo",
+      "vermentino",
+      "pinot blanco",
+      "furmint",
+      "chenin blanc",
+      "romorantin",
+      "Silex Blanc Fumé de Pouilly Didier Dagueneau",
+      "muscadet seco sin madera"
+    ],
+    "wine_style_descriptors": [
+      "anisado",
+      "fresco",
+      "mineral",
+      "sin madera",
+      "joven",
+      "seco",
+      "alta acidez",
+      "notas vegetales",
+      "perfil herbáceo"
+    ],
+    "molecular_principle": "El anetol, el estragol y el mentol —moléculas dominantes de los ingredientes anisados— comparten compuestos volátiles con los vinos de sauvignon blanc y variedades afines, creando una atracción molecular directa.",
+    "avoid_reason": "Los tintos con tanino rompen la armonía con ingredientes anisados delicados; los blancos con madera apagan los tonos vegetales y herbáceos.",
+    "pairings": [
+      {
+        "dish": "Gargouillou de hortalizas jóvenes en modo anisado (hinojo, apio, topinambur, chirivía, remolacha amarilla, menta)",
+        "wine": "Sauvignon blanc o verdejo joven seco sin madera"
+      },
+      {
+        "dish": "Salmón confitado con aceite de perejil, ensalada de hinojo y puré de chirivía",
+        "wine": "Sauvignon blanc tipo Pouilly Fumé"
+      },
+      {
+        "dish": "Rollitos de primavera de gambas con daikon, apio, hinojo, pepino, menta y ralladura de lima",
+        "wine": "Silex 2000 Blanc Fumé de Pouilly, Didier Dagueneau"
+      },
+      {
+        "dish": "Sándwich de queso de cabra con manzana verde, hinojo, pepino, pimiento verde y menta fresca",
+        "wine": "Sauvignon blanc o verdejo"
+      },
+      {
+        "dish": "Estofado de jarrete de cordero con tomates, pastís e hinojo",
+        "wine": "Syrah del valle del Ródano o de Sudáfrica"
+      },
+      {
+        "dish": "Volován de gambas con Pernod",
+        "wine": "Sauvignon blanc o vino con perfil anisado"
+      }
+    ],
+    "molecular_families": [
+      "anetol",
+      "estragol",
+      "mentol",
+      "carvona",
+      "linalol",
+      "terpenos anisados"
+    ]
+  },
+  {
+    "id": "anisado_tinto_regaliz",
+    "title": "Platos con regaliz, pastís e hinojo — vino tinto",
+    "foods": [
+      "extracto de regaliz negro",
+      "pastís",
+      "anís estrellado",
+      "hinojo cocinado",
+      "estofado con regaliz",
+      "cordero con hinojo y pastís",
+      "salsa al regaliz",
+      "jarrete de cordero con anís estrellado"
+    ],
+    "wine_types_primary": [
+      "tinto"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [
+      "blanco"
+    ],
+    "wines_specific": [
+      "syrah del Ródano",
+      "shiraz australiano",
+      "shiraz sudafricano",
+      "mezcla garnacha-syrah-monastrell",
+      "cabernet-syrah"
+    ],
+    "wine_style_descriptors": [
+      "anisado",
+      "regaliz",
+      "notas de menta",
+      "especiado",
+      "cuerpo medio-alto",
+      "tanino maduro"
+    ],
+    "molecular_principle": "El extracto de regaliz negro contiene ácido glicirricínico que suaviza los taninos de los tintos y, junto con sus moléculas anisadas, crea un puente armónico con los syrah y garnachas que también expresan tonos de regaliz y anís.",
+    "avoid_reason": "Los blancos carecen de la estructura tánica que el regaliz suaviza y potencia; la armonía pierde fuerza sin el contacto tínico.",
+    "pairings": [
+      {
+        "dish": "Estofado de jarrete de cordero con pastís e hinojo",
+        "wine": "Syrah del Ródano o shiraz sudafricano"
+      },
+      {
+        "dish": "Platos dominados por extracto de regaliz negro en salsa",
+        "wine": "Syrah, mezclas garnacha-syrah-monastrell o cabernet-syrah"
+      }
+    ],
+    "molecular_families": [
+      "anetol",
+      "ácido glicirricínico",
+      "maltol",
+      "estragol"
+    ]
+  },
+  {
+    "id": "sotolon_vino_jaune_curri",
+    "title": "Platos con curri, fenogreco tostado y aromas de nuez",
+    "foods": [
+      "curri",
+      "semillas tostadas de fenogreco",
+      "platos al curri indio",
+      "pescado yodado con fenogreco",
+      "vieiras con espuma de fenogreco",
+      "foie gras con curri",
+      "tatin de manzana al curri",
+      "piña caramelizada con curri",
+      "ternera ahumada y laqueada con soja",
+      "maíz inflado al caramelo con fenogreco"
+    ],
+    "wine_types_primary": [
+      "blanco",
+      "generoso",
+      "dulce"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [
+      "tinto",
+      "espumoso"
+    ],
+    "wines_specific": [
+      "vin jaune del Jura",
+      "sauternes añejo",
+      "tokaji aszú envejecido",
+      "jerez oloroso",
+      "jerez amontillado",
+      "manzanilla pasada",
+      "montilla-moriles amontillado",
+      "jurançon seco joven con maceración de fenogreco"
+    ],
+    "wine_style_descriptors": [
+      "oxidativo",
+      "notas de nuez",
+      "curri",
+      "caramelo",
+      "arce",
+      "largo envejecimiento",
+      "mineral a pedernal"
+    ],
+    "molecular_principle": "El sotolón —molécula dominante del curri, la fenogreco tostada y el vin jaune— crea una unión directa con vinos que desarrollan este compuesto: crianza bajo velo de flor, envejecimiento oxidativo o botrytis.",
+    "avoid_reason": "Los tintos y espumosos no desarrollan sotolón y carecen del perfil oxidativo necesario para la armonía con estos ingredientes.",
+    "pairings": [
+      {
+        "dish": "Tatin de manzana al curri coronada con escalope de foie gras de pato salteado",
+        "wine": "Sauternes maduro Château Rieussec 1979"
+      },
+      {
+        "dish": "Tres vieiras Princess con espumas de sake, fenogreco tostado y jarabe de arce",
+        "wine": "Cosecha Sotolón (jurançon seco macerado con semillas tostadas de fenogreco)"
+      },
+      {
+        "dish": "Receta dominada por el curri",
+        "wine": "Vin jaune del Jura o sauternes envejecido"
+      },
+      {
+        "dish": "Salmón laqueado con arce, reducción balsámico-soja, salteado de setas",
+        "wine": "Asunción Oloroso, Montilla-Moriles, Alvear"
+      },
+      {
+        "dish": "Mar y montaña catalán/indio: foie gras salteado y vieiras con reducción de curri-arce",
+        "wine": "Vin Jaune 1985 Château-Chalon, Henri Maire"
+      },
+      {
+        "dish": "Crujiente de foie gras con manzanas, pan de jengibre, arce y curri",
+        "wine": "Tokaji Aszú 5 puttonyos, Disnoko"
+      },
+      {
+        "dish": "Ostra merengada de elBulli transformada con espuma de fenogreco tostado",
+        "wine": "La Bota de Manzanilla Pasada 10"
+      },
+      {
+        "dish": "Pescado yodado con aroma a fenogreco o arce",
+        "wine": "Vin jaune muy mineral con olor a pedernal"
+      }
+    ],
+    "molecular_families": [
+      "sotolón",
+      "cicloteno",
+      "furanona del arce",
+      "maltol"
+    ]
+  },
+  {
+    "id": "fino_manzanilla_versatil",
+    "title": "Higos secos, jamón ibérico, mariscos yodados, sushi y alimentos terpénicos — fino y manzanilla",
+    "foods": [
+      "higos secos",
+      "higos frescos",
+      "dátiles",
+      "jamón ibérico",
+      "prosciutto",
+      "brochetas de higos con jamón",
+      "ostras",
+      "crustáceos",
+      "caviar",
+      "sushi",
+      "sashimi",
+      "salsa de soja",
+      "jengibre marinado",
+      "daikon",
+      "wakame",
+      "espárragos verdes",
+      "aceitunas",
+      "alcachofas",
+      "pescados ahumados",
+      "queso de cabra curado",
+      "queso de cabra con romero",
+      "vieiras a la parrilla con coco tostado y yogur",
+      "puerro con manzana y cilantro",
+      "cigala en tempura de almendras (Homenaje Roca)",
+      "ensalada de queso de cabra marinado en aceite con romero"
+    ],
+    "wine_types_primary": [
+      "generoso"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "fino de Jerez",
+      "manzanilla de Sanlúcar",
+      "manzanilla pasada",
+      "Tío Pepe González Byass",
+      "Manzanilla Papirusa Emilio Lustau"
+    ],
+    "wine_style_descriptors": [
+      "salino",
+      "mineral",
+      "almendra fresca",
+      "manzana verde",
+      "yodado",
+      "floral terpénico",
+      "seco",
+      "fresco",
+      "oxidativo bajo velo de flor"
+    ],
+    "molecular_principle": "La solerona (familia del sotolón) del fino coincide con la del higo seco; las lactonas compartidas con el jamón ibérico y el coco; los terpenos (linalol, nerolidol, farnesol) crean afinidad con ingredientes florales y yodados; sus 307 compuestos volátiles generan una polivalencia sin par.",
+    "avoid_reason": "Ningún tipo de vino se excluye a priori, pero el fino supera a cualquier alternativa por densidad molecular compartida con estos ingredientes.",
+    "pairings": [
+      {
+        "dish": "Higos secos solos",
+        "wine": "Fino (preferido sobre amontillado y oloroso)"
+      },
+      {
+        "dish": "Plato de jamón ibérico (o prosciutto) con higos secos",
+        "wine": "Fino o Manzanilla"
+      },
+      {
+        "dish": "Brochetas de higos secos enrolladas con jamón ibérico",
+        "wine": "Fino o Manzanilla"
+      },
+      {
+        "dish": "Queso de cabra semicurado con romero macerado en el interior",
+        "wine": "Fino o Manzanilla"
+      },
+      {
+        "dish": "Puerro en frío/caliente con manzanas frescas y cocidas, aromatizadas con cilantro fresco",
+        "wine": "Fino o Manzanilla"
+      },
+      {
+        "dish": "Vieiras a la parrilla con cuscús de nuez de Brasil y virutas de coco tostadas, salsa de yogur, jengibre y cítrico",
+        "wine": "Fino o Manzanilla"
+      },
+      {
+        "dish": "Ensalada de queso de cabra seco marinado en aceite de oliva aromatizado con romero",
+        "wine": "Fino o Manzanilla"
+      },
+      {
+        "dish": "Ostras, crustáceos, caviar",
+        "wine": "Fino o Manzanilla"
+      },
+      {
+        "dish": "Sushi con salsa de soja, jengibre marinado, daikon y wakame",
+        "wine": "Fino o Manzanilla"
+      },
+      {
+        "dish": "Espárragos verdes, aceitunas, alcachofas, pescados ahumados, queso de cabra curado",
+        "wine": "Fino o Manzanilla"
+      },
+      {
+        "dish": "Cigala en tempura de almendras tiernas, compota de manzana, curri y setas (Homenaje a Chartier, El Celler de Can Roca)",
+        "wine": "Fino"
+      },
+      {
+        "dish": "Canapés de gambas con mayonesa al azafrán, crema de zanahoria al azafrán con mejillones",
+        "wine": "Muscat Pierre Sparr Réserve Alsacia o fino Tío Pepe"
+      },
+      {
+        "dish": "Crema de azafrán con vieiras y cigalas",
+        "wine": "Fino Tío Pepe González Byass"
+      },
+      {
+        "dish": "Quesos de pasta semidura y dura afinados con aromas a hierba y flores",
+        "wine": "Manzanilla Papirusa Emilio Lustau"
+      }
+    ],
+    "molecular_families": [
+      "solerona",
+      "lactonas (sherry lactonas)",
+      "acetaldehído",
+      "acetoína",
+      "diacetilo",
+      "terpenos (linalol, nerolidol, farnesol)",
+      "sotolón"
+    ]
+  },
+  {
+    "id": "oloroso_alimentos_densos",
+    "title": "Platos con higos, dátiles, frutos secos tostados, postres especiados — oloroso y amontillado",
+    "foods": [
+      "higos secos al horno",
+      "dátiles",
+      "higos asados con canela y miel",
+      "higos asados con canela al horno",
+      "nueces tostadas",
+      "almendras tostadas",
+      "avellanas tostadas",
+      "quesos curados de pasta dura",
+      "postre de cacao con semillas tostadas de fenogreco y dátiles",
+      "pescado no ahumado preparado con té lapsang souchong",
+      "espuma de ahumado sobre huevas de pescado",
+      "haba tonka",
+      "lavanda",
+      "tabaco",
+      "canela",
+      "platos ricos en caramelo y nuez"
+    ],
+    "wine_types_primary": [
+      "generoso",
+      "dulce"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "jerez oloroso seco",
+      "jerez amontillado",
+      "jerez pedro ximénez",
+      "montilla-moriles oloroso",
+      "montilla-moriles amontillado"
+    ],
+    "wine_style_descriptors": [
+      "oxidativo",
+      "denso",
+      "notas de frutos secos tostados",
+      "caramelo",
+      "dátil",
+      "higo seco",
+      "nuez rancia",
+      "especiado",
+      "untuoso",
+      "cálido"
+    ],
+    "molecular_principle": "La solerona, el sotolón, las sherry lactonas y los compuestos fenólicos (ácido benzoico, cumarina, piperonal) del oloroso/amontillado encuentran sus equivalentes moleculares en higos secos, dátiles, frutos secos tostados y especias cálidas.",
+    "avoid_reason": "Los vinos ligeros o con alta acidez quedan aplastados por la densidad aromática y la textura grasa del oloroso; la armonía requiere igual peso.",
+    "pairings": [
+      {
+        "dish": "Postre con cacao, semillas tostadas de fenogreco, dátiles",
+        "wine": "Tokaji aszú (Hungría) o jerez oloroso"
+      },
+      {
+        "dish": "Pescado no ahumado preparado al té lapsang souchong con espuma de ahumado sobre huevas",
+        "wine": "Oloroso más seco que dulce"
+      },
+      {
+        "dish": "Higos asados con canela y miel",
+        "wine": "Vino blanco licoroso con Botrytis o jerez oloroso"
+      },
+      {
+        "dish": "Nuez, caramelo y vainilla en postres",
+        "wine": "Jerez dulce, tipo oloroso o pedro ximénez"
+      }
+    ],
+    "molecular_families": [
+      "solerona",
+      "sotolón",
+      "sherry lactonas",
+      "cumarina",
+      "ácido benzoico",
+      "piperonal",
+      "compuestos fenólicos"
+    ]
+  },
+  {
+    "id": "roble_barrica_carnes_parrilla",
+    "title": "Carnes a la parrilla, asadas y cocinadas con fuego de leña",
+    "foods": [
+      "carne a la parrilla",
+      "carne asada",
+      "chuletón",
+      "entrecot",
+      "solomillo",
+      "rosbif",
+      "carne a la brasa",
+      "costillar",
+      "T-bone",
+      "verduras a la parrilla",
+      "pan tostado",
+      "pescados y verduras cocinados en fuego de leña",
+      "cebolla caramelizada",
+      "ajo asado",
+      "puerro asado"
+    ],
+    "wine_types_primary": [
+      "tinto"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [
+      "blanco",
+      "espumoso"
+    ],
+    "wines_specific": [
+      "cabernet sauvignon",
+      "syrah",
+      "malbec",
+      "tempranillo",
+      "nebbiolo",
+      "sangiovese",
+      "shiraz australiano"
+    ],
+    "wine_style_descriptors": [
+      "tanino maduro",
+      "crianza en barrica de roble",
+      "cuerpo alto",
+      "notas tostadas",
+      "especiado",
+      "ahumado",
+      "fruta oscura"
+    ],
+    "molecular_principle": "La reacción de Maillard al cocinar la carne genera los mismos compuestos aromáticos tostados (vainillina, guayacol, eugenol, furfurales) que el tostado de las barricas de roble, creando una armonía casi perfecta.",
+    "avoid_reason": "Los blancos y espumosos carecen de tanino para interactuar con las proteínas y la grasa de la carne roja a la parrilla, y pierden frente a los aromas tostados.",
+    "pairings": [
+      {
+        "dish": "Carne a la parrilla y asada",
+        "wine": "Cabernet sauvignon, syrah, malbec, tempranillo, nebbiolo, sangiovese — los más sostenidos y tánicos, criados en barrica"
+      },
+      {
+        "dish": "Filete de Angus con setas matsutake",
+        "wine": "Pinot Noir Le Grand Clos, Le Clos Jordanne, Niagara Peninsula, Canadá (Thomas Bachelder)"
+      }
+    ],
+    "molecular_families": [
+      "vainillina",
+      "guayacol",
+      "eugenol",
+      "furfurales",
+      "pirazinas de Maillard",
+      "acetaldehído",
+      "siringol"
+    ]
+  },
+  {
+    "id": "carne_cruda_tartar",
+    "title": "Carne cruda, tartar y carpaccio",
+    "foods": [
+      "tartar de carne",
+      "steak tartar",
+      "carne cruda",
+      "carpaccio de vacuno",
+      "carne picada cruda"
+    ],
+    "wine_types_primary": [
+      "blanco",
+      "tinto"
+    ],
+    "wine_types_acceptable": [
+      "rosado"
+    ],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "muscadet maduro con varios años de botella",
+      "blanco perfumado de cuerpo moderado",
+      "tinto ligero y afrutado"
+    ],
+    "wine_style_descriptors": [
+      "ligero",
+      "perfumado",
+      "cuerpo moderado",
+      "sin tanino marcado",
+      "fresco",
+      "sin madera"
+    ],
+    "molecular_principle": "La carne cruda no desarrolla compuestos aromáticos de la cocción (Maillard), resulta más salada y ácida; necesita vinos ligeros que no aplanen sus sutiles matices con tanino excesivo.",
+    "avoid_reason": "Los tintos potentes y tánicos dominan y amargan los sabores delicados de la carne cruda.",
+    "pairings": [
+      {
+        "dish": "Tartar de carne",
+        "wine": "Muscadet maduro con varios años de botella"
+      }
+    ],
+    "molecular_families": [
+      "escatol",
+      "indol",
+      "terpenos",
+      "aldehídos alifáticos"
+    ]
+  },
+  {
+    "id": "carne_vacuno_pasto_terpenos",
+    "title": "Vacuno criado en pasto y forraje — vinos especiados y florales",
+    "foods": [
+      "carne de vacuno alimentado con pasto",
+      "carne de vacuno de pastoreo",
+      "carne de hierba",
+      "carne con notas terpénicas y florales",
+      "recetas de vacuno con especias y hierbas",
+      "recetas con azahar o jazmín"
+    ],
+    "wine_types_primary": [
+      "tinto"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "shiraz australiano",
+      "shiraz con notas terpénicas"
+    ],
+    "wine_style_descriptors": [
+      "especiado",
+      "floral",
+      "herbáceo",
+      "terpénico",
+      "cuerpo amplio",
+      "voluminoso"
+    ],
+    "molecular_principle": "La carne de pasto contiene más terpenos (hierbas, especias) y escatol (flores) por la alimentación con clorofila; estos compuestos resuenan con los shiraz australianos ricos en los mismos terpenos.",
+    "avoid_reason": "Los vinos planos y sin perfil aromático no hacen eco a la complejidad terpénica de este tipo de carne.",
+    "pairings": [
+      {
+        "dish": "Vacuno alimentado con pasto (con notas terpénicas y escatol-floral)",
+        "wine": "Shiraz australiano"
+      }
+    ],
+    "molecular_families": [
+      "terpenos",
+      "escatol",
+      "indol"
+    ]
+  },
+  {
+    "id": "carne_vacuno_pienso",
+    "title": "Vacuno alimentado con pienso — tintos rústicos y generosos",
+    "foods": [
+      "carne de vacuno alimentada con pienso",
+      "carne intensamente bovina"
+    ],
+    "wine_types_primary": [
+      "tinto"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "mezcla garnacha-syrah-monastrell del Languedoc",
+      "malbec argentino",
+      "malbec de Cahors"
+    ],
+    "wine_style_descriptors": [
+      "rústico",
+      "generoso",
+      "robusto",
+      "frutal oscuro",
+      "cuerpo pleno"
+    ],
+    "molecular_principle": "La carne de pienso tiene menos complejidad aromática pero mayor robustez, requiriendo vinos generosos y algo rústicos que no la dominen pero sí la encuadren.",
+    "avoid_reason": "Los vinos demasiado aromáticos o elegantes desequilibran una carne de sabor más sencillo y rotundo.",
+    "pairings": [
+      {
+        "dish": "Vacuno alimentado con pienso",
+        "wine": "Mezclas garnacha-syrah-monastrell del Languedoc, malbec argentino o de Cahors"
+      }
+    ],
+    "molecular_families": [
+      "aldehídos alifáticos",
+      "lactonas",
+      "escatol mínimo"
+    ]
+  },
+  {
+    "id": "vacuno_mayor_envejecido",
+    "title": "Vacuno mayor, envejecido y con mucho umami",
+    "foods": [
+      "vacuno mayor envejecido",
+      "carne de vaca vieja",
+      "carne con alta maduración",
+      "dry-aged beef",
+      "carne muy entreverada con grasa"
+    ],
+    "wine_types_primary": [
+      "tinto"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "cabernet sauvignon de Australia",
+      "cabernet sauvignon de California",
+      "cabernet sauvignon de Chile",
+      "cabernet del Midi francés",
+      "petite sirah de California",
+      "zinfandel de California y México"
+    ],
+    "wine_style_descriptors": [
+      "muy aromático",
+      "tanino cálido",
+      "mediterráneo",
+      "animal",
+      "especiado",
+      "cuerpo alto"
+    ],
+    "molecular_principle": "El envejecimiento de la carne aumenta significativamente los aminoácidos (umami) y la complejidad aromática; se necesitan vinos con igual volumen, intensidad animal y taninos cálidos de climas mediterráneos.",
+    "avoid_reason": "Los vinos frescos y de bajo cuerpo quedan literalmente aplastados por la potencia del umami y la grasa del vacuno mayor.",
+    "pairings": [
+      {
+        "dish": "Vacuno mayor envejecido",
+        "wine": "Cabernet sauvignon de Australia/California/Chile, cabernet del Midi francés, petite sirah, zinfandel"
+      }
+    ],
+    "molecular_families": [
+      "aminoácidos/umami",
+      "lactonas",
+      "aldehídos",
+      "terpenos"
+    ]
+  },
+  {
+    "id": "carne_cocida_pot_au_feu",
+    "title": "Carne de vacuno cocida en caldo (pot-au-feu)",
+    "foods": [
+      "pot-au-feu",
+      "carne cocida en caldo",
+      "vacuno cocido",
+      "cocido",
+      "carne hervida",
+      "bullabesa de carne"
+    ],
+    "wine_types_primary": [
+      "tinto",
+      "blanco"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "tinto fresco con taninos suaves",
+      "blanco bastante generoso con acidez moderada"
+    ],
+    "wine_style_descriptors": [
+      "fresco",
+      "tanino suave",
+      "aromático",
+      "acidez moderada",
+      "ligero a medio cuerpo"
+    ],
+    "molecular_principle": "Al cocer la carne, sus fibras se hacen fibrosas como carne blanca y pierde capacidad de suavizar taninos; necesita vinos frescos con taninos mínimos o blancos generosos.",
+    "avoid_reason": "Los tintos tánicos y potentes no encuentran la proteína necesaria para suavizarse y resultan ásperos.",
+    "pairings": [
+      {
+        "dish": "Carne cocida (pot-au-feu)",
+        "wine": "Tinto fresco con taninos suaves o blanco generoso de acidez moderada"
+      }
+    ],
+    "molecular_families": [
+      "proteínas desnaturalizadas",
+      "aldehídos del caldo"
+    ]
+  },
+  {
+    "id": "carne_estofada",
+    "title": "Carne de vacuno estofada al horno",
+    "foods": [
+      "carne estofada",
+      "estofado de ternera",
+      "ragú de vacuno",
+      "carne en jugo de cocción",
+      "boeuf bourguignon",
+      "carne braseada"
+    ],
+    "wine_types_primary": [
+      "tinto"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "mezclas garnacha-syrah-monastrell del Nuevo Mundo",
+      "mezcla cabernet-shiraz",
+      "vinos mediterráneos de sol intenso",
+      "amarone del Véneto"
+    ],
+    "wine_style_descriptors": [
+      "envolvente",
+      "generoso",
+      "aterciopelado",
+      "denso",
+      "rico",
+      "cuerpo pleno",
+      "carácter solar"
+    ],
+    "molecular_principle": "El estofado genera una textura a medio camino entre parrilla y cocción; su estructura grasa y los aromas del jugo concentrado requieren tintos muy aromáticos y envolventes de textura densa.",
+    "avoid_reason": "Los vinos ligeros o con alta acidez quedan empequeñecidos ante la densidad y untuosidad del estofado.",
+    "pairings": [
+      {
+        "dish": "Carne estofada",
+        "wine": "Mezclas garnacha-syrah-monastrell, cabernet-shiraz, vinos mediterráneos de climas cálidos, Amarone del Véneto"
+      }
+    ],
+    "molecular_families": [
+      "pirazinas de Maillard",
+      "lactonas",
+      "aldehídos de cocción lenta"
+    ]
+  },
+  {
+    "id": "cordero_tomillo_mediterraneo",
+    "title": "Cordero en cualquier preparación — vinos mediterráneos con tomillo",
+    "foods": [
+      "cordero a la parrilla",
+      "cordero asado",
+      "guiso de cordero",
+      "pierna de cordero",
+      "chuletillas de cordero",
+      "rack de cordero",
+      "ragú de cordero",
+      "tayín de cordero",
+      "cordero al romero",
+      "chuletillas de cordero con canela y azafrán"
+    ],
+    "wine_types_primary": [
+      "tinto"
+    ],
+    "wine_types_acceptable": [
+      "blanco"
+    ],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "tintos mediterráneos con aromas de hierbas del Mediterráneo",
+      "tintos con tomillo molecular",
+      "garnacha del Ródano",
+      "syrah-garnacha-monastrell del Languedoc",
+      "riesling seco Alsace Grand Cru (para cordero cocido con romero)"
+    ],
+    "wine_style_descriptors": [
+      "herbáceo mediterráneo",
+      "tomillo",
+      "lavanda",
+      "especiado",
+      "cuerpo medio-alto",
+      "tanino maduro"
+    ],
+    "molecular_principle": "El cordero contiene timol —compuesto dominante del tomillo— de forma natural; los vinos mediterráneos ricos en aromas de hierbas del mismo ámbito crean una armonía molecular que va mucho más allá de la simple textura.",
+    "avoid_reason": "El Pauillac/Burdeos solo aporta armonía de texturas pero no molecular; no resuena con el timol natural del cordero.",
+    "pairings": [
+      {
+        "dish": "Cordero (cualquier preparación)",
+        "wine": "Tintos mediterráneos con tomillo — NO Pauillac/Burdeos como tradición"
+      },
+      {
+        "dish": "Guiso de cordero aromatizado al romero",
+        "wine": "Riesling seco Alsace Grand Cru"
+      },
+      {
+        "dish": "Chuletillas de cordero con canela y azafrán",
+        "wine": "Rosado de Burdeos con buena estructura (Rosé de Malartic)"
+      },
+      {
+        "dish": "Ragú de cordero a las cuatro especias (pimienta, nuez moscada, jengibre y clavo)",
+        "wine": "Priorat, Rioja, zinfandel o petite sirah"
+      },
+      {
+        "dish": "Tayín de ragú de cordero a las cinco especias con cebolla cipollini caramelizada",
+        "wine": "Garnacha del Ródano o tinto dominado por garnacha"
+      }
+    ],
+    "molecular_families": [
+      "timol",
+      "carvacrol",
+      "terpenos herbáceos",
+      "terpenos del tomillo"
+    ]
+  },
+  {
+    "id": "cerdo_lactonas_blanco",
+    "title": "Cerdo asado y platos de cerdo — blancos con lactonas y tintos con madera",
+    "foods": [
+      "cerdo asado",
+      "cerdo relleno de albaricoques",
+      "lomo de cerdo",
+      "medallones de cerdo",
+      "jamón fresco",
+      "costillas de cerdo",
+      "cerdo con frutas",
+      "cerdo a la canela",
+      "jamón glaseado",
+      "cerdo salteado vietnamita a las cinco especias"
+    ],
+    "wine_types_primary": [
+      "blanco",
+      "tinto"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "roussanne del Ródano",
+      "roussanne de California",
+      "viognier",
+      "merlot con mucha madera",
+      "tempranillo con mucha madera",
+      "pinot noir australiano o californiano",
+      "pinot noir Kim Crawford Marlborough Nueva Zelanda"
+    ],
+    "wine_style_descriptors": [
+      "lácteo",
+      "albaricoque",
+      "melocotón",
+      "coco",
+      "lactonas",
+      "suave",
+      "con madera moderada"
+    ],
+    "molecular_principle": "La carne de cerdo es rica en lactonas (albaricoque, melocotón, coco) que resuenan con los vinos de roussanne, viognier y los tintos con larga crianza en roble, todos ellos ricos en estas mismas moléculas.",
+    "avoid_reason": "Los tintos muy tánicos y sin madera no tienen las lactonas necesarias para conectar con la grasa afrutada del cerdo.",
+    "pairings": [
+      {
+        "dish": "Cerdo asado (con albaricoques)",
+        "wine": "Roussanne del Ródano o California, viognier, merlot o tempranillo con mucha madera"
+      },
+      {
+        "dish": "Filetes de cerdo a la canela con arándanos rojos",
+        "wine": "Pinot noir australiano (Coldstream Hills 2007 Yarra Valley)"
+      },
+      {
+        "dish": "Pollo asado al sésamo y cinco especias / salteado de cerdo vietnamita a las cinco especias",
+        "wine": "Pinot noir Kim Crawford 2007 Marlborough, Nueva Zelanda"
+      },
+      {
+        "dish": "Costillas de cerdo a la canela y al curri de vino tinto",
+        "wine": "Tinto dominado por garnacha del Ródano o España (Cariñena, Monasterio de las Viñas)"
+      },
+      {
+        "dish": "Medallones de cerdo al arce y boniato con pecanas especiadas",
+        "wine": "Vin Jaune del Jura (Rolet, Stéphane Tissot)"
+      },
+      {
+        "dish": "Oreilles de crisse (carrilleras de cerdo fritas)",
+        "wine": "Vin Jaune del Jura"
+      }
+    ],
+    "molecular_families": [
+      "lactonas (albaricoque, melocotón, coco)",
+      "sherry lactonas",
+      "metiloctalactona"
+    ]
+  },
+  {
+    "id": "jamon_iberico_fino",
+    "title": "Jamón ibérico — fino",
+    "foods": [
+      "jamón ibérico",
+      "jamón serrano",
+      "prosciutto",
+      "jamón con higos secos"
+    ],
+    "wine_types_primary": [
+      "generoso"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "fino de Jerez",
+      "manzanilla"
+    ],
+    "wine_style_descriptors": [
+      "salino",
+      "almendra fresca",
+      "manzana verde",
+      "floral",
+      "seco",
+      "oxidativo bajo velo de flor"
+    ],
+    "molecular_principle": "El jamón ibérico y el fino comparten lactonas (sherry lactonas) y acetaldehído; la solerona del fino es la misma que aparece en el proceso de curación del jamón, creando una unión molecular directa.",
+    "avoid_reason": "Otros vinos carecen de la coincidencia molecular de lactonas específicas entre el jamón y el fino.",
+    "pairings": [
+      {
+        "dish": "Jamón ibérico",
+        "wine": "Fino (lactonas compartidas)"
+      },
+      {
+        "dish": "Plato de jamón ibérico con higos secos",
+        "wine": "Fino o manzanilla"
+      }
+    ],
+    "molecular_families": [
+      "lactonas (sherry lactonas)",
+      "acetaldehído",
+      "solerona"
+    ]
+  },
+  {
+    "id": "gewurztraminer_lichi_jengibre",
+    "title": "Lichi, jengibre, cúrcuma, cardamomo — gewürztraminer y scheurebe",
+    "foods": [
+      "lichi fresco",
+      "lichi en conserva",
+      "jengibre fresco",
+      "jengibre cristalizado",
+      "cúrcuma",
+      "cardamomo",
+      "galangal",
+      "pollo con guindillas y lichis",
+      "tartar de lichis con especias",
+      "algodón de azúcar al jengibre",
+      "panna cotta al lichi",
+      "granita de lichis",
+      "ensalada de piña y lichi",
+      "sopa de lichis",
+      "platos asiáticos con lichi",
+      "fricasé de gambas con curri y romero",
+      "gambas salteadas con piña, pimiento y romero con cúrcuma"
+    ],
+    "wine_types_primary": [
+      "blanco"
+    ],
+    "wine_types_acceptable": [
+      "dulce"
+    ],
+    "wine_types_avoid": [
+      "tinto"
+    ],
+    "wines_specific": [
+      "gewürztraminer de Alsacia seco",
+      "gewürztraminer de Alsacia vendimia tardía",
+      "gewürztraminer Wintzenheim 2005 Domaine Zind Humbrecht",
+      "gewürztraminer Clos Windsbuhl Vendanges Tardives 2005 Domaine Zind Humbrecht",
+      "scheurebe austriaco seco o licoroso",
+      "scheurebe TBA Kracher Austria",
+      "riesling alemán, alsaciano o australiano (para gambas con romero)"
+    ],
+    "wine_style_descriptors": [
+      "floral intenso",
+      "rosa",
+      "lichi",
+      "exótico",
+      "especiado",
+      "textura amplia",
+      "terpénico",
+      "denso"
+    ],
+    "molecular_principle": "El lichi y la gewürztraminer comparten una docena de compuestos volátiles idénticos (óxido de cis-rose, linalol, geraniol, furaneol, vainillina, etc.) siendo prácticamente gemelos moleculares; el jengibre comparte los compuestos terpénicos dominantes con ambas variedades.",
+    "avoid_reason": "Los tintos aplanan el carácter floral y exótico delicado de estos ingredientes.",
+    "pairings": [
+      {
+        "dish": "Pollo con guindillas y lichis",
+        "wine": "Gewürztraminer seco de Alsacia (Wintzenheim 2005, Domaine Zind Humbrecht)"
+      },
+      {
+        "dish": "Tartar de lichis con especias",
+        "wine": "Scheurebe TBA No 9 Kracher Austria"
+      },
+      {
+        "dish": "Granita de lichis, cremoso de yogur con chocolate marfil, pomelo, campari e hibisco",
+        "wine": "Gewürztraminer Vendanges Tardives Clos Windsbuhl 2005, Domaine Zind Humbrecht"
+      },
+      {
+        "dish": "Fricasé de gambas con piña y pimientos con chantillí al romero",
+        "wine": "Riesling alemán, alsaciano o australiano"
+      },
+      {
+        "dish": "Fricasé de gambas con piña, pimientos y chantillí al curri, aromas de romero",
+        "wine": "Gewürztraminer seco alsaciano"
+      }
+    ],
+    "molecular_families": [
+      "óxido de cis-rose",
+      "linalol",
+      "geraniol",
+      "furaneol",
+      "β-damascenona",
+      "alcohol fenetílico",
+      "terpenos"
+    ]
+  },
+  {
+    "id": "pina_fresa_licorosos",
+    "title": "Piña y fresa con vinos licorosos",
+    "foods": [
+      "piña fresca",
+      "piña caramelizada",
+      "piña en conserva",
+      "fresa madura",
+      "fresa cocinada",
+      "piña y fresa combinadas",
+      "tarta Tatin de piña",
+      "tarta Tatin de fresa",
+      "jamón con piña",
+      "jamón glaseado con fresas",
+      "magret de pato con duxelles de piña caramelizada a la vainilla",
+      "shortcake de piña y chantillí al romero",
+      "postres de piña con clavo o vainilla",
+      "postres de fresa con clavo o vainilla",
+      "bastoncillos de piña con hinojo y anís"
+    ],
+    "wine_types_primary": [
+      "dulce"
+    ],
+    "wine_types_acceptable": [
+      "generoso"
+    ],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "sauternes",
+      "cadillac",
+      "loupiac",
+      "sainte-croix-du-mont",
+      "jurançon semiseco",
+      "oloroso de Jerez",
+      "montilla-moriles oloroso"
+    ],
+    "wine_style_descriptors": [
+      "licoroso",
+      "botrytis",
+      "piña madura",
+      "vainilla",
+      "clavo",
+      "dulce complejo",
+      "caramelizado"
+    ],
+    "molecular_principle": "Los sauternes y licorosos desarrollan butirato de etilo (piña) y furaneol (caramelo/fresa) en proporciones muy similares a la piña y la fresa maduras; comparten además eugenol (clavo) y vainillina.",
+    "avoid_reason": "Los vinos secos sin azúcar residual carecen de la resonancia dulce y el perfil caramelizado que conecta con piña y fresa maduras.",
+    "pairings": [
+      {
+        "dish": "Magret de pato con duxelles de piña caramelizada a la vainilla (o al clavo)",
+        "wine": "Sauternes"
+      },
+      {
+        "dish": "Postres de piña o fresa con vainilla o clavo",
+        "wine": "Sauternes, cadillac, loupiac, sainte-croix-du-mont"
+      },
+      {
+        "dish": "Jamón con piña glaseado con azúcar moreno o arce",
+        "wine": "Oloroso de Jerez, montilla-moriles oloroso o jurançon semiseco"
+      },
+      {
+        "dish": "Bastoncillos de piña perfumada al hinojo y anís estrellado",
+        "wine": "Jurançon semiseco Symphonie de Noviembre 2004, Domaine de Cauhapé"
+      }
+    ],
+    "molecular_families": [
+      "furaneol",
+      "butirato de etilo",
+      "eugenol",
+      "vainillina",
+      "ésteres afrutados",
+      "sotolón (piña caramelizada)"
+    ]
+  },
+  {
+    "id": "pina_fresa_blancos_secos",
+    "title": "Piña y fresa con blancos secos y chardonnay",
+    "foods": [
+      "piña fresca en platos salados",
+      "piña en ensaladas",
+      "fresa fresca",
+      "platos salados con piña",
+      "piña con salmón o pescado"
+    ],
+    "wine_types_primary": [
+      "blanco"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "chardonnay de Chablis (piña fresca y verde)",
+      "chardonnay de Australia/California/Chile (piña madura)",
+      "jurançon seco",
+      "pacherenc-du-vic-bilh seco",
+      "chardonnay del Jura",
+      "savagnin del Jura",
+      "marsanne del Ródano",
+      "roussanne del Ródano"
+    ],
+    "wine_style_descriptors": [
+      "tropical",
+      "piña",
+      "exótico",
+      "fresco o maduro según clima",
+      "sin madera o poca madera"
+    ],
+    "molecular_principle": "Los vinos de chardonnay desarrollan butirato de etilo (piña) y butirato de isoamilo (manzana) —los ésteres que marcan el aroma a piña— en cantidades que resuenan directamente con la fruta.",
+    "avoid_reason": "Los tintos tánicos dominan los aromas delicados de la piña y fresa frescas en platos salados.",
+    "pairings": [
+      {
+        "dish": "Piña fresca en platos salados",
+        "wine": "Chardonnay de Chablis (climas fríos = piña fresca) o chardonnay de Australia/California/Chile (climas cálidos = piña madura)"
+      },
+      {
+        "dish": "Platos con piña y curri",
+        "wine": "Vinos del Jura (chardonnay, savagnin), marsanne o roussanne del Ródano"
+      }
+    ],
+    "molecular_families": [
+      "butirato de etilo",
+      "butirato de isoamilo",
+      "furaneol",
+      "eugenol"
+    ]
+  },
+  {
+    "id": "pina_fresa_tintos_eugenol",
+    "title": "Piña y fresa cocinadas con tintos españoles y del Nuevo Mundo",
+    "foods": [
+      "piña muy madura cocinada",
+      "fresa muy madura cocinada",
+      "tarta Tatin de piña y clavo",
+      "postre de piña caramelizada",
+      "sopa de piña y fresa al romero",
+      "platos salados-dulces con piña o fresa",
+      "shortcake de piña o fresa con romero"
+    ],
+    "wine_types_primary": [
+      "tinto"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "garnacha del Priorat",
+      "garnacha del Campo de Borja",
+      "garnacha de Cariñena",
+      "mezcla tempranillo-garnacha de Rioja Baja",
+      "mencía del Bierzo",
+      "touriga nacional de Portugal",
+      "pinot noir del Nuevo Mundo (California, Nueva Zelanda)",
+      "zinfandel de California",
+      "petite sirah de México"
+    ],
+    "wine_style_descriptors": [
+      "eugenol",
+      "clavo",
+      "fruta roja y oscura",
+      "especiado",
+      "suave y penetrante",
+      "criado en barrica"
+    ],
+    "molecular_principle": "La piña y la fresa muy maduras o cocinadas desarrollan eugenol (clavo) en cantidad significativa; los tintos españoles de garnacha y mencía, así como el pinot noir, están especialmente impregnados de este compuesto de clavo procedente del escobajo o la barrica.",
+    "avoid_reason": "Los blancos carecen de la profundidad tánica y la presencia de eugenol necesaria para acompañar piña y fresa cocinadas con un tinto.",
+    "pairings": [
+      {
+        "dish": "Piña o fresa cocinadas que requieren tinto",
+        "wine": "Garnacha (Priorat, Campo de Borja, Cariñena), mezcla tempranillo-garnacha (Rioja Baja), mencía (Bierzo), touriga nacional, pinot noir del Nuevo Mundo, zinfandel, petite sirah"
+      },
+      {
+        "dish": "Postres de piña o fresa con romero, vainilla o clavo que requieren vino de postre",
+        "wine": "Banyuls, Maury, Rasteau, Rivesaltes amarillos; monastrell dulce de Jumilla; pedro ximénez Solera Montilla-Moriles; pineau des Charentes tintos 5-10 años; porto vintage joven"
+      }
+    ],
+    "molecular_families": [
+      "eugenol",
+      "furaneol",
+      "vainillina",
+      "β-cariofileno"
+    ]
+  },
+  {
+    "id": "clavo_tintos_espanoles",
+    "title": "Platos con clavo como especia dominante — tintos españoles y portugueses",
+    "foods": [
+      "platos dominados por el clavo",
+      "pan de jengibre",
+      "chucrut",
+      "pot-au-feu",
+      "guisos de carne con clavo",
+      "curris indios",
+      "mezcla de cinco especias chinas",
+      "ragú de cordero con cuatro-especias",
+      "pot-au-foie con clavo y anís estrellado",
+      "codorniz lacada con miel y cinco especias",
+      "pollo asado con sésamo y cinco especias",
+      "filete de salmón con cuatro especias",
+      "risotto con zumo de remolacha al clavo",
+      "queso trucado con clavo molido"
+    ],
+    "wine_types_primary": [
+      "tinto"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "garnacha del Priorat",
+      "garnacha de Rioja Baja",
+      "garnacha del Campo de Borja",
+      "garnacha de Cariñena",
+      "tempranillo de Rioja",
+      "tempranillo de Toro",
+      "tempranillo de Ribera del Duero",
+      "mencía del Bierzo",
+      "touriga nacional de Portugal",
+      "pinot noir de Borgoña",
+      "pinot noir de Nueva Zelanda",
+      "mezclas Ródano y australianas garnacha-monastrell-syrah",
+      "zinfandel de California",
+      "petite sirah de California"
+    ],
+    "wine_style_descriptors": [
+      "eugenol",
+      "clavo",
+      "suave y penetrante",
+      "especiado",
+      "tanino maduro",
+      "cuerpo medio-alto"
+    ],
+    "molecular_principle": "El eugenol —compuesto dominante del clavo (70-90%)— es el mismo que aporta la barrica de roble francés y ruso a los vinos, y que las ligninas del escobajo de la garnacha y el mencía; la unión es directa y precisa.",
+    "avoid_reason": "Los blancos y espumosos carecen del eugenol y la profundidad que el clavo requiere para crear resonancia.",
+    "pairings": [
+      {
+        "dish": "Platos dominados por el clavo (tintos moderados a con cuerpo)",
+        "wine": "Bierzo, Campo de Borja, Cariñena, pinot noir del Nuevo Mundo, garnacha del Ródano y Languedoc"
+      },
+      {
+        "dish": "Platos dominados por el clavo (tintos potentes)",
+        "wine": "Priorat, Rioja, zinfandel, petite sirah"
+      },
+      {
+        "dish": "Pot-au-foie con clavo, anís estrellado, hojas de curri y arroz al té wulong",
+        "wine": "Villa de Corullón 2001 Bierzo, Descendientes de J. Palacios"
+      },
+      {
+        "dish": "Queso de corteza floral con aroma a clavo (trucado para maridar con tinto)",
+        "wine": "Tintos del Bierzo, La Rioja, La Ribera del Duero o zinfandel californiano"
+      }
+    ],
+    "molecular_families": [
+      "eugenol",
+      "β-cariofileno",
+      "vainillina",
+      "furfurales"
+    ]
+  },
+  {
+    "id": "romero_blancos_alsacianos",
+    "title": "Platos dominados por el romero — blancos terpénicos y alsacianos",
+    "foods": [
+      "cordero al romero",
+      "gambas salteadas con romero",
+      "pescado al romero",
+      "queso munster con romero",
+      "piña y fresa al romero",
+      "shortcake con romero",
+      "tarta al sifón con merengue al romero",
+      "gelatina de Campari con tofu al vapor de romero",
+      "ensalada de queso de cabra marinado con romero",
+      "sopa de piña y fresa al romero",
+      "platos de verduras con romero"
+    ],
+    "wine_types_primary": [
+      "blanco"
+    ],
+    "wine_types_acceptable": [
+      "generoso"
+    ],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "riesling de Alsacia seco",
+      "riesling Alsace Grand Cru",
+      "gewürztraminer de Alsacia seco",
+      "gewürztraminer vendimia tardía",
+      "muscat seco de Alsacia",
+      "muscat de Rivesaltes (VDN)",
+      "riesling de vendimia tardía",
+      "Riesling Les Ecaillers Beyer 2003 Alsacia León Beyer",
+      "fino (por su linalol, nerolidol y farnesol)"
+    ],
+    "wine_style_descriptors": [
+      "terpénico",
+      "floral",
+      "especiado",
+      "cítrico",
+      "mineral",
+      "fresco",
+      "alto alcohol moderado"
+    ],
+    "molecular_principle": "Los terpenos del romero (α-pineno, β-pineno, cineol, linalol, canfeno, borneol) son las mismas familias moleculares que dominan en los vinos de riesling, gewürztraminer y muscat; la unión es de compuestos idénticos.",
+    "avoid_reason": "Los vinos sin perfil terpénico (tintos de barrica, blancos neutros) no resuenan con los aromas complejos del romero.",
+    "pairings": [
+      {
+        "dish": "Fricasé de gambas con piña y pimientos con chantillí al romero",
+        "wine": "Riesling alemán, alsaciano o australiano"
+      },
+      {
+        "dish": "Fricasé de gambas con piña, pimientos y chantillí al curri, aromas de romero",
+        "wine": "Gewürztraminer seco alsaciano"
+      },
+      {
+        "dish": "Guiso de cordero aromatizado al romero",
+        "wine": "Riesling seco Alsace Grand Cru"
+      },
+      {
+        "dish": "Queso de corteza lavada (munster) macerado con romero + sopa tibia de piña y fresas al romero",
+        "wine": "Gewürztraminer Vendimia Tardía"
+      },
+      {
+        "dish": "Shortcake de fresa y piña con chantillí al romero",
+        "wine": "Muscat de Rivesaltes u otro VDN de muscat"
+      },
+      {
+        "dish": "Tarta al sifón (tarta de limón con merengue al sifón aromatizado al romero)",
+        "wine": "Riesling de Vendimia Tardía"
+      },
+      {
+        "dish": "Ensalada de queso de cabra seco marinado en aceite de oliva aromatizado con romero",
+        "wine": "Fino o manzanilla"
+      }
+    ],
+    "molecular_families": [
+      "terpenos (α-pineno, β-pineno)",
+      "cineol/eucaliptol",
+      "linalol",
+      "canfeno",
+      "borneol",
+      "eugenol"
+    ]
+  },
+  {
+    "id": "azafran_riesling_chardonnay",
+    "title": "Platos con azafrán — riesling, sauvignon blanc, chardonnay y rosado",
+    "foods": [
+      "paella con azafrán",
+      "risotto a la milanesa",
+      "bullabesa marsellesa",
+      "arroz con azafrán",
+      "curris con azafrán",
+      "brocheta de rape al azafrán",
+      "crema de zanahoria al azafrán con mejillones",
+      "gnocchi de polenta con café y azafrán (elBulli)",
+      "albaricoque con vainilla y azafrán (elBulli)",
+      "costillar de cerdo con manzanas golden y azafrán",
+      "tarta de pera nashi y azafrán",
+      "canapés de gambas con mayonesa al azafrán"
+    ],
+    "wine_types_primary": [
+      "blanco",
+      "rosado"
+    ],
+    "wine_types_acceptable": [
+      "dulce"
+    ],
+    "wine_types_avoid": [
+      "tinto"
+    ],
+    "wines_specific": [
+      "riesling de Alsacia",
+      "Riesling Les Ecaillers Beyer 2003 León Beyer",
+      "sauvignon blanc",
+      "chardonnay",
+      "chardonnay con madera para platos con café y azafrán",
+      "muscat seco de Alsacia",
+      "jerez fino",
+      "manzanilla",
+      "rosado con estructura (Rosé de Malartic Bordeaux Rosé)",
+      "sauternes (para tarta de pera nashi)",
+      "jurançon seco o licoroso",
+      "sauvignon blanc late harvest de Chile"
+    ],
+    "wine_style_descriptors": [
+      "mineral",
+      "carotenoides",
+      "floral terpénico",
+      "ligero amargor",
+      "fresco",
+      "cítrico",
+      "especiado floral"
+    ],
+    "molecular_principle": "Los carotenoides, el safranal (terpeno) y los aldehídos del azafrán resuenan con los vinos de chardonnay, sauvignon blanc y riesling, ricos en carotenoides; el pineno del azafrán realza el yodo de los mariscos y conecta con el mineral del riesling.",
+    "avoid_reason": "Los tintos no poseen la familia de carotenoides y aldehídos del azafrán; además sus taninos distorsionan el delicado amargor especiado de la especia.",
+    "pairings": [
+      {
+        "dish": "Brocheta de rape al azafrán o rape con cebolla, limón y azafrán",
+        "wine": "Riesling Les Ecaillers Beyer 2003 Alsacia, León Beyer"
+      },
+      {
+        "dish": "Canapés de gambas con mayonesa al azafrán, crema de zanahoria al azafrán con mejillones",
+        "wine": "Muscat Pierre Sparr Réserve, Alsacia"
+      },
+      {
+        "dish": "Crema de azafrán con vieiras y cigalas",
+        "wine": "Fino Tío Pepe González Byass"
+      },
+      {
+        "dish": "Chuletillas de cordero con canela y azafrán",
+        "wine": "Rosado Rosé de Malartic, Bordeaux Rosé"
+      },
+      {
+        "dish": "Gnocchi de polenta con café y azafrán (elBulli 2008)",
+        "wine": "Chardonnay con madera"
+      },
+      {
+        "dish": "Costillar de cerdo con manzanas golden y azafrán",
+        "wine": "Chardonnay australiano o californiano sin mucha madera"
+      },
+      {
+        "dish": "Tarta de pera nashi y azafrán",
+        "wine": "Sauvignon Blanc Late Harvest de Chile o sauternes con proporción alta de sauvignon"
+      }
+    ],
+    "molecular_families": [
+      "carotenoides",
+      "safranal",
+      "picrocrocina",
+      "α-pineno",
+      "cineol",
+      "linalol",
+      "aldehídos"
+    ]
+  },
+  {
+    "id": "jengibre_gewurztraminer_scheurebe",
+    "title": "Platos con jengibre — gewürztraminer, scheurebe y riesling",
+    "foods": [
+      "jengibre fresco",
+      "jengibre en polvo",
+      "jengibre cristalizado",
+      "galangal",
+      "cúrcuma",
+      "cardamomo",
+      "sushi con jengibre marinado",
+      "curris con jengibre",
+      "pollo con jengibre",
+      "gambas con jengibre",
+      "vieiras con jengibre",
+      "platos tailandeses con jengibre",
+      "platos indios con jengibre",
+      "platos indonesios con jengibre",
+      "platos asiáticos con jengibre"
+    ],
+    "wine_types_primary": [
+      "blanco"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "gewürztraminer (especialmente)",
+      "scheurebe",
+      "riesling",
+      "vinos terpénicos en general"
+    ],
+    "wine_style_descriptors": [
+      "floral",
+      "cítrico",
+      "especiado",
+      "terpénico",
+      "fresco",
+      "servir menos frío que de costumbre"
+    ],
+    "molecular_principle": "El jengibre y la gewürztraminer/scheurebe comparten los mismos compuestos dominantes (linalol, geraniol, canfeno, geranial, neral, limoneno), siendo el jengibre prácticamente un gemelo vegetal de estas variedades.",
+    "avoid_reason": "Los blancos con alta acidez y los tintos no resuenan con el perfil terpénico-cítrico del jengibre y pueden volverse incisivos por el efecto de sabor a frío.",
+    "pairings": [
+      {
+        "dish": "Platos asiáticos con jengibre como ingrediente principal",
+        "wine": "Gewürztraminer (especialmente), scheurebe o riesling"
+      }
+    ],
+    "molecular_families": [
+      "linalol",
+      "geraniol",
+      "canfeno",
+      "citral",
+      "cineol",
+      "gingerol",
+      "zingerona",
+      "shogaol"
+    ]
+  },
+  {
+    "id": "jarabe_arce_vinos_barrica",
+    "title": "Platos salados con jarabe de arce — vinos secos criados en barrica",
+    "foods": [
+      "salmón laqueado con arce y soja",
+      "cerdo salado con arce",
+      "pato laqueado con arce",
+      "jamón al arce",
+      "ternera ahumada laqueada con soja/arce",
+      "platos salados con un toque discreto de arce"
+    ],
+    "wine_types_primary": [
+      "blanco",
+      "tinto"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "chardonnay del Nuevo Mundo (California, Australia, España)",
+      "riojas con roble americano",
+      "riberas del Duero con roble americano",
+      "champagne añejo"
+    ],
+    "wine_style_descriptors": [
+      "lactonas",
+      "caramelizado",
+      "vainilla",
+      "notas de arce",
+      "tostado",
+      "crianza en barrica"
+    ],
+    "molecular_principle": "El jarabe de arce comparte con los vinos criados en barrica de roble los mismos compuestos (lactonas, cicloteno, maltol, furfural, vainillina, eugenol, sotolón) generados por el calor en la madera de roble y de arce respectivamente.",
+    "avoid_reason": "Los vinos sin paso por madera carecen de los compuestos del arce y no resuenan con sus tonos caramelizados.",
+    "pairings": [
+      {
+        "dish": "Platos salados con jarabe de arce (discreto)",
+        "wine": "Chardonnays del Nuevo Mundo, riojas o riberas del Duero con roble americano, champagne añejo"
+      },
+      {
+        "dish": "Salmón laqueado con arce, reducción balsámico-soja, salteado de setas",
+        "wine": "Asunción Oloroso, Montilla-Moriles, Alvear"
+      }
+    ],
+    "molecular_families": [
+      "lactonas",
+      "cicloteno",
+      "maltol",
+      "furfural",
+      "vainillina",
+      "eugenol",
+      "sotolón",
+      "Maple furanone"
+    ]
+  },
+  {
+    "id": "jarabe_arce_dulces_licorosos",
+    "title": "Platos dulces y salados dulces con jarabe de arce — vinos dulces y oxidativos",
+    "foods": [
+      "comida de cabaña azucarera",
+      "pancakes con arce",
+      "platos tradicionales quebequeses al arce",
+      "postres con jarabe de arce",
+      "jamón al arce"
+    ],
+    "wine_types_primary": [
+      "dulce",
+      "generoso"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "tokaji aszú envejecido 10 años",
+      "sauternes",
+      "monbazillac",
+      "sainte-croix-du-mont",
+      "vinos dulces naturales criados en entorno oxidativo",
+      "vino santo",
+      "sake Nigori (10% alc., frío)",
+      "oporto tawny 10 años (servido fresco)",
+      "jerez oloroso",
+      "montilla-moriles pedro ximénez",
+      "Cerveza Boréale Noire Stout (5,5% alc.)"
+    ],
+    "wine_style_descriptors": [
+      "oxidativo",
+      "caramelizado",
+      "arce",
+      "nuez",
+      "rancio",
+      "dulce complejo",
+      "sotolón dominante"
+    ],
+    "molecular_principle": "La Maple furanone y el sotolón del jarabe de arce encuentran su equivalente en los vinos de crianza oxidativa y licorosos de botrytis, todos ricos en estos mismos compuestos por envejecimiento en contacto con el oxígeno.",
+    "avoid_reason": "Los vinos secos sin crianza oxidativa ni azúcar residual no tienen los compuestos caramelizados del arce.",
+    "pairings": [
+      {
+        "dish": "Platos endulzados con jarabe de arce",
+        "wine": "Tokaji aszú envejecido, vino santo (semiseco), sake Nigori, jerez oloroso o montilla-moriles pedro ximénez solera"
+      },
+      {
+        "dish": "Platos salados con jarabe de arce",
+        "wine": "Vino santo (el menos dulce posible), sake, ron añejo o jerez oloroso"
+      },
+      {
+        "dish": "Jamón al arce",
+        "wine": "Cerveza Boréale Noire Stout 5,5% alc."
+      },
+      {
+        "dish": "Medallones de cerdo al arce y boniato con pecanas especiadas",
+        "wine": "Vin Jaune del Jura (Rolet, Stéphane Tissot)"
+      },
+      {
+        "dish": "Oreilles de crisse (carrilleras de cerdo fritas)",
+        "wine": "Vin Jaune del Jura"
+      },
+      {
+        "dish": "Comida de cabaña azucarera tradicional",
+        "wine": "Oporto tawny 10 años (servido fresco), sauternes ligero, sake Nigori, monbazillac, sainte-croix-du-mont"
+      }
+    ],
+    "molecular_families": [
+      "Maple furanone",
+      "sotolón",
+      "cicloteno",
+      "maltol",
+      "furanona del arce"
+    ]
+  },
+  {
+    "id": "quesos_pasta_semidura_blancos",
+    "title": "Quesos de pasta semidura y dura — vinos blancos terpénicos",
+    "foods": [
+      "quesos de pasta semidura afinados",
+      "quesos de pasta dura",
+      "queso suizo",
+      "mimolette",
+      "parmigiano reggiano",
+      "emmental",
+      "cheddar",
+      "quesos de pastos estivales con notas terpénicas",
+      "quesos con aromas florales y herbáceos"
+    ],
+    "wine_types_primary": [
+      "blanco",
+      "rosado"
+    ],
+    "wine_types_acceptable": [
+      "generoso"
+    ],
+    "wine_types_avoid": [
+      "tinto"
+    ],
+    "wines_specific": [
+      "riesling floral de Alsacia (Riesling Réserve Domaine Fernand Engel)",
+      "gewürztraminer seco o dulce",
+      "muscat seco de Alsacia",
+      "jurançon seco (Cuvée Marie 2006 Charles Hours)",
+      "jerez fino",
+      "manzanilla",
+      "chardonnay sin madera floral",
+      "rosados con carotenoides"
+    ],
+    "wine_style_descriptors": [
+      "floral",
+      "terpénico",
+      "mineral",
+      "fresco",
+      "linalol",
+      "carotenoides",
+      "sin madera o poca madera"
+    ],
+    "molecular_principle": "Los quesos de pasta semidura/dura son ricos en linalol (flores) y carotenoides, exactamente los mismos compuestos que dominan en riesling, gewürztraminer y muscat; la unión es de moléculas idénticas.",
+    "avoid_reason": "Los vinos tintos con tanino crean un sabor amargo desagradable al combinarse con la grasa y proteínas del queso; los blancos son la unión científicamente correcta.",
+    "pairings": [
+      {
+        "dish": "Quesos de pasta semidura y dura recubiertos con semillas de cilantro o con ensalada mesclun con cilantro/albahaca y cuartos de manzana o pera",
+        "wine": "Riesling joven floral"
+      },
+      {
+        "dish": "Queso Cru des Erables (afinado 60 días en cabaña azucarera con aperitivo Charles-Aimé Robert)",
+        "wine": "Warre's Otima 10 años Porto Tawny o Cazes Ambré 1995 Rivesaltes"
+      },
+      {
+        "dish": "Quesos de pasta semidura nobles (Pied-de-Vent, Gré des Champs)",
+        "wine": "Cuvée Marie 2006 Jurançon Sec, Charles Hours"
+      },
+      {
+        "dish": "Quesos afinados más tiempo (Valbert, Alfred le fermier)",
+        "wine": "Manzanilla Papirusa, Jerez, Emilio Lustau"
+      }
+    ],
+    "molecular_families": [
+      "linalol",
+      "carotenoides",
+      "dimetilpiracinas",
+      "lactonas",
+      "ésteres frutales"
+    ]
+  },
+  {
+    "id": "quesos_corteza_floral_chardonnay",
+    "title": "Quesos con corteza floral (brie, camembert) — chardonnay con madera y cerveza de alta fermentación",
+    "foods": [
+      "queso brie",
+      "camembert",
+      "quesos con corteza floral",
+      "quesos de doble crema",
+      "quesos de triple crema",
+      "quesos con corteza blanca y pasta suave"
+    ],
+    "wine_types_primary": [
+      "blanco"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [
+      "tinto"
+    ],
+    "wines_specific": [
+      "chardonnay del Nuevo Mundo con barrica y sobre lías",
+      "Chardonnay Le Bonheur Simonsberg-Stellenbosch Sudáfrica",
+      "Swan Bay Scotchmans Hill Victoria Australia",
+      "Chardonnay Cloudy Bay Marlborough Nueva Zelanda",
+      "cervezas de alta fermentación inglesas (pale ale, brown ale)",
+      "cervezas belgas oscuras"
+    ],
+    "wine_style_descriptors": [
+      "mantequilloso",
+      "cremoso",
+      "barrica y lías",
+      "diacetilo",
+      "nata",
+      "vainilla",
+      "cuerpo amplio"
+    ],
+    "molecular_principle": "El diacetilo (mantequilla) es la molécula dominante de los quesos con corteza floral y también la que el chardonnay criado en barrica sobre lías desarrolla en mayor cantidad; la unión es de compuestos idénticos.",
+    "avoid_reason": "Los tintos con tanino crean amargor desagradable con la grasa y proteínas del queso de corteza floral.",
+    "pairings": [
+      {
+        "dish": "Queso Casimir y Le Petit Normand (similar al camembert)",
+        "wine": "Chardonnay Le Bonheur, Simonsberg-Stellenbosch, Sudáfrica"
+      },
+      {
+        "dish": "Queso Champayeur con costra floral compacta",
+        "wine": "Swan Bay Scotchmans Hill, Victoria, Australia"
+      },
+      {
+        "dish": "Queso Riopelle triple crema",
+        "wine": "Chardonnay Cloudy Bay, Marlborough, Nueva Zelanda"
+      }
+    ],
+    "molecular_families": [
+      "diacetilo",
+      "aminoácidos/umami",
+      "acetoína",
+      "cicloteno",
+      "maltol"
+    ]
+  },
+  {
+    "id": "quesos_azules_oporto_sauternes",
+    "title": "Quesos azules — oporto vintage, sauternes y licorosos",
+    "foods": [
+      "queso azul",
+      "roquefort",
+      "stilton",
+      "gorgonzola",
+      "fourme d'ambert",
+      "quesos azules suaves",
+      "quesos azules fuertes",
+      "queso azul de Quebec"
+    ],
+    "wine_types_primary": [
+      "dulce",
+      "generoso"
+    ],
+    "wine_types_acceptable": [
+      "blanco"
+    ],
+    "wine_types_avoid": [
+      "tinto"
+    ],
+    "wines_specific": [
+      "oporto vintage 15 años para quesos azules fuertes (Smith Woodhouse 1994)",
+      "oporto vintage 20+ años para quesos azules suaves (Dow's 1985, Graham's 1970)",
+      "sauternes",
+      "sauvignon blanc vendimia tardía",
+      "gewürztraminer vendimia tardía o selección de uvas nobles",
+      "scheurebe austriaco",
+      "vino dulce natural de moscatel",
+      "jerez fino",
+      "manzanilla",
+      "chardonnay con madera del Nuevo Mundo",
+      "Samichlaus Bière Extra Forte Schlossbrauerei Eggenberg Austria (14% alc.)"
+    ],
+    "wine_style_descriptors": [
+      "potente",
+      "aterciopelado",
+      "voluminoso",
+      "umami",
+      "presencia en boca fuerte",
+      "licoroso o generoso"
+    ],
+    "molecular_principle": "El umami (glutamato) dominante en quesos azules obliga a vinos con gran volumen en boca; los tioles del queso azul resuenan con el sauvignon blanc del sauternes; el diacetilo y las cetonas oxidativas conectan con fino y manzanilla.",
+    "avoid_reason": "Los vinos tintos tánicos crean combinaciones amargas y desagradables con los ácidos grasos y el umami del queso azul.",
+    "pairings": [
+      {
+        "dish": "Quesos azules fuertes (Roquefort, Stilton)",
+        "wine": "Oporto Vintage joven ~15 años (Smith Woodhouse 1994)"
+      },
+      {
+        "dish": "Quesos azules suaves (Fourme d'Ambert, Rassembleu)",
+        "wine": "Oporto Vintage 20+ años (Dow's 1985, Graham's 1970)"
+      },
+      {
+        "dish": "Quesos azules (en general)",
+        "wine": "Sauternes, sauvignon blanc VT, gewürztraminer VT, scheurebe austriaco, VDN de moscatel, fino, manzanilla, chardonnay con madera del NM"
+      }
+    ],
+    "molecular_families": [
+      "tioles",
+      "diacetilo",
+      "cetonas metiladas",
+      "linalol/terpenos",
+      "aminoácidos/umami",
+      "ácidos grasos"
+    ]
+  },
+  {
+    "id": "canela_pinot_noir_garnacha",
+    "title": "Platos con canela — pinot noir y tintos de garnacha",
+    "foods": [
+      "platos de carne con canela",
+      "tayín de cordero con canela",
+      "costillas de cerdo a la canela",
+      "cerdo a las cinco especias",
+      "pollo a las cinco especias",
+      "pato a la canela",
+      "postres con manzana y canela",
+      "canela en curris",
+      "chocolate con canela"
+    ],
+    "wine_types_primary": [
+      "tinto"
+    ],
+    "wine_types_acceptable": [
+      "dulce"
+    ],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "pinot noir de Australia y California",
+      "pinot noir Coldstream Hills 2007 Yarra Valley Australia",
+      "pinot noir Kim Crawford 2007 Marlborough Nueva Zelanda",
+      "garnacha del Ródano o de España",
+      "Monasterio de Las Viñas Gran Reserva 2001 Cariñena",
+      "gewürztraminer de vendimia tardía (por su cinamaldehído)",
+      "sauternes para postres con canela"
+    ],
+    "wine_style_descriptors": [
+      "especiado suave",
+      "canela",
+      "suave tanino",
+      "fruta roja",
+      "cerezas",
+      "envolvente"
+    ],
+    "molecular_principle": "El cinamaldehído (aldehído cinámico) dominante de la canela también aparece en las ligninas del escobajo de la garnacha del Ródano, en los vinos de maceración carbónica y en los pinot noirs de barrica nueva; el gewürztraminer de VT es también rico en cinamaldehído.",
+    "avoid_reason": "Los vinos sin rastro de cinamaldehído o especias suaves no resuenan con el perfil cálido de la canela.",
+    "pairings": [
+      {
+        "dish": "Filetes de cerdo a la canela con arándanos rojos",
+        "wine": "Pinot noir australiano (Coldstream Hills 2007 Yarra Valley)"
+      },
+      {
+        "dish": "Pollo asado al sésamo y cinco especias / salteado de cerdo vietnamita",
+        "wine": "Pinot noir Kim Crawford 2007 Marlborough, Nueva Zelanda"
+      },
+      {
+        "dish": "Tayín de ragú de cordero a las cinco especias con cebollas cipollini caramelizadas",
+        "wine": "Tinto dominado por garnacha (Monasterio de Las Viñas Gran Reserva 2001 Cariñena)"
+      },
+      {
+        "dish": "Postres con canela y quesos — higos asados con canela y miel",
+        "wine": "Sauternes (Château Bel Air 2004 Sainte-Croix-du-Mont) o sidra de hielo de Quebec"
+      },
+      {
+        "dish": "Milhojas de pan de jengibre con manzana",
+        "wine": "Sauternes o sidra de hielo de Quebec"
+      }
+    ],
+    "molecular_families": [
+      "cinamaldehído",
+      "cinamato de etilo",
+      "linalol",
+      "eugenol",
+      "cumarina",
+      "benzaldehído"
+    ]
+  },
+  {
+    "id": "capsaicina_guindilla_vinos_amortiguadores",
+    "title": "Platos picantes con guindilla/capsaicina — vinos que calman el fuego",
+    "foods": [
+      "guindillas",
+      "chile",
+      "jalapeño",
+      "chipotle",
+      "habanero",
+      "cayena",
+      "pimentón picante",
+      "tabasco",
+      "sambal",
+      "curri verde tailandés",
+      "satay indonesio",
+      "cocina de Sichuan",
+      "cocina tex-mex",
+      "platos tailandeses",
+      "platos indonesios",
+      "platos mexicanos",
+      "platos indios picantes",
+      "chocolate negro con guindilla"
+    ],
+    "wine_types_primary": [
+      "blanco",
+      "dulce"
+    ],
+    "wine_types_acceptable": [
+      "tinto"
+    ],
+    "wine_types_avoid": [
+      "espumoso"
+    ],
+    "wines_specific": [
+      "sake Nigori 10% alc. (refrescante, lácteo, calma la capsaicina)",
+      "tintos españoles con barrica americana (vainilla amortiguadora): Rioja, Ribera del Duero, Jumilla",
+      "merlot del Nuevo Mundo (vainilla amortiguadora)",
+      "zinfandel del Nuevo Mundo",
+      "petite sirah del Nuevo Mundo",
+      "vinos blancos minerales con tinte ahumado (para chiles ahumados como chipotle/pimentón)",
+      "tintos con barrica de roble (para chiles ahumados)"
+    ],
+    "wine_style_descriptors": [
+      "graso",
+      "poco ácido",
+      "vainillado",
+      "amortiguador del picante",
+      "máximo 14,5% alcohol",
+      "servido fresco 14-15°C para tintos",
+      "lácteo para sake"
+    ],
+    "molecular_principle": "La capsaicina es soluble en grasa y alcohol, no en agua; los vinos con vainilla (barrica americana) tienen efecto amortiguador; el sake Nigori es lácteo, bajo en alcohol y calma químicamente la capsaicina.",
+    "avoid_reason": "Las bebidas gaseosas (cerveza con gas carbónico) y los blancos muy ácidos amplifican y prolongan el efecto de quemazón de la capsaicina.",
+    "pairings": [
+      {
+        "dish": "Platos tailandeses, indonesios, indios o mexicanos picantes",
+        "wine": "Sake Nigori 10% alc. — refrescante, lácteo, calma la capsaicina"
+      },
+      {
+        "dish": "Cocina con capsaicina en general",
+        "wine": "Vinos españoles con barrica americana (vainilla = amortiguador): Rioja, Ribera del Duero, Jumilla; o Merlot/Zinfandel/Petite Sirah del Nuevo Mundo"
+      },
+      {
+        "dish": "Chiles ahumados (chipotle, pimentón)",
+        "wine": "Vinos blancos minerales con tinte ahumado o tintos con barrica de roble"
+      }
+    ],
+    "molecular_families": [
+      "capsaicina",
+      "dihidrocapsaicina",
+      "vainillina (amortiguador)",
+      "eugenol (amortiguador)"
+    ]
+  },
+  {
+    "id": "sabor_frio_manzana_sauvignon",
+    "title": "Platos con alimentos de sabor a frío (manzana, pepino, menta cruda) — sauvignon blanc y verdejo",
+    "foods": [
+      "manzana fresca",
+      "pepino",
+      "pimiento verde",
+      "menta cruda",
+      "wasabi",
+      "daikon",
+      "rábano picante",
+      "citronela",
+      "cilantro fresco",
+      "estragón",
+      "eucalipto",
+      "hinojo fresco",
+      "lima",
+      "melisa",
+      "verbena",
+      "chirivía",
+      "perejil fresco crudo",
+      "apio crudo",
+      "jengibre crudo",
+      "sándwich de sabor a frío (queso de cabra, manzana, pepino, menta)",
+      "crema fría de pepino, manzana y ralladura de lima",
+      "ceviche con cilantro",
+      "ensaladas con hierbas frescas"
+    ],
+    "wine_types_primary": [
+      "blanco"
+    ],
+    "wine_types_acceptable": [
+      "tinto"
+    ],
+    "wine_types_avoid": [],
+    "wines_specific": [
+      "sauvignon blanc",
+      "verdejo de Rueda",
+      "albariño",
+      "romorantin",
+      "grüner veltliner",
+      "chardonnay de climas frescos sin madera (Chablis, Nueva Zelanda)",
+      "cabernet franc fresco del Loira (Chinon)",
+      "Verdejo Bribón Rueda Prado Rey",
+      "Chinon La Coulée Automnale Couly-Dutheil",
+      "Pazo de Señorans Rías Baixas"
+    ],
+    "wine_style_descriptors": [
+      "servir menos frío que de costumbre",
+      "acidez moderada (no incisiva)",
+      "fresco",
+      "vegetal",
+      "mineral",
+      "sin amargor marcado"
+    ],
+    "molecular_principle": "El estragol y el mentol activan receptores de frío (8-28°C), amplificando la acidez y amargor del vino; hay que elegir vinos con acidez moderada y servirlos algo menos fríos; el sauvignon blanc y el verdejo tienen el mismo perfil anisado-refrescante.",
+    "avoid_reason": "Los vinos con acidez incisiva (riesling muy seco) resultan demasiado agresivos por el efecto del frío sobre las papilas; los espumosos no encajan por el gas carbónico.",
+    "pairings": [
+      {
+        "dish": "Sándwich de queso de cabra con manzana verde, pepino, pimiento, menta y wasabi",
+        "wine": "Sauvignon blanc o verdejo"
+      },
+      {
+        "dish": "Crema fría de pepino, manzana y ralladura de lima",
+        "wine": "Pazo de Señorans, Rías Baixas (albariño)"
+      },
+      {
+        "dish": "Sándwich en modo sabor a frío y anisado",
+        "wine": "Verdejo Bribón Rueda Prado Rey o Chinon La Coulée Automnale Couly-Dutheil"
+      }
+    ],
+    "molecular_families": [
+      "estragol",
+      "mentol",
+      "cineol",
+      "anetol",
+      "terpenos refrescantes"
+    ]
+  },
+  {
+    "id": "lichi_gewurztraminer_postres",
+    "title": "Postres con lichi, flores, pomelo y fruta exótica — gewürztraminer dulce y scheurebe",
+    "foods": [
+      "granita de lichis",
+      "panna cotta al lichi",
+      "sopa de lichis",
+      "algodón de azúcar al jengibre sobre sopa de lichis",
+      "tartar de lichis con especias",
+      "cremoso de yogur con chocolate marfil",
+      "gelatina de campari con pomelo rosa",
+      "postres con agua de rosas",
+      "postres con flores comestibles (rosa, lavanda, osmanto)",
+      "postres con fruta de la pasión",
+      "postres con mango"
+    ],
+    "wine_types_primary": [
+      "dulce",
+      "blanco"
+    ],
+    "wine_types_acceptable": [],
+    "wine_types_avoid": [
+      "tinto"
+    ],
+    "wines_specific": [
+      "gewürztraminer vendimia tardía de Alsacia",
+      "gewürztraminer Clos Windsbuhl Vendanges Tardives 2005 Zind Humbrecht",
+      "selección de uvas nobles de gewürztraminer",
+      "scheurebe TBA austriaco (Kracher)"
+    ],
+    "wine_style_descriptors": [
+      "muy floral",
+      "rosa",
+      "lichi",
+      "denso",
+      "licoroso",
+      "exótico",
+      "complejo"
+    ],
+    "molecular_principle": "Los postres de lichi y flores comparten el óxido de cis-rose (rosa/lichi), el linalol (lavanda/flores) y el geraniol con los gewürztraminers dulces, creando una armonía de compuestos idénticos.",
+    "avoid_reason": "Los tintos y vinos sin perfil floral-exótico no resuenan con los aromas delicados del lichi y las flores.",
+    "pairings": [
+      {
+        "dish": "Granita de lichis, cremoso de yogur con chocolate marfil, pomelo rosa, campari e hibisco (Patrice Demers)",
+        "wine": "Gewürztraminer Clos Windsbuhl Vendanges Tardives 2005, Domaine Zind Humbrecht"
+      },
+      {
+        "dish": "Panna cotta al roquefort con tres frutas en masa acidulada y caramelo al vino añejo",
+        "wine": "Scheurebe TBA No 4 Kracher Austria"
+      }
+    ],
+    "molecular_families": [
+      "óxido de cis-rose",
+      "linalol",
+      "geraniol",
+      "alcohol fenetílico",
+      "furaneol",
+      "β-damascenona"
+    ]
+  }
+]

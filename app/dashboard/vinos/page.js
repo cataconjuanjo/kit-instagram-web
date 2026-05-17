@@ -185,11 +185,11 @@ async function archivoPdfSeleccionado(e) {
       const res = await fetch('/api/importar-vinos-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfBase64: base64 })
+        body: JSON.stringify({ fileBase64: base64, mediaType: file.type || 'application/pdf' })
       })
       const data = await res.json()
       if (!res.ok || !Array.isArray(data.vinos) || !data.vinos.length) {
-        setErrorPdf(data.error || 'No se encontraron vinos en el PDF.')
+        setErrorPdf(data.error || 'No se encontraron vinos en el archivo.')
       } else {
         setVinosImportar(data.vinos.map(vino => ({
           nombre: vino.nombre || '',
@@ -200,13 +200,13 @@ async function archivoPdfSeleccionado(e) {
           anada: vino.anada || '',
           precio_copa: vino.precio_copa || '',
           precio_botella: vino.precio_botella || '',
-          stock: 0,
+          stock: 1,
           notas_cata: vino.notas_cata || '',
           activo: true,
         })))
       }
     } catch (error) {
-      setErrorPdf('Error leyendo el PDF. Revisa que sea un PDF de texto y vuelve a intentarlo.')
+      setErrorPdf('Error leyendo el archivo. Revisa que sea PDF, JPG o PNG y vuelve a intentarlo.')
     }
     setLeyendoPdf(false)
   }
@@ -327,17 +327,17 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
         </>
       }
     >
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '40px 32px' }}>
+      <div className={styles.winePage}>
         {mostrarImportador && (
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
             <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>Importar carta de vinos</p>
             <p style={{ fontSize: 13, color: '#999', lineHeight: 1.6, margin: '0 0 16px' }}>
-              Sube una carta en PDF. La app intentará extraer nombre, bodega, tipo, región, uva, añada, precios y perfil.
+              Sube una carta en PDF, JPG o PNG. La app intentará extraer nombre, bodega, tipo, región, uva, añada, precios y perfil.
             </p>
-            <input ref={inputPdfRef} type="file" accept="application/pdf" onChange={archivoPdfSeleccionado} style={{ display: 'none' }} />
+            <input ref={inputPdfRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={archivoPdfSeleccionado} style={{ display: 'none' }} />
             <button onClick={() => inputPdfRef.current?.click()} disabled={leyendoPdf}
               style={{ width: '100%', background: leyendoPdf ? '#f3f3f3' : '#fafafa', color: leyendoPdf ? '#aaa' : '#111', border: '1px dashed #d8d8d8', padding: '18px', fontSize: 13, cursor: leyendoPdf ? 'not-allowed' : 'pointer', marginBottom: 12 }}>
-              {leyendoPdf ? 'Leyendo PDF...' : pdfNombre ? `PDF cargado: ${pdfNombre}` : 'Subir carta de vinos en PDF'}
+              {leyendoPdf ? 'Leyendo archivo...' : pdfNombre ? `Archivo cargado: ${pdfNombre}` : 'Subir carta de vinos en PDF, JPG o PNG'}
             </button>
             {errorPdf && <p style={{ fontSize: 12, color: '#c07070', margin: '0 0 12px' }}>{errorPdf}</p>}
 
@@ -350,11 +350,11 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
                     {importando ? 'Guardando...' : `Guardar ${vinosImportar.filter(v => v.activo && !vinoDuplicado(v)).length}`}
                   </button>
                 </div>
-                <div style={{ border: '1px solid #f0f0f0', overflowX: 'auto' }}>
+                <div className={styles.importTable}>
                   {vinosImportar.map((vino, index) => {
                     const duplicado = vinoDuplicado(vino)
                     return (
-                      <div key={`${vino.nombre}-${index}`} style={{ display: 'grid', gridTemplateColumns: '28px 1.5fr 1fr 92px 1fr 70px 80px 80px', gap: 10, minWidth: 980, padding: '10px 12px', borderBottom: index < vinosImportar.length - 1 ? '1px solid #f8f8f8' : 'none', opacity: vino.activo && !duplicado ? 1 : 0.45 }}>
+                      <div key={`${vino.nombre}-${index}`} className={styles.importWineRow} style={{ borderBottom: index < vinosImportar.length - 1 ? '1px solid #f8f8f8' : 'none', opacity: vino.activo && !duplicado ? 1 : 0.45 }}>
                         <input type="checkbox" checked={vino.activo && !duplicado} disabled={duplicado} onChange={e => actualizarVinoImportar(index, { activo: e.target.checked })} style={{ marginTop: 8 }} />
                         <input value={vino.nombre} onChange={e => actualizarVinoImportar(index, { nombre: e.target.value })} placeholder="Vino" style={{ border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: 12, color: '#111', background: 'transparent' }} />
                         <input value={vino.bodega} onChange={e => actualizarVinoImportar(index, { bodega: e.target.value })} placeholder="Bodega" style={{ border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: 12, color: '#777', background: 'transparent' }} />
@@ -379,7 +379,7 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
 {editandoVino && (
   <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
     <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 24px' }}>Editando: {editandoVino.nombre}</p>
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 28px', marginBottom: 16 }}>
+    <div className={styles.wineFormGrid}>
       {[
         { label: 'Nombre *', key: 'nombre', placeholder: '' },
         { label: 'Bodega', key: 'bodega', placeholder: '' },
@@ -423,7 +423,7 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
       </div>
       <PerfilVino vino={editandoVino} onChange={setEditandoVino} />
     </div>
-    <div style={{ display: 'flex', gap: 8 }}>
+    <div className={styles.wineActions}>
       <button onClick={() => guardarEdicion(editandoVino)} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
         Guardar cambios
       </button>
@@ -437,7 +437,7 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
         {mostrarFormulario && (
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
             <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 24px' }}>Nuevo vino</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 28px', marginBottom: 16 }}>
+            <div className={styles.wineFormGrid}>
               {campo('Nombre *', 'nombre', 'Ej. Barbazul Tinto')}
               {campo('Bodega', 'bodega', 'Ej. Primitivo Quiles')}
               {campo('Región', 'region', 'Ej. Cádiz')}
@@ -478,9 +478,9 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
         )}
 
         {/* Lista vinos */}
-        <div style={{ background: '#fff', border: '1px solid #f0f0f0' }}>
+        <div className={styles.wineList}>
           {/* Cabecera columnas */}
-          <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr 80px 80px 60px 140px', gap: 12, padding: '12px 20px', borderBottom: '1px solid #f0f0f0' }}>
+          <div className={styles.wineListHeader}>
   {['Vino', 'Bodega · Región', 'Copa', 'Botella', 'Stock', ''].map(h => (
               <p key={h} style={{ fontSize: 10, color: '#ccc', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>{h}</p>
             ))}
@@ -492,12 +492,11 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
             </div>
           ) : (
             vinos.map((v, i) => (
-              <div key={v.id} style={{
-  display: 'grid', gridTemplateColumns: '3fr 2fr 80px 80px 60px 140px', gap: 12,
-                padding: '16px 20px', borderBottom: i < vinos.length - 1 ? '1px solid #f8f8f8' : 'none',
+              <div key={v.id} className={styles.wineListRow} style={{
+                borderBottom: i < vinos.length - 1 ? '1px solid #f8f8f8' : 'none',
                 opacity: v.activo ? 1 : 0.4
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className={styles.wineNameCell}>
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: tipoDot[v.tipo], flexShrink: 0 }} />
                   <div>
                     <p style={{ margin: 0, fontSize: 14, color: '#111' }}>{v.nombre}</p>
