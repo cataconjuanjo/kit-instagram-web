@@ -242,66 +242,40 @@
 
 .diagnosticList {
   display: grid;
-  gap: 1px;
-  background: #e6e2da;
 }
 
 .diagnosticItem {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 14px;
-  background: #fffaf3;
-  padding: 16px 20px;
+  padding: 14px 20px;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid rgba(255, 250, 243, 0.08);
+}
+
+.diagnosticItem:last-child {
+  border-bottom: none;
+}
+
+.diagnosticHigh {
+  border-left-color: #c0352e;
+}
+
+.diagnosticMid {
+  border-left-color: rgba(255, 250, 243, 0.2);
 }
 
 .diagnosticTitle {
   margin: 0;
-  color: #171416;
-  font-size: 14px;
-  font-weight: 780;
-}
-
-.diagnosticText {
-  margin: 6px 0 0;
-  color: #67615b;
-  font-size: 12px;
-  line-height: 1.55;
+  color: #fffaf3;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.3;
 }
 
 .diagnosticAction {
-  margin: 9px 0 0;
-  color: #531827;
+  margin: 5px 0 0;
+  color: rgba(255, 250, 243, 0.5);
   font-size: 12px;
-  font-weight: 800;
-}
-
-.level {
-  align-self: start;
-  border-radius: 8px;
-  padding: 5px 8px;
-  font-size: 10px;
-  font-weight: 850;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.levelHigh {
-  background: #531827;
-  color: #fffaf3;
-}
-
-.levelMedium {
-  background: #efe8d9;
-  color: #7b5b22;
-}
-
-.consultLabel {
-  margin: 8px 0 0;
-  color: #9b7430;
-  font-size: 10px;
-  font-weight: 850;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .empty {
@@ -498,11 +472,27 @@
   font-weight: 800;
 }
 
+.taskPanel {
+  margin-top: 10px;
+  background: #fffaf3;
+  border: 1px solid #dfddd6;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.taskPanelLabel {
+  margin: 0 0 10px;
+  color: #9b7430;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .taskList {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 0 20px 18px;
 }
 
 .taskLink {
@@ -510,13 +500,19 @@
   align-items: center;
   min-height: 30px;
   border: 1px solid #dfddd6;
-  border-radius: 8px;
-  background: #f8f7f3;
+  border-radius: 6px;
+  background: #f4f2ec;
   color: #4e4944;
-  padding: 5px 9px;
+  padding: 5px 10px;
   text-decoration: none;
   font-size: 11px;
   font-weight: 750;
+  transition: background 120ms, border-color 120ms;
+}
+
+.taskLink:hover {
+  background: #ede9e0;
+  border-color: #ccc8be;
 }
 
 .sectionSpace {

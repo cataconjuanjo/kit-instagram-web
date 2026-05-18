@@ -329,39 +329,34 @@ export default function DashboardHome() {
                 <div>
                   <p className={styles.eyebrow}>Diagnostico de carta</p>
                   <h2 className={styles.panelTitle}>Huecos entre vino, cocina y venta</h2>
-                  <p className={styles.panelSub}>Prioriza lo que afecta a venta sugerida, ticket medio y coherencia de la bodega.</p>
                 </div>
-                <span className={styles.badge}>{mejoras.length} alertas</span>
+                {mejoras.length > 0 && <span className={styles.badge}>{mejoras.length}</span>}
               </div>
 
               {mejoras.length > 0 ? (
                 <div className={styles.diagnosticList}>
                   {mejoras.map(mejora => (
-                    <article key={mejora.titulo} className={styles.diagnosticItem}>
-                      <div>
-                        <h3 className={styles.diagnosticTitle}>{mejora.titulo}</h3>
-                        <p className={styles.diagnosticText}>{mejora.desc}</p>
-                        <p className={styles.diagnosticAction}>{mejora.accion}</p>
-                        {mejora.consultoria && <p className={styles.consultLabel}>Requiere criterio de consultor</p>}
-                      </div>
-                      <span className={`${styles.level} ${mejora.nivel === 'alto' ? styles.levelHigh : styles.levelMedium}`}>
-                        {mejora.nivel}
-                      </span>
+                    <article key={mejora.titulo} className={`${styles.diagnosticItem} ${mejora.nivel === 'alto' ? styles.diagnosticHigh : styles.diagnosticMid}`}>
+                      <h3 className={styles.diagnosticTitle}>{mejora.titulo}</h3>
+                      <p className={styles.diagnosticAction}>{mejora.accion}</p>
                     </article>
                   ))}
                 </div>
               ) : (
                 <p className={styles.empty}>No hay alertas importantes ahora mismo.</p>
               )}
+            </div>
 
-              {tareasCalidad.length > 0 && (
+            {tareasCalidad.length > 0 && (
+              <div className={styles.taskPanel}>
+                <p className={styles.taskPanelLabel}>Acciones rápidas</p>
                 <div className={styles.taskList}>
                   {tareasCalidad.map(tarea => (
                     <Link key={tarea.texto} href={tarea.href} className={styles.taskLink}>{tarea.texto}</Link>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {cobertura.length > 0 && (
               <>
