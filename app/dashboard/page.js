@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import Link from 'next/link'
-import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail } from '../demo'
+import { getEffectiveRestaurantEmail } from '../demo'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -54,13 +54,6 @@ export default function DashboardHome() {
     cargar()
   }, [])
 
-  async function cerrarSesion() {
-    clearAdminRestaurantEmail()
-    clearDemoEmail()
-    await supabase.auth.signOut()
-    window.location.href = '/login'
-  }
-
   function guardarObjetivo(nuevoObjetivo) {
     setObjetivo(nuevoObjetivo)
     if (restaurante?.id) window.localStorage.setItem(`cartavinos_objetivo_${restaurante.id}`, nuevoObjetivo)
@@ -71,26 +64,6 @@ export default function DashboardHome() {
       <p style={{ fontSize: 12, letterSpacing: '0.15em', color: '#bbb' }}>CARGANDO</p>
     </div>
   )
-
-  const cardStyle = {
-    background: '#fff',
-    border: '1px solid #f0f0f0',
-    padding: '28px 24px',
-    cursor: 'pointer',
-    height: '100%',
-    boxSizing: 'border-box',
-  }
-
-  const iconBox = (color, iconColor, icon) => (
-    <div style={{ width: 52, height: 52, borderRadius: 8, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, color: iconColor }}>
-      {icon}
-    </div>
-  )
-
-  const hover = {
-    onMouseEnter: e => { e.currentTarget.style.borderColor = '#e0e0e0'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.04)' },
-    onMouseLeave: e => { e.currentTarget.style.borderColor = '#f0f0f0'; e.currentTarget.style.boxShadow = 'none' },
-  }
 
   const vinosActivos = vinos.filter(v => v.activo !== false)
   const tiposConteo = vinosActivos.reduce((acc, vino) => {
@@ -292,71 +265,6 @@ export default function DashboardHome() {
   const mejoras = diagnosticoCarta.slice(0, 6)
   const oportunidadesConsultoria = diagnosticoCarta.filter(item => item.consultoria)
 
-  const secciones = [
-    {
-      href: '/dashboard/vinos',
-      titulo: 'Carta de vinos',
-      desc: 'Gestiona tu lista, añade referencias y controla el stock',
-      stat: `${stats.referencias} referencias`,
-      color: '#E1F5EE', iconColor: '#0F6E56',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={26} height={26}>
-        <path d="M8 3h8l1 9a5 5 0 0 1-10 0L8 3z"/>
-        <line x1="7" y1="8" x2="17" y2="8"/>
-        <line x1="12" y1="17" x2="12" y2="21"/>
-        <line x1="8" y1="21" x2="16" y2="21"/>
-      </svg>
-    },
-    {
-      href: '/dashboard/platos',
-      titulo: 'Platos',
-      desc: 'Añade y organiza los platos del menú de cocina',
-      stat: `${stats.platos} platos activos`,
-      color: '#FAECE7', iconColor: '#993C1D',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={26} height={26}>
-        <circle cx="12" cy="12" r="9"/>
-        <path d="M12 3v9"/><path d="M8 12h8"/>
-        <path d="M5.2 17.8A8 8 0 0 0 12 21a8 8 0 0 0 6.8-3.2"/>
-      </svg>
-    },
-    {
-      href: '/dashboard/estadisticas',
-      titulo: 'Estadísticas',
-      desc: 'Escaneos QR, consultas al sommelier y tendencias',
-      stat: `${stats.escaneosTotales} escaneos totales`,
-      color: '#E6F1FB', iconColor: '#185FA5',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={26} height={26}>
-        <line x1="18" y1="20" x2="18" y2="10"/>
-        <line x1="12" y1="20" x2="12" y2="4"/>
-        <line x1="6" y1="20" x2="6" y2="14"/>
-      </svg>
-    },
-    {
-      href: '/dashboard/qr',
-      titulo: 'Mi QR',
-      desc: 'Descarga e imprime el código QR de tu carta',
-      stat: null,
-      color: '#EEEDFE', iconColor: '#534AB7',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={26} height={26}>
-        <rect x="3" y="3" width="7" height="7" rx="1"/>
-        <rect x="14" y="3" width="7" height="7" rx="1"/>
-        <rect x="3" y="14" width="7" height="7" rx="1"/>
-        <rect x="14" y="14" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/>
-        <rect x="14" y="18" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/>
-      </svg>
-    },
-    {
-      href: '/dashboard/personalizar',
-      titulo: 'Personalizar',
-      desc: 'Colores, logo y apariencia de tu carta pública',
-      stat: null,
-      color: '#FBEAF0', iconColor: '#993556',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={26} height={26}>
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    },
-  ]
-
   const estadoCarta = calidadGlobal >= 80 ? 'Lista para vender' : calidadGlobal >= 55 ? 'Casi lista' : 'Necesita criterio'
   const metricasPremium = [
     { label: 'Vinos activos', valor: stats.referencias, detalle: `${vinosPorCopa.length} por copa` },
@@ -377,47 +285,30 @@ export default function DashboardHome() {
   const consultoriaBody = encodeURIComponent(`Hola Juanjo,\n\nMe gustaria solicitar una consultoria para revisar la carta de vinos de ${restaurante?.nombre || 'mi restaurante'}.\n\nMe interesa especialmente:\n- Auditoria de bodega\n- Rediseno de carta de vinos\n- Ticket medio\n- Seleccion de proveedores o distribuidores\n\nGracias.`)
   const consultoriaHref = `mailto:${consultoriaEmail}?subject=${consultoriaSubject}&body=${consultoriaBody}`
 
-  const accesosPremium = [
-    { href: '/dashboard/vinos', titulo: 'Carta de vinos', texto: 'Referencias, precios, copa y stock', stat: `${stats.referencias} referencias` },
-    { href: '/dashboard/platos', titulo: 'Platos', texto: 'Contexto para maridaje y ticket', stat: `${stats.platos} activos` },
-    { href: '/dashboard/estadisticas', titulo: 'Estadisticas', texto: 'Escaneos, consultas y traccion', stat: `${stats.escaneosTotales} escaneos` },
-    { href: '/dashboard/seleccion', titulo: 'Seleccion destacada', texto: 'Vinos con narrativa propia', stat: 'Curadoria' },
-    { href: '/dashboard/personalizar', titulo: 'Marca del local', texto: 'Logo, color y presencia publica', stat: 'Identidad' },
-    { href: '/dashboard/qr', titulo: 'QR de sala', texto: 'Acceso fisico a la carta digital', stat: 'Operativa' },
-  ]
-
-  const dashboardPremium = true
-  if (dashboardPremium) return (
-    <main className={styles.shell}>
-      <header className={styles.topbar}>
-        <div className={styles.brandBlock}>
-          <p className={styles.eyebrow}>Panel de gestion</p>
-          <h1 className={styles.topTitle}>{restaurante?.nombre || 'Carta de vinos'}</h1>
-          <p className={styles.topSub}>{restaurante?.ciudad || 'Hospitality wine program'}</p>
-        </div>
-        <div className={styles.topActions}>
-          <a href={`/carta/${restaurante?.slug}`} target="_blank" className={styles.topLink}>Carta publica</a>
-          <a href={`/camarero/${restaurante?.slug}`} target="_blank" className={styles.topLink}>Modo camarero</a>
-          <button type="button" onClick={cerrarSesion} className={styles.topButton}>Salir</button>
-        </div>
-      </header>
-
+  return (
+    <main>
       <div className={styles.wrap}>
-        <section className={styles.summary}>
-          <div className={styles.heroPanel}>
-            <p className={styles.eyebrow}>Estrategia de vino</p>
-            <h2 className={styles.heroTitle}>Del vino correcto al vino que vende y emociona</h2>
-            <p className={styles.heroText}>
-              Un panel para leer carta, bodega y sala como una sola unidad: rentabilidad, coherencia, rotacion y experiencia del cliente.
-            </p>
-          </div>
-          <div className={styles.scorePanel}>
+        <section className={styles.scoreStrip}>
+          <div className={styles.scoreStripTop}>
             <div>
               <p className={styles.eyebrow}>Estado de carta</p>
-              <p className={styles.scoreNumber}>{calidadGlobal}%</p>
-              <p className={styles.scoreLabel}>{estadoCarta}</p>
+              <p className={styles.stripStatus}>{estadoCarta}</p>
             </div>
-            <p className={styles.scoreLabel}>Preparacion global: platos, vinos, maridaje y stock.</p>
+            <p className={styles.scoreNumber}>{calidadGlobal}%</p>
+          </div>
+          <div className={styles.checkGrid}>
+            {checksCalidad.map(check => (
+              <Link key={check.label} href={check.href} className={styles.checkItem}>
+                <div className={styles.checkRow}>
+                  <span className={styles.checkLabel}>{check.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: check.valor >= 80 ? '#5fa882' : check.valor >= 55 ? '#d4941a' : '#c0482a' }}>{check.valor}%</span>
+                </div>
+                <div style={{ height: 3, background: 'rgba(255,250,243,0.15)', overflow: 'hidden', borderRadius: 2, margin: '6px 0' }}>
+                  <div style={{ width: `${check.valor}%`, height: '100%', background: check.valor >= 80 ? '#5fa882' : check.valor >= 55 ? '#d4941a' : '#c0482a' }} />
+                </div>
+                <p className={styles.checkDetail}>{check.detalle}</p>
+              </Link>
+            ))}
           </div>
         </section>
 
@@ -547,223 +438,6 @@ export default function DashboardHome() {
           </aside>
         </section>
 
-        <section className={styles.quickGrid}>
-          {accesosPremium.map((item, index) => (
-            <Link key={item.href} href={item.href} className={`${styles.quickCard} ${index === 0 ? styles.quickCardDark : ''}`}>
-              <div>
-                <p className={styles.moduleLabel}>Modulo</p>
-                <h3 className={styles.quickTitle}>{item.titulo}</h3>
-                <p className={styles.quickText}>{item.texto}</p>
-              </div>
-              <div className={styles.quickFooter}>
-                <p className={styles.quickStat}>{item.stat}</p>
-                <span className={styles.moduleArrow}>Abrir pantalla -&gt;</span>
-              </div>
-            </Link>
-          ))}
-        </section>
-      </div>
-    </main>
-  )
-
-  return (
-    <main style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'system-ui, sans-serif' }}>
-
-      {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #f0f0f0', padding: '0 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 64 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 1, height: 32, background: '#e8e8e8' }} />
-          <div>
-            <p style={{ fontSize: 15, fontWeight: 400, color: '#111', margin: 0, fontFamily: 'Georgia, serif' }}>{restaurante?.nombre}</p>
-            <p style={{ fontSize: 11, color: '#bbb', margin: 0, letterSpacing: '0.05em' }}>{restaurante?.ciudad}</p>
-          </div>
-        </div>
-        <button onClick={cerrarSesion} style={{ background: 'none', border: '1px solid #e8e8e8', color: '#aaa', padding: '6px 16px', borderRadius: 0, cursor: 'pointer', fontSize: 12, letterSpacing: '0.05em' }}>
-          Salir
-        </button>
-      </div>
-
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '48px 32px' }}>
-
-        {/* Bienvenida */}
-        <div style={{ marginBottom: 40 }}>
-          <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Panel de gestión</p>
-          <h1 style={{ fontSize: 28, fontWeight: 300, color: '#111', margin: 0, fontFamily: 'Georgia, serif' }}>{restaurante?.nombre}</h1>
-        </div>
-
-        <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '24px', marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, marginBottom: 22 }}>
-            <div>
-              <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 8px' }}>Estado de la carta</p>
-              <p style={{ fontSize: 20, color: '#111', margin: 0, fontFamily: 'Georgia, serif', fontWeight: 300 }}>
-                {calidadGlobal >= 80 ? 'Lista para vender' : calidadGlobal >= 55 ? 'Casi lista' : 'Necesita limpieza'}
-              </p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontSize: 36, color: calidadGlobal >= 80 ? '#0F6E56' : calidadGlobal >= 55 ? '#BA7517' : '#993C1D', margin: 0, fontFamily: 'Georgia, serif', fontWeight: 300 }}>{calidadGlobal}%</p>
-              <p style={{ fontSize: 11, color: '#bbb', margin: 0 }}>preparación global</p>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14, marginBottom: tareasCalidad.length ? 20 : 0 }}>
-            {checksCalidad.map(check => (
-              <Link key={check.label} href={check.href} style={{ textDecoration: 'none' }}>
-                <div style={{ border: '1px solid #f0f0f0', padding: 14, height: '100%', boxSizing: 'border-box' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <p style={{ fontSize: 12, color: '#111', margin: 0, fontWeight: 500 }}>{check.label}</p>
-                    <p style={{ fontSize: 12, color: check.valor >= 80 ? '#0F6E56' : check.valor >= 55 ? '#BA7517' : '#993C1D', margin: 0 }}>{check.valor}%</p>
-                  </div>
-                  <div style={{ height: 5, background: '#f1f1f1', overflow: 'hidden', marginBottom: 8 }}>
-                    <div style={{ width: `${check.valor}%`, height: '100%', background: check.valor >= 80 ? '#0F6E56' : check.valor >= 55 ? '#BA7517' : '#993C1D' }} />
-                  </div>
-                  <p style={{ fontSize: 11, color: '#aaa', margin: 0, lineHeight: 1.4 }}>{check.detalle}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          {tareasCalidad.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {tareasCalidad.map(tarea => (
-                <Link key={tarea.texto} href={tarea.href} style={{ textDecoration: 'none' }}>
-                  <span style={{ display: 'inline-block', border: '1px solid #e8e8e8', color: '#777', background: '#fafafa', borderRadius: 20, padding: '7px 11px', fontSize: 11 }}>
-                    {tarea.texto}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '24px', marginBottom: 24 }}>
-          <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 14px' }}>Objetivo comercial</p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {objetivos.map(item => (
-              <button key={item.id} onClick={() => guardarObjetivo(item.id)} style={{
-                background: objetivo === item.id ? '#111' : '#fafafa',
-                color: objetivo === item.id ? '#fff' : '#888',
-                border: '1px solid #e8e8e8',
-                padding: '9px 14px',
-                borderRadius: 8,
-                fontSize: 12,
-                cursor: 'pointer'
-              }}>
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {oportunidadesConsultoria.length > 0 && (
-          <div style={{ background: '#fff', border: '1px solid #eadfcb', padding: '20px 24px', marginBottom: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18 }}>
-              <div>
-                <p style={{ fontSize: 10, color: '#BA7517', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 8px' }}>Oportunidad de consultoría</p>
-                <p style={{ fontSize: 18, color: '#111', margin: '0 0 6px', fontFamily: 'Georgia, serif', fontWeight: 300 }}>
-                  La carta pide criterio profesional
-                </p>
-                <p style={{ fontSize: 12, color: '#777', lineHeight: 1.6, margin: 0 }}>
-                  Hay decisiones de compra o reposicionamiento que la app detecta, pero conviene resolver con una propuesta de selección: estilos, rango de precio, margen y platos objetivo.
-                </p>
-              </div>
-              <span style={{ fontSize: 12, color: '#111', background: '#F6E7CC', borderRadius: 20, padding: '7px 11px', whiteSpace: 'nowrap' }}>
-                {oportunidadesConsultoria.length} oportunidades
-              </span>
-            </div>
-          </div>
-        )}
-
-        {cobertura.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(cobertura.length, 4)}, minmax(0, 1fr))`, gap: 1, background: '#f0f0f0', border: '1px solid #f0f0f0', marginBottom: 24 }}>
-            {cobertura.map(item => {
-              const suficiente = item.vinos >= Math.min(item.platos, 3)
-              return (
-                <div key={item.label} style={{ background: '#fff', padding: '18px 16px' }}>
-                  <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 8px' }}>{item.label}</p>
-                  <p style={{ fontSize: 24, fontWeight: 300, color: '#111', margin: 0, fontFamily: 'Georgia, serif' }}>{item.platos}</p>
-                  <p style={{ fontSize: 11, color: suficiente ? '#4A8C6F' : '#BA7517', margin: '6px 0 0' }}>
-                    {item.vinos} vinos candidatos detectados
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {mejoras.length > 0 && (
-          <div style={{ background: '#111', padding: '24px', marginBottom: 32 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 16 }}>
-              <div>
-                <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 6px' }}>Diagnóstico de carta</p>
-                <p style={{ fontSize: 18, color: '#fff', margin: 0, fontFamily: 'Georgia, serif', fontWeight: 300 }}>Huecos entre cocina, vino y venta</p>
-              </div>
-              <span style={{ fontSize: 11, color: '#111', background: '#fff', borderRadius: 20, padding: '6px 10px', whiteSpace: 'nowrap' }}>
-                {mejoras.length} alertas
-              </span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-              {mejoras.map(mejora => (
-                <div key={mejora.titulo} style={{ border: '1px solid rgba(255,255,255,0.1)', padding: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <p style={{ fontSize: 14, color: '#fff', margin: 0, fontWeight: 500 }}>{mejora.titulo}</p>
-                    <span style={{ fontSize: 9, color: mejora.nivel === 'alto' ? '#111' : '#ddd', background: mejora.nivel === 'alto' ? '#fff' : '#333', borderRadius: 20, padding: '3px 7px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      {mejora.nivel}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', margin: 0, lineHeight: 1.6 }}>{mejora.desc}</p>
-                  <p style={{ fontSize: 11, color: '#fff', margin: '12px 0 0', lineHeight: 1.4 }}>{mejora.accion}</p>
-                  {mejora.consultoria && (
-                    <p style={{ fontSize: 10, color: '#C4A55A', margin: '8px 0 0', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Requiere criterio de consultor</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tarjetas */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-
-          {secciones.map(s => (
-            <Link key={s.href} href={s.href} style={{ textDecoration: 'none' }}>
-              <div style={cardStyle} {...hover}>
-                {iconBox(s.color, s.iconColor, s.icon)}
-                <p style={{ fontSize: 15, fontWeight: 500, color: '#111', margin: '0 0 4px' }}>{s.titulo}</p>
-                <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 10px', lineHeight: 1.6 }}>{s.desc}</p>
-                {s.stat && <p style={{ fontSize: 12, fontWeight: 500, color: '#555', margin: 0 }}>{s.stat}</p>}
-              </div>
-            </Link>
-          ))}
-
-          {/* Ver carta pública */}
-          <a href={`/carta/${restaurante?.slug}`} target="_blank" style={{ textDecoration: 'none' }}>
-            <div style={cardStyle} {...hover}>
-              {iconBox('#E1F5EE', '#0F6E56',
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={26} height={26}>
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                  <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                </svg>
-              )}
-              <p style={{ fontSize: 15, fontWeight: 500, color: '#111', margin: '0 0 4px' }}>Ver carta pública</p>
-              <p style={{ fontSize: 12, color: '#aaa', margin: 0, lineHeight: 1.6 }}>Así la ven tus clientes al escanear el QR</p>
-            </div>
-          </a>
-
-          {/* Modo camarero */}
-          <a href={`/camarero/${restaurante?.slug}`} target="_blank" style={{ textDecoration: 'none' }}>
-            <div style={cardStyle} {...hover}>
-              {iconBox('#F1EFE8', '#5F5E5A',
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={26} height={26}>
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
-              )}
-              <p style={{ fontSize: 15, fontWeight: 500, color: '#111', margin: '0 0 4px' }}>Modo camarero</p>
-              <p style={{ fontSize: 12, color: '#aaa', margin: 0, lineHeight: 1.6 }}>Vista simplificada para el personal de sala</p>
-            </div>
-          </a>
-
-        </div>
       </div>
     </main>
   )
