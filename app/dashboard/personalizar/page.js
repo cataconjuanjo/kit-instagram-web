@@ -695,7 +695,6 @@ export default function Personalizar() {
                 minHeight: 360,
                 borderRadius: 18,
                 overflow: 'hidden',
-                position: 'relative',
                 display: 'grid',
                 alignContent: 'center',
                 justifyItems: 'center',
@@ -703,24 +702,15 @@ export default function Personalizar() {
                 padding: 24,
                 backgroundColor: colorFondo,
                 boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
+                ...(hubFondoUrl ? {
+                  backgroundImage: `linear-gradient(rgba(0,0,0,${hubOverlay}), rgba(0,0,0,${hubOverlay})), url(${hubFondoUrl})`,
+                  backgroundSize: `${hubFondoZoom}%`,
+                  backgroundPosition: `${hubFondoX}% ${hubFondoY}%`,
+                  backgroundRepeat: 'no-repeat',
+                } : {}),
               }}
             >
-              {hubFondoUrl && (
-                <div
-                  aria-hidden="true"
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    backgroundImage: `linear-gradient(rgba(0,0,0,${hubOverlay}), rgba(0,0,0,${hubOverlay})), url(${hubFondoUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: `${hubFondoX}% ${hubFondoY}%`,
-                    backgroundRepeat: 'no-repeat',
-                    transform: `scale(${hubFondoZoom / 100})`,
-                    transformOrigin: 'center',
-                    pointerEvents: 'none',
-                  }}
-                />
-              )}
+              <div style={{ display: 'contents' }}>
               {hubMostrarLogo && (logoUrl ? (
                 <img src={logoUrl} alt="Logo" style={{ width: 68, height: 68, objectFit: 'contain', borderRadius: 999, background: colorPrimario, padding: 8, boxSizing: 'border-box' }} />
               ) : (
@@ -751,6 +741,7 @@ export default function Personalizar() {
                   {label}
                 </div>
               ))}
+              </div>
             </div>
           </div>
         </div>
