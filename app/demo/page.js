@@ -33,7 +33,7 @@ export default function DemoLoDeCarmen() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 36 }}>
           <Link href="/carta/carmen" style={{ textDecoration: 'none' }}>
-            <DemoCard titulo="Carta pública" desc="Vista cliente con platos, vinos y sommelier." />
+            <DemoCard titulo="Carta pública" desc="Vista cliente con platos, vinos y guía de maridaje." />
           </Link>
           <Link href="/camarero/carmen?demo=1" style={{ textDecoration: 'none' }}>
             <DemoCard titulo="Modo camarero" desc="Entra sin PIN y abre una ficha de venta." destacado />

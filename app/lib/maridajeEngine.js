@@ -71,7 +71,7 @@ function necesidadesEstructurales(consulta) {
     n.acidezMin = 4; n.taninosMax = 2; n.cuerpoMax = 3
   }
   if (contexto === 'carne') {
-    // WSET L3: la grasa suaviza el tanino, la proteina se une al tanino.
+    // WSET L3: la grasa suaviza el tanino, la proteína se une al tanino.
     // Tanino maduro es el eje principal; acidez limpia entre bocados; cuerpo suficiente para igualar intensidad.
     n.taninosMin = 3
     n.cuerpoMin = 3
@@ -169,9 +169,9 @@ export function criteriosEstructurales(consulta = '') {
 
   if (contexto === 'queso') {
     rasgos.push('grasa lactea', 'sal', 'umami')
-    buscar.push('acidez', 'salinidad', 'flor/oxidacion o dulzor si hay curacion alta')
+    buscar.push('acidez', 'salinidad', 'flor/oxidación o dulzor si hay curación alta')
     evitar.push('tanino marcado por defecto')
-    apuntes.push('En queso el color no manda: textura, sal y curacion pesan mas que elegir tinto por costumbre.')
+    apuntes.push('En queso el color no manda: textura, sal y curación pesan más que elegir tinto por costumbre.')
   }
   if (contexto === 'fritura' || metodo.frito) {
     rasgos.push('grasa', 'crujiente', 'sal')
@@ -180,12 +180,12 @@ export function criteriosEstructurales(consulta = '') {
     apuntes.push('La fritura pide limpieza: acidez, salinidad o burbuja dejan la boca preparada para otro bocado.')
   }
   if (contexto === 'pescado') {
-    rasgos.push('proteina de mar')
+    rasgos.push('proteína de mar')
     buscar.push('frescura', 'salinidad', 'acidez')
     evitar.push('tanino dominante')
   }
   if (contexto === 'carne') {
-    rasgos.push('intensidad', metodo.brasa ? 'tostado/brasa' : 'sabor carnico')
+    rasgos.push('intensidad', metodo.brasa ? 'tostado/brasa' : 'sabor cárnico')
     buscar.push('fruta suficiente', 'acidez', metodo.brasa ? 'crianza integrada' : 'estructura sin secar')
     evitar.push('vino sin cuerpo si el plato es intenso')
   }
@@ -196,14 +196,14 @@ export function criteriosEstructurales(consulta = '') {
   }
   if (metodo.vegetalVerde) {
     rasgos.push('vegetal verde')
-    buscar.push('perfil citrico o vegetal', 'frescura')
+    buscar.push('perfil cítrico o vegetal', 'frescura')
     evitar.push('tinto con tanino y madera')
   }
   if (metodo.picante) {
     rasgos.push('picante')
     buscar.push('alcohol moderado', 'frescura', 'ligero dulzor si procede')
     evitar.push('alcohol alto', 'tanino seco')
-    apuntes.push('El picante sube la sensacion de alcohol y tanino; mejor frescura y amabilidad.')
+    apuntes.push('El picante sube la sensación de alcohol y tanino; mejor frescura y amabilidad.')
   }
   if (metodo.umami || metodo.setasTrufa) {
     rasgos.push('umami')
@@ -212,18 +212,18 @@ export function criteriosEstructurales(consulta = '') {
     apuntes.push('El umami endurece el vino: conviene fruta, salinidad o textura para compensar.')
   }
   if (metodo.dulce) {
-    rasgos.push('dulzor/reduccion')
-    buscar.push('fruta madura', 'oxidacion controlada', 'acidez')
+    rasgos.push('dulzor/reducción')
+    buscar.push('fruta madura', 'oxidación controlada', 'acidez')
     evitar.push('vino muy seco y austero')
-    apuntes.push('El dulzor del plato hace que el vino parezca mas duro y menos afrutado.')
+    apuntes.push('El dulzor del plato hace que el vino parezca más duro y menos afrutado.')
   }
   if (metodo.frio) {
-    rasgos.push('servicio frio')
-    buscar.push('tension', 'aroma nitido', 'salinidad')
+    rasgos.push('servicio frío')
+    buscar.push('tensión', 'aroma nítido', 'salinidad')
   }
 
   if (!apuntes.length) {
-    apuntes.push('El criterio comun cruza Papilas con estructura WSET: dulzor, acidez, tanino, cuerpo, umami, sal, grasa, salsa y tecnica del plato.')
+    apuntes.push('El criterio común cruza Papilas con estructura WSET: dulzor, acidez, tanino, cuerpo, umami, sal, grasa, salsa y técnica del plato.')
   }
 
   return {
@@ -298,24 +298,38 @@ function capitulosParaConsulta(consultaNormalizada) {
 function compatibilidadContexto(vino, contexto, consultaNormalizada) {
   const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
   const esTawnyOPorto = textoVino.includes('tawny') || textoVino.includes('porto') || textoVino.includes('oporto')
+  const esPx = textoVino.includes('pedro ximenez') || textoVino.includes(' px ') || textoVino.includes('px,') || textoVino.includes('alvear px')
+  const esDulceOxidativo = vino.tipo === 'dulce' || esPx || esTawnyOPorto
   const quesoTrucadoParaTinto = ['clavo', 'olivada', 'tomate seco', 'tomates secos'].some(t => consultaNormalizada.includes(t))
   const metodo = metodosPlato(consultaNormalizada)
+  const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
+    'postre', 'tarta', 'helado', 'brownie', 'chocolate', 'queso azul', 'azul',
+    'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
+  ].some(t => consultaNormalizada.includes(t))
+
+  if (esDulceOxidativo && !contextoDulcePermitido) {
+    return {
+      compatible: false,
+      penalizacion: 85,
+      razon: 'PX, tawny y vinos dulces quedan reservados para postres, quesos o platos claramente dulces; en platos salados normales conviene una opción seca.'
+    }
+  }
 
   if (contexto === 'queso' && vino.tipo === 'tinto' && !quesoTrucadoParaTinto) {
-    return { compatible: false, penalizacion: 80, razon: 'En quesos se priorizan blancos, finos/manzanillas, rosados, dulces u oxidativos; el tinto queda como excepcion si el acompanamiento lo justifica.' }
+    return { compatible: false, penalizacion: 80, razon: 'En quesos se priorizan blancos, finos/manzanillas, rosados, dulces u oxidativos; el tinto queda como excepción si el acompañamiento lo justifica.' }
   }
 
   // Carne roja potente: el blanco no es la lectura correcta según WSET L3
-  // (la grasa y la proteina de la carne interactuan con el tanino, no con la acidez del blanco)
-  // Excepciones: salsas cremosas/gratinadas, servicio frio, o preparaciones muy suaves
+  // (la grasa y la proteína de la carne interactúan con el tanino, no con la acidez del blanco)
+  // Excepciones: salsas cremosas/gratinadas, servicio frío, o preparaciones muy suaves
   if (contexto === 'carne' && vino.tipo === 'blanco' && !metodo.gratinado && !metodo.frio) {
-    return { compatible: false, penalizacion: 75, razon: 'Para carne roja la grasa infiltrada suaviza el tanino y la proteina se une a el; el blanco no tiene esa interaccion estructural. Excepciones: salsas cremosas o gratinados.' }
+    return { compatible: false, penalizacion: 75, razon: 'Para carne roja la grasa infiltrada suaviza el tanino y la proteína se une a él; el blanco no tiene esa interacción estructural. Excepciones: salsas cremosas o gratinados.' }
   }
   if (contexto === 'carne' && vino.tipo === 'espumoso' && !metodo.frio && !metodo.frito) {
     return { compatible: false, penalizacion: 50, razon: 'El espumoso no es la primera lectura para carne roja intensa.' }
   }
   if (contexto === 'fritura') {
-    if (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto) return { compatible: false, penalizacion: 90, razon: 'Para fritura conviene tension, salinidad o burbuja; tinto potente, dulce o tawny no es la primera lectura.' }
+    if (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto) return { compatible: false, penalizacion: 90, razon: 'Para fritura conviene tensión, salinidad o burbuja; tinto potente, dulce o tawny no es la primera lectura.' }
     if (!['generoso', 'espumoso', 'blanco', 'rosado'].includes(vino.tipo)) return { compatible: false, penalizacion: 50, razon: 'Para fritura se priorizan estilos frescos, salinos o con burbuja.' }
   }
   if (contexto === 'aperitivo' && (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto)) {
@@ -323,8 +337,8 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
   }
   if (contexto === 'pescado') {
     const tintoJustificado = metodo.brasa || metodo.ahumado || metodo.setasTrufa || metodo.dulce
-    if (vino.tipo === 'tinto' && !tintoJustificado) return { compatible: false, penalizacion: 85, razon: 'En pescado sin brasa, ahumado, setas/trufa o reduccion intensa, se priorizan blancos, espumosos, rosados o generosos secos.' }
-    if ((consultaNormalizada.includes('salmon') || consultaNormalizada.includes('bacalao')) && metodo.vegetalVerde && vino.tipo === 'tinto') return { compatible: false, penalizacion: 90, razon: 'Con pescado y verdura verde, frescor y perfil vegetal pesan mas que el tinto.' }
+    if (vino.tipo === 'tinto' && !tintoJustificado) return { compatible: false, penalizacion: 85, razon: 'En pescado sin brasa, ahumado, setas/trufa o reducción intensa, se priorizan blancos, espumosos, rosados o generosos secos.' }
+    if ((consultaNormalizada.includes('salmon') || consultaNormalizada.includes('bacalao')) && metodo.vegetalVerde && vino.tipo === 'tinto') return { compatible: false, penalizacion: 90, razon: 'Con pescado y verdura verde, frescor y perfil vegetal pesan más que el tinto.' }
     if ((metodo.gratinado || metodo.frito) && (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto)) return { compatible: false, penalizacion: 90, razon: 'El gratinado, alioli o fritura pide acidez, salinidad o burbuja; evita tintos potentes y vinos dulces.' }
   }
   return { compatible: true, penalizacion: 0 }
@@ -356,7 +370,7 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
   const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
   const compatibilidad = compatibilidadContexto(vino, contexto, consultaNormalizada)
   let score = 0
-  let motivo = 'busca afinidad aromatica y estructural con el plato'
+  let motivo = 'busca afinidad aromática y estructural con el plato'
   let fuente = 'Papilas + estructura WSET'
 
   matchesKb.forEach(match => {
@@ -395,7 +409,11 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
   if (metodo.vegetalVerde && ['blanco', 'generoso', 'espumoso'].includes(vino.tipo)) score += 5
   if (metodo.vegetalVerde && ['sauvignon', 'verdejo', 'albari', 'riesling'].some(t => textoVino.includes(t))) score += 8
   if (metodo.setasTrufa && contexto === 'pescado' && ['tinto', 'blanco'].includes(vino.tipo)) score += 4
-  if (metodo.dulce && ['dulce', 'generoso'].includes(vino.tipo)) score += 4
+  const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
+    'postre', 'tarta', 'helado', 'brownie', 'chocolate', 'queso azul', 'azul',
+    'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
+  ].some(t => consultaNormalizada.includes(t))
+  if (metodo.dulce && contextoDulcePermitido && ['dulce', 'generoso'].includes(vino.tipo)) score += 4
   if (metodo.picante && ['perfil fresco', 'floral', 'dulce', 'baja graduacion'].some(t => textoVino.includes(t))) score += 5
   if (contexto === 'queso' && ['oxidativo', 'dulce', 'salino', 'floral', 'alta acidez'].some(t => textoVino.includes(t))) score += 6
   if ((contexto === 'aperitivo' || metodo.frio) && ['perfil fresco', 'alta acidez', 'salino', 'mineral', 'floral'].some(t => textoVino.includes(t))) score += 5
@@ -429,7 +447,7 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
   score -= compatibilidad.penalizacion
   if (!compatibilidad.compatible) {
     motivo = compatibilidad.razon
-    fuente = 'Restriccion compartida del KB'
+      fuente = 'Restricción compartida del KB'
   }
 
   return { vino, score: score + (Math.min(precioBotella(vino), 80) / 80), motivo, fuente, compatible: compatibilidad.compatible }
@@ -482,8 +500,8 @@ export function lecturaMesa(consultas = []) {
     rasgos: unique(lecturas.flatMap(item => item.rasgos || []), 8),
     buscar: unique(lecturas.flatMap(item => item.buscar || []), 8),
     evitar: unique(lecturas.flatMap(item => item.evitar || []), 7),
-    frase: `Botella puente para ${consultas.length} platos: debe limpiar los entrantes y sostener el plato mas intenso sin imponerse.`,
-    lectura: 'La recomendacion se calcula por compatibilidad transversal, no por el plato que mas grita.',
+    frase: `Botella puente para ${consultas.length} platos: debe limpiar los entrantes y sostener el plato más intenso sin imponerse.`,
+    lectura: 'La recomendación se calcula por compatibilidad transversal, no por el plato que más grita.',
   }
 }
 
@@ -503,7 +521,7 @@ function lecturaConsulta(consulta) {
   }
   return {
     ...estructural,
-    frase: 'Busco afinidad aromatica y equilibrio estructural con el ingrediente dominante, la salsa y la tecnica.',
+    frase: 'Busco afinidad aromática y equilibrio estructural con el ingrediente dominante, la salsa y la técnica.',
   }
 }
 
@@ -514,13 +532,13 @@ export function resumenAnalisisParaPrompt(analisis) {
   }).join('\n')
 
   return [
-    'Analisis interno compartido entre carta publica y modo camarero:',
+    'Análisis interno compartido entre carta pública y modo camarero:',
     analisis.lectura?.frase,
     analisis.lectura?.lectura,
     analisis.lectura?.rasgos?.length ? `Rasgos del plato o mesa: ${analisis.lectura.rasgos.join(', ')}.` : '',
     analisis.lectura?.buscar?.length ? `Buscar en el vino: ${analisis.lectura.buscar.join(', ')}.` : '',
     analisis.lectura?.evitar?.length ? `Evitar: ${analisis.lectura.evitar.join(', ')}.` : '',
     candidatos ? `Candidatos priorizados por Papilas/KB/WSET:\n${candidatos}` : '',
-    'Usa estos candidatos como preferencia fuerte. Solo cambia si tu razonamiento estructural lo justifica, y nunca recomiendes vinos que no esten en la carta real.',
+    'Usa estos candidatos como preferencia fuerte. Solo cambia si tu razonamiento estructural lo justifica, y nunca recomiendes vinos que no estén en la carta real.',
   ].filter(Boolean).join('\n')
 }

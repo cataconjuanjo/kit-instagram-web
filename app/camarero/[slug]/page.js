@@ -35,7 +35,6 @@ export default function Camarero({ params }) {
   const [mostrarPlatosVenta, setMostrarPlatosVenta] = useState(false)
   const [tipoVinoAbierto, setTipoVinoAbierto] = useState(null)
 
-  const PIN = '1234'
   const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30' }
   const tipoLabel = { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja' }
   const tipoPlural = { tinto: 'Tintos', blanco: 'Blancos', rosado: 'Rosados', espumoso: 'Espumosos', generoso: 'Generosos', dulce: 'Dulces', naranja: 'Naranjas' }
@@ -84,7 +83,8 @@ export default function Camarero({ params }) {
   }, [])
 
   function comprobarPin() {
-    if (pin === PIN) { setAutenticado(true); setErrorPin(false) }
+    const pinConfigurado = String(restaurante?.camarero_pin || process.env.NEXT_PUBLIC_CAMARERO_FALLBACK_PIN || '').trim()
+    if (pinConfigurado && pin === pinConfigurado) { setAutenticado(true); setErrorPin(false) }
     else setErrorPin(true)
   }
 
@@ -316,12 +316,12 @@ export default function Camarero({ params }) {
       evitar.push('tintos potentes', 'vinos dulces')
     }
     if (contexto === 'pescado') {
-      rasgos.push('proteina de mar')
+      rasgos.push('proteína de mar')
       buscar.push('frescura', 'acidez', 'perfil salino')
       evitar.push('tanino marcado')
     }
     if (contexto === 'carne') {
-      rasgos.push('intensidad', metodo.brasa ? 'tostado/brasa' : 'sabor carnico')
+      rasgos.push('intensidad', metodo.brasa ? 'tostado/brasa' : 'sabor cárnico')
       buscar.push(metodo.brasa ? 'estructura y notas tostadas' : 'fruta, cuerpo y buena acidez')
       evitar.push('vinos demasiado ligeros si el plato es intenso')
     }
@@ -331,7 +331,7 @@ export default function Camarero({ params }) {
     }
     if (metodo.vegetalVerde) {
       rasgos.push('vegetal verde')
-      buscar.push('perfil vegetal o citrico')
+      buscar.push('perfil vegetal o cítrico')
       evitar.push('madera dominante')
     }
     if (metodo.picante) {
@@ -341,22 +341,22 @@ export default function Camarero({ params }) {
     }
     if (metodo.setasTrufa) {
       rasgos.push('terroso')
-      buscar.push('evolucion, umami o textura')
+      buscar.push('evolución, umami o textura')
     }
     if (metodo.dulce) {
-      rasgos.push('dulzor/reduccion')
-      buscar.push('volumen', 'oxidacion controlada o dulzor compatible')
+      rasgos.push('dulzor/reducción')
+      buscar.push('volumen', 'oxidación controlada o dulzor compatible')
     }
 
     const frase = contexto === 'queso'
-      ? 'Aqui no venderia tinto por defecto: primero miraria textura, curacion y acompanamiento.'
+      ? 'Aquí no vendería tinto por defecto: primero miraría textura, curación y acompañamiento.'
       : contexto === 'pescado' && metodo.vegetalVerde
-        ? 'Lo venderia desde la frescura: el vino debe acompanar la grasa del pescado sin pelearse con el vegetal.'
+        ? 'Lo vendería desde la frescura: el vino debe acompañar la grasa del pescado sin pelearse con el vegetal.'
         : contexto === 'fritura' || metodo.frito
-          ? 'Lo venderia desde la limpieza: algo que corte grasa y deje la boca lista para otro bocado.'
+          ? 'Lo vendería desde la limpieza: algo que corte grasa y deje la boca lista para otro bocado.'
           : contexto === 'carne'
-            ? 'Lo venderia desde la intensidad del plato y, si hay brasa, desde la afinidad con notas tostadas.'
-            : 'Lo venderia buscando afinidad aromatica con el ingrediente dominante y la salsa.'
+            ? 'Lo vendería desde la intensidad del plato y, si hay brasa, desde la afinidad con notas tostadas.'
+            : 'Lo vendería buscando afinidad aromática con el ingrediente dominante y la salsa.'
 
     return {
       rasgos: [...new Set([...rasgos, ...(estructural.rasgos || [])])].slice(0, 7),
@@ -442,9 +442,16 @@ export default function Camarero({ params }) {
   }
 
   function precioMedioVinosVenta() {
-    const disponibles = vinos.filter(v => v.activo !== false && v.stock !== 0 && precioBotella(v) > 0)
+    const disponibles = vinos.filter(esVinoElegibleParaObjetivo)
     if (!disponibles.length) return 28
     return disponibles.reduce((sum, vino) => sum + precioBotella(vino), 0) / disponibles.length
+  }
+
+  function esVinoElegibleParaObjetivo(vino) {
+    if (vino.activo === false || vino.stock === 0 || precioBotella(vino) <= 0) return false
+    if (objetivoVenta === 'copas' && !(Number(vino.precio_copa) > 0)) return false
+    if (objetivoVenta === 'local' && !esVinoDeZona(vino)) return false
+    return true
   }
 
   function lecturaMesaVenta() {
@@ -458,8 +465,8 @@ export default function Camarero({ params }) {
       rasgos: unir('rasgos'),
       buscar: unir('buscar'),
       evitar: unir('evitar'),
-      frase: `Buscamos una botella puente para ${consultas.length} platos: suficiente frescura para los entrantes y estructura para el plato mas intenso.`,
-      lectura: `${rangoBotellaParaTicket(ticketMesaVenta(), precioMedioVinosVenta()).lectura} La recomendacion no optimiza un plato aislado, sino el conjunto.`,
+      frase: `Buscamos una botella puente para ${consultas.length} platos: suficiente frescura para los entrantes y estructura para el plato más intenso.`,
+      lectura: `${rangoBotellaParaTicket(ticketMesaVenta(), precioMedioVinosVenta()).lectura} La recomendación no optimiza un plato aislado, sino el conjunto.`,
     }
   }
 
@@ -469,19 +476,33 @@ export default function Camarero({ params }) {
   function compatibilidadContexto(vino, contexto, consultaNormalizada) {
     const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
     const esTawnyOPorto = textoVino.includes('tawny') || textoVino.includes('porto') || textoVino.includes('oporto')
+    const esPx = textoVino.includes('pedro ximenez') || textoVino.includes(' px ') || textoVino.includes('px,') || textoVino.includes('alvear px')
+    const esDulceOxidativo = vino.tipo === 'dulce' || esPx || esTawnyOPorto
     const quesoTrucadoParaTinto = ['clavo', 'olivada', 'tomate seco', 'tomates secos'].some(t => consultaNormalizada.includes(t))
     const metodo = metodosPlato(consultaNormalizada)
+    const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
+      'postre', 'tarta', 'helado', 'brownie', 'chocolate', 'queso azul', 'azul',
+      'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
+    ].some(t => consultaNormalizada.includes(t))
+
+    if (esDulceOxidativo && !contextoDulcePermitido) {
+      return {
+        compatible: false,
+        penalizacion: 85,
+        razon: 'PX, tawny y vinos dulces quedan reservados para postres, quesos o platos claramente dulces; en platos salados normales conviene una opción seca.'
+      }
+    }
 
     if (contexto === 'queso') {
       if (vino.tipo === 'tinto' && !quesoTrucadoParaTinto) {
-        return { compatible: false, penalizacion: 80, razon: 'En quesos, el KB prioriza blancos, finos/manzanillas, rosados, dulces y oportos; el tinto queda como excepcion si el queso esta trucado.' }
+        return { compatible: false, penalizacion: 80, razon: 'En quesos, el KB prioriza blancos, finos/manzanillas, rosados, dulces y oportos; el tinto queda como excepción si el queso está trucado.' }
       }
       return { compatible: true, penalizacion: 0 }
     }
 
     if (contexto === 'fritura') {
       if (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto) {
-        return { compatible: false, penalizacion: 90, razon: 'Para fritura conviene tension, salinidad o burbuja; un tinto potente o un tawny no es la primera lectura del KB.' }
+        return { compatible: false, penalizacion: 90, razon: 'Para fritura conviene tensión, salinidad o burbuja; un tinto potente o un tawny no es la primera lectura del KB.' }
       }
       if (!['generoso', 'espumoso', 'blanco', 'rosado'].includes(vino.tipo)) {
         return { compatible: false, penalizacion: 50, razon: 'Para fritura se priorizan estilos frescos, salinos o con burbuja.' }
@@ -499,10 +520,10 @@ export default function Camarero({ params }) {
     if (contexto === 'pescado') {
       const tintoJustificado = metodo.brasa || metodo.ahumado || metodo.setasTrufa || metodo.dulce
       if (vino.tipo === 'tinto' && !tintoJustificado) {
-        return { compatible: false, penalizacion: 85, razon: 'En pescado sin brasa, ahumado, setas/trufa o reduccion intensa, se priorizan blancos, espumosos, rosados o generosos secos.' }
+        return { compatible: false, penalizacion: 85, razon: 'En pescado sin brasa, ahumado, setas/trufa o reducción intensa, se priorizan blancos, espumosos, rosados o generosos secos.' }
       }
       if ((consultaNormalizada.includes('salmon') || consultaNormalizada.includes('bacalao')) && metodo.vegetalVerde && vino.tipo === 'tinto') {
-        return { compatible: false, penalizacion: 90, razon: 'Con pescado y verduras verdes como esparragos, el metodo de plato pide frescor y perfil vegetal antes que tinto.' }
+        return { compatible: false, penalizacion: 90, razon: 'Con pescado y verduras verdes como espárragos, el método de plato pide frescor y perfil vegetal antes que tinto.' }
       }
       if (metodo.gratinado || metodo.frito) {
         if (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto) {
@@ -575,7 +596,7 @@ export default function Camarero({ params }) {
     const tipo = tipoLabel[vino.tipo]?.toLowerCase() || 'vino'
     const origen = vino.region ? ` de ${vino.region}` : ''
     const uva = vino.uva ? `, con ${vino.uva}` : ''
-    const base = `Recomiendalo como ${tipo}${origen}${uva}: ${motivo}.`
+    const base = `Recomiéndalo como ${tipo}${origen}${uva}: ${motivo}.`
     return fuente ? `${base} Criterio: ${fuente}.` : base
   }
 
@@ -595,7 +616,9 @@ export default function Camarero({ params }) {
           ? -2
           : evento.resultado === 'otra'
             ? -1
-            : 0
+            : evento.resultado === 'no_stock' || evento.resultado === 'agotado'
+              ? -3
+              : 0
 
       return {
         total: acc.total + (pesoResultado * pesoContexto),
@@ -614,7 +637,7 @@ export default function Camarero({ params }) {
   function puntuarParaVenta(vino, matchesKb, objetivo, precioMedio, contexto, consultaNormalizada, rangoTicket = null) {
     const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
     let score = 0
-    let motivo = 'busca afinidad aromatica con el plato, no solo el topico del color'
+    let motivo = 'busca afinidad aromática con el plato, no solo el tópico del color'
     let fuente = 'Papilas y moleculas'
     const compatibilidad = compatibilidadContexto(vino, contexto, consultaNormalizada)
     const metodo = metodosPlato(consultaNormalizada)
@@ -672,12 +695,16 @@ export default function Camarero({ params }) {
     if (metodo.vegetalVerde && ['blanco', 'generoso', 'espumoso'].includes(vino.tipo)) score += 5
     if (metodo.vegetalVerde && ['sauvignon', 'verdejo', 'albari', 'riesling'].some(t => textoVino.includes(t))) score += 8
     if (metodo.setasTrufa && contexto === 'pescado' && ['tinto', 'blanco'].includes(vino.tipo)) score += 4
-    if (metodo.dulce && ['dulce', 'generoso'].includes(vino.tipo)) score += 4
+    const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
+      'postre', 'tarta', 'helado', 'brownie', 'chocolate', 'queso azul', 'azul',
+      'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
+    ].some(t => consultaNormalizada.includes(t))
+    if (metodo.dulce && contextoDulcePermitido && ['dulce', 'generoso'].includes(vino.tipo)) score += 4
 
     if (metodo.frito && ['alta acidez', 'perfil fresco', 'salino', 'manzanilla', 'fino'].some(t => textoVino.includes(t))) score += 7
     if (metodo.gratinado && ['perfil fresco', 'alta acidez', 'salino', 'mineral'].some(t => textoVino.includes(t))) score += 4
     if (metodo.brasa && ['tostado', 'madera', 'fruta madura', 'con cuerpo', 'tanino amable'].some(t => textoVino.includes(t))) score += 6
-    if (metodo.dulce && ['dulce', 'oxidativo', 'pedro ximenez', 'px', 'fruta madura'].some(t => textoVino.includes(t))) score += 6
+    if (metodo.dulce && contextoDulcePermitido && ['dulce', 'oxidativo', 'pedro ximenez', 'px', 'fruta madura'].some(t => textoVino.includes(t))) score += 6
     if (contexto === 'queso' && ['oxidativo', 'dulce', 'salino', 'floral', 'alta acidez'].some(t => textoVino.includes(t))) score += 6
     if ((contexto === 'aperitivo' || metodo.frio) && ['perfil fresco', 'alta acidez', 'salino', 'mineral', 'floral'].some(t => textoVino.includes(t))) score += 5
     if (metodo.picante && ['perfil fresco', 'floral', 'dulce', 'baja graduacion'].some(t => textoVino.includes(t))) score += 5
@@ -696,14 +723,14 @@ export default function Camarero({ params }) {
 
     if (!compatibilidad.compatible && compatibilidad.razon) {
       motivo = compatibilidad.razon
-      fuente = 'Restriccion de contexto del KB'
+      fuente = 'Restricción de contexto del KB'
     }
 
     return { vino, score, motivo, fuente, compatible: compatibilidad.compatible, aprendizaje: ajusteAprendizajeVenta(vino, contexto) }
   }
 
   function calcularRecomendacionesVenta() {
-    const disponibles = vinos.filter(v => v.activo !== false && v.stock !== 0 && precioBotella(v) > 0)
+    const disponibles = vinos.filter(esVinoElegibleParaObjetivo)
     if (!disponibles.length) return []
 
     const precioMedio = disponibles.reduce((sum, vino) => sum + precioBotella(vino), 0) / disponibles.length
@@ -747,28 +774,32 @@ export default function Camarero({ params }) {
 
     const usados = new Set()
     const bodegasUsadas = new Set()
+    const tiposUsados = new Set()
     const elegir = (label, filtroPrecio) => {
-      const candidatos = puntuados.filter(item => item.compatible && !usados.has(item.vino.id) && filtroPrecio(item.vino))
+      const candidatos = puntuados.filter(item => item.compatible && item.score >= 6 && !usados.has(item.vino.id) && filtroPrecio(item.vino))
       if (!candidatos.length) return null
 
       const mejorScore = candidatos[0].score
-      const margen = objetivoVenta === 'rotar' ? 24 : rotacionVenta > 0 ? 18 : 10
+      const margen = objetivoVenta === 'rotar' ? 22 : rotacionVenta > 0 ? 18 : 12
       const grupoBueno = candidatos.filter(item => mejorScore - item.score <= margen)
-      const grupoDiverso = grupoBueno.filter(item => !item.vino.bodega || !bodegasUsadas.has(item.vino.bodega))
-      const grupoElegible = grupoDiverso.length ? grupoDiverso : grupoBueno
+      const grupoTipoDiverso = grupoBueno.filter(item => !item.vino.tipo || !tiposUsados.has(item.vino.tipo))
+      const grupoBodegaDiverso = grupoTipoDiverso.filter(item => !item.vino.bodega || !bodegasUsadas.has(item.vino.bodega))
+      const grupoElegible = grupoBodegaDiverso.length ? grupoBodegaDiverso : grupoTipoDiverso.length ? grupoTipoDiverso : grupoBueno
       const desplazamiento = rotacionVenta + Math.abs(hashTexto(label)) % Math.max(grupoElegible.length, 1)
       const elegido = elegirConRotacion(grupoElegible, `${semilla}-${label}`, desplazamiento)
       if (!elegido) return null
       usados.add(elegido.vino.id)
       if (elegido.vino.bodega) bodegasUsadas.add(elegido.vino.bodega)
-      return { ...elegido, label, rangoTicket, ticketComida }
+      if (elegido.vino.tipo) tiposUsados.add(elegido.vino.tipo)
+      return { ...elegido, label, rangoTicket, ticketComida, objetivo: objetivoVenta }
     }
 
-    return [
+    const lista = [
       elegir('Facil de vender', vino => precioBotella(vino) <= Math.max(30, rangoTicket.ideal) && precioBotella(vino) >= Math.max(14, rangoTicket.min * 0.75)),
       elegir('Recomendado', () => true),
       elegir('Premium', vino => precioBotella(vino) >= Math.max(35, rangoTicket.ideal, rangoTicket.max * 0.9)),
     ].filter(Boolean)
+    return lista
   }
 
   const tipos = ['todos', ...new Set(vinos.map(v => v.tipo))]
@@ -816,6 +847,17 @@ export default function Camarero({ params }) {
       <button onClick={comprobarPin} style={{ background: 'white', color: '#111', border: 'none', padding: '12px 32px', fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
         Entrar
       </button>
+      <a href="/cartavinos" target="_blank" rel="noreferrer" style={{
+        marginTop: 34,
+        color: '#555',
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: '0.12em',
+        textDecoration: 'none',
+        textTransform: 'uppercase'
+      }}>
+        Carta Viva by @cataconjuanjo
+      </a>
     </div>
   )
 
@@ -939,7 +981,7 @@ export default function Camarero({ params }) {
         <div style={{ borderTop: '1px solid #222' }}>
           {[
             { label: 'Región', valor: vinoSeleccionado.region },
-            { label: 'Uva', valor: vinoSeleccionado.uva },
+            { label: 'Uva / blend', valor: vinoSeleccionado.uva },
             { label: 'Añada', valor: vinoSeleccionado.anada },
             { label: 'Copa', valor: vinoSeleccionado.precio_copa ? `${vinoSeleccionado.precio_copa} €` : null },
             { label: 'Botella', valor: vinoSeleccionado.precio_botella ? `${vinoSeleccionado.precio_botella} €` : null },
@@ -998,7 +1040,7 @@ export default function Camarero({ params }) {
               <div className={styles.panelHeader}>
                 <div>
                   <p className={styles.eyebrow}>Mesa</p>
-                  <h2 className={styles.panelTitle}>{platosMesaVenta.length > 1 ? `${platosMesaVenta.length} platos` : 'Venta rapida'}</h2>
+                  <h2 className={styles.panelTitle}>{platosMesaVenta.length > 1 ? `${platosMesaVenta.length} platos` : 'Venta rápida'}</h2>
                   <p className={styles.panelSubtitle}>{platosMesaVenta.length ? platosMesaVenta.map(p => p.nombre).join(' · ') : 'Sin plato seleccionado'}</p>
                 </div>
                 <select value={objetivoVenta} onChange={e => cambiarObjetivoVenta(e.target.value)} className={styles.select}>
@@ -1011,14 +1053,6 @@ export default function Camarero({ params }) {
               </div>
 
               <div className={styles.panelBody}>
-                <input
-                  type="text"
-                  placeholder="Plato o mesa"
-                  value={consultaVenta}
-                  onChange={e => cambiarConsultaVenta(e.target.value)}
-                  className={styles.field}
-                />
-
                 {platosMesaVenta.length > 0 && (
                   <div className={styles.selectedBox}>
                     <div className={styles.selectedHeader}>
@@ -1106,7 +1140,7 @@ export default function Camarero({ params }) {
             <section className={styles.panelDark}>
               <div className={styles.panelHeader}>
                 <div>
-                  <p className={styles.eyebrow}>Recomendacion</p>
+                  <p className={styles.eyebrow}>Recomendación</p>
                   <h2 className={styles.panelTitle}>Vinos para vender</h2>
                   <p className={styles.panelSubtitle}>{platosMesaVenta.length > 1 ? 'Botella puente para la mesa' : 'Tres caminos comerciales'}</p>
                 </div>
@@ -1133,7 +1167,7 @@ export default function Camarero({ params }) {
                     ))}
                   </div>
                 ) : (
-                  <p className={styles.emptyState}>Sin recomendacion disponible.</p>
+                  <p className={styles.emptyState}>Sin recomendación disponible.</p>
                 )}
 
                 {lecturaActual && (
@@ -1168,7 +1202,7 @@ export default function Camarero({ params }) {
             <div className={styles.bodegaControls}>
               <input
                 type="text"
-                placeholder="Buscar vino, bodega, uva, region"
+                placeholder="Buscar vino, bodega, uva, región"
                 value={busqueda}
                 onChange={e => setBusqueda(e.target.value)}
                 className={styles.field}
@@ -1262,9 +1296,9 @@ export default function Camarero({ params }) {
       <div style={{ padding: '16px 20px 18px', borderBottom: '1px solid #222', background: '#151515' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12 }}>
           <div>
-            <p style={{ fontSize: 10, color: '#555', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 4px' }}>Venta rapida</p>
+            <p style={{ fontSize: 10, color: '#555', letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 4px' }}>Venta rápida</p>
             <p style={{ fontSize: 13, color: '#aaa', margin: 0 }}>
-              {platosMesaVenta.length > 1 ? `Botella puente para ${platosMesaVenta.length} platos` : 'Recomendacion para defender en mesa'}
+              {platosMesaVenta.length > 1 ? `Botella puente para ${platosMesaVenta.length} platos` : 'Recomendación para defender en mesa'}
             </p>
           </div>
           <select value={objetivoVenta} onChange={e => cambiarObjetivoVenta(e.target.value)}
@@ -1281,11 +1315,6 @@ export default function Camarero({ params }) {
           style={{ width: '100%', background: '#222', color: '#aaa', border: '1px solid #333', borderRadius: 10, padding: '9px 12px', fontSize: 12, cursor: 'pointer', marginBottom: 10 }}>
           Otras opciones compatibles
         </button>
-
-        <input type="text" placeholder="Ej. ensaladilla rusa, codillo al Pedro Ximenez, queso curado..."
-          value={consultaVenta} onChange={e => cambiarConsultaVenta(e.target.value)}
-          style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #333', background: '#111', color: '#fff', outline: 'none', fontSize: 14, boxSizing: 'border-box', marginBottom: 10 }}
-        />
 
         {platosMesaVenta.length > 0 && (
           <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 10, padding: 10, marginBottom: 10 }}>
@@ -1440,12 +1469,23 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
   const { vino, label, motivo, fuente, aprendizaje, rangoTicket, ticketComida } = item
   const stockCritico = vino.stock > 0 && vino.stock <= 3
   const ajusteAprendido = aprendizaje && Math.abs(aprendizaje.ajuste) >= 2.5
+  const esPorCopas = item.objetivo === 'copas'
+  const precioPrincipal = esPorCopas ? Number(vino.precio_copa) || 0 : Number(vino.precio_botella) || 0
+  const precioPrincipalLabel = esPorCopas ? `${precioPrincipal} EUR copa` : `${precioPrincipal} EUR`
   const precioVino = Number(vino.precio_botella) || 0
   const precioEnRango = rangoTicket && precioVino >= rangoTicket.min && precioVino <= rangoTicket.max
+  const resumenVenta = [
+    tipoLabel[vino.tipo] || 'Vino',
+    vino.bodega,
+    vino.uva,
+    vino.precio_copa ? `${vino.precio_copa} EUR copa` : ''
+  ].filter(Boolean).join(' · ')
   const acciones = [
     { key: 'vendida', label: 'Vendida' },
     { key: 'no_convence', label: 'No convenció' },
     { key: 'otra', label: 'Pidió otra' },
+    { key: 'no_stock', label: 'No quedaba' },
+    { key: 'agotado', label: 'Agotado' },
   ]
 
   const tarjetaVentaCompacta = true
@@ -1457,12 +1497,10 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
             <span className={styles.dot} style={{ background: tipoDot[vino.tipo] || '#666' }} />
             {label}
           </span>
-          <span className={styles.price}>{vino.precio_botella} EUR</span>
+          <span className={styles.price}>{precioPrincipalLabel}</span>
         </div>
         <h3 className={styles.wineName}>{vino.nombre}</h3>
-        <p className={styles.wineInfo}>
-          {tipoLabel[vino.tipo] || 'Vino'}{vino.bodega ? ` · ${vino.bodega}` : ''}{vino.precio_copa ? ` · ${vino.precio_copa} EUR copa` : ''}
-        </p>
+        <p className={styles.wineInfo}>{resumenVenta}</p>
         <p className={styles.reason}>{fraseVenta(vino, motivo, fuente)}</p>
         {ticketComida > 0 && rangoTicket && (
           <p className={styles.statusLine} style={{ color: precioEnRango ? '#1f7a61' : '#6f767d' }}>
@@ -1505,12 +1543,10 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[vino.tipo] || '#666', flexShrink: 0 }} />
             <span style={{ fontSize: 10, color: '#777', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</span>
           </div>
-          <span style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>{vino.precio_botella} EUR</span>
+          <span style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>{precioPrincipalLabel}</span>
         </div>
         <p style={{ margin: '0 0 4px', fontSize: 15, color: '#fff', fontWeight: 500 }}>{vino.nombre}</p>
-        <p style={{ margin: '0 0 10px', fontSize: 11, color: '#666' }}>
-          {tipoLabel[vino.tipo] || 'Vino'}{vino.bodega ? ` · ${vino.bodega}` : ''}{vino.precio_copa ? ` · ${vino.precio_copa} EUR copa` : ''}
-        </p>
+        <p style={{ margin: '0 0 10px', fontSize: 11, color: '#666' }}>{resumenVenta}</p>
         <p style={{ margin: 0, fontSize: 12, color: '#aaa', lineHeight: 1.55 }}>{fraseVenta(vino, motivo, fuente)}</p>
         {ticketComida > 0 && rangoTicket && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: precioEnRango ? '#7BAF8A' : '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
@@ -1558,6 +1594,8 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
 function VinoRow({ v, tipoDot, tipoLabel, enComparador, onSelect, onComparador, comparadorLleno }) {
   const stockColor = v.stock === 0 ? '#c07070' : v.stock <= 3 ? '#C4A55A' : '#555'
   const stockLabel = v.stock === 0 ? 'Sin stock' : v.stock <= 3 ? `${v.stock} bot.` : null
+  const detalleFila = [tipoLabel[v.tipo] || 'Vino', v.bodega, v.uva, v.region, stockLabel].filter(Boolean).join(' · ')
+  const detalleBodega = [v.bodega, v.uva, v.region, v.anada].filter(Boolean).join(' · ')
 
   const filaBodegaCompacta = true
   if (filaBodegaCompacta) return (
@@ -1566,9 +1604,7 @@ function VinoRow({ v, tipoDot, tipoLabel, enComparador, onSelect, onComparador, 
         <span className={styles.dot} style={{ background: tipoDot[v.tipo] || '#444' }} />
         <div className={styles.wineRowText}>
           <p className={styles.wineRowName}>{v.nombre}</p>
-          <p className={styles.wineRowDetail}>
-            {tipoLabel[v.tipo] || 'Vino'}{v.bodega ? ` · ${v.bodega}` : ''}{v.region ? ` · ${v.region}` : ''}{stockLabel ? ` · ${stockLabel}` : ''}
-          </p>
+          <p className={styles.wineRowDetail}>{detalleFila}</p>
         </div>
         <div className={styles.wineRowPrice}>
           <p style={{ color: '#17191d', fontSize: 14, fontWeight: 800 }}>{v.precio_botella} EUR</p>
@@ -1595,7 +1631,7 @@ function VinoRow({ v, tipoDot, tipoLabel, enComparador, onSelect, onComparador, 
             <p style={{ margin: 0, fontSize: 15, color: 'white' }}>{v.nombre}</p>
             {stockLabel && <span style={{ fontSize: 10, color: stockColor, border: `1px solid ${stockColor}`, padding: '1px 6px', borderRadius: 4 }}>{stockLabel}</span>}
           </div>
-          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#555' }}>{v.bodega}{v.region ? ` · ${v.region}` : ''}{v.anada ? ` · ${v.anada}` : ''}</p>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: '#555' }}>{detalleBodega}</p>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <p style={{ margin: 0, fontSize: 14, color: 'white' }}>{v.precio_botella} €</p>

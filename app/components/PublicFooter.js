@@ -5,7 +5,7 @@ export default function PublicFooter() {
     <footer className="footer">
       <span>© 2026 Juanjo Garcia · Cata con Juanjo · Malaga</span>
       <div>
-        <Link href="/">Consultoria</Link>
+        <Link href="/">Consultoría</Link>
         <Link href="/catas">Catas</Link>
         <Link href="/cartavinos">Carta Viva</Link>
         <Link href="/aviso-legal">Aviso legal</Link>

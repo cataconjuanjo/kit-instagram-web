@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { isAdminEmail } from '../demo'
 
+const RESTAURANTE_PREFIX = '[RESTAURANTE] '
+const esSeleccionJuanjo = item => !String(item.nota_personal || '').startsWith(RESTAURANTE_PREFIX)
+
 export default function SommelierDashboard() {
   const [user, setUser] = useState(null)
   const [restaurantes, setRestaurantes] = useState([])
@@ -41,7 +44,7 @@ export default function SommelierDashboard() {
         .eq('restaurante_id', restauranteActivo.id)
         .eq('activo', true)
         .order('orden')
-      setSeleccion(selData || [])
+      setSeleccion((selData || []).filter(esSeleccionJuanjo))
     }
     cargarRestaurante()
   }, [restauranteActivo])
@@ -82,23 +85,28 @@ export default function SommelierDashboard() {
   )
 
   return (
-    <main style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'system-ui, sans-serif' }}>
-
-      {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #f0f0f0', padding: '0 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 64 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 1, height: 32, background: '#e8e8e8' }} />
-          <div>
-            <p style={{ fontSize: 15, fontWeight: 400, color: '#111', margin: 0, fontFamily: 'Georgia, serif' }}>@cataconjuanjo</p>
-            <p style={{ fontSize: 11, color: '#bbb', margin: 0, letterSpacing: '0.05em' }}>Panel de sommelier</p>
-          </div>
+    <main className="admin-page">
+      <header className="admin-topbar">
+        <div>
+          <p className="admin-kicker">Superadmin</p>
+          <h1>Selección Juanjo</h1>
+          <p>@cataconjuanjo</p>
         </div>
-        <button onClick={cerrarSesion} style={{ background: 'none', border: '1px solid #e8e8e8', color: '#aaa', padding: '6px 16px', borderRadius: 0, cursor: 'pointer', fontSize: 12, letterSpacing: '0.05em' }}>
-          Salir
-        </button>
-      </div>
+        <button onClick={cerrarSesion}>Salir</button>
+      </header>
 
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '48px 32px' }}>
+      <section className="admin-shell">
+        <aside className="admin-sidebar">
+          <p className="admin-kicker">Consultor</p>
+          <a href="/admin/consultoria">Radar</a>
+          <a href="/admin/propuestas">Propuestas</a>
+          <a href="/admin/proveedores">Proveedores</a>
+          <a className="active" href="/sommelier">Selección Juanjo</a>
+          <a href="/admin">Restaurantes</a>
+        </aside>
+
+        <div className="admin-main">
+      <div style={{ maxWidth: 860, padding: '0 0 48px' }}>
 
         {/* Selector de restaurante */}
         <div style={{ marginBottom: 40 }}>
@@ -122,7 +130,7 @@ export default function SommelierDashboard() {
         {restauranteActivo && (
           <>
             <div style={{ marginBottom: 32 }}>
-              <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 4px' }}>Selección especial</p>
+              <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 4px' }}>Selección Juanjo</p>
               <h1 style={{ fontSize: 24, fontWeight: 300, fontFamily: 'Georgia, serif', color: '#111', margin: '0 0 4px' }}>{restauranteActivo.nombre}</h1>
               <p style={{ fontSize: 12, color: '#bbb', margin: 0 }}>{seleccion.length}/4 vinos seleccionados</p>
             </div>
@@ -189,6 +197,8 @@ export default function SommelierDashboard() {
           </>
         )}
       </div>
+        </div>
+      </section>
     </main>
   )
 }

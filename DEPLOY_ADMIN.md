@@ -22,6 +22,38 @@ Project Settings -> API -> service_role key
 
 No debe llevar prefijo `NEXT_PUBLIC_`.
 
+## Activar Control de Bodega
+
+Antes de publicar o usar la pantalla:
+
+```text
+https://cataconjuanjo.com/dashboard/bodega
+```
+
+ejecuta en Supabase SQL Editor el archivo:
+
+```text
+supabase/add_bodega_control.sql
+```
+
+Anade a `vinos` los campos de coste, proveedor y stock minimo, y crea la tabla `movimientos_stock` para la siguiente fase de trazabilidad de entradas, ventas, mermas y ajustes.
+
+## Activar Propuestas del consultor
+
+Antes de usar:
+
+```text
+https://cataconjuanjo.com/admin/propuestas
+```
+
+ejecuta en Supabase SQL Editor el archivo:
+
+```text
+supabase/add_consultor_propuestas.sql
+```
+
+Crea la tabla `consultor_propuestas`, donde el superadmin puede dejar recomendaciones de vinos, proveedores, margen, precio recomendado y motivo consultivo para cada restaurante. El restaurante las ve dentro de `/dashboard/bodega`.
+
 ## Crear el usuario superadmin
 
 1. Entra en Supabase.

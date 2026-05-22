@@ -6,6 +6,10 @@ import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
+const RESTAURANTE_PREFIX = '[RESTAURANTE] '
+const esSugerenciaRestaurante = item => String(item.nota_personal || '').startsWith(RESTAURANTE_PREFIX)
+const limpiarNota = nota => String(nota || '').replace(RESTAURANTE_PREFIX, '')
+
 export default function SeleccionEspecial() {
   const [restaurante, setRestaurante] = useState(null)
   const [vinos, setVinos] = useState([])
@@ -30,7 +34,7 @@ export default function SeleccionEspecial() {
           .eq('restaurante_id', rest.id)
           .eq('activo', true)
           .order('orden')
-        setSeleccion(selData || [])
+        setSeleccion((selData || []).filter(esSugerenciaRestaurante))
       }
       setLoading(false)
     }
@@ -43,7 +47,7 @@ export default function SeleccionEspecial() {
     const { data, error } = await supabase.from('seleccion_especial').insert([{
       restaurante_id: restaurante.id,
       vino_id: vinoElegido,
-      nota_personal: nota,
+      nota_personal: `${RESTAURANTE_PREFIX}${nota}`,
       orden: seleccion.length
     }]).select('*, vinos(nombre, bodega, tipo, region)')
     if (!error) {
@@ -67,15 +71,24 @@ export default function SeleccionEspecial() {
   return (
     <ModuleShell
       restaurante={restaurante}
-      eyebrow="Seleccion destacada"
-      title="@cataconjuanjo"
-      subtitle="El escaparate editorial de la carta: hasta cuatro vinos que merece la pena empujar por calidad, oportunidad comercial o relato de sala."
+      eyebrow="Sugerencia del restaurante"
+      title="Vuestro vino recomendado"
+      subtitle="Una recomendación propia del restaurante, con el mismo formato visual que la selección Juanjo, pero firmada por la casa."
       narrow
+      help={{
+        title: 'Para qué sirve',
+        intro: 'Esta sugerencia es vuestra voz dentro de la carta pública.',
+        items: [
+          { title: 'Solo una', text: 'Debe sentirse como una recomendación real, no como otra carta dentro de la carta.' },
+          { title: 'Criterio de casa', text: 'Elegid por temporada, novedad, vino local, plato estrella o una botella que queráis defender.' },
+          { title: 'Nota vendible', text: 'Escribid una frase humana y concreta: por qué pedirlo hoy, con qué plato o para qué momento.' },
+        ],
+      }}
     >
       <section className={styles.statsGrid}>
         <div className={styles.stat}>
-          <p className={styles.statValue}>{seleccion.length}/4</p>
-          <p className={styles.statLabel}>Vinos destacados</p>
+          <p className={styles.statValue}>{seleccion.length}/1</p>
+          <p className={styles.statLabel}>Sugerencia activa</p>
         </div>
         <div className={styles.stat}>
           <p className={styles.statValue}>{disponibles.length}</p>
@@ -83,14 +96,14 @@ export default function SeleccionEspecial() {
         </div>
       </section>
 
-      {seleccion.length < 4 && (
+      {seleccion.length < 1 && (
         <section className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
-              <h2 className={styles.panelTitle}>Anadir vino destacado</h2>
+              <h2 className={styles.panelTitle}>Añadir sugerencia de la casa</h2>
               <p className={styles.panelSub}>Selecciona una referencia y deja una nota breve, vendible y humana.</p>
             </div>
-            <span className={styles.badge}>{4 - seleccion.length} huecos</span>
+            <span className={styles.badge}>1 hueco</span>
           </div>
           <div className={styles.panelBody}>
             <div className={styles.formGrid}>
@@ -109,7 +122,7 @@ export default function SeleccionEspecial() {
                   className={styles.textarea}
                   value={nota}
                   onChange={e => setNota(e.target.value)}
-                  placeholder="Por que lo recomiendas, con que plato lo defenderias o que lo hace especial..."
+                  placeholder="Por qué lo recomendáis, con qué plato lo defenderíais o qué lo hace especial..."
                 />
               </div>
               <div className={styles.full}>
@@ -118,7 +131,7 @@ export default function SeleccionEspecial() {
                   onClick={anadirSeleccion}
                   disabled={guardando || !vinoElegido || !nota.trim()}
                 >
-                  {guardando ? 'Guardando...' : 'Anadir seleccion'}
+                  {guardando ? 'Guardando...' : 'Añadir sugerencia'}
                 </button>
               </div>
             </div>
@@ -128,8 +141,8 @@ export default function SeleccionEspecial() {
 
       <section className={styles.sectionHead}>
         <div>
-          <h2 className={styles.sectionTitle}>Seleccion actual</h2>
-          <p className={styles.sectionText}>Estos vinos aparecen destacados en la carta publica.</p>
+          <h2 className={styles.sectionTitle}>Sugerencia actual</h2>
+          <p className={styles.sectionText}>Este vino aparece en la carta pública como recomendación del restaurante.</p>
         </div>
       </section>
 
@@ -141,7 +154,7 @@ export default function SeleccionEspecial() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
                   <span className={styles.dot} style={{ background: tipoDot[s.vinos?.tipo] || '#8b8278', marginTop: 6 }} />
                   <div>
-                    <p className={styles.eyebrow} style={{ marginBottom: 5 }}>Seleccion {index + 1}</p>
+                    <p className={styles.eyebrow} style={{ marginBottom: 5 }}>Recomendación de la casa</p>
                     <h3 className={styles.sectionTitle}>{s.vinos?.nombre}</h3>
                     <p className={styles.sectionText}>{s.vinos?.bodega} · {s.vinos?.region || 'Sin region'}</p>
                   </div>
@@ -149,13 +162,13 @@ export default function SeleccionEspecial() {
                 <button className={styles.ghost} onClick={() => quitarSeleccion(s.id)}>Quitar</button>
               </div>
               <p className={styles.lead} style={{ marginTop: 14, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
-                {s.nota_personal}
+                {limpiarNota(s.nota_personal)}
               </p>
             </article>
           ))}
         </div>
       ) : (
-        <div className={styles.empty}>Aun no hay vinos destacados.</div>
+        <div className={styles.empty}>Aún no hay sugerencia del restaurante.</div>
       )}
     </ModuleShell>
   )

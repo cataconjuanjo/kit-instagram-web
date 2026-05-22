@@ -24,11 +24,11 @@ function generarPassword() {
 async function validarAdmin(req) {
   const auth = req.headers.get('authorization') || ''
   const token = auth.replace(/^Bearer\s+/i, '')
-  if (!token) return { error: 'Sesion no recibida', status: 401 }
+  if (!token) return { error: 'Sesión no recibida', status: 401 }
 
   const supabaseAuth = createClient(supabaseUrl, anonKey)
   const { data, error } = await supabaseAuth.auth.getUser(token)
-  if (error || !data?.user) return { error: 'Sesion no valida', status: 401 }
+  if (error || !data?.user) return { error: 'Sesión no válida', status: 401 }
   if ((data.user.email || '').toLowerCase() !== adminEmail.toLowerCase()) {
     return { error: 'No autorizado', status: 403 }
   }
@@ -100,6 +100,14 @@ export async function POST(req) {
         color_fondo: body.color_fondo || '#fffaf3',
         color_acento: body.color_acento || '#bfa984',
         tipografia: body.tipografia || 'serif',
+        hub_activo: Boolean(body.hub_activo),
+        hub_titulo: body.hub_titulo || null,
+        hub_subtitulo: body.hub_subtitulo || null,
+        instagram_url: body.instagram_url || null,
+        facebook_url: body.facebook_url || null,
+        plan: body.plan || 'basic',
+        subscription_status: body.subscription_status || 'trialing',
+        ticket_medio_comida: body.ticket_medio_comida === '' || body.ticket_medio_comida === undefined ? null : Number(body.ticket_medio_comida) || null,
         banner_zoom: 100,
         banner_x: 50,
         banner_y: 50
@@ -172,7 +180,15 @@ export async function PATCH(req) {
       color_primario: body.color_primario || '#531827',
       color_fondo: body.color_fondo || '#fffaf3',
       color_acento: body.color_acento || '#bfa984',
-      tipografia: body.tipografia || 'serif'
+      tipografia: body.tipografia || 'serif',
+      hub_activo: Boolean(body.hub_activo),
+      hub_titulo: body.hub_titulo || null,
+      hub_subtitulo: body.hub_subtitulo || null,
+      instagram_url: body.instagram_url || null,
+      facebook_url: body.facebook_url || null,
+      plan: body.plan || 'basic',
+      subscription_status: body.subscription_status || 'trialing',
+      ticket_medio_comida: body.ticket_medio_comida === '' || body.ticket_medio_comida === undefined ? null : Number(body.ticket_medio_comida) || null
     }
 
     const { data: restaurante, error } = await adminSupabase

@@ -60,7 +60,7 @@ export async function POST(req) {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 12000,
-      system: 'Eres un extractor de cartas de vinos. Lees PDFs e imagenes de restaurantes y devuelves solo JSON valido. No inventes vinos. No incluyas platos ni bebidas que no sean vino, espumoso, generoso o dulce.',
+      system: 'Eres un extractor de cartas de vinos. Lees PDFs e imágenes de restaurantes y devuelves solo JSON válido. No inventes vinos. No incluyas platos ni bebidas que no sean vino, espumoso, generoso o dulce.',
       messages: [{
         role: 'user',
         content: [
@@ -69,29 +69,29 @@ export async function POST(req) {
             type: 'text',
             text: `Extrae la carta de vinos de este archivo.
 
-Devuelve exclusivamente un array JSON valido, sin markdown, sin explicaciones. Extrae como maximo 120 referencias.
+Devuelve exclusivamente un array JSON válido, sin markdown, sin explicaciones. Extrae como máximo 120 referencias.
 
 Cada objeto debe tener esta forma:
 {
   "nombre": "nombre del vino",
-  "bodega": "bodega si aparece o vacio",
+  "bodega": "bodega si aparece o vacío",
   "tipo": "tinto|blanco|rosado|espumoso|generoso|dulce|naranja",
-  "region": "zona, DO o pais si aparece o vacio",
-  "uva": "uvas si aparecen o vacio",
-  "anada": "añada si aparece o vacio",
-  "precio_copa": numero o 0,
-  "precio_botella": numero o 0,
-  "notas_cata": "perfiles utiles si son evidentes; si no, vacio"
+  "region": "zona, DO o país si aparece o vacío",
+  "uva": "uvas si aparecen o vacío",
+  "anada": "añada si aparece o vacío",
+  "precio_copa": número o 0,
+  "precio_botella": número o 0,
+  "notas_cata": "perfiles útiles si son evidentes; si no, vacío"
 }
 
 Reglas:
 No incluyas cervezas, refrescos, cocteles, cafés ni platos.
-Si no sabes un campo, dejalo vacio o 0.
-Usa precios en euros como numero.
+Si no sabes un campo, déjalo vacío o 0.
+Usa precios en euros como número.
 Si aparecen precio de copa y botella, distingue ambos.
-Si solo hay un precio, colocalo como precio_botella.
+Si solo hay un precio, colócalo como precio_botella.
 El texto extraido de PDF puede unir precios de copa y botella: por ejemplo "1455" suele significar copa 14 y botella 55; "8,038" suele significar copa 8,0 y botella 38; "25110" suele significar copa 25 y botella 110.
-Usa los encabezados cercanos como Blancos, Tintos, Champagne, Generosos o Espumosos para inferir el tipo cuando no aparezca en la linea del vino.
+Usa los encabezados cercanos como Blancos, Tintos, Champagne, Generosos o Espumosos para inferir el tipo cuando no aparezca en la línea del vino.
 No dupliques el mismo vino.`
           }
         ]

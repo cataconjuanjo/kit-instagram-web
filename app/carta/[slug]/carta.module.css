@@ -6,6 +6,33 @@
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+.brandCredit {
+  padding: 22px 16px 10px;
+  text-align: center;
+}
+
+.priceLegal {
+  max-width: 420px;
+  margin: 0 auto 12px;
+  color: #756d63;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.brandCredit a {
+  color: color-mix(in srgb, var(--color-primario, #171416) 62%, #888);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  opacity: 0.66;
+}
+
+.brandCredit a:hover {
+  opacity: 1;
+}
+
 .hero {
   position: relative;
   background: #171416;
@@ -14,10 +41,24 @@
   overflow: hidden;
 }
 
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--hero-image, none);
+  background-position: var(--hero-position, center);
+  background-repeat: no-repeat;
+  background-size: cover;
+  transform: scale(var(--hero-scale, 1));
+  transform-origin: center;
+}
+
 .hero::after {
   content: "";
   position: absolute;
   inset: auto -20% -48px -20%;
+  z-index: 1;
   height: 96px;
   background: rgba(255, 250, 243, 0.05);
   transform: rotate(-2deg);
@@ -25,7 +66,7 @@
 
 .heroTop {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   justify-content: space-between;
   gap: 18px;
@@ -76,6 +117,21 @@
   color: rgba(255, 250, 243, 0.58);
   font-size: 13px;
   line-height: 1.45;
+}
+
+.heroCredit {
+  display: inline-flex;
+  margin-top: 10px;
+  color: rgba(255, 250, 243, 0.46);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.heroCredit:hover {
+  color: rgba(255, 250, 243, 0.76);
 }
 
 .langButton {
@@ -308,6 +364,32 @@
 
 .selection {
   margin: 10px 0 20px;
+  display: grid;
+  gap: 18px;
+}
+
+.selectionGroup {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #dfd6c8;
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.72);
+  padding: 14px;
+}
+
+.selectionSource {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.selectionSourceMark {
+  width: 4px;
+  height: 38px;
+  border-radius: 999px;
+  background: #bfa984;
+  flex: 0 0 auto;
 }
 
 .sectionHead {
@@ -335,23 +417,30 @@
 .featuredCard {
   background: #fffaf3;
   border: 1px solid #d7c8a7;
-  border-left: 4px solid #bfa984;
   border-radius: 8px;
   padding: 15px;
-  margin-bottom: 10px;
   cursor: pointer;
+  box-shadow: 0 8px 22px rgba(23, 20, 22, 0.05);
 }
 
 .wineCard {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, auto);
+  gap: 14px;
+  align-items: center;
   background: #fffaf3;
   border: 1px solid #dfd6c8;
   border-radius: 8px;
-  padding: 14px;
+  padding: 13px 12px;
   margin-bottom: 8px;
+}
+
+.wineCardConsultant {
+  border-color: rgba(191, 169, 132, 0.72);
+  background:
+    linear-gradient(90deg, rgba(191, 169, 132, 0.17), rgba(255, 250, 243, 0) 38%),
+    #fffaf3;
+  box-shadow: 0 10px 26px rgba(122, 92, 36, 0.09);
 }
 
 .accordionSection {
@@ -390,11 +479,12 @@
 .wineInfo {
   min-width: 0;
   cursor: pointer;
+  padding-right: 2px;
 }
 
 .wineTop {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   min-width: 0;
 }
@@ -403,22 +493,89 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
+  margin-top: 7px;
   flex-shrink: 0;
+}
+
+.wineTitleBlock {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .wineName {
   margin: 0;
   color: #171416;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 780;
-  line-height: 1.25;
+  line-height: 1.18;
+}
+
+.vintagePill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border: 1px solid #ded4c4;
+  border-radius: 999px;
+  padding: 0 7px;
+  color: #6f675e;
+  background: rgba(255, 255, 255, 0.52);
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1;
 }
 
 .wineMeta {
   margin: 5px 0 0 16px;
   color: #766e64;
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.35;
+}
+
+.wineGrape {
+  margin: 3px 0 0 16px;
+  color: #4f4840;
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.wineTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 7px 0 0 16px;
+}
+
+.wineTag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border: 1px solid rgba(191, 169, 132, 0.55);
+  border-radius: 999px;
+  background: #efe2c4;
+  color: #5f4418;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.wineTagHouse {
+  border-color: rgba(23, 20, 22, 0.16);
+  background: rgba(23, 20, 22, 0.055);
+  color: #4f4840;
+}
+
+.consultantSignature {
+  margin: 4px 0 0 16px;
+  color: #8a6d35;
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1.2;
 }
 
 .wineNotes {
@@ -433,9 +590,60 @@
 .priceBlock {
   display: grid;
   justify-items: end;
-  gap: 5px;
+  gap: 6px;
   text-align: right;
   flex-shrink: 0;
+}
+
+.priceBlock > .glassPrice,
+.priceBlock > .bottlePrice {
+  display: none;
+}
+
+.mainPrice {
+  display: flex;
+  align-items: baseline;
+  justify-items: end;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.mainPrice span {
+  display: none;
+  color: #171416;
+  font-size: 18px;
+  font-weight: 880;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.mainPrice .formattedPrice {
+  display: block;
+}
+
+.mainPrice small,
+.secondaryPrice,
+.priceMeta {
+  color: #8b8176;
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1.15;
+  text-transform: lowercase;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.mainPrice small::before {
+  content: "/ ";
+}
+
+.secondaryPrice {
+  display: none;
+}
+
+.priceMeta {
+  margin: -1px 0 0;
+  text-transform: none;
 }
 
 .glassPrice {
@@ -452,8 +660,8 @@
 }
 
 .compareButton {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border: 1px solid #dfd6c8;
   border-radius: 8px;
   background: #f7f2ea;
@@ -461,6 +669,7 @@
   cursor: pointer;
   font-size: 18px;
   font-weight: 750;
+  line-height: 1;
 }
 
 .compareActive {
@@ -553,6 +762,41 @@
   color: rgba(255, 250, 243, 0.5);
   font-size: 20px;
   line-height: 1;
+}
+
+.regionGroup,
+.regionSubgroup {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.regionGroup + .regionGroup,
+.regionSubgroup + .regionSubgroup {
+  margin-top: 18px;
+}
+
+.regionTitle {
+  margin: 0;
+  color: #171416;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.regionName {
+  margin: 4px 0 0;
+  color: #9b7430;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.regionDo {
+  margin: 4px 0 2px;
+  color: #817970;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .modeGrid {
@@ -755,14 +999,29 @@
   }
 
   .wineCard {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 88px;
+    gap: 10px;
+    padding: 12px 10px;
   }
 
   .priceBlock {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    text-align: left;
+    display: grid;
+    justify-items: end;
+    align-content: center;
+    text-align: right;
+  }
+
+  .wineName {
+    font-size: 14px;
+  }
+
+  .wineMeta,
+  .wineGrape {
+    font-size: 11px;
+  }
+
+  .mainPrice span {
+    font-size: 16px;
   }
 
   .modeGrid {
@@ -788,5 +1047,174 @@
 
   .compareText {
     font-size: 12px;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+
+  .shell {
+    background: #fff;
+    color: #171416;
+    padding-bottom: 0;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+
+  .tabs,
+  .searchPanel,
+  .shortcutPanel,
+  .compareButton,
+  .compareBar,
+  .brandCredit,
+  .heroCredit,
+  .langButton {
+    display: none !important;
+  }
+
+  .hero {
+    color: #171416;
+    background: #fff !important;
+    border-bottom: 2px solid #171416;
+    border-radius: 0;
+    padding: 8px 0 12px;
+    margin-bottom: 12px;
+  }
+
+  .hero::after {
+    display: none;
+  }
+
+  .heroTop {
+    display: block;
+  }
+
+  .logoFrame {
+    width: 58px;
+    height: 58px;
+    border: 0;
+    background: #fff;
+    padding: 0;
+    margin-bottom: 8px;
+  }
+
+  .title {
+    color: #171416;
+    font-size: 24pt;
+    line-height: 1.05;
+  }
+
+  .kicker {
+    color: #7b5c22;
+    font-size: 8pt;
+  }
+
+  .meta {
+    color: #6c6761;
+    font-family: Arial, sans-serif;
+    font-size: 9pt;
+  }
+
+  .content {
+    max-width: none;
+    padding: 0;
+  }
+
+  .accordion,
+  .accordionOpen {
+    border: 0;
+    background: #fff;
+  }
+
+  .accordionHead {
+    border: 0;
+    border-bottom: 1px solid #171416;
+    border-radius: 0;
+    background: #fff;
+    padding: 14px 0 7px;
+  }
+
+  .accordionTitle h2 {
+    color: #171416;
+    font-size: 15pt;
+  }
+
+  .accordionIcon,
+  .compareAction,
+  .wineBadges,
+  .featuredBadge,
+  .detailsButton {
+    display: none !important;
+  }
+
+  .wineCard {
+    grid-template-columns: minmax(0, 1fr) 78px;
+    gap: 12px;
+    border: 0;
+    border-bottom: 1px solid #ded8cf;
+    border-radius: 0;
+    background: #fff;
+    padding: 8px 0;
+    margin: 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .featuredCard {
+    border: 1px solid #c8bda9;
+    border-left: 4px solid #171416;
+    padding: 10px;
+    margin: 8px 0;
+  }
+
+  .wineName {
+    color: #171416;
+    font-size: 11pt;
+    line-height: 1.2;
+  }
+
+  .wineMeta,
+  .wineGrape,
+  .wineNotes,
+  .glassPrice {
+    color: #5f5a54;
+    font-family: Arial, sans-serif;
+    font-size: 8.5pt;
+    line-height: 1.35;
+  }
+
+  .priceBlock {
+    text-align: right;
+  }
+
+  .brandCredit {
+    display: block !important;
+    padding: 12px 0 0;
+    text-align: left;
+  }
+
+  .brandCredit a {
+    display: none !important;
+  }
+
+  .priceLegal {
+    margin: 0;
+    max-width: none;
+    color: #5f5a54;
+    font-family: Arial, sans-serif;
+    font-size: 8.5pt;
+  }
+
+  .mainPrice span {
+    color: #171416;
+    font-size: 11pt;
+  }
+
+  .mainPrice small,
+  .secondaryPrice {
+    color: #5f5a54;
+    font-size: 7.5pt;
   }
 }

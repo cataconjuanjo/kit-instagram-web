@@ -22,7 +22,7 @@ export default function Login() {
     } else {
       clearAdminRestaurantEmail()
       clearDemoEmail()
-      window.location.href = isAdminEmail(email) ? '/admin' : '/dashboard'
+      window.location.href = isAdminEmail(email) ? '/admin/consultoria' : '/dashboard'
     }
     setLoading(false)
   }
@@ -50,7 +50,7 @@ export default function Login() {
         </div>
         <div className="login-proof">
           <span>QR</span>
-          <span>Sommelier IA</span>
+          <span>Guía de maridaje</span>
           <span>Modo sala</span>
           <span>Dashboard</span>
         </div>

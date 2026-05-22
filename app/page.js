@@ -4,22 +4,28 @@ import LeadForm from './components/LeadForm'
 import PublicNav from './components/PublicNav'
 import PublicFooter from './components/PublicFooter'
 
+export const metadata = {
+  alternates: {
+    canonical: '/',
+  },
+}
+
 const servicios = [
   {
-    titulo: 'Auditoria de carta y bodega',
-    texto: 'Analizo referencias, rotacion, stock, margenes, estructura de precios y coherencia con el concepto del local.',
+    titulo: 'Auditoría de carta y bodega',
+    texto: 'Analizo referencias, rotación, stock, márgenes, estructura de precios y coherencia con el concepto del local.',
   },
   {
     titulo: 'Rediseño de carta de vinos',
-    texto: 'Construyo una carta clara, vendible y con narrativa: categorias, estilos, maridajes y vinos que el equipo puede defender.',
+    texto: 'Construyo una carta clara, vendible y con narrativa: categorías, estilos, maridajes y vinos que el equipo puede defender.',
   },
   {
-    titulo: 'Formacion de sala',
+    titulo: 'Formación de sala',
     texto: 'Entreno al equipo para recomendar mejor, explicar sin impostar y convertir dudas del cliente en venta sugerida.',
   },
   {
     titulo: 'Carta Viva',
-    texto: 'Digitalizo la carta con QR, sommelier IA, vista de camarero, seleccion destacada y datos reales de uso.',
+    texto: 'Digitalizo la carta con QR, guía de maridaje, vista de camarero, selección destacada y datos reales de uso.',
   },
 ]
 
@@ -33,15 +39,15 @@ const catas = [
     texto: 'Team building, incentivos o eventos con clientes. Formatos cuidados, participativos y adaptados al nivel del grupo.',
   },
   {
-    titulo: 'Formacion inicial',
+    titulo: 'Formación inicial',
     texto: 'Sesiones para aprender a catar, entender estilos, leer etiquetas y ganar seguridad al elegir vino.',
   },
 ]
 
 const metodologia = [
-  ['01', 'Diagnostico', 'Vemos que hay en carta, que se vende, que ocupa espacio, que falta y que esta frenando margen o experiencia.'],
+  ['01', 'Diagnóstico', 'Vemos qué hay en carta, qué se vende, qué ocupa espacio, qué falta y qué está frenando margen o experiencia.'],
   ['02', 'Estrategia', 'Diseñamos una arquitectura de vinos ajustada al ticket, cocina, sala, publico y posicionamiento del restaurante.'],
-  ['03', 'Implementacion', 'Lo bajamos a carta, proveedores, formacion, QR, seguimiento y rutinas para que no se quede en un informe.'],
+  ['03', 'Implementación', 'Lo bajamos a carta, proveedores, formación, QR, seguimiento y rutinas para que no se quede en un informe.'],
 ]
 
 export default function Home() {
@@ -51,29 +57,29 @@ export default function Home() {
 
       <section className="hero hero-consultoria">
         <div className="hero-copy">
-          <p className="eyebrow">Vino, margen y experiencia de sala</p>
+          <p className="eyebrow">Control de bodega, margen y experiencia de sala</p>
           <h1>Cartas de vino con criterio, margen y memoria.</h1>
           <p className="lead">
-            Ayudo a restaurantes, hoteles boutique y espacios singulares a convertir su bodega en una herramienta
-            de rentabilidad, diferenciacion y experiencia memorable para el cliente.
+            Ayudo a restaurantes, hoteles boutique y espacios singulares a saber qué tienen, qué margen deja cada
+            botella, qué falta por reponer y cómo convertir la carta en venta real en sala.
           </p>
           <div className="hero-actions">
-            <Link href="#contacto" className="btn btn-primary">Reserva un diagnostico</Link>
-            <Link href="/cartavinos" className="btn btn-secondary">Ver Carta Viva</Link>
+            <Link href="#contacto" className="btn btn-primary">Reserva un diagnóstico</Link>
+            <Link href="/cartavinos#demo-segura" className="btn btn-secondary">Ver demo segura</Link>
           </div>
         </div>
 
         <aside className="hero-panel">
           <p className="panel-label">Sistema integrado</p>
-          <h2>Consultoria + herramienta digital</h2>
+          <h2>Consultoría + control operativo</h2>
           <p>
-            No entrego recomendaciones que se quedan en un cajon. Analizo, rediseño, digitalizo y acompaño la
-            implantacion hasta que la carta forma parte del ADN comercial del negocio.
+            No entrego recomendaciones que se quedan en un cajón. Analizo, rediseño, digitalizo y conecto carta,
+            bodega, sala y reposición para que cada decisión tenga contexto.
           </p>
           <div className="metric-grid">
             <div><strong>QR</strong><span>Carta viva</span></div>
-            <div><strong>IA</strong><span>Maridaje real</span></div>
-            <div><strong>KPIs</strong><span>Uso y stock</span></div>
+            <div><strong>Stock</strong><span>Minimos y pedido</span></div>
+            <div><strong>Margen</strong><span>Coste y PVP</span></div>
             <div><strong>WSET 3</strong><span>Criterio humano</span></div>
           </div>
         </aside>
@@ -81,14 +87,14 @@ export default function Home() {
 
       <section className="section intro-band">
         <p>
-          Una carta de vinos no es una lista. Es una decision de compra repetida muchas veces al dia. Cuando esta
-          bien pensada, sube ticket medio, reduce friccion en sala y hace que el cliente recuerde el restaurante.
+          Una carta de vinos no es una lista. Es stock, margen, proveedor, relato de sala y una decisión de compra
+          repetida muchas veces al día. Cuando está bien pensada, sube ticket medio y reduce fricción.
         </p>
       </section>
 
       <section id="servicios" className="section">
         <div className="section-head">
-          <p className="eyebrow">Que hago</p>
+          <p className="eyebrow">Qué hago</p>
           <h2>Servicios para restaurantes que quieren vender vino sin perder identidad.</h2>
         </div>
         <div className="service-grid">
@@ -108,10 +114,10 @@ export default function Home() {
         </div>
         <div className="tasting-copy">
           <p className="eyebrow">Catas y experiencias</p>
-          <h2>Tambien diseño catas para personas, equipos y momentos especiales.</h2>
+          <h2>También diseño catas para personas, equipos y momentos especiales.</h2>
           <p>
-            La consultoria es el foco profesional, pero el vino tambien se aprende y se disfruta en la mesa. Catas
-            privadas, sesiones para empresas y formatos de iniciacion con el mismo criterio: rigor, cercania y cero
+            La consultoría es el foco profesional, pero el vino también se aprende y se disfruta en la mesa. Catas
+            privadas, sesiones para empresas y formatos de iniciación con el mismo criterio: rigor, cercanía y cero
             postureo.
           </p>
           <div className="mini-service-grid">
@@ -129,22 +135,23 @@ export default function Home() {
       <section className="section product-band">
         <div>
           <p className="eyebrow">Producto propio</p>
-          <h2>Carta Viva es la parte operativa de la consultoria.</h2>
+          <h2>Carta Viva es la parte operativa de la consultoría.</h2>
           <p>
-            Tu restaurante tiene una carta publica por QR, un panel privado, una vista de camarero para vender mejor
-            y un sommelier IA que recomienda vinos de tu propia carta, no referencias inventadas.
+            Tu restaurante tiene una carta pública por QR, un panel privado, una vista de camarero para vender mejor
+            y una guía de maridaje que recomienda vinos de tu propia carta, no referencias inventadas. También mide
+            coste, PVP, stock mínimo, proveedor, incidencias y pedido sugerido.
           </p>
         </div>
         <div className="product-actions">
           <Link href="/cartavinos" className="btn btn-primary">Descubrir Carta Viva</Link>
-          <Link href="/cartavinos#contacto" className="btn btn-secondary">Solicitar demo</Link>
+          <Link href="/cartavinos#demo-segura" className="btn btn-secondary">Ver demo segura</Link>
         </div>
       </section>
 
       <section id="metodologia" className="section">
         <div className="section-head narrow">
           <p className="eyebrow">Metodo</p>
-          <h2>Del diagnostico a la implantacion.</h2>
+          <h2>Del diagnóstico a la implantación.</h2>
         </div>
         <div className="steps">
           {metodologia.map(([num, titulo, texto]) => (
@@ -160,17 +167,17 @@ export default function Home() {
       <section className="section split">
         <div>
           <p className="eyebrow">Sobre mi</p>
-          <h2>Soy Juanjo Garcia. Ingeniero de formacion, WSET Level 3 por vocacion.</h2>
+          <h2>Soy Juanjo García. Ingeniero de formación, WSET Level 3 por vocación.</h2>
         </div>
         <div className="copy-stack">
           <p>
             Mi forma de trabajar mezcla dos mundos: la mirada analitica de la ingenieria y el criterio sensorial del
-            vino. Me interesan las cartas que tienen alma, pero tambien numeros: rotacion, margen, ticket medio y
+            vino. Me interesan las cartas que tienen alma, pero también números: rotación, margen, ticket medio y
             facilidad de venta.
           </p>
           <p>
-            Acompaño a negocios que quieren profesionalizar su oferta de vinos sin convertirla en algo frio. El vino
-            tiene que vender, si. Pero tambien tiene que emocionar.
+            Acompaño a negocios que quieren profesionalizar su oferta de vinos sin convertirla en algo frío. El vino
+            tiene que vender, sí. Pero también tiene que emocionar.
           </p>
         </div>
       </section>
@@ -178,7 +185,7 @@ export default function Home() {
       <section className="section proof-section">
         <div className="section-head">
           <p className="eyebrow">Primer paso</p>
-          <h2>Antes de cambiar tu carta, entendamos que esta pasando.</h2>
+          <h2>Antes de cambiar tu carta, entendamos qué está pasando.</h2>
         </div>
         <div className="proof-grid">
           <Link href="/catas" className="proof-card">
@@ -187,11 +194,11 @@ export default function Home() {
           </Link>
           <Link href="/cartavinos" className="proof-card">
             <strong>Ver Carta Viva</strong>
-            <span>QR, dashboard, sommelier IA y vista de sala.</span>
+            <span>QR, dashboard, guía de maridaje y vista de sala.</span>
           </Link>
           <Link href="#contacto" className="proof-card">
             <strong>Auditar mi bodega</strong>
-            <span>Una primera conversacion sobre carta, margen y sala.</span>
+            <span>Una primera conversación sobre carta, margen y sala.</span>
           </Link>
         </div>
       </section>

@@ -11,7 +11,7 @@ export async function POST(request) {
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 300,
-      system: 'Eres un sommelier experto. Escribes notas de cata elegantes y concisas en español. Sin asteriscos, sin markdown, solo texto plano en 2-3 frases máximo.',
+      system: 'Eres un especialista en vino. Escribes notas de cata elegantes y concisas en español. Sin asteriscos, sin markdown, solo texto plano en 2-3 frases máximo.',
       messages: [{
         role: 'user',
         content: `Escribe una nota de cata breve y elegante para este vino:

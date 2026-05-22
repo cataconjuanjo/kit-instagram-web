@@ -66,7 +66,7 @@ function rasgosSugeridos(nombre, descripcion = '') {
     { match: ['seta', 'setas', 'trufa', 'boletus', 'champinon'], rasgo: 'setas trufa' },
     { match: ['almendra', 'almendras', 'nuez', 'nueces', 'avellana'], rasgo: 'frutos secos' },
     { match: ['queso', 'quesos', 'cheddar', 'cabra', 'curado'], rasgo: 'queso' },
-    { match: ['frio', 'fria', 'salmorejo', 'mazamorra', 'ensaladilla', 'gazpacho'], rasgo: 'frio' },
+    { match: ['frio', 'fria', 'salmorejo', 'mazamorra', 'ensaladilla', 'gazpacho'], rasgo: 'frío' },
     { match: ['rabo', 'codillo', 'madurada', 'jamon', 'trufa', 'soja'], rasgo: 'umami' },
   ]
 
@@ -170,6 +170,8 @@ export default function Platos() {
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [mostrarImportador, setMostrarImportador] = useState(false)
+  const [busquedaPlatos, setBusquedaPlatos] = useState('')
+  const [filtroPlatos, setFiltroPlatos] = useState('todos')
   const [editandoPlato, setEditandoPlato] = useState(null)
   const [nuevoPlato, setNuevoPlato] = useState({ nombre: '', descripcion: '', categoria: 'Entrantes fríos', precio: '' })
   const [textoImportar, setTextoImportar] = useState('')
@@ -331,12 +333,29 @@ export default function Platos() {
 
   if (loading) return <LoadingState />
 
+  const filtroUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('filtro') : ''
+  const platosBase = filtroUrl === 'descripcion'
+    ? platos.filter(plato => !plato.descripcion || plato.descripcion.trim().length < 8)
+    : platos
+  const busquedaNormalizada = normalizar(busquedaPlatos)
+  const platosVisibles = platosBase.filter(plato => {
+    const texto = normalizar([plato.nombre, plato.descripcion, plato.categoria].filter(Boolean).join(' '))
+    const coincideBusqueda = !busquedaNormalizada || texto.includes(busquedaNormalizada)
+    const coincideEstado =
+      filtroPlatos === 'todos' ||
+      (filtroPlatos === 'activos' && plato.activo !== false) ||
+      (filtroPlatos === 'ocultos' && plato.activo === false) ||
+      (filtroPlatos === 'sin_descripcion' && (!plato.descripcion || plato.descripcion.trim().length < 8)) ||
+      (filtroPlatos === 'sin_precio' && !Number(plato.precio))
+    return coincideBusqueda && coincideEstado
+  })
+
   return (
     <ModuleShell
       restaurante={restaurante}
       eyebrow="Carta de comida"
-      title="Gestion de platos"
-      subtitle="Mantiene precios, categorias y rasgos culinarios claros para que el maridaje entienda la carta real del restaurante."
+      title="Gestión de platos"
+      subtitle="Mantiene precios, categorías y rasgos culinarios claros para que el maridaje entienda la carta real del restaurante."
       actions={
         <>
           <button
@@ -349,10 +368,19 @@ export default function Platos() {
             onClick={() => { setMostrarFormulario(!mostrarFormulario); setMostrarImportador(false) }}
             className={mostrarFormulario ? styles.ghost : styles.primary}
           >
-            {mostrarFormulario ? 'Cancelar' : 'Anadir plato'}
+            {mostrarFormulario ? 'Cancelar' : 'Añadir plato'}
           </button>
         </>
       }
+      help={{
+        title: 'Platos que ayudan a vender vino',
+        intro: 'La carta de comida no es otro servicio: es contexto para que el maridaje tenga criterio.',
+        items: [
+          { title: 'Descripción corta', text: 'Incluye técnica, salsa, intensidad o ingrediente clave. No hace falta redactar poesía.' },
+          { title: 'Rasgos internos', text: 'Brasa, frito, queso o umami ayudan al sistema a cruzar mejor platos y vinos.' },
+          { title: 'Importación', text: 'Si subes la carta, revisa duplicados y categorías antes de guardar para no ensuciar la base.' },
+        ],
+      }}
     >
       <div style={{ display: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -470,44 +498,36 @@ export default function Platos() {
           </div>
         )}
 
-        {editandoPlato && (
-          <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
-            <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 20px' }}>Editando: {editandoPlato.nombre}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 28px', marginBottom: 16 }}>
-              <div>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Nombre *</label>
-                <input type="text" value={editandoPlato.nombre} onChange={e => setEditandoPlato({ ...editandoPlato, nombre: e.target.value })}
-                  style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
-              </div>
-              <div>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Categoría</label>
-                <select value={editandoPlato.categoria} onChange={e => setEditandoPlato({ ...editandoPlato, categoria: e.target.value })}
-                  style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111' }}>
-                  {categorias.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Precio (€)</label>
-                <input type="number" value={editandoPlato.precio || ''} onChange={e => setEditandoPlato({ ...editandoPlato, precio: e.target.value })}
-                  style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Descripción</label>
-                <input type="text" value={editandoPlato.descripcion || ''} onChange={e => setEditandoPlato({ ...editandoPlato, descripcion: e.target.value })}
-                  style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
-              </div>
-              <RasgosMaridaje plato={editandoPlato} onChange={setEditandoPlato} />
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => guardarEdicion(editandoPlato)} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
-                Guardar cambios
-              </button>
-              <button onClick={() => setEditandoPlato(null)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '12px 28px', fontSize: 11, color: '#aaa', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                Cancelar
-              </button>
-            </div>
+        <section className={styles.listToolbar}>
+          <div>
+            <label className={styles.label}>Buscar plato</label>
+            <input
+              className={styles.searchInput}
+              value={busquedaPlatos}
+              onChange={e => setBusquedaPlatos(e.target.value)}
+              placeholder="Nombre, categoría, técnica, salsa o ingrediente"
+            />
           </div>
-        )}
+          <div className={styles.segmented}>
+            {[
+              ['todos', 'Todos'],
+              ['activos', 'Activos'],
+              ['sin_descripcion', 'Sin descripción'],
+              ['sin_precio', 'Sin precio'],
+              ['ocultos', 'Ocultos'],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={filtroPlatos === id ? styles.segmentActive : ''}
+                onClick={() => setFiltroPlatos(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className={styles.resultCount}>{platosVisibles.length} de {platosBase.length} platos</p>
+        </section>
 
         <div style={{ background: '#fff', border: '1px solid #f0f0f0', overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.3fr 80px 2fr 160px', gap: 12, padding: '12px 20px', borderBottom: '1px solid #f0f0f0', background: '#fafafa' }}>
@@ -516,26 +536,66 @@ export default function Platos() {
             ))}
           </div>
 
-          {platos.length === 0 ? (
+          {platosVisibles.length === 0 ? (
             <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-              <p style={{ color: '#ccc', fontSize: 14, fontWeight: 300 }}>Aún no hay platos. Añade el primero.</p>
+              <p style={{ color: '#ccc', fontSize: 14, fontWeight: 300 }}>{filtroUrl === 'descripcion' ? 'No hay platos pendientes de descripción.' : 'Aún no hay platos. Añade el primero.'}</p>
             </div>
           ) : (
-            platos.map((p, i) => (
-              <div key={p.id} style={{
-                display: 'grid', gridTemplateColumns: '2fr 1.3fr 80px 2fr 160px', gap: 12,
-                padding: '14px 20px', borderBottom: i < platos.length - 1 ? '1px solid #f8f8f8' : 'none',
-                opacity: p.activo ? 1 : 0.4
-              }}>
-                <p style={{ margin: 0, fontSize: 14, color: '#111' }}>{p.nombre}</p>
-                <p style={{ margin: 0, fontSize: 12, color: '#888' }}>{p.categoria}</p>
-                <p style={{ margin: 0, fontSize: 12, color: '#111' }}>{Number(p.precio) ? `${Number(p.precio).toFixed(2)} €` : '—'}</p>
-                <p style={{ margin: 0, fontSize: 12, color: '#bbb' }}>{p.descripcion || '—'}</p>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <button onClick={() => setEditandoPlato(p)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '3px 8px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>Editar</button>
-                  <button onClick={() => toggleActivo(p)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '3px 8px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>{p.activo ? 'Ocultar' : 'Mostrar'}</button>
-                  <button onClick={() => borrarPlato(p)} style={{ background: 'none', border: '1px solid #f0c0c0', padding: '3px 8px', fontSize: 10, color: '#c07070', cursor: 'pointer' }}>Borrar</button>
+            platosVisibles.map((p, i) => (
+              <div key={p.id} className={styles.wineRowGroup}>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '2fr 1.3fr 80px 2fr 160px', gap: 12,
+                  padding: '14px 20px', borderBottom: i < platosVisibles.length - 1 ? '1px solid #f8f8f8' : 'none',
+                  opacity: p.activo ? 1 : 0.4
+                }}>
+                  <p style={{ margin: 0, fontSize: 14, color: '#111' }}>{p.nombre}</p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#888' }}>{p.categoria}</p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#111' }}>{Number(p.precio) ? `${Number(p.precio).toFixed(2)} €` : '—'}</p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#bbb' }}>{p.descripcion || '—'}</p>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => setEditandoPlato({ ...p, precio: p.precio || '' })} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '3px 8px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>Editar</button>
+                    <button onClick={() => toggleActivo(p)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '3px 8px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>{p.activo ? 'Ocultar' : 'Mostrar'}</button>
+                    <button onClick={() => borrarPlato(p)} style={{ background: 'none', border: '1px solid #f0c0c0', padding: '3px 8px', fontSize: 10, color: '#c07070', cursor: 'pointer' }}>Borrar</button>
+                  </div>
                 </div>
+                {editandoPlato?.id === p.id && (
+                  <div className={styles.inlineEditPanel}>
+                    <p className={styles.inlineEditTitle}>Editando {editandoPlato.nombre}</p>
+                    <div className={styles.wineFormGrid}>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Nombre *</label>
+                        <input type="text" value={editandoPlato.nombre} onChange={e => setEditandoPlato({ ...editandoPlato, nombre: e.target.value })}
+                          style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Categoría</label>
+                        <select value={editandoPlato.categoria} onChange={e => setEditandoPlato({ ...editandoPlato, categoria: e.target.value })}
+                          style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111' }}>
+                          {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Precio (€)</label>
+                        <input type="number" value={editandoPlato.precio || ''} onChange={e => setEditandoPlato({ ...editandoPlato, precio: e.target.value })}
+                          style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
+                      </div>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Descripción</label>
+                        <input type="text" value={editandoPlato.descripcion || ''} onChange={e => setEditandoPlato({ ...editandoPlato, descripcion: e.target.value })}
+                          style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
+                      </div>
+                      <RasgosMaridaje plato={editandoPlato} onChange={setEditandoPlato} />
+                    </div>
+                    <div className={styles.wineActions}>
+                      <button onClick={() => guardarEdicion(editandoPlato)} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                        Guardar cambios
+                      </button>
+                      <button onClick={() => setEditandoPlato(null)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '12px 28px', fontSize: 11, color: '#aaa', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))
           )}

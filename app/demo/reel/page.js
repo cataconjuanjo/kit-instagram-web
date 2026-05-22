@@ -2,15 +2,15 @@ const slides = [
   {
     eyebrow: 'Carta real',
     title: 'Lo de Carmen',
-    text: 'La carta digital no solo ensena vinos: conecta platos reales con decisiones de venta en sala.',
+    text: 'La carta digital no solo enseña vinos: conecta platos reales con decisiones de venta en sala.',
     detail: '81 referencias · platos de carta · modo camarero',
     tags: ['Carta', 'Platos', 'Sala'],
   },
   {
     eyebrow: 'Plato seleccionado',
     title: 'Codillo al Pedro Ximenez',
-    text: 'La app entiende el plato: cerdo meloso, grasa, coccion lenta y reduccion dulce.',
-    detail: 'No interpreta solo palabras sueltas: lee tecnica, textura y salsa.',
+    text: 'La app entiende el plato: cerdo meloso, grasa, cocción lenta y reducción dulce.',
+    detail: 'No interpreta solo palabras sueltas: lee técnica, textura y salsa.',
     tags: ['Textura', 'Salsa', 'Metodo'],
   },
   {
@@ -24,7 +24,7 @@ const slides = [
     eyebrow: 'Vinos compatibles',
     title: 'Tres opciones de la carta',
     text: 'Facil de vender, recomendado y premium. Siempre con vinos reales del restaurante.',
-    detail: 'La recomendacion se apoya en la carta existente, no inventa botellas.',
+    detail: 'La recomendación se apoya en la carta existente, no inventa botellas.',
     tags: ['Facil', 'Top', 'Premium'],
   },
   {

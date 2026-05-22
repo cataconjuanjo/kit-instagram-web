@@ -20,20 +20,20 @@ export default function AvisoLegal() {
 
       <h2>Objeto</h2>
       <p>
-        Este sitio web presenta los servicios profesionales de Cata con Juanjo: consultoria de vino, formacion,
+        Este sitio web presenta los servicios profesionales de Cata con Juanjo: consultoría de vino, formación,
         experiencias enologicas y herramientas digitales para restaurantes y negocios hospitality.
       </p>
 
       <h2>Propiedad intelectual</h2>
       <p>
-        Los textos, diseño, imagenes, codigo y contenidos pertenecen a Juanjo Garcia o a terceros que han autorizado
-        su uso. No se permite su reproduccion, distribucion o comunicacion publica sin autorizacion expresa.
+        Los textos, diseño, imágenes, código y contenidos pertenecen a Juanjo García o a terceros que han autorizado
+        su uso. No se permite su reproducción, distribución o comunicación pública sin autorización expresa.
       </p>
 
       <h2>Responsabilidad</h2>
       <p>
-        Se trabaja para mantener la informacion actualizada y correcta, pero el titular no se responsabiliza de usos
-        indebidos del contenido ni de interrupciones tecnicas ajenas a su control.
+        Se trabaja para mantener la información actualizada y correcta, pero el titular no se responsabiliza de usos
+        indebidos del contenido ni de interrupciones técnicas ajenas a su control.
       </p>
 
       <h2>Legislacion aplicable</h2>

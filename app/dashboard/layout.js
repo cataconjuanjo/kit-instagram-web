@@ -5,7 +5,16 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail } from '../demo'
+import { nombrePlan } from '../lib/plans'
 import styles from './layout.module.css'
+
+const icon = {
+  home: <svg viewBox="0 0 20 20" fill="currentColor" width={16} height={16}><path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7a1 1 0 0 0 1.414 1.414L4 10.414V17a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-3h2v3a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6.586l.293.293a1 1 0 0 0 1.414-1.414l-7-7z"/></svg>,
+  wine: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><path d="M8 3h8l1 9a5 5 0 0 1-10 0L8 3z"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="8" y1="21" x2="16" y2="21"/></svg>,
+  bodega: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><path d="M4 20h16"/><path d="M6 20V7l6-3 6 3v13"/><path d="M9 20v-6h6v6"/><path d="M8 10h2M14 10h2"/></svg>,
+  sala: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><path d="M8 3h8"/><path d="M9 3v5a3 3 0 0 1-6 0V3h6Z"/><path d="M15 3v18"/><path d="M19 8v13"/><path d="M5 21h14"/></svg>,
+  ajustes: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+}
 
 export default function DashboardLayout({ children }) {
   const pathname = usePathname()
@@ -18,7 +27,7 @@ export default function DashboardLayout({ children }) {
     async function cargar() {
       const { email } = await getEffectiveRestaurantEmail(supabase)
       if (!email) return
-      const { data: rest } = await supabase.from('restaurantes').select('id, nombre, ciudad, slug').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (!rest) return
       setRestaurante(rest)
       const [{ count: vinos }, { count: platos }] = await Promise.all([
@@ -41,34 +50,58 @@ export default function DashboardLayout({ children }) {
   const isActive = (href, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
 
+  const inicialesRestaurante = (restaurante?.nombre || 'CV')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(palabra => palabra[0])
+    .join('')
+    .toUpperCase()
+
+  const planVisible = restaurante?.plan === 'basic'
+    ? 'Acceso completo'
+    : restaurante
+      ? nombrePlan(restaurante)
+      : ''
+
   const navItems = [
+    { href: '/dashboard', label: 'Inicio', exact: true, icon: icon.home },
     {
-      href: '/dashboard', label: 'Inicio', exact: true,
-      icon: <svg viewBox="0 0 20 20" fill="currentColor" width={16} height={16}><path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7a1 1 0 0 0 1.414 1.414L4 10.414V17a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-3h2v3a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6.586l.293.293a1 1 0 0 0 1.414-1.414l-7-7z"/></svg>,
+      href: '/dashboard/carta',
+      label: 'Carta',
+      icon: icon.wine,
+      stat: vinoCount + platoCount || null,
+      children: [
+        { href: '/dashboard/vinos', label: 'Vinos', stat: vinoCount || null },
+        { href: '/dashboard/platos', label: 'Platos', stat: platoCount || null },
+        { href: '/dashboard/seleccion', label: 'Sugerencia' },
+      ],
     },
     {
-      href: '/dashboard/vinos', label: 'Vinos', stat: vinoCount || null,
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><path d="M8 3h8l1 9a5 5 0 0 1-10 0L8 3z"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="8" y1="21" x2="16" y2="21"/></svg>,
+      href: '/dashboard/sala',
+      label: 'Sala',
+      icon: icon.sala,
+      children: [
+        { href: '/dashboard/cierre', label: 'Cierre servicio' },
+        { href: '/dashboard/estadisticas', label: 'Actividad' },
+      ],
     },
     {
-      href: '/dashboard/platos', label: 'Platos', stat: platoCount || null,
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><circle cx="12" cy="12" r="9"/><path d="M12 3v9"/><path d="M8 12h8"/></svg>,
+      href: '/dashboard/bodega',
+      label: 'Bodega',
+      icon: icon.bodega,
+      children: [
+        { href: '/dashboard/inventario', label: 'Inventario' },
+      ],
     },
     {
-      href: '/dashboard/estadisticas', label: 'Estadísticas',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
-    },
-    {
-      href: '/dashboard/seleccion', label: 'Selección destacada',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-    },
-    {
-      href: '/dashboard/qr', label: 'QR de sala',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/><rect x="14" y="18" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/></svg>,
-    },
-    {
-      href: '/dashboard/personalizar', label: 'Diseño y marca',
-      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+      href: '/dashboard/ajustes',
+      label: 'Ajustes',
+      icon: icon.ajustes,
+      children: [
+        { href: '/dashboard/qr', label: 'QR y accesos' },
+        { href: '/dashboard/personalizar', label: 'Diseño y marca' },
+      ],
     },
   ]
 
@@ -76,49 +109,65 @@ export default function DashboardLayout({ children }) {
     <div className={styles.shell}>
       <nav className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
-          <p className={styles.brandLabel}>Panel de gestión</p>
-          <p className={styles.brandName}>{restaurante?.nombre || '—'}</p>
-          {restaurante?.ciudad && <p className={styles.brandCity}>{restaurante.ciudad}</p>}
+          <div className={styles.brandIdentity}>
+            {restaurante?.logo_url ? (
+              <img className={styles.brandLogo} src={restaurante.logo_url} alt={restaurante.nombre || 'Logo restaurante'} />
+            ) : (
+              <span className={styles.brandLogoFallback}>{inicialesRestaurante}</span>
+            )}
+            <div className={styles.brandText}>
+              <p className={styles.brandLabel}>Panel restaurante</p>
+              <p className={styles.brandName}>{restaurante?.nombre || '-'}</p>
+              {restaurante?.ciudad && <p className={styles.brandCity}>{restaurante.ciudad}</p>}
+            </div>
+          </div>
+          {restaurante && <p className={styles.brandPlan}>{planVisible}</p>}
         </div>
 
         <ul className={styles.nav}>
-          {navItems.map(item => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                className={`${styles.navLink} ${isActive(item.href, item.exact) ? styles.navActive : ''}`}
-                onClick={() => setMenuOpen(false)}
-              >
-                <span className={styles.navIcon}>{item.icon}</span>
-                <span className={styles.navLabel}>{item.label}</span>
-                {item.stat != null && <span className={styles.navStat}>{item.stat}</span>}
-              </Link>
-            </li>
-          ))}
+          {navItems.map(item => {
+            const active = isActive(item.href, item.exact) || item.children?.some(child => isActive(child.href))
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={`${styles.navLink} ${active ? styles.navActive : ''}`}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span className={styles.navIcon}>{item.icon}</span>
+                  <span className={styles.navLabel}>{item.label}</span>
+                  {item.stat != null && <span className={styles.navStat}>{item.stat}</span>}
+                </Link>
+                {active && item.children?.length > 0 && (
+                  <div className={styles.subnav}>
+                    {item.children.map(child => (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={`${styles.subnavLink} ${isActive(child.href, child.exact) ? styles.subnavActive : ''}`}
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <span>{child.label}</span>
+                        {child.stat != null && <span className={styles.navStat}>{child.stat}</span>}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </li>
+            )
+          })}
         </ul>
 
         <div className={styles.sidebarFooter}>
           <div className={styles.footerLinks}>
-            <a
-              href={restaurante ? `/carta/${restaurante.slug}` : '#'}
-              target="_blank"
-              className={styles.footerLink}
-            >
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" width={12} height={12}><path d="M11 3h6v6M17 3l-7 7M9 5H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4"/></svg>
+            <a href={restaurante?.slug ? `/carta/${restaurante.slug}` : '#'} target="_blank" rel="noreferrer" className={styles.footerLink}>
               Carta pública
             </a>
-            <a
-              href={restaurante ? `/camarero/${restaurante.slug}` : '#'}
-              target="_blank"
-              className={styles.footerLink}
-            >
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" width={12} height={12}><path d="M11 3h6v6M17 3l-7 7M9 5H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4"/></svg>
+            <a href={restaurante?.slug ? `/camarero/${restaurante.slug}` : '#'} target="_blank" rel="noreferrer" className={styles.footerLink}>
               Modo camarero
             </a>
           </div>
-          <button type="button" onClick={cerrarSesion} className={styles.logoutButton}>
-            Salir
-          </button>
+          <button type="button" onClick={cerrarSesion} className={styles.logoutButton}>Salir</button>
         </div>
       </nav>
 
@@ -131,7 +180,7 @@ export default function DashboardLayout({ children }) {
               <path fillRule="evenodd" d="M3 5h14a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm0 4h14a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm0 4h14a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2z" clipRule="evenodd"/>
             </svg>
           </button>
-          <p className={styles.mobileName}>{restaurante?.nombre || '—'}</p>
+          <p className={styles.mobileName}>{restaurante?.nombre || '-'}</p>
         </div>
         {children}
       </div>

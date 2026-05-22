@@ -30,11 +30,25 @@ export default function Personalizar() {
   const [bannerZoom, setBannerZoom] = useState(100)
   const [bannerX, setBannerX] = useState(50)
   const [bannerY, setBannerY] = useState(50)
+  const [hubFondoUrl, setHubFondoUrl] = useState(null)
+  const [hubFondoZoom, setHubFondoZoom] = useState(115)
+  const [hubFondoX, setHubFondoX] = useState(50)
+  const [hubFondoY, setHubFondoY] = useState(50)
+  const [hubOverlay, setHubOverlay] = useState(0.48)
+  const [hubEstilo, setHubEstilo] = useState('nubes')
+  const [hubTitulo, setHubTitulo] = useState('')
+  const [hubSubtitulo, setHubSubtitulo] = useState('')
+  const [hubMostrarLogo, setHubMostrarLogo] = useState(true)
+  const [hubMostrarNombre, setHubMostrarNombre] = useState(true)
+  const [hubMostrarDireccion, setHubMostrarDireccion] = useState(true)
   const [subiendoLogo, setSubiendoLogo] = useState(false)
   const [subiendoBanner, setSubiendoBanner] = useState(false)
+  const [subiendoHub, setSubiendoHub] = useState(false)
   const [guardado, setGuardado] = useState(false)
+  const [errorPersonalizacion, setErrorPersonalizacion] = useState('')
   const fileRef = useRef(null)
   const bannerRef = useRef(null)
+  const hubRef = useRef(null)
   const dragRef = useRef(null)
   const dragState = useRef(null)
 
@@ -54,6 +68,17 @@ export default function Personalizar() {
         setBannerZoom(rest.banner_zoom || 100)
         setBannerX(rest.banner_x ?? 50)
         setBannerY(rest.banner_y ?? 50)
+        setHubFondoUrl(rest.hub_fondo_url || null)
+        setHubFondoZoom(rest.hub_fondo_zoom || 115)
+        setHubFondoX(rest.hub_fondo_x ?? 50)
+        setHubFondoY(rest.hub_fondo_y ?? 50)
+        setHubOverlay(rest.hub_overlay ?? 0.48)
+        setHubEstilo(rest.hub_estilo || 'nubes')
+        setHubTitulo(rest.hub_titulo || '')
+        setHubSubtitulo(rest.hub_subtitulo || '')
+        setHubMostrarLogo(rest.hub_mostrar_logo !== false)
+        setHubMostrarNombre(rest.hub_mostrar_nombre !== false)
+        setHubMostrarDireccion(rest.hub_mostrar_direccion !== false)
       }
       setLoading(false)
     }
@@ -65,6 +90,41 @@ export default function Personalizar() {
     setColorFondo(p.fondo)
     setColorAcento(p.acento)
     setTipografia(p.tipografia)
+  }
+
+  function nombreArchivoStorage(tipo, file) {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    return `${restaurante.slug}/${tipo}-${Date.now()}.${ext}`
+  }
+
+  function esErrorColumnasHub(error) {
+    const texto = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase()
+    return ['hub_mostrar_logo', 'hub_mostrar_nombre', 'hub_mostrar_direccion'].some(columna => texto.includes(columna))
+  }
+
+  function descripcionErrorGuardar(nombre, error, sql) {
+    const detalle = error?.message ? ` (${error.message})` : ''
+    return `${nombre}${detalle}${sql ? `. Ejecuta ${sql} en Supabase.` : ''}`
+  }
+
+  function aplicarEstadoBanner(url, zoom = 100, x = 50, y = 50) {
+    setBannerUrl(url)
+    setBannerZoom(zoom)
+    setBannerX(x)
+    setBannerY(y)
+  }
+
+  function aplicarEstadoHub(url, zoom = 115, x = 50, y = 50) {
+    setHubFondoUrl(url)
+    setHubFondoZoom(zoom)
+    setHubFondoX(x)
+    setHubFondoY(y)
+  }
+
+  async function guardarParcial(cambios) {
+    const { error } = await supabase.from('restaurantes').update(cambios).eq('id', restaurante.id)
+    if (!error) setRestaurante(prev => prev ? { ...prev, ...cambios } : prev)
+    return { error }
   }
 
   // Drag to reposition banner
@@ -102,50 +162,179 @@ export default function Personalizar() {
   async function subirBanner(e) {
     const file = e.target.files[0]
     if (!file) return
+    setErrorPersonalizacion('')
     setSubiendoBanner(true)
-    const ext = file.name.split('.').pop()
-    const fileName = `banner-${restaurante.slug}.${ext}`
-    const { error } = await supabase.storage.from('logos').upload(fileName, file, { upsert: true })
-    if (!error) {
+    const previewUrl = URL.createObjectURL(file)
+    aplicarEstadoBanner(previewUrl)
+    const fileName = nombreArchivoStorage('banner', file)
+    const { error } = await supabase.storage.from('logos').upload(fileName, file, { cacheControl: '31536000' })
+    if (error) {
+      setErrorPersonalizacion('No se pudo subir el banner a Supabase. Lo ves en la vista previa, pero no se aplicará en la carta pública hasta que suba correctamente.')
+    } else {
       const { data } = supabase.storage.from('logos').getPublicUrl(fileName)
-      setBannerUrl(data.publicUrl)
-      setBannerZoom(100)
-      setBannerX(50)
-      setBannerY(50)
+      const cambios = { banner_url: data.publicUrl, banner_zoom: 100, banner_x: 50, banner_y: 50 }
+      aplicarEstadoBanner(cambios.banner_url, cambios.banner_zoom, cambios.banner_x, cambios.banner_y)
+      URL.revokeObjectURL(previewUrl)
+      const { error: updateError } = await guardarParcial(cambios)
+      if (updateError) {
+        setErrorPersonalizacion(`El banner se subió y aparece en la vista previa, pero no se pudo aplicar en la carta pública: ${updateError.message || 'error de guardado'}.`)
+      }
     }
+    e.target.value = ''
     setSubiendoBanner(false)
+  }
+
+  async function subirHubFondo(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setErrorPersonalizacion('')
+    setSubiendoHub(true)
+    const previewUrl = URL.createObjectURL(file)
+    aplicarEstadoHub(previewUrl)
+    const fileName = nombreArchivoStorage('hub', file)
+    const { error } = await supabase.storage.from('logos').upload(fileName, file, { cacheControl: '31536000' })
+    if (error) {
+      setErrorPersonalizacion('No se pudo subir el fondo del hub a Supabase. Lo ves en la vista previa, pero no se aplicará en el hub público hasta que suba correctamente.')
+    } else {
+      const { data } = supabase.storage.from('logos').getPublicUrl(fileName)
+      const cambios = { hub_fondo_url: data.publicUrl, hub_fondo_zoom: 115, hub_fondo_x: 50, hub_fondo_y: 50 }
+      aplicarEstadoHub(cambios.hub_fondo_url, cambios.hub_fondo_zoom, cambios.hub_fondo_x, cambios.hub_fondo_y)
+      URL.revokeObjectURL(previewUrl)
+      const { error: updateError } = await guardarParcial(cambios)
+      if (updateError) {
+        setErrorPersonalizacion(`El fondo del hub se subió y aparece en la vista previa, pero no se pudo aplicar en el hub público: ${updateError.message || 'error de guardado'}.`)
+      }
+    }
+    e.target.value = ''
+    setSubiendoHub(false)
   }
 
   async function subirLogo(e) {
     const file = e.target.files[0]
     if (!file) return
+    setErrorPersonalizacion('')
     setSubiendoLogo(true)
-    const ext = file.name.split('.').pop()
-    const fileName = `${restaurante.slug}.${ext}`
-    const { error } = await supabase.storage.from('logos').upload(fileName, file, { upsert: true })
-    if (!error) {
+    const fileName = nombreArchivoStorage('logo', file)
+    const { error } = await supabase.storage.from('logos').upload(fileName, file, { cacheControl: '31536000' })
+    if (error) {
+      setErrorPersonalizacion('No se pudo subir el logo. Revisa el formato de imagen e inténtalo de nuevo.')
+    } else {
       const { data } = supabase.storage.from('logos').getPublicUrl(fileName)
-      const url = data.publicUrl
-      await supabase.from('restaurantes').update({ logo_url: url }).eq('id', restaurante.id)
-      setLogoUrl(url)
+      const { error: updateError } = await guardarParcial({ logo_url: data.publicUrl })
+      if (updateError) {
+        setErrorPersonalizacion('El logo se subió, pero no se pudo guardar en el restaurante.')
+      } else {
+        setLogoUrl(data.publicUrl)
+      }
     }
+    e.target.value = ''
     setSubiendoLogo(false)
   }
 
-  async function guardar() {
+  async function quitarBanner() {
+    setErrorPersonalizacion('')
+    const cambios = { banner_url: null, banner_zoom: 100, banner_x: 50, banner_y: 50 }
+    const { error } = await guardarParcial(cambios)
+    if (error) {
+      setErrorPersonalizacion('No se pudo quitar el banner.')
+      return
+    }
+    aplicarEstadoBanner(null, 100, 50, 50)
+  }
+
+  async function quitarHubFondo() {
+    setErrorPersonalizacion('')
+    const cambios = { hub_fondo_url: null, hub_fondo_zoom: 115, hub_fondo_x: 50, hub_fondo_y: 50 }
+    const { error } = await guardarParcial(cambios)
+    if (error) {
+      setErrorPersonalizacion('No se pudo quitar el fondo del hub.')
+      return
+    }
+    aplicarEstadoHub(null, 115, 50, 50)
+  }
+
+  async function guardarPorBloques() {
+    setErrorPersonalizacion('')
     setGuardando(true)
-    await supabase.from('restaurantes').update({
+
+    const grupos = [
+      { nombre: 'colores base', cambios: { color_primario: colorPrimario, color_fondo: colorFondo } },
+      { nombre: 'acento y tipografia', cambios: { color_acento: colorAcento, tipografia }, sql: 'supabase/add_personalizacion.sql' },
+      { nombre: 'banner de carta', cambios: { banner_url: bannerUrl, banner_zoom: bannerZoom, banner_x: bannerX, banner_y: bannerY }, sql: 'supabase/add_personalizacion.sql' },
+      { nombre: 'texto del hub', cambios: { hub_titulo: hubTitulo.trim() || null, hub_subtitulo: hubSubtitulo.trim() || null }, sql: 'supabase/add_hub_links.sql' },
+      { nombre: 'fondo del hub', cambios: { hub_fondo_url: hubFondoUrl, hub_fondo_zoom: hubFondoZoom, hub_fondo_x: hubFondoX, hub_fondo_y: hubFondoY, hub_overlay: hubOverlay, hub_estilo: hubEstilo }, sql: 'supabase/add_hub_links.sql' },
+      { nombre: 'visibilidad del hub', cambios: { hub_mostrar_logo: hubMostrarLogo, hub_mostrar_nombre: hubMostrarNombre, hub_mostrar_direccion: hubMostrarDireccion }, sql: 'supabase/add_hub_links.sql' },
+    ]
+
+    const errores = []
+    let guardados = 0
+    for (const grupo of grupos) {
+      const { error } = await guardarParcial(grupo.cambios)
+      if (error) errores.push(descripcionErrorGuardar(grupo.nombre, error, grupo.sql))
+      else guardados += 1
+    }
+
+    if (guardados > 0) {
+      setGuardado(true)
+      setTimeout(() => setGuardado(false), 2000)
+    }
+
+    if (errores.length) {
+      setErrorPersonalizacion(
+        guardados > 0
+          ? `Guardado parcial. Fallo: ${errores.join(' | ')}`
+          : `No se pudo guardar nada. Fallo: ${errores.join(' | ')}`
+      )
+    }
+
+    setGuardando(false)
+  }
+
+  async function guardar() {
+    setErrorPersonalizacion('')
+    setGuardando(true)
+    const cambios = {
       color_primario: colorPrimario,
       color_fondo: colorFondo,
       color_acento: colorAcento,
       tipografia,
+      hub_titulo: hubTitulo.trim() || null,
+      hub_subtitulo: hubSubtitulo.trim() || null,
       banner_url: bannerUrl,
       banner_zoom: bannerZoom,
       banner_x: bannerX,
       banner_y: bannerY,
-    }).eq('id', restaurante.id)
-    setGuardado(true)
-    setTimeout(() => setGuardado(false), 2000)
+      hub_fondo_url: hubFondoUrl,
+      hub_fondo_zoom: hubFondoZoom,
+      hub_fondo_x: hubFondoX,
+      hub_fondo_y: hubFondoY,
+      hub_overlay: hubOverlay,
+      hub_estilo: hubEstilo,
+    }
+    const { error } = await guardarParcial(cambios)
+    if (error) {
+      setErrorPersonalizacion('No se pudieron guardar los cambios de diseño.')
+      setGuardando(false)
+      return
+    }
+
+    const { error: errorOpcionesHub } = await guardarParcial({
+      hub_mostrar_logo: hubMostrarLogo,
+      hub_mostrar_nombre: hubMostrarNombre,
+      hub_mostrar_direccion: hubMostrarDireccion,
+    })
+    if (errorOpcionesHub) {
+      setGuardado(true)
+      setTimeout(() => setGuardado(false), 2000)
+      setErrorPersonalizacion(
+        esErrorColumnasHub(errorOpcionesHub)
+          ? 'Diseño guardado. Los interruptores de logo/nombre/dirección necesitan ejecutar el SQL actualizado de supabase/add_hub_links.sql en Supabase.'
+          : `Diseño guardado, pero no se pudieron guardar las opciones del hub: ${errorOpcionesHub.message || 'error desconocido'}.`
+      )
+    } else {
+      setGuardado(true)
+      setTimeout(() => setGuardado(false), 2000)
+    }
     setGuardando(false)
   }
 
@@ -153,15 +342,24 @@ export default function Personalizar() {
 
   function bannerCss(zoom, x, y) {
     return {
+      position: 'absolute',
+      inset: 0,
       backgroundImage: bannerUrl
         ? `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url(${bannerUrl})`
         : undefined,
-      backgroundSize: bannerUrl ? `${zoom}%` : undefined,
-      backgroundPosition: bannerUrl ? `${x}% ${y}%` : undefined,
+      backgroundSize: 'cover',
+      backgroundPosition: `${x}% ${y}%`,
+      backgroundRepeat: 'no-repeat',
+      transform: `scale(${Number(zoom || 100) / 100})`,
+      transformOrigin: 'center',
+      pointerEvents: 'none',
     }
   }
 
   if (loading) return <LoadingState />
+
+  const tituloHubPreview = hubTitulo.trim() || restaurante?.nombre
+  const subtituloHubPreview = hubSubtitulo.trim() || restaurante?.ciudad || 'Carta, reservas y enlaces'
 
   return (
     <ModuleShell
@@ -171,11 +369,32 @@ export default function Personalizar() {
       subtitle="Elige una paleta base y ajusta los colores para que la carta encaje con la marca del establecimiento."
       narrow
       actions={
-        <a className={styles.secondary} href={`/carta/${restaurante?.slug || ''}`} target="_blank" rel="noreferrer">
-          Ver carta
-        </a>
+        <>
+          <a className={styles.secondary} href={`/carta/${restaurante?.slug || ''}`} target="_blank" rel="noreferrer">
+            Ver carta
+          </a>
+          {restaurante?.hub_activo && (
+            <a className={styles.secondary} href={`/r/${restaurante.slug}`} target="_blank" rel="noreferrer">
+              Ver hub
+            </a>
+          )}
+        </>
       }
+      help={{
+        title: 'Diseno sin romper la carta',
+        intro: 'Personaliza lo suficiente para que sea reconocible, pero manteniendo legibilidad en móvil.',
+        items: [
+          { title: 'Empieza por paleta', text: 'Elige una base parecida al local y despues ajusta colores concretos.' },
+          { title: 'Imagen y logo', text: 'Usa imágenes claras. Evita banners oscuros o recortados que tapen el nombre.' },
+          { title: 'Revisa en móvil', text: 'Guarda y abre la carta pública. Si se lee bien en móvil, normalmente funciona en mesa.' },
+        ],
+      }}
     >
+      {errorPersonalizacion && (
+        <div className={styles.empty} style={{ minHeight: 'auto', marginBottom: 16, color: '#9b3535' }}>
+          {errorPersonalizacion}
+        </div>
+      )}
       {/* Paletas curadas */}
       <section className={styles.panel}>
         <div className={styles.panelHead}>
@@ -276,10 +495,13 @@ export default function Personalizar() {
           </div>
           <div className={styles.panelBody}>
             <div className={styles.previewCard} style={{ background: colorFondo, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 16px', background: bannerUrl ? undefined : colorPrimario, ...bannerCss(bannerZoom, bannerX, bannerY) }}>
-                {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: 28, objectFit: 'contain', display: 'block', marginBottom: 8 }} />}
-                <p style={{ margin: '0 0 2px', color: 'rgba(255,255,255,0.55)', fontSize: 9, fontWeight: 850, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Carta de vinos</p>
-                <p style={{ margin: 0, color: '#fff', fontSize: 18, fontFamily: fontPreview }}>{restaurante?.nombre}</p>
+              <div style={{ position: 'relative', overflow: 'hidden', padding: '14px 16px', background: colorPrimario }}>
+                {bannerUrl && <div aria-hidden="true" style={bannerCss(bannerZoom, bannerX, bannerY)} />}
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: 28, objectFit: 'contain', display: 'block', marginBottom: 8 }} />}
+                  <p style={{ margin: '0 0 2px', color: 'rgba(255,255,255,0.55)', fontSize: 9, fontWeight: 850, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Carta de vinos</p>
+                  <p style={{ margin: 0, color: '#fff', fontSize: 18, fontFamily: fontPreview }}>{restaurante?.nombre}</p>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 6, padding: '10px 12px', flexWrap: 'wrap' }}>
                 {['Todos', 'Tintos', 'Blancos'].map((label, i) => (
@@ -331,13 +553,10 @@ export default function Personalizar() {
                 style={{
                   height: 140, borderRadius: 10, overflow: 'hidden', cursor: 'grab', userSelect: 'none',
                   position: 'relative', border: '1px solid #e8e8e8',
-                  backgroundImage: `url(${bannerUrl})`,
-                  backgroundSize: `${bannerZoom}%`,
-                  backgroundPosition: `${bannerX}% ${bannerY}%`,
-                  backgroundRepeat: 'no-repeat',
                   backgroundColor: '#111',
                 }}
               >
+                <div aria-hidden="true" style={bannerCss(bannerZoom, bannerX, bannerY)} />
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                   <span style={{ background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 11, padding: '4px 10px', borderRadius: 20, letterSpacing: '0.05em' }}>
                     Arrastra para encuadrar
@@ -362,7 +581,7 @@ export default function Personalizar() {
                 <button className={styles.secondary} onClick={() => bannerRef.current.click()} disabled={subiendoBanner}>
                   {subiendoBanner ? 'Subiendo...' : 'Cambiar foto'}
                 </button>
-                <button className={styles.secondary} onClick={() => setBannerUrl(null)} style={{ color: '#c00', borderColor: '#fcc' }}>
+                <button className={styles.secondary} onClick={quitarBanner} style={{ color: '#c00', borderColor: '#fcc' }}>
                   Quitar banner
                 </button>
               </div>
@@ -378,6 +597,162 @@ export default function Personalizar() {
               </button>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Hub */}
+      <section className={styles.panel} style={{ marginTop: 16 }}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2 className={styles.panelTitle}>Hub tipo campsite</h2>
+            <p className={styles.panelSub}>Foto de fondo y botones tipo nube para carta, reservas, redes y accesos rápidos.</p>
+          </div>
+        </div>
+        <div className={styles.panelBody}>
+          <div className={styles.gridTwo}>
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div>
+                <label className={styles.label}>Foto de fondo del hub</label>
+                <p className={styles.tiny} style={{ marginTop: 0 }}>Interior, barra, fachada o una imagen de ambiente. La app la oscurece para que los botones se lean.</p>
+                <input type="file" accept="image/*" ref={hubRef} onChange={subirHubFondo} style={{ display: 'none' }} />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button className={styles.secondary} onClick={() => hubRef.current.click()} disabled={subiendoHub}>
+                    {subiendoHub ? 'Subiendo...' : hubFondoUrl ? 'Cambiar fondo' : 'Subir fondo'}
+                  </button>
+                  {hubFondoUrl && (
+                    <button className={styles.secondary} onClick={quitarHubFondo} style={{ color: '#9b3535', borderColor: '#e0bbbb' }}>
+                      Quitar fondo
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className={styles.formGrid}>
+                <div>
+                  <label className={styles.label}>Título del hub</label>
+                  <input className={styles.input} value={hubTitulo} onChange={e => setHubTitulo(e.target.value)} placeholder={restaurante?.nombre || 'Nombre del restaurante'} />
+                </div>
+                <div>
+                  <label className={styles.label}>Dirección o subtítulo</label>
+                  <input className={styles.input} value={hubSubtitulo} onChange={e => setHubSubtitulo(e.target.value)} placeholder={restaurante?.ciudad || 'Carta, reservas y enlaces'} />
+                </div>
+                <label className={styles.checkOption}>
+                  <input type="checkbox" checked={hubMostrarLogo} onChange={e => setHubMostrarLogo(e.target.checked)} />
+                  <span>Mostrar logo en el hub</span>
+                </label>
+                <label className={styles.checkOption}>
+                  <input type="checkbox" checked={hubMostrarNombre} onChange={e => setHubMostrarNombre(e.target.checked)} />
+                  <span>Mostrar nombre del restaurante</span>
+                </label>
+                <label className={styles.checkOption}>
+                  <input type="checkbox" checked={hubMostrarDireccion} onChange={e => setHubMostrarDireccion(e.target.checked)} />
+                  <span>Mostrar dirección o subtítulo</span>
+                </label>
+                <div>
+                  <label className={styles.label}>Estilo botones</label>
+                  <select className={styles.input} value={hubEstilo} onChange={e => setHubEstilo(e.target.value)}>
+                    <option value="nubes">Nubes claras</option>
+                    <option value="solido">Botones sólidos</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={styles.label}>Oscurecer fondo</label>
+                  <input
+                    type="range"
+                    min={0.2}
+                    max={0.78}
+                    step={0.01}
+                    value={hubOverlay}
+                    onChange={e => setHubOverlay(Number(e.target.value))}
+                    style={{ width: '100%', accentColor: colorPrimario }}
+                  />
+                  <p className={styles.tiny} style={{ margin: 0 }}>{Math.round(hubOverlay * 100)}%</p>
+                </div>
+                <div>
+                  <label className={styles.label}>Zoom fondo</label>
+                  <input
+                    type="range"
+                    min={100}
+                    max={260}
+                    step={1}
+                    value={hubFondoZoom}
+                    onChange={e => setHubFondoZoom(Number(e.target.value))}
+                    style={{ width: '100%', accentColor: colorPrimario }}
+                  />
+                </div>
+                <div>
+                  <label className={styles.label}>Posición</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <input className={styles.input} type="number" min={0} max={100} value={hubFondoX} onChange={e => setHubFondoX(Number(e.target.value))} />
+                    <input className={styles.input} type="number" min={0} max={100} value={hubFondoY} onChange={e => setHubFondoY(Number(e.target.value))} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                minHeight: 360,
+                borderRadius: 18,
+                overflow: 'hidden',
+                position: 'relative',
+                display: 'grid',
+                alignContent: 'center',
+                justifyItems: 'center',
+                gap: 12,
+                padding: 24,
+                backgroundColor: colorFondo,
+                boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)',
+              }}
+            >
+              {hubFondoUrl && (
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundImage: `linear-gradient(rgba(0,0,0,${hubOverlay}), rgba(0,0,0,${hubOverlay})), url(${hubFondoUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: `${hubFondoX}% ${hubFondoY}%`,
+                    backgroundRepeat: 'no-repeat',
+                    transform: `scale(${hubFondoZoom / 100})`,
+                    transformOrigin: 'center',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
+              {hubMostrarLogo && (logoUrl ? (
+                <img src={logoUrl} alt="Logo" style={{ width: 68, height: 68, objectFit: 'contain', borderRadius: 999, background: colorPrimario, padding: 8, boxSizing: 'border-box' }} />
+              ) : (
+                <div style={{ width: 68, height: 68, borderRadius: 999, background: colorPrimario, color: '#fff', display: 'grid', placeItems: 'center', fontFamily: fontPreview }}>
+                  {restaurante?.nombre?.slice(0, 2)}
+                </div>
+              ))}
+              {(hubMostrarNombre || hubMostrarDireccion) && (
+                <div style={{ textAlign: 'center', color: hubFondoUrl ? '#fff' : colorPrimario }}>
+                  {hubMostrarNombre && <h3 style={{ margin: 0, fontSize: 28, lineHeight: 1, fontFamily: fontPreview }}>{tituloHubPreview}</h3>}
+                  {hubMostrarDireccion && <p style={{ margin: hubMostrarNombre ? '8px 0 0' : 0, opacity: 0.72 }}>{subtituloHubPreview}</p>}
+                </div>
+              )}
+              {['Carta de vino', 'Carta de comida', 'Reservas'].map((label, index) => (
+                <div key={label} style={{
+                  width: '100%',
+                  maxWidth: 320,
+                  minHeight: 48,
+                  borderRadius: 999,
+                  display: 'grid',
+                  placeItems: 'center',
+                  background: hubEstilo === 'solido' || index === 0 ? colorPrimario : 'rgba(255,255,255,0.86)',
+                  color: hubEstilo === 'solido' || index === 0 ? '#fff' : '#111',
+                  fontWeight: 850,
+                  boxShadow: '0 16px 38px rgba(0,0,0,0.18)',
+                  border: `1px solid ${index === 0 ? colorAcento : 'rgba(255,255,255,0.58)'}`,
+                }}>
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -409,7 +784,7 @@ export default function Personalizar() {
 
       <button
         className={styles.primary}
-        onClick={guardar}
+        onClick={guardarPorBloques}
         disabled={guardando}
         style={{ width: '100%', marginTop: 16, background: guardado ? '#4A8C6F' : undefined, borderColor: guardado ? '#4A8C6F' : undefined }}
       >

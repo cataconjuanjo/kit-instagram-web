@@ -83,6 +83,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [mostrarImportador, setMostrarImportador] = useState(false)
+  const [busquedaVinos, setBusquedaVinos] = useState('')
+  const [filtroVinos, setFiltroVinos] = useState('todos')
   const [generandoCata, setGenerandoCata] = useState(false)
   const [editandoAnada, setEditandoAnada] = useState(null)
 const [nuevaAnada, setNuevaAnada] = useState('')
@@ -93,11 +95,12 @@ const [vinosImportar, setVinosImportar] = useState([])
 const [pdfNombre, setPdfNombre] = useState('')
 const [leyendoPdf, setLeyendoPdf] = useState(false)
 const [errorPdf, setErrorPdf] = useState('')
+const [errorBodega, setErrorBodega] = useState('')
 const [importando, setImportando] = useState(false)
 const inputPdfRef = useRef(null)
   const [nuevoVino, setNuevoVino] = useState({
     nombre: '', bodega: '', tipo: 'tinto', region: '',
-    uva: '', anada: '', precio_copa: '', precio_botella: '', stock: '', notas_cata: ''
+    uva: '', anada: '', precio_copa: '', precio_botella: '', stock: '', coste_compra: '', stock_minimo: '', proveedor: '', notas_cata: ''
   })
 
   useEffect(() => {
@@ -145,6 +148,9 @@ async function añadirVino() {
       precio_copa: parseFloat(nuevoVino.precio_copa) || 0,
       precio_botella: parseFloat(nuevoVino.precio_botella) || 0,
       stock: parseInt(nuevoVino.stock) || 0,
+      coste_compra: parseFloat(nuevoVino.coste_compra) || 0,
+      stock_minimo: parseInt(nuevoVino.stock_minimo) || 0,
+      proveedor: nuevoVino.proveedor || '',
 notas_cata: [nuevoVino.notas_cata, notasCata].filter(Boolean).join('. '),
     }]).select()
 
@@ -153,7 +159,7 @@ setGenerandoCata(false)
       setVinos([...vinos, data[0]])
       setNuevoVino({
         nombre: '', bodega: '', tipo: 'tinto', region: '',
-        uva: '', anada: '', precio_copa: '', precio_botella: '', stock: '', notas_cata: ''
+        uva: '', anada: '', precio_copa: '', precio_botella: '', stock: '', coste_compra: '', stock_minimo: '', proveedor: '', notas_cata: ''
       })
       setMostrarFormulario(false)
     }
@@ -262,8 +268,21 @@ async function guardarAnada(vino) {
   setVinos(vinos.filter(v => v.id !== vino.id))
 }
 async function actualizarStock(vino, cambio) {
+  const stockAnterior = Number(vino.stock) || 0
   const nuevoStock = Math.max(0, (vino.stock || 0) + cambio)
-  await supabase.from('vinos').update({ stock: nuevoStock }).eq('id', vino.id)
+  const { error } = await supabase.from('vinos').update({ stock: nuevoStock }).eq('id', vino.id)
+  if (error) return
+  if (restaurante?.id && stockAnterior !== nuevoStock) {
+    await supabase.from('movimientos_stock').insert([{
+      restaurante_id: restaurante.id,
+      vino_id: vino.id,
+      tipo: cambio > 0 ? 'entrada' : 'ajuste',
+      cantidad: nuevoStock - stockAnterior,
+      stock_anterior: stockAnterior,
+      stock_nuevo: nuevoStock,
+      motivo: cambio > 0 ? 'Ajuste rápido: entrada manual' : 'Ajuste rápido: salida manual',
+    }])
+  }
   setVinos(vinos.map(v => v.id === vino.id ? { ...v, stock: nuevoStock } : v))
 }
 
@@ -277,11 +296,17 @@ async function guardarEdicion(vino) {
     anada: vino.anada,
     precio_copa: vino.precio_copa !== '' ? parseFloat(vino.precio_copa) : null,
 precio_botella: parseFloat(vino.precio_botella) || 0,
+    coste_compra: parseFloat(vino.coste_compra) || 0,
+    stock_minimo: parseInt(vino.stock_minimo, 10) || 0,
+    proveedor: vino.proveedor || '',
     notas_cata: vino.notas_cata || '',
   }).eq('id', vino.id)
-  if (!error) {
+  if (error) {
+    setErrorBodega('No se pudieron guardar los campos de bodega. Ejecuta supabase/add_bodega_control.sql si aún no lo has hecho.')
+  } else {
+    setErrorBodega('')
     setVinos(vinos.map(v => v.id === vino.id ? { ...v, ...vino, precio_copa: vino.precio_copa !== '' ? parseFloat(vino.precio_copa) : null,
-precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
+precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(vino.coste_compra) || 0, stock_minimo: parseInt(vino.stock_minimo, 10) || 0, proveedor: vino.proveedor || '' } : v))
     setEditandoVino(null)
   }
 }
@@ -304,14 +329,41 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
 
   if (loading) return <LoadingState />
 
+  const filtroUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('filtro') : ''
+  const vinosBase = filtroUrl === 'pendientes'
+    ? vinos.filter(v => !Number(v.precio_botella) || !v.notas_cata || v.notas_cata.length < 12)
+    : vinos
+  const busquedaNormalizada = normalizar(busquedaVinos)
+  const vinosVisibles = vinosBase.filter(vino => {
+    const texto = normalizar([
+      vino.nombre,
+      vino.bodega,
+      vino.region,
+      vino.uva,
+      vino.anada,
+      vino.proveedor,
+      vino.notas_cata,
+      tipoLabel[vino.tipo],
+    ].filter(Boolean).join(' '))
+    const coincideBusqueda = !busquedaNormalizada || texto.includes(busquedaNormalizada)
+    const coincideEstado =
+      filtroVinos === 'todos' ||
+      (filtroVinos === 'activos' && vino.activo !== false) ||
+      (filtroVinos === 'ocultos' && vino.activo === false) ||
+      (filtroVinos === 'pendientes' && (!Number(vino.precio_botella) || !vino.notas_cata || vino.notas_cata.length < 12)) ||
+      (filtroVinos === 'stock' && Number(vino.stock_minimo || 0) > 0 && Number(vino.stock) <= Number(vino.stock_minimo || 0))
+    return coincideBusqueda && coincideEstado
+  })
+
   return (
     <ModuleShell
       restaurante={restaurante}
       eyebrow="Carta de vinos"
-      title="Gestion de referencias"
-      subtitle="Controla precios, stock, perfiles de cata e importaciones para que sala y sommelier trabajen con la misma informacion."
+      title="Gestión de referencias"
+      subtitle="Controla precios, stock, perfiles de cata e importaciones para que sala y maridaje trabajen con la misma información."
       actions={
         <>
+          <a href="/dashboard/bodega" className={styles.secondary}>Control bodega</a>
           <button
             onClick={() => { setMostrarImportador(!mostrarImportador); setMostrarFormulario(false) }}
             className={mostrarImportador ? styles.ghost : styles.secondary}
@@ -322,12 +374,22 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
             onClick={() => { setMostrarFormulario(!mostrarFormulario); setMostrarImportador(false) }}
             className={mostrarFormulario ? styles.ghost : styles.primary}
           >
-            {mostrarFormulario ? 'Cancelar' : 'Anadir vino'}
+            {mostrarFormulario ? 'Cancelar' : 'Añadir vino'}
           </button>
         </>
       }
+      help={{
+        title: 'Gestión de vinos',
+        intro: 'Aquí se crea y corrige la base de datos de la carta. Lo crítico es que cada vino sea vendible y encontrable.',
+        items: [
+          { title: 'Alta rápida', text: 'Nombre, tipo y precio son lo mínimo para aparecer con sentido en la carta pública.' },
+          { title: 'Perfil de venta', text: 'Notas y etiquetas ayudan al modo camarero a recomendar sin depender de memoria.' },
+          { title: 'Bodega después', text: 'Coste, proveedor y stock mínimo afinan margen y reposición; no tienen que bloquear el alta inicial.' },
+        ],
+      }}
     >
       <div className={styles.winePage}>
+        {errorBodega && <div className={styles.empty} style={{ minHeight: 70, marginBottom: 16, color: '#9b3535' }}>{errorBodega}</div>}
         {mostrarImportador && (
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
             <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>Importar carta de vinos</p>
@@ -376,63 +438,6 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
             )}
           </div>
         )}
-{editandoVino && (
-  <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
-    <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 24px' }}>Editando: {editandoVino.nombre}</p>
-    <div className={styles.wineFormGrid}>
-      {[
-        { label: 'Nombre *', key: 'nombre', placeholder: '' },
-        { label: 'Bodega', key: 'bodega', placeholder: '' },
-        { label: 'Región', key: 'region', placeholder: '' },
-        { label: 'Uva', key: 'uva', placeholder: '' },
-        { label: 'Añada', key: 'anada', placeholder: '' },
-        { label: 'Precio copa (€)', key: 'precio_copa', placeholder: '' },
-        { label: 'Precio botella (€)', key: 'precio_botella', placeholder: '' },
-      ].map(f => (
-        <div key={f.key}>
-          <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{f.label}</label>
-          <input
-            type="text"
-            value={editandoVino[f.key] || ''}
-            onChange={e => setEditandoVino({ ...editandoVino, [f.key]: e.target.value })}
-            style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, boxSizing: 'border-box', outline: 'none', background: 'transparent', color: '#111' }}
-          />
-        </div>
-      ))}
-      <div>
-        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Tipo *</label>
-        <select value={editandoVino.tipo} onChange={e => setEditandoVino({ ...editandoVino, tipo: e.target.value })}
-          style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111' }}>
-          <option value="tinto">Tinto</option>
-          <option value="blanco">Blanco</option>
-          <option value="rosado">Rosado</option>
-          <option value="espumoso">Espumoso</option>
-          <option value="generoso">Generoso</option>
-          <option value="dulce">Dulce</option>
-          <option value="naranja">Naranja</option>
-        </select>
-      </div>
-      <div style={{ gridColumn: '1 / -1' }}>
-        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Notas de cata y venta</label>
-        <textarea
-          value={editandoVino.notas_cata || ''}
-          onChange={e => setEditandoVino({ ...editandoVino, notas_cata: e.target.value })}
-          rows={3}
-          style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, boxSizing: 'border-box', outline: 'none', background: 'transparent', color: '#111', resize: 'vertical', fontFamily: 'system-ui, sans-serif' }}
-        />
-      </div>
-      <PerfilVino vino={editandoVino} onChange={setEditandoVino} />
-    </div>
-    <div className={styles.wineActions}>
-      <button onClick={() => guardarEdicion(editandoVino)} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
-        Guardar cambios
-      </button>
-      <button onClick={() => setEditandoVino(null)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '12px 28px', fontSize: 11, color: '#aaa', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-        Cancelar
-      </button>
-    </div>
-  </div>
-)}
         {/* Formulario */}
         {mostrarFormulario && (
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
@@ -459,6 +464,9 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
               {campo('Precio copa (€)', 'precio_copa', '4.00', 'number')}
               {campo('Precio botella (€)', 'precio_botella', '22.00', 'number')}
               {campo('Stock', 'stock', '12', 'number')}
+              {campo('Coste compra (€)', 'coste_compra', '8.50', 'number')}
+              {campo('Stock mínimo', 'stock_minimo', '3', 'number')}
+              {campo('Proveedor', 'proveedor', 'Distribuidor habitual')}
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Notas de cata y venta</label>
                 <textarea
@@ -478,6 +486,37 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
         )}
 
         {/* Lista vinos */}
+        <section className={styles.listToolbar}>
+          <div>
+            <label className={styles.label}>Buscar referencia</label>
+            <input
+              className={styles.searchInput}
+              value={busquedaVinos}
+              onChange={e => setBusquedaVinos(e.target.value)}
+              placeholder="Nombre, bodega, uva, región, añada o proveedor"
+            />
+          </div>
+          <div className={styles.segmented}>
+            {[
+              ['todos', 'Todos'],
+              ['activos', 'Activos'],
+              ['pendientes', 'Pendientes'],
+              ['stock', 'Stock bajo'],
+              ['ocultos', 'Ocultos'],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={filtroVinos === id ? styles.segmentActive : ''}
+                onClick={() => setFiltroVinos(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className={styles.resultCount}>{vinosVisibles.length} de {vinosBase.length} referencias</p>
+        </section>
+
         <div className={styles.wineList}>
           {/* Cabecera columnas */}
           <div className={styles.wineListHeader}>
@@ -486,14 +525,15 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
             ))}
           </div>
 
-          {vinos.length === 0 ? (
+          {vinosVisibles.length === 0 ? (
             <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-              <p style={{ color: '#ccc', fontSize: 14, fontWeight: 300 }}>Aún no hay vinos. Añade el primero.</p>
+              <p style={{ color: '#ccc', fontSize: 14, fontWeight: 300 }}>{filtroUrl === 'pendientes' ? 'No hay vinos pendientes de completar.' : 'Aún no hay vinos. Añade el primero.'}</p>
             </div>
           ) : (
-            vinos.map((v, i) => (
-              <div key={v.id} className={styles.wineListRow} style={{
-                borderBottom: i < vinos.length - 1 ? '1px solid #f8f8f8' : 'none',
+            vinosVisibles.map((v, i) => (
+              <div key={v.id} className={styles.wineRowGroup}>
+              <div className={styles.wineListRow} style={{
+                borderBottom: i < vinosVisibles.length - 1 ? '1px solid #f8f8f8' : 'none',
                 opacity: v.activo ? 1 : 0.4
               }}>
                 <div className={styles.wineNameCell}>
@@ -552,7 +592,7 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
   <button onClick={() => actualizarStock(v, 1)} style={{ width: 22, height: 22, borderRadius: 4, border: '1px solid #e8e8e8', background: 'none', cursor: 'pointer', color: '#aaa', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>
 </div>
                 <div style={{ display: 'flex', gap: 4, alignSelf: 'center' }}>
-  <button onClick={() => { setEditandoVino({...v, precio_copa: v.precio_copa || '', precio_botella: v.precio_botella || ''}); }} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '4px 10px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>
+  <button onClick={() => { setEditandoVino({...v, precio_copa: v.precio_copa || '', precio_botella: v.precio_botella || '', coste_compra: v.coste_compra || '', stock_minimo: v.stock_minimo || '', proveedor: v.proveedor || ''}); }} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '4px 10px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>
     Editar
   </button>
   <button onClick={() => toggleActivo(v)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '4px 10px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>
@@ -562,6 +602,67 @@ precio_botella: parseFloat(vino.precio_botella) || 0 } : v))
     Borrar
   </button>
 </div>
+</div>
+              {editandoVino?.id === v.id && (
+                <div className={styles.inlineEditPanel}>
+                  <p className={styles.inlineEditTitle}>Editando {editandoVino.nombre}</p>
+                  <div className={styles.wineFormGrid}>
+                    {[
+                      { label: 'Nombre *', key: 'nombre' },
+                      { label: 'Bodega', key: 'bodega' },
+                      { label: 'Región', key: 'region' },
+                      { label: 'Uva', key: 'uva' },
+                      { label: 'Añada', key: 'anada' },
+                      { label: 'Precio copa (€)', key: 'precio_copa' },
+                      { label: 'Precio botella (€)', key: 'precio_botella' },
+                      { label: 'Coste compra (€)', key: 'coste_compra' },
+                      { label: 'Stock mínimo', key: 'stock_minimo' },
+                      { label: 'Proveedor', key: 'proveedor' },
+                    ].map(f => (
+                      <div key={f.key}>
+                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{f.label}</label>
+                        <input
+                          type="text"
+                          value={editandoVino[f.key] || ''}
+                          onChange={e => setEditandoVino({ ...editandoVino, [f.key]: e.target.value })}
+                          style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, boxSizing: 'border-box', outline: 'none', background: 'transparent', color: '#111' }}
+                        />
+                      </div>
+                    ))}
+                    <div>
+                      <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Tipo *</label>
+                      <select value={editandoVino.tipo} onChange={e => setEditandoVino({ ...editandoVino, tipo: e.target.value })}
+                        style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111' }}>
+                        <option value="tinto">Tinto</option>
+                        <option value="blanco">Blanco</option>
+                        <option value="rosado">Rosado</option>
+                        <option value="espumoso">Espumoso</option>
+                        <option value="generoso">Generoso</option>
+                        <option value="dulce">Dulce</option>
+                        <option value="naranja">Naranja</option>
+                      </select>
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Notas de cata y venta</label>
+                      <textarea
+                        value={editandoVino.notas_cata || ''}
+                        onChange={e => setEditandoVino({ ...editandoVino, notas_cata: e.target.value })}
+                        rows={3}
+                        style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, boxSizing: 'border-box', outline: 'none', background: 'transparent', color: '#111', resize: 'vertical', fontFamily: 'system-ui, sans-serif' }}
+                      />
+                    </div>
+                    <PerfilVino vino={editandoVino} onChange={setEditandoVino} />
+                  </div>
+                  <div className={styles.wineActions}>
+                    <button onClick={() => guardarEdicion(editandoVino)} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                      Guardar cambios
+                    </button>
+                    <button onClick={() => setEditandoVino(null)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '12px 28px', fontSize: 11, color: '#aaa', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
               </div>
             ))
           )}

@@ -4,6 +4,10 @@ import { analizarMaridaje, resumenAnalisisParaPrompt } from '../../lib/maridajeE
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+function normalizarTexto(texto = '') {
+  return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
 function lineaVino(vino) {
   return `- ${vino.nombre} (${[
     vino.bodega,
@@ -23,7 +27,7 @@ function lineaPlato(plato) {
 
 function buildSystem(cartaVinos, idioma) {
   if (idioma === 'en') {
-    return `You are an expert sommelier. The customer reads on a mobile screen. Be VERY brief.
+    return `You are a wine-pairing assistant supervised by the restaurant wine consultant. The customer reads on a mobile screen. Be VERY brief and selective.
 
 FORMAT — exactly this, nothing more:
 [Wine name] — [1 sentence why]. [price]€
@@ -33,22 +37,26 @@ FORMAT — exactly this, nothing more:
 Rules:
 - Plain text only. No asterisks, bold, lists, or symbols.
 - One short sentence per wine explaining the structural reason (tannin, acidity, body, fat, umami — not just "it pairs well").
+- Recommend up to 2 wines: one accessible option and one more ambitious/premium option.
+- If both are valid, prefer different styles or colours so the customer does not feel locked into one colour.
 - Only recommend wines from the list below. Never invent wines.
 - WSET L3 and Chartier methodology.
 
 Current wine list:
 ${cartaVinos}`
   }
-  return `Eres un sommelier experto. El cliente lee desde el movil. Se MUY breve.
+  return `Eres un asistente de maridaje supervisado por el consultor de vinos del restaurante. El cliente lee desde el móvil. Sé MUY breve y exigente.
 
-FORMATO — exactamente esto, nada mas:
+FORMATO — exactamente esto, nada más:
 [Nombre del vino] — [1 frase de por que]. [precio]€
 
 [Nombre del vino] — [1 frase de por que]. [precio]€
 
 Reglas:
 - Solo texto plano. Sin asteriscos, negritas, listas ni simbolos.
-- Una frase corta por vino explicando la razon estructural (tanino, acidez, cuerpo, grasa, umami — no solo "marida bien").
+- Una frase corta por vino explicando la razón estructural (tanino, acidez, cuerpo, grasa, umami — no solo "marida bien").
+- Recomienda hasta 2 vinos: una opción accesible y otra más ambiciosa/premium.
+- Si ambas son válidas, intenta que tengan estilos o colores distintos para que el cliente no sienta que solo existe una vía.
 - Solo recomiendas vinos de la carta real que aparece abajo. Nunca inventas vinos.
 - Metodologia WSET L3 y Chartier.
 
@@ -68,10 +76,15 @@ export async function POST(request) {
       mensajeSeguimiento,
     } = await request.json()
 
-    const [{ data: vinos }, { data: platos }] = await Promise.all([
+    const [{ data: vinosData }, { data: platos }] = await Promise.all([
       supabase.from('vinos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true).gt('stock', 0),
       supabase.from('platos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
     ])
+
+    const soloCopa = normalizarTexto(modoMesa).includes('copa') || normalizarTexto(modoMesa).includes('glass')
+    const vinos = soloCopa
+      ? (vinosData || []).filter(vino => Number(vino.precio_copa) > 0)
+      : (vinosData || [])
 
     const cartaVinos = (vinos || []).map(lineaVino).join('\n')
     const cartaPlatos = (platos || []).map(lineaPlato).join('\n')
@@ -93,12 +106,12 @@ export async function POST(request) {
       let prompt
       if (modo === 'mesa') {
         prompt = idioma === 'en'
-          ? `Dishes: ${consulta}. Format: ${modoMesa}.\n\nPairing analysis:\n${criterioCompartido}\n\nGive exactly 2 wines (one under 30€, one any price). Use the exact format from the system prompt.`
-          : `Platos: ${consulta}. Formato: ${modoMesa}.\n\nAnalisis de maridaje:\n${criterioCompartido}\n\nDa exactamente 2 vinos (uno bajo 30€, otro sin limite). Usa el formato exacto del system prompt.`
+          ? `Dishes: ${consulta}. Format: ${modoMesa}.\n\nPairing analysis:\n${criterioCompartido}\n\nGive up to 2 wines: one accessible option and one premium option. If format is by the glass, use only wines with glass price. If possible, avoid both wines being the same colour/style unless that is clearly the best pairing. Use the exact format from the system prompt.`
+          : `Platos: ${consulta}. Formato: ${modoMesa}.\n\nAnálisis de maridaje:\n${criterioCompartido}\n\nDa hasta 2 vinos: una opción accesible y otra premium. Si el formato es por copas, usa solo vinos con precio de copa. Si es posible, evita que los dos sean del mismo color/estilo salvo que sea claramente lo mejor para el maridaje. Usa el formato exacto del system prompt.`
       } else if (modo === 'plato') {
         prompt = idioma === 'en'
-          ? `Dish: "${consulta}".\n\nPairing analysis:\n${criterioCompartido}\n\nGive exactly 2 wines (one under 30€, one any price). Use the exact format from the system prompt.`
-          : `Plato: "${consulta}".\n\nAnalisis de maridaje:\n${criterioCompartido}\n\nDa exactamente 2 vinos (uno bajo 30€, otro sin limite). Usa el formato exacto del system prompt.`
+          ? `Dish: "${consulta}".\n\nPairing analysis:\n${criterioCompartido}\n\nGive up to 2 wines: one accessible option and one premium option. If possible, avoid both wines being the same colour/style unless that is clearly the best pairing. Use the exact format from the system prompt.`
+          : `Plato: "${consulta}".\n\nAnálisis de maridaje:\n${criterioCompartido}\n\nDa hasta 2 vinos: una opción accesible y otra premium. Si es posible, evita que los dos sean del mismo color/estilo salvo que sea claramente lo mejor para el maridaje. Usa el formato exacto del system prompt.`
       } else {
         prompt = idioma === 'en'
           ? `Wine: "${consulta}". List 3 dishes from below that pair well. One sentence each. Exact dish names.\n\n${cartaPlatos}`
@@ -107,7 +120,7 @@ export async function POST(request) {
 
       prefill = idioma === 'en'
         ? 'Of course, here is my recommendation:'
-        : 'Claro, aqui va mi recomendacion:'
+        : 'Claro, aquí va mi recomendación:'
 
       messages = [
         { role: 'user', content: prompt },
@@ -156,6 +169,6 @@ export async function POST(request) {
     })
   } catch (error) {
     console.error('Error en maridaje:', error)
-    return Response.json({ error: 'Error al consultar el sommelier.' }, { status: 500 })
+    return Response.json({ error: 'Error al consultar el maridaje.' }, { status: 500 })
   }
 }

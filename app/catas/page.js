@@ -5,8 +5,17 @@ import PublicNav from '../components/PublicNav'
 import PublicFooter from '../components/PublicFooter'
 
 export const metadata = {
-  title: 'Catas de vino en Malaga',
-  description: 'Catas de vino privadas, para empresas y cursos de iniciacion con Juanjo Garcia, WSET Level 3, en Malaga y Andalucia.',
+  title: 'Catas de vino en Málaga',
+  description: 'Catas de vino privadas, para empresas y cursos de iniciación con Juanjo García, WSET Level 3, en Málaga y Andalucía.',
+  alternates: {
+    canonical: '/catas',
+  },
+  openGraph: {
+    title: 'Catas de vino en Málaga · Cata con Juanjo',
+    description: 'Catas privadas, para empresas y cursos de iniciación al vino en Málaga con criterio WSET Level 3.',
+    url: '/catas',
+    images: [{ url: '/assets/og-image.jpg', width: 1200, height: 630 }],
+  },
 }
 
 const formatos = [
@@ -14,19 +23,19 @@ const formatos = [
     nombre: 'Cata privada',
     precio: 'desde 120€',
     texto: 'Para 2 a 6 personas. Ideal para cumpleaños, regalos o una noche distinta en casa.',
-    incluye: ['5 o 6 vinos', 'Guia de cata', 'Contexto sencillo', 'Duracion 1,5 a 2 horas'],
+    incluye: ['5 o 6 vinos', 'Guía de cata', 'Contexto sencillo', 'Duración 1,5 a 2 horas'],
   },
   {
     nombre: 'Cata para empresas',
     precio: 'desde 20€/persona',
     texto: 'Una actividad elegante y participativa para equipos, incentivos o eventos con clientes.',
-    incluye: ['Formato a medida', 'Dinamica de grupo', 'Opcion con maridaje', 'Desplazamiento a empresa'],
+    incluye: ['Formato a medida', 'Dinámica de grupo', 'Opción con maridaje', 'Desplazamiento a empresa'],
   },
   {
-    nombre: 'Curso de iniciacion',
+    nombre: 'Curso de iniciación',
     precio: 'desde 60€/persona',
     texto: 'Para entender estilos, variedades, etiquetas, servicio y maridaje sin tecnicismos innecesarios.',
-    incluye: ['Sesiones practicas', 'Material de apoyo', 'Cata guiada', 'Lenguaje claro'],
+    incluye: ['Sesiones prácticas', 'Material de apoyo', 'Cata guiada', 'Lenguaje claro'],
   },
 ]
 
@@ -49,7 +58,7 @@ export default function CatasPage() {
           <p className="eyebrow">Catas de vino en Malaga</p>
           <h1>Aprende a entender el vino, no solo beberlo.</h1>
           <p className="lead">
-            Catas privadas, experiencias para empresas y cursos de iniciacion con una idea sencilla: disfrutar mas
+            Catas privadas, experiencias para empresas y cursos de iniciación con una idea sencilla: disfrutar más
             del vino porque entiendes mejor lo que tienes en la copa.
           </p>
           <div className="hero-actions">
@@ -59,14 +68,14 @@ export default function CatasPage() {
         </div>
         <div className="photo-collage">
           <Image src="/assets/instagram/post-4.jpg" alt="Cata de vinos con Juanjo Garcia" width={640} height={640} />
-          <Image src="/assets/instagram/post-8.jpg" alt="Formacion de vino en Malaga" width={640} height={640} />
+          <Image src="/assets/instagram/post-8.jpg" alt="Formación de vino en Málaga" width={640} height={640} />
           <Image src="/assets/instagram/post-10.jpg" alt="Vinos para cata privada" width={640} height={853} />
         </div>
       </section>
 
       <section className="section intro-band tasting-intro">
         <p>
-          Una buena cata no va de acertar aromas raros. Va de entender acidez, cuerpo, textura, origen y por que un
+          Una buena cata no va de acertar aromas raros. Va de entender acidez, cuerpo, textura, origen y por qué un
           vino funciona mejor en una mesa que en otra.
         </p>
       </section>
@@ -74,7 +83,7 @@ export default function CatasPage() {
       <section id="formatos" className="section">
         <div className="section-head">
           <p className="eyebrow">Formatos</p>
-          <h2>Catas con estructura, ritmo y conversacion real.</h2>
+          <h2>Catas con estructura, ritmo y conversación real.</h2>
         </div>
         <div className="pricing-grid">
           {formatos.map((formato) => (
@@ -94,7 +103,7 @@ export default function CatasPage() {
       <section className="section tasting-topics">
         <div>
           <p className="eyebrow">Tematicas posibles</p>
-          <h2>Diseñamos la cata segun el grupo, la ocasion y el nivel.</h2>
+          <h2>Diseñamos la cata según el grupo, la ocasión y el nivel.</h2>
         </div>
         <div className="topic-list">
           {temas.map((tema) => <span key={tema}>{tema}</span>)}
@@ -104,17 +113,17 @@ export default function CatasPage() {
       <section className="section split">
         <div>
           <p className="eyebrow">Como trabajo</p>
-          <h2>Rigor tecnico, lenguaje normal y una mesa que no se enfria.</h2>
+          <h2>Rigor técnico, lenguaje normal y una mesa que no se enfría.</h2>
         </div>
         <div className="copy-stack">
           <p>
-            Preparo cada cata con una seleccion coherente, materiales sencillos y un hilo conductor. No se trata de
-            impresionar con vocabulario, sino de que el grupo salga sabiendo algo que podra usar la proxima vez que
+            Preparo cada cata con una selección coherente, materiales sencillos y un hilo conductor. No se trata de
+            impresionar con vocabulario, sino de que el grupo salga sabiendo algo que podrá usar la próxima vez que
             pida una botella.
           </p>
           <p>
-            Si hay comida, adapto los vinos al contexto. Si es empresa, cuido el ritmo y la participacion. Si es una
-            celebracion, busco que sea memorable sin ponerse academico.
+            Si hay comida, adapto los vinos al contexto. Si es empresa, cuido el ritmo y la participación. Si es una
+            celebración, busco que sea memorable sin ponerse académico.
           </p>
         </div>
       </section>
@@ -122,9 +131,9 @@ export default function CatasPage() {
       <section id="contacto" className="section contact-section">
         <div>
           <p className="eyebrow">Reserva</p>
-          <h2>Cuéntame que tienes en mente.</h2>
+          <h2>Cuéntame qué tienes en mente.</h2>
           <p>
-            Dime fecha aproximada, numero de personas, lugar y tipo de cata. Te respondo con una propuesta clara.
+            Dime fecha aproximada, número de personas, lugar y tipo de cata. Te respondo con una propuesta clara.
           </p>
           <div className="contact-links">
             <a href="mailto:cataconjuanjo@gmail.com" title="Email" aria-label="Enviar email">

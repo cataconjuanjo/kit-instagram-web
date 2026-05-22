@@ -25,7 +25,8 @@ export default function QRPage() {
 
   useEffect(() => {
     if (restaurante && canvasRef.current) {
-      const url = `${window.location.origin}/carta/${restaurante.slug}`
+      const destino = restaurante.hub_activo ? 'r' : 'carta'
+      const url = `${window.location.origin}/${destino}/${restaurante.slug}`
       QRCode.toCanvas(canvasRef.current, url, {
         width: 280,
         margin: 2,
@@ -45,38 +46,49 @@ export default function QRPage() {
   if (loading) return <LoadingState />
 
   const urlDirecta = typeof window !== 'undefined' && restaurante
-    ? `${window.location.origin}/carta/${restaurante.slug}`
+    ? `${window.location.origin}/${restaurante.hub_activo ? 'r' : 'carta'}/${restaurante.slug}`
     : ''
 
   return (
     <ModuleShell
       restaurante={restaurante}
-      eyebrow="Codigo QR"
+      eyebrow="Código QR"
       title="Carta lista para mesa"
-      subtitle="Un QR limpio, descargable y vinculado a la carta publica del establecimiento."
+      subtitle="Un QR limpio y descargable. Si el hub está activo, apunta al link en bio; si no, apunta a la carta de vinos."
       narrow
+      help={{
+        title: 'Antes de imprimir',
+        intro: 'El QR es el punto de entrada del cliente. Conviene probarlo antes de llevarlo a mesa.',
+        items: [
+          { title: 'Destino', text: 'Si el hub está activo abre reservas, cartas y redes. Si no, abre la carta de vinos directamente.' },
+          { title: 'Prueba real', text: 'Escanea con el móvil antes de imprimir para revisar velocidad, logo, colores y enlaces.' },
+          { title: 'Uso', text: 'Descarga el PNG y usalo en sobremesa, metacrilato, cartel o enlace de Instagram.' },
+        ],
+      }}
     >
       <section className={styles.qrLayout}>
         <div className={styles.qrCard}>
           <canvas ref={canvasRef} />
           <div style={{ textAlign: 'center' }}>
             <p className={styles.sectionTitle}>{restaurante?.nombre}</p>
-            <p className={styles.sectionText}>Carta digital</p>
+            <p className={styles.sectionText}>{restaurante?.hub_activo ? 'Hub público' : 'Carta digital'}</p>
           </div>
           <button className={styles.primary} onClick={descargar}>Descargar PNG</button>
+          <a className={styles.secondary} href={`/carta/${restaurante?.slug || ''}?print=1`} target="_blank" rel="noreferrer">Imprimir / PDF</a>
         </div>
 
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
-              <h2 className={styles.panelTitle}>URL directa</h2>
-              <p className={styles.panelSub}>Enlace publico para compartir, probar o enviar al proveedor de imprenta.</p>
+              <h2 className={styles.panelTitle}>{restaurante?.hub_activo ? 'URL del hub' : 'URL directa'}</h2>
+              <p className={styles.panelSub}>Enlace público para compartir, probar o enviar al proveedor de imprenta.</p>
             </div>
           </div>
           <div className={styles.panelBody}>
             <div className={styles.urlBox}>{urlDirecta}</div>
             <div className={styles.actionRow} style={{ marginTop: 14 }}>
               <a className={styles.secondary} href={urlDirecta} target="_blank" rel="noreferrer">Abrir carta</a>
+              <a className={styles.secondary} href={`/carta/${restaurante?.slug || ''}?print=1`} target="_blank" rel="noreferrer">Carta en PDF</a>
               <button className={styles.ghost} onClick={() => navigator.clipboard?.writeText(urlDirecta)}>Copiar URL</button>
             </div>
           </div>

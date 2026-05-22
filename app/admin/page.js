@@ -18,12 +18,16 @@ export default function AdminPage() {
   const [altaCreada, setAltaCreada] = useState(null)
   const [editandoId, setEditandoId] = useState(null)
   const [edicion, setEdicion] = useState(null)
+  const [hubLinks, setHubLinks] = useState([])
+  const [nuevoLink, setNuevoLink] = useState({ titulo: '', url: '', tipo: 'link' })
   const [nuevoRestaurante, setNuevoRestaurante] = useState({
     nombre: '',
     email: '',
     ciudad: '',
     slug: '',
-    password: ''
+    password: '',
+    plan: 'basic',
+    subscription_status: 'trialing',
   })
 
   useEffect(() => {
@@ -59,8 +63,16 @@ export default function AdminPage() {
       color_primario: restaurante.color_primario || '#531827',
       color_fondo: restaurante.color_fondo || '#fffaf3',
       color_acento: restaurante.color_acento || '#bfa984',
-      tipografia: restaurante.tipografia || 'serif'
+      tipografia: restaurante.tipografia || 'serif',
+      hub_activo: Boolean(restaurante.hub_activo),
+      hub_titulo: restaurante.hub_titulo || '',
+      hub_subtitulo: restaurante.hub_subtitulo || '',
+      instagram_url: restaurante.instagram_url || '',
+      facebook_url: restaurante.facebook_url || '',
+      plan: restaurante.plan || 'basic',
+      subscription_status: restaurante.subscription_status || 'trialing',
     })
+    cargarHubLinks(restaurante.id)
   }
 
   function slugDesdeNombre(nombre) {
@@ -92,14 +104,69 @@ export default function AdminPage() {
     }))
   }
 
+  async function tokenAdmin() {
+    const { data: sessionData } = await supabase.auth.getSession()
+    return sessionData?.session?.access_token
+  }
+
+  async function cargarHubLinks(restauranteId) {
+    const token = await tokenAdmin()
+    const res = await fetch(`/api/admin/hub-links?restaurante_id=${restauranteId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const data = await res.json()
+    setHubLinks(res.ok ? data.links || [] : [])
+  }
+
+  async function crearHubLink() {
+    if (!edicion?.id || !nuevoLink.titulo.trim() || !nuevoLink.url.trim()) return
+    const token = await tokenAdmin()
+    const res = await fetch('/api/admin/hub-links', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ...nuevoLink, restaurante_id: edicion.id, orden: hubLinks.length })
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setHubLinks([...hubLinks, data.link])
+      setNuevoLink({ titulo: '', url: '', tipo: 'link' })
+    } else {
+      setErrorEdicion(data.error || 'No se pudo crear el enlace.')
+    }
+  }
+
+  async function guardarHubLink(link) {
+    const token = await tokenAdmin()
+    const res = await fetch('/api/admin/hub-links', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(link)
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setHubLinks(hubLinks.map(item => item.id === data.link.id ? data.link : item))
+    } else {
+      setErrorEdicion(data.error || 'No se pudo editar el enlace.')
+    }
+  }
+
+  async function borrarHubLink(id) {
+    const token = await tokenAdmin()
+    const res = await fetch('/api/admin/hub-links', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ id })
+    })
+    if (res.ok) setHubLinks(hubLinks.filter(link => link.id !== id))
+  }
+
   async function guardarEdicion(e) {
     e.preventDefault()
     if (!edicion) return
     setGuardandoEdicion(true)
     setErrorEdicion('')
 
-    const { data: sessionData } = await supabase.auth.getSession()
-    const token = sessionData?.session?.access_token
+    const token = await tokenAdmin()
 
     try {
       const res = await fetch('/api/admin/restaurantes', {
@@ -111,7 +178,7 @@ export default function AdminPage() {
         body: JSON.stringify(edicion)
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo guardar la edicion.')
+      if (!res.ok) throw new Error(data.error || 'No se pudo guardar la edición.')
 
       setRestaurantes(prev => prev.map(r => r.id === data.restaurante.id ? data.restaurante : r).sort((a, b) => a.nombre.localeCompare(b.nombre)))
       setEditandoId(null)
@@ -146,7 +213,7 @@ export default function AdminPage() {
 
       setRestaurantes(prev => [...prev, data.restaurante].sort((a, b) => a.nombre.localeCompare(b.nombre)))
       setAltaCreada(data)
-      setNuevoRestaurante({ nombre: '', email: '', ciudad: '', slug: '', password: '' })
+      setNuevoRestaurante({ nombre: '', email: '', ciudad: '', slug: '', password: '', plan: 'basic', subscription_status: 'trialing' })
     } catch (error) {
       setErrorAlta(error.message)
     }
@@ -173,26 +240,35 @@ export default function AdminPage() {
       <header className="admin-topbar">
         <div>
           <p className="admin-kicker">Superadmin</p>
-          <h1>Carta Viva</h1>
+          <h1>Restaurantes</h1>
           <p>{user?.email}</p>
         </div>
         <button onClick={salir}>Salir</button>
       </header>
 
-      <section className="admin-wrap">
+      <section className="admin-shell">
+        <aside className="admin-sidebar">
+          <p className="admin-kicker">Consultor</p>
+          <Link href="/admin/consultoria">Radar</Link>
+          <Link href="/admin/propuestas">Propuestas</Link>
+          <Link href="/admin/proveedores">Proveedores</Link>
+          <Link href="/sommelier">Selección Juanjo</Link>
+          <Link className="active" href="/admin">Restaurantes</Link>
+        </aside>
+
+        <div className="admin-main">
         <div className="admin-head">
           <div>
             <p className="eyebrow">Restaurantes</p>
-            <h2>Elige una carta para gestionarla.</h2>
+            <h2>Altas, accesos y configuración de cada restaurante.</h2>
           </div>
-          <Link href="/sommelier" className="btn btn-secondary">Selecciones Juanjo</Link>
         </div>
 
         <section className="admin-create">
           <div>
             <p className="eyebrow">Alta nueva</p>
             <h2>Crear restaurante y acceso privado</h2>
-            <p>Genera la ficha, el usuario de login y las URLs de carta publica y modo sala.</p>
+            <p>Genera la ficha, el usuario de login y las URLs de carta pública y modo sala.</p>
           </div>
           <form onSubmit={crearRestaurante} className="admin-create-form">
             <label>
@@ -236,8 +312,25 @@ export default function AdminPage() {
               <input
                 value={nuevoRestaurante.password}
                 onChange={e => actualizarCampo('password', e.target.value)}
-                placeholder="Dejalo vacio para generar una automaticamente"
+                placeholder="Déjalo vacío para generar una automáticamente"
               />
+            </label>
+            <label>
+              Plan
+              <select value={nuevoRestaurante.plan} onChange={e => actualizarCampo('plan', e.target.value)}>
+                <option value="basic">Basic</option>
+                <option value="pro">Pro Bodega</option>
+                <option value="premium">Premium Consultoría</option>
+              </select>
+            </label>
+            <label>
+              Estado
+              <select value={nuevoRestaurante.subscription_status} onChange={e => actualizarCampo('subscription_status', e.target.value)}>
+                <option value="trialing">Prueba</option>
+                <option value="active">Activo</option>
+                <option value="past_due">Pago pendiente</option>
+                <option value="cancelled">Cancelado</option>
+              </select>
             </label>
             <button disabled={creando}>
               {creando ? 'Creando alta...' : 'Crear alta'}
@@ -270,7 +363,64 @@ export default function AdminPage() {
                     <label>Fondo<input type="color" value={edicion.color_fondo} onChange={e => actualizarEdicion('color_fondo', e.target.value)} /></label>
                     <label>Acento<input type="color" value={edicion.color_acento} onChange={e => actualizarEdicion('color_acento', e.target.value)} /></label>
                   </div>
-                  <label>Tipografia<select value={edicion.tipografia} onChange={e => actualizarEdicion('tipografia', e.target.value)}><option value="serif">Serif</option><option value="sans">Sans</option></select></label>
+                  <label>Tipografía<select value={edicion.tipografia} onChange={e => actualizarEdicion('tipografia', e.target.value)}><option value="serif">Serif</option><option value="sans">Sans</option></select></label>
+                  <label>Plan<select value={edicion.plan} onChange={e => actualizarEdicion('plan', e.target.value)}><option value="basic">Basic</option><option value="pro">Pro Bodega</option><option value="premium">Premium Consultoría</option></select></label>
+                  <label>Estado<select value={edicion.subscription_status} onChange={e => actualizarEdicion('subscription_status', e.target.value)}><option value="trialing">Prueba</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="cancelled">Cancelado</option></select></label>
+                  <label className="admin-hub-switch">
+                    <input type="checkbox" checked={edicion.hub_activo} onChange={e => actualizarEdicion('hub_activo', e.target.checked)} />
+                    Activar hub tipo link en bio
+                  </label>
+                  {edicion.hub_activo && (
+                    <>
+                      <label>Título hub<input value={edicion.hub_titulo} onChange={e => actualizarEdicion('hub_titulo', e.target.value)} placeholder={edicion.nombre} /></label>
+                      <label>Subtítulo hub<input value={edicion.hub_subtitulo} onChange={e => actualizarEdicion('hub_subtitulo', e.target.value)} placeholder="Restaurante · ciudad" /></label>
+                      <label>Instagram<input value={edicion.instagram_url} onChange={e => actualizarEdicion('instagram_url', e.target.value)} placeholder="https://instagram.com/..." /></label>
+                      <label>Facebook<input value={edicion.facebook_url} onChange={e => actualizarEdicion('facebook_url', e.target.value)} placeholder="https://facebook.com/..." /></label>
+                      <div className="admin-hub-links">
+                        <strong>Botones del hub</strong>
+                        {hubLinks.map(link => (
+                          <div className="admin-hub-link-row" key={link.id}>
+                            <input value={link.titulo} onChange={e => setHubLinks(hubLinks.map(item => item.id === link.id ? { ...item, titulo: e.target.value } : item))} onBlur={() => guardarHubLink(hubLinks.find(item => item.id === link.id) || link)} />
+                            <input value={link.url} onChange={e => setHubLinks(hubLinks.map(item => item.id === link.id ? { ...item, url: e.target.value } : item))} onBlur={() => guardarHubLink(hubLinks.find(item => item.id === link.id) || link)} />
+                            <select value={link.tipo || 'link'} onChange={e => guardarHubLink({ ...link, tipo: e.target.value })}>
+                              <option value="link">Link</option>
+                              <option value="tarta">Tarta</option>
+                              <option value="carta">Carta</option>
+                              <option value="carta_vinos">Carta vinos</option>
+                              <option value="gintonics">Gintonics</option>
+                              <option value="pdf">PDF</option>
+                              <option value="reservas">Reservas</option>
+                              <option value="grupos">Grupos</option>
+                              <option value="alergenos">Alérgenos</option>
+                              <option value="instagram">Instagram</option>
+                              <option value="facebook">Facebook</option>
+                              <option value="maps">Maps</option>
+                            </select>
+                            <button type="button" onClick={() => borrarHubLink(link.id)}>×</button>
+                          </div>
+                        ))}
+                        <div className="admin-hub-link-row">
+                          <input value={nuevoLink.titulo} onChange={e => setNuevoLink({ ...nuevoLink, titulo: e.target.value })} placeholder="Carta restaurante" />
+                          <input value={nuevoLink.url} onChange={e => setNuevoLink({ ...nuevoLink, url: e.target.value })} placeholder="https://..." />
+                          <select value={nuevoLink.tipo} onChange={e => setNuevoLink({ ...nuevoLink, tipo: e.target.value })}>
+                            <option value="link">Link</option>
+                            <option value="tarta">Tarta</option>
+                            <option value="carta">Carta</option>
+                            <option value="carta_vinos">Carta vinos</option>
+                            <option value="gintonics">Gintonics</option>
+                            <option value="pdf">PDF</option>
+                            <option value="reservas">Reservas</option>
+                            <option value="grupos">Grupos</option>
+                            <option value="alergenos">Alérgenos</option>
+                            <option value="instagram">Instagram</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="maps">Maps</option>
+                          </select>
+                          <button type="button" onClick={crearHubLink}>+</button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {errorEdicion && <p className="admin-inline-error">{errorEdicion}</p>}
                   <div className="admin-card-actions">
                     <button type="submit" disabled={guardandoEdicion}>{guardandoEdicion ? 'Guardando...' : 'Guardar cambios'}</button>
@@ -281,15 +431,13 @@ export default function AdminPage() {
                 <>
               <div>
                 <h3>{restaurante.nombre}</h3>
-                <p>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || 'Sin ubicacion'}</p>
+                <p>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || 'Sin ubicación'}</p>
                 <span>{restaurante.email}</span>
                 <small className="admin-slug">/{restaurante.slug}</small>
               </div>
               <div className="admin-card-actions">
                 <button onClick={() => gestionar(restaurante)}>Gestionar dashboard</button>
                 <button className="admin-plain-button" onClick={() => empezarEdicion(restaurante)}>Editar datos</button>
-                <a href={`/carta/${restaurante.slug}`} target="_blank" rel="noreferrer">Ver carta publica</a>
-                <a href={`/camarero/${restaurante.slug}`} target="_blank" rel="noreferrer">Modo sala</a>
               </div>
                 </>
               )}
@@ -302,6 +450,7 @@ export default function AdminPage() {
             <p>No hay restaurantes creados todavia.</p>
           </div>
         )}
+        </div>
       </section>
     </main>
   )
