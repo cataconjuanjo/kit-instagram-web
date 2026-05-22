@@ -592,12 +592,27 @@ export default function Camarero({ params }) {
       }))
   }
 
-  function fraseVenta(vino, motivo, fuente) {
+  const descripcionCapitulo = {
+    anisado_blanco_herbaceo: 'perfil fresco y aromático que va bien con este plato',
+    sabor_frio_manzana_sauvignon: 'carácter ligero y frutal que encaja con este tipo de cocina',
+    fino_manzanilla_versatil: 'muy versátil, aguanta bien cualquier dirección del plato',
+    romero_blancos_alsacianos: 'notas herbales y especiadas que acompañan la intensidad del plato',
+    azafran_riesling_chardonnay: 'acidez y cuerpo que equilibran bien el plato',
+    oloroso_alimentos_densos: 'estructura y densidad que aguantan los sabores más potentes',
+    quesos_pasta_semidura_blancos: 'notas frescas y cremosas que van bien con la textura',
+    quesos_corteza_floral_chardonnay: 'perfil floral y con cuerpo, buena opción para quesos suaves',
+    sotolon_vino_jaune_curri: 'oxidativo y especiado, aguanta bien las especias del plato',
+    capsaicina_guindilla_vinos_amortiguadores: 'su frescura templa bien el picante',
+    fino_oloroso: 'generoso versátil, acompaña bien este tipo de plato',
+  }
+
+  function fraseVenta(vino, motivo) {
     const tipo = tipoLabel[vino.tipo]?.toLowerCase() || 'vino'
     const origen = vino.region ? ` de ${vino.region}` : ''
-    const uva = vino.uva ? `, con ${vino.uva}` : ''
-    const base = `Recomiéndalo como ${tipo}${origen}${uva}: ${motivo}.`
-    return fuente ? `${base} Criterio: ${fuente}.` : base
+    const uva = vino.uva ? ` (${vino.uva})` : ''
+    const cabecera = `${tipo.charAt(0).toUpperCase() + tipo.slice(1)}${origen}${uva}.`
+    const cuerpo = motivo.charAt(0).toUpperCase() + motivo.slice(1)
+    return `${cabecera} ${cuerpo}.`
   }
 
   function ajusteAprendizajeVenta(vino, contexto) {
@@ -637,8 +652,8 @@ export default function Camarero({ params }) {
   function puntuarParaVenta(vino, matchesKb, objetivo, precioMedio, contexto, consultaNormalizada, rangoTicket = null) {
     const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
     let score = 0
-    let motivo = 'busca afinidad aromática con el plato, no solo el tópico del color'
-    let fuente = 'Papilas y moleculas'
+    let motivo = 'buena elección para este tipo de plato'
+    let fuente = ''
     const compatibilidad = compatibilidadContexto(vino, contexto, consultaNormalizada)
     const metodo = metodosPlato(consultaNormalizada)
 
@@ -653,9 +668,7 @@ export default function Camarero({ params }) {
       matchScore += Math.min(terminosCoincidentes.length, 6) * 5
 
       if (matchScore > score) {
-        motivo = terminosCoincidentes.length
-          ? `comparte referencias aromaticas o de estilo con ${terminosCoincidentes.slice(0, 3).join(', ')}`
-          : `encaja con la familia ${match.capitulo.title}`
+        motivo = descripcionCapitulo[match.capitulo.id] || 'encaja bien con este tipo de plato'
         fuente = match.capitulo.title
       }
       score += matchScore
@@ -678,13 +691,13 @@ export default function Camarero({ params }) {
       if (dentroRango) {
         score += objetivo === 'ticket' ? 9 : 5
         if (distanciaIdeal <= tolerancia * 0.55) score += 3
-        motivo = `${motivo}; ademas encaja con el ticket estimado de la mesa`
+        motivo = `${motivo}, y encaja con el presupuesto estimado de la mesa`
       } else {
         const penalizacionPrecio = Math.min(9, (distanciaIdeal / tolerancia) * 3)
         score -= penalizacionPrecio
         if (objetivo === 'ticket' && precio > rangoTicket.max && precio <= rangoTicket.max * 1.35) {
           score += 4
-          motivo = `${motivo}; puede defenderse como subida de ticket controlada`
+          motivo = `${motivo}; se puede ofrecer como opción un poco más especial sin romper el presupuesto`
         }
       }
     }
@@ -713,9 +726,9 @@ export default function Camarero({ params }) {
     score += aprendizaje.ajuste
     if (Math.abs(aprendizaje.ajuste) >= 2.5) {
       motivo = aprendizaje.ajuste > 0
-        ? `${motivo}; ademas ha funcionado bien en sala en casos parecidos`
-        : `${motivo}; aunque el historial de sala pide prudencia con este vino`
-      fuente = `${fuente} + feedback de sala`
+        ? `${motivo}; además ha funcionado bien en sala en mesas parecidas`
+        : `${motivo}; aunque en sala no ha convencido mucho últimamente`
+      fuente = fuente
     }
 
     score += Math.min(precioBotella(vino), 80) / 80
@@ -1466,7 +1479,7 @@ export default function Camarero({ params }) {
 }
 
 function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, onFeedback, feedbackVenta, consultaVenta }) {
-  const { vino, label, motivo, fuente, aprendizaje, rangoTicket, ticketComida } = item
+  const { vino, label, motivo, aprendizaje, rangoTicket, ticketComida } = item
   const stockCritico = vino.stock > 0 && vino.stock <= 3
   const ajusteAprendido = aprendizaje && Math.abs(aprendizaje.ajuste) >= 2.5
   const esPorCopas = item.objetivo === 'copas'
@@ -1501,7 +1514,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         </div>
         <h3 className={styles.wineName}>{vino.nombre}</h3>
         <p className={styles.wineInfo}>{resumenVenta}</p>
-        <p className={styles.reason}>{fraseVenta(vino, motivo, fuente)}</p>
+        <p className={styles.reason}>{fraseVenta(vino, motivo)}</p>
         {ticketComida > 0 && rangoTicket && (
           <p className={styles.statusLine} style={{ color: precioEnRango ? '#1f7a61' : '#6f767d' }}>
             {precioEnRango ? 'Encaja con ticket mesa' : `Fuera de horquilla ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
@@ -1547,7 +1560,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         </div>
         <p style={{ margin: '0 0 4px', fontSize: 15, color: '#fff', fontWeight: 500 }}>{vino.nombre}</p>
         <p style={{ margin: '0 0 10px', fontSize: 11, color: '#666' }}>{resumenVenta}</p>
-        <p style={{ margin: 0, fontSize: 12, color: '#aaa', lineHeight: 1.55 }}>{fraseVenta(vino, motivo, fuente)}</p>
+        <p style={{ margin: 0, fontSize: 12, color: '#aaa', lineHeight: 1.55 }}>{fraseVenta(vino, motivo)}</p>
         {ticketComida > 0 && rangoTicket && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: precioEnRango ? '#7BAF8A' : '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {precioEnRango ? 'Encaja con ticket mesa' : `Fuera de horquilla ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}

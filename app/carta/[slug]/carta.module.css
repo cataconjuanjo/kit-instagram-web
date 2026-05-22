@@ -149,7 +149,7 @@
 
 .tabs {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
