@@ -16,6 +16,18 @@ function HubIcon({ tipo }) {
   if (tipo === 'alergenos') {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17h.01"/></svg>
   }
+  if (tipo === 'tarta') {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8Z"/><path d="M4 11c0-2.2 1.8-4 4-4s4 1.8 4 1.8S13.8 7 16 7s4 1.8 4 4"/><path d="M12 3v4"/><path d="M11 3h2"/></svg>
+  }
+  if (tipo === 'gintonics') {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l-1 8H9L8 3Z"/><path d="M9 11l3 7 3-7"/><path d="M6 21h12"/><path d="M7 7h1M10 5h1"/></svg>
+  }
+  if (tipo === 'pdf') {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8L14 2Z"/><path d="M14 2v6h6"/><path d="M8 13h2.5a1.5 1.5 0 0 1 0 3H8v-3ZM8 16v3"/><path d="M14 13v6M14 13h2a1.5 1.5 0 0 1 0 3h-2"/><path d="M17 13h1a2 2 0 0 1 0 4v2"/></svg>
+  }
+  if (tipo === 'grupos') {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="8" r="2.5"/><path d="M21 20c0-2.8-1.8-5-4-5.5"/></svg>
+  }
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H7a5 5 0 0 0 0 10h2"/><path d="M15 7h2a5 5 0 0 1 0 10h-2"/><path d="M8 12h8"/></svg>
 }
 
@@ -141,7 +153,7 @@ export default function RestauranteHub({ params }) {
           {linksPrincipales.map(link => (
             <a
               key={link.id}
-              className={`hub-link ${link.tipo === 'carta_vinos' ? 'hub-link-featured' : ''}`}
+              className="hub-link"
               href={link.url}
               target={link.url?.startsWith('/') ? '_self' : '_blank'}
               rel="noreferrer"
