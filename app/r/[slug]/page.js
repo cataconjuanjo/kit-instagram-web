@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 
 function HubIcon({ tipo }) {
-  if (['carta_vinos', 'carta', 'comida'].includes(tipo)) {
+  if (tipo === 'carta_vinos') {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l1 8a5 5 0 0 1-10 0l1-8Z"/><path d="M7.5 8h9"/><path d="M12 16v5"/><path d="M8.5 21h7"/></svg>
+  }
+  if (['carta', 'comida'].includes(tipo)) {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3M9 2v3M7 5h2M8 5v13"/><circle cx="12" cy="15" r="3.5"/><path d="M16 2l1 5h-1v11"/></svg>
   }
   if (tipo === 'reservas') {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3"/><path d="M4.5 8h15"/><path d="M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 12h3M8 16h6"/></svg>

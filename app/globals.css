@@ -1856,7 +1856,7 @@ h3 {
 }
 
 .hub-links {
-  width: min(100%, 610px);
+  width: min(100%, 400px);
   box-sizing: border-box;
   display: grid;
   gap: 12px;
