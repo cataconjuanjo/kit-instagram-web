@@ -194,6 +194,10 @@ async function archivoPdfSeleccionado(e) {
   if (!file) return
   setPdfNombre(file.name)
   setErrorPdf('')
+  if (file.size > 3 * 1024 * 1024) {
+    setErrorPdf('El archivo es demasiado grande (más de 3 MB). Exporta solo las páginas de vinos o comprime el PDF.')
+    return
+  }
   const reader = new FileReader()
   reader.onload = async () => {
     const base64 = String(reader.result || '').split(',')[1]
@@ -227,7 +231,7 @@ async function archivoPdfSeleccionado(e) {
         })))
       }
     } catch (error) {
-      setErrorPdf('Error leyendo el archivo. Formatos válidos: PDF, Excel (.xlsx), CSV, JPG o PNG.')
+      setErrorPdf('No se pudo procesar el archivo. Comprueba que es un PDF, Excel, CSV o imagen válida y que no supera 3 MB.')
     }
     setLeyendoPdf(false)
   }
