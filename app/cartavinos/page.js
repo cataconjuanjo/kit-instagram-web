@@ -59,6 +59,16 @@ const demoSegura = [
   },
 ]
 
+const faq = [
+  ['¿Hay permanencia mínima?', 'No. Puedes cancelar cuando quieras. Si eres cliente fundador, el precio reducido se mantiene mientras mantengas la suscripción activa.'],
+  ['¿Cuánto tarda en estar listo?', 'La puesta en marcha suele llevar entre 1 y 3 días. Depende del tamaño de la carta y de si ya tienes los vinos en un listado o hay que construirlo desde cero.'],
+  ['¿La configuración inicial tiene coste aparte?', 'Sí, desde 49 €. Está incluida sin coste adicional en el plan Acompañado.'],
+  ['¿Puedo cambiar de plan más adelante?', 'Sí, en cualquier momento. Puedes subir de Básico a Sala o a Acompañado según lo que necesites.'],
+  ['¿Qué pasa con mis datos si cancelo?', 'Antes de cerrar la cuenta te entrego toda tu información en formato descargable. Nada desaparece sin que lo tengas guardado.'],
+  ['¿Necesito instalar algo?', 'No. Carta Viva funciona desde el navegador en móvil, tablet y escritorio. Sin apps, sin instalaciones.'],
+  ['¿El maridaje recomienda vinos de fuera de mi carta?', 'No. El motor de maridaje solo trabaja con los vinos que tú tienes dados de alta. Nunca sugiere referencias que no puedes servir.'],
+]
+
 const modalidades = [
   {
     nombre: 'Digitalización',
@@ -278,11 +288,11 @@ export default function CartaVivaPage() {
 
       <section className="section cv-demo-section" id="demo-segura">
         <div className="section-head narrow">
-          <p className="eyebrow">Demo segura</p>
-          <h2>Se puede enseñar valor sin regalar datos ni abrir la cocina del producto.</h2>
+          <p className="eyebrow">Ve cómo funciona</p>
+          <h2>Tres pantallas reales con datos de ejemplo.</h2>
           <p>
-            La demo pública usa datos ficticios y pantallas simplificadas. Para clientes reales, el recorrido completo
-            se enseña en una demo privada con un restaurante de prueba y permisos controlados.
+            Lo que ves abajo es Carta Viva funcionando: bodega, inventario y cierre de servicio. Los datos son inventados
+            para proteger a los restaurantes que ya lo usan. Si quieres verlo con tu carta real, te hago una demo en directo sin compromiso.
           </p>
         </div>
         <div className="safe-demo-grid">
@@ -293,19 +303,18 @@ export default function CartaVivaPage() {
                 <h3>{pantalla.titulo}</h3>
               </div>
               <strong>{pantalla.dato}</strong>
-              <div>
+              <div className="safe-demo-rows">
                 {pantalla.filas.map((fila) => <span key={fila}>{fila}</span>)}
               </div>
             </article>
           ))}
         </div>
         <div className="demo-note">
-          <strong>Protección comercial</strong>
-          <p>
-            Nada de capturas con restaurantes reales, datos sensibles o reglas internas completas. Solo evidencias
-            suficientes para que el hostelero entienda el resultado.
-          </p>
-          <Link href="#contacto" className="btn btn-primary">Ver demo de restaurante</Link>
+          <div>
+            <strong>¿Quieres verlo con tu carta real?</strong>
+            <p>Te enseño el sistema completo con un restaurante de prueba. Sin datos tuyos, sin compromisos.</p>
+          </div>
+          <Link href="#contacto" className="btn btn-primary">Pedir demo privada</Link>
         </div>
       </section>
 
@@ -363,6 +372,21 @@ export default function CartaVivaPage() {
                 </div>
               ))}
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="section cv-faq">
+        <div className="section-head narrow">
+          <p className="eyebrow">Preguntas frecuentes</p>
+          <h2>Lo que suelen preguntar antes de contratar.</h2>
+        </div>
+        <div className="faq-list">
+          {faq.map(([pregunta, respuesta]) => (
+            <details className="faq-item" key={pregunta}>
+              <summary>{pregunta}</summary>
+              <p>{respuesta}</p>
+            </details>
           ))}
         </div>
       </section>

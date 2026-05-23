@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import LeadForm from './components/LeadForm'
 import PublicNav from './components/PublicNav'
 import PublicFooter from './components/PublicFooter'
@@ -29,18 +28,23 @@ const servicios = [
   },
 ]
 
-const catas = [
+
+const activaciones = [
   {
-    titulo: 'Catas privadas',
-    texto: 'Una experiencia cercana para grupos pequeños, celebraciones o regalos. Vinos elegidos con criterio y explicados sin solemnidad.',
+    titulo: 'Cena de maridaje',
+    texto: 'El restaurante activa una noche con su menú y mi criterio en sala. Los clientes comen, beben y entienden qué tienen en la copa.',
   },
   {
-    titulo: 'Catas para empresas',
-    texto: 'Team building, incentivos o eventos con clientes. Formatos cuidados, participativos y adaptados al nivel del grupo.',
+    titulo: 'Noche de productor',
+    texto: 'Un bodeguero, una mesa y una historia detrás de cada copa. Formato íntimo que llena noches y conecta a los clientes con el origen del vino.',
   },
   {
-    titulo: 'Formación inicial',
-    texto: 'Sesiones para aprender a catar, entender estilos, leer etiquetas y ganar seguridad al elegir vino.',
+    titulo: 'Selección de Juanjo',
+    texto: 'Vinos elegidos con criterio dentro de tu carta, con mi nombre y mi lectura detrás. Actualizable cada temporada.',
+  },
+  {
+    titulo: 'Formación de producto',
+    texto: 'Cuando entran vinos nuevos, formo a sala para que los defienda con argumentos reales. Una sesión, un equipo que vende mejor.',
   },
 ]
 
@@ -108,27 +112,22 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section tasting-band">
-        <div className="tasting-image" aria-hidden="true">
-          <Image src="/assets/instagram/post-6.jpg" alt="" width={640} height={853} />
+      <section className="section activaciones-section">
+        <div className="section-head">
+          <p className="eyebrow">Activaciones en sala</p>
+          <h2>Formatos para que el vino genere negocio dentro del restaurante.</h2>
         </div>
-        <div className="tasting-copy">
-          <p className="eyebrow">Catas y experiencias</p>
-          <h2>También diseño catas para personas, equipos y momentos especiales.</h2>
-          <p>
-            La consultoría es el foco profesional, pero el vino también se aprende y se disfruta en la mesa. Catas
-            privadas, sesiones para empresas y formatos de iniciación con el mismo criterio: rigor, cercanía y cero
-            postureo.
-          </p>
-          <div className="mini-service-grid">
-            {catas.map((cata) => (
-              <article key={cata.titulo}>
-                <h3>{cata.titulo}</h3>
-                <p>{cata.texto}</p>
-              </article>
-            ))}
-          </div>
-          <Link href="/catas" className="btn btn-secondary">Ver servicios de cata</Link>
+        <div className="activaciones-grid">
+          {activaciones.map((item) => (
+            <article className="activacion-card" key={item.titulo}>
+              <h3>{item.titulo}</h3>
+              <p>{item.texto}</p>
+            </article>
+          ))}
+        </div>
+        <div className="activaciones-footer">
+          <p>¿Tienes una idea diferente? Lo hablamos.</p>
+          <Link href="#contacto" className="btn btn-secondary">Cuéntame</Link>
         </div>
       </section>
 
