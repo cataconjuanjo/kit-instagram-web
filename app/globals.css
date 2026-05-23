@@ -1744,6 +1744,51 @@ h3 {
   color: var(--ink);
 }
 
+/* Reset tipográfico para todo el contenido del panel admin */
+.admin-main h1,
+.admin-main h2,
+.admin-main h3,
+.admin-main h4 {
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.admin-main h2 {
+  font-size: 1.15rem;
+  margin: 0 0 6px;
+}
+
+.admin-main h3 {
+  font-size: 1rem;
+  margin: 0 0 4px;
+}
+
+.admin-main h4 {
+  font-size: 0.9rem;
+  margin: 0 0 4px;
+}
+
+.admin-main .consult-hero h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.admin-main .admin-head h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.admin-main .admin-create h2 {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.admin-main .supplier-panel h2 {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
 .admin-loading {
   min-height: 100vh;
   display: grid;
@@ -5110,8 +5155,8 @@ h3 {
 .radar-header h2 {
   margin: 0 0 4px;
   color: var(--ink);
-  font-size: 1.35rem;
-  font-weight: 950;
+  font-size: 1.1rem;
+  font-weight: 750;
 }
 
 .radar-header p {
