@@ -25,34 +25,31 @@ const IVA_HOSTELERIA = 1.10
 const sinIva = valor => decimal(valor) / IVA_HOSTELERIA
 const conIva = valor => decimal(valor) * IVA_HOSTELERIA
 
-function ticketReferencia(restaurante, platosActivos, vinosConPrecio) {
+function ticketReferencia(restaurante, platosActivos) {
   const ticketGuardado = decimal(restaurante.ticket_medio || restaurante.ticket_medio_comida || restaurante.ticket_comida)
-  if (ticketGuardado > 0) return { valor: ticketGuardado, fuente: 'ticket configurado' }
+  if (ticketGuardado > 0) return { valor: ticketGuardado, fuente: 'ticket configurado', ticketEsEstimado: false }
   const platosConPrecio = platosActivos.filter(p => decimal(p.precio) > 0)
   if (platosConPrecio.length) {
     const mediaPlato = platosConPrecio.reduce((sum, p) => sum + decimal(p.precio), 0) / platosConPrecio.length
-    return { valor: Math.round(mediaPlato * 2.2), fuente: 'estimado por carta de comida' }
+    return { valor: Math.round(mediaPlato * 2.5), fuente: 'estimado por carta de comida', ticketEsEstimado: true }
   }
-  const mediaVino = vinosConPrecio.length
-    ? vinosConPrecio.reduce((sum, v) => sum + decimal(v.precio_botella), 0) / vinosConPrecio.length
-    : 30
-  return { valor: Math.round(Math.max(22, mediaVino * 0.9)), fuente: 'estimado por precio de vino' }
+  return { valor: null, fuente: 'no disponible', ticketEsEstimado: true }
 }
 
 function mapaPrecios(vinosConPrecio, ticket) {
+  if (!ticket) return { gamas: [], desajustes: [], base: 'sin_ticket' }
   const total = vinosConPrecio.length
-  const ticketSinIva = sinIva(ticket)
   const rangos = [
-    { id: 'baja', label: 'Gama baja', objetivo: 20, min: 0, max: Math.max(sinIva(18), ticketSinIva * 0.45) },
-    { id: 'media', label: 'Gama media', objetivo: 45, min: Math.max(sinIva(18), ticketSinIva * 0.45), max: Math.max(sinIva(28), ticketSinIva * 0.75) },
-    { id: 'alta', label: 'Gama alta', objetivo: 15, min: Math.max(sinIva(28), ticketSinIva * 0.75), max: Math.max(sinIva(55), ticketSinIva * 1.8) },
-    { id: 'muy_alta', label: 'Muy alta', objetivo: 15, min: Math.max(sinIva(55), ticketSinIva * 1.8), max: Math.max(sinIva(95), ticketSinIva * 3) },
-    { id: 'premium', label: 'Premium', objetivo: 5, min: Math.max(sinIva(95), ticketSinIva * 3), max: Infinity },
+    { id: 'baja',     label: 'Gama baja',  objetivo: 20, min: 0,            max: ticket * 0.5 },
+    { id: 'media',    label: 'Gama media', objetivo: 45, min: ticket * 0.5,  max: ticket * 1.0 },
+    { id: 'alta',     label: 'Gama alta',  objetivo: 15, min: ticket * 1.0,  max: ticket * 2.0 },
+    { id: 'muy_alta', label: 'Muy alta',   objetivo: 15, min: ticket * 2.0,  max: ticket * 3.0 },
+    { id: 'premium',  label: 'Premium',    objetivo:  5, min: ticket * 3.0,  max: Infinity },
   ]
   const gamas = rangos.map(rango => {
     const vinos = vinosConPrecio.filter(v => {
-      const precio = sinIva(v.precio_botella)
-      return precio > rango.min && precio <= rango.max
+      const precio = decimal(v.precio_botella)
+      return rango.max === Infinity ? precio >= rango.min : precio >= rango.min && precio < rango.max
     })
     const real = pct(vinos.length, total)
     return {
@@ -61,14 +58,20 @@ function mapaPrecios(vinosConPrecio, ticket) {
       real,
       diferencia: real - rango.objetivo,
       rangoTexto: rango.max === Infinity
-        ? `>${Math.round(conIva(rango.min))}`
-        : `${Math.round(conIva(rango.min + 1))}-${Math.round(conIva(rango.max))}`
+        ? `>${Math.round(rango.min)}`
+        : rango.min === 0
+          ? `hasta ${Math.round(rango.max)}`
+          : `${Math.round(rango.min)}–${Math.round(rango.max)}`,
     }
   })
+  const umbral = Math.max(1, Math.round(total * 0.10))
   const desajustes = gamas
-    .filter(g => Math.abs(g.diferencia) >= 10 || (g.objetivo > 0 && g.vinos === 0))
+    .filter(g => {
+      const ideal = Math.round((g.objetivo / 100) * total)
+      return Math.abs(g.vinos - ideal) > umbral || (g.vinos === 0 && ideal > 0)
+    })
     .map(g => `${g.label}: ${g.real}% real vs ${g.objetivo}% objetivo`)
-  return { gamas, desajustes, base: 'calculo_sin_iva_muestra_con_iva' }
+  return { gamas, desajustes, base: 'pvp_iva_incl' }
 }
 
 function haceDiasISO(dias) {
@@ -152,7 +155,7 @@ function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propu
 
   const vinosConPrecio = activos.filter(v => Number(v.precio_botella) > 0)
   const platosConPrecio = platosActivos.filter(p => Number(p.precio) > 0)
-  const ticket = ticketReferencia(restaurante, platosActivos, vinosConPrecio)
+  const ticket = ticketReferencia(restaurante, platosActivos)
   const wineMapping = mapaPrecios(vinosConPrecio, ticket.valor)
   const precioMedioVino = vinosConPrecio.reduce((sum, v, _, arr) => sum + Number(v.precio_botella) / arr.length, 0)
   const precioMedioPlato = platosConPrecio.reduce((sum, p, _, arr) => sum + Number(p.precio) / arr.length, 0)
@@ -196,7 +199,7 @@ function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propu
   if (margenBajo.length > 0) oportunidad(11, 'Margen bajo en referencias con datos', `${margenBajo.length} vinos bajan del 55% de margen estimado. Puede haber compra cara o PVP mal defendido.`, 'Pricing y beverage cost')
   if (bajoMinimo.length > 0) oportunidad(9, 'Reposición pendiente', `${bajoMinimo.length} vinos están por debajo del stock mínimo configurado.`, 'Rutina de compras')
   if (sinProveedor.length > total * 0.4) oportunidad(8, 'Proveedores poco trazados', `${sinProveedor.length} vinos sin proveedor. Hay margen para ordenar compra y negociación.`, 'Mapa de proveedores')
-  if (wineMapping.desajustes.length > 0) oportunidad(12, 'Mapa de precios descompensado', wineMapping.desajustes.slice(0, 2).join('. '), 'Wine mapping y arquitectura de precios')
+  if (wineMapping.desajustes.length > 0) oportunidad(12, 'Mapa de precios descompensado', wineMapping.desajustes.slice(0, 2).join('. '), 'Arquitectura de precios')
   if (incidenciasStock.length >= 2) oportunidad(10, 'Sala está encontrando roturas de stock', `${incidenciasStock.length} incidencias marcadas en los últimos 30 días.`, 'Control de servicio y reposición')
   if (dudasSala.length >= 3) oportunidad(9, 'Vinos que no terminan de convencer en sala', `${dudasSala.length} dudas o cambios marcados. Puede faltar argumento, precio o alternativa.`, 'Formación de sala')
   if (propuestasInteresan.length > 0) oportunidad(14, 'Cliente caliente con propuestas abiertas', `${propuestasInteresan.length} propuestas marcadas como interesan. Buen momento para cerrar acción.`, 'Seguimiento comercial')
@@ -454,21 +457,27 @@ export default function RadarConsultoria() {
                             min="0"
                             step="1"
                             value={ticketDrafts[informe.restaurante.id] ?? ''}
-                            placeholder={`${informe.diagnostico.ticket.valor}`}
+                            placeholder={informe.diagnostico.ticket.valor != null ? String(informe.diagnostico.ticket.valor) : ''}
                             onChange={e => setTicketDrafts(actual => ({ ...actual, [informe.restaurante.id]: e.target.value }))}
                           />
                           <button onClick={() => guardarTicket(informe)} disabled={guardandoTicket === informe.restaurante.id}>
                             {guardandoTicket === informe.restaurante.id ? 'Guardando' : 'Guardar'}
                           </button>
                         </div>
-                        <small>Ahora: {eur(informe.diagnostico.ticket.valor)} PVP IVA incl. · {informe.diagnostico.ticket.fuente}</small>
+                        <small>
+                          {informe.diagnostico.ticket.valor == null
+                            ? 'Sin ticket configurado — introdúcelo aquí'
+                            : `${eur(informe.diagnostico.ticket.valor)} PVP IVA incl. · ${informe.diagnostico.ticket.fuente}${informe.diagnostico.ticket.ticketEsEstimado ? ' · Estimado automáticamente' : ''}`}
+                        </small>
                       </div>
                     </div>
 
                     <div className="strategy-grid">
                       <section>
-                        <h4>Wine mapping</h4>
-                        {informe.diagnostico.wineMapping.gamas.map(gama => (
+                        <h4>Arquitectura de precios</h4>
+                        {informe.diagnostico.ticket.valor == null ? (
+                          <p style={{ color: '#b97a1a', fontSize: 12, margin: 0 }}>Ticket medio no disponible — introdúcelo manualmente en la Ficha 360.</p>
+                        ) : informe.diagnostico.wineMapping.gamas.map(gama => (
                           <div className="mapping-row" key={gama.id}>
                             <div>
                               <strong>{gama.label}</strong>
@@ -587,21 +596,27 @@ export default function RadarConsultoria() {
                             min="0"
                             step="1"
                             value={ticketDrafts[informe.restaurante.id] ?? ''}
-                            placeholder={`${informe.diagnostico.ticket.valor}`}
+                            placeholder={informe.diagnostico.ticket.valor != null ? String(informe.diagnostico.ticket.valor) : ''}
                             onChange={e => setTicketDrafts(actual => ({ ...actual, [informe.restaurante.id]: e.target.value }))}
                           />
                           <button onClick={() => guardarTicket(informe)} disabled={guardandoTicket === informe.restaurante.id}>
                             {guardandoTicket === informe.restaurante.id ? 'Guardando' : 'Guardar'}
                           </button>
                         </div>
-                        <small>Ahora: {eur(informe.diagnostico.ticket.valor)} · {informe.diagnostico.ticket.fuente}</small>
+                        <small>
+                          {informe.diagnostico.ticket.valor == null
+                            ? 'Sin ticket configurado — introdúcelo aquí'
+                            : `${eur(informe.diagnostico.ticket.valor)} · ${informe.diagnostico.ticket.fuente}${informe.diagnostico.ticket.ticketEsEstimado ? ' · Estimado automáticamente' : ''}`}
+                        </small>
                       </div>
                     </div>
 
                     <div className="strategy-grid">
                       <section>
-                        <h4>Wine mapping</h4>
-                        {informe.diagnostico.wineMapping.gamas.map(gama => (
+                        <h4>Arquitectura de precios</h4>
+                        {informe.diagnostico.ticket.valor == null ? (
+                          <p style={{ color: '#b97a1a', fontSize: 12, margin: 0 }}>Ticket medio no disponible — introdúcelo manualmente en la Ficha 360.</p>
+                        ) : informe.diagnostico.wineMapping.gamas.map(gama => (
                           <div className="mapping-row" key={gama.id}>
                             <div>
                               <strong>{gama.label}</strong>
