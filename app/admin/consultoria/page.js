@@ -281,7 +281,6 @@ export default function RadarConsultoria() {
   const [estadisticas, setEstadisticas] = useState([])
   const [propuestas, setPropuestas] = useState([])
   const [filtro, setFiltro] = useState('todas')
-  const [abierto, setAbierto] = useState(null)
   const [ticketDrafts, setTicketDrafts] = useState({})
   const [guardandoTicket, setGuardandoTicket] = useState('')
   const [loading, setLoading] = useState(true)
@@ -551,109 +550,11 @@ export default function RadarConsultoria() {
               </div>
 
               <div className="consult-actions">
-                <button onClick={() => gestionar(informe.restaurante)}>Abrir dashboard</button>
+                <Link className="consult-primary-action" href={`/admin/restaurante/${informe.restaurante.id}`}>Trabajar →</Link>
                 <a href={`/carta/${informe.restaurante.slug}`} target="_blank" rel="noreferrer">Ver carta</a>
-                <button className="consult-secondary" onClick={() => setAbierto(abierto === informe.restaurante.id ? null : informe.restaurante.id)}>Ficha 360</button>
-                <Link href={`/admin/informe/${informe.restaurante.id}`}>Ver informe</Link>
-                <Link href={`/admin/propuestas?restaurante=${informe.restaurante.id}&titulo=${encodeURIComponent(informe.alertas[0]?.titulo || '')}&motivo=${encodeURIComponent(informe.alertas[0]?.detalle || '')}&prioridad=${informe.prioridad === 'Alta' ? 'alta' : informe.prioridad === 'Media' ? 'media' : 'baja'}`}>Crear propuesta</Link>
+                <button className="consult-secondary" onClick={() => gestionar(informe.restaurante)}>Dashboard</button>
               </div>
 
-              {abierto === informe.restaurante.id && (
-                <div className="consult-360">
-                  <div>
-                    <span>Economia</span>
-                    <strong>{eur(informe.metricas.valorCoste)} a coste</strong>
-                    <p>{eur(informe.metricas.valorVenta)} potencial venta. {informe.metricas.sinCoste} sin coste, {informe.metricas.margenBajo} con margen bajo.</p>
-                  </div>
-                  <div>
-                    <span>Sala</span>
-                    <strong>{informe.ventasMarcadas.length} ventas marcadas</strong>
-                    <p>{informe.incidenciasStock.length} incidencias stock, {informe.dudasSala.length} dudas/cambios, {informe.metricas.sommelier30} usos maridaje.</p>
-                  </div>
-                  <div>
-                    <span>Compra</span>
-                    <strong>{informe.metricas.bajoMinimo} bajo mínimo</strong>
-                    <p>{informe.metricas.sinProveedor} sin proveedor, {informe.metricas.sinStockMinimo} sin stock mínimo.</p>
-                  </div>
-                  <div>
-                    <span>Seguimiento</span>
-                    <strong>{informe.propuestasAbiertas.length} propuestas abiertas</strong>
-                    <p>{informe.propuesta || 'No hay una propuesta comercial clara generada aún.'}</p>
-                  </div>
-                  {informe.vinosConDudas.length > 0 && (
-                    <div className="consult-360-wide">
-                      <span>Vinos con fricción en sala</span>
-                      <p>{informe.vinosConDudas.map(([vino, total]) => `${vino} (${total})`).join(' · ')}</p>
-                    </div>
-                  )}
-                  <div className="consult-360-wide strategy-panel">
-                    <div className="strategy-head">
-                      <div>
-                        <span>Diagnóstico estratégico</span>
-                        <strong>Mapa de precios y salud de carta</strong>
-                      </div>
-                      <div className="ticket-editor">
-                        <label>Ticket medio comida real</label>
-                        <div>
-                          <input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={ticketDrafts[informe.restaurante.id] ?? ''}
-                            placeholder={informe.diagnostico.ticket.valor != null ? String(informe.diagnostico.ticket.valor) : ''}
-                            onChange={e => setTicketDrafts(actual => ({ ...actual, [informe.restaurante.id]: e.target.value }))}
-                          />
-                          <button onClick={() => guardarTicket(informe)} disabled={guardandoTicket === informe.restaurante.id}>
-                            {guardandoTicket === informe.restaurante.id ? 'Guardando' : 'Guardar'}
-                          </button>
-                        </div>
-                        <small>
-                          {informe.diagnostico.ticket.valor == null
-                            ? 'Sin ticket configurado — introdúcelo aquí'
-                            : `${eur(informe.diagnostico.ticket.valor)} · ${informe.diagnostico.ticket.fuente}${informe.diagnostico.ticket.ticketEsEstimado ? ' · Estimado automáticamente' : ''}`}
-                        </small>
-                      </div>
-                    </div>
-
-                    <div className="strategy-grid">
-                      <section>
-                        <h4>Arquitectura de precios</h4>
-                        {informe.diagnostico.ticket.valor == null ? (
-                          <p style={{ color: '#b97a1a', fontSize: 12, margin: 0 }}>Ticket medio no disponible — introdúcelo manualmente en la Ficha 360.</p>
-                        ) : informe.diagnostico.wineMapping.gamas.map(gama => (
-                          <div className="mapping-row" key={gama.id}>
-                            <div>
-                              <strong>{gama.label}</strong>
-                              <span>{gama.rangoTexto} EUR · {gama.vinos} vinos</span>
-                            </div>
-                            <div className="mapping-bar"><i style={{ width: `${Math.min(100, gama.real)}%` }} /></div>
-                            <b>{gama.real}%</b>
-                            <em>obj. {gama.objetivo}%</em>
-                          </div>
-                        ))}
-                      </section>
-
-                      <section>
-                        <h4>Salud operativa</h4>
-                        <div className="strategy-pills">
-                          {informe.diagnostico.salud.map(item => (
-                            <span key={item.label} className={item.valor > Math.max(0, item.total * 0.2) ? 'is-warning' : ''}>{item.label}: {item.valor}</span>
-                          ))}
-                        </div>
-                      </section>
-
-                      <section>
-                        <h4>Equilibrio comercial</h4>
-                        <div className="strategy-pills">
-                          {informe.diagnostico.equilibrio.map(item => (
-                            <span key={item.label}>{item.label}: {item.valor}</span>
-                          ))}
-                        </div>
-                      </section>
-                    </div>
-                  </div>
-                </div>
-              )}
             </article>
           ))}
         </div>
