@@ -84,6 +84,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [mostrarImportador, setMostrarImportador] = useState(false)
+  const [arrastrandoPdf, setArrastrandoPdf] = useState(false)
+  const [progresoPdf, setProgresoPdf] = useState('')
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('importar') === '1') setMostrarImportador(true)
@@ -189,53 +191,90 @@ function actualizarVinoImportar(index, cambios) {
   setVinosImportar(vinosImportar.map((vino, i) => i === index ? { ...vino, ...cambios } : vino))
 }
 
-async function archivoPdfSeleccionado(e) {
-  const file = e.target.files?.[0]
-  if (!file) return
-  setPdfNombre(file.name)
-  setErrorPdf('')
-  if (file.size > 3 * 1024 * 1024) {
-    setErrorPdf('El archivo es demasiado grande (más de 3 MB). Exporta solo las páginas de vinos o comprime el PDF.')
-    return
+function leerBase64(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || '').split(',')[1] || null)
+    reader.onerror = () => resolve(null)
+    reader.readAsDataURL(file)
+  })
+}
+
+async function procesarArchivos(files) {
+  const lista = Array.from(files)
+  const grandes = lista.filter(f => f.size > 3 * 1024 * 1024)
+  const validos = lista.filter(f => f.size <= 3 * 1024 * 1024)
+  if (grandes.length) {
+    setErrorPdf(`${grandes.map(f => `"${f.name}"`).join(', ')} ${grandes.length === 1 ? 'supera' : 'superan'} los 3 MB. Comprime o divide el PDF.`)
   }
-  const reader = new FileReader()
-  reader.onload = async () => {
-    const base64 = String(reader.result || '').split(',')[1]
-    if (!base64) {
-      setErrorPdf('No se pudo leer el archivo.')
-      return
-    }
-    setLeyendoPdf(true)
+  if (!validos.length) return
+  setPdfNombre(validos.map(f => f.name).join(', '))
+  setLeyendoPdf(true)
+  const todosVinos = []
+  for (let i = 0; i < validos.length; i++) {
+    if (validos.length > 1) setProgresoPdf(`Procesando archivo ${i + 1} de ${validos.length}...`)
+    const base64 = await leerBase64(validos[i])
+    if (!base64) continue
     try {
       const res = await fetch('/api/importar-vinos-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileBase64: base64, mediaType: file.type || 'application/pdf' })
+        body: JSON.stringify({ fileBase64: base64, mediaType: validos[i].type || 'application/pdf' })
       })
       const data = await res.json()
-      if (!res.ok || !Array.isArray(data.vinos) || !data.vinos.length) {
-        setErrorPdf(data.error || 'No se encontraron vinos en el archivo.')
-      } else {
-        setVinosImportar(data.vinos.map(vino => ({
-          nombre: vino.nombre || '',
-          bodega: vino.bodega || '',
-          tipo: vino.tipo || 'tinto',
-          region: vino.region || '',
-          uva: vino.uva || '',
-          anada: vino.anada || '',
-          precio_copa: vino.precio_copa || '',
-          precio_botella: vino.precio_botella || '',
-          stock: 1,
-          notas_cata: vino.notas_cata || '',
-          activo: true,
-        })))
-      }
-    } catch (error) {
-      setErrorPdf('No se pudo procesar el archivo. Comprueba que es un PDF, Excel, CSV o imagen válida y que no supera 3 MB.')
-    }
-    setLeyendoPdf(false)
+      if (res.ok && Array.isArray(data.vinos)) todosVinos.push(...data.vinos)
+    } catch {}
   }
-  reader.readAsDataURL(file)
+  if (!todosVinos.length) {
+    if (!grandes.length) setErrorPdf('No se encontraron vinos en los archivos.')
+  } else {
+    const vistos = new Set()
+    const unicos = todosVinos.filter(v => {
+      const key = normalizar(v.nombre)
+      if (vistos.has(key)) return false
+      vistos.add(key)
+      return true
+    })
+    setVinosImportar(unicos.map(vino => ({
+      nombre: vino.nombre || '',
+      bodega: vino.bodega || '',
+      tipo: vino.tipo || 'tinto',
+      region: vino.region || '',
+      uva: vino.uva || '',
+      anada: vino.anada || '',
+      precio_copa: Number(vino.precio_copa) > 0 ? vino.precio_copa : '',
+      precio_botella: Number(vino.precio_botella) > 0 ? vino.precio_botella : '',
+      stock: 1,
+      notas_cata: vino.notas_cata || '',
+      activo: true,
+    })))
+  }
+  setProgresoPdf('')
+  setLeyendoPdf(false)
+}
+
+function archivoPdfSeleccionado(e) {
+  const files = e.target.files
+  if (!files?.length) return
+  setErrorPdf('')
+  procesarArchivos(files)
+}
+
+function handleDragOver(e) {
+  e.preventDefault()
+  setArrastrandoPdf(true)
+}
+
+function handleDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) setArrastrandoPdf(false)
+}
+
+function handleDrop(e) {
+  e.preventDefault()
+  setArrastrandoPdf(false)
+  setErrorPdf('')
+  const files = e.dataTransfer.files
+  if (files?.length) procesarArchivos(files)
 }
 
 async function guardarImportacionVinos() {
@@ -426,11 +465,20 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
             <p style={{ fontSize: 13, color: '#999', lineHeight: 1.6, margin: '0 0 16px' }}>
               Sube la carta en cualquier formato: PDF, Excel, CSV o foto (JPG/PNG). La IA extrae nombre, bodega, tipo, región, uva, añada y precios. Revisa y corrige antes de guardar.
             </p>
-            <input ref={inputPdfRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls,.csv,text/csv" onChange={archivoPdfSeleccionado} style={{ display: 'none' }} />
-            <button onClick={() => inputPdfRef.current?.click()} disabled={leyendoPdf}
-              style={{ width: '100%', background: leyendoPdf ? '#f3f3f3' : '#fafafa', color: leyendoPdf ? '#aaa' : '#111', border: '1px dashed #d8d8d8', padding: '18px', fontSize: 13, cursor: leyendoPdf ? 'not-allowed' : 'pointer', marginBottom: 12 }}>
-              {leyendoPdf ? 'Leyendo archivo...' : pdfNombre ? `Archivo cargado: ${pdfNombre}` : 'PDF · Excel · CSV · Foto — arrastra o haz clic'}
-            </button>
+            <input ref={inputPdfRef} type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls,.csv,text/csv" onChange={archivoPdfSeleccionado} style={{ display: 'none' }} />
+            <div
+              onClick={() => !leyendoPdf && inputPdfRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              style={{ width: '100%', background: arrastrandoPdf ? '#fdf6f8' : leyendoPdf ? '#f3f3f3' : '#fafafa', color: leyendoPdf ? '#aaa' : '#111', border: `1px dashed ${arrastrandoPdf ? '#74223d' : '#d8d8d8'}`, padding: '20px 18px', fontSize: 13, cursor: leyendoPdf ? 'not-allowed' : 'pointer', marginBottom: 12, textAlign: 'center', boxSizing: 'border-box', userSelect: 'none' }}
+            >
+              {leyendoPdf
+                ? (progresoPdf || 'Leyendo archivo...')
+                : pdfNombre
+                  ? `Cargado: ${pdfNombre}`
+                  : <span>PDF · Excel · CSV · Foto — arrastra o haz clic<br /><span style={{ fontSize: 11, color: '#bbb' }}>Puedes seleccionar varios archivos · Máx. 3 MB por archivo</span></span>}
+            </div>
             {errorPdf && <p style={{ fontSize: 12, color: '#c07070', margin: '0 0 12px' }}>{errorPdf}</p>}
 
             {vinosImportar.length > 0 && (

@@ -12,11 +12,11 @@ Cada objeto debe tener esta forma exacta:
   "nombre": "nombre del vino",
   "bodega": "bodega si aparece o vacío",
   "tipo": "tinto|blanco|rosado|espumoso|generoso|dulce|naranja",
-  "region": "zona, DO o país si aparece o vacío",
+  "region": "zona o D.O. exactamente como aparece en el texto, o vacío",
   "uva": "uvas si aparecen o vacío",
   "anada": "añada si aparece o vacío",
-  "precio_copa": número o 0,
-  "precio_botella": número o 0,
+  "precio_copa": número mayor que 0 si existe precio de copa, si no 0,
+  "precio_botella": número mayor que 0 si existe precio de botella, si no 0,
   "notas_cata": "perfiles útiles si son evidentes; si no, vacío"
 }
 
@@ -24,8 +24,10 @@ Reglas:
 No incluyas cervezas, refrescos, cócteles, cafés ni platos.
 Si no sabes un campo, déjalo vacío o 0.
 Usa precios en euros como número sin símbolo.
+REGIÓN: copia la D.O. o zona geográfica tal como aparece en el texto (ej: "D.O. Sierras de Málaga", "D.O.Ca. Rioja", "AOC Sancerre"). No la traduzcas ni la inventes.
+PRECIOS: solo pon un precio si aparece explícitamente en el texto para ese formato. Si el vino solo se vende por botella, precio_copa = 0. Si solo se vende por copa, precio_botella = 0. No inventes precios.
 Si aparecen precio de copa y botella, distingue ambos.
-Si solo hay un precio, colócalo como precio_botella.
+Si solo hay un precio y no indica copa, colócalo como precio_botella.
 Cuando los precios aparecen separados por espacio en la misma línea (ej: "8,0 38" o "4,5 22"), el primero es copa y el segundo botella.
 Cuando el texto une los precios sin separación (ej: "1455" o "8,038"), interpreta como copa 14 y botella 55, copa 8 y botella 38.
 Usa encabezados como Blancos, Tintos, Champagne, Generosos, Espumosos para inferir el tipo cuando no aparezca en la línea del vino.
