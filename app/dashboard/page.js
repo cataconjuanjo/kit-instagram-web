@@ -167,12 +167,16 @@ export default function DashboardHome() {
   ].filter(check => !check.feature || puedeUsar(restaurante, check.feature))
 
   const tareasInicio = [
-    { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio, uva y stock inicial.', href: '/dashboard/vinos' },
-    { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos' },
-    { id: 'bodega', titulo: 'Completar margen y proveedor', texto: 'Coste, proveedor y stock mínimo convierten la carta en control de bodega.', href: '/dashboard/bodega', feature: 'bodega' },
+    { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio, uva y stock inicial.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
+    { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
+    { id: 'bodega', titulo: 'Completar margen y proveedor', texto: 'Coste, proveedor y stock mínimo convierten la carta en control de bodega.', href: '/dashboard/bodega', feature: 'bodega', autoHide: () => sinCosteCompra.length === 0 && sinProveedor.length === 0 },
     { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la carta pública, revisa móvil y deja listo el PIN de sala.', href: '/dashboard/qr' },
   ]
-  const tareasInicioVisibles = tareasInicio.filter(tarea => !tareasOcultas.includes(tarea.id) && (!tarea.feature || puedeUsar(restaurante, tarea.feature)))
+  const tareasInicioVisibles = tareasInicio.filter(tarea =>
+    !tareasOcultas.includes(tarea.id) &&
+    (!tarea.feature || puedeUsar(restaurante, tarea.feature)) &&
+    !tarea.autoHide?.()
+  )
 
   return (
     <main>

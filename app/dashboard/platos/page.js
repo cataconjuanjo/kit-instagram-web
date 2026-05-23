@@ -170,6 +170,10 @@ export default function Platos() {
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [mostrarImportador, setMostrarImportador] = useState(false)
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('importar') === '1') setMostrarImportador(true)
+  }, [])
   const [busquedaPlatos, setBusquedaPlatos] = useState('')
   const [filtroPlatos, setFiltroPlatos] = useState('todos')
   const [editandoPlato, setEditandoPlato] = useState(null)

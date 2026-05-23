@@ -84,6 +84,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [mostrarImportador, setMostrarImportador] = useState(false)
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('importar') === '1') setMostrarImportador(true)
+  }, [])
   const [busquedaVinos, setBusquedaVinos] = useState('')
   const [filtroVinos, setFiltroVinos] = useState('todos')
   const [generandoCata, setGenerandoCata] = useState(false)
