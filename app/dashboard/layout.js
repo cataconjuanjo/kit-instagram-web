@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail } from '../demo'
-import { nombrePlan } from '../lib/plans'
+import { nombrePlan, puedeUsar } from '../lib/plans'
 import styles from './layout.module.css'
 
 const icon = {
@@ -58,11 +58,7 @@ export default function DashboardLayout({ children }) {
     .join('')
     .toUpperCase()
 
-  const planVisible = restaurante?.plan === 'basic'
-    ? 'Acceso completo'
-    : restaurante
-      ? nombrePlan(restaurante)
-      : ''
+  const planVisible = restaurante ? nombrePlan(restaurante) : ''
 
   const navItems = [
     { href: '/dashboard', label: 'Inicio', exact: true, icon: icon.home },
@@ -81,17 +77,19 @@ export default function DashboardLayout({ children }) {
       href: '/dashboard/sala',
       label: 'Sala',
       icon: icon.sala,
+      feature: 'modo_camarero',
       children: [
-        { href: '/dashboard/cierre', label: 'Cierre servicio' },
-        { href: '/dashboard/estadisticas', label: 'Actividad' },
+        { href: '/dashboard/cierre', label: 'Cierre servicio', feature: 'cierre_servicio' },
+        { href: '/dashboard/estadisticas', label: 'Actividad', feature: 'estadisticas' },
       ],
     },
     {
       href: '/dashboard/bodega',
       label: 'Bodega',
       icon: icon.bodega,
+      feature: 'bodega',
       children: [
-        { href: '/dashboard/inventario', label: 'Inventario' },
+        { href: '/dashboard/inventario', label: 'Inventario', feature: 'inventario' },
       ],
     },
     {
@@ -103,7 +101,11 @@ export default function DashboardLayout({ children }) {
         { href: '/dashboard/personalizar', label: 'Diseño y marca' },
       ],
     },
-  ]
+  ].filter(item => !item.feature || puedeUsar(restaurante, item.feature))
+    .map(item => ({
+      ...item,
+      children: item.children?.filter(child => !child.feature || puedeUsar(restaurante, child.feature)),
+    }))
 
   return (
     <div className={styles.shell}>
@@ -163,9 +165,11 @@ export default function DashboardLayout({ children }) {
             <a href={restaurante?.slug ? `/carta/${restaurante.slug}` : '#'} target="_blank" rel="noreferrer" className={styles.footerLink}>
               Carta pública
             </a>
-            <a href={restaurante?.slug ? `/camarero/${restaurante.slug}` : '#'} target="_blank" rel="noreferrer" className={styles.footerLink}>
-              Modo camarero
-            </a>
+            {puedeUsar(restaurante, 'modo_camarero') && (
+              <a href={restaurante?.slug ? `/camarero/${restaurante.slug}` : '#'} target="_blank" rel="noreferrer" className={styles.footerLink}>
+                Modo camarero
+              </a>
+            )}
           </div>
           <button type="button" onClick={cerrarSesion} className={styles.logoutButton}>Salir</button>
         </div>

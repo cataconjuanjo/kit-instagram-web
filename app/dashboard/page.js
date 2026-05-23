@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { getEffectiveRestaurantEmail } from '../demo'
+import { puedeUsar } from '../lib/plans'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -154,24 +155,24 @@ export default function DashboardHome() {
 
   const modulos = [
     { label: 'Carta', title: 'Vinos y platos', text: 'Gestiona la información que ve el cliente y usa sala.', stat: `${vinosActivos.length} vinos · ${platos.length} platos`, href: '/dashboard/carta' },
-    { label: 'Sala', title: 'Cierre de servicio', text: 'Revisa ventas, dudas e incidencias después del turno.', stat: `${stats.ventasHoy} ventas hoy`, href: '/dashboard/sala' },
-    { label: 'Bodega', title: 'Stock y margen', text: 'Valor, pedido sugerido, proveedor y datos pendientes.', stat: `${bajoMinimo.length} bajo mínimo`, href: '/dashboard/bodega' },
-  ]
+    { label: 'Sala', title: 'Cierre de servicio', text: 'Revisa ventas, dudas e incidencias después del turno.', stat: `${stats.ventasHoy} ventas hoy`, href: '/dashboard/sala', feature: 'modo_camarero' },
+    { label: 'Bodega', title: 'Stock y margen', text: 'Valor, pedido sugerido, proveedor y datos pendientes.', stat: `${bajoMinimo.length} bajo mínimo`, href: '/dashboard/bodega', feature: 'bodega' },
+  ].filter(modulo => !modulo.feature || puedeUsar(restaurante, modulo.feature))
 
   const checksSalud = [
     { label: 'Vinos', valor: calidadVinos, detalle: `${vinosSinPrecio.length} sin precio · ${vinosSinPerfil.length} sin perfil`, href: '/dashboard/vinos?filtro=pendientes' },
     { label: 'Platos', valor: calidadPlatos, detalle: `${platosSinDescripcion.length} sin descripción · ${platosSinPrecio.length} sin precio`, href: '/dashboard/platos?filtro=descripcion' },
-    { label: 'Stock', valor: calidadStock, detalle: `${vinosSinStock.length} sin stock actualizado`, href: '/dashboard/bodega' },
-    { label: 'Bodega', valor: porcentaje(vinosActivos.length - sinCosteCompra.length - sinProveedor.length, vinosActivos.length), detalle: `${sinCosteCompra.length} sin coste · ${sinProveedor.length} sin proveedor`, href: '/dashboard/bodega#referencias' },
-  ]
+    { label: 'Stock', valor: calidadStock, detalle: `${vinosSinStock.length} sin stock actualizado`, href: '/dashboard/bodega', feature: 'bodega' },
+    { label: 'Bodega', valor: porcentaje(vinosActivos.length - sinCosteCompra.length - sinProveedor.length, vinosActivos.length), detalle: `${sinCosteCompra.length} sin coste · ${sinProveedor.length} sin proveedor`, href: '/dashboard/bodega#referencias', feature: 'bodega' },
+  ].filter(check => !check.feature || puedeUsar(restaurante, check.feature))
 
   const tareasInicio = [
     { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio, uva y stock inicial.', href: '/dashboard/vinos' },
     { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos' },
-    { id: 'bodega', titulo: 'Completar margen y proveedor', texto: 'Coste, proveedor y stock mínimo convierten la carta en control de bodega.', href: '/dashboard/bodega' },
+    { id: 'bodega', titulo: 'Completar margen y proveedor', texto: 'Coste, proveedor y stock mínimo convierten la carta en control de bodega.', href: '/dashboard/bodega', feature: 'bodega' },
     { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la carta pública, revisa móvil y deja listo el PIN de sala.', href: '/dashboard/qr' },
   ]
-  const tareasInicioVisibles = tareasInicio.filter(tarea => !tareasOcultas.includes(tarea.id))
+  const tareasInicioVisibles = tareasInicio.filter(tarea => !tareasOcultas.includes(tarea.id) && (!tarea.feature || puedeUsar(restaurante, tarea.feature)))
 
   return (
     <main>

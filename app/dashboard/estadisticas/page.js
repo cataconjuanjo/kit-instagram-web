@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
-import { LoadingState, ModuleShell } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
 function resumenVenta(detalle) {
@@ -21,6 +21,10 @@ function resumenVenta(detalle) {
   } catch {
     return 'feedback registrado'
   }
+}
+
+function leerJSON(detalle) {
+  try { return JSON.parse(detalle || '{}') } catch { return null }
 }
 
 function fechaLocalISO(fecha) {
@@ -64,6 +68,9 @@ export default function Estadisticas() {
     cargar()
   }, [])
 
+  if (loading) return <LoadingState />
+  if (!restaurante) return null
+
   const hoy = fechaLocalISO(new Date())
   const statsFiltradas = stats.filter(s => {
     const fecha = fechaLocalISO(s.created_at)
@@ -74,6 +81,7 @@ export default function Estadisticas() {
   })
   const escaneos = statsFiltradas.filter(s => s.tipo === 'escaneo').length
   const consultas = statsFiltradas.filter(s => s.tipo === 'sommelier').length
+  const recomendaciones = statsFiltradas.filter(s => s.tipo === 'recomendacion')
   const feedbacksVenta = statsFiltradas.filter(s => s.tipo === 'venta')
   const escaneosHoy = stats.filter(s => s.tipo === 'escaneo' && fechaLocalISO(s.created_at) === hoy).length
   const consultasHoy = stats.filter(s => s.tipo === 'sommelier' && fechaLocalISO(s.created_at) === hoy).length
@@ -81,11 +89,8 @@ export default function Estadisticas() {
     try { return JSON.parse(s.detalle || '{}').resultado === 'vendida' } catch { return false }
   }).length
 
-  const feedbackVenta = feedbacksVenta
-    .map(s => {
-      try { return JSON.parse(s.detalle || '{}') } catch { return null }
-    })
-    .filter(Boolean)
+  const feedbackVenta = feedbacksVenta.map(s => leerJSON(s.detalle)).filter(Boolean)
+  const recomendacionesVino = recomendaciones.map(s => leerJSON(s.detalle)).filter(Boolean)
 
   const rendimientoVinos = Object.entries(feedbackVenta.reduce((acc, item) => {
     const vino = item.vino || 'Vino sin nombre'
@@ -106,18 +111,29 @@ export default function Estadisticas() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
 
-  if (loading) return <LoadingState />
+  const vinosRecomendados = Object.entries(recomendacionesVino.reduce((acc, item) => {
+    const vino = item.vino || 'Vino sin nombre'
+    acc[vino] = acc[vino] || { total: 0, cliente: 0, camarero: 0 }
+    const origen = item.origen === 'camarero' ? 'camarero' : 'cliente'
+    acc[vino][origen] += 1
+    acc[vino].total += 1
+    return acc
+  }, {}))
+    .sort((a, b) => b[1].total - a[1].total)
+    .slice(0, 8)
 
   const metricas = [
     { label: 'Escaneos totales', valor: escaneos },
     { label: 'Escaneos hoy', valor: escaneosHoy },
     { label: 'Consultas maridaje', valor: consultas },
+    { label: 'Vinos recomendados', valor: recomendaciones.length },
     { label: 'Maridaje hoy', valor: consultasHoy },
     { label: 'Ventas marcadas', valor: ventasMarcadas },
     { label: 'Conversion', valor: escaneos > 0 ? `${Math.round((consultas / escaneos) * 100)}%` : '0%' },
   ]
 
   return (
+    <FeatureGate restaurante={restaurante} feature="estadisticas" title="Actividad no incluida">
     <ModuleShell
       restaurante={restaurante}
       eyebrow="Estadisticas"
@@ -180,6 +196,36 @@ export default function Estadisticas() {
       </section>
 
       <section className={styles.gridTwo}>
+        <div className={styles.panel}>
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>Vinos más recomendados</h2>
+              <p className={styles.panelSub}>Cuenta las recomendaciones generadas en carta pública y modo camarero.</p>
+            </div>
+            <span className={styles.badge}>{vinosRecomendados.length}</span>
+          </div>
+          <div className={styles.panelBody}>
+            {vinosRecomendados.length ? (
+              <div className={styles.itemStack}>
+                {vinosRecomendados.map(([vino, datos], index) => (
+                  <article className={styles.itemCard} key={vino}>
+                    <div className={styles.sectionHead} style={{ margin: 0 }}>
+                      <div>
+                        <p className={styles.eyebrow} style={{ marginBottom: 5 }}>#{index + 1}</p>
+                        <h3 className={styles.sectionTitle}>{vino}</h3>
+                        <p className={styles.sectionText}>Cliente {datos.cliente} · Camarero {datos.camarero}</p>
+                      </div>
+                      <span className={styles.badge}>{datos.total}x</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.empty}>Aún no hay recomendaciones registradas.</div>
+            )}
+          </div>
+        </div>
+
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
@@ -256,14 +302,16 @@ export default function Estadisticas() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span
                         className={styles.dot}
-                        style={{ background: s.tipo === 'escaneo' ? '#4A8C6F' : s.tipo === 'venta' ? '#bfa984' : '#531827' }}
+                        style={{ background: s.tipo === 'escaneo' ? '#4A8C6F' : s.tipo === 'venta' ? '#bfa984' : s.tipo === 'recomendacion' ? '#3266a8' : '#531827' }}
                       />
                       <p className={styles.sectionTitle}>
                         {s.tipo === 'escaneo'
                           ? 'Escaneo de carta'
                           : s.tipo === 'venta'
                             ? `Venta sala: ${resumenVenta(s.detalle)}`
-                            : `Maridaje: ${s.detalle?.substring(0, 46)}${s.detalle?.length > 46 ? '...' : ''}`}
+                            : s.tipo === 'recomendacion'
+                              ? `Recomendado: ${leerJSON(s.detalle)?.vino || 'vino'}`
+                              : `Maridaje: ${s.detalle?.substring(0, 46)}${s.detalle?.length > 46 ? '...' : ''}`}
                       </p>
                     </div>
                     <p className={styles.tiny}>
@@ -279,5 +327,6 @@ export default function Estadisticas() {
         </div>
       </section>
     </ModuleShell>
+    </FeatureGate>
   )
 }

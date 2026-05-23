@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
+import { nombrePlan, puedeUsar } from '../lib/plans'
 import styles from './module.module.css'
 
 export function LoadingState() {
@@ -71,5 +73,33 @@ export function ModuleShell({ restaurante, eyebrow, title, subtitle, actions, he
         {children}
       </div>
     </main>
+  )
+}
+
+export function FeatureGate({ restaurante, feature, title = 'Funcion no incluida', children }) {
+  if (!restaurante) return null
+  if (puedeUsar(restaurante, feature)) return children
+
+  const estado = restaurante.subscription_status || 'trialing'
+  const textoEstado = ['past_due', 'cancelled'].includes(estado)
+    ? 'La suscripcion no esta activa. Actualiza el estado desde administracion para recuperar el acceso.'
+    : `Esta pantalla no esta incluida en el plan ${nombrePlan(restaurante)}.`
+
+  return (
+    <ModuleShell
+      restaurante={restaurante}
+      eyebrow="Plan"
+      title={title}
+      subtitle={textoEstado}
+      actions={<Link className={styles.secondary} href="/dashboard">Volver al inicio</Link>}
+      narrow
+    >
+      <section className={styles.empty}>
+        <div>
+          <strong>Disponible al subir de plan</strong>
+          <p>El acceso queda bloqueado para este restaurante, aunque conozca la URL directa.</p>
+        </div>
+      </section>
+    </ModuleShell>
   )
 }

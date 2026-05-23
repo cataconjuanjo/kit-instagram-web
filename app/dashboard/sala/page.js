@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
-import { LoadingState, ModuleShell } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
 function leerDetalle(detalle) {
@@ -43,6 +43,7 @@ export default function SalaHub() {
   }, [])
 
   if (loading) return <LoadingState />
+  if (!restaurante) return null
 
   const ventas = eventos.filter(e => e.tipo === 'venta' && e.parsed?.resultado === 'vendida').length
   const incidencias = eventos.filter(e => e.tipo === 'venta' && ['no_stock', 'agotado'].includes(e.parsed?.resultado)).length
@@ -50,6 +51,7 @@ export default function SalaHub() {
   const consultas = eventos.filter(e => e.tipo === 'sommelier').length
 
   return (
+    <FeatureGate restaurante={restaurante} feature="modo_camarero" title="Modo sala no incluido">
     <ModuleShell
       restaurante={restaurante}
       eyebrow="Sala"
@@ -88,5 +90,6 @@ export default function SalaHub() {
         </Link>
       </section>
     </ModuleShell>
+    </FeatureGate>
   )
 }

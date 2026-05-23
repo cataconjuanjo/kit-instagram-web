@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
+import { puedeUsar } from '../../lib/plans'
 
-function HubIcon({ tipo }) {
-  if (tipo === 'carta_vinos') {
+function HubIcon({ tipo, titulo }) {
+  const texto = `${tipo || ''} ${titulo || ''}`.toLowerCase()
+  if (tipo === 'carta_vinos' || texto.includes('vino')) {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l1 8a5 5 0 0 1-10 0l1-8Z"/><path d="M7.5 8h9"/><path d="M12 16v5"/><path d="M8.5 21h7"/></svg>
   }
-  if (['carta', 'comida'].includes(tipo)) {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3M9 2v3M7 5h2M8 5v13"/><circle cx="12" cy="15" r="3.5"/><path d="M16 2l1 5h-1v11"/></svg>
+  if (['carta', 'comida'].includes(tipo) || texto.includes('comida') || texto.includes('restaurante') || texto.includes('menu') || texto.includes('menú')) {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9a3 3 0 0 1 3 3v13H9a3 3 0 0 1-3-3V4Z"/><path d="M9 8h6"/><path d="M9 11h5"/><path d="M9 14h4"/><path d="M19 7v13"/><path d="M4 7v10"/></svg>
   }
   if (tipo === 'reservas') {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3"/><path d="M4.5 8h15"/><path d="M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 12h3M8 16h6"/></svg>
@@ -70,7 +72,7 @@ export default function RestauranteHub({ params }) {
         .eq('slug', slug)
         .single()
 
-      if (rest?.hub_activo) {
+      if (rest?.hub_activo && puedeUsar(rest, 'hub')) {
         setRestaurante(rest)
         const { data } = await supabase
           .from('restaurante_links')
@@ -161,7 +163,7 @@ export default function RestauranteHub({ params }) {
               target={link.url?.startsWith('/') ? '_self' : '_blank'}
               rel="noreferrer"
             >
-              <span className="hub-link-icon"><HubIcon tipo={link.tipo} /></span>
+              <span className="hub-link-icon"><HubIcon tipo={link.tipo} titulo={link.titulo} /></span>
               <span className="hub-link-text">{link.titulo}</span>
             </a>
           ))}

@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabase } from '../../supabase'
 import { analizarMaridaje, resumenAnalisisParaPrompt } from '../../lib/maridajeEngine'
+import { puedeUsar } from '../../lib/plans'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -76,10 +77,15 @@ export async function POST(request) {
       mensajeSeguimiento,
     } = await request.json()
 
-    const [{ data: vinosData }, { data: platos }] = await Promise.all([
+    const [{ data: restaurante }, { data: vinosData }, { data: platos }] = await Promise.all([
+      supabase.from('restaurantes').select('*').eq('id', restaurante_id).single(),
       supabase.from('vinos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true).gt('stock', 0),
       supabase.from('platos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
     ])
+
+    if (!restaurante || !puedeUsar(restaurante, 'maridaje_cliente')) {
+      return Response.json({ error: 'Funcion no incluida en el plan activo.' }, { status: 403 })
+    }
 
     const soloCopa = normalizarTexto(modoMesa).includes('copa') || normalizarTexto(modoMesa).includes('glass')
     const vinos = soloCopa
@@ -128,11 +134,32 @@ export async function POST(request) {
       ]
 
       // Registrar estadística solo en el primer turno
-      await supabase.from('estadisticas').insert([{
+      const eventos = [{
         restaurante_id,
         tipo: 'sommelier',
         detalle: String(consulta || '').slice(0, 200),
-      }])
+      }]
+
+      if (analisisMaridaje?.recomendados?.length) {
+        analisisMaridaje.recomendados.forEach((item, index) => {
+          if (!item?.vino) return
+          eventos.push({
+            restaurante_id,
+            tipo: 'recomendacion',
+            detalle: JSON.stringify({
+              origen: 'cliente',
+              modo,
+              consulta: String(consulta || '').slice(0, 200),
+              vino_id: item.vino.id,
+              vino: item.vino.nombre,
+              posicion: index + 1,
+              precio: item.vino.precio_botella,
+            }),
+          })
+        })
+      }
+
+      await supabase.from('estadisticas').insert(eventos)
     }
 
     const stream = anthropic.messages.stream({

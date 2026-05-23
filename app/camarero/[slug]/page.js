@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
-import papilasKb from '../../data/papilas_kb_v2_completo_1.json'
+import { chartierKb, fuenteChartier } from '../../lib/chartierKb'
 import { buscarPlatoKb } from '../../data/platos_kb'
 import { criteriosEstructurales } from '../../lib/maridajeEngine'
+import { nombrePlan, puedeUsar } from '../../lib/plans'
 import styles from './camarero.module.css'
 
 export default function Camarero({ params }) {
@@ -29,11 +30,13 @@ export default function Camarero({ params }) {
   const [demoActivo, setDemoActivo] = useState(false)
   const [feedbackVenta, setFeedbackVenta] = useState({})
   const [historialVenta, setHistorialVenta] = useState([])
+  const [historialRecomendaciones, setHistorialRecomendaciones] = useState([])
   const [vistaServicio, setVistaServicio] = useState('venta')
   const [busquedaPlatoVenta, setBusquedaPlatoVenta] = useState('')
   const [categoriaPlatoVenta, setCategoriaPlatoVenta] = useState('todos')
   const [mostrarPlatosVenta, setMostrarPlatosVenta] = useState(false)
   const [tipoVinoAbierto, setTipoVinoAbierto] = useState(null)
+  const ultimaRecomendacionRegistrada = useRef('')
 
   const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30' }
   const tipoLabel = { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja' }
@@ -41,6 +44,19 @@ export default function Camarero({ params }) {
   const coloresVino = ['#7B2D2D', '#C4A55A', '#534AB7', '#4A8C6F']
   const ejes = ['dulzor', 'acidez', 'taninos', 'alcohol', 'cuerpo', 'intensidad', 'final']
   const etiquetas = { dulzor: 'Dulzor', acidez: 'Acidez', taninos: 'Taninos', alcohol: 'Alcohol', cuerpo: 'Cuerpo', intensidad: 'Intensidad', final: 'Final' }
+  const chartierBusqueda = useMemo(() => (chartierKb || []).map(capitulo => ({
+    capitulo,
+    textoBusqueda: normalizar([
+      capitulo.id,
+      capitulo.title,
+      textoPlano(capitulo.foods),
+      textoPlano(capitulo.foods_chartier_explicitly_named),
+      textoPlano(capitulo.pairings?.map(p => p.dish)),
+      textoPlano(capitulo.explicit_pairings_in_chapter?.map(p => p.dish_chartier)),
+    ].join(' ')),
+    terminosVino: terminosVinoDesdeCapitulo(capitulo),
+    tipos: tiposInferidosDesdeCapitulo(capitulo),
+  })), [])
 
   useEffect(() => {
     async function cargar() {
@@ -60,14 +76,26 @@ export default function Camarero({ params }) {
         setVinos(vinosData || [])
         const { data: platosData } = await supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true).order('categoria')
         setPlatos(platosData || [])
-        const { data: ventasData } = await supabase
-          .from('estadisticas')
-          .select('detalle, created_at')
-          .eq('restaurante_id', rest.id)
-          .eq('tipo', 'venta')
-          .order('created_at', { ascending: false })
-          .limit(300)
+        const [{ data: ventasData }, { data: recomendacionesData }] = await Promise.all([
+          supabase
+            .from('estadisticas')
+            .select('detalle, created_at')
+            .eq('restaurante_id', rest.id)
+            .eq('tipo', 'venta')
+            .order('created_at', { ascending: false })
+            .limit(300),
+          supabase
+            .from('estadisticas')
+            .select('detalle, created_at')
+            .eq('restaurante_id', rest.id)
+            .eq('tipo', 'recomendacion')
+            .order('created_at', { ascending: false })
+            .limit(500),
+        ])
         setHistorialVenta((ventasData || []).map(item => {
+          try { return JSON.parse(item.detalle || '{}') } catch { return null }
+        }).filter(Boolean))
+        setHistorialRecomendaciones((recomendacionesData || []).map(item => {
           try { return JSON.parse(item.detalle || '{}') } catch { return null }
         }).filter(Boolean))
         if (esDemo && platosData?.length) {
@@ -225,7 +253,10 @@ export default function Camarero({ params }) {
       .map(([, value]) => textoPlano(value))
       .join(' ')
 
-    const pairings = textoPlano((capitulo.explicit_pairings_in_chapter || []).map(p => p.wine_chartier))
+    const pairings = textoPlano([
+      ...(capitulo.explicit_pairings_in_chapter || []).map(p => p.wine_chartier),
+      ...(capitulo.pairings || []).map(p => p.wine),
+    ])
     const textoVinos = `${camposVino} ${pairings}`
     const tokens = palabrasClave(textoVinos)
 
@@ -259,6 +290,7 @@ export default function Camarero({ params }) {
   function contextoVenta(consultaNormalizada) {
     const platoKb = buscarPlatoKb(consultaNormalizada)
     if (platoKb?.contexto) return platoKb.contexto
+    if (esJamonCurado(consultaNormalizada)) return 'aperitivo'
     if (consultaNormalizada.includes('queso')) return 'queso'
     if (consultaNormalizada.includes('fritura') || consultaNormalizada.includes('frito') || consultaNormalizada.includes('croqueta')) return 'fritura'
     if (consultaNormalizada.includes('aperitivo') || consultaNormalizada.includes('entrante') || consultaNormalizada.includes('compartir')) return 'aperitivo'
@@ -266,6 +298,26 @@ export default function Camarero({ params }) {
     if (consultaNormalizada.includes('pescado') || consultaNormalizada.includes('marisco') || consultaNormalizada.includes('gamba') || consultaNormalizada.includes('lubina') || consultaNormalizada.includes('salmon') || consultaNormalizada.includes('bacalao') || consultaNormalizada.includes('chipiron')) return 'pescado'
     if (consultaNormalizada.includes('picante') || consultaNormalizada.includes('curry')) return 'picante'
     return 'general'
+  }
+
+  function esJamonCurado(consultaNormalizada) {
+    return ['jamon', 'serrano', 'prosciutto', 'paleta iberica', 'paleta de bellota'].some(t => consultaNormalizada.includes(t))
+  }
+
+  function esVinoDulceOSemidulce(vino, textoVino = '') {
+    return vino.tipo === 'dulce' || ['semidulce', 'semi dulce', 'dulce', 'vendimia tardia', 'late harvest'].some(t => textoVino.includes(t))
+  }
+
+  function esBlancoLigeroDeUsoEstrecho(vino, textoVino = '') {
+    return vino.tipo === 'blanco' && ['verdejo', 'rueda'].some(t => textoVino.includes(t))
+  }
+
+  function esGenerosoSeco(vino, textoVino = '') {
+    return vino.tipo === 'generoso' || ['fino', 'manzanilla', 'amontillado', 'palo cortado', 'jerez'].some(t => textoVino.includes(t))
+  }
+
+  function esEspumosoSeco(vino, textoVino = '') {
+    return vino.tipo === 'espumoso' || ['espumoso', 'cava', 'champagne', 'corpinnat', 'cremant', 'prosecco', 'brut', 'ancestral', 'pet nat'].some(t => textoVino.includes(t))
   }
 
   function metodosPlato(consultaNormalizada) {
@@ -309,6 +361,11 @@ export default function Camarero({ params }) {
       rasgos.push('lacteo', metodo.frutosSecos ? 'frutos secos' : 'umami')
       buscar.push('blancos florales', 'fino o manzanilla', 'rosado o dulce si el queso lo pide')
       evitar.push('tinto con tanino salvo queso preparado para ello')
+    }
+    if (esJamonCurado(texto)) {
+      rasgos.push('sal', 'grasa', 'curacion', 'umami')
+      buscar.push('fino o manzanilla', 'burbuja seca', 'blanco salino')
+      evitar.push('tinto con tanino', 'madera dominante')
     }
     if (contexto === 'fritura' || metodo.frito) {
       rasgos.push('grasa', 'crujiente', 'sal')
@@ -407,6 +464,10 @@ export default function Camarero({ params }) {
       .filter(Boolean)
   }
 
+  function hayConsultaVenta() {
+    return platosMesaVenta.length > 0 || normalizar(consultaVenta).length > 1
+  }
+
   function ticketMesaVenta() {
     if (platosMesaVenta.length) {
       return platosMesaVenta.reduce((sum, plato) => sum + (Number(plato.precio) || 0), 0)
@@ -455,6 +516,7 @@ export default function Camarero({ params }) {
   }
 
   function lecturaMesaVenta() {
+    if (!hayConsultaVenta()) return null
     const consultas = consultasVentaActuales()
     if (consultas.length <= 1) return lecturaVenta(consultas[0] || consultaVenta)
 
@@ -477,7 +539,7 @@ export default function Camarero({ params }) {
     const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
     const esTawnyOPorto = textoVino.includes('tawny') || textoVino.includes('porto') || textoVino.includes('oporto')
     const esPx = textoVino.includes('pedro ximenez') || textoVino.includes(' px ') || textoVino.includes('px,') || textoVino.includes('alvear px')
-    const esDulceOxidativo = vino.tipo === 'dulce' || esPx || esTawnyOPorto
+    const esDulceOxidativo = esVinoDulceOSemidulce(vino, textoVino) || esPx || esTawnyOPorto
     const quesoTrucadoParaTinto = ['clavo', 'olivada', 'tomate seco', 'tomates secos'].some(t => consultaNormalizada.includes(t))
     const metodo = metodosPlato(consultaNormalizada)
     const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
@@ -485,11 +547,11 @@ export default function Camarero({ params }) {
       'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
     ].some(t => consultaNormalizada.includes(t))
 
-    if (esDulceOxidativo && !contextoDulcePermitido) {
+    if (esDulceOxidativo && !contextoDulcePermitido && !metodo.picante) {
       return {
         compatible: false,
         penalizacion: 85,
-        razon: 'PX, tawny y vinos dulces quedan reservados para postres, quesos o platos claramente dulces; en platos salados normales conviene una opción seca.'
+        razon: 'Los vinos dulces o semidulces quedan reservados para postres, quesos, picante o platos claramente dulces; en platos salados normales conviene una opcion seca.'
       }
     }
 
@@ -511,6 +573,9 @@ export default function Camarero({ params }) {
     }
 
     if (contexto === 'aperitivo') {
+      if (esJamonCurado(consultaNormalizada) && vino.tipo === 'tinto') {
+        return { compatible: false, penalizacion: 95, razon: 'Con jamon curado la sal y el umami endurecen el tanino; mejor fino, manzanilla, burbuja seca o blanco salino.' }
+      }
       if (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto) {
         return { compatible: false, penalizacion: 60, razon: 'Para aperitivo se priorizan vinos frescos, salinos, blancos, generosos secos o espumosos.' }
       }
@@ -551,7 +616,6 @@ export default function Camarero({ params }) {
       postre: ['sotolon', 'pina_fresa', 'jarabe_arce', 'canela'],
     }
 
-    const capitulos = papilasKb.chapters || []
     const idsAtajo = [
       ...(platoKb?.capitulos || []),
       ...Object.entries(atajos)
@@ -559,36 +623,30 @@ export default function Camarero({ params }) {
       .flatMap(([, ids]) => ids)
     ]
 
-    const matches = capitulos.map(capitulo => {
-      const textoCapitulo = normalizar([
-        capitulo.id,
-        capitulo.title,
-        textoPlano(capitulo.foods_chartier_explicitly_named),
-        textoPlano(capitulo.explicit_pairings_in_chapter?.map(p => p.dish_chartier)),
-      ].join(' '))
-
+    const matches = chartierBusqueda.map(item => {
+      const { capitulo } = item
       let score = idsAtajo.includes(capitulo.id) ? 12 : 0
       palabrasClave(consultaNormalizada).forEach(palabra => {
-        if (textoCapitulo.includes(palabra)) score += 4
+        if (item.textoBusqueda.includes(palabra)) score += 4
       })
 
       return {
         capitulo,
         score,
-        terminosVino: terminosVinoDesdeCapitulo(capitulo),
-        tipos: tiposInferidosDesdeCapitulo(capitulo),
+        terminosVino: item.terminosVino,
+        tipos: item.tipos,
       }
     }).filter(match => match.score > 0)
 
     if (matches.length) return matches.sort((a, b) => b.score - a.score).slice(0, 4)
 
-    return capitulos
-      .filter(capitulo => ['sabor_frio', 'anisado', 'fino_oloroso'].includes(capitulo.id))
-      .map(capitulo => ({
-        capitulo,
+    return chartierBusqueda
+      .filter(item => ['sabor_frio', 'anisado', 'fino_oloroso'].includes(item.capitulo.id))
+      .map(item => ({
+        capitulo: item.capitulo,
         score: 2,
-        terminosVino: terminosVinoDesdeCapitulo(capitulo),
-        tipos: tiposInferidosDesdeCapitulo(capitulo),
+        terminosVino: item.terminosVino,
+        tipos: item.tipos,
       }))
   }
 
@@ -613,6 +671,27 @@ export default function Camarero({ params }) {
     const cabecera = `${tipo.charAt(0).toUpperCase() + tipo.slice(1)}${origen}${uva}.`
     const cuerpo = motivo.charAt(0).toUpperCase() + motivo.slice(1)
     return `${cabecera} ${cuerpo}.`
+  }
+
+  function motivoMesaVenta(vino, numeroPlatos, consultaNormalizada) {
+    const textoVino = normalizar(`${vino.nombre || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
+    const metodo = metodosPlato(consultaNormalizada)
+    const platos = numeroPlatos > 1 ? `${numeroPlatos} platos` : 'la mesa'
+
+    if (vino.tipo === 'blanco') {
+      if (metodo.gratinado) return `aporta frescura para limpiar la parte cremosa y suficiente volumen para acompanar ${platos}`
+      if (metodo.vegetalVerde) return `acompana los matices verdes del plato con frescura y deja una sensacion ligera en la mesa`
+      return `tiene frescura y amplitud para acompanar ${platos} sin hacerse pesado`
+    }
+    if (vino.tipo === 'espumoso') return `su acidez y burbuja limpian el paladar y funcionan muy bien cuando la mesa comparte varios bocados`
+    if (vino.tipo === 'generoso') return `su perfil salino y seco da profundidad al plato y limpia la boca entre bocados`
+    if (vino.tipo === 'rosado') return `ofrece fruta, frescura y cuerpo medio para moverse bien entre platos distintos`
+    if (vino.tipo === 'tinto') {
+      if (metodo.brasa || textoVino.includes('crianza') || textoVino.includes('barrica')) return `tiene fruta y estructura para sostener la intensidad del plato sin secar el paladar`
+      return `aporta fruta y cuerpo medio, una opcion amable para acompanar ${platos}`
+    }
+    if (vino.tipo === 'dulce') return `funciona por contraste y afinidad aromatica cuando el plato tiene dulzor, queso o final de postre`
+    return `mantiene equilibrio entre frescura, cuerpo y aroma para acompanar ${platos}`
   }
 
   function ajusteAprendizajeVenta(vino, contexto) {
@@ -649,6 +728,28 @@ export default function Camarero({ params }) {
     return { ajuste, muestras: pesos.muestras, vendidas: pesos.vendidas }
   }
 
+  function ajusteExposicionRecomendacion(vino, contexto) {
+    if (!historialRecomendaciones.length) return { ajuste: 0, veces: 0 }
+
+    const datos = historialRecomendaciones.reduce((acc, evento) => {
+      const mismoVino = String(evento.vino_id) === String(vino.id) || normalizar(evento.vino) === normalizar(vino.nombre)
+      if (!mismoVino) return acc
+
+      const contextoEvento = contextoVenta(normalizar(evento.consulta || ''))
+      const mismoContexto = contextoEvento === contexto
+      const peso = mismoContexto ? 1 : 0.35
+      return {
+        total: acc.total + peso,
+        mismoContexto: acc.mismoContexto + (mismoContexto ? 1 : 0),
+      }
+    }, { total: 0, mismoContexto: 0 })
+
+    if (!datos.total) return { ajuste: 0, veces: 0 }
+
+    const ajuste = -Math.min(9, Math.log2(datos.total + 1) * 2.4)
+    return { ajuste, veces: datos.total, mismoContexto: datos.mismoContexto }
+  }
+
   function puntuarParaVenta(vino, matchesKb, objetivo, precioMedio, contexto, consultaNormalizada, rangoTicket = null) {
     const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
     let score = 0
@@ -669,7 +770,7 @@ export default function Camarero({ params }) {
 
       if (matchScore > score) {
         motivo = descripcionCapitulo[match.capitulo.id] || 'encaja bien con este tipo de plato'
-        fuente = match.capitulo.title
+        fuente = `${fuenteChartier(match.capitulo)}: ${match.capitulo.title}`
       }
       score += matchScore
     })
@@ -704,7 +805,17 @@ export default function Camarero({ params }) {
 
     if (metodo.brasa && contexto === 'carne' && vino.tipo === 'tinto') score += 8
     if (metodo.frito && ['generoso', 'espumoso', 'blanco'].includes(vino.tipo)) score += 8
+    if (metodo.frito && esGenerosoSeco(vino, textoVino)) {
+      score += 12
+      motivo = 'su perfil salino y seco limpia la fritura y aguanta la grasa sin cansar'
+    }
+    if (metodo.frito && esEspumosoSeco(vino, textoVino)) {
+      score += 12
+      motivo = 'la burbuja seca y la acidez limpian grasa y sal entre bocados'
+    }
     if (metodo.gratinado && ['blanco', 'generoso', 'espumoso'].includes(vino.tipo)) score += 5
+    if (metodo.gratinado && esEspumosoSeco(vino, textoVino)) score += 8
+    if (metodo.gratinado && esGenerosoSeco(vino, textoVino)) score += 7
     if (metodo.vegetalVerde && ['blanco', 'generoso', 'espumoso'].includes(vino.tipo)) score += 5
     if (metodo.vegetalVerde && ['sauvignon', 'verdejo', 'albari', 'riesling'].some(t => textoVino.includes(t))) score += 8
     if (metodo.setasTrufa && contexto === 'pescado' && ['tinto', 'blanco'].includes(vino.tipo)) score += 4
@@ -720,10 +831,36 @@ export default function Camarero({ params }) {
     if (metodo.dulce && contextoDulcePermitido && ['dulce', 'oxidativo', 'pedro ximenez', 'px', 'fruta madura'].some(t => textoVino.includes(t))) score += 6
     if (contexto === 'queso' && ['oxidativo', 'dulce', 'salino', 'floral', 'alta acidez'].some(t => textoVino.includes(t))) score += 6
     if ((contexto === 'aperitivo' || metodo.frio) && ['perfil fresco', 'alta acidez', 'salino', 'mineral', 'floral'].some(t => textoVino.includes(t))) score += 5
+    if (contexto === 'aperitivo' && esGenerosoSeco(vino, textoVino)) score += 10
+    if (contexto === 'aperitivo' && esEspumosoSeco(vino, textoVino)) score += 10
+    if (contexto === 'pescado' && esEspumosoSeco(vino, textoVino)) score += metodo.gratinado || metodo.frito ? 8 : 5
+    if (esJamonCurado(consultaNormalizada)) {
+      if (esGenerosoSeco(vino, textoVino)) {
+        score += 28
+        motivo = 'fino o manzanilla es la lectura mas directa: salinidad, crianza biologica y boca seca para grasa, sal y umami del jamon'
+        fuente = fuente || 'Regla de sala: jamon curado'
+      } else if (esEspumosoSeco(vino, textoVino)) {
+        score += 18
+        motivo = 'la burbuja seca limpia la grasa del jamon y respeta la sal sin endurecer taninos'
+        fuente = fuente || 'Regla de sala: jamon curado'
+      } else if (vino.tipo === 'blanco') {
+        score += 4
+      }
+    }
     if (metodo.picante && ['perfil fresco', 'floral', 'dulce', 'baja graduacion'].some(t => textoVino.includes(t))) score += 5
+    if (
+      esBlancoLigeroDeUsoEstrecho(vino, textoVino) &&
+      !['aperitivo', 'fritura', 'pescado'].includes(contexto) &&
+      !metodo.vegetalVerde &&
+      !metodo.frio
+    ) {
+      score -= 7
+    }
 
     const aprendizaje = ajusteAprendizajeVenta(vino, contexto)
     score += aprendizaje.ajuste
+    const exposicion = ajusteExposicionRecomendacion(vino, contexto)
+    score += exposicion.ajuste
     if (Math.abs(aprendizaje.ajuste) >= 2.5) {
       motivo = aprendizaje.ajuste > 0
         ? `${motivo}; además ha funcionado bien en sala en mesas parecidas`
@@ -739,10 +876,11 @@ export default function Camarero({ params }) {
       fuente = 'Restricción de contexto del KB'
     }
 
-    return { vino, score, motivo, fuente, compatible: compatibilidad.compatible, aprendizaje: ajusteAprendizajeVenta(vino, contexto) }
+    return { vino, score, motivo, fuente, compatible: compatibilidad.compatible, aprendizaje, exposicion }
   }
 
   function calcularRecomendacionesVenta() {
+    if (!hayConsultaVenta()) return []
     const disponibles = vinos.filter(esVinoElegibleParaObjetivo)
     if (!disponibles.length) return []
 
@@ -774,7 +912,7 @@ export default function Camarero({ params }) {
           vino,
           score: scoreBase - penalizacionMesa,
           motivo: compatible
-            ? `funciona como vino puente para ${consultas.length} platos, sin chocar con ninguno de ellos`
+            ? motivoMesaVenta(vino, consultas.length, consultaNormalizada)
             : `encaja con parte de la mesa, pero tiene conflicto con ${incompatibles.length} plato${incompatibles.length > 1 ? 's' : ''}`,
           fuente: compatible ? 'Modo mesa: compatibilidad transversal' : mejorParcial.fuente,
           compatible,
@@ -788,6 +926,16 @@ export default function Camarero({ params }) {
     const usados = new Set()
     const bodegasUsadas = new Set()
     const tiposUsados = new Set()
+    const requiereSalinoBurbuja = consultas.some(consulta => {
+      const texto = normalizar(consulta)
+      const contexto = contextoVenta(texto)
+      const metodo = metodosPlato(texto)
+      return esJamonCurado(texto) || contexto === 'aperitivo' || contexto === 'fritura' || metodo.frito || metodo.gratinado || contexto === 'pescado'
+    })
+    const esVinoSalinoOBurbuja = vino => {
+      const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
+      return esGenerosoSeco(vino, textoVino) || esEspumosoSeco(vino, textoVino)
+    }
     const elegir = (label, filtroPrecio) => {
       const candidatos = puntuados.filter(item => item.compatible && item.score >= 6 && !usados.has(item.vino.id) && filtroPrecio(item.vino))
       if (!candidatos.length) return null
@@ -809,27 +957,36 @@ export default function Camarero({ params }) {
 
     const lista = [
       elegir('Facil de vender', vino => precioBotella(vino) <= Math.max(30, rangoTicket.ideal) && precioBotella(vino) >= Math.max(14, rangoTicket.min * 0.75)),
+      requiereSalinoBurbuja ? elegir('Salino / burbuja', esVinoSalinoOBurbuja) : null,
       elegir('Recomendado', () => true),
       elegir('Premium', vino => precioBotella(vino) >= Math.max(35, rangoTicket.ideal, rangoTicket.max * 0.9)),
     ].filter(Boolean)
     return lista
   }
 
-  const tipos = ['todos', ...new Set(vinos.map(v => v.tipo))]
-  const recomendacionesVenta = calcularRecomendacionesVenta()
-  const lecturaActual = lecturaMesaVenta()
-  const ticketActualVenta = ticketMesaVenta()
-  const rangoActualVenta = rangoBotellaParaTicket(ticketActualVenta, precioMedioVinosVenta())
-  const categoriasPlatosVenta = ['todos', ...new Set(platosVenta.map(plato => plato.categoria).filter(Boolean))]
-  const platosVentaFiltrados = platosVenta.filter(plato => {
+  const tipos = useMemo(() => ['todos', ...new Set(vinos.map(v => v.tipo))], [vinos])
+  const recomendacionesVenta = useMemo(() => (
+    autenticado && vistaServicio === 'venta' ? calcularRecomendacionesVenta() : []
+  ), [autenticado, vistaServicio, vinos, platosMesaVenta, consultaVenta, objetivoVenta, rotacionVenta, historialVenta, historialRecomendaciones, restaurante])
+  const lecturaActual = useMemo(() => (
+    autenticado && vistaServicio === 'venta' ? lecturaMesaVenta() : null
+  ), [autenticado, vistaServicio, platosMesaVenta, consultaVenta, vinos, restaurante])
+  const ticketActualVenta = useMemo(() => (
+    autenticado ? ticketMesaVenta() : 0
+  ), [autenticado, platosMesaVenta, consultaVenta])
+  const rangoActualVenta = useMemo(() => (
+    rangoBotellaParaTicket(ticketActualVenta, precioMedioVinosVenta())
+  ), [ticketActualVenta, vinos, objetivoVenta, restaurante])
+  const categoriasPlatosVenta = useMemo(() => ['todos', ...new Set(platosVenta.map(plato => plato.categoria).filter(Boolean))], [platosVenta])
+  const platosVentaFiltrados = useMemo(() => platosVenta.filter(plato => {
     const texto = normalizar(`${plato.nombre} ${plato.descripcion || ''} ${plato.categoria || ''}`)
     const matchCategoria = categoriaPlatoVenta === 'todos' || plato.categoria === categoriaPlatoVenta
     const matchBusqueda = !busquedaPlatoVenta || texto.includes(normalizar(busquedaPlatoVenta))
     return matchCategoria && matchBusqueda
-  })
+  }), [platosVenta, categoriaPlatoVenta, busquedaPlatoVenta])
   const platosPanelAbierto = mostrarPlatosVenta || busquedaPlatoVenta.length > 0 || categoriaPlatoVenta !== 'todos'
 
-  const vinosFiltrados = vinos.filter(v => {
+  const vinosFiltrados = useMemo(() => vinos.filter(v => {
     const matchBusqueda = !busqueda || busqueda.length < 2 ||
       v.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       (v.bodega && v.bodega.toLowerCase().includes(busqueda.toLowerCase())) ||
@@ -837,13 +994,47 @@ export default function Camarero({ params }) {
       (v.region && v.region.toLowerCase().includes(busqueda.toLowerCase()))
     const matchFiltro = filtro === 'todos' || v.tipo === filtro
     return matchBusqueda && matchFiltro
-  })
+  }), [vinos, busqueda, filtro])
+
+  useEffect(() => {
+    if (!autenticado || vistaServicio !== 'venta' || !restaurante?.id || !hayConsultaVenta() || !recomendacionesVenta.length) return
+
+    const consulta = consultaVentaActiva()
+    const firma = `${restaurante.id}|${consulta}|${objetivoVenta}|${rotacionVenta}|${recomendacionesVenta.map(item => item.vino.id).join(',')}`
+    if (ultimaRecomendacionRegistrada.current === firma) return
+    ultimaRecomendacionRegistrada.current = firma
+
+    const eventos = recomendacionesVenta.map((item, index) => ({
+      restaurante_id: restaurante.id,
+      tipo: 'recomendacion',
+      detalle: JSON.stringify({
+        origen: 'camarero',
+        consulta: String(consulta || '').slice(0, 200),
+        objetivo: objetivoVenta,
+        etiqueta: item.label,
+        vino_id: item.vino.id,
+        vino: item.vino.nombre,
+        posicion: index + 1,
+        precio: item.vino.precio_botella,
+      }),
+    }))
+
+    supabase.from('estadisticas').insert(eventos)
+  }, [autenticado, vistaServicio, restaurante?.id, recomendacionesVenta, objetivoVenta, rotacionVenta, consultaVenta, platosMesaVenta])
 
   const cx = 150, cy = 150, r = 100
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#111', fontFamily: 'sans-serif' }}>
       <p style={{ fontSize: 12, letterSpacing: '0.15em', color: '#666' }}>CARGANDO</p>
+    </div>
+  )
+
+  if (restaurante && !puedeUsar(restaurante, 'modo_camarero')) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif', padding: 24, textAlign: 'center' }}>
+      <p style={{ fontSize: 11, color: '#666', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 8px' }}>Plan {nombrePlan(restaurante)}</p>
+      <p style={{ fontSize: 26, fontWeight: 300, color: 'white', fontFamily: 'Georgia, serif', margin: '0 0 14px' }}>Modo camarero no incluido</p>
+      <p style={{ maxWidth: 360, color: '#aaa', fontSize: 14, lineHeight: 1.5, margin: 0 }}>Este acceso queda reservado para el Plan Sala o Acompanado.</p>
     </div>
   )
 
@@ -1180,7 +1371,7 @@ export default function Camarero({ params }) {
                     ))}
                   </div>
                 ) : (
-                  <p className={styles.emptyState}>Sin recomendación disponible.</p>
+                  <p className={styles.emptyState}>{hayConsultaVenta() ? 'Sin recomendacion disponible.' : 'Selecciona un plato, usa un atajo o escribe una consulta para recomendar vino.'}</p>
                 )}
 
                 {lecturaActual && (
@@ -1517,7 +1708,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         <p className={styles.reason}>{fraseVenta(vino, motivo)}</p>
         {ticketComida > 0 && rangoTicket && (
           <p className={styles.statusLine} style={{ color: precioEnRango ? '#1f7a61' : '#6f767d' }}>
-            {precioEnRango ? 'Encaja con ticket mesa' : `Fuera de horquilla ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
+            {precioEnRango ? 'Precio coherente para la mesa' : `Revisar precio: ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
           </p>
         )}
         {stockCritico && (
@@ -1563,7 +1754,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         <p style={{ margin: 0, fontSize: 12, color: '#aaa', lineHeight: 1.55 }}>{fraseVenta(vino, motivo)}</p>
         {ticketComida > 0 && rangoTicket && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: precioEnRango ? '#7BAF8A' : '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            {precioEnRango ? 'Encaja con ticket mesa' : `Fuera de horquilla ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
+            {precioEnRango ? 'Precio coherente para la mesa' : `Revisar precio: ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
           </p>
         )}
         {stockCritico && (

@@ -78,6 +78,80 @@ const modalidades = [
   },
 ]
 
+const planes = [
+  {
+    nombre: 'Básico',
+    precio: '39',
+    precioPublico: '49',
+    etiqueta: 'Carta digital viva',
+    texto: 'Para restaurantes que quieren sustituir el PDF por una carta digital cuidada, actualizable y con maridaje para el cliente.',
+    incluye: ['Carta digital por QR', 'Carta de vinos actualizable', 'Fichas de vino claras', 'Maridaje para el cliente', 'Personalización visual'],
+    cta: 'Empezar con carta digital',
+  },
+  {
+    nombre: 'Sala',
+    precio: '79',
+    precioPublico: '99',
+    etiqueta: 'El plan más operativo',
+    texto: 'Para restaurantes que quieren que su equipo recomiende mejor y venda vino con más seguridad durante el servicio.',
+    incluye: ['Todo el plan Básico', 'Modo camarero con PIN', 'Recomendaciones por plato o mesa', 'Objetivos de venta en sala', 'Estadísticas y control de bodega'],
+    destacado: true,
+    cta: 'Probar modo sala',
+  },
+  {
+    nombre: 'Acompañado',
+    precio: '149',
+    precioPublico: '199',
+    etiqueta: 'Software + consultor',
+    texto: 'Para restaurantes que quieren además una lectura mensual de su carta, oportunidades de venta y criterio profesional continuo.',
+    incluye: ['Todo el plan Sala', 'Revisión mensual del consultor', 'Lectura profesional de oportunidades', 'Ajuste experto de maridajes y carta', 'Soporte prioritario'],
+    premium: true,
+    cta: 'Quiero acompañamiento',
+  },
+]
+
+const comparativaPlanes = [
+  {
+    grupo: 'Carta digital',
+    filas: [
+      ['Carta digital por QR', true, true, true],
+      ['Carta de vinos actualizable', true, true, true],
+      ['Maridaje para el cliente', true, true, true],
+      ['Personalización visual', true, true, true],
+    ],
+  },
+  {
+    grupo: 'Gestión y sala',
+    filas: [
+      ['Modo camarero con PIN', false, true, true],
+      ['Recomendaciones por plato o mesa', false, true, true],
+      ['Objetivos de venta en sala', false, true, true],
+      ['Estadísticas de recomendaciones', false, true, true],
+      ['Control de stock y bodega', false, true, true],
+    ],
+  },
+  {
+    grupo: 'Acompañamiento del consultor',
+    filas: [
+      ['Revisión mensual del consultor', false, false, true],
+      ['Lectura profesional de oportunidades', false, false, true],
+      ['Ajuste experto de maridajes y carta', false, false, true],
+    ],
+  },
+]
+
+const CheckIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+    <path d="M2 7.5L5.5 12L13 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+const MinusIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <line x1="3.5" y1="7" x2="10.5" y2="7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
+)
+
 export const metadata = {
   title: 'Carta Viva · Carta digital de vino con IA',
   description: 'Carta Viva une carta digital QR, guía de maridaje, modo sala y consultoría de vino para restaurantes con criterio WSET Level 3.',
@@ -235,20 +309,60 @@ export default function CartaVivaPage() {
         </div>
       </section>
 
-      <section className="section cv-modalidades">
+      <section className="section cv-modalidades" id="planes">
         <div className="section-head">
-          <p className="eyebrow">Modalidades</p>
-          <h2>La propuesta se adapta a la madurez de tu carta.</h2>
+          <p className="eyebrow">Planes</p>
+          <h2>Elige cuánto quieres que trabaje tu carta de vinos.</h2>
         </div>
         <div className="pricing-grid">
-          {modalidades.map((item) => (
-            <article className={`price-card ${item.destacado ? 'featured' : ''}`} key={item.nombre}>
-              {item.destacado && <span className="badge">Más equilibrado</span>}
+          {planes.map((item) => (
+            <article className={`price-card ${item.destacado ? 'featured' : ''} ${item.premium ? 'premium' : ''}`} key={item.nombre}>
+              {item.destacado && <span className="badge">Recomendado</span>}
+              {item.premium && <span className="badge badge-premium">Premium</span>}
               <h3>{item.nombre}</h3>
               <div className="plan-label">{item.etiqueta}</div>
+              <div className="price">
+                <del className="price-publico">{item.precioPublico} €</del>
+                <strong>{item.precio} €</strong>
+                <small>/mes</small>
+              </div>
+              <p className="price-fundador-label">Precio fundador</p>
               <p>{item.texto}</p>
-              <Link href="#contacto" className="btn btn-secondary">Solicitar propuesta</Link>
+              <ul>
+                {item.incluye.map((linea) => <li key={linea}>{linea}</li>)}
+              </ul>
+              <Link href="#contacto" className={item.destacado ? 'btn btn-primary' : 'btn btn-secondary'}>{item.cta}</Link>
             </article>
+          ))}
+        </div>
+        <p className="pricing-note">
+          * Precios orientativos para un restaurante independiente. El precio final puede variar según volumen de carta o número de locales.
+        </p>
+        <div className="plans-comparison" aria-label="Comparativa de planes Carta Viva">
+          <div className="plans-col-header">
+            <span />
+            <strong>Básico</strong>
+            <strong>Sala</strong>
+            <strong className="col-premium">Acompañado</strong>
+          </div>
+          {comparativaPlanes.map(({ grupo, filas }) => (
+            <div className="plans-group" key={grupo}>
+              <div className="plans-group-label"><span>{grupo}</span></div>
+              {filas.map(([feature, basic, sala, acomp]) => (
+                <div className="plans-row" key={feature}>
+                  <span>{feature}</span>
+                  {[basic, sala, acomp].map((activo, index) => (
+                    <strong
+                      className={`${activo ? 'yes' : 'no'}${index === 2 ? ' col-premium' : ''}`}
+                      key={`${feature}-${index}`}
+                      aria-label={activo ? 'Incluido' : 'No incluido'}
+                    >
+                      {activo ? <CheckIcon /> : <MinusIcon />}
+                    </strong>
+                  ))}
+                </div>
+              ))}
+            </div>
           ))}
         </div>
       </section>

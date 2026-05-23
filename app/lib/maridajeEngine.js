@@ -1,4 +1,4 @@
-import papilasKb from '../data/papilas_maridajes_final_1.json'
+import { chartierKb, fuenteChartier } from './chartierKb'
 import { buscarPlatoKb } from '../data/platos_kb'
 
 // Estima el perfil estructural de un vino (1-5) a partir de sus datos.
@@ -95,6 +95,11 @@ function necesidadesEstructurales(consulta) {
   if (contexto === 'aperitivo') {
     n.alcoholMax = 4; n.taninosMax = 2; n.cuerpoMax = 3
   }
+  if (esJamonCurado(texto)) {
+    n.taninosMax = 2
+    n.acidezMin = 3
+    n.cuerpoMax = 3
+  }
 
   return n
 }
@@ -127,6 +132,7 @@ export function precioBotella(vino) {
 function contextoVenta(consultaNormalizada) {
   const platoKb = buscarPlatoKb(consultaNormalizada)
   if (platoKb?.contexto) return platoKb.contexto
+  if (esJamonCurado(consultaNormalizada)) return 'aperitivo'
   if (consultaNormalizada.includes('queso')) return 'queso'
   if (consultaNormalizada.includes('fritura') || consultaNormalizada.includes('frito') || consultaNormalizada.includes('croqueta') || consultaNormalizada.includes('flamenquin')) return 'fritura'
   if (consultaNormalizada.includes('aperitivo') || consultaNormalizada.includes('entrante') || consultaNormalizada.includes('compartir')) return 'aperitivo'
@@ -139,6 +145,26 @@ function contextoVenta(consultaNormalizada) {
   if (consultaNormalizada.includes('pescado') || consultaNormalizada.includes('marisco') || consultaNormalizada.includes('gamba') || consultaNormalizada.includes('lubina') || consultaNormalizada.includes('salmon') || consultaNormalizada.includes('bacalao') || consultaNormalizada.includes('chipiron')) return 'pescado'
   if (consultaNormalizada.includes('picante') || consultaNormalizada.includes('curry') || consultaNormalizada.includes('pil pil')) return 'picante'
   return 'general'
+}
+
+function esJamonCurado(consultaNormalizada) {
+  return ['jamon', 'serrano', 'prosciutto', 'paleta iberica', 'paleta de bellota'].some(t => consultaNormalizada.includes(t))
+}
+
+function esVinoDulceOSemidulce(vino, textoVino = '') {
+  return vino.tipo === 'dulce' || ['semidulce', 'semi dulce', 'dulce', 'vendimia tardia', 'late harvest'].some(t => textoVino.includes(t))
+}
+
+function esBlancoLigeroDeUsoEstrecho(vino, textoVino = '') {
+  return vino.tipo === 'blanco' && ['verdejo', 'rueda'].some(t => textoVino.includes(t))
+}
+
+function esGenerosoSeco(vino, textoVino = '') {
+  return vino.tipo === 'generoso' || ['fino', 'manzanilla', 'amontillado', 'palo cortado', 'jerez'].some(t => textoVino.includes(t))
+}
+
+function esEspumosoSeco(vino, textoVino = '') {
+  return vino.tipo === 'espumoso' || ['espumoso', 'cava', 'champagne', 'corpinnat', 'cremant', 'prosecco', 'brut', 'ancestral', 'pet nat'].some(t => textoVino.includes(t))
 }
 
 function metodosPlato(consultaNormalizada) {
@@ -166,6 +192,13 @@ export function criteriosEstructurales(consulta = '') {
   const buscar = []
   const evitar = []
   const apuntes = []
+
+  if (esJamonCurado(texto)) {
+    rasgos.push('sal', 'grasa', 'curacion', 'umami')
+    buscar.push('fino o manzanilla', 'burbuja seca', 'blanco salino')
+    evitar.push('tinto con tanino', 'madera dominante')
+    apuntes.push('Con jamon curado mandan sal, grasa y umami: fino/manzanilla o burbuja seca antes que tinto.')
+  }
 
   if (contexto === 'queso') {
     rasgos.push('grasa lactea', 'sal', 'umami')
@@ -256,7 +289,7 @@ function capitulosParaConsulta(consultaNormalizada) {
     curry:     ['sotolon_vino_jaune_curri', 'capsaicina_guindilla_vinos_amortiguadores'],
     postre:    ['jarabe_arce_dulces_licorosos', 'pina_fresa_licorosos', 'canela_pinot_noir_garnacha'],
   }
-  const capitulos = papilasKb
+  const capitulos = chartierKb
   const idsAtajo = [
     ...(platoKb?.capitulos || []),
     ...Object.entries(atajos)
@@ -299,7 +332,7 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
   const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
   const esTawnyOPorto = textoVino.includes('tawny') || textoVino.includes('porto') || textoVino.includes('oporto')
   const esPx = textoVino.includes('pedro ximenez') || textoVino.includes(' px ') || textoVino.includes('px,') || textoVino.includes('alvear px')
-  const esDulceOxidativo = vino.tipo === 'dulce' || esPx || esTawnyOPorto
+  const esDulceOxidativo = esVinoDulceOSemidulce(vino, textoVino) || esPx || esTawnyOPorto
   const quesoTrucadoParaTinto = ['clavo', 'olivada', 'tomate seco', 'tomates secos'].some(t => consultaNormalizada.includes(t))
   const metodo = metodosPlato(consultaNormalizada)
   const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
@@ -307,11 +340,11 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
     'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
   ].some(t => consultaNormalizada.includes(t))
 
-  if (esDulceOxidativo && !contextoDulcePermitido) {
+  if (esDulceOxidativo && !contextoDulcePermitido && !metodo.picante) {
     return {
       compatible: false,
       penalizacion: 85,
-      razon: 'PX, tawny y vinos dulces quedan reservados para postres, quesos o platos claramente dulces; en platos salados normales conviene una opción seca.'
+      razon: 'Los vinos dulces o semidulces quedan reservados para postres, quesos, picante o platos claramente dulces; en platos salados normales conviene una opcion seca.'
     }
   }
 
@@ -331,6 +364,9 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
   if (contexto === 'fritura') {
     if (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto) return { compatible: false, penalizacion: 90, razon: 'Para fritura conviene tensión, salinidad o burbuja; tinto potente, dulce o tawny no es la primera lectura.' }
     if (!['generoso', 'espumoso', 'blanco', 'rosado'].includes(vino.tipo)) return { compatible: false, penalizacion: 50, razon: 'Para fritura se priorizan estilos frescos, salinos o con burbuja.' }
+  }
+  if (esJamonCurado(consultaNormalizada) && vino.tipo === 'tinto') {
+    return { compatible: false, penalizacion: 95, razon: 'Con jamon curado la sal y el umami endurecen el tanino; mejor fino, manzanilla, burbuja seca o blanco salino.' }
   }
   if (contexto === 'aperitivo' && (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto)) {
     return { compatible: false, penalizacion: 60, razon: 'Para aperitivo se priorizan vinos frescos, salinos, blancos, generosos secos o espumosos.' }
@@ -371,7 +407,7 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
   const compatibilidad = compatibilidadContexto(vino, contexto, consultaNormalizada)
   let score = 0
   let motivo = 'busca afinidad aromática y estructural con el plato'
-  let fuente = 'Papilas + estructura WSET'
+  let fuente = 'Chartier + estructura WSET'
 
   matchesKb.forEach(match => {
     let matchScore = match.score
@@ -385,10 +421,13 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
       motivo = terminosCoincidentes.length
         ? `comparte referencias de estilo con ${terminosCoincidentes.slice(0, 3).join(', ')}`
         : `encaja con la familia ${match.capitulo.title}`
-      fuente = match.capitulo.title
+      fuente = `${fuenteChartier(match.capitulo)}: ${match.capitulo.title}`
     }
     score += matchScore
   })
+
+  const fuentesChartier = new Set(matchesKb.map(match => fuenteChartier(match.capitulo)))
+  if (fuentesChartier.size > 1) score += 4
 
   if (rangoTicket) {
     const precio = precioBotella(vino)
@@ -405,7 +444,17 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
 
   if (metodo.brasa && contexto === 'carne' && vino.tipo === 'tinto') score += 8
   if (metodo.frito && ['generoso', 'espumoso', 'blanco'].includes(vino.tipo)) score += 8
+  if (metodo.frito && esGenerosoSeco(vino, textoVino)) {
+    score += 12
+    motivo = 'su perfil salino y seco limpia la fritura y aguanta la grasa sin cansar'
+  }
+  if (metodo.frito && esEspumosoSeco(vino, textoVino)) {
+    score += 12
+    motivo = 'la burbuja seca y la acidez limpian grasa y sal entre bocados'
+  }
   if (metodo.gratinado && ['blanco', 'generoso', 'espumoso'].includes(vino.tipo)) score += 5
+  if (metodo.gratinado && esEspumosoSeco(vino, textoVino)) score += 8
+  if (metodo.gratinado && esGenerosoSeco(vino, textoVino)) score += 7
   if (metodo.vegetalVerde && ['blanco', 'generoso', 'espumoso'].includes(vino.tipo)) score += 5
   if (metodo.vegetalVerde && ['sauvignon', 'verdejo', 'albari', 'riesling'].some(t => textoVino.includes(t))) score += 8
   if (metodo.setasTrufa && contexto === 'pescado' && ['tinto', 'blanco'].includes(vino.tipo)) score += 4
@@ -417,6 +466,30 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
   if (metodo.picante && ['perfil fresco', 'floral', 'dulce', 'baja graduacion'].some(t => textoVino.includes(t))) score += 5
   if (contexto === 'queso' && ['oxidativo', 'dulce', 'salino', 'floral', 'alta acidez'].some(t => textoVino.includes(t))) score += 6
   if ((contexto === 'aperitivo' || metodo.frio) && ['perfil fresco', 'alta acidez', 'salino', 'mineral', 'floral'].some(t => textoVino.includes(t))) score += 5
+  if (contexto === 'aperitivo' && esGenerosoSeco(vino, textoVino)) score += 10
+  if (contexto === 'aperitivo' && esEspumosoSeco(vino, textoVino)) score += 10
+  if (contexto === 'pescado' && esEspumosoSeco(vino, textoVino)) score += metodo.gratinado || metodo.frito ? 8 : 5
+  if (esJamonCurado(consultaNormalizada)) {
+    if (esGenerosoSeco(vino, textoVino)) {
+      score += 28
+      motivo = 'fino o manzanilla es la lectura mas directa: salinidad, crianza biologica y boca seca para grasa, sal y umami del jamon'
+      fuente = fuente || 'Regla de sala: jamon curado'
+    } else if (esEspumosoSeco(vino, textoVino)) {
+      score += 18
+      motivo = 'la burbuja seca limpia la grasa del jamon y respeta la sal sin endurecer taninos'
+      fuente = fuente || 'Regla de sala: jamon curado'
+    } else if (vino.tipo === 'blanco') {
+      score += 4
+    }
+  }
+  if (
+    esBlancoLigeroDeUsoEstrecho(vino, textoVino) &&
+    !['aperitivo', 'fritura', 'pescado'].includes(contexto) &&
+    !metodo.vegetalVerde &&
+    !metodo.frio
+  ) {
+    score -= 7
+  }
 
   // Matching estructural por perfil numérico estimado — más preciso que text-matching
   const perfil = estimarPerfil(vino)
@@ -538,7 +611,7 @@ export function resumenAnalisisParaPrompt(analisis) {
     analisis.lectura?.rasgos?.length ? `Rasgos del plato o mesa: ${analisis.lectura.rasgos.join(', ')}.` : '',
     analisis.lectura?.buscar?.length ? `Buscar en el vino: ${analisis.lectura.buscar.join(', ')}.` : '',
     analisis.lectura?.evitar?.length ? `Evitar: ${analisis.lectura.evitar.join(', ')}.` : '',
-    candidatos ? `Candidatos priorizados por Papilas/KB/WSET:\n${candidatos}` : '',
+    candidatos ? `Candidatos priorizados por Chartier/KB/WSET:\n${candidatos}` : '',
     'Usa estos candidatos como preferencia fuerte. Solo cambia si tu razonamiento estructural lo justifica, y nunca recomiendes vinos que no estén en la carta real.',
   ].filter(Boolean).join('\n')
 }

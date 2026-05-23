@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
+import { puedeUsar } from '../../lib/plans'
 import styles from './carta.module.css'
 
 const t = {
@@ -729,6 +730,12 @@ setPerfiles(nuevosPerfiles)
   if (!restaurante) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#fff', fontFamily: 'sans-serif' }}>
       <p style={{ color: '#999' }}>{i.noEncontrado}</p>
+    </div>
+  )
+
+  if (!puedeUsar(restaurante, 'carta_qr')) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#fff', fontFamily: 'sans-serif', padding: 24, textAlign: 'center' }}>
+      <p style={{ color: '#999', lineHeight: 1.5 }}>Carta no disponible temporalmente.</p>
     </div>
   )
 

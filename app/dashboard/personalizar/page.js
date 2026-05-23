@@ -724,21 +724,34 @@ export default function Personalizar() {
                   {hubMostrarDireccion && <p style={{ margin: hubMostrarNombre ? '8px 0 0' : 0, opacity: 0.72 }}>{subtituloHubPreview}</p>}
                 </div>
               )}
-              {['Carta de vino', 'Carta de comida', 'Reservas'].map((label, index) => (
-                <div key={label} style={{
+              {[
+                { label: 'Carta de vino', icon: 'wine' },
+                { label: 'Carta restaurante', icon: 'menu' },
+                { label: 'Reservas', icon: 'calendar' },
+              ].map(item => (
+                <div key={item.label} style={{
                   width: '100%',
                   maxWidth: 320,
                   minHeight: 48,
                   borderRadius: 999,
                   display: 'grid',
-                  placeItems: 'center',
-                  background: hubEstilo === 'solido' || index === 0 ? colorPrimario : 'rgba(255,255,255,0.86)',
-                  color: hubEstilo === 'solido' || index === 0 ? '#fff' : '#111',
+                  gridTemplateColumns: '34px minmax(0, 1fr) 20px',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '0 18px',
+                  background: hubEstilo === 'solido' ? colorPrimario : 'rgba(255,255,255,0.86)',
+                  color: hubEstilo === 'solido' ? '#fff' : '#111',
                   fontWeight: 850,
                   boxShadow: '0 16px 38px rgba(0,0,0,0.18)',
-                  border: `1px solid ${index === 0 ? colorAcento : 'rgba(255,255,255,0.58)'}`,
+                  border: `1px solid ${hubEstilo === 'solido' ? colorAcento : 'rgba(255,255,255,0.58)'}`,
                 }}>
-                  {label}
+                  <span style={{ display: 'grid', placeItems: 'center', color: hubEstilo === 'solido' ? '#fff' : colorPrimario }}>
+                    {item.icon === 'wine' && <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3h8l1 8a5 5 0 0 1-10 0l1-8Z"/><path d="M7.5 8h9"/><path d="M12 16v5"/><path d="M8.5 21h7"/></svg>}
+                    {item.icon === 'menu' && <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h9a3 3 0 0 1 3 3v13H9a3 3 0 0 1-3-3V4Z"/><path d="M9 8h6"/><path d="M9 11h5"/><path d="M9 14h4"/><path d="M19 7v13"/><path d="M4 7v10"/></svg>}
+                    {item.icon === 'calendar' && <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3v3M17 3v3"/><path d="M4.5 8h15"/><path d="M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 12h3M8 16h6"/></svg>}
+                  </span>
+                  <span style={{ justifySelf: 'center' }}>{item.label}</span>
+                  <span />
                 </div>
               ))}
               </div>

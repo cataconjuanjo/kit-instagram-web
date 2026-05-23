@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
-import { LoadingState, ModuleShell } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
 function eur(valor) {
@@ -162,6 +162,7 @@ export default function ControlBodega() {
   }
 
   if (loading) return <LoadingState />
+  if (!restaurante) return null
 
   const acciones = [
     incidencias.length > 0 && { texto: `${incidencias.length} incidencias de sala pendientes`, href: '/dashboard/cierre#incidencias' },
@@ -185,6 +186,7 @@ export default function ControlBodega() {
   }
 
   return (
+    <FeatureGate restaurante={restaurante} feature="bodega" title="Bodega no incluida">
     <ModuleShell
       restaurante={restaurante}
       eyebrow="Bodega"
@@ -491,5 +493,6 @@ export default function ControlBodega() {
         )}
       </section>
     </ModuleShell>
+    </FeatureGate>
   )
 }

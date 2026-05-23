@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
+import { limiteVinosPlan, nombrePlan, puedeUsar } from '../../lib/plans'
 import styles from '../module.module.css'
 
 const perfilesVino = [
@@ -119,7 +120,14 @@ const inputPdfRef = useRef(null)
   }, [])
 
 async function añadirVino() {
+const limiteVinos = restaurante ? limiteVinosPlan(restaurante) : 60
+const vinosActivos = vinos.filter(vino => vino.activo !== false)
+
     if (!nuevoVino.nombre || !nuevoVino.tipo) return
+    if (vinosActivos.length >= limiteVinos) {
+      setErrorBodega(`El plan ${nombrePlan(restaurante)} permite hasta ${limiteVinos} vinos activos.`)
+      return
+    }
     setGenerandoCata(true)
 
     let notasCata = ''
@@ -164,6 +172,9 @@ setGenerandoCata(false)
       setMostrarFormulario(false)
     }
   }
+
+const limiteVinosActual = restaurante ? limiteVinosPlan(restaurante) : 60
+const vinosActivosActuales = vinos.filter(vino => vino.activo !== false)
 
 function vinoDuplicado(vino) {
   const nombre = normalizar(vino.nombre)
@@ -222,6 +233,11 @@ async function archivoPdfSeleccionado(e) {
 async function guardarImportacionVinos() {
   const nuevos = vinosImportar.filter(vino => vino.activo && vino.nombre.trim() && !vinoDuplicado(vino))
   if (!nuevos.length || !restaurante?.id) return
+  const hueco = Math.max(0, limiteVinosActual - vinosActivosActuales.length)
+  if (nuevos.length > hueco) {
+    setErrorPdf(`Tu plan permite ${limiteVinosActual} vinos activos. Puedes importar ${hueco} ahora mismo.`)
+    return
+  }
   setImportando(true)
   const { data, error } = await supabase.from('vinos').insert(nuevos.map(vino => ({
     nombre: vino.nombre.trim(),
@@ -259,6 +275,10 @@ async function guardarAnada(vino) {
     setNuevoPrecio('')
   }
   async function toggleActivo(vino) {
+    if (vino.activo === false && vinosActivosActuales.length >= limiteVinosActual) {
+      setErrorBodega(`El plan ${nombrePlan(restaurante)} permite hasta ${limiteVinosActual} vinos activos.`)
+      return
+    }
     await supabase.from('vinos').update({ activo: !vino.activo }).eq('id', vino.id)
     setVinos(vinos.map(v => v.id === vino.id ? { ...v, activo: !v.activo } : v))
   }
@@ -363,13 +383,15 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
       subtitle="Controla precios, stock, perfiles de cata e importaciones para que sala y maridaje trabajen con la misma información."
       actions={
         <>
-          <a href="/dashboard/bodega" className={styles.secondary}>Control bodega</a>
-          <button
-            onClick={() => { setMostrarImportador(!mostrarImportador); setMostrarFormulario(false) }}
-            className={mostrarImportador ? styles.ghost : styles.secondary}
-          >
-            {mostrarImportador ? 'Cerrar importador' : 'Importar PDF'}
-          </button>
+          {puedeUsar(restaurante, 'bodega') && <a href="/dashboard/bodega" className={styles.secondary}>Control bodega</a>}
+          {puedeUsar(restaurante, 'importador_pdf') && (
+            <button
+              onClick={() => { setMostrarImportador(!mostrarImportador); setMostrarFormulario(false) }}
+              className={mostrarImportador ? styles.ghost : styles.secondary}
+            >
+              {mostrarImportador ? 'Cerrar importador' : 'Importar PDF'}
+            </button>
+          )}
           <button
             onClick={() => { setMostrarFormulario(!mostrarFormulario); setMostrarImportador(false) }}
             className={mostrarFormulario ? styles.ghost : styles.primary}

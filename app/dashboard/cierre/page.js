@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
-import { LoadingState, ModuleShell } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
 function leerDetalle(detalle) {
@@ -129,6 +129,7 @@ export default function CierreServicio() {
   }
 
   if (loading) return <LoadingState />
+  if (!restaurante) return null
 
   const acciones = [
     datos.incidencias.length > 0 && `Aplicar o ignorar ${datos.incidencias.length} incidencias de stock.`,
@@ -138,6 +139,7 @@ export default function CierreServicio() {
   ].filter(Boolean)
 
   return (
+    <FeatureGate restaurante={restaurante} feature="cierre_servicio" title="Cierre de servicio no incluido">
     <ModuleShell
       restaurante={restaurante}
       eyebrow="Cierre de servicio"
@@ -298,5 +300,6 @@ export default function CierreServicio() {
         </div>
       </section>
     </ModuleShell>
+    </FeatureGate>
   )
 }

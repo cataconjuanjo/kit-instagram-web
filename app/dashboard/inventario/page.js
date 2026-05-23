@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
-import { LoadingState, ModuleShell } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
 function decimal(valor) {
@@ -160,6 +160,7 @@ export default function InventarioSemanal() {
   }
 
   if (loading) return <LoadingState />
+  if (!restaurante) return null
 
   const costeDiferencia = datos.ajustes.reduce((sum, ajuste) => sum + ajuste.coste, 0)
   const ventaDiferencia = datos.ajustes.reduce((sum, ajuste) => sum + ajuste.venta, 0)
@@ -175,6 +176,7 @@ export default function InventarioSemanal() {
   ]
 
   return (
+    <FeatureGate restaurante={restaurante} feature="inventario" title="Inventario no incluido">
     <ModuleShell
       restaurante={restaurante}
       eyebrow="Inventario inteligente"
@@ -280,5 +282,6 @@ export default function InventarioSemanal() {
         </div>
       </section>
     </ModuleShell>
+    </FeatureGate>
   )
 }
