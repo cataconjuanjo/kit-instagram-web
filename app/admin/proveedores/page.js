@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
-import AdminSidebar from '../components/AdminSidebar'
+
 
 const proveedorInicial = {
   nombre: '',
@@ -231,19 +231,11 @@ export default function ProveedoresPage() {
   }
 
   if (loading) {
-    return (
-      <main className="admin-page">
-        <p className="admin-loading">Cargando proveedores</p>
-      </main>
-    )
+    return <p className="admin-loading">Cargando proveedores</p>
   }
 
   return (
-    <main className="admin-page">
-      <section className="admin-shell">
-        <AdminSidebar />
-
-        <div className="admin-main">
+    <div className="admin-main">
           <div className="consult-hero">
             <div>
               <p className="eyebrow">Base privada de compra</p>
@@ -365,8 +357,6 @@ export default function ProveedoresPage() {
               ))}
             </section>
           </div>
-        </div>
-      </section>
-    </main>
+    </div>
   )
 }

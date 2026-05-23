@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail, setAdminRestaurantEmail } from '../../demo'
-import AdminSidebar from '../components/AdminSidebar'
+
 
 function normalizar(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -365,11 +365,7 @@ export default function RadarConsultoria() {
   }
 
   if (loading) {
-    return (
-      <main className="admin-page">
-        <p className="admin-loading">Cargando radar</p>
-      </main>
-    )
+    return <p className="admin-loading">Cargando radar</p>
   }
 
   const alta = informes.filter(i => i.prioridad === 'Alta').length
@@ -383,12 +379,8 @@ export default function RadarConsultoria() {
   ]
 
   return (
-    <main className="admin-page">
-      <section className="admin-shell">
-        <AdminSidebar />
-
-        <div className="admin-main radar-main">
-          <div className="radar-header">
+    <div className="admin-main radar-main">
+      <div className="radar-header">
             <div>
               <h2>Radar</h2>
               <p>{informes.length} restaurantes · {alta} prioridad alta · {media} prioridad media</p>
@@ -429,9 +421,7 @@ export default function RadarConsultoria() {
             )}
           </div>
 
-        </div>
-      </section>
-    </main>
+    </div>
   )
 }
 

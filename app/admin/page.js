@@ -244,35 +244,11 @@ export default function AdminPage() {
   }
 
   if (loading) {
-    return (
-      <main className="admin-page">
-        <p className="admin-loading">Cargando</p>
-      </main>
-    )
+    return <p className="admin-loading">Cargando</p>
   }
 
   return (
-    <main className="admin-page">
-      <header className="admin-topbar">
-        <div>
-          <p className="admin-kicker">Superadmin</p>
-          <h1>Restaurantes</h1>
-          <p>{user?.email}</p>
-        </div>
-        <button onClick={salir}>Salir</button>
-      </header>
-
-      <section className="admin-shell">
-        <aside className="admin-sidebar">
-          <p className="admin-kicker">Consultor</p>
-          <Link href="/admin/consultoria">Radar</Link>
-          <Link href="/admin/propuestas">Propuestas</Link>
-          <Link href="/admin/proveedores">Proveedores</Link>
-          <Link href="/sommelier">Selección Juanjo</Link>
-          <Link className="active" href="/admin">Restaurantes</Link>
-        </aside>
-
-        <div className="admin-main">
+    <div className="admin-main">
         <div className="admin-head">
           <div>
             <p className="eyebrow">Restaurantes</p>
@@ -483,8 +459,6 @@ export default function AdminPage() {
             <p>No hay restaurantes creados todavia.</p>
           </div>
         )}
-        </div>
-      </section>
-    </main>
+    </div>
   )
 }

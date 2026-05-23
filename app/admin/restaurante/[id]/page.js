@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../supabase'
 import { isAdminEmail, setAdminRestaurantEmail } from '../../../demo'
-import AdminSidebar from '../../components/AdminSidebar'
+
 
 function normalizar(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -283,18 +283,27 @@ export default function RestauranteWorkspace() {
   const [alertaAbierta, setAlertaAbierta] = useState(null)
   const propuestaFormRef = useRef(null)
 
+  const [seleccion, setSeleccion] = useState([])
+  const [vinoElegido, setVinoElegido] = useState('')
+  const [notaSeleccion, setNotaSeleccion] = useState('')
+  const [guardandoSeleccion, setGuardandoSeleccion] = useState(false)
+
+  const RESTAURANTE_PREFIX = '[RESTAURANTE] '
+  const esSeleccionJuanjo = item => !String(item.nota_personal || '').startsWith(RESTAURANTE_PREFIX)
+
   useEffect(() => {
     async function cargar() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || !isAdminEmail(user.email)) { window.location.href = '/login'; return }
       setUser(user)
       const desde = haceDiasISO(30)
-      const [{ data: rest }, { data: vinosData }, { data: platosData }, { data: statsData }, { data: propuestasData }] = await Promise.all([
+      const [{ data: rest }, { data: vinosData }, { data: platosData }, { data: statsData }, { data: propuestasData }, { data: selData }] = await Promise.all([
         supabase.from('restaurantes').select('*').eq('id', id).single(),
         supabase.from('vinos').select('*').eq('restaurante_id', id),
         supabase.from('platos').select('*').eq('restaurante_id', id),
         supabase.from('estadisticas').select('*').eq('restaurante_id', id).gte('created_at', desde),
         supabase.from('consultor_propuestas').select('*').eq('restaurante_id', id).order('created_at', { ascending: false }),
+        supabase.from('seleccion_especial').select('*, vinos(nombre, bodega, tipo, region)').eq('restaurante_id', id).eq('activo', true).order('orden'),
       ])
       setRestaurante(rest)
       setTicketDraft(rest?.ticket_medio_comida || rest?.ticket_medio || rest?.ticket_comida || '')
@@ -302,6 +311,7 @@ export default function RestauranteWorkspace() {
       setPlatos(platosData || [])
       setEstadisticas(statsData || [])
       setPropuestas(propuestasData || [])
+      setSeleccion((selData || []).filter(item => !String(item.nota_personal || '').startsWith('[RESTAURANTE] ')))
       setLoading(false)
     }
     if (id) cargar()
@@ -435,12 +445,32 @@ export default function RestauranteWorkspace() {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  if (loading) return <main className="admin-page"><p className="admin-loading">Cargando restaurante</p></main>
+  async function añadirSeleccion() {
+    if (!vinoElegido || !notaSeleccion.trim()) return
+    setGuardandoSeleccion(true)
+    const { data, error } = await supabase.from('seleccion_especial').insert([{
+      restaurante_id: id,
+      vino_id: vinoElegido,
+      nota_personal: notaSeleccion,
+      orden: seleccion.length
+    }]).select('*, vinos(nombre, bodega, tipo, region)')
+    if (!error && data?.[0]) {
+      setSeleccion(prev => [...prev, data[0]])
+      setVinoElegido('')
+      setNotaSeleccion('')
+    }
+    setGuardandoSeleccion(false)
+  }
+
+  async function quitarSeleccion(selId) {
+    await supabase.from('seleccion_especial').update({ activo: false }).eq('id', selId)
+    setSeleccion(prev => prev.filter(s => s.id !== selId))
+  }
+
+  if (loading) return <p className="admin-loading">Cargando restaurante</p>
 
   if (!restaurante || !analisis) return (
-    <main className="admin-page">
-      <div className="admin-empty" style={{ margin: '48px auto' }}>Restaurante no encontrado.</div>
-    </main>
+    <div className="admin-empty" style={{ margin: '48px auto' }}>Restaurante no encontrado.</div>
   )
 
   const { score, prioridad, alertas, servicios, siguienteMovimiento, metricas, diagnostico, ventasMarcadas, incidenciasStock, dudasSala, propuestasAbiertas, vinosConDudas } = analisis
@@ -448,11 +478,7 @@ export default function RestauranteWorkspace() {
   const propuestasActivas = propuestas.filter(p => p.estado !== 'descartada' && p.estado !== 'incorporada')
 
   return (
-    <main className="admin-page">
-      <section className="admin-shell">
-        <AdminSidebar />
-
-        <div className="admin-main ws-main">
+    <div className="admin-main ws-main">
 
           {/* Workspace header */}
           <div className="ws-header">
@@ -475,6 +501,7 @@ export default function RestauranteWorkspace() {
             <button onClick={() => scrollTo('ws-resumen')}>Resumen</button>
             <button onClick={() => scrollTo('ws-diagnostico')}>Diagnóstico</button>
             <button onClick={() => scrollTo('ws-propuestas')}>Propuestas {propuestasActivas.length > 0 && <span className="ws-badge">{propuestasActivas.length}</span>}</button>
+            <button onClick={() => scrollTo('ws-seleccion')}>Selección {seleccion.length > 0 && <span className="ws-badge">{seleccion.length}/4</span>}</button>
             <button onClick={() => scrollTo('ws-informe')}>Informe</button>
           </nav>
 
@@ -765,6 +792,67 @@ export default function RestauranteWorkspace() {
           </section>
 
           {/* ═══════════════════════════════════════
+              SECCIÓN: SELECCIÓN JUANJO
+          ═══════════════════════════════════════ */}
+          <section id="ws-seleccion" className="ws-section">
+            <div className="ws-section-head">
+              <h3 className="ws-section-title">Selección Juanjo</h3>
+              <span className="ws-sub">{seleccion.length}/4 vinos</span>
+            </div>
+
+            {seleccion.length < 4 && (
+              <div className="ws-propuesta-form" style={{ marginBottom: 20 }}>
+                <p className="admin-kicker">Añadir vino a la selección</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <label>
+                    Vino
+                    <select value={vinoElegido} onChange={e => setVinoElegido(e.target.value)}>
+                      <option value="">Selecciona un vino de la carta...</option>
+                      {vinos.filter(v => v.activo !== false && !seleccion.some(s => s.vino_id === v.id)).map(v => (
+                        <option key={v.id} value={v.id}>{v.nombre} · {v.bodega}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Nota personal
+                    <input
+                      value={notaSeleccion}
+                      onChange={e => setNotaSeleccion(e.target.value)}
+                      placeholder="Por qué lo recomiendas, con qué platos..."
+                    />
+                  </label>
+                </div>
+                <button
+                  className="ws-btn-primary"
+                  onClick={añadirSeleccion}
+                  disabled={guardandoSeleccion || !vinoElegido || !notaSeleccion.trim()}
+                >
+                  {guardandoSeleccion ? 'Guardando...' : 'Añadir a la selección'}
+                </button>
+              </div>
+            )}
+
+            {seleccion.length > 0 ? (
+              <div className="ws-propuestas-list">
+                {seleccion.map(s => (
+                  <div key={s.id} className="ws-propuesta-item">
+                    <div className="ws-propuesta-info">
+                      <strong>{s.vinos?.nombre}</strong>
+                      <p>{[s.vinos?.bodega, s.vinos?.region].filter(Boolean).join(' · ')}</p>
+                      {s.nota_personal && <p className="ws-propuesta-motivo">{s.nota_personal}</p>}
+                    </div>
+                    <div className="ws-propuesta-actions">
+                      <button className="admin-plain-button" onClick={() => quitarSeleccion(s.id)}>Quitar</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="ws-empty-block">Sin vinos en la selección de este restaurante.</div>
+            )}
+          </section>
+
+          {/* ═══════════════════════════════════════
               SECCIÓN: INFORME
           ═══════════════════════════════════════ */}
           <section id="ws-informe" className="ws-section">
@@ -819,8 +907,6 @@ export default function RestauranteWorkspace() {
             </div>
           </section>
 
-        </div>
-      </section>
-    </main>
+    </div>
   )
 }
