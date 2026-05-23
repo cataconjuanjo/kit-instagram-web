@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
+import AdminSidebar from '../components/AdminSidebar'
 
 const proveedorInicial = {
   nombre: '',
@@ -248,14 +249,7 @@ export default function ProveedoresPage() {
       </header>
 
       <section className="admin-shell">
-        <aside className="admin-sidebar">
-          <p className="admin-kicker">Consultor</p>
-          <Link href="/admin/consultoria">Radar</Link>
-          <Link href="/admin/propuestas">Propuestas</Link>
-          <Link className="active" href="/admin/proveedores">Proveedores</Link>
-          <Link href="/sommelier">Selección Juanjo</Link>
-          <Link href="/admin">Restaurantes</Link>
-        </aside>
+        <AdminSidebar />
 
         <div className="admin-main">
           <div className="consult-hero">

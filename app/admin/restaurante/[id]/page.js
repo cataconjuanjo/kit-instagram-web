@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../supabase'
 import { isAdminEmail, setAdminRestaurantEmail } from '../../../demo'
+import AdminSidebar from '../../components/AdminSidebar'
 
 function normalizar(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -457,13 +458,7 @@ export default function RestauranteWorkspace() {
       </header>
 
       <section className="admin-shell">
-        <aside className="admin-sidebar">
-          <p className="admin-kicker">Consultor</p>
-          <Link className="active" href="/admin/consultoria">Radar</Link>
-          <Link href="/admin/proveedores">Proveedores</Link>
-          <Link href="/sommelier">Selección Juanjo</Link>
-          <Link href="/admin">Restaurantes</Link>
-        </aside>
+        <AdminSidebar />
 
         <div className="admin-main ws-main">
 

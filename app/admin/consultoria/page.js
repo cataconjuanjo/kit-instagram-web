@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail, setAdminRestaurantEmail } from '../../demo'
+import AdminSidebar from '../components/AdminSidebar'
 
 function normalizar(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -373,9 +374,6 @@ export default function RadarConsultoria() {
 
   const alta = informes.filter(i => i.prioridad === 'Alta').length
   const media = informes.filter(i => i.prioridad === 'Media').length
-  const valorCartera = informes.reduce((sum, informe) => sum + informe.metricas.valorCoste, 0)
-  const propuestasAbiertas = informes.reduce((sum, informe) => sum + informe.propuestasAbiertas.length, 0)
-  const alertasSala = informes.reduce((sum, informe) => sum + informe.incidenciasStock.length + informe.dudasSala.length, 0)
   const filtros = [
     ['todas', 'Todas'],
     ['alta', 'Prioridad alta'],
@@ -386,180 +384,56 @@ export default function RadarConsultoria() {
 
   return (
     <main className="admin-page">
-      <header className="admin-topbar">
-        <div>
-          <p className="admin-kicker">Superadmin</p>
-          <h1>Radar consultoría</h1>
-          <p>{user?.email}</p>
-        </div>
-      </header>
-
       <section className="admin-shell">
-        <aside className="admin-sidebar">
-          <p className="admin-kicker">Consultor</p>
-          <Link className="active" href="/admin/consultoria">Radar</Link>
-          <Link href="/admin/propuestas">Propuestas</Link>
-          <Link href="/admin/proveedores">Proveedores</Link>
-          <Link href="/sommelier">Selección Juanjo</Link>
-          <Link href="/admin">Restaurantes</Link>
-        </aside>
+        <AdminSidebar />
 
-        <div className="admin-main">
-        <div className="consult-hero">
-          <div>
-            <p className="eyebrow">Oportunidades privadas</p>
-            <h2>Detecta dónde Carta Viva puede convertirse en consultoría.</h2>
-            <p>Lectura estratégica de carta, cocina, margen, stock, proveedores, uso real y argumentos de sala. Esto no se muestra al restaurante.</p>
+        <div className="admin-main radar-main">
+          <div className="radar-header">
+            <div>
+              <h2>Radar</h2>
+              <p>{informes.length} restaurantes · {alta} prioridad alta · {media} prioridad media</p>
+            </div>
           </div>
-          <div className="consult-summary">
-            <strong>{alta}</strong><span>prioridad alta</span>
-            <strong>{media}</strong><span>prioridad media</span>
+
+          <div className="radar-filterbar">
+            {filtros.map(([id, label]) => (
+              <button key={id} className={filtro === id ? 'active' : ''} onClick={() => setFiltro(id)}>{label}</button>
+            ))}
           </div>
-        </div>
 
-        {false && <div className="consult-command">
-          <article><strong>{eur(valorCartera)}</strong><span>bodega a coste medida</span></article>
-          <article><strong>{alertasSala}</strong><span>señales de sala 30 días</span></article>
-          <article><strong>{propuestasAbiertas}</strong><span>propuestas abiertas</span></article>
-          <article><strong>{informes.filter(i => i.metricas.sinCoste > 0).length}</strong><span>restaurantes sin costes completos</span></article>
-        </div>}
-
-        <div className="consult-overview">
-          <span>{informes.length} restaurantes</span>
-          <span>{alta} prioridad alta</span>
-          <span>{media} prioridad media</span>
-          <span>{informes.filter(i => i.metricas.sinCoste > 0).length} sin costes completos</span>
-          <span>{propuestasAbiertas} propuestas abiertas</span>
-        </div>
-
-        <div className="consult-filterbar">
-          {filtros.map(([id, label]) => (
-            <button key={id} className={filtro === id ? 'active' : ''} onClick={() => setFiltro(id)}>{label}</button>
-          ))}
-        </div>
-
-        <div className="consult-grid">
-          {informesFiltrados.map(informe => (
-            <article className="consult-card" key={informe.restaurante.id}>
-              <div className="consult-card-head">
-                <div>
-                  <p className="admin-kicker">{informe.prioridad}</p>
-                  <h3>{informe.restaurante.nombre}</h3>
-                  <span>{informe.restaurante.ciudad || 'Sin ciudad'} · {informe.metricas.vinos} vinos · {informe.metricas.platos} platos</span>
-                  {false && <div className="consult-360-wide strategy-panel">
-                    <div className="strategy-head">
-                      <div>
-                        <span>Diagnóstico estratégico</span>
-                        <strong>Mapa de precios y salud de carta</strong>
-                      </div>
-                      <div className="ticket-editor">
-                        <label>Ticket medio comida real</label>
-                        <div>
-                          <input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={ticketDrafts[informe.restaurante.id] ?? ''}
-                            placeholder={informe.diagnostico.ticket.valor != null ? String(informe.diagnostico.ticket.valor) : ''}
-                            onChange={e => setTicketDrafts(actual => ({ ...actual, [informe.restaurante.id]: e.target.value }))}
-                          />
-                          <button onClick={() => guardarTicket(informe)} disabled={guardandoTicket === informe.restaurante.id}>
-                            {guardandoTicket === informe.restaurante.id ? 'Guardando' : 'Guardar'}
-                          </button>
-                        </div>
-                        <small>
-                          {informe.diagnostico.ticket.valor == null
-                            ? 'Sin ticket configurado — introdúcelo aquí'
-                            : `${eur(informe.diagnostico.ticket.valor)} PVP IVA incl. · ${informe.diagnostico.ticket.fuente}${informe.diagnostico.ticket.ticketEsEstimado ? ' · Estimado automáticamente' : ''}`}
-                        </small>
-                      </div>
-                    </div>
-
-                    <div className="strategy-grid">
-                      <section>
-                        <h4>Arquitectura de precios</h4>
-                        {informe.diagnostico.ticket.valor == null ? (
-                          <p style={{ color: '#b97a1a', fontSize: 12, margin: 0 }}>Ticket medio no disponible — introdúcelo manualmente en la Ficha 360.</p>
-                        ) : informe.diagnostico.wineMapping.gamas.map(gama => (
-                          <div className="mapping-row" key={gama.id}>
-                            <div>
-                              <strong>{gama.label}</strong>
-                              <span>{gama.rangoTexto} EUR PVP · {gama.vinos} vinos</span>
-                            </div>
-                            <div className="mapping-bar"><i style={{ width: `${Math.min(100, gama.real)}%` }} /></div>
-                            <b>{gama.real}%</b>
-                            <em>obj. {gama.objetivo}%</em>
-                          </div>
-                        ))}
-                      </section>
-
-                      <section>
-                        <h4>Salud operativa</h4>
-                        <div className="strategy-pills">
-                          {informe.diagnostico.salud.map(item => (
-                            <span key={item.label} className={item.valor > Math.max(0, item.total * 0.2) ? 'is-warning' : ''}>{item.label}: {item.valor}</span>
-                          ))}
-                        </div>
-                      </section>
-
-                      <section>
-                        <h4>Equilibrio comercial</h4>
-                        <div className="strategy-pills">
-                          {informe.diagnostico.equilibrio.map(item => (
-                            <span key={item.label}>{item.label}: {item.valor}</span>
-                          ))}
-                        </div>
-                      </section>
-                    </div>
-                  </div>}
+          <div className="radar-list">
+            {informesFiltrados.map(informe => (
+              <Link
+                key={informe.restaurante.id}
+                href={`/admin/restaurante/${informe.restaurante.id}`}
+                className="radar-row"
+              >
+                <div className={`radar-score radar-score-${informe.prioridad.toLowerCase()}`}>
+                  {informe.score}
                 </div>
-                <div className={`consult-score consult-score-${informe.prioridad.toLowerCase()}`}>{informe.score}</div>
-              </div>
-
-              <div className="consult-metrics">
-                <span>{informe.metricas.copa} copa</span>
-                <span>{informe.metricas.locales} locales</span>
-                <span>{informe.metricas.dulces} dulces</span>
-                <span>{informe.metricas.precioMedioVino} EUR medio</span>
-                <span>{informe.metricas.margenMedio ?? '-'}% margen</span>
-                <span>{informe.metricas.bajoMinimo} bajo mínimo</span>
-              </div>
-
-              <div className="consult-next">
-                <span>Siguiente movimiento</span>
-                <strong>{informe.siguienteMovimiento}</strong>
-              </div>
-
-              {informe.alertas.length ? (
-                <div className="consult-alerts">
-                  {informe.alertas.slice(0, 3).map(alerta => (
-                    <div key={alerta.titulo}>
-                      <strong>{alerta.titulo}</strong>
-                      <p>{alerta.detalle}</p>
-                    </div>
-                  ))}
+                <div className="radar-info">
+                  <strong>{informe.restaurante.nombre}</strong>
+                  <span>{informe.restaurante.ciudad || '—'} · {informe.metricas.vinos} vinos · {informe.metricas.platos} platos</span>
                 </div>
-              ) : (
-                <div className="consult-empty">Sin alertas claras. Oportunidad de mantenimiento o afinado puntual.</div>
-              )}
+                <div className="radar-alerta">
+                  {informe.alertas[0]
+                    ? <><strong>{informe.alertas[0].titulo}</strong><span>{informe.alertas[0].detalle}</span></>
+                    : <span>Sin alertas críticas. Mantenimiento fino.</span>
+                  }
+                </div>
+                <div className="radar-cta">Trabajar →</div>
+              </Link>
+            ))}
+            {informesFiltrados.length === 0 && (
+              <div className="ws-empty-block">No hay restaurantes con este filtro.</div>
+            )}
+          </div>
 
-              <div className="consult-services">
-                {(informe.servicios.length ? informe.servicios : ['Mantenimiento estratégico']).map(servicio => (
-                  <span key={servicio}>{servicio}</span>
-                ))}
-              </div>
-
-              <div className="consult-actions">
-                <Link className="consult-primary-action" href={`/admin/restaurante/${informe.restaurante.id}`}>Trabajar →</Link>
-                <a href={`/carta/${informe.restaurante.slug}`} target="_blank" rel="noreferrer">Ver carta</a>
-                <button className="consult-secondary" onClick={() => gestionar(informe.restaurante)}>Dashboard</button>
-              </div>
-
-            </article>
-          ))}
-        </div>
         </div>
       </section>
     </main>
   )
 }
+
+
+
