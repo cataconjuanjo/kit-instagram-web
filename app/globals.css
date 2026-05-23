@@ -5307,3 +5307,224 @@ h3 {
   border-color: var(--wine);
 }
 
+/* ══════════════════════════════════════════
+   MOBILE — fixes globales de overflow y layout
+══════════════════════════════════════════ */
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+@media (max-width: 768px) {
+
+  /* Plans comparison — row dentro del contenedor scroll */
+  .plans-row {
+    width: 620px;
+    grid-template-columns: 200px repeat(3, 140px);
+  }
+
+  /* Workspace header */
+  .ws-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    position: static;
+  }
+
+  .ws-header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .ws-header-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .ws-header-actions button,
+  .ws-header-actions a {
+    font-size: 0.72rem;
+    padding: 7px 12px;
+  }
+
+  /* Workspace anchors */
+  .ws-anchors {
+    position: static;
+    overflow-x: auto;
+    gap: 4px;
+    padding: 10px 16px;
+    scrollbar-width: none;
+  }
+
+  .ws-anchors::-webkit-scrollbar { display: none; }
+
+  .ws-anchors button {
+    font-size: 0.72rem;
+    padding: 6px 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Workspace secciones */
+  .ws-section {
+    padding: 20px 16px;
+  }
+
+  .ws-resumen-top {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .ws-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ws-strategy-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ws-ticket-row {
+    flex-wrap: wrap;
+  }
+
+  .ws-sala-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ws-informe-hero {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ws-informe-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ws-informe-plan-item {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Radar */
+  .radar-header {
+    padding: 20px 16px 14px;
+  }
+
+  .radar-filterbar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 16px;
+  }
+
+  .radar-list {
+    padding: 12px 16px;
+  }
+
+  .radar-row {
+    grid-template-columns: 40px 1fr auto;
+    grid-template-rows: auto auto;
+    padding: 14px 12px;
+    gap: 8px;
+  }
+
+  .radar-alerta {
+    grid-column: 1 / -1;
+    padding: 0;
+  }
+
+  .radar-cta {
+    font-size: 0.7rem;
+    padding: 6px 10px;
+  }
+
+  /* Admin — Altas y proveedores */
+  .admin-head {
+    padding: 16px 16px 0;
+  }
+
+  .admin-create,
+  .supplier-panel {
+    padding: 16px;
+    gap: 16px;
+    grid-template-columns: 1fr;
+  }
+
+  .admin-create-form {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-create-wide {
+    grid-column: 1;
+  }
+
+  .admin-grid {
+    grid-template-columns: 1fr;
+    padding: 0 16px 32px;
+  }
+
+  .consult-hero {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .consult-filterbar,
+  .admin-color-row {
+    flex-wrap: wrap;
+  }
+
+  .supplier-layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* Formulario propuestas */
+  .ws-propuesta-form {
+    padding: 16px;
+  }
+
+  .ws-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ws-form-actions {
+    flex-wrap: wrap;
+  }
+
+  /* Lista propuestas */
+  .ws-propuesta-item {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .ws-propuesta-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .ws-score-block {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .ws-metrics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .radar-row {
+    grid-template-columns: 36px 1fr;
+  }
+
+  .radar-cta {
+    display: none;
+  }
+
+  .admin-card-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
