@@ -153,12 +153,30 @@ export async function PUT(req) {
       auth: { autoRefreshToken: false, persistSession: false }
     })
 
-    const { data: { users }, error: listError } = await adminSupabase.auth.admin.listUsers({ perPage: 1000 })
-    if (listError) throw listError
+    const filterRes = await fetch(
+      `${supabaseUrl}/auth/v1/admin/users?filter=${encodeURIComponent(`email="${email}"`)}`,
+      { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` } }
+    )
+    const filterData = await filterRes.json()
+    const authUser = filterData.users?.[0]
 
-    const authUser = users?.find(u => u.email?.toLowerCase() === email)
     if (!authUser) {
-      return Response.json({ error: 'No se encontró usuario con ese email en Supabase Auth.' }, { status: 404 })
+      // Fallback: paginar listUsers
+      let found = null
+      let page = 1
+      while (!found) {
+        const { data, error } = await adminSupabase.auth.admin.listUsers({ page, perPage: 50 })
+        if (error || !data?.users?.length) break
+        found = data.users.find(u => u.email?.toLowerCase() === email)
+        if (!data.nextPage) break
+        page++
+      }
+      if (!found) {
+        return Response.json({ error: `No se encontró usuario con email ${email} en Supabase Auth.` }, { status: 404 })
+      }
+      const { error: updateError } = await adminSupabase.auth.admin.updateUserById(found.id, { password })
+      if (updateError) throw updateError
+      return Response.json({ ok: true, email, password })
     }
 
     const { error: updateError } = await adminSupabase.auth.admin.updateUserById(authUser.id, { password })
