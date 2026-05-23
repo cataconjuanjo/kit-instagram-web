@@ -6,6 +6,13 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail } from '../demo'
 
+const PLAN_LABEL = { basic: 'Básico', pro: 'Sala', premium: 'Acompañado' }
+
+function generarPassword() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
+
 export default function AdminPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
@@ -16,6 +23,7 @@ export default function AdminPage() {
   const [errorAlta, setErrorAlta] = useState('')
   const [errorEdicion, setErrorEdicion] = useState('')
   const [altaCreada, setAltaCreada] = useState(null)
+  const [copiado, setCopiado] = useState(false)
   const [editandoId, setEditandoId] = useState(null)
   const [edicion, setEdicion] = useState(null)
   const [hubLinks, setHubLinks] = useState([])
@@ -25,8 +33,8 @@ export default function AdminPage() {
     email: '',
     ciudad: '',
     slug: '',
-    password: '',
-    plan: 'basic',
+    password: generarPassword(),
+    plan: 'pro',
     subscription_status: 'trialing',
   })
 
@@ -213,12 +221,20 @@ export default function AdminPage() {
 
       setRestaurantes(prev => [...prev, data.restaurante].sort((a, b) => a.nombre.localeCompare(b.nombre)))
       setAltaCreada(data)
-      setNuevoRestaurante({ nombre: '', email: '', ciudad: '', slug: '', password: '', plan: 'basic', subscription_status: 'trialing' })
+      setNuevoRestaurante({ nombre: '', email: '', ciudad: '', slug: '', password: generarPassword(), plan: 'pro', subscription_status: 'trialing' })
     } catch (error) {
       setErrorAlta(error.message)
     }
 
     setCreando(false)
+  }
+
+  function copiarAcceso() {
+    if (!altaCreada) return
+    const texto = `Acceso a Carta Viva\n\nEmail: ${altaCreada.credenciales.email}\nContraseña: ${altaCreada.credenciales.password}\n\nTu carta pública: ${altaCreada.urls.carta}\nModo camarero (para sala): ${altaCreada.urls.camarero}\n\nEntra en tu panel: https://cataconjuanjo.com/login`
+    navigator.clipboard.writeText(texto)
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 2500)
   }
 
   async function salir() {
@@ -308,19 +324,24 @@ export default function AdminPage() {
               />
             </label>
             <label className="admin-create-wide">
-              Contrasena inicial
-              <input
-                value={nuevoRestaurante.password}
-                onChange={e => actualizarCampo('password', e.target.value)}
-                placeholder="Déjalo vacío para generar una automáticamente"
-              />
+              Contraseña inicial
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={nuevoRestaurante.password}
+                  onChange={e => actualizarCampo('password', e.target.value)}
+                  style={{ flex: 1, fontFamily: 'monospace' }}
+                />
+                <button type="button" onClick={() => actualizarCampo('password', generarPassword())} style={{ whiteSpace: 'nowrap', fontSize: 11 }}>
+                  Regenerar
+                </button>
+              </div>
             </label>
             <label>
               Plan
               <select value={nuevoRestaurante.plan} onChange={e => actualizarCampo('plan', e.target.value)}>
-                <option value="basic">Basico</option>
+                <option value="basic">Básico</option>
                 <option value="pro">Sala</option>
-                <option value="premium">Acompanado</option>
+                <option value="premium">Acompañado</option>
               </select>
             </label>
             <label>
@@ -341,10 +362,17 @@ export default function AdminPage() {
           {altaCreada && (
             <div className="admin-alert admin-alert-ok">
               <strong>{altaCreada.restaurante.nombre} creado.</strong>
-              <span>Usuario: {altaCreada.credenciales.email}</span>
-              <span>Contrasena: {altaCreada.credenciales.password}</span>
+              <span>Email: {altaCreada.credenciales.email}</span>
+              <span style={{ fontFamily: 'monospace' }}>Contraseña: {altaCreada.credenciales.password}</span>
               <span>Carta: {altaCreada.urls.carta}</span>
               <span>Modo sala: {altaCreada.urls.camarero}</span>
+              <button
+                type="button"
+                onClick={copiarAcceso}
+                style={{ marginTop: 10, background: copiado ? '#3a6b4e' : '#111', color: '#fff', border: 'none', padding: '10px 18px', fontSize: 12, cursor: 'pointer', letterSpacing: '0.08em' }}
+              >
+                {copiado ? '✓ Copiado' : 'Copiar acceso para enviar'}
+              </button>
             </div>
           )}
         </section>
@@ -430,7 +458,12 @@ export default function AdminPage() {
               ) : (
                 <>
               <div>
-                <h3>{restaurante.nombre}</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <h3 style={{ margin: 0 }}>{restaurante.nombre}</h3>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', background: restaurante.plan === 'premium' ? '#f1e4e7' : restaurante.plan === 'pro' ? '#e8f0eb' : '#f5f5f5', color: restaurante.plan === 'premium' ? '#74223d' : restaurante.plan === 'pro' ? '#385f4f' : '#888', padding: '2px 8px', borderRadius: 99 }}>
+                    {PLAN_LABEL[restaurante.plan] || restaurante.plan}
+                  </span>
+                </div>
                 <p>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || 'Sin ubicación'}</p>
                 <span>{restaurante.email}</span>
                 <small className="admin-slug">/{restaurante.slug}</small>
