@@ -132,6 +132,45 @@ export async function POST(req) {
   }
 }
 
+export async function PUT(req) {
+  try {
+    if (!serviceRoleKey) {
+      return Response.json({ error: 'Falta SUPABASE_SERVICE_ROLE_KEY.' }, { status: 500 })
+    }
+
+    const admin = await validarAdmin(req)
+    if (admin.error) return Response.json({ error: admin.error }, { status: admin.status })
+
+    const body = await req.json()
+    const email = String(body.email || '').trim().toLowerCase()
+    const password = String(body.password || '').trim()
+
+    if (!email || !password || password.length < 8) {
+      return Response.json({ error: 'Email y contraseña (mín. 8 caracteres) son obligatorios.' }, { status: 400 })
+    }
+
+    const adminSupabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+
+    const { data: { users }, error: listError } = await adminSupabase.auth.admin.listUsers({ perPage: 1000 })
+    if (listError) throw listError
+
+    const authUser = users?.find(u => u.email?.toLowerCase() === email)
+    if (!authUser) {
+      return Response.json({ error: 'No se encontró usuario con ese email en Supabase Auth.' }, { status: 404 })
+    }
+
+    const { error: updateError } = await adminSupabase.auth.admin.updateUserById(authUser.id, { password })
+    if (updateError) throw updateError
+
+    return Response.json({ ok: true, email, password })
+  } catch (error) {
+    console.error('Error reseteando contraseña:', error)
+    return Response.json({ error: 'No se pudo cambiar la contraseña.' }, { status: 500 })
+  }
+}
+
 export async function PATCH(req) {
   try {
     if (!serviceRoleKey) {

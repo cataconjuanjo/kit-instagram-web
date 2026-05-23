@@ -26,6 +26,10 @@ export default function AdminPage() {
   const [copiado, setCopiado] = useState(false)
   const [editandoId, setEditandoId] = useState(null)
   const [edicion, setEdicion] = useState(null)
+  const [resetandoId, setResetandoId] = useState(null)
+  const [nuevaPass, setNuevaPass] = useState('')
+  const [resetResult, setResetResult] = useState(null)
+  const [copiadoReset, setCopiadoReset] = useState(false)
   const [hubLinks, setHubLinks] = useState([])
   const [nuevoLink, setNuevoLink] = useState({ titulo: '', url: '', tipo: 'link' })
   const [nuevoRestaurante, setNuevoRestaurante] = useState({
@@ -237,6 +241,33 @@ export default function AdminPage() {
     setTimeout(() => setCopiado(false), 2500)
   }
 
+  async function resetPassword(restaurante) {
+    const pass = generarPassword()
+    setResetandoId(restaurante.id)
+    setNuevaPass(pass)
+    setResetResult(null)
+    const token = await tokenAdmin()
+    const res = await fetch('/api/admin/restaurantes', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ email: restaurante.email, password: pass })
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setResetResult({ ok: true, email: restaurante.email, password: pass })
+    } else {
+      setResetResult({ ok: false, error: data.error })
+    }
+  }
+
+  function copiarReset() {
+    if (!resetResult?.ok) return
+    const texto = `Nuevas credenciales de acceso\n\nEmail: ${resetResult.email}\nContraseña: ${resetResult.password}\n\nPanel: https://cataconjuanjo.com/login`
+    navigator.clipboard.writeText(texto)
+    setCopiadoReset(true)
+    setTimeout(() => setCopiadoReset(false), 2500)
+  }
+
   async function salir() {
     clearAdminRestaurantEmail()
     await supabase.auth.signOut()
@@ -445,9 +476,31 @@ export default function AdminPage() {
                 <small className="admin-slug">/{restaurante.slug}</small>
               </div>
               <div className="admin-card-actions">
-                <button onClick={() => gestionar(restaurante)}>Gestionar dashboard</button>
-                <button className="admin-plain-button" onClick={() => empezarEdicion(restaurante)}>Editar datos</button>
+                <button onClick={() => gestionar(restaurante)}>Abrir dashboard</button>
+                <button className="admin-plain-button" onClick={() => empezarEdicion(restaurante)}>Editar</button>
+                <button className="admin-plain-button" onClick={() => { setResetResult(null); resetPassword(restaurante) }}>
+                  {resetandoId === restaurante.id && !resetResult ? 'Generando...' : 'Nueva contraseña'}
+                </button>
               </div>
+              {resetandoId === restaurante.id && resetResult && (
+                <div className={`admin-alert ${resetResult.ok ? 'admin-alert-ok' : 'admin-alert-error'}`} style={{ marginTop: 10 }}>
+                  {resetResult.ok ? (
+                    <>
+                      <span>Email: <strong>{resetResult.email}</strong></span>
+                      <span>Contraseña: <strong style={{ fontFamily: 'monospace' }}>{resetResult.password}</strong></span>
+                      <button
+                        type="button"
+                        onClick={copiarReset}
+                        style={{ marginTop: 8, background: copiadoReset ? '#3a6b4e' : '#111', color: '#fff', border: 'none', padding: '8px 16px', fontSize: 11, cursor: 'pointer' }}
+                      >
+                        {copiadoReset ? '✓ Copiado' : 'Copiar para enviar'}
+                      </button>
+                    </>
+                  ) : (
+                    <span>{resetResult.error}</span>
+                  )}
+                </div>
+              )}
                 </>
               )}
             </article>
