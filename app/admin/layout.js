@@ -78,6 +78,13 @@ export default function AdminLayout({ children }) {
             >
               Radar global
             </Link>
+            <Link
+              href="/admin"
+              className={`${styles.footerLink} ${pathname === '/admin' ? styles.footerLinkActive : ''}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              Altas y accesos
+            </Link>
           </div>
           <button type="button" onClick={cerrarSesion} className={styles.logoutButton}>Salir</button>
         </div>
