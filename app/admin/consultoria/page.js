@@ -39,12 +39,16 @@ function ticketReferencia(restaurante, platosActivos) {
 function mapaPrecios(vinosConPrecio, ticket) {
   if (!ticket) return { gamas: [], desajustes: [], base: 'sin_ticket' }
   const total = vinosConPrecio.length
+  const t50  = Math.max(ticket * 0.5, 20)
+  const t100 = Math.max(ticket * 1.0, 38)
+  const t200 = Math.max(ticket * 2.0, 70)
+  const t300 = Math.max(ticket * 3.0, 120)
   const rangos = [
-    { id: 'baja',     label: 'Gama baja',  objetivo: 20, min: 0,            max: ticket * 0.5 },
-    { id: 'media',    label: 'Gama media', objetivo: 45, min: ticket * 0.5,  max: ticket * 1.0 },
-    { id: 'alta',     label: 'Gama alta',  objetivo: 15, min: ticket * 1.0,  max: ticket * 2.0 },
-    { id: 'muy_alta', label: 'Muy alta',   objetivo: 15, min: ticket * 2.0,  max: ticket * 3.0 },
-    { id: 'premium',  label: 'Premium',    objetivo:  5, min: ticket * 3.0,  max: Infinity },
+    { id: 'baja',     label: 'Gama baja',  objetivo: 20, min: 0,     max: t50  },
+    { id: 'media',    label: 'Gama media', objetivo: 45, min: t50,   max: t100 },
+    { id: 'alta',     label: 'Gama alta',  objetivo: 15, min: t100,  max: t200 },
+    { id: 'muy_alta', label: 'Muy alta',   objetivo: 15, min: t200,  max: t300 },
+    { id: 'premium',  label: 'Premium',    objetivo:  5, min: t300,  max: Infinity },
   ]
   const gamas = rangos.map(rango => {
     const vinos = vinosConPrecio.filter(v => {
