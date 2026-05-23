@@ -223,7 +223,7 @@ async function archivoPdfSeleccionado(e) {
         })))
       }
     } catch (error) {
-      setErrorPdf('Error leyendo el archivo. Revisa que sea PDF, JPG o PNG y vuelve a intentarlo.')
+      setErrorPdf('Error leyendo el archivo. Formatos válidos: PDF, Excel (.xlsx), CSV, JPG o PNG.')
     }
     setLeyendoPdf(false)
   }
@@ -389,7 +389,7 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
               onClick={() => { setMostrarImportador(!mostrarImportador); setMostrarFormulario(false) }}
               className={mostrarImportador ? styles.ghost : styles.secondary}
             >
-              {mostrarImportador ? 'Cerrar importador' : 'Importar PDF'}
+              {mostrarImportador ? 'Cerrar importador' : 'Importar carta'}
             </button>
           )}
           <button
@@ -416,12 +416,12 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
             <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>Importar carta de vinos</p>
             <p style={{ fontSize: 13, color: '#999', lineHeight: 1.6, margin: '0 0 16px' }}>
-              Sube una carta en PDF, JPG o PNG. La app intentará extraer nombre, bodega, tipo, región, uva, añada, precios y perfil.
+              Sube la carta en cualquier formato: PDF, Excel, CSV o foto (JPG/PNG). La IA extrae nombre, bodega, tipo, región, uva, añada y precios. Revisa y corrige antes de guardar.
             </p>
-            <input ref={inputPdfRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={archivoPdfSeleccionado} style={{ display: 'none' }} />
+            <input ref={inputPdfRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls,.csv,text/csv" onChange={archivoPdfSeleccionado} style={{ display: 'none' }} />
             <button onClick={() => inputPdfRef.current?.click()} disabled={leyendoPdf}
               style={{ width: '100%', background: leyendoPdf ? '#f3f3f3' : '#fafafa', color: leyendoPdf ? '#aaa' : '#111', border: '1px dashed #d8d8d8', padding: '18px', fontSize: 13, cursor: leyendoPdf ? 'not-allowed' : 'pointer', marginBottom: 12 }}>
-              {leyendoPdf ? 'Leyendo archivo...' : pdfNombre ? `Archivo cargado: ${pdfNombre}` : 'Subir carta de vinos en PDF, JPG o PNG'}
+              {leyendoPdf ? 'Leyendo archivo...' : pdfNombre ? `Archivo cargado: ${pdfNombre}` : 'PDF · Excel · CSV · Foto — arrastra o haz clic'}
             </button>
             {errorPdf && <p style={{ fontSize: 12, color: '#c07070', margin: '0 0 12px' }}>{errorPdf}</p>}
 

@@ -1,77 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
-import pdf from 'pdf-parse/lib/pdf-parse'
+import * as XLSX from 'xlsx'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-async function extraerTextoPdf(base64) {
-  const result = await pdf(Buffer.from(base64, 'base64'))
-  return (result.text || '').trim()
-}
-
-function extraerJson(texto) {
-  const limpio = (texto || '').trim()
-  try {
-    return JSON.parse(limpio)
-  } catch {}
-
-  const match = limpio.match(/\[[\s\S]*\]/)
-  if (!match) return []
-  try {
-    return JSON.parse(match[0])
-  } catch {
-    return []
-  }
-}
-
-export async function POST(req) {
-  try {
-    const { pdfBase64, fileBase64, mediaType } = await req.json()
-    const data = fileBase64 || pdfBase64
-    const tipoArchivo = mediaType || 'application/pdf'
-
-    if (!data) {
-      return Response.json({ vinos: [], error: 'Archivo no recibido' }, { status: 400 })
-    }
-
-    const textoPdf = tipoArchivo === 'application/pdf' ? await extraerTextoPdf(data) : ''
-    const entrada = textoPdf.length > 200
-      ? {
-          type: 'text',
-          text: `Texto extraido del PDF:\n\n${textoPdf.slice(0, 60000)}`
-        }
-      : tipoArchivo === 'application/pdf'
-        ? {
-            type: 'document',
-            source: {
-              type: 'base64',
-              media_type: 'application/pdf',
-              data
-            }
-          }
-        : {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: tipoArchivo,
-              data
-            }
-          }
-
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 12000,
-      system: 'Eres un extractor de cartas de vinos. Lees PDFs e imágenes de restaurantes y devuelves solo JSON válido. No inventes vinos. No incluyas platos ni bebidas que no sean vino, espumoso, generoso o dulce.',
-      messages: [{
-        role: 'user',
-        content: [
-          entrada,
-          {
-            type: 'text',
-            text: `Extrae la carta de vinos de este archivo.
+const PROMPT_EXTRACCION = `Extrae la carta de vinos de este archivo.
 
 Devuelve exclusivamente un array JSON válido, sin markdown, sin explicaciones. Extrae como máximo 120 referencias.
 
-Cada objeto debe tener esta forma:
+Cada objeto debe tener esta forma exacta:
 {
   "nombre": "nombre del vino",
   "bodega": "bodega si aparece o vacío",
@@ -85,22 +21,74 @@ Cada objeto debe tener esta forma:
 }
 
 Reglas:
-No incluyas cervezas, refrescos, cocteles, cafés ni platos.
+No incluyas cervezas, refrescos, cócteles, cafés ni platos.
 Si no sabes un campo, déjalo vacío o 0.
-Usa precios en euros como número.
+Usa precios en euros como número sin símbolo.
 Si aparecen precio de copa y botella, distingue ambos.
 Si solo hay un precio, colócalo como precio_botella.
-El texto extraido de PDF puede unir precios de copa y botella: por ejemplo "1455" suele significar copa 14 y botella 55; "8,038" suele significar copa 8,0 y botella 38; "25110" suele significar copa 25 y botella 110.
-Usa los encabezados cercanos como Blancos, Tintos, Champagne, Generosos o Espumosos para inferir el tipo cuando no aparezca en la línea del vino.
+Cuando el texto del PDF une precios (ej: "1455"), interpreta como copa 14 y botella 55; "8,038" como copa 8 y botella 38.
+Usa encabezados como Blancos, Tintos, Champagne, Generosos, Espumosos para inferir el tipo cuando no aparezca en la línea del vino.
 No dupliques el mismo vino.`
-          }
-        ]
-      }]
+
+function extraerJson(texto) {
+  const limpio = (texto || '').trim()
+  try { return JSON.parse(limpio) } catch {}
+  const match = limpio.match(/\[[\s\S]*\]/)
+  if (!match) return []
+  try { return JSON.parse(match[0]) } catch { return [] }
+}
+
+function excelATexto(base64) {
+  const workbook = XLSX.read(Buffer.from(base64, 'base64'), { type: 'buffer' })
+  const sheet = workbook.Sheets[workbook.SheetNames[0]]
+  return XLSX.utils.sheet_to_csv(sheet)
+}
+
+function csvATexto(base64) {
+  return Buffer.from(base64, 'base64').toString('utf-8')
+}
+
+export async function POST(req) {
+  try {
+    const { fileBase64, pdfBase64, mediaType } = await req.json()
+    const data = fileBase64 || pdfBase64
+    const tipo = (mediaType || 'application/pdf').toLowerCase()
+
+    if (!data) {
+      return Response.json({ vinos: [], error: 'Archivo no recibido' }, { status: 400 })
+    }
+
+    let entrada
+
+    if (tipo.startsWith('image/')) {
+      entrada = {
+        type: 'image',
+        source: { type: 'base64', media_type: tipo, data },
+      }
+    } else if (tipo === 'application/pdf') {
+      entrada = {
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data },
+      }
+    } else if (tipo.includes('spreadsheetml') || tipo.includes('ms-excel') || tipo.includes('excel')) {
+      const texto = excelATexto(data)
+      entrada = { type: 'text', text: `Carta de vinos (Excel):\n\n${texto.slice(0, 60000)}` }
+    } else {
+      // CSV y cualquier formato de texto
+      const texto = csvATexto(data)
+      entrada = { type: 'text', text: `Carta de vinos (CSV/texto):\n\n${texto.slice(0, 60000)}` }
+    }
+
+    const message = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 12000,
+      system: 'Eres un extractor de cartas de vinos. Lees cualquier formato de archivo y devuelves solo JSON válido. No inventes vinos. No incluyas platos ni bebidas que no sean vino, espumoso, generoso o dulce.',
+      messages: [{ role: 'user', content: [entrada, { type: 'text', text: PROMPT_EXTRACCION }] }],
     })
 
     return Response.json({ vinos: extraerJson(message.content?.[0]?.text) })
   } catch (error) {
-    console.error('Error importando vinos desde archivo:', error)
+    console.error('Error importando carta:', error)
     return Response.json({ vinos: [], error: 'No se pudo leer el archivo' }, { status: 500 })
   }
 }
