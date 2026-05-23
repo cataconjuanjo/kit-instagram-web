@@ -22,6 +22,11 @@ export default function AdminSidebar() {
 
   return (
     <aside className="admin-sidebar admin-sidebar-ng">
+      <div className="asng-brand">
+        <strong>Carta Viva</strong>
+        <span>Panel consultor</span>
+      </div>
+
       <nav className="asng-tools">
         <Link href="/admin/proveedores" className={enProveedores ? 'active' : ''}>Proveedores</Link>
         <Link href="/sommelier" className={enSommelier ? 'active' : ''}>Selección Juanjo</Link>

@@ -240,14 +240,6 @@ export default function ProveedoresPage() {
 
   return (
     <main className="admin-page">
-      <header className="admin-topbar">
-        <div>
-          <p className="admin-kicker">Superadmin</p>
-          <h1>Proveedores y catálogos</h1>
-          <p>{user?.email}</p>
-        </div>
-      </header>
-
       <section className="admin-shell">
         <AdminSidebar />
 

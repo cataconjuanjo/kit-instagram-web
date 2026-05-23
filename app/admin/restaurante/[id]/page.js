@@ -449,14 +449,6 @@ export default function RestauranteWorkspace() {
 
   return (
     <main className="admin-page">
-      <header className="admin-topbar">
-        <div>
-          <p className="admin-kicker">Superadmin</p>
-          <h1>Panel consultor</h1>
-          <p>{user?.email}</p>
-        </div>
-      </header>
-
       <section className="admin-shell">
         <AdminSidebar />
 
