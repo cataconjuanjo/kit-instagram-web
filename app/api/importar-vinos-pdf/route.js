@@ -26,7 +26,8 @@ Si no sabes un campo, déjalo vacío o 0.
 Usa precios en euros como número sin símbolo.
 Si aparecen precio de copa y botella, distingue ambos.
 Si solo hay un precio, colócalo como precio_botella.
-Cuando el texto del PDF une precios (ej: "1455"), interpreta como copa 14 y botella 55; "8,038" como copa 8 y botella 38.
+Cuando los precios aparecen separados por espacio en la misma línea (ej: "8,0 38" o "4,5 22"), el primero es copa y el segundo botella.
+Cuando el texto une los precios sin separación (ej: "1455" o "8,038"), interpreta como copa 14 y botella 55, copa 8 y botella 38.
 Usa encabezados como Blancos, Tintos, Champagne, Generosos, Espumosos para inferir el tipo cuando no aparezca en la línea del vino.
 No dupliques el mismo vino.`
 
@@ -80,7 +81,7 @@ export async function POST(req) {
     }
 
     const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 12000,
       system: 'Eres un extractor de cartas de vinos. Lees cualquier formato de archivo y devuelves solo JSON válido. No inventes vinos. No incluyas platos ni bebidas que no sean vino, espumoso, generoso o dulce.',
       messages: [{ role: 'user', content: [entrada, { type: 'text', text: PROMPT_EXTRACCION }] }],
