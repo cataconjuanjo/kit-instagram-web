@@ -92,7 +92,7 @@ const planes = [
   {
     nombre: 'Básico',
     precio: '39',
-    precioPublico: '49',
+    precioPublico: '59',
     etiqueta: 'Carta digital viva',
     texto: 'Para restaurantes que quieren sustituir el PDF por una carta digital cuidada, actualizable y con maridaje para el cliente.',
     incluye: ['Carta digital por QR', 'Carta de vinos actualizable', 'Fichas de vino claras', 'Maridaje para el cliente', 'Personalización visual'],
