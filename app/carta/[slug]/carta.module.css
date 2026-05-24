@@ -196,13 +196,13 @@
 
 .search {
   width: 100%;
-  min-height: 44px;
+  min-height: 46px;
   border: 1px solid #ddd5c7;
   border-radius: 8px;
   background: #fffaf3;
   color: #171416;
   padding: 0 13px;
-  font-size: 15px;
+  font-size: 16px;
   box-sizing: border-box;
   outline: none;
 }
@@ -238,14 +238,14 @@
 
 .chip {
   flex-shrink: 0;
-  min-height: 32px;
+  min-height: 36px;
   border: 1px solid #ddd5c7;
   border-radius: 999px;
   background: transparent;
   color: #6c655c;
-  padding: 0 13px;
+  padding: 0 14px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 750;
 }
 
@@ -513,7 +513,7 @@
 .wineName {
   margin: 0;
   color: #171416;
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 780;
   line-height: 1.18;
 }
@@ -521,13 +521,13 @@
 .vintagePill {
   display: inline-flex;
   align-items: center;
-  min-height: 20px;
+  min-height: 22px;
   border: 1px solid #ded4c4;
   border-radius: 999px;
-  padding: 0 7px;
+  padding: 0 8px;
   color: #6f675e;
   background: rgba(255, 255, 255, 0.52);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 760;
   line-height: 1;
 }
@@ -535,14 +535,14 @@
 .wineMeta {
   margin: 5px 0 0 16px;
   color: #766e64;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.35;
 }
 
 .wineGrape {
   margin: 3px 0 0 16px;
   color: #4f4840;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 760;
   line-height: 1.35;
 }
@@ -1024,17 +1024,8 @@
     text-align: right;
   }
 
-  .wineName {
-    font-size: 14px;
-  }
-
-  .wineMeta,
-  .wineGrape {
-    font-size: 11px;
-  }
-
   .mainPrice span {
-    font-size: 16px;
+    font-size: 17px;
   }
 
   .modeGrid {
