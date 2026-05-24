@@ -1,13 +1,16 @@
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
 
 // Redirige al restaurante al portal de cliente de Stripe
 // donde puede cambiar de plan, actualizar tarjeta o cancelar
 export async function POST(req) {
   try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return Response.json({ error: 'Stripe no configurado.' }, { status: 503 })
+    }
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
     const { restaurante_id } = await req.json()
     if (!restaurante_id) {
       return Response.json({ error: 'restaurante_id obligatorio.' }, { status: 400 })

@@ -1,8 +1,6 @@
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-
 // Mapa de price_id → plan interno
 function planDesdePriceId(priceId) {
   if (priceId === process.env.STRIPE_PRICE_BASIC)   return 'basic'
@@ -13,6 +11,11 @@ function planDesdePriceId(priceId) {
 
 // El webhook necesita el body en raw para verificar la firma de Stripe
 export async function POST(req) {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return new Response('Stripe no configurado.', { status: 503 })
+  }
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+
   const body      = await req.text()
   const signature = req.headers.get('stripe-signature')
 

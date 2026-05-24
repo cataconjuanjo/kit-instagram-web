@@ -1,18 +1,19 @@
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
-
-// Mapa de plan → precio de Stripe (configura los IDs en las env vars)
-const PRICE_IDS = {
-  basic:   process.env.STRIPE_PRICE_BASIC,
-  pro:     process.env.STRIPE_PRICE_PRO,
-  premium: process.env.STRIPE_PRICE_PREMIUM,
-}
 
 export async function POST(req) {
   try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return Response.json({ error: 'Stripe no configurado.' }, { status: 503 })
+    }
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+    const PRICE_IDS = {
+      basic:   process.env.STRIPE_PRICE_BASIC,
+      pro:     process.env.STRIPE_PRICE_PRO,
+      premium: process.env.STRIPE_PRICE_PREMIUM,
+    }
     const { plan, restaurante_id, email, nombre } = await req.json()
 
     if (!plan || !PRICE_IDS[plan]) {
