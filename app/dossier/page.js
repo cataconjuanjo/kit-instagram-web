@@ -525,14 +525,26 @@ export default function Dossier() {
 
         @media print {
           .print-btn { display: none !important; }
+
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+
           body { background: #fff; }
+
           .page {
             width: 100%;
             margin: 0;
             box-shadow: none;
             page-break-after: always;
+            break-after: page;
           }
-          .page:last-child { page-break-after: auto; }
+          .page:last-child {
+            page-break-after: auto;
+            break-after: auto;
+          }
           .cover { height: 100vh; }
           .inner { min-height: 100vh; }
         }
@@ -540,9 +552,20 @@ export default function Dossier() {
         @page { size: A4; margin: 0; }
       `}</style>
 
-      <button className="print-btn" onClick={() => window.print()}>
-        Descargar PDF
-      </button>
+      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+        <button
+          style={{ background: '#2c1810', color: '#e8d9c0', border: 'none', padding: '10px 22px', fontSize: 12, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
+          onClick={() => {
+            alert('Para que salgan los colores:\n\n1. Clic en "Más ajustes" o "More settings"\n2. Activa "Gráficos de fondo" (Background graphics)\n3. Márgenes → Ninguno\n4. Guardar como PDF')
+            window.print()
+          }}
+        >
+          Descargar PDF
+        </button>
+        <span style={{ fontSize: 10, color: '#888', letterSpacing: '0.04em' }}>
+          Activa "Gráficos de fondo" en el diálogo
+        </span>
+      </div>
 
       {/* ══════════════════════════════════════════════════════════ */}
       {/* PORTADA                                                    */}
