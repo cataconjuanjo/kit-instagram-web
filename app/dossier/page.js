@@ -716,7 +716,7 @@ export default function Dossier() {
                   <p className="plan-tag">Plan Básico</p>
                   <p className="plan-name">Básico</p>
                   <p className="plan-price-real">59€ <span>/ mes</span></p>
-                  <p className="plan-founder">Precio fundador: <s>39€/mes</s></p>
+                  <p className="plan-founder">Precio fundador: 39€/mes</p>
                 </div>
                 <div className="plan-body">
                   <p className="plan-limit">Hasta 60 referencias de vino</p>
@@ -736,7 +736,7 @@ export default function Dossier() {
                   <p className="plan-tag">Más popular</p>
                   <p className="plan-name">Sala</p>
                   <p className="plan-price-real">99€ <span>/ mes</span></p>
-                  <p className="plan-founder">Precio fundador: <s>79€/mes</s></p>
+                  <p className="plan-founder">Precio fundador: 79€/mes</p>
                 </div>
                 <div className="plan-body">
                   <p className="plan-limit">Hasta 120 referencias de vino</p>
@@ -758,7 +758,7 @@ export default function Dossier() {
                   <p className="plan-tag">Plan Premium</p>
                   <p className="plan-name">Acompañado</p>
                   <p className="plan-price-real">199€ <span>/ mes</span></p>
-                  <p className="plan-founder">Precio fundador: <s>149€/mes</s></p>
+                  <p className="plan-founder">Precio fundador: 149€/mes</p>
                 </div>
                 <div className="plan-body">
                   <p className="plan-limit">Hasta 200 referencias de vino</p>
@@ -782,6 +782,13 @@ export default function Dossier() {
                 Los primeros cinco restaurantes que se sumen mantendrán el precio fundador
                 de por vida, sin que ninguna subida futura les afecte. Es una forma de
                 reconocer a quienes confían primero.
+              </p>
+              <p style={{ marginTop: 10 }}>
+                <strong>Carta Viva es una app viva.</strong>{' '}
+                Está en desarrollo activo y evoluciona con cada restaurante que se suma.
+                Las necesidades reales de cada negocio moldean lo que viene después.
+                Si tienes una idea o una necesidad concreta, la escuchamos — y probablemente
+                acabe siendo una funcionalidad para todos.
               </p>
             </div>
           </div>
