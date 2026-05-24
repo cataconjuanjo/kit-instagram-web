@@ -1,6 +1,48 @@
 'use client'
 
+import { useState } from 'react'
+
+async function descargarPDF() {
+  const html2canvas = (await import('html2canvas')).default
+  const jsPDF = (await import('jspdf')).default
+
+  const paginas = document.querySelectorAll('.page')
+  const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' })
+
+  for (let i = 0; i < paginas.length; i++) {
+    const canvas = await html2canvas(paginas[i], {
+      scale: 3,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      onclone: (doc) => {
+        // Ocultar el botón de descarga en la captura
+        const btn = doc.querySelector('.download-bar')
+        if (btn) btn.style.display = 'none'
+      }
+    })
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.97)
+    if (i > 0) pdf.addPage()
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297)
+  }
+
+  pdf.save('carta-viva-dossier-2026.pdf')
+}
+
 export default function Dossier() {
+  const [generando, setGenerando] = useState(false)
+
+  async function handleDescargar() {
+    setGenerando(true)
+    try {
+      await descargarPDF()
+    } finally {
+      setGenerando(false)
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -552,19 +594,27 @@ export default function Dossier() {
         @page { size: A4; margin: 0; }
       `}</style>
 
-      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 999, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+      <div className="download-bar" style={{ position: 'fixed', top: 20, right: 20, zIndex: 999 }}>
         <button
-          style={{ background: '#2c1810', color: '#e8d9c0', border: 'none', padding: '10px 22px', fontSize: 12, fontFamily: 'DM Sans, sans-serif', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
-          onClick={() => {
-            alert('Para que salgan los colores:\n\n1. Clic en "Más ajustes" o "More settings"\n2. Activa "Gráficos de fondo" (Background graphics)\n3. Márgenes → Ninguno\n4. Guardar como PDF')
-            window.print()
+          style={{
+            background: generando ? '#5a3020' : '#2c1810',
+            color: '#e8d9c0',
+            border: 'none',
+            padding: '11px 24px',
+            fontSize: 12,
+            fontFamily: 'DM Sans, sans-serif',
+            fontWeight: 500,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            cursor: generando ? 'wait' : 'pointer',
+            boxShadow: '0 2px 16px rgba(0,0,0,0.25)',
+            minWidth: 160,
           }}
+          onClick={handleDescargar}
+          disabled={generando}
         >
-          Descargar PDF
+          {generando ? 'Generando PDF…' : '↓ Descargar PDF'}
         </button>
-        <span style={{ fontSize: 10, color: '#888', letterSpacing: '0.04em' }}>
-          Activa "Gráficos de fondo" en el diálogo
-        </span>
       </div>
 
       {/* ══════════════════════════════════════════════════════════ */}
