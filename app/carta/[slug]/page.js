@@ -704,7 +704,10 @@ setPerfiles(nuevosPerfiles)
             style={enComparador ? { background: colorPrimario, borderColor: colorPrimario } : undefined}
             aria-label={enComparador ? i.quitarComparador : i.añadirComparador}
           >
-            {enComparador ? '✓' : '+'}
+            {enComparador
+              ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20,6 9,17 4,12"/></svg>
+              : <><svg width="13" height="10" viewBox="0 0 20 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="6" cy="6" r="5"/><circle cx="14" cy="6" r="5"/></svg><span>VS</span></>
+            }
           </button>
         </div>
       </article>
@@ -835,7 +838,6 @@ setPerfiles(nuevosPerfiles)
                   </text>
                 )
               })}
-{console.log('Perfiles en render:', JSON.stringify(perfiles))}
 {vinosComparador.map((v, idx) => {
   const perfil = perfiles[v.id]
   if (!perfil) return null
@@ -958,7 +960,7 @@ setPerfiles(nuevosPerfiles)
   )
 
   if (vista === 'carta') return (
-    <div className={styles.shell} style={{ paddingBottom: vinosComparador.length > 0 ? 96 : 34 }}>
+    <div className={styles.shell} style={{ paddingBottom: 80 }}>
       <header className={styles.hero} style={heroStyle()}>
         <div className={styles.heroTop}>
           <div>
@@ -979,10 +981,6 @@ setPerfiles(nuevosPerfiles)
           </button>
         </div>
 
-        <nav className={styles.tabs}>
-          <button className={`${styles.tab} ${styles.tabActive}`} onClick={() => setVista('carta')}>{i.carta}</button>
-          <button className={styles.tab} onClick={() => setVista('sommelier')}>{i.sommelier}</button>
-        </nav>
       </header>
 
       <main className={styles.content}>
@@ -1295,10 +1293,15 @@ setPerfiles(nuevosPerfiles)
             onClick={() => { setMostrarComparador(true); cargarPerfiles(vinosComparador) }}
             style={{ color: colorPrimario }}
           >
-            {i.comparar}
+            {i.comparar} →
           </button>
         </div>
       )}
+
+      <nav className={styles.bottomNav}>
+        <button className={`${styles.bottomNavBtn} ${styles.bottomNavActive}`} onClick={() => setVista('carta')} style={{ color: colorPrimario, borderTopColor: colorPrimario }}>{i.carta}</button>
+        <button className={styles.bottomNavBtn} onClick={() => setVista('sommelier')}>{i.sommelier}</button>
+      </nav>
     </div>
   )
 
@@ -1324,10 +1327,6 @@ setPerfiles(nuevosPerfiles)
           </button>
         </div>
 
-        <nav className={styles.tabs}>
-          <button className={styles.tab} onClick={() => setVista('carta')}>{i.carta}</button>
-          <button className={`${styles.tab} ${styles.tabActive}`} onClick={() => setVista('sommelier')}>{i.sommelier}</button>
-        </nav>
       </header>
 
       <main className={styles.content}>
@@ -1471,20 +1470,25 @@ setPerfiles(nuevosPerfiles)
           )
         })}
       </main>
+
+      <nav className={styles.bottomNav}>
+        <button className={styles.bottomNavBtn} onClick={() => setVista('carta')}>{i.carta}</button>
+        <button className={`${styles.bottomNavBtn} ${styles.bottomNavActive}`} onClick={() => setVista('sommelier')} style={{ color: colorPrimario, borderTopColor: colorPrimario }}>{i.sommelier}</button>
+      </nav>
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'system-ui, sans-serif', paddingBottom: vinosComparador.length > 0 ? 80 : 0 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--color-fondo, #fafafa)', fontFamily: 'system-ui, sans-serif', paddingBottom: 80 }}>
 
       {/* Header */}
       <div style={{ background: colorPrimario, padding: '36px 24px 24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             {restaurante.logo_url && (
-              <img src={restaurante.logo_url} alt={restaurante.nombre} style={{ height: 48, maxWidth: 160, objectFit: 'contain', marginBottom: 16, display: 'block', filter: 'brightness(0) invert(1)' }} />
+              <img src={restaurante.logo_url} alt={restaurante.nombre} style={{ height: 48, maxWidth: 160, objectFit: 'contain', marginBottom: 16, display: 'block' }} />
             )}
-            <h1 style={{ fontSize: 30, fontWeight: 300, color: '#fff', margin: '0 0 6px', fontFamily: 'Georgia, serif' }}>{restaurante.nombre}</h1>
+            <h1 style={{ fontSize: 30, fontWeight: 300, color: '#fff', margin: '0 0 6px', fontFamily: fontTitulo }}>{restaurante.nombre}</h1>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{vinos.length} {i.referencias} · {restaurante.ciudad}</p>
           </div>
           <button onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 13, padding: '6px 14px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, marginTop: 4 }}>
@@ -1493,39 +1497,27 @@ setPerfiles(nuevosPerfiles)
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', background: colorPrimario, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        {[{ id: 'carta', label: i.carta }, { id: 'sommelier', label: i.sommelier }].map(tab => (
-          <button key={tab.id} onClick={() => setVista(tab.id)} style={{
-            flex: 1, padding: '14px', border: 'none', background: 'transparent',
-            fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase',
-            color: vista === tab.id ? '#fff' : 'rgba(255,255,255,0.35)', cursor: 'pointer',
-            borderBottom: vista === tab.id ? '2px solid #fff' : '2px solid transparent'
-          }}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       {vista === 'carta' && (
         <div>
           {/* Buscador */}
-          <div style={{ padding: '12px 16px', background: seleccion.length > 0 ? colorPrimario : '#fff', borderBottom: seleccion.length > 0 ? 'none' : '1px solid #f0f0f0' }}>
+          <div style={{ padding: '12px 16px', background: '#fff', borderBottom: '1px solid #f0f0f0' }}>
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 type="text"
                 placeholder={i.buscar}
                 value={busqueda}
                 onChange={e => setBusqueda(e.target.value)}
-                style={{ flex: 1, padding: '11px 14px', border: seleccion.length > 0 ? '1px solid rgba(255,255,255,0.15)' : '1px solid #e8e8e8', borderRadius: 10, fontSize: 15, outline: 'none', color: seleccion.length > 0 ? '#fff' : '#111', background: seleccion.length > 0 ? 'rgba(255,255,255,0.1)' : '#fafafa' }}
+                style={{ flex: 1, padding: '11px 14px', border: '1px solid #e8e8e8', borderRadius: 10, fontSize: 15, outline: 'none', color: '#111', background: '#fafafa' }}
               />
               <button onClick={() => setMostrarFiltros(!mostrarFiltros)} style={{
-                padding: '11px 16px', border: '1px solid #e8e8e8', borderRadius: 10,
-                background: mostrarFiltros ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
-color: '#fff',
-border: '1px solid rgba(255,255,255,0.15)',
+                padding: '11px 16px', borderRadius: 10, cursor: 'pointer',
+                background: mostrarFiltros ? `${colorPrimario}12` : '#fafafa',
+                color: mostrarFiltros ? colorPrimario : '#888',
+                border: `1px solid ${mostrarFiltros ? colorPrimario : '#e8e8e8'}`,
+                fontWeight: mostrarFiltros ? 600 : 400, fontSize: 13,
               }}>
-                {i.filtros}
+                {i.filtros}{filtroActivo ? ' ·' : ''}
               </button>
             </div>
 
@@ -1597,7 +1589,7 @@ border: '1px solid rgba(255,255,255,0.15)',
         style={{ background: '#f5f2ee', borderRadius: 12, padding: '16px', marginBottom: 10, cursor: 'pointer', border: `1px solid ${colorPrimario}22` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[s.vinos?.tipo] || '#888', flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111', flex: 1, fontFamily: 'Georgia, serif' }}>{s.vinos?.nombre}</p>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111', flex: 1, fontFamily: fontTitulo }}>{s.vinos?.nombre}</p>
           <div style={{ background: colorPrimario, color: '#fff', fontSize: 13, fontWeight: 500, padding: '4px 12px', borderRadius: 20, flexShrink: 0 }}>{s.vinos?.precio_botella} €</div>
         </div>
         <p style={{ margin: '0 0 10px 18px', fontSize: 13, color: '#555', lineHeight: 1.8, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>{limpiarNotaSeleccion(s.nota_personal)}</p>
@@ -1624,7 +1616,7 @@ border: '1px solid rgba(255,255,255,0.15)',
         style={{ background: '#f5f2ee', borderRadius: 12, padding: '16px', marginBottom: 10, cursor: 'pointer', border: `1px solid ${colorPrimario}22` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[s.vinos?.tipo] || '#888', flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111', flex: 1, fontFamily: 'Georgia, serif' }}>{s.vinos?.nombre}</p>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111', flex: 1, fontFamily: fontTitulo }}>{s.vinos?.nombre}</p>
           <div style={{ background: colorPrimario, color: '#fff', fontSize: 13, fontWeight: 500, padding: '4px 12px', borderRadius: 20, flexShrink: 0 }}>{s.vinos?.precio_botella} €</div>
         </div>
         <p style={{ margin: '0 0 10px 18px', fontSize: 13, color: '#555', lineHeight: 1.8, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>{limpiarNotaSeleccion(s.nota_personal)}</p>
@@ -1645,8 +1637,11 @@ border: '1px solid rgba(255,255,255,0.15)',
               const grupo = vinosFiltrados.filter(v => v.tipo === tipo)
               if (!grupo.length) return null
               return (
-                <div key={tipo} style={{ marginTop: 24 }}>
-                  <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 10px' }}>{i.tipoPlural[tipo]}</p>
+                <div key={tipo} style={{ marginTop: 28 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: colorPrimario, letterSpacing: '0.14em', textTransform: 'uppercase', margin: 0, fontFamily: fontTitulo }}>{i.tipoPlural[tipo]}</p>
+                    <div style={{ flex: 1, height: 1, background: `${colorPrimario}22` }} />
+                  </div>
                   {grupo.map(v => {
                     const enComparador = vinosComparador.find(vc => vc.id === v.id)
                     return (
@@ -1671,13 +1666,24 @@ border: '1px solid rgba(255,255,255,0.15)',
                         </div>
                         <button
                           onClick={() => toggleComparador(v)}
+                          title={enComparador ? 'Quitar de comparación' : 'Comparar este vino'}
                           style={{
-                            width: 32, height: 32, borderRadius: 8, border: 'none', cursor: vinosComparador.length >= 4 && !enComparador ? 'not-allowed' : 'pointer',
-                            background: enComparador ? colorPrimario : '#f5f5f5',
-                            color: enComparador ? '#fff' : '#aaa', fontSize: 18, flexShrink: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                            cursor: vinosComparador.length >= 4 && !enComparador ? 'not-allowed' : 'pointer',
+                            background: enComparador ? colorPrimario : 'transparent',
+                            border: enComparador ? 'none' : `1px solid #e0e0e0`,
+                            color: enComparador ? '#fff' : '#bbb',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
                           }}>
-                          {enComparador ? '✓' : '+'}
+                          {enComparador
+                            ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20,6 9,17 4,12"/></svg>
+                            : <>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                                  <circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/>
+                                </svg>
+                                <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.05em' }}>VS</span>
+                              </>
+                          }
                         </button>
                       </div>
                     )
@@ -1692,7 +1698,7 @@ border: '1px solid rgba(255,255,255,0.15)',
 
       {vista === 'sommelier' && (
         <div style={{ padding: '24px 16px' }}>
-          <h2 style={{ fontSize: 24, fontWeight: 300, fontFamily: 'Georgia, serif', color: '#111', margin: '0 0 6px' }}>{i.quePedir}</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 300, fontFamily: fontTitulo, color: '#111', margin: '0 0 6px' }}>{i.quePedir}</h2>
           <p style={{ fontSize: 14, color: '#bbb', margin: '0 0 24px', lineHeight: 1.6 }}>{i.seleccionaPlatos}</p>
 
           {platosSeleccionados.length > 0 && (
@@ -1793,25 +1799,57 @@ border: '1px solid rgba(255,255,255,0.15)',
         <a href="/cartavinos" target="_blank" rel="noreferrer">Carta Viva by @cataconjuanjo</a>
       </footer>
 
-      {/* Barra comparador */}
+      {/* Pill comparador — flota sobre la nav */}
       {vinosComparador.length > 0 && (
         <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: colorPrimario, padding: '16px 20px',
+          position: 'fixed', bottom: 68, left: 16, right: 16, zIndex: 99,
+          background: colorPrimario, borderRadius: 14, padding: '12px 16px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          zIndex: 100
+          boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
         }}>
-          <p style={{ margin: 0, fontSize: 14, color: '#fff', fontWeight: 500 }}>
+          <p style={{ margin: 0, fontSize: 13, color: '#fff', fontWeight: 500 }}>
             {vinosComparador.length} {i.vinosSeleccionados}
           </p>
           <button onClick={() => { setMostrarComparador(true); cargarPerfiles(vinosComparador) }} style={{
             background: '#fff', color: colorPrimario, border: 'none',
-            padding: '10px 24px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer'
+            padding: '8px 18px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
           }}>
             {i.comparar} →
           </button>
         </div>
       )}
+
+      {/* Navegación inferior */}
+      <nav style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+        background: '#fff', borderTop: '1px solid #ebebeb',
+        display: 'flex',
+      }}>
+        {[
+          { id: 'carta', label: i.carta, icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 3h6l-1.5 9h-3L9 3z"/>
+              <path d="M10.5 12c0 3 1.5 5 1.5 5s1.5-2 1.5-5"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+              <line x1="9" y1="21" x2="15" y2="21"/>
+            </svg>
+          )},
+          { id: 'sommelier', label: i.sommelier, icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+            </svg>
+          )},
+        ].map(tab => (
+          <button key={tab.id} onClick={() => setVista(tab.id)} style={{
+            flex: 1, padding: '10px 8px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            color: vista === tab.id ? colorPrimario : '#c0c0c0',
+          }}>
+            {tab.icon}
+            <span style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: vista === tab.id ? 700 : 400 }}>{tab.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }

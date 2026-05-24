@@ -37,7 +37,7 @@
   position: relative;
   background: #171416;
   color: #fffaf3;
-  padding: 30px 18px 18px;
+  padding: 20px 18px 14px;
   overflow: hidden;
 }
 
@@ -77,14 +77,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 78px;
-  max-width: 172px;
-  min-height: 56px;
+  min-width: 60px;
+  max-width: 140px;
+  min-height: 40px;
   background: #fffaf3;
   border: 1px solid rgba(255, 250, 243, 0.22);
-  border-radius: 8px;
-  padding: 8px 10px;
-  margin-bottom: 16px;
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 10px;
 }
 
 .logo {
@@ -105,17 +105,16 @@
 .title {
   margin: 0;
   color: #fffaf3;
-  font-family: var(--font-titulo, Georgia, serif);
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 400;
   line-height: 1.05;
   letter-spacing: 0;
 }
 
 .meta {
-  margin: 10px 0 0;
+  margin: 5px 0 0;
   color: rgba(255, 250, 243, 0.58);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -328,10 +327,14 @@
   border: 1px solid #dfd6c8;
   border-radius: 8px;
   background: #fffaf3;
-  color: #171416;
+  color: var(--color-primario, #171416);
   cursor: pointer;
   padding: 10px 12px;
   text-align: left;
+}
+
+.shortcut small {
+  color: var(--color-acento, #817970);
 }
 
 .shortcut:disabled {
@@ -444,7 +447,7 @@
 }
 
 .accordionSection {
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 .accordionHead {
@@ -453,25 +456,27 @@
   justify-content: space-between;
   align-items: center;
   gap: 14px;
-  border: 1px solid #dfd6c8;
-  border-radius: 8px;
-  background: #fffaf3;
+  border: none;
+  border-bottom: 1px solid #dfd6c8;
+  border-radius: 0;
+  background: transparent;
   color: #171416;
-  padding: 15px;
+  padding: 14px 2px 12px;
   cursor: pointer;
   text-align: left;
 }
 
 .accordionIcon {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: #f3ece1;
-  color: #766e64;
-  font-size: 20px;
+  border-radius: 50%;
+  border: 1px solid #dfd6c8;
+  background: transparent;
+  color: var(--color-primario, #766e64);
+  font-size: 18px;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -619,6 +624,9 @@
 
 .mainPrice .formattedPrice {
   display: block;
+  color: var(--color-acento, #171416);
+  font-size: 19px;
+  font-weight: 880;
 }
 
 .mainPrice small,
@@ -660,15 +668,21 @@
 }
 
 .compareButton {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: 1px solid #dfd6c8;
   border-radius: 8px;
   background: #f7f2ea;
-  color: #7d746b;
+  color: #9d8e7f;
   cursor: pointer;
-  font-size: 18px;
-  font-weight: 750;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   line-height: 1;
 }
 
@@ -697,7 +711,6 @@
 .sommelierTitle {
   margin: 0;
   color: #171416;
-  font-family: Georgia, serif;
   font-size: 25px;
   font-weight: 400;
   line-height: 1.15;
@@ -927,8 +940,8 @@
   position: fixed;
   left: 12px;
   right: 12px;
-  bottom: 12px;
-  z-index: 100;
+  bottom: 76px;
+  z-index: 99;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1040,7 +1053,7 @@
   .compareBar {
     left: 8px;
     right: 8px;
-    bottom: 8px;
+    bottom: 72px;
     padding: 10px 12px;
     gap: 8px;
   }
@@ -1048,6 +1061,59 @@
   .compareText {
     font-size: 12px;
   }
+}
+
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #fffaf3;
+  border-top: 1px solid #e8e2d8;
+}
+
+.bottomNavBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px 8px 17px;
+  border: none;
+  border-top: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  color: #bbb5ae;
+  transition: color 0.15s, border-color 0.15s;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.bottomNavActive {
+  color: var(--color-primario, #171416);
+  border-top-color: currentColor;
+}
+
+/* ── Tipografía del restaurante en todos los elementos de UI ── */
+.title,
+.sectionTitle,
+.sommelierTitle,
+.wineName,
+.regionTitle,
+.dishName,
+.selectedDishName,
+.shortcut span,
+.bottomNavBtn,
+.chip,
+.filterButton,
+.clearButton,
+.modeLabel,
+.compareAction,
+.compareText {
+  font-family: var(--font-titulo, system-ui, sans-serif);
 }
 
 @media print {
@@ -1068,6 +1134,7 @@
   .shortcutPanel,
   .compareButton,
   .compareBar,
+  .bottomNav,
   .brandCredit,
   .heroCredit,
   .langButton {
