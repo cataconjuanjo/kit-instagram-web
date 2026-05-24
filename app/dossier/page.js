@@ -4,388 +4,523 @@ export default function Dossier() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=Inter:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-          font-family: 'Inter', sans-serif;
-          background: #f0ebe0;
-          color: #1a1a1a;
+          font-family: 'DM Sans', system-ui, sans-serif;
+          background: #e8e0d0;
+          color: #1c1410;
+          -webkit-font-smoothing: antialiased;
         }
 
         .print-btn {
           position: fixed;
-          top: 24px;
-          right: 24px;
+          top: 20px;
+          right: 20px;
           z-index: 999;
-          background: #531827;
-          color: #fff;
+          background: #2c1810;
+          color: #e8d9c0;
           border: none;
-          padding: 12px 24px;
-          font-size: 13px;
-          font-family: 'Inter', sans-serif;
-          letter-spacing: 0.06em;
+          padding: 10px 22px;
+          font-size: 12px;
+          font-family: 'DM Sans', sans-serif;
+          font-weight: 500;
+          letter-spacing: 0.08em;
           cursor: pointer;
-          border-radius: 4px;
-          box-shadow: 0 4px 20px rgba(83,24,39,0.3);
+          text-transform: uppercase;
         }
-        .print-btn:hover { background: #3d1020; }
 
         .page {
           width: 210mm;
-          min-height: 297mm;
-          margin: 24px auto;
+          margin: 20px auto;
           background: #fff;
-          box-shadow: 0 8px 48px rgba(0,0,0,0.12);
+          box-shadow: 0 4px 32px rgba(0,0,0,0.15);
           overflow: hidden;
+          position: relative;
         }
 
-        /* ── Portada ── */
+        /* ══ PORTADA ══════════════════════════════════════════ */
+
         .cover {
           height: 297mm;
-          display: grid;
-          grid-template-rows: 1fr auto;
-          background: #1a0d0e;
+          background: #1c1008;
+          display: flex;
+          flex-direction: column;
           position: relative;
           overflow: hidden;
         }
-        .cover-bg {
+
+        .cover-texture {
           position: absolute;
           inset: 0;
           background:
-            radial-gradient(ellipse 80% 60% at 70% 40%, rgba(191,169,132,0.12), transparent),
-            radial-gradient(ellipse 50% 70% at 20% 80%, rgba(83,24,39,0.4), transparent);
+            radial-gradient(ellipse 90% 50% at 60% 30%, rgba(139,80,40,0.22), transparent 60%),
+            radial-gradient(ellipse 40% 60% at 5% 90%, rgba(191,160,110,0.1), transparent);
         }
-        .cover-inner {
+
+        .cover-stripe {
+          position: absolute;
+          left: 0; top: 0; bottom: 0;
+          width: 5px;
+          background: #8b3a2a;
+        }
+
+        .cover-top {
           position: relative;
           z-index: 1;
-          padding: 52px 56px;
+          padding: 48px 52px 0 56px;
+          flex: 1;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
         }
-        .cover-brand {
+
+        .cover-logo-row {
           display: flex;
-          flex-direction: column;
-          gap: 4px;
+          align-items: baseline;
+          gap: 16px;
         }
-        .cover-brand-name {
-          font-family: 'Playfair Display', serif;
-          font-size: 18px;
-          font-weight: 400;
-          color: #bfa984;
+
+        .cover-logo-name {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 20px;
+          font-weight: 300;
+          color: #c8a87a;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .cover-logo-by {
+          font-size: 11px;
+          color: rgba(255,255,255,0.22);
           letter-spacing: 0.08em;
         }
-        .cover-brand-sub {
-          font-size: 11px;
-          color: rgba(255,255,255,0.35);
-          letter-spacing: 0.1em;
+
+        .cover-body {
+          padding-bottom: 56px;
+        }
+
+        .cover-label {
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.22em;
           text-transform: uppercase;
+          color: #8b3a2a;
+          margin-bottom: 22px;
         }
-        .cover-hero {
-          max-width: 520px;
-        }
-        .cover-eyebrow {
-          font-size: 11px;
-          font-weight: 600;
-          letter-spacing: 0.16em;
-          text-transform: uppercase;
-          color: #bfa984;
-          margin-bottom: 20px;
-        }
+
         .cover-h1 {
-          font-family: 'Playfair Display', serif;
-          font-size: 54px;
-          font-weight: 400;
-          line-height: 1.08;
-          color: #fff;
-          margin-bottom: 28px;
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 68px;
+          font-weight: 300;
+          line-height: 0.95;
+          color: #f0e8d8;
+          margin-bottom: 32px;
+          letter-spacing: -0.01em;
         }
+
         .cover-h1 em {
           font-style: italic;
-          color: #bfa984;
+          color: #c8a87a;
         }
-        .cover-desc {
-          font-size: 15px;
+
+        .cover-divider {
+          width: 48px;
+          height: 1px;
+          background: #8b3a2a;
+          margin-bottom: 22px;
+        }
+
+        .cover-tagline {
+          font-size: 14px;
+          font-weight: 300;
           line-height: 1.75;
-          color: rgba(255,255,255,0.6);
-          max-width: 440px;
+          color: rgba(240,232,216,0.55);
+          max-width: 400px;
         }
-        .cover-footer {
+
+        .cover-bottom {
           position: relative;
           z-index: 1;
-          padding: 32px 56px;
-          border-top: 1px solid rgba(255,255,255,0.08);
+          padding: 22px 52px 22px 56px;
+          border-top: 1px solid rgba(255,255,255,0.06);
           display: flex;
           justify-content: space-between;
           align-items: center;
         }
-        .cover-footer-url {
-          font-size: 12px;
-          color: rgba(255,255,255,0.3);
-          letter-spacing: 0.06em;
-        }
-        .cover-footer-tag {
+
+        .cover-url {
           font-size: 11px;
-          color: rgba(255,255,255,0.2);
+          color: rgba(255,255,255,0.18);
           letter-spacing: 0.1em;
+        }
+
+        .cover-year {
+          font-size: 10px;
+          color: rgba(255,255,255,0.12);
+          letter-spacing: 0.14em;
           text-transform: uppercase;
         }
 
-        /* ── Página interior ── */
-        .inner-page {
+        /* ══ PÁGINA INTERIOR ══════════════════════════════════ */
+
+        .inner {
           min-height: 297mm;
-          padding: 52px 56px;
+          padding: 48px 52px 48px 56px;
           display: flex;
           flex-direction: column;
-          gap: 48px;
+          gap: 44px;
+          position: relative;
         }
 
-        .section-eyebrow {
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 0.18em;
-          text-transform: uppercase;
-          color: #531827;
-          margin-bottom: 16px;
+        .inner-stripe {
+          position: absolute;
+          left: 0; top: 0; bottom: 0;
+          width: 5px;
+          background: #8b3a2a;
         }
-        .section-title {
-          font-family: 'Playfair Display', serif;
-          font-size: 32px;
-          font-weight: 400;
-          line-height: 1.2;
-          color: #1a1a1a;
-          margin-bottom: 8px;
+
+        .page-nav {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-bottom: 20px;
+          border-bottom: 1px solid #ede5d8;
         }
-        .section-subtitle {
+
+        .page-nav-brand {
+          font-family: 'Cormorant Garamond', serif;
           font-size: 14px;
-          line-height: 1.7;
-          color: #666;
-          max-width: 560px;
+          font-weight: 300;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: #8b3a2a;
+        }
+
+        .page-nav-num {
+          font-size: 10px;
+          color: #c8b89a;
+          letter-spacing: 0.14em;
+        }
+
+        /* ── Bloque de sección ── */
+        .s-label {
+          font-size: 9px;
+          font-weight: 500;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: #8b3a2a;
+          margin-bottom: 10px;
+        }
+
+        .s-title {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 34px;
+          font-weight: 300;
+          line-height: 1.15;
+          color: #1c1410;
+          margin-bottom: 10px;
+        }
+
+        .s-sub {
+          font-size: 13px;
+          font-weight: 300;
+          line-height: 1.75;
+          color: #7a6a58;
+          max-width: 500px;
         }
 
         /* ── Problemas ── */
-        .problems-grid {
+        .problems {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 16px;
-          margin-top: 8px;
+          gap: 1px;
+          background: #ede5d8;
+          border: 1px solid #ede5d8;
+          margin-top: 6px;
         }
-        .problem-card {
+
+        .prob {
           background: #faf7f2;
-          border: 1px solid #ede7da;
-          border-radius: 8px;
           padding: 20px 22px;
         }
-        .problem-icon {
-          font-size: 20px;
+
+        .prob-num {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 28px;
+          font-weight: 300;
+          color: #d4c0a0;
+          line-height: 1;
           margin-bottom: 10px;
-          display: block;
         }
-        .problem-title {
-          font-size: 13px;
-          font-weight: 600;
-          color: #1a1a1a;
-          margin-bottom: 6px;
+
+        .prob-title {
+          font-size: 12px;
+          font-weight: 500;
+          color: #2c1810;
+          margin-bottom: 5px;
           line-height: 1.4;
         }
-        .problem-desc {
-          font-size: 12px;
-          color: #888;
-          line-height: 1.6;
+
+        .prob-desc {
+          font-size: 11px;
+          font-weight: 300;
+          color: #9a8878;
+          line-height: 1.65;
         }
 
         /* ── Features ── */
-        .features-list {
+        .features {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 0;
+          margin-top: 6px;
         }
-        .feature-row {
+
+        .feat {
           display: grid;
-          grid-template-columns: 40px 1fr;
-          gap: 16px;
-          align-items: flex-start;
-          padding-bottom: 20px;
+          grid-template-columns: 28px 1fr;
+          gap: 14px;
+          padding: 14px 0;
           border-bottom: 1px solid #f0ebe0;
+          align-items: flex-start;
         }
-        .feature-row:last-child { border-bottom: none; padding-bottom: 0; }
-        .feature-num {
-          width: 36px;
-          height: 36px;
-          background: #531827;
-          color: #fff;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 12px;
-          font-weight: 600;
-          flex-shrink: 0;
+
+        .feat:last-child { border-bottom: none; }
+
+        .feat-n {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 18px;
+          font-weight: 300;
+          color: #c8a87a;
+          padding-top: 1px;
         }
-        .feature-content {}
-        .feature-title {
-          font-size: 14px;
-          font-weight: 600;
-          color: #1a1a1a;
-          margin-bottom: 4px;
+
+        .feat-title {
+          font-size: 12.5px;
+          font-weight: 500;
+          color: #1c1410;
+          margin-bottom: 3px;
+          line-height: 1.3;
         }
-        .feature-desc {
-          font-size: 12px;
-          color: #777;
+
+        .feat-desc {
+          font-size: 11.5px;
+          font-weight: 300;
+          color: #7a6a58;
           line-height: 1.65;
         }
 
         /* ── Planes ── */
-        .plans-grid {
+        .plans {
           display: grid;
           grid-template-columns: 1fr 1fr 1fr;
-          gap: 14px;
+          gap: 0;
+          border: 1px solid #ede5d8;
+          background: #ede5d8;
+          margin-top: 6px;
         }
-        .plan-card {
-          border: 1.5px solid #ede7da;
-          border-radius: 10px;
-          overflow: hidden;
-        }
-        .plan-card.featured {
-          border-color: #531827;
-          box-shadow: 0 4px 24px rgba(83,24,39,0.12);
-        }
-        .plan-header {
-          padding: 20px 20px 16px;
+
+        .plan {
           background: #faf7f2;
-          border-bottom: 1px solid #ede7da;
+          display: flex;
+          flex-direction: column;
         }
-        .plan-card.featured .plan-header {
-          background: #531827;
-          border-bottom-color: transparent;
+
+        .plan.featured {
+          background: #1c1008;
         }
-        .plan-badge {
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.14em;
+
+        .plan-top {
+          padding: 22px 20px 16px;
+          border-bottom: 1px solid #ede5d8;
+        }
+
+        .plan.featured .plan-top {
+          border-bottom-color: rgba(255,255,255,0.08);
+        }
+
+        .plan-tag {
+          font-size: 8.5px;
+          font-weight: 500;
+          letter-spacing: 0.2em;
           text-transform: uppercase;
-          color: #531827;
-          margin-bottom: 8px;
+          color: #8b3a2a;
+          margin-bottom: 10px;
         }
-        .plan-card.featured .plan-badge { color: #bfa984; }
+
+        .plan.featured .plan-tag { color: #c8a87a; }
+
         .plan-name {
-          font-family: 'Playfair Display', serif;
-          font-size: 22px;
-          font-weight: 400;
-          color: #1a1a1a;
-          margin-bottom: 4px;
-        }
-        .plan-card.featured .plan-name { color: #fff; }
-        .plan-price {
-          font-size: 28px;
-          font-weight: 700;
-          color: #531827;
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 24px;
+          font-weight: 300;
+          color: #1c1410;
+          margin-bottom: 10px;
           line-height: 1;
         }
-        .plan-card.featured .plan-price { color: #bfa984; }
-        .plan-price span {
-          font-size: 13px;
-          font-weight: 400;
+
+        .plan.featured .plan-name { color: #f0e8d8; }
+
+        .plan-price-real {
+          font-size: 26px;
+          font-weight: 500;
+          color: #1c1410;
+          line-height: 1;
+        }
+
+        .plan.featured .plan-price-real { color: #c8a87a; }
+
+        .plan-price-real span {
+          font-size: 12px;
+          font-weight: 300;
           color: #aaa;
         }
-        .plan-card.featured .plan-price span { color: rgba(255,255,255,0.5); }
+
+        .plan.featured .plan-price-real span { color: rgba(255,255,255,0.35); }
+
+        .plan-founder {
+          margin-top: 6px;
+          font-size: 10px;
+          font-weight: 300;
+          color: #9a8878;
+          line-height: 1.5;
+        }
+
+        .plan.featured .plan-founder { color: rgba(255,255,255,0.35); }
+
+        .plan-founder s {
+          color: #c8a87a;
+          font-weight: 500;
+        }
+
+        .plan.featured .plan-founder s { color: #c8a87a; }
+
         .plan-body {
-          padding: 16px 20px 20px;
+          padding: 14px 20px 20px;
+          flex: 1;
         }
+
         .plan-limit {
-          font-size: 11px;
-          color: #999;
-          margin-bottom: 12px;
-          padding-bottom: 12px;
-          border-bottom: 1px solid #f0ebe0;
+          font-size: 10px;
+          font-weight: 300;
+          color: #b0a090;
+          margin-bottom: 10px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid #ede5d8;
         }
-        .plan-features {
+
+        .plan.featured .plan-limit {
+          color: rgba(255,255,255,0.25);
+          border-bottom-color: rgba(255,255,255,0.08);
+        }
+
+        .plan-feats {
           list-style: none;
           display: flex;
           flex-direction: column;
-          gap: 7px;
-        }
-        .plan-features li {
-          font-size: 11.5px;
-          color: #555;
-          display: flex;
-          gap: 7px;
-          align-items: flex-start;
-          line-height: 1.4;
-        }
-        .plan-features li::before {
-          content: '✓';
-          color: #531827;
-          font-weight: 700;
-          flex-shrink: 0;
-          margin-top: 1px;
+          gap: 6px;
         }
 
-        /* ── CTA final ── */
-        .cta-block {
-          background: #1a0d0e;
-          border-radius: 12px;
-          padding: 40px 44px;
-          display: grid;
-          grid-template-columns: 1fr auto;
-          gap: 32px;
-          align-items: center;
+        .plan-feats li {
+          font-size: 11px;
+          font-weight: 300;
+          color: #5a4a3a;
+          display: flex;
+          gap: 6px;
+          line-height: 1.45;
         }
-        .cta-title {
-          font-family: 'Playfair Display', serif;
-          font-size: 26px;
-          font-weight: 400;
-          color: #fff;
-          line-height: 1.25;
-          margin-bottom: 8px;
+
+        .plan.featured .plan-feats li { color: rgba(240,232,216,0.65); }
+
+        .plan-feats li::before {
+          content: '—';
+          color: #c8a87a;
+          flex-shrink: 0;
+          font-weight: 300;
         }
-        .cta-desc {
-          font-size: 13px;
-          color: rgba(255,255,255,0.5);
+
+        /* ── Nota fundador ── */
+        .founder-note {
+          background: #f5f0e6;
+          border-left: 3px solid #c8a87a;
+          padding: 14px 18px;
+          margin-top: 14px;
+        }
+
+        .founder-note p {
+          font-size: 11px;
+          font-weight: 300;
+          color: #5a4a3a;
           line-height: 1.65;
         }
-        .cta-contact {
+
+        .founder-note strong {
+          font-weight: 500;
+          color: #2c1810;
+        }
+
+        /* ── CTA ── */
+        .cta {
+          background: #1c1008;
+          padding: 32px 36px;
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 28px;
+          align-items: center;
+        }
+
+        .cta-left {}
+
+        .cta-title {
+          font-family: 'Cormorant Garamond', serif;
+          font-size: 24px;
+          font-weight: 300;
+          color: #f0e8d8;
+          line-height: 1.2;
+          margin-bottom: 6px;
+        }
+
+        .cta-desc {
+          font-size: 12px;
+          font-weight: 300;
+          color: rgba(240,232,216,0.45);
+          line-height: 1.65;
+          max-width: 320px;
+        }
+
+        .cta-right {
           text-align: right;
           flex-shrink: 0;
         }
+
         .cta-contact-label {
-          font-size: 10px;
-          color: rgba(255,255,255,0.3);
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          margin-bottom: 8px;
-        }
-        .cta-contact-email {
-          font-size: 14px;
-          color: #bfa984;
+          font-size: 9px;
           font-weight: 500;
-        }
-        .cta-contact-web {
-          font-size: 12px;
-          color: rgba(255,255,255,0.3);
-          margin-top: 4px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.2);
+          margin-bottom: 7px;
         }
 
-        /* ── Page header ── */
-        .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding-bottom: 24px;
-          border-bottom: 1px solid #ede7da;
+        .cta-email {
+          font-size: 12px;
+          color: #c8a87a;
+          font-weight: 400;
+          margin-bottom: 4px;
         }
-        .page-header-brand {
-          font-family: 'Playfair Display', serif;
-          font-size: 15px;
-          color: #531827;
-          letter-spacing: 0.06em;
-        }
-        .page-header-num {
+
+        .cta-ig {
           font-size: 11px;
-          color: #ccc;
-          letter-spacing: 0.1em;
+          color: rgba(255,255,255,0.25);
+        }
+
+        .cta-web {
+          font-size: 10px;
+          color: rgba(255,255,255,0.15);
+          margin-top: 4px;
         }
 
         @media print {
@@ -399,132 +534,152 @@ export default function Dossier() {
           }
           .page:last-child { page-break-after: auto; }
           .cover { height: 100vh; }
-          .inner-page { min-height: 100vh; }
+          .inner { min-height: 100vh; }
         }
 
-        @page {
-          size: A4;
-          margin: 0;
-        }
+        @page { size: A4; margin: 0; }
       `}</style>
 
       <button className="print-btn" onClick={() => window.print()}>
-        Guardar como PDF ↓
+        Descargar PDF
       </button>
 
-      {/* ══════════════════════════════════════════════════════ */}
-      {/* PORTADA                                               */}
-      {/* ══════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* PORTADA                                                    */}
+      {/* ══════════════════════════════════════════════════════════ */}
       <div className="page">
         <div className="cover">
-          <div className="cover-bg" />
-          <div className="cover-inner">
-            <div className="cover-brand">
-              <span className="cover-brand-name">Carta Viva</span>
-              <span className="cover-brand-sub">por Cata con Juanjo</span>
+          <div className="cover-texture" />
+          <div className="cover-stripe" />
+
+          <div className="cover-top">
+            <div className="cover-logo-row">
+              <span className="cover-logo-name">Carta Viva</span>
+              <span className="cover-logo-by">por Cata con Juanjo</span>
             </div>
-            <div className="cover-hero">
-              <p className="cover-eyebrow">Herramienta digital para restaurantes</p>
+
+            <div className="cover-body">
+              <p className="cover-label">Herramienta digital para hostelería</p>
               <h1 className="cover-h1">
-                Tu carta de vinos,<br />
+                Tu carta<br />
+                de vinos,<br />
                 <em>siempre viva.</em>
               </h1>
-              <p className="cover-desc">
-                Actualiza tu carta en segundos, da a tu sala el apoyo de un sumiller
-                y deja que el cliente encuentre el vino perfecto para su plato —
-                desde su propio móvil.
+              <div className="cover-divider" />
+              <p className="cover-tagline">
+                Para el bar y restaurante que no tiene sumiller
+                —ni lo necesita— pero sí quiere que su vino
+                se venda bien, su bodega esté controlada
+                y su equipo recomiende con convicción.
               </p>
             </div>
           </div>
-          <div className="cover-footer">
-            <span className="cover-footer-url">cataconjuanjo.com</span>
-            <span className="cover-footer-tag">Dossier comercial · 2025</span>
+
+          <div className="cover-bottom">
+            <span className="cover-url">cataconjuanjo.com</span>
+            <span className="cover-year">Dossier comercial · 2026</span>
           </div>
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════ */}
-      {/* PÁGINA 2 — Problemas + Features                       */}
-      {/* ══════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* PÁGINA 2 — Problemas + Features                           */}
+      {/* ══════════════════════════════════════════════════════════ */}
       <div className="page">
-        <div className="inner-page">
+        <div className="inner">
+          <div className="inner-stripe" />
 
-          <div className="page-header">
-            <span className="page-header-brand">Carta Viva</span>
-            <span className="page-header-num">02</span>
+          <div className="page-nav">
+            <span className="page-nav-brand">Carta Viva</span>
+            <span className="page-nav-num">02 / 03</span>
           </div>
 
           {/* Problemas */}
           <div>
-            <p className="section-eyebrow">El problema</p>
-            <h2 className="section-title">Lo que pasa en casi todos los restaurantes</h2>
-            <p className="section-subtitle">
-              La hostelería trabaja con márgenes ajustados. Cada menú impreso que caduca,
-              cada vino agotado que sigue en carta o cada recomendación sin convicción
-              es dinero y reputación que se pierden.
+            <p className="s-label">El problema</p>
+            <h2 className="s-title">Lo que pasa cada día<br />en la mayoría de bares</h2>
+            <p className="s-sub">
+              Mucho vino en la carta, poco tiempo para mantenerla.
+              Camareros sin argumentos y una bodega que nadie controla del todo.
             </p>
-            <div className="problems-grid" style={{ marginTop: 24 }}>
-              <div className="problem-card">
-                <span className="problem-icon">📋</span>
-                <p className="problem-title">La carta impresa caduca en días</p>
-                <p className="problem-desc">Cambia una añada, se acaba un vino — y la carta ya miente. Reimprimir cuesta tiempo y dinero.</p>
+
+            <div className="problems">
+              <div className="prob">
+                <p className="prob-num">01</p>
+                <p className="prob-title">La carta impresa miente</p>
+                <p className="prob-desc">Cambia una añada, se acaba un vino, sube un precio — y nadie actualiza nada. El cliente pregunta por un vino que ya no hay.</p>
               </div>
-              <div className="problem-card">
-                <span className="problem-icon">🍷</span>
-                <p className="problem-title">Sin sumiller, el camarero no sabe qué recomendar</p>
-                <p className="problem-desc">La mayoría de salas no tienen sumiller. El equipo recomienda sin convicción y el cliente lo nota.</p>
+              <div className="prob">
+                <p className="prob-num">02</p>
+                <p className="prob-title">El camarero recomienda sin convicción</p>
+                <p className="prob-desc">Sin sumiller y sin herramientas, el equipo dice "este está bien" sin saber por qué. El cliente lo nota y pide agua.</p>
               </div>
-              <div className="problem-card">
-                <span className="problem-icon">📱</span>
-                <p className="problem-title">El cliente busca en Google antes que en la carta</p>
-                <p className="problem-desc">Si la carta no inspira confianza, el cliente consulta su móvil. O no pide nada.</p>
+              <div className="prob">
+                <p className="prob-num">03</p>
+                <p className="prob-title">La bodega va por libre</p>
+                <p className="prob-desc">No sabes qué margen tiene cada vino, qué se vende de verdad ni qué hace falta pedir. Te enteras cuando ya se ha acabado.</p>
               </div>
-              <div className="problem-card">
-                <span className="problem-icon">📦</span>
-                <p className="problem-title">La bodega va por libre</p>
-                <p className="problem-desc">No hay control real de stock. Se venden vinos agotados o se piden referencias que sobran.</p>
+              <div className="prob">
+                <p className="prob-num">04</p>
+                <p className="prob-title">Cambiar la carta cuesta dinero y tiempo</p>
+                <p className="prob-desc">Cada actualización implica rediseñar, imprimir y distribuir. Con lo que cambia el vino, es un ciclo que no termina nunca.</p>
               </div>
             </div>
           </div>
 
           {/* Features */}
           <div>
-            <p className="section-eyebrow">La solución</p>
-            <h2 className="section-title">Lo que Carta Viva hace por ti</h2>
-            <div className="features-list" style={{ marginTop: 20 }}>
-              <div className="feature-row">
-                <div className="feature-num">1</div>
-                <div className="feature-content">
-                  <p className="feature-title">Carta de vinos siempre actualizada, en segundos</p>
-                  <p className="feature-desc">¿Cambia una añada? Un clic. ¿Se acaba un vino? Un clic. El cliente escanea el QR y siempre ve la carta real — sin tachones, sin errores, sin reimprimir nada.</p>
+            <p className="s-label">La solución</p>
+            <h2 className="s-title">Lo que Carta Viva<br />hace por tu negocio</h2>
+
+            <div className="features">
+              <div className="feat">
+                <span className="feat-n">1</span>
+                <div>
+                  <p className="feat-title">Carta siempre actualizada — sin reimprimir nada</p>
+                  <p className="feat-desc">Cambia una añada, marca un vino como agotado o ajusta un precio en segundos. El cliente escanea el QR y ve la carta real de hoy, no la de hace seis meses.</p>
                 </div>
               </div>
-              <div className="feature-row">
-                <div className="feature-num">2</div>
-                <div className="feature-content">
-                  <p className="feature-title">El sumiller que tu sala no tiene, en el bolsillo del camarero</p>
-                  <p className="feature-desc">El modo camarero lleva el asistente de maridaje integrado en la PDA de sala. El camarero selecciona el plato del cliente y recibe la recomendación de vino al instante — con argumentos. Vende con convicción, sin necesitar un sumiller.</p>
+              <div className="feat">
+                <span className="feat-n">2</span>
+                <div>
+                  <p className="feat-title">Tu equipo recomienda con argumentos — desde la PDA</p>
+                  <p className="feat-desc">El modo camarero lleva el asistente de maridaje en el bolsillo. El camarero elige el plato del cliente y recibe al momento qué vino recomendar y por qué. Sin improvisación, sin quedar mal.</p>
                 </div>
               </div>
-              <div className="feature-row">
-                <div className="feature-num">3</div>
-                <div className="feature-content">
-                  <p className="feature-title">Carta de comidas viva y conectada al maridaje</p>
-                  <p className="feature-desc">Define tus platos con ingredientes y elaboración. Cuanto más detallado, mejor trabaja el asistente. El cliente puede buscar el maridaje ideal desde su móvil, sin pedirle nada al camarero.</p>
+              <div className="feat">
+                <span className="feat-n">3</span>
+                <div>
+                  <p className="feat-title">El cliente encuentra su vino solo</p>
+                  <p className="feat-desc">Desde su móvil, el cliente puede pedir maridaje para lo que va a comer. El asistente le recomienda con precio incluido. Menos preguntas al camarero, más ventas de vino.</p>
                 </div>
               </div>
-              <div className="feature-row">
-                <div className="feature-num">4</div>
-                <div className="feature-content">
-                  <p className="feature-title">Importa tu carta actual desde PDF</p>
-                  <p className="feature-desc">No empiezas de cero. Sube la carta que tienes en PDF y la convertimos en digital en minutos. Sin teclear referencias una por una.</p>
+              <div className="feat">
+                <span className="feat-n">4</span>
+                <div>
+                  <p className="feat-title">Importa tu carta desde PDF en dos minutos</p>
+                  <p className="feat-desc">Sube la carta que tienes ahora — en PDF, Excel o foto — y la convierte en digital automáticamente. No empiezas de cero, no tecleas referencia por referencia.</p>
                 </div>
               </div>
-              <div className="feature-row">
-                <div className="feature-num">5</div>
-                <div className="feature-content">
-                  <p className="feature-title">Control de bodega e inventario en tiempo real</p>
-                  <p className="feature-desc">Sabe qué tienes, cuánto te queda y qué se vende. Sin hojas de cálculo, sin sorpresas al abrir la bodega.</p>
+              <div className="feat">
+                <span className="feat-n">5</span>
+                <div>
+                  <p className="feat-title">Bodega, margen y pedidos bajo control</p>
+                  <p className="feat-desc">De un vistazo: qué tienes, cuánto vale, qué margen deja cada vino y qué hace falta pedir. La lista de pedido se genera sola — la copias y la mandas al proveedor por WhatsApp.</p>
+                </div>
+              </div>
+              <div className="feat">
+                <span className="feat-n">6</span>
+                <div>
+                  <p className="feat-title">Cierre de servicio en tres minutos</p>
+                  <p className="feat-desc">Al terminar el turno, el sistema recoge las señales de sala: qué se vendió, qué se agotó, qué no convenció. El stock se actualiza solo. La bodega siempre refleja la realidad.</p>
+                </div>
+              </div>
+              <div className="feat">
+                <span className="feat-n">7</span>
+                <div>
+                  <p className="feat-title">Tu marca, tu diseño — no una plantilla genérica</p>
+                  <p className="feat-desc">Elige tus colores, tu tipografía y sube tu logo. La carta digital parece tuya, no de un software. El QR puede llevar también a tu carta de comida, reservas o cualquier enlace.</p>
                 </div>
               </div>
             </div>
@@ -533,103 +688,118 @@ export default function Dossier() {
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════ */}
-      {/* PÁGINA 3 — Planes + CTA                              */}
-      {/* ══════════════════════════════════════════════════════ */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* PÁGINA 3 — Planes + CTA                                   */}
+      {/* ══════════════════════════════════════════════════════════ */}
       <div className="page">
-        <div className="inner-page">
+        <div className="inner">
+          <div className="inner-stripe" />
 
-          <div className="page-header">
-            <span className="page-header-brand">Carta Viva</span>
-            <span className="page-header-num">03</span>
+          <div className="page-nav">
+            <span className="page-nav-brand">Carta Viva</span>
+            <span className="page-nav-num">03 / 03</span>
           </div>
 
-          {/* Planes */}
           <div>
-            <p className="section-eyebrow">Suscripción</p>
-            <h2 className="section-title">Elige el plan de tu restaurante</h2>
-            <p className="section-subtitle">
-              Sin permanencia. Sin instalación. Funciona desde el primer día.
+            <p className="s-label">Suscripción mensual · Sin permanencia</p>
+            <h2 className="s-title">Elige el plan<br />de tu restaurante</h2>
+            <p className="s-sub">
+              Sin instalación. Sin contrato. Funciona desde el primer día.
               Los 14 primeros días son gratis para que lo pruebes con tu equipo.
             </p>
 
-            <div className="plans-grid" style={{ marginTop: 28 }}>
+            <div className="plans">
 
               {/* Básico */}
-              <div className="plan-card">
-                <div className="plan-header">
-                  <p className="plan-badge">Plan Básico</p>
+              <div className="plan">
+                <div className="plan-top">
+                  <p className="plan-tag">Plan Básico</p>
                   <p className="plan-name">Básico</p>
-                  <p className="plan-price">39€ <span>/ mes</span></p>
+                  <p className="plan-price-real">59€ <span>/ mes</span></p>
+                  <p className="plan-founder">Precio fundador: <s>39€/mes</s></p>
                 </div>
                 <div className="plan-body">
                   <p className="plan-limit">Hasta 60 referencias de vino</p>
-                  <ul className="plan-features">
-                    <li>Carta digital con QR</li>
-                    <li>Actualización instantánea</li>
+                  <ul className="plan-feats">
+                    <li>Carta digital con QR siempre actualizada</li>
                     <li>Maridaje para el cliente desde su móvil</li>
-                    <li>Hub de enlaces (link en bio)</li>
+                    <li>Hub de enlaces (carta, reservas, redes)</li>
                     <li>Personalización de marca</li>
+                    <li>Notas de cata generadas automáticamente</li>
                   </ul>
                 </div>
               </div>
 
-              {/* Sala (featured) */}
-              <div className="plan-card featured">
-                <div className="plan-header">
-                  <p className="plan-badge">Más popular</p>
+              {/* Sala */}
+              <div className="plan featured">
+                <div className="plan-top">
+                  <p className="plan-tag">Más popular</p>
                   <p className="plan-name">Sala</p>
-                  <p className="plan-price">79€ <span>/ mes</span></p>
+                  <p className="plan-price-real">99€ <span>/ mes</span></p>
+                  <p className="plan-founder">Precio fundador: <s>79€/mes</s></p>
                 </div>
                 <div className="plan-body">
                   <p className="plan-limit">Hasta 120 referencias de vino</p>
-                  <ul className="plan-features">
+                  <ul className="plan-feats">
                     <li>Todo lo del plan Básico</li>
                     <li>Modo camarero con asistente IA</li>
                     <li>Importación de carta desde PDF</li>
                     <li>Control de bodega e inventario</li>
-                    <li>Estadísticas de sala</li>
-                    <li>Cierre de servicio</li>
-                    <li>Personalización avanzada</li>
+                    <li>Cierre de servicio automatizado</li>
+                    <li>Estadísticas de sala y escaneos</li>
+                    <li>Gestión de carta de comidas</li>
                   </ul>
                 </div>
               </div>
 
               {/* Acompañado */}
-              <div className="plan-card">
-                <div className="plan-header">
-                  <p className="plan-badge">Plan Premium</p>
+              <div className="plan">
+                <div className="plan-top">
+                  <p className="plan-tag">Plan Premium</p>
                   <p className="plan-name">Acompañado</p>
-                  <p className="plan-price">149€ <span>/ mes</span></p>
+                  <p className="plan-price-real">199€ <span>/ mes</span></p>
+                  <p className="plan-founder">Precio fundador: <s>149€/mes</s></p>
                 </div>
                 <div className="plan-body">
                   <p className="plan-limit">Hasta 200 referencias de vino</p>
-                  <ul className="plan-features">
+                  <ul className="plan-feats">
                     <li>Todo lo del plan Sala</li>
-                    <li>Informes de bodega y venta</li>
+                    <li>Informes de bodega y rotación</li>
                     <li>Gestión de proveedores</li>
-                    <li>Consultoría con Juanjo</li>
+                    <li>Propuestas de nuevas referencias</li>
+                    <li>Consultoría directa con Juanjo</li>
                     <li>Soporte prioritario</li>
                   </ul>
                 </div>
               </div>
 
             </div>
+
+            {/* Nota precios fundador */}
+            <div className="founder-note">
+              <p>
+                <strong>Precios fundador para los primeros 5 restaurantes.</strong>{' '}
+                Los primeros cinco restaurantes que se sumen mantendrán el precio fundador
+                de por vida, sin que ninguna subida futura les afecte. Es una forma de
+                reconocer a quienes confían primero.
+              </p>
+            </div>
           </div>
 
           {/* CTA */}
-          <div className="cta-block">
-            <div>
-              <h3 className="cta-title">¿Lo probamos con tu restaurante?</h3>
+          <div className="cta">
+            <div className="cta-left">
+              <h3 className="cta-title">¿Lo probamos con<br />tu restaurante?</h3>
               <p className="cta-desc">
-                14 días gratis, sin tarjeta. Te lo configuramos nosotros
+                14 días gratis, sin tarjeta ni contrato. Te lo configuramos nosotros
                 y en menos de una hora tu carta ya está viva.
               </p>
             </div>
-            <div className="cta-contact">
+            <div className="cta-right">
               <p className="cta-contact-label">Contacto directo</p>
-              <p className="cta-contact-email">jjgarciapozo@gmail.com</p>
-              <p className="cta-contact-web">cataconjuanjo.com</p>
+              <p className="cta-email">cataconjuanjo@gmail.com</p>
+              <p className="cta-ig">@cataconjuanjo</p>
+              <p className="cta-web">cataconjuanjo.com</p>
             </div>
           </div>
 
