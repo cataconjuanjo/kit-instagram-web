@@ -301,3 +301,66 @@ export async function PATCH(req) {
     return Response.json({ error: 'No se pudo editar el restaurante.' }, { status: 500 })
   }
 }
+
+export async function DELETE(req) {
+  try {
+    if (!serviceRoleKey) {
+      return Response.json({ error: 'Falta SUPABASE_SERVICE_ROLE_KEY.' }, { status: 500 })
+    }
+
+    const admin = await validarAdmin(req)
+    if (admin.error) return Response.json({ error: admin.error }, { status: admin.status })
+
+    const body = await req.json()
+    const id = String(body.id || '').trim()
+    const email = String(body.email || '').trim().toLowerCase()
+
+    if (!id || !email) {
+      return Response.json({ error: 'ID y email son obligatorios.' }, { status: 400 })
+    }
+
+    const adminSupabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+
+    // 1. Borrar el restaurante de la base de datos
+    const { error: dbError } = await adminSupabase
+      .from('restaurantes')
+      .delete()
+      .eq('id', id)
+
+    if (dbError) throw dbError
+
+    // 2. Buscar y borrar el usuario de Supabase Auth
+    const filterRes = await fetch(
+      `${supabaseUrl}/auth/v1/admin/users?filter=${encodeURIComponent(`email="${email}"`)}`,
+      { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` } }
+    )
+    const filterData = await filterRes.json()
+    const authUser = filterData.users?.[0]
+
+    if (authUser) {
+      const { error: authError } = await adminSupabase.auth.admin.deleteUser(authUser.id)
+      if (authError) console.error('Error borrando usuario auth:', authError)
+    } else {
+      // Fallback: buscar paginando
+      let found = null
+      let page = 1
+      while (!found) {
+        const { data, error } = await adminSupabase.auth.admin.listUsers({ page, perPage: 50 })
+        if (error || !data?.users?.length) break
+        found = data.users.find(u => u.email?.toLowerCase() === email)
+        if (!data.nextPage) break
+        page++
+      }
+      if (found) {
+        await adminSupabase.auth.admin.deleteUser(found.id)
+      }
+    }
+
+    return Response.json({ ok: true, email })
+  } catch (error) {
+    console.error('Error dando de baja restaurante:', error)
+    return Response.json({ error: 'No se pudo dar de baja el restaurante.' }, { status: 500 })
+  }
+}
