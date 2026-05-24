@@ -1,20 +1,20 @@
 export const PLANES = {
   basic: {
     nombre: 'Basico',
-    precioOrientativo: '39 EUR/mes',
-    limiteVinos: 60,
+    precioOrientativo: '59 EUR/mes',
+    limiteVinos: 100,
     features: ['carta_qr', 'hub', 'personalizacion_basica', 'maridaje_cliente'],
   },
   pro: {
     nombre: 'Sala',
-    precioOrientativo: '79 EUR/mes',
-    limiteVinos: 120,
+    precioOrientativo: '99 EUR/mes',
+    limiteVinos: 200,
     features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'bodega', 'inventario', 'importador_pdf'],
   },
   premium: {
     nombre: 'Acompanado',
-    precioOrientativo: '149 EUR/mes',
-    limiteVinos: 200,
+    precioOrientativo: '199 EUR/mes',
+    limiteVinos: 9999,
     features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'bodega', 'inventario', 'importador_pdf', 'informes', 'proveedores', 'consultoria'],
   },
 }

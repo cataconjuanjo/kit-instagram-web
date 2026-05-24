@@ -792,7 +792,7 @@ export default function Dossier() {
                   <p className="plan-founder">Precio fundador: 39€/mes</p>
                 </div>
                 <div className="plan-body">
-                  <p className="plan-limit">Hasta 60 referencias de vino</p>
+                  <p className="plan-limit">Hasta 100 referencias de vino</p>
                   <ul className="plan-feats">
                     <li>Carta digital con QR siempre actualizada</li>
                     <li>Maridaje para el cliente desde su móvil</li>
@@ -812,7 +812,7 @@ export default function Dossier() {
                   <p className="plan-founder">Precio fundador: 79€/mes</p>
                 </div>
                 <div className="plan-body">
-                  <p className="plan-limit">Hasta 120 referencias de vino</p>
+                  <p className="plan-limit">Hasta 200 referencias de vino</p>
                   <ul className="plan-feats">
                     <li>Todo lo del plan Básico</li>
                     <li>Modo camarero con asistente IA</li>
@@ -834,7 +834,7 @@ export default function Dossier() {
                   <p className="plan-founder">Precio fundador: 149€/mes</p>
                 </div>
                 <div className="plan-body">
-                  <p className="plan-limit">Hasta 200 referencias de vino</p>
+                  <p className="plan-limit">Más de 200 referencias de vino</p>
                   <ul className="plan-feats">
                     <li>Todo lo del plan Sala</li>
                     <li>Informes de bodega y rotación</li>
