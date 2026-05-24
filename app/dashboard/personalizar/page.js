@@ -7,15 +7,24 @@ import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
 const PALETTES = [
-  { nombre: 'Bodega',        primario: '#1C3A2A', fondo: '#FAFAF7', acento: '#B8860B', tipografia: 'serif' },
-  { nombre: 'Moderno',       primario: '#111111', fondo: '#FFFFFF', acento: '#4A8C6F', tipografia: 'sans'  },
-  { nombre: 'Burdeos',       primario: '#5C1A1A', fondo: '#FDF8F3', acento: '#B87333', tipografia: 'serif' },
-  { nombre: 'Bistró',        primario: '#1A2E4A', fondo: '#FAF7F2', acento: '#C4603A', tipografia: 'sans'  },
-  { nombre: 'Mineral',       primario: '#2D2D2D', fondo: '#FAFAFA', acento: '#7B8FA0', tipografia: 'sans'  },
-  { nombre: 'Rústico',       primario: '#3D2B1F', fondo: '#F7F3EE', acento: '#A0522D', tipografia: 'serif' },
-  { nombre: 'Mediterráneo',  primario: '#1B4F72', fondo: '#F8FBFF', acento: '#E67E22', tipografia: 'sans'  },
-  { nombre: 'Oro',           primario: '#0A0A0A', fondo: '#F5F0E8', acento: '#C9A84C', tipografia: 'serif' },
+  { nombre: 'Bodega',        primario: '#1C3A2A', fondo: '#FAFAF7', acento: '#B8860B', tipografia: 'serif'     },
+  { nombre: 'Moderno',       primario: '#111111', fondo: '#FFFFFF', acento: '#4A8C6F', tipografia: 'sans'      },
+  { nombre: 'Burdeos',       primario: '#5C1A1A', fondo: '#FDF8F3', acento: '#B87333', tipografia: 'serif'     },
+  { nombre: 'Bistró',        primario: '#1A2E4A', fondo: '#FAF7F2', acento: '#C4603A', tipografia: 'sans'      },
+  { nombre: 'Mineral',       primario: '#2D2D2D', fondo: '#FAFAFA', acento: '#7B8FA0', tipografia: 'sans'      },
+  { nombre: 'Rústico',       primario: '#3D2B1F', fondo: '#F7F3EE', acento: '#A0522D', tipografia: 'serif'     },
+  { nombre: 'Mediterráneo',  primario: '#1B4F72', fondo: '#F8FBFF', acento: '#E67E22', tipografia: 'sans'      },
+  { nombre: 'Oro',           primario: '#0A0A0A', fondo: '#F5F0E8', acento: '#C9A84C', tipografia: 'serif'     },
+  { nombre: 'Carmen',        primario: '#3D2B1F', fondo: '#F7F3EE', acento: '#8B5A3A', tipografia: 'condensed' },
+  { nombre: 'Elegante',      primario: '#1A1A2E', fondo: '#FDFCF9', acento: '#9B7E6B', tipografia: 'display'   },
 ]
+
+const FONT_MAP = {
+  serif:     { family: 'Georgia, serif',                 label: 'Clásica',   sample: 'Vino',  googleFont: null },
+  sans:      { family: 'system-ui, sans-serif',          label: 'Moderna',   sample: 'Vino',  googleFont: null },
+  condensed: { family: '"Barlow Condensed", sans-serif', label: 'Condensada', sample: 'VINO', googleFont: 'Barlow+Condensed:wght@700' },
+  display:   { family: '"Playfair Display", serif',      label: 'Display',   sample: 'Vino',  googleFont: 'Playfair+Display:wght@500' },
+}
 
 export default function Personalizar() {
   const [restaurante, setRestaurante] = useState(null)
@@ -84,6 +93,18 @@ export default function Personalizar() {
     }
     cargar()
   }, [])
+
+  // Cargar Google Fonts cuando cambia la tipografía seleccionada
+  useEffect(() => {
+    const font = FONT_MAP[tipografia]
+    if (!font?.googleFont) return
+    if (document.querySelector(`link[data-gfont="${tipografia}"]`)) return
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = `https://fonts.googleapis.com/css2?family=${font.googleFont}&display=swap`
+    link.setAttribute('data-gfont', tipografia)
+    document.head.appendChild(link)
+  }, [tipografia])
 
   function aplicarPaleta(p) {
     setColorPrimario(p.primario)
@@ -338,7 +359,7 @@ export default function Personalizar() {
     setGuardando(false)
   }
 
-  const fontPreview = tipografia === 'sans' ? 'system-ui, sans-serif' : 'Georgia, serif'
+  const fontPreview = (FONT_MAP[tipografia] || FONT_MAP.serif).family
 
   function bannerCss(zoom, x, y) {
     return {
@@ -421,7 +442,7 @@ export default function Personalizar() {
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.acento }} />
                   </div>
                   <div style={{ padding: '6px 8px 8px' }}>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: p.primario, fontFamily: p.tipografia === 'sans' ? 'system-ui, sans-serif' : 'Georgia, serif' }}>{p.nombre}</p>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: p.primario, fontFamily: (FONT_MAP[p.tipografia] || FONT_MAP.serif).family }}>{p.nombre}</p>
                   </div>
                 </button>
               )
@@ -469,14 +490,14 @@ export default function Personalizar() {
                 <label className={styles.label}>Tipografía</label>
                 <p className={styles.tiny} style={{ marginTop: 0, marginBottom: 6 }}>Nombre y títulos de la carta</p>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {[{ id: 'serif', label: 'Clásica', sample: 'Vino' }, { id: 'sans', label: 'Moderna', sample: 'Vino' }].map(t => (
-                    <button key={t.id} onClick={() => setTipografia(t.id)} style={{
-                      flex: 1, padding: '10px 8px', borderRadius: 8, cursor: 'pointer',
-                      border: tipografia === t.id ? `2px solid ${colorPrimario}` : '2px solid #e8e8e8',
-                      background: tipografia === t.id ? `${colorPrimario}10` : '#fafafa',
+                  {Object.entries(FONT_MAP).map(([id, f]) => (
+                    <button key={id} onClick={() => setTipografia(id)} style={{
+                      flex: 1, padding: '10px 6px', borderRadius: 8, cursor: 'pointer',
+                      border: tipografia === id ? `2px solid ${colorPrimario}` : '2px solid #e8e8e8',
+                      background: tipografia === id ? `${colorPrimario}10` : '#fafafa',
                     }}>
-                      <p style={{ margin: '0 0 2px', fontSize: 16, fontFamily: t.id === 'sans' ? 'system-ui, sans-serif' : 'Georgia, serif', color: colorPrimario }}>{t.sample}</p>
-                      <p style={{ margin: 0, fontSize: 10, color: '#aaa' }}>{t.label}</p>
+                      <p style={{ margin: '0 0 2px', fontSize: 15, fontFamily: f.family, color: colorPrimario, fontWeight: id === 'condensed' ? 700 : 400 }}>{f.sample}</p>
+                      <p style={{ margin: 0, fontSize: 10, color: '#aaa' }}>{f.label}</p>
                     </button>
                   ))}
                 </div>

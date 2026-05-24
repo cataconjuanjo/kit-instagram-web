@@ -5,6 +5,24 @@ import { supabase } from '../../supabase'
 import { puedeUsar } from '../../lib/plans'
 import styles from './carta.module.css'
 
+const FONT_MAP = {
+  serif:     { family: 'Georgia, serif',                       googleFont: null },
+  sans:      { family: 'system-ui, sans-serif',                googleFont: null },
+  condensed: { family: '"Barlow Condensed", sans-serif',       googleFont: 'Barlow+Condensed:wght@400;600;700;800' },
+  display:   { family: '"Playfair Display", serif',            googleFont: 'Playfair+Display:wght@400;500;600;700' },
+}
+
+function cargarGoogleFont(tipografia) {
+  const font = FONT_MAP[tipografia]
+  if (!font?.googleFont) return
+  if (document.querySelector(`link[data-gfont="${tipografia}"]`)) return
+  const link = document.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = `https://fonts.googleapis.com/css2?family=${font.googleFont}&display=swap`
+  link.setAttribute('data-gfont', tipografia)
+  document.head.appendChild(link)
+}
+
 const t = {
   es: {
     cargando: 'CARGANDO',
@@ -204,7 +222,8 @@ export default function CartaPublica({ params }) {
       if (rest.color_primario) document.documentElement.style.setProperty('--color-primario', rest.color_primario)
       if (rest.color_fondo) document.documentElement.style.setProperty('--color-fondo', rest.color_fondo)
       if (rest.color_acento) document.documentElement.style.setProperty('--color-acento', rest.color_acento)
-      document.documentElement.style.setProperty('--font-titulo', rest.tipografia === 'sans' ? 'system-ui, sans-serif' : 'Georgia, serif')
+      cargarGoogleFont(rest.tipografia)
+      document.documentElement.style.setProperty('--font-titulo', (FONT_MAP[rest.tipografia] || FONT_MAP.serif).family)
       const { data: vinosData } = await supabase.from('vinos').select('*').eq('restaurante_id', rest.id).eq('activo', true)
       const vinosActivos = vinosData || []
       const hayStockInformado = vinosActivos.some(vino => Number(vino.stock) > 0)
@@ -391,7 +410,7 @@ setPerfiles(nuevosPerfiles)
   const tipos = ['todos', ...new Set(vinos.map(v => v.tipo))]
   const colorPrimario = restaurante?.color_primario || '#111111'
   const colorAcento = restaurante?.color_acento || colorPrimario
-  const fontTitulo = restaurante?.tipografia === 'sans' ? 'system-ui, sans-serif' : 'Georgia, serif'
+  const fontTitulo = (FONT_MAP[restaurante?.tipografia] || FONT_MAP.serif).family
 
   function heroStyle() {
     if (!restaurante?.banner_url) return { background: colorPrimario }
