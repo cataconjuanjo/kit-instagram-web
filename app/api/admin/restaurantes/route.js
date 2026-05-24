@@ -36,6 +36,8 @@ async function validarAdmin(req) {
   return { user: data.user }
 }
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
+
 export async function POST(req) {
   try {
     if (!serviceRoleKey) {
@@ -52,13 +54,9 @@ export async function POST(req) {
     const email = String(body.email || '').trim().toLowerCase()
     const ciudad = String(body.ciudad || '').trim()
     const slug = normalizarSlug(body.slug || nombre)
-    const password = String(body.password || '').trim() || generarPassword()
 
     if (!nombre || !email || !slug) {
       return Response.json({ error: 'Nombre, email y slug son obligatorios.' }, { status: 400 })
-    }
-    if (password.length < 8) {
-      return Response.json({ error: 'La contrasena debe tener al menos 8 caracteres.' }, { status: 400 })
     }
 
     const adminSupabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -78,15 +76,28 @@ export async function POST(req) {
       return Response.json({ error: 'Ya existe un restaurante con ese slug.' }, { status: 409 })
     }
 
-    const { error: userError } = await adminSupabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { restaurante: nombre }
+    // Enviamos invitación por email: Supabase manda el enlace de activación automáticamente.
+    // El usuario hace clic → llega a /bienvenida → elige su propia contraseña.
+    const { error: inviteError } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${SITE_URL}/bienvenida`,
+      data: { restaurante: nombre }
     })
 
-    if (userError) {
-      return Response.json({ error: `No se pudo crear el usuario: ${userError.message}` }, { status: 400 })
+    if (inviteError) {
+      // Si el usuario ya existe como invitado previo (no confirmado), intentamos reenviar
+      if (inviteError.message?.toLowerCase().includes('already been invited')) {
+        // Generamos un nuevo enlace de recuperación para que pueda activar su cuenta
+        const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+          type: 'recovery',
+          email,
+          options: { redirectTo: `${SITE_URL}/bienvenida` }
+        })
+        if (linkError) {
+          return Response.json({ error: `No se pudo reenviar la invitación: ${linkError.message}` }, { status: 400 })
+        }
+      } else {
+        return Response.json({ error: `No se pudo enviar la invitación: ${inviteError.message}` }, { status: 400 })
+      }
     }
 
     const { data: restaurante, error: restauranteError } = await adminSupabase
@@ -119,9 +130,9 @@ export async function POST(req) {
 
     return Response.json({
       restaurante,
-      credenciales: { email, password },
+      invitacion: { enviada: true, email },
       urls: {
-        dashboard: '/login',
+        bienvenida: `${SITE_URL}/bienvenida`,
         carta: `/carta/${slug}`,
         camarero: `/camarero/${slug}`
       }
@@ -143,15 +154,36 @@ export async function PUT(req) {
 
     const body = await req.json()
     const email = String(body.email || '').trim().toLowerCase()
+    // modo: 'email' → manda link de recuperación | 'manual' → cambia contraseña directamente
+    const modo = body.modo === 'manual' ? 'manual' : 'email'
     const password = String(body.password || '').trim()
 
-    if (!email || !password || password.length < 8) {
-      return Response.json({ error: 'Email y contraseña (mín. 8 caracteres) son obligatorios.' }, { status: 400 })
+    if (!email) {
+      return Response.json({ error: 'El email es obligatorio.' }, { status: 400 })
     }
 
     const adminSupabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false }
     })
+
+    // ── Modo email: genera enlace de recuperación y lo devuelve (o lo manda Supabase) ──
+    if (modo === 'email') {
+      const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+        type: 'recovery',
+        email,
+        options: { redirectTo: `${SITE_URL}/bienvenida` }
+      })
+      if (linkError) {
+        return Response.json({ error: `No se pudo generar el enlace: ${linkError.message}` }, { status: 400 })
+      }
+      // Devolvemos el enlace para que el admin lo comparta si quiere, o simplemente confirmamos
+      return Response.json({ ok: true, modo: 'email', email, link: linkData?.properties?.action_link })
+    }
+
+    // ── Modo manual: cambia la contraseña directamente (flujo anterior) ──
+    if (!password || password.length < 8) {
+      return Response.json({ error: 'La contraseña debe tener al menos 8 caracteres.' }, { status: 400 })
+    }
 
     const filterRes = await fetch(
       `${supabaseUrl}/auth/v1/admin/users?filter=${encodeURIComponent(`email="${email}"`)}`,
@@ -176,13 +208,13 @@ export async function PUT(req) {
       }
       const { error: updateError } = await adminSupabase.auth.admin.updateUserById(found.id, { password })
       if (updateError) throw updateError
-      return Response.json({ ok: true, email, password })
+      return Response.json({ ok: true, modo: 'manual', email, password })
     }
 
     const { error: updateError } = await adminSupabase.auth.admin.updateUserById(authUser.id, { password })
     if (updateError) throw updateError
 
-    return Response.json({ ok: true, email, password })
+    return Response.json({ ok: true, modo: 'manual', email, password })
   } catch (error) {
     console.error('Error reseteando contraseña:', error)
     return Response.json({ error: 'No se pudo cambiar la contraseña.' }, { status: 500 })

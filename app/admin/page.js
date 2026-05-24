@@ -13,6 +13,9 @@ function generarPassword() {
   return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
+// Modo reset: 'email' = enviar enlace | 'manual' = generar contraseña
+// Se usa en el botón de "reset password" de cada tarjeta de restaurante
+
 export default function AdminPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
@@ -37,7 +40,6 @@ export default function AdminPage() {
     email: '',
     ciudad: '',
     slug: '',
-    password: generarPassword(),
     plan: 'pro',
     subscription_status: 'trialing',
   })
@@ -225,7 +227,7 @@ export default function AdminPage() {
 
       setRestaurantes(prev => [...prev, data.restaurante].sort((a, b) => a.nombre.localeCompare(b.nombre)))
       setAltaCreada(data)
-      setNuevoRestaurante({ nombre: '', email: '', ciudad: '', slug: '', password: generarPassword(), plan: 'pro', subscription_status: 'trialing' })
+      setNuevoRestaurante({ nombre: '', email: '', ciudad: '', slug: '', plan: 'pro', subscription_status: 'trialing' })
     } catch (error) {
       setErrorAlta(error.message)
     }
@@ -235,13 +237,30 @@ export default function AdminPage() {
 
   function copiarAcceso() {
     if (!altaCreada) return
-    const texto = `Acceso a Carta Viva\n\nEmail: ${altaCreada.credenciales.email}\nContraseña: ${altaCreada.credenciales.password}\n\nTu carta pública: ${altaCreada.urls.carta}\nModo camarero (para sala): ${altaCreada.urls.camarero}\n\nEntra en tu panel: https://cataconjuanjo.com/login`
+    const texto = `Bienvenido a Carta Viva 🍷\n\nHola, te hemos dado de alta en Carta Viva.\n\nRevisa tu email (${altaCreada.invitacion.email}) — recibirás un enlace para activar tu cuenta y elegir tu contraseña.\n\nUna vez activo, accede a tu panel desde:\nhttps://cataconjuanjo.com/login\n\nTu carta pública: https://cataconjuanjo.com${altaCreada.urls.carta}\nModo sala (camareros): https://cataconjuanjo.com${altaCreada.urls.camarero}`
     navigator.clipboard.writeText(texto)
     setCopiado(true)
     setTimeout(() => setCopiado(false), 2500)
   }
 
-  async function resetPassword(restaurante) {
+  async function enviarEnlaceAcceso(restaurante) {
+    setResetandoId(restaurante.id)
+    setResetResult(null)
+    const token = await tokenAdmin()
+    const res = await fetch('/api/admin/restaurantes', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ email: restaurante.email, modo: 'email' })
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setResetResult({ ok: true, modo: 'email', email: restaurante.email, link: data.link })
+    } else {
+      setResetResult({ ok: false, error: data.error })
+    }
+  }
+
+  async function resetPasswordManual(restaurante) {
     const pass = generarPassword()
     setResetandoId(restaurante.id)
     setNuevaPass(pass)
@@ -250,11 +269,11 @@ export default function AdminPage() {
     const res = await fetch('/api/admin/restaurantes', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ email: restaurante.email, password: pass })
+      body: JSON.stringify({ email: restaurante.email, modo: 'manual', password: pass })
     })
     const data = await res.json()
     if (res.ok) {
-      setResetResult({ ok: true, email: restaurante.email, password: pass })
+      setResetResult({ ok: true, modo: 'manual', email: restaurante.email, password: pass })
     } else {
       setResetResult({ ok: false, error: data.error })
     }
@@ -262,7 +281,12 @@ export default function AdminPage() {
 
   function copiarReset() {
     if (!resetResult?.ok) return
-    const texto = `Nuevas credenciales de acceso\n\nEmail: ${resetResult.email}\nContraseña: ${resetResult.password}\n\nPanel: https://cataconjuanjo.com/login`
+    let texto = ''
+    if (resetResult.modo === 'email') {
+      texto = `Enlace de acceso a Carta Viva\n\nHola, usa este enlace para entrar en tu panel y elegir tu contraseña:\n${resetResult.link}\n\nSi el enlace no funciona, entra en: https://cataconjuanjo.com/login`
+    } else {
+      texto = `Nuevas credenciales de acceso\n\nEmail: ${resetResult.email}\nContraseña: ${resetResult.password}\n\nPanel: https://cataconjuanjo.com/login`
+    }
     navigator.clipboard.writeText(texto)
     setCopiadoReset(true)
     setTimeout(() => setCopiadoReset(false), 2500)
@@ -330,19 +354,7 @@ export default function AdminPage() {
                 required
               />
             </label>
-            <label className="admin-create-wide">
-              Contraseña inicial
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  value={nuevoRestaurante.password}
-                  onChange={e => actualizarCampo('password', e.target.value)}
-                  style={{ flex: 1, fontFamily: 'monospace' }}
-                />
-                <button type="button" onClick={() => actualizarCampo('password', generarPassword())} style={{ whiteSpace: 'nowrap', fontSize: 11 }}>
-                  Regenerar
-                </button>
-              </div>
-            </label>
+            {/* La contraseña la elige el propio restaurante al activar su cuenta vía email de invitación */}
             <label>
               Plan
               <select value={nuevoRestaurante.plan} onChange={e => actualizarCampo('plan', e.target.value)}>
@@ -368,17 +380,20 @@ export default function AdminPage() {
           {errorAlta && <p className="admin-alert admin-alert-error">{errorAlta}</p>}
           {altaCreada && (
             <div className="admin-alert admin-alert-ok">
-              <strong>{altaCreada.restaurante.nombre} creado.</strong>
-              <span>Email: {altaCreada.credenciales.email}</span>
-              <span style={{ fontFamily: 'monospace' }}>Contraseña: {altaCreada.credenciales.password}</span>
-              <span>Carta: {altaCreada.urls.carta}</span>
-              <span>Modo sala: {altaCreada.urls.camarero}</span>
+              <strong>✓ {altaCreada.restaurante.nombre} creado</strong>
+              <span>📧 Invitación enviada a <strong>{altaCreada.invitacion.email}</strong></span>
+              <span style={{ fontSize: 13, color: '#555' }}>
+                El restaurante recibirá un email con un enlace para activar su cuenta y elegir su contraseña.
+                El enlace caduca en 24 horas.
+              </span>
+              <span style={{ fontSize: 12, color: '#777' }}>Carta: {altaCreada.urls.carta}</span>
+              <span style={{ fontSize: 12, color: '#777' }}>Modo sala: {altaCreada.urls.camarero}</span>
               <button
                 type="button"
                 onClick={copiarAcceso}
                 style={{ marginTop: 10, background: copiado ? '#3a6b4e' : '#111', color: '#fff', border: 'none', padding: '10px 18px', fontSize: 12, cursor: 'pointer', letterSpacing: '0.08em' }}
               >
-                {copiado ? '✓ Copiado' : 'Copiar acceso para enviar'}
+                {copiado ? '✓ Copiado' : 'Copiar mensaje de bienvenida'}
               </button>
             </div>
           )}
@@ -478,13 +493,39 @@ export default function AdminPage() {
               <div className="admin-card-actions">
                 <button onClick={() => gestionar(restaurante)}>Abrir dashboard</button>
                 <button className="admin-plain-button" onClick={() => empezarEdicion(restaurante)}>Editar</button>
-                <button className="admin-plain-button" onClick={() => { setResetResult(null); resetPassword(restaurante) }}>
-                  {resetandoId === restaurante.id && !resetResult ? 'Generando...' : 'Nueva contraseña'}
+                <button
+                  className="admin-plain-button"
+                  onClick={() => { setResetResult(null); enviarEnlaceAcceso(restaurante) }}
+                  disabled={resetandoId === restaurante.id && !resetResult}
+                >
+                  {resetandoId === restaurante.id && !resetResult ? 'Enviando...' : 'Enviar enlace de acceso'}
+                </button>
+                <button
+                  className="admin-plain-button"
+                  onClick={() => { setResetResult(null); resetPasswordManual(restaurante) }}
+                  disabled={resetandoId === restaurante.id && !resetResult}
+                  title="Genera una contraseña aleatoria sin mandar email"
+                >
+                  Pass manual
                 </button>
               </div>
               {resetandoId === restaurante.id && resetResult && (
                 <div className={`admin-alert ${resetResult.ok ? 'admin-alert-ok' : 'admin-alert-error'}`} style={{ marginTop: 10 }}>
-                  {resetResult.ok ? (
+                  {resetResult.ok && resetResult.modo === 'email' ? (
+                    <>
+                      <span>✓ Enlace de activación generado para <strong>{resetResult.email}</strong></span>
+                      <span style={{ fontSize: 12, color: '#555' }}>
+                        Si Supabase no ha enviado el email, usa el botón de copiar y envíalo tú manualmente.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={copiarReset}
+                        style={{ marginTop: 8, background: copiadoReset ? '#3a6b4e' : '#111', color: '#fff', border: 'none', padding: '8px 16px', fontSize: 11, cursor: 'pointer' }}
+                      >
+                        {copiadoReset ? '✓ Copiado' : 'Copiar enlace para enviar'}
+                      </button>
+                    </>
+                  ) : resetResult.ok && resetResult.modo === 'manual' ? (
                     <>
                       <span>Email: <strong>{resetResult.email}</strong></span>
                       <span>Contraseña: <strong style={{ fontFamily: 'monospace' }}>{resetResult.password}</strong></span>
