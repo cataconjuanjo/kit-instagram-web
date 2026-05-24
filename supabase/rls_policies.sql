@@ -62,23 +62,32 @@ CREATE POLICY "deny_anon_estadisticas"
   USING (false);
 
 
--- ── 6. Otras tablas sensibles ────────────────────────────────────
--- Ajusta según las tablas que tengas. Patrón: bloquear anon por defecto.
+-- ── 6. Otras tablas sensibles (solo si existen) ─────────────────
+-- Usar DO $$ para evitar errores si la tabla no existe.
 
--- proveedores
-ALTER TABLE IF EXISTS proveedores ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "deny_anon_proveedores"
-  ON proveedores FOR ALL TO anon USING (false);
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'hub_links') THEN
+    ALTER TABLE hub_links ENABLE ROW LEVEL SECURITY;
+    IF NOT EXISTS (SELECT FROM pg_policies WHERE tablename = 'hub_links' AND policyname = 'deny_anon_hub_links') THEN
+      CREATE POLICY "deny_anon_hub_links" ON hub_links FOR ALL TO anon USING (false);
+    END IF;
+  END IF;
 
--- hub_links
-ALTER TABLE IF EXISTS hub_links ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "deny_anon_hub_links"
-  ON hub_links FOR ALL TO anon USING (false);
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'propuestas') THEN
+    ALTER TABLE propuestas ENABLE ROW LEVEL SECURITY;
+    IF NOT EXISTS (SELECT FROM pg_policies WHERE tablename = 'propuestas' AND policyname = 'deny_anon_propuestas') THEN
+      CREATE POLICY "deny_anon_propuestas" ON propuestas FOR ALL TO anon USING (false);
+    END IF;
+  END IF;
 
--- propuestas
-ALTER TABLE IF EXISTS propuestas ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "deny_anon_propuestas"
-  ON propuestas FOR ALL TO anon USING (false);
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'proveedores') THEN
+    ALTER TABLE proveedores ENABLE ROW LEVEL SECURITY;
+    IF NOT EXISTS (SELECT FROM pg_policies WHERE tablename = 'proveedores' AND policyname = 'deny_anon_proveedores') THEN
+      CREATE POLICY "deny_anon_proveedores" ON proveedores FOR ALL TO anon USING (false);
+    END IF;
+  END IF;
+END $$;
 
 
 -- ═══════════════════════════════════════════════════════════════
