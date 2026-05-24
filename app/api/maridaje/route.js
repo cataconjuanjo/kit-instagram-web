@@ -1,9 +1,37 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { supabase } from '../../supabase'
+import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { analizarMaridaje, resumenAnalisisParaPrompt } from '../../lib/maridajeEngine'
 import { puedeUsar } from '../../lib/plans'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+// ── Rate limiting ──────────────────────────────────────────────
+const RATE_LIMIT = 20          // max llamadas por IP
+const RATE_WINDOW_MS = 60 * 60 * 1000  // ventana de 1 hora
+
+async function checkRateLimit(ip) {
+  const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
+
+  const { count } = await supabaseAdmin
+    .from('rate_limits')
+    .select('*', { count: 'exact', head: true })
+    .eq('ip', ip)
+    .eq('endpoint', 'maridaje')
+    .gte('created_at', since)
+
+  if ((count || 0) >= RATE_LIMIT) return false
+
+  await supabaseAdmin.from('rate_limits').insert({ ip, endpoint: 'maridaje' })
+  return true
+}
+
+function getIP(request) {
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    '0.0.0.0'
+  )
+}
 
 function normalizarTexto(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -67,6 +95,16 @@ ${cartaVinos}`
 
 export async function POST(request) {
   try {
+    // ── Rate limit por IP ──────────────────────────────────────
+    const ip = getIP(request)
+    const allowed = await checkRateLimit(ip)
+    if (!allowed) {
+      return Response.json(
+        { error: 'Demasiadas consultas. Espera un momento antes de volver a pedir recomendaciones.' },
+        { status: 429 }
+      )
+    }
+
     const {
       consulta,
       modo,
@@ -78,9 +116,9 @@ export async function POST(request) {
     } = await request.json()
 
     const [{ data: restaurante }, { data: vinosData }, { data: platos }] = await Promise.all([
-      supabase.from('restaurantes').select('*').eq('id', restaurante_id).single(),
-      supabase.from('vinos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true).gt('stock', 0),
-      supabase.from('platos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
+      supabaseAdmin.from('restaurantes').select('*').eq('id', restaurante_id).single(),
+      supabaseAdmin.from('vinos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true).gt('stock', 0),
+      supabaseAdmin.from('platos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
     ])
 
     if (!restaurante || !puedeUsar(restaurante, 'maridaje_cliente')) {
@@ -159,7 +197,7 @@ export async function POST(request) {
         })
       }
 
-      await supabase.from('estadisticas').insert(eventos)
+      await supabaseAdmin.from('estadisticas').insert(eventos)
     }
 
     const stream = anthropic.messages.stream({
