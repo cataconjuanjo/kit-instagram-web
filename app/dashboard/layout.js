@@ -81,6 +81,7 @@ export default function DashboardLayout({ children }) {
       children: [
         { href: '/dashboard/cierre', label: 'Cierre servicio', feature: 'cierre_servicio' },
         { href: '/dashboard/estadisticas', label: 'Actividad', feature: 'estadisticas' },
+        { href: '/dashboard/menu-engineering', label: 'Rentabilidad', feature: 'estadisticas' },
       ],
     },
     {
