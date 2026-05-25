@@ -40,16 +40,18 @@ function ticketReferencia(restaurante, platosActivos) {
 function mapaPrecios(vinosConPrecio, ticket) {
   if (!ticket) return { gamas: [], desajustes: [], base: 'sin_ticket' }
   const total = vinosConPrecio.length
-  const t50  = Math.max(ticket * 0.5, 20)
-  const t100 = Math.max(ticket * 1.0, 38)
-  const t200 = Math.max(ticket * 2.0, 70)
-  const t300 = Math.max(ticket * 3.0, 120)
+  // Umbrales calibrados con metodología Álex Pardo GCA (ticket 40€ y 57€)
+  const tBajaMin = Math.max(ticket * 0.38, 12)   // mínimo recomendado — vinos más baratos quedan fuera de gama
+  const tBaja    = Math.max(ticket * 0.48, 18)   // 48% — Baja / Media
+  const tMedia   = Math.max(ticket * 0.75, 28)   // 75% — Media / Alta
+  const tAlta    = Math.max(ticket * 1.75, 60)   // 175% — Alta / Muy Alta
+  const tMuyAlta = Math.max(ticket * 2.75, 100)  // 275% — Muy Alta / Premium
   const rangos = [
-    { id: 'baja',     label: 'Gama baja',  objetivo: 20, min: 0,     max: t50  },
-    { id: 'media',    label: 'Gama media', objetivo: 45, min: t50,   max: t100 },
-    { id: 'alta',     label: 'Gama alta',  objetivo: 15, min: t100,  max: t200 },
-    { id: 'muy_alta', label: 'Muy alta',   objetivo: 15, min: t200,  max: t300 },
-    { id: 'premium',  label: 'Premium',    objetivo:  5, min: t300,  max: Infinity },
+    { id: 'baja',     label: 'Gama baja',  objetivo: 20, min: 0,        max: tBaja    },
+    { id: 'media',    label: 'Gama media', objetivo: 45, min: tBaja,    max: tMedia   },
+    { id: 'alta',     label: 'Gama alta',  objetivo: 15, min: tMedia,   max: tAlta    },
+    { id: 'muy_alta', label: 'Muy alta',   objetivo: 15, min: tAlta,    max: tMuyAlta },
+    { id: 'premium',  label: 'Premium',    objetivo:  5, min: tMuyAlta, max: Infinity },
   ]
   const gamas = rangos.map(rango => {
     const vinos = vinosConPrecio.filter(v => {
