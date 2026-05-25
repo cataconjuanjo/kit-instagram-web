@@ -236,7 +236,11 @@ export default function CartaPublica({ params }) {
         .eq('activo', true)
         .order('orden')
       setSeleccion(selData || [])
-      await supabase.from('estadisticas').insert([{ restaurante_id: rest.id, tipo: 'escaneo', detalle: 'carta' }])
+      fetch('/api/estadisticas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurante_id: rest.id, tipo: 'escaneo', detalle: 'carta' }),
+      })
       setLoading(false)
     }
     cargar()

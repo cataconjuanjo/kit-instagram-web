@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { requireUser } from '../_lib/auth'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
@@ -6,7 +7,13 @@ const anthropic = new Anthropic({
 
 export async function POST(request) {
   try {
+    const auth = await requireUser(request)
+    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+
     const { nombre, bodega, tipo, region, uva, anada } = await request.json()
+    if (!String(nombre || '').trim() || !String(tipo || '').trim()) {
+      return Response.json({ notas: '', error: 'Nombre y tipo son obligatorios.' }, { status: 400 })
+    }
 
     const message = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',

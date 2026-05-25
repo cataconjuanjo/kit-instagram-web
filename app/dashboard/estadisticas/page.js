@@ -85,12 +85,12 @@ export default function Estadisticas() {
   const feedbacksVenta = statsFiltradas.filter(s => s.tipo === 'venta')
   const escaneosHoy = stats.filter(s => s.tipo === 'escaneo' && fechaLocalISO(s.created_at) === hoy).length
   const consultasHoy = stats.filter(s => s.tipo === 'sommelier' && fechaLocalISO(s.created_at) === hoy).length
-  const ventasMarcadas = feedbacksVenta.filter(s => {
-    try { return JSON.parse(s.detalle || '{}').resultado === 'vendida' } catch { return false }
-  }).length
+  const ventasMarcadas = feedbacksVenta.filter(s => leerJSON(s.detalle)?.resultado === 'vendida').length
 
   const feedbackVenta = feedbacksVenta.map(s => leerJSON(s.detalle)).filter(Boolean)
   const recomendacionesVino = recomendaciones.map(s => leerJSON(s.detalle)).filter(Boolean)
+  const incidenciasStock = feedbackVenta.filter(item => ['no_stock', 'agotado'].includes(item.resultado)).length
+  const dudasSala = feedbackVenta.filter(item => ['no_convence', 'otra'].includes(item.resultado)).length
 
   const rendimientoVinos = Object.entries(feedbackVenta.reduce((acc, item) => {
     const vino = item.vino || 'Vino sin nombre'
@@ -133,6 +133,18 @@ export default function Estadisticas() {
     .sort((a, b) => b[1].total - a[1].total)
     .slice(0, 8)
 
+  const conversion = escaneos > 0 ? Math.round((consultas / escaneos) * 100) : 0
+  const tasaVenta = feedbacksVenta.length > 0 ? Math.round((ventasMarcadas / feedbacksVenta.length) * 100) : 0
+  const lecturaEjecutiva = [
+    escaneos === 0 && { titulo: 'No hay escaneos en el periodo', texto: 'Revisa ubicación del QR, material de mesa y si sala lo está ofreciendo.', href: '/dashboard/qr' },
+    incidenciasStock > 0 && { titulo: 'Stock está generando fricción', texto: `${incidenciasStock} avisos de falta de stock o agotado. Conviene pasar por cierre y bodega.`, href: '/dashboard/cierre#incidencias' },
+    dudasSala > 0 && { titulo: 'Hay dudas en mesa', texto: `${dudasSala} cambios o rechazos. Revisa argumento, precio o alternativa.`, href: '/dashboard/cierre#dudas' },
+    topPlatos[0] && { titulo: 'Plato que pide ayuda', texto: `${topPlatos[0][0]} concentra consultas de maridaje. Úsalo para formar a sala.`, href: '/dashboard/platos' },
+    vinosRecomendados[0] && { titulo: 'Vino con tirón en recomendación', texto: `${vinosRecomendados[0][0]} aparece ${vinosRecomendados[0][1].total} veces. Comprueba stock y margen.`, href: '/dashboard/bodega' },
+    topVinosVendidos[0] && { titulo: 'Venta marcada destacada', texto: `${topVinosVendidos[0][0]} lidera con ${topVinosVendidos[0][1]} ventas marcadas.`, href: '/dashboard/sala' },
+  ].filter(Boolean).slice(0, 4)
+  const accionPrincipal = lecturaEjecutiva[0] || { titulo: 'Sin alertas relevantes', texto: 'Los datos no muestran fricción clara en el periodo seleccionado.', href: '/dashboard/sala' }
+
   const metricas = [
     { label: 'Escaneos totales', valor: escaneos },
     { label: 'Escaneos hoy', valor: escaneosHoy },
@@ -140,18 +152,19 @@ export default function Estadisticas() {
     { label: 'Vinos recomendados', valor: recomendaciones.length },
     { label: 'Maridaje hoy', valor: consultasHoy },
     { label: 'Ventas marcadas', valor: ventasMarcadas },
-    { label: 'Conversion', valor: escaneos > 0 ? `${Math.round((consultas / escaneos) * 100)}%` : '0%' },
+    { label: 'Conversión', valor: `${conversion}%` },
+    { label: 'Aceptación sala', valor: feedbacksVenta.length ? `${tasaVenta}%` : '-' },
   ]
 
   return (
     <FeatureGate restaurante={restaurante} feature="estadisticas" title="Actividad no incluida">
     <ModuleShell
       restaurante={restaurante}
-      eyebrow="Estadisticas"
+      eyebrow="Estadísticas"
       title="Actividad de la carta"
       subtitle="Lectura rápida de escaneos, consultas de maridaje y feedback de sala para tomar decisiones comerciales con criterio."
       help={{
-        title: 'Como leer los datos',
+        title: 'Cómo leer los datos',
         intro: 'No hace falta mirarlo cada hora. Funciona mejor como lectura semanal o mensual.',
         items: [
           { title: 'Escaneos', text: 'Indican uso de la carta, pero no venta. Si bajan, revisa QR, ubicación o comunicación en sala.' },
@@ -206,7 +219,27 @@ export default function Estadisticas() {
         ))}
       </section>
 
-      {/* Gráfica top vinos vendidos */}
+      <section className={styles.panelDark} style={{ marginBottom: 16 }}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2 className={styles.panelTitle}>Lectura ejecutiva</h2>
+            <p className={styles.panelSub}>No solo cuenta eventos: convierte la actividad en la siguiente decisión.</p>
+          </div>
+          <a className={styles.secondary} href={accionPrincipal.href}>Abrir acción</a>
+        </div>
+        <div className={styles.panelBody}>
+          <div className={styles.itemStack}>
+            {(lecturaEjecutiva.length ? lecturaEjecutiva : [accionPrincipal]).map(item => (
+              <a key={item.titulo} href={item.href} className={styles.itemCard}>
+                <p className={styles.eyebrow}>Decisión</p>
+                <h3 className={styles.sectionTitle}>{item.titulo}</h3>
+                <p className={styles.sectionText}>{item.texto}</p>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {topVinosVendidos.length > 0 && (
         <section className={styles.panel} style={{ marginBottom: 16 }}>
           <div className={styles.panelHead}>
@@ -222,7 +255,7 @@ export default function Estadisticas() {
                 <div key={vino}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                     <span style={{ fontSize: 13, fontWeight: i === 0 ? 700 : 500, color: '#171416', maxWidth: '80%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {i === 0 ? '⭐ ' : ''}{vino}
+                      {i === 0 ? 'Principal: ' : ''}{vino}
                     </span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#766e64', flexShrink: 0, marginLeft: 8 }}>
                       {ventas} {ventas === 1 ? 'venta' : 'ventas'}
@@ -299,7 +332,7 @@ export default function Estadisticas() {
                 ))}
               </div>
             ) : (
-              <div className={styles.empty}>Sin feedback de venta todavia.</div>
+              <div className={styles.empty}>Sin feedback de venta todavía.</div>
             )}
           </div>
         </div>

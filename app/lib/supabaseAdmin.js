@@ -10,11 +10,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!serviceRoleKey) {
-  console.warn('[supabaseAdmin] SUPABASE_SERVICE_ROLE_KEY no definida — las rutas API usarán anon key')
+  console.warn('[supabaseAdmin] SUPABASE_SERVICE_ROLE_KEY no definida; las rutas admin fallaran hasta configurarla')
 }
 
 export const supabaseAdmin = createClient(
   supabaseUrl,
-  serviceRoleKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  serviceRoleKey || 'missing-service-role-key',
   { auth: { persistSession: false } }
 )

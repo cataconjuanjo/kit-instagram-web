@@ -169,11 +169,9 @@ export default function Platos() {
   const [platos, setPlatos] = useState([])
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
-  const [mostrarImportador, setMostrarImportador] = useState(false)
-
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('importar') === '1') setMostrarImportador(true)
-  }, [])
+  const [mostrarImportador, setMostrarImportador] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('importar') === '1'
+  ))
   const [busquedaPlatos, setBusquedaPlatos] = useState('')
   const [filtroPlatos, setFiltroPlatos] = useState('todos')
   const [editandoPlato, setEditandoPlato] = useState(null)
@@ -238,7 +236,7 @@ export default function Platos() {
       try {
         const res = await fetch('/api/importar-platos-pdf', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await authHeaders(),
           body: JSON.stringify({ fileBase64: base64, mediaType: file.type || 'application/pdf' })
         })
         const data = await res.json()
@@ -254,6 +252,14 @@ export default function Platos() {
       setLeyendoPdf(false)
     }
     reader.readAsDataURL(file)
+  }
+
+  async function authHeaders() {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    return token
+      ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+      : { 'Content-Type': 'application/json' }
   }
 
   function actualizarPlatoImportar(index, cambios) {

@@ -91,6 +91,12 @@ export default function ControlBodega() {
       const objetivo = Math.max(minimo * 2, minimo + 3)
       return { ...vino, pedir: Math.max(1, objetivo - decimal(vino.stock)) }
     })
+    const pedidoPorProveedor = Object.entries(pedido.reduce((acc, vino) => {
+      const proveedor = vino.proveedor?.trim() || 'Sin proveedor'
+      acc[proveedor] = acc[proveedor] || []
+      acc[proveedor].push(vino)
+      return acc
+    }, {})).sort((a, b) => a[0].localeCompare(b[0]))
     const proveedores = Object.entries(activos.reduce((acc, vino) => {
       const proveedor = vino.proveedor?.trim() || 'Sin proveedor'
       acc[proveedor] = acc[proveedor] || { refs: 0, coste: 0 }
@@ -114,7 +120,7 @@ export default function ControlBodega() {
       .sort((a, b) => b.ventasMarcadas - a.ventasMarcadas)
       .slice(0, 5)
 
-    return { activos, valorCoste, valorVenta, margenMedio, margenPotencial, bajoMinimo, sinCoste, margenBajo, sinPrecio, sinProveedor, sinStockMinimo, pedido, proveedores, sinRotacion, topRotacion }
+    return { activos, valorCoste, valorVenta, margenMedio, margenPotencial, bajoMinimo, sinCoste, margenBajo, sinPrecio, sinProveedor, sinStockMinimo, pedido, pedidoPorProveedor, proveedores, sinRotacion, topRotacion }
   }, [vinos, eventosSala])
 
   function iniciarEdicion(vino) {
@@ -178,7 +184,11 @@ export default function ControlBodega() {
     const texto = [
       `Pedido sugerido - ${restaurante?.nombre || 'Carta Viva'}`,
       '',
-      ...datos.pedido.map(vino => `- ${vino.nombre} (${vino.proveedor || 'sin proveedor'}): pedir ${vino.pedir} uds. Stock ${vino.stock || 0}, mínimo ${vino.stock_minimo}`),
+      ...datos.pedidoPorProveedor.flatMap(([proveedor, vinosProveedor]) => [
+        proveedor,
+        ...vinosProveedor.map(vino => `- ${vino.nombre}: pedir ${vino.pedir} uds. Stock ${vino.stock || 0}, mínimo ${vino.stock_minimo}`),
+        '',
+      ]),
     ].join('\n')
     await navigator.clipboard.writeText(texto)
     setPedidoCopiado(true)
@@ -209,7 +219,7 @@ export default function ControlBodega() {
         <div className={styles.stat}><p className={styles.statValue}>{eur(datos.valorCoste)}</p><p className={styles.statLabel}>Valor a coste</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{eur(datos.valorVenta)}</p><p className={styles.statLabel}>Potencial venta</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{eur(datos.margenPotencial)}</p><p className={styles.statLabel}>Margen bruto potencial</p></div>
-        <div className={styles.stat}><p className={styles.statValue} style={{ color: margenColor(datos.margenMedio) }}>{datos.margenMedio ?? '-'}%</p><p className={styles.statLabel}>Margen medio</p></div>
+        <div className={styles.stat}><p className={styles.statValue} style={{ color: margenColor(datos.margenMedio) }}>{datos.margenMedio == null ? '-' : datos.margenMedio}%</p><p className={styles.statLabel}>Margen medio</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{datos.bajoMinimo.length}</p><p className={styles.statLabel}>Bajo mínimo</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{datos.sinRotacion.length}</p><p className={styles.statLabel}>Stock alto sin salida</p></div>
       </section>
@@ -252,14 +262,22 @@ export default function ControlBodega() {
           <div className={styles.panelBody}>
             {datos.pedido.length ? (
               <div className={styles.itemStack}>
-                {datos.pedido.slice(0, 5).map(vino => (
-                  <article key={vino.id} className={styles.itemCard}>
+                {datos.pedidoPorProveedor.map(([proveedor, vinosProveedor]) => (
+                  <article key={proveedor} className={styles.itemCard}>
                     <div className={styles.sectionHead} style={{ margin: 0 }}>
                       <div>
-                        <h3 className={styles.sectionTitle}>{vino.nombre}</h3>
-                        <p className={styles.sectionText}>{vino.proveedor || 'Sin proveedor'} · stock {vino.stock || 0} · mínimo {vino.stock_minimo}</p>
+                        <p className={styles.eyebrow}>{vinosProveedor.length} referencias</p>
+                        <h3 className={styles.sectionTitle}>{proveedor}</h3>
                       </div>
-                      <span className={styles.badge}>Pedir {vino.pedir}</span>
+                      <span className={styles.badge}>{vinosProveedor.reduce((sum, vino) => sum + vino.pedir, 0)} uds.</span>
+                    </div>
+                    <div className={styles.itemStack} style={{ marginTop: 12 }}>
+                      {vinosProveedor.map(vino => (
+                        <div key={vino.id} className={styles.sectionHead} style={{ margin: 0, paddingTop: 8, borderTop: '1px solid rgba(23,20,22,0.08)' }}>
+                          <p className={styles.sectionText} style={{ margin: 0 }}>{vino.nombre} · stock {vino.stock || 0} · mínimo {vino.stock_minimo}</p>
+                          <strong className={styles.badge}>Pedir {vino.pedir}</strong>
+                        </div>
+                      ))}
                     </div>
                   </article>
                 ))}
@@ -304,7 +322,7 @@ export default function ControlBodega() {
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
-              <h2 className={styles.panelTitle}>Referencias con traccion</h2>
+              <h2 className={styles.panelTitle}>Referencias con tracción</h2>
               <p className={styles.panelSub}>Vinos que sala está consiguiendo vender o defender.</p>
             </div>
             <span className={styles.badge}>{datos.topRotacion.length}</span>
@@ -482,7 +500,7 @@ export default function ControlBodega() {
                           <input className={styles.input} type="number" step="0.01" value={editando.coste_compra} onChange={e => setEditando({ ...editando, coste_compra: e.target.value })} />
                           {parseFloat(editando.coste_compra) > 0 && (
                             <p style={{ margin: '5px 0 0', fontSize: 11, color: '#8b8278' }}>
-                              × 2 → {(parseFloat(editando.coste_compra) * 2).toFixed(2)} € · × 3 → {(parseFloat(editando.coste_compra) * 3).toFixed(2)} €
+                              x2 {(parseFloat(editando.coste_compra) * 2).toFixed(2)} EUR · x3 {(parseFloat(editando.coste_compra) * 3).toFixed(2)} EUR
                             </p>
                           )}
                         </div>

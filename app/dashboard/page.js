@@ -34,6 +34,18 @@ function inicioDiaISO() {
   return d.toISOString()
 }
 
+function fechaLocalClave() {
+  const d = new Date()
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+function claveCierreDia(restauranteId) {
+  return `carta_viva_cierre_${restauranteId}_${fechaLocalClave()}`
+}
+
 export default function DashboardHome() {
   const [restaurante, setRestaurante] = useState(null)
   const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, incidenciasSala: 0, dudasSala: 0 })
@@ -42,6 +54,7 @@ export default function DashboardHome() {
   const [propuestas, setPropuestas] = useState([])
   const [mostrarAyuda, setMostrarAyuda] = useState(false)
   const [tareasOcultas, setTareasOcultas] = useState([])
+  const [turnoCerrado, setTurnoCerrado] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -72,6 +85,14 @@ export default function DashboardHome() {
           supabase.from('consultor_propuestas').select('*').eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
         ])
         const ventasHoy = (statsHoy || []).filter(s => s.tipo === 'venta').map(s => leerDetalle(s.detalle))
+        if (typeof window !== 'undefined') {
+          try {
+            const guardados = JSON.parse(window.localStorage.getItem(claveCierreDia(rest.id)) || '[]')
+            setTurnoCerrado(Array.isArray(guardados) && guardados.length >= ventasHoy.length && ventasHoy.length > 0)
+          } catch {
+            setTurnoCerrado(false)
+          }
+        }
         setVinos(vinosData || [])
         setPlatos(platosData || [])
         setPropuestas(propuestasData || [])
@@ -159,6 +180,40 @@ export default function DashboardHome() {
     { label: 'Bodega', title: 'Stock y margen', text: 'Valor, pedido sugerido, proveedor y datos pendientes.', stat: `${bajoMinimo.length} bajo mínimo`, href: '/dashboard/bodega', feature: 'bodega' },
   ].filter(modulo => !modulo.feature || puedeUsar(restaurante, modulo.feature))
 
+  const vinosServicio = vinosActivos
+    .filter(vino => decimal(vino.stock) > 0 && decimal(vino.precio_botella) > 0)
+    .map(vino => {
+      const venta = decimal(vino.precio_botella)
+      const coste = decimal(vino.coste_compra)
+      const margenPct = venta && coste ? Math.round(((venta - coste) / venta) * 100) : null
+      const stock = decimal(vino.stock)
+      const score =
+        (margenPct || 45) +
+        (decimal(vino.precio_copa) > 0 ? 12 : 0) +
+        (stock >= Math.max(8, decimal(vino.stock_minimo) * 2) ? 10 : 0) +
+        (normalizar(vino.region).includes(normalizar(restaurante?.ciudad || '')) ? 8 : 0)
+      return { ...vino, margenPct, score }
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+
+  const riesgosServicio = [
+    ...bajoMinimo.map(vino => ({ ...vino, motivo: `Stock ${decimal(vino.stock)} / mínimo ${decimal(vino.stock_minimo)}` })),
+    ...vinosActivos.filter(vino => decimal(vino.stock) === 0).map(vino => ({ ...vino, motivo: 'Sin stock informado' })),
+  ].filter((vino, index, lista) => lista.findIndex(item => item.id === vino.id) === index).slice(0, 4)
+
+  const platosServicio = platos
+    .filter(plato => plato.descripcion && plato.descripcion.trim().length >= 8)
+    .sort((a, b) => decimal(b.precio) - decimal(a.precio))
+    .slice(0, 3)
+
+  const enlacesServicio = [
+    { label: 'Abrir carta', href: restaurante?.slug ? `/carta/${restaurante.slug}` : '/dashboard/carta', external: Boolean(restaurante?.slug) },
+    puedeUsar(restaurante, 'modo_camarero') && { label: 'Modo camarero', href: restaurante?.slug ? `/camarero/${restaurante.slug}` : '/dashboard/sala', external: Boolean(restaurante?.slug) },
+    puedeUsar(restaurante, 'cierre_servicio') && { label: 'Cerrar servicio', href: '/dashboard/cierre' },
+    { label: 'QR mesa', href: '/dashboard/qr' },
+  ].filter(Boolean)
+
   const checksSalud = [
     { label: 'Vinos', valor: calidadVinos, detalle: `${vinosSinPrecio.length} sin precio · ${vinosSinPerfil.length} sin perfil`, href: '/dashboard/vinos?filtro=pendientes' },
     { label: 'Platos', valor: calidadPlatos, detalle: `${platosSinDescripcion.length} sin descripción · ${platosSinPrecio.length} sin precio`, href: '/dashboard/platos?filtro=descripcion' },
@@ -177,6 +232,21 @@ export default function DashboardHome() {
     (!tarea.feature || puedeUsar(restaurante, tarea.feature)) &&
     !tarea.autoHide?.()
   )
+
+  const alertasSala = stats.incidenciasSala + stats.dudasSala
+  const haySenalesSala = stats.ventasHoy + alertasSala > 0
+  const siguienteTurno = alertasSala > 0
+    ? { label: 'Resolver señales', href: '/dashboard/cierre', detalle: `${alertasSala} señales requieren decisión` }
+    : stats.ventasHoy > 0 && !turnoCerrado
+      ? { label: 'Cerrar turno', href: '/dashboard/cierre', detalle: `${stats.ventasHoy} ventas marcadas hoy` }
+      : bajoMinimo.length > 0
+        ? { label: 'Preparar pedido', href: '/dashboard/bodega#pedido', detalle: `${bajoMinimo.length} referencias bajo mínimo` }
+        : { label: 'Abrir briefing', href: '/dashboard/sala', detalle: 'Sala lista para preparar el servicio' }
+  const estadoTurno = turnoCerrado
+    ? 'Turno cerrado'
+    : haySenalesSala
+      ? 'Turno con señales'
+      : 'Turno limpio'
 
   return (
     <main>
@@ -247,6 +317,29 @@ export default function DashboardHome() {
           )}
         </section>
 
+        <section className={styles.shiftCard}>
+          <div className={styles.shiftMain}>
+            <p className={styles.eyebrow}>Turno de hoy</p>
+            <h2>{estadoTurno}</h2>
+            <p>{siguienteTurno.detalle}</p>
+          </div>
+          <div className={styles.shiftStats}>
+            <div>
+              <strong>{stats.ventasHoy}</strong>
+              <span>ventas</span>
+            </div>
+            <div>
+              <strong>{alertasSala}</strong>
+              <span>señales</span>
+            </div>
+            <div>
+              <strong>{turnoCerrado ? 'Sí' : 'No'}</strong>
+              <span>cerrado</span>
+            </div>
+          </div>
+          <Link className={styles.shiftAction} href={siguienteTurno.href}>{siguienteTurno.label}</Link>
+        </section>
+
         <section className={styles.summary}>
           <div className={styles.heroPanel}>
             <p className={styles.eyebrow}>Inicio</p>
@@ -273,6 +366,73 @@ export default function DashboardHome() {
             <Link href={accionesVisibles[0]?.href || '/dashboard/sala'} className={styles.executiveLink}>
               Abrir prioridad
             </Link>
+          </div>
+        </section>
+
+        <section className={styles.servicePlan}>
+          <div className={styles.servicePlanHead}>
+            <div>
+              <p className={styles.eyebrow}>Plan de servicio</p>
+              <h2>Antes de abrir sala</h2>
+              <p>Un resumen operativo para saber qué vender, qué vigilar y qué enlaces necesita el equipo.</p>
+            </div>
+            <div className={styles.servicePlanActions}>
+              {enlacesServicio.map(enlace => enlace.external ? (
+                <a key={enlace.label} href={enlace.href} target="_blank" rel="noreferrer">{enlace.label}</a>
+              ) : (
+                <Link key={enlace.label} href={enlace.href}>{enlace.label}</Link>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.servicePlanGrid}>
+            <article className={styles.servicePlanCard}>
+              <span className={styles.servicePlanLabel}>Empujar hoy</span>
+              {vinosServicio.length ? (
+                <div className={styles.servicePlanList}>
+                  {vinosServicio.map(vino => (
+                    <Link key={vino.id} href="/dashboard/vinos" className={styles.servicePlanItem}>
+                      <strong>{vino.nombre}</strong>
+                      <span>{[vino.bodega, vino.margenPct ? `${vino.margenPct}% margen` : 'completar coste', decimal(vino.precio_copa) > 0 ? 'por copa' : null].filter(Boolean).join(' · ')}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.servicePlanEmpty}>Añade precio y stock para proponer vinos de servicio.</p>
+              )}
+            </article>
+
+            <article className={styles.servicePlanCard}>
+              <span className={styles.servicePlanLabel}>Vigilar stock</span>
+              {riesgosServicio.length ? (
+                <div className={styles.servicePlanList}>
+                  {riesgosServicio.map(vino => (
+                    <Link key={vino.id} href="/dashboard/bodega" className={styles.servicePlanItem}>
+                      <strong>{vino.nombre}</strong>
+                      <span>{vino.motivo}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.servicePlanEmpty}>Sin alertas de stock con los datos actuales.</p>
+              )}
+            </article>
+
+            <article className={styles.servicePlanCard}>
+              <span className={styles.servicePlanLabel}>Platos para argumentar</span>
+              {platosServicio.length ? (
+                <div className={styles.servicePlanList}>
+                  {platosServicio.map(plato => (
+                    <Link key={plato.id} href="/dashboard/platos" className={styles.servicePlanItem}>
+                      <strong>{plato.nombre}</strong>
+                      <span>{[plato.categoria, decimal(plato.precio) ? eur(plato.precio) : null].filter(Boolean).join(' · ')}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.servicePlanEmpty}>Completa descripciones de platos para preparar argumentos de venta.</p>
+              )}
+            </article>
           </div>
         </section>
 

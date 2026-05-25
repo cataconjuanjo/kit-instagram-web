@@ -1,15 +1,23 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { requireUser } from '../_lib/auth'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const MAX_BASE64_LENGTH = 4_500_000
 
 export async function POST(req) {
   try {
+    const auth = await requireUser(req)
+    if (auth.error) return Response.json({ texto: '', error: auth.error }, { status: auth.status })
+
     const { pdfBase64, fileBase64, mediaType } = await req.json()
     const data = fileBase64 || pdfBase64
     const tipo = (mediaType || 'application/pdf').toLowerCase()
 
     if (!data) {
       return Response.json({ texto: '', error: 'Archivo no recibido' }, { status: 400 })
+    }
+    if (String(data).length > MAX_BASE64_LENGTH) {
+      return Response.json({ texto: '', error: 'Archivo demasiado grande. Usa un PDF o imagen de hasta 3 MB.' }, { status: 413 })
     }
 
     const entrada = tipo.startsWith('image/')

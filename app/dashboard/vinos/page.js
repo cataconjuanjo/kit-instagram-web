@@ -83,13 +83,11 @@ export default function Dashboard() {
   const [vinos, setVinos] = useState([])
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
-  const [mostrarImportador, setMostrarImportador] = useState(false)
+  const [mostrarImportador, setMostrarImportador] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('importar') === '1'
+  ))
   const [arrastrandoPdf, setArrastrandoPdf] = useState(false)
   const [progresoPdf, setProgresoPdf] = useState('')
-
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('importar') === '1') setMostrarImportador(true)
-  }, [])
   const [busquedaVinos, setBusquedaVinos] = useState('')
   const [filtroVinos, setFiltroVinos] = useState('todos')
   const [generandoCata, setGenerandoCata] = useState(false)
@@ -140,7 +138,7 @@ const vinosActivos = vinos.filter(vino => vino.activo !== false)
     try {
       const res = await fetch('/api/cata', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
           nombre: nuevoVino.nombre,
           bodega: nuevoVino.bodega,
@@ -200,6 +198,14 @@ function leerBase64(file) {
   })
 }
 
+async function authHeaders() {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  return token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' }
+}
+
 async function procesarArchivos(files) {
   const lista = Array.from(files)
   const grandes = lista.filter(f => f.size > 3 * 1024 * 1024)
@@ -218,7 +224,7 @@ async function procesarArchivos(files) {
     try {
       const res = await fetch('/api/importar-vinos-pdf', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ fileBase64: base64, mediaType: validos[i].type || 'application/pdf' })
       })
       const data = await res.json()

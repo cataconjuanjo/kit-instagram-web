@@ -17,9 +17,61 @@ function inicioDiaISO() {
   return d.toISOString()
 }
 
+function decimal(valor) {
+  return parseFloat(valor) || 0
+}
+
+function eur(valor) {
+  return `${decimal(valor).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} EUR`
+}
+
+function prepararBriefing(vinos = [], platos = [], restaurante = {}) {
+  const activos = vinos.filter(vino => vino.activo !== false)
+  const ciudad = (restaurante?.ciudad || '').toLowerCase()
+
+  const vinosServicio = activos
+    .filter(vino => decimal(vino.stock) > 0 && decimal(vino.precio_botella) > 0)
+    .map(vino => {
+      const venta = decimal(vino.precio_botella)
+      const coste = decimal(vino.coste_compra)
+      const margenPct = venta && coste ? Math.round(((venta - coste) / venta) * 100) : null
+      const stock = decimal(vino.stock)
+      const score =
+        (margenPct || 45) +
+        (decimal(vino.precio_copa) > 0 ? 12 : 0) +
+        (stock >= Math.max(8, decimal(vino.stock_minimo) * 2) ? 10 : 0) +
+        ((vino.region || '').toLowerCase().includes(ciudad) ? 8 : 0)
+      return { ...vino, margenPct, score }
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+
+  const vinosRiesgo = activos
+    .filter(vino => decimal(vino.stock) === 0 || (decimal(vino.stock_minimo) > 0 && decimal(vino.stock) <= decimal(vino.stock_minimo)))
+    .sort((a, b) => decimal(a.stock) - decimal(b.stock))
+    .slice(0, 3)
+
+  const platosArgumento = platos
+    .filter(plato => plato.activo !== false && plato.descripcion && plato.descripcion.trim().length >= 8)
+    .sort((a, b) => decimal(b.precio) - decimal(a.precio))
+    .slice(0, 3)
+
+  return { vinosServicio, vinosRiesgo, platosArgumento }
+}
+
+function LineaBriefing({ titulo, detalle }) {
+  return (
+    <div style={{ borderTop: '1px solid rgba(90, 72, 55, 0.12)', paddingTop: 10 }}>
+      <p className={styles.sectionTitle} style={{ fontSize: 14 }}>{titulo}</p>
+      {detalle && <p className={styles.sectionText} style={{ marginTop: 3 }}>{detalle}</p>}
+    </div>
+  )
+}
+
 export default function SalaHub() {
   const [restaurante, setRestaurante] = useState(null)
   const [eventos, setEventos] = useState([])
+  const [briefing, setBriefing] = useState({ vinosServicio: [], vinosRiesgo: [], platosArgumento: [] })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -29,13 +81,18 @@ export default function SalaHub() {
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
-        const { data } = await supabase
-          .from('estadisticas')
-          .select('*')
-          .eq('restaurante_id', rest.id)
-          .gte('created_at', inicioDiaISO())
-          .order('created_at', { ascending: false })
-        setEventos((data || []).map(item => ({ ...item, parsed: leerDetalle(item.detalle) })))
+        const [{ data: estadisticas }, { data: vinos }, { data: platos }] = await Promise.all([
+          supabase
+            .from('estadisticas')
+            .select('*')
+            .eq('restaurante_id', rest.id)
+            .gte('created_at', inicioDiaISO())
+            .order('created_at', { ascending: false }),
+          supabase.from('vinos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
+          supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
+        ])
+        setEventos((estadisticas || []).map(item => ({ ...item, parsed: leerDetalle(item.detalle) })))
+        setBriefing(prepararBriefing(vinos || [], platos || [], rest))
       }
       setLoading(false)
     }
@@ -64,7 +121,7 @@ export default function SalaHub() {
         items: [
           { title: 'Durante el servicio', text: 'El camarero marca ventas, falta de stock o cambios de decisión desde su pantalla simple.' },
           { title: 'Al cierre', text: 'Revisa incidencias y dudas en Cierre de servicio. Ahí decides si ajustar stock o solo tomar nota.' },
-          { title: 'Semanalmente', text: 'Actividad sirve para ver tendencias: que se consulta, que convence y que necesita mejor argumento.' },
+          { title: 'Semanalmente', text: 'Actividad sirve para ver tendencias: qué se consulta, qué convence y qué necesita mejor argumento.' },
         ],
       }}
     >
@@ -75,6 +132,62 @@ export default function SalaHub() {
         <div className={styles.stat}><p className={styles.statValue}>{consultas}</p><p className={styles.statLabel}>Consultas maridaje</p></div>
       </section>
 
+      <section className={styles.panel} style={{ marginTop: 16 }}>
+        <div className={styles.panelHead}>
+          <div>
+            <p className={styles.eyebrow}>Antes de abrir</p>
+            <h2 className={styles.panelTitle}>Briefing de sala</h2>
+            <p className={styles.panelSub}>Qué vender con intención, qué revisar antes de prometer y qué platos usar para abrir conversación.</p>
+          </div>
+          <Link className={styles.secondary} href="/dashboard/cierre">Ir a cierre</Link>
+        </div>
+        <div className={styles.panelBody}>
+          <div className={styles.gridTwo}>
+            <article className={styles.itemCard}>
+              <p className={styles.eyebrow}>Empujar hoy</p>
+              <h3 className={styles.sectionTitle}>Vinos con recorrido</h3>
+              <div className={styles.itemStack} style={{ marginTop: 12 }}>
+                {briefing.vinosServicio.length ? briefing.vinosServicio.map(vino => (
+                  <LineaBriefing
+                    key={vino.id}
+                    titulo={vino.nombre}
+                    detalle={[vino.bodega, vino.margenPct ? `${vino.margenPct}% margen` : 'coste pendiente', decimal(vino.precio_copa) > 0 ? 'por copa' : eur(vino.precio_botella)].filter(Boolean).join(' · ')}
+                  />
+                )) : <p className={styles.sectionText}>Añade stock, precio y coste para generar recomendaciones de venta.</p>}
+              </div>
+            </article>
+
+            <article className={styles.itemCard}>
+              <p className={styles.eyebrow}>Revisar antes</p>
+              <h3 className={styles.sectionTitle}>No prometer sin mirar bodega</h3>
+              <div className={styles.itemStack} style={{ marginTop: 12 }}>
+                {briefing.vinosRiesgo.length ? briefing.vinosRiesgo.map(vino => (
+                  <LineaBriefing
+                    key={vino.id}
+                    titulo={vino.nombre}
+                    detalle={`Stock ${decimal(vino.stock)}${decimal(vino.stock_minimo) ? ` / mínimo ${decimal(vino.stock_minimo)}` : ''}`}
+                  />
+                )) : <p className={styles.sectionText}>No hay referencias críticas de stock para este servicio.</p>}
+              </div>
+            </article>
+
+            <article className={styles.itemCard}>
+              <p className={styles.eyebrow}>Argumentos</p>
+              <h3 className={styles.sectionTitle}>Platos para vender mejor</h3>
+              <div className={styles.itemStack} style={{ marginTop: 12 }}>
+                {briefing.platosArgumento.length ? briefing.platosArgumento.map(plato => (
+                  <LineaBriefing
+                    key={plato.id}
+                    titulo={plato.nombre}
+                    detalle={[plato.categoria, decimal(plato.precio) ? eur(plato.precio) : null].filter(Boolean).join(' · ')}
+                  />
+                )) : <p className={styles.sectionText}>Completa descripciones de platos para preparar mejores argumentos de sala.</p>}
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section className={styles.hubGrid}>
         <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/cierre">
           <p className={styles.eyebrow}>Hoy</p>
@@ -83,7 +196,7 @@ export default function SalaHub() {
           <span>{incidencias + dudas} señales pendientes</span>
         </Link>
         <Link className={styles.hubCard} href="/dashboard/estadisticas">
-          <p className={styles.eyebrow}>Historico</p>
+          <p className={styles.eyebrow}>Histórico</p>
           <h2>Actividad</h2>
           <p>Escaneos, consultas de maridaje y feedback acumulado.</p>
           <span>Ver tendencias</span>

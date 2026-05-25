@@ -10,6 +10,7 @@ import styles from '../module.module.css'
 export default function QRPage() {
   const [restaurante, setRestaurante] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [copiado, setCopiado] = useState('')
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -23,38 +24,53 @@ export default function QRPage() {
     cargar()
   }, [])
 
+  const urlBase = typeof window !== 'undefined' ? window.location.origin : ''
+  const destino = restaurante?.hub_activo ? 'r' : 'carta'
+  const urlDirecta = restaurante?.slug ? `${urlBase}/${destino}/${restaurante.slug}` : ''
+  const urlCarta = restaurante?.slug ? `${urlBase}/carta/${restaurante.slug}` : ''
+  const urlPrint = restaurante?.slug ? `${urlBase}/carta/${restaurante.slug}?print=1` : ''
+  const textoEquipo = restaurante ? `Carta digital ${restaurante.nombre}: ${urlDirecta}` : ''
+
   useEffect(() => {
-    if (restaurante && canvasRef.current) {
-      const destino = restaurante.hub_activo ? 'r' : 'carta'
-      const url = `${window.location.origin}/${destino}/${restaurante.slug}`
-      QRCode.toCanvas(canvasRef.current, url, {
-        width: 280,
+    if (urlDirecta && canvasRef.current) {
+      QRCode.toCanvas(canvasRef.current, urlDirecta, {
+        width: 300,
         margin: 2,
         color: { dark: '#171416', light: '#ffffff' }
       })
     }
-  }, [restaurante])
+  }, [urlDirecta])
 
   function descargar() {
     const canvas = canvasRef.current
+    if (!canvas || !restaurante?.slug) return
     const link = document.createElement('a')
     link.download = `qr-${restaurante.slug}.png`
     link.href = canvas.toDataURL()
     link.click()
   }
 
+  async function copiar(texto, tipo) {
+    if (!texto) return
+    await navigator.clipboard?.writeText(texto)
+    setCopiado(tipo)
+    setTimeout(() => setCopiado(''), 1800)
+  }
+
   if (loading) return <LoadingState />
 
-  const urlDirecta = typeof window !== 'undefined' && restaurante
-    ? `${window.location.origin}/${restaurante.hub_activo ? 'r' : 'carta'}/${restaurante.slug}`
-    : ''
+  const pruebas = [
+    { titulo: 'Abrir desde cliente', detalle: restaurante?.hub_activo ? 'El QR abre el hub público.' : 'El QR abre la carta digital.', href: urlDirecta },
+    { titulo: 'Carta directa', detalle: 'Comprueba platos, vinos, precios y tiempos de carga.', href: urlCarta },
+    { titulo: 'Versión impresión', detalle: 'Abre la vista preparada para imprimir o guardar PDF.', href: urlPrint },
+  ]
 
   return (
     <ModuleShell
       restaurante={restaurante}
       eyebrow="Código QR"
-      title="Carta lista para mesa"
-      subtitle="Un QR limpio y descargable. Si el hub está activo, apunta al link en bio; si no, apunta a la carta de vinos."
+      title="Entrega de QR y accesos"
+      subtitle="Pantalla de entrega para probar el enlace, descargar el QR y preparar materiales de mesa."
       narrow
       help={{
         title: 'Antes de imprimir',
@@ -62,7 +78,7 @@ export default function QRPage() {
         items: [
           { title: 'Destino', text: 'Si el hub está activo abre reservas, cartas y redes. Si no, abre la carta de vinos directamente.' },
           { title: 'Prueba real', text: 'Escanea con el móvil antes de imprimir para revisar velocidad, logo, colores y enlaces.' },
-          { title: 'Uso', text: 'Descarga el PNG y usalo en sobremesa, metacrilato, cartel o enlace de Instagram.' },
+          { title: 'Uso', text: 'Descarga el PNG y úsalo en sobremesa, metacrilato, cartel o enlace de Instagram.' },
         ],
       }}
     >
@@ -74,22 +90,49 @@ export default function QRPage() {
             <p className={styles.sectionText}>{restaurante?.hub_activo ? 'Hub público' : 'Carta digital'}</p>
           </div>
           <button className={styles.primary} onClick={descargar}>Descargar PNG</button>
-          <a className={styles.secondary} href={`/carta/${restaurante?.slug || ''}?print=1`} target="_blank" rel="noreferrer">Imprimir / PDF</a>
+          <a className={styles.secondary} href={urlPrint} target="_blank" rel="noreferrer">Imprimir / PDF</a>
         </div>
 
-        <div className={styles.panel}>
-          <div className={styles.panelHead}>
-            <div>
-              <h2 className={styles.panelTitle}>{restaurante?.hub_activo ? 'URL del hub' : 'URL directa'}</h2>
-              <p className={styles.panelSub}>Enlace público para compartir, probar o enviar al proveedor de imprenta.</p>
+        <div className={styles.itemStack}>
+          <div className={styles.panel}>
+            <div className={styles.panelHead}>
+              <div>
+                <h2 className={styles.panelTitle}>{restaurante?.hub_activo ? 'URL del hub' : 'URL directa'}</h2>
+                <p className={styles.panelSub}>Enlace público para compartir, probar o enviar al proveedor de imprenta.</p>
+              </div>
+              <span className={styles.badge}>{destino === 'r' ? 'Hub' : 'Carta'}</span>
+            </div>
+            <div className={styles.panelBody}>
+              <div className={styles.urlBox}>{urlDirecta}</div>
+              <div className={styles.actionRow} style={{ marginTop: 14 }}>
+                <a className={styles.secondary} href={urlDirecta} target="_blank" rel="noreferrer">Abrir destino</a>
+                <button className={styles.ghost} onClick={() => copiar(urlDirecta, 'url')}>{copiado === 'url' ? 'Copiado' : 'Copiar URL'}</button>
+                <button className={styles.ghost} onClick={() => copiar(textoEquipo, 'equipo')}>{copiado === 'equipo' ? 'Copiado' : 'Copiar para equipo'}</button>
+              </div>
             </div>
           </div>
-          <div className={styles.panelBody}>
-            <div className={styles.urlBox}>{urlDirecta}</div>
-            <div className={styles.actionRow} style={{ marginTop: 14 }}>
-              <a className={styles.secondary} href={urlDirecta} target="_blank" rel="noreferrer">Abrir carta</a>
-              <a className={styles.secondary} href={`/carta/${restaurante?.slug || ''}?print=1`} target="_blank" rel="noreferrer">Carta en PDF</a>
-              <button className={styles.ghost} onClick={() => navigator.clipboard?.writeText(urlDirecta)}>Copiar URL</button>
+
+          <div className={styles.panel}>
+            <div className={styles.panelHead}>
+              <div>
+                <h2 className={styles.panelTitle}>Pruebas rápidas</h2>
+                <p className={styles.panelSub}>Tres aperturas para comprobar qué verá el cliente antes de imprimir.</p>
+              </div>
+            </div>
+            <div className={styles.panelBody}>
+              <div className={styles.itemStack}>
+                {pruebas.map(prueba => (
+                  <a key={prueba.titulo} href={prueba.href} target="_blank" rel="noreferrer" className={styles.itemCard}>
+                    <div className={styles.sectionHead} style={{ margin: 0 }}>
+                      <div>
+                        <h3 className={styles.sectionTitle}>{prueba.titulo}</h3>
+                        <p className={styles.sectionText}>{prueba.detalle}</p>
+                      </div>
+                      <span className={styles.badge}>Abrir</span>
+                    </div>
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -685,7 +685,7 @@ export default function Dossier() {
               <div className="prob">
                 <p className="prob-num">02</p>
                 <p className="prob-title">El camarero recomienda sin convicción</p>
-                <p className="prob-desc">Sin sumiller y sin herramientas, el equipo dice "este está bien" sin saber por qué. El cliente lo nota y pide agua.</p>
+                <p className="prob-desc">Sin sumiller y sin herramientas, el equipo dice &quot;este está bien&quot; sin saber por qué. El cliente lo nota y pide agua.</p>
               </div>
               <div className="prob">
                 <p className="prob-num">03</p>

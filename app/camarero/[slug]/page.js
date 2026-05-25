@@ -44,7 +44,7 @@ export default function Camarero({ params }) {
   const coloresVino = ['#7B2D2D', '#C4A55A', '#534AB7', '#4A8C6F']
   const ejes = ['dulzor', 'acidez', 'taninos', 'alcohol', 'cuerpo', 'intensidad', 'final']
   const etiquetas = { dulzor: 'Dulzor', acidez: 'Acidez', taninos: 'Taninos', alcohol: 'Alcohol', cuerpo: 'Cuerpo', intensidad: 'Intensidad', final: 'Final' }
-  const chartierBusqueda = useMemo(() => (chartierKb || []).map(capitulo => ({
+  const chartierBusqueda = (chartierKb || []).map(capitulo => ({
     capitulo,
     textoBusqueda: normalizar([
       capitulo.id,
@@ -56,7 +56,7 @@ export default function Camarero({ params }) {
     ].join(' ')),
     terminosVino: terminosVinoDesdeCapitulo(capitulo),
     tipos: tiposInferidosDesdeCapitulo(capitulo),
-  })), [])
+  }))
 
   useEffect(() => {
     async function cargar() {
@@ -76,28 +76,6 @@ export default function Camarero({ params }) {
         setVinos(vinosData || [])
         const { data: platosData } = await supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true).order('categoria')
         setPlatos(platosData || [])
-        const [{ data: ventasData }, { data: recomendacionesData }] = await Promise.all([
-          supabase
-            .from('estadisticas')
-            .select('detalle, created_at')
-            .eq('restaurante_id', rest.id)
-            .eq('tipo', 'venta')
-            .order('created_at', { ascending: false })
-            .limit(300),
-          supabase
-            .from('estadisticas')
-            .select('detalle, created_at')
-            .eq('restaurante_id', rest.id)
-            .eq('tipo', 'recomendacion')
-            .order('created_at', { ascending: false })
-            .limit(500),
-        ])
-        setHistorialVenta((ventasData || []).map(item => {
-          try { return JSON.parse(item.detalle || '{}') } catch { return null }
-        }).filter(Boolean))
-        setHistorialRecomendaciones((recomendacionesData || []).map(item => {
-          try { return JSON.parse(item.detalle || '{}') } catch { return null }
-        }).filter(Boolean))
         if (esDemo && platosData?.length) {
           const platoDemo = platosData.find(plato => plato.nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes('codillo')) || platosData[0]
           setConsultaVenta(`${platoDemo.nombre}${platoDemo.precio ? ` (${platoDemo.precio} EUR)` : ''}${platoDemo.descripcion ? `: ${platoDemo.descripcion}` : ''}`)
@@ -112,8 +90,26 @@ export default function Camarero({ params }) {
 
   function comprobarPin() {
     const pinConfigurado = String(restaurante?.camarero_pin || process.env.NEXT_PUBLIC_CAMARERO_FALLBACK_PIN || '').trim()
-    if (pinConfigurado && pin === pinConfigurado) { setAutenticado(true); setErrorPin(false) }
+    if (pinConfigurado && pin === pinConfigurado) {
+      setAutenticado(true)
+      setErrorPin(false)
+      cargarHistorialSala(pinConfigurado)
+    }
     else setErrorPin(true)
+  }
+
+  async function cargarHistorialSala(pinValido) {
+    if (!restaurante?.id) return
+    const query = new URLSearchParams({ restaurante_id: restaurante.id, pin: pinValido })
+    const res = await fetch(`/api/estadisticas?${query.toString()}`)
+    if (!res.ok) return
+    const data = await res.json()
+    setHistorialVenta((data.ventas || []).map(item => {
+      try { return JSON.parse(item.detalle || '{}') } catch { return null }
+    }).filter(Boolean))
+    setHistorialRecomendaciones((data.recomendaciones || []).map(item => {
+      try { return JSON.parse(item.detalle || '{}') } catch { return null }
+    }).filter(Boolean))
   }
 
   function toggleComparador(vino) {
@@ -183,13 +179,16 @@ export default function Camarero({ params }) {
       posicion: label,
     })
 
-    const { error } = await supabase.from('estadisticas').insert([{
-      restaurante_id: restaurante.id,
-      tipo: 'venta',
-      detalle,
-    }])
+    const res = await fetch('/api/estadisticas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pin,
+        eventos: [{ restaurante_id: restaurante.id, tipo: 'venta', detalle }],
+      }),
+    })
 
-    if (error) {
+    if (!res.ok) {
       setFeedbackVenta(prev => ({ ...prev, [clave]: false }))
     } else {
       setHistorialVenta(prev => [{ resultado, vino_id: vino.id, vino: vino.nombre, plato: consultaActiva, objetivo: objetivoVenta, posicion: label }, ...prev].slice(0, 300))
@@ -965,25 +964,17 @@ export default function Camarero({ params }) {
   }
 
   const tipos = useMemo(() => ['todos', ...new Set(vinos.map(v => v.tipo))], [vinos])
-  const recomendacionesVenta = useMemo(() => (
-    autenticado && vistaServicio === 'venta' ? calcularRecomendacionesVenta() : []
-  ), [autenticado, vistaServicio, vinos, platosMesaVenta, consultaVenta, objetivoVenta, rotacionVenta, historialVenta, historialRecomendaciones, restaurante])
-  const lecturaActual = useMemo(() => (
-    autenticado && vistaServicio === 'venta' ? lecturaMesaVenta() : null
-  ), [autenticado, vistaServicio, platosMesaVenta, consultaVenta, vinos, restaurante])
-  const ticketActualVenta = useMemo(() => (
-    autenticado ? ticketMesaVenta() : 0
-  ), [autenticado, platosMesaVenta, consultaVenta])
-  const rangoActualVenta = useMemo(() => (
-    rangoBotellaParaTicket(ticketActualVenta, precioMedioVinosVenta())
-  ), [ticketActualVenta, vinos, objetivoVenta, restaurante])
+  const recomendacionesVenta = autenticado && vistaServicio === 'venta' ? calcularRecomendacionesVenta() : []
+  const lecturaActual = autenticado && vistaServicio === 'venta' ? lecturaMesaVenta() : null
+  const ticketActualVenta = autenticado ? ticketMesaVenta() : 0
+  const rangoActualVenta = rangoBotellaParaTicket(ticketActualVenta, precioMedioVinosVenta())
   const categoriasPlatosVenta = useMemo(() => ['todos', ...new Set(platosVenta.map(plato => plato.categoria).filter(Boolean))], [platosVenta])
-  const platosVentaFiltrados = useMemo(() => platosVenta.filter(plato => {
+  const platosVentaFiltrados = platosVenta.filter(plato => {
     const texto = normalizar(`${plato.nombre} ${plato.descripcion || ''} ${plato.categoria || ''}`)
     const matchCategoria = categoriaPlatoVenta === 'todos' || plato.categoria === categoriaPlatoVenta
     const matchBusqueda = !busquedaPlatoVenta || texto.includes(normalizar(busquedaPlatoVenta))
     return matchCategoria && matchBusqueda
-  }), [platosVenta, categoriaPlatoVenta, busquedaPlatoVenta])
+  })
   const platosPanelAbierto = mostrarPlatosVenta || busquedaPlatoVenta.length > 0 || categoriaPlatoVenta !== 'todos'
 
   const vinosFiltrados = useMemo(() => vinos.filter(v => {
@@ -1019,8 +1010,12 @@ export default function Camarero({ params }) {
       }),
     }))
 
-    supabase.from('estadisticas').insert(eventos)
-  }, [autenticado, vistaServicio, restaurante?.id, recomendacionesVenta, objetivoVenta, rotacionVenta, consultaVenta, platosMesaVenta])
+    fetch('/api/estadisticas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin, eventos }),
+    })
+  }, [autenticado, vistaServicio, restaurante?.id, recomendacionesVenta, objetivoVenta, rotacionVenta, consultaVenta, platosMesaVenta, pin])
 
   const cx = 150, cy = 150, r = 100
 

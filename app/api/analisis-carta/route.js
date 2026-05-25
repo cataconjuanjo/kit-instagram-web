@@ -1,11 +1,50 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const MAX_BASE64_LENGTH = 4_500_000
+const RATE_LIMIT = 5
+const RATE_WINDOW_MS = 60 * 60 * 1000
+
+function getIP(request) {
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    '0.0.0.0'
+  )
+}
+
+async function checkRateLimit(ip) {
+  const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
+  const { count } = await supabaseAdmin
+    .from('rate_limits')
+    .select('*', { count: 'exact', head: true })
+    .eq('ip', ip)
+    .eq('endpoint', 'analisis-carta')
+    .gte('created_at', since)
+
+  if ((count || 0) >= RATE_LIMIT) return false
+
+  await supabaseAdmin.from('rate_limits').insert({ ip, endpoint: 'analisis-carta' })
+  return true
+}
 
 export async function POST(req) {
   const { pdfBase64 } = await req.json()
 
   try {
+    const allowed = await checkRateLimit(getIP(req))
+    if (!allowed) {
+      return Response.json({ analisis: null, error: 'Demasiadas consultas. Prueba de nuevo en un rato.' }, { status: 429 })
+    }
+
+    if (!pdfBase64) {
+      return Response.json({ analisis: null, error: 'Archivo no recibido' }, { status: 400 })
+    }
+    if (String(pdfBase64).length > MAX_BASE64_LENGTH) {
+      return Response.json({ analisis: null, error: 'Archivo demasiado grande. Usa un PDF de hasta 3 MB.' }, { status: 413 })
+    }
+
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,

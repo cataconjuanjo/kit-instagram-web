@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin as supabase } from '../../lib/supabaseAdmin'
+import { requireRestaurantAccess } from '../_lib/auth'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
@@ -29,6 +30,8 @@ Describe color, aromas y boca en 2-3 frases naturales como las de una guía de v
 export async function POST(request) {
   try {
     const { restaurante_id } = await request.json()
+    const auth = await requireRestaurantAccess(request, supabase, restaurante_id)
+    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
 
     const { data: vinos } = await supabase
       .from('vinos')

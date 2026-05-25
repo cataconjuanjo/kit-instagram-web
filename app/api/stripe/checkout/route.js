@@ -1,5 +1,6 @@
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { requireRestaurantAccess } from '../../_lib/auth'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
 
@@ -28,6 +29,10 @@ export async function POST(req) {
       process.env.SUPABASE_SERVICE_ROLE_KEY,
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
+    if (restaurante_id) {
+      const auth = await requireRestaurantAccess(req, adminSupabase, restaurante_id)
+      if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    }
 
     // Buscar o crear el customer en Stripe
     let stripeCustomerId = null

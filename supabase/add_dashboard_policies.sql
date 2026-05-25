@@ -164,7 +164,10 @@ CREATE POLICY "auth_restaurantes_update"
 DROP POLICY IF EXISTS "auth_restaurantes_select" ON restaurantes;
 CREATE POLICY "auth_restaurantes_select"
   ON restaurantes FOR SELECT TO authenticated
-  USING (true);  -- cualquier usuario autenticado puede leer restaurantes (mismo nivel que anon)
+  USING (
+    (auth.jwt() ->> 'email') = 'cataconjuanjo@gmail.com'
+    OR email = (auth.jwt() ->> 'email')
+  );
 
 -- ── 5. MOVIMIENTOS_STOCK ─────────────────────────────────────
 -- Las políticas de propietario ya existen (add_bodega_control.sql).
