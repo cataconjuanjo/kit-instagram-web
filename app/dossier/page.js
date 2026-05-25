@@ -755,6 +755,13 @@ export default function Dossier() {
                   <p className="feat-desc">Elige tus colores, tu tipografía y sube tu logo. La carta digital parece tuya, no de un software. El QR puede llevar también a tu carta de comida, reservas o cualquier enlace.</p>
                 </div>
               </div>
+              <div className="feat">
+                <span className="feat-n">8</span>
+                <div>
+                  <p className="feat-title">Rentabilidad de carta — sabe qué vinos empujar, cuáles renegociar y cuáles quitar</p>
+                  <p className="feat-desc">Cada vino clasificado automáticamente en cuatro categorías según su margen real y su popularidad en sala: Estrella, Joya oculta, Caballo de batalla o Revisar. Con acciones concretas para cada uno. Los datos entran solos — desde el camarero o desde el conteo semanal de bodega.</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -820,6 +827,7 @@ export default function Dossier() {
                     <li>Control de bodega e inventario</li>
                     <li>Cierre de servicio automatizado</li>
                     <li>Estadísticas de sala y escaneos</li>
+                    <li>Análisis de rentabilidad por vino</li>
                     <li>Gestión de carta de comidas</li>
                   </ul>
                 </div>
