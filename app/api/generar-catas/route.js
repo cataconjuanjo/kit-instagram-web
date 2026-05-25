@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { supabase } from '../../supabase'
+import { supabaseAdmin as supabase } from '../../lib/supabaseAdmin'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
