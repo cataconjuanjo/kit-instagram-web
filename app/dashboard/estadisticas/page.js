@@ -95,12 +95,23 @@ export default function Estadisticas() {
   const rendimientoVinos = Object.entries(feedbackVenta.reduce((acc, item) => {
     const vino = item.vino || 'Vino sin nombre'
     acc[vino] = acc[vino] || { vendida: 0, no_convence: 0, otra: 0, total: 0 }
-    acc[vino][item.resultado] = (acc[vino][item.resultado] || 0) + 1
-    acc[vino].total += 1
+    acc[vino][item.resultado] = (acc[vino][item.resultado] || 0) + (item.cantidad || 1)
+    acc[vino].total += (item.cantidad || 1)
     return acc
   }, {}))
     .sort((a, b) => (b[1].vendida - b[1].no_convence) - (a[1].vendida - a[1].no_convence))
     .slice(0, 6)
+
+  const topVinosVendidos = Object.entries(feedbackVenta.reduce((acc, item) => {
+    if (item.resultado !== 'vendida') return acc
+    const vino = item.vino || 'Vino sin nombre'
+    acc[vino] = (acc[vino] || 0) + (item.cantidad || 1)
+    return acc
+  }, {}))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+
+  const maxVentas = topVinosVendidos[0]?.[1] || 1
 
   const platosFrecuentes = statsFiltradas
     .filter(s => s.tipo === 'sommelier' && s.detalle)
@@ -194,6 +205,44 @@ export default function Estadisticas() {
           </div>
         ))}
       </section>
+
+      {/* Gráfica top vinos vendidos */}
+      {topVinosVendidos.length > 0 && (
+        <section className={styles.panel} style={{ marginBottom: 16 }}>
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>Top vinos vendidos</h2>
+              <p className={styles.panelSub}>Ventas marcadas en sala e inventario en el período seleccionado.</p>
+            </div>
+            <span className={styles.badge}>{topVinosVendidos.reduce((s, [, n]) => s + n, 0)} ventas</span>
+          </div>
+          <div className={styles.panelBody}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {topVinosVendidos.map(([vino, ventas], i) => (
+                <div key={vino}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: i === 0 ? 700 : 500, color: '#171416', maxWidth: '80%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {i === 0 ? '⭐ ' : ''}{vino}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#766e64', flexShrink: 0, marginLeft: 8 }}>
+                      {ventas} {ventas === 1 ? 'venta' : 'ventas'}
+                    </span>
+                  </div>
+                  <div style={{ height: 8, background: '#f0ebe4', borderRadius: 4 }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${Math.round((ventas / maxVentas) * 100)}%`,
+                      background: i === 0 ? '#7B2D2D' : i < 3 ? '#bfa984' : '#d9cfc6',
+                      borderRadius: 4,
+                      transition: 'width 0.4s ease',
+                    }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className={styles.gridTwo}>
         <div className={styles.panel}>
