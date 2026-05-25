@@ -50,6 +50,9 @@ export default function Personalizar() {
   const [hubMostrarLogo, setHubMostrarLogo] = useState(true)
   const [hubMostrarNombre, setHubMostrarNombre] = useState(true)
   const [hubMostrarDireccion, setHubMostrarDireccion] = useState(true)
+  const [cartaMostrarEuro, setCartaMostrarEuro] = useState(true)
+  const [cartaCopaDecimales, setCartaCopaDecimales] = useState(true)
+  const [cartaPieTexto, setCartaPieTexto] = useState('')
   const [subiendoLogo, setSubiendoLogo] = useState(false)
   const [subiendoBanner, setSubiendoBanner] = useState(false)
   const [subiendoHub, setSubiendoHub] = useState(false)
@@ -88,6 +91,9 @@ export default function Personalizar() {
         setHubMostrarLogo(rest.hub_mostrar_logo !== false)
         setHubMostrarNombre(rest.hub_mostrar_nombre !== false)
         setHubMostrarDireccion(rest.hub_mostrar_direccion !== false)
+        setCartaMostrarEuro(rest.carta_mostrar_euro !== false)
+        setCartaCopaDecimales(rest.carta_copa_decimales !== false)
+        setCartaPieTexto(rest.carta_pie_texto || '')
       }
       setLoading(false)
     }
@@ -285,6 +291,7 @@ export default function Personalizar() {
       { nombre: 'texto del hub', cambios: { hub_titulo: hubTitulo.trim() || null, hub_subtitulo: hubSubtitulo.trim() || null }, sql: 'supabase/add_hub_links.sql' },
       { nombre: 'fondo del hub', cambios: { hub_fondo_url: hubFondoUrl, hub_fondo_zoom: hubFondoZoom, hub_fondo_x: hubFondoX, hub_fondo_y: hubFondoY, hub_overlay: hubOverlay, hub_estilo: hubEstilo }, sql: 'supabase/add_hub_links.sql' },
       { nombre: 'visibilidad del hub', cambios: { hub_mostrar_logo: hubMostrarLogo, hub_mostrar_nombre: hubMostrarNombre, hub_mostrar_direccion: hubMostrarDireccion }, sql: 'supabase/add_hub_links.sql' },
+      { nombre: 'formato de precios', cambios: { carta_mostrar_euro: cartaMostrarEuro, carta_copa_decimales: cartaCopaDecimales, carta_pie_texto: cartaPieTexto.trim() || null }, sql: 'supabase/add_precio_formato.sql' },
     ]
 
     const errores = []
@@ -802,6 +809,38 @@ export default function Personalizar() {
               <button className={styles.secondary} onClick={() => fileRef.current.click()} disabled={subiendoLogo}>
                 {subiendoLogo ? 'Subiendo...' : logoUrl ? 'Cambiar logo' : 'Subir logo'}
               </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Formato de precios */}
+      <section className={styles.panel} style={{ marginTop: 16 }}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2 className={styles.panelTitle}>Formato de precios</h2>
+            <p className={styles.panelSub}>Controla cómo se muestran los precios en la carta pública y el texto legal del pie.</p>
+          </div>
+        </div>
+        <div className={styles.panelBody}>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <label className={styles.checkOption}>
+              <input type="checkbox" checked={cartaMostrarEuro} onChange={e => setCartaMostrarEuro(e.target.checked)} />
+              <span>Mostrar símbolo € junto al precio</span>
+            </label>
+            <label className={styles.checkOption}>
+              <input type="checkbox" checked={cartaCopaDecimales} onChange={e => setCartaCopaDecimales(e.target.checked)} />
+              <span>Mostrar decimales en precio por copa (ej. 3,50 vs 4)</span>
+            </label>
+            <div>
+              <label className={styles.label}>Texto legal al pie de carta</label>
+              <p className={styles.tiny} style={{ marginTop: 0, marginBottom: 6 }}>Déjalo vacío para usar el texto por defecto sobre IVA incluido.</p>
+              <input
+                className={styles.input}
+                value={cartaPieTexto}
+                onChange={e => setCartaPieTexto(e.target.value)}
+                placeholder="Los precios de esta carta están indicados en Euros € e incluyen el 10% de IVA."
+              />
             </div>
           </div>
         </div>

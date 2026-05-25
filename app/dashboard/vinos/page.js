@@ -378,8 +378,8 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
   }
 }
 
-  const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30' }
-  const tipoLabel = { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja' }
+  const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87' }
+  const tipoLabel = { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja', sin_alcohol: 'Sin alcohol' }
 
   const campo = (label, key, placeholder, type = 'text') => (
     <div>
@@ -499,7 +499,7 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
                         <input value={vino.nombre} onChange={e => actualizarVinoImportar(index, { nombre: e.target.value })} placeholder="Vino" style={{ border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: 12, color: '#111', background: 'transparent' }} />
                         <input value={vino.bodega} onChange={e => actualizarVinoImportar(index, { bodega: e.target.value })} placeholder="Bodega" style={{ border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: 12, color: '#777', background: 'transparent' }} />
                         <select value={vino.tipo} onChange={e => actualizarVinoImportar(index, { tipo: e.target.value })} style={{ border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: 12, color: '#777', background: 'transparent' }}>
-                          {['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja'].map(tipo => <option key={tipo} value={tipo}>{tipoLabel[tipo]}</option>)}
+                          {['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol'].map(tipo => <option key={tipo} value={tipo}>{tipoLabel[tipo]}</option>)}
                         </select>
                         <input value={vino.region} onChange={e => actualizarVinoImportar(index, { region: e.target.value })} placeholder="Región" style={{ border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: 12, color: '#777', background: 'transparent' }} />
                         <input value={vino.anada} onChange={e => actualizarVinoImportar(index, { anada: e.target.value })} placeholder="Añada" style={{ border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: 12, color: '#777', background: 'transparent' }} />
@@ -537,6 +537,7 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
                   <option value="generoso">Generoso</option>
                   <option value="dulce">Dulce</option>
                   <option value="naranja">Naranja</option>
+                  <option value="sin_alcohol">Sin alcohol</option>
                 </select>
               </div>
               {campo('Precio copa (€)', 'precio_copa', '4.00', 'number')}
@@ -718,6 +719,7 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
                         <option value="generoso">Generoso</option>
                         <option value="dulce">Dulce</option>
                         <option value="naranja">Naranja</option>
+                        <option value="sin_alcohol">Sin alcohol</option>
                       </select>
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>

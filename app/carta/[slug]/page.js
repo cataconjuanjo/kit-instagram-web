@@ -67,8 +67,8 @@ const t = {
     añadirComparador: 'Añadir a comparador',
     quitarComparador: 'Quitar',
     maxComparador: 'Máximo 4 vinos',
-    tipoLabel: { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja' },
-    tipoPlural: { tinto: 'Tintos', blanco: 'Blancos', rosado: 'Rosados', espumoso: 'Espumosos', generoso: 'Generosos', dulce: 'Dulces', naranja: 'Naranjas' },
+    tipoLabel: { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja', sin_alcohol: 'Sin alcohol' },
+    tipoPlural: { tinto: 'Tintos', blanco: 'Blancos', rosado: 'Rosados', espumoso: 'Espumosos', generoso: 'Generosos', dulce: 'Dulces', naranja: 'Naranjas', sin_alcohol: 'Sin alcohol' },
     btl: 'btl',
   },
   en: {
@@ -114,8 +114,8 @@ const t = {
     añadirComparador: 'Add to compare',
     quitarComparador: 'Remove',
     maxComparador: 'Maximum 4 wines',
-    tipoLabel: { tinto: 'Red', blanco: 'White', rosado: 'Rosé', espumoso: 'Sparkling', generoso: 'Fortified', dulce: 'Sweet', naranja: 'Orange' },
-    tipoPlural: { tinto: 'Reds', blanco: 'Whites', rosado: 'Rosés', espumoso: 'Sparkling', generoso: 'Fortified', dulce: 'Sweet', naranja: 'Orange' },
+    tipoLabel: { tinto: 'Red', blanco: 'White', rosado: 'Rosé', espumoso: 'Sparkling', generoso: 'Fortified', dulce: 'Sweet', naranja: 'Orange', sin_alcohol: 'Non-alcoholic' },
+    tipoPlural: { tinto: 'Reds', blanco: 'Whites', rosado: 'Rosés', espumoso: 'Sparkling', generoso: 'Fortified', dulce: 'Sweet', naranja: 'Orange', sin_alcohol: 'Non-alcoholic' },
     btl: 'btl',
   }
 }
@@ -123,8 +123,7 @@ const t = {
 const RESTAURANTE_PREFIX = '[RESTAURANTE] '
 const esSugerenciaRestaurante = item => String(item.nota_personal || '').startsWith(RESTAURANTE_PREFIX)
 const limpiarNotaSeleccion = nota => String(nota || '').replace(RESTAURANTE_PREFIX, '')
-const precioBotellaCarta = valor => Number(valor || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-const precioCopaCarta = valor => Number(valor || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+const _formatPrecio = (valor, decimalesMax) => Number(valor || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: decimalesMax })
 
 export default function CartaPublica({ params }) {
   const [restaurante, setRestaurante] = useState(null)
@@ -157,7 +156,7 @@ export default function CartaPublica({ params }) {
   const scrollAntesFicha = useRef(0)
 
   const i = t[idioma]
-  const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30' }
+  const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87' }
   const seleccionJuanjo = seleccion.filter(item => !esSugerenciaRestaurante(item))
   const seleccionRestaurante = seleccion.filter(esSugerenciaRestaurante)
   const vinoEnSeleccion = (vino, lista) => lista.some(item => String(item.vino_id || item.vinos?.id) === String(vino.id))
@@ -395,6 +394,11 @@ setPerfiles(nuevosPerfiles)
   setCargandoPerfiles(false)
 }
 
+  // Formateadores de precio dependientes de la configuración del restaurante
+  const moneda = restaurante?.carta_mostrar_euro !== false ? ' €' : ''
+  const precioBotellaCarta = valor => _formatPrecio(valor, 0) + moneda
+  const precioCopaCarta = valor => _formatPrecio(valor, restaurante?.carta_copa_decimales !== false ? 2 : 0) + moneda
+
   const preciosDisponibles = [...new Set(vinos.map(v => v.precio_botella).filter(Boolean).sort((a, b) => a - b))]
   const precioMaximo = preciosDisponibles[preciosDisponibles.length - 1] || 100
 
@@ -447,8 +451,8 @@ setPerfiles(nuevosPerfiles)
   const mostrarSeleccion = seleccion.length > 0 && !busqueda && filtro === 'todos' && !precioMax && !soloInternacional && !soloCopa
   const filtroActivo = precioMax || filtro !== 'todos' || soloInternacional || soloCopa
   const busquedaOFiltrado = Boolean(busqueda || filtroActivo)
-  const tiposOrdenados = ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja']
-  const tiposPorCopaOrdenados = ['blanco', 'tinto', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja']
+  const tiposOrdenados = ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol']
+  const tiposPorCopaOrdenados = ['blanco', 'tinto', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol']
   const vinosPorCopa = vinos.filter(v => Number(v.precio_copa) > 0).length
   const vinosMenos30 = vinos.filter(v => Number(v.precio_botella) > 0 && Number(v.precio_botella) <= 30).length
   const vinosFrescos = vinos.filter(v => ['blanco', 'rosado', 'espumoso', 'generoso'].includes(v.tipo)).length
@@ -1795,7 +1799,7 @@ setPerfiles(nuevosPerfiles)
       )}
 
       <footer className={styles.brandCredit}>
-        <p className={styles.priceLegal}>Los precios de esta carta están indicados en Euros € e incluyen el 10% de IVA.</p>
+        <p className={styles.priceLegal}>{restaurante?.carta_pie_texto || 'Los precios de esta carta están indicados en Euros € e incluyen el 10% de IVA.'}</p>
         <a href="/cartavinos" target="_blank" rel="noreferrer">Carta Viva by @cataconjuanjo</a>
       </footer>
 

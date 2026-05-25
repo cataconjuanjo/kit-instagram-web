@@ -11,7 +11,7 @@ Cada objeto debe tener esta forma exacta:
 {
   "nombre": "nombre del vino",
   "bodega": "bodega si aparece o vacío",
-  "tipo": "tinto|blanco|rosado|espumoso|generoso|dulce|naranja",
+  "tipo": "tinto|blanco|rosado|espumoso|generoso|dulce|naranja|sin_alcohol",
   "region": "zona o D.O. exactamente como aparece en el texto, o vacío",
   "uva": "uvas si aparecen o vacío",
   "anada": "añada si aparece o vacío",

@@ -477,7 +477,15 @@ export default function ControlBodega() {
 
                     {isEditing && (
                       <div className={styles.formGrid} style={{ marginTop: 16 }}>
-                        <div><label className={styles.label}>Coste compra</label><input className={styles.input} type="number" step="0.01" value={editando.coste_compra} onChange={e => setEditando({ ...editando, coste_compra: e.target.value })} /></div>
+                        <div>
+                          <label className={styles.label}>Coste compra</label>
+                          <input className={styles.input} type="number" step="0.01" value={editando.coste_compra} onChange={e => setEditando({ ...editando, coste_compra: e.target.value })} />
+                          {parseFloat(editando.coste_compra) > 0 && (
+                            <p style={{ margin: '5px 0 0', fontSize: 11, color: '#8b8278' }}>
+                              × 2 → {(parseFloat(editando.coste_compra) * 2).toFixed(2)} € · × 3 → {(parseFloat(editando.coste_compra) * 3).toFixed(2)} €
+                            </p>
+                          )}
+                        </div>
                         <div><label className={styles.label}>Stock mínimo</label><input className={styles.input} type="number" value={editando.stock_minimo} onChange={e => setEditando({ ...editando, stock_minimo: e.target.value })} /></div>
                         <div><label className={styles.label}>Proveedor</label><input className={styles.input} value={editando.proveedor} onChange={e => setEditando({ ...editando, proveedor: e.target.value })} /></div>
                         <div><label className={styles.label}>Referencia proveedor</label><input className={styles.input} value={editando.referencia_proveedor} onChange={e => setEditando({ ...editando, referencia_proveedor: e.target.value })} /></div>

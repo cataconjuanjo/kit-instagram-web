@@ -63,7 +63,7 @@ export default function SeleccionEspecial() {
     setSeleccion(seleccion.filter(s => s.id !== id))
   }
 
-  const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30' }
+  const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87' }
   const disponibles = vinos.filter(v => !seleccion.some(s => s.vino_id === v.id))
 
   if (loading) return <LoadingState />
