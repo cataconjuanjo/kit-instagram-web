@@ -61,11 +61,12 @@ function mapaPrecios(vinosConPrecio, ticket) {
   if (!ticket) return { gamas: [], desajustes: [] }
   const total = vinosConPrecio.length
   // Umbrales calibrados con metodología Álex Pardo GCA (ticket 40€ y 57€)
-  const tBajaMin = Math.max(ticket * 0.38, 12)   // mínimo recomendado — vinos más baratos quedan fuera de gama
-  const tBaja    = Math.max(ticket * 0.48, 18)   // 48% — Baja / Media
-  const tMedia   = Math.max(ticket * 0.75, 28)   // 75% — Media / Alta
-  const tAlta    = Math.max(ticket * 1.75, 60)   // 175% — Alta / Muy Alta
-  const tMuyAlta = Math.max(ticket * 2.75, 100)  // 275% — Muy Alta / Premium
+  // Todos proporcionales al ticket — sin floors fijos
+  const tBajaMin = ticket * 0.38   // 38% — mínimo recomendado Gama Baja
+  const tBaja    = ticket * 0.48   // 48% — Baja / Media
+  const tMedia   = ticket * 0.75   // 75% — Media / Alta
+  const tAlta    = ticket * 1.75   // 175% — Alta / Muy Alta
+  const tMuyAlta = ticket * 2.75   // 275% — Muy Alta / Premium
   const rangos = [
     { id: 'baja',     label: 'Gama baja',  objetivo: 20, min: 0,        max: tBaja    },
     { id: 'media',    label: 'Gama media', objetivo: 45, min: tBaja,    max: tMedia   },
