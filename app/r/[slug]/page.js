@@ -180,7 +180,7 @@ export default function RestauranteHub({ params }) {
         )}
 
         <a className="hub-credit" href="https://cataconjuanjo.com/cartavinos" target="_blank" rel="noreferrer">
-          Carta Viva by @cataconjuanjo
+          Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
         </a>
       </section>
     </main>

@@ -335,7 +335,7 @@ export default function InformeConsultor() {
 
         <footer className="report-footer">
           <div>
-            <strong>Carta Viva by @cataconjuanjo</strong>
+            <strong>Carta Viva <em style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</em> @cataconjuanjo</strong>
             <p>Diagnóstico generado para orientar una conversación comercial y técnica sobre carta de vinos, bodega y servicio.</p>
           </div>
           <Link href={`/admin/propuestas?restaurante=${restaurante.id}&titulo=${encodeURIComponent(topAlertas[0]?.titulo || '')}&motivo=${encodeURIComponent(topAlertas[0]?.detalle || '')}&prioridad=${informe.prioridad === 'Alta' ? 'alta' : informe.prioridad === 'Media' ? 'media' : 'baja'}`} className="no-print">

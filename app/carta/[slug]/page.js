@@ -976,7 +976,7 @@ setPerfiles(nuevosPerfiles)
             <p className={styles.kicker}>{i.carta}</p>
             <h1 className={styles.title}>{restaurante.nombre}</h1>
             <a className={styles.heroCredit} href="/cartavinos" target="_blank" rel="noreferrer">
-              Carta Viva by @cataconjuanjo
+              Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
             </a>
             <p className={styles.meta}>{vinos.length} {i.referencias} · {restaurante.ciudad}</p>
           </div>
@@ -1304,7 +1304,7 @@ setPerfiles(nuevosPerfiles)
 
       <footer className={styles.brandCredit}>
         <p className={styles.priceLegal}>{restaurante?.carta_pie_texto || 'Los precios de esta carta están indicados en Euros € e incluyen el 10% de IVA.'}</p>
-        <a href="/cartavinos" target="_blank" rel="noreferrer">Carta Viva by @cataconjuanjo</a>
+        <a href="/cartavinos" target="_blank" rel="noreferrer">Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo</a>
       </footer>
 
       <nav className={styles.bottomNav}>
@@ -1327,7 +1327,7 @@ setPerfiles(nuevosPerfiles)
             <p className={styles.kicker}>{i.sommelier}</p>
             <h1 className={styles.title}>{restaurante.nombre}</h1>
             <a className={styles.heroCredit} href="/cartavinos" target="_blank" rel="noreferrer">
-              Carta Viva by @cataconjuanjo
+              Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
             </a>
             <p className={styles.meta}>{restaurante.ciudad} · {platos.length} platos disponibles</p>
           </div>
@@ -1805,7 +1805,7 @@ setPerfiles(nuevosPerfiles)
 
       <footer className={styles.brandCredit}>
         <p className={styles.priceLegal}>{restaurante?.carta_pie_texto || 'Los precios de esta carta están indicados en Euros € e incluyen el 10% de IVA.'}</p>
-        <a href="/cartavinos" target="_blank" rel="noreferrer">Carta Viva by @cataconjuanjo</a>
+        <a href="/cartavinos" target="_blank" rel="noreferrer">Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo</a>
       </footer>
 
       {/* Pill comparador — flota sobre la nav */}

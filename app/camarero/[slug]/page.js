@@ -1060,7 +1060,7 @@ export default function Camarero({ params }) {
         textDecoration: 'none',
         textTransform: 'uppercase'
       }}>
-        Carta Viva by @cataconjuanjo
+        Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
       </a>
     </div>
   )
