@@ -66,7 +66,7 @@ export default function Dossier() {
           color: #e8d9c0;
           border: none;
           padding: 10px 22px;
-          font-size: 12px;
+          font-size: 13px;
           font-family: 'DM Sans', sans-serif;
           font-weight: 500;
           letter-spacing: 0.08em;
@@ -105,14 +105,14 @@ export default function Dossier() {
         .cover-stripe {
           position: absolute;
           left: 0; top: 0; bottom: 0;
-          width: 5px;
+          width: 6px;
           background: #8b3a2a;
         }
 
         .cover-top {
           position: relative;
           z-index: 1;
-          padding: 48px 52px 0 56px;
+          padding: 52px 56px 0 62px;
           flex: 1;
           display: flex;
           flex-direction: column;
@@ -127,7 +127,7 @@ export default function Dossier() {
 
         .cover-logo-name {
           font-family: 'Cormorant Garamond', serif;
-          font-size: 20px;
+          font-size: 24px;
           font-weight: 300;
           color: #c8a87a;
           letter-spacing: 0.12em;
@@ -135,31 +135,31 @@ export default function Dossier() {
         }
 
         .cover-logo-by {
-          font-size: 11px;
+          font-size: 13px;
           color: rgba(255,255,255,0.22);
           letter-spacing: 0.08em;
         }
 
         .cover-body {
-          padding-bottom: 56px;
+          padding-bottom: 64px;
         }
 
         .cover-label {
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 500;
           letter-spacing: 0.22em;
           text-transform: uppercase;
           color: #8b3a2a;
-          margin-bottom: 22px;
+          margin-bottom: 26px;
         }
 
         .cover-h1 {
           font-family: 'Cormorant Garamond', serif;
-          font-size: 68px;
+          font-size: 82px;
           font-weight: 300;
           line-height: 0.95;
           color: #f0e8d8;
-          margin-bottom: 32px;
+          margin-bottom: 38px;
           letter-spacing: -0.01em;
         }
 
@@ -169,24 +169,24 @@ export default function Dossier() {
         }
 
         .cover-divider {
-          width: 48px;
+          width: 56px;
           height: 1px;
           background: #8b3a2a;
-          margin-bottom: 22px;
+          margin-bottom: 26px;
         }
 
         .cover-tagline {
-          font-size: 14px;
+          font-size: 17px;
           font-weight: 300;
-          line-height: 1.75;
-          color: rgba(240,232,216,0.55);
-          max-width: 400px;
+          line-height: 1.8;
+          color: rgba(240,232,216,0.6);
+          max-width: 440px;
         }
 
         .cover-bottom {
           position: relative;
           z-index: 1;
-          padding: 22px 52px 22px 56px;
+          padding: 24px 56px 24px 62px;
           border-top: 1px solid rgba(255,255,255,0.06);
           display: flex;
           justify-content: space-between;
@@ -194,14 +194,14 @@ export default function Dossier() {
         }
 
         .cover-url {
-          font-size: 11px;
-          color: rgba(255,255,255,0.18);
+          font-size: 13px;
+          color: rgba(255,255,255,0.22);
           letter-spacing: 0.1em;
         }
 
         .cover-year {
-          font-size: 10px;
-          color: rgba(255,255,255,0.12);
+          font-size: 12px;
+          color: rgba(255,255,255,0.15);
           letter-spacing: 0.14em;
           text-transform: uppercase;
         }
@@ -210,17 +210,17 @@ export default function Dossier() {
 
         .inner {
           min-height: 297mm;
-          padding: 48px 52px 48px 56px;
+          padding: 52px 56px 52px 62px;
           display: flex;
           flex-direction: column;
-          gap: 44px;
+          gap: 48px;
           position: relative;
         }
 
         .inner-stripe {
           position: absolute;
           left: 0; top: 0; bottom: 0;
-          width: 5px;
+          width: 6px;
           background: #8b3a2a;
         }
 
@@ -228,13 +228,13 @@ export default function Dossier() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding-bottom: 20px;
+          padding-bottom: 22px;
           border-bottom: 1px solid #ede5d8;
         }
 
         .page-nav-brand {
           font-family: 'Cormorant Garamond', serif;
-          font-size: 14px;
+          font-size: 17px;
           font-weight: 300;
           letter-spacing: 0.12em;
           text-transform: uppercase;
@@ -242,36 +242,36 @@ export default function Dossier() {
         }
 
         .page-nav-num {
-          font-size: 10px;
+          font-size: 12px;
           color: #c8b89a;
           letter-spacing: 0.14em;
         }
 
         /* ── Bloque de sección ── */
         .s-label {
-          font-size: 9px;
+          font-size: 11px;
           font-weight: 500;
           letter-spacing: 0.22em;
           text-transform: uppercase;
           color: #8b3a2a;
-          margin-bottom: 10px;
+          margin-bottom: 12px;
         }
 
         .s-title {
           font-family: 'Cormorant Garamond', serif;
-          font-size: 34px;
+          font-size: 42px;
           font-weight: 300;
-          line-height: 1.15;
+          line-height: 1.12;
           color: #1c1410;
-          margin-bottom: 10px;
+          margin-bottom: 12px;
         }
 
         .s-sub {
-          font-size: 13px;
+          font-size: 16px;
           font-weight: 300;
           line-height: 1.75;
           color: #7a6a58;
-          max-width: 500px;
+          max-width: 520px;
         }
 
         /* ── Problemas ── */
@@ -281,36 +281,36 @@ export default function Dossier() {
           gap: 1px;
           background: #ede5d8;
           border: 1px solid #ede5d8;
-          margin-top: 6px;
+          margin-top: 10px;
         }
 
         .prob {
           background: #faf7f2;
-          padding: 20px 22px;
+          padding: 24px 26px;
         }
 
         .prob-num {
           font-family: 'Cormorant Garamond', serif;
-          font-size: 28px;
+          font-size: 34px;
           font-weight: 300;
           color: #d4c0a0;
           line-height: 1;
-          margin-bottom: 10px;
+          margin-bottom: 12px;
         }
 
         .prob-title {
-          font-size: 12px;
+          font-size: 15px;
           font-weight: 500;
           color: #2c1810;
-          margin-bottom: 5px;
+          margin-bottom: 7px;
           line-height: 1.4;
         }
 
         .prob-desc {
-          font-size: 11px;
+          font-size: 13px;
           font-weight: 300;
           color: #9a8878;
-          line-height: 1.65;
+          line-height: 1.7;
         }
 
         /* ── Features ── */
@@ -318,14 +318,14 @@ export default function Dossier() {
           display: flex;
           flex-direction: column;
           gap: 0;
-          margin-top: 6px;
+          margin-top: 8px;
         }
 
         .feat {
           display: grid;
-          grid-template-columns: 28px 1fr;
-          gap: 14px;
-          padding: 14px 0;
+          grid-template-columns: 34px 1fr;
+          gap: 16px;
+          padding: 16px 0;
           border-bottom: 1px solid #f0ebe0;
           align-items: flex-start;
         }
@@ -334,25 +334,25 @@ export default function Dossier() {
 
         .feat-n {
           font-family: 'Cormorant Garamond', serif;
-          font-size: 18px;
+          font-size: 22px;
           font-weight: 300;
           color: #c8a87a;
           padding-top: 1px;
         }
 
         .feat-title {
-          font-size: 12.5px;
+          font-size: 15px;
           font-weight: 500;
           color: #1c1410;
-          margin-bottom: 3px;
+          margin-bottom: 4px;
           line-height: 1.3;
         }
 
         .feat-desc {
-          font-size: 11.5px;
+          font-size: 13.5px;
           font-weight: 300;
           color: #7a6a58;
-          line-height: 1.65;
+          line-height: 1.7;
         }
 
         /* ── Planes ── */
@@ -362,7 +362,7 @@ export default function Dossier() {
           gap: 0;
           border: 1px solid #ede5d8;
           background: #ede5d8;
-          margin-top: 6px;
+          margin-top: 10px;
         }
 
         .plan {
@@ -376,7 +376,7 @@ export default function Dossier() {
         }
 
         .plan-top {
-          padding: 22px 20px 16px;
+          padding: 26px 22px 18px;
           border-bottom: 1px solid #ede5d8;
         }
 
@@ -385,29 +385,29 @@ export default function Dossier() {
         }
 
         .plan-tag {
-          font-size: 8.5px;
+          font-size: 10px;
           font-weight: 500;
           letter-spacing: 0.2em;
           text-transform: uppercase;
           color: #8b3a2a;
-          margin-bottom: 10px;
+          margin-bottom: 12px;
         }
 
         .plan.featured .plan-tag { color: #c8a87a; }
 
         .plan-name {
           font-family: 'Cormorant Garamond', serif;
-          font-size: 24px;
+          font-size: 30px;
           font-weight: 300;
           color: #1c1410;
-          margin-bottom: 10px;
+          margin-bottom: 12px;
           line-height: 1;
         }
 
         .plan.featured .plan-name { color: #f0e8d8; }
 
         .plan-price-real {
-          font-size: 26px;
+          font-size: 32px;
           font-weight: 500;
           color: #1c1410;
           line-height: 1;
@@ -416,7 +416,7 @@ export default function Dossier() {
         .plan.featured .plan-price-real { color: #c8a87a; }
 
         .plan-price-real span {
-          font-size: 12px;
+          font-size: 15px;
           font-weight: 300;
           color: #aaa;
         }
@@ -424,8 +424,8 @@ export default function Dossier() {
         .plan.featured .plan-price-real span { color: rgba(255,255,255,0.35); }
 
         .plan-founder {
-          margin-top: 6px;
-          font-size: 10px;
+          margin-top: 8px;
+          font-size: 12px;
           font-weight: 300;
           color: #9a8878;
           line-height: 1.5;
@@ -441,16 +441,16 @@ export default function Dossier() {
         .plan.featured .plan-founder s { color: #c8a87a; }
 
         .plan-body {
-          padding: 14px 20px 20px;
+          padding: 18px 22px 24px;
           flex: 1;
         }
 
         .plan-limit {
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 300;
           color: #b0a090;
-          margin-bottom: 10px;
-          padding-bottom: 10px;
+          margin-bottom: 12px;
+          padding-bottom: 12px;
           border-bottom: 1px solid #ede5d8;
         }
 
@@ -463,19 +463,19 @@ export default function Dossier() {
           list-style: none;
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 8px;
         }
 
         .plan-feats li {
-          font-size: 11px;
+          font-size: 13px;
           font-weight: 300;
           color: #5a4a3a;
           display: flex;
-          gap: 6px;
-          line-height: 1.45;
+          gap: 7px;
+          line-height: 1.5;
         }
 
-        .plan.featured .plan-feats li { color: rgba(240,232,216,0.65); }
+        .plan.featured .plan-feats li { color: rgba(240,232,216,0.7); }
 
         .plan-feats li::before {
           content: '—';
@@ -488,15 +488,15 @@ export default function Dossier() {
         .founder-note {
           background: #f5f0e6;
           border-left: 3px solid #c8a87a;
-          padding: 14px 18px;
-          margin-top: 14px;
+          padding: 18px 22px;
+          margin-top: 16px;
         }
 
         .founder-note p {
-          font-size: 11px;
+          font-size: 13px;
           font-weight: 300;
           color: #5a4a3a;
-          line-height: 1.65;
+          line-height: 1.7;
         }
 
         .founder-note strong {
@@ -507,10 +507,10 @@ export default function Dossier() {
         /* ── CTA ── */
         .cta {
           background: #1c1008;
-          padding: 32px 36px;
+          padding: 38px 44px;
           display: grid;
           grid-template-columns: 1fr auto;
-          gap: 28px;
+          gap: 32px;
           align-items: center;
         }
 
@@ -518,19 +518,19 @@ export default function Dossier() {
 
         .cta-title {
           font-family: 'Cormorant Garamond', serif;
-          font-size: 24px;
+          font-size: 30px;
           font-weight: 300;
           color: #f0e8d8;
           line-height: 1.2;
-          margin-bottom: 6px;
+          margin-bottom: 8px;
         }
 
         .cta-desc {
-          font-size: 12px;
+          font-size: 15px;
           font-weight: 300;
-          color: rgba(240,232,216,0.45);
-          line-height: 1.65;
-          max-width: 320px;
+          color: rgba(240,232,216,0.5);
+          line-height: 1.7;
+          max-width: 340px;
         }
 
         .cta-right {
@@ -539,30 +539,30 @@ export default function Dossier() {
         }
 
         .cta-contact-label {
-          font-size: 9px;
+          font-size: 11px;
           font-weight: 500;
           letter-spacing: 0.18em;
           text-transform: uppercase;
-          color: rgba(255,255,255,0.2);
-          margin-bottom: 7px;
+          color: rgba(255,255,255,0.25);
+          margin-bottom: 9px;
         }
 
         .cta-email {
-          font-size: 12px;
+          font-size: 15px;
           color: #c8a87a;
           font-weight: 400;
-          margin-bottom: 4px;
+          margin-bottom: 5px;
         }
 
         .cta-ig {
-          font-size: 11px;
-          color: rgba(255,255,255,0.25);
+          font-size: 13px;
+          color: rgba(255,255,255,0.3);
         }
 
         .cta-web {
-          font-size: 10px;
-          color: rgba(255,255,255,0.15);
-          margin-top: 4px;
+          font-size: 12px;
+          color: rgba(255,255,255,0.18);
+          margin-top: 5px;
         }
 
         @media print {
@@ -601,7 +601,7 @@ export default function Dossier() {
             color: '#e8d9c0',
             border: 'none',
             padding: '11px 24px',
-            fontSize: 12,
+            fontSize: 13,
             fontFamily: 'DM Sans, sans-serif',
             fontWeight: 500,
             letterSpacing: '0.08em',
