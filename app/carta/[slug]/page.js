@@ -1475,6 +1475,11 @@ setPerfiles(nuevosPerfiles)
         })}
       </main>
 
+      <footer className={styles.brandCredit}>
+        <p className={styles.priceLegal}>{restaurante?.carta_pie_texto || 'Los precios de esta carta están indicados en Euros € e incluyen el 10% de IVA.'}</p>
+        <a href="/cartavinos" target="_blank" rel="noreferrer">Carta Viva by @cataconjuanjo</a>
+      </footer>
+
       <nav className={styles.bottomNav}>
         <button className={styles.bottomNavBtn} onClick={() => setVista('carta')}>{i.carta}</button>
         <button className={`${styles.bottomNavBtn} ${styles.bottomNavActive}`} onClick={() => setVista('sommelier')} style={{ color: colorPrimario, borderTopColor: colorPrimario }}>{i.sommelier}</button>
