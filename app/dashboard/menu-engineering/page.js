@@ -110,7 +110,7 @@ export default function MenuEngineering() {
       try {
         const d = JSON.parse(stat.detalle || '{}')
         if (d.resultado === 'vendida' && d.vino_id) {
-          ventasPorId[d.vino_id] = (ventasPorId[d.vino_id] || 0) + 1
+          ventasPorId[d.vino_id] = (ventasPorId[d.vino_id] || 0) + (d.cantidad || 1)
         }
       } catch { /* ignorar registros corruptos */ }
     }

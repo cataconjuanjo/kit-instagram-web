@@ -140,12 +140,28 @@ export default function InventarioSemanal() {
         await supabase.from('movimientos_stock').insert([{
           restaurante_id: restaurante.id,
           vino_id: vino.id,
-          tipo: 'ajuste',
+          tipo: motivo === 'venta' ? 'venta' : 'ajuste',
           cantidad: diferencia,
           stock_anterior: stockActual,
           stock_nuevo: contado,
           motivo: `Inventario semanal: ${motivo}`
         }])
+
+        // Si el motivo es "venta no registrada" y hay botellas de menos,
+        // registrar en estadísticas para que Rentabilidad las cuente
+        if (motivo === 'venta' && diferencia < 0) {
+          await supabase.from('estadisticas').insert([{
+            restaurante_id: restaurante.id,
+            tipo: 'venta',
+            detalle: JSON.stringify({
+              vino_id: vino.id,
+              vino: vino.nombre,
+              resultado: 'vendida',
+              cantidad: Math.abs(diferencia),
+              origen: 'inventario',
+            }),
+          }])
+        }
       }
     }
 
