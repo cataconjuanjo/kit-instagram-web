@@ -273,6 +273,6 @@ export async function POST(request) {
     })
   } catch (error) {
     console.error('Error en maridaje:', error)
-    return Response.json({ error: 'Error al consultar el maridaje.' }, { status: 500 })
+    return Response.json({ error: 'Error al consultar el maridaje.', _d: String(error?.message).slice(0,300) }, { status: 500 })
   }
 }
