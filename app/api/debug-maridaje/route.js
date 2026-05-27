@@ -21,8 +21,9 @@ export async function GET(request) {
 
   // 3. Supabase query
   try {
-    const { data, error } = await supabaseAdmin.from('restaurantes').select('id').limit(1)
-    results.supabase_query = error ? 'ERROR: ' + error.message : 'OK (rows: ' + (data?.length || 0) + ')'
+    const { data, error } = await supabaseAdmin.from('restaurantes').select('id, slug, plan, subscription_status').limit(3)
+    results.supabase_query = error ? 'ERROR: ' + error.message : 'OK'
+    results.restaurantes = data
   } catch (e) { results.supabase_query = 'THROW: ' + e.message }
 
   // 4. Anthropic SDK init
