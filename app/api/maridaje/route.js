@@ -120,12 +120,25 @@ export async function POST(request) {
   try {
     // ── Rate limit ─────────────────────────────────────────────────
     const ip = getIP(request)
-    const allowed = await checkRateLimit(ip)
-    if (!allowed) {
-      return Response.json(
-        { error: 'Demasiadas consultas. Espera un momento antes de volver a pedir recomendaciones.' },
-        { status: 429 }
-      )
+    try {
+      const allowed = await checkRateLimit(ip)
+      if (!allowed) {
+        return Response.json(
+          { error: 'Demasiadas consultas. Espera un momento antes de volver a pedir recomendaciones.' },
+          { status: 429 }
+        )
+      }
+    } catch (err) {
+      console.error('[maridaje] checkRateLimit error:', err?.message, err?.code)
+      throw err
+    }
+
+    let body
+    try {
+      body = await request.json()
+    } catch (err) {
+      console.error('[maridaje] request.json error:', err?.message)
+      throw err
     }
 
     const {
@@ -136,13 +149,39 @@ export async function POST(request) {
       idioma = 'es',
       historial = [],
       mensajeSeguimiento,
-    } = await request.json()
+    } = body
 
-    const [{ data: restaurante }, { data: vinosData }, { data: platos }] = await Promise.all([
-      supabaseAdmin.from('restaurantes').select('*').eq('id', restaurante_id).single(),
-      supabaseAdmin.from('vinos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true).gt('stock', 0),
-      supabaseAdmin.from('platos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
-    ])
+    let restaurante, vinosData, platos
+
+    try {
+      const results = await Promise.all([
+        supabaseAdmin.from('restaurantes').select('*').eq('id', restaurante_id).single(),
+        supabaseAdmin.from('vinos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true).gt('stock', 0),
+        supabaseAdmin.from('platos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
+      ])
+
+      const [resRest, resVinos, resPlatos] = results
+
+      if (resRest.error) {
+        console.error('[maridaje] restaurantes query error:', resRest.error?.message)
+        throw new Error(`Restaurante query failed: ${resRest.error?.message}`)
+      }
+      if (resVinos.error) {
+        console.error('[maridaje] vinos query error:', resVinos.error?.message)
+        throw new Error(`Vinos query failed: ${resVinos.error?.message}`)
+      }
+      if (resPlatos.error) {
+        console.error('[maridaje] platos query error:', resPlatos.error?.message)
+        throw new Error(`Platos query failed: ${resPlatos.error?.message}`)
+      }
+
+      restaurante = resRest.data
+      vinosData = resVinos.data
+      platos = resPlatos.data
+    } catch (err) {
+      console.error('[maridaje] Promise.all error:', err?.message)
+      throw err
+    }
 
     if (!restaurante || !puedeUsar(restaurante, 'maridaje_cliente')) {
       return Response.json({ error: 'Funcion no incluida en el plan activo.' }, { status: 403 })
@@ -278,7 +317,11 @@ export async function POST(request) {
       },
     })
   } catch (error) {
-    console.error('Error en maridaje:', error)
+    console.error('[maridaje] FULL ERROR:', {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack?.split('\n').slice(0, 3).join(' | '),
+    })
     return Response.json({ error: 'Error al consultar el maridaje.' }, { status: 500 })
   }
 }
