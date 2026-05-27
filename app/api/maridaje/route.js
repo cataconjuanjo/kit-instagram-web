@@ -176,7 +176,7 @@ export async function POST(request) {
         try {
           const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
           const grafoMod = await import('../../lib/chartierGraph')
-          const grafoAnalisis = grafoMod.analizarConGrafo(consultaTexto, vinos || [])
+          const grafoAnalisis = await grafoMod.analizarConGrafo(consultaTexto, vinos || [])
           resumenGrafo = grafoMod.resumenGrafoParaPrompt(grafoAnalisis) || ''
         } catch (err) {
           console.error('[maridaje] grafo (no fatal):', err?.message)
