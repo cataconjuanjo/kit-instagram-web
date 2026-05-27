@@ -182,6 +182,8 @@ export default function Platos() {
   const [pdfNombre, setPdfNombre] = useState('')
   const [leyendoPdf, setLeyendoPdf] = useState(false)
   const [errorPdf, setErrorPdf] = useState('')
+  const [enriqueciendoBatch, setEnriqueciendoBatch] = useState(false)
+  const [resultadoBatch, setResultadoBatch] = useState(null)
   const inputPdfRef = useRef(null)
 
   const categorias = ['Entrantes fríos', 'Entrantes calientes', 'Cuchara', 'De la tierra', 'Del mar', 'Tablas', 'Postres']
@@ -200,6 +202,25 @@ export default function Platos() {
     }
     cargar()
   }, [])
+
+  // ── Enriquecimiento Chartier batch ────────────────────────────────────────
+  async function enriquecerTodosLosPlatos() {
+    if (!restaurante?.id || enriqueciendoBatch) return
+    setEnriqueciendoBatch(true)
+    setResultadoBatch(null)
+    try {
+      const res = await fetch('/api/enriquecer-platos-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurante_id: restaurante.id }),
+      })
+      const data = await res.json()
+      setResultadoBatch(data)
+    } catch {
+      setResultadoBatch({ error: 'No se pudo conectar con el servidor' })
+    }
+    setEnriqueciendoBatch(false)
+  }
 
   // ── Enriquecimiento Chartier en background ────────────────────────────────
   async function enriquecerPlato(plato) {
@@ -561,7 +582,26 @@ export default function Platos() {
               </button>
             ))}
           </div>
-          <p className={styles.resultCount}>{platosVisibles.length} de {platosBase.length} platos</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <p className={styles.resultCount}>{platosVisibles.length} de {platosBase.length} platos</p>
+            <button
+              onClick={enriquecerTodosLosPlatos}
+              disabled={enriqueciendoBatch}
+              title="Analiza con IA los platos sin perfil aromático Chartier"
+              style={{
+                background: 'none', border: '1px solid #e0e0e0', borderRadius: 6,
+                padding: '4px 10px', fontSize: 11, color: enriqueciendoBatch ? '#bbb' : '#888',
+                cursor: enriqueciendoBatch ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              {enriqueciendoBatch ? '⏳ Analizando...' : '✦ Analizar Chartier'}
+            </button>
+          </div>
+          {resultadoBatch && (
+            <p style={{ fontSize: 11, color: resultadoBatch.error ? '#c07070' : '#5a9a6a', margin: '6px 0 0', gridColumn: '1 / -1' }}>
+              {resultadoBatch.error || resultadoBatch.mensaje}
+            </p>
+          )}
         </section>
 
         <div style={{ background: '#fff', border: '1px solid #f0f0f0', overflow: 'hidden' }}>
