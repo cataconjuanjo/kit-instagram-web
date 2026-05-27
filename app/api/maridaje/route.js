@@ -322,6 +322,9 @@ export async function POST(request) {
       code: error?.code,
       stack: error?.stack?.split('\n').slice(0, 3).join(' | '),
     })
-    return Response.json({ error: 'Error al consultar el maridaje.' }, { status: 500 })
+    return Response.json({
+      error: 'Error al consultar el maridaje.',
+      _debug: { message: error?.message, code: error?.code, stack: error?.stack?.split('\n').slice(0, 5) }
+    }, { status: 500 })
   }
 }
