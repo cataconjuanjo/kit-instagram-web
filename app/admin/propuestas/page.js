@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
 
@@ -25,25 +25,38 @@ function calcularMargen(coste, precio) {
   const costeNum = Number(coste) || 0
   const precioNum = Number(precio) || 0
   if (!costeNum || !precioNum || precioNum <= costeNum) return ''
-  return String(Math.round(((precioNum - costeNum) / precioNum) * 100))
+  return String(Math.round(((precioNum - costeNum) / costeNum) * 100))
 }
 
 function calcularPrecioDesdeMargen(coste, margen) {
   const costeNum = Number(coste) || 0
   const margenNum = Number(margen) || 0
-  if (!costeNum || margenNum <= 0 || margenNum >= 95) return ''
-  const precio = costeNum / (1 - margenNum / 100)
-  return String(Math.round(precio))
+  if (!costeNum || margenNum <= 0) return ''
+  const precio = costeNum * (1 + margenNum / 100)
+  return precio.toFixed(2)
+}
+
+function normalizarCatalogo(texto = '') {
+  return String(texto)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
 }
 
 export default function PropuestasConsultor() {
   const [user, setUser] = useState(null)
   const [restaurantes, setRestaurantes] = useState([])
   const [vinos, setVinos] = useState([])
+  const [platos, setPlatos] = useState([])
+  const [proveedoresCatalogo, setProveedoresCatalogo] = useState([])
+  const [vinosCatalogo, setVinosCatalogo] = useState([])
   const [propuestas, setPropuestas] = useState([])
   const [form, setForm] = useState(inicial)
   const [modoPropuesta, setModoPropuesta] = useState('alta')
   const [vinoExistenteId, setVinoExistenteId] = useState('')
+  const [proveedorCatalogoId, setProveedorCatalogoId] = useState('')
+  const [vinoCatalogoId, setVinoCatalogoId] = useState('')
+  const [busquedaVinoCatalogo, setBusquedaVinoCatalogo] = useState('')
   const [editando, setEditando] = useState(null)
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
@@ -72,12 +85,19 @@ export default function PropuestasConsultor() {
         return
       }
       setUser(user)
-      const [{ data: rests }, { data: vinosData }] = await Promise.all([
+      const token = await tokenAdmin()
+      const [{ data: rests }, { data: vinosData }, { data: platosData }, catalogoRes] = await Promise.all([
         supabase.from('restaurantes').select('*').order('nombre'),
-        supabase.from('vinos').select('*').order('nombre')
+        supabase.from('vinos').select('*').order('nombre'),
+        supabase.from('platos').select('*').order('nombre'),
+        fetch('/api/admin/proveedores', { headers: { Authorization: `Bearer ${token}` } })
       ])
+      const catalogoData = await catalogoRes.json().catch(() => ({}))
       setRestaurantes(rests || [])
       setVinos(vinosData || [])
+      setPlatos(platosData || [])
+      setProveedoresCatalogo(catalogoRes.ok ? catalogoData.proveedores || [] : [])
+      setVinosCatalogo(catalogoRes.ok ? catalogoData.vinos || [] : [])
       await cargarPropuestas()
       setLoading(false)
     }
@@ -101,6 +121,30 @@ export default function PropuestasConsultor() {
   }, [restaurantes])
 
   const vinosRestaurante = vinos.filter(vino => String(vino.restaurante_id) === String(form.restaurante_id))
+  const platosRestaurante = platos.filter(plato => String(plato.restaurante_id) === String(form.restaurante_id))
+  const vinosCatalogoFiltrados = useMemo(() => {
+    const terminos = normalizarCatalogo(busquedaVinoCatalogo).split(' ').filter(Boolean)
+    const base = proveedorCatalogoId
+      ? vinosCatalogo.filter(vino => String(vino.proveedor_id) === String(proveedorCatalogoId))
+      : vinosCatalogo
+    return base
+      .filter(vino => {
+        if (!terminos.length) return true
+        const proveedor = proveedoresCatalogo.find(item => String(item.id) === String(vino.proveedor_id))
+        const texto = normalizarCatalogo([
+          vino.nombre,
+          vino.bodega,
+          vino.region,
+          vino.tipo,
+          vino.uva,
+          vino.referencia,
+          vino.formato,
+          proveedor?.nombre,
+        ].filter(Boolean).join(' '))
+        return terminos.every(termino => texto.includes(termino))
+      })
+      .slice(0, 40)
+  }, [vinosCatalogo, proveedoresCatalogo, proveedorCatalogoId, busquedaVinoCatalogo])
 
   function actualizar(campo, valor) {
     setError('')
@@ -126,6 +170,9 @@ export default function PropuestasConsultor() {
     setUltimoCampoEconomico('precio')
     setModoPropuesta(propuesta.tipo === 'Retirar referencia' ? 'retirada' : 'alta')
     setVinoExistenteId('')
+    setProveedorCatalogoId('')
+    setVinoCatalogoId('')
+    setBusquedaVinoCatalogo('')
     setForm({
       restaurante_id: propuesta.restaurante_id || '',
       titulo: propuesta.titulo || '',
@@ -166,6 +213,9 @@ export default function PropuestasConsultor() {
       setForm(inicial)
       setModoPropuesta('alta')
       setVinoExistenteId('')
+      setProveedorCatalogoId('')
+      setVinoCatalogoId('')
+      setBusquedaVinoCatalogo('')
       setEditando(null)
     } else {
       setError(data.error || 'No se pudo guardar la propuesta.')
@@ -197,6 +247,34 @@ export default function PropuestasConsultor() {
       proveedor_sugerido: vino.proveedor || '',
       coste_estimado: vino.coste_compra || '',
       precio_recomendado: vino.precio_botella || ''
+    }))
+  }
+
+  function seleccionarProveedorCatalogo(proveedorId) {
+    setProveedorCatalogoId(proveedorId)
+    setVinoCatalogoId('')
+    setBusquedaVinoCatalogo('')
+  }
+
+  function seleccionarVinoCatalogo(id) {
+    setVinoCatalogoId(id)
+    const vino = vinosCatalogo.find(item => String(item.id) === String(id))
+    if (!vino) return
+    const proveedor = proveedoresCatalogo.find(item => String(item.id) === String(vino.proveedor_id))
+    const pvp = Number(vino.pvp_recomendado) > 0 ? vino.pvp_recomendado : ''
+    setProveedorCatalogoId(vino.proveedor_id || '')
+    setBusquedaVinoCatalogo(vino.nombre || '')
+    setUltimoCampoEconomico(pvp ? 'precio' : 'margen')
+    setForm(prev => ({
+      ...prev,
+      titulo: prev.titulo || `Añadir ${vino.nombre} a la carta`,
+      vino: vino.nombre || '',
+      tipo: vino.tipo || '',
+      zona: vino.region || '',
+      proveedor_sugerido: proveedor?.nombre || vino.proveedores_vino?.nombre || '',
+      coste_estimado: Number(vino.coste_estimado) > 0 ? vino.coste_estimado : '',
+      precio_recomendado: pvp,
+      margen_objetivo: pvp ? calcularMargen(vino.coste_estimado, pvp) : prev.margen_objetivo,
     }))
   }
 
@@ -251,6 +329,8 @@ export default function PropuestasConsultor() {
                   const modo = e.target.value
                   setModoPropuesta(modo)
                   setVinoExistenteId('')
+                  setProveedorCatalogoId('')
+                  setVinoCatalogoId('')
                   if (modo === 'retirada') actualizar('tipo', 'Retirar referencia')
                   else actualizar('tipo', '')
                 }}
@@ -279,6 +359,36 @@ export default function PropuestasConsultor() {
             ) : (
               <>
                 <label>
+                  Proveedor del catálogo
+                  <select value={proveedorCatalogoId} onChange={e => seleccionarProveedorCatalogo(e.target.value)}>
+                    <option value="">Todos los proveedores...</option>
+                    {proveedoresCatalogo.map(proveedor => (
+                      <option key={proveedor.id} value={proveedor.id}>{proveedor.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Buscar vino del catálogo común
+                  <input value={busquedaVinoCatalogo} onChange={e => setBusquedaVinoCatalogo(e.target.value)} placeholder="Nombre, bodega, zona, uva o referencia..." />
+                </label>
+                <div className="admin-create-wide catalog-picker">
+                  {vinosCatalogoFiltrados.length === 0 && <p>No hay vinos con ese filtro.</p>}
+                  {vinosCatalogoFiltrados.map(vino => {
+                    const proveedor = proveedoresCatalogo.find(item => String(item.id) === String(vino.proveedor_id))
+                    return (
+                      <button
+                        type="button"
+                        key={vino.id}
+                        className={String(vinoCatalogoId) === String(vino.id) ? 'active' : ''}
+                        onClick={() => seleccionarVinoCatalogo(vino.id)}
+                      >
+                        <strong>{vino.nombre}</strong>
+                        <span>{[proveedor?.nombre, vino.bodega, vino.region, vino.formato, vino.coste_estimado ? `${vino.coste_estimado} EUR` : ''].filter(Boolean).join(' · ')}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <label>
                   Vino sugerido
                   <input value={form.vino} onChange={e => actualizar('vino', e.target.value)} placeholder="Moscatel naturalmente dulce..." />
                 </label>
@@ -305,20 +415,30 @@ export default function PropuestasConsultor() {
               <input type="number" step="0.01" value={form.precio_recomendado} onChange={e => actualizar('precio_recomendado', e.target.value)} />
             </label>
             <label>
-              Margen objetivo %
+              Margen sobre coste %
               <input
                 type="number"
                 min="1"
-                max="94"
+                max="900"
                 value={form.margen_objetivo}
                 onChange={e => actualizar('margen_objetivo', e.target.value)}
-                placeholder="Ej. 70"
+                placeholder="Ej. 200"
                 title="Si editas este margen, la app calcula el precio recomendado."
               />
             </label>
             <label>
               Plato objetivo
-              <input value={form.plato_objetivo} onChange={e => actualizar('plato_objetivo', e.target.value)} placeholder="Tarta de queso, fritura, carne..." />
+              <select value={form.plato_objetivo} onChange={e => actualizar('plato_objetivo', e.target.value)} disabled={!form.restaurante_id}>
+                <option value="">{form.restaurante_id ? 'Sin plato concreto...' : 'Elige restaurante primero...'}</option>
+                {form.plato_objetivo && !platosRestaurante.some(plato => plato.nombre === form.plato_objetivo) && (
+                  <option value={form.plato_objetivo}>{form.plato_objetivo}</option>
+                )}
+                {platosRestaurante.map(plato => (
+                  <option key={plato.id} value={plato.nombre}>
+                    {[plato.nombre, plato.categoria].filter(Boolean).join(' · ')}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               Prioridad
@@ -348,7 +468,7 @@ export default function PropuestasConsultor() {
               />
             </label>
             <button disabled={guardando}>{guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear propuesta'}</button>
-            {editando && <button type="button" className="admin-plain-button" onClick={() => { setEditando(null); setForm(inicial); setModoPropuesta('alta'); setVinoExistenteId('') }}>Cancelar</button>}
+            {editando && <button type="button" className="admin-plain-button" onClick={() => { setEditando(null); setForm(inicial); setModoPropuesta('alta'); setVinoExistenteId(''); setProveedorCatalogoId(''); setVinoCatalogoId(''); setBusquedaVinoCatalogo('') }}>Cancelar</button>}
           </form>
           {error && <p className="admin-alert admin-alert-error">{error}</p>}
         </section>

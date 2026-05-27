@@ -38,21 +38,67 @@ export default function AdminLayout({ children }) {
         </div>
 
         <ul className={styles.nav}>
-          <li>
+          <li className={styles.navGroup}>
+            <p className={styles.navGroupTitle}>Trabajo</p>
             <Link
-              href="/admin/proveedores"
-              className={`${styles.navLink} ${pathname === '/admin/proveedores' ? styles.navActive : ''}`}
+              href="/admin/consultoria"
+              className={`${styles.navLink} ${pathname === '/admin/consultoria' ? styles.navActive : ''}`}
               onClick={() => setMenuOpen(false)}
             >
-              Proveedores
+              Radar global
             </Link>
+          </li>
+
+          <li className={styles.navGroup}>
+            <p className={styles.navGroupTitle}>Restaurantes</p>
+            <div className={styles.subnavAdmin}>
+              <Link
+                href="/admin?vista=altas"
+                className={styles.subnavAdminLink}
+                onClick={() => setMenuOpen(false)}
+              >
+                Altas
+              </Link>
+              <Link
+                href="/admin?vista=accesos"
+                className={styles.subnavAdminLink}
+                onClick={() => setMenuOpen(false)}
+              >
+                Accesos
+              </Link>
+            </div>
+          </li>
+
+          <li className={styles.navGroup}>
+            <p className={styles.navGroupTitle}>Proveedores</p>
+            <div
+              className={`${styles.navLink} ${pathname === '/admin/proveedores' ? styles.navActive : ''}`}
+            >
+              Proveedores
+            </div>
+            <div className={styles.subnavAdmin}>
+              <Link
+                href="/admin/proveedores?vista=gestion"
+                className={styles.subnavAdminLink}
+                onClick={() => setMenuOpen(false)}
+              >
+                Fichas e importacion
+              </Link>
+              <Link
+                href="/admin/proveedores?vista=catalogo"
+                className={styles.subnavAdminLink}
+                onClick={() => setMenuOpen(false)}
+              >
+                Catalogo comun
+              </Link>
+            </div>
           </li>
         </ul>
 
         <hr className={styles.divider} />
 
         <div className={styles.restSection}>
-          <p className={styles.restLabel}>Restaurantes</p>
+          <p className={styles.restLabel}>Restaurantes activos</p>
           {restaurantes.map(r => (
             <Link
               key={r.id}
@@ -70,22 +116,6 @@ export default function AdminLayout({ children }) {
         </div>
 
         <div className={styles.sidebarFooter}>
-          <div className={styles.footerLinks}>
-            <Link
-              href="/admin/consultoria"
-              className={`${styles.footerLink} ${pathname === '/admin/consultoria' ? styles.footerLinkActive : ''}`}
-              onClick={() => setMenuOpen(false)}
-            >
-              Radar global
-            </Link>
-            <Link
-              href="/admin"
-              className={`${styles.footerLink} ${pathname === '/admin' ? styles.footerLinkActive : ''}`}
-              onClick={() => setMenuOpen(false)}
-            >
-              Altas y accesos
-            </Link>
-          </div>
           <button type="button" onClick={cerrarSesion} className={styles.logoutButton}>Salir</button>
         </div>
       </nav>

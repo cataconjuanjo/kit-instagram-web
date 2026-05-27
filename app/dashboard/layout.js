@@ -21,6 +21,7 @@ export default function DashboardLayout({ children }) {
   const [restaurante, setRestaurante] = useState(null)
   const [vinoCount, setVinoCount] = useState(0)
   const [platoCount, setPlatoCount] = useState(0)
+  const [propuestasCount, setPropuestasCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -30,12 +31,14 @@ export default function DashboardLayout({ children }) {
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (!rest) return
       setRestaurante(rest)
-      const [{ count: vinos }, { count: platos }] = await Promise.all([
+      const [{ count: vinos }, { count: platos }, { count: propuestas }] = await Promise.all([
         supabase.from('vinos').select('id', { count: 'exact', head: true }).eq('restaurante_id', rest.id).eq('activo', true),
         supabase.from('platos').select('id', { count: 'exact', head: true }).eq('restaurante_id', rest.id).eq('activo', true),
+        supabase.from('consultor_propuestas').select('id', { count: 'exact', head: true }).eq('restaurante_id', rest.id).neq('estado', 'descartada').neq('estado', 'incorporada'),
       ])
       setVinoCount(vinos || 0)
       setPlatoCount(platos || 0)
+      setPropuestasCount(propuestas || 0)
     }
     cargar()
   }, [])
@@ -85,10 +88,11 @@ export default function DashboardLayout({ children }) {
       ],
     },
     {
-      href: '/dashboard/bodega',
+      href: propuestasCount > 0 ? '/dashboard/bodega#propuestas' : '/dashboard/bodega',
       label: 'Bodega',
       icon: icon.bodega,
       feature: 'bodega',
+      alert: propuestasCount || null,
       children: [
         { href: '/dashboard/inventario', label: 'Inventario', feature: 'inventario' },
       ],
@@ -139,6 +143,7 @@ export default function DashboardLayout({ children }) {
                 >
                   <span className={styles.navIcon}>{item.icon}</span>
                   <span className={styles.navLabel}>{item.label}</span>
+                  {item.alert != null && <span className={styles.navAlert}>{item.alert}</span>}
                   {item.stat != null && <span className={styles.navStat}>{item.stat}</span>}
                 </Link>
                 {active && item.children?.length > 0 && (

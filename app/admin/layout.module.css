@@ -93,6 +93,20 @@
   margin: 0;
 }
 
+.navGroup {
+  padding: 4px 0 8px;
+}
+
+.navGroupTitle {
+  margin: 0;
+  padding: 8px 16px 6px;
+  color: rgba(255, 250, 243, 0.32);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
 .navLink {
   display: flex;
   align-items: center;
@@ -116,6 +130,36 @@
   color: #fffaf3;
   background: rgba(83, 24, 39, 0.4);
   border-left-color: #531827;
+}
+
+.subnavAdmin {
+  display: grid;
+  gap: 2px;
+  padding: 3px 10px 0 24px;
+}
+
+.subnavAdminLink {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 6px 9px;
+  color: rgba(255, 250, 243, 0.52);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-decoration: none;
+  transition: color 120ms, background 120ms;
+}
+
+.subnavAdminLink:hover {
+  color: #fffaf3;
+  background: rgba(255, 250, 243, 0.06);
+}
+
+.subnavAdminActive {
+  color: #fffaf3;
+  background: rgba(255, 250, 243, 0.08);
 }
 
 /* Divider */

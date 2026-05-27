@@ -27,12 +27,52 @@ function adminClient() {
   })
 }
 
+async function seleccionarTodo(query, chunkSize = 1000) {
+  let from = 0
+  let rows = []
+
+  while (true) {
+    const { data, error } = await query.range(from, from + chunkSize - 1)
+    if (error) throw error
+    rows = rows.concat(data || [])
+    if (!data || data.length < chunkSize) break
+    from += chunkSize
+  }
+
+  return rows
+}
+
 function texto(body, campo) {
-  return String(body[campo] || '').trim()
+  return repararMojibake(String(body[campo] || '').trim())
 }
 
 function dinero(valor) {
   return valor === '' || valor === null || valor === undefined ? 0 : Number(valor) || 0
+}
+
+function repararMojibake(valor) {
+  if (!valor || !/[ÃÂâ]/.test(valor)) return valor
+  const windows1252 = {
+    '€': 0x80, '‚': 0x82, 'ƒ': 0x83, '„': 0x84, '…': 0x85, '†': 0x86, '‡': 0x87,
+    'ˆ': 0x88, '‰': 0x89, 'Š': 0x8a, '‹': 0x8b, 'Œ': 0x8c, 'Ž': 0x8e,
+    '‘': 0x91, '’': 0x92, '“': 0x93, '”': 0x94, '•': 0x95, '–': 0x96, '—': 0x97,
+    '˜': 0x98, '™': 0x99, 'š': 0x9a, '›': 0x9b, 'œ': 0x9c, 'ž': 0x9e, 'Ÿ': 0x9f,
+  }
+  const bytes = Uint8Array.from(Array.from(valor).map(char => {
+    const codigo = char.charCodeAt(0)
+    return windows1252[char] ?? (codigo <= 255 ? codigo : codigo & 255)
+  }))
+  const reparado = new TextDecoder('utf-8').decode(bytes)
+  return reparado.includes('�') ? valor : reparado
+}
+
+function repararFila(fila) {
+  if (!fila) return fila
+  return Object.fromEntries(Object.entries(fila).map(([clave, valor]) => {
+    if (typeof valor === 'string') return [clave, repararMojibake(valor)]
+    if (valor && typeof valor === 'object' && !Array.isArray(valor)) return [clave, repararFila(valor)]
+    return [clave, valor]
+  }))
 }
 
 function payloadProveedor(body) {
@@ -74,18 +114,22 @@ export async function GET(req) {
     if (admin.error) return Response.json({ error: admin.error }, { status: admin.status })
 
     const supabase = adminClient()
-    const [{ data: proveedores, error: proveedoresError }, { data: vinos, error: vinosError }] = await Promise.all([
+    const [{ data: proveedores, error: proveedoresError }, vinos] = await Promise.all([
       supabase.from('proveedores_vino').select('*').order('nombre'),
-      supabase
-        .from('proveedor_catalogo_vinos')
-        .select('*, proveedores_vino(nombre)')
-        .order('created_at', { ascending: false })
+      seleccionarTodo(
+        supabase
+          .from('proveedor_catalogo_vinos')
+          .select('*, proveedores_vino(nombre)')
+          .order('created_at', { ascending: false })
+      )
     ])
 
     if (proveedoresError) throw proveedoresError
-    if (vinosError) throw vinosError
 
-    return Response.json({ proveedores: proveedores || [], vinos: vinos || [] })
+    return Response.json({
+      proveedores: (proveedores || []).map(repararFila),
+      vinos: (vinos || []).map(repararFila),
+    })
   } catch (error) {
     console.error('Error leyendo proveedores:', error)
     return Response.json({ error: 'No se pudieron cargar los proveedores.' }, { status: 500 })
@@ -99,6 +143,39 @@ export async function POST(req) {
 
     const body = await req.json()
     const supabase = adminClient()
+
+    if (body.kind === 'vinos_bulk') {
+      const proveedorId = body.proveedor_id
+      const vinos = Array.isArray(body.vinos) ? body.vinos : []
+      if (!proveedorId || !vinos.length) {
+        return Response.json({ error: 'Proveedor y vinos son obligatorios.' }, { status: 400 })
+      }
+
+      const payload = vinos
+        .map(vino => payloadVino({ ...vino, proveedor_id: proveedorId }))
+        .filter(vino => vino.nombre)
+
+      if (!payload.length) {
+        return Response.json({ error: 'No hay vinos válidos para importar.' }, { status: 400 })
+      }
+
+      if (body.reemplazar === true) {
+        const { error } = await supabase
+          .from('proveedor_catalogo_vinos')
+          .delete()
+          .eq('proveedor_id', proveedorId)
+
+        if (error) throw error
+      }
+
+      const { data, error } = await supabase
+        .from('proveedor_catalogo_vinos')
+        .insert(payload)
+        .select('*, proveedores_vino(nombre)')
+
+      if (error) throw error
+      return Response.json({ vinos: data || [] })
+    }
 
     if (body.kind === 'vino') {
       const dataPayload = payloadVino(body)

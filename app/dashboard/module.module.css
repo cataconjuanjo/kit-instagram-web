@@ -276,6 +276,11 @@
   overflow: hidden;
 }
 
+.notificationFocus {
+  scroll-margin-top: 24px;
+  box-shadow: 0 0 0 3px rgba(195, 52, 52, 0.18), 0 18px 42px rgba(23, 20, 22, 0.14);
+}
+
 .panelHead {
   display: flex;
   justify-content: space-between;

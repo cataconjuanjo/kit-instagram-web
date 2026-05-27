@@ -46,7 +46,7 @@ export async function POST(req) {
     }
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: 'Eres un experto en cartas de vinos con certificación WSET Level 3. Analizas cartas de restaurantes y das diagnósticos concretos y accionables. Respondes en texto plano corrido, sin asteriscos, sin markdown, sin listas con guiones. Usas párrafos cortos y directos.',
       messages: [{

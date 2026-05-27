@@ -9,7 +9,7 @@ export async function POST(req) {
 
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 256,
       system: 'Eres un experto en vinos con conocimiento WSET Level 3. Respondes ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markdown, sin explicaciones.',
       messages: [{

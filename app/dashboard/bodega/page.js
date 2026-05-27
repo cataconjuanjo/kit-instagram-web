@@ -71,6 +71,15 @@ export default function ControlBodega() {
     cargar()
   }, [])
 
+  useEffect(() => {
+    if (loading || typeof window === 'undefined') return
+    if (window.location.hash !== '#propuestas') return
+    window.requestAnimationFrame(() => {
+      setMostrarPropuestas(true)
+      document.getElementById('propuestas')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }, [loading, propuestas.length])
+
   const datos = useMemo(() => {
     const activos = vinos.filter(vino => vino.activo !== false)
     const conCoste = activos.filter(vino => decimal(vino.coste_compra) > 0 && decimal(vino.precio_botella) > 0)
@@ -426,7 +435,7 @@ export default function ControlBodega() {
       </section>
 
       {propuestas.length > 0 && (
-        <section className={styles.panelDark} id="propuestas" style={{ marginTop: 16 }}>
+        <section className={`${styles.panelDark} ${styles.notificationFocus}`} id="propuestas" style={{ marginTop: 16 }}>
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Propuestas recibidas</h2>

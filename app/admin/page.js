@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail } from '../demo'
 
@@ -16,8 +16,11 @@ function generarPassword() {
 // Modo reset: 'email' = enviar enlace | 'manual' = generar contraseña
 // Se usa en el botón de "reset password" de cada tarjeta de restaurante
 
-export default function AdminPage() {
+function AdminPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const vistaAdmin = searchParams.get('vista') === 'accesos' ? 'accesos' : 'altas'
+  const esAltas = vistaAdmin === 'altas'
   const [user, setUser] = useState(null)
   const [restaurantes, setRestaurantes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -327,11 +330,12 @@ export default function AdminPage() {
         <div className="admin-head">
           <div>
             <p className="eyebrow">Restaurantes</p>
-            <h2>Altas, accesos y configuración de cada restaurante.</h2>
+            <h2>{esAltas ? 'Alta de restaurante y entrega de acceso.' : 'Accesos y gestion rapida de restaurantes.'}</h2>
           </div>
         </div>
 
-        <section className="admin-create">
+        {esAltas && (
+        <section className="admin-create admin-create-compact">
           <div>
             <p className="eyebrow">Alta nueva</p>
             <h2>Crear restaurante y acceso privado</h2>
@@ -418,10 +422,21 @@ export default function AdminPage() {
             </div>
           )}
         </section>
+        )}
 
-        <div className="admin-grid">
+        {!esAltas && (
+        <section className="admin-access-panel">
+          <div className="admin-access-toolbar">
+            <div>
+              <p className="eyebrow">Accesos</p>
+              <h3>{restaurantes.length} restaurantes</h3>
+            </div>
+            <Link href="/admin?vista=altas" className="admin-access-new">Nueva alta</Link>
+          </div>
+
+        <div className="admin-access-list">
           {restaurantes.map(restaurante => (
-            <article className="admin-card" key={restaurante.id}>
+            <article className="admin-card admin-access-card" key={restaurante.id}>
               {editandoId === restaurante.id && edicion ? (
                 <form className="admin-edit-form" onSubmit={guardarEdicion}>
                   <label>Nombre<input value={edicion.nombre} onChange={e => actualizarEdicion('nombre', e.target.value)} required /></label>
@@ -499,10 +514,10 @@ export default function AdminPage() {
                 </form>
               ) : (
                 <>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <h3 style={{ margin: 0 }}>{restaurante.nombre}</h3>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', background: restaurante.plan === 'premium' ? '#f1e4e7' : restaurante.plan === 'pro' ? '#e8f0eb' : '#f5f5f5', color: restaurante.plan === 'premium' ? '#74223d' : restaurante.plan === 'pro' ? '#385f4f' : '#888', padding: '2px 8px', borderRadius: 99 }}>
+              <div className="admin-access-main">
+                <div className="admin-access-title">
+                  <h3>{restaurante.nombre}</h3>
+                  <span className={`admin-plan-pill admin-plan-${restaurante.plan || 'basic'}`}>
                     {PLAN_LABEL[restaurante.plan] || restaurante.plan}
                   </span>
                 </div>
@@ -510,7 +525,7 @@ export default function AdminPage() {
                 <span>{restaurante.email}</span>
                 <small className="admin-slug">/{restaurante.slug}</small>
               </div>
-              <div className="admin-card-actions">
+              <div className="admin-access-actions">
                 <button onClick={() => gestionar(restaurante)}>Abrir dashboard</button>
                 <button className="admin-plain-button" onClick={() => empezarEdicion(restaurante)}>Editar</button>
                 <button
@@ -600,12 +615,22 @@ export default function AdminPage() {
             </article>
           ))}
         </div>
+        </section>
+        )}
 
-        {restaurantes.length === 0 && (
+        {!esAltas && restaurantes.length === 0 && (
           <div className="admin-empty">
             <p>No hay restaurantes creados todavia.</p>
           </div>
         )}
     </div>
+  )
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<p className="admin-loading">Cargando</p>}>
+      <AdminPageContent />
+    </Suspense>
   )
 }

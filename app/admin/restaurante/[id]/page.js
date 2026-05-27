@@ -239,13 +239,20 @@ function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propu
 function calcularMargen(coste, precio) {
   const c = Number(coste) || 0; const p = Number(precio) || 0
   if (!c || !p || p <= c) return ''
-  return String(Math.round(((p - c) / p) * 100))
+  return String(Math.round(((p - c) / c) * 100))
 }
 
 function calcularPrecioDesdeMargen(coste, margen) {
   const c = Number(coste) || 0; const m = Number(margen) || 0
-  if (!c || m <= 0 || m >= 95) return ''
-  return String(Math.round(c / (1 - m / 100)))
+  if (!c || m <= 0) return ''
+  return (c * (1 + m / 100)).toFixed(2)
+}
+
+function normalizarCatalogo(texto = '') {
+  return String(texto)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
 }
 
 const propuestaVacia = {
@@ -269,6 +276,8 @@ export default function RestauranteWorkspace() {
   const [platos, setPlatos] = useState([])
   const [estadisticas, setEstadisticas] = useState([])
   const [propuestas, setPropuestas] = useState([])
+  const [proveedoresCatalogo, setProveedoresCatalogo] = useState([])
+  const [vinosCatalogo, setVinosCatalogo] = useState([])
   const [loading, setLoading] = useState(true)
 
   const [ticketDraft, setTicketDraft] = useState('')
@@ -278,6 +287,9 @@ export default function RestauranteWorkspace() {
   const [editandoPropuesta, setEditandoPropuesta] = useState(null)
   const [modoPropuesta, setModoPropuesta] = useState('alta')
   const [vinoExistenteId, setVinoExistenteId] = useState('')
+  const [proveedorCatalogoId, setProveedorCatalogoId] = useState('')
+  const [vinoCatalogoId, setVinoCatalogoId] = useState('')
+  const [busquedaVinoCatalogo, setBusquedaVinoCatalogo] = useState('')
   const [guardandoPropuesta, setGuardandoPropuesta] = useState(false)
   const [errorPropuesta, setErrorPropuesta] = useState('')
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -300,20 +312,25 @@ export default function RestauranteWorkspace() {
       if (!user || !isAdminEmail(user.email)) { window.location.href = '/login'; return }
       setUser(user)
       const desde = haceDiasISO(30)
-      const [{ data: rest }, { data: vinosData }, { data: platosData }, { data: statsData }, { data: propuestasData }, { data: selData }] = await Promise.all([
+      const token = await tokenAdmin()
+      const [{ data: rest }, { data: vinosData }, { data: platosData }, { data: statsData }, { data: propuestasData }, { data: selData }, catalogoRes] = await Promise.all([
         supabase.from('restaurantes').select('*').eq('id', id).single(),
         supabase.from('vinos').select('*').eq('restaurante_id', id),
         supabase.from('platos').select('*').eq('restaurante_id', id),
         supabase.from('estadisticas').select('*').eq('restaurante_id', id).gte('created_at', desde),
         supabase.from('consultor_propuestas').select('*').eq('restaurante_id', id).order('created_at', { ascending: false }),
         supabase.from('seleccion_especial').select('*, vinos(nombre, bodega, tipo, region)').eq('restaurante_id', id).eq('activo', true).order('orden'),
+        fetch('/api/admin/proveedores', { headers: { Authorization: `Bearer ${token}` } }),
       ])
+      const catalogoData = await catalogoRes.json().catch(() => ({}))
       setRestaurante(rest)
       setTicketDraft(rest?.ticket_medio_comida || rest?.ticket_medio || rest?.ticket_comida || '')
       setVinos(vinosData || [])
       setPlatos(platosData || [])
       setEstadisticas(statsData || [])
       setPropuestas(propuestasData || [])
+      setProveedoresCatalogo(catalogoRes.ok ? catalogoData.proveedores || [] : [])
+      setVinosCatalogo(catalogoRes.ok ? catalogoData.vinos || [] : [])
       setSeleccion((selData || []).filter(item => !String(item.nota_personal || '').startsWith('[RESTAURANTE] ')))
       setLoading(false)
     }
@@ -369,6 +386,9 @@ export default function RestauranteWorkspace() {
     setEditandoPropuesta(null)
     setModoPropuesta('alta')
     setVinoExistenteId('')
+    setProveedorCatalogoId('')
+    setVinoCatalogoId('')
+    setBusquedaVinoCatalogo('')
     setFormPropuesta({ ...propuestaVacia, restaurante_id: id, ...prefill })
     setMostrarForm(true)
     setTimeout(() => propuestaFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
@@ -378,6 +398,9 @@ export default function RestauranteWorkspace() {
     setEditandoPropuesta(p.id)
     setModoPropuesta(p.tipo === 'Retirar referencia' ? 'retirada' : 'alta')
     setVinoExistenteId('')
+    setProveedorCatalogoId('')
+    setVinoCatalogoId('')
+    setBusquedaVinoCatalogo('')
     setFormPropuesta({
       restaurante_id: id, titulo: p.titulo || '', vino: p.vino || '', tipo: p.tipo || '',
       zona: p.zona || '', proveedor_sugerido: p.proveedor_sugerido || '',
@@ -399,6 +422,58 @@ export default function RestauranteWorkspace() {
       vino: v.nombre || '', tipo: 'Retirar referencia', zona: v.region || '',
       proveedor_sugerido: v.proveedor || '', coste_estimado: v.coste_compra || '',
       precio_recomendado: v.precio_botella || ''
+    }))
+  }
+
+  const vinosCatalogoFiltrados = useMemo(() => {
+    const terminos = normalizarCatalogo(busquedaVinoCatalogo).split(' ').filter(Boolean)
+    const base = proveedorCatalogoId
+      ? vinosCatalogo.filter(vino => String(vino.proveedor_id) === String(proveedorCatalogoId))
+      : vinosCatalogo
+    return base
+      .filter(vino => {
+        if (!terminos.length) return true
+        const proveedor = proveedoresCatalogo.find(item => String(item.id) === String(vino.proveedor_id))
+        const texto = normalizarCatalogo([
+          vino.nombre,
+          vino.bodega,
+          vino.region,
+          vino.tipo,
+          vino.uva,
+          vino.referencia,
+          vino.formato,
+          proveedor?.nombre,
+        ].filter(Boolean).join(' '))
+        return terminos.every(termino => texto.includes(termino))
+      })
+      .slice(0, 40)
+  }, [vinosCatalogo, proveedoresCatalogo, proveedorCatalogoId, busquedaVinoCatalogo])
+
+  function seleccionarProveedorCatalogo(proveedorId) {
+    setProveedorCatalogoId(proveedorId)
+    setVinoCatalogoId('')
+    setBusquedaVinoCatalogo('')
+  }
+
+  function seleccionarVinoCatalogo(vinoId) {
+    setVinoCatalogoId(vinoId)
+    const vino = vinosCatalogo.find(item => String(item.id) === String(vinoId))
+    if (!vino) return
+    const proveedor = proveedoresCatalogo.find(item => String(item.id) === String(vino.proveedor_id))
+    const pvp = Number(vino.pvp_recomendado) > 0 ? vino.pvp_recomendado : ''
+    setProveedorCatalogoId(vino.proveedor_id || '')
+    setBusquedaVinoCatalogo(vino.nombre || '')
+    setUltimoCampoEco(pvp ? 'precio' : 'margen')
+    setFormPropuesta(prev => ({
+      ...prev,
+      titulo: prev.titulo || `Añadir ${vino.nombre} a la carta`,
+      vino: vino.nombre || '',
+      tipo: vino.tipo || '',
+      zona: vino.region || '',
+      proveedor_sugerido: proveedor?.nombre || vino.proveedores_vino?.nombre || '',
+      coste_estimado: Number(vino.coste_estimado) > 0 ? vino.coste_estimado : '',
+      precio_recomendado: pvp,
+      margen_objetivo: pvp ? calcularMargen(vino.coste_estimado, pvp) : prev.margen_objetivo,
     }))
   }
 
@@ -426,6 +501,9 @@ export default function RestauranteWorkspace() {
       setEditandoPropuesta(null)
       setModoPropuesta('alta')
       setVinoExistenteId('')
+      setProveedorCatalogoId('')
+      setVinoCatalogoId('')
+      setBusquedaVinoCatalogo('')
       setMostrarForm(false)
     } else {
       setErrorPropuesta(data.error || 'No se pudo guardar la propuesta.')
@@ -691,7 +769,7 @@ export default function RestauranteWorkspace() {
                 <form onSubmit={guardarPropuesta} className="admin-create-form ws-form-grid">
                   <label>
                     Tipo de propuesta
-                    <select value={modoPropuesta} onChange={e => { setModoPropuesta(e.target.value); setVinoExistenteId('') }}>
+                    <select value={modoPropuesta} onChange={e => { setModoPropuesta(e.target.value); setVinoExistenteId(''); setProveedorCatalogoId(''); setVinoCatalogoId('') }}>
                       <option value="alta">Añadir o recomendar vino</option>
                       <option value="retirada">Retirar vino existente</option>
                     </select>
@@ -713,6 +791,36 @@ export default function RestauranteWorkspace() {
                     </label>
                   ) : (
                     <>
+                      <label>
+                        Proveedor del catálogo
+                        <select value={proveedorCatalogoId} onChange={e => seleccionarProveedorCatalogo(e.target.value)}>
+                          <option value="">Todos los proveedores...</option>
+                          {proveedoresCatalogo.map(proveedor => (
+                            <option key={proveedor.id} value={proveedor.id}>{proveedor.nombre}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Buscar vino del catálogo común
+                        <input value={busquedaVinoCatalogo} onChange={e => setBusquedaVinoCatalogo(e.target.value)} placeholder="Nombre, bodega, zona, uva o referencia..." />
+                      </label>
+                      <div className="admin-create-wide catalog-picker">
+                        {vinosCatalogoFiltrados.length === 0 && <p>No hay vinos con ese filtro.</p>}
+                        {vinosCatalogoFiltrados.map(vino => {
+                          const proveedor = proveedoresCatalogo.find(item => String(item.id) === String(vino.proveedor_id))
+                          return (
+                            <button
+                              type="button"
+                              key={vino.id}
+                              className={String(vinoCatalogoId) === String(vino.id) ? 'active' : ''}
+                              onClick={() => seleccionarVinoCatalogo(vino.id)}
+                            >
+                              <strong>{vino.nombre}</strong>
+                              <span>{[proveedor?.nombre, vino.bodega, vino.region, vino.formato, vino.coste_estimado ? `${vino.coste_estimado} EUR` : ''].filter(Boolean).join(' · ')}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
                       <label>Vino sugerido<input value={formPropuesta.vino} onChange={e => actualizarForm('vino', e.target.value)} placeholder="Moscatel naturalmente dulce..." /></label>
                       <label>Tipo / estilo<input value={formPropuesta.tipo} onChange={e => actualizarForm('tipo', e.target.value)} placeholder="Dulce, generoso, blanco salino..." /></label>
                     </>
@@ -721,8 +829,21 @@ export default function RestauranteWorkspace() {
                   <label>Proveedor sugerido<input value={formPropuesta.proveedor_sugerido} onChange={e => actualizarForm('proveedor_sugerido', e.target.value)} placeholder="Distribuidor o bodega" /></label>
                   <label>Coste estimado<input type="number" step="0.01" value={formPropuesta.coste_estimado} onChange={e => actualizarForm('coste_estimado', e.target.value)} /></label>
                   <label>Precio recomendado<input type="number" step="0.01" value={formPropuesta.precio_recomendado} onChange={e => actualizarForm('precio_recomendado', e.target.value)} /></label>
-                  <label>Margen objetivo %<input type="number" min="1" max="94" value={formPropuesta.margen_objetivo} onChange={e => actualizarForm('margen_objetivo', e.target.value)} placeholder="Ej. 70" /></label>
-                  <label>Plato objetivo<input value={formPropuesta.plato_objetivo} onChange={e => actualizarForm('plato_objetivo', e.target.value)} placeholder="Tarta de queso, fritura, carne..." /></label>
+                  <label>Margen sobre coste %<input type="number" min="1" max="900" value={formPropuesta.margen_objetivo} onChange={e => actualizarForm('margen_objetivo', e.target.value)} placeholder="Ej. 200" /></label>
+                  <label>
+                    Plato objetivo
+                    <select value={formPropuesta.plato_objetivo} onChange={e => actualizarForm('plato_objetivo', e.target.value)}>
+                      <option value="">Sin plato concreto...</option>
+                      {formPropuesta.plato_objetivo && !platos.some(plato => plato.nombre === formPropuesta.plato_objetivo) && (
+                        <option value={formPropuesta.plato_objetivo}>{formPropuesta.plato_objetivo}</option>
+                      )}
+                      {platos.map(plato => (
+                        <option key={plato.id} value={plato.nombre}>
+                          {[plato.nombre, plato.categoria].filter(Boolean).join(' · ')}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <label>
                     Prioridad
                     <select value={formPropuesta.prioridad} onChange={e => actualizarForm('prioridad', e.target.value)}>
@@ -753,7 +874,7 @@ export default function RestauranteWorkspace() {
                   <div className="ws-form-actions">
                     <button disabled={guardandoPropuesta}>{guardandoPropuesta ? 'Guardando...' : editandoPropuesta ? 'Guardar cambios' : 'Crear propuesta'}</button>
                     {editandoPropuesta && (
-                      <button type="button" className="admin-plain-button" onClick={() => { setEditandoPropuesta(null); setFormPropuesta(propuestaVacia); setMostrarForm(false) }}>Cancelar</button>
+                      <button type="button" className="admin-plain-button" onClick={() => { setEditandoPropuesta(null); setFormPropuesta(propuestaVacia); setProveedorCatalogoId(''); setVinoCatalogoId(''); setBusquedaVinoCatalogo(''); setMostrarForm(false) }}>Cancelar</button>
                     )}
                   </div>
                   {errorPropuesta && <p className="admin-alert admin-alert-error">{errorPropuesta}</p>}
