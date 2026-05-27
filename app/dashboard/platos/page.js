@@ -201,6 +201,27 @@ export default function Platos() {
     cargar()
   }, [])
 
+  // ── Enriquecimiento Chartier en background ────────────────────────────────
+  async function enriquecerPlato(plato) {
+    try {
+      const res = await fetch('/api/enriquecer-plato', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: plato.nombre,
+          descripcion: plato.descripcion || '',
+          categoria: plato.categoria || '',
+          plato_id: plato.id,
+          restaurante_id: plato.restaurante_id,
+        }),
+      })
+      if (!res.ok) return
+      const { familias_aromaticas } = await res.json()
+      if (!familias_aromaticas) return
+      setPlatos(prev => prev.map(p => p.id === plato.id ? { ...p, familias_aromaticas } : p))
+    } catch {}
+  }
+
   async function añadirPlato() {
     if (!nuevoPlato.nombre.trim()) return
     const { data, error } = await supabase.from('platos').insert([{
@@ -213,6 +234,7 @@ export default function Platos() {
       setPlatos([...platos, data[0]])
       setNuevoPlato({ nombre: '', descripcion: '', categoria: 'Entrantes fríos', precio: '' })
       setMostrarFormulario(false)
+      enriquecerPlato(data[0]).catch(() => {})
     }
   }
 
@@ -313,6 +335,8 @@ export default function Platos() {
       setTextoImportar('')
       setPlatosImportar([])
       setMostrarImportador(false)
+      // Enriquecer Chartier en background (sin bloquear UI)
+      actualizados.forEach(plato => enriquecerPlato(plato).catch(() => {}))
     }
     setImportando(false)
   }
@@ -327,6 +351,7 @@ export default function Platos() {
     if (!error) {
       setPlatos(platos.map(p => p.id === plato.id ? { ...p, ...plato } : p))
       setEditandoPlato(null)
+      enriquecerPlato({ ...plato, restaurante_id: restaurante.id }).catch(() => {})
     }
   }
 

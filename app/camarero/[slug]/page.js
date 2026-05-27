@@ -6,6 +6,7 @@ import { chartierKb, fuenteChartier } from '../../lib/chartierKb'
 import { buscarPlatoKb } from '../../data/platos_kb'
 import { criteriosEstructurales } from '../../lib/maridajeEngine'
 import { nombrePlan, puedeUsar } from '../../lib/plans'
+import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import styles from './camarero.module.css'
 
 export default function Camarero({ params }) {
@@ -894,12 +895,29 @@ export default function Camarero({ params }) {
         if (!esMesa) {
           const contexto = contextoVenta(consultaNormalizada)
           const matchesKb = capitulosParaConsulta(consultaNormalizada)
-          return puntuarParaVenta(vino, matchesKb, objetivoVenta, precioMedio, contexto, consultaNormalizada, rangoTicket)
+          const resultado = puntuarParaVenta(vino, matchesKb, objetivoVenta, precioMedio, contexto, consultaNormalizada, rangoTicket)
+          // ── Bonus Chartier desde familias_aromaticas del plato ────────────
+          const platoActual = platosMesaVenta[0]
+          if (platoActual?.familias_aromaticas?.familias?.length) {
+            const { bonus, motivo: motivoChartier, riesgos } = bonusChartierFamilias(vino, platoActual.familias_aromaticas.familias)
+            resultado.score += bonus
+            if (motivoChartier && bonus > 0) resultado.motivo = motivoChartier
+            if (riesgos?.length && bonus < 0) resultado.motivo = riesgos[0]
+          }
+          return resultado
         }
 
-        const parciales = consultas.map(consulta => {
+        const parciales = consultas.map((consulta, i) => {
           const texto = normalizar(consulta)
-          return puntuarParaVenta(vino, capitulosParaConsulta(texto), objetivoVenta, precioMedio, contextoVenta(texto), texto, rangoTicket)
+          const resultado = puntuarParaVenta(vino, capitulosParaConsulta(texto), objetivoVenta, precioMedio, contextoVenta(texto), texto, rangoTicket)
+          // ── Bonus Chartier por plato individual de la mesa ────────────────
+          const plato = platosMesaVenta[i]
+          if (plato?.familias_aromaticas?.familias?.length) {
+            const { bonus, motivo: motivoChartier } = bonusChartierFamilias(vino, plato.familias_aromaticas.familias)
+            resultado.score += bonus
+            if (motivoChartier && bonus > 0) resultado.motivo = motivoChartier
+          }
+          return resultado
         })
         const incompatibles = parciales.filter(item => !item.compatible)
         const scoreBase = parciales.reduce((sum, item) => sum + item.score, 0) / parciales.length
