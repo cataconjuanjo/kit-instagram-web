@@ -1,11 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { analizarMaridaje, resumenAnalisisParaPrompt } from '../../lib/maridajeEngine'
-import { analizarConGrafo, resumenGrafoParaPrompt } from '../../lib/chartierGraph'
 import { puedeUsar } from '../../lib/plans'
-
-// Extender timeout en Vercel Pro (60s). En Hobby el máximo es 10s.
-export const maxDuration = 60
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -175,14 +171,15 @@ export async function POST(request) {
       let contextoCriterios = ''
 
       if (esModoMaridaje) {
-        // Grafo de Chartier (evidencia aromática directa) — defensivo
+        // Grafo de Chartier — import dinámico para que un fallo no mate la ruta
         let resumenGrafo = ''
         try {
           const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
-          const grafoAnalisis = analizarConGrafo(consultaTexto, vinos || [])
-          resumenGrafo = resumenGrafoParaPrompt(grafoAnalisis) || ''
+          const grafoMod = await import('../../lib/chartierGraph')
+          const grafoAnalisis = grafoMod.analizarConGrafo(consultaTexto, vinos || [])
+          resumenGrafo = grafoMod.resumenGrafoParaPrompt(grafoAnalisis) || ''
         } catch (err) {
-          console.error('[maridaje] grafo error (no fatal):', err?.message)
+          console.error('[maridaje] grafo (no fatal):', err?.message)
         }
 
         // Motor estructural existente (acidez, tanino, cuerpo, restricciones)
@@ -250,7 +247,7 @@ export async function POST(request) {
 
     // ── Streaming ──────────────────────────────────────────────────
     const stream = anthropic.messages.stream({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
       system: systemPrompt,
       messages,
