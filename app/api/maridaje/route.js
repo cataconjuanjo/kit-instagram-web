@@ -1,17 +1,17 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { analizarMaridaje, resumenAnalisisParaPrompt } from '../../lib/maridajeEngine'
+import { analizarConGrafo, resumenGrafoParaPrompt } from '../../lib/chartierGraph'
 import { puedeUsar } from '../../lib/plans'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// ── Rate limiting ──────────────────────────────────────────────
-const RATE_LIMIT = 20          // max llamadas por IP
-const RATE_WINDOW_MS = 60 * 60 * 1000  // ventana de 1 hora
+// ── Rate limiting ──────────────────────────────────────────────────────────
+const RATE_LIMIT = 20
+const RATE_WINDOW_MS = 60 * 60 * 1000
 
 async function checkRateLimit(ip) {
   const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
-
   const { count } = await supabaseAdmin
     .from('rate_limits')
     .select('*', { count: 'exact', head: true })
@@ -20,7 +20,6 @@ async function checkRateLimit(ip) {
     .gte('created_at', since)
 
   if ((count || 0) >= RATE_LIMIT) return false
-
   await supabaseAdmin.from('rate_limits').insert({ ip, endpoint: 'maridaje' })
   return true
 }
@@ -34,7 +33,7 @@ function getIP(request) {
 }
 
 function normalizarTexto(texto = '') {
-  return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
 function lineaVino(vino) {
@@ -43,59 +42,84 @@ function lineaVino(vino) {
     vino.tipo,
     vino.region,
     vino.uva ? `uva: ${vino.uva}` : '',
-    vino.anada ? `anada: ${vino.anada}` : '',
-    vino.precio_copa ? `copa: ${vino.precio_copa} EUR` : '',
-    `botella: ${vino.precio_botella} EUR`,
-    vino.notas_cata ? `notas: ${vino.notas_cata}` : ''
+    vino.anada ? `añada: ${vino.anada}` : '',
+    vino.precio_copa ? `copa: ${vino.precio_copa}€` : '',
+    `botella: ${vino.precio_botella}€`,
+    vino.notas_cata ? `notas: ${vino.notas_cata}` : '',
   ].filter(Boolean).join(', ')})`
 }
 
 function lineaPlato(plato) {
-  return `- ${plato.nombre}${plato.precio ? ` (${plato.precio} EUR)` : ''}${plato.descripcion ? ': ' + plato.descripcion : ''} (${plato.categoria})`
+  return `- ${plato.nombre}${plato.precio ? ` (${plato.precio}€)` : ''}${plato.descripcion ? ': ' + plato.descripcion : ''} (${plato.categoria})`
 }
 
+// ── Prompt maestro — basado en metodología Chartier ───────────────────────
 function buildSystem(cartaVinos, idioma) {
   if (idioma === 'en') {
-    return `You are a wine-pairing assistant supervised by the restaurant wine consultant. The customer reads on a mobile screen. Be VERY brief and selective.
+    return `You are a wine pairing sommelier using François Chartier's aromatic methodology.
+Only recommend wines from the real wine list below. Never invent wines.
+
+Your reasoning:
+1. Identify the dominant aromatic families of the dish (main ingredient, cooking technique, sauce, condiments).
+2. Find wines with shared or complementary aromatic families — sauce and technique often matter more than the protein.
+3. Check structure: acidity, body, tannin, alcohol, sweetness.
+4. Control risks: spice, salinity, umami, heavy oak, hard tannin.
+5. If the pairing is not ideal, say so honestly — never sound confident about a weak pairing.
+
+Key rules:
+- Grilling, roasting, smoke, Maillard → wines with barrel aging share aromatic bridges.
+- Green, anise, citrus, herbal dishes → sauvignon blanc, verdejo, riesling, albarino, assyrtiko, chablis.
+- Iodine, saline, marine dishes → precision and minerality: fino, manzanilla, albarino, chablis, dry riesling.
+- With cheese, never assume red: most cheeses pair better with whites, fortified, or sweet wines.
+- With high spice: avoid hard tannin, high alcohol, drying oak. Seek freshness, low tannin, light sweetness.
+- If no wine is ideal, say "the best available option is X" — do not pretend perfection.
 
 FORMAT — exactly this, nothing more:
-[Wine name] — [1 sentence why]. [price]€
+[Wine name] — [1 sentence why, using the specific aromatic bridge]. [price]€
 
-[Wine name] — [1 sentence why]. [price]€
+[Wine name] — [1 sentence alternative if it exists]. [price]€
 
-Rules:
-- Plain text only. No asterisks, bold, lists, or symbols.
-- One short sentence per wine explaining the structural reason (tannin, acidity, body, fat, umami — not just "it pairs well").
-- Recommend up to 2 wines: one accessible option and one more ambitious/premium option.
-- If both are valid, prefer different styles or colours so the customer does not feel locked into one colour.
-- Only recommend wines from the list below. Never invent wines.
-- WSET L3 and Chartier methodology.
+Each sentence: sensory and specific — aromas, texture, freshness, aging, smoke, fat, salinity, finish. Max 25 words.
+Plain text only. No asterisks, bold, lists or symbols.
 
 Current wine list:
 ${cartaVinos}`
   }
-  return `Eres un asistente de maridaje supervisado por el consultor de vinos del restaurante. El cliente lee desde el móvil. Sé MUY breve y exigente.
+
+  return `Eres un sommelier de maridaje que usa la metodología aromática de François Chartier.
+Solo recomiendas vinos de la carta real que aparece abajo. Nunca inventas vinos.
+
+Tu razonamiento:
+1. Identificar las familias aromáticas dominantes del plato: ingrediente principal, técnica de cocción, salsa, condimentos.
+2. Buscar vinos con familias aromáticas compartidas o complementarias — la salsa y la técnica pueden pesar más que la proteína.
+3. Comprobar estructura: acidez, cuerpo, tanino, alcohol, dulzor.
+4. Controlar riesgos: picante, salinidad, umami, madera excesiva, tanino duro.
+5. Si el maridaje no es perfecto, dilo con honestidad — nunca suenes seguro ante un maridaje débil.
+
+Reglas específicas de Chartier:
+- Brasa, asado, humo, tostado Maillard → vinos con crianza en barrica comparten puente aromático.
+- Platos verdes, anisados, cítricos, herbales → sauvignon blanc, verdejo, riesling, albariño, assyrtiko, chablis.
+- Platos yodados, salinos, marinos → precisión y mineralidad: fino, manzanilla, albariño, chablis, riesling seco.
+- Con quesos: no asumas tinto; la mayoría funcionan mejor con blancos, generosos, dulces.
+- Con picante alto: evita tanino duro, alcohol alto y roble secante.
+- Con umami alto (setas, soja, miso, curado): vigilar tintos tánicos que pueden endurecerse.
+- Si ningun vino es ideal, di cuál es la mejor opción disponible sin fingir perfección.
 
 FORMATO — exactamente esto, nada más:
-[Nombre del vino] — [1 frase de por que]. [precio]€
+[Nombre del vino] — [1 frase del puente aromático concreto]. [precio]€
 
-[Nombre del vino] — [1 frase de por que]. [precio]€
+[Nombre del vino] — [1 frase alternativa si existe]. [precio]€
 
-Reglas:
-- Solo texto plano. Sin asteriscos, negritas, listas ni simbolos.
-- Una frase corta por vino explicando la razón estructural (tanino, acidez, cuerpo, grasa, umami — no solo "marida bien").
-- Recomienda hasta 2 vinos: una opción accesible y otra más ambiciosa/premium.
-- Si ambas son válidas, intenta que tengan estilos o colores distintos para que el cliente no sienta que solo existe una vía.
-- Solo recomiendas vinos de la carta real que aparece abajo. Nunca inventas vinos.
-- Metodologia WSET L3 y Chartier.
+La frase debe ser sensorial y específica: aromas, textura, frescura, crianza, brasa, grasa, salinidad, final en boca. Máximo 25 palabras.
+Solo texto plano. Sin asteriscos, negritas, listas ni símbolos.
 
-Carta de vinos actual del restaurante:
+Carta de vinos del restaurante:
 ${cartaVinos}`
 }
 
 export async function POST(request) {
   try {
-    // ── Rate limit por IP ──────────────────────────────────────
+    // ── Rate limit ─────────────────────────────────────────────────
     const ip = getIP(request)
     const allowed = await checkRateLimit(ip)
     if (!allowed) {
@@ -138,70 +162,87 @@ export async function POST(request) {
     let prefill = ''
 
     if (mensajeSeguimiento && historial.length > 0) {
-      // Turno de seguimiento: añade el mensaje al historial existente
+      // Turno de seguimiento — mantiene el historial existente
       messages = [...historial, { role: 'user', content: mensajeSeguimiento }]
     } else {
-      // Primer turno: construir prompt completo con análisis de maridaje
-      const analisisMaridaje = (modo === 'mesa' || modo === 'plato')
-        ? analizarMaridaje(consulta, vinos || [])
-        : null
-      const criterioCompartido = analisisMaridaje ? resumenAnalisisParaPrompt(analisisMaridaje) : ''
+      // Primer turno — construir contexto completo con grafo + motor estructural
+      const esModoMaridaje = modo === 'mesa' || modo === 'plato'
+
+      // ── Análisis del grafo de Chartier ────────────────────────
+      let contextoCriterios = ''
+
+      if (esModoMaridaje) {
+        // Grafo de Chartier (evidencia aromática directa)
+        const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
+        const grafoAnalisis = analizarConGrafo(consultaTexto, vinos || [])
+        const resumenGrafo = resumenGrafoParaPrompt(grafoAnalisis)
+
+        // Motor estructural existente (acidez, tanino, cuerpo, restricciones)
+        const motorAnalisis = analizarMaridaje(consulta, vinos || [])
+        const resumenMotor = resumenAnalisisParaPrompt(motorAnalisis)
+
+        // Combinar ambas fuentes de evidencia
+        contextoCriterios = [
+          resumenGrafo || '',
+          resumenMotor || '',
+        ].filter(Boolean).join('\n\n')
+
+        // Registrar estadísticas
+        const eventos = [{ restaurante_id, tipo: 'sommelier', detalle: String(consulta || '').slice(0, 200) }]
+        if (motorAnalisis?.recomendados?.length) {
+          motorAnalisis.recomendados.forEach((item, index) => {
+            if (!item?.vino) return
+            eventos.push({
+              restaurante_id,
+              tipo: 'recomendacion',
+              detalle: JSON.stringify({
+                origen: 'cliente',
+                modo,
+                consulta: String(consulta || '').slice(0, 200),
+                vino_id: item.vino.id,
+                vino: item.vino.nombre,
+                posicion: index + 1,
+                precio: item.vino.precio_botella,
+              }),
+            })
+          })
+        }
+        await supabaseAdmin.from('estadisticas').insert(eventos)
+      }
+
+      // ── Construir prompt del usuario ───────────────────────────
+      const modosTexto = {
+        botella: idioma === 'en' ? 'a single bottle for the whole table' : 'una sola botella para toda la mesa',
+        copa: idioma === 'en' ? 'a glass for each dish' : 'una copa por plato',
+        progresion: idioma === 'en' ? 'a wine progression from lighter to fuller' : 'una progresión de menos a más cuerpo',
+      }
 
       let prompt
       if (modo === 'mesa') {
         prompt = idioma === 'en'
-          ? `Dishes: ${consulta}. Format: ${modoMesa}.\n\nPairing analysis:\n${criterioCompartido}\n\nGive up to 2 wines: one accessible option and one premium option. If format is by the glass, use only wines with glass price. If possible, avoid both wines being the same colour/style unless that is clearly the best pairing. Use the exact format from the system prompt.`
-          : `Platos: ${consulta}. Formato: ${modoMesa}.\n\nAnálisis de maridaje:\n${criterioCompartido}\n\nDa hasta 2 vinos: una opción accesible y otra premium. Si el formato es por copas, usa solo vinos con precio de copa. Si es posible, evita que los dos sean del mismo color/estilo salvo que sea claramente lo mejor para el maridaje. Usa el formato exacto del system prompt.`
+          ? `Dishes: ${consulta}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nGive up to 2 wines: one accessible, one premium. If format is by the glass, use only wines with glass price. Use the exact format from the system prompt.`
+          : `Platos: ${consulta}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nDa hasta 2 vinos: uno accesible y otro premium. Si el formato es por copas, usa solo vinos con precio de copa. Usa el formato exacto del system prompt.`
       } else if (modo === 'plato') {
         prompt = idioma === 'en'
-          ? `Dish: "${consulta}".\n\nPairing analysis:\n${criterioCompartido}\n\nGive up to 2 wines: one accessible option and one premium option. If possible, avoid both wines being the same colour/style unless that is clearly the best pairing. Use the exact format from the system prompt.`
-          : `Plato: "${consulta}".\n\nAnálisis de maridaje:\n${criterioCompartido}\n\nDa hasta 2 vinos: una opción accesible y otra premium. Si es posible, evita que los dos sean del mismo color/estilo salvo que sea claramente lo mejor para el maridaje. Usa el formato exacto del system prompt.`
+          ? `Dish: "${consulta}".\n\n${contextoCriterios}\n\nGive up to 2 wines: one accessible, one premium. Use the exact format from the system prompt.`
+          : `Plato: "${consulta}".\n\n${contextoCriterios}\n\nDa hasta 2 vinos: uno accesible y otro premium. Usa el formato exacto del system prompt.`
       } else {
+        // Modo inverso: dado un vino, recomendar platos
         prompt = idioma === 'en'
           ? `Wine: "${consulta}". List 3 dishes from below that pair well. One sentence each. Exact dish names.\n\n${cartaPlatos}`
           : `Vino: "${consulta}". Lista 3 platos de abajo que mariden bien. Una frase cada uno. Nombres exactos.\n\n${cartaPlatos}`
       }
 
-      prefill = idioma === 'en'
-        ? 'Of course, here is my recommendation:'
-        : 'Claro, aquí va mi recomendación:'
-
+      prefill = idioma === 'en' ? 'Of course, here is my recommendation:' : 'Claro, aquí va mi recomendación:'
       messages = [
         { role: 'user', content: prompt },
         { role: 'assistant', content: prefill },
       ]
-
-      // Registrar estadística solo en el primer turno
-      const eventos = [{
-        restaurante_id,
-        tipo: 'sommelier',
-        detalle: String(consulta || '').slice(0, 200),
-      }]
-
-      if (analisisMaridaje?.recomendados?.length) {
-        analisisMaridaje.recomendados.forEach((item, index) => {
-          if (!item?.vino) return
-          eventos.push({
-            restaurante_id,
-            tipo: 'recomendacion',
-            detalle: JSON.stringify({
-              origen: 'cliente',
-              modo,
-              consulta: String(consulta || '').slice(0, 200),
-              vino_id: item.vino.id,
-              vino: item.vino.nombre,
-              posicion: index + 1,
-              precio: item.vino.precio_botella,
-            }),
-          })
-        })
-      }
-
-      await supabaseAdmin.from('estadisticas').insert(eventos)
     }
 
+    // ── Streaming ──────────────────────────────────────────────────
     const stream = anthropic.messages.stream({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: systemPrompt,
       messages,
@@ -216,7 +257,6 @@ export async function POST(request) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`))
             }
           }
-          // Enviar prefill al final para que el frontend construya el historial correctamente
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, prefill })}\n\n`))
           controller.close()
         } catch (err) {
