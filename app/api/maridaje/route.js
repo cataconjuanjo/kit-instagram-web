@@ -4,6 +4,9 @@ import { analizarMaridaje, resumenAnalisisParaPrompt } from '../../lib/maridajeE
 import { analizarConGrafo, resumenGrafoParaPrompt } from '../../lib/chartierGraph'
 import { puedeUsar } from '../../lib/plans'
 
+// Extender timeout en Vercel Pro (60s). En Hobby el máximo es 10s.
+export const maxDuration = 60
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // ── Rate limiting ──────────────────────────────────────────────────────────
@@ -172,10 +175,15 @@ export async function POST(request) {
       let contextoCriterios = ''
 
       if (esModoMaridaje) {
-        // Grafo de Chartier (evidencia aromática directa)
-        const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
-        const grafoAnalisis = analizarConGrafo(consultaTexto, vinos || [])
-        const resumenGrafo = resumenGrafoParaPrompt(grafoAnalisis)
+        // Grafo de Chartier (evidencia aromática directa) — defensivo
+        let resumenGrafo = ''
+        try {
+          const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
+          const grafoAnalisis = analizarConGrafo(consultaTexto, vinos || [])
+          resumenGrafo = resumenGrafoParaPrompt(grafoAnalisis) || ''
+        } catch (err) {
+          console.error('[maridaje] grafo error (no fatal):', err?.message)
+        }
 
         // Motor estructural existente (acidez, tanino, cuerpo, restricciones)
         const motorAnalisis = analizarMaridaje(consulta, vinos || [])
