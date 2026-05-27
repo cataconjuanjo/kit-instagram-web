@@ -245,28 +245,23 @@ export async function POST(request) {
       ]
     }
 
-    // ── Streaming ──────────────────────────────────────────────────
-    const stream = anthropic.messages.stream({
+    // ── Llamada a Claude (awaited — evita unhandled rejections en Vercel) ────
+    const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: systemPrompt,
       messages,
     })
 
+    const textoRespuesta = msg.content?.[0]?.text || ''
+
+    // ── Devolver como SSE para que el cliente lo lea igual que antes ──────
     const encoder = new TextEncoder()
     const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`))
-            }
-          }
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, prefill })}\n\n`))
-          controller.close()
-        } catch (err) {
-          controller.error(err)
-        }
+      start(controller) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: textoRespuesta })}\n\n`))
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, prefill })}\n\n`))
+        controller.close()
       },
     })
 
