@@ -238,10 +238,9 @@ export async function POST(request) {
           : `Vino: "${consulta}". Lista 3 platos de abajo que mariden bien. Una frase cada uno. Nombres exactos.\n\n${cartaPlatos}`
       }
 
-      prefill = idioma === 'en' ? 'Of course, here is my recommendation:' : 'Claro, aquí va mi recomendación:'
+      prefill = ''
       messages = [
         { role: 'user', content: prompt },
-        { role: 'assistant', content: prefill },
       ]
     }
 
