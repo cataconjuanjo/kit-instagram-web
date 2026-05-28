@@ -2217,7 +2217,7 @@ h3 {
 .hub-link {
   width: 100%;
   box-sizing: border-box;
-  min-height: 58px;
+  min-height: 56px;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) 34px;
   align-items: center;
@@ -2227,8 +2227,8 @@ h3 {
   color: #151515;
   padding: 0 18px;
   text-decoration: none;
-  font-weight: 720;
-  box-shadow: 0 14px 34px rgba(0,0,0,0.14);
+  font-weight: 680;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.13);
   backdrop-filter: blur(18px);
 }
 
@@ -2240,7 +2240,7 @@ h3 {
 
 .hub-link:hover {
   transform: translateY(-1px);
-  box-shadow: 0 18px 42px rgba(0,0,0,0.18);
+  box-shadow: 0 16px 38px rgba(0,0,0,0.17);
 }
 
 .hub-link-icon {
@@ -2278,7 +2278,7 @@ h3 {
   justify-self: center;
   min-width: 0;
   overflow-wrap: anywhere;
-  font-size: 0.98rem;
+  font-size: 0.96rem;
   letter-spacing: 0;
 }
 
@@ -2304,26 +2304,26 @@ h3 {
 .hub-socials {
   display: flex;
   justify-content: center;
-  gap: 18px;
-  margin-top: 6px;
+  gap: 14px;
+  margin-top: 2px;
 }
 
 .hub-socials a {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
   border-radius: 999px;
   color: var(--hub-color, #24423c);
-  background: rgba(255,255,255,0.78);
+  background: rgba(255,255,255,0.68);
   text-decoration: none;
-  box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.1);
   backdrop-filter: blur(14px);
 }
 
 .hub-socials svg {
-  width: 25px;
-  height: 25px;
+  width: 23px;
+  height: 23px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.9;
@@ -2337,14 +2337,14 @@ h3 {
 }
 
 .hub-credit {
-  margin-top: 2px;
+  margin-top: 0;
   color: rgba(255,255,255,0.82);
-  font-size: 0.7rem;
-  font-weight: 850;
+  font-size: 0.66rem;
+  font-weight: 760;
   letter-spacing: 0.08em;
   text-decoration: none;
   text-transform: uppercase;
-  opacity: 0.82;
+  opacity: 0.68;
   text-shadow: 0 1px 12px rgba(0,0,0,0.4);
 }
 

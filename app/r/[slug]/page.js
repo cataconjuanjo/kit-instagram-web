@@ -144,7 +144,7 @@ export default function RestauranteHub({ params }) {
         '--hub-image': fondoHub ? `url("${fondoHub}")` : undefined,
         '--hub-image-scale': String((Number(restaurante.hub_fondo_zoom) || 115) / 100),
         '--hub-image-position': `${restaurante.hub_fondo_x ?? 50}% ${restaurante.hub_fondo_y ?? 50}%`,
-        '--hub-overlay': fondoHub ? Math.max(0.2, Math.min(0.78, overlay)) : 0,
+        '--hub-overlay': fondoHub ? Math.max(0.56, Math.min(0.78, overlay)) : 0,
       }}
     >
       <section className="hub-card">
