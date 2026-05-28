@@ -355,7 +355,7 @@
 .shortcut span {
   display: block;
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 760;
 }
 
 .shortcut small {
@@ -407,7 +407,7 @@
   margin: 0;
   color: #171416;
   font-size: 17px;
-  font-weight: 850;
+  font-weight: 760;
 }
 
 .sectionSub {
@@ -514,7 +514,7 @@
   margin: 0;
   color: #171416;
   font-size: 17px;
-  font-weight: 780;
+  font-weight: 700;
   line-height: 1.18;
 }
 
@@ -543,7 +543,7 @@
   margin: 3px 0 0 16px;
   color: #4f4840;
   font-size: 12px;
-  font-weight: 760;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -564,7 +564,7 @@
   color: #5f4418;
   padding: 0 8px;
   font-size: 10px;
-  font-weight: 850;
+  font-weight: 760;
   line-height: 1;
   white-space: nowrap;
 }
@@ -617,7 +617,7 @@
   display: none;
   color: #171416;
   font-size: 18px;
-  font-weight: 880;
+  font-weight: 780;
   line-height: 1;
   white-space: nowrap;
 }
@@ -626,7 +626,7 @@
   display: block;
   color: var(--color-acento, #171416);
   font-size: 19px;
-  font-weight: 880;
+  font-weight: 780;
 }
 
 .mainPrice small,
@@ -664,11 +664,11 @@
   margin: 0;
   color: #171416;
   font-size: 17px;
-  font-weight: 850;
+  font-weight: 780;
 }
 
 .compareButton {
-  width: 36px;
+  min-width: 54px;
   height: 36px;
   border: 1px solid #dfd6c8;
   border-radius: 8px;
@@ -680,10 +680,12 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  font-size: 8px;
-  font-weight: 800;
+  padding: 0 8px;
+  font-size: 9px;
+  font-weight: 760;
   letter-spacing: 0.04em;
   line-height: 1;
+  text-transform: uppercase;
 }
 
 .compareActive {
@@ -793,7 +795,7 @@
   margin: 0;
   color: #171416;
   font-size: 14px;
-  font-weight: 850;
+  font-weight: 760;
 }
 
 .regionName {
@@ -1078,7 +1080,7 @@
   color: #bbb5ae;
   transition: color 0.15s, border-color 0.15s;
   font-size: 16px;
-  font-weight: 850;
+  font-weight: 760;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }

@@ -160,6 +160,7 @@ export default function CartaPublica({ params }) {
   const seleccionJuanjo = seleccion.filter(item => !esSugerenciaRestaurante(item))
   const seleccionRestaurante = seleccion.filter(esSugerenciaRestaurante)
   const vinoEnSeleccion = (vino, lista) => lista.some(item => String(item.vino_id || item.vinos?.id) === String(vino.id))
+  const seleccionDeVino = vino => seleccion.find(item => String(item.vino_id || item.vinos?.id) === String(vino.id))
   const etiquetasVino = vino => [
     vinoEnSeleccion(vino, seleccionJuanjo) && { texto: 'Selección del consultor', detalle: 'por @cataconjuanjo · WSET Level 3', tipo: 'consultor' },
     vinoEnSeleccion(vino, seleccionRestaurante) && { texto: 'Recomienda la casa', tipo: 'casa' },
@@ -646,6 +647,7 @@ setPerfiles(nuevosPerfiles)
     const tieneCopa = Number(v.precio_copa) > 0
     const etiquetas = etiquetasVino(v)
     const recomendadoConsultor = etiquetas.some(etiqueta => etiqueta.tipo === 'consultor')
+    const notaSeleccion = notaCorta(limpiarNotaSeleccion(seleccionDeVino(v)?.nota_personal))
     return (
       <article
         key={v.id}
@@ -677,6 +679,7 @@ setPerfiles(nuevosPerfiles)
           {etiquetas.some(etiqueta => etiqueta.tipo === 'consultor') && (
             <p className={styles.consultantSignature}>por @cataconjuanjo · WSET Level 3</p>
           )}
+          {notaSeleccion && <p className={styles.wineNotes}>{notaSeleccion}</p>}
         </div>
         <div className={styles.priceBlock}>
           {precioCopaPrincipal ? (
@@ -714,7 +717,7 @@ setPerfiles(nuevosPerfiles)
           >
             {enComparador
               ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20,6 9,17 4,12"/></svg>
-              : <><svg width="13" height="10" viewBox="0 0 20 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="6" cy="6" r="5"/><circle cx="14" cy="6" r="5"/></svg><span>VS</span></>
+              : <span>{i.comparar}</span>
             }
           </button>
         </div>
