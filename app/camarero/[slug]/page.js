@@ -455,7 +455,11 @@ export default function Camarero({ params }) {
   }
 
   function cambiarPerfilClienteVenta(campo, valor) {
-    setPerfilClienteVenta(prev => ({ ...prev, [campo]: valor }))
+    const siguientePerfil = { ...perfilClienteVenta, [campo]: valor }
+    setPerfilClienteVenta(siguientePerfil)
+    if (!platosMesaVenta.length) {
+      setConsultaVenta(consultaDesdePerfilCliente(siguientePerfil))
+    }
     setRotacionVenta(0)
   }
 
@@ -497,14 +501,14 @@ export default function Camarero({ params }) {
     return perfilClienteVenta.bebe !== 'indiferente' || perfilClienteVenta.estilo !== 'facil' || perfilClienteVenta.gama !== 'auto'
   }
 
-  function consultaDesdePerfilCliente() {
-    const bebe = preguntasClienteVenta.bebe.find(opcion => opcion.id === perfilClienteVenta.bebe)?.label
-    const estilo = preguntasClienteVenta.estilo.find(opcion => opcion.id === perfilClienteVenta.estilo)?.label
-    const gama = gamasVenta().find(opcion => opcion.id === perfilClienteVenta.gama)?.label
+  function consultaDesdePerfilCliente(perfil = perfilClienteVenta) {
+    const bebe = preguntasClienteVenta.bebe.find(opcion => opcion.id === perfil.bebe)?.label
+    const estilo = preguntasClienteVenta.estilo.find(opcion => opcion.id === perfil.estilo)?.label
+    const gama = gamasVenta().find(opcion => opcion.id === perfil.gama)?.label
     return [
-      bebe && perfilClienteVenta.bebe !== 'indiferente' ? `cliente suele beber ${bebe}` : '',
-      estilo && perfilClienteVenta.estilo !== 'facil' ? `busca ${estilo}` : 'vino facil de beber',
-      gama && perfilClienteVenta.gama !== 'auto' ? `gama ${gama}` : '',
+      bebe && perfil.bebe !== 'indiferente' ? `cliente suele beber ${bebe}` : '',
+      estilo && perfil.estilo !== 'facil' ? `busca ${estilo}` : 'vino facil de beber',
+      gama && perfil.gama !== 'auto' ? `gama ${gama}` : '',
     ].filter(Boolean).join(', ')
   }
 
@@ -1573,7 +1577,11 @@ export default function Camarero({ params }) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setPerfilClienteVenta({ bebe: 'indiferente', estilo: 'facil', gama: 'auto' })}
+                      onClick={() => {
+                        setPerfilClienteVenta({ bebe: 'indiferente', estilo: 'facil', gama: 'auto' })
+                        if (!platosMesaVenta.length) setConsultaVenta('')
+                        setRotacionVenta(0)
+                      }}
                       className={styles.plainButton}
                     >
                       Reset
