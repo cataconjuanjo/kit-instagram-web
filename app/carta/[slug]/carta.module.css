@@ -406,8 +406,8 @@
 .sectionTitle {
   margin: 0;
   color: #171416;
-  font-size: 17px;
-  font-weight: 760;
+  font-size: 18px;
+  font-weight: 720;
 }
 
 .sectionSub {
@@ -513,9 +513,9 @@
 .wineName {
   margin: 0;
   color: #171416;
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.18;
+  font-size: 16px;
+  font-weight: 680;
+  line-height: 1.22;
 }
 
 .vintagePill {
@@ -535,15 +535,16 @@
 .wineMeta {
   margin: 5px 0 0 16px;
   color: #766e64;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 400;
   line-height: 1.35;
 }
 
 .wineGrape {
   margin: 3px 0 0 16px;
   color: #4f4840;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 650;
   line-height: 1.35;
 }
 
@@ -794,8 +795,9 @@
 .regionTitle {
   margin: 0;
   color: #171416;
-  font-size: 14px;
-  font-weight: 760;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .regionName {
@@ -1095,7 +1097,6 @@
 .sectionTitle,
 .sommelierTitle,
 .wineName,
-.regionTitle,
 .dishName,
 .selectedDishName,
 .shortcut span,
