@@ -14,7 +14,7 @@ export const metadata = {
     title: 'Catas de vino en Málaga · Cata con Juanjo',
     description: 'Catas privadas, para empresas y cursos de iniciación al vino en Málaga con criterio WSET Level 3.',
     url: '/catas',
-    images: [{ url: '/assets/og-image.jpg', width: 1200, height: 630 }],
+    images: [{ url: '/assets/og-carta-viva-2026.jpg', width: 1200, height: 630 }],
   },
 }
 

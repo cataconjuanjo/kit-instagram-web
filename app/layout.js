@@ -26,13 +26,13 @@ export const metadata = {
     siteName: 'Cata con Juanjo',
     locale: 'es_ES',
     type: 'website',
-    images: [{ url: '/assets/og-image.jpg', width: 1200, height: 630 }],
+    images: [{ url: '/assets/og-carta-viva-2026.jpg', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Cata con Juanjo · Consultoría de vino hospitality',
     description: 'Cartas de vino con criterio, margen y memoria. Consultoría, formación y Carta Viva para restaurantes.',
-    images: ['/assets/og-image.jpg'],
+    images: ['/assets/og-carta-viva-2026.jpg'],
   },
 }
 

@@ -172,7 +172,7 @@ export const metadata = {
     title: 'Carta Viva · Carta digital de vino con IA para restaurantes',
     description: 'Carta digital QR, guía de maridaje y consultoría de vino para restaurantes. Por Juanjo García, WSET Level 3.',
     url: '/cartavinos',
-    images: [{ url: '/assets/og-image.jpg', width: 1200, height: 630 }],
+    images: [{ url: '/assets/og-carta-viva-2026.jpg', width: 1200, height: 630 }],
   },
 }
 
