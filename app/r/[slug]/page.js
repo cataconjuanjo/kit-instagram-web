@@ -5,33 +5,37 @@ import { supabase } from '../../supabase'
 import { puedeUsar } from '../../lib/plans'
 
 function HubIcon({ tipo, titulo }) {
-  const texto = `${tipo || ''} ${titulo || ''}`.toLowerCase()
+  const texto = `${tipo || ''} ${titulo || ''}`
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+  if (tipo === 'tarta' || texto.includes('tarta') || texto.includes('postre')) {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8Z"/><path d="M4 11c0-2.2 1.8-4 4-4s4 1.8 4 1.8S13.8 7 16 7s4 1.8 4 4"/><path d="M12 3v4"/><path d="M11 3h2"/></svg>
+  }
+  if (tipo === 'reservas' || texto.includes('reserv')) {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3"/><path d="M4.5 8h15"/><path d="M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 12h3M8 16h6"/></svg>
+  }
   if (tipo === 'carta_vinos' || texto.includes('vino')) {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l1 8a5 5 0 0 1-10 0l1-8Z"/><path d="M7.5 8h9"/><path d="M12 16v5"/><path d="M8.5 21h7"/></svg>
   }
-  if (['carta', 'comida'].includes(tipo) || texto.includes('comida') || texto.includes('restaurante') || texto.includes('menu') || texto.includes('menú')) {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9a3 3 0 0 1 3 3v13H9a3 3 0 0 1-3-3V4Z"/><path d="M9 8h6"/><path d="M9 11h5"/><path d="M9 14h4"/><path d="M19 7v13"/><path d="M4 7v10"/></svg>
+  if (tipo === 'grupos' || texto.includes('grupo') || texto.includes('evento')) {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="8" r="2.5"/><path d="M21 20c0-2.8-1.8-5-4-5.5"/></svg>
   }
-  if (tipo === 'reservas') {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3"/><path d="M4.5 8h15"/><path d="M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M8 12h3M8 16h6"/></svg>
-  }
-  if (tipo === 'maps') {
+  if (tipo === 'maps' || texto.includes('direccion') || texto.includes('ubicacion')) {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/></svg>
   }
-  if (tipo === 'alergenos') {
+  if (tipo === 'alergenos' || texto.includes('alergen')) {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17h.01"/></svg>
   }
-  if (tipo === 'tarta') {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8Z"/><path d="M4 11c0-2.2 1.8-4 4-4s4 1.8 4 1.8S13.8 7 16 7s4 1.8 4 4"/><path d="M12 3v4"/><path d="M11 3h2"/></svg>
-  }
-  if (tipo === 'gintonics') {
+  if (tipo === 'gintonics' || texto.includes('gin') || texto.includes('tonic') || texto.includes('coctel')) {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l-1 8H9L8 3Z"/><path d="M9 11l3 7 3-7"/><path d="M6 21h12"/><path d="M7 7h1M10 5h1"/></svg>
+  }
+  if (['carta', 'comida'].includes(tipo) || texto.includes('comida') || texto.includes('restaurante') || texto.includes('menu')) {
+    return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9a3 3 0 0 1 3 3v13H9a3 3 0 0 1-3-3V4Z"/><path d="M9 8h6"/><path d="M9 11h5"/><path d="M9 14h4"/><path d="M19 7v13"/><path d="M4 7v10"/></svg>
   }
   if (tipo === 'pdf') {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8L14 2Z"/><path d="M14 2v6h6"/><path d="M8 13h2.5a1.5 1.5 0 0 1 0 3H8v-3ZM8 16v3"/><path d="M14 13v6M14 13h2a1.5 1.5 0 0 1 0 3h-2"/><path d="M17 13h1a2 2 0 0 1 0 4v2"/></svg>
-  }
-  if (tipo === 'grupos') {
-    return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="8" r="2.5"/><path d="M21 20c0-2.8-1.8-5-4-5.5"/></svg>
   }
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H7a5 5 0 0 0 0 10h2"/><path d="M15 7h2a5 5 0 0 1 0 10h-2"/><path d="M8 12h8"/></svg>
 }
@@ -119,11 +123,15 @@ export default function RestauranteHub({ params }) {
   const fondoHub = restaurante.hub_fondo_url || ''
   const estilo = restaurante.hub_estilo || 'nubes'
   const overlay = Number(restaurante.hub_overlay ?? 0.48)
-  const linksSociales = [
+  const linksSocialesBase = [
     restaurante.instagram_url && { id: 'instagram-url', tipo: 'instagram', url: restaurante.instagram_url },
     restaurante.facebook_url && { id: 'facebook-url', tipo: 'facebook', url: restaurante.facebook_url },
     ...links.filter(link => ['instagram', 'facebook'].includes(link.tipo))
   ].filter(Boolean)
+  const linksSociales = linksSocialesBase.filter((link, index, lista) => {
+    const clave = `${link.tipo}-${link.url}`
+    return lista.findIndex(item => `${item.tipo}-${item.url}` === clave) === index
+  })
   const linksPrincipales = links.filter(link => !['instagram', 'facebook'].includes(link.tipo))
 
   return (
