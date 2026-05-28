@@ -53,6 +53,51 @@ function lineaPlato(plato) {
 }
 
 // ── Prompt maestro — basado en metodología Chartier ───────────────────────
+function vinoMencionado(linea, vinos) {
+  const texto = normalizarTexto(linea)
+  return (vinos || []).find(vino => {
+    const nombre = normalizarTexto(vino.nombre || '')
+    return nombre.length >= 4 && texto.includes(nombre)
+  })
+}
+
+function fallbackDesdeMotor(candidatos = [], idioma = 'es') {
+  const lineas = candidatos
+    .filter(item => item?.vino?.nombre)
+    .slice(0, 2)
+    .map(item => {
+      const vino = item.vino
+      const precio = Number(vino.precio_botella) ? `${Number(vino.precio_botella)} EUR` : ''
+      const motivo = item.motivo || (idioma === 'en'
+        ? 'it is the friendliest option available for the dish, with enough freshness and balance'
+        : 'es la opcion mas amable para el plato, con frescura y equilibrio')
+      return `${vino.nombre} - ${motivo}. ${precio}`.trim()
+    })
+
+  if (lineas.length) return lineas.join('\n\n')
+  return idioma === 'en'
+    ? 'I cannot find a reliable pairing with the available wine list.'
+    : 'No encuentro un maridaje fiable con los vinos disponibles en la carta.'
+}
+
+function respuestaSoloConCarta(texto, vinos, fallbackCandidatos, idioma) {
+  const lineas = String(texto || '').split(/\n+/).map(linea => linea.trim()).filter(Boolean)
+  if (!lineas.length) return fallbackDesdeMotor(fallbackCandidatos, idioma)
+
+  const usadas = new Set()
+  const validas = []
+  for (const linea of lineas) {
+    const vino = vinoMencionado(linea, vinos)
+    if (!vino || usadas.has(vino.id || vino.nombre)) continue
+    usadas.add(vino.id || vino.nombre)
+    validas.push(linea)
+    if (validas.length >= 2) break
+  }
+
+  if (validas.length) return validas.join('\n\n')
+  return fallbackDesdeMotor(fallbackCandidatos, idioma)
+}
+
 function buildSystem(cartaVinos, idioma) {
   if (idioma === 'en') {
     return `You are a wine pairing sommelier using François Chartier's aromatic methodology.
@@ -64,6 +109,7 @@ Your reasoning:
 3. Check structure: acidity, body, tannin, alcohol, sweetness.
 4. Control risks: spice, salinity, umami, heavy oak, hard tannin.
 5. If the pairing is not ideal, say so honestly — never sound confident about a weak pairing.
+6. Keep Chartier's methodology in your reasoning, but translate the final explanation into natural restaurant language.
 
 Key rules:
 - Grilling, roasting, smoke, Maillard → wines with barrel aging share aromatic bridges.
@@ -73,12 +119,18 @@ Key rules:
 - With high spice: avoid hard tannin, high alcohol, drying oak. Seek freshness, low tannin, light sweetness.
 - If no wine is ideal, say "the best available option is X" — do not pretend perfection.
 
+Voice:
+- Speak like a calm sommelier at the table, not like a technical manual.
+- Use everyday sensory words: fresh, juicy, saline, soft, smoky, creamy, clean, light, deep.
+- Avoid jargon unless it is common for guests. Do not mention molecules, aromatic families, lactones, terpenes or methodology.
+- Make the guest feel safe, especially if they do not usually drink wine.
+
 FORMAT — exactly this, nothing more:
-[Wine name] — [1 sentence why, using the specific aromatic bridge]. [price]€
+[Wine name] — [1 natural sentence explaining why it will taste good with the dish]. [price]€
 
 [Wine name] — [1 sentence alternative if it exists]. [price]€
 
-Each sentence: sensory and specific — aromas, texture, freshness, aging, smoke, fat, salinity, finish. Max 25 words.
+Each sentence: natural, sensory and specific, but not technical. Max 22 words.
 Plain text only. No asterisks, bold, lists or symbols.
 
 Current wine list:
@@ -94,6 +146,7 @@ Tu razonamiento:
 3. Comprobar estructura: acidez, cuerpo, tanino, alcohol, dulzor.
 4. Controlar riesgos: picante, salinidad, umami, madera excesiva, tanino duro.
 5. Si el maridaje no es perfecto, dilo con honestidad — nunca suenes seguro ante un maridaje débil.
+6. La metodología Chartier debe estar en tu razonamiento, no en la forma final de hablar al cliente.
 
 Reglas específicas de Chartier:
 - Brasa, asado, humo, tostado Maillard → vinos con crianza en barrica comparten puente aromático.
@@ -104,12 +157,18 @@ Reglas específicas de Chartier:
 - Con umami alto (setas, soja, miso, curado): vigilar tintos tánicos que pueden endurecerse.
 - Si ningun vino es ideal, di cuál es la mejor opción disponible sin fingir perfección.
 
+Voz:
+- Habla como un sumiller tranquilo en mesa, no como un manual técnico.
+- Usa palabras sensoriales sencillas: fresco, jugoso, salino, suave, ahumado, cremoso, limpio, ligero, profundo.
+- Evita tecnicismos si no ayudan al cliente. No menciones moléculas, familias aromáticas, lactonas, terpenos ni metodología.
+- Haz que el cliente no habitual se sienta seguro, no examinado.
+
 FORMATO — exactamente esto, nada más:
-[Nombre del vino] — [1 frase del puente aromático concreto]. [precio]€
+[Nombre del vino] — [1 frase natural explicando por qué va a estar rico con el plato]. [precio]€
 
 [Nombre del vino] — [1 frase alternativa si existe]. [precio]€
 
-La frase debe ser sensorial y específica: aromas, textura, frescura, crianza, brasa, grasa, salinidad, final en boca. Máximo 25 palabras.
+La frase debe ser natural, sensorial y específica, pero no técnica. Máximo 22 palabras.
 Solo texto plano. Sin asteriscos, negritas, listas ni símbolos.
 
 Carta de vinos del restaurante:
@@ -159,8 +218,10 @@ export async function POST(request) {
 
     let messages
     let prefill = ''
+    let fallbackCandidatos = []
+    const esSeguimiento = Boolean(mensajeSeguimiento && historial.length > 0)
 
-    if (mensajeSeguimiento && historial.length > 0) {
+    if (esSeguimiento) {
       // Turno de seguimiento — mantiene el historial existente
       messages = [...historial, { role: 'user', content: mensajeSeguimiento }]
     } else {
@@ -184,6 +245,7 @@ export async function POST(request) {
 
         // Motor estructural existente (acidez, tanino, cuerpo, restricciones)
         const motorAnalisis = analizarMaridaje(consulta, vinos || [])
+        fallbackCandidatos = motorAnalisis?.recomendados || motorAnalisis?.candidatos || []
         const resumenMotor = resumenAnalisisParaPrompt(motorAnalisis)
 
         // Combinar ambas fuentes de evidencia
@@ -252,7 +314,10 @@ export async function POST(request) {
       messages,
     })
 
-    const textoRespuesta = msg.content?.[0]?.text || ''
+    const respuestaClaude = msg.content?.[0]?.text || ''
+    const textoRespuesta = esSeguimiento
+      ? respuestaClaude
+      : respuestaSoloConCarta(respuestaClaude, vinos || [], fallbackCandidatos, idioma)
 
     // ── Devolver como SSE para que el cliente lo lea igual que antes ──────
     const encoder = new TextEncoder()
