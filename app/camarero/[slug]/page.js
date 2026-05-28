@@ -27,6 +27,7 @@ export default function Camarero({ params }) {
   const [consultaVenta, setConsultaVenta] = useState('')
   const [platosMesaVenta, setPlatosMesaVenta] = useState([])
   const [objetivoVenta, setObjetivoVenta] = useState('equilibrado')
+  const [perfilClienteVenta, setPerfilClienteVenta] = useState({ bebe: 'indiferente', estilo: 'facil', gama: 'auto' })
   const [rotacionVenta, setRotacionVenta] = useState(0)
   const [demoActivo, setDemoActivo] = useState(false)
   const [feedbackVenta, setFeedbackVenta] = useState({})
@@ -37,11 +38,29 @@ export default function Camarero({ params }) {
   const [categoriaPlatoVenta, setCategoriaPlatoVenta] = useState('todos')
   const [mostrarPlatosVenta, setMostrarPlatosVenta] = useState(false)
   const [tipoVinoAbierto, setTipoVinoAbierto] = useState(null)
+  const [grafoVenta, setGrafoVenta] = useState(null)
   const ultimaRecomendacionRegistrada = useRef('')
 
   const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87' }
   const tipoLabel = { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja', sin_alcohol: 'Sin alcohol' }
   const tipoPlural = { tinto: 'Tintos', blanco: 'Blancos', rosado: 'Rosados', espumoso: 'Espumosos', generoso: 'Generosos', dulce: 'Dulces', naranja: 'Naranjas', sin_alcohol: 'Sin alcohol' }
+  const preguntasClienteVenta = {
+    bebe: [
+      { id: 'indiferente', label: 'No lo tiene claro' },
+      { id: 'blanco', label: 'Blanco / fresco' },
+      { id: 'tinto_suave', label: 'Tinto suave' },
+      { id: 'tinto_cuerpo', label: 'Tinto con cuerpo' },
+      { id: 'burbuja', label: 'Burbuja' },
+      { id: 'generoso', label: 'Generoso' },
+    ],
+    estilo: [
+      { id: 'facil', label: 'Facil de beber' },
+      { id: 'fresco', label: 'Fresco' },
+      { id: 'clasico', label: 'Clasico' },
+      { id: 'local', label: 'De la zona' },
+      { id: 'especial', label: 'Algo especial' },
+    ],
+  }
   const coloresVino = ['#7B2D2D', '#C4A55A', '#534AB7', '#4A8C6F']
   const ejes = ['dulzor', 'acidez', 'taninos', 'alcohol', 'cuerpo', 'intensidad', 'final']
   const etiquetas = { dulzor: 'Dulzor', acidez: 'Acidez', taninos: 'Taninos', alcohol: 'Alcohol', cuerpo: 'Cuerpo', intensidad: 'Intensidad', final: 'Final' }
@@ -435,6 +454,11 @@ export default function Camarero({ params }) {
     setRotacionVenta(0)
   }
 
+  function cambiarPerfilClienteVenta(campo, valor) {
+    setPerfilClienteVenta(prev => ({ ...prev, [campo]: valor }))
+    setRotacionVenta(0)
+  }
+
   function consultaDesdePlato(plato) {
     return `${plato.nombre}${plato.precio ? ` (${plato.precio} EUR)` : ''}${plato.descripcion ? `: ${plato.descripcion}` : ''}`
   }
@@ -502,6 +526,47 @@ export default function Camarero({ params }) {
     }
   }
 
+  function ticketReferenciaVenta() {
+    const ticketConfigurado = Number(restaurante?.ticket_medio || restaurante?.ticket_medio_comida || restaurante?.ticket_comida) || 0
+    if (ticketConfigurado > 0) return { valor: ticketConfigurado, fuente: 'configurado' }
+    if (ticketMesaVenta() > 0) return { valor: ticketMesaVenta(), fuente: 'mesa' }
+    const platosConPrecio = platosVenta.filter(plato => Number(plato.precio) > 0)
+    if (platosConPrecio.length) {
+      const mediaPlato = platosConPrecio.reduce((sum, plato) => sum + Number(plato.precio), 0) / platosConPrecio.length
+      return { valor: Math.round(mediaPlato * 2.5), fuente: 'estimado' }
+    }
+    const vinosConPrecio = vinos.filter(vino => vino?.activo !== false && vino?.stock !== 0 && precioBotella(vino) > 0)
+    const precioMedioCarta = vinosConPrecio.length
+      ? vinosConPrecio.reduce((sum, vino) => sum + precioBotella(vino), 0) / vinosConPrecio.length
+      : 30
+    return { valor: Math.max(40, precioMedioCarta / 0.75), fuente: 'carta' }
+  }
+
+  function gamasVenta() {
+    const ticket = ticketReferenciaVenta().valor
+    const rangos = [
+      { id: 'auto', label: 'Auto', min: 0, max: Infinity, helper: 'segun mesa' },
+      { id: 'baja', label: 'Baja', min: 0, max: ticket * 0.48 },
+      { id: 'media', label: 'Media', min: ticket * 0.48, max: ticket * 0.75 },
+      { id: 'alta', label: 'Alta', min: ticket * 0.75, max: ticket * 1.75 },
+      { id: 'muy_alta', label: 'Muy alta', min: ticket * 1.75, max: ticket * 2.75 },
+      { id: 'premium', label: 'Premium', min: ticket * 2.75, max: Infinity },
+    ]
+
+    return rangos.map(gama => ({
+      ...gama,
+      helper: gama.helper || (gama.max === Infinity
+        ? `desde ${Math.round(gama.min)} EUR`
+        : gama.min === 0
+          ? `hasta ${Math.round(gama.max)} EUR`
+          : `${Math.round(gama.min)}-${Math.round(gama.max)} EUR`),
+    }))
+  }
+
+  function gamaActivaVenta() {
+    return gamasVenta().find(gama => gama.id === perfilClienteVenta.gama) || gamasVenta()[0]
+  }
+
   function precioMedioVinosVenta() {
     const disponibles = vinos.filter(esVinoElegibleParaObjetivo)
     if (!disponibles.length) return 28
@@ -512,7 +577,86 @@ export default function Camarero({ params }) {
     if (vino.activo === false || vino.stock === 0 || precioBotella(vino) <= 0) return false
     if (objetivoVenta === 'copas' && !(Number(vino.precio_copa) > 0)) return false
     if (objetivoVenta === 'local' && !esVinoDeZona(vino)) return false
+    if (!encajaEnGamaCliente(vino)) return false
     return true
+  }
+
+  function encajaEnGamaCliente(vino) {
+    if (perfilClienteVenta.gama === 'auto') return true
+    const gama = gamaActivaVenta()
+    const precio = precioBotella(vino)
+    return gama.max === Infinity ? precio >= gama.min : precio >= gama.min && precio < gama.max
+  }
+
+  function ajustePreferenciasCliente(vino) {
+    const textoVino = normalizar(`${vino.nombre || ''} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
+    let score = 0
+    const motivos = []
+
+    if (perfilClienteVenta.bebe === 'blanco') {
+      if (['blanco', 'rosado', 'espumoso'].includes(vino.tipo)) score += 10
+      if (['tinto', 'generoso', 'dulce'].includes(vino.tipo)) score -= 5
+      motivos.push('va hacia un perfil fresco y facil')
+    }
+    if (perfilClienteVenta.bebe === 'tinto_suave') {
+      if (vino.tipo === 'tinto') score += 8
+      if (['garnacha', 'pinot', 'mencia', 'joven', 'suave', 'fresco'].some(t => textoVino.includes(t))) score += 5
+      if (['crianza', 'reserva', 'potente', 'madera', 'tanino'].some(t => textoVino.includes(t))) score -= 4
+      motivos.push('mantiene el tinto en una zona amable')
+    }
+    if (perfilClienteVenta.bebe === 'tinto_cuerpo') {
+      if (vino.tipo === 'tinto') score += 10
+      if (['cuerpo', 'estructura', 'crianza', 'reserva', 'syrah', 'cabernet', 'monastrell'].some(t => textoVino.includes(t))) score += 4
+      motivos.push('tiene mas presencia en boca')
+    }
+    if (perfilClienteVenta.bebe === 'burbuja') {
+      score += vino.tipo === 'espumoso' ? 14 : -4
+      motivos.push('responde a una peticion de burbuja')
+    }
+    if (perfilClienteVenta.bebe === 'generoso') {
+      score += vino.tipo === 'generoso' ? 14 : -4
+      motivos.push('entra en el terreno de los generosos')
+    }
+
+    if (perfilClienteVenta.estilo === 'fresco') {
+      if (['blanco', 'rosado', 'espumoso', 'generoso'].includes(vino.tipo)) score += 4
+      if (['fresco', 'acidez', 'salino', 'mineral', 'citrico'].some(t => textoVino.includes(t))) score += 6
+      motivos.push('prioriza frescura')
+    }
+    if (perfilClienteVenta.estilo === 'local') {
+      score += esVinoDeZona(vino) ? 12 : -3
+      motivos.push('refuerza la zona')
+    }
+    if (perfilClienteVenta.estilo === 'especial') {
+      if (precioBotella(vino) >= Math.max(35, precioMedioVinosVenta())) score += 5
+      if (['parcel', 'edicion', 'singular', 'autor', 'ancestral', 'natural'].some(t => textoVino.includes(t))) score += 5
+      motivos.push('suena mas especial sin complicar la venta')
+    }
+    if (perfilClienteVenta.estilo === 'clasico') {
+      if (['rioja', 'ribera', 'rueda', 'jerez', 'montilla', 'crianza', 'reserva'].some(t => textoVino.includes(t))) score += 6
+      motivos.push('se puede defender desde referencias reconocibles')
+    }
+    if (perfilClienteVenta.estilo === 'facil') {
+      if (precioBotella(vino) <= Math.max(32, precioMedioVinosVenta())) score += 3
+      if (['fresco', 'fruta', 'suave', 'amable', 'ligero'].some(t => textoVino.includes(t))) score += 4
+    }
+
+    if (perfilClienteVenta.gama !== 'auto') {
+      const gama = gamaActivaVenta()
+      motivos.push(`encaja en gama ${gama.label.toLowerCase()}`)
+    }
+
+    return { score, motivo: motivos[0] || '' }
+  }
+
+  function aplicarPerfilCliente(resultado) {
+    const ajuste = ajustePreferenciasCliente(resultado.vino)
+    if (!ajuste.score) return resultado
+    return {
+      ...resultado,
+      score: resultado.score + ajuste.score,
+      motivo: ajuste.motivo ? `${resultado.motivo}; ${ajuste.motivo}` : resultado.motivo,
+    }
   }
 
   function lecturaMesaVenta() {
@@ -890,6 +1034,35 @@ export default function Camarero({ params }) {
     const esMesa = consultas.length > 1
     const ticketComida = ticketMesaVenta()
     const rangoTicket = rangoBotellaParaTicket(ticketComida, precioMedio)
+    const grafoCandidatos = grafoVenta?.consulta === consultaVentaActiva() ? (grafoVenta?.candidatos || []) : []
+    const grafoPorVino = new Map(grafoCandidatos.map(item => [String(item.vino_id || item.nombre), item]))
+    const grafoPorNombre = new Map(grafoCandidatos.map(item => [normalizar(item.nombre), item]))
+    const aplicarGrafoChartier = resultado => {
+      const item = grafoPorVino.get(String(resultado.vino.id)) || grafoPorNombre.get(normalizar(resultado.vino.nombre))
+      if (!item) return resultado
+
+      const ev = item.evidencias?.[0]
+      const directo = item.evidencias?.some(e => e.origen === 'chartier_directo')
+      const base = Math.log2(Math.max(2, Number(item.scoreGrafo) || 2)) * (directo ? 5.2 : 3.7)
+      const bonus = Math.min(directo ? 44 : 28, Math.max(directo ? 16 : 8, base))
+      const penalizacionRiesgo = (item.riesgos?.length || 0) * 8
+      const motivoGrafo = ev?.concepto && ev?.wineLabel
+        ? directo
+          ? `Chartier conecta ${ev.concepto} con ${ev.wineLabel}`
+          : `afinidad Chartier por ${ev.familia || ev.concepto}`
+        : 'evidencia del grafo Chartier unificado'
+
+      return {
+        ...resultado,
+        score: resultado.score + bonus - penalizacionRiesgo,
+        motivo: item.riesgos?.length && penalizacionRiesgo >= bonus
+          ? item.riesgos[0]
+          : `${motivoGrafo}; ${resultado.motivo}`,
+        fuente: directo ? 'Grafo Chartier unificado: evidencia directa' : 'Grafo Chartier unificado: familia aromatica',
+        chartierGrafo: item,
+      }
+    }
+
     const puntuados = disponibles
       .map(vino => {
         if (!esMesa) {
@@ -904,7 +1077,7 @@ export default function Camarero({ params }) {
             if (motivoChartier && bonus > 0) resultado.motivo = motivoChartier
             if (riesgos?.length && bonus < 0) resultado.motivo = riesgos[0]
           }
-          return resultado
+          return aplicarPerfilCliente(aplicarGrafoChartier(resultado))
         }
 
         const parciales = consultas.map((consulta, i) => {
@@ -925,7 +1098,7 @@ export default function Camarero({ params }) {
         const penalizacionMesa = incompatibles.length * 45
         const compatible = incompatibles.length === 0
 
-        return {
+        return aplicarPerfilCliente(aplicarGrafoChartier({
           vino,
           score: scoreBase - penalizacionMesa,
           motivo: compatible
@@ -935,7 +1108,7 @@ export default function Camarero({ params }) {
           compatible,
           rangoTicket,
           ticketComida,
-        }
+        }))
       })
       .sort((a, b) => b.score - a.score)
     const semilla = `${consultaNormalizada}-${objetivoVenta}-${rotacionVenta}`
@@ -981,11 +1154,61 @@ export default function Camarero({ params }) {
     return lista
   }
 
+  const consultaGrafoVenta = autenticado && vistaServicio === 'venta' && restaurante?.id && (platosMesaVenta.length > 0 || normalizar(consultaVenta).length > 1)
+    ? (platosMesaVenta.length ? platosMesaVenta.map(consultaDesdePlato).join(', ') : consultaVenta)
+    : ''
+  const vinosGrafoPayload = useMemo(() => vinos
+    .filter(vino => vino?.activo !== false && vino?.stock !== 0 && Number(vino?.precio_botella) > 0)
+    .map(vino => ({
+      id: vino.id,
+      nombre: vino.nombre,
+      bodega: vino.bodega,
+      tipo: vino.tipo,
+      region: vino.region,
+      uva: vino.uva,
+      anada: vino.anada,
+      precio_copa: vino.precio_copa,
+      precio_botella: vino.precio_botella,
+      notas_cata: vino.notas_cata,
+      stock: vino.stock,
+      activo: vino.activo,
+    })), [vinos])
+
+  useEffect(() => {
+    if (!consultaGrafoVenta || !vinosGrafoPayload.length) {
+      return
+    }
+
+    const controller = new AbortController()
+    let cancelado = false
+
+    fetch('/api/maridaje-grafo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ consulta: consultaGrafoVenta, vinos: vinosGrafoPayload }),
+      signal: controller.signal,
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!cancelado) setGrafoVenta(data ? { ...data, consulta: consultaGrafoVenta } : null)
+      })
+      .catch(() => {
+        if (!cancelado) setGrafoVenta(null)
+      })
+
+    return () => {
+      cancelado = true
+      controller.abort()
+    }
+  }, [consultaGrafoVenta, vinosGrafoPayload])
+
   const tipos = useMemo(() => ['todos', ...new Set(vinos.map(v => v.tipo))], [vinos])
   const recomendacionesVenta = autenticado && vistaServicio === 'venta' ? calcularRecomendacionesVenta() : []
   const lecturaActual = autenticado && vistaServicio === 'venta' ? lecturaMesaVenta() : null
   const ticketActualVenta = autenticado ? ticketMesaVenta() : 0
   const rangoActualVenta = rangoBotellaParaTicket(ticketActualVenta, precioMedioVinosVenta())
+  const gamasClienteVenta = autenticado ? gamasVenta() : []
+  const ticketReferenciaCliente = autenticado ? ticketReferenciaVenta() : null
   const categoriasPlatosVenta = useMemo(() => ['todos', ...new Set(platosVenta.map(plato => plato.categoria).filter(Boolean))], [platosVenta])
   const platosVentaFiltrados = platosVenta.filter(plato => {
     const texto = normalizar(`${plato.nombre} ${plato.descripcion || ''} ${plato.categoria || ''}`)
@@ -1009,7 +1232,7 @@ export default function Camarero({ params }) {
     if (!autenticado || vistaServicio !== 'venta' || !restaurante?.id || !hayConsultaVenta() || !recomendacionesVenta.length) return
 
     const consulta = consultaVentaActiva()
-    const firma = `${restaurante.id}|${consulta}|${objetivoVenta}|${rotacionVenta}|${recomendacionesVenta.map(item => item.vino.id).join(',')}`
+    const firma = `${restaurante.id}|${consulta}|${objetivoVenta}|${perfilClienteVenta.bebe}|${perfilClienteVenta.estilo}|${perfilClienteVenta.gama}|${rotacionVenta}|${recomendacionesVenta.map(item => item.vino.id).join(',')}`
     if (ultimaRecomendacionRegistrada.current === firma) return
     ultimaRecomendacionRegistrada.current = firma
 
@@ -1020,6 +1243,7 @@ export default function Camarero({ params }) {
         origen: 'camarero',
         consulta: String(consulta || '').slice(0, 200),
         objetivo: objetivoVenta,
+        perfil_cliente: perfilClienteVenta,
         etiqueta: item.label,
         vino_id: item.vino.id,
         vino: item.vino.nombre,
@@ -1033,7 +1257,7 @@ export default function Camarero({ params }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin, eventos }),
     })
-  }, [autenticado, vistaServicio, restaurante?.id, recomendacionesVenta, objetivoVenta, rotacionVenta, consultaVenta, platosMesaVenta, pin])
+  }, [autenticado, vistaServicio, restaurante?.id, recomendacionesVenta, objetivoVenta, perfilClienteVenta, rotacionVenta, consultaVenta, platosMesaVenta, pin])
 
   const cx = 150, cy = 150, r = 100
 
@@ -1301,6 +1525,70 @@ export default function Camarero({ params }) {
                   </div>
                 )}
 
+                <div className={styles.waiterGuide}>
+                  <div className={styles.guideHeader}>
+                    <div>
+                      <p className={styles.sectionLabel} style={{ margin: 0 }}>Modo camarero</p>
+                      <p className={styles.guideTitle}>Pregunta rapida al cliente</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPerfilClienteVenta({ bebe: 'indiferente', estilo: 'facil', gama: 'auto' })}
+                      className={styles.plainButton}
+                    >
+                      Reset
+                    </button>
+                  </div>
+
+                  <p className={styles.guideQuestion}>Que suele beber?</p>
+                  <div className={styles.optionGrid}>
+                    {preguntasClienteVenta.bebe.map(opcion => (
+                      <button
+                        key={opcion.id}
+                        type="button"
+                        onClick={() => cambiarPerfilClienteVenta('bebe', opcion.id)}
+                        className={`${styles.optionButton} ${perfilClienteVenta.bebe === opcion.id ? styles.optionActive : ''}`}
+                      >
+                        {opcion.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className={styles.guideQuestion}>Que busca hoy?</p>
+                  <div className={styles.optionGrid}>
+                    {preguntasClienteVenta.estilo.map(opcion => (
+                      <button
+                        key={opcion.id}
+                        type="button"
+                        onClick={() => cambiarPerfilClienteVenta('estilo', opcion.id)}
+                        className={`${styles.optionButton} ${perfilClienteVenta.estilo === opcion.id ? styles.optionActive : ''}`}
+                      >
+                        {opcion.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className={styles.guideRangeHeader}>
+                    <p className={styles.guideQuestion}>Gama</p>
+                    {ticketReferenciaCliente && (
+                      <span>{ticketReferenciaCliente.fuente === 'configurado' ? 'ticket medio' : 'estimado'} {Math.round(ticketReferenciaCliente.valor)} EUR</span>
+                    )}
+                  </div>
+                  <div className={styles.rangeGrid}>
+                    {gamasClienteVenta.map(gama => (
+                      <button
+                        key={gama.id}
+                        type="button"
+                        onClick={() => cambiarPerfilClienteVenta('gama', gama.id)}
+                        className={`${styles.rangeButton} ${perfilClienteVenta.gama === gama.id ? styles.rangeActive : ''}`}
+                      >
+                        <strong>{gama.label}</strong>
+                        <span>{gama.helper}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <p className={styles.sectionLabel}>Atajos</p>
                 <div className={styles.scrollChips}>
                   {['Aperitivo', 'Pescado', 'Carne', 'Queso', 'Fritura', 'Fresco', 'Premium'].map(atajo => (
@@ -1359,7 +1647,13 @@ export default function Camarero({ params }) {
                 <div>
                   <p className={styles.eyebrow}>Recomendación</p>
                   <h2 className={styles.panelTitle}>Vinos para vender</h2>
-                  <p className={styles.panelSubtitle}>{platosMesaVenta.length > 1 ? 'Botella puente para la mesa' : 'Tres caminos comerciales'}</p>
+                  <p className={styles.panelSubtitle}>
+                    {consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta
+                      ? 'Cruzando grafo Chartier...'
+                      : grafoVenta?.consulta === consultaGrafoVenta && grafoVenta?.candidatos?.length
+                        ? 'Grafo Chartier unificado activo'
+                        : platosMesaVenta.length > 1 ? 'Botella puente para la mesa' : 'Tres caminos comerciales'}
+                  </p>
                 </div>
                 <button type="button" onClick={() => setRotacionVenta(rotacionVenta + 1)} className={styles.primaryButton}>
                   Otras opciones
@@ -1691,6 +1985,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
   const precioPrincipalLabel = esPorCopas ? `${precioPrincipal} EUR copa` : `${precioPrincipal} EUR`
   const precioVino = Number(vino.precio_botella) || 0
   const precioEnRango = rangoTicket && precioVino >= rangoTicket.min && precioVino <= rangoTicket.max
+  const chartierDirecto = item.chartierGrafo?.evidencias?.some(ev => ev.origen === 'chartier_directo')
   const resumenVenta = [
     tipoLabel[vino.tipo] || 'Vino',
     vino.bodega,
@@ -1719,6 +2014,11 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         <h3 className={styles.wineName}>{vino.nombre}</h3>
         <p className={styles.wineInfo}>{resumenVenta}</p>
         <p className={styles.reason}>{fraseVenta(vino, motivo)}</p>
+        {item.chartierGrafo && (
+          <p className={styles.statusLine} style={{ color: chartierDirecto ? '#1f7a61' : '#6f767d' }}>
+            {chartierDirecto ? 'Chartier directo' : 'Chartier por familia aromatica'}
+          </p>
+        )}
         {ticketComida > 0 && rangoTicket && (
           <p className={styles.statusLine} style={{ color: precioEnRango ? '#1f7a61' : '#6f767d' }}>
             {precioEnRango ? 'Precio coherente para la mesa' : `Revisar precio: ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
@@ -1765,6 +2065,11 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         <p style={{ margin: '0 0 4px', fontSize: 15, color: '#fff', fontWeight: 500 }}>{vino.nombre}</p>
         <p style={{ margin: '0 0 10px', fontSize: 11, color: '#666' }}>{resumenVenta}</p>
         <p style={{ margin: 0, fontSize: 12, color: '#aaa', lineHeight: 1.55 }}>{fraseVenta(vino, motivo)}</p>
+        {item.chartierGrafo && (
+          <p style={{ margin: '10px 0 0', fontSize: 10, color: chartierDirecto ? '#7BAF8A' : '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            {chartierDirecto ? 'Chartier directo' : 'Chartier por familia aromatica'}
+          </p>
+        )}
         {ticketComida > 0 && rangoTicket && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: precioEnRango ? '#7BAF8A' : '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {precioEnRango ? 'Precio coherente para la mesa' : `Revisar precio: ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}

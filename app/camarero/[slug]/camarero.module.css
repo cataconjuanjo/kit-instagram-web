@@ -307,6 +307,112 @@
   font-weight: 650;
 }
 
+.waiterGuide {
+  margin-top: 14px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #e0e4df;
+  border-radius: 8px;
+}
+
+.guideHeader,
+.guideRangeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.guideTitle {
+  margin: 3px 0 0;
+  color: #17191d;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.guideQuestion {
+  margin: 12px 0 7px;
+  color: #5f666c;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.guideRangeHeader span {
+  margin-top: 12px;
+  color: #8a9298;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.optionGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.optionButton {
+  min-height: 32px;
+  border: 1px solid #d9ded7;
+  border-radius: 8px;
+  background: #f7f7f2;
+  color: #4f565d;
+  cursor: pointer;
+  padding: 7px 9px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.optionActive {
+  background: #1f7a61;
+  border-color: #1f7a61;
+  color: #ffffff;
+}
+
+.rangeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.rangeButton {
+  min-height: 52px;
+  border: 1px solid #d9ded7;
+  border-radius: 8px;
+  background: #f7f7f2;
+  color: #17191d;
+  cursor: pointer;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.rangeButton strong,
+.rangeButton span {
+  display: block;
+}
+
+.rangeButton strong {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.rangeButton span {
+  margin-top: 3px;
+  color: #7b8288;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.rangeActive {
+  background: #17191d;
+  border-color: #17191d;
+  color: #ffffff;
+}
+
+.rangeActive span {
+  color: #cfd5cd;
+}
+
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -738,7 +844,8 @@
   }
 
   .dishGrid,
-  .statsGrid {
+  .statsGrid,
+  .rangeGrid {
     grid-template-columns: 1fr;
   }
 
