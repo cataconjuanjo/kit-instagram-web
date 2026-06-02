@@ -727,6 +727,37 @@ button.itemCard {
   white-space: nowrap;
 }
 
+.toolbarSelect {
+  min-height: 42px;
+  min-width: 180px;
+  box-sizing: border-box;
+  border: 1px solid #ddd7cc;
+  border-radius: 8px;
+  background: #fff;
+  color: #4f4840;
+  padding: 9px 34px 9px 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.toolbarSummary {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+
+.bulkToggle,
+.bulkClear {
+  border: 0;
+  background: transparent;
+  color: #531827;
+  padding: 0;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 850;
+}
+
 .toolbarMeta {
   display: flex;
   align-items: center;
@@ -741,7 +772,7 @@ button.itemCard {
   flex-wrap: wrap;
   border: 1px solid #dfddd6;
   border-radius: 8px;
-  background: #fffaf3;
+  background: #f8f4ea;
   padding: 12px 14px;
   margin-bottom: 14px;
 }
@@ -761,6 +792,10 @@ button.itemCard {
   color: #8b8278;
   font-size: 11px;
   font-weight: 850;
+}
+
+.bulkClear {
+  color: #8b8278;
 }
 
 .bulkActions {
@@ -999,6 +1034,14 @@ button.itemCard {
   .resultCount {
     text-align: left;
     white-space: normal;
+  }
+
+  .toolbarSummary {
+    justify-items: start;
+  }
+
+  .toolbarSelect {
+    width: 100%;
   }
 
   .toolbarMeta {

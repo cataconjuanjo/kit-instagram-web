@@ -81,6 +81,7 @@ function PerfilVino({ vino, onChange }) {
 export default function Dashboard() {
   const [restaurante, setRestaurante] = useState(null)
   const [vinos, setVinos] = useState([])
+  const [proveedoresCatalogo, setProveedoresCatalogo] = useState([])
   const [loading, setLoading] = useState(true)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [mostrarImportador, setMostrarImportador] = useState(() => (
@@ -121,6 +122,13 @@ const inputPdfRef = useRef(null)
         setRestaurante(rest)
         const { data: vinosData } = await supabase.from('vinos').select('*').eq('restaurante_id', rest.id)
         setVinos(vinosData || [])
+        const token = (await supabase.auth.getSession()).data.session?.access_token
+        if (token) {
+          const query = new URLSearchParams({ restaurante_id: rest.id })
+          const res = await fetch(`/api/proveedores-visibles?${query}`, { headers: { Authorization: `Bearer ${token}` } })
+          const data = res.ok ? await res.json() : {}
+          setProveedoresCatalogo(data.proveedores || [])
+        }
       }
       setLoading(false)
     }
@@ -389,6 +397,11 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
   }
 }
 
+const proveedoresDisponibles = [...new Set([
+  ...proveedoresCatalogo,
+  ...vinos.map(vino => String(vino.proveedor || '').trim()).filter(Boolean),
+])].sort((a, b) => a.localeCompare(b, 'es'))
+
 function alternarSeleccion(id) {
   setSeleccionados(actual => actual.includes(id) ? actual.filter(item => item !== id) : [...actual, id])
 }
@@ -634,42 +647,31 @@ async function aplicarAccionMasiva() {
               placeholder="Nombre, bodega, uva, región, añada o proveedor"
             />
           </div>
-          <div className={styles.segmented}>
-            {[
-              ['todos', 'Todos'],
-              ['activos', 'Activos'],
-              ['pendientes', 'Pendientes'],
-              ['stock', 'Stock bajo'],
-              ['sin_stock', 'Sin stock'],
-              ['sin_coste', 'Sin coste'],
-              ['sin_proveedor', 'Sin proveedor'],
-              ['sin_minimo', 'Sin mínimo'],
-              ['ocultos', 'Ocultos'],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                className={filtroVinos === id ? styles.segmentActive : ''}
-                onClick={() => setFiltroVinos(id)}
-              >
-                {label}
-              </button>
-            ))}
+          <div>
+            <label className={styles.label}>Vista</label>
+            <select className={styles.toolbarSelect} value={filtroVinos} onChange={e => setFiltroVinos(e.target.value)}>
+              <option value="todos">Todos los vinos</option>
+              <option value="activos">Activos</option>
+              <option value="pendientes">Pendientes</option>
+              <option value="stock">Stock bajo</option>
+              <option value="sin_stock">Sin stock</option>
+              <option value="sin_coste">Sin coste</option>
+              <option value="sin_proveedor">Sin proveedor</option>
+              <option value="sin_minimo">Sin stock mínimo</option>
+              <option value="ocultos">Ocultos</option>
+            </select>
           </div>
-          <p className={styles.resultCount}>{vinosVisibles.length} de {vinosBase.length} referencias</p>
+          <div className={styles.toolbarSummary}>
+            <p className={styles.resultCount}>{vinosVisibles.length} de {vinosBase.length} referencias</p>
+            <button type="button" className={styles.bulkToggle} onClick={() => alternarSeleccionVisibles(vinosVisibles)}>
+              {todosVisiblesSeleccionados ? 'Desmarcar visibles' : 'Seleccionar visibles'}
+            </button>
+          </div>
         </section>
 
-        <section className={styles.bulkPanel}>
-          <label className={styles.bulkSelectAll}>
-            <input
-              type="checkbox"
-              checked={todosVisiblesSeleccionados}
-              onChange={() => alternarSeleccionVisibles(vinosVisibles)}
-            />
-            <span>{todosVisiblesSeleccionados ? 'Desmarcar visibles' : 'Seleccionar visibles'}</span>
-          </label>
+        {seleccionados.length > 0 && <section className={styles.bulkPanel}>
           <p className={styles.bulkCount}>{seleccionados.length} seleccionados</p>
-          {seleccionados.length > 0 && (
+          <button type="button" className={styles.bulkClear} onClick={() => setSeleccionados([])}>Limpiar selección</button>
             <div className={styles.bulkActions}>
               <select className={styles.select} value={accionMasiva} onChange={e => { setAccionMasiva(e.target.value); setValorMasivo('') }}>
                 <option value="proveedor">Asignar proveedor</option>
@@ -685,14 +687,18 @@ async function aplicarAccionMasiva() {
                   value={valorMasivo}
                   onChange={e => setValorMasivo(e.target.value)}
                   placeholder={accionMasiva === 'proveedor' ? 'Nombre del proveedor' : 'Unidades mínimas'}
+                  list={accionMasiva === 'proveedor' ? 'proveedores-vino' : undefined}
                 />
               )}
               <button className={styles.primary} onClick={aplicarAccionMasiva} disabled={aplicandoMasivo}>
                 {aplicandoMasivo ? 'Aplicando...' : 'Aplicar'}
               </button>
             </div>
-          )}
-        </section>
+        </section>}
+
+        <datalist id="proveedores-vino">
+          {proveedoresDisponibles.map(proveedor => <option key={proveedor} value={proveedor} />)}
+        </datalist>
 
         <div className={styles.wineList}>
           {/* Cabecera columnas */}
@@ -803,6 +809,7 @@ async function aplicarAccionMasiva() {
                           type="text"
                           value={editandoVino[f.key] || ''}
                           onChange={e => setEditandoVino({ ...editandoVino, [f.key]: e.target.value })}
+                          list={f.key === 'proveedor' ? 'proveedores-vino' : undefined}
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, boxSizing: 'border-box', outline: 'none', background: 'transparent', color: '#111' }}
                         />
                       </div>
