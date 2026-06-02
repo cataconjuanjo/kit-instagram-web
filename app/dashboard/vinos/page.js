@@ -102,6 +102,10 @@ const [leyendoPdf, setLeyendoPdf] = useState(false)
 const [errorPdf, setErrorPdf] = useState('')
 const [errorBodega, setErrorBodega] = useState('')
 const [importando, setImportando] = useState(false)
+const [seleccionados, setSeleccionados] = useState([])
+const [accionMasiva, setAccionMasiva] = useState('proveedor')
+const [valorMasivo, setValorMasivo] = useState('')
+const [aplicandoMasivo, setAplicandoMasivo] = useState(false)
 const inputPdfRef = useRef(null)
   const [nuevoVino, setNuevoVino] = useState({
     nombre: '', bodega: '', tipo: 'tinto', region: '',
@@ -385,6 +389,48 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
   }
 }
 
+function alternarSeleccion(id) {
+  setSeleccionados(actual => actual.includes(id) ? actual.filter(item => item !== id) : [...actual, id])
+}
+
+function alternarSeleccionVisibles(vinosVisibles) {
+  const idsVisibles = vinosVisibles.map(vino => vino.id)
+  const todosMarcados = idsVisibles.length > 0 && idsVisibles.every(id => seleccionados.includes(id))
+  setSeleccionados(actual => todosMarcados
+    ? actual.filter(id => !idsVisibles.includes(id))
+    : [...new Set([...actual, ...idsVisibles])])
+}
+
+async function aplicarAccionMasiva() {
+  if (!seleccionados.length) return
+  const cambios = {}
+  if (accionMasiva === 'proveedor') {
+    if (!valorMasivo.trim()) return
+    cambios.proveedor = valorMasivo.trim()
+  }
+  if (accionMasiva === 'stock_minimo') {
+    if (valorMasivo === '' || Number.isNaN(Number(valorMasivo))) return
+    cambios.stock_minimo = Math.max(0, parseInt(valorMasivo, 10) || 0)
+  }
+  if (accionMasiva === 'mostrar') cambios.activo = true
+  if (accionMasiva === 'ocultar') {
+    if (!confirm(`¿Ocultar ${seleccionados.length} referencias de la carta pública?`)) return
+    cambios.activo = false
+  }
+
+  setAplicandoMasivo(true)
+  setErrorBodega('')
+  const { error } = await supabase.from('vinos').update(cambios).in('id', seleccionados)
+  if (error) {
+    setErrorBodega('No se pudo aplicar el cambio masivo.')
+  } else {
+    setVinos(actual => actual.map(vino => seleccionados.includes(vino.id) ? { ...vino, ...cambios } : vino))
+    setSeleccionados([])
+    setValorMasivo('')
+  }
+  setAplicandoMasivo(false)
+}
+
   const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87' }
   const tipoLabel = { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja', sin_alcohol: 'Sin alcohol' }
 
@@ -425,9 +471,15 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
       (filtroVinos === 'activos' && vino.activo !== false) ||
       (filtroVinos === 'ocultos' && vino.activo === false) ||
       (filtroVinos === 'pendientes' && (!Number(vino.precio_botella) || !vino.notas_cata || vino.notas_cata.length < 12)) ||
-      (filtroVinos === 'stock' && Number(vino.stock_minimo || 0) > 0 && Number(vino.stock) <= Number(vino.stock_minimo || 0))
+      (filtroVinos === 'stock' && Number(vino.stock_minimo || 0) > 0 && Number(vino.stock) <= Number(vino.stock_minimo || 0)) ||
+      (filtroVinos === 'sin_stock' && Number(vino.stock) <= 0) ||
+      (filtroVinos === 'sin_coste' && !Number(vino.coste_compra)) ||
+      (filtroVinos === 'sin_proveedor' && !String(vino.proveedor || '').trim()) ||
+      (filtroVinos === 'sin_minimo' && !Number(vino.stock_minimo))
     return coincideBusqueda && coincideEstado
   })
+  const visiblesSeleccionados = vinosVisibles.filter(vino => seleccionados.includes(vino.id)).length
+  const todosVisiblesSeleccionados = vinosVisibles.length > 0 && visiblesSeleccionados === vinosVisibles.length
 
   return (
     <ModuleShell
@@ -588,6 +640,10 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
               ['activos', 'Activos'],
               ['pendientes', 'Pendientes'],
               ['stock', 'Stock bajo'],
+              ['sin_stock', 'Sin stock'],
+              ['sin_coste', 'Sin coste'],
+              ['sin_proveedor', 'Sin proveedor'],
+              ['sin_minimo', 'Sin mínimo'],
               ['ocultos', 'Ocultos'],
             ].map(([id, label]) => (
               <button
@@ -601,6 +657,41 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
             ))}
           </div>
           <p className={styles.resultCount}>{vinosVisibles.length} de {vinosBase.length} referencias</p>
+        </section>
+
+        <section className={styles.bulkPanel}>
+          <label className={styles.bulkSelectAll}>
+            <input
+              type="checkbox"
+              checked={todosVisiblesSeleccionados}
+              onChange={() => alternarSeleccionVisibles(vinosVisibles)}
+            />
+            <span>{todosVisiblesSeleccionados ? 'Desmarcar visibles' : 'Seleccionar visibles'}</span>
+          </label>
+          <p className={styles.bulkCount}>{seleccionados.length} seleccionados</p>
+          {seleccionados.length > 0 && (
+            <div className={styles.bulkActions}>
+              <select className={styles.select} value={accionMasiva} onChange={e => { setAccionMasiva(e.target.value); setValorMasivo('') }}>
+                <option value="proveedor">Asignar proveedor</option>
+                <option value="stock_minimo">Definir stock mínimo</option>
+                <option value="mostrar">Mostrar en carta</option>
+                <option value="ocultar">Ocultar de carta</option>
+              </select>
+              {['proveedor', 'stock_minimo'].includes(accionMasiva) && (
+                <input
+                  className={styles.input}
+                  type={accionMasiva === 'stock_minimo' ? 'number' : 'text'}
+                  min={accionMasiva === 'stock_minimo' ? '0' : undefined}
+                  value={valorMasivo}
+                  onChange={e => setValorMasivo(e.target.value)}
+                  placeholder={accionMasiva === 'proveedor' ? 'Nombre del proveedor' : 'Unidades mínimas'}
+                />
+              )}
+              <button className={styles.primary} onClick={aplicarAccionMasiva} disabled={aplicandoMasivo}>
+                {aplicandoMasivo ? 'Aplicando...' : 'Aplicar'}
+              </button>
+            </div>
+          )}
         </section>
 
         <div className={styles.wineList}>
@@ -623,6 +714,7 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
                 opacity: v.activo ? 1 : 0.4
               }}>
                 <div className={styles.wineNameCell}>
+                  <input type="checkbox" checked={seleccionados.includes(v.id)} onChange={() => alternarSeleccion(v.id)} aria-label={`Seleccionar ${v.nombre}`} />
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: tipoDot[v.tipo], flexShrink: 0 }} />
                   <div>
                     <p style={{ margin: 0, fontSize: 14, color: '#111' }}>{v.nombre}</p>
