@@ -42,6 +42,7 @@ export default function AjustesHub() {
     { titulo: 'PIN de sala definido', detalle: pinConfigurado ? 'El equipo puede entrar en modo camarero.' : 'Define un PIN antes de formar al equipo.', href: '#pin-sala', pendiente: !pinConfigurado },
     { titulo: 'Carta pública abierta', detalle: 'Comprueba que precios, platos y enlaces cargan bien.', href: destino },
   ]
+  const checklistPendiente = checklist.some(item => item.pendiente)
 
   async function guardarPinSala() {
     if (!restaurante?.id) return
@@ -99,7 +100,7 @@ export default function AjustesHub() {
         <div className={styles.stat}><p className={styles.statValue}>{restaurante?.slug || '-'}</p><p className={styles.statLabel}>Slug público</p></div>
       </section>
 
-      <section className={styles.panelDark} style={{ marginBottom: 16 }}>
+      {checklistPendiente && <section className={styles.panelDark} style={{ marginBottom: 16 }}>
         <div className={styles.panelHead}>
           <div>
             <h2 className={styles.panelTitle}>Checklist de entrega</h2>
@@ -134,7 +135,7 @@ export default function AjustesHub() {
             ))}
           </div>
         </div>
-      </section>
+      </section>}
 
       <section className={styles.hubGrid}>
         <Link className={styles.hubCard} href="/dashboard/qr">

@@ -67,6 +67,20 @@ const CATEGORIAS = [
   },
 ]
 
+const ANALISIS_DEMO = {
+  estado: 'demo',
+  totalVentas: 42,
+  barreraRentabilidad: 12.4,
+  barreraPopularidad: 17.5,
+  vinosSinCoste: 0,
+  vinos: [
+    { id: 'demo-estrella', nombre: 'Ejemplo: Rioja crianza', bodega: 'Bodega de muestra', margen: 15.8, ventas: 14, pctVentas: 33.3, categoria: 'estrella' },
+    { id: 'demo-joya', nombre: 'Ejemplo: Godello sobre lías', bodega: 'Bodega de muestra', margen: 14.2, ventas: 4, pctVentas: 9.5, categoria: 'joya' },
+    { id: 'demo-caballo', nombre: 'Ejemplo: Verdejo por copa', bodega: 'Bodega de muestra', margen: 8.6, ventas: 16, pctVentas: 38.1, categoria: 'caballo' },
+    { id: 'demo-revisar', nombre: 'Ejemplo: Reserva clásico', bodega: 'Bodega de muestra', margen: 7.9, ventas: 3, pctVentas: 7.1, categoria: 'revisar' },
+  ],
+}
+
 export default function MenuEngineering() {
   const [restaurante, setRestaurante] = useState(null)
   const [vinos, setVinos] = useState([])
@@ -122,7 +136,7 @@ export default function MenuEngineering() {
     if (vinosConCoste.length < 3) return { estado: 'sin_coste', vinosConCoste }
 
     const totalVentas = Object.values(ventasPorId).reduce((s, n) => s + n, 0)
-    if (totalVentas < 5) return { estado: 'sin_ventas', vinosConCoste }
+    if (totalVentas < 5) return { estado: 'sin_ventas', vinosConCoste, totalVentas }
 
     const vinosCalculados = vinosConCoste.map(v => ({
       ...v,
@@ -165,6 +179,9 @@ export default function MenuEngineering() {
   if (loading) return <LoadingState />
   if (!restaurante) return null
 
+  const esDemo = analisis?.estado !== 'ok'
+  const analisisVisible = esDemo ? ANALISIS_DEMO : analisis
+
   return (
     <FeatureGate restaurante={restaurante} feature="estadisticas" title="Análisis no incluido">
       <ModuleShell
@@ -201,33 +218,42 @@ export default function MenuEngineering() {
           <div className={styles.panel} style={{ borderLeft: '3px solid #d4a636', marginBottom: 16 }}>
             <p style={{ margin: 0, fontSize: 14, color: '#7a5a20' }}>
               <strong>Pocas ventas registradas.</strong>{' '}
-              El análisis necesita al menos 5 ventas marcadas desde Sala. Cuantas más semanas de datos, más fiable el resultado.
+              Hay {analisis.totalVentas} de 5 ventas mínimas marcadas desde Sala. Cuantas más semanas de datos, más fiable el resultado.
             </p>
           </div>
         )}
 
-        {/* Análisis completo */}
-        {analisis?.estado === 'ok' && (
+        {esDemo && (
+          <div className={styles.panel} style={{ borderLeft: '3px solid #531827', marginBottom: 16 }}>
+            <p style={{ margin: 0, fontSize: 14, color: '#531827' }}>
+              <strong>Vista previa con datos de ejemplo.</strong>{' '}
+              Así se organizará tu carta cuando haya suficiente actividad real. Ninguna cifra ni referencia de esta muestra pertenece a tu restaurante.
+            </p>
+          </div>
+        )}
+
+        {/* Análisis completo o vista previa */}
+        {analisisVisible && (
           <>
             {/* Métricas clave */}
             <section className={styles.panel} style={{ marginBottom: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                 <div>
                   <p style={{ margin: '0 0 3px', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ventas analizadas</p>
-                  <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#171416' }}>{analisis.totalVentas}</p>
+                  <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#171416' }}>{analisisVisible.totalVentas}</p>
                 </div>
                 <div>
                   <p style={{ margin: '0 0 3px', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Margen medio</p>
-                  <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#171416' }}>{analisis.barreraRentabilidad.toFixed(2)}€</p>
+                  <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#171416' }}>{analisisVisible.barreraRentabilidad.toFixed(2)}€</p>
                 </div>
                 <div>
                   <p style={{ margin: '0 0 3px', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Barrera popularidad</p>
-                  <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#171416' }}>{analisis.barreraPopularidad.toFixed(1)}%</p>
+                  <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#171416' }}>{analisisVisible.barreraPopularidad.toFixed(1)}%</p>
                 </div>
               </div>
-              {analisis.vinosSinCoste > 0 && (
+              {analisisVisible.vinosSinCoste > 0 && (
                 <p style={{ margin: '12px 0 0', fontSize: 12, color: '#999' }}>
-                  {analisis.vinosSinCoste} {analisis.vinosSinCoste === 1 ? 'vino' : 'vinos'} sin coste de compra no {analisis.vinosSinCoste === 1 ? 'aparece' : 'aparecen'} en el análisis.{' '}
+                  {analisisVisible.vinosSinCoste} {analisisVisible.vinosSinCoste === 1 ? 'vino' : 'vinos'} sin coste de compra no {analisisVisible.vinosSinCoste === 1 ? 'aparece' : 'aparecen'} en el análisis.{' '}
                   <a href="/dashboard/bodega" style={{ color: '#766e64' }}>Completar en Bodega →</a>
                 </p>
               )}
@@ -236,7 +262,7 @@ export default function MenuEngineering() {
             {/* Cuadrantes */}
             <div style={{ display: 'grid', gap: 10 }}>
               {CATEGORIAS.map(cat => {
-                const vinosCat = analisis.vinos
+                const vinosCat = analisisVisible.vinos
                   .filter(v => v.categoria === cat.id)
                   .sort((a, b) => b.ventas - a.ventas || b.margen - a.margen)
                 return (
