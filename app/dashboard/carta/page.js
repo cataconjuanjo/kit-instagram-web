@@ -6,6 +6,7 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
+import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
 
 function porcentaje(valor, total) {
   if (!total) return 0
@@ -69,7 +70,7 @@ export default function CartaHub() {
       subtitle="Aquí se mantiene la información que ve el cliente y usa el modo camarero para recomendar."
       actions={
         <>
-          <a className={styles.secondary} href={`/carta/${restaurante?.slug || ''}`} target="_blank" rel="noreferrer">Ver carta pública</a>
+          <OpenCartaPruebaButton className={styles.secondary} restauranteId={restaurante?.id}>Probar carta</OpenCartaPruebaButton>
           <a className={styles.secondary} href={`/carta/${restaurante?.slug || ''}?print=1`} target="_blank" rel="noreferrer">Imprimir / PDF</a>
         </>
       }

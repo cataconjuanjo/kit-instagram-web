@@ -211,7 +211,7 @@ export default function Platos() {
     try {
       const res = await fetch('/api/enriquecer-platos-batch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ restaurante_id: restaurante.id }),
       })
       const data = await res.json()
@@ -227,7 +227,7 @@ export default function Platos() {
     try {
       const res = await fetch('/api/enriquecer-plato', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({
           nombre: plato.nombre,
           descripcion: plato.descripcion || '',
@@ -280,7 +280,7 @@ export default function Platos() {
         const res = await fetch('/api/importar-platos-pdf', {
           method: 'POST',
           headers: await authHeaders(),
-          body: JSON.stringify({ fileBase64: base64, mediaType: file.type || 'application/pdf' })
+          body: JSON.stringify({ fileBase64: base64, mediaType: file.type || 'application/pdf', restaurante_id: restaurante.id })
         })
         const data = await res.json()
         if (!res.ok || !data.texto) {
@@ -462,7 +462,7 @@ export default function Platos() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '40px 32px' }}>
+      <div className={styles.menuPage}>
         {mostrarImportador && (
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
             <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>Importar carta</p>
@@ -499,7 +499,7 @@ export default function Platos() {
             {platosImportar.length > 0 && (
               <div style={{ border: '1px solid #f0f0f0', overflow: 'hidden' }}>
                 {platosImportar.map((plato, index) => (
-                  <div key={`${plato.nombre}-${index}`} style={{ display: 'grid', gridTemplateColumns: '28px 1.4fr 1fr 80px 2fr', gap: 12, padding: '12px 14px', borderBottom: index < platosImportar.length - 1 ? '1px solid #f8f8f8' : 'none', opacity: plato.activo ? 1 : 0.45 }}>
+                  <div key={`${plato.nombre}-${index}`} className={styles.importDishRow} style={{ borderBottom: index < platosImportar.length - 1 ? '1px solid #f8f8f8' : 'none', opacity: plato.activo ? 1 : 0.45 }}>
                     <input type="checkbox" checked={plato.activo} onChange={e => actualizarPlatoImportar(index, { activo: e.target.checked })} style={{ marginTop: 10 }} />
                     <input value={plato.nombre} onChange={e => actualizarPlatoImportar(index, { nombre: e.target.value })} style={{ border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: 13, color: '#111', background: 'transparent' }} />
                     <select value={plato.categoria} onChange={e => actualizarPlatoImportar(index, { categoria: e.target.value })} style={{ border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: 12, color: '#777', background: 'transparent' }}>
@@ -582,7 +582,7 @@ export default function Platos() {
               </button>
             ))}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className={styles.toolbarMeta}>
             <p className={styles.resultCount}>{platosVisibles.length} de {platosBase.length} platos</p>
             <button
               onClick={enriquecerTodosLosPlatos}
@@ -604,8 +604,8 @@ export default function Platos() {
           )}
         </section>
 
-        <div style={{ background: '#fff', border: '1px solid #f0f0f0', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.3fr 80px 2fr 160px', gap: 12, padding: '12px 20px', borderBottom: '1px solid #f0f0f0', background: '#fafafa' }}>
+        <div className={styles.dataList}>
+          <div className={styles.dishListHeader}>
             {['Plato', 'Categoría', 'Precio', 'Descripción', ''].map(h => (
               <p key={h} style={{ fontSize: 10, color: '#ccc', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>{h}</p>
             ))}
@@ -618,16 +618,15 @@ export default function Platos() {
           ) : (
             platosVisibles.map((p, i) => (
               <div key={p.id} className={styles.wineRowGroup}>
-                <div style={{
-                  display: 'grid', gridTemplateColumns: '2fr 1.3fr 80px 2fr 160px', gap: 12,
-                  padding: '14px 20px', borderBottom: i < platosVisibles.length - 1 ? '1px solid #f8f8f8' : 'none',
+                <div className={styles.dishListRow} style={{
+                  borderBottom: i < platosVisibles.length - 1 ? '1px solid #f8f8f8' : 'none',
                   opacity: p.activo ? 1 : 0.4
                 }}>
                   <p style={{ margin: 0, fontSize: 14, color: '#111' }}>{p.nombre}</p>
-                  <p style={{ margin: 0, fontSize: 12, color: '#888' }}>{p.categoria}</p>
-                  <p style={{ margin: 0, fontSize: 12, color: '#111' }}>{Number(p.precio) ? `${Number(p.precio).toFixed(2)} €` : '—'}</p>
-                  <p style={{ margin: 0, fontSize: 12, color: '#bbb' }}>{p.descripcion || '—'}</p>
-                  <div style={{ display: 'flex', gap: 4 }}>
+                  <p data-label="Categoria" style={{ margin: 0, fontSize: 12, color: '#888' }}>{p.categoria}</p>
+                  <p data-label="Precio" style={{ margin: 0, fontSize: 12, color: '#111' }}>{Number(p.precio) ? `${Number(p.precio).toFixed(2)} €` : '—'}</p>
+                  <p data-label="Descripcion" style={{ margin: 0, fontSize: 12, color: '#bbb' }}>{p.descripcion || '—'}</p>
+                  <div className={styles.dishActions}>
                     <button onClick={() => setEditandoPlato({ ...p, precio: p.precio || '' })} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '3px 8px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>Editar</button>
                     <button onClick={() => toggleActivo(p)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '3px 8px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>{p.activo ? 'Ocultar' : 'Mostrar'}</button>
                     <button onClick={() => borrarPlato(p)} style={{ background: 'none', border: '1px solid #f0c0c0', padding: '3px 8px', fontSize: 10, color: '#c07070', cursor: 'pointer' }}>Borrar</button>

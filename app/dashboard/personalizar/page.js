@@ -5,6 +5,7 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
+import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
 
 const PALETTES = [
   { nombre: 'Bodega',        primario: '#1C3A2A', fondo: '#FAFAF7', acento: '#B8860B', tipografia: 'serif'     },
@@ -398,9 +399,9 @@ export default function Personalizar() {
       narrow
       actions={
         <>
-          <a className={styles.secondary} href={`/carta/${restaurante?.slug || ''}`} target="_blank" rel="noreferrer">
-            Ver carta
-          </a>
+          <OpenCartaPruebaButton className={styles.secondary} restauranteId={restaurante?.id}>
+            Probar carta
+          </OpenCartaPruebaButton>
           {restaurante?.hub_activo && (
             <a className={styles.secondary} href={`/r/${restaurante.slug}`} target="_blank" rel="noreferrer">
               Ver hub

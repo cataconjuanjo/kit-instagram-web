@@ -8,6 +8,28 @@ import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail } from
 
 const PLAN_LABEL = { basic: 'Básico', pro: 'Sala', premium: 'Acompañado' }
 
+function formatoDuracion(segundos = 0) {
+  const minutos = Math.round(segundos / 60)
+  if (minutos < 60) return `${minutos} min`
+  const horas = Math.floor(minutos / 60)
+  const resto = minutos % 60
+  return resto ? `${horas} h ${resto} min` : `${horas} h`
+}
+
+function formatoFecha(fecha) {
+  if (!fecha) return 'Sin accesos'
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(fecha))
+}
+
+function formatoCosteIa(importe = 0) {
+  return `${Number(importe || 0).toFixed(2)} USD`
+}
+
 function generarPassword() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
   return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
@@ -39,6 +61,8 @@ function AdminPageContent() {
   const [bajaId, setBajaId] = useState(null) // id del restaurante pendiente de confirmar baja
   const [dandoDeBaja, setDandoDeBaja] = useState(false)
   const [hubLinks, setHubLinks] = useState([])
+  const [uso, setUso] = useState({ resumen: {}, recientes: [], ia: { resumen: {}, preparacion: { resumen: {}, total: {} }, total: {}, disponible: false } })
+  const [usoError, setUsoError] = useState('')
   const [nuevoLink, setNuevoLink] = useState({ titulo: '', url: '', tipo: 'link' })
   const [nuevoRestaurante, setNuevoRestaurante] = useState({
     nombre: '',
@@ -60,6 +84,16 @@ function AdminPageContent() {
       setUser(user)
       const { data } = await supabase.from('restaurantes').select('*').order('nombre')
       setRestaurantes(data || [])
+      const token = await tokenAdmin()
+      const usoRes = await fetch('/api/uso', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const usoData = await usoRes.json()
+      if (usoRes.ok) {
+        setUso(usoData)
+      } else {
+        setUsoError(usoData.error || 'No se pudo cargar el uso.')
+      }
       setLoading(false)
     }
     cargar()
@@ -434,8 +468,46 @@ function AdminPageContent() {
             <Link href="/admin?vista=altas" className="admin-access-new">Nueva alta</Link>
           </div>
 
+        <div className="admin-usage-overview">
+          <div>
+            <p className="eyebrow">Uso del panel</p>
+            <h3>Actividad reciente</h3>
+            {uso.ia?.disponible && (
+              <>
+                <p>IA operativa este mes: {uso.ia.total?.consultas || 0} consultas · {formatoCosteIa(uso.ia.total?.coste_estimado_usd)}</p>
+                {(uso.ia.preparacion?.total?.consultas || 0) > 0 && (
+                  <p>Preparación interna: {uso.ia.preparacion.total.consultas} consultas · {formatoCosteIa(uso.ia.preparacion.total.coste_estimado_usd)}</p>
+                )}
+              </>
+            )}
+          </div>
+          {usoError ? (
+            <p className="admin-inline-error">{usoError}</p>
+          ) : uso.recientes.length === 0 ? (
+            <p className="admin-usage-empty">Todavía no hay sesiones registradas.</p>
+          ) : (
+            <div className="admin-usage-recent">
+              {uso.recientes.slice(0, 6).map(sesion => {
+                const restaurante = restaurantes.find(item => item.id === sesion.restaurante_id)
+                return (
+                  <div key={sesion.id}>
+                    <strong>{restaurante?.nombre || 'Restaurante'}</strong>
+                    <span>{sesion.user_email}</span>
+                    <span>{formatoFecha(sesion.started_at)}</span>
+                    <span>{formatoDuracion(sesion.active_seconds)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
         <div className="admin-access-list">
-          {restaurantes.map(restaurante => (
+          {restaurantes.map(restaurante => {
+            const resumenUso = uso.resumen[restaurante.id]
+            const resumenIa = uso.ia?.resumen?.[restaurante.id]
+            const resumenPreparacionIa = uso.ia?.preparacion?.resumen?.[restaurante.id]
+            return (
             <article className="admin-card admin-access-card" key={restaurante.id}>
               {editandoId === restaurante.id && edicion ? (
                 <form className="admin-edit-form" onSubmit={guardarEdicion}>
@@ -524,6 +596,22 @@ function AdminPageContent() {
                 <p>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || 'Sin ubicación'}</p>
                 <span>{restaurante.email}</span>
                 <small className="admin-slug">/{restaurante.slug}</small>
+                <div className="admin-usage-stats">
+                  <span className={resumenUso?.activo_ahora ? 'is-online' : ''}>
+                    {resumenUso?.activo_ahora ? 'Activo ahora' : `Último acceso: ${formatoFecha(resumenUso?.ultimo_acceso)}`}
+                  </span>
+                  <span>{resumenUso?.sesiones || 0} sesiones</span>
+                  <span>{formatoDuracion(resumenUso?.active_seconds)} de uso activo</span>
+                  <span>Media: {formatoDuracion(resumenUso?.sesiones ? resumenUso.active_seconds / resumenUso.sesiones : 0)}</span>
+                  <span>IA operativa este mes: {resumenIa?.consultas || 0} consultas</span>
+                  <span>Coste IA operativo: {formatoCosteIa(resumenIa?.coste_estimado_usd)}</span>
+                  {(resumenIa?.consultas || 0) > 0 && (
+                    <span>Clientes: {resumenIa?.origenes?.cliente_real?.consultas || 0} · Pruebas restaurante: {resumenIa?.origenes?.restaurante_prueba?.consultas || 0}</span>
+                  )}
+                  {(resumenPreparacionIa?.consultas || 0) > 0 && (
+                    <span>Preparación interna IA: {resumenPreparacionIa.consultas} consultas · {formatoCosteIa(resumenPreparacionIa.coste_estimado_usd)}</span>
+                  )}
+                </div>
               </div>
               <div className="admin-access-actions">
                 <button onClick={() => gestionar(restaurante)}>Abrir dashboard</button>
@@ -613,7 +701,8 @@ function AdminPageContent() {
                 </>
               )}
             </article>
-          ))}
+            )
+          })}
         </div>
         </section>
         )}

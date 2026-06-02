@@ -47,6 +47,13 @@ export default function AdminLayout({ children }) {
             >
               Radar global
             </Link>
+            <Link
+              href="/admin/sugerencias"
+              className={`${styles.navLink} ${pathname === '/admin/sugerencias' ? styles.navActive : ''}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              Buzón sugerencias
+            </Link>
           </li>
 
           <li className={styles.navGroup}>

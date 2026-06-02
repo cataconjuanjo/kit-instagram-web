@@ -12,6 +12,7 @@
 
 import fs from 'fs'
 import path from 'path'
+import { analizarConGoldstein } from './goldsteinStructural.js'
 
 // ── URL del grafo en Supabase Storage ─────────────────────────────────────
 // Configura CHARTIER_GRAPH_URL en las variables de entorno de Vercel
@@ -297,6 +298,10 @@ export async function analizarConGrafo(consulta, vinosDisponibles = []) {
 
   const terminos = extraerTerminos(String(consulta || ''), grafo)
   if (!terminos.length) return null
+  const goldsteinAnalisis = analizarConGoldstein(consulta, vinosDisponibles)
+  const goldsteinPorVino = new Map(
+    goldsteinAnalisis.candidatos.map(item => [String(item.vino.id || item.vino.nombre), item])
+  )
 
   const directPairings = grafo.indexes.direct_wine_pairings_by_concept
   const familiesByConc = grafo.indexes.families_by_concept
@@ -391,18 +396,33 @@ export async function analizarConGrafo(consulta, vinosDisponibles = []) {
 
     if (totalScore <= 0) continue
 
-    const riesgos = detectarRiesgos(terminos, vino)
-    if (riesgos.length) totalScore -= 18 * riesgos.length
+    const scoreChartier = Math.round(totalScore)
+    const riesgosChartier = detectarRiesgos(terminos, vino)
+    if (riesgosChartier.length) totalScore -= 18 * riesgosChartier.length
+    const goldstein = goldsteinPorVino.get(String(vino.id || vino.nombre))
+    if (goldstein) totalScore += goldstein.scoreGoldstein
+    const riesgos = [...new Set([...riesgosChartier, ...(goldstein?.riesgos || [])])]
 
     cartaScores.push({
       vino,
       scoreGrafo: Math.round(totalScore),
+      scoreChartier,
+      scoreGoldstein: goldstein?.scoreGoldstein || 0,
       evidencias: evidenciasVino.sort((a, b) => (b.peso || 0) - (a.peso || 0) || (b.strength || 0) - (a.strength || 0)).slice(0, 5),
       riesgos,
+      goldstein: goldstein ? {
+        bloqueado: goldstein.bloqueado,
+        fortalezas: goldstein.fortalezas,
+        riesgos: goldstein.riesgos,
+        reglas: goldstein.reglas,
+      } : null,
     })
   }
 
-  const candidatos = cartaScores.sort((a, b) => b.scoreGrafo - a.scoreGrafo).slice(0, 8)
+  const candidatos = cartaScores
+    .filter(item => !item.goldstein?.bloqueado)
+    .sort((a, b) => b.scoreGrafo - a.scoreGrafo)
+    .slice(0, 8)
   if (!candidatos.length) return null
 
   const mejorScore = candidatos[0].scoreGrafo
@@ -410,7 +430,20 @@ export async function analizarConGrafo(consulta, vinosDisponibles = []) {
   const tieneDirecto = candidatos.some(c => c.evidencias.some(e => e.origen === 'chartier_directo'))
   const nodosResueltos = terminos.flatMap(t => getConceptos(t).map(c => ({ label: c.label, rol: t.rol })))
 
-  return { terminosDetectados: terminos.map(t => t.texto), nodosResueltos, candidatos, confianza, tieneDirecto }
+  return {
+    terminosDetectados: terminos.map(t => t.texto),
+    nodosResueltos,
+    candidatos,
+    confianza,
+    tieneDirecto,
+    goldstein: {
+      origen: goldsteinAnalisis.origen,
+      rasgosPlato: goldsteinAnalisis.rasgosPlato,
+      salsas: goldsteinAnalisis.salsas,
+      tecnicas: goldsteinAnalisis.tecnicas,
+      puentes: goldsteinAnalisis.puentes,
+    },
+  }
 }
 
 // ── Resumen para el prompt de Claude ──────────────────────────────────────
@@ -453,12 +486,21 @@ export function resumenGrafoParaPrompt(analisis) {
     const precio = v.precio_botella ? `${v.precio_botella}€/bot` : ''
     const copa = v.precio_copa ? ` · ${v.precio_copa}€/copa` : ''
     const riesgo = c.riesgos.length ? ` ⚠ ${c.riesgos[0]}` : ''
-    lineas.push(`${i + 1}. ${v.nombre} — ${v.tipo || ''}, ${v.uva || ''} — ${precio}${copa} — score ${c.scoreGrafo} [${ev?.origen || ''}]${riesgo}`)
+    const ajusteGoldstein = c.scoreGoldstein ? ` · Goldstein ${c.scoreGoldstein > 0 ? '+' : ''}${c.scoreGoldstein}` : ''
+    lineas.push(`${i + 1}. ${v.nombre} — ${v.tipo || ''}, ${v.uva || ''} — ${precio}${copa} — score ${c.scoreGrafo}${ajusteGoldstein} [${ev?.origen || ''}]${riesgo}`)
   }
 
   lineas.push('')
   const confLabel = confianza === 'alta' ? 'ALTA' : confianza === 'media' ? 'MEDIA' : 'BAJA — razona con cuidado'
   lineas.push(`Confianza: ${confLabel}${tieneDirecto ? '' : ' — sin evidencia directa, usa familias aromáticas'}`)
+  if (analisis.goldstein?.rasgosPlato?.length) {
+    lineas.push('')
+    lineas.push('VALIDACION ESTRUCTURAL GOLDSTEIN (no atribuir a Chartier):')
+    lineas.push(`Rasgos del plato: ${analisis.goldstein.rasgosPlato.join(', ')}`)
+    if (analisis.goldstein.salsas?.length) lineas.push(`Salsas: ${analisis.goldstein.salsas.join(', ')}`)
+    if (analisis.goldstein.tecnicas?.length) lineas.push(`Tecnicas: ${analisis.goldstein.tecnicas.join(', ')}`)
+    if (analisis.goldstein.puentes?.length) lineas.push(`Ingredientes puente: ${analisis.goldstein.puentes.join(', ')}`)
+  }
   lineas.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
   return lineas.join('\n')

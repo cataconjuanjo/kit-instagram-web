@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
+import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MAX_BASE64_LENGTH = 4_500_000
@@ -45,8 +46,9 @@ export async function POST(req) {
       return Response.json({ analisis: null, error: 'Archivo demasiado grande. Usa un PDF de hasta 3 MB.' }, { status: 413 })
     }
 
+    const modelo = 'claude-sonnet-4-6'
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: modelo,
       max_tokens: 1024,
       system: 'Eres un experto en cartas de vinos con certificación WSET Level 3. Analizas cartas de restaurantes y das diagnósticos concretos y accionables. Respondes en texto plano corrido, sin asteriscos, sin markdown, sin listas con guiones. Usas párrafos cortos y directos.',
       messages: [{
@@ -72,6 +74,11 @@ Sé directo, específico y usa los vinos reales de la carta en tu análisis. No 
           }
         ]
       }]
+    })
+    await registrarConsumoAnthropic({
+      endpoint: 'analisis_carta_publico',
+      modelo,
+      usage: message.usage,
     })
 
     return Response.json({ analisis: message.content[0].text })

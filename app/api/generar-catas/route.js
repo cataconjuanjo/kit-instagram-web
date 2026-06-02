@@ -1,14 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin as supabase } from '../../lib/supabaseAdmin'
 import { requireRestaurantAccess } from '../_lib/auth'
+import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 })
 
-async function generarNota(vino) {
+async function generarNota(vino, restauranteId) {
+  const modelo = 'claude-haiku-4-5'
   const message = await anthropic.messages.create({
-    model: 'claude-haiku-4-5',
+    model: modelo,
     max_tokens: 300,
     system: 'Eres un especialista en vino. Escribes notas de cata elegantes y concisas en español. Sin asteriscos, sin markdown, solo texto plano en 2-3 frases máximo.',
     messages: [{
@@ -23,6 +25,13 @@ Añada: ${vino.anada || 'sin especificar'}
 
 Describe color, aromas y boca en 2-3 frases naturales como las de una guía de vinos. Sin listar, texto corrido.`
     }]
+  })
+  await registrarConsumoAnthropic({
+    restauranteId,
+    endpoint: 'generar_catas_batch',
+    modelo,
+    usage: message.usage,
+    metadata: { vino_id: vino.id, vino: vino.nombre },
   })
   return message.content[0].text
 }
@@ -43,7 +52,7 @@ export async function POST(request) {
 
     for (const vino of vinos) {
       try {
-        const notas = await generarNota(vino)
+        const notas = await generarNota(vino, restaurante_id)
         await supabase.from('vinos').update({ notas_cata: notas }).eq('id', vino.id)
         actualizados++
         await new Promise(r => setTimeout(r, 500))

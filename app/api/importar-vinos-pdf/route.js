@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import * as XLSX from 'xlsx'
-import { requireUser } from '../_lib/auth'
+import { requireRestaurantAccess } from '../_lib/auth'
+import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MAX_BASE64_LENGTH = 4_500_000
@@ -55,10 +57,9 @@ function csvATexto(base64) {
 
 export async function POST(req) {
   try {
-    const auth = await requireUser(req)
+    const { fileBase64, pdfBase64, mediaType, restaurante_id } = await req.json()
+    const auth = await requireRestaurantAccess(req, supabaseAdmin, restaurante_id)
     if (auth.error) return Response.json({ vinos: [], error: auth.error }, { status: auth.status })
-
-    const { fileBase64, pdfBase64, mediaType } = await req.json()
     const data = fileBase64 || pdfBase64
     const tipo = (mediaType || 'application/pdf').toLowerCase()
 
@@ -90,11 +91,19 @@ export async function POST(req) {
       entrada = { type: 'text', text: `Carta de vinos (CSV/texto):\n\n${texto.slice(0, 60000)}` }
     }
 
+    const modelo = 'claude-sonnet-4-6'
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: modelo,
       max_tokens: 12000,
       system: 'Eres un extractor de cartas de vinos. Lees cualquier formato de archivo y devuelves solo JSON válido. No inventes vinos. No incluyas platos ni bebidas que no sean vino, espumoso, generoso o dulce.',
       messages: [{ role: 'user', content: [entrada, { type: 'text', text: PROMPT_EXTRACCION }] }],
+    })
+    await registrarConsumoAnthropic({
+      restauranteId: restaurante_id,
+      endpoint: 'importar_vinos',
+      modelo,
+      usage: message.usage,
+      metadata: { media_type: tipo },
     })
 
     return Response.json({ vinos: extraerJson(message.content?.[0]?.text) })

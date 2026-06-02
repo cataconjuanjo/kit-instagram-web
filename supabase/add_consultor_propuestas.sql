@@ -22,15 +22,5 @@ create table if not exists public.consultor_propuestas (
 
 alter table public.consultor_propuestas enable row level security;
 
-drop policy if exists "consultor_propuestas_select" on public.consultor_propuestas;
-create policy "consultor_propuestas_select"
-on public.consultor_propuestas
-for select
-using (true);
-
-drop policy if exists "consultor_propuestas_update" on public.consultor_propuestas;
-create policy "consultor_propuestas_update"
-on public.consultor_propuestas
-for update
-using (true)
-with check (true);
+-- Sin políticas públicas. add_dashboard_policies.sql concede acceso autenticado
+-- por propietario o admin después de crear la tabla.

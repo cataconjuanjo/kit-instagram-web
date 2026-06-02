@@ -1,4 +1,5 @@
 import { analizarConGrafo } from '../../lib/chartierGraph'
+import { analizarConGoldstein } from '../../lib/goldsteinStructural'
 
 function compactarCandidato(item) {
   const vino = item.vino || {}
@@ -6,7 +7,21 @@ function compactarCandidato(item) {
     vino_id: vino.id,
     nombre: vino.nombre,
     scoreGrafo: item.scoreGrafo,
+    scoreChartier: item.scoreChartier,
+    scoreGoldstein: item.scoreGoldstein,
     riesgos: item.riesgos || [],
+    goldstein: item.goldstein ? {
+      bloqueado: item.goldstein.bloqueado,
+      fortalezas: item.goldstein.fortalezas || [],
+      riesgos: item.goldstein.riesgos || [],
+      reglas: (item.goldstein.reglas || []).slice(0, 4).map(regla => ({
+        id: regla.id,
+        dimension: regla.dimension,
+        tipo: regla.tipo,
+        delta: regla.delta,
+        summary: regla.summary,
+      })),
+    } : null,
     evidencias: (item.evidencias || []).slice(0, 4).map(ev => ({
       wineLabel: ev.wineLabel,
       concepto: ev.concepto,
@@ -33,12 +48,32 @@ function vinosDisponibles(vinos = []) {
       region: vino.region,
       uva: vino.uva,
       anada: vino.anada,
+      alcohol: vino.alcohol,
+      graduacion: vino.graduacion,
       precio_copa: vino.precio_copa,
       precio_botella: vino.precio_botella,
       notas_cata: vino.notas_cata,
       stock: vino.stock,
       activo: vino.activo,
     }))
+}
+
+function compactarGoldstein(analisis) {
+  if (!analisis) return null
+  return {
+    origen: analisis.origen,
+    rasgosPlato: analisis.rasgosPlato || [],
+    salsas: analisis.salsas || [],
+    tecnicas: analisis.tecnicas || [],
+    puentes: analisis.puentes || [],
+    descartados: (analisis.candidatos || [])
+      .filter(item => item.bloqueado)
+      .map(item => ({
+        vino_id: item.vino?.id,
+        nombre: item.vino?.nombre,
+        riesgos: item.riesgos || [],
+      })),
+  }
 }
 
 export async function POST(request) {
@@ -49,10 +84,15 @@ export async function POST(request) {
       return Response.json({ error: 'consulta requerida' }, { status: 400 })
     }
 
+    if (!Array.isArray(vinos)) {
+      return Response.json({ error: 'vinos debe ser un array' }, { status: 400 })
+    }
+
     const carta = vinosDisponibles(vinos)
+    const goldstein = compactarGoldstein(analizarConGoldstein(textoConsulta, carta))
     const analisis = await analizarConGrafo(textoConsulta, carta)
     if (!analisis) {
-      return Response.json({ candidatos: [], confianza: 'baja', tieneDirecto: false })
+      return Response.json({ candidatos: [], confianza: 'baja', tieneDirecto: false, goldstein })
     }
 
     return Response.json({
@@ -60,6 +100,7 @@ export async function POST(request) {
       nodosResueltos: analisis.nodosResueltos || [],
       confianza: analisis.confianza,
       tieneDirecto: analisis.tieneDirecto,
+      goldstein,
       candidatos: (analisis.candidatos || []).map(compactarCandidato),
     })
   } catch (error) {

@@ -161,21 +161,21 @@ const VINOS = [
   {
     nombre: 'El Nido', bodega: 'Casa Castillo & Egly-Ouriet', tipo: 'tinto',
     region: 'Jumilla', uva: 'Cabernet Sauvignon, Monastrell', anada: '2019',
-    precio_copa: 9.00, precio_botella: 54, coste_compra: 25.00,
+    precio_copa: 12.00, precio_botella: 54, coste_compra: 25.00,
     stock: 3, stock_minimo: 1,
     proveedor: 'Vinos Alhambra SL', referencia_proveedor: 'ELN-TIN-19',
     formato_compra: 'Caja 6',
-    notas_cata: 'grandioso, concentrado, muy tánico, profundo, largo',
+    notas_cata: 'grandioso, concentrado, muy tánico, profundo, largo, coravin premium',
     activo: true,
   },
   {
     nombre: 'Contador', bodega: 'Bodegas Contador', tipo: 'tinto',
     region: 'Rioja', uva: 'Tempranillo', anada: '2020',
-    precio_copa: 14.00, precio_botella: 85, coste_compra: 40.00,
+    precio_copa: 18.00, precio_botella: 85, coste_compra: 40.00,
     stock: 2, stock_minimo: 1,
     proveedor: 'Vinos Alhambra SL', referencia_proveedor: 'CNT-TIN-20',
     formato_compra: 'Caja 6',
-    notas_cata: 'icónico, sedoso, complejísimo, larga crianza, ático',
+    notas_cata: 'icónico, sedoso, complejísimo, larga crianza, ático, coravin premium',
     activo: true,
   },
   {
@@ -233,11 +233,11 @@ const VINOS = [
   {
     nombre: 'Pazo Señorans Selección de Añada', bodega: 'Pazo de Señorans', tipo: 'blanco',
     region: 'Rías Baixas', uva: 'Albariño', anada: '2019',
-    precio_copa: 7.00, precio_botella: 42, coste_compra: 19.00,
+    precio_copa: 9.00, precio_botella: 42, coste_compra: 19.00,
     stock: 5, stock_minimo: 2,
     proveedor: 'Vinos Alhambra SL', referencia_proveedor: 'PSA-SEL-19',
     formato_compra: 'Caja 6',
-    notas_cata: 'complejo, cítrico evolucionado, salino, volumen, largo',
+    notas_cata: 'complejo, cítrico evolucionado, salino, volumen, largo, coravin premium',
     activo: true,
   },
   {
@@ -317,11 +317,11 @@ const VINOS = [
   {
     nombre: 'Gramona Gran Cuvée', bodega: 'Gramona', tipo: 'espumoso',
     region: 'Cava DO', uva: 'Xarello, Macabeo', anada: '2019',
-    precio_copa: 8.00, precio_botella: 48, coste_compra: 22.00,
+    precio_copa: 10.00, precio_botella: 48, coste_compra: 22.00,
     stock: 5, stock_minimo: 2,
     proveedor: 'Distribuciones Sur', referencia_proveedor: 'GRA-GRC-19',
     formato_compra: 'Caja 6',
-    notas_cata: 'complejo, levaduras, nuez, burbuja elegante, gran persistencia',
+    notas_cata: 'complejo, levaduras, nuez, burbuja elegante, gran persistencia, coravin premium',
     activo: true,
   },
   {
@@ -369,11 +369,11 @@ const VINOS = [
   {
     nombre: 'González Byass Apóstoles', bodega: 'González Byass', tipo: 'generoso',
     region: 'Jerez DO', uva: 'Palomino, Pedro Ximénez', anada: null,
-    precio_copa: 5.50, precio_botella: 32, coste_compra: 13.00,
+    precio_copa: 8.00, precio_botella: 32, coste_compra: 13.00,
     stock: 9, stock_minimo: 3,
     proveedor: 'Distribuciones Sur', referencia_proveedor: 'GBY-APO-AP',
     formato_compra: 'Caja 6',
-    notas_cata: 'palo cortado, nueces, caramelo, rancio, complejo',
+    notas_cata: 'palo cortado, nueces, caramelo, rancio, complejo, coravin premium',
     activo: true,
   },
 

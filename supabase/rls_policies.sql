@@ -26,31 +26,20 @@ CREATE POLICY "deny_anon" ON rate_limits FOR ALL TO anon USING (false);
 -- ── 2. restaurantes ─────────────────────────────────────────────
 ALTER TABLE restaurantes ENABLE ROW LEVEL SECURITY;
 
--- Anon puede leer cualquier restaurante (necesario para carta pública por slug)
-CREATE POLICY "anon_read_restaurantes"
-  ON restaurantes FOR SELECT TO anon
-  USING (true);
-
--- Anon no puede escribir, actualizar ni borrar
--- (INSERT/UPDATE/DELETE no tienen políticas → bloqueado por defecto)
+-- Sin lectura anon directa. /api/public/restaurante/[slug] expone una lista
+-- blanca de campos para carta y hub.
 
 
 -- ── 3. vinos ────────────────────────────────────────────────────
 ALTER TABLE vinos ENABLE ROW LEVEL SECURITY;
 
--- Anon solo lee vinos activos (carta pública y maridaje)
-CREATE POLICY "anon_read_vinos_activos"
-  ON vinos FOR SELECT TO anon
-  USING (activo = true);
+-- Sin lectura anon directa. La carta pública usa la API filtrada.
 
 
 -- ── 4. platos ───────────────────────────────────────────────────
 ALTER TABLE platos ENABLE ROW LEVEL SECURITY;
 
--- Anon solo lee platos activos (sommelier)
-CREATE POLICY "anon_read_platos_activos"
-  ON platos FOR SELECT TO anon
-  USING (activo = true);
+-- Sin lectura anon directa. La carta pública usa la API filtrada.
 
 
 -- ── 5. estadisticas ─────────────────────────────────────────────

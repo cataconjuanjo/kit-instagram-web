@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { supabase } from '../../supabase'
 import { chartierKb, fuenteChartier } from '../../lib/chartierKb'
 import { buscarPlatoKb } from '../../data/platos_kb'
 import { criteriosEstructurales } from '../../lib/maridajeEngine'
 import { nombrePlan, puedeUsar } from '../../lib/plans'
 import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import styles from './camarero.module.css'
+
+const PERFIL_CLIENTE_NEUTRO = { bebe: 'ninguno', estilo: 'ninguno', gama: 'auto' }
 
 export default function Camarero({ params }) {
   const [restaurante, setRestaurante] = useState(null)
@@ -19,6 +20,7 @@ export default function Camarero({ params }) {
   const [pin, setPin] = useState('')
   const [autenticado, setAutenticado] = useState(false)
   const [errorPin, setErrorPin] = useState(false)
+  const [salaToken, setSalaToken] = useState('')
   const [filtro, setFiltro] = useState('todos')
   const [vinosComparador, setVinosComparador] = useState([])
   const [mostrarComparador, setMostrarComparador] = useState(false)
@@ -27,7 +29,9 @@ export default function Camarero({ params }) {
   const [consultaVenta, setConsultaVenta] = useState('')
   const [platosMesaVenta, setPlatosMesaVenta] = useState([])
   const [objetivoVenta, setObjetivoVenta] = useState('equilibrado')
-  const [perfilClienteVenta, setPerfilClienteVenta] = useState({ bebe: 'indiferente', estilo: 'facil', gama: 'auto' })
+  const [perfilClienteVenta, setPerfilClienteVenta] = useState(PERFIL_CLIENTE_NEUTRO)
+  const [modoRecomendacionVenta, setModoRecomendacionVenta] = useState('platos')
+  const [mostrarAfinadoCliente, setMostrarAfinadoCliente] = useState(false)
   const [rotacionVenta, setRotacionVenta] = useState(0)
   const [demoActivo, setDemoActivo] = useState(false)
   const [feedbackVenta, setFeedbackVenta] = useState({})
@@ -81,26 +85,17 @@ export default function Camarero({ params }) {
   useEffect(() => {
     async function cargar() {
       const esDemo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1'
-      if (esDemo) {
-        setDemoActivo(true)
-        setAutenticado(true)
-      }
       const slug = (await params).slug
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('slug', slug).single()
+      const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}`)
+      const data = res.ok ? await res.json() : {}
+      const rest = data.restaurante
       if (rest) {
         setRestaurante(rest)
         const objetivoGuardado = typeof window !== 'undefined' ? window.localStorage.getItem(`cartavinos_objetivo_${rest.id}`) : null
         const mapaObjetivo = { vender_copas: 'copas', subir_ticket: 'ticket', rotar_stock: 'rotar', vino_local: 'local' }
         if (objetivoGuardado && mapaObjetivo[objetivoGuardado]) setObjetivoVenta(mapaObjetivo[objetivoGuardado])
-        const { data: vinosData } = await supabase.from('vinos').select('*').eq('restaurante_id', rest.id).eq('activo', true)
-        setVinos(vinosData || [])
-        const { data: platosData } = await supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true).order('categoria')
-        setPlatos(platosData || [])
-        if (esDemo && platosData?.length) {
-          const platoDemo = platosData.find(plato => plato.nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes('codillo')) || platosData[0]
-          setConsultaVenta(`${platoDemo.nombre}${platoDemo.precio ? ` (${platoDemo.precio} EUR)` : ''}${platoDemo.descripcion ? `: ${platoDemo.descripcion}` : ''}`)
-          setPlatosMesaVenta([platoDemo])
-          setRotacionVenta(0)
+        if (esDemo) {
+          setDemoActivo(true)
         }
       }
       setLoading(false)
@@ -108,20 +103,56 @@ export default function Camarero({ params }) {
     cargar()
   }, [])
 
-  function comprobarPin() {
-    const pinConfigurado = String(restaurante?.camarero_pin || process.env.NEXT_PUBLIC_CAMARERO_FALLBACK_PIN || '').trim()
-    if (pinConfigurado && pin === pinConfigurado) {
-      setAutenticado(true)
-      setErrorPin(false)
-      cargarHistorialSala(pinConfigurado)
-    }
-    else setErrorPin(true)
+  async function comprobarPin() {
+    if (!restaurante?.id) return
+    await iniciarSesionSala(restaurante, pin)
   }
 
-  async function cargarHistorialSala(pinValido) {
-    if (!restaurante?.id) return
-    const query = new URLSearchParams({ restaurante_id: restaurante.id, pin: pinValido })
-    const res = await fetch(`/api/estadisticas?${query.toString()}`)
+  async function iniciarSesionSala(rest, pinIntroducido, demo = false) {
+    const res = await fetch('/api/camarero/sesion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restaurante_id: rest.id, pin: pinIntroducido, demo }),
+    })
+    if (!res.ok) {
+      setErrorPin(true)
+      return
+    }
+    const data = await res.json()
+    setSalaToken(data.sala_token)
+    setAutenticado(true)
+    setErrorPin(false)
+    await Promise.all([
+      cargarDatosSala(rest, data.sala_token, demo),
+      cargarHistorialSala(rest.id, data.sala_token),
+    ])
+  }
+
+  async function cargarDatosSala(rest, token, demo = false) {
+    const res = await fetch('/api/camarero/datos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restaurante_id: rest.id, sala_token: token }),
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    setRestaurante({ ...rest, ...data.restaurante })
+    setVinos(data.vinos || [])
+    setPlatos(data.platos || [])
+    if (demo && data.platos?.length) {
+      const platoDemo = data.platos.find(plato => plato.nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes('codillo')) || data.platos[0]
+      setConsultaVenta(`${platoDemo.nombre}${platoDemo.precio ? ` (${platoDemo.precio} EUR)` : ''}${platoDemo.descripcion ? `: ${platoDemo.descripcion}` : ''}`)
+      setPlatosMesaVenta([platoDemo])
+      setRotacionVenta(0)
+    }
+  }
+
+  async function cargarHistorialSala(restauranteId, token) {
+    if (!restauranteId) return
+    const query = new URLSearchParams({ restaurante_id: restauranteId })
+    const res = await fetch(`/api/estadisticas?${query.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
     if (!res.ok) return
     const data = await res.json()
     setHistorialVenta((data.ventas || []).map(item => {
@@ -131,6 +162,12 @@ export default function Camarero({ params }) {
       try { return JSON.parse(item.detalle || '{}') } catch { return null }
     }).filter(Boolean))
   }
+
+  useEffect(() => {
+    if (demoActivo && restaurante?.id && !autenticado) {
+      iniciarSesionSala(restaurante, '', true)
+    }
+  }, [demoActivo, restaurante, autenticado])
 
   function toggleComparador(vino) {
     if (vinosComparador.find(v => v.id === vino.id)) {
@@ -149,7 +186,7 @@ export default function Camarero({ params }) {
           const res = await fetch('/api/perfil', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nombre: v.nombre, tipo: v.tipo, region: v.region, uva: v.uva, anada: v.anada })
+            body: JSON.stringify({ nombre: v.nombre, tipo: v.tipo, region: v.region, uva: v.uva, anada: v.anada, restaurante_id: restaurante.id })
           })
           const data = await res.json()
           return { id: v.id, perfil: data.perfil }
@@ -203,7 +240,7 @@ export default function Camarero({ params }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        pin,
+        sala_token: salaToken,
         eventos: [{ restaurante_id: restaurante.id, tipo: 'venta', detalle }],
       }),
     })
@@ -217,6 +254,12 @@ export default function Camarero({ params }) {
 
   function normalizar(texto) {
     return (texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  }
+
+  function incluyeTerminoCompleto(texto, termino) {
+    const textoDelimitado = ` ${normalizar(texto).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()} `
+    const terminoDelimitado = normalizar(termino).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
+    return terminoDelimitado && textoDelimitado.includes(` ${terminoDelimitado} `)
   }
 
   function precioBotella(vino) {
@@ -454,6 +497,16 @@ export default function Camarero({ params }) {
     setRotacionVenta(0)
   }
 
+  function cambiarModoRecomendacionVenta(modo) {
+    if (modo === modoRecomendacionVenta) return
+    setModoRecomendacionVenta(modo)
+    setPerfilClienteVenta(PERFIL_CLIENTE_NEUTRO)
+    setConsultaVenta('')
+    setPlatosMesaVenta([])
+    setMostrarAfinadoCliente(false)
+    setRotacionVenta(0)
+  }
+
   function cambiarPerfilClienteVenta(campo, valor) {
     const siguientePerfil = { ...perfilClienteVenta, [campo]: valor }
     setPerfilClienteVenta(siguientePerfil)
@@ -498,7 +551,7 @@ export default function Camarero({ params }) {
   }
 
   function tienePerfilClienteActivo() {
-    return perfilClienteVenta.bebe !== 'indiferente' || perfilClienteVenta.estilo !== 'facil' || perfilClienteVenta.gama !== 'auto'
+    return perfilClienteVenta.bebe !== 'ninguno' || perfilClienteVenta.estilo !== 'ninguno' || perfilClienteVenta.gama !== 'auto'
   }
 
   function consultaDesdePerfilCliente(perfil = perfilClienteVenta) {
@@ -506,8 +559,8 @@ export default function Camarero({ params }) {
     const estilo = preguntasClienteVenta.estilo.find(opcion => opcion.id === perfil.estilo)?.label
     const gama = gamasVenta().find(opcion => opcion.id === perfil.gama)?.label
     return [
-      bebe && perfil.bebe !== 'indiferente' ? `cliente suele beber ${bebe}` : '',
-      estilo && perfil.estilo !== 'facil' ? `busca ${estilo}` : 'vino facil de beber',
+      perfil.bebe === 'indiferente' ? 'cliente no tiene una preferencia clara de vino' : bebe ? `cliente suele beber ${bebe}` : '',
+      estilo ? `busca ${estilo}` : '',
       gama && perfil.gama !== 'auto' ? `gama ${gama}` : '',
     ].filter(Boolean).join(', ')
   }
@@ -565,7 +618,7 @@ export default function Camarero({ params }) {
   function gamasVenta() {
     const ticket = ticketReferenciaVenta().valor
     const rangos = [
-      { id: 'auto', label: 'Auto', min: 0, max: Infinity, helper: 'segun mesa' },
+      { id: 'auto', label: 'Sin limite', min: 0, max: Infinity, helper: 'sin filtro' },
       { id: 'baja', label: 'Baja', min: 0, max: ticket * 0.48 },
       { id: 'media', label: 'Media', min: ticket * 0.48, max: ticket * 0.75 },
       { id: 'alta', label: 'Alta', min: ticket * 0.75, max: ticket * 1.75 },
@@ -609,17 +662,14 @@ export default function Camarero({ params }) {
   }
 
   function encajaEnPreferenciaCliente(vino) {
-    const textoVino = normalizar(`${vino.nombre || ''} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
-    if (perfilClienteVenta.bebe === 'blanco') return ['blanco', 'rosado', 'espumoso'].includes(vino.tipo)
-    if (perfilClienteVenta.bebe === 'burbuja') return vino.tipo === 'espumoso'
-    if (perfilClienteVenta.bebe === 'generoso') return vino.tipo === 'generoso'
-    if (perfilClienteVenta.bebe === 'tinto_suave') return vino.tipo === 'tinto'
-    if (perfilClienteVenta.bebe === 'tinto_cuerpo') return vino.tipo === 'tinto'
-    if (perfilClienteVenta.estilo === 'fresco') {
-      return ['blanco', 'rosado', 'espumoso', 'generoso'].includes(vino.tipo) ||
-        ['fresco', 'acidez', 'salino', 'mineral', 'citrico'].some(t => textoVino.includes(t))
-    }
-    return true
+    let encaja = true
+    if (perfilClienteVenta.bebe === 'blanco') encaja = encaja && ['blanco', 'rosado', 'espumoso'].includes(vino.tipo)
+    if (perfilClienteVenta.bebe === 'burbuja') encaja = encaja && vino.tipo === 'espumoso'
+    if (perfilClienteVenta.bebe === 'generoso') encaja = encaja && vino.tipo === 'generoso'
+    if (perfilClienteVenta.bebe === 'tinto_suave') encaja = encaja && vino.tipo === 'tinto'
+    if (perfilClienteVenta.bebe === 'tinto_cuerpo') encaja = encaja && vino.tipo === 'tinto'
+    if (perfilClienteVenta.estilo === 'local') encaja = encaja && esVinoDeZona(vino)
+    return encaja
   }
 
   function ajustePreferenciasCliente(vino) {
@@ -723,7 +773,7 @@ export default function Camarero({ params }) {
     const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
       'postre', 'tarta', 'helado', 'brownie', 'chocolate', 'queso azul', 'azul',
       'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
-    ].some(t => consultaNormalizada.includes(t))
+    ].some(t => incluyeTerminoCompleto(consultaNormalizada, t))
 
     if (esDulceOxidativo && !contextoDulcePermitido && !metodo.picante) {
       return {
@@ -1000,7 +1050,7 @@ export default function Camarero({ params }) {
     const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
       'postre', 'tarta', 'helado', 'brownie', 'chocolate', 'queso azul', 'azul',
       'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
-    ].some(t => consultaNormalizada.includes(t))
+    ].some(t => incluyeTerminoCompleto(consultaNormalizada, t))
     if (metodo.dulce && contextoDulcePermitido && ['dulce', 'generoso'].includes(vino.tipo)) score += 4
 
     if (metodo.frito && ['alta acidez', 'perfil fresco', 'salino', 'manzanilla', 'fino'].some(t => textoVino.includes(t))) score += 7
@@ -1059,6 +1109,7 @@ export default function Camarero({ params }) {
 
   function calcularRecomendacionesVenta() {
     if (!hayConsultaVenta()) return []
+    if (consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta) return []
     let disponibles = vinos.filter(vino => esVinoElegibleParaObjetivo(vino))
     if (!disponibles.length && perfilClienteVenta.gama !== 'auto') {
       disponibles = vinos.filter(vino => esVinoElegibleParaObjetivo(vino, { ignorarGama: true }))
@@ -1068,6 +1119,7 @@ export default function Camarero({ params }) {
     const filtradosPorPreferencia = tienePerfilClienteActivo()
       ? disponibles.filter(encajaEnPreferenciaCliente)
       : disponibles
+    if (perfilClienteVenta.estilo === 'local' && !filtradosPorPreferencia.length) return []
     const candidatosBase = filtradosPorPreferencia.length ? filtradosPorPreferencia : disponibles
 
     const precioMedio = candidatosBase.reduce((sum, vino) => sum + precioBotella(vino), 0) / candidatosBase.length
@@ -1077,7 +1129,13 @@ export default function Camarero({ params }) {
     const esMesa = consultas.length > 1
     const ticketComida = ticketMesaVenta()
     const rangoTicket = rangoBotellaParaTicket(ticketComida, precioMedio)
-    const grafoCandidatos = grafoVenta?.consulta === consultaVentaActiva() ? (grafoVenta?.candidatos || []) : []
+    const grafoListo = grafoVenta?.consulta === consultaGrafoVenta
+    const grafoCandidatos = grafoListo ? (grafoVenta?.candidatos || []) : []
+    const descartadosGoldstein = grafoListo ? (grafoVenta?.goldstein?.descartados || []) : []
+    const goldsteinBloqueados = new Set(
+      descartadosGoldstein.flatMap(item => [String(item.vino_id || ''), normalizar(item.nombre)])
+    )
+    const bloqueadoPorGoldstein = vino => goldsteinBloqueados.has(String(vino.id || '')) || goldsteinBloqueados.has(normalizar(vino.nombre))
     const grafoPorVino = new Map(grafoCandidatos.map(item => [String(item.vino_id || item.nombre), item]))
     const grafoPorNombre = new Map(grafoCandidatos.map(item => [normalizar(item.nombre), item]))
     const aplicarGrafoChartier = resultado => {
@@ -1086,6 +1144,7 @@ export default function Camarero({ params }) {
 
       const ev = item.evidencias?.[0]
       const directo = item.evidencias?.some(e => e.origen === 'chartier_directo')
+      const goldsteinActivo = Boolean(item.goldstein?.reglas?.length)
       const base = Math.log2(Math.max(2, Number(item.scoreGrafo) || 2)) * (directo ? 5.2 : 3.7)
       const bonus = Math.min(directo ? 44 : 28, Math.max(directo ? 16 : 8, base))
       const penalizacionRiesgo = (item.riesgos?.length || 0) * 8
@@ -1101,8 +1160,9 @@ export default function Camarero({ params }) {
         motivo: item.riesgos?.length && penalizacionRiesgo >= bonus
           ? item.riesgos[0]
           : `${motivoGrafo}; ${resultado.motivo}`,
-        fuente: directo ? 'Grafo Chartier unificado: evidencia directa' : 'Grafo Chartier unificado: familia aromatica',
+        fuente: `${directo ? 'Grafo Chartier unificado: evidencia directa' : 'Grafo Chartier unificado: familia aromatica'}${goldsteinActivo ? ' + validacion estructural Goldstein' : ''}`,
         chartierGrafo: item,
+        goldsteinEstructural: goldsteinActivo ? item.goldstein : null,
       }
     }
 
@@ -1153,6 +1213,7 @@ export default function Camarero({ params }) {
           ticketComida,
         }))
       })
+      .filter(item => !bloqueadoPorGoldstein(item.vino))
       .sort((a, b) => b.score - a.score)
     const semilla = `${consultaNormalizada}-${objetivoVenta}-${rotacionVenta}`
 
@@ -1169,6 +1230,11 @@ export default function Camarero({ params }) {
       const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
       return esGenerosoSeco(vino, textoVino) || esEspumosoSeco(vino, textoVino)
     }
+    const registrarUso = vino => {
+      usados.add(vino.id)
+      if (vino.bodega) bodegasUsadas.add(vino.bodega)
+      if (vino.tipo) tiposUsados.add(vino.tipo)
+    }
     const elegir = (label, filtroPrecio) => {
       const candidatos = puntuados.filter(item => item.compatible && item.score >= 6 && !usados.has(item.vino.id) && filtroPrecio(item.vino))
       if (!candidatos.length) return null
@@ -1182,19 +1248,33 @@ export default function Camarero({ params }) {
       const desplazamiento = rotacionVenta + Math.abs(hashTexto(label)) % Math.max(grupoElegible.length, 1)
       const elegido = elegirConRotacion(grupoElegible, `${semilla}-${label}`, desplazamiento)
       if (!elegido) return null
-      usados.add(elegido.vino.id)
-      if (elegido.vino.bodega) bodegasUsadas.add(elegido.vino.bodega)
-      if (elegido.vino.tipo) tiposUsados.add(elegido.vino.tipo)
+      registrarUso(elegido.vino)
       return { ...elegido, label, rangoTicket, ticketComida, objetivo: objetivoVenta }
     }
 
-    const lista = [
-      tienePerfilClienteActivo() ? elegir('Perfil cliente', () => true) : null,
-      elegir('Facil de vender', vino => precioBotella(vino) <= Math.max(30, rangoTicket.ideal) && precioBotella(vino) >= Math.max(14, rangoTicket.min * 0.75)),
-      requiereSalinoBurbuja ? elegir('Salino / burbuja', esVinoSalinoOBurbuja) : null,
-      elegir('Recomendado', () => true),
-      elegir('Premium', vino => precioBotella(vino) >= Math.max(35, rangoTicket.ideal, rangoTicket.max * 0.9)),
-    ].filter(Boolean)
+    const lista = []
+    const agregar = item => {
+      if (item && lista.length < 3) lista.push(item)
+    }
+    if (tienePerfilClienteActivo()) agregar(elegir('Perfil cliente', () => true))
+    if (lista.length < 3) agregar(elegir('Facil de vender', vino => precioBotella(vino) <= Math.max(30, rangoTicket.ideal) && precioBotella(vino) >= Math.max(14, rangoTicket.min * 0.75)))
+    if (lista.length < 3 && requiereSalinoBurbuja) agregar(elegir('Salino / burbuja', esVinoSalinoOBurbuja))
+    if (lista.length < 3) agregar(elegir('Recomendado', () => true))
+    if (lista.length < 3) agregar(elegir('Premium', vino => precioBotella(vino) >= Math.max(35, rangoTicket.ideal, rangoTicket.max * 0.9)))
+
+    const objetivo = Math.min(3, puntuados.filter(item => item.compatible).length)
+    const restantes = puntuados.filter(item => item.compatible && !usados.has(item.vino.id))
+    while (lista.length < objetivo && restantes.length) {
+      const elegido = restantes.shift()
+      registrarUso(elegido.vino)
+      lista.push({
+        ...elegido,
+        label: `Alternativa compatible ${lista.length + 1}`,
+        rangoTicket,
+        ticketComida,
+        objetivo: objetivoVenta,
+      })
+    }
     return lista
   }
 
@@ -1211,6 +1291,8 @@ export default function Camarero({ params }) {
       region: vino.region,
       uva: vino.uva,
       anada: vino.anada,
+      alcohol: vino.alcohol,
+      graduacion: vino.graduacion,
       precio_copa: vino.precio_copa,
       precio_botella: vino.precio_botella,
       notas_cata: vino.notas_cata,
@@ -1253,7 +1335,7 @@ export default function Camarero({ params }) {
   const rangoActualVenta = rangoBotellaParaTicket(ticketActualVenta, precioMedioVinosVenta())
   const gamasClienteVenta = autenticado ? gamasVenta() : []
   const ticketReferenciaCliente = autenticado ? ticketReferenciaVenta() : null
-  const categoriasPlatosVenta = useMemo(() => ['todos', ...new Set(platosVenta.map(plato => plato.categoria).filter(Boolean))], [platosVenta])
+  const categoriasPlatosVenta = ['todos', ...new Set(platosVenta.map(plato => plato.categoria).filter(Boolean))]
   const platosVentaFiltrados = platosVenta.filter(plato => {
     const texto = normalizar(`${plato.nombre} ${plato.descripcion || ''} ${plato.categoria || ''}`)
     const matchCategoria = categoriaPlatoVenta === 'todos' || plato.categoria === categoriaPlatoVenta
@@ -1299,9 +1381,9 @@ export default function Camarero({ params }) {
     fetch('/api/estadisticas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin, eventos }),
+      body: JSON.stringify({ sala_token: salaToken, eventos }),
     })
-  }, [autenticado, vistaServicio, restaurante?.id, recomendacionesVenta, objetivoVenta, perfilClienteVenta, rotacionVenta, consultaVenta, platosMesaVenta, pin])
+  }, [autenticado, vistaServicio, restaurante?.id, recomendacionesVenta, objetivoVenta, perfilClienteVenta, rotacionVenta, consultaVenta, platosMesaVenta, salaToken])
 
   const cx = 150, cy = 150, r = 100
 
@@ -1525,11 +1607,19 @@ export default function Camarero({ params }) {
               <div className={styles.panelHeader}>
                 <div>
                   <p className={styles.eyebrow}>Mesa</p>
-                  <h2 className={styles.panelTitle}>{platosMesaVenta.length > 1 ? `${platosMesaVenta.length} platos` : 'Venta rápida'}</h2>
-                  <p className={styles.panelSubtitle}>{platosMesaVenta.length ? platosMesaVenta.map(p => p.nombre).join(' · ') : 'Sin plato seleccionado'}</p>
+                  <h2 className={styles.panelTitle}>
+                    {modoRecomendacionVenta === 'platos'
+                      ? platosMesaVenta.length > 1 ? `${platosMesaVenta.length} platos` : 'Maridaje por platos'
+                      : 'Preferencias del cliente'}
+                  </h2>
+                  <p className={styles.panelSubtitle}>
+                    {modoRecomendacionVenta === 'platos'
+                      ? platosMesaVenta.length ? platosMesaVenta.map(p => p.nombre).join(' · ') : 'Selecciona la comida de la mesa'
+                      : 'Orienta la venta antes de elegir la comida'}
+                  </p>
                 </div>
-                <select value={objetivoVenta} onChange={e => cambiarObjetivoVenta(e.target.value)} className={styles.select}>
-                  <option value="equilibrado">Equilibrado</option>
+                <select aria-label="Objetivo de recomendacion" value={objetivoVenta} onChange={e => cambiarObjetivoVenta(e.target.value)} className={styles.select}>
+                  <option value="equilibrado">Mejor maridaje</option>
                   <option value="copas">Por copas</option>
                   <option value="ticket">Subir ticket</option>
                   <option value="rotar">Rotar stock</option>
@@ -1538,7 +1628,33 @@ export default function Camarero({ params }) {
               </div>
 
               <div className={styles.panelBody}>
-                {platosMesaVenta.length > 0 && (
+                <div className={styles.recommendModeTabs} role="tablist" aria-label="Modo de recomendacion">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={modoRecomendacionVenta === 'platos'}
+                    onClick={() => cambiarModoRecomendacionVenta('platos')}
+                    className={`${styles.recommendModeTab} ${modoRecomendacionVenta === 'platos' ? styles.recommendModeTabActive : ''}`}
+                  >
+                    Por platos
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={modoRecomendacionVenta === 'preferencias'}
+                    onClick={() => cambiarModoRecomendacionVenta('preferencias')}
+                    className={`${styles.recommendModeTab} ${modoRecomendacionVenta === 'preferencias' ? styles.recommendModeTabActive : ''}`}
+                  >
+                    Por preferencias
+                  </button>
+                </div>
+                <p className={styles.modeHint}>
+                  {modoRecomendacionVenta === 'platos'
+                    ? 'Elige uno o varios platos. Chartier y Goldstein buscan el vino que mejor acompana la mesa.'
+                    : 'Haz una o dos preguntas. La recomendacion parte de lo que busca el cliente.'}
+                </p>
+
+                {modoRecomendacionVenta === 'platos' && platosMesaVenta.length > 0 && (
                   <div className={styles.selectedBox}>
                     <div className={styles.selectedHeader}>
                       <p className={styles.sectionLabel} style={{ margin: 0 }}>Seleccionados</p>
@@ -1556,7 +1672,7 @@ export default function Camarero({ params }) {
                   </div>
                 )}
 
-                {(ticketActualVenta > 0 || platosMesaVenta.length > 1) && (
+                {modoRecomendacionVenta === 'platos' && (ticketActualVenta > 0 || platosMesaVenta.length > 1) && (
                   <div className={styles.statsGrid}>
                     <div className={styles.stat}>
                       <p className={styles.statLabel}>Ticket comida</p>
@@ -1569,16 +1685,23 @@ export default function Camarero({ params }) {
                   </div>
                 )}
 
+                {modoRecomendacionVenta === 'platos' && platosMesaVenta.length > 0 && !mostrarAfinadoCliente && (
+                  <button type="button" onClick={() => setMostrarAfinadoCliente(true)} className={styles.refineButton}>
+                    Afinar con preferencias del cliente
+                  </button>
+                )}
+
+                {(modoRecomendacionVenta === 'preferencias' || mostrarAfinadoCliente) && (
                 <div className={styles.waiterGuide}>
                   <div className={styles.guideHeader}>
                     <div>
-                      <p className={styles.sectionLabel} style={{ margin: 0 }}>Modo camarero</p>
-                      <p className={styles.guideTitle}>Pregunta rapida al cliente</p>
+                      <p className={styles.sectionLabel} style={{ margin: 0 }}>{mostrarAfinadoCliente ? 'Afinado opcional' : 'Preguntas al cliente'}</p>
+                      <p className={styles.guideTitle}>{mostrarAfinadoCliente ? 'Matiza el maridaje' : 'Orienta la recomendacion'}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => {
-                        setPerfilClienteVenta({ bebe: 'indiferente', estilo: 'facil', gama: 'auto' })
+                        setPerfilClienteVenta(PERFIL_CLIENTE_NEUTRO)
                         if (!platosMesaVenta.length) setConsultaVenta('')
                         setRotacionVenta(0)
                       }}
@@ -1628,7 +1751,7 @@ export default function Camarero({ params }) {
                         key={gama.id}
                         type="button"
                         onClick={() => cambiarPerfilClienteVenta('gama', gama.id)}
-                        className={`${styles.rangeButton} ${perfilClienteVenta.gama === gama.id ? styles.rangeActive : ''}`}
+                        className={`${styles.rangeButton} ${gama.id !== 'auto' && perfilClienteVenta.gama === gama.id ? styles.rangeActive : ''}`}
                       >
                         <strong>{gama.label}</strong>
                         <span>{gama.helper}</span>
@@ -1636,8 +1759,11 @@ export default function Camarero({ params }) {
                     ))}
                   </div>
                 </div>
+                )}
 
-                <p className={styles.sectionLabel}>Atajos</p>
+                {modoRecomendacionVenta === 'platos' && (
+                  <>
+                <p className={styles.sectionLabel}>Recomendar para...</p>
                 <div className={styles.scrollChips}>
                   {['Aperitivo', 'Pescado', 'Carne', 'Queso', 'Fritura', 'Fresco', 'Premium'].map(atajo => (
                     <button key={atajo} type="button" onClick={() => cambiarConsultaVenta(atajo)}
@@ -1650,7 +1776,7 @@ export default function Camarero({ params }) {
                 {platosVenta.length > 0 && (
                   <>
                     <div className={styles.sectionHeaderLine}>
-                      <p className={styles.sectionLabel}>Platos</p>
+                      <p className={styles.sectionLabel}>Platos de la carta</p>
                       <button type="button" onClick={() => setMostrarPlatosVenta(!mostrarPlatosVenta)} className={styles.textButton}>
                         {platosPanelAbierto ? 'Ocultar' : `Mostrar (${platosVenta.length})`}
                       </button>
@@ -1687,6 +1813,8 @@ export default function Camarero({ params }) {
                     )}
                   </>
                 )}
+                  </>
+                )}
               </div>
             </aside>
 
@@ -1699,13 +1827,15 @@ export default function Camarero({ params }) {
                     {consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta
                       ? 'Cruzando grafo Chartier...'
                       : grafoVenta?.consulta === consultaGrafoVenta && grafoVenta?.candidatos?.length
-                        ? 'Grafo Chartier unificado activo'
-                        : platosMesaVenta.length > 1 ? 'Botella puente para la mesa' : 'Tres caminos comerciales'}
+                        ? 'Chartier + Goldstein activos'
+                        : platosMesaVenta.length > 1 ? 'Botella puente para la mesa' : hayConsultaVenta() ? 'Tres opciones para la mesa' : 'Esperando seleccion'}
                   </p>
                 </div>
-                <button type="button" onClick={() => setRotacionVenta(rotacionVenta + 1)} className={styles.primaryButton}>
-                  Otras opciones
-                </button>
+                {recomendacionesVenta.length > 0 && (
+                  <button type="button" onClick={() => setRotacionVenta(rotacionVenta + 1)} className={styles.primaryButton}>
+                    Otras opciones
+                  </button>
+                )}
               </div>
 
               <div className={styles.panelBody}>
@@ -1726,11 +1856,23 @@ export default function Camarero({ params }) {
                     ))}
                   </div>
                 ) : (
-                  <p className={styles.emptyState}>{hayConsultaVenta() ? 'Sin recomendacion disponible.' : 'Selecciona un plato, rellena el cuestionario o usa un atajo para recomendar vino.'}</p>
+                  <p className={styles.emptyState}>
+                    {consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta
+                      ? 'Validando compatibilidad...'
+                      : perfilClienteVenta.estilo === 'local'
+                        ? 'No hay vinos de la zona compatibles con el plato y los filtros elegidos.'
+                        : hayConsultaVenta()
+                          ? 'Sin recomendacion disponible.'
+                          : modoRecomendacionVenta === 'platos'
+                            ? 'Selecciona uno o varios platos para encontrar el mejor vino para la mesa.'
+                            : 'Haz una o dos preguntas al cliente para orientar la recomendacion.'}
+                  </p>
                 )}
 
                 {lecturaActual && (
-                  <div className={styles.salesNote}>
+                  <details className={styles.salesNote}>
+                    <summary className={styles.salesNoteSummary}>Ver por que encajan</summary>
+                    <div className={styles.salesNoteBody}>
                     {lecturaActual.lectura && <p className={styles.salesNoteText}>{lecturaActual.lectura}</p>}
                     <p className={styles.salesNoteText} style={{ marginTop: lecturaActual.lectura ? 8 : 0 }}>{lecturaActual.frase}</p>
                     <div className={styles.noteGrid}>
@@ -1745,7 +1887,8 @@ export default function Camarero({ params }) {
                         </div>
                       ))}
                     </div>
-                  </div>
+                    </div>
+                  </details>
                 )}
               </div>
             </section>
@@ -1862,7 +2005,7 @@ export default function Camarero({ params }) {
           </div>
           <select value={objetivoVenta} onChange={e => cambiarObjetivoVenta(e.target.value)}
             style={{ background: '#222', color: '#aaa', border: '1px solid #333', borderRadius: 8, padding: '8px 10px', fontSize: 12, outline: 'none' }}>
-            <option value="equilibrado">Equilibrado</option>
+            <option value="equilibrado">Mejor maridaje</option>
             <option value="copas">Por copas</option>
             <option value="ticket">Subir ticket</option>
             <option value="rotar">Rotar stock</option>
@@ -2034,6 +2177,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
   const precioVino = Number(vino.precio_botella) || 0
   const precioEnRango = rangoTicket && precioVino >= rangoTicket.min && precioVino <= rangoTicket.max
   const chartierDirecto = item.chartierGrafo?.evidencias?.some(ev => ev.origen === 'chartier_directo')
+  const goldsteinActivo = Boolean(item.goldsteinEstructural?.reglas?.length)
   const resumenVenta = [
     tipoLabel[vino.tipo] || 'Vino',
     vino.bodega,
@@ -2067,6 +2211,9 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
             {chartierDirecto ? 'Chartier directo' : 'Chartier por familia aromatica'}
           </p>
         )}
+        {goldsteinActivo && (
+          <p className={styles.statusLine} style={{ color: '#6f767d' }}>Goldstein estructural</p>
+        )}
         {ticketComida > 0 && rangoTicket && (
           <p className={styles.statusLine} style={{ color: precioEnRango ? '#1f7a61' : '#6f767d' }}>
             {precioEnRango ? 'Precio coherente para la mesa' : `Revisar precio: ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
@@ -2082,20 +2229,32 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         )}
       </div>
 
-      <div className={styles.feedbackGrid}>
-        {acciones.map(accion => {
-          const enviado = feedbackVenta[`${vino.id}-${accion.key}-${consultaVenta}`]
-          return (
-            <button
-              key={accion.key}
-              type="button"
-              onClick={() => onFeedback(vino, accion.key, label)}
-              className={`${styles.feedbackButton} ${enviado ? styles.feedbackActive : ''}`}
-            >
-              {accion.label}
-            </button>
-          )
-        })}
+      <div className={styles.feedbackActions}>
+        <button
+          type="button"
+          onClick={() => onFeedback(vino, 'vendida', label)}
+          className={`${styles.soldButton} ${feedbackVenta[`${vino.id}-vendida-${consultaVenta}`] ? styles.feedbackActive : ''}`}
+        >
+          Vendida
+        </button>
+        <details className={styles.feedbackMenu}>
+          <summary>Mas resultados</summary>
+          <div className={styles.feedbackGrid}>
+            {acciones.filter(accion => accion.key !== 'vendida').map(accion => {
+              const enviado = feedbackVenta[`${vino.id}-${accion.key}-${consultaVenta}`]
+              return (
+                <button
+                  key={accion.key}
+                  type="button"
+                  onClick={() => onFeedback(vino, accion.key, label)}
+                  className={`${styles.feedbackButton} ${enviado ? styles.feedbackActive : ''}`}
+                >
+                  {accion.label}
+                </button>
+              )
+            })}
+          </div>
+        </details>
       </div>
     </article>
   )
@@ -2116,6 +2275,11 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         {item.chartierGrafo && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: chartierDirecto ? '#7BAF8A' : '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             {chartierDirecto ? 'Chartier directo' : 'Chartier por familia aromatica'}
+          </p>
+        )}
+        {goldsteinActivo && (
+          <p style={{ margin: '10px 0 0', fontSize: 10, color: '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Goldstein estructural
           </p>
         )}
         {ticketComida > 0 && rangoTicket && (

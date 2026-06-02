@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import * as XLSX from 'xlsx'
 import { createClient } from '@supabase/supabase-js'
+import { registrarConsumoAnthropic } from '../../../lib/anthropicUsage'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MAX_BASE64_LENGTH = 7_500_000
@@ -333,8 +334,9 @@ export async function POST(req) {
     }
 
     try {
+      const modelo = 'claude-sonnet-4-6'
       const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
+        model: modelo,
         max_tokens: 16000,
         system: 'Eres un extractor de catalogos profesionales de distribuidores de vino. Devuelves solo JSON valido. No inventas referencias ni precios.',
         messages: [{
@@ -344,6 +346,12 @@ export async function POST(req) {
             { type: 'text', text: `${PROMPT_EXTRACCION}\n\nProveedor indicado por el usuario: ${proveedorNombre || 'no indicado'}` }
           ]
         }],
+      })
+      await registrarConsumoAnthropic({
+        endpoint: 'importar_catalogo_proveedor',
+        modelo,
+        usage: message.usage,
+        metadata: { proveedor: proveedorNombre || null },
       })
 
       const vinos = extraerJson(message.content?.[0]?.text)

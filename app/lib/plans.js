@@ -13,7 +13,7 @@ export const PLANES = {
   },
   premium: {
     nombre: 'Acompanado',
-    precioOrientativo: '199 EUR/mes',
+    precioOrientativo: 'Presupuesto personalizado',
     limiteVinos: 9999,
     features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'bodega', 'inventario', 'importador_pdf', 'informes', 'proveedores', 'consultoria'],
   },

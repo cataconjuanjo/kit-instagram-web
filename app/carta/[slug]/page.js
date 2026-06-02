@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { supabase } from '../../supabase'
 import { puedeUsar } from '../../lib/plans'
 import styles from './carta.module.css'
 
@@ -29,7 +28,7 @@ const t = {
     noEncontrado: 'Restaurante no encontrado.',
     referencias: 'referencias',
     carta: 'Carta',
-    sommelier: 'Maridaje',
+    sommelier: 'ArmonIA',
     buscar: 'Buscar vino, bodega o uva...',
     filtros: 'Filtros',
     todos: 'Todos',
@@ -39,6 +38,8 @@ const t = {
     limpiarFiltros: 'Limpiar filtros',
     sinResultados: 'Sin resultados para esta búsqueda.',
     seleccionEspecial: 'Selección Juanjo',
+    seleccionCoravin: 'Selección Coravin',
+    seleccionCoravinSub: 'Botellas premium servidas por copa',
     fichaVino: 'Ficha del vino',
     region: 'Región',
     uva: 'Uva / blend',
@@ -86,6 +87,8 @@ const t = {
     limpiarFiltros: 'Clear filters',
     sinResultados: 'No results for this search.',
     seleccionEspecial: 'Special selection',
+    seleccionCoravin: 'Coravin selection',
+    seleccionCoravinSub: 'Premium bottles served by the glass',
     fichaVino: 'Wine details',
     region: 'Region',
     uva: 'Grape / blend',
@@ -154,6 +157,9 @@ export default function CartaPublica({ params }) {
   const [historialSommelier, setHistorialSommelier] = useState([])
   const [inputSeguimiento, setInputSeguimiento] = useState('')
   const scrollAntesFicha = useRef(0)
+  const tokenPrueba = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('prueba') || ''
+    : ''
 
   const i = t[idioma]
   const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87' }
@@ -216,7 +222,9 @@ export default function CartaPublica({ params }) {
   useEffect(() => {
     async function cargar() {
       const slug = (await params).slug
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('slug', slug).single()
+      const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}?carta=1`)
+      const data = res.ok ? await res.json() : {}
+      const rest = data.restaurante
       if (!rest) { setLoading(false); return }
       setRestaurante(rest)
       if (rest.color_primario) document.documentElement.style.setProperty('--color-primario', rest.color_primario)
@@ -224,18 +232,13 @@ export default function CartaPublica({ params }) {
       if (rest.color_acento) document.documentElement.style.setProperty('--color-acento', rest.color_acento)
       cargarGoogleFont(rest.tipografia)
       document.documentElement.style.setProperty('--font-titulo', (FONT_MAP[rest.tipografia] || FONT_MAP.serif).family)
-      const { data: vinosData } = await supabase.from('vinos').select('*').eq('restaurante_id', rest.id).eq('activo', true)
+      const vinosData = data.vinos
       const vinosActivos = vinosData || []
       const hayStockInformado = vinosActivos.some(vino => Number(vino.stock) > 0)
       setVinos(hayStockInformado ? vinosActivos.filter(vino => Number(vino.stock) > 0) : vinosActivos)
-      const { data: platosData } = await supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true)
+      const platosData = data.platos
       setPlatos(platosData || [])
-      const { data: selData } = await supabase
-        .from('seleccion_especial')
-        .select('*, vinos(nombre, bodega, tipo, region, uva, anada, precio_copa, precio_botella, notas_cata)')
-        .eq('restaurante_id', rest.id)
-        .eq('activo', true)
-        .order('orden')
+      const selData = data.seleccion
       setSeleccion(selData || [])
       fetch('/api/estadisticas', {
         method: 'POST',
@@ -307,10 +310,11 @@ export default function CartaPublica({ params }) {
         restaurante_id: restaurante.id,
         idioma,
         historial: [],
+        prueba_token: tokenPrueba,
       }),
     })
     if (!res.ok) {
-      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar el maridaje. Inténtalo de nuevo.')
+      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
       setCargandoIA(false)
       return
     }
@@ -343,10 +347,11 @@ export default function CartaPublica({ params }) {
         restaurante_id: restaurante.id,
         idioma,
         historial: historialSommelier,
+        prueba_token: tokenPrueba,
       }),
     })
     if (!res.ok) {
-      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar el maridaje. Inténtalo de nuevo.')
+      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
       setCargandoIA(false)
       return
     }
@@ -381,7 +386,7 @@ async function cargarPerfiles(vinosACargar) {
   const res = await fetch('/api/perfil', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre: v.nombre, tipo: v.tipo, region: v.region, uva: v.uva, anada: v.anada })
+    body: JSON.stringify({ nombre: v.nombre, tipo: v.tipo, region: v.region, uva: v.uva, anada: v.anada, restaurante_id: restaurante.id, prueba_token: tokenPrueba })
   })
   const data = await res.json()
   console.log('Perfil recibido para', v.nombre, ':', JSON.stringify(data))
@@ -403,6 +408,7 @@ setPerfiles(nuevosPerfiles)
   const moneda = restaurante?.carta_mostrar_euro !== false ? ' €' : ''
   const precioBotellaCarta = valor => _formatPrecio(valor, 0) + moneda
   const precioCopaCarta = valor => _formatPrecio(valor, restaurante?.carta_copa_decimales !== false ? 2 : 0) + moneda
+  const precioUnidadCarta = (precio, unidad) => `${precio} / ${String(unidad || '').toLowerCase()}`
 
   const preciosDisponibles = [...new Set(vinos.map(v => v.precio_botella).filter(Boolean).sort((a, b) => a - b))]
   const precioMaximo = preciosDisponibles[preciosDisponibles.length - 1] || 100
@@ -453,6 +459,7 @@ setPerfiles(nuevosPerfiles)
     const limpia = texto.replace(/\s+/g, ' ').trim()
     return limpia.length > 120 ? `${limpia.slice(0, 117)}...` : limpia
   }
+  const esCoravin = vino => normalizarTexto(vino.notas_cata || '').includes('coravin')
   const mostrarSeleccion = seleccion.length > 0 && !busqueda && filtro === 'todos' && !precioMax && !soloInternacional && !soloCopa
   const filtroActivo = precioMax || filtro !== 'todos' || soloInternacional || soloCopa
   const busquedaOFiltrado = Boolean(busqueda || filtroActivo)
@@ -461,13 +468,15 @@ setPerfiles(nuevosPerfiles)
   const vinosPorCopa = vinos.filter(v => Number(v.precio_copa) > 0).length
   const vinosMenos30 = vinos.filter(v => Number(v.precio_botella) > 0 && Number(v.precio_botella) <= 30).length
   const vinosFrescos = vinos.filter(v => ['blanco', 'rosado', 'espumoso', 'generoso'].includes(v.tipo)).length
+  const vinosCoravinFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && esCoravin(v))
+  const vinosPorCopaFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && !esCoravin(v))
 
   function ambitoComercial(vino) {
     const region = normalizarTexto(vino.region || '')
     const regionCanonica = regionOrden(vino)
     const regionCanonicaLimpia = normalizarTexto(regionCanonica)
     const localTerms = ['malaga', 'sierras de malaga', 'andalucia', 'cadiz', 'jerez', 'sanlucar', 'manzanilla', 'montilla', 'moriles', 'condado de huelva', 'granada', 'cordoba', 'sevilla']
-    const espanaTerms = ['rioja', 'ribera', 'duero', 'toro', 'bierzo', 'priorat', 'montsant', 'jumilla', 'yecla', 'alicante', 'rueda', 'rias baixas', 'valdeorras', 'navarra', 'penedes', 'penedes', 'corpinnat', 'cava', 'calatayud', 'mallorca', 'monterrei', 'ribeira sacra', 'ribeiro', 'txakoli', 'txacoli', 'valle de la orotava', 'prado irache', 'somontano', 'manchuela', 'madrid', 'gredos', 'catalunya', 'cataluna', 'castilla', 'leon', 'galicia', 'aragon', 'murcia', 'valencia', 'extremadura', 'toledo']
+    const espanaTerms = ['rioja', 'ribera', 'duero', 'toro', 'bierzo', 'priorat', 'montsant', 'jumilla', 'yecla', 'alicante', 'almansa', 'valdepenas', 'carinena', 'pago de otazu', 'rueda', 'rias baixas', 'valdeorras', 'navarra', 'penedes', 'penedes', 'corpinnat', 'cava', 'calatayud', 'mallorca', 'monterrei', 'ribeira sacra', 'ribeiro', 'txakoli', 'txacoli', 'valle de la orotava', 'prado irache', 'somontano', 'manchuela', 'madrid', 'gredos', 'catalunya', 'cataluna', 'castilla', 'leon', 'galicia', 'aragon', 'murcia', 'valencia', 'extremadura', 'toledo']
     const internacionalTerms = ['internacional', 'francia', 'aoc ', 'champagne', 'chablis', 'borgona', 'bourgogne', 'borogogne', 'gevrey', 'chambertin', 'chassagne', 'montrachet', 'corton', 'sancerre', 'anjou', 'jura', 'beajolais', 'beaujolais', 'burdeos', 'bordeaux', 'margaux', 'loire', 'loira', 'rhone', 'rhodano', 'rodano', 'alsace', 'alsacia', 'italia', 'toscana', 'piamonte', 'sicilia', 'siciliane', 'alemania', 'mosel', 'portugal', 'vinho verde', 'oporto', 'douro', 'dao', 'alentejo', 'normandie', 'sudafrica', 'sudáfrica', 'argentina', 'chile', 'napa', 'austria']
 
     if (localTerms.some(t => regionCanonicaLimpia.includes(t) || region.includes(t))) return 'local'
@@ -540,6 +549,10 @@ setPerfiles(nuevosPerfiles)
       ['jumilla', 'D.O. Jumilla'],
       ['yecla', 'D.O. Yecla'],
       ['alicante', 'D.O. Alicante'],
+      ['almansa', 'D.O. Almansa'],
+      ['valdepenas', 'D.O. Valdepeñas'],
+      ['carinena', 'D.O.P. Cariñena'],
+      ['pago de otazu', 'D.O.P. Pago de Otazu'],
       ['cava', 'D.O. Cava'],
       ['corpinnat', 'Corpinnat'],
       ['penedes', 'D.O. Penedès'],
@@ -689,9 +702,9 @@ setPerfiles(nuevosPerfiles)
                 <span>{v.precio_copa} €</span>
                 <small>{i.copa}</small>
               </div>
-              {v.precio_botella && <p className={styles.priceMeta}>{precioBotellaCarta(v.precio_botella)} botella</p>}
-              {v.precio_botella && <p className={styles.secondaryPrice}>{v.precio_botella} € botella</p>}
-              <p className={styles.glassPrice}>{v.precio_botella} € · {i.botella.toLowerCase()}</p>
+              {v.precio_botella && <p className={styles.priceMeta}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
+              {v.precio_botella && <p className={styles.secondaryPrice}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
+              <p className={styles.glassPrice}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>
               <p className={styles.bottlePrice}>{v.precio_copa} €</p>
               <p className={styles.glassPrice}>{i.copa}</p>
             </>
@@ -702,9 +715,9 @@ setPerfiles(nuevosPerfiles)
                 <span>{v.precio_botella} €</span>
                 <small>{i.botella}</small>
               </div>
-              {tieneCopa && <p className={styles.priceMeta}>{precioCopaCarta(v.precio_copa)} copa</p>}
-              {tieneCopa && <p className={styles.secondaryPrice}>{v.precio_copa} € copa</p>}
-              {v.precio_copa && <p className={styles.glassPrice}>{v.precio_copa} € · {i.copa.toLowerCase()}</p>}
+              {tieneCopa && <p className={styles.priceMeta}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
+              {tieneCopa && <p className={styles.secondaryPrice}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
+              {v.precio_copa && <p className={styles.glassPrice}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
               <p className={styles.bottlePrice}>{v.precio_botella} €</p>
             </>
           )}
@@ -1101,7 +1114,27 @@ setPerfiles(nuevosPerfiles)
           </section>
         )}
 
-        {vinosFiltrados.some(v => Number(v.precio_copa) > 0) && filtro === 'todos' && (
+        {vinosCoravinFiltrados.length > 0 && filtro === 'todos' && (
+          <section className={styles.accordionSection}>
+            <button
+              type="button"
+              className={styles.accordionHead}
+              onClick={evento => toggleSeccion('coravin', evento)}
+              aria-expanded={soloCopa || busquedaOFiltrado || seccionAbierta === 'coravin'}
+            >
+              <div>
+                <h2 className={styles.sectionTitle}>{i.seleccionCoravin}</h2>
+                <p className={styles.sectionSub}>{i.seleccionCoravinSub} - {vinosCoravinFiltrados.length} {i.referencias}</p>
+              </div>
+              <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'coravin' ? '-' : '+'}</span>
+            </button>
+            {(soloCopa || busquedaOFiltrado || seccionAbierta === 'coravin') && gruposAmbito.map(ambito =>
+              renderBloqueAmbito(ambito, vinosCoravinFiltrados, { precioCopaPrincipal: true, prefix: 'coravin' })
+            )}
+          </section>
+        )}
+
+        {vinosPorCopaFiltrados.length > 0 && filtro === 'todos' && (
           <section className={styles.accordionSection}>
             <button
               type="button"
@@ -1111,12 +1144,12 @@ setPerfiles(nuevosPerfiles)
             >
               <div>
                 <h2 className={styles.sectionTitle}>Vinos por copa</h2>
-                <p className={styles.sectionSub}>{vinosFiltrados.filter(v => Number(v.precio_copa) > 0).length} {i.referencias}</p>
+                <p className={styles.sectionSub}>{vinosPorCopaFiltrados.length} {i.referencias}</p>
               </div>
               <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'copas' ? '−' : '+'}</span>
             </button>
             {(soloCopa || busquedaOFiltrado || seccionAbierta === 'copas') && gruposAmbito.map(ambito =>
-              renderBloqueAmbito(ambito, vinosFiltrados.filter(v => Number(v.precio_copa) > 0), { precioCopaPrincipal: true, prefix: 'copas' })
+              renderBloqueAmbito(ambito, vinosPorCopaFiltrados, { precioCopaPrincipal: true, prefix: 'copas' })
             )}
           </section>
         )}

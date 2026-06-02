@@ -7,6 +7,8 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
+import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { requireRestaurantAccess } from '../_lib/auth'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -75,13 +77,21 @@ function validarFamilias(result) {
   }
 }
 
-async function enriquecerUnPlato(plato) {
+async function enriquecerUnPlato(plato, restauranteId) {
   try {
+    const modelo = 'claude-haiku-4-5-20251001'
     const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: modelo,
       max_tokens: 256,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: USER_PROMPT(plato.nombre, plato.descripcion, plato.categoria) }],
+    })
+    await registrarConsumoAnthropic({
+      restauranteId,
+      endpoint: 'enriquecer_platos_batch',
+      modelo,
+      usage: message.usage,
+      metadata: { plato_id: plato.id, plato: plato.nombre },
     })
     const texto = message.content?.[0]?.text || ''
     const parsed = extraerJson(texto)
@@ -99,11 +109,11 @@ async function enriquecerUnPlato(plato) {
   }
 }
 
-async function procesarEnLotes(platos, tamanoLote = 3) {
+async function procesarEnLotes(platos, restauranteId, tamanoLote = 3) {
   const resultados = []
   for (let i = 0; i < platos.length; i += tamanoLote) {
     const lote = platos.slice(i, i + tamanoLote)
-    const resultadosLote = await Promise.all(lote.map(enriquecerUnPlato))
+    const resultadosLote = await Promise.all(lote.map(plato => enriquecerUnPlato(plato, restauranteId)))
     resultados.push(...resultadosLote)
     // Pequeña pausa entre lotes para no saturar Anthropic
     if (i + tamanoLote < platos.length) {
@@ -120,6 +130,9 @@ export async function POST(req) {
     if (!restaurante_id) {
       return Response.json({ error: 'restaurante_id requerido' }, { status: 400 })
     }
+
+    const auth = await requireRestaurantAccess(req, supabaseAdmin, restaurante_id)
+    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
 
     // Verificar que el restaurante existe
     const { data: restaurante } = await supabaseAdmin
@@ -149,7 +162,7 @@ export async function POST(req) {
       return Response.json({ procesados: 0, errores: 0, total: 0, mensaje: 'Todos los platos ya tienen perfil aromático' })
     }
 
-    const resultados = await procesarEnLotes(platos, 3)
+    const resultados = await procesarEnLotes(platos, restaurante_id, 3)
 
     const procesados = resultados.filter(r => r.ok).length
     const errores = resultados.filter(r => !r.ok).length

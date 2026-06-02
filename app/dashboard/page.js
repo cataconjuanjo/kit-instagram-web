@@ -6,6 +6,7 @@ import { supabase } from '../supabase'
 import { getEffectiveRestaurantEmail } from '../demo'
 import { puedeUsar } from '../lib/plans'
 import styles from './dashboard.module.css'
+import OpenCartaPruebaButton from './OpenCartaPruebaButton'
 
 function normalizar(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -208,7 +209,7 @@ export default function DashboardHome() {
     .slice(0, 3)
 
   const enlacesServicio = [
-    { label: 'Abrir carta', href: restaurante?.slug ? `/carta/${restaurante.slug}` : '/dashboard/carta', external: Boolean(restaurante?.slug) },
+    { label: 'Probar carta', pruebaCarta: true },
     puedeUsar(restaurante, 'modo_camarero') && { label: 'Modo camarero', href: restaurante?.slug ? `/camarero/${restaurante.slug}` : '/dashboard/sala', external: Boolean(restaurante?.slug) },
     puedeUsar(restaurante, 'cierre_servicio') && { label: 'Cerrar servicio', href: '/dashboard/cierre' },
     { label: 'QR mesa', href: '/dashboard/qr' },
@@ -377,7 +378,9 @@ export default function DashboardHome() {
               <p>Un resumen operativo para saber qué vender, qué vigilar y qué enlaces necesita el equipo.</p>
             </div>
             <div className={styles.servicePlanActions}>
-              {enlacesServicio.map(enlace => enlace.external ? (
+              {enlacesServicio.map(enlace => enlace.pruebaCarta ? (
+                <OpenCartaPruebaButton key={enlace.label} restauranteId={restaurante?.id}>{enlace.label}</OpenCartaPruebaButton>
+              ) : enlace.external ? (
                 <a key={enlace.label} href={enlace.href} target="_blank" rel="noreferrer">{enlace.label}</a>
               ) : (
                 <Link key={enlace.label} href={enlace.href}>{enlace.label}</Link>

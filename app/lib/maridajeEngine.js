@@ -108,6 +108,12 @@ export function normalizar(texto = '') {
   return String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
+function incluyeTerminoCompleto(texto, termino) {
+  const textoDelimitado = ` ${normalizar(texto).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()} `
+  const terminoDelimitado = normalizar(termino).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
+  return terminoDelimitado && textoDelimitado.includes(` ${terminoDelimitado} `)
+}
+
 function textoPlano(valor) {
   if (!valor) return ''
   if (typeof valor === 'string') return valor
@@ -335,10 +341,15 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
   const esDulceOxidativo = esVinoDulceOSemidulce(vino, textoVino) || esPx || esTawnyOPorto
   const quesoTrucadoParaTinto = ['clavo', 'olivada', 'tomate seco', 'tomates secos'].some(t => consultaNormalizada.includes(t))
   const metodo = metodosPlato(consultaNormalizada)
+  const esCarneRojaPotente = [
+    'carne roja', 'rabo', 'cordero', 'ternera', 'vaca', 'buey', 'chuleton', 'txuleton',
+    'chuleta', 'entrecot', 't-bone', 'tbone', 'solomillo', 'carrillera', 'carrillada',
+    'magret', 'pichon', 'caza', 'liebre', 'venado', 'jabali',
+  ].some(t => consultaNormalizada.includes(t))
   const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
     'postre', 'tarta', 'helado', 'brownie', 'chocolate', 'queso azul', 'azul',
     'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
-  ].some(t => consultaNormalizada.includes(t))
+  ].some(t => incluyeTerminoCompleto(consultaNormalizada, t))
 
   if (esDulceOxidativo && !contextoDulcePermitido && !metodo.picante) {
     return {
@@ -355,10 +366,10 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
   // Carne roja potente: el blanco no es la lectura correcta según WSET L3
   // (la grasa y la proteína de la carne interactúan con el tanino, no con la acidez del blanco)
   // Excepciones: salsas cremosas/gratinadas, servicio frío, o preparaciones muy suaves
-  if (contexto === 'carne' && vino.tipo === 'blanco' && !metodo.gratinado && !metodo.frio) {
+  if (esCarneRojaPotente && vino.tipo === 'blanco' && !metodo.gratinado && !metodo.frio) {
     return { compatible: false, penalizacion: 75, razon: 'Para carne roja la grasa infiltrada suaviza el tanino y la proteína se une a él; el blanco no tiene esa interacción estructural. Excepciones: salsas cremosas o gratinados.' }
   }
-  if (contexto === 'carne' && vino.tipo === 'espumoso' && !metodo.frio && !metodo.frito) {
+  if (esCarneRojaPotente && vino.tipo === 'espumoso' && !metodo.frio && !metodo.frito) {
     return { compatible: false, penalizacion: 50, razon: 'El espumoso no es la primera lectura para carne roja intensa.' }
   }
   if (contexto === 'fritura') {
@@ -461,7 +472,7 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
   const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
     'postre', 'tarta', 'helado', 'brownie', 'chocolate', 'queso azul', 'azul',
     'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
-  ].some(t => consultaNormalizada.includes(t))
+  ].some(t => incluyeTerminoCompleto(consultaNormalizada, t))
   if (metodo.dulce && contextoDulcePermitido && ['dulce', 'generoso'].includes(vino.tipo)) score += 4
   if (metodo.picante && ['perfil fresco', 'floral', 'dulce', 'baja graduacion'].some(t => textoVino.includes(t))) score += 5
   if (contexto === 'queso' && ['oxidativo', 'dulce', 'salino', 'floral', 'alta acidez'].some(t => textoVino.includes(t))) score += 6
@@ -562,7 +573,7 @@ export function analizarMaridaje(consulta, vinos = []) {
   return {
     lectura,
     candidatos: compatibles.slice(0, 10),
-    recomendados: unique([bajo30, sinLimite], 2),
+    recomendados: unique([bajo30, sinLimite, ...compatibles], 3),
   }
 }
 

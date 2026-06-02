@@ -3,6 +3,10 @@ export default function robots() {
     rules: {
       userAgent: '*',
       allow: '/',
+      disallow: [
+        '/carta/propuesta-',
+        '/camarero/propuesta-',
+      ],
     },
     sitemap: 'https://cataconjuanjo.com/sitemap.xml',
   }

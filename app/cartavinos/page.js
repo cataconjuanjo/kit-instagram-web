@@ -60,9 +60,9 @@ const demoSegura = [
 ]
 
 const faq = [
-  ['¿Hay permanencia mínima?', 'No. Puedes cancelar cuando quieras. Si eres cliente fundador, el precio reducido se mantiene mientras mantengas la suscripción activa.'],
+  ['¿Hay permanencia mínima?', 'No. Puedes cancelar cuando quieras. La suscripción se adapta al momento de tu restaurante.'],
   ['¿Cuánto tarda en estar listo?', 'La puesta en marcha suele llevar entre 1 y 3 días. Depende del tamaño de la carta y de si ya tienes los vinos en un listado o hay que construirlo desde cero.'],
-  ['¿La configuración inicial tiene coste aparte?', 'Sí, desde 49 €. Está incluida sin coste adicional en el plan Acompañado.'],
+  ['¿La configuración inicial tiene coste aparte?', 'Depende del volumen y del estado de la carta. Antes de empezar valoramos la carga inicial y te indicamos el importe con claridad. Está incluida en el plan Acompañado.'],
   ['¿Puedo cambiar de plan más adelante?', 'Sí, en cualquier momento. Puedes subir de Básico a Sala o a Acompañado según lo que necesites.'],
   ['¿Qué pasa con mis datos si cancelo?', 'Antes de cerrar la cuenta te entrego toda tu información en formato descargable. Nada desaparece sin que lo tengas guardado.'],
   ['¿Necesito instalar algo?', 'No. Carta Viva funciona desde el navegador en móvil, tablet y escritorio. Sin apps, sin instalaciones.'],
@@ -91,8 +91,7 @@ const modalidades = [
 const planes = [
   {
     nombre: 'Básico',
-    precio: '39',
-    precioPublico: '59',
+    precio: '59',
     etiqueta: 'Carta digital viva',
     texto: 'Para restaurantes que quieren sustituir el PDF por una carta digital cuidada, actualizable y con maridaje para el cliente.',
     incluye: ['Carta digital por QR', 'Carta de vinos actualizable', 'Fichas de vino claras', 'Maridaje para el cliente', 'Personalización visual'],
@@ -100,8 +99,7 @@ const planes = [
   },
   {
     nombre: 'Sala',
-    precio: '79',
-    precioPublico: '99',
+    precio: '99',
     etiqueta: 'El plan más operativo',
     texto: 'Para restaurantes que quieren que su equipo recomiende mejor y venda vino con más seguridad durante el servicio.',
     incluye: ['Todo el plan Básico', 'Modo camarero con PIN', 'Recomendaciones por plato o mesa', 'Objetivos de venta en sala', 'Estadísticas y control de bodega'],
@@ -110,12 +108,12 @@ const planes = [
   },
   {
     nombre: 'Acompañado',
-    precio: '149',
-    precioPublico: '199',
+    precio: '199',
     etiqueta: 'Software + consultor',
     texto: 'Para restaurantes que quieren además una lectura mensual de su carta, oportunidades de venta y criterio profesional continuo.',
     incluye: ['Todo el plan Sala', 'Revisión mensual del consultor', 'Lectura profesional de oportunidades', 'Ajuste experto de maridajes y carta', 'Soporte prioritario'],
     premium: true,
+    desde: true,
     cta: 'Quiero acompañamiento',
   },
 ]
@@ -331,11 +329,9 @@ export default function CartaVivaPage() {
               <h3>{item.nombre}</h3>
               <div className="plan-label">{item.etiqueta}</div>
               <div className="price">
-                <del className="price-publico">{item.precioPublico} €</del>
-                <strong>{item.precio} €</strong>
+                <strong>{item.desde ? 'Desde ' : ''}{item.precio} €</strong>
                 <small>/mes</small>
               </div>
-              <p className="price-fundador-label">Precio fundador</p>
               <p>{item.texto}</p>
               <ul>
                 {item.incluye.map((linea) => <li key={linea}>{linea}</li>)}
@@ -345,7 +341,7 @@ export default function CartaVivaPage() {
           ))}
         </div>
         <p className="pricing-note">
-          * Precios orientativos para un restaurante independiente. El precio final puede variar según volumen de carta o número de locales.
+          * Precios mensuales orientativos para un restaurante independiente. La configuración inicial se valora según el volumen y el estado de la carta.
         </p>
         <div className="plans-comparison" aria-label="Comparativa de planes Carta Viva">
           <div className="plans-col-header">

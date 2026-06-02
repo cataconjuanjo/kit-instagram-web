@@ -307,6 +307,54 @@
   font-weight: 650;
 }
 
+.recommendModeTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  background: #e8ece7;
+  border: 1px solid #d9ded7;
+  border-radius: 8px;
+}
+
+.recommendModeTab {
+  min-height: 38px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #687078;
+  cursor: pointer;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.recommendModeTabActive {
+  background: #17191d;
+  color: #ffffff;
+}
+
+.modeHint {
+  margin: 9px 0 0;
+  color: #687078;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.refineButton {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 12px;
+  border: 1px solid #cfd5cd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f6d58;
+  cursor: pointer;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .waiterGuide {
   margin-top: 14px;
   padding: 12px;
@@ -583,9 +631,9 @@
 
 .feedbackGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .feedbackButton {
@@ -598,6 +646,44 @@
   padding: 6px 4px;
   font-size: 10px;
   font-weight: 700;
+}
+
+.feedbackActions {
+  display: grid;
+  grid-template-columns: minmax(82px, 0.8fr) minmax(110px, 1.2fr);
+  gap: 6px;
+  align-items: start;
+  margin-top: 12px;
+}
+
+.soldButton,
+.feedbackMenu summary {
+  min-height: 34px;
+  box-sizing: border-box;
+  border: 1px solid #d9ded7;
+  border-radius: 8px;
+  background: #f7f7f2;
+  color: #555d65;
+  cursor: pointer;
+  padding: 7px 8px;
+  font-size: 10px;
+  font-weight: 750;
+  text-align: center;
+}
+
+.soldButton {
+  width: 100%;
+}
+
+.feedbackMenu summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  list-style: none;
+}
+
+.feedbackMenu summary::-webkit-details-marker {
+  display: none;
 }
 
 .feedbackActive {
@@ -619,6 +705,32 @@
   color: #dfe3dc;
   font-size: 12px;
   line-height: 1.55;
+}
+
+.salesNoteSummary {
+  color: #dfe3dc;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+  list-style: none;
+}
+
+.salesNoteSummary::-webkit-details-marker {
+  display: none;
+}
+
+.salesNoteSummary::after {
+  content: '+';
+  float: right;
+  color: #8e979f;
+}
+
+.salesNote[open] .salesNoteSummary::after {
+  content: '-';
+}
+
+.salesNoteBody {
+  margin-top: 12px;
 }
 
 .noteGrid {

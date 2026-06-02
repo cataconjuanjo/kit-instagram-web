@@ -6,6 +6,7 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
+import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
 
 export default function QRPage() {
   const [restaurante, setRestaurante] = useState(null)
@@ -60,8 +61,8 @@ export default function QRPage() {
   if (loading) return <LoadingState />
 
   const pruebas = [
-    { titulo: 'Abrir desde cliente', detalle: restaurante?.hub_activo ? 'El QR abre el hub público.' : 'El QR abre la carta digital.', href: urlDirecta },
-    { titulo: 'Carta directa', detalle: 'Comprueba platos, vinos, precios y tiempos de carga.', href: urlCarta },
+    { titulo: 'Abrir enlace público', detalle: restaurante?.hub_activo ? 'El QR abre el hub público. Si consultas ArmonIA, contará como cliente real.' : 'El QR abre la carta digital. Si consultas ArmonIA, contará como cliente real.', href: urlDirecta },
+    { titulo: 'Carta directa', detalle: 'Comprueba platos, vinos, precios y tiempos de carga. Esta apertura se registra como prueba interna.', pruebaCarta: true },
     { titulo: 'Versión impresión', detalle: 'Abre la vista preparada para imprimir o guardar PDF.', href: urlPrint },
   ]
 
@@ -121,7 +122,17 @@ export default function QRPage() {
             </div>
             <div className={styles.panelBody}>
               <div className={styles.itemStack}>
-                {pruebas.map(prueba => (
+                {pruebas.map(prueba => prueba.pruebaCarta ? (
+                  <OpenCartaPruebaButton key={prueba.titulo} restauranteId={restaurante?.id} className={styles.itemCard}>
+                    <div className={styles.sectionHead} style={{ margin: 0 }}>
+                      <div>
+                        <h3 className={styles.sectionTitle}>{prueba.titulo}</h3>
+                        <p className={styles.sectionText}>{prueba.detalle}</p>
+                      </div>
+                      <span className={styles.badge}>Abrir</span>
+                    </div>
+                  </OpenCartaPruebaButton>
+                ) : (
                   <a key={prueba.titulo} href={prueba.href} target="_blank" rel="noreferrer" className={styles.itemCard}>
                     <div className={styles.sectionHead} style={{ margin: 0 }}>
                       <div>

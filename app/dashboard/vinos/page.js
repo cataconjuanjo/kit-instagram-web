@@ -145,7 +145,8 @@ const vinosActivos = vinos.filter(vino => vino.activo !== false)
           tipo: nuevoVino.tipo,
           region: nuevoVino.region,
           uva: nuevoVino.uva,
-          anada: nuevoVino.anada
+          anada: nuevoVino.anada,
+          restaurante_id: restaurante.id
         })
       })
       const data = await res.json()
@@ -225,7 +226,7 @@ async function procesarArchivos(files) {
       const res = await fetch('/api/importar-vinos-pdf', {
         method: 'POST',
         headers: await authHeaders(),
-        body: JSON.stringify({ fileBase64: base64, mediaType: validos[i].type || 'application/pdf' })
+        body: JSON.stringify({ fileBase64: base64, mediaType: validos[i].type || 'application/pdf', restaurante_id: restaurante.id })
       })
       const data = await res.json()
       if (res.ok && Array.isArray(data.vinos)) todosVinos.push(...data.vinos)
@@ -648,9 +649,9 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
 </p>
                   </div>
                 </div>
-                <p style={{ margin: 0, fontSize: 13, color: '#888', alignSelf: 'center' }}>{v.bodega}{v.region ? ` · ${v.region}` : ''}</p>
-                <p style={{ margin: 0, fontSize: 13, color: '#111', alignSelf: 'center' }}>{v.precio_copa} €</p>
-                <p style={{ margin: 0, fontSize: 13, color: '#111', alignSelf: 'center' }}>
+                <p data-label="Bodega" style={{ margin: 0, fontSize: 13, color: '#888', alignSelf: 'center' }}>{v.bodega}{v.region ? ` · ${v.region}` : ''}</p>
+                <p data-label="Copa" style={{ margin: 0, fontSize: 13, color: '#111', alignSelf: 'center' }}>{v.precio_copa} €</p>
+                <p data-label="Botella" style={{ margin: 0, fontSize: 13, color: '#111', alignSelf: 'center' }}>
   {editandoPrecio === v.id ? (
     <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       <input
@@ -671,7 +672,7 @@ precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(v
     </span>
   )}
 </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'center' }}>
+                <div data-label="Stock" style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'center' }}>
   <button onClick={() => actualizarStock(v, -1)} style={{ width: 22, height: 22, borderRadius: 4, border: '1px solid #e8e8e8', background: 'none', cursor: v.stock === 0 ? 'not-allowed' : 'pointer', color: '#aaa', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>−</button>
   <span style={{ fontSize: 13, color: v.stock === 0 ? '#C47A8A' : v.stock <= 3 ? '#C4A55A' : '#888', minWidth: 20, textAlign: 'center' }}>{v.stock}</span>
   <button onClick={() => actualizarStock(v, 1)} style={{ width: 22, height: 22, borderRadius: 4, border: '1px solid #e8e8e8', background: 'none', cursor: 'pointer', color: '#aaa', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>

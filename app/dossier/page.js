@@ -796,7 +796,7 @@ export default function Dossier() {
                   <p className="plan-tag">Plan Básico</p>
                   <p className="plan-name">Básico</p>
                   <p className="plan-price-real">59€ <span>/ mes</span></p>
-                  <p className="plan-founder">Precio fundador: 39€/mes</p>
+                  <p className="plan-founder">Carta digital viva para clientes</p>
                 </div>
                 <div className="plan-body">
                   <p className="plan-limit">Hasta 100 referencias de vino</p>
@@ -816,7 +816,7 @@ export default function Dossier() {
                   <p className="plan-tag">Más popular</p>
                   <p className="plan-name">Sala</p>
                   <p className="plan-price-real">99€ <span>/ mes</span></p>
-                  <p className="plan-founder">Precio fundador: 79€/mes</p>
+                  <p className="plan-founder">La opción más operativa</p>
                 </div>
                 <div className="plan-body">
                   <p className="plan-limit">Hasta 200 referencias de vino</p>
@@ -838,8 +838,8 @@ export default function Dossier() {
                 <div className="plan-top">
                   <p className="plan-tag">Plan Premium</p>
                   <p className="plan-name">Acompañado</p>
-                  <p className="plan-price-real">199€ <span>/ mes</span></p>
-                  <p className="plan-founder">Precio fundador: 149€/mes</p>
+                  <p className="plan-price-real">Desde 199€ <span>/ mes</span></p>
+                  <p className="plan-founder">Según necesidades del restaurante</p>
                 </div>
                 <div className="plan-body">
                   <p className="plan-limit">Más de 200 referencias de vino</p>
@@ -856,13 +856,12 @@ export default function Dossier() {
 
             </div>
 
-            {/* Nota precios fundador */}
+            {/* Nota comercial */}
             <div className="founder-note">
               <p>
-                <strong>Precios fundador para los primeros 5 restaurantes.</strong>{' '}
-                Los primeros cinco restaurantes que se sumen mantendrán el precio fundador
-                de por vida, sin que ninguna subida futura les afecte. Es una forma de
-                reconocer a quienes confían primero.
+                <strong>Configuración inicial según el volumen y el estado de la carta.</strong>{' '}
+                Antes de empezar valoramos la carga de vinos, platos y datos de bodega para que el
+                restaurante conozca el alcance con claridad. En el plan Acompañado está incluida.
               </p>
               <p style={{ marginTop: 10 }}>
                 <strong>Carta Viva es una app viva.</strong>{' '}

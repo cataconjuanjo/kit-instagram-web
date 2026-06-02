@@ -1,15 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { requireUser } from '../_lib/auth'
+import { requireRestaurantAccess } from '../_lib/auth'
+import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MAX_BASE64_LENGTH = 4_500_000
 
 export async function POST(req) {
   try {
-    const auth = await requireUser(req)
+    const { pdfBase64, fileBase64, mediaType, restaurante_id } = await req.json()
+    const auth = await requireRestaurantAccess(req, supabaseAdmin, restaurante_id)
     if (auth.error) return Response.json({ texto: '', error: auth.error }, { status: auth.status })
-
-    const { pdfBase64, fileBase64, mediaType } = await req.json()
     const data = fileBase64 || pdfBase64
     const tipo = (mediaType || 'application/pdf').toLowerCase()
 
@@ -24,8 +25,9 @@ export async function POST(req) {
       ? { type: 'image', source: { type: 'base64', media_type: tipo, data } }
       : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } }
 
+    const modelo = 'claude-haiku-4-5-20251001'
     const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: modelo,
       max_tokens: 4000,
       system: 'Eres un extractor de cartas de restaurante. Lees PDFs e imágenes de cartas de comida y devuelves platos limpios para importar. No inventes platos. No incluyas vinos, bebidas, menús legales, alérgenos sueltos, horarios ni texto promocional. Responde solo en texto plano.',
       messages: [{
@@ -51,6 +53,13 @@ Si hay variantes de un mismo plato que se venden como platos distintos, mantenla
           },
         ],
       }],
+    })
+    await registrarConsumoAnthropic({
+      restauranteId: restaurante_id,
+      endpoint: 'importar_platos',
+      modelo,
+      usage: message.usage,
+      metadata: { media_type: tipo },
     })
 
     return Response.json({ texto: message.content?.[0]?.text || '' })

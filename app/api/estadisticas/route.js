@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
+import { validarSesionCamarero } from '../../lib/camareroSession'
 
 const TIPOS_PERMITIDOS = new Set(['escaneo', 'sommelier', 'recomendacion', 'venta', 'incidencia', 'inventario'])
 const TIPOS_PUBLICOS = new Set(['escaneo'])
@@ -14,21 +15,10 @@ function limpiarEvento(evento = {}) {
   return { restaurante_id, tipo, detalle }
 }
 
-async function validarPinRestaurante(restauranteId, pin) {
-  const { data: restaurante, error } = await supabaseAdmin
-    .from('restaurantes')
-    .select('id, camarero_pin')
-    .eq('id', restauranteId)
-    .single()
-
-  if (error || !restaurante) return { error: 'Restaurante no encontrado.', status: 404 }
-
-  const pinValido = String(restaurante.camarero_pin || process.env.NEXT_PUBLIC_CAMARERO_FALLBACK_PIN || '').trim()
-  if (!pinValido || String(pin || '').trim() !== pinValido) {
-    return { error: 'No autorizado.', status: 403 }
-  }
-
-  return { ok: true }
+function validarAccesoSala(restauranteId, token) {
+  return validarSesionCamarero(token, restauranteId)
+    ? { ok: true }
+    : { error: 'No autorizado.', status: 403 }
 }
 
 export async function POST(req) {
@@ -47,7 +37,7 @@ export async function POST(req) {
       if (restauranteIds.length !== 1) {
         return Response.json({ error: 'Los eventos deben pertenecer a un solo restaurante.' }, { status: 400 })
       }
-      const acceso = await validarPinRestaurante(restauranteIds[0], body.pin)
+      const acceso = validarAccesoSala(restauranteIds[0], body.sala_token)
       if (acceso.error) return Response.json({ error: acceso.error }, { status: acceso.status })
     }
 
@@ -65,13 +55,13 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url)
     const restauranteId = searchParams.get('restaurante_id')
-    const pin = String(searchParams.get('pin') || '').trim()
+    const salaToken = String(req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim()
 
-    if (!restauranteId || !pin) {
-      return Response.json({ error: 'restaurante_id y pin son obligatorios.' }, { status: 400 })
+    if (!restauranteId || !salaToken) {
+      return Response.json({ error: 'restaurante_id y sala_token son obligatorios.' }, { status: 400 })
     }
 
-    const acceso = await validarPinRestaurante(restauranteId, pin)
+    const acceso = validarAccesoSala(restauranteId, salaToken)
     if (acceso.error) return Response.json({ error: acceso.error }, { status: acceso.status })
 
     const [{ data: ventas }, { data: recomendaciones }] = await Promise.all([

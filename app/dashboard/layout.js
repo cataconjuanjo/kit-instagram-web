@@ -6,7 +6,9 @@ import Link from 'next/link'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail } from '../demo'
 import { nombrePlan, puedeUsar } from '../lib/plans'
+import UsageTracker from './UsageTracker'
 import styles from './layout.module.css'
+import OpenCartaPruebaButton from './OpenCartaPruebaButton'
 
 const icon = {
   home: <svg viewBox="0 0 20 20" fill="currentColor" width={16} height={16}><path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7a1 1 0 0 0 1.414 1.414L4 10.414V17a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-3h2v3a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6.586l.293.293a1 1 0 0 0 1.414-1.414l-7-7z"/></svg>,
@@ -114,6 +116,7 @@ export default function DashboardLayout({ children }) {
 
   return (
     <div className={styles.shell}>
+      {restaurante && <UsageTracker restauranteId={restaurante.id} />}
       <nav className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <div className={styles.brandIdentity}>
@@ -168,14 +171,17 @@ export default function DashboardLayout({ children }) {
 
         <div className={styles.sidebarFooter}>
           <div className={styles.footerLinks}>
-            <a href={restaurante?.slug ? `/carta/${restaurante.slug}` : '#'} target="_blank" rel="noreferrer" className={styles.footerLink}>
-              Carta pública
-            </a>
+            <OpenCartaPruebaButton restauranteId={restaurante?.id} className={styles.footerLink}>
+              Probar carta
+            </OpenCartaPruebaButton>
             {puedeUsar(restaurante, 'modo_camarero') && (
               <a href={restaurante?.slug ? `/camarero/${restaurante.slug}` : '#'} target="_blank" rel="noreferrer" className={styles.footerLink}>
                 Modo camarero
               </a>
             )}
+            <Link href="/dashboard/sugerencias" className={styles.footerLink}>
+              Enviar sugerencia
+            </Link>
           </div>
           <button type="button" onClick={cerrarSesion} className={styles.logoutButton}>Salir</button>
         </div>

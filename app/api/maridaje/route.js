@@ -1,7 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { analizarMaridaje, resumenAnalisisParaPrompt } from '../../lib/maridajeEngine'
+import { analizarConGoldstein } from '../../lib/goldsteinStructural'
 import { puedeUsar } from '../../lib/plans'
+import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { origenConsumoCarta } from '../../lib/cartaPruebaToken'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -53,27 +56,51 @@ function lineaPlato(plato) {
 }
 
 // ── Prompt maestro — basado en metodología Chartier ───────────────────────
-function vinoMencionado(linea, vinos) {
-  const texto = normalizarTexto(linea)
+function limpiarPrefijoRecomendacion(linea = '') {
+  return String(linea).trim().replace(/^(?:[-*•]\s*|\d+[.)]\s*)/, '')
+}
+
+function vinoAlInicioDeRecomendacion(linea, vinos) {
+  const limpia = limpiarPrefijoRecomendacion(linea)
+  const texto = normalizarTexto(limpia)
   return (vinos || []).find(vino => {
     const nombre = normalizarTexto(vino.nombre || '')
-    return nombre.length >= 4 && texto.includes(nombre)
+    if (nombre.length < 4 || !texto.startsWith(nombre)) return false
+    return /^[-–—:]\s*\S/.test(texto.slice(nombre.length).trimStart())
   })
 }
 
-function fallbackDesdeMotor(candidatos = [], idioma = 'es') {
-  const lineas = candidatos
-    .filter(item => item?.vino?.nombre)
-    .slice(0, 2)
-    .map(item => {
-      const vino = item.vino
-      const precio = Number(vino.precio_botella) ? `${Number(vino.precio_botella)} EUR` : ''
-      const motivo = item.motivo || (idioma === 'en'
-        ? 'it is the friendliest option available for the dish, with enough freshness and balance'
-        : 'es la opcion mas amable para el plato, con frescura y equilibrio')
-      return `${vino.nombre} - ${motivo}. ${precio}`.trim()
-    })
+function lineaFallback(item, idioma = 'es') {
+  const vino = item.vino
+  const precio = Number(vino.precio_botella) ? `${Number(vino.precio_botella)}€` : ''
+  const motivo = item.motivo || (idioma === 'en'
+    ? 'it is a friendly option for the dish, with freshness and balance'
+    : 'es una opcion amable para el plato, con frescura y equilibrio')
+  return `${vino.nombre} — ${motivo}. ${precio}`.trim()
+}
 
+function candidatosUnicos(candidatos = [], limite = 3) {
+  const usados = new Set()
+  return candidatos.filter(item => {
+    const clave = item?.vino?.id || item?.vino?.nombre
+    if (!clave || usados.has(clave)) return false
+    usados.add(clave)
+    return true
+  }).slice(0, limite)
+}
+
+function candidatoDesdeGrafo(item) {
+  return {
+    vino: item.vino,
+    score: item.scoreGrafo,
+    motivo: 'es una de las opciones mejor respaldadas para acompañar el conjunto de platos sin imponerse',
+    fuente: 'Grafo Chartier + validacion estructural Goldstein',
+    compatible: true,
+  }
+}
+
+function fallbackDesdeMotor(candidatos = [], idioma = 'es') {
+  const lineas = candidatosUnicos(candidatos, 3).map(item => lineaFallback(item, idioma))
   if (lineas.length) return lineas.join('\n\n')
   return idioma === 'en'
     ? 'I cannot find a reliable pairing with the available wine list.'
@@ -82,19 +109,27 @@ function fallbackDesdeMotor(candidatos = [], idioma = 'es') {
 
 function respuestaSoloConCarta(texto, vinos, fallbackCandidatos, idioma) {
   const lineas = String(texto || '').split(/\n+/).map(linea => linea.trim()).filter(Boolean)
-  if (!lineas.length) return fallbackDesdeMotor(fallbackCandidatos, idioma)
-
   const usadas = new Set()
   const validas = []
   for (const linea of lineas) {
-    const vino = vinoMencionado(linea, vinos)
+    const vino = vinoAlInicioDeRecomendacion(linea, vinos)
     if (!vino || usadas.has(vino.id || vino.nombre)) continue
     usadas.add(vino.id || vino.nombre)
-    validas.push(linea)
-    if (validas.length >= 2) break
+    validas.push(limpiarPrefijoRecomendacion(linea))
+    if (validas.length >= 3) break
   }
 
-  if (validas.length) return validas.join('\n\n')
+  const alternativas = candidatosUnicos(fallbackCandidatos, 10)
+  const minimo = Math.min(2, alternativas.length)
+  for (const item of alternativas) {
+    const clave = item.vino.id || item.vino.nombre
+    if (usadas.has(clave)) continue
+    usadas.add(clave)
+    validas.push(lineaFallback(item, idioma))
+    if (validas.length >= minimo) break
+  }
+
+  if (validas.length) return validas.slice(0, 3).join('\n\n')
   return fallbackDesdeMotor(fallbackCandidatos, idioma)
 }
 
@@ -129,6 +164,8 @@ FORMAT — exactly this, nothing more:
 [Wine name] — [1 natural sentence explaining why it will taste good with the dish]. [price]€
 
 [Wine name] — [1 sentence alternative if it exists]. [price]€
+
+[Wine name] — [1 sentence third alternative if it exists]. [price]€
 
 Each sentence: natural, sensory and specific, but not technical. Max 22 words.
 Plain text only. No asterisks, bold, lists or symbols.
@@ -168,6 +205,8 @@ FORMATO — exactamente esto, nada más:
 
 [Nombre del vino] — [1 frase alternativa si existe]. [precio]€
 
+[Nombre del vino] — [1 frase con una tercera alternativa si existe]. [precio]€
+
 La frase debe ser natural, sensorial y específica, pero no técnica. Máximo 22 palabras.
 Solo texto plano. Sin asteriscos, negritas, listas ni símbolos.
 
@@ -195,7 +234,16 @@ export async function POST(request) {
       idioma = 'es',
       historial = [],
       mensajeSeguimiento,
+      prueba_token,
     } = await request.json()
+
+    if (!restaurante_id) {
+      return Response.json({ error: 'Restaurante obligatorio.' }, { status: 400 })
+    }
+    const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
+    if (consultaTexto.length > 1200 || !Array.isArray(historial) || historial.length > 12) {
+      return Response.json({ error: 'Consulta demasiado larga.' }, { status: 400 })
+    }
 
     const [{ data: restaurante }, { data: vinosData }, { data: platos }] = await Promise.all([
       supabaseAdmin.from('restaurantes').select('*').eq('id', restaurante_id).single(),
@@ -214,11 +262,11 @@ export async function POST(request) {
 
     const cartaVinos = (vinos || []).map(lineaVino).join('\n')
     const cartaPlatos = (platos || []).map(lineaPlato).join('\n')
-    const systemPrompt = buildSystem(cartaVinos, idioma)
 
     let messages
     let prefill = ''
     let fallbackCandidatos = []
+    let vinosRespuesta = vinos || []
     const esSeguimiento = Boolean(mensajeSeguimiento && historial.length > 0)
 
     if (esSeguimiento) {
@@ -230,22 +278,40 @@ export async function POST(request) {
 
       // ── Análisis del grafo de Chartier ────────────────────────
       let contextoCriterios = ''
+      let candidatosGrafo = []
 
       if (esModoMaridaje) {
+        const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
+        const goldsteinAnalisis = analizarConGoldstein(consultaTexto, vinosRespuesta)
+        const bloqueadosGoldstein = new Set(
+          goldsteinAnalisis.candidatos
+            .filter(item => item.bloqueado)
+            .map(item => String(item.vino.id || item.vino.nombre))
+        )
+        vinosRespuesta = vinosRespuesta.filter(vino => !bloqueadosGoldstein.has(String(vino.id || vino.nombre)))
+
         // Grafo de Chartier — import dinámico para que un fallo no mate la ruta
         let resumenGrafo = ''
         try {
-          const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
           const grafoMod = await import('../../lib/chartierGraph')
-          const grafoAnalisis = await grafoMod.analizarConGrafo(consultaTexto, vinos || [])
+          const grafoAnalisis = await grafoMod.analizarConGrafo(consultaTexto, vinosRespuesta)
           resumenGrafo = grafoMod.resumenGrafoParaPrompt(grafoAnalisis) || ''
+          candidatosGrafo = (grafoAnalisis?.candidatos || []).slice(0, 3).map(candidatoDesdeGrafo)
+          if (grafoAnalisis?.confianza !== 'baja' && candidatosGrafo.length >= 2) {
+            const permitidos = new Set(candidatosGrafo.map(item => String(item.vino.id || item.vino.nombre)))
+            vinosRespuesta = vinosRespuesta.filter(vino => permitidos.has(String(vino.id || vino.nombre)))
+          }
         } catch (err) {
           console.error('[maridaje] grafo (no fatal):', err?.message)
         }
 
         // Motor estructural existente (acidez, tanino, cuerpo, restricciones)
-        const motorAnalisis = analizarMaridaje(consulta, vinos || [])
-        fallbackCandidatos = motorAnalisis?.recomendados || motorAnalisis?.candidatos || []
+        const motorAnalisis = analizarMaridaje(consulta, vinosRespuesta)
+        fallbackCandidatos = candidatosUnicos([
+          ...candidatosGrafo,
+          ...(motorAnalisis?.recomendados || []),
+          ...(motorAnalisis?.candidatos || []),
+        ], 10)
         const resumenMotor = resumenAnalisisParaPrompt(motorAnalisis)
 
         // Combinar ambas fuentes de evidencia
@@ -287,12 +353,12 @@ export async function POST(request) {
       let prompt
       if (modo === 'mesa') {
         prompt = idioma === 'en'
-          ? `Dishes: ${consulta}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nGive up to 2 wines: one accessible, one premium. If format is by the glass, use only wines with glass price. Use the exact format from the system prompt.`
-          : `Platos: ${consulta}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nDa hasta 2 vinos: uno accesible y otro premium. Si el formato es por copas, usa solo vinos con precio de copa. Usa el formato exacto del system prompt.`
+          ? `Dishes: ${consulta}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nGive 2 or 3 reliable wines: one accessible, one premium, and a third alternative if it is structurally safe. If format is by the glass, use only wines with glass price. Never fill the quota with a weak pairing. Use the exact format from the system prompt.`
+          : `Platos: ${consulta}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nDa 2 o 3 vinos fiables: uno accesible, otro premium y una tercera alternativa si es estructuralmente segura. Si el formato es por copas, usa solo vinos con precio de copa. Nunca rellenes el cupo con un maridaje débil. Usa el formato exacto del system prompt.`
       } else if (modo === 'plato') {
         prompt = idioma === 'en'
-          ? `Dish: "${consulta}".\n\n${contextoCriterios}\n\nGive up to 2 wines: one accessible, one premium. Use the exact format from the system prompt.`
-          : `Plato: "${consulta}".\n\n${contextoCriterios}\n\nDa hasta 2 vinos: uno accesible y otro premium. Usa el formato exacto del system prompt.`
+          ? `Dish: "${consulta}".\n\n${contextoCriterios}\n\nGive 2 or 3 reliable wines: one accessible, one premium, and a third alternative if it is structurally safe. Never fill the quota with a weak pairing. Use the exact format from the system prompt.`
+          : `Plato: "${consulta}".\n\n${contextoCriterios}\n\nDa 2 o 3 vinos fiables: uno accesible, otro premium y una tercera alternativa si es estructuralmente segura. Nunca rellenes el cupo con un maridaje débil. Usa el formato exacto del system prompt.`
       } else {
         // Modo inverso: dado un vino, recomendar platos
         prompt = idioma === 'en'
@@ -306,18 +372,35 @@ export async function POST(request) {
       ]
     }
 
+    const systemPrompt = buildSystem(
+      esSeguimiento ? cartaVinos : vinosRespuesta.map(lineaVino).join('\n'),
+      idioma
+    )
+
     // ── Llamada a Claude (awaited — evita unhandled rejections en Vercel) ────
+    const modelo = 'claude-sonnet-4-6'
     const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: modelo,
       max_tokens: 1024,
       system: systemPrompt,
       messages,
+    })
+    await registrarConsumoAnthropic({
+      restauranteId: restaurante_id,
+      endpoint: 'maridaje_cliente',
+      modelo,
+      usage: msg.usage,
+      metadata: {
+        seguimiento: esSeguimiento,
+        modo: modo || 'seguimiento',
+        origen: origenConsumoCarta({ pruebaToken: prueba_token, restauranteId: restaurante_id }),
+      },
     })
 
     const respuestaClaude = msg.content?.[0]?.text || ''
     const textoRespuesta = esSeguimiento
       ? respuestaClaude
-      : respuestaSoloConCarta(respuestaClaude, vinos || [], fallbackCandidatos, idioma)
+      : respuestaSoloConCarta(respuestaClaude, vinosRespuesta, fallbackCandidatos, idioma)
 
     // ── Devolver como SSE para que el cliente lo lea igual que antes ──────
     const encoder = new TextEncoder()
@@ -331,13 +414,13 @@ export async function POST(request) {
 
     return new Response(readable, {
       headers: {
-        'Content-Type': 'text/event-stream',
+        'Content-Type': 'text/event-stream; charset=utf-8',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
       },
     })
   } catch (error) {
     console.error('Error en maridaje:', error)
-    return Response.json({ error: 'Error al consultar el maridaje.', _d: String(error?.message).slice(0,300) }, { status: 500 })
+    return Response.json({ error: 'Error al consultar el maridaje.' }, { status: 500 })
   }
 }

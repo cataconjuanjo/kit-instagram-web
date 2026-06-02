@@ -6,7 +6,9 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@supabase/supabase-js'
+import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { supabaseAdmin } from '../../lib/supabaseAdmin'
+import { requireRestaurantAccess } from '../_lib/auth'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -73,18 +75,29 @@ export async function POST(req) {
   try {
     const { nombre, descripcion, categoria, plato_id, restaurante_id } = await req.json()
 
+    const auth = await requireRestaurantAccess(req, supabaseAdmin, restaurante_id)
+    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+
     if (!nombre?.trim()) {
       return Response.json({ error: 'Nombre del plato requerido' }, { status: 400 })
     }
 
+    const modelo = 'claude-haiku-4-5-20251001'
     const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: modelo,
       max_tokens: 256,
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
         content: USER_PROMPT(nombre, descripcion, categoria),
       }],
+    })
+    await registrarConsumoAnthropic({
+      restauranteId: restaurante_id,
+      endpoint: 'enriquecer_plato',
+      modelo,
+      usage: message.usage,
+      metadata: { plato_id: plato_id || null, plato: nombre },
     })
 
     const texto = message.content?.[0]?.text || ''
@@ -97,10 +110,6 @@ export async function POST(req) {
 
     // Si se proporcionan IDs, actualizar directamente en Supabase (server-side)
     if (plato_id && restaurante_id) {
-      const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY,
-      )
       await supabaseAdmin
         .from('platos')
         .update({ familias_aromaticas })

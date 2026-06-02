@@ -29,3 +29,5 @@ CREATE TABLE IF NOT EXISTS restaurante_links (
 
 CREATE INDEX IF NOT EXISTS restaurante_links_restaurante_idx
 ON restaurante_links(restaurante_id, orden);
+
+ALTER TABLE restaurante_links ENABLE ROW LEVEL SECURITY;

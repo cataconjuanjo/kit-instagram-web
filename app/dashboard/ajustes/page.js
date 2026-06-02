@@ -6,10 +6,12 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
+import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
 
 export default function AjustesHub() {
   const [restaurante, setRestaurante] = useState(null)
   const [pinSala, setPinSala] = useState('')
+  const [pinConfigurado, setPinConfigurado] = useState(false)
   const [guardandoPin, setGuardandoPin] = useState(false)
   const [mensajePin, setMensajePin] = useState('')
   const [copiado, setCopiado] = useState('')
@@ -21,7 +23,7 @@ export default function AjustesHub() {
       if (!email) { window.location.href = '/login'; return }
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       setRestaurante(rest || null)
-      setPinSala(rest?.camarero_pin || '')
+      setPinConfigurado(Boolean(rest?.camarero_pin_hash || rest?.camarero_pin))
       setLoading(false)
     }
     cargar()
@@ -37,7 +39,7 @@ export default function AjustesHub() {
   const checklist = [
     { titulo: 'QR probado en móvil', detalle: restaurante?.hub_activo ? 'El QR abre el hub público.' : 'El QR abre la carta directa.', href: '/dashboard/qr' },
     { titulo: 'Marca revisada', detalle: 'Logo, colores, banner y estilo visual de la carta.', href: '/dashboard/personalizar' },
-    { titulo: 'PIN de sala definido', detalle: pinSala ? 'El equipo puede entrar en modo camarero.' : 'Define un PIN antes de formar al equipo.', href: '#pin-sala', pendiente: !pinSala },
+    { titulo: 'PIN de sala definido', detalle: pinConfigurado ? 'El equipo puede entrar en modo camarero.' : 'Define un PIN antes de formar al equipo.', href: '#pin-sala', pendiente: !pinConfigurado },
     { titulo: 'Carta pública abierta', detalle: 'Comprueba que precios, platos y enlaces cargan bien.', href: destino },
   ]
 
@@ -51,9 +53,19 @@ export default function AjustesHub() {
       setGuardandoPin(false)
       return
     }
-    const { error } = await supabase.from('restaurantes').update({ camarero_pin: pinLimpio }).eq('id', restaurante.id)
-    if (!error) setRestaurante({ ...restaurante, camarero_pin: pinLimpio })
-    setMensajePin(error ? 'No se pudo guardar el PIN.' : 'PIN de sala guardado.')
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    const res = await fetch('/api/camarero/configurar-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+      body: JSON.stringify({ restaurante_id: restaurante.id, pin: pinLimpio }),
+    })
+    if (res.ok) {
+      setRestaurante({ ...restaurante, camarero_pin_configurado: true })
+      setPinConfigurado(true)
+      setPinSala('')
+    }
+    setMensajePin(res.ok ? 'PIN de sala guardado.' : 'No se pudo guardar el PIN.')
     setGuardandoPin(false)
   }
 
@@ -70,7 +82,7 @@ export default function AjustesHub() {
       eyebrow="Ajustes"
       title="Accesos, marca y puesta en marcha"
       subtitle="Configuración que se toca poco, pero que debe quedar perfecta antes de entregar la carta al restaurante."
-      actions={<a className={styles.secondary} href={destino} target="_blank" rel="noreferrer">Ver experiencia pública</a>}
+      actions={<OpenCartaPruebaButton className={styles.secondary} restauranteId={restaurante?.id}>Probar carta</OpenCartaPruebaButton>}
       help={{
         title: 'Cuándo tocar ajustes',
         intro: 'Esta zona se usa sobre todo al dar de alta el restaurante o cuando cambia la identidad visual.',
@@ -83,7 +95,7 @@ export default function AjustesHub() {
     >
       <section className={styles.statsGrid}>
         <div className={styles.stat}><p className={styles.statValue}>{restaurante?.hub_activo ? 'Hub' : 'Carta'}</p><p className={styles.statLabel}>Destino del QR</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{pinSala ? 'Listo' : 'Falta'}</p><p className={styles.statLabel}>PIN camarero</p></div>
+        <div className={styles.stat}><p className={styles.statValue}>{pinConfigurado ? 'Listo' : 'Falta'}</p><p className={styles.statLabel}>PIN camarero</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{restaurante?.slug || '-'}</p><p className={styles.statLabel}>Slug público</p></div>
       </section>
 

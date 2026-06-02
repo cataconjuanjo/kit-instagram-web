@@ -1,0 +1,2601 @@
+{
+  "version": "0.1",
+  "generated_at": "2026-06-01T08:14:02",
+  "purpose": "Capa estructural de sumiller para validar maridajes de vino en restaurante. Complementa el nucleo aromatico Chartier sin mezclar procedencias.",
+  "source": {
+    "id": "goldstein_perfect_pairings",
+    "author": "Evan Goldstein",
+    "title": "Perfect Pairings: A Master Sommelier's Practical Advice for Partnering Wine with Food",
+    "publication_year": 2006,
+    "local_file": "perfect-pairings-a-master-sommeliers-practical-advice-for-partnering-wine-with-food-9780520931664_compress.pdf",
+    "pdf_pages": 344,
+    "role": "sommelier_general_structural_validator"
+  },
+  "provenance_policy": {
+    "origin_value": "goldstein_structural",
+    "chartier_origin_values_reserved": [
+      "chartier_directo",
+      "chartier_inferido"
+    ],
+    "important_note": "Goldstein no se usa como evidencia molecular ni se atribuye a Chartier. Sus reglas validan equilibrio estructural y ayudan a resolver excepciones."
+  },
+  "integration_policy": {
+    "decision_order": [
+      "chartier_directo",
+      "chartier_inferido_familia",
+      "goldstein_structural",
+      "restaurant_availability"
+    ],
+    "hard_rule": "No permitir que una coincidencia aromatica aislada compense un bloqueo estructural critico.",
+    "runtime_origin_label": "goldstein_structural"
+  },
+  "dimensions": {
+    "acidity": "Capacidad de refrescar grasa, sal y riqueza; requisito ante platos acidos.",
+    "sweetness": "Contraste para picante y sal; requisito de equivalencia o superioridad en postres.",
+    "salt": "Rasgo del plato que puede amplificar tanino y alcohol.",
+    "tannin": "Astringencia equilibrada por proteina, grasa, amargor y tostado; riesgo con pescado y ciertos quesos.",
+    "oak": "Textura y tostado que pierden versatilidad si dominan; requieren puentes apropiados.",
+    "alcohol_weight": "Cuerpo e intensidad del vino; riesgo con sal, picante y platos ligeros.",
+    "sauce_dominance": "Prioridad de la salsa o condimento sobre el ingrediente principal.",
+    "side_dish_dominance": "Capacidad de una guarnicion intensa para modificar el maridaje.",
+    "serving_temperature": "Riesgo de que un plato muy caliente amplifique la sensacion alcoholica."
+  },
+  "general_rules": [
+    {
+      "id": "goldstein_acid_001",
+      "dimension": "acidity",
+      "summary": "Usar acidez para refrescar platos grasos, ricos, aceitosos, salados o moderadamente picantes.",
+      "when": {
+        "food_traits": [
+          "fatty",
+          "rich",
+          "oily",
+          "salty",
+          "mild_spicy"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "boost",
+        "score_delta": 18,
+        "prefer_wine_traits": [
+          "high_acidity"
+        ],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            15
+          ],
+          "pdf_pages": [
+            25
+          ],
+          "section": "Creating Pairings That Work > Key 1. Acidity"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_acid_002",
+      "dimension": "acidity",
+      "summary": "La acidez del vino debe igualar o superar la de un plato acido para que el vino no quede apagado.",
+      "when": {
+        "food_traits": [
+          "tart",
+          "vinaigrette",
+          "citrus_sauce",
+          "tomato",
+          "capers"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "require",
+        "score_delta": 22,
+        "prefer_wine_traits": [
+          "high_acidity"
+        ],
+        "avoid_wine_traits": [
+          "low_acidity"
+        ]
+      },
+      "severity": "alta",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            16
+          ],
+          "pdf_pages": [
+            26
+          ],
+          "section": "Creating Pairings That Work > Key 1. Acidity"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_acid_003",
+      "dimension": "acidity",
+      "summary": "Los vinos de acidez baja tienen menos margen gastronomico y piden platos suaves con algun apoyo acido.",
+      "when": {
+        "food_traits": [],
+        "wine_traits": [
+          "low_acidity"
+        ]
+      },
+      "action": {
+        "effect": "penalty",
+        "score_delta": -10,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            16
+          ],
+          "pdf_pages": [
+            26
+          ],
+          "section": "Creating Pairings That Work > Key 1. Acidity"
+        }
+      ],
+      "notes": "Tratar mild_food y acidic_garnish como condiciones del plato, no como rasgos del vino."
+    },
+    {
+      "id": "goldstein_sweet_001",
+      "dimension": "sweetness",
+      "summary": "Un ligero dulzor residual puede amortiguar un picante moderado.",
+      "when": {
+        "food_traits": [
+          "mild_spicy",
+          "spicy"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "boost",
+        "score_delta": 18,
+        "prefer_wine_traits": [
+          "off_dry",
+          "low_to_moderate_alcohol",
+          "low_tannin"
+        ],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            16
+          ],
+          "pdf_pages": [
+            26
+          ],
+          "section": "Creating Pairings That Work > Key 2. Sweetness"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_sweet_002",
+      "dimension": "sweetness",
+      "summary": "Un vino ligeramente dulce puede acompanar fruta, chutneys o salsas con dulzor moderado.",
+      "when": {
+        "food_traits": [
+          "slightly_sweet",
+          "fruit_sauce",
+          "chutney",
+          "dried_fruit"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "boost",
+        "score_delta": 14,
+        "prefer_wine_traits": [
+          "off_dry",
+          "ripe_fruit"
+        ],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            17
+          ],
+          "pdf_pages": [
+            27
+          ],
+          "section": "Creating Pairings That Work > Key 2. Sweetness"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_sweet_003",
+      "dimension": "sweetness",
+      "summary": "El dulzor del vino puede contrarrestar la sal, especialmente en algunos quesos y cocinas especiadas.",
+      "when": {
+        "food_traits": [
+          "salty",
+          "blue_cheese"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "boost",
+        "score_delta": 12,
+        "prefer_wine_traits": [
+          "off_dry",
+          "sweet"
+        ],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            17
+          ],
+          "pdf_pages": [
+            27
+          ],
+          "section": "Creating Pairings That Work > Key 2. Sweetness"
+        }
+      ],
+      "notes": "Aplicar con moderacion: el propio autor recomienda experimentar."
+    },
+    {
+      "id": "goldstein_sweet_004",
+      "dimension": "sweetness",
+      "summary": "Con postres, el vino debe ser al menos tan dulce como el plato.",
+      "when": {
+        "food_traits": [
+          "dessert"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "block",
+        "score_delta": -100,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": [
+          "dry",
+          "less_sweet_than_dessert"
+        ]
+      },
+      "severity": "critica",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            17
+          ],
+          "pdf_pages": [
+            27
+          ],
+          "section": "Creating Pairings That Work > Key 2. Sweetness"
+        },
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            244
+          ],
+          "pdf_pages": [
+            254
+          ],
+          "section": "Dessert Wines > Wine and Food Pairing"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_salt_001",
+      "dimension": "salt",
+      "summary": "La acidez reduce la percepcion de sal y suele funcionar mejor que el tanino con platos salados.",
+      "when": {
+        "food_traits": [
+          "salty"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "boost",
+        "score_delta": 16,
+        "prefer_wine_traits": [
+          "high_acidity",
+          "sparkling"
+        ],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            17
+          ],
+          "pdf_pages": [
+            27
+          ],
+          "section": "Creating Pairings That Work > Key 3. Saltiness"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_salt_002",
+      "dimension": "salt",
+      "summary": "El tanino puede exagerar la sal y endurecer el maridaje.",
+      "when": {
+        "food_traits": [
+          "salty"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "penalty",
+        "score_delta": -24,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": [
+          "high_tannin"
+        ]
+      },
+      "severity": "alta",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            18
+          ],
+          "pdf_pages": [
+            28
+          ],
+          "section": "Creating Pairings That Work > Key 3. Saltiness"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_salt_003",
+      "dimension": "salt",
+      "summary": "La sal aumenta la sensacion de alcohol del vino.",
+      "when": {
+        "food_traits": [
+          "salty"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "penalty",
+        "score_delta": -20,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": [
+          "high_alcohol"
+        ]
+      },
+      "severity": "alta",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            18
+          ],
+          "pdf_pages": [
+            28
+          ],
+          "section": "Creating Pairings That Work > Key 3. Saltiness"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_tannin_001",
+      "dimension": "tannin",
+      "summary": "La grasa y la proteina amortiguan la astringencia del tanino.",
+      "when": {
+        "food_traits": [
+          "fatty",
+          "protein_rich",
+          "red_meat"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "boost",
+        "score_delta": 14,
+        "prefer_wine_traits": [
+          "medium_tannin",
+          "high_tannin"
+        ],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            19
+          ],
+          "pdf_pages": [
+            29
+          ],
+          "section": "Creating Pairings That Work > Key 4. Tannin"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_tannin_002",
+      "dimension": "tannin",
+      "summary": "Los alimentos amargos y las tecnicas que aportan tostado o carbonizacion pueden armonizar con vinos tanicos.",
+      "when": {
+        "food_traits": [
+          "bitter",
+          "grilled",
+          "charred",
+          "blackened"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "boost",
+        "score_delta": 12,
+        "prefer_wine_traits": [
+          "medium_tannin",
+          "high_tannin"
+        ],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            18
+          ],
+          "pdf_pages": [
+            28
+          ],
+          "section": "Creating Pairings That Work > Key 4. Tannin"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_tannin_003",
+      "dimension": "tannin",
+      "summary": "El tanino alto puede resultar mas agresivo con platos pobres en grasa y proteina.",
+      "when": {
+        "food_traits": [
+          "low_fat",
+          "low_protein",
+          "delicate_vegetarian"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "penalty",
+        "score_delta": -18,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": [
+          "high_tannin"
+        ]
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            19
+          ],
+          "pdf_pages": [
+            29
+          ],
+          "section": "Creating Pairings That Work > Key 4. Tannin"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_tannin_004",
+      "dimension": "tannin",
+      "summary": "El aceite del pescado y un vino tanico suelen producir una sensacion metalica desagradable.",
+      "when": {
+        "food_traits": [
+          "fish",
+          "fish_oil",
+          "oily_fish"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "penalty",
+        "score_delta": -32,
+        "prefer_wine_traits": [
+          "low_tannin_red"
+        ],
+        "avoid_wine_traits": [
+          "high_tannin"
+        ]
+      },
+      "severity": "alta",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            19
+          ],
+          "pdf_pages": [
+            29
+          ],
+          "section": "Creating Pairings That Work > Key 4. Tannin"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_tannin_005",
+      "dimension": "tannin",
+      "summary": "Algunos quesos duros, curados, pungentes o de cabra pueden volver metalico un tinto muy tanico.",
+      "when": {
+        "food_traits": [
+          "aged_hard_cheese",
+          "pungent_cheese",
+          "goat_cheese"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "penalty",
+        "score_delta": -24,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": [
+          "high_tannin"
+        ]
+      },
+      "severity": "alta",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            19
+          ],
+          "pdf_pages": [
+            29
+          ],
+          "section": "Creating Pairings That Work > Key 4. Tannin"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_oak_001",
+      "dimension": "oak",
+      "summary": "La comida puede amplificar una barrica dominante; los vinos muy marcados por roble pierden versatilidad.",
+      "when": {
+        "food_traits": [
+          "delicate"
+        ],
+        "wine_traits": [
+          "high_oak"
+        ]
+      },
+      "action": {
+        "effect": "penalty",
+        "score_delta": -14,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": [
+          "high_oak"
+        ]
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            19,
+            20
+          ],
+          "pdf_pages": [
+            29,
+            30
+          ],
+          "section": "Creating Pairings That Work > Key 5. Oak"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_oak_002",
+      "dimension": "oak",
+      "summary": "Brasa, ahumado, tostado y caramelizacion pueden formar un puente con vinos de barrica.",
+      "when": {
+        "food_traits": [
+          "grilled",
+          "smoked",
+          "toasted",
+          "caramelized"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "boost",
+        "score_delta": 14,
+        "prefer_wine_traits": [
+          "medium_oak",
+          "high_oak"
+        ],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            19
+          ],
+          "pdf_pages": [
+            29
+          ],
+          "section": "Creating Pairings That Work > Key 5. Oak"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_oak_003",
+      "dimension": "oak",
+      "summary": "La textura redonda aportada por la barrica puede acompanar salsas cremosas o mantecosas.",
+      "when": {
+        "food_traits": [
+          "cream_sauce",
+          "butter_sauce",
+          "rich_texture"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "boost",
+        "score_delta": 10,
+        "prefer_wine_traits": [
+          "medium_oak",
+          "round_texture"
+        ],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            20
+          ],
+          "pdf_pages": [
+            30
+          ],
+          "section": "Creating Pairings That Work > Key 5. Oak"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_oak_004",
+      "dimension": "oak",
+      "summary": "Los vinos sin madera o con madera ligera son mas flexibles en mesa.",
+      "when": {
+        "food_traits": [],
+        "wine_traits": [
+          "unoaked",
+          "low_oak"
+        ]
+      },
+      "action": {
+        "effect": "boost",
+        "score_delta": 6,
+        "prefer_wine_traits": [
+          "versatile"
+        ],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            20
+          ],
+          "pdf_pages": [
+            30
+          ],
+          "section": "Creating Pairings That Work > Key 5. Oak"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_weight_001",
+      "dimension": "alcohol_weight",
+      "summary": "El alcohol contribuye al cuerpo percibido del vino.",
+      "when": {
+        "food_traits": [],
+        "wine_traits": [
+          "high_alcohol"
+        ]
+      },
+      "action": {
+        "effect": "annotate",
+        "score_delta": 0,
+        "prefer_wine_traits": [
+          "full_body"
+        ],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            20
+          ],
+          "pdf_pages": [
+            30
+          ],
+          "section": "Creating Pairings That Work > Key 6. Alcohol"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_weight_002",
+      "dimension": "alcohol_weight",
+      "summary": "La intensidad y el peso del vino deben guardar proporcion con el plato.",
+      "when": {
+        "food_traits": [],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "require",
+        "score_delta": 16,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": []
+      },
+      "severity": "alta",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            20
+          ],
+          "pdf_pages": [
+            30
+          ],
+          "section": "Creating Pairings That Work > Key 6. Alcohol"
+        }
+      ],
+      "notes": "Comparar food_weight y wine_body antes de aplicar afinidades aromaticas secundarias."
+    },
+    {
+      "id": "goldstein_weight_003",
+      "dimension": "alcohol_weight",
+      "summary": "Los vinos de alcohol alto tienen menos opciones gastronomicas, especialmente ante sal y picante.",
+      "when": {
+        "food_traits": [
+          "salty",
+          "spicy",
+          "hot_spicy"
+        ],
+        "wine_traits": [
+          "high_alcohol"
+        ]
+      },
+      "action": {
+        "effect": "penalty",
+        "score_delta": -28,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": [
+          "high_alcohol"
+        ]
+      },
+      "severity": "alta",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            20
+          ],
+          "pdf_pages": [
+            30
+          ],
+          "section": "Creating Pairings That Work > Key 6. Alcohol"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_weight_004",
+      "dimension": "alcohol_weight",
+      "summary": "Con picante fuerte se descartan vinos de alcohol alto: el calor del plato amplifica demasiado su graduacion.",
+      "when": {
+        "food_traits": [
+          "hot_spicy"
+        ],
+        "wine_traits": [
+          "high_alcohol"
+        ]
+      },
+      "action": {
+        "effect": "block",
+        "score_delta": -100,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": [
+          "high_alcohol"
+        ]
+      },
+      "severity": "critica",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            27
+          ],
+          "pdf_pages": [
+            37
+          ],
+          "section": "Quick Reference > Food spicy or hot"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_sauce_001",
+      "dimension": "sauce_dominance",
+      "summary": "Una salsa o condimento dominante puede pesar mas que el ingrediente principal al elegir el vino.",
+      "when": {
+        "food_traits": [
+          "dominant_sauce",
+          "dominant_condiment"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "reorder",
+        "score_delta": 25,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": []
+      },
+      "severity": "alta",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 3. Sauces and Condiments"
+        },
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            27
+          ],
+          "pdf_pages": [
+            37
+          ],
+          "section": "Quick Reference > Food dominated by a strong sauce or condiment"
+        }
+      ],
+      "notes": "Analizar primero la salsa y despues el ingrediente principal."
+    },
+    {
+      "id": "goldstein_side_001",
+      "dimension": "side_dish_dominance",
+      "summary": "Una guarnicion intensa puede modificar o incluso gobernar el maridaje.",
+      "when": {
+        "food_traits": [
+          "dominant_side_dish"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "reorder",
+        "score_delta": 12,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": []
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            24
+          ],
+          "pdf_pages": [
+            34
+          ],
+          "section": "Creating Pairings That Work > And Those Devilish Side Dishes"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "goldstein_temperature_001",
+      "dimension": "serving_temperature",
+      "summary": "Un plato servido muy caliente puede aumentar la percepcion alcoholica del vino.",
+      "when": {
+        "food_traits": [
+          "served_very_hot"
+        ],
+        "wine_traits": []
+      },
+      "action": {
+        "effect": "penalty",
+        "score_delta": -14,
+        "prefer_wine_traits": [],
+        "avoid_wine_traits": [
+          "high_alcohol"
+        ]
+      },
+      "severity": "media",
+      "confidence": "alta",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            27
+          ],
+          "pdf_pages": [
+            37
+          ],
+          "section": "Quick Reference > Food served very hot"
+        }
+      ],
+      "notes": ""
+    }
+  ],
+  "technique_profiles": [
+    {
+      "id": "goldstein_tech_steam",
+      "label": "vapor",
+      "aliases": [
+        "vapor",
+        "al vapor",
+        "steamed"
+      ],
+      "impact": "bajo",
+      "adds_food_traits": [
+        "delicate"
+      ],
+      "runtime_effect": "Conservar el peso del ingrediente principal; evitar vinos que lo aplasten.",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 2. Cooking Methods"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_tech_poach",
+      "label": "pochado o escalfado",
+      "aliases": [
+        "pochado",
+        "pochada",
+        "escalfado",
+        "escalfada",
+        "poached"
+      ],
+      "impact": "bajo",
+      "adds_food_traits": [
+        "delicate"
+      ],
+      "runtime_effect": "Conservar el peso del ingrediente principal; evitar vinos que lo aplasten.",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 2. Cooking Methods"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_tech_boil",
+      "label": "hervido",
+      "aliases": [
+        "hervido",
+        "hervida",
+        "cocido",
+        "boiled"
+      ],
+      "impact": "bajo",
+      "adds_food_traits": [
+        "delicate"
+      ],
+      "runtime_effect": "Conservar el peso del ingrediente principal; evitar vinos que lo aplasten.",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 2. Cooking Methods"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_tech_saute",
+      "label": "salteado",
+      "aliases": [
+        "salteado",
+        "salteada",
+        "sauteed"
+      ],
+      "impact": "medio_bajo",
+      "adds_food_traits": [
+        "mild_sweetness"
+      ],
+      "runtime_effect": "Mantener el foco en ingredientes y salsa.",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 2. Cooking Methods"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_tech_fry",
+      "label": "fritura",
+      "aliases": [
+        "frito",
+        "frita",
+        "fritura",
+        "deep-fried"
+      ],
+      "impact": "medio",
+      "adds_food_traits": [
+        "fatty",
+        "crisp_texture",
+        "mild_sweetness"
+      ],
+      "runtime_effect": "Subir acidez, burbuja o tension para limpiar el paladar.",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 2. Cooking Methods"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_tech_braise",
+      "label": "braseado o guisado",
+      "aliases": [
+        "braseado",
+        "braseada",
+        "guisado",
+        "guisada",
+        "braised"
+      ],
+      "impact": "medio",
+      "adds_food_traits": [
+        "round_texture",
+        "medium_weight"
+      ],
+      "runtime_effect": "Recalcular cuerpo y salsa; la preparacion gana peso.",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 2. Cooking Methods"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_tech_roast",
+      "label": "asado",
+      "aliases": [
+        "asado",
+        "asada",
+        "horno",
+        "roasted",
+        "baked"
+      ],
+      "impact": "medio",
+      "adds_food_traits": [
+        "medium_weight"
+      ],
+      "runtime_effect": "Recalcular intensidad segun tostado y salsa.",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 2. Cooking Methods"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_tech_smoke",
+      "label": "ahumado",
+      "aliases": [
+        "ahumado",
+        "ahumada",
+        "smoked"
+      ],
+      "impact": "alto",
+      "adds_food_traits": [
+        "smoked",
+        "sweet_smoke",
+        "high_impact"
+      ],
+      "runtime_effect": "Permitir vinos con mas estructura y valorar puente con roble integrado.",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 2. Cooking Methods"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_tech_grill",
+      "label": "parrilla o brasa",
+      "aliases": [
+        "parrilla",
+        "brasa",
+        "brasas",
+        "grilled"
+      ],
+      "impact": "alto",
+      "adds_food_traits": [
+        "grilled",
+        "bitter",
+        "charred",
+        "crust",
+        "high_impact"
+      ],
+      "runtime_effect": "Permitir tanino y roble si el peso del plato lo sostiene.",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 2. Cooking Methods"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_tech_blacken",
+      "label": "carbonizado",
+      "aliases": [
+        "carbonizado",
+        "carbonizada",
+        "blackened",
+        "tostado intenso"
+      ],
+      "impact": "alto",
+      "adds_food_traits": [
+        "bitter",
+        "charred",
+        "high_impact"
+      ],
+      "runtime_effect": "Valorar simetria con tanino o tostado, sin exceder el peso del plato.",
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 2. Cooking Methods"
+        }
+      ]
+    }
+  ],
+  "sauce_profiles": [
+    {
+      "id": "goldstein_sauce_vinaigrette",
+      "label": "vinagreta o salsa citrica",
+      "aliases": [
+        "vinagreta",
+        "vinaigretta",
+        "limon",
+        "lima",
+        "citrico",
+        "citrica"
+      ],
+      "dominant_traits": [
+        "tart",
+        "high_acidity"
+      ],
+      "prefer_wine_traits": [
+        "high_acidity"
+      ],
+      "avoid_wine_traits": [
+        "low_acidity"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 3. Sauces and Condiments"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_sauce_chutney",
+      "label": "chutney o salsa de fruta",
+      "aliases": [
+        "chutney",
+        "salsa de fruta",
+        "compota",
+        "mango",
+        "albaricoque",
+        "pasas"
+      ],
+      "dominant_traits": [
+        "slightly_sweet",
+        "fruit_sauce"
+      ],
+      "prefer_wine_traits": [
+        "off_dry",
+        "ripe_fruit"
+      ],
+      "avoid_wine_traits": [
+        "austere"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 3. Sauces and Condiments"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_sauce_hot",
+      "label": "salsa picante",
+      "aliases": [
+        "harissa",
+        "salsa picante",
+        "brava",
+        "chile",
+        "guindilla",
+        "cayena"
+      ],
+      "dominant_traits": [
+        "spicy",
+        "hot_spicy"
+      ],
+      "prefer_wine_traits": [
+        "off_dry",
+        "low_to_moderate_alcohol",
+        "low_tannin",
+        "low_oak"
+      ],
+      "avoid_wine_traits": [
+        "high_alcohol",
+        "high_tannin",
+        "high_oak"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23,
+            27
+          ],
+          "pdf_pages": [
+            33,
+            37
+          ],
+          "section": "Sauces and Condiments | Quick Reference > Spicy or hot"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_sauce_soy",
+      "label": "salsa de soja",
+      "aliases": [
+        "soja",
+        "salsa de soja",
+        "soy"
+      ],
+      "dominant_traits": [
+        "salty"
+      ],
+      "prefer_wine_traits": [
+        "high_acidity",
+        "off_dry",
+        "low_to_moderate_alcohol"
+      ],
+      "avoid_wine_traits": [
+        "high_tannin",
+        "high_alcohol"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 3. Sauces and Condiments"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_sauce_cream",
+      "label": "salsa cremosa o de mantequilla",
+      "aliases": [
+        "crema",
+        "nata",
+        "mantequilla",
+        "beurre blanc",
+        "beurre rouge"
+      ],
+      "dominant_traits": [
+        "rich",
+        "fatty",
+        "cream_sauce",
+        "round_texture"
+      ],
+      "prefer_wine_traits": [
+        "high_acidity",
+        "round_texture",
+        "medium_body"
+      ],
+      "avoid_wine_traits": [],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 3. Sauces and Condiments"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_sauce_emulsion",
+      "label": "salsa emulsionada",
+      "aliases": [
+        "mayonesa",
+        "mahonesa",
+        "alioli",
+        "aioli",
+        "emulsion"
+      ],
+      "dominant_traits": [
+        "rich",
+        "fatty",
+        "emulsified_sauce"
+      ],
+      "prefer_wine_traits": [
+        "high_acidity",
+        "round_texture"
+      ],
+      "avoid_wine_traits": [],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 3. Sauces and Condiments"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_sauce_reduction",
+      "label": "reduccion intensa",
+      "aliases": [
+        "reduccion",
+        "reducido",
+        "glaseado"
+      ],
+      "dominant_traits": [
+        "requires_analysis"
+      ],
+      "prefer_wine_traits": [],
+      "avoid_wine_traits": [],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            23
+          ],
+          "pdf_pages": [
+            33
+          ],
+          "section": "Creating Pairings That Work > Key 3. Sauces and Condiments"
+        }
+      ],
+      "notes": "Clasificar despues como acida, dulce, salada, picante o rica segun ingredientes."
+    }
+  ],
+  "bridge_ingredients": [
+    {
+      "id": "goldstein_bridge_slow_onion_garlic",
+      "label": "ajo y cebolla cocinados lentamente",
+      "aliases": [
+        "ajo",
+        "cebolla",
+        "cebolla caramelizada",
+        "ajo asado"
+      ],
+      "effects": [
+        "round_texture",
+        "sweetness",
+        "smoky_if_caramelized",
+        "earthy_bridge",
+        "oak_bridge"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            22
+          ],
+          "pdf_pages": [
+            32
+          ],
+          "section": "Magic Ingredients and Their Effects"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_bridge_olives",
+      "label": "aceitunas",
+      "aliases": [
+        "aceituna",
+        "aceitunas",
+        "oliva",
+        "olivas",
+        "tapenade",
+        "olivada"
+      ],
+      "variants": {
+        "green": {
+          "effects": [
+            "white_wine_affinity"
+          ],
+          "wine_hints": [
+            "sauvignon_blanc",
+            "pinot_gris",
+            "unoaked_chardonnay"
+          ]
+        },
+        "black": {
+          "effects": [
+            "red_wine_affinity"
+          ],
+          "wine_hints": [
+            "merlot",
+            "cabernet_sauvignon",
+            "syrah"
+          ]
+        }
+      },
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            22
+          ],
+          "pdf_pages": [
+            32
+          ],
+          "section": "Magic Ingredients and Their Effects"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_bridge_cured_meat",
+      "label": "charcuteria",
+      "aliases": [
+        "prosciutto",
+        "bacon",
+        "panceta",
+        "pancetta",
+        "jamon",
+        "charcuteria"
+      ],
+      "effects": [
+        "can_tilt_white_dish_to_soft_red_or_rose"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            22
+          ],
+          "pdf_pages": [
+            32
+          ],
+          "section": "Magic Ingredients and Their Effects"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_bridge_dairy",
+      "label": "queso y lacteos",
+      "aliases": [
+        "queso",
+        "feta",
+        "gorgonzola",
+        "queso de cabra",
+        "lacteo"
+      ],
+      "effects": [
+        "rich_texture",
+        "can_bridge_vegetables_to_high_acid_white"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            22
+          ],
+          "pdf_pages": [
+            32
+          ],
+          "section": "Magic Ingredients and Their Effects"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_bridge_herbs",
+      "label": "hierbas",
+      "aliases": [
+        "perifollo",
+        "eneldo",
+        "estragon",
+        "albahaca",
+        "tomillo",
+        "romero"
+      ],
+      "variants": {
+        "fragrant": {
+          "aliases": [
+            "perifollo",
+            "eneldo",
+            "estragon"
+          ],
+          "wine_hints": [
+            "riesling",
+            "chardonnay"
+          ]
+        },
+        "pungent": {
+          "aliases": [
+            "albahaca",
+            "tomillo",
+            "romero"
+          ],
+          "wine_hints": [
+            "sauvignon_blanc",
+            "merlot",
+            "cabernet_sauvignon"
+          ]
+        }
+      },
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            22
+          ],
+          "pdf_pages": [
+            32
+          ],
+          "section": "Magic Ingredients and Their Effects"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_bridge_legumes",
+      "label": "legumbres",
+      "aliases": [
+        "lenteja",
+        "lentejas",
+        "alubia",
+        "alubias",
+        "judia",
+        "judias",
+        "garbanzo",
+        "garbanzos"
+      ],
+      "effects": [
+        "white_wine_friendly",
+        "herbs_tilt_white",
+        "meat_tilts_red",
+        "can_enable_fish_with_red"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            22
+          ],
+          "pdf_pages": [
+            32
+          ],
+          "section": "Magic Ingredients and Their Effects"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_bridge_mushrooms",
+      "label": "setas",
+      "aliases": [
+        "seta",
+        "setas",
+        "champinon",
+        "shiitake",
+        "rebozuelo",
+        "boletus"
+      ],
+      "variants": {
+        "dark_or_dried": {
+          "effects": [
+            "earthy",
+            "red_wine_affinity"
+          ]
+        },
+        "light_creamy": {
+          "effects": [
+            "white_wine_affinity",
+            "textured_white_affinity"
+          ]
+        }
+      },
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            22
+          ],
+          "pdf_pages": [
+            32
+          ],
+          "section": "Magic Ingredients and Their Effects"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_bridge_nuts",
+      "label": "frutos secos",
+      "aliases": [
+        "nuez",
+        "nueces",
+        "almendra",
+        "almendras",
+        "avellana",
+        "avellanas",
+        "frutos secos"
+      ],
+      "effects": [
+        "oak_bridge_if_toasted",
+        "bitterness_can_soften_tannin",
+        "light_oak_affinity"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            22
+          ],
+          "pdf_pages": [
+            32
+          ],
+          "section": "Magic Ingredients and Their Effects"
+        }
+      ]
+    }
+  ],
+  "wine_style_profiles": [
+    {
+      "id": "goldstein_wine_sparkling_dry",
+      "label": "espumoso seco",
+      "aliases": [
+        "espumoso",
+        "brut",
+        "champagne",
+        "cava",
+        "cremant"
+      ],
+      "traits": [
+        "high_acidity",
+        "bubbles",
+        "light_body",
+        "low_to_moderate_alcohol"
+      ],
+      "food_hints": [
+        "salty",
+        "fried",
+        "rich",
+        "oily",
+        "shellfish"
+      ],
+      "avoid_food_traits": [],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            38
+          ],
+          "pdf_pages": [
+            48
+          ],
+          "section": "Sparkling Wines > Wine and Food Pairing"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_chardonnay_unoaked_mineral",
+      "label": "chardonnay mineral o sin madera",
+      "aliases": [
+        "chardonnay",
+        "chablis",
+        "unoaked chardonnay"
+      ],
+      "traits": [
+        "medium_to_high_acidity",
+        "medium_body",
+        "low_oak",
+        "versatile"
+      ],
+      "food_hints": [
+        "delicate_fish",
+        "shellfish",
+        "mild_food",
+        "herbs"
+      ],
+      "avoid_food_traits": [
+        "very_bold"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            54,
+            55
+          ],
+          "pdf_pages": [
+            64,
+            65
+          ],
+          "section": "Chardonnay > Wine and Food Pairing | Pairing Pointers"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_chardonnay_oaked_round",
+      "label": "chardonnay redondo con barrica",
+      "aliases": [
+        "oaked chardonnay",
+        "barrel-fermented chardonnay",
+        "meursault"
+      ],
+      "traits": [
+        "medium_acidity",
+        "medium_to_full_body",
+        "medium_oak",
+        "round_texture"
+      ],
+      "food_hints": [
+        "butter_sauce",
+        "cream_sauce",
+        "rich_shellfish",
+        "roasted"
+      ],
+      "avoid_food_traits": [
+        "very_spicy",
+        "very_delicate"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            54,
+            55
+          ],
+          "pdf_pages": [
+            64,
+            65
+          ],
+          "section": "Chardonnay > Wine and Food Pairing | Pairing Pointers"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_sauvignon_herbal",
+      "label": "sauvignon blanc herbal y tenso",
+      "aliases": [
+        "sauvignon blanc",
+        "sancerre",
+        "pouilly-fume"
+      ],
+      "traits": [
+        "high_acidity",
+        "herbal",
+        "citrus",
+        "low_oak",
+        "versatile"
+      ],
+      "food_hints": [
+        "goat_cheese",
+        "green_herbs",
+        "green_vegetables",
+        "shellfish",
+        "tart"
+      ],
+      "avoid_food_traits": [
+        "very_sweet"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            69,
+            70
+          ],
+          "pdf_pages": [
+            79,
+            80
+          ],
+          "section": "Sauvignon Blanc > Wine and Food Pairing | Pairing Pointers"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_sauvignon_graves",
+      "label": "sauvignon blanc con textura y madera moderada",
+      "aliases": [
+        "graves",
+        "white_bordeaux",
+        "oaked sauvignon blanc"
+      ],
+      "traits": [
+        "high_acidity",
+        "medium_body",
+        "medium_oak",
+        "earthy"
+      ],
+      "food_hints": [
+        "rich_shellfish",
+        "garlic",
+        "peas",
+        "textured_food"
+      ],
+      "avoid_food_traits": [
+        "very_sweet"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            69,
+            70
+          ],
+          "pdf_pages": [
+            79,
+            80
+          ],
+          "section": "Sauvignon Blanc > Wine and Food Pairing | Pairing Pointers"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_riesling_dry",
+      "label": "riesling seco",
+      "aliases": [
+        "riesling seco",
+        "dry riesling"
+      ],
+      "traits": [
+        "high_acidity",
+        "low_oak",
+        "low_to_moderate_alcohol",
+        "mineral"
+      ],
+      "food_hints": [
+        "pork",
+        "apple",
+        "onion",
+        "tart",
+        "aromatic_food"
+      ],
+      "avoid_food_traits": [],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            82,
+            83
+          ],
+          "pdf_pages": [
+            92,
+            93
+          ],
+          "section": "Riesling > Wine and Food Pairing | Pairing Pointers"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_riesling_off_dry",
+      "label": "riesling con ligero dulzor",
+      "aliases": [
+        "riesling",
+        "off-dry riesling",
+        "riesling semiseco"
+      ],
+      "traits": [
+        "high_acidity",
+        "off_dry",
+        "low_oak",
+        "low_to_moderate_alcohol"
+      ],
+      "food_hints": [
+        "mild_spicy",
+        "asian_cuisine",
+        "fruit_sauce",
+        "ginger"
+      ],
+      "avoid_food_traits": [
+        "very_hot_spicy"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            82,
+            83
+          ],
+          "pdf_pages": [
+            92,
+            93
+          ],
+          "section": "Riesling > Wine and Food Pairing | Pairing Pointers"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_pinot_gris_italian",
+      "label": "pinot gris ligero y citrico",
+      "aliases": [
+        "pinot grigio",
+        "italian pinot gris"
+      ],
+      "traits": [
+        "high_acidity",
+        "light_body",
+        "low_oak"
+      ],
+      "food_hints": [
+        "rich",
+        "citrus",
+        "seafood",
+        "ceviche"
+      ],
+      "avoid_food_traits": [],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            95
+          ],
+          "pdf_pages": [
+            105
+          ],
+          "section": "Pinot Gris > Wine and Food Pairing"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_pinot_gris_alsace",
+      "label": "pinot gris alsaciano con textura",
+      "aliases": [
+        "alsace pinot gris",
+        "pinot gris"
+      ],
+      "traits": [
+        "medium_acidity",
+        "medium_body",
+        "textured",
+        "spicy"
+      ],
+      "food_hints": [
+        "creamy",
+        "spiced",
+        "tangy",
+        "cheese"
+      ],
+      "avoid_food_traits": [],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            95
+          ],
+          "pdf_pages": [
+            105
+          ],
+          "section": "Pinot Gris > Wine and Food Pairing"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_gewurztraminer",
+      "label": "gewurztraminer aromatico",
+      "aliases": [
+        "gewurztraminer"
+      ],
+      "traits": [
+        "aromatic",
+        "medium_acidity",
+        "medium_to_full_body",
+        "possible_off_dry",
+        "possible_high_alcohol"
+      ],
+      "food_hints": [
+        "aromatic_spices",
+        "mild_spicy",
+        "cheese",
+        "fruit_accents"
+      ],
+      "avoid_food_traits": [
+        "very_hot_spicy"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            109,
+            110
+          ],
+          "pdf_pages": [
+            119,
+            120
+          ],
+          "section": "Gewurztraminer > Wine and Food Pairing | Pairing Pointers"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_viognier_young",
+      "label": "viognier joven",
+      "aliases": [
+        "viognier",
+        "condrieu"
+      ],
+      "traits": [
+        "aromatic",
+        "medium_acidity",
+        "full_body",
+        "possible_high_alcohol",
+        "round_texture"
+      ],
+      "food_hints": [
+        "shellfish",
+        "butter_sauce",
+        "cream_sauce",
+        "sweet_spices",
+        "root_vegetables"
+      ],
+      "avoid_food_traits": [
+        "tart",
+        "green_vegetables",
+        "sharp_sauce",
+        "hot_spicy",
+        "fishy_fish"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            137,
+            138,
+            139
+          ],
+          "pdf_pages": [
+            147,
+            148,
+            149
+          ],
+          "section": "Viognier > Wine and Food Pairing | Pairing Pointers"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_cabernet_young",
+      "label": "cabernet sauvignon joven y estructurado",
+      "aliases": [
+        "cabernet sauvignon",
+        "cabernet"
+      ],
+      "traits": [
+        "high_tannin",
+        "full_body",
+        "possible_high_alcohol",
+        "possible_high_oak"
+      ],
+      "food_hints": [
+        "red_meat",
+        "grilled",
+        "charred",
+        "protein_rich",
+        "fatty"
+      ],
+      "avoid_food_traits": [
+        "delicate",
+        "fish",
+        "low_protein"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            153,
+            154
+          ],
+          "pdf_pages": [
+            163,
+            164
+          ],
+          "section": "Cabernet Sauvignon > Wine and Food Pairing"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_cabernet_aged",
+      "label": "cabernet sauvignon evolucionado",
+      "aliases": [
+        "aged cabernet sauvignon",
+        "cabernet reserva"
+      ],
+      "traits": [
+        "medium_tannin",
+        "full_body",
+        "developed",
+        "delicate_aromas"
+      ],
+      "food_hints": [
+        "simple_red_meat",
+        "roast",
+        "pepper",
+        "rare_meat"
+      ],
+      "avoid_food_traits": [
+        "overly_complex"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            26
+          ],
+          "pdf_pages": [
+            36
+          ],
+          "section": "Quick Reference > Aged and red"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_merlot_soft",
+      "label": "merlot amable",
+      "aliases": [
+        "merlot"
+      ],
+      "traits": [
+        "medium_tannin",
+        "medium_body",
+        "round_texture",
+        "fruit_forward"
+      ],
+      "food_hints": [
+        "poultry",
+        "pork",
+        "braised",
+        "medium_weight"
+      ],
+      "avoid_food_traits": [],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            167
+          ],
+          "pdf_pages": [
+            177
+          ],
+          "section": "Merlot > Wine and Food Pairing"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_pinot_noir",
+      "label": "pinot noir",
+      "aliases": [
+        "pinot noir",
+        "burgundy red",
+        "borgona tinto"
+      ],
+      "traits": [
+        "low_to_medium_tannin",
+        "medium_acidity",
+        "light_to_medium_body",
+        "versatile_red"
+      ],
+      "food_hints": [
+        "poultry",
+        "pork",
+        "mushroom",
+        "fish_if_red_needed",
+        "medium_weight"
+      ],
+      "avoid_food_traits": [
+        "very_bold"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            181
+          ],
+          "pdf_pages": [
+            191
+          ],
+          "section": "Pinot Noir > Wine and Food Pairing"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_sangiovese",
+      "label": "sangiovese",
+      "aliases": [
+        "sangiovese",
+        "chianti",
+        "brunello"
+      ],
+      "traits": [
+        "high_acidity",
+        "moderate_alcohol",
+        "balanced_tannin",
+        "food_friendly"
+      ],
+      "food_hints": [
+        "tomato",
+        "pasta",
+        "rustic_food",
+        "medium_weight"
+      ],
+      "avoid_food_traits": [],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            194
+          ],
+          "pdf_pages": [
+            204
+          ],
+          "section": "Sangiovese > Wine and Food Pairing"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_syrah_rhone",
+      "label": "syrah especiado y ahumado",
+      "aliases": [
+        "syrah",
+        "rhone syrah",
+        "northern rhone"
+      ],
+      "traits": [
+        "medium_to_high_tannin",
+        "full_body",
+        "peppery",
+        "smoky"
+      ],
+      "food_hints": [
+        "red_meat",
+        "grilled",
+        "smoked",
+        "roast",
+        "stew"
+      ],
+      "avoid_food_traits": [
+        "delicate"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            208
+          ],
+          "pdf_pages": [
+            218
+          ],
+          "section": "Syrah > Wine and Food Pairing"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_zinfandel_nouveau",
+      "label": "zinfandel tinto frutal",
+      "aliases": [
+        "zinfandel",
+        "zin"
+      ],
+      "traits": [
+        "fruit_forward",
+        "medium_body",
+        "soft_tannin",
+        "possible_high_alcohol"
+      ],
+      "food_hints": [
+        "barbecue",
+        "burger",
+        "charcuterie",
+        "moderate_spice"
+      ],
+      "avoid_food_traits": [
+        "delicate"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            222,
+            223
+          ],
+          "pdf_pages": [
+            232,
+            233
+          ],
+          "section": "Zinfandel > Wine and Food Pairing | Methods of Cooking"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_zinfandel_powerful",
+      "label": "zinfandel potente",
+      "aliases": [
+        "powerful zinfandel",
+        "monster zinfandel",
+        "zinfandel potente",
+        "zin potente"
+      ],
+      "traits": [
+        "high_alcohol",
+        "full_body",
+        "medium_to_high_tannin",
+        "fruit_forward"
+      ],
+      "food_hints": [
+        "barbecue",
+        "grilled",
+        "smoked",
+        "braised",
+        "robust_food"
+      ],
+      "avoid_food_traits": [
+        "delicate",
+        "hot_spicy"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            222,
+            223
+          ],
+          "pdf_pages": [
+            232,
+            233
+          ],
+          "section": "Zinfandel > Wine and Food Pairing | Methods of Cooking"
+        }
+      ]
+    },
+    {
+      "id": "goldstein_wine_dessert",
+      "label": "vino dulce",
+      "aliases": [
+        "vino dulce",
+        "dessert wine",
+        "sauternes",
+        "late harvest",
+        "oporto",
+        "porto",
+        "tokaji"
+      ],
+      "traits": [
+        "sweet"
+      ],
+      "food_hints": [
+        "dessert",
+        "blue_cheese"
+      ],
+      "avoid_food_traits": [
+        "dessert_sweeter_than_wine"
+      ],
+      "source_refs": [
+        {
+          "source": "goldstein_perfect_pairings",
+          "book_pages": [
+            244
+          ],
+          "pdf_pages": [
+            254
+          ],
+          "section": "Dessert Wines > Wine and Food Pairing"
+        }
+      ]
+    }
+  ],
+  "runtime_guardrails": [
+    {
+      "id": "goldstein_guardrail_001",
+      "rule": "No etiquetar una regla de Goldstein como chartier_directo ni chartier_inferido."
+    },
+    {
+      "id": "goldstein_guardrail_002",
+      "rule": "Chartier conserva la prioridad aromatico-molecular; Goldstein valida estructura, riesgo y excepciones."
+    },
+    {
+      "id": "goldstein_guardrail_003",
+      "rule": "Una incompatibilidad estructural fuerte no puede compensarse con una afinidad aromatica aislada."
+    },
+    {
+      "id": "goldstein_guardrail_004",
+      "rule": "Analizar salsa, condimento y guarnicion antes de aplicar reglas genericas por proteina principal."
+    },
+    {
+      "id": "goldstein_guardrail_005",
+      "rule": "No usar productores, importadores ni precios del libro para recomendar botellas: la fuente es de 2006."
+    },
+    {
+      "id": "goldstein_guardrail_006",
+      "rule": "Recomendar exclusivamente vinos disponibles en la carta actual del restaurante."
+    }
+  ],
+  "restaurant_runtime_retrieval": [
+    "Extraer ingrediente principal, salsa, condimento, guarnicion, tecnica y temperatura de servicio.",
+    "Clasificar rasgos del plato: acidez, dulzor, sal, picante, grasa, proteina, amargor, intensidad y peso.",
+    "Consultar Chartier primero para obtener afinidades aromaticas directas o inferidas.",
+    "Recuperar reglas Goldstein activadas por los rasgos del plato y por el perfil estructural del vino disponible.",
+    "Aplicar bloqueos criticos y penalizaciones estructurales antes de ordenar candidatos.",
+    "Usar ingredientes puente y tecnicas para justificar excepciones razonadas.",
+    "Explicar al cliente el resultado en lenguaje sensorial sencillo y conservar la trazabilidad interna."
+  ],
+  "excluded_content": [
+    "Recetas completas y prosa extensa.",
+    "Listas de productores e importadores.",
+    "Precios y recomendaciones comerciales historicas.",
+    "Bebidas distintas del vino."
+  ],
+  "summary": {
+    "general_rules": 26,
+    "technique_profiles": 10,
+    "sauce_profiles": 7,
+    "bridge_ingredients": 8,
+    "wine_style_profiles": 20,
+    "runtime_guardrails": 6,
+    "general_rules_by_dimension": {
+      "acidity": 3,
+      "alcohol_weight": 4,
+      "oak": 4,
+      "salt": 3,
+      "sauce_dominance": 1,
+      "serving_temperature": 1,
+      "side_dish_dominance": 1,
+      "sweetness": 4,
+      "tannin": 5
+    }
+  },
+  "copyright_note": "Base estructurada para recuperacion y puntuacion. No contiene la prosa completa del libro ni sustituye la consulta de la fuente."
+}

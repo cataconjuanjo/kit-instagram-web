@@ -20,8 +20,8 @@ export async function POST(req) {
     if (!plan || !PRICE_IDS[plan]) {
       return Response.json({ error: 'Plan no válido.' }, { status: 400 })
     }
-    if (!email) {
-      return Response.json({ error: 'Email obligatorio.' }, { status: 400 })
+    if (!restaurante_id) {
+      return Response.json({ error: 'restaurante_id obligatorio.' }, { status: 400 })
     }
 
     const adminSupabase = createClient(
@@ -29,45 +29,42 @@ export async function POST(req) {
       process.env.SUPABASE_SERVICE_ROLE_KEY,
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
-    if (restaurante_id) {
-      const auth = await requireRestaurantAccess(req, adminSupabase, restaurante_id)
-      if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
-    }
+    const auth = await requireRestaurantAccess(req, adminSupabase, restaurante_id)
+    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
 
     // Buscar o crear el customer en Stripe
     let stripeCustomerId = null
 
-    if (restaurante_id) {
-      const { data: rest } = await adminSupabase
-        .from('restaurantes')
-        .select('stripe_customer_id')
-        .eq('id', restaurante_id)
-        .single()
+    const { data: rest } = await adminSupabase
+      .from('restaurantes')
+      .select('stripe_customer_id, email, nombre')
+      .eq('id', restaurante_id)
+      .single()
 
-      stripeCustomerId = rest?.stripe_customer_id
-    }
+    stripeCustomerId = rest?.stripe_customer_id
+    const customerEmail = rest?.email || email
+    const customerName = rest?.nombre || nombre
+    if (!customerEmail) return Response.json({ error: 'Email obligatorio.' }, { status: 400 })
 
     if (!stripeCustomerId) {
       // Buscar si ya existe en Stripe por email
-      const existing = await stripe.customers.list({ email, limit: 1 })
+      const existing = await stripe.customers.list({ email: customerEmail, limit: 1 })
       if (existing.data.length > 0) {
         stripeCustomerId = existing.data[0].id
       } else {
         const customer = await stripe.customers.create({
-          email,
-          name: nombre || undefined,
+          email: customerEmail,
+          name: customerName || undefined,
           metadata: { restaurante_id: restaurante_id || '' }
         })
         stripeCustomerId = customer.id
       }
 
       // Guardar el customer_id en el restaurante si tenemos el id
-      if (restaurante_id) {
-        await adminSupabase
-          .from('restaurantes')
-          .update({ stripe_customer_id: stripeCustomerId })
-          .eq('id', restaurante_id)
-      }
+      await adminSupabase
+        .from('restaurantes')
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq('id', restaurante_id)
     }
 
     // Crear la sesión de checkout

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '../../supabase'
 import { puedeUsar } from '../../lib/plans'
 
 function HubIcon({ tipo, titulo }) {
@@ -70,21 +69,13 @@ export default function RestauranteHub({ params }) {
   useEffect(() => {
     async function cargar() {
       const slug = (await params).slug
-      const { data: rest } = await supabase
-        .from('restaurantes')
-        .select('*')
-        .eq('slug', slug)
-        .single()
+      const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}?hub=1`)
+      const data = res.ok ? await res.json() : {}
+      const rest = data.restaurante
 
       if (rest?.hub_activo && puedeUsar(rest, 'hub')) {
         setRestaurante(rest)
-        const { data } = await supabase
-          .from('restaurante_links')
-          .select('*')
-          .eq('restaurante_id', rest.id)
-          .eq('visible', true)
-          .order('orden')
-        setLinks(data || [])
+        setLinks(data.links || [])
       }
 
       setLoading(false)

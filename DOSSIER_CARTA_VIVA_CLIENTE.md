@@ -364,7 +364,21 @@ Respuesta:
 
 > Mi propuesta no es solo digitalizar vuestra carta. Es convertir vuestra oferta de vinos en una herramienta mas clara para el cliente, mas util para sala y mas rentable para el negocio. Podemos empezar manteniendo lo que ya teneis y mejorando la carta de vinos como primera fase.
 
-## 10. Checklist para la demo
+## 10. Tarifas orientativas
+
+Para un restaurante independiente:
+
+| Plan | Precio mensual | Enfoque |
+| --- | ---: | --- |
+| Basico | 59 EUR/mes | Carta digital viva con QR y ArmonIA para el cliente. |
+| Sala | 99 EUR/mes | Todo el plan Basico, modo camarero, bodega, inventario y seguimiento operativo. |
+| Acompanado | Desde 199 EUR/mes | Software, seguimiento consultivo y ajustes profesionales continuos. |
+
+La configuracion inicial se valora segun el volumen y el estado de la carta. En el plan Acompanado esta incluida.
+
+Los descuentos de lanzamiento, si procede ofrecerlos durante la fase inicial, se comunican de forma privada y no forman parte de la tarifa publica.
+
+## 11. Checklist para la demo
 
 - Abrir `/r/slug` si el hub esta activado.
 - Abrir `/carta/slug`.
