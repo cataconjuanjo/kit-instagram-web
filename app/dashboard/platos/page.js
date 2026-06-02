@@ -564,35 +564,23 @@ export default function Platos() {
               placeholder="Nombre, categoría, técnica, salsa o ingrediente"
             />
           </div>
-          <div className={styles.segmented}>
-            {[
-              ['todos', 'Todos'],
-              ['activos', 'Activos'],
-              ['sin_descripcion', 'Sin descripción'],
-              ['sin_precio', 'Sin precio'],
-              ['ocultos', 'Ocultos'],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                className={filtroPlatos === id ? styles.segmentActive : ''}
-                onClick={() => setFiltroPlatos(id)}
-              >
-                {label}
-              </button>
-            ))}
+          <div>
+            <label className={styles.label}>Vista</label>
+            <select className={styles.toolbarSelect} value={filtroPlatos} onChange={e => setFiltroPlatos(e.target.value)}>
+              <option value="todos">Todos los platos</option>
+              <option value="activos">Activos</option>
+              <option value="sin_descripcion">Sin descripción</option>
+              <option value="sin_precio">Sin precio</option>
+              <option value="ocultos">Ocultos</option>
+            </select>
           </div>
-          <div className={styles.toolbarMeta}>
+          <div className={styles.toolbarSummary}>
             <p className={styles.resultCount}>{platosVisibles.length} de {platosBase.length} platos</p>
             <button
               onClick={enriquecerTodosLosPlatos}
+              className={styles.bulkToggle}
               disabled={enriqueciendoBatch}
               title="Analiza con IA los platos sin perfil aromático Chartier"
-              style={{
-                background: 'none', border: '1px solid #e0e0e0', borderRadius: 6,
-                padding: '4px 10px', fontSize: 11, color: enriqueciendoBatch ? '#bbb' : '#888',
-                cursor: enriqueciendoBatch ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
-              }}
             >
               {enriqueciendoBatch ? '⏳ Analizando...' : '✦ Analizar Chartier'}
             </button>

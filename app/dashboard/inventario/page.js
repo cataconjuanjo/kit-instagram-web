@@ -6,6 +6,8 @@ import { getEffectiveRestaurantEmail } from '../../demo'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
+const VINOS_POR_TANDA = 10
+
 function decimal(valor) {
   return Number(valor) || 0
 }
@@ -31,6 +33,8 @@ export default function InventarioSemanal() {
   const [conteos, setConteos] = useState({})
   const [motivos, setMotivos] = useState({})
   const [filtro, setFiltro] = useState('prioridad')
+  const [pagina, setPagina] = useState(1)
+  const [soloAjustes, setSoloAjustes] = useState(false)
   const [loading, setLoading] = useState(true)
   const [aplicando, setAplicando] = useState(false)
   const [mensaje, setMensaje] = useState('')
@@ -178,6 +182,21 @@ export default function InventarioSemanal() {
   if (loading) return <LoadingState />
   if (!restaurante) return null
 
+  const ajustesPorId = new Set(datos.ajustes.map(ajuste => ajuste.vino.id))
+  const vinosInventario = soloAjustes
+    ? datos.filtrados.filter(vino => ajustesPorId.has(vino.id))
+    : datos.filtrados
+  const totalPaginas = Math.max(1, Math.ceil(vinosInventario.length / VINOS_POR_TANDA))
+  const paginaActual = Math.min(pagina, totalPaginas)
+  const inicioTanda = (paginaActual - 1) * VINOS_POR_TANDA
+  const vinosTanda = vinosInventario.slice(inicioTanda, inicioTanda + VINOS_POR_TANDA)
+  const revisadosFiltro = datos.filtrados.filter(vino =>
+    conteos[vino.id] !== '' && conteos[vino.id] !== undefined && conteos[vino.id] !== null
+  ).length
+  const rangoTanda = vinosInventario.length
+    ? `${inicioTanda + 1}-${Math.min(inicioTanda + VINOS_POR_TANDA, vinosInventario.length)}`
+    : '0'
+
   const costeDiferencia = datos.ajustes.reduce((sum, ajuste) => sum + ajuste.coste, 0)
   const ventaDiferencia = datos.ajustes.reduce((sum, ajuste) => sum + ajuste.venta, 0)
 
@@ -228,7 +247,7 @@ export default function InventarioSemanal() {
         <div className={styles.panelBody}>
           <div className={styles.actionRow}>
             {filtros.map(([id, label]) => (
-              <button key={id} className={filtro === id ? styles.secondary : styles.ghost} onClick={() => setFiltro(id)}>
+              <button key={id} className={filtro === id ? styles.secondary : styles.ghost} onClick={() => { setFiltro(id); setPagina(1) }}>
                 {label}
               </button>
             ))}
@@ -245,9 +264,35 @@ export default function InventarioSemanal() {
           <span className={styles.badge}>{datos.filtrados.length}</span>
         </div>
         <div className={styles.panelBody}>
-          {datos.filtrados.length ? (
-            <div className={styles.itemStack}>
-              {datos.filtrados.map(vino => {
+          <div className={styles.inventoryToolbar}>
+            <div>
+              <p className={styles.eyebrow}>Progreso de revisión</p>
+              <strong>{revisadosFiltro} de {datos.filtrados.length} revisados</strong>
+            </div>
+            <label className={styles.bulkSelectAll}>
+              <input
+                type="checkbox"
+                checked={soloAjustes}
+                onChange={event => { setSoloAjustes(event.target.checked); setPagina(1) }}
+              />
+              <span>Solo ajustes preparados ({datos.ajustes.length})</span>
+            </label>
+          </div>
+
+          {vinosInventario.length ? (
+            <>
+              <div className={styles.inventoryPager}>
+                <button type="button" onClick={() => setPagina(Math.max(1, paginaActual - 1))} disabled={paginaActual === 1}>
+                  Anterior
+                </button>
+                <span>Tanda {paginaActual} de {totalPaginas} · {rangoTanda} de {vinosInventario.length}</span>
+                <button type="button" onClick={() => setPagina(Math.min(totalPaginas, paginaActual + 1))} disabled={paginaActual === totalPaginas}>
+                  Siguiente tanda
+                </button>
+              </div>
+
+              <div className={styles.itemStack}>
+              {vinosTanda.map(vino => {
                 const contado = conteos[vino.id]
                 const diferencia = contado === '' || contado === undefined ? null : Number(contado) - decimal(vino.stock)
                 return (
@@ -291,9 +336,24 @@ export default function InventarioSemanal() {
                   </article>
                 )
               })}
-            </div>
+              </div>
+
+              {totalPaginas > 1 && (
+                <div className={styles.inventoryPager}>
+                  <button type="button" onClick={() => setPagina(Math.max(1, paginaActual - 1))} disabled={paginaActual === 1}>
+                    Anterior
+                  </button>
+                  <span>Tanda {paginaActual} de {totalPaginas}</span>
+                  <button type="button" onClick={() => setPagina(Math.min(totalPaginas, paginaActual + 1))} disabled={paginaActual === totalPaginas}>
+                    Siguiente tanda
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
-            <div className={styles.empty}>No hay vinos en este filtro.</div>
+            <div className={styles.empty}>
+              {soloAjustes ? 'No hay ajustes preparados en este filtro.' : 'No hay vinos en este filtro.'}
+            </div>
           )}
         </div>
       </section>
