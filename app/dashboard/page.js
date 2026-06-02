@@ -47,6 +47,31 @@ function claveCierreDia(restauranteId) {
   return `carta_viva_cierre_${restauranteId}_${fechaLocalClave()}`
 }
 
+async function tokenSesion() {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token || ''
+}
+
+async function cargarCierreRemoto(restauranteId) {
+  const token = await tokenSesion()
+  if (!token) return null
+  const query = new URLSearchParams({ restaurante_id: restauranteId, fecha: fechaLocalClave() })
+  const res = await fetch(`/api/cierres-servicio?${query}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) return null
+  const data = await res.json()
+  return data.cierre || null
+}
+
+const OBJETIVOS_SERVICIO = [
+  { id: 'equilibrado', label: 'Equilibrado' },
+  { id: 'vender_copas', label: 'Vender por copas' },
+  { id: 'subir_ticket', label: 'Subir ticket' },
+  { id: 'rotar_stock', label: 'Rotar stock' },
+  { id: 'vino_local', label: 'Producto local' },
+]
+
 export default function DashboardHome() {
   const [restaurante, setRestaurante] = useState(null)
   const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, incidenciasSala: 0, dudasSala: 0 })
@@ -56,6 +81,7 @@ export default function DashboardHome() {
   const [mostrarAyuda, setMostrarAyuda] = useState(false)
   const [tareasOcultas, setTareasOcultas] = useState([])
   const [turnoCerrado, setTurnoCerrado] = useState(false)
+  const [objetivoServicio, setObjetivoServicio] = useState('equilibrado')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -69,6 +95,7 @@ export default function DashboardHome() {
           try {
             const guardadas = JSON.parse(window.localStorage.getItem(`carta_viva_inicio_${rest.id}`) || '[]')
             setTareasOcultas(Array.isArray(guardadas) ? guardadas : [])
+            setObjetivoServicio(window.localStorage.getItem(`cartavinos_objetivo_${rest.id}`) || 'equilibrado')
           } catch {
             setTareasOcultas([])
           }
@@ -85,11 +112,14 @@ export default function DashboardHome() {
           supabase.from('estadisticas').select('tipo, detalle, created_at').eq('restaurante_id', rest.id).gte('created_at', hoy),
           supabase.from('consultor_propuestas').select('*').eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
         ])
-        const ventasHoy = (statsHoy || []).filter(s => s.tipo === 'venta').map(s => leerDetalle(s.detalle))
+        const eventosVentaHoy = (statsHoy || []).filter(s => s.tipo === 'venta')
+        const ventasHoy = eventosVentaHoy.map(s => leerDetalle(s.detalle))
         if (typeof window !== 'undefined') {
           try {
-            const guardados = JSON.parse(window.localStorage.getItem(claveCierreDia(rest.id)) || '[]')
-            setTurnoCerrado(Array.isArray(guardados) && guardados.length >= ventasHoy.length && ventasHoy.length > 0)
+            const locales = JSON.parse(window.localStorage.getItem(claveCierreDia(rest.id)) || '[]')
+            const cierreRemoto = await cargarCierreRemoto(rest.id)
+            const guardados = cierreRemoto?.eventos_revisados || locales
+            setTurnoCerrado(Boolean(cierreRemoto?.cerrado) || (Array.isArray(guardados) && guardados.length >= eventosVentaHoy.length && eventosVentaHoy.length > 0))
           } catch {
             setTurnoCerrado(false)
           }
@@ -117,6 +147,13 @@ export default function DashboardHome() {
     window.localStorage.setItem(`carta_viva_inicio_${restaurante.id}`, JSON.stringify(nuevas))
   }
 
+  function cambiarObjetivoServicio(value) {
+    setObjetivoServicio(value)
+    if (restaurante?.id && typeof window !== 'undefined') {
+      window.localStorage.setItem(`cartavinos_objetivo_${restaurante.id}`, value)
+    }
+  }
+
   function restaurarTareasInicio() {
     if (!restaurante?.id || typeof window === 'undefined') return
     setTareasOcultas([])
@@ -130,7 +167,6 @@ export default function DashboardHome() {
   )
 
   const vinosActivos = vinos.filter(v => v.activo !== false)
-  const vinosPorCopa = vinosActivos.filter(v => decimal(v.precio_copa) > 0)
   const vinosSinPrecio = vinosActivos.filter(vino => !decimal(vino.precio_botella))
   const vinosSinPerfil = vinosActivos.filter(vino => !vino.notas_cata || normalizar(vino.notas_cata).length < 12)
   const vinosSinStock = vinosActivos.filter(vino => vino.stock === null || vino.stock === undefined || decimal(vino.stock) === 0)
@@ -140,18 +176,10 @@ export default function DashboardHome() {
   const sinCosteCompra = vinosActivos.filter(vino => !decimal(vino.coste_compra))
   const sinProveedor = vinosActivos.filter(vino => !vino.proveedor)
   const propuestasActivas = propuestas.filter(item => item.estado !== 'incorporada')
-  const valorBodegaCoste = vinosActivos.reduce((sum, vino) => sum + decimal(vino.stock) * decimal(vino.coste_compra), 0)
-  const valorBodegaVenta = vinosActivos.reduce((sum, vino) => sum + decimal(vino.stock) * decimal(vino.precio_botella), 0)
-  const margenBrutoPotencial = Math.max(0, valorBodegaVenta - valorBodegaCoste)
-  const vinosConMargen = vinosActivos.filter(vino => decimal(vino.coste_compra) > 0 && decimal(vino.precio_botella) > 0)
-  const margenMedio = vinosConMargen.length
-    ? Math.round(vinosConMargen.reduce((sum, vino) => sum + (((decimal(vino.precio_botella) - decimal(vino.coste_compra)) / decimal(vino.precio_botella)) * 100), 0) / vinosConMargen.length)
-    : null
-
-  const calidadPlatos = Math.round((porcentaje(platos.length - platosSinDescripcion.length, platos.length) * 0.6) + (porcentaje(platos.length - platosSinPrecio.length, platos.length) * 0.4))
-  const calidadVinos = Math.round((porcentaje(vinosActivos.length - vinosSinPrecio.length, vinosActivos.length) * 0.45) + (porcentaje(vinosActivos.length - vinosSinPerfil.length, vinosActivos.length) * 0.45) + (porcentaje(vinosPorCopa.length, Math.max(3, vinosActivos.length * 0.15)) * 0.1))
+  const calidadPlatos = Math.round((porcentaje(platos.length - platosSinDescripcion.length, platos.length) * 0.65) + (porcentaje(platos.length - platosSinPrecio.length, platos.length) * 0.35))
+  const calidadVinos = Math.round((porcentaje(vinosActivos.length - vinosSinPrecio.length, vinosActivos.length) * 0.45) + (porcentaje(vinosActivos.length - vinosSinPerfil.length, vinosActivos.length) * 0.45) + (porcentaje(vinosActivos.length - vinosSinStock.length, vinosActivos.length) * 0.1))
   const calidadStock = porcentaje(vinosActivos.length - vinosSinStock.length, vinosActivos.length)
-  const calidadGlobal = Math.round((calidadPlatos * 0.28) + (calidadVinos * 0.42) + (calidadStock * 0.3))
+  const calidadGlobal = Math.round((calidadVinos * 0.58) + (calidadPlatos * 0.42))
   const estadoCarta = calidadGlobal >= 80 ? 'Lista para trabajar' : calidadGlobal >= 55 ? 'Necesita ajustes' : 'Requiere orden'
 
   const acciones = [
@@ -170,9 +198,7 @@ export default function DashboardHome() {
   const metricas = [
     { label: 'Salud carta', valor: `${calidadGlobal}%`, detalle: estadoCarta },
     { label: 'Alertas hoy', valor: stats.incidenciasSala + stats.dudasSala, detalle: `${stats.incidenciasSala} stock, ${stats.dudasSala} sala` },
-    { label: 'Bodega coste', valor: eur(valorBodegaCoste), detalle: valorBodegaCoste ? `${eur(valorBodegaVenta)} potencial venta` : 'Completa costes para medirlo' },
-    { label: 'Margen bruto', valor: eur(margenBrutoPotencial), detalle: valorBodegaCoste ? 'Potencial antes de costes operativos' : 'Completa costes y PVP' },
-    { label: 'Margen medio', valor: margenMedio == null ? '-' : `${margenMedio}%`, detalle: `${vinosConMargen.length} vinos medidos` },
+    { label: 'Ventas hoy', valor: stats.ventasHoy, detalle: turnoCerrado ? 'Turno revisado' : 'Pendientes de cierre' },
   ]
 
   const modulos = [
@@ -188,11 +214,13 @@ export default function DashboardHome() {
       const coste = decimal(vino.coste_compra)
       const margenPct = venta && coste ? Math.round(((venta - coste) / venta) * 100) : null
       const stock = decimal(vino.stock)
+      const local = normalizar(vino.region).includes(normalizar(restaurante?.ciudad || ''))
       const score =
         (margenPct || 45) +
-        (decimal(vino.precio_copa) > 0 ? 12 : 0) +
-        (stock >= Math.max(8, decimal(vino.stock_minimo) * 2) ? 10 : 0) +
-        (normalizar(vino.region).includes(normalizar(restaurante?.ciudad || '')) ? 8 : 0)
+        (decimal(vino.precio_copa) > 0 ? objetivoServicio === 'vender_copas' ? 30 : 8 : 0) +
+        (stock >= Math.max(8, decimal(vino.stock_minimo) * 2) ? objetivoServicio === 'rotar_stock' ? 30 : 8 : 0) +
+        (local ? objetivoServicio === 'vino_local' ? 30 : 6 : 0) +
+        (objetivoServicio === 'subir_ticket' ? Math.min(24, venta / 3) : 0)
       return { ...vino, margenPct, score }
     })
     .sort((a, b) => b.score - a.score)
@@ -252,7 +280,7 @@ export default function DashboardHome() {
   return (
     <main>
       <div className={styles.wrap}>
-        <section className={styles.onboardingPanel}>
+        {tareasInicioVisibles.length > 0 && <section className={styles.onboardingPanel}>
           <div className={styles.onboardingHead}>
             <div>
               <p className={styles.eyebrow}>Primeros 30 minutos</p>
@@ -287,7 +315,7 @@ export default function DashboardHome() {
               <span>Estas tareas ya no molestarán en el inicio.</span>
             </div>
           )}
-        </section>
+        </section>}
 
         <section className={styles.healthStrip}>
           <div className={styles.healthHead}>
@@ -378,6 +406,9 @@ export default function DashboardHome() {
               <p>Un resumen operativo para saber qué vender, qué vigilar y qué enlaces necesita el equipo.</p>
             </div>
             <div className={styles.servicePlanActions}>
+              <select value={objetivoServicio} onChange={event => cambiarObjetivoServicio(event.target.value)} aria-label="Objetivo comercial del servicio">
+                {OBJETIVOS_SERVICIO.map(objetivo => <option key={objetivo.id} value={objetivo.id}>{objetivo.label}</option>)}
+              </select>
               {enlacesServicio.map(enlace => enlace.pruebaCarta ? (
                 <OpenCartaPruebaButton key={enlace.label} restauranteId={restaurante?.id}>{enlace.label}</OpenCartaPruebaButton>
               ) : enlace.external ? (

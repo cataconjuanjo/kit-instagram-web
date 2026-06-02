@@ -411,7 +411,7 @@
 
 .metricGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -456,7 +456,8 @@
 }
 
 .servicePlanActions a,
-.servicePlanActions button {
+.servicePlanActions button,
+.servicePlanActions select {
   min-height: 34px;
   display: inline-flex;
   align-items: center;
@@ -470,6 +471,11 @@
   font-weight: 850;
   background: transparent;
   cursor: pointer;
+}
+
+.servicePlanActions select {
+  background: #fffaf3;
+  color: #531827;
 }
 
 .servicePlanGrid {

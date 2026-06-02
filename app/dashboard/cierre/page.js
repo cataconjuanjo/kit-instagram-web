@@ -39,6 +39,23 @@ function claveCierreDia(restauranteId) {
   return `carta_viva_cierre_${restauranteId}_${fechaLocalClave()}`
 }
 
+async function tokenSesion() {
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token || ''
+}
+
+async function cargarCierreRemoto(restauranteId) {
+  const token = await tokenSesion()
+  if (!token) return null
+  const query = new URLSearchParams({ restaurante_id: restauranteId, fecha: fechaLocalClave() })
+  const res = await fetch(`/api/cierres-servicio?${query}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) return null
+  const data = await res.json()
+  return data.cierre || null
+}
+
 export default function CierreServicio() {
   const [restaurante, setRestaurante] = useState(null)
   const [vinos, setVinos] = useState([])
@@ -69,9 +86,11 @@ export default function CierreServicio() {
         setEventos(eventosParseados)
         if (typeof window !== 'undefined') {
           try {
-            const guardados = JSON.parse(window.localStorage.getItem(claveCierreDia(rest.id)) || '[]')
+            const locales = JSON.parse(window.localStorage.getItem(claveCierreDia(rest.id)) || '[]')
+            const cierreRemoto = await cargarCierreRemoto(rest.id)
+            const guardados = cierreRemoto?.eventos_revisados || locales
             setOcultos(Array.isArray(guardados) ? guardados : [])
-            setTurnoCerrado(Array.isArray(guardados) && guardados.length >= eventosParseados.length && eventosParseados.length > 0)
+            setTurnoCerrado(Boolean(cierreRemoto?.cerrado))
           } catch {
             setOcultos([])
           }
@@ -82,15 +101,29 @@ export default function CierreServicio() {
     cargar()
   }, [])
 
-  function guardarOcultos(nuevos) {
+  async function guardarOcultos(nuevos, cerrado = false) {
     setOcultos(nuevos)
+    setTurnoCerrado(cerrado)
     if (restaurante?.id && typeof window !== 'undefined') {
       window.localStorage.setItem(claveCierreDia(restaurante.id), JSON.stringify(nuevos))
     }
+    if (!restaurante?.id) return
+    const token = await tokenSesion()
+    if (!token) return
+    await fetch('/api/cierres-servicio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        restaurante_id: restaurante.id,
+        fecha: fechaLocalClave(),
+        eventos_revisados: nuevos,
+        cerrado,
+      }),
+    })
   }
 
-  function ocultarEvento(id) {
-    guardarOcultos([...new Set([...ocultos, id])])
+  async function ocultarEvento(id) {
+    await guardarOcultos([...new Set([...ocultos, id])])
   }
 
   const datos = useMemo(() => {
@@ -127,7 +160,7 @@ export default function CierreServicio() {
     const { error } = await supabase.from('vinos').update({ stock: 0 }).eq('id', vinoId)
     if (!error) {
       setVinos(vinos.map(vino => String(vino.id) === String(vinoId) ? { ...vino, stock: 0 } : vino))
-      ocultarEvento(evento.id)
+      await ocultarEvento(evento.id)
       await supabase.from('movimientos_stock').insert([{
         restaurante_id: restaurante.id,
         vino_id: vinoId,
@@ -149,7 +182,7 @@ export default function CierreServicio() {
     const { error } = await supabase.from('vinos').update({ stock: stockNuevo }).eq('id', vinoId)
     if (!error) {
       setVinos(vinos.map(vino => String(vino.id) === String(vinoId) ? { ...vino, stock: stockNuevo } : vino))
-      ocultarEvento(evento.id)
+      await ocultarEvento(evento.id)
       await supabase.from('movimientos_stock').insert([{
         restaurante_id: restaurante.id,
         vino_id: vinoId,
@@ -162,18 +195,18 @@ export default function CierreServicio() {
     }
   }
 
-  function cerrarTurno() {
+  async function cerrarTurno() {
     const nuevos = [...new Set([...ocultos, ...datos.visibles.map(evento => evento.id)])]
-    guardarOcultos(nuevos)
-    setTurnoCerrado(true)
+    await guardarOcultos(nuevos, true)
   }
 
-  function reabrirTurno() {
+  async function reabrirTurno() {
     setOcultos([])
     setTurnoCerrado(false)
     if (restaurante?.id && typeof window !== 'undefined') {
       window.localStorage.removeItem(claveCierreDia(restaurante.id))
     }
+    await guardarOcultos([], false)
   }
 
   if (loading) return <LoadingState />
