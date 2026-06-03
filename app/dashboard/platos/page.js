@@ -393,12 +393,8 @@ export default function Platos() {
 
   if (loading) return <LoadingState />
 
-  const filtroUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('filtro') : ''
-  const platosBase = filtroUrl === 'descripcion'
-    ? platos.filter(plato => !plato.descripcion || plato.descripcion.trim().length < 8)
-    : platos
   const busquedaNormalizada = normalizar(busquedaPlatos)
-  const platosVisibles = platosBase.filter(plato => {
+  const platosVisibles = platos.filter(plato => {
     const texto = normalizar([plato.nombre, plato.descripcion, plato.categoria].filter(Boolean).join(' '))
     const coincideBusqueda = !busquedaNormalizada || texto.includes(busquedaNormalizada)
     const coincideEstado =
@@ -580,7 +576,7 @@ export default function Platos() {
             </select>
           </div>
           <div className={styles.toolbarSummary}>
-            <p className={styles.resultCount}>{platosVisibles.length} de {platosBase.length} platos</p>
+            <p className={styles.resultCount}>{platosVisibles.length} de {platos.length} platos</p>
             {puedeAnalizarChartier && (
             <button
               onClick={enriquecerTodosLosPlatos}
@@ -608,7 +604,7 @@ export default function Platos() {
 
           {platosVisibles.length === 0 ? (
             <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-              <p style={{ color: '#ccc', fontSize: 14, fontWeight: 300 }}>{filtroUrl === 'descripcion' ? 'No hay platos pendientes de descripcion interna.' : 'Aún no hay platos. Añade el primero.'}</p>
+              <p style={{ color: '#ccc', fontSize: 14, fontWeight: 300 }}>Aún no hay platos que coincidan con esta vista.</p>
             </div>
           ) : (
             platosVisibles.map((p, i) => (
