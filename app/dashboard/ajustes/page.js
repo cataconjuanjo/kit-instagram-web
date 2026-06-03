@@ -19,11 +19,13 @@ export default function AjustesHub() {
   const [guardandoActividad, setGuardandoActividad] = useState(false)
   const [copiado, setCopiado] = useState('')
   const [loading, setLoading] = useState(true)
+  const [esAdmin, setEsAdmin] = useState(false)
 
   useEffect(() => {
     async function cargar() {
-      const { email } = await getEffectiveRestaurantEmail(supabase)
+      const { email, isAdmin } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
+      setEsAdmin(Boolean(isAdmin))
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       setRestaurante(rest || null)
       setPinConfigurado(Boolean(rest?.camarero_pin_hash || rest?.camarero_pin))
@@ -177,7 +179,7 @@ export default function AjustesHub() {
       </section>
 
       <section className={styles.gridTwo} style={{ marginTop: 16 }}>
-        <div className={styles.panel}>
+        {esAdmin && <div className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Arranque de actividad real</h2>
@@ -202,7 +204,7 @@ export default function AjustesHub() {
             </div>
             {mensajeActividad && <p className={styles.tiny}>{mensajeActividad}</p>}
           </div>
-        </div>
+        </div>}
 
         <div className={styles.panel} id="pin-sala">
           <div className={styles.panelHead}>
