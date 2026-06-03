@@ -59,6 +59,77 @@ function prepararBriefing(vinos = [], platos = [], restaurante = {}) {
   return { vinosServicio, vinosRiesgo, platosArgumento }
 }
 
+function objetivoBriefing(briefing) {
+  if (briefing.vinosServicio.some(vino => decimal(vino.precio_copa) > 0)) {
+    return 'Empujar vinos por copa y referencias faciles de defender.'
+  }
+  if (briefing.vinosRiesgo.length) {
+    return 'Vender con intencion sin prometer referencias criticas de stock.'
+  }
+  return 'Subir la calidad de recomendacion y marcar senales utiles durante el servicio.'
+}
+
+function detalleVinoServicio(vino) {
+  return [
+    vino.bodega,
+    vino.margenPct ? `${vino.margenPct}% margen` : 'coste pendiente',
+    decimal(vino.precio_copa) > 0 ? 'por copa' : eur(vino.precio_botella),
+  ].filter(Boolean).join(' · ')
+}
+
+function detalleVinoRiesgo(vino) {
+  return `Stock ${decimal(vino.stock)}${decimal(vino.stock_minimo) ? ` / minimo ${decimal(vino.stock_minimo)}` : ''}`
+}
+
+function detallePlato(plato) {
+  return [plato.categoria, decimal(plato.precio) ? eur(plato.precio) : null].filter(Boolean).join(' · ')
+}
+
+function construirBriefingCompartible(restaurante, briefing, urlCamarero) {
+  const lineas = [
+    `Briefing de sala - ${restaurante?.nombre || 'Restaurante'}`,
+    new Date().toLocaleDateString('es-ES'),
+    '',
+    `Objetivo: ${objetivoBriefing(briefing)}`,
+    '',
+    'Empujar hoy:',
+    ...(briefing.vinosServicio.length
+      ? briefing.vinosServicio.map(vino => `- ${vino.nombre}${detalleVinoServicio(vino) ? ` (${detalleVinoServicio(vino)})` : ''}`)
+      : ['- Completar stock, precio y coste para generar recomendaciones.']),
+    '',
+    'Revisar antes de prometer:',
+    ...(briefing.vinosRiesgo.length
+      ? briefing.vinosRiesgo.map(vino => `- ${vino.nombre}: ${detalleVinoRiesgo(vino)}`)
+      : ['- Sin referencias criticas de stock para este servicio.']),
+    '',
+    'Argumentos rapidos:',
+    ...(briefing.platosArgumento.length
+      ? briefing.platosArgumento.map(plato => `- ${plato.nombre}${detallePlato(plato) ? ` (${detallePlato(plato)})` : ''}`)
+      : ['- Completar descripciones de platos para preparar mejores argumentos.']),
+    '',
+    `Modo camarero: ${urlCamarero}`,
+  ]
+
+  return lineas.join('\n')
+}
+
+async function copiarTexto(texto) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(texto)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = texto
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
+}
+
 function LineaBriefing({ titulo, detalle }) {
   return (
     <div style={{ borderTop: '1px solid rgba(90, 72, 55, 0.12)', paddingTop: 10 }}>
@@ -72,6 +143,7 @@ export default function SalaHub() {
   const [restaurante, setRestaurante] = useState(null)
   const [eventos, setEventos] = useState([])
   const [briefing, setBriefing] = useState({ vinosServicio: [], vinosRiesgo: [], platosArgumento: [] })
+  const [mensajeBriefing, setMensajeBriefing] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -106,6 +178,15 @@ export default function SalaHub() {
   const incidencias = eventos.filter(e => e.tipo === 'venta' && ['no_stock', 'agotado'].includes(e.parsed?.resultado)).length
   const dudas = eventos.filter(e => e.tipo === 'venta' && ['no_convence', 'otra'].includes(e.parsed?.resultado)).length
   const consultas = eventos.filter(e => e.tipo === 'sommelier').length
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const urlCamarero = `${origin}/camarero/${restaurante?.slug || ''}`
+
+  async function copiarBriefing() {
+    const texto = construirBriefingCompartible(restaurante, briefing, urlCamarero)
+    await copiarTexto(texto)
+    setMensajeBriefing('Briefing copiado para compartir.')
+    setTimeout(() => setMensajeBriefing(''), 1800)
+  }
 
   return (
     <FeatureGate restaurante={restaurante} feature="modo_camarero" title="Modo sala no incluido">
@@ -114,7 +195,7 @@ export default function SalaHub() {
       eyebrow="Sala"
       title="Servicio y actividad"
       subtitle="Rutina diaria para revisar lo que ha pasado en mesa y dejar la carta lista para el siguiente servicio."
-      actions={<a className={styles.secondary} href={`/camarero/${restaurante?.slug || ''}`} target="_blank" rel="noreferrer">Abrir modo camarero</a>}
+      actions={<a className={styles.secondary} href={urlCamarero} target="_blank" rel="noreferrer">Abrir modo camarero</a>}
       help={{
         title: 'Rutina de sala',
         intro: 'No es para tocarlo todo durante el servicio. Es para recoger señales y decidir después con calma.',
@@ -138,8 +219,12 @@ export default function SalaHub() {
             <p className={styles.eyebrow}>Antes de abrir</p>
             <h2 className={styles.panelTitle}>Briefing de sala</h2>
             <p className={styles.panelSub}>Qué vender con intención, qué revisar antes de prometer y qué platos usar para abrir conversación.</p>
+            {mensajeBriefing && <p className={styles.tiny}>{mensajeBriefing}</p>}
           </div>
-          <Link className={styles.secondary} href="/dashboard/cierre">Ir a cierre</Link>
+          <div className={styles.actionRow}>
+            <button type="button" className={styles.primary} onClick={copiarBriefing}>Copiar briefing</button>
+            <Link className={styles.secondary} href="/dashboard/cierre">Ir a cierre</Link>
+          </div>
         </div>
         <div className={styles.panelBody}>
           <div className={styles.gridTwo}>
@@ -151,7 +236,7 @@ export default function SalaHub() {
                   <LineaBriefing
                     key={vino.id}
                     titulo={vino.nombre}
-                    detalle={[vino.bodega, vino.margenPct ? `${vino.margenPct}% margen` : 'coste pendiente', decimal(vino.precio_copa) > 0 ? 'por copa' : eur(vino.precio_botella)].filter(Boolean).join(' · ')}
+                    detalle={detalleVinoServicio(vino)}
                   />
                 )) : <p className={styles.sectionText}>Añade stock, precio y coste para generar recomendaciones de venta.</p>}
               </div>
@@ -165,7 +250,7 @@ export default function SalaHub() {
                   <LineaBriefing
                     key={vino.id}
                     titulo={vino.nombre}
-                    detalle={`Stock ${decimal(vino.stock)}${decimal(vino.stock_minimo) ? ` / mínimo ${decimal(vino.stock_minimo)}` : ''}`}
+                    detalle={detalleVinoRiesgo(vino)}
                   />
                 )) : <p className={styles.sectionText}>No hay referencias críticas de stock para este servicio.</p>}
               </div>
@@ -179,7 +264,7 @@ export default function SalaHub() {
                   <LineaBriefing
                     key={plato.id}
                     titulo={plato.nombre}
-                    detalle={[plato.categoria, decimal(plato.precio) ? eur(plato.precio) : null].filter(Boolean).join(' · ')}
+                    detalle={detallePlato(plato)}
                   />
                 )) : <p className={styles.sectionText}>Completa descripciones de platos para preparar mejores argumentos de sala.</p>}
               </div>
