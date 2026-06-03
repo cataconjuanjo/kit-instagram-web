@@ -296,7 +296,7 @@ export default function ControlBodega() {
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Pedido sugerido</h2>
-              <p className={styles.panelSub}>Basado en stock actual y mínimo configurado.</p>
+              <p className={styles.panelSub}>Agrupado por proveedor para copiar y pegar a cada distribuidor.</p>
             </div>
             <div className={styles.actionRow}>
               <span className={styles.badge}>{datos.pedido.length}</span>
@@ -316,10 +316,10 @@ export default function ControlBodega() {
                       <div className={styles.actionRow}>
                         <span className={styles.badge}>{vinosProveedor.reduce((sum, vino) => sum + vino.pedir, 0)} uds.</span>
                         <button className={styles.ghost} onClick={() => copiarPedidoProveedor(proveedor, vinosProveedor)}>
-                          {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar proveedor'}
+                          {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar mensaje'}
                         </button>
                         <button className={styles.ghost} onClick={() => abrirWhatsAppProveedor(proveedor, vinosProveedor)}>
-                          WhatsApp
+                          Enviar WhatsApp
                         </button>
                       </div>
                     </div>
