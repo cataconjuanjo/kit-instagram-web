@@ -294,6 +294,113 @@
   white-space: nowrap;
 }
 
+.managerCard {
+  background: #171416;
+  border: 1px solid #2d282a;
+  border-radius: 8px;
+  color: #fffaf3;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.managerHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.managerHead h2 {
+  margin: 0;
+  color: #fffaf3;
+  font-size: 22px;
+  font-weight: 850;
+}
+
+.managerHead p:not(.eyebrow) {
+  max-width: 660px;
+  margin: 6px 0 0;
+  color: rgba(255, 250, 243, 0.62);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.managerMainAction,
+.managerStep {
+  text-decoration: none;
+}
+
+.managerMainAction {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 250, 243, 0.22);
+  border-radius: 8px;
+  background: #fffaf3;
+  color: #531827;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.managerGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.managerStep {
+  min-height: 132px;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  border: 1px solid rgba(255, 250, 243, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.04);
+  color: #fffaf3;
+  padding: 14px;
+}
+
+.managerStep span {
+  color: #bfa984;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.managerStep strong {
+  color: #fffaf3;
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.managerStep small {
+  color: rgba(255, 250, 243, 0.6);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.managerStep em {
+  width: fit-content;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: rgba(191, 169, 132, 0.14);
+  color: #d5bd8b;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .healthStrip {
   background: #fffaf3;
   border: 1px solid #dfddd6;
@@ -1143,6 +1250,7 @@
   .checkGrid,
   .onboardingGrid,
   .quickGrid,
+  .managerGrid,
   .servicePlanGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1153,6 +1261,10 @@
 
   .servicePlanActions {
     justify-content: flex-start;
+  }
+
+  .managerHead {
+    flex-direction: column;
   }
 }
 
@@ -1181,6 +1293,7 @@
   .checkGrid,
   .onboardingGrid,
   .quickGrid,
+  .managerGrid,
   .servicePlanGrid {
     grid-template-columns: 1fr;
   }

@@ -276,6 +276,46 @@ export default function DashboardHome() {
     : haySenalesSala
       ? 'Turno con señales'
       : 'Turno limpio'
+  const urlModoCamarero = restaurante?.slug ? `/camarero/${restaurante.slug}` : '/dashboard/sala'
+  const tareasEncargado = [
+    {
+      momento: 'Antes de abrir',
+      titulo: riesgosServicio.length ? 'Revisar vinos delicados' : 'Compartir briefing',
+      detalle: riesgosServicio.length ? `${riesgosServicio.length} referencias que sala no deberia prometer sin mirar.` : 'El equipo tiene una guia corta de que vender y que vigilar.',
+      href: '/dashboard/sala',
+      estado: riesgosServicio.length ? 'Revisar' : 'Listo',
+    },
+    {
+      momento: 'Durante servicio',
+      titulo: 'Modo camarero',
+      detalle: 'Enlace directo para que sala marque ventas, dudas y faltas de stock.',
+      href: urlModoCamarero,
+      external: Boolean(restaurante?.slug),
+      estado: 'Abrir',
+    },
+    stats.ventasHoy > 0 && !turnoCerrado
+      ? {
+          momento: 'Despues del servicio',
+          titulo: 'Cerrar turno',
+          detalle: `${stats.ventasHoy} ventas o senales esperan decision.`,
+          href: '/dashboard/cierre',
+          estado: 'Pendiente',
+        }
+      : {
+          momento: 'Despues del servicio',
+          titulo: turnoCerrado ? 'Turno cerrado' : 'Sin cierre pendiente',
+          detalle: turnoCerrado ? 'Las senales de hoy ya estan revisadas.' : 'No hay senales de sala que obliguen a entrar ahora.',
+          href: '/dashboard/cierre',
+          estado: 'Listo',
+        },
+    bajoMinimo.length > 0 && {
+      momento: 'Bodega',
+      titulo: 'Preparar pedido',
+      detalle: `${bajoMinimo.length} referencias estan bajo minimo.`,
+      href: '/dashboard/bodega#pedido',
+      estado: 'Comprar',
+    },
+  ].filter(Boolean)
 
   return (
     <main>
@@ -316,6 +356,36 @@ export default function DashboardHome() {
             </div>
           )}
         </section>}
+
+        <section className={styles.managerCard}>
+          <div className={styles.managerHead}>
+            <div>
+              <p className={styles.eyebrow}>Modo encargado</p>
+              <h2>Lo justo para llevar el turno</h2>
+              <p>Una guia corta: abrir sala, no prometer lo critico, cerrar lo pendiente y salir de aqui si no hay nada urgente.</p>
+            </div>
+            <Link className={styles.managerMainAction} href={siguienteTurno.href}>{siguienteTurno.label}</Link>
+          </div>
+          <div className={styles.managerGrid}>
+            {tareasEncargado.map(tarea => (
+              tarea.external ? (
+                <a key={`${tarea.momento}-${tarea.titulo}`} className={styles.managerStep} href={tarea.href} target="_blank" rel="noreferrer">
+                  <span>{tarea.momento}</span>
+                  <strong>{tarea.titulo}</strong>
+                  <small>{tarea.detalle}</small>
+                  <em>{tarea.estado}</em>
+                </a>
+              ) : (
+                <Link key={`${tarea.momento}-${tarea.titulo}`} className={styles.managerStep} href={tarea.href}>
+                  <span>{tarea.momento}</span>
+                  <strong>{tarea.titulo}</strong>
+                  <small>{tarea.detalle}</small>
+                  <em>{tarea.estado}</em>
+                </Link>
+              )
+            ))}
+          </div>
+        </section>
 
         <section className={styles.healthStrip}>
           <div className={styles.healthHead}>

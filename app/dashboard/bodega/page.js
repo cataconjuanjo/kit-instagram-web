@@ -40,6 +40,7 @@ export default function ControlBodega() {
   const [mostrarPropuestas, setMostrarPropuestas] = useState(false)
   const [mostrarReferencias, setMostrarReferencias] = useState(false)
   const [pedidoCopiado, setPedidoCopiado] = useState(false)
+  const [proveedorCopiado, setProveedorCopiado] = useState('')
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
@@ -204,6 +205,19 @@ export default function ControlBodega() {
     setTimeout(() => setPedidoCopiado(false), 1800)
   }
 
+  async function copiarPedidoProveedor(proveedor, vinosProveedor) {
+    if (!vinosProveedor?.length || typeof navigator === 'undefined') return
+    const texto = [
+      `Pedido sugerido - ${restaurante?.nombre || 'Carta Viva'}`,
+      proveedor,
+      '',
+      ...vinosProveedor.map(vino => `- ${vino.nombre}: pedir ${vino.pedir} uds. Stock ${vino.stock || 0}, minimo ${vino.stock_minimo}`),
+    ].join('\n')
+    await navigator.clipboard.writeText(texto)
+    setProveedorCopiado(proveedor)
+    setTimeout(() => setProveedorCopiado(''), 1800)
+  }
+
   return (
     <FeatureGate restaurante={restaurante} feature="bodega" title="Bodega no incluida">
     <ModuleShell
@@ -278,7 +292,12 @@ export default function ControlBodega() {
                         <p className={styles.eyebrow}>{vinosProveedor.length} referencias</p>
                         <h3 className={styles.sectionTitle}>{proveedor}</h3>
                       </div>
-                      <span className={styles.badge}>{vinosProveedor.reduce((sum, vino) => sum + vino.pedir, 0)} uds.</span>
+                      <div className={styles.actionRow}>
+                        <span className={styles.badge}>{vinosProveedor.reduce((sum, vino) => sum + vino.pedir, 0)} uds.</span>
+                        <button className={styles.ghost} onClick={() => copiarPedidoProveedor(proveedor, vinosProveedor)}>
+                          {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar proveedor'}
+                        </button>
+                      </div>
                     </div>
                     <div className={styles.itemStack} style={{ marginTop: 12 }}>
                       {vinosProveedor.map(vino => (
