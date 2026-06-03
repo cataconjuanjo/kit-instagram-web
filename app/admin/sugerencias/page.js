@@ -97,6 +97,14 @@ export default function AdminSugerenciasPage() {
                 placeholder="Seguimiento, decisión o próximo paso..."
               />
             </label>
+            <label className="consult-field">
+              Respuesta visible para el restaurante
+              <textarea
+                value={item.respuesta_publica || ''}
+                onChange={event => setSugerencias(actual => actual.map(sugerencia => sugerencia.id === item.id ? { ...sugerencia, respuesta_publica: event.target.value } : sugerencia))}
+                placeholder="Ej. Lo tenemos en revisión. Gracias por avisar."
+              />
+            </label>
             <div className="consult-card-actions">
               <select value={item.estado} onChange={event => actualizar(item, { estado: event.target.value })}>
                 {ESTADOS.map(estado => <option value={estado} key={estado}>{estado}</option>)}

@@ -13,6 +13,12 @@ function texto(value, limite) {
   return String(value || '').trim().slice(0, limite)
 }
 
+function selectSugerencias(admin = false) {
+  return admin
+    ? 'id, restaurante_id, tipo, mensaje, pagina, estado, respuesta_interna, respuesta_publica, created_at, updated_at, restaurantes(nombre, slug)'
+    : 'id, restaurante_id, tipo, mensaje, pagina, estado, respuesta_publica, created_at, updated_at'
+}
+
 export async function POST(req) {
   try {
     const body = await req.json()
@@ -53,21 +59,31 @@ export async function GET(req) {
 
     const { searchParams } = new URL(req.url)
     const restauranteId = texto(searchParams.get('restaurante_id'), 80)
-    let query = supabaseAdmin
-      .from('sugerencias_restaurante')
-      .select('id, restaurante_id, tipo, mensaje, pagina, estado, respuesta_interna, created_at, updated_at, restaurantes(nombre, slug)')
-      .order('created_at', { ascending: false })
-      .limit(esAdmin(auth.user) ? 500 : 30)
+    const admin = esAdmin(auth.user)
 
-    if (!esAdmin(auth.user)) {
-      const acceso = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
-      if (acceso.error) return Response.json({ error: acceso.error }, { status: acceso.status })
-      query = query.eq('restaurante_id', restauranteId)
-    } else if (restauranteId) {
-      query = query.eq('restaurante_id', restauranteId)
+    function crearQuery(select) {
+      let query = supabaseAdmin
+        .from('sugerencias_restaurante')
+        .select(select)
+        .order('created_at', { ascending: false })
+        .limit(admin ? 500 : 30)
+
+      if (!admin || restauranteId) query = query.eq('restaurante_id', restauranteId)
+      return query
     }
 
-    const { data, error } = await query
+    if (!admin) {
+      const acceso = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
+      if (acceso.error) return Response.json({ error: acceso.error }, { status: acceso.status })
+    }
+
+    let { data, error } = await crearQuery(selectSugerencias(admin))
+    if (error && String(error.message || '').includes('respuesta_publica')) {
+      const selectFallback = admin
+        ? 'id, restaurante_id, tipo, mensaje, pagina, estado, respuesta_interna, created_at, updated_at, restaurantes(nombre, slug)'
+        : 'id, restaurante_id, tipo, mensaje, pagina, estado, created_at, updated_at'
+      ;({ data, error } = await crearQuery(selectFallback))
+    }
     if (error) throw error
     return Response.json({ sugerencias: data || [] })
   } catch (error) {
@@ -89,14 +105,26 @@ export async function PATCH(req) {
     const cambios = {
       estado: ESTADOS.has(body.estado) ? body.estado : 'revisando',
       respuesta_interna: texto(body.respuesta_interna, 2000) || null,
+      respuesta_publica: texto(body.respuesta_publica, 2000) || null,
       updated_at: new Date().toISOString(),
     }
-    const { data, error } = await supabaseAdmin
+    let { data, error } = await supabaseAdmin
       .from('sugerencias_restaurante')
       .update(cambios)
       .eq('id', id)
-      .select('id, restaurante_id, tipo, mensaje, pagina, estado, respuesta_interna, created_at, updated_at, restaurantes(nombre, slug)')
+      .select(selectSugerencias(true))
       .single()
+
+    if (error && String(error.message || '').includes('respuesta_publica')) {
+      const fallback = { ...cambios }
+      delete fallback.respuesta_publica
+      ;({ data, error } = await supabaseAdmin
+        .from('sugerencias_restaurante')
+        .update(fallback)
+        .eq('id', id)
+        .select('id, restaurante_id, tipo, mensaje, pagina, estado, respuesta_interna, created_at, updated_at, restaurantes(nombre, slug)')
+        .single())
+    }
 
     if (error) throw error
     return Response.json({ sugerencia: data })
