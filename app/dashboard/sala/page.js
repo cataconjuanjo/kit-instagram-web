@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { maxFechaISO } from '../../lib/actividadReal'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
@@ -153,13 +154,16 @@ export default function SalaHub() {
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
+        const desdeActividad = rest.actividad_real_desde ? maxFechaISO(inicioDiaISO(), rest.actividad_real_desde) : null
         const [{ data: estadisticas }, { data: vinos }, { data: platos }] = await Promise.all([
-          supabase
-            .from('estadisticas')
-            .select('*')
-            .eq('restaurante_id', rest.id)
-            .gte('created_at', inicioDiaISO())
-            .order('created_at', { ascending: false }),
+          desdeActividad
+            ? supabase
+              .from('estadisticas')
+              .select('*')
+              .eq('restaurante_id', rest.id)
+              .gte('created_at', desdeActividad)
+              .order('created_at', { ascending: false })
+            : Promise.resolve({ data: [] }),
           supabase.from('vinos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
           supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
         ])

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { actividadRealDesdeISO, etiquetaActividadReal } from '../../lib/actividadReal'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
@@ -78,11 +79,19 @@ export default function Estadisticas() {
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
-        const { data } = await supabase
+        const desdeActividad = actividadRealDesdeISO(rest)
+        if (!desdeActividad) {
+          setStats([])
+          setLoading(false)
+          return
+        }
+        let query = supabase
           .from('estadisticas')
           .select('*')
           .eq('restaurante_id', rest.id)
           .order('created_at', { ascending: false })
+        if (desdeActividad) query = query.gte('created_at', desdeActividad)
+        const { data } = await query
         setStats(data || [])
       }
       setLoading(false)
@@ -92,6 +101,7 @@ export default function Estadisticas() {
 
   if (loading) return <LoadingState />
   if (!restaurante) return null
+  const actividadIniciada = Boolean(actividadRealDesdeISO(restaurante))
 
   const hoy = fechaLocalISO(new Date())
   const statsFiltradas = stats.filter(s => {
@@ -229,6 +239,20 @@ export default function Estadisticas() {
         ],
       }}
     >
+      <section className={actividadIniciada ? styles.panel : styles.panelDark} style={{ marginBottom: 16 }}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2 className={styles.panelTitle}>{actividadIniciada ? `Actividad real desde ${etiquetaActividadReal(restaurante)}` : 'Actividad real no iniciada'}</h2>
+            <p className={styles.panelSub}>
+              {actividadIniciada
+                ? 'Las metricas de esta pantalla ya excluyen el historico de pruebas anterior al arranque.'
+                : 'Activa la fecha de arranque en Ajustes cuando el restaurante confirme que empieza. Hasta entonces no uses estas cifras para decisiones comerciales.'}
+            </p>
+          </div>
+          <a className={styles.secondary} href="/dashboard/ajustes">Ajustes</a>
+        </div>
+      </section>
+
       <section className={styles.panel} style={{ marginBottom: 16 }}>
         <div className={styles.panelHead}>
           <div>

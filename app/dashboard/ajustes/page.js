@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { etiquetaActividadReal } from '../../lib/actividadReal'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
@@ -14,6 +15,8 @@ export default function AjustesHub() {
   const [pinConfigurado, setPinConfigurado] = useState(false)
   const [guardandoPin, setGuardandoPin] = useState(false)
   const [mensajePin, setMensajePin] = useState('')
+  const [mensajeActividad, setMensajeActividad] = useState('')
+  const [guardandoActividad, setGuardandoActividad] = useState(false)
   const [copiado, setCopiado] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -77,6 +80,26 @@ export default function AjustesHub() {
     setTimeout(() => setCopiado(''), 1800)
   }
 
+  async function guardarInicioActividad(fechaISO) {
+    if (!restaurante?.id || guardandoActividad) return
+    setGuardandoActividad(true)
+    setMensajeActividad('')
+    const { data, error } = await supabase
+      .from('restaurantes')
+      .update({ actividad_real_desde: fechaISO })
+      .eq('id', restaurante.id)
+      .select()
+      .single()
+
+    if (!error && data) {
+      setRestaurante(data)
+      setMensajeActividad(fechaISO ? 'Actividad real iniciada desde hoy.' : 'Actividad real pausada. Las pruebas no alimentaran decisiones.')
+    } else {
+      setMensajeActividad('No se pudo guardar el estado de actividad real.')
+    }
+    setGuardandoActividad(false)
+  }
+
   return (
     <ModuleShell
       restaurante={restaurante}
@@ -98,6 +121,7 @@ export default function AjustesHub() {
         <div className={styles.stat}><p className={styles.statValue}>{restaurante?.hub_activo ? 'Hub' : 'Carta'}</p><p className={styles.statLabel}>Destino del QR</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{pinConfigurado ? 'Listo' : 'Falta'}</p><p className={styles.statLabel}>PIN camarero</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{restaurante?.slug || '-'}</p><p className={styles.statLabel}>Slug público</p></div>
+        <div className={styles.stat}><p className={styles.statValue}>{etiquetaActividadReal(restaurante)}</p><p className={styles.statLabel}>Actividad real</p></div>
       </section>
 
       {checklistPendiente && <section className={styles.panelDark} style={{ marginBottom: 16 }}>
@@ -153,6 +177,33 @@ export default function AjustesHub() {
       </section>
 
       <section className={styles.gridTwo} style={{ marginTop: 16 }}>
+        <div className={styles.panel}>
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>Arranque de actividad real</h2>
+              <p className={styles.panelSub}>Hasta que el restaurante empiece de verdad, las pruebas no deben alimentar Actividad, Briefing, Inventario ni Rentabilidad.</p>
+            </div>
+          </div>
+          <div className={styles.panelBody}>
+            <div className={styles.itemCard} style={{ marginBottom: 12 }}>
+              <p className={styles.eyebrow}>Estado actual</p>
+              <h3 className={styles.sectionTitle}>{restaurante?.actividad_real_desde ? `Cuenta desde ${etiquetaActividadReal(restaurante)}` : 'Actividad real no iniciada'}</h3>
+              <p className={styles.sectionText}>No borra datos antiguos. Solo evita que el historico de pruebas se use para decisiones comerciales.</p>
+            </div>
+            <div className={styles.itemStack}>
+              <button className={styles.primary} onClick={() => guardarInicioActividad(new Date().toISOString())} disabled={guardandoActividad}>
+                {restaurante?.actividad_real_desde ? 'Reiniciar desde hoy' : 'Empezar actividad real hoy'}
+              </button>
+              {restaurante?.actividad_real_desde && (
+                <button className={styles.ghost} onClick={() => guardarInicioActividad(null)} disabled={guardandoActividad}>
+                  Pausar actividad real
+                </button>
+              )}
+            </div>
+            {mensajeActividad && <p className={styles.tiny}>{mensajeActividad}</p>}
+          </div>
+        </div>
+
         <div className={styles.panel} id="pin-sala">
           <div className={styles.panelHead}>
             <div>

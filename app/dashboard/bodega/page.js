@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
@@ -52,10 +53,15 @@ export default function ControlBodega() {
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
+        const desdeActividad = actividadRealDesdeISO(rest)
+        let ventasQuery = Promise.resolve({ data: [] })
+        if (desdeActividad) {
+          ventasQuery = supabase.from('estadisticas').select('*').eq('restaurante_id', rest.id).eq('tipo', 'venta').gte('created_at', desdeActividad).order('created_at', { ascending: false }).limit(80)
+        }
         const [{ data: vinosData }, { data: propuestasData }, { data: incidenciasData }, { data: movimientosData }] = await Promise.all([
           supabase.from('vinos').select('*').eq('restaurante_id', rest.id).order('nombre'),
           supabase.from('consultor_propuestas').select('*').eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
-          supabase.from('estadisticas').select('*').eq('restaurante_id', rest.id).eq('tipo', 'venta').order('created_at', { ascending: false }).limit(80),
+          ventasQuery,
           supabase.from('movimientos_stock').select('*, vinos(nombre, bodega)').eq('restaurante_id', rest.id).order('created_at', { ascending: false }).limit(10),
         ])
         setVinos(vinosData || [])

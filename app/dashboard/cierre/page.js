@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { maxFechaISO } from '../../lib/actividadReal'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
@@ -71,15 +72,18 @@ export default function CierreServicio() {
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
+        const desdeActividad = rest.actividad_real_desde ? maxFechaISO(inicioDiaISO(), rest.actividad_real_desde) : null
         const [{ data: vinosData }, { data: statsData }] = await Promise.all([
           supabase.from('vinos').select('*').eq('restaurante_id', rest.id),
-          supabase
-            .from('estadisticas')
-            .select('*')
-            .eq('restaurante_id', rest.id)
-            .eq('tipo', 'venta')
-            .gte('created_at', inicioDiaISO())
-            .order('created_at', { ascending: false })
+          desdeActividad
+            ? supabase
+              .from('estadisticas')
+              .select('*')
+              .eq('restaurante_id', rest.id)
+              .eq('tipo', 'venta')
+              .gte('created_at', desdeActividad)
+              .order('created_at', { ascending: false })
+            : Promise.resolve({ data: [] })
         ])
         const eventosParseados = (statsData || []).map(item => ({ ...item, parsed: leerDetalle(item.detalle) }))
         setVinos(vinosData || [])

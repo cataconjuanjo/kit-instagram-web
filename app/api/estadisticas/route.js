@@ -1,5 +1,7 @@
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { validarSesionCamarero } from '../../lib/camareroSession'
+import { validarTokenPruebaCarta } from '../../lib/cartaPruebaToken'
+import { actividadRealDesdeISO } from '../../lib/actividadReal'
 
 const TIPOS_PERMITIDOS = new Set(['escaneo', 'sommelier', 'recomendacion', 'venta', 'incidencia', 'inventario'])
 const TIPOS_PUBLICOS = new Set(['escaneo'])
@@ -25,10 +27,31 @@ export async function POST(req) {
   try {
     const body = await req.json()
     const eventosRaw = Array.isArray(body.eventos) ? body.eventos : [body]
-    const eventos = eventosRaw.map(limpiarEvento).filter(Boolean).slice(0, 20)
+    let eventos = eventosRaw
+      .map(limpiarEvento)
+      .filter(Boolean)
+      .filter(evento => !(evento.tipo === 'escaneo' && validarTokenPruebaCarta(body.prueba_token, evento.restaurante_id)))
+      .slice(0, 20)
 
     if (!eventos.length) {
-      return Response.json({ error: 'Evento no valido.' }, { status: 400 })
+      return Response.json({ ok: true, ignored: true })
+    }
+
+    const restauranteIdsEventos = [...new Set(eventos.map(evento => evento.restaurante_id))]
+    const { data: restaurantesActividad } = await supabaseAdmin
+      .from('restaurantes')
+      .select('id, actividad_real_desde')
+      .in('id', restauranteIdsEventos)
+    const activos = new Set((restaurantesActividad || [])
+      .filter(restaurante => {
+        const desde = actividadRealDesdeISO(restaurante)
+        return desde && new Date(desde).getTime() <= Date.now()
+      })
+      .map(restaurante => String(restaurante.id)))
+    eventos = eventos.filter(evento => activos.has(String(evento.restaurante_id)))
+
+    if (!eventos.length) {
+      return Response.json({ ok: true, ignored: true })
     }
 
     const requierePin = eventos.some(evento => !TIPOS_PUBLICOS.has(evento.tipo))
@@ -64,21 +87,38 @@ export async function GET(req) {
     const acceso = validarAccesoSala(restauranteId, salaToken)
     if (acceso.error) return Response.json({ error: acceso.error }, { status: acceso.status })
 
-    const [{ data: ventas }, { data: recomendaciones }] = await Promise.all([
-      supabaseAdmin
+    const { data: restaurante } = await supabaseAdmin
+      .from('restaurantes')
+      .select('actividad_real_desde')
+      .eq('id', restauranteId)
+      .single()
+    const desdeActividad = actividadRealDesdeISO(restaurante)
+    if (!desdeActividad) {
+      return Response.json({ ventas: [], recomendaciones: [] })
+    }
+
+    let ventasQuery = supabaseAdmin
         .from('estadisticas')
         .select('detalle, created_at')
         .eq('restaurante_id', restauranteId)
         .eq('tipo', 'venta')
         .order('created_at', { ascending: false })
-        .limit(300),
-      supabaseAdmin
+        .limit(300)
+    let recomendacionesQuery = supabaseAdmin
         .from('estadisticas')
         .select('detalle, created_at')
         .eq('restaurante_id', restauranteId)
         .eq('tipo', 'recomendacion')
         .order('created_at', { ascending: false })
-        .limit(500),
+        .limit(500)
+    if (desdeActividad) {
+      ventasQuery = ventasQuery.gte('created_at', desdeActividad)
+      recomendacionesQuery = recomendacionesQuery.gte('created_at', desdeActividad)
+    }
+
+    const [{ data: ventas }, { data: recomendaciones }] = await Promise.all([
+      ventasQuery,
+      recomendacionesQuery,
     ])
 
     return Response.json({ ventas: ventas || [], recomendaciones: recomendaciones || [] })

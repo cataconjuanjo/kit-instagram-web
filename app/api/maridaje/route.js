@@ -5,6 +5,7 @@ import { analizarConGoldstein } from '../../lib/goldsteinStructural'
 import { puedeUsar } from '../../lib/plans'
 import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
 import { origenConsumoCarta } from '../../lib/cartaPruebaToken'
+import { actividadRealDesdeISO } from '../../lib/actividadReal'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -329,6 +330,7 @@ export async function POST(request) {
         ].filter(Boolean).join('\n\n')
 
         // Registrar estadísticas
+        if (actividadRealDesdeISO(restaurante) && origenConsumoCarta({ pruebaToken: prueba_token, restauranteId: restaurante_id }) === 'cliente_real') {
         const eventos = [{ restaurante_id, tipo: 'sommelier', detalle: String(consulta || '').slice(0, 200) }]
         if (motorAnalisis?.recomendados?.length) {
           motorAnalisis.recomendados.forEach((item, index) => {
@@ -349,6 +351,7 @@ export async function POST(request) {
           })
         }
         await supabaseAdmin.from('estadisticas').insert(eventos)
+        }
       }
 
       // ── Construir prompt del usuario ───────────────────────────

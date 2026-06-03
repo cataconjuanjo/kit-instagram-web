@@ -243,7 +243,7 @@ export default function CartaPublica({ params }) {
       fetch('/api/estadisticas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ restaurante_id: rest.id, tipo: 'escaneo', detalle: 'carta' }),
+        body: JSON.stringify({ restaurante_id: rest.id, tipo: 'escaneo', detalle: 'carta', prueba_token: tokenPrueba }),
       })
       setLoading(false)
     }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { getEffectiveRestaurantEmail } from '../demo'
+import { maxFechaISO } from '../lib/actividadReal'
 import { puedeUsar } from '../lib/plans'
 import styles from './dashboard.module.css'
 import OpenCartaPruebaButton from './OpenCartaPruebaButton'
@@ -101,6 +102,7 @@ export default function DashboardHome() {
           }
         }
         const hoy = inicioDiaISO()
+        const desdeActividad = rest.actividad_real_desde ? maxFechaISO(hoy, rest.actividad_real_desde) : null
         const [
           { data: vinosData },
           { data: platosData },
@@ -109,7 +111,9 @@ export default function DashboardHome() {
         ] = await Promise.all([
           supabase.from('vinos').select('*').eq('restaurante_id', rest.id),
           supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
-          supabase.from('estadisticas').select('tipo, detalle, created_at').eq('restaurante_id', rest.id).gte('created_at', hoy),
+          desdeActividad
+            ? supabase.from('estadisticas').select('tipo, detalle, created_at').eq('restaurante_id', rest.id).gte('created_at', desdeActividad)
+            : Promise.resolve({ data: [] }),
           supabase.from('consultor_propuestas').select('*').eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
         ])
         const eventosVentaHoy = (statsHoy || []).filter(s => s.tipo === 'venta')

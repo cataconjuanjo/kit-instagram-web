@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
@@ -95,17 +96,23 @@ export default function MenuEngineering() {
         .from('restaurantes').select('*').eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
+        const desdeActividad = actividadRealDesdeISO(rest)
+        let ventasQuery = Promise.resolve({ data: [] })
+        if (desdeActividad) {
+          ventasQuery = supabase
+            .from('estadisticas')
+            .select('detalle')
+            .eq('restaurante_id', rest.id)
+            .eq('tipo', 'venta')
+            .gte('created_at', desdeActividad)
+        }
         const [{ data: vinosData }, { data: statsData }] = await Promise.all([
           supabase
             .from('vinos')
             .select('id, nombre, bodega, precio_botella, coste_compra')
             .eq('restaurante_id', rest.id)
             .eq('activo', true),
-          supabase
-            .from('estadisticas')
-            .select('detalle')
-            .eq('restaurante_id', rest.id)
-            .eq('tipo', 'venta'),
+          ventasQuery,
         ])
         setVinos(vinosData || [])
         setVentas(statsData || [])
