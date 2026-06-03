@@ -192,9 +192,6 @@ export default function DashboardHome() {
     propuestasActivas.length > 0 && { texto: `Valorar ${propuestasActivas.length} propuestas pendientes`, href: '/dashboard/bodega#propuestas', tipo: 'Propuesta' },
   ].filter(Boolean)
 
-  const accionesVisibles = acciones.slice(0, 3)
-  const prioridad = accionesVisibles[0]?.texto || 'Sin tareas críticas ahora mismo'
-
   const metricas = [
     { label: 'Salud carta', valor: `${calidadGlobal}%`, detalle: estadoCarta },
     { label: 'Alertas hoy', valor: stats.incidenciasSala + stats.dudasSala, detalle: `${stats.incidenciasSala} stock, ${stats.dudasSala} sala` },
@@ -276,47 +273,6 @@ export default function DashboardHome() {
     : haySenalesSala
       ? 'Turno con señales'
       : 'Turno limpio'
-  const urlModoCamarero = restaurante?.slug ? `/camarero/${restaurante.slug}` : '/dashboard/sala'
-  const tareasEncargado = [
-    {
-      momento: 'Antes de abrir',
-      titulo: riesgosServicio.length ? 'Revisar vinos delicados' : 'Compartir briefing',
-      detalle: riesgosServicio.length ? `${riesgosServicio.length} referencias que sala no deberia prometer sin mirar.` : 'El equipo tiene una guia corta de que vender y que vigilar.',
-      href: '/dashboard/sala',
-      estado: riesgosServicio.length ? 'Revisar' : 'Listo',
-    },
-    {
-      momento: 'Durante servicio',
-      titulo: 'Modo camarero',
-      detalle: 'Enlace directo para que sala marque ventas, dudas y faltas de stock.',
-      href: urlModoCamarero,
-      external: Boolean(restaurante?.slug),
-      estado: 'Abrir',
-    },
-    stats.ventasHoy > 0 && !turnoCerrado
-      ? {
-          momento: 'Despues del servicio',
-          titulo: 'Cerrar turno',
-          detalle: `${stats.ventasHoy} ventas o senales esperan decision.`,
-          href: '/dashboard/cierre',
-          estado: 'Pendiente',
-        }
-      : {
-          momento: 'Despues del servicio',
-          titulo: turnoCerrado ? 'Turno cerrado' : 'Sin cierre pendiente',
-          detalle: turnoCerrado ? 'Las senales de hoy ya estan revisadas.' : 'No hay senales de sala que obliguen a entrar ahora.',
-          href: '/dashboard/cierre',
-          estado: 'Listo',
-        },
-    bajoMinimo.length > 0 && {
-      momento: 'Bodega',
-      titulo: 'Preparar pedido',
-      detalle: `${bajoMinimo.length} referencias estan bajo minimo.`,
-      href: '/dashboard/bodega#pedido',
-      estado: 'Comprar',
-    },
-  ].filter(Boolean)
-
   return (
     <main>
       <div className={styles.wrap}>
@@ -356,36 +312,6 @@ export default function DashboardHome() {
             </div>
           )}
         </section>}
-
-        <section className={styles.managerCard}>
-          <div className={styles.managerHead}>
-            <div>
-              <p className={styles.eyebrow}>Modo encargado</p>
-              <h2>Lo justo para llevar el turno</h2>
-              <p>Una guia corta: abrir sala, no prometer lo critico, cerrar lo pendiente y salir de aqui si no hay nada urgente.</p>
-            </div>
-            <Link className={styles.managerMainAction} href={siguienteTurno.href}>{siguienteTurno.label}</Link>
-          </div>
-          <div className={styles.managerGrid}>
-            {tareasEncargado.map(tarea => (
-              tarea.external ? (
-                <a key={`${tarea.momento}-${tarea.titulo}`} className={styles.managerStep} href={tarea.href} target="_blank" rel="noreferrer">
-                  <span>{tarea.momento}</span>
-                  <strong>{tarea.titulo}</strong>
-                  <small>{tarea.detalle}</small>
-                  <em>{tarea.estado}</em>
-                </a>
-              ) : (
-                <Link key={`${tarea.momento}-${tarea.titulo}`} className={styles.managerStep} href={tarea.href}>
-                  <span>{tarea.momento}</span>
-                  <strong>{tarea.titulo}</strong>
-                  <small>{tarea.detalle}</small>
-                  <em>{tarea.estado}</em>
-                </Link>
-              )
-            ))}
-          </div>
-        </section>
 
         <section className={styles.healthStrip}>
           <div className={styles.healthHead}>
@@ -437,35 +363,6 @@ export default function DashboardHome() {
             </div>
           </div>
           <Link className={styles.shiftAction} href={siguienteTurno.href}>{siguienteTurno.label}</Link>
-        </section>
-
-        <section className={styles.summary}>
-          <div className={styles.heroPanel}>
-            <p className={styles.eyebrow}>Inicio</p>
-            <h1 className={styles.heroTitle}>Qué necesita atención hoy</h1>
-            <p className={styles.heroText}>
-              Una pantalla corta para decidir rápido. Lo demás queda dentro de Carta, Sala, Bodega y Ajustes.
-            </p>
-            <div className={styles.taskList} style={{ marginTop: 18 }}>
-              {accionesVisibles.length ? accionesVisibles.map(accion => (
-                <Link key={accion.texto} href={accion.href} className={styles.taskLink}>
-                  {accion.tipo}: {accion.texto}
-                </Link>
-              )) : (
-                <Link href="/dashboard/sala" className={styles.taskLink}>Rutina: revisar sala cuando termine el servicio</Link>
-              )}
-            </div>
-          </div>
-          <div className={styles.scorePanel}>
-            <div>
-              <p className={styles.eyebrow}>Prioridad ahora</p>
-              <p className={styles.scoreNumber}>{acciones.length}</p>
-              <p className={styles.scoreLabel}>{prioridad}</p>
-            </div>
-            <Link href={accionesVisibles[0]?.href || '/dashboard/sala'} className={styles.executiveLink}>
-              Abrir prioridad
-            </Link>
-          </div>
         </section>
 
         <section className={styles.servicePlan}>
