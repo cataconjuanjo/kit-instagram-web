@@ -120,6 +120,7 @@ export default function ControlBodega() {
       acc[proveedor].coste += decimal(vino.stock) * decimal(vino.coste_compra)
       return acc
     }, {})).sort((a, b) => b[1].coste - a[1].coste).slice(0, 5)
+    const proveedoresExistentes = [...new Set(activos.map(vino => vino.proveedor?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
     const ventasPorVino = eventosSala.reduce((acc, evento) => {
       if (evento.parsed?.resultado !== 'vendida') return acc
       const id = evento.parsed?.vino_id
@@ -136,7 +137,7 @@ export default function ControlBodega() {
       .sort((a, b) => b.ventasMarcadas - a.ventasMarcadas)
       .slice(0, 5)
 
-    return { activos, valorCoste, valorVenta, margenMedio, margenPotencial, bajoMinimo, sinCoste, margenBajo, sinPrecio, sinProveedor, sinStockMinimo, pedido, pedidoPorProveedor, proveedores, sinRotacion, topRotacion }
+    return { activos, valorCoste, valorVenta, margenMedio, margenPotencial, bajoMinimo, sinCoste, margenBajo, sinPrecio, sinProveedor, sinStockMinimo, pedido, pedidoPorProveedor, proveedores, proveedoresExistentes, sinRotacion, topRotacion }
   }, [vinos, eventosSala])
 
   function iniciarEdicion(vino) {
@@ -148,6 +149,14 @@ export default function ControlBodega() {
       proveedor: vino.proveedor || '',
       referencia_proveedor: vino.referencia_proveedor || '',
       formato_compra: vino.formato_compra || '',
+    })
+  }
+
+  function editarProveedorDesdePedido(vino) {
+    setMostrarReferencias(true)
+    iniciarEdicion(vino)
+    window.requestAnimationFrame(() => {
+      document.getElementById('referencias')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
   }
 
@@ -239,6 +248,54 @@ export default function ControlBodega() {
     window.open(`https://wa.me/?text=${texto}`, '_blank', 'noopener,noreferrer')
   }
 
+  function renderGrupoPedido([proveedor, vinosProveedor]) {
+    const faltaProveedor = proveedor === 'Sin proveedor'
+
+    return (
+      <article key={proveedor} className={styles.itemCard}>
+        <div className={styles.sectionHead} style={{ margin: 0 }}>
+          <div>
+            <p className={styles.eyebrow}>{vinosProveedor.length} referencias</p>
+            <h3 className={styles.sectionTitle}>{faltaProveedor ? `${vinosProveedor.length} vinos no se pueden mandar todavia` : proveedor}</h3>
+            {faltaProveedor && (
+              <p className={styles.sectionText} style={{ marginTop: 4 }}>
+                Falta proveedor. Completalo para que cada referencia entre en el mensaje correcto.
+              </p>
+            )}
+          </div>
+          <div className={styles.actionRow}>
+            <span className={styles.badge}>{vinosProveedor.reduce((sum, vino) => sum + vino.pedir, 0)} uds.</span>
+            {!faltaProveedor && (
+              <>
+                <button className={styles.ghost} onClick={() => copiarPedidoProveedor(proveedor, vinosProveedor)}>
+                  {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar mensaje'}
+                </button>
+                <button className={styles.ghost} onClick={() => abrirWhatsAppProveedor(proveedor, vinosProveedor)}>
+                  Enviar WhatsApp
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        <div className={styles.itemStack} style={{ marginTop: 12 }}>
+          {vinosProveedor.map(vino => (
+            <div key={vino.id} className={styles.sectionHead} style={{ margin: 0, paddingTop: 8, borderTop: '1px solid rgba(23,20,22,0.08)' }}>
+              <p className={styles.sectionText} style={{ margin: 0 }}>{vino.nombre} - stock {vino.stock || 0} - minimo {vino.stock_minimo}</p>
+              <div className={styles.actionRow}>
+                <strong className={styles.badge}>Pedir {vino.pedir}</strong>
+                {faltaProveedor && (
+                  <button className={styles.ghost} onClick={() => editarProveedorDesdePedido(vino)}>
+                    Completar proveedor
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </article>
+    )
+  }
+
   return (
     <FeatureGate restaurante={restaurante} feature="bodega" title="Bodega no incluida">
     <ModuleShell
@@ -306,33 +363,7 @@ export default function ControlBodega() {
           <div className={styles.panelBody}>
             {datos.pedido.length ? (
               <div className={styles.itemStack}>
-                {datos.pedidoPorProveedor.map(([proveedor, vinosProveedor]) => (
-                  <article key={proveedor} className={styles.itemCard}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <p className={styles.eyebrow}>{vinosProveedor.length} referencias</p>
-                        <h3 className={styles.sectionTitle}>{proveedor}</h3>
-                      </div>
-                      <div className={styles.actionRow}>
-                        <span className={styles.badge}>{vinosProveedor.reduce((sum, vino) => sum + vino.pedir, 0)} uds.</span>
-                        <button className={styles.ghost} onClick={() => copiarPedidoProveedor(proveedor, vinosProveedor)}>
-                          {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar mensaje'}
-                        </button>
-                        <button className={styles.ghost} onClick={() => abrirWhatsAppProveedor(proveedor, vinosProveedor)}>
-                          Enviar WhatsApp
-                        </button>
-                      </div>
-                    </div>
-                    <div className={styles.itemStack} style={{ marginTop: 12 }}>
-                      {vinosProveedor.map(vino => (
-                        <div key={vino.id} className={styles.sectionHead} style={{ margin: 0, paddingTop: 8, borderTop: '1px solid rgba(23,20,22,0.08)' }}>
-                          <p className={styles.sectionText} style={{ margin: 0 }}>{vino.nombre} · stock {vino.stock || 0} · mínimo {vino.stock_minimo}</p>
-                          <strong className={styles.badge}>Pedir {vino.pedir}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  </article>
-                ))}
+                {datos.pedidoPorProveedor.map(renderGrupoPedido)}
               </div>
             ) : (
               <div className={styles.empty}>No hay pedido sugerido ahora.</div>
@@ -557,7 +588,18 @@ export default function ControlBodega() {
                           )}
                         </div>
                         <div><label className={styles.label}>Stock mínimo</label><input className={styles.input} type="number" value={editando.stock_minimo} onChange={e => setEditando({ ...editando, stock_minimo: e.target.value })} /></div>
-                        <div><label className={styles.label}>Proveedor</label><input className={styles.input} value={editando.proveedor} onChange={e => setEditando({ ...editando, proveedor: e.target.value })} /></div>
+                        <div>
+                          <label className={styles.label}>Proveedor</label>
+                          <input
+                            className={styles.input}
+                            list="proveedores-bodega"
+                            value={editando.proveedor}
+                            onChange={e => setEditando({ ...editando, proveedor: e.target.value })}
+                          />
+                          <datalist id="proveedores-bodega">
+                            {datos.proveedoresExistentes.map(proveedor => <option key={proveedor} value={proveedor} />)}
+                          </datalist>
+                        </div>
                         <div><label className={styles.label}>Referencia proveedor</label><input className={styles.input} value={editando.referencia_proveedor} onChange={e => setEditando({ ...editando, referencia_proveedor: e.target.value })} /></div>
                         <div className={styles.full}><label className={styles.label}>Formato compra</label><input className={styles.input} placeholder="Caja 6, caja 12, unidad..." value={editando.formato_compra} onChange={e => setEditando({ ...editando, formato_compra: e.target.value })} /></div>
                         <div className={styles.full}><button className={styles.primary} onClick={guardarBodega} disabled={guardando}>{guardando ? 'Guardando...' : 'Guardar control'}</button></div>
