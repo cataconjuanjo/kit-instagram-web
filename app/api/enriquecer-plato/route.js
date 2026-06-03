@@ -10,6 +10,8 @@ import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { requireRestaurantAccess } from '../_lib/auth'
 
+const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const FAMILIAS_DISPONIBLES = `
@@ -77,6 +79,9 @@ export async function POST(req) {
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restaurante_id)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    if ((auth.user?.email || '').toLowerCase() !== adminEmail.toLowerCase()) {
+      return Response.json({ error: 'Solo administracion puede lanzar el analisis Chartier.' }, { status: 403 })
+    }
 
     if (!nombre?.trim()) {
       return Response.json({ error: 'Nombre del plato requerido' }, { status: 400 })

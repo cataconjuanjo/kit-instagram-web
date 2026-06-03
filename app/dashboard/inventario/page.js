@@ -134,6 +134,8 @@ export default function InventarioSemanal() {
 
   async function aplicarAjustes() {
     if (!restaurante?.id || !datos.ajustes.length) return
+    const confirmar = window.confirm(`Vas a aplicar ${datos.ajustes.length} ajustes de inventario y modificar stock. ¿Continuar?`)
+    if (!confirmar) return
     setAplicando(true)
     setMensaje('')
 

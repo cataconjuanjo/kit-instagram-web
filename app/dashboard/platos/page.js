@@ -227,6 +227,7 @@ export default function Platos() {
 
   // ── Enriquecimiento Chartier en background ────────────────────────────────
   async function enriquecerPlato(plato) {
+    if (!puedeAnalizarChartier) return
     try {
       const res = await fetch('/api/enriquecer-plato', {
         method: 'POST',
