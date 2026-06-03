@@ -71,11 +71,13 @@ export default function Estadisticas() {
   const [fechaFin, setFechaFin] = useState('')
   const [servicio, setServicio] = useState('todos')
   const [mensajeInforme, setMensajeInforme] = useState('')
+  const [esAdmin, setEsAdmin] = useState(false)
 
   useEffect(() => {
     async function cargar() {
-      const { email } = await getEffectiveRestaurantEmail(supabase)
+      const { email, isAdmin } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
+      setEsAdmin(Boolean(isAdmin))
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
@@ -242,14 +244,14 @@ export default function Estadisticas() {
       <section className={actividadIniciada ? styles.panel : styles.panelDark} style={{ marginBottom: 16 }}>
         <div className={styles.panelHead}>
           <div>
-            <h2 className={styles.panelTitle}>{actividadIniciada ? `Actividad real desde ${etiquetaActividadReal(restaurante)}` : 'Actividad real no iniciada'}</h2>
+            <h2 className={styles.panelTitle}>{actividadIniciada ? `Actividad real desde ${etiquetaActividadReal(restaurante)}` : 'Actividad preparada'}</h2>
             <p className={styles.panelSub}>
               {actividadIniciada
                 ? 'Las metricas de esta pantalla ya excluyen el historico de pruebas anterior al arranque.'
-                : 'Activa la fecha de arranque en Ajustes cuando el restaurante confirme que empieza. Hasta entonces no uses estas cifras para decisiones comerciales.'}
+                : 'Cuando empecéis a usar Sala en el día a día, aquí aparecerán escaneos, consultas, recomendaciones y ventas reales. De momento no mezclamos datos de prueba con decisiones del restaurante.'}
             </p>
           </div>
-          <a className={styles.secondary} href="/dashboard/ajustes">Ajustes</a>
+          {esAdmin && <a className={styles.secondary} href="/dashboard/ajustes">Activar en Ajustes</a>}
         </div>
       </section>
 
