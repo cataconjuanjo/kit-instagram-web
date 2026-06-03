@@ -51,6 +51,7 @@ export default function ControlBodega() {
   const [proveedorCopiado, setProveedorCopiado] = useState('')
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
+  const [guardadoBodega, setGuardadoBodega] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -149,6 +150,7 @@ export default function ControlBodega() {
 
   function iniciarEdicion(vino) {
     setError('')
+    setGuardadoBodega('')
     setEditando({
       id: vino.id,
       coste_compra: vino.coste_compra || '',
@@ -177,10 +179,19 @@ export default function ControlBodega() {
     })
   }
 
-  async function guardarBodega() {
+  function moverEdicion(direccion) {
+    if (!editando || !referenciasVisibles.length) return
+    const index = referenciasVisibles.findIndex(vino => vino.id === editando.id)
+    if (index < 0) return
+    const siguiente = referenciasVisibles[index + direccion]
+    if (siguiente) iniciarEdicion(siguiente)
+  }
+
+  async function guardarBodega({ cerrar = false, siguiente = false } = {}) {
     if (!editando) return
     setGuardando(true)
     setError('')
+    setGuardadoBodega('')
     const cambios = {
       coste_compra: parseFloat(editando.coste_compra) || 0,
       stock_minimo: parseInt(editando.stock_minimo, 10) || 0,
@@ -193,7 +204,19 @@ export default function ControlBodega() {
       setError('No se pudo guardar el control de bodega.')
     } else {
       setVinos(vinos.map(vino => vino.id === editando.id ? { ...vino, ...cambios } : vino))
-      setEditando(null)
+      setGuardadoBodega('Guardado.')
+      if (cerrar) {
+        setEditando(null)
+      } else if (siguiente) {
+        const index = referenciasVisibles.findIndex(vino => vino.id === editando.id)
+        const siguienteVino = referenciasVisibles[index + 1]
+        if (siguienteVino) {
+          iniciarEdicion(siguienteVino)
+          setGuardadoBodega('Guardado. Siguiente referencia abierta.')
+        }
+      } else {
+        setEditando({ ...editando, ...cambios })
+      }
     }
     setGuardando(false)
   }
@@ -638,6 +661,7 @@ export default function ControlBodega() {
                 const m = margen(vino)
                 const bajo = decimal(vino.stock_minimo) > 0 && decimal(vino.stock) <= decimal(vino.stock_minimo)
                 const isEditing = editando?.id === vino.id
+                const posicion = referenciasVisibles.findIndex(item => item.id === vino.id)
                 return (
                   <article key={vino.id} className={styles.itemCard}>
                     <div className={styles.sectionHead} style={{ margin: 0 }}>
@@ -678,7 +702,18 @@ export default function ControlBodega() {
                         </div>
                         <div><label className={styles.label}>Referencia proveedor</label><input className={styles.input} value={editando.referencia_proveedor} onChange={e => setEditando({ ...editando, referencia_proveedor: e.target.value })} /></div>
                         <div className={styles.full}><label className={styles.label}>Formato compra</label><input className={styles.input} placeholder="Caja 6, caja 12, unidad..." value={editando.formato_compra} onChange={e => setEditando({ ...editando, formato_compra: e.target.value })} /></div>
-                        <div className={styles.full}><button className={styles.primary} onClick={guardarBodega} disabled={guardando}>{guardando ? 'Guardando...' : 'Guardar control'}</button></div>
+                        <div className={styles.full}>
+                          <div className={styles.actionRow}>
+                            <button className={styles.ghost} onClick={() => moverEdicion(-1)} disabled={guardando || posicion <= 0}>Anterior</button>
+                            <button className={styles.ghost} onClick={() => moverEdicion(1)} disabled={guardando || posicion >= referenciasVisibles.length - 1}>Siguiente</button>
+                          </div>
+                          <div className={styles.actionRow} style={{ marginTop: 10 }}>
+                            <button className={styles.primary} onClick={() => guardarBodega()} disabled={guardando}>{guardando ? 'Guardando...' : 'Guardar y seguir'}</button>
+                            <button className={styles.secondary} onClick={() => guardarBodega({ siguiente: true })} disabled={guardando || posicion >= referenciasVisibles.length - 1}>Guardar y siguiente</button>
+                            <button className={styles.ghost} onClick={() => guardarBodega({ cerrar: true })} disabled={guardando}>Guardar y cerrar</button>
+                          </div>
+                          {guardadoBodega && <p className={styles.tiny}>{guardadoBodega}</p>}
+                        </div>
                       </div>
                     )}
                   </article>
