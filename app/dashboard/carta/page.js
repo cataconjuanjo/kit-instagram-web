@@ -53,13 +53,13 @@ export default function CartaHub() {
   const checklist = [
     { titulo: 'Vinos con precio', valor: vinos.length - vinosSinPrecio.length, total: vinos.length, href: '/dashboard/vinos?filtro=pendientes' },
     { titulo: 'Vinos con perfil de venta', valor: vinos.length - vinosSinPerfil.length, total: vinos.length, href: '/dashboard/vinos?filtro=pendientes' },
-    { titulo: 'Platos con descripción', valor: platos.length - platosSinDescripcion.length, total: platos.length, href: '/dashboard/platos?filtro=descripcion' },
+    { titulo: 'Platos con descripcion interna', valor: platos.length - platosSinDescripcion.length, total: platos.length, href: '/dashboard/platos?filtro=descripcion' },
     { titulo: 'Platos con precio', valor: platos.length - platosSinPrecio.length, total: platos.length, href: '/dashboard/platos' },
   ]
   const pendientesPrioritarios = [
     ...vinosSinPrecio.slice(0, 3).map(vino => ({ tipo: 'Precio vino', nombre: vino.nombre, href: '/dashboard/vinos?filtro=pendientes' })),
     ...vinosSinPerfil.slice(0, 3).map(vino => ({ tipo: 'Perfil vino', nombre: vino.nombre, href: '/dashboard/vinos?filtro=pendientes' })),
-    ...platosSinDescripcion.slice(0, 3).map(plato => ({ tipo: 'Descripción plato', nombre: plato.nombre, href: '/dashboard/platos?filtro=descripcion' })),
+    ...platosSinDescripcion.slice(0, 3).map(plato => ({ tipo: 'Descripcion interna', nombre: plato.nombre, href: '/dashboard/platos?filtro=descripcion' })),
   ].slice(0, 5)
 
   return (
@@ -79,7 +79,7 @@ export default function CartaHub() {
         intro: 'Esta pestaña es la base comercial de la carta. Si está bien alimentada, el resto de la app trabaja mejor.',
         items: [
           { title: 'Primero vinos', text: 'Comprueba precios, stock y perfil de venta. Sin eso, la carta pública y el modo camarero pierden fuerza.' },
-          { title: 'Luego platos', text: 'Los platos necesitan descripción breve: técnica, salsa, intensidad o ingrediente clave para recomendar mejor.' },
+          { title: 'Luego platos', text: 'Los platos necesitan descripcion interna: tecnica, salsa, intensidad o ingrediente clave. No se muestra como receta en la carta publica.' },
           { title: 'Destacados al final', text: 'Úsalos cuando quieras empujar margen, producto local, novedad o una referencia con buen relato de sala.' },
         ],
       }}
@@ -142,8 +142,8 @@ export default function CartaHub() {
         <Link className={styles.hubCard} href="/dashboard/platos">
           <p className={styles.eyebrow}>Maridaje</p>
           <h2>Platos</h2>
-          <p>Carta de comida, categorías y pistas para que la recomendación encaje.</p>
-          <span>{platosSinDescripcion.length} necesitan descripción</span>
+          <p>Carta de comida, categorias y pistas internas para que la recomendacion encaje.</p>
+          <span>{platosSinDescripcion.length} necesitan descripcion interna</span>
         </Link>
         <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/seleccion">
           <p className={styles.eyebrow}>Escaparate</p>

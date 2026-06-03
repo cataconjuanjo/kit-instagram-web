@@ -188,7 +188,7 @@ export default function DashboardHome() {
     bajoMinimo.length > 0 && { texto: `Preparar reposición de ${bajoMinimo.length} vinos`, href: '/dashboard/bodega#pedido', tipo: 'Bodega' },
     sinCosteCompra.length > 0 && { texto: `Completar coste de ${sinCosteCompra.length} vinos`, href: '/dashboard/bodega#referencias', tipo: 'Margen' },
     vinosSinPrecio.length + vinosSinPerfil.length > 0 && { texto: `Completar datos de ${vinosSinPrecio.length + vinosSinPerfil.length} vinos`, href: '/dashboard/vinos?filtro=pendientes', tipo: 'Carta' },
-    platosSinDescripcion.length > 0 && { texto: `Completar descripción de ${platosSinDescripcion.length} platos`, href: '/dashboard/platos?filtro=descripcion', tipo: 'Carta' },
+    platosSinDescripcion.length > 0 && { texto: `Completar descripcion interna de ${platosSinDescripcion.length} platos`, href: '/dashboard/platos?filtro=descripcion', tipo: 'Maridaje' },
     propuestasActivas.length > 0 && { texto: `Valorar ${propuestasActivas.length} propuestas pendientes`, href: '/dashboard/bodega#propuestas', tipo: 'Propuesta' },
   ].filter(Boolean)
 
@@ -242,14 +242,15 @@ export default function DashboardHome() {
 
   const checksSalud = [
     { label: 'Vinos', valor: calidadVinos, detalle: `${vinosSinPrecio.length} sin precio · ${vinosSinPerfil.length} sin perfil`, href: '/dashboard/vinos?filtro=pendientes' },
-    { label: 'Platos', valor: calidadPlatos, detalle: `${platosSinDescripcion.length} sin descripción · ${platosSinPrecio.length} sin precio`, href: '/dashboard/platos?filtro=descripcion' },
+    { label: 'Platos', valor: calidadPlatos, detalle: `${platosSinDescripcion.length} sin descripcion interna · ${platosSinPrecio.length} sin precio`, href: '/dashboard/platos?filtro=descripcion' },
     { label: 'Stock', valor: calidadStock, detalle: `${vinosSinStock.length} sin stock actualizado`, href: '/dashboard/bodega', feature: 'bodega' },
     { label: 'Bodega', valor: porcentaje(vinosActivos.length - sinCosteCompra.length - sinProveedor.length, vinosActivos.length), detalle: `${sinCosteCompra.length} sin coste · ${sinProveedor.length} sin proveedor`, href: '/dashboard/bodega#referencias', feature: 'bodega' },
   ].filter(check => !check.feature || puedeUsar(restaurante, check.feature))
 
   const tareasInicio = [
     { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio, uva y stock inicial.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
-    { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
+    { id: 'platos', titulo: 'Cargar platos clave', texto: 'Anade los platos que mas se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
+    { id: 'descripciones_platos', titulo: 'Definir platos para maridaje', texto: 'Describe tecnica, salsa, intensidad e ingredientes clave. Es informacion interna: no se muestra como receta en la carta publica.', href: '/dashboard/platos?filtro=descripcion', autoHide: () => platos.length === 0 || platosSinDescripcion.length === 0 },
     { id: 'bodega', titulo: 'Completar margen y proveedor', texto: 'Coste, proveedor y stock mínimo convierten la carta en control de bodega.', href: '/dashboard/bodega', feature: 'bodega', autoHide: () => sinCosteCompra.length === 0 && sinProveedor.length === 0 },
     { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la carta pública, revisa móvil y deja listo el PIN de sala.', href: '/dashboard/qr' },
   ]
@@ -431,7 +432,7 @@ export default function DashboardHome() {
                   ))}
                 </div>
               ) : (
-                <p className={styles.servicePlanEmpty}>Completa descripciones de platos para preparar argumentos de venta.</p>
+                <p className={styles.servicePlanEmpty}>Completa descripciones internas de platos para preparar argumentos y afinar maridajes.</p>
               )}
             </article>
           </div>

@@ -293,7 +293,7 @@ export default function CartaPublica({ params }) {
     setHistorialSommelier([])
     setInputSeguimiento('')
     const consultaPlatos = platosSeleccionados
-      .map(p => `${p.nombre}${p.precio ? ` (${p.precio}€)` : ''}${p.descripcion ? `: ${p.descripcion}` : ''}`)
+      .map(p => `${p.nombre}${p.precio ? ` (${p.precio}€)` : ''}`)
       .join(', ')
     const modosTexto = {
       botella: idioma === 'en' ? 'a single bottle that works well for the whole table' : 'una sola botella que funcione bien para toda la mesa',
@@ -308,6 +308,7 @@ export default function CartaPublica({ params }) {
         modo: 'mesa',
         modoMesa: modosTexto[modoMesa],
         restaurante_id: restaurante.id,
+        plato_ids: platosSeleccionados.map(plato => plato.id).filter(Boolean),
         idioma,
         historial: [],
         prueba_token: tokenPrueba,
@@ -448,7 +449,7 @@ setPerfiles(nuevosPerfiles)
   const busquedaPlatosLimpia = normalizarTexto(busquedaPlatos)
   const platosSommelierFiltrados = platos.filter(plato => {
     if (!busquedaPlatosLimpia) return true
-    const texto = normalizarTexto(`${plato.nombre} ${plato.descripcion || ''} ${plato.categoria || ''}`)
+    const texto = normalizarTexto(`${plato.nombre} ${plato.categoria || ''}`)
     return texto.includes(busquedaPlatosLimpia)
   })
 
@@ -1503,7 +1504,6 @@ setPerfiles(nuevosPerfiles)
                     >
                       <div>
                         <h3 className={styles.dishName}>{p.nombre}</h3>
-                        {p.descripcion && <p className={styles.dishDesc}>{p.descripcion}</p>}
                       </div>
                       <div>
                         {Number(p.precio) > 0 && <p className={styles.dishPrice}>{Number(p.precio).toFixed(2)} €</p>}
@@ -1825,7 +1825,6 @@ setPerfiles(nuevosPerfiles)
                       }}>
                         <div>
                           <p style={{ margin: 0, fontSize: 15, color: '#111', fontWeight: seleccionado ? 500 : 400 }}>{p.nombre}</p>
-                          {p.descripcion && <p style={{ margin: '3px 0 0', fontSize: 12, color: '#ccc' }}>{p.descripcion}</p>}
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                           {Number(p.precio) > 0 && <p style={{ margin: '0 0 4px', fontSize: 12, color: '#999' }}>{Number(p.precio).toFixed(2)} €</p>}

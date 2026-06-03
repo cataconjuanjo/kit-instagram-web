@@ -158,7 +158,7 @@ function RasgosMaridaje({ plato, onChange }) {
         })}
       </div>
       <p style={{ fontSize: 11, color: '#bbb', margin: '10px 0 0', lineHeight: 1.5 }}>
-        Estos rasgos se guardan en la descripción y ayudan al modo camarero a entender técnica, salsa e intensidad.
+        Estos rasgos se guardan en la descripcion interna. No se muestran como receta en la carta publica, pero ayudan al modo camarero y al maridaje.
       </p>
     </div>
   )
@@ -415,7 +415,7 @@ export default function Platos() {
       restaurante={restaurante}
       eyebrow="Carta de comida"
       title="Gestión de platos"
-      subtitle="Mantiene precios, categorías y rasgos culinarios claros para que el maridaje entienda la carta real del restaurante."
+      subtitle="Mantiene precios, categorias y descripciones internas para que el maridaje entienda la carta real sin publicar recetas."
       actions={
         <>
           <button
@@ -434,10 +434,10 @@ export default function Platos() {
       }
       help={{
         title: 'Platos que ayudan a vender vino',
-        intro: 'La carta de comida no es otro servicio: es contexto para que el maridaje tenga criterio.',
+        intro: 'La carta de comida no es otro servicio: es contexto interno para que el maridaje tenga criterio.',
         items: [
-          { title: 'Descripción corta', text: 'Incluye técnica, salsa, intensidad o ingrediente clave. No hace falta redactar poesía.' },
-          { title: 'Rasgos internos', text: 'Brasa, frito, queso o umami ayudan al sistema a cruzar mejor platos y vinos.' },
+          { title: 'Descripcion interna', text: 'Incluye tecnica, salsa, intensidad o ingrediente clave. No se muestra como receta en la carta publica.' },
+          { title: 'Rasgos internos', text: 'Brasa, frito, queso o umami ayudan al sistema a cruzar mejor platos y vinos sin dar mas trabajo a sala.' },
           { title: 'Importación', text: 'Si subes la carta, revisa duplicados y categorías antes de guardar para no ensuciar la base.' },
         ],
       }}
@@ -471,7 +471,7 @@ export default function Platos() {
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
             <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>Importar carta</p>
             <p style={{ fontSize: 13, color: '#999', lineHeight: 1.6, margin: '0 0 16px' }}>
-              Sube un PDF, JPG o PNG, o pega una lista de platos, uno por línea. La app intentará detectar categoría y rasgos de maridaje antes de guardar.
+              Sube un PDF, JPG o PNG, o pega una lista de platos, uno por linea. La app intentara detectar categoria y rasgos internos de maridaje antes de guardar.
             </p>
             <input ref={inputPdfRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={archivoPdfSeleccionado} style={{ display: 'none' }} />
             <button onClick={() => inputPdfRef.current?.click()} disabled={leyendoPdf}
@@ -545,10 +545,11 @@ export default function Platos() {
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Descripción</label>
+                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Descripcion interna</label>
                 <input type="text" value={nuevoPlato.descripcion} onChange={e => setNuevoPlato({ ...nuevoPlato, descripcion: e.target.value })}
-                  placeholder="Ej. Deshuesado, con salsa de PX"
+                  placeholder="Ej. deshuesado, salsa de PX, meloso, umami"
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
+                <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para maridaje y sala. No se muestra como receta en la carta publica.</p>
               </div>
               <RasgosMaridaje plato={nuevoPlato} onChange={setNuevoPlato} />
             </div>
@@ -573,7 +574,7 @@ export default function Platos() {
             <select className={styles.toolbarSelect} value={filtroPlatos} onChange={e => setFiltroPlatos(e.target.value)}>
               <option value="todos">Todos los platos</option>
               <option value="activos">Activos</option>
-              <option value="sin_descripcion">Sin descripción</option>
+              <option value="sin_descripcion">Sin descripcion interna</option>
               <option value="sin_precio">Sin precio</option>
               <option value="ocultos">Ocultos</option>
             </select>
@@ -600,14 +601,14 @@ export default function Platos() {
 
         <div className={styles.dataList}>
           <div className={styles.dishListHeader}>
-            {['Plato', 'Categoría', 'Precio', 'Descripción', ''].map(h => (
+            {['Plato', 'Categoría', 'Precio', 'Descripcion interna', ''].map(h => (
               <p key={h} style={{ fontSize: 10, color: '#ccc', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>{h}</p>
             ))}
           </div>
 
           {platosVisibles.length === 0 ? (
             <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-              <p style={{ color: '#ccc', fontSize: 14, fontWeight: 300 }}>{filtroUrl === 'descripcion' ? 'No hay platos pendientes de descripción.' : 'Aún no hay platos. Añade el primero.'}</p>
+              <p style={{ color: '#ccc', fontSize: 14, fontWeight: 300 }}>{filtroUrl === 'descripcion' ? 'No hay platos pendientes de descripcion interna.' : 'Aún no hay platos. Añade el primero.'}</p>
             </div>
           ) : (
             platosVisibles.map((p, i) => (
@@ -648,9 +649,10 @@ export default function Platos() {
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
                       </div>
                       <div style={{ gridColumn: '1 / -1' }}>
-                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Descripción</label>
+                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Descripcion interna</label>
                         <input type="text" value={editandoPlato.descripcion || ''} onChange={e => setEditandoPlato({ ...editandoPlato, descripcion: e.target.value })}
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
+                        <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para maridaje y sala. No se muestra como receta en la carta publica.</p>
                       </div>
                       <RasgosMaridaje plato={editandoPlato} onChange={setEditandoPlato} />
                     </div>

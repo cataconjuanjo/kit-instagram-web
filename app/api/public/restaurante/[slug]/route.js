@@ -19,7 +19,7 @@ const CAMPOS_VINO = [
 ]
 
 const CAMPOS_PLATO = [
-  'id', 'restaurante_id', 'nombre', 'descripcion', 'categoria', 'precio',
+  'id', 'restaurante_id', 'nombre', 'categoria', 'precio',
   'activo', 'familias_aromaticas',
 ]
 

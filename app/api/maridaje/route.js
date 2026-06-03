@@ -235,12 +235,14 @@ export async function POST(request) {
       historial = [],
       mensajeSeguimiento,
       prueba_token,
+      plato_ids = [],
     } = await request.json()
 
     if (!restaurante_id) {
       return Response.json({ error: 'Restaurante obligatorio.' }, { status: 400 })
     }
     const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
+    const platoIds = Array.isArray(plato_ids) ? plato_ids.map(id => String(id)).filter(Boolean).slice(0, 20) : []
     if (consultaTexto.length > 1200 || !Array.isArray(historial) || historial.length > 12) {
       return Response.json({ error: 'Consulta demasiado larga.' }, { status: 400 })
     }
@@ -259,6 +261,13 @@ export async function POST(request) {
     const vinos = soloCopa
       ? (vinosData || []).filter(vino => Number(vino.precio_copa) > 0)
       : (vinosData || [])
+    const idsContexto = new Set(platoIds)
+    const platosContexto = idsContexto.size
+      ? (platos || []).filter(plato => idsContexto.has(String(plato.id)))
+      : []
+    const consultaInterna = platosContexto.length
+      ? platosContexto.map(lineaPlato).join(', ')
+      : consultaTexto
 
     const cartaVinos = (vinos || []).map(lineaVino).join('\n')
     const cartaPlatos = (platos || []).map(lineaPlato).join('\n')
@@ -281,8 +290,7 @@ export async function POST(request) {
       let candidatosGrafo = []
 
       if (esModoMaridaje) {
-        const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
-        const goldsteinAnalisis = analizarConGoldstein(consultaTexto, vinosRespuesta)
+        const goldsteinAnalisis = analizarConGoldstein(consultaInterna, vinosRespuesta)
         const bloqueadosGoldstein = new Set(
           goldsteinAnalisis.candidatos
             .filter(item => item.bloqueado)
@@ -294,7 +302,7 @@ export async function POST(request) {
         let resumenGrafo = ''
         try {
           const grafoMod = await import('../../lib/chartierGraph')
-          const grafoAnalisis = await grafoMod.analizarConGrafo(consultaTexto, vinosRespuesta)
+          const grafoAnalisis = await grafoMod.analizarConGrafo(consultaInterna, vinosRespuesta)
           resumenGrafo = grafoMod.resumenGrafoParaPrompt(grafoAnalisis) || ''
           candidatosGrafo = (grafoAnalisis?.candidatos || []).slice(0, 3).map(candidatoDesdeGrafo)
           if (grafoAnalisis?.confianza !== 'baja' && candidatosGrafo.length >= 2) {
@@ -306,7 +314,7 @@ export async function POST(request) {
         }
 
         // Motor estructural existente (acidez, tanino, cuerpo, restricciones)
-        const motorAnalisis = analizarMaridaje(consulta, vinosRespuesta)
+        const motorAnalisis = analizarMaridaje(consultaInterna, vinosRespuesta)
         fallbackCandidatos = candidatosUnicos([
           ...candidatosGrafo,
           ...(motorAnalisis?.recomendados || []),
@@ -353,12 +361,12 @@ export async function POST(request) {
       let prompt
       if (modo === 'mesa') {
         prompt = idioma === 'en'
-          ? `Dishes: ${consulta}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nGive 2 or 3 reliable wines: one accessible, one premium, and a third alternative if it is structurally safe. If format is by the glass, use only wines with glass price. Never fill the quota with a weak pairing. Use the exact format from the system prompt.`
-          : `Platos: ${consulta}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nDa 2 o 3 vinos fiables: uno accesible, otro premium y una tercera alternativa si es estructuralmente segura. Si el formato es por copas, usa solo vinos con precio de copa. Nunca rellenes el cupo con un maridaje débil. Usa el formato exacto del system prompt.`
+          ? `Dishes: ${consultaInterna}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nGive 2 or 3 reliable wines: one accessible, one premium, and a third alternative if it is structurally safe. If format is by the glass, use only wines with glass price. Never fill the quota with a weak pairing. Use the exact format from the system prompt.`
+          : `Platos: ${consultaInterna}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nDa 2 o 3 vinos fiables: uno accesible, otro premium y una tercera alternativa si es estructuralmente segura. Si el formato es por copas, usa solo vinos con precio de copa. Nunca rellenes el cupo con un maridaje débil. Usa el formato exacto del system prompt.`
       } else if (modo === 'plato') {
         prompt = idioma === 'en'
-          ? `Dish: "${consulta}".\n\n${contextoCriterios}\n\nGive 2 or 3 reliable wines: one accessible, one premium, and a third alternative if it is structurally safe. Never fill the quota with a weak pairing. Use the exact format from the system prompt.`
-          : `Plato: "${consulta}".\n\n${contextoCriterios}\n\nDa 2 o 3 vinos fiables: uno accesible, otro premium y una tercera alternativa si es estructuralmente segura. Nunca rellenes el cupo con un maridaje débil. Usa el formato exacto del system prompt.`
+          ? `Dish: "${consultaInterna}".\n\n${contextoCriterios}\n\nGive 2 or 3 reliable wines: one accessible, one premium, and a third alternative if it is structurally safe. Never fill the quota with a weak pairing. Use the exact format from the system prompt.`
+          : `Plato: "${consultaInterna}".\n\n${contextoCriterios}\n\nDa 2 o 3 vinos fiables: uno accesible, otro premium y una tercera alternativa si es estructuralmente segura. Nunca rellenes el cupo con un maridaje débil. Usa el formato exacto del system prompt.`
       } else {
         // Modo inverso: dado un vino, recomendar platos
         prompt = idioma === 'en'
