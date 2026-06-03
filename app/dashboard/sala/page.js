@@ -192,6 +192,11 @@ export default function SalaHub() {
     setTimeout(() => setMensajeBriefing(''), 1800)
   }
 
+  function abrirWhatsAppBriefing() {
+    const texto = encodeURIComponent(construirBriefingCompartible(restaurante, briefing, urlCamarero))
+    window.open(`https://wa.me/?text=${texto}`, '_blank', 'noopener,noreferrer')
+  }
+
   return (
     <FeatureGate restaurante={restaurante} feature="modo_camarero" title="Modo sala no incluido">
     <ModuleShell
@@ -227,6 +232,7 @@ export default function SalaHub() {
           </div>
           <div className={styles.actionRow}>
             <button type="button" className={styles.primary} onClick={copiarBriefing}>Copiar briefing</button>
+            <button type="button" className={styles.secondary} onClick={abrirWhatsAppBriefing}>Enviar WhatsApp</button>
             <Link className={styles.secondary} href="/dashboard/cierre">Ir a cierre</Link>
           </div>
         </div>
