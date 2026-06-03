@@ -10,6 +10,8 @@ import { createClient } from '@supabase/supabase-js'
 import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
 import { requireRestaurantAccess } from '../_lib/auth'
 
+const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const supabaseAdmin = createClient(
@@ -133,6 +135,9 @@ export async function POST(req) {
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restaurante_id)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    if ((auth.user?.email || '').toLowerCase() !== adminEmail.toLowerCase()) {
+      return Response.json({ error: 'Solo administracion puede lanzar el analisis Chartier batch.' }, { status: 403 })
+    }
 
     // Verificar que el restaurante existe
     const { data: restaurante } = await supabaseAdmin

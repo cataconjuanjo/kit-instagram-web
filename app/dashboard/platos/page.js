@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
-import { getEffectiveRestaurantEmail } from '../../demo'
+import { ADMIN_EMAIL, getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
@@ -184,6 +184,7 @@ export default function Platos() {
   const [errorPdf, setErrorPdf] = useState('')
   const [enriqueciendoBatch, setEnriqueciendoBatch] = useState(false)
   const [resultadoBatch, setResultadoBatch] = useState(null)
+  const [puedeAnalizarChartier, setPuedeAnalizarChartier] = useState(false)
   const inputPdfRef = useRef(null)
 
   const categorias = ['Entrantes fríos', 'Entrantes calientes', 'Cuchara', 'De la tierra', 'Del mar', 'Tablas', 'Postres']
@@ -192,6 +193,8 @@ export default function Platos() {
     async function cargar() {
       const { email } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
+      const { data: sessionData } = await supabase.auth.getSession()
+      setPuedeAnalizarChartier((sessionData.session?.user?.email || '').toLowerCase() === ADMIN_EMAIL.toLowerCase())
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
@@ -576,6 +579,7 @@ export default function Platos() {
           </div>
           <div className={styles.toolbarSummary}>
             <p className={styles.resultCount}>{platosVisibles.length} de {platosBase.length} platos</p>
+            {puedeAnalizarChartier && (
             <button
               onClick={enriquecerTodosLosPlatos}
               className={styles.bulkToggle}
@@ -584,6 +588,7 @@ export default function Platos() {
             >
               {enriqueciendoBatch ? '⏳ Analizando...' : '✦ Analizar Chartier'}
             </button>
+            )}
           </div>
           {resultadoBatch && (
             <p style={{ fontSize: 11, color: resultadoBatch.error ? '#c07070' : '#5a9a6a', margin: '6px 0 0', gridColumn: '1 / -1' }}>
