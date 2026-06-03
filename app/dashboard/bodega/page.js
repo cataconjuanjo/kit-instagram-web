@@ -211,17 +211,32 @@ export default function ControlBodega() {
     setTimeout(() => setPedidoCopiado(false), 1800)
   }
 
+  function textoPedidoProveedor(proveedor, vinosProveedor) {
+    return [
+      `Hola, te paso pedido para ${restaurante?.nombre || 'el restaurante'}:`,
+      '',
+      `Proveedor: ${proveedor}`,
+      '',
+      ...vinosProveedor.map(vino => {
+        const referencia = vino.referencia_proveedor ? ` · ref. ${vino.referencia_proveedor}` : ''
+        const formato = vino.formato_compra ? ` · ${vino.formato_compra}` : ''
+        return `- ${vino.nombre}${referencia}: ${vino.pedir} uds.${formato}`
+      }),
+      '',
+      'Gracias.',
+    ].join('\n')
+  }
+
   async function copiarPedidoProveedor(proveedor, vinosProveedor) {
     if (!vinosProveedor?.length || typeof navigator === 'undefined') return
-    const texto = [
-      `Pedido sugerido - ${restaurante?.nombre || 'Carta Viva'}`,
-      proveedor,
-      '',
-      ...vinosProveedor.map(vino => `- ${vino.nombre}: pedir ${vino.pedir} uds. Stock ${vino.stock || 0}, minimo ${vino.stock_minimo}`),
-    ].join('\n')
-    await navigator.clipboard.writeText(texto)
+    await navigator.clipboard.writeText(textoPedidoProveedor(proveedor, vinosProveedor))
     setProveedorCopiado(proveedor)
     setTimeout(() => setProveedorCopiado(''), 1800)
+  }
+
+  function abrirWhatsAppProveedor(proveedor, vinosProveedor) {
+    const texto = encodeURIComponent(textoPedidoProveedor(proveedor, vinosProveedor))
+    window.open(`https://wa.me/?text=${texto}`, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -302,6 +317,9 @@ export default function ControlBodega() {
                         <span className={styles.badge}>{vinosProveedor.reduce((sum, vino) => sum + vino.pedir, 0)} uds.</span>
                         <button className={styles.ghost} onClick={() => copiarPedidoProveedor(proveedor, vinosProveedor)}>
                           {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar proveedor'}
+                        </button>
+                        <button className={styles.ghost} onClick={() => abrirWhatsAppProveedor(proveedor, vinosProveedor)}>
+                          WhatsApp
                         </button>
                       </div>
                     </div>
