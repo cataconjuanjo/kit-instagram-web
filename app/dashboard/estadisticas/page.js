@@ -41,6 +41,27 @@ function servicioDeFecha(fecha) {
   return 'otro'
 }
 
+async function copiarTexto(texto) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(texto)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = texto
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
+}
+
+function lineaTop(lista, vacio, formato = ([nombre, valor]) => `${nombre} (${valor})`) {
+  return lista.length ? lista.slice(0, 3).map(item => `- ${formato(item)}`) : [`- ${vacio}`]
+}
+
 export default function Estadisticas() {
   const [restaurante, setRestaurante] = useState(null)
   const [stats, setStats] = useState([])
@@ -48,6 +69,7 @@ export default function Estadisticas() {
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
   const [servicio, setServicio] = useState('todos')
+  const [mensajeInforme, setMensajeInforme] = useState('')
 
   useEffect(() => {
     async function cargar() {
@@ -156,6 +178,40 @@ export default function Estadisticas() {
     { label: 'Aceptación sala', valor: feedbacksVenta.length ? `${tasaVenta}%` : '-' },
   ]
 
+  const periodoInforme = fechaInicio || fechaFin
+    ? `${fechaInicio || 'inicio'} a ${fechaFin || 'hoy'}${servicio !== 'todos' ? ` · ${servicio}` : ''}`
+    : `Últimos datos disponibles${servicio !== 'todos' ? ` · ${servicio}` : ''}`
+
+  const accionesInforme = lecturaEjecutiva.length ? lecturaEjecutiva : [accionPrincipal]
+  const informeCompartible = [
+    `Informe de actividad - ${restaurante?.nombre || 'Restaurante'}`,
+    periodoInforme,
+    '',
+    'Actividad:',
+    `- ${escaneos} escaneos de carta`,
+    `- ${consultas} consultas de maridaje`,
+    `- ${recomendaciones.length} recomendaciones generadas`,
+    `- ${ventasMarcadas} ventas marcadas desde sala`,
+    '',
+    'Lo más relevante:',
+    ...lineaTop(topPlatos.slice(0, 1), 'Sin platos consultados', ([nombre, veces]) => `Plato más consultado: ${nombre} (${veces}x)`),
+    ...lineaTop(vinosRecomendados.slice(0, 1), 'Sin vinos recomendados', ([nombre, datos]) => `Vino más recomendado: ${nombre} (${datos.total}x)`),
+    ...lineaTop(topVinosVendidos.slice(0, 1), 'Sin ventas marcadas', ([nombre, ventas]) => `Vino más vendido marcado: ${nombre} (${ventas})`),
+    '',
+    'Alertas:',
+    `- ${incidenciasStock} avisos de stock`,
+    `- ${dudasSala} dudas, rechazos o cambios`,
+    '',
+    'Acciones recomendadas:',
+    ...accionesInforme.slice(0, 3).map((item, index) => `${index + 1}. ${item.titulo}. ${item.texto}`),
+  ].join('\n')
+
+  async function copiarInforme() {
+    await copiarTexto(informeCompartible)
+    setMensajeInforme('Informe copiado para compartir.')
+    setTimeout(() => setMensajeInforme(''), 1800)
+  }
+
   return (
     <FeatureGate restaurante={restaurante} feature="estadisticas" title="Actividad no incluida">
     <ModuleShell
@@ -224,8 +280,12 @@ export default function Estadisticas() {
           <div>
             <h2 className={styles.panelTitle}>Lectura ejecutiva</h2>
             <p className={styles.panelSub}>No solo cuenta eventos: convierte la actividad en la siguiente decisión.</p>
+            {mensajeInforme && <p className={styles.tiny}>{mensajeInforme}</p>}
           </div>
-          <a className={styles.secondary} href={accionPrincipal.href}>Abrir acción</a>
+          <div className={styles.actionRow}>
+            <button type="button" className={styles.primary} onClick={copiarInforme}>Copiar informe</button>
+            <a className={styles.secondary} href={accionPrincipal.href}>Abrir acción</a>
+          </div>
         </div>
         <div className={styles.panelBody}>
           <div className={styles.itemStack}>
