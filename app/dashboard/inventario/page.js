@@ -13,6 +13,10 @@ function decimal(valor) {
   return Number(valor) || 0
 }
 
+function normalizar(texto = '') {
+  return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
 function eur(valor) {
   return `${decimal(valor).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
 }
@@ -34,6 +38,7 @@ export default function InventarioSemanal() {
   const [conteos, setConteos] = useState({})
   const [motivos, setMotivos] = useState({})
   const [filtro, setFiltro] = useState('prioridad')
+  const [busqueda, setBusqueda] = useState('')
   const [pagina, setPagina] = useState(1)
   const [soloAjustes, setSoloAjustes] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -189,14 +194,25 @@ export default function InventarioSemanal() {
   if (!restaurante) return null
 
   const ajustesPorId = new Set(datos.ajustes.map(ajuste => ajuste.vino.id))
-  const vinosInventario = soloAjustes
+  const vinosInventarioBase = soloAjustes
     ? datos.filtrados.filter(vino => ajustesPorId.has(vino.id))
     : datos.filtrados
+  const vinosInventario = vinosInventarioBase.filter(vino => {
+    const q = normalizar(busqueda.trim())
+    if (!q) return true
+    return normalizar([
+      vino.nombre,
+      vino.bodega,
+      vino.proveedor,
+      vino.region,
+      vino.uva,
+    ].filter(Boolean).join(' ')).includes(q)
+  })
   const totalPaginas = Math.max(1, Math.ceil(vinosInventario.length / VINOS_POR_TANDA))
   const paginaActual = Math.min(pagina, totalPaginas)
   const inicioTanda = (paginaActual - 1) * VINOS_POR_TANDA
   const vinosTanda = vinosInventario.slice(inicioTanda, inicioTanda + VINOS_POR_TANDA)
-  const revisadosFiltro = datos.filtrados.filter(vino =>
+  const revisadosFiltro = vinosInventario.filter(vino =>
     conteos[vino.id] !== '' && conteos[vino.id] !== undefined && conteos[vino.id] !== null
   ).length
   const rangoTanda = vinosInventario.length
@@ -267,13 +283,22 @@ export default function InventarioSemanal() {
             <h2 className={styles.panelTitle}>Conteo rápido</h2>
             <p className={styles.panelSub}>Introduce solo las unidades contadas donde haya diferencia o quieras confirmar stock.</p>
           </div>
-          <span className={styles.badge}>{datos.filtrados.length}</span>
+          <span className={styles.badge}>{vinosInventario.length}</span>
         </div>
         <div className={styles.panelBody}>
+          <div style={{ marginBottom: 12 }}>
+            <label className={styles.label}>Buscar vino</label>
+            <input
+              className={styles.input}
+              value={busqueda}
+              onChange={event => { setBusqueda(event.target.value); setPagina(1) }}
+              placeholder="Nombre, bodega, proveedor, uva o región..."
+            />
+          </div>
           <div className={styles.inventoryToolbar}>
             <div>
               <p className={styles.eyebrow}>Progreso de revisión</p>
-              <strong>{revisadosFiltro} de {datos.filtrados.length} revisados</strong>
+              <strong>{revisadosFiltro} de {vinosInventario.length} visibles revisados</strong>
             </div>
             <label className={styles.bulkSelectAll}>
               <input

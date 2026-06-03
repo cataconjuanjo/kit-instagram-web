@@ -16,6 +16,10 @@ function decimal(valor) {
   return Number(valor) || 0
 }
 
+function normalizar(texto = '') {
+  return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
 function margen(vino) {
   const venta = decimal(vino.precio_botella)
   const coste = decimal(vino.coste_compra)
@@ -40,7 +44,9 @@ export default function ControlBodega() {
   const [editando, setEditando] = useState(null)
   const [mostrarPropuestas, setMostrarPropuestas] = useState(false)
   const [mostrarReferencias, setMostrarReferencias] = useState(false)
+  const [mostrarMovimientos, setMostrarMovimientos] = useState(false)
   const [filtroReferencias, setFiltroReferencias] = useState('todos')
+  const [busquedaReferencias, setBusquedaReferencias] = useState('')
   const [pedidoCopiado, setPedidoCopiado] = useState(false)
   const [proveedorCopiado, setProveedorCopiado] = useState('')
   const [loading, setLoading] = useState(true)
@@ -220,6 +226,16 @@ export default function ControlBodega() {
     if (filtroReferencias === 'sin_proveedor') return !vino.proveedor
     if (filtroReferencias === 'sin_minimo') return !decimal(vino.stock_minimo)
     return true
+  }).filter(vino => {
+    const q = normalizar(busquedaReferencias.trim())
+    if (!q) return true
+    return normalizar([
+      vino.nombre,
+      vino.bodega,
+      vino.proveedor,
+      vino.region,
+      vino.referencia_proveedor,
+    ].filter(Boolean).join(' ')).includes(q)
   })
 
   const etiquetaFiltroReferencias = {
@@ -463,9 +479,14 @@ export default function ControlBodega() {
             <h2 className={styles.panelTitle}>Libro de movimientos</h2>
             <p className={styles.panelSub}>Últimos cambios de stock con motivo y trazabilidad.</p>
           </div>
-          <span className={styles.badge}>{movimientos.length}</span>
+          <div className={styles.actionRow}>
+            <span className={styles.badge}>{movimientos.length}</span>
+            <button className={styles.ghost} onClick={() => setMostrarMovimientos(!mostrarMovimientos)}>
+              {mostrarMovimientos ? 'Ocultar' : 'Ver movimientos'}
+            </button>
+          </div>
         </div>
-        <div className={styles.panelBody}>
+        {mostrarMovimientos && <div className={styles.panelBody}>
           {movimientos.length ? (
             <div className={styles.itemStack}>
               {movimientos.map(mov => (
@@ -484,7 +505,7 @@ export default function ControlBodega() {
           ) : (
             <div className={styles.empty}>Aún no hay movimientos de stock registrados.</div>
           )}
-        </div>
+        </div>}
       </section>
 
       <section className={styles.gridTwo} style={{ marginTop: 16 }}>
@@ -597,6 +618,15 @@ export default function ControlBodega() {
         </div>
         {mostrarReferencias && (
           <div className={styles.panelBody}>
+            <div style={{ marginBottom: 12 }}>
+              <label className={styles.label}>Buscar referencia</label>
+              <input
+                className={styles.input}
+                value={busquedaReferencias}
+                onChange={e => setBusquedaReferencias(e.target.value)}
+                placeholder="Nombre, bodega, proveedor o referencia..."
+              />
+            </div>
             <div className={styles.actionRow} style={{ marginBottom: 12 }}>
               <button className={filtroReferencias === 'todos' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('todos')}>Todas</button>
               <button className={filtroReferencias === 'sin_coste' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('sin_coste')}>Sin coste</button>
