@@ -47,6 +47,8 @@ export default function ControlBodega() {
   const [mostrarMovimientos, setMostrarMovimientos] = useState(false)
   const [filtroReferencias, setFiltroReferencias] = useState('todos')
   const [busquedaReferencias, setBusquedaReferencias] = useState('')
+  const [pedidoRapido, setPedidoRapido] = useState({})
+  const [pedidoManual, setPedidoManual] = useState({})
   const [pedidoCopiado, setPedidoCopiado] = useState(false)
   const [proveedorCopiado, setProveedorCopiado] = useState('')
   const [loading, setLoading] = useState(true)
@@ -268,12 +270,55 @@ export default function ControlBodega() {
     sin_minimo: `${referenciasVisibles.length} sin stock minimo`,
   }[filtroReferencias]
 
+  const pedidoManualLista = Object.entries(pedidoManual)
+    .map(([id, cantidad]) => {
+      const vino = datos.activos.find(item => String(item.id) === String(id))
+      const pedir = parseInt(cantidad, 10) || 0
+      return vino && pedir > 0 ? { ...vino, pedir, pedidoManual: true } : null
+    })
+    .filter(Boolean)
+
+  const pedidoCombinado = Array.from([
+    ...datos.pedido.map(vino => ({ ...vino, pedidoManual: false })),
+    ...pedidoManualLista,
+  ].reduce((acc, vino) => {
+    const actual = acc.get(vino.id)
+    acc.set(vino.id, actual
+      ? { ...actual, pedir: actual.pedir + vino.pedir, pedidoManual: actual.pedidoManual || vino.pedidoManual }
+      : vino)
+    return acc
+  }, new Map()).values())
+
+  const pedidoPorProveedor = Object.entries(pedidoCombinado.reduce((acc, vino) => {
+    const proveedor = vino.proveedor?.trim() || 'Sin proveedor'
+    acc[proveedor] = acc[proveedor] || []
+    acc[proveedor].push(vino)
+    return acc
+  }, {})).sort((a, b) => a[0].localeCompare(b[0]))
+
+  function cambiarPedidoRapido(vinoId, valor) {
+    setPedidoRapido({ ...pedidoRapido, [vinoId]: String(valor || '').replace(/[^\d]/g, '') })
+  }
+
+  function anadirPedidoManual(vino) {
+    const cantidad = parseInt(pedidoRapido[vino.id], 10) || 0
+    if (cantidad <= 0) return
+    setPedidoManual({ ...pedidoManual, [vino.id]: (parseInt(pedidoManual[vino.id], 10) || 0) + cantidad })
+    setPedidoRapido({ ...pedidoRapido, [vino.id]: '' })
+  }
+
+  function quitarPedidoManual(vinoId) {
+    const siguiente = { ...pedidoManual }
+    delete siguiente[vinoId]
+    setPedidoManual(siguiente)
+  }
+
   async function copiarPedido() {
-    if (!datos.pedido.length || typeof navigator === 'undefined') return
+    if (!pedidoCombinado.length || typeof navigator === 'undefined') return
     const texto = [
       `Pedido sugerido - ${restaurante?.nombre || 'Carta Viva'}`,
       '',
-      ...datos.pedidoPorProveedor.flatMap(([proveedor, vinosProveedor]) => [
+      ...pedidoPorProveedor.flatMap(([proveedor, vinosProveedor]) => [
         proveedor,
         ...vinosProveedor.map(vino => `- ${vino.nombre}: pedir ${vino.pedir} uds. Stock ${vino.stock || 0}, mínimo ${vino.stock_minimo}`),
         '',
@@ -420,14 +465,14 @@ export default function ControlBodega() {
               <p className={styles.panelSub}>Agrupado por proveedor para copiar y pegar a cada distribuidor.</p>
             </div>
             <div className={styles.actionRow}>
-              <span className={styles.badge}>{datos.pedido.length}</span>
-              {datos.pedido.length > 0 && <button className={styles.ghost} onClick={copiarPedido}>{pedidoCopiado ? 'Copiado' : 'Copiar pedido'}</button>}
+              <span className={styles.badge}>{pedidoCombinado.length}</span>
+              {pedidoCombinado.length > 0 && <button className={styles.ghost} onClick={copiarPedido}>{pedidoCopiado ? 'Copiado' : 'Copiar pedido'}</button>}
             </div>
           </div>
           <div className={styles.panelBody}>
-            {datos.pedido.length ? (
+            {pedidoCombinado.length ? (
               <div className={styles.itemStack}>
-                {datos.pedidoPorProveedor.map(renderGrupoPedido)}
+                {pedidoPorProveedor.map(renderGrupoPedido)}
               </div>
             ) : (
               <div className={styles.empty}>No hay pedido sugerido ahora.</div>
@@ -662,6 +707,7 @@ export default function ControlBodega() {
                 const bajo = decimal(vino.stock_minimo) > 0 && decimal(vino.stock) <= decimal(vino.stock_minimo)
                 const isEditing = editando?.id === vino.id
                 const posicion = referenciasVisibles.findIndex(item => item.id === vino.id)
+                const cantidadManual = parseInt(pedidoManual[vino.id], 10) || 0
                 return (
                   <article key={vino.id} className={styles.itemCard}>
                     <div className={styles.sectionHead} style={{ margin: 0 }}>
@@ -671,9 +717,26 @@ export default function ControlBodega() {
                       </div>
                       <div className={styles.actionRow}>
                         {bajo && <span className={styles.badge}>Bajo mínimo</span>}
+                        {cantidadManual > 0 && <span className={styles.badge}>Manual {cantidadManual}</span>}
                         <span className={styles.badge} style={{ color: margenColor(m) }}>{m == null ? 'Sin margen' : `${m}% margen`}</span>
                         <button className={styles.ghost} onClick={() => isEditing ? setEditando(null) : iniciarEdicion(vino)}>{isEditing ? 'Cerrar' : 'Editar'}</button>
                       </div>
+                    </div>
+
+                    <div className={styles.actionRow} style={{ marginTop: 12 }}>
+                      <input
+                        className={styles.input}
+                        type="number"
+                        min="1"
+                        value={pedidoRapido[vino.id] || ''}
+                        onChange={e => cambiarPedidoRapido(vino.id, e.target.value)}
+                        placeholder="Pedir"
+                        style={{ maxWidth: 110 }}
+                      />
+                      <button className={styles.ghost} onClick={() => anadirPedidoManual(vino)}>Añadir al pedido</button>
+                      {cantidadManual > 0 && (
+                        <button className={styles.ghost} onClick={() => quitarPedidoManual(vino.id)}>Quitar manual</button>
+                      )}
                     </div>
 
                     {isEditing && (
