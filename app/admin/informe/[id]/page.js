@@ -18,6 +18,14 @@ function eur(valor) {
   return `${decimal(valor).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} EUR`
 }
 
+function minutosAHoras(minutos) {
+  const total = Math.max(0, Math.round(minutos || 0))
+  if (total < 60) return `${total} min`
+  const horas = Math.floor(total / 60)
+  const resto = total % 60
+  return resto ? `${horas} h ${resto} min` : `${horas} h`
+}
+
 function haceDiasISO(dias) {
   const d = new Date()
   d.setDate(d.getDate() - dias)
@@ -39,6 +47,23 @@ function textoVino(vino) {
 
 function textoPlato(plato) {
   return `${plato.nombre || ''} ${plato.descripcion || ''} ${plato.categoria || ''}`
+}
+
+async function copiarTexto(texto) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(texto)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = texto
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
 }
 
 function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propuestas = []) {
@@ -109,6 +134,23 @@ function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propu
   const escaneos30 = estadisticas.filter(e => e.tipo === 'escaneo').length
   const sommelier30 = estadisticas.filter(e => e.tipo === 'sommelier').length
   const propuestasAbiertas = propuestas.filter(p => p.estado !== 'descartada' && p.estado !== 'incorporada')
+  const vinosPorId = new Map(activos.map(vino => [String(vino.id), vino]))
+  const margenAsistido = ventasMarcadas.reduce((sum, evento) => {
+    const vino = vinosPorId.get(String(evento.parsed?.vino_id || ''))
+    if (!vino || !decimal(vino.precio_botella) || !decimal(vino.coste_compra)) return sum
+    return sum + (decimal(vino.precio_botella) - decimal(vino.coste_compra)) * (decimal(evento.parsed?.cantidad) || 1)
+  }, 0)
+  const ventasConMargen = ventasMarcadas.filter(evento => {
+    const vino = vinosPorId.get(String(evento.parsed?.vino_id || ''))
+    return vino && decimal(vino.precio_botella) > 0 && decimal(vino.coste_compra) > 0
+  }).length
+  const minutosAhorrados =
+    (sommelier30 * 2) +
+    (ventasMarcadas.length * 1) +
+    (incidenciasStock.length * 5) +
+    (bajoMinimo.length * 3) +
+    (propuestasAbiertas.length * 4)
+  const riesgosDetectados = incidenciasStock.length + bajoMinimo.length + margenBajo.length + sinCoste.length + sinProveedor.length
 
   const alertas = []
   const oportunidad = (peso, titulo, detalle, accion) => alertas.push({ peso, titulo, detalle, accion })
@@ -148,6 +190,14 @@ function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propu
     prioridad,
     alertas: alertasOrdenadas,
     plan,
+    impacto: {
+      actividadAsistida: escaneos30 + sommelier30 + ventasMarcadas.length,
+      margenAsistido,
+      ventasConMargen,
+      minutosAhorrados,
+      riesgosDetectados,
+      oportunidadesDetectadas: alertasOrdenadas.length,
+    },
     metricas: {
       vinos: total,
       platos: platosActivos.length,
@@ -183,6 +233,7 @@ export default function InformeConsultor() {
   const [platos, setPlatos] = useState([])
   const [estadisticas, setEstadisticas] = useState([])
   const [propuestas, setPropuestas] = useState([])
+  const [impactoCopiado, setImpactoCopiado] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -233,6 +284,23 @@ export default function InformeConsultor() {
 
   const fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
   const topAlertas = informe.alertas.slice(0, 5)
+  const impacto = informe.impacto
+  const textoImpacto = [
+    `Impacto mensual de ArmonIA - ${restaurante.nombre}`,
+    '',
+    `En los ultimos 30 dias, ArmonIA ha ayudado a controlar ${informe.metricas.escaneos30} escaneos de carta, ${informe.metricas.sommelier30} consultas de maridaje y ${informe.metricas.ventasMarcadas} ventas marcadas desde sala.`,
+    `Margen bajo control: ${eur(impacto.margenAsistido)} de margen bruto monitorizado en ventas con coste y precio informados (${impacto.ventasConMargen} ventas con margen trazable).`,
+    `Riesgo operativo detectado: ${informe.metricas.incidenciasStock} incidencias de stock, ${informe.metricas.bajoMinimo} referencias bajo minimo, ${informe.metricas.sinCoste} sin coste y ${informe.metricas.sinProveedor} sin proveedor.`,
+    `Tiempo operativo estimado: ${minutosAHoras(impacto.minutosAhorrados)} de apoyo mensual entre consultas resueltas, ventas registradas, alertas y seguimiento de propuestas.`,
+    '',
+    'Lectura comercial: la app no sustituye el criterio del restaurante ni del consultor; ordena la informacion, evita decisiones a ciegas y convierte actividad dispersa en acciones concretas de carta, bodega y sala.',
+  ].join('\n')
+
+  async function copiarImpactoMensual() {
+    await copiarTexto(textoImpacto)
+    setImpactoCopiado(true)
+    setTimeout(() => setImpactoCopiado(false), 1800)
+  }
 
   return (
     <main className="report-page">
@@ -268,6 +336,47 @@ export default function InformeConsultor() {
           <div><span>Potencial venta</span><strong>{eur(informe.metricas.valorVenta)}</strong></div>
           <div><span>Margen medio</span><strong>{informe.metricas.margenMedio ?? '-'}%</strong></div>
           <div><span>Usos maridaje 30d</span><strong>{informe.metricas.sommelier30}</strong></div>
+        </section>
+
+        <section className="report-section">
+          <div className="report-section-head">
+            <div>
+              <p className="report-kicker">Valor defendible</p>
+              <h2>Impacto mensual de ArmonIA</h2>
+            </div>
+            <button
+              type="button"
+              className="no-print"
+              onClick={copiarImpactoMensual}
+              style={{
+                border: '1px solid #171416',
+                borderRadius: 999,
+                background: '#171416',
+                color: '#fffaf3',
+                padding: '10px 14px',
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}
+            >
+              {impactoCopiado ? 'Copiado' : 'Copiar bloque mensual'}
+            </button>
+          </div>
+          <section className="report-metrics" style={{ marginTop: 0 }}>
+            <div><span>Actividad asistida</span><strong>{impacto.actividadAsistida}</strong></div>
+            <div><span>Margen monitorizado</span><strong>{eur(impacto.margenAsistido)}</strong></div>
+            <div><span>Riesgos detectados</span><strong>{impacto.riesgosDetectados}</strong></div>
+            <div><span>Tiempo estimado</span><strong>{minutosAHoras(impacto.minutosAhorrados)}</strong></div>
+          </section>
+          <div className="report-panel">
+            <p>
+              Estas cifras son prudentes: miden actividad controlada, margen trazable y riesgos detectados por la app,
+              no promesas de venta atribuida. Sirven para justificar el seguimiento mensual y explicar por que la cuota
+              queda por debajo del valor operativo que protege.
+            </p>
+          </div>
         </section>
 
         <section className="report-section">
