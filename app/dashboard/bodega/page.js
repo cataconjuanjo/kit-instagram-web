@@ -20,6 +20,14 @@ function normalizar(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
+function telefonoWhatsApp(telefono = '') {
+  const limpio = String(telefono || '').replace(/[^\d+]/g, '')
+  if (!limpio) return ''
+  if (limpio.startsWith('+')) return limpio.slice(1)
+  if (limpio.length === 9) return `34${limpio}`
+  return limpio.replace(/^\+/, '')
+}
+
 function margen(vino) {
   const venta = decimal(vino.precio_botella)
   const coste = decimal(vino.coste_compra)
@@ -37,6 +45,7 @@ function margenColor(valor) {
 export default function ControlBodega() {
   const [restaurante, setRestaurante] = useState(null)
   const [vinos, setVinos] = useState([])
+  const [proveedoresContacto, setProveedoresContacto] = useState([])
   const [propuestas, setPropuestas] = useState([])
   const [incidencias, setIncidencias] = useState([])
   const [eventosSala, setEventosSala] = useState([])
@@ -68,13 +77,20 @@ export default function ControlBodega() {
         if (desdeActividad) {
           ventasQuery = supabase.from('estadisticas').select('*').eq('restaurante_id', rest.id).eq('tipo', 'venta').gte('created_at', desdeActividad).order('created_at', { ascending: false }).limit(80)
         }
-        const [{ data: vinosData }, { data: propuestasData }, { data: incidenciasData }, { data: movimientosData }] = await Promise.all([
+        const token = (await supabase.auth.getSession()).data.session?.access_token
+        const proveedoresQuery = token
+          ? fetch(`/api/proveedores-visibles?${new URLSearchParams({ restaurante_id: rest.id })}`, { headers: { Authorization: `Bearer ${token}` } })
+          : Promise.resolve(null)
+        const [{ data: vinosData }, { data: propuestasData }, { data: incidenciasData }, { data: movimientosData }, proveedoresRes] = await Promise.all([
           supabase.from('vinos').select('*').eq('restaurante_id', rest.id).order('nombre'),
           supabase.from('consultor_propuestas').select('*').eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
           ventasQuery,
           supabase.from('movimientos_stock').select('*, vinos(nombre, bodega)').eq('restaurante_id', rest.id).order('created_at', { ascending: false }).limit(10),
+          proveedoresQuery,
         ])
+        const proveedoresData = proveedoresRes?.ok ? await proveedoresRes.json() : {}
         setVinos(vinosData || [])
+        setProveedoresContacto(proveedoresData.proveedores_detalle || [])
         setPropuestas(propuestasData || [])
         setMovimientos(movimientosData || [])
         const eventosVenta = (incidenciasData || []).map(item => {
@@ -149,6 +165,12 @@ export default function ControlBodega() {
 
     return { activos, valorCoste, valorVenta, margenMedio, margenPotencial, bajoMinimo, sinCoste, margenBajo, sinPrecio, sinProveedor, sinStockMinimo, pedido, pedidoPorProveedor, proveedores, proveedoresExistentes, sinRotacion, topRotacion }
   }, [vinos, eventosSala])
+  const contactosPorProveedor = useMemo(() => {
+    return Object.fromEntries(proveedoresContacto.map(proveedor => [
+      normalizar(proveedor.nombre),
+      proveedor,
+    ]))
+  }, [proveedoresContacto])
 
   function iniciarEdicion(vino) {
     setError('')
@@ -296,6 +318,10 @@ export default function ControlBodega() {
     return acc
   }, {})).sort((a, b) => a[0].localeCompare(b[0]))
 
+  function contactoProveedor(nombre) {
+    return contactosPorProveedor[normalizar(nombre)] || null
+  }
+
   function cambiarPedidoRapido(vinoId, valor) {
     setPedidoRapido({ ...pedidoRapido, [vinoId]: String(valor || '').replace(/[^\d]/g, '') })
   }
@@ -313,9 +339,8 @@ export default function ControlBodega() {
     setPedidoManual(siguiente)
   }
 
-  async function copiarPedido() {
-    if (!pedidoCombinado.length || typeof navigator === 'undefined') return
-    const texto = [
+  function textoPedidoCompleto() {
+    return [
       `Pedido sugerido - ${restaurante?.nombre || 'Carta Viva'}`,
       '',
       ...pedidoPorProveedor.flatMap(([proveedor, vinosProveedor]) => [
@@ -324,9 +349,19 @@ export default function ControlBodega() {
         '',
       ]),
     ].join('\n')
-    await navigator.clipboard.writeText(texto)
+  }
+
+  async function copiarPedido() {
+    if (!pedidoCombinado.length || typeof navigator === 'undefined') return
+    await navigator.clipboard.writeText(textoPedidoCompleto())
     setPedidoCopiado(true)
     setTimeout(() => setPedidoCopiado(false), 1800)
+  }
+
+  function abrirWhatsAppPedido() {
+    if (!pedidoCombinado.length || typeof window === 'undefined') return
+    const texto = encodeURIComponent(textoPedidoCompleto())
+    window.open(`https://wa.me/?text=${texto}`, '_blank', 'noopener,noreferrer')
   }
 
   function textoPedidoProveedor(proveedor, vinosProveedor) {
@@ -354,11 +389,15 @@ export default function ControlBodega() {
 
   function abrirWhatsAppProveedor(proveedor, vinosProveedor) {
     const texto = encodeURIComponent(textoPedidoProveedor(proveedor, vinosProveedor))
-    window.open(`https://wa.me/?text=${texto}`, '_blank', 'noopener,noreferrer')
+    const telefono = telefonoWhatsApp(contactoProveedor(proveedor)?.telefono)
+    const url = telefono ? `https://wa.me/${telefono}?text=${texto}` : `https://wa.me/?text=${texto}`
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   function renderGrupoPedido([proveedor, vinosProveedor]) {
     const faltaProveedor = proveedor === 'Sin proveedor'
+    const contacto = contactoProveedor(proveedor)
+    const tieneTelefono = Boolean(telefonoWhatsApp(contacto?.telefono))
 
     return (
       <article key={proveedor} className={styles.itemCard}>
@@ -380,12 +419,17 @@ export default function ControlBodega() {
                   {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar para WhatsApp'}
                 </button>
                 <button className={styles.ghost} onClick={() => abrirWhatsAppProveedor(proveedor, vinosProveedor)}>
-                  Abrir WhatsApp
+                  {tieneTelefono ? 'WhatsApp directo' : 'Abrir WhatsApp'}
                 </button>
               </>
             )}
           </div>
         </div>
+        {!faltaProveedor && contacto && (
+          <p className={styles.sectionText} style={{ margin: '8px 0 0' }}>
+            {[contacto.telefono ? `Tel. ${contacto.telefono}` : null, contacto.email].filter(Boolean).join(' · ')}
+          </p>
+        )}
         <div className={styles.itemStack} style={{ marginTop: 12 }}>
           {vinosProveedor.map(vino => (
             <div key={vino.id} className={styles.sectionHead} style={{ margin: 0, paddingTop: 8, borderTop: '1px solid rgba(23,20,22,0.08)' }}>
@@ -466,7 +510,12 @@ export default function ControlBodega() {
             </div>
             <div className={styles.actionRow}>
               <span className={styles.badge}>{pedidoCombinado.length}</span>
-              {pedidoCombinado.length > 0 && <button className={styles.ghost} onClick={copiarPedido}>{pedidoCopiado ? 'Copiado' : 'Copiar pedido'}</button>}
+              {pedidoCombinado.length > 0 && (
+                <>
+                  <button className={styles.ghost} onClick={copiarPedido}>{pedidoCopiado ? 'Copiado' : 'Copiar para WhatsApp'}</button>
+                  <button className={styles.ghost} onClick={abrirWhatsAppPedido}>Abrir WhatsApp</button>
+                </>
+              )}
             </div>
           </div>
           <div className={styles.panelBody}>

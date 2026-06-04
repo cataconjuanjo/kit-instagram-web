@@ -14,12 +14,20 @@ export async function GET(req) {
 
     const { data, error } = await supabaseAdmin
       .from('proveedores_vino')
-      .select('nombre')
+      .select('nombre, telefono, email')
       .eq('visible_restaurantes', true)
       .order('nombre')
 
     if (error) throw error
-    return Response.json({ proveedores: (data || []).map(item => item.nombre).filter(Boolean) })
+    const proveedores = (data || []).filter(item => item.nombre)
+    return Response.json({
+      proveedores: proveedores.map(item => item.nombre),
+      proveedores_detalle: proveedores.map(item => ({
+        nombre: item.nombre,
+        telefono: item.telefono || '',
+        email: item.email || '',
+      })),
+    })
   } catch (error) {
     console.error('[proveedores-visibles] leer:', error)
     return Response.json({ error: 'No se pudieron cargar los proveedores.' }, { status: 500 })
