@@ -255,6 +255,54 @@ function normalizarCatalogo(texto = '') {
     .replace(/[\u0300-\u036f]/g, '')
 }
 
+function tokensCatalogo(texto = '') {
+  return normalizarCatalogo(texto)
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(token => token.length >= 3)
+}
+
+function scoreMatchCatalogo(vinoRestaurante, vinoCatalogo, proveedor) {
+  const nombreRest = normalizarCatalogo(vinoRestaurante?.nombre)
+  const nombreCatalogo = normalizarCatalogo(vinoCatalogo?.nombre)
+  const bodegaRest = normalizarCatalogo(vinoRestaurante?.bodega)
+  const bodegaCatalogo = normalizarCatalogo(vinoCatalogo?.bodega)
+  const regionRest = normalizarCatalogo(vinoRestaurante?.region)
+  const regionCatalogo = normalizarCatalogo(vinoCatalogo?.region)
+  const tipoRest = normalizarCatalogo(vinoRestaurante?.tipo)
+  const tipoCatalogo = normalizarCatalogo(vinoCatalogo?.tipo)
+  const uvaRest = normalizarCatalogo(vinoRestaurante?.uva)
+  const uvaCatalogo = normalizarCatalogo(vinoCatalogo?.uva)
+  const proveedorRest = normalizarCatalogo(vinoRestaurante?.proveedor)
+  const proveedorCatalogo = normalizarCatalogo(proveedor?.nombre || vinoCatalogo?.proveedores_vino?.nombre)
+  const anadaRest = String(vinoRestaurante?.anada || '').trim()
+  const anadaCatalogo = String(vinoCatalogo?.anada || '').trim()
+
+  let score = 0
+  if (nombreRest && nombreCatalogo) {
+    if (nombreRest === nombreCatalogo) score += 48
+    else if (nombreRest.includes(nombreCatalogo) || nombreCatalogo.includes(nombreRest)) score += 34
+    const tokensRest = tokensCatalogo(vinoRestaurante?.nombre)
+    const tokensCat = new Set(tokensCatalogo(vinoCatalogo?.nombre))
+    const comunes = tokensRest.filter(token => tokensCat.has(token)).length
+    score += Math.min(24, comunes * 8)
+  }
+  if (bodegaRest && bodegaCatalogo) {
+    if (bodegaRest === bodegaCatalogo) score += 22
+    else if (bodegaRest.includes(bodegaCatalogo) || bodegaCatalogo.includes(bodegaRest)) score += 14
+  }
+  if (regionRest && regionCatalogo && (regionRest.includes(regionCatalogo) || regionCatalogo.includes(regionRest))) score += 10
+  if (tipoRest && tipoCatalogo && tipoRest === tipoCatalogo) score += 8
+  if (uvaRest && uvaCatalogo && (uvaRest.includes(uvaCatalogo) || uvaCatalogo.includes(uvaRest))) score += 8
+  if (anadaRest && anadaCatalogo && anadaRest === anadaCatalogo) score += 8
+  if (proveedorRest && proveedorCatalogo && proveedorRest === proveedorCatalogo) score += 18
+  if (decimal(vinoCatalogo?.coste_estimado) > 0) score += 4
+  if (vinoCatalogo?.referencia) score += 3
+  if (vinoCatalogo?.formato) score += 2
+
+  return score
+}
+
 const propuestaVacia = {
   titulo: '', vino: '', tipo: '', zona: '', proveedor_sugerido: '',
   coste_estimado: '', precio_recomendado: '', margen_objetivo: '',
@@ -290,6 +338,10 @@ export default function RestauranteWorkspace() {
   const [proveedorCatalogoId, setProveedorCatalogoId] = useState('')
   const [vinoCatalogoId, setVinoCatalogoId] = useState('')
   const [busquedaVinoCatalogo, setBusquedaVinoCatalogo] = useState('')
+  const [proveedorMatchId, setProveedorMatchId] = useState('')
+  const [busquedaMatchCatalogo, setBusquedaMatchCatalogo] = useState('')
+  const [aplicandoMatchId, setAplicandoMatchId] = useState('')
+  const [mensajeMatch, setMensajeMatch] = useState('')
   const [guardandoPropuesta, setGuardandoPropuesta] = useState(false)
   const [errorPropuesta, setErrorPropuesta] = useState('')
   const [mostrarForm, setMostrarForm] = useState(false)
@@ -449,6 +501,44 @@ export default function RestauranteWorkspace() {
       .slice(0, 40)
   }, [vinosCatalogo, proveedoresCatalogo, proveedorCatalogoId, busquedaVinoCatalogo])
 
+  const proveedorCatalogoPorId = useMemo(() => (
+    Object.fromEntries(proveedoresCatalogo.map(proveedor => [String(proveedor.id), proveedor]))
+  ), [proveedoresCatalogo])
+
+  const matchesCatalogo = useMemo(() => {
+    const terminos = tokensCatalogo(busquedaMatchCatalogo)
+    const catalogoBase = vinosCatalogo.filter(vino => {
+      if (proveedorMatchId && String(vino.proveedor_id) !== String(proveedorMatchId)) return false
+      return vino.activo !== false
+    })
+    return vinos
+      .filter(vino => vino.activo !== false)
+      .filter(vino => !vino.proveedor || !decimal(vino.coste_compra) || !vino.referencia_proveedor || !vino.formato_compra)
+      .filter(vino => {
+        if (!terminos.length) return true
+        const texto = normalizarCatalogo([vino.nombre, vino.bodega, vino.region, vino.tipo, vino.uva, vino.proveedor].filter(Boolean).join(' '))
+        return terminos.every(termino => texto.includes(termino))
+      })
+      .map(vino => {
+        const candidatos = catalogoBase
+          .map(catalogo => {
+            const proveedor = proveedorCatalogoPorId[String(catalogo.proveedor_id)]
+            return {
+              vino: catalogo,
+              proveedor,
+              score: scoreMatchCatalogo(vino, catalogo, proveedor)
+            }
+          })
+          .filter(match => match.score >= 34)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3)
+        return { vino, candidatos }
+      })
+      .filter(item => item.candidatos.length > 0)
+      .sort((a, b) => b.candidatos[0].score - a.candidatos[0].score)
+      .slice(0, 30)
+  }, [vinos, vinosCatalogo, proveedorCatalogoPorId, proveedorMatchId, busquedaMatchCatalogo])
+
   function seleccionarProveedorCatalogo(proveedorId) {
     setProveedorCatalogoId(proveedorId)
     setVinoCatalogoId('')
@@ -475,6 +565,35 @@ export default function RestauranteWorkspace() {
       precio_recomendado: pvp,
       margen_objetivo: pvp ? calcularMargen(vino.coste_estimado, pvp) : prev.margen_objetivo,
     }))
+  }
+
+  async function aplicarMatchCatalogo(vinoRestaurante, match) {
+    const proveedor = match.proveedor
+    const vinoCatalogo = match.vino
+    const cambios = {}
+    const nombreProveedor = proveedor?.nombre || vinoCatalogo.proveedores_vino?.nombre || ''
+
+    if (nombreProveedor) cambios.proveedor = nombreProveedor
+    if (decimal(vinoCatalogo.coste_estimado) > 0) cambios.coste_compra = decimal(vinoCatalogo.coste_estimado)
+    if (vinoCatalogo.referencia) cambios.referencia_proveedor = vinoCatalogo.referencia
+    if (vinoCatalogo.formato) cambios.formato_compra = vinoCatalogo.formato
+
+    if (!Object.keys(cambios).length) return
+    setAplicandoMatchId(`${vinoRestaurante.id}-${vinoCatalogo.id}`)
+    setMensajeMatch('')
+    const { error } = await supabase
+      .from('vinos')
+      .update(cambios)
+      .eq('id', vinoRestaurante.id)
+      .eq('restaurante_id', id)
+
+    if (error) {
+      setMensajeMatch(`No se pudo aplicar a ${vinoRestaurante.nombre}: ${error.message}`)
+    } else {
+      setVinos(prev => prev.map(vino => String(vino.id) === String(vinoRestaurante.id) ? { ...vino, ...cambios } : vino))
+      setMensajeMatch(`Datos aplicados a ${vinoRestaurante.nombre}.`)
+    }
+    setAplicandoMatchId('')
   }
 
   async function guardarPropuesta(e) {
@@ -581,6 +700,7 @@ export default function RestauranteWorkspace() {
           <nav className="ws-anchors">
             <button onClick={() => scrollTo('ws-resumen')}>Resumen</button>
             <button onClick={() => scrollTo('ws-diagnostico')}>Diagnóstico</button>
+            <button onClick={() => scrollTo('ws-matching')}>Matching {matchesCatalogo.length > 0 && <span className="ws-badge">{matchesCatalogo.length}</span>}</button>
             <button onClick={() => scrollTo('ws-propuestas')}>Propuestas {propuestasActivas.length > 0 && <span className="ws-badge">{propuestasActivas.length}</span>}</button>
             <button onClick={() => scrollTo('ws-seleccion')}>Selección {seleccion.length > 0 && <span className="ws-badge">{seleccion.length}/4</span>}</button>
             <button onClick={() => scrollTo('ws-informe')}>Informe</button>
@@ -754,6 +874,84 @@ export default function RestauranteWorkspace() {
           {/* ═══════════════════════════════════════
               SECCIÓN: PROPUESTAS
           ═══════════════════════════════════════ */}
+          <section id="ws-matching" className="ws-section">
+            <div className="ws-section-head">
+              <div>
+                <h3 className="ws-section-title">Matching carta - catalogo proveedor</h3>
+                <p className="ws-match-sub">Cruza vinos del restaurante con catalogos cargados para completar proveedor, coste, referencia y formato sin pedirle mas trabajo al encargado.</p>
+              </div>
+              <Link href="/admin/proveedores" className="ws-btn-secondary">Gestionar catalogos</Link>
+            </div>
+
+            <div className="admin-create-form ws-form-grid ws-match-tools">
+              <label>
+                Proveedor
+                <select value={proveedorMatchId} onChange={e => setProveedorMatchId(e.target.value)}>
+                  <option value="">Todos los proveedores...</option>
+                  {proveedoresCatalogo.map(proveedor => (
+                    <option key={proveedor.id} value={proveedor.id}>{proveedor.nombre}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Buscar vino de la carta
+                <input value={busquedaMatchCatalogo} onChange={e => setBusquedaMatchCatalogo(e.target.value)} placeholder="Nombre, bodega, uva, region..." />
+              </label>
+            </div>
+
+            {mensajeMatch && <p className={`admin-alert ${mensajeMatch.startsWith('No se pudo') ? 'admin-alert-error' : 'admin-alert-ok'}`}>{mensajeMatch}</p>}
+
+            <div className="ws-match-list">
+              {vinosCatalogo.length === 0 && (
+                <div className="ws-empty-block">Aun no hay catalogos de proveedor cargados. Cuando subas tarifas, aqui apareceran cruces automaticos.</div>
+              )}
+              {vinosCatalogo.length > 0 && matchesCatalogo.length === 0 && (
+                <div className="ws-empty-block">No hay coincidencias claras con los filtros actuales. Prueba otro proveedor o revisa nombres/bodegas del catalogo.</div>
+              )}
+              {matchesCatalogo.map(({ vino, candidatos }) => {
+                const faltantes = [
+                  !vino.proveedor && 'proveedor',
+                  !decimal(vino.coste_compra) && 'coste',
+                  !vino.referencia_proveedor && 'referencia',
+                  !vino.formato_compra && 'formato',
+                ].filter(Boolean)
+                return (
+                  <article className="ws-match-card" key={vino.id}>
+                    <div className="ws-match-current">
+                      <span className="admin-kicker">Carta restaurante</span>
+                      <h4>{vino.nombre}</h4>
+                      <p>{[vino.bodega, vino.region, vino.uva, vino.anada].filter(Boolean).join(' · ') || 'Sin datos extra'}</p>
+                      <div className="strategy-pills">
+                        {faltantes.map(item => <span key={item} className="is-warning">Falta {item}</span>)}
+                      </div>
+                    </div>
+                    <div className="ws-match-candidates">
+                      {candidatos.map(match => {
+                        const key = `${vino.id}-${match.vino.id}`
+                        return (
+                          <div className="ws-match-candidate" key={key}>
+                            <div>
+                              <strong>{match.vino.nombre}</strong>
+                              <span>{[match.proveedor?.nombre || match.vino.proveedores_vino?.nombre, match.vino.bodega, match.vino.region, match.vino.formato, match.vino.coste_estimado ? `${match.vino.coste_estimado} EUR` : '', match.vino.referencia ? `ref. ${match.vino.referencia}` : ''].filter(Boolean).join(' · ')}</span>
+                              <small>Confianza {Math.min(99, match.score)}%</small>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => aplicarMatchCatalogo(vino, match)}
+                              disabled={aplicandoMatchId === key}
+                            >
+                              {aplicandoMatchId === key ? 'Aplicando...' : 'Aplicar datos'}
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          </section>
+
           <section id="ws-propuestas" className="ws-section">
             <div className="ws-section-head">
               <h3 className="ws-section-title">Propuestas</h3>
