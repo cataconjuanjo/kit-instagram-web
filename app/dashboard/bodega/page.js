@@ -377,10 +377,10 @@ export default function ControlBodega() {
             {!faltaProveedor && (
               <>
                 <button className={styles.ghost} onClick={() => copiarPedidoProveedor(proveedor, vinosProveedor)}>
-                  {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar mensaje'}
+                  {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar para WhatsApp'}
                 </button>
                 <button className={styles.ghost} onClick={() => abrirWhatsAppProveedor(proveedor, vinosProveedor)}>
-                  Enviar WhatsApp
+                  Abrir WhatsApp
                 </button>
               </>
             )}
