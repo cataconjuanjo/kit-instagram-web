@@ -36,6 +36,90 @@ function etiquetaResultado(resultado) {
   }[resultado] || 'Feedback'
 }
 
+function decimal(valor) {
+  return Number(valor) || 0
+}
+
+function normalizar(texto = '') {
+  return String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+function margenPct(vino) {
+  const precio = decimal(vino?.precio_botella)
+  const coste = decimal(vino?.coste_compra)
+  if (!precio || !coste) return null
+  return Math.round(((precio - coste) / precio) * 100)
+}
+
+function distanciaPrecio(origen, candidato) {
+  const precioOrigen = decimal(origen?.precio_botella)
+  const precioCandidato = decimal(candidato?.precio_botella)
+  if (!precioOrigen || !precioCandidato) return 0
+  return Math.abs(precioOrigen - precioCandidato) / precioOrigen
+}
+
+function palabrasPerfil(vino) {
+  return normalizar(`${vino?.notas_cata || ''} ${vino?.uva || ''} ${vino?.region || ''}`)
+    .split(/[^a-z0-9]+/)
+    .filter(palabra => palabra.length > 3)
+}
+
+function explicarSustituto(origen, candidato) {
+  const motivos = []
+  if (origen?.tipo && candidato?.tipo === origen.tipo) motivos.push(`mismo tipo (${candidato.tipo})`)
+  const distancia = distanciaPrecio(origen, candidato)
+  if (distancia > 0 && distancia <= 0.25) motivos.push('precio parecido')
+  if (origen?.uva && candidato?.uva && normalizar(origen.uva) === normalizar(candidato.uva)) motivos.push('uva similar')
+  if (origen?.region && candidato?.region && normalizar(origen.region) === normalizar(candidato.region)) motivos.push('misma zona')
+  const margen = margenPct(candidato)
+  if (margen != null && margen >= 55) motivos.push(`${margen}% margen`)
+  if (decimal(candidato.stock) > Math.max(2, decimal(candidato.stock_minimo))) motivos.push(`stock ${decimal(candidato.stock)}`)
+  return motivos.slice(0, 3).join(' · ') || 'alternativa disponible'
+}
+
+function sugerirSustitutos(vinos, vinoOrigen) {
+  if (!vinoOrigen) return []
+  const origenPerfil = new Set(palabrasPerfil(vinoOrigen))
+  return vinos
+    .filter(vino => vino.activo !== false)
+    .filter(vino => String(vino.id) !== String(vinoOrigen.id))
+    .filter(vino => decimal(vino.stock) > 0)
+    .map(vino => {
+      const distancia = distanciaPrecio(vinoOrigen, vino)
+      const perfilComun = palabrasPerfil(vino).filter(palabra => origenPerfil.has(palabra)).length
+      const margen = margenPct(vino)
+      const score =
+        (vino.tipo && vino.tipo === vinoOrigen.tipo ? 35 : 0) +
+        (distancia > 0 && distancia <= 0.15 ? 22 : distancia <= 0.30 ? 14 : distancia <= 0.50 ? 5 : -18) +
+        Math.min(18, perfilComun * 6) +
+        (vino.uva && vinoOrigen.uva && normalizar(vino.uva) === normalizar(vinoOrigen.uva) ? 10 : 0) +
+        (vino.region && vinoOrigen.region && normalizar(vino.region) === normalizar(vinoOrigen.region) ? 8 : 0) +
+        (margen != null && margen >= 60 ? 10 : margen != null && margen >= 50 ? 5 : 0) +
+        (decimal(vino.stock) >= Math.max(3, decimal(vino.stock_minimo) + 1) ? 8 : 0)
+      return { ...vino, score, motivoSustituto: explicarSustituto(vinoOrigen, vino) }
+    })
+    .filter(vino => vino.score > 12)
+    .sort((a, b) => b.score - a.score || decimal(b.stock) - decimal(a.stock))
+    .slice(0, 3)
+}
+
+async function copiarTexto(texto) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(texto)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = texto
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
+}
+
 function claveCierreDia(restauranteId) {
   return `carta_viva_cierre_${restauranteId}_${fechaLocalClave()}`
 }
@@ -63,6 +147,7 @@ export default function CierreServicio() {
   const [eventos, setEventos] = useState([])
   const [ocultos, setOcultos] = useState([])
   const [turnoCerrado, setTurnoCerrado] = useState(false)
+  const [sustitutoCopiado, setSustitutoCopiado] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -211,6 +296,22 @@ export default function CierreServicio() {
       window.localStorage.removeItem(claveCierreDia(restaurante.id))
     }
     await guardarOcultos([], false)
+  }
+
+  async function copiarSustitutosSala(evento, vinoOrigen, sustitutos) {
+    if (!sustitutos.length) return
+    const texto = [
+      `Sustituto para sala - ${evento.parsed?.vino || vinoOrigen?.nombre || 'vino agotado'}`,
+      '',
+      `Si piden ${evento.parsed?.vino || vinoOrigen?.nombre || 'este vino'} y no queda, ofrecer:`,
+      ...sustitutos.map((vino, index) => `${index + 1}. ${vino.nombre}${vino.precio_botella ? ` (${vino.precio_botella} EUR)` : ''}: ${vino.motivoSustituto}.`),
+      '',
+      'Frase corta:',
+      `"Ahora mismo no queda, pero puedo ofrecerte ${sustitutos[0].nombre}: encaja por perfil y tenemos stock."`,
+    ].join('\n')
+    await copiarTexto(texto)
+    setSustitutoCopiado(evento.id)
+    setTimeout(() => setSustitutoCopiado(''), 1800)
   }
 
   if (loading) return <LoadingState />
@@ -368,6 +469,7 @@ export default function CierreServicio() {
             <div className={styles.itemStack}>
               {datos.incidencias.map(evento => {
                 const vino = vinos.find(item => String(item.id) === String(evento.parsed?.vino_id))
+                const sustitutos = sugerirSustitutos(vinos, vino)
                 return (
                   <article className={styles.itemCard} key={evento.id}>
                     <div className={styles.sectionHead} style={{ margin: 0 }}>
@@ -381,6 +483,43 @@ export default function CierreServicio() {
                         <button className={styles.ghost} onClick={() => ocultarEvento(evento.id)}>Ignorar</button>
                       </div>
                     </div>
+                    {vino && (
+                      <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(23,20,22,0.08)' }}>
+                        <div className={styles.sectionHead} style={{ margin: 0 }}>
+                          <div>
+                            <p className={styles.eyebrow}>Sustitutos para no perder la venta</p>
+                            <p className={styles.sectionText}>
+                              Basado en tipo, precio parecido, perfil de venta, margen y stock disponible.
+                            </p>
+                          </div>
+                          {sustitutos.length > 0 && (
+                            <button className={styles.ghost} onClick={() => copiarSustitutosSala(evento, vino, sustitutos)}>
+                              {sustitutoCopiado === evento.id ? 'Copiado' : 'Copiar para sala'}
+                            </button>
+                          )}
+                        </div>
+                        {sustitutos.length ? (
+                          <div className={styles.itemStack} style={{ marginTop: 10 }}>
+                            {sustitutos.map(sustituto => (
+                              <div key={sustituto.id} className={styles.sectionHead} style={{ margin: 0, padding: '8px 0', borderTop: '1px solid rgba(23,20,22,0.06)' }}>
+                                <div>
+                                  <h4 className={styles.sectionTitle} style={{ fontSize: 14 }}>{sustituto.nombre}</h4>
+                                  <p className={styles.sectionText}>
+                                    {[sustituto.bodega, sustituto.tipo, sustituto.precio_botella ? `${sustituto.precio_botella} EUR` : null].filter(Boolean).join(' · ')}
+                                  </p>
+                                  <p className={styles.sectionText}>{sustituto.motivoSustituto}</p>
+                                </div>
+                                <span className={styles.badge}>Stock {decimal(sustituto.stock)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className={styles.empty} style={{ minHeight: 80, marginTop: 10 }}>
+                            No hay sustitutos claros con stock. Revisa bodega o completa perfiles de venta.
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </article>
                 )
               })}
