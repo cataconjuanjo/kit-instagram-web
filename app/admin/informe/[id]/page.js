@@ -66,6 +66,72 @@ async function copiarTexto(texto) {
   document.body.removeChild(textarea)
 }
 
+function claveSnapshots(restauranteId) {
+  return `armonia_informe_snapshots_${restauranteId}`
+}
+
+function leerSnapshots(restauranteId) {
+  if (typeof window === 'undefined' || !restauranteId) return []
+  try {
+    const guardados = JSON.parse(window.localStorage.getItem(claveSnapshots(restauranteId)) || '[]')
+    return Array.isArray(guardados)
+      ? guardados.filter(Boolean).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      : []
+  } catch {
+    return []
+  }
+}
+
+function guardarSnapshots(restauranteId, snapshots) {
+  if (typeof window === 'undefined' || !restauranteId) return
+  window.localStorage.setItem(claveSnapshots(restauranteId), JSON.stringify(snapshots.slice(0, 12)))
+}
+
+function crearSnapshot(restaurante, informe) {
+  return {
+    snapshot_id: `${Date.now()}`,
+    restaurante_id: restaurante.id,
+    restaurante_nombre: restaurante.nombre,
+    created_at: new Date().toISOString(),
+    score: informe.score,
+    prioridad: informe.prioridad,
+    metricas: {
+      vinos: informe.metricas.vinos,
+      platos: informe.metricas.platos,
+      margenMedio: informe.metricas.margenMedio,
+      margenBajo: informe.metricas.margenBajo,
+      bajoMinimo: informe.metricas.bajoMinimo,
+      sinCoste: informe.metricas.sinCoste,
+      sinProveedor: informe.metricas.sinProveedor,
+      sinStockMinimo: informe.metricas.sinStockMinimo,
+      valorCoste: informe.metricas.valorCoste,
+      valorVenta: informe.metricas.valorVenta,
+      ventasMarcadas: informe.metricas.ventasMarcadas,
+      incidenciasStock: informe.metricas.incidenciasStock,
+      dudasSala: informe.metricas.dudasSala,
+      escaneos30: informe.metricas.escaneos30,
+      sommelier30: informe.metricas.sommelier30,
+    },
+    impacto: {
+      actividadAsistida: informe.impacto.actividadAsistida,
+      margenAsistido: informe.impacto.margenAsistido,
+      minutosAhorrados: informe.impacto.minutosAhorrados,
+      riesgosDetectados: informe.impacto.riesgosDetectados,
+    },
+  }
+}
+
+function fechaSnapshot(fecha) {
+  if (!fecha) return 'sin fecha'
+  return new Date(fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function textoCambio(valor, sufijo = '') {
+  if (!valor) return `sin cambio${sufijo}`
+  const signo = valor > 0 ? '+' : ''
+  return `${signo}${valor}${sufijo}`
+}
+
 function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propuestas = []) {
   const activos = vinos.filter(vino => vino.activo !== false)
   const platosActivos = platos.filter(plato => plato.activo !== false)
@@ -234,6 +300,10 @@ export default function InformeConsultor() {
   const [estadisticas, setEstadisticas] = useState([])
   const [propuestas, setPropuestas] = useState([])
   const [impactoCopiado, setImpactoCopiado] = useState(false)
+  const [evolucionCopiada, setEvolucionCopiada] = useState(false)
+  const [snapshots, setSnapshots] = useState(() => leerSnapshots(id))
+  const [snapshotReferenciaId] = useState(() => leerSnapshots(id)[0]?.snapshot_id || '')
+  const [snapshotGuardado, setSnapshotGuardado] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -285,6 +355,65 @@ export default function InformeConsultor() {
   const fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
   const topAlertas = informe.alertas.slice(0, 5)
   const impacto = informe.impacto
+  const snapshotsOrdenados = [...snapshots].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  const snapshotAnterior = snapshotsOrdenados.find(snapshot => snapshot.snapshot_id === snapshotReferenciaId)
+  const metricasAnteriores = snapshotAnterior?.metricas || {}
+  const impactoAnterior = snapshotAnterior?.impacto || {}
+  const evolucion = snapshotAnterior ? [
+    {
+      label: 'Costes pendientes',
+      actual: informe.metricas.sinCoste,
+      anterior: metricasAnteriores.sinCoste ?? 0,
+      cambio: informe.metricas.sinCoste - (metricasAnteriores.sinCoste ?? 0),
+      buenoSiBaja: true,
+    },
+    {
+      label: 'Proveedores pendientes',
+      actual: informe.metricas.sinProveedor,
+      anterior: metricasAnteriores.sinProveedor ?? 0,
+      cambio: informe.metricas.sinProveedor - (metricasAnteriores.sinProveedor ?? 0),
+      buenoSiBaja: true,
+    },
+    {
+      label: 'Bajo mínimo',
+      actual: informe.metricas.bajoMinimo,
+      anterior: metricasAnteriores.bajoMinimo ?? 0,
+      cambio: informe.metricas.bajoMinimo - (metricasAnteriores.bajoMinimo ?? 0),
+      buenoSiBaja: true,
+    },
+    {
+      label: 'Margen medio',
+      actual: informe.metricas.margenMedio ?? 0,
+      anterior: metricasAnteriores.margenMedio ?? 0,
+      cambio: (informe.metricas.margenMedio ?? 0) - (metricasAnteriores.margenMedio ?? 0),
+      sufijo: ' pts',
+      buenoSiSube: true,
+    },
+    {
+      label: 'Uso maridaje 30d',
+      actual: informe.metricas.sommelier30,
+      anterior: metricasAnteriores.sommelier30 ?? 0,
+      cambio: informe.metricas.sommelier30 - (metricasAnteriores.sommelier30 ?? 0),
+      buenoSiSube: true,
+    },
+    {
+      label: 'Ventas marcadas 30d',
+      actual: informe.metricas.ventasMarcadas,
+      anterior: metricasAnteriores.ventasMarcadas ?? 0,
+      cambio: informe.metricas.ventasMarcadas - (metricasAnteriores.ventasMarcadas ?? 0),
+      buenoSiSube: true,
+    },
+    {
+      label: 'Margen monitorizado',
+      actual: Math.round(impacto.margenAsistido),
+      anterior: Math.round(impactoAnterior.margenAsistido || 0),
+      cambio: Math.round(impacto.margenAsistido - (impactoAnterior.margenAsistido || 0)),
+      sufijo: ' EUR',
+      buenoSiSube: true,
+    },
+  ] : []
+  const evolucionPositiva = evolucion.filter(item => item.cambio && ((item.buenoSiBaja && item.cambio < 0) || (item.buenoSiSube && item.cambio > 0)))
+  const evolucionPendiente = evolucion.filter(item => item.cambio && ((item.buenoSiBaja && item.cambio > 0) || (item.buenoSiSube && item.cambio < 0)))
   const textoImpacto = [
     `Impacto mensual de ArmonIA - ${restaurante.nombre}`,
     '',
@@ -295,11 +424,46 @@ export default function InformeConsultor() {
     '',
     'Lectura comercial: la app no sustituye el criterio del restaurante ni del consultor; ordena la informacion, evita decisiones a ciegas y convierte actividad dispersa en acciones concretas de carta, bodega y sala.',
   ].join('\n')
+  const textoEvolucion = snapshotAnterior ? [
+    `Evolucion mensual - ${restaurante.nombre}`,
+    `Comparativa contra foto guardada el ${fechaSnapshot(snapshotAnterior.created_at)}`,
+    '',
+    'Avances:',
+    ...(evolucionPositiva.length
+      ? evolucionPositiva.map(item => `- ${item.label}: ${item.anterior} -> ${item.actual} (${textoCambio(item.cambio, item.sufijo || '')})`)
+      : ['- Sin avances numericos claros frente a la foto anterior.']),
+    '',
+    'Pendientes:',
+    ...(evolucionPendiente.length
+      ? evolucionPendiente.map(item => `- ${item.label}: ${item.anterior} -> ${item.actual} (${textoCambio(item.cambio, item.sufijo || '')})`)
+      : ['- No hay retrocesos relevantes frente a la foto anterior.']),
+    '',
+    `Lectura: el informe permite demostrar evolucion, no solo estado actual. Guarda una foto al cerrar cada informe mensual para medir progreso real el mes siguiente.`,
+  ].join('\n') : [
+    `Evolucion mensual - ${restaurante.nombre}`,
+    '',
+    'Aun no hay una foto anterior guardada para este restaurante. Guarda la foto de este informe y el siguiente mes ArmonIA comparara automaticamente el progreso.',
+  ].join('\n')
 
   async function copiarImpactoMensual() {
     await copiarTexto(textoImpacto)
     setImpactoCopiado(true)
     setTimeout(() => setImpactoCopiado(false), 1800)
+  }
+
+  async function copiarEvolucionMensual() {
+    await copiarTexto(textoEvolucion)
+    setEvolucionCopiada(true)
+    setTimeout(() => setEvolucionCopiada(false), 1800)
+  }
+
+  function guardarFotoMensual() {
+    const snapshotActual = crearSnapshot(restaurante, informe)
+    const siguientes = [snapshotActual, ...snapshotsOrdenados].slice(0, 12)
+    guardarSnapshots(restaurante.id, siguientes)
+    setSnapshots(siguientes)
+    setSnapshotGuardado(true)
+    setTimeout(() => setSnapshotGuardado(false), 1800)
   }
 
   return (
@@ -377,6 +541,100 @@ export default function InformeConsultor() {
               queda por debajo del valor operativo que protege.
             </p>
           </div>
+        </section>
+
+        <section className="report-section">
+          <div className="report-section-head">
+            <div>
+              <p className="report-kicker">Seguimiento</p>
+              <h2>Evolución frente al informe anterior</h2>
+            </div>
+            <div className="no-print" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={copiarEvolucionMensual}
+                style={{
+                  border: '1px solid #171416',
+                  borderRadius: 999,
+                  background: '#171416',
+                  color: '#fffaf3',
+                  padding: '10px 14px',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
+              >
+                {evolucionCopiada ? 'Copiado' : 'Copiar evolución'}
+              </button>
+              <button
+                type="button"
+                onClick={guardarFotoMensual}
+                style={{
+                  border: '1px solid rgba(23,20,22,0.22)',
+                  borderRadius: 999,
+                  background: '#fffaf3',
+                  color: '#171416',
+                  padding: '10px 14px',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
+              >
+                {snapshotGuardado ? 'Foto guardada' : 'Guardar foto mensual'}
+              </button>
+            </div>
+          </div>
+          {snapshotAnterior ? (
+            <>
+              <p style={{ margin: '0 0 14px', color: '#6f665f', fontSize: 13 }}>
+                Comparado con la foto guardada el {fechaSnapshot(snapshotAnterior.created_at)}. Guarda una foto al cerrar cada informe mensual para medir progreso real.
+              </p>
+              <section className="report-metrics" style={{ marginTop: 0 }}>
+                {evolucion.slice(0, 4).map(item => {
+                  const positivo = item.cambio && ((item.buenoSiBaja && item.cambio < 0) || (item.buenoSiSube && item.cambio > 0))
+                  const negativo = item.cambio && ((item.buenoSiBaja && item.cambio > 0) || (item.buenoSiSube && item.cambio < 0))
+                  return (
+                    <div key={item.label}>
+                      <span>{item.label}</span>
+                      <strong>{item.actual}{item.sufijo === ' pts' ? '%' : ''}</strong>
+                      <small style={{ color: positivo ? '#2f6b45' : negativo ? '#9b3535' : '#8b8278', fontWeight: 800 }}>
+                        {textoCambio(item.cambio, item.sufijo || '')}
+                      </small>
+                    </div>
+                  )
+                })}
+              </section>
+              <div className="report-grid">
+                <div className="report-panel">
+                  <p className="report-kicker">Avances</p>
+                  <ul>
+                    {evolucionPositiva.length ? evolucionPositiva.slice(0, 4).map(item => (
+                      <li key={item.label}>{item.label}: {item.anterior} → {item.actual} ({textoCambio(item.cambio, item.sufijo || '')}).</li>
+                    )) : <li>Sin avances numéricos claros frente a la foto anterior.</li>}
+                  </ul>
+                </div>
+                <div className="report-panel">
+                  <p className="report-kicker">Pendientes</p>
+                  <ul>
+                    {evolucionPendiente.length ? evolucionPendiente.slice(0, 4).map(item => (
+                      <li key={item.label}>{item.label}: {item.anterior} → {item.actual} ({textoCambio(item.cambio, item.sufijo || '')}).</li>
+                    )) : <li>No hay retrocesos relevantes frente a la foto anterior.</li>}
+                  </ul>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="report-panel">
+              <p>
+                Aún no hay una foto anterior guardada para este restaurante. Guarda la foto de este informe y el mes que viene
+                ArmonIA podrá comparar costes completados, proveedores, margen, stock y uso real de sala.
+              </p>
+            </div>
+          )}
         </section>
 
         <section className="report-section">
