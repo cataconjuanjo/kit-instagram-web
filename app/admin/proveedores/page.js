@@ -135,7 +135,8 @@ function ProveedoresPageContent() {
   const [soloSinPrecio, setSoloSinPrecio] = useState(false)
   const [ocultarSinPrecio, setOcultarSinPrecio] = useState(false)
   const [soloFavoritos, setSoloFavoritos] = useState(false)
-  const [margenCarta, setMargenCarta] = useState(3.0)
+  const [modoCopa, setModoCopa] = useState(false)
+  const [margenCopaPct, setMargenCopaPct] = useState(70)
   const [togglingFavorito, setTogglingFavorito] = useState(new Set())
   const [filtroImportacion, setFiltroImportacion] = useState('')
   const [reemplazarCatalogo, setReemplazarCatalogo] = useState(false)
@@ -349,6 +350,31 @@ function ProveedoresPageContent() {
   function etiquetaOrden(campo) {
     if (ordenReferencias.campo !== campo) return '↕'
     return ordenReferencias.dir === 'asc' ? '↑' : '↓'
+  }
+
+  function calcularBotella(coste) {
+    const c = Number(coste) || 0
+    if (c <= 0) return null
+    if (c <= 6) {
+      const pvp = c * 3.5 * 1.10
+      return { pvp, etiqueta: '×3,5', margen: Math.round(((3.5 - 1) / 3.5) * 100) }
+    }
+    if (c <= 18) {
+      const pvp = c * 2.5 * 1.10
+      return { pvp, etiqueta: '×2,5', margen: Math.round(((2.5 - 1) / 2.5) * 100) }
+    }
+    const pvpSinIva = c + 20
+    return { pvp: pvpSinIva * 1.10, etiqueta: '+20 €', margen: Math.round((20 / pvpSinIva) * 100) }
+  }
+
+  function calcularCopa(coste, margenPct) {
+    const c = Number(coste) || 0
+    if (c <= 0) return null
+    const costeCopa = c / 4.5
+    const pvp = costeCopa / (1 - margenPct / 100)
+    const botella = calcularBotella(c)
+    const ratioPct = botella ? Math.round((pvp / botella.pvp) * 100) : null
+    return { pvp, costeCopa, ratioPct }
   }
 
   const totalFavoritos = useMemo(() => vinos.filter(v => v.favorito).length, [vinos])
@@ -1120,15 +1146,25 @@ function ProveedoresPageContent() {
             {soloFavoritos && vinosFiltrados.length > 0 && (
               <div className="supplier-price-calc">
                 <span>Calculadora de carta</span>
-                <label>
-                  Margen ×
-                  <input
-                    type="number" step="0.1" min="1" max="10"
-                    value={margenCarta}
-                    onChange={e => setMargenCarta(Math.max(1, Number(e.target.value) || 3))}
-                  />
-                </label>
-                <span className="supplier-price-formula">coste neto × {margenCarta} × 1,10 (IVA) = PVP carta</span>
+                <div className="supplier-calc-mode">
+                  <button type="button" className={!modoCopa ? 'is-active' : ''} onClick={() => setModoCopa(false)}>Botella</button>
+                  <button type="button" className={modoCopa ? 'is-active' : ''} onClick={() => setModoCopa(true)}>Copa</button>
+                </div>
+                {modoCopa && (
+                  <label>
+                    Margen objetivo
+                    <select value={margenCopaPct} onChange={e => setMargenCopaPct(Number(e.target.value))}>
+                      <option value={70}>70 %</option>
+                      <option value={75}>75 %</option>
+                      <option value={80}>80 %</option>
+                    </select>
+                  </label>
+                )}
+                <span className="supplier-price-formula">
+                  {modoCopa
+                    ? `coste / 4,5 copas (merma 10%) ÷ (1 − ${margenCopaPct}%) = PVP copa · check copa ≤ 25% botella`
+                    : '≤6€ ×3,5 · 7-18€ ×2,5 · >18€ +20€ · todo ×1,10 IVA'}
+                </span>
               </div>
             )}
             {vinosFiltrados.length > 0 && (
@@ -1140,7 +1176,7 @@ function ProveedoresPageContent() {
                     <button type="button" onClick={() => cambiarOrdenReferencias('zona')} className={ordenReferencias.campo === 'zona' ? 'is-active' : ''}>Zona / Tipo <span>{etiquetaOrden('zona')}</span></button>
                     <button type="button" onClick={() => cambiarOrdenReferencias('formato')} className={ordenReferencias.campo === 'formato' ? 'is-active' : ''}>Formato <span>{etiquetaOrden('formato')}</span></button>
                     <button type="button" onClick={() => cambiarOrdenReferencias('coste')} className={ordenReferencias.campo === 'coste' ? 'is-active' : ''}>Coste <span>{etiquetaOrden('coste')}</span></button>
-                    {soloFavoritos && <span>PVP carta</span>}
+                    {soloFavoritos && <span>{modoCopa ? 'PVP copa' : 'PVP botella'}</span>}
                     <span></span>
                   </div>
                   {referenciasVisibles.map(vino => (
@@ -1153,13 +1189,28 @@ function ProveedoresPageContent() {
                       <span>{[vino.region, vino.tipo, vino.uva].filter(Boolean).join(' · ') || '-'}</span>
                       <span>{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
                       <strong>{dinero(vino.coste_estimado) || '-'}</strong>
-                      {soloFavoritos && (
-                        <strong className="supplier-pvp-calc">
-                          {Number(vino.coste_estimado) > 0
-                            ? `${(Number(vino.coste_estimado) * margenCarta * 1.10).toFixed(2)} EUR`
-                            : '—'}
-                        </strong>
-                      )}
+                      {soloFavoritos && (() => {
+                        if (!Number(vino.coste_estimado)) return <span className="supplier-pvp-calc supplier-pvp-empty">—</span>
+                        if (modoCopa) {
+                          const r = calcularCopa(vino.coste_estimado, margenCopaPct)
+                          const alerta = r.ratioPct > 25
+                          return (
+                            <div className="supplier-pvp-calc">
+                              <strong>{r.pvp.toFixed(2)} €</strong>
+                              <small title={alerta ? 'Copa > 25% del precio botella' : 'Ratio copa/botella correcto'} className={alerta ? 'pvp-ratio-warn' : 'pvp-ratio-ok'}>
+                                {r.ratioPct !== null ? `${r.ratioPct}% botella` : ''}
+                              </small>
+                            </div>
+                          )
+                        }
+                        const r = calcularBotella(vino.coste_estimado)
+                        return (
+                          <div className="supplier-pvp-calc">
+                            <strong>{r.pvp.toFixed(2)} €</strong>
+                            <small>{r.etiqueta} · {r.margen}% mg</small>
+                          </div>
+                        )
+                      })()}
                       <div className="supplier-row-actions">
                         <button
                           type="button"
