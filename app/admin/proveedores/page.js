@@ -382,6 +382,23 @@ function ProveedoresPageContent() {
 
   const totalFavoritos = useMemo(() => vinos.filter(v => v.favorito).length, [vinos])
 
+  const gruposFavoritos = useMemo(() => {
+    if (!soloFavoritos) return null
+    const map = {}
+    referenciasVisibles.forEach(vino => {
+      const clave = claveComparacion(vino)
+      if (!map[clave]) map[clave] = []
+      map[clave].push(vino)
+    })
+    return Object.values(map).map(grupo => ({
+      vinos: [...grupo].sort((a, b) => (Number(a.coste_estimado) || 0) - (Number(b.coste_estimado) || 0)),
+      nombre: grupo[0].nombre,
+      bodega: grupo[0].bodega,
+      tipo: grupo[0].tipo,
+      region: grupo[0].region,
+    }))
+  }, [referenciasVisibles, soloFavoritos])
+
   function leerFavoritosLocales() {
     try { return new Set(JSON.parse(localStorage.getItem('favoritos_catalogo') || '[]')) } catch { return new Set() }
   }
@@ -1177,54 +1194,90 @@ function ProveedoresPageContent() {
             )}
             {vinosFiltrados.length > 0 && (
               <>
-                <div className={`supplier-table${soloFavoritos ? ' supplier-table--pvp' : ''}`}>
-                  <div className="supplier-table-head">
-                    <button type="button" onClick={() => cambiarOrdenReferencias('nombre')} className={ordenReferencias.campo === 'nombre' ? 'is-active' : ''}>Vino <span>{etiquetaOrden('nombre')}</span></button>
-                    <button type="button" onClick={() => cambiarOrdenReferencias('bodega')} className={ordenReferencias.campo === 'bodega' ? 'is-active' : ''}>Bodega <span>{etiquetaOrden('bodega')}</span></button>
-                    <button type="button" onClick={() => cambiarOrdenReferencias('zona')} className={ordenReferencias.campo === 'zona' ? 'is-active' : ''}>Zona / Tipo <span>{etiquetaOrden('zona')}</span></button>
-                    <button type="button" onClick={() => cambiarOrdenReferencias('formato')} className={ordenReferencias.campo === 'formato' ? 'is-active' : ''}>Formato <span>{etiquetaOrden('formato')}</span></button>
-                    <button type="button" onClick={() => cambiarOrdenReferencias('coste')} className={ordenReferencias.campo === 'coste' ? 'is-active' : ''}>Coste <span>{etiquetaOrden('coste')}</span></button>
-                    {soloFavoritos && <span>PVP carta</span>}
-                    <span></span>
-                  </div>
-                  {referenciasVisibles.map(vino => (
-                    <div className="supplier-table-row" key={vino.id}>
-                      <div>
-                        <strong>{vino.nombre}</strong>
-                        <small>{proveedorPorId[vino.proveedor_id]?.nombre || vino.proveedores_vino?.nombre || 'Proveedor'}</small>
-                      </div>
-                      <span>{vino.bodega || '-'}</span>
-                      <span>{[vino.region, vino.tipo, vino.uva].filter(Boolean).join(' · ') || '-'}</span>
-                      <span>{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
-                      <strong>{dinero(vino.coste_estimado) || '-'}</strong>
-                      {soloFavoritos && (() => {
-                        if (!Number(vino.coste_estimado)) return <span className="supplier-pvp-calc supplier-pvp-empty">—</span>
-                        const rb = calcularBotella(vino.coste_estimado)
-                        const rc = calcularCopa(vino.coste_estimado, margenCopaPct)
-                        const alerta = rc?.ratioPct > 25
-                        return (
-                          <div className="supplier-pvp-calc">
-                            <span className="pvp-line"><em>Bot.</em><strong>{rb.pvp.toFixed(2)} €</strong><small>{rb.etiqueta}</small></span>
-                            <span className="pvp-line"><em>Copa</em><strong>{rc.pvp.toFixed(2)} €</strong><small title={alerta ? 'Copa > 25% botella' : 'Ratio ok'} className={alerta ? 'pvp-ratio-warn' : 'pvp-ratio-ok'}>{rc.ratioPct !== null ? `${rc.ratioPct}%` : ''}</small></span>
+                {soloFavoritos ? (
+                  <div className="supplier-fav-groups">
+                    {gruposFavoritos.map(grupo => {
+                      const tieneMultiples = grupo.vinos.length > 1
+                      return (
+                        <div key={grupo.vinos[0].id} className={`supplier-fav-group${tieneMultiples ? ' has-multiple' : ''}`}>
+                          <div className="supplier-fav-group-head">
+                            <div>
+                              <strong>{grupo.nombre}</strong>
+                              <small>{[grupo.bodega, grupo.tipo, grupo.region].filter(Boolean).join(' · ')}</small>
+                            </div>
+                            {tieneMultiples && <span className="supplier-fav-badge">{grupo.vinos.length} distribuidores</span>}
                           </div>
-                        )
-                      })()}
-                      <div className="supplier-row-actions">
-                        <button
-                          type="button"
-                          className={`supplier-fav-btn${vino.favorito ? ' is-fav' : ''}`}
-                          onClick={() => toggleFavorito(vino)}
-                          title={vino.favorito ? 'Quitar de favoritos' : 'Añadir a favoritos'}
-                          disabled={togglingFavorito.has(vino.id)}
-                        >
-                          {vino.favorito ? '★' : '☆'}
-                        </button>
-                        <button onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion') }}>Editar</button>
-                        <button className="admin-plain-button" onClick={() => borrar(vino.id, 'vino')}>Borrar</button>
-                      </div>
+                          {grupo.vinos.map((vino, index) => {
+                            const esMasBarato = tieneMultiples && index === 0
+                            const rb = Number(vino.coste_estimado) ? calcularBotella(vino.coste_estimado) : null
+                            const rc = Number(vino.coste_estimado) ? calcularCopa(vino.coste_estimado, margenCopaPct) : null
+                            const alerta = rc?.ratioPct > 25
+                            return (
+                              <div key={vino.id} className={`supplier-fav-row${esMasBarato ? ' is-cheapest' : ''}`}>
+                                <span className="supplier-fav-dist">{proveedorPorId[vino.proveedor_id]?.nombre || 'Proveedor'}</span>
+                                <span className="supplier-fav-format">{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
+                                <strong className="supplier-fav-cost">{dinero(vino.coste_estimado) || '-'}</strong>
+                                {rb ? (
+                                  <div className="supplier-pvp-calc">
+                                    <span className="pvp-line"><em>Bot.</em><strong>{rb.pvp.toFixed(2)} €</strong><small>{rb.etiqueta}</small></span>
+                                    <span className="pvp-line"><em>Copa</em><strong>{rc.pvp.toFixed(2)} €</strong>
+                                      <small className={alerta ? 'pvp-ratio-warn' : 'pvp-ratio-ok'} title={alerta ? 'Copa > 25% del precio botella. Baja el margen o no la ofrezcas por copa.' : 'Ratio copa/botella correcto'}>
+                                        {rc.ratioPct !== null ? `${rc.ratioPct}%` : ''}
+                                      </small>
+                                    </span>
+                                  </div>
+                                ) : <span className="supplier-pvp-empty">—</span>}
+                                <div className="supplier-row-actions">
+                                  <button type="button" className={`supplier-fav-btn${vino.favorito ? ' is-fav' : ''}`} onClick={() => toggleFavorito(vino)} title={vino.favorito ? 'Quitar de favoritos' : 'Añadir a favoritos'} disabled={togglingFavorito.has(vino.id)}>
+                                    {vino.favorito ? '★' : '☆'}
+                                  </button>
+                                  <button onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion') }}>Editar</button>
+                                  <button className="admin-plain-button" onClick={() => borrar(vino.id, 'vino')}>Borrar</button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="supplier-table">
+                    <div className="supplier-table-head">
+                      <button type="button" onClick={() => cambiarOrdenReferencias('nombre')} className={ordenReferencias.campo === 'nombre' ? 'is-active' : ''}>Vino <span>{etiquetaOrden('nombre')}</span></button>
+                      <button type="button" onClick={() => cambiarOrdenReferencias('bodega')} className={ordenReferencias.campo === 'bodega' ? 'is-active' : ''}>Bodega <span>{etiquetaOrden('bodega')}</span></button>
+                      <button type="button" onClick={() => cambiarOrdenReferencias('zona')} className={ordenReferencias.campo === 'zona' ? 'is-active' : ''}>Zona / Tipo <span>{etiquetaOrden('zona')}</span></button>
+                      <button type="button" onClick={() => cambiarOrdenReferencias('formato')} className={ordenReferencias.campo === 'formato' ? 'is-active' : ''}>Formato <span>{etiquetaOrden('formato')}</span></button>
+                      <button type="button" onClick={() => cambiarOrdenReferencias('coste')} className={ordenReferencias.campo === 'coste' ? 'is-active' : ''}>Coste <span>{etiquetaOrden('coste')}</span></button>
+                      <span></span>
                     </div>
-                  ))}
-                </div>
+                    {referenciasVisibles.map(vino => (
+                      <div className="supplier-table-row" key={vino.id}>
+                        <div>
+                          <strong>{vino.nombre}</strong>
+                          <small>{proveedorPorId[vino.proveedor_id]?.nombre || vino.proveedores_vino?.nombre || 'Proveedor'}</small>
+                        </div>
+                        <span>{vino.bodega || '-'}</span>
+                        <span>{[vino.region, vino.tipo, vino.uva].filter(Boolean).join(' · ') || '-'}</span>
+                        <span>{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
+                        <strong>{dinero(vino.coste_estimado) || '-'}</strong>
+                        <div className="supplier-row-actions">
+                          <button
+                            type="button"
+                            className={`supplier-fav-btn${vino.favorito ? ' is-fav' : ''}`}
+                            onClick={() => toggleFavorito(vino)}
+                            title={vino.favorito ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                            disabled={togglingFavorito.has(vino.id)}
+                          >
+                            {vino.favorito ? '★' : '☆'}
+                          </button>
+                          <button onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion') }}>Editar</button>
+                          <button className="admin-plain-button" onClick={() => borrar(vino.id, 'vino')}>Borrar</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="supplier-pagination">
                   <button disabled={paginaReferencias <= 1} onClick={() => setPaginaReferencias(pagina => Math.max(1, pagina - 1))}>Anterior</button>
                   <span>Mostrando {referenciasVisibles.length} de {vinosFiltrados.length}</span>
