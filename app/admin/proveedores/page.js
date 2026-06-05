@@ -377,7 +377,8 @@ function ProveedoresPageContent() {
     const pvp = costeCopa / (1 - margenPct / 100)
     const botella = calcularBotella(c)
     const ratioPct = botella ? Math.round((pvp / botella.pvp) * 100) : null
-    return { pvp, costeCopa, ratioPct }
+    const copasHastaEmpatar = botella ? Math.ceil(botella.pvp / pvp) : null
+    return { pvp, costeCopa, ratioPct, copasHastaEmpatar }
   }
 
   const totalFavoritos = useMemo(() => vinos.filter(v => v.favorito).length, [vinos])
@@ -1221,7 +1222,7 @@ function ProveedoresPageContent() {
                                   <div className="supplier-pvp-calc">
                                     <span className="pvp-line"><em>Bot.</em><strong>{rb.pvp.toFixed(2)} €</strong><small>{rb.etiqueta}</small></span>
                                     <span className="pvp-line"><em>Copa</em><strong>{rc.pvp.toFixed(2)} €</strong>
-                                      <small className={alerta ? 'pvp-ratio-warn' : 'pvp-ratio-ok'} title={alerta ? 'Copa > 25% del precio botella. Baja el margen o no la ofrezcas por copa.' : 'Ratio copa/botella correcto'}>
+                                      <small className={alerta ? 'pvp-ratio-warn' : 'pvp-ratio-ok'} title={alerta ? `A partir de ${rc.copasHastaEmpatar} copas el cliente paga más que la botella — ofrécele la botella antes` : 'Menos de 4 copas igualan el precio botella'}>
                                         {rc.ratioPct !== null ? `${rc.ratioPct}%` : ''}
                                       </small>
                                     </span>
