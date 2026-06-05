@@ -173,7 +173,6 @@ function ProveedoresPageContent() {
     setVinos(vinosCargados)
 
     const primerProveedor = data.proveedores?.[0]?.id || ''
-    setProveedorSeleccionado(actual => actual || primerProveedor)
     setVinoForm(actual => ({
       ...actual,
       proveedor_id: actual.proveedor_id || primerProveedor
