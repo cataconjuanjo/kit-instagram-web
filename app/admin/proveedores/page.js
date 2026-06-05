@@ -1222,8 +1222,8 @@ function ProveedoresPageContent() {
                                   <div className="supplier-pvp-calc">
                                     <span className="pvp-line"><em>Bot.</em><strong>{rb.pvp.toFixed(2)} €</strong><small>{rb.etiqueta}</small></span>
                                     <span className="pvp-line"><em>Copa</em><strong>{rc.pvp.toFixed(2)} €</strong>
-                                      <small className={alerta ? 'pvp-ratio-warn' : 'pvp-ratio-ok'} title={alerta ? `A partir de ${rc.copasHastaEmpatar} copas el cliente paga más que la botella — ofrécele la botella antes` : 'Menos de 4 copas igualan el precio botella'}>
-                                        {rc.ratioPct !== null ? `${rc.ratioPct}%` : ''}
+                                      <small className={alerta ? 'pvp-ratio-warn' : 'pvp-ratio-ok'} title={`${rc.ratioPct}% del precio botella · ${rc.copasHastaEmpatar} copas igualan la botella`}>
+                                        {rc.ratioPct !== null ? `${rc.ratioPct}% bot.` : ''}
                                       </small>
                                     </span>
                                   </div>
