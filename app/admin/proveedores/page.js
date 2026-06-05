@@ -165,7 +165,12 @@ function ProveedoresPageContent() {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'No se pudieron cargar proveedores.')
     setProveedores(data.proveedores || [])
-    setVinos(data.vinos || [])
+    const favoritosLocales = leerFavoritosLocales()
+    const vinosCargados = (data.vinos || []).map(v => ({
+      ...v,
+      favorito: v.favorito || favoritosLocales.has(v.id)
+    }))
+    setVinos(vinosCargados)
 
     const primerProveedor = data.proveedores?.[0]?.id || ''
     setProveedorSeleccionado(actual => actual || primerProveedor)
@@ -379,6 +384,16 @@ function ProveedoresPageContent() {
 
   const totalFavoritos = useMemo(() => vinos.filter(v => v.favorito).length, [vinos])
 
+  function leerFavoritosLocales() {
+    try { return new Set(JSON.parse(localStorage.getItem('favoritos_catalogo') || '[]')) } catch { return new Set() }
+  }
+
+  function guardarFavoritoLocal(id, valor) {
+    const set = leerFavoritosLocales()
+    valor ? set.add(id) : set.delete(id)
+    localStorage.setItem('favoritos_catalogo', JSON.stringify([...set]))
+  }
+
   async function toggleFavorito(vino) {
     const nuevoValor = !vino.favorito
     setVinos(prev => prev.map(v => v.id === vino.id ? { ...v, favorito: nuevoValor } : v))
@@ -390,9 +405,12 @@ function ProveedoresPageContent() {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: vino.id, kind: 'favorito', favorito: nuevoValor })
       })
-      if (!res.ok) setVinos(prev => prev.map(v => v.id === vino.id ? { ...v, favorito: !nuevoValor } : v))
+      if (!res.ok) {
+        // columna no existe todavía — persiste en localStorage hasta que corra la migración
+        guardarFavoritoLocal(vino.id, nuevoValor)
+      }
     } catch {
-      setVinos(prev => prev.map(v => v.id === vino.id ? { ...v, favorito: !nuevoValor } : v))
+      guardarFavoritoLocal(vino.id, nuevoValor)
     } finally {
       setTogglingFavorito(prev => { const s = new Set(prev); s.delete(vino.id); return s })
     }
