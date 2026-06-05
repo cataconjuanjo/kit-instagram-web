@@ -43,6 +43,8 @@ export default function Camarero({ params }) {
   const [mostrarPlatosVenta, setMostrarPlatosVenta] = useState(false)
   const [tipoVinoAbierto, setTipoVinoAbierto] = useState(null)
   const [grafoVenta, setGrafoVenta] = useState(null)
+  const [cantidadRapida, setCantidadRapida] = useState(1)
+  const [mensajeServicio, setMensajeServicio] = useState('')
   const ultimaRecomendacionRegistrada = useRef('')
 
   const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87' }
@@ -220,12 +222,13 @@ export default function Camarero({ params }) {
     }).join(' ') + ' Z'
   }
 
-  async function registrarFeedbackVenta(vino, resultado, label) {
+  async function registrarFeedbackVenta(vino, resultado, label, cantidad = 1) {
     if (!restaurante || !vino) return
 
     const consultaActiva = consultaVentaActiva()
     const clave = `${vino.id}-${resultado}-${consultaActiva}`
     setFeedbackVenta(prev => ({ ...prev, [clave]: true }))
+    const cantidadNormalizada = Math.max(1, Number(cantidad) || 1)
 
     const detalle = JSON.stringify({
       resultado,
@@ -234,6 +237,7 @@ export default function Camarero({ params }) {
       plato: consultaActiva,
       objetivo: objetivoVenta,
       posicion: label,
+      cantidad: cantidadNormalizada,
     })
 
     const res = await fetch('/api/estadisticas', {
@@ -247,8 +251,19 @@ export default function Camarero({ params }) {
 
     if (!res.ok) {
       setFeedbackVenta(prev => ({ ...prev, [clave]: false }))
+      setMensajeServicio('No se pudo guardar. Reintenta en un momento.')
+      setTimeout(() => setMensajeServicio(''), 2200)
     } else {
-      setHistorialVenta(prev => [{ resultado, vino_id: vino.id, vino: vino.nombre, plato: consultaActiva, objetivo: objetivoVenta, posicion: label }, ...prev].slice(0, 300))
+      setHistorialVenta(prev => [{ resultado, vino_id: vino.id, vino: vino.nombre, plato: consultaActiva, objetivo: objetivoVenta, posicion: label, cantidad: cantidadNormalizada }, ...prev].slice(0, 300))
+      const textoResultado = {
+        vendida: 'Venta marcada',
+        no_convence: 'Duda marcada',
+        otra: 'Cambio marcado',
+        no_stock: 'Falta de stock marcada',
+        agotado: 'Agotado marcado',
+      }[resultado] || 'Señal guardada'
+      setMensajeServicio(`${textoResultado}: ${vino.nombre}`)
+      setTimeout(() => setMensajeServicio(''), 2200)
     }
   }
 
@@ -1343,6 +1358,14 @@ export default function Camarero({ params }) {
     return matchCategoria && matchBusqueda
   })
   const platosPanelAbierto = mostrarPlatosVenta || busquedaPlatoVenta.length > 0 || categoriaPlatoVenta !== 'todos'
+  const recomendacionPrincipal = recomendacionesVenta[0] || null
+  const ultimasSenales = historialVenta.slice(0, 4)
+  const accionesRapidasVenta = [
+    { key: 'vendida', label: 'Vendida', helper: 'Cuenta para rentabilidad' },
+    { key: 'no_stock', label: 'No quedaba', helper: 'Aviso para bodega' },
+    { key: 'no_convence', label: 'No convenció', helper: 'Duda de sala' },
+    { key: 'otra', label: 'Pidió otra', helper: 'Cambio de decisión' },
+  ]
 
   const vinosFiltrados = useMemo(() => vinos.filter(v => {
     const matchBusqueda = !busqueda || busqueda.length < 2 ||
@@ -1839,6 +1862,67 @@ export default function Camarero({ params }) {
               </div>
 
               <div className={styles.panelBody}>
+                {mensajeServicio && (
+                  <div className={styles.serviceToast} role="status">
+                    {mensajeServicio}
+                  </div>
+                )}
+
+                {recomendacionPrincipal && (
+                  <section className={styles.quickServicePanel} aria-label="Acciones rápidas de servicio">
+                    <div className={styles.quickServiceHead}>
+                      <div>
+                        <p className={styles.sectionLabel} style={{ margin: 0 }}>Ahora en mesa</p>
+                        <h3>{recomendacionPrincipal.vino.nombre}</h3>
+                        <p>
+                          {[
+                            tipoLabel[recomendacionPrincipal.vino.tipo],
+                            recomendacionPrincipal.vino.bodega,
+                            recomendacionPrincipal.vino.precio_botella ? `${Number(recomendacionPrincipal.vino.precio_botella).toFixed(0)} EUR` : null,
+                          ].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                      <div className={styles.quickStepper} aria-label="Cantidad">
+                        <button type="button" onClick={() => setCantidadRapida(Math.max(1, cantidadRapida - 1))} aria-label="Restar cantidad">-</button>
+                        <strong>{cantidadRapida}</strong>
+                        <button type="button" onClick={() => setCantidadRapida(cantidadRapida + 1)} aria-label="Sumar cantidad">+</button>
+                      </div>
+                    </div>
+                    <div className={styles.quickActionGrid}>
+                      {accionesRapidasVenta.map(accion => (
+                        <button
+                          key={accion.key}
+                          type="button"
+                          className={accion.key === 'vendida' ? styles.quickActionPrimary : styles.quickAction}
+                          onClick={() => registrarFeedbackVenta(recomendacionPrincipal.vino, accion.key, 'rápida', cantidadRapida)}
+                        >
+                          <strong>{accion.label}</strong>
+                          <span>{accion.helper}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {ultimasSenales.length > 0 && (
+                  <div className={styles.recentSignals}>
+                    <p className={styles.sectionLabel} style={{ margin: 0 }}>Últimas señales</p>
+                    <div>
+                      {ultimasSenales.map((evento, index) => (
+                        <span key={`${evento.vino_id || evento.vino}-${evento.resultado}-${index}`}>
+                          {evento.cantidad && evento.cantidad > 1 ? `${evento.cantidad}x ` : ''}{evento.vino || 'Vino'} · {{
+                            vendida: 'vendida',
+                            no_stock: 'no quedaba',
+                            agotado: 'agotado',
+                            no_convence: 'no convenció',
+                            otra: 'pidió otra',
+                          }[evento.resultado] || 'feedback'}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {recomendacionesVenta.length > 0 ? (
                   <div className={styles.recommendGrid}>
                     {recomendacionesVenta.map(item => (

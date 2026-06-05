@@ -278,6 +278,19 @@ export default function DashboardHome() {
     : haySenalesSala
       ? 'Turno con señales'
       : 'Turno limpio'
+  const estadoOperativo = calidadGlobal === 100
+    ? { label: 'Todo listo', color: '#10B981' }
+    : calidadGlobal >= 95
+      ? { label: 'Revisar antes de abrir', color: '#F59E0B' }
+      : { label: 'Critico para publicar', color: '#EF4444' }
+  const faltasOperativas = [
+    vinosSinPrecio.length > 0 && `${vinosSinPrecio.length} vinos sin precio`,
+    vinosSinPerfil.length > 0 && `${vinosSinPerfil.length} vinos sin descripcion`,
+    platosSinPrecio.length > 0 && `${platosSinPrecio.length} platos sin precio`,
+    platosSinDescripcion.length > 0 && `${platosSinDescripcion.length} platos sin descripcion`,
+    bajoMinimo.length > 0 && `${bajoMinimo.length} referencias bajo minimo`,
+  ].filter(Boolean)
+  const propuestasTop = propuestasActivas.slice(0, 3)
   return (
     <main>
       <div className={styles.wrap}>
@@ -323,6 +336,7 @@ export default function DashboardHome() {
             <div>
               <p className={styles.eyebrow}>Salud de carta</p>
               <h2>Estado operativo</h2>
+              <p className={styles.healthStatus} style={{ color: estadoOperativo.color }}>{calidadGlobal}% · {estadoOperativo.label}</p>
             </div>
             <button type="button" className={styles.infoButton} onClick={() => setMostrarAyuda(!mostrarAyuda)} title="Ayuda de inicio" aria-label="Ayuda de inicio">i</button>
           </div>
@@ -337,8 +351,13 @@ export default function DashboardHome() {
                   <div style={{ width: `${check.valor}%`, height: '100%', background: check.valor >= 80 ? '#5fa882' : check.valor >= 55 ? '#d4941a' : '#c0482a' }} />
                 </div>
                 <p className={styles.checkDetail}>{check.detalle}</p>
+                {check.valor < 100 && <span className={styles.completeNow}>Completar ahora</span>}
               </Link>
             ))}
+          </div>
+          <div className={styles.missingPanel}>
+            <strong>{faltasOperativas.length ? 'Falta completar' : 'Todo listo para publicar'}</strong>
+            <span>{faltasOperativas.length ? faltasOperativas.slice(0, 4).join(' · ') : 'Carta, sala y bodega no tienen bloqueos visibles.'}</span>
           </div>
           {mostrarAyuda && (
             <div className={styles.helpInline}>
@@ -346,6 +365,27 @@ export default function DashboardHome() {
             </div>
           )}
         </section>
+
+        {propuestasTop.length > 0 && (
+          <section className={styles.proposalsPanel}>
+            <div className={styles.proposalsHead}>
+              <div>
+                <p className={styles.eyebrow}>Propuestas del consultor</p>
+                <h2>Ideas para mejorar</h2>
+              </div>
+              <Link href="/dashboard/bodega#propuestas">{propuestasActivas.length} pendientes de valorar</Link>
+            </div>
+            <div className={styles.proposalsGrid}>
+              {propuestasTop.map(propuesta => (
+                <Link key={propuesta.id} href="/dashboard/bodega#propuestas" className={styles.proposalCard}>
+                  <span>{propuesta.prioridad || 'media'}</span>
+                  <strong>{propuesta.titulo}</strong>
+                  <p>{[propuesta.vino, propuesta.tipo, propuesta.zona].filter(Boolean).join(' · ') || 'Propuesta de mejora'}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className={styles.shiftCard}>
           <div className={styles.shiftMain}>
@@ -392,8 +432,8 @@ export default function DashboardHome() {
           </div>
 
           <div className={styles.servicePlanGrid}>
-            <article className={styles.servicePlanCard}>
-              <span className={styles.servicePlanLabel}>Empujar hoy</span>
+            <article className={`${styles.servicePlanCard} ${styles.servicePlanPush}`}>
+              <span className={styles.servicePlanLabel}>📊 Empujar hoy</span>
               {vinosServicio.length ? (
                 <div className={styles.servicePlanList}>
                   {vinosServicio.map(vino => (
@@ -408,8 +448,8 @@ export default function DashboardHome() {
               )}
             </article>
 
-            <article className={styles.servicePlanCard}>
-              <span className={styles.servicePlanLabel}>Vigilar stock</span>
+            <article className={`${styles.servicePlanCard} ${styles.servicePlanWatch}`}>
+              <span className={styles.servicePlanLabel}>📉 Vigilar stock</span>
               {riesgosServicio.length ? (
                 <div className={styles.servicePlanList}>
                   {riesgosServicio.map(vino => (
@@ -424,8 +464,8 @@ export default function DashboardHome() {
               )}
             </article>
 
-            <article className={styles.servicePlanCard}>
-              <span className={styles.servicePlanLabel}>Platos para argumentar</span>
+            <article className={`${styles.servicePlanCard} ${styles.servicePlanArgue}`}>
+              <span className={styles.servicePlanLabel}>⭐ Argumentar</span>
               {platosServicio.length ? (
                 <div className={styles.servicePlanList}>
                   {platosServicio.map(plato => (
@@ -440,6 +480,20 @@ export default function DashboardHome() {
               )}
             </article>
           </div>
+        </section>
+
+        <section className={styles.afterShiftPanel}>
+          <div>
+            <p className={styles.eyebrow}>Despues de cerrar</p>
+            <h2>Actividad de hoy</h2>
+            <p>{stats.ventasHoy} ventas realizadas · {stats.incidenciasSala} incidencias · {stats.dudasSala} dudas de sala</p>
+          </div>
+          <div className={styles.afterShiftStats}>
+            <span><strong>{stats.ventasHoy}</strong> ventas</span>
+            <span><strong>{stats.incidenciasSala + stats.dudasSala}</strong> pendientes</span>
+            <span><strong>{stats.sommelier}</strong> consultas</span>
+          </div>
+          <Link href="/dashboard/cierre">Revisar cierre de servicio</Link>
         </section>
 
         <section className={styles.metricGrid}>

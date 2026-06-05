@@ -9,16 +9,33 @@ import styles from '../module.module.css'
 
 function decimal(val) { return parseFloat(val) || 0 }
 
+async function copiarTexto(texto) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(texto)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = texto
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
+}
+
 const CATEGORIAS = [
   {
     id: 'estrella',
-    emoji: '⭐',
+    icon: 'E',
     label: 'Estrella',
     desc: 'Alta popularidad · Alto margen',
     acciones: [
       'Dale la mejor posición en carta.',
       'Entrena a sala para que sigan vendiéndolo.',
-      'No toques el precio — está funcionando.',
+      'No toques el precio: está funcionando.',
     ],
     color: '#7a5a1a',
     borde: '#d4a636',
@@ -26,7 +43,7 @@ const CATEGORIAS = [
   },
   {
     id: 'joya',
-    emoji: '💎',
+    icon: 'J',
     label: 'Joya oculta',
     desc: 'Baja popularidad · Alto margen',
     acciones: [
@@ -40,7 +57,7 @@ const CATEGORIAS = [
   },
   {
     id: 'caballo',
-    emoji: '🔄',
+    icon: 'C',
     label: 'Caballo de batalla',
     desc: 'Alta popularidad · Bajo margen',
     acciones: [
@@ -54,7 +71,7 @@ const CATEGORIAS = [
   },
   {
     id: 'revisar',
-    emoji: '⚠️',
+    icon: 'R',
     label: 'Revisar',
     desc: 'Baja popularidad · Bajo margen',
     acciones: [
@@ -87,6 +104,8 @@ export default function MenuEngineering() {
   const [vinos, setVinos] = useState([])
   const [ventas, setVentas] = useState([])
   const [loading, setLoading] = useState(true)
+  const [categoriaActiva, setCategoriaActiva] = useState('todas')
+  const [mensaje, setMensaje] = useState('')
 
   useEffect(() => {
     async function cargar() {
@@ -125,7 +144,6 @@ export default function MenuEngineering() {
   const analisis = useMemo(() => {
     if (!vinos.length) return null
 
-    // Contar botellas vendidas por vino_id
     const ventasPorId = {}
     for (const stat of ventas) {
       try {
@@ -136,7 +154,6 @@ export default function MenuEngineering() {
       } catch { /* ignorar registros corruptos */ }
     }
 
-    // Solo vinos con coste y precio informados
     const vinosConCoste = vinos.filter(
       v => decimal(v.coste_compra) > 0 && decimal(v.precio_botella) > 0
     )
@@ -152,7 +169,6 @@ export default function MenuEngineering() {
       pctVentas: ((ventasPorId[v.id] || 0) / totalVentas) * 100,
     }))
 
-    // Barreras según metodología Álex Pardo GCA
     const barreraRentabilidad =
       vinosCalculados.reduce((s, v) => s + v.margen, 0) / vinosCalculados.length
 
@@ -188,6 +204,52 @@ export default function MenuEngineering() {
 
   const esDemo = analisis?.estado !== 'ok'
   const analisisVisible = esDemo ? ANALISIS_DEMO : analisis
+  const vinosAnalizados = analisisVisible?.vinos || []
+  const vinosFiltrados = categoriaActiva === 'todas'
+    ? vinosAnalizados
+    : vinosAnalizados.filter(v => v.categoria === categoriaActiva)
+  const maxMargen = Math.max(...vinosAnalizados.map(v => v.margen), analisisVisible?.barreraRentabilidad || 1, 1)
+  const maxPopularidad = Math.max(...vinosAnalizados.map(v => v.pctVentas), analisisVisible?.barreraPopularidad || 1, 1)
+  const resumenCategorias = CATEGORIAS.map(cat => ({
+    ...cat,
+    vinos: vinosAnalizados.filter(v => v.categoria === cat.id),
+  }))
+  const accionesPrioritarias = [
+    ...vinosAnalizados
+      .filter(v => v.categoria === 'caballo')
+      .sort((a, b) => b.ventas - a.ventas)
+      .slice(0, 3)
+      .map(v => ({ vino: v, tipo: 'Renegociar margen', texto: `Se vende bien (${v.ventas}) pero deja ${v.margen.toFixed(2)}€ por botella.` })),
+    ...vinosAnalizados
+      .filter(v => v.categoria === 'joya')
+      .sort((a, b) => b.margen - a.margen)
+      .slice(0, 3)
+      .map(v => ({ vino: v, tipo: 'Empujar en sala', texto: `Margen alto (${v.margen.toFixed(2)}€) con poca salida (${v.pctVentas.toFixed(1)}%).` })),
+    ...vinosAnalizados
+      .filter(v => v.categoria === 'revisar')
+      .sort((a, b) => a.ventas - b.ventas || a.margen - b.margen)
+      .slice(0, 3)
+      .map(v => ({ vino: v, tipo: 'Revisar continuidad', texto: 'Bajo margen y baja popularidad. Candidato a sustituir.' })),
+  ].slice(0, 5)
+
+  const informeAcciones = [
+    `Plan de rentabilidad - ${restaurante?.nombre || 'Restaurante'}`,
+    '',
+    `Ventas analizadas: ${analisisVisible?.totalVentas || 0}`,
+    `Margen medio: ${analisisVisible?.barreraRentabilidad?.toFixed(2) || '0.00'}€`,
+    `Barrera popularidad: ${analisisVisible?.barreraPopularidad?.toFixed(1) || '0.0'}%`,
+    '',
+    'Acciones prioritarias:',
+    ...(accionesPrioritarias.length
+      ? accionesPrioritarias.map((item, index) => `${index + 1}. ${item.tipo}: ${item.vino.nombre}. ${item.texto}`)
+      : ['1. Sin acciones urgentes con los datos actuales.']),
+  ].join('\n')
+
+  async function copiarPlan() {
+    await copiarTexto(informeAcciones)
+    setMensaje('Plan copiado.')
+    setTimeout(() => setMensaje(''), 1800)
+  }
 
   return (
     <FeatureGate restaurante={restaurante} feature="estadisticas" title="Análisis no incluido">
@@ -200,15 +262,13 @@ export default function MenuEngineering() {
           title: 'Cómo funciona',
           intro: 'Necesita dos datos por vino: precio de coste (en Bodega) y ventas registradas en Sala. Cuantas más ventas acumuladas, más preciso el análisis.',
           items: [
-            { title: '⭐ Estrella', text: 'Se vende bien y deja buen margen. Cuídalo y dale visibilidad.' },
-            { title: '💎 Joya oculta', text: 'Rentable pero poco pedido. Entrenar sala o darle mejor posición en carta.' },
-            { title: '🔄 Caballo de batalla', text: 'Se vende mucho pero con poco margen. Renegociar coste o ajustar PVP.' },
-            { title: '⚠️ Revisar', text: 'Poco vendido y poco rentable. Candidato a salir de carta.' },
+            { title: 'Estrella', text: 'Se vende bien y deja buen margen. Cuídalo y dale visibilidad.' },
+            { title: 'Joya oculta', text: 'Rentable pero poco pedido. Entrenar sala o darle mejor posición en carta.' },
+            { title: 'Caballo de batalla', text: 'Se vende mucho pero con poco margen. Renegociar coste o ajustar PVP.' },
+            { title: 'Revisar', text: 'Poco vendido y poco rentable. Candidato a salir de carta.' },
           ],
         }}
       >
-
-        {/* Avisos de datos insuficientes */}
         {analisis?.estado === 'sin_coste' && (
           <div className={styles.panel} style={{ borderLeft: '3px solid #d4a636', marginBottom: 16 }}>
             <p style={{ margin: 0, fontSize: 14, color: '#7a5a20' }}>
@@ -239,37 +299,176 @@ export default function MenuEngineering() {
           </div>
         )}
 
-        {/* Análisis completo o vista previa */}
         {analisisVisible && (
           <>
-            {/* Métricas clave */}
-            <section className={styles.panel} style={{ marginBottom: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                <div>
-                  <p style={{ margin: '0 0 3px', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ventas analizadas</p>
-                  <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#171416' }}>{analisisVisible.totalVentas}</p>
+            <section className={styles.profitHero}>
+              <div>
+                <p className={styles.eyebrow}>Mapa de decisión</p>
+                <h2>Qué vino empujar, cuidar o sacar</h2>
+                <p>
+                  La carta se cruza por margen y popularidad real. Arriba interesa; a la derecha se vende.
+                  Lo importante no es mirar números, es decidir el siguiente movimiento.
+                </p>
+                <div className={styles.profitHeroActions}>
+                  <button type="button" className={styles.primary} onClick={copiarPlan}>Copiar plan</button>
+                  <a className={styles.secondary} href="/dashboard/sala">Registrar ventas</a>
+                  <a className={styles.ghost} href="/dashboard/bodega">Completar costes</a>
                 </div>
-                <div>
-                  <p style={{ margin: '0 0 3px', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Margen medio</p>
-                  <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#171416' }}>{analisisVisible.barreraRentabilidad.toFixed(2)}€</p>
-                </div>
-                <div>
-                  <p style={{ margin: '0 0 3px', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Barrera popularidad</p>
-                  <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#171416' }}>{analisisVisible.barreraPopularidad.toFixed(1)}%</p>
-                </div>
+                {mensaje && <p className={styles.tiny}>{mensaje}</p>}
+              </div>
+              <div className={styles.profitHeroScore} aria-label={`${accionesPrioritarias.length} acciones prioritarias`}>
+                <strong>{accionesPrioritarias.length}</strong>
+                <span>acciones claras</span>
+              </div>
+            </section>
+
+            <section className={`${styles.statsGrid} ${styles.profitStats}`}>
+              <div className={styles.stat}>
+                <p className={styles.statValue}>{analisisVisible.totalVentas}</p>
+                <p className={styles.statLabel}>Ventas analizadas</p>
+              </div>
+              <div className={styles.stat}>
+                <p className={styles.statValue}>{analisisVisible.barreraRentabilidad.toFixed(2)}€</p>
+                <p className={styles.statLabel}>Margen medio</p>
+              </div>
+              <div className={styles.stat}>
+                <p className={styles.statValue}>{analisisVisible.barreraPopularidad.toFixed(1)}%</p>
+                <p className={styles.statLabel}>Barrera popularidad</p>
+              </div>
+              <div className={styles.stat}>
+                <p className={styles.statValue}>{resumenCategorias.find(c => c.id === 'estrella')?.vinos.length || 0}</p>
+                <p className={styles.statLabel}>Vinos estrella</p>
               </div>
               {analisisVisible.vinosSinCoste > 0 && (
-                <p style={{ margin: '12px 0 0', fontSize: 12, color: '#999' }}>
-                  {analisisVisible.vinosSinCoste} {analisisVisible.vinosSinCoste === 1 ? 'vino' : 'vinos'} sin coste de compra no {analisisVisible.vinosSinCoste === 1 ? 'aparece' : 'aparecen'} en el análisis.{' '}
-                  <a href="/dashboard/bodega" style={{ color: '#766e64' }}>Completar en Bodega →</a>
-                </p>
+                <div className={styles.stat}>
+                  <p className={styles.statValue}>{analisisVisible.vinosSinCoste}</p>
+                  <p className={styles.statLabel}>Sin coste de compra</p>
+                </div>
               )}
             </section>
 
-            {/* Cuadrantes */}
-            <div style={{ display: 'grid', gap: 10 }}>
+            {analisisVisible.vinosSinCoste > 0 && (
+              <section className={styles.panel} style={{ marginBottom: 16 }}>
+                <div className={styles.panelHead}>
+                  <div>
+                    <h2 className={styles.panelTitle}>Dato pendiente</h2>
+                    <p className={styles.panelSub}>
+                      {analisisVisible.vinosSinCoste} {analisisVisible.vinosSinCoste === 1 ? 'vino' : 'vinos'} sin coste de compra no {analisisVisible.vinosSinCoste === 1 ? 'aparece' : 'aparecen'} en el análisis.
+                    </p>
+                  </div>
+                  <a className={styles.secondary} href="/dashboard/bodega">Completar en Bodega</a>
+                </div>
+              </section>
+            )}
+
+            <section className={styles.gridTwo}>
+              <div className={styles.panelDark}>
+                <div className={styles.panelHead}>
+                  <div>
+                    <h2 className={styles.panelTitle}>Matriz de carta</h2>
+                    <p className={styles.panelSub}>Cada punto es un vino. Margen arriba, popularidad a la derecha.</p>
+                  </div>
+                </div>
+                <div className={styles.panelBody}>
+                  <div className={styles.profitMatrix}>
+                    <span className={styles.profitAxisY}>Margen</span>
+                    <span className={styles.profitAxisX}>Popularidad</span>
+                    <span className={styles.profitThresholdY} style={{ left: `${Math.min(88, Math.max(12, (analisisVisible.barreraPopularidad / maxPopularidad) * 82 + 8))}%` }} />
+                    <span className={styles.profitThresholdX} style={{ bottom: `${Math.min(88, Math.max(12, (analisisVisible.barreraRentabilidad / maxMargen) * 82 + 8))}%` }} />
+                    <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantTopRight}`}>Estrella</span>
+                    <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantTopLeft}`}>Joya</span>
+                    <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantBottomRight}`}>Renegociar</span>
+                    <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantBottomLeft}`}>Revisar</span>
+                    {vinosAnalizados.map(vino => {
+                      const cat = CATEGORIAS.find(c => c.id === vino.categoria)
+                      const left = Math.min(92, Math.max(8, (vino.pctVentas / maxPopularidad) * 84 + 6))
+                      const bottom = Math.min(92, Math.max(8, (vino.margen / maxMargen) * 84 + 6))
+                      return (
+                        <button
+                          key={vino.id}
+                          type="button"
+                          className={`${styles.profitPoint} ${categoriaActiva !== 'todas' && categoriaActiva !== vino.categoria ? styles.profitPointMuted : ''}`}
+                          style={{ left: `${left}%`, bottom: `${bottom}%`, borderColor: cat?.borde, background: cat?.color }}
+                          onClick={() => setCategoriaActiva(vino.categoria)}
+                          aria-label={`${vino.nombre}. ${cat?.label}. Margen ${vino.margen.toFixed(2)} euros, popularidad ${vino.pctVentas.toFixed(1)} por ciento`}
+                          title={`${vino.nombre} · ${cat?.label}`}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.panel}>
+                <div className={styles.panelHead}>
+                  <div>
+                    <h2 className={styles.panelTitle}>Acciones prioritarias</h2>
+                    <p className={styles.panelSub}>Ordenadas para que sala y compras sepan qué mover primero.</p>
+                  </div>
+                  <button type="button" className={styles.secondary} onClick={copiarPlan}>Copiar</button>
+                </div>
+                <div className={styles.panelBody}>
+                  {accionesPrioritarias.length ? (
+                    <div className={styles.itemStack}>
+                      {accionesPrioritarias.map(item => {
+                        const cat = CATEGORIAS.find(c => c.id === item.vino.categoria)
+                        return (
+                          <article className={styles.profitActionCard} key={`${item.tipo}-${item.vino.id}`}>
+                            <span style={{ borderColor: cat?.borde, color: cat?.color }}>{cat?.icon}</span>
+                            <div>
+                              <p className={styles.eyebrow}>{item.tipo}</p>
+                              <h3>{item.vino.nombre}</h3>
+                              <p>{item.texto}</p>
+                            </div>
+                          </article>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className={styles.empty}>Sin acciones urgentes con los datos actuales.</div>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className={styles.panel} style={{ marginTop: 16 }}>
+              <div className={styles.panelHead}>
+                <div>
+                  <h2 className={styles.panelTitle}>Cuadrantes</h2>
+                  <p className={styles.panelSub}>Filtra la lista para trabajar solo el tipo de vino que toca ahora.</p>
+                </div>
+                <div className={styles.segmented} role="group" aria-label="Filtrar rentabilidad por cuadrante">
+                  <button type="button" className={categoriaActiva === 'todas' ? styles.segmentActive : ''} onClick={() => setCategoriaActiva('todas')}>Todos</button>
+                  {CATEGORIAS.map(cat => (
+                    <button key={cat.id} type="button" className={categoriaActiva === cat.id ? styles.segmentActive : ''} onClick={() => setCategoriaActiva(cat.id)}>
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className={styles.panelBody}>
+                <div className={styles.profitCategoryGrid}>
+                  {resumenCategorias.map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      className={`${styles.profitCategoryChip} ${categoriaActiva === cat.id ? styles.profitCategoryChipActive : ''}`}
+                      onClick={() => setCategoriaActiva(cat.id)}
+                      style={{ borderColor: cat.borde }}
+                    >
+                      <span style={{ color: cat.color }}>{cat.icon}</span>
+                      <strong>{cat.vinos.length}</strong>
+                      <small>{cat.label}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
               {CATEGORIAS.map(cat => {
-                const vinosCat = analisisVisible.vinos
+                if (categoriaActiva !== 'todas' && categoriaActiva !== cat.id) return null
+                const vinosCat = vinosFiltrados
                   .filter(v => v.categoria === cat.id)
                   .sort((a, b) => b.ventas - a.ventas || b.margen - a.margen)
                 return (
@@ -280,7 +479,7 @@ export default function MenuEngineering() {
                   >
                     <div style={{ marginBottom: 10 }}>
                       <h2 className={styles.panelTitle} style={{ color: cat.color, marginBottom: 2 }}>
-                        {cat.emoji} {cat.label}
+                        <span className={styles.profitCategoryIcon} style={{ borderColor: cat.borde }}>{cat.icon}</span> {cat.label}
                         <span style={{ fontWeight: 400, fontSize: 13, color: '#888', marginLeft: 8 }}>
                           — {cat.desc}
                         </span>
@@ -338,7 +537,6 @@ export default function MenuEngineering() {
             </div>
           </>
         )}
-
       </ModuleShell>
     </FeatureGate>
   )

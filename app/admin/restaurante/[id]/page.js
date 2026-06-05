@@ -248,6 +248,12 @@ function calcularPrecioDesdeMargen(coste, margen) {
   return (c * (1 + m / 100)).toFixed(2)
 }
 
+function diasDesde(fecha) {
+  if (!fecha) return null
+  const diff = Date.now() - new Date(fecha).getTime()
+  return Math.max(0, Math.floor(diff / 86400000))
+}
+
 function normalizarCatalogo(texto = '') {
   return String(texto)
     .toLowerCase()
@@ -393,6 +399,10 @@ export default function RestauranteWorkspace() {
     () => restaurante ? analizar(restaurante, vinos, platos, estadisticas, propuestas) : null,
     [restaurante, vinos, platos, estadisticas, propuestas]
   )
+
+  useEffect(() => {
+    if (analisis?.alertas?.[0] && !alertaAbierta) setAlertaAbierta(analisis.alertas[0].titulo)
+  }, [analisis, alertaAbierta])
 
   function gestionar() {
     setAdminRestaurantEmail(restaurante.email)
@@ -641,6 +651,29 @@ export default function RestauranteWorkspace() {
     if (res.ok) setPropuestas(prev => prev.filter(x => x.id !== pid))
   }
 
+  async function completarPropuesta(propuesta) {
+    if (!confirm(`Marcar como completada: ${propuesta.titulo}?`)) return
+    const token = await tokenAdmin()
+    const res = await fetch('/api/admin/propuestas', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ ...propuesta, estado: 'incorporada' })
+    })
+    const data = await res.json()
+    if (res.ok) setPropuestas(prev => prev.map(item => item.id === propuesta.id ? data.propuesta : item))
+  }
+
+  function copiarResumen() {
+    const texto = [
+      restaurante.nombre,
+      `Prioridad: ${analisis.prioridad} (${analisis.score})`,
+      `Siguiente movimiento: ${analisis.siguienteMovimiento}`,
+      `Vinos: ${analisis.metricas.vinos}`,
+      `Propuestas abiertas: ${analisis.propuestasAbiertas.length}`
+    ].join('\n')
+    navigator.clipboard.writeText(texto)
+  }
+
   function scrollTo(id) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -690,16 +723,18 @@ export default function RestauranteWorkspace() {
               </div>
             </div>
             <div className="ws-header-actions">
+              <button onClick={copiarResumen} aria-label="Copiar resumen del restaurante">Copiar datos</button>
               <button onClick={gestionar}>Abrir dashboard</button>
-              <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer">Imprimir informe ↗</a>
+              <button onClick={() => window.print()} aria-label="Imprimir esta pagina">Imprimir pagina</button>
+              <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer">Descargar informe</a>
               <a href={`/carta/${restaurante.slug}`} target="_blank" rel="noreferrer">Ver carta ↗</a>
             </div>
           </div>
 
           {/* Anchor navigation */}
           <nav className="ws-anchors">
-            <button onClick={() => scrollTo('ws-resumen')}>Resumen</button>
-            <button onClick={() => scrollTo('ws-diagnostico')}>Diagnóstico</button>
+            <button onClick={() => scrollTo('ws-resumen')}>Resumen {propuestasAbiertas.length > 0 && <span className="ws-badge">{propuestasAbiertas.length}</span>}</button>
+            <button onClick={() => scrollTo('ws-diagnostico')}>Diagnóstico {alertas.length > 0 && <span className="ws-badge">{alertas.length}</span>}</button>
             <button onClick={() => scrollTo('ws-matching')}>Matching {matchesCatalogo.length > 0 && <span className="ws-badge">{matchesCatalogo.length}</span>}</button>
             <button onClick={() => scrollTo('ws-propuestas')}>Propuestas {propuestasActivas.length > 0 && <span className="ws-badge">{propuestasActivas.length}</span>}</button>
             <button onClick={() => scrollTo('ws-seleccion')}>Selección {seleccion.length > 0 && <span className="ws-badge">{seleccion.length}/4</span>}</button>
@@ -754,7 +789,10 @@ export default function RestauranteWorkspace() {
                     <button className="ws-alerta-head" onClick={() => setAlertaAbierta(alertaAbierta === alerta.titulo ? null : alerta.titulo)}>
                       <div className="ws-alerta-left">
                         <span className="ws-alerta-peso">{alerta.peso}</span>
-                        <span className="ws-alerta-titulo">{alerta.titulo}</span>
+                        <span className="ws-alerta-titulo">
+                          {alerta.titulo}
+                          {alertaAbierta !== alerta.titulo && <small>{alerta.detalle}</small>}
+                        </span>
                       </div>
                       <span className="ws-alerta-chevron">{alertaAbierta === alerta.titulo ? '▲' : '▼'}</span>
                     </button>
@@ -1094,6 +1132,11 @@ export default function RestauranteWorkspace() {
                       </div>
                       <strong>{p.titulo}</strong>
                       <p>{[p.vino, p.tipo, p.zona].filter(Boolean).join(' · ') || 'Propuesta de consultoría'}</p>
+                      <div className="ws-propuesta-history">
+                        <span>Abierta desde hace {diasDesde(p.created_at) ?? 0} dias</span>
+                        <span>Responsable: Juanjo</span>
+                        <a href="#ws-propuestas">Historial de cambios</a>
+                      </div>
                       {p.motivo && <p className="ws-propuesta-motivo">{p.motivo}</p>}
                       {(p.coste_estimado || p.precio_recomendado) && (
                         <small>
@@ -1104,6 +1147,7 @@ export default function RestauranteWorkspace() {
                       )}
                     </div>
                     <div className="ws-propuesta-actions">
+                      {p.estado !== 'incorporada' && <button onClick={() => completarPropuesta(p)}>Marcar completada</button>}
                       <button onClick={() => abrirFormEditar(p)}>Editar</button>
                       <button className="admin-plain-button" onClick={() => borrarPropuesta(p.id)}>Borrar</button>
                     </div>
@@ -1228,6 +1272,11 @@ export default function RestauranteWorkspace() {
               </div>
             </div>
           </section>
+
+          <footer className="ws-audit-footer">
+            <span>Ultima actualizacion: {user?.email || 'Consultor'} · {fecha}</span>
+            <a href="#ws-diagnostico">Ver historial de cambios completo</a>
+          </footer>
 
     </div>
   )

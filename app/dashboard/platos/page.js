@@ -25,6 +25,20 @@ function normalizar(texto = '') {
   return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
+function csvValor(valor = '') {
+  return `"${String(valor ?? '').replace(/"/g, '""')}"`
+}
+
+function descargarArchivo(nombre, contenido, tipo = 'text/csv;charset=utf-8;') {
+  const blob = new Blob([contenido], { type: tipo })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = nombre
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 function descripcionConRasgo(descripcion = '', rasgo) {
   const limpia = descripcion.trim()
   const textoNormalizado = normalizar(limpia)
@@ -174,6 +188,11 @@ export default function Platos() {
   ))
   const [busquedaPlatos, setBusquedaPlatos] = useState('')
   const [filtroPlatos, setFiltroPlatos] = useState('todos')
+  const [filtrosColumnaPlatos, setFiltrosColumnaPlatos] = useState({ plato: '', categoria: '', precio: '', descripcion: '' })
+  const [ordenPlatos, setOrdenPlatos] = useState({ key: 'nombre', dir: 'asc' })
+  const [paginaPlatos, setPaginaPlatos] = useState(1)
+  const [pageSizePlatos, setPageSizePlatos] = useState(10)
+  const [mensajePlatos, setMensajePlatos] = useState('')
   const [editandoPlato, setEditandoPlato] = useState(null)
   const [nuevoPlato, setNuevoPlato] = useState({ nombre: '', descripcion: '', categoria: 'Entrantes fríos', precio: '' })
   const [textoImportar, setTextoImportar] = useState('')
@@ -205,6 +224,17 @@ export default function Platos() {
     }
     cargar()
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (new URLSearchParams(window.location.search).get('new') === '1') {
+      setMostrarFormulario(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    setPaginaPlatos(1)
+  }, [busquedaPlatos, filtroPlatos, pageSizePlatos, filtrosColumnaPlatos])
 
   // ── Enriquecimiento Chartier batch ────────────────────────────────────────
   async function enriquecerTodosLosPlatos() {
@@ -385,15 +415,57 @@ export default function Platos() {
     setPlatos(platos.map(p => p.id === plato.id ? { ...p, activo: !p.activo } : p))
   }
 
+  async function duplicarPlato(plato) {
+    if (!restaurante?.id) return
+    const copia = {
+      restaurante_id: restaurante.id,
+      nombre: `${plato.nombre} (copia)`,
+      descripcion: plato.descripcion || '',
+      categoria: plato.categoria || 'Entrantes frios',
+      precio: Number(plato.precio) || 0,
+      activo: false,
+    }
+    const { data, error } = await supabase.from('platos').insert([copia]).select()
+    if (!error && data?.[0]) {
+      setPlatos([...platos, data[0]])
+      setMensajePlatos('Plato duplicado como borrador oculto')
+      enriquecerPlato(data[0]).catch(() => {})
+    }
+  }
+
   async function borrarPlato(plato) {
     if (!confirm(`¿Seguro que quieres eliminar "${plato.nombre}"?`)) return
     await supabase.from('platos').delete().eq('id', plato.id)
     setPlatos(platos.filter(p => p.id !== plato.id))
   }
 
+  function ordenarPorPlato(key) {
+    setOrdenPlatos(actual => ({ key, dir: actual.key === key && actual.dir === 'asc' ? 'desc' : 'asc' }))
+  }
+
+  function valorOrdenPlato(plato, key) {
+    if (key === 'precio') return Number(plato.precio) || 0
+    if (key === 'categoria') return plato.categoria || ''
+    if (key === 'descripcion') return plato.descripcion || ''
+    return plato.nombre || ''
+  }
+
+  function platoComoFila(plato) {
+    return [
+      plato.nombre,
+      plato.categoria,
+      plato.precio,
+      plato.descripcion,
+      plato.activo === false ? 'Oculto' : 'Activo',
+    ]
+  }
+
   if (loading) return <LoadingState />
 
   const busquedaNormalizada = normalizar(busquedaPlatos)
+  const filtrosPlatosNormalizados = Object.fromEntries(
+    Object.entries(filtrosColumnaPlatos).map(([key, value]) => [key, normalizar(value)])
+  )
   const platosVisibles = platos.filter(plato => {
     const texto = normalizar([plato.nombre, plato.descripcion, plato.categoria].filter(Boolean).join(' '))
     const coincideBusqueda = !busquedaNormalizada || texto.includes(busquedaNormalizada)
@@ -403,8 +475,38 @@ export default function Platos() {
       (filtroPlatos === 'ocultos' && plato.activo === false) ||
       (filtroPlatos === 'sin_descripcion' && (!plato.descripcion || plato.descripcion.trim().length < 8)) ||
       (filtroPlatos === 'sin_precio' && !Number(plato.precio))
-    return coincideBusqueda && coincideEstado
+    const coincideColumnas =
+      (!filtrosPlatosNormalizados.plato || normalizar(plato.nombre || '').includes(filtrosPlatosNormalizados.plato)) &&
+      (!filtrosPlatosNormalizados.categoria || normalizar(plato.categoria || '').includes(filtrosPlatosNormalizados.categoria)) &&
+      (!filtrosPlatosNormalizados.precio || normalizar(String(plato.precio ?? '')).includes(filtrosPlatosNormalizados.precio)) &&
+      (!filtrosPlatosNormalizados.descripcion || normalizar(plato.descripcion || '').includes(filtrosPlatosNormalizados.descripcion))
+    return coincideBusqueda && coincideEstado && coincideColumnas
+  }).sort((a, b) => {
+    const valorA = valorOrdenPlato(a, ordenPlatos.key)
+    const valorB = valorOrdenPlato(b, ordenPlatos.key)
+    const resultado = typeof valorA === 'number' && typeof valorB === 'number'
+      ? valorA - valorB
+      : String(valorA).localeCompare(String(valorB), 'es', { numeric: true, sensitivity: 'base' })
+    return ordenPlatos.dir === 'asc' ? resultado : -resultado
   })
+  const totalPaginasPlatos = Math.max(1, Math.ceil(platosVisibles.length / pageSizePlatos))
+  const paginaPlatosSegura = Math.min(paginaPlatos, totalPaginasPlatos)
+  const inicioPlatos = (paginaPlatosSegura - 1) * pageSizePlatos
+  const platosPagina = platosVisibles.slice(inicioPlatos, inicioPlatos + pageSizePlatos)
+  const rangoPlatos = platosVisibles.length === 0 ? '0' : `${inicioPlatos + 1}-${inicioPlatos + platosPagina.length}`
+  const cabeceraPlatos = ['Nombre', 'Categoria', 'Precio', 'Descripcion', 'Estado']
+  const csvPlatos = [cabeceraPlatos, ...platosVisibles.map(platoComoFila)].map(fila => fila.map(csvValor).join(',')).join('\n')
+
+  async function copiarPlatos() {
+    const texto = [cabeceraPlatos, ...platosVisibles.map(platoComoFila)].map(fila => fila.join('\t')).join('\n')
+    await navigator.clipboard?.writeText(texto)
+    setMensajePlatos(`${platosVisibles.length} platos copiados al portapapeles`)
+  }
+
+  async function copiarPlato(plato) {
+    await navigator.clipboard?.writeText(platoComoFila(plato).join('\t'))
+    setMensajePlatos('Plato copiado al portapapeles')
+  }
 
   return (
     <ModuleShell
@@ -421,6 +523,7 @@ export default function Platos() {
             {mostrarImportador ? 'Cerrar importador' : 'Importar carta'}
           </button>
           <button
+            data-shortcut-edit="true"
             onClick={() => { setMostrarFormulario(!mostrarFormulario); setMostrarImportador(false) }}
             className={mostrarFormulario ? styles.ghost : styles.primary}
           >
@@ -549,7 +652,7 @@ export default function Platos() {
               </div>
               <RasgosMaridaje plato={nuevoPlato} onChange={setNuevoPlato} />
             </div>
-            <button onClick={añadirPlato} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+            <button data-shortcut-save="true" onClick={añadirPlato} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
               Guardar plato
             </button>
           </div>
@@ -576,7 +679,15 @@ export default function Platos() {
             </select>
           </div>
           <div className={styles.toolbarSummary}>
-            <p className={styles.resultCount}>{platosVisibles.length} de {platos.length} platos</p>
+            <p className={styles.resultCount}>{rangoPlatos} de {platosVisibles.length} platos</p>
+            <label className={styles.pageSizeControl}>
+              <span>Por pagina</span>
+              <select value={pageSizePlatos} onChange={e => setPageSizePlatos(Number(e.target.value))}>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </label>
             {puedeAnalizarChartier && (
             <button
               onClick={enriquecerTodosLosPlatos}
@@ -587,6 +698,10 @@ export default function Platos() {
               {enriqueciendoBatch ? '⏳ Analizando...' : '✦ Analizar Chartier'}
             </button>
             )}
+            <div className={styles.quickActions}>
+              <button type="button" onClick={() => descargarArchivo('platos.csv', csvPlatos)}>CSV</button>
+              <button type="button" onClick={copiarPlatos}>Copiar</button>
+            </div>
           </div>
           {resultadoBatch && (
             <p style={{ fontSize: 11, color: resultadoBatch.error ? '#c07070' : '#5a9a6a', margin: '6px 0 0', gridColumn: '1 / -1' }}>
@@ -595,6 +710,13 @@ export default function Platos() {
           )}
         </section>
 
+        {mensajePlatos && (
+          <div className={styles.inlineToast} role="status">
+            {mensajePlatos}
+            <button type="button" onClick={() => setMensajePlatos('')} aria-label="Cerrar aviso">Cerrar</button>
+          </div>
+        )}
+
         <div className={styles.dataList}>
           <div className={styles.dishListHeader}>
             {['Plato', 'Categoría', 'Precio', 'Descripcion interna', ''].map(h => (
@@ -602,26 +724,42 @@ export default function Platos() {
             ))}
           </div>
 
+          <div className={styles.inlineColumnFilters}>
+            <button type="button" onClick={() => ordenarPorPlato('nombre')}>Plato {ordenPlatos.key === 'nombre' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
+            <button type="button" onClick={() => ordenarPorPlato('categoria')}>Categoria {ordenPlatos.key === 'categoria' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
+            <button type="button" onClick={() => ordenarPorPlato('precio')}>Precio {ordenPlatos.key === 'precio' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
+            <button type="button" onClick={() => ordenarPorPlato('descripcion')}>Descripcion {ordenPlatos.key === 'descripcion' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
+            <span />
+            <input aria-label="Filtrar plato" value={filtrosColumnaPlatos.plato} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, plato: e.target.value })} placeholder="Filtrar plato" />
+            <input aria-label="Filtrar categoria" value={filtrosColumnaPlatos.categoria} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, categoria: e.target.value })} placeholder="Categoria" />
+            <input aria-label="Filtrar precio" value={filtrosColumnaPlatos.precio} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, precio: e.target.value })} placeholder="Precio" />
+            <input aria-label="Filtrar descripcion" value={filtrosColumnaPlatos.descripcion} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, descripcion: e.target.value })} placeholder="Descripcion" />
+            <button type="button" className={styles.clearFilters} onClick={() => setFiltrosColumnaPlatos({ plato: '', categoria: '', precio: '', descripcion: '' })}>Limpiar</button>
+          </div>
+
           {platosVisibles.length === 0 ? (
             <div style={{ padding: '60px 20px', textAlign: 'center' }}>
               <p style={{ color: '#ccc', fontSize: 14, fontWeight: 300 }}>Aún no hay platos que coincidan con esta vista.</p>
             </div>
           ) : (
-            platosVisibles.map((p, i) => (
+            platosPagina.map((p, i) => (
               <div key={p.id} className={styles.wineRowGroup}>
                 <div className={styles.dishListRow} style={{
-                  borderBottom: i < platosVisibles.length - 1 ? '1px solid #f8f8f8' : 'none',
+                  borderBottom: i < platosPagina.length - 1 ? '1px solid #f8f8f8' : 'none',
                   opacity: p.activo ? 1 : 0.4
                 }}>
                   <p style={{ margin: 0, fontSize: 14, color: '#111' }}>{p.nombre}</p>
                   <p data-label="Categoria" style={{ margin: 0, fontSize: 12, color: '#888' }}>{p.categoria}</p>
                   <p data-label="Precio" style={{ margin: 0, fontSize: 12, color: '#111' }}>{Number(p.precio) ? `${Number(p.precio).toFixed(2)} €` : '—'}</p>
                   <p data-label="Descripcion" style={{ margin: 0, fontSize: 12, color: '#bbb' }}>{p.descripcion || '—'}</p>
-                  <div className={styles.dishActions}>
-                    <button onClick={() => setEditandoPlato({ ...p, precio: p.precio || '' })} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '3px 8px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>Editar</button>
-                    <button onClick={() => toggleActivo(p)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '3px 8px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>{p.activo ? 'Ocultar' : 'Mostrar'}</button>
-                    <button onClick={() => borrarPlato(p)} style={{ background: 'none', border: '1px solid #f0c0c0', padding: '3px 8px', fontSize: 10, color: '#c07070', cursor: 'pointer' }}>Borrar</button>
-                  </div>
+                  <details className={styles.rowMenu}>
+                    <summary aria-label={`Acciones para ${p.nombre}`}>...</summary>
+                    <button data-shortcut-edit="true" aria-label={`Editar ${p.nombre}`} onClick={() => setEditandoPlato({ ...p, precio: p.precio || '' })}>Editar</button>
+                    <button onClick={() => copiarPlato(p)}>Copiar fila</button>
+                    <button onClick={() => duplicarPlato(p)}>Duplicar</button>
+                    <button onClick={() => toggleActivo(p)}>{p.activo ? 'Ocultar' : 'Mostrar'}</button>
+                    <button className={styles.dangerAction} onClick={() => borrarPlato(p)}>Borrar</button>
+                  </details>
                 </div>
                 {editandoPlato?.id === p.id && (
                   <div className={styles.inlineEditPanel}>
@@ -653,7 +791,7 @@ export default function Platos() {
                       <RasgosMaridaje plato={editandoPlato} onChange={setEditandoPlato} />
                     </div>
                     <div className={styles.wineActions}>
-                      <button onClick={() => guardarEdicion(editandoPlato)} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                      <button data-shortcut-save="true" onClick={() => guardarEdicion(editandoPlato)} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
                         Guardar cambios
                       </button>
                       <button onClick={() => setEditandoPlato(null)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '12px 28px', fontSize: 11, color: '#aaa', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
@@ -666,6 +804,17 @@ export default function Platos() {
             ))
           )}
         </div>
+        {platosVisibles.length > pageSizePlatos && (
+          <nav className={styles.paginationBar} aria-label="Paginacion de platos">
+            <button type="button" onClick={() => setPaginaPlatos(Math.max(1, paginaPlatosSegura - 1))} disabled={paginaPlatosSegura === 1}>
+              Anterior
+            </button>
+            <span>Pagina {paginaPlatosSegura} de {totalPaginasPlatos}</span>
+            <button type="button" onClick={() => setPaginaPlatos(Math.min(totalPaginasPlatos, paginaPlatosSegura + 1))} disabled={paginaPlatosSegura === totalPaginasPlatos}>
+              Siguiente
+            </button>
+          </nav>
+        )}
       </div>
     </ModuleShell>
   )

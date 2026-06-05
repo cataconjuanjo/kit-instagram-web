@@ -27,6 +27,20 @@ function normalizar(texto = '') {
   return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
+function csvValor(valor = '') {
+  return `"${String(valor ?? '').replace(/"/g, '""')}"`
+}
+
+function descargarArchivo(nombre, contenido, tipo = 'text/csv;charset=utf-8;') {
+  const blob = new Blob([contenido], { type: tipo })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = nombre
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 function notasConPerfil(notas = '', perfil) {
   const limpias = notas.trim()
   const textoNormalizado = normalizar(limpias)
@@ -91,6 +105,11 @@ export default function Dashboard() {
   const [progresoPdf, setProgresoPdf] = useState('')
   const [busquedaVinos, setBusquedaVinos] = useState('')
   const [filtroVinos, setFiltroVinos] = useState('todos')
+  const [filtrosColumnaVinos, setFiltrosColumnaVinos] = useState({ vino: '', bodega: '', tipo: '', precio: '', stock: '' })
+  const [ordenVinos, setOrdenVinos] = useState({ key: 'nombre', dir: 'asc' })
+  const [paginaVinos, setPaginaVinos] = useState(1)
+  const [pageSizeVinos, setPageSizeVinos] = useState(10)
+  const [mensajeVinos, setMensajeVinos] = useState('')
   const [generandoCata, setGenerandoCata] = useState(false)
   const [editandoAnada, setEditandoAnada] = useState(null)
 const [nuevaAnada, setNuevaAnada] = useState('')
@@ -134,6 +153,17 @@ const inputPdfRef = useRef(null)
     }
     cargarDatos()
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (new URLSearchParams(window.location.search).get('new') === '1') {
+      setMostrarFormulario(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    setPaginaVinos(1)
+  }, [busquedaVinos, filtroVinos, pageSizeVinos, filtrosColumnaVinos])
 
 async function añadirVino() {
 const limiteVinos = restaurante ? limiteVinosPlan(restaurante) : 60
@@ -372,6 +402,32 @@ async function actualizarStock(vino, cambio) {
   setVinos(vinos.map(v => v.id === vino.id ? { ...v, stock: nuevoStock } : v))
 }
 
+async function duplicarVino(vino) {
+  if (!restaurante?.id) return
+  const copia = {
+    restaurante_id: restaurante.id,
+    nombre: `${vino.nombre} (copia)`,
+    bodega: vino.bodega || '',
+    tipo: vino.tipo || 'tinto',
+    region: vino.region || '',
+    uva: vino.uva || '',
+    anada: vino.anada || '',
+    precio_copa: vino.precio_copa || null,
+    precio_botella: Number(vino.precio_botella) || 0,
+    stock: Number(vino.stock) || 0,
+    coste_compra: Number(vino.coste_compra) || 0,
+    stock_minimo: Number(vino.stock_minimo) || 0,
+    proveedor: vino.proveedor || '',
+    notas_cata: vino.notas_cata || '',
+    activo: false,
+  }
+  const { data, error } = await supabase.from('vinos').insert([copia]).select()
+  if (!error && data?.[0]) {
+    setVinos([...vinos, data[0]])
+    setMensajeVinos('Vino duplicado como borrador oculto')
+  }
+}
+
 async function guardarEdicion(vino) {
   const { error } = await supabase.from('vinos').update({
     nombre: vino.nombre,
@@ -412,6 +468,35 @@ function alternarSeleccionVisibles(vinosVisibles) {
   setSeleccionados(actual => todosMarcados
     ? actual.filter(id => !idsVisibles.includes(id))
     : [...new Set([...actual, ...idsVisibles])])
+}
+
+function ordenarPorVino(key) {
+  setOrdenVinos(actual => ({ key, dir: actual.key === key && actual.dir === 'asc' ? 'desc' : 'asc' }))
+}
+
+function valorOrdenVino(vino, key) {
+  if (key === 'precio_copa') return Number(vino.precio_copa) || 0
+  if (key === 'precio_botella') return Number(vino.precio_botella) || 0
+  if (key === 'stock') return Number(vino.stock) || 0
+  if (key === 'tipo') return tipoLabel[vino.tipo] || vino.tipo || ''
+  if (key === 'bodega') return `${vino.bodega || ''} ${vino.region || ''}`
+  return vino.nombre || ''
+}
+
+function vinoComoFila(vino) {
+  return [
+    vino.nombre,
+    vino.bodega,
+    vino.region,
+    tipoLabel[vino.tipo] || vino.tipo,
+    vino.uva,
+    vino.anada,
+    vino.precio_copa,
+    vino.precio_botella,
+    vino.stock,
+    vino.proveedor,
+    vino.activo === false ? 'Oculto' : 'Activo',
+  ]
 }
 
 async function aplicarAccionMasiva() {
@@ -467,6 +552,9 @@ async function aplicarAccionMasiva() {
     ? vinos.filter(v => !Number(v.precio_botella) || !v.notas_cata || v.notas_cata.length < 12)
     : vinos
   const busquedaNormalizada = normalizar(busquedaVinos)
+  const filtrosVinosNormalizados = Object.fromEntries(
+    Object.entries(filtrosColumnaVinos).map(([key, value]) => [key, normalizar(value)])
+  )
   const vinosVisibles = vinosBase.filter(vino => {
     const texto = normalizar([
       vino.nombre,
@@ -489,10 +577,41 @@ async function aplicarAccionMasiva() {
       (filtroVinos === 'sin_coste' && !Number(vino.coste_compra)) ||
       (filtroVinos === 'sin_proveedor' && !String(vino.proveedor || '').trim()) ||
       (filtroVinos === 'sin_minimo' && !Number(vino.stock_minimo))
-    return coincideBusqueda && coincideEstado
+    const coincideColumnas =
+      (!filtrosVinosNormalizados.vino || normalizar(`${vino.nombre || ''} ${vino.uva || ''} ${vino.anada || ''}`).includes(filtrosVinosNormalizados.vino)) &&
+      (!filtrosVinosNormalizados.bodega || normalizar(`${vino.bodega || ''} ${vino.region || ''}`).includes(filtrosVinosNormalizados.bodega)) &&
+      (!filtrosVinosNormalizados.tipo || normalizar(tipoLabel[vino.tipo] || vino.tipo || '').includes(filtrosVinosNormalizados.tipo)) &&
+      (!filtrosVinosNormalizados.precio || normalizar(`${vino.precio_copa || ''} ${vino.precio_botella || ''}`).includes(filtrosVinosNormalizados.precio)) &&
+      (!filtrosVinosNormalizados.stock || normalizar(String(vino.stock ?? '')).includes(filtrosVinosNormalizados.stock))
+    return coincideBusqueda && coincideEstado && coincideColumnas
+  }).sort((a, b) => {
+    const valorA = valorOrdenVino(a, ordenVinos.key)
+    const valorB = valorOrdenVino(b, ordenVinos.key)
+    const resultado = typeof valorA === 'number' && typeof valorB === 'number'
+      ? valorA - valorB
+      : String(valorA).localeCompare(String(valorB), 'es', { numeric: true, sensitivity: 'base' })
+    return ordenVinos.dir === 'asc' ? resultado : -resultado
   })
-  const visiblesSeleccionados = vinosVisibles.filter(vino => seleccionados.includes(vino.id)).length
-  const todosVisiblesSeleccionados = vinosVisibles.length > 0 && visiblesSeleccionados === vinosVisibles.length
+  const totalPaginasVinos = Math.max(1, Math.ceil(vinosVisibles.length / pageSizeVinos))
+  const paginaVinosSegura = Math.min(paginaVinos, totalPaginasVinos)
+  const inicioVinos = (paginaVinosSegura - 1) * pageSizeVinos
+  const vinosPagina = vinosVisibles.slice(inicioVinos, inicioVinos + pageSizeVinos)
+  const visiblesSeleccionados = vinosPagina.filter(vino => seleccionados.includes(vino.id)).length
+  const todosVisiblesSeleccionados = vinosPagina.length > 0 && visiblesSeleccionados === vinosPagina.length
+  const rangoVinos = vinosVisibles.length === 0 ? '0' : `${inicioVinos + 1}-${inicioVinos + vinosPagina.length}`
+  const cabeceraVinos = ['Nombre', 'Bodega', 'Region', 'Tipo', 'Uva', 'Anada', 'Precio copa', 'Precio botella', 'Stock', 'Proveedor', 'Estado']
+  const csvVinos = [cabeceraVinos, ...vinosVisibles.map(vinoComoFila)].map(fila => fila.map(csvValor).join(',')).join('\n')
+
+  async function copiarVinos() {
+    const texto = [cabeceraVinos, ...vinosVisibles.map(vinoComoFila)].map(fila => fila.join('\t')).join('\n')
+    await navigator.clipboard?.writeText(texto)
+    setMensajeVinos(`${vinosVisibles.length} vinos copiados al portapapeles`)
+  }
+
+  async function copiarVino(vino) {
+    await navigator.clipboard?.writeText(vinoComoFila(vino).join('\t'))
+    setMensajeVinos('Vino copiado al portapapeles')
+  }
 
   return (
     <ModuleShell
@@ -511,8 +630,9 @@ async function aplicarAccionMasiva() {
               {mostrarImportador ? 'Cerrar importador' : 'Importar carta'}
             </button>
           )}
-          <button
-            onClick={() => { setMostrarFormulario(!mostrarFormulario); setMostrarImportador(false) }}
+            <button
+              data-shortcut-edit="true"
+              onClick={() => { setMostrarFormulario(!mostrarFormulario); setMostrarImportador(false) }}
             className={mostrarFormulario ? styles.ghost : styles.primary}
           >
             {mostrarFormulario ? 'Cancelar' : 'Añadir vino'}
@@ -630,7 +750,7 @@ async function aplicarAccionMasiva() {
               </div>
               <PerfilVino vino={nuevoVino} onChange={setNuevoVino} />
             </div>
-            <button onClick={añadirVino} disabled={generandoCata} style={{ background: generandoCata ? '#888' : '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: generandoCata ? 'not-allowed' : 'pointer' }}>
+            <button data-shortcut-save="true" onClick={añadirVino} disabled={generandoCata} style={{ background: generandoCata ? '#888' : '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: generandoCata ? 'not-allowed' : 'pointer' }}>
   {generandoCata ? 'Generando notas de cata...' : 'Guardar vino'}
 </button>
           </div>
@@ -662,12 +782,31 @@ async function aplicarAccionMasiva() {
             </select>
           </div>
           <div className={styles.toolbarSummary}>
-            <p className={styles.resultCount}>{vinosVisibles.length} de {vinosBase.length} referencias</p>
-            <button type="button" className={styles.bulkToggle} onClick={() => alternarSeleccionVisibles(vinosVisibles)}>
-              {todosVisiblesSeleccionados ? 'Desmarcar visibles' : 'Seleccionar visibles'}
+            <p className={styles.resultCount}>{rangoVinos} de {vinosVisibles.length} referencias</p>
+            <label className={styles.pageSizeControl}>
+              <span>Por pagina</span>
+              <select value={pageSizeVinos} onChange={e => setPageSizeVinos(Number(e.target.value))}>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </label>
+            <button type="button" className={styles.bulkToggle} onClick={() => alternarSeleccionVisibles(vinosPagina)}>
+              {todosVisiblesSeleccionados ? 'Desmarcar pagina' : 'Seleccionar pagina'}
             </button>
+            <div className={styles.quickActions}>
+              <button type="button" onClick={() => descargarArchivo('vinos.csv', csvVinos)}>CSV</button>
+              <button type="button" onClick={copiarVinos}>Copiar</button>
+            </div>
           </div>
         </section>
+
+        {mensajeVinos && (
+          <div className={styles.inlineToast} role="status">
+            {mensajeVinos}
+            <button type="button" onClick={() => setMensajeVinos('')} aria-label="Cerrar aviso">Cerrar</button>
+          </div>
+        )}
 
         {seleccionados.length > 0 && <section className={styles.bulkPanel}>
           <p className={styles.bulkCount}>{seleccionados.length} seleccionados</p>
@@ -708,15 +847,30 @@ async function aplicarAccionMasiva() {
             ))}
           </div>
 
+          <div className={styles.inlineColumnFilters}>
+            <button type="button" onClick={() => ordenarPorVino('nombre')}>Vino {ordenVinos.key === 'nombre' ? (ordenVinos.dir === 'asc' ? '↑' : '↓') : ''}</button>
+            <button type="button" onClick={() => ordenarPorVino('bodega')}>Bodega {ordenVinos.key === 'bodega' ? (ordenVinos.dir === 'asc' ? '↑' : '↓') : ''}</button>
+            <button type="button" onClick={() => ordenarPorVino('precio_copa')}>Copa {ordenVinos.key === 'precio_copa' ? (ordenVinos.dir === 'asc' ? '↑' : '↓') : ''}</button>
+            <button type="button" onClick={() => ordenarPorVino('precio_botella')}>Botella {ordenVinos.key === 'precio_botella' ? (ordenVinos.dir === 'asc' ? '↑' : '↓') : ''}</button>
+            <button type="button" onClick={() => ordenarPorVino('stock')}>Stock {ordenVinos.key === 'stock' ? (ordenVinos.dir === 'asc' ? '↑' : '↓') : ''}</button>
+            <button type="button" className={styles.clearFilters} onClick={() => setFiltrosColumnaVinos({ vino: '', bodega: '', tipo: '', precio: '', stock: '' })}>Limpiar</button>
+            <input aria-label="Filtrar vino" value={filtrosColumnaVinos.vino} onChange={e => setFiltrosColumnaVinos({ ...filtrosColumnaVinos, vino: e.target.value })} placeholder="Filtrar vino" />
+            <input aria-label="Filtrar bodega o region" value={filtrosColumnaVinos.bodega} onChange={e => setFiltrosColumnaVinos({ ...filtrosColumnaVinos, bodega: e.target.value })} placeholder="Bodega/region" />
+            <input aria-label="Filtrar tipo" value={filtrosColumnaVinos.tipo} onChange={e => setFiltrosColumnaVinos({ ...filtrosColumnaVinos, tipo: e.target.value })} placeholder="Tipo" />
+            <input aria-label="Filtrar precio" value={filtrosColumnaVinos.precio} onChange={e => setFiltrosColumnaVinos({ ...filtrosColumnaVinos, precio: e.target.value })} placeholder="Precio" />
+            <input aria-label="Filtrar stock" value={filtrosColumnaVinos.stock} onChange={e => setFiltrosColumnaVinos({ ...filtrosColumnaVinos, stock: e.target.value })} placeholder="Stock" />
+            <span />
+          </div>
+
           {vinosVisibles.length === 0 ? (
             <div style={{ padding: '60px 20px', textAlign: 'center' }}>
               <p style={{ color: '#ccc', fontSize: 14, fontWeight: 300 }}>{filtroUrl === 'pendientes' ? 'No hay vinos pendientes de completar.' : 'Aún no hay vinos. Añade el primero.'}</p>
             </div>
           ) : (
-            vinosVisibles.map((v, i) => (
+            vinosPagina.map((v, i) => (
               <div key={v.id} className={styles.wineRowGroup}>
               <div className={styles.wineListRow} style={{
-                borderBottom: i < vinosVisibles.length - 1 ? '1px solid #f8f8f8' : 'none',
+                borderBottom: i < vinosPagina.length - 1 ? '1px solid #f8f8f8' : 'none',
                 opacity: v.activo ? 1 : 0.4
               }}>
                 <div className={styles.wineNameCell}>
@@ -775,17 +929,14 @@ async function aplicarAccionMasiva() {
   <span style={{ fontSize: 13, color: v.stock === 0 ? '#C47A8A' : v.stock <= 3 ? '#C4A55A' : '#888', minWidth: 20, textAlign: 'center' }}>{v.stock}</span>
   <button onClick={() => actualizarStock(v, 1)} style={{ width: 22, height: 22, borderRadius: 4, border: '1px solid #e8e8e8', background: 'none', cursor: 'pointer', color: '#aaa', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>
 </div>
-                <div style={{ display: 'flex', gap: 4, alignSelf: 'center' }}>
-  <button onClick={() => { setEditandoVino({...v, precio_copa: v.precio_copa || '', precio_botella: v.precio_botella || '', coste_compra: v.coste_compra || '', stock_minimo: v.stock_minimo || '', proveedor: v.proveedor || ''}); }} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '4px 10px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>
-    Editar
-  </button>
-  <button onClick={() => toggleActivo(v)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '4px 10px', fontSize: 10, color: '#aaa', cursor: 'pointer' }}>
-    {v.activo ? 'Ocultar' : 'Mostrar'}
-  </button>
-  <button onClick={() => borrarVino(v)} style={{ background: 'none', border: '1px solid #f0c0c0', padding: '4px 10px', fontSize: 10, color: '#c07070', cursor: 'pointer' }}>
-    Borrar
-  </button>
-</div>
+                <details className={styles.rowMenu}>
+                  <summary aria-label={`Acciones para ${v.nombre}`}>...</summary>
+                  <button data-shortcut-edit="true" aria-label={`Editar ${v.nombre}`} onClick={() => { setEditandoVino({...v, precio_copa: v.precio_copa || '', precio_botella: v.precio_botella || '', coste_compra: v.coste_compra || '', stock_minimo: v.stock_minimo || '', proveedor: v.proveedor || ''}); }}>Editar</button>
+                  <button onClick={() => copiarVino(v)}>Copiar fila</button>
+                  <button onClick={() => duplicarVino(v)}>Duplicar</button>
+                  <button onClick={() => toggleActivo(v)}>{v.activo ? 'Ocultar' : 'Mostrar'}</button>
+                  <button className={styles.dangerAction} onClick={() => borrarVino(v)}>Borrar</button>
+                </details>
 </div>
               {editandoVino?.id === v.id && (
                 <div className={styles.inlineEditPanel}>
@@ -840,7 +991,7 @@ async function aplicarAccionMasiva() {
                     <PerfilVino vino={editandoVino} onChange={setEditandoVino} />
                   </div>
                   <div className={styles.wineActions}>
-                    <button onClick={() => guardarEdicion(editandoVino)} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                    <button data-shortcut-save="true" onClick={() => guardarEdicion(editandoVino)} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
                       Guardar cambios
                     </button>
                     <button onClick={() => setEditandoVino(null)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '12px 28px', fontSize: 11, color: '#aaa', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
@@ -853,6 +1004,17 @@ async function aplicarAccionMasiva() {
             ))
           )}
         </div>
+        {vinosVisibles.length > pageSizeVinos && (
+          <nav className={styles.paginationBar} aria-label="Paginacion de vinos">
+            <button type="button" onClick={() => setPaginaVinos(Math.max(1, paginaVinosSegura - 1))} disabled={paginaVinosSegura === 1}>
+              Anterior
+            </button>
+            <span>Pagina {paginaVinosSegura} de {totalPaginasVinos}</span>
+            <button type="button" onClick={() => setPaginaVinos(Math.min(totalPaginasVinos, paginaVinosSegura + 1))} disabled={paginaVinosSegura === totalPaginasVinos}>
+              Siguiente
+            </button>
+          </nav>
+        )}
       </div>
     </ModuleShell>
   )

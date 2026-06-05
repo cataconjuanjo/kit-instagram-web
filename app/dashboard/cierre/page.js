@@ -148,6 +148,7 @@ export default function CierreServicio() {
   const [ocultos, setOcultos] = useState([])
   const [turnoCerrado, setTurnoCerrado] = useState(false)
   const [sustitutoCopiado, setSustitutoCopiado] = useState('')
+  const [mensajeCierre, setMensajeCierre] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -213,6 +214,7 @@ export default function CierreServicio() {
 
   async function ocultarEvento(id) {
     await guardarOcultos([...new Set([...ocultos, id])])
+    setMensajeCierre('Señal marcada como revisada')
   }
 
   const datos = useMemo(() => {
@@ -250,6 +252,7 @@ export default function CierreServicio() {
     if (!error) {
       setVinos(vinos.map(vino => String(vino.id) === String(vinoId) ? { ...vino, stock: 0 } : vino))
       await ocultarEvento(evento.id)
+      setMensajeCierre('Stock ajustado a 0 y movimiento registrado')
       await supabase.from('movimientos_stock').insert([{
         restaurante_id: restaurante.id,
         vino_id: vinoId,
@@ -272,6 +275,7 @@ export default function CierreServicio() {
     if (!error) {
       setVinos(vinos.map(vino => String(vino.id) === String(vinoId) ? { ...vino, stock: stockNuevo } : vino))
       await ocultarEvento(evento.id)
+      setMensajeCierre('Venta descontada del stock')
       await supabase.from('movimientos_stock').insert([{
         restaurante_id: restaurante.id,
         vino_id: vinoId,
@@ -285,8 +289,10 @@ export default function CierreServicio() {
   }
 
   async function cerrarTurno() {
+    if (datos.visibles.length > 0 && !confirm(`¿Cerrar turno y marcar ${datos.visibles.length} señales como revisadas?`)) return
     const nuevos = [...new Set([...ocultos, ...datos.visibles.map(evento => evento.id)])]
     await guardarOcultos(nuevos, true)
+    setMensajeCierre('Turno cerrado')
   }
 
   async function reabrirTurno() {
@@ -296,6 +302,7 @@ export default function CierreServicio() {
       window.localStorage.removeItem(claveCierreDia(restaurante.id))
     }
     await guardarOcultos([], false)
+    setMensajeCierre('Turno reabierto')
   }
 
   async function copiarSustitutosSala(evento, vinoOrigen, sustitutos) {
@@ -304,7 +311,7 @@ export default function CierreServicio() {
       `Sustituto para sala - ${evento.parsed?.vino || vinoOrigen?.nombre || 'vino agotado'}`,
       '',
       `Si piden ${evento.parsed?.vino || vinoOrigen?.nombre || 'este vino'} y no queda, ofrecer:`,
-      ...sustitutos.map((vino, index) => `${index + 1}. ${vino.nombre}${vino.precio_botella ? ` (${vino.precio_botella} EUR)` : ''}: ${vino.motivoSustituto}.`),
+      ...sustitutos.map((vino, index) => `${index + 1}. ${vino.nombre}${vino.precio_botella ? ` (${vino.precio_botella} €)` : ''}: ${vino.motivoSustituto}.`),
       '',
       'Frase corta:',
       `"Ahora mismo no queda, pero puedo ofrecerte ${sustitutos[0].nombre}: encaja por perfil y tenemos stock."`,
@@ -379,14 +386,33 @@ export default function CierreServicio() {
         ],
       }}
     >
-      <section className={styles.statsGrid}>
+      {mensajeCierre && (
+        <div className={styles.inlineToast} role="status">
+          {mensajeCierre}
+          <button type="button" onClick={() => setMensajeCierre('')} aria-label="Cerrar aviso">Cerrar</button>
+        </div>
+      )}
+
+      <section className={styles.closeHero}>
+        <div>
+          <p className={styles.eyebrow}>Cierre guiado</p>
+          <h2>{turnoCerrado || datos.visibles.length === 0 ? 'Servicio limpio' : 'Quedan decisiones por resolver'}</h2>
+          <p>Revisa señales de sala, ajusta stock cuando proceda y deja preparada la bodega para el siguiente turno.</p>
+        </div>
+        <div className={styles.closeHeroScore}>
+          <strong>{progresoCierre}%</strong>
+          <span>{pasosHechos} de {pasosCierre.length} pasos</span>
+        </div>
+      </section>
+
+      <section className={`${styles.statsGrid} ${styles.closeStats}`}>
         <div className={styles.stat}><p className={styles.statValue}>{datos.vendidas.length}</p><p className={styles.statLabel}>Ventas marcadas</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{datos.incidencias.length}</p><p className={styles.statLabel}>Incidencias stock</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{datos.dudas.length}</p><p className={styles.statLabel}>Dudas o cambios</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{datos.visibles.length}</p><p className={styles.statLabel}>Señales pendientes</p></div>
       </section>
 
-      <section className={turnoCerrado || datos.visibles.length === 0 ? styles.panel : styles.panelDark} style={{ marginBottom: 16 }}>
+      <section className={`${turnoCerrado || datos.visibles.length === 0 ? styles.panel : styles.panelDark} ${styles.closeProgressPanel}`} style={{ marginBottom: 16 }}>
         <div className={styles.panelHead}>
           <div>
             <h2 className={styles.panelTitle}>{turnoCerrado || datos.visibles.length === 0 ? 'Turno revisado' : 'Turno pendiente de cierre'}</h2>
@@ -399,8 +425,8 @@ export default function CierreServicio() {
           <span className={styles.badge}>{datos.visibles.length} pendientes</span>
         </div>
         <div className={styles.panelBody}>
-          <div style={{ height: 8, borderRadius: 99, background: turnoCerrado || datos.visibles.length === 0 ? '#e7e0d2' : 'rgba(255,250,243,0.16)', overflow: 'hidden' }}>
-            <div style={{ width: `${progresoCierre}%`, height: '100%', background: turnoCerrado || datos.visibles.length === 0 ? '#5fa882' : '#f0c36a' }} />
+          <div className={styles.closeProgressTrack}>
+            <div className={styles.closeProgressFill} style={{ width: `${progresoCierre}%` }} />
           </div>
           <p className={styles.sectionText} style={{ color: turnoCerrado || datos.visibles.length === 0 ? undefined : 'rgba(255,250,243,0.66)' }}>{pasosHechos} de {pasosCierre.length} pasos completados</p>
         </div>
@@ -417,7 +443,7 @@ export default function CierreServicio() {
         <div className={styles.panelBody}>
           <div className={styles.itemStack}>
             {pasosCierre.map((paso, index) => (
-              <article key={paso.titulo} className={styles.itemCard}>
+              <article key={paso.titulo} className={`${styles.itemCard} ${styles.closeStep} ${paso.hecho ? styles.closeStepDone : ''}`}>
                 <div className={styles.sectionHead} style={{ margin: 0 }}>
                   <div>
                     <p className={styles.eyebrow}>Paso {index + 1}</p>
@@ -505,7 +531,7 @@ export default function CierreServicio() {
                                 <div>
                                   <h4 className={styles.sectionTitle} style={{ fontSize: 14 }}>{sustituto.nombre}</h4>
                                   <p className={styles.sectionText}>
-                                    {[sustituto.bodega, sustituto.tipo, sustituto.precio_botella ? `${sustituto.precio_botella} EUR` : null].filter(Boolean).join(' · ')}
+                                    {[sustituto.bodega, sustituto.tipo, sustituto.precio_botella ? `${sustituto.precio_botella} €` : null].filter(Boolean).join(' · ')}
                                   </p>
                                   <p className={styles.sectionText}>{sustituto.motivoSustituto}</p>
                                 </div>
@@ -612,6 +638,15 @@ export default function CierreServicio() {
           </div>
         </div>
       </section>
+      {datos.visibles.length > 0 && !turnoCerrado && (
+        <div className={styles.closeStickyAction}>
+          <div>
+            <strong>{datos.visibles.length} señales pendientes</strong>
+            <span>Revisa lo importante o cierra el turno si ya está decidido.</span>
+          </div>
+          <button type="button" className={styles.primary} onClick={cerrarTurno}>Cerrar turno</button>
+        </div>
+      )}
     </ModuleShell>
     </FeatureGate>
   )

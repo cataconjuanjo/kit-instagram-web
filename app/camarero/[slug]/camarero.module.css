@@ -549,6 +549,152 @@
   gap: 10px;
 }
 
+.serviceToast {
+  border: 1px solid rgba(44, 145, 103, 0.35);
+  border-radius: 8px;
+  background: #dff5eb;
+  color: #125b45;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.quickServicePanel {
+  border: 1px solid #343b44;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(31, 122, 97, 0.16), rgba(247, 247, 242, 0.04));
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.quickServiceHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.quickServiceHead h3 {
+  margin: 4px 0 0;
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1.18;
+}
+
+.quickServiceHead p:not(.sectionLabel) {
+  margin: 5px 0 0;
+  color: #aab2ba;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.quickStepper {
+  display: grid;
+  grid-template-columns: 36px 40px 36px;
+  gap: 4px;
+  align-items: center;
+}
+
+.quickStepper button {
+  min-height: 36px;
+  border: 1px solid #343b44;
+  border-radius: 8px;
+  background: #101318;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.quickStepper strong {
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #f7f7f2;
+  color: #17191d;
+  font-size: 16px;
+}
+
+.quickActionGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.quickAction,
+.quickActionPrimary {
+  min-height: 72px;
+  border: 1px solid #343b44;
+  border-radius: 8px;
+  background: #101318;
+  color: #dfe3dc;
+  cursor: pointer;
+  padding: 10px;
+  text-align: left;
+}
+
+.quickActionPrimary {
+  border-color: #1f7a61;
+  background: #1f7a61;
+  color: #ffffff;
+}
+
+.quickAction strong,
+.quickAction span,
+.quickActionPrimary strong,
+.quickActionPrimary span {
+  display: block;
+}
+
+.quickAction strong,
+.quickActionPrimary strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.quickAction span,
+.quickActionPrimary span {
+  margin-top: 5px;
+  color: rgba(247, 247, 242, 0.64);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.recentSignals {
+  border: 1px solid #2a3037;
+  border-radius: 8px;
+  background: #101318;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.recentSignals > div {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-top: 8px;
+  scrollbar-width: none;
+}
+
+.recentSignals > div::-webkit-scrollbar {
+  display: none;
+}
+
+.recentSignals span {
+  flex-shrink: 0;
+  border: 1px solid #343b44;
+  border-radius: 999px;
+  background: #171a1f;
+  color: #cfd5cd;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
 .recommendCard {
   min-height: 214px;
   display: flex;
@@ -940,6 +1086,7 @@
 
   .serviceGrid,
   .recommendGrid,
+  .quickActionGrid,
   .noteGrid,
   .bodegaControls {
     grid-template-columns: 1fr;
@@ -965,6 +1112,18 @@
   .recommendToolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .quickServiceHead {
+    grid-template-columns: 1fr;
+  }
+
+  .quickStepper {
+    grid-template-columns: 44px minmax(54px, 1fr) 44px;
+  }
+
+  .quickActionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .wineRow {
@@ -1017,6 +1176,12 @@
   .feedbackGrid {
     grid-template-columns: 1fr 1fr 1fr;
     gap: 4px;
+  }
+
+  .quickAction,
+  .quickActionPrimary {
+    min-height: 66px;
+    padding: 9px;
   }
 
   .compareBar {

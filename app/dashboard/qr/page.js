@@ -51,6 +51,11 @@ export default function QRPage() {
     link.click()
   }
 
+  function imprimir() {
+    if (typeof window === 'undefined') return
+    window.print()
+  }
+
   async function copiar(texto, tipo) {
     if (!texto) return
     await navigator.clipboard?.writeText(texto)
@@ -83,15 +88,33 @@ export default function QRPage() {
         ],
       }}
     >
+      <section className={styles.qrHero}>
+        <div>
+          <p className={styles.eyebrow}>Material de mesa</p>
+          <h2>QR listo para imprimir</h2>
+          <p>Una pieza limpia para sobremesa, metacrilato o carta física. Prueba el destino antes de mandar a imprenta.</p>
+        </div>
+        <div className={styles.qrHeroActions}>
+          <button className={styles.primary} onClick={descargar}>Descargar QR</button>
+          <button className={styles.secondary} onClick={imprimir}>Imprimir esta página</button>
+          <button className={styles.ghost} onClick={() => copiar(urlDirecta, 'url')}>{copiado === 'url' ? 'Copiado' : 'Copiar enlace'}</button>
+        </div>
+      </section>
+
       <section className={styles.qrLayout}>
         <div className={styles.qrCard}>
-          <canvas ref={canvasRef} />
+          <div className={styles.tableTentPreview}>
+            <p>Escanea para ver la carta viva</p>
+            <canvas ref={canvasRef} />
+            <span>{restaurante?.nombre}</span>
+          </div>
           <div style={{ textAlign: 'center' }}>
             <p className={styles.sectionTitle}>{restaurante?.nombre}</p>
             <p className={styles.sectionText}>{restaurante?.hub_activo ? 'Hub público' : 'Carta digital'}</p>
           </div>
           <button className={styles.primary} onClick={descargar}>Descargar PNG</button>
           <a className={styles.secondary} href={urlPrint} target="_blank" rel="noreferrer">Imprimir / PDF</a>
+          <button className={styles.ghost} onClick={imprimir}>Imprimir página</button>
         </div>
 
         <div className={styles.itemStack}>

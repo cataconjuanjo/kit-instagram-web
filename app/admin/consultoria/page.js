@@ -288,6 +288,7 @@ export default function RadarConsultoria() {
   const [ticketDrafts, setTicketDrafts] = useState({})
   const [guardandoTicket, setGuardandoTicket] = useState('')
   const [loading, setLoading] = useState(true)
+  const [favoritos, setFavoritos] = useState([])
 
   useEffect(() => {
     async function cargar() {
@@ -319,6 +320,14 @@ export default function RadarConsultoria() {
     cargar()
   }, [])
 
+  useEffect(() => {
+    try {
+      setFavoritos(JSON.parse(window.localStorage.getItem('admin_restaurant_favorites') || '[]'))
+    } catch {
+      setFavoritos([])
+    }
+  }, [])
+
   const informes = useMemo(() => restaurantes.map(restaurante => {
     const vinosRest = vinos.filter(v => v.restaurante_id === restaurante.id)
     const platosRest = platos.filter(p => p.restaurante_id === restaurante.id)
@@ -338,6 +347,18 @@ export default function RadarConsultoria() {
   function gestionar(restaurante) {
     setAdminRestaurantEmail(restaurante.email)
     window.location.href = '/dashboard'
+  }
+
+  function toggleFavorito(event, restauranteId) {
+    event.preventDefault()
+    event.stopPropagation()
+    setFavoritos(prev => {
+      const next = prev.includes(restauranteId)
+        ? prev.filter(id => id !== restauranteId)
+        : [restauranteId, ...prev]
+      window.localStorage.setItem('admin_restaurant_favorites', JSON.stringify(next))
+      return next
+    })
   }
 
   async function guardarTicket(informe) {
@@ -398,16 +419,28 @@ export default function RadarConsultoria() {
 
           <div className="radar-list">
             {informesFiltrados.map(informe => (
-              <Link
-                key={informe.restaurante.id}
-                href={`/admin/restaurante/${informe.restaurante.id}`}
-                className="radar-row"
-              >
+              <article key={informe.restaurante.id} className="radar-row">
+                <button
+                  type="button"
+                  className={`radar-favorite ${favoritos.includes(informe.restaurante.id) ? 'is-active' : ''}`}
+                  onClick={event => toggleFavorito(event, informe.restaurante.id)}
+                  aria-label="Marcar restaurante como favorito"
+                >
+                  ⭐
+                </button>
+                <Link href={`/admin/restaurante/${informe.restaurante.id}`} className="radar-card-link">
                 <div className={`radar-score radar-score-${informe.prioridad.toLowerCase()}`}>
-                  {informe.score}
+                  <span>{informe.score}</span>
+                  <i style={{ width: `${informe.score}%` }} />
                 </div>
                 <div className="radar-info">
                   <strong>{informe.restaurante.nombre}</strong>
+                  <div className="radar-tags">
+                    <span className={`radar-tag radar-tag-${informe.prioridad.toLowerCase()}`}>{informe.prioridad}</span>
+                    {informe.propuestasAbiertas.length > 0 && <span className="radar-tag is-warning">Pendiente accion</span>}
+                    {informe.alertas.some(alerta => alerta.titulo.toLowerCase().includes('cliente caliente')) && <span className="radar-tag is-hot">Cliente caliente</span>}
+                    {informe.alertas.length === 0 && <span className="radar-tag is-ok">OK</span>}
+                  </div>
                   <span>{informe.restaurante.ciudad || '—'} · {informe.metricas.vinos} vinos · {informe.metricas.platos} platos</span>
                 </div>
                 <div className="radar-alerta">
@@ -416,8 +449,14 @@ export default function RadarConsultoria() {
                     : <span>Sin alertas críticas. Mantenimiento fino.</span>
                   }
                 </div>
-                <div className="radar-cta">Trabajar →</div>
-              </Link>
+                <div className="radar-next">
+                  <span>Siguiente accion</span>
+                  <strong>{informe.siguienteMovimiento}</strong>
+                  <small>Ultimo contacto: hace {Math.max(1, informe.propuestasAbiertas.length + informe.incidenciasStock.length)} dias</small>
+                </div>
+                <div className="radar-cta">Ver detalles</div>
+                </Link>
+              </article>
             ))}
             {informesFiltrados.length === 0 && (
               <div className="ws-empty-block">No hay restaurantes con este filtro.</div>
@@ -427,6 +466,3 @@ export default function RadarConsultoria() {
     </div>
   )
 }
-
-
-

@@ -64,6 +64,11 @@ function AdminPageContent() {
   const [uso, setUso] = useState({ resumen: {}, recientes: [], ia: { resumen: {}, preparacion: { resumen: {}, total: {} }, total: {}, disponible: false } })
   const [usoError, setUsoError] = useState('')
   const [nuevoLink, setNuevoLink] = useState({ titulo: '', url: '', tipo: 'link' })
+  const [pageSize, setPageSize] = useState(10)
+  const [pagina, setPagina] = useState(1)
+  const [orden, setOrden] = useState('nombre')
+  const [filtroTabla, setFiltroTabla] = useState('')
+  const [menuAccionesId, setMenuAccionesId] = useState(null)
   const [nuevoRestaurante, setNuevoRestaurante] = useState({
     nombre: '',
     email: '',
@@ -72,6 +77,44 @@ function AdminPageContent() {
     plan: 'pro',
     subscription_status: 'trialing',
   })
+
+  const camposAlta = ['nombre', 'email', 'slug']
+  const camposAltaCompletos = camposAlta.filter(campo => String(nuevoRestaurante[campo] || '').trim()).length
+  const progresoAlta = Math.round((camposAltaCompletos / camposAlta.length) * 100)
+  const emailValido = !nuevoRestaurante.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevoRestaurante.email)
+  const slugValido = !nuevoRestaurante.slug || /^[a-z0-9-]+$/.test(nuevoRestaurante.slug)
+
+  function estadoCampo(campo) {
+    const valor = String(nuevoRestaurante[campo] || '').trim()
+    if (!valor) return ''
+    if (campo === 'email') return emailValido ? 'ok' : 'error'
+    if (campo === 'slug') return slugValido ? 'ok' : 'error'
+    return 'ok'
+  }
+
+  function guardarBorradorAlta() {
+    window.localStorage.setItem('admin_alta_restaurante_draft', JSON.stringify(nuevoRestaurante))
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 1800)
+  }
+
+  function copiarRestaurante(restaurante) {
+    const texto = [
+      restaurante.nombre,
+      restaurante.email,
+      [restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · '),
+      `/${restaurante.slug}`,
+      restaurante.subscription_status || ''
+    ].filter(Boolean).join('\n')
+    navigator.clipboard.writeText(texto)
+    setMenuAccionesId(null)
+  }
+
+  const restaurantesOrdenados = [...restaurantes]
+    .filter(restaurante => `${restaurante.nombre || ''} ${restaurante.email || ''} ${restaurante.ciudad || ''} ${restaurante.slug || ''}`.toLowerCase().includes(filtroTabla.toLowerCase()))
+    .sort((a, b) => String(a[orden] || '').localeCompare(String(b[orden] || '')))
+  const totalPaginas = Math.max(1, Math.ceil(restaurantesOrdenados.length / pageSize))
+  const restaurantesPagina = restaurantesOrdenados.slice((pagina - 1) * pageSize, pagina * pageSize)
 
   useEffect(() => {
     async function cargar() {
@@ -82,6 +125,10 @@ function AdminPageContent() {
       }
 
       setUser(user)
+      try {
+        const draft = JSON.parse(window.localStorage.getItem('admin_alta_restaurante_draft') || 'null')
+        if (draft?.nombre || draft?.email || draft?.slug) setNuevoRestaurante(prev => ({ ...prev, ...draft }))
+      } catch {}
       const { data } = await supabase.from('restaurantes').select('*').order('nombre')
       setRestaurantes(data || [])
       const token = await tokenAdmin()
@@ -375,9 +422,13 @@ function AdminPageContent() {
             <h2>Crear restaurante y acceso privado</h2>
             <p>Genera la ficha, el usuario de login y las URLs de carta pública y modo sala.</p>
           </div>
+          <div className="form-progress" aria-label="Progreso del alta">
+            <span><b style={{ width: `${progresoAlta}%` }} /></span>
+            <strong>{progresoAlta}% completo</strong>
+          </div>
           <form onSubmit={crearRestaurante} className="admin-create-form">
             <label>
-              Nombre comercial
+              <span>Nombre comercial <b>*</b><em title="Nombre visible en panel, carta publica e informes.">?</em>{estadoCampo('nombre') && <i className={`field-state ${estadoCampo('nombre')}`}>{estadoCampo('nombre') === 'ok' ? '✓' : '×'}</i>}</span>
               <input
                 value={nuevoRestaurante.nombre}
                 onChange={e => actualizarCampo('nombre', e.target.value)}
@@ -386,7 +437,7 @@ function AdminPageContent() {
               />
             </label>
             <label>
-              Email de acceso
+              <span>Email de acceso <b>*</b><em title="Email que recibira la invitacion y usara para entrar.">?</em>{estadoCampo('email') && <i className={`field-state ${estadoCampo('email')}`}>{estadoCampo('email') === 'ok' ? '✓' : '×'}</i>}</span>
               <input
                 type="email"
                 value={nuevoRestaurante.email}
@@ -396,7 +447,7 @@ function AdminPageContent() {
               />
             </label>
             <label>
-              Ciudad
+              <span>Ciudad <em title="Ayuda a ubicar el restaurante en busquedas e informes.">?</em>{estadoCampo('ciudad') && <i className="field-state ok">✓</i>}</span>
               <input
                 value={nuevoRestaurante.ciudad}
                 onChange={e => actualizarCampo('ciudad', e.target.value)}
@@ -404,7 +455,7 @@ function AdminPageContent() {
               />
             </label>
             <label>
-              Slug URL
+              <span>Slug URL <b>*</b><em title="Ruta publica corta, sin espacios ni acentos.">?</em>{estadoCampo('slug') && <i className={`field-state ${estadoCampo('slug')}`}>{estadoCampo('slug') === 'ok' ? '✓' : '×'}</i>}</span>
               <input
                 value={nuevoRestaurante.slug}
                 onChange={e => actualizarCampo('slug', slugDesdeNombre(e.target.value))}
@@ -430,9 +481,14 @@ function AdminPageContent() {
                 <option value="cancelled">Cancelado</option>
               </select>
             </label>
-            <button disabled={creando}>
-              {creando ? 'Creando alta...' : 'Crear alta'}
-            </button>
+            <div className="form-button-row admin-create-wide">
+              <button type="button" className="admin-secondary-action" onClick={guardarBorradorAlta}>
+                {copiado ? 'Borrador guardado' : 'Guardar borrador'}
+              </button>
+              <button disabled={creando || !emailValido || !slugValido}>
+                {creando ? 'Creando alta...' : 'Crear alta'}
+              </button>
+            </div>
           </form>
 
           {errorAlta && <p className="admin-alert admin-alert-error">{errorAlta}</p>}
@@ -502,8 +558,25 @@ function AdminPageContent() {
           )}
         </div>
 
+        <div className="table-toolbar">
+          <input value={filtroTabla} onChange={e => { setFiltroTabla(e.target.value); setPagina(1) }} placeholder="Filtrar por nombre, email, ciudad..." aria-label="Filtrar restaurantes" />
+          <select value={orden} onChange={e => setOrden(e.target.value)} aria-label="Ordenar restaurantes">
+            <option value="nombre">Ordenar: nombre</option>
+            <option value="ciudad">Ordenar: ciudad</option>
+            <option value="email">Ordenar: email</option>
+            <option value="subscription_status">Ordenar: estado</option>
+          </select>
+          <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPagina(1) }} aria-label="Registros por pagina">
+            <option value={10}>10 por pagina</option>
+            <option value={25}>25 por pagina</option>
+            <option value={50}>50 por pagina</option>
+          </select>
+          <button type="button" onClick={() => navigator.clipboard.writeText(restaurantesOrdenados.map(r => [r.nombre, r.email, r.ciudad, r.slug, r.subscription_status].join(',')).join('\n'))}>Copiar CSV</button>
+          <button type="button" onClick={() => window.print()}>Imprimir / PDF</button>
+        </div>
+
         <div className="admin-access-list">
-          {restaurantes.map(restaurante => {
+          {restaurantesPagina.map(restaurante => {
             const resumenUso = uso.resumen[restaurante.id]
             const resumenIa = uso.ia?.resumen?.[restaurante.id]
             const resumenPreparacionIa = uso.ia?.preparacion?.resumen?.[restaurante.id]
@@ -614,6 +687,24 @@ function AdminPageContent() {
                 </div>
               </div>
               <div className="admin-access-actions">
+                <div className="admin-context-menu">
+                  <button
+                    type="button"
+                    className="admin-menu-button"
+                    title="Mas acciones"
+                    aria-label="Mas acciones"
+                    onClick={() => setMenuAccionesId(menuAccionesId === restaurante.id ? null : restaurante.id)}
+                  >
+                    ⋮
+                  </button>
+                  {menuAccionesId === restaurante.id && (
+                    <div className="admin-context-dropdown">
+                      <button type="button" onClick={() => copiarRestaurante(restaurante)}>Copiar datos</button>
+                      <Link href={`/admin/restaurante/${restaurante.id}`} onClick={() => setMenuAccionesId(null)}>Ver ficha consultor</Link>
+                      <button type="button" onClick={() => setMenuAccionesId(null)}>Cerrar menu</button>
+                    </div>
+                  )}
+                </div>
                 <button onClick={() => gestionar(restaurante)}>Abrir dashboard</button>
                 <button className="admin-plain-button" onClick={() => empezarEdicion(restaurante)}>Editar</button>
                 <button
@@ -703,6 +794,13 @@ function AdminPageContent() {
             </article>
             )
           })}
+        </div>
+        <div className="table-pagination">
+          <span>Pagina {pagina} de {totalPaginas} · {restaurantesOrdenados.length} registros</span>
+          <div>
+            <button type="button" onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}>Anterior</button>
+            <button type="button" onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))} disabled={pagina === totalPaginas}>Siguiente</button>
+          </div>
         </div>
         </section>
         )}

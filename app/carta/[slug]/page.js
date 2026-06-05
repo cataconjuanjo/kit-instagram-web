@@ -991,7 +991,7 @@ setPerfiles(nuevosPerfiles)
           <div>
             {restaurante.logo_url && (
               <span className={styles.logoFrame}>
-                <img src={restaurante.logo_url} alt={restaurante.nombre} className={styles.logo} />
+                <img src={restaurante.logo_url} alt={restaurante.nombre} className={styles.logo} loading="lazy" />
               </span>
             )}
             <p className={styles.kicker}>{i.carta}</p>
@@ -1362,7 +1362,7 @@ setPerfiles(nuevosPerfiles)
           <div>
             {restaurante.logo_url && (
               <span className={styles.logoFrame}>
-                <img src={restaurante.logo_url} alt={restaurante.nombre} className={styles.logo} />
+                <img src={restaurante.logo_url} alt={restaurante.nombre} className={styles.logo} loading="lazy" />
               </span>
             )}
             <p className={styles.kicker}>{i.sommelier}</p>
@@ -1535,7 +1535,7 @@ setPerfiles(nuevosPerfiles)
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             {restaurante.logo_url && (
-              <img src={restaurante.logo_url} alt={restaurante.nombre} style={{ height: 48, maxWidth: 160, objectFit: 'contain', marginBottom: 16, display: 'block' }} />
+              <img src={restaurante.logo_url} alt={restaurante.nombre} loading="lazy" style={{ height: 48, maxWidth: 160, objectFit: 'contain', marginBottom: 16, display: 'block' }} />
             )}
             <h1 style={{ fontSize: 30, fontWeight: 300, color: '#fff', margin: '0 0 6px', fontFamily: fontTitulo }}>{restaurante.nombre}</h1>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{vinos.length} {i.referencias} · {restaurante.ciudad}</p>

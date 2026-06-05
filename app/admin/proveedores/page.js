@@ -61,6 +61,23 @@ function archivoABase64(file) {
   })
 }
 
+async function leerRespuestaImportacion(res) {
+  const texto = await res.text()
+  if (!texto) return {}
+  try {
+    return JSON.parse(texto)
+  } catch {
+    if (/request entity too large|payload too large|body exceeded|too large/i.test(texto)) {
+      return {
+        error: 'El catálogo es demasiado grande para subirlo directo. Abre el PDF, copia el texto de las páginas de tarifa y pégalo en la alternativa de texto.',
+      }
+    }
+    return {
+      error: 'El servidor no devolvió una respuesta válida. Prueba con un archivo más pequeño o pega el texto del catálogo.',
+    }
+  }
+}
+
 function opcionesCampo(campo, base = []) {
   return Object.values(base.reduce((acc, vino) => {
     const valor = String(vino[campo] || '').trim()
@@ -71,7 +88,6 @@ function opcionesCampo(campo, base = []) {
     return acc
   }, {}))
     .sort((a, b) => (b.total - a.total) || a.label.localeCompare(b.label, 'es'))
-    .slice(0, 18)
 }
 
 async function tokenAdmin() {
@@ -79,7 +95,7 @@ async function tokenAdmin() {
   return sessionData?.session?.access_token
 }
 
-const LIMITE_PDF_DIRECTO_MB = 5
+const LIMITE_PDF_DIRECTO_MB = 3
 const REFERENCIAS_POR_PAGINA = 60
 const RANGOS_PRECIO = [
   { id: '', label: 'Todos los precios' },
@@ -115,7 +131,9 @@ function ProveedoresPageContent() {
   const [filtroPrecio, setFiltroPrecio] = useState('')
   const [filtroAbierto, setFiltroAbierto] = useState('')
   const [paginaReferencias, setPaginaReferencias] = useState(1)
+  const [ordenReferencias, setOrdenReferencias] = useState({ campo: 'nombre', dir: 'asc' })
   const [soloSinPrecio, setSoloSinPrecio] = useState(false)
+  const [ocultarSinPrecio, setOcultarSinPrecio] = useState(false)
   const [filtroImportacion, setFiltroImportacion] = useState('')
   const [reemplazarCatalogo, setReemplazarCatalogo] = useState(false)
   const [progresoGuardado, setProgresoGuardado] = useState('')
@@ -175,14 +193,15 @@ function ProveedoresPageContent() {
 
   useEffect(() => {
     setPaginaReferencias(1)
-  }, [proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio])
+  }, [proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, ordenReferencias])
 
   const vinosFiltrados = useMemo(() => {
     const terminos = normalizar(busquedaReferencias).split(' ').filter(Boolean)
     const rango = RANGOS_PRECIO.find(item => item.id === filtroPrecio)
-    return vinos.filter(vino => {
+    const filtrados = vinos.filter(vino => {
       if (proveedorSeleccionado && String(vino.proveedor_id) !== String(proveedorSeleccionado)) return false
       if (soloSinPrecio && Number(vino.coste_estimado) > 0) return false
+      if (ocultarSinPrecio && Number(vino.coste_estimado) <= 0) return false
       if (filtroZona && normalizar(vino.region) !== filtroZona) return false
       if (filtroBodega && normalizar(vino.bodega) !== filtroBodega) return false
       if (filtroTipo && normalizar(vino.tipo) !== filtroTipo) return false
@@ -207,7 +226,27 @@ function ProveedoresPageContent() {
       ].filter(Boolean).join(' '))
       return terminos.every(termino => texto.includes(termino))
     })
-  }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio])
+    const valorOrden = vino => {
+      if (ordenReferencias.campo === 'coste') return Number(vino.coste_estimado) || 0
+      if (ordenReferencias.campo === 'bodega') return normalizar(vino.bodega)
+      if (ordenReferencias.campo === 'zona') return normalizar(`${vino.region || ''} ${vino.tipo || ''} ${vino.uva || ''}`)
+      if (ordenReferencias.campo === 'formato') return normalizar(`${vino.formato || ''} ${vino.referencia || ''}`)
+      return normalizar(vino.nombre)
+    }
+
+    return [...filtrados].sort((a, b) => {
+      const av = valorOrden(a)
+      const bv = valorOrden(b)
+      let resultado
+      if (typeof av === 'number' || typeof bv === 'number') {
+        resultado = (av || 0) - (bv || 0)
+      } else {
+        resultado = String(av).localeCompare(String(bv), 'es', { numeric: true })
+      }
+      if (!resultado) resultado = normalizar(a.nombre).localeCompare(normalizar(b.nombre), 'es', { numeric: true })
+      return ordenReferencias.dir === 'desc' ? -resultado : resultado
+    })
+  }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, ordenReferencias])
 
   const proveedorPorId = useMemo(
     () => Object.fromEntries(proveedores.map(proveedor => [proveedor.id, proveedor])),
@@ -241,6 +280,7 @@ function ProveedoresPageContent() {
       if (excluir !== 'bodega' && filtroBodega && normalizar(vino.bodega) !== filtroBodega) return false
       if (excluir !== 'tipo' && filtroTipo && normalizar(vino.tipo) !== filtroTipo) return false
       if (soloSinPrecio && Number(vino.coste_estimado) > 0) return false
+      if (ocultarSinPrecio && Number(vino.coste_estimado) <= 0) return false
       if (rango?.id === 'sin_precio' && Number(vino.coste_estimado) > 0) return false
       if (rango?.min !== undefined || rango?.max !== undefined) {
         const coste = Number(vino.coste_estimado) || 0
@@ -268,8 +308,11 @@ function ProveedoresPageContent() {
       zonas: opcionesCampo('region', baseProveedor.filter(vino => pasaBase(vino, 'zona'))),
       bodegas: opcionesCampo('bodega', baseProveedor.filter(vino => pasaBase(vino, 'bodega'))),
       tipos: opcionesCampo('tipo', baseProveedor.filter(vino => pasaBase(vino, 'tipo'))),
+      sinZona: baseProveedor.filter(vino => pasaBase(vino, 'zona') && !normalizar(vino.region)).length,
+      sinBodega: baseProveedor.filter(vino => pasaBase(vino, 'bodega') && !normalizar(vino.bodega)).length,
+      sinTipo: baseProveedor.filter(vino => pasaBase(vino, 'tipo') && !normalizar(vino.tipo)).length,
     }
-  }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio])
+  }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio])
 
   const etiquetaFiltro = useCallback((opciones, valor, vacio = 'Todos') => (
     valor ? (opciones.find(opcion => opcion.key === valor)?.label || valor) : vacio
@@ -289,6 +332,18 @@ function ProveedoresPageContent() {
   function seleccionarTipo(valor) {
     setFiltroTipo(valor)
     setFiltroAbierto('')
+  }
+
+  function cambiarOrdenReferencias(campo) {
+    setOrdenReferencias(actual => ({
+      campo,
+      dir: actual.campo === campo && actual.dir === 'asc' ? 'desc' : 'asc',
+    }))
+  }
+
+  function etiquetaOrden(campo) {
+    if (ordenReferencias.campo !== campo) return '↕'
+    return ordenReferencias.dir === 'asc' ? '↑' : '↓'
   }
 
   const totalPaginasReferencias = Math.max(1, Math.ceil(vinosFiltrados.length / REFERENCIAS_POR_PAGINA))
@@ -434,7 +489,7 @@ function ProveedoresPageContent() {
           ...proveedorForm
         })
       })
-      const data = await res.json()
+      const data = await leerRespuestaImportacion(res)
       if (!res.ok) throw new Error(data.error || 'No se pudo guardar el proveedor.')
       await cargarCatalogo()
       setProveedorForm(proveedorInicial)
@@ -462,7 +517,7 @@ function ProveedoresPageContent() {
           ...vinoForm
         })
       })
-      const data = await res.json()
+      const data = await leerRespuestaImportacion(res)
       if (!res.ok) throw new Error(data.error || 'No se pudo guardar el vino.')
       await cargarCatalogo()
       setVinoForm({ ...vinoInicial, proveedor_id: vinoForm.proveedor_id })
@@ -939,9 +994,17 @@ function ProveedoresPageContent() {
               onChange={e => setBusquedaReferencias(e.target.value)}
               placeholder="Filtrar referencias guardadas por vino, bodega, zona, uva o referencia..."
             />
-            <select value={filtroPrecio} onChange={e => { setFiltroPrecio(e.target.value); setSoloSinPrecio(e.target.value === 'sin_precio') }}>
+            <select value={filtroPrecio} onChange={e => { setFiltroPrecio(e.target.value); setSoloSinPrecio(e.target.value === 'sin_precio'); if (e.target.value === 'sin_precio') setOcultarSinPrecio(false) }}>
               {RANGOS_PRECIO.map(rango => <option key={rango.id || 'todos'} value={rango.id}>{rango.label}</option>)}
             </select>
+            <label className="supplier-price-toggle">
+              <input
+                type="checkbox"
+                checked={ocultarSinPrecio}
+                onChange={e => { setOcultarSinPrecio(e.target.checked); if (e.target.checked && filtroPrecio === 'sin_precio') { setFiltroPrecio(''); setSoloSinPrecio(false) } }}
+              />
+              Ocultar sin precio
+            </label>
             <span>{vinosFiltrados.length} visibles</span>
           </div>
 
@@ -999,14 +1062,15 @@ function ProveedoresPageContent() {
               </div>
             </div>
 
-            {(filtroZona || filtroBodega || filtroTipo || filtroPrecio || busquedaReferencias || soloSinPrecio) && (
+            {(filtroZona || filtroBodega || filtroTipo || filtroPrecio || busquedaReferencias || soloSinPrecio || ocultarSinPrecio) && (
               <div className="supplier-active-filters">
                 {filtroZona && <span>Zona: {etiquetaFiltro(opcionesFiltros.zonas, filtroZona)}</span>}
                 {filtroBodega && <span>Bodega: {etiquetaFiltro(opcionesFiltros.bodegas, filtroBodega)}</span>}
                 {filtroTipo && <span>Tipo: {etiquetaFiltro(opcionesFiltros.tipos, filtroTipo)}</span>}
                 {filtroPrecio && <span>{RANGOS_PRECIO.find(rango => rango.id === filtroPrecio)?.label}</span>}
+                {ocultarSinPrecio && <span>Con precio</span>}
                 {busquedaReferencias && <span>Texto: {busquedaReferencias}</span>}
-                <button className="admin-plain-button supplier-clear-filters" onClick={() => { setFiltroZona(''); setFiltroBodega(''); setFiltroTipo(''); setFiltroPrecio(''); setBusquedaReferencias(''); setSoloSinPrecio(false); setFiltroAbierto('') }}>
+                <button className="admin-plain-button supplier-clear-filters" onClick={() => { setFiltroZona(''); setFiltroBodega(''); setFiltroTipo(''); setFiltroPrecio(''); setBusquedaReferencias(''); setSoloSinPrecio(false); setOcultarSinPrecio(false); setFiltroAbierto('') }}>
                   Limpiar filtros
                 </button>
               </div>
@@ -1023,11 +1087,11 @@ function ProveedoresPageContent() {
               <>
                 <div className="supplier-table">
                   <div className="supplier-table-head">
-                    <span>Vino</span>
-                    <span>Bodega</span>
-                    <span>Zona / Tipo</span>
-                    <span>Formato</span>
-                    <span>Coste</span>
+                    <button type="button" onClick={() => cambiarOrdenReferencias('nombre')} className={ordenReferencias.campo === 'nombre' ? 'is-active' : ''}>Vino <span>{etiquetaOrden('nombre')}</span></button>
+                    <button type="button" onClick={() => cambiarOrdenReferencias('bodega')} className={ordenReferencias.campo === 'bodega' ? 'is-active' : ''}>Bodega <span>{etiquetaOrden('bodega')}</span></button>
+                    <button type="button" onClick={() => cambiarOrdenReferencias('zona')} className={ordenReferencias.campo === 'zona' ? 'is-active' : ''}>Zona / Tipo <span>{etiquetaOrden('zona')}</span></button>
+                    <button type="button" onClick={() => cambiarOrdenReferencias('formato')} className={ordenReferencias.campo === 'formato' ? 'is-active' : ''}>Formato <span>{etiquetaOrden('formato')}</span></button>
+                    <button type="button" onClick={() => cambiarOrdenReferencias('coste')} className={ordenReferencias.campo === 'coste' ? 'is-active' : ''}>Coste <span>{etiquetaOrden('coste')}</span></button>
                     <span></span>
                   </div>
                   {referenciasVisibles.map(vino => (

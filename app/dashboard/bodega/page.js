@@ -9,7 +9,7 @@ import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
 function eur(valor) {
-  return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} EUR`
+  return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
 }
 
 function decimal(valor) {
@@ -200,6 +200,20 @@ export default function ControlBodega() {
     setEditando(null)
     window.requestAnimationFrame(() => {
       document.getElementById('referencias')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  function abrirPropuestas() {
+    setMostrarPropuestas(true)
+    window.requestAnimationFrame(() => {
+      document.getElementById('propuestas')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  function abrirMovimientos() {
+    setMostrarMovimientos(true)
+    window.requestAnimationFrame(() => {
+      document.getElementById('movimientos')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
   }
 
@@ -469,6 +483,50 @@ export default function ControlBodega() {
     >
       {error && <div className={styles.empty} style={{ minHeight: 70, marginBottom: 16, color: '#9b3535' }}>{error}</div>}
 
+      <div className={styles.cellarPage}>
+      <section className={styles.cellarHero}>
+        <div className={styles.cellarHeroCopy}>
+          <p className={styles.eyebrow}>Cava viva</p>
+          <h2>La bodega, lista para servicio</h2>
+          <p>
+            Una vista pensada para mirar el stock como lo mira sala: qué falta, qué merece empuje y qué botella necesita una decisión hoy.
+          </p>
+          <div className={styles.cellarHeroActions}>
+            <a href="#pedido" className={styles.primary}>Preparar pedido</a>
+            <button type="button" className={styles.secondary} onClick={abrirPropuestas}>Ver propuestas</button>
+            <Link className={styles.ghost} href="/dashboard/vinos?filtro=stock">Stock bajo</Link>
+          </div>
+        </div>
+        <div className={styles.cellarHeroMetrics}>
+          <article>
+            <strong>{datos.activos.length}</strong>
+            <span>referencias activas</span>
+          </article>
+          <article>
+            <strong>{datos.bajoMinimo.length}</strong>
+            <span>bajo mínimo</span>
+          </article>
+          <article>
+            <strong>{pedidoCombinado.length}</strong>
+            <span>para pedir</span>
+          </article>
+        </div>
+      </section>
+
+      <nav className={styles.innerTabs} aria-label="Secciones de bodega">
+        <a href="#pedido">Estado</a>
+        <button type="button" onClick={abrirPropuestas}>
+          Propuestas {propuestas.length > 0 && <span>{propuestas.length}</span>}
+        </button>
+        <button type="button" onClick={abrirMovimientos}>
+          Movimientos
+        </button>
+        <a href="#proveedores">Proveedores</a>
+        <button type="button" onClick={() => abrirReferencias('sin_coste')}>
+          Pendiente {datos.sinCoste.length + datos.sinProveedor.length + datos.sinStockMinimo.length > 0 && <span>{datos.sinCoste.length + datos.sinProveedor.length + datos.sinStockMinimo.length}</span>}
+        </button>
+      </nav>
+
       <section className={styles.statsGrid}>
         <div className={styles.stat}><p className={styles.statValue}>{eur(datos.valorCoste)}</p><p className={styles.statLabel}>Valor a coste</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{eur(datos.valorVenta)}</p><p className={styles.statLabel}>Potencial venta</p></div>
@@ -590,7 +648,7 @@ export default function ControlBodega() {
         </div>
       </section>
 
-      <section className={styles.panel} style={{ marginTop: 16 }}>
+      <section className={styles.panel} id="movimientos" style={{ marginTop: 16 }}>
         <div className={styles.panelHead}>
           <div>
             <h2 className={styles.panelTitle}>Libro de movimientos</h2>
@@ -625,7 +683,7 @@ export default function ControlBodega() {
         </div>}
       </section>
 
-      <section className={styles.gridTwo} style={{ marginTop: 16 }}>
+      <section className={styles.gridTwo} id="proveedores" style={{ marginTop: 16 }}>
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
@@ -686,8 +744,7 @@ export default function ControlBodega() {
         </div>
       </section>
 
-      {propuestas.length > 0 && (
-        <section className={`${styles.panelDark} ${styles.notificationFocus}`} id="propuestas" style={{ marginTop: 16 }}>
+      <section className={`${styles.panelDark} ${styles.notificationFocus}`} id="propuestas" style={{ marginTop: 16 }}>
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Propuestas recibidas</h2>
@@ -697,7 +754,7 @@ export default function ControlBodega() {
               {mostrarPropuestas ? 'Ocultar' : `Ver ${propuestas.length}`}
             </button>
           </div>
-          {mostrarPropuestas && (
+          {mostrarPropuestas && propuestas.length > 0 && (
             <div className={styles.panelBody}>
               <div className={styles.itemStack}>
                 {propuestas.map(propuesta => (
@@ -720,8 +777,12 @@ export default function ControlBodega() {
               </div>
             </div>
           )}
+          {mostrarPropuestas && propuestas.length === 0 && (
+            <div className={styles.panelBody}>
+              <div className={styles.empty}>No hay propuestas pendientes ahora.</div>
+            </div>
+          )}
         </section>
-      )}
 
       <section className={styles.panel} id="referencias" style={{ marginTop: 16 }}>
         <div className={styles.panelHead}>
@@ -795,7 +856,7 @@ export default function ControlBodega() {
                           <input className={styles.input} type="number" step="0.01" value={editando.coste_compra} onChange={e => setEditando({ ...editando, coste_compra: e.target.value })} />
                           {parseFloat(editando.coste_compra) > 0 && (
                             <p style={{ margin: '5px 0 0', fontSize: 11, color: '#8b8278' }}>
-                              x2 {(parseFloat(editando.coste_compra) * 2).toFixed(2)} EUR · x3 {(parseFloat(editando.coste_compra) * 3).toFixed(2)} EUR
+                              x2 {(parseFloat(editando.coste_compra) * 2).toFixed(2)} € · x3 {(parseFloat(editando.coste_compra) * 3).toFixed(2)} €
                             </p>
                           )}
                         </div>
@@ -835,6 +896,7 @@ export default function ControlBodega() {
           </div>
         )}
       </section>
+      </div>
     </ModuleShell>
     </FeatureGate>
   )

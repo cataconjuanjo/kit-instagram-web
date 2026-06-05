@@ -27,6 +27,32 @@ const FONT_MAP = {
   display:   { family: '"Playfair Display", serif',      label: 'Display',   sample: 'Vino',  googleFont: 'Playfair+Display:wght@500' },
 }
 
+function hexToRgb(hex = '') {
+  const clean = hex.replace('#', '').trim()
+  if (!/^[0-9a-f]{6}$/i.test(clean)) return null
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16),
+  }
+}
+
+function luminance(hex) {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return 0
+  const values = [rgb.r, rgb.g, rgb.b].map(value => {
+    const channel = value / 255
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+  })
+  return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722
+}
+
+function contrastRatio(a, b) {
+  const light = Math.max(luminance(a), luminance(b))
+  const dark = Math.min(luminance(a), luminance(b))
+  return (light + 0.05) / (dark + 0.05)
+}
+
 export default function Personalizar() {
   const [restaurante, setRestaurante] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -389,6 +415,16 @@ export default function Personalizar() {
 
   const tituloHubPreview = hubTitulo.trim() || restaurante?.nombre
   const subtituloHubPreview = hubSubtitulo.trim() || restaurante?.ciudad || 'Carta, reservas y enlaces'
+  const contrasteCabecera = contrastRatio(colorPrimario, '#ffffff')
+  const contrasteFondo = contrastRatio(colorFondo, '#111111')
+  const checksMarca = [
+    { label: 'Logo', ok: Boolean(logoUrl), text: logoUrl ? 'Cargado' : 'Pendiente' },
+    { label: 'Banner carta', ok: Boolean(bannerUrl), text: bannerUrl ? 'Con imagen' : 'Sin banner' },
+    { label: 'Fondo hub', ok: Boolean(hubFondoUrl), text: hubFondoUrl ? 'Personalizado' : 'Sin fondo' },
+    { label: 'Contraste cabecera', ok: contrasteCabecera >= 4.5, text: `${contrasteCabecera.toFixed(1)}:1` },
+    { label: 'Contraste fondo', ok: contrasteFondo >= 4.5, text: `${contrasteFondo.toFixed(1)}:1` },
+  ]
+  const marcaLista = checksMarca.filter(item => item.ok).length
 
   return (
     <ModuleShell
@@ -424,6 +460,25 @@ export default function Personalizar() {
           {errorPersonalizacion}
         </div>
       )}
+      <section className={styles.brandHealth}>
+        <div>
+          <p className={styles.eyebrow}>Diagnóstico de marca</p>
+          <h2>{marcaLista === checksMarca.length ? 'Identidad lista para mesa' : 'Faltan detalles de identidad'}</h2>
+          <p>Un vistazo rápido a lo que verá el cliente: logo, ambiente, hub y legibilidad.</p>
+        </div>
+        <div className={styles.brandHealthScore}>
+          <strong>{marcaLista}/{checksMarca.length}</strong>
+          <span>puntos listos</span>
+        </div>
+        <div className={styles.brandChecks}>
+          {checksMarca.map(item => (
+            <span key={item.label} className={item.ok ? styles.brandCheckOk : styles.brandCheckPending}>
+              {item.label}: {item.text}
+            </span>
+          ))}
+        </div>
+      </section>
+
       {/* Paletas curadas */}
       <section className={styles.panel}>
         <div className={styles.panelHead}>
@@ -527,7 +582,7 @@ export default function Personalizar() {
               <div style={{ position: 'relative', overflow: 'hidden', padding: '14px 16px', background: colorPrimario }}>
                 {bannerUrl && <div aria-hidden="true" style={bannerCss(bannerZoom, bannerX, bannerY)} />}
                 <div style={{ position: 'relative', zIndex: 1 }}>
-                  {logoUrl && <img src={logoUrl} alt="Logo" style={{ height: 28, objectFit: 'contain', display: 'block', marginBottom: 8 }} />}
+                  {logoUrl && <img src={logoUrl} alt="Logo" loading="lazy" style={{ height: 28, objectFit: 'contain', display: 'block', marginBottom: 8 }} />}
                   <p style={{ margin: '0 0 2px', color: 'rgba(255,255,255,0.55)', fontSize: 9, fontWeight: 850, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Carta de vinos</p>
                   <p style={{ margin: 0, color: '#fff', fontSize: 18, fontFamily: fontPreview }}>{restaurante?.nombre}</p>
                 </div>
@@ -741,7 +796,7 @@ export default function Personalizar() {
             >
               <div style={{ display: 'contents' }}>
               {hubMostrarLogo && (logoUrl ? (
-                <img src={logoUrl} alt="Logo" style={{ width: 68, height: 68, objectFit: 'contain', borderRadius: 999, background: colorPrimario, padding: 8, boxSizing: 'border-box' }} />
+                <img src={logoUrl} alt="Logo" loading="lazy" style={{ width: 68, height: 68, objectFit: 'contain', borderRadius: 999, background: colorPrimario, padding: 8, boxSizing: 'border-box' }} />
               ) : (
                 <div style={{ width: 68, height: 68, borderRadius: 999, background: colorPrimario, color: '#fff', display: 'grid', placeItems: 'center', fontFamily: fontPreview }}>
                   {restaurante?.nombre?.slice(0, 2)}
@@ -801,7 +856,7 @@ export default function Personalizar() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
             <div style={{ width: 72, height: 72, border: '1px solid #dfddd6', borderRadius: 8, display: 'grid', placeItems: 'center', background: colorPrimario, overflow: 'hidden', flexShrink: 0 }}>
               {logoUrl
-                ? <img src={logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                ? <img src={logoUrl} alt="Logo" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 : <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Sin logo</span>
               }
             </div>

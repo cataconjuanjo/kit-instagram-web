@@ -142,7 +142,7 @@ export default function RestauranteHub({ params }) {
         {mostrarIdentidad && (
           <div className="hub-identity">
             {mostrarLogo && (restaurante.logo_url ? (
-              <img className="hub-logo" src={restaurante.logo_url} alt={restaurante.nombre} />
+              <img className="hub-logo" src={restaurante.logo_url} alt={restaurante.nombre} loading="lazy" />
             ) : (
               <div className="hub-logo hub-logo-text">{restaurante.nombre?.slice(0, 2)}</div>
             ))}

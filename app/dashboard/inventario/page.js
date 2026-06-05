@@ -31,6 +31,11 @@ function leerDetalle(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return {} }
 }
 
+function setConteoSeguro(setConteos, vinoId, valor) {
+  const numero = Math.max(0, Number(valor) || 0)
+  setConteos(prev => ({ ...prev, [vinoId]: String(numero) }))
+}
+
 export default function InventarioSemanal() {
   const [restaurante, setRestaurante] = useState(null)
   const [vinos, setVinos] = useState([])
@@ -162,8 +167,6 @@ export default function InventarioSemanal() {
           motivo: `Inventario semanal: ${motivo}`
         }])
 
-        // Si el motivo es "venta no registrada" y hay botellas de menos,
-        // registrar en estadísticas para que Rentabilidad las cuente
         if (motivo === 'venta' && diferencia < 0) {
           await supabase.from('estadisticas').insert([{
             restaurante_id: restaurante.id,
@@ -221,15 +224,19 @@ export default function InventarioSemanal() {
 
   const costeDiferencia = datos.ajustes.reduce((sum, ajuste) => sum + ajuste.coste, 0)
   const ventaDiferencia = datos.ajustes.reduce((sum, ajuste) => sum + ajuste.venta, 0)
+  const bajoMinimo = datos.enriquecidos.filter(vino => vino.bajoMinimo).length
+  const incidencias = datos.enriquecidos.filter(vino => vino.actividad.incidencias > 0).length
+  const sinCoste = datos.enriquecidos.filter(vino => vino.sinCoste).length
+  const progreso = vinosInventario.length ? Math.round((revisadosFiltro / vinosInventario.length) * 100) : 0
 
   const filtros = [
-    ['prioridad', 'Revisar primero'],
-    ['minimo', 'Bajo mínimo'],
-    ['incidencias', 'Incidencias'],
-    ['premium', 'Premium'],
-    ['copa', 'Por copa'],
-    ['sin_coste', 'Sin coste'],
-    ['todo', 'Todo'],
+    ['prioridad', 'Revisar primero', datos.enriquecidos.filter(vino => vino.prioridad > 0).length],
+    ['minimo', 'Bajo mínimo', bajoMinimo],
+    ['incidencias', 'Incidencias', incidencias],
+    ['premium', 'Premium', datos.enriquecidos.filter(vino => vino.premium).length],
+    ['copa', 'Por copa', datos.enriquecidos.filter(vino => vino.porCopa).length],
+    ['sin_coste', 'Sin coste', sinCoste],
+    ['todo', 'Todo', datos.enriquecidos.length],
   ]
 
   return (
@@ -246,13 +253,39 @@ export default function InventarioSemanal() {
         items: [
           { title: 'Empieza por prioridad', text: 'Bajo mínimo, incidencias, vinos premium y copa tienen más impacto que una lista alfabética.' },
           { title: 'Cuenta y compara', text: 'Rellena solo las unidades contadas cuando haya diferencia real con el stock de la app.' },
-          { title: 'Aplica al final', text: 'El boton de aplicar actualiza stock y guarda el movimiento para mantener trazabilidad.' },
+          { title: 'Aplica al final', text: 'El botón de aplicar actualiza stock y guarda el movimiento para mantener trazabilidad.' },
         ],
       }}
     >
-      {mensaje && <div className={styles.empty} style={{ minHeight: 70, marginBottom: 16 }}>{mensaje}</div>}
+      {mensaje && <div className={styles.inlineToast} style={{ marginTop: 0 }}><span>{mensaje}</span><button type="button" onClick={() => setMensaje('')}>Cerrar</button></div>}
 
-      <section className={styles.statsGrid}>
+      <section className={styles.inventoryHero}>
+        <div>
+          <p className={styles.eyebrow}>Modo conteo rápido</p>
+          <h2>Cuenta por impacto, no por alfabeto</h2>
+          <p>
+            Empieza por bajo mínimo, incidencias, copa y premium. Cada referencia muestra qué revisar,
+            cuánto stock declara la app y si el ajuste impacta coste o venta.
+          </p>
+          <div className={styles.inventoryHeroActions}>
+            <button type="button" className={styles.primary} onClick={() => document.getElementById('inventario-conteo')?.scrollIntoView({ behavior: 'smooth' })}>
+              Empezar conteo
+            </button>
+            <button type="button" className={styles.secondary} onClick={() => { setFiltro('minimo'); setPagina(1) }}>
+              Bajo mínimo ({bajoMinimo})
+            </button>
+            <button type="button" className={styles.ghost} onClick={() => { setFiltro('incidencias'); setPagina(1) }}>
+              Incidencias ({incidencias})
+            </button>
+          </div>
+        </div>
+        <div className={styles.inventoryHeroScore}>
+          <strong>{progreso}%</strong>
+          <span>{revisadosFiltro} revisados</span>
+        </div>
+      </section>
+
+      <section className={`${styles.statsGrid} ${styles.inventoryStats}`}>
         <div className={styles.stat}><p className={styles.statValue}>{datos.filtrados.length}</p><p className={styles.statLabel}>Referencias a revisar</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{datos.ajustes.length}</p><p className={styles.statLabel}>Ajustes preparados</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{eur(costeDiferencia)}</p><p className={styles.statLabel}>Diferencia a coste</p></div>
@@ -267,17 +300,18 @@ export default function InventarioSemanal() {
           </div>
         </div>
         <div className={styles.panelBody}>
-          <div className={styles.actionRow}>
-            {filtros.map(([id, label]) => (
-              <button key={id} className={filtro === id ? styles.secondary : styles.ghost} onClick={() => { setFiltro(id); setPagina(1) }}>
-                {label}
+          <div className={styles.inventoryFilterGrid}>
+            {filtros.map(([id, label, total]) => (
+              <button key={id} className={filtro === id ? styles.inventoryFilterActive : styles.inventoryFilter} onClick={() => { setFiltro(id); setPagina(1) }}>
+                <span>{label}</span>
+                <strong>{total}</strong>
               </button>
             ))}
           </div>
         </div>
       </section>
 
-      <section className={styles.panel}>
+      <section className={styles.panel} id="inventario-conteo">
         <div className={styles.panelHead}>
           <div>
             <h2 className={styles.panelTitle}>Conteo rápido</h2>
@@ -286,20 +320,16 @@ export default function InventarioSemanal() {
           <span className={styles.badge}>{vinosInventario.length}</span>
         </div>
         <div className={styles.panelBody}>
-          <div style={{ marginBottom: 12 }}>
-            <label className={styles.label}>Buscar vino</label>
-            <input
-              className={styles.input}
-              value={busqueda}
-              onChange={event => { setBusqueda(event.target.value); setPagina(1) }}
-              placeholder="Nombre, bodega, proveedor, uva o región..."
-            />
-          </div>
-          <div className={styles.inventoryToolbar}>
-            <div>
-              <p className={styles.eyebrow}>Progreso de revisión</p>
-              <strong>{revisadosFiltro} de {vinosInventario.length} visibles revisados</strong>
-            </div>
+          <div className={styles.inventorySearchRow}>
+            <label>
+              <span className={styles.label}>Buscar vino</span>
+              <input
+                className={styles.input}
+                value={busqueda}
+                onChange={event => { setBusqueda(event.target.value); setPagina(1) }}
+                placeholder="Nombre, bodega, proveedor, uva o región..."
+              />
+            </label>
             <label className={styles.bulkSelectAll}>
               <input
                 type="checkbox"
@@ -308,6 +338,16 @@ export default function InventarioSemanal() {
               />
               <span>Solo ajustes preparados ({datos.ajustes.length})</span>
             </label>
+          </div>
+
+          <div className={styles.inventoryToolbar}>
+            <div>
+              <p className={styles.eyebrow}>Progreso de revisión</p>
+              <strong>{revisadosFiltro} de {vinosInventario.length} visibles revisados</strong>
+            </div>
+            <div className={styles.inventoryProgressTrack} aria-label={`Progreso ${progreso}%`}>
+              <span style={{ width: `${progreso}%` }} />
+            </div>
           </div>
 
           {vinosInventario.length ? (
@@ -324,33 +364,61 @@ export default function InventarioSemanal() {
 
               <div className={styles.itemStack}>
               {vinosTanda.map(vino => {
+                const stockActual = decimal(vino.stock)
+                const minimo = decimal(vino.stock_minimo)
                 const contado = conteos[vino.id]
-                const diferencia = contado === '' || contado === undefined ? null : Number(contado) - decimal(vino.stock)
+                const tieneConteo = contado !== '' && contado !== undefined && contado !== null
+                const diferencia = tieneConteo ? Number(contado) - stockActual : null
+                const stockRatio = minimo > 0 ? Math.min(100, Math.round((stockActual / Math.max(minimo, 1)) * 100)) : 100
+                const etiquetas = [
+                  vino.bajoMinimo && ['danger', 'Bajo mínimo'],
+                  vino.actividad.incidencias > 0 && ['danger', `${vino.actividad.incidencias} incidencias`],
+                  vino.actividad.ventas > 0 && ['success', `${vino.actividad.ventas} ventas`],
+                  vino.premium && ['info', 'Premium'],
+                  vino.porCopa && ['warning', 'Por copa'],
+                  vino.sinCoste && ['warning', 'Sin coste']
+                ].filter(Boolean)
                 return (
-                  <article className={styles.itemCard} key={vino.id}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
+                  <article className={styles.inventoryCard} key={vino.id}>
+                    <div className={styles.inventoryCardHead}>
                       <div>
-                        <h3 className={styles.sectionTitle}>{vino.nombre}</h3>
-                        <p className={styles.sectionText}>
-                          {vino.bodega || 'Sin bodega'} · stock app {vino.stock || 0} · coste {eur(vino.coste_compra)} · venta {eur(vino.precio_botella)}
-                        </p>
-                        <p className={styles.tiny}>
-                          {[
-                            vino.bajoMinimo && 'bajo mínimo',
-                            vino.actividad.incidencias > 0 && `${vino.actividad.incidencias} incidencias`,
-                            vino.actividad.ventas > 0 && `${vino.actividad.ventas} ventas marcadas`,
-                            vino.premium && 'premium',
-                            vino.porCopa && 'por copa',
-                            vino.sinCoste && 'sin coste'
-                          ].filter(Boolean).join(' · ') || 'revisión general'}
+                        <h3>{vino.nombre}</h3>
+                        <p>
+                          {vino.bodega || 'Sin bodega'} · stock app {stockActual} · coste {eur(vino.coste_compra)} · venta {eur(vino.precio_botella)}
                         </p>
                       </div>
-                      <span className={styles.badge}>{diferencia === null || Number.isNaN(diferencia) ? 'Pendiente' : diferencia > 0 ? `+${diferencia}` : String(diferencia)}</span>
+                      <span className={`${styles.inventoryDelta} ${diferencia > 0 ? styles.inventoryDeltaPositive : diferencia < 0 ? styles.inventoryDeltaNegative : ''}`}>
+                        {!tieneConteo || Number.isNaN(diferencia) ? 'Pendiente' : diferencia > 0 ? `+${diferencia}` : String(diferencia)}
+                      </span>
                     </div>
-                    <div className={styles.formGrid} style={{ marginTop: 14 }}>
+
+                    <div className={styles.inventoryBadges}>
+                      {(etiquetas.length ? etiquetas : [['neutral', 'Revisión general']]).map(([tipo, texto]) => (
+                        <span key={texto} className={styles[`inventoryBadge${tipo.charAt(0).toUpperCase()}${tipo.slice(1)}`]}>{texto}</span>
+                      ))}
+                    </div>
+
+                    <div className={styles.inventoryStockBar}>
                       <div>
-                        <label className={styles.label}>Stock contado</label>
-                        <input className={styles.input} type="number" value={conteos[vino.id] ?? ''} onChange={e => setConteos({ ...conteos, [vino.id]: e.target.value })} placeholder={String(vino.stock || 0)} />
+                        <span style={{ width: `${stockRatio}%` }} className={vino.bajoMinimo ? styles.inventoryStockDanger : ''} />
+                      </div>
+                      <p>Stock {stockActual}{minimo > 0 ? ` / mínimo ${minimo}` : ' · sin mínimo definido'}</p>
+                    </div>
+
+                    <div className={styles.inventoryCountGrid}>
+                      <div>
+                        <span className={styles.label}>Stock contado</span>
+                        <div className={styles.stepper}>
+                          <button type="button" aria-label={`Restar una unidad a ${vino.nombre}`} onClick={() => setConteoSeguro(setConteos, vino.id, (tieneConteo ? Number(contado) : stockActual) - 1)}>-</button>
+                          <input
+                            className={styles.input}
+                            type="number"
+                            value={conteos[vino.id] ?? ''}
+                            onChange={e => setConteos({ ...conteos, [vino.id]: e.target.value })}
+                            placeholder={String(stockActual)}
+                          />
+                          <button type="button" aria-label={`Sumar una unidad a ${vino.nombre}`} onClick={() => setConteoSeguro(setConteos, vino.id, (tieneConteo ? Number(contado) : stockActual) + 1)}>+</button>
+                        </div>
                       </div>
                       <div>
                         <label className={styles.label}>Motivo</label>
@@ -362,6 +430,18 @@ export default function InventarioSemanal() {
                           <option value="cata">Cata interna</option>
                           <option value="error">Error anterior</option>
                         </select>
+                      </div>
+                      <div className={styles.inventoryQuickButtons}>
+                        <button type="button" className={styles.secondary} onClick={() => setConteos(prev => ({ ...prev, [vino.id]: String(stockActual) }))}>
+                          Confirmar stock
+                        </button>
+                        <button type="button" className={styles.ghost} onClick={() => setConteos(prev => {
+                          const next = { ...prev }
+                          delete next[vino.id]
+                          return next
+                        })}>
+                          Limpiar
+                        </button>
                       </div>
                     </div>
                   </article>

@@ -1,8 +1,14 @@
 .shell {
   display: flex;
   min-height: 100vh;
-  background: #f4f4f1;
+  background: #F8F7F4;
+  color: #222222;
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.darkShell {
+  background: #1f1f1f;
+  color: #f6f2ea;
 }
 
 /* ── Sidebar ── */
@@ -12,10 +18,10 @@
   top: 0;
   left: 0;
   bottom: 0;
-  width: 220px;
+  width: 248px;
   display: flex;
   flex-direction: column;
-  background: #171416;
+  background: #3A3A3A;
   border-right: 1px solid rgba(255, 250, 243, 0.08);
   z-index: 50;
   overflow-y: auto;
@@ -59,7 +65,7 @@
 .brandLogoFallback {
   display: grid;
   place-items: center;
-  color: #d9c8a8;
+  color: #ffffff;
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -71,7 +77,7 @@
 
 .brandLabel {
   margin: 0 0 5px;
-  color: #bfa984;
+  color: #ffffff;
   font-size: 9px;
   font-weight: 850;
   letter-spacing: 0.15em;
@@ -80,7 +86,7 @@
 
 .brandName {
   margin: 0;
-  color: #fffaf3;
+  color: #ffffff;
   font-size: 15px;
   font-weight: 750;
   line-height: 1.2;
@@ -93,6 +99,13 @@
   margin: 3px 0 0;
   color: rgba(255, 250, 243, 0.42);
   font-size: 11px;
+}
+
+.pinState {
+  margin: 5px 0 0;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .brandPlan {
@@ -126,7 +139,8 @@
   align-items: center;
   gap: 10px;
   padding: 9px 16px;
-  color: rgba(255, 250, 243, 0.6);
+  min-height: 44px;
+  color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
   font-size: 13px;
   font-weight: 650;
@@ -136,14 +150,14 @@
 }
 
 .navLink:hover {
-  color: #fffaf3;
-  background: rgba(255, 250, 243, 0.06);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .navActive {
-  color: #fffaf3;
-  background: rgba(83, 24, 39, 0.4);
-  border-left-color: #531827;
+  color: #ffffff;
+  background: #8B3F5C;
+  border-left-color: #ffffff;
 }
 
 .navIcon {
@@ -166,22 +180,22 @@
   background: rgba(255, 250, 243, 0.1);
   color: rgba(255, 250, 243, 0.6);
   border-radius: 10px;
-  padding: 1px 7px;
-  font-size: 11px;
+  padding: 4px 9px;
+  font-size: 12px;
   font-weight: 780;
 }
 
 .navAlert {
-  min-width: 18px;
-  height: 18px;
+  min-width: 28px;
+  height: 24px;
   flex-shrink: 0;
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
-  background: #c33434;
+  background: #EF4444;
   color: #fff;
   box-shadow: 0 0 0 2px rgba(23, 20, 22, 0.9);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 900;
   line-height: 1;
 }
@@ -198,13 +212,13 @@
 }
 
 .subnavLink {
-  min-height: 28px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   border-radius: 6px;
-  color: rgba(255, 250, 243, 0.44);
+  color: rgba(255, 255, 255, 0.76);
   padding: 5px 8px;
   text-decoration: none;
   font-size: 11px;
@@ -212,8 +226,8 @@
 }
 
 .subnavLink:hover {
-  color: rgba(255, 250, 243, 0.78);
-  background: rgba(255, 250, 243, 0.05);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .subnavActive {
@@ -284,12 +298,326 @@ button.footerLink {
 /* ── Main area ── */
 
 .main {
-  margin-left: 220px;
+  margin-left: 248px;
   min-height: 100vh;
   flex: 1;
   display: flex;
   flex-direction: column;
   color: #171416;
+}
+
+.operationalTopbar {
+  position: sticky;
+  top: 0;
+  z-index: 35;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.1fr) auto;
+  align-items: center;
+  gap: 18px;
+  min-height: 68px;
+  padding: 10px 24px;
+  border-bottom: 1px solid #e4ddd2;
+  background: rgba(255, 253, 248, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.darkShell .operationalTopbar {
+  border-bottom-color: #343434;
+  background: rgba(32, 32, 32, 0.96);
+}
+
+.restaurantTitle {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.restaurantTitle strong {
+  color: #222222;
+  font-size: 16px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.restaurantTitle span {
+  color: #625a53;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.darkShell .restaurantTitle strong,
+.darkShell .restaurantTitle span {
+  color: #fffaf3;
+}
+
+.topSearch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.topSearch > button,
+.topStatus a,
+.topStatus button,
+.clock {
+  min-height: 44px;
+  border: 1px solid #d8d0c4;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #222222;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.topSearch > button {
+  width: 100%;
+  text-align: left;
+}
+
+.topSearch kbd {
+  border: 1px solid #d8d0c4;
+  border-radius: 6px;
+  background: #F8F7F4;
+  color: #625a53;
+  padding: 4px 7px;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.searchPopover,
+.profileDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  z-index: 7;
+  border: 1px solid #d8d0c4;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 20px 44px rgba(23, 20, 22, 0.16);
+}
+
+.searchPopover {
+  left: 0;
+  right: 0;
+  padding: 10px;
+}
+
+.searchHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.searchHeader input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #d8d0c4;
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #222222;
+  font: inherit;
+}
+
+.searchHeader button {
+  min-height: 44px;
+  border: 1px solid #d8d0c4;
+  border-radius: 8px;
+  background: #F8F7F4;
+  color: #222222;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.searchResults {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.searchResults a {
+  display: grid;
+  gap: 2px;
+  border-radius: 7px;
+  padding: 9px 10px;
+  color: #222222;
+  text-decoration: none;
+}
+
+.searchResults a:hover {
+  background: #F8F7F4;
+}
+
+.searchResults span,
+.searchResults small {
+  color: #625a53;
+  font-size: 11px;
+}
+
+.searchResults strong {
+  font-size: 13px;
+}
+
+.searchResults p {
+  margin: 8px 4px;
+  color: #625a53;
+  font-size: 12px;
+}
+
+.topStatus {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.alertPillCritical {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #b42323 !important;
+}
+
+.alertPillOk {
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #05734f !important;
+}
+
+.clock {
+  display: inline-flex;
+  align-items: center;
+}
+
+.profileMenu {
+  position: relative;
+}
+
+.profileDropdown {
+  right: 0;
+  display: grid;
+  gap: 4px;
+  min-width: 210px;
+  padding: 8px;
+}
+
+.profileDropdown a,
+.profileDropdown button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #222222;
+  padding: 8px 10px;
+  text-align: left;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.profileDropdown a:hover,
+.profileDropdown button:hover {
+  background: #F8F7F4;
+}
+
+.shortcutToast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 90;
+  border-radius: 8px;
+  background: #10B981;
+  color: #ffffff;
+  padding: 11px 14px;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 16px 36px rgba(23, 20, 22, 0.18);
+}
+
+.shortcutsBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(23, 20, 22, 0.56);
+  padding: 18px;
+}
+
+.shortcutsModal {
+  width: min(560px, 100%);
+  border: 1px solid #d8d0c4;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1A1A1A;
+  padding: 18px;
+  box-shadow: 0 24px 70px rgba(23, 20, 22, 0.28);
+}
+
+.shortcutsHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.shortcutsHead h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.shortcutsHead button {
+  min-height: 40px;
+  border: 1px solid #d8d0c4;
+  border-radius: 8px;
+  background: #F8F7F4;
+  color: #1A1A1A;
+  padding: 0 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.shortcutsModal dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.shortcutsModal dl > div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  border-radius: 8px;
+  background: #F8F7F4;
+  padding: 10px;
+}
+
+.shortcutsModal dt {
+  width: fit-content;
+  border-radius: 6px;
+  background: #1A1A1A;
+  color: #ffffff;
+  padding: 5px 7px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.shortcutsModal dd {
+  margin: 0;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 750;
 }
 
 /* ── Mobile bar ── */
@@ -366,5 +694,21 @@ button.footerLink {
 
   .mobileBar {
     display: flex;
+  }
+
+  .operationalTopbar {
+    top: 59px;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .operationalTopbar {
+    padding: 10px 14px;
+  }
+
+  .topStatus {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }

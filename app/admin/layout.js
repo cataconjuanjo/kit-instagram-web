@@ -9,6 +9,10 @@ import styles from './layout.module.css'
 export default function AdminLayout({ children }) {
   const [restaurantes, setRestaurantes] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [notificationOpen, setNotificationOpen] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
   const pathname = usePathname()
 
   async function cerrarSesion() {
@@ -17,12 +21,42 @@ export default function AdminLayout({ children }) {
   }
 
   useEffect(() => {
-    supabase.from('restaurantes').select('id, nombre, ciudad').order('nombre')
+    supabase.auth.getUser().then(({ data }) => setUserEmail(data?.user?.email || ''))
+    supabase.from('restaurantes').select('id, nombre, ciudad, provincia, subscription_status').order('nombre')
       .then(({ data }) => setRestaurantes(data || []))
+  }, [])
+
+  useEffect(() => {
+    function onKeyDown(event) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        document.getElementById('admin-global-search')?.focus()
+      }
+      if (event.key === 'Escape') {
+        setSearch('')
+        setProfileOpen(false)
+        setNotificationOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
   const matchRest = pathname.match(/\/admin\/restaurante\/([^/]+)/)
   const currentId = matchRest?.[1]
+  const activeRestaurant = restaurantes.find(r => String(r.id) === String(currentId))
+  const filteredRestaurants = search.trim()
+    ? restaurantes.filter(r => `${r.nombre || ''} ${r.ciudad || ''} ${r.provincia || ''}`.toLowerCase().includes(search.toLowerCase())).slice(0, 8)
+    : []
+  const pendientes = restaurantes.filter(r => r.subscription_status === 'trialing' || r.subscription_status === 'past_due').length
+  const breadcrumbs = [
+    { label: 'Panel', href: '/admin/consultoria' },
+    pathname === '/admin/consultoria' && { label: 'Radar' },
+    pathname === '/admin/sugerencias' && { label: 'Buzon sugerencias' },
+    pathname === '/admin/proveedores' && { label: 'Proveedores' },
+    pathname === '/admin' && { label: 'Restaurantes' },
+    activeRestaurant && { label: activeRestaurant.nombre },
+  ].filter(Boolean)
 
   return (
     <div className={styles.shell}>
@@ -39,7 +73,7 @@ export default function AdminLayout({ children }) {
 
         <ul className={styles.nav}>
           <li className={styles.navGroup}>
-            <p className={styles.navGroupTitle}>Trabajo</p>
+            <p className={styles.navGroupTitle}><span>🎯</span> Trabajo</p>
             <Link
               href="/admin/consultoria"
               className={`${styles.navLink} ${pathname === '/admin/consultoria' ? styles.navActive : ''}`}
@@ -57,7 +91,7 @@ export default function AdminLayout({ children }) {
           </li>
 
           <li className={styles.navGroup}>
-            <p className={styles.navGroupTitle}>Restaurantes</p>
+            <p className={styles.navGroupTitle}><span>🏪</span> Restaurantes</p>
             <div className={styles.subnavAdmin}>
               <Link
                 href="/admin?vista=altas"
@@ -77,7 +111,7 @@ export default function AdminLayout({ children }) {
           </li>
 
           <li className={styles.navGroup}>
-            <p className={styles.navGroupTitle}>Proveedores</p>
+            <p className={styles.navGroupTitle}><span>🤝</span> Proveedores</p>
             <div
               className={`${styles.navLink} ${pathname === '/admin/proveedores' ? styles.navActive : ''}`}
             >
@@ -105,7 +139,7 @@ export default function AdminLayout({ children }) {
         <hr className={styles.divider} />
 
         <div className={styles.restSection}>
-          <p className={styles.restLabel}>Restaurantes activos</p>
+          <p className={styles.restLabel}>Restaurantes activos <span>{restaurantes.length}</span></p>
           {restaurantes.map(r => (
             <Link
               key={r.id}
@@ -114,7 +148,10 @@ export default function AdminLayout({ children }) {
               onClick={() => setMenuOpen(false)}
             >
               <span className={styles.restName}>{r.nombre}</span>
-              {r.ciudad && <span className={styles.restCity}>{r.ciudad}</span>}
+              <span className={styles.restMeta}>
+                <span>{r.ciudad || r.provincia || 'Sin ubicacion'}</span>
+                <span className={styles.restStatus}>{r.subscription_status || 'activo'}</span>
+              </span>
             </Link>
           ))}
           {restaurantes.length === 0 && (
@@ -138,6 +175,82 @@ export default function AdminLayout({ children }) {
           </button>
           <p className={styles.mobileName}>Panel consultor</p>
         </div>
+        <header className={styles.topbar}>
+          <nav className={styles.breadcrumbs} aria-label="Ruta actual">
+            {breadcrumbs.map((item, index) => (
+              item.href && index < breadcrumbs.length - 1
+                ? <Link key={item.label} href={item.href}>{item.label}</Link>
+                : <span key={item.label}>{item.label}</span>
+            ))}
+          </nav>
+
+          <div className={styles.globalSearch}>
+            <span aria-hidden="true">⌕</span>
+            <input
+              id="admin-global-search"
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Buscar restaurante..."
+              aria-label="Buscar restaurante"
+            />
+            <kbd>Ctrl K</kbd>
+            {filteredRestaurants.length > 0 && (
+              <div className={styles.searchResults}>
+                {filteredRestaurants.map(restaurante => (
+                  <Link key={restaurante.id} href={`/admin/restaurante/${restaurante.id}`} onClick={() => setSearch('')}>
+                    <strong>{restaurante.nombre}</strong>
+                    <span>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || 'Sin ubicacion'}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.topActions}>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label="Notificaciones"
+              onClick={() => setNotificationOpen(open => !open)}
+            >
+              🔔
+              {pendientes > 0 && <span>{pendientes}</span>}
+            </button>
+            {notificationOpen && (
+              <div className={styles.notificationsDropdown}>
+                <strong>Alertas operativas</strong>
+                {pendientes === 0 ? (
+                  <p>Sin restaurantes con accion pendiente.</p>
+                ) : restaurantes
+                  .filter(restaurante => restaurante.subscription_status === 'trialing' || restaurante.subscription_status === 'past_due')
+                  .slice(0, 6)
+                  .map(restaurante => (
+                    <Link
+                      key={restaurante.id}
+                      href={`/admin/restaurante/${restaurante.id}`}
+                      onClick={() => setNotificationOpen(false)}
+                    >
+                      <span>{restaurante.nombre}</span>
+                      <small>{restaurante.subscription_status === 'past_due' ? 'Pago pendiente' : 'En prueba'}</small>
+                    </Link>
+                  ))}
+                <Link href="/admin?vista=accesos" onClick={() => setNotificationOpen(false)}>Ver todos los accesos</Link>
+              </div>
+            )}
+            <div className={styles.profileMenu}>
+              <button type="button" className={styles.avatarButton} onClick={() => setProfileOpen(open => !open)} aria-label="Abrir perfil">
+                {userEmail ? userEmail.slice(0, 1).toUpperCase() : 'U'}
+              </button>
+              {profileOpen && (
+                <div className={styles.profileDropdown}>
+                  <strong>{userEmail || 'Consultor'}</strong>
+                  <Link href="/admin?vista=accesos" onClick={() => setProfileOpen(false)}>Accesos</Link>
+                  <button type="button" onClick={cerrarSesion}>Cerrar sesion</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
         {children}
       </div>
     </div>

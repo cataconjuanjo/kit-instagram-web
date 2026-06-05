@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail } from '../demo'
@@ -20,11 +20,20 @@ const icon = {
 
 export default function DashboardLayout({ children }) {
   const pathname = usePathname()
+  const router = useRouter()
   const [restaurante, setRestaurante] = useState(null)
   const [vinoCount, setVinoCount] = useState(0)
   const [platoCount, setPlatoCount] = useState(0)
   const [propuestasCount, setPropuestasCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [searchItems, setSearchItems] = useState([])
+  const [clock, setClock] = useState('')
+  const [darkMode, setDarkMode] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [shortcutMessage, setShortcutMessage] = useState('')
 
   useEffect(() => {
     async function cargar() {
@@ -33,17 +42,112 @@ export default function DashboardLayout({ children }) {
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (!rest) return
       setRestaurante(rest)
-      const [{ count: vinos }, { count: platos }, { count: propuestas }] = await Promise.all([
+      try {
+        const cachedSearch = JSON.parse(window.localStorage.getItem(`dashboard_search_cache_${rest.id}`) || '[]')
+        if (Array.isArray(cachedSearch) && cachedSearch.length) setSearchItems(cachedSearch)
+      } catch {}
+      const [{ count: vinos }, { count: platos }, { count: propuestas }, { data: vinosSearch }, { data: platosSearch }] = await Promise.all([
         supabase.from('vinos').select('id', { count: 'exact', head: true }).eq('restaurante_id', rest.id).eq('activo', true),
         supabase.from('platos').select('id', { count: 'exact', head: true }).eq('restaurante_id', rest.id).eq('activo', true),
         supabase.from('consultor_propuestas').select('id', { count: 'exact', head: true }).eq('restaurante_id', rest.id).neq('estado', 'descartada').neq('estado', 'incorporada'),
+        supabase.from('vinos').select('id, nombre, bodega, region').eq('restaurante_id', rest.id).eq('activo', true).limit(80),
+        supabase.from('platos').select('id, nombre, categoria').eq('restaurante_id', rest.id).eq('activo', true).limit(80),
       ])
       setVinoCount(vinos || 0)
       setPlatoCount(platos || 0)
       setPropuestasCount(propuestas || 0)
+      const nextSearchItems = [
+        ...(vinosSearch || []).map(item => ({ ...item, tipo: 'Vino', href: '/dashboard/vinos', meta: [item.bodega, item.region].filter(Boolean).join(' · ') })),
+        ...(platosSearch || []).map(item => ({ ...item, tipo: 'Plato', href: '/dashboard/platos', meta: item.categoria || '' })),
+      ]
+      setSearchItems(nextSearchItems)
+      window.localStorage.setItem(`dashboard_search_cache_${rest.id}`, JSON.stringify(nextSearchItems))
     }
     cargar()
   }, [])
+
+  useEffect(() => {
+    const tick = () => setClock(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }))
+    tick()
+    const id = setInterval(tick, 30000)
+    return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('dashboard_dark_mode') === '1' : false
+    setDarkMode(saved)
+  }, [])
+
+  useEffect(() => {
+    function onKeyDown(event) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setSearchOpen(true)
+        setTimeout(() => document.getElementById('dashboard-global-search')?.focus(), 20)
+        return
+      }
+      if ((event.ctrlKey || event.metaKey) && ['1', '2', '3', '4', '5'].includes(event.key)) {
+        event.preventDefault()
+        const routes = ['/dashboard', '/dashboard/carta', '/dashboard/sala', '/dashboard/bodega', '/dashboard/ajustes']
+        router.push(routes[Number(event.key) - 1])
+        return
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'n') {
+        event.preventDefault()
+        if (pathname.includes('/platos')) router.push('/dashboard/platos?new=1')
+        else router.push('/dashboard/vinos?new=1')
+        setShortcutMessage(pathname.includes('/platos') ? 'Nuevo plato' : 'Nuevo vino')
+        setTimeout(() => setShortcutMessage(''), 1500)
+        return
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'e') {
+        event.preventDefault()
+        const editButton = document.querySelector('[data-shortcut-edit], button[aria-label*="Editar"]')
+        editButton?.focus()
+        setShortcutMessage(editButton ? 'Elemento editable enfocado' : 'No hay elemento para editar')
+        setTimeout(() => setShortcutMessage(''), 1500)
+        return
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        const saveButton = document.querySelector('[data-shortcut-save], button[type="submit"]')
+        saveButton?.click()
+        setShortcutMessage(saveButton ? 'Guardando cambios' : 'No hay cambios para guardar')
+        setTimeout(() => setShortcutMessage(''), 1500)
+        return
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+        const undoButton = document.querySelector('[data-shortcut-undo]')
+        if (undoButton) {
+          event.preventDefault()
+          undoButton.click()
+          setShortcutMessage('Ultimo cambio deshecho')
+          setTimeout(() => setShortcutMessage(''), 1500)
+        }
+        return
+      }
+      if (!event.ctrlKey && !event.metaKey && event.key === '?' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName || '')) {
+        event.preventDefault()
+        setShortcutsOpen(true)
+        return
+      }
+      if (event.key === 'Escape') {
+        setSearchOpen(false)
+        setProfileOpen(false)
+        setShortcutsOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [pathname, router])
+
+  function toggleDarkMode() {
+    setDarkMode(value => {
+      const next = !value
+      window.localStorage.setItem('dashboard_dark_mode', next ? '1' : '0')
+      return next
+    })
+  }
 
   async function cerrarSesion() {
     clearAdminRestaurantEmail()
@@ -96,6 +200,9 @@ export default function DashboardLayout({ children }) {
       feature: 'bodega',
       alert: propuestasCount || null,
       children: [
+        { href: '/dashboard/bodega', label: 'Stock', feature: 'bodega' },
+        { href: '/dashboard/bodega#propuestas', label: 'Propuestas', feature: 'bodega', alert: propuestasCount || null },
+        { href: '/dashboard/bodega#movimientos', label: 'Movimientos', feature: 'bodega' },
         { href: '/dashboard/inventario', label: 'Inventario', feature: 'inventario' },
       ],
     },
@@ -114,14 +221,20 @@ export default function DashboardLayout({ children }) {
       children: item.children?.filter(child => !child.feature || puedeUsar(restaurante, child.feature)),
     }))
 
+  const filteredSearch = query.trim()
+    ? searchItems.filter(item => `${item.nombre || ''} ${item.meta || ''} ${item.tipo}`.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
+    : []
+  const turnoAbierto = Boolean(restaurante?.actividad_real_desde)
+  const pinActivo = Boolean(restaurante?.camarero_pin_configurado)
+
   return (
-    <div className={styles.shell}>
+    <div className={`${styles.shell} ${darkMode ? styles.darkShell : ''}`}>
       {restaurante && <UsageTracker restauranteId={restaurante.id} />}
       <nav className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <div className={styles.brandIdentity}>
             {restaurante?.logo_url ? (
-              <img className={styles.brandLogo} src={restaurante.logo_url} alt={restaurante.nombre || 'Logo restaurante'} />
+              <img className={styles.brandLogo} src={restaurante.logo_url} alt={restaurante.nombre || 'Logo restaurante'} loading="lazy" />
             ) : (
               <span className={styles.brandLogoFallback}>{inicialesRestaurante}</span>
             )}
@@ -129,6 +242,7 @@ export default function DashboardLayout({ children }) {
               <p className={styles.brandLabel}>Panel restaurante</p>
               <p className={styles.brandName}>{restaurante?.nombre || '-'}</p>
               {restaurante?.ciudad && <p className={styles.brandCity}>{restaurante.ciudad}</p>}
+              <p className={styles.pinState}>{pinActivo ? '🔒 PIN activo' : '🔓 PIN inactivo'}</p>
             </div>
           </div>
           {restaurante && <p className={styles.brandPlan}>{planVisible}</p>}
@@ -159,6 +273,7 @@ export default function DashboardLayout({ children }) {
                         onClick={() => setMenuOpen(false)}
                       >
                         <span>{child.label}</span>
+                        {child.alert != null && <span className={styles.navAlert}>{child.alert}</span>}
                         {child.stat != null && <span className={styles.navStat}>{child.stat}</span>}
                       </Link>
                     ))}
@@ -198,6 +313,85 @@ export default function DashboardLayout({ children }) {
           </button>
           <p className={styles.mobileName}>{restaurante?.nombre || '-'}</p>
         </div>
+        <header className={styles.operationalTopbar}>
+          <div className={styles.restaurantTitle}>
+            <strong>{restaurante?.nombre || 'Restaurante'}</strong>
+            <span>{[restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' · ') || 'Sin ubicacion'} · {turnoAbierto ? '🟢 Abierto' : '⚪ Cerrado'}</span>
+          </div>
+
+          <div className={styles.topSearch}>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(open => !open)}
+              aria-expanded={searchOpen}
+              aria-label={searchOpen ? 'Cerrar busqueda de vinos o platos' : 'Buscar vinos o platos'}
+            >
+              {searchOpen ? 'Cerrar busqueda' : 'Buscar vinos/platos'}
+            </button>
+            <kbd>Ctrl K</kbd>
+            {searchOpen && (
+              <div className={styles.searchPopover}>
+                <div className={styles.searchHeader}>
+                  <input
+                    id="dashboard-global-search"
+                    value={query}
+                    onChange={event => setQuery(event.target.value)}
+                    placeholder="Buscar vino, bodega, plato..."
+                    aria-label="Busqueda global del dashboard"
+                  />
+                  <button type="button" onClick={() => { setSearchOpen(false); setQuery('') }} aria-label="Cerrar busqueda">Cerrar</button>
+                </div>
+                <div className={styles.searchResults}>
+                  {filteredSearch.map(item => (
+                    <Link key={`${item.tipo}-${item.id}`} href={item.href} onClick={() => { setSearchOpen(false); setQuery('') }}>
+                      <span>{item.tipo}</span>
+                      <strong>{item.nombre}</strong>
+                      {item.meta && <small>{item.meta}</small>}
+                    </Link>
+                  ))}
+                  {query && filteredSearch.length === 0 && <p>Sin resultados rápidos.</p>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.topStatus}>
+            <Link href="/dashboard/bodega#propuestas" className={propuestasCount > 0 ? styles.alertPillCritical : styles.alertPillOk}>
+              {propuestasCount} alertas
+            </Link>
+            <span className={styles.clock}>{clock}</span>
+            <div className={styles.profileMenu}>
+              <button type="button" onClick={() => setProfileOpen(open => !open)} aria-label="Abrir perfil">Perfil</button>
+              {profileOpen && (
+                <div className={styles.profileDropdown}>
+                  <Link href="/dashboard/ajustes" onClick={() => setProfileOpen(false)}>Ajustes</Link>
+                  <Link href="/admin?vista=accesos" onClick={() => setProfileOpen(false)}>Cambiar restaurante</Link>
+                  <button type="button" onClick={toggleDarkMode}>{darkMode ? 'Modo claro' : 'Modo oscuro'}</button>
+                  <button type="button" onClick={cerrarSesion}>Salir</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+        {shortcutMessage && <div className={styles.shortcutToast} role="status">{shortcutMessage}</div>}
+        {shortcutsOpen && (
+          <div className={styles.shortcutsBackdrop} role="dialog" aria-modal="true" aria-labelledby="dashboard-shortcuts-title" onClick={() => setShortcutsOpen(false)}>
+            <div className={styles.shortcutsModal} onClick={event => event.stopPropagation()}>
+              <div className={styles.shortcutsHead}>
+                <h2 id="dashboard-shortcuts-title">Atajos de teclado</h2>
+                <button type="button" onClick={() => setShortcutsOpen(false)} aria-label="Cerrar ayuda de atajos">Cerrar</button>
+              </div>
+              <dl>
+                <div><dt>Ctrl+K</dt><dd>Busqueda global</dd></div>
+                <div><dt>Ctrl+N</dt><dd>Nuevo vino o plato segun contexto</dd></div>
+                <div><dt>Ctrl+E</dt><dd>Enfocar accion de edicion visible</dd></div>
+                <div><dt>Ctrl+S</dt><dd>Guardar formulario visible</dd></div>
+                <div><dt>Ctrl+1-5</dt><dd>Inicio, Carta, Sala, Bodega, Ajustes</dd></div>
+                <div><dt>?</dt><dd>Ver esta ayuda</dd></div>
+              </dl>
+            </div>
+          </div>
+        )}
         {children}
       </div>
     </div>
