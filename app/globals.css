@@ -3202,31 +3202,48 @@ h3 {
 
 .supplier-table--pvp .supplier-table-head,
 .supplier-table--pvp .supplier-table-row {
-  grid-template-columns: minmax(210px, 1.35fr) minmax(130px, 0.9fr) minmax(160px, 1fr) minmax(110px, 0.7fr) 92px 116px 132px;
+  grid-template-columns: minmax(210px, 1.35fr) minmax(130px, 0.9fr) minmax(160px, 1fr) minmax(110px, 0.7fr) 92px 148px 132px;
 }
 
 .supplier-pvp-calc {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
-.supplier-pvp-calc strong {
+.pvp-line {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.pvp-line em {
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+  width: 26px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.pvp-line strong {
   color: #b8600a;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
 }
 
-.supplier-pvp-calc small {
-  font-size: 0.72rem;
+.pvp-line small {
+  font-size: 0.7rem;
   color: var(--muted);
 }
 
-.supplier-pvp-calc .pvp-ratio-warn {
-  color: #c47a1a;
+.pvp-ratio-warn {
+  color: #c47a1a !important;
   font-weight: 700;
 }
 
-.supplier-pvp-calc .pvp-ratio-ok {
+.pvp-ratio-ok {
   color: #4a8c6f;
 }
 
