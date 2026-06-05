@@ -3087,6 +3087,108 @@ h3 {
   accent-color: var(--wine);
 }
 
+.supplier-fav-toggle {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 850;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.supplier-fav-toggle.is-active {
+  background: #fffaf0;
+  color: #b8600a;
+  border-color: #d4a050;
+}
+
+.supplier-fav-toggle:hover {
+  border-color: var(--wine);
+  color: var(--wine);
+}
+
+.supplier-fav-btn {
+  padding: 7px 9px;
+  font-size: 0.9rem;
+  border: 0;
+  background: transparent;
+  color: #c8c0b0;
+  cursor: pointer;
+  border-radius: 6px;
+  line-height: 1;
+  transition: color 0.12s;
+}
+
+.supplier-fav-btn:hover {
+  color: #c47a1a;
+}
+
+.supplier-fav-btn.is-fav {
+  color: #c47a1a;
+}
+
+.supplier-fav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.supplier-price-calc {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: #fffaf0;
+  border: 1px solid #e8d4a0;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.supplier-price-calc > span:first-child {
+  font-weight: 850;
+  color: var(--ink);
+}
+
+.supplier-price-calc label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-weight: 700;
+  cursor: default;
+}
+
+.supplier-price-calc input {
+  width: 64px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  text-align: center;
+}
+
+.supplier-price-formula {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.supplier-table--pvp .supplier-table-head,
+.supplier-table--pvp .supplier-table-row {
+  grid-template-columns: minmax(210px, 1.35fr) minmax(130px, 0.9fr) minmax(160px, 1fr) minmax(110px, 0.7fr) 92px 108px 132px;
+}
+
+.supplier-pvp-calc {
+  color: #b8600a !important;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .supplier-section-head {
   display: flex;
   justify-content: space-between;

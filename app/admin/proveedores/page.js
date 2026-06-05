@@ -134,6 +134,9 @@ function ProveedoresPageContent() {
   const [ordenReferencias, setOrdenReferencias] = useState({ campo: 'nombre', dir: 'asc' })
   const [soloSinPrecio, setSoloSinPrecio] = useState(false)
   const [ocultarSinPrecio, setOcultarSinPrecio] = useState(false)
+  const [soloFavoritos, setSoloFavoritos] = useState(false)
+  const [margenCarta, setMargenCarta] = useState(3.0)
+  const [togglingFavorito, setTogglingFavorito] = useState(new Set())
   const [filtroImportacion, setFiltroImportacion] = useState('')
   const [reemplazarCatalogo, setReemplazarCatalogo] = useState(false)
   const [progresoGuardado, setProgresoGuardado] = useState('')
@@ -193,7 +196,7 @@ function ProveedoresPageContent() {
 
   useEffect(() => {
     setPaginaReferencias(1)
-  }, [proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, ordenReferencias])
+  }, [proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos, ordenReferencias])
 
   const vinosFiltrados = useMemo(() => {
     const terminos = normalizar(busquedaReferencias).split(' ').filter(Boolean)
@@ -202,6 +205,7 @@ function ProveedoresPageContent() {
       if (proveedorSeleccionado && String(vino.proveedor_id) !== String(proveedorSeleccionado)) return false
       if (soloSinPrecio && Number(vino.coste_estimado) > 0) return false
       if (ocultarSinPrecio && Number(vino.coste_estimado) <= 0) return false
+      if (soloFavoritos && !vino.favorito) return false
       if (filtroZona && normalizar(vino.region) !== filtroZona) return false
       if (filtroBodega && normalizar(vino.bodega) !== filtroBodega) return false
       if (filtroTipo && normalizar(vino.tipo) !== filtroTipo) return false
@@ -246,7 +250,7 @@ function ProveedoresPageContent() {
       if (!resultado) resultado = normalizar(a.nombre).localeCompare(normalizar(b.nombre), 'es', { numeric: true })
       return ordenReferencias.dir === 'desc' ? -resultado : resultado
     })
-  }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, ordenReferencias])
+  }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos, ordenReferencias])
 
   const proveedorPorId = useMemo(
     () => Object.fromEntries(proveedores.map(proveedor => [proveedor.id, proveedor])),
@@ -281,6 +285,7 @@ function ProveedoresPageContent() {
       if (excluir !== 'tipo' && filtroTipo && normalizar(vino.tipo) !== filtroTipo) return false
       if (soloSinPrecio && Number(vino.coste_estimado) > 0) return false
       if (ocultarSinPrecio && Number(vino.coste_estimado) <= 0) return false
+      if (soloFavoritos && !vino.favorito) return false
       if (rango?.id === 'sin_precio' && Number(vino.coste_estimado) > 0) return false
       if (rango?.min !== undefined || rango?.max !== undefined) {
         const coste = Number(vino.coste_estimado) || 0
@@ -312,7 +317,7 @@ function ProveedoresPageContent() {
       sinBodega: baseProveedor.filter(vino => pasaBase(vino, 'bodega') && !normalizar(vino.bodega)).length,
       sinTipo: baseProveedor.filter(vino => pasaBase(vino, 'tipo') && !normalizar(vino.tipo)).length,
     }
-  }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio])
+  }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos])
 
   const etiquetaFiltro = useCallback((opciones, valor, vacio = 'Todos') => (
     valor ? (opciones.find(opcion => opcion.key === valor)?.label || valor) : vacio
@@ -344,6 +349,27 @@ function ProveedoresPageContent() {
   function etiquetaOrden(campo) {
     if (ordenReferencias.campo !== campo) return '↕'
     return ordenReferencias.dir === 'asc' ? '↑' : '↓'
+  }
+
+  const totalFavoritos = useMemo(() => vinos.filter(v => v.favorito).length, [vinos])
+
+  async function toggleFavorito(vino) {
+    const nuevoValor = !vino.favorito
+    setVinos(prev => prev.map(v => v.id === vino.id ? { ...v, favorito: nuevoValor } : v))
+    setTogglingFavorito(prev => new Set([...prev, vino.id]))
+    try {
+      const token = await tokenAdmin()
+      const res = await fetch('/api/admin/proveedores', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: vino.id, kind: 'favorito', favorito: nuevoValor })
+      })
+      if (!res.ok) setVinos(prev => prev.map(v => v.id === vino.id ? { ...v, favorito: !nuevoValor } : v))
+    } catch {
+      setVinos(prev => prev.map(v => v.id === vino.id ? { ...v, favorito: !nuevoValor } : v))
+    } finally {
+      setTogglingFavorito(prev => { const s = new Set(prev); s.delete(vino.id); return s })
+    }
   }
 
   const totalPaginasReferencias = Math.max(1, Math.ceil(vinosFiltrados.length / REFERENCIAS_POR_PAGINA))
@@ -1005,6 +1031,13 @@ function ProveedoresPageContent() {
               />
               Ocultar sin precio
             </label>
+            <button
+              type="button"
+              className={`supplier-fav-toggle${soloFavoritos ? ' is-active' : ''}`}
+              onClick={() => setSoloFavoritos(s => !s)}
+            >
+              {soloFavoritos ? '★' : '☆'} {totalFavoritos > 0 ? `Favoritos (${totalFavoritos})` : 'Favoritos'}
+            </button>
             <span>{vinosFiltrados.length} visibles</span>
           </div>
 
@@ -1062,15 +1095,16 @@ function ProveedoresPageContent() {
               </div>
             </div>
 
-            {(filtroZona || filtroBodega || filtroTipo || filtroPrecio || busquedaReferencias || soloSinPrecio || ocultarSinPrecio) && (
+            {(filtroZona || filtroBodega || filtroTipo || filtroPrecio || busquedaReferencias || soloSinPrecio || ocultarSinPrecio || soloFavoritos) && (
               <div className="supplier-active-filters">
                 {filtroZona && <span>Zona: {etiquetaFiltro(opcionesFiltros.zonas, filtroZona)}</span>}
                 {filtroBodega && <span>Bodega: {etiquetaFiltro(opcionesFiltros.bodegas, filtroBodega)}</span>}
                 {filtroTipo && <span>Tipo: {etiquetaFiltro(opcionesFiltros.tipos, filtroTipo)}</span>}
                 {filtroPrecio && <span>{RANGOS_PRECIO.find(rango => rango.id === filtroPrecio)?.label}</span>}
                 {ocultarSinPrecio && <span>Con precio</span>}
+                {soloFavoritos && <span>★ Solo favoritos</span>}
                 {busquedaReferencias && <span>Texto: {busquedaReferencias}</span>}
-                <button className="admin-plain-button supplier-clear-filters" onClick={() => { setFiltroZona(''); setFiltroBodega(''); setFiltroTipo(''); setFiltroPrecio(''); setBusquedaReferencias(''); setSoloSinPrecio(false); setOcultarSinPrecio(false); setFiltroAbierto('') }}>
+                <button className="admin-plain-button supplier-clear-filters" onClick={() => { setFiltroZona(''); setFiltroBodega(''); setFiltroTipo(''); setFiltroPrecio(''); setBusquedaReferencias(''); setSoloSinPrecio(false); setOcultarSinPrecio(false); setSoloFavoritos(false); setFiltroAbierto('') }}>
                   Limpiar filtros
                 </button>
               </div>
@@ -1083,15 +1117,30 @@ function ProveedoresPageContent() {
               <span>Pagina {Math.min(paginaReferencias, totalPaginasReferencias)} de {totalPaginasReferencias}</span>
             </div>
             {vinosFiltrados.length === 0 && <p className="consult-empty">No hay vinos para este filtro.</p>}
+            {soloFavoritos && vinosFiltrados.length > 0 && (
+              <div className="supplier-price-calc">
+                <span>Calculadora de carta</span>
+                <label>
+                  Margen ×
+                  <input
+                    type="number" step="0.1" min="1" max="10"
+                    value={margenCarta}
+                    onChange={e => setMargenCarta(Math.max(1, Number(e.target.value) || 3))}
+                  />
+                </label>
+                <span className="supplier-price-formula">coste neto × {margenCarta} × 1,10 (IVA) = PVP carta</span>
+              </div>
+            )}
             {vinosFiltrados.length > 0 && (
               <>
-                <div className="supplier-table">
+                <div className={`supplier-table${soloFavoritos ? ' supplier-table--pvp' : ''}`}>
                   <div className="supplier-table-head">
                     <button type="button" onClick={() => cambiarOrdenReferencias('nombre')} className={ordenReferencias.campo === 'nombre' ? 'is-active' : ''}>Vino <span>{etiquetaOrden('nombre')}</span></button>
                     <button type="button" onClick={() => cambiarOrdenReferencias('bodega')} className={ordenReferencias.campo === 'bodega' ? 'is-active' : ''}>Bodega <span>{etiquetaOrden('bodega')}</span></button>
                     <button type="button" onClick={() => cambiarOrdenReferencias('zona')} className={ordenReferencias.campo === 'zona' ? 'is-active' : ''}>Zona / Tipo <span>{etiquetaOrden('zona')}</span></button>
                     <button type="button" onClick={() => cambiarOrdenReferencias('formato')} className={ordenReferencias.campo === 'formato' ? 'is-active' : ''}>Formato <span>{etiquetaOrden('formato')}</span></button>
                     <button type="button" onClick={() => cambiarOrdenReferencias('coste')} className={ordenReferencias.campo === 'coste' ? 'is-active' : ''}>Coste <span>{etiquetaOrden('coste')}</span></button>
+                    {soloFavoritos && <span>PVP carta</span>}
                     <span></span>
                   </div>
                   {referenciasVisibles.map(vino => (
@@ -1104,7 +1153,23 @@ function ProveedoresPageContent() {
                       <span>{[vino.region, vino.tipo, vino.uva].filter(Boolean).join(' · ') || '-'}</span>
                       <span>{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
                       <strong>{dinero(vino.coste_estimado) || '-'}</strong>
+                      {soloFavoritos && (
+                        <strong className="supplier-pvp-calc">
+                          {Number(vino.coste_estimado) > 0
+                            ? `${(Number(vino.coste_estimado) * margenCarta * 1.10).toFixed(2)} EUR`
+                            : '—'}
+                        </strong>
+                      )}
                       <div className="supplier-row-actions">
+                        <button
+                          type="button"
+                          className={`supplier-fav-btn${vino.favorito ? ' is-fav' : ''}`}
+                          onClick={() => toggleFavorito(vino)}
+                          title={vino.favorito ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                          disabled={togglingFavorito.has(vino.id)}
+                        >
+                          {vino.favorito ? '★' : '☆'}
+                        </button>
                         <button onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion') }}>Editar</button>
                         <button className="admin-plain-button" onClick={() => borrar(vino.id, 'vino')}>Borrar</button>
                       </div>

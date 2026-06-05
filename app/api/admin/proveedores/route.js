@@ -219,6 +219,17 @@ export async function PATCH(req) {
     if (!body.id) return Response.json({ error: 'ID obligatorio.' }, { status: 400 })
     const supabase = adminClient()
 
+    if (body.kind === 'favorito') {
+      const { data, error } = await supabase
+        .from('proveedor_catalogo_vinos')
+        .update({ favorito: Boolean(body.favorito), updated_at: new Date().toISOString() })
+        .eq('id', body.id)
+        .select('id, favorito')
+        .single()
+      if (error) throw error
+      return Response.json({ vino: data })
+    }
+
     if (body.kind === 'vino') {
       const dataPayload = payloadVino(body)
       if (!dataPayload.proveedor_id || !dataPayload.nombre) {
