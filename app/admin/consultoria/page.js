@@ -40,13 +40,22 @@ function ticketReferencia(restaurante, platosActivos) {
 function mapaPrecios(vinosConPrecio, ticket) {
   if (!ticket) return { gamas: [], desajustes: [], base: 'sin_ticket' }
   const total = vinosConPrecio.length
-  // Umbrales calibrados con metodología Álex Pardo GCA (ticket 40€ y 57€)
-  // Todos proporcionales al ticket — sin floors fijos
-  const tBajaMin = ticket * 0.38   // 38% — mínimo recomendado Gama Baja
-  const tBaja    = ticket * 0.48   // 48% — Baja / Media
-  const tMedia   = ticket * 0.75   // 75% — Media / Alta
-  const tAlta    = ticket * 1.75   // 175% — Alta / Muy Alta
-  const tMuyAlta = ticket * 2.75   // 275% — Muy Alta / Premium
+  const referencias = {
+    actual: total,
+    minimo: Math.round(ticket * 1.0),
+    ideal: Math.round(ticket * 1.25),
+    maximo: Math.round(ticket * 1.5),
+  }
+  referencias.estado = total < referencias.minimo
+    ? 'corta'
+    : total > referencias.maximo
+      ? 'larga'
+      : 'equilibrada'
+  // Botella completa vs ticket por persona: escala con ticket, pero mantiene suelos comerciales realistas.
+  const tBaja = Math.max(22, ticket * 0.60)
+  const tMedia = Math.max(tBaja + 10, ticket * 1.05)
+  const tAlta = Math.max(tMedia + 14, ticket * 1.65)
+  const tMuyAlta = Math.max(tAlta + 24, ticket * 2.50)
   const rangos = [
     { id: 'baja',     label: 'Gama baja',  objetivo: 20, min: 0,        max: tBaja    },
     { id: 'media',    label: 'Gama media', objetivo: 45, min: tBaja,    max: tMedia   },
@@ -79,7 +88,9 @@ function mapaPrecios(vinosConPrecio, ticket) {
       return Math.abs(g.vinos - ideal) > umbral || (g.vinos === 0 && ideal > 0)
     })
     .map(g => `${g.label}: ${g.real}% real vs ${g.objetivo}% objetivo`)
-  return { gamas, desajustes, base: 'pvp_iva_incl' }
+  if (referencias.estado === 'corta') desajustes.unshift(`Carta corta: ${total} referencias vs ${referencias.minimo}-${referencias.maximo} recomendadas`)
+  if (referencias.estado === 'larga') desajustes.unshift(`Carta larga: ${total} referencias vs ${referencias.minimo}-${referencias.maximo} recomendadas`)
+  return { gamas, desajustes, referencias, base: 'pvp_iva_incl' }
 }
 
 function haceDiasISO(dias) {

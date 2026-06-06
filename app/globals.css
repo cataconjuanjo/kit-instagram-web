@@ -3215,6 +3215,8 @@ h3 {
   display: flex;
   align-items: baseline;
   gap: 4px;
+  justify-content: flex-end;
+  white-space: nowrap;
 }
 
 .pvp-line em {
@@ -3222,7 +3224,7 @@ h3 {
   font-size: 0.68rem;
   font-weight: 700;
   color: var(--muted);
-  width: 26px;
+  min-width: 72px;
   flex-shrink: 0;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -3278,8 +3280,21 @@ h3 {
 }
 
 .supplier-fav-group-head strong {
+  display: block;
   font-size: 0.9rem;
   color: var(--ink);
+}
+
+.supplier-field-label,
+.supplier-fav-row em {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .supplier-fav-group-head small {
@@ -3303,10 +3318,14 @@ h3 {
 
 .supplier-fav-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(110px, 0.75fr) 110px 148px 132px;
-  gap: 10px;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr);
+  grid-template-areas:
+    "cost pvp"
+    "provider format"
+    "actions actions";
+  gap: 10px 16px;
   align-items: center;
-  padding: 8px 12px;
+  padding: 12px;
   border-top: 1px solid var(--line);
   font-size: 0.86rem;
 }
@@ -3316,7 +3335,14 @@ h3 {
 }
 
 .supplier-fav-dist {
-  font-weight: 700;
+  grid-area: provider;
+  color: var(--ink);
+  font-size: 0.84rem;
+}
+
+.supplier-fav-dist strong,
+.supplier-fav-format strong {
+  display: block;
   color: var(--ink);
   font-size: 0.84rem;
 }
@@ -3327,13 +3353,37 @@ h3 {
 }
 
 .supplier-fav-format {
+  grid-area: format;
   color: var(--muted);
   font-size: 0.78rem;
   overflow-wrap: anywhere;
 }
 
 .supplier-fav-cost {
+  grid-area: cost;
+  display: block;
   color: var(--ink);
+  font-size: 0.92rem;
+  text-align: left;
+  padding: 9px 10px;
+  background: rgba(54, 28, 34, 0.04);
+  border: 1px solid rgba(54, 28, 34, 0.08);
+  border-radius: 7px;
+}
+
+.supplier-fav-row .supplier-pvp-calc {
+  grid-area: pvp;
+  min-width: 0;
+  padding: 9px 10px;
+  background: rgba(54, 28, 34, 0.04);
+  border: 1px solid rgba(54, 28, 34, 0.08);
+  border-radius: 7px;
+}
+
+.supplier-fav-row .supplier-row-actions {
+  grid-area: actions;
+  justify-content: flex-end;
+  padding-top: 2px;
 }
 
 .supplier-section-head {
@@ -4126,6 +4176,185 @@ h3 {
   padding-top: 0;
 }
 
+.mapping-row-summary {
+  grid-column: 1 / -1;
+  margin: 14px 20px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(139, 63, 92, 0.18);
+  border-radius: 8px;
+  background: #fffaf2;
+}
+
+.mapping-row-summary b {
+  text-transform: capitalize;
+}
+
+.mapping-row-summary.is-corta b {
+  color: var(--warning);
+}
+
+.mapping-row-summary.is-larga b {
+  color: var(--danger);
+}
+
+.mapping-row-summary.is-equilibrada b {
+  color: var(--success);
+}
+
+.mapping-rebalance {
+  grid-column: 1 / -1;
+  margin: 12px 20px 0;
+  padding: 14px;
+  border: 1px solid rgba(44, 44, 44, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.mapping-rebalance strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.mapping-rebalance p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.mapping-rebalance .strategy-pills {
+  margin-top: 10px;
+}
+
+.mapping-gama-detail {
+  border-top: 1px solid rgba(30, 20, 20, 0.075);
+}
+
+.mapping-gama-detail:first-of-type {
+  border-top: 0;
+}
+
+.mapping-gama-detail summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.mapping-gama-detail summary.mapping-row {
+  grid-template-columns: minmax(124px, 1fr) minmax(120px, 0.9fr) 42px 62px 18px;
+}
+
+.mapping-gama-detail summary::-webkit-details-marker {
+  display: none;
+}
+
+.mapping-gama-detail summary::after {
+  content: "+";
+  justify-self: end;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.mapping-gama-detail[open] summary::after {
+  content: "-";
+}
+
+.mapping-gama-detail.is-surplus summary b {
+  color: var(--warning);
+}
+
+.mapping-gama-detail.is-deficit summary b {
+  color: var(--danger);
+}
+
+.mapping-gama-detail.is-balanced summary b {
+  color: var(--success);
+}
+
+.mapping-wine-list {
+  display: grid;
+  gap: 6px;
+  padding: 0 0 12px 12px;
+}
+
+.mapping-wine-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(30, 20, 20, 0.075);
+  border-radius: 7px;
+  background: rgba(248, 247, 244, 0.72);
+}
+
+.mapping-wine-item.is-exit-candidate {
+  border-color: rgba(239, 68, 68, 0.32);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.mapping-wine-item strong {
+  font-size: 0.78rem;
+}
+
+.mapping-wine-item span {
+  margin-top: 2px;
+}
+
+.mapping-wine-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.mapping-wine-actions b {
+  white-space: nowrap;
+  color: var(--ink);
+  font-size: 0.8rem;
+}
+
+.mapping-wine-actions button {
+  border: 1px solid rgba(126, 53, 57, 0.22);
+  border-radius: 7px;
+  background: #fffaf2;
+  color: #6f252d;
+  padding: 6px 8px;
+  font-size: 0.68rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.mapping-wine-item.is-exit-candidate .mapping-wine-actions button {
+  background: #6f252d;
+  color: #fff;
+}
+
+.mapping-exit-summary {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(239, 68, 68, 0.24);
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.mapping-exit-summary strong,
+.mapping-exit-summary span {
+  display: block;
+}
+
+.mapping-exit-summary strong {
+  color: #6f252d;
+  font-size: 0.8rem;
+}
+
+.mapping-exit-summary span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
 .mapping-row strong {
   display: block;
   color: var(--ink);
@@ -4186,6 +4415,13 @@ h3 {
   border-color: rgba(126, 53, 57, 0.28);
   background: rgba(126, 53, 57, 0.075);
   color: #6f252d;
+}
+
+.strategy-pills span b {
+  margin-left: auto;
+  color: var(--wine);
+  font-size: 0.74rem;
+  white-space: nowrap;
 }
 
 .admin-main .consult-hero {
@@ -6754,6 +6990,16 @@ h3 {
     text-align: left;
   }
 
+  .mapping-wine-item,
+  .mapping-wine-actions {
+    grid-template-columns: 1fr;
+    justify-content: flex-start;
+  }
+
+  .mapping-wine-actions {
+    align-items: flex-start;
+  }
+
   .mapping-bar {
     width: 100%;
   }
@@ -6940,6 +7186,20 @@ html, body {
 
   .supplier-reference-tools span {
     text-align: left;
+  }
+
+  .supplier-fav-row {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "cost"
+      "pvp"
+      "provider"
+      "format"
+      "actions";
+  }
+
+  .supplier-fav-row .supplier-row-actions {
+    justify-content: flex-start;
   }
 
   .supplier-table {
@@ -7406,6 +7666,221 @@ html, body {
   text-decoration: none;
 }
 
+.consulting-intelligence {
+  border-color: rgba(139, 63, 92, 0.2);
+  background: linear-gradient(180deg, #fffdf8 0%, #fbf6ee 100%);
+}
+
+.intelligence-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.intelligence-meta span {
+  border: 1px solid #eadfd3;
+  border-radius: 999px;
+  background: #fff;
+  color: #5b5149;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.intelligence-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.intelligence-kpis > div {
+  min-height: 118px;
+  border: 1px solid #eadfd3;
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.intelligence-kpis span,
+.intelligence-alert span,
+.intelligence-rec span,
+.classification-wine span {
+  display: block;
+}
+
+.intelligence-kpis span {
+  color: #6b6158;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.intelligence-kpis strong {
+  display: block;
+  margin-top: 6px;
+  color: #5b1730;
+  font-family: Georgia, serif;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.intelligence-kpis small {
+  display: block;
+  margin-top: 8px;
+  color: #5b5149;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.intelligence-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.intelligence-columns > div,
+.intelligence-classifications {
+  border: 1px solid #eadfd3;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.84);
+  padding: 16px;
+}
+
+.intelligence-columns h4,
+.intelligence-classifications h4 {
+  margin: 0 0 10px;
+  color: #171416;
+  font-size: 0.95rem;
+}
+
+.intelligence-alert,
+.intelligence-rec {
+  display: grid;
+  gap: 5px;
+  border-left: 4px solid #d7d0c7;
+  padding: 10px 0 10px 12px;
+}
+
+.intelligence-alert + .intelligence-alert,
+.intelligence-rec + .intelligence-rec {
+  border-top: 1px solid #efe7dd;
+}
+
+.intelligence-alert.is-critica {
+  border-left-color: #EF4444;
+}
+
+.intelligence-alert.is-aviso {
+  border-left-color: #F59E0B;
+}
+
+.intelligence-alert.is-info {
+  border-left-color: #3B82F6;
+}
+
+.intelligence-alert strong,
+.intelligence-rec strong {
+  color: #171416;
+  font-size: 0.86rem;
+}
+
+.intelligence-alert span,
+.intelligence-rec span {
+  color: #4b4038;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.intelligence-alert small,
+.intelligence-rec small,
+.classification-wine small {
+  color: #7a6f65;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.intelligence-classifications > div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.classification-group {
+  border: 1px solid #eadfd3;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.classification-group summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.classification-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.classification-group summary strong {
+  color: #171416;
+  font-size: 0.8rem;
+}
+
+.classification-group summary span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 24px;
+  border-radius: 999px;
+  background: #f4eee6;
+  color: #5b1730;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.classification-wine {
+  display: grid;
+  gap: 3px;
+  padding: 9px 12px;
+  border-top: 1px solid #efe7dd;
+}
+
+.classification-wine span {
+  color: #171416;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.classification-group.is-estrella summary {
+  background: #fff8e7;
+}
+
+.classification-group.is-joya summary {
+  background: #edf8f1;
+}
+
+.classification-group.is-caballo summary {
+  background: #eef5fb;
+}
+
+.classification-group.is-revisar summary {
+  background: #fff0f0;
+}
+
+.ws-empty-inline {
+  margin: 0;
+  color: #7a6f65;
+  font-size: 0.78rem;
+}
+
 .admin-loading {
   width: min(680px, calc(100% - 48px));
   min-height: 132px;
@@ -7429,6 +7904,14 @@ html, body {
 }
 
 @media (max-width: 1180px) {
+  .intelligence-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .intelligence-classifications > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .radar-card-link {
     grid-template-columns: 64px minmax(0, 1fr) auto;
   }
@@ -7439,6 +7922,12 @@ html, body {
 }
 
 @media (max-width: 760px) {
+  .intelligence-kpis,
+  .intelligence-columns,
+  .intelligence-classifications > div {
+    grid-template-columns: 1fr;
+  }
+
   .radar-card-link {
     grid-template-columns: 56px minmax(0, 1fr);
     padding: 18px 16px 18px 50px;

@@ -632,13 +632,17 @@ export default function Camarero({ params }) {
 
   function gamasVenta() {
     const ticket = ticketReferenciaVenta().valor
+    const tBaja = Math.max(22, ticket * 0.60)
+    const tMedia = Math.max(tBaja + 10, ticket * 1.05)
+    const tAlta = Math.max(tMedia + 14, ticket * 1.65)
+    const tMuyAlta = Math.max(tAlta + 24, ticket * 2.50)
     const rangos = [
       { id: 'auto', label: 'Sin limite', min: 0, max: Infinity, helper: 'sin filtro' },
-      { id: 'baja', label: 'Baja', min: 0, max: ticket * 0.48 },
-      { id: 'media', label: 'Media', min: ticket * 0.48, max: ticket * 0.75 },
-      { id: 'alta', label: 'Alta', min: ticket * 0.75, max: ticket * 1.75 },
-      { id: 'muy_alta', label: 'Muy alta', min: ticket * 1.75, max: ticket * 2.75 },
-      { id: 'premium', label: 'Premium', min: ticket * 2.75, max: Infinity },
+      { id: 'baja', label: 'Baja', min: 0, max: tBaja },
+      { id: 'media', label: 'Media', min: tBaja, max: tMedia },
+      { id: 'alta', label: 'Alta', min: tMedia, max: tAlta },
+      { id: 'muy_alta', label: 'Muy alta', min: tAlta, max: tMuyAlta },
+      { id: 'premium', label: 'Premium', min: tMuyAlta, max: Infinity },
     ]
 
     return rangos.map(gama => ({

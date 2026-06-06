@@ -47,7 +47,17 @@ function texto(body, campo) {
 }
 
 function dinero(valor) {
-  return valor === '' || valor === null || valor === undefined ? 0 : Number(valor) || 0
+  if (valor === '' || valor === null || valor === undefined) return 0
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0
+  const limpio = String(valor)
+    .replace(/\s/g, '')
+    .replace(/[^\d,.-]/g, '')
+  if (!limpio) return 0
+  const decimal = limpio.includes(',') && limpio.lastIndexOf(',') > limpio.lastIndexOf('.')
+    ? limpio.replace(/\./g, '').replace(',', '.')
+    : limpio.replace(/,/g, '')
+  const numero = Number(decimal)
+  return Number.isFinite(numero) ? numero : 0
 }
 
 function repararMojibake(valor) {

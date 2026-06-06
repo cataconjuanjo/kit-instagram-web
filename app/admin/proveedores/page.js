@@ -33,8 +33,22 @@ const vinoInicial = {
   activo: true
 }
 
+function numeroCoste(valor) {
+  if (valor === null || valor === undefined || valor === '') return 0
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0
+  const limpio = String(valor)
+    .replace(/\s/g, '')
+    .replace(/[^\d,.-]/g, '')
+  if (!limpio) return 0
+  const decimal = limpio.includes(',') && limpio.lastIndexOf(',') > limpio.lastIndexOf('.')
+    ? limpio.replace(/\./g, '').replace(',', '.')
+    : limpio.replace(/,/g, '')
+  const numero = Number(decimal)
+  return Number.isFinite(numero) ? numero : 0
+}
+
 function dinero(valor) {
-  const numero = Number(valor) || 0
+  const numero = numeroCoste(valor)
   return numero ? `${numero.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR` : ''
 }
 
@@ -105,6 +119,17 @@ const RANGOS_PRECIO = [
   { id: '20-40', label: '20-40 EUR', min: 20, max: 40 },
   { id: '40+', label: 'Mas de 40 EUR', min: 40 },
 ]
+
+function costeEnRango(coste, rango) {
+  if (!rango?.id) return true
+  if (rango.id === 'sin_precio') return coste <= 0
+  if (coste <= 0) return false
+  if (rango.id === '0-10') return coste <= 10
+  if (rango.id === '10-20') return coste > 10 && coste <= 20
+  if (rango.id === '20-40') return coste > 20 && coste <= 40
+  if (rango.id === '40+') return coste > 40
+  return true
+}
 
 function ProveedoresPageContent() {
   const router = useRouter()
@@ -207,19 +232,14 @@ function ProveedoresPageContent() {
     const rango = RANGOS_PRECIO.find(item => item.id === filtroPrecio)
     const filtrados = vinos.filter(vino => {
       if (proveedorSeleccionado && String(vino.proveedor_id) !== String(proveedorSeleccionado)) return false
-      if (soloSinPrecio && Number(vino.coste_estimado) > 0) return false
-      if (ocultarSinPrecio && Number(vino.coste_estimado) <= 0) return false
+      const costeVino = numeroCoste(vino.coste_estimado)
+      if (soloSinPrecio && costeVino > 0) return false
+      if (ocultarSinPrecio && costeVino <= 0) return false
       if (soloFavoritos && !vino.favorito) return false
       if (filtroZona && normalizar(vino.region) !== filtroZona) return false
       if (filtroBodega && normalizar(vino.bodega) !== filtroBodega) return false
       if (filtroTipo && normalizar(vino.tipo) !== filtroTipo) return false
-      if (rango?.id === 'sin_precio' && Number(vino.coste_estimado) > 0) return false
-      if (rango?.min !== undefined || rango?.max !== undefined) {
-        const coste = Number(vino.coste_estimado) || 0
-        if (!coste) return false
-        if (rango.min !== undefined && coste < rango.min) return false
-        if (rango.max !== undefined && coste > rango.max) return false
-      }
+      if (!costeEnRango(costeVino, rango)) return false
       if (!terminos.length) return true
       const texto = normalizar([
         vino.nombre,
@@ -235,7 +255,7 @@ function ProveedoresPageContent() {
       return terminos.every(termino => texto.includes(termino))
     })
     const valorOrden = vino => {
-      if (ordenReferencias.campo === 'coste') return Number(vino.coste_estimado) || 0
+      if (ordenReferencias.campo === 'coste') return numeroCoste(vino.coste_estimado)
       if (ordenReferencias.campo === 'bodega') return normalizar(vino.bodega)
       if (ordenReferencias.campo === 'zona') return normalizar(`${vino.region || ''} ${vino.tipo || ''} ${vino.uva || ''}`)
       if (ordenReferencias.campo === 'formato') return normalizar(`${vino.formato || ''} ${vino.referencia || ''}`)
@@ -246,7 +266,12 @@ function ProveedoresPageContent() {
       const av = valorOrden(a)
       const bv = valorOrden(b)
       let resultado
-      if (typeof av === 'number' || typeof bv === 'number') {
+      if (ordenReferencias.campo === 'coste') {
+        const sinPrecioA = av <= 0
+        const sinPrecioB = bv <= 0
+        if (sinPrecioA !== sinPrecioB) return sinPrecioA ? 1 : -1
+        resultado = av - bv
+      } else if (typeof av === 'number' || typeof bv === 'number') {
         resultado = (av || 0) - (bv || 0)
       } else {
         resultado = String(av).localeCompare(String(bv), 'es', { numeric: true })
@@ -271,11 +296,23 @@ function ProveedoresPageContent() {
   ), [vinos])
 
   const metricas = useMemo(() => {
-    const conCoste = vinos.filter(vino => Number(vino.coste_estimado) > 0).length
+    const conCoste = vinos.filter(vino => numeroCoste(vino.coste_estimado) > 0).length
     const sinCoste = vinos.length - conCoste
     const proveedoresConCatalogo = proveedores.filter(proveedor => conteoPorProveedor[proveedor.id] > 0).length
     return { conCoste, sinCoste, proveedoresConCatalogo }
   }, [vinos, proveedores, conteoPorProveedor])
+
+  const resumenPrecioFiltrado = useMemo(() => {
+    const costes = vinosFiltrados
+      .map(vino => numeroCoste(vino.coste_estimado))
+      .filter(coste => coste > 0)
+    if (!costes.length) return null
+    return {
+      min: Math.min(...costes),
+      max: Math.max(...costes),
+      total: costes.length,
+    }
+  }, [vinosFiltrados])
 
   const opcionesFiltros = useMemo(() => {
     const baseProveedor = proveedorSeleccionado
@@ -287,16 +324,11 @@ function ProveedoresPageContent() {
       if (excluir !== 'zona' && filtroZona && normalizar(vino.region) !== filtroZona) return false
       if (excluir !== 'bodega' && filtroBodega && normalizar(vino.bodega) !== filtroBodega) return false
       if (excluir !== 'tipo' && filtroTipo && normalizar(vino.tipo) !== filtroTipo) return false
-      if (soloSinPrecio && Number(vino.coste_estimado) > 0) return false
-      if (ocultarSinPrecio && Number(vino.coste_estimado) <= 0) return false
+      const costeVino = numeroCoste(vino.coste_estimado)
+      if (soloSinPrecio && costeVino > 0) return false
+      if (ocultarSinPrecio && costeVino <= 0) return false
       if (soloFavoritos && !vino.favorito) return false
-      if (rango?.id === 'sin_precio' && Number(vino.coste_estimado) > 0) return false
-      if (rango?.min !== undefined || rango?.max !== undefined) {
-        const coste = Number(vino.coste_estimado) || 0
-        if (!coste) return false
-        if (rango.min !== undefined && coste < rango.min) return false
-        if (rango.max !== undefined && coste > rango.max) return false
-      }
+      if (!costeEnRango(costeVino, rango)) return false
       if (terminos.length) {
         const texto = normalizar([
           vino.nombre,
@@ -356,22 +388,28 @@ function ProveedoresPageContent() {
   }
 
   function calcularBotella(coste) {
-    const c = Number(coste) || 0
+    const c = numeroCoste(coste)
     if (c <= 0) return null
+    const iva = 1.10
+    const margenDesdePvp = pvpSinIva => Math.round(((pvpSinIva - c) / pvpSinIva) * 100)
     if (c <= 6) {
-      const pvp = c * 3.5 * 1.10
-      return { pvp, etiqueta: '×3,5', margen: Math.round(((3.5 - 1) / 3.5) * 100) }
+      const pvpSinIva = c * 3.5
+      return { pvp: pvpSinIva * iva, etiqueta: '×3,5', margen: margenDesdePvp(pvpSinIva) }
     }
     if (c <= 18) {
-      const pvp = c * 2.5 * 1.10
-      return { pvp, etiqueta: '×2,5', margen: Math.round(((2.5 - 1) / 2.5) * 100) }
+      const pvpSinIva = Math.max(c * 2.5, 6 * 3.5)
+      return {
+        pvp: pvpSinIva * iva,
+        etiqueta: pvpSinIva === 6 * 3.5 ? '×2,5 suelo' : '×2,5',
+        margen: margenDesdePvp(pvpSinIva)
+      }
     }
-    const pvpSinIva = c + 20
-    return { pvp: pvpSinIva * 1.10, etiqueta: '+20 €', margen: Math.round((20 / pvpSinIva) * 100) }
+    const pvpSinIva = Math.max(c + 20, 45)
+    return { pvp: pvpSinIva * iva, etiqueta: pvpSinIva === 45 ? 'mín. 45 €' : '+20 €', margen: margenDesdePvp(pvpSinIva) }
   }
 
   function calcularCopa(coste, margenPct) {
-    const c = Number(coste) || 0
+    const c = numeroCoste(coste)
     if (c <= 0) return null
     const costeCopa = c / 4.5
     const pvp = costeCopa / (1 - margenPct / 100)
@@ -380,25 +418,6 @@ function ProveedoresPageContent() {
     const copasHastaEmpatar = botella ? Math.ceil(botella.pvp / pvp) : null
     return { pvp, costeCopa, ratioPct, copasHastaEmpatar }
   }
-
-  const totalFavoritos = useMemo(() => vinos.filter(v => v.favorito).length, [vinos])
-
-  const gruposFavoritos = useMemo(() => {
-    if (!soloFavoritos) return null
-    const map = {}
-    referenciasVisibles.forEach(vino => {
-      const clave = claveComparacion(vino)
-      if (!map[clave]) map[clave] = []
-      map[clave].push(vino)
-    })
-    return Object.values(map).map(grupo => ({
-      vinos: [...grupo].sort((a, b) => (Number(a.coste_estimado) || 0) - (Number(b.coste_estimado) || 0)),
-      nombre: grupo[0].nombre,
-      bodega: grupo[0].bodega,
-      tipo: grupo[0].tipo,
-      region: grupo[0].region,
-    }))
-  }, [referenciasVisibles, soloFavoritos])
 
   function leerFavoritosLocales() {
     try { return new Set(JSON.parse(localStorage.getItem('favoritos_catalogo') || '[]')) } catch { return new Set() }
@@ -437,6 +456,25 @@ function ProveedoresPageContent() {
     const inicio = (paginaReferencias - 1) * REFERENCIAS_POR_PAGINA
     return vinosFiltrados.slice(inicio, inicio + REFERENCIAS_POR_PAGINA)
   }, [vinosFiltrados, paginaReferencias])
+
+  const totalFavoritos = useMemo(() => vinos.filter(v => v.favorito).length, [vinos])
+
+  const gruposFavoritos = useMemo(() => {
+    if (!soloFavoritos) return []
+    const map = {}
+    referenciasVisibles.forEach(vino => {
+      const clave = claveComparacion(vino)
+      if (!map[clave]) map[clave] = []
+      map[clave].push(vino)
+    })
+    return Object.values(map).map(grupo => ({
+      vinos: [...grupo].sort((a, b) => (numeroCoste(a.coste_estimado) || Number.MAX_SAFE_INTEGER) - (numeroCoste(b.coste_estimado) || Number.MAX_SAFE_INTEGER)),
+      nombre: grupo[0].nombre,
+      bodega: grupo[0].bodega,
+      tipo: grupo[0].tipo,
+      region: grupo[0].region,
+    }))
+  }, [referenciasVisibles, soloFavoritos])
 
   const clavesExistentesImportacion = useMemo(() => {
     const set = new Set()
@@ -504,7 +542,7 @@ function ProveedoresPageContent() {
         const refs = grupo.refs
           .map(vino => ({
             ...vino,
-            costeNumero: Number(vino.coste_estimado) || 0,
+            costeNumero: numeroCoste(vino.coste_estimado),
             proveedorNombre: proveedorPorId[vino.proveedor_id]?.nombre || vino.proveedores_vino?.nombre || 'Proveedor'
           }))
           .sort((a, b) => (a.costeNumero || Number.MAX_SAFE_INTEGER) - (b.costeNumero || Number.MAX_SAFE_INTEGER))
@@ -675,8 +713,8 @@ function ProveedoresPageContent() {
         anada: vino.anada || '',
         referencia: vino.referencia || '',
         formato: vino.formato || '',
-        coste_estimado: Number(vino.coste_estimado) > 0 ? vino.coste_estimado : '',
-        pvp_recomendado: Number(vino.pvp_recomendado) > 0 ? vino.pvp_recomendado : '',
+        coste_estimado: numeroCoste(vino.coste_estimado) > 0 ? vino.coste_estimado : '',
+        pvp_recomendado: numeroCoste(vino.pvp_recomendado) > 0 ? vino.pvp_recomendado : '',
         disponibilidad: vino.disponibilidad || '',
         notas: vino.notas || '',
         activo: true,
@@ -743,8 +781,8 @@ function ProveedoresPageContent() {
         anada: vino.anada || '',
         referencia: vino.referencia || '',
         formato: vino.formato || '',
-        coste_estimado: Number(vino.coste_estimado) > 0 ? vino.coste_estimado : '',
-        pvp_recomendado: Number(vino.pvp_recomendado) > 0 ? vino.pvp_recomendado : '',
+        coste_estimado: numeroCoste(vino.coste_estimado) > 0 ? vino.coste_estimado : '',
+        pvp_recomendado: numeroCoste(vino.pvp_recomendado) > 0 ? vino.pvp_recomendado : '',
         disponibilidad: vino.disponibilidad || '',
         notas: vino.notas || '',
         activo: true,
@@ -984,7 +1022,7 @@ function ProveedoresPageContent() {
                   <div className="supplier-import-summary">
                     <strong>{catalogoImportar.length}</strong><span>detectadas</span>
                     <strong>{catalogoImportar.filter(vino => vino.activo).length}</strong><span>activas</span>
-                    <strong>{catalogoImportar.filter(vino => Number(vino.coste_estimado) > 0).length}</strong><span>con coste</span>
+                    <strong>{catalogoImportar.filter(vino => numeroCoste(vino.coste_estimado) > 0).length}</strong><span>con coste</span>
                     <strong>{duplicadosImportacion}</strong><span>duplicados</span>
                   </div>
                   <div className="supplier-import-tools">
@@ -1161,6 +1199,9 @@ function ProveedoresPageContent() {
                 {filtroBodega && <span>Bodega: {etiquetaFiltro(opcionesFiltros.bodegas, filtroBodega)}</span>}
                 {filtroTipo && <span>Tipo: {etiquetaFiltro(opcionesFiltros.tipos, filtroTipo)}</span>}
                 {filtroPrecio && <span>{RANGOS_PRECIO.find(rango => rango.id === filtroPrecio)?.label}</span>}
+                {filtroPrecio && resumenPrecioFiltrado && (
+                  <span>{resumenPrecioFiltrado.total} con coste · {dinero(resumenPrecioFiltrado.min)} - {dinero(resumenPrecioFiltrado.max)}</span>
+                )}
                 {ocultarSinPrecio && <span>Con precio</span>}
                 {soloFavoritos && <span>★ Solo favoritos</span>}
                 {busquedaReferencias && <span>Texto: {busquedaReferencias}</span>}
@@ -1189,7 +1230,7 @@ function ProveedoresPageContent() {
                   </select>
                 </label>
                 <span className="supplier-price-formula">
-                  Botella: ≤6€ ×3,5 · 7-18€ ×2,5 · &gt;18€ +20€ · ×1,10 IVA · Copa: coste ÷ 4,5 (merma 10%) ÷ (1−{margenCopaPct}%)
+                  Botella: ≤6€ ×3,5 · 7-18€ ×2,5 con suelo del tramo anterior · &gt;18€ +20€ con mínimo 45€ · ×1,10 IVA · Copa: coste ÷ 4,5 (merma 10%) ÷ (1−{margenCopaPct}%)
                 </span>
               </div>
             )}
@@ -1203,25 +1244,27 @@ function ProveedoresPageContent() {
                         <div key={grupo.vinos[0].id} className={`supplier-fav-group${tieneMultiples ? ' has-multiple' : ''}`}>
                           <div className="supplier-fav-group-head">
                             <div>
+                              <span className="supplier-field-label">Vino</span>
                               <strong>{grupo.nombre}</strong>
-                              <small>{[grupo.bodega, grupo.tipo, grupo.region].filter(Boolean).join(' · ')}</small>
+                              <small>{[grupo.bodega && `Bodega: ${grupo.bodega}`, grupo.tipo && `Tipo: ${grupo.tipo}`, grupo.region && `Zona: ${grupo.region}`].filter(Boolean).join(' · ')}</small>
                             </div>
                             {tieneMultiples && <span className="supplier-fav-badge">{grupo.vinos.length} distribuidores</span>}
                           </div>
                           {grupo.vinos.map((vino, index) => {
                             const esMasBarato = tieneMultiples && index === 0
-                            const rb = Number(vino.coste_estimado) ? calcularBotella(vino.coste_estimado) : null
-                            const rc = Number(vino.coste_estimado) ? calcularCopa(vino.coste_estimado, margenCopaPct) : null
+                            const coste = numeroCoste(vino.coste_estimado)
+                            const rb = coste ? calcularBotella(coste) : null
+                            const rc = coste ? calcularCopa(coste, margenCopaPct) : null
                             const alerta = rc?.ratioPct > 25
                             return (
                               <div key={vino.id} className={`supplier-fav-row${esMasBarato ? ' is-cheapest' : ''}`}>
-                                <span className="supplier-fav-dist">{proveedorPorId[vino.proveedor_id]?.nombre || 'Proveedor'}</span>
-                                <span className="supplier-fav-format">{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
-                                <strong className="supplier-fav-cost">{dinero(vino.coste_estimado) || '-'}</strong>
+                                <span className="supplier-fav-dist"><em>Proveedor</em><strong>{proveedorPorId[vino.proveedor_id]?.nombre || 'Proveedor'}</strong></span>
+                                <span className="supplier-fav-format"><em>Formato / ref.</em><strong>{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</strong></span>
+                                <strong className="supplier-fav-cost"><em>Coste botella</em>{dinero(vino.coste_estimado) || '-'}</strong>
                                 {rb ? (
                                   <div className="supplier-pvp-calc">
-                                    <span className="pvp-line"><em>Bot.</em><strong>{rb.pvp.toFixed(2)} €</strong><small>{rb.etiqueta}</small></span>
-                                    <span className="pvp-line"><em>Copa</em><strong>{rc.pvp.toFixed(2)} €</strong>
+                                    <span className="pvp-line"><em>PVP botella</em><strong>{rb.pvp.toFixed(2)} €</strong><small>{rb.etiqueta}</small></span>
+                                    <span className="pvp-line"><em>PVP copa</em><strong>{rc.pvp.toFixed(2)} €</strong>
                                       <small className={alerta ? 'pvp-ratio-warn' : 'pvp-ratio-ok'} title={`${rc.ratioPct}% del precio botella · ${rc.copasHastaEmpatar} copas igualan la botella`}>
                                         {rc.ratioPct !== null ? `${rc.ratioPct}% bot.` : ''}
                                       </small>
@@ -1249,14 +1292,14 @@ function ProveedoresPageContent() {
                       <button type="button" onClick={() => cambiarOrdenReferencias('bodega')} className={ordenReferencias.campo === 'bodega' ? 'is-active' : ''}>Bodega <span>{etiquetaOrden('bodega')}</span></button>
                       <button type="button" onClick={() => cambiarOrdenReferencias('zona')} className={ordenReferencias.campo === 'zona' ? 'is-active' : ''}>Zona / Tipo <span>{etiquetaOrden('zona')}</span></button>
                       <button type="button" onClick={() => cambiarOrdenReferencias('formato')} className={ordenReferencias.campo === 'formato' ? 'is-active' : ''}>Formato <span>{etiquetaOrden('formato')}</span></button>
-                      <button type="button" onClick={() => cambiarOrdenReferencias('coste')} className={ordenReferencias.campo === 'coste' ? 'is-active' : ''}>Coste <span>{etiquetaOrden('coste')}</span></button>
+                      <button type="button" onClick={() => cambiarOrdenReferencias('coste')} className={ordenReferencias.campo === 'coste' ? 'is-active' : ''}>Coste botella <span>{etiquetaOrden('coste')}</span></button>
                       <span></span>
                     </div>
                     {referenciasVisibles.map(vino => (
                       <div className="supplier-table-row" key={vino.id}>
                         <div>
                           <strong>{vino.nombre}</strong>
-                          <small>{proveedorPorId[vino.proveedor_id]?.nombre || vino.proveedores_vino?.nombre || 'Proveedor'}</small>
+                          <small>Proveedor: {proveedorPorId[vino.proveedor_id]?.nombre || vino.proveedores_vino?.nombre || 'Proveedor'}</small>
                         </div>
                         <span>{vino.bodega || '-'}</span>
                         <span>{[vino.region, vino.tipo, vino.uva].filter(Boolean).join(' · ') || '-'}</span>

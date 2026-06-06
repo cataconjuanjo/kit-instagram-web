@@ -58,15 +58,24 @@ function ticketReferencia(restaurante, platosActivos) {
 }
 
 function mapaPrecios(vinosConPrecio, ticket) {
-  if (!ticket) return { gamas: [], desajustes: [] }
+  if (!ticket) return { gamas: [], desajustes: [], referencias: null }
   const total = vinosConPrecio.length
-  // Umbrales calibrados con metodología Álex Pardo GCA (ticket 40€ y 57€)
-  // Todos proporcionales al ticket — sin floors fijos
-  const tBajaMin = ticket * 0.38   // 38% — mínimo recomendado Gama Baja
-  const tBaja    = ticket * 0.48   // 48% — Baja / Media
-  const tMedia   = ticket * 0.75   // 75% — Media / Alta
-  const tAlta    = ticket * 1.75   // 175% — Alta / Muy Alta
-  const tMuyAlta = ticket * 2.75   // 275% — Muy Alta / Premium
+  const referencias = {
+    actual: total,
+    minimo: Math.round(ticket * 1.0),
+    ideal: Math.round(ticket * 1.25),
+    maximo: Math.round(ticket * 1.5),
+  }
+  referencias.estado = total < referencias.minimo
+    ? 'corta'
+    : total > referencias.maximo
+      ? 'larga'
+      : 'equilibrada'
+  // Botella completa vs ticket por persona: escala con ticket, pero mantiene suelos comerciales realistas.
+  const tBaja = Math.max(22, ticket * 0.60)
+  const tMedia = Math.max(tBaja + 10, ticket * 1.05)
+  const tAlta = Math.max(tMedia + 14, ticket * 1.65)
+  const tMuyAlta = Math.max(tAlta + 24, ticket * 2.50)
   const rangos = [
     { id: 'baja',     label: 'Gama baja',  objetivo: 20, min: 0,        max: tBaja    },
     { id: 'media',    label: 'Gama media', objetivo: 45, min: tBaja,    max: tMedia   },
@@ -93,7 +102,113 @@ function mapaPrecios(vinosConPrecio, ticket) {
     const ideal = Math.round((g.objetivo / 100) * total)
     return Math.abs(g.vinos - ideal) > umbral || (g.vinos === 0 && ideal > 0)
   }).map(g => `${g.label}: ${g.real}% real vs ${g.objetivo}% objetivo`)
-  return { gamas, desajustes }
+  if (referencias.estado === 'corta') desajustes.unshift(`Carta corta: ${total} referencias vs ${referencias.minimo}-${referencias.maximo} recomendadas`)
+  if (referencias.estado === 'larga') desajustes.unshift(`Carta larga: ${total} referencias vs ${referencias.minimo}-${referencias.maximo} recomendadas`)
+  return { gamas, desajustes, referencias }
+}
+
+function mapaPreciosAccionable(vinosConPrecio, ticket) {
+  if (!ticket) return { gamas: [], desajustes: [], referencias: null, reequilibrio: null }
+  const total = vinosConPrecio.length
+  const referencias = {
+    actual: total,
+    minimo: Math.round(ticket * 1.0),
+    ideal: Math.round(ticket * 1.25),
+    maximo: Math.round(ticket * 1.5),
+  }
+  referencias.estado = total < referencias.minimo
+    ? 'corta'
+    : total > referencias.maximo
+      ? 'larga'
+      : 'equilibrada'
+
+  const tBaja = Math.max(22, ticket * 0.60)
+  const tMedia = Math.max(tBaja + 10, ticket * 1.05)
+  const tAlta = Math.max(tMedia + 14, ticket * 1.65)
+  const tMuyAlta = Math.max(tAlta + 24, ticket * 2.50)
+  const rangos = [
+    { id: 'baja', label: 'Gama baja', objetivo: 20, min: 0, max: tBaja },
+    { id: 'media', label: 'Gama media', objetivo: 45, min: tBaja, max: tMedia },
+    { id: 'alta', label: 'Gama alta', objetivo: 15, min: tMedia, max: tAlta },
+    { id: 'muy_alta', label: 'Muy alta', objetivo: 15, min: tAlta, max: tMuyAlta },
+    { id: 'premium', label: 'Premium', objetivo: 5, min: tMuyAlta, max: Infinity },
+  ]
+  const totalObjetivo = referencias.estado === 'equilibrada' ? total : referencias.ideal
+  const objetivosPorGama = rangos.map(rango => Math.round((rango.objetivo / 100) * totalObjetivo))
+  const ajusteObjetivo = totalObjetivo - objetivosPorGama.reduce((sum, valor) => sum + valor, 0)
+  objetivosPorGama[1] = Math.max(0, objetivosPorGama[1] + ajusteObjetivo)
+
+  const gamas = rangos.map((rango, index) => {
+    const vinos = vinosConPrecio
+      .filter(vino => {
+        const precio = decimal(vino.precio_botella)
+        return rango.max === Infinity ? precio >= rango.min : precio >= rango.min && precio < rango.max
+      })
+      .sort((a, b) => decimal(a.precio_botella) - decimal(b.precio_botella))
+    const objetivoNumero = objetivosPorGama[index]
+    const delta = vinos.length - objetivoNumero
+    return {
+      ...rango,
+      vinos: vinos.length,
+      vinosDetalle: vinos.map(vino => ({
+        id: vino.id,
+        nombre: vino.nombre,
+        bodega: vino.bodega,
+        tipo: vino.tipo,
+        region: vino.region,
+        precio: decimal(vino.precio_botella),
+        coste: decimal(vino.coste_compra),
+      })),
+      real: pct(vinos.length, total),
+      objetivoNumero,
+      delta,
+      diferencia: pct(vinos.length, total) - rango.objetivo,
+      rangoTexto: rango.max === Infinity
+        ? `>${Math.round(rango.min)}`
+        : rango.min === 0
+          ? `hasta ${Math.round(rango.max)}`
+          : `${Math.round(rango.min)}-${Math.round(rango.max)}`,
+    }
+  })
+
+  const sobrantes = gamas.filter(gama => gama.delta > 0).map(gama => ({ label: gama.label, cantidad: gama.delta }))
+  const faltantes = gamas.filter(gama => gama.delta < 0).map(gama => ({ label: gama.label, cantidad: Math.abs(gama.delta) }))
+  const movimientos = []
+  let surplusIndex = 0
+  let deficitIndex = 0
+  while (surplusIndex < sobrantes.length && deficitIndex < faltantes.length) {
+    const cantidad = Math.min(sobrantes[surplusIndex].cantidad, faltantes[deficitIndex].cantidad)
+    movimientos.push({
+      cantidad,
+      desde: sobrantes[surplusIndex].label,
+      hacia: faltantes[deficitIndex].label,
+      texto: `Sustituir ${cantidad} ref. de ${sobrantes[surplusIndex].label.toLowerCase()} por ${cantidad} ref. de ${faltantes[deficitIndex].label.toLowerCase()}`,
+    })
+    sobrantes[surplusIndex].cantidad -= cantidad
+    faltantes[deficitIndex].cantidad -= cantidad
+    if (sobrantes[surplusIndex].cantidad === 0) surplusIndex++
+    if (faltantes[deficitIndex].cantidad === 0) deficitIndex++
+  }
+  const reequilibrio = {
+    totalObjetivo,
+    quitarTotal: Math.max(0, total - totalObjetivo),
+    agregarTotal: Math.max(0, totalObjetivo - total),
+    movimientos,
+    resumen: movimientos.length
+      ? movimientos.map(movimiento => movimiento.texto).join('. ')
+      : referencias.estado === 'equilibrada'
+        ? 'La cantidad total encaja; revisar solo excesos o huecos por gama.'
+        : referencias.estado === 'corta'
+          ? `Faltan ${Math.max(0, totalObjetivo - total)} referencias para acercarse al ideal.`
+          : `Sobran ${Math.max(0, total - totalObjetivo)} referencias para acercarse al ideal.`,
+  }
+  const umbral = Math.max(1, Math.round(total * 0.10))
+  const desajustes = gamas
+    .filter(gama => Math.abs(gama.delta) > umbral || (gama.vinos === 0 && gama.objetivoNumero > 0))
+    .map(gama => `${gama.label}: ${gama.vinos} real vs ${gama.objetivoNumero} objetivo`)
+  if (referencias.estado === 'corta') desajustes.unshift(`Carta corta: ${total} referencias vs ${referencias.minimo}-${referencias.maximo} recomendadas`)
+  if (referencias.estado === 'larga') desajustes.unshift(`Carta larga: ${total} referencias vs ${referencias.minimo}-${referencias.maximo} recomendadas`)
+  return { gamas, desajustes, referencias, reequilibrio }
 }
 
 function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propuestas = []) {
@@ -199,7 +314,7 @@ function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propu
     : 'Mantenimiento fino: revisar relato, sala y pequeñas mejoras de carta'
 
   const ticket = ticketReferencia(restaurante, platosActivos)
-  const wineMapping = mapaPrecios(vinosConPrecio, ticket.valor)
+  const wineMapping = mapaPreciosAccionable(vinosConPrecio, ticket.valor)
 
   return {
     score, prioridad, alertas: alertasOrdenadas, servicios, siguienteMovimiento,
@@ -224,13 +339,13 @@ function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propu
         { label: 'Stock cero', valor: sinStock.length, total },
       ],
       equilibrio: [
-        { label: 'Tintos', valor: tipos.tinto || 0 },
-        { label: 'Blancos', valor: tipos.blanco || 0 },
-        { label: 'Espumosos', valor: tipos.espumoso || 0 },
-        { label: 'Generosos', valor: tipos.generoso || 0 },
-        { label: 'Dulces', valor: dulces.length },
-        { label: 'Por copa', valor: porCopa.length },
-        { label: 'Locales', valor: locales.length },
+        { label: 'Tintos', valor: tipos.tinto || 0, pct: pct(tipos.tinto || 0, total) },
+        { label: 'Blancos', valor: tipos.blanco || 0, pct: pct(tipos.blanco || 0, total) },
+        { label: 'Espumosos', valor: tipos.espumoso || 0, pct: pct(tipos.espumoso || 0, total) },
+        { label: 'Generosos', valor: tipos.generoso || 0, pct: pct(tipos.generoso || 0, total) },
+        { label: 'Dulces', valor: dulces.length, pct: pct(dulces.length, total) },
+        { label: 'Por copa', valor: porCopa.length, pct: pct(porCopa.length, total) },
+        { label: 'Locales', valor: locales.length, pct: pct(locales.length, total) },
       ]
     }
   }
@@ -333,6 +448,7 @@ export default function RestauranteWorkspace() {
   const [proveedoresCatalogo, setProveedoresCatalogo] = useState([])
   const [vinosCatalogo, setVinosCatalogo] = useState([])
   const [loading, setLoading] = useState(true)
+  const [candidatosSalida, setCandidatosSalida] = useState([])
 
   const [ticketDraft, setTicketDraft] = useState('')
   const [guardandoTicket, setGuardandoTicket] = useState(false)
@@ -354,6 +470,10 @@ export default function RestauranteWorkspace() {
   const [ultimoCampoEco, setUltimoCampoEco] = useState('precio')
 
   const [alertaAbierta, setAlertaAbierta] = useState(null)
+  const [consultoriaFase1, setConsultoriaFase1] = useState(null)
+  const [cargandoFase1, setCargandoFase1] = useState(false)
+  const [recalculandoFase1, setRecalculandoFase1] = useState(false)
+  const [errorFase1, setErrorFase1] = useState('')
   const propuestaFormRef = useRef(null)
 
   const [seleccion, setSeleccion] = useState([])
@@ -391,13 +511,33 @@ export default function RestauranteWorkspace() {
       setVinosCatalogo(catalogoRes.ok ? catalogoData.vinos || [] : [])
       setSeleccion((selData || []).filter(item => !String(item.nota_personal || '').startsWith('[RESTAURANTE] ')))
       setLoading(false)
+      cargarConsultoriaFase1(token)
     }
     if (id) cargar()
   }, [id])
 
+  useEffect(() => {
+    if (!id) return
+    try {
+      setCandidatosSalida(JSON.parse(localStorage.getItem(`candidatos_salida_${id}`) || '[]'))
+    } catch {
+      setCandidatosSalida([])
+    }
+  }, [id])
+
+  useEffect(() => {
+    if (!id) return
+    localStorage.setItem(`candidatos_salida_${id}`, JSON.stringify(candidatosSalida))
+  }, [id, candidatosSalida])
+
   const analisis = useMemo(
     () => restaurante ? analizar(restaurante, vinos, platos, estadisticas, propuestas) : null,
     [restaurante, vinos, platos, estadisticas, propuestas]
+  )
+  const candidatosSalidaSet = useMemo(() => new Set(candidatosSalida.map(String)), [candidatosSalida])
+  const candidatosSalidaDetalle = useMemo(
+    () => vinos.filter(vino => candidatosSalidaSet.has(String(vino.id))),
+    [vinos, candidatosSalidaSet]
   )
 
   useEffect(() => {
@@ -407,6 +547,53 @@ export default function RestauranteWorkspace() {
   function gestionar() {
     setAdminRestaurantEmail(restaurante.email)
     window.location.href = '/dashboard'
+  }
+
+  function alternarCandidatoSalida(vinoId) {
+    const idVino = String(vinoId)
+    setCandidatosSalida(prev => prev.map(String).includes(idVino)
+      ? prev.filter(item => String(item) !== idVino)
+      : [...prev, idVino]
+    )
+  }
+
+  async function cargarConsultoriaFase1(tokenRecibido) {
+    if (!id) return
+    setCargandoFase1(true)
+    setErrorFase1('')
+    try {
+      const token = tokenRecibido || await tokenAdmin()
+      const res = await fetch(`/api/admin/consultoria-fase1/recalcular?restaurante_id=${id}`, {
+        headers: { Authorization: `Bearer ${token || ''}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la consultoria inteligente.')
+      setConsultoriaFase1(data)
+    } catch (error) {
+      setErrorFase1(error.message || 'No se pudo cargar la consultoria inteligente.')
+    } finally {
+      setCargandoFase1(false)
+    }
+  }
+
+  async function recalcularConsultoriaFase1() {
+    setRecalculandoFase1(true)
+    setErrorFase1('')
+    try {
+      const token = await tokenAdmin()
+      const res = await fetch('/api/admin/consultoria-fase1/recalcular', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+        body: JSON.stringify({ restaurante_id: id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'No se pudo recalcular la consultoria inteligente.')
+      await cargarConsultoriaFase1(token)
+    } catch (error) {
+      setErrorFase1(error.message || 'No se pudo recalcular la consultoria inteligente.')
+    } finally {
+      setRecalculandoFase1(false)
+    }
   }
 
   async function guardarTicket() {
@@ -734,6 +921,7 @@ export default function RestauranteWorkspace() {
           {/* Anchor navigation */}
           <nav className="ws-anchors">
             <button onClick={() => scrollTo('ws-resumen')}>Resumen {propuestasAbiertas.length > 0 && <span className="ws-badge">{propuestasAbiertas.length}</span>}</button>
+            <button onClick={() => scrollTo('ws-inteligencia')}>Inteligencia {consultoriaFase1?.alertas?.length > 0 && <span className="ws-badge">{consultoriaFase1.alertas.length}</span>}</button>
             <button onClick={() => scrollTo('ws-diagnostico')}>Diagnóstico {alertas.length > 0 && <span className="ws-badge">{alertas.length}</span>}</button>
             <button onClick={() => scrollTo('ws-matching')}>Matching {matchesCatalogo.length > 0 && <span className="ws-badge">{matchesCatalogo.length}</span>}</button>
             <button onClick={() => scrollTo('ws-propuestas')}>Propuestas {propuestasActivas.length > 0 && <span className="ws-badge">{propuestasActivas.length}</span>}</button>
@@ -772,6 +960,95 @@ export default function RestauranteWorkspace() {
                 <span className="ws-servicios-label">Servicios detectados</span>
                 {servicios.map(s => <span key={s} className="ws-servicio-pill">{s}</span>)}
               </div>
+            )}
+          </section>
+
+          <section id="ws-inteligencia" className="ws-section consulting-intelligence">
+            <div className="ws-section-head">
+              <div>
+                <p className="admin-kicker">Fase 1 - Motor persistente</p>
+                <h3 className="ws-section-title">Consultoria inteligente</h3>
+                <p className="ws-match-sub">Calcula KPIs, guarda historico, detecta problemas, genera recomendaciones y clasifica referencias con datos de los ultimos 30 dias.</p>
+              </div>
+              <button className="ws-btn-primary" onClick={recalcularConsultoriaFase1} disabled={recalculandoFase1}>
+                {recalculandoFase1 ? 'Recalculando...' : 'Recalcular y guardar'}
+              </button>
+            </div>
+
+            {errorFase1 && <p className="admin-alert admin-alert-error">{errorFase1}</p>}
+            {cargandoFase1 && <div className="ws-empty-block">Cargando ultima foto analitica...</div>}
+            {!cargandoFase1 && !consultoriaFase1?.ultima && (
+              <div className="ws-empty-block">
+                Aun no hay historico guardado. Pulsa "Recalcular y guardar" para crear la primera foto analitica.
+              </div>
+            )}
+
+            {consultoriaFase1?.ultima && (
+              <>
+                <div className="intelligence-meta">
+                  <span>Ultima foto: {new Date(consultoriaFase1.ultima.created_at).toLocaleString('es-ES')}</span>
+                  <span>Periodo: {new Date(consultoriaFase1.ultima.periodo_inicio).toLocaleDateString('es-ES')} - {new Date(consultoriaFase1.ultima.periodo_fin).toLocaleDateString('es-ES')}</span>
+                </div>
+
+                <div className="intelligence-kpis">
+                  {(consultoriaFase1.kpis || []).slice(0, 10).map(kpi => (
+                    <div key={kpi.id || kpi.clave}>
+                      <span>{kpi.nombre}</span>
+                      <strong>{Number(kpi.valor).toLocaleString('es-ES', { maximumFractionDigits: 2 })} {kpi.unidad}</strong>
+                      <small>{kpi.interpretacion}</small>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="intelligence-columns">
+                  <div>
+                    <h4>Alertas activas</h4>
+                    {(consultoriaFase1.alertas || []).length ? consultoriaFase1.alertas.slice(0, 6).map(alerta => (
+                      <article className={`intelligence-alert is-${alerta.severidad}`} key={alerta.id}>
+                        <strong>{alerta.titulo}</strong>
+                        <span>{alerta.detalle}</span>
+                        <small>{alerta.accion_sugerida}</small>
+                      </article>
+                    )) : <p className="ws-empty-inline">Sin alertas activas guardadas.</p>}
+                  </div>
+
+                  <div>
+                    <h4>Recomendaciones automaticas</h4>
+                    {(consultoriaFase1.recomendaciones || []).length ? consultoriaFase1.recomendaciones.slice(0, 6).map(rec => (
+                      <article className="intelligence-rec" key={rec.id}>
+                        <strong>{rec.titulo}</strong>
+                        <span>{rec.detalle}</span>
+                        <small>{rec.prioridad} - esfuerzo {rec.esfuerzo} - {rec.accion}</small>
+                      </article>
+                    )) : <p className="ws-empty-inline">Sin recomendaciones pendientes guardadas.</p>}
+                  </div>
+                </div>
+
+                <div className="intelligence-classifications">
+                  <h4>Clasificacion de referencias</h4>
+                  <div>
+                    {['estrella', 'joya', 'caballo', 'revisar'].map(categoria => {
+                      const items = (consultoriaFase1.clasificaciones || []).filter(item => item.categoria === categoria)
+                      const label = categoria === 'estrella' ? 'Estrellas'
+                        : categoria === 'joya' ? 'Joyas ocultas'
+                          : categoria === 'caballo' ? 'Caballos de batalla'
+                            : 'A revisar'
+                      return (
+                        <details key={categoria} className={`classification-group is-${categoria}`}>
+                          <summary><strong>{label}</strong><span>{items.length}</span></summary>
+                          {items.slice(0, 12).map(item => (
+                            <div className="classification-wine" key={item.id}>
+                              <span>{item.vinos?.nombre || 'Vino sin nombre'}</span>
+                              <small>{Number(item.margen_bruto_pct).toFixed(1)}% margen - {Number(item.popularidad_pct).toFixed(1)}% popularidad</small>
+                            </div>
+                          ))}
+                          {!items.length && <p className="ws-empty-inline">Sin referencias en esta categoria.</p>}
+                        </details>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
             )}
           </section>
 
@@ -848,19 +1125,79 @@ export default function RestauranteWorkspace() {
               </div>
 
               <div className="ws-strategy-grid">
+                {diagnostico.ticket.valor != null && diagnostico.wineMapping.referencias && (
+                  <div className={`mapping-row mapping-row-summary is-${diagnostico.wineMapping.referencias.estado}`}>
+                    <div>
+                      <strong>Numero de referencias</strong>
+                      <span>
+                        {diagnostico.wineMapping.referencias.actual} actuales · recomendado {diagnostico.wineMapping.referencias.minimo}-{diagnostico.wineMapping.referencias.maximo} · ideal {diagnostico.wineMapping.referencias.ideal}
+                      </span>
+                    </div>
+                    <div className="mapping-bar"><i style={{ width: `${Math.min(100, (diagnostico.wineMapping.referencias.actual / Math.max(1, diagnostico.wineMapping.referencias.maximo)) * 100)}%` }} /></div>
+                    <b>{diagnostico.wineMapping.referencias.estado}</b>
+                    <em>x1-x1,5 ticket</em>
+                  </div>
+                )}
+                {diagnostico.ticket.valor != null && diagnostico.wineMapping.reequilibrio && (
+                  <div className="mapping-rebalance">
+                    <div>
+                      <span className="admin-kicker">Reequilibrio recomendado</span>
+                      <strong>{diagnostico.wineMapping.reequilibrio.resumen}</strong>
+                      <p>
+                        Objetivo operativo: {diagnostico.wineMapping.reequilibrio.totalObjetivo} referencias
+                        {diagnostico.wineMapping.reequilibrio.quitarTotal > 0 && ` · quitar ${diagnostico.wineMapping.reequilibrio.quitarTotal}`}
+                        {diagnostico.wineMapping.reequilibrio.agregarTotal > 0 && ` · añadir ${diagnostico.wineMapping.reequilibrio.agregarTotal}`}
+                      </p>
+                    </div>
+                    {diagnostico.wineMapping.reequilibrio.movimientos.length > 0 && (
+                      <div className="strategy-pills">
+                        {diagnostico.wineMapping.reequilibrio.movimientos.map((movimiento, index) => (
+                          <span key={`${movimiento.desde}-${movimiento.hacia}-${index}`} className="is-warning">{movimiento.texto}</span>
+                        ))}
+                      </div>
+                    )}
+                    {candidatosSalidaDetalle.length > 0 && (
+                      <div className="mapping-exit-summary">
+                        <strong>{candidatosSalidaDetalle.length} candidatos marcados para salir</strong>
+                        <span>{candidatosSalidaDetalle.slice(0, 4).map(vino => vino.nombre).join(' · ')}{candidatosSalidaDetalle.length > 4 ? ' · ...' : ''}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="ws-strategy-col ws-strategy-col-wide">
                   {diagnostico.ticket.valor == null ? (
                     <p className="ws-sin-ticket">Ticket medio no disponible — introdúcelo arriba para ver la arquitectura de precios.</p>
                   ) : diagnostico.wineMapping.gamas.map(gama => (
-                    <div className="mapping-row" key={gama.id}>
-                      <div>
-                        <strong>{gama.label}</strong>
+                    <details className={`mapping-gama-detail ${gama.delta > 0 ? 'is-surplus' : gama.delta < 0 ? 'is-deficit' : 'is-balanced'}`} key={gama.id}>
+                      <summary className="mapping-row">
+                        <div>
+                          <strong>{gama.label}</strong>
+                          <span>Objetivo {gama.objetivoNumero} refs. · actual {gama.vinos}</span>
                         <span>{gama.rangoTexto} EUR · {gama.vinos} vinos</span>
                       </div>
                       <div className="mapping-bar"><i style={{ width: `${Math.min(100, gama.real)}%` }} /></div>
-                      <b>{gama.real}%</b>
-                      <em>obj. {gama.objetivo}%</em>
-                    </div>
+                        <b>{gama.delta > 0 ? `+${gama.delta}` : gama.delta}</b>
+                        <em>{gama.delta > 0 ? 'sobran' : gama.delta < 0 ? 'faltan' : 'ok'}</em>
+                      </summary>
+                      <div className="mapping-wine-list">
+                        {gama.vinosDetalle.length ? gama.vinosDetalle.map(vino => (
+                          <div className={`mapping-wine-item ${candidatosSalidaSet.has(String(vino.id)) ? 'is-exit-candidate' : ''}`} key={vino.id}>
+                            <div>
+                              <strong>{vino.nombre}</strong>
+                              <span>{[vino.bodega, vino.tipo, vino.region].filter(Boolean).join(' · ') || 'Sin datos extra'}</span>
+                            </div>
+                            <div className="mapping-wine-actions">
+                              <b>{eur(vino.precio)}</b>
+                              <button type="button" onClick={() => alternarCandidatoSalida(vino.id)}>
+                                {candidatosSalidaSet.has(String(vino.id)) ? 'Quitar marca' : 'Candidato salida'}
+                              </button>
+                            </div>
+                          </div>
+                        )) : (
+                          <p>No hay vinos en esta gama.</p>
+                        )}
+                      </div>
+                    </details>
                   ))}
                 </div>
 
@@ -879,7 +1216,7 @@ export default function RestauranteWorkspace() {
                   <p className="ws-strategy-col-title">Equilibrio comercial</p>
                   <div className="strategy-pills">
                     {diagnostico.equilibrio.map(item => (
-                      <span key={item.label}>{item.label}: {item.valor}</span>
+                      <span key={item.label}>{item.label}: {item.valor} <b>{item.pct}%</b></span>
                     ))}
                   </div>
                 </div>
