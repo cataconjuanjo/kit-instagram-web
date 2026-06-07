@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../supabase'
-import { isAdminEmail, setAdminRestaurantEmail } from '../../../demo'
+import { isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../../../demo'
 
 
 function normalizar(texto = '') {
@@ -480,6 +480,9 @@ export default function RestauranteWorkspace() {
   const [vinoElegido, setVinoElegido] = useState('')
   const [notaSeleccion, setNotaSeleccion] = useState('')
   const [guardandoSeleccion, setGuardandoSeleccion] = useState(false)
+  const [accionesMobileOpen, setAccionesMobileOpen] = useState(false)
+  const [sigMovOpen, setSigMovOpen] = useState(false)
+  const [planConsultorOpen, setPlanConsultorOpen] = useState(false)
 
   const RESTAURANTE_PREFIX = '[RESTAURANTE] '
   const esSeleccionJuanjo = item => !String(item.nota_personal || '').startsWith(RESTAURANTE_PREFIX)
@@ -502,6 +505,10 @@ export default function RestauranteWorkspace() {
       ])
       const catalogoData = await catalogoRes.json().catch(() => ({}))
       setRestaurante(rest)
+      if (rest?.id) {
+        setAdminRestaurantId(rest.id)
+        setAdminRestaurantEmail(rest.email)
+      }
       setTicketDraft(rest?.ticket_medio_comida || rest?.ticket_medio || rest?.ticket_comida || '')
       setVinos(vinosData || [])
       setPlatos(platosData || [])
@@ -546,7 +553,8 @@ export default function RestauranteWorkspace() {
 
   function gestionar() {
     setAdminRestaurantEmail(restaurante.email)
-    window.location.href = '/dashboard'
+    setAdminRestaurantId(restaurante.id)
+    window.location.href = `/dashboard?restaurante_id=${restaurante.id}`
   }
 
   function alternarCandidatoSalida(vinoId) {
@@ -861,6 +869,62 @@ export default function RestauranteWorkspace() {
     navigator.clipboard.writeText(texto)
   }
 
+  function copiarPlanConsultor() {
+    const diagnostico = consultoriaFase1?.consultor?.diagnostic
+    const items = consultoriaFase1?.consultor?.items || []
+    if (!diagnostico) return
+    const porFase = fase => items.filter(item => item.fase === fase)
+    const lineas = [
+      `Plan consultor - ${restaurante.nombre}`,
+      '',
+      diagnostico.resumen_ejecutivo,
+      '',
+      `Estado actual: ${diagnostico.estado_actual}`,
+      `Problema principal: ${diagnostico.problema_principal}`,
+      '',
+      'Acciones rapidas:',
+      ...(porFase('accion_rapida').length ? porFase('accion_rapida').map((item, index) => `${index + 1}. ${item.titulo}: ${item.accion}`) : ['Sin acciones rapidas detectadas.']),
+      '',
+      'Medio plazo:',
+      ...(porFase('medio_plazo').length ? porFase('medio_plazo').map((item, index) => `${index + 1}. ${item.titulo}: ${item.accion}`) : ['Sin acciones de medio plazo detectadas.']),
+      '',
+      'Estrategico:',
+      ...(porFase('estrategico').length ? porFase('estrategico').map((item, index) => `${index + 1}. ${item.titulo}: ${item.accion}`) : ['Sin acciones estrategicas detectadas.']),
+    ]
+    navigator.clipboard.writeText(lineas.join('\n'))
+  }
+
+  function copiarInformeEjecutivo() {
+    const diagnostico = consultoriaFase1?.consultor?.diagnostic
+    const oportunidad = consultoriaFase1?.oportunidad?.snapshot
+    const oportunidades = consultoriaFase1?.oportunidad?.items || []
+    const alertasMotor = consultoriaFase1?.alertas || []
+    const copa = consultoriaFase1?.copa?.snapshot
+    if (!diagnostico && !oportunidad && !alertasMotor.length) return
+    const lineas = [
+      `Informe ejecutivo - ${restaurante.nombre}`,
+      '',
+      diagnostico?.resumen_ejecutivo || `Diagnostico pendiente de recalculo para ${restaurante.nombre}.`,
+      '',
+      diagnostico?.estado_actual ? `Estado actual: ${diagnostico.estado_actual}` : '',
+      diagnostico?.problema_principal ? `Problema principal: ${diagnostico.problema_principal}` : '',
+      oportunidad ? `Recuperacion anual estimada: ${Number(oportunidad.recuperacion_anual_estimada).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR` : '',
+      oportunidad ? `Capital liberable estimado: ${Number(oportunidad.capital_liberable_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR` : '',
+      copa ? `Venta por copa: ${copa.candidatos_copa + copa.candidatos_copa_premium + copa.candidatos_coravin} candidatos detectados` : '',
+      '',
+      'Alertas principales:',
+      ...(alertasMotor.length
+        ? alertasMotor.slice(0, 5).map((alerta, index) => `${index + 1}. ${alerta.titulo}: ${alerta.accion_sugerida || alerta.detalle}`)
+        : ['Sin alertas abiertas en el motor.']),
+      '',
+      'Oportunidades economicas:',
+      ...(oportunidades.length
+        ? oportunidades.slice(0, 5).map((item, index) => `${index + 1}. ${item.titulo}: ${item.accion} (${Number(item.impacto_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR estimados)`)
+        : ['Sin oportunidades cuantificadas todavia.']),
+    ].filter(Boolean)
+    navigator.clipboard.writeText(lineas.join('\n'))
+  }
+
   function scrollTo(id) {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -916,6 +980,25 @@ export default function RestauranteWorkspace() {
               <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer">Descargar informe</a>
               <a href={`/carta/${restaurante.slug}`} target="_blank" rel="noreferrer">Ver carta ↗</a>
             </div>
+            <div className="ws-actions-mobile">
+              <button
+                type="button"
+                className="ws-actions-toggle"
+                onClick={() => setAccionesMobileOpen(o => !o)}
+                aria-expanded={accionesMobileOpen}
+              >
+                Acciones {accionesMobileOpen ? '▲' : '▼'}
+              </button>
+              {accionesMobileOpen && (
+                <div className="ws-actions-dropdown-panel">
+                  <button onClick={() => { copiarResumen(); setAccionesMobileOpen(false) }}>Copiar datos</button>
+                  <button onClick={() => { gestionar(); setAccionesMobileOpen(false) }}>Abrir dashboard</button>
+                  <button onClick={() => { window.print(); setAccionesMobileOpen(false) }}>Imprimir página</button>
+                  <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer" onClick={() => setAccionesMobileOpen(false)}>Descargar informe</a>
+                  <a href={`/carta/${restaurante.slug}`} target="_blank" rel="noreferrer" onClick={() => setAccionesMobileOpen(false)}>Ver carta ↗</a>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Anchor navigation */}
@@ -939,9 +1022,17 @@ export default function RestauranteWorkspace() {
                   <span>{score}</span>
                   <strong>{prioridad}</strong>
                 </div>
-                <div>
-                  <p className="ws-next-label">Siguiente movimiento</p>
-                  <p className="ws-next-text">{siguienteMovimiento}</p>
+                <div className="ws-next-block">
+                  <button
+                    type="button"
+                    className="ws-next-header"
+                    onClick={() => setSigMovOpen(o => !o)}
+                    aria-expanded={sigMovOpen}
+                  >
+                    <p className="ws-next-label">Siguiente movimiento</p>
+                    <span className="ws-next-chevron">{sigMovOpen ? '−' : '+'}</span>
+                  </button>
+                  <p className={`ws-next-text${sigMovOpen ? '' : ' ws-next-collapsed'}`}>{siguienteMovimiento}</p>
                 </div>
               </div>
               <div className="ws-metrics-grid">
@@ -989,6 +1080,122 @@ export default function RestauranteWorkspace() {
                   <span>Ultima foto: {new Date(consultoriaFase1.ultima.created_at).toLocaleString('es-ES')}</span>
                   <span>Periodo: {new Date(consultoriaFase1.ultima.periodo_inicio).toLocaleDateString('es-ES')} - {new Date(consultoriaFase1.ultima.periodo_fin).toLocaleDateString('es-ES')}</span>
                 </div>
+
+                {consultoriaFase1.consultor_pendiente_migracion && (
+                  <p className="admin-alert admin-alert-error">
+                    Modo consultor pendiente: falta aplicar en Supabase la migracion supabase/add_consultant_mode.sql.
+                  </p>
+                )}
+
+                {consultoriaFase1.oportunidad_pendiente_migracion && (
+                  <p className="admin-alert admin-alert-error">
+                    Oportunidad economica pendiente: falta aplicar en Supabase la migracion supabase/add_opportunity_engine.sql.
+                  </p>
+                )}
+
+                {consultoriaFase1.consultor?.diagnostic && (
+                  <div className={`consultant-plan${planConsultorOpen ? ' is-expanded' : ''}`}>
+                    <div className="consultant-plan-head">
+                      <div>
+                        <button
+                          type="button"
+                          className="consultant-plan-toggle"
+                          onClick={() => setPlanConsultorOpen(o => !o)}
+                          aria-expanded={planConsultorOpen}
+                        >
+                          <h4>Plan consultor</h4>
+                          <span className="consultant-plan-chevron">{planConsultorOpen ? '−' : '+'}</span>
+                        </button>
+                        <p>{consultoriaFase1.consultor.diagnostic.resumen_ejecutivo}</p>
+                      </div>
+                      <button type="button" onClick={copiarPlanConsultor}>Copiar resumen para cliente</button>
+                    </div>
+                    <div className="consultant-plan-body">
+                    <div className="consultant-plan-status">
+                      <div>
+                        <span>Prioridad</span>
+                        <strong>{consultoriaFase1.consultor.diagnostic.prioridad}</strong>
+                      </div>
+                      <div>
+                        <span>Score</span>
+                        <strong>{consultoriaFase1.consultor.diagnostic.score}</strong>
+                      </div>
+                      <div>
+                        <span>Problema principal</span>
+                        <strong>{consultoriaFase1.consultor.diagnostic.problema_principal}</strong>
+                      </div>
+                    </div>
+                    <p className="consultant-current-state">{consultoriaFase1.consultor.diagnostic.estado_actual}</p>
+                    <div className="consultant-plan-columns">
+                      {[
+                        ['accion_rapida', 'Acciones rapidas'],
+                        ['medio_plazo', 'Medio plazo'],
+                        ['estrategico', 'Estrategico'],
+                      ].map(([fase, label]) => {
+                        const items = (consultoriaFase1.consultor.items || []).filter(item => item.fase === fase)
+                        return (
+                          <div key={fase}>
+                            <h5>{label}</h5>
+                            {items.slice(0, 6).map(item => (
+                              <article key={item.id || `${fase}-${item.titulo}`}>
+                                <strong>{item.titulo}</strong>
+                                <span>{item.detalle}</span>
+                                <small>{item.accion}</small>
+                                <em>{item.prioridad} · impacto {item.impacto} · esfuerzo {item.esfuerzo}</em>
+                              </article>
+                            ))}
+                            {!items.length && <p className="ws-empty-inline">Sin acciones en este bloque.</p>}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {consultoriaFase1.oportunidad?.snapshot && (
+                      <div className="opportunity-engine">
+                        <div className="opportunity-head">
+                          <div>
+                            <h5>Oportunidad economica</h5>
+                            <p>{consultoriaFase1.oportunidad.snapshot.resumen}</p>
+                          </div>
+                        </div>
+                        <div className="opportunity-kpis">
+                          <div>
+                            <span>Recuperacion anual estimada</span>
+                            <strong>{Number(consultoriaFase1.oportunidad.snapshot.recuperacion_anual_estimada).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</strong>
+                          </div>
+                          <div>
+                            <span>Capital liberable</span>
+                            <strong>{Number(consultoriaFase1.oportunidad.snapshot.capital_liberable_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</strong>
+                          </div>
+                          <div>
+                            <span>Acciones rapidas</span>
+                            <strong>{Number(consultoriaFase1.oportunidad.snapshot.impacto_acciones_rapidas).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</strong>
+                          </div>
+                          <div>
+                            <span>Confianza media</span>
+                            <strong>{Number(consultoriaFase1.oportunidad.snapshot.confianza_media_pct).toFixed(0)}%</strong>
+                          </div>
+                        </div>
+                        <div className="opportunity-list">
+                          {(consultoriaFase1.oportunidad.items || []).slice(0, 6).map(item => (
+                            <article key={item.id || `${item.area}-${item.titulo}`}>
+                              <div>
+                                <strong>{item.titulo}</strong>
+                                <span>{item.detalle}</span>
+                                <small>{item.accion}</small>
+                              </div>
+                              <div>
+                                <b>{Number(item.impacto_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</b>
+                                <em>{item.area} · {item.horizonte.replace('_', ' ')} · confianza {Number(item.confianza_pct).toFixed(0)}%</em>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    </div>{/* consultant-plan-body */}
+                  </div>
+                )}
 
                 <div className="intelligence-kpis">
                   {(consultoriaFase1.kpis || []).slice(0, 10).map(kpi => (
@@ -1048,6 +1255,216 @@ export default function RestauranteWorkspace() {
                     })}
                   </div>
                 </div>
+
+                {consultoriaFase1.inventario_pendiente_migracion && (
+                  <p className="admin-alert admin-alert-error">
+                    Inventario inteligente pendiente: falta aplicar en Supabase la migracion supabase/add_inventory_intelligence.sql.
+                  </p>
+                )}
+
+                {consultoriaFase1.carta_pendiente_migracion && (
+                  <p className="admin-alert admin-alert-error">
+                    Inteligencia de carta pendiente: falta aplicar en Supabase la migracion supabase/add_wine_list_intelligence.sql.
+                  </p>
+                )}
+
+                {consultoriaFase1.copa_pendiente_migracion && (
+                  <p className="admin-alert admin-alert-error">
+                    Motor por copa pendiente: falta aplicar en Supabase la migracion supabase/add_btg_engine.sql.
+                  </p>
+                )}
+
+                {consultoriaFase1.inventario?.snapshot && (
+                  <div className="inventory-intelligence">
+                    <div className="inventory-intelligence-head">
+                      <div>
+                        <h4>Inventario inteligente</h4>
+                        <p>Foto de bodega guardada con stock inmovilizado, referencias lentas, exceso, proveedor principal y mermas.</p>
+                      </div>
+                      <Link href="/dashboard/bodega" className="ws-btn-secondary">Abrir bodega</Link>
+                    </div>
+                    <div className="inventory-intelligence-kpis">
+                      <div>
+                        <span>Valor a coste</span>
+                        <strong>{Number(consultoriaFase1.inventario.snapshot.valor_coste_total).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</strong>
+                      </div>
+                      <div>
+                        <span>Stock inmovilizado</span>
+                        <strong>{consultoriaFase1.inventario.snapshot.stock_inmovilizado_refs}</strong>
+                        <small>{Number(consultoriaFase1.inventario.snapshot.stock_inmovilizado_valor).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</small>
+                      </div>
+                      <div>
+                        <span>Referencias lentas</span>
+                        <strong>{consultoriaFase1.inventario.snapshot.referencias_lentas}</strong>
+                      </div>
+                      <div>
+                        <span>Exceso de stock</span>
+                        <strong>{consultoriaFase1.inventario.snapshot.exceso_stock_refs}</strong>
+                      </div>
+                      <div>
+                        <span>Proveedor principal</span>
+                        <strong>{consultoriaFase1.inventario.snapshot.proveedor_principal || 'Sin datos'}</strong>
+                        <small>{Number(consultoriaFase1.inventario.snapshot.proveedor_principal_pct).toFixed(1)}%</small>
+                      </div>
+                      <div>
+                        <span>Merma / ajustes</span>
+                        <strong>{Number(consultoriaFase1.inventario.snapshot.tasa_merma_pct).toFixed(1)}%</strong>
+                        <small>{consultoriaFase1.inventario.snapshot.merma_unidades} uds.</small>
+                      </div>
+                    </div>
+                    <div className="inventory-risk-list">
+                      {(consultoriaFase1.inventario.items || [])
+                        .filter(item => ['inmovilizado', 'lento', 'exceso', 'bajo_minimo', 'sin_datos'].includes(item.estado_inventario))
+                        .slice(0, 12)
+                        .map(item => (
+                          <div className={`inventory-risk-item is-${item.estado_inventario}`} key={item.id || `${item.vino_id}-${item.estado_inventario}`}>
+                            <div>
+                              <strong>{item.vinos?.nombre || 'Vino sin nombre'}</strong>
+                              <span>{item.motivo}</span>
+                            </div>
+                            <div>
+                              <b>{item.estado_inventario.replace('_', ' ')}</b>
+                              <small>{item.stock_actual} uds. · {Number(item.valor_stock_coste).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</small>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {consultoriaFase1.carta?.snapshot && (
+                  <div className="wine-list-intelligence">
+                    <div className="inventory-intelligence-head">
+                      <div>
+                        <h4>Inteligencia de carta</h4>
+                        <p>Lee productividad por referencia, concentracion de ventas, huecos de precio y bajo rendimiento.</p>
+                      </div>
+                      <Link href="/dashboard/menu-engineering" className="ws-btn-secondary">Ver menu engineering</Link>
+                    </div>
+                    <div className="inventory-intelligence-kpis">
+                      <div>
+                        <span>Pareto top 20%</span>
+                        <strong>{Number(consultoriaFase1.carta.snapshot.pareto_top20_ventas_pct).toFixed(1)}%</strong>
+                        <small>{consultoriaFase1.carta.snapshot.pareto_top20_refs} refs.</small>
+                      </div>
+                      <div>
+                        <span>Refs. con venta</span>
+                        <strong>{consultoriaFase1.carta.snapshot.referencias_con_venta}</strong>
+                        <small>de {consultoriaFase1.carta.snapshot.referencias_total}</small>
+                      </div>
+                      <div>
+                        <span>Productividad media</span>
+                        <strong>{Number(consultoriaFase1.carta.snapshot.productividad_media).toFixed(1)}</strong>
+                        <small>sobre 100</small>
+                      </div>
+                      <div>
+                        <span>Bajo rendimiento</span>
+                        <strong>{consultoriaFase1.carta.snapshot.bottom10_refs}</strong>
+                        <small>bottom 10%</small>
+                      </div>
+                      <div>
+                        <span>Huecos de precio</span>
+                        <strong>{(consultoriaFase1.carta.snapshot.huecos_precio || []).length}</strong>
+                      </div>
+                      <div>
+                        <span>Estado carta</span>
+                        <strong>{consultoriaFase1.carta.snapshot.carta_inflada ? 'Inflada' : 'Controlada'}</strong>
+                      </div>
+                    </div>
+
+                    {(consultoriaFase1.carta.snapshot.huecos_precio || []).length > 0 && (
+                      <div className="wine-list-gaps">
+                        {(consultoriaFase1.carta.snapshot.huecos_precio || []).map(item => (
+                          <span key={`${item.gama}-${item.rango}`}>{item.gama}: {item.rango} EUR</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="wine-list-gamas">
+                      {(consultoriaFase1.carta.snapshot.resumen_gamas || []).map(gama => (
+                        <div key={gama.id}>
+                          <strong>{gama.nombre}</strong>
+                          <span>{gama.referencias} refs. · {gama.ventas_pct}% ventas</span>
+                          <small>{gama.rango} EUR · productividad {Number(gama.productividad_media).toFixed(1)}</small>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="inventory-risk-list">
+                      {(consultoriaFase1.carta.items || [])
+                        .filter(item => item.es_bottom10)
+                        .slice(0, 10)
+                        .map(item => (
+                          <div className="inventory-risk-item is-lento" key={item.id || item.vino_id}>
+                            <div>
+                              <strong>{item.vinos?.nombre || item.nombre || 'Vino sin nombre'}</strong>
+                              <span>{item.motivo}</span>
+                            </div>
+                            <div>
+                              <b>{Number(item.productividad_score).toFixed(1)}/100</b>
+                              <small>{item.ventas_unidades} ventas · {Number(item.margen_bruto_pct).toFixed(1)}% margen</small>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {consultoriaFase1.copa?.snapshot && (
+                  <div className="btg-intelligence">
+                    <div className="inventory-intelligence-head">
+                      <div>
+                        <h4>Motor de venta por copa</h4>
+                        <p>Detecta candidatos por copa, copa premium y Coravin, con precio sugerido, margen y riesgo de apertura.</p>
+                      </div>
+                      <Link href="/dashboard/sala" className="ws-btn-secondary">Abrir sala</Link>
+                    </div>
+                    <div className="inventory-intelligence-kpis">
+                      <div>
+                        <span>Cobertura por copa</span>
+                        <strong>{Number(consultoriaFase1.copa.snapshot.cobertura_copa_pct).toFixed(1)}%</strong>
+                        <small>{consultoriaFase1.copa.snapshot.referencias_por_copa} de {consultoriaFase1.copa.snapshot.referencias_activas}</small>
+                      </div>
+                      <div>
+                        <span>Candidatos copa</span>
+                        <strong>{consultoriaFase1.copa.snapshot.candidatos_copa}</strong>
+                      </div>
+                      <div>
+                        <span>Copa premium</span>
+                        <strong>{consultoriaFase1.copa.snapshot.candidatos_copa_premium}</strong>
+                      </div>
+                      <div>
+                        <span>Coravin</span>
+                        <strong>{consultoriaFase1.copa.snapshot.candidatos_coravin}</strong>
+                      </div>
+                      <div>
+                        <span>Beneficio potencial</span>
+                        <strong>{Number(consultoriaFase1.copa.snapshot.beneficio_potencial_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</strong>
+                        <small>si se vende una botella de cada candidato por copa</small>
+                      </div>
+                    </div>
+
+                    <div className="btg-candidates">
+                      {(consultoriaFase1.copa.candidates || []).slice(0, 10).map(item => (
+                        <div className={`btg-candidate is-${item.categoria_copa}`} key={item.id || item.vino_id}>
+                          <div>
+                            <strong>{item.vinos?.nombre || item.nombre || 'Vino sin nombre'}</strong>
+                            <span>{item.motivo}</span>
+                            <small>{item.accion}</small>
+                          </div>
+                          <div>
+                            <b>{Number(item.score_copa).toFixed(0)}/100</b>
+                            <span>{item.categoria_copa.replace('_', ' ')}</span>
+                            <small>{Number(item.precio_copa_sugerido).toFixed(2)} EUR/copa · margen {Number(item.margen_copa_pct).toFixed(1)}%</small>
+                          </div>
+                        </div>
+                      ))}
+                      {!(consultoriaFase1.copa.candidates || []).length && (
+                        <p className="ws-empty-inline">No hay candidatos claros con los datos actuales.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </section>
@@ -1560,8 +1977,12 @@ export default function RestauranteWorkspace() {
           ═══════════════════════════════════════ */}
           <section id="ws-informe" className="ws-section">
             <div className="ws-section-head">
-              <h3 className="ws-section-title">Informe</h3>
-              <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer" className="ws-btn-secondary">Abrir versión imprimible ↗</a>
+              <h3 className="ws-section-title">Informe ejecutivo</h3>
+              <div className="report-inline-actions">
+                <button type="button" onClick={copiarInformeEjecutivo}>Copiar resumen</button>
+                <button type="button" onClick={() => window.print()} aria-label="Imprimir esta pagina">Imprimir</button>
+                <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer" className="ws-btn-secondary">Abrir version imprimible</a>
+              </div>
             </div>
 
             <div className="ws-informe-preview">
@@ -1570,39 +1991,49 @@ export default function RestauranteWorkspace() {
                   <p className="admin-kicker">Informe privado de consultoría</p>
                   <h4>Estado de la carta de vinos de {restaurante.nombre}</h4>
                   <p>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ')} · {fecha}</p>
+                  {consultoriaFase1?.consultor?.diagnostic?.resumen_ejecutivo && (
+                    <p className="ws-informe-lead">{consultoriaFase1.consultor.diagnostic.resumen_ejecutivo}</p>
+                  )}
                 </div>
-                <div className={`report-score report-score-${prioridad.toLowerCase()}`}>
-                  <span>{score}</span>
-                  <strong>{prioridad}</strong>
+                <div className={`report-score report-score-${(consultoriaFase1?.consultor?.diagnostic?.prioridad || prioridad).toLowerCase()}`}>
+                  <span>{consultoriaFase1?.consultor?.diagnostic?.score ?? score}</span>
+                  <strong>{consultoriaFase1?.consultor?.diagnostic?.prioridad || prioridad}</strong>
                 </div>
               </div>
 
               <div className="ws-informe-metrics">
-                <div><span>Valor a coste</span><strong>{eur(metricas.valorCoste)}</strong></div>
-                <div><span>Potencial venta</span><strong>{eur(metricas.valorVenta)}</strong></div>
-                <div><span>Margen medio</span><strong>{metricas.margenMedio ?? '—'}%</strong></div>
-                <div><span>Maridajes 30d</span><strong>{metricas.sommelier30}</strong></div>
+                <div><span>Recuperacion anual</span><strong>{consultoriaFase1?.oportunidad?.snapshot ? `${Number(consultoriaFase1.oportunidad.snapshot.recuperacion_anual_estimada).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR` : eur(metricas.valorVenta)}</strong></div>
+                <div><span>Capital liberable</span><strong>{consultoriaFase1?.oportunidad?.snapshot ? `${Number(consultoriaFase1.oportunidad.snapshot.capital_liberable_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR` : eur(metricas.valorCoste)}</strong></div>
+                <div><span>Alertas abiertas</span><strong>{consultoriaFase1?.alertas?.length ?? alertas.length}</strong></div>
+                <div><span>Candidatos copa</span><strong>{consultoriaFase1?.copa?.snapshot ? consultoriaFase1.copa.snapshot.candidatos_copa + consultoriaFase1.copa.snapshot.candidatos_copa_premium + consultoriaFase1.copa.snapshot.candidatos_coravin : metricas.sommelier30}</strong></div>
               </div>
 
               <div className="ws-informe-alertas">
                 <p className="admin-kicker">Oportunidades principales</p>
-                {alertas.slice(0, 5).map(a => (
+                {(consultoriaFase1?.oportunidad?.items || []).slice(0, 5).map(item => (
+                  <div key={item.id || `${item.area}-${item.titulo}`} className="ws-informe-alerta">
+                    <strong>{item.titulo}</strong>
+                    <p>{item.detalle}</p>
+                    <em>{item.accion} - {Number(item.impacto_estimado).toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR - confianza {Number(item.confianza_pct).toFixed(0)}%</em>
+                  </div>
+                ))}
+                {!(consultoriaFase1?.oportunidad?.items || []).length && (consultoriaFase1?.alertas || alertas).slice(0, 5).map(a => (
                   <div key={a.titulo} className="ws-informe-alerta">
                     <strong>{a.titulo}</strong>
                     <p>{a.detalle}</p>
-                    <em>{a.accion}</em>
+                    <em>{a.accion_sugerida || a.accion}</em>
                   </div>
                 ))}
               </div>
 
               <div className="ws-informe-plan">
                 <p className="admin-kicker">Hoja de ruta propuesta</p>
-                {alertas.slice(0, 4).map((a, i) => (
-                  <div key={a.titulo} className="ws-informe-plan-item">
+                {((consultoriaFase1?.consultor?.items || []).length ? consultoriaFase1.consultor.items : alertas.map(a => ({ titulo: a.titulo, accion: a.accion }))).slice(0, 6).map((item, i) => (
+                  <div key={item.id || item.titulo} className="ws-informe-plan-item">
                     <span>{i + 1}</span>
                     <div>
-                      <strong>{a.titulo}</strong>
-                      <p>{a.accion}</p>
+                      <strong>{item.titulo}</strong>
+                      <p>{item.accion}</p>
                     </div>
                   </div>
                 ))}

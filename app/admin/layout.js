@@ -52,6 +52,8 @@ export default function AdminLayout({ children }) {
   const breadcrumbs = [
     { label: 'Panel', href: '/admin/consultoria' },
     pathname === '/admin/consultoria' && { label: 'Radar' },
+    pathname === '/admin/acciones' && { label: 'Acciones' },
+    pathname === '/admin/alertas' && { label: 'Alertas' },
     pathname === '/admin/sugerencias' && { label: 'Buzon sugerencias' },
     pathname === '/admin/proveedores' && { label: 'Proveedores' },
     pathname === '/admin' && { label: 'Restaurantes' },
@@ -80,6 +82,20 @@ export default function AdminLayout({ children }) {
               onClick={() => setMenuOpen(false)}
             >
               Radar global
+            </Link>
+            <Link
+              href="/admin/alertas"
+              className={`${styles.navLink} ${pathname === '/admin/alertas' ? styles.navActive : ''}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              Alertas
+            </Link>
+            <Link
+              href="/admin/acciones"
+              className={`${styles.navLink} ${pathname === '/admin/acciones' ? styles.navActive : ''}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              Acciones
             </Link>
             <Link
               href="/admin/sugerencias"

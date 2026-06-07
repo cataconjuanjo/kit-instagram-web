@@ -85,7 +85,7 @@ export default function AdminSugerenciasPage() {
                 <h2>{item.restaurantes?.nombre || 'Restaurante'}</h2>
                 <p className="consult-muted">{fecha(item.created_at)}</p>
               </div>
-              <span className="consult-badge">{item.estado}</span>
+              <span className={`consult-badge consult-badge--${item.estado}`}>{item.estado}</span>
             </div>
             <p className="consult-card-text">{item.mensaje}</p>
             {item.pagina && <p className="consult-muted">Contexto: {item.pagina}</p>}

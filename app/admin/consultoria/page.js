@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
-import { isAdminEmail, setAdminRestaurantEmail } from '../../demo'
+import { isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../../demo'
 
 
 function normalizar(texto = '') {
@@ -20,6 +20,39 @@ function decimal(valor) {
 
 function eur(valor) {
   return `${decimal(valor).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} EUR`
+}
+
+function oportunidadRadar(informe) {
+  const persistida = informe.ejecutivo?.resumen?.recuperacion_anual_estimada || 0
+  if (persistida > 0) return persistida
+  const margenBajo = informe.metricas?.margenBajo || 0
+  const sinCoste = informe.metricas?.sinCoste || 0
+  const propuestas = informe.propuestasAbiertas?.length || 0
+  const copaFaltante = Math.max(0, Math.round((informe.metricas?.vinos || 0) * 0.12) - (informe.metricas?.copa || 0))
+  return (margenBajo * 180) + (sinCoste * 60) + (propuestas * 120) + (copaFaltante * 90)
+}
+
+function capitalRadar(informe) {
+  const persistido = informe.ejecutivo?.resumen?.capital_liberable_estimado || 0
+  if (persistido > 0) return persistido
+  const valorCoste = informe.metricas?.valorCoste || 0
+  const vinos = informe.metricas?.vinos || 0
+  if (!valorCoste || !vinos) return 0
+  const friccion = (informe.metricas?.margenBajo || 0) + (informe.metricas?.bajoMinimo || 0) + (informe.metricas?.sinProveedor || 0)
+  if (!friccion) return 0
+  return Math.round(valorCoste * Math.min(0.18, Math.max(0.04, friccion / vinos * 0.18)))
+}
+
+function alertasCriticasRadar(informe) {
+  const persistidas = informe.ejecutivo?.resumen?.alertas_criticas
+  if (typeof persistidas === 'number' && persistidas > 0) return persistidas
+  return informe.prioridad === 'Alta' ? Math.max(1, Math.min(3, informe.alertas?.filter(alerta => alerta.peso >= 12).length || 1)) : 0
+}
+
+function candidatosCopaRadar(informe) {
+  const persistidos = informe.ejecutivo?.resumen?.candidatos_copa || 0
+  if (persistidos > 0) return persistidos
+  return Math.max(0, Math.round((informe.metricas?.vinos || 0) * 0.12) - (informe.metricas?.copa || 0))
 }
 
 const IVA_HOSTELERIA = 1.10
@@ -300,6 +333,7 @@ export default function RadarConsultoria() {
   const [guardandoTicket, setGuardandoTicket] = useState('')
   const [loading, setLoading] = useState(true)
   const [favoritos, setFavoritos] = useState([])
+  const [radarEjecutivo, setRadarEjecutivo] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -310,12 +344,20 @@ export default function RadarConsultoria() {
       }
       setUser(user)
       const desde = haceDiasISO(30)
-      const [{ data: rests }, { data: vinosData }, { data: platosData }, { data: estadisticasData }, { data: propuestasData }] = await Promise.all([
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token || ''
+      const radarPromise = token
+        ? fetch('/api/admin/radar-ejecutivo', { headers: { Authorization: `Bearer ${token}` } })
+            .then(async res => res.ok ? res.json() : null)
+            .catch(() => null)
+        : Promise.resolve(null)
+      const [{ data: rests }, { data: vinosData }, { data: platosData }, { data: estadisticasData }, { data: propuestasData }, radarData] = await Promise.all([
         supabase.from('restaurantes').select('*').order('nombre'),
         supabase.from('vinos').select('*'),
         supabase.from('platos').select('*'),
         supabase.from('estadisticas').select('*').gte('created_at', desde),
-        supabase.from('consultor_propuestas').select('*').order('created_at', { ascending: false })
+        supabase.from('consultor_propuestas').select('*').order('created_at', { ascending: false }),
+        radarPromise,
       ])
       setRestaurantes(rests || [])
       setTicketDrafts(Object.fromEntries((rests || []).map(rest => [
@@ -326,6 +368,7 @@ export default function RadarConsultoria() {
       setPlatos(platosData || [])
       setEstadisticas(estadisticasData || [])
       setPropuestas(propuestasData || [])
+      setRadarEjecutivo(radarData)
       setLoading(false)
     }
     cargar()
@@ -339,25 +382,52 @@ export default function RadarConsultoria() {
     }
   }, [])
 
+  const ejecutivoPorRestaurante = useMemo(() => {
+    const mapa = new Map()
+    for (const item of radarEjecutivo?.items || []) {
+      mapa.set(item.restaurante.id, item)
+    }
+    return mapa
+  }, [radarEjecutivo])
+
   const informes = useMemo(() => restaurantes.map(restaurante => {
     const vinosRest = vinos.filter(v => v.restaurante_id === restaurante.id)
     const platosRest = platos.filter(p => p.restaurante_id === restaurante.id)
     const estadisticasRest = estadisticas.filter(e => e.restaurante_id === restaurante.id)
     const propuestasRest = propuestas.filter(p => p.restaurante_id === restaurante.id)
-    return { restaurante, ...analizar(restaurante, vinosRest, platosRest, estadisticasRest, propuestasRest) }
-  }).sort((a, b) => b.score - a.score), [restaurantes, vinos, platos, estadisticas, propuestas])
+    const base = { restaurante, ...analizar(restaurante, vinosRest, platosRest, estadisticasRest, propuestasRest) }
+    const ejecutivo = ejecutivoPorRestaurante.get(restaurante.id)
+    if (!ejecutivo) return base
+    const prioridad = ejecutivo.prioridad === 'alta' ? 'Alta' : ejecutivo.prioridad === 'media' ? 'Media' : 'Baja'
+    return {
+      ...base,
+      ejecutivo,
+      score: ejecutivo.score ?? base.score,
+      prioridad,
+      siguienteMovimiento: ejecutivo.resumen?.siguiente_accion || base.siguienteMovimiento,
+    }
+  }).sort((a, b) => {
+    const opA = a.ejecutivo?.resumen?.recuperacion_anual_estimada || 0
+    const opB = b.ejecutivo?.resumen?.recuperacion_anual_estimada || 0
+    return (b.score - a.score) || (opB - opA)
+  }), [restaurantes, vinos, platos, estadisticas, propuestas, ejecutivoPorRestaurante])
 
   const informesFiltrados = informes.filter(informe => {
     if (filtro === 'alta') return informe.prioridad === 'Alta'
     if (filtro === 'margen') return informe.metricas.sinCoste > 0 || informe.metricas.margenBajo > 0
     if (filtro === 'sala') return informe.dudasSala.length > 0 || informe.incidenciasStock.length > 0
     if (filtro === 'propuestas') return informe.propuestasAbiertas.length > 0
+    if (filtro === 'oportunidad') return oportunidadRadar(informe) > 0
+    if (filtro === 'capital') return capitalRadar(informe) > 0
+    if (filtro === 'copa') return candidatosCopaRadar(informe) > 0
+    if (filtro === 'carta') return informe.ejecutivo?.resumen?.carta_inflada || (informe.ejecutivo?.resumen?.bottom10_refs || 0) > 0
     return true
   })
 
   function gestionar(restaurante) {
     setAdminRestaurantEmail(restaurante.email)
-    window.location.href = '/dashboard'
+    setAdminRestaurantId(restaurante.id)
+    window.location.href = `/dashboard?restaurante_id=${restaurante.id}`
   }
 
   function toggleFavorito(event, restauranteId) {
@@ -405,9 +475,18 @@ export default function RadarConsultoria() {
 
   const alta = informes.filter(i => i.prioridad === 'Alta').length
   const media = informes.filter(i => i.prioridad === 'Media').length
+  const oportunidadTotal = informes.reduce((sum, informe) => sum + oportunidadRadar(informe), 0)
+  const capitalTotal = informes.reduce((sum, informe) => sum + capitalRadar(informe), 0)
+  const alertasCriticas = informes.reduce((sum, informe) => sum + alertasCriticasRadar(informe), 0)
+  const candidatosCopa = informes.reduce((sum, informe) => sum + candidatosCopaRadar(informe), 0)
+  const fotosPersistidas = informes.filter(informe => informe.ejecutivo?.resumen?.ultima_foto).length
   const filtros = [
     ['todas', 'Todas'],
     ['alta', 'Prioridad alta'],
+    ['oportunidad', 'Oportunidad'],
+    ['capital', 'Capital'],
+    ['copa', 'Copa'],
+    ['carta', 'Carta'],
     ['margen', 'Margen/bodega'],
     ['sala', 'Sala'],
     ['propuestas', 'Propuestas'],
@@ -417,9 +496,41 @@ export default function RadarConsultoria() {
     <div className="admin-main radar-main">
       <div className="radar-header">
             <div>
-              <h2>Radar</h2>
+              <p className="admin-kicker">Centro de mando</p>
+              <h2>Radar ejecutivo</h2>
               <p>{informes.length} restaurantes · {alta} prioridad alta · {media} prioridad media</p>
+              <p className="radar-data-note">
+                {fotosPersistidas} restaurantes con foto persistida. El resto usa estimacion previa del radar hasta pulsar "Recalcular y guardar" en su ficha.
+              </p>
             </div>
+          </div>
+
+          <section className="executive-radar-summary">
+            <article>
+              <span>Oportunidad anual</span>
+              <strong>{eur(oportunidadTotal)}</strong>
+              <small>Potencial estimado si se ejecutan acciones.</small>
+            </article>
+            <article>
+              <span>Capital liberable</span>
+              <strong>{eur(capitalTotal)}</strong>
+              <small>Stock/carta que puede desbloquear caja.</small>
+            </article>
+            <article>
+              <span>Alertas criticas</span>
+              <strong>{alertasCriticas}</strong>
+              <small>Problemas abiertos que merecen llamada.</small>
+            </article>
+            <article>
+              <span>Candidatos copa</span>
+              <strong>{candidatosCopa}</strong>
+              <small>Oportunidades para subir ticket y rotar.</small>
+            </article>
+          </section>
+
+          <div className="radar-command-bar">
+            <Link href="/admin/acciones">Ver pipeline consultor</Link>
+            <Link href="/admin/alertas">Ver alertas abiertas</Link>
           </div>
 
           <div className="radar-filterbar">
@@ -449,14 +560,26 @@ export default function RadarConsultoria() {
                   <div className="radar-tags">
                     <span className={`radar-tag radar-tag-${informe.prioridad.toLowerCase()}`}>{informe.prioridad}</span>
                     {informe.propuestasAbiertas.length > 0 && <span className="radar-tag is-warning">Pendiente accion</span>}
+                    {oportunidadRadar(informe) > 0 && <span className="radar-tag is-hot">{eur(oportunidadRadar(informe))}</span>}
+                    {candidatosCopaRadar(informe) > 0 && <span className="radar-tag is-ok">{candidatosCopaRadar(informe)} copa</span>}
                     {informe.alertas.some(alerta => alerta.titulo.toLowerCase().includes('cliente caliente')) && <span className="radar-tag is-hot">Cliente caliente</span>}
                     {informe.alertas.length === 0 && <span className="radar-tag is-ok">OK</span>}
                   </div>
                   <span>{informe.restaurante.ciudad || '—'} · {informe.metricas.vinos} vinos · {informe.metricas.platos} platos</span>
+                  {informe.ejecutivo && (
+                    <small className="radar-executive-line">
+                      Capital {eur(capitalRadar(informe))} · Alertas criticas {alertasCriticasRadar(informe)} · Carta {informe.ejecutivo.resumen.carta_inflada ? 'inflada' : 'controlada'}
+                    </small>
+                  )}
+                  {!informe.ejecutivo && (
+                    <small className="radar-executive-line">
+                      Estimacion previa: capital {eur(capitalRadar(informe))} · alertas criticas {alertasCriticasRadar(informe)} · copa {candidatosCopaRadar(informe)}
+                    </small>
+                  )}
                 </div>
                 <div className="radar-alerta">
-                  {informe.alertas[0]
-                    ? <><strong>{informe.alertas[0].titulo}</strong><span>{informe.alertas[0].detalle}</span></>
+                  {informe.ejecutivo?.resumen?.problema_principal || informe.alertas[0]
+                    ? <><strong>{informe.ejecutivo?.resumen?.problema_principal || informe.alertas[0].titulo}</strong><span>{informe.ejecutivo?.alertas?.[0]?.detalle || informe.alertas[0]?.detalle}</span></>
                     : <span>Sin alertas críticas. Mantenimiento fino.</span>
                   }
                 </div>

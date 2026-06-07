@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
-import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail } from '../demo'
+import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../demo'
 
 const PLAN_LABEL = { basic: 'Básico', pro: 'Sala', premium: 'Acompañado' }
 
@@ -69,6 +69,7 @@ function AdminPageContent() {
   const [orden, setOrden] = useState('nombre')
   const [filtroTabla, setFiltroTabla] = useState('')
   const [menuAccionesId, setMenuAccionesId] = useState(null)
+  const [acordeonAlta, setAcordeonAlta] = useState('datos')
   const [nuevoRestaurante, setNuevoRestaurante] = useState({
     nombre: '',
     email: '',
@@ -148,7 +149,8 @@ function AdminPageContent() {
 
   function gestionar(restaurante) {
     setAdminRestaurantEmail(restaurante.email)
-    router.push('/dashboard')
+    setAdminRestaurantId(restaurante.id)
+    router.push(`/dashboard?restaurante_id=${restaurante.id}`)
   }
 
   function empezarEdicion(restaurante) {
@@ -426,61 +428,127 @@ function AdminPageContent() {
             <span><b style={{ width: `${progresoAlta}%` }} /></span>
             <strong>{progresoAlta}% completo</strong>
           </div>
-          <form onSubmit={crearRestaurante} className="admin-create-form">
-            <label>
-              <span>Nombre comercial <b>*</b><em title="Nombre visible en panel, carta publica e informes.">?</em>{estadoCampo('nombre') && <i className={`field-state ${estadoCampo('nombre')}`}>{estadoCampo('nombre') === 'ok' ? '✓' : '×'}</i>}</span>
-              <input
-                value={nuevoRestaurante.nombre}
-                onChange={e => actualizarCampo('nombre', e.target.value)}
-                placeholder="Ej. Casa Pepe"
-                required
-              />
-            </label>
-            <label>
-              <span>Email de acceso <b>*</b><em title="Email que recibira la invitacion y usara para entrar.">?</em>{estadoCampo('email') && <i className={`field-state ${estadoCampo('email')}`}>{estadoCampo('email') === 'ok' ? '✓' : '×'}</i>}</span>
-              <input
-                type="email"
-                value={nuevoRestaurante.email}
-                onChange={e => actualizarCampo('email', e.target.value)}
-                placeholder="restaurante@email.com"
-                required
-              />
-            </label>
-            <label>
-              <span>Ciudad <em title="Ayuda a ubicar el restaurante en busquedas e informes.">?</em>{estadoCampo('ciudad') && <i className="field-state ok">✓</i>}</span>
-              <input
-                value={nuevoRestaurante.ciudad}
-                onChange={e => actualizarCampo('ciudad', e.target.value)}
-                placeholder="Ej. Jerez"
-              />
-            </label>
-            <label>
-              <span>Slug URL <b>*</b><em title="Ruta publica corta, sin espacios ni acentos.">?</em>{estadoCampo('slug') && <i className={`field-state ${estadoCampo('slug')}`}>{estadoCampo('slug') === 'ok' ? '✓' : '×'}</i>}</span>
-              <input
-                value={nuevoRestaurante.slug}
-                onChange={e => actualizarCampo('slug', slugDesdeNombre(e.target.value))}
-                placeholder="casa-pepe"
-                required
-              />
-            </label>
-            {/* La contraseña la elige el propio restaurante al activar su cuenta vía email de invitación */}
-            <label>
-              Plan
-              <select value={nuevoRestaurante.plan} onChange={e => actualizarCampo('plan', e.target.value)}>
-                <option value="basic">Básico</option>
-                <option value="pro">Sala</option>
-                <option value="premium">Acompañado</option>
-              </select>
-            </label>
-            <label>
-              Estado
-              <select value={nuevoRestaurante.subscription_status} onChange={e => actualizarCampo('subscription_status', e.target.value)}>
-                <option value="trialing">Prueba</option>
-                <option value="active">Activo</option>
-                <option value="past_due">Pago pendiente</option>
-                <option value="cancelled">Cancelado</option>
-              </select>
-            </label>
+          <form onSubmit={crearRestaurante}>
+            <div className="alta-accordion">
+
+              {/* Sección 1: Identificación */}
+              <div className="alta-step">
+                <button
+                  type="button"
+                  className={`alta-step-header${acordeonAlta === 'datos' ? ' is-open' : ''}`}
+                  onClick={() => setAcordeonAlta(s => s === 'datos' ? null : 'datos')}
+                  aria-expanded={acordeonAlta === 'datos'}
+                >
+                  <span className="alta-step-num">1</span>
+                  <span className="alta-step-info">
+                    <strong>Identificación</strong>
+                    <small>Nombre comercial y email de acceso</small>
+                  </span>
+                  <span className="alta-step-icon">{acordeonAlta === 'datos' ? '−' : '+'}</span>
+                </button>
+                {acordeonAlta === 'datos' && (
+                  <div className="alta-step-body">
+                    <label>
+                      <span>Nombre comercial <b>*</b><em title="Nombre visible en panel, carta publica e informes.">?</em>{estadoCampo('nombre') && <i className={`field-state ${estadoCampo('nombre')}`}>{estadoCampo('nombre') === 'ok' ? '✓' : '×'}</i>}</span>
+                      <input
+                        value={nuevoRestaurante.nombre}
+                        onChange={e => actualizarCampo('nombre', e.target.value)}
+                        placeholder="Ej. Casa Pepe"
+                        required
+                      />
+                    </label>
+                    <label>
+                      <span>Email de acceso <b>*</b><em title="Email que recibira la invitacion y usara para entrar.">?</em>{estadoCampo('email') && <i className={`field-state ${estadoCampo('email')}`}>{estadoCampo('email') === 'ok' ? '✓' : '×'}</i>}</span>
+                      <input
+                        type="email"
+                        value={nuevoRestaurante.email}
+                        onChange={e => actualizarCampo('email', e.target.value)}
+                        placeholder="restaurante@email.com"
+                        required
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Sección 2: Ubicación y URL */}
+              <div className="alta-step">
+                <button
+                  type="button"
+                  className={`alta-step-header${acordeonAlta === 'ubicacion' ? ' is-open' : ''}`}
+                  onClick={() => setAcordeonAlta(s => s === 'ubicacion' ? null : 'ubicacion')}
+                  aria-expanded={acordeonAlta === 'ubicacion'}
+                >
+                  <span className="alta-step-num">2</span>
+                  <span className="alta-step-info">
+                    <strong>Ubicación y URL</strong>
+                    <small>Ciudad y slug de la carta pública</small>
+                  </span>
+                  <span className="alta-step-icon">{acordeonAlta === 'ubicacion' ? '−' : '+'}</span>
+                </button>
+                {acordeonAlta === 'ubicacion' && (
+                  <div className="alta-step-body">
+                    <label>
+                      <span>Ciudad <em title="Ayuda a ubicar el restaurante en busquedas e informes.">?</em>{estadoCampo('ciudad') && <i className="field-state ok">✓</i>}</span>
+                      <input
+                        value={nuevoRestaurante.ciudad}
+                        onChange={e => actualizarCampo('ciudad', e.target.value)}
+                        placeholder="Ej. Jerez"
+                      />
+                    </label>
+                    <label>
+                      <span>Slug URL <b>*</b><em title="Ruta publica corta, sin espacios ni acentos.">?</em>{estadoCampo('slug') && <i className={`field-state ${estadoCampo('slug')}`}>{estadoCampo('slug') === 'ok' ? '✓' : '×'}</i>}</span>
+                      <input
+                        value={nuevoRestaurante.slug}
+                        onChange={e => actualizarCampo('slug', slugDesdeNombre(e.target.value))}
+                        placeholder="casa-pepe"
+                        required
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Sección 3: Plan y estado */}
+              <div className="alta-step">
+                <button
+                  type="button"
+                  className={`alta-step-header${acordeonAlta === 'plan' ? ' is-open' : ''}`}
+                  onClick={() => setAcordeonAlta(s => s === 'plan' ? null : 'plan')}
+                  aria-expanded={acordeonAlta === 'plan'}
+                >
+                  <span className="alta-step-num">3</span>
+                  <span className="alta-step-info">
+                    <strong>Plan y estado</strong>
+                    <small>Suscripción y estado de activación</small>
+                  </span>
+                  <span className="alta-step-icon">{acordeonAlta === 'plan' ? '−' : '+'}</span>
+                </button>
+                {acordeonAlta === 'plan' && (
+                  <div className="alta-step-body">
+                    <label>
+                      Plan
+                      <select value={nuevoRestaurante.plan} onChange={e => actualizarCampo('plan', e.target.value)}>
+                        <option value="basic">Básico</option>
+                        <option value="pro">Sala</option>
+                        <option value="premium">Acompañado</option>
+                      </select>
+                    </label>
+                    <label>
+                      Estado
+                      <select value={nuevoRestaurante.subscription_status} onChange={e => actualizarCampo('subscription_status', e.target.value)}>
+                        <option value="trialing">Prueba</option>
+                        <option value="active">Activo</option>
+                        <option value="past_due">Pago pendiente</option>
+                        <option value="cancelled">Cancelado</option>
+                      </select>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+            </div>
+
             <div className="form-button-row admin-create-wide">
               <button type="button" className="admin-secondary-action" onClick={guardarBorradorAlta}>
                 {copiado ? 'Borrador guardado' : 'Guardar borrador'}

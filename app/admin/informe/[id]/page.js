@@ -299,6 +299,7 @@ export default function InformeConsultor() {
   const [platos, setPlatos] = useState([])
   const [estadisticas, setEstadisticas] = useState([])
   const [propuestas, setPropuestas] = useState([])
+  const [consultoriaFase1, setConsultoriaFase1] = useState(null)
   const [impactoCopiado, setImpactoCopiado] = useState(false)
   const [evolucionCopiada, setEvolucionCopiada] = useState(false)
   const [snapshots, setSnapshots] = useState(() => leerSnapshots(id))
@@ -315,18 +316,27 @@ export default function InformeConsultor() {
       }
       setUser(user)
       const desde = haceDiasISO(30)
-      const [{ data: rest }, { data: vinosData }, { data: platosData }, { data: statsData }, { data: propuestasData }] = await Promise.all([
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+      const consultoriaPromise = token
+        ? fetch(`/api/admin/consultoria-fase1/recalcular?restaurante_id=${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).then(async res => res.ok ? res.json() : null).catch(() => null)
+        : Promise.resolve(null)
+      const [{ data: rest }, { data: vinosData }, { data: platosData }, { data: statsData }, { data: propuestasData }, consultoriaData] = await Promise.all([
         supabase.from('restaurantes').select('*').eq('id', id).single(),
         supabase.from('vinos').select('*').eq('restaurante_id', id),
         supabase.from('platos').select('*').eq('restaurante_id', id),
         supabase.from('estadisticas').select('*').eq('restaurante_id', id).gte('created_at', desde),
         supabase.from('consultor_propuestas').select('*').eq('restaurante_id', id).order('created_at', { ascending: false }),
+        consultoriaPromise,
       ])
       setRestaurante(rest)
       setVinos(vinosData || [])
       setPlatos(platosData || [])
       setEstadisticas(statsData || [])
       setPropuestas(propuestasData || [])
+      setConsultoriaFase1(consultoriaData)
       setLoading(false)
     }
     if (id) cargar()
@@ -353,7 +363,17 @@ export default function InformeConsultor() {
   }
 
   const fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
-  const topAlertas = informe.alertas.slice(0, 5)
+  const diagnosticoConsultor = consultoriaFase1?.consultor?.diagnostic
+  const accionesConsultor = consultoriaFase1?.consultor?.items || []
+  const oportunidadSnapshot = consultoriaFase1?.oportunidad?.snapshot
+  const oportunidadItems = consultoriaFase1?.oportunidad?.items || []
+  const cartaSnapshot = consultoriaFase1?.carta?.snapshot
+  const copaSnapshot = consultoriaFase1?.copa?.snapshot
+  const candidatosCopa = consultoriaFase1?.copa?.candidates || []
+  const clasificacionesMotor = consultoriaFase1?.clasificaciones || []
+  const topAlertas = (consultoriaFase1?.alertas?.length ? consultoriaFase1.alertas : informe.alertas).slice(0, 5)
+  const prioridadInforme = diagnosticoConsultor?.prioridad || informe.prioridad
+  const scoreInforme = diagnosticoConsultor?.score ?? informe.score
   const impacto = informe.impacto
   const snapshotsOrdenados = [...snapshots].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   const snapshotAnterior = snapshotsOrdenados.find(snapshot => snapshot.snapshot_id === snapshotReferenciaId)
@@ -415,15 +435,16 @@ export default function InformeConsultor() {
   const evolucionPositiva = evolucion.filter(item => item.cambio && ((item.buenoSiBaja && item.cambio < 0) || (item.buenoSiSube && item.cambio > 0)))
   const evolucionPendiente = evolucion.filter(item => item.cambio && ((item.buenoSiBaja && item.cambio > 0) || (item.buenoSiSube && item.cambio < 0)))
   const textoImpacto = [
-    `Impacto mensual de ArmonIA - ${restaurante.nombre}`,
+    `Impacto mensual de Carta Viva - ${restaurante.nombre}`,
     '',
+    oportunidadSnapshot ? `Oportunidad economica anual estimada: ${eur(oportunidadSnapshot.recuperacion_anual_estimada)} y ${eur(oportunidadSnapshot.capital_liberable_estimado)} de capital liberable estimado.` : '',
     `En los ultimos 30 dias, ArmonIA ha ayudado a controlar ${informe.metricas.escaneos30} escaneos de carta, ${informe.metricas.sommelier30} consultas de maridaje y ${informe.metricas.ventasMarcadas} ventas marcadas desde sala.`,
     `Margen bajo control: ${eur(impacto.margenAsistido)} de margen bruto monitorizado en ventas con coste y precio informados (${impacto.ventasConMargen} ventas con margen trazable).`,
     `Riesgo operativo detectado: ${informe.metricas.incidenciasStock} incidencias de stock, ${informe.metricas.bajoMinimo} referencias bajo minimo, ${informe.metricas.sinCoste} sin coste y ${informe.metricas.sinProveedor} sin proveedor.`,
     `Tiempo operativo estimado: ${minutosAHoras(impacto.minutosAhorrados)} de apoyo mensual entre consultas resueltas, ventas registradas, alertas y seguimiento de propuestas.`,
     '',
     'Lectura comercial: la app no sustituye el criterio del restaurante ni del consultor; ordena la informacion, evita decisiones a ciegas y convierte actividad dispersa en acciones concretas de carta, bodega y sala.',
-  ].join('\n')
+  ].filter(Boolean).join('\n')
   const textoEvolucion = snapshotAnterior ? [
     `Evolucion mensual - ${restaurante.nombre}`,
     `Comparativa contra foto guardada el ${fechaSnapshot(snapshotAnterior.created_at)}`,
@@ -480,27 +501,50 @@ export default function InformeConsultor() {
             <h1>Estado de la carta de vinos de {restaurante.nombre}</h1>
             <p>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || 'Restaurante'} · {fecha}</p>
           </div>
-          <div className={`report-score report-score-${informe.prioridad.toLowerCase()}`}>
-            <span>{informe.score}</span>
-            <strong>{informe.prioridad}</strong>
+          <div className={`report-score report-score-${prioridadInforme.toLowerCase()}`}>
+            <span>{scoreInforme}</span>
+            <strong>{prioridadInforme}</strong>
           </div>
         </header>
 
         <section className="report-summary">
           <h2>Diagnóstico ejecutivo</h2>
-          <p>
-            La carta muestra {informe.metricas.vinos} referencias activas y {informe.metricas.platos} platos cargados.
-            El análisis detecta oportunidades en venta, margen, stock y relato de sala. Las prioridades no sustituyen el criterio del consultor:
-            sirven para ordenar la conversación y convertir datos dispersos en decisiones.
-          </p>
+          <p>{diagnosticoConsultor?.resumen_ejecutivo || `La carta muestra ${informe.metricas.vinos} referencias activas y ${informe.metricas.platos} platos cargados. El analisis detecta oportunidades en venta, margen, stock y relato de sala. Las prioridades no sustituyen el criterio del consultor: sirven para ordenar la conversacion y convertir datos dispersos en decisiones.`}</p>
+          {diagnosticoConsultor?.estado_actual && <p>{diagnosticoConsultor.estado_actual}</p>}
         </section>
 
         <section className="report-metrics">
-          <div><span>Valor a coste</span><strong>{eur(informe.metricas.valorCoste)}</strong></div>
-          <div><span>Potencial venta</span><strong>{eur(informe.metricas.valorVenta)}</strong></div>
+          <div><span>Recuperacion anual</span><strong>{oportunidadSnapshot ? eur(oportunidadSnapshot.recuperacion_anual_estimada) : eur(informe.metricas.valorVenta)}</strong></div>
+          <div><span>Capital liberable</span><strong>{oportunidadSnapshot ? eur(oportunidadSnapshot.capital_liberable_estimado) : eur(informe.metricas.valorCoste)}</strong></div>
           <div><span>Margen medio</span><strong>{informe.metricas.margenMedio ?? '-'}%</strong></div>
-          <div><span>Usos maridaje 30d</span><strong>{informe.metricas.sommelier30}</strong></div>
+          <div><span>Confianza media</span><strong>{oportunidadSnapshot ? `${Number(oportunidadSnapshot.confianza_media_pct).toFixed(0)}%` : `${informe.metricas.sommelier30} usos`}</strong></div>
         </section>
+
+        {oportunidadSnapshot && (
+          <section className="report-section">
+            <div className="report-section-head">
+              <div>
+                <p className="report-kicker">Motor de oportunidad economica</p>
+                <h2>Dinero recuperable y capital atrapado</h2>
+              </div>
+            </div>
+            <section className="report-metrics" style={{ marginTop: 0 }}>
+              <div><span>Acciones rapidas</span><strong>{eur(oportunidadSnapshot.impacto_acciones_rapidas)}</strong></div>
+              <div><span>Medio plazo</span><strong>{eur(oportunidadSnapshot.impacto_medio_plazo)}</strong></div>
+              <div><span>Estrategico</span><strong>{eur(oportunidadSnapshot.impacto_estrategico)}</strong></div>
+              <div><span>Oportunidades</span><strong>{oportunidadSnapshot.oportunidades_total}</strong></div>
+            </section>
+            <div className="report-alerts">
+              {oportunidadItems.slice(0, 4).map(item => (
+                <article key={item.id || `${item.area}-${item.titulo}`}>
+                  <h3>{item.titulo}</h3>
+                  <p>{item.detalle}</p>
+                  <strong>{item.accion} · {eur(item.impacto_estimado)} · confianza {Number(item.confianza_pct).toFixed(0)}%</strong>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="report-section">
           <div className="report-section-head">
@@ -647,7 +691,7 @@ export default function InformeConsultor() {
               <article key={alerta.titulo}>
                 <h3>{alerta.titulo}</h3>
                 <p>{alerta.detalle}</p>
-                <strong>{alerta.accion}</strong>
+                <strong>{alerta.accion_sugerida || alerta.accion}</strong>
               </article>
             )) : (
               <article>
@@ -688,17 +732,47 @@ export default function InformeConsultor() {
             <h2>Hoja de ruta propuesta</h2>
           </div>
           <div className="report-plan">
-            {(informe.plan.length ? informe.plan : [{ fase: 1, titulo: 'Mantenimiento estratégico', accion: 'Revisar carta, relato y pequeños ajustes comerciales.' }]).map(item => (
+            {(accionesConsultor.length ? accionesConsultor.slice(0, 9) : (informe.plan.length ? informe.plan : [{ fase: 1, titulo: 'Mantenimiento estratégico', accion: 'Revisar carta, relato y pequeños ajustes comerciales.' }])).map(item => (
               <article key={`${item.fase}-${item.titulo}`}>
-                <span>{item.fase}</span>
+                <span>{String(item.fase).replace('accion_rapida', '30d').replace('medio_plazo', '90d').replace('estrategico', '180d')}</span>
                 <div>
                   <h3>{item.titulo}</h3>
                   <p>{item.accion}</p>
+                  {item.detalle && <small>{item.detalle}</small>}
                 </div>
               </article>
             ))}
           </div>
         </section>
+
+        {(clasificacionesMotor.length > 0 || candidatosCopa.length > 0 || cartaSnapshot || copaSnapshot) && (
+          <section className="report-grid">
+            <div className="report-panel">
+              <p className="report-kicker">Menu engineering</p>
+              <h2>Referencias a proteger o revisar</h2>
+              <ul>
+                {clasificacionesMotor.slice(0, 6).map(item => (
+                  <li key={item.id || `${item.vino_id}-${item.categoria}`}>
+                    {(item.vinos?.nombre || item.nombre || 'Vino')} - {item.categoria}: {item.explicacion || 'Clasificacion automatica por margen y popularidad.'}
+                  </li>
+                ))}
+                {!clasificacionesMotor.length && <li>Sin clasificaciones guardadas todavia. Recalcula la consultoria inteligente para completar este bloque.</li>}
+              </ul>
+            </div>
+            <div className="report-panel">
+              <p className="report-kicker">Venta por copa</p>
+              <h2>Candidatos de activacion</h2>
+              <ul>
+                {candidatosCopa.slice(0, 6).map(item => (
+                  <li key={item.id || `${item.vino_id}-${item.categoria_copa}`}>
+                    {item.nombre || item.vinos?.nombre || 'Vino'} - {item.categoria_copa}: copa sugerida {eur(item.precio_copa_sugerido)} con margen {Number(item.margen_copa_pct).toFixed(0)}%.
+                  </li>
+                ))}
+                {!candidatosCopa.length && <li>{copaSnapshot ? copaSnapshot.motivo_principal : 'Sin candidatos guardados todavia.'}</li>}
+              </ul>
+            </div>
+          </section>
+        )}
 
         <footer className="report-footer">
           <div>

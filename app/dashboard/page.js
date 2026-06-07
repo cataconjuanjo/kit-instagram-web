@@ -87,9 +87,12 @@ export default function DashboardHome() {
 
   useEffect(() => {
     async function cargar() {
-      const { email } = await getEffectiveRestaurantEmail(supabase)
-      if (!email) { window.location.href = '/login'; return }
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { email, restauranteId } = await getEffectiveRestaurantEmail(supabase)
+      if (!email && !restauranteId) { window.location.href = '/login'; return }
+      const queryRestaurante = supabase.from('restaurantes').select('*')
+      const { data: rest } = restauranteId
+        ? await queryRestaurante.eq('id', restauranteId).single()
+        : await queryRestaurante.eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
         if (typeof window !== 'undefined') {

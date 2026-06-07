@@ -37,9 +37,12 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     async function cargar() {
-      const { email } = await getEffectiveRestaurantEmail(supabase)
-      if (!email) return
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { email, restauranteId } = await getEffectiveRestaurantEmail(supabase)
+      if (!email && !restauranteId) return
+      const queryRestaurante = supabase.from('restaurantes').select('*')
+      const { data: rest } = restauranteId
+        ? await queryRestaurante.eq('id', restauranteId).single()
+        : await queryRestaurante.eq('email', email).single()
       if (!rest) return
       setRestaurante(rest)
       try {
