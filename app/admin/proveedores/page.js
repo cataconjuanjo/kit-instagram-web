@@ -261,6 +261,7 @@ function ProveedoresPageContent() {
     })
     const valorOrden = vino => {
       if (ordenReferencias.campo === 'coste') return numeroCoste(vino.coste_estimado)
+      if (ordenReferencias.campo === 'pvp') return calcularBotella(numeroCoste(vino.coste_estimado))?.pvp ?? 0
       if (ordenReferencias.campo === 'bodega') return normalizar(vino.bodega)
       if (ordenReferencias.campo === 'zona') return normalizar(`${vino.region || ''} ${vino.tipo || ''} ${vino.uva || ''}`)
       if (ordenReferencias.campo === 'formato') return normalizar(`${vino.formato || ''} ${vino.referencia || ''}`)
@@ -271,7 +272,7 @@ function ProveedoresPageContent() {
       const av = valorOrden(a)
       const bv = valorOrden(b)
       let resultado
-      if (ordenReferencias.campo === 'coste') {
+      if (ordenReferencias.campo === 'coste' || ordenReferencias.campo === 'pvp') {
         const sinPrecioA = av <= 0
         const sinPrecioB = bv <= 0
         if (sinPrecioA !== sinPrecioB) return sinPrecioA ? 1 : -1
@@ -1285,6 +1286,17 @@ function ProveedoresPageContent() {
                     <option value={80}>80 %</option>
                   </select>
                 </label>
+                <label>
+                  Ordenar por
+                  <select value={ordenReferencias.campo} onChange={e => setOrdenReferencias(prev => ({ campo: e.target.value, dir: prev.campo === e.target.value ? prev.dir : 'asc' }))}>
+                    <option value="nombre">Nombre</option>
+                    <option value="coste">Coste botella</option>
+                    <option value="pvp">PVP botella</option>
+                  </select>
+                </label>
+                <button type="button" className="admin-plain-button" onClick={() => setOrdenReferencias(prev => ({ ...prev, dir: prev.dir === 'asc' ? 'desc' : 'asc' }))}>
+                  {ordenReferencias.dir === 'asc' ? '↑ Asc' : '↓ Desc'}
+                </button>
                 <span className="supplier-price-formula">
                   Botella: ≤6€ ×3,5 · 7-18€ ×2,5 con suelo del tramo anterior · &gt;18€ +20€ con mínimo 45€ · ×1,10 IVA · Copa: coste ÷ 4,5 (merma 10%) ÷ (1−{margenCopaPct}%)
                 </span>
@@ -1342,16 +1354,19 @@ function ProveedoresPageContent() {
                     })}
                   </div>
                 ) : (
-                  <div className="supplier-table">
+                  <div className="supplier-table supplier-table--pvp">
                     <div className="supplier-table-head">
                       <button type="button" onClick={() => cambiarOrdenReferencias('nombre')} className={ordenReferencias.campo === 'nombre' ? 'is-active' : ''}>Vino <span>{etiquetaOrden('nombre')}</span></button>
                       <button type="button" onClick={() => cambiarOrdenReferencias('bodega')} className={ordenReferencias.campo === 'bodega' ? 'is-active' : ''}>Bodega <span>{etiquetaOrden('bodega')}</span></button>
                       <button type="button" onClick={() => cambiarOrdenReferencias('zona')} className={ordenReferencias.campo === 'zona' ? 'is-active' : ''}>Zona / Tipo <span>{etiquetaOrden('zona')}</span></button>
                       <button type="button" onClick={() => cambiarOrdenReferencias('formato')} className={ordenReferencias.campo === 'formato' ? 'is-active' : ''}>Formato <span>{etiquetaOrden('formato')}</span></button>
                       <button type="button" onClick={() => cambiarOrdenReferencias('coste')} className={ordenReferencias.campo === 'coste' ? 'is-active' : ''}>Coste botella <span>{etiquetaOrden('coste')}</span></button>
+                      <button type="button" onClick={() => cambiarOrdenReferencias('pvp')} className={ordenReferencias.campo === 'pvp' ? 'is-active' : ''}>PVP botella <span>{etiquetaOrden('pvp')}</span></button>
                       <span></span>
                     </div>
-                    {referenciasVisibles.map(vino => (
+                    {referenciasVisibles.map(vino => {
+                      const rb = calcularBotella(numeroCoste(vino.coste_estimado))
+                      return (
                       <div className="supplier-table-row" key={vino.id}>
                         <div>
                           <strong>{vino.nombre}</strong>
@@ -1361,6 +1376,7 @@ function ProveedoresPageContent() {
                         <span>{[vino.region, vino.tipo, vino.uva].filter(Boolean).join(' · ') || '-'}</span>
                         <span>{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
                         <strong>{dinero(vino.coste_estimado) || '-'}</strong>
+                        {rb ? <strong>{rb.pvp.toFixed(2)} €</strong> : <span>—</span>}
                         <div className="supplier-row-actions">
                           <button
                             type="button"
@@ -1375,7 +1391,8 @@ function ProveedoresPageContent() {
                           <button className="admin-plain-button" onClick={() => borrar(vino.id, 'vino')}>Borrar</button>
                         </div>
                       </div>
-                    ))}
+                    )
+                    })}
                   </div>
                 )}
                 <div className="supplier-pagination">
