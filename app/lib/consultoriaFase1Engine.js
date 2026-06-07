@@ -230,8 +230,8 @@ function precioCopaSugerido(costeBotella, pvpBotella) {
   const copasVendibles = Math.max(1, copas * (1 - merma))
   const precioPorMargen = (coste / copasVendibles) / (1 - margenObjetivo)
   const minimo = COEFICIENTES_CONSULTORIA_FASE1.precio_minimo_copa.valor
-  const techoComercial = pvpBotella ? numero(pvpBotella) * 0.32 : 0
-  const sugerido = Math.max(minimo, precioPorMargen, techoComercial)
+  const techoComercial = pvpBotella ? numero(pvpBotella) * 0.25 : Infinity
+  const sugerido = Math.min(Math.max(minimo, precioPorMargen), techoComercial)
   return redondear(Math.ceil(sugerido * 2) / 2, 2)
 }
 
