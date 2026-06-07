@@ -316,6 +316,15 @@ function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propu
   const ticket = ticketReferencia(restaurante, platosActivos)
   const wineMapping = mapaPreciosAccionable(vinosConPrecio, ticket.valor)
 
+  const brechaCocina = [
+    platosFritura.length >= 2 && generosos.length + espumosos.length < 2 && { cocina: `Frituras (${platosFritura.length})`, falta: 'Generoso seco o espumoso' },
+    platosPescado.length >= 2 && frescos.length + espumosos.length + generosos.length < 3 && { cocina: `Pescado/Marisco (${platosPescado.length})`, falta: 'Blanco fresco o atlántico' },
+    platosQueso.length >= 1 && generosos.length + dulces.length < 2 && { cocina: `Quesos (${platosQueso.length})`, falta: 'Generoso o dulce' },
+    platosCarne.length >= 2 && (tipos.tinto || 0) < 4 && { cocina: `Carnes (${platosCarne.length})`, falta: 'Tintos con cuerpo/crianza' },
+    platosPostre.length >= 2 && dulces.length === 0 && { cocina: `Postres (${platosPostre.length})`, falta: 'Vino dulce de cierre' },
+    (tipos.blanco || 0) < (tipos.tinto || 0) * 0.35 && platosPescado.length + platosFritura.length > 2 && { cocina: `Cocina de mar (${platosPescado.length + platosFritura.length})`, falta: 'Blancos gastronómicos' },
+  ].filter(Boolean)
+
   return {
     score, prioridad, alertas: alertasOrdenadas, servicios, siguienteMovimiento,
     ventasMarcadas, incidenciasStock, dudasSala, propuestasAbiertas, vinosConDudas,
@@ -346,7 +355,8 @@ function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propu
         { label: 'Dulces', valor: dulces.length, pct: pct(dulces.length, total) },
         { label: 'Por copa', valor: porCopa.length, pct: pct(porCopa.length, total) },
         { label: 'Locales', valor: locales.length, pct: pct(locales.length, total) },
-      ]
+      ],
+      brechaCocina,
     }
   }
 }
@@ -1637,6 +1647,18 @@ export default function RestauranteWorkspace() {
                     ))}
                   </div>
                 </div>
+
+                {diagnostico.brechaCocina?.length > 0 && (
+                  <div className="ws-strategy-col ws-strategy-col-wide">
+                    <p className="ws-strategy-col-title">Cobertura cocina → vinos</p>
+                    <div className="wine-list-gaps">
+                      {diagnostico.brechaCocina.map(b => (
+                        <span key={b.cocina}>{b.cocina} · falta {b.falta}</span>
+                      ))}
+                    </div>
+                    <small style={{ color: '#7a5a1a', fontSize: '0.72rem' }}>Estilos que tu cocina pide y tu carta no cubre</small>
+                  </div>
+                )}
               </div>
             </div>
 

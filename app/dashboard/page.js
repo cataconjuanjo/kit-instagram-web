@@ -13,6 +13,11 @@ function normalizar(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
+function incluye(texto, terminos) {
+  const t = normalizar(texto)
+  return terminos.some(term => t.includes(normalizar(term)))
+}
+
 function porcentaje(valor, total) {
   if (!total) return 0
   return Math.max(0, Math.min(100, Math.round((valor / total) * 100)))
@@ -294,6 +299,29 @@ export default function DashboardHome() {
     bajoMinimo.length > 0 && `${bajoMinimo.length} referencias bajo minimo`,
   ].filter(Boolean)
   const propuestasTop = propuestasActivas.slice(0, 3)
+
+  const tv = v => `${v.nombre || ''} ${v.bodega || ''} ${v.tipo || ''} ${v.region || ''} ${v.uva || ''} ${v.notas_cata || ''}`
+  const tp = p => `${p.nombre || ''} ${p.descripcion || ''} ${p.categoria || ''}`
+  const generosos = vinosActivos.filter(v => normalizar(v.tipo || '').includes('generoso') || incluye(tv(v), ['fino', 'manzanilla', 'amontillado', 'oloroso']))
+  const espumosos = vinosActivos.filter(v => normalizar(v.tipo || '').includes('espumoso') || incluye(tv(v), ['cava', 'champagne', 'brut']))
+  const dulces = vinosActivos.filter(v => normalizar(v.tipo || '').includes('dulce') || incluye(tv(v), ['pedro ximenez', 'px', 'moscatel', 'tokaji']))
+  const frescos = vinosActivos.filter(v => incluye(tv(v), ['albarino', 'verdejo', 'godello', 'txakoli', 'salino', 'mineral', 'fresco']))
+  const tintosDash = vinosActivos.filter(v => normalizar(v.tipo || '').includes('tinto'))
+  const blancosDash = vinosActivos.filter(v => normalizar(v.tipo || '').includes('blanco'))
+  const platosFritura = platos.filter(p => incluye(tp(p), ['frit', 'croqueta', 'rebozado', 'flamenquin', 'adobo', 'tempura']))
+  const platosPescado = platos.filter(p => incluye(tp(p), ['pescado', 'marisco', 'gamba', 'atun', 'salmon', 'bacalao', 'boqueron', 'del mar']))
+  const platosQueso = platos.filter(p => incluye(tp(p), ['queso', 'curado', 'cabra']))
+  const platosCarne = platos.filter(p => incluye(tp(p), ['brasa', 'vaca', 'ternera', 'presa', 'solomillo', 'rabo', 'cordero', 'cerdo']))
+  const platosPostre = platos.filter(p => incluye(tp(p), ['postre', 'tarta', 'torrija', 'helado', 'chocolate']))
+  const brechaCocina = [
+    platosFritura.length >= 2 && generosos.length + espumosos.length < 2 && { cocina: `Frituras (${platosFritura.length})`, falta: 'Generoso seco o espumoso' },
+    platosPescado.length >= 2 && frescos.length + espumosos.length + generosos.length < 3 && { cocina: `Pescado/Marisco (${platosPescado.length})`, falta: 'Blanco fresco o atlántico' },
+    platosQueso.length >= 1 && generosos.length + dulces.length < 2 && { cocina: `Quesos (${platosQueso.length})`, falta: 'Generoso o vino dulce' },
+    platosCarne.length >= 2 && tintosDash.length < 4 && { cocina: `Carnes (${platosCarne.length})`, falta: 'Tintos con cuerpo o crianza' },
+    platosPostre.length >= 2 && dulces.length === 0 && { cocina: `Postres (${platosPostre.length})`, falta: 'Vino dulce de cierre' },
+    blancosDash.length < tintosDash.length * 0.35 && platosPescado.length + platosFritura.length > 2 && { cocina: `Cocina de mar (${platosPescado.length + platosFritura.length})`, falta: 'Blancos gastronómicos' },
+  ].filter(Boolean)
+
   return (
     <main>
       <div className={styles.wrap}>
@@ -385,6 +413,23 @@ export default function DashboardHome() {
                   <strong>{propuesta.titulo}</strong>
                   <p>{[propuesta.vino, propuesta.tipo, propuesta.zona].filter(Boolean).join(' · ') || 'Propuesta de mejora'}</p>
                 </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {brechaCocina.length > 0 && (
+          <section className={styles.proposalsPanel}>
+            <div className={styles.proposalsHead}>
+              <div>
+                <p className={styles.eyebrow}>Maridaje gastronómico</p>
+                <h2>Tu cocina pide {brechaCocina.length} tipo{brechaCocina.length > 1 ? 's' : ''} de vino que no {brechaCocina.length > 1 ? 'están' : 'está'} en carta</h2>
+              </div>
+              <a href="mailto:jjgarciapozo@gmail.com?subject=Consultoría de carta de vinos">Contactar consultor</a>
+            </div>
+            <div className="wine-list-gaps" style={{ padding: '0.5rem 0 0.25rem' }}>
+              {brechaCocina.map(b => (
+                <span key={b.cocina}>{b.cocina} · falta {b.falta}</span>
               ))}
             </div>
           </section>

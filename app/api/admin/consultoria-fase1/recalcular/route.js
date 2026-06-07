@@ -31,6 +31,63 @@ function esTablaNoExiste(error) {
   return error?.code === 'PGRST205' || /Could not find the table/i.test(error?.message || '')
 }
 
+function normalizar(t = '') {
+  return String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
+function incluye(texto, terminos) {
+  const t = normalizar(texto)
+  return terminos.some(term => t.includes(normalizar(term)))
+}
+
+function brechaCocinaAlertas(platos, vinos, restauranteId, periodoInicio, periodoFin) {
+  const platosActivos = (platos || []).filter(p => p.activo !== false)
+  const vinosActivos = (vinos || []).filter(v => v.activo !== false)
+  if (!platosActivos.length || !vinosActivos.length) return []
+
+  const tv = v => `${v.nombre || ''} ${v.bodega || ''} ${v.tipo || ''} ${v.region || ''} ${v.uva || ''} ${v.notas_cata || ''}`
+  const tp = p => `${p.nombre || ''} ${p.descripcion || ''} ${p.categoria || ''}`
+
+  const generosos = vinosActivos.filter(v => normalizar(v.tipo || '').includes('generoso') || incluye(tv(v), ['fino', 'manzanilla', 'amontillado', 'oloroso']))
+  const espumosos = vinosActivos.filter(v => normalizar(v.tipo || '').includes('espumoso') || incluye(tv(v), ['cava', 'champagne', 'brut']))
+  const dulces = vinosActivos.filter(v => normalizar(v.tipo || '').includes('dulce') || incluye(tv(v), ['pedro ximenez', 'px', 'moscatel', 'tokaji']))
+  const frescos = vinosActivos.filter(v => incluye(tv(v), ['albarino', 'verdejo', 'godello', 'txakoli', 'salino', 'mineral', 'fresco']))
+  const tintos = vinosActivos.filter(v => normalizar(v.tipo || '').includes('tinto'))
+  const blancos = vinosActivos.filter(v => normalizar(v.tipo || '').includes('blanco'))
+
+  const platosFritura = platosActivos.filter(p => incluye(tp(p), ['frit', 'croqueta', 'rebozado', 'flamenquin', 'adobo', 'tempura']))
+  const platosPescado = platosActivos.filter(p => incluye(tp(p), ['pescado', 'marisco', 'gamba', 'atun', 'salmon', 'bacalao', 'boqueron', 'del mar']))
+  const platosQueso = platosActivos.filter(p => incluye(tp(p), ['queso', 'curado', 'cabra']))
+  const platosCarne = platosActivos.filter(p => incluye(tp(p), ['brasa', 'vaca', 'ternera', 'presa', 'solomillo', 'rabo', 'cordero', 'cerdo']))
+  const platosPostre = platosActivos.filter(p => incluye(tp(p), ['postre', 'tarta', 'torrija', 'helado', 'chocolate']))
+
+  const gaps = [
+    platosFritura.length >= 2 && generosos.length + espumosos.length < 2 && { cocina: `Frituras (${platosFritura.length} platos)`, falta: 'Generoso seco o espumoso' },
+    platosPescado.length >= 2 && frescos.length + espumosos.length + generosos.length < 3 && { cocina: `Pescado/Marisco (${platosPescado.length} platos)`, falta: 'Blanco fresco o atlántico' },
+    platosQueso.length >= 1 && generosos.length + dulces.length < 2 && { cocina: `Quesos (${platosQueso.length} platos)`, falta: 'Generoso o vino dulce' },
+    platosCarne.length >= 2 && tintos.length < 4 && { cocina: `Carnes (${platosCarne.length} platos)`, falta: 'Tintos con cuerpo o crianza' },
+    platosPostre.length >= 2 && dulces.length === 0 && { cocina: `Postres (${platosPostre.length} platos)`, falta: 'Vino dulce de cierre' },
+    blancos.length < tintos.length * 0.35 && platosPescado.length + platosFritura.length > 2 && { cocina: `Cocina de mar (${platosPescado.length + platosFritura.length} platos)`, falta: 'Blancos gastronómicos' },
+  ].filter(Boolean)
+
+  if (!gaps.length) return []
+
+  return [{
+    restaurante_id: restauranteId,
+    clave: 'brecha_cocina_vinos',
+    entidad_tipo: 'restaurante',
+    entidad_id: restauranteId,
+    severidad: gaps.length >= 3 ? 'aviso' : 'info',
+    titulo: `Carta de vinos sin cobertura para ${gaps.length} aspecto${gaps.length > 1 ? 's' : ''} de tu cocina`,
+    detalle: JSON.stringify({ gaps }),
+    impacto: gaps.map(g => `${g.cocina} → falta ${g.falta}`).join(' · '),
+    accion_sugerida: 'Revisar con sumiller consultor qué estilos incorporar según cocina',
+    estado: 'abierta',
+    periodo_inicio: periodoInicio,
+    periodo_fin: periodoFin,
+  }]
+}
+
 function esColumnaNoExiste(error) {
   return error?.code === 'PGRST204' || /Could not find.*column|column .* does not exist/i.test(error?.message || '')
 }
@@ -326,11 +383,13 @@ export async function POST(req) {
       { data: vinos, error: vinosError },
       { data: estadisticas, error: estadisticasError },
       { data: movimientos, error: movimientosError },
+      { data: platos, error: platosError },
     ] = await Promise.all([
       supabase.from('restaurantes').select('*').eq('id', restauranteId).single(),
       supabase.from('vinos').select('*').eq('restaurante_id', restauranteId),
       supabase.from('estadisticas').select('*').eq('restaurante_id', restauranteId).gte('created_at', periodoInicio),
       supabase.from('movimientos_stock').select('*').eq('restaurante_id', restauranteId).gte('created_at', periodoInicio),
+      supabase.from('platos').select('nombre,descripcion,categoria,activo').eq('restaurante_id', restauranteId),
     ])
 
     const error = restError || vinosError || estadisticasError || movimientosError
@@ -362,6 +421,9 @@ export async function POST(req) {
     const insertResults = await Promise.all(inserts)
     const insertError = insertResults.find(res => res.error)?.error
     if (insertError) throw insertError
+
+    const brechaAlertas = brechaCocinaAlertas(platos || [], vinos || [], restauranteId, periodoInicio, periodoFin)
+    payload.alertas = [...payload.alertas, ...brechaAlertas]
 
     const alertasPersistidas = await guardarAlertasDeduplicadas(supabase, restauranteId, payload.alertas, periodoFin)
 
