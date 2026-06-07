@@ -404,7 +404,7 @@ function ProveedoresPageContent() {
     }
     if (c <= 18) {
       const pvpSinIva = 2 * c + 9
-      return { pvp: pvpSinIva * iva, etiqueta: '+20%+9€', margen: margenDesdePvp(pvpSinIva) }
+      return { pvp: pvpSinIva * iva, etiqueta: '×2+9€', margen: margenDesdePvp(pvpSinIva) }
     }
     const pvpSinIva = Math.max(c + 20, 45)
     return { pvp: pvpSinIva * iva, etiqueta: pvpSinIva === 45 ? 'mín. 45 €' : '+20 €', margen: margenDesdePvp(pvpSinIva) }
@@ -1294,7 +1294,7 @@ function ProveedoresPageContent() {
                   {ordenReferencias.dir === 'asc' ? '↑ Asc' : '↓ Desc'}
                 </button>
                 <span className="supplier-price-formula">
-                  Botella: ≤6€ ×3,5 · 6-18€ lineal 2c+9 (empalma sin salto) · &gt;18€ +20€ mín. 45€ · ×1,10 IVA · Copa: coste ÷ 4,5 (merma 10%) ÷ (1−{margenCopaPct}%)
+                  Botella: ≤6€ ×3,5 · 6-18€ ×2+9€ · &gt;18€ +20€ mín. 45€ · ×1,10 IVA · Copa: coste ÷ 4,5 (merma 10%) ÷ (1−{margenCopaPct}%)
                 </span>
               </div>
             )}
