@@ -1946,8 +1946,8 @@ setPerfiles(nuevosPerfiles)
               ]},
               { id: 'precio', q: i.quizQ4, ops: [
                 { v: '25', l: idioma === 'en' ? 'Up to 25€' : 'Hasta 25€' },
-                { v: '50', l: '25–50€' },
-                { v: 'mas', l: idioma === 'en' ? 'Over 50€' : 'Más de 50€' },
+                { v: '50', l: idioma === 'en' ? 'Up to 50€' : 'Hasta 50€' },
+                { v: '100', l: idioma === 'en' ? 'Up to 100€' : 'Hasta 100€' },
                 { v: 'sin', l: idioma === 'en' ? 'No limit' : 'Sin límite' },
               ]},
             ]
