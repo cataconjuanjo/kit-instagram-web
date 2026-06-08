@@ -487,10 +487,10 @@ setPerfiles(nuevosPerfiles)
   }
 
   const gruposAmbito = [
-    { id: 'local', label: 'Vinos locales / Andalucía', icon: '🏛' },
-    { id: 'espana', label: 'España', icon: '🇪🇸' },
-    { id: 'internacional', label: 'Internacionales', icon: '🌍' },
-    { id: 'sin_origen', label: 'Sin D.O. / otros', icon: '·' },
+    { id: 'local', label: 'Vinos locales / Andalucía' },
+    { id: 'espana', label: 'España' },
+    { id: 'internacional', label: 'Internacionales' },
+    { id: 'sin_origen', label: 'Sin D.O. / otros' },
   ]
 
   function prioridadRegion(region) {
@@ -1125,7 +1125,7 @@ setPerfiles(nuevosPerfiles)
               aria-expanded={soloCopa || busquedaOFiltrado || seccionAbierta === 'coravin'}
             >
               <div>
-                <h2 className={styles.sectionTitle}><span className={styles.sectionIcon}>🥂</span>{i.seleccionCoravin}</h2>
+                <h2 className={styles.sectionTitle}>{i.seleccionCoravin}</h2>
                 <p className={styles.sectionSub}>{i.seleccionCoravinSub} - {vinosCoravinFiltrados.length} {i.referencias}</p>
               </div>
               <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'coravin' ? '-' : '+'}</span>
@@ -1145,7 +1145,7 @@ setPerfiles(nuevosPerfiles)
               aria-expanded={soloCopa || busquedaOFiltrado || seccionAbierta === 'copas'}
             >
               <div>
-                <h2 className={styles.sectionTitle}><span className={styles.sectionIcon}>🍷</span>Vinos por copa</h2>
+                <h2 className={styles.sectionTitle}>Vinos por copa</h2>
                 <p className={styles.sectionSub}>{vinosPorCopaFiltrados.length} {i.referencias}</p>
               </div>
               <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'copas' ? '−' : '+'}</span>
@@ -1265,9 +1265,7 @@ setPerfiles(nuevosPerfiles)
                 aria-expanded={abierta}
               >
                 <div>
-                  <h2 className={styles.sectionTitle}>
-                    {ambito.icon && <span className={styles.sectionIcon}>{ambito.icon}</span>}{ambito.label}
-                  </h2>
+                  <h2 className={styles.sectionTitle}>{ambito.label}</h2>
                   <p className={styles.sectionSub}>{grupo.length} {i.referencias}</p>
                 </div>
                 <span className={styles.accordionIcon}>{abierta ? '−' : '+'}</span>
