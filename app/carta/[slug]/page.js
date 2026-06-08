@@ -1422,7 +1422,7 @@ setPerfiles(nuevosPerfiles)
 
       <nav className={styles.bottomNav}>
         <button className={`${styles.bottomNavBtn} ${styles.bottomNavActive}`} onClick={() => setVista('carta')} style={{ color: colorPrimario, borderTopColor: colorPrimario }}>{i.carta}</button>
-        <button className={styles.bottomNavBtn} onClick={() => setVista('sommelier')}>{i.sommelier}</button>
+        <button className={styles.bottomNavBtn} onClick={() => setVista('sommelier')} style={{ background: '#c9a84c', color: '#fff', borderTop: '3px solid #a8893a', fontWeight: 900 }}>{i.sommelier} ✦</button>
       </nav>
     </div>
   )
@@ -1685,7 +1685,7 @@ setPerfiles(nuevosPerfiles)
 
       <nav className={styles.bottomNav}>
         <button className={styles.bottomNavBtn} onClick={() => setVista('carta')}>{i.carta}</button>
-        <button className={`${styles.bottomNavBtn} ${styles.bottomNavActive}`} onClick={() => setVista('sommelier')} style={{ color: colorPrimario, borderTopColor: colorPrimario }}>{i.sommelier}</button>
+        <button className={`${styles.bottomNavBtn} ${styles.bottomNavActive}`} onClick={() => setVista('sommelier')} style={{ background: colorPrimario, color: '#fff', borderTop: `3px solid ${colorPrimario}`, fontWeight: 900 }}>{i.sommelier} ✦</button>
       </nav>
     </div>
   )
