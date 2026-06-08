@@ -420,9 +420,9 @@ export async function POST(request) {
           if (porTipo.length >= 3) vinosQuiz = porTipo
         }
         const filtrosPrecio = {
-          '20': v => Number(v.precio_botella) <= 20,
-          '40': v => Number(v.precio_botella) <= 40,
-          '80': v => Number(v.precio_botella) <= 80,
+          '25': v => Number(v.precio_botella) <= 25,
+          '50': v => Number(v.precio_botella) <= 50,
+          '100': v => Number(v.precio_botella) <= 100,
         }
         if (precio && filtrosPrecio[precio]) {
           // Siempre respetamos el presupuesto del cliente — sin fallback al catálogo completo
@@ -460,7 +460,7 @@ export async function POST(request) {
 
         const estiloTexto = { fresco: 'fresco y ligero', cuerpo: 'con cuerpo', potente: 'potente e intenso', dulce: 'dulce o semidulce' }[estilo] || ''
         const comidaTexto = { pescado: 'pescado o marisco', carne: 'carne o guiso', ligero: 'algo ligero', solo: 'solo, sin comida', variado: 'variado / para compartir' }[comida] || ''
-        const precioTexto = { '20': 'hasta 20€', '40': 'hasta 40€', '80': 'hasta 80€', 'sin': 'sin límite' }[precio] || ''
+        const precioTexto = { '25': 'hasta 25€', '50': 'hasta 50€', '100': 'hasta 100€', 'sin': 'sin límite' }[precio] || ''
 
         const perfilTexto = [
           tipo ? `tipo: ${tipo}` : '',

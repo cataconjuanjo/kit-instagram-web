@@ -1491,9 +1491,9 @@ setPerfiles(nuevosPerfiles)
               { v: 'variado', l: idioma === 'en' ? 'Sharing / mixed' : 'Variado / compartimos' },
             ]},
             { id: 'precio', q: i.quizQ4, ops: [
-              { v: '20', l: idioma === 'en' ? 'Up to 20€' : 'Hasta 20€' },
-              { v: '40', l: idioma === 'en' ? 'Up to 40€' : 'Hasta 40€' },
-              { v: '80', l: idioma === 'en' ? 'Up to 80€' : 'Hasta 80€' },
+              { v: '25', l: idioma === 'en' ? 'Up to 25€' : 'Hasta 25€' },
+              { v: '50', l: idioma === 'en' ? 'Up to 50€' : 'Hasta 50€' },
+              { v: '100', l: idioma === 'en' ? 'Up to 100€' : 'Hasta 100€' },
               { v: 'sin', l: idioma === 'en' ? 'No limit' : 'Sin límite' },
             ]},
           ]
