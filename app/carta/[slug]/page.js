@@ -487,10 +487,10 @@ setPerfiles(nuevosPerfiles)
   }
 
   const gruposAmbito = [
-    { id: 'local', label: 'Vinos locales / Andalucía' },
-    { id: 'espana', label: 'España' },
-    { id: 'internacional', label: 'Internacionales' },
-    { id: 'sin_origen', label: 'Sin D.O. / otros' },
+    { id: 'local', label: 'Vinos locales / Andalucía', icon: '🏛' },
+    { id: 'espana', label: 'España', icon: '🇪🇸' },
+    { id: 'internacional', label: 'Internacionales', icon: '🌍' },
+    { id: 'sin_origen', label: 'Sin D.O. / otros', icon: '·' },
   ]
 
   function prioridadRegion(region) {
@@ -818,7 +818,7 @@ setPerfiles(nuevosPerfiles)
     <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ background: colorPrimario, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button onClick={() => setMostrarComparador(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#fff', padding: 0 }}>←</button>
+          <button onClick={() => setMostrarComparador(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#fff', padding: '0 8px', minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>←</button>
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{i.comparar}</span>
         </div>
         <button onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>
@@ -937,7 +937,7 @@ setPerfiles(nuevosPerfiles)
     <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ background: colorPrimario, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button onClick={cerrarFichaVino} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#fff', padding: 0 }}>←</button>
+          <button onClick={cerrarFichaVino} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#fff', padding: '0 8px', minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', gap: 8 }}>←<span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', opacity: 0.75 }}>Volver</span></button>
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{i.fichaVino}</span>
         </div>
         <button onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>
@@ -1019,6 +1019,7 @@ setPerfiles(nuevosPerfiles)
               onChange={e => setBusqueda(e.target.value)}
             />
             <button className={styles.filterButton} onClick={() => setMostrarFiltros(!mostrarFiltros)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
               {i.filtros}
             </button>
           </div>
@@ -1124,7 +1125,7 @@ setPerfiles(nuevosPerfiles)
               aria-expanded={soloCopa || busquedaOFiltrado || seccionAbierta === 'coravin'}
             >
               <div>
-                <h2 className={styles.sectionTitle}>{i.seleccionCoravin}</h2>
+                <h2 className={styles.sectionTitle}><span className={styles.sectionIcon}>🥂</span>{i.seleccionCoravin}</h2>
                 <p className={styles.sectionSub}>{i.seleccionCoravinSub} - {vinosCoravinFiltrados.length} {i.referencias}</p>
               </div>
               <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'coravin' ? '-' : '+'}</span>
@@ -1144,7 +1145,7 @@ setPerfiles(nuevosPerfiles)
               aria-expanded={soloCopa || busquedaOFiltrado || seccionAbierta === 'copas'}
             >
               <div>
-                <h2 className={styles.sectionTitle}>Vinos por copa</h2>
+                <h2 className={styles.sectionTitle}><span className={styles.sectionIcon}>🍷</span>Vinos por copa</h2>
                 <p className={styles.sectionSub}>{vinosPorCopaFiltrados.length} {i.referencias}</p>
               </div>
               <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'copas' ? '−' : '+'}</span>
@@ -1264,7 +1265,9 @@ setPerfiles(nuevosPerfiles)
                 aria-expanded={abierta}
               >
                 <div>
-                  <h2 className={styles.sectionTitle}>{ambito.label}</h2>
+                  <h2 className={styles.sectionTitle}>
+                    {ambito.icon && <span className={styles.sectionIcon}>{ambito.icon}</span>}{ambito.label}
+                  </h2>
                   <p className={styles.sectionSub}>{grupo.length} {i.referencias}</p>
                 </div>
                 <span className={styles.accordionIcon}>{abierta ? '−' : '+'}</span>
