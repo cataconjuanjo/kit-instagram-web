@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
-import { analizarMaridaje, resumenAnalisisParaPrompt } from '../../lib/maridajeEngine'
+import { analizarMaridaje, resumenAnalisisParaPrompt, estimarPerfil } from '../../lib/maridajeEngine'
 import { analizarConGoldstein } from '../../lib/goldsteinStructural'
 import { puedeUsar } from '../../lib/plans'
 import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
@@ -283,6 +283,7 @@ export async function POST(request) {
       mensajeSeguimiento,
       prueba_token,
       plato_ids = [],
+      perfilQuiz,
     } = await request.json()
 
     if (!restaurante_id) {
@@ -409,7 +410,69 @@ export async function POST(request) {
       }
 
       let prompt
-      if (esSucesion && modo === 'mesa') {
+      if (modo === 'quiz') {
+        const { tipo, estilo, comida, precio } = perfilQuiz || {}
+
+        // Filtrar carta por tipo y precio antes de mandar a Claude
+        let vinosQuiz = (vinosData || []).filter(v => v.activo !== false && v.stock !== 0 && Number(v.precio_botella) > 0)
+        if (tipo) {
+          const porTipo = vinosQuiz.filter(v => v.tipo === tipo)
+          if (porTipo.length >= 3) vinosQuiz = porTipo
+        }
+        const filtrosPrecio = {
+          '25': v => Number(v.precio_botella) <= 25,
+          '50': v => Number(v.precio_botella) > 25 && Number(v.precio_botella) <= 50,
+          'mas': v => Number(v.precio_botella) > 50,
+        }
+        if (precio && filtrosPrecio[precio]) {
+          // Siempre respetamos el presupuesto del cliente — sin fallback al catálogo completo
+          vinosQuiz = vinosQuiz.filter(filtrosPrecio[precio])
+        }
+
+        // Filtrar por estilo usando perfil estructural estimado
+        if (estilo) {
+          const filtrosEstilo = {
+            fresco:  v => { const p = estimarPerfil(v); return p.cuerpo <= 2 || p.acidez >= 4 },
+            cuerpo:  v => { const p = estimarPerfil(v); return p.cuerpo === 3 },
+            potente: v => { const p = estimarPerfil(v); return p.cuerpo >= 4 },
+            dulce:   v => { const p = estimarPerfil(v); return p.dulzor >= 3 || v.tipo === 'dulce' || v.tipo === 'generoso' },
+          }[estilo]
+          if (filtrosEstilo) {
+            const porEstilo = vinosQuiz.filter(filtrosEstilo)
+            if (porEstilo.length >= 2) vinosQuiz = porEstilo
+          }
+        }
+
+        vinosRespuesta = vinosQuiz
+
+        // Usar el contexto de comida para el motor estructural
+        const comidaConsultaMap = {
+          pescado: 'pescado a la plancha con limón',
+          carne: 'carne a la brasa',
+          ligero: 'ensalada aperitivo',
+          solo: 'aperitivo',
+        }
+        const comidaConsulta = comidaConsultaMap[comida] || 'aperitivo'
+        const motorAnalisis = analizarMaridaje(comidaConsulta, vinosRespuesta)
+        fallbackCandidatos = candidatosUnicos([...(motorAnalisis?.recomendados || []), ...(motorAnalisis?.candidatos || [])], 10)
+        const resumenMotor = resumenAnalisisParaPrompt(motorAnalisis)
+
+        const estiloTexto = { fresco: 'fresco y ligero', cuerpo: 'con cuerpo', potente: 'potente e intenso', dulce: 'dulce o semidulce' }[estilo] || ''
+        const comidaTexto = { pescado: 'pescado o marisco', carne: 'carne o guiso', ligero: 'algo ligero', solo: 'solo, sin comida' }[comida] || ''
+        const precioTexto = { '25': 'hasta 25€', '50': '25–50€', 'mas': 'más de 50€', 'sin': 'sin límite' }[precio] || ''
+
+        const perfilTexto = [
+          tipo ? `tipo: ${tipo}` : '',
+          estiloTexto ? `estilo: ${estiloTexto}` : '',
+          comidaTexto ? `con: ${comidaTexto}` : '',
+          precioTexto ? `presupuesto: ${precioTexto}` : '',
+        ].filter(Boolean).join(' · ')
+
+        const maxVinos = Math.min(3, vinosRespuesta.length)
+        prompt = idioma === 'en'
+          ? `Customer profile (no specific dish):\n${perfilTexto}\n\n${resumenMotor}\n\nThere are ${vinosRespuesta.length} wines available after filtering. Recommend up to ${maxVinos} — only the ones that genuinely fit. Do not fill the list if a wine does not match well. Use the exact format from the system prompt.`
+          : `Perfil del cliente (sin plato concreto):\n${perfilTexto}\n\n${resumenMotor}\n\nHay ${vinosRespuesta.length} vinos disponibles tras el filtro. Recomienda como máximo ${maxVinos} — solo los que encajen de verdad. No rellenes la lista si un vino no encaja bien. Usa el formato exacto del system prompt.`
+      } else if (esSucesion && modo === 'mesa') {
         const platosLista = platosContexto.length
           ? platosContexto.map((p, idx) => `${idx + 1}. ${p.nombre}${p.precio ? ` (${p.precio}€)` : ''}`).join('\n')
           : consultaInterna

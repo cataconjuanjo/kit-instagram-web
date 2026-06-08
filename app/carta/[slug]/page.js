@@ -61,6 +61,15 @@ const t = {
     variosOrden: 'Varios en orden',
     sucesionCopas: 'Sucesión copas',
     arcoPlato: 'Copa a copa, en arco',
+    recomendame: 'Recomiéndame',
+    porPlatos: 'Por platos',
+    quizSubtitulo: '4 preguntas · 3 vinos',
+    quizQ1: '¿Qué tipo de vino?',
+    quizQ2: '¿Cómo lo quieres?',
+    quizQ3: '¿Con qué lo tomas?',
+    quizQ4: '¿Hasta cuánto por botella?',
+    quizEmpezar: 'Empezar de nuevo',
+    quizAtras: '← Atrás',
     pedirRecomendacion: 'Pedir recomendación',
     consultando: 'Consultando...',
     nuevaConsulta: 'Nueva consulta',
@@ -112,6 +121,15 @@ const t = {
     variosOrden: 'Several in order',
     sucesionCopas: 'Glass arc',
     arcoPlato: 'Glass by glass, in arc',
+    recomendame: 'Recommend me',
+    porPlatos: 'By dish',
+    quizSubtitulo: '4 questions · 3 wines',
+    quizQ1: 'What type of wine?',
+    quizQ2: 'How do you like it?',
+    quizQ3: 'What are you having?',
+    quizQ4: 'Budget per bottle?',
+    quizEmpezar: 'Start over',
+    quizAtras: '← Back',
     pedirRecomendacion: 'Get recommendation',
     consultando: 'Consulting...',
     nuevaConsulta: 'New query',
@@ -160,6 +178,10 @@ export default function CartaPublica({ params }) {
   const [cargandoPerfiles, setCargandoPerfiles] = useState(false)
   const [historialSommelier, setHistorialSommelier] = useState([])
   const [inputSeguimiento, setInputSeguimiento] = useState('')
+  const [modoSommelier, setModoSommelier] = useState('platos')
+  const [pasoQuiz, setPasoQuiz] = useState(1)
+  const [respuestasQuiz, setRespuestasQuiz] = useState({})
+  const [respuestaQuiz, setRespuestaQuiz] = useState('')
   const scrollAntesFicha = useRef(0)
   const tokenPrueba = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('prueba') || ''
@@ -288,6 +310,48 @@ export default function CartaPublica({ params }) {
         } catch {}
       }
     }
+  }
+
+  async function preguntarQuizCon(respuestas) {
+    setCargandoIA(true)
+    setRespuestaQuiz('')
+    const res = await fetch('/api/maridaje', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        modo: 'quiz',
+        perfilQuiz: respuestas,
+        restaurante_id: restaurante.id,
+        idioma,
+        historial: [],
+        prueba_token: tokenPrueba,
+      }),
+    })
+    if (!res.ok) {
+      setRespuestaQuiz(idioma === 'en' ? 'Error. Please try again.' : 'Error al consultar. Inténtalo de nuevo.')
+      setCargandoIA(false)
+      return
+    }
+    let texto = ''
+    await leerStream(res, chunk => { texto += chunk; setRespuestaQuiz(texto) }, () => {})
+    setCargandoIA(false)
+  }
+
+  function responderQuiz(campo, valor) {
+    const nuevas = { ...respuestasQuiz, [campo]: valor }
+    setRespuestasQuiz(nuevas)
+    if (pasoQuiz < 4) {
+      setPasoQuiz(pasoQuiz + 1)
+    } else {
+      setPasoQuiz(5)
+      preguntarQuizCon(nuevas)
+    }
+  }
+
+  function reiniciarQuiz() {
+    setPasoQuiz(1)
+    setRespuestasQuiz({})
+    setRespuestaQuiz('')
   }
 
   async function preguntarSommelier() {
@@ -1389,11 +1453,100 @@ setPerfiles(nuevosPerfiles)
 
       <main className={styles.content}>
         <section className={styles.sommelierIntro}>
-          <h2 className={styles.sommelierTitle}>{i.quePedir}</h2>
-          <p className={styles.sommelierText}>{i.seleccionaPlatos}</p>
+          <h2 className={styles.sommelierTitle}>{modoSommelier === 'quiz' ? i.recomendame : i.quePedir}</h2>
+          <p className={styles.sommelierText}>{modoSommelier === 'quiz' ? i.quizSubtitulo : i.seleccionaPlatos}</p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            {[
+              { id: 'platos', label: i.porPlatos },
+              { id: 'quiz', label: i.recomendame },
+            ].map(m => (
+              <button key={m.id} onClick={() => { setModoSommelier(m.id); setRespuesta(''); setRespuestaQuiz('') }} style={{
+                padding: '9px 18px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13,
+                background: modoSommelier === m.id ? colorAcento : '#f0ebe3',
+                color: modoSommelier === m.id ? '#fff' : '#888', fontWeight: modoSommelier === m.id ? 500 : 400,
+              }}>
+                {m.label}
+              </button>
+            ))}
+          </div>
         </section>
 
-        <section className={styles.dishSearchPanel}>
+        {modoSommelier === 'quiz' && (() => {
+          const preguntas = [
+            { id: 'tipo', q: i.quizQ1, ops: [
+              { v: 'blanco', l: 'Blanco' }, { v: 'tinto', l: 'Tinto' }, { v: 'espumoso', l: 'Espumoso' },
+              { v: 'rosado', l: 'Rosado' }, { v: 'generoso', l: 'Generoso' }, { v: null, l: idioma === 'en' ? 'No preference' : 'Me da igual' },
+            ]},
+            { id: 'estilo', q: i.quizQ2, ops: [
+              { v: 'fresco', l: idioma === 'en' ? 'Fresh & light' : 'Fresco y ligero' },
+              { v: 'cuerpo', l: idioma === 'en' ? 'Medium-bodied' : 'Con cuerpo' },
+              { v: 'potente', l: idioma === 'en' ? 'Full & powerful' : 'Potente' },
+              { v: 'dulce', l: idioma === 'en' ? 'Sweet' : 'Dulce' },
+            ]},
+            { id: 'comida', q: i.quizQ3, ops: [
+              { v: 'pescado', l: idioma === 'en' ? 'Fish / seafood' : 'Pescado / marisco' },
+              { v: 'carne', l: idioma === 'en' ? 'Meat / stew' : 'Carne / guiso' },
+              { v: 'ligero', l: idioma === 'en' ? 'Light bites' : 'Algo ligero' },
+              { v: 'solo', l: idioma === 'en' ? 'Just the wine' : 'Solo el vino' },
+            ]},
+            { id: 'precio', q: i.quizQ4, ops: [
+              { v: '25', l: idioma === 'en' ? 'Up to 25€' : 'Hasta 25€' },
+              { v: '50', l: '25–50€' },
+              { v: 'mas', l: idioma === 'en' ? 'Over 50€' : 'Más de 50€' },
+              { v: 'sin', l: idioma === 'en' ? 'No limit' : 'Sin límite' },
+            ]},
+          ]
+          const preguntaActual = preguntas[pasoQuiz - 1]
+          return (
+            <section className={styles.selectedPanel} style={{ maxWidth: 480 }}>
+              {pasoQuiz <= 4 ? (
+                <>
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 20 }}>
+                    {[1,2,3,4].map(n => (
+                      <div key={n} style={{ flex: 1, height: 3, borderRadius: 2, background: n <= pasoQuiz ? colorAcento : '#e8e8e8' }} />
+                    ))}
+                  </div>
+                  <p className={styles.selectedHead} style={{ fontSize: 17, marginBottom: 16 }}>{preguntaActual.q}</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {preguntaActual.ops.map(op => (
+                      <button key={String(op.v)} onClick={() => responderQuiz(preguntaActual.id, op.v)} style={{
+                        padding: '13px 16px', border: `1px solid ${respuestasQuiz[preguntaActual.id] === op.v ? colorAcento : '#e8e8e8'}`,
+                        borderRadius: 10, cursor: 'pointer', fontSize: 15, textAlign: 'left', fontWeight: 300,
+                        background: respuestasQuiz[preguntaActual.id] === op.v ? colorAcento : '#fff',
+                        color: respuestasQuiz[preguntaActual.id] === op.v ? '#fff' : '#333',
+                      }}>
+                        {op.l}
+                      </button>
+                    ))}
+                  </div>
+                  {pasoQuiz > 1 && (
+                    <button onClick={() => setPasoQuiz(pasoQuiz - 1)} style={{ marginTop: 14, background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 13 }}>
+                      {i.quizAtras}
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+                    {preguntas.map(p => {
+                      const op = p.ops.find(o => o.v === respuestasQuiz[p.id])
+                      return op ? <span key={p.id} style={{ background: colorAcento, color: '#fff', borderRadius: 20, padding: '4px 12px', fontSize: 12 }}>{op.l}</span> : null
+                    })}
+                  </div>
+                  {cargandoIA && !respuestaQuiz && <p className={styles.sommelierText}>{i.consultando}</p>}
+                  {respuestaQuiz && (
+                    <p className={styles.answerText} style={{ whiteSpace: 'pre-wrap', marginBottom: 16 }}>{respuestaQuiz}</p>
+                  )}
+                  <button onClick={reiniciarQuiz} className={styles.clearButton} style={{ color: '#fffaf3', borderColor: 'rgba(255,250,243,0.2)', marginTop: 8 }}>
+                    {i.quizEmpezar}
+                  </button>
+                </>
+              )}
+            </section>
+          )
+        })()}
+
+        {modoSommelier === 'platos' && <section className={styles.dishSearchPanel}>
           <div className={styles.searchRow}>
             <input
               className={styles.search}
@@ -1412,9 +1565,9 @@ setPerfiles(nuevosPerfiles)
               </button>
             )}
           </div>
-        </section>
+        </section>}
 
-        {platosSeleccionados.length > 0 && (
+        {modoSommelier === 'platos' && platosSeleccionados.length > 0 && (
           <section className={styles.selectedPanel}>
             <p className={styles.selectedHead}>{i.tuSeleccion}</p>
             {platosSeleccionados.map((p, idx) => (
@@ -1473,11 +1626,11 @@ setPerfiles(nuevosPerfiles)
           </section>
         )}
 
-        {platosSommelierFiltrados.length === 0 && (
+        {modoSommelier === 'platos' && platosSommelierFiltrados.length === 0 && (
           <div className={styles.empty}>{i.sinPlatos}</div>
         )}
 
-        {categoriasPlatos.map(categoria => {
+        {modoSommelier === 'platos' && categoriasPlatos.map(categoria => {
           const grupo = platosSommelierFiltrados.filter(p => (p.categoria || 'Otros') === categoria)
           if (!grupo.length) return null
           const abierta = Boolean(busquedaPlatosLimpia) || categoriaPlatoAbierta === categoria
@@ -1756,10 +1909,98 @@ setPerfiles(nuevosPerfiles)
 
       {vista === 'sommelier' && (
         <div style={{ padding: '24px 16px' }}>
-          <h2 style={{ fontSize: 24, fontWeight: 300, fontFamily: fontTitulo, color: '#111', margin: '0 0 6px' }}>{i.quePedir}</h2>
-          <p style={{ fontSize: 14, color: '#bbb', margin: '0 0 24px', lineHeight: 1.6 }}>{i.seleccionaPlatos}</p>
+          <h2 style={{ fontSize: 24, fontWeight: 300, fontFamily: fontTitulo, color: '#111', margin: '0 0 6px' }}>
+            {modoSommelier === 'quiz' ? i.recomendame : i.quePedir}
+          </h2>
+          <p style={{ fontSize: 14, color: '#bbb', margin: '0 0 14px', lineHeight: 1.6 }}>
+            {modoSommelier === 'quiz' ? i.quizSubtitulo : i.seleccionaPlatos}
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+            {[{ id: 'platos', label: i.porPlatos }, { id: 'quiz', label: i.recomendame }].map(m => (
+              <button key={m.id} onClick={() => { setModoSommelier(m.id); setRespuesta(''); setRespuestaQuiz('') }} style={{
+                flex: 1, padding: '10px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13,
+                background: modoSommelier === m.id ? colorAcento : '#f5f5f5',
+                color: modoSommelier === m.id ? '#fff' : '#888', fontWeight: modoSommelier === m.id ? 500 : 400,
+              }}>{m.label}</button>
+            ))}
+          </div>
 
-          {platosSeleccionados.length > 0 && (
+          {modoSommelier === 'quiz' && (() => {
+            const preguntas = [
+              { id: 'tipo', q: i.quizQ1, ops: [
+                { v: 'blanco', l: 'Blanco' }, { v: 'tinto', l: 'Tinto' }, { v: 'espumoso', l: 'Espumoso' },
+                { v: 'rosado', l: 'Rosado' }, { v: 'generoso', l: 'Generoso' }, { v: null, l: idioma === 'en' ? 'No preference' : 'Me da igual' },
+              ]},
+              { id: 'estilo', q: i.quizQ2, ops: [
+                { v: 'fresco', l: idioma === 'en' ? 'Fresh & light' : 'Fresco y ligero' },
+                { v: 'cuerpo', l: idioma === 'en' ? 'Medium-bodied' : 'Con cuerpo' },
+                { v: 'potente', l: idioma === 'en' ? 'Full & powerful' : 'Potente' },
+                { v: 'dulce', l: idioma === 'en' ? 'Sweet' : 'Dulce' },
+              ]},
+              { id: 'comida', q: i.quizQ3, ops: [
+                { v: 'pescado', l: idioma === 'en' ? 'Fish / seafood' : 'Pescado / marisco' },
+                { v: 'carne', l: idioma === 'en' ? 'Meat / stew' : 'Carne / guiso' },
+                { v: 'ligero', l: idioma === 'en' ? 'Light bites' : 'Algo ligero' },
+                { v: 'solo', l: idioma === 'en' ? 'Just the wine' : 'Solo el vino' },
+              ]},
+              { id: 'precio', q: i.quizQ4, ops: [
+                { v: '25', l: idioma === 'en' ? 'Up to 25€' : 'Hasta 25€' },
+                { v: '50', l: '25–50€' },
+                { v: 'mas', l: idioma === 'en' ? 'Over 50€' : 'Más de 50€' },
+                { v: 'sin', l: idioma === 'en' ? 'No limit' : 'Sin límite' },
+              ]},
+            ]
+            const preguntaActual = preguntas[pasoQuiz - 1]
+            return (
+              <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '1px solid #f0f0f0', marginBottom: 24 }}>
+                {pasoQuiz <= 4 ? (
+                  <>
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 18 }}>
+                      {[1,2,3,4].map(n => (
+                        <div key={n} style={{ flex: 1, height: 3, borderRadius: 2, background: n <= pasoQuiz ? colorAcento : '#e8e8e8' }} />
+                      ))}
+                    </div>
+                    <p style={{ fontSize: 17, fontWeight: 300, color: '#111', margin: '0 0 14px', fontFamily: fontTitulo }}>{preguntaActual.q}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {preguntaActual.ops.map(op => (
+                        <button key={String(op.v)} onClick={() => responderQuiz(preguntaActual.id, op.v)} style={{
+                          padding: '13px 16px', border: `1px solid ${respuestasQuiz[preguntaActual.id] === op.v ? colorAcento : '#e8e8e8'}`,
+                          borderRadius: 10, cursor: 'pointer', fontSize: 15, textAlign: 'left', fontWeight: 300,
+                          background: respuestasQuiz[preguntaActual.id] === op.v ? colorAcento : '#fff',
+                          color: respuestasQuiz[preguntaActual.id] === op.v ? '#fff' : '#333',
+                        }}>
+                          {op.l}
+                        </button>
+                      ))}
+                    </div>
+                    {pasoQuiz > 1 && (
+                      <button onClick={() => setPasoQuiz(pasoQuiz - 1)} style={{ marginTop: 14, background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: 13 }}>
+                        {i.quizAtras}
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                      {preguntas.map(p => {
+                        const op = p.ops.find(o => o.v === respuestasQuiz[p.id])
+                        return op ? <span key={p.id} style={{ background: colorAcento, color: '#fff', borderRadius: 20, padding: '4px 12px', fontSize: 12 }}>{op.l}</span> : null
+                      })}
+                    </div>
+                    {cargandoIA && !respuestaQuiz && <p style={{ fontSize: 14, color: '#bbb' }}>{i.consultando}</p>}
+                    {respuestaQuiz && (
+                      <p style={{ fontSize: 15, color: '#333', lineHeight: 1.8, fontWeight: 300, whiteSpace: 'pre-wrap', margin: '0 0 16px' }}>{respuestaQuiz}</p>
+                    )}
+                    <button onClick={reiniciarQuiz} style={{ background: 'none', border: '1px solid #e8e8e8', borderRadius: 8, padding: '10px 20px', fontSize: 12, color: '#aaa', cursor: 'pointer' }}>
+                      {i.quizEmpezar}
+                    </button>
+                  </>
+                )}
+              </div>
+            )
+          })()}
+
+          {modoSommelier === 'platos' && platosSeleccionados.length > 0 && (
             <div style={{ background: '#fff', borderRadius: 12, padding: '16px', marginBottom: 24, border: '1px solid #f0f0f0' }}>
               <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>{i.tuSeleccion}</p>
               {platosSeleccionados.map((p, idx) => (
@@ -1814,7 +2055,7 @@ setPerfiles(nuevosPerfiles)
             </div>
           )}
 
-          {categoriasPlatos.map(categoria => {
+          {modoSommelier === 'platos' && categoriasPlatos.map(categoria => {
             const grupo = platos.filter(p => (p.categoria || 'Otros') === categoria)
             if (!grupo.length) return null
             return (
