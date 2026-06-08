@@ -451,6 +451,7 @@ export async function POST(request) {
           carne: 'carne a la brasa',
           ligero: 'ensalada aperitivo',
           solo: 'aperitivo',
+          variado: 'mesa variada para compartir: pescado, carne y entrantes',
         }
         const comidaConsulta = comidaConsultaMap[comida] || 'aperitivo'
         const motorAnalisis = analizarMaridaje(comidaConsulta, vinosRespuesta)
@@ -458,7 +459,7 @@ export async function POST(request) {
         const resumenMotor = resumenAnalisisParaPrompt(motorAnalisis)
 
         const estiloTexto = { fresco: 'fresco y ligero', cuerpo: 'con cuerpo', potente: 'potente e intenso', dulce: 'dulce o semidulce' }[estilo] || ''
-        const comidaTexto = { pescado: 'pescado o marisco', carne: 'carne o guiso', ligero: 'algo ligero', solo: 'solo, sin comida' }[comida] || ''
+        const comidaTexto = { pescado: 'pescado o marisco', carne: 'carne o guiso', ligero: 'algo ligero', solo: 'solo, sin comida', variado: 'variado / para compartir' }[comida] || ''
         const precioTexto = { '25': 'hasta 25€', '50': '25–50€', 'mas': 'más de 50€', 'sin': 'sin límite' }[precio] || ''
 
         const perfilTexto = [

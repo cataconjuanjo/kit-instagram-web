@@ -1488,6 +1488,7 @@ setPerfiles(nuevosPerfiles)
               { v: 'carne', l: idioma === 'en' ? 'Meat / stew' : 'Carne / guiso' },
               { v: 'ligero', l: idioma === 'en' ? 'Light bites' : 'Algo ligero' },
               { v: 'solo', l: idioma === 'en' ? 'Just the wine' : 'Solo el vino' },
+              { v: 'variado', l: idioma === 'en' ? 'Sharing / mixed' : 'Variado / compartimos' },
             ]},
             { id: 'precio', q: i.quizQ4, ops: [
               { v: '25', l: idioma === 'en' ? 'Up to 25€' : 'Hasta 25€' },
