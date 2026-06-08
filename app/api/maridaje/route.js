@@ -215,6 +215,52 @@ Carta de vinos del restaurante:
 ${cartaVinos}`
 }
 
+function buildSystemSucesion(cartaVinos, idioma) {
+  if (idioma === 'en') {
+    return `You are a sommelier building a glass-by-glass harmonic succession using François Chartier's aromatic methodology.
+Only use wines from the list below that have a glass price (copa price). Never invent wines.
+
+Your task: recommend ONE wine by the glass per dish, in the order the dishes will be served.
+The succession must follow a harmonic arc — lighter and effervescent first, building through whites and rosés, then reds, finishing with fortified or sweet if the meal ends there.
+Each wine must pair with its dish AND flow naturally from the previous glass to the next.
+Avoid repeating the same wine twice unless the list is very small.
+
+Voice: calm sommelier at the table. Sensory words only. No jargon, no methodology names.
+
+FORMAT — exactly this, one line per dish, nothing more:
+1. [Wine name] with [dish] — [1 sentence: why it pairs and how it connects to what follows]. [copa price]€/glass
+2. [Wine name] with [dish] — [1 sentence]. [copa price]€/glass
+...
+Total arc: XX€
+
+Sentence: natural, sensory, max 22 words. Plain text only. No asterisks, bold or symbols.
+
+Wine list (BTG only):
+${cartaVinos}`
+  }
+
+  return `Eres un sommelier que construye una sucesión armónica de copas usando la metodología de François Chartier.
+Solo usa vinos de la lista de abajo que tengan precio de copa. Nunca inventes vinos.
+
+Tu tarea: recomienda UNA copa por plato, en el orden en que se servirán los platos.
+La sucesión debe seguir un arco armónico — empezando por lo más ligero o con burbuja, avanzando por blancos y rosados, luego tintos, y terminando con generosos o dulces si la comida lo pide.
+Cada vino debe maridar con su plato Y encadenar bien con la copa anterior y la siguiente.
+No repitas el mismo vino dos veces salvo que la carta sea muy pequeña.
+
+Voz: sumiller tranquilo en mesa. Solo palabras sensoriales. Sin tecnicismos ni nombres de metodología.
+
+FORMATO — exactamente este, una línea por plato, nada más:
+1. [Nombre del vino] con [plato] — [1 frase: por qué marida y cómo enlaza con lo siguiente]. [precio copa]€/copa
+2. [Nombre del vino] con [plato] — [1 frase]. [precio copa]€/copa
+...
+Total sucesión: XX€
+
+La frase debe ser natural, sensorial, máximo 22 palabras. Solo texto plano. Sin asteriscos, negritas ni símbolos.
+
+Carta de vinos disponibles por copa:
+${cartaVinos}`
+}
+
 export async function POST(request) {
   try {
     // ── Rate limit ─────────────────────────────────────────────────
@@ -258,7 +304,8 @@ export async function POST(request) {
       return Response.json({ error: 'Funcion no incluida en el plan activo.' }, { status: 403 })
     }
 
-    const soloCopa = normalizarTexto(modoMesa).includes('copa') || normalizarTexto(modoMesa).includes('glass')
+    const esSucesion = normalizarTexto(modoMesa).includes('sucesion')
+    const soloCopa = esSucesion || normalizarTexto(modoMesa).includes('copa') || normalizarTexto(modoMesa).includes('glass')
     const vinos = soloCopa
       ? (vinosData || []).filter(vino => Number(vino.precio_copa) > 0)
       : (vinosData || [])
@@ -362,7 +409,14 @@ export async function POST(request) {
       }
 
       let prompt
-      if (modo === 'mesa') {
+      if (esSucesion && modo === 'mesa') {
+        const platosLista = platosContexto.length
+          ? platosContexto.map((p, idx) => `${idx + 1}. ${p.nombre}${p.precio ? ` (${p.precio}€)` : ''}`).join('\n')
+          : consultaInterna
+        prompt = idioma === 'en'
+          ? `Build a harmonic glass succession for this meal:\n${platosLista}\n\n${contextoCriterios}\n\nOne BTG wine per dish in serving order. Follow the arc (light/sparkling → whites → reds → sweet). Use only wines with copa price. Use the exact format from the system prompt.`
+          : `Construye una sucesión armónica de copas para esta comida:\n${platosLista}\n\n${contextoCriterios}\n\nUna copa por plato en el orden de servicio. Sigue el arco (ligero/burbuja → blancos → tintos → dulces/generosos). Usa solo vinos con precio de copa. Usa el formato exacto del system prompt.`
+      } else if (modo === 'mesa') {
         prompt = idioma === 'en'
           ? `Dishes: ${consultaInterna}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nGive 2 or 3 reliable wines: one accessible, one premium, and a third alternative if it is structurally safe. If format is by the glass, use only wines with glass price. Never fill the quota with a weak pairing. Use the exact format from the system prompt.`
           : `Platos: ${consultaInterna}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nDa 2 o 3 vinos fiables: uno accesible, otro premium y una tercera alternativa si es estructuralmente segura. Si el formato es por copas, usa solo vinos con precio de copa. Nunca rellenes el cupo con un maridaje débil. Usa el formato exacto del system prompt.`
@@ -383,10 +437,10 @@ export async function POST(request) {
       ]
     }
 
-    const systemPrompt = buildSystem(
-      esSeguimiento ? cartaVinos : vinosRespuesta.map(lineaVino).join('\n'),
-      idioma
-    )
+    const cartaParaPrompt = esSeguimiento ? cartaVinos : vinosRespuesta.map(lineaVino).join('\n')
+    const systemPrompt = (!esSeguimiento && esSucesion)
+      ? buildSystemSucesion(cartaParaPrompt, idioma)
+      : buildSystem(cartaParaPrompt, idioma)
 
     // ── Llamada a Claude (awaited — evita unhandled rejections en Vercel) ────
     const modelo = 'claude-sonnet-4-6'
@@ -409,7 +463,7 @@ export async function POST(request) {
     })
 
     const respuestaClaude = msg.content?.[0]?.text || ''
-    const textoRespuesta = esSeguimiento
+    const textoRespuesta = (esSeguimiento || esSucesion)
       ? respuestaClaude
       : respuestaSoloConCarta(respuestaClaude, vinosRespuesta, fallbackCandidatos, idioma)
 

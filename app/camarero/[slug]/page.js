@@ -667,7 +667,7 @@ export default function Camarero({ params }) {
 
   function esVinoElegibleParaObjetivo(vino, opciones = {}) {
     if (vino.activo === false || vino.stock === 0 || precioBotella(vino) <= 0) return false
-    if (objetivoVenta === 'copas' && !(Number(vino.precio_copa) > 0)) return false
+    if ((objetivoVenta === 'copas' || objetivoVenta === 'sucesion_copas') && !(Number(vino.precio_copa) > 0)) return false
     if (objetivoVenta === 'local' && !esVinoDeZona(vino)) return false
     if (!opciones.ignorarGama && !encajaEnGamaCliente(vino)) return false
     return true
@@ -1026,7 +1026,7 @@ export default function Camarero({ params }) {
       if (vino.stock > 3) score += Math.min(vino.stock, 18) / 2
       if (vino.stock > 0 && vino.stock <= 3) score -= 4
     }
-    if (vino.precio_copa) score += objetivo === 'copas' ? 8 : 1
+    if (vino.precio_copa) score += (objetivo === 'copas' || objetivo === 'sucesion_copas') ? 8 : 1
     if (precioBotella(vino) > precioMedio) score += objetivo === 'ticket' ? 5 : 0
     if (objetivo === 'local') score += esVinoDeZona(vino) ? 9 : -2
 
@@ -1183,6 +1183,43 @@ export default function Camarero({ params }) {
         chartierGrafo: item,
         goldsteinEstructural: goldsteinActivo ? item.goldstein : null,
       }
+    }
+
+    // ── Sucesión de copas: una copa por plato en arco armónico ───────────
+    if (objetivoVenta === 'sucesion_copas' && esMesa) {
+      const usadosIds = new Set()
+      const copas = consultas.map((consulta, i) => {
+        const texto = normalizar(consulta)
+        const matchesKb = capitulosParaConsulta(texto)
+        const contexto = contextoVenta(texto)
+        const plato = platosMesaVenta[i]
+        const candidatos = candidatosBase
+          .filter(v => !bloqueadoPorGoldstein(v) && !usadosIds.has(v.id))
+          .map(vino => {
+            const res = puntuarParaVenta(vino, matchesKb, objetivoVenta, precioMedio, contexto, texto, rangoTicket)
+            if (plato?.familias_aromaticas?.familias?.length) {
+              const { bonus, motivo: m } = bonusChartierFamilias(vino, plato.familias_aromaticas.familias)
+              res.score += bonus
+              if (m && bonus > 0) res.motivo = m
+            }
+            return aplicarPerfilCliente(aplicarGrafoChartier(res))
+          })
+          .filter(item => item.compatible && item.score >= 0)
+          .sort((a, b) => b.score - a.score)
+        const elegido = candidatos[0]
+        if (!elegido) return null
+        const platoNombre = plato?.nombre || consulta.split('(')[0].trim()
+        usadosIds.add(elegido.vino.id)
+        return {
+          ...elegido,
+          label: `${i + 1}ª copa · ${platoNombre}`,
+          platoNombre,
+          rangoTicket,
+          ticketComida,
+          objetivo: objetivoVenta,
+        }
+      }).filter(Boolean)
+      return copas
     }
 
     const puntuados = candidatosBase
@@ -1648,6 +1685,7 @@ export default function Camarero({ params }) {
                 <select aria-label="Objetivo de recomendacion" value={objetivoVenta} onChange={e => cambiarObjetivoVenta(e.target.value)} className={styles.select}>
                   <option value="equilibrado">Mejor maridaje</option>
                   <option value="copas">Por copas</option>
+                  <option value="sucesion_copas">Sucesión copas</option>
                   <option value="ticket">Subir ticket</option>
                   <option value="rotar">Rotar stock</option>
                   <option value="local">Vino local</option>
@@ -2095,6 +2133,7 @@ export default function Camarero({ params }) {
             style={{ background: '#222', color: '#aaa', border: '1px solid #333', borderRadius: 8, padding: '8px 10px', fontSize: 12, outline: 'none' }}>
             <option value="equilibrado">Mejor maridaje</option>
             <option value="copas">Por copas</option>
+            <option value="sucesion_copas">Sucesión copas</option>
             <option value="ticket">Subir ticket</option>
             <option value="rotar">Rotar stock</option>
             <option value="local">Vino local</option>
@@ -2259,7 +2298,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
   const { vino, label, motivo, aprendizaje, rangoTicket, ticketComida } = item
   const stockCritico = vino.stock > 0 && vino.stock <= 3
   const ajusteAprendido = aprendizaje && Math.abs(aprendizaje.ajuste) >= 2.5
-  const esPorCopas = item.objetivo === 'copas'
+  const esPorCopas = item.objetivo === 'copas' || item.objetivo === 'sucesion_copas'
   const precioPrincipal = esPorCopas ? Number(vino.precio_copa) || 0 : Number(vino.precio_botella) || 0
   const precioPrincipalLabel = esPorCopas ? `${precioPrincipal} EUR copa` : `${precioPrincipal} EUR`
   const precioVino = Number(vino.precio_botella) || 0
