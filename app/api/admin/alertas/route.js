@@ -68,7 +68,10 @@ async function asegurarAlertasOperativas(supabase) {
     supabase.from('consultor_propuestas').select('id, restaurante_id, estado'),
     supabase.from('alerts').select('id, restaurante_id, clave, estado').in('estado', ['abierta', 'en_progreso']),
   ])
-  if (restError || vinosError || existentesError) return
+  if (restError || vinosError || existentesError) {
+    console.error('asegurarAlertasOperativas query error:', { restError, vinosError, existentesError })
+    return
+  }
 
   const existentesSet = new Set((existentes || []).map(item => `${item.restaurante_id}:${item.clave}`))
   const nuevas = []
@@ -175,7 +178,8 @@ async function asegurarAlertasOperativas(supabase) {
   }
 
   if (nuevas.length) {
-    await supabase.from('alerts').insert(nuevas)
+    const { error: insertError } = await supabase.from('alerts').insert(nuevas)
+    if (insertError) console.error('asegurarAlertasOperativas insert error:', insertError)
   }
 }
 
