@@ -236,7 +236,7 @@ export async function GET(req) {
     if (restauranteIds.length) {
       const { data: restData, error: restError } = await supabase
         .from('restaurantes')
-        .select('id, nombre, ciudad, provincia, slug')
+        .select('id, nombre, ciudad, slug')
         .in('id', restauranteIds)
       if (restError) throw restError
       restaurantes = new Map((restData || []).map(restaurante => [restaurante.id, restaurante]))
@@ -288,7 +288,7 @@ export async function PATCH(req) {
 
     const { data: restaurante } = await supabase
       .from('restaurantes')
-      .select('id, nombre, ciudad, provincia, slug')
+      .select('id, nombre, ciudad, slug')
       .eq('id', alerta.restaurante_id)
       .maybeSingle()
 

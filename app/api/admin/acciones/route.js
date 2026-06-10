@@ -289,7 +289,7 @@ export async function GET(req) {
       leerOpcional(accionesQuery),
       leerOpcional(recomendacionesQuery),
       leerOpcional(alertasQuery),
-      supabase.from('restaurantes').select('id, nombre, ciudad, provincia, slug'),
+      supabase.from('restaurantes').select('id, nombre, ciudad, slug'),
     ])
 
     if (restaurantesRes.error) throw restaurantesRes.error
