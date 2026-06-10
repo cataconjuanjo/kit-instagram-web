@@ -22,7 +22,7 @@ export default function AdminLayout({ children }) {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserEmail(data?.user?.email || ''))
-    supabase.from('restaurantes').select('id, nombre, ciudad, provincia, subscription_status').order('nombre')
+    supabase.from('restaurantes').select('id, nombre, ciudad, subscription_status').order('nombre')
       .then(({ data }) => setRestaurantes(data || []))
   }, [])
 
@@ -46,7 +46,7 @@ export default function AdminLayout({ children }) {
   const currentId = matchRest?.[1]
   const activeRestaurant = restaurantes.find(r => String(r.id) === String(currentId))
   const filteredRestaurants = search.trim()
-    ? restaurantes.filter(r => `${r.nombre || ''} ${r.ciudad || ''} ${r.provincia || ''}`.toLowerCase().includes(search.toLowerCase())).slice(0, 8)
+    ? restaurantes.filter(r => `${r.nombre || ''} ${r.ciudad || ''}`.toLowerCase().includes(search.toLowerCase())).slice(0, 8)
     : []
   const pendientes = restaurantes.filter(r => r.subscription_status === 'trialing' || r.subscription_status === 'past_due').length
   const breadcrumbs = [
@@ -215,7 +215,7 @@ export default function AdminLayout({ children }) {
                 {filteredRestaurants.map(restaurante => (
                   <Link key={restaurante.id} href={`/admin/restaurante/${restaurante.id}`} onClick={() => setSearch('')}>
                     <strong>{restaurante.nombre}</strong>
-                    <span>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || 'Sin ubicacion'}</span>
+                    <span>{restaurante.ciudad || 'Sin ubicacion'}</span>
                   </Link>
                 ))}
               </div>

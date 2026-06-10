@@ -9984,4 +9984,395 @@ html, body {
   box-shadow: 0 0 0 1px rgba(56, 95, 79, 0.15);
 }
 
+/* ══════════════════════════════════════
+   WIZARD ALTA RESTAURANTE
+══════════════════════════════════════ */
+
+.alta-wizard {
+  max-width: 620px;
+  padding: 28px 28px 56px;
+}
+
+.alta-wizard-head {
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e8e2d9;
+  display: grid;
+  gap: 20px;
+}
+
+.alta-wizard-intro h2 {
+  margin: 5px 0 8px;
+  font-size: 1.35rem;
+  font-weight: 820;
+  color: #171416;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.alta-wizard-intro > p {
+  margin: 0;
+  color: #6b6158;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.alta-wizard-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.alta-wizard-bar {
+  height: 5px;
+  background: #e8e2d9;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.alta-wizard-bar span {
+  display: block;
+  height: 100%;
+  background: #8B3F5C;
+  border-radius: inherit;
+  transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+}
+
+.alta-wizard-progress p {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #9a9188;
+}
+
+/* ── Steps ── */
+
+.alta-accordion {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.alta-step {
+  border: 1px solid #e8e2d9;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  transition: box-shadow 150ms;
+}
+
+.alta-step:has(.alta-step-header.is-open) {
+  box-shadow: 0 2px 12px rgba(23, 20, 22, 0.08);
+  border-color: #d0c9c0;
+}
+
+.alta-step-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 58px;
+  padding: 14px 18px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 150ms;
+}
+
+.alta-step-header:hover {
+  background: #faf8f5;
+}
+
+.alta-step-header.is-open {
+  border-bottom: 1px solid #e8e2d9;
+  background: #fdf9f4;
+}
+
+.alta-step-num {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #f0ebe4;
+  color: #6b6158;
+  font-size: 0.8rem;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  transition: background 200ms, color 200ms;
+}
+
+.alta-step-num.is-done {
+  background: #10B981;
+  color: #fff;
+}
+
+.alta-step-header.is-open .alta-step-num:not(.is-done) {
+  background: #8B3F5C;
+  color: #fff;
+}
+
+.alta-step-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.alta-step-info strong {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 760;
+  color: #171416;
+}
+
+.alta-step-info small {
+  font-size: 0.75rem;
+  color: #9a9188;
+}
+
+.alta-step-icon {
+  flex: 0 0 auto;
+  font-size: 0.6rem;
+  color: #9a9188;
+}
+
+.alta-step-body {
+  padding: 20px 18px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.alta-field {
+  display: grid;
+  gap: 5px;
+}
+
+.alta-field span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #4b4038;
+}
+
+.alta-field span b {
+  color: #EF4444;
+  font-weight: 900;
+}
+
+.alta-check {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 0.85rem;
+  color: #10B981;
+  font-weight: 900;
+}
+
+.alta-error {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 0.85rem;
+  color: #EF4444;
+  font-weight: 900;
+}
+
+.alta-field input,
+.alta-field select {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  border: 1.5px solid #e0d9d0;
+  border-radius: 8px;
+  background: #fffdf9;
+  color: #171416;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+
+.alta-field input:focus,
+.alta-field select:focus {
+  border-color: #8B3F5C;
+  box-shadow: 0 0 0 3px rgba(139, 63, 92, 0.12);
+}
+
+.alta-field input::placeholder {
+  color: #b8b0a7;
+}
+
+.alta-field > small {
+  font-size: 0.7rem;
+  color: #9a9188;
+  line-height: 1.4;
+}
+
+/* ── Actions ── */
+
+.alta-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.alta-btn-ghost {
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1.5px solid #d7d0c7;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b6158;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 150ms, background 150ms, color 150ms;
+}
+
+.alta-btn-ghost:hover {
+  border-color: #b8b0a7;
+  background: #f8f6f2;
+  color: #4b4038;
+}
+
+.alta-btn-primary {
+  min-height: 42px;
+  padding: 0 24px;
+  border: none;
+  border-radius: 8px;
+  background: #171416;
+  color: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 150ms, transform 80ms;
+}
+
+.alta-btn-primary:hover:not(:disabled) {
+  background: #2d2829;
+}
+
+.alta-btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.alta-btn-primary:disabled {
+  background: #cbc4bc;
+  cursor: not-allowed;
+}
+
+/* ── Success state ── */
+
+.alta-success {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 20px;
+  border: 1.5px solid #10B981;
+  border-radius: 10px;
+  background: #f0fdf4;
+}
+
+.alta-success-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #10B981;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+}
+
+.alta-success-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.alta-success-body strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #065f46;
+}
+
+.alta-success-body span {
+  font-size: 0.85rem;
+  color: #047857;
+}
+
+.alta-success-body small {
+  font-size: 0.75rem;
+  color: #6b6158;
+  line-height: 1.5;
+}
+
+.alta-success-urls {
+  display: grid;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.alta-success-urls code {
+  font-size: 0.72rem;
+  color: #4b4038;
+  background: rgba(0,0,0,0.05);
+  padding: 3px 7px;
+  border-radius: 4px;
+}
+
+.alta-success-body button {
+  align-self: start;
+  margin-top: 8px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 7px;
+  background: #171416;
+  color: #fff;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .alta-wizard {
+    padding: 16px 16px 48px;
+  }
+
+  .alta-step-body {
+    grid-template-columns: 1fr;
+  }
+
+  .alta-actions {
+    flex-direction: column-reverse;
+  }
+
+  .alta-btn-ghost,
+  .alta-btn-primary {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 

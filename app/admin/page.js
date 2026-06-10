@@ -418,20 +418,22 @@ function AdminPageContent() {
         </div>
 
         {esAltas && (
-        <section className="admin-create admin-create-compact">
-          <div>
-            <p className="eyebrow">Alta nueva</p>
-            <h2>Crear restaurante y acceso privado</h2>
-            <p>Genera la ficha, el usuario de login y las URLs de carta pública y modo sala.</p>
-          </div>
-          <div className="form-progress" aria-label="Progreso del alta">
-            <span><b style={{ width: `${progresoAlta}%` }} /></span>
-            <strong>{progresoAlta}% completo</strong>
-          </div>
+        <section className="alta-wizard">
+          <header className="alta-wizard-head">
+            <div className="alta-wizard-intro">
+              <p className="admin-kicker">Alta nueva</p>
+              <h2>Crear restaurante y acceso privado</h2>
+              <p>Genera la ficha, el usuario de login y las URLs de carta pública y modo sala.</p>
+            </div>
+            <div className="alta-wizard-progress" aria-label={`Progreso: ${progresoAlta}%`}>
+              <div className="alta-wizard-bar"><span style={{ width: `${progresoAlta}%` }} /></div>
+              <p>{camposAltaCompletos} de {camposAlta.length} campos · {progresoAlta}% completado</p>
+            </div>
+          </header>
+
           <form onSubmit={crearRestaurante}>
             <div className="alta-accordion">
 
-              {/* Sección 1: Identificación */}
               <div className="alta-step">
                 <button
                   type="button"
@@ -439,39 +441,37 @@ function AdminPageContent() {
                   onClick={() => setAcordeonAlta(s => s === 'datos' ? null : 'datos')}
                   aria-expanded={acordeonAlta === 'datos'}
                 >
-                  <span className="alta-step-num">1</span>
+                  <span className={`alta-step-num${estadoCampo('nombre') === 'ok' && estadoCampo('email') === 'ok' ? ' is-done' : ''}`}>
+                    {estadoCampo('nombre') === 'ok' && estadoCampo('email') === 'ok' ? '✓' : '1'}
+                  </span>
                   <span className="alta-step-info">
                     <strong>Identificación</strong>
                     <small>Nombre comercial y email de acceso</small>
                   </span>
-                  <span className="alta-step-icon">{acordeonAlta === 'datos' ? '−' : '+'}</span>
+                  <span className="alta-step-icon">{acordeonAlta === 'datos' ? '▲' : '▼'}</span>
                 </button>
                 {acordeonAlta === 'datos' && (
                   <div className="alta-step-body">
-                    <label>
-                      <span>Nombre comercial <b>*</b><em title="Nombre visible en panel, carta publica e informes.">?</em>{estadoCampo('nombre') && <i className={`field-state ${estadoCampo('nombre')}`}>{estadoCampo('nombre') === 'ok' ? '✓' : '×'}</i>}</span>
-                      <input
-                        value={nuevoRestaurante.nombre}
-                        onChange={e => actualizarCampo('nombre', e.target.value)}
-                        placeholder="Ej. Casa Pepe"
-                        required
-                      />
+                    <label className="alta-field">
+                      <span>Nombre comercial <b>*</b>
+                        {estadoCampo('nombre') === 'ok' && <i className="alta-check">✓</i>}
+                        {estadoCampo('nombre') === 'error' && <i className="alta-error">×</i>}
+                      </span>
+                      <input value={nuevoRestaurante.nombre} onChange={e => actualizarCampo('nombre', e.target.value)} placeholder="Ej. Casa Pepe" required />
+                      <small>Visible en panel, carta pública e informes</small>
                     </label>
-                    <label>
-                      <span>Email de acceso <b>*</b><em title="Email que recibira la invitacion y usara para entrar.">?</em>{estadoCampo('email') && <i className={`field-state ${estadoCampo('email')}`}>{estadoCampo('email') === 'ok' ? '✓' : '×'}</i>}</span>
-                      <input
-                        type="email"
-                        value={nuevoRestaurante.email}
-                        onChange={e => actualizarCampo('email', e.target.value)}
-                        placeholder="restaurante@email.com"
-                        required
-                      />
+                    <label className="alta-field">
+                      <span>Email de acceso <b>*</b>
+                        {estadoCampo('email') === 'ok' && <i className="alta-check">✓</i>}
+                        {estadoCampo('email') === 'error' && <i className="alta-error">×</i>}
+                      </span>
+                      <input type="email" value={nuevoRestaurante.email} onChange={e => actualizarCampo('email', e.target.value)} placeholder="restaurante@email.com" required />
+                      <small>Recibirá la invitación y usará este email para entrar</small>
                     </label>
                   </div>
                 )}
               </div>
 
-              {/* Sección 2: Ubicación y URL */}
               <div className="alta-step">
                 <button
                   type="button"
@@ -479,37 +479,33 @@ function AdminPageContent() {
                   onClick={() => setAcordeonAlta(s => s === 'ubicacion' ? null : 'ubicacion')}
                   aria-expanded={acordeonAlta === 'ubicacion'}
                 >
-                  <span className="alta-step-num">2</span>
+                  <span className={`alta-step-num${estadoCampo('slug') === 'ok' ? ' is-done' : ''}`}>
+                    {estadoCampo('slug') === 'ok' ? '✓' : '2'}
+                  </span>
                   <span className="alta-step-info">
                     <strong>Ubicación y URL</strong>
                     <small>Ciudad y slug de la carta pública</small>
                   </span>
-                  <span className="alta-step-icon">{acordeonAlta === 'ubicacion' ? '−' : '+'}</span>
+                  <span className="alta-step-icon">{acordeonAlta === 'ubicacion' ? '▲' : '▼'}</span>
                 </button>
                 {acordeonAlta === 'ubicacion' && (
                   <div className="alta-step-body">
-                    <label>
-                      <span>Ciudad <em title="Ayuda a ubicar el restaurante en busquedas e informes.">?</em>{estadoCampo('ciudad') && <i className="field-state ok">✓</i>}</span>
-                      <input
-                        value={nuevoRestaurante.ciudad}
-                        onChange={e => actualizarCampo('ciudad', e.target.value)}
-                        placeholder="Ej. Jerez"
-                      />
+                    <label className="alta-field">
+                      <span>Ciudad</span>
+                      <input value={nuevoRestaurante.ciudad} onChange={e => actualizarCampo('ciudad', e.target.value)} placeholder="Ej. Jerez" />
                     </label>
-                    <label>
-                      <span>Slug URL <b>*</b><em title="Ruta publica corta, sin espacios ni acentos.">?</em>{estadoCampo('slug') && <i className={`field-state ${estadoCampo('slug')}`}>{estadoCampo('slug') === 'ok' ? '✓' : '×'}</i>}</span>
-                      <input
-                        value={nuevoRestaurante.slug}
-                        onChange={e => actualizarCampo('slug', slugDesdeNombre(e.target.value))}
-                        placeholder="casa-pepe"
-                        required
-                      />
+                    <label className="alta-field">
+                      <span>Slug URL <b>*</b>
+                        {estadoCampo('slug') === 'ok' && <i className="alta-check">✓</i>}
+                        {estadoCampo('slug') === 'error' && <i className="alta-error">×</i>}
+                      </span>
+                      <input value={nuevoRestaurante.slug} onChange={e => actualizarCampo('slug', slugDesdeNombre(e.target.value))} placeholder="casa-pepe" required />
+                      <small>URL pública corta, sin espacios ni acentos</small>
                     </label>
                   </div>
                 )}
               </div>
 
-              {/* Sección 3: Plan y estado */}
               <div className="alta-step">
                 <button
                   type="button"
@@ -522,22 +518,22 @@ function AdminPageContent() {
                     <strong>Plan y estado</strong>
                     <small>Suscripción y estado de activación</small>
                   </span>
-                  <span className="alta-step-icon">{acordeonAlta === 'plan' ? '−' : '+'}</span>
+                  <span className="alta-step-icon">{acordeonAlta === 'plan' ? '▲' : '▼'}</span>
                 </button>
                 {acordeonAlta === 'plan' && (
                   <div className="alta-step-body">
-                    <label>
-                      Plan
+                    <label className="alta-field">
+                      <span>Plan</span>
                       <select value={nuevoRestaurante.plan} onChange={e => actualizarCampo('plan', e.target.value)}>
                         <option value="basic">Básico</option>
                         <option value="pro">Sala</option>
                         <option value="premium">Acompañado</option>
                       </select>
                     </label>
-                    <label>
-                      Estado
+                    <label className="alta-field">
+                      <span>Estado</span>
                       <select value={nuevoRestaurante.subscription_status} onChange={e => actualizarCampo('subscription_status', e.target.value)}>
-                        <option value="trialing">Prueba</option>
+                        <option value="trialing">En prueba</option>
                         <option value="active">Activo</option>
                         <option value="past_due">Pago pendiente</option>
                         <option value="cancelled">Cancelado</option>
@@ -549,34 +545,32 @@ function AdminPageContent() {
 
             </div>
 
-            <div className="form-button-row admin-create-wide">
-              <button type="button" className="admin-secondary-action" onClick={guardarBorradorAlta}>
-                {copiado ? 'Borrador guardado' : 'Guardar borrador'}
+            <div className="alta-actions">
+              <button type="button" className="alta-btn-ghost" onClick={guardarBorradorAlta}>
+                {copiado ? '✓ Guardado' : 'Guardar borrador'}
               </button>
-              <button disabled={creando || !emailValido || !slugValido}>
-                {creando ? 'Creando alta...' : 'Crear alta'}
+              <button type="submit" className="alta-btn-primary" disabled={creando || !emailValido || !slugValido}>
+                {creando ? 'Creando…' : 'Crear restaurante →'}
               </button>
             </div>
           </form>
 
           {errorAlta && <p className="admin-alert admin-alert-error">{errorAlta}</p>}
           {altaCreada && (
-            <div className="admin-alert admin-alert-ok">
-              <strong>✓ {altaCreada.restaurante.nombre} creado</strong>
-              <span>📧 Invitación enviada a <strong>{altaCreada.invitacion.email}</strong></span>
-              <span style={{ fontSize: 13, color: '#555' }}>
-                El restaurante recibirá un email con un enlace para activar su cuenta y elegir su contraseña.
-                El enlace caduca en 24 horas.
-              </span>
-              <span style={{ fontSize: 12, color: '#777' }}>Carta: {altaCreada.urls.carta}</span>
-              <span style={{ fontSize: 12, color: '#777' }}>Modo sala: {altaCreada.urls.camarero}</span>
-              <button
-                type="button"
-                onClick={copiarAcceso}
-                style={{ marginTop: 10, background: copiado ? '#3a6b4e' : '#111', color: '#fff', border: 'none', padding: '10px 18px', fontSize: 12, cursor: 'pointer', letterSpacing: '0.08em' }}
-              >
-                {copiado ? '✓ Copiado' : 'Copiar mensaje de bienvenida'}
-              </button>
+            <div className="alta-success">
+              <div className="alta-success-icon">✓</div>
+              <div className="alta-success-body">
+                <strong>{altaCreada.restaurante.nombre} creado</strong>
+                <span>Invitación enviada a <b>{altaCreada.invitacion.email}</b></span>
+                <small>El restaurante recibirá un enlace para activar su cuenta. Caduca en 24 h.</small>
+                <div className="alta-success-urls">
+                  <code>Carta: {altaCreada.urls.carta}</code>
+                  <code>Sala: {altaCreada.urls.camarero}</code>
+                </div>
+                <button type="button" onClick={copiarAcceso}>
+                  {copiado ? '✓ Copiado' : 'Copiar mensaje de bienvenida'}
+                </button>
+              </div>
             </div>
           )}
         </section>
