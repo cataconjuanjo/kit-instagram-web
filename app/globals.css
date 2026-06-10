@@ -10375,4 +10375,253 @@ html, body {
   }
 }
 
+/* ── Proveedores: compact rows ── */
+
+.supplier-sections {
+  display: grid;
+  gap: 28px;
+  margin-top: 4px;
+}
+
+.supplier-section {
+  display: grid;
+  gap: 12px;
+}
+
+.supplier-section .supplier-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1.5px solid var(--line);
+}
+
+.supplier-section .supplier-section-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.supplier-section .supplier-section-head span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  background: rgba(139, 31, 56, 0.07);
+  border-radius: 20px;
+  padding: 2px 10px;
+}
+
+.supplier-rows {
+  display: grid;
+  gap: 1px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.supplier-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: rgba(255,255,255,0.92);
+  transition: background 120ms;
+}
+
+.supplier-row:hover {
+  background: #fdfaf5;
+}
+
+.supplier-row-info {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.supplier-row-info strong {
+  font-size: 0.92rem;
+  font-weight: 750;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.supplier-row-info span {
+  font-size: 0.76rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.supplier-row-stats {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+.supplier-row-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--wine);
+  background: rgba(139, 31, 56, 0.08);
+  border-radius: 20px;
+  padding: 2px 9px;
+}
+
+.supplier-row-status {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #888;
+  background: #f3f3f3;
+  border-radius: 20px;
+  padding: 2px 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.supplier-row-status.is-public {
+  color: #1a7a4a;
+  background: #e6f7ee;
+}
+
+.supplier-row-btns {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.supplier-btn-edit,
+.supplier-btn-danger,
+.supplier-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
+  white-space: nowrap;
+}
+
+.supplier-btn-edit {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+}
+
+.supplier-btn-edit:hover {
+  border-color: #c9a84c;
+  background: #fffbf0;
+  color: #7a5c00;
+}
+
+.supplier-btn-danger {
+  border: 1px solid #fcd4d4;
+  background: #fff5f5;
+  color: #c0392b;
+}
+
+.supplier-btn-danger:hover {
+  border-color: #e88;
+  background: #ffe0e0;
+}
+
+.supplier-btn-primary {
+  border: none;
+  background: var(--wine);
+  color: #fff;
+}
+
+.supplier-btn-primary:hover {
+  background: #6b1130;
+}
+
+/* ── Proveedor ficha form (inside accordion) ── */
+
+.supplier-ficha-form {
+  display: grid;
+  gap: 14px;
+}
+
+.supplier-ficha-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.supplier-ficha-wide {
+  grid-column: 1 / -1;
+}
+
+.supplier-ficha-form .alta-field label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.supplier-ficha-form .alta-field input,
+.supplier-ficha-form .alta-field select,
+.supplier-ficha-form .alta-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf0;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+
+.supplier-ficha-form .alta-field input:focus,
+.supplier-ficha-form .alta-field select:focus,
+.supplier-ficha-form .alta-field textarea:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(190, 154, 94, 0.16);
+}
+
+.supplier-ficha-form .alta-field textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.supplier-ficha-actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+@media (max-width: 600px) {
+  .supplier-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .supplier-row-btns {
+    flex-wrap: wrap;
+  }
+
+  .supplier-ficha-grid {
+    grid-template-columns: 1fr;
+  }
+}
 

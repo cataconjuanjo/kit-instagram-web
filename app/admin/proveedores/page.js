@@ -900,19 +900,47 @@ function ProveedoresPageContent() {
               </button>
               {acordeonAbierto === 'ficha' && (
                 <div className="supplier-accordion-body">
-                  <form onSubmit={guardarProveedor} className="admin-create-form">
-                    <label>Nombre<input value={proveedorForm.nombre} onChange={e => cambiarProveedor('nombre', e.target.value)} placeholder="Distribuidor, bodega o importador" required /></label>
-                    <label>Zona<input value={proveedorForm.zona} onChange={e => cambiarProveedor('zona', e.target.value)} placeholder="Málaga, Andalucía, nacional..." /></label>
-                    <label>Contacto<input value={proveedorForm.contacto} onChange={e => cambiarProveedor('contacto', e.target.value)} placeholder="Persona de contacto" /></label>
-                    <label>Email<input type="email" value={proveedorForm.email} onChange={e => cambiarProveedor('email', e.target.value)} placeholder="comercial@proveedor.com" /></label>
-                    <label>Teléfono<input value={proveedorForm.telefono} onChange={e => cambiarProveedor('telefono', e.target.value)} placeholder="+34..." /></label>
-                    <label className="admin-hub-switch">
+                  <form onSubmit={guardarProveedor} className="supplier-ficha-form">
+                    <div className="supplier-ficha-grid">
+                      <div className="alta-field">
+                        <label>Nombre del proveedor</label>
+                        <input value={proveedorForm.nombre} onChange={e => cambiarProveedor('nombre', e.target.value)} placeholder="Distribuidor, bodega o importador" required />
+                      </div>
+                      <div className="alta-field">
+                        <label>Zona de trabajo</label>
+                        <input value={proveedorForm.zona} onChange={e => cambiarProveedor('zona', e.target.value)} placeholder="Málaga, Andalucía, nacional..." />
+                      </div>
+                      <div className="alta-field">
+                        <label>Contacto</label>
+                        <input value={proveedorForm.contacto} onChange={e => cambiarProveedor('contacto', e.target.value)} placeholder="Persona de contacto" />
+                      </div>
+                      <div className="alta-field">
+                        <label>Email comercial</label>
+                        <input type="email" value={proveedorForm.email} onChange={e => cambiarProveedor('email', e.target.value)} placeholder="comercial@proveedor.com" />
+                      </div>
+                      <div className="alta-field">
+                        <label>Teléfono</label>
+                        <input value={proveedorForm.telefono} onChange={e => cambiarProveedor('telefono', e.target.value)} placeholder="+34..." />
+                      </div>
+                    </div>
+                    <label className="admin-hub-switch" style={{ marginTop: 4 }}>
                       <input type="checkbox" checked={proveedorForm.visible_restaurantes} onChange={e => cambiarProveedor('visible_restaurantes', e.target.checked)} />
                       Preparado para mostrar a restaurantes
                     </label>
-                    <label className="admin-create-wide">Notas<textarea value={proveedorForm.notas} onChange={e => cambiarProveedor('notas', e.target.value)} placeholder="Condiciones, zonas fuertes, mínimos, tipo de catálogo, relación comercial..." /></label>
-                    <button disabled={guardando}>{guardando ? 'Guardando...' : editandoProveedor ? 'Guardar proveedor' : 'Crear proveedor'}</button>
-                    {editandoProveedor && <button type="button" className="admin-plain-button" onClick={() => { setEditandoProveedor(null); setProveedorForm(proveedorInicial) }}>Cancelar edición</button>}
+                    <div className="alta-field" style={{ marginTop: 12 }}>
+                      <label>Notas privadas</label>
+                      <textarea value={proveedorForm.notas} onChange={e => cambiarProveedor('notas', e.target.value)} placeholder="Condiciones, zonas fuertes, mínimos, tipo de catálogo, relación comercial..." />
+                    </div>
+                    <div className="supplier-ficha-actions">
+                      <button type="submit" className="alta-btn-primary" disabled={guardando}>
+                        {guardando ? 'Guardando...' : editandoProveedor ? 'Guardar cambios' : 'Crear proveedor'}
+                      </button>
+                      {editandoProveedor && (
+                        <button type="button" className="alta-btn-ghost" onClick={() => { setEditandoProveedor(null); setProveedorForm(proveedorInicial) }}>
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
                   </form>
                 </div>
               )}
@@ -1119,32 +1147,78 @@ function ProveedoresPageContent() {
               </button>
               {acordeonAbierto === 'vino' && (
                 <div className="supplier-accordion-body">
-                  <form onSubmit={guardarVino} className="admin-create-form">
-                    <label>
-                      Proveedor
-                      <select value={vinoForm.proveedor_id} onChange={e => cambiarVino('proveedor_id', e.target.value)} required>
-                        <option value="">Selecciona...</option>
-                        {proveedores.map(proveedor => <option key={proveedor.id} value={proveedor.id}>{proveedor.nombre}</option>)}
-                      </select>
-                    </label>
-                    <label>Vino<input value={vinoForm.nombre} onChange={e => cambiarVino('nombre', e.target.value)} placeholder="Nombre comercial" required /></label>
-                    <label>Bodega<input value={vinoForm.bodega} onChange={e => cambiarVino('bodega', e.target.value)} placeholder="Bodega" /></label>
-                    <label>Tipo<input value={vinoForm.tipo} onChange={e => cambiarVino('tipo', e.target.value)} placeholder="Tinto, blanco, generoso..." /></label>
-                    <label>Zona / D.O.<input value={vinoForm.region} onChange={e => cambiarVino('region', e.target.value)} placeholder="Rioja, Jerez, Málaga..." /></label>
-                    <label>Uva / blend<input value={vinoForm.uva} onChange={e => cambiarVino('uva', e.target.value)} placeholder="Tempranillo, Palomino, Garnacha..." /></label>
-                    <label>Añada<input value={vinoForm.anada} onChange={e => cambiarVino('anada', e.target.value)} placeholder="2022, saca 2024..." /></label>
-                    <label>Referencia<input value={vinoForm.referencia} onChange={e => cambiarVino('referencia', e.target.value)} placeholder="Código proveedor" /></label>
-                    <label>Formato<input value={vinoForm.formato} onChange={e => cambiarVino('formato', e.target.value)} placeholder="Botella 75 cl, caja 6..." /></label>
-                    <label>Coste estimado<input type="number" step="0.01" value={vinoForm.coste_estimado} onChange={e => cambiarVino('coste_estimado', e.target.value)} /></label>
-                    <label>PVP recomendado<input type="number" step="0.01" value={vinoForm.pvp_recomendado} onChange={e => cambiarVino('pvp_recomendado', e.target.value)} /></label>
-                    <label>Disponibilidad<input value={vinoForm.disponibilidad} onChange={e => cambiarVino('disponibilidad', e.target.value)} placeholder="Disponible, cupo, preguntar..." /></label>
-                    <label className="admin-hub-switch">
+                  <form onSubmit={guardarVino} className="supplier-ficha-form">
+                    <div className="supplier-ficha-grid">
+                      <div className="alta-field supplier-ficha-wide">
+                        <label>Proveedor</label>
+                        <select value={vinoForm.proveedor_id} onChange={e => cambiarVino('proveedor_id', e.target.value)} required>
+                          <option value="">Selecciona...</option>
+                          {proveedores.map(proveedor => <option key={proveedor.id} value={proveedor.id}>{proveedor.nombre}</option>)}
+                        </select>
+                      </div>
+                      <div className="alta-field supplier-ficha-wide">
+                        <label>Nombre del vino</label>
+                        <input value={vinoForm.nombre} onChange={e => cambiarVino('nombre', e.target.value)} placeholder="Nombre comercial" required />
+                      </div>
+                      <div className="alta-field">
+                        <label>Bodega</label>
+                        <input value={vinoForm.bodega} onChange={e => cambiarVino('bodega', e.target.value)} placeholder="Bodega" />
+                      </div>
+                      <div className="alta-field">
+                        <label>Tipo</label>
+                        <input value={vinoForm.tipo} onChange={e => cambiarVino('tipo', e.target.value)} placeholder="Tinto, blanco, generoso..." />
+                      </div>
+                      <div className="alta-field">
+                        <label>Zona / D.O.</label>
+                        <input value={vinoForm.region} onChange={e => cambiarVino('region', e.target.value)} placeholder="Rioja, Jerez, Málaga..." />
+                      </div>
+                      <div className="alta-field">
+                        <label>Uva / blend</label>
+                        <input value={vinoForm.uva} onChange={e => cambiarVino('uva', e.target.value)} placeholder="Tempranillo, Palomino, Garnacha..." />
+                      </div>
+                      <div className="alta-field">
+                        <label>Añada</label>
+                        <input value={vinoForm.anada} onChange={e => cambiarVino('anada', e.target.value)} placeholder="2022, saca 2024..." />
+                      </div>
+                      <div className="alta-field">
+                        <label>Referencia proveedor</label>
+                        <input value={vinoForm.referencia} onChange={e => cambiarVino('referencia', e.target.value)} placeholder="Código proveedor" />
+                      </div>
+                      <div className="alta-field">
+                        <label>Formato</label>
+                        <input value={vinoForm.formato} onChange={e => cambiarVino('formato', e.target.value)} placeholder="Botella 75 cl, caja 6..." />
+                      </div>
+                      <div className="alta-field">
+                        <label>Coste estimado (€)</label>
+                        <input type="number" step="0.01" value={vinoForm.coste_estimado} onChange={e => cambiarVino('coste_estimado', e.target.value)} />
+                      </div>
+                      <div className="alta-field">
+                        <label>PVP recomendado (€)</label>
+                        <input type="number" step="0.01" value={vinoForm.pvp_recomendado} onChange={e => cambiarVino('pvp_recomendado', e.target.value)} />
+                      </div>
+                      <div className="alta-field">
+                        <label>Disponibilidad</label>
+                        <input value={vinoForm.disponibilidad} onChange={e => cambiarVino('disponibilidad', e.target.value)} placeholder="Disponible, cupo, preguntar..." />
+                      </div>
+                    </div>
+                    <label className="admin-hub-switch" style={{ marginTop: 4 }}>
                       <input type="checkbox" checked={vinoForm.activo} onChange={e => cambiarVino('activo', e.target.checked)} />
                       Referencia activa
                     </label>
-                    <label className="admin-create-wide">Notas<textarea value={vinoForm.notas} onChange={e => cambiarVino('notas', e.target.value)} placeholder="Por qué interesa, estilo, restaurantes donde encaja, margen, maridajes..." /></label>
-                    <button disabled={guardando || proveedores.length === 0}>{guardando ? 'Guardando...' : editandoVino ? 'Guardar referencia' : 'Añadir al catálogo'}</button>
-                    {editandoVino && <button type="button" className="admin-plain-button" onClick={() => { setEditandoVino(null); setVinoForm({ ...vinoInicial, proveedor_id: proveedorSeleccionado }) }}>Cancelar edición</button>}
+                    <div className="alta-field" style={{ marginTop: 12 }}>
+                      <label>Notas</label>
+                      <textarea value={vinoForm.notas} onChange={e => cambiarVino('notas', e.target.value)} placeholder="Por qué interesa, estilo, restaurantes donde encaja, margen, maridajes..." />
+                    </div>
+                    <div className="supplier-ficha-actions">
+                      <button type="submit" className="alta-btn-primary" disabled={guardando || proveedores.length === 0}>
+                        {guardando ? 'Guardando...' : editandoVino ? 'Guardar referencia' : 'Añadir al catálogo'}
+                      </button>
+                      {editandoVino && (
+                        <button type="button" className="alta-btn-ghost" onClick={() => { setEditandoVino(null); setVinoForm({ ...vinoInicial, proveedor_id: proveedorSeleccionado }) }}>
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
                   </form>
                 </div>
               )}
@@ -1403,44 +1477,63 @@ function ProveedoresPageContent() {
           )}
 
           {vistaProveedores === 'gestion' && (
-          <div className="supplier-layout">
-            <section className="supplier-list">
-              <h2>Proveedores</h2>
-              {proveedores.length === 0 && <p className="consult-empty">Aún no hay proveedores privados.</p>}
-              {proveedores.map(proveedor => (
-                <article className="admin-card supplier-card" key={proveedor.id}>
-                  <div>
-                    <span className="admin-slug">{proveedor.visible_restaurantes ? 'Preparado para mostrar' : 'Privado'}</span>
-                    <h3>{proveedor.nombre}</h3>
-                    <p>{conteoPorProveedor[proveedor.id] || 0} referencias guardadas</p>
-                    <p>{[proveedor.zona, proveedor.contacto].filter(Boolean).join(' · ') || 'Sin zona/contacto'}</p>
-                    <span>{[proveedor.email, proveedor.telefono].filter(Boolean).join(' · ') || 'Sin datos de contacto'}</span>
-                    {proveedor.notas && <small className="admin-slug">{proveedor.notas}</small>}
+          <div className="supplier-sections">
+            <section className="supplier-section">
+              <div className="supplier-section-head">
+                <h2>Proveedores</h2>
+                {proveedores.length > 0 && <span>{proveedores.length} registrados</span>}
+              </div>
+              {proveedores.length === 0 && <p className="consult-empty">Aún no hay proveedores privados. Crea uno con el formulario de arriba.</p>}
+              <div className="supplier-rows">
+                {proveedores.map(proveedor => (
+                  <div className="supplier-row" key={proveedor.id}>
+                    <div className="supplier-row-info">
+                      <strong>{proveedor.nombre}</strong>
+                      <span>{[proveedor.zona, proveedor.contacto, proveedor.email, proveedor.telefono].filter(Boolean).join(' · ') || 'Sin zona ni contacto'}</span>
+                    </div>
+                    <div className="supplier-row-stats">
+                      <span className="supplier-row-badge">{conteoPorProveedor[proveedor.id] || 0} refs</span>
+                      <span className={`supplier-row-status${proveedor.visible_restaurantes ? ' is-public' : ''}`}>
+                        {proveedor.visible_restaurantes ? 'Visible' : 'Privado'}
+                      </span>
+                    </div>
+                    <div className="supplier-row-btns">
+                      <button type="button" className="supplier-btn-edit" onClick={() => editarProveedor(proveedor)}>✏ Editar</button>
+                      <button type="button" className="supplier-btn-danger" onClick={() => borrar(proveedor.id, 'proveedor')}>✕ Borrar</button>
+                    </div>
                   </div>
-                  <div className="admin-card-actions">
-                    <button onClick={() => editarProveedor(proveedor)}>Editar</button>
-                    <button className="admin-plain-button" onClick={() => borrar(proveedor.id, 'proveedor')}>Borrar</button>
-                  </div>
-                </article>
-              ))}
+                ))}
+              </div>
             </section>
 
-            <section className="supplier-list">
-              <h2>Catalogos cargados</h2>
-              {proveedores.filter(proveedor => conteoPorProveedor[proveedor.id] > 0).length === 0 && <p className="consult-empty">Aun no hay catalogos cargados.</p>}
-              {proveedores.filter(proveedor => conteoPorProveedor[proveedor.id] > 0).map(proveedor => (
-                <article className="admin-card supplier-card" key={`${proveedor.id}-catalogo`}>
-                  <div>
-                    <span className="admin-slug">Catalogo privado</span>
-                    <h3>{proveedor.nombre}</h3>
-                    <p>{conteoPorProveedor[proveedor.id]} referencias guardadas</p>
-                    <span>{proveedor.zona || 'Sin zona asignada'}</span>
+            <section className="supplier-section">
+              <div className="supplier-section-head">
+                <h2>Catálogos cargados</h2>
+                {proveedores.filter(p => conteoPorProveedor[p.id] > 0).length > 0 && (
+                  <span>{proveedores.filter(p => conteoPorProveedor[p.id] > 0).length} con referencias</span>
+                )}
+              </div>
+              {proveedores.filter(proveedor => conteoPorProveedor[proveedor.id] > 0).length === 0 && (
+                <p className="consult-empty">Aún no hay catálogos. Usa el acordeón de importación para cargar el PDF de un distribuidor.</p>
+              )}
+              <div className="supplier-rows">
+                {proveedores.filter(proveedor => conteoPorProveedor[proveedor.id] > 0).map(proveedor => (
+                  <div className="supplier-row" key={`${proveedor.id}-catalogo`}>
+                    <div className="supplier-row-info">
+                      <strong>{proveedor.nombre}</strong>
+                      <span>{proveedor.zona || 'Sin zona asignada'}</span>
+                    </div>
+                    <div className="supplier-row-stats">
+                      <span className="supplier-row-badge">{conteoPorProveedor[proveedor.id]} referencias</span>
+                    </div>
+                    <div className="supplier-row-btns">
+                      <button type="button" className="supplier-btn-primary" onClick={() => { setProveedorSeleccionado(proveedor.id); cambiarVistaProveedores('catalogo') }}>
+                        → Ver catálogo
+                      </button>
+                    </div>
                   </div>
-                  <div className="admin-card-actions">
-                    <button onClick={() => { setProveedorSeleccionado(proveedor.id); cambiarVistaProveedores('catalogo') }}>Ver catalogo</button>
-                  </div>
-                </article>
-              ))}
+                ))}
+              </div>
             </section>
           </div>
           )}
