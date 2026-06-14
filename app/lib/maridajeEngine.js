@@ -367,9 +367,6 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
   if (esCarneRojaPotente && vino.tipo === 'espumoso' && !metodo.frio && !metodo.frito) {
     return { compatible: false, penalizacion: 50, razon: 'El espumoso no es la primera lectura para carne roja intensa.' }
   }
-  if (esCarneRojaPotente && vino.tipo === 'generoso') {
-    return { compatible: false, penalizacion: 55, razon: 'Un generoso (fino, amontillado, oloroso) carece de taninos para trabajar la proteína de la carne roja; el alto alcohol amplifica la intensidad sin equilibrarla.' }
-  }
   if (contexto === 'fritura') {
     if (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto) return { compatible: false, penalizacion: 90, razon: 'Para fritura conviene tensión, salinidad o burbuja; tinto potente, dulce o tawny no es la primera lectura.' }
     if (!['generoso', 'espumoso', 'blanco', 'rosado'].includes(vino.tipo)) return { compatible: false, penalizacion: 50, razon: 'Para fritura se priorizan estilos frescos, salinos o con burbuja.' }
