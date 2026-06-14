@@ -1,0 +1,6778 @@
+{
+  "version": "0.1",
+  "generated_at": "2026-06-14T07:41:08.429Z",
+  "purpose": "Capa culinaria sensorial para laboratorio A/B de maridaje. No contiene recomendaciones de vino ni modifica el motor publico por si sola.",
+  "safety_policy": {
+    "runtime_default": "lab_only",
+    "affects_public_pairing": false,
+    "wine_pairing_generated_here": false
+  },
+  "ingredients": [
+    {
+      "ingrediente": "ajo",
+      "nombre_visible": "Ajo",
+      "familia": "hierba",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 0,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 3,
+        "picante": 3,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Vehículo graso donde se disuelven y difunden sus aceites esenciales.",
+          "tipo": "tecnica",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "perejil",
+          "motivo": "Clásico mediterráneo; las notas verdes refrescan la potencia aliácea.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "limon",
+          "motivo": "La acidez de los cítricos doma la agresividad picante en crudo.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "frito",
+          "efecto_sensorial": "Dora las láminas restando picor y sumando un tostado crujiente (estilo al ajillo)."
+        },
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Muta el diente hacia una pulpa cremosa, dulce y extremadamente sutil."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "picante": 4,
+          "intensidad": 5,
+          "textura": "dura_mordiente"
+        },
+        "horno": {
+          "picante": 0,
+          "dulzor": 4,
+          "textura": "cremosa_mollar"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "al_ajillo",
+          "refrito",
+          "majado",
+          "asado"
+        ],
+        "sinonimos": [
+          "allium_sativum"
+        ],
+        "alertas": [
+          "El ajo quemado amarga con agresividad arruinando cualquier fondo base."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "albahaca",
+      "nombre_visible": "Albahaca",
+      "familia": "hierba",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 0,
+        "picante": 1,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 4,
+        "floral": 1,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "tomate",
+          "motivo": "Maridaje mediterráneo estelar; las notas anisadas realzan la acidez líquida.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Conductor idóneo donde se fijan las notas perfumadas del vegetal.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "mozzarella",
+          "motivo": "Aporta frescura herbal cortante sobre la grasa neutra láctica.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "piñon",
+          "motivo": "Ligazón resinosa que estructura la salsa pesto clásica.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Conserva los aceites de estragol anisados libres de oxidación física."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "herbal": 4,
+          "dulzor": 2,
+          "textura": "hoja_delicada"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "pesto",
+          "caprese",
+          "hojas_tornadas",
+          "infundido"
+        ],
+        "sinonimos": [
+          "ocimum_basilicum"
+        ],
+        "alertas": [
+          "Se ennegrece por oxidación si se corta con cuchillo metálico; exige ser rasgada a mano."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "alcachofa",
+      "nombre_visible": "Alcachofa",
+      "familia": "verdura",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 3,
+        "acidez": 0,
+        "salinidad": 1,
+        "amargor": 3,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 2,
+        "herbal": 2,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "jamon",
+          "motivo": "Afinidad nuclear; la salinidad curada del jamón contrarresta el amargor del vegetal.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "limon",
+          "motivo": "Indispensable para evitar la oxidación aérea e introducir frescor cítrico.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Soporte pungente clásico para salteados de corazones limpios.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Aporta untuosidad suavizando los taninos vegetales ásperos.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "confitado",
+          "efecto_sensorial": "Cocción prolongada en aceite que rinde un corazón tierno libre de amargores crudos."
+        },
+        {
+          "tecnica": "frito",
+          "efecto_sensorial": "Muta las hojas exteriores en láminas tostadas crujientes (estilo flor)."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "confitado": {
+          "grasa": 3,
+          "amargor": 1,
+          "textura": "mollar_untuosa"
+        },
+        "frito": {
+          "tostado": 3,
+          "textura": "crujiente_hojaldrada"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "confitadas",
+          "con_jamon",
+          "en_flor",
+          "al_parrilla"
+        ],
+        "sinonimos": [
+          "cynara_scolymus"
+        ],
+        "alertas": [
+          "Contiene cinarina, compuesto que altera los receptores induciendo un falso sabor dulce posterior."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "alioli",
+      "nombre_visible": "Alioli",
+      "familia": "salsa",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 5,
+        "dulzor": 1,
+        "acidez": 1,
+        "salinidad": 2,
+        "amargor": 1,
+        "umami": 3,
+        "picante": 2,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "patata",
+          "motivo": "El almidón neutro absorbe la grasa aliácea de forma idónea (Bravas).",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "marisco",
+          "motivo": "Acompaña arroces marineros (Fideuá) sumando untuosidad rústica.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Emulsión en frío; aglutina aceite y ajo confiriendo una suntuosidad masiva."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "grasa": 5,
+          "picante": 2,
+          "textura": "emulsion_densa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "all_i_oli",
+          "emulsionado",
+          "mortero",
+          "fideua"
+        ],
+        "sinonimos": [
+          "alloli",
+          "ajonesa"
+        ],
+        "alertas": [
+          "La presencia de ajo crudo masivo satura los receptores gustativos de forma prolongada."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "almendra",
+      "nombre_visible": "Almendra",
+      "familia": "fruto_seco",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 4,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 1,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "chocolate",
+          "motivo": "Sinergia grasa dulce-amarga tradicional en toda la repostería.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "jamon",
+          "motivo": "Los matices grasos del fruto seco resuenan con la bellota del curado.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "uva",
+          "motivo": "Aporte líquido dulce en sopas frías tradicionales (Ajoblanco).",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "tostado",
+          "efecto_sensorial": "Dispara de forma drástica las notas tostadas y elimina el amargor crudo."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "tostado": {
+          "tostado": 4,
+          "amargor": 0,
+          "textura": "crujiente_quebradiza"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "marcona",
+          "ajoblanco",
+          "laminada",
+          "garrapiñada"
+        ],
+        "sinonimos": [
+          "prunus_dulcis"
+        ],
+        "alertas": [
+          "La variedad amarga contiene amigdalina; no apta para uso culinario común."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "anchoa",
+      "nombre_visible": "Anchoa",
+      "familia": "fermentado",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 2,
+        "dulzor": 0,
+        "acidez": 1,
+        "salinidad": 5,
+        "amargor": 1,
+        "umami": 5,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 1,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 5
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "mantequilla",
+          "motivo": "La grasa láctica dulce amortigua e integra la extrema salinidad.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "tomate",
+          "motivo": "Sinergia de umami donde la pulpa aporta hidratación mitigadora.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "queso_de_cabra",
+          "motivo": "Cremosidad y notas lácticas ácidas que doman el pescado curado.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "aceitunas",
+          "motivo": "Combinación tradicional de salmueras vegetales y marinas (Gilda).",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "curado",
+          "efecto_sensorial": "Maduración prolongada que maximiza el umami y concentra salmueras."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "curado": {
+          "salinidad": 5,
+          "umami": 5,
+          "textura": "flexible_deshidratada"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "salazon",
+          "gilda",
+          "semiconserva",
+          "del_cantabrico"
+        ],
+        "sinonimos": [
+          "anchoa en salazón"
+        ],
+        "alertas": [
+          "Su alta concentración de sal domina instantáneamente platos delicados."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "atun",
+      "nombre_visible": "Atún",
+      "familia": "pescado",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 3,
+        "dulzor": 0,
+        "acidez": 0,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 4,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 3
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Vehículo lipídico que suaviza las notas férricas y densas de su músculo.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Realza los elementos cárnicos y el umami natural del corte.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "limon",
+          "motivo": "La acidez cítrica disuelve la pesadez de los cortes grasos.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "soja",
+          "motivo": "Multiplica el umami y añade salinidad profunda sin enmascarar.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "tomate",
+          "motivo": "Aporta una acidez umami idónea para guisos tradicionales o crudos.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "pimienta_negra",
+          "motivo": "Añade una nota pungente que rompe la homogeneidad de la carne.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Mantiene la textura mantecosa y una intensidad yodada limpia."
+        },
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Carameliza el exterior por Maillard reteniendo jugosidad central."
+        },
+        {
+          "tecnica": "escabeche",
+          "efecto_sensorial": "Dispara la acidez y reduce la percepción de grasa pesada."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "tostado": 0,
+          "grasa": 3,
+          "yodado_marino": 3,
+          "textura": "mantecosa"
+        },
+        "plancha": {
+          "tostado": 3,
+          "amargor": 1,
+          "intensidad": 5
+        },
+        "escabeche": {
+          "acidez": 5,
+          "salinidad": 3,
+          "textura": "firme_lascada"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "ventresca",
+          "tartar",
+          "tataki",
+          "marmitako",
+          "tarantelo"
+        ],
+        "sinonimos": [
+          "atún rojo",
+          "thunnus"
+        ],
+        "alertas": [
+          "Se reseca velozmente si se sobrepasa el tiempo exacto de cocción."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "avellana",
+      "nombre_visible": "Avellana",
+      "familia": "fruto_seco",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 4,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 2,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "chocolate",
+          "motivo": "Maridaje molecular idóneo; funde texturas grasas (Gianduja).",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "queso_azul",
+          "motivo": "Contrapunto graso terroso frente a la salinidad del hongo.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "tostado",
+          "efecto_sensorial": "Sube el perfil tostado liberando aceites esenciales encerrados."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "tostado": {
+          "tostado": 4,
+          "textura": "crujiente"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "gianduja",
+          "picada",
+          "romesco",
+          "tostada"
+        ],
+        "sinonimos": [
+          "corylus_avellana"
+        ],
+        "alertas": [
+          "La piel exterior tostada aporta una alta astringencia si no se retira."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "azafran",
+      "nombre_visible": "Azafrán",
+      "familia": "especia",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 2,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 1,
+        "tostado": 0,
+        "terroso": 2,
+        "herbal": 0,
+        "floral": 3,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "arroz",
+          "motivo": "Sinergia nuclear en paellas; el grano expande el aroma floral-amargo tiñéndose de oro.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Pilar aromático complementario en los fondos marineros tradicionales.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "marisco",
+          "motivo": "Resalta el dulzor de gambas o bivalvos aportando un marco noble.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Infunde caldos liberando crocina (color) y safranal (aroma floral-terroso) de forma uniforme."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "guiso": {
+          "floral": 3,
+          "terroso": 2
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "hebras",
+          "paella",
+          "infusionado",
+          "majado"
+        ],
+        "sinonimos": [
+          "crocus_sativus",
+          "oro rojo"
+        ],
+        "alertas": [
+          "Un exceso introduce notas medicinales y un amargor químico metálico desagradable."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "bacalao",
+      "nombre_visible": "Bacalao",
+      "familia": "pescado",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 1,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 2
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Indispensable para ligar emulsiones con la gelatina de su carne.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Conductor graso esencial para ligar salsas tradicionales.",
+          "tipo": "tecnica",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "tomate",
+          "motivo": "Jugosidad y acidez dulce que equilibran el fondo salino.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "patata",
+          "motivo": "Base neutra harinosa que absorbe gelatinas y salinidad.",
+          "tipo": "textura",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "pimenton",
+          "motivo": "Añade fondo terroso y un recuerdo ahumado sutil.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "confitado",
+          "efecto_sensorial": "Conserva la humedad y extrae colágeno sin secar las lascas."
+        },
+        {
+          "tecnica": "curado",
+          "efecto_sensorial": "Deshidrata la pieza concentrando salinidad y dureza fibrosa."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "curado": {
+          "salinidad": 5,
+          "intensidad": 4,
+          "textura": "fibrosa_densa"
+        },
+        "confitado": {
+          "grasa": 2,
+          "textura": "lascada_untuosa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "pil-pil",
+          "vizcaina",
+          "skrei",
+          "buñuelos",
+          "brandada"
+        ],
+        "sinonimos": [
+          "bacalao salado"
+        ],
+        "alertas": [
+          "Si el desalado es deficiente, el calor concentrará la sal de forma agresiva."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "berenjena",
+      "nombre_visible": "Berenjena",
+      "familia": "verdura",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 2,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Su pungencia contrarresta el fondo ligeramente amargo e insípido de la pulpa.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Su esponja estructural absorbe grasas aportando suntuosidad masiva.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "tomate",
+          "motivo": "La acidez líquida hidrata la pulpa porosa estructurando el bocado.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "comino",
+          "motivo": "Eleva el perfil terroso evocando preparaciones de corte magrebí.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Colapsa la estructura porosa rindiendo una pasta untuosa idónea para purés."
+        },
+        {
+          "tecnica": "frito",
+          "efecto_sensorial": "Fija el contorno exterior de forma crujiente si se protege adecuadamente (rebozado)."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "horno": {
+          "amargor": 0,
+          "textura": "cremosa_puré"
+        },
+        "frito": {
+          "grasa": 4,
+          "tostado": 2,
+          "textura": "crujiente_exterior"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "mutabal",
+          "baba_ganoush",
+          "escalivada",
+          "rellena",
+          "al_magro"
+        ],
+        "sinonimos": [
+          "solanum_melongena"
+        ],
+        "alertas": [
+          "Su naturaleza porosa absorbe aceite de forma descontrolada si la temperatura es baja."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "boletus",
+      "nombre_visible": "Boletus",
+      "familia": "setas",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 1,
+        "amargor": 0,
+        "umami": 5,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 4,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Levanta las notas de humedad forestal sin eclipsar el hongo.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Lubricante idóneo que respeta la nitidez fúngica del hongo.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "huevo",
+          "motivo": "La yema aglutina el umami creando texturas sedosas colosales.",
+          "tipo": "textura",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "perejil",
+          "motivo": "Aporte verde mínimo que refresca el fondo denso otoñal.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Dora caras exteriores confiriendo texturas carnosas y tostados limpios."
+        },
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Laminado fino tipo carpaccio expone notas de fruto seco y firmeza sutil."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "dulzor": 3,
+          "textura": "firme_sedosa"
+        },
+        "plancha": {
+          "tostado": 3,
+          "umami": 5,
+          "textura": "carnosa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "edulis",
+          "risotto",
+          "salteado",
+          "carpaccio"
+        ],
+        "sinonimos": [
+          "boletus_edulis",
+          "cepa"
+        ],
+        "alertas": [
+          "Posee niveles máximos de umami natural; actúa como pilar saporífero absoluto."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "boqueron",
+      "nombre_visible": "Boquerón",
+      "familia": "pescado",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 2,
+        "dulzor": 0,
+        "acidez": 0,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 4
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "vinagre",
+          "motivo": "Blanquea las fibras cárnicas dotándolas de una acidez punzante limpia.",
+          "tipo": "tecnica",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Potenciador en crudo esencial para dotar de relieve al marinado.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "perejil",
+          "motivo": "Equilibrio herbal verde frente a la acidez acética implícita.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Suaviza el impacto cortante del vinagre en preparaciones frías.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "fermentado",
+          "efecto_sensorial": "El marinado frío muta la textura a firme y eleva la acidez."
+        },
+        {
+          "tecnica": "frito",
+          "efecto_sensorial": "Genera tostado exterior volviendo quebradiza y crujiente la espina."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "fermentado": {
+          "acidez": 4,
+          "textura": "tersa_blanqueada"
+        },
+        "frito": {
+          "grasa": 3,
+          "tostado": 3,
+          "textura": "crujiente"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "en_vinagre",
+          "frito_al_andalus",
+          "abiertos"
+        ],
+        "sinonimos": [
+          "bocarte",
+          "anchoa_fresca"
+        ],
+        "alertas": [
+          "La fritura exige aceites a alta temperatura para evitar empapamientos grasos."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "burrata",
+      "nombre_visible": "Burrata",
+      "familia": "lacteo",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 5,
+        "dulzor": 2,
+        "acidez": 1,
+        "salinidad": 1,
+        "amargor": 0,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "tomate",
+          "motivo": "Afinidad impecable; la acidez cítrica rompe la nata láctea densa.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "albahaca",
+          "motivo": "Aporte herbal dulce que refresca el corazón graso del queso.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Fluidez vegetal noble que viste la capa exterior de hilada.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "anchoa",
+          "motivo": "La salinidad marina extrema sacude la neutralidad dulce de la stracciatella.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Conserva el núcleo licuado (stracciatella) graso y frescor láctico puro."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "textura": "cremosa_hilada_licuada"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "stracciatella",
+          "fresca",
+          "caprese",
+          "inyectada"
+        ],
+        "sinonimos": [
+          "mozzarella rellena de nata"
+        ],
+        "alertas": [
+          "Se debe servir rigurosamente a temperatura ambiente para apreciar el fundido interno."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "calabacin",
+      "nombre_visible": "Calabacín",
+      "familia": "verdura",
+      "perfil_sensorial": {
+        "intensidad": 1,
+        "grasa": 0,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 1,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 1,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Despierta la neutralidad gustativa de este vegetal de alta base acuosa.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Vehículo graso sutil que viste las rodajas en salteados rápidos.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "cebolla",
+          "motivo": "Suma fondo dulce en revueltos y pistos tradicionales.",
+          "tipo": "complemento",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "queso_fresco",
+          "motivo": "Asociación láctica ligera que respeta la delicadeza del vegetal.",
+          "tipo": "textura",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Dora contornos velozmente manteniendo un corazón turgente y húmedo."
+        },
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Textura crujiente sutil e hidratante si se lamina muy fino (estilo carpaccio)."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "tostado": 0,
+          "textura": "crujiente_fresca"
+        },
+        "plancha": {
+          "tostado": 2,
+          "textura": "tierna"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "pisto",
+          "crema",
+          "carpaccio",
+          "flor_de_calabacin"
+        ],
+        "sinonimos": [
+          "zucchini"
+        ],
+        "alertas": [
+          "Posee un alto porcentaje de agua; cocciones prolongadas desintegran su fisonomía."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "calabaza",
+      "nombre_visible": "Calabaza",
+      "familia": "verdura",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 4,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 1,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "nutmeg",
+          "motivo": "Espezia idónea; los matices cálidos cortan el dulzor plano de la pulpa.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Añade notas pungentes equilibradoras en cremas u horneados.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "romero",
+          "motivo": "Aporte resinoso balsámico que enmarca los azúcares en asados.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Caramelización profunda de azúcares deshidratando la carne del vegetal."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "horno": {
+          "dulzor": 5,
+          "tostado": 2,
+          "textura": "cremosa_crepitante"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "crema",
+          "asada",
+          "cabello_de_angel",
+          "gajos"
+        ],
+        "sinonimos": [
+          "cucúrbita"
+        ],
+        "alertas": [
+          "Posee una marcada dirección dulce; requiere sal o especias para fijarse en el plano salado."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "calamar",
+      "nombre_visible": "Calamar",
+      "familia": "marisco",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 3,
+        "acidez": 0,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 3
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "El pungente sulfuroso realza la sutil carne marina.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "limon",
+          "motivo": "Acidez limpia que aviva el dulzor sutil del cuerpo.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "perejil",
+          "motivo": "Aporte herbal fresco y corte clásico en salteados.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "cebolla",
+          "motivo": "Su caramelización lenta dobla el dulzor nativo del cefalópodo.",
+          "tipo": "complemento",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "tomate",
+          "motivo": "Aporta base ácida y umami que envuelve la carne.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Tuesta el exterior rápidamente concentrando azúcares."
+        },
+        {
+          "tecnica": "frito",
+          "efecto_sensorial": "Suma cobertura grasa crujiente exterior manteniendo el centro blando."
+        },
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Rompe colágeno hacia una textura tierna e integra el umami de la tinta."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "tostado": 0,
+          "grasa": 0,
+          "yodado_marino": 3,
+          "textura": "firme_cremosa"
+        },
+        "plancha": {
+          "tostado": 3,
+          "amargor": 1,
+          "intensidad": 3
+        },
+        "frito": {
+          "grasa": 4,
+          "tostado": 3,
+          "textura": "crujiente_exterior"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "chipiron",
+          "puntillitas",
+          "en_su_tinta",
+          "encebollado",
+          "a_la_romana"
+        ],
+        "sinonimos": [
+          "chipirón",
+          "magano"
+        ],
+        "alertas": [
+          "La sobrecocción genera una textura gomosa mecánicamente desagradable."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "canela",
+      "nombre_visible": "Canela",
+      "familia": "especia",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 3,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 1,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 2,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "manzana",
+          "motivo": "Sinergia imbatible en repostería; enmarca el dulzor frutal con caldos cálidos.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "naranja",
+          "motivo": "Perfuma los jugos cítricos en postres tradicionales de corte mediterráneo.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Infusión en rama; desprende cinamaldehído de forma sutil sin enturbiar líquidos."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "dulzor": 3,
+          "floral": 2
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "en_rama",
+          "molida",
+          "infusionada",
+          "postres"
+        ],
+        "sinonimos": [
+          "cinnamomum_verum"
+        ],
+        "alertas": [
+          "La versión molida satura y reseca preparaciones si se espolvorea en exceso."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "cebolla",
+      "nombre_visible": "Cebolla",
+      "familia": "verdura",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 2,
+        "picante": 1,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Dupla aliácea que cimienta la práctica totalidad de los sofritos mediterráneos.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Conductor graso indispensable para el colapso y confitado de sus fibras.",
+          "tipo": "tecnica",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "tomate",
+          "motivo": "El dulzor de la cebolla equilibra la acidez directa de la pulpa de tomate.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "vinagre",
+          "motivo": "Aporta un medio ácido que pacifica la pungencia sulfurosa en ensaladas.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Cocción lenta (caramelización) que destruye el picor transformándolo en dulzor profundo."
+        },
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Exalta notas sulfurosas pungentes e intensidad picante con textura crujiente."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "picante": 3,
+          "dulzor": 1,
+          "textura": "crujiente_mordiente"
+        },
+        "guiso": {
+          "picante": 0,
+          "dulzor": 5,
+          "umami": 4,
+          "textura": "melosa_confitada"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "pochada",
+          "encebollado",
+          "caramelizada",
+          "sofrito"
+        ],
+        "sinonimos": [
+          "allium_cepa"
+        ],
+        "alertas": [
+          "Quemar la cebolla durante el sofrito introduce un amargor negro irreversible."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "cerdo_iberico",
+      "nombre_visible": "Cerdo Ibérico",
+      "familia": "carne",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 5,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 1,
+        "amargor": 0,
+        "umami": 4,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "romero",
+          "motivo": "Aceites balsámicos que perfuman e integran las vetas grasas.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Aliado nuclear en adobos; estructura el fondo cárnico.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "pimenton",
+          "motivo": "Conexión tradicional que añade matices ahumados y de tierra.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "manzana",
+          "motivo": "Su dulzor frutal-ácido limpia la densa untuosidad porcina.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "brasa",
+          "efecto_sensorial": "Fundición óptima de grasa infiltrada sumando potentes tostados exteriores."
+        },
+        {
+          "tecnica": "confitado",
+          "efecto_sensorial": "Rinde fibras sumamente blandas al cocer en propio medio lipídico."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "brasa": {
+          "tostado": 4,
+          "ahumado": 3,
+          "intensidad": 5
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "secreto",
+          "pluma",
+          "presa",
+          "carrillada",
+          "solomillo"
+        ],
+        "sinonimos": [
+          "cerdo de bellota"
+        ],
+        "alertas": [
+          "Su grasa posee bajo punto de fusión; cocciones defectuosas malogran la palatabilidad."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "champinon",
+      "nombre_visible": "Champiñón",
+      "familia": "setas",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 1,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 3,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Imprescindible para dotar de nervio y dirección a un hongo neutro.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "perejil",
+          "motivo": "Asociación clásica que aporta frescura vegetal al salteado.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "limon",
+          "motivo": "Evita el ennegrecimiento rápido aportando picos de acidez.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Evapora el agua superficial concentrando sutilmente el umami nativo."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "plancha": {
+          "tostado": 2,
+          "textura": "firme_tierna"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "al_ajillo",
+          "salteados",
+          "crema",
+          "laminados"
+        ],
+        "sinonimos": [
+          "champiñón de París",
+          "agaricus_bisporus"
+        ],
+        "alertas": [
+          "Suelta abundante agua de constitución si la sartén pierde temperatura."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "chile",
+      "nombre_visible": "Chile",
+      "familia": "especia",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 0,
+        "dulzor": 1,
+        "acidez": 1,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 5,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "lime",
+          "motivo": "La acidez de los cítricos equilibra y amortigua la agudeza de la capsaicina.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "cilantro",
+          "motivo": "Aporte verde fresco que alivia la quemazón en las papilas.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Exalta la capsaicina pura induciendo un marcado efecto picante térmico masivo."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "picante": 5,
+          "textura": "mordida_punzante"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "guindilla",
+          "picante",
+          "rodajas",
+          "pepitas"
+        ],
+        "sinonimos": [
+          "guindilla",
+          "ají"
+        ],
+        "alertas": [
+          "La capsaicina satura las papilas; inhabilita temporalmente la cata de matices tenues."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "chocolate",
+      "nombre_visible": "Chocolate",
+      "familia": "salsa",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 4,
+        "dulzor": 3,
+        "acidez": 1,
+        "salinidad": 0,
+        "amargor": 3,
+        "umami": 1,
+        "picante": 0,
+        "ahumado": 1,
+        "tostado": 3,
+        "terroso": 2,
+        "herbal": 0,
+        "floral": 1,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "nata",
+          "motivo": "Los lípidos lácteos arropan y mitigan el amargor puro del cacao.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "naranja",
+          "motivo": "Los aceites cítricos de la corteza iluminan las notas oscuras del chocolate.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "avellana",
+          "motivo": "Sinergia lipídica perfecta clásica en bombonería (Gianduja).",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Fundido; licúa la manteca de cacao entregando texturas fluidas suntuosas."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "textura": "fluida_suntuosa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "negro",
+          "fondant",
+          "ganache",
+          "cobertura",
+          "cacao"
+        ],
+        "sinonimos": [
+          "pasta de cacao"
+        ],
+        "alertas": [
+          "Formatos con alto porcentaje de cacao inyectan una fuerte astringencia amarga."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "chorizo",
+      "nombre_visible": "Chorizo",
+      "familia": "carne",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 5,
+        "dulzor": 0,
+        "acidez": 1,
+        "salinidad": 4,
+        "amargor": 0,
+        "umami": 4,
+        "picante": 2,
+        "ahumado": 3,
+        "tostado": 0,
+        "terroso": 2,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "pimenton",
+          "motivo": "Define el ingrediente; otorga fondo terroso y ahumado nuclear.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Elemento de pungencia esencial en el adobo constituyente.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "patata",
+          "motivo": "Soporte harinoso que absorbe la grasa roja liberada.",
+          "tipo": "textura",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "vinagre",
+          "motivo": "Presente residual en adobos; corta levemente la pesadez lipídica.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Emulsiona caldos aportando grasa pigmentada, sal y perfil ahumado."
+        },
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Carameliza envolturas y tuesta jugos superficiales de la carne."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "guiso": {
+          "intensidad": 5,
+          "ahumado": 3,
+          "textura": "desmigada"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "riojana",
+          "fresco",
+          "curado",
+          "al_vino",
+          "txistorra"
+        ],
+        "sinonimos": [
+          "chistorra"
+        ],
+        "alertas": [
+          "El exceso de pimentón satura las papilas bloqueando sabores sutiles posteriores."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "cilantro",
+      "nombre_visible": "Cilantro",
+      "familia": "hierba",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 0,
+        "acidez": 1,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 4,
+        "floral": 2,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "lime",
+          "motivo": "Sinergia cítrica herbal punzante que levanta preparaciones frías.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "chile",
+          "motivo": "Equilibra los picos térmicos picantes aportando frescura verde.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "cebolla",
+          "motivo": "Asociación cruda nuclear en salsas americanas (Pico de gallo).",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Exalta notas aldehídicas cítricas potentes y frescor jabonoso limpio."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "herbal": 4,
+          "floral": 2
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "mojo_verde",
+          "ceviche",
+          "pico_de_gallo",
+          "hojas"
+        ],
+        "sinonimos": [
+          "coriandrum_sativum",
+          "perejil chino"
+        ],
+        "alertas": [
+          "Contiene aldehídos estables; provoca rechazo absoluto en usuarios propensos por motivos genéticos."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "comino",
+      "nombre_visible": "Comino",
+      "familia": "especia",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 2,
+        "umami": 0,
+        "picante": 1,
+        "ahumado": 1,
+        "tostado": 0,
+        "terroso": 5,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "cordero",
+          "motivo": "Afinidad andalusí; la potencia terrosa calza con la intensidad de la carne.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "garbanzos",
+          "motivo": "Suma matices cálidos orientales reduciendo la pesadez de legumbres.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "zanahoria",
+          "motivo": "Corta el dulzor plano lineal de la raíz aportando rudeza de tierra.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "tostado",
+          "efecto_sensorial": "Evapora humedades residuales maximizando notas terrosas tostadas fragantes."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "tostado": {
+          "tostado": 3,
+          "terroso": 5
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "molido",
+          "en_grano",
+          "adobo_moruno",
+          "majado"
+        ],
+        "sinonimos": [
+          "cuminum_cyminum"
+        ],
+        "alertas": [
+          "Espezia sumamente invasiva; dosificar al gramo para no monopolizar el fondo."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "conejo",
+      "nombre_visible": "Conejo",
+      "familia": "carne",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 1,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 1,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Acompaña la finura de su carne de monte en refritos rústicos.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "romero",
+          "motivo": "Afinidad silvestre de origen; enmarca el perfil campera de la pieza.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "tomillo",
+          "motivo": "Aporta frescor herbal de sotobosque idóneo para cocciones lentas.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "vinagre",
+          "motivo": "Eje en escabeches tradicionales; aporta mordida y conserva las fibras.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Integra condimentos manteniendo la humedad de una carne sumamente magra."
+        },
+        {
+          "tecnica": "escabeche",
+          "efecto_sensorial": "Eleva notablemente la acidez ablandando el músculo fibroso."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "escabeche": {
+          "acidez": 4,
+          "textura": "hilada_firme"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "al_ajillo",
+          "cazadora",
+          "escabechado",
+          "con_arroz"
+        ],
+        "sinonimos": [
+          "cunicultura"
+        ],
+        "alertas": [
+          "Carne con nulo nivel graso; se torna seca y astillosa con facilidad."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "cordero",
+      "nombre_visible": "Cordero",
+      "familia": "carne",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 4,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 1,
+        "amargor": 0,
+        "umami": 4,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "romero",
+          "motivo": "Los aceites balsámicos y resinosos mitigan el olor característico del animal.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Se inserta de forma nuclear en asados equilibrando las grasas.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "menta",
+          "motivo": "Afinidad de contraste extrema; aporta frescor balsámico cortante frente a la grasa.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "comino",
+          "motivo": "Acentúa los perfiles de tierra e intensidades de guisos morunos.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Consigue fundir la grasa exterior volviendo la piel crujiente (estilo lechal)."
+        },
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Concentra jugos y disuelve tejidos duros (como en calderetas)."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "horno": {
+          "tostado": 3,
+          "textura": "piel_crujiente_interior_tierno"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "lechal",
+          "caldereta",
+          "paletilla",
+          "chuletillas"
+        ],
+        "sinonimos": [
+          "ovino",
+          "ternasco"
+        ],
+        "alertas": [
+          "Su grasa se solidifica con rapidez al enfriarse; requiere rigurosa temperatura de servicio."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "dorada",
+      "nombre_visible": "Dorada",
+      "familia": "pescado",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 1,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 2
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Soporta refritos tradicionales levantando el dulzor de su carne.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Confiere untuosidad limpia a un pescado de musculatura compacta.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "vinagre",
+          "motivo": "Corta la densidad del refrito final agregando viveza ácida.",
+          "tipo": "contraste",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "cebolla",
+          "motivo": "Aporta matices dulces al caramelizarse paulatinamente en asados.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Cocción suave que respeta su fisonomía cárnica compacta."
+        },
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Tuesta la superficie caramelizando proteínas de forma rápida."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "plancha": {
+          "tostado": 2,
+          "textura": "compacta_firme"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "a_la_espalda",
+          "a_la_sal",
+          "fileteado"
+        ],
+        "sinonimos": [
+          "dorada de estero"
+        ],
+        "alertas": [
+          "Evitar el uso de aderezos excesivamente especiados sobre su sutil carne."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "esparrago",
+      "nombre_visible": "Espárrago",
+      "familia": "verdura",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 1,
+        "amargor": 2,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 3,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "parmesano",
+          "motivo": "La salinidad y el umami del queso seco equilibran el amargor herbal.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Vehículo graso limpio que barniza los tallos en cocciones rápidas.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "limon",
+          "motivo": "Unas gotas de zumo avivan los tonos verdes y mitigan la sensación sulfurosa.",
+          "tipo": "contraste",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "huevo",
+          "motivo": "La yema grasa recubre los tallos aportando una suntuosidad clásica.",
+          "tipo": "textura",
+          "confianza": 5
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Tuesta la superficie y concentra azúcares manteniendo rigurosa turgencia."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "plancha": {
+          "tostado": 2,
+          "textura": "crujiente_firme"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "trigueros",
+          "a_la_parrilla",
+          "crema",
+          "blanqueados"
+        ],
+        "sinonimos": [
+          "espárrago verde"
+        ],
+        "alertas": [
+          "Contiene compuestos azufrados estables; influye de forma directa en la persistencia del retrogusto."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "frutos_rojos",
+      "nombre_visible": "Frutos Rojos",
+      "familia": "fruta",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 3,
+        "acidez": 4,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 2,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "nata",
+          "motivo": "Los lípidos de la leche arropan y mitigan la acidez cortante.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "menta",
+          "motivo": "Acentúa el carácter balsámico y silvestre de las bayas.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "chocolate_blanco",
+          "motivo": "La grasa mantecosa neutra equilibra la acidez de los frutos.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Máxima expresión ácida y turgencia frutal viva."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "acidez": 4,
+          "textura": "blanda_vesicular"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "frambuesa",
+          "arandano",
+          "grosella",
+          "mermelada",
+          "coulis"
+        ],
+        "sinonimos": [
+          "bayas silvestres"
+        ],
+        "alertas": [
+          "Poseen ácidos punzantes que pueden eclipsar sabores dulces muy tenues."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "gamba",
+      "nombre_visible": "Gamba",
+      "familia": "marisco",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 4,
+        "acidez": 0,
+        "salinidad": 3,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 4
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Contrapunto pungente que ensalza el dulzor del músculo.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Medio graso conductor que extrae los jugos de la cabeza.",
+          "tipo": "tecnica",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "guindilla",
+          "motivo": "Picante sutil que de forma controlada activa receptores frente al dulzor.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "limon",
+          "motivo": "Cítrico que despierta las notas de mar abierto.",
+          "tipo": "contraste",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "azafran",
+          "motivo": "Soporte floral en fondos e hilos de arroz.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Tuesta el caparazón transmitiendo notas ahumadas ligeras al interior."
+        },
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Exalta textura licuada-cremosa y dulzor marino intacto."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "tostado": 0,
+          "grasa": 0,
+          "yodado_marino": 4,
+          "textura": "cremosa_untuosa"
+        },
+        "plancha": {
+          "tostado": 4,
+          "ahumado": 2,
+          "intensidad": 4
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "al_ajillo",
+          "gamba_roja",
+          "gamba_blanca",
+          "carpaccio"
+        ],
+        "sinonimos": [
+          "quisquilla"
+        ],
+        "alertas": [
+          "La cabeza concentra muchísimo umami y yodo; altera drásticamente el conjunto."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "granada",
+      "nombre_visible": "Granada",
+      "familia": "fruta",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 3,
+        "acidez": 3,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 1,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "escarola",
+          "motivo": "Oposición perfecta otoñal; los granos líquidos contrastan el amargor de la hoja.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "queso_azul",
+          "motivo": "Aporta picos ácidos que aligeran la densidad del queso curado.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Exhibe granos crocantes que estallan liberando zumo agridulce."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "textura": "grano_crocante"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "granos",
+          "ensaladas",
+          "zumo",
+          "jarabe"
+        ],
+        "sinonimos": [
+          "punica_granatum"
+        ],
+        "alertas": [
+          "La membrana interna amarilla introducida por error inyecta fuerte astringencia."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "hierba_buena",
+      "nombre_visible": "Hierbabuena",
+      "familia": "hierba",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 4,
+        "floral": 1,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "garbanzos",
+          "motivo": "Toque andaluz clásico; una rama en el cocido aligera la pesadez del caldo.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "cordero",
+          "motivo": "Notas aromáticas dulces más mansas que la menta común para acompañar carnes.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Añadida al final del caldo desprende un aroma reconfortante dulce-herbal."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "guiso": {
+          "herbal": 3,
+          "dulzor": 2
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "rama_en_caldo",
+          "cocido",
+          "infusionada"
+        ],
+        "sinonimos": [
+          "mentha_spicata"
+        ],
+        "alertas": [
+          "Más dulce y menos mentolada que la menta piperita; no son intercambiables en recetas estrictas."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "higo",
+      "nombre_visible": "Higo",
+      "familia": "fruta",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 5,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 1,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "jamon",
+          "motivo": "Contrapunto mediterráneo dulce-salado idóneo en frío.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "queso_de_cabra",
+          "motivo": "La acidez láctica del chèvre corta la melaza densa del fruto.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "nueces",
+          "motivo": "Aporte crujiente resinosa que encaja con las semillas internas.",
+          "tipo": "textura",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Expone una pulpa carnosa y una textura granillosa melosa intacta."
+        },
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Carameliza los azúcares exteriores de forma veloz."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "plancha": {
+          "tostado": 2,
+          "dulzor": 5
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "brevas",
+          "frescos",
+          "maridados",
+          "compota"
+        ],
+        "sinonimos": [
+          "ficus_carica"
+        ],
+        "alertas": [
+          "Fruto de extrema fragilidad; exige nula manipulación previa al plato."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "jamon",
+      "nombre_visible": "Jamón",
+      "familia": "carne",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 4,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 4,
+        "amargor": 0,
+        "umami": 5,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 1,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "tomate",
+          "motivo": "Fluidez líquida y acidez sutil que aligeran la concentración salina.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Incrementa el brillo visual y ayuda a disolver texturas curadas.",
+          "tipo": "textura",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "almendra",
+          "motivo": "Eco de frutos secos que resuena con los matices de bellota.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "higo",
+          "motivo": "Oposición clásico dulce-salado del entorno mediterráneo.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "curado",
+          "efecto_sensorial": "Deshidratación prolongada que maximiza umami, sal y asienta grasas."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "curado": {
+          "salinidad": 4,
+          "umami": 5,
+          "textura": "curada_hebrada"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "iberico",
+          "serrano",
+          "de_bellota",
+          "veteado"
+        ],
+        "sinonimos": [
+          "jamón curado"
+        ],
+        "alertas": [
+          "La aplicación de calor directo concentra la sal exponencialmente."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "jengibre",
+      "nombre_visible": "Jengibre",
+      "familia": "especia",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 1,
+        "acidez": 2,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 3,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 2,
+        "herbal": 2,
+        "floral": 1,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "soja",
+          "motivo": "Unión oriental medular; el picor cítrico refresca la salinidad profunda.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Configura la base aromática hirviente de salteados en wok.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Expone el gingerol libre confiriendo un picor punzante de corte muy cítrico."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "picante": 3,
+          "acidez": 2,
+          "textura": "fibrosa_jugosa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "rallado",
+          "en_rodajas",
+          "en_curry",
+          "salteado"
+        ],
+        "sinonimos": [
+          "zingiber_officinale"
+        ],
+        "alertas": [
+          "Aporta un frescor térmico picante particular; no confundir con el picor del chile."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "langostino",
+      "nombre_visible": "Langostino",
+      "familia": "marisco",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 3,
+        "acidez": 0,
+        "salinidad": 3,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 3
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "mayonesa",
+          "motivo": "Aporta lípidos y untuosidad a la carne magra y densa.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "limon",
+          "motivo": "Corta la densidad de aderezos grasos acompañantes.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Eleva el tono del marisco en salteados rápidos.",
+          "tipo": "complemento",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "tomate",
+          "motivo": "Base ácida idónea para salsas de corte americano.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Carne tersa, mordida firme y dulzor sutil."
+        },
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Carameliza sutilmente jugos exteriores del exoesqueleto."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "tostado": 0,
+          "grasa": 0,
+          "yodado_marino": 3,
+          "textura": "tersa_firme"
+        },
+        "plancha": {
+          "tostado": 3,
+          "intensidad": 4
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "cocido",
+          "de_sanlucar",
+          "coctel",
+          "crujiente"
+        ],
+        "sinonimos": [
+          "langostino tigre"
+        ],
+        "alertas": [
+          "Servido frío con salsas densas requiere picos de acidez externa para limpiar el paladar."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "limon",
+      "nombre_visible": "Limón",
+      "familia": "fruta",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 0,
+        "dulzor": 1,
+        "acidez": 5,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 1,
+        "floral": 1,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Unión ácida-pungente nuclear en adobos y refritos mediterráneos.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "perejil",
+          "motivo": "Establece frescura cítrico-herbal instantánea (Gremolata).",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "pescado_blanco",
+          "motivo": "La acidez disuelve la sutil proteína marina dando viveza.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "menta",
+          "motivo": "Sinergia refrescante extrema para bases líquidas o aderezos.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Exalta la acidez acentuada y los aceites esenciales volátiles de la corteza."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "acidez": 5,
+          "textura": "liquida_vibrante"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "zumo",
+          "ralladura",
+          "gremolata",
+          "marinado"
+        ],
+        "sinonimos": [
+          "citrus_limon"
+        ],
+        "alertas": [
+          "Un exceso de zumo desnaturaliza de forma irreversible proteínas delicadas en frío."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "lubina",
+      "nombre_visible": "Lubina",
+      "familia": "pescado",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 1,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 3
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "limon",
+          "motivo": "Realza la carne tersa e ilumina sus jugos naturales.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "hinojo",
+          "motivo": "Las notas anisadas juegan armónicamente con su perfil yodado.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "romero",
+          "motivo": "Aporta un sutil marco de monte bajo si se asa al horno.",
+          "tipo": "puente_aromatico",
+          "confianza": 3
+        },
+        {
+          "ingrediente": "patata",
+          "motivo": "Base panadera que absorbe la grasa natural desprendida de la piel.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "La sal conserva los jugos y potencia su firmeza original."
+        },
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Dora la piel fundiendo lípidos superficiales de forma limpia."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "horno": {
+          "salinidad": 3,
+          "textura": "tersa_jugosa"
+        },
+        "plancha": {
+          "tostado": 2,
+          "textura": "piel_crujiente"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "a_la_sal",
+          "bilbaina",
+          "a_la_espalda"
+        ],
+        "sinonimos": [
+          "róbalo"
+        ],
+        "alertas": [
+          "Cuidar que la piel no quede gomosa si se saltea de forma descuidada."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "manchego",
+      "nombre_visible": "Manchego",
+      "familia": "lacteo",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 4,
+        "dulzor": 1,
+        "acidez": 2,
+        "salinidad": 3,
+        "amargor": 0,
+        "umami": 4,
+        "picante": 1,
+        "ahumado": 0,
+        "tostado": 1,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "almendra",
+          "motivo": "Sinergia tradicional; el fruto seco secunda la grasa ovina.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "uva",
+          "motivo": "El estallido líquido dulce aligera la densidad de la pasta seca.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "curado",
+          "efecto_sensorial": "La maduración prolongada endurece la pasta concentrando notas ovinas."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "curado": {
+          "salinidad": 3,
+          "textura": "firme_quebradiza"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "curado",
+          "semicurado",
+          "en_tacos",
+          "lascas"
+        ],
+        "sinonimos": [
+          "queso de oveja manchega"
+        ],
+        "alertas": [
+          "Versiones muy curadas presentan picos picantes estables de fondo."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "mango",
+      "nombre_visible": "Mango",
+      "familia": "fruta",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 4,
+        "acidez": 2,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 3,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "limon",
+          "motivo": "La acidez cítrica recorta el fondo resinoso hiperdulce del fruto.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "chile",
+          "motivo": "Maridaje de corte tropical; el picor activa las papilas frente a la melaza.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "cilantro",
+          "motivo": "Aporte herbal cítrico idóneo para la construcción de salsas frías o chutneys.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Textura carnosa untuosa y despliegue aromático floral máximo."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "textura": "carnosa_fundente"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "chutney",
+          "tartar",
+          "dados",
+          "sorbete"
+        ],
+        "sinonimos": [
+          "mangifera_indica"
+        ],
+        "alertas": [
+          "Ejemplares sobremadurados entregan texturas excesivamente fibrosas e hiladas."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "mantequilla",
+      "nombre_visible": "Mantequilla",
+      "familia": "lacteo",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 5,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 1,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "vieira",
+          "motivo": "La grasa láctica carameliza el exterior fijando azúcares marinos.",
+          "tipo": "tecnica",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "manzana",
+          "motivo": "Base conductora idónea para asados y salteados dulces.",
+          "tipo": "tecnica",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Amalgama tradicional que mitiga la agresividad aliácea directa.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Tostada (Beurre Noisette); muta azúcares lácteos hacia notas de fruto seco crujiente."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "tostado": 3,
+          "dulzor": 3,
+          "textura": "liquida_untuosa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "pomada",
+          "clarificada",
+          "noisette",
+          "hojaldre"
+        ],
+        "sinonimos": [
+          "manteca de vaca"
+        ],
+        "alertas": [
+          "Posee un punto de humo bajo; se quema con facilidad aportando amargor."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "manzana",
+      "nombre_visible": "Manzana",
+      "familia": "fruta",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 3,
+        "acidez": 2,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 1,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "canela",
+          "motivo": "Afinidad indisoluble; calidez aromática sobre los azúcares de la pulpa.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "mantequilla",
+          "motivo": "Engrasa y carameliza las rodajas en cocciones de pastelería.",
+          "tipo": "tecnica",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "cerdo_iberico",
+          "motivo": "La acidez frutal ejerce de bálsamo cortante frente al tocino animal.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "nueces",
+          "motivo": "Aporte crujiente y amargo que rompe la textura blanda dulce.",
+          "tipo": "textura",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Colapsa la pulpa concentrando azúcares y confiriendo texturas mollares."
+        },
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Ofrece mordida crujiente nítida y acidez refrescante (Granny Smith)."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "acidez": 3,
+          "textura": "crujiente_turgente"
+        },
+        "horno": {
+          "dulzor": 4,
+          "acidez": 1,
+          "textura": "compota_blanda"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "tarta",
+          "tatin",
+          "compota",
+          "confitada",
+          "gajos"
+        ],
+        "sinonimos": [
+          "malus_domestica"
+        ],
+        "alertas": [
+          "Se oxida oscureciéndose rápidamente al corte si no se protege con ácido."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "mayonesa",
+      "nombre_visible": "Mayonesa",
+      "familia": "salsa",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 5,
+        "dulzor": 1,
+        "acidez": 1,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "langostino",
+          "motivo": "Aporta los lípidos ausentes a la carne firme del crustáceo.",
+          "tipo": "textura",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "limon",
+          "motivo": "Unas gotas aligeran la sensación pesada de la emulsión oleosa.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Emulsión de aceite y yema; genera una textura cremosa envolvente protectora."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "grasa": 5,
+          "textura": "cremosa_envolvente"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "emulsion",
+          "casera",
+          "salsa_rosa",
+          "ensaladilla"
+        ],
+        "sinonimos": [
+          "mahonesa"
+        ],
+        "alertas": [
+          "Salsa altamente inestable ante el calor directo; se corta separando el aceite."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "mejillon",
+      "nombre_visible": "Mejillón",
+      "familia": "marisco",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 4,
+        "amargor": 0,
+        "umami": 4,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 4
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "limon",
+          "motivo": "Despierta las notas de roca y contrasta la salinidad.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Soporte aromático idóneo para aperturas al vapor.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "tomate",
+          "motivo": "Vehículo dulce-ácido idóneo para construir salsas marineras.",
+          "tipo": "complemento",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "pimenton",
+          "motivo": "Aporta marco ahumado y terroso característico en escabeches.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "escabeche",
+          "efecto_sensorial": "Fija la textura, añade acidez punzante y reduce percepción yodada bruta."
+        },
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "No aplica habitualmente en culinaria mediterránea por seguridad y textura."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "escabeche": {
+          "acidez": 4,
+          "salinidad": 4,
+          "textura": "firme_asentada"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "al_vapor",
+          "marinera",
+          "en_escabeche",
+          "tigres"
+        ],
+        "sinonimos": [
+          "mocejón"
+        ],
+        "alertas": [
+          "El agua interna liberada al abrir contiene alta concentración de sal marina."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "menta",
+      "nombre_visible": "Menta",
+      "familia": "hierba",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 4,
+        "floral": 1,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "cordero",
+          "motivo": "El mentol produce una sensación térmica fría que corta la grasa densa del animal.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "limon",
+          "motivo": "Unión hiper-refrescante idónea para aderezos veraniegos o fondos fríos.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "guisantes",
+          "motivo": "Resalta el dulzor tierno de las legumbres frescas de primavera.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Exalta el mentol libre garantizando un marcado efecto balsámico refrescante."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "herbal": 4,
+          "textura": "hoja_fresca"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "hojas_frescas",
+          "infusion",
+          "picada"
+        ],
+        "sinonimos": [
+          "mentha_piperita"
+        ],
+        "alertas": [
+          "Muta hacia perfiles oscuros amargos si se somete a cocciones largas calientes."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "merluza",
+      "nombre_visible": "Merluza",
+      "familia": "pescado",
+      "perfil_sensorial": {
+        "intensidad": 1,
+        "grasa": 0,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 2
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "perejil",
+          "motivo": "Frescura herbal sutil que no enmascara la finura del pescado.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Base indispensable para dotar de intensidad a su carne magra.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "almejas",
+          "motivo": "Elevan el tono yodado y la salinidad marina en la salsa verde.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "patata",
+          "motivo": "Soporte neutro clásico para asentar caldos sin distorsionar.",
+          "tipo": "textura",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "frito",
+          "efecto_sensorial": "Añade grasa y crujiente exterior protegiendo la delicadeza interna."
+        },
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Genera una finísima costra tostada sumando ligeros aromas."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "frito": {
+          "grasa": 3,
+          "tostado": 2,
+          "textura": "crujiente_exterior"
+        },
+        "al_vapor": {
+          "tostado": 0,
+          "textura": "suave_quebradiza"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "salsa_verde",
+          "a_la_romana",
+          "cogote",
+          "pincho"
+        ],
+        "sinonimos": [
+          "pescada",
+          "carioca"
+        ],
+        "alertas": [
+          "Su sutil perfil aromático se anula por completo ante condimentos invasivos."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "miel",
+      "nombre_visible": "Miel",
+      "familia": "salsa",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 5,
+        "acidez": 1,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 1,
+        "floral": 2,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "queso_azul",
+          "motivo": "Amortigua la fuerte salinidad atenuando los picos picantes del hongo.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "limon",
+          "motivo": "Unión agridulce tradicional para aderezos o jarabes.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Uso en crudo; conserva la viscosidad densa y los aromas florales intactos."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "dulzor": 5,
+          "textura": "viscosa_espesa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "milflores",
+          "romero",
+          "melaza",
+          "glaseado"
+        ],
+        "sinonimos": [
+          "miel de abejas"
+        ],
+        "alertas": [
+          "Saturación por dulzor extremo; exige un uso medido en cocina salada."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "miso",
+      "nombre_visible": "Miso",
+      "familia": "fermentado",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 1,
+        "dulzor": 2,
+        "acidez": 1,
+        "salinidad": 4,
+        "amargor": 1,
+        "umami": 5,
+        "picante": 0,
+        "ahumado": 1,
+        "tostado": 2,
+        "terroso": 3,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "pescado_blanco",
+          "motivo": "Los formatos dulces (miso blanco) lacan el pescado aportando un umami profundo.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "berenjena",
+          "motivo": "La pulpa porosa absorbe la pasta enriqueciéndose con matices terrosos calientes.",
+          "tipo": "textura",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "fermentado",
+          "efecto_sensorial": "Maduración por hongo koji que rinde una pasta densa rica en umami terroso."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "fermentado": {
+          "umami": 5,
+          "terroso": 3,
+          "textura": "pasta_pastosa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "shiro_miso",
+          "aka_miso",
+          "lacado",
+          "caldo"
+        ],
+        "sinonimos": [
+          "pasta de soja fermentada"
+        ],
+        "alertas": [
+          "Hervir la pasta de forma directa destruye sus matices aromáticos sutiles volátiles."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "morcilla",
+      "nombre_visible": "Morcilla",
+      "familia": "carne",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 4,
+        "dulzor": 3,
+        "acidez": 0,
+        "salinidad": 3,
+        "amargor": 0,
+        "umami": 5,
+        "picante": 1,
+        "ahumado": 1,
+        "tostado": 0,
+        "terroso": 3,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "cebolla",
+          "motivo": "Aporta dulzor profundo que balancea el perfil de la sangre.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "piñon",
+          "motivo": "Contrapunto crocante y notas resinosas grasas idóneas.",
+          "tipo": "textura",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "manzana",
+          "motivo": "Quiebro frutal ácido que aligera la densidad en rellenos.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "comino",
+          "motivo": "Intensifica el carácter terroso del embutido.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "frito",
+          "efecto_sensorial": "Genera costra exterior tostada muy crujiente aislando el interior blando."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "frito": {
+          "tostado": 3,
+          "textura": "crujiente_exterior"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "de_burgos",
+          "de_arroz",
+          "revuelto",
+          "cebollona"
+        ],
+        "sinonimos": [
+          "morcilla de sangre"
+        ],
+        "alertas": [
+          "Especias internas añadidas (canela/clavo) alteran notablemente la dirección del plato."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "mostaza",
+      "nombre_visible": "Mostaza",
+      "familia": "salsa",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 1,
+        "dulzor": 1,
+        "acidez": 3,
+        "salinidad": 2,
+        "amargor": 1,
+        "umami": 2,
+        "picante": 3,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "salmon",
+          "motivo": "La pungencia delisotiocianato corta la grasa del pescado azul aportando relieve.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "vinagre",
+          "motivo": "Refuerza la mordida ácida constituyente de las versiones tipo Dijon.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Pasta aderezada; expande un picor nasal volátil característico limpio."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "picante": 3,
+          "acidez": 3,
+          "textura": "pastosa_gránulos"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "dijon",
+          "antigua",
+          "en_grano",
+          "vinagreta"
+        ],
+        "sinonimos": [
+          "salsa de mostaza"
+        ],
+        "alertas": [
+          "Su picor es de corte nasal volátil; se disipa de forma distinta al chile."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "naranja",
+      "nombre_visible": "Naranja",
+      "familia": "fruta",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 4,
+        "acidez": 3,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 2,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "chocolate",
+          "motivo": "Maridaje dulce-amargo clásico; los aceites de la cáscara iluminan el cacao.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "pato",
+          "motivo": "Corta la opulencia lípida del ave mediante su perfil agridulce.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "canela",
+          "motivo": "Suma matices cálidos a los azúcares cítricos en postres.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Mantiene el equilibrio exacto frutal entre acidez y dulzor."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "dulzor": 4,
+          "acidez": 3,
+          "textura": "jugosa_vesicular"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "gajos",
+          "supremas",
+          "ralladura",
+          "reduccion"
+        ],
+        "sinonimos": [
+          "naranja dulce"
+        ],
+        "alertas": [
+          "La parte blanca interna de la corteza (albedo) inyecta un amargor astringente."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "nata",
+      "nombre_visible": "Nata",
+      "familia": "lacteo",
+      "perfil_sensorial": {
+        "intensidad": 1,
+        "grasa": 5,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 1,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "chocolate",
+          "motivo": "Base indispensable en ganaches; suaviza el amargor del cacao.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "frutos_rojos",
+          "motivo": "Arropa y mitiga la punzante acidez de las bayas silvestres.",
+          "tipo": "textura",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "vanilla",
+          "motivo": "Sinergia dulce perfumada tradicional en pastelería.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Montada; introduce burbujas de aire generando texturas etéreas suntuosas."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "textura": "aérea_suntuosa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "montada",
+          "liquida",
+          "ganache",
+          "crema_pastelera"
+        ],
+        "sinonimos": [
+          "crema de leche"
+        ],
+        "alertas": [
+          "Satura los receptores si se usa en exceso, disminuyendo la percepción de sabores sutiles."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "nuez",
+      "nombre_visible": "Nuez",
+      "familia": "fruto_seco",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 4,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 3,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 2,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "queso_azul",
+          "motivo": "Afinidad clásica absoluta; el amargor astringente limpia la pasta grasa.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "pera",
+          "motivo": "Contrapunto crujiente idóneo frente a la pulpa blanda dulce.",
+          "tipo": "textura",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "manzana",
+          "motivo": "Aporte maderero en ensaladas frescas de corte otoñal.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Mantiene marcados los taninos astringentes de la piel fina perimetral."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "amargor": 3,
+          "textura": "crujiente_astringente"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "walnut",
+          "ensalada",
+          "troceadas",
+          "con_miel"
+        ],
+        "sinonimos": [
+          "juglans_regia"
+        ],
+        "alertas": [
+          "Su alto contenido lipídico la vuelve rancia con celeridad bajo luz directa."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "ostra",
+      "nombre_visible": "Ostra",
+      "familia": "marisco",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 1,
+        "dulzor": 1,
+        "acidez": 2,
+        "salinidad": 5,
+        "amargor": 1,
+        "umami": 4,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 5
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "limon",
+          "motivo": "Choque ácido directo sobre el agua de mar concentrada.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "vinagre",
+          "motivo": "Eje de salsas tradicionales con chalota; aporta acidez acética limpia.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "pimienta_negra",
+          "motivo": "Quiebro pungente al unísono de la textura fría marina.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Estado natural; máxima salinidad, yodo puro y textura resbaladiza."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "tostado": 0,
+          "salinidad": 5,
+          "yodado_marino": 5,
+          "textura": "resbaladiza_carnosa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "al_natural",
+          "mignonette",
+          "viva"
+        ],
+        "sinonimos": [
+          "ostión"
+        ],
+        "alertas": [
+          "La descomunal carga salina anula matices de acompañamientos dulces de baja intensidad."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "parmesano",
+      "nombre_visible": "Parmesano",
+      "familia": "lacteo",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 3,
+        "dulzor": 1,
+        "acidez": 1,
+        "salinidad": 4,
+        "amargor": 0,
+        "umami": 5,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 2,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Los lípidos vegetales lubrican los cristales de tirosina secos.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "tomate",
+          "motivo": "Sinergia de umami glutámico masiva de corte puramente italiano.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "esparrago",
+          "motivo": "La salinidad seca del queso contrarresta el fondo amargo herbal.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Rallado fino; actúa como sazonador e incrementa el umami instantáneo."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "textura": "polvo_cristalino"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "lascas",
+          "rallado",
+          "risotto",
+          "tuile",
+          "regiano"
+        ],
+        "sinonimos": [
+          "parmigiano_reggiano"
+        ],
+        "alertas": [
+          "Aporta altos valores de sal; se debe moderar la sazón del plato base."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "patata",
+      "nombre_visible": "Patata",
+      "familia": "verdura",
+      "perfil_sensorial": {
+        "intensidad": 1,
+        "grasa": 0,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 1,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 2,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "La base idónea para fluidificar y aportar grasas a la masa de almidón.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Aporte pungente que rompe la linealidad sápida del tubérculo.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "pimienta_negra",
+          "motivo": "Añade notas aromáticas punzantes sobre la base harinosa neutra.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "frito",
+          "efecto_sensorial": "Genera una costra crujiente deshidratada reteniendo un interior cremoso."
+        },
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Carameliza los almidones superficiales virando hacia la suavidad mollar."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "frito": {
+          "grasa": 4,
+          "tostado": 3,
+          "textura": "crujiente_exterior"
+        },
+        "guiso": {
+          "textura": "harinosa_blanda"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "bravas",
+          "panadera",
+          "paja",
+          "arrugas",
+          "puré"
+        ],
+        "sinonimos": [
+          "papa"
+        ],
+        "alertas": [
+          "Actúa como un potente absorbedor de sal y grasa en caldos y guisados."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "pato",
+      "nombre_visible": "Pato",
+      "familia": "ave",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 5,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 1,
+        "amargor": 0,
+        "umami": 4,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "naranja",
+          "motivo": "Maridaje dulce-ácido nuclear; corta la untuosidad masiva de su grasa.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "pimienta_negra",
+          "motivo": "Pungencia directa indispensable en el magret.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "higo",
+          "motivo": "Aporta carnosidad dulce idónea frente a la intensidad del ave.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "confitado",
+          "efecto_sensorial": "Cocción lenta en su propia grasa que entrega hilos blandos desmigados."
+        },
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Utilizado en el magret; funde la grasa subcutánea tostando la piel."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "confitado": {
+          "grasa": 5,
+          "textura": "desmigada_melosa"
+        },
+        "plancha": {
+          "tostado": 3,
+          "textura": "firme_jugosa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "magret",
+          "confit",
+          "foie",
+          "foie_gras"
+        ],
+        "sinonimos": [
+          "ánade"
+        ],
+        "alertas": [
+          "Su masiva capa gruda requiere canalizar adecuadamente el fundido durante el cocinado."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "pera",
+      "nombre_visible": "Pera",
+      "familia": "fruta",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 4,
+        "acidez": 1,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 2,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "queso_azul",
+          "motivo": "Oposición brutal y perfecta entre el dulzor floral y la salinidad fúngica.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "chocolate",
+          "motivo": "Suntuosidad amarga que envuelve la finura sápida de la pulpa.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "almendra",
+          "motivo": "Acompañamiento sutil en tartas clásicas de corte francés (Frangipane).",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Ideal para ablandar variedades duras mediante almíbares o vinos."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "horno": {
+          "dulzor": 5,
+          "textura": "sedosa_fundente"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "al_vino",
+          "frangipane",
+          "tartas",
+          "caramelizadas"
+        ],
+        "sinonimos": [
+          "pyrus"
+        ],
+        "alertas": [
+          "Su textura granulada nativa puede resultar molesta si la pieza está verde."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "perejil",
+      "nombre_visible": "Perejil",
+      "familia": "hierba",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 0,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 4,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Dupla fundamental; refresca e hidrata la pungencia aliácea directa.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "limon",
+          "motivo": "Suma frescura herbal verde a las notas ácidas de cítricos (Gremolata).",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "merluza",
+          "motivo": "Aporta un marco cromático y aromático sin canibalizar el pescado.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Mantiene intactos los aceites clorofílicos volátiles y el frescor."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "herbal": 4,
+          "textura": "hoja_fresca"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "salsa_verde",
+          "gremolata",
+          "picado",
+          "refrito"
+        ],
+        "sinonimos": [
+          "petroselinum_crispum"
+        ],
+        "alertas": [
+          "La cocción prolongada destruye por completo su aroma convirtiéndolo en paja neutra."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "pimenton",
+      "nombre_visible": "Pimentón",
+      "familia": "especia",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 2,
+        "acidez": 1,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 2,
+        "picante": 1,
+        "ahumado": 4,
+        "tostado": 0,
+        "terroso": 3,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "pulpo",
+          "motivo": "Sinergia mítica gallega; viste la neutralidad del colágeno con humo terroso.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "patata",
+          "motivo": "El almidón absorbe y expande las notas ahumadas de forma idónea.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Dupla medular en adobos, ajadas y conservas de la matanza.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Añadido al aceite fuera del fuego; disuelve sus carotenoides aportando color y humo limpio."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "ahumado": 4,
+          "textura": "polvo_emulsionado"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "de_la_vera",
+          "dulce",
+          "picante",
+          "ajada",
+          "refrito"
+        ],
+        "sinonimos": [
+          "paprika",
+          "pimentón ahumado"
+        ],
+        "alertas": [
+          "Se quema con extrema facilidad al contacto directo con la sartén caliente amargando el plato."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "pimienta_negra",
+      "nombre_visible": "Pimienta Negra",
+      "familia": "especia",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 0,
+        "acidez": 1,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 3,
+        "ahumado": 1,
+        "tostado": 0,
+        "terroso": 2,
+        "herbal": 1,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "vaca_madurada",
+          "motivo": "La piperina rompe la opulencia rindiendo un corte limpio palatal.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "fresa",
+          "motivo": "Maridaje de contraste audaz; activa receptores potenciando el dulzor frutal.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Molido al momento; libera piperina y terpenos volátiles fragantes de golpe."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "picante": 3,
+          "intensidad": 4
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "recien_molida",
+          "en_grano",
+          "mortero"
+        ],
+        "sinonimos": [
+          "piper_nigrum"
+        ],
+        "alertas": [
+          "Los formatos premolidos comerciales pierden los terpenos quedando reducidos a un picor plano."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "pimiento",
+      "nombre_visible": "Pimiento",
+      "familia": "verdura",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 3,
+        "acidez": 1,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 1,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 1,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Potenciador clásico que dinamiza la pulpa carnosa en asados.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "cebolla",
+          "motivo": "Se asocian para configurar la base de cualquier sofrito o fritada.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Vehículo indispensable para fluidificar la piel y ablandar la carne.",
+          "tipo": "tecnica",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "tomate",
+          "motivo": "Sinergia de huerta que aporta acidez a la dulzura del pimiento asado.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Carameliza azúcares y desprende la piel facilitando notas sumamente dulces."
+        },
+        {
+          "tecnica": "frito",
+          "efecto_sensorial": "Ablanda la textura de forma veloz aportando notas grasas externas (estilo Padrón)."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "horno": {
+          "dulzor": 4,
+          "textura": "melosa_blanda"
+        },
+        "crudo": {
+          "amargor": 2,
+          "herbal": 2,
+          "textura": "crujiente"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "escalivada",
+          "asado",
+          "pisto",
+          "de_germinacion",
+          "piquillo"
+        ],
+        "sinonimos": [
+          "morrón",
+          "pimiento dulce"
+        ],
+        "alertas": [
+          "Los ejemplares verdes (inmaduros) poseen picos de amargor y notas herbales notables."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "pina",
+      "nombre_visible": "Piña",
+      "familia": "fruta",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 4,
+        "acidez": 4,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 2,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "cerdo_iberico",
+          "motivo": "La acidez punzante yodada rompe las fibras grasas del animal.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "menta",
+          "motivo": "Aporte balsámico que refresca el fondo azucarado del fruto.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "cilantro",
+          "motivo": "Añade notas verdes aligerando el peso frutal denso.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Carameliza azúcares atenuando la acidez agresiva nativa."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "plancha": {
+          "tostado": 2,
+          "acidez": 2,
+          "dulzor": 5,
+          "textura": "firme_tierna"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "caramelizada",
+          "carpaccio",
+          "chutney_de_piña"
+        ],
+        "sinonimos": [
+          "ananás"
+        ],
+        "alertas": [
+          "Contiene bromelina; enzima activa que rompe cadenas proteicas si se usa cruda con lácteos."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "pinon",
+      "nombre_visible": "Piñón",
+      "familia": "fruto_seco",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 5,
+        "dulzor": 3,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 2,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "espinach",
+          "motivo": "Unión nuclear catalana; la grasa resinosa mitiga el amargor oxálico de la hoja.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "morcilla",
+          "motivo": "Aporta picos crocantes que rompen la homogeneidad blanda de la sangre.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "albahaca",
+          "motivo": "Eje conductor de ligazón oleosa en la confección del pesto mediterráneo.",
+          "tipo": "tecnica",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "tostado",
+          "efecto_sensorial": "Suda aceites esenciales de pino tornándose sumamente dulce y fragante."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "tostado": {
+          "tostado": 3,
+          "dulzor": 4,
+          "textura": "tierno_crujiente"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "a_la_catalana",
+          "pesto",
+          "tostados",
+          "rellenos"
+        ],
+        "sinonimos": [
+          "piñón ibérico"
+        ],
+        "alertas": [
+          "Se queman en segundos en la sartén debido a su altísima concentración oleosa."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "pistacho",
+      "nombre_visible": "Pistacho",
+      "familia": "fruto_seco",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 4,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 1,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "chocolate_blanco",
+          "motivo": "Sinergia dulce resinosa de gran valor cromático y suntuoso.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "queso_de_cabra",
+          "motivo": "Aporte crujiente resinoso que viste la cobertura exterior de rulos.",
+          "tipo": "textura",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "tostado",
+          "efecto_sensorial": "Acentúa los tonos dulces y resinosos mitigando notas herbales."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "tostado": {
+          "tostado": 3,
+          "textura": "crujiente_firme"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "repelado",
+          "crema_de_pistacho",
+          "crocante",
+          "granillo"
+        ],
+        "sinonimos": [
+          "pistacia_vera"
+        ],
+        "alertas": [
+          "Evitar los formatos comerciales excesivamente salados en elaboraciones dulces."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "pollo",
+      "nombre_visible": "Pollo",
+      "familia": "ave",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 2,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 1,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Aporta la columna vertebral aromática a una carne de baja intensidad.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "limon",
+          "motivo": "Acidez cítrica que refresca las preparaciones al horno o fritas.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "tomillo",
+          "motivo": "La hierba idónea por antonomasia para enriquecer asados sin saturar.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "setas",
+          "motivo": "Suman matices terrosos profundos y umami a su carne blanca.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "patata",
+          "motivo": "Guarnición neutra tradicional que recoge los jugos grasos del asado.",
+          "tipo": "textura",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Fija jugos interiores deshidratando la piel de forma crujiente."
+        },
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Traspasa los aromas del sofrito hacia el interior de las fibras."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "horno": {
+          "tostado": 2,
+          "textura": "piel_crujiente"
+        },
+        "frito": {
+          "grasa": 4,
+          "tostado": 3,
+          "textura": "crujiente_exterior"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "asado",
+          "al_ajillo",
+          "pechuga",
+          "muslo",
+          "pepitoria"
+        ],
+        "sinonimos": [
+          "ave de corral"
+        ],
+        "alertas": [
+          "La pechuga es sumamente magra; carece de margen ante sobrecocciones."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "puerro",
+      "nombre_visible": "Puerro",
+      "familia": "verdura",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 3,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 2,
+        "picante": 1,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 1,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "patata",
+          "motivo": "Sinergia tradicional en cremas frías o calientes (Porrusalda/Vichyssoise).",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "mantequilla",
+          "motivo": "Los lípidos lácteos potencian el perfil elegante y dulce del vegetal.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "nata",
+          "motivo": "Aporta untuosidad envolvente para fijar purés de corte clásico.",
+          "tipo": "textura",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Ablanda las capas celulósicas convirtiéndolas en filamentos dulces."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "guiso": {
+          "dulzor": 4,
+          "picante": 0,
+          "textura": "sedosa_fundente"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "vichyssoise",
+          "porrusalda",
+          "crema",
+          "rehogado"
+        ],
+        "sinonimos": [
+          "allium_ampeloprasum"
+        ],
+        "alertas": [
+          "Exige escrupuloso lavado; la presencia de tierra interna invalida la textura de cremas."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "pulpo",
+      "nombre_visible": "Pulpo",
+      "familia": "marisco",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 3
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "pimenton",
+          "motivo": "El fondo terroso y dulce viste la neutralidad cárnica del colágeno.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "patata",
+          "motivo": "Textura harinosa absorbente de jugos marinos y aderezos grasos.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Suministra la suntuosidad oleica ausente de manera natural.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Confiere notas crujientes punzantes si se saltea rápidamente.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Ablanda fibras musculares liberando un caldo violáceo de gran umami."
+        },
+        {
+          "tecnica": "brasa",
+          "efecto_sensorial": "Carameliza ventosas aportando tostados potentes sin secar el núcleo."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "guiso": {
+          "textura": "blanda_melosa",
+          "intensidad": 3
+        },
+        "brasa": {
+          "tostado": 3,
+          "ahumado": 2,
+          "textura": "firme_crujiente_exterior"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "a_la_gallega",
+          "a_feira",
+          "a_la_brasa",
+          "rockpulpo"
+        ],
+        "sinonimos": [
+          "pulpo de roca"
+        ],
+        "alertas": [
+          "El control de los tiempos de cocción determina la palatabilidad de su textura."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "queso_azul",
+      "nombre_visible": "Queso Azul",
+      "familia": "lacteo",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 4,
+        "dulzor": 0,
+        "acidez": 2,
+        "salinidad": 4,
+        "amargor": 1,
+        "umami": 5,
+        "picante": 2,
+        "ahumado": 0,
+        "tostado": 1,
+        "terroso": 3,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "pera",
+          "motivo": "Equilibrio absoluto entre el dulzor floral líquido y las notas fúngicas.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "nueces",
+          "motivo": "La resina del fruto seco limpia la opulencia de la pasta azul.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "miel",
+          "motivo": "Amortigua la fuerte salinidad atenuando los picos picantes del hongo.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Uso fundido en salsas calientes; diluye el hongo distribuyendo el umami."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "textura": "salsa_untuosa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "cabrales",
+          "roquefort",
+          "salsa_azul",
+          "desmigado"
+        ],
+        "sinonimos": [
+          "queso de pasta azul"
+        ],
+        "alertas": [
+          "Su descomunal carga de umami y sal sepulta sabores delicados acompañantes."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "queso_de_cabra",
+      "nombre_visible": "Queso de Cabra",
+      "familia": "lacteo",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 4,
+        "dulzor": 1,
+        "acidez": 4,
+        "salinidad": 3,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 1,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "higo",
+          "motivo": "Contrapunto nuclear; la acidez láctica quiebra la melaza del fruto.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Aporta fluidez vegetal suavizando la textura tiza clásica.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "tomate",
+          "motivo": "Sinergia de acidez mutua amortiguada por la grasa del queso.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "nueces",
+          "motivo": "Aporte crujiente amargo sobre la pasta cremosa.",
+          "tipo": "textura",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Dora el contorno exterior licuando sutilmente el corazón lácteo."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "horno": {
+          "tostado": 2,
+          "textura": "fundente_cremosa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "rulo",
+          "chèvre",
+          "ensalada_de_cabra",
+          "gratinado"
+        ],
+        "sinonimos": [
+          "queso de rulo",
+          "chèvre"
+        ],
+        "alertas": [
+          "Posee ácidos caproicos estables que dominan el retrogusto de forma prolongada."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "romero",
+      "nombre_visible": "Romero",
+      "familia": "hierba",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 0,
+        "dulzor": 0,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 2,
+        "umami": 0,
+        "picante": 1,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 5,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "cordero",
+          "motivo": "Los aceites pináceos penetran y doman los olores fuertes del animal.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "cerdo_iberico",
+          "motivo": "Perfuma las vetas grasas durante asados lentos o barbacoas.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Dupla rústica por excelencia para asados y fondos cárnicos de monte.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "patata",
+          "motivo": "Confiere un marco forestal elegante a las patatas panadera al horno.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Soporta cocciones extremas liberando esencias sin desintegrarse debido a su hoja dura."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "horno": {
+          "amargor": 1,
+          "herbal": 5
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "rama",
+          "asados",
+          "al_horno",
+          "arroz_de_monte"
+        ],
+        "sinonimos": [
+          "salvia_rosmarinus"
+        ],
+        "alertas": [
+          "Hierba invasiva de alta potencia; un exceso monopoliza por completo el mapa del plato."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "salmon",
+      "nombre_visible": "Salmón",
+      "familia": "pescado",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 4,
+        "dulzor": 2,
+        "acidez": 0,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 3,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 2
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "eneldo",
+          "motivo": "Perfil herbal y sutilmente anisado que aligera la grasa.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "limon",
+          "motivo": "Acidez cítrica cortante que equilibra los ácidos grasos.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "mostaza",
+          "motivo": "Pungencia ácida que estructura la mordida y aporta relieve.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "yogur",
+          "motivo": "Aizga una acidez láctica untuosa acorde a la textura del pescado.",
+          "tipo": "textura",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "alcaparras",
+          "motivo": "Añaden picos salinos y ácidos que rompen la homogeneidad gruda.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "ahumado",
+          "efecto_sensorial": "Aumenta la salinidad y añade notas de humo leñoso estables."
+        },
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Respeta el dulzor intrínseco entregando una textura lascada blanda."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "ahumado": {
+          "ahumado": 4,
+          "salinidad": 4,
+          "dulzor": 3,
+          "textura": "sedosa_firme"
+        },
+        "horno": {
+          "dulzor": 2,
+          "textura": "tierno_lascado"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "gravlax",
+          "tartar",
+          "a_la_papillote",
+          "marinado"
+        ],
+        "sinonimos": [
+          "salmón del atlántico"
+        ],
+        "alertas": [
+          "El formato ahumado altera radicalmente la salinidad frente al pescado fresco."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "sardina",
+      "nombre_visible": "Sardina",
+      "familia": "pescado",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 4,
+        "dulzor": 0,
+        "acidez": 0,
+        "salinidad": 3,
+        "amargor": 1,
+        "umami": 4,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 5
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "limon",
+          "motivo": "Indispensable para limpiar la untuosidad grasa y el yodo masivo.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Secunda de forma óptima la potencia rústica de este pescado azul.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "vinagre",
+          "motivo": "Base de marinados que transforma la crudeza aportando frescura.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "tomate",
+          "motivo": "Crea un fondo dulce y ácido que balancea la fuerte salinidad.",
+          "tipo": "complemento",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "perejil",
+          "motivo": "Aligera con notas herbales la larga persistencia aromática.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "brasa",
+          "efecto_sensorial": "Fundición masiva de lípidos subcutáneos sumando potentes ahumados."
+        },
+        {
+          "tecnica": "escabeche",
+          "efecto_sensorial": "Atenúa la percepción grasa aportando un medio ácido protector."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "brasa": {
+          "tostado": 4,
+          "ahumado": 4,
+          "intensidad": 5,
+          "textura": "jugosa_oleosa"
+        },
+        "escabeche": {
+          "acidez": 4,
+          "salinidad": 3,
+          "textura": "firme_asentada"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "espeto",
+          "parrilla",
+          "en_conserva",
+          "marinado"
+        ],
+        "sinonimos": [
+          "parrocha"
+        ],
+        "alertas": [
+          "Su grasa se oxida con rapidez alterando el sabor original si no es fresca."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "sesamo",
+      "nombre_visible": "Sésamo",
+      "familia": "fruto_seco",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 4,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 2,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 2,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "soja",
+          "motivo": "Afinidad asiática; la semilla enriquece el perfil salino de la salsa.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "atun",
+          "motivo": "Configura costras tostadas que resguardan la ventresca cruda (Tataki).",
+          "tipo": "textura",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "miel",
+          "motivo": "Amalgama tradicional dulce-amarga en turrones o barras.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "tostado",
+          "efecto_sensorial": "Dispara notas terrosas de frutos secos eliminando la neutralidad plana de la semilla."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "tostado": {
+          "tostado": 4,
+          "textura": "crocante_diminuta"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "tahini",
+          "tataki",
+          "tostado",
+          "ajonjoli"
+        ],
+        "sinonimos": [
+          "ajonjolí"
+        ],
+        "alertas": [
+          "En crudo resultan anodinas; exigen calor para expandir su mapa aromático."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "soja",
+      "nombre_visible": "Soja",
+      "familia": "fermentado",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 1,
+        "acidez": 2,
+        "salinidad": 5,
+        "amargor": 1,
+        "umami": 5,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 1,
+        "terroso": 2,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "jengibre",
+          "motivo": "El picor cítrico rompe la hegemonía de la salmuera fermentada.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "atun",
+          "motivo": "Dispara el umami cárnico del pescado sustituyendo de forma idónea a la sal.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Aporte pungente complementario para adobos y lacados calientes.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "fermentado",
+          "efecto_sensorial": "Proceso constituyente; genera niveles masivos de glutamato y salmuera."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "fermentado": {
+          "salinidad": 5,
+          "umami": 5,
+          "textura": "liquida_densa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "salsa_de_soja",
+          "shoyu",
+          "marinado",
+          "lacado"
+        ],
+        "sinonimos": [
+          "salsa de soya",
+          "shoyu"
+        ],
+        "alertas": [
+          "Su masiva concentración salina deshidrata de forma veloz géneros frescos."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "ternera",
+      "nombre_visible": "Ternera",
+      "familia": "carne",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 2,
+        "dulzor": 1,
+        "acidez": 0,
+        "salinidad": 1,
+        "amargor": 0,
+        "umami": 4,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Eleva de forma directa la intensidad cárnica de los cortes magros.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "thyme",
+          "motivo": "Aporte herbal fresco idóneo para bañar la pieza en su jugo.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "mantequilla",
+          "motivo": "Los lípidos lácteos aportan la untuosidad de la que carece este animal joven.",
+          "tipo": "textura",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "setas",
+          "motivo": "Sinergia profunda en guisos de corte tradicional aumentando el umami.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "limon",
+          "motivo": "Un quiebro ácido al final (estilo escalope) refresca las fibras.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Fija jugos internos caramelizando la albúmina exterior."
+        },
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Transforma los cortes con tendones en bocados extremadamente melosos."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "plancha": {
+          "tostado": 3,
+          "intensidad": 4
+        },
+        "guiso": {
+          "umami": 5,
+          "textura": "gelatinosa_suave"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "fricando",
+          "escalope",
+          "carrillera",
+          "ossubuco"
+        ],
+        "sinonimos": [
+          "ternera blanca"
+        ],
+        "alertas": [
+          "Carece de la grasa protectora del buey; la sobrecocción seca la carne."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "tomate",
+      "nombre_visible": "Tomate",
+      "familia": "verdura",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 3,
+        "acidez": 4,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 4,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 1,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "albahaca",
+          "motivo": "Sinergia aromática absoluta; las notas dulces herbales realzan la acidez.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Aporte pungente que estructura las bases de sofritos mediterráneos.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Vehículo graso idóneo que redondea la acidez cortante de la pulpa.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "cebolla",
+          "motivo": "Equilibra con su dulzor natural los picos de acidez acentuada.",
+          "tipo": "complemento",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "queso_fresco",
+          "motivo": "Contrapunto de textura láctica untuosa frente al jugo ácido.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Exalta la acidez vibrante, el agua biológica y la textura turgente."
+        },
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Concentra azúcares disminuyendo agua y multiplicando el umami natural."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "acidez": 4,
+          "dulzor": 3,
+          "textura": "turgente_jugosa"
+        },
+        "guiso": {
+          "acidez": 2,
+          "dulzor": 4,
+          "umami": 5,
+          "textura": "confitada_densa"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "salmorejo",
+          "gazpacho",
+          "sofrito",
+          "concasse",
+          "confitado"
+        ],
+        "sinonimos": [
+          "jitomate"
+        ],
+        "alertas": [
+          "En salsas largas, su acidez natural suele requerir corrección con dulzor externo."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "tomillo",
+      "nombre_visible": "Tomillo",
+      "familia": "hierba",
+      "perfil_sensorial": {
+        "intensidad": 4,
+        "grasa": 0,
+        "dulzor": 0,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 2,
+        "herbal": 4,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "pollo",
+          "motivo": "Afinidad infalible; enriquece las aves de corral aportando matices camperos sutiles.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ternera",
+          "motivo": "Perfuma los jugos en el salseo final con mantequilla.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "ajo",
+          "motivo": "Amalgama tradicional en la base de guisos y estofados mediterráneos.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "setas",
+          "motivo": "Sintoniza de forma directa con los matices de suelo forestal húmedo.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "guiso",
+          "efecto_sensorial": "Disuelve el timol de forma uniforme en caldos aportando profundidad terrosa herbal."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "guiso": {
+          "terroso": 3,
+          "herbal": 4
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "bunch",
+          "estofado",
+          "salseo",
+          "al_horno"
+        ],
+        "sinonimos": [
+          "thymus"
+        ],
+        "alertas": [
+          "Las ramas leñosas deben retirarse antes del pase para evitar molestias mecánicas."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "uva",
+      "nombre_visible": "Uva",
+      "familia": "fruta",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 4,
+        "acidez": 2,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 1,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "queso_manchego",
+          "motivo": "Clásico castellano; la grasa del queso seco sintoniza con el agua dulce.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "almendra",
+          "motivo": "Asociación tradicional en frío (Ajoblanco malagueño) aportando textura.",
+          "tipo": "textura",
+          "confianza": 5
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Estallido líquido refrescante en boca al romper el hollejo."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "textura": "liquida_estallido"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "ajoblanco",
+          "pasas",
+          "peladas",
+          "moscatel"
+        ],
+        "sinonimos": [
+          "vitis_vinifera"
+        ],
+        "alertas": [
+          "Las pepitas internas inyectan amargor astringente si se muerden de forma descuidada."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "vaca_madurada",
+      "nombre_visible": "Vaca Madurada",
+      "familia": "carne",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 4,
+        "dulzor": 1,
+        "acidez": 1,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 5,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 2,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "patata",
+          "motivo": "Acompañamiento harinoso frito que equilibra el peso graso animal.",
+          "tipo": "textura",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "pimienta_negra",
+          "motivo": "Pungencia directa que corta y limpia las notas grasas profundas.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Acompaña las notas minerales si se frota en la parrilla al final.",
+          "tipo": "puente_aromatico",
+          "confianza": 4
+        },
+        {
+          "ingrediente": "queso_azul",
+          "motivo": "Sinergia extrema entre las notas fúngicas de la grasa madurada y el queso.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "brasa",
+          "efecto_sensorial": "Sublima la grasa infiltrada potenciando un tostado y ahumado masivos."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "brasa": {
+          "tostado": 5,
+          "ahumado": 3,
+          "intensidad": 5,
+          "textura": "veteada_crujiente"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "txuleta",
+          "chuleton",
+          "dry_aged",
+          "entreco"
+        ],
+        "sinonimos": [
+          "vaca vieja",
+          "buey"
+        ],
+        "alertas": [
+          "La maduración concentra matices animales minerales y terrosos muy potentes."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "vainilla",
+      "nombre_visible": "Vainilla",
+      "familia": "especia",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 4,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 1,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 1,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 3,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "nata",
+          "motivo": "Los lípidos lácteos actúan como el mejor soporte disolvente para la vainillina.",
+          "tipo": "tecnica",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "chocolate",
+          "motivo": "Redondea los picos amargos de los cacaos puros aportando elegancia.",
+          "tipo": "complemento",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "otro",
+          "efecto_sensorial": "Raspado de la vaina; libera las semillas negras concentrando el aroma floral puro."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "otro": {
+          "floral": 4,
+          "textura": "semillas_diminutas"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "vaina",
+          "semillas",
+          "infusionada",
+          "extracto"
+        ],
+        "sinonimos": [
+          "vanilla"
+        ],
+        "alertas": [
+          "Los sucedáneos artificiales de vanillina carecen de la complejidad ahumada y floral original."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "vieira",
+      "nombre_visible": "Vieira",
+      "familia": "marisco",
+      "perfil_sensorial": {
+        "intensidad": 3,
+        "grasa": 0,
+        "dulzor": 4,
+        "acidez": 0,
+        "salinidad": 2,
+        "amargor": 0,
+        "umami": 4,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 2
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "mantequilla",
+          "motivo": "Los lácteos caramelizan el exterior potenciando los azúcares naturales de la carne.",
+          "tipo": "tecnica",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "jamon",
+          "motivo": "Salinidad animal profunda que quiebra el dulzor cárnico blando de la vieira.",
+          "tipo": "contraste",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "cebolla",
+          "motivo": "Al sudar despacio aporta sintonía dulce al conjunto.",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "plancha",
+          "efecto_sensorial": "Genera costra dulce caramelizada reteniendo el centro sedoso."
+        },
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Cocción suave que amalgama jugos bajo coberturas tradicionales."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "tostado": 0,
+          "dulzor": 4,
+          "textura": "sedosa_tierna"
+        },
+        "plancha": {
+          "tostado": 3,
+          "intensidad": 4
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "a_la_gallega",
+          "marcada",
+          "gratinada",
+          "tartar"
+        ],
+        "sinonimos": [
+          "venera"
+        ],
+        "alertas": [
+          "El coral posee notas grasas e intensidades distintas a la nuez blanca."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "vinagre",
+      "nombre_visible": "Vinagre",
+      "familia": "salsa",
+      "perfil_sensorial": {
+        "intensidad": 5,
+        "grasa": 0,
+        "dulzor": 1,
+        "acidez": 5,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 0,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "aceite_de_oliva",
+          "motivo": "Unión nuclear en vinagretas; la grasa camufla la agudeza acética agresiva.",
+          "tipo": "tecnica",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "boqueron",
+          "motivo": "Muta y blanquea el músculo marino dotándolo de firmeza.",
+          "tipo": "tecnica",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "escabeche",
+          "efecto_sensorial": "Aporta un medio ácido drástico conservador ablandando fibras duras."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "escabeche": {
+          "acidez": 5,
+          "textura": "liquida_penetrante"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "jerez",
+          "m0dena",
+          "vinagreta",
+          "escabeche"
+        ],
+        "sinonimos": [
+          "ácido acético diluido"
+        ],
+        "alertas": [
+          "Su acidez agresiva anula por completo matices frutales sutiles si se dosifica mal."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "yogur",
+      "nombre_visible": "Yogur",
+      "familia": "lacteo",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 3,
+        "dulzor": 2,
+        "acidez": 3,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 1,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 0,
+        "herbal": 0,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "pepino",
+          "motivo": "Unión refrescante extrema mediterránea; la acidez láctica baña la frescura acuosa.",
+          "tipo": "contraste",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "menta",
+          "motivo": "Afinidad balsámica que potencia la frescura del medio ácido.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "ajo",
+          "motivo": "Aporte pungente atenuado por la base cremosa fría (Salsa Tzatziki).",
+          "tipo": "complemento",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Mantiene intactas las notas ácidas fermentadas y la fluidez cremosa."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "textura": "cremosa_fluida"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "tzatziki",
+          "griego",
+          "crema",
+          "marinado"
+        ],
+        "sinonimos": [
+          "leche fermentada"
+        ],
+        "alertas": [
+          "El calor directo continuado corta la estructura láctea disociando su suero."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    },
+    {
+      "ingrediente": "zanahoria",
+      "nombre_visible": "Zanahoria",
+      "familia": "verdura",
+      "perfil_sensorial": {
+        "intensidad": 2,
+        "grasa": 0,
+        "dulzor": 4,
+        "acidez": 0,
+        "salinidad": 0,
+        "amargor": 0,
+        "umami": 1,
+        "picante": 0,
+        "ahumado": 0,
+        "tostado": 0,
+        "terroso": 1,
+        "herbal": 1,
+        "floral": 0,
+        "yodado_marino": 0
+      },
+      "afinidades_fuertes": [
+        {
+          "ingrediente": "cebolla",
+          "motivo": "Se alían en sofritos reforzando la dimensión dulce de los fondos.",
+          "tipo": "complemento",
+          "confianza": 5
+        },
+        {
+          "ingrediente": "comino",
+          "motivo": "Maridaje clásico; el aroma especiado equilibra la melaza del vegetal.",
+          "tipo": "puente_aromatico",
+          "confianza": 5
+        }
+      ],
+      "afinidades_medias": [
+        {
+          "ingrediente": "limon",
+          "motivo": "Acidez cítrica que recorta el dulzor lineal de la pulpa.",
+          "tipo": "contraste",
+          "confianza": 4
+        }
+      ],
+      "tecnicas_relevantes": [
+        {
+          "tecnica": "crudo",
+          "efecto_sensorial": "Exalta una textura dura sumamente crujiente y frescor vegetal noble."
+        },
+        {
+          "tecnica": "horno",
+          "efecto_sensorial": "Concentra los azúcares nativos eliminando agua estructural."
+        }
+      ],
+      "modificadores_por_tecnica": {
+        "crudo": {
+          "dulzor": 3,
+          "textura": "dura_crujiente"
+        },
+        "horno": {
+          "dulzor": 5,
+          "textura": "tierna_blanda"
+        }
+      },
+      "notas_para_app": {
+        "palabras_clave": [
+          "mirepoix",
+          "crema",
+          "en_rodajas",
+          "glaseadas"
+        ],
+        "sinonimos": [
+          "daucus_carota"
+        ],
+        "alertas": [
+          "Su cocción prolongada eleva el dulzor pudiendo desbalancear guisados salados."
+        ]
+      },
+      "origen": "flavor_bible_extraccion_gemini"
+    }
+  ],
+  "summaries": [
+    {
+      "ingredientes_procesados": 10,
+      "afinidades_transversales_detected": [
+        "Los pescados azules de alta carga yodada (sardina, boquerón, atún) demandan la intervención de ácidos puros (limón, vinagre) para aligerar la masticación e intensidad en boca.",
+        "Los pescados blancos lineales (merluza, dorada, lubina) necesitan bases lipídicas con ajos para estirar su sutil perfil sin verse anulados.",
+        "Los productos marinos fermentados/curados (anchoas) desarrollan picos de sal tan masivos que exigen grasas lácteas dulces (mantequilla) como amortiguadores sensoriales."
+      ],
+      "reglas_generales_extraidas": [
+        {
+          "regla": "Ante perfiles marinos dominados por colágenos compactos libres de grasa, las técnicas de alta temperatura (brasa) deben fijar notas tostadas exteriores para equilibrar la neutralidad del núcleo.",
+          "aplicacion": "pulpo a la brasa, atún marcado a la plancha"
+        },
+        {
+          "regla": "Las estructuras lascadas o fibrosas encuentran armonía con soportes harinosos neutros que retienen las emulsiones jugosas del cocinado.",
+          "aplicacion": "bacalao con patatas, pulpo a la gallega"
+        }
+      ]
+    },
+    {
+      "ingredientes_procesados": 10,
+      "afinidades_transversales_detectadas": [
+        "Los crustáceos y cefalópodos dulces marinos multiplican su persistencia aromática en caliente bajo refritos sulfurosos (ajo) que rompen la neutralidad.",
+        "Los embutidos y cortes densos de la matanza porcina (cerdo, chorizo, morcilla) concentran altos valores grasos y terrosos que agradecen elementos frutales ácidos como corrector palatal."
+      ],
+      "reglas_generales_extraidas": [
+        {
+          "regla": "Frente a bivalvos expuestos a salinidades y yodos masivos en crudo, se deben proponer contrastes ácidos directos y evitar aportes grasos que saturen las papilas.",
+          "aplicacion": "ostras al natural, mejillones al vapor con limón"
+        },
+        {
+          "regla": "Las proteínas marinas de perfil dulce con nula grasa estructural ganan redondez y retención de jugos si se asocian a lípidos lácteos o curados de alta concentración salina.",
+          "aplicacion": "vieiras con mantequilla, vieiras envueltas en jamón"
+        }
+      ]
+    },
+    {
+      "ingredientes_procesados": 10,
+      "afinidades_transversales_detectadas": [
+        "Las carnes magras o animales jóvenes de baja intensidad (ternera, pollo, conejo) dependen sistemáticamente del ajo y las hierbas leñosas para fijar relieve aromático.",
+        "Las hortalizas mediterráneas de pulpa porosa o acuosa (berenjena, calabacín, pimiento) actúan como esponjas que requieren aceite de oliva para resolver texturas palatables."
+      ],
+      "reglas_generales_extraidas": [
+        {
+          "regla": "Ante piezas de alta concentración grasa y potencia mineral derivadas de procesos de maduración o naturaleza del ave, se deben buscar contrastes punzantes (pimienta) o frutales marcadamente ácidos.",
+          "aplicacion": "vaca madurada con pimienta negra, pato con salsa de naranja"
+        },
+        {
+          "regla": "La aplicación de cocciones concentradas e hídricas sobre frutos de huerta transmuta la acidez cortante original hacia perfiles densos dominados por el umami dulce.",
+          "aplicacion": "tomate en sofrito de larga cocción, pimiento confitado al horno"
+        }
+      ]
+    },
+    {
+      "ingredientes_procesados": 10,
+      "afinidades_transversales_detectadas": [
+        "Los vegetales aliáceos basales (cebolla, ajo, puerro) operan como catalizadores moleculares mudando de la pungencia cruda al dulzor graso mediante cocciones lentas.",
+        "Las hortalizas otoñales e invernales de corte dulce (zanahoria, calabaza) exigen especias de perfil cálido (nuez moscada, comino) para romper la monotonía de sus azúcares."
+      ],
+      "reglas_generales_extraidas": [
+        {
+          "regla": "Frente a amargores vegetales intrínsecos derivados de taninos estables, la alianza con curados salinos intensos bloquea la percepción áspera redondeando el bocado.",
+          "aplicacion": "alcachofas salteadas con jamón serrano"
+        },
+        {
+          "regla": "Los hongos carnosos de alto umami e inclinación terrosa (boletus) multiplican su persistencia sedosa al ligarse con emulsiones grasas ricas en albúmina.",
+          "aplicacion": "boletus salteados con yema de huevo"
+        }
+      ]
+    },
+    {
+      "ingredientes_procesados": 10,
+      "afinidades_transversales_detectadas": [
+        "Los frutos de marcada dirección hiperdulce y untuosa (higo, mango, pera) demandan choques salinos o ácidos directos para disolver su linealidad en boca.",
+        "Las frutas ácidas estables (limón, frutos rojos) operan de forma óptima como correctores frente a lácteos densos o grasas saturadas."
+      ],
+      "reglas_generales_extraidas": [
+        {
+          "regla": "La aplicación de calor directo sobre frutas de alta acidez y azúcares nativos mitiga los picos agresivos transformándolos en almíbares tostados melosos.",
+          "aplicacion": "piña a la plancha, manzanas asadas"
+        },
+        {
+          "regla": "Las bayas o granos que ofrecen estallidos líquidos al corte exigen bases vegetales de perfil marcadamente amargo para estructurar ensaladas equilibradas.",
+          "aplicacion": "ensalada de escarola con granada"
+        }
+      ]
+    },
+    {
+      "ingredientes_procesados": 8,
+      "afinidades_transversales_detectadas": [
+        "Los quesos secos y madurados ricos en sal (parmesano, manchego) operan como sazonadores naturales que demandan la intervención de lípidos o frutas para fluidificar la mordida.",
+        "Los lácteos cremosos o fluidos ricos en grasas saturadas (burrata, nata, mantequilla) actúan como envolventes de sabor que agradecen ácidos cítricos cortantes."
+      ],
+      "reglas_generales_extraidas": [
+        {
+          "regla": "Ante pastas lácteas dominadas por intensidades fúngicas y picos salinos (queso azul), se deben proponer contrastes frutales de corte marcadamente dulce-floral.",
+          "aplicacion": "queso azul con peras cortadas"
+        },
+        {
+          "regla": "La aplicación de calor controlado sobre grasas lácteas sólidas (mantequilla) carameliza las proteínas residuales virando el perfil hacia notas tostadas de fruto seco.",
+          "aplicacion": "elaboración de beurre noisette"
+        }
+      ]
+    },
+    {
+      "ingredientes_procesados": 6,
+      "afinidades_transversales_detectadas": [
+        "Los frutos secos mediterráneos (almendra, avellana, piñón) aportan niveles masivos de grasas vegetales densas que actúan como aglutinadores de salsas tradicionales (Romesco/Pesto).",
+        "Las semillas oleosas exigen la aplicación de tostados limpios para disolver el amargor crudo y activar notas resinosas fragantes."
+      ],
+      "reglas_generales_extraidas": [
+        {
+          "regla": "Frente a hojas vegetales con picos marcados de amargor férrico u oxálico, la adición de piñones tostados equilibra el paladar mediante lípidos resinosos dulces.",
+          "aplicacion": "espinacas a la catalana"
+        },
+        {
+          "regla": "Los frutos secos de piel astringente marcados por el amargor nativo (nuez) ofrecen contrastes ideales frente a la cremosidad salina de las pastas fúngicas.",
+          "aplicacion": "queso azul con nueces"
+        }
+      ]
+    },
+    {
+      "ingredientes_procesados": 7,
+      "afinidades_transversales_detectadas": [
+        "Las hierbas blandas clorofílicas (perejil, albahaca, cilantro) exigen su uso riguroso en crudo para evitar la volatilización de aceites y el ennegrecimiento.",
+        "Las hierbas leñosas perennes (romero, tomillo) resisten y agradecen cocciones térmicas prolongadas, fijando esencias en medios grasos."
+      ],
+      "reglas_generales_extraidas": [
+        {
+          "regla": "Frente a carnes ovinas o porcinas dotadas de grasas saturadas densas, la adición de notas mentoladas frías alivia la masticación mediante choque térmico simulado.",
+          "aplicacion": "cordero asado con hojas de menta"
+        },
+        {
+          "regla": "Las bases aliáceas pungentes ganan equilibrio y frescor vegetal si se asocian de forma simétrica a hojas verdes clorofílicas finamente picadas.",
+          "aplicacion": "refrito de ajo con perejil fresco"
+        }
+      ]
+    },
+    {
+      "ingredientes_procesados": 8,
+      "afinidades_transversales_detectadas": [
+        "Las especias de perfil terroso y ahumado (pimentón, comino) configuran la base de adobos tradicionales, requiriendo aceite para estabilizarse.",
+        "Las especias dulces y florales (canela, vainilla) dependen de soportes lácteos o frutales para expandir sus esencias volátiles."
+      ],
+      "reglas_generales_extraidas": [
+        {
+          "regla": "Frente a azúcares lineales planos de raíces vegetales de huerta, la irrupción de notas marcadamente terrosas rompe la monotonía del bocado.",
+          "aplicacion": "zanahorias aliñadas con comino"
+        },
+        {
+          "regla": "Los condimentos basados en picor químico puro por capsaicina (chile) ganan balance al asociarse con ácidos cítricos que amortiguan la agudeza térmica.",
+          "aplicacion": "chile con zumo de lima"
+        }
+      ]
+    },
+    {
+      "ingredientes_procesados": 8,
+      "afinidades_transversales_detectadas": [
+        "Los fermentados puros de alta salinidad (soja, miso) operan como inyectores masivos de umami que demandan notas punzantes o raíces cítricas para equilibrarse.",
+        "Las grandes emulsiones grasas (mayonesa, alioli) actúan como protectores de textura que ganan viveza bajo picos ácidos controlados."
+      ],
+      "reglas_generales_extraidas": [
+        {
+          "regla": "Frente a salsas dominadas por una acidez acética radical (vinagre), la asociación obligatoria con aceites vegetales densos camufla la agresividad protegiendo el paladar.",
+          "aplicacion": "confección de vinagretas equilibradas"
+        },
+        {
+          "regla": "Los elementos basados en dulzor untuoso concentrado (miel) mitigan las aristas picantes y la fuerte salmuera de las pastas fúngicas duras.",
+          "aplicacion": "queso azul con hilos de miel"
+        }
+      ]
+    }
+  ]
+}
