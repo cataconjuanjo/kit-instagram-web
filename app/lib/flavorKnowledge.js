@@ -153,6 +153,9 @@ export function consultaEnriquecidaFlavor(consulta = '', analisis = analizarFlav
   const rasgos = analisis.rasgosAltos.map(item => `${item.dimension} ${item.valor}/5`).join(' · ')
   const afinidades = analisis.afinidades.map(item => item.ingrediente).join(' · ')
 
+  // Las afinidades son ingredientes que MARIDAN con el plato, no ingredientes del plato.
+  // Si se pasan al motor de reglas, lo confunden (trata 'setas' como ingrediente del plato).
+  // Solo se incluyen ingredientes y técnicas reales detectados en el plato.
   return [
     String(consulta || ''),
     '',
@@ -160,7 +163,6 @@ export function consultaEnriquecidaFlavor(consulta = '', analisis = analizarFlav
     ingredientes ? `Ingredientes detectados: ${ingredientes}.` : '',
     tecnicas ? `Tecnicas detectadas: ${tecnicas}.` : '',
     rasgos ? `Rasgos sensoriales altos: ${rasgos}.` : '',
-    afinidades ? `Afinidades culinarias del plato: ${afinidades}.` : '',
     'Usar esta lectura solo como contexto culinario; no atribuirla a Chartier ni tratarla como maridaje de vino directo.',
   ].filter(Boolean).join('\n')
 }
