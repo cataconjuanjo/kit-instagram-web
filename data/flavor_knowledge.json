@@ -76,8 +76,7 @@
         "palabras_clave": [
           "al_ajillo",
           "refrito",
-          "majado",
-          "asado"
+          "majado"
         ],
         "sinonimos": [
           "allium_sativum"
@@ -236,7 +235,6 @@
       },
       "notas_para_app": {
         "palabras_clave": [
-          "confitadas",
           "con_jamon",
           "en_flor",
           "al_parrilla"
@@ -625,8 +623,7 @@
         "palabras_clave": [
           "gianduja",
           "picada",
-          "romesco",
-          "tostada"
+          "romesco"
         ],
         "sinonimos": [
           "corylus_avellana"
@@ -959,7 +956,6 @@
         "palabras_clave": [
           "edulis",
           "risotto",
-          "salteado",
           "carpaccio"
         ],
         "sinonimos": [
@@ -1896,7 +1892,6 @@
         "palabras_clave": [
           "riojana",
           "fresco",
-          "curado",
           "al_vino",
           "txistorra"
         ],
@@ -2644,7 +2639,6 @@
       "notas_para_app": {
         "palabras_clave": [
           "rama_en_caldo",
-          "cocido",
           "infusionada"
         ],
         "sinonimos": [
@@ -2859,8 +2853,7 @@
         "palabras_clave": [
           "rallado",
           "en_rodajas",
-          "en_curry",
-          "salteado"
+          "en_curry"
         ],
         "sinonimos": [
           "zingiber_officinale"
@@ -2943,7 +2936,6 @@
       },
       "notas_para_app": {
         "palabras_clave": [
-          "cocido",
           "de_sanlucar",
           "coctel",
           "crujiente"
@@ -3021,8 +3013,7 @@
         "palabras_clave": [
           "zumo",
           "ralladura",
-          "gremolata",
-          "marinado"
+          "gremolata"
         ],
         "sinonimos": [
           "citrus_limon"
@@ -3166,7 +3157,6 @@
       },
       "notas_para_app": {
         "palabras_clave": [
-          "curado",
           "semicurado",
           "en_tacos",
           "lascas"
@@ -3394,7 +3384,6 @@
           "tarta",
           "tatin",
           "compota",
-          "confitada",
           "gajos"
         ],
         "sinonimos": [
@@ -3537,9 +3526,7 @@
       },
       "notas_para_app": {
         "palabras_clave": [
-          "al_vapor",
           "marinera",
-          "en_escabeche",
           "tigres"
         ],
         "sinonimos": [
@@ -4829,7 +4816,6 @@
       "notas_para_app": {
         "palabras_clave": [
           "escalivada",
-          "asado",
           "pisto",
           "de_germinacion",
           "piquillo"
@@ -5428,8 +5414,7 @@
         "palabras_clave": [
           "rulo",
           "chèvre",
-          "ensalada_de_cabra",
-          "gratinado"
+          "ensalada_de_cabra"
         ],
         "sinonimos": [
           "queso de rulo",
@@ -5504,8 +5489,6 @@
       "notas_para_app": {
         "palabras_clave": [
           "rama",
-          "asados",
-          "al_horno",
           "arroz_de_monte"
         ],
         "sinonimos": [
@@ -5597,8 +5580,7 @@
         "palabras_clave": [
           "gravlax",
           "tartar",
-          "a_la_papillote",
-          "marinado"
+          "a_la_papillote"
         ],
         "sinonimos": [
           "salmón del atlántico"
@@ -5690,8 +5672,7 @@
         "palabras_clave": [
           "espeto",
           "parrilla",
-          "en_conserva",
-          "marinado"
+          "en_conserva"
         ],
         "sinonimos": [
           "parrocha"
@@ -5760,7 +5741,6 @@
         "palabras_clave": [
           "tahini",
           "tataki",
-          "tostado",
           "ajonjoli"
         ],
         "sinonimos": [
@@ -5830,7 +5810,6 @@
         "palabras_clave": [
           "salsa_de_soja",
           "shoyu",
-          "marinado",
           "lacado"
         ],
         "sinonimos": [
@@ -6090,9 +6069,7 @@
       "notas_para_app": {
         "palabras_clave": [
           "bunch",
-          "estofado",
-          "salseo",
-          "al_horno"
+          "salseo"
         ],
         "sinonimos": [
           "thymus"
@@ -6375,7 +6352,6 @@
         "palabras_clave": [
           "a_la_gallega",
           "marcada",
-          "gratinada",
           "tartar"
         ],
         "sinonimos": [
@@ -6507,8 +6483,7 @@
         "palabras_clave": [
           "tzatziki",
           "griego",
-          "crema",
-          "marinado"
+          "crema"
         ],
         "sinonimos": [
           "leche fermentada"
