@@ -7,3 +7,4 @@ dev-server*.log
 demo-output/
 web-*.html
 .vercel
+.netlify/
