@@ -139,7 +139,6 @@ function contextoVenta(consultaNormalizada) {
   const platoKb = buscarPlatoKb(consultaNormalizada)
   if (platoKb?.contexto) return platoKb.contexto
   if (esJamonCurado(consultaNormalizada)) return 'aperitivo'
-  if (consultaNormalizada.includes('queso')) return 'queso'
   if (consultaNormalizada.includes('fritura') || consultaNormalizada.includes('frito') || consultaNormalizada.includes('croqueta') || consultaNormalizada.includes('flamenquin')) return 'fritura'
   if (consultaNormalizada.includes('aperitivo') || consultaNormalizada.includes('entrante') || consultaNormalizada.includes('compartir')) return 'aperitivo'
   if (['carne', 'rabo', 'codillo', 'cordero', 'ternera', 'iberico',
@@ -148,6 +147,8 @@ function contextoVenta(consultaNormalizada) {
        'secreto', 'presa', 'pluma iberica',
        'magret', 'pichon', 'caza', 'liebre', 'venado', 'jabali',
        'lomo de cerdo', 'lomo iberico'].some(t => consultaNormalizada.includes(t))) return 'carne'
+  // Queso va después de carne: si hay solomillo + queso en un acompañamiento, la carne manda
+  if (consultaNormalizada.includes('queso')) return 'queso'
   if (consultaNormalizada.includes('pescado') || consultaNormalizada.includes('marisco') || consultaNormalizada.includes('gamba') || consultaNormalizada.includes('lubina') || consultaNormalizada.includes('salmon') || consultaNormalizada.includes('bacalao') || consultaNormalizada.includes('chipiron')) return 'pescado'
   if (consultaNormalizada.includes('picante') || consultaNormalizada.includes('curry') || consultaNormalizada.includes('pil pil')) return 'picante'
   return 'general'
@@ -178,7 +179,7 @@ function metodosPlato(consultaNormalizada) {
   return {
     brasa: platoKb?.metodos?.includes('brasa') || ['brasa', 'parrilla', 'plancha', 'barbacoa', 'brasas'].some(t => consultaNormalizada.includes(t)),
     frito: platoKb?.metodos?.includes('frito') || ['frito', 'frita', 'fritura', 'croqueta', 'flamenquin'].some(t => consultaNormalizada.includes(t)),
-    gratinado: platoKb?.metodos?.includes('gratinado') || ['gratinado', 'gratinada', 'alioli', 'queso', 'quesos', 'parmentier', 'crema'].some(t => consultaNormalizada.includes(t)),
+    gratinado: platoKb?.metodos?.includes('gratinado') || ['gratinado', 'gratinada', 'alioli', 'parmentier', 'queso fundido', 'gratin'].some(t => consultaNormalizada.includes(t)),
     ahumado: platoKb?.metodos?.includes('ahumado') || ['ahumado', 'ahumada'].some(t => consultaNormalizada.includes(t)),
     picante: platoKb?.metodos?.includes('picante') || ['picante', 'picantito', 'pil pil', 'ajillo', 'brava', 'curry'].some(t => consultaNormalizada.includes(t)),
     vegetalVerde: platoKb?.metodos?.includes('vegetal') || ['esparrago', 'esparragos', 'pimiento', 'pepino', 'menta', 'perejil', 'hinojo', 'apio'].some(t => consultaNormalizada.includes(t)),
