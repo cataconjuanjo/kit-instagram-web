@@ -287,6 +287,9 @@ function capitulosParaConsulta(consultaNormalizada) {
   const platoKb = buscarPlatoKb(consultaNormalizada)
   const atajos = {
     aperitivo: ['fino_manzanilla_versatil', 'anisado_blanco_herbaceo', 'sabor_frio_manzana_sauvignon'],
+    jamon:     ['jamon_iberico_fino', 'fino_manzanilla_versatil'],
+    serrano:   ['jamon_iberico_fino', 'fino_manzanilla_versatil'],
+    prosciutto:['jamon_iberico_fino', 'fino_manzanilla_versatil'],
     pescado:   ['anisado_blanco_herbaceo', 'romero_blancos_alsacianos', 'azafran_riesling_chardonnay', 'sabor_frio_manzana_sauvignon'],
     carne:     ['roble_barrica_carnes_parrilla', 'carne_estofada', 'carne_vacuno_pasto_terpenos', 'clavo_tintos_espanoles'],
     queso:     ['quesos_pasta_semidura_blancos', 'quesos_corteza_floral_chardonnay', 'quesos_azules_oporto_sauternes', 'fino_manzanilla_versatil'],
