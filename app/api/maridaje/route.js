@@ -418,9 +418,9 @@ export async function POST(request) {
         // Motor estructural existente (acidez, tanino, cuerpo, restricciones)
         const motorAnalisis = analizarMaridaje(consultaInterna, vinosRespuesta)
         fallbackCandidatos = candidatosUnicos([
-          ...candidatosGrafo,
           ...(motorAnalisis?.recomendados || []),
           ...(motorAnalisis?.candidatos || []),
+          ...candidatosGrafo,
         ], 10)
         const resumenMotor = resumenAnalisisParaPrompt(motorAnalisis)
 
