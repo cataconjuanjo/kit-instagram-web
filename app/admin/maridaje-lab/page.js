@@ -17,6 +17,23 @@ async function tokenAdmin() {
   return data?.session?.access_token || ''
 }
 
+function normalizar(texto = '') {
+  return String(texto)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+}
+
+function consultaDesdePlato(plato = {}) {
+  return [
+    plato.nombre,
+    plato.descripcion,
+    plato.categoria ? `categoria: ${plato.categoria}` : '',
+    Number(plato.precio) > 0 ? `precio: ${plato.precio} EUR` : '',
+  ].filter(Boolean).join('. ')
+}
+
 function listaCandidatos(version) {
   return version?.grafo?.candidatos?.length
     ? version.grafo.candidatos
@@ -55,9 +72,14 @@ function CandidateList({ title, version }) {
 export default function MaridajeLabPage() {
   const [restaurantes, setRestaurantes] = useState([])
   const [restauranteId, setRestauranteId] = useState('')
-  const [consulta, setConsulta] = useState(EJEMPLOS[0])
+  const [platos, setPlatos] = useState([])
+  const [platoId, setPlatoId] = useState('')
+  const [busquedaPlato, setBusquedaPlato] = useState('')
+  const [consulta, setConsulta] = useState('')
+  const [modoManual, setModoManual] = useState(false)
   const [resultado, setResultado] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [cargandoPlatos, setCargandoPlatos] = useState(false)
   const [analizando, setAnalizando] = useState(false)
   const [error, setError] = useState('')
 
@@ -70,7 +92,7 @@ export default function MaridajeLabPage() {
       }
       const token = await tokenAdmin()
       const res = await fetch('/api/admin/maridaje-lab', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
@@ -84,8 +106,44 @@ export default function MaridajeLabPage() {
     cargar()
   }, [])
 
+  useEffect(() => {
+    async function cargarPlatos() {
+      if (!restauranteId) return
+      setCargandoPlatos(true)
+      setError('')
+      setResultado(null)
+      const token = await tokenAdmin()
+      const res = await fetch(`/api/admin/maridaje-lab?restaurante_id=${encodeURIComponent(restauranteId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        const lista = data.platos || []
+        setPlatos(lista)
+        setPlatoId(lista[0]?.id || '')
+        setConsulta(lista[0] ? consultaDesdePlato(lista[0]) : '')
+        setModoManual(false)
+      } else {
+        setPlatos([])
+        setPlatoId('')
+        setConsulta('')
+        setError(data.error || 'No se pudieron cargar los platos del restaurante.')
+      }
+      setCargandoPlatos(false)
+    }
+    cargarPlatos()
+  }, [restauranteId])
+
   const flavor = resultado?.flavorLectura
   const comparacion = resultado?.comparacion
+  const platoSeleccionado = platos.find(plato => String(plato.id) === String(platoId)) || null
+  const platosFiltrados = useMemo(() => {
+    const q = normalizar(busquedaPlato)
+    return platos.filter(plato => {
+      const texto = normalizar([plato.nombre, plato.descripcion, plato.categoria].filter(Boolean).join(' '))
+      return !q || texto.includes(q)
+    }).slice(0, 80)
+  }, [platos, busquedaPlato])
   const resumenFlavor = useMemo(() => {
     if (!flavor) return []
     return [
@@ -96,9 +154,16 @@ export default function MaridajeLabPage() {
     ].filter(Boolean)
   }, [flavor])
 
+  function seleccionarPlato(id) {
+    const plato = platos.find(item => String(item.id) === String(id))
+    setPlatoId(id)
+    setConsulta(plato ? consultaDesdePlato(plato) : '')
+    setResultado(null)
+  }
+
   async function analizar(e) {
     e?.preventDefault()
-    if (!restauranteId || !consulta.trim()) return
+    if (!restauranteId || (!modoManual && !platoId) || (modoManual && !consulta.trim())) return
     setAnalizando(true)
     setError('')
     setResultado(null)
@@ -106,7 +171,11 @@ export default function MaridajeLabPage() {
     const res = await fetch('/api/admin/maridaje-lab', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ restaurante_id: restauranteId, consulta })
+      body: JSON.stringify({
+        restaurante_id: restauranteId,
+        plato_id: modoManual ? null : platoId,
+        consulta: modoManual ? consulta : '',
+      }),
     })
     const data = await res.json().catch(() => ({}))
     if (res.ok) setResultado(data)
@@ -122,7 +191,7 @@ export default function MaridajeLabPage() {
         <div>
           <p className="admin-kicker">Laboratorio privado</p>
           <h1>Maridaje A/B con Flavor</h1>
-          <p>Compara el motor actual con una version experimental que primero interpreta ingredientes, tecnica y rasgos sensoriales. No afecta a clientes ni a sala.</p>
+          <p>Compara el motor actual con una version experimental usando platos reales del restaurante seleccionado. No afecta a clientes ni a sala.</p>
         </div>
       </div>
 
@@ -130,7 +199,7 @@ export default function MaridajeLabPage() {
         <form onSubmit={analizar} className="admin-create-form">
           <label>
             Restaurante
-            <select value={restauranteId} onChange={e => setRestauranteId(e.target.value)}>
+            <select value={restauranteId} onChange={e => { setRestauranteId(e.target.value); setBusquedaPlato('') }}>
               {restaurantes.map(restaurante => (
                 <option key={restaurante.id} value={restaurante.id}>
                   {[restaurante.nombre, restaurante.ciudad].filter(Boolean).join(' · ')}
@@ -138,19 +207,79 @@ export default function MaridajeLabPage() {
               ))}
             </select>
           </label>
-          <label className="admin-create-wide">
-            Plato o consulta
-            <textarea value={consulta} onChange={e => setConsulta(e.target.value)} placeholder="Ej. Tataki de atun con soja y sesamo" />
+
+          <label>
+            Modo
+            <select value={modoManual ? 'manual' : 'plato'} onChange={e => { setModoManual(e.target.value === 'manual'); setResultado(null) }}>
+              <option value="plato">Plato real de la carta</option>
+              <option value="manual">Consulta manual</option>
+            </select>
           </label>
-          <div className="admin-card-actions lab-examples">
-            {EJEMPLOS.map(ejemplo => (
-              <button key={ejemplo} type="button" className="admin-plain-button" onClick={() => setConsulta(ejemplo)}>
-                {ejemplo}
-              </button>
-            ))}
-          </div>
-          <button disabled={analizando || !restauranteId || !consulta.trim()}>
-            {analizando ? 'Analizando...' : 'Comparar maridajes'}
+
+          {!modoManual && (
+            <>
+              <label className="admin-create-wide">
+                Buscar plato
+                <input
+                  value={busquedaPlato}
+                  onChange={e => setBusquedaPlato(e.target.value)}
+                  placeholder={cargandoPlatos ? 'Cargando platos...' : 'Buscar por nombre, categoria o descripcion'}
+                />
+              </label>
+
+              <label className="admin-create-wide">
+                Selecciona plato
+                <select
+                  value={platoId}
+                  onChange={e => seleccionarPlato(e.target.value)}
+                  disabled={cargandoPlatos || platosFiltrados.length === 0}
+                >
+                  {platosFiltrados.map(plato => (
+                    <option key={plato.id} value={plato.id}>
+                      {[plato.nombre, plato.categoria, Number(plato.precio) > 0 ? `${plato.precio} EUR` : ''].filter(Boolean).join(' · ')}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {platoSeleccionado && (
+                <article className="admin-card lab-card admin-create-wide">
+                  <span className="admin-slug">Plato seleccionado</span>
+                  <h3>{platoSeleccionado.nombre}</h3>
+                  <p>{[platoSeleccionado.categoria, Number(platoSeleccionado.precio) > 0 ? `${platoSeleccionado.precio} EUR` : ''].filter(Boolean).join(' · ')}</p>
+                  <small>{platoSeleccionado.descripcion || 'Sin descripcion interna. El laboratorio tendra menos precision.'}</small>
+                </article>
+              )}
+
+              {platos.length === 0 && (
+                <p className="consult-empty admin-create-wide">Este restaurante no tiene platos activos cargados. El laboratorio no puede probar carta real hasta que existan platos.</p>
+              )}
+            </>
+          )}
+
+          {modoManual && (
+            <>
+              <label className="admin-create-wide">
+                Consulta manual
+                <textarea value={consulta} onChange={e => setConsulta(e.target.value)} placeholder="Ej. Tataki de atun con soja y sesamo" />
+              </label>
+              <div className="admin-card-actions lab-examples">
+                {EJEMPLOS.map(ejemplo => (
+                  <button key={ejemplo} type="button" className="admin-plain-button" onClick={() => { setConsulta(ejemplo); setResultado(null) }}>
+                    {ejemplo}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <label className="admin-create-wide">
+            Texto que se analizara
+            <textarea value={consulta} readOnly placeholder="Aqui se vera el texto construido desde el plato real" />
+          </label>
+
+          <button disabled={analizando || cargandoPlatos || !restauranteId || (!modoManual && !platoId) || (modoManual && !consulta.trim())}>
+            {analizando ? 'Analizando...' : modoManual ? 'Comparar consulta manual' : 'Comparar con plato real'}
           </button>
         </form>
       </section>
@@ -163,6 +292,7 @@ export default function MaridajeLabPage() {
             <article className="admin-card lab-card">
               <span className="admin-slug">Lectura Flavor</span>
               <h3>Que ha entendido del plato</h3>
+              {resultado.plato && <p>Plato real: <strong>{resultado.plato.nombre}</strong></p>}
               {resumenFlavor.length ? resumenFlavor.map(linea => <p key={linea}>{linea}</p>) : <p>No ha detectado ingredientes de la base Flavor.</p>}
               {flavor?.alertas?.length > 0 && <small className="lab-risk">Alertas: {flavor.alertas.join(' · ')}</small>}
             </article>
@@ -189,4 +319,3 @@ export default function MaridajeLabPage() {
     </div>
   )
 }
-

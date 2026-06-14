@@ -29,6 +29,26 @@ function vinosDisponibles(vinos = []) {
     .map(compactarVino)
 }
 
+function compactarPlato(plato = {}) {
+  return {
+    id: plato.id,
+    nombre: plato.nombre,
+    descripcion: plato.descripcion,
+    categoria: plato.categoria,
+    precio: plato.precio,
+    activo: plato.activo,
+  }
+}
+
+function consultaDesdePlato(plato = {}) {
+  return [
+    plato.nombre,
+    plato.descripcion,
+    plato.categoria ? `categoria: ${plato.categoria}` : '',
+    Number(plato.precio) > 0 ? `precio: ${plato.precio} EUR` : '',
+  ].filter(Boolean).join('. ')
+}
+
 function candidatoMotor(item, index) {
   const vino = item?.vino || {}
   return {
@@ -135,6 +155,22 @@ export async function GET(request) {
     return Response.json({ error: 'Solo admin.' }, { status: 403 })
   }
 
+  const { searchParams } = new URL(request.url)
+  const restauranteId = searchParams.get('restaurante_id')
+
+  if (restauranteId) {
+    const { data, error } = await supabaseAdmin
+      .from('platos')
+      .select('id, nombre, descripcion, categoria, precio, activo')
+      .eq('restaurante_id', restauranteId)
+      .eq('activo', true)
+      .order('categoria')
+      .order('nombre')
+
+    if (error) return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ platos: (data || []).map(compactarPlato) })
+  }
+
   const { data, error } = await supabaseAdmin
     .from('restaurantes')
     .select('id, nombre, ciudad')
@@ -152,23 +188,44 @@ export async function POST(request) {
       return Response.json({ error: 'Solo admin.' }, { status: 403 })
     }
 
-    const { restaurante_id, consulta } = await request.json()
-    const texto = String(consulta || '').trim()
-    if (!restaurante_id || !texto) {
-      return Response.json({ error: 'Restaurante y consulta son obligatorios.' }, { status: 400 })
+    const { restaurante_id, consulta, plato_id } = await request.json()
+    let texto = String(consulta || '').trim()
+    if (!restaurante_id) {
+      return Response.json({ error: 'Restaurante obligatorio.' }, { status: 400 })
     }
-    if (texto.length > 600) {
+    if (!plato_id && !texto) {
+      return Response.json({ error: 'Elige un plato real o escribe una consulta manual.' }, { status: 400 })
+    }
+    if (texto.length > 900) {
       return Response.json({ error: 'Consulta demasiado larga para el laboratorio.' }, { status: 400 })
     }
 
-    const [{ data: restaurante, error: restError }, { data: vinosData, error: vinosError }] = await Promise.all([
+    const [
+      { data: restaurante, error: restError },
+      { data: vinosData, error: vinosError },
+      platoResult,
+    ] = await Promise.all([
       supabaseAdmin.from('restaurantes').select('id, nombre').eq('id', restaurante_id).single(),
       supabaseAdmin.from('vinos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
+      plato_id
+        ? supabaseAdmin
+          .from('platos')
+          .select('id, nombre, descripcion, categoria, precio, activo')
+          .eq('id', plato_id)
+          .eq('restaurante_id', restaurante_id)
+          .eq('activo', true)
+          .single()
+        : Promise.resolve({ data: null, error: null }),
     ])
 
     if (restError || !restaurante) return Response.json({ error: 'Restaurante no encontrado.' }, { status: 404 })
     if (vinosError) return Response.json({ error: vinosError.message }, { status: 500 })
+    if (plato_id && (platoResult.error || !platoResult.data)) {
+      return Response.json({ error: 'Plato no encontrado en este restaurante.' }, { status: 404 })
+    }
 
+    const plato = platoResult.data ? compactarPlato(platoResult.data) : null
+    if (plato) texto = consultaDesdePlato(plato)
     const vinos = vinosDisponibles(vinosData || [])
     const flavorLectura = analizarFlavor(texto)
     const textoFlavor = consultaEnriquecidaFlavor(texto, flavorLectura)
@@ -179,6 +236,7 @@ export async function POST(request) {
 
     return Response.json({
       restaurante,
+      plato,
       consulta: texto,
       flavorLectura,
       actual,
@@ -190,4 +248,3 @@ export async function POST(request) {
     return Response.json({ error: 'Error ejecutando laboratorio de maridaje.' }, { status: 500 })
   }
 }
-
