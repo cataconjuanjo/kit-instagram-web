@@ -457,7 +457,6 @@ export async function POST(request) {
       const modosTexto = {
         botella: idioma === 'en' ? 'a single bottle for the whole table' : 'una sola botella para toda la mesa',
         copa: idioma === 'en' ? 'a glass for each dish' : 'una copa por plato',
-        progresion: idioma === 'en' ? 'a wine progression from lighter to fuller' : 'una progresión de menos a más cuerpo',
       }
 
       let prompt

@@ -63,7 +63,6 @@ const t = {
     paraMesa: 'Para toda la mesa',
     porCopas: 'Por copas',
     porPlato: 'Una por plato',
-    progresion: 'Progresión',
     variosOrden: 'Varios en orden',
     sucesionCopas: 'Sucesión copas',
     arcoPlato: 'Copa a copa, en arco',
@@ -129,7 +128,6 @@ const t = {
     paraMesa: 'For the whole table',
     porCopas: 'By the glass',
     porPlato: 'One per dish',
-    progresion: 'Progression',
     variosOrden: 'Several in order',
     sucesionCopas: 'Glass arc',
     arcoPlato: 'Glass by glass, in arc',
@@ -380,7 +378,6 @@ export default function CartaPublica({ params }) {
     const modosTexto = {
       botella: idioma === 'en' ? 'a single bottle that works well for the whole table' : 'una sola botella que funcione bien para toda la mesa',
       copa: idioma === 'en' ? 'a different glass for each dish' : 'una copa diferente para cada plato',
-      progresion: idioma === 'en' ? 'a wine progression from lighter to fuller body' : 'una progresión de vinos para toda la comida de menos a más cuerpo',
       sucesion: idioma === 'en'
         ? 'a harmonic glass succession: one BTG wine per dish building an aromatic arc from lighter to fuller'
         : 'sucesion_copas: una copa diferente por plato siguiendo un arco armónico de menos a más cuerpo — solo vinos disponibles por copa',
@@ -1729,7 +1726,6 @@ setPerfiles(nuevosPerfiles)
               {[
                 { id: 'botella', label: i.unaBotella, desc: i.paraMesa },
                 { id: 'copa', label: i.porCopas, desc: i.porPlato },
-                { id: 'progresion', label: i.progresion, desc: i.variosOrden },
                 { id: 'sucesion', label: i.sucesionCopas, desc: i.arcoPlato },
               ].map(m => (
                 <button
@@ -2161,7 +2157,6 @@ setPerfiles(nuevosPerfiles)
                   {[
                     { id: 'botella', label: i.unaBotella, desc: i.paraMesa },
                     { id: 'copa', label: i.porCopas, desc: i.porPlato },
-                    { id: 'progresion', label: i.progresion, desc: i.variosOrden },
                     { id: 'sucesion', label: i.sucesionCopas, desc: i.arcoPlato },
                   ].map(m => (
                     <button key={m.id} onClick={() => setModoMesa(m.id)} style={{
