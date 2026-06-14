@@ -176,6 +176,7 @@ FORMAT — exactly this, nothing more:
 [Wine name] — [1 sentence]. ${precioLabel}
 
 Each sentence: natural, sensory and specific, but not technical. Max 22 words.
+The sentence MUST reference the guest's actual dish or ingredient — NEVER the wine's generic uses ("ideal with seafood", "perfect with cheese", "great with rice"). If the wine appears because of one ingredient in a multi-dish context, name that ingredient.
 Plain text only. No asterisks, bold, lists or symbols.
 
 Current wine list:
@@ -221,6 +222,7 @@ FORMATO — exactamente esto, nada más:
 [Nombre del vino] — [1 frase]. ${precioLabelEs}
 
 La frase debe ser natural, sensorial y específica, pero no técnica. Máximo 22 palabras.
+La frase SIEMPRE menciona el plato o ingrediente concreto del cliente — NUNCA los usos genéricos del vino ("ideal para mariscos", "perfecto con queso", "va bien con arroces"). Si el vino aparece por un ingrediente concreto dentro de varios platos, nómbralo.
 Solo texto plano. Sin asteriscos, negritas, listas ni símbolos.
 
 Carta de vinos del restaurante:
