@@ -618,21 +618,29 @@ export default function CierreServicio() {
               <h2 className={styles.panelTitle}>Dudas de sala</h2>
               <p className={styles.panelSub}>Si un vino no convence, puede faltar argumento, precio o alternativa.</p>
             </div>
+            <span className={styles.badge}>{datos.dudas.length}</span>
           </div>
           <div className={styles.panelBody}>
-            {datos.porVino.filter(item => item.no_convence + item.otra > 0).length ? (
+            {datos.dudas.length ? (
               <div className={styles.itemStack}>
-                {datos.porVino.filter(item => item.no_convence + item.otra > 0).slice(0, 6).map(item => (
-                  <article className={styles.itemCard} key={item.vino_id || item.vino}>
+                {datos.dudas.slice(0, 8).map(evento => {
+                  const vino = vinos.find(item => String(item.id) === String(evento.parsed?.vino_id))
+                  return (
+                  <article className={styles.itemCard} key={evento.id}>
                     <div className={styles.sectionHead} style={{ margin: 0 }}>
                       <div>
-                        <h3 className={styles.sectionTitle}>{item.vino}</h3>
-                        <p className={styles.sectionText}>{item.no_convence} no convenció · {item.otra} pidió otra</p>
+                        <p className={styles.eyebrow}>{etiquetaResultado(evento.parsed?.resultado)}</p>
+                        <h3 className={styles.sectionTitle}>{evento.parsed?.vino || vino?.nombre || 'Vino'}</h3>
+                        <p className={styles.sectionText}>{evento.parsed?.plato || 'Sin contexto'}{vino?.precio_botella ? ` · ${vino.precio_botella} €` : ''}</p>
                       </div>
-                      <Link className={styles.ghost} href="/dashboard/vinos">Revisar</Link>
+                      <div className={styles.actionRow}>
+                        <button type="button" className={styles.primary} onClick={() => ocultarEvento(evento.id)}>Marcar revisada</button>
+                        <Link className={styles.ghost} href="/dashboard/vinos">Revisar vino</Link>
+                      </div>
                     </div>
                   </article>
-                ))}
+                  )
+                })}
               </div>
             ) : <div className={styles.empty}>Sin dudas marcadas hoy.</div>}
           </div>

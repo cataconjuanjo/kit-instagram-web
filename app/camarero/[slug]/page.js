@@ -28,6 +28,8 @@ export default function Camarero({ params }) {
   const [cargandoPerfiles, setCargandoPerfiles] = useState(false)
   const [consultaVenta, setConsultaVenta] = useState('')
   const [platosMesaVenta, setPlatosMesaVenta] = useState([])
+  const [vinoMandatoVenta, setVinoMandatoVenta] = useState(null)
+  const [busquedaVinoMandato, setBusquedaVinoMandato] = useState('')
   const [objetivoVenta, setObjetivoVenta] = useState('equilibrado')
   const [perfilClienteVenta, setPerfilClienteVenta] = useState(PERFIL_CLIENTE_NEUTRO)
   const [modoRecomendacionVenta, setModoRecomendacionVenta] = useState('platos')
@@ -504,6 +506,7 @@ export default function Camarero({ params }) {
   function cambiarConsultaVenta(valor) {
     setConsultaVenta(valor)
     setPlatosMesaVenta([])
+    setVinoMandatoVenta(null)
     setRotacionVenta(0)
   }
 
@@ -518,6 +521,8 @@ export default function Camarero({ params }) {
     setPerfilClienteVenta(PERFIL_CLIENTE_NEUTRO)
     setConsultaVenta('')
     setPlatosMesaVenta([])
+    setVinoMandatoVenta(null)
+    setBusquedaVinoMandato('')
     setMostrarAfinadoCliente(false)
     setRotacionVenta(0)
   }
@@ -542,17 +547,20 @@ export default function Camarero({ params }) {
       : [...platosMesaVenta, plato]
 
     setPlatosMesaVenta(nuevosPlatos)
+    setVinoMandatoVenta(null)
     setConsultaVenta(nuevosPlatos.map(consultaDesdePlato).join(', '))
     setRotacionVenta(0)
   }
 
   function consultaVentaActiva() {
+    if (modoRecomendacionVenta === 'vino' && vinoMandatoVenta) return vinoMandatoVenta.nombre
     return platosMesaVenta.length
       ? platosMesaVenta.map(consultaDesdePlato).join(', ')
       : consultaVenta
   }
 
   function consultasVentaActuales() {
+    if (modoRecomendacionVenta === 'vino' && vinoMandatoVenta) return [vinoMandatoVenta.nombre]
     if (platosMesaVenta.length) return platosMesaVenta.map(consultaDesdePlato)
     if (normalizar(consultaVenta).length > 1) return consultaVenta
       .split(',')
@@ -562,11 +570,27 @@ export default function Camarero({ params }) {
   }
 
   function hayConsultaVenta() {
+    if (modoRecomendacionVenta === 'vino') return Boolean(vinoMandatoVenta)
     return platosMesaVenta.length > 0 || normalizar(consultaVenta).length > 1 || tienePerfilClienteActivo()
   }
 
   function tienePerfilClienteActivo() {
     return perfilClienteVenta.bebe !== 'ninguno' || perfilClienteVenta.estilo !== 'ninguno' || perfilClienteVenta.gama !== 'auto'
+  }
+
+  function elegirVinoMandato(vino) {
+    setVinoMandatoVenta(vino)
+    setConsultaVenta(vino.nombre)
+    setPlatosMesaVenta([])
+    setPerfilClienteVenta(PERFIL_CLIENTE_NEUTRO)
+    setMostrarAfinadoCliente(false)
+    setRotacionVenta(0)
+  }
+
+  function limpiarVinoMandato() {
+    setVinoMandatoVenta(null)
+    setConsultaVenta('')
+    setRotacionVenta(0)
   }
 
   function consultaDesdePerfilCliente(perfil = perfilClienteVenta) {
@@ -1127,6 +1151,7 @@ export default function Camarero({ params }) {
   }
 
   function calcularRecomendacionesVenta() {
+    if (modoRecomendacionVenta === 'vino') return []
     if (!hayConsultaVenta()) return []
     if (consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta) return []
     let disponibles = vinos.filter(vino => esVinoElegibleParaObjetivo(vino))
@@ -1334,6 +1359,57 @@ export default function Camarero({ params }) {
     return lista
   }
 
+  function frasePlatoParaVino(plato, vino, motivo = '') {
+    const categoria = plato.categoria ? `${plato.categoria}. ` : ''
+    const base = motivo
+      ? motivo.replace(/;\s*/g, '. ')
+      : motivoMesaVenta(vino, 1, normalizar(consultaDesdePlato(plato)))
+    const frase = base.charAt(0).toUpperCase() + base.slice(1)
+    return `${categoria}${frase}.`
+  }
+
+  function calcularPlatosParaVinoMandato() {
+    if (!vinoMandatoVenta) return []
+    const precioMedio = precioMedioVinosVenta()
+    const rangoTicket = rangoBotellaParaTicket(Number(vinoMandatoVenta.precio_botella) || 0, precioMedio)
+    const candidatos = platosVenta
+      .map(plato => {
+        const consulta = consultaDesdePlato(plato)
+        const texto = normalizar(consulta)
+        const contexto = contextoVenta(texto)
+        const resultado = puntuarParaVenta(
+          vinoMandatoVenta,
+          capitulosParaConsulta(texto),
+          'vino_manda',
+          precioMedio,
+          contexto,
+          texto,
+          rangoTicket
+        )
+        if (plato?.familias_aromaticas?.familias?.length) {
+          const { bonus, motivo: motivoChartier, riesgos } = bonusChartierFamilias(vinoMandatoVenta, plato.familias_aromaticas.familias)
+          resultado.score += bonus
+          if (motivoChartier && bonus > 0) resultado.motivo = motivoChartier
+          if (riesgos?.length && bonus < 0) resultado.motivo = riesgos[0]
+        }
+        return {
+          plato,
+          vino: vinoMandatoVenta,
+          score: resultado.score,
+          compatible: resultado.compatible,
+          motivo: resultado.motivo,
+          fuente: resultado.fuente,
+        }
+      })
+      .filter(item => item.compatible && item.score >= 0)
+      .sort((a, b) => b.score - a.score)
+
+    return candidatos.slice(0, 6).map((item, index) => ({
+      ...item,
+      label: ['Mejor encaje', 'Segunda opcion', 'Alternativa segura', 'Opcion fresca', 'Opcion con cuerpo', 'Para compartir'][index] || `Opcion ${index + 1}`,
+    }))
+  }
+
   const consultaGrafoVenta = autenticado && vistaServicio === 'venta' && restaurante?.id && (platosMesaVenta.length > 0 || normalizar(consultaVenta).length > 1)
     ? (platosMesaVenta.length ? platosMesaVenta.map(consultaDesdePlato).join(', ') : consultaVenta)
     : ''
@@ -1386,6 +1462,7 @@ export default function Camarero({ params }) {
 
   const tipos = useMemo(() => ['todos', ...new Set(vinos.map(v => v.tipo))], [vinos])
   const recomendacionesVenta = autenticado && vistaServicio === 'venta' ? calcularRecomendacionesVenta() : []
+  const sugerenciasPlatosVino = autenticado && vistaServicio === 'venta' && modoRecomendacionVenta === 'vino' ? calcularPlatosParaVinoMandato() : []
   const lecturaActual = autenticado && vistaServicio === 'venta' ? lecturaMesaVenta() : null
   const ticketActualVenta = autenticado ? ticketMesaVenta() : 0
   const rangoActualVenta = rangoBotellaParaTicket(ticketActualVenta, precioMedioVinosVenta())
@@ -1399,7 +1476,14 @@ export default function Camarero({ params }) {
     return matchCategoria && matchBusqueda
   })
   const platosPanelAbierto = mostrarPlatosVenta || busquedaPlatoVenta.length > 0 || categoriaPlatoVenta !== 'todos'
-  const recomendacionPrincipal = recomendacionesVenta[0] || null
+  const vinosMandatoFiltrados = vinos
+    .filter(vino => vino?.activo !== false && vino?.stock !== 0 && precioBotella(vino) > 0)
+    .filter(vino => {
+      const texto = normalizar(`${vino.nombre || ''} ${vino.bodega || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.tipo || ''}`)
+      return !busquedaVinoMandato || texto.includes(normalizar(busquedaVinoMandato))
+    })
+    .slice(0, 30)
+  const recomendacionPrincipal = modoRecomendacionVenta === 'vino' ? null : recomendacionesVenta[0] || null
   const ultimasSenales = historialVenta.slice(0, 4)
   const accionesRapidasVenta = [
     { key: 'vendida', label: 'Vendida', helper: 'Cuenta para rentabilidad' },
@@ -1419,7 +1503,7 @@ export default function Camarero({ params }) {
   }), [vinos, busqueda, filtro])
 
   useEffect(() => {
-    if (!autenticado || vistaServicio !== 'venta' || !restaurante?.id || !hayConsultaVenta() || !recomendacionesVenta.length) return
+    if (!autenticado || vistaServicio !== 'venta' || modoRecomendacionVenta === 'vino' || !restaurante?.id || !hayConsultaVenta() || !recomendacionesVenta.length) return
 
     const consulta = consultaVentaActiva() || consultaDesdePerfilCliente()
     const firma = `${restaurante.id}|${consulta}|${objetivoVenta}|${perfilClienteVenta.bebe}|${perfilClienteVenta.estilo}|${perfilClienteVenta.gama}|${rotacionVenta}|${recomendacionesVenta.map(item => item.vino.id).join(',')}`
@@ -1447,7 +1531,7 @@ export default function Camarero({ params }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sala_token: salaToken, eventos }),
     })
-  }, [autenticado, vistaServicio, restaurante?.id, recomendacionesVenta, objetivoVenta, perfilClienteVenta, rotacionVenta, consultaVenta, platosMesaVenta, salaToken])
+  }, [autenticado, vistaServicio, modoRecomendacionVenta, restaurante?.id, recomendacionesVenta, objetivoVenta, perfilClienteVenta, rotacionVenta, consultaVenta, platosMesaVenta, salaToken])
 
   const cx = 150, cy = 150, r = 100
 
@@ -1674,12 +1758,16 @@ export default function Camarero({ params }) {
                   <h2 className={styles.panelTitle}>
                     {modoRecomendacionVenta === 'platos'
                       ? platosMesaVenta.length > 1 ? `${platosMesaVenta.length} platos` : 'Maridaje por platos'
-                      : 'Preferencias del cliente'}
+                      : modoRecomendacionVenta === 'vino'
+                        ? 'El vino manda'
+                        : 'Preferencias del cliente'}
                   </h2>
                   <p className={styles.panelSubtitle}>
                     {modoRecomendacionVenta === 'platos'
                       ? platosMesaVenta.length ? platosMesaVenta.map(p => p.nombre).join(' · ') : 'Selecciona la comida de la mesa'
-                      : 'Orienta la venta antes de elegir la comida'}
+                      : modoRecomendacionVenta === 'vino'
+                        ? vinoMandatoVenta ? vinoMandatoVenta.nombre : 'Elige la botella que el cliente quiere beber'
+                        : 'Orienta la venta antes de elegir la comida'}
                   </p>
                 </div>
                 <select aria-label="Objetivo de recomendacion" value={objetivoVenta} onChange={e => cambiarObjetivoVenta(e.target.value)} className={styles.select}>
@@ -1712,12 +1800,71 @@ export default function Camarero({ params }) {
                   >
                     Por preferencias
                   </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={modoRecomendacionVenta === 'vino'}
+                    onClick={() => cambiarModoRecomendacionVenta('vino')}
+                    className={`${styles.recommendModeTab} ${modoRecomendacionVenta === 'vino' ? styles.recommendModeTabActive : ''}`}
+                  >
+                    Vino manda
+                  </button>
                 </div>
                 <p className={styles.modeHint}>
                   {modoRecomendacionVenta === 'platos'
                     ? 'Elige uno o varios platos. Chartier y Goldstein buscan el vino que mejor acompana la mesa.'
-                    : 'Haz una o dos preguntas. La recomendacion parte de lo que busca el cliente.'}
+                    : modoRecomendacionVenta === 'vino'
+                      ? 'Primero eliges el vino. Despues la carta se ordena por los platos que mejor lo hacen brillar.'
+                      : 'Haz una o dos preguntas. La recomendacion parte de lo que busca el cliente.'}
                 </p>
+
+                {modoRecomendacionVenta === 'vino' && (
+                  <div className={styles.wineFirstBox}>
+                    <div className={styles.selectedHeader}>
+                      <div>
+                        <p className={styles.sectionLabel} style={{ margin: 0 }}>Botella elegida</p>
+                        <p className={styles.guideTitle}>{vinoMandatoVenta ? vinoMandatoVenta.nombre : 'Busca el vino que manda'}</p>
+                      </div>
+                      {vinoMandatoVenta && (
+                        <button type="button" onClick={limpiarVinoMandato} className={styles.plainButton}>
+                          Cambiar
+                        </button>
+                      )}
+                    </div>
+
+                    {vinoMandatoVenta ? (
+                      <button type="button" onClick={() => setVinoSeleccionado(vinoMandatoVenta)} className={styles.wineFirstSelected}>
+                        <span className={styles.dot} style={{ background: tipoDot[vinoMandatoVenta.tipo] || '#666' }} />
+                        <span>
+                          <strong>{vinoMandatoVenta.nombre}</strong>
+                          <em>{[tipoLabel[vinoMandatoVenta.tipo], vinoMandatoVenta.bodega, vinoMandatoVenta.precio_botella ? `${vinoMandatoVenta.precio_botella} EUR` : null].filter(Boolean).join(' Â· ')}</em>
+                        </span>
+                      </button>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          placeholder="Buscar vino"
+                          value={busquedaVinoMandato}
+                          onChange={e => setBusquedaVinoMandato(e.target.value)}
+                          className={styles.field}
+                          style={{ marginTop: 10 }}
+                        />
+                        <div className={styles.winePickList}>
+                          {vinosMandatoFiltrados.map(vino => (
+                            <button key={vino.id} type="button" onClick={() => elegirVinoMandato(vino)} className={styles.winePickButton}>
+                              <span className={styles.dot} style={{ background: tipoDot[vino.tipo] || '#666' }} />
+                              <span>
+                                <strong>{vino.nombre}</strong>
+                                <em>{[tipoLabel[vino.tipo], vino.bodega, vino.precio_botella ? `${vino.precio_botella} EUR` : null].filter(Boolean).join(' Â· ')}</em>
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {modoRecomendacionVenta === 'platos' && platosMesaVenta.length > 0 && (
                   <div className={styles.selectedBox}>
@@ -1887,16 +2034,18 @@ export default function Camarero({ params }) {
               <div className={styles.panelHeader}>
                 <div>
                   <p className={styles.eyebrow}>Recomendación</p>
-                  <h2 className={styles.panelTitle}>Vinos para vender</h2>
+                  <h2 className={styles.panelTitle}>{modoRecomendacionVenta === 'vino' ? 'Platos para ese vino' : 'Vinos para vender'}</h2>
                   <p className={styles.panelSubtitle}>
-                    {consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta
+                    {modoRecomendacionVenta === 'vino'
+                      ? vinoMandatoVenta ? 'La comida se adapta a la botella elegida' : 'Esperando vino elegido'
+                      : consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta
                       ? 'Cruzando grafo Chartier...'
                       : grafoVenta?.consulta === consultaGrafoVenta && grafoVenta?.candidatos?.length
                         ? 'Chartier + Goldstein activos'
                         : platosMesaVenta.length > 1 ? 'Botella puente para la mesa' : hayConsultaVenta() ? 'Tres opciones para la mesa' : 'Esperando seleccion'}
                   </p>
                 </div>
-                {recomendacionesVenta.length > 0 && (
+                {modoRecomendacionVenta !== 'vino' && recomendacionesVenta.length > 0 && (
                   <button type="button" onClick={() => setRotacionVenta(rotacionVenta + 1)} className={styles.primaryButton}>
                     Otras opciones
                   </button>
@@ -1965,6 +2114,23 @@ export default function Camarero({ params }) {
                   </div>
                 )}
 
+                {modoRecomendacionVenta === 'vino' && sugerenciasPlatosVino.length > 0 && (
+                  <div className={styles.dishRecommendGrid}>
+                    {sugerenciasPlatosVino.map(item => (
+                      <article key={item.plato.id || item.plato.nombre} className={styles.dishRecommendCard}>
+                        <div className={styles.recommendMeta}>
+                          <span className={styles.tag}>{item.label}</span>
+                          {item.plato.precio && <span className={styles.price}>{Number(item.plato.precio).toFixed(2)} EUR</span>}
+                        </div>
+                        <h3>{item.plato.nombre}</h3>
+                        {item.plato.descripcion && <p className={styles.dishDescription}>{item.plato.descripcion}</p>}
+                        <p className={styles.reason}>{frasePlatoParaVino(item.plato, item.vino, item.motivo)}</p>
+                        <p className={styles.statusLine}>{item.fuente}</p>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
                 {recomendacionesVenta.length > 0 ? (
                   <div className={styles.recommendGrid}>
                     {recomendacionesVenta.map(item => (
@@ -1981,9 +2147,13 @@ export default function Camarero({ params }) {
                       />
                     ))}
                   </div>
-                ) : (
+                ) : modoRecomendacionVenta === 'vino' && sugerenciasPlatosVino.length > 0 ? null : (
                   <p className={styles.emptyState}>
-                    {consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta
+                    {modoRecomendacionVenta === 'vino'
+                      ? vinoMandatoVenta
+                        ? 'No encuentro platos suficientemente seguros para ese vino en la carta activa.'
+                        : 'Elige un vino de la carta para ver que platos le van mejor y por que.'
+                      : consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta
                       ? 'Validando compatibilidad...'
                       : perfilClienteVenta.estilo === 'local'
                         ? 'No hay vinos de la zona compatibles con el plato y los filtros elegidos.'
@@ -1995,7 +2165,7 @@ export default function Camarero({ params }) {
                   </p>
                 )}
 
-                {lecturaActual && (
+                {modoRecomendacionVenta !== 'vino' && lecturaActual && (
                   <details className={styles.salesNote}>
                     <summary className={styles.salesNoteSummary}>Ver por que encajan</summary>
                     <div className={styles.salesNoteBody}>

@@ -65,7 +65,7 @@ export default function AdminLayout({ children }) {
       <nav className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <div className={styles.brandIdentity}>
-            <span className={styles.brandMark}>CV</span>
+            <img className={styles.brandMark} src="/brand/carta-viva/isotipo-dark.svg" alt="Carta Viva" />
             <div className={styles.brandText}>
               <p className={styles.brandLabel}>Panel consultor</p>
               <p className={styles.brandName}>Carta Viva</p>

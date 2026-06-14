@@ -68,8 +68,8 @@ export default function Bienvenida() {
     return (
       <main className="login-page">
         <section className="login-brand-panel">
-          <Link href="/" className="brand login-brand">
-            <span>Carta Viva</span>
+          <Link href="/cartavinos" className="brand login-brand login-brand-logo">
+            <img src="/brand/carta-viva/logo-horizontal-negative.png" alt="Carta Viva" />
             <small>por Cata con Juanjo</small>
           </Link>
         </section>
@@ -87,8 +87,8 @@ export default function Bienvenida() {
     return (
       <main className="login-page">
         <section className="login-brand-panel">
-          <Link href="/" className="brand login-brand">
-            <span>Carta Viva</span>
+          <Link href="/cartavinos" className="brand login-brand login-brand-logo">
+            <img src="/brand/carta-viva/logo-horizontal-negative.png" alt="Carta Viva" />
             <small>por Cata con Juanjo</small>
           </Link>
         </section>
@@ -116,8 +116,8 @@ export default function Bienvenida() {
     return (
       <main className="login-page">
         <section className="login-brand-panel">
-          <Link href="/" className="brand login-brand">
-            <span>Carta Viva</span>
+          <Link href="/cartavinos" className="brand login-brand login-brand-logo">
+            <img src="/brand/carta-viva/logo-horizontal-negative.png" alt="Carta Viva" />
             <small>por Cata con Juanjo</small>
           </Link>
           <div className="login-brand-copy">
@@ -143,8 +143,8 @@ export default function Bienvenida() {
   return (
     <main className="login-page">
       <section className="login-brand-panel">
-        <Link href="/" className="brand login-brand">
-          <span>Carta Viva</span>
+        <Link href="/cartavinos" className="brand login-brand login-brand-logo">
+          <img src="/brand/carta-viva/logo-horizontal-negative.png" alt="Carta Viva" />
           <small>por Cata con Juanjo</small>
         </Link>
         <div className="login-brand-copy">

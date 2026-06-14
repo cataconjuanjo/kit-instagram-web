@@ -974,7 +974,7 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   align-items: stretch;
-  min-height: 470px;
+  min-height: 320px;
   overflow: hidden;
   border: 1px solid rgba(83, 24, 39, 0.18);
   border-radius: 8px;
@@ -990,12 +990,7 @@
 }
 
 .cellarHero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 20% 18%, rgba(201, 169, 93, 0.2), transparent 28%);
-  pointer-events: none;
+  content: none;
 }
 
 .cellarHeroCopy {
@@ -1013,7 +1008,7 @@
   margin: 0;
   color: #fffaf3;
   font-family: Georgia, serif;
-  font-size: 40px;
+  font-size: 34px;
   font-weight: 400;
   line-height: 1.04;
 }
@@ -1074,7 +1069,7 @@
 }
 
 .cellarPage .statsGrid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .cellarPage .stat {
@@ -1275,6 +1270,112 @@ button.itemCard {
 .itemStack {
   display: grid;
   gap: 10px;
+}
+
+.quickActionBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: -2px 0 16px;
+  border: 1px solid #dfddd6;
+  border-radius: 8px;
+  background: #fffaf3;
+  padding: 12px;
+}
+
+.pendingStrip {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.42fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 16px;
+  border: 1px solid #dfddd6;
+  border-radius: 8px;
+  background: #fffaf3;
+  padding: 16px;
+}
+
+.pendingStrip h2 {
+  margin: 0;
+  color: #171416;
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.pendingStrip p:not(.eyebrow) {
+  margin: 6px 0 0;
+  color: #706a64;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pendingGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pendingItem,
+.pendingItemActive {
+  min-height: 92px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  border: 1px solid #e5ded1;
+  border-radius: 8px;
+  background: #f8f4ea;
+  color: #171416;
+  padding: 10px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.pendingItemActive {
+  border-color: #531827;
+  background: #531827;
+  color: #fffaf3;
+}
+
+.pendingItem strong,
+.pendingItemActive strong {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.pendingItem span,
+.pendingItemActive span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.pendingItem small,
+.pendingItemActive small {
+  color: #706a64;
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.pendingItemActive small {
+  color: rgba(255, 250, 243, 0.66);
+}
+
+.advancedDetails {
+  grid-column: 1 / -1;
+  border: 1px solid #eee6da;
+  border-radius: 8px;
+  background: #fffaf3;
+  padding: 10px 12px;
+}
+
+.advancedDetails summary {
+  cursor: pointer;
+  color: #531827;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .hubGrid {
@@ -2332,7 +2433,8 @@ button.itemCard {
   .gridTwo,
   .hubGrid,
   .qrLayout,
-  .helpBox {
+  .helpBox,
+  .pendingStrip {
     grid-template-columns: 1fr;
   }
 
@@ -2343,7 +2445,8 @@ button.itemCard {
   .statsGridFive,
   .formGrid,
   .formGridThree,
-  .helpGrid {
+  .helpGrid,
+  .pendingGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -2496,6 +2599,10 @@ button.itemCard {
 }
 
 @media (max-width: 640px) {
+  .pendingGrid {
+    grid-template-columns: 1fr;
+  }
+
   .topbar {
     align-items: flex-start;
     flex-direction: column;

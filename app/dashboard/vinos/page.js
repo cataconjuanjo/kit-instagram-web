@@ -601,6 +601,19 @@ async function aplicarAccionMasiva() {
   const rangoVinos = vinosVisibles.length === 0 ? '0' : `${inicioVinos + 1}-${inicioVinos + vinosPagina.length}`
   const cabeceraVinos = ['Nombre', 'Bodega', 'Region', 'Tipo', 'Uva', 'Anada', 'Precio copa', 'Precio botella', 'Stock', 'Proveedor', 'Estado']
   const csvVinos = [cabeceraVinos, ...vinosVisibles.map(vinoComoFila)].map(fila => fila.map(csvValor).join(',')).join('\n')
+  const vinosActivos = vinos.filter(vino => vino.activo !== false)
+  const vinosSinPrecio = vinosActivos.filter(vino => !Number(vino.precio_botella))
+  const vinosSinPerfil = vinosActivos.filter(vino => !vino.notas_cata || vino.notas_cata.length < 12)
+  const vinosSinStock = vinosActivos.filter(vino => Number(vino.stock) <= 0)
+  const vinosSinCoste = vinosActivos.filter(vino => !Number(vino.coste_compra))
+  const vinosSinProveedor = vinosActivos.filter(vino => !String(vino.proveedor || '').trim())
+  const pendientesVinos = [
+    { label: 'Sin precio', count: vinosSinPrecio.length, href: '?filtro=pendientes', filter: 'pendientes', text: 'Bloquea publicacion y venta.' },
+    { label: 'Sin perfil', count: vinosSinPerfil.length, href: '?filtro=pendientes', filter: 'pendientes', text: 'Debilita maridaje y modo camarero.' },
+    { label: 'Sin stock', count: vinosSinStock.length, href: '?filtro=sin_stock', filter: 'sin_stock', text: 'Puede crear incidencias en sala.' },
+    { label: 'Sin coste', count: vinosSinCoste.length, href: '?filtro=sin_coste', filter: 'sin_coste', text: 'Impide leer margen real.' },
+    { label: 'Sin proveedor', count: vinosSinProveedor.length, href: '?filtro=sin_proveedor', filter: 'sin_proveedor', text: 'Complica el pedido.' },
+  ]
 
   async function copiarVinos() {
     const texto = [cabeceraVinos, ...vinosVisibles.map(vinoComoFila)].map(fila => fila.join('\t')).join('\n')
@@ -651,6 +664,28 @@ async function aplicarAccionMasiva() {
     >
       <div className={styles.winePage}>
         {errorBodega && <div className={styles.empty} style={{ minHeight: 70, marginBottom: 16, color: '#9b3535' }}>{errorBodega}</div>}
+        <section className={styles.pendingStrip}>
+          <div>
+            <p className={styles.eyebrow}>Cola de mejora</p>
+            <h2>Lo que hace que la carta venda mejor</h2>
+            <p>Precio, perfil y stock primero. Coste y proveedor afinan bodega y margen.</p>
+          </div>
+          <div className={styles.pendingGrid}>
+            {pendientesVinos.map(item => (
+              <button
+                key={item.label}
+                type="button"
+                className={filtroVinos === item.filter ? styles.pendingItemActive : styles.pendingItem}
+                onClick={() => setFiltroVinos(item.filter)}
+              >
+                <strong>{item.count}</strong>
+                <span>{item.label}</span>
+                <small>{item.text}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+
         {mostrarImportador && (
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
             <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>Importar carta de vinos</p>
@@ -735,9 +770,6 @@ async function aplicarAccionMasiva() {
               {campo('Precio copa (€)', 'precio_copa', '4.00', 'number')}
               {campo('Precio botella (€)', 'precio_botella', '22.00', 'number')}
               {campo('Stock', 'stock', '12', 'number')}
-              {campo('Coste compra (€)', 'coste_compra', '8.50', 'number')}
-              {campo('Stock mínimo', 'stock_minimo', '3', 'number')}
-              {campo('Proveedor', 'proveedor', 'Distribuidor habitual')}
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Notas de cata y venta</label>
                 <textarea
@@ -749,6 +781,14 @@ async function aplicarAccionMasiva() {
                 />
               </div>
               <PerfilVino vino={nuevoVino} onChange={setNuevoVino} />
+              <details className={styles.advancedDetails}>
+                <summary>Bodega avanzada</summary>
+                <div className={styles.wineFormGrid} style={{ marginTop: 12 }}>
+                  {campo('Coste compra (€)', 'coste_compra', '8.50', 'number')}
+                  {campo('Stock mínimo', 'stock_minimo', '3', 'number')}
+                  {campo('Proveedor', 'proveedor', 'Distribuidor habitual')}
+                </div>
+              </details>
             </div>
             <button data-shortcut-save="true" onClick={añadirVino} disabled={generandoCata} style={{ background: generandoCata ? '#888' : '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: generandoCata ? 'not-allowed' : 'pointer' }}>
   {generandoCata ? 'Generando notas de cata...' : 'Guardar vino'}
@@ -950,9 +990,6 @@ async function aplicarAccionMasiva() {
                       { label: 'Añada', key: 'anada' },
                       { label: 'Precio copa (€)', key: 'precio_copa' },
                       { label: 'Precio botella (€)', key: 'precio_botella' },
-                      { label: 'Coste compra (€)', key: 'coste_compra' },
-                      { label: 'Stock mínimo', key: 'stock_minimo' },
-                      { label: 'Proveedor', key: 'proveedor' },
                     ].map(f => (
                       <div key={f.key}>
                         <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{f.label}</label>
@@ -965,6 +1002,27 @@ async function aplicarAccionMasiva() {
                         />
                       </div>
                     ))}
+                    <details className={styles.advancedDetails}>
+                      <summary>Bodega avanzada</summary>
+                      <div className={styles.wineFormGrid} style={{ marginTop: 12 }}>
+                        {[
+                          { label: 'Coste compra (€)', key: 'coste_compra' },
+                          { label: 'Stock mínimo', key: 'stock_minimo' },
+                          { label: 'Proveedor', key: 'proveedor' },
+                        ].map(f => (
+                          <div key={f.key}>
+                            <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{f.label}</label>
+                            <input
+                              type="text"
+                              value={editandoVino[f.key] || ''}
+                              onChange={e => setEditandoVino({ ...editandoVino, [f.key]: e.target.value })}
+                              list={f.key === 'proveedor' ? 'proveedores-vino' : undefined}
+                              style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, boxSizing: 'border-box', outline: 'none', background: 'transparent', color: '#111' }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </details>
                     <div>
                       <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Tipo *</label>
                       <select value={editandoVino.tipo} onChange={e => setEditandoVino({ ...editandoVino, tipo: e.target.value })}

@@ -162,14 +162,6 @@ export default function DashboardLayout({ children }) {
   const isActive = (href, exact = false) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
 
-  const inicialesRestaurante = (restaurante?.nombre || 'CV')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(palabra => palabra[0])
-    .join('')
-    .toUpperCase()
-
   const planVisible = restaurante ? nombrePlan(restaurante) : ''
 
   const navItems = [
@@ -239,7 +231,7 @@ export default function DashboardLayout({ children }) {
             {restaurante?.logo_url ? (
               <img className={styles.brandLogo} src={restaurante.logo_url} alt={restaurante.nombre || 'Logo restaurante'} loading="lazy" />
             ) : (
-              <span className={styles.brandLogoFallback}>{inicialesRestaurante}</span>
+              <img className={styles.brandLogo} src="/brand/carta-viva/isotipo-dark.svg" alt="Carta Viva" />
             )}
             <div className={styles.brandText}>
               <p className={styles.brandLabel}>Panel restaurante</p>

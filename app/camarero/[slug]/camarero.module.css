@@ -309,7 +309,7 @@
 
 .recommendModeTabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
   background: #e8ece7;
@@ -339,6 +339,67 @@
   color: #687078;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.wineFirstBox {
+  margin-top: 14px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #e0e4df;
+  border-radius: 8px;
+}
+
+.wineFirstSelected,
+.winePickButton {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  border: 1px solid #d9ded7;
+  border-radius: 8px;
+  background: #f7f7f2;
+  color: #17191d;
+  cursor: pointer;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.wineFirstSelected {
+  margin-top: 10px;
+  background: #eef6f3;
+  border-color: #b9d8ce;
+}
+
+.wineFirstSelected strong,
+.winePickButton strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.wineFirstSelected em,
+.winePickButton em {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #747a80;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.winePickList {
+  display: grid;
+  gap: 7px;
+  max-height: 260px;
+  overflow: auto;
+  margin-top: 10px;
+  padding-right: 2px;
 }
 
 .refineButton {
@@ -547,6 +608,35 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+}
+
+.dishRecommendGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dishRecommendCard {
+  min-height: 210px;
+  border: 1px solid #343b44;
+  border-radius: 8px;
+  background: #101318;
+  color: #f7f7f2;
+  padding: 13px;
+}
+
+.dishRecommendCard h3 {
+  margin: 10px 0 0;
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.dishDescription {
+  margin: 8px 0 0;
+  color: #8f98a3;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .serviceToast {
@@ -1086,6 +1176,7 @@
 
   .serviceGrid,
   .recommendGrid,
+  .dishRecommendGrid,
   .quickActionGrid,
   .noteGrid,
   .bodegaControls {
@@ -1103,6 +1194,7 @@
   }
 
   .dishGrid,
+  .dishRecommendGrid,
   .statsGrid,
   .rangeGrid {
     grid-template-columns: 1fr;

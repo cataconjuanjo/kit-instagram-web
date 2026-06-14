@@ -85,6 +85,111 @@
   padding: 28px 24px 48px;
 }
 
+.priorityPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.42fr);
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 16px;
+  border: 1px solid #ddd6cb;
+  border-left: 5px solid #8B3F5C;
+  border-radius: 8px;
+  background: #fffdf8;
+  padding: 20px;
+}
+
+.priorityPanel h1 {
+  margin: 0;
+  color: #222222;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.12;
+}
+
+.priorityPanel p {
+  margin: 8px 0 0;
+  color: #625a53;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.prioritySide {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.prioritySide span {
+  color: #625a53;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.prioritySide a {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #222222;
+  color: #ffffff;
+  padding: 0 14px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.todayActions {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 16px;
+  border: 1px solid #e4ddd2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.todayActions h2 {
+  margin: 0;
+  color: #222222;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.todayActionList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.todayActionList a {
+  display: grid;
+  gap: 6px;
+  min-height: 72px;
+  border: 1px solid #e4ddd2;
+  border-radius: 8px;
+  background: #F8F7F4;
+  color: #222222;
+  padding: 12px;
+  text-decoration: none;
+}
+
+.todayActionList span {
+  color: #8B3F5C;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.todayActionList strong {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
 .onboardingPanel {
   background: #fffaf3;
   border: 1px solid #dfddd6;
@@ -329,6 +434,33 @@
   font-size: 16px;
   font-weight: 850;
   line-height: 1;
+}
+
+.healthToggle {
+  min-height: 38px;
+  border: 1px solid #d8c898;
+  border-radius: 8px;
+  background: #f8f4ea;
+  color: #531827;
+  padding: 0 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.healthDetail {
+  margin-top: 14px;
+  border-top: 1px solid rgba(23, 20, 22, 0.08);
+  padding-top: 14px;
+}
+
+.healthDetail > p {
+  margin: 12px 0 0;
+  color: #6c6761;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .helpInline {
@@ -1124,6 +1256,23 @@
 }
 
 @media (max-width: 980px) {
+  .priorityPanel,
+  .todayActions {
+    grid-template-columns: 1fr;
+  }
+
+  .prioritySide {
+    justify-items: start;
+  }
+
+  .prioritySide span {
+    text-align: left;
+  }
+
+  .todayActionList {
+    grid-template-columns: 1fr;
+  }
+
   .summary,
   .mainGrid,
   .shiftCard {
@@ -1171,6 +1320,23 @@
 
   .wrap {
     padding: 18px 12px 36px;
+  }
+
+  .priorityPanel {
+    padding: 16px;
+  }
+
+  .priorityPanel h1 {
+    font-size: 22px;
+  }
+
+  .healthHead {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .healthToggle {
+    width: fit-content;
   }
 
   .heroTitle {

@@ -109,6 +109,54 @@ textarea {
   text-decoration: none;
 }
 
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.brand-logo img {
+  display: block;
+  width: clamp(210px, 22vw, 340px);
+  height: auto;
+}
+
+.brand-lockup-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.brand-lockup-copy strong {
+  display: block;
+  color: var(--ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.25rem, 2vw, 1.72rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.brand-lockup-copy strong span {
+  font: inherit;
+  color: inherit;
+}
+
+.brand-lockup-copy strong em {
+  color: var(--wine);
+  font-style: normal;
+}
+
+.brand-lockup-copy small {
+  display: block;
+  color: var(--gold);
+  font-size: clamp(0.56rem, 0.8vw, 0.68rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .brand span {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 1.28rem;
@@ -120,6 +168,19 @@ textarea {
   font-size: 0.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.brand.brand-logo .brand-lockup-copy small {
+  color: var(--gold);
+  font-size: clamp(0.56rem, 0.8vw, 0.68rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+}
+
+.login-brand-logo .brand-lockup-copy small {
+  color: var(--gold);
+  font-size: clamp(0.62rem, 1vw, 0.78rem);
 }
 
 .navlinks {
@@ -1666,6 +1727,39 @@ h3 {
   color: #fff;
 }
 
+.login-brand-logo {
+  width: fit-content;
+  display: grid;
+  gap: 10px;
+}
+
+.login-brand-logo img {
+  display: block;
+  width: min(420px, 76vw);
+  height: auto;
+  filter: drop-shadow(0 12px 30px rgba(0,0,0,0.2));
+}
+
+.login-brand-logo > small:last-child {
+  grid-column: auto;
+}
+
+.login-brand-logo .brand-lockup-copy strong {
+  color: #fffaf0;
+  font-size: clamp(1.55rem, 3vw, 2.35rem);
+  text-shadow: 0 8px 26px rgba(0,0,0,0.24);
+}
+
+.login-brand-logo .brand-lockup-copy strong em {
+  color: #c23b61;
+}
+
+.login-brand-logo .brand-lockup-copy small {
+  color: var(--gold);
+  font-size: clamp(0.62rem, 1vw, 0.78rem);
+  letter-spacing: 0.08em;
+}
+
 .login-brand small {
   color: rgba(255,255,255,0.48);
 }
@@ -1673,7 +1767,9 @@ h3 {
 .login-brand-copy {
   position: relative;
   z-index: 1;
-  max-width: 720px;
+  max-width: 620px;
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 .login-brand-copy .eyebrow {
@@ -1681,15 +1777,16 @@ h3 {
 }
 
 .login-brand-copy h1 {
-  font-size: clamp(3rem, 7vw, 6.2rem);
-  line-height: 0.96;
+  max-width: 610px;
+  font-size: clamp(3.4rem, 7vw, 6.4rem);
+  line-height: 0.94;
 }
 
 .login-brand-copy p:not(.eyebrow) {
   max-width: 560px;
   color: rgba(255,255,255,0.68);
-  font-size: 1.05rem;
-  line-height: 1.75;
+  font-size: 1.08rem;
+  line-height: 1.7;
 }
 
 .login-proof {
@@ -1718,14 +1815,12 @@ h3 {
 }
 
 .login-card {
-  width: min(100%, 430px);
+  width: min(100%, 460px);
   display: grid;
-  gap: 18px;
-  padding: clamp(28px, 4vw, 42px);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(255,255,255,0.74);
-  box-shadow: 0 22px 70px rgba(35, 20, 12, 0.1);
+  gap: 20px;
+  padding: clamp(30px, 4vw, 46px);
+  border-left: 3px solid var(--wine);
+  background: rgba(255,250,240,0.62);
 }
 
 .login-kicker {
@@ -1739,7 +1834,8 @@ h3 {
 
 .login-card h2 {
   margin: 0;
-  font-size: clamp(2rem, 4vw, 2.7rem);
+  font-size: clamp(2.2rem, 4vw, 3rem);
+  line-height: 1.05;
 }
 
 .login-muted {
@@ -6821,12 +6917,11 @@ h3 {
   border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 
-.asng-brand strong {
+.asng-brand img {
   display: block;
-  color: #fff;
-  font-size: 0.88rem;
-  font-weight: 950;
-  letter-spacing: -0.01em;
+  width: 150px;
+  height: auto;
+  margin-bottom: 8px;
 }
 
 .asng-brand span {

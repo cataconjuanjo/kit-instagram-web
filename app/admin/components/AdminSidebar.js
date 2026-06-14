@@ -23,7 +23,7 @@ export default function AdminSidebar() {
   return (
     <aside className="admin-sidebar admin-sidebar-ng">
       <div className="asng-brand">
-        <strong>Carta Viva</strong>
+        <img src="/brand/carta-viva/logo-horizontal-dark.svg" alt="Carta Viva" />
         <span>Panel consultor</span>
       </div>
 

@@ -17,6 +17,7 @@ export default function CartaHub() {
   const [restaurante, setRestaurante] = useState(null)
   const [vinos, setVinos] = useState([])
   const [platos, setPlatos] = useState([])
+  const [seleccion, setSeleccion] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,12 +27,14 @@ export default function CartaHub() {
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
-        const [{ data: vinosData }, { data: platosData }] = await Promise.all([
+        const [{ data: vinosData }, { data: platosData }, { data: seleccionData }] = await Promise.all([
           supabase.from('vinos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
           supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
+          supabase.from('seleccion_especial').select('*').eq('restaurante_id', rest.id).eq('activo', true),
         ])
         setVinos(vinosData || [])
         setPlatos(platosData || [])
+        setSeleccion(seleccionData || [])
       }
       setLoading(false)
     }
@@ -46,6 +49,7 @@ export default function CartaHub() {
   const platosSinDescripcion = platos.filter(plato => !plato.descripcion || plato.descripcion.length < 8)
   const platosSinPrecio = platos.filter(plato => !Number(plato.precio))
   const pendientesCarta = vinosSinPrecio.length + vinosSinPerfil.length + platosSinDescripcion.length + platosSinPrecio.length
+  const pendientesMotor = vinosSinPerfil.length + platosSinDescripcion.length
   const calidadVinos = Math.round((porcentaje(vinos.length - vinosSinPrecio.length, vinos.length) * 0.45) + (porcentaje(vinos.length - vinosSinPerfil.length, vinos.length) * 0.45) + (porcentaje(vinos.length - vinosSinStock.length, vinos.length) * 0.1))
   const calidadPlatos = Math.round((porcentaje(platos.length - platosSinDescripcion.length, platos.length) * 0.65) + (porcentaje(platos.length - platosSinPrecio.length, platos.length) * 0.35))
   const calidadPublicacion = Math.round((calidadVinos * 0.58) + (calidadPlatos * 0.42))
@@ -53,14 +57,21 @@ export default function CartaHub() {
   const checklist = [
     { titulo: 'Vinos con precio', valor: vinos.length - vinosSinPrecio.length, total: vinos.length, href: '/dashboard/vinos?filtro=pendientes' },
     { titulo: 'Vinos con perfil de venta', valor: vinos.length - vinosSinPerfil.length, total: vinos.length, href: '/dashboard/vinos?filtro=pendientes' },
-    { titulo: 'Platos con descripcion interna', valor: platos.length - platosSinDescripcion.length, total: platos.length, href: '/dashboard/platos?filtro=descripcion' },
-    { titulo: 'Platos con precio', valor: platos.length - platosSinPrecio.length, total: platos.length, href: '/dashboard/platos' },
+    { titulo: 'Platos con pistas de venta', valor: platos.length - platosSinDescripcion.length, total: platos.length, href: '/dashboard/platos?filtro=descripcion' },
+    { titulo: 'Platos con precio', valor: platos.length - platosSinPrecio.length, total: platos.length, href: '/dashboard/platos?filtro=sin_precio' },
   ]
   const pendientesPrioritarios = [
-    ...vinosSinPrecio.slice(0, 3).map(vino => ({ tipo: 'Precio vino', nombre: vino.nombre, href: '/dashboard/vinos?filtro=pendientes' })),
-    ...vinosSinPerfil.slice(0, 3).map(vino => ({ tipo: 'Perfil vino', nombre: vino.nombre, href: '/dashboard/vinos?filtro=pendientes' })),
-    ...platosSinDescripcion.slice(0, 3).map(plato => ({ tipo: 'Descripcion interna', nombre: plato.nombre, href: '/dashboard/platos?filtro=descripcion' })),
+    ...vinosSinPrecio.slice(0, 3).map(vino => ({ tipo: 'Publicacion', nombre: vino.nombre, detalle: 'Vino sin precio', href: '/dashboard/vinos?filtro=pendientes' })),
+    ...platosSinPrecio.slice(0, 2).map(plato => ({ tipo: 'Publicacion', nombre: plato.nombre, detalle: 'Plato sin precio', href: '/dashboard/platos?filtro=sin_precio' })),
+    ...vinosSinPerfil.slice(0, 3).map(vino => ({ tipo: 'Recomendacion', nombre: vino.nombre, detalle: 'Falta perfil de venta', href: '/dashboard/vinos?filtro=pendientes' })),
+    ...platosSinDescripcion.slice(0, 3).map(plato => ({ tipo: 'Recomendacion', nombre: plato.nombre, detalle: 'Faltan pistas para maridar', href: '/dashboard/platos?filtro=descripcion' })),
   ].slice(0, 5)
+  const accionesRapidas = [
+    { label: 'Importar vinos', href: '/dashboard/vinos?importar=1' },
+    { label: 'Añadir vino', href: '/dashboard/vinos?new=1' },
+    { label: 'Importar platos', href: '/dashboard/platos?importar=1' },
+    { label: 'Vino destacado', href: '/dashboard/seleccion' },
+  ]
 
   return (
     <ModuleShell
@@ -88,7 +99,13 @@ export default function CartaHub() {
         <div className={styles.stat}><p className={styles.statValue}>{vinos.length}</p><p className={styles.statLabel}>Vinos activos</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{platos.length}</p><p className={styles.statLabel}>Platos activos</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{calidadPublicacion}%</p><p className={styles.statLabel}>{estadoPublicacion}</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{pendientesCarta}</p><p className={styles.statLabel}>Datos a completar</p></div>
+        <div className={styles.stat}><p className={styles.statValue}>{pendientesMotor}</p><p className={styles.statLabel}>Faltan para recomendar</p></div>
+      </section>
+
+      <section className={styles.quickActionBar} aria-label="Acciones rapidas de carta">
+        {accionesRapidas.map(accion => (
+          <Link key={accion.href} className={styles.secondary} href={accion.href}>{accion.label}</Link>
+        ))}
       </section>
 
       <section className={pendientesCarta ? styles.panelDark : styles.panel} style={{ marginBottom: 16 }}>
@@ -123,6 +140,7 @@ export default function CartaHub() {
                 <Link key={`${item.tipo}-${item.nombre}`} href={item.href} className={styles.itemCard}>
                   <p className={styles.eyebrow}>{item.tipo}</p>
                   <h3 className={styles.sectionTitle}>{item.nombre}</h3>
+                  <p className={styles.sectionText}>{item.detalle}</p>
                 </Link>
               )) : (
                 <div className={styles.empty}>La carta no tiene pendientes críticos para publicar.</div>
@@ -142,14 +160,14 @@ export default function CartaHub() {
         <Link className={styles.hubCard} href="/dashboard/platos">
           <p className={styles.eyebrow}>Maridaje</p>
           <h2>Platos</h2>
-          <p>Carta de comida, categorias y pistas internas para que la recomendacion encaje.</p>
-          <span>{platosSinDescripcion.length} necesitan descripcion interna</span>
+          <p>Carta de comida, categorias y pistas de venta para que la recomendacion encaje.</p>
+          <span>{platosSinDescripcion.length} necesitan pistas de venta</span>
         </Link>
         <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/seleccion">
           <p className={styles.eyebrow}>Escaparate</p>
           <h2>Sugerencia de la casa</h2>
           <p>La Selección Juanjo la mantiene el consultor. Aquí podéis añadir una recomendación propia del restaurante.</p>
-          <span>1 vino recomendado</span>
+          <span>{seleccion.length}/1 vino recomendado</span>
         </Link>
       </section>
     </ModuleShell>

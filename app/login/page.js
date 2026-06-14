@@ -36,8 +36,8 @@ export default function Login() {
   return (
     <main className="login-page">
       <section className="login-brand-panel">
-        <Link href="/" className="brand login-brand">
-          <span>Cata con Juanjo</span>
+        <Link href="/cartavinos" className="brand login-brand login-brand-logo">
+          <img src="/brand/carta-viva/logo-horizontal-negative.png" alt="Carta Viva" />
           <small>Volver a la web</small>
         </Link>
         <div className="login-brand-copy">

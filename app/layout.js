@@ -9,15 +9,31 @@ export const viewport = {
 
 export const metadata = {
   metadataBase: new URL('https://cataconjuanjo.com'),
+  applicationName: 'Carta Viva',
+  manifest: '/manifest.webmanifest',
   title: {
     default: 'Cata con Juanjo · Consultoría de vino para restaurantes',
     template: '%s · Cata con Juanjo',
   },
   description: 'Consultoría de vino para restaurantes, hoteles y hospitality. Cartas rentables, formación de sala y Carta Viva: carta digital con QR y guía de maridaje.',
+  appleWebApp: {
+    capable: true,
+    title: 'Carta Viva',
+    statusBarStyle: 'black',
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
-    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
-    shortcut: '/icon.svg',
-    apple: '/apple-icon.svg',
+    icon: [
+      { url: '/brand/carta-viva/icons/favicon.svg', type: 'image/svg+xml' },
+      { url: '/brand/carta-viva/icons/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/brand/carta-viva/icons/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    shortcut: '/brand/carta-viva/icons/favicon.svg',
+    apple: [
+      { url: '/brand/carta-viva/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   openGraph: {
     title: 'Cata con Juanjo · Consultoría de vino hospitality',

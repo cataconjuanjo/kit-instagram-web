@@ -8,8 +8,8 @@ export const metadata = {
 export default function Privacidad() {
   return (
     <main className="legal-page">
-      <Link href="/" className="brand">
-        <span>Cata con Juanjo</span>
+      <Link href="/cartavinos" className="brand brand-logo">
+        <img src="/brand/carta-viva/logo-horizontal.svg" alt="Carta Viva" />
         <small>Volver a la web</small>
       </Link>
       <h1>Privacidad y cookies</h1>

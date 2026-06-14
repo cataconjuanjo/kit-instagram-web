@@ -9,9 +9,8 @@ const labels = {
 export default function PublicNav({ active = 'home', eyebrow = 'Consultoría de vino hospitality' }) {
   return (
     <nav className="topbar">
-      <Link href="/" className="brand">
-        <span>Cata con Juanjo</span>
-        <small>{eyebrow}</small>
+      <Link href="/cartavinos" className="brand brand-logo">
+        <img src="/brand/carta-viva/logo-horizontal.png" alt="Carta Viva" />
       </Link>
       <div className="navlinks" aria-label="Navegación principal">
         <Link className={active === 'home' ? 'active' : ''} href="/">{labels.home}</Link>

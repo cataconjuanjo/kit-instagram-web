@@ -147,7 +147,7 @@ function analizarCartaTexto(texto, platosExistentes = []) {
 function RasgosMaridaje({ plato, onChange }) {
   return (
     <div style={{ gridColumn: '1 / -1' }}>
-      <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '4px 0 10px' }}>Rasgos para maridaje</p>
+      <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '4px 0 10px' }}>Pistas rápidas para vender y maridar</p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {rasgosMaridaje.map(rasgo => {
           const activo = normalizar(plato.descripcion || '').includes(normalizar(rasgo.texto))
@@ -172,7 +172,7 @@ function RasgosMaridaje({ plato, onChange }) {
         })}
       </div>
       <p style={{ fontSize: 11, color: '#bbb', margin: '10px 0 0', lineHeight: 1.5 }}>
-        Estos rasgos se guardan en la descripcion interna. No se muestran como receta en la carta publica, pero ayudan al modo camarero y al maridaje.
+        Estas pistas no se muestran como receta en la carta publica. Ayudan al modo camarero a elegir vinos por tecnica, salsa, intensidad e ingrediente clave.
       </p>
     </div>
   )
@@ -496,6 +496,20 @@ export default function Platos() {
   const rangoPlatos = platosVisibles.length === 0 ? '0' : `${inicioPlatos + 1}-${inicioPlatos + platosPagina.length}`
   const cabeceraPlatos = ['Nombre', 'Categoria', 'Precio', 'Descripcion', 'Estado']
   const csvPlatos = [cabeceraPlatos, ...platosVisibles.map(platoComoFila)].map(fila => fila.map(csvValor).join(',')).join('\n')
+  const platosActivos = platos.filter(plato => plato.activo !== false)
+  const platosSinPrecio = platosActivos.filter(plato => !Number(plato.precio))
+  const platosSinPistas = platosActivos.filter(plato => !plato.descripcion || plato.descripcion.trim().length < 8)
+  const platosSinCategoria = platosActivos.filter(plato => !String(plato.categoria || '').trim())
+  const platosSinRasgos = platosActivos.filter(plato => {
+    const descripcion = normalizar(plato.descripcion || '')
+    return !rasgosMaridaje.some(rasgo => descripcion.includes(normalizar(rasgo.texto)))
+  })
+  const pendientesPlatos = [
+    { label: 'Sin precio', count: platosSinPrecio.length, filter: 'sin_precio', text: 'Frena publicacion y ticket.' },
+    { label: 'Sin pistas', count: platosSinPistas.length, filter: 'sin_descripcion', text: 'Debilita el maridaje.' },
+    { label: 'Sin categoria', count: platosSinCategoria.length, filter: 'todos', text: 'Cuesta escanear la carta.' },
+    { label: 'Sin rasgos', count: platosSinRasgos.length, filter: 'sin_descripcion', text: 'Faltan señales de venta.' },
+  ]
 
   async function copiarPlatos() {
     const texto = [cabeceraPlatos, ...platosVisibles.map(platoComoFila)].map(fila => fila.join('\t')).join('\n')
@@ -513,7 +527,7 @@ export default function Platos() {
       restaurante={restaurante}
       eyebrow="Carta de comida"
       title="Gestión de platos"
-      subtitle="Mantiene precios, categorias y descripciones internas para que el maridaje entienda la carta real sin publicar recetas."
+      subtitle="Mantiene precios, categorias y pistas de venta para que el maridaje entienda la carta real sin publicar recetas."
       actions={
         <>
           <button
@@ -535,7 +549,7 @@ export default function Platos() {
         title: 'Platos que ayudan a vender vino',
         intro: 'La carta de comida no es otro servicio: es contexto interno para que el maridaje tenga criterio.',
         items: [
-          { title: 'Descripcion interna', text: 'Incluye tecnica, salsa, intensidad o ingrediente clave. No se muestra como receta en la carta publica.' },
+          { title: 'Pistas de venta', text: 'Incluye tecnica, salsa, intensidad o ingrediente clave. No se muestra como receta en la carta publica.' },
           { title: 'Rasgos internos', text: 'Brasa, frito, queso o umami ayudan al sistema a cruzar mejor platos y vinos sin dar mas trabajo a sala.' },
           { title: 'Importación', text: 'Si subes la carta, revisa duplicados y categorías antes de guardar para no ensuciar la base.' },
         ],
@@ -566,6 +580,28 @@ export default function Platos() {
       </div>
 
       <div className={styles.menuPage}>
+        <section className={styles.pendingStrip}>
+          <div>
+            <p className={styles.eyebrow}>Cola de mejora</p>
+            <h2>Lo que ayuda a vender vino con la comida</h2>
+            <p>Precio y pistas de venta primero. Los rasgos convierten cada plato en una oportunidad de maridaje.</p>
+          </div>
+          <div className={styles.pendingGrid}>
+            {pendientesPlatos.map(item => (
+              <button
+                key={item.label}
+                type="button"
+                className={filtroPlatos === item.filter ? styles.pendingItemActive : styles.pendingItem}
+                onClick={() => setFiltroPlatos(item.filter)}
+              >
+                <strong>{item.count}</strong>
+                <span>{item.label}</span>
+                <small>{item.text}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+
         {mostrarImportador && (
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
             <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>Importar carta</p>
@@ -644,11 +680,11 @@ export default function Platos() {
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Descripcion interna</label>
+                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Pistas de venta y maridaje</label>
                 <input type="text" value={nuevoPlato.descripcion} onChange={e => setNuevoPlato({ ...nuevoPlato, descripcion: e.target.value })}
                   placeholder="Ej. deshuesado, salsa de PX, meloso, umami"
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
-                <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para maridaje y sala. No se muestra como receta en la carta publica.</p>
+                <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para recomendar vino y ayudar a sala. No se muestra como receta en la carta publica.</p>
               </div>
               <RasgosMaridaje plato={nuevoPlato} onChange={setNuevoPlato} />
             </div>
@@ -673,7 +709,7 @@ export default function Platos() {
             <select className={styles.toolbarSelect} value={filtroPlatos} onChange={e => setFiltroPlatos(e.target.value)}>
               <option value="todos">Todos los platos</option>
               <option value="activos">Activos</option>
-              <option value="sin_descripcion">Sin descripcion interna</option>
+              <option value="sin_descripcion">Sin pistas de venta</option>
               <option value="sin_precio">Sin precio</option>
               <option value="ocultos">Ocultos</option>
             </select>
@@ -719,7 +755,7 @@ export default function Platos() {
 
         <div className={styles.dataList}>
           <div className={styles.dishListHeader}>
-            {['Plato', 'Categoría', 'Precio', 'Descripcion interna', ''].map(h => (
+            {['Plato', 'Categoría', 'Precio', 'Pistas de venta', ''].map(h => (
               <p key={h} style={{ fontSize: 10, color: '#ccc', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>{h}</p>
             ))}
           </div>
@@ -728,12 +764,12 @@ export default function Platos() {
             <button type="button" onClick={() => ordenarPorPlato('nombre')}>Plato {ordenPlatos.key === 'nombre' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <button type="button" onClick={() => ordenarPorPlato('categoria')}>Categoria {ordenPlatos.key === 'categoria' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <button type="button" onClick={() => ordenarPorPlato('precio')}>Precio {ordenPlatos.key === 'precio' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
-            <button type="button" onClick={() => ordenarPorPlato('descripcion')}>Descripcion {ordenPlatos.key === 'descripcion' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
+            <button type="button" onClick={() => ordenarPorPlato('descripcion')}>Pistas {ordenPlatos.key === 'descripcion' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <span />
             <input aria-label="Filtrar plato" value={filtrosColumnaPlatos.plato} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, plato: e.target.value })} placeholder="Filtrar plato" />
             <input aria-label="Filtrar categoria" value={filtrosColumnaPlatos.categoria} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, categoria: e.target.value })} placeholder="Categoria" />
             <input aria-label="Filtrar precio" value={filtrosColumnaPlatos.precio} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, precio: e.target.value })} placeholder="Precio" />
-            <input aria-label="Filtrar descripcion" value={filtrosColumnaPlatos.descripcion} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, descripcion: e.target.value })} placeholder="Descripcion" />
+            <input aria-label="Filtrar pistas de venta" value={filtrosColumnaPlatos.descripcion} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, descripcion: e.target.value })} placeholder="Pistas" />
             <button type="button" className={styles.clearFilters} onClick={() => setFiltrosColumnaPlatos({ plato: '', categoria: '', precio: '', descripcion: '' })}>Limpiar</button>
           </div>
 
@@ -751,7 +787,7 @@ export default function Platos() {
                   <p style={{ margin: 0, fontSize: 14, color: '#111' }}>{p.nombre}</p>
                   <p data-label="Categoria" style={{ margin: 0, fontSize: 12, color: '#888' }}>{p.categoria}</p>
                   <p data-label="Precio" style={{ margin: 0, fontSize: 12, color: '#111' }}>{Number(p.precio) ? `${Number(p.precio).toFixed(2)} €` : '—'}</p>
-                  <p data-label="Descripcion" style={{ margin: 0, fontSize: 12, color: '#bbb' }}>{p.descripcion || '—'}</p>
+                  <p data-label="Pistas" style={{ margin: 0, fontSize: 12, color: '#bbb' }}>{p.descripcion || '—'}</p>
                   <details className={styles.rowMenu}>
                     <summary aria-label={`Acciones para ${p.nombre}`}>...</summary>
                     <button data-shortcut-edit="true" aria-label={`Editar ${p.nombre}`} onClick={() => setEditandoPlato({ ...p, precio: p.precio || '' })}>Editar</button>
@@ -783,10 +819,10 @@ export default function Platos() {
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
                       </div>
                       <div style={{ gridColumn: '1 / -1' }}>
-                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Descripcion interna</label>
+                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Pistas de venta y maridaje</label>
                         <input type="text" value={editandoPlato.descripcion || ''} onChange={e => setEditandoPlato({ ...editandoPlato, descripcion: e.target.value })}
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
-                        <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para maridaje y sala. No se muestra como receta en la carta publica.</p>
+                        <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para recomendar vino y ayudar a sala. No se muestra como receta en la carta publica.</p>
                       </div>
                       <RasgosMaridaje plato={editandoPlato} onChange={setEditandoPlato} />
                     </div>

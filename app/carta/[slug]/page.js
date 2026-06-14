@@ -49,6 +49,12 @@ const t = {
     notasCata: 'Notas de cata',
     quePedir: '¿Qué vas a pedir?',
     seleccionaPlatos: 'Selecciona tus platos y afinamos una recomendación de vino.',
+    vinoManda: 'Ya tengo vino',
+    vinoMandaSub: 'Elige el vino que quieres beber y te decimos que platos pedir.',
+    buscarVino: 'Buscar vino...',
+    eligeVino: 'Elige un vino de la carta',
+    vinoElegido: 'Vino elegido',
+    platosParaVino: 'Platos para este vino',
     buscarPlato: 'Buscar plato...',
     sinPlatos: 'No hay platos con esa búsqueda.',
     tuSeleccion: 'Tu selección',
@@ -109,6 +115,12 @@ const t = {
     notasCata: 'Tasting notes',
     quePedir: 'What are you having?',
     seleccionaPlatos: 'Select your dishes and we will refine one wine recommendation.',
+    vinoManda: 'I have a wine',
+    vinoMandaSub: 'Choose the wine you want to drink and we will suggest what to order.',
+    buscarVino: 'Search wine...',
+    eligeVino: 'Choose a wine from the list',
+    vinoElegido: 'Chosen wine',
+    platosParaVino: 'Dishes for this wine',
     buscarPlato: 'Search dish...',
     sinPlatos: 'No dishes found for this search.',
     tuSeleccion: 'Your selection',
@@ -179,6 +191,8 @@ export default function CartaPublica({ params }) {
   const [historialSommelier, setHistorialSommelier] = useState([])
   const [inputSeguimiento, setInputSeguimiento] = useState('')
   const [modoSommelier, setModoSommelier] = useState('platos')
+  const [vinoMandatoCliente, setVinoMandatoCliente] = useState(null)
+  const [busquedaVinoSommelier, setBusquedaVinoSommelier] = useState('')
   const [pasoQuiz, setPasoQuiz] = useState(1)
   const [respuestasQuiz, setRespuestasQuiz] = useState({})
   const [respuestaQuiz, setRespuestaQuiz] = useState('')
@@ -405,6 +419,54 @@ export default function CartaPublica({ params }) {
     setCargandoIA(false)
   }
 
+  async function preguntarPlatosParaVino() {
+    if (!vinoMandatoCliente) return
+    setCargandoIA(true)
+    setRespuesta('')
+    setHistorialSommelier([])
+    setInputSeguimiento('')
+    const consultaVino = [
+      vinoMandatoCliente.nombre,
+      vinoMandatoCliente.bodega,
+      vinoMandatoCliente.tipo,
+      vinoMandatoCliente.region,
+      vinoMandatoCliente.uva ? `uva: ${vinoMandatoCliente.uva}` : '',
+      vinoMandatoCliente.notas_cata ? `notas: ${vinoMandatoCliente.notas_cata}` : '',
+    ].filter(Boolean).join(', ')
+    const res = await fetch('/api/maridaje', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        consulta: consultaVino,
+        modo: 'vino',
+        restaurante_id: restaurante.id,
+        idioma,
+        historial: [],
+        prueba_token: tokenPrueba,
+      }),
+    })
+    if (!res.ok) {
+      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Intentalo de nuevo.')
+      setCargandoIA(false)
+      return
+    }
+    let textoAcumulado = ''
+    const promptUsuario = idioma === 'en'
+      ? `The customer wants to drink this wine: ${consultaVino}. Suggest dishes from the menu.`
+      : `El cliente quiere beber este vino: ${consultaVino}. Sugiere platos de la carta.`
+    await leerStream(
+      res,
+      chunk => { textoAcumulado += chunk; setRespuesta(textoAcumulado) },
+      prefill => {
+        setHistorialSommelier([
+          { role: 'user', content: promptUsuario },
+          { role: 'assistant', content: prefill + textoAcumulado },
+        ])
+      }
+    )
+    setCargandoIA(false)
+  }
+
   async function preguntarSeguimiento() {
     const msg = inputSeguimiento.trim()
     if (!msg || cargandoIA || !historialSommelier.length) return
@@ -523,6 +585,15 @@ setPerfiles(nuevosPerfiles)
     const texto = normalizarTexto(`${plato.nombre} ${plato.categoria || ''}`)
     return texto.includes(busquedaPlatosLimpia)
   })
+
+  const busquedaVinoSommelierLimpia = normalizarTexto(busquedaVinoSommelier)
+  const vinosSommelierFiltrados = vinos
+    .filter(vino => vino?.activo !== false && Number(vino.precio_botella) > 0)
+    .filter(vino => {
+      const texto = normalizarTexto(`${vino.nombre || ''} ${vino.bodega || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.tipo || ''}`)
+      return !busquedaVinoSommelierLimpia || texto.includes(busquedaVinoSommelierLimpia)
+    })
+    .slice(0, 40)
 
   const resumenVino = vino => [vino.bodega, vino.uva, vino.region, vino.anada].filter(Boolean).join(' · ')
   const resumenVinoListado = vino => [vino.bodega, vino.uva, vino.anada].filter(Boolean).join(' · ')
@@ -1453,14 +1524,15 @@ setPerfiles(nuevosPerfiles)
 
       <main className={styles.content}>
         <section className={styles.sommelierIntro}>
-          <h2 className={styles.sommelierTitle}>{modoSommelier === 'quiz' ? i.recomendame : i.quePedir}</h2>
-          <p className={styles.sommelierText}>{modoSommelier === 'quiz' ? i.quizSubtitulo : i.seleccionaPlatos}</p>
+          <h2 className={styles.sommelierTitle}>{modoSommelier === 'quiz' ? i.recomendame : modoSommelier === 'vino' ? i.vinoManda : i.quePedir}</h2>
+          <p className={styles.sommelierText}>{modoSommelier === 'quiz' ? i.quizSubtitulo : modoSommelier === 'vino' ? i.vinoMandaSub : i.seleccionaPlatos}</p>
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             {[
               { id: 'platos', label: i.porPlatos },
               { id: 'quiz', label: i.recomendame },
+              { id: 'vino', label: i.vinoManda },
             ].map(m => (
-              <button key={m.id} onClick={() => { setModoSommelier(m.id); setRespuesta(''); setRespuestaQuiz('') }} style={{
+              <button key={m.id} onClick={() => { setModoSommelier(m.id); setRespuesta(''); setRespuestaQuiz(''); setHistorialSommelier([]); setInputSeguimiento('') }} style={{
                 padding: '9px 18px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13,
                 background: modoSommelier === m.id ? colorAcento : '#f0ebe3',
                 color: modoSommelier === m.id ? '#fff' : '#888', fontWeight: modoSommelier === m.id ? 500 : 400,
@@ -1546,6 +1618,76 @@ setPerfiles(nuevosPerfiles)
             </section>
           )
         })()}
+
+        {modoSommelier === 'vino' && (
+          <section className={styles.selectedPanel}>
+            <p className={styles.selectedHead}>{vinoMandatoCliente ? i.vinoElegido : i.eligeVino}</p>
+
+            {vinoMandatoCliente ? (
+              <article className={styles.wineChoiceCard} onClick={() => abrirFichaVino(vinoMandatoCliente)}>
+                <div>
+                  <h3>{vinoMandatoCliente.nombre}</h3>
+                  <p>{[vinoMandatoCliente.bodega, vinoMandatoCliente.uva, vinoMandatoCliente.region].filter(Boolean).join(' · ')}</p>
+                </div>
+                <strong>{precioBotellaCarta(vinoMandatoCliente.precio_botella)}</strong>
+              </article>
+            ) : (
+              <>
+                <input
+                  className={styles.darkSearch}
+                  type="text"
+                  placeholder={i.buscarVino}
+                  value={busquedaVinoSommelier}
+                  onChange={e => setBusquedaVinoSommelier(e.target.value)}
+                />
+                <div className={styles.wineChoiceList}>
+                  {vinosSommelierFiltrados.map(vino => (
+                    <button
+                      key={vino.id}
+                      type="button"
+                      className={styles.wineChoiceButton}
+                      onClick={() => { setVinoMandatoCliente(vino); setRespuesta(''); setHistorialSommelier([]) }}
+                    >
+                      <span className={styles.dot} style={{ background: tipoDot[vino.tipo] || colorPrimario }} />
+                      <span>
+                        <strong>{vino.nombre}</strong>
+                        <em>{[vino.bodega, vino.uva, vino.region].filter(Boolean).join(' · ')}</em>
+                      </span>
+                      <b>{precioBotellaCarta(vino.precio_botella)}</b>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {vinoMandatoCliente && (
+              <div style={{ display: 'grid', gap: 8, marginTop: 14 }}>
+                <button
+                  className={styles.recommendButton}
+                  onClick={preguntarPlatosParaVino}
+                  disabled={cargandoIA}
+                  style={{ background: cargandoIA ? '#8d8578' : colorAcento }}
+                >
+                  {cargandoIA ? i.consultando : i.platosParaVino}
+                </button>
+                <button
+                  className={styles.clearButton}
+                  onClick={() => { setVinoMandatoCliente(null); setRespuesta(''); setHistorialSommelier([]) }}
+                  style={{ color: '#fffaf3', borderColor: 'rgba(255,250,243,0.2)' }}
+                >
+                  {i.nuevaConsulta}
+                </button>
+              </div>
+            )}
+
+            {respuesta && (
+              <div className={styles.answerBox}>
+                <p className={styles.selectedHead}>{i.sommelier}</p>
+                <p className={styles.answerText}>{respuesta}</p>
+              </div>
+            )}
+          </section>
+        )}
 
         {modoSommelier === 'platos' && <section className={styles.dishSearchPanel}>
           <div className={styles.searchRow}>

@@ -84,7 +84,7 @@ export default function DashboardHome() {
   const [vinos, setVinos] = useState([])
   const [platos, setPlatos] = useState([])
   const [propuestas, setPropuestas] = useState([])
-  const [mostrarAyuda, setMostrarAyuda] = useState(false)
+  const [mostrarSaludCarta, setMostrarSaludCarta] = useState(false)
   const [tareasOcultas, setTareasOcultas] = useState([])
   const [turnoCerrado, setTurnoCerrado] = useState(false)
   const [objetivoServicio, setObjetivoServicio] = useState('equilibrado')
@@ -299,6 +299,15 @@ export default function DashboardHome() {
     bajoMinimo.length > 0 && `${bajoMinimo.length} referencias bajo minimo`,
   ].filter(Boolean)
   const propuestasTop = propuestasActivas.slice(0, 3)
+  const accionPrincipal = acciones[0]
+    ? { label: acciones[0].texto, href: acciones[0].href, detalle: acciones[0].tipo }
+    : siguienteTurno
+  const accionesSecundarias = acciones.slice(1, 4)
+  const resumenOperativo = [
+    `${calidadGlobal}% salud de carta`,
+    `${stats.ventasHoy} ventas hoy`,
+    `${alertasSala} señales de sala`,
+  ].join(' · ')
 
   const tv = v => `${v.nombre || ''} ${v.bodega || ''} ${v.tipo || ''} ${v.region || ''} ${v.uva || ''} ${v.notas_cata || ''}`
   const tp = p => `${p.nombre || ''} ${p.descripcion || ''} ${p.categoria || ''}`
@@ -325,6 +334,18 @@ export default function DashboardHome() {
   return (
     <main>
       <div className={styles.wrap}>
+        <section className={styles.priorityPanel}>
+          <div>
+            <p className={styles.eyebrow}>Prioridad de hoy</p>
+            <h1>{accionPrincipal.label}</h1>
+            <p>{accionPrincipal.detalle || resumenOperativo}</p>
+          </div>
+          <div className={styles.prioritySide}>
+            <span>{resumenOperativo}</span>
+            <Link href={accionPrincipal.href}>Abrir tarea</Link>
+          </div>
+        </section>
+
         {tareasInicioVisibles.length > 0 && <section className={styles.onboardingPanel}>
           <div className={styles.onboardingHead}>
             <div>
@@ -362,6 +383,23 @@ export default function DashboardHome() {
           )}
         </section>}
 
+        {accionesSecundarias.length > 0 && (
+          <section className={styles.todayActions}>
+            <div>
+              <p className={styles.eyebrow}>Siguiente</p>
+              <h2>Acciones pendientes</h2>
+            </div>
+            <div className={styles.todayActionList}>
+              {accionesSecundarias.map(accion => (
+                <Link key={accion.texto} href={accion.href}>
+                  <span>{accion.tipo}</span>
+                  <strong>{accion.texto}</strong>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className={styles.healthStrip}>
           <div className={styles.healthHead}>
             <div>
@@ -369,30 +407,32 @@ export default function DashboardHome() {
               <h2>Estado operativo</h2>
               <p className={styles.healthStatus} style={{ color: estadoOperativo.color }}>{calidadGlobal}% · {estadoOperativo.label}</p>
             </div>
-            <button type="button" className={styles.infoButton} onClick={() => setMostrarAyuda(!mostrarAyuda)} title="Ayuda de inicio" aria-label="Ayuda de inicio">i</button>
-          </div>
-          <div className={styles.checkGrid}>
-            {checksSalud.map(check => (
-              <Link key={check.label} href={check.href} className={styles.checkItem}>
-                <div className={styles.checkRow}>
-                  <span className={styles.checkLabel}>{check.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: check.valor >= 80 ? '#5fa882' : check.valor >= 55 ? '#d4941a' : '#c0482a' }}>{check.valor}%</span>
-                </div>
-                <div style={{ height: 3, background: 'rgba(23,20,22,0.08)', overflow: 'hidden', borderRadius: 2, margin: '6px 0' }}>
-                  <div style={{ width: `${check.valor}%`, height: '100%', background: check.valor >= 80 ? '#5fa882' : check.valor >= 55 ? '#d4941a' : '#c0482a' }} />
-                </div>
-                <p className={styles.checkDetail}>{check.detalle}</p>
-                {check.valor < 100 && <span className={styles.completeNow}>Completar ahora</span>}
-              </Link>
-            ))}
+            <button type="button" className={styles.healthToggle} onClick={() => setMostrarSaludCarta(!mostrarSaludCarta)}>
+              {mostrarSaludCarta ? 'Ocultar detalle' : 'Ver detalle'}
+            </button>
           </div>
           <div className={styles.missingPanel}>
             <strong>{faltasOperativas.length ? 'Falta completar' : 'Todo listo para publicar'}</strong>
             <span>{faltasOperativas.length ? faltasOperativas.slice(0, 4).join(' · ') : 'Carta, sala y bodega no tienen bloqueos visibles.'}</span>
           </div>
-          {mostrarAyuda && (
-            <div className={styles.helpInline}>
-              <p><strong>Cómo usar inicio:</strong> revisa la salud de carta, atiende la prioridad del día y entra solo al módulo necesario. Ajustes, QR y marca viven en el menú lateral.</p>
+          {mostrarSaludCarta && (
+            <div className={styles.healthDetail}>
+              <div className={styles.checkGrid}>
+                {checksSalud.map(check => (
+                  <Link key={check.label} href={check.href} className={styles.checkItem}>
+                    <div className={styles.checkRow}>
+                      <span className={styles.checkLabel}>{check.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: check.valor >= 80 ? '#5fa882' : check.valor >= 55 ? '#d4941a' : '#c0482a' }}>{check.valor}%</span>
+                    </div>
+                    <div style={{ height: 3, background: 'rgba(23,20,22,0.08)', overflow: 'hidden', borderRadius: 2, margin: '6px 0' }}>
+                      <div style={{ width: `${check.valor}%`, height: '100%', background: check.valor >= 80 ? '#5fa882' : check.valor >= 55 ? '#d4941a' : '#c0482a' }} />
+                    </div>
+                    <p className={styles.checkDetail}>{check.detalle}</p>
+                    {check.valor < 100 && <span className={styles.completeNow}>Completar ahora</span>}
+                  </Link>
+                ))}
+              </div>
+              <p><strong>Cómo usar Inicio:</strong> atiende primero la prioridad del día. La salud de carta sirve para completar datos, no para dirigir cada servicio.</p>
             </div>
           )}
         </section>
@@ -401,8 +441,8 @@ export default function DashboardHome() {
           <section className={styles.proposalsPanel}>
             <div className={styles.proposalsHead}>
               <div>
-                <p className={styles.eyebrow}>Propuestas del consultor</p>
-                <h2>Ideas para mejorar</h2>
+                <p className={styles.eyebrow}>Mejoras pendientes</p>
+                <h2>Ideas listas para valorar</h2>
               </div>
               <Link href="/dashboard/bodega#propuestas">{propuestasActivas.length} pendientes de valorar</Link>
             </div>

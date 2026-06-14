@@ -261,6 +261,48 @@ Carta de vinos disponibles por copa:
 ${cartaVinos}`
 }
 
+function buildSystemPlatosParaVino(cartaPlatos, idioma) {
+  if (idioma === 'en') {
+    return `You are a restaurant sommelier. The guest has already chosen the wine and wants the food to follow the bottle.
+Only recommend dishes from the real menu below. Never invent dishes.
+
+Reasoning:
+1. Read the wine style from its name, type, region, grape and tasting notes.
+2. Choose dishes whose ingredient, sauce and cooking technique will make that wine taste better.
+3. Avoid dishes that would make the wine feel harsh, flat, alcoholic or sweet.
+4. If the fit is not reliable, do not include that dish.
+
+Voice: natural table language, sensory and concise. No technical method names.
+
+FORMAT - repeat this format for 5 or 6 dishes, ordered from strongest fit to lighter alternative:
+[Dish name] — [1 natural sentence explaining why it fits that wine]. [price]€
+
+Use exact dish names. Max 24 words per sentence. Plain text only.
+
+Current food menu:
+${cartaPlatos}`
+  }
+
+  return `Eres un sumiller de restaurante. El cliente ya ha elegido el vino y quiere que la comida siga a esa botella.
+Solo recomiendas platos de la carta real de abajo. Nunca inventes platos.
+
+Razonamiento:
+1. Lee el estilo del vino por nombre, tipo, region, uva y notas de cata.
+2. Elige platos cuyo ingrediente, salsa y tecnica hagan que ese vino sepa mejor.
+3. Evita platos que vuelvan el vino duro, plano, alcoholico o dulce.
+4. Si el encaje no es fiable, no incluyas ese plato.
+
+Voz: lenguaje natural de mesa, sensorial y concreto. Sin nombres de metodologias.
+
+FORMATO - repite este formato para 5 o 6 platos, ordenados del encaje mas fuerte a la alternativa mas ligera:
+[Nombre del plato] — [1 frase natural explicando por que encaja con ese vino]. [precio]€
+
+Usa nombres exactos de platos. Maximo 24 palabras por frase. Solo texto plano.
+
+Carta de platos del restaurante:
+${cartaPlatos}`
+}
+
 export async function POST(request) {
   try {
     // ── Rate limit ─────────────────────────────────────────────────
@@ -326,6 +368,7 @@ export async function POST(request) {
     let fallbackCandidatos = []
     let vinosRespuesta = vinos || []
     const esSeguimiento = Boolean(mensajeSeguimiento && historial.length > 0)
+    const esModoPlatosParaVino = !esSeguimiento && !['mesa', 'plato', 'quiz'].includes(modo)
 
     if (esSeguimiento) {
       // Turno de seguimiento — mantiene el historial existente
@@ -491,8 +534,8 @@ export async function POST(request) {
       } else {
         // Modo inverso: dado un vino, recomendar platos
         prompt = idioma === 'en'
-          ? `Wine: "${consulta}". List 3 dishes from below that pair well. One sentence each. Exact dish names.\n\n${cartaPlatos}`
-          : `Vino: "${consulta}". Lista 3 platos de abajo que mariden bien. Una frase cada uno. Nombres exactos.\n\n${cartaPlatos}`
+          ? `Chosen wine: "${consulta}". Recommend 5 or 6 real dishes from the menu that should be ordered because this wine is the priority. Explain why each dish makes the wine work.`
+          : `Vino elegido: "${consulta}". Recomienda 5 o 6 platos reales de la carta que pedirias porque este vino es la prioridad. Explica por que cada plato hace funcionar el vino.`
       }
 
       prefill = ''
@@ -502,9 +545,11 @@ export async function POST(request) {
     }
 
     const cartaParaPrompt = esSeguimiento ? cartaVinos : vinosRespuesta.map(lineaVino).join('\n')
-    const systemPrompt = (!esSeguimiento && esSucesion)
-      ? buildSystemSucesion(cartaParaPrompt, idioma)
-      : buildSystem(cartaParaPrompt, idioma)
+    const systemPrompt = esModoPlatosParaVino
+      ? buildSystemPlatosParaVino(cartaPlatos, idioma)
+      : (!esSeguimiento && esSucesion)
+        ? buildSystemSucesion(cartaParaPrompt, idioma)
+        : buildSystem(cartaParaPrompt, idioma)
 
     // ── Llamada a Claude (awaited — evita unhandled rejections en Vercel) ────
     const modelo = 'claude-sonnet-4-6'
@@ -527,7 +572,7 @@ export async function POST(request) {
     })
 
     const respuestaClaude = msg.content?.[0]?.text || ''
-    const textoRespuesta = (esSeguimiento || esSucesion)
+    const textoRespuesta = (esSeguimiento || esSucesion || esModoPlatosParaVino)
       ? respuestaClaude
       : respuestaSoloConCarta(respuestaClaude, vinosRespuesta, fallbackCandidatos, idioma)
 

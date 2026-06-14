@@ -781,6 +781,84 @@
   font-weight: 750;
 }
 
+.darkSearch {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  border: 1px solid rgba(255, 250, 243, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.08);
+  color: #fffaf3;
+  outline: none;
+  padding: 12px;
+  font-size: 14px;
+}
+
+.darkSearch::placeholder {
+  color: rgba(255, 250, 243, 0.45);
+}
+
+.wineChoiceList {
+  display: grid;
+  gap: 8px;
+  max-height: 340px;
+  overflow: auto;
+  margin-top: 12px;
+  padding-right: 2px;
+}
+
+.wineChoiceButton,
+.wineChoiceCard {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(255, 250, 243, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.08);
+  color: #fffaf3;
+  cursor: pointer;
+  padding: 11px 12px;
+  text-align: left;
+}
+
+.wineChoiceCard {
+  grid-template-columns: minmax(0, 1fr) auto;
+  background: rgba(255, 250, 243, 0.12);
+}
+
+.wineChoiceButton strong,
+.wineChoiceCard h3 {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+  color: #fffaf3;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.wineChoiceButton em,
+.wineChoiceCard p {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 3px 0 0;
+  color: rgba(255, 250, 243, 0.58);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.wineChoiceButton b,
+.wineChoiceCard strong {
+  color: #fffaf3;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .selectedRemove {
   color: rgba(255, 250, 243, 0.5);
   font-size: 20px;
