@@ -39,7 +39,7 @@ function normalizarTexto(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
-function lineaVino(vino) {
+function lineaVino(vino, soloCopa = false) {
   return `- ${vino.nombre} (${[
     vino.bodega,
     vino.tipo,
@@ -47,7 +47,7 @@ function lineaVino(vino) {
     vino.uva ? `uva: ${vino.uva}` : '',
     vino.anada ? `añada: ${vino.anada}` : '',
     vino.precio_copa ? `copa: ${vino.precio_copa}€` : '',
-    `botella: ${vino.precio_botella}€`,
+    soloCopa ? '' : `botella: ${vino.precio_botella}€`,
     vino.notas_cata ? `notas: ${vino.notas_cata}` : '',
   ].filter(Boolean).join(', ')})`
 }
@@ -71,9 +71,11 @@ function vinoAlInicioDeRecomendacion(linea, vinos) {
   })
 }
 
-function lineaFallback(item, idioma = 'es') {
+function lineaFallback(item, idioma = 'es', soloCopa = false) {
   const vino = item.vino
-  const precio = Number(vino.precio_botella) ? `${Number(vino.precio_botella)}€` : ''
+  const precio = soloCopa
+    ? (Number(vino.precio_copa) ? `${Number(vino.precio_copa)}€/copa` : '')
+    : (Number(vino.precio_botella) ? `${Number(vino.precio_botella)}€` : '')
   const motivo = item.motivo || (idioma === 'en'
     ? 'it is a friendly option for the dish, with freshness and balance'
     : 'es una opcion amable para el plato, con frescura y equilibrio')
@@ -100,15 +102,15 @@ function candidatoDesdeGrafo(item) {
   }
 }
 
-function fallbackDesdeMotor(candidatos = [], idioma = 'es') {
-  const lineas = candidatosUnicos(candidatos, 3).map(item => lineaFallback(item, idioma))
+function fallbackDesdeMotor(candidatos = [], idioma = 'es', soloCopa = false) {
+  const lineas = candidatosUnicos(candidatos, 3).map(item => lineaFallback(item, idioma, soloCopa))
   if (lineas.length) return lineas.join('\n\n')
   return idioma === 'en'
     ? 'I cannot find a reliable pairing with the available wine list.'
     : 'No encuentro un maridaje fiable con los vinos disponibles en la carta.'
 }
 
-function respuestaSoloConCarta(texto, vinos, fallbackCandidatos, idioma) {
+function respuestaSoloConCarta(texto, vinos, fallbackCandidatos, idioma, soloCopa = false) {
   const lineas = String(texto || '').split(/\n+/).map(linea => linea.trim()).filter(Boolean)
   const usadas = new Set()
   const validas = []
@@ -126,16 +128,17 @@ function respuestaSoloConCarta(texto, vinos, fallbackCandidatos, idioma) {
     const clave = item.vino.id || item.vino.nombre
     if (usadas.has(clave)) continue
     usadas.add(clave)
-    validas.push(lineaFallback(item, idioma))
+    validas.push(lineaFallback(item, idioma, soloCopa))
     if (validas.length >= minimo) break
   }
 
   if (validas.length) return validas.slice(0, 3).join('\n\n')
-  return fallbackDesdeMotor(fallbackCandidatos, idioma)
+  return fallbackDesdeMotor(fallbackCandidatos, idioma, soloCopa)
 }
 
-function buildSystem(cartaVinos, idioma) {
+function buildSystem(cartaVinos, idioma, soloCopa = false) {
   if (idioma === 'en') {
+    const precioLabel = soloCopa ? '[glass price]€/glass' : '[price]€'
     return `You are the sommelier of this restaurant. Your role has two equal parts: give the right pairing AND help the restaurant sell the highest-value wine that truly fits the dish.
 Only recommend wines from the real wine list below. Never invent wines.
 
@@ -168,9 +171,9 @@ Voice:
 - Make the guest feel safe, especially if they do not usually drink wine.
 
 FORMAT — exactly this, nothing more:
-[Wine name] — [1 natural sentence explaining why it will taste good with the dish]. [price]€
+[Wine name] — [1 natural sentence explaining why it will taste good with the dish]. ${precioLabel}
 
-[Wine name] — [1 sentence]. [price]€
+[Wine name] — [1 sentence]. ${precioLabel}
 
 Each sentence: natural, sensory and specific, but not technical. Max 22 words.
 Plain text only. No asterisks, bold, lists or symbols.
@@ -179,6 +182,7 @@ Current wine list:
 ${cartaVinos}`
   }
 
+  const precioLabelEs = soloCopa ? '[precio copa]€/copa' : '[precio]€'
   return `Eres el sommelier de este restaurante. Tu misión tiene dos partes iguales: dar el maridaje correcto Y ayudar al restaurante a vender el vino de mayor valor que armonice bien con el plato.
 Solo recomiendas vinos de la carta real que aparece abajo. Nunca inventas vinos.
 
@@ -212,9 +216,9 @@ Voz:
 - Haz que el cliente no habitual se sienta seguro, no examinado.
 
 FORMATO — exactamente esto, nada más:
-[Nombre del vino] — [1 frase natural explicando por qué va a estar rico con el plato]. [precio]€
+[Nombre del vino] — [1 frase natural explicando por qué va a estar rico con el plato]. ${precioLabelEs}
 
-[Nombre del vino] — [1 frase]. [precio]€
+[Nombre del vino] — [1 frase]. ${precioLabelEs}
 
 La frase debe ser natural, sensorial y específica, pero no técnica. Máximo 22 palabras.
 Solo texto plano. Sin asteriscos, negritas, listas ni símbolos.
@@ -368,7 +372,7 @@ export async function POST(request) {
       ? platosContexto.map(lineaPlato).join(', ')
       : consultaTexto
 
-    const cartaVinos = (vinos || []).map(lineaVino).join('\n')
+    const cartaVinos = (vinos || []).map(v => lineaVino(v, soloCopa)).join('\n')
     const cartaPlatos = (platos || []).map(lineaPlato).join('\n')
 
     let messages
@@ -548,12 +552,12 @@ export async function POST(request) {
       ]
     }
 
-    const cartaParaPrompt = esSeguimiento ? cartaVinos : vinosRespuesta.map(lineaVino).join('\n')
+    const cartaParaPrompt = esSeguimiento ? cartaVinos : vinosRespuesta.map(v => lineaVino(v, soloCopa)).join('\n')
     const systemPrompt = esModoPlatosParaVino
       ? buildSystemPlatosParaVino(cartaPlatos, idioma)
       : (!esSeguimiento && esSucesion)
         ? buildSystemSucesion(cartaParaPrompt, idioma)
-        : buildSystem(cartaParaPrompt, idioma)
+        : buildSystem(cartaParaPrompt, idioma, soloCopa)
 
     // ── Llamada a Claude (awaited — evita unhandled rejections en Vercel) ────
     const modelo = 'claude-sonnet-4-6'
@@ -578,7 +582,7 @@ export async function POST(request) {
     const respuestaClaude = msg.content?.[0]?.text || ''
     const textoRespuesta = (esSeguimiento || esSucesion || esModoPlatosParaVino)
       ? respuestaClaude
-      : respuestaSoloConCarta(respuestaClaude, vinosRespuesta, fallbackCandidatos, idioma)
+      : respuestaSoloConCarta(respuestaClaude, vinosRespuesta, fallbackCandidatos, idioma, soloCopa)
 
     // ── Devolver como SSE para que el cliente lo lea igual que antes ──────
     const encoder = new TextEncoder()
