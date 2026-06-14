@@ -148,10 +148,10 @@ export function analizarFlavor(consulta = '') {
 
 export function consultaEnriquecidaFlavor(consulta = '', analisis = analizarFlavor(consulta)) {
   if (!analisis.ingredientes.length && !analisis.rasgosAltos.length) return String(consulta || '')
-  const ingredientes = analisis.ingredientes.map(item => item.nombre || item.id).join(', ')
-  const tecnicas = analisis.tecnicas.join(', ')
-  const rasgos = analisis.rasgosAltos.map(item => `${item.dimension} ${item.valor}/5`).join(', ')
-  const afinidades = analisis.afinidades.map(item => item.ingrediente).join(', ')
+  const ingredientes = analisis.ingredientes.map(item => item.nombre || item.id).join(' · ')
+  const tecnicas = analisis.tecnicas.join(' · ')
+  const rasgos = analisis.rasgosAltos.map(item => `${item.dimension} ${item.valor}/5`).join(' · ')
+  const afinidades = analisis.afinidades.map(item => item.ingrediente).join(' · ')
 
   return [
     String(consulta || ''),
