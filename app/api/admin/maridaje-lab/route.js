@@ -86,34 +86,48 @@ function candidatoGrafo(item, index) {
   }
 }
 
-function resumenGoldstein(consulta, vinos) {
-  const analisis = analizarConGoldstein(consulta, vinos)
-  return {
-    rasgosPlato: analisis.rasgosPlato || [],
-    salsas: analisis.salsas || [],
-    tecnicas: analisis.tecnicas || [],
-    puentes: analisis.puentes || [],
-    bloqueados: (analisis.candidatos || [])
-      .filter(item => item.bloqueado)
-      .slice(0, 8)
-      .map(item => ({
-        vino_id: item.vino?.id,
-        nombre: item.vino?.nombre,
-        riesgos: item.riesgos || [],
-      })),
-  }
-}
-
+// Misma arquitectura que app/api/maridaje/route.js:
+// Goldstein (veto duro) → Motor (compatibles) → Grafo filtrado por motor → Claude
 async function analizarVersion(consulta, vinos) {
-  const [motor, grafo] = await Promise.all([
-    Promise.resolve(analizarMaridaje(consulta, vinos)),
-    analizarConGrafo(consulta, vinos).catch(() => null),
-  ])
+  // 1. Goldstein — veto duro
+  const goldsteinAnalisis = analizarConGoldstein(consulta, vinos)
+  const bloqueadosGoldstein = new Set(
+    (goldsteinAnalisis.candidatos || [])
+      .filter(c => c.bloqueado)
+      .map(c => String(c.vino?.id || c.vino?.nombre))
+  )
+  const vinosSinVetar = vinos.filter(v => !bloqueadosGoldstein.has(String(v.id || v.nombre)))
+
+  // 2. Motor estructural — determina compatibles
+  const motor = analizarMaridaje(consulta, vinosSinVetar)
+  const motorCompatibles = new Set(
+    [...(motor?.recomendados || []), ...(motor?.candidatos || [])]
+      .map(c => String(c.vino?.id || c.vino?.nombre))
+  )
+
+  // 3. Grafo Chartier — solo candidatos que también pasaron el motor
+  const grafo = await analizarConGrafo(consulta, vinosSinVetar).catch(() => null)
+  const candidatosGrafoFiltrados = (grafo?.candidatos || [])
+    .filter(c => motorCompatibles.size < 2 || motorCompatibles.has(String(c.vino?.id || c.vino?.nombre)))
+    .slice(0, 8)
 
   return {
     consulta,
     lectura: motor?.lectura || null,
-    goldstein: resumenGoldstein(consulta, vinos),
+    goldstein: {
+      rasgosPlato: goldsteinAnalisis.rasgosPlato || [],
+      salsas: goldsteinAnalisis.salsas || [],
+      tecnicas: goldsteinAnalisis.tecnicas || [],
+      puentes: goldsteinAnalisis.puentes || [],
+      bloqueados: (goldsteinAnalisis.candidatos || [])
+        .filter(item => item.bloqueado)
+        .slice(0, 8)
+        .map(item => ({
+          vino_id: item.vino?.id,
+          nombre: item.vino?.nombre,
+          riesgos: item.riesgos || [],
+        })),
+    },
     motor: {
       recomendados: (motor?.recomendados || []).map(candidatoMotor),
       candidatos: (motor?.candidatos || []).slice(0, 8).map(candidatoMotor),
@@ -123,7 +137,7 @@ async function analizarVersion(consulta, vinos) {
       tieneDirecto: grafo.tieneDirecto,
       terminosDetectados: grafo.terminosDetectados || [],
       nodosResueltos: grafo.nodosResueltos || [],
-      candidatos: (grafo.candidatos || []).slice(0, 8).map(candidatoGrafo),
+      candidatos: candidatosGrafoFiltrados.map(candidatoGrafo),
     } : null,
   }
 }
