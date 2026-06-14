@@ -1785,7 +1785,7 @@ button.itemCard {
   justify-self: end;
 }
 
-.rowMenu summary {
+.rowMenuTrigger {
   width: 36px;
   min-height: 36px;
   display: grid;
@@ -1797,35 +1797,31 @@ button.itemCard {
   cursor: pointer;
   font-size: 16px;
   font-weight: 950;
-  list-style: none;
 }
 
-.rowMenu summary::-webkit-details-marker {
-  display: none;
-}
-
-.rowMenu[open] {
+.rowMenuOpen {
   z-index: 25;
 }
 
-.rowMenu[open] summary {
+.rowMenuOpen .rowMenuTrigger {
   border-color: #531827;
 }
 
-.rowMenu[open]::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-}
-
-.rowMenu button {
+.rowMenuDropdown {
   position: absolute;
   right: 0;
   top: 42px;
   width: 150px;
-  min-height: 38px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 12px 26px rgba(40, 30, 20, 0.14);
+  z-index: 1;
+}
+
+.rowMenuDropdown button {
   display: block;
+  width: 100%;
+  min-height: 38px;
   border: 0;
   border-bottom: 1px solid #f0eee8;
   background: #fff;
@@ -1838,38 +1834,14 @@ button.itemCard {
   font-weight: 850;
 }
 
-.rowMenu button:hover,
-.rowMenu button:focus-visible {
+.rowMenuDropdown button:hover,
+.rowMenuDropdown button:focus-visible {
   background: #f8f4ea;
   color: #531827;
 }
 
-.rowMenu button:first-of-type {
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-}
-
-.rowMenu button:nth-of-type(2) {
-  top: 80px;
-}
-
-.rowMenu button:nth-of-type(3) {
-  top: 118px;
-}
-
-.rowMenu button:nth-of-type(4) {
-  top: 156px;
-}
-
-.rowMenu button:nth-of-type(5) {
-  top: 194px;
-}
-
-.rowMenu button:last-of-type {
+.rowMenuDropdown button:last-of-type {
   border-bottom: 0;
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
-  box-shadow: 0 12px 26px rgba(40, 30, 20, 0.14);
 }
 
 .dangerAction {

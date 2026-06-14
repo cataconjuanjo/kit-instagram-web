@@ -205,6 +205,8 @@ export default function Platos() {
   const [resultadoBatch, setResultadoBatch] = useState(null)
   const [puedeAnalizarChartier, setPuedeAnalizarChartier] = useState(false)
   const inputPdfRef = useRef(null)
+  const menuPlatoRef = useRef(null)
+  const [menuPlato, setMenuPlato] = useState(null)
 
   const categorias = ['Entrantes fríos', 'Entrantes calientes', 'Cuchara', 'De la tierra', 'Del mar', 'Tablas', 'Postres']
 
@@ -235,6 +237,17 @@ export default function Platos() {
   useEffect(() => {
     setPaginaPlatos(1)
   }, [busquedaPlatos, filtroPlatos, pageSizePlatos, filtrosColumnaPlatos])
+
+  useEffect(() => {
+    if (!menuPlato) return
+    function cerrarMenu(e) {
+      if (menuPlatoRef.current && !menuPlatoRef.current.contains(e.target)) {
+        setMenuPlato(null)
+      }
+    }
+    document.addEventListener('mousedown', cerrarMenu, true)
+    return () => document.removeEventListener('mousedown', cerrarMenu, true)
+  }, [menuPlato])
 
   // ── Enriquecimiento Chartier batch ────────────────────────────────────────
   async function enriquecerTodosLosPlatos() {
@@ -788,14 +801,25 @@ export default function Platos() {
                   <p data-label="Categoria" style={{ margin: 0, fontSize: 12, color: '#888' }}>{p.categoria}</p>
                   <p data-label="Precio" style={{ margin: 0, fontSize: 12, color: '#111' }}>{Number(p.precio) ? `${Number(p.precio).toFixed(2)} €` : '—'}</p>
                   <p data-label="Pistas" style={{ margin: 0, fontSize: 12, color: '#bbb' }}>{p.descripcion || '—'}</p>
-                  <details className={styles.rowMenu}>
-                    <summary aria-label={`Acciones para ${p.nombre}`}>...</summary>
-                    <button data-shortcut-edit="true" aria-label={`Editar ${p.nombre}`} onClick={() => setEditandoPlato({ ...p, precio: p.precio || '' })}>Editar</button>
-                    <button onClick={() => copiarPlato(p)}>Copiar fila</button>
-                    <button onClick={() => duplicarPlato(p)}>Duplicar</button>
-                    <button onClick={() => toggleActivo(p)}>{p.activo ? 'Ocultar' : 'Mostrar'}</button>
-                    <button className={styles.dangerAction} onClick={() => borrarPlato(p)}>Borrar</button>
-                  </details>
+                  <div
+                    className={`${styles.rowMenu}${menuPlato === p.id ? ' ' + styles.rowMenuOpen : ''}`}
+                    ref={menuPlato === p.id ? menuPlatoRef : null}
+                  >
+                    <button
+                      className={styles.rowMenuTrigger}
+                      aria-label={`Acciones para ${p.nombre}`}
+                      onClick={() => setMenuPlato(menuPlato === p.id ? null : p.id)}
+                    >...</button>
+                    {menuPlato === p.id && (
+                      <div className={styles.rowMenuDropdown}>
+                        <button data-shortcut-edit="true" onClick={() => { setMenuPlato(null); setEditandoPlato({ ...p, precio: p.precio || '' }) }}>Editar</button>
+                        <button onClick={() => { setMenuPlato(null); copiarPlato(p) }}>Copiar fila</button>
+                        <button onClick={() => { setMenuPlato(null); duplicarPlato(p) }}>Duplicar</button>
+                        <button onClick={() => { setMenuPlato(null); toggleActivo(p) }}>{p.activo ? 'Ocultar' : 'Mostrar'}</button>
+                        <button className={styles.dangerAction} onClick={() => { setMenuPlato(null); borrarPlato(p) }}>Borrar</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {editandoPlato?.id === p.id && (
                   <div className={styles.inlineEditPanel}>
