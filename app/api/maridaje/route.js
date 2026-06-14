@@ -396,11 +396,7 @@ export async function POST(request) {
           const grafoMod = await import('../../lib/chartierGraph')
           const grafoAnalisis = await grafoMod.analizarConGrafo(consultaInterna, vinosRespuesta)
           resumenGrafo = grafoMod.resumenGrafoParaPrompt(grafoAnalisis) || ''
-          candidatosGrafo = (grafoAnalisis?.candidatos || []).slice(0, 3).map(candidatoDesdeGrafo)
-          if (grafoAnalisis?.confianza !== 'baja' && candidatosGrafo.length >= 2) {
-            const permitidos = new Set(candidatosGrafo.map(item => String(item.vino.id || item.vino.nombre)))
-            vinosRespuesta = vinosRespuesta.filter(vino => permitidos.has(String(vino.id || vino.nombre)))
-          }
+          candidatosGrafo = (grafoAnalisis?.candidatos || []).slice(0, 6).map(candidatoDesdeGrafo)
         } catch (err) {
           console.error('[maridaje] grafo (no fatal):', err?.message)
         }

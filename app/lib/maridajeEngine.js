@@ -324,14 +324,9 @@ function capitulosParaConsulta(consultaNormalizada) {
 
   if (matches.length) return matches.sort((a, b) => b.score - a.score).slice(0, 4)
 
-  return capitulos
-    .filter(capitulo => ['fino_manzanilla_versatil', 'anisado_blanco_herbaceo', 'sabor_frio_manzana_sauvignon'].includes(capitulo.id))
-    .map(capitulo => ({
-      capitulo,
-      score: 2,
-      terminosVino: terminosVinoDesdeCapitulo(capitulo),
-      tipos: capitulo.wine_types_primary || [],
-    }))
+  // Sin match KB: devolver lista vacía para que compatibilidadContexto y la estructura
+  // determinen el ganador sin sesgo de capítulos blancos/generosos
+  return []
 }
 
 function compatibilidadContexto(vino, contexto, consultaNormalizada) {

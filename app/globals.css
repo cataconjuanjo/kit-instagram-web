@@ -2694,6 +2694,147 @@ h3 {
   font-weight: 500;
 }
 
+/* Laboratorio de maridaje: vista densa para trabajar sin scroll innecesario */
+.lab-main {
+  padding: 16px 18px 28px;
+}
+
+.lab-main .admin-head {
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.lab-main .admin-head h1 {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.lab-main .admin-head p:not(.admin-kicker) {
+  max-width: 780px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.lab-main .admin-kicker {
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+
+.lab-main .admin-create {
+  display: block;
+  margin-bottom: 20px;
+  padding: 12px;
+}
+
+.lab-main .admin-create-form {
+  grid-template-columns: minmax(160px, 0.65fr) minmax(160px, 0.65fr) minmax(260px, 1.35fr) minmax(260px, 1.35fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.lab-main .admin-create-form label {
+  gap: 4px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.lab-main .admin-create-form input,
+.lab-main .admin-create-form select,
+.lab-main .admin-create-form textarea {
+  min-height: 32px;
+  border-radius: 7px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+
+.lab-main .admin-create-form textarea {
+  min-height: 58px;
+}
+
+.lab-main .admin-create-form > button {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.lab-main .admin-card {
+  min-height: 0;
+  gap: 8px;
+  padding: 12px;
+}
+
+.lab-main .admin-card h3 {
+  margin: 0 0 3px;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.lab-main .admin-card p,
+.lab-main .admin-card small,
+.lab-main .admin-card span {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.lab-main .admin-card p {
+  margin-bottom: 4px;
+}
+
+.lab-main .admin-slug {
+  margin-top: 0;
+  font-size: 10px;
+}
+
+.lab-main .admin-card-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.lab-main .admin-card-actions button,
+.lab-main .admin-card-actions a {
+  min-height: 30px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.lab-main .lab-summary-grid,
+.lab-main .lab-results-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.lab-main .lab-results-grid {
+  margin-top: 20px;
+}
+
+.lab-main .lab-candidates {
+  display: grid;
+  gap: 6px;
+}
+
+.lab-main .lab-candidate {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(255, 250, 240, 0.68);
+}
+
+.lab-main .lab-candidate strong {
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.lab-main .lab-risk {
+  color: #9b3535;
+}
+
 .admin-empty {
   padding: 48px;
   border: 1px solid var(--line);
