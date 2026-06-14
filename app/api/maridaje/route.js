@@ -381,6 +381,7 @@ export async function POST(request) {
     let prefill = ''
     let fallbackCandidatos = []
     let vinosRespuesta = vinos || []
+    let vinosParaClaude = vinosRespuesta
     const esSeguimiento = Boolean(mensajeSeguimiento && historial.length > 0)
     const esModoPlatosParaVino = !esSeguimiento && !['mesa', 'plato', 'quiz'].includes(modo)
 
@@ -396,6 +397,7 @@ export async function POST(request) {
       let candidatosGrafo = []
 
       if (esModoMaridaje) {
+        // 1. GOLDSTEIN — veto duro: elimina vinos estructuralmente incompatibles antes de todo
         const goldsteinAnalisis = analizarConGoldstein(consultaInterna, vinosRespuesta)
         const bloqueadosGoldstein = new Set(
           goldsteinAnalisis.candidatos
@@ -404,19 +406,37 @@ export async function POST(request) {
         )
         vinosRespuesta = vinosRespuesta.filter(vino => !bloqueadosGoldstein.has(String(vino.id || vino.nombre)))
 
-        // Grafo de Chartier — import dinámico para que un fallo no mate la ruta
+        // 2. MOTOR ESTRUCTURAL — determina qué vinos son compatibles con el contexto
+        //    Corre antes del grafo para filtrar lo que Claude puede ver
+        const motorAnalisis = analizarMaridaje(consultaInterna, vinosRespuesta)
+        const motorCompatibles = new Set(
+          [...(motorAnalisis?.recomendados || []), ...(motorAnalisis?.candidatos || [])]
+            .map(c => String(c.vino?.id || c.vino?.nombre))
+        )
+
+        // Claude solo recibe vinos que pasaron el motor estructural
+        // Si hay menos de 2 compatibles (carta muy pequeña), usa todos para no quedarse sin opciones
+        vinosParaClaude = motorCompatibles.size >= 2
+          ? vinosRespuesta.filter(v => motorCompatibles.has(String(v.id || v.nombre)))
+          : vinosRespuesta
+
+        // 3. GRAFO DE CHARTIER — da la inteligencia aromática sobre el conjunto compatible
+        //    El resumen va al prompt; los candidatos se filtran por compatibilidad estructural
         let resumenGrafo = ''
         try {
           const grafoMod = await import('../../lib/chartierGraph')
           const grafoAnalisis = await grafoMod.analizarConGrafo(consultaInterna, vinosRespuesta)
           resumenGrafo = grafoMod.resumenGrafoParaPrompt(grafoAnalisis) || ''
-          candidatosGrafo = (grafoAnalisis?.candidatos || []).slice(0, 6).map(candidatoDesdeGrafo)
+          // Solo candidatos del grafo que también pasaron el motor estructural
+          candidatosGrafo = (grafoAnalisis?.candidatos || [])
+            .slice(0, 6)
+            .map(candidatoDesdeGrafo)
+            .filter(c => motorCompatibles.has(String(c.vino?.id || c.vino?.nombre)))
         } catch (err) {
           console.error('[maridaje] grafo (no fatal):', err?.message)
         }
 
-        // Motor estructural existente (acidez, tanino, cuerpo, restricciones)
-        const motorAnalisis = analizarMaridaje(consultaInterna, vinosRespuesta)
+        // 4. FALLBACK — solo candidatos validados por ambas fuentes
         fallbackCandidatos = candidatosUnicos([
           ...(motorAnalisis?.recomendados || []),
           ...(motorAnalisis?.candidatos || []),
@@ -424,7 +444,7 @@ export async function POST(request) {
         ], 10)
         const resumenMotor = resumenAnalisisParaPrompt(motorAnalisis)
 
-        // Combinar ambas fuentes de evidencia
+        // Combinar evidencia aromática (Chartier) + estructural para el prompt de Claude
         contextoCriterios = [
           resumenGrafo || '',
           resumenMotor || '',
@@ -553,7 +573,7 @@ export async function POST(request) {
       ]
     }
 
-    const cartaParaPrompt = esSeguimiento ? cartaVinos : vinosRespuesta.map(v => lineaVino(v, soloCopa)).join('\n')
+    const cartaParaPrompt = esSeguimiento ? cartaVinos : vinosParaClaude.map(v => lineaVino(v, soloCopa)).join('\n')
     const systemPrompt = esModoPlatosParaVino
       ? buildSystemPlatosParaVino(cartaPlatos, idioma)
       : (!esSeguimiento && esSucesion)
@@ -583,7 +603,7 @@ export async function POST(request) {
     const respuestaClaude = msg.content?.[0]?.text || ''
     const textoRespuesta = (esSeguimiento || esSucesion || esModoPlatosParaVino)
       ? respuestaClaude
-      : respuestaSoloConCarta(respuestaClaude, vinosRespuesta, fallbackCandidatos, idioma, soloCopa)
+      : respuestaSoloConCarta(respuestaClaude, vinosParaClaude, fallbackCandidatos, idioma, soloCopa)
 
     // ── Devolver como SSE para que el cliente lo lea igual que antes ──────
     const encoder = new TextEncoder()

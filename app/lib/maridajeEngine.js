@@ -570,7 +570,7 @@ export function analizarMaridaje(consulta, vinos = []) {
 
   return {
     lectura,
-    candidatos: compatibles.slice(0, 10),
+    candidatos: compatibles,
     recomendados: unique([bajo30, sinLimite, ...compatibles], 3),
   }
 }

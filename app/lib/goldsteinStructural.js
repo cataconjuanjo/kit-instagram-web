@@ -86,8 +86,13 @@ function perfilesCoincidentes(texto, perfiles = []) {
 
 function getKb() {
   if (_kb) return _kb
-  const ruta = path.join(process.cwd(), 'data', 'goldstein_structural_pairing_kb.json')
-  _kb = JSON.parse(fs.readFileSync(ruta, 'utf8'))
+  try {
+    const ruta = path.join(process.cwd(), 'data', 'goldstein_structural_pairing_kb.json')
+    _kb = JSON.parse(fs.readFileSync(ruta, 'utf8'))
+  } catch (err) {
+    console.error('[goldstein] KB no cargado, usando reglas vacías:', err?.message)
+    _kb = { reglas: [], ingredientes: {}, tecnicas: {} }
+  }
   return _kb
 }
 
