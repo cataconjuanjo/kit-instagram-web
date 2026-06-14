@@ -182,7 +182,7 @@ function metodosPlato(consultaNormalizada) {
     gratinado: platoKb?.metodos?.includes('gratinado') || ['gratinado', 'gratinada', 'alioli', 'parmentier', 'queso fundido', 'gratin'].some(t => consultaNormalizada.includes(t)),
     ahumado: platoKb?.metodos?.includes('ahumado') || ['ahumado', 'ahumada'].some(t => consultaNormalizada.includes(t)),
     picante: platoKb?.metodos?.includes('picante') || ['picante', 'picantito', 'pil pil', 'ajillo', 'brava', 'curry'].some(t => consultaNormalizada.includes(t)),
-    vegetalVerde: platoKb?.metodos?.includes('vegetal') || ['esparrago', 'esparragos', 'pimiento', 'pepino', 'menta', 'perejil', 'hinojo', 'apio'].some(t => consultaNormalizada.includes(t)),
+    vegetalVerde: platoKb?.metodos?.includes('vegetal') || ['esparrago', 'esparragos', 'pepino', 'menta', 'perejil', 'hinojo', 'apio'].some(t => consultaNormalizada.includes(t)),
     setasTrufa: platoKb?.metodos?.includes('setas_trufa') || ['seta', 'setas', 'boletus', 'champinon', 'champinones', 'trufa'].some(t => consultaNormalizada.includes(t)),
     dulce: platoKb?.metodos?.includes('dulce') || ['pedro ximenez', 'px', 'miel', 'pasas', 'caramelizada', 'caramelizado'].some(t => consultaNormalizada.includes(t)),
     frutosSecos: platoKb?.metodos?.includes('frutos_secos') || ['nuez', 'nueces', 'almendra', 'almendras', 'avellana'].some(t => consultaNormalizada.includes(t)),
@@ -344,7 +344,7 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
   ].some(t => consultaNormalizada.includes(t))
   const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
     'postre', 'tarta', 'helado', 'brownie', 'chocolate', 'queso azul', 'azul',
-    'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
+    'caramelo', 'toffee', 'datil', 'higo', 'torrija'
   ].some(t => incluyeTerminoCompleto(consultaNormalizada, t))
 
   if (esDulceOxidativo && !contextoDulcePermitido && !metodo.picante) {
@@ -470,7 +470,7 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
   if (metodo.setasTrufa && contexto === 'pescado' && ['tinto', 'blanco'].includes(vino.tipo)) score += 4
   const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
     'postre', 'tarta', 'helado', 'brownie', 'chocolate', 'queso azul', 'azul',
-    'caramelo', 'toffee', 'datil', 'higo', 'frutos secos', 'torrija'
+    'caramelo', 'toffee', 'datil', 'higo', 'torrija'
   ].some(t => incluyeTerminoCompleto(consultaNormalizada, t))
   if (metodo.dulce && contextoDulcePermitido && ['dulce', 'generoso'].includes(vino.tipo)) score += 4
   if (metodo.picante && ['perfil fresco', 'floral', 'dulce', 'baja graduacion'].some(t => textoVino.includes(t))) score += 5
