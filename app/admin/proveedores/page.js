@@ -295,7 +295,8 @@ function ProveedoresPageContent() {
   useEffect(() => {
     if (ordenReferencias.campo !== 'pvp') return
     console.log('[DEBUG-PVP-SORT] dir=' + ordenReferencias.dir + ' total=' + vinosFiltrados.length)
-    vinosFiltrados.slice(0, 20).forEach((vino, i) => {
+    vinosFiltrados.forEach((vino, i) => {
+      if (!vino.nombre.toLowerCase().includes('miradas')) return
       const costeRaw = vino.coste_estimado
       const c = numeroCoste(costeRaw)
       let pvpSort = 0
@@ -303,7 +304,7 @@ function ProveedoresPageContent() {
         const pvpSinIva = c > 11 ? c + 20 : c > 6 ? 2 * c + 9 : c * 3.5
         pvpSort = pvpSinIva * 1.10
       }
-      console.log(`[${i}] "${vino.nombre}" coste_raw=${JSON.stringify(costeRaw)} typeof=${typeof costeRaw} c=${c} pvpSort=${pvpSort.toFixed(4)}`)
+      console.log(`[pos ${i}] "${vino.nombre}" coste_raw=${JSON.stringify(costeRaw)} typeof=${typeof costeRaw} c=${c} pvpSort=${pvpSort.toFixed(4)}`)
     })
   }, [vinosFiltrados, ordenReferencias])
 
