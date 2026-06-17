@@ -37,7 +37,7 @@ function numeroCoste(valor) {
   if (valor === null || valor === undefined || valor === '') return 0
   if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0
   const limpio = String(valor)
-    .replace(/\s/g, '')
+    .replace(/\s/gu, '')
     .replace(/[^\d,.-]/g, '')
   if (!limpio) return 0
   const decimal = limpio.includes(',') && limpio.lastIndexOf(',') > limpio.lastIndexOf('.')
@@ -231,6 +231,18 @@ function ProveedoresPageContent() {
   useEffect(() => {
     setPaginaReferencias(1)
   }, [proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos, ordenReferencias])
+
+  useEffect(() => {
+    if (ordenReferencias.campo !== 'pvp') return
+    console.log('[DEBUG-PVP-SORT] dir=' + ordenReferencias.dir + ' total=' + vinosFiltrados.length)
+    vinosFiltrados.forEach((vino, i) => {
+      const costeRaw = vino.coste_estimado
+      const costeNum = numeroCoste(costeRaw)
+      const pvpSort = calcularBotella(costeNum)?.pvp ?? 0
+      if (i < 20) console.log(`[${i}] "${vino.nombre}" coste_raw=${JSON.stringify(costeRaw)} typeof=${typeof costeRaw} costeNum=${costeNum} pvpSort=${pvpSort}`)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vinosFiltrados, ordenReferencias])
 
   const vinosFiltradosBase = useMemo(() => {
     const terminos = normalizar(busquedaReferencias).split(' ').filter(Boolean)
