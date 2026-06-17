@@ -235,13 +235,16 @@ function ProveedoresPageContent() {
   useEffect(() => {
     if (ordenReferencias.campo !== 'pvp') return
     console.log('[DEBUG-PVP-SORT] dir=' + ordenReferencias.dir + ' total=' + vinosFiltrados.length)
-    vinosFiltrados.forEach((vino, i) => {
+    vinosFiltrados.slice(0, 20).forEach((vino, i) => {
       const costeRaw = vino.coste_estimado
-      const costeNum = numeroCoste(costeRaw)
-      const pvpSort = calcularBotella(costeNum)?.pvp ?? 0
-      if (i < 20) console.log(`[${i}] "${vino.nombre}" coste_raw=${JSON.stringify(costeRaw)} typeof=${typeof costeRaw} costeNum=${costeNum} pvpSort=${pvpSort}`)
+      const c = numeroCoste(costeRaw)
+      let pvpSort = 0
+      if (c > 0) {
+        const pvpSinIva = c > 11 ? c + 20 : c > 6 ? 2 * c + 9 : c * 3.5
+        pvpSort = pvpSinIva * 1.10
+      }
+      console.log(`[${i}] "${vino.nombre}" coste_raw=${JSON.stringify(costeRaw)} typeof=${typeof costeRaw} c=${c} pvpSort=${pvpSort.toFixed(4)}`)
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vinosFiltrados, ordenReferencias])
 
   const vinosFiltradosBase = useMemo(() => {
