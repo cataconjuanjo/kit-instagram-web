@@ -232,10 +232,10 @@ function ProveedoresPageContent() {
     setPaginaReferencias(1)
   }, [proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos, ordenReferencias])
 
-  const vinosFiltrados = useMemo(() => {
+  const vinosFiltradosBase = useMemo(() => {
     const terminos = normalizar(busquedaReferencias).split(' ').filter(Boolean)
     const rango = RANGOS_PRECIO.find(item => item.id === filtroPrecio)
-    const filtrados = vinos.filter(vino => {
+    return vinos.filter(vino => {
       if (proveedorSeleccionado && String(vino.proveedor_id) !== String(proveedorSeleccionado)) return false
       const costeVino = numeroCoste(vino.coste_estimado)
       if (soloSinPrecio && costeVino > 0) return false
@@ -259,6 +259,9 @@ function ProveedoresPageContent() {
       ].filter(Boolean).join(' '))
       return terminos.every(termino => texto.includes(termino))
     })
+  }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos])
+
+  const vinosFiltrados = useMemo(() => {
     const valorOrden = vino => {
       if (ordenReferencias.campo === 'coste') return numeroCoste(vino.coste_estimado)
       if (ordenReferencias.campo === 'pvp') return calcularBotella(numeroCoste(vino.coste_estimado))?.pvp ?? 0
@@ -268,7 +271,7 @@ function ProveedoresPageContent() {
       return normalizar(vino.nombre)
     }
 
-    return [...filtrados].sort((a, b) => {
+    return [...vinosFiltradosBase].sort((a, b) => {
       const av = valorOrden(a)
       const bv = valorOrden(b)
       let resultado
@@ -283,9 +286,11 @@ function ProveedoresPageContent() {
         resultado = String(av).localeCompare(String(bv), 'es', { numeric: true })
       }
       if (!resultado) resultado = normalizar(a.nombre).localeCompare(normalizar(b.nombre), 'es', { numeric: true })
+      if (!resultado) resultado = String(a.referencia || '').localeCompare(String(b.referencia || ''), 'es', { numeric: true })
+      if (!resultado) resultado = String(a.id || '').localeCompare(String(b.id || ''), 'es', { numeric: true })
       return ordenReferencias.dir === 'desc' ? -resultado : resultado
     })
-  }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos, ordenReferencias])
+  }, [vinosFiltradosBase, ordenReferencias])
 
   const proveedorPorId = useMemo(
     () => Object.fromEntries(proveedores.map(proveedor => [proveedor.id, proveedor])),
@@ -382,6 +387,7 @@ function ProveedoresPageContent() {
   }
 
   function cambiarOrdenReferencias(campo) {
+    setPaginaReferencias(1)
     setOrdenReferencias(actual => ({
       campo,
       dir: actual.campo === campo && actual.dir === 'asc' ? 'desc' : 'asc',
