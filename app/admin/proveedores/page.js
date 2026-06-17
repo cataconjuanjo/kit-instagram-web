@@ -232,21 +232,6 @@ function ProveedoresPageContent() {
     setPaginaReferencias(1)
   }, [proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos, ordenReferencias])
 
-  useEffect(() => {
-    if (ordenReferencias.campo !== 'pvp') return
-    console.log('[DEBUG-PVP-SORT] dir=' + ordenReferencias.dir + ' total=' + vinosFiltrados.length)
-    vinosFiltrados.slice(0, 20).forEach((vino, i) => {
-      const costeRaw = vino.coste_estimado
-      const c = numeroCoste(costeRaw)
-      let pvpSort = 0
-      if (c > 0) {
-        const pvpSinIva = c > 11 ? c + 20 : c > 6 ? 2 * c + 9 : c * 3.5
-        pvpSort = pvpSinIva * 1.10
-      }
-      console.log(`[${i}] "${vino.nombre}" coste_raw=${JSON.stringify(costeRaw)} typeof=${typeof costeRaw} c=${c} pvpSort=${pvpSort.toFixed(4)}`)
-    })
-  }, [vinosFiltrados, ordenReferencias])
-
   const vinosFiltradosBase = useMemo(() => {
     const terminos = normalizar(busquedaReferencias).split(' ').filter(Boolean)
     const rango = RANGOS_PRECIO.find(item => item.id === filtroPrecio)
@@ -306,6 +291,21 @@ function ProveedoresPageContent() {
       return ordenReferencias.dir === 'desc' ? -resultado : resultado
     })
   }, [vinosFiltradosBase, ordenReferencias])
+
+  useEffect(() => {
+    if (ordenReferencias.campo !== 'pvp') return
+    console.log('[DEBUG-PVP-SORT] dir=' + ordenReferencias.dir + ' total=' + vinosFiltrados.length)
+    vinosFiltrados.slice(0, 20).forEach((vino, i) => {
+      const costeRaw = vino.coste_estimado
+      const c = numeroCoste(costeRaw)
+      let pvpSort = 0
+      if (c > 0) {
+        const pvpSinIva = c > 11 ? c + 20 : c > 6 ? 2 * c + 9 : c * 3.5
+        pvpSort = pvpSinIva * 1.10
+      }
+      console.log(`[${i}] "${vino.nombre}" coste_raw=${JSON.stringify(costeRaw)} typeof=${typeof costeRaw} c=${c} pvpSort=${pvpSort.toFixed(4)}`)
+    })
+  }, [vinosFiltrados, ordenReferencias])
 
   const proveedorPorId = useMemo(
     () => Object.fromEntries(proveedores.map(proveedor => [proveedor.id, proveedor])),
