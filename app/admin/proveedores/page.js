@@ -61,6 +61,23 @@ function normalizar(texto = '') {
     .trim()
 }
 
+function coincideBusqueda(valores, busqueda) {
+  const terminos = normalizar(busqueda).split(' ').filter(Boolean)
+  if (!terminos.length) return true
+  const palabras = normalizar(valores.filter(Boolean).join(' ')).split(' ').filter(Boolean)
+  return terminos.every(termino => palabras.some(palabra => palabra.startsWith(termino)))
+}
+
+function relevanciaBusqueda(vino, busqueda) {
+  const consulta = normalizar(busqueda)
+  if (!consulta) return 0
+  const nombre = normalizar(vino.nombre)
+  if (nombre === consulta) return 0
+  if (nombre.startsWith(`${consulta} `) || nombre.split(' ').some(palabra => palabra.startsWith(consulta))) return 1
+  if (coincideBusqueda([vino.bodega], consulta)) return 2
+  return 3
+}
+
 function claveComparacion(vino) {
   const nombre = normalizar(vino.nombre).replace(/\b(19|20)\d{2}\b/g, '').trim()
   return [nombre, normalizar(vino.bodega), normalizar(vino.anada)].filter(Boolean).join('|')
@@ -233,7 +250,6 @@ function ProveedoresPageContent() {
   }, [proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos, ordenReferencias])
 
   const vinosFiltradosBase = useMemo(() => {
-    const terminos = normalizar(busquedaReferencias).split(' ').filter(Boolean)
     const rango = RANGOS_PRECIO.find(item => item.id === filtroPrecio)
     return vinos.filter(vino => {
       if (proveedorSeleccionado && String(vino.proveedor_id) !== String(proveedorSeleccionado)) return false
@@ -245,8 +261,7 @@ function ProveedoresPageContent() {
       if (filtroBodega && normalizar(vino.bodega) !== filtroBodega) return false
       if (filtroTipo && normalizar(vino.tipo) !== filtroTipo) return false
       if (!costeEnRango(costeVino, rango)) return false
-      if (!terminos.length) return true
-      const texto = normalizar([
+      return coincideBusqueda([
         vino.nombre,
         vino.bodega,
         vino.tipo,
@@ -256,8 +271,7 @@ function ProveedoresPageContent() {
         vino.referencia,
         vino.formato,
         vino.disponibilidad,
-      ].filter(Boolean).join(' '))
-      return terminos.every(termino => texto.includes(termino))
+      ], busquedaReferencias)
     })
   }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos])
 
@@ -272,6 +286,10 @@ function ProveedoresPageContent() {
     }
 
     return [...vinosFiltradosBase].sort((a, b) => {
+      if (busquedaReferencias.trim()) {
+        const relevancia = relevanciaBusqueda(a, busquedaReferencias) - relevanciaBusqueda(b, busquedaReferencias)
+        if (relevancia) return relevancia
+      }
       const av = valorOrden(a)
       const bv = valorOrden(b)
       let resultado
@@ -290,7 +308,7 @@ function ProveedoresPageContent() {
       if (!resultado) resultado = String(a.id || '').localeCompare(String(b.id || ''), 'es', { numeric: true })
       return ordenReferencias.dir === 'desc' ? -resultado : resultado
     })
-  }, [vinosFiltradosBase, ordenReferencias])
+  }, [vinosFiltradosBase, ordenReferencias, busquedaReferencias])
 
   useEffect(() => {
     if (ordenReferencias.campo !== 'pvp') return
@@ -348,7 +366,6 @@ function ProveedoresPageContent() {
     const baseProveedor = proveedorSeleccionado
       ? vinos.filter(vino => String(vino.proveedor_id) === String(proveedorSeleccionado))
       : vinos
-    const terminos = normalizar(busquedaReferencias).split(' ').filter(Boolean)
     const rango = RANGOS_PRECIO.find(item => item.id === filtroPrecio)
     const pasaBase = (vino, excluir = '') => {
       if (excluir !== 'zona' && filtroZona && normalizar(vino.region) !== filtroZona) return false
@@ -359,8 +376,7 @@ function ProveedoresPageContent() {
       if (ocultarSinPrecio && costeVino <= 0) return false
       if (soloFavoritos && !vino.favorito) return false
       if (!costeEnRango(costeVino, rango)) return false
-      if (terminos.length) {
-        const texto = normalizar([
+      if (!coincideBusqueda([
           vino.nombre,
           vino.bodega,
           vino.tipo,
@@ -370,9 +386,7 @@ function ProveedoresPageContent() {
           vino.referencia,
           vino.formato,
           vino.disponibilidad,
-        ].filter(Boolean).join(' '))
-        if (!terminos.every(termino => texto.includes(termino))) return false
-      }
+        ], busquedaReferencias)) return false
       return true
     }
     return {
@@ -512,10 +526,8 @@ function ProveedoresPageContent() {
   }, [vinos, proveedorImportacion])
 
   const importacionFiltrada = useMemo(() => {
-    const terminos = normalizar(filtroImportacion).split(' ').filter(Boolean)
-    if (!terminos.length) return catalogoImportar
-    return catalogoImportar.filter(vino => {
-      const texto = normalizar([
+    if (!normalizar(filtroImportacion)) return catalogoImportar
+    return catalogoImportar.filter(vino => coincideBusqueda([
         vino.nombre,
         vino.bodega,
         vino.tipo,
@@ -524,9 +536,7 @@ function ProveedoresPageContent() {
         vino.formato,
         vino.referencia,
         vino.disponibilidad,
-      ].filter(Boolean).join(' '))
-      return terminos.every(termino => texto.includes(termino))
-    })
+      ], filtroImportacion))
   }, [catalogoImportar, filtroImportacion])
 
   const duplicadosImportacion = useMemo(() => (
@@ -534,11 +544,9 @@ function ProveedoresPageContent() {
   ), [catalogoImportar, clavesExistentesImportacion])
 
   const comparadorCatalogo = useMemo(() => {
-    const terminos = normalizar(busquedaCatalogo).split(' ').filter(Boolean)
-    if (!terminos.length) return []
+    if (!normalizar(busquedaCatalogo)) return []
 
-    const candidatos = vinos.filter(vino => {
-      const texto = normalizar([
+    const candidatos = vinos.filter(vino => coincideBusqueda([
         vino.nombre,
         vino.bodega,
         vino.region,
@@ -547,9 +555,7 @@ function ProveedoresPageContent() {
         vino.referencia,
         vino.proveedores_vino?.nombre,
         proveedorPorId[vino.proveedor_id]?.nombre,
-      ].filter(Boolean).join(' '))
-      return terminos.every(termino => texto.includes(termino))
-    })
+      ], busquedaCatalogo))
 
     const grupos = Object.values(candidatos.reduce((acc, vino) => {
       const key = claveComparacion(vino) || `${vino.id}`
