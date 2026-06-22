@@ -2708,6 +2708,13 @@ button.itemCard {
     margin: 10px 0 14px;
   }
 
+  .wineListRow > div:nth-child(5) button {
+    width: 40px !important;
+    height: 40px !important;
+    min-height: 40px;
+    border-radius: 8px !important;
+  }
+
   .wineListRow > div:nth-child(6),
   .dishActions {
     display: grid !important;
@@ -2788,6 +2795,14 @@ button.itemCard {
     flex-direction: column;
   }
 
+  .panelHead {
+    flex-wrap: wrap;
+  }
+
+  .panelHead > button {
+    width: 100%;
+  }
+
   .actionRow {
     width: 100%;
   }
@@ -2797,6 +2812,7 @@ button.itemCard {
   .danger,
   .ghost,
   .helpButton {
+    min-height: 44px;
     justify-content: center;
   }
 

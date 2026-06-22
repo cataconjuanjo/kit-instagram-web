@@ -5,9 +5,11 @@ import { supabase } from '../supabase'
 
 export default function OpenCartaPruebaButton({ restauranteId, className = '', children = 'Probar carta' }) {
   const [abriendo, setAbriendo] = useState(false)
+  const [error, setError] = useState('')
 
   async function abrir() {
     if (!restauranteId || abriendo) return
+    setError('')
     const nuevaVentana = window.open('about:blank', '_blank')
     if (nuevaVentana) nuevaVentana.opener = null
     setAbriendo(true)
@@ -28,15 +30,22 @@ export default function OpenCartaPruebaButton({ restauranteId, className = '', c
       else window.open(body.url, '_blank', 'noopener,noreferrer')
     } catch (error) {
       nuevaVentana?.close()
-      window.alert(error.message)
+      setError(error.message || 'No se pudo abrir la carta.')
     } finally {
       setAbriendo(false)
     }
   }
 
   return (
-    <button type="button" className={className} onClick={abrir} disabled={!restauranteId || abriendo}>
-      {abriendo ? 'Abriendo...' : children}
-    </button>
+    <>
+      <button type="button" className={className} onClick={abrir} disabled={!restauranteId || abriendo}>
+        {abriendo ? 'Abriendo...' : children}
+      </button>
+      {error && (
+        <span role="alert" style={{ color: '#a33b3b', fontSize: 12, lineHeight: 1.35 }}>
+          {error}
+        </span>
+      )}
+    </>
   )
 }

@@ -340,6 +340,7 @@ export default function RadarConsultoria() {
   const [filtro, setFiltro] = useState('todas')
   const [ticketDrafts, setTicketDrafts] = useState({})
   const [guardandoTicket, setGuardandoTicket] = useState('')
+  const [ticketError, setTicketError] = useState('')
   const [loading, setLoading] = useState(true)
   const [favoritos, setFavoritos] = useState([])
   const [radarEjecutivo, setRadarEjecutivo] = useState(null)
@@ -457,6 +458,7 @@ export default function RadarConsultoria() {
     const restaurante = informe.restaurante
     const valor = ticketDrafts[restaurante.id]
     setGuardandoTicket(restaurante.id)
+    setTicketError('')
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/admin/restaurantes', {
@@ -474,7 +476,7 @@ export default function RadarConsultoria() {
       if (!res.ok) throw new Error(data.error || 'No se pudo guardar el ticket.')
       setRestaurantes(actual => actual.map(rest => rest.id === restaurante.id ? data.restaurante : rest))
     } catch (error) {
-      alert(error.message || 'No se pudo guardar el ticket medio.')
+      setTicketError(error.message || 'No se pudo guardar el ticket medio.')
     } finally {
       setGuardandoTicket('')
     }
@@ -532,6 +534,7 @@ export default function RadarConsultoria() {
               </p>
             </div>
           </div>
+          {ticketError && <p className="admin-alert admin-alert-error" role="alert">{ticketError}</p>}
 
           <section className="executive-radar-summary">
             <article>

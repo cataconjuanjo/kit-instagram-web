@@ -61,6 +61,7 @@ function AdminPageContent() {
   const [copiadoReset, setCopiadoReset] = useState(false)
   const [bajaId, setBajaId] = useState(null) // id del restaurante pendiente de confirmar baja
   const [dandoDeBaja, setDandoDeBaja] = useState(false)
+  const [bajaError, setBajaError] = useState('')
   const [hubLinks, setHubLinks] = useState([])
   const [uso, setUso] = useState({ resumen: {}, recientes: [], ia: { resumen: {}, preparacion: { resumen: {}, total: {} }, total: {}, disponible: false } })
   const [usoError, setUsoError] = useState('')
@@ -371,20 +372,23 @@ function AdminPageContent() {
 
   async function darDeBaja(restaurante) {
     setDandoDeBaja(true)
-    const token = await tokenAdmin()
-    const res = await fetch('/api/admin/restaurantes', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ id: restaurante.id, email: restaurante.email })
-    })
-    const data = await res.json()
-    if (res.ok) {
+    setBajaError('')
+    try {
+      const token = await tokenAdmin()
+      const res = await fetch('/api/admin/restaurantes', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id: restaurante.id, email: restaurante.email })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'No se pudo dar de baja el restaurante.')
       setRestaurantes(prev => prev.filter(r => r.id !== restaurante.id))
       setBajaId(null)
-    } else {
-      alert(data.error || 'No se pudo dar de baja el restaurante.')
+    } catch (error) {
+      setBajaError(error.message || 'No se pudo dar de baja el restaurante.')
+    } finally {
+      setDandoDeBaja(false)
     }
-    setDandoDeBaja(false)
   }
 
   function copiarReset() {
@@ -405,6 +409,8 @@ function AdminPageContent() {
     await supabase.auth.signOut()
     window.location.href = '/login'
   }
+
+  const restauranteBaja = restaurantes.find(restaurante => restaurante.id === bajaId)
 
   if (loading) {
     return <p className="admin-loading">Cargando</p>
@@ -789,37 +795,12 @@ function AdminPageContent() {
                 <button
                   className="admin-plain-button"
                   style={{ color: '#c0392b' }}
-                  onClick={() => { setBajaId(restaurante.id); setResetResult(null) }}
+                  onClick={() => { setBajaId(restaurante.id); setBajaError(''); setResetResult(null) }}
                 >
                   Dar de baja
                 </button>
               </div>
 
-              {bajaId === restaurante.id && (
-                <div className="admin-alert admin-alert-error" style={{ marginTop: 10 }}>
-                  <strong>¿Dar de baja a {restaurante.nombre}?</strong>
-                  <span style={{ fontSize: 13 }}>
-                    Se borrará el restaurante y su acceso de forma permanente. Esta acción no se puede deshacer.
-                  </span>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <button
-                      type="button"
-                      onClick={() => darDeBaja(restaurante)}
-                      disabled={dandoDeBaja}
-                      style={{ background: '#c0392b', color: '#fff', border: 'none', padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}
-                    >
-                      {dandoDeBaja ? 'Borrando...' : 'Sí, dar de baja'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBajaId(null)}
-                      style={{ background: 'transparent', border: '1px solid #ccc', padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              )}
               {resetandoId === restaurante.id && resetResult && (
                 <div className={`admin-alert ${resetResult.ok ? 'admin-alert-ok' : 'admin-alert-error'}`} style={{ marginTop: 10 }}>
                   {resetResult.ok && resetResult.modo === 'email' ? (
@@ -892,6 +873,33 @@ function AdminPageContent() {
               ? 'Se generará una contraseña aleatoria nueva. La contraseña anterior dejará de funcionar.'
               : 'Se generará un enlace de activación que podrás copiar y enviar al restaurante.'}</p>
           </div>
+        </AdminOverlay>
+        <AdminOverlay
+          open={Boolean(restauranteBaja)}
+          onClose={() => !dandoDeBaja && setBajaId(null)}
+          size="modal"
+          eyebrow="Acción irreversible"
+          title="Dar de baja al restaurante"
+          description={restauranteBaja ? `${restauranteBaja.nombre} · ${restauranteBaja.email}` : ''}
+          footer={
+            <>
+              <button type="button" onClick={() => setBajaId(null)} disabled={dandoDeBaja}>Cancelar</button>
+              <button
+                type="button"
+                className="is-danger"
+                disabled={dandoDeBaja}
+                onClick={() => restauranteBaja && darDeBaja(restauranteBaja)}
+              >
+                {dandoDeBaja ? 'Dando de baja…' : 'Dar de baja definitivamente'}
+              </button>
+            </>
+          }
+        >
+          <div className="admin-detail-box">
+            <h3>Se eliminarán el restaurante y su acceso</h3>
+            <p>Esta acción es permanente y no se puede deshacer.</p>
+          </div>
+          {bajaError && <p className="admin-alert admin-alert-error">{bajaError}</p>}
         </AdminOverlay>
         <div className="table-pagination">
           <span>Pagina {pagina} de {totalPaginas} · {restaurantesOrdenados.length} registros</span>

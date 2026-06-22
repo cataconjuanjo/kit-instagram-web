@@ -7,6 +7,7 @@ import { LoadingState, ModuleShell } from '../moduleComponents'
 import { limiteVinosPlan, nombrePlan, puedeUsar } from '../../lib/plans'
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
+import ConfirmationDialog from '../ConfirmationDialog'
 
 const perfilesVino = [
   { label: 'Fresco', texto: 'perfil fresco' },
@@ -129,6 +130,8 @@ const [seleccionados, setSeleccionados] = useState([])
 const [accionMasiva, setAccionMasiva] = useState('proveedor')
 const [valorMasivo, setValorMasivo] = useState('')
 const [aplicandoMasivo, setAplicandoMasivo] = useState(false)
+const [confirmacion, setConfirmacion] = useState(null)
+const [borrandoId, setBorrandoId] = useState('')
 const inputPdfRef = useRef(null)
   const [nuevoVino, setNuevoVino] = useState({
     nombre: '', bodega: '', tipo: 'tinto', region: '',
@@ -371,9 +374,19 @@ async function guardarAnada(vino) {
     setVinos(vinos.map(v => v.id === vino.id ? { ...v, activo: !v.activo } : v))
   }
   async function borrarVino(vino) {
-  if (!confirm(`¿Seguro que quieres eliminar "${vino.nombre}"? Esta acción no se puede deshacer.`)) return
-  await supabase.from('vinos').delete().eq('id', vino.id)
-  setVinos(vinos.filter(v => v.id !== vino.id))
+  setBorrandoId(vino.id)
+  setErrorBodega('')
+  try {
+    const { error } = await supabase.from('vinos').delete().eq('id', vino.id)
+    if (error) throw error
+    setVinos(actual => actual.filter(v => v.id !== vino.id))
+    return true
+  } catch {
+    setErrorBodega('No se pudo eliminar el vino. Vuelve a intentarlo.')
+    return false
+  } finally {
+    setBorrandoId('')
+  }
 }
 async function actualizarStock(vino, cambio) {
   const stockAnterior = Number(vino.stock) || 0
@@ -493,7 +506,7 @@ function vinoComoFila(vino) {
   ]
 }
 
-async function aplicarAccionMasiva() {
+async function aplicarAccionMasiva(confirmado = false) {
   if (!seleccionados.length) return
   const cambios = {}
   if (accionMasiva === 'proveedor') {
@@ -506,7 +519,10 @@ async function aplicarAccionMasiva() {
   }
   if (accionMasiva === 'mostrar') cambios.activo = true
   if (accionMasiva === 'ocultar') {
-    if (!confirm(`¿Ocultar ${seleccionados.length} referencias de la carta pública?`)) return
+    if (!confirmado) {
+      setConfirmacion({ tipo: 'ocultar', total: seleccionados.length })
+      return
+    }
     cambios.activo = false
   }
 
@@ -979,7 +995,7 @@ async function aplicarAccionMasiva() {
                     <button onClick={() => copiarVino(v)}>Copiar fila</button>
                     <button onClick={() => duplicarVino(v)}>Duplicar</button>
                     <button onClick={() => toggleActivo(v)}>{v.activo ? 'Ocultar' : 'Mostrar'}</button>
-                    <button className={styles.dangerAction} onClick={() => borrarVino(v)}>Borrar</button>
+                    <button className={styles.dangerAction} onClick={() => setConfirmacion({ tipo: 'borrar', vino: v })}>Borrar</button>
                   </div>
                 </details>
 </div>
@@ -1081,6 +1097,27 @@ async function aplicarAccionMasiva() {
             </button>
           </nav>
         )}
+        <ConfirmationDialog
+          open={Boolean(confirmacion)}
+          onClose={() => setConfirmacion(null)}
+          title={confirmacion?.tipo === 'borrar' ? 'Eliminar vino' : 'Ocultar referencias'}
+          description={confirmacion?.tipo === 'borrar'
+            ? `Se eliminará “${confirmacion.vino?.nombre || ''}” de forma permanente.`
+            : `${confirmacion?.total || 0} referencias dejarán de aparecer en la carta pública.`}
+          confirmLabel={confirmacion?.tipo === 'borrar' ? 'Eliminar definitivamente' : 'Ocultar referencias'}
+          busy={aplicandoMasivo || Boolean(borrandoId)}
+          onConfirm={async () => {
+            const accion = confirmacion
+            if (accion?.tipo === 'borrar') {
+              const eliminado = await borrarVino(accion.vino)
+              if (eliminado) setConfirmacion(null)
+            }
+            if (accion?.tipo === 'ocultar') {
+              setConfirmacion(null)
+              await aplicarAccionMasiva(true)
+            }
+          }}
+        />
       </div>
     </ModuleShell>
   )

@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
+import AdminOverlay from '../components/AdminOverlay'
 
 
 const proveedorInicial = {
@@ -205,6 +206,8 @@ function ProveedoresPageContent() {
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const [borradoPendiente, setBorradoPendiente] = useState(null)
+  const [borrando, setBorrando] = useState(false)
   const [vistaProveedores, setVistaProveedores] = useState(searchParams.get('vista') === 'catalogo' ? 'catalogo' : 'gestion')
   const [acordeonAbierto, setAcordeonAbierto] = useState(null)
   const catalogoRef = useRef(null)
@@ -866,12 +869,8 @@ function ProveedoresPageContent() {
   }
 
   async function borrar(id, kind) {
-    const mensaje = kind === 'vino'
-      ? '¿Borrar este vino del catálogo privado?'
-      : '¿Borrar este proveedor y su catálogo privado?'
-    if (!confirm(mensaje)) return
-
     setError('')
+    setBorrando(true)
     try {
       const token = await tokenAdmin()
       const res = await fetch('/api/admin/proveedores', {
@@ -887,8 +886,11 @@ function ProveedoresPageContent() {
         setVinos(actual => actual.filter(vino => vino.proveedor_id !== id))
         if (proveedorSeleccionado === id) setProveedorSeleccionado('')
       }
+      setBorradoPendiente(null)
     } catch (error) {
       setError(error.message)
+    } finally {
+      setBorrando(false)
     }
   }
 
@@ -1448,7 +1450,7 @@ function ProveedoresPageContent() {
                                     {vino.favorito ? '★' : '☆'}
                                   </button>
                                   <button onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion') }}>Editar</button>
-                                  <button className="admin-plain-button" onClick={() => borrar(vino.id, 'vino')}>Borrar</button>
+                                  <button className="admin-plain-button" onClick={() => setBorradoPendiente({ id: vino.id, kind: 'vino', nombre: vino.nombre })}>Borrar</button>
                                 </div>
                               </div>
                             )
@@ -1492,7 +1494,7 @@ function ProveedoresPageContent() {
                             {vino.favorito ? '★' : '☆'}
                           </button>
                           <button onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion') }}>Editar</button>
-                          <button className="admin-plain-button" onClick={() => borrar(vino.id, 'vino')}>Borrar</button>
+                          <button className="admin-plain-button" onClick={() => setBorradoPendiente({ id: vino.id, kind: 'vino', nombre: vino.nombre })}>Borrar</button>
                         </div>
                       </div>
                     )
@@ -1533,7 +1535,7 @@ function ProveedoresPageContent() {
                     </div>
                     <div className="supplier-row-btns">
                       <button type="button" className="supplier-btn-edit" onClick={() => editarProveedor(proveedor)}>✏ Editar</button>
-                      <button type="button" className="supplier-btn-danger" onClick={() => borrar(proveedor.id, 'proveedor')}>✕ Borrar</button>
+                      <button type="button" className="supplier-btn-danger" onClick={() => setBorradoPendiente({ id: proveedor.id, kind: 'proveedor', nombre: proveedor.nombre })}>✕ Borrar</button>
                     </div>
                   </div>
                 ))}
@@ -1571,6 +1573,32 @@ function ProveedoresPageContent() {
             </section>
           </div>
           )}
+          <AdminOverlay
+            open={Boolean(borradoPendiente)}
+            onClose={() => !borrando && setBorradoPendiente(null)}
+            size="modal"
+            eyebrow="Acción irreversible"
+            title={borradoPendiente?.kind === 'vino' ? 'Eliminar referencia' : 'Eliminar proveedor'}
+            description={borradoPendiente?.nombre || ''}
+            footer={
+              <>
+                <button type="button" onClick={() => setBorradoPendiente(null)} disabled={borrando}>Cancelar</button>
+                <button
+                  type="button"
+                  className="is-danger"
+                  disabled={borrando}
+                  onClick={() => borradoPendiente && borrar(borradoPendiente.id, borradoPendiente.kind)}
+                >
+                  {borrando ? 'Eliminando…' : 'Eliminar definitivamente'}
+                </button>
+              </>
+            }
+          >
+            <div className="admin-detail-box">
+              <h3>{borradoPendiente?.kind === 'vino' ? 'La referencia desaparecerá del catálogo privado' : 'También se eliminará todo su catálogo privado'}</h3>
+              <p>Esta acción es permanente y no se puede deshacer.</p>
+            </div>
+          </AdminOverlay>
     </div>
   )
 }

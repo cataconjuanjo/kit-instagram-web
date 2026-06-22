@@ -58,6 +58,15 @@ export default function SugerenciasPage() {
     cargar()
   }, [cargarSugerencias])
 
+  useEffect(() => {
+    function abrirDesdeUrl() {
+      if (window.location.hash === '#nueva') setFormAbierto(true)
+    }
+    abrirDesdeUrl()
+    window.addEventListener('hashchange', abrirDesdeUrl)
+    return () => window.removeEventListener('hashchange', abrirDesdeUrl)
+  }, [])
+
   async function enviar(event) {
     event.preventDefault()
     if (!restaurante?.id || mensaje.trim().length < 10) return
@@ -142,44 +151,6 @@ export default function SugerenciasPage() {
           {estadoEnvio && <p className={styles.sectionText}>{estadoEnvio}</p>}
         </form>
       </ResponsiveOverlay>
-
-      <section className={styles.panel} style={{ display: 'none' }} aria-hidden="true">
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Enviar comentario</h2>
-            <p className={styles.panelSub}>Lo revisaremos para priorizar mejoras útiles para el trabajo diario.</p>
-          </div>
-        </div>
-        <div className={styles.panelBody}>
-          <form onSubmit={enviar}>
-            <div className={styles.formGrid}>
-              <label>
-                <span className={styles.label}>Tipo de comentario</span>
-                <select className={styles.select} value={tipo} onChange={event => setTipo(event.target.value)}>
-                  {TIPOS.map(item => <option value={item.id} key={item.id}>{item.label}</option>)}
-                </select>
-              </label>
-              <label className={styles.full}>
-                <span className={styles.label}>¿Qué nos quieres contar?</span>
-                <textarea
-                  className={styles.textarea}
-                  value={mensaje}
-                  onChange={event => setMensaje(event.target.value)}
-                  rows={8}
-                  maxLength={3000}
-                  placeholder="Por ejemplo: en inventario me vendría bien filtrar por proveedor, o al guardar un vino aparece un error..."
-                  required
-                />
-              </label>
-            </div>
-            <p className={styles.tiny}>{mensaje.length} / 3000</p>
-            {estadoEnvio && <p className={styles.sectionText}>{estadoEnvio}</p>}
-            <button className={styles.primary} type="submit" disabled={enviando || mensaje.trim().length < 10}>
-              {enviando ? 'Enviando...' : 'Enviar sugerencia'}
-            </button>
-          </form>
-        </div>
-      </section>
 
       <section className={styles.panel} style={{ marginTop: 16 }}>
         <div className={styles.panelHead}>

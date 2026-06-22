@@ -222,7 +222,7 @@ export default function DashboardLayout({ children }) {
   return (
     <div className={`${styles.shell} ${darkMode ? styles.darkShell : ''}`}>
       {restaurante && <UsageTracker restauranteId={restaurante.id} />}
-      <nav className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
+      <nav id="dashboard-navigation" aria-label="Navegación principal" className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <div className={styles.brandIdentity}>
             {restaurante?.logo_url ? (
@@ -286,7 +286,7 @@ export default function DashboardLayout({ children }) {
                 Modo camarero
               </a>
             )}
-            <Link href="/dashboard/sugerencias" className={styles.footerLink}>
+            <Link href="/dashboard/sugerencias#nueva" className={styles.footerLink}>
               Enviar sugerencia
             </Link>
           </div>
@@ -298,7 +298,14 @@ export default function DashboardLayout({ children }) {
 
       <div className={styles.main}>
         <div className={styles.mobileBar}>
-          <button type="button" className={styles.menuToggle} onClick={() => setMenuOpen(true)}>
+          <button
+            type="button"
+            className={styles.menuToggle}
+            onClick={() => setMenuOpen(true)}
+            aria-label="Abrir menú principal"
+            aria-controls="dashboard-navigation"
+            aria-expanded={menuOpen}
+          >
             <svg viewBox="0 0 20 20" fill="currentColor" width={18} height={18}>
               <path fillRule="evenodd" d="M3 5h14a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm0 4h14a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm0 4h14a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2z" clipRule="evenodd"/>
             </svg>

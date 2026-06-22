@@ -6,6 +6,7 @@ import { ADMIN_EMAIL, getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
+import ConfirmationDialog from '../ConfirmationDialog'
 
 const rasgosMaridaje = [
   { label: 'Brasa', texto: 'brasa' },
@@ -210,6 +211,9 @@ export default function Platos() {
   const inputPdfRef = useRef(null)
   const menuPlatoRef = useRef(null)
   const [menuPlato, setMenuPlato] = useState(null)
+  const [platoBorrar, setPlatoBorrar] = useState(null)
+  const [borrandoId, setBorrandoId] = useState('')
+  const [errorPlatos, setErrorPlatos] = useState('')
 
   const categorias = ['Entrantes fríos', 'Entrantes calientes', 'Cuchara', 'De la tierra', 'Del mar', 'Tablas', 'Postres']
 
@@ -439,9 +443,19 @@ export default function Platos() {
   }
 
   async function borrarPlato(plato) {
-    if (!confirm(`¿Seguro que quieres eliminar "${plato.nombre}"?`)) return
-    await supabase.from('platos').delete().eq('id', plato.id)
-    setPlatos(platos.filter(p => p.id !== plato.id))
+    setBorrandoId(plato.id)
+    setErrorPlatos('')
+    try {
+      const { error } = await supabase.from('platos').delete().eq('id', plato.id)
+      if (error) throw error
+      setPlatos(actual => actual.filter(p => p.id !== plato.id))
+      return true
+    } catch {
+      setErrorPlatos('No se pudo eliminar el plato. Vuelve a intentarlo.')
+      return false
+    } finally {
+      setBorrandoId('')
+    }
   }
 
   function ordenarPorPlato(key) {
@@ -560,31 +574,8 @@ export default function Platos() {
         ],
       }}
     >
-      <div style={{ display: 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <a href="/dashboard" style={{ fontSize: 12, color: '#aaa', textDecoration: 'none', letterSpacing: '0.05em' }}>← Volver</a>
-          <div style={{ width: 1, height: 32, background: '#e8e8e8' }} />
-          <p style={{ fontSize: 15, fontWeight: 400, color: '#111', margin: 0, fontFamily: 'Georgia, serif' }}>{restaurante?.nombre}</p>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => { setMostrarImportador(!mostrarImportador); setMostrarFormulario(false) }} style={{
-            background: mostrarImportador ? 'transparent' : '#fff', color: '#777',
-            border: '1px solid #e8e8e8',
-            padding: '8px 16px', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer'
-          }}>
-            {mostrarImportador ? 'Cerrar importador' : 'Importar carta'}
-          </button>
-          <button onClick={() => { setMostrarFormulario(!mostrarFormulario); setMostrarImportador(false) }} style={{
-            background: mostrarFormulario ? 'transparent' : '#111', color: mostrarFormulario ? '#aaa' : '#fff',
-            border: mostrarFormulario ? '1px solid #e8e8e8' : '1px solid #111',
-            padding: '8px 20px', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer'
-          }}>
-            {mostrarFormulario ? 'Cancelar' : '+ Añadir plato'}
-          </button>
-        </div>
-      </div>
-
       <div className={styles.menuPage}>
+        {errorPlatos && <div className={styles.empty} role="alert" style={{ minHeight: 70, marginBottom: 16, color: '#9b3535' }}>{errorPlatos}</div>}
         <section className={styles.pendingStrip}>
           <div>
             <p className={styles.eyebrow}>Cola de mejora</p>
@@ -814,7 +805,7 @@ export default function Platos() {
                         <button onClick={() => { setMenuPlato(null); copiarPlato(p) }}>Copiar fila</button>
                         <button onClick={() => { setMenuPlato(null); duplicarPlato(p) }}>Duplicar</button>
                         <button onClick={() => { setMenuPlato(null); toggleActivo(p) }}>{p.activo ? 'Ocultar' : 'Mostrar'}</button>
-                        <button className={styles.dangerAction} onClick={() => { setMenuPlato(null); borrarPlato(p) }}>Borrar</button>
+                        <button className={styles.dangerAction} onClick={() => { setMenuPlato(null); setPlatoBorrar(p) }}>Borrar</button>
                       </div>
                     )}
                   </div>
@@ -876,6 +867,20 @@ export default function Platos() {
             </button>
           </nav>
         )}
+        <ConfirmationDialog
+          open={Boolean(platoBorrar)}
+          onClose={() => setPlatoBorrar(null)}
+          title="Eliminar plato"
+          description={`Se eliminará “${platoBorrar?.nombre || ''}” de forma permanente.`}
+          confirmLabel="Eliminar definitivamente"
+          busy={Boolean(borrandoId)}
+          onConfirm={async () => {
+            const plato = platoBorrar
+            if (!plato) return
+            const eliminado = await borrarPlato(plato)
+            if (eliminado) setPlatoBorrar(null)
+          }}
+        />
       </div>
     </ModuleShell>
   )

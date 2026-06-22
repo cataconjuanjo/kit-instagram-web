@@ -704,11 +704,37 @@ button.footerLink {
 
 @media (max-width: 720px) {
   .operationalTopbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    min-height: 56px;
     padding: 10px 14px;
   }
 
+  .restaurantTitle,
+  .topSearch kbd,
+  .clock,
+  .profileMenu {
+    display: none;
+  }
+
+  .topSearch > button {
+    min-height: 40px;
+  }
+
+  .searchPopover {
+    position: fixed;
+    top: 122px;
+    left: 12px;
+    right: 12px;
+  }
+
   .topStatus {
-    justify-content: flex-start;
-    flex-wrap: wrap;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+
+  .topStatus a {
+    min-height: 40px;
+    white-space: nowrap;
   }
 }
