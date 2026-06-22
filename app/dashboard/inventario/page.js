@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { maxFechaISO } from '../../lib/actividadReal'
+import { aplicarAjustesStock } from '../../lib/stockClient'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
+import ResponsiveOverlay from '../ResponsiveOverlay'
 
 const VINOS_POR_TANDA = 10
 
@@ -46,6 +48,7 @@ export default function InventarioSemanal() {
   const [busqueda, setBusqueda] = useState('')
   const [pagina, setPagina] = useState(1)
   const [soloAjustes, setSoloAjustes] = useState(false)
+  const [confirmarAjustes, setConfirmarAjustes] = useState(false)
   const [loading, setLoading] = useState(true)
   const [aplicando, setAplicando] = useState(false)
   const [mensaje, setMensaje] = useState('')
@@ -148,49 +151,36 @@ export default function InventarioSemanal() {
 
   async function aplicarAjustes() {
     if (!restaurante?.id || !datos.ajustes.length) return
-    const confirmar = window.confirm(`Vas a aplicar ${datos.ajustes.length} ajustes de inventario y modificar stock. ¿Continuar?`)
-    if (!confirmar) return
+    setConfirmarAjustes(false)
     setAplicando(true)
     setMensaje('')
 
-    for (const ajuste of datos.ajustes) {
-      const { vino, contado, stockActual, diferencia, motivo } = ajuste
-      const { error } = await supabase.from('vinos').update({ stock: contado }).eq('id', vino.id)
-      if (!error) {
-        await supabase.from('movimientos_stock').insert([{
-          restaurante_id: restaurante.id,
+    try {
+      const resultados = await aplicarAjustesStock(supabase, {
+        restaurante_id: restaurante.id,
+        ajustes: datos.ajustes.map(({ vino, contado, diferencia, motivo }) => ({
           vino_id: vino.id,
+          modo: 'establecer',
+          valor: contado,
           tipo: motivo === 'venta' ? 'venta' : 'ajuste',
-          cantidad: diferencia,
-          stock_anterior: stockActual,
-          stock_nuevo: contado,
-          motivo: `Inventario semanal: ${motivo}`
-        }])
-
-        if (motivo === 'venta' && diferencia < 0) {
-          await supabase.from('estadisticas').insert([{
-            restaurante_id: restaurante.id,
-            tipo: 'venta',
-            detalle: JSON.stringify({
-              vino_id: vino.id,
-              vino: vino.nombre,
-              resultado: 'vendida',
-              cantidad: Math.abs(diferencia),
-              origen: 'inventario',
-            }),
-          }])
-        }
-      }
+          motivo: `Inventario semanal: ${motivo}`,
+          registrar_venta: motivo === 'venta' && diferencia < 0,
+        })),
+      })
+      const stockPorVino = new Map(resultados.map(item => [String(item.vino_id), item.stock_nuevo]))
+      setVinos(actuales => actuales.map(vino =>
+        stockPorVino.has(String(vino.id))
+          ? { ...vino, stock: stockPorVino.get(String(vino.id)) }
+          : vino
+      ))
+      setConteos({})
+      setMotivos({})
+      setMensaje(`${resultados.length} ajustes aplicados.`)
+    } catch (error) {
+      setMensaje(error.message || 'No se pudieron aplicar los ajustes.')
+    } finally {
+      setAplicando(false)
     }
-
-    setVinos(vinos.map(vino => {
-      const ajuste = datos.ajustes.find(item => item.vino.id === vino.id)
-      return ajuste ? { ...vino, stock: ajuste.contado } : vino
-    }))
-    setConteos({})
-    setMotivos({})
-    setMensaje(`${datos.ajustes.length} ajustes aplicados.`)
-    setAplicando(false)
   }
 
   if (loading) return <LoadingState />
@@ -246,7 +236,7 @@ export default function InventarioSemanal() {
       eyebrow="Inventario inteligente"
       title="Revisar solo lo importante"
       subtitle="Una rutina semanal para contar vinos de riesgo, aplicar diferencias y medir el impacto económico sin revisar toda la bodega."
-      actions={<button className={styles.primary} onClick={aplicarAjustes} disabled={aplicando || !datos.ajustes.length}>{aplicando ? 'Aplicando...' : `Aplicar ${datos.ajustes.length} ajustes`}</button>}
+      actions={<button className={styles.primary} onClick={() => setConfirmarAjustes(true)} disabled={aplicando || !datos.ajustes.length}>{aplicando ? 'Aplicando...' : `Aplicar ${datos.ajustes.length} ajustes`}</button>}
       help={{
         title: 'Inventario práctico',
         intro: 'La idea no es contar todo cada día, sino revisar primero las referencias que pueden generar problemas.',
@@ -284,6 +274,30 @@ export default function InventarioSemanal() {
           <span>{revisadosFiltro} revisados</span>
         </div>
       </section>
+      <ResponsiveOverlay
+        open={confirmarAjustes}
+        onClose={() => !aplicando && setConfirmarAjustes(false)}
+        size="modal"
+        eyebrow="Confirmar inventario"
+        title={`Aplicar ${datos.ajustes.length} ajustes`}
+        description="Se actualizará el stock y quedará registrado el motivo de cada diferencia."
+        footer={
+          <>
+            <button type="button" className={styles.ghost} onClick={() => setConfirmarAjustes(false)} disabled={aplicando}>Cancelar</button>
+            <button type="button" className={styles.primary} onClick={aplicarAjustes} disabled={aplicando}>{aplicando ? 'Aplicando…' : 'Confirmar ajustes'}</button>
+          </>
+        }
+      >
+        <div className={styles.itemStack}>
+          {datos.ajustes.slice(0, 8).map(ajuste => (
+            <article className={styles.itemCard} key={ajuste.vino.id}>
+              <h3 className={styles.sectionTitle}>{ajuste.vino.nombre}</h3>
+              <p className={styles.sectionText}>Stock {ajuste.vino.stock || 0} → {ajuste.contado} · {ajuste.motivo}</p>
+            </article>
+          ))}
+          {datos.ajustes.length > 8 && <p className={styles.sectionText}>Y {datos.ajustes.length - 8} ajustes más.</p>}
+        </div>
+      </ResponsiveOverlay>
 
       <section className={`${styles.statsGrid} ${styles.inventoryStats}`}>
         <div className={styles.stat}><p className={styles.statValue}>{datos.filtrados.length}</p><p className={styles.statLabel}>Referencias a revisar</p></div>

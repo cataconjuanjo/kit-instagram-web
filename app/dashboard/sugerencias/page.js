@@ -5,6 +5,7 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
+import ResponsiveOverlay from '../ResponsiveOverlay'
 
 const TIPOS = [
   { id: 'mejora', label: 'Algo que mejoraría' },
@@ -32,6 +33,7 @@ export default function SugerenciasPage() {
   const [estadoEnvio, setEstadoEnvio] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [formAbierto, setFormAbierto] = useState(false)
 
   const cargarSugerencias = useCallback(async (restauranteId) => {
     if (!restauranteId) return
@@ -79,6 +81,7 @@ export default function SugerenciasPage() {
       setTipo('mejora')
       setEstadoEnvio('Gracias. La sugerencia ha llegado correctamente.')
       await cargarSugerencias(restaurante.id)
+      setFormAbierto(false)
     } else {
       setEstadoEnvio(body.error || 'No se pudo enviar. Inténtalo de nuevo.')
     }
@@ -96,6 +99,51 @@ export default function SugerenciasPage() {
       narrow
     >
       <section className={styles.panel}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2 className={styles.panelTitle}>¿Quieres contarnos algo?</h2>
+            <p className={styles.panelSub}>Envía un comentario breve sin perder el historial.</p>
+          </div>
+          <button type="button" className={styles.primary} onClick={() => setFormAbierto(true)}>Enviar sugerencia</button>
+        </div>
+        {estadoEnvio && <div className={styles.panelBody}><p className={styles.sectionText}>{estadoEnvio}</p></div>}
+      </section>
+
+      <ResponsiveOverlay
+        open={formAbierto}
+        onClose={() => !enviando && setFormAbierto(false)}
+        size="modal"
+        eyebrow="Tu opinión"
+        title="Enviar sugerencia"
+        description="Cuéntanos qué mejorarías o si algo no funciona como esperabas."
+        footer={
+          <>
+            <button type="button" className={styles.ghost} onClick={() => setFormAbierto(false)} disabled={enviando}>Cancelar</button>
+            <button type="submit" form="restaurant-feedback-form" className={styles.primary} disabled={enviando || mensaje.trim().length < 10}>
+              {enviando ? 'Enviando…' : 'Enviar sugerencia'}
+            </button>
+          </>
+        }
+      >
+        <form id="restaurant-feedback-form" onSubmit={enviar}>
+          <div className={styles.formGrid}>
+            <label>
+              <span className={styles.label}>Tipo de comentario</span>
+              <select className={styles.select} value={tipo} onChange={event => setTipo(event.target.value)}>
+                {TIPOS.map(item => <option value={item.id} key={item.id}>{item.label}</option>)}
+              </select>
+            </label>
+            <label className={styles.full}>
+              <span className={styles.label}>¿Qué nos quieres contar?</span>
+              <textarea className={styles.textarea} value={mensaje} onChange={event => setMensaje(event.target.value)} rows={8} maxLength={3000} required />
+            </label>
+          </div>
+          <p className={styles.tiny}>{mensaje.length} / 3000</p>
+          {estadoEnvio && <p className={styles.sectionText}>{estadoEnvio}</p>}
+        </form>
+      </ResponsiveOverlay>
+
+      <section className={styles.panel} style={{ display: 'none' }} aria-hidden="true">
         <div className={styles.panelHead}>
           <div>
             <h2 className={styles.panelTitle}>Enviar comentario</h2>

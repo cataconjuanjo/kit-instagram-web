@@ -7,6 +7,7 @@ import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
+import ResponsiveOverlay from '../ResponsiveOverlay'
 
 function eur(valor) {
   return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
@@ -54,6 +55,7 @@ export default function ControlBodega() {
   const [mostrarPropuestas, setMostrarPropuestas] = useState(false)
   const [mostrarReferencias, setMostrarReferencias] = useState(false)
   const [mostrarMovimientos, setMostrarMovimientos] = useState(false)
+  const [vistaBodega, setVistaBodega] = useState('resumen')
   const [filtroReferencias, setFiltroReferencias] = useState('todos')
   const [busquedaReferencias, setBusquedaReferencias] = useState('')
   const [pedidoRapido, setPedidoRapido] = useState({})
@@ -106,10 +108,14 @@ export default function ControlBodega() {
 
   useEffect(() => {
     if (loading || typeof window === 'undefined') return
-    if (window.location.hash !== '#propuestas') return
+    const hash = window.location.hash
     window.requestAnimationFrame(() => {
-      setMostrarPropuestas(true)
-      document.getElementById('propuestas')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      if (hash === '#pedido') setVistaBodega('compras')
+      if (['#referencias', '#proveedores', '#rotacion', '#movimientos'].includes(hash)) setVistaBodega('stock')
+      if (hash === '#propuestas') {
+        setVistaBodega('propuestas')
+        setMostrarPropuestas(true)
+      }
     })
   }, [loading, propuestas.length])
 
@@ -186,6 +192,7 @@ export default function ControlBodega() {
   }
 
   function editarProveedorDesdePedido(vino) {
+    setVistaBodega('stock')
     setFiltroReferencias('todos')
     setMostrarReferencias(true)
     iniciarEdicion(vino)
@@ -195,6 +202,7 @@ export default function ControlBodega() {
   }
 
   function abrirReferencias(filtro = 'todos') {
+    setVistaBodega('stock')
     setFiltroReferencias(filtro)
     setMostrarReferencias(true)
     setEditando(null)
@@ -204,6 +212,7 @@ export default function ControlBodega() {
   }
 
   function abrirPropuestas() {
+    setVistaBodega('propuestas')
     setMostrarPropuestas(true)
     window.requestAnimationFrame(() => {
       document.getElementById('propuestas')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -211,10 +220,27 @@ export default function ControlBodega() {
   }
 
   function abrirMovimientos() {
+    setVistaBodega('stock')
     setMostrarMovimientos(true)
     window.requestAnimationFrame(() => {
       document.getElementById('movimientos')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
+  }
+
+  function abrirAccionBodega(event, href) {
+    if (!href?.startsWith('#')) return
+    event.preventDefault()
+    if (href === '#pedido') {
+      setVistaBodega('compras')
+      return
+    }
+    if (href === '#propuestas') {
+      abrirPropuestas()
+      return
+    }
+    setVistaBodega('stock')
+    if (href === '#movimientos') setMostrarMovimientos(true)
+    if (href === '#referencias') setMostrarReferencias(true)
   }
 
   function moverEdicion(direccion) {
@@ -494,7 +520,7 @@ export default function ControlBodega() {
             Primero lo que hay que decidir hoy: pedido, datos que bloquean margen e incidencias que debe cerrar sala.
           </p>
           <div className={styles.cellarHeroActions}>
-            <a href="#pedido" className={styles.primary}>Preparar pedido</a>
+            <button type="button" className={styles.primary} onClick={() => setVistaBodega('compras')}>Preparar pedido</button>
             <button type="button" className={styles.secondary} onClick={abrirPropuestas}>Ver propuestas</button>
             <Link className={styles.ghost} href="/dashboard/vinos?filtro=stock">Stock bajo</Link>
           </div>
@@ -516,29 +542,29 @@ export default function ControlBodega() {
       </section>
 
       <nav className={styles.innerTabs} aria-label="Secciones de bodega">
-        <a href="#pedido">Pedido</a>
-        <a href="#proveedores">Datos pendientes {datosPendientesTotal > 0 && <span>{datosPendientesTotal}</span>}</a>
-        <a href="#rotacion">Rotación {datos.sinRotacion.length > 0 && <span>{datos.sinRotacion.length}</span>}</a>
-        <button type="button" onClick={abrirPropuestas}>
+        <button type="button" className={vistaBodega === 'resumen' ? styles.innerTabActive : ''} onClick={() => setVistaBodega('resumen')}>
+          Resumen
+        </button>
+        <button type="button" className={vistaBodega === 'compras' ? styles.innerTabActive : ''} onClick={() => setVistaBodega('compras')}>
+          Compras {pedidoCombinado.length > 0 && <span>{pedidoCombinado.length}</span>}
+        </button>
+        <button type="button" className={vistaBodega === 'stock' ? styles.innerTabActive : ''} onClick={() => setVistaBodega('stock')}>
+          Stock {datosPendientesTotal > 0 && <span>{datosPendientesTotal}</span>}
+        </button>
+        <button type="button" className={vistaBodega === 'propuestas' ? styles.innerTabActive : ''} onClick={abrirPropuestas}>
           Propuestas {propuestas.length > 0 && <span>{propuestas.length}</span>}
-        </button>
-        <button type="button" onClick={abrirMovimientos}>
-          Movimientos
-        </button>
-        <button type="button" onClick={() => abrirReferencias('sin_coste')}>
-          Editar referencias
         </button>
       </nav>
 
-      <section className={styles.statsGrid}>
+      {vistaBodega === 'resumen' && <section className={styles.statsGrid}>
         <div className={styles.stat}><p className={styles.statValue}>{eur(datos.valorCoste)}</p><p className={styles.statLabel}>Valor a coste</p></div>
         <div className={styles.stat}><p className={styles.statValue} style={{ color: margenColor(datos.margenMedio) }}>{datos.margenMedio == null ? '-' : datos.margenMedio}%</p><p className={styles.statLabel}>Margen medio</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{datos.bajoMinimo.length}</p><p className={styles.statLabel}>Bajo mínimo</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{pedidoCombinado.length}</p><p className={styles.statLabel}>Pedido sugerido</p></div>
-      </section>
+      </section>}
 
-      <section className={styles.gridTwo}>
-        <div className={styles.panelDark}>
+      {(vistaBodega === 'resumen' || vistaBodega === 'compras') && <section className={`${styles.gridTwo} ${styles.singleView}`}>
+        {vistaBodega === 'resumen' && <div className={styles.panelDark}>
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Qué mirar ahora</h2>
@@ -550,7 +576,7 @@ export default function ControlBodega() {
             {acciones.length ? (
               <div className={styles.itemStack}>
                 {acciones.slice(0, 5).map(accion => (
-                  <Link key={accion.texto} href={accion.href} className={styles.itemCard} style={{ background: '#231e20', borderColor: '#3a3033', textDecoration: 'none' }}>
+                  <Link key={accion.texto} href={accion.href} onClick={event => abrirAccionBodega(event, accion.href)} className={styles.itemCard} style={{ background: '#231e20', borderColor: '#3a3033', textDecoration: 'none' }}>
                     <p className={styles.eyebrow}>{accion.tipo}</p>
                     <p className={styles.sectionTitle} style={{ color: '#fffaf3' }}>{accion.texto}</p>
                   </Link>
@@ -560,9 +586,9 @@ export default function ControlBodega() {
               <p className={styles.panelSub}>Sin urgencias de bodega con los datos actuales.</p>
             )}
           </div>
-        </div>
+        </div>}
 
-        <div className={styles.panel} id="pedido">
+        {vistaBodega === 'compras' && <div className={styles.panel} id="pedido">
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Pedido sugerido</h2>
@@ -587,10 +613,10 @@ export default function ControlBodega() {
               <div className={styles.empty}>No hay pedido sugerido ahora.</div>
             )}
           </div>
-        </div>
-      </section>
+        </div>}
+      </section>}
 
-      <section className={styles.gridTwo} id="rotacion" style={{ marginTop: 16 }}>
+      {vistaBodega === 'stock' && <section className={styles.gridTwo} id="rotacion" style={{ marginTop: 16 }}>
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
@@ -648,9 +674,9 @@ export default function ControlBodega() {
             )}
           </div>
         </div>
-      </section>
+      </section>}
 
-      <section className={styles.panel} id="movimientos" style={{ marginTop: 16 }}>
+      {vistaBodega === 'stock' && <section className={styles.panel} id="movimientos" style={{ marginTop: 16 }}>
         <div className={styles.panelHead}>
           <div>
             <h2 className={styles.panelTitle}>Libro de movimientos</h2>
@@ -683,9 +709,9 @@ export default function ControlBodega() {
             <div className={styles.empty}>Aún no hay movimientos de stock registrados.</div>
           )}
         </div>}
-      </section>
+      </section>}
 
-      <section className={styles.gridTwo} id="proveedores" style={{ marginTop: 16 }}>
+      {vistaBodega === 'stock' && <section className={styles.gridTwo} id="proveedores" style={{ marginTop: 16 }}>
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
@@ -750,9 +776,9 @@ export default function ControlBodega() {
             )}
           </div>
         </div>
-      </section>
+      </section>}
 
-      <section className={`${styles.panelDark} ${styles.notificationFocus}`} id="propuestas" style={{ marginTop: 16 }}>
+      {vistaBodega === 'propuestas' && <section className={`${styles.panelDark} ${styles.notificationFocus}`} id="propuestas" style={{ marginTop: 16 }}>
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Propuestas recibidas</h2>
@@ -790,9 +816,9 @@ export default function ControlBodega() {
               <div className={styles.empty}>No hay propuestas pendientes ahora.</div>
             </div>
           )}
-        </section>
+        </section>}
 
-      <section className={styles.panel} id="referencias" style={{ marginTop: 16 }}>
+      {vistaBodega === 'stock' && <section className={styles.panel} id="referencias" style={{ marginTop: 16 }}>
         <div className={styles.panelHead}>
           <div>
             <h2 className={styles.panelTitle}>Referencias de bodega</h2>
@@ -858,7 +884,21 @@ export default function ControlBodega() {
                     </div>
 
                     {isEditing && (
-                      <div className={styles.formGrid} style={{ marginTop: 16 }}>
+                      <ResponsiveOverlay
+                        open
+                        onClose={() => !guardando && setEditando(null)}
+                        eyebrow="Control de bodega"
+                        title={`Editar ${editando.nombre}`}
+                        description={`${editando.bodega || 'Sin bodega'} · stock ${editando.stock || 0} · venta ${eur(editando.precio_botella)}`}
+                        footer={
+                          <>
+                            <button type="button" className={styles.ghost} onClick={() => setEditando(null)} disabled={guardando}>Cancelar</button>
+                            <button type="button" className={styles.secondary} onClick={() => guardarBodega({ siguiente: true })} disabled={guardando || posicion >= referenciasVisibles.length - 1}>Guardar y siguiente</button>
+                            <button type="button" className={styles.primary} onClick={() => guardarBodega({ cerrar: true })} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</button>
+                          </>
+                        }
+                      >
+                      <div className={styles.formGrid}>
                         <div>
                           <label className={styles.label}>Coste compra</label>
                           <input className={styles.input} type="number" step="0.01" value={editando.coste_compra} onChange={e => setEditando({ ...editando, coste_compra: e.target.value })} />
@@ -888,14 +928,10 @@ export default function ControlBodega() {
                             <button className={styles.ghost} onClick={() => moverEdicion(-1)} disabled={guardando || posicion <= 0}>Anterior</button>
                             <button className={styles.ghost} onClick={() => moverEdicion(1)} disabled={guardando || posicion >= referenciasVisibles.length - 1}>Siguiente</button>
                           </div>
-                          <div className={styles.actionRow} style={{ marginTop: 10 }}>
-                            <button className={styles.primary} onClick={() => guardarBodega()} disabled={guardando}>{guardando ? 'Guardando...' : 'Guardar y seguir'}</button>
-                            <button className={styles.secondary} onClick={() => guardarBodega({ siguiente: true })} disabled={guardando || posicion >= referenciasVisibles.length - 1}>Guardar y siguiente</button>
-                            <button className={styles.ghost} onClick={() => guardarBodega({ cerrar: true })} disabled={guardando}>Guardar y cerrar</button>
-                          </div>
                           {guardadoBodega && <p className={styles.tiny}>{guardadoBodega}</p>}
                         </div>
                       </div>
+                      </ResponsiveOverlay>
                     )}
                   </article>
                 )
@@ -903,7 +939,7 @@ export default function ControlBodega() {
             </div>
           </div>
         )}
-      </section>
+      </section>}
       </div>
     </ModuleShell>
     </FeatureGate>

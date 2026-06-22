@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { maxFechaISO } from '../../lib/actividadReal'
+import { aplicarAjustesStock } from '../../lib/stockClient'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
+import ResponsiveOverlay from '../ResponsiveOverlay'
 
 function leerDetalle(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return {} }
@@ -148,8 +150,10 @@ export default function CierreServicio() {
   const [ocultos, setOcultos] = useState([])
   const [turnoCerrado, setTurnoCerrado] = useState(false)
   const [sustitutoCopiado, setSustitutoCopiado] = useState('')
+  const [eventoProcesando, setEventoProcesando] = useState('')
   const [mensajeCierre, setMensajeCierre] = useState('')
   const [loading, setLoading] = useState(true)
+  const [confirmarCierre, setConfirmarCierre] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -245,51 +249,62 @@ export default function CierreServicio() {
 
   async function marcarStockCero(evento) {
     const vinoId = evento.parsed?.vino_id
-    if (!vinoId || !restaurante?.id) return
-    const vinoActual = vinos.find(vino => String(vino.id) === String(vinoId))
-    const stockAnterior = Number(vinoActual?.stock) || 0
-    const { error } = await supabase.from('vinos').update({ stock: 0 }).eq('id', vinoId)
-    if (!error) {
-      setVinos(vinos.map(vino => String(vino.id) === String(vinoId) ? { ...vino, stock: 0 } : vino))
+    if (!vinoId || !restaurante?.id || eventoProcesando === evento.id) return
+    setEventoProcesando(evento.id)
+    try {
+      const [ajuste] = await aplicarAjustesStock(supabase, {
+        restaurante_id: restaurante.id,
+        ajustes: [{
+          vino_id: vinoId,
+          modo: 'establecer',
+          valor: 0,
+          tipo: 'ajuste',
+          motivo: `Cierre de servicio: ${etiquetaResultado(evento.parsed?.resultado)}`,
+        }],
+      })
+      setVinos(actuales => actuales.map(vino =>
+        String(vino.id) === String(vinoId) ? { ...vino, stock: ajuste?.stock_nuevo ?? 0 } : vino
+      ))
       await ocultarEvento(evento.id)
       setMensajeCierre('Stock ajustado a 0 y movimiento registrado')
-      await supabase.from('movimientos_stock').insert([{
-        restaurante_id: restaurante.id,
-        vino_id: vinoId,
-        tipo: 'ajuste',
-        cantidad: -stockAnterior,
-        stock_anterior: stockAnterior,
-        stock_nuevo: 0,
-        motivo: `Cierre de servicio: ${etiquetaResultado(evento.parsed?.resultado)}`
-      }])
+    } catch (error) {
+      setMensajeCierre(error.message || 'No se pudo ajustar el stock.')
+    } finally {
+      setEventoProcesando('')
     }
   }
 
   async function descontarVenta(evento) {
     const vinoId = evento.parsed?.vino_id
-    if (!vinoId || !restaurante?.id) return
-    const vinoActual = vinos.find(vino => String(vino.id) === String(vinoId))
-    const stockAnterior = Number(vinoActual?.stock) || 0
-    const stockNuevo = Math.max(0, stockAnterior - 1)
-    const { error } = await supabase.from('vinos').update({ stock: stockNuevo }).eq('id', vinoId)
-    if (!error) {
-      setVinos(vinos.map(vino => String(vino.id) === String(vinoId) ? { ...vino, stock: stockNuevo } : vino))
+    if (!vinoId || !restaurante?.id || eventoProcesando === evento.id) return
+    setEventoProcesando(evento.id)
+    try {
+      const [ajuste] = await aplicarAjustesStock(supabase, {
+        restaurante_id: restaurante.id,
+        ajustes: [{
+          vino_id: vinoId,
+          modo: 'delta',
+          valor: -1,
+          tipo: 'venta',
+          motivo: 'Cierre de servicio: venta marcada por sala',
+        }],
+      })
+      setVinos(actuales => actuales.map(vino =>
+        String(vino.id) === String(vinoId)
+          ? { ...vino, stock: ajuste?.stock_nuevo ?? vino.stock }
+          : vino
+      ))
       await ocultarEvento(evento.id)
       setMensajeCierre('Venta descontada del stock')
-      await supabase.from('movimientos_stock').insert([{
-        restaurante_id: restaurante.id,
-        vino_id: vinoId,
-        tipo: 'venta',
-        cantidad: -1,
-        stock_anterior: stockAnterior,
-        stock_nuevo: stockNuevo,
-        motivo: `Cierre de servicio: venta marcada por sala`
-      }])
+    } catch (error) {
+      setMensajeCierre(error.message || 'No se pudo descontar la venta.')
+    } finally {
+      setEventoProcesando('')
     }
   }
 
   async function cerrarTurno() {
-    if (datos.visibles.length > 0 && !confirm(`¿Cerrar turno y marcar ${datos.visibles.length} señales como revisadas?`)) return
+    setConfirmarCierre(false)
     const nuevos = [...new Set([...ocultos, ...datos.visibles.map(evento => evento.id)])]
     await guardarOcultos(nuevos, true)
     setMensajeCierre('Turno cerrado')
@@ -370,7 +385,7 @@ export default function CierreServicio() {
         <>
           <Link href="/dashboard/bodega" className={styles.secondary}>Ir a bodega</Link>
           {datos.visibles.length > 0 ? (
-            <button type="button" className={styles.primary} onClick={cerrarTurno}>Cerrar turno</button>
+            <button type="button" className={styles.primary} onClick={() => setConfirmarCierre(true)}>Cerrar turno</button>
           ) : (
             <button type="button" className={styles.ghost} onClick={reabrirTurno}>Reabrir turno</button>
           )}
@@ -455,7 +470,7 @@ export default function CierreServicio() {
                   ) : paso.href ? (
                     <a className={styles.ghost} href={paso.href}>Revisar</a>
                   ) : (
-                    <button type="button" className={styles.primary} onClick={cerrarTurno}>Cerrar</button>
+                    <button type="button" className={styles.primary} onClick={() => setConfirmarCierre(true)}>Cerrar</button>
                   )}
                 </div>
               </article>
@@ -505,7 +520,9 @@ export default function CierreServicio() {
                         <p className={styles.sectionText}>{evento.parsed?.plato || 'Sin contexto'}{vino ? ` · stock actual ${vino.stock || 0}` : ''}</p>
                       </div>
                       <div className={styles.actionRow}>
-                        <button className={styles.primary} onClick={() => marcarStockCero(evento)}>Marcar stock 0</button>
+                        <button className={styles.primary} disabled={eventoProcesando === evento.id} onClick={() => marcarStockCero(evento)}>
+                          {eventoProcesando === evento.id ? 'Aplicando...' : 'Marcar stock 0'}
+                        </button>
                         <button className={styles.ghost} onClick={() => ocultarEvento(evento.id)}>Ignorar</button>
                       </div>
                     </div>
@@ -576,7 +593,9 @@ export default function CierreServicio() {
                         <p className={styles.sectionText}>{evento.parsed?.plato || 'Sin contexto'}{vino ? ` · stock actual ${vino.stock || 0}` : ''}</p>
                       </div>
                       <div className={styles.actionRow}>
-                        <button className={styles.primary} onClick={() => descontarVenta(evento)}>Descontar 1</button>
+                        <button className={styles.primary} disabled={eventoProcesando === evento.id} onClick={() => descontarVenta(evento)}>
+                          {eventoProcesando === evento.id ? 'Aplicando...' : 'Descontar 1'}
+                        </button>
                         <button className={styles.ghost} onClick={() => ocultarEvento(evento.id)}>Dejar como señal</button>
                       </div>
                     </div>
@@ -652,9 +671,29 @@ export default function CierreServicio() {
             <strong>{datos.visibles.length} señales pendientes</strong>
             <span>Revisa lo importante o cierra el turno si ya está decidido.</span>
           </div>
-          <button type="button" className={styles.primary} onClick={cerrarTurno}>Cerrar turno</button>
+          <button type="button" className={styles.primary} onClick={() => setConfirmarCierre(true)}>Cerrar turno</button>
         </div>
       )}
+      <ResponsiveOverlay
+        open={confirmarCierre}
+        onClose={() => setConfirmarCierre(false)}
+        size="modal"
+        eyebrow="Final del servicio"
+        title="Cerrar turno"
+        description={`Se marcarán ${datos.visibles.length} señales como revisadas y podrás reabrir el turno si fuera necesario.`}
+        footer={
+          <>
+            <button type="button" className={styles.ghost} onClick={() => setConfirmarCierre(false)}>Cancelar</button>
+            <button type="button" className={styles.primary} onClick={cerrarTurno}>Confirmar cierre</button>
+          </>
+        }
+      >
+        <div className={styles.statsGrid}>
+          <div className={styles.stat}><p className={styles.statValue}>{datos.incidencias.length}</p><p className={styles.statLabel}>Incidencias</p></div>
+          <div className={styles.stat}><p className={styles.statValue}>{datos.vendidas.length}</p><p className={styles.statLabel}>Ventas marcadas</p></div>
+          <div className={styles.stat}><p className={styles.statValue}>{datos.dudas.length}</p><p className={styles.statLabel}>Dudas de sala</p></div>
+        </div>
+      </ResponsiveOverlay>
     </ModuleShell>
     </FeatureGate>
   )

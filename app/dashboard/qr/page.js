@@ -7,11 +7,13 @@ import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
+import ResponsiveOverlay from '../ResponsiveOverlay'
 
 export default function QRPage() {
   const [restaurante, setRestaurante] = useState(null)
   const [loading, setLoading] = useState(true)
   const [copiado, setCopiado] = useState('')
+  const [vistaRapida, setVistaRapida] = useState(false)
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -78,6 +80,7 @@ export default function QRPage() {
       title="Entrega de QR y accesos"
       subtitle="Pantalla de entrega para probar el enlace, descargar el QR y preparar materiales de mesa."
       narrow
+      actions={<button type="button" className={styles.primary} onClick={() => setVistaRapida(true)}>Vista rápida</button>}
       help={{
         title: 'Antes de imprimir',
         intro: 'El QR es el punto de entrada del cliente. Conviene probarlo antes de llevarlo a mesa.',
@@ -171,6 +174,23 @@ export default function QRPage() {
           </div>
         </div>
       </section>
+      <ResponsiveOverlay
+        open={vistaRapida}
+        onClose={() => setVistaRapida(false)}
+        size="modal"
+        eyebrow="QR y accesos"
+        title="Acceso rápido"
+        description="Comparte o prueba el enlace público desde el móvil. La página completa sigue disponible para imprimir."
+        footer={<button type="button" className={styles.ghost} onClick={() => setVistaRapida(false)}>Cerrar</button>}
+      >
+        <div className={styles.itemStack}>
+          <div className={styles.urlBox}>{urlDirecta}</div>
+          <a className={styles.primary} href={urlDirecta} target="_blank" rel="noreferrer">Abrir destino público</a>
+          <button className={styles.secondary} onClick={() => copiar(urlDirecta, 'quick')}>{copiado === 'quick' ? 'Enlace copiado' : 'Copiar enlace'}</button>
+          <button className={styles.secondary} onClick={descargar}>Descargar QR</button>
+          <a className={styles.ghost} href={urlPrint} target="_blank" rel="noreferrer">Abrir impresión / PDF</a>
+        </div>
+      </ResponsiveOverlay>
     </ModuleShell>
   )
 }
