@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../demo'
+import AdminOverlay from './components/AdminOverlay'
 
 const PLAN_LABEL = { basic: 'Básico', pro: 'Sala', premium: 'Acompañado' }
 
@@ -69,6 +70,7 @@ function AdminPageContent() {
   const [orden, setOrden] = useState('nombre')
   const [filtroTabla, setFiltroTabla] = useState('')
   const [menuAccionesId, setMenuAccionesId] = useState(null)
+  const [accionAcceso, setAccionAcceso] = useState(null)
   const [acordeonAlta, setAcordeonAlta] = useState('datos')
   const [nuevoRestaurante, setNuevoRestaurante] = useState({
     nombre: '',
@@ -771,14 +773,14 @@ function AdminPageContent() {
                 <button className="admin-plain-button" onClick={() => empezarEdicion(restaurante)}>Editar</button>
                 <button
                   className="admin-plain-button"
-                  onClick={() => { setResetResult(null); enviarEnlaceAcceso(restaurante) }}
+                  onClick={() => { setResetResult(null); setAccionAcceso({ tipo: 'email', restaurante }) }}
                   disabled={resetandoId === restaurante.id && !resetResult}
                 >
                   {resetandoId === restaurante.id && !resetResult ? 'Enviando...' : 'Enviar enlace de acceso'}
                 </button>
                 <button
                   className="admin-plain-button"
-                  onClick={() => { setResetResult(null); resetPasswordManual(restaurante) }}
+                  onClick={() => { setResetResult(null); setAccionAcceso({ tipo: 'manual', restaurante }) }}
                   disabled={resetandoId === restaurante.id && !resetResult}
                   title="Genera una contraseña aleatoria sin mandar email"
                 >
@@ -857,6 +859,40 @@ function AdminPageContent() {
             )
           })}
         </div>
+        <AdminOverlay
+          open={Boolean(accionAcceso)}
+          onClose={() => setAccionAcceso(null)}
+          size="modal"
+          eyebrow="Accesos"
+          title={accionAcceso?.tipo === 'manual' ? 'Generar contraseña manual' : 'Enviar enlace de acceso'}
+          description={accionAcceso ? `${accionAcceso.restaurante.nombre} · ${accionAcceso.restaurante.email}` : ''}
+          footer={
+            <>
+              <button type="button" onClick={() => setAccionAcceso(null)}>Cancelar</button>
+              <button
+                type="button"
+                className="is-primary"
+                disabled={Boolean(resetandoId && !resetResult)}
+                onClick={async () => {
+                  const accion = accionAcceso
+                  if (!accion) return
+                  if (accion.tipo === 'manual') await resetPasswordManual(accion.restaurante)
+                  else await enviarEnlaceAcceso(accion.restaurante)
+                  setAccionAcceso(null)
+                }}
+              >
+                Confirmar
+              </button>
+            </>
+          }
+        >
+          <div className="admin-detail-box">
+            <h3>{accionAcceso?.tipo === 'manual' ? 'Cambio inmediato de credenciales' : 'Enlace para elegir contraseña'}</h3>
+            <p>{accionAcceso?.tipo === 'manual'
+              ? 'Se generará una contraseña aleatoria nueva. La contraseña anterior dejará de funcionar.'
+              : 'Se generará un enlace de activación que podrás copiar y enviar al restaurante.'}</p>
+          </div>
+        </AdminOverlay>
         <div className="table-pagination">
           <span>Pagina {pagina} de {totalPaginas} · {restaurantesOrdenados.length} registros</span>
           <div>

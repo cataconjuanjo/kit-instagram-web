@@ -170,7 +170,7 @@ function ProveedoresPageContent() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const [vistaProveedores, setVistaProveedores] = useState(searchParams.get('vista') === 'catalogo' ? 'catalogo' : 'gestion')
-  const [acordeonAbierto, setAcordeonAbierto] = useState('ficha')
+  const [acordeonAbierto, setAcordeonAbierto] = useState(null)
   const catalogoRef = useRef(null)
 
   function toggleAcordeon(seccion) {
@@ -593,6 +593,7 @@ function ProveedoresPageContent() {
   }
 
   function editarProveedor(proveedor) {
+    setAcordeonAbierto('ficha')
     setEditandoProveedor(proveedor.id)
     setProveedorForm({
       nombre: proveedor.nombre || '',
@@ -606,6 +607,7 @@ function ProveedoresPageContent() {
   }
 
   function editarVino(vino) {
+    setAcordeonAbierto('vino')
     setEditandoVino(vino.id)
     setVinoForm({
       proveedor_id: vino.proveedor_id || proveedorSeleccionado || '',
@@ -645,6 +647,7 @@ function ProveedoresPageContent() {
       await cargarCatalogo()
       setProveedorForm(proveedorInicial)
       setEditandoProveedor(null)
+      setAcordeonAbierto(null)
       if (data.proveedor?.id) setProveedorSeleccionado(data.proveedor.id)
     } catch (error) {
       setError(error.message)
@@ -673,6 +676,7 @@ function ProveedoresPageContent() {
       await cargarCatalogo()
       setVinoForm({ ...vinoInicial, proveedor_id: vinoForm.proveedor_id })
       setEditandoVino(null)
+      setAcordeonAbierto(null)
       if (data.vino?.proveedor_id) setProveedorSeleccionado(data.vino.proveedor_id)
     } catch (error) {
       setError(error.message)

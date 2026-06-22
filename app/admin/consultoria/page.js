@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../../demo'
+import AdminOverlay from '../components/AdminOverlay'
 
 
 function normalizar(texto = '') {
@@ -53,6 +54,14 @@ function candidatosCopaRadar(informe) {
   const persistidos = informe.ejecutivo?.resumen?.candidatos_copa || 0
   if (persistidos > 0) return persistidos
   return Math.max(0, Math.round((informe.metricas?.vinos || 0) * 0.12) - (informe.metricas?.copa || 0))
+}
+
+function activacionRadar(informe) {
+  if (!informe.metricas?.vinos) return { nivel: 0, label: 'Sin carta', accion: 'Cargar vinos' }
+  if (!informe.metricas?.platos) return { nivel: 1, label: 'Sin platos', accion: 'Cargar platos' }
+  if (!informe.metricas?.escaneos30) return { nivel: 2, label: 'Sin primer escaneo', accion: 'Probar y colocar QR' }
+  if (!informe.metricas?.sommelier30) return { nivel: 3, label: 'Sin primer maridaje', accion: 'Probar recomendación' }
+  return { nivel: 4, label: 'Activado', accion: 'Consolidar uso' }
 }
 
 const IVA_HOSTELERIA = 1.10
@@ -334,6 +343,7 @@ export default function RadarConsultoria() {
   const [loading, setLoading] = useState(true)
   const [favoritos, setFavoritos] = useState([])
   const [radarEjecutivo, setRadarEjecutivo] = useState(null)
+  const [vistaRapida, setVistaRapida] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -421,6 +431,7 @@ export default function RadarConsultoria() {
     if (filtro === 'capital') return capitalRadar(informe) > 0
     if (filtro === 'copa') return candidatosCopaRadar(informe) > 0
     if (filtro === 'carta') return informe.ejecutivo?.resumen?.carta_inflada || (informe.ejecutivo?.resumen?.bottom10_refs || 0) > 0
+    if (filtro === 'activacion') return activacionRadar(informe).nivel < 4
     return true
   })
 
@@ -480,8 +491,25 @@ export default function RadarConsultoria() {
   const alertasCriticas = informes.reduce((sum, informe) => sum + alertasCriticasRadar(informe), 0)
   const candidatosCopa = informes.reduce((sum, informe) => sum + candidatosCopaRadar(informe), 0)
   const fotosPersistidas = informes.filter(informe => informe.ejecutivo?.resumen?.ultima_foto).length
+  const agendaHoy = [...informes]
+    .sort((a, b) => {
+      const favoritoA = favoritos.includes(a.restaurante.id) ? 1 : 0
+      const favoritoB = favoritos.includes(b.restaurante.id) ? 1 : 0
+      return (favoritoB - favoritoA)
+        || (b.score - a.score)
+        || (oportunidadRadar(b) - oportunidadRadar(a))
+    })
+    .slice(0, 3)
+  const restaurantesConAccion = informes.filter(informe =>
+    informe.prioridad === 'Alta'
+    || informe.propuestasAbiertas.length > 0
+    || alertasCriticasRadar(informe) > 0
+  ).length
+  const activados = informes.filter(informe => activacionRadar(informe).nivel === 4).length
+  const bloqueadosActivacion = informes.length - activados
   const filtros = [
     ['todas', 'Todas'],
+    ['activacion', 'Activación'],
     ['alta', 'Prioridad alta'],
     ['oportunidad', 'Oportunidad'],
     ['capital', 'Capital'],
@@ -500,7 +528,7 @@ export default function RadarConsultoria() {
               <h2>Radar ejecutivo</h2>
               <p>{informes.length} restaurantes · {alta} prioridad alta · {media} prioridad media</p>
               <p className="radar-data-note">
-                {fotosPersistidas} restaurantes con foto persistida. El resto usa estimacion previa del radar hasta pulsar "Recalcular y guardar" en su ficha.
+                {fotosPersistidas} restaurantes con foto persistida. El resto usa estimacion previa del radar hasta pulsar &ldquo;Recalcular y guardar&rdquo; en su ficha.
               </p>
             </div>
           </div>
@@ -526,6 +554,52 @@ export default function RadarConsultoria() {
               <strong>{candidatosCopa}</strong>
               <small>Oportunidades para subir ticket y rotar.</small>
             </article>
+          </section>
+
+          <section className="activation-funnel-summary">
+            <div>
+              <span>Embudo de activación</span>
+              <strong>{activados}/{informes.length} restaurantes activados</strong>
+              <small>Activado = carta y platos cargados + primer escaneo + primer maridaje en los últimos 30 días.</small>
+            </div>
+            <div className="activation-funnel-bar">
+              <span style={{ width: `${pct(activados, informes.length)}%` }} />
+            </div>
+            <b>{bloqueadosActivacion} necesitan acompañamiento</b>
+          </section>
+
+          <section className="consultant-agenda">
+            <div className="consultant-agenda-head">
+              <div>
+                <p className="admin-kicker">Agenda recomendada</p>
+                <h3>Los 3 restaurantes que atendería hoy</h3>
+                <p>{restaurantesConAccion} restaurantes tienen una acción concreta abierta.</p>
+              </div>
+              <Link href="/admin/acciones">Abrir pipeline completo</Link>
+            </div>
+            <div className="consultant-agenda-grid">
+              {agendaHoy.map((informe, index) => {
+                const problema = informe.ejecutivo?.resumen?.problema_principal || informe.alertas[0]?.titulo || 'Mantenimiento fino'
+                return (
+                  <article key={informe.restaurante.id}>
+                    <div className="consultant-agenda-rank">{index + 1}</div>
+                    <div className="consultant-agenda-content">
+                      <div className="consultant-agenda-title">
+                        <strong>{informe.restaurante.nombre}</strong>
+                        <span className={`radar-tag radar-tag-${informe.prioridad.toLowerCase()}`}>{informe.prioridad}</span>
+                      </div>
+                      <p>{problema}</p>
+                      <small>{informe.siguienteMovimiento}</small>
+                      <div className="consultant-agenda-impact">
+                        <span>{eur(oportunidadRadar(informe))} oportunidad</span>
+                        <span>{alertasCriticasRadar(informe)} alertas críticas</span>
+                      </div>
+                    </div>
+                    <Link href={`/admin/restaurante/${informe.restaurante.id}`}>Trabajar ahora →</Link>
+                  </article>
+                )
+              })}
+            </div>
           </section>
 
           <div className="radar-command-bar">
@@ -564,6 +638,9 @@ export default function RadarConsultoria() {
                     {candidatosCopaRadar(informe) > 0 && <span className="radar-tag is-ok">{candidatosCopaRadar(informe)} copa</span>}
                     {informe.alertas.some(alerta => alerta.titulo.toLowerCase().includes('cliente caliente')) && <span className="radar-tag is-hot">Cliente caliente</span>}
                     {informe.alertas.length === 0 && <span className="radar-tag is-ok">OK</span>}
+                    <span className={`radar-tag ${activacionRadar(informe).nivel === 4 ? 'is-ok' : 'is-warning'}`}>
+                      {activacionRadar(informe).label}
+                    </span>
                   </div>
                   <span>{informe.restaurante.ciudad || '—'} · {informe.metricas.vinos} vinos · {informe.metricas.platos} platos</span>
                   {informe.ejecutivo && (
@@ -585,17 +662,54 @@ export default function RadarConsultoria() {
                 </div>
                 <div className="radar-next">
                   <span>Siguiente accion</span>
-                  <strong>{informe.siguienteMovimiento}</strong>
+                  <strong>{activacionRadar(informe).nivel < 4 ? activacionRadar(informe).accion : informe.siguienteMovimiento}</strong>
                   <small>Ultimo contacto: hace {Math.max(1, informe.propuestasAbiertas.length + informe.incidenciasStock.length)} dias</small>
                 </div>
                 <div className="radar-cta">Ver detalles</div>
                 </Link>
+                <button type="button" className="radar-quick-button" onClick={() => setVistaRapida(informe)}>Vista rápida</button>
               </article>
             ))}
             {informesFiltrados.length === 0 && (
               <div className="ws-empty-block">No hay restaurantes con este filtro.</div>
             )}
           </div>
+          <AdminOverlay
+            open={Boolean(vistaRapida)}
+            onClose={() => setVistaRapida(null)}
+            eyebrow={vistaRapida?.prioridad ? `Prioridad ${vistaRapida.prioridad}` : 'Radar'}
+            title={vistaRapida?.restaurante?.nombre || 'Restaurante'}
+            description={vistaRapida ? `${vistaRapida.restaurante.ciudad || 'Sin ciudad'} · ${vistaRapida.metricas.vinos} vinos · ${vistaRapida.metricas.platos} platos` : ''}
+            footer={
+              <>
+                <button type="button" onClick={() => setVistaRapida(null)}>Cerrar</button>
+                {vistaRapida && <button type="button" className="is-primary" onClick={() => gestionar(vistaRapida.restaurante)}>Abrir dashboard</button>}
+              </>
+            }
+          >
+            {vistaRapida && (
+              <div className="admin-detail-stack">
+                <div className="alerts-summary">
+                  <div><span>Score</span><strong>{vistaRapida.score}</strong></div>
+                  <div><span>Oportunidad</span><strong>{eur(oportunidadRadar(vistaRapida))}</strong></div>
+                  <div><span>Capital</span><strong>{eur(capitalRadar(vistaRapida))}</strong></div>
+                  <div><span>Alertas</span><strong>{alertasCriticasRadar(vistaRapida)}</strong></div>
+                </div>
+                <div className="admin-detail-box">
+                  <h3>Problema principal</h3>
+                  <p>{vistaRapida.ejecutivo?.resumen?.problema_principal || vistaRapida.alertas[0]?.titulo || 'Sin alertas críticas.'}</p>
+                </div>
+                <div className="admin-detail-box">
+                  <h3>Siguiente acción</h3>
+                  <p>{activacionRadar(vistaRapida).nivel < 4 ? activacionRadar(vistaRapida).accion : vistaRapida.siguienteMovimiento}</p>
+                </div>
+                <div className="admin-overlay-actions">
+                  <Link href={`/admin/restaurante/${vistaRapida.restaurante.id}`}>Abrir ficha consultor</Link>
+                  <Link href={`/admin/propuestas?restaurante=${vistaRapida.restaurante.id}`}>Crear propuesta</Link>
+                </div>
+              </div>
+            )}
+          </AdminOverlay>
 
     </div>
   )
