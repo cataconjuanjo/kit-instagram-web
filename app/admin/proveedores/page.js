@@ -68,6 +68,25 @@ function coincideBusqueda(valores, busqueda) {
   return terminos.every(termino => palabras.some(palabra => palabra.startsWith(termino)))
 }
 
+function coincideReferencia(vino, busqueda) {
+  const consulta = normalizar(busqueda)
+  if (!consulta) return true
+
+  const camposPrincipales = [vino.nombre, vino.bodega]
+  if (coincideBusqueda(camposPrincipales, consulta)) return true
+
+  const terminos = consulta.split(' ').filter(Boolean)
+  const camposExactos = [
+    vino.referencia,
+    vino.anada,
+    vino.formato,
+  ].map(normalizar).filter(Boolean)
+
+  return terminos.every(termino => camposExactos.some(campo =>
+    campo === termino || campo.split(' ').includes(termino)
+  ))
+}
+
 function relevanciaBusqueda(vino, busqueda) {
   const consulta = normalizar(busqueda)
   if (!consulta) return 0
@@ -261,17 +280,7 @@ function ProveedoresPageContent() {
       if (filtroBodega && normalizar(vino.bodega) !== filtroBodega) return false
       if (filtroTipo && normalizar(vino.tipo) !== filtroTipo) return false
       if (!costeEnRango(costeVino, rango)) return false
-      return coincideBusqueda([
-        vino.nombre,
-        vino.bodega,
-        vino.tipo,
-        vino.region,
-        vino.uva,
-        vino.anada,
-        vino.referencia,
-        vino.formato,
-        vino.disponibilidad,
-      ], busquedaReferencias)
+      return coincideReferencia(vino, busquedaReferencias)
     })
   }, [vinos, proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos])
 
@@ -376,17 +385,7 @@ function ProveedoresPageContent() {
       if (ocultarSinPrecio && costeVino <= 0) return false
       if (soloFavoritos && !vino.favorito) return false
       if (!costeEnRango(costeVino, rango)) return false
-      if (!coincideBusqueda([
-          vino.nombre,
-          vino.bodega,
-          vino.tipo,
-          vino.region,
-          vino.uva,
-          vino.anada,
-          vino.referencia,
-          vino.formato,
-          vino.disponibilidad,
-        ], busquedaReferencias)) return false
+      if (!coincideReferencia(vino, busquedaReferencias)) return false
       return true
     }
     return {
