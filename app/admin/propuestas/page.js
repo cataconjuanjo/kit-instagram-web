@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
+import AdminOverlay from '../components/AdminOverlay'
 
 const inicial = {
   restaurante_id: '',
@@ -62,6 +63,8 @@ export default function PropuestasConsultor() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const [ultimoCampoEconomico, setUltimoCampoEconomico] = useState('precio')
+  const [formAbierto, setFormAbierto] = useState(false)
+  const [borrarPendiente, setBorrarPendiente] = useState(null)
 
   async function tokenAdmin() {
     const { data: sessionData } = await supabase.auth.getSession()
@@ -110,6 +113,7 @@ export default function PropuestasConsultor() {
     const restauranteId = params.get('restaurante')
     if (!restauranteId) return
     window.requestAnimationFrame(() => {
+      setFormAbierto(true)
       setForm(prev => ({
         ...prev,
         restaurante_id: restauranteId,
@@ -166,6 +170,7 @@ export default function PropuestasConsultor() {
   }
 
   function empezarEditar(propuesta) {
+    setFormAbierto(true)
     setEditando(propuesta.id)
     setUltimoCampoEconomico('precio')
     setModoPropuesta(propuesta.tipo === 'Retirar referencia' ? 'retirada' : 'alta')
@@ -217,21 +222,42 @@ export default function PropuestasConsultor() {
       setVinoCatalogoId('')
       setBusquedaVinoCatalogo('')
       setEditando(null)
+      setFormAbierto(false)
     } else {
       setError(data.error || 'No se pudo guardar la propuesta.')
     }
     setGuardando(false)
   }
 
+  function cerrarFormulario() {
+    if (guardando) return
+    setFormAbierto(false)
+    setEditando(null)
+    setForm(inicial)
+    setModoPropuesta('alta')
+    setVinoExistenteId('')
+    setProveedorCatalogoId('')
+    setVinoCatalogoId('')
+    setBusquedaVinoCatalogo('')
+    setError('')
+  }
+
+  function abrirNueva() {
+    cerrarFormulario()
+    setFormAbierto(true)
+  }
+
   async function borrar(id) {
-    if (!confirm('¿Borrar esta propuesta?')) return
     const token = await tokenAdmin()
     const res = await fetch('/api/admin/propuestas', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ id })
     })
-    if (res.ok) setPropuestas(propuestas.filter(item => item.id !== id))
+    if (res.ok) {
+      setPropuestas(propuestas.filter(item => item.id !== id))
+      setBorrarPendiente(null)
+    }
   }
 
   function seleccionarVinoExistente(id) {
@@ -307,13 +333,31 @@ export default function PropuestasConsultor() {
         </aside>
 
         <div className="admin-main">
+        <div className="admin-overlay-launch">
+          <button type="button" onClick={abrirNueva}>Nueva propuesta</button>
+        </div>
+        <AdminOverlay
+          open={formAbierto}
+          onClose={cerrarFormulario}
+          eyebrow={editando ? 'Editar propuesta' : 'Nueva propuesta'}
+          title="Recomendación accionable"
+          description="Crea una propuesta para el restaurante sin perder el listado ni el contexto de consultoría."
+          footer={
+            <>
+              <button type="button" onClick={cerrarFormulario} disabled={guardando}>Cancelar</button>
+              <button type="submit" form="consultant-proposal-form" className="is-primary" disabled={guardando}>
+                {guardando ? 'Guardando…' : editando ? 'Guardar cambios' : 'Crear propuesta'}
+              </button>
+            </>
+          }
+        >
         <section className="admin-create">
           <div>
             <p className="eyebrow">{editando ? 'Editar propuesta' : 'Nueva propuesta'}</p>
             <h2>Recomendación accionable para un restaurante</h2>
             <p>Esto aparecerá en el Control de Bodega del restaurante como propuesta de @cataconjuanjo.</p>
           </div>
-          <form onSubmit={guardar} className="admin-create-form">
+          <form id="consultant-proposal-form" onSubmit={guardar} className="admin-create-form">
             <label>
               Restaurante
               <select value={form.restaurante_id} onChange={e => actualizar('restaurante_id', e.target.value)} required>
@@ -468,10 +512,11 @@ export default function PropuestasConsultor() {
               />
             </label>
             <button disabled={guardando}>{guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear propuesta'}</button>
-            {editando && <button type="button" className="admin-plain-button" onClick={() => { setEditando(null); setForm(inicial); setModoPropuesta('alta'); setVinoExistenteId(''); setProveedorCatalogoId(''); setVinoCatalogoId(''); setBusquedaVinoCatalogo('') }}>Cancelar</button>}
+            {editando && <button type="button" className="admin-plain-button" onClick={cerrarFormulario}>Cancelar</button>}
           </form>
           {error && <p className="admin-alert admin-alert-error">{error}</p>}
         </section>
+        </AdminOverlay>
 
         <div className="admin-grid">
           {propuestas.map(propuesta => (
@@ -485,11 +530,32 @@ export default function PropuestasConsultor() {
               </div>
               <div className="admin-card-actions">
                 <button onClick={() => empezarEditar(propuesta)}>Editar</button>
-                <button className="admin-plain-button" onClick={() => borrar(propuesta.id)}>Borrar</button>
+                <button className="admin-plain-button" onClick={() => setBorrarPendiente(propuesta)}>Borrar</button>
               </div>
             </article>
           ))}
         </div>
+        <AdminOverlay
+          open={Boolean(borrarPendiente)}
+          onClose={() => setBorrarPendiente(null)}
+          size="modal"
+          eyebrow="Confirmación"
+          title="Borrar propuesta"
+          description="Esta acción elimina la propuesta del panel del consultor y del restaurante."
+          footer={
+            <>
+              <button type="button" onClick={() => setBorrarPendiente(null)}>Cancelar</button>
+              <button type="button" className="is-danger" onClick={() => borrar(borrarPendiente.id)}>Borrar definitivamente</button>
+            </>
+          }
+        >
+          {borrarPendiente && (
+            <div className="admin-detail-box">
+              <h3>{borrarPendiente.titulo}</h3>
+              <p>{borrarPendiente.restaurantes?.nombre || 'Restaurante'}</p>
+            </div>
+          )}
+        </AdminOverlay>
         </div>
       </section>
     </main>

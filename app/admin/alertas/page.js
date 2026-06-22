@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
+import AdminOverlay from '../components/AdminOverlay'
 
 const ESTADOS = [
   ['todas', 'Todas'],
@@ -44,21 +45,9 @@ export default function AdminAlertasPage() {
   const [loading, setLoading] = useState(true)
   const [accionando, setAccionando] = useState('')
   const [mensaje, setMensaje] = useState('')
+  const [alertaActiva, setAlertaActiva] = useState(null)
 
-  useEffect(() => {
-    async function cargarUsuario() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user || !isAdminEmail(user.email)) {
-        window.location.href = '/login'
-        return
-      }
-      setUser(user)
-      cargarAlertas()
-    }
-    cargarUsuario()
-  }, [])
-
-  async function cargarAlertas() {
+  const cargarAlertas = useCallback(async () => {
     setLoading(true)
     setMensaje('')
     const token = await tokenAdmin()
@@ -74,11 +63,25 @@ export default function AdminAlertasPage() {
       setMensaje(data.error || 'No se pudieron cargar las alertas.')
     }
     setLoading(false)
-  }
+  }, [estado, severidad])
 
   useEffect(() => {
-    if (user) cargarAlertas()
-  }, [estado, severidad])
+    async function cargarUsuario() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || !isAdminEmail(user.email)) {
+        window.location.href = '/login'
+        return
+      }
+      setUser(user)
+    }
+    cargarUsuario()
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    const timeout = window.setTimeout(cargarAlertas, 0)
+    return () => window.clearTimeout(timeout)
+  }, [user, cargarAlertas])
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
@@ -117,6 +120,7 @@ export default function AdminAlertasPage() {
     const data = await res.json().catch(() => ({}))
     if (res.ok) {
       setMensaje('Alerta actualizada.')
+      setAlertaActiva(null)
       await cargarAlertas()
     } else {
       setMensaje(data.error || 'No se pudo actualizar la alerta.')
@@ -235,16 +239,60 @@ export default function AdminAlertasPage() {
                 )}
               </div>
               <div className="alert-work-actions">
-                <button disabled={accionando === alerta.id} onClick={() => actualizarAlerta(alerta, 'en_progreso', 'Trabajo iniciado.')}>En progreso</button>
-                <button disabled={accionando === alerta.id} onClick={() => crearPropuesta(alerta)}>Crear propuesta</button>
-                <button disabled={accionando === alerta.id} onClick={() => actualizarAlerta(alerta, 'resuelta', 'Resuelta desde bandeja de alertas.')}>Resolver</button>
-                <button disabled={accionando === alerta.id} onClick={() => actualizarAlerta(alerta, 'descartada', 'Descartada desde bandeja de alertas.')}>Descartar</button>
+                <button className="admin-open-detail" onClick={() => setAlertaActiva(alerta)}>Abrir detalle</button>
               </div>
             </article>
           ))}
           {!visibles.length && <div className="ws-empty-block">No hay alertas con estos filtros.</div>}
         </div>
       </section>
+      <AdminOverlay
+        open={Boolean(alertaActiva)}
+        onClose={() => !accionando && setAlertaActiva(null)}
+        eyebrow={alertaActiva?.severidad}
+        title={alertaActiva?.titulo || 'Detalle de alerta'}
+        description={`${alertaActiva?.restaurantes?.nombre || 'Restaurante'} · ${alertaActiva?.estado?.replace('_', ' ') || ''}`}
+      >
+        {alertaActiva && (
+          <div className="admin-detail-stack">
+            <div className="admin-detail-box">
+              <h3>Diagnóstico</h3>
+              <p>{alertaActiva.detalle}</p>
+            </div>
+            {alertaActiva.impacto && (
+              <div className="admin-detail-box">
+                <h3>Impacto</h3>
+                <p>{alertaActiva.impacto}</p>
+              </div>
+            )}
+            {alertaActiva.accion_sugerida && (
+              <div className="admin-detail-box">
+                <h3>Acción sugerida</h3>
+                <p>{alertaActiva.accion_sugerida}</p>
+              </div>
+            )}
+            <div className="alert-work-meta">
+              <Link href={`/admin/restaurante/${alertaActiva.restaurante_id}`}>Abrir restaurante</Link>
+              <span>{haceDias(alertaActiva.created_at)}</span>
+              <span>{Number(alertaActiva.veces_detectada || 1)} detecciones</span>
+            </div>
+            {historialPorAlerta[alertaActiva.id]?.length > 0 && (
+              <div className="admin-detail-box">
+                <h3>Historial</h3>
+                {historialPorAlerta[alertaActiva.id].slice(0, 6).map(item => (
+                  <p key={item.id}>{item.accion}: {item.estado_anterior || '-'} → {item.estado_nuevo || '-'} · {item.comentario || 'Sin comentario'}</p>
+                ))}
+              </div>
+            )}
+            <div className="admin-overlay-actions">
+              <button disabled={accionando === alertaActiva.id} onClick={() => actualizarAlerta(alertaActiva, 'en_progreso', 'Trabajo iniciado.')}>En progreso</button>
+              <button disabled={accionando === alertaActiva.id} onClick={() => crearPropuesta(alertaActiva)}>Crear propuesta</button>
+              <button disabled={accionando === alertaActiva.id} onClick={() => actualizarAlerta(alertaActiva, 'resuelta', 'Resuelta desde bandeja de alertas.')}>Resolver</button>
+              <button disabled={accionando === alertaActiva.id} onClick={() => actualizarAlerta(alertaActiva, 'descartada', 'Descartada desde bandeja de alertas.')}>Descartar</button>
+            </div>
+          </div>
+        )}
+      </AdminOverlay>
     </div>
   )
 }

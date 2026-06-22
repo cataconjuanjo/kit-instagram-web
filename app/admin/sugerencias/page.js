@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
+import AdminOverlay from '../components/AdminOverlay'
 
 const TIPO_LABEL = {
   mejora: 'Mejora',
@@ -21,6 +22,7 @@ export default function AdminSugerenciasPage() {
   const [filtro, setFiltro] = useState('pendientes')
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState('')
+  const [sugerenciaActiva, setSugerenciaActiva] = useState(null)
 
   async function token() {
     const { data } = await supabase.auth.getSession()
@@ -45,7 +47,10 @@ export default function AdminSugerenciasPage() {
       body: JSON.stringify({ ...item, ...cambios }),
     })
     const data = await res.json()
-    if (res.ok) setSugerencias(actual => actual.map(sugerencia => sugerencia.id === item.id ? data.sugerencia : sugerencia))
+    if (res.ok) {
+      setSugerencias(actual => actual.map(sugerencia => sugerencia.id === item.id ? data.sugerencia : sugerencia))
+      setSugerenciaActiva(null)
+    }
     setGuardando('')
   }
 
@@ -89,33 +94,59 @@ export default function AdminSugerenciasPage() {
             </div>
             <p className="consult-card-text">{item.mensaje}</p>
             {item.pagina && <p className="consult-muted">Contexto: {item.pagina}</p>}
+            <div className="consult-card-actions">
+              <button type="button" onClick={() => setSugerenciaActiva({ ...item })}>Revisar y responder</button>
+            </div>
+          </article>
+        ))}
+      </section>
+      <AdminOverlay
+        open={Boolean(sugerenciaActiva)}
+        onClose={() => !guardando && setSugerenciaActiva(null)}
+        size="modal"
+        eyebrow={TIPO_LABEL[sugerenciaActiva?.tipo] || sugerenciaActiva?.tipo}
+        title={sugerenciaActiva?.restaurantes?.nombre || 'Sugerencia'}
+        description={sugerenciaActiva ? `${fecha(sugerenciaActiva.created_at)}${sugerenciaActiva.pagina ? ` · ${sugerenciaActiva.pagina}` : ''}` : ''}
+        footer={
+          <>
+            <button type="button" onClick={() => setSugerenciaActiva(null)} disabled={Boolean(guardando)}>Cancelar</button>
+            <button type="button" className="is-primary" onClick={() => actualizar(sugerenciaActiva, {})} disabled={!sugerenciaActiva || guardando === sugerenciaActiva?.id}>
+              {guardando === sugerenciaActiva?.id ? 'Guardando…' : 'Guardar respuesta'}
+            </button>
+          </>
+        }
+      >
+        {sugerenciaActiva && (
+          <div className="admin-detail-stack">
+            <div className="admin-detail-box">
+              <h3>Mensaje del restaurante</h3>
+              <p>{sugerenciaActiva.mensaje}</p>
+            </div>
+            <label className="consult-field">
+              Estado
+              <select value={sugerenciaActiva.estado} onChange={event => setSugerenciaActiva({ ...sugerenciaActiva, estado: event.target.value })}>
+                {ESTADOS.map(estado => <option value={estado} key={estado}>{estado}</option>)}
+              </select>
+            </label>
             <label className="consult-field">
               Nota interna
               <textarea
-                value={item.respuesta_interna || ''}
-                onChange={event => setSugerencias(actual => actual.map(sugerencia => sugerencia.id === item.id ? { ...sugerencia, respuesta_interna: event.target.value } : sugerencia))}
+                value={sugerenciaActiva.respuesta_interna || ''}
+                onChange={event => setSugerenciaActiva({ ...sugerenciaActiva, respuesta_interna: event.target.value })}
                 placeholder="Seguimiento, decisión o próximo paso..."
               />
             </label>
             <label className="consult-field">
               Respuesta visible para el restaurante
               <textarea
-                value={item.respuesta_publica || ''}
-                onChange={event => setSugerencias(actual => actual.map(sugerencia => sugerencia.id === item.id ? { ...sugerencia, respuesta_publica: event.target.value } : sugerencia))}
+                value={sugerenciaActiva.respuesta_publica || ''}
+                onChange={event => setSugerenciaActiva({ ...sugerenciaActiva, respuesta_publica: event.target.value })}
                 placeholder="Ej. Lo tenemos en revisión. Gracias por avisar."
               />
             </label>
-            <div className="consult-card-actions">
-              <select value={item.estado} onChange={event => actualizar(item, { estado: event.target.value })}>
-                {ESTADOS.map(estado => <option value={estado} key={estado}>{estado}</option>)}
-              </select>
-              <button type="button" onClick={() => actualizar(item, {})} disabled={guardando === item.id}>
-                {guardando === item.id ? 'Guardando...' : 'Guardar nota'}
-              </button>
-            </div>
-          </article>
-        ))}
-      </section>
+          </div>
+        )}
+      </AdminOverlay>
     </main>
   )
 }
