@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
 
@@ -59,24 +59,7 @@ export default function AdminAccionesPage() {
   const [accionando, setAccionando] = useState('')
   const [mensaje, setMensaje] = useState('')
 
-  useEffect(() => {
-    async function cargarUsuario() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user || !isAdminEmail(user.email)) {
-        window.location.href = '/login'
-        return
-      }
-      setUser(user)
-      cargarAcciones()
-    }
-    cargarUsuario()
-  }, [])
-
-  useEffect(() => {
-    if (user) cargarAcciones()
-  }, [estado])
-
-  async function cargarAcciones() {
+  const cargarAcciones = useCallback(async () => {
     setLoading(true)
     setMensaje('')
     const token = await tokenAdmin()
@@ -91,7 +74,25 @@ export default function AdminAccionesPage() {
       setMensaje(data.error || 'No se pudieron cargar las acciones.')
     }
     setLoading(false)
-  }
+  }, [estado])
+
+  useEffect(() => {
+    async function cargarUsuario() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || !isAdminEmail(user.email)) {
+        window.location.href = '/login'
+        return
+      }
+      setUser(user)
+    }
+    cargarUsuario()
+  }, [])
+
+  useEffect(() => {
+    if (!user) return
+    const timeout = window.setTimeout(cargarAcciones, 0)
+    return () => window.clearTimeout(timeout)
+  }, [user, cargarAcciones])
 
   async function actualizarAccion(accion, nuevoEstado) {
     setAccionando(`${accion.fuente}-${accion.id}`)

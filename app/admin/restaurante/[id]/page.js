@@ -1080,7 +1080,7 @@ export default function RestauranteWorkspace() {
             {cargandoFase1 && <div className="ws-empty-block">Cargando ultima foto analitica...</div>}
             {!cargandoFase1 && !consultoriaFase1?.ultima && (
               <div className="ws-empty-block">
-                Aun no hay historico guardado. Pulsa "Recalcular y guardar" para crear la primera foto analitica.
+                Aun no hay historico guardado. Pulsa &ldquo;Recalcular y guardar&rdquo; para crear la primera foto analitica.
               </div>
             )}
 
