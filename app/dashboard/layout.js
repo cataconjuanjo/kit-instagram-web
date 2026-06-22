@@ -31,7 +31,9 @@ export default function DashboardLayout({ children }) {
   const [query, setQuery] = useState('')
   const [searchItems, setSearchItems] = useState([])
   const [clock, setClock] = useState('')
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(() => (
+    typeof window !== 'undefined' && window.localStorage.getItem('dashboard_dark_mode') === '1'
+  ))
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [shortcutMessage, setShortcutMessage] = useState('')
 
@@ -74,11 +76,6 @@ export default function DashboardLayout({ children }) {
     tick()
     const id = setInterval(tick, 30000)
     return () => clearInterval(id)
-  }, [])
-
-  useEffect(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('dashboard_dark_mode') === '1' : false
-    setDarkMode(saved)
   }, [])
 
   useEffect(() => {
@@ -174,7 +171,6 @@ export default function DashboardLayout({ children }) {
       children: [
         { href: '/dashboard/vinos', label: 'Vinos', stat: vinoCount || null },
         { href: '/dashboard/platos', label: 'Platos', stat: platoCount || null },
-        { href: '/dashboard/seleccion', label: 'Sugerencia' },
       ],
     },
     {
@@ -196,6 +192,7 @@ export default function DashboardLayout({ children }) {
       alert: propuestasCount || null,
       children: [
         { href: '/dashboard/bodega', label: 'Stock', feature: 'bodega' },
+        { href: '/dashboard/precios', label: 'Precios y márgenes', feature: 'precios_margenes' },
         { href: '/dashboard/bodega#propuestas', label: 'Propuestas', feature: 'bodega', alert: propuestasCount || null },
         { href: '/dashboard/bodega#movimientos', label: 'Movimientos', feature: 'bodega' },
         { href: '/dashboard/inventario', label: 'Inventario', feature: 'inventario' },

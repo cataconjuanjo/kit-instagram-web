@@ -7,6 +7,7 @@ import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
+import SuggestionDialog from '../SuggestionDialog'
 
 function porcentaje(valor, total) {
   if (!total) return 0
@@ -19,6 +20,7 @@ export default function CartaHub() {
   const [platos, setPlatos] = useState([])
   const [seleccion, setSeleccion] = useState([])
   const [loading, setLoading] = useState(true)
+  const [mostrarSugerencia, setMostrarSugerencia] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -53,6 +55,7 @@ export default function CartaHub() {
   const calidadVinos = Math.round((porcentaje(vinos.length - vinosSinPrecio.length, vinos.length) * 0.45) + (porcentaje(vinos.length - vinosSinPerfil.length, vinos.length) * 0.45) + (porcentaje(vinos.length - vinosSinStock.length, vinos.length) * 0.1))
   const calidadPlatos = Math.round((porcentaje(platos.length - platosSinDescripcion.length, platos.length) * 0.65) + (porcentaje(platos.length - platosSinPrecio.length, platos.length) * 0.35))
   const calidadPublicacion = Math.round((calidadVinos * 0.58) + (calidadPlatos * 0.42))
+  const sugerenciasRestaurante = seleccion.filter(item => String(item.nota_personal || '').startsWith('[RESTAURANTE] '))
   const estadoPublicacion = calidadPublicacion >= 80 ? 'Lista para enseñar' : calidadPublicacion >= 55 ? 'Publicable con avisos' : 'No la enseñaría aún'
   const checklist = [
     { titulo: 'Vinos con precio', valor: vinos.length - vinosSinPrecio.length, total: vinos.length, href: '/dashboard/vinos?filtro=pendientes' },
@@ -70,7 +73,7 @@ export default function CartaHub() {
     { label: 'Importar vinos', href: '/dashboard/vinos?importar=1' },
     { label: 'Añadir vino', href: '/dashboard/vinos?new=1' },
     { label: 'Importar platos', href: '/dashboard/platos?importar=1' },
-    { label: 'Vino destacado', href: '/dashboard/seleccion' },
+    { label: 'Vino destacado', action: () => setMostrarSugerencia(true) },
   ]
 
   return (
@@ -104,7 +107,9 @@ export default function CartaHub() {
 
       <section className={styles.quickActionBar} aria-label="Acciones rapidas de carta">
         {accionesRapidas.map(accion => (
-          <Link key={accion.href} className={styles.secondary} href={accion.href}>{accion.label}</Link>
+          accion.action
+            ? <button key={accion.label} type="button" className={styles.secondary} onClick={accion.action}>{accion.label}</button>
+            : <Link key={accion.href} className={styles.secondary} href={accion.href}>{accion.label}</Link>
         ))}
       </section>
 
@@ -163,13 +168,21 @@ export default function CartaHub() {
           <p>Carta de comida, categorias y pistas de venta para que la recomendacion encaje.</p>
           <span>{platosSinDescripcion.length} necesitan pistas de venta</span>
         </Link>
-        <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/seleccion">
+        <button type="button" className={`${styles.hubCard} ${styles.hubCardDark}`} onClick={() => setMostrarSugerencia(true)}>
           <p className={styles.eyebrow}>Escaparate</p>
           <h2>Sugerencia de la casa</h2>
           <p>La Selección Juanjo la mantiene el consultor. Aquí podéis añadir una recomendación propia del restaurante.</p>
-          <span>{seleccion.length}/1 vino recomendado</span>
-        </Link>
+          <span>{sugerenciasRestaurante.length}/1 vino recomendado</span>
+        </button>
       </section>
+      <SuggestionDialog
+        open={mostrarSugerencia}
+        onClose={() => setMostrarSugerencia(false)}
+        restaurante={restaurante}
+        vinos={vinos}
+        seleccion={seleccion}
+        onChange={setSeleccion}
+      />
     </ModuleShell>
   )
 }

@@ -5,6 +5,7 @@ import { supabase } from '../../supabase'
 import { ADMIN_EMAIL, getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
+import ResponsiveOverlay from '../ResponsiveOverlay'
 
 const rasgosMaridaje = [
   { label: 'Brasa', texto: 'brasa' },
@@ -182,7 +183,9 @@ export default function Platos() {
   const [restaurante, setRestaurante] = useState(null)
   const [platos, setPlatos] = useState([])
   const [loading, setLoading] = useState(true)
-  const [mostrarFormulario, setMostrarFormulario] = useState(false)
+  const [mostrarFormulario, setMostrarFormulario] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('new') === '1'
+  ))
   const [mostrarImportador, setMostrarImportador] = useState(() => (
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('importar') === '1'
   ))
@@ -226,17 +229,6 @@ export default function Platos() {
     }
     cargar()
   }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (new URLSearchParams(window.location.search).get('new') === '1') {
-      setMostrarFormulario(true)
-    }
-  }, [])
-
-  useEffect(() => {
-    setPaginaPlatos(1)
-  }, [busquedaPlatos, filtroPlatos, pageSizePlatos, filtrosColumnaPlatos])
 
   useEffect(() => {
     if (!menuPlato) return
@@ -605,7 +597,7 @@ export default function Platos() {
                 key={item.label}
                 type="button"
                 className={filtroPlatos === item.filter ? styles.pendingItemActive : styles.pendingItem}
-                onClick={() => setFiltroPlatos(item.filter)}
+                onClick={() => { setFiltroPlatos(item.filter); setPaginaPlatos(1) }}
               >
                 <strong>{item.count}</strong>
                 <span>{item.label}</span>
@@ -669,10 +661,20 @@ export default function Platos() {
           </div>
         )}
 
-        {mostrarFormulario && (
-          <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
-            <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 20px' }}>Nuevo plato</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 28px', marginBottom: 16 }}>
+        <ResponsiveOverlay
+          open={mostrarFormulario}
+          onClose={() => setMostrarFormulario(false)}
+          eyebrow="Carta de comida"
+          title="Añadir plato"
+          description="Añade precio y unas pocas pistas internas para que sala y el motor de maridaje entiendan el plato."
+          footer={
+            <>
+              <button type="button" className={styles.ghost} onClick={() => setMostrarFormulario(false)}>Cancelar</button>
+              <button data-shortcut-save="true" className={styles.primary} onClick={añadirPlato} disabled={!nuevoPlato.nombre}>Guardar plato</button>
+            </>
+          }
+        >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px 28px', marginBottom: 16 }}>
               <div>
                 <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Nombre *</label>
                 <input type="text" value={nuevoPlato.nombre} onChange={e => setNuevoPlato({ ...nuevoPlato, nombre: e.target.value })}
@@ -701,11 +703,7 @@ export default function Platos() {
               </div>
               <RasgosMaridaje plato={nuevoPlato} onChange={setNuevoPlato} />
             </div>
-            <button data-shortcut-save="true" onClick={añadirPlato} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
-              Guardar plato
-            </button>
-          </div>
-        )}
+        </ResponsiveOverlay>
 
         <section className={styles.listToolbar}>
           <div>
@@ -713,13 +711,13 @@ export default function Platos() {
             <input
               className={styles.searchInput}
               value={busquedaPlatos}
-              onChange={e => setBusquedaPlatos(e.target.value)}
+              onChange={e => { setBusquedaPlatos(e.target.value); setPaginaPlatos(1) }}
               placeholder="Nombre, categoría, técnica, salsa o ingrediente"
             />
           </div>
           <div>
             <label className={styles.label}>Vista</label>
-            <select className={styles.toolbarSelect} value={filtroPlatos} onChange={e => setFiltroPlatos(e.target.value)}>
+            <select className={styles.toolbarSelect} value={filtroPlatos} onChange={e => { setFiltroPlatos(e.target.value); setPaginaPlatos(1) }}>
               <option value="todos">Todos los platos</option>
               <option value="activos">Activos</option>
               <option value="sin_descripcion">Sin pistas de venta</option>
@@ -731,7 +729,7 @@ export default function Platos() {
             <p className={styles.resultCount}>{rangoPlatos} de {platosVisibles.length} platos</p>
             <label className={styles.pageSizeControl}>
               <span>Por pagina</span>
-              <select value={pageSizePlatos} onChange={e => setPageSizePlatos(Number(e.target.value))}>
+              <select value={pageSizePlatos} onChange={e => { setPageSizePlatos(Number(e.target.value)); setPaginaPlatos(1) }}>
                 <option value={10}>10</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>
@@ -773,17 +771,17 @@ export default function Platos() {
             ))}
           </div>
 
-          <div className={styles.inlineColumnFilters}>
+          <div className={`${styles.inlineColumnFilters} ${styles.dishColumnFilters}`}>
             <button type="button" onClick={() => ordenarPorPlato('nombre')}>Plato {ordenPlatos.key === 'nombre' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <button type="button" onClick={() => ordenarPorPlato('categoria')}>Categoria {ordenPlatos.key === 'categoria' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <button type="button" onClick={() => ordenarPorPlato('precio')}>Precio {ordenPlatos.key === 'precio' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <button type="button" onClick={() => ordenarPorPlato('descripcion')}>Pistas {ordenPlatos.key === 'descripcion' ? (ordenPlatos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <span />
-            <input aria-label="Filtrar plato" value={filtrosColumnaPlatos.plato} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, plato: e.target.value })} placeholder="Filtrar plato" />
-            <input aria-label="Filtrar categoria" value={filtrosColumnaPlatos.categoria} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, categoria: e.target.value })} placeholder="Categoria" />
-            <input aria-label="Filtrar precio" value={filtrosColumnaPlatos.precio} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, precio: e.target.value })} placeholder="Precio" />
-            <input aria-label="Filtrar pistas de venta" value={filtrosColumnaPlatos.descripcion} onChange={e => setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, descripcion: e.target.value })} placeholder="Pistas" />
-            <button type="button" className={styles.clearFilters} onClick={() => setFiltrosColumnaPlatos({ plato: '', categoria: '', precio: '', descripcion: '' })}>Limpiar</button>
+            <input aria-label="Filtrar plato" value={filtrosColumnaPlatos.plato} onChange={e => { setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, plato: e.target.value }); setPaginaPlatos(1) }} placeholder="Filtrar plato" />
+            <input aria-label="Filtrar categoria" value={filtrosColumnaPlatos.categoria} onChange={e => { setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, categoria: e.target.value }); setPaginaPlatos(1) }} placeholder="Categoria" />
+            <input aria-label="Filtrar precio" value={filtrosColumnaPlatos.precio} onChange={e => { setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, precio: e.target.value }); setPaginaPlatos(1) }} placeholder="Precio" />
+            <input aria-label="Filtrar pistas de venta" value={filtrosColumnaPlatos.descripcion} onChange={e => { setFiltrosColumnaPlatos({ ...filtrosColumnaPlatos, descripcion: e.target.value }); setPaginaPlatos(1) }} placeholder="Pistas" />
+            <button type="button" className={styles.clearFilters} onClick={() => { setFiltrosColumnaPlatos({ plato: '', categoria: '', precio: '', descripcion: '' }); setPaginaPlatos(1) }}>Limpiar</button>
           </div>
 
           {platosVisibles.length === 0 ? (
@@ -822,8 +820,19 @@ export default function Platos() {
                   </div>
                 </div>
                 {editandoPlato?.id === p.id && (
-                  <div className={styles.inlineEditPanel}>
-                    <p className={styles.inlineEditTitle}>Editando {editandoPlato.nombre}</p>
+                  <ResponsiveOverlay
+                    open
+                    onClose={() => setEditandoPlato(null)}
+                    eyebrow="Carta de comida"
+                    title={`Editar ${editandoPlato.nombre}`}
+                    description="Mantén el precio y las pistas internas que usa sala para recomendar."
+                    footer={
+                      <>
+                        <button type="button" className={styles.ghost} onClick={() => setEditandoPlato(null)}>Cancelar</button>
+                        <button data-shortcut-save="true" className={styles.primary} onClick={() => guardarEdicion(editandoPlato)} disabled={!editandoPlato.nombre}>Guardar cambios</button>
+                      </>
+                    }
+                  >
                     <div className={styles.wineFormGrid}>
                       <div>
                         <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Nombre *</label>
@@ -850,15 +859,7 @@ export default function Platos() {
                       </div>
                       <RasgosMaridaje plato={editandoPlato} onChange={setEditandoPlato} />
                     </div>
-                    <div className={styles.wineActions}>
-                      <button data-shortcut-save="true" onClick={() => guardarEdicion(editandoPlato)} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
-                        Guardar cambios
-                      </button>
-                      <button onClick={() => setEditandoPlato(null)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '12px 28px', fontSize: 11, color: '#aaa', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
+                  </ResponsiveOverlay>
                 )}
               </div>
             ))

@@ -1395,6 +1395,9 @@ button.itemCard {
   color: #171416;
   padding: 20px;
   text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
 }
 
 .hubCard:hover {
@@ -1744,7 +1747,7 @@ button.itemCard {
 
 .inlineColumnFilters {
   display: grid;
-  grid-template-columns: inherit;
+  grid-template-columns: 3fr 2fr 80px 80px 60px 140px;
   gap: 8px 14px;
   align-items: center;
   border-bottom: 1px solid #f0eee8;
@@ -1783,6 +1786,40 @@ button.itemCard {
   position: relative;
   align-self: center;
   justify-self: end;
+}
+
+.dishColumnFilters {
+  grid-template-columns: minmax(150px, 2fr) minmax(100px, 1.3fr) 80px minmax(130px, 2fr) 160px;
+}
+
+.rowMenu > summary {
+  width: 36px;
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 1px solid #ddd7cc;
+  border-radius: 8px;
+  background: #fff;
+  color: #531827;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  list-style: none;
+}
+
+.rowMenu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.rowMenu[open] {
+  z-index: 25;
+}
+
+.rowMenu[open] > summary {
+  border-color: #531827;
+  background: #f8f4ea;
 }
 
 .rowMenuTrigger {
@@ -2481,6 +2518,10 @@ button.itemCard {
     display: none;
   }
 
+  .inlineColumnFilters {
+    display: none;
+  }
+
   .wineList,
   .dataList {
     border-left: 0;
@@ -2488,10 +2529,132 @@ button.itemCard {
     width: 100%;
   }
 
+  .wineList {
+    display: grid;
+    gap: 10px;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .dataList {
+    display: grid;
+    gap: 10px;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .wineRowGroup {
+    overflow: visible;
+    border: 1px solid #dfddd6;
+    border-radius: 10px;
+    background: #fffaf3;
+  }
+
   .wineListRow,
   .dishListRow {
+    position: relative;
     display: block !important;
     padding: 16px !important;
+  }
+
+  .wineListRow .rowMenu {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    margin: 0;
+  }
+
+  .wineListRow .rowMenu[open] {
+    position: static;
+    width: 100%;
+    margin-top: 14px;
+  }
+
+  .wineListRow .rowMenu[open] > summary {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+  }
+
+  .wineListRow .rowMenuDropdown {
+    position: static;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .wineListRow .rowMenuDropdown button {
+    min-height: 42px;
+    border: 1px solid #dfddd6;
+    border-radius: 8px;
+    background: #fff;
+    text-align: center;
+  }
+
+  .wineListRow .rowMenuDropdown .dangerAction {
+    grid-column: 1 / -1;
+  }
+
+  .dishListRow {
+    border: 0 !important;
+    border-radius: 10px;
+    background: #fffaf3;
+  }
+
+  .dishListRow .rowMenu {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    margin: 0;
+  }
+
+  .dishListRow .rowMenuOpen {
+    position: static;
+    width: 100%;
+    margin-top: 14px;
+  }
+
+  .dishListRow .rowMenuOpen .rowMenuTrigger {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+  }
+
+  .dishListRow .rowMenuDropdown {
+    position: static;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .dishListRow .rowMenuDropdown button {
+    min-height: 42px;
+    border: 1px solid #dfddd6;
+    border-radius: 8px;
+    background: #fff;
+    text-align: center;
+  }
+
+  .dishListRow .rowMenuDropdown .dangerAction {
+    grid-column: 1 / -1;
+  }
+
+  .dishListRow > p:first-child {
+    padding-right: 48px;
+  }
+
+  .wineListRow .wineNameCell {
+    padding-right: 48px;
   }
 
   .dishListRow > p:first-child {
@@ -2804,6 +2967,16 @@ button.itemCard {
   border-color: #8B3F5C;
   color: #8B3F5C;
   outline: none;
+}
+
+.innerTabs button.innerTabActive {
+  border-color: #531827;
+  background: #531827;
+  color: #fffaf3;
+}
+
+.singleView {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .innerTabs span {

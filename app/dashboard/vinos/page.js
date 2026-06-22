@@ -5,7 +5,9 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import { limiteVinosPlan, nombrePlan, puedeUsar } from '../../lib/plans'
+import { aplicarAjustesStock } from '../../lib/stockClient'
 import styles from '../module.module.css'
+import ResponsiveOverlay from '../ResponsiveOverlay'
 
 const perfilesVino = [
   { label: 'Fresco', texto: 'perfil fresco' },
@@ -97,7 +99,9 @@ export default function Dashboard() {
   const [vinos, setVinos] = useState([])
   const [proveedoresCatalogo, setProveedoresCatalogo] = useState([])
   const [loading, setLoading] = useState(true)
-  const [mostrarFormulario, setMostrarFormulario] = useState(false)
+  const [mostrarFormulario, setMostrarFormulario] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('new') === '1'
+  ))
   const [mostrarImportador, setMostrarImportador] = useState(() => (
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('importar') === '1'
   ))
@@ -153,17 +157,6 @@ const inputPdfRef = useRef(null)
     }
     cargarDatos()
   }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (new URLSearchParams(window.location.search).get('new') === '1') {
-      setMostrarFormulario(true)
-    }
-  }, [])
-
-  useEffect(() => {
-    setPaginaVinos(1)
-  }, [busquedaVinos, filtroVinos, pageSizeVinos, filtrosColumnaVinos])
 
 async function añadirVino() {
 const limiteVinos = restaurante ? limiteVinosPlan(restaurante) : 60
@@ -384,22 +377,26 @@ async function guardarAnada(vino) {
   setVinos(vinos.filter(v => v.id !== vino.id))
 }
 async function actualizarStock(vino, cambio) {
-  const stockAnterior = Number(vino.stock) || 0
-  const nuevoStock = Math.max(0, (vino.stock || 0) + cambio)
-  const { error } = await supabase.from('vinos').update({ stock: nuevoStock }).eq('id', vino.id)
-  if (error) return
-  if (restaurante?.id && stockAnterior !== nuevoStock) {
-    await supabase.from('movimientos_stock').insert([{
+  if (!restaurante?.id) return
+  setMensajeVinos('')
+  try {
+    const [ajuste] = await aplicarAjustesStock(supabase, {
       restaurante_id: restaurante.id,
-      vino_id: vino.id,
-      tipo: cambio > 0 ? 'entrada' : 'ajuste',
-      cantidad: nuevoStock - stockAnterior,
-      stock_anterior: stockAnterior,
-      stock_nuevo: nuevoStock,
-      motivo: cambio > 0 ? 'Ajuste rápido: entrada manual' : 'Ajuste rápido: salida manual',
-    }])
+      ajustes: [{
+        vino_id: vino.id,
+        modo: 'delta',
+        valor: cambio,
+        tipo: cambio > 0 ? 'entrada' : 'ajuste',
+        motivo: cambio > 0 ? 'Ajuste rapido: entrada manual' : 'Ajuste rapido: salida manual',
+      }],
+    })
+    if (!ajuste) return
+    setVinos(actuales => actuales.map(item =>
+      item.id === vino.id ? { ...item, stock: ajuste.stock_nuevo } : item
+    ))
+  } catch (error) {
+    setMensajeVinos(error.message || 'No se pudo actualizar el stock.')
   }
-  setVinos(vinos.map(v => v.id === vino.id ? { ...v, stock: nuevoStock } : v))
 }
 
 async function duplicarVino(vino) {
@@ -634,6 +631,7 @@ async function aplicarAccionMasiva() {
       subtitle="Controla precios, stock, perfiles de cata e importaciones para que sala y maridaje trabajen con la misma información."
       actions={
         <>
+          {puedeUsar(restaurante, 'precios_margenes') && <a href="/dashboard/precios" className={styles.secondary}>Calcular precios</a>}
           {puedeUsar(restaurante, 'bodega') && <a href="/dashboard/bodega" className={styles.secondary}>Control bodega</a>}
           {puedeUsar(restaurante, 'importador_pdf') && (
             <button
@@ -676,7 +674,7 @@ async function aplicarAccionMasiva() {
                 key={item.label}
                 type="button"
                 className={filtroVinos === item.filter ? styles.pendingItemActive : styles.pendingItem}
-                onClick={() => setFiltroVinos(item.filter)}
+                onClick={() => { setFiltroVinos(item.filter); setPaginaVinos(1) }}
               >
                 <strong>{item.count}</strong>
                 <span>{item.label}</span>
@@ -744,9 +742,21 @@ async function aplicarAccionMasiva() {
           </div>
         )}
         {/* Formulario */}
-        {mostrarFormulario && (
-          <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
-            <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 24px' }}>Nuevo vino</p>
+        <ResponsiveOverlay
+          open={mostrarFormulario}
+          onClose={() => !generandoCata && setMostrarFormulario(false)}
+          eyebrow="Carta de vinos"
+          title="Añadir vino"
+          description="Completa lo esencial ahora. Los datos avanzados de bodega pueden añadirse después."
+          footer={
+            <>
+              <button type="button" className={styles.ghost} onClick={() => setMostrarFormulario(false)} disabled={generandoCata}>Cancelar</button>
+              <button data-shortcut-save="true" className={styles.primary} onClick={añadirVino} disabled={generandoCata || !nuevoVino.nombre || !nuevoVino.tipo}>
+                {generandoCata ? 'Generando notas…' : 'Guardar vino'}
+              </button>
+            </>
+          }
+        >
             <div className={styles.wineFormGrid}>
               {campo('Nombre *', 'nombre', 'Ej. Barbazul Tinto')}
               {campo('Bodega', 'bodega', 'Ej. Primitivo Quiles')}
@@ -790,11 +800,7 @@ async function aplicarAccionMasiva() {
                 </div>
               </details>
             </div>
-            <button data-shortcut-save="true" onClick={añadirVino} disabled={generandoCata} style={{ background: generandoCata ? '#888' : '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: generandoCata ? 'not-allowed' : 'pointer' }}>
-  {generandoCata ? 'Generando notas de cata...' : 'Guardar vino'}
-</button>
-          </div>
-        )}
+        </ResponsiveOverlay>
 
         {/* Lista vinos */}
         <section className={styles.listToolbar}>
@@ -803,13 +809,13 @@ async function aplicarAccionMasiva() {
             <input
               className={styles.searchInput}
               value={busquedaVinos}
-              onChange={e => setBusquedaVinos(e.target.value)}
+              onChange={e => { setBusquedaVinos(e.target.value); setPaginaVinos(1) }}
               placeholder="Nombre, bodega, uva, región, añada o proveedor"
             />
           </div>
           <div>
             <label className={styles.label}>Vista</label>
-            <select className={styles.toolbarSelect} value={filtroVinos} onChange={e => setFiltroVinos(e.target.value)}>
+            <select className={styles.toolbarSelect} value={filtroVinos} onChange={e => { setFiltroVinos(e.target.value); setPaginaVinos(1) }}>
               <option value="todos">Todos los vinos</option>
               <option value="activos">Activos</option>
               <option value="pendientes">Pendientes</option>
@@ -825,7 +831,7 @@ async function aplicarAccionMasiva() {
             <p className={styles.resultCount}>{rangoVinos} de {vinosVisibles.length} referencias</p>
             <label className={styles.pageSizeControl}>
               <span>Por pagina</span>
-              <select value={pageSizeVinos} onChange={e => setPageSizeVinos(Number(e.target.value))}>
+              <select value={pageSizeVinos} onChange={e => { setPageSizeVinos(Number(e.target.value)); setPaginaVinos(1) }}>
                 <option value={10}>10</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>
@@ -893,12 +899,12 @@ async function aplicarAccionMasiva() {
             <button type="button" onClick={() => ordenarPorVino('precio_copa')}>Copa {ordenVinos.key === 'precio_copa' ? (ordenVinos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <button type="button" onClick={() => ordenarPorVino('precio_botella')}>Botella {ordenVinos.key === 'precio_botella' ? (ordenVinos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <button type="button" onClick={() => ordenarPorVino('stock')}>Stock {ordenVinos.key === 'stock' ? (ordenVinos.dir === 'asc' ? '↑' : '↓') : ''}</button>
-            <button type="button" className={styles.clearFilters} onClick={() => setFiltrosColumnaVinos({ vino: '', bodega: '', tipo: '', precio: '', stock: '' })}>Limpiar</button>
-            <input aria-label="Filtrar vino" value={filtrosColumnaVinos.vino} onChange={e => setFiltrosColumnaVinos({ ...filtrosColumnaVinos, vino: e.target.value })} placeholder="Filtrar vino" />
-            <input aria-label="Filtrar bodega o region" value={filtrosColumnaVinos.bodega} onChange={e => setFiltrosColumnaVinos({ ...filtrosColumnaVinos, bodega: e.target.value })} placeholder="Bodega/region" />
-            <input aria-label="Filtrar tipo" value={filtrosColumnaVinos.tipo} onChange={e => setFiltrosColumnaVinos({ ...filtrosColumnaVinos, tipo: e.target.value })} placeholder="Tipo" />
-            <input aria-label="Filtrar precio" value={filtrosColumnaVinos.precio} onChange={e => setFiltrosColumnaVinos({ ...filtrosColumnaVinos, precio: e.target.value })} placeholder="Precio" />
-            <input aria-label="Filtrar stock" value={filtrosColumnaVinos.stock} onChange={e => setFiltrosColumnaVinos({ ...filtrosColumnaVinos, stock: e.target.value })} placeholder="Stock" />
+            <button type="button" className={styles.clearFilters} onClick={() => { setFiltrosColumnaVinos({ vino: '', bodega: '', tipo: '', precio: '', stock: '' }); setPaginaVinos(1) }}>Limpiar</button>
+            <input aria-label="Filtrar vino" value={filtrosColumnaVinos.vino} onChange={e => { setFiltrosColumnaVinos({ ...filtrosColumnaVinos, vino: e.target.value }); setPaginaVinos(1) }} placeholder="Filtrar vino" />
+            <input aria-label="Filtrar bodega o region" value={filtrosColumnaVinos.bodega} onChange={e => { setFiltrosColumnaVinos({ ...filtrosColumnaVinos, bodega: e.target.value }); setPaginaVinos(1) }} placeholder="Bodega/region" />
+            <input aria-label="Filtrar tipo" value={filtrosColumnaVinos.tipo} onChange={e => { setFiltrosColumnaVinos({ ...filtrosColumnaVinos, tipo: e.target.value }); setPaginaVinos(1) }} placeholder="Tipo" />
+            <input aria-label="Filtrar precio" value={filtrosColumnaVinos.precio} onChange={e => { setFiltrosColumnaVinos({ ...filtrosColumnaVinos, precio: e.target.value }); setPaginaVinos(1) }} placeholder="Precio" />
+            <input aria-label="Filtrar stock" value={filtrosColumnaVinos.stock} onChange={e => { setFiltrosColumnaVinos({ ...filtrosColumnaVinos, stock: e.target.value }); setPaginaVinos(1) }} placeholder="Stock" />
             <span />
           </div>
 
@@ -971,16 +977,29 @@ async function aplicarAccionMasiva() {
 </div>
                 <details className={styles.rowMenu}>
                   <summary aria-label={`Acciones para ${v.nombre}`}>...</summary>
-                  <button data-shortcut-edit="true" aria-label={`Editar ${v.nombre}`} onClick={() => { setEditandoVino({...v, precio_copa: v.precio_copa || '', precio_botella: v.precio_botella || '', coste_compra: v.coste_compra || '', stock_minimo: v.stock_minimo || '', proveedor: v.proveedor || ''}); }}>Editar</button>
-                  <button onClick={() => copiarVino(v)}>Copiar fila</button>
-                  <button onClick={() => duplicarVino(v)}>Duplicar</button>
-                  <button onClick={() => toggleActivo(v)}>{v.activo ? 'Ocultar' : 'Mostrar'}</button>
-                  <button className={styles.dangerAction} onClick={() => borrarVino(v)}>Borrar</button>
+                  <div className={styles.rowMenuDropdown}>
+                    <button data-shortcut-edit="true" aria-label={`Editar ${v.nombre}`} onClick={() => { setEditandoVino({...v, precio_copa: v.precio_copa || '', precio_botella: v.precio_botella || '', coste_compra: v.coste_compra || '', stock_minimo: v.stock_minimo || '', proveedor: v.proveedor || ''}); }}>Editar</button>
+                    <button onClick={() => copiarVino(v)}>Copiar fila</button>
+                    <button onClick={() => duplicarVino(v)}>Duplicar</button>
+                    <button onClick={() => toggleActivo(v)}>{v.activo ? 'Ocultar' : 'Mostrar'}</button>
+                    <button className={styles.dangerAction} onClick={() => borrarVino(v)}>Borrar</button>
+                  </div>
                 </details>
 </div>
               {editandoVino?.id === v.id && (
-                <div className={styles.inlineEditPanel}>
-                  <p className={styles.inlineEditTitle}>Editando {editandoVino.nombre}</p>
+                <ResponsiveOverlay
+                  open
+                  onClose={() => setEditandoVino(null)}
+                  eyebrow="Carta de vinos"
+                  title={`Editar ${editandoVino.nombre}`}
+                  description="Los cambios se aplicarán a la carta, bodega y herramientas de sala."
+                  footer={
+                    <>
+                      <button type="button" className={styles.ghost} onClick={() => setEditandoVino(null)}>Cancelar</button>
+                      <button data-shortcut-save="true" className={styles.primary} onClick={() => guardarEdicion(editandoVino)} disabled={!editandoVino.nombre}>Guardar cambios</button>
+                    </>
+                  }
+                >
                   <div className={styles.wineFormGrid}>
                     {[
                       { label: 'Nombre *', key: 'nombre' },
@@ -1048,15 +1067,7 @@ async function aplicarAccionMasiva() {
                     </div>
                     <PerfilVino vino={editandoVino} onChange={setEditandoVino} />
                   </div>
-                  <div className={styles.wineActions}>
-                    <button data-shortcut-save="true" onClick={() => guardarEdicion(editandoVino)} style={{ background: '#111', color: '#fff', border: 'none', padding: '12px 28px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
-                      Guardar cambios
-                    </button>
-                    <button onClick={() => setEditandoVino(null)} style={{ background: 'none', border: '1px solid #e8e8e8', padding: '12px 28px', fontSize: 11, color: '#aaa', cursor: 'pointer', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
+                </ResponsiveOverlay>
               )}
               </div>
             ))
