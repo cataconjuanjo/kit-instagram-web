@@ -5,7 +5,6 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import { limiteVinosPlan, nombrePlan, puedeUsar } from '../../lib/plans'
-import { aplicarAjustesStock } from '../../lib/stockClient'
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 
@@ -377,26 +376,24 @@ async function guardarAnada(vino) {
   setVinos(vinos.filter(v => v.id !== vino.id))
 }
 async function actualizarStock(vino, cambio) {
-  if (!restaurante?.id) return
-  setMensajeVinos('')
-  try {
-    const [ajuste] = await aplicarAjustesStock(supabase, {
+  const stockAnterior = Number(vino.stock) || 0
+  const nuevoStock = Math.max(0, stockAnterior + cambio)
+  const { error } = await supabase.from('vinos').update({ stock: nuevoStock }).eq('id', vino.id)
+  if (error) return
+  if (restaurante?.id && stockAnterior !== nuevoStock) {
+    await supabase.from('movimientos_stock').insert([{
       restaurante_id: restaurante.id,
-      ajustes: [{
-        vino_id: vino.id,
-        modo: 'delta',
-        valor: cambio,
-        tipo: cambio > 0 ? 'entrada' : 'ajuste',
-        motivo: cambio > 0 ? 'Ajuste rapido: entrada manual' : 'Ajuste rapido: salida manual',
-      }],
-    })
-    if (!ajuste) return
-    setVinos(actuales => actuales.map(item =>
-      item.id === vino.id ? { ...item, stock: ajuste.stock_nuevo } : item
-    ))
-  } catch (error) {
-    setMensajeVinos(error.message || 'No se pudo actualizar el stock.')
+      vino_id: vino.id,
+      tipo: cambio > 0 ? 'entrada' : 'ajuste',
+      cantidad: nuevoStock - stockAnterior,
+      stock_anterior: stockAnterior,
+      stock_nuevo: nuevoStock,
+      motivo: cambio > 0 ? 'Ajuste rápido: entrada manual' : 'Ajuste rápido: salida manual',
+    }])
   }
+  setVinos(actuales => actuales.map(item =>
+    item.id === vino.id ? { ...item, stock: nuevoStock } : item
+  ))
 }
 
 async function duplicarVino(vino) {
