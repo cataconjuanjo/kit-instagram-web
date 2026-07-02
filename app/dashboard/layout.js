@@ -36,6 +36,9 @@ export default function DashboardLayout({ children }) {
   ))
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [shortcutMessage, setShortcutMessage] = useState('')
+  const [demoPresentacion] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_presentacion') === '1'
+  ))
 
   useEffect(() => {
     async function cargar() {
@@ -162,49 +165,53 @@ export default function DashboardLayout({ children }) {
   const planVisible = restaurante ? nombrePlan(restaurante) : ''
 
   const navItems = [
-    { href: '/dashboard', label: 'Inicio', exact: true, icon: icon.home },
+    { href: '/dashboard', label: 'Inicio', hint: 'Prioridad y puesta en marcha', exact: true, icon: icon.home },
     {
       href: '/dashboard/carta',
-      label: 'Carta',
+      label: 'Carta pública',
+      hint: 'Vinos, platos y QR',
       icon: icon.wine,
       stat: vinoCount + platoCount || null,
       children: [
-        { href: '/dashboard/vinos', label: 'Vinos', stat: vinoCount || null },
-        { href: '/dashboard/platos', label: 'Platos', stat: platoCount || null },
+        { href: '/dashboard/vinos', label: 'Vinos', hint: 'Precios y perfiles', stat: vinoCount || null },
+        { href: '/dashboard/platos', label: 'Platos', hint: 'Pistas para maridar', stat: platoCount || null },
       ],
     },
     {
       href: '/dashboard/sala',
       label: 'Sala',
+      hint: 'Servicio y cierre',
       icon: icon.sala,
       feature: 'modo_camarero',
       children: [
-        { href: '/dashboard/cierre', label: 'Cierre servicio', feature: 'cierre_servicio' },
-        { href: '/dashboard/estadisticas', label: 'Actividad', feature: 'estadisticas' },
-        { href: '/dashboard/menu-engineering', label: 'Rentabilidad', feature: 'estadisticas' },
+        { href: '/dashboard/cierre', label: 'Cierre del turno', hint: 'Ventas e incidencias', feature: 'cierre_servicio' },
+        { href: '/dashboard/estadisticas', label: 'Actividad de sala', hint: 'Escaneos y consultas', feature: 'estadisticas' },
+        { href: '/dashboard/menu-engineering', label: 'Rentabilidad', hint: 'Qué empujar o revisar', feature: 'estadisticas' },
       ],
     },
     {
       href: propuestasCount > 0 ? '/dashboard/bodega#propuestas' : '/dashboard/bodega',
       label: 'Bodega',
+      hint: 'Stock, pedidos y margen',
       icon: icon.bodega,
       feature: 'bodega',
       alert: propuestasCount || null,
       children: [
-        { href: '/dashboard/bodega', label: 'Stock', feature: 'bodega' },
-        { href: '/dashboard/precios', label: 'Precios y márgenes', feature: 'precios_margenes' },
-        { href: '/dashboard/bodega#propuestas', label: 'Propuestas', feature: 'bodega', alert: propuestasCount || null },
-        { href: '/dashboard/bodega#movimientos', label: 'Movimientos', feature: 'bodega' },
-        { href: '/dashboard/inventario', label: 'Inventario', feature: 'inventario' },
+        { href: '/dashboard/bodega', label: 'Stock y pedido', hint: 'Compra sugerida', feature: 'bodega' },
+        { href: '/dashboard/precios', label: 'Márgenes', hint: 'Precio y coste', feature: 'precios_margenes' },
+        { href: '/dashboard/bodega#propuestas', label: 'Propuestas', hint: 'Ideas por decidir', feature: 'bodega', alert: propuestasCount || null },
+        { href: '/dashboard/bodega#movimientos', label: 'Movimientos', hint: 'Historial de stock', feature: 'bodega' },
+        { href: '/dashboard/inventario', label: 'Inventario físico', hint: 'Conteo real', feature: 'inventario' },
       ],
     },
     {
       href: '/dashboard/ajustes',
       label: 'Ajustes',
+      hint: 'QR, marca y accesos',
       icon: icon.ajustes,
       children: [
-        { href: '/dashboard/qr', label: 'QR y accesos' },
-        { href: '/dashboard/personalizar', label: 'Diseño y marca' },
+        { href: '/dashboard/qr', label: 'QR y accesos', hint: 'Mesa y camarero' },
+        { href: '/dashboard/personalizar', label: 'Diseño de carta', hint: 'Logo y colores' },
       ],
     },
   ].filter(item => !item.feature || puedeUsar(restaurante, item.feature))
@@ -217,7 +224,7 @@ export default function DashboardLayout({ children }) {
     ? searchItems.filter(item => `${item.nombre || ''} ${item.meta || ''} ${item.tipo}`.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
     : []
   const turnoAbierto = Boolean(restaurante?.actividad_real_desde)
-  const pinActivo = Boolean(restaurante?.camarero_pin_configurado)
+  const pinActivo = Boolean(restaurante?.camarero_pin_configurado || restaurante?.camarero_pin_hash || restaurante?.camarero_pin)
 
   return (
     <div className={`${styles.shell} ${darkMode ? styles.darkShell : ''}`}>
@@ -234,7 +241,7 @@ export default function DashboardLayout({ children }) {
               <p className={styles.brandLabel}>Panel restaurante</p>
               <p className={styles.brandName}>{restaurante?.nombre || '-'}</p>
               {restaurante?.ciudad && <p className={styles.brandCity}>{restaurante.ciudad}</p>}
-              <p className={styles.pinState}>{pinActivo ? '🔒 PIN activo' : '🔓 PIN inactivo'}</p>
+              <p className={styles.pinState}>{pinActivo ? 'PIN activo' : 'PIN inactivo'}</p>
             </div>
           </div>
           {restaurante && <p className={styles.brandPlan}>{planVisible}</p>}
@@ -251,7 +258,10 @@ export default function DashboardLayout({ children }) {
                   onClick={() => setMenuOpen(false)}
                 >
                   <span className={styles.navIcon}>{item.icon}</span>
-                  <span className={styles.navLabel}>{item.label}</span>
+                  <span className={styles.navCopy}>
+                    <span className={styles.navLabel}>{item.label}</span>
+                    {item.hint && <small className={styles.navHint}>{item.hint}</small>}
+                  </span>
                   {item.alert != null && <span className={styles.navAlert}>{item.alert}</span>}
                   {item.stat != null && <span className={styles.navStat}>{item.stat}</span>}
                 </Link>
@@ -264,7 +274,10 @@ export default function DashboardLayout({ children }) {
                         className={`${styles.subnavLink} ${isActive(child.href, child.exact) ? styles.subnavActive : ''}`}
                         onClick={() => setMenuOpen(false)}
                       >
-                        <span>{child.label}</span>
+                        <span className={styles.subnavCopy}>
+                          <span>{child.label}</span>
+                          {child.hint && <small>{child.hint}</small>}
+                        </span>
                         {child.alert != null && <span className={styles.navAlert}>{child.alert}</span>}
                         {child.stat != null && <span className={styles.navStat}>{child.stat}</span>}
                       </Link>
@@ -297,6 +310,12 @@ export default function DashboardLayout({ children }) {
       {menuOpen && <div className={styles.overlay} onClick={() => setMenuOpen(false)} />}
 
       <div className={styles.main}>
+        {demoPresentacion && (
+          <div className={styles.demoManagerBar}>
+            <span>Vista gerente · Demo La Taberna</span>
+            <a href="/demo/taberna-del-puerto">Volver a la muestra</a>
+          </div>
+        )}
         <div className={styles.mobileBar}>
           <button
             type="button"
@@ -315,7 +334,11 @@ export default function DashboardLayout({ children }) {
         <header className={styles.operationalTopbar}>
           <div className={styles.restaurantTitle}>
             <strong>{restaurante?.nombre || 'Restaurante'}</strong>
-            <span>{[restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' · ') || 'Sin ubicacion'} · {turnoAbierto ? '🟢 Abierto' : '⚪ Cerrado'}</span>
+            <span className={styles.restaurantMeta}>
+              {[restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' · ') || 'Sin ubicacion'}
+              <span className={`${styles.statusDot} ${turnoAbierto ? styles.statusDotOpen : styles.statusDotClosed}`} />
+              {turnoAbierto ? 'Abierto' : 'Cerrado'}
+            </span>
           </div>
 
           <div className={styles.topSearch}>
@@ -356,7 +379,7 @@ export default function DashboardLayout({ children }) {
 
           <div className={styles.topStatus}>
             <Link href="/dashboard/bodega#propuestas" className={propuestasCount > 0 ? styles.alertPillCritical : styles.alertPillOk}>
-              {propuestasCount} alertas
+              {propuestasCount > 0 ? `${propuestasCount} propuestas` : 'Sin propuestas'}
             </Link>
             <span className={styles.clock}>{clock}</span>
             <div className={styles.profileMenu}>

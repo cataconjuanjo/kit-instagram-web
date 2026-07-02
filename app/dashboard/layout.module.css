@@ -1,4 +1,5 @@
 .shell {
+  --dashboard-mobile-bar-height: calc(60px + env(safe-area-inset-top, 0px));
   display: flex;
   min-height: 100vh;
   background: #F8F7F4;
@@ -19,8 +20,11 @@
   left: 0;
   bottom: 0;
   width: 248px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: #3A3A3A;
   border-right: 1px solid rgba(255, 250, 243, 0.08);
   z-index: 50;
@@ -175,6 +179,27 @@
   flex: 1;
 }
 
+.navCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  flex: 1;
+}
+
+.navHint {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navActive .navHint {
+  color: rgba(255, 250, 243, 0.74);
+}
+
 .navStat {
   flex-shrink: 0;
   background: rgba(255, 250, 243, 0.1);
@@ -223,6 +248,28 @@
   text-decoration: none;
   font-size: 11px;
   font-weight: 700;
+}
+
+.subnavCopy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.subnavCopy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subnavCopy small {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.subnavActive .subnavCopy small {
+  color: rgba(255, 250, 243, 0.66);
 }
 
 .subnavLink:hover {
@@ -306,6 +353,32 @@ button.footerLink {
   color: #171416;
 }
 
+.demoManagerBar {
+  position: sticky;
+  top: 0;
+  z-index: 44;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 38px;
+  border-bottom: 1px solid rgba(216, 200, 152, 0.26);
+  background: #171416;
+  color: #fffaf3;
+  padding: 0 16px;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.demoManagerBar a {
+  color: #d8c898;
+  text-decoration: none;
+}
+
+.demoManagerBar ~ .operationalTopbar {
+  top: 38px;
+}
+
 .operationalTopbar {
   position: sticky;
   top: 0;
@@ -345,6 +418,30 @@ button.footerLink {
   color: #625a53;
   font-size: 12px;
   font-weight: 750;
+}
+
+.restaurantMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(98, 90, 83, 0.08);
+}
+
+.statusDotOpen {
+  background: #10b981;
+}
+
+.statusDotClosed {
+  background: #a8a29e;
 }
 
 .darkShell .restaurantTitle strong,
@@ -626,7 +723,9 @@ button.footerLink {
   display: none;
   align-items: center;
   gap: 12px;
-  padding: 11px 16px;
+  min-height: var(--dashboard-mobile-bar-height);
+  box-sizing: border-box;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
   background: #171416;
   border-bottom: 1px solid rgba(255, 250, 243, 0.1);
   position: sticky;
@@ -638,8 +737,8 @@ button.footerLink {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   background: transparent;
   border: none;
   color: #fffaf3;
@@ -697,8 +796,16 @@ button.footerLink {
   }
 
   .operationalTopbar {
-    top: 59px;
+    top: var(--dashboard-mobile-bar-height);
     grid-template-columns: 1fr;
+  }
+
+  .demoManagerBar ~ .mobileBar {
+    top: 38px;
+  }
+
+  .demoManagerBar ~ .operationalTopbar {
+    top: calc(38px + var(--dashboard-mobile-bar-height));
   }
 }
 
@@ -723,7 +830,7 @@ button.footerLink {
 
   .searchPopover {
     position: fixed;
-    top: 122px;
+    top: calc(var(--dashboard-mobile-bar-height) + 64px);
     left: 12px;
     right: 12px;
   }

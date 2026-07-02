@@ -7,15 +7,9 @@ import { getEffectiveRestaurantEmail } from '../demo'
 import { maxFechaISO } from '../lib/actividadReal'
 import { puedeUsar } from '../lib/plans'
 import styles from './dashboard.module.css'
-import OpenCartaPruebaButton from './OpenCartaPruebaButton'
 
 function normalizar(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-}
-
-function incluye(texto, terminos) {
-  const t = normalizar(texto)
-  return terminos.some(term => t.includes(normalizar(term)))
 }
 
 function porcentaje(valor, total) {
@@ -25,10 +19,6 @@ function porcentaje(valor, total) {
 
 function decimal(valor) {
   return Number(valor) || 0
-}
-
-function eur(valor) {
-  return `${decimal(valor).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} EUR`
 }
 
 function leerDetalle(detalle) {
@@ -70,24 +60,14 @@ async function cargarCierreRemoto(restauranteId) {
   return data.cierre || null
 }
 
-const OBJETIVOS_SERVICIO = [
-  { id: 'equilibrado', label: 'Equilibrado' },
-  { id: 'vender_copas', label: 'Vender por copas' },
-  { id: 'subir_ticket', label: 'Subir ticket' },
-  { id: 'rotar_stock', label: 'Rotar stock' },
-  { id: 'vino_local', label: 'Producto local' },
-]
-
 export default function DashboardHome() {
   const [restaurante, setRestaurante] = useState(null)
   const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, incidenciasSala: 0, dudasSala: 0 })
   const [vinos, setVinos] = useState([])
   const [platos, setPlatos] = useState([])
   const [propuestas, setPropuestas] = useState([])
-  const [mostrarSaludCarta, setMostrarSaludCarta] = useState(false)
   const [tareasOcultas, setTareasOcultas] = useState([])
   const [turnoCerrado, setTurnoCerrado] = useState(false)
-  const [objetivoServicio, setObjetivoServicio] = useState('equilibrado')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -104,7 +84,6 @@ export default function DashboardHome() {
           try {
             const guardadas = JSON.parse(window.localStorage.getItem(`carta_viva_inicio_${rest.id}`) || '[]')
             setTareasOcultas(Array.isArray(guardadas) ? guardadas : [])
-            setObjetivoServicio(window.localStorage.getItem(`cartavinos_objetivo_${rest.id}`) || 'equilibrado')
           } catch {
             setTareasOcultas([])
           }
@@ -152,26 +131,6 @@ export default function DashboardHome() {
     cargar()
   }, [])
 
-  function completarTareaInicio(id) {
-    if (!restaurante?.id || typeof window === 'undefined') return
-    const nuevas = [...new Set([...tareasOcultas, id])]
-    setTareasOcultas(nuevas)
-    window.localStorage.setItem(`carta_viva_inicio_${restaurante.id}`, JSON.stringify(nuevas))
-  }
-
-  function cambiarObjetivoServicio(value) {
-    setObjetivoServicio(value)
-    if (restaurante?.id && typeof window !== 'undefined') {
-      window.localStorage.setItem(`cartavinos_objetivo_${restaurante.id}`, value)
-    }
-  }
-
-  function restaurarTareasInicio() {
-    if (!restaurante?.id || typeof window === 'undefined') return
-    setTareasOcultas([])
-    window.localStorage.removeItem(`carta_viva_inicio_${restaurante.id}`)
-  }
-
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#fff', fontFamily: 'system-ui, sans-serif' }}>
       <p style={{ fontSize: 12, letterSpacing: '0.15em', color: '#bbb' }}>CARGANDO</p>
@@ -190,7 +149,6 @@ export default function DashboardHome() {
   const propuestasActivas = propuestas.filter(item => item.estado !== 'incorporada')
   const calidadPlatos = Math.round((porcentaje(platos.length - platosSinDescripcion.length, platos.length) * 0.65) + (porcentaje(platos.length - platosSinPrecio.length, platos.length) * 0.35))
   const calidadVinos = Math.round((porcentaje(vinosActivos.length - vinosSinPrecio.length, vinosActivos.length) * 0.45) + (porcentaje(vinosActivos.length - vinosSinPerfil.length, vinosActivos.length) * 0.45) + (porcentaje(vinosActivos.length - vinosSinStock.length, vinosActivos.length) * 0.1))
-  const calidadStock = porcentaje(vinosActivos.length - vinosSinStock.length, vinosActivos.length)
   const calidadGlobal = Math.round((calidadVinos * 0.58) + (calidadPlatos * 0.42))
   const estadoCarta = calidadGlobal >= 80 ? 'Lista para trabajar' : calidadGlobal >= 55 ? 'Necesita ajustes' : 'Requiere orden'
 
@@ -204,61 +162,6 @@ export default function DashboardHome() {
     propuestasActivas.length > 0 && { texto: `Valorar ${propuestasActivas.length} propuestas pendientes`, href: '/dashboard/bodega#propuestas', tipo: 'Propuesta' },
   ].filter(Boolean)
 
-  const metricas = [
-    { label: 'Salud carta', valor: `${calidadGlobal}%`, detalle: estadoCarta },
-    { label: 'Alertas hoy', valor: stats.incidenciasSala + stats.dudasSala, detalle: `${stats.incidenciasSala} stock, ${stats.dudasSala} sala` },
-    { label: 'Ventas hoy', valor: stats.ventasHoy, detalle: turnoCerrado ? 'Turno revisado' : 'Pendientes de cierre' },
-  ]
-
-  const modulos = [
-    { label: 'Carta', title: 'Vinos y platos', text: 'Gestiona la información que ve el cliente y usa sala.', stat: `${vinosActivos.length} vinos · ${platos.length} platos`, href: '/dashboard/carta' },
-    { label: 'Sala', title: 'Cierre de servicio', text: 'Revisa ventas, dudas e incidencias después del turno.', stat: `${stats.ventasHoy} ventas hoy`, href: '/dashboard/sala', feature: 'modo_camarero' },
-    { label: 'Bodega', title: 'Stock y margen', text: 'Valor, pedido sugerido, proveedor y datos pendientes.', stat: `${bajoMinimo.length} bajo mínimo`, href: '/dashboard/bodega', feature: 'bodega' },
-  ].filter(modulo => !modulo.feature || puedeUsar(restaurante, modulo.feature))
-
-  const vinosServicio = vinosActivos
-    .filter(vino => decimal(vino.stock) > 0 && decimal(vino.precio_botella) > 0)
-    .map(vino => {
-      const venta = decimal(vino.precio_botella)
-      const coste = decimal(vino.coste_compra)
-      const margenPct = venta && coste ? Math.round(((venta - coste) / venta) * 100) : null
-      const stock = decimal(vino.stock)
-      const local = normalizar(vino.region).includes(normalizar(restaurante?.ciudad || ''))
-      const score =
-        (margenPct || 45) +
-        (decimal(vino.precio_copa) > 0 ? objetivoServicio === 'vender_copas' ? 30 : 8 : 0) +
-        (stock >= Math.max(8, decimal(vino.stock_minimo) * 2) ? objetivoServicio === 'rotar_stock' ? 30 : 8 : 0) +
-        (local ? objetivoServicio === 'vino_local' ? 30 : 6 : 0) +
-        (objetivoServicio === 'subir_ticket' ? Math.min(24, venta / 3) : 0)
-      return { ...vino, margenPct, score }
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
-
-  const riesgosServicio = [
-    ...bajoMinimo.map(vino => ({ ...vino, motivo: `Stock ${decimal(vino.stock)} / mínimo ${decimal(vino.stock_minimo)}` })),
-    ...vinosActivos.filter(vino => decimal(vino.stock) === 0).map(vino => ({ ...vino, motivo: 'Sin stock informado' })),
-  ].filter((vino, index, lista) => lista.findIndex(item => item.id === vino.id) === index).slice(0, 4)
-
-  const platosServicio = platos
-    .filter(plato => plato.descripcion && plato.descripcion.trim().length >= 8)
-    .sort((a, b) => decimal(b.precio) - decimal(a.precio))
-    .slice(0, 3)
-
-  const enlacesServicio = [
-    { label: 'Probar carta', pruebaCarta: true },
-    puedeUsar(restaurante, 'modo_camarero') && { label: 'Modo camarero', href: restaurante?.slug ? `/camarero/${restaurante.slug}` : '/dashboard/sala', external: Boolean(restaurante?.slug) },
-    puedeUsar(restaurante, 'cierre_servicio') && { label: 'Cerrar servicio', href: '/dashboard/cierre' },
-    { label: 'QR mesa', href: '/dashboard/qr' },
-  ].filter(Boolean)
-
-  const checksSalud = [
-    { label: 'Vinos', valor: calidadVinos, detalle: `${vinosSinPrecio.length} sin precio · ${vinosSinPerfil.length} sin perfil`, href: '/dashboard/vinos?filtro=pendientes' },
-    { label: 'Platos', valor: calidadPlatos, detalle: `${platosSinDescripcion.length} sin descripcion interna · ${platosSinPrecio.length} sin precio`, href: '/dashboard/platos?filtro=descripcion' },
-    { label: 'Stock', valor: calidadStock, detalle: `${vinosSinStock.length} sin stock actualizado`, href: '/dashboard/bodega', feature: 'bodega' },
-    { label: 'Bodega', valor: porcentaje(vinosActivos.length - sinCosteCompra.length - sinProveedor.length, vinosActivos.length), detalle: `${sinCosteCompra.length} sin coste · ${sinProveedor.length} sin proveedor`, href: '/dashboard/bodega#referencias', feature: 'bodega' },
-  ].filter(check => !check.feature || puedeUsar(restaurante, check.feature))
-
   const tareasInicio = [
     { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio, uva y stock inicial.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
     { id: 'platos', titulo: 'Cargar platos clave', texto: 'Anade los platos que mas se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
@@ -271,6 +174,12 @@ export default function DashboardHome() {
     (!tarea.feature || puedeUsar(restaurante, tarea.feature)) &&
     !tarea.autoHide?.()
   )
+  const tareasInicioAplicables = tareasInicio.filter(tarea => !tarea.feature || puedeUsar(restaurante, tarea.feature))
+  const tareasInicioCompletadas = tareasInicioAplicables.length - tareasInicioVisibles.length
+  const progresoActivacion = porcentaje(tareasInicioCompletadas, tareasInicioAplicables.length)
+  const activacionCompacta = progresoActivacion >= 60 && tareasInicioVisibles.length <= 2
+  const tareasActivacionMostradas = activacionCompacta ? tareasInicioVisibles : tareasInicioAplicables
+  const mostrarOperativaDiaria = tareasInicioVisibles.length === 0 || activacionCompacta
 
   const alertasSala = stats.incidenciasSala + stats.dudasSala
   const haySenalesSala = stats.ventasHoy + alertasSala > 0
@@ -286,11 +195,6 @@ export default function DashboardHome() {
     : haySenalesSala
       ? 'Turno con señales'
       : 'Turno limpio'
-  const estadoOperativo = calidadGlobal === 100
-    ? { label: 'Todo listo', color: '#10B981' }
-    : calidadGlobal >= 95
-      ? { label: 'Revisar antes de abrir', color: '#F59E0B' }
-      : { label: 'Critico para publicar', color: '#EF4444' }
   const faltasOperativas = [
     vinosSinPrecio.length > 0 && `${vinosSinPrecio.length} vinos sin precio`,
     vinosSinPerfil.length > 0 && `${vinosSinPerfil.length} vinos sin descripcion`,
@@ -298,317 +202,124 @@ export default function DashboardHome() {
     platosSinDescripcion.length > 0 && `${platosSinDescripcion.length} platos sin descripcion`,
     bajoMinimo.length > 0 && `${bajoMinimo.length} referencias bajo minimo`,
   ].filter(Boolean)
-  const propuestasTop = propuestasActivas.slice(0, 3)
   const accionPrincipal = acciones[0]
     ? { label: acciones[0].texto, href: acciones[0].href, detalle: acciones[0].tipo }
     : siguienteTurno
   const accionesSecundarias = acciones.slice(1, 4)
+  const accionesInicio = (acciones.length ? acciones.slice(0, 4) : [siguienteTurno])
   const resumenOperativo = [
     `${calidadGlobal}% salud de carta`,
     `${stats.ventasHoy} ventas hoy`,
     `${alertasSala} señales de sala`,
   ].join(' · ')
 
-  const tv = v => `${v.nombre || ''} ${v.bodega || ''} ${v.tipo || ''} ${v.region || ''} ${v.uva || ''} ${v.notas_cata || ''}`
-  const tp = p => `${p.nombre || ''} ${p.descripcion || ''} ${p.categoria || ''}`
-  const generosos = vinosActivos.filter(v => normalizar(v.tipo || '').includes('generoso') || incluye(tv(v), ['fino', 'manzanilla', 'amontillado', 'oloroso']))
-  const espumosos = vinosActivos.filter(v => normalizar(v.tipo || '').includes('espumoso') || incluye(tv(v), ['cava', 'champagne', 'brut']))
-  const dulces = vinosActivos.filter(v => normalizar(v.tipo || '').includes('dulce') || incluye(tv(v), ['pedro ximenez', 'px', 'moscatel', 'tokaji']))
-  const frescos = vinosActivos.filter(v => incluye(tv(v), ['albarino', 'verdejo', 'godello', 'txakoli', 'salino', 'mineral', 'fresco']))
-  const tintosDash = vinosActivos.filter(v => normalizar(v.tipo || '').includes('tinto'))
-  const blancosDash = vinosActivos.filter(v => normalizar(v.tipo || '').includes('blanco'))
-  const platosFritura = platos.filter(p => incluye(tp(p), ['frit', 'croqueta', 'rebozado', 'flamenquin', 'adobo', 'tempura']))
-  const platosPescado = platos.filter(p => incluye(tp(p), ['pescado', 'marisco', 'gamba', 'atun', 'salmon', 'bacalao', 'boqueron', 'del mar']))
-  const platosQueso = platos.filter(p => incluye(tp(p), ['queso', 'curado', 'cabra']))
-  const platosCarne = platos.filter(p => incluye(tp(p), ['brasa', 'vaca', 'ternera', 'presa', 'solomillo', 'rabo', 'cordero', 'cerdo']))
-  const platosPostre = platos.filter(p => incluye(tp(p), ['postre', 'tarta', 'torrija', 'helado', 'chocolate']))
-  const brechaCocina = [
-    platosFritura.length >= 2 && generosos.length + espumosos.length < 2 && { cocina: `Frituras (${platosFritura.length})`, falta: 'Generoso seco o espumoso' },
-    platosPescado.length >= 2 && frescos.length + espumosos.length + generosos.length < 3 && { cocina: `Pescado/Marisco (${platosPescado.length})`, falta: 'Blanco fresco o atlántico' },
-    platosQueso.length >= 1 && generosos.length + dulces.length < 2 && { cocina: `Quesos (${platosQueso.length})`, falta: 'Generoso o vino dulce' },
-    platosCarne.length >= 2 && tintosDash.length < 4 && { cocina: `Carnes (${platosCarne.length})`, falta: 'Tintos con cuerpo o crianza' },
-    platosPostre.length >= 2 && dulces.length === 0 && { cocina: `Postres (${platosPostre.length})`, falta: 'Vino dulce de cierre' },
-    blancosDash.length < tintosDash.length * 0.35 && platosPescado.length + platosFritura.length > 2 && { cocina: `Cocina de mar (${platosPescado.length + platosFritura.length})`, falta: 'Blancos gastronómicos' },
-  ].filter(Boolean)
-
   return (
     <main>
       <div className={styles.wrap}>
-        <section className={styles.priorityPanel}>
-          <div>
-            <p className={styles.eyebrow}>Prioridad de hoy</p>
-            <h1>{accionPrincipal.label}</h1>
-            <p>{accionPrincipal.detalle || resumenOperativo}</p>
-          </div>
-          <div className={styles.prioritySide}>
-            <span>{resumenOperativo}</span>
-            <Link href={accionPrincipal.href}>Abrir tarea</Link>
-          </div>
-        </section>
-
-        {tareasInicioVisibles.length > 0 && <section className={styles.onboardingPanel}>
-          <div className={styles.onboardingHead}>
-            <div>
-              <p className={styles.eyebrow}>Primeros 30 minutos</p>
-              <h2>Tareas de puesta en marcha</h2>
-              <p>Márcalas como hechas y desaparecen de este inicio. La pantalla se queda limpia para el trabajo diario.</p>
+        {tareasInicioVisibles.length > 0 && (
+          <section className={`${styles.activationPanel} ${activacionCompacta ? styles.activationCompact : ''}`}>
+            <div className={styles.activationHead}>
+              <div>
+                <p className={styles.eyebrow}>Puesta en marcha</p>
+                <h1>Publica tu primera Carta Viva</h1>
+                <p>Completa estos pasos en orden. Cuando termines, tendrás carta pública, maridaje y QR listos para probar.</p>
+              </div>
+              <div className={styles.activationProgress}>
+                <strong>{progresoActivacion}%</strong>
+                <span>{tareasInicioCompletadas} de {tareasInicioAplicables.length} pasos</span>
+              </div>
             </div>
-            {tareasInicioVisibles.length === 0 && (
-              <button type="button" className={styles.resetTasksButton} onClick={restaurarTareasInicio}>
-                Restaurar tareas
-              </button>
-            )}
-          </div>
-          {tareasInicioVisibles.length > 0 ? (
-            <div className={styles.onboardingGrid}>
-              {tareasInicioVisibles.map((tarea, index) => (
-                <article className={styles.onboardingTask} key={tarea.id}>
-                  <span className={styles.onboardingNumber}>{index + 1}</span>
-                  <div>
-                    <h3>{tarea.titulo}</h3>
-                    <p>{tarea.texto}</p>
-                    <div className={styles.onboardingActions}>
-                      <Link href={tarea.href}>Abrir</Link>
-                      <button type="button" onClick={() => completarTareaInicio(tarea.id)}>Hecho</button>
+            <div className={styles.activationBar}><span style={{ width: `${progresoActivacion}%` }} /></div>
+            <div className={styles.activationSteps}>
+              {tareasActivacionMostradas.map((tarea) => {
+                const pendiente = tareasInicioVisibles.some(item => item.id === tarea.id)
+                const siguiente = pendiente && tarea.id === tareasInicioVisibles[0]?.id
+                const index = tareasInicioAplicables.findIndex(item => item.id === tarea.id)
+                return (
+                  <article key={tarea.id} className={`${!pendiente ? styles.activationDone : ''} ${siguiente ? styles.activationCurrent : ''}`}>
+                    <span>{pendiente ? index + 1 : '✓'}</span>
+                    <div>
+                      <strong>{tarea.titulo}</strong>
+                      <small>{pendiente ? tarea.texto : 'Completado'}</small>
                     </div>
-                  </div>
-                </article>
-              ))}
+                    {pendiente && <Link href={tarea.href}>{siguiente ? 'Continuar' : 'Abrir'}</Link>}
+                  </article>
+                )
+              })}
             </div>
-          ) : (
-            <div className={styles.onboardingComplete}>
-              <strong>Puesta en marcha completada</strong>
-              <span>Estas tareas ya no molestarán en el inicio.</span>
+            <div className={styles.activationTrust}>
+              <span>Los cambios se guardan automáticamente</span>
+              <span>Tu carta no se publica sola</span>
+              <Link href="/dashboard/qr">Revisar QR</Link>
             </div>
-          )}
-        </section>}
+          </section>
+        )}
 
-        {accionesSecundarias.length > 0 && (
+        {mostrarOperativaDiaria && (
+          <>
+            <section className={styles.priorityPanel}>
+              <div>
+                <p className={styles.eyebrow}>Prioridad de hoy</p>
+                <h1>{accionPrincipal.label}</h1>
+                <p>{accionPrincipal.detalle || resumenOperativo}</p>
+              </div>
+              <div className={styles.prioritySide}>
+                <span>{resumenOperativo}</span>
+                <Link href={accionPrincipal.href}>Abrir tarea</Link>
+              </div>
+            </section>
+
+            <section className={styles.focusPanel}>
+              <div className={styles.focusBlock}>
+                <p className={styles.eyebrow}>Trabajo pendiente</p>
+                <h2>{acciones.length ? 'Acciones abiertas' : 'Sin urgencias ahora'}</h2>
+                <div className={styles.focusList}>
+                  {accionesInicio.map(accion => (
+                    <Link key={accion.texto || accion.label} href={accion.href}>
+                      <span>{accion.tipo || 'Operativa'}</span>
+                      <strong>{accion.texto || accion.label}</strong>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.focusBlock}>
+                <p className={styles.eyebrow}>Estado</p>
+                <h2>{estadoCarta}</h2>
+                <div className={styles.stateRows}>
+                  <span><strong>{calidadGlobal}%</strong> salud de carta</span>
+                  <span><strong>{estadoTurno}</strong> sala</span>
+                  <span><strong>{alertasSala}</strong> señales pendientes</span>
+                </div>
+                <div className={styles.stateCallout}>
+                  {faltasOperativas.length ? faltasOperativas.slice(0, 3).join(' · ') : 'Carta, sala y bodega sin bloqueos visibles.'}
+                </div>
+                <div className={styles.focusActions}>
+                  <Link href="/dashboard/carta">Carta</Link>
+                  {puedeUsar(restaurante, 'modo_camarero') && <Link href="/dashboard/sala">Sala</Link>}
+                  {puedeUsar(restaurante, 'bodega') && <Link href="/dashboard/bodega">Bodega</Link>}
+                </div>
+              </div>
+            </section>
+          </>
+        )}
+
+        {mostrarOperativaDiaria && accionesSecundarias.length > 0 && (
           <section className={styles.todayActions}>
             <div>
               <p className={styles.eyebrow}>Siguiente</p>
-              <h2>Acciones pendientes</h2>
+              <h2>Después de la prioridad</h2>
             </div>
             <div className={styles.todayActionList}>
               {accionesSecundarias.map(accion => (
-                <Link key={accion.texto} href={accion.href}>
-                  <span>{accion.tipo}</span>
-                  <strong>{accion.texto}</strong>
+                <Link key={accion.texto || accion.label} href={accion.href}>
+                  <span>{accion.tipo || 'Operativa'}</span>
+                  <strong>{accion.texto || accion.label}</strong>
                 </Link>
               ))}
             </div>
           </section>
         )}
-
-        <section className={styles.healthStrip}>
-          <div className={styles.healthHead}>
-            <div>
-              <p className={styles.eyebrow}>Salud de carta</p>
-              <h2>Estado operativo</h2>
-              <p className={styles.healthStatus} style={{ color: estadoOperativo.color }}>{calidadGlobal}% · {estadoOperativo.label}</p>
-            </div>
-            <button type="button" className={styles.healthToggle} onClick={() => setMostrarSaludCarta(!mostrarSaludCarta)}>
-              {mostrarSaludCarta ? 'Ocultar detalle' : 'Ver detalle'}
-            </button>
-          </div>
-          <div className={styles.missingPanel}>
-            <strong>{faltasOperativas.length ? 'Falta completar' : 'Todo listo para publicar'}</strong>
-            <span>{faltasOperativas.length ? faltasOperativas.slice(0, 4).join(' · ') : 'Carta, sala y bodega no tienen bloqueos visibles.'}</span>
-          </div>
-          {mostrarSaludCarta && (
-            <div className={styles.healthDetail}>
-              <div className={styles.checkGrid}>
-                {checksSalud.map(check => (
-                  <Link key={check.label} href={check.href} className={styles.checkItem}>
-                    <div className={styles.checkRow}>
-                      <span className={styles.checkLabel}>{check.label}</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: check.valor >= 80 ? '#5fa882' : check.valor >= 55 ? '#d4941a' : '#c0482a' }}>{check.valor}%</span>
-                    </div>
-                    <div style={{ height: 3, background: 'rgba(23,20,22,0.08)', overflow: 'hidden', borderRadius: 2, margin: '6px 0' }}>
-                      <div style={{ width: `${check.valor}%`, height: '100%', background: check.valor >= 80 ? '#5fa882' : check.valor >= 55 ? '#d4941a' : '#c0482a' }} />
-                    </div>
-                    <p className={styles.checkDetail}>{check.detalle}</p>
-                    {check.valor < 100 && <span className={styles.completeNow}>Completar ahora</span>}
-                  </Link>
-                ))}
-              </div>
-              <p><strong>Cómo usar Inicio:</strong> atiende primero la prioridad del día. La salud de carta sirve para completar datos, no para dirigir cada servicio.</p>
-            </div>
-          )}
-        </section>
-
-        {propuestasTop.length > 0 && (
-          <section className={styles.proposalsPanel}>
-            <div className={styles.proposalsHead}>
-              <div>
-                <p className={styles.eyebrow}>Mejoras pendientes</p>
-                <h2>Ideas listas para valorar</h2>
-              </div>
-              <Link href="/dashboard/bodega#propuestas">{propuestasActivas.length} pendientes de valorar</Link>
-            </div>
-            <div className={styles.proposalsGrid}>
-              {propuestasTop.map(propuesta => (
-                <Link key={propuesta.id} href="/dashboard/bodega#propuestas" className={styles.proposalCard}>
-                  <span>{propuesta.prioridad || 'media'}</span>
-                  <strong>{propuesta.titulo}</strong>
-                  <p>{[propuesta.vino, propuesta.tipo, propuesta.zona].filter(Boolean).join(' · ') || 'Propuesta de mejora'}</p>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {brechaCocina.length > 0 && (
-          <section className={styles.proposalsPanel}>
-            <div className={styles.proposalsHead}>
-              <div>
-                <p className={styles.eyebrow}>Maridaje gastronómico</p>
-                <h2>Tu cocina pide {brechaCocina.length} tipo{brechaCocina.length > 1 ? 's' : ''} de vino que no {brechaCocina.length > 1 ? 'están' : 'está'} en carta</h2>
-              </div>
-              <a href="mailto:jjgarciapozo@gmail.com?subject=Consultoría de carta de vinos">Contactar consultor</a>
-            </div>
-            <div className="wine-list-gaps" style={{ padding: '0.5rem 0 0.25rem' }}>
-              {brechaCocina.map(b => (
-                <span key={b.cocina}>{b.cocina} · falta {b.falta}</span>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section className={styles.shiftCard}>
-          <div className={styles.shiftMain}>
-            <p className={styles.eyebrow}>Turno de hoy</p>
-            <h2>{estadoTurno}</h2>
-            <p>{siguienteTurno.detalle}</p>
-          </div>
-          <div className={styles.shiftStats}>
-            <div>
-              <strong>{stats.ventasHoy}</strong>
-              <span>ventas</span>
-            </div>
-            <div>
-              <strong>{alertasSala}</strong>
-              <span>señales</span>
-            </div>
-            <div>
-              <strong>{turnoCerrado ? 'Sí' : 'No'}</strong>
-              <span>cerrado</span>
-            </div>
-          </div>
-          <Link className={styles.shiftAction} href={siguienteTurno.href}>{siguienteTurno.label}</Link>
-        </section>
-
-        <section className={styles.servicePlan}>
-          <div className={styles.servicePlanHead}>
-            <div>
-              <p className={styles.eyebrow}>Plan de servicio</p>
-              <h2>Antes de abrir sala</h2>
-              <p>Un resumen operativo para saber qué vender, qué vigilar y qué enlaces necesita el equipo.</p>
-            </div>
-            <div className={styles.servicePlanActions}>
-              <select value={objetivoServicio} onChange={event => cambiarObjetivoServicio(event.target.value)} aria-label="Objetivo comercial del servicio">
-                {OBJETIVOS_SERVICIO.map(objetivo => <option key={objetivo.id} value={objetivo.id}>{objetivo.label}</option>)}
-              </select>
-              {enlacesServicio.map(enlace => enlace.pruebaCarta ? (
-                <OpenCartaPruebaButton key={enlace.label} restauranteId={restaurante?.id}>{enlace.label}</OpenCartaPruebaButton>
-              ) : enlace.external ? (
-                <a key={enlace.label} href={enlace.href} target="_blank" rel="noreferrer">{enlace.label}</a>
-              ) : (
-                <Link key={enlace.label} href={enlace.href}>{enlace.label}</Link>
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.servicePlanGrid}>
-            <article className={`${styles.servicePlanCard} ${styles.servicePlanPush}`}>
-              <span className={styles.servicePlanLabel}>📊 Empujar hoy</span>
-              {vinosServicio.length ? (
-                <div className={styles.servicePlanList}>
-                  {vinosServicio.map(vino => (
-                    <Link key={vino.id} href="/dashboard/vinos" className={styles.servicePlanItem}>
-                      <strong>{vino.nombre}</strong>
-                      <span>{[vino.bodega, vino.margenPct ? `${vino.margenPct}% margen` : 'completar coste', decimal(vino.precio_copa) > 0 ? 'por copa' : null].filter(Boolean).join(' · ')}</span>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className={styles.servicePlanEmpty}>Añade precio y stock para proponer vinos de servicio.</p>
-              )}
-            </article>
-
-            <article className={`${styles.servicePlanCard} ${styles.servicePlanWatch}`}>
-              <span className={styles.servicePlanLabel}>📉 Vigilar stock</span>
-              {riesgosServicio.length ? (
-                <div className={styles.servicePlanList}>
-                  {riesgosServicio.map(vino => (
-                    <Link key={vino.id} href="/dashboard/bodega" className={styles.servicePlanItem}>
-                      <strong>{vino.nombre}</strong>
-                      <span>{vino.motivo}</span>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className={styles.servicePlanEmpty}>Sin alertas de stock con los datos actuales.</p>
-              )}
-            </article>
-
-            <article className={`${styles.servicePlanCard} ${styles.servicePlanArgue}`}>
-              <span className={styles.servicePlanLabel}>⭐ Argumentar</span>
-              {platosServicio.length ? (
-                <div className={styles.servicePlanList}>
-                  {platosServicio.map(plato => (
-                    <Link key={plato.id} href="/dashboard/platos" className={styles.servicePlanItem}>
-                      <strong>{plato.nombre}</strong>
-                      <span>{[plato.categoria, decimal(plato.precio) ? eur(plato.precio) : null].filter(Boolean).join(' · ')}</span>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className={styles.servicePlanEmpty}>Completa descripciones internas de platos para preparar argumentos y afinar maridajes.</p>
-              )}
-            </article>
-          </div>
-        </section>
-
-        <section className={styles.afterShiftPanel}>
-          <div>
-            <p className={styles.eyebrow}>Despues de cerrar</p>
-            <h2>Actividad de hoy</h2>
-            <p>{stats.ventasHoy} ventas realizadas · {stats.incidenciasSala} incidencias · {stats.dudasSala} dudas de sala</p>
-          </div>
-          <div className={styles.afterShiftStats}>
-            <span><strong>{stats.ventasHoy}</strong> ventas</span>
-            <span><strong>{stats.incidenciasSala + stats.dudasSala}</strong> pendientes</span>
-            <span><strong>{stats.sommelier}</strong> consultas</span>
-          </div>
-          <Link href="/dashboard/cierre">Revisar cierre de servicio</Link>
-        </section>
-
-        <section className={styles.metricGrid}>
-          {metricas.map(metrica => (
-            <div key={metrica.label} className={styles.metric}>
-              <p className={styles.eyebrow}>{metrica.label}</p>
-              <p className={styles.metricValue}>{metrica.valor}</p>
-              <p className={styles.metricLabel}>{metrica.detalle}</p>
-            </div>
-          ))}
-        </section>
-
-        <section className={styles.quickGrid}>
-          {modulos.map(modulo => (
-            <Link key={modulo.title} href={modulo.href} className={`${styles.quickCard} ${modulo.dark ? styles.quickCardDark : ''}`}>
-              <div>
-                <p className={styles.moduleLabel}>{modulo.label}</p>
-                <h2 className={styles.quickTitle}>{modulo.title}</h2>
-                <p className={styles.quickText}>{modulo.text}</p>
-              </div>
-              <div className={styles.quickFooter}>
-                <span className={styles.quickStat}>{modulo.stat}</span>
-                <span className={styles.moduleArrow}>Entrar</span>
-              </div>
-            </Link>
-          ))}
-        </section>
 
       </div>
     </main>
