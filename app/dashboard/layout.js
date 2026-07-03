@@ -231,18 +231,23 @@ export default function DashboardLayout({ children }) {
       {restaurante && <UsageTracker restauranteId={restaurante.id} />}
       <nav id="dashboard-navigation" aria-label="Navegación principal" className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
-          <div className={styles.brandIdentity}>
-            {restaurante?.logo_url ? (
-              <img className={styles.brandLogo} src={restaurante.logo_url} alt={restaurante.nombre || 'Logo restaurante'} loading="lazy" />
-            ) : (
-              <img className={styles.brandLogo} src="/brand/carta-viva/isotipo-dark.svg" alt="Carta Viva" />
-            )}
-            <div className={styles.brandText}>
-              <p className={styles.brandLabel}>Panel restaurante</p>
-              <p className={styles.brandName}>{restaurante?.nombre || '-'}</p>
-              {restaurante?.ciudad && <p className={styles.brandCity}>{restaurante.ciudad}</p>}
-              <p className={styles.pinState}>{pinActivo ? 'PIN activo' : 'PIN inactivo'}</p>
+          <div className={styles.brandHeader}>
+            <div className={styles.brandIdentity}>
+              {restaurante?.logo_url ? (
+                <img className={styles.brandLogo} src={restaurante.logo_url} alt={restaurante.nombre || 'Logo restaurante'} loading="lazy" />
+              ) : (
+                <img className={styles.brandLogo} src="/brand/carta-viva/isotipo-dark.svg" alt="Carta Viva" />
+              )}
+              <div className={styles.brandText}>
+                <p className={styles.brandLabel}>Panel restaurante</p>
+                <p className={styles.brandName}>{restaurante?.nombre || 'Restaurante'}</p>
+                {restaurante?.ciudad && <p className={styles.brandCity}>{restaurante.ciudad}</p>}
+                <p className={styles.pinState}>{pinActivo ? 'PIN activo' : 'PIN inactivo'}</p>
+              </div>
             </div>
+            <button type="button" className={styles.sidebarClose} onClick={() => setMenuOpen(false)}>
+              Cerrar
+            </button>
           </div>
           {restaurante && <p className={styles.brandPlan}>{planVisible}</p>}
         </div>
@@ -265,7 +270,7 @@ export default function DashboardLayout({ children }) {
                   {item.alert != null && <span className={styles.navAlert}>{item.alert}</span>}
                   {item.stat != null && <span className={styles.navStat}>{item.stat}</span>}
                 </Link>
-                {active && item.children?.length > 0 && (
+                {(active || menuOpen) && item.children?.length > 0 && (
                   <div className={styles.subnav}>
                     {item.children.map(child => (
                       <Link
@@ -328,8 +333,9 @@ export default function DashboardLayout({ children }) {
             <svg viewBox="0 0 20 20" fill="currentColor" width={18} height={18}>
               <path fillRule="evenodd" d="M3 5h14a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm0 4h14a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm0 4h14a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2z" clipRule="evenodd"/>
             </svg>
+            <span>Menú</span>
           </button>
-          <p className={styles.mobileName}>{restaurante?.nombre || '-'}</p>
+          <p className={styles.mobileName}>{restaurante?.nombre || 'Restaurante'}</p>
         </div>
         <header className={styles.operationalTopbar}>
           <div className={styles.restaurantTitle}>

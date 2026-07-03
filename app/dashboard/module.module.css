@@ -2780,6 +2780,14 @@ button.itemCard {
     text-align: center;
   }
 
+  .heroActions .helpButton {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    align-self: flex-end;
+    padding: 0;
+  }
+
   .title {
     font-size: 27px;
   }
@@ -2932,6 +2940,10 @@ button.itemCard {
   .helpButton {
     width: 100%;
     text-align: center;
+  }
+
+  .heroActions .helpButton {
+    width: 44px;
   }
 
   .table {

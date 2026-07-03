@@ -164,8 +164,8 @@ export default function DashboardHome() {
 
   const tareasInicio = [
     { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio, uva y stock inicial.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
-    { id: 'platos', titulo: 'Cargar platos clave', texto: 'Anade los platos que mas se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
-    { id: 'descripciones_platos', titulo: 'Definir platos para maridaje', texto: 'Describe tecnica, salsa, intensidad e ingredientes clave. Es informacion interna: no se muestra como receta en la carta publica.', href: '/dashboard/platos?filtro=descripcion', autoHide: () => platos.length === 0 || platosSinDescripcion.length === 0 },
+    { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
+    { id: 'descripciones_platos', titulo: 'Definir platos para maridaje', texto: 'Describe técnica, salsa, intensidad e ingredientes clave. Es información interna: no se muestra como receta en la carta pública.', href: '/dashboard/platos?filtro=descripcion', autoHide: () => platos.length === 0 || platosSinDescripcion.length === 0 },
     { id: 'bodega', titulo: 'Completar margen y proveedor', texto: 'Coste, proveedor y stock mínimo convierten la carta en control de bodega.', href: '/dashboard/bodega', feature: 'bodega', autoHide: () => sinCosteCompra.length === 0 && sinProveedor.length === 0 },
     { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la carta pública, revisa móvil y deja listo el PIN de sala.', href: '/dashboard/qr' },
   ]
@@ -178,7 +178,8 @@ export default function DashboardHome() {
   const tareasInicioCompletadas = tareasInicioAplicables.length - tareasInicioVisibles.length
   const progresoActivacion = porcentaje(tareasInicioCompletadas, tareasInicioAplicables.length)
   const activacionCompacta = progresoActivacion >= 60 && tareasInicioVisibles.length <= 2
-  const tareasActivacionMostradas = activacionCompacta ? tareasInicioVisibles : tareasInicioAplicables
+  const siguienteActivacion = tareasInicioVisibles[0]
+  const colaActivacion = tareasInicioVisibles.slice(1)
   const mostrarOperativaDiaria = tareasInicioVisibles.length === 0 || activacionCompacta
 
   const alertasSala = stats.incidenciasSala + stats.dudasSala
@@ -230,22 +231,29 @@ export default function DashboardHome() {
               </div>
             </div>
             <div className={styles.activationBar}><span style={{ width: `${progresoActivacion}%` }} /></div>
-            <div className={styles.activationSteps}>
-              {tareasActivacionMostradas.map((tarea) => {
-                const pendiente = tareasInicioVisibles.some(item => item.id === tarea.id)
-                const siguiente = pendiente && tarea.id === tareasInicioVisibles[0]?.id
-                const index = tareasInicioAplicables.findIndex(item => item.id === tarea.id)
-                return (
-                  <article key={tarea.id} className={`${!pendiente ? styles.activationDone : ''} ${siguiente ? styles.activationCurrent : ''}`}>
-                    <span>{pendiente ? index + 1 : '✓'}</span>
-                    <div>
+            <div className={styles.activationStepsFocused}>
+              {siguienteActivacion && (
+                <article className={styles.activationCurrent}>
+                  <span>{tareasInicioAplicables.findIndex(item => item.id === siguienteActivacion.id) + 1}</span>
+                  <div>
+                    <small>Siguiente paso</small>
+                    <strong>{siguienteActivacion.titulo}</strong>
+                    <p>{siguienteActivacion.texto}</p>
+                  </div>
+                  <Link href={siguienteActivacion.href}>Continuar</Link>
+                </article>
+              )}
+              {colaActivacion.length > 0 && (
+                <div className={styles.activationQueue}>
+                  <p>Después</p>
+                  {colaActivacion.map(tarea => (
+                    <Link key={tarea.id} href={tarea.href}>
+                      <span>{tareasInicioAplicables.findIndex(item => item.id === tarea.id) + 1}</span>
                       <strong>{tarea.titulo}</strong>
-                      <small>{pendiente ? tarea.texto : 'Completado'}</small>
-                    </div>
-                    {pendiente && <Link href={tarea.href}>{siguiente ? 'Continuar' : 'Abrir'}</Link>}
-                  </article>
-                )
-              })}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
             <div className={styles.activationTrust}>
               <span>Los cambios se guardan automáticamente</span>

@@ -51,6 +51,13 @@
   min-width: 0;
 }
 
+.brandHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .brandLogo,
 .brandLogoFallback {
   width: 38px;
@@ -123,6 +130,20 @@
   font-weight: 850;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.sidebarClose {
+  display: none;
+  min-height: 34px;
+  border: 1px solid rgba(255, 250, 243, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.08);
+  color: #fffaf3;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
 }
 
 /* Nav */
@@ -737,14 +758,19 @@ button.footerLink {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  gap: 7px;
+  min-width: 82px;
   height: 44px;
   background: transparent;
-  border: none;
+  border: 1px solid rgba(255, 250, 243, 0.14);
   color: #fffaf3;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 8px;
   flex-shrink: 0;
+  padding: 0 11px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 850;
 }
 
 .menuToggle:hover {
@@ -781,6 +807,12 @@ button.footerLink {
 
   .sidebarOpen {
     transform: translateX(0);
+  }
+
+  .sidebarClose {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .overlay {
