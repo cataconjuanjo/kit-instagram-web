@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { getEffectiveRestaurantEmail } from '../demo'
-import { maxFechaISO } from '../lib/actividadReal'
+import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceDay'
 import { puedeUsar } from '../lib/plans'
 import styles from './dashboard.module.css'
 
@@ -23,12 +23,6 @@ function decimal(valor) {
 
 function leerDetalle(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return {} }
-}
-
-function inicioDiaISO() {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString()
 }
 
 function fechaLocalClave() {
@@ -68,6 +62,7 @@ export default function DashboardHome() {
   const [propuestas, setPropuestas] = useState([])
   const [tareasOcultas, setTareasOcultas] = useState([])
   const [turnoCerrado, setTurnoCerrado] = useState(false)
+  const [etiquetaDia, setEtiquetaDia] = useState('hoy')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -88,8 +83,8 @@ export default function DashboardHome() {
             setTareasOcultas([])
           }
         }
-        const hoy = inicioDiaISO()
-        const desdeActividad = rest.actividad_real_desde ? maxFechaISO(hoy, rest.actividad_real_desde) : null
+        const ventanaDia = await resolverVentanaDiaOperativo(supabase, rest, { tipo: 'venta' })
+        setEtiquetaDia(ventanaDia.etiqueta)
         const [
           { data: vinosData },
           { data: platosData },
@@ -98,9 +93,10 @@ export default function DashboardHome() {
         ] = await Promise.all([
           supabase.from('vinos').select('*').eq('restaurante_id', rest.id),
           supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
-          desdeActividad
-            ? supabase.from('estadisticas').select('tipo, detalle, created_at').eq('restaurante_id', rest.id).gte('created_at', desdeActividad)
-            : Promise.resolve({ data: [] }),
+          aplicarVentana(
+            supabase.from('estadisticas').select('tipo, detalle, created_at').eq('restaurante_id', rest.id),
+            ventanaDia
+          ),
           supabase.from('consultor_propuestas').select('*').eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
         ])
         const eventosVentaHoy = (statsHoy || []).filter(s => s.tipo === 'venta')
@@ -147,6 +143,7 @@ export default function DashboardHome() {
   const sinCosteCompra = vinosActivos.filter(vino => !decimal(vino.coste_compra))
   const sinProveedor = vinosActivos.filter(vino => !vino.proveedor)
   const propuestasActivas = propuestas.filter(item => item.estado !== 'incorporada')
+  const pinConfigurado = Boolean(restaurante?.camarero_pin_configurado || restaurante?.camarero_pin_hash || restaurante?.camarero_pin)
   const calidadPlatos = Math.round((porcentaje(platos.length - platosSinDescripcion.length, platos.length) * 0.65) + (porcentaje(platos.length - platosSinPrecio.length, platos.length) * 0.35))
   const calidadVinos = Math.round((porcentaje(vinosActivos.length - vinosSinPrecio.length, vinosActivos.length) * 0.45) + (porcentaje(vinosActivos.length - vinosSinPerfil.length, vinosActivos.length) * 0.45) + (porcentaje(vinosActivos.length - vinosSinStock.length, vinosActivos.length) * 0.1))
   const calidadGlobal = Math.round((calidadVinos * 0.58) + (calidadPlatos * 0.42))
@@ -167,7 +164,7 @@ export default function DashboardHome() {
     { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
     { id: 'descripciones_platos', titulo: 'Definir platos para maridaje', texto: 'Describe técnica, salsa, intensidad e ingredientes clave. Es información interna: no se muestra como receta en la carta pública.', href: '/dashboard/platos?filtro=descripcion', autoHide: () => platos.length === 0 || platosSinDescripcion.length === 0 },
     { id: 'bodega', titulo: 'Completar margen y proveedor', texto: 'Coste, proveedor y stock mínimo convierten la carta en control de bodega.', href: '/dashboard/bodega', feature: 'bodega', autoHide: () => sinCosteCompra.length === 0 && sinProveedor.length === 0 },
-    { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la carta pública, revisa móvil y deja listo el PIN de sala.', href: '/dashboard/qr' },
+    { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la carta pública, revisa móvil y deja listo el PIN de sala.', href: '/dashboard/qr', autoHide: () => Boolean(restaurante?.slug) && pinConfigurado },
   ]
   const tareasInicioVisibles = tareasInicio.filter(tarea =>
     !tareasOcultas.includes(tarea.id) &&
@@ -184,10 +181,11 @@ export default function DashboardHome() {
 
   const alertasSala = stats.incidenciasSala + stats.dudasSala
   const haySenalesSala = stats.ventasHoy + alertasSala > 0
+  const etiquetaServicio = etiquetaDia === 'ultimo_dia_demo' ? 'último servicio demo' : 'hoy'
   const siguienteTurno = alertasSala > 0
     ? { label: 'Resolver señales', href: '/dashboard/cierre', detalle: `${alertasSala} señales requieren decisión` }
     : stats.ventasHoy > 0 && !turnoCerrado
-      ? { label: 'Cerrar turno', href: '/dashboard/cierre', detalle: `${stats.ventasHoy} ventas marcadas hoy` }
+      ? { label: 'Cerrar turno', href: '/dashboard/cierre', detalle: `${stats.ventasHoy} ventas marcadas ${etiquetaServicio}` }
       : bajoMinimo.length > 0
         ? { label: 'Preparar pedido', href: '/dashboard/bodega#pedido', detalle: `${bajoMinimo.length} referencias bajo mínimo` }
         : { label: 'Abrir briefing', href: '/dashboard/sala', detalle: 'Sala lista para preparar el servicio' }
@@ -210,7 +208,7 @@ export default function DashboardHome() {
   const accionesInicio = (acciones.length ? acciones.slice(0, 4) : [siguienteTurno])
   const resumenOperativo = [
     `${calidadGlobal}% salud de carta`,
-    `${stats.ventasHoy} ventas hoy`,
+    `${stats.ventasHoy} ventas ${etiquetaServicio}`,
     `${alertasSala} señales de sala`,
   ].join(' · ')
 
@@ -300,7 +298,11 @@ export default function DashboardHome() {
                   <span><strong>{alertasSala}</strong> señales pendientes</span>
                 </div>
                 <div className={styles.stateCallout}>
-                  {faltasOperativas.length ? faltasOperativas.slice(0, 3).join(' · ') : 'Carta, sala y bodega sin bloqueos visibles.'}
+                  {alertasSala > 0
+                    ? `${alertasSala} señales de sala pendientes de revisar.`
+                    : faltasOperativas.length
+                      ? faltasOperativas.slice(0, 3).join(' · ')
+                      : 'Carta, sala y bodega sin bloqueos visibles.'}
                 </div>
                 <div className={styles.focusActions}>
                   <Link href="/dashboard/carta">Carta</Link>

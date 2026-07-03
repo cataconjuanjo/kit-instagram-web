@@ -172,7 +172,7 @@ export default function CartaHub() {
           <p className={styles.eyebrow}>Escaparate</p>
           <h2>Sugerencia de la casa</h2>
           <p>La Selección Juanjo la mantiene el consultor. Aquí podéis añadir una recomendación propia del restaurante.</p>
-          <span>{sugerenciasRestaurante.length}/1 vino recomendado</span>
+          <span>{sugerenciasRestaurante.length ? `${sugerenciasRestaurante.length} vinos recomendados` : 'Sin recomendacion propia'}</span>
         </button>
       </section>
       <SuggestionDialog

@@ -4,18 +4,12 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
-import { maxFechaISO } from '../../lib/actividadReal'
+import { aplicarVentana, resolverVentanaDiaOperativo } from '../../lib/demoServiceDay'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
 function leerDetalle(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return {} }
-}
-
-function inicioDiaISO() {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString()
 }
 
 function decimal(valor) {
@@ -145,6 +139,7 @@ export default function SalaHub() {
   const [eventos, setEventos] = useState([])
   const [briefing, setBriefing] = useState({ vinosServicio: [], vinosRiesgo: [], platosArgumento: [] })
   const [mensajeBriefing, setMensajeBriefing] = useState('')
+  const [etiquetaDia, setEtiquetaDia] = useState('hoy')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -154,16 +149,17 @@ export default function SalaHub() {
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
-        const desdeActividad = rest.actividad_real_desde ? maxFechaISO(inicioDiaISO(), rest.actividad_real_desde) : null
+        const ventanaDia = await resolverVentanaDiaOperativo(supabase, rest, { tipo: 'venta' })
+        setEtiquetaDia(ventanaDia.etiqueta)
         const [{ data: estadisticas }, { data: vinos }, { data: platos }] = await Promise.all([
-          desdeActividad
-            ? supabase
+          aplicarVentana(
+            supabase
               .from('estadisticas')
               .select('*')
               .eq('restaurante_id', rest.id)
-              .gte('created_at', desdeActividad)
-              .order('created_at', { ascending: false })
-            : Promise.resolve({ data: [] }),
+              .order('created_at', { ascending: false }),
+            ventanaDia
+          ),
           supabase.from('vinos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
           supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
         ])
@@ -182,6 +178,7 @@ export default function SalaHub() {
   const incidencias = eventos.filter(e => e.tipo === 'venta' && ['no_stock', 'agotado'].includes(e.parsed?.resultado)).length
   const dudas = eventos.filter(e => e.tipo === 'venta' && ['no_convence', 'otra'].includes(e.parsed?.resultado)).length
   const consultas = eventos.filter(e => e.tipo === 'sommelier').length
+  const etiquetaServicio = etiquetaDia === 'ultimo_dia_demo' ? 'último servicio demo' : 'hoy'
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const urlCamarero = `${origin}/camarero/${restaurante?.slug || ''}`
 
@@ -216,7 +213,7 @@ export default function SalaHub() {
       }}
     >
       <section className={styles.statsGrid}>
-        <div className={styles.stat}><p className={styles.statValue}>{ventas}</p><p className={styles.statLabel}>Ventas marcadas hoy</p></div>
+        <div className={styles.stat}><p className={styles.statValue}>{ventas}</p><p className={styles.statLabel}>Ventas marcadas {etiquetaServicio}</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{incidencias}</p><p className={styles.statLabel}>Incidencias de stock</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{dudas}</p><p className={styles.statLabel}>Dudas o cambios</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{consultas}</p><p className={styles.statLabel}>Consultas maridaje</p></div>

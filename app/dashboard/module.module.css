@@ -3033,24 +3033,24 @@ button.itemCard {
   }
 
   .cellarHero {
-    min-height: 560px;
-    padding: 24px;
-    background-position: center right;
+    display: none;
   }
 
   .cellarHeroCopy h2 {
-    font-size: 36px;
-    line-height: 1.08;
+    font-size: 28px;
+    line-height: 1.12;
   }
 
   .cellarHeroCopy p:not(.eyebrow) {
-    font-size: 13px;
-    line-height: 1.65;
+    font-size: 12px;
+    line-height: 1.45;
   }
 
   .cellarHeroActions {
     display: grid;
     grid-template-columns: 1fr;
+    margin-top: 14px;
+    gap: 7px;
   }
 
   .cellarHeroActions .primary,
@@ -3062,18 +3062,20 @@ button.itemCard {
 
   .cellarHeroMetrics {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 16px;
   }
 
   .cellarHeroMetrics article {
-    padding: 13px 11px;
+    padding: 10px 8px;
   }
 
   .cellarHeroMetrics strong {
-    font-size: 26px;
+    font-size: 22px;
   }
 
   .cellarHeroMetrics span {
-    font-size: 10px;
+    font-size: 9px;
     line-height: 1.25;
   }
 
