@@ -767,6 +767,11 @@ h3 {
   appearance: none;
 }
 
+.lead-form select option {
+  background: var(--paper);
+  color: var(--ink);
+}
+
 .lead-form textarea {
   resize: vertical;
 }
