@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { puedeUsar } from '../../lib/plans'
 import styles from './carta.module.css'
 
 const FONT_MAP = {
@@ -179,6 +178,7 @@ export default function CartaPublica({ params }) {
   const [soloInternacional, setSoloInternacional] = useState(false)
   const [soloCopa, setSoloCopa] = useState(false)
   const [seccionAbierta, setSeccionAbierta] = useState('')
+  const [seccionInicialAplicada, setSeccionInicialAplicada] = useState(false)
   const [busquedaPlatos, setBusquedaPlatos] = useState('')
   const [categoriaPlatoAbierta, setCategoriaPlatoAbierta] = useState('')
   const [idioma, setIdioma] = useState('es')
@@ -194,6 +194,9 @@ export default function CartaPublica({ params }) {
   const [pasoQuiz, setPasoQuiz] = useState(1)
   const [respuestasQuiz, setRespuestasQuiz] = useState({})
   const [respuestaQuiz, setRespuestaQuiz] = useState('')
+  const [demoPresentacion] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_presentacion') === '1'
+  ))
   const scrollAntesFicha = useRef(0)
   const tokenPrueba = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('prueba') || ''
@@ -272,8 +275,7 @@ export default function CartaPublica({ params }) {
       document.documentElement.style.setProperty('--font-titulo', (FONT_MAP[rest.tipografia] || FONT_MAP.serif).family)
       const vinosData = data.vinos
       const vinosActivos = vinosData || []
-      const hayStockInformado = vinosActivos.some(vino => Number(vino.stock) > 0)
-      setVinos(hayStockInformado ? vinosActivos.filter(vino => Number(vino.stock) > 0) : vinosActivos)
+      setVinos(vinosActivos.filter(vino => vino.disponible !== false))
       const platosData = data.platos
       setPlatos(platosData || [])
       const selData = data.seleccion
@@ -364,6 +366,11 @@ export default function CartaPublica({ params }) {
     setPasoQuiz(1)
     setRespuestasQuiz({})
     setRespuestaQuiz('')
+  }
+
+  function irASeleccionSommelier() {
+    if (typeof document === 'undefined') return
+    document.getElementById('seleccion-sommelier')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   async function preguntarSommelier() {
@@ -613,8 +620,7 @@ setPerfiles(nuevosPerfiles)
 
   function ambitoComercial(vino) {
     const region = normalizarTexto(vino.region || '')
-    const regionCanonica = regionOrden(vino)
-    const regionCanonicaLimpia = normalizarTexto(regionCanonica)
+    const regionCanonicaLimpia = region
     const localTerms = ['malaga', 'sierras de malaga', 'andalucia', 'cadiz', 'jerez', 'sanlucar', 'manzanilla', 'montilla', 'moriles', 'condado de huelva', 'granada', 'cordoba', 'sevilla']
     const espanaTerms = ['rioja', 'ribera', 'duero', 'toro', 'bierzo', 'priorat', 'montsant', 'jumilla', 'yecla', 'alicante', 'almansa', 'valdepenas', 'carinena', 'pago de otazu', 'rueda', 'rias baixas', 'valdeorras', 'navarra', 'penedes', 'penedes', 'corpinnat', 'cava', 'calatayud', 'mallorca', 'monterrei', 'ribeira sacra', 'ribeiro', 'txakoli', 'txacoli', 'valle de la orotava', 'prado irache', 'somontano', 'manchuela', 'madrid', 'gredos', 'catalunya', 'cataluna', 'castilla', 'leon', 'galicia', 'aragon', 'murcia', 'valencia', 'extremadura', 'toledo']
     const internacionalTerms = ['internacional', 'francia', 'aoc ', 'champagne', 'chablis', 'borgona', 'bourgogne', 'borogogne', 'gevrey', 'chambertin', 'chassagne', 'montrachet', 'corton', 'sancerre', 'anjou', 'jura', 'beajolais', 'beaujolais', 'burdeos', 'bordeaux', 'margaux', 'loire', 'loira', 'rhone', 'rhodano', 'rodano', 'alsace', 'alsacia', 'italia', 'toscana', 'piamonte', 'sicilia', 'siciliane', 'alemania', 'mosel', 'portugal', 'vinho verde', 'oporto', 'douro', 'dao', 'alentejo', 'normandie', 'sudafrica', 'sudáfrica', 'argentina', 'chile', 'napa', 'austria']
@@ -631,6 +637,21 @@ setPerfiles(nuevosPerfiles)
     { id: 'internacional', label: 'Internacionales' },
     { id: 'sin_origen', label: 'Sin D.O. / otros' },
   ]
+
+  useEffect(() => {
+    if (loading || seccionInicialAplicada || seccionAbierta || busquedaOFiltrado) return
+    const timer = setTimeout(() => {
+      if (vinosPorCopaFiltrados.length > 0) {
+        setSeccionAbierta('copas')
+        setSeccionInicialAplicada(true)
+        return
+      }
+      const primerAmbito = gruposAmbito.find(ambito => vinosFiltrados.some(v => ambitoComercial(v) === ambito.id))
+      if (primerAmbito) setSeccionAbierta(primerAmbito.id)
+      if (primerAmbito || vinosFiltrados.length > 0) setSeccionInicialAplicada(true)
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [loading, seccionInicialAplicada, seccionAbierta, busquedaOFiltrado, vinosPorCopaFiltrados.length, vinosFiltrados.length])
 
   function prioridadRegion(region) {
     const r = normalizarTexto(region)
@@ -919,7 +940,7 @@ setPerfiles(nuevosPerfiles)
     </div>
   )
 
-  if (!puedeUsar(restaurante, 'carta_qr')) return (
+  if (!restaurante.carta_disponible) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#fff', fontFamily: 'sans-serif', padding: 24, textAlign: 'center' }}>
       <p style={{ color: '#999', lineHeight: 1.5 }}>Carta no disponible temporalmente.</p>
     </div>
@@ -1125,6 +1146,12 @@ setPerfiles(nuevosPerfiles)
 
   if (vista === 'carta') return (
     <div className={styles.shell} style={{ paddingBottom: 80 }}>
+      {demoPresentacion && (
+        <div className={styles.demoPresentationBar}>
+          <span>Vista cliente · Carta</span>
+          <a href="/demo/taberna-del-puerto">Volver a la muestra</a>
+        </div>
+      )}
       <header className={styles.hero} style={heroStyle()}>
         <div className={styles.heroTop}>
           <div>
@@ -1497,6 +1524,12 @@ setPerfiles(nuevosPerfiles)
 
   if (vista === 'sommelier') return (
     <div className={styles.shell}>
+      {demoPresentacion && (
+        <div className={styles.demoPresentationBar}>
+          <span>Vista cliente · ArmonIA</span>
+          <a href="/demo/taberna-del-puerto">Volver a la muestra</a>
+        </div>
+      )}
       <header className={styles.hero} style={heroStyle()}>
         <div className={styles.heroTop}>
           <div>
@@ -1523,17 +1556,23 @@ setPerfiles(nuevosPerfiles)
         <section className={styles.sommelierIntro}>
           <h2 className={styles.sommelierTitle}>{modoSommelier === 'quiz' ? i.recomendame : modoSommelier === 'vino' ? i.vinoManda : i.quePedir}</h2>
           <p className={styles.sommelierText}>{modoSommelier === 'quiz' ? i.quizSubtitulo : modoSommelier === 'vino' ? i.vinoMandaSub : i.seleccionaPlatos}</p>
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <div className={styles.journeyStrip} aria-label={idioma === 'en' ? 'Recommendation steps' : 'Pasos de la recomendación'}>
+            <span className={modoSommelier === 'platos' && !platosSeleccionados.length ? styles.journeyActive : ''}><b>1</b>{idioma === 'en' ? 'Choose' : 'Elige'}</span>
+            <span className={modoSommelier === 'platos' && platosSeleccionados.length > 0 && !respuesta ? styles.journeyActive : ''}><b>2</b>{idioma === 'en' ? 'Adjust' : 'Ajusta'}</span>
+            <span className={respuesta || respuestaQuiz ? styles.journeyActive : ''}><b>3</b>{idioma === 'en' ? 'Enjoy' : 'Decide'}</span>
+          </div>
+          <div className={styles.sommelierModeTabs}>
             {[
               { id: 'platos', label: i.porPlatos },
               { id: 'quiz', label: i.recomendame },
               { id: 'vino', label: i.vinoManda },
             ].map(m => (
-              <button key={m.id} onClick={() => { setModoSommelier(m.id); setRespuesta(''); setRespuestaQuiz(''); setHistorialSommelier([]); setInputSeguimiento('') }} style={{
-                padding: '9px 18px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13,
-                background: modoSommelier === m.id ? colorAcento : '#f0ebe3',
-                color: modoSommelier === m.id ? '#fff' : '#888', fontWeight: modoSommelier === m.id ? 500 : 400,
-              }}>
+              <button
+                key={m.id}
+                className={modoSommelier === m.id ? styles.sommelierModeActive : ''}
+                onClick={() => { setModoSommelier(m.id); setRespuesta(''); setRespuestaQuiz(''); setHistorialSommelier([]); setInputSeguimiento('') }}
+                style={modoSommelier === m.id ? { background: colorAcento } : undefined}
+              >
                 {m.label}
               </button>
             ))}
@@ -1708,7 +1747,7 @@ setPerfiles(nuevosPerfiles)
         </section>}
 
         {modoSommelier === 'platos' && platosSeleccionados.length > 0 && (
-          <section className={styles.selectedPanel}>
+          <section className={styles.selectedPanel} id="seleccion-sommelier">
             <p className={styles.selectedHead}>{i.tuSeleccion}</p>
             {platosSeleccionados.map((p, idx) => (
               <div
@@ -1749,17 +1788,16 @@ setPerfiles(nuevosPerfiles)
             </button>
 
             {respuesta && (
-              <div className={styles.answerBox}>
+              <div className={styles.answerBox} aria-live="polite">
                 <p className={styles.selectedHead}>{i.sommelier}</p>
                 <p className={styles.answerText}>{respuesta}</p>
 
-                <button
-                  className={styles.clearButton}
-                  onClick={() => { setRespuesta(''); setPlatosSeleccionados([]); setHistorialSommelier([]) }}
-                  style={{ color: '#fffaf3', borderColor: 'rgba(255,250,243,0.2)', marginTop: 14 }}
-                >
-                  {i.nuevaConsulta}
-                </button>
+                <div className={styles.answerActions}>
+                  <button type="button" onClick={() => setVista('carta')}>{i.carta}</button>
+                  <button type="button" onClick={() => { setRespuesta(''); setPlatosSeleccionados([]); setHistorialSommelier([]) }}>
+                    {i.nuevaConsulta}
+                  </button>
+                </div>
               </div>
             )}
           </section>
@@ -1820,6 +1858,18 @@ setPerfiles(nuevosPerfiles)
           )
         })}
       </main>
+
+      {modoSommelier === 'platos' && platosSeleccionados.length > 0 && !respuesta && (
+        <div className={styles.selectionDock}>
+          <div>
+            <strong>{platosSeleccionados.length}</strong>
+            <span>{idioma === 'en' ? 'dishes selected' : platosSeleccionados.length === 1 ? 'plato seleccionado' : 'platos seleccionados'}</span>
+          </div>
+          <button type="button" onClick={irASeleccionSommelier}>
+            {idioma === 'en' ? 'Continue' : 'Continuar'}
+          </button>
+        </div>
+      )}
 
       <nav className={styles.bottomNav}>
         <button className={styles.bottomNavBtn} onClick={() => setVista('carta')}>{i.carta}</button>

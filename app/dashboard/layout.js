@@ -5,10 +5,11 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail } from '../demo'
-import { nombrePlan, puedeUsar } from '../lib/plans'
+import { esPerfilBodega, nombrePlan, puedeUsar } from '../lib/plans'
 import UsageTracker from './UsageTracker'
 import styles from './layout.module.css'
 import OpenCartaPruebaButton from './OpenCartaPruebaButton'
+import { GuideModeProvider, GuidePanel, GuideToggle } from './GuideMode'
 
 const icon = {
   home: <svg viewBox="0 0 20 20" fill="currentColor" width={16} height={16}><path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7a1 1 0 0 0 1.414 1.414L4 10.414V17a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-3h2v3a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6.586l.293.293a1 1 0 0 0 1.414-1.414l-7-7z"/></svg>,
@@ -39,6 +40,10 @@ export default function DashboardLayout({ children }) {
   const [demoPresentacion] = useState(() => (
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_presentacion') === '1'
   ))
+  const [demoSumiller] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_sumiller') === '1'
+  ))
+  const perfilBodega = esPerfilBodega(restaurante)
 
   useEffect(() => {
     async function cargar() {
@@ -66,7 +71,7 @@ export default function DashboardLayout({ children }) {
       setPropuestasCount(propuestas || 0)
       const nextSearchItems = [
         ...(vinosSearch || []).map(item => ({ ...item, tipo: 'Vino', href: '/dashboard/vinos', meta: [item.bodega, item.region].filter(Boolean).join(' · ') })),
-        ...(platosSearch || []).map(item => ({ ...item, tipo: 'Plato', href: '/dashboard/platos', meta: item.categoria || '' })),
+        ...(esPerfilBodega(rest) ? [] : (platosSearch || []).map(item => ({ ...item, tipo: 'Plato', href: '/dashboard/platos', meta: item.categoria || '' }))),
       ]
       setSearchItems(nextSearchItems)
       window.localStorage.setItem(`dashboard_search_cache_${rest.id}`, JSON.stringify(nextSearchItems))
@@ -91,7 +96,9 @@ export default function DashboardLayout({ children }) {
       }
       if ((event.ctrlKey || event.metaKey) && ['1', '2', '3', '4', '5'].includes(event.key)) {
         event.preventDefault()
-        const routes = ['/dashboard', '/dashboard/carta', '/dashboard/sala', '/dashboard/bodega', '/dashboard/ajustes']
+        const routes = perfilBodega
+          ? ['/dashboard', '/dashboard/vinos', '/dashboard/bodega', '/dashboard/catalogo', '/dashboard/ajustes']
+          : ['/dashboard', '/dashboard/carta', '/dashboard/sala', '/dashboard/bodega', '/dashboard/ajustes']
         router.push(routes[Number(event.key) - 1])
         return
       }
@@ -142,7 +149,7 @@ export default function DashboardLayout({ children }) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [pathname, router])
+  }, [pathname, router, perfilBodega])
 
   function toggleDarkMode() {
     setDarkMode(value => {
@@ -167,15 +174,20 @@ export default function DashboardLayout({ children }) {
   const navItems = [
     { href: '/dashboard', label: 'Inicio', hint: 'Prioridad y puesta en marcha', exact: true, icon: icon.home },
     {
-      href: '/dashboard/carta',
-      label: 'Carta pública',
-      hint: 'Vinos, platos y QR',
+      href: perfilBodega ? '/dashboard/vinos' : '/dashboard/carta',
+      label: perfilBodega ? 'Referencias' : 'Carta pública',
+      hint: perfilBodega ? 'Vinos, costes y fichas' : 'Vinos, platos y QR',
       icon: icon.wine,
-      stat: vinoCount + platoCount || null,
-      children: [
-        { href: '/dashboard/vinos', label: 'Vinos', hint: 'Precios y perfiles', stat: vinoCount || null },
-        { href: '/dashboard/platos', label: 'Platos', hint: 'Pistas para maridar', stat: platoCount || null },
-      ],
+      feature: perfilBodega ? 'bodega' : 'carta_qr',
+      stat: perfilBodega ? (vinoCount || null) : (vinoCount + platoCount || null),
+      children: perfilBodega
+        ? [
+            { href: '/dashboard/vinos', label: 'Vinos', hint: 'Fichas, precios y stock', stat: vinoCount || null, feature: 'bodega' },
+          ]
+        : [
+            { href: '/dashboard/vinos', label: 'Vinos', hint: 'Precios y perfiles', stat: vinoCount || null },
+            { href: '/dashboard/platos', label: 'Platos', hint: 'Pistas para maridar', stat: platoCount || null },
+          ],
     },
     {
       href: '/dashboard/sala',
@@ -186,19 +198,27 @@ export default function DashboardLayout({ children }) {
       children: [
         { href: '/dashboard/cierre', label: 'Cierre del turno', hint: 'Ventas e incidencias', feature: 'cierre_servicio' },
         { href: '/dashboard/estadisticas', label: 'Actividad de sala', hint: 'Escaneos y consultas', feature: 'estadisticas' },
+        { href: '/dashboard/tpv', label: 'Importar TPV', hint: 'Ventas reales CSV', feature: 'tpv_import' },
         { href: '/dashboard/menu-engineering', label: 'Rentabilidad', hint: 'Qué empujar o revisar', feature: 'estadisticas' },
       ],
     },
     {
       href: propuestasCount > 0 ? '/dashboard/bodega#propuestas' : '/dashboard/bodega',
       label: 'Bodega',
-      hint: 'Stock, pedidos y margen',
+      hint: perfilBodega ? 'Stock, compras y mapa' : 'Stock, pedidos y margen',
       icon: icon.bodega,
       feature: 'bodega',
       alert: propuestasCount || null,
       children: [
         { href: '/dashboard/bodega', label: 'Stock y pedido', hint: 'Compra sugerida', feature: 'bodega' },
+        ...(perfilBodega ? [
+          { href: '/dashboard/menu-engineering', label: 'Estrellas y joyas', hint: 'Salida, margen y capital', feature: 'estadisticas' },
+          { href: '/dashboard/catalogo', label: 'Catalogo distribuidores', hint: 'Tarifas y altas', feature: 'bodega' },
+          { href: '/dashboard/constructor', label: 'Constructor de carta', hint: 'Ordenar y exportar', feature: 'bodega' },
+        ] : []),
         { href: '/dashboard/precios', label: 'Márgenes', hint: 'Precio y coste', feature: 'precios_margenes' },
+        { href: '/dashboard/simulador', label: 'Simulador de rentabilidad', hint: 'Copa, margen y escenarios', feature: 'precios_margenes' },
+        { href: '/dashboard/trazabilidad', label: 'Trazabilidad', hint: 'Fuentes y formulas', feature: 'precios_margenes' },
         { href: '/dashboard/bodega#propuestas', label: 'Propuestas', hint: 'Ideas por decidir', feature: 'bodega', alert: propuestasCount || null },
         { href: '/dashboard/bodega#movimientos', label: 'Movimientos', hint: 'Historial de stock', feature: 'bodega' },
         { href: '/dashboard/inventario', label: 'Inventario físico', hint: 'Conteo real', feature: 'inventario' },
@@ -207,12 +227,14 @@ export default function DashboardLayout({ children }) {
     {
       href: '/dashboard/ajustes',
       label: 'Ajustes',
-      hint: 'QR, marca y accesos',
+      hint: perfilBodega ? 'Cuenta y accesos' : 'QR, marca y accesos',
       icon: icon.ajustes,
-      children: [
-        { href: '/dashboard/qr', label: 'QR y accesos', hint: 'Mesa y camarero' },
-        { href: '/dashboard/personalizar', label: 'Diseño de carta', hint: 'Logo y colores' },
-      ],
+      children: perfilBodega
+        ? []
+        : [
+            { href: '/dashboard/qr', label: 'QR y accesos', hint: 'Mesa y camarero' },
+            { href: '/dashboard/personalizar', label: 'Diseño de carta', hint: 'Logo y colores' },
+          ],
     },
   ].filter(item => !item.feature || puedeUsar(restaurante, item.feature))
     .map(item => ({
@@ -225,8 +247,14 @@ export default function DashboardLayout({ children }) {
     : []
   const turnoAbierto = Boolean(restaurante?.actividad_real_desde)
   const pinActivo = Boolean(restaurante?.camarero_pin_configurado || restaurante?.camarero_pin_hash || restaurante?.camarero_pin)
+  const entidadNombre = restaurante?.nombre || (perfilBodega ? 'Bodega' : 'Restaurante')
+  const entidadUbicacion = [restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' · ') || (perfilBodega ? 'Sin ubicacion de bodega' : 'Sin ubicacion')
+  const estadoActividad = perfilBodega
+    ? (turnoAbierto ? 'Bodega activa' : 'Sin actividad reciente')
+    : (turnoAbierto ? 'Abierto' : 'Cerrado')
 
   return (
+    <GuideModeProvider restaurantId={restaurante?.id}>
     <div className={`${styles.shell} ${darkMode ? styles.darkShell : ''}`}>
       {restaurante && <UsageTracker restauranteId={restaurante.id} />}
       <nav id="dashboard-navigation" aria-label="Navegación principal" className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
@@ -234,15 +262,15 @@ export default function DashboardLayout({ children }) {
           <div className={styles.brandHeader}>
             <div className={styles.brandIdentity}>
               {restaurante?.logo_url ? (
-                <img className={styles.brandLogo} src={restaurante.logo_url} alt={restaurante.nombre || 'Logo restaurante'} loading="lazy" />
+                <img className={styles.brandLogo} src={restaurante.logo_url} alt={restaurante.nombre || (perfilBodega ? 'Logo bodega' : 'Logo restaurante')} loading="lazy" />
               ) : (
                 <img className={styles.brandLogo} src="/brand/carta-viva/isotipo-dark.svg" alt="Carta Viva" />
               )}
               <div className={styles.brandText}>
-                <p className={styles.brandLabel}>Panel restaurante</p>
-                <p className={styles.brandName}>{restaurante?.nombre || 'Restaurante'}</p>
+                <p className={styles.brandLabel}>{perfilBodega ? 'Panel bodega' : 'Panel restaurante'}</p>
+                <p className={styles.brandName}>{entidadNombre}</p>
                 {restaurante?.ciudad && <p className={styles.brandCity}>{restaurante.ciudad}</p>}
-                <p className={styles.pinState}>{pinActivo ? 'PIN activo' : 'PIN inactivo'}</p>
+                {!perfilBodega && <p className={styles.pinState}>{pinActivo ? 'PIN activo' : 'PIN inactivo'}</p>}
               </div>
             </div>
             <button type="button" className={styles.sidebarClose} onClick={() => setMenuOpen(false)}>
@@ -296,16 +324,18 @@ export default function DashboardLayout({ children }) {
 
         <div className={styles.sidebarFooter}>
           <div className={styles.footerLinks}>
-            <OpenCartaPruebaButton restauranteId={restaurante?.id} className={styles.footerLink}>
-              Probar carta
-            </OpenCartaPruebaButton>
+            {puedeUsar(restaurante, 'carta_qr') && (
+              <OpenCartaPruebaButton restauranteId={restaurante?.id} className={styles.footerLink}>
+                Probar carta
+              </OpenCartaPruebaButton>
+            )}
             {puedeUsar(restaurante, 'modo_camarero') && (
               <a href={restaurante?.slug ? `/camarero/${restaurante.slug}` : '#'} target="_blank" rel="noreferrer" className={styles.footerLink}>
                 Modo camarero
               </a>
             )}
             <Link href="/dashboard/sugerencias#nueva" className={styles.footerLink}>
-              Enviar sugerencia
+              {perfilBodega ? 'Enviar mejora' : 'Enviar sugerencia'}
             </Link>
           </div>
           <button type="button" onClick={cerrarSesion} className={styles.logoutButton}>Salir</button>
@@ -315,10 +345,19 @@ export default function DashboardLayout({ children }) {
       {menuOpen && <div className={styles.overlay} onClick={() => setMenuOpen(false)} />}
 
       <div className={styles.main}>
-        {demoPresentacion && (
+        {(demoPresentacion || demoSumiller) && (
           <div className={styles.demoManagerBar}>
-            <span>Vista gerente · Demo La Taberna</span>
-            <a href="/demo/taberna-del-puerto">Volver a la muestra</a>
+            {demoSumiller ? (
+              <>
+                <span>Vista sumiller - Demo Bodega</span>
+                <a href="/demo/sumiller">Volver a demo sumiller</a>
+              </>
+            ) : (
+              <>
+                <span>Vista gerente - Demo La Taberna</span>
+                <a href="/demo/taberna-del-puerto">Volver a la muestra</a>
+              </>
+            )}
           </div>
         )}
         <div className={styles.mobileBar}>
@@ -335,15 +374,15 @@ export default function DashboardLayout({ children }) {
             </svg>
             <span>Menú</span>
           </button>
-          <p className={styles.mobileName}>{restaurante?.nombre || 'Restaurante'}</p>
+          <p className={styles.mobileName}>{entidadNombre}</p>
         </div>
         <header className={styles.operationalTopbar}>
           <div className={styles.restaurantTitle}>
-            <strong>{restaurante?.nombre || 'Restaurante'}</strong>
+            <strong>{entidadNombre}</strong>
             <span className={styles.restaurantMeta}>
-              {[restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' · ') || 'Sin ubicacion'}
+              {entidadUbicacion}
               <span className={`${styles.statusDot} ${turnoAbierto ? styles.statusDotOpen : styles.statusDotClosed}`} />
-              {turnoAbierto ? 'Abierto' : 'Cerrado'}
+              {estadoActividad}
             </span>
           </div>
 
@@ -352,9 +391,9 @@ export default function DashboardLayout({ children }) {
               type="button"
               onClick={() => setSearchOpen(open => !open)}
               aria-expanded={searchOpen}
-              aria-label={searchOpen ? 'Cerrar busqueda de vinos o platos' : 'Buscar vinos o platos'}
+              aria-label={searchOpen ? 'Cerrar busqueda' : (perfilBodega ? 'Buscar vinos' : 'Buscar vinos o platos')}
             >
-              {searchOpen ? 'Cerrar busqueda' : 'Buscar vinos/platos'}
+              {searchOpen ? 'Cerrar busqueda' : (perfilBodega ? 'Buscar vinos' : 'Buscar vinos/platos')}
             </button>
             <kbd>Ctrl K</kbd>
             {searchOpen && (
@@ -364,7 +403,7 @@ export default function DashboardLayout({ children }) {
                     id="dashboard-global-search"
                     value={query}
                     onChange={event => setQuery(event.target.value)}
-                    placeholder="Buscar vino, bodega, plato..."
+                    placeholder={perfilBodega ? 'Buscar vino, bodega, proveedor...' : 'Buscar vino, bodega, plato...'}
                     aria-label="Busqueda global del dashboard"
                   />
                   <button type="button" onClick={() => { setSearchOpen(false); setQuery('') }} aria-label="Cerrar busqueda">Cerrar</button>
@@ -384,6 +423,7 @@ export default function DashboardLayout({ children }) {
           </div>
 
           <div className={styles.topStatus}>
+            <GuideToggle compact />
             <Link href="/dashboard/bodega#propuestas" className={propuestasCount > 0 ? styles.alertPillCritical : styles.alertPillOk}>
               {propuestasCount > 0 ? `${propuestasCount} propuestas` : 'Sin propuestas'}
             </Link>
@@ -393,7 +433,7 @@ export default function DashboardLayout({ children }) {
               {profileOpen && (
                 <div className={styles.profileDropdown}>
                   <Link href="/dashboard/ajustes" onClick={() => setProfileOpen(false)}>Ajustes</Link>
-                  <Link href="/admin?vista=accesos" onClick={() => setProfileOpen(false)}>Cambiar restaurante</Link>
+                  <Link href="/admin?vista=accesos" onClick={() => setProfileOpen(false)}>{perfilBodega ? 'Cambiar bodega' : 'Cambiar restaurante'}</Link>
                   <button type="button" onClick={toggleDarkMode}>{darkMode ? 'Modo claro' : 'Modo oscuro'}</button>
                   <button type="button" onClick={cerrarSesion}>Salir</button>
                 </div>
@@ -401,6 +441,7 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
         </header>
+        <GuidePanel />
         {shortcutMessage && <div className={styles.shortcutToast} role="status">{shortcutMessage}</div>}
         {shortcutsOpen && (
           <div className={styles.shortcutsBackdrop} role="dialog" aria-modal="true" aria-labelledby="dashboard-shortcuts-title" onClick={() => setShortcutsOpen(false)}>
@@ -414,7 +455,7 @@ export default function DashboardLayout({ children }) {
                 <div><dt>Ctrl+N</dt><dd>Nuevo vino o plato segun contexto</dd></div>
                 <div><dt>Ctrl+E</dt><dd>Enfocar accion de edicion visible</dd></div>
                 <div><dt>Ctrl+S</dt><dd>Guardar formulario visible</dd></div>
-                <div><dt>Ctrl+1-5</dt><dd>Inicio, Carta, Sala, Bodega, Ajustes</dd></div>
+                <div><dt>Ctrl+1-5</dt><dd>{perfilBodega ? 'Inicio, Referencias, Bodega, Inventario, Ajustes' : 'Inicio, Carta, Sala, Bodega, Ajustes'}</dd></div>
                 <div><dt>?</dt><dd>Ver esta ayuda</dd></div>
               </dl>
             </div>
@@ -423,5 +464,6 @@ export default function DashboardLayout({ children }) {
         {children}
       </div>
     </div>
+    </GuideModeProvider>
   )
 }

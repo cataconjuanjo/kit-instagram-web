@@ -366,7 +366,7 @@ async function parseAll() {
   return { rows: [...deduped.values()], byFile }
 }
 
-module.exports = { parseAll }
+module.exports = { parseAll, parseFile, parsePrimerasMarcas, parseSoto, parseWineMerchant, parseWineMerchantCsv }
 
 if (require.main === module) {
   parseAll().then(({ rows, byFile }) => {

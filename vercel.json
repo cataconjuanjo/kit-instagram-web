@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/resumen-semanal/recalcular?dias=7&enviar=1&respetar_rutina=1&modo_diario=1",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}

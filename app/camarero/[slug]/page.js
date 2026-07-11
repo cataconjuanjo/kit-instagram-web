@@ -3,8 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { chartierKb, fuenteChartier } from '../../lib/chartierKb'
 import { buscarPlatoKb } from '../../data/platos_kb'
-import { criteriosEstructurales } from '../../lib/maridajeEngine'
-import { nombrePlan, puedeUsar } from '../../lib/plans'
+import {
+  analizarMaridaje,
+  contextoMaridaje,
+  criteriosEstructurales,
+  esCarneRojaPotenteConsulta,
+  lecturaMesa as lecturaMesaMotor,
+  prioridadEstiloCarneRoja,
+  prioridadEstiloJamon,
+} from '../../lib/maridajeEngine'
 import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import styles from './camarero.module.css'
 
@@ -46,8 +53,17 @@ export default function Camarero({ params }) {
   const [tipoVinoAbierto, setTipoVinoAbierto] = useState(null)
   const [grafoVenta, setGrafoVenta] = useState(null)
   const [cantidadRapida, setCantidadRapida] = useState(1)
+  const [recomendacionActivaId, setRecomendacionActivaId] = useState('')
+  const [contextoServicio, setContextoServicio] = useState({
+    camarero: '',
+    mesa: '',
+    comensales: '',
+    ticket_mesa: '',
+    formato: 'botella',
+  })
   const [mensajeServicio, setMensajeServicio] = useState('')
   const ultimaRecomendacionRegistrada = useRef('')
+  const demoFocusAplicado = useRef(false)
 
   const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87' }
   const tipoLabel = { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja', sin_alcohol: 'Sin alcohol' }
@@ -98,6 +114,16 @@ export default function Camarero({ params }) {
         const objetivoGuardado = typeof window !== 'undefined' ? window.localStorage.getItem(`cartavinos_objetivo_${rest.id}`) : null
         const mapaObjetivo = { vender_copas: 'copas', subir_ticket: 'ticket', rotar_stock: 'rotar', vino_local: 'local' }
         if (objetivoGuardado && mapaObjetivo[objetivoGuardado]) setObjetivoVenta(mapaObjetivo[objetivoGuardado])
+        if (typeof window !== 'undefined') {
+          try {
+            const contextoGuardado = JSON.parse(window.localStorage.getItem(`cartavinos_contexto_servicio_${rest.id}`) || '{}')
+            setContextoServicio(prev => ({
+              ...prev,
+              ...contextoGuardado,
+              formato: ['botella', 'copa'].includes(contextoGuardado.formato) ? contextoGuardado.formato : prev.formato,
+            }))
+          } catch {}
+        }
         if (esDemo) {
           setDemoActivo(true)
         }
@@ -228,17 +254,41 @@ export default function Camarero({ params }) {
     if (!restaurante || !vino) return
 
     const consultaActiva = consultaVentaActiva()
+    const recomendacion = recomendacionActualParaVino(vino, label)
+    const posicionRecomendacion = recomendacion
+      ? recomendacionesVenta.findIndex(item => item.recommendation_id === recomendacion.recommendation_id) + 1
+      : null
+    const recommendationId = recomendacion?.recommendation_id || idRecomendacionVenta({ vino, label }, 0, consultaActiva)
+    const grupoRecomendacionId = recomendacion?.grupo_recomendacion_id || grupoRecomendacionVenta(consultaActiva)
     const clave = `${vino.id}-${resultado}-${consultaActiva}`
     setFeedbackVenta(prev => ({ ...prev, [clave]: true }))
     const cantidadNormalizada = Math.max(1, Number(cantidad) || 1)
+    const formatoVenta = formatoVentaParaVino(vino)
+    const precioUnidad = precioUnidadVenta(vino, formatoVenta)
+    const importeVinoEstimado = resultado === 'vendida' ? precioUnidad * cantidadNormalizada : 0
+    const comensales = numeroContexto(contextoServicio.comensales)
+    const ticketMesa = numeroContexto(contextoServicio.ticket_mesa)
 
     const detalle = JSON.stringify({
+      recommendation_id: recommendationId,
+      grupo_recomendacion_id: grupoRecomendacionId,
+      recommendation_label: recomendacion?.label || label,
+      recommendation_position: posicionRecomendacion || null,
       resultado,
       vino_id: vino.id,
       vino: vino.nombre,
       plato: consultaActiva,
       objetivo: objetivoVenta,
       posicion: label,
+      precio_recomendado: recomendacion?.vino?.precio_botella || vino.precio_botella || null,
+      precio_copa_recomendado: recomendacion?.vino?.precio_copa || vino.precio_copa || null,
+      formato_venta: formatoVenta,
+      precio_unidad: precioUnidad || null,
+      importe_vino_estimado: importeVinoEstimado || null,
+      comensales: comensales || null,
+      ticket_mesa: ticketMesa || null,
+      mesa: String(contextoServicio.mesa || '').trim() || null,
+      camarero: String(contextoServicio.camarero || '').trim() || null,
       cantidad: cantidadNormalizada,
     })
 
@@ -256,7 +306,24 @@ export default function Camarero({ params }) {
       setMensajeServicio('No se pudo guardar. Reintenta en un momento.')
       setTimeout(() => setMensajeServicio(''), 2200)
     } else {
-      setHistorialVenta(prev => [{ resultado, vino_id: vino.id, vino: vino.nombre, plato: consultaActiva, objetivo: objetivoVenta, posicion: label, cantidad: cantidadNormalizada }, ...prev].slice(0, 300))
+      setHistorialVenta(prev => [{
+        recommendation_id: recommendationId,
+        grupo_recomendacion_id: grupoRecomendacionId,
+        resultado,
+        vino_id: vino.id,
+        vino: vino.nombre,
+        plato: consultaActiva,
+        objetivo: objetivoVenta,
+        posicion: label,
+        formato_venta: formatoVenta,
+        importe_vino_estimado: importeVinoEstimado || null,
+        comensales: comensales || null,
+        ticket_mesa: ticketMesa || null,
+        mesa: String(contextoServicio.mesa || '').trim() || null,
+        camarero: String(contextoServicio.camarero || '').trim() || null,
+        cantidad: cantidadNormalizada,
+      }, ...prev].slice(0, 300))
+      setCantidadRapida(1)
       const textoResultado = {
         vendida: 'Venta marcada',
         no_convence: 'Duda marcada',
@@ -367,6 +434,8 @@ export default function Camarero({ params }) {
   }
 
   function contextoVenta(consultaNormalizada) {
+    const contextoCentral = contextoMaridaje(consultaNormalizada)
+    if (contextoCentral && contextoCentral !== 'general') return contextoCentral
     const platoKb = buscarPlatoKb(consultaNormalizada)
     if (platoKb?.contexto) return platoKb.contexto
     if (esJamonCurado(consultaNormalizada)) return 'aperitivo'
@@ -419,6 +488,8 @@ export default function Camarero({ params }) {
   function lecturaVenta(consulta) {
     const texto = normalizar(consulta)
     if (!texto) return null
+    const lecturaCentral = lecturaMesaMotor([consulta])
+    if (lecturaCentral) return lecturaCentral
     const platoKb = buscarPlatoKb(texto)
     const estructural = criteriosEstructurales(texto)
     if (platoKb) {
@@ -550,6 +621,17 @@ export default function Camarero({ params }) {
     setVinoMandatoVenta(null)
     setConsultaVenta(nuevosPlatos.map(consultaDesdePlato).join(', '))
     setRotacionVenta(0)
+    if (!existe) setTimeout(() => irARecomendacionesServicio(), 80)
+  }
+
+  function irARecomendacionesServicio() {
+    if (typeof document === 'undefined') return
+    document.getElementById('recomendaciones-servicio')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function elegirRecomendacionParaFicha(recommendationId, opciones = {}) {
+    setRecomendacionActivaId(recommendationId)
+    if (opciones.scroll) irARecomendacionesServicio()
   }
 
   function consultaVentaActiva() {
@@ -567,6 +649,61 @@ export default function Camarero({ params }) {
       .map(parte => parte.trim())
       .filter(Boolean)
     return [consultaDesdePerfilCliente()]
+  }
+
+  function numeroContexto(valor) {
+    const numero = Number(String(valor || '').replace(',', '.'))
+    return Number.isFinite(numero) && numero > 0 ? numero : 0
+  }
+
+  function actualizarContextoServicio(campo, valor) {
+    const siguiente = {
+      ...contextoServicio,
+      [campo]: valor,
+    }
+    setContextoServicio(siguiente)
+    if (restaurante?.id && typeof window !== 'undefined') {
+      window.localStorage.setItem(`cartavinos_contexto_servicio_${restaurante.id}`, JSON.stringify(siguiente))
+    }
+  }
+
+  function formatoVentaParaVino(vino) {
+    if (contextoServicio.formato === 'copa' && Number(vino?.precio_copa) > 0) return 'copa'
+    return 'botella'
+  }
+
+  function precioUnidadVenta(vino, formato) {
+    return formato === 'copa'
+      ? Number(vino?.precio_copa) || 0
+      : Number(vino?.precio_botella) || 0
+  }
+
+  function firmaRecomendacionVenta(consulta = consultaVentaActiva() || consultaDesdePerfilCliente()) {
+    return [
+      restaurante?.id || 'sin-restaurante',
+      normalizar(consulta).slice(0, 180),
+      objetivoVenta,
+      perfilClienteVenta.bebe || '',
+      perfilClienteVenta.estilo || '',
+      perfilClienteVenta.gama || '',
+      rotacionVenta,
+    ].join('|')
+  }
+
+  function grupoRecomendacionVenta(consulta = consultaVentaActiva() || consultaDesdePerfilCliente()) {
+    return `grp_${Math.abs(hashTexto(firmaRecomendacionVenta(consulta)))}`
+  }
+
+  function idRecomendacionVenta(item, index = 0, consulta = consultaVentaActiva() || consultaDesdePerfilCliente()) {
+    const vino = item?.vino || {}
+    const vinoId = vino.id || vino.nombre || ''
+    return `rec_${Math.abs(hashTexto(`${firmaRecomendacionVenta(consulta)}|${vinoId}|${item?.label || ''}|${index + 1}`))}`
+  }
+
+  function recomendacionActualParaVino(vino, label) {
+    const vinoId = String(vino?.id || '')
+    return recomendacionesVenta.find(item => String(item.vino?.id || '') === vinoId && item.label === label) ||
+      recomendacionesVenta.find(item => String(item.vino?.id || '') === vinoId)
   }
 
   function hayConsultaVenta() {
@@ -809,7 +946,13 @@ export default function Camarero({ params }) {
   function compatibilidadContexto(vino, contexto, consultaNormalizada) {
     const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
     const esTawnyOPorto = textoVino.includes('tawny') || textoVino.includes('porto') || textoVino.includes('oporto')
-    const esPx = textoVino.includes('pedro ximenez') || textoVino.includes(' px ') || textoVino.includes('px,') || textoVino.includes('alvear px')
+    const generosoSeco = esGenerosoSeco(vino, textoVino)
+    const esPx = !generosoSeco && (
+      textoVino.includes(' px ') ||
+      textoVino.includes('px,') ||
+      textoVino.includes('alvear px') ||
+      (textoVino.includes('pedro ximenez') && (vino.tipo === 'dulce' || textoVino.includes('dulce')))
+    )
     const esDulceOxidativo = esVinoDulceOSemidulce(vino, textoVino) || esPx || esTawnyOPorto
     const quesoTrucadoParaTinto = ['clavo', 'olivada', 'tomate seco', 'tomates secos'].some(t => consultaNormalizada.includes(t))
     const metodo = metodosPlato(consultaNormalizada)
@@ -995,7 +1138,7 @@ export default function Camarero({ params }) {
     if (!pesos.muestras) return { ajuste: 0, muestras: 0 }
 
     const confianza = Math.min(pesos.muestras / 6, 1)
-    const ajuste = Math.max(-10, Math.min(10, pesos.total * confianza))
+    const ajuste = Math.max(-4, Math.min(4, pesos.total * confianza))
     return { ajuste, muestras: pesos.muestras, vendidas: pesos.vendidas }
   }
 
@@ -1017,8 +1160,127 @@ export default function Camarero({ params }) {
 
     if (!datos.total) return { ajuste: 0, veces: 0 }
 
-    const ajuste = -Math.min(9, Math.log2(datos.total + 1) * 2.4)
+    const ajuste = -Math.min(4, Math.log2(datos.total + 1) * 1.2)
     return { ajuste, veces: datos.total, mismoContexto: datos.mismoContexto }
+  }
+
+  function claveConsultaSala(texto) {
+    return normalizar(String(texto || '')
+      .split(':')[0]
+      .replace(/\([^)]*\)/g, ' '))
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
+  function mismoVinoSala(vino, evento) {
+    const idEvento = String(evento?.vino_id || '')
+    const idVino = String(vino?.id || '')
+    const nombreEvento = normalizar(evento?.vino || '')
+    const nombreVino = normalizar(vino?.nombre || '')
+    return Boolean(idEvento && idVino && idEvento === idVino) ||
+      Boolean(nombreEvento && nombreVino && nombreEvento === nombreVino)
+  }
+
+  function pesoConsultaSala(evento, consultas, contexto) {
+    const consultaEvento = claveConsultaSala(evento?.plato || evento?.consulta || '')
+    const consultasBase = consultas.map(claveConsultaSala).filter(Boolean)
+    if (consultaEvento && consultasBase.some(consulta => consultaEvento === consulta || consultaEvento.includes(consulta) || consulta.includes(consultaEvento))) return 1
+
+    const contextoEvento = contextoVenta(normalizar(evento?.plato || evento?.consulta || ''))
+    return contextoEvento === contexto ? 0.35 : 0
+  }
+
+  function senalComercialSala(vino, consultas, contexto, opciones = {}) {
+    const base = {
+      visible: false,
+      ajuste: 0,
+      tipo: 'medir',
+      label: '',
+      texto: '',
+      ventas: 0,
+      dudas: 0,
+      stock: 0,
+      recomendaciones: 0,
+      conversion: 0,
+    }
+
+    if (!historialVenta.length && !historialRecomendaciones.length) return base
+
+    const resumen = historialVenta.reduce((acc, evento) => {
+      if (!mismoVinoSala(vino, evento)) return acc
+      const peso = pesoConsultaSala(evento, consultas, contexto)
+      if (!peso) return acc
+      const cantidad = Number(evento.cantidad) || 1
+      const importe = Number(evento.importe_vino_estimado) || 0
+
+      acc.muestras += peso
+      acc.feedback += peso
+      if (evento.resultado === 'vendida') {
+        acc.ventas += cantidad * peso
+        acc.ventasEventos += peso
+        acc.importe += importe * peso
+      }
+      if (['no_convence', 'otra'].includes(evento.resultado)) acc.dudas += peso
+      if (['no_stock', 'agotado'].includes(evento.resultado)) acc.stock += peso
+      return acc
+    }, { muestras: 0, feedback: 0, ventas: 0, ventasEventos: 0, dudas: 0, stock: 0, importe: 0 })
+
+    const recomendaciones = historialRecomendaciones.reduce((acc, evento) => {
+      if (!mismoVinoSala(vino, evento)) return acc
+      return acc + pesoConsultaSala(evento, consultas, contexto)
+    }, 0)
+
+    const totalFeedback = resumen.ventasEventos + resumen.dudas + resumen.stock
+    const conversion = recomendaciones ? Math.round((resumen.ventasEventos / recomendaciones) * 100) : resumen.ventasEventos ? 100 : 0
+    const valorMedio = resumen.ventas ? resumen.importe / resumen.ventas : 0
+    const precio = precioBotella(vino)
+    const confianza = Math.min((totalFeedback + recomendaciones * 0.35) / 5, 1)
+    let tipo = 'medir'
+    let label = ''
+    let texto = ''
+    let ajusteBase = 0
+
+    if (resumen.stock >= 1) {
+      tipo = 'stock'
+      label = 'Confirmar stock'
+      texto = 'Ya hubo aviso de stock con una mesa parecida. Ofrecelo solo tras comprobar bodega.'
+      ajusteBase = -4
+    } else if (resumen.dudas >= 1 && resumen.dudas >= resumen.ventasEventos) {
+      tipo = 'duda'
+      label = 'Revisar argumento'
+      texto = 'Ha generado dudas o cambios. Mantiene el encaje, pero conviene preparar alternativa.'
+      ajusteBase = -2.8
+    } else if (resumen.ventasEventos >= 1 && conversion >= 50) {
+      tipo = 'funciona'
+      label = 'Ha funcionado en sala'
+      texto = `${Math.round(resumen.ventas)} venta${Math.round(resumen.ventas) === 1 ? '' : 's'} registrada${Math.round(resumen.ventas) === 1 ? '' : 's'} con esta consulta o contexto.`
+      ajusteBase = 3.5
+    } else if (resumen.ventasEventos >= 1 && (valorMedio >= 35 || precio >= (opciones.umbralUpsell || 35))) {
+      tipo = 'upsell'
+      label = 'Buen upsell'
+      texto = 'Ya se vendio como opcion de mas valor. Usalo cuando la mesa acepte algo especial.'
+      ajusteBase = 2.4
+    } else if (recomendaciones >= 2 && !totalFeedback) {
+      tipo = 'medir'
+      label = 'Medir resultado'
+      texto = 'Se ha recomendado varias veces, pero falta marcar si vende o genera dudas.'
+      ajusteBase = -0.8
+    }
+
+    const ajuste = Math.max(-4, Math.min(3.5, ajusteBase * Math.max(confianza, tipo === 'stock' ? 0.85 : 0.55)))
+    return {
+      visible: Boolean(label),
+      ajuste,
+      tipo,
+      label,
+      texto,
+      ventas: Math.round(resumen.ventas),
+      dudas: Math.round(resumen.dudas),
+      stock: Math.round(resumen.stock),
+      recomendaciones: Math.round(recomendaciones),
+      conversion,
+    }
   }
 
   function puntuarParaVenta(vino, matchesKb, objetivo, precioMedio, contexto, consultaNormalizada, rangoTicket = null) {
@@ -1132,12 +1394,8 @@ export default function Camarero({ params }) {
     score += aprendizaje.ajuste
     const exposicion = ajusteExposicionRecomendacion(vino, contexto)
     score += exposicion.ajuste
-    if (Math.abs(aprendizaje.ajuste) >= 2.5) {
-      motivo = aprendizaje.ajuste > 0
-        ? `${motivo}; además ha funcionado bien en sala en mesas parecidas`
-        : `${motivo}; aunque en sala no ha convencido mucho últimamente`
-      fuente = fuente
-    }
+    const senalSala = senalComercialSala(vino, [consultaNormalizada], contexto)
+    if (compatibilidad.compatible) score += senalSala.ajuste
 
     score += Math.min(precioBotella(vino), 80) / 80
     score -= compatibilidad.penalizacion
@@ -1147,32 +1405,51 @@ export default function Camarero({ params }) {
       fuente = 'Restricción de contexto del KB'
     }
 
-    return { vino, score, motivo, fuente, compatible: compatibilidad.compatible, aprendizaje, exposicion }
+    return { vino, score, motivo, fuente, compatible: compatibilidad.compatible, aprendizaje, exposicion, senalSala }
   }
 
   function calcularRecomendacionesVenta() {
     if (modoRecomendacionVenta === 'vino') return []
     if (!hayConsultaVenta()) return []
-    if (consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta) return []
-    let disponibles = vinos.filter(vino => esVinoElegibleParaObjetivo(vino))
+    const requiereCopa = objetivoVenta === 'copas' || objetivoVenta === 'sucesion_copas'
+    const vinosParaMotor = vinos.filter(vino => {
+      if (vino?.activo === false || vino?.stock === 0 || precioBotella(vino) <= 0) return false
+      if (requiereCopa && !(Number(vino.precio_copa) > 0)) return false
+      return true
+    })
+    let disponibles = vinosParaMotor.filter(vino => {
+      if (objetivoVenta === 'local' && !esVinoDeZona(vino)) return false
+      if (!encajaEnGamaCliente(vino)) return false
+      return true
+    })
     if (!disponibles.length && perfilClienteVenta.gama !== 'auto') {
-      disponibles = vinos.filter(vino => esVinoElegibleParaObjetivo(vino, { ignorarGama: true }))
+      disponibles = vinosParaMotor.filter(vino => objetivoVenta !== 'local' || esVinoDeZona(vino))
+    }
+    if (!disponibles.length && objetivoVenta === 'local') {
+      disponibles = vinosParaMotor
     }
     if (!disponibles.length) return []
 
-    const filtradosPorPreferencia = tienePerfilClienteActivo()
-      ? disponibles.filter(encajaEnPreferenciaCliente)
-      : disponibles
-    if (perfilClienteVenta.estilo === 'local' && !filtradosPorPreferencia.length) return []
-    const candidatosBase = filtradosPorPreferencia.length ? filtradosPorPreferencia : disponibles
-
-    const precioMedio = candidatosBase.reduce((sum, vino) => sum + precioBotella(vino), 0) / candidatosBase.length
+    const precioMedio = disponibles.reduce((sum, vino) => sum + precioBotella(vino), 0) / disponibles.length
     const consultas = consultasVentaActuales()
     const consultaActiva = consultaVentaActiva() || consultaDesdePerfilCliente()
     const consultaNormalizada = normalizar(consultaActiva)
     const esMesa = consultas.length > 1
+    const prioridadJamonCurado = consultas.some(consulta => esJamonCurado(normalizar(consulta)))
     const ticketComida = ticketMesaVenta()
     const rangoTicket = rangoBotellaParaTicket(ticketComida, precioMedio)
+    const preciosOrdenados = disponibles
+      .map(vino => precioBotella(vino))
+      .filter(precio => precio > 0)
+      .sort((a, b) => a - b)
+    const percentilPrecio = ratio => {
+      if (!preciosOrdenados.length) return precioMedio
+      const index = Math.min(preciosOrdenados.length - 1, Math.max(0, Math.floor((preciosOrdenados.length - 1) * ratio)))
+      return preciosOrdenados[index]
+    }
+    const umbralUpsell = Math.max(rangoTicket.max * 1.15, precioMedio, percentilPrecio(0.55))
+    const umbralPremium = Math.max(rangoTicket.max * 1.35, precioMedio * 1.2, percentilPrecio(0.72))
+    const prioridadCarneTicket = objetivoVenta === 'ticket' && consultas.some(consulta => esCarneRojaPotenteConsulta(consulta))
     const grafoListo = grafoVenta?.consulta === consultaGrafoVenta
     const grafoCandidatos = grafoListo ? (grafoVenta?.candidatos || []) : []
     const descartadosGoldstein = grafoListo ? (grafoVenta?.goldstein?.descartados || []) : []
@@ -1182,6 +1459,12 @@ export default function Camarero({ params }) {
     const bloqueadoPorGoldstein = vino => goldsteinBloqueados.has(String(vino.id || '')) || goldsteinBloqueados.has(normalizar(vino.nombre))
     const grafoPorVino = new Map(grafoCandidatos.map(item => [String(item.vino_id || item.nombre), item]))
     const grafoPorNombre = new Map(grafoCandidatos.map(item => [normalizar(item.nombre), item]))
+    const vinosLocalesPorId = new Map(vinos.map(vino => [String(vino.id || ''), vino]))
+    const vinosLocalesPorNombre = new Map(vinos.map(vino => [normalizar(vino.nombre), vino]))
+    const disponiblesIds = new Set(disponibles.map(vino => String(vino.id || vino.nombre)))
+    const disponiblesNombres = new Set(disponibles.map(vino => normalizar(vino.nombre)))
+    const vinoPermitido = vino => disponiblesIds.has(String(vino.id || vino.nombre)) || disponiblesNombres.has(normalizar(vino.nombre))
+    const vinoLocal = vino => vinosLocalesPorId.get(String(vino?.id || '')) || vinosLocalesPorNombre.get(normalizar(vino?.nombre)) || vino
     const aplicarGrafoChartier = resultado => {
       const item = grafoPorVino.get(String(resultado.vino.id)) || grafoPorNombre.get(normalizar(resultado.vino.nombre))
       if (!item) return resultado
@@ -1211,26 +1494,142 @@ export default function Camarero({ params }) {
     }
 
     // ── Sucesión de copas: una copa por plato en arco armónico ───────────
+    const aplicarFamiliasPlatos = resultado => {
+      if (!platosMesaVenta.length) return resultado
+      let bonusTotal = 0
+      let motivoFamilia = ''
+      let riesgoFamilia = ''
+      platosMesaVenta.forEach(plato => {
+        if (!plato?.familias_aromaticas?.familias?.length) return
+        const { bonus, motivo, riesgos } = bonusChartierFamilias(resultado.vino, plato.familias_aromaticas.familias)
+        bonusTotal += Math.max(-8, Math.min(10, Number(bonus) || 0))
+        if (!motivoFamilia && motivo && bonus > 0) motivoFamilia = motivo
+        if (!riesgoFamilia && riesgos?.length && bonus < 0) riesgoFamilia = riesgos[0]
+      })
+      if (!bonusTotal) return resultado
+      const bonusAjustado = esMesa ? bonusTotal / Math.max(platosMesaVenta.length, 1) : bonusTotal
+      return {
+        ...resultado,
+        score: resultado.score + bonusAjustado,
+        motivo: motivoFamilia && bonusAjustado > 0
+          ? `${motivoFamilia}; ${resultado.motivo}`
+          : riesgoFamilia && bonusAjustado < 0
+            ? riesgoFamilia
+            : resultado.motivo,
+      }
+    }
+
+    const aplicarAjustesSala = resultado => {
+      const vino = resultado.vino
+      const contexto = contextoVenta(consultaNormalizada)
+      let score = Number(resultado.score) || 0
+      let motivo = resultado.motivo || motivoMesaVenta(vino, consultas.length, consultaNormalizada)
+      const fuente = resultado.fuente || 'Motor ArmonIA central'
+
+      if (objetivoVenta === 'rotar') {
+        if (vino.stock > 3) score += Math.min(vino.stock, 18) / 2
+        if (vino.stock > 0 && vino.stock <= 3) score -= 4
+      }
+      if (vino.precio_copa) score += requiereCopa ? 8 : 1
+      if (objetivoVenta === 'ticket') {
+        const precio = precioBotella(vino)
+        if (precio >= umbralPremium) {
+          score += 18
+          motivo = `${motivo}; permite subir ticket con una botella especial que sigue siendo coherente con el plato`
+        } else if (precio >= umbralUpsell) {
+          score += 12
+          motivo = `${motivo}; sube ticket sin perder encaje gastronomico`
+        } else if (precio <= Math.max(rangoTicket.max, precioMedio * 0.85)) {
+          score -= 10
+        }
+        if (prioridadCarneTicket) {
+          const prioridadCarne = prioridadEstiloCarneRoja(vino, consultas)
+          if (prioridadCarne <= 2) score += 14
+          else if (vino.tipo !== 'tinto') score -= 18
+        }
+      }
+      if (objetivoVenta === 'local') score += esVinoDeZona(vino) ? 9 : -2
+
+      if (rangoTicket && objetivoVenta !== 'ticket' && !(prioridadJamonCurado && objetivoVenta === 'equilibrado')) {
+        const precio = precioBotella(vino)
+        const dentroRango = precio >= rangoTicket.min && precio <= rangoTicket.max
+        const distanciaIdeal = Math.abs(precio - rangoTicket.ideal)
+        const tolerancia = Math.max(8, rangoTicket.ideal * 0.35)
+
+        if (dentroRango) {
+          score += objetivoVenta === 'ticket' ? 9 : 5
+          if (distanciaIdeal <= tolerancia * 0.55) score += 3
+          motivo = `${motivo}; encaja con el presupuesto estimado de la mesa`
+        } else {
+          score -= Math.min(9, (distanciaIdeal / tolerancia) * 3)
+          if (objetivoVenta === 'ticket' && precio > rangoTicket.max && precio <= rangoTicket.max * 1.35) {
+            score += 4
+            motivo = `${motivo}; se puede ofrecer como opcion un poco mas especial sin romper el presupuesto`
+          }
+        }
+      }
+
+      const aprendizaje = ajusteAprendizajeVenta(vino, contexto)
+      const exposicion = ajusteExposicionRecomendacion(vino, contexto)
+      score += aprendizaje.ajuste + exposicion.ajuste
+      const senalSala = senalComercialSala(vino, consultas, contexto, { umbralUpsell })
+      if (resultado.compatible !== false) score += senalSala.ajuste
+
+      return {
+        ...resultado,
+        score,
+        motivo,
+        fuente,
+        compatible: resultado.compatible !== false,
+        aprendizaje,
+        exposicion,
+        senalSala,
+        rangoTicket,
+        ticketComida,
+        motorCentral: true,
+      }
+    }
+
+    const desdeMotorCentral = item => {
+      const vino = vinoLocal(item.vino)
+      if (!vino || !vinoPermitido(vino) || bloqueadoPorGoldstein(vino)) return null
+      return aplicarPerfilCliente(aplicarGrafoChartier(aplicarFamiliasPlatos(aplicarAjustesSala({
+        vino,
+        score: item.score,
+        motivo: item.motivo,
+        fuente: item.fuente,
+        compatible: item.compatible !== false,
+        rangoTicket: item.rangoTicket || rangoTicket,
+      }))))
+    }
+
+    const motorApiListo = grafoVenta?.consulta === consultaGrafoVenta && grafoVenta?.motor && !requiereCopa
+    const motorCentral = motorApiListo
+      ? grafoVenta.motor
+      : analizarMaridaje(esMesa ? consultas : consultaActiva, vinosParaMotor)
+    const itemsMotor = [
+      ...(motorCentral?.candidatos || []),
+      ...(motorCentral?.recomendados || []),
+    ]
+
     if (objetivoVenta === 'sucesion_copas' && esMesa) {
       const usadosIds = new Set()
       const copas = consultas.map((consulta, i) => {
-        const texto = normalizar(consulta)
-        const matchesKb = capitulosParaConsulta(texto)
-        const contexto = contextoVenta(texto)
         const plato = platosMesaVenta[i]
-        const candidatos = candidatosBase
-          .filter(v => !bloqueadoPorGoldstein(v) && !usadosIds.has(v.id))
-          .map(vino => {
-            const res = puntuarParaVenta(vino, matchesKb, objetivoVenta, precioMedio, contexto, texto, rangoTicket)
-            if (plato?.familias_aromaticas?.familias?.length) {
-              const { bonus, motivo: m } = bonusChartierFamilias(vino, plato.familias_aromaticas.familias)
-              res.score += bonus
-              if (m && bonus > 0) res.motivo = m
-            }
-            return aplicarPerfilCliente(aplicarGrafoChartier(res))
-          })
-          .filter(item => item.compatible && item.score >= 0)
-          .sort((a, b) => b.score - a.score)
+        const candidatos = analizarMaridaje(consulta, vinosParaMotor.filter(v => !usadosIds.has(v.id))).candidatos
+          .map(desdeMotorCentral)
+          .filter(item => item && item.compatible && item.score >= 0)
+          .sort((a, b) => {
+          if (prioridadJamonCurado) {
+            const diffPrioridad = prioridadEstiloJamon(a.vino) - prioridadEstiloJamon(b.vino)
+            if (diffPrioridad !== 0) return diffPrioridad
+          }
+          if (prioridadCarneTicket) {
+            const diffPrioridad = prioridadEstiloCarneRoja(a.vino, consultas) - prioridadEstiloCarneRoja(b.vino, consultas)
+            if (diffPrioridad !== 0) return diffPrioridad
+          }
+          return b.score - a.score
+        })
         const elegido = candidatos[0]
         if (!elegido) return null
         const platoNombre = plato?.nombre || consulta.split('(')[0].trim()
@@ -1247,55 +1646,28 @@ export default function Camarero({ params }) {
       return copas
     }
 
-    const puntuados = candidatosBase
-      .map(vino => {
-        if (!esMesa) {
-          const contexto = contextoVenta(consultaNormalizada)
-          const matchesKb = capitulosParaConsulta(consultaNormalizada)
-          const resultado = puntuarParaVenta(vino, matchesKb, objetivoVenta, precioMedio, contexto, consultaNormalizada, rangoTicket)
-          // ── Bonus Chartier desde familias_aromaticas del plato ────────────
-          const platoActual = platosMesaVenta[0]
-          if (platoActual?.familias_aromaticas?.familias?.length) {
-            const { bonus, motivo: motivoChartier, riesgos } = bonusChartierFamilias(vino, platoActual.familias_aromaticas.familias)
-            resultado.score += bonus
-            if (motivoChartier && bonus > 0) resultado.motivo = motivoChartier
-            if (riesgos?.length && bonus < 0) resultado.motivo = riesgos[0]
-          }
-          return aplicarPerfilCliente(aplicarGrafoChartier(resultado))
-        }
-
-        const parciales = consultas.map((consulta, i) => {
-          const texto = normalizar(consulta)
-          const resultado = puntuarParaVenta(vino, capitulosParaConsulta(texto), objetivoVenta, precioMedio, contextoVenta(texto), texto, rangoTicket)
-          // ── Bonus Chartier por plato individual de la mesa ────────────────
-          const plato = platosMesaVenta[i]
-          if (plato?.familias_aromaticas?.familias?.length) {
-            const { bonus, motivo: motivoChartier } = bonusChartierFamilias(vino, plato.familias_aromaticas.familias)
-            resultado.score += bonus
-            if (motivoChartier && bonus > 0) resultado.motivo = motivoChartier
-          }
-          return resultado
-        })
-        const incompatibles = parciales.filter(item => !item.compatible)
-        const scoreBase = parciales.reduce((sum, item) => sum + item.score, 0) / parciales.length
-        const mejorParcial = parciales.sort((a, b) => b.score - a.score)[0]
-        const penalizacionMesa = incompatibles.length * 45
-        const compatible = incompatibles.length === 0
-
-        return aplicarPerfilCliente(aplicarGrafoChartier({
-          vino,
-          score: scoreBase - penalizacionMesa,
-          motivo: compatible
-            ? motivoMesaVenta(vino, consultas.length, consultaNormalizada)
-            : `encaja con parte de la mesa, pero tiene conflicto con ${incompatibles.length} plato${incompatibles.length > 1 ? 's' : ''}`,
-          fuente: compatible ? 'Modo mesa: compatibilidad transversal' : mejorParcial.fuente,
-          compatible,
-          rangoTicket,
-          ticketComida,
-        }))
+    const vistosMotor = new Set()
+    const puntuados = itemsMotor
+      .map(desdeMotorCentral)
+      .filter(Boolean)
+      .filter(item => {
+        const clave = String(item.vino.id || item.vino.nombre)
+        if (vistosMotor.has(clave)) return false
+        vistosMotor.add(clave)
+        return item.compatible
       })
-      .filter(item => !bloqueadoPorGoldstein(item.vino))
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => {
+        if (prioridadJamonCurado) {
+          const diffPrioridad = prioridadEstiloJamon(a.vino) - prioridadEstiloJamon(b.vino)
+          if (diffPrioridad !== 0) return diffPrioridad
+        }
+        if (prioridadCarneTicket) {
+          const diffPrioridad = prioridadEstiloCarneRoja(a.vino, consultas) - prioridadEstiloCarneRoja(b.vino, consultas)
+          if (diffPrioridad !== 0) return diffPrioridad
+        }
+        return b.score - a.score
+      })
+
     const semilla = `${consultaNormalizada}-${objetivoVenta}-${rotacionVenta}`
 
     const usados = new Set()
@@ -1311,13 +1683,16 @@ export default function Camarero({ params }) {
       const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
       return esGenerosoSeco(vino, textoVino) || esEspumosoSeco(vino, textoVino)
     }
+    const esUpsellTicket = vino => precioBotella(vino) >= umbralUpsell
+    const esPremiumTicket = vino => precioBotella(vino) >= umbralPremium
+    const esEstiloPreferenteTicket = vino => !prioridadCarneTicket || prioridadEstiloCarneRoja(vino, consultas) <= 2
     const registrarUso = vino => {
       usados.add(vino.id)
       if (vino.bodega) bodegasUsadas.add(vino.bodega)
       if (vino.tipo) tiposUsados.add(vino.tipo)
     }
-    const elegir = (label, filtroPrecio) => {
-      const candidatos = puntuados.filter(item => item.compatible && item.score >= 6 && !usados.has(item.vino.id) && filtroPrecio(item.vino))
+    const elegir = (label, filtroPrecio, opciones = {}) => {
+      const candidatos = puntuados.filter(item => item.compatible && item.score >= 0 && !usados.has(item.vino.id) && filtroPrecio(item.vino))
       if (!candidatos.length) return null
 
       const mejorScore = candidatos[0].score
@@ -1325,9 +1700,13 @@ export default function Camarero({ params }) {
       const grupoBueno = candidatos.filter(item => mejorScore - item.score <= margen)
       const grupoTipoDiverso = grupoBueno.filter(item => !item.vino.tipo || !tiposUsados.has(item.vino.tipo))
       const grupoBodegaDiverso = grupoTipoDiverso.filter(item => !item.vino.bodega || !bodegasUsadas.has(item.vino.bodega))
-      const grupoElegible = grupoBodegaDiverso.length ? grupoBodegaDiverso : grupoTipoDiverso.length ? grupoTipoDiverso : grupoBueno
+      const grupoElegible = opciones.sinDiversidad
+        ? grupoBueno
+        : grupoBodegaDiverso.length ? grupoBodegaDiverso : grupoTipoDiverso.length ? grupoTipoDiverso : grupoBueno
       const desplazamiento = rotacionVenta + Math.abs(hashTexto(label)) % Math.max(grupoElegible.length, 1)
-      const elegido = elegirConRotacion(grupoElegible, `${semilla}-${label}`, desplazamiento)
+      const elegido = opciones.sinRotacion
+        ? grupoElegible[0]
+        : elegirConRotacion(grupoElegible, `${semilla}-${label}`, desplazamiento)
       if (!elegido) return null
       registrarUso(elegido.vino)
       return { ...elegido, label, rangoTicket, ticketComida, objetivo: objetivoVenta }
@@ -1337,11 +1716,35 @@ export default function Camarero({ params }) {
     const agregar = item => {
       if (item && lista.length < 3) lista.push(item)
     }
-    if (tienePerfilClienteActivo()) agregar(elegir('Perfil cliente', () => true))
-    if (lista.length < 3) agregar(elegir('Facil de vender', vino => precioBotella(vino) <= Math.max(30, rangoTicket.ideal) && precioBotella(vino) >= Math.max(14, rangoTicket.min * 0.75)))
-    if (lista.length < 3 && requiereSalinoBurbuja) agregar(elegir('Salino / burbuja', esVinoSalinoOBurbuja))
-    if (lista.length < 3) agregar(elegir('Recomendado', () => true))
-    if (lista.length < 3) agregar(elegir('Premium', vino => precioBotella(vino) >= Math.max(35, rangoTicket.ideal, rangoTicket.max * 0.9)))
+    if (prioridadJamonCurado) {
+      agregar(elegir('Jamon curado', esVinoSalinoOBurbuja, { sinDiversidad: true, sinRotacion: true }))
+      if (lista.length < 3) agregar(elegir('Salino / burbuja', esVinoSalinoOBurbuja, { sinDiversidad: true, sinRotacion: true }))
+      if (lista.length < 3) agregar(elegir('Recomendado', () => true, { sinRotacion: true }))
+    } else if (objetivoVenta === 'ticket') {
+      agregar(elegir('Subir ticket', vino => esUpsellTicket(vino) && esEstiloPreferenteTicket(vino), { sinDiversidad: true, sinRotacion: true }))
+      if (lista.length < 3) agregar(elegir('Premium compatible', vino => esPremiumTicket(vino), { sinDiversidad: true, sinRotacion: true }))
+      if (lista.length < 3) agregar(elegir('Ticket seguro', esUpsellTicket, { sinDiversidad: true, sinRotacion: true }))
+      if (lista.length < 3) agregar(elegir('Mejor maridaje', () => true, { sinDiversidad: true, sinRotacion: true }))
+    } else if (objetivoVenta === 'copas') {
+      agregar(elegir('Mejor copa', () => true, { sinDiversidad: true, sinRotacion: true }))
+      if (tienePerfilClienteActivo()) agregar(elegir('Perfil cliente', () => true))
+      if (lista.length < 3 && requiereSalinoBurbuja) agregar(elegir('Salino / burbuja', esVinoSalinoOBurbuja))
+      if (lista.length < 3) agregar(elegir('Alternativa por copa', () => true))
+    } else if (objetivoVenta === 'rotar') {
+      agregar(elegir('Rotar stock', vino => Number(vino.stock) > 3, { sinDiversidad: true }))
+      if (lista.length < 3) agregar(elegir('Mejor maridaje', () => true, { sinRotacion: true }))
+      if (lista.length < 3) agregar(elegir('Alternativa compatible', () => true))
+    } else if (objetivoVenta === 'local') {
+      agregar(elegir('Vino local', esVinoDeZona, { sinDiversidad: true, sinRotacion: true }))
+      if (lista.length < 3) agregar(elegir('Mejor maridaje local', esVinoDeZona))
+      if (lista.length < 3) agregar(elegir('Alternativa compatible', () => true))
+    } else {
+      agregar(elegir('Mejor maridaje', () => true, { sinDiversidad: true, sinRotacion: true }))
+      if (tienePerfilClienteActivo()) agregar(elegir('Perfil cliente', () => true))
+      if (lista.length < 3 && requiereSalinoBurbuja) agregar(elegir('Salino / burbuja', esVinoSalinoOBurbuja))
+      if (lista.length < 3) agregar(elegir('Alternativa compatible', () => true))
+      if (lista.length < 3) agregar(elegir('Premium compatible', vino => precioBotella(vino) >= umbralUpsell))
+    }
 
     const objetivo = Math.min(3, puntuados.filter(item => item.compatible).length)
     const restantes = puntuados.filter(item => item.compatible && !usados.has(item.vino.id))
@@ -1370,22 +1773,17 @@ export default function Camarero({ params }) {
 
   function calcularPlatosParaVinoMandato() {
     if (!vinoMandatoVenta) return []
-    const precioMedio = precioMedioVinosVenta()
-    const rangoTicket = rangoBotellaParaTicket(Number(vinoMandatoVenta.precio_botella) || 0, precioMedio)
     const candidatos = platosVenta
       .map(plato => {
         const consulta = consultaDesdePlato(plato)
-        const texto = normalizar(consulta)
-        const contexto = contextoVenta(texto)
-        const resultado = puntuarParaVenta(
-          vinoMandatoVenta,
-          capitulosParaConsulta(texto),
-          'vino_manda',
-          precioMedio,
-          contexto,
-          texto,
-          rangoTicket
-        )
+        const analisis = analizarMaridaje(consulta, [vinoMandatoVenta])
+        const resultado = analisis.candidatos?.[0] || analisis.recomendados?.[0] || {
+          vino: vinoMandatoVenta,
+          score: -100,
+          compatible: false,
+          motivo: 'No encuentro un encaje suficientemente claro desde ArmonIA central.',
+          fuente: 'Motor ArmonIA central',
+        }
         if (plato?.familias_aromaticas?.familias?.length) {
           const { bonus, motivo: motivoChartier, riesgos } = bonusChartierFamilias(vinoMandatoVenta, plato.familias_aromaticas.familias)
           resultado.score += bonus
@@ -1461,7 +1859,12 @@ export default function Camarero({ params }) {
   }, [consultaGrafoVenta, vinosGrafoPayload])
 
   const tipos = useMemo(() => ['todos', ...new Set(vinos.map(v => v.tipo))], [vinos])
-  const recomendacionesVenta = autenticado && vistaServicio === 'venta' ? calcularRecomendacionesVenta() : []
+  const recomendacionesVentaBase = autenticado && vistaServicio === 'venta' ? calcularRecomendacionesVenta() : []
+  const recomendacionesVenta = recomendacionesVentaBase.map((item, index) => ({
+    ...item,
+    recommendation_id: idRecomendacionVenta(item, index),
+    grupo_recomendacion_id: grupoRecomendacionVenta(),
+  }))
   const sugerenciasPlatosVino = autenticado && vistaServicio === 'venta' && modoRecomendacionVenta === 'vino' ? calcularPlatosParaVinoMandato() : []
   const lecturaActual = autenticado && vistaServicio === 'venta' ? lecturaMesaVenta() : null
   const ticketActualVenta = autenticado ? ticketMesaVenta() : 0
@@ -1484,6 +1887,9 @@ export default function Camarero({ params }) {
     })
     .slice(0, 30)
   const recomendacionPrincipal = modoRecomendacionVenta === 'vino' ? null : recomendacionesVenta[0] || null
+  const recomendacionActivaVenta = modoRecomendacionVenta === 'vino'
+    ? null
+    : recomendacionesVenta.find(item => item.recommendation_id === recomendacionActivaId) || recomendacionPrincipal
   const ultimasSenales = historialVenta.slice(0, 4)
   const accionesRapidasVenta = [
     { key: 'vendida', label: 'Vendida', helper: 'Cuenta para rentabilidad' },
@@ -1491,6 +1897,9 @@ export default function Camarero({ params }) {
     { key: 'no_convence', label: 'No convenció', helper: 'Duda de sala' },
     { key: 'otra', label: 'Pidió otra', helper: 'Cambio de decisión' },
   ]
+  const formatoPrincipal = recomendacionActivaVenta ? formatoVentaParaVino(recomendacionActivaVenta.vino) : contextoServicio.formato
+  const precioUnidadPrincipal = recomendacionActivaVenta ? precioUnidadVenta(recomendacionActivaVenta.vino, formatoPrincipal) : 0
+  const importeRapidoEstimado = precioUnidadPrincipal * cantidadRapida
 
   const vinosFiltrados = useMemo(() => vinos.filter(v => {
     const matchBusqueda = !busqueda || busqueda.length < 2 ||
@@ -1514,6 +1923,8 @@ export default function Camarero({ params }) {
       restaurante_id: restaurante.id,
       tipo: 'recomendacion',
       detalle: JSON.stringify({
+        recommendation_id: item.recommendation_id,
+        grupo_recomendacion_id: item.grupo_recomendacion_id,
         origen: 'camarero',
         consulta: String(consulta || '').slice(0, 200),
         objetivo: objetivoVenta,
@@ -1533,6 +1944,19 @@ export default function Camarero({ params }) {
     })
   }, [autenticado, vistaServicio, modoRecomendacionVenta, restaurante?.id, recomendacionesVenta, objetivoVenta, perfilClienteVenta, rotacionVenta, consultaVenta, platosMesaVenta, salaToken])
 
+  useEffect(() => {
+    if (demoFocusAplicado.current || !demoActivo || !autenticado || !recomendacionesVenta.length) return
+    const focusDemo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_focus') === '1'
+    if (!focusDemo) return
+    demoFocusAplicado.current = true
+    const openTimer = setTimeout(() => setMostrarPlatosVenta(true), 0)
+    const focusTimer = setTimeout(() => irARecomendacionesServicio(), 450)
+    return () => {
+      clearTimeout(openTimer)
+      clearTimeout(focusTimer)
+    }
+  }, [demoActivo, autenticado, recomendacionesVenta.length])
+
   const cx = 150, cy = 150, r = 100
 
   if (loading) return (
@@ -1541,9 +1965,9 @@ export default function Camarero({ params }) {
     </div>
   )
 
-  if (restaurante && !puedeUsar(restaurante, 'modo_camarero')) return (
+  if (restaurante && !restaurante.sala_disponible) return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif', padding: 24, textAlign: 'center' }}>
-      <p style={{ fontSize: 11, color: '#666', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 8px' }}>Plan {nombrePlan(restaurante)}</p>
+      <p style={{ fontSize: 11, color: '#666', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 8px' }}>Carta Viva</p>
       <p style={{ fontSize: 26, fontWeight: 300, color: 'white', fontFamily: 'Georgia, serif', margin: '0 0 14px' }}>Modo camarero no incluido</p>
       <p style={{ maxWidth: 360, color: '#aaa', fontSize: 14, lineHeight: 1.5, margin: 0 }}>Este acceso queda reservado para el Plan Sala o Acompanado.</p>
     </div>
@@ -1781,6 +2205,11 @@ export default function Camarero({ params }) {
               </div>
 
               <div className={styles.panelBody}>
+                <div className={styles.serviceJourney} aria-label="Flujo de venta asistida">
+                  <span className={!hayConsultaVenta() ? styles.serviceJourneyActive : ''}><b>1</b>Escucha</span>
+                  <span className={hayConsultaVenta() && !recomendacionesVenta.length ? styles.serviceJourneyActive : ''}><b>2</b>Recomienda</span>
+                  <span className={recomendacionesVenta.length ? styles.serviceJourneyActive : ''}><b>3</b>Registra</span>
+                </div>
                 <div className={styles.recommendModeTabs} role="tablist" aria-label="Modo de recomendacion">
                   <button
                     type="button"
@@ -2027,10 +2456,20 @@ export default function Camarero({ params }) {
                 )}
                   </>
                 )}
+
+                {recomendacionesVenta.length > 0 && (
+                  <button type="button" onClick={irARecomendacionesServicio} className={styles.resultShortcut}>
+                    <span>
+                      <strong>{recomendacionesVenta.length} opciones listas</strong>
+                      <small>Ver argumento de venta y registrar resultado</small>
+                    </span>
+                    <b>Continuar →</b>
+                  </button>
+                )}
               </div>
             </aside>
 
-            <section className={styles.panelDark}>
+            <section className={styles.panelDark} id="recomendaciones-servicio">
               <div className={styles.panelHeader}>
                 <div>
                   <p className={styles.eyebrow}>Recomendación</p>
@@ -2059,17 +2498,17 @@ export default function Camarero({ params }) {
                   </div>
                 )}
 
-                {recomendacionPrincipal && (
+                {recomendacionActivaVenta && (
                   <section className={styles.quickServicePanel} aria-label="Acciones rápidas de servicio">
                     <div className={styles.quickServiceHead}>
                       <div>
                         <p className={styles.sectionLabel} style={{ margin: 0 }}>Ahora en mesa</p>
-                        <h3>{recomendacionPrincipal.vino.nombre}</h3>
+                        <h3>{recomendacionActivaVenta.vino.nombre}</h3>
                         <p>
                           {[
-                            tipoLabel[recomendacionPrincipal.vino.tipo],
-                            recomendacionPrincipal.vino.bodega,
-                            recomendacionPrincipal.vino.precio_botella ? `${Number(recomendacionPrincipal.vino.precio_botella).toFixed(0)} EUR` : null,
+                            tipoLabel[recomendacionActivaVenta.vino.tipo],
+                            recomendacionActivaVenta.vino.bodega,
+                            recomendacionActivaVenta.vino.precio_botella ? `${Number(recomendacionActivaVenta.vino.precio_botella).toFixed(0)} EUR` : null,
                           ].filter(Boolean).join(' · ')}
                         </p>
                       </div>
@@ -2079,13 +2518,70 @@ export default function Camarero({ params }) {
                         <button type="button" onClick={() => setCantidadRapida(cantidadRapida + 1)} aria-label="Sumar cantidad">+</button>
                       </div>
                     </div>
+                    <div className={styles.quickChoiceBlock}>
+                      <div className={styles.quickChoiceHeader}>
+                        <span>Vino que se registra</span>
+                        <strong>{recomendacionActivaVenta.label}</strong>
+                      </div>
+                      <div className={styles.quickRecommendationTabs} aria-label="Elegir vino para registrar">
+                      {recomendacionesVenta.map((item, index) => {
+                        const activo = item.recommendation_id === recomendacionActivaVenta.recommendation_id
+                        return (
+                          <button
+                            key={item.recommendation_id || item.vino.id || item.label}
+                            type="button"
+                            className={activo ? styles.quickRecommendationActive : styles.quickRecommendationTab}
+                            onClick={() => elegirRecomendacionParaFicha(item.recommendation_id)}
+                          >
+                            <span>{index + 1}. {item.label}</span>
+                            <strong>{item.vino.nombre}</strong>
+                          </button>
+                        )
+                      })}
+                      </div>
+                    </div>
+                    {recomendacionActivaVenta.senalSala?.visible && (
+                      <div className={`${styles.quickSalesSignal} ${styles[`quickSalesSignal_${recomendacionActivaVenta.senalSala.tipo}`] || ''}`}>
+                        <span>Sala</span>
+                        <strong>{recomendacionActivaVenta.senalSala.label}</strong>
+                        <p>{recomendacionActivaVenta.senalSala.texto}</p>
+                      </div>
+                    )}
+                    <div className={styles.serviceContextGrid}>
+                      <label>
+                        <span>Formato</span>
+                        <select value={formatoPrincipal} onChange={e => actualizarContextoServicio('formato', e.target.value)}>
+                          <option value="botella">Botella</option>
+                          <option value="copa" disabled={!Number(recomendacionActivaVenta.vino.precio_copa)}>Copa</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>Camarero</span>
+                        <input value={contextoServicio.camarero} onChange={e => actualizarContextoServicio('camarero', e.target.value)} placeholder="Nombre" />
+                      </label>
+                      <label>
+                        <span>Mesa</span>
+                        <input value={contextoServicio.mesa} onChange={e => actualizarContextoServicio('mesa', e.target.value)} placeholder="12" />
+                      </label>
+                      <label>
+                        <span>Comensales</span>
+                        <input inputMode="numeric" value={contextoServicio.comensales} onChange={e => actualizarContextoServicio('comensales', e.target.value)} placeholder="2" />
+                      </label>
+                      <label>
+                        <span>Ticket mesa</span>
+                        <input inputMode="decimal" value={contextoServicio.ticket_mesa} onChange={e => actualizarContextoServicio('ticket_mesa', e.target.value)} placeholder="86" />
+                      </label>
+                      <p className={styles.serviceContextTotal}>
+                        {importeRapidoEstimado > 0 ? `${importeRapidoEstimado.toFixed(2)} EUR vino` : 'Sin precio'}
+                      </p>
+                    </div>
                     <div className={styles.quickActionGrid}>
                       {accionesRapidasVenta.map(accion => (
                         <button
                           key={accion.key}
                           type="button"
                           className={accion.key === 'vendida' ? styles.quickActionPrimary : styles.quickAction}
-                          onClick={() => registrarFeedbackVenta(recomendacionPrincipal.vino, accion.key, 'rápida', cantidadRapida)}
+                          onClick={() => registrarFeedbackVenta(recomendacionActivaVenta.vino, accion.key, recomendacionActivaVenta.label, cantidadRapida)}
                         >
                           <strong>{accion.label}</strong>
                           <span>{accion.helper}</span>
@@ -2141,6 +2637,8 @@ export default function Camarero({ params }) {
                         tipoLabel={tipoLabel}
                         fraseVenta={fraseVenta}
                         onSelect={setVinoSeleccionado}
+                        onChoose={id => elegirRecomendacionParaFicha(id, { scroll: true })}
+                        isSelected={item.recommendation_id === recomendacionActivaVenta?.recommendation_id}
                         onFeedback={registrarFeedbackVenta}
                         feedbackVenta={feedbackVenta}
                         consultaVenta={consultaVentaActiva()}
@@ -2410,6 +2908,8 @@ export default function Camarero({ params }) {
                 tipoLabel={tipoLabel}
                 fraseVenta={fraseVenta}
                 onSelect={setVinoSeleccionado}
+                onChoose={id => elegirRecomendacionParaFicha(id, { scroll: true })}
+                isSelected={item.recommendation_id === recomendacionActivaVenta?.recommendation_id}
                 onFeedback={registrarFeedbackVenta}
                 feedbackVenta={feedbackVenta}
                 consultaVenta={consultaVentaActiva()}
@@ -2464,8 +2964,8 @@ export default function Camarero({ params }) {
   )
 }
 
-function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, onFeedback, feedbackVenta, consultaVenta }) {
-  const { vino, label, motivo, aprendizaje, rangoTicket, ticketComida } = item
+function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, onChoose, isSelected, onFeedback, feedbackVenta, consultaVenta }) {
+  const { vino, label, motivo, aprendizaje, rangoTicket, ticketComida, senalSala } = item
   const stockCritico = vino.stock > 0 && vino.stock <= 3
   const ajusteAprendido = aprendizaje && Math.abs(aprendizaje.ajuste) >= 2.5
   const esPorCopas = item.objetivo === 'copas' || item.objetivo === 'sucesion_copas'
@@ -2489,10 +2989,22 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
     { key: 'agotado', label: 'Agotado' },
   ]
 
+  const elegirParaFicha = () => onChoose?.(item.recommendation_id)
+
   const tarjetaVentaCompacta = true
   if (tarjetaVentaCompacta) return (
-    <article className={styles.recommendCard}>
-      <div onClick={() => onSelect(vino)} className={styles.recommendClick}>
+    <article
+      className={`${styles.recommendCard} ${isSelected ? styles.recommendCardActive : ''}`}
+      onClick={elegirParaFicha}
+      onKeyDown={event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          elegirParaFicha()
+        }
+      }}
+      tabIndex={0}
+    >
+      <div className={styles.recommendClick}>
         <div className={styles.recommendMeta}>
           <span className={styles.tag}>
             <span className={styles.dot} style={{ background: tipoDot[vino.tipo] || '#666' }} />
@@ -2502,7 +3014,34 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         </div>
         <h3 className={styles.wineName}>{vino.nombre}</h3>
         <p className={styles.wineInfo}>{resumenVenta}</p>
+        <button
+          type="button"
+          className={isSelected ? styles.pickWineActive : styles.pickWineButton}
+          onClick={event => {
+            event.stopPropagation()
+            elegirParaFicha()
+          }}
+        >
+          {isSelected ? 'Seleccionado para registrar' : 'Registrar este vino'}
+        </button>
+        <button
+          type="button"
+          className={styles.viewWineButton}
+          onClick={event => {
+            event.stopPropagation()
+            onSelect(vino)
+          }}
+        >
+          Ver detalle
+        </button>
         <p className={styles.reason}>{fraseVenta(vino, motivo)}</p>
+        {senalSala?.visible && (
+          <div className={`${styles.salesSignal} ${styles[`salesSignal_${senalSala.tipo}`] || ''}`}>
+            <span>Sala</span>
+            <strong>{senalSala.label}</strong>
+            <p>{senalSala.texto}</p>
+          </div>
+        )}
         {item.chartierGrafo && (
           <p className={styles.statusLine} style={{ color: chartierDirecto ? '#1f7a61' : '#6f767d' }}>
             {chartierDirecto ? 'Chartier directo' : 'Chartier por familia aromatica'}
@@ -2526,7 +3065,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         )}
       </div>
 
-      <div className={styles.feedbackActions}>
+      <div className={styles.feedbackActions} onClick={event => event.stopPropagation()}>
         <button
           type="button"
           onClick={() => onFeedback(vino, 'vendida', label)}

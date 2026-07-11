@@ -142,6 +142,48 @@
   padding: 14px 16px 16px;
 }
 
+.serviceJourney {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.serviceJourney span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #d9ded7;
+  border-radius: 7px;
+  background: #eef1ed;
+  color: #747a80;
+  padding: 7px 8px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.serviceJourney b {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #d8ddd7;
+  color: #5e666d;
+  font-size: 9px;
+}
+
+.serviceJourney .serviceJourneyActive {
+  border-color: #17191d;
+  background: #17191d;
+  color: #ffffff;
+}
+
+.serviceJourneyActive b {
+  background: #1f7a61;
+  color: #ffffff;
+}
+
 .field {
   width: 100%;
   box-sizing: border-box;
@@ -326,6 +368,7 @@
   cursor: pointer;
   padding: 8px 10px;
   font-size: 12px;
+  line-height: 1.15;
   font-weight: 750;
 }
 
@@ -339,6 +382,42 @@
   color: #687078;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.resultShortcut {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #1f7a61;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.resultShortcut span {
+  display: grid;
+  gap: 3px;
+}
+
+.resultShortcut strong {
+  font-size: 12px;
+}
+
+.resultShortcut small {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+}
+
+.resultShortcut > b {
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .wineFirstBox {
@@ -708,6 +787,188 @@
   font-size: 16px;
 }
 
+.quickChoiceBlock {
+  margin-top: 12px;
+  border: 1px solid rgba(247, 247, 242, 0.12);
+  border-radius: 8px;
+  background: rgba(16, 19, 24, 0.72);
+  padding: 10px;
+}
+
+.quickChoiceHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.quickChoiceHeader span {
+  color: #8f98a3;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.quickChoiceHeader strong {
+  color: #ffffff;
+  font-size: 11px;
+  text-align: right;
+}
+
+.quickRecommendationTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.quickRecommendationTab,
+.quickRecommendationActive {
+  min-height: 54px;
+  border: 1px solid #343b44;
+  border-radius: 8px;
+  background: #101318;
+  color: #dfe3dc;
+  cursor: pointer;
+  padding: 8px;
+  text-align: left;
+}
+
+.quickRecommendationActive {
+  border-color: #1f7a61;
+  background: #1f7a61;
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16) inset;
+}
+
+.quickRecommendationTab span,
+.quickRecommendationActive span,
+.quickRecommendationTab strong,
+.quickRecommendationActive strong {
+  display: block;
+}
+
+.quickRecommendationTab span,
+.quickRecommendationActive span {
+  color: rgba(247, 247, 242, 0.62);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.quickRecommendationTab strong,
+.quickRecommendationActive strong {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.quickSalesSignal {
+  margin-top: 10px;
+  border: 1px solid rgba(31, 122, 97, 0.34);
+  border-radius: 8px;
+  background: rgba(31, 122, 97, 0.14);
+  color: #dff5eb;
+  padding: 9px 10px;
+}
+
+.quickSalesSignal span,
+.salesSignal span {
+  display: block;
+  color: inherit;
+  opacity: 0.68;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.quickSalesSignal strong,
+.salesSignal strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.quickSalesSignal p,
+.salesSignal p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.quickSalesSignal_duda,
+.quickSalesSignal_medir {
+  border-color: rgba(188, 140, 42, 0.38);
+  background: rgba(188, 140, 42, 0.14);
+  color: #f5dfb8;
+}
+
+.quickSalesSignal_stock {
+  border-color: rgba(185, 74, 72, 0.42);
+  background: rgba(185, 74, 72, 0.14);
+  color: #ffd8d3;
+}
+
+.serviceContextGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 0.8fr 0.9fr 1fr auto;
+  gap: 7px;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.serviceContextGrid label {
+  min-width: 0;
+}
+
+.serviceContextGrid span {
+  display: block;
+  margin-bottom: 4px;
+  color: #8f98a3;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.serviceContextGrid input,
+.serviceContextGrid select {
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  border: 1px solid #343b44;
+  border-radius: 8px;
+  background: #101318;
+  color: #ffffff;
+  padding: 8px 9px;
+  font-size: 12px;
+  font-weight: 750;
+  outline: none;
+}
+
+.serviceContextGrid input::placeholder {
+  color: #58616a;
+}
+
+.serviceContextTotal {
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  border-radius: 8px;
+  background: #f7f7f2;
+  color: #17191d;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
 .quickActionGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -795,11 +1056,21 @@
   border-radius: 8px;
   padding: 13px;
   box-sizing: border-box;
+  cursor: pointer;
+}
+
+.recommendCardActive {
+  border-color: #1f7a61;
+  box-shadow: inset 0 0 0 1px #1f7a61;
+}
+
+.recommendCard:focus-visible {
+  outline: 3px solid rgba(31, 122, 97, 0.28);
+  outline-offset: 2px;
 }
 
 .recommendClick {
   flex: 1;
-  cursor: pointer;
 }
 
 .recommendMeta {
@@ -850,11 +1121,72 @@
   line-height: 1.35;
 }
 
+.pickWineButton,
+.pickWineActive {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid #d9ded7;
+  border-radius: 8px;
+  background: #f7f7f2;
+  color: #555d65;
+  cursor: pointer;
+  padding: 6px 9px;
+  margin: 0 0 10px;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.pickWineActive {
+  border-color: #1f7a61;
+  background: #1f7a61;
+  color: #ffffff;
+}
+
+.viewWineButton {
+  width: 100%;
+  min-height: 28px;
+  border: 0;
+  background: transparent;
+  color: #6f767d;
+  cursor: pointer;
+  padding: 0 0 10px;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.viewWineButton:hover {
+  color: #17191d;
+}
+
 .reason {
   margin: 0;
   color: #3f454b;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.salesSignal {
+  margin-top: 10px;
+  border: 1px solid rgba(31, 122, 97, 0.28);
+  border-radius: 8px;
+  background: #edf8f3;
+  color: #125b45;
+  padding: 9px 10px;
+}
+
+.salesSignal_duda,
+.salesSignal_medir {
+  border-color: rgba(188, 140, 42, 0.3);
+  background: #fff7e5;
+  color: #7a5614;
+}
+
+.salesSignal_stock {
+  border-color: rgba(185, 74, 72, 0.28);
+  background: #fff0ee;
+  color: #8f2d2b;
 }
 
 .statusLine {
@@ -1210,12 +1542,40 @@
     grid-template-columns: 1fr;
   }
 
+  .quickRecommendationTabs {
+    grid-template-columns: 1fr;
+  }
+
   .quickStepper {
     grid-template-columns: 44px minmax(54px, 1fr) 44px;
   }
 
+  .serviceContextGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .serviceContextTotal {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
   .quickActionGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .serviceJourney span {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    padding: 7px 3px;
+    text-align: center;
+  }
+
+  .resultShortcut {
+    position: sticky;
+    bottom: 10px;
+    z-index: 8;
+    box-shadow: 0 12px 28px rgba(23, 25, 29, 0.2);
   }
 
   .wineRow {

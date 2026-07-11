@@ -20,10 +20,25 @@
  */
 
 const { createClient } = require('@supabase/supabase-js')
+const fs = require('fs')
+const path = require('path')
 
 // ── Config ────────────────────────────────────────────────────
 // Carga desde variables de entorno o .env.local
-require('dotenv').config({ path: '.env.local' })
+try {
+  require('dotenv').config({ path: '.env.local' })
+} catch {
+  const envPath = path.join(process.cwd(), '.env.local')
+  if (fs.existsSync(envPath)) {
+    for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+      const match = line.match(/^([^#=]+)=(.*)$/)
+      if (!match) continue
+      const key = match[1].trim()
+      const value = match[2].trim().replace(/^['"]|['"]$/g, '')
+      if (!process.env[key]) process.env[key] = value
+    }
+  }
+}
 const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_KEY   = process.env.SUPABASE_SERVICE_ROLE_KEY
 const DEMO_EMAIL    = 'demo@taberna-del-puerto.com'
@@ -68,6 +83,7 @@ const RESTAURANTE = {
   subscription_status: 'active',
   subscription_ends_at: '2027-06-01T00:00:00Z',
   ticket_medio_comida: 38,
+  actividad_real_desde: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
 
   // Branding
   color_primario: '#3D2B1F',   // marrón oscuro cálido
@@ -93,6 +109,7 @@ const RESTAURANTE = {
 
   // Camarero
   camarero_pin: '2847',
+  camarero_pin_hash: null,
 }
 
 // ── 2. VINOS ──────────────────────────────────────────────────
@@ -468,29 +485,55 @@ async function main() {
 
   // ── 5.1 Limpiar datos anteriores ──────────────────────────
   console.log('🧹  Limpiando datos anteriores del demo...')
+  async function limpiarTabla(tabla, restId) {
+    const { error } = await supabase.from(tabla).delete().eq('restaurante_id', restId)
+    if (error && !/Could not find the table|schema cache|does not exist/i.test(error.message || '')) {
+      console.warn(`   ⚠ ${tabla}: ${error.message}`)
+    }
+  }
+
   const { data: existing } = await supabase
     .from('restaurantes')
-    .select('id')
-    .eq('email', DEMO_EMAIL)
+    .select('*')
+    .or(`email.eq.${DEMO_EMAIL},slug.eq.${DEMO_SLUG}`)
     .maybeSingle()
 
   if (existing) {
     const restId = existing.id
-    await supabase.from('estadisticas').delete().eq('restaurante_id', restId)
-    await supabase.from('movimientos_stock').delete().eq('restaurante_id', restId)
-    await supabase.from('platos').delete().eq('restaurante_id', restId)
-    await supabase.from('vinos').delete().eq('restaurante_id', restId)
-    await supabase.from('restaurante_links').delete().eq('restaurante_id', restId)
-    await supabase.from('consultor_propuestas').delete().eq('restaurante_id', restId)
-    await supabase.from('restaurantes').delete().eq('id', restId)
+    await limpiarTabla('estadisticas', restId)
+    await limpiarTabla('movimientos_stock', restId)
+    await limpiarTabla('restaurante_links', restId)
+    await limpiarTabla('consultor_propuestas', restId)
+    await limpiarTabla('seleccion_especial', restId)
+    await limpiarTabla('alerts', restId)
+    await limpiarTabla('alert_history', restId)
+    await limpiarTabla('recommendations', restId)
+    await limpiarTabla('kpi_history', restId)
+    await limpiarTabla('wine_performance', restId)
+    await limpiarTabla('wine_classifications', restId)
+    await limpiarTabla('inventory_snapshot_items', restId)
+    await limpiarTabla('inventory_snapshots', restId)
+    await limpiarTabla('wine_list_snapshot_items', restId)
+    await limpiarTabla('wine_list_snapshots', restId)
+    await limpiarTabla('btg_candidates', restId)
+    await limpiarTabla('btg_snapshots', restId)
+    await limpiarTabla('consultant_action_items', restId)
+    await limpiarTabla('consultant_diagnostics', restId)
+    await limpiarTabla('opportunity_items', restId)
+    await limpiarTabla('opportunity_snapshots', restId)
+    await limpiarTabla('cierres_servicio', restId)
+    await limpiarTabla('sugerencias', restId)
+    await limpiarTabla('platos', restId)
+    await limpiarTabla('vinos', restId)
     console.log('   ✓ Datos anteriores eliminados\n')
   }
 
   // ── 5.2 Crear restaurante ─────────────────────────────────
   console.log('🏠  Creando restaurante...')
-  const { data: rest, error: errRest } = await supabase
-    .from('restaurantes')
-    .insert(RESTAURANTE)
+  const queryRestaurante = existing
+    ? supabase.from('restaurantes').update(RESTAURANTE).eq('id', existing.id)
+    : supabase.from('restaurantes').insert(RESTAURANTE)
+  const { data: rest, error: errRest } = await queryRestaurante
     .select()
     .single()
 

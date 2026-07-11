@@ -1,0 +1,227 @@
+.inputSuffix {
+  position: relative;
+}
+
+.inputSuffix input {
+  padding-right: 38px;
+}
+
+.inputSuffix > span {
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8b8278;
+  font-size: 13px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.simulator {
+  background:
+    radial-gradient(circle at 90% 15%, rgba(193, 154, 82, 0.17), transparent 30%),
+    #171416;
+}
+
+.simulator .inputSuffix > span {
+  color: #665f59;
+}
+
+.simulatorGrid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(360px, 1.2fr);
+  gap: 24px;
+  align-items: end;
+}
+
+.simulatorFields {
+  display: grid;
+  gap: 16px;
+}
+
+.results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.results article {
+  min-height: 126px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border: 1px solid rgba(255, 250, 243, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.06);
+  padding: 18px;
+}
+
+.results article > span,
+.results article > strong,
+.results article > small {
+  display: block;
+}
+
+.results span,
+.results small {
+  color: rgba(255, 250, 243, 0.58);
+  font-size: 11px;
+}
+
+.results strong {
+  margin: 8px 0 5px;
+  color: #fffaf3;
+  font-family: Georgia, serif;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 500;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 220px;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.notice {
+  border: 1px solid #d8c898;
+  border-radius: 8px;
+  background: #f8f4ea;
+  color: #531827;
+  padding: 11px 13px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.priceList {
+  display: grid;
+  gap: 8px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.pageTabs {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pageButton,
+.pageActive {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.pageButton {
+  border: 1px solid #dfddd6;
+  background: #fff;
+  color: #5b5550;
+}
+
+.pageActive {
+  border: 1px solid #531827;
+  background: #531827;
+  color: #fffaf3;
+}
+
+.priceRow {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.25fr) minmax(145px, 0.8fr) minmax(145px, 0.8fr) auto;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid #e4dfd6;
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.wineIdentity,
+.comparison {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wineIdentity strong,
+.comparison strong {
+  color: #171416;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.wineIdentity span,
+.comparison span,
+.comparison small {
+  color: #817971;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.wineIdentity span {
+  margin-top: 4px;
+}
+
+.comparison strong {
+  margin: 3px 0;
+}
+
+.comparison small[data-tone='up'] {
+  color: #9b7430;
+}
+
+.comparison small[data-tone='down'] {
+  color: #b85454;
+}
+
+.comparison small[data-tone='ok'] {
+  color: #4a8c6f;
+}
+
+@media (max-width: 820px) {
+  .simulatorGrid,
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .priceRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wineIdentity {
+    grid-column: 1 / -1;
+  }
+
+  .priceRow button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .results,
+  .priceRow {
+    grid-template-columns: 1fr;
+  }
+
+  .wineIdentity,
+  .priceRow button {
+    grid-column: auto;
+  }
+
+  .pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

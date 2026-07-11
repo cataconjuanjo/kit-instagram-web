@@ -141,6 +141,7 @@ export default function CierreServicio() {
   const [restaurante, setRestaurante] = useState(null)
   const [vinos, setVinos] = useState([])
   const [eventos, setEventos] = useState([])
+  const [recomendaciones, setRecomendaciones] = useState([])
   const [ocultos, setOcultos] = useState([])
   const [turnoCerrado, setTurnoCerrado] = useState(false)
   const [sustitutoCopiado, setSustitutoCopiado] = useState('')
@@ -157,7 +158,7 @@ export default function CierreServicio() {
       if (rest) {
         setRestaurante(rest)
         const ventanaDia = await resolverVentanaDiaOperativo(supabase, rest, { tipo: 'venta' })
-        const [{ data: vinosData }, { data: statsData }] = await Promise.all([
+        const [{ data: vinosData }, { data: statsData }, { data: recomendacionesData }] = await Promise.all([
           supabase.from('vinos').select('*').eq('restaurante_id', rest.id),
           aplicarVentana(
             supabase
@@ -167,11 +168,24 @@ export default function CierreServicio() {
               .eq('tipo', 'venta')
               .order('created_at', { ascending: false }),
             ventanaDia
+          ),
+          aplicarVentana(
+            supabase
+              .from('estadisticas')
+              .select('*')
+              .eq('restaurante_id', rest.id)
+              .eq('tipo', 'recomendacion')
+              .order('created_at', { ascending: false }),
+            ventanaDia
           )
         ])
         const eventosParseados = (statsData || []).map(item => ({ ...item, parsed: leerDetalle(item.detalle) }))
+        const recomendacionesParseadas = (recomendacionesData || [])
+          .map(item => ({ ...item, parsed: leerDetalle(item.detalle) }))
+          .filter(item => item.parsed?.recommendation_id || item.parsed?.vino_id || item.parsed?.vino)
         setVinos(vinosData || [])
         setEventos(eventosParseados)
+        setRecomendaciones(recomendacionesParseadas)
         if (typeof window !== 'undefined') {
           try {
             const locales = JSON.parse(window.localStorage.getItem(claveCierreDia(rest.id)) || '[]')
@@ -217,6 +231,23 @@ export default function CierreServicio() {
 
   const datos = useMemo(() => {
     const visibles = eventos.filter(evento => !ocultos.includes(evento.id))
+    const outcomesPorRecomendacion = new Set(
+      eventos
+        .map(evento => evento.parsed?.recommendation_id)
+        .filter(Boolean)
+        .map(String)
+    )
+    const recomendacionesUnicas = Object.values(recomendaciones.reduce((acc, evento) => {
+      const parsed = evento.parsed || {}
+      const clave = String(parsed.recommendation_id || `${parsed.vino_id || parsed.vino || 'vino'}-${evento.id}`)
+      if (!acc[clave]) acc[clave] = evento
+      return acc
+    }, {}))
+    const recomendacionesPendientes = recomendacionesUnicas.filter(evento => {
+      const parsed = evento.parsed || {}
+      const recId = String(parsed.recommendation_id || '')
+      return !ocultos.includes(`rec:${evento.id}`) && (!recId || !outcomesPorRecomendacion.has(recId))
+    })
     const incidencias = visibles.filter(evento => ['no_stock', 'agotado'].includes(evento.parsed?.resultado))
     const dudas = visibles.filter(evento => ['no_convence', 'otra'].includes(evento.parsed?.resultado))
     const vendidas = visibles.filter(evento => evento.parsed?.resultado === 'vendida')
@@ -238,8 +269,8 @@ export default function CierreServicio() {
       return acc
     }, {})).map(([, value]) => value).sort((a, b) => b.total - a.total)
 
-    return { visibles, incidencias, dudas, vendidas, porVino }
-  }, [eventos, ocultos])
+    return { visibles, recomendacionesPendientes, incidencias, dudas, vendidas, porVino }
+  }, [eventos, recomendaciones, ocultos])
 
   async function marcarStockCero(evento) {
     const vinoId = evento.parsed?.vino_id
@@ -297,9 +328,52 @@ export default function CierreServicio() {
     }
   }
 
+  async function guardarOutcomeRecomendacion(evento, resultado) {
+    if (!restaurante?.id || eventoProcesando) return
+    const parsed = evento.parsed || {}
+    const clave = `rec:${evento.id}`
+    setEventoProcesando(`${clave}:${resultado}`)
+    try {
+      const token = await tokenSesion()
+      if (!token) throw new Error('La sesion ha caducado. Vuelve a entrar.')
+      const res = await fetch('/api/recommendation-outcomes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          restaurante_id: restaurante.id,
+          recommendation_id: parsed.recommendation_id,
+          grupo_recomendacion_id: parsed.grupo_recomendacion_id,
+          resultado,
+          vino_id: parsed.vino_id,
+          vino: parsed.vino,
+          plato: parsed.consulta || parsed.plato,
+          recommendation_label: parsed.etiqueta || parsed.recommendation_label,
+          recommendation_position: parsed.posicion || parsed.recommendation_position,
+          formato_venta: parsed.formato_venta || 'desconocido',
+          importe_vino_estimado: parsed.precio || parsed.precio_recomendado || null,
+          cantidad: 1,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'No se pudo guardar el resultado.')
+      const nuevosEventos = (data.eventos_insertados || []).map(item => ({ ...item, parsed: leerDetalle(item.detalle) }))
+      if (nuevosEventos.length) setEventos(actuales => [...nuevosEventos, ...actuales])
+      await guardarOcultos([...new Set([...ocultos, clave])])
+      setMensajeCierre(resultado === 'vendida' ? 'Venta confirmada desde recomendacion' : 'Resultado de recomendacion guardado')
+    } catch (error) {
+      setMensajeCierre(error.message || 'No se pudo guardar el resultado.')
+    } finally {
+      setEventoProcesando('')
+    }
+  }
+
   async function cerrarTurno() {
     setConfirmarCierre(false)
-    const nuevos = [...new Set([...ocultos, ...datos.visibles.map(evento => evento.id)])]
+    const nuevos = [...new Set([
+      ...ocultos,
+      ...datos.visibles.map(evento => evento.id),
+      ...datos.recomendacionesPendientes.map(evento => `rec:${evento.id}`),
+    ])]
     await guardarOcultos(nuevos, true)
     setMensajeCierre('Turno cerrado')
   }
@@ -333,14 +407,23 @@ export default function CierreServicio() {
   if (loading) return <LoadingState />
   if (!restaurante) return null
 
+  const pendientesCierre = datos.visibles.length + datos.recomendacionesPendientes.length
+
   const acciones = [
+    datos.recomendacionesPendientes.length > 0 && `Validar ${datos.recomendacionesPendientes.length} recomendaciones sin resultado.`,
     datos.incidencias.length > 0 && `Aplicar o ignorar ${datos.incidencias.length} incidencias de stock.`,
     datos.dudas.length > 0 && `Revisar ${datos.dudas.length} dudas de sala: precio, argumento o alternativa.`,
     datos.vendidas.length > 0 && `Detectar vinos con tracción: ${datos.vendidas.length} ventas marcadas hoy.`,
-    datos.visibles.length === 0 && 'Sin señales de sala hoy. El cierre queda limpio.',
+    pendientesCierre === 0 && 'Sin señales de sala hoy. El cierre queda limpio.',
   ].filter(Boolean)
 
   const pasosCierre = [
+    {
+      titulo: 'Validar recomendaciones',
+      detalle: datos.recomendacionesPendientes.length ? `${datos.recomendacionesPendientes.length} recomendaciones sin resultado` : 'Sin recomendaciones pendientes',
+      hecho: datos.recomendacionesPendientes.length === 0,
+      href: '#recomendaciones',
+    },
     {
       titulo: 'Resolver incidencias de stock',
       detalle: datos.incidencias.length ? `${datos.incidencias.length} avisos pendientes` : 'Sin incidencias pendientes',
@@ -361,8 +444,8 @@ export default function CierreServicio() {
     },
     {
       titulo: 'Cerrar turno',
-      detalle: turnoCerrado || datos.visibles.length === 0 ? 'Turno revisado' : 'Guarda el cierre cuando no quieras ver más señales hoy',
-      hecho: turnoCerrado || datos.visibles.length === 0,
+      detalle: turnoCerrado || pendientesCierre === 0 ? 'Turno revisado' : 'Guarda el cierre cuando no quieras ver más señales hoy',
+      hecho: turnoCerrado || pendientesCierre === 0,
     },
   ]
   const pasosHechos = pasosCierre.filter(paso => paso.hecho).length
@@ -378,7 +461,7 @@ export default function CierreServicio() {
       actions={
         <>
           <Link href="/dashboard/bodega" className={styles.secondary}>Ir a bodega</Link>
-          {datos.visibles.length > 0 ? (
+          {pendientesCierre > 0 ? (
             <button type="button" className={styles.primary} onClick={() => setConfirmarCierre(true)}>Cerrar turno</button>
           ) : (
             <button type="button" className={styles.ghost} onClick={reabrirTurno}>Reabrir turno</button>
@@ -405,7 +488,7 @@ export default function CierreServicio() {
       <section className={styles.closeHero}>
         <div>
           <p className={styles.eyebrow}>Cierre guiado</p>
-          <h2>{turnoCerrado || datos.visibles.length === 0 ? 'Servicio limpio' : 'Quedan decisiones por resolver'}</h2>
+          <h2>{turnoCerrado || pendientesCierre === 0 ? 'Servicio limpio' : 'Quedan decisiones por resolver'}</h2>
           <p>Revisa señales de sala, ajusta stock cuando proceda y deja preparada la bodega para el siguiente turno.</p>
         </div>
         <div className={styles.closeHeroScore}>
@@ -416,28 +499,29 @@ export default function CierreServicio() {
 
       <section className={`${styles.statsGrid} ${styles.closeStats}`}>
         <div className={styles.stat}><p className={styles.statValue}>{datos.vendidas.length}</p><p className={styles.statLabel}>Ventas marcadas</p></div>
+        <div className={styles.stat}><p className={styles.statValue}>{datos.recomendacionesPendientes.length}</p><p className={styles.statLabel}>Reco. sin validar</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{datos.incidencias.length}</p><p className={styles.statLabel}>Incidencias stock</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{datos.dudas.length}</p><p className={styles.statLabel}>Dudas o cambios</p></div>
         <div className={styles.stat}><p className={styles.statValue}>{datos.visibles.length}</p><p className={styles.statLabel}>Señales pendientes</p></div>
       </section>
 
-      <section className={`${turnoCerrado || datos.visibles.length === 0 ? styles.panel : styles.panelDark} ${styles.closeProgressPanel}`} style={{ marginBottom: 16 }}>
+      <section className={`${turnoCerrado || pendientesCierre === 0 ? styles.panel : styles.panelDark} ${styles.closeProgressPanel}`} style={{ marginBottom: 16 }}>
         <div className={styles.panelHead}>
           <div>
-            <h2 className={styles.panelTitle}>{turnoCerrado || datos.visibles.length === 0 ? 'Turno revisado' : 'Turno pendiente de cierre'}</h2>
+            <h2 className={styles.panelTitle}>{turnoCerrado || pendientesCierre === 0 ? 'Turno revisado' : 'Turno pendiente de cierre'}</h2>
             <p className={styles.panelSub}>
-              {turnoCerrado || datos.visibles.length === 0
+              {turnoCerrado || pendientesCierre === 0
                 ? 'Las señales de hoy quedan limpias en esta pantalla. Puedes reabrir si necesitas revisar de nuevo.'
                 : 'Resuelve stock, descuenta ventas útiles o cierra el turno si solo quieres guardar las señales como revisadas.'}
             </p>
           </div>
-          <span className={styles.badge}>{datos.visibles.length} pendientes</span>
+          <span className={styles.badge}>{pendientesCierre} pendientes</span>
         </div>
         <div className={styles.panelBody}>
           <div className={styles.closeProgressTrack}>
             <div className={styles.closeProgressFill} style={{ width: `${progresoCierre}%` }} />
           </div>
-          <p className={styles.sectionText} style={{ color: turnoCerrado || datos.visibles.length === 0 ? undefined : 'rgba(255,250,243,0.66)' }}>{pasosHechos} de {pasosCierre.length} pasos completados</p>
+          <p className={styles.sectionText} style={{ color: turnoCerrado || pendientesCierre === 0 ? undefined : 'rgba(255,250,243,0.66)' }}>{pasosHechos} de {pasosCierre.length} pasos completados</p>
         </div>
       </section>
 
@@ -490,6 +574,57 @@ export default function CierreServicio() {
           </div>
         </div>
       </section>
+
+      {datos.recomendacionesPendientes.length > 0 && (
+        <section className={styles.panel} id="recomendaciones" style={{ marginBottom: 16 }}>
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>Recomendaciones sin resultado</h2>
+              <p className={styles.panelSub}>No hace falta que sala marque todo. Valida aqui que salio, que no salio o si hubo rotura de stock.</p>
+            </div>
+            <span className={styles.badge}>{datos.recomendacionesPendientes.length}</span>
+          </div>
+          <div className={styles.panelBody}>
+            <div className={styles.itemStack}>
+              {datos.recomendacionesPendientes.slice(0, 12).map(evento => {
+                const parsed = evento.parsed || {}
+                const vino = vinos.find(item => String(item.id) === String(parsed.vino_id))
+                const clave = `rec:${evento.id}`
+                const procesando = eventoProcesando.startsWith(clave)
+                return (
+                  <article className={styles.itemCard} key={evento.id}>
+                    <div className={styles.sectionHead} style={{ margin: 0 }}>
+                      <div>
+                        <p className={styles.eyebrow}>{parsed.origen === 'cliente' ? 'Cliente' : 'Sala'}{parsed.posicion ? ` · opcion ${parsed.posicion}` : ''}</p>
+                        <h3 className={styles.sectionTitle}>{parsed.vino || vino?.nombre || 'Vino recomendado'}</h3>
+                        <p className={styles.sectionText}>
+                          {[parsed.consulta || parsed.plato, parsed.etiqueta, parsed.precio ? `${parsed.precio} EUR` : vino?.precio_botella ? `${vino.precio_botella} EUR` : null]
+                            .filter(Boolean)
+                            .join(' · ') || 'Sin contexto'}
+                        </p>
+                      </div>
+                      <div className={styles.actionRow}>
+                        <button className={styles.primary} disabled={procesando} onClick={() => guardarOutcomeRecomendacion(evento, 'vendida')}>
+                          {eventoProcesando === `${clave}:vendida` ? 'Guardando...' : 'Salio'}
+                        </button>
+                        <button className={styles.ghost} disabled={procesando} onClick={() => guardarOutcomeRecomendacion(evento, 'no_vendida')}>
+                          No salio
+                        </button>
+                        <button className={styles.ghost} disabled={procesando} onClick={() => guardarOutcomeRecomendacion(evento, 'no_stock')}>
+                          Sin stock
+                        </button>
+                        <button className={styles.ghost} disabled={procesando} onClick={() => guardarOcultos([...new Set([...ocultos, clave])])}>
+                          Ignorar
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {datos.incidencias.length > 0 && (
         <section className={styles.panel} id="incidencias" style={{ marginBottom: 16 }}>
@@ -659,10 +794,10 @@ export default function CierreServicio() {
           </div>
         </div>
       </section>
-      {datos.visibles.length > 0 && !turnoCerrado && (
+      {pendientesCierre > 0 && !turnoCerrado && (
         <div className={styles.closeStickyAction}>
           <div>
-            <strong>{datos.visibles.length} señales pendientes</strong>
+            <strong>{pendientesCierre} decisiones pendientes</strong>
             <span>Revisa lo importante o cierra el turno si ya está decidido.</span>
           </div>
           <button type="button" className={styles.primary} onClick={() => setConfirmarCierre(true)}>Cerrar turno</button>
@@ -674,7 +809,7 @@ export default function CierreServicio() {
         size="modal"
         eyebrow="Final del servicio"
         title="Cerrar turno"
-        description={`Se marcarán ${datos.visibles.length} señales como revisadas y podrás reabrir el turno si fuera necesario.`}
+        description={`Se marcarán ${pendientesCierre} decisiones como revisadas y podrás reabrir el turno si fuera necesario.`}
         footer={
           <>
             <button type="button" className={styles.ghost} onClick={() => setConfirmarCierre(false)}>Cancelar</button>

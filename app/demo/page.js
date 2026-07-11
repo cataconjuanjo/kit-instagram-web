@@ -32,11 +32,17 @@ export default function DemoLoDeCarmen() {
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 36 }}>
+          <Link href="/demo/sumiller" style={{ textDecoration: 'none' }}>
+            <DemoCard titulo="Demo sumiller" desc="Bodega profesional con stock, compras, margen e inventario." destacado />
+          </Link>
+          <Link href="/demo/taberna-del-puerto" style={{ textDecoration: 'none' }}>
+            <DemoCard titulo="La Taberna del Puerto" desc="Muestra comercial con cliente, camarero y gerente." />
+          </Link>
           <Link href="/carta/carmen" style={{ textDecoration: 'none' }}>
             <DemoCard titulo="Carta pública" desc="Vista cliente con platos, vinos y guía de maridaje." />
           </Link>
           <Link href="/camarero/carmen?demo=1" style={{ textDecoration: 'none' }}>
-            <DemoCard titulo="Modo camarero" desc="Entra sin PIN y abre una ficha de venta." destacado />
+            <DemoCard titulo="Modo camarero" desc="Entra sin PIN y abre una ficha de venta." />
           </Link>
           <button onClick={abrirDashboard} style={{ textAlign: 'left', border: '1px solid #333', background: '#1a1a1a', color: '#fff', padding: 20, borderRadius: 12, cursor: 'pointer' }}>
             <p style={{ fontSize: 15, color: '#fff', margin: '0 0 8px', fontWeight: 500 }}>Dashboard</p>

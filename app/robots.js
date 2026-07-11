@@ -4,6 +4,11 @@ export default function robots() {
       userAgent: '*',
       allow: '/',
       disallow: [
+        '/admin',
+        '/dashboard',
+        '/login',
+        '/bienvenida',
+        '/api',
         '/carta/propuesta-',
         '/camarero/propuesta-',
       ],

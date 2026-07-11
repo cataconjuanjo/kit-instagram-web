@@ -1,8 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { esPerfilBodega } from '../../lib/plans'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
@@ -67,6 +69,26 @@ export default function SeleccionEspecial() {
   const disponibles = vinos.filter(v => !seleccion.some(s => s.vino_id === v.id))
 
   if (loading) return <LoadingState />
+
+  if (esPerfilBodega(restaurante)) {
+    return (
+      <ModuleShell
+        restaurante={restaurante}
+        eyebrow="Bodega"
+        title="Sugerencia de restaurante no incluida"
+        subtitle="En Sommelier no hay escaparate publico que destacar. El trabajo esta en priorizar referencias por rotacion, margen, stock y valor inmovilizado."
+        actions={<Link className={styles.secondary} href="/dashboard/menu-engineering">Ver estrellas y joyas</Link>}
+        narrow
+      >
+        <section className={styles.empty}>
+          <div>
+            <strong>Decision interna</strong>
+            <p>Usa el mapa estrella/joya para decidir que proteger, renegociar, activar o archivar.</p>
+          </div>
+        </section>
+      </ModuleShell>
+    )
+  }
 
   return (
     <ModuleShell

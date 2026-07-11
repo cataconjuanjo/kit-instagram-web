@@ -1,8 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { esPerfilBodega } from '../../lib/plans'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
@@ -412,6 +414,26 @@ export default function Personalizar() {
   }
 
   if (loading) return <LoadingState />
+
+  if (esPerfilBodega(restaurante)) {
+    return (
+      <ModuleShell
+        restaurante={restaurante}
+        eyebrow="Bodega"
+        title="Diseno de carta no incluido en Sommelier"
+        subtitle="La membresia sommelier no publica carta ni QR. Su configuracion se centra en datos de bodega, actividad real y accesos internos de trabajo."
+        actions={<Link className={styles.secondary} href="/dashboard/ajustes">Volver a ajustes</Link>}
+        narrow
+      >
+        <section className={styles.empty}>
+          <div>
+            <strong>Sin escaparate publico</strong>
+            <p>Para esta cuenta, la identidad visual de carta se sustituye por control de referencias, inventario y decisiones economicas.</p>
+          </div>
+        </section>
+      </ModuleShell>
+    )
+  }
 
   const tituloHubPreview = hubTitulo.trim() || restaurante?.nombre
   const subtituloHubPreview = hubSubtitulo.trim() || restaurante?.ciudad || 'Carta, reservas y enlaces'

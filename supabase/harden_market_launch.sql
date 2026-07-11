@@ -159,6 +159,7 @@ begin
 
   v_limite := case v_plan
     when 'premium' then 9999
+    when 'bodega' then 1000
     when 'pro' then 200
     else 100
   end;

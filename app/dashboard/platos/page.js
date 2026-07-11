@@ -1,8 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { ADMIN_EMAIL, getEffectiveRestaurantEmail } from '../../demo'
+import { esPerfilBodega } from '../../lib/plans'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
@@ -480,6 +482,26 @@ export default function Platos() {
   }
 
   if (loading) return <LoadingState />
+
+  if (esPerfilBodega(restaurante)) {
+    return (
+      <ModuleShell
+        restaurante={restaurante}
+        eyebrow="Bodega"
+        title="Platos y maridaje no incluidos en Sommelier"
+        subtitle="El sumiller ya decide armonias y servicio. Esta membresia se enfoca en bodega: referencias, compras, inventario, TPV, margen y rotacion."
+        actions={<Link className={styles.secondary} href="/dashboard/vinos">Gestionar referencias</Link>}
+        narrow
+      >
+        <section className={styles.empty}>
+          <div>
+            <strong>Foco profesional</strong>
+            <p>Los datos que importan aqui son coste, proveedor, stock minimo, venta real, margen y capital inmovilizado por vino.</p>
+          </div>
+        </section>
+      </ModuleShell>
+    )
+  }
 
   const busquedaNormalizada = normalizar(busquedaPlatos)
   const filtrosPlatosNormalizados = Object.fromEntries(

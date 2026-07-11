@@ -1,9 +1,11 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { esPerfilBodega } from '../../lib/plans'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
@@ -66,6 +68,26 @@ export default function QRPage() {
   }
 
   if (loading) return <LoadingState />
+
+  if (esPerfilBodega(restaurante)) {
+    return (
+      <ModuleShell
+        restaurante={restaurante}
+        eyebrow="Accesos"
+        title="QR no incluido en Sommelier"
+        subtitle="La membresia sommelier trabaja con bodega interna: referencias, stock, inventario, TPV y mapa estrella/joya. No genera carta publica ni QR de mesa."
+        actions={<Link className={styles.secondary} href="/dashboard/ajustes">Volver a ajustes</Link>}
+        narrow
+      >
+        <section className={styles.empty}>
+          <div>
+            <strong>Sin carta publica</strong>
+            <p>Para esta cuenta, los accesos utiles estan en Referencias, Bodega, Inventario y Estrellas/Joyas.</p>
+          </div>
+        </section>
+      </ModuleShell>
+    )
+  }
 
   const pruebas = [
     { titulo: 'Abrir enlace público', detalle: restaurante?.hub_activo ? 'El QR abre el hub público. Si consultas ArmonIA, contará como cliente real.' : 'El QR abre la carta digital. Si consultas ArmonIA, contará como cliente real.', href: urlDirecta },

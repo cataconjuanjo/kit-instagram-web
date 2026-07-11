@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { esPerfilBodega } from '../../lib/plans'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
@@ -44,6 +45,26 @@ export default function CartaHub() {
   }, [])
 
   if (loading) return <LoadingState />
+
+  if (esPerfilBodega(restaurante)) {
+    return (
+      <ModuleShell
+        restaurante={restaurante}
+        eyebrow="Bodega"
+        title="Carta publica no incluida en Sommelier"
+        subtitle="Esta membresia esta pensada para que el sumiller gestione referencias, compras, stock, inventario, rentabilidad y mapa estrella/joya."
+        actions={<Link className={styles.secondary} href="/dashboard/vinos">Gestionar referencias</Link>}
+        narrow
+      >
+        <section className={styles.empty}>
+          <div>
+            <strong>Foco en gestion de bodega</strong>
+            <p>Los maridajes, QR y publicaciones quedan fuera de esta experiencia para no mezclar sala con control de bodega.</p>
+          </div>
+        </section>
+      </ModuleShell>
+    )
+  }
 
   const vinosSinPrecio = vinos.filter(vino => !Number(vino.precio_botella))
   const vinosSinPerfil = vinos.filter(vino => !vino.notas_cata || vino.notas_cata.length < 12)

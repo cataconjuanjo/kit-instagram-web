@@ -56,6 +56,79 @@ function candidatosCopaRadar(informe) {
   return Math.max(0, Math.round((informe.metricas?.vinos || 0) * 0.12) - (informe.metricas?.copa || 0))
 }
 
+function semanalRadar(informe) {
+  return informe.ejecutivo?.semanal || informe.semanal || null
+}
+
+function bloqueoSemanalPrincipal(informe) {
+  return semanalRadar(informe)?.bloqueos?.[0] || null
+}
+
+function estadoEnvioSemanal(semanal) {
+  const status = semanal?.delivery?.status
+  if (status === 'sent') return 'Enviado'
+  if (status === 'failed') return 'Fallido'
+  if (status === 'disabled') return 'Pausado'
+  if (status === 'pending') return 'Pendiente'
+  if (status === 'draft') return 'Sin enviar'
+  return 'Sin foto'
+}
+
+function claseEnvioSemanal(semanal) {
+  const status = semanal?.delivery?.status
+  if (status === 'sent') return 'is-ok'
+  if (status === 'failed') return 'is-hot'
+  if (status === 'disabled') return 'is-muted'
+  return 'is-warning'
+}
+
+function etiquetaAutomatismo(status) {
+  if (status === 'success') return 'OK'
+  if (status === 'partial') return 'Parcial'
+  if (status === 'failed') return 'Error'
+  if (status === 'running') return 'En curso'
+  if (status === 'skipped') return 'Omitido'
+  return 'Sin dato'
+}
+
+function claseAutomatismo(status) {
+  if (status === 'success') return 'is-ok'
+  if (status === 'failed') return 'is-hot'
+  if (status === 'partial' || status === 'running') return 'is-warning'
+  return 'is-muted'
+}
+
+function claseCierreProducto(estado) {
+  if (estado === 'listo' || estado === 'ok') return 'is-ok'
+  if (estado === 'bloqueado' || estado === 'blocker') return 'is-hot'
+  return 'is-warning'
+}
+
+function etiquetaCierreProducto(estado) {
+  if (estado === 'listo') return 'Listo'
+  if (estado === 'bloqueado') return 'Bloqueado'
+  if (estado === 'ok') return 'OK'
+  if (estado === 'blocker') return 'Bloqueo'
+  if (estado === 'warning') return 'Aviso'
+  return 'Casi'
+}
+
+function economicaRadar(informe) {
+  return informe.ejecutivo?.economica || informe.economica || null
+}
+
+function claseDefensaEconomica(economica) {
+  if (!economica?.tiene_foto || economica.estado === 'no_presentar') return 'is-hot'
+  if (economica.estado === 'presentable') return 'is-ok'
+  if (economica.estado === 'con_contexto') return 'is-warning'
+  return 'is-muted'
+}
+
+function etiquetaDefensaEconomica(economica) {
+  if (!economica?.tiene_foto) return 'Sin foto económica'
+  return economica.estado_label || 'Sin dato'
+}
+
 function activacionRadar(informe) {
   if (!informe.metricas?.vinos) return { nivel: 0, label: 'Sin carta', accion: 'Cargar vinos' }
   if (!informe.metricas?.platos) return { nivel: 1, label: 'Sin platos', accion: 'Cargar platos' }
@@ -413,6 +486,8 @@ export default function RadarConsultoria() {
     return {
       ...base,
       ejecutivo,
+      semanal: ejecutivo.semanal,
+      economica: ejecutivo.economica,
       score: ejecutivo.score ?? base.score,
       prioridad,
       siguienteMovimiento: ejecutivo.resumen?.siguiente_accion || base.siguienteMovimiento,
@@ -433,6 +508,18 @@ export default function RadarConsultoria() {
     if (filtro === 'copa') return candidatosCopaRadar(informe) > 0
     if (filtro === 'carta') return informe.ejecutivo?.resumen?.carta_inflada || (informe.ejecutivo?.resumen?.bottom10_refs || 0) > 0
     if (filtro === 'activacion') return activacionRadar(informe).nivel < 4
+    if (filtro === 'semanal') {
+      const semanal = semanalRadar(informe)
+      return (semanal?.score || 0) >= 35 || (semanal?.kpis?.recuperable_semana || 0) > 0
+    }
+    if (filtro === 'envio') {
+      const semanal = semanalRadar(informe)
+      return !semanal?.periodo_key || ['draft', 'pending', 'failed'].includes(semanal.delivery?.status)
+    }
+    if (filtro === 'defensa') {
+      const economica = economicaRadar(informe)
+      return !economica?.tiene_foto || economica.estado === 'no_presentar' || economica.estado === 'con_contexto'
+    }
     return true
   })
 
@@ -509,6 +596,21 @@ export default function RadarConsultoria() {
   ).length
   const activados = informes.filter(informe => activacionRadar(informe).nivel === 4).length
   const bloqueadosActivacion = informes.length - activados
+  const consultorSemanal = radarEjecutivo?.consultor || {}
+  const resumenSemanalConsultor = consultorSemanal.resumen || {}
+  const agendaSemanal = consultorSemanal.agenda_semana || []
+  const bloqueosSemanales = consultorSemanal.bloqueos || []
+  const automatismos = radarEjecutivo?.automatismos || {}
+  const resumenAutomatismos = automatismos.resumen || {}
+  const jobsAutomatismos = automatismos.por_job || []
+  const automatismosPendientes = automatismos.migration_pending || []
+  const defensaEconomica = radarEjecutivo?.defensa_economica || {}
+  const resumenDefensaEconomica = defensaEconomica.resumen || {}
+  const defensaBloqueadas = defensaEconomica.bloqueadas || []
+  const defensaPresentables = defensaEconomica.presentables || []
+  const cierreProducto = radarEjecutivo?.cierre_producto || {}
+  const checksCierre = cierreProducto.checks || []
+  const resumenCierre = cierreProducto.resumen || {}
   const filtros = [
     ['todas', 'Todas'],
     ['activacion', 'Activación'],
@@ -517,6 +619,9 @@ export default function RadarConsultoria() {
     ['capital', 'Capital'],
     ['copa', 'Copa'],
     ['carta', 'Carta'],
+    ['semanal', 'Semana'],
+    ['envio', 'Envio'],
+    ['defensa', 'Defensa'],
     ['margen', 'Margen/bodega'],
     ['sala', 'Sala'],
     ['propuestas', 'Propuestas'],
@@ -530,11 +635,36 @@ export default function RadarConsultoria() {
               <h2>Radar ejecutivo</h2>
               <p>{informes.length} restaurantes · {alta} prioridad alta · {media} prioridad media</p>
               <p className="radar-data-note">
-                {fotosPersistidas} restaurantes con foto persistida. El resto usa estimacion previa del radar hasta pulsar &ldquo;Recalcular y guardar&rdquo; en su ficha.
+                {fotosPersistidas} restaurantes con foto persistida. El resto usa estimación previa del radar hasta pulsar &ldquo;Recalcular y guardar&rdquo; en su ficha.
               </p>
             </div>
           </div>
           {ticketError && <p className="admin-alert admin-alert-error" role="alert">{ticketError}</p>}
+
+          <section className="product-readiness-panel">
+            <div className="product-readiness-head">
+              <div>
+                <p className="admin-kicker">Cierre de producto</p>
+                <h3>Estado para venderlo con confianza</h3>
+                <p>{resumenCierre.ok || 0}/{resumenCierre.total_checks || 0} checks listos · {resumenCierre.blockers || 0} bloqueos · {resumenCierre.warnings || 0} avisos.</p>
+              </div>
+              <div className="product-readiness-score">
+                <strong>{cierreProducto.score || 0}%</strong>
+                <span className={`radar-tag ${claseCierreProducto(cierreProducto.estado)}`}>{etiquetaCierreProducto(cierreProducto.estado)}</span>
+              </div>
+            </div>
+            <div className="product-readiness-grid">
+              {checksCierre.map(check => (
+                <article key={check.id} className="product-readiness-check">
+                  <span className={`radar-tag ${claseCierreProducto(check.estado)}`}>{etiquetaCierreProducto(check.estado)}</span>
+                  <strong>{check.titulo}</strong>
+                  <p>{check.detalle}</p>
+                  <small>{check.accion}</small>
+                </article>
+              ))}
+              {checksCierre.length === 0 && <p className="product-readiness-empty">Cargando estado de cierre.</p>}
+            </div>
+          </section>
 
           <section className="executive-radar-summary">
             <article>
@@ -548,7 +678,7 @@ export default function RadarConsultoria() {
               <small>Stock/carta que puede desbloquear caja.</small>
             </article>
             <article>
-              <span>Alertas criticas</span>
+              <span>Alertas críticas</span>
               <strong>{alertasCriticas}</strong>
               <small>Problemas abiertos que merecen llamada.</small>
             </article>
@@ -569,6 +699,192 @@ export default function RadarConsultoria() {
               <span style={{ width: `${pct(activados, informes.length)}%` }} />
             </div>
             <b>{bloqueadosActivacion} necesitan acompañamiento</b>
+          </section>
+
+          <section className="consultant-weekly-briefing">
+            <div className="consultant-weekly-head">
+              <div>
+                <p className="admin-kicker">Resumen consultor</p>
+                <h3>Agenda semanal por rentabilidad y datos</h3>
+                <p>{resumenSemanalConsultor.restaurantes || 0} restaurantes medidos desde la foto semanal y el estado real de entrega.</p>
+              </div>
+              <div className="consultant-weekly-status">
+                <strong>{resumenSemanalConsultor.fotos_recientes || 0}/{resumenSemanalConsultor.restaurantes || 0}</strong>
+                <span>fotos recientes</span>
+              </div>
+            </div>
+            <div className="consultant-weekly-kpis">
+              <article>
+                <span>Beneficio defendido</span>
+                <strong>{eur(resumenSemanalConsultor.beneficio_bruto || 0)}</strong>
+              </article>
+              <article>
+                <span>Por capturar</span>
+                <strong>{eur(resumenSemanalConsultor.recuperable_semana || 0)}</strong>
+              </article>
+              <article>
+                <span>Sin foto</span>
+                <strong>{resumenSemanalConsultor.sin_foto || 0}</strong>
+              </article>
+              <article>
+                <span>Envíos fallidos</span>
+                <strong>{resumenSemanalConsultor.envio_fallido || 0}</strong>
+              </article>
+            </div>
+            <div className="consultant-weekly-grid">
+              <div className="consultant-weekly-panel">
+                <div className="consultant-weekly-panel-head">
+                  <strong>Prioridad de esta semana</strong>
+                  <span>{agendaSemanal.length} cuentas</span>
+                </div>
+                <div className="consultant-weekly-list">
+                  {agendaSemanal.slice(0, 5).map((item, index) => (
+                    <Link key={item.restaurante_id} href={`/admin/restaurante/${item.restaurante_id}`} className="consultant-weekly-row">
+                      <span className={`consultant-weekly-priority priority-${item.prioridad}`}>{index + 1}</span>
+                      <div>
+                        <strong>{item.restaurante?.nombre || 'Restaurante'}</strong>
+                        <small>{item.siguiente_accion}</small>
+                      </div>
+                      <b>{eur(item.recuperable_semana || 0)}</b>
+                    </Link>
+                  ))}
+                  {agendaSemanal.length === 0 && <p className="consultant-weekly-empty">No hay cuentas semanales priorizadas.</p>}
+                </div>
+              </div>
+              <div className="consultant-weekly-panel">
+                <div className="consultant-weekly-panel-head">
+                  <strong>Bloqueos recurrentes</strong>
+                  <span>{bloqueosSemanales.length} tipos</span>
+                </div>
+                <div className="consultant-weekly-blockers">
+                  {bloqueosSemanales.map(bloqueo => (
+                    <div key={bloqueo.tipo} className="consultant-weekly-blocker">
+                      <div>
+                        <strong>{bloqueo.titulo}</strong>
+                        <small>{bloqueo.restaurantes?.slice(0, 3).map(rest => rest.nombre).join(', ') || bloqueo.detalle}</small>
+                      </div>
+                      <span>{bloqueo.total}</span>
+                    </div>
+                  ))}
+                  {bloqueosSemanales.length === 0 && <p className="consultant-weekly-empty">Sin bloqueos repetidos detectados.</p>}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="automation-health-panel">
+            <div className="automation-health-head">
+              <div>
+                <p className="admin-kicker">Automatismos</p>
+                <h3>Salud operativa de los últimos 7 días</h3>
+              </div>
+              <span className={`radar-tag ${automatismosPendientes.length ? 'is-warning' : claseAutomatismo((resumenAutomatismos.failed || 0) > 0 ? 'failed' : 'success')}`}>
+                {automatismosPendientes.length ? 'Migracion pendiente' : `${resumenAutomatismos.success || 0} OK`}
+              </span>
+            </div>
+            <div className="automation-health-kpis">
+              <article>
+                <span>Ejecuciones</span>
+                <strong>{resumenAutomatismos.total || 0}</strong>
+              </article>
+              <article>
+                <span>Errores</span>
+                <strong>{resumenAutomatismos.errors || resumenAutomatismos.failed || 0}</strong>
+              </article>
+              <article>
+                <span>Procesados</span>
+                <strong>{resumenAutomatismos.processed || 0}</strong>
+              </article>
+              <article>
+                <span>Parciales</span>
+                <strong>{resumenAutomatismos.partial || 0}</strong>
+              </article>
+            </div>
+            <div className="automation-health-list">
+              {jobsAutomatismos.slice(0, 4).map(job => (
+                <div key={job.job_key} className="automation-health-row">
+                  <div>
+                    <strong>{job.job_key === 'radar_diario' ? 'Radar diario' : 'Resumen semanal'}</strong>
+                    <small>{job.latest_at ? new Date(job.latest_at).toLocaleString('es-ES') : 'Sin ejecucion'}</small>
+                  </div>
+                  <span className={`radar-tag ${claseAutomatismo(job.latest_status)}`}>{etiquetaAutomatismo(job.latest_status)}</span>
+                </div>
+              ))}
+              {jobsAutomatismos.length === 0 && (
+                <p className="automation-health-empty">
+                  {automatismosPendientes.length ? 'Aplica la migracion de logs para ver ejecuciones reales.' : 'Todavia no hay ejecuciones registradas.'}
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className="economic-defense-panel">
+            <div className="economic-defense-head">
+              <div>
+                <p className="admin-kicker">Defensa económica</p>
+                <h3>Cifras listas para presentar a gerencia</h3>
+                <p>{resumenDefensaEconomica.con_foto || 0}/{resumenDefensaEconomica.restaurantes || informes.length} restaurantes tienen foto económica guardada.</p>
+              </div>
+              <span className={`radar-tag ${(resumenDefensaEconomica.no_presentar || resumenDefensaEconomica.sin_foto) ? 'is-warning' : 'is-ok'}`}>
+                Rigor medio {resumenDefensaEconomica.rigor_medio || 0}%
+              </span>
+            </div>
+            <div className="economic-defense-kpis">
+              <article>
+                <span>Presentables</span>
+                <strong>{resumenDefensaEconomica.presentables || 0}</strong>
+              </article>
+              <article>
+                <span>Con contexto</span>
+                <strong>{resumenDefensaEconomica.con_contexto || 0}</strong>
+              </article>
+              <article>
+                <span>No presentar</span>
+                <strong>{resumenDefensaEconomica.no_presentar || 0}</strong>
+              </article>
+              <article>
+                <span>Sin foto</span>
+                <strong>{resumenDefensaEconomica.sin_foto || 0}</strong>
+              </article>
+            </div>
+            <div className="economic-defense-grid">
+              <div className="economic-defense-box">
+                <div className="economic-defense-box-head">
+                  <strong>Bloqueadas para informe</strong>
+                  <span>{defensaBloqueadas.length} cuentas</span>
+                </div>
+                <div className="economic-defense-list">
+                  {defensaBloqueadas.slice(0, 5).map(item => (
+                    <Link key={item.restaurante_id} href={`/admin/restaurante/${item.restaurante_id}`} className="economic-defense-row">
+                      <div>
+                        <strong>{item.restaurante?.nombre || 'Restaurante'}</strong>
+                        <small>{item.bloqueo_principal || item.accion}</small>
+                      </div>
+                      <span className={`radar-tag ${claseDefensaEconomica(item)}`}>{etiquetaDefensaEconomica(item)}</span>
+                    </Link>
+                  ))}
+                  {defensaBloqueadas.length === 0 && <p className="economic-defense-empty">No hay cuentas bloqueadas por defensa económica.</p>}
+                </div>
+              </div>
+              <div className="economic-defense-box">
+                <div className="economic-defense-box-head">
+                  <strong>Cuentas presentables</strong>
+                  <span>{defensaPresentables.length} cuentas</span>
+                </div>
+                <div className="economic-defense-list">
+                  {defensaPresentables.slice(0, 5).map(item => (
+                    <Link key={item.restaurante_id} href={`/admin/restaurante/${item.restaurante_id}`} className="economic-defense-row">
+                      <div>
+                        <strong>{item.restaurante?.nombre || 'Restaurante'}</strong>
+                        <small>Rigor {item.score}% · foto {item.ultima_foto_at ? new Date(item.ultima_foto_at).toLocaleDateString('es-ES') : 'sin fecha'}</small>
+                      </div>
+                      <b>{eur(item.beneficio_presentable || 0)}</b>
+                    </Link>
+                  ))}
+                  {defensaPresentables.length === 0 && <p className="economic-defense-empty">Aún no hay cuentas con cifras plenamente presentables.</p>}
+                </div>
+              </div>
+            </div>
           </section>
 
           <section className="consultant-agenda">
@@ -617,7 +933,11 @@ export default function RadarConsultoria() {
           </div>
 
           <div className="radar-list">
-            {informesFiltrados.map(informe => (
+            {informesFiltrados.map(informe => {
+              const semanal = semanalRadar(informe)
+              const bloqueoSemanal = bloqueoSemanalPrincipal(informe)
+              const economica = economicaRadar(informe)
+              return (
               <article key={informe.restaurante.id} className="radar-row">
                 <button
                   type="button"
@@ -636,24 +956,38 @@ export default function RadarConsultoria() {
                   <strong>{informe.restaurante.nombre}</strong>
                   <div className="radar-tags">
                     <span className={`radar-tag radar-tag-${informe.prioridad.toLowerCase()}`}>{informe.prioridad}</span>
-                    {informe.propuestasAbiertas.length > 0 && <span className="radar-tag is-warning">Pendiente accion</span>}
+                    {informe.propuestasAbiertas.length > 0 && <span className="radar-tag is-warning">Pendiente acción</span>}
                     {oportunidadRadar(informe) > 0 && <span className="radar-tag is-hot">{eur(oportunidadRadar(informe))}</span>}
                     {candidatosCopaRadar(informe) > 0 && <span className="radar-tag is-ok">{candidatosCopaRadar(informe)} copa</span>}
+                    {(semanal?.kpis?.recuperable_semana || 0) > 0 && <span className="radar-tag is-hot">{eur(semanal.kpis.recuperable_semana)} semana</span>}
                     {informe.alertas.some(alerta => alerta.titulo.toLowerCase().includes('cliente caliente')) && <span className="radar-tag is-hot">Cliente caliente</span>}
                     {informe.alertas.length === 0 && <span className="radar-tag is-ok">OK</span>}
                     <span className={`radar-tag ${activacionRadar(informe).nivel === 4 ? 'is-ok' : 'is-warning'}`}>
                       {activacionRadar(informe).label}
                     </span>
+                    <span className={`radar-tag ${claseEnvioSemanal(semanal)}`}>Resumen {estadoEnvioSemanal(semanal)}</span>
+                    <span className={`radar-tag ${claseDefensaEconomica(economica)}`}>{etiquetaDefensaEconomica(economica)}</span>
+                    {bloqueoSemanal && <span className="radar-tag is-warning">{bloqueoSemanal.titulo}</span>}
                   </div>
                   <span>{informe.restaurante.ciudad || '—'} · {informe.metricas.vinos} vinos · {informe.metricas.platos} platos</span>
                   {informe.ejecutivo && (
                     <small className="radar-executive-line">
-                      Capital {eur(capitalRadar(informe))} · Alertas criticas {alertasCriticasRadar(informe)} · Carta {informe.ejecutivo.resumen.carta_inflada ? 'inflada' : 'controlada'}
+                      Capital {eur(capitalRadar(informe))} · Alertas críticas {alertasCriticasRadar(informe)} · Carta {informe.ejecutivo.resumen.carta_inflada ? 'inflada' : 'controlada'}
+                    </small>
+                  )}
+                  {semanal && (
+                    <small className="radar-executive-line">
+                      Semana {eur(semanal.kpis?.beneficio_bruto || 0)} defendido / {eur(semanal.kpis?.recuperable_semana || 0)} por capturar
+                    </small>
+                  )}
+                  {economica?.tiene_foto && (
+                    <small className="radar-executive-line">
+                      Defensa {economica.score}% · Presentable {eur(economica.beneficio_presentable || 0)} · {economica.bloqueo_principal}
                     </small>
                   )}
                   {!informe.ejecutivo && (
                     <small className="radar-executive-line">
-                      Estimacion previa: capital {eur(capitalRadar(informe))} · alertas criticas {alertasCriticasRadar(informe)} · copa {candidatosCopaRadar(informe)}
+                      Estimación previa: capital {eur(capitalRadar(informe))} · alertas críticas {alertasCriticasRadar(informe)} · copa {candidatosCopaRadar(informe)}
                     </small>
                   )}
                 </div>
@@ -664,15 +998,16 @@ export default function RadarConsultoria() {
                   }
                 </div>
                 <div className="radar-next">
-                  <span>Siguiente accion</span>
+                  <span>Siguiente acción</span>
                   <strong>{activacionRadar(informe).nivel < 4 ? activacionRadar(informe).accion : informe.siguienteMovimiento}</strong>
-                  <small>Ultimo contacto: hace {Math.max(1, informe.propuestasAbiertas.length + informe.incidenciasStock.length)} dias</small>
+                  <small>Último contacto: hace {Math.max(1, informe.propuestasAbiertas.length + informe.incidenciasStock.length)} días</small>
                 </div>
                 <div className="radar-cta">Ver detalles</div>
                 </Link>
                 <button type="button" className="radar-quick-button" onClick={() => setVistaRapida(informe)}>Vista rápida</button>
               </article>
-            ))}
+              )
+            })}
             {informesFiltrados.length === 0 && (
               <div className="ws-empty-block">No hay restaurantes con este filtro.</div>
             )}
@@ -705,6 +1040,26 @@ export default function RadarConsultoria() {
                 <div className="admin-detail-box">
                   <h3>Siguiente acción</h3>
                   <p>{activacionRadar(vistaRapida).nivel < 4 ? activacionRadar(vistaRapida).accion : vistaRapida.siguienteMovimiento}</p>
+                </div>
+                {semanalRadar(vistaRapida) && (
+                  <div className="admin-detail-box">
+                    <h3>Resumen semanal</h3>
+                    <p>
+                      {eur(semanalRadar(vistaRapida).kpis?.beneficio_bruto || 0)} defendido,
+                      {' '}{eur(semanalRadar(vistaRapida).kpis?.recuperable_semana || 0)} por capturar.
+                      {' '}Entrega: {estadoEnvioSemanal(semanalRadar(vistaRapida))}.
+                      {bloqueoSemanalPrincipal(vistaRapida) ? ` Bloqueo: ${bloqueoSemanalPrincipal(vistaRapida).titulo}.` : ''}
+                    </p>
+                  </div>
+                )}
+                <div className="admin-detail-box">
+                  <h3>Defensa económica</h3>
+                  <p>
+                    {etiquetaDefensaEconomica(economicaRadar(vistaRapida))}.
+                    {economicaRadar(vistaRapida)?.tiene_foto
+                      ? ` Rigor ${economicaRadar(vistaRapida).score}%, presentable ${eur(economicaRadar(vistaRapida).beneficio_presentable || 0)}. ${economicaRadar(vistaRapida).bloqueo_principal || ''}`
+                      : ' Falta guardar una foto de trazabilidad antes de presentar cifras.'}
+                  </p>
                 </div>
                 <div className="admin-overlay-actions">
                   <Link href={`/admin/restaurante/${vistaRapida.restaurante.id}`}>Abrir ficha consultor</Link>

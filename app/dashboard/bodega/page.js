@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
+import { esPerfilBodega } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
@@ -41,6 +42,33 @@ function margenColor(valor) {
   if (valor >= 68) return '#4A8C6F'
   if (valor >= 55) return '#b8860b'
   return '#b85454'
+}
+
+const DIAS_PERIODO_ROTACION = 30
+const DIAS_ENTREGA_PEDIDO = 7
+const STOCK_SEGURIDAD_DEFECTO = 2
+
+function planReposicion(vino, ventasMarcadas = 0) {
+  const stock = decimal(vino.stock)
+  const minimo = decimal(vino.stock_minimo)
+  const ventasDia = ventasMarcadas / DIAS_PERIODO_ROTACION
+  const consumoEntrega = ventasDia > 0 ? Math.ceil(ventasDia * DIAS_ENTREGA_PEDIDO) : 0
+  const stockSeguridad = minimo > 0 ? minimo : STOCK_SEGURIDAD_DEFECTO
+  const puntoPedido = Math.max(minimo, consumoEntrega + stockSeguridad)
+  const objetivoBase = Math.max(stockSeguridad * 2, stockSeguridad + 3)
+  const objetivo = Math.max(objetivoBase, puntoPedido + consumoEntrega)
+  const diasCobertura = ventasDia > 0 ? Math.round(stock / ventasDia) : null
+  const pedir = stock <= puntoPedido ? Math.max(1, Math.ceil(objetivo - stock)) : 0
+  return {
+    ventasMarcadas,
+    ventasDia,
+    consumoEntrega,
+    stockSeguridad,
+    puntoPedido: Math.ceil(puntoPedido),
+    objetivo: Math.ceil(objetivo),
+    diasCobertura,
+    pedir,
+  }
 }
 
 export default function ControlBodega() {
@@ -120,7 +148,19 @@ export default function ControlBodega() {
   }, [loading, propuestas.length])
 
   const datos = useMemo(() => {
-    const activos = vinos.filter(vino => vino.activo !== false)
+    const ventasPorVino = eventosSala.reduce((acc, evento) => {
+      if (evento.parsed?.resultado !== 'vendida') return acc
+      const id = evento.parsed?.vino_id
+      if (!id) return acc
+      acc[id] = (acc[id] || 0) + 1
+      return acc
+    }, {})
+    const activos = vinos
+      .filter(vino => vino.activo !== false)
+      .map(vino => {
+        const reposicion = planReposicion(vino, ventasPorVino[vino.id] || 0)
+        return { ...vino, ventasMarcadas: reposicion.ventasMarcadas, reposicion }
+      })
     const conCoste = activos.filter(vino => decimal(vino.coste_compra) > 0 && decimal(vino.precio_botella) > 0)
     const valorCoste = activos.reduce((sum, vino) => sum + decimal(vino.stock) * decimal(vino.coste_compra), 0)
     const valorVenta = activos.reduce((sum, vino) => sum + decimal(vino.stock) * decimal(vino.precio_botella), 0)
@@ -134,11 +174,9 @@ export default function ControlBodega() {
     const sinPrecio = activos.filter(vino => !decimal(vino.precio_botella))
     const sinProveedor = activos.filter(vino => !vino.proveedor)
     const sinStockMinimo = activos.filter(vino => !decimal(vino.stock_minimo))
-    const pedido = bajoMinimo.map(vino => {
-      const minimo = decimal(vino.stock_minimo)
-      const objetivo = Math.max(minimo * 2, minimo + 3)
-      return { ...vino, pedir: Math.max(1, objetivo - decimal(vino.stock)) }
-    })
+    const pedido = activos
+      .filter(vino => vino.reposicion.pedir > 0 && (decimal(vino.stock_minimo) > 0 || vino.reposicion.ventasMarcadas > 0))
+      .map(vino => ({ ...vino, pedir: vino.reposicion.pedir }))
     const pedidoPorProveedor = Object.entries(pedido.reduce((acc, vino) => {
       const proveedor = vino.proveedor?.trim() || 'Sin proveedor'
       acc[proveedor] = acc[proveedor] || []
@@ -147,19 +185,16 @@ export default function ControlBodega() {
     }, {})).sort((a, b) => a[0].localeCompare(b[0]))
     const proveedores = Object.entries(activos.reduce((acc, vino) => {
       const proveedor = vino.proveedor?.trim() || 'Sin proveedor'
-      acc[proveedor] = acc[proveedor] || { refs: 0, coste: 0 }
+      acc[proveedor] = acc[proveedor] || { refs: 0, coste: 0, venta: 0 }
       acc[proveedor].refs += 1
       acc[proveedor].coste += decimal(vino.stock) * decimal(vino.coste_compra)
+      acc[proveedor].venta += decimal(vino.ventasMarcadas) * decimal(vino.precio_botella)
       return acc
-    }, {})).sort((a, b) => b[1].coste - a[1].coste).slice(0, 5)
+    }, {})).map(([proveedor, info]) => [
+      proveedor,
+      { ...info, retorno: info.coste > 0 ? info.venta / info.coste : null },
+    ]).sort((a, b) => b[1].coste - a[1].coste).slice(0, 5)
     const proveedoresExistentes = [...new Set(activos.map(vino => vino.proveedor?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
-    const ventasPorVino = eventosSala.reduce((acc, evento) => {
-      if (evento.parsed?.resultado !== 'vendida') return acc
-      const id = evento.parsed?.vino_id
-      if (!id) return acc
-      acc[id] = (acc[id] || 0) + 1
-      return acc
-    }, {})
     const sinRotacion = activos
       .filter(vino => decimal(vino.stock) >= Math.max(8, decimal(vino.stock_minimo) * 3) && !ventasPorVino[vino.id])
       .sort((a, b) => (decimal(b.stock) * decimal(b.coste_compra)) - (decimal(a.stock) * decimal(a.coste_compra)))
@@ -299,12 +334,13 @@ export default function ControlBodega() {
   if (loading) return <LoadingState />
   if (!restaurante) return null
 
+  const perfilBodega = esPerfilBodega(restaurante)
   const datosPendientesTotal = datos.sinCoste.length + datos.sinProveedor.length + datos.sinStockMinimo.length + datos.sinPrecio.length
   const acciones = [
-    datos.bajoMinimo.length > 0 && { tipo: 'Compra', texto: `Preparar pedido de ${datos.bajoMinimo.length} vinos bajo mínimo`, href: '#pedido' },
+    datos.pedido.length > 0 && { tipo: 'Compra', texto: `Preparar pedido de ${datos.pedido.length} vinos en minimo o punto de pedido`, href: '#pedido' },
     datos.sinCoste.length > 0 && { tipo: 'Margen', texto: `Completar coste de ${datos.sinCoste.length} referencias`, href: '#referencias' },
     datos.sinProveedor.length > 0 && { tipo: 'Proveedor', texto: `Asignar proveedor a ${datos.sinProveedor.length} vinos`, href: '#proveedores' },
-    incidencias.length > 0 && { tipo: 'Sala', texto: `${incidencias.length} incidencias pendientes en cierre`, href: '/dashboard/cierre#incidencias' },
+    !perfilBodega && incidencias.length > 0 && { tipo: 'Sala', texto: `${incidencias.length} incidencias pendientes en cierre`, href: '/dashboard/cierre#incidencias' },
     datos.margenBajo.length > 0 && { tipo: 'Margen', texto: `Revisar ${datos.margenBajo.length} vinos con margen bajo`, href: '#referencias' },
     datos.sinRotacion.length > 0 && { tipo: 'Rotación', texto: `Revisar ${datos.sinRotacion.length} vinos con stock alto sin salida`, href: '#rotacion' },
     propuestas.length > 0 && { tipo: 'Mejora', texto: `Valorar ${propuestas.length} propuestas`, href: '#propuestas' },
@@ -387,7 +423,10 @@ export default function ControlBodega() {
       '',
       ...pedidoPorProveedor.flatMap(([proveedor, vinosProveedor]) => [
         proveedor,
-        ...vinosProveedor.map(vino => `- ${vino.nombre}: pedir ${vino.pedir} uds. Stock ${vino.stock || 0}, mínimo ${vino.stock_minimo}`),
+        ...vinosProveedor.map(vino => {
+          const cobertura = vino.reposicion?.diasCobertura == null ? 'sin ventas recientes' : `${vino.reposicion.diasCobertura} dias`
+          return `- ${vino.nombre}: pedir ${vino.pedir} uds. Stock ${vino.stock || 0}, minimo ${vino.stock_minimo || 0}, punto pedido ${vino.reposicion?.puntoPedido || vino.stock_minimo || 0}, cobertura ${cobertura}`
+        }),
         '',
       ]),
     ].join('\n')
@@ -408,14 +447,15 @@ export default function ControlBodega() {
 
   function textoPedidoProveedor(proveedor, vinosProveedor) {
     return [
-      `Hola, te paso pedido para ${restaurante?.nombre || 'el restaurante'}:`,
+      `Hola, te paso pedido para ${restaurante?.nombre || (perfilBodega ? 'la bodega' : 'el restaurante')}:`,
       '',
       `Proveedor: ${proveedor}`,
       '',
       ...vinosProveedor.map(vino => {
         const referencia = vino.referencia_proveedor ? ` · ref. ${vino.referencia_proveedor}` : ''
         const formato = vino.formato_compra ? ` · ${vino.formato_compra}` : ''
-        return `- ${vino.nombre}${referencia}: ${vino.pedir} uds.${formato}`
+        const cobertura = vino.reposicion?.diasCobertura == null ? 'sin ventas recientes' : `${vino.reposicion.diasCobertura} dias de cobertura`
+        return `- ${vino.nombre}${referencia}: ${vino.pedir} uds.${formato} Stock ${vino.stock || 0}; punto pedido ${vino.reposicion?.puntoPedido || vino.stock_minimo || 0}; ${cobertura}`
       }),
       '',
       'Gracias.',
@@ -475,7 +515,10 @@ export default function ControlBodega() {
         <div className={styles.itemStack} style={{ marginTop: 12 }}>
           {vinosProveedor.map(vino => (
             <div key={vino.id} className={styles.sectionHead} style={{ margin: 0, paddingTop: 8, borderTop: '1px solid rgba(23,20,22,0.08)' }}>
-              <p className={styles.sectionText} style={{ margin: 0 }}>{vino.nombre} - stock {vino.stock || 0} - minimo {vino.stock_minimo}</p>
+              <p className={styles.sectionText} style={{ margin: 0 }}>
+                {vino.nombre} - stock {vino.stock || 0} - minimo {vino.stock_minimo || 0} - punto pedido {vino.reposicion?.puntoPedido || vino.stock_minimo || 0}
+                {vino.reposicion?.diasCobertura == null ? ' - sin ventas recientes' : ` - cobertura ${vino.reposicion.diasCobertura} dias`}
+              </p>
               <div className={styles.actionRow}>
                 <strong className={styles.badge}>Pedir {vino.pedir}</strong>
                 {faltaProveedor && (
@@ -496,13 +539,21 @@ export default function ControlBodega() {
     <ModuleShell
       restaurante={restaurante}
       eyebrow="Bodega"
-      title="Stock, margen y reposición"
-      subtitle="Vista operativa: cuánto hay en bodega, qué comprar y qué datos faltan. La edición completa queda plegada."
+      title={perfilBodega ? 'Control de bodega para sumiller' : 'Stock, margen y reposición'}
+      subtitle={perfilBodega
+        ? 'KPI, compras, margen, proveedor e inventario para dejar atrás el Excel sin perder criterio profesional.'
+        : 'Vista operativa: cuánto hay en bodega, qué comprar y qué datos faltan. La edición completa queda plegada.'}
       actions={<Link className={styles.secondary} href="/dashboard/inventario">Inventario</Link>}
       help={{
-        title: 'Qué hacer aquí',
-        intro: 'Bodega es la pantalla de control, no la de carga masiva. Sirve para ver riesgos y preparar compras.',
-        items: [
+        title: perfilBodega ? 'Rutina del sumiller' : 'Qué hacer aquí',
+        intro: perfilBodega
+          ? 'Bodega concentra decisiones de compra, margen, rotación y proveedor. La IA ordena señales; el criterio lo mantiene el sumiller.'
+          : 'Bodega es la pantalla de control, no la de carga masiva. Sirve para ver riesgos y preparar compras.',
+        items: perfilBodega ? [
+          { title: 'Compra primero', text: 'Bajo mínimo y punto de pedido convierten stock real en una lista preparada por proveedor.' },
+          { title: 'Defiende margen', text: 'Coste, PVP y ventas recientes separan vinos estrella, joyas y referencias que revisar.' },
+          { title: 'Limpia Excel', text: 'Proveedor, referencia y stock mínimo quedan en ficha para inventario, pedidos y reporting.' },
+        ] : [
           { title: 'Mira urgencias', text: 'Bajo mínimo, margen bajo y datos sin completar son las acciones que más impacto tienen.' },
           { title: 'Prepara pedido', text: 'Usa la lista sugerida como punto de partida antes de hablar con proveedor o consultor.' },
           { title: 'Edita lo necesario', text: 'Coste, proveedor y stock mínimo alimentan margen, reposición e inventario inteligente.' },
@@ -514,14 +565,20 @@ export default function ControlBodega() {
       <div className={styles.cellarPage}>
       <section className={styles.cellarHero}>
         <div className={styles.cellarHeroCopy}>
-          <p className={styles.eyebrow}>Cava viva</p>
-          <h2>Compra, margen y stock en una sola mirada</h2>
+          <p className={styles.eyebrow}>{perfilBodega ? 'Carta Viva Bodega' : 'Cava viva'}</p>
+          <h2>{perfilBodega ? 'Tu bodega, en criterio y números' : 'Compra, margen y stock en una sola mirada'}</h2>
           <p>
-            Primero lo que hay que decidir hoy: pedido, datos que bloquean margen e incidencias que debe cerrar sala.
+            {perfilBodega
+              ? 'Primero lo que hay que decidir hoy: pedido, margen, stock inmovilizado y referencias que conviene mover.'
+              : 'Primero lo que hay que decidir hoy: pedido, datos que bloquean margen e incidencias que debe cerrar sala.'}
           </p>
           <div className={styles.cellarHeroActions}>
             <button type="button" className={styles.primary} onClick={() => setVistaBodega('compras')}>Preparar pedido</button>
-            <button type="button" className={styles.secondary} onClick={abrirPropuestas}>Ver propuestas</button>
+            {perfilBodega ? (
+              <Link className={styles.secondary} href="/dashboard/menu-engineering">Ver estrellas y joyas</Link>
+            ) : (
+              <button type="button" className={styles.secondary} onClick={abrirPropuestas}>Ver propuestas</button>
+            )}
             <Link className={styles.ghost} href="/dashboard/vinos?filtro=stock">Stock bajo</Link>
           </div>
         </div>
@@ -568,7 +625,7 @@ export default function ControlBodega() {
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Qué mirar ahora</h2>
-              <p className={styles.panelSub}>Compra, margen y datos pendientes. Las incidencias se resuelven en Cierre.</p>
+              <p className={styles.panelSub}>{perfilBodega ? 'Compra, margen y datos pendientes con lectura de stock, proveedor y venta real.' : 'Compra, margen y datos pendientes. Las incidencias se resuelven en Cierre.'}</p>
             </div>
             <span className={styles.badge}>{acciones.length}</span>
           </div>
@@ -592,7 +649,7 @@ export default function ControlBodega() {
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Pedido sugerido</h2>
-              <p className={styles.panelSub}>Agrupado por proveedor para copiar y pegar a cada distribuidor.</p>
+              <p className={styles.panelSub}>Agrupado por proveedor. Se activa por stock minimo, ventas recientes, plazo de entrega y colchon de seguridad.</p>
             </div>
             <div className={styles.actionRow}>
               <span className={styles.badge}>{pedidoCombinado.length}</span>
@@ -635,7 +692,7 @@ export default function ControlBodega() {
                         <h3 className={styles.sectionTitle}>{vino.nombre}</h3>
                         <p className={styles.sectionText}>{vino.proveedor || 'Sin proveedor'} · stock {vino.stock || 0} · coste inmovilizado {eur(decimal(vino.stock) * decimal(vino.coste_compra))}</p>
                       </div>
-                      <span className={styles.badge}>Sin ventas marcadas</span>
+                      <span className={styles.badge}>{perfilBodega ? 'Sin ventas recientes' : 'Sin ventas marcadas'}</span>
                     </div>
                   </article>
                 ))}
@@ -650,7 +707,7 @@ export default function ControlBodega() {
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Referencias con tracción</h2>
-              <p className={styles.panelSub}>Vinos que sala está consiguiendo vender o defender.</p>
+              <p className={styles.panelSub}>{perfilBodega ? 'Vinos con salida real que conviene proteger, reponer o defender ante dirección.' : 'Vinos que sala está consiguiendo vender o defender.'}</p>
             </div>
             <span className={styles.badge}>{datos.topRotacion.length}</span>
           </div>
@@ -670,7 +727,7 @@ export default function ControlBodega() {
                 ))}
               </div>
             ) : (
-              <div className={styles.empty}>Aún no hay ventas marcadas desde sala.</div>
+              <div className={styles.empty}>{perfilBodega ? 'Aún no hay ventas recientes registradas.' : 'Aún no hay ventas marcadas desde sala.'}</div>
             )}
           </div>
         </div>
@@ -764,7 +821,9 @@ export default function ControlBodega() {
                     <div className={styles.sectionHead} style={{ margin: 0 }}>
                       <div>
                         <h3 className={styles.sectionTitle}>{proveedor}</h3>
-                        <p className={styles.sectionText}>{info.refs} referencias</p>
+                        <p className={styles.sectionText}>
+                          {info.refs} referencias · retorno {info.retorno == null ? '-' : `${info.retorno.toFixed(2)}x`}
+                        </p>
                       </div>
                       <span className={styles.badge}>{eur(info.coste)}</span>
                     </div>

@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 function planDesdePriceId(priceId) {
   if (priceId === process.env.STRIPE_PRICE_BASIC)   return 'basic'
   if (priceId === process.env.STRIPE_PRICE_PRO)     return 'pro'
+  if (priceId === process.env.STRIPE_PRICE_BODEGA)  return 'bodega'
   if (priceId === process.env.STRIPE_PRICE_PREMIUM) return 'premium'
   return null
 }

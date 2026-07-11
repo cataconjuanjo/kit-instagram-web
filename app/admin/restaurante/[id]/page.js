@@ -970,6 +970,7 @@ export default function RestauranteWorkspace() {
   const { score, prioridad, alertas, servicios, siguienteMovimiento, metricas, diagnostico, ventasMarcadas, incidenciasStock, dudasSala, propuestasAbiertas, vinosConDudas } = analisis
   const fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
   const propuestasActivas = propuestas.filter(p => p.estado !== 'descartada' && p.estado !== 'incorporada')
+  const decisionesPrioritarias = alertas.slice(0, 3)
 
   return (
     <div className="admin-main ws-main">
@@ -1062,6 +1063,53 @@ export default function RestauranteWorkspace() {
                 {servicios.map(s => <span key={s} className="ws-servicio-pill">{s}</span>)}
               </div>
             )}
+
+            <div className="consultant-decision-board">
+              <div className="consultant-decision-head">
+                <div>
+                  <p className="admin-kicker">Decisión ejecutiva</p>
+                  <h3>Qué mover ahora</h3>
+                </div>
+                <span>{decisionesPrioritarias.length || 1} acciones priorizadas</span>
+              </div>
+              <div className="consultant-decision-grid">
+                {decisionesPrioritarias.length ? decisionesPrioritarias.map((alerta, index) => (
+                  <article key={alerta.titulo}>
+                    <div className="consultant-decision-number">{index + 1}</div>
+                    <div>
+                      <span>{alerta.servicio}</span>
+                      <strong>{alerta.titulo}</strong>
+                      <p>{alerta.detalle}</p>
+                    </div>
+                    <div className="consultant-decision-actions">
+                      <button
+                        type="button"
+                        onClick={() => abrirFormNuevo({
+                          titulo: alerta.titulo,
+                          motivo: `${alerta.detalle}\n\nAcción sugerida: ${alerta.accion || alerta.servicio}`,
+                          prioridad: index === 0 ? 'alta' : 'media',
+                        })}
+                      >
+                        Crear propuesta
+                      </button>
+                      <button type="button" onClick={() => scrollTo('ws-diagnostico')}>Ver diagnóstico</button>
+                    </div>
+                  </article>
+                )) : (
+                  <article className="consultant-decision-clear">
+                    <div className="consultant-decision-number">✓</div>
+                    <div>
+                      <span>Mantenimiento</span>
+                      <strong>Sin bloqueos prioritarios</strong>
+                      <p>Revisa pequeños ajustes de relato, sala y rotación antes de abrir nuevas propuestas.</p>
+                    </div>
+                    <div className="consultant-decision-actions">
+                      <button type="button" onClick={gestionar}>Abrir dashboard</button>
+                    </div>
+                  </article>
+                )}
+              </div>
+            </div>
           </section>
 
           <section id="ws-inteligencia" className="ws-section consulting-intelligence">
@@ -1425,7 +1473,7 @@ export default function RestauranteWorkspace() {
                     <div className="inventory-intelligence-head">
                       <div>
                         <h4>Motor de venta por copa</h4>
-                        <p>Detecta candidatos por copa, copa premium y Coravin, con precio sugerido, margen y riesgo de apertura.</p>
+                        <p>Detecta candidatos por copa, copa premium, Coravin y copas de descubrimiento para llevar una propuesta concreta al restaurante.</p>
                       </div>
                       <Link href="/dashboard/sala" className="ws-btn-secondary">Abrir sala</Link>
                     </div>
@@ -1455,20 +1503,23 @@ export default function RestauranteWorkspace() {
                     </div>
 
                     <div className="btg-candidates">
-                      {(consultoriaFase1.copa.candidates || []).slice(0, 10).map(item => (
-                        <div className={`btg-candidate is-${item.categoria_copa}`} key={item.id || item.vino_id}>
-                          <div>
-                            <strong>{item.vinos?.nombre || item.nombre || 'Vino sin nombre'}</strong>
-                            <span>{item.motivo}</span>
-                            <small>{item.accion}</small>
+                      {(consultoriaFase1.copa.candidates || []).slice(0, 10).map(item => {
+                        const esDescubrimiento = /descubrimiento/i.test(`${item.motivo || ''} ${item.accion || ''}`)
+                        return (
+                          <div className={`btg-candidate is-${item.categoria_copa}${esDescubrimiento ? ' is-discovery' : ''}`} key={item.id || item.vino_id}>
+                            <div>
+                              <strong>{item.vinos?.nombre || item.nombre || 'Vino sin nombre'}</strong>
+                              <span>{item.motivo}</span>
+                              <small>{item.accion}</small>
+                            </div>
+                            <div>
+                              <b>{Number(item.score_copa).toFixed(0)}/100</b>
+                              <span>{esDescubrimiento ? 'descubrimiento' : item.categoria_copa.replace('_', ' ')}</span>
+                              <small>{Number(item.precio_copa_sugerido).toFixed(2)} EUR/copa · margen {Number(item.margen_copa_pct).toFixed(1)}%</small>
+                            </div>
                           </div>
-                          <div>
-                            <b>{Number(item.score_copa).toFixed(0)}/100</b>
-                            <span>{item.categoria_copa.replace('_', ' ')}</span>
-                            <small>{Number(item.precio_copa_sugerido).toFixed(2)} EUR/copa · margen {Number(item.margen_copa_pct).toFixed(1)}%</small>
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                       {!(consultoriaFase1.copa.candidates || []).length && (
                         <p className="ws-empty-inline">No hay candidatos claros con los datos actuales.</p>
                       )}

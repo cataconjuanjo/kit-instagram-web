@@ -5,31 +5,87 @@ import { useState } from 'react'
 async function descargarPDF() {
   const html2canvas = (await import('html2canvas')).default
   const jsPDF = (await import('jspdf')).default
-
-  const paginas = document.querySelectorAll('.page')
+  const paginas = document.querySelectorAll('.dossier-page')
   const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' })
 
-  for (let i = 0; i < paginas.length; i++) {
+  for (let i = 0; i < paginas.length; i += 1) {
     const canvas = await html2canvas(paginas[i], {
       scale: 3,
       useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
+      backgroundColor: '#f7f2e9',
       logging: false,
-      onclone: (doc) => {
-        // Ocultar el botón de descarga en la captura
-        const btn = doc.querySelector('.download-bar')
-        if (btn) btn.style.display = 'none'
-      }
     })
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.97)
     if (i > 0) pdf.addPage()
-    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297)
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.97), 'JPEG', 0, 0, 210, 297)
   }
 
-  pdf.save('carta-viva-dossier-2026.pdf')
+  pdf.save('carta-viva-dossier.pdf')
 }
+
+const resultados = [
+  {
+    numero: '01',
+    titulo: 'Más vino bien recomendado',
+    texto: 'La carta y el equipo conectan cada mesa con referencias que encajan con la cocina, el momento y el presupuesto.',
+  },
+  {
+    numero: '02',
+    titulo: 'Más criterio en sala',
+    texto: 'El equipo dispone de argumentos claros, alternativas y objetivos de servicio sin recitar fichas técnicas.',
+  },
+  {
+    numero: '03',
+    titulo: 'Más control de la bodega',
+    texto: 'Stock, compras, precios y márgenes dejan de vivir en lugares distintos y empiezan a contar la misma historia.',
+  },
+]
+
+const palancas = [
+  ['Venta', 'Referencias que encajan con la cocina pero hoy tienen poca visibilidad.'],
+  ['Margen', 'Vinos con un coste o un PVP que conviene revisar antes de seguir vendiéndolos igual.'],
+  ['Rotación', 'Botellas con demasiado stock que pueden activarse en sala, por copa o mediante un maridaje concreto.'],
+  ['Compra', 'Reposiciones, proveedores y nuevas referencias decididas con más información y menos intuición.'],
+]
+
+const planes = [
+  {
+    nombre: 'Básico',
+    etiqueta: 'Carta y cliente',
+    resumen: 'Para presentar el vino con el mismo cuidado que la cocina.',
+    incluye: [
+      'Carta digital personalizada',
+      'Fichas claras y vinos por copa',
+      'Recomendaciones con los platos reales',
+      'Selección de la casa y comparador',
+      'QR y actualización de referencias',
+    ],
+  },
+  {
+    nombre: 'Sala',
+    etiqueta: 'Operativa completa',
+    resumen: 'Para conectar cliente, equipo y bodega durante el servicio.',
+    destacado: true,
+    incluye: [
+      'Todo lo incluido en Básico',
+      'Modo camarero y briefing de sala',
+      'Objetivos: copa, ticket, local o rotación',
+      'Stock, márgenes, inventario y pedidos',
+      'Cierre de servicio y estadísticas',
+    ],
+  },
+  {
+    nombre: 'Acompañado',
+    etiqueta: 'Dirección y evolución',
+    resumen: 'Para revisar y desarrollar la propuesta de vino con criterio profesional.',
+    incluye: [
+      'Todo lo incluido en Sala',
+      'Lectura periódica de carta y bodega',
+      'Oportunidades de margen y rotación',
+      'Estrategia de copas y proveedores',
+      'Recomendaciones y seguimiento',
+    ],
+  },
+]
 
 export default function Dossier() {
   const [generando, setGenerando] = useState(false)
@@ -44,854 +100,493 @@ export default function Dossier() {
   }
 
   return (
-    <>
+    <main className="dossier">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap');
 
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+          --ink: #241811;
+          --wine: #5b1d2a;
+          --green: #243a31;
+          --paper: #f7f2e9;
+          --gold: #bd9560;
+          --muted: #796c62;
+          --line: rgba(36, 24, 17, .16);
+        }
 
-        body {
-          font-family: 'DM Sans', system-ui, sans-serif;
-          background: #e8e0d0;
-          color: #1c1410;
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #d8d0c3; }
+        .dossier {
+          min-height: 100vh;
+          padding: 28px 0 60px;
+          color: var(--ink);
+          font-family: 'DM Sans', sans-serif;
           -webkit-font-smoothing: antialiased;
         }
-
-        .print-btn {
+        .download {
           position: fixed;
-          top: 20px;
-          right: 20px;
-          z-index: 999;
-          background: #2c1810;
-          color: #e8d9c0;
-          border: none;
-          padding: 10px 22px;
-          font-size: 13px;
-          font-family: 'DM Sans', sans-serif;
-          font-weight: 500;
-          letter-spacing: 0.08em;
+          z-index: 20;
+          top: 22px;
+          right: 22px;
+          border: 0;
+          border-radius: 999px;
+          background: var(--ink);
+          color: white;
+          padding: 12px 20px;
+          font: 600 12px/1 'DM Sans', sans-serif;
+          letter-spacing: .08em;
+          text-transform: uppercase;
           cursor: pointer;
-          text-transform: uppercase;
+          box-shadow: 0 8px 24px rgba(36, 24, 17, .2);
         }
-
-        .page {
+        .dossier-page {
+          position: relative;
           width: 210mm;
-          margin: 20px auto;
-          background: #fff;
-          box-shadow: 0 4px 32px rgba(0,0,0,0.15);
-          overflow: hidden;
-          position: relative;
-        }
-
-        /* ══ PORTADA ══════════════════════════════════════════ */
-
-        .cover {
           height: 297mm;
-          background: #1c1008;
-          display: flex;
-          flex-direction: column;
-          position: relative;
+          margin: 0 auto 24px;
           overflow: hidden;
+          background: var(--paper);
+          box-shadow: 0 18px 50px rgba(36, 24, 17, .18);
         }
-
-        .cover-texture {
-          position: absolute;
-          inset: 0;
+        .page-inner {
+          height: 100%;
+          padding: 18mm 17mm 15mm;
+          display: flex;
+          flex-direction: column;
+        }
+        .folio {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: .18em;
+          text-transform: uppercase;
+          color: var(--muted);
+        }
+        .brand { color: var(--wine); }
+        .serif { font-family: 'Playfair Display', Georgia, serif; }
+        .eyebrow {
+          margin: 0 0 14px;
+          color: var(--wine);
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: .18em;
+          text-transform: uppercase;
+        }
+        h1, h2, h3, p { margin-top: 0; }
+        .cover {
           background:
-            radial-gradient(ellipse 90% 50% at 60% 30%, rgba(139,80,40,0.22), transparent 60%),
-            radial-gradient(ellipse 40% 60% at 5% 90%, rgba(191,160,110,0.1), transparent);
+            radial-gradient(circle at 76% 18%, rgba(189,149,96,.18), transparent 28%),
+            linear-gradient(145deg, #243a31 0%, #1c2d26 58%, #16241f 100%);
+          color: #f8f1e5;
         }
-
-        .cover-stripe {
-          position: absolute;
-          left: 0; top: 0; bottom: 0;
-          width: 6px;
-          background: #8b3a2a;
+        .cover .page-inner { padding: 18mm 18mm 16mm; }
+        .cover .folio { color: rgba(255,255,255,.5); }
+        .cover .brand { color: #e4c99f; }
+        .cover-copy {
+          width: 83%;
+          margin: auto 0;
         }
-
-        .cover-top {
-          position: relative;
-          z-index: 1;
-          padding: 52px 56px 0 62px;
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-        }
-
-        .cover-logo-row {
-          display: flex;
-          align-items: baseline;
-          gap: 16px;
-        }
-
-        .cover-logo-name {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 24px;
-          font-weight: 300;
-          color: #c8a87a;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-        }
-
-        .cover-logo-by {
-          font-size: 13px;
-          color: rgba(255,255,255,0.22);
-          letter-spacing: 0.08em;
-        }
-
-        .cover-body {
-          padding-bottom: 64px;
-        }
-
-        .cover-label {
-          font-size: 12px;
-          font-weight: 500;
-          letter-spacing: 0.22em;
-          text-transform: uppercase;
-          color: #8b3a2a;
-          margin-bottom: 26px;
-        }
-
-        .cover-h1 {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 82px;
-          font-weight: 300;
-          line-height: 0.95;
-          color: #f0e8d8;
-          margin-bottom: 38px;
-          letter-spacing: -0.01em;
-        }
-
-        .cover-h1 em {
-          font-style: italic;
-          color: #c8a87a;
-        }
-
-        .cover-divider {
-          width: 56px;
-          height: 1px;
-          background: #8b3a2a;
-          margin-bottom: 26px;
-        }
-
-        .cover-tagline {
-          font-size: 17px;
-          font-weight: 300;
-          line-height: 1.8;
-          color: rgba(240,232,216,0.6);
-          max-width: 440px;
-        }
-
-        .cover-bottom {
-          position: relative;
-          z-index: 1;
-          padding: 24px 56px 24px 62px;
-          border-top: 1px solid rgba(255,255,255,0.06);
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .cover-url {
-          font-size: 13px;
-          color: rgba(255,255,255,0.22);
-          letter-spacing: 0.1em;
-        }
-
-        .cover-year {
-          font-size: 12px;
-          color: rgba(255,255,255,0.15);
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-        }
-
-        /* ══ PÁGINA INTERIOR ══════════════════════════════════ */
-
-        .inner {
-          min-height: 297mm;
-          padding: 52px 56px 52px 62px;
-          display: flex;
-          flex-direction: column;
-          gap: 48px;
-          position: relative;
-        }
-
-        .inner-stripe {
-          position: absolute;
-          left: 0; top: 0; bottom: 0;
-          width: 6px;
-          background: #8b3a2a;
-        }
-
-        .page-nav {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding-bottom: 22px;
-          border-bottom: 1px solid #ede5d8;
-        }
-
-        .page-nav-brand {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 17px;
-          font-weight: 300;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: #8b3a2a;
-        }
-
-        .page-nav-num {
-          font-size: 12px;
-          color: #c8b89a;
-          letter-spacing: 0.14em;
-        }
-
-        /* ── Bloque de sección ── */
-        .s-label {
+        .cover-kicker {
+          margin-bottom: 24px;
+          color: #e4c99f;
           font-size: 11px;
-          font-weight: 500;
-          letter-spacing: 0.22em;
+          letter-spacing: .16em;
           text-transform: uppercase;
-          color: #8b3a2a;
-          margin-bottom: 12px;
         }
-
-        .s-title {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 42px;
-          font-weight: 300;
-          line-height: 1.12;
-          color: #1c1410;
-          margin-bottom: 12px;
-        }
-
-        .s-sub {
-          font-size: 16px;
-          font-weight: 300;
-          line-height: 1.75;
-          color: #7a6a58;
-          max-width: 520px;
-        }
-
-        /* ── Problemas ── */
-        .problems {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1px;
-          background: #ede5d8;
-          border: 1px solid #ede5d8;
-          margin-top: 10px;
-        }
-
-        .prob {
-          background: #faf7f2;
-          padding: 24px 26px;
-        }
-
-        .prob-num {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 34px;
-          font-weight: 300;
-          color: #d4c0a0;
-          line-height: 1;
-          margin-bottom: 12px;
-        }
-
-        .prob-title {
-          font-size: 15px;
+        .cover h1 {
+          margin-bottom: 26px;
+          font-size: 59px;
+          line-height: .98;
           font-weight: 500;
-          color: #2c1810;
-          margin-bottom: 7px;
+          letter-spacing: -.035em;
+        }
+        .cover h1 em { color: #e4c99f; font-weight: 500; }
+        .cover-lead {
+          max-width: 570px;
+          margin: 0;
+          padding-top: 24px;
+          border-top: 1px solid rgba(255,255,255,.25);
+          color: rgba(255,255,255,.78);
+          font-size: 18px;
+          line-height: 1.55;
+          font-weight: 300;
+        }
+        .cover-bottom {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 14px;
+        }
+        .cover-result {
+          padding-top: 13px;
+          border-top: 1px solid rgba(255,255,255,.2);
+        }
+        .cover-result strong {
+          display: block;
+          margin-bottom: 5px;
+          color: #e4c99f;
+          font: 500 17px/1.15 'Playfair Display', Georgia, serif;
+        }
+        .cover-result span {
+          color: rgba(255,255,255,.56);
+          font-size: 10px;
           line-height: 1.4;
         }
-
-        .prob-desc {
-          font-size: 13px;
-          font-weight: 300;
-          color: #9a8878;
-          line-height: 1.7;
+        .section-head { margin: 34px 0 28px; }
+        .section-head h2 {
+          max-width: 620px;
+          margin-bottom: 15px;
+          font: 500 37px/1.08 'Playfair Display', Georgia, serif;
+          letter-spacing: -.025em;
         }
-
-        /* ── Features ── */
-        .features {
-          display: flex;
-          flex-direction: column;
-          gap: 0;
-          margin-top: 8px;
+        .section-head > p:last-child {
+          max-width: 610px;
+          color: var(--muted);
+          font-size: 14px;
+          line-height: 1.6;
         }
-
-        .feat {
+        .results {
           display: grid;
-          grid-template-columns: 34px 1fr;
-          gap: 16px;
-          padding: 16px 0;
-          border-bottom: 1px solid #f0ebe0;
-          align-items: flex-start;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+          margin-bottom: 32px;
         }
-
-        .feat:last-child { border-bottom: none; }
-
-        .feat-n {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 22px;
-          font-weight: 300;
-          color: #c8a87a;
-          padding-top: 1px;
+        .result {
+          min-height: 192px;
+          padding: 20px 18px;
+          border: 1px solid var(--line);
+          background: rgba(255,255,255,.34);
         }
-
-        .feat-title {
-          font-size: 15px;
-          font-weight: 500;
-          color: #1c1410;
+        .result-number {
+          color: var(--gold);
+          font-size: 10px;
+          letter-spacing: .14em;
+        }
+        .result h3 {
+          margin: 38px 0 10px;
+          font: 600 21px/1.1 'Playfair Display', Georgia, serif;
+        }
+        .result p {
+          color: var(--muted);
+          font-size: 11px;
+          line-height: 1.55;
+        }
+        .money-block {
+          display: grid;
+          grid-template-columns: .8fr 1.2fr;
+          gap: 24px;
+          margin-top: auto;
+          padding: 25px;
+          background: var(--wine);
+          color: white;
+        }
+        .money-block h3 {
+          margin-bottom: 10px;
+          font: 500 25px/1.12 'Playfair Display', Georgia, serif;
+        }
+        .money-block > div > p {
+          color: rgba(255,255,255,.66);
+          font-size: 11px;
+          line-height: 1.55;
+        }
+        .levers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+        .lever {
+          padding-left: 12px;
+          border-left: 2px solid #d4ae79;
+        }
+        .lever strong {
+          display: block;
           margin-bottom: 4px;
-          line-height: 1.3;
+          color: #ecd5b2;
+          font-size: 11px;
+          letter-spacing: .08em;
+          text-transform: uppercase;
         }
-
-        .feat-desc {
-          font-size: 13.5px;
-          font-weight: 300;
-          color: #7a6a58;
-          line-height: 1.7;
+        .lever span {
+          color: rgba(255,255,255,.7);
+          font-size: 10px;
+          line-height: 1.45;
         }
-
-        /* ── Planes ── */
+        .plans-head {
+          display: flex;
+          align-items: end;
+          justify-content: space-between;
+          gap: 30px;
+          margin: 34px 0 25px;
+        }
+        .plans-head h2 {
+          max-width: 500px;
+          margin: 0;
+          font: 500 37px/1.07 'Playfair Display', Georgia, serif;
+          letter-spacing: -.025em;
+        }
+        .plans-head p {
+          max-width: 240px;
+          margin: 0;
+          color: var(--muted);
+          font-size: 11px;
+          line-height: 1.5;
+        }
         .plans {
           display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 0;
-          border: 1px solid #ede5d8;
-          background: #ede5d8;
-          margin-top: 10px;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 11px;
         }
-
         .plan {
-          background: #faf7f2;
           display: flex;
+          min-height: 448px;
           flex-direction: column;
+          padding: 20px 17px;
+          border: 1px solid var(--line);
+          background: rgba(255,255,255,.35);
         }
-
         .plan.featured {
-          background: #1c1008;
+          background: var(--green);
+          border-color: var(--green);
+          color: white;
         }
-
-        .plan-top {
-          padding: 26px 22px 18px;
-          border-bottom: 1px solid #ede5d8;
-        }
-
-        .plan.featured .plan-top {
-          border-bottom-color: rgba(255,255,255,0.08);
-        }
-
-        .plan-tag {
-          font-size: 10px;
-          font-weight: 500;
-          letter-spacing: 0.2em;
+        .plan-label {
+          margin-bottom: 24px;
+          color: var(--wine);
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: .13em;
           text-transform: uppercase;
-          color: #8b3a2a;
-          margin-bottom: 12px;
         }
-
-        .plan.featured .plan-tag { color: #c8a87a; }
-
-        .plan-name {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 30px;
-          font-weight: 300;
-          color: #1c1410;
-          margin-bottom: 12px;
-          line-height: 1;
-        }
-
-        .plan.featured .plan-name { color: #f0e8d8; }
-
-        .plan-price-real {
-          font-size: 32px;
-          font-weight: 500;
-          color: #1c1410;
-          line-height: 1;
-        }
-
-        .plan.featured .plan-price-real { color: #c8a87a; }
-
-        .plan-price-real span {
-          font-size: 15px;
-          font-weight: 300;
-          color: #aaa;
-        }
-
-        .plan.featured .plan-price-real span { color: rgba(255,255,255,0.35); }
-
-        .plan-founder {
-          margin-top: 8px;
-          font-size: 12px;
-          font-weight: 300;
-          color: #9a8878;
-          line-height: 1.5;
-        }
-
-        .plan.featured .plan-founder { color: rgba(255,255,255,0.35); }
-
-        .plan-founder s {
-          color: #c8a87a;
-          font-weight: 500;
-        }
-
-        .plan.featured .plan-founder s { color: #c8a87a; }
-
-        .plan-body {
-          padding: 18px 22px 24px;
-          flex: 1;
-        }
-
-        .plan-limit {
-          font-size: 12px;
-          font-weight: 300;
-          color: #b0a090;
-          margin-bottom: 12px;
-          padding-bottom: 12px;
-          border-bottom: 1px solid #ede5d8;
-        }
-
-        .plan.featured .plan-limit {
-          color: rgba(255,255,255,0.25);
-          border-bottom-color: rgba(255,255,255,0.08);
-        }
-
-        .plan-feats {
-          list-style: none;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .plan-feats li {
-          font-size: 13px;
-          font-weight: 300;
-          color: #5a4a3a;
-          display: flex;
-          gap: 7px;
-          line-height: 1.5;
-        }
-
-        .plan.featured .plan-feats li { color: rgba(240,232,216,0.7); }
-
-        .plan-feats li::before {
-          content: '—';
-          color: #c8a87a;
-          flex-shrink: 0;
-          font-weight: 300;
-        }
-
-        /* ── Nota fundador ── */
-        .founder-note {
-          background: #f5f0e6;
-          border-left: 3px solid #c8a87a;
-          padding: 18px 22px;
-          margin-top: 16px;
-        }
-
-        .founder-note p {
-          font-size: 13px;
-          font-weight: 300;
-          color: #5a4a3a;
-          line-height: 1.7;
-        }
-
-        .founder-note strong {
-          font-weight: 500;
-          color: #2c1810;
-        }
-
-        /* ── CTA ── */
-        .cta {
-          background: #1c1008;
-          padding: 38px 44px;
-          display: grid;
-          grid-template-columns: 1fr auto;
-          gap: 32px;
-          align-items: center;
-        }
-
-        .cta-left {}
-
-        .cta-title {
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 30px;
-          font-weight: 300;
-          color: #f0e8d8;
-          line-height: 1.2;
+        .featured .plan-label { color: #dfbf91; }
+        .plan h3 {
           margin-bottom: 8px;
+          font: 600 27px/1 'Playfair Display', Georgia, serif;
         }
-
-        .cta-desc {
-          font-size: 15px;
-          font-weight: 300;
-          color: rgba(240,232,216,0.5);
-          line-height: 1.7;
-          max-width: 340px;
-        }
-
-        .cta-right {
-          text-align: right;
-          flex-shrink: 0;
-        }
-
-        .cta-contact-label {
+        .plan-summary {
+          min-height: 92px;
+          margin-top: 14px;
+          margin-bottom: 18px;
+          padding-bottom: 18px;
+          border-bottom: 1px solid var(--line);
+          color: var(--muted);
           font-size: 11px;
-          font-weight: 500;
-          letter-spacing: 0.18em;
+          line-height: 1.5;
+        }
+        .featured .plan-summary {
+          color: rgba(255,255,255,.66);
+          border-color: rgba(255,255,255,.18);
+        }
+        .plan ul { margin: 0; padding: 0; list-style: none; }
+        .plan li {
+          position: relative;
+          margin-bottom: 14px;
+          padding-left: 17px;
+          color: #554940;
+          font-size: 10.5px;
+          line-height: 1.42;
+        }
+        .plan li::before {
+          content: '·';
+          position: absolute;
+          left: 2px;
+          color: var(--gold);
+          font-size: 18px;
+          line-height: 10px;
+        }
+        .featured li { color: rgba(255,255,255,.76); }
+        .plan-note {
+          margin-top: auto;
+          padding-top: 17px;
+          border-top: 1px solid var(--line);
+          color: var(--muted);
+          font-size: 9px;
+          line-height: 1.45;
+        }
+        .featured .plan-note {
+          color: rgba(255,255,255,.5);
+          border-color: rgba(255,255,255,.18);
+        }
+        .closing {
+          display: grid;
+          grid-template-columns: 1.35fr .65fr;
+          gap: 25px;
+          margin-top: auto;
+          padding: 24px 26px;
+          background: #eadfcf;
+        }
+        .closing h3 {
+          margin-bottom: 7px;
+          font: 600 23px/1.15 'Playfair Display', Georgia, serif;
+        }
+        .closing p {
+          margin: 0;
+          color: var(--muted);
+          font-size: 10px;
+          line-height: 1.5;
+        }
+        .contact {
+          align-self: center;
+          padding-left: 20px;
+          border-left: 1px solid var(--line);
+        }
+        .contact strong {
+          display: block;
+          margin-bottom: 8px;
+          color: var(--wine);
+          font-size: 10px;
+          letter-spacing: .12em;
           text-transform: uppercase;
-          color: rgba(255,255,255,0.25);
-          margin-bottom: 9px;
         }
-
-        .cta-email {
-          font-size: 15px;
-          color: #c8a87a;
-          font-weight: 400;
-          margin-bottom: 5px;
-        }
-
-        .cta-ig {
-          font-size: 13px;
-          color: rgba(255,255,255,0.3);
-        }
-
-        .cta-web {
-          font-size: 12px;
-          color: rgba(255,255,255,0.18);
-          margin-top: 5px;
-        }
+        .contact span { display: block; margin-bottom: 3px; font-size: 10px; }
 
         @media print {
-          .print-btn { display: none !important; }
-
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
-          }
-
-          body { background: #fff; }
-
-          .page {
-            width: 100%;
-            margin: 0;
-            box-shadow: none;
-            page-break-after: always;
-            break-after: page;
-          }
-          .page:last-child {
-            page-break-after: auto;
-            break-after: auto;
-          }
-          .cover { height: 100vh; }
-          .inner { min-height: 100vh; }
+          body, .dossier { background: white; }
+          .dossier { padding: 0; }
+          .download { display: none; }
+          .dossier-page { margin: 0; box-shadow: none; page-break-after: always; }
         }
-
-        @page { size: A4; margin: 0; }
+        @media (max-width: 850px) {
+          .dossier { padding-top: 75px; overflow-x: auto; }
+          .dossier-page { margin-left: 15px; margin-right: 15px; }
+        }
       `}</style>
 
-      <div className="download-bar" style={{ position: 'fixed', top: 20, right: 20, zIndex: 999 }}>
-        <button
-          style={{
-            background: generando ? '#5a3020' : '#2c1810',
-            color: '#e8d9c0',
-            border: 'none',
-            padding: '11px 24px',
-            fontSize: 13,
-            fontFamily: 'DM Sans, sans-serif',
-            fontWeight: 500,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            cursor: generando ? 'wait' : 'pointer',
-            boxShadow: '0 2px 16px rgba(0,0,0,0.25)',
-            minWidth: 160,
-          }}
-          onClick={handleDescargar}
-          disabled={generando}
-        >
-          {generando ? 'Generando PDF…' : '↓ Descargar PDF'}
-        </button>
-      </div>
+      <button className="download" onClick={handleDescargar} disabled={generando}>
+        {generando ? 'Generando…' : 'Descargar PDF'}
+      </button>
 
-      {/* ══════════════════════════════════════════════════════════ */}
-      {/* PORTADA                                                    */}
-      {/* ══════════════════════════════════════════════════════════ */}
-      <div className="page">
-        <div className="cover">
-          <div className="cover-texture" />
-          <div className="cover-stripe" />
+      <section className="dossier-page cover">
+        <div className="page-inner">
+          <div className="folio">
+            <span className="brand">Carta Viva</span>
+            <span>Cata con Juanjo · 2026</span>
+          </div>
 
-          <div className="cover-top">
-            <div className="cover-logo-row">
-              <span className="cover-logo-name">Carta Viva</span>
-              <span className="cover-logo-by">por Cata con Juanjo</span>
-            </div>
-
-            <div className="cover-body">
-              <p className="cover-label">Herramienta digital para hostelería</p>
-              <h1 className="cover-h1">
-                Tu carta<br />
-                de vinos,<br />
-                <em>siempre viva.</em>
-              </h1>
-              <div className="cover-divider" />
-              <p className="cover-tagline">
-                Para el bar y restaurante que no tiene sumiller
-                —ni lo necesita— pero sí quiere que su vino
-                se venda bien, su bodega esté controlada
-                y su equipo recomiende con convicción.
-              </p>
-            </div>
+          <div className="cover-copy">
+            <p className="cover-kicker">Carta · Sala · Bodega</p>
+            <h1 className="serif">
+              Tu cocina tiene<br />un criterio.<br />
+              <em>Tu propuesta de vino también.</em>
+            </h1>
+            <p className="cover-lead">
+              Carta Viva conecta la propuesta gastronómica con la carta, el trabajo de sala
+              y la gestión de bodega para que el vino se recomiende mejor y evolucione junto al restaurante.
+            </p>
           </div>
 
           <div className="cover-bottom">
-            <span className="cover-url">cataconjuanjo.com</span>
-            <span className="cover-year">Dossier comercial · 2026</span>
+            <div className="cover-result">
+              <strong>Elegir mejor</strong>
+              <span>Una carta que acompaña la cocina y orienta al cliente.</span>
+            </div>
+            <div className="cover-result">
+              <strong>Recomendar mejor</strong>
+              <span>Argumentos concretos para cada plato, mesa y servicio.</span>
+            </div>
+            <div className="cover-result">
+              <strong>Decidir mejor</strong>
+              <span>Información útil sobre margen, stock y rotación.</span>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* ══════════════════════════════════════════════════════════ */}
-      {/* PÁGINA 2 — Problemas + Features                           */}
-      {/* ══════════════════════════════════════════════════════════ */}
-      <div className="page">
-        <div className="inner">
-          <div className="inner-stripe" />
-
-          <div className="page-nav">
-            <span className="page-nav-brand">Carta Viva</span>
-            <span className="page-nav-num">02 / 03</span>
+      <section className="dossier-page">
+        <div className="page-inner">
+          <div className="folio">
+            <span className="brand">Carta Viva</span>
+            <span>02 / 03</span>
           </div>
 
-          {/* Problemas */}
-          <div>
-            <p className="s-label">El problema</p>
-            <h2 className="s-title">Lo que pasa cada día<br />en la mayoría de bares</h2>
-            <p className="s-sub">
-              Mucho vino en la carta, poco tiempo para mantenerla.
-              Camareros sin argumentos y una bodega que nadie controla del todo.
+          <header className="section-head">
+            <p className="eyebrow">El valor para el restaurante</p>
+            <h2>El vino deja de ser una lista y empieza a trabajar para el negocio.</h2>
+            <p>
+              No se trata de añadir referencias. Se trata de que cada vino tenga una razón para estar,
+              un lugar dentro de la cocina y una oportunidad real de venderse.
             </p>
+          </header>
 
-            <div className="problems">
-              <div className="prob">
-                <p className="prob-num">01</p>
-                <p className="prob-title">La carta impresa miente</p>
-                <p className="prob-desc">Cambia una añada, se acaba un vino, sube un precio — y nadie actualiza nada. El cliente pregunta por un vino que ya no hay.</p>
-              </div>
-              <div className="prob">
-                <p className="prob-num">02</p>
-                <p className="prob-title">El camarero recomienda sin convicción</p>
-                <p className="prob-desc">Sin sumiller y sin herramientas, el equipo dice &quot;este está bien&quot; sin saber por qué. El cliente lo nota y pide agua.</p>
-              </div>
-              <div className="prob">
-                <p className="prob-num">03</p>
-                <p className="prob-title">La bodega va por libre</p>
-                <p className="prob-desc">No sabes qué margen tiene cada vino, qué se vende de verdad ni qué hace falta pedir. Te enteras cuando ya se ha acabado.</p>
-              </div>
-              <div className="prob">
-                <p className="prob-num">04</p>
-                <p className="prob-title">Cambiar la carta cuesta dinero y tiempo</p>
-                <p className="prob-desc">Cada actualización implica rediseñar, imprimir y distribuir. Con lo que cambia el vino, es un ciclo que no termina nunca.</p>
-              </div>
-            </div>
+          <div className="results">
+            {resultados.map((resultado) => (
+              <article className="result" key={resultado.numero}>
+                <span className="result-number">{resultado.numero}</span>
+                <h3>{resultado.titulo}</h3>
+                <p>{resultado.texto}</p>
+              </article>
+            ))}
           </div>
 
-          {/* Features */}
-          <div>
-            <p className="s-label">La solución</p>
-            <h2 className="s-title">Lo que Carta Viva<br />hace por tu negocio</h2>
-
-            <div className="features">
-              <div className="feat">
-                <span className="feat-n">1</span>
-                <div>
-                  <p className="feat-title">Carta siempre actualizada — sin reimprimir nada</p>
-                  <p className="feat-desc">Cambia una añada, marca un vino como agotado o ajusta un precio en segundos. El cliente escanea el QR y ve la carta real de hoy, no la de hace seis meses.</p>
-                </div>
-              </div>
-              <div className="feat">
-                <span className="feat-n">2</span>
-                <div>
-                  <p className="feat-title">Tu equipo recomienda con argumentos — desde la PDA</p>
-                  <p className="feat-desc">El modo camarero lleva el asistente de maridaje en el bolsillo. El camarero elige el plato del cliente y recibe al momento qué vino recomendar y por qué. Sin improvisación, sin quedar mal.</p>
-                </div>
-              </div>
-              <div className="feat">
-                <span className="feat-n">3</span>
-                <div>
-                  <p className="feat-title">El cliente encuentra su vino solo</p>
-                  <p className="feat-desc">Desde su móvil, el cliente puede pedir maridaje para lo que va a comer. El asistente le recomienda con precio incluido. Menos preguntas al camarero, más ventas de vino.</p>
-                </div>
-              </div>
-              <div className="feat">
-                <span className="feat-n">4</span>
-                <div>
-                  <p className="feat-title">Importa tu carta desde PDF en dos minutos</p>
-                  <p className="feat-desc">Sube la carta que tienes ahora — en PDF, Excel o foto — y la convierte en digital automáticamente. No empiezas de cero, no tecleas referencia por referencia.</p>
-                </div>
-              </div>
-              <div className="feat">
-                <span className="feat-n">5</span>
-                <div>
-                  <p className="feat-title">Bodega, margen y pedidos bajo control</p>
-                  <p className="feat-desc">De un vistazo: qué tienes, cuánto vale, qué margen deja cada vino y qué hace falta pedir. La lista de pedido se genera sola — la copias y la mandas al proveedor por WhatsApp.</p>
-                </div>
-              </div>
-              <div className="feat">
-                <span className="feat-n">6</span>
-                <div>
-                  <p className="feat-title">Cierre de servicio en tres minutos</p>
-                  <p className="feat-desc">Al terminar el turno, el sistema recoge las señales de sala: qué se vendió, qué se agotó, qué no convenció. El stock se actualiza solo. La bodega siempre refleja la realidad.</p>
-                </div>
-              </div>
-              <div className="feat">
-                <span className="feat-n">7</span>
-                <div>
-                  <p className="feat-title">Tu marca, tu diseño — no una plantilla genérica</p>
-                  <p className="feat-desc">Elige tus colores, tu tipografía y sube tu logo. La carta digital parece tuya, no de un software. El QR puede llevar también a tu carta de comida, reservas o cualquier enlace.</p>
-                </div>
-              </div>
-              <div className="feat">
-                <span className="feat-n">8</span>
-                <div>
-                  <p className="feat-title">Rentabilidad de carta — sabe qué vinos empujar, cuáles renegociar y cuáles quitar</p>
-                  <p className="feat-desc">Cada vino clasificado automáticamente en cuatro categorías según su margen real y su popularidad en sala: Estrella, Joya oculta, Caballo de batalla o Revisar. Con acciones concretas para cada uno. Los datos entran solos — desde el camarero o desde el conteo semanal de bodega.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════ */}
-      {/* PÁGINA 3 — Planes + CTA                                   */}
-      {/* ══════════════════════════════════════════════════════════ */}
-      <div className="page">
-        <div className="inner">
-          <div className="inner-stripe" />
-
-          <div className="page-nav">
-            <span className="page-nav-brand">Carta Viva</span>
-            <span className="page-nav-num">03 / 03</span>
-          </div>
-
-          <div>
-            <p className="s-label">Suscripción mensual · Sin permanencia</p>
-            <h2 className="s-title">Elige el plan<br />de tu restaurante</h2>
-            <p className="s-sub">
-              Sin instalación. Sin contrato. Funciona desde el primer día.
-              Los 14 primeros días son gratis para que lo pruebes con tu equipo.
-            </p>
-
-            <div className="plans">
-
-              {/* Básico */}
-              <div className="plan">
-                <div className="plan-top">
-                  <p className="plan-tag">Plan Básico</p>
-                  <p className="plan-name">Básico</p>
-                  <p className="plan-price-real">59€ <span>/ mes</span></p>
-                  <p className="plan-founder">Carta digital viva para clientes</p>
-                </div>
-                <div className="plan-body">
-                  <p className="plan-limit">Hasta 100 referencias de vino</p>
-                  <ul className="plan-feats">
-                    <li>Carta digital con QR siempre actualizada</li>
-                    <li>Maridaje para el cliente desde su móvil</li>
-                    <li>Hub de enlaces (carta, reservas, redes)</li>
-                    <li>Personalización de marca</li>
-                    <li>Notas de cata generadas automáticamente</li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* Sala */}
-              <div className="plan featured">
-                <div className="plan-top">
-                  <p className="plan-tag">Más popular</p>
-                  <p className="plan-name">Sala</p>
-                  <p className="plan-price-real">99€ <span>/ mes</span></p>
-                  <p className="plan-founder">La opción más operativa</p>
-                </div>
-                <div className="plan-body">
-                  <p className="plan-limit">Hasta 200 referencias de vino</p>
-                  <ul className="plan-feats">
-                    <li>Todo lo del plan Básico</li>
-                    <li>Modo camarero con asistente IA</li>
-                    <li>Importación de carta desde PDF</li>
-                    <li>Control de bodega e inventario</li>
-                    <li>Cierre de servicio automatizado</li>
-                    <li>Estadísticas de sala y escaneos</li>
-                    <li>Análisis de rentabilidad por vino</li>
-                    <li>Gestión de carta de comidas</li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* Acompañado */}
-              <div className="plan">
-                <div className="plan-top">
-                  <p className="plan-tag">Plan Premium</p>
-                  <p className="plan-name">Acompañado</p>
-                  <p className="plan-price-real">Desde 199€ <span>/ mes</span></p>
-                  <p className="plan-founder">Según necesidades del restaurante</p>
-                </div>
-                <div className="plan-body">
-                  <p className="plan-limit">Más de 200 referencias de vino</p>
-                  <ul className="plan-feats">
-                    <li>Todo lo del plan Sala</li>
-                    <li>Informes de bodega y rotación</li>
-                    <li>Gestión de proveedores</li>
-                    <li>Propuestas de nuevas referencias</li>
-                    <li>Consultoría directa con Juanjo</li>
-                    <li>Soporte prioritario</li>
-                  </ul>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Nota comercial */}
-            <div className="founder-note">
+          <aside className="money-block">
+            <div>
+              <p className="eyebrow" style={{ color: '#d9b27e' }}>Dónde aparece el retorno</p>
+              <h3>Primero localizamos la oportunidad. Después ponemos números.</h3>
               <p>
-                <strong>Configuración inicial según el volumen y el estado de la carta.</strong>{' '}
-                Antes de empezar valoramos la carga de vinos, platos y datos de bodega para que el
-                restaurante conozca el alcance con claridad. En el plan Acompañado está incluida.
-              </p>
-              <p style={{ marginTop: 10 }}>
-                <strong>Carta Viva es una app viva.</strong>{' '}
-                Está en desarrollo activo y evoluciona con cada restaurante que se suma.
-                Las necesidades reales de cada negocio moldean lo que viene después.
-                Si tienes una idea o una necesidad concreta, la escuchamos — y probablemente
-                acabe siendo una funcionalidad para todos.
+                El impacto se calcula con los datos reales del restaurante: costes, precios,
+                stock, ventas y funcionamiento de sala. Sin promesas genéricas.
               </p>
             </div>
-          </div>
-
-          {/* CTA */}
-          <div className="cta">
-            <div className="cta-left">
-              <h3 className="cta-title">¿Lo probamos con<br />tu restaurante?</h3>
-              <p className="cta-desc">
-                14 días gratis, sin tarjeta ni contrato. Te lo configuramos nosotros
-                y en menos de una hora tu carta ya está viva.
-              </p>
+            <div className="levers">
+              {palancas.map(([titulo, texto]) => (
+                <div className="lever" key={titulo}>
+                  <strong>{titulo}</strong>
+                  <span>{texto}</span>
+                </div>
+              ))}
             </div>
-            <div className="cta-right">
-              <p className="cta-contact-label">Contacto directo</p>
-              <p className="cta-email">cataconjuanjo@gmail.com</p>
-              <p className="cta-ig">@cataconjuanjo</p>
-              <p className="cta-web">cataconjuanjo.com</p>
-            </div>
-          </div>
-
+          </aside>
         </div>
-      </div>
-    </>
+      </section>
+
+      <section className="dossier-page">
+        <div className="page-inner">
+          <div className="folio">
+            <span className="brand">Carta Viva</span>
+            <span>03 / 03</span>
+          </div>
+
+          <div className="plans-head">
+            <div>
+              <p className="eyebrow">Tres formas de trabajar</p>
+              <h2>Desde una carta mejor presentada hasta una propuesta de vino dirigida.</h2>
+            </div>
+            <p>
+              La configuración inicial se valora según el volumen y el estado de las cartas del restaurante.
+            </p>
+          </div>
+
+          <div className="plans">
+            {planes.map((plan) => (
+              <article className={`plan ${plan.destacado ? 'featured' : ''}`} key={plan.nombre}>
+                <p className="plan-label">{plan.etiqueta}</p>
+                <h3>{plan.nombre}</h3>
+                <p className="plan-summary">{plan.resumen}</p>
+                <ul>
+                  {plan.incluye.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+                <p className="plan-note">
+                  {plan.nombre === 'Acompañado'
+                    ? 'El alcance se define después de conocer la carta, la cocina y los objetivos del restaurante.'
+                    : 'Suscripción mensual. El restaurante mantiene siempre el control de sus datos y contenidos.'}
+                </p>
+              </article>
+            ))}
+          </div>
+
+          <footer className="closing">
+            <div>
+              <h3>Empezamos por entender el restaurante.</h3>
+              <p>
+                Revisamos la carta actual, la cocina y la forma de trabajar en sala.
+                A partir de ahí vemos qué nivel de herramienta y acompañamiento tiene sentido.
+              </p>
+            </div>
+            <div className="contact">
+              <strong>Contacto directo</strong>
+              <span>cataconjuanjo.com</span>
+              <span>@cataconjuanjo</span>
+              <span>cataconjuanjo@gmail.com</span>
+            </div>
+          </footer>
+        </div>
+      </section>
+    </main>
   )
 }

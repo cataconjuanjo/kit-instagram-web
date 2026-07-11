@@ -1,1 +1,15 @@
-.codex-next-*.log
+.codex-*
+.env*
+.netlify/
+.next/
+node_modules/
+dev-server*.log
+.next-*.log
+debug.log
+tmp/
+output/
+marketing/
+netlify-vinoteca/
+*.pdf
+*.md
+vinoteca.html

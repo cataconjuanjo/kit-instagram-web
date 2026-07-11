@@ -7,7 +7,7 @@ import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../demo'
 import AdminOverlay from './components/AdminOverlay'
 
-const PLAN_LABEL = { basic: 'Básico', pro: 'Sala', premium: 'Acompañado' }
+const PLAN_LABEL = { basic: 'Básico', pro: 'Sala', bodega: 'Bodega', premium: 'Acompañado' }
 
 function formatoDuracion(segundos = 0) {
   const minutos = Math.round(segundos / 60)
@@ -535,6 +535,7 @@ function AdminPageContent() {
                       <select value={nuevoRestaurante.plan} onChange={e => actualizarCampo('plan', e.target.value)}>
                         <option value="basic">Básico</option>
                         <option value="pro">Sala</option>
+                        <option value="bodega">Bodega</option>
                         <option value="premium">Acompañado</option>
                       </select>
                     </label>
@@ -664,7 +665,7 @@ function AdminPageContent() {
                     <label>Acento<input type="color" value={edicion.color_acento} onChange={e => actualizarEdicion('color_acento', e.target.value)} /></label>
                   </div>
                   <label>Tipografía<select value={edicion.tipografia} onChange={e => actualizarEdicion('tipografia', e.target.value)}><option value="serif">Serif</option><option value="sans">Sans</option></select></label>
-                  <label>Plan<select value={edicion.plan} onChange={e => actualizarEdicion('plan', e.target.value)}><option value="basic">Basico</option><option value="pro">Sala</option><option value="premium">Acompanado</option></select></label>
+                  <label>Plan<select value={edicion.plan} onChange={e => actualizarEdicion('plan', e.target.value)}><option value="basic">Basico</option><option value="pro">Sala</option><option value="bodega">Bodega</option><option value="premium">Acompanado</option></select></label>
                   <label>Estado<select value={edicion.subscription_status} onChange={e => actualizarEdicion('subscription_status', e.target.value)}><option value="trialing">Prueba</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="cancelled">Cancelado</option></select></label>
                   <label className="admin-hub-switch">
                     <input type="checkbox" checked={edicion.hub_activo} onChange={e => actualizarEdicion('hub_activo', e.target.checked)} />

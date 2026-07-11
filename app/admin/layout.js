@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { supabase } from '../supabase'
 import styles from './layout.module.css'
+import { GuideModeProvider, GuidePanel, GuideToggle } from '../dashboard/GuideMode'
 
 export default function AdminLayout({ children }) {
   const [restaurantes, setRestaurantes] = useState([])
@@ -53,6 +54,7 @@ export default function AdminLayout({ children }) {
     { label: 'Panel', href: '/admin/consultoria' },
     pathname === '/admin/consultoria' && { label: 'Radar' },
     pathname === '/admin/acciones' && { label: 'Acciones' },
+    pathname === '/admin/simulador-cartas' && { label: 'Simulador cartas' },
     pathname === '/admin/alertas' && { label: 'Alertas' },
     pathname === '/admin/sugerencias' && { label: 'Buzon sugerencias' },
     pathname === '/admin/proveedores' && { label: 'Proveedores' },
@@ -61,6 +63,7 @@ export default function AdminLayout({ children }) {
   ].filter(Boolean)
 
   return (
+    <GuideModeProvider restaurantId="consultor">
     <div className={styles.shell}>
       <nav className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
@@ -96,6 +99,13 @@ export default function AdminLayout({ children }) {
               onClick={() => setMenuOpen(false)}
             >
               Acciones
+            </Link>
+            <Link
+              href="/admin/simulador-cartas"
+              className={`${styles.navLink} ${pathname === '/admin/simulador-cartas' ? styles.navActive : ''}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              Simulador cartas
             </Link>
             <Link
               href="/admin/sugerencias"
@@ -176,6 +186,11 @@ export default function AdminLayout({ children }) {
         </div>
 
         <div className={styles.sidebarFooter}>
+          <div className={styles.footerLinks}>
+            <a href="/taberna-del-puerto" target="_blank" rel="noreferrer" className={styles.demoFooterLink}>
+              Demo La Taberna
+            </a>
+          </div>
           <button type="button" onClick={cerrarSesion} className={styles.logoutButton}>Salir</button>
         </div>
       </nav>
@@ -190,6 +205,7 @@ export default function AdminLayout({ children }) {
             </svg>
           </button>
           <p className={styles.mobileName}>Panel consultor</p>
+          <GuideToggle compact />
         </div>
         <header className={styles.topbar}>
           <nav className={styles.breadcrumbs} aria-label="Ruta actual">
@@ -223,6 +239,7 @@ export default function AdminLayout({ children }) {
           </div>
 
           <div className={styles.topActions}>
+            <GuideToggle />
             <button
               type="button"
               className={styles.iconButton}
@@ -267,8 +284,10 @@ export default function AdminLayout({ children }) {
             </div>
           </div>
         </header>
+        <GuidePanel />
         {children}
       </div>
     </div>
+    </GuideModeProvider>
   )
 }

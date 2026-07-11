@@ -1,5 +1,6 @@
 import { analizarConGrafo } from '../../lib/chartierGraph'
 import { analizarConGoldstein } from '../../lib/goldsteinStructural'
+import { analizarMaridaje } from '../../lib/maridajeEngine'
 
 function compactarCandidato(item) {
   const vino = item.vino || {}
@@ -34,6 +35,44 @@ function compactarCandidato(item) {
       peso: ev.peso,
     })),
   }
+}
+
+function compactarMotorItem(item) {
+  const vino = item.vino || {}
+  return {
+    vino: {
+      id: vino.id,
+      nombre: vino.nombre,
+      bodega: vino.bodega,
+      tipo: vino.tipo,
+      region: vino.region,
+      uva: vino.uva,
+      anada: vino.anada,
+      precio_copa: vino.precio_copa,
+      precio_botella: vino.precio_botella,
+      notas_cata: vino.notas_cata,
+      stock: vino.stock,
+      activo: vino.activo,
+    },
+    score: item.score,
+    motivo: item.motivo,
+    fuente: item.fuente,
+    compatible: item.compatible,
+    rangoTicket: item.rangoTicket,
+  }
+}
+
+function compactarMotor(analisis) {
+  return {
+    version: 'armonia-core-v1',
+    lectura: analisis?.lectura || null,
+    recomendados: (analisis?.recomendados || []).map(compactarMotorItem),
+    candidatos: (analisis?.candidatos || []).slice(0, 80).map(compactarMotorItem),
+  }
+}
+
+function claveVino(vino = {}) {
+  return String(vino.id || vino.nombre || '')
 }
 
 function vinosDisponibles(vinos = []) {
@@ -89,10 +128,23 @@ export async function POST(request) {
     }
 
     const carta = vinosDisponibles(vinos)
-    const goldstein = compactarGoldstein(analizarConGoldstein(textoConsulta, carta))
-    const analisis = await analizarConGrafo(textoConsulta, carta)
+    const goldsteinAnalisis = analizarConGoldstein(textoConsulta, carta)
+    const bloqueadosGoldstein = new Set(
+      (goldsteinAnalisis.candidatos || [])
+        .filter(item => item.bloqueado)
+        .map(item => claveVino(item.vino))
+    )
+    const cartaValidada = carta.filter(vino => !bloqueadosGoldstein.has(claveVino(vino)))
+    const goldstein = compactarGoldstein(goldsteinAnalisis)
+    const motor = compactarMotor(analizarMaridaje(textoConsulta, cartaValidada))
+    let analisis = null
+    try {
+      analisis = await analizarConGrafo(textoConsulta, cartaValidada)
+    } catch (error) {
+      console.error('[maridaje-grafo] grafo no fatal:', error?.message)
+    }
     if (!analisis) {
-      return Response.json({ candidatos: [], confianza: 'baja', tieneDirecto: false, goldstein })
+      return Response.json({ candidatos: [], confianza: 'baja', tieneDirecto: false, goldstein, motor })
     }
 
     return Response.json({
@@ -101,6 +153,7 @@ export async function POST(request) {
       confianza: analisis.confianza,
       tieneDirecto: analisis.tieneDirecto,
       goldstein,
+      motor,
       candidatos: (analisis.candidatos || []).map(compactarCandidato),
     })
   } catch (error) {

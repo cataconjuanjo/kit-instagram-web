@@ -60,7 +60,10 @@ export default function Bienvenida() {
     }
 
     setEstado('exito')
-    setTimeout(() => { window.location.href = '/dashboard' }, 2500)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('carta_viva_recien_activado', '1')
+    }
+    setTimeout(() => { window.location.href = '/dashboard?bienvenida=1' }, 2500)
   }
 
   // ── Cargando ────────────────────────────────────────────────
@@ -123,7 +126,7 @@ export default function Bienvenida() {
           <div className="login-brand-copy">
             <p className="eyebrow">Todo listo</p>
             <h1>Tu cuenta está activa.</h1>
-            <p>En un momento te llevamos a tu panel de restaurante.</p>
+            <p>En un momento empezamos el recorrido para publicar tu primera carta.</p>
           </div>
         </section>
         <section className="login-form-panel">
@@ -131,7 +134,7 @@ export default function Bienvenida() {
             <span style={{ fontSize: 40 }}>🎉</span>
             <h2 style={{ textAlign: 'center', fontSize: 22 }}>¡Bienvenido a Carta Viva!</h2>
             <p className="login-muted" style={{ textAlign: 'center' }}>
-              Tu contraseña está guardada. Accediendo a tu panel…
+              Tu contraseña está guardada. El siguiente paso será cargar vinos y platos.
             </p>
           </div>
         </section>

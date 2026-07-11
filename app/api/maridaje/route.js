@@ -6,6 +6,7 @@ import { puedeUsar } from '../../lib/plans'
 import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
 import { origenConsumoCarta } from '../../lib/cartaPruebaToken'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
+import { guardarAtribucionDesdeEventos } from '../../lib/recommendationAttribution'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -113,26 +114,39 @@ function fallbackDesdeMotor(candidatos = [], idioma = 'es', soloCopa = false) {
 function respuestaSoloConCarta(texto, vinos, fallbackCandidatos, idioma, soloCopa = false) {
   const lineas = String(texto || '').split(/\n+/).map(linea => linea.trim()).filter(Boolean)
   const usadas = new Set()
-  const validas = []
+  const validasPorVino = new Map()
+  const extrasValidas = []
   for (const linea of lineas) {
     const vino = vinoAlInicioDeRecomendacion(linea, vinos)
-    if (!vino || usadas.has(vino.id || vino.nombre)) continue
-    usadas.add(vino.id || vino.nombre)
-    validas.push(limpiarPrefijoRecomendacion(linea))
-    if (validas.length >= 3) break
+    const clave = vino?.id || vino?.nombre
+    if (!vino || usadas.has(clave)) continue
+    usadas.add(clave)
+    const limpia = limpiarPrefijoRecomendacion(linea)
+    validasPorVino.set(String(clave), limpia)
+    extrasValidas.push({ clave: String(clave), linea: limpia })
   }
 
   const alternativas = candidatosUnicos(fallbackCandidatos, 10)
-  const minimo = Math.min(2, alternativas.length)
-  for (const item of alternativas) {
-    const clave = item.vino.id || item.vino.nombre
-    if (usadas.has(clave)) continue
-    usadas.add(clave)
-    validas.push(lineaFallback(item, idioma, soloCopa))
-    if (validas.length >= minimo) break
+  if (alternativas.length) {
+    const ordenadas = []
+    const usadasOrden = new Set()
+    for (const item of alternativas) {
+      const clave = String(item.vino.id || item.vino.nombre)
+      if (usadasOrden.has(clave)) continue
+      usadasOrden.add(clave)
+      ordenadas.push(validasPorVino.get(clave) || lineaFallback(item, idioma, soloCopa))
+      if (ordenadas.length >= 3) break
+    }
+    for (const item of extrasValidas) {
+      if (ordenadas.length >= 3) break
+      if (usadasOrden.has(item.clave)) continue
+      usadasOrden.add(item.clave)
+      ordenadas.push(item.linea)
+    }
+    return ordenadas.slice(0, 3).join('\n\n')
   }
 
-  if (validas.length) return validas.slice(0, 3).join('\n\n')
+  if (extrasValidas.length) return extrasValidas.slice(0, 3).map(item => item.linea).join('\n\n')
   return fallbackDesdeMotor(fallbackCandidatos, idioma, soloCopa)
 }
 
@@ -471,7 +485,11 @@ export async function POST(request) {
             })
           })
         }
-        await supabaseAdmin.from('estadisticas').insert(eventos)
+        const { data: eventosInsertados } = await supabaseAdmin
+          .from('estadisticas')
+          .insert(eventos)
+          .select('id, restaurante_id, tipo, detalle, created_at')
+        await guardarAtribucionDesdeEventos(supabaseAdmin, eventosInsertados || [])
         }
       }
 

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { puedeUsar } from '../../lib/plans'
 
 function HubIcon({ tipo, titulo }) {
   const texto = `${tipo || ''} ${titulo || ''}`
@@ -61,10 +60,28 @@ function SocialIcon({ tipo }) {
   return tipo === 'facebook' ? <FacebookIcon /> : <InstagramIcon />
 }
 
+function limpiarTextoPublico(texto = '') {
+  return String(texto || '')
+    .replace(/Â·/g, '·')
+    .replace(/Ã—/g, '×')
+    .replace(/â‚¬/g, '€')
+    .replace(/\s+\?\s+/g, ' · ')
+    .replace(/malague\?as/gi, match => match[0] === 'M' ? 'Malagueñas' : 'malagueñas')
+    .replace(/gustar\?a/gi, match => match[0] === 'G' ? 'Gustaría' : 'gustaría')
+    .replace(/\bqu\?/gi, match => match[0] === 'Q' ? 'Qué' : 'qué')
+    .replace(/\bm\?s\b/gi, match => match[0] === 'M' ? 'Más' : 'más')
+    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
 export default function RestauranteHub({ params }) {
   const [restaurante, setRestaurante] = useState(null)
   const [links, setLinks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [demoPresentacion] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_presentacion') === '1'
+  ))
 
   useEffect(() => {
     async function cargar() {
@@ -73,7 +90,7 @@ export default function RestauranteHub({ params }) {
       const data = res.ok ? await res.json() : {}
       const rest = data.restaurante
 
-      if (rest?.hub_activo && puedeUsar(rest, 'hub')) {
+      if (rest?.hub_activo && rest?.hub_disponible) {
         setRestaurante(rest)
         setLinks(data.links || [])
       }
@@ -102,8 +119,9 @@ export default function RestauranteHub({ params }) {
     )
   }
 
-  const titulo = restaurante.hub_titulo || restaurante.nombre
-  const subtitulo = restaurante.hub_subtitulo || [restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ')
+  const titulo = limpiarTextoPublico(restaurante.hub_titulo || restaurante.nombre)
+  const subtitulo = limpiarTextoPublico(restaurante.hub_subtitulo || [restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · '))
+  const queryDemo = demoPresentacion ? '?demo_presentacion=1' : ''
   const mostrarLogo = restaurante.hub_mostrar_logo !== false
   const mostrarNombre = restaurante.hub_mostrar_nombre !== false
   const mostrarDireccion = restaurante.hub_mostrar_direccion !== false
@@ -124,6 +142,13 @@ export default function RestauranteHub({ params }) {
     return lista.findIndex(item => `${item.tipo}-${item.url}` === clave) === index
   })
   const linksPrincipales = links.filter(link => !['instagram', 'facebook'].includes(link.tipo))
+  const hrefLink = link => {
+    const tituloLimpio = limpiarTextoPublico(link.titulo).toLowerCase()
+    if (link.tipo === 'carta' || link.tipo === 'carta_vinos' || link.url === '#carta' || tituloLimpio.includes('carta de vinos')) {
+      return `/carta/${restaurante.slug}${queryDemo}`
+    }
+    return link.url || '#'
+  }
 
   return (
     <main
@@ -138,6 +163,12 @@ export default function RestauranteHub({ params }) {
         '--hub-overlay': fondoHub ? Math.max(0.56, Math.min(0.78, overlay)) : 0,
       }}
     >
+      {demoPresentacion && (
+        <div className="demo-presentation-bar">
+          <span>Vista cliente</span>
+          <a href="/demo/taberna-del-puerto">Volver a la muestra</a>
+        </div>
+      )}
       <section className="hub-card">
         {mostrarIdentidad && (
           <div className="hub-identity">
@@ -158,12 +189,12 @@ export default function RestauranteHub({ params }) {
             <a
               key={link.id}
               className="hub-link"
-              href={link.url}
-              target={link.url?.startsWith('/') ? '_self' : '_blank'}
+              href={hrefLink(link)}
+              target={hrefLink(link).startsWith('/') ? '_self' : '_blank'}
               rel="noreferrer"
             >
               <span className="hub-link-icon"><HubIcon tipo={link.tipo} titulo={link.titulo} /></span>
-              <span className="hub-link-text">{link.titulo}</span>
+              <span className="hub-link-text">{limpiarTextoPublico(link.titulo)}</span>
             </a>
           ))}
         </div>

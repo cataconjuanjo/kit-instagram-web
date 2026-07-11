@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { nombrePlan, puedeUsar } from '../lib/plans'
 import styles from './module.module.css'
+import { useGuideMode } from './GuideMode'
 
 export function LoadingState() {
   return (
@@ -41,6 +42,7 @@ function ModuleHelp({ help }) {
 
 export function ModuleShell({ restaurante, eyebrow, title, subtitle, actions, help, children, narrow = false }) {
   const [helpOpen, setHelpOpen] = useState(false)
+  const { enabled: guideEnabled } = useGuideMode()
 
   return (
     <main className={styles.shell}>
@@ -69,7 +71,7 @@ export function ModuleShell({ restaurante, eyebrow, title, subtitle, actions, he
             </div>
           )}
         </section>
-        {helpOpen && <ModuleHelp help={help} />}
+        {(helpOpen || guideEnabled) && <ModuleHelp help={help} />}
         {children}
       </div>
     </main>
@@ -97,7 +99,7 @@ export function FeatureGate({ restaurante, feature, title = 'Funcion no incluida
       <section className={styles.empty}>
         <div>
           <strong>Disponible al subir de plan</strong>
-          <p>El acceso queda bloqueado para este restaurante, aunque conozca la URL directa.</p>
+          <p>El acceso queda bloqueado para esta cuenta, aunque conozca la URL directa.</p>
         </div>
       </section>
     </ModuleShell>

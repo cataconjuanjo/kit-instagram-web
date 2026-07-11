@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { LoadingState, ModuleShell } from '../moduleComponents'
-import { limiteVinosPlan, nombrePlan, puedeUsar } from '../../lib/plans'
+import { esPerfilBodega, limiteVinosPlan, nombrePlan, puedeUsar } from '../../lib/plans'
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 import ConfirmationDialog from '../ConfirmationDialog'
@@ -43,6 +43,28 @@ function descargarArchivo(nombre, contenido, tipo = 'text/csv;charset=utf-8;') {
   URL.revokeObjectURL(url)
 }
 
+function vinoInicialDesdeUrl() {
+  const base = {
+    nombre: '', bodega: '', tipo: 'tinto', region: '',
+    uva: '', anada: '', precio_copa: '', precio_botella: '', stock: '', coste_compra: '', stock_minimo: '', proveedor: '', notas_cata: ''
+  }
+  if (typeof window === 'undefined') return base
+  const params = new URLSearchParams(window.location.search)
+  if (!params.get('catalogo')) return base
+  return {
+    ...base,
+    nombre: params.get('catalogo') || '',
+    bodega: params.get('bodega') || '',
+    region: params.get('region') || '',
+    uva: params.get('uva') || '',
+    anada: params.get('anada') || '',
+    precio_botella: params.get('pvp') || '',
+    coste_compra: params.get('coste') || '',
+    proveedor: params.get('proveedor') || '',
+    notas_cata: 'Candidata desde catalogo de distribuidores.',
+  }
+}
+
 function notasConPerfil(notas = '', perfil) {
   const limpias = notas.trim()
   const textoNormalizado = normalizar(limpias)
@@ -60,10 +82,12 @@ function notasConPerfil(notas = '', perfil) {
   return limpias ? `${limpias}. ${perfil.texto}` : perfil.texto
 }
 
-function PerfilVino({ vino, onChange }) {
+function PerfilVino({ vino, onChange, perfilBodega = false }) {
   return (
     <div style={{ gridColumn: '1 / -1' }}>
-      <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '4px 0 10px' }}>Perfil para maridaje y venta</p>
+      <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '4px 0 10px' }}>
+        {perfilBodega ? 'Perfil técnico interno' : 'Perfil para maridaje y venta'}
+      </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {perfilesVino.map(perfil => {
           const activo = normalizar(vino.notas_cata || '').includes(normalizar(perfil.texto))
@@ -88,7 +112,9 @@ function PerfilVino({ vino, onChange }) {
         })}
       </div>
       <p style={{ fontSize: 11, color: '#bbb', margin: '10px 0 0', lineHeight: 1.5 }}>
-        Estos perfiles ayudan al modo camarero a distinguir, por ejemplo, un blanco salino para fritura de un blanco floral para queso o aperitivo.
+        {perfilBodega
+          ? 'Estos perfiles ayudan a filtrar, inventariar y explicar estilos sin depender de memoria.'
+          : 'Estos perfiles ayudan al modo camarero a distinguir, por ejemplo, un blanco salino para fritura de un blanco floral para queso o aperitivo.'}
       </p>
     </div>
   )
@@ -133,10 +159,7 @@ const [aplicandoMasivo, setAplicandoMasivo] = useState(false)
 const [confirmacion, setConfirmacion] = useState(null)
 const [borrandoId, setBorrandoId] = useState('')
 const inputPdfRef = useRef(null)
-  const [nuevoVino, setNuevoVino] = useState({
-    nombre: '', bodega: '', tipo: 'tinto', region: '',
-    uva: '', anada: '', precio_copa: '', precio_botella: '', stock: '', coste_compra: '', stock_minimo: '', proveedor: '', notas_cata: ''
-  })
+  const [nuevoVino, setNuevoVino] = useState(vinoInicialDesdeUrl)
 
   useEffect(() => {
     async function cargarDatos() {
@@ -557,6 +580,7 @@ async function aplicarAccionMasiva(confirmado = false) {
 
   if (loading) return <LoadingState />
 
+  const perfilBodega = esPerfilBodega(restaurante)
   const filtroUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('filtro') : ''
   const vinosBase = filtroUrl === 'pendientes'
     ? vinos.filter(v => !Number(v.precio_botella) || !v.notas_cata || v.notas_cata.length < 12)
@@ -619,8 +643,8 @@ async function aplicarAccionMasiva(confirmado = false) {
   const vinosSinProveedor = vinosActivos.filter(vino => !String(vino.proveedor || '').trim())
   const pendientesVinos = [
     { label: 'Sin precio', count: vinosSinPrecio.length, href: '?filtro=pendientes', filter: 'pendientes', text: 'Bloquea publicacion y venta.' },
-    { label: 'Sin perfil', count: vinosSinPerfil.length, href: '?filtro=pendientes', filter: 'pendientes', text: 'Debilita maridaje y modo camarero.' },
-    { label: 'Sin stock', count: vinosSinStock.length, href: '?filtro=sin_stock', filter: 'sin_stock', text: 'Puede crear incidencias en sala.' },
+    { label: 'Sin perfil', count: vinosSinPerfil.length, href: '?filtro=pendientes', filter: 'pendientes', text: perfilBodega ? 'Debilita búsqueda, inventario y lectura interna.' : 'Debilita maridaje y modo camarero.' },
+    { label: 'Sin stock', count: vinosSinStock.length, href: '?filtro=sin_stock', filter: 'sin_stock', text: perfilBodega ? 'Bloquea compra y reposición fiable.' : 'Puede crear incidencias en sala.' },
     { label: 'Sin coste', count: vinosSinCoste.length, href: '?filtro=sin_coste', filter: 'sin_coste', text: 'Impide leer margen real.' },
     { label: 'Sin proveedor', count: vinosSinProveedor.length, href: '?filtro=sin_proveedor', filter: 'sin_proveedor', text: 'Complica el pedido.' },
   ]
@@ -639,9 +663,11 @@ async function aplicarAccionMasiva(confirmado = false) {
   return (
     <ModuleShell
       restaurante={restaurante}
-      eyebrow="Carta de vinos"
-      title="Gestión de referencias"
-      subtitle="Controla precios, stock, perfiles de cata e importaciones para que sala y maridaje trabajen con la misma información."
+      eyebrow={perfilBodega ? 'Referencias de bodega' : 'Carta de vinos'}
+      title={perfilBodega ? 'Maestro de referencias' : 'Gestión de referencias'}
+      subtitle={perfilBodega
+        ? 'Controla añadas, stock, coste, proveedor, margen y datos técnicos para que la bodega deje de depender de Excel.'
+        : 'Controla precios, stock, perfiles de cata e importaciones para que sala y maridaje trabajen con la misma información.'}
       actions={
         <>
           {puedeUsar(restaurante, 'precios_margenes') && <a href="/dashboard/precios" className={styles.secondary}>Calcular precios</a>}
@@ -651,7 +677,7 @@ async function aplicarAccionMasiva(confirmado = false) {
               onClick={() => { setMostrarImportador(!mostrarImportador); setMostrarFormulario(false) }}
               className={mostrarImportador ? styles.ghost : styles.secondary}
             >
-              {mostrarImportador ? 'Cerrar importador' : 'Importar carta'}
+              {mostrarImportador ? 'Cerrar importador' : (perfilBodega ? 'Importar referencias' : 'Importar carta')}
             </button>
           )}
             <button
@@ -664,9 +690,15 @@ async function aplicarAccionMasiva(confirmado = false) {
         </>
       }
       help={{
-        title: 'Gestión de vinos',
-        intro: 'Aquí se crea y corrige la base de datos de la carta. Lo crítico es que cada vino sea vendible y encontrable.',
-        items: [
+        title: perfilBodega ? 'Gestión de referencias' : 'Gestión de vinos',
+        intro: perfilBodega
+          ? 'Aquí se ordena la base de bodega: datos técnicos, proveedor, coste, stock y estado operativo de cada referencia.'
+          : 'Aquí se crea y corrige la base de datos de la carta. Lo crítico es que cada vino sea vendible y encontrable.',
+        items: perfilBodega ? [
+          { title: 'Ficha completa', text: 'Nombre, añada, coste, proveedor y stock mínimo evitan depender de hojas sueltas.' },
+          { title: 'Perfil técnico', text: 'Notas y etiquetas ayudan a buscar, formar equipo y defender referencias.' },
+          { title: 'Bodega después', text: 'El control económico se completa en Bodega e Inventario.' },
+        ] : [
           { title: 'Alta rápida', text: 'Nombre, tipo y precio son lo mínimo para aparecer con sentido en la carta pública.' },
           { title: 'Perfil de venta', text: 'Notas y etiquetas ayudan al modo camarero a recomendar sin depender de memoria.' },
           { title: 'Bodega después', text: 'Coste, proveedor y stock mínimo afinan margen y reposición; no tienen que bloquear el alta inicial.' },
@@ -678,8 +710,8 @@ async function aplicarAccionMasiva(confirmado = false) {
         <section className={styles.pendingStrip}>
           <div>
             <p className={styles.eyebrow}>Cola de mejora</p>
-            <h2>Lo que hace que la carta venda mejor</h2>
-            <p>Precio, perfil y stock primero. Coste y proveedor afinan bodega y margen.</p>
+            <h2>{perfilBodega ? 'Lo que hace que la bodega sea controlable' : 'Lo que hace que la carta venda mejor'}</h2>
+            <p>{perfilBodega ? 'Stock, coste, proveedor y perfil primero. Después margen, compra y rotación.' : 'Precio, perfil y stock primero. Coste y proveedor afinan bodega y margen.'}</p>
           </div>
           <div className={styles.pendingGrid}>
             {pendientesVinos.map(item => (
@@ -699,9 +731,11 @@ async function aplicarAccionMasiva(confirmado = false) {
 
         {mostrarImportador && (
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
-            <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>Importar carta de vinos</p>
+            <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>{perfilBodega ? 'Importar referencias de bodega' : 'Importar carta de vinos'}</p>
             <p style={{ fontSize: 13, color: '#999', lineHeight: 1.6, margin: '0 0 16px' }}>
-              Sube la carta en cualquier formato: PDF, Excel, CSV o foto (JPG/PNG). La IA extrae nombre, bodega, tipo, región, uva, añada y precios. Revisa y corrige antes de guardar.
+              {perfilBodega
+                ? 'Sube un listado en PDF, Excel, CSV o foto (JPG/PNG). La IA extrae nombre, bodega, tipo, región, uva, añada y precios para que puedas completar coste, proveedor y stock.'
+                : 'Sube la carta en cualquier formato: PDF, Excel, CSV o foto (JPG/PNG). La IA extrae nombre, bodega, tipo, región, uva, añada y precios. Revisa y corrige antes de guardar.'}
             </p>
             <input ref={inputPdfRef} type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp,.xlsx,.xls,.csv,text/csv" onChange={archivoPdfSeleccionado} style={{ display: 'none' }} />
             <div
@@ -758,9 +792,9 @@ async function aplicarAccionMasiva(confirmado = false) {
         <ResponsiveOverlay
           open={mostrarFormulario}
           onClose={() => !generandoCata && setMostrarFormulario(false)}
-          eyebrow="Carta de vinos"
+          eyebrow={perfilBodega ? 'Referencia de bodega' : 'Carta de vinos'}
           title="Añadir vino"
-          description="Completa lo esencial ahora. Los datos avanzados de bodega pueden añadirse después."
+          description={perfilBodega ? 'Completa la ficha operativa ahora. Coste, proveedor y stock mínimo alimentan KPI, compra e inventario.' : 'Completa lo esencial ahora. Los datos avanzados de bodega pueden añadirse después.'}
           footer={
             <>
               <button type="button" className={styles.ghost} onClick={() => setMostrarFormulario(false)} disabled={generandoCata}>Cancelar</button>
@@ -794,7 +828,7 @@ async function aplicarAccionMasiva(confirmado = false) {
               {campo('Precio botella (€)', 'precio_botella', '22.00', 'number')}
               {campo('Stock', 'stock', '12', 'number')}
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Notas de cata y venta</label>
+                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{perfilBodega ? 'Notas técnicas internas' : 'Notas de cata y venta'}</label>
                 <textarea
                   value={nuevoVino.notas_cata}
                   onChange={e => setNuevoVino({ ...nuevoVino, notas_cata: e.target.value })}
@@ -803,7 +837,7 @@ async function aplicarAccionMasiva(confirmado = false) {
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, boxSizing: 'border-box', outline: 'none', background: 'transparent', color: '#111', resize: 'vertical', fontFamily: 'system-ui, sans-serif' }}
                 />
               </div>
-              <PerfilVino vino={nuevoVino} onChange={setNuevoVino} />
+              <PerfilVino vino={nuevoVino} onChange={setNuevoVino} perfilBodega={perfilBodega} />
               <details className={styles.advancedDetails}>
                 <summary>Bodega avanzada</summary>
                 <div className={styles.wineFormGrid} style={{ marginTop: 12 }}>
@@ -874,8 +908,8 @@ async function aplicarAccionMasiva(confirmado = false) {
               <select className={styles.select} value={accionMasiva} onChange={e => { setAccionMasiva(e.target.value); setValorMasivo('') }}>
                 <option value="proveedor">Asignar proveedor</option>
                 <option value="stock_minimo">Definir stock mínimo</option>
-                <option value="mostrar">Mostrar en carta</option>
-                <option value="ocultar">Ocultar de carta</option>
+                <option value="mostrar">{perfilBodega ? 'Activar referencia' : 'Mostrar en carta'}</option>
+                <option value="ocultar">{perfilBodega ? 'Archivar referencia' : 'Ocultar de carta'}</option>
               </select>
               {['proveedor', 'stock_minimo'].includes(accionMasiva) && (
                 <input
@@ -994,7 +1028,7 @@ async function aplicarAccionMasiva(confirmado = false) {
                     <button data-shortcut-edit="true" aria-label={`Editar ${v.nombre}`} onClick={() => { setEditandoVino({...v, precio_copa: v.precio_copa || '', precio_botella: v.precio_botella || '', coste_compra: v.coste_compra || '', stock_minimo: v.stock_minimo || '', proveedor: v.proveedor || ''}); }}>Editar</button>
                     <button onClick={() => copiarVino(v)}>Copiar fila</button>
                     <button onClick={() => duplicarVino(v)}>Duplicar</button>
-                    <button onClick={() => toggleActivo(v)}>{v.activo ? 'Ocultar' : 'Mostrar'}</button>
+                    <button onClick={() => toggleActivo(v)}>{perfilBodega ? (v.activo ? 'Archivar' : 'Activar') : (v.activo ? 'Ocultar' : 'Mostrar')}</button>
                     <button className={styles.dangerAction} onClick={() => setConfirmacion({ tipo: 'borrar', vino: v })}>Borrar</button>
                   </div>
                 </details>
@@ -1003,9 +1037,9 @@ async function aplicarAccionMasiva(confirmado = false) {
                 <ResponsiveOverlay
                   open
                   onClose={() => setEditandoVino(null)}
-                  eyebrow="Carta de vinos"
+                  eyebrow={perfilBodega ? 'Referencia de bodega' : 'Carta de vinos'}
                   title={`Editar ${editandoVino.nombre}`}
-                  description="Los cambios se aplicarán a la carta, bodega y herramientas de sala."
+                  description={perfilBodega ? 'Los cambios alimentan stock, margen, compras, inventario y lectura interna.' : 'Los cambios se aplicarán a la carta, bodega y herramientas de sala.'}
                   footer={
                     <>
                       <button type="button" className={styles.ghost} onClick={() => setEditandoVino(null)}>Cancelar</button>
@@ -1070,7 +1104,7 @@ async function aplicarAccionMasiva(confirmado = false) {
                       </select>
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
-                      <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Notas de cata y venta</label>
+                      <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{perfilBodega ? 'Notas técnicas internas' : 'Notas de cata y venta'}</label>
                       <textarea
                         value={editandoVino.notas_cata || ''}
                         onChange={e => setEditandoVino({ ...editandoVino, notas_cata: e.target.value })}
@@ -1078,7 +1112,7 @@ async function aplicarAccionMasiva(confirmado = false) {
                         style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, boxSizing: 'border-box', outline: 'none', background: 'transparent', color: '#111', resize: 'vertical', fontFamily: 'system-ui, sans-serif' }}
                       />
                     </div>
-                    <PerfilVino vino={editandoVino} onChange={setEditandoVino} />
+                    <PerfilVino vino={editandoVino} onChange={setEditandoVino} perfilBodega={perfilBodega} />
                   </div>
                 </ResponsiveOverlay>
               )}
@@ -1100,11 +1134,13 @@ async function aplicarAccionMasiva(confirmado = false) {
         <ConfirmationDialog
           open={Boolean(confirmacion)}
           onClose={() => setConfirmacion(null)}
-          title={confirmacion?.tipo === 'borrar' ? 'Eliminar vino' : 'Ocultar referencias'}
+          title={confirmacion?.tipo === 'borrar' ? 'Eliminar vino' : (perfilBodega ? 'Archivar referencias' : 'Ocultar referencias')}
           description={confirmacion?.tipo === 'borrar'
             ? `Se eliminará “${confirmacion.vino?.nombre || ''}” de forma permanente.`
-            : `${confirmacion?.total || 0} referencias dejarán de aparecer en la carta pública.`}
-          confirmLabel={confirmacion?.tipo === 'borrar' ? 'Eliminar definitivamente' : 'Ocultar referencias'}
+            : (perfilBodega
+              ? `${confirmacion?.total || 0} referencias quedarán archivadas y fuera del control operativo.`
+              : `${confirmacion?.total || 0} referencias dejarán de aparecer en la carta pública.`)}
+          confirmLabel={confirmacion?.tipo === 'borrar' ? 'Eliminar definitivamente' : (perfilBodega ? 'Archivar referencias' : 'Ocultar referencias')}
           busy={aplicandoMasivo || Boolean(borrandoId)}
           onConfirm={async () => {
             const accion = confirmacion

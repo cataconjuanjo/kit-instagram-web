@@ -29,6 +29,16 @@ export const COEFICIENTES_CONSULTORIA_FASE1 = {
     descripcion: 'Si el stock actual supera tres veces el stock minimo y no vende, se considera exceso potencial.',
     origen: 'Criterio operativo ya usado en bodega/inventario para detectar stock alto sin salida.',
   },
+  dias_entrega_pedido: {
+    valor: 7,
+    descripcion: 'Dias de espera operativos usados para anticipar reposicion antes de romper servicio.',
+    origen: 'Gestion de bebidas: el punto de pedido debe cubrir consumo durante el plazo de entrega mas stock de seguridad.',
+  },
+  stock_seguridad_unidades: {
+    valor: 2,
+    descripcion: 'Colchon minimo cuando una referencia no tiene stock minimo configurado.',
+    origen: 'Gestion de bebidas: mantener un nivel de seguridad reduce rupturas sin sobredimensionar compras.',
+  },
   dependencia_proveedor_pct: {
     valor: 40,
     descripcion: 'Si un proveedor concentra mas del 40% del valor a coste, hay riesgo de dependencia.',
@@ -109,6 +119,11 @@ export const COEFICIENTES_CONSULTORIA_FASE1 = {
     descripcion: 'Multiplicador prudente para oportunidad por copa detectada.',
     origen: 'No se asume vender todos los candidatos cada mes; se estima seis ciclos de activacion al ano.',
   },
+  umbral_copa_descubrimiento_score: {
+    valor: 45,
+    descripcion: 'Score minimo para marcar una referencia como copa de descubrimiento para el consultor.',
+    origen: 'Acuti et al.: la venta por copa reduce el riesgo percibido y activa la busqueda de variedad.',
+  },
   umbral_copa_premium: {
     valor: 35,
     descripcion: 'PVP botella desde el que una referencia puede considerarse candidata a copa premium.',
@@ -160,6 +175,18 @@ function numero(valor) {
 function redondear(valor, decimales = 2) {
   const factor = 10 ** decimales
   return Math.round((Number(valor) || 0) * factor) / factor
+}
+
+function textoNormalizado(valor = '') {
+  return String(valor || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function incluyeTexto(valor = '', terminos = []) {
+  const texto = textoNormalizado(valor)
+  return terminos.some(termino => texto.includes(textoNormalizado(termino)))
 }
 
 function porcentaje(valor, total) {
@@ -233,6 +260,80 @@ function precioCopaSugerido(costeBotella, pvpBotella) {
   const techoComercial = pvpBotella ? numero(pvpBotella) * 0.25 : Infinity
   const sugerido = Math.min(Math.max(minimo, precioPorMargen), techoComercial)
   return redondear(Math.ceil(sugerido * 2) / 2, 2)
+}
+
+function analizarCopaDescubrimiento({ item, pvp, stock, margenCopa, concentracionRegiones, referenciasActivas }) {
+  const vino = item.vino || {}
+  const region = vino.region || ''
+  const uva = vino.uva || ''
+  const notas = `${vino.nombre || ''} ${vino.bodega || ''} ${vino.tipo || ''} ${region} ${uva} ${vino.notas_cata || ''}`
+  const regionRefs = region ? numero(concentracionRegiones[region]) : 0
+  const regionPocoRepresentada = Boolean(region && regionRefs > 0 && regionRefs <= Math.max(2, Math.ceil(referenciasActivas * 0.08)))
+  const premium = pvp >= COEFICIENTES_CONSULTORIA_FASE1.umbral_copa_premium.valor
+  const pocoVendido = item.ventas_unidades <= 1
+  const margenSano = margenCopa >= COEFICIENTES_CONSULTORIA_FASE1.margen_objetivo_copa_pct.valor - 5
+  const stockControlable = stock >= 2 && stock <= 10
+  const perfilCurioso = incluyeTexto(notas, [
+    'godello',
+    'treixadura',
+    'mencia',
+    'bobal',
+    'garnacha blanca',
+    'brancellao',
+    'caiño',
+    'listan',
+    'malvasia',
+    'forcallat',
+    'natural',
+    'sobre lias',
+    'parcela',
+    'pago',
+    'atlantic',
+    'atlantico',
+    'montilla',
+    'jerez',
+    'manzanilla',
+    'amontillado',
+  ])
+
+  const razones = []
+  let score = 0
+  if (premium) {
+    score += 18
+    razones.push('reduce la barrera de una botella de ticket alto')
+  }
+  if (pocoVendido) {
+    score += 14
+    razones.push('tiene poca salida por botella')
+  }
+  if (regionPocoRepresentada) {
+    score += 12
+    razones.push('aporta una zona poco repetida en la carta')
+  }
+  if (perfilCurioso) {
+    score += 10
+    razones.push('aporta un perfil de descubrimiento para sala')
+  }
+  if (margenSano) {
+    score += 8
+    razones.push('mantiene margen suficiente por copa')
+  }
+  if (stockControlable) {
+    score += 6
+    razones.push('puede probarse sin abrir demasiado riesgo de stock')
+  }
+
+  const esDescubrimiento = score >= COEFICIENTES_CONSULTORIA_FASE1.umbral_copa_descubrimiento_score.valor
+    && (premium || regionPocoRepresentada || perfilCurioso)
+
+  return {
+    esDescubrimiento,
+    score: redondear(score, 2),
+    razones,
+    argumentoSala: esDescubrimiento
+      ? 'Ofrecer como copa para probar algo distinto sin pedir la botella completa.'
+      : '',
+  }
 }
 
 function areaProblema(clave = '') {
@@ -582,6 +683,11 @@ export function calcularConsultoriaFase1({
   const grossMarginRealPct = porcentaje(beneficioBrutoReal, ingresosEstimados)
   const stockMedioEstimado = valorStockCoste
   const inventoryTurnover = stockMedioEstimado > 0 ? redondear(costeVentasEstimado / stockMedioEstimado, 2) : 0
+  const winspidGlobal = stockMedioEstimado > 0 ? redondear(ingresosEstimados / stockMedioEstimado, 2) : 0
+  const winspidPorVino = Object.fromEntries(winePerformance.map(item => [
+    String(item.vino_id),
+    item.valor_stock_coste > 0 ? redondear(item.ingresos_estimados / item.valor_stock_coste, 2) : null,
+  ]))
   const deadStock = activos.filter(vino => {
     const stock = numero(vino.stock)
     const minimo = numero(vino.stock_minimo)
@@ -599,13 +705,19 @@ export function calcularConsultoriaFase1({
 
   const proveedores = activos.reduce((acc, vino) => {
     const proveedor = (vino.proveedor || 'Sin proveedor').trim() || 'Sin proveedor'
-    acc[proveedor] = acc[proveedor] || { referencias: 0, valor: 0 }
+    const ventasUnidades = ventasPorVino[String(vino.id)] || 0
+    acc[proveedor] = acc[proveedor] || { referencias: 0, valor: 0, ventas: 0 }
     acc[proveedor].referencias += 1
     acc[proveedor].valor += numero(vino.stock) * numero(vino.coste_compra)
+    acc[proveedor].ventas += ventasUnidades * numero(vino.precio_botella)
     return acc
   }, {})
   const proveedorPrincipal = Object.entries(proveedores).sort((a, b) => b[1].valor - a[1].valor)[0]
   const proveedorPrincipalPct = proveedorPrincipal ? porcentaje(proveedorPrincipal[1].valor, valorStockCoste) : 0
+  const proveedorBajoRetorno = Object.entries(proveedores)
+    .map(([nombre, info]) => ({ nombre, ...info, retorno: info.valor > 0 ? redondear(info.ventas / info.valor, 2) : 0 }))
+    .filter(item => item.valor > 0 && item.retorno < 0.5)
+    .sort((a, b) => b.valor - a.valor)[0]
 
   const inventarioItems = activos.map(vino => {
     const stock = Math.round(numero(vino.stock))
@@ -615,6 +727,13 @@ export function calcularConsultoriaFase1({
     const ventasUnidades = ventasPorVino[String(vino.id)] || 0
     const ventasDia = ventasUnidades / Math.max(1, COEFICIENTES_CONSULTORIA_FASE1.dias_periodo.valor)
     const diasCobertura = ventasDia > 0 ? Math.round(stock / ventasDia) : null
+    const consumoEntrega = ventasDia > 0
+      ? Math.ceil(ventasDia * COEFICIENTES_CONSULTORIA_FASE1.dias_entrega_pedido.valor)
+      : 0
+    const stockSeguridad = stockMinimo > 0
+      ? stockMinimo
+      : COEFICIENTES_CONSULTORIA_FASE1.stock_seguridad_unidades.valor
+    const puntoPedido = Math.max(stockMinimo, consumoEntrega + stockSeguridad)
     const valor = redondear(stock * coste, 2)
     const limiteStockAlto = Math.max(
       COEFICIENTES_CONSULTORIA_FASE1.stock_alto_min_unidades.valor,
@@ -629,6 +748,9 @@ export function calcularConsultoriaFase1({
     } else if (stockMinimo > 0 && stock <= stockMinimo) {
       estado = 'bajo_minimo'
       motivo = 'Stock actual igual o inferior al minimo configurado.'
+    } else if (ventasUnidades > 0 && stock <= puntoPedido) {
+      estado = 'bajo_minimo'
+      motivo = `Stock en punto de pedido: cubre plazo de entrega (${COEFICIENTES_CONSULTORIA_FASE1.dias_entrega_pedido.valor} dias) mas seguridad.`
     } else if (stock >= limiteStockAlto && ventasUnidades === 0) {
       estado = 'inmovilizado'
       motivo = 'Stock alto y cero ventas registradas en el periodo.'
@@ -656,6 +778,7 @@ export function calcularConsultoriaFase1({
       vino,
     }
   })
+  const reposicionOperativa = inventarioItems.filter(item => item.estado_inventario === 'bajo_minimo')
 
   const inventarioResumen = {
     referencias_activas: activos.length,
@@ -822,7 +945,19 @@ export function calcularConsultoriaFase1({
       const rotacionScore = item.ventas_unidades > 0 ? 20 : item.valor_stock_coste > 0 ? 8 : 0
       const oportunidadScore = precioActual ? 8 : 18
       const premiumScore = pvp >= COEFICIENTES_CONSULTORIA_FASE1.umbral_copa_premium.valor ? 12 : 4
-      const score = limitar(margenScore + stockScore + rotacionScore + oportunidadScore + premiumScore, 0, 100)
+      const descubrimiento = analizarCopaDescubrimiento({
+        item,
+        pvp,
+        stock,
+        margenCopa,
+        concentracionRegiones,
+        referenciasActivas: activos.length,
+      })
+      const score = limitar(
+        margenScore + stockScore + rotacionScore + oportunidadScore + premiumScore + (descubrimiento.esDescubrimiento ? 10 : descubrimiento.score * 0.12),
+        0,
+        100
+      )
       const categoria = pvp >= COEFICIENTES_CONSULTORIA_FASE1.umbral_coravin.valor && item.ventas_unidades <= 1
         ? 'coravin'
         : pvp >= COEFICIENTES_CONSULTORIA_FASE1.umbral_copa_premium.valor
@@ -843,6 +978,12 @@ export function calcularConsultoriaFase1({
         : categoria === 'copa_premium'
           ? 'Ofrecer por copa premium con argumento de sala y precio visible.'
           : 'Incluir en seleccion por copa y formar a sala con una frase de venta.'
+      const motivoConsultor = descubrimiento.esDescubrimiento
+        ? `Copa de descubrimiento: ${descubrimiento.razones.slice(0, 3).join(', ')}. La copa reduce el riesgo percibido y permite al cliente probar variedad sin pedir botella completa.`
+        : motivo
+      const accionConsultor = descubrimiento.esDescubrimiento
+        ? `Propuesta consultor: probar 14 dias a ${precioSugerido.toFixed(2)} EUR/copa. Argumento sala: "${descubrimiento.argumentoSala}" Medir copas vendidas, merma y si desbloquea venta por botella.`
+        : accion
       return {
         restaurante_id: restaurante.id,
         vino_id: item.vino_id,
@@ -862,8 +1003,8 @@ export function calcularConsultoriaFase1({
         beneficio_por_botella_copa: beneficioCopa,
         margen_copa_pct: margenCopa,
         riesgo_apertura: riesgo,
-        motivo,
-        accion,
+        motivo: motivoConsultor,
+        accion: accionConsultor,
         vino: item.vino,
       }
     })
@@ -894,6 +1035,7 @@ export function calcularConsultoriaFase1({
     crearKpi(restaurante.id, periodoInicio, periodoFin, 'margen_bruto_real_pct', 'Margen bruto real estimado', grossMarginRealPct, '%', 'rentabilidad', 'Beneficio bruto estimado / ingresos estimados.', 'Lectura de rentabilidad real del periodo con los eventos registrados.'),
     crearKpi(restaurante.id, periodoInicio, periodoFin, 'valor_stock_coste', 'Valor de bodega a coste', redondear(valorStockCoste, 2), 'EUR', 'inventario', 'Suma de stock actual por coste de compra.', 'Capital inmovilizado en bodega.'),
     crearKpi(restaurante.id, periodoInicio, periodoFin, 'rotacion_inventario_estimada', 'Rotacion inventario estimada', inventoryTurnover, 'x', 'inventario', 'Coste estimado de ventas / valor actual de stock a coste.', 'Cuantas veces se mueve el capital de bodega en el periodo.'),
+    crearKpi(restaurante.id, periodoInicio, periodoFin, 'winspid_retorno_inventario', 'Retorno de inventario vino', winspidGlobal, 'x', 'inventario', 'Ingresos estimados por vino vendido / valor actual de stock a coste.', 'Cuantos euros de venta genera cada euro inmovilizado en bodega.'),
     crearKpi(restaurante.id, periodoInicio, periodoFin, 'dead_stock_ratio_pct', 'Stock inmovilizado', deadStockRatio, '%', 'inventario', 'Valor de referencias con stock alto y cero ventas / valor total a coste.', 'Capital atrapado en vinos que no han salido en el periodo.'),
     crearKpi(restaurante.id, periodoInicio, periodoFin, 'shrinkage_rate_pct', 'Merma y ajustes negativos', shrinkageRate, '%', 'inventario', 'Unidades de merma/ajustes negativos / salidas registradas.', 'Controla perdidas, invitaciones o descuadres de inventario.'),
     crearKpi(restaurante.id, periodoInicio, periodoFin, 'btg_coverage_pct', 'Cobertura por copa', btgCoverage, '%', 'carta', 'Referencias con precio de copa / referencias activas.', 'Mide si la carta tiene palanca suficiente para venta por copa.'),
@@ -946,9 +1088,12 @@ export function calcularConsultoriaFase1({
     recomendacion('pricing', 'Revisar referencias de margen bajo', `${margenBajo.length} vinos estan por debajo del margen saludable.`, 'Ordenar por margen y corregir primero los vinos con ventas o stock alto.', 'alta', 'medio', {}, { margen_saludable_pct: COEFICIENTES_CONSULTORIA_FASE1.margen_saludable_pct.valor })
   }
 
-  if (bajoMinimo.length > 0) {
-    alerta('aviso', 'stock_bajo_minimo', 'Reposicion pendiente', `${bajoMinimo.length} referencias estan bajo minimo.`, 'Riesgo de ruptura durante el servicio.', 'Preparar pedido sugerido por proveedor.')
-    recomendacion('inventario', 'Preparar pedido de reposicion', `Hay ${bajoMinimo.length} vinos bajo minimo.`, 'Usar la vista Bodega para copiar el pedido sugerido.', 'media', 'bajo')
+  if (reposicionOperativa.length > 0) {
+    alerta('aviso', 'stock_bajo_minimo', 'Reposicion pendiente', `${reposicionOperativa.length} referencias estan en minimo o punto de pedido.`, 'Riesgo de ruptura durante el servicio si no se cubre plazo de entrega y seguridad.', 'Preparar pedido sugerido por proveedor.')
+    recomendacion('inventario', 'Preparar pedido de reposicion', `Hay ${reposicionOperativa.length} vinos en minimo o punto de pedido.`, 'Usar la vista Bodega para copiar el pedido sugerido.', 'media', 'bajo', {}, {
+      dias_entrega_pedido: COEFICIENTES_CONSULTORIA_FASE1.dias_entrega_pedido.valor,
+      stock_seguridad_unidades: COEFICIENTES_CONSULTORIA_FASE1.stock_seguridad_unidades.valor,
+    })
   }
 
   if (deadStock.length > 0) {
@@ -994,10 +1139,12 @@ export function calcularConsultoriaFase1({
   }
 
   if (btgCandidates.length > 0) {
-    recomendacion('venta_por_copa', 'Activar candidatos por copa', `Se detectan ${btgCandidates.length} candidatos para copa, copa premium o Coravin.`, 'Probar los mejores candidatos durante 30 dias y medir salida/margen.', 'alta', 'medio', {}, {
+    const descubrimientoTotal = btgCandidates.filter(item => /descubrimiento/i.test(`${item.motivo} ${item.accion}`)).length
+    recomendacion('venta_por_copa', 'Activar candidatos por copa', `Se detectan ${btgCandidates.length} candidatos para copa, copa premium o Coravin${descubrimientoTotal ? `, incluyendo ${descubrimientoTotal} copas de descubrimiento` : ''}.`, 'Probar los mejores candidatos durante 14-30 dias y medir salida, margen y merma. Si son copas de descubrimiento, llevar tambien el argumento de sala.', 'alta', 'medio', {}, {
       copas_por_botella: COEFICIENTES_CONSULTORIA_FASE1.copas_por_botella.valor,
       merma_copa_pct: COEFICIENTES_CONSULTORIA_FASE1.merma_copa_pct.valor,
       margen_objetivo_copa_pct: COEFICIENTES_CONSULTORIA_FASE1.margen_objetivo_copa_pct.valor,
+      copas_descubrimiento: descubrimientoTotal,
     })
   }
 
@@ -1013,6 +1160,19 @@ export function calcularConsultoriaFase1({
   if (proveedorPrincipalPct > COEFICIENTES_CONSULTORIA_FASE1.dependencia_proveedor_pct.valor && proveedorPrincipal) {
     alerta('aviso', 'dependencia_proveedor', 'Dependencia de proveedor', `${proveedorPrincipal[0]} concentra ${proveedorPrincipalPct}% del valor a coste.`, 'Menor poder de negociacion y mas riesgo si falla suministro.', 'Diversificar compras o renegociar condiciones.')
     recomendacion('proveedores', 'Reducir dependencia de proveedor', `${proveedorPrincipal[0]} concentra demasiado valor de bodega.`, 'Buscar alternativas en gamas equivalentes o negociar condiciones por volumen.', 'media', 'medio', {}, { dependencia_proveedor_pct: COEFICIENTES_CONSULTORIA_FASE1.dependencia_proveedor_pct.valor })
+  }
+
+  if (proveedorBajoRetorno) {
+    recomendacion(
+      'proveedores',
+      'Revisar retorno por proveedor',
+      `${proveedorBajoRetorno.nombre} tiene ${redondear(proveedorBajoRetorno.valor, 0)} EUR a coste y retorno ${proveedorBajoRetorno.retorno}x.`,
+      'Negociar pedidos mas pequenos, apoyo comercial o sustituir referencias que no trabajan el capital.',
+      'media',
+      'medio',
+      {},
+      { winspid_retorno_inventario: winspidGlobal }
+    )
   }
 
   clasificaciones
@@ -1032,6 +1192,7 @@ export function calcularConsultoriaFase1({
         {
           umbral_margen_pct: item.umbral_margen_pct,
           umbral_popularidad_pct: item.umbral_popularidad_pct,
+          winspid_retorno_inventario: winspidPorVino[String(item.vino_id)],
         }
       )
     })
@@ -1041,6 +1202,7 @@ export function calcularConsultoriaFase1({
     ventas_unidades: totalVentasUnidades,
     margen_medio_pct: redondear(margenMedioPct, 2),
     valor_stock_coste: redondear(valorStockCoste, 2),
+    retorno_inventario_x: winspidGlobal,
     alertas: alertas.length,
     recomendaciones: recomendaciones.length,
     clasificaciones: clasificaciones.length,

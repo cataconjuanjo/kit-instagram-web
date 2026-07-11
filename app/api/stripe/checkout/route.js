@@ -13,6 +13,7 @@ export async function POST(req) {
     const PRICE_IDS = {
       basic:   process.env.STRIPE_PRICE_BASIC,
       pro:     process.env.STRIPE_PRICE_PRO,
+      bodega:  process.env.STRIPE_PRICE_BODEGA,
       premium: process.env.STRIPE_PRICE_PREMIUM,
     }
     const { plan, restaurante_id, email, nombre } = await req.json()

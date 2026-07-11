@@ -2,7 +2,12 @@
 
 import { useState } from 'react'
 
-export default function LeadForm({ source = 'Cata con Juanjo' }) {
+export default function LeadForm({
+  source = 'Cata con Juanjo',
+  cta = 'Solicitar diagnóstico',
+  title = 'Cuéntame lo esencial',
+  successTitle = 'Solicitud recibida',
+}) {
   const [form, setForm] = useState({ nombre: '', email: '', restaurante: '', referencias: '', problema: '', mensaje: '' })
   const [estado, setEstado] = useState('idle')
 
@@ -36,14 +41,18 @@ export default function LeadForm({ source = 'Cata con Juanjo' }) {
   if (estado === 'sent') {
     return (
       <div className="lead-form form-success">
-        <h3>Mensaje recibido</h3>
-        <p>Te respondo en menos de 24 horas. Si es urgente, también puedes escribirme por WhatsApp.</p>
+        <h3>{successTitle}</h3>
+        <p>Te respondo en menos de 24 horas con el siguiente paso y sin compromiso.</p>
       </div>
     )
   }
 
   return (
     <form className="lead-form" onSubmit={enviar}>
+      <div className="lead-form-intro">
+        <strong>{title}</strong>
+        <span>2 minutos · respuesta personal · sin compromiso</span>
+      </div>
       <label>
         Nombre
         <input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required />
@@ -83,8 +92,11 @@ export default function LeadForm({ source = 'Cata con Juanjo' }) {
       </label>
       {estado === 'error' && <p className="form-error">No se ha podido enviar. Escríbeme directamente a cataconjuanjo@gmail.com.</p>}
       <button type="submit" className="btn btn-primary" disabled={estado === 'sending'}>
-        {estado === 'sending' ? 'Enviando...' : 'Solicitar diagnóstico'}
+        {estado === 'sending' ? 'Enviando...' : cta}
       </button>
+      <p className="lead-form-privacy">
+        Tus datos solo se usan para responder a esta solicitud. No se comparten con terceros.
+      </p>
     </form>
   )
 }

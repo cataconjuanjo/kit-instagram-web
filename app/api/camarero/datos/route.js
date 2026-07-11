@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { validarSesionCamarero } from '../../../lib/camareroSession'
+import { puedeUsar } from '../../../lib/plans'
 
 const CAMPOS_RESTAURANTE_SALA = [
   'id', 'slug', 'nombre', 'ciudad', 'provincia', 'region',
@@ -27,7 +28,10 @@ export async function POST(req) {
 
     if (!restaurante) return Response.json({ error: 'Restaurante no encontrado.' }, { status: 404 })
     return Response.json({
-      restaurante: seleccionarCampos(restaurante, CAMPOS_RESTAURANTE_SALA),
+      restaurante: {
+        ...seleccionarCampos(restaurante, CAMPOS_RESTAURANTE_SALA),
+        sala_disponible: puedeUsar(restaurante, 'modo_camarero'),
+      },
       vinos: vinos || [],
       platos: platos || [],
     })

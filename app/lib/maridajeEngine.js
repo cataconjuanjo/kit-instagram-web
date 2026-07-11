@@ -1,5 +1,6 @@
 import { chartierKb, fuenteChartier } from './chartierKb'
 import { buscarPlatoKb } from '../data/platos_kb'
+import { beneficioBruto, margenBrutoPct, numero, redondear } from './wineEconomics'
 
 // Estima el perfil estructural de un vino (1-5) a partir de sus datos.
 // Permite matching estructural directo: taninos, acidez, cuerpo, etc.
@@ -46,9 +47,10 @@ export function estimarPerfil(vino) {
   if (['fresco', 'frescura', 'jovial', 'joven y fresco'].some(t => texto.includes(t)))                          p.dulzor  = Math.max(1, p.dulzor - 1)
 
   // Generosos específicos
+  const generosoSecoTexto = vino.tipo === 'generoso' || ['fino', 'manzanilla', 'amontillado', 'palo cortado', 'jerez'].some(t => texto.includes(t))
   if (texto.includes('fino') || texto.includes('manzanilla'))               { p.taninos = 1; p.acidez = 4; p.dulzor = 1; p.alcohol = 4; p.cuerpo = 2 }
   if (texto.includes('oloroso') || texto.includes('amontillado'))           { p.taninos = 1; p.acidez = 3; p.dulzor = 2; p.alcohol = 5; p.cuerpo = 4 }
-  if (texto.includes('pedro ximenez') || texto.includes(' px ') || texto.includes('px,')) { p.dulzor = 5; p.cuerpo = 5; p.alcohol = 4; p.acidez = 2 }
+  if (!generosoSecoTexto && (texto.includes('pedro ximenez') || texto.includes(' px ') || texto.includes('px,'))) { p.dulzor = 5; p.cuerpo = 5; p.alcohol = 4; p.acidez = 2 }
   if (texto.includes('tawny') || texto.includes('oporto') || texto.includes('porto'))     { p.dulzor = 4; p.cuerpo = 4; p.alcohol = 5; p.taninos = 2 }
 
   // Clamp 1-5
@@ -135,6 +137,67 @@ export function precioBotella(vino) {
   return Number(vino?.precio_botella) || 0
 }
 
+function lecturaComercialVino(vino) {
+  const precio = precioBotella(vino)
+  const coste = numero(vino?.coste_compra)
+  const stock = numero(vino?.stock)
+  const minimo = numero(vino?.stock_minimo)
+  const margenPct = precio && coste ? margenBrutoPct(precio, coste) : 0
+  const beneficio = precio && coste ? beneficioBruto(precio, coste) : 0
+  let score = 0
+  const motivos = []
+
+  if (margenPct >= 70) {
+    score += 9
+    motivos.push('margen alto')
+  } else if (margenPct >= 60) {
+    score += 6
+    motivos.push('margen sano')
+  } else if (margenPct > 0 && margenPct < 50) {
+    score -= 5
+    motivos.push('margen bajo')
+  }
+
+  if (beneficio >= 18) score += 5
+  else if (beneficio >= 10) score += 3
+
+  if (stock > Math.max(4, minimo * 2)) {
+    score += 4
+    motivos.push('stock disponible')
+  } else if (stock > 0 && minimo > 0 && stock <= minimo) {
+    score -= 4
+    motivos.push('stock justo')
+  }
+
+  if (numero(vino?.precio_copa) > 0) {
+    score += 2
+    motivos.push('tambien por copa')
+  }
+
+  return {
+    score: redondear(score, 2),
+    margenPct: redondear(margenPct, 1),
+    beneficio: redondear(beneficio, 2),
+    motivos: motivos.slice(0, 3),
+  }
+}
+
+function compararPorMaridajeYNegocio(a, b, consultas) {
+  const prioridadJamon = consultas.some(consulta => esJamonCurado(normalizar(consulta)))
+  if (prioridadJamon) {
+    const diffPrioridad = prioridadEstiloJamon(a.vino) - prioridadEstiloJamon(b.vino)
+    if (diffPrioridad !== 0) return diffPrioridad
+  }
+
+  const diffScore = b.score - a.score
+  if (Math.abs(diffScore) > 8) return diffScore
+
+  const diffComercial = (b.comercial?.score || 0) - (a.comercial?.score || 0)
+  if (Math.abs(diffComercial) > 0.1) return diffComercial
+
+  return diffScore
+}
+
 function contextoVenta(consultaNormalizada) {
   const platoKb = buscarPlatoKb(consultaNormalizada)
   if (platoKb?.contexto) return platoKb.contexto
@@ -152,6 +215,20 @@ function contextoVenta(consultaNormalizada) {
   if (consultaNormalizada.includes('pescado') || consultaNormalizada.includes('marisco') || consultaNormalizada.includes('gamba') || consultaNormalizada.includes('lubina') || consultaNormalizada.includes('salmon') || consultaNormalizada.includes('bacalao') || consultaNormalizada.includes('chipiron')) return 'pescado'
   if (consultaNormalizada.includes('picante') || consultaNormalizada.includes('curry') || consultaNormalizada.includes('pil pil')) return 'picante'
   return 'general'
+}
+
+export function contextoMaridaje(consulta = '') {
+  return contextoVenta(normalizar(consulta))
+}
+
+export function esCarneRojaPotenteConsulta(consulta = '') {
+  const consultaNormalizada = normalizar(Array.isArray(consulta) ? consulta.join(' ') : consulta)
+  return [
+    'carne roja', 'ternera', 'vaca', 'buey', 'chuleton', 'txuleton',
+    'chuleta', 'entrecot', 't-bone', 'tbone', 'solomillo',
+    'costillar de vaca', 'costilla de buey', 'cordero',
+    'magret', 'pichon', 'caza', 'liebre', 'venado', 'jabali',
+  ].some(t => consultaNormalizada.includes(t))
 }
 
 function esJamonCurado(consultaNormalizada) {
@@ -172,6 +249,47 @@ function esGenerosoSeco(vino, textoVino = '') {
 
 function esEspumosoSeco(vino, textoVino = '') {
   return vino.tipo === 'espumoso' || ['espumoso', 'cava', 'champagne', 'corpinnat', 'cremant', 'prosecco', 'brut', 'ancestral', 'pet nat'].some(t => textoVino.includes(t))
+}
+
+function esBlancoSalinoParaJamon(vino, textoVino = '') {
+  return vino.tipo === 'blanco' && [
+    'salino', 'mineral', 'yodado', 'marino', 'albari', 'albarino', 'godello',
+    'txakoli', 'chablis', 'riesling seco', 'xarel', 'assyrtiko',
+  ].some(t => textoVino.includes(t))
+}
+
+export function prioridadEstiloJamon(vino) {
+  const textoVino = normalizar(`${vino?.nombre || ''} ${vino?.bodega || ''} ${vino?.tipo || ''} ${vino?.region || ''} ${vino?.uva || ''} ${vino?.notas_cata || ''}`)
+  if (esGenerosoSeco(vino, textoVino)) return 1
+  if (esEspumosoSeco(vino, textoVino)) return 2
+  if (esBlancoSalinoParaJamon(vino, textoVino)) return 3
+  if (vino?.tipo === 'blanco' || vino?.tipo === 'rosado') return 4
+  return 9
+}
+
+export function prioridadEstiloCarneRoja(vino, consulta = '') {
+  const consultaNormalizada = normalizar(Array.isArray(consulta) ? consulta.join(' ') : consulta)
+  const contexto = contextoVenta(consultaNormalizada)
+  if (contexto !== 'carne' && !esCarneRojaPotenteConsulta(consultaNormalizada)) return 9
+
+  const textoVino = normalizar(`${vino?.nombre || ''} ${vino?.bodega || ''} ${vino?.tipo || ''} ${vino?.region || ''} ${vino?.uva || ''} ${vino?.notas_cata || ''}`)
+  const perfil = estimarPerfil(vino || {})
+  if (vino?.tipo === 'tinto') {
+    let prioridad = 3
+    if (perfil.taninos >= 3 && perfil.cuerpo >= 3) prioridad = 1
+    else if (perfil.taninos >= 3 || perfil.cuerpo >= 3) prioridad = 2
+    if ([
+      'ribera', 'rioja', 'toro', 'priorat', 'cabernet', 'syrah', 'shiraz',
+      'malbec', 'monastrell', 'tempranillo', 'graciano', 'tannat',
+      'reserva', 'crianza', 'gran reserva', 'barrica', 'roble',
+    ].some(t => textoVino.includes(t))) prioridad = Math.min(prioridad, 1)
+    return prioridad
+  }
+  if (vino?.tipo === 'naranja') return 5
+  if (vino?.tipo === 'rosado') return 6
+  if (vino?.tipo === 'generoso') return 7
+  if (vino?.tipo === 'blanco' || vino?.tipo === 'espumoso') return 8
+  return 9
 }
 
 function metodosPlato(consultaNormalizada) {
@@ -336,15 +454,17 @@ function capitulosParaConsulta(consultaNormalizada) {
 function compatibilidadContexto(vino, contexto, consultaNormalizada) {
   const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
   const esTawnyOPorto = textoVino.includes('tawny') || textoVino.includes('porto') || textoVino.includes('oporto')
-  const esPx = textoVino.includes('pedro ximenez') || textoVino.includes(' px ') || textoVino.includes('px,') || textoVino.includes('alvear px')
+  const generosoSeco = esGenerosoSeco(vino, textoVino)
+  const esPx = !generosoSeco && (
+    textoVino.includes(' px ') ||
+    textoVino.includes('px,') ||
+    textoVino.includes('alvear px') ||
+    (textoVino.includes('pedro ximenez') && (vino.tipo === 'dulce' || textoVino.includes('dulce')))
+  )
   const esDulceOxidativo = esVinoDulceOSemidulce(vino, textoVino) || esPx || esTawnyOPorto
   const quesoTrucadoParaTinto = ['clavo', 'olivada', 'tomate seco', 'tomates secos'].some(t => consultaNormalizada.includes(t))
   const metodo = metodosPlato(consultaNormalizada)
-  const esCarneRojaPotente = [
-    'carne roja', 'rabo', 'cordero', 'ternera', 'vaca', 'buey', 'chuleton', 'txuleton',
-    'chuleta', 'entrecot', 't-bone', 'tbone', 'solomillo', 'carrillera', 'carrillada',
-    'magret', 'pichon', 'caza', 'liebre', 'venado', 'jabali',
-  ].some(t => consultaNormalizada.includes(t))
+  const esCarneRojaPotente = esCarneRojaPotenteConsulta(consultaNormalizada)
   const contextoDulcePermitido = contexto === 'postre' || contexto === 'queso' || [
     'postre', 'tarta', 'helado', 'brownie', 'chocolate', 'queso azul', 'azul',
     'caramelo', 'toffee', 'datil', 'higo', 'torrija'
@@ -484,15 +604,20 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
   if (contexto === 'pescado' && esEspumosoSeco(vino, textoVino)) score += metodo.gratinado || metodo.frito ? 8 : 5
   if (esJamonCurado(consultaNormalizada)) {
     if (esGenerosoSeco(vino, textoVino)) {
-      score += 28
-      motivo = 'fino o manzanilla es la lectura mas directa: salinidad, crianza biologica y boca seca para grasa, sal y umami del jamon'
+      score += 60
+      motivo = 'fino, manzanilla o amontillado seco es la lectura mas directa: salinidad, crianza y boca seca para grasa, sal y umami del jamon'
       fuente = fuente || 'Regla de sala: jamon curado'
     } else if (esEspumosoSeco(vino, textoVino)) {
-      score += 18
+      score += 32
       motivo = 'la burbuja seca limpia la grasa del jamon y respeta la sal sin endurecer taninos'
       fuente = fuente || 'Regla de sala: jamon curado'
+    } else if (esBlancoSalinoParaJamon(vino, textoVino)) {
+      score += 14
+      motivo = 'actua como blanco salino de respaldo para jamon: refresca grasa y sal sin meter tanino'
+      fuente = fuente || 'Regla de sala: jamon curado'
     } else if (vino.tipo === 'blanco') {
-      score += 4
+      score -= 18
+      motivo = 'es blanco, pero no tiene suficiente lectura salina frente a fino, manzanilla o amontillado para jamon curado'
     }
   }
   if (
@@ -536,7 +661,14 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
       fuente = 'Restricción compartida del KB'
   }
 
-  return { vino, score: score + (Math.min(precioBotella(vino), 80) / 80), motivo, fuente, compatible: compatibilidad.compatible }
+  return {
+    vino,
+    score: score + (Math.min(precioBotella(vino), 80) / 80),
+    motivo,
+    fuente,
+    compatible: compatibilidad.compatible,
+    comercial: lecturaComercialVino(vino),
+  }
 }
 
 export function analizarMaridaje(consulta, vinos = []) {
@@ -564,18 +696,22 @@ export function analizarMaridaje(consulta, vinos = []) {
         : `funciona como vino puente para ${consultas.length} platos sin chocar con ninguno`,
       fuente: incompatibles.length ? mejorParcial.fuente : 'Modo mesa: compatibilidad transversal',
       compatible: incompatibles.length === 0,
+      comercial: lecturaComercialVino(vino),
       rangoTicket,
     }
-  }).sort((a, b) => b.score - a.score)
+  }).sort((a, b) => compararPorMaridajeYNegocio(a, b, consultas))
 
   const compatibles = puntuados.filter(item => item.compatible)
-  const bajo30 = compatibles.find(item => precioBotella(item.vino) <= 30)
-  const sinLimite = compatibles.find(item => !bajo30 || item.vino.id !== bajo30.vino.id)
+  const prioridadTecnica = consultas.some(consulta => esJamonCurado(normalizar(consulta)))
+  const bajo30 = prioridadTecnica ? null : compatibles.find(item => precioBotella(item.vino) <= 30)
+  const sinLimite = prioridadTecnica ? null : compatibles.find(item => !bajo30 || item.vino.id !== bajo30.vino.id)
 
   return {
     lectura,
     candidatos: compatibles,
-    recomendados: unique([bajo30, sinLimite, ...compatibles], 3),
+    recomendados: prioridadTecnica
+      ? compatibles.slice(0, 3)
+      : unique([bajo30, sinLimite, ...compatibles], 3),
   }
 }
 
@@ -614,7 +750,10 @@ function lecturaConsulta(consulta) {
 export function resumenAnalisisParaPrompt(analisis) {
   const candidatos = analisis.candidatos.slice(0, 8).map((item, idx) => {
     const vino = item.vino
-    return `${idx + 1}. ${vino.nombre} (${vino.tipo || 'vino'}, ${precioBotella(vino)} EUR): ${item.motivo}. Fuente: ${item.fuente}. Score interno: ${Math.round(item.score)}.`
+    const comercial = item.comercial?.motivos?.length
+      ? ` Senal comercial secundaria: ${item.comercial.motivos.join(', ')}${item.comercial.margenPct ? `, margen ${item.comercial.margenPct}%` : ''}.`
+      : ''
+    return `${idx + 1}. ${vino.nombre} (${vino.tipo || 'vino'}, ${precioBotella(vino)} EUR): ${item.motivo}. Fuente: ${item.fuente}. Score interno: ${Math.round(item.score)}.${comercial}`
   }).join('\n')
 
   return [
@@ -625,6 +764,7 @@ export function resumenAnalisisParaPrompt(analisis) {
     analisis.lectura?.buscar?.length ? `Buscar en el vino: ${analisis.lectura.buscar.join(', ')}.` : '',
     analisis.lectura?.evitar?.length ? `Evitar: ${analisis.lectura.evitar.join(', ')}.` : '',
     candidatos ? `Candidatos priorizados por Chartier/KB/WSET:\n${candidatos}` : '',
+    'La senal comercial solo sirve para desempatar entre vinos gastronomicamente equivalentes; no sacrifiques maridaje, presupuesto ni stock real.',
     'Usa estos candidatos como preferencia fuerte. Solo cambia si tu razonamiento estructural lo justifica, y nunca recomiendes vinos que no estén en la carta real.',
   ].filter(Boolean).join('\n')
 }

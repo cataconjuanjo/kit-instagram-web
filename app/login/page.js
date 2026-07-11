@@ -3,10 +3,9 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { supabase } from '../supabase'
-import { clearAdminRestaurantEmail, clearDemoEmail, isAdminEmail, setDemoEmail } from '../demo'
+import { clearAdminRestaurantEmail, clearDemoEmail, isAdminEmail } from '../demo'
 
 export default function Login() {
-  const showDemo = process.env.NEXT_PUBLIC_SHOW_DEMO === 'true'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -18,19 +17,13 @@ export default function Login() {
     setError('')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      setError('Email o contraseña incorrectos')
+      setError('Email o contrasena incorrectos')
     } else {
       clearAdminRestaurantEmail()
       clearDemoEmail()
       window.location.href = isAdminEmail(email) ? '/admin/consultoria' : '/dashboard'
     }
     setLoading(false)
-  }
-
-  async function entrarDemo(demoEmail) {
-    setDemoEmail(demoEmail)
-    await supabase.auth.signOut()
-    window.location.href = '/dashboard'
   }
 
   return (
@@ -42,16 +35,15 @@ export default function Login() {
         </Link>
         <div className="login-brand-copy">
           <p className="eyebrow">Carta Viva</p>
-          <h1>Acceso privado para restaurantes.</h1>
+          <h1>Acceso privado Carta Viva.</h1>
           <p>
-            Gestiona tu carta, actualiza referencias, revisa señales de sala y mantén viva la bodega desde un mismo
-            panel.
+            Gestiona referencias, stock, actividad comercial y decisiones de bodega desde un mismo panel profesional.
           </p>
         </div>
         <div className="login-proof">
-          <span>QR</span>
-          <span>Guía de maridaje</span>
-          <span>Modo sala</span>
+          <span>Bodega</span>
+          <span>Referencias</span>
+          <span>Rentabilidad</span>
           <span>Dashboard</span>
         </div>
       </section>
@@ -59,9 +51,9 @@ export default function Login() {
       <section className="login-form-panel">
         <form className="login-card" onSubmit={handleLogin}>
           <div>
-            <p className="login-kicker">Área clientes</p>
+            <p className="login-kicker">Area clientes</p>
             <h2>Entrar en Carta Viva</h2>
-            <p className="login-muted">Usa las credenciales de tu restaurante.</p>
+            <p className="login-muted">Usa tus credenciales de acceso.</p>
           </div>
 
           <label>
@@ -76,7 +68,7 @@ export default function Login() {
           </label>
 
           <label>
-            Contraseña
+            Contrasena
             <input
               type="password"
               autoComplete="current-password"
@@ -93,19 +85,10 @@ export default function Login() {
           </button>
 
           <div className="login-help">
-            <span>¿No tienes acceso?</span>
+            <span>No tienes acceso?</span>
             <Link href="/cartavinos#contacto">Solicitar demo privada</Link>
           </div>
 
-          {showDemo && (
-            <div className="login-demo">
-              <p>Acceso demo</p>
-              <div>
-                <button type="button" onClick={() => entrarDemo('casapepe@cartavinos.com')}>Casa Pepe</button>
-                <button type="button" onClick={() => entrarDemo('lodecarmen@cartavinos.com')}>Lo de Carmen</button>
-              </div>
-            </div>
-          )}
         </form>
       </section>
     </main>

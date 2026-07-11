@@ -433,6 +433,544 @@
   font-weight: 900;
 }
 
+.dailyRadarPanel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #ddd6cb;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.weeklyPanel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  border: 1px solid #ddd6cb;
+  border-radius: 8px;
+  background: #171416;
+  color: #fffaf3;
+  padding: 18px;
+}
+
+.weeklyHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.weeklyHead h2 {
+  max-width: 760px;
+  margin: 0;
+  color: #fffaf3;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.weeklyHead p:not(.eyebrow) {
+  margin: 6px 0 0;
+  color: rgba(255, 250, 243, 0.62);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.weeklyActions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.weeklyActions button,
+.weeklyActions a {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 250, 243, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.06);
+  color: #fffaf3;
+  padding: 0 11px;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.weeklyActions button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.weeklyNotice {
+  width: fit-content;
+  border: 1px solid rgba(183, 226, 204, 0.4);
+  border-radius: 8px;
+  background: rgba(6, 95, 70, 0.2);
+  color: #d1fae5;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.weeklyRoutine {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.1fr) minmax(84px, 0.4fr) minmax(180px, 1fr) minmax(108px, 0.55fr) minmax(118px, 0.6fr) minmax(96px, 0.5fr) auto;
+  align-items: end;
+  gap: 8px;
+  border: 1px solid rgba(255, 250, 243, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.05);
+  padding: 12px;
+}
+
+.weeklyRoutineState,
+.weeklyRoutine label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.weeklyRoutineState span,
+.weeklyRoutine label span {
+  color: #d8c898;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.weeklyRoutineState strong {
+  color: #fffaf3;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.weeklyRoutineState small {
+  color: rgba(255, 250, 243, 0.58);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.weeklyRoutine input,
+.weeklyRoutine select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(255, 250, 243, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.08);
+  color: #fffaf3;
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.weeklyRoutine select option {
+  color: #171416;
+}
+
+.weeklyRoutine button {
+  min-height: 36px;
+  border: 1px solid rgba(216, 200, 152, 0.42);
+  border-radius: 8px;
+  background: #d8c898;
+  color: #171416;
+  padding: 0 11px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.weeklyRoutine button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.weeklyCheck {
+  min-height: 36px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  border: 1px solid rgba(255, 250, 243, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.05);
+  padding: 8px 9px;
+}
+
+.weeklyCheck input {
+  width: 16px;
+  min-height: 16px;
+  height: 16px;
+  accent-color: #d8c898;
+}
+
+.weeklyMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.weeklyMetrics article {
+  min-width: 0;
+  min-height: 104px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 250, 243, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.05);
+  padding: 13px;
+}
+
+.weeklyMetrics span,
+.weeklyDecisionList span,
+.weeklyValueList span {
+  color: #d8c898;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.weeklyMetrics strong {
+  color: #fffaf3;
+  font-size: 24px;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.weeklyMetrics small {
+  color: rgba(255, 250, 243, 0.58);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.weeklyEvolution {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(216, 200, 152, 0.22);
+  border-radius: 8px;
+  background: rgba(216, 200, 152, 0.08);
+  padding: 10px 12px;
+}
+
+.weeklyEvolution span {
+  color: rgba(255, 250, 243, 0.58);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.weeklyEvolution strong {
+  border-radius: 999px;
+  background: rgba(255, 250, 243, 0.08);
+  color: #fffaf3;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.weeklyGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.9fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.weeklyBlock {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.weeklyBlock h3 {
+  margin: 0;
+  color: #fffaf3;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.weeklyDecisionList,
+.weeklyValueList {
+  display: grid;
+  gap: 8px;
+}
+
+.weeklyDecisionList a,
+.weeklyValueList a,
+.weeklyDecisionList p {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(255, 250, 243, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.05);
+  color: #fffaf3;
+  padding: 12px;
+  text-decoration: none;
+}
+
+.weeklyDecisionList p {
+  margin: 0;
+  color: rgba(255, 250, 243, 0.62);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.weeklyDecisionList strong,
+.weeklyValueList strong {
+  color: #fffaf3;
+  font-size: 14px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.weeklyDecisionList small,
+.weeklyValueList small {
+  color: rgba(255, 250, 243, 0.58);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.weeklyValueList {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.weeklyValueList a {
+  align-content: start;
+}
+
+.weeklyPending {
+  border-color: rgba(245, 158, 11, 0.28) !important;
+  background: rgba(245, 158, 11, 0.08) !important;
+}
+
+.dailyRadarHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.dailyRadarHead h2 {
+  margin: 0;
+  color: #222222;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.dailyRadarHead p {
+  margin: 5px 0 0;
+  color: #625a53;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.dailyRadarHead button,
+.dailyRadarActions button,
+.dailyRadarActions a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d8c898;
+  border-radius: 8px;
+  background: #fffaf3;
+  color: #531827;
+  padding: 0 10px;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.dailyRadarHead button:disabled,
+.dailyRadarActions button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.cellarCommandPanel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  border: 1px solid #2d282a;
+  border-radius: 10px;
+  background: #171416;
+  color: #fffaf3;
+  padding: 18px;
+}
+
+.cellarCommandHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.cellarCommandHead h2 {
+  margin: 0;
+  color: #fffaf3;
+  font-family: Georgia, serif;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.cellarCommandHead p:not(.eyebrow) {
+  max-width: 660px;
+  margin: 7px 0 0;
+  color: rgba(255, 250, 243, 0.62);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cellarCommandHead a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d8c898;
+  border-radius: 8px;
+  background: #d8c898;
+  color: #171416;
+  padding: 0 13px;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.cellarCommandMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cellarCommandMetrics article {
+  min-width: 0;
+  min-height: 112px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 250, 243, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.05);
+  padding: 13px;
+}
+
+.cellarCommandMetrics span,
+.cellarCommandGrid span {
+  color: #d8c898;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cellarCommandMetrics strong {
+  color: #fffaf3;
+  font-size: 25px;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.cellarCommandMetrics small {
+  color: rgba(255, 250, 243, 0.58);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.cellarCommandGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cellarCommandGrid a {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgba(216, 200, 152, 0.22);
+  border-radius: 8px;
+  background: rgba(216, 200, 152, 0.08);
+  color: #fffaf3;
+  padding: 12px;
+  text-decoration: none;
+}
+
+.cellarCommandGrid strong {
+  color: #fffaf3;
+  font-size: 13px;
+  line-height: 1.28;
+}
+
+.radarNotice {
+  border: 1px solid #ddb8b8;
+  border-radius: 8px;
+  background: #fff0ee;
+  color: #9b3535;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dailyRadarList {
+  display: grid;
+  gap: 10px;
+}
+
+.dailyRadarItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  border: 1px solid #e4ddd2;
+  border-radius: 8px;
+  background: #F8F7F4;
+  padding: 13px;
+}
+
+.dailyRadarItem span {
+  color: #8B3F5C;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.dailyRadarItem h3 {
+  margin: 4px 0 0;
+  color: #222222;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.dailyRadarItem p {
+  margin: 5px 0 0;
+  color: #625a53;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.dailyRadarActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: flex-end;
+  max-width: 360px;
+}
+
 .focusPanel {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
@@ -1751,6 +2289,19 @@
     grid-template-columns: 1fr;
   }
 
+  .cellarCommandHead {
+    display: grid;
+  }
+
+  .cellarCommandHead a {
+    justify-self: start;
+  }
+
+  .cellarCommandMetrics,
+  .cellarCommandGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .activationSteps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1764,6 +2315,36 @@
   }
 
   .todayActionList {
+    grid-template-columns: 1fr;
+  }
+
+  .dailyRadarItem {
+    grid-template-columns: 1fr;
+  }
+
+  .dailyRadarActions {
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  .weeklyMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .weeklyRoutine {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .weeklyRoutineState {
+    grid-column: 1 / -1;
+  }
+
+  .weeklyRoutine button {
+    width: fit-content;
+  }
+
+  .weeklyGrid {
     grid-template-columns: 1fr;
   }
 
@@ -1858,6 +2439,54 @@
 
   .priorityPanel h1 {
     font-size: 22px;
+  }
+
+  .dailyRadarPanel {
+    padding: 14px;
+  }
+
+  .weeklyPanel {
+    padding: 14px;
+  }
+
+  .weeklyHead {
+    flex-direction: column;
+  }
+
+  .weeklyActions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .weeklyActions button,
+  .weeklyActions a {
+    width: 100%;
+  }
+
+  .weeklyMetrics,
+  .weeklyValueList {
+    grid-template-columns: 1fr;
+  }
+
+  .weeklyRoutine {
+    grid-template-columns: 1fr;
+  }
+
+  .weeklyRoutine button {
+    width: 100%;
+  }
+
+  .weeklyEvolution {
+    display: grid;
+  }
+
+  .dailyRadarHead {
+    flex-direction: column;
+  }
+
+  .dailyRadarHead button {
+    width: 100%;
   }
 
   .focusBlock {

@@ -188,8 +188,13 @@ export default function CartaVivaPage() {
             empiece a venderse con sentido.
           </p>
           <div className="hero-actions">
-            <Link href="#contacto" className="btn btn-primary">Solicitar demo privada</Link>
+            <Link href="#prueba" className="btn btn-primary">Probar Carta Viva 14 días</Link>
             <Link href="#como-funciona" className="btn btn-secondary">Ver cómo funciona</Link>
+          </div>
+          <div className="cv-trust-line">
+            <span>Configuración acompañada</span>
+            <span>Sin permanencia</span>
+            <span>Respuesta personal</span>
           </div>
         </div>
 
@@ -208,6 +213,27 @@ export default function CartaVivaPage() {
           No se trata de poner un PDF en un QR. Se trata de que cliente, camarero y propietario lean la carta de vino
           de forma distinta: más clara, más rentable y más memorable.
         </p>
+      </section>
+
+      <section className="section cv-activation-path" id="prueba">
+        <div className="section-head narrow">
+          <p className="eyebrow">Prueba guiada de 14 días</p>
+          <h2>Tu primera carta publicada, no otra herramienta abandonada.</h2>
+          <p>La prueba empieza con un objetivo concreto: cargar la base, comprobar el maridaje y poner el QR delante de un cliente real.</p>
+        </div>
+        <div className="cv-activation-grid">
+          <article><span>1</span><strong>Me envías tu carta</strong><p>PDF, Excel o listado. Te digo qué está listo y qué falta.</p></article>
+          <article><span>2</span><strong>Montamos la base</strong><p>Vinos, platos, precios y perfiles esenciales para recomendar.</p></article>
+          <article><span>3</span><strong>Pruebas sala y QR</strong><p>Validas carta pública, modo camarero y primeras recomendaciones.</p></article>
+          <article><span>4</span><strong>Decides con datos</strong><p>Al final de los 14 días sabes si aporta valor al restaurante.</p></article>
+        </div>
+        <div className="cv-activation-cta">
+          <div>
+            <strong>Sin permanencia. Sin compromiso de continuidad.</strong>
+            <span>La configuración inicial se valora según el volumen de la carta.</span>
+          </div>
+          <Link href="#contacto" className="btn btn-primary">Solicitar mi prueba</Link>
+        </div>
       </section>
 
       <section id="como-funciona" className="section cv-flow-section">
@@ -406,7 +432,12 @@ export default function CartaVivaPage() {
             Manda el nombre del restaurante y una idea de tu carta actual. Te responderé con una propuesta clara.
           </p>
         </div>
-        <LeadForm source="Carta Viva" />
+        <LeadForm
+          source="Carta Viva · prueba guiada 14 días"
+          cta="Solicitar prueba de 14 días"
+          title="Solicita tu prueba guiada"
+          successTitle="Prueba solicitada"
+        />
       </section>
 
       <PublicFooter />

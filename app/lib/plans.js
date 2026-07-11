@@ -9,13 +9,19 @@ export const PLANES = {
     nombre: 'Sala',
     precioOrientativo: '99 EUR/mes',
     limiteVinos: 200,
-    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'bodega', 'inventario', 'importador_pdf'],
+    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf'],
+  },
+  bodega: {
+    nombre: 'Bodega',
+    precioOrientativo: '149 EUR/mes',
+    limiteVinos: 1000,
+    features: ['estadisticas', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'informes', 'proveedores'],
   },
   premium: {
     nombre: 'Acompanado',
     precioOrientativo: 'Presupuesto personalizado',
     limiteVinos: 9999,
-    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'bodega', 'inventario', 'importador_pdf', 'informes', 'proveedores', 'consultoria'],
+    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'informes', 'proveedores', 'consultoria'],
   },
 }
 
@@ -38,6 +44,10 @@ export function nombrePlan(restaurante) {
 
 export function limiteVinosPlan(restaurante) {
   return PLANES[planRestaurante(restaurante)].limiteVinos
+}
+
+export function esPerfilBodega(restaurante) {
+  return planRestaurante(restaurante) === 'bodega'
 }
 
 export function estadoPlan(restaurante) {

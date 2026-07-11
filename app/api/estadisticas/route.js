@@ -2,6 +2,7 @@ import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { validarSesionCamarero } from '../../lib/camareroSession'
 import { validarTokenPruebaCarta } from '../../lib/cartaPruebaToken'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
+import { guardarAtribucionDesdeEventos } from '../../lib/recommendationAttribution'
 
 const TIPOS_PERMITIDOS = new Set(['escaneo', 'sommelier', 'recomendacion', 'venta', 'incidencia', 'inventario'])
 const TIPOS_PUBLICOS = new Set(['escaneo'])
@@ -64,8 +65,12 @@ export async function POST(req) {
       if (acceso.error) return Response.json({ error: acceso.error }, { status: acceso.status })
     }
 
-    const { error } = await supabaseAdmin.from('estadisticas').insert(eventos)
+    const { data: eventosInsertados, error } = await supabaseAdmin
+      .from('estadisticas')
+      .insert(eventos)
+      .select('id, restaurante_id, tipo, detalle, created_at')
     if (error) throw error
+    await guardarAtribucionDesdeEventos(supabaseAdmin, eventosInsertados || [])
 
     return Response.json({ ok: true })
   } catch (error) {

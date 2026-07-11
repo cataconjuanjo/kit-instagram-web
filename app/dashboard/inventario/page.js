@@ -244,6 +244,7 @@ export default function InventarioSemanal() {
           { title: 'Empieza por prioridad', text: 'Bajo mínimo, incidencias, vinos premium y copa tienen más impacto que una lista alfabética.' },
           { title: 'Cuenta y compara', text: 'Rellena solo las unidades contadas cuando haya diferencia real con el stock de la app.' },
           { title: 'Aplica al final', text: 'El botón de aplicar actualiza stock y guarda el movimiento para mantener trazabilidad.' },
+          { title: 'Separa motivos', text: 'Venta no registrada, merma, invitacion y ajuste no son lo mismo: solo la venta explica coste asociado a ingreso.' },
         ],
       }}
     >
@@ -255,7 +256,7 @@ export default function InventarioSemanal() {
           <h2>Cuenta por impacto, no por alfabeto</h2>
           <p>
             Empieza por bajo mínimo, incidencias, copa y premium. Cada referencia muestra qué revisar,
-            cuánto stock declara la app y si el ajuste impacta coste o venta.
+            cuánto stock declara la app y si la diferencia corresponde a venta, merma, invitacion o ajuste.
           </p>
           <div className={styles.inventoryHeroActions}>
             <button type="button" className={styles.primary} onClick={() => document.getElementById('inventario-conteo')?.scrollIntoView({ behavior: 'smooth' })}>

@@ -25,6 +25,15 @@ function fecha(value) {
   return new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' }).format(new Date(value))
 }
 
+function limpiarTexto(texto = '') {
+  return String(texto || '')
+    .replace(/gustar\?a/gi, match => match[0] === 'G' ? 'Gustaría' : 'gustaría')
+    .replace(/\bqu\?/gi, match => match[0] === 'Q' ? 'Qué' : 'qué')
+    .replace(/\bm\?s\b/gi, match => match[0] === 'M' ? 'Más' : 'más')
+    .replace(/\br\?pido/gi, match => match[0] === 'R' ? 'Rápido' : 'rápido')
+    .replace(/\bfunci\?n/gi, match => match[0] === 'F' ? 'Función' : 'función')
+}
+
 export default function SugerenciasPage() {
   const [restaurante, setRestaurante] = useState(null)
   const [sugerencias, setSugerencias] = useState([])
@@ -168,8 +177,8 @@ export default function SugerenciasPage() {
                   <div className={styles.sectionHead} style={{ margin: 0 }}>
                     <div>
                       <p className={styles.eyebrow}>{TIPOS.find(tipoItem => tipoItem.id === item.tipo)?.label || item.tipo} · {fecha(item.created_at)}</p>
-                      <h3 className={styles.sectionTitle}>{item.mensaje}</h3>
-                      {item.respuesta_publica && <p className={styles.sectionText} style={{ marginTop: 8 }}>{item.respuesta_publica}</p>}
+                      <h3 className={styles.sectionTitle}>{limpiarTexto(item.mensaje)}</h3>
+                      {item.respuesta_publica && <p className={styles.sectionText} style={{ marginTop: 8 }}>{limpiarTexto(item.respuesta_publica)}</p>}
                     </div>
                     <span className={styles.badge}>{ESTADO_LABEL[item.estado] || item.estado}</span>
                   </div>

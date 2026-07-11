@@ -8,3 +8,14 @@ demo-output/
 web-*.html
 .vercel
 .netlify/
+
+# Local Codex/dev artifacts
+.codex-*.log
+.codex-*.out.log
+.codex-*.err.log
+.codex-*.cmd
+.codex-*.png
+debug.log
+tmp/
+output/
+.vscode/
