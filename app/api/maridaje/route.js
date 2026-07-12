@@ -93,6 +93,12 @@ function candidatosUnicos(candidatos = [], limite = 3) {
   }).slice(0, limite)
 }
 
+function normalizarStockParaMaridaje(vinos = []) {
+  const controlStockActivo = vinos.some(vino => Number(vino?.stock) > 0)
+  if (controlStockActivo) return vinos
+  return vinos.map(vino => ({ ...vino, stock: null }))
+}
+
 function candidatoDesdeGrafo(item) {
   return {
     vino: item.vino,
@@ -367,7 +373,7 @@ export async function POST(request) {
 
     const [{ data: restaurante }, { data: vinosData }, { data: platos }] = await Promise.all([
       supabaseAdmin.from('restaurantes').select('*').eq('id', restaurante_id).single(),
-      supabaseAdmin.from('vinos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true).gt('stock', 0),
+      supabaseAdmin.from('vinos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
       supabaseAdmin.from('platos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
     ])
 
@@ -377,9 +383,10 @@ export async function POST(request) {
 
     const esSucesion = normalizarTexto(modoMesa).includes('sucesion')
     const soloCopa = esSucesion || normalizarTexto(modoMesa).includes('copa') || normalizarTexto(modoMesa).includes('glass')
+    const vinosDisponibles = normalizarStockParaMaridaje(vinosData || [])
     const vinos = soloCopa
-      ? (vinosData || []).filter(vino => Number(vino.precio_copa) > 0)
-      : (vinosData || [])
+      ? vinosDisponibles.filter(vino => Number(vino.precio_copa) > 0)
+      : vinosDisponibles
     const idsContexto = new Set(platoIds)
     const platosContexto = idsContexto.size
       ? (platos || []).filter(plato => idsContexto.has(String(plato.id)))
@@ -504,7 +511,7 @@ export async function POST(request) {
         const { tipo, estilo, comida, precio } = perfilQuiz || {}
 
         // Filtrar carta por tipo y precio antes de mandar a Claude
-        let vinosQuiz = (vinosData || []).filter(v => v.activo !== false && v.stock !== 0 && Number(v.precio_botella) > 0)
+        let vinosQuiz = vinosDisponibles.filter(v => v.activo !== false && v.stock !== 0 && Number(v.precio_botella) > 0)
         if (tipo) {
           const porTipo = vinosQuiz.filter(v => v.tipo === tipo)
           if (porTipo.length >= 3) vinosQuiz = porTipo

@@ -23,10 +23,11 @@ function compactarVino(vino = {}) {
 }
 
 function vinosDisponibles(vinos = []) {
+  const controlStockActivo = vinos.some(vino => Number(vino?.stock) > 0)
   return vinos
-    .filter(vino => vino?.activo !== false && Number(vino?.stock) !== 0 && Number(vino?.precio_botella) > 0)
+    .filter(vino => vino?.activo !== false && (!controlStockActivo || Number(vino?.stock) !== 0) && Number(vino?.precio_botella) > 0)
     .slice(0, 140)
-    .map(compactarVino)
+    .map(vino => compactarVino(controlStockActivo ? vino : { ...vino, stock: null }))
 }
 
 function compactarPlato(plato = {}) {
