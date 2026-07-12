@@ -139,7 +139,18 @@ export default function ControlBodega() {
     const hash = window.location.hash
     window.requestAnimationFrame(() => {
       if (hash === '#pedido') setVistaBodega('compras')
-      if (['#referencias', '#proveedores', '#rotacion', '#movimientos'].includes(hash)) setVistaBodega('stock')
+      const filtrosPorHash = {
+        '#referencias-pendientes': 'pendientes',
+        '#referencias-sin-coste': 'sin_coste',
+        '#referencias-sin-proveedor': 'sin_proveedor',
+        '#referencias-sin-minimo': 'sin_minimo',
+      }
+      if (['#referencias', '#proveedores', '#rotacion', '#movimientos', ...Object.keys(filtrosPorHash)].includes(hash)) setVistaBodega('stock')
+      if (hash === '#referencias') setMostrarReferencias(true)
+      if (filtrosPorHash[hash]) {
+        setFiltroReferencias(filtrosPorHash[hash])
+        setMostrarReferencias(true)
+      }
       if (hash === '#propuestas') {
         setVistaBodega('propuestas')
         setMostrarPropuestas(true)
@@ -218,6 +229,10 @@ export default function ControlBodega() {
     setGuardadoBodega('')
     setEditando({
       id: vino.id,
+      nombre: vino.nombre,
+      bodega: vino.bodega,
+      stock: vino.stock,
+      precio_botella: vino.precio_botella,
       coste_compra: vino.coste_compra || '',
       stock_minimo: vino.stock_minimo || '',
       proveedor: vino.proveedor || '',
@@ -276,6 +291,10 @@ export default function ControlBodega() {
     setVistaBodega('stock')
     if (href === '#movimientos') setMostrarMovimientos(true)
     if (href === '#referencias') setMostrarReferencias(true)
+    if (href === '#referencias-pendientes') abrirReferencias('pendientes')
+    if (href === '#referencias-sin-coste') abrirReferencias('sin_coste')
+    if (href === '#referencias-sin-proveedor') abrirReferencias('sin_proveedor')
+    if (href === '#referencias-sin-minimo') abrirReferencias('sin_minimo')
   }
 
   function moverEdicion(direccion) {
@@ -338,8 +357,8 @@ export default function ControlBodega() {
   const datosPendientesTotal = datos.sinCoste.length + datos.sinProveedor.length + datos.sinStockMinimo.length + datos.sinPrecio.length
   const acciones = [
     datos.pedido.length > 0 && { tipo: 'Compra', texto: `Preparar pedido de ${datos.pedido.length} vinos en minimo o punto de pedido`, href: '#pedido' },
-    datos.sinCoste.length > 0 && { tipo: 'Margen', texto: `Completar coste de ${datos.sinCoste.length} referencias`, href: '#referencias' },
-    datos.sinProveedor.length > 0 && { tipo: 'Proveedor', texto: `Asignar proveedor a ${datos.sinProveedor.length} vinos`, href: '#proveedores' },
+    datos.sinCoste.length > 0 && { tipo: 'Margen', texto: `Completar coste de ${datos.sinCoste.length} referencias`, href: '#referencias-sin-coste' },
+    datos.sinProveedor.length > 0 && { tipo: 'Proveedor', texto: `Asignar proveedor a ${datos.sinProveedor.length} vinos`, href: '#referencias-sin-proveedor' },
     !perfilBodega && incidencias.length > 0 && { tipo: 'Sala', texto: `${incidencias.length} incidencias pendientes en cierre`, href: '/dashboard/cierre#incidencias' },
     datos.margenBajo.length > 0 && { tipo: 'Margen', texto: `Revisar ${datos.margenBajo.length} vinos con margen bajo`, href: '#referencias' },
     datos.sinRotacion.length > 0 && { tipo: 'Rotación', texto: `Revisar ${datos.sinRotacion.length} vinos con stock alto sin salida`, href: '#rotacion' },
@@ -347,6 +366,7 @@ export default function ControlBodega() {
   ].filter(Boolean)
 
   const referenciasVisibles = datos.activos.filter(vino => {
+    if (filtroReferencias === 'pendientes') return !decimal(vino.coste_compra) || !vino.proveedor || !decimal(vino.stock_minimo)
     if (filtroReferencias === 'sin_coste') return !decimal(vino.coste_compra)
     if (filtroReferencias === 'sin_proveedor') return !vino.proveedor
     if (filtroReferencias === 'sin_minimo') return !decimal(vino.stock_minimo)
@@ -365,10 +385,12 @@ export default function ControlBodega() {
 
   const etiquetaFiltroReferencias = {
     todos: `${datos.activos.length} referencias`,
+    pendientes: `${referenciasVisibles.length} pendientes`,
     sin_coste: `${referenciasVisibles.length} sin coste`,
     sin_proveedor: `${referenciasVisibles.length} sin proveedor`,
     sin_minimo: `${referenciasVisibles.length} sin stock minimo`,
   }[filtroReferencias]
+  const modoCompletarDatos = filtroReferencias !== 'todos'
 
   const pedidoManualLista = Object.entries(pedidoManual)
     .map(([id, cantidad]) => {
@@ -881,7 +903,7 @@ export default function ControlBodega() {
         <div className={styles.panelHead}>
           <div>
             <h2 className={styles.panelTitle}>Referencias de bodega</h2>
-            <p className={styles.panelSub}>Edición avanzada de coste, proveedor y stock mínimo.</p>
+            <p className={styles.panelSub}>{modoCompletarDatos ? 'Completa primero coste, proveedor y stock mínimo. El pedido queda para la vista de compras.' : 'Edición avanzada de coste, proveedor, stock mínimo y pedido manual.'}</p>
           </div>
           <button className={styles.ghost} onClick={() => setMostrarReferencias(!mostrarReferencias)}>
             {mostrarReferencias ? 'Ocultar' : `Editar ${etiquetaFiltroReferencias}`}
@@ -900,6 +922,7 @@ export default function ControlBodega() {
             </div>
             <div className={styles.actionRow} style={{ marginBottom: 12 }}>
               <button className={filtroReferencias === 'todos' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('todos')}>Todas</button>
+              <button className={filtroReferencias === 'pendientes' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('pendientes')}>Pendientes</button>
               <button className={filtroReferencias === 'sin_coste' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('sin_coste')}>Sin coste</button>
               <button className={filtroReferencias === 'sin_proveedor' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('sin_proveedor')}>Sin proveedor</button>
               <button className={filtroReferencias === 'sin_minimo' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('sin_minimo')}>Sin stock minimo</button>
@@ -926,7 +949,7 @@ export default function ControlBodega() {
                       </div>
                     </div>
 
-                    <div className={styles.actionRow} style={{ marginTop: 12 }}>
+                    {!modoCompletarDatos && <div className={styles.actionRow} style={{ marginTop: 12 }}>
                       <input
                         className={styles.input}
                         type="number"
@@ -940,7 +963,7 @@ export default function ControlBodega() {
                       {cantidadManual > 0 && (
                         <button className={styles.ghost} onClick={() => quitarPedidoManual(vino.id)}>Quitar manual</button>
                       )}
-                    </div>
+                    </div>}
 
                     {isEditing && (
                       <ResponsiveOverlay
