@@ -241,11 +241,12 @@ export async function POST(request) {
 
     const plato = platoResult.data ? compactarPlato(platoResult.data) : null
     if (plato) texto = consultaDesdePlato(plato)
+    const consultaAnalisis = plato ? [texto] : texto
     const vinos = vinosDisponibles(vinosData || [])
     const flavorLectura = analizarFlavor(texto)
     const textoFlavor = consultaEnriquecidaFlavor(texto, flavorLectura)
     const [actual, conFlavor] = await Promise.all([
-      analizarVersion(texto, vinos),
+      analizarVersion(consultaAnalisis, vinos),
       analizarVersion(textoFlavor, vinos),
     ])
 

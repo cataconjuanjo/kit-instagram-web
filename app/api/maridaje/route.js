@@ -394,6 +394,9 @@ export async function POST(request) {
     const consultaInterna = platosContexto.length
       ? platosContexto.map(lineaPlato).join(', ')
       : consultaTexto
+    const consultaAnalisis = platosContexto.length
+      ? platosContexto.map(lineaPlato)
+      : consultaTexto
 
     const cartaVinos = (vinos || []).map(v => lineaVino(v, soloCopa)).join('\n')
     const cartaPlatos = (platos || []).map(lineaPlato).join('\n')
@@ -419,7 +422,7 @@ export async function POST(request) {
 
       if (esModoMaridaje) {
         // 1. GOLDSTEIN — veto duro: elimina vinos estructuralmente incompatibles antes de todo
-        const goldsteinAnalisis = analizarConGoldstein(consultaInterna, vinosRespuesta)
+        const goldsteinAnalisis = analizarConGoldstein(consultaAnalisis, vinosRespuesta)
         const bloqueadosGoldstein = new Set(
           goldsteinAnalisis.candidatos
             .filter(item => item.bloqueado)
@@ -429,7 +432,7 @@ export async function POST(request) {
 
         // 2. MOTOR ESTRUCTURAL — determina qué vinos son compatibles con el contexto
         //    Corre antes del grafo para filtrar lo que Claude puede ver
-        const motorAnalisis = analizarMaridaje(consultaInterna, vinosRespuesta)
+        const motorAnalisis = analizarMaridaje(consultaAnalisis, vinosRespuesta)
         const motorCompatibles = new Set(
           [...(motorAnalisis?.recomendados || []), ...(motorAnalisis?.candidatos || [])]
             .map(c => String(c.vino?.id || c.vino?.nombre))
@@ -446,7 +449,7 @@ export async function POST(request) {
         let resumenGrafo = ''
         try {
           const grafoMod = await import('../../lib/chartierGraph')
-          const grafoAnalisis = await grafoMod.analizarConGrafo(consultaInterna, vinosRespuesta)
+          const grafoAnalisis = await grafoMod.analizarConGrafo(consultaAnalisis, vinosRespuesta)
           resumenGrafo = grafoMod.resumenGrafoParaPrompt(grafoAnalisis) || ''
           // Solo candidatos del grafo que también pasaron el motor estructural
           candidatosGrafo = (grafoAnalisis?.candidatos || [])
