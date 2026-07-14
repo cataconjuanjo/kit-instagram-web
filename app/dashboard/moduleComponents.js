@@ -14,6 +14,35 @@ export function LoadingState() {
   )
 }
 
+export function MetricInfo({ title, children }) {
+  if (!children) return null
+
+  return (
+    <details className={styles.metricInfo}>
+      <summary aria-label={`Explicar ${title || 'metrica'}`} title="Que significa este dato">
+        i
+      </summary>
+      <div className={styles.metricInfoBubble}>
+        {title && <strong>{title}</strong>}
+        <p>{children}</p>
+      </div>
+    </details>
+  )
+}
+
+export function StatCard({ value, label, info, hint, valueStyle }) {
+  return (
+    <div className={styles.stat}>
+      <div className={styles.statTop}>
+        <p className={styles.statValue} style={valueStyle}>{value}</p>
+        <MetricInfo title={label}>{info}</MetricInfo>
+      </div>
+      <p className={styles.statLabel}>{label}</p>
+      {hint && <p className={styles.statHint}>{hint}</p>}
+    </div>
+  )
+}
+
 function ModuleHelp({ help }) {
   if (!help) return null
 

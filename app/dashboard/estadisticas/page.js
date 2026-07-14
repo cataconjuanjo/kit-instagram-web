@@ -7,7 +7,7 @@ import { actividadRealDesdeISO, etiquetaActividadReal } from '../../lib/activida
 import { esVentaTPV, priorizarVentas } from '../../lib/salesPriority'
 import { esPerfilBodega } from '../../lib/plans'
 import { beneficioBruto, costeNetoCompra, copasVendibles, margenBrutoPct, numero, precioNetoVenta, redondear } from '../../lib/wineEconomics'
-import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 
 function resumenVenta(detalle) {
@@ -1328,6 +1328,20 @@ export default function Estadisticas() {
     { id: 'vigilar', titulo: 'Vigilar', items: accionesFase6.vigilar, vacio: 'Sin riesgos suaves que seguir.' },
   ]
 
+  function explicarMetrica(label) {
+    if (label.includes('Ventas KPI')) return 'Ventas usadas para indicadores economicos. TPV tiene prioridad y sala solo entra cuando no duplica una venta real del mismo vino y dia.'
+    if (label.includes('Ventas TPV')) return 'Unidades detectadas en la importacion TPV. Es la fuente mas fuerte para ventas reales cuando esta vinculada a vinos.'
+    if (label.includes('TPV atrib')) return 'Ventas TPV que se pueden relacionar con una recomendacion previa. Ayuda a medir si Carta Viva influye en la venta.'
+    if (label.includes('Beneficio bruto')) return 'Ingreso neto estimado menos coste neto de compra, solo en ventas con vino, precio y coste suficientes.'
+    if (label.includes('Margen bruto')) return 'Porcentaje del ingreso neto que queda despues de restar el coste de compra. Solo se calcula con ventas que tienen coste.'
+    if (label.includes('Fiabilidad')) return 'Indica si los datos sirven para decidir. Sube cuando hay costes, PVP, TPV, atribucion, cierre y stock informados.'
+    if (label.includes('Importe vino')) return 'Suma del importe de vino registrado en ventas KPI del periodo filtrado.'
+    if (label.includes('Perd') || label.includes('pend')) return 'Dinero recuperable o bloqueado por stock, ventas sin coste, TPV sin atribuir o recomendaciones sin validar.'
+    if (label.includes('Oport')) return 'Senales comerciales detectadas: recomendaciones sin venta, dudas, stock, margen o parejas plato-vino con potencial.'
+    if (label.includes('Convers')) return 'Porcentaje de recomendaciones o consultas que acaban en venta segun el feedback y las ventas trazadas.'
+    return 'Dato operativo del periodo filtrado. Sirve como contexto, pero las decisiones economicas dependen de coste, PVP, stock y ventas fiables.'
+  }
+
   const metricas = [
     { label: perfilBodega ? 'Eventos totales' : 'Escaneos totales', valor: escaneos },
     { label: perfilBodega ? 'Eventos hoy' : 'Escaneos hoy', valor: escaneosHoy },
@@ -1523,10 +1537,12 @@ export default function Estadisticas() {
 
       <section className={styles.statsGrid}>
         {metricas.map(metrica => (
-          <div className={styles.stat} key={metrica.label}>
-            <p className={styles.statValue}>{metrica.valor}</p>
-            <p className={styles.statLabel}>{metrica.label}</p>
-          </div>
+          <StatCard
+            key={metrica.label}
+            value={metrica.valor}
+            label={metrica.label}
+            info={explicarMetrica(metrica.label)}
+          />
         ))}
       </section>
 
@@ -1650,22 +1666,30 @@ export default function Estadisticas() {
           </div>
           <div className={styles.panelBody}>
             <section className={styles.statsGrid} style={{ marginBottom: 14 }}>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{beneficioBrutoAtribuido ? eur(beneficioBrutoAtribuido) : '-'}</p>
-                <p className={styles.statLabel}>Beneficio KPI</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{beneficioAtribuidoRecomendacion ? eur(beneficioAtribuidoRecomendacion) : '-'}</p>
-                <p className={styles.statLabel}>Beneficio rec.</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{ventasTPVAtribuidas || '-'}</p>
-                <p className={styles.statLabel}>TPV atribuido</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{parejasQueFuncionan || '-'}</p>
-                <p className={styles.statLabel}>Pares que funcionan</p>
-              </div>
+              <StatCard
+                value={beneficioBrutoAtribuido ? eur(beneficioBrutoAtribuido) : '-'}
+                label="Beneficio KPI"
+                hint="Venta con coste y PVP."
+                info="Beneficio bruto calculado desde las ventas KPI del periodo. Usa TPV prioritario y sala no duplicada, siempre que haya coste de compra y precio."
+              />
+              <StatCard
+                value={beneficioAtribuidoRecomendacion ? eur(beneficioAtribuidoRecomendacion) : '-'}
+                label="Beneficio rec."
+                hint="Asociado a recomendaciones."
+                info="Parte del beneficio que se puede vincular a recomendaciones de la app mediante identificadores de recomendacion o ventas TPV atribuidas."
+              />
+              <StatCard
+                value={ventasTPVAtribuidas || '-'}
+                label="TPV atribuido"
+                hint="Venta real conectada."
+                info="Lineas de TPV que coinciden con un vino recomendado. Ayuda a defender que la recomendacion influyo en una venta real."
+              />
+              <StatCard
+                value={parejasQueFuncionan || '-'}
+                label="Pares que funcionan"
+                hint="Plato-vino con senal."
+                info="Combinaciones de plato o consulta con vino que muestran venta, aceptacion o conversion suficiente para reforzarlas en sala."
+              />
             </section>
             <div className={styles.itemStack}>
               {ganadoEsteMes.map(item => (
@@ -1697,22 +1721,30 @@ export default function Estadisticas() {
           </div>
           <div className={styles.panelBody}>
             <section className={styles.statsGrid} style={{ marginBottom: 14 }}>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{valorRecuperablePendiente ? eur(valorRecuperablePendiente) : '-'}</p>
-                <p className={styles.statLabel}>Recuperable estimado</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{importeTpvNoAtribuido ? eur(importeTpvNoAtribuido) : '-'}</p>
-                <p className={styles.statLabel}>TPV sin atribuir</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{ventasSinCoste || '-'}</p>
-                <p className={styles.statLabel}>Ventas sin coste</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{recomendacionesSinResultadoEconomico.length || '-'}</p>
-                <p className={styles.statLabel}>Rec. pendientes</p>
-              </div>
+              <StatCard
+                value={valorRecuperablePendiente ? eur(valorRecuperablePendiente) : '-'}
+                label="Recuperable estimado"
+                hint="Oportunidad, no caja."
+                info="Estimacion de dinero que podria recuperarse corrigiendo stock, margen bajo, ventas sin coste, recomendaciones sin validar o TPV no atribuido."
+              />
+              <StatCard
+                value={importeTpvNoAtribuido ? eur(importeTpvNoAtribuido) : '-'}
+                label="TPV sin atribuir"
+                hint="Venta real sin origen claro."
+                info="Importe de ventas TPV de vino que no estan conectadas a una recomendacion. Sirve para aprender demanda y mejorar alias/matching."
+              />
+              <StatCard
+                value={ventasSinCoste || '-'}
+                label="Ventas sin coste"
+                hint="Bloquean margen."
+                info="Ventas de vinos cuyo coste de compra no esta informado. La venta existe, pero no se puede calcular beneficio fiable."
+              />
+              <StatCard
+                value={recomendacionesSinResultadoEconomico.length || '-'}
+                label="Rec. pendientes"
+                hint="Falta cerrar resultado."
+                info="Recomendaciones que se mostraron pero no tienen venta, rechazo, stock o cierre asociado. Conviene resolverlas en cierre o con TPV."
+              />
             </section>
             <div className={styles.itemStack}>
               {perdidoPendiente.map(item => (
@@ -1914,22 +1946,30 @@ export default function Estadisticas() {
           </div>
           <div className={styles.panelBody}>
             <section className={styles.statsGrid} style={{ marginBottom: 14 }}>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{beneficioBrutoAtribuido ? eur(beneficioBrutoAtribuido) : '-'}</p>
-                <p className={styles.statLabel}>Beneficio bruto</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{margenBrutoAtribuidoPct ? `${margenBrutoAtribuidoPct}%` : '-'}</p>
-                <p className={styles.statLabel}>Margen medio</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{beneficioNoConvertido ? eur(beneficioNoConvertido) : '-'}</p>
-                <p className={styles.statLabel}>Beneficio no convertido</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{ventasSinCoste || '-'}</p>
-                <p className={styles.statLabel}>Ventas sin coste</p>
-              </div>
+              <StatCard
+                value={beneficioBrutoAtribuido ? eur(beneficioBrutoAtribuido) : '-'}
+                label="Beneficio bruto"
+                hint="Ingresos netos menos coste."
+                info="Se calcula con ventas KPI que tienen precio y coste: precio neto de venta menos coste neto de compra, multiplicado por unidades."
+              />
+              <StatCard
+                value={margenBrutoAtribuidoPct ? `${margenBrutoAtribuidoPct}%` : '-'}
+                label="Margen medio"
+                hint="Solo ventas con coste."
+                info="Porcentaje medio de beneficio sobre ingreso neto en las ventas que permiten calcular margen. Si faltan costes, puede quedar incompleto."
+              />
+              <StatCard
+                value={beneficioNoConvertido ? eur(beneficioNoConvertido) : '-'}
+                label="Beneficio no convertido"
+                hint="Potencial perdido."
+                info="Beneficio estimado de recomendaciones o situaciones que no acabaron en venta por falta de stock, dudas, rechazo o pendiente de cierre."
+              />
+              <StatCard
+                value={ventasSinCoste || '-'}
+                label="Ventas sin coste"
+                hint="Dato a completar."
+                info="Numero de ventas donde sabemos que hubo movimiento, pero falta coste de compra para calcular beneficio y margen defendible."
+              />
             </section>
 
             <section className={styles.gridTwo}>

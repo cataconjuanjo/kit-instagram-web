@@ -6,7 +6,7 @@ import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { esPerfilBodega } from '../../lib/plans'
 import { priorizarVentas } from '../../lib/salesPriority'
-import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 
 function decimal(val) { return parseFloat(val) || 0 }
@@ -401,39 +401,55 @@ export default function MenuEngineering() {
             </section>
 
             <section className={`${styles.statsGrid} ${styles.profitStats}`}>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{analisisVisible.totalVentas}</p>
-                <p className={styles.statLabel}>Ventas KPI</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{analisisVisible.ventasTPV ?? '-'}/{analisisVisible.ventasSalaKpi ?? '-'}</p>
-                <p className={styles.statLabel}>{perfilBodega ? 'TPV/movimientos' : 'TPV/Sala'}</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{analisisVisible.barreraRentabilidad.toFixed(2)}€</p>
-                <p className={styles.statLabel}>Margen medio</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{analisisVisible.barreraPopularidad.toFixed(1)}%</p>
-                <p className={styles.statLabel}>{perfilBodega ? 'Barrera salida' : 'Barrera popularidad'}</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{resumenCategorias.find(c => c.id === 'estrella')?.vinos.length || 0}</p>
-                <p className={styles.statLabel}>Vinos estrella</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{retornoInventarioGlobal == null ? '-' : `${retornoInventarioGlobal.toFixed(2)}x`}</p>
-                <p className={styles.statLabel}>Retorno inventario</p>
-              </div>
-              <div className={styles.stat}>
-                <p className={styles.statValue}>{capitalSinVenta.toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</p>
-                <p className={styles.statLabel}>Capital sin venta</p>
-              </div>
+              <StatCard
+                value={analisisVisible.totalVentas}
+                label="Ventas KPI"
+                hint="Base del mapa."
+                info="Ventas usadas para clasificar la carta. TPV tiene prioridad y sala se usa solo cuando no duplica una venta real."
+              />
+              <StatCard
+                value={`${analisisVisible.ventasTPV ?? '-'}/${analisisVisible.ventasSalaKpi ?? '-'}`}
+                label={perfilBodega ? 'TPV/movimientos' : 'TPV/Sala'}
+                hint="Fuentes separadas."
+                info="Muestra cuantas ventas vienen del TPV y cuantas de sala o movimientos no duplicados. Sirve para saber de donde nace el analisis."
+              />
+              <StatCard
+                value={`${analisisVisible.barreraRentabilidad.toFixed(2)} EUR`}
+                label="Margen medio"
+                hint="Umbral del cuadrante."
+                info="Media del beneficio absoluto por botella entre vinos con coste y PVP. Se usa como linea para separar margen alto y bajo."
+              />
+              <StatCard
+                value={`${analisisVisible.barreraPopularidad.toFixed(1)}%`}
+                label={perfilBodega ? 'Barrera salida' : 'Barrera popularidad'}
+                hint="Umbral de movimiento."
+                info="Porcentaje minimo de ventas sobre el total para considerar que una referencia se mueve bien dentro del periodo analizado."
+              />
+              <StatCard
+                value={resumenCategorias.find(c => c.id === 'estrella')?.vinos.length || 0}
+                label="Vinos estrella"
+                hint="Alta salida y margen."
+                info="Referencias que venden por encima de la barrera de salida y dejan margen por encima de la media. Conviene proteger stock y proveedor."
+              />
+              <StatCard
+                value={retornoInventarioGlobal == null ? '-' : `${retornoInventarioGlobal.toFixed(2)}x`}
+                label="Retorno inventario"
+                hint="Ventas por euro en bodega."
+                info="Relaciona venta estimada con el capital a coste inmovilizado. Cuanto mas bajo, mas dinero hay parado respecto a la salida."
+              />
+              <StatCard
+                value={`${capitalSinVenta.toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR`}
+                label="Capital sin venta"
+                hint="Stock parado."
+                info="Valor a coste de referencias con stock pero sin ventas KPI en el periodo. Es una senal para no comprar mas, activar o retirar."
+              />
               {analisisVisible.vinosSinCoste > 0 && (
-                <div className={styles.stat}>
-                  <p className={styles.statValue}>{analisisVisible.vinosSinCoste}</p>
-                  <p className={styles.statLabel}>Sin coste de compra</p>
-                </div>
+                <StatCard
+                  value={analisisVisible.vinosSinCoste}
+                  label="Sin coste de compra"
+                  hint="No entran en margen."
+                  info="Vinos activos sin coste informado. No se pueden clasificar bien por rentabilidad hasta completar ese dato."
+                />
               )}
             </section>
 

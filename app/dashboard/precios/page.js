@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
-import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 import priceStyles from './precios.module.css'
 
@@ -205,10 +205,30 @@ export default function PreciosMargenes() {
         }}
       >
         <section className={styles.statsGrid}>
-          <div className={styles.stat}><p className={styles.statValue}>{vinos.filter(v => v.activo !== false).length}</p><p className={styles.statLabel}>Vinos activos</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{conCoste.length}</p><p className={styles.statLabel}>Con coste informado</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{porRevisar.length}</p><p className={styles.statLabel}>Precios para revisar</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{ajustes.margen}%</p><p className={styles.statLabel}>Margen objetivo</p></div>
+          <StatCard
+            value={vinos.filter(v => v.activo !== false).length}
+            label="Vinos activos"
+            hint="Referencias visibles para trabajar."
+            info="Cuenta los vinos activos del restaurante. Los vinos archivados o desactivados no entran en esta revision de precios."
+          />
+          <StatCard
+            value={conCoste.length}
+            label="Con coste informado"
+            hint="Base para calcular margen."
+            info="Numero de vinos con coste de compra cargado. Sin coste, la app no puede recomendar PVP ni calcular margen con fiabilidad."
+          />
+          <StatCard
+            value={porRevisar.length}
+            label="Precios para revisar"
+            hint="Difieren del criterio actual."
+            info="Vinos cuyo PVP de botella o copa no coincide con el precio recomendado segun el coste, margen objetivo y copas por botella configurados."
+          />
+          <StatCard
+            value={`${ajustes.margen}%`}
+            label="Margen objetivo"
+            hint="Criterio editable."
+            info="Porcentaje de margen bruto que se usa para calcular precios sugeridos. No cambia la carta hasta que se pulsa Aplicar precios en una referencia."
+          />
         </section>
 
         <section className={styles.panel} style={{ marginBottom: 16 }}>

@@ -7,7 +7,7 @@ import { BY_THE_GLASS_REFERENCE, POSITIONING_MARKUP_REFERENCE, beneficioBruto, c
 import { esPerfilBodega } from '../../lib/plans'
 import { priorizarVentas, esVentaTPV } from '../../lib/salesPriority'
 import { supabase } from '../../supabase'
-import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 
 const FORMULA_VERSION = 'profit-simulator-v2-contextual-margin'
@@ -610,11 +610,36 @@ export default function SimuladorRentabilidad() {
         }}
       >
         <section className={styles.statsGrid}>
-          <div className={styles.stat}><p className={styles.statValue}>{eur(impactoAnual)}</p><p className={styles.statLabel}>Impacto anual</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{eur(impactoMensual)}</p><p className={styles.statLabel}>Impacto mensual</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{eur(capitalLiberable)}</p><p className={styles.statLabel}>Capital neto</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{confianza}</p><p className={styles.statLabel}>Confianza</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{simulacion.posicionamiento.label}</p><p className={styles.statLabel}>Perfil de margen</p></div>
+          <StatCard
+            value={eur(impactoAnual)}
+            label="Impacto anual"
+            hint="Estimacion de las 5 acciones."
+            info="Suma el impacto de margen anual de las principales acciones del escenario. Es una estimacion basada en ventas KPI, recomendaciones, coste, PVP y stock disponibles."
+          />
+          <StatCard
+            value={eur(impactoMensual)}
+            label="Impacto mensual"
+            hint="Version mensual del escenario."
+            info="Mismo calculo que impacto anual, llevado a un mes. Ayuda a decidir si la accion merece trabajo operativo inmediato."
+          />
+          <StatCard
+            value={eur(capitalLiberable)}
+            label="Capital neto"
+            hint="Stock que libera o exige caja."
+            info="Puede ser positivo si el escenario reduce stock parado, o negativo si requiere comprar para recuperar ventas perdidas por falta de stock."
+          />
+          <StatCard
+            value={confianza}
+            label="Confianza"
+            hint="Calidad de la evidencia."
+            info="Resume la fuerza de los datos usados: TPV, ventas KPI, recomendaciones y volumen del periodo. Alta no significa promesa; significa mejor base para decidir."
+          />
+          <StatCard
+            value={simulacion.posicionamiento.label}
+            label="Perfil de margen"
+            hint="Contexto del restaurante."
+            info="Ajusta el margen objetivo segun ticket medio, estilo de restaurante y banda de coste del vino. No todos los locales defienden el mismo margen."
+          />
         </section>
 
         <section className={styles.panelDark} style={{ marginBottom: 16 }}>

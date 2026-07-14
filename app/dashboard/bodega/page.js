@@ -6,7 +6,7 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { esPerfilBodega } from '../../lib/plans'
-import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 
@@ -636,10 +636,31 @@ export default function ControlBodega() {
       </nav>
 
       {vistaBodega === 'resumen' && <section className={styles.statsGrid}>
-        <div className={styles.stat}><p className={styles.statValue}>{eur(datos.valorCoste)}</p><p className={styles.statLabel}>Valor a coste</p></div>
-        <div className={styles.stat}><p className={styles.statValue} style={{ color: margenColor(datos.margenMedio) }}>{datos.margenMedio == null ? '-' : datos.margenMedio}%</p><p className={styles.statLabel}>Margen medio</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{datos.bajoMinimo.length}</p><p className={styles.statLabel}>Bajo mínimo</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{pedidoCombinado.length}</p><p className={styles.statLabel}>Pedido sugerido</p></div>
+        <StatCard
+          value={eur(datos.valorCoste)}
+          label="Valor a coste"
+          hint="Dinero inmovilizado en bodega."
+          info="Suma el stock actual de cada vino multiplicado por su coste de compra. Si falta coste o stock, esa referencia pesa como cero y conviene completarla."
+        />
+        <StatCard
+          value={datos.margenMedio == null ? '-' : `${datos.margenMedio}%`}
+          label="Margen medio"
+          valueStyle={{ color: margenColor(datos.margenMedio) }}
+          hint="Solo referencias con coste y PVP."
+          info="Media del margen bruto de los vinos que tienen coste de compra y precio de venta. Sirve para detectar si la carta esta vendiendo demasiado barato o si falta dato economico."
+        />
+        <StatCard
+          value={datos.bajoMinimo.length}
+          label="Bajo mínimo"
+          hint="Riesgo de rotura de stock."
+          info="Cuenta los vinos cuyo stock actual esta en el minimo definido o por debajo. Es una senal de compra o de sustituto antes del servicio."
+        />
+        <StatCard
+          value={pedidoCombinado.length}
+          label="Pedido sugerido"
+          hint="Reposicion calculada."
+          info="Referencias que la app propone pedir por bajo stock, minimo definido, venta reciente o pedido manual. No compra automaticamente: prepara la decision."
+        />
       </section>}
 
       {(vistaBodega === 'resumen' || vistaBodega === 'compras') && <section className={`${styles.gridTwo} ${styles.singleView}`}>

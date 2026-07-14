@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { supabase } from '../../supabase'
 import { esPerfilBodega } from '../../lib/plans'
-import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 
 function numero(valor) {
@@ -250,11 +250,36 @@ export default function TrazabilidadEconomica() {
         )}
 
         <section className={styles.statsGrid}>
-          <div className={styles.stat}><p className={styles.statValue}>{pct(resumen.puntuacion_rigor)}</p><p className={styles.statLabel}>Rigor económico</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{eur(resumen.beneficio_real_tpv)}</p><p className={styles.statLabel}>Beneficio real TPV</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{eur(resumen.beneficio_confirmado_sala)}</p><p className={styles.statLabel}>{perfilBodega ? 'Confirmado operativo' : 'Confirmado sala'}</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{eur(resumen.beneficio_inferido)}</p><p className={styles.statLabel}>Inferido separado</p></div>
-          <div className={styles.stat}><p className={styles.statValue}>{eur(resumen.oportunidad_estimada)}</p><p className={styles.statLabel}>Oportunidad estimada</p></div>
+          <StatCard
+            value={pct(resumen.puntuacion_rigor)}
+            label="Rigor económico"
+            hint="Semaforo de defensa."
+            info="Mide si los datos economicos son presentables: coste y PVP cargados, fuentes separadas, snapshots completos y formula identificada."
+          />
+          <StatCard
+            value={eur(resumen.beneficio_real_tpv)}
+            label="Beneficio real TPV"
+            hint="Venta real importada."
+            info="Beneficio bruto calculado desde lineas de TPV vinculadas a vinos, usando precio de venta, coste de compra y reglas de IVA configuradas."
+          />
+          <StatCard
+            value={eur(resumen.beneficio_confirmado_sala)}
+            label={perfilBodega ? 'Confirmado operativo' : 'Confirmado sala'}
+            hint="Validado por operativa."
+            info={perfilBodega ? 'Beneficio asociado a movimientos o ajustes operativos validados, separado del TPV real y de las estimaciones.' : 'Beneficio de ventas confirmadas por sala o cierre, separado del TPV real y de las ventas inferidas.'}
+          />
+          <StatCard
+            value={eur(resumen.beneficio_inferido)}
+            label="Inferido separado"
+            hint="Probable, no real."
+            info="Importe calculado por senales indirectas, como recomendaciones sin cierre completo o patrones de actividad. Se separa para no mezclarlo con venta real."
+          />
+          <StatCard
+            value={eur(resumen.oportunidad_estimada)}
+            label="Oportunidad estimada"
+            hint="Dinero posible."
+            info="Impacto potencial detectado por escenarios, radar o acciones pendientes. Sirve para priorizar, no para presentarlo como ingreso conseguido."
+          />
         </section>
 
         <section className={styles.panel} style={{ marginBottom: 16 }}>
