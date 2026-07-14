@@ -29,7 +29,7 @@ export default function AjustesHub() {
       setEsAdmin(Boolean(isAdmin))
       const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
       setRestaurante(rest || null)
-      setPinConfigurado(Boolean(rest?.camarero_pin_hash || rest?.camarero_pin))
+      setPinConfigurado(Boolean(rest?.camarero_pin_bloqueo_activo))
       setLoading(false)
     }
     cargar()
@@ -62,7 +62,7 @@ export default function AjustesHub() {
   ] : [
     { titulo: 'QR probado en movil', detalle: restaurante?.hub_activo ? 'El QR abre el hub publico.' : 'El QR abre la carta directa.', href: '/dashboard/qr' },
     { titulo: 'Marca revisada', detalle: 'Logo, colores, banner y estilo visual de la carta.', href: '/dashboard/personalizar' },
-    { titulo: 'PIN de sala definido', detalle: pinConfigurado ? 'El equipo puede entrar en modo camarero.' : 'Define un PIN antes de formar al equipo.', href: '#pin-sala', pendiente: !pinConfigurado },
+    { titulo: 'Acceso de sala revisado', detalle: pinConfigurado ? 'El modo camarero pide PIN.' : 'El modo camarero queda abierto sin PIN.', href: '#pin-sala' },
     { titulo: 'Carta publica abierta', detalle: 'Comprueba que precios, platos y enlaces cargan bien.', href: destino },
   ]
   const checklistPendiente = checklist.some(item => item.pendiente)
@@ -82,14 +82,34 @@ export default function AjustesHub() {
     const res = await fetch('/api/camarero/configurar-pin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
-      body: JSON.stringify({ restaurante_id: restaurante.id, pin: pinLimpio }),
+      body: JSON.stringify({ restaurante_id: restaurante.id, pin: pinLimpio, habilitado: true }),
     })
     if (res.ok) {
-      setRestaurante({ ...restaurante, camarero_pin_configurado: true })
+      setRestaurante({ ...restaurante, camarero_pin_requerido: true, camarero_pin_bloqueo_activo: true })
       setPinConfigurado(true)
       setPinSala('')
     }
     setMensajePin(res.ok ? 'PIN de sala guardado.' : 'No se pudo guardar el PIN.')
+    setGuardandoPin(false)
+  }
+
+  async function deshabilitarPinSala() {
+    if (!restaurante?.id) return
+    setGuardandoPin(true)
+    setMensajePin('')
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    const res = await fetch('/api/camarero/configurar-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` },
+      body: JSON.stringify({ restaurante_id: restaurante.id, habilitado: false }),
+    })
+    if (res.ok) {
+      setRestaurante({ ...restaurante, camarero_pin_requerido: false, camarero_pin_bloqueo_activo: false, camarero_pin_hash: null, camarero_pin: null })
+      setPinConfigurado(false)
+      setPinSala('')
+    }
+    setMensajePin(res.ok ? 'Modo camarero deshabilitado.' : 'No se pudo deshabilitar el PIN.')
     setGuardandoPin(false)
   }
 
@@ -160,7 +180,7 @@ export default function AjustesHub() {
         ) : (
           <>
             <div className={styles.stat}><p className={styles.statValue}>{restaurante?.hub_activo ? 'Hub' : 'Carta'}</p><p className={styles.statLabel}>Destino del QR</p></div>
-            <div className={styles.stat}><p className={styles.statValue}>{pinConfigurado ? 'Listo' : 'Falta'}</p><p className={styles.statLabel}>PIN camarero</p></div>
+            <div className={styles.stat}><p className={styles.statValue}>{pinConfigurado ? 'Activo' : 'Sin PIN'}</p><p className={styles.statLabel}>PIN camarero</p></div>
             <div className={styles.stat}><p className={styles.statValue}>{restaurante?.slug || '-'}</p><p className={styles.statLabel}>Slug publico</p></div>
             <div className={styles.stat}><p className={styles.statValue}>{etiquetaActividadReal(restaurante)}</p><p className={styles.statLabel}>Actividad real</p></div>
           </>
@@ -286,7 +306,7 @@ export default function AjustesHub() {
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>PIN de modo camarero</h2>
-              <p className={styles.panelSub}>Acceso sencillo para sala, distinto por restaurante y editable cuando cambie el equipo.</p>
+              <p className={styles.panelSub}>Sin PIN por defecto. Si el restaurante quiere proteger el acceso de sala, guarda un PIN activo.</p>
             </div>
           </div>
           <div className={styles.panelBody}>
@@ -311,8 +331,13 @@ export default function AjustesHub() {
               </div>
             </div>
             <button className={styles.primary} onClick={guardarPinSala} disabled={guardandoPin} style={{ marginTop: 14 }}>
-              {guardandoPin ? 'Guardando...' : 'Guardar PIN'}
+              {guardandoPin ? 'Guardando...' : (pinConfigurado ? 'Cambiar PIN' : 'Activar PIN')}
             </button>
+            {pinConfigurado && (
+              <button className={styles.ghost} onClick={deshabilitarPinSala} disabled={guardandoPin} style={{ marginTop: 8 }}>
+                Desactivar PIN
+              </button>
+            )}
           </div>
         </div>}
 

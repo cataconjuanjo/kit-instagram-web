@@ -2,7 +2,10 @@
 create extension if not exists pgcrypto;
 
 alter table public.restaurantes
-  add column if not exists camarero_pin_hash text;
+  add column if not exists camarero_pin_hash text,
+  add column if not exists camarero_pin_habilitado boolean not null default false,
+  add column if not exists camarero_pin_requerido boolean not null default false,
+  add column if not exists camarero_pin_bloqueo_activo boolean not null default false;
 
 create or replace function public.configurar_pin_camarero(
   p_restaurante_id uuid,
@@ -20,7 +23,10 @@ begin
 
   update public.restaurantes
   set camarero_pin_hash = extensions.crypt(p_pin, extensions.gen_salt('bf')),
-      camarero_pin = null
+      camarero_pin = null,
+      camarero_pin_habilitado = true,
+      camarero_pin_requerido = true,
+      camarero_pin_bloqueo_activo = true
   where id = p_restaurante_id;
 end;
 $$;
@@ -38,6 +44,7 @@ as $$
     select 1
     from public.restaurantes
     where id = p_restaurante_id
+      and camarero_pin_bloqueo_activo is true
       and camarero_pin_hash is not null
       and camarero_pin_hash = extensions.crypt(p_pin, camarero_pin_hash)
   );
@@ -49,10 +56,12 @@ grant execute on function public.configurar_pin_camarero(uuid, text) to service_
 grant execute on function public.verificar_pin_camarero(uuid, text) to service_role;
 
 update public.restaurantes
-set camarero_pin_hash = extensions.crypt(camarero_pin, extensions.gen_salt('bf')),
+set camarero_pin_hash = null,
+    camarero_pin_habilitado = false,
+    camarero_pin_requerido = false,
+    camarero_pin_bloqueo_activo = false,
     camarero_pin = null
-where nullif(trim(camarero_pin), '') is not null
-  and camarero_pin_hash is null;
+where nullif(trim(camarero_pin), '') is not null;
 
 drop policy if exists "anon_read_restaurantes" on public.restaurantes;
 drop policy if exists "anon_read_vinos_activos" on public.vinos;

@@ -26,6 +26,7 @@ export default function Camarero({ params }) {
   const [loading, setLoading] = useState(true)
   const [pin, setPin] = useState('')
   const [autenticado, setAutenticado] = useState(false)
+  const [intentandoAccesoAbierto, setIntentandoAccesoAbierto] = useState(false)
   const [errorPin, setErrorPin] = useState(false)
   const [salaToken, setSalaToken] = useState('')
   const [filtro, setFiltro] = useState('todos')
@@ -138,19 +139,22 @@ export default function Camarero({ params }) {
     await iniciarSesionSala(restaurante, pin)
   }
 
-  async function iniciarSesionSala(rest, pinIntroducido, demo = false) {
+  async function iniciarSesionSala(rest, pinIntroducido, demo = false, accesoAbierto = false) {
+    if (accesoAbierto) setIntentandoAccesoAbierto(true)
     const res = await fetch('/api/camarero/sesion', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ restaurante_id: rest.id, pin: pinIntroducido, demo }),
     })
     if (!res.ok) {
-      setErrorPin(true)
+      if (!accesoAbierto) setErrorPin(true)
+      setIntentandoAccesoAbierto(false)
       return
     }
     const data = await res.json()
     setSalaToken(data.sala_token)
     setAutenticado(true)
+    setIntentandoAccesoAbierto(false)
     setErrorPin(false)
     await Promise.all([
       cargarDatosSala(rest, data.sala_token, demo),
@@ -194,8 +198,13 @@ export default function Camarero({ params }) {
   }
 
   useEffect(() => {
-    if (demoActivo && restaurante?.id && !autenticado) {
+    if (!restaurante?.id || autenticado) return
+    if (demoActivo) {
       iniciarSesionSala(restaurante, '', true)
+      return
+    }
+    if (restaurante.camarero_pin_bloqueo_activo !== true) {
+      iniciarSesionSala(restaurante, '', false, true)
     }
   }, [demoActivo, restaurante, autenticado])
 
@@ -1970,6 +1979,14 @@ export default function Camarero({ params }) {
       <p style={{ fontSize: 11, color: '#666', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 8px' }}>Carta Viva</p>
       <p style={{ fontSize: 26, fontWeight: 300, color: 'white', fontFamily: 'Georgia, serif', margin: '0 0 14px' }}>Modo camarero no incluido</p>
       <p style={{ maxWidth: 360, color: '#aaa', fontSize: 14, lineHeight: 1.5, margin: 0 }}>Este acceso queda reservado para el Plan Sala o Acompanado.</p>
+    </div>
+  )
+
+  if (!autenticado && restaurante?.camarero_pin_bloqueo_activo !== true) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif', padding: 24 }}>
+      <p style={{ fontSize: 11, color: '#666', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 8px' }}>Modo camarero</p>
+      <p style={{ fontSize: 20, fontWeight: 300, color: 'white', fontFamily: 'Georgia, serif', margin: '0 0 16px' }}>{restaurante?.nombre}</p>
+      <p style={{ fontSize: 12, color: '#777', margin: 0 }}>{intentandoAccesoAbierto ? 'Entrando sin PIN...' : 'Preparando acceso de sala...'}</p>
     </div>
   )
 

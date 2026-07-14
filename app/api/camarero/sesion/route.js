@@ -56,15 +56,14 @@ export async function POST(req) {
       process.env.NEXT_PUBLIC_SHOW_DEMO === 'true' &&
       esSlugDemoPermitido(restaurante.slug)
     let pinValido = demoPermitida
-    if (!pinValido && restaurante.camarero_pin_hash) {
+    if (!pinValido && restaurante.camarero_pin_bloqueo_activo !== true) {
+      pinValido = true
+    } else if (!pinValido && restaurante.camarero_pin_hash) {
       const { data } = await supabaseAdmin.rpc('verificar_pin_camarero', {
         p_restaurante_id: restaurante.id,
         p_pin: String(pin || '').trim(),
       })
       pinValido = data === true
-    } else if (!pinValido) {
-      const legado = String(restaurante.camarero_pin || process.env.CAMARERO_FALLBACK_PIN || '').trim()
-      pinValido = Boolean(legado && String(pin || '').trim() === legado)
     }
 
     if (!pinValido) return Response.json({ error: 'PIN incorrecto.' }, { status: 403 })

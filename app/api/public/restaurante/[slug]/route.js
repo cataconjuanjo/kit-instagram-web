@@ -10,6 +10,7 @@ const CAMPOS_RESTAURANTE = [
   'hub_fondo_zoom', 'hub_fondo_x', 'hub_fondo_y', 'hub_overlay',
   'hub_estilo', 'hub_mostrar_logo', 'hub_mostrar_nombre',
   'hub_mostrar_direccion', 'instagram_url', 'facebook_url',
+  'camarero_pin_bloqueo_activo',
 ]
 
 const CAMPOS_VINO = [
