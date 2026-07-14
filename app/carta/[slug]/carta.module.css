@@ -118,6 +118,10 @@
   object-fit: contain;
 }
 
+.logoFallback {
+  opacity: 0.72;
+}
+
 .kicker {
   margin: 0 0 7px;
   color: #cbb98c;

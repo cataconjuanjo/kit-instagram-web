@@ -10,6 +10,9 @@ const FONT_MAP = {
   display:   { family: '"Playfair Display", serif',            googleFont: 'Playfair+Display:wght@400;500;600;700' },
 }
 
+const DEFAULT_RESTAURANT_BANNER = '/images/wine-cellar-hero.png'
+const DEFAULT_RESTAURANT_LOGO = '/brand/carta-viva/logo-horizontal-dark.svg'
+
 function cargarGoogleFont(tipografia) {
   const font = FONT_MAP[tipografia]
   if (!font?.googleFont) return
@@ -566,16 +569,30 @@ setPerfiles(nuevosPerfiles)
   const fontTitulo = (FONT_MAP[restaurante?.tipografia] || FONT_MAP.serif).family
 
   function heroStyle() {
-    if (!restaurante?.banner_url) return { background: colorPrimario }
-    const zoom = restaurante.banner_zoom || 100
-    const x = restaurante.banner_x ?? 50
-    const y = restaurante.banner_y ?? 50
+    const bannerUrl = restaurante?.banner_url || DEFAULT_RESTAURANT_BANNER
+    const zoom = restaurante?.banner_url ? restaurante.banner_zoom || 100 : 100
+    const x = restaurante?.banner_url ? restaurante.banner_x ?? 50 : 50
+    const y = restaurante?.banner_url ? restaurante.banner_y ?? 50 : 50
     return {
       background: colorPrimario,
-      '--hero-image': `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url(${restaurante.banner_url})`,
+      '--hero-image': `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url(${bannerUrl})`,
       '--hero-position': `${x}% ${y}%`,
       '--hero-scale': String(Number(zoom || 100) / 100),
     }
+  }
+
+  function renderHeroLogo() {
+    const logoUrl = restaurante?.logo_url || DEFAULT_RESTAURANT_LOGO
+    return (
+      <span className={styles.logoFrame}>
+        <img
+          src={logoUrl}
+          alt={restaurante?.logo_url ? restaurante.nombre : 'Carta Viva'}
+          className={`${styles.logo} ${!restaurante?.logo_url ? styles.logoFallback : ''}`}
+          loading="lazy"
+        />
+      </span>
+    )
   }
   const categoriasBase = ['Entrantes fríos', 'Entrantes calientes', 'Cuchara', 'De la tierra', 'Del mar', 'Tablas']
   const categoriasPlatos = [
@@ -1155,11 +1172,8 @@ setPerfiles(nuevosPerfiles)
       <header className={styles.hero} style={heroStyle()}>
         <div className={styles.heroTop}>
           <div>
-            {restaurante.logo_url && (
-              <span className={styles.logoFrame}>
-                <img src={restaurante.logo_url} alt={restaurante.nombre} className={styles.logo} loading="lazy" />
-              </span>
-            )}
+            {renderHeroLogo()}
+
             <p className={styles.kicker}>{i.carta}</p>
             <h1 className={styles.title}>{restaurante.nombre}</h1>
             <a className={styles.heroCredit} href="/cartavinos" target="_blank" rel="noreferrer">
@@ -1533,11 +1547,8 @@ setPerfiles(nuevosPerfiles)
       <header className={styles.hero} style={heroStyle()}>
         <div className={styles.heroTop}>
           <div>
-            {restaurante.logo_url && (
-              <span className={styles.logoFrame}>
-                <img src={restaurante.logo_url} alt={restaurante.nombre} className={styles.logo} loading="lazy" />
-              </span>
-            )}
+            {renderHeroLogo()}
+
             <p className={styles.kicker}>{i.sommelier}</p>
             <h1 className={styles.title}>{restaurante.nombre}</h1>
             <a className={styles.heroCredit} href="/cartavinos" target="_blank" rel="noreferrer">
