@@ -2,6 +2,8 @@ import Link from 'next/link'
 import LeadForm from './components/LeadForm'
 import PublicNav from './components/PublicNav'
 import PublicFooter from './components/PublicFooter'
+import AuthHashRedirect from './components/AuthHashRedirect'
+import { recursos } from './recursos/content'
 
 export const metadata = {
   alternates: {
@@ -54,15 +56,22 @@ const metodologia = [
   ['03', 'Implementación', 'Lo bajamos a carta, proveedores, formación, QR, seguimiento y rutinas para que no se quede en un informe.'],
 ]
 
+const recursosDestacados = recursos.filter((recurso) => [
+  'como-hacer-carta-vinos-rentable',
+  'margen-vino-por-copa',
+  'control-stock-vino-restaurante',
+].includes(recurso.slug))
+
 export default function Home() {
   return (
     <main className="site-shell">
+      <AuthHashRedirect />
       <PublicNav active="home" />
 
       <section className="hero hero-consultoria">
         <div className="hero-copy">
           <p className="eyebrow">Control de bodega, margen y experiencia de sala</p>
-          <h1>Cartas de vino con criterio, margen y memoria.</h1>
+          <h1>Consultoría de carta de vinos para restaurantes en Málaga y España.</h1>
           <p className="lead">
             Ayudo a restaurantes, hoteles boutique y espacios singulares a saber qué tienen, qué margen deja cada
             botella, qué falta por reponer y cómo convertir la carta en venta real en sala.
@@ -119,7 +128,7 @@ export default function Home() {
         </div>
         <div className="activaciones-grid">
           {activaciones.map((item) => (
-            <article className="activacion-card" key={item.titulo}>
+            <article className="activación-card" key={item.titulo}>
               <h3>{item.titulo}</h3>
               <p>{item.texto}</p>
             </article>
@@ -181,6 +190,26 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="section resource-preview-section">
+        <div className="section-head">
+          <p className="eyebrow">Recursos para restaurantes</p>
+          <h2>Guías para mejorar carta, margen y control de bodega.</h2>
+        </div>
+        <div className="resource-grid compact">
+          {recursosDestacados.map((recurso) => (
+            <article className="resource-card" key={recurso.slug}>
+              <span className="resource-category">{recurso.category}</span>
+              <h3><Link href={`/recursos/${recurso.slug}`}>{recurso.title}</Link></h3>
+              <p>{recurso.description}</p>
+            </article>
+          ))}
+        </div>
+        <div className="section-inline-cta">
+          <Link href="/recursos" className="btn btn-primary">Ver todos los recursos</Link>
+          <Link href="/formación-sala" className="btn btn-secondary">Formación de sala</Link>
+        </div>
+      </section>
+
       <section className="section proof-section">
         <div className="section-head">
           <p className="eyebrow">Primer paso</p>
@@ -189,7 +218,7 @@ export default function Home() {
         <div className="proof-grid">
           <Link href="/catas" className="proof-card">
             <strong>Organizar una cata</strong>
-            <span>Privadas, empresa o iniciacion al vino.</span>
+            <span>Privadas, empresa o iniciación al vino.</span>
           </Link>
           <Link href="/cartavinos" className="proof-card">
             <strong>Ver Carta Viva</strong>
