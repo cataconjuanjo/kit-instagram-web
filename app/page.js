@@ -56,6 +56,13 @@ const metodologia = [
   ['03', 'Implementación', 'Lo bajamos a carta, proveedores, formación, QR, seguimiento y rutinas para que no se quede en un informe.'],
 ]
 
+const bodegaChart = [
+  { label: 'Tintos',     pct: 58, color: '#6b1a2e', trend: 'up' },
+  { label: 'Blancos',    pct: 42, color: '#c4a84a', trend: 'up' },
+  { label: 'Espumosos',  pct: 51, color: '#a08c72', trend: 'flat' },
+  { label: 'Rosados',    pct: 28, color: '#c4707a', trend: 'down' },
+]
+
 const recursosDestacados = recursos.filter((recurso) => [
   'como-hacer-carta-vinos-rentable',
   'margen-vino-por-copa',
@@ -89,11 +96,20 @@ export default function Home() {
             No entrego recomendaciones que se quedan en un cajón. Analizo, rediseño, digitalizo y conecto carta,
             bodega, sala y reposición para que cada decisión tenga contexto.
           </p>
-          <div className="metric-grid">
-            <div><strong>QR</strong><span>Carta viva</span></div>
-            <div><strong>Stock</strong><span>Minimos y pedido</span></div>
-            <div><strong>Margen</strong><span>Coste y PVP</span></div>
-            <div><strong>WSET 3</strong><span>Criterio humano</span></div>
+          <div className="bodega-chart" aria-label="Ejemplo de análisis de bodega — datos simulados">
+            {bodegaChart.map(({ label, pct, color, trend }) => (
+              <div key={label} className="bodega-row">
+                <span className="bodega-cat">{label}</span>
+                <div className="bodega-bar-track">
+                  <div className="bodega-bar" style={{ '--w': `${pct}%`, '--c': color }} />
+                </div>
+                <span className="bodega-val">{pct}%</span>
+                <span className={`bodega-trend bodega-trend--${trend}`} aria-hidden="true">
+                  {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
+                </span>
+              </div>
+            ))}
+            <p className="bodega-caption">margen medio · rotación · datos simulados</p>
           </div>
         </aside>
       </section>
@@ -127,8 +143,9 @@ export default function Home() {
           <h2>Formatos para que el vino genere negocio dentro del restaurante.</h2>
         </div>
         <div className="activaciones-grid">
-          {activaciones.map((item) => (
-            <article className="activación-card" key={item.titulo}>
+          {activaciones.map((item, i) => (
+            <article className="activacion-card" key={item.titulo}>
+              <span className="activacion-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
               <h3>{item.titulo}</h3>
               <p>{item.texto}</p>
             </article>
