@@ -14311,3 +14311,229 @@ html, body {
     width: 100%;
   }
 }
+
+/* ===============================================================
+   REDISEÑO EDITORIAL — "Carta de autor"
+   Scoped to .site-shell — no afecta al dashboard ni a la app
+   =============================================================== */
+
+/* 1. Tipografía display — Cormorant Garamond en titulares */
+.site-shell h1,
+.site-shell h2,
+.site-shell h3 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+}
+
+.site-shell h1 {
+  font-size: clamp(3.2rem, 6.8vw, 7rem);
+  font-weight: 500;
+  line-height: 0.95;
+  letter-spacing: -0.028em;
+  max-width: none;
+}
+
+.site-shell h2 {
+  font-size: clamp(2rem, 4.2vw, 4rem);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+
+.site-shell h3 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+}
+
+/* 2. Eyebrow — línea dorada + versalitas */
+.site-shell .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--gold);
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+
+.site-shell .eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 22px;
+  height: 1px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* 3. Hero consultoria — columnas editoriales */
+.site-shell .hero.hero-consultoria {
+  grid-template-columns: 1fr 360px;
+  gap: 0 clamp(36px, 5vw, 68px);
+  align-items: start;
+  min-height: 0;
+  padding-top: clamp(52px, 7vw, 92px);
+  padding-bottom: clamp(52px, 7vw, 92px);
+}
+
+.site-shell .hero-copy {
+  max-width: none;
+}
+
+.site-shell .hero-copy h1 {
+  font-size: clamp(3.2rem, 6.8vw, 7rem);
+  max-width: none;
+  margin-bottom: 28px;
+}
+
+.site-shell .hero-copy .lead {
+  font-size: 1.04rem;
+  max-width: 520px;
+  color: var(--muted);
+  line-height: 1.72;
+}
+
+/* 4. Hero panel — borde dorado sutil, fondo más profundo */
+.site-shell .hero-panel {
+  background:
+    linear-gradient(140deg, rgba(116,34,61,0.3) 0%, transparent 44%),
+    #16100d;
+  border: 1px solid rgba(175,139,82,0.22);
+  border-radius: 6px;
+}
+
+.site-shell .hero-panel h2 {
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+  color: rgba(255, 250, 241, 0.96);
+  letter-spacing: -0.018em;
+  max-width: none;
+  line-height: 1.1;
+}
+
+/* 5. Intro band — cita de autor en italic serif grande */
+.site-shell .intro-band p {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(1.55rem, 3.2vw, 2.9rem);
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: rgba(255, 250, 241, 0.9);
+  max-width: 1000px;
+}
+
+/* 6. Servicios — tarjetas tipo carta con ordinal */
+.site-shell #servicios .service-grid {
+  counter-reset: servicio;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  /* mantener 4 columnas en desktop */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.site-shell #servicios .service-card {
+  counter-increment: servicio;
+  background: rgba(255, 250, 240, 0.72);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 32px 24px;
+  min-height: 260px;
+  gap: 0;
+  transition: background 0.2s ease;
+}
+
+.site-shell #servicios .service-card:hover {
+  background: #fff;
+  transform: none;
+  box-shadow: none;
+}
+
+.site-shell #servicios .service-card .card-mark {
+  display: none;
+}
+
+.site-shell #servicios .service-card::before {
+  content: counter(servicio, decimal-leading-zero);
+  display: block;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 0.88rem;
+  color: var(--gold);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  margin-bottom: 18px;
+}
+
+.site-shell #servicios .service-card h3 {
+  font-size: 1.42rem;
+  margin: 0 0 12px;
+  color: var(--ink);
+}
+
+.site-shell #servicios .service-card p {
+  font-size: 0.88rem;
+  line-height: 1.74;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* 7. CV hero — misma escala de tipo */
+.site-shell .cv-hero-copy h1 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(3rem, 6.4vw, 7rem);
+  font-weight: 500;
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+  max-width: none;
+}
+
+/* 8. Botones — menos redondos, más serios */
+.site-shell .btn-primary,
+.site-shell .btn-secondary {
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+  font-size: 0.87rem;
+  min-height: 48px;
+}
+
+.site-shell .nav-cta {
+  border-radius: 4px;
+}
+
+/* 9. Section-head h2 — max-width coherente */
+.site-shell .section-head h2 {
+  max-width: 680px;
+}
+
+/* Mobile — ajustes para el editorial grande */
+@media (max-width: 900px) {
+  .site-shell .hero.hero-consultoria {
+    grid-template-columns: 1fr;
+    gap: clamp(36px, 6vw, 56px) 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .site-shell h1 {
+    font-size: clamp(2.6rem, 10vw, 3.8rem);
+    line-height: 1.0;
+  }
+
+  .site-shell h2 {
+    font-size: clamp(1.9rem, 7vw, 3rem);
+  }
+
+  .site-shell .intro-band p {
+    font-size: clamp(1.25rem, 5.5vw, 1.9rem);
+  }
+
+  .site-shell #servicios .service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
