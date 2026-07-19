@@ -2296,7 +2296,7 @@ export default function Estadisticas() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span
                         className={styles.dot}
-                        style={{ background: s.tipo === 'escaneo' ? '#4A8C6F' : s.tipo === 'venta' ? '#bfa984' : s.tipo === 'recomendacion' ? '#3266a8' : '#531827' }}
+                        style={{ background: s.tipo === 'escaneo' ? '#4A8C6F' : s.tipo === 'venta' ? '#bfa984' : s.tipo === 'recomendacion' ? '#3266a8' : '#74223d' }}
                       />
                       <p className={styles.sectionTitle}>
                         {s.tipo === 'escaneo'

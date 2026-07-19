@@ -67,8 +67,7 @@ export default function CookieConsent() {
       {!consent && (
         <section className="cookie-consent" aria-label="Aviso de cookies">
           <p>
-            Usamos Google Analytics para medir visitas y mejorar la web. Puedes aceptar o rechazar las cookies
-            analíticas. Las zonas privadas de Carta Viva no usan esta medición.
+            Usamos cookies analíticas para medir visitas y mejorar la web. Puedes aceptar o rechazar.
           </p>
           <div className="cookie-consent__actions">
             <button type="button" className="cookie-consent__secondary" onClick={reject}>

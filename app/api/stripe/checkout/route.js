@@ -3,6 +3,16 @@ import { createClient } from '@supabase/supabase-js'
 import { requireRestaurantAccess } from '../../_lib/auth'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+
+function stripeTrialEnd(value) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  const seconds = Math.floor(date.getTime() / 1000)
+  const minTrialEnd = Math.floor(Date.now() / 1000) + 48 * 60 * 60
+  return seconds >= minTrialEnd ? seconds : null
+}
 
 export async function POST(req) {
   try {
@@ -16,7 +26,7 @@ export async function POST(req) {
       bodega:  process.env.STRIPE_PRICE_BODEGA,
       premium: process.env.STRIPE_PRICE_PREMIUM,
     }
-    const { plan, restaurante_id, email, nombre } = await req.json()
+    const { plan, restaurante_id, email, nombre, trial_end } = await req.json()
 
     if (!plan || !PRICE_IDS[plan]) {
       return Response.json({ error: 'Plan no válido.' }, { status: 400 })
@@ -32,13 +42,15 @@ export async function POST(req) {
     )
     const auth = await requireRestaurantAccess(req, adminSupabase, restaurante_id)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+    const isAdmin = (auth.user?.email || '').toLowerCase() === ADMIN_EMAIL.toLowerCase()
+    const customTrialEnd = isAdmin ? stripeTrialEnd(trial_end) : null
 
     // Buscar o crear el customer en Stripe
     let stripeCustomerId = null
 
     const { data: rest } = await adminSupabase
       .from('restaurantes')
-      .select('stripe_customer_id, email, nombre')
+      .select('*')
       .eq('id', restaurante_id)
       .single()
 
@@ -85,7 +97,7 @@ export async function POST(req) {
           restaurante_id: restaurante_id || '',
           plan,
         },
-        trial_period_days: 14, // 14 días de prueba gratis
+        ...(customTrialEnd ? { trial_end: customTrialEnd } : { trial_period_days: 14 }),
       },
       locale: 'es',
       allow_promotion_codes: true,

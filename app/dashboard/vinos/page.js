@@ -43,6 +43,17 @@ function descargarArchivo(nombre, contenido, tipo = 'text/csv;charset=utf-8;') {
   URL.revokeObjectURL(url)
 }
 
+function decimalOpcional(valor) {
+  if (valor === '' || valor === null || valor === undefined) return null
+  const numero = Number(String(valor).replace(',', '.'))
+  return Number.isFinite(numero) && numero > 0 ? numero : null
+}
+
+function precioCelda(valor) {
+  const numero = decimalOpcional(valor)
+  return numero ? `${numero} EUR` : '-'
+}
+
 function vinoInicialDesdeUrl() {
   const base = {
     nombre: '', bodega: '', tipo: 'tinto', region: '',
@@ -218,8 +229,8 @@ const vinosActivos = vinos.filter(vino => vino.activo !== false)
     const { data, error } = await supabase.from('vinos').insert([{
       ...nuevoVino,
       restaurante_id: restaurante.id,
-      precio_copa: parseFloat(nuevoVino.precio_copa) || 0,
-      precio_botella: parseFloat(nuevoVino.precio_botella) || 0,
+      precio_copa: decimalOpcional(nuevoVino.precio_copa),
+      precio_botella: decimalOpcional(nuevoVino.precio_botella),
       stock: parseInt(nuevoVino.stock) || 0,
       coste_compra: parseFloat(nuevoVino.coste_compra) || 0,
       stock_minimo: parseInt(nuevoVino.stock_minimo) || 0,
@@ -360,8 +371,8 @@ async function guardarImportacionVinos() {
     region: vino.region || '',
     uva: vino.uva || '',
     anada: vino.anada || '',
-    precio_copa: parseFloat(vino.precio_copa) || 0,
-    precio_botella: parseFloat(vino.precio_botella) || 0,
+    precio_copa: decimalOpcional(vino.precio_copa),
+    precio_botella: decimalOpcional(vino.precio_botella),
     stock: parseInt(vino.stock) || 0,
     notas_cata: vino.notas_cata || '',
     restaurante_id: restaurante.id,
@@ -383,8 +394,9 @@ async function guardarAnada(vino) {
     setNuevaAnada('')
   }
   async function guardarPrecio(vino) {
-    await supabase.from('vinos').update({ precio_botella: parseFloat(nuevoPrecio) }).eq('id', vino.id)
-    setVinos(vinos.map(v => v.id === vino.id ? { ...v, precio_botella: parseFloat(nuevoPrecio) } : v))
+    const precio = decimalOpcional(nuevoPrecio)
+    await supabase.from('vinos').update({ precio_botella: precio }).eq('id', vino.id)
+    setVinos(vinos.map(v => v.id === vino.id ? { ...v, precio_botella: precio } : v))
     setEditandoPrecio(null)
     setNuevoPrecio('')
   }
@@ -443,7 +455,7 @@ async function duplicarVino(vino) {
     uva: vino.uva || '',
     anada: vino.anada || '',
     precio_copa: vino.precio_copa || null,
-    precio_botella: Number(vino.precio_botella) || 0,
+    precio_botella: decimalOpcional(vino.precio_botella),
     stock: Number(vino.stock) || 0,
     coste_compra: Number(vino.coste_compra) || 0,
     stock_minimo: Number(vino.stock_minimo) || 0,
@@ -466,8 +478,8 @@ async function guardarEdicion(vino) {
     region: vino.region,
     uva: vino.uva,
     anada: vino.anada,
-    precio_copa: vino.precio_copa !== '' ? parseFloat(vino.precio_copa) : null,
-precio_botella: parseFloat(vino.precio_botella) || 0,
+    precio_copa: decimalOpcional(vino.precio_copa),
+precio_botella: decimalOpcional(vino.precio_botella),
     coste_compra: parseFloat(vino.coste_compra) || 0,
     stock_minimo: parseInt(vino.stock_minimo, 10) || 0,
     proveedor: vino.proveedor || '',
@@ -477,8 +489,8 @@ precio_botella: parseFloat(vino.precio_botella) || 0,
     setErrorBodega('No se pudieron guardar los campos de bodega. Ejecuta supabase/add_bodega_control.sql si aún no lo has hecho.')
   } else {
     setErrorBodega('')
-    setVinos(vinos.map(v => v.id === vino.id ? { ...v, ...vino, precio_copa: vino.precio_copa !== '' ? parseFloat(vino.precio_copa) : null,
-precio_botella: parseFloat(vino.precio_botella) || 0, coste_compra: parseFloat(vino.coste_compra) || 0, stock_minimo: parseInt(vino.stock_minimo, 10) || 0, proveedor: vino.proveedor || '' } : v))
+    setVinos(vinos.map(v => v.id === vino.id ? { ...v, ...vino, precio_copa: decimalOpcional(vino.precio_copa),
+precio_botella: decimalOpcional(vino.precio_botella), coste_compra: parseFloat(vino.coste_compra) || 0, stock_minimo: parseInt(vino.stock_minimo, 10) || 0, proveedor: vino.proveedor || '' } : v))
     setEditandoVino(null)
   }
 }
@@ -995,7 +1007,7 @@ async function aplicarAccionMasiva(confirmado = false) {
                   </div>
                 </div>
                 <p data-label="Bodega" style={{ margin: 0, fontSize: 13, color: '#888', alignSelf: 'center' }}>{v.bodega}{v.region ? ` · ${v.region}` : ''}</p>
-                <p data-label="Copa" style={{ margin: 0, fontSize: 13, color: '#111', alignSelf: 'center' }}>{v.precio_copa} €</p>
+                <p data-label="Copa" style={{ margin: 0, fontSize: 13, color: '#111', alignSelf: 'center' }}>{precioCelda(v.precio_copa)}</p>
                 <p data-label="Botella" style={{ margin: 0, fontSize: 13, color: '#111', alignSelf: 'center' }}>
   {editandoPrecio === v.id ? (
     <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1013,7 +1025,7 @@ async function aplicarAccionMasiva(confirmado = false) {
     </span>
   ) : (
     <span onClick={() => { setEditandoPrecio(v.id); setNuevoPrecio(v.precio_botella || '') }} style={{ cursor: 'pointer', borderBottom: '1px dashed #ccc' }}>
-      {v.precio_botella} €
+      {precioCelda(v.precio_botella)}
     </span>
   )}
 </p>

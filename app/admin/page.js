@@ -59,6 +59,9 @@ function AdminPageContent() {
   const [nuevaPass, setNuevaPass] = useState('')
   const [resetResult, setResetResult] = useState(null)
   const [copiadoReset, setCopiadoReset] = useState(false)
+  const [stripeandoId, setStripeandoId] = useState(null)
+  const [stripeResult, setStripeResult] = useState(null)
+  const [copiadoStripe, setCopiadoStripe] = useState(false)
   const [bajaId, setBajaId] = useState(null) // id del restaurante pendiente de confirmar baja
   const [dandoDeBaja, setDandoDeBaja] = useState(false)
   const [bajaError, setBajaError] = useState('')
@@ -80,6 +83,8 @@ function AdminPageContent() {
     slug: '',
     plan: 'pro',
     subscription_status: 'trialing',
+    trial_hours_limit: '5',
+    trial_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
   })
 
   const camposAlta = ['nombre', 'email', 'slug']
@@ -165,7 +170,7 @@ function AdminPageContent() {
       email: restaurante.email || '',
       ciudad: restaurante.ciudad || '',
       slug: restaurante.slug || '',
-      color_primario: restaurante.color_primario || '#531827',
+      color_primario: restaurante.color_primario || '#74223d',
       color_fondo: restaurante.color_fondo || '#fffaf3',
       color_acento: restaurante.color_acento || '#bfa984',
       tipografia: restaurante.tipografia || 'serif',
@@ -176,6 +181,9 @@ function AdminPageContent() {
       facebook_url: restaurante.facebook_url || '',
       plan: restaurante.plan || 'basic',
       subscription_status: restaurante.subscription_status || 'trialing',
+      trial_hours_limit: restaurante.trial_active_seconds_limit ? String(Math.round((Number(restaurante.trial_active_seconds_limit) / 3600) * 10) / 10) : '',
+      trial_expires_at: restaurante.trial_expires_at ? new Date(restaurante.trial_expires_at).toISOString().slice(0, 10) : '',
+      trial_started_at: restaurante.trial_started_at || null,
     })
     cargarHubLinks(restaurante.id)
   }
@@ -318,7 +326,16 @@ function AdminPageContent() {
 
       setRestaurantes(prev => [...prev, data.restaurante].sort((a, b) => a.nombre.localeCompare(b.nombre)))
       setAltaCreada(data)
-      setNuevoRestaurante({ nombre: '', email: '', ciudad: '', slug: '', plan: 'pro', subscription_status: 'trialing' })
+      setNuevoRestaurante({
+        nombre: '',
+        email: '',
+        ciudad: '',
+        slug: '',
+        plan: 'pro',
+        subscription_status: 'trialing',
+        trial_hours_limit: '5',
+        trial_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      })
     } catch (error) {
       setErrorAlta(error.message)
     }
@@ -368,6 +385,36 @@ function AdminPageContent() {
     } else {
       setResetResult({ ok: false, error: data.error })
     }
+  }
+
+  async function enviarActivacion(restaurante) {
+    setStripeandoId(restaurante.id)
+    setStripeResult(null)
+    setCopiadoStripe(false)
+    const token = await tokenAdmin()
+    const res = await fetch('/api/admin/activacion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        restaurante_id: restaurante.id,
+        plan: restaurante.plan || 'premium',
+        trial_end: '2026-09-01T00:00:00+02:00',
+      })
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setStripeResult({ ok: true, restaurante_id: restaurante.id, nombre: restaurante.nombre, url: data.checkout_url, email: data.email })
+    } else {
+      setStripeResult({ ok: false, restaurante_id: restaurante.id, error: data.error || 'No se pudo enviar la activacion.' })
+    }
+    setStripeandoId(null)
+  }
+
+  function copiarStripe() {
+    if (!stripeResult?.ok) return
+    navigator.clipboard.writeText(stripeResult.url)
+    setCopiadoStripe(true)
+    setTimeout(() => setCopiadoStripe(false), 2500)
   }
 
   async function darDeBaja(restaurante) {
@@ -548,6 +595,16 @@ function AdminPageContent() {
                         <option value="cancelled">Cancelado</option>
                       </select>
                     </label>
+                    <label className="alta-field">
+                      <span>Horas reales de prueba</span>
+                      <input type="number" min="0" step="0.5" value={nuevoRestaurante.trial_hours_limit} onChange={e => actualizarCampo('trial_hours_limit', e.target.value)} placeholder="5" />
+                      <small>Solo cuenta el tiempo activo dentro del panel. Vacio = sin limite por horas.</small>
+                    </label>
+                    <label className="alta-field">
+                      <span>Caduca el</span>
+                      <input type="date" value={nuevoRestaurante.trial_expires_at} onChange={e => actualizarCampo('trial_expires_at', e.target.value)} />
+                      <small>Ventana maxima de calendario para que la prueba no se eternice.</small>
+                    </label>
                   </div>
                 )}
               </div>
@@ -667,6 +724,8 @@ function AdminPageContent() {
                   <label>Tipografía<select value={edicion.tipografia} onChange={e => actualizarEdicion('tipografia', e.target.value)}><option value="serif">Serif</option><option value="sans">Sans</option></select></label>
                   <label>Plan<select value={edicion.plan} onChange={e => actualizarEdicion('plan', e.target.value)}><option value="basic">Basico</option><option value="pro">Sala</option><option value="bodega">Bodega</option><option value="premium">Acompanado</option></select></label>
                   <label>Estado<select value={edicion.subscription_status} onChange={e => actualizarEdicion('subscription_status', e.target.value)}><option value="trialing">Prueba</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="cancelled">Cancelado</option></select></label>
+                  <label>Horas prueba<input type="number" min="0" step="0.5" value={edicion.trial_hours_limit} onChange={e => actualizarEdicion('trial_hours_limit', e.target.value)} placeholder="5" /></label>
+                  <label>Caduca prueba<input type="date" value={edicion.trial_expires_at} onChange={e => actualizarEdicion('trial_expires_at', e.target.value)} /></label>
                   <label className="admin-hub-switch">
                     <input type="checkbox" checked={edicion.hub_activo} onChange={e => actualizarEdicion('hub_activo', e.target.checked)} />
                     Activar hub tipo link en bio
@@ -795,6 +854,14 @@ function AdminPageContent() {
                 </button>
                 <button
                   className="admin-plain-button"
+                  onClick={() => enviarActivacion(restaurante)}
+                  disabled={stripeandoId === restaurante.id}
+                  title="Envia email con contrasena y Stripe gratis hasta el 1 de septiembre"
+                >
+                  {stripeandoId === restaurante.id ? 'Enviando...' : 'Enviar activacion'}
+                </button>
+                <button
+                  className="admin-plain-button"
                   style={{ color: '#c0392b' }}
                   onClick={() => { setBajaId(restaurante.id); setBajaError(''); setResetResult(null) }}
                 >
@@ -832,6 +899,24 @@ function AdminPageContent() {
                     </>
                   ) : (
                     <span>{resetResult.error}</span>
+                  )}
+                </div>
+              )}
+              {stripeResult?.restaurante_id === restaurante.id && (
+                <div className={`admin-alert ${stripeResult.ok ? 'admin-alert-ok' : 'admin-alert-error'}`} style={{ marginTop: 10 }}>
+                  {stripeResult.ok ? (
+                    <>
+                      <span>Activacion enviada a <strong>{stripeResult.email}</strong>. Incluye contrasena y Stripe hasta el 1 de septiembre.</span>
+                      <button
+                        type="button"
+                        onClick={copiarStripe}
+                        style={{ marginTop: 8, background: copiadoStripe ? '#3a6b4e' : '#111', color: '#fff', border: 'none', padding: '8px 16px', fontSize: 11, cursor: 'pointer' }}
+                      >
+                        {copiadoStripe ? '✓ Copiado' : 'Copiar enlace Stripe'}
+                      </button>
+                    </>
+                  ) : (
+                    <span>{stripeResult.error}</span>
                   )}
                 </div>
               )}

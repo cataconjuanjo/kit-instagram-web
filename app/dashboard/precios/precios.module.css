@@ -71,7 +71,7 @@
 .results strong {
   margin: 8px 0 5px;
   color: #fffaf3;
-  font-family: Georgia, serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: 34px;
   line-height: 1;
   font-weight: 500;
@@ -88,7 +88,7 @@
   border: 1px solid #d8c898;
   border-radius: 8px;
   background: #f8f4ea;
-  color: #531827;
+  color: #74223d;
   padding: 11px 13px;
   margin-bottom: 12px;
   font-size: 12px;
@@ -132,8 +132,8 @@
 }
 
 .pageActive {
-  border: 1px solid #531827;
-  background: #531827;
+  border: 1px solid #74223d;
+  background: #74223d;
   color: #fffaf3;
 }
 

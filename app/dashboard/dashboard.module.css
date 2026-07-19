@@ -1,6 +1,6 @@
 .shell {
   min-height: 100vh;
-  background: #f4f4f1;
+  background: #f8f3eb;
   color: #171416;
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
@@ -385,7 +385,7 @@
   align-items: center;
   margin-bottom: 16px;
   border: 1px solid #ddd6cb;
-  border-left: 5px solid #8B3F5C;
+  border-left: 5px solid #74223d;
   border-radius: 8px;
   background: #fffdf8;
   padding: 20px;
@@ -785,7 +785,7 @@
   border: 1px solid #d8c898;
   border-radius: 8px;
   background: #fffaf3;
-  color: #531827;
+  color: #74223d;
   padding: 0 10px;
   cursor: pointer;
   text-decoration: none;
@@ -820,7 +820,7 @@
 .cellarCommandHead h2 {
   margin: 0;
   color: #fffaf3;
-  font-family: Georgia, serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: 28px;
   font-weight: 400;
   line-height: 1.1;
@@ -936,12 +936,12 @@
   align-items: start;
   border: 1px solid #e4ddd2;
   border-radius: 8px;
-  background: #F8F7F4;
+  background: #f8f3eb;
   padding: 13px;
 }
 
 .dailyRadarItem span {
-  color: #8B3F5C;
+  color: #74223d;
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.1em;
@@ -1004,14 +1004,14 @@
   gap: 4px;
   border: 1px solid #e4ddd2;
   border-radius: 8px;
-  background: #F8F7F4;
+  background: #f8f3eb;
   color: #222222;
   padding: 12px;
   text-decoration: none;
 }
 
 .focusList span {
-  color: #8B3F5C;
+  color: #74223d;
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.1em;
@@ -1070,7 +1070,7 @@
   border: 1px solid #d8c898;
   border-radius: 8px;
   background: #fffaf3;
-  color: #531827;
+  color: #74223d;
   padding: 0 12px;
   text-decoration: none;
   font-size: 11px;
@@ -1108,14 +1108,14 @@
   min-height: 72px;
   border: 1px solid #e4ddd2;
   border-radius: 8px;
-  background: #F8F7F4;
+  background: #f8f3eb;
   color: #222222;
   padding: 12px;
   text-decoration: none;
 }
 
 .todayActionList span {
-  color: #8B3F5C;
+  color: #74223d;
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.1em;
@@ -1182,7 +1182,7 @@
 }
 
 .contextToggle small {
-  color: #8B3F5C;
+  color: #74223d;
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -1195,7 +1195,7 @@
 }
 
 .contextToggle b {
-  color: #531827;
+  color: #74223d;
   font-size: 12px;
   white-space: nowrap;
 }
@@ -1305,7 +1305,7 @@
   border: 1px solid #d8c898;
   border-radius: 8px;
   background: #fffaf3;
-  color: #531827;
+  color: #74223d;
   padding: 7px 10px;
   text-decoration: none;
   cursor: pointer;
@@ -1314,8 +1314,8 @@
 }
 
 .onboardingActions button {
-  background: #531827;
-  border-color: #531827;
+  background: #74223d;
+  border-color: #74223d;
   color: #fffaf3;
 }
 
@@ -1414,7 +1414,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #531827;
+  background: #74223d;
   color: #fffaf3;
   padding: 10px 14px;
   text-decoration: none;
@@ -1454,9 +1454,9 @@
   border: 1px solid #d8c898;
   border-radius: 999px;
   background: #f8f4ea;
-  color: #531827;
+  color: #74223d;
   cursor: pointer;
-  font-family: Georgia, serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: 16px;
   font-weight: 850;
   line-height: 1;
@@ -1467,7 +1467,7 @@
   border: 1px solid #d8c898;
   border-radius: 8px;
   background: #f8f4ea;
-  color: #531827;
+  color: #74223d;
   padding: 0 12px;
   cursor: pointer;
   font: inherit;
@@ -1512,7 +1512,7 @@
 .heroTitle {
   margin: 0;
   color: #171416;
-  font-family: Georgia, serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: 32px;
   font-weight: 400;
   line-height: 1.08;
@@ -1530,7 +1530,7 @@
 .scorePanel {
   display: grid;
   align-content: space-between;
-  background: #531827;
+  background: #74223d;
   border: 1px solid #6b2434;
   border-radius: 8px;
   color: #fffaf3;
@@ -1539,7 +1539,7 @@
 
 .scoreNumber {
   margin: 0;
-  font-family: Georgia, serif;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: 58px;
   line-height: 0.92;
   font-weight: 400;
@@ -1633,7 +1633,7 @@
 
 .servicePlanActions select {
   background: #fffaf3;
-  color: #531827;
+  color: #74223d;
 }
 
 .servicePlanGrid {
@@ -1777,7 +1777,7 @@
   min-height: 26px;
   border-radius: 8px;
   background: #efe8d9;
-  color: #531827;
+  color: #74223d;
   padding: 4px 9px;
   font-size: 11px;
   font-weight: 800;
@@ -1837,8 +1837,8 @@
 
 .quote {
   margin: 0;
-  color: #531827;
-  font-family: Georgia, serif;
+  color: #74223d;
+  font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: 22px;
   font-weight: 400;
   line-height: 1.18;
@@ -1858,7 +1858,7 @@
   justify-content: center;
   margin-top: 14px;
   border-radius: 8px;
-  background: #531827;
+  background: #74223d;
   color: #fffaf3;
   padding: 9px 12px;
   text-decoration: none;
@@ -1911,8 +1911,8 @@
 }
 
 .objectiveActive {
-  background: #531827;
-  border-color: #531827;
+  background: #74223d;
+  border-color: #74223d;
   color: #fffaf3;
 }
 
@@ -2009,7 +2009,7 @@
   flex-shrink: 0;
   border: 1px solid #d8c898;
   border-radius: 8px;
-  color: #531827;
+  color: #74223d;
   padding: 8px 10px;
   text-decoration: none;
   font-size: 12px;
@@ -2153,7 +2153,7 @@
 }
 
 .moduleArrow {
-  color: #531827;
+  color: #74223d;
   font-size: 11px;
   font-weight: 850;
   white-space: nowrap;
@@ -2167,7 +2167,7 @@
 /* ── Score strip ── */
 
 .scoreStrip {
-  background: #531827;
+  background: #74223d;
   border-radius: 8px;
   padding: 22px 24px;
   margin-bottom: 16px;
@@ -2636,7 +2636,7 @@
   margin-top: 10px;
   border-radius: 999px;
   background: rgba(139, 63, 92, 0.1);
-  color: #8B3F5C;
+  color: #74223d;
   padding: 5px 9px;
   font-size: 11px;
   font-weight: 900;
@@ -2749,7 +2749,7 @@
 }
 
 .servicePlanPush {
-  background: #F8F7F4;
+  background: #f8f3eb;
 }
 
 .servicePlanWatch {
@@ -2761,7 +2761,7 @@
 }
 
 .servicePlanLabel {
-  color: #8B3F5C;
+  color: #74223d;
 }
 
 .servicePlanItem {
@@ -2817,7 +2817,7 @@
 
 .afterShiftStats span {
   border-radius: 8px;
-  background: #F8F7F4;
+  background: #f8f3eb;
   color: #625a53;
   padding: 8px 10px;
   font-size: 12px;

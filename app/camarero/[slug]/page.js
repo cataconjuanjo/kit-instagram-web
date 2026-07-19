@@ -12,10 +12,50 @@ import {
   prioridadEstiloCarneRoja,
   prioridadEstiloJamon,
 } from '../../lib/maridajeEngine'
+import { isLocalWine } from '../../lib/wineRegion'
 import { bonusChartierFamilias } from '../../data/chartierFamilias'
+import { isLargeFormatWine } from '../../lib/wineFormat'
 import styles from './camarero.module.css'
 
 const PERFIL_CLIENTE_NEUTRO = { bebe: 'ninguno', estilo: 'ninguno', gama: 'auto' }
+
+function esPerfilGoiko(restaurante = {}) {
+  const texto = `${restaurante?.slug || ''} ${restaurante?.nombre || ''}`.toLowerCase()
+  return texto.includes('goiko') || texto.includes('janardoa')
+}
+
+function etiquetasTipoVino(restaurante = {}) {
+  const label = { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja', sin_alcohol: 'Sin alcohol', sidra: 'Sidra' }
+  const plural = { tinto: 'Tintos', blanco: 'Blancos', rosado: 'Rosados', espumoso: 'Espumosos', generoso: 'Generosos', dulce: 'Dulces', naranja: 'Naranjas', sin_alcohol: 'Sin alcohol', sidra: 'Sidras' }
+  if (!esPerfilGoiko(restaurante)) return { label, plural }
+  return {
+    label: {
+      ...label,
+      tinto: 'Tinto / ardo beltza',
+      blanco: 'Blanco / ardo txuria',
+      rosado: 'Rosado / ardo gorria',
+      espumoso: 'Espumoso / aparduna',
+      generoso: 'Generoso / ardo oparoa',
+      dulce: 'Dulce / ardo gozoa',
+      sidra: 'Sidra / sagardoa',
+    },
+    plural: {
+      ...plural,
+      tinto: 'Tintos / ardo beltzak',
+      blanco: 'Blancos / ardo txuriak',
+      rosado: 'Rosados / ardo gorriak',
+      espumoso: 'Espumosos / apardunak',
+      generoso: 'Generosos / ardo oparoak',
+      dulce: 'Dulces / ardo gozoak',
+      sidra: 'Sidras / sagardoak',
+    },
+  }
+}
+
+function ordenTiposVino(restaurante = {}) {
+  const base = ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol']
+  return esPerfilGoiko(restaurante) ? ['sidra', ...base] : base
+}
 
 export default function Camarero({ params }) {
   const [restaurante, setRestaurante] = useState(null)
@@ -66,17 +106,19 @@ export default function Camarero({ params }) {
   const ultimaRecomendacionRegistrada = useRef('')
   const demoFocusAplicado = useRef(false)
 
-  const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87' }
-  const tipoLabel = { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja', sin_alcohol: 'Sin alcohol' }
-  const tipoPlural = { tinto: 'Tintos', blanco: 'Blancos', rosado: 'Rosados', espumoso: 'Espumosos', generoso: 'Generosos', dulce: 'Dulces', naranja: 'Naranjas', sin_alcohol: 'Sin alcohol' }
+  const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87', sidra: '#8A8F3A' }
+  const etiquetasTipo = etiquetasTipoVino(restaurante)
+  const tipoLabel = etiquetasTipo.label
+  const tipoPlural = etiquetasTipo.plural
+  const tiposListado = ordenTiposVino(restaurante)
   const preguntasClienteVenta = {
     bebe: [
       { id: 'indiferente', label: 'No lo tiene claro' },
-      { id: 'blanco', label: 'Blanco / fresco' },
+      { id: 'blanco', label: `${tipoLabel.blanco} / fresco` },
       { id: 'tinto_suave', label: 'Tinto suave' },
       { id: 'tinto_cuerpo', label: 'Tinto con cuerpo' },
       { id: 'burbuja', label: 'Burbuja' },
-      { id: 'generoso', label: 'Generoso' },
+      { id: 'generoso', label: tipoLabel.generoso },
     ],
     estilo: [
       { id: 'facil', label: 'Facil de beber' },
@@ -360,13 +402,7 @@ export default function Camarero({ params }) {
   }
 
   function esVinoDeZona(vino) {
-    const zona = normalizar(`${restaurante?.ciudad || ''} ${restaurante?.provincia || ''} ${restaurante?.region || ''}`)
-    const base = zona.split(/[^a-z0-9]+/).filter(termino => termino.length > 3)
-    const extra = zona.includes('malaga') ? ['malaga', 'sierras de malaga', 'montes de malaga', 'ronda', 'axarquia'] : []
-    const terminos = [...new Set([...base, ...extra])]
-    if (!terminos.length) return false
-    const texto = normalizar(`${vino.nombre || ''} ${vino.bodega || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
-    return terminos.some(termino => texto.includes(termino))
+    return isLocalWine(vino, restaurante)
   }
 
   function textoPlano(valor) {
@@ -837,6 +873,8 @@ export default function Camarero({ params }) {
 
   function esVinoElegibleParaObjetivo(vino, opciones = {}) {
     if (vino.activo === false || vino.stock === 0 || precioBotella(vino) <= 0) return false
+    if (vino.tipo === 'sidra') return false
+    if (isLargeFormatWine(vino)) return false
     if ((objetivoVenta === 'copas' || objetivoVenta === 'sucesion_copas') && !(Number(vino.precio_copa) > 0)) return false
     if (objetivoVenta === 'local' && !esVinoDeZona(vino)) return false
     if (!opciones.ignorarGama && !encajaEnGamaCliente(vino)) return false
@@ -1423,6 +1461,8 @@ export default function Camarero({ params }) {
     const requiereCopa = objetivoVenta === 'copas' || objetivoVenta === 'sucesion_copas'
     const vinosParaMotor = vinos.filter(vino => {
       if (vino?.activo === false || vino?.stock === 0 || precioBotella(vino) <= 0) return false
+      if (vino?.tipo === 'sidra') return false
+      if (isLargeFormatWine(vino)) return false
       if (requiereCopa && !(Number(vino.precio_copa) > 0)) return false
       return true
     })
@@ -1821,7 +1861,7 @@ export default function Camarero({ params }) {
     ? (platosMesaVenta.length ? platosMesaVenta.map(consultaDesdePlato).join(', ') : consultaVenta)
     : ''
   const vinosGrafoPayload = useMemo(() => vinos
-    .filter(vino => vino?.activo !== false && vino?.stock !== 0 && Number(vino?.precio_botella) > 0)
+    .filter(vino => vino?.activo !== false && vino?.stock !== 0 && vino?.tipo !== 'sidra' && !isLargeFormatWine(vino) && Number(vino?.precio_botella) > 0)
     .map(vino => ({
       id: vino.id,
       nombre: vino.nombre,
@@ -1867,7 +1907,12 @@ export default function Camarero({ params }) {
     }
   }, [consultaGrafoVenta, vinosGrafoPayload])
 
-  const tipos = useMemo(() => ['todos', ...new Set(vinos.map(v => v.tipo))], [vinos])
+  const tipos = useMemo(() => {
+    const disponibles = [...new Set(vinos.map(v => v.tipo).filter(Boolean))]
+    const ordenados = [...tiposListado, ...disponibles]
+      .filter((tipo, index, lista) => tipo && disponibles.includes(tipo) && lista.indexOf(tipo) === index)
+    return ['todos', ...ordenados]
+  }, [vinos, tiposListado])
   const recomendacionesVentaBase = autenticado && vistaServicio === 'venta' ? calcularRecomendacionesVenta() : []
   const recomendacionesVenta = recomendacionesVentaBase.map((item, index) => ({
     ...item,
@@ -1889,7 +1934,7 @@ export default function Camarero({ params }) {
   })
   const platosPanelAbierto = mostrarPlatosVenta || busquedaPlatoVenta.length > 0 || categoriaPlatoVenta !== 'todos'
   const vinosMandatoFiltrados = vinos
-    .filter(vino => vino?.activo !== false && vino?.stock !== 0 && precioBotella(vino) > 0)
+    .filter(vino => vino?.activo !== false && vino?.stock !== 0 && vino?.tipo !== 'sidra' && !isLargeFormatWine(vino) && precioBotella(vino) > 0)
     .filter(vino => {
       const texto = normalizar(`${vino.nombre || ''} ${vino.bodega || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.tipo || ''}`)
       return !busquedaVinoMandato || texto.includes(normalizar(busquedaVinoMandato))
@@ -2741,7 +2786,7 @@ export default function Camarero({ params }) {
                 </div>
               )
             ) : (
-              ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja'].map(tipo => {
+              tiposListado.map(tipo => {
                 const grupo = vinosFiltrados.filter(v => v.tipo === tipo)
                 if (!grupo.length) return null
                 const abierto = filtro !== 'todos' || tipoVinoAbierto === tipo
@@ -2947,7 +2992,7 @@ export default function Camarero({ params }) {
             ))
           )
         ) : (
-          ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja'].map(tipo => {
+          tiposListado.map(tipo => {
             const grupo = vinosFiltrados.filter(v => v.tipo === tipo)
             if (!grupo.length) return null
             const abierto = filtro !== 'todos' || tipoVinoAbierto === tipo

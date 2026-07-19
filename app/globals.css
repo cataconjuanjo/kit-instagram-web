@@ -5043,7 +5043,7 @@ h3 {
 }
 
 .consult-score-alta {
-  background: #531827;
+  background: #74223d;
   color: #fff;
 }
 
@@ -5814,7 +5814,7 @@ h3 {
 }
 
 .report-score-alta {
-  background: #531827;
+  background: #74223d;
 }
 
 .report-score-media {
@@ -9651,7 +9651,7 @@ html, body {
   align-items: center;
   width: max-content;
   border-radius: 999px;
-  background: #F8F7F4;
+  background: #f8f3eb;
   color: #4b4038;
   padding: 4px 8px;
   font-size: 0.66rem;
@@ -9740,7 +9740,7 @@ html, body {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #8B3F5C;
+  background: #74223d;
 }
 
 .form-progress strong {
@@ -9889,7 +9889,7 @@ html, body {
 
 .admin-context-dropdown button:hover,
 .admin-context-dropdown a:hover {
-  background: #F8F7F4 !important;
+  background: #f8f3eb !important;
 }
 
 .ws-anchors {
@@ -9902,8 +9902,8 @@ html, body {
 
 .ws-anchors button:focus-visible,
 .ws-anchors button:hover {
-  color: #8B3F5C;
-  border-bottom-color: #8B3F5C;
+  color: #74223d;
+  border-bottom-color: #74223d;
   outline: none;
 }
 
@@ -9947,7 +9947,7 @@ html, body {
 .ws-propuesta-history span,
 .ws-propuesta-history a {
   border-radius: 999px;
-  background: #F8F7F4;
+  background: #f8f3eb;
   color: #5b5149;
   padding: 4px 8px;
   text-decoration: none;
@@ -9963,7 +9963,7 @@ html, body {
 }
 
 .ws-audit-footer a {
-  color: #8B3F5C;
+  color: #74223d;
   font-weight: 800;
   text-decoration: none;
 }
@@ -10038,9 +10038,9 @@ html, body {
 
 .consultant-plan-head button {
   min-height: 38px;
-  border: 1px solid #8B3F5C;
+  border: 1px solid #74223d;
   border-radius: 8px;
-  background: #8B3F5C;
+  background: #74223d;
   color: #fff;
   padding: 0 12px;
   font-size: 0.76rem;
@@ -10127,7 +10127,7 @@ html, body {
 }
 
 .consultant-plan-columns em {
-  color: #8B3F5C;
+  color: #74223d;
   font-size: 0.68rem;
   font-style: normal;
   font-weight: 900;
@@ -10641,7 +10641,7 @@ html, body {
 }
 
 .btg-candidate.is-coravin {
-  border-left-color: #8B3F5C;
+  border-left-color: #74223d;
 }
 
 .btg-candidate.is-discovery {
@@ -10848,7 +10848,7 @@ html, body {
 .alert-work-meta a,
 .alert-work-meta span {
   border-radius: 999px;
-  background: #F8F7F4;
+  background: #f8f3eb;
   color: #5b5149;
   padding: 5px 8px;
   text-decoration: none;
@@ -10857,7 +10857,7 @@ html, body {
 }
 
 .alert-work-meta a {
-  color: #8B3F5C;
+  color: #74223d;
 }
 
 .alert-work-actions {
@@ -10879,8 +10879,8 @@ html, body {
 }
 
 .alert-work-actions button:hover {
-  border-color: #8B3F5C;
-  color: #8B3F5C;
+  border-color: #74223d;
+  color: #74223d;
 }
 
 .alert-history {
@@ -10889,7 +10889,7 @@ html, body {
 }
 
 .alert-history summary {
-  color: #8B3F5C;
+  color: #74223d;
   cursor: pointer;
   font-size: 0.76rem;
   font-weight: 900;
@@ -12127,7 +12127,7 @@ html, body {
 .alta-wizard-bar span {
   display: block;
   height: 100%;
-  background: #8B3F5C;
+  background: #74223d;
   border-radius: inherit;
   transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
   min-width: 0;
@@ -12206,7 +12206,7 @@ html, body {
 }
 
 .alta-step-header.is-open .alta-step-num:not(.is-done) {
-  background: #8B3F5C;
+  background: #74223d;
   color: #fff;
 }
 
@@ -12295,7 +12295,7 @@ html, body {
 
 .alta-field input:focus,
 .alta-field select:focus {
-  border-color: #8B3F5C;
+  border-color: #74223d;
   box-shadow: 0 0 0 3px rgba(139, 63, 92, 0.12);
 }
 
@@ -13771,7 +13771,7 @@ html, body {
   border: 1px solid #ded8ce;
   border-radius: 999px;
   background: transparent;
-  color: #531827;
+  color: #74223d;
   cursor: pointer;
   font-size: 25px;
 }
@@ -13799,15 +13799,15 @@ html, body {
   border: 1px solid #d8c898;
   border-radius: 8px;
   background: #fffaf3;
-  color: #531827;
+  color: #74223d;
   padding: 8px 14px;
   cursor: pointer;
   font-weight: 850;
 }
 
 .admin-overlay-footer button.is-primary {
-  border-color: #531827;
-  background: #531827;
+  border-color: #74223d;
+  background: #74223d;
   color: #fffaf3;
 }
 
@@ -13849,9 +13849,9 @@ html, body {
 .admin-overlay-launch button,
 .admin-open-detail {
   min-height: 40px;
-  border: 1px solid #531827;
+  border: 1px solid #74223d;
   border-radius: 8px;
-  background: #531827;
+  background: #74223d;
   color: #fffaf3;
   padding: 8px 14px;
   cursor: pointer;
@@ -13893,7 +13893,7 @@ html, body {
   border: 1px solid #ded8ce;
   border-radius: 8px;
   background: #fff;
-  color: #531827;
+  color: #74223d;
   cursor: pointer;
   font-weight: 850;
 }
@@ -13906,7 +13906,7 @@ html, body {
   border: 1px solid #ded8ce;
   border-radius: 8px;
   background: #fff;
-  color: #531827;
+  color: #74223d;
   padding: 8px 12px;
   text-decoration: none;
   font-weight: 850;
@@ -13925,7 +13925,7 @@ html, body {
   border: 1px solid #d8c898;
   border-radius: 8px;
   background: #fffaf3;
-  color: #531827;
+  color: #74223d;
   padding: 5px 9px;
   cursor: pointer;
   font-size: 11px;

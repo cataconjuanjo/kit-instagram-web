@@ -27,6 +27,7 @@ const FONT_MAP = {
   sans:      { family: 'system-ui, sans-serif',          label: 'Moderna',   sample: 'Vino',  googleFont: null },
   condensed: { family: '"Barlow Condensed", sans-serif', label: 'Condensada', sample: 'VINO', googleFont: 'Barlow+Condensed:wght@700' },
   display:   { family: '"Playfair Display", serif',      label: 'Display',   sample: 'Vino',  googleFont: 'Playfair+Display:wght@500' },
+  garamond:  { family: '"Cormorant Garamond", Georgia, serif', label: 'Carta vino', sample: 'Vino', googleFont: 'Cormorant+Garamond:wght@400;500;600;700' },
 }
 
 function hexToRgb(hex = '') {
@@ -574,10 +575,10 @@ export default function Personalizar() {
               <div>
                 <label className={styles.label}>Tipografía</label>
                 <p className={styles.tiny} style={{ marginTop: 0, marginBottom: 6 }}>Nombre y títulos de la carta</p>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(92px, 1fr))', gap: 8 }}>
                   {Object.entries(FONT_MAP).map(([id, f]) => (
                     <button key={id} onClick={() => setTipografia(id)} style={{
-                      flex: 1, padding: '10px 6px', borderRadius: 8, cursor: 'pointer',
+                      padding: '10px 6px', borderRadius: 8, cursor: 'pointer',
                       border: tipografia === id ? `2px solid ${colorPrimario}` : '2px solid #e8e8e8',
                       background: tipografia === id ? `${colorPrimario}10` : '#fafafa',
                     }}>

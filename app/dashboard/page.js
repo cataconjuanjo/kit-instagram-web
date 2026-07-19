@@ -392,7 +392,7 @@ export default function DashboardHome() {
   const sinProveedor = vinosActivos.filter(vino => !vino.proveedor)
   const sinStockMinimo = vinosActivos.filter(vino => !decimal(vino.stock_minimo))
   const propuestasActivas = propuestas.filter(item => item.estado !== 'incorporada')
-  const pinConfigurado = Boolean(restaurante?.camarero_pin_configurado || restaurante?.camarero_pin_hash || restaurante?.camarero_pin)
+  const pinConfigurado = Boolean(restaurante?.camarero_pin_bloqueo_activo)
   const perfilBodega = esPerfilBodega(restaurante)
   const calidadPlatos = Math.round((porcentaje(platos.length - platosSinDescripcion.length, platos.length) * 0.65) + (porcentaje(platos.length - platosSinPrecio.length, platos.length) * 0.35))
   const calidadVinos = Math.round((porcentaje(vinosActivos.length - vinosSinPrecio.length, vinosActivos.length) * 0.45) + (porcentaje(vinosActivos.length - vinosSinPerfil.length, vinosActivos.length) * 0.45) + (porcentaje(vinosActivos.length - vinosSinStock.length, vinosActivos.length) * 0.1))
@@ -412,6 +412,7 @@ export default function DashboardHome() {
     bajoMinimo.length > 0 && { texto: `Preparar reposicion de ${bajoMinimo.length} vinos`, href: '/dashboard/bodega#pedido', tipo: 'Compra' },
     sinCosteCompra.length > 0 && { texto: `Completar coste de ${sinCosteCompra.length} referencias`, href: '/dashboard/bodega#referencias-sin-coste', tipo: 'Margen' },
     sinProveedor.length > 0 && { texto: `Asignar proveedor a ${sinProveedor.length} vinos`, href: '/dashboard/bodega#referencias-sin-proveedor', tipo: 'Proveedor' },
+    vinosSinStock.length > 0 && { texto: `Registrar stock actual de ${vinosSinStock.length} vinos`, href: '/dashboard/bodega#referencias-sin-stock', tipo: 'Stock' },
     sinStockMinimo.length > 0 && { texto: `Definir stock minimo de ${sinStockMinimo.length} referencias`, href: '/dashboard/bodega#referencias-sin-minimo', tipo: 'Stock' },
     vinosSinPrecio.length > 0 && { texto: `Revisar precio de venta de ${vinosSinPrecio.length} vinos`, href: '/dashboard/vinos?filtro=pendientes', tipo: 'Precio' },
     propuestasActivas.length > 0 && { texto: `Valorar ${propuestasActivas.length} propuestas pendientes`, href: '/dashboard/bodega#propuestas', tipo: 'Propuesta' },
@@ -431,14 +432,14 @@ export default function DashboardHome() {
   const tareasInicio = perfilBodega
     ? [
         { id: 'bodega_vinos', titulo: 'Cargar referencias de bodega', texto: 'Importa o crea los vinos con stock inicial, precio y datos principales.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
-        { id: 'bodega_control', titulo: 'Completar control de bodega', texto: 'Coste, proveedor y stock minimo convierten la lista en una herramienta de gestion.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || (sinCosteCompra.length === 0 && sinProveedor.length === 0 && sinStockMinimo.length === 0) },
+        { id: 'bodega_control', titulo: 'Completar control de bodega', texto: 'Coste, proveedor y stock actual convierten la lista en una herramienta de gestion.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || (sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 && sinStockMinimo.length === 0) },
       ]
     : [
         { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio, uva y stock inicial.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
         { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
         { id: 'descripciones_platos', titulo: 'Definir platos para maridaje', texto: 'Describe técnica, salsa, intensidad e ingredientes clave. Es información interna: no se muestra como receta en la carta pública.', href: '/dashboard/platos?filtro=descripcion', autoHide: () => platos.length === 0 || platosSinDescripcion.length === 0 },
-        { id: 'bodega', titulo: 'Completar margen y proveedor', texto: 'Coste, proveedor y stock mínimo convierten la carta en control de bodega.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => sinCosteCompra.length === 0 && sinProveedor.length === 0 },
-        { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la carta pública, revisa móvil y deja listo el PIN de sala.', href: '/dashboard/qr', autoHide: () => Boolean(restaurante?.slug) && pinConfigurado },
+        { id: 'bodega', titulo: 'Completar margen, proveedor y stock', texto: 'Coste, proveedor y stock actual convierten la carta en control de bodega.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 },
+        { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la carta pública, revisa móvil y decide si sala entra con PIN o sin PIN.', href: '/dashboard/qr', autoHide: () => Boolean(restaurante?.slug) },
       ]
   const tareasInicioVisibles = tareasInicio.filter(tarea =>
     !tareasOcultas.includes(tarea.id) &&
@@ -459,8 +460,8 @@ export default function DashboardHome() {
   const siguienteTurno = perfilBodega
     ? bajoMinimo.length > 0
       ? { label: 'Preparar pedido', href: '/dashboard/bodega#pedido', detalle: `${bajoMinimo.length} referencias bajo minimo` }
-      : sinCosteCompra.length + sinProveedor.length + sinStockMinimo.length > 0
-        ? { label: 'Completar datos de bodega', href: '/dashboard/bodega#referencias-pendientes', detalle: `${sinCosteCompra.length + sinProveedor.length + sinStockMinimo.length} datos pendientes` }
+      : sinCosteCompra.length + sinProveedor.length + vinosSinStock.length + sinStockMinimo.length > 0
+        ? { label: 'Completar datos de bodega', href: '/dashboard/bodega#referencias-pendientes', detalle: `${sinCosteCompra.length + sinProveedor.length + vinosSinStock.length + sinStockMinimo.length} datos pendientes` }
         : { label: 'Abrir bodega', href: '/dashboard/bodega', detalle: 'Stock, margen y compras bajo control' }
     : alertasSala > 0
       ? { label: 'Resolver señales', href: '/dashboard/cierre', detalle: `${alertasSala} señales requieren decisión` }
@@ -470,7 +471,7 @@ export default function DashboardHome() {
           ? { label: 'Preparar pedido', href: '/dashboard/bodega#pedido', detalle: `${bajoMinimo.length} referencias bajo mínimo` }
           : { label: 'Abrir briefing', href: '/dashboard/sala', detalle: 'Sala lista para preparar el servicio' }
   const estadoTurno = perfilBodega
-    ? bajoMinimo.length > 0 ? 'Compra pendiente' : sinCosteCompra.length + sinProveedor.length + sinStockMinimo.length > 0 ? 'Datos pendientes' : 'Bodega estable'
+    ? bajoMinimo.length > 0 ? 'Compra pendiente' : sinCosteCompra.length + sinProveedor.length + vinosSinStock.length + sinStockMinimo.length > 0 ? 'Datos pendientes' : 'Bodega estable'
     : turnoCerrado
       ? 'Turno cerrado'
       : haySenalesSala
@@ -483,6 +484,7 @@ export default function DashboardHome() {
     !perfilBodega && platosSinDescripcion.length > 0 && `${platosSinDescripcion.length} platos sin descripcion`,
     perfilBodega && sinCosteCompra.length > 0 && `${sinCosteCompra.length} referencias sin coste`,
     perfilBodega && sinProveedor.length > 0 && `${sinProveedor.length} referencias sin proveedor`,
+    perfilBodega && vinosSinStock.length > 0 && `${vinosSinStock.length} referencias sin stock actual`,
     perfilBodega && sinStockMinimo.length > 0 && `${sinStockMinimo.length} referencias sin minimo`,
     bajoMinimo.length > 0 && `${bajoMinimo.length} referencias bajo minimo`,
   ].filter(Boolean)

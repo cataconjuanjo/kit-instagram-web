@@ -10,7 +10,7 @@ const CAMPOS_RESTAURANTE = [
   'hub_fondo_zoom', 'hub_fondo_x', 'hub_fondo_y', 'hub_overlay',
   'hub_estilo', 'hub_mostrar_logo', 'hub_mostrar_nombre',
   'hub_mostrar_direccion', 'instagram_url', 'facebook_url',
-  'camarero_pin_bloqueo_activo',
+  'camarero_pin_requerido', 'camarero_pin_bloqueo_activo',
 ]
 
 const CAMPOS_VINO = [
@@ -28,6 +28,11 @@ function seleccionarCampos(fila, campos) {
   return Object.fromEntries(campos
     .filter(campo => Object.prototype.hasOwnProperty.call(fila || {}, campo))
     .map(campo => [campo, fila[campo]]))
+}
+
+function esPerfilGoiko(restaurante = {}) {
+  const texto = `${restaurante?.slug || ''} ${restaurante?.nombre || ''}`.toLowerCase()
+  return texto.includes('goiko') || texto.includes('janardoa')
 }
 
 export async function GET(req, { params }) {
@@ -56,8 +61,16 @@ export async function GET(req, { params }) {
       },
     }
     if (incluirCarta && respuesta.restaurante.carta_disponible) {
+      let vinosQuery = supabaseAdmin
+        .from('vinos')
+        .select('*')
+        .eq('restaurante_id', restaurante.id)
+        .eq('activo', true)
+      if (esPerfilGoiko(restaurante)) {
+        vinosQuery = vinosQuery.order('created_at', { ascending: true })
+      }
       const [{ data: vinos }, { data: platos }, { data: seleccion }] = await Promise.all([
-        supabaseAdmin.from('vinos').select('*').eq('restaurante_id', restaurante.id).eq('activo', true),
+        vinosQuery,
         supabaseAdmin.from('platos').select('*').eq('restaurante_id', restaurante.id).eq('activo', true),
         supabaseAdmin
           .from('seleccion_especial')

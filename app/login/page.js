@@ -10,6 +10,8 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   async function handleLogin(event) {
     event.preventDefault()
@@ -24,6 +26,23 @@ export default function Login() {
       window.location.href = isAdminEmail(email) ? '/admin/consultoria' : '/dashboard'
     }
     setLoading(false)
+  }
+
+  async function handlePasswordReset() {
+    setError('')
+    setResetSent(false)
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Introduce tu email para enviarte el enlace de recuperacion')
+      return
+    }
+    setResetLoading(true)
+    await fetch('/api/auth/password-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    setResetSent(true)
+    setResetLoading(false)
   }
 
   return (
@@ -79,13 +98,16 @@ export default function Login() {
           </label>
 
           {error && <p className="login-error">{error}</p>}
+          {resetSent && <p className="login-muted">Si el email pertenece a una cuenta activa, recibiras un enlace para crear una nueva contrasena.</p>}
 
           <button type="submit" className="btn btn-primary login-submit" disabled={loading}>
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
 
           <div className="login-help">
-            <span>No tienes acceso?</span>
+            <button type="button" onClick={handlePasswordReset} disabled={resetLoading} style={{ border: 'none', background: 'transparent', padding: 0, color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
+              {resetLoading ? 'Enviando...' : 'He olvidado mi contrasena'}
+            </button>
             <Link href="/cartavinos#contacto">Solicitar demo privada</Link>
           </div>
 

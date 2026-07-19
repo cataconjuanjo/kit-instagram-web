@@ -241,7 +241,7 @@
   border: 1px solid var(--color-primario, #d4c6aa);
   border-radius: 8px;
   background: #fffaf3;
-  color: var(--color-primario, #531827);
+  color: var(--color-primario, #74223d);
   padding: 0 13px;
   cursor: pointer;
   font-size: 12px;
@@ -1646,6 +1646,51 @@
 .compareAction,
 .compareText {
   font-family: var(--font-titulo, system-ui, sans-serif);
+}
+
+.fontGaramond .title {
+  font-size: 32px;
+  line-height: 1.02;
+}
+
+.fontGaramond .sectionTitle {
+  font-size: 22px;
+  line-height: 1.08;
+}
+
+.fontGaramond .wineName {
+  font-size: 19px;
+  line-height: 1.16;
+  font-weight: 600;
+}
+
+.fontGaramond .regionName {
+  font-size: 13px;
+}
+
+.fontGaramond .regionDo {
+  font-size: 13px;
+}
+
+.fontGaramond .bottomNavBtn,
+.fontGaramond .chip,
+.fontGaramond .filterButton,
+.fontGaramond .clearButton {
+  font-size: 14px;
+}
+
+@media (min-width: 720px) {
+  .fontGaramond .title {
+    font-size: 38px;
+  }
+
+  .fontGaramond .sectionTitle {
+    font-size: 25px;
+  }
+
+  .fontGaramond .wineName {
+    font-size: 20px;
+  }
 }
 
 @media print {

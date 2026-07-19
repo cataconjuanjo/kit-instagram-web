@@ -15,7 +15,7 @@ Cada objeto debe tener esta forma exacta:
 {
   "nombre": "nombre del vino",
   "bodega": "bodega si aparece o vacío",
-  "tipo": "tinto|blanco|rosado|espumoso|generoso|dulce|naranja|sin_alcohol",
+  "tipo": "tinto|blanco|rosado|espumoso|generoso|dulce|naranja|sin_alcohol|sidra",
   "region": "zona o D.O. exactamente como aparece en el texto, o vacío",
   "uva": "uvas si aparecen o vacío",
   "anada": "añada si aparece o vacío",
@@ -25,7 +25,7 @@ Cada objeto debe tener esta forma exacta:
 }
 
 Reglas:
-No incluyas cervezas, refrescos, cócteles, cafés ni platos.
+No incluyas cervezas, refrescos, cócteles, cafés ni platos. Solo incluye sidras si existe una sección explícita de Sidras/Sagardoak o equivalente.
 Si no sabes un campo, déjalo vacío o 0.
 Usa precios en euros como número sin símbolo.
 REGIÓN: copia la D.O. o zona geográfica tal como aparece en el texto (ej: "D.O. Sierras de Málaga", "D.O.Ca. Rioja", "AOC Sancerre"). No la traduzcas ni la inventes.
@@ -34,8 +34,10 @@ Si aparecen precio de copa y botella, distingue ambos.
 Si solo hay un precio y no indica copa, colócalo como precio_botella.
 Cuando los precios aparecen separados por espacio en la misma línea (ej: "8,0 38" o "4,5 22"), el primero es copa y el segundo botella.
 Cuando el texto une los precios sin separación (ej: "1455" o "8,038"), interpreta como copa 14 y botella 55, copa 8 y botella 38.
-Usa encabezados como Blancos, Tintos, Champagne, Generosos, Espumosos para inferir el tipo cuando no aparezca en la línea del vino.
-No dupliques el mismo vino.`
+Usa encabezados como Blancos, Tintos, Champagne, Generosos, Espumosos o Sidras/Sagardoak para inferir el tipo cuando no aparezca en la línea del vino.
+No dupliques el mismo vino.` + `
+
+Regla final de precios: no uses 0 para indicar ausencia de precio. Si no hay precio de copa o botella, devuelve null en ese campo.`
 
 function extraerJson(texto) {
   const limpio = (texto || '').trim()

@@ -10,6 +10,43 @@ function planDesdePriceId(priceId) {
   return null
 }
 
+function estadoDesdeStripe(status) {
+  const statusMap = {
+    active: 'active',
+    trialing: 'trialing',
+    past_due: 'past_due',
+    canceled: 'cancelled',
+    unpaid: 'past_due',
+    incomplete: 'past_due',
+    incomplete_expired: 'cancelled',
+    paused: 'past_due',
+  }
+  return statusMap[status] || 'past_due'
+}
+
+function fechaStripe(timestamp) {
+  return timestamp ? new Date(timestamp * 1000).toISOString() : null
+}
+
+async function actualizarRestauranteStripe(adminSupabase, filtro, update) {
+  const { error } = await adminSupabase
+    .from('restaurantes')
+    .update(update)
+    [filtro.campo](...filtro.args)
+
+  if (!error) return
+  if (!/schema cache|stripe_/i.test(error.message || '')) throw error
+
+  const fallback = Object.fromEntries(
+    Object.entries(update).filter(([key]) => !key.startsWith('stripe_'))
+  )
+  const { error: fallbackError } = await adminSupabase
+    .from('restaurantes')
+    .update(fallback)
+    [filtro.campo](...filtro.args)
+  if (fallbackError) throw fallbackError
+}
+
 // El webhook necesita el body en raw para verificar la firma de Stripe
 export async function POST(req) {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -43,24 +80,32 @@ export async function POST(req) {
         const restaurante_id = session.metadata?.restaurante_id
         const customerId     = session.customer
         const subscriptionId = session.subscription
-
         if (!restaurante_id) break
+        const { data: restauranteActual } = await adminSupabase
+          .from('restaurantes')
+          .select('id, subscription_status')
+          .eq('id', restaurante_id)
+          .single()
+        if (restauranteActual?.subscription_status === 'cancelled') {
+          console.log(`checkout.session.completed ignorado - restaurante ${restaurante_id} cancelado`)
+          break
+        }
 
         // Obtener el plan desde la suscripción
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         const priceId = subscription.items.data[0]?.price?.id
         const plan = planDesdePriceId(priceId) || session.metadata?.plan || 'basic'
+        const subscription_status = estadoDesdeStripe(subscription.status)
 
-        await adminSupabase
-          .from('restaurantes')
-          .update({
-            plan,
-            subscription_status:    'active',
-            stripe_customer_id:     customerId,
-            stripe_subscription_id: subscriptionId,
-            stripe_price_id:        priceId,
-          })
-          .eq('id', restaurante_id)
+        await actualizarRestauranteStripe(adminSupabase, { campo: 'eq', args: ['id', restaurante_id] }, {
+          plan,
+          subscription_status,
+          stripe_customer_id:     customerId,
+          stripe_subscription_id: subscriptionId,
+          stripe_price_id:        priceId,
+          trial_expires_at:       fechaStripe(subscription.trial_end),
+          trial_started_at:       fechaStripe(subscription.trial_start),
+        })
 
         console.log(`✓ checkout.session.completed — restaurante ${restaurante_id} → plan ${plan}`)
         break
@@ -72,31 +117,18 @@ export async function POST(req) {
         const customerId = sub.customer
         const priceId    = sub.items.data[0]?.price?.id
         const plan       = planDesdePriceId(priceId)
-
-        // Mapear estado de Stripe → estado interno
-        const statusMap = {
-          active:            'active',
-          trialing:          'trialing',
-          past_due:          'past_due',
-          canceled:          'cancelled',
-          unpaid:            'past_due',
-          incomplete:        'past_due',
-          incomplete_expired:'cancelled',
-          paused:            'past_due',
-        }
-        const subscription_status = statusMap[sub.status] || 'past_due'
+        const subscription_status = estadoDesdeStripe(sub.status)
 
         const update = {
           subscription_status,
           stripe_subscription_id: sub.id,
           stripe_price_id: priceId,
+          trial_expires_at: fechaStripe(sub.trial_end),
+          trial_started_at: fechaStripe(sub.trial_start),
           ...(plan ? { plan } : {}),
         }
 
-        await adminSupabase
-          .from('restaurantes')
-          .update(update)
-          .eq('stripe_customer_id', customerId)
+        await actualizarRestauranteStripe(adminSupabase, { campo: 'eq', args: ['stripe_customer_id', customerId] }, update)
 
         console.log(`✓ subscription.updated — customer ${customerId} → ${subscription_status} / plan ${plan}`)
         break

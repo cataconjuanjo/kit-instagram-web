@@ -2,7 +2,7 @@
   --dashboard-mobile-bar-height: calc(60px + env(safe-area-inset-top, 0px));
   display: flex;
   min-height: 100vh;
-  background: #F8F7F4;
+  background: #f8f3eb;
   color: #222222;
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
@@ -25,8 +25,8 @@
   flex-direction: column;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: #3A3A3A;
-  border-right: 1px solid rgba(255, 250, 243, 0.08);
+  background: #1c0e13;
+  border-right: 1px solid rgba(255, 250, 243, 0.06);
   z-index: 50;
   overflow-y: auto;
   scrollbar-width: none;
@@ -181,8 +181,8 @@
 
 .navActive {
   color: #ffffff;
-  background: #8B3F5C;
-  border-left-color: #ffffff;
+  background: #74223d;
+  border-left-color: rgba(255, 250, 243, 0.55);
 }
 
 .navIcon {
@@ -247,7 +247,7 @@
 }
 
 .navActive .navStat {
-  background: rgba(83, 24, 39, 0.55);
+  background: rgba(40, 8, 18, 0.55);
   color: rgba(255, 250, 243, 0.9);
 }
 
@@ -503,7 +503,7 @@ button.footerLink {
 .topSearch kbd {
   border: 1px solid #d8d0c4;
   border-radius: 6px;
-  background: #F8F7F4;
+  background: #f8f3eb;
   color: #625a53;
   padding: 4px 7px;
   font-size: 10px;
@@ -547,7 +547,7 @@ button.footerLink {
   min-height: 44px;
   border: 1px solid #d8d0c4;
   border-radius: 8px;
-  background: #F8F7F4;
+  background: #f8f3eb;
   color: #222222;
   padding: 0 12px;
   font: inherit;
@@ -572,7 +572,7 @@ button.footerLink {
 }
 
 .searchResults a:hover {
-  background: #F8F7F4;
+  background: #f8f3eb;
 }
 
 .searchResults span,
@@ -644,7 +644,7 @@ button.footerLink {
 
 .profileDropdown a:hover,
 .profileDropdown button:hover {
-  background: #F8F7F4;
+  background: #f8f3eb;
 }
 
 .shortcutToast {
@@ -698,7 +698,7 @@ button.footerLink {
   min-height: 40px;
   border: 1px solid #d8d0c4;
   border-radius: 8px;
-  background: #F8F7F4;
+  background: #f8f3eb;
   color: #1A1A1A;
   padding: 0 12px;
   font-weight: 900;
@@ -717,7 +717,7 @@ button.footerLink {
   gap: 10px;
   align-items: center;
   border-radius: 8px;
-  background: #F8F7F4;
+  background: #f8f3eb;
   padding: 10px;
 }
 
@@ -747,8 +747,8 @@ button.footerLink {
   min-height: var(--dashboard-mobile-bar-height);
   box-sizing: border-box;
   padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
-  background: #171416;
-  border-bottom: 1px solid rgba(255, 250, 243, 0.1);
+  background: #1c0e13;
+  border-bottom: 1px solid rgba(255, 250, 243, 0.09);
   position: sticky;
   top: 0;
   z-index: 40;

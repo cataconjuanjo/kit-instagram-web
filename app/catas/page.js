@@ -40,7 +40,7 @@ const formatos = [
 ]
 
 const temas = [
-  'Vinos de Malaga y Andalucia',
+  'Vinos de Málaga y Andalucía',
   'Blancos que sorprenden',
   'Tintos con estilos muy distintos',
   'Burbujas y generosos',
@@ -49,14 +49,32 @@ const temas = [
 ]
 
 export default function CatasPage() {
+  const serviceJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: 'Catas de vino en Málaga',
+    provider: {
+      '@type': 'LocalBusiness',
+      name: 'Cata con Juanjo',
+      url: 'https://cataconjuanjo.com',
+    },
+    areaServed: ['Málaga', 'Andalucía'],
+    serviceType: 'Catas de vino privadas, para empresas y cursos de iniciación',
+    description: metadata.description,
+  }
+
   return (
     <main className="site-shell">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }}
+      />
       <PublicNav active="catas" eyebrow="Catas y experiencias" />
 
       <section className="hero catas-hero">
         <div className="hero-copy">
-          <p className="eyebrow">Catas de vino en Malaga</p>
-          <h1>Aprende a entender el vino, no solo beberlo.</h1>
+          <p className="eyebrow">Catas de vino en Málaga</p>
+          <h1>Catas de vino en Málaga: aprende a entender el vino, no solo beberlo.</h1>
           <p className="lead">
             Catas privadas, experiencias para empresas y cursos de iniciación con una idea sencilla: disfrutar más
             del vino porque entiendes mejor lo que tienes en la copa.
@@ -67,9 +85,9 @@ export default function CatasPage() {
           </div>
         </div>
         <div className="photo-collage">
-          <Image src="/assets/instagram/post-4.jpg" alt="Cata de vinos con Juanjo Garcia" width={640} height={640} />
-          <Image src="/assets/instagram/post-8.jpg" alt="Formación de vino en Málaga" width={640} height={640} />
-          <Image src="/assets/instagram/post-10.jpg" alt="Vinos para cata privada" width={640} height={853} />
+          <Image src="/assets/instagram/post-6.jpg" alt="Mesa preparada para una cata privada de vinos" width={640} height={853} />
+          <Image src="/assets/instagram/post-10.jpg" alt="Vino de Málaga servido en copa para una cata" width={640} height={853} />
+          <Image src="/assets/instagram/post-9.jpg" alt="Botella y copa para experiencia de cata de vino" width={640} height={853} />
         </div>
       </section>
 
@@ -78,6 +96,31 @@ export default function CatasPage() {
           Una buena cata no va de acertar aromas raros. Va de entender acidez, cuerpo, textura, origen y por qué un
           vino funciona mejor en una mesa que en otra.
         </p>
+      </section>
+
+      <section className="section catas-business-section">
+        <div className="section-head">
+          <p className="eyebrow">Catas para empresas en Málaga</p>
+          <h2>Un formato elegante para equipos, clientes y eventos corporativos.</h2>
+        </div>
+        <div className="split compact-split">
+          <div className="copy-stack">
+            <p>
+              Diseño catas de vino para empresas en Málaga con ritmo, participación y lenguaje claro. Pueden funcionar
+              como team building, incentivo, recepción de clientes o actividad dentro de una jornada corporativa.
+            </p>
+            <p>
+              La selección puede centrarse en vinos de Málaga y Andalucía, estilos internacionales, maridajes o una
+              dinámica comparativa para que el grupo participe sin sentirse en una clase.
+            </p>
+          </div>
+          <div className="business-list">
+            <span>Team building</span>
+            <span>Eventos con clientes</span>
+            <span>Catas con maridaje</span>
+            <span>Formato en empresa o espacio privado</span>
+          </div>
+        </div>
       </section>
 
       <section id="formatos" className="section">
@@ -133,7 +176,7 @@ export default function CatasPage() {
           <p className="eyebrow">Reserva</p>
           <h2>Cuéntame qué tienes en mente.</h2>
           <p>
-            Dime fecha aproximada, número de personas, lugar y tipo de cata. Te respondo con una propuesta clara.
+            Dime fecha apróximada, número de personas, lugar y tipo de cata. Te respondo con una propuestá clara.
           </p>
           <div className="contact-links">
             <a href="mailto:cataconjuanjo@gmail.com" title="Email" aria-label="Enviar email">

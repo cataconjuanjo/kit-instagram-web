@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { isLargeFormatWine } from '../../lib/wineFormat'
+import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
 import styles from './carta.module.css'
 
 const FONT_MAP = {
@@ -8,6 +10,7 @@ const FONT_MAP = {
   sans:      { family: 'system-ui, sans-serif',                googleFont: null },
   condensed: { family: '"Barlow Condensed", sans-serif',       googleFont: 'Barlow+Condensed:wght@400;600;700;800' },
   display:   { family: '"Playfair Display", serif',            googleFont: 'Playfair+Display:wght@400;500;600;700' },
+  garamond:  { family: '"Cormorant Garamond", Georgia, serif', googleFont: 'Cormorant+Garamond:wght@400;500;600;700' },
 }
 
 const DEFAULT_RESTAURANT_BANNER = '/images/wine-cellar-hero.png'
@@ -86,8 +89,8 @@ const t = {
     añadirComparador: 'Añadir a comparador',
     quitarComparador: 'Quitar',
     maxComparador: 'Máximo 4 vinos',
-    tipoLabel: { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja', sin_alcohol: 'Sin alcohol' },
-    tipoPlural: { tinto: 'Tintos', blanco: 'Blancos', rosado: 'Rosados', espumoso: 'Espumosos', generoso: 'Generosos', dulce: 'Dulces', naranja: 'Naranjas', sin_alcohol: 'Sin alcohol' },
+    tipoLabel: { tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso', generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja', sin_alcohol: 'Sin alcohol', sidra: 'Sidra' },
+    tipoPlural: { tinto: 'Tintos', blanco: 'Blancos', rosado: 'Rosados', espumoso: 'Espumosos', generoso: 'Generosos', dulce: 'Dulces', naranja: 'Naranjas', sin_alcohol: 'Sin alcohol', sidra: 'Sidras' },
     btl: 'btl',
   },
   en: {
@@ -151,8 +154,8 @@ const t = {
     añadirComparador: 'Add to compare',
     quitarComparador: 'Remove',
     maxComparador: 'Maximum 4 wines',
-    tipoLabel: { tinto: 'Red', blanco: 'White', rosado: 'Rosé', espumoso: 'Sparkling', generoso: 'Fortified', dulce: 'Sweet', naranja: 'Orange', sin_alcohol: 'Non-alcoholic' },
-    tipoPlural: { tinto: 'Reds', blanco: 'Whites', rosado: 'Rosés', espumoso: 'Sparkling', generoso: 'Fortified', dulce: 'Sweet', naranja: 'Orange', sin_alcohol: 'Non-alcoholic' },
+    tipoLabel: { tinto: 'Red', blanco: 'White', rosado: 'Rosé', espumoso: 'Sparkling', generoso: 'Fortified', dulce: 'Sweet', naranja: 'Orange', sin_alcohol: 'Non-alcoholic', sidra: 'Cider' },
+    tipoPlural: { tinto: 'Reds', blanco: 'Whites', rosado: 'Rosés', espumoso: 'Sparkling', generoso: 'Fortified', dulce: 'Sweet', naranja: 'Orange', sin_alcohol: 'Non-alcoholic', sidra: 'Ciders' },
     btl: 'btl',
   }
 }
@@ -160,7 +163,63 @@ const t = {
 const RESTAURANTE_PREFIX = '[RESTAURANTE] '
 const esSugerenciaRestaurante = item => String(item.nota_personal || '').startsWith(RESTAURANTE_PREFIX)
 const limpiarNotaSeleccion = nota => String(nota || '').replace(RESTAURANTE_PREFIX, '')
+const precioValido = valor => Number(valor) > 0
 const _formatPrecio = (valor, decimalesMax) => Number(valor || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: decimalesMax })
+const precioCartaSeguro = (valor, formatter) => precioValido(valor) ? formatter(valor) : ''
+
+function esPerfilGoiko(restaurante = {}) {
+  const texto = `${restaurante?.slug || ''} ${restaurante?.nombre || ''}`.toLowerCase()
+  return texto.includes('goiko') || texto.includes('janardoa')
+}
+
+function copyCartaRestaurante(base, restaurante = {}) {
+  if (!esPerfilGoiko(restaurante)) return base
+  return {
+    ...base,
+    soloInternacionales: 'Solo Francia, Italia y otros',
+    tipoLabel: {
+      ...base.tipoLabel,
+      tinto: 'Tinto / ardo beltza',
+      blanco: 'Blanco / ardo txuria',
+      rosado: 'Rosado / ardo gorria',
+      espumoso: 'Espumoso / aparduna',
+      generoso: 'Generoso / ardo oparoa',
+      dulce: 'Dulce / ardo gozoa',
+      sidra: 'Sidra / sagardoa',
+    },
+    tipoPlural: {
+      ...base.tipoPlural,
+      tinto: 'Tintos / ardo beltzak',
+      blanco: 'Blancos / ardo txuriak',
+      rosado: 'Rosados / ardo gorriak',
+      espumoso: 'Espumosos / apardunak',
+      generoso: 'Generosos / ardo oparoak',
+      dulce: 'Dulces / ardo gozoak',
+      sidra: 'Sidras / sagardoak',
+    },
+    tiposOrdenados: ['sidra', 'tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol'],
+    tiposPorCopaOrdenados: ['blanco', 'tinto', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol'],
+    gruposAmbito: {
+      local: 'Bertako ardoak / vinos de la zona',
+      espana: 'D.O. peninsulares e islas',
+      internacional: 'Francia, Italia y otros',
+      sin_origen: 'Otras zonas / bestelakoak',
+    },
+    vinosPorCopa: 'Vinos por copa / Kopak',
+  }
+}
+
+function textoVinoOrden(vino = {}) {
+  return `${vino.nombre || ''} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`
+}
+
+function nombreVinoCarta(vino = {}) {
+  return String(vino.nombre || '')
+    .replace(/\b(MAGNUM|Jeroboam)(?=[A-ZÁÉÍÓÚÑ])/g, '$1 ')
+    .replace(/([a-záéíóúñ])(?=(Bodegas|Domaine|Château|Chateau|Maison|Viña|Vina|Celler|Clos|Pago|Tempos|Marqués|Marques|Mestres|Jacquesson|Albamar|Fulcro|Zárate|Zarate|Rafael|Artuke|Frontonio|Sierra|CVNE|Antídoto|Antidoto|Bollinger|Bérêche|Bereche|Moët|Moet|Louis|Valette|Dard|Mas|Teso|Bruno)\b)/g, '$1 ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
 
 export default function CartaPublica({ params }) {
   const [restaurante, setRestaurante] = useState(null)
@@ -205,8 +264,9 @@ export default function CartaPublica({ params }) {
     ? new URLSearchParams(window.location.search).get('prueba') || ''
     : ''
 
-  const i = t[idioma]
-  const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87' }
+  const estructuraPdfGoiko = esPerfilGoiko(restaurante)
+  const i = copyCartaRestaurante(t[idioma], restaurante)
+  const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87', sidra: '#8A8F3A' }
   const seleccionJuanjo = seleccion.filter(item => !esSugerenciaRestaurante(item))
   const seleccionRestaurante = seleccion.filter(esSugerenciaRestaurante)
   const vinoEnSeleccion = (vino, lista) => lista.some(item => String(item.vino_id || item.vinos?.id) === String(vino.id))
@@ -563,10 +623,18 @@ setPerfiles(nuevosPerfiles)
     return matchTipo && matchBusqueda && matchPrecio && matchInternacional && matchCopa
   })
 
-  const tipos = ['todos', ...new Set(vinos.map(v => v.tipo))]
+  const tiposDisponibles = [...new Set(vinos.map(v => v.tipo).filter(Boolean))]
+  const tiposBaseOrdenados = i.tiposOrdenados || ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol', 'sidra']
+  const tiposCopaBaseOrdenados = i.tiposPorCopaOrdenados || ['blanco', 'tinto', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol']
+  const ordenarTiposDisponibles = orden => [...orden, ...tiposDisponibles]
+    .filter((tipo, index, lista) => tipo && tiposDisponibles.includes(tipo) && lista.indexOf(tipo) === index)
+  const tiposOrdenados = ordenarTiposDisponibles(tiposBaseOrdenados)
+  const tiposPorCopaOrdenados = ordenarTiposDisponibles(tiposCopaBaseOrdenados)
+  const tipos = ['todos', ...tiposOrdenados]
   const colorPrimario = restaurante?.color_primario || '#111111'
   const colorAcento = restaurante?.color_acento || colorPrimario
   const fontTitulo = (FONT_MAP[restaurante?.tipografia] || FONT_MAP.serif).family
+  const claseTipografia = restaurante?.tipografia === 'garamond' ? styles.fontGaramond : ''
 
   function heroStyle() {
     const bannerUrl = restaurante?.banner_url || DEFAULT_RESTAURANT_BANNER
@@ -609,7 +677,7 @@ setPerfiles(nuevosPerfiles)
 
   const busquedaVinoSommelierLimpia = normalizarTexto(busquedaVinoSommelier)
   const vinosSommelierFiltrados = vinos
-    .filter(vino => vino?.activo !== false && Number(vino.precio_botella) > 0)
+    .filter(vino => vino?.activo !== false && vino?.tipo !== 'sidra' && !isLargeFormatWine(vino) && Number(vino.precio_botella) > 0)
     .filter(vino => {
       const texto = normalizarTexto(`${vino.nombre || ''} ${vino.bodega || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.tipo || ''}`)
       return !busquedaVinoSommelierLimpia || texto.includes(busquedaVinoSommelierLimpia)
@@ -627,8 +695,6 @@ setPerfiles(nuevosPerfiles)
   const mostrarSeleccion = seleccion.length > 0 && !busqueda && filtro === 'todos' && !precioMax && !soloInternacional && !soloCopa
   const filtroActivo = precioMax || filtro !== 'todos' || soloInternacional || soloCopa
   const busquedaOFiltrado = Boolean(busqueda || filtroActivo)
-  const tiposOrdenados = ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol']
-  const tiposPorCopaOrdenados = ['blanco', 'tinto', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol']
   const vinosPorCopa = vinos.filter(v => Number(v.precio_copa) > 0).length
   const vinosMenos30 = vinos.filter(v => Number(v.precio_botella) > 0 && Number(v.precio_botella) <= 30).length
   const vinosFrescos = vinos.filter(v => ['blanco', 'rosado', 'espumoso', 'generoso'].includes(v.tipo)).length
@@ -636,24 +702,80 @@ setPerfiles(nuevosPerfiles)
   const vinosPorCopaFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && !esCoravin(v))
 
   function ambitoComercial(vino) {
-    const region = normalizarTexto(vino.region || '')
-    const regionCanonicaLimpia = region
-    const localTerms = ['malaga', 'sierras de malaga', 'andalucia', 'cadiz', 'jerez', 'sanlucar', 'manzanilla', 'montilla', 'moriles', 'condado de huelva', 'granada', 'cordoba', 'sevilla']
-    const espanaTerms = ['rioja', 'ribera', 'duero', 'toro', 'bierzo', 'priorat', 'montsant', 'jumilla', 'yecla', 'alicante', 'almansa', 'valdepenas', 'carinena', 'pago de otazu', 'rueda', 'rias baixas', 'valdeorras', 'navarra', 'penedes', 'penedes', 'corpinnat', 'cava', 'calatayud', 'mallorca', 'monterrei', 'ribeira sacra', 'ribeiro', 'txakoli', 'txacoli', 'valle de la orotava', 'prado irache', 'somontano', 'manchuela', 'madrid', 'gredos', 'catalunya', 'cataluna', 'castilla', 'leon', 'galicia', 'aragon', 'murcia', 'valencia', 'extremadura', 'toledo']
-    const internacionalTerms = ['internacional', 'francia', 'aoc ', 'champagne', 'chablis', 'borgona', 'bourgogne', 'borogogne', 'gevrey', 'chambertin', 'chassagne', 'montrachet', 'corton', 'sancerre', 'anjou', 'jura', 'beajolais', 'beaujolais', 'burdeos', 'bordeaux', 'margaux', 'loire', 'loira', 'rhone', 'rhodano', 'rodano', 'alsace', 'alsacia', 'italia', 'toscana', 'piamonte', 'sicilia', 'siciliane', 'alemania', 'mosel', 'portugal', 'vinho verde', 'oporto', 'douro', 'dao', 'alentejo', 'normandie', 'sudafrica', 'sudáfrica', 'argentina', 'chile', 'napa', 'austria']
-
-    if (localTerms.some(t => regionCanonicaLimpia.includes(t) || region.includes(t))) return 'local'
-    if (espanaTerms.some(t => regionCanonicaLimpia.includes(t) || region.includes(t))) return 'espana'
-    if (vino.internacional === true || internacionalTerms.some(t => regionCanonicaLimpia.includes(t) || region.includes(t))) return 'internacional'
-    return 'sin_origen'
+    return commercialScopeForWine(vino, restaurante)
   }
 
   const gruposAmbito = [
-    { id: 'local', label: 'Vinos locales / Andalucía' },
-    { id: 'espana', label: 'España' },
-    { id: 'internacional', label: 'Internacionales' },
-    { id: 'sin_origen', label: 'Sin D.O. / otros' },
+    { id: 'local', label: i.gruposAmbito?.local || localWineLabel(restaurante) },
+    { id: 'espana', label: i.gruposAmbito?.espana || 'España' },
+    { id: 'internacional', label: i.gruposAmbito?.internacional || 'Internacionales' },
+    { id: 'sin_origen', label: i.gruposAmbito?.sin_origen || 'Sin D.O. / otros' },
   ]
+  const pareceRosado = vino => {
+    const texto = normalizarTexto(textoVinoOrden(vino))
+    return ['rose', 'rosado', 'rosat', 'saignee', 'rose de riceys'].some(term => texto.includes(term))
+  }
+  const esEspumosoRosado = vino => {
+    const texto = normalizarTexto(textoVinoOrden(vino))
+    const pareceEspumoso = ['champagne', 'cava', 'corpinnat', 'brut', 'petillant', 'ancestral'].some(term => texto.includes(term))
+    return pareceRosado(vino) && pareceEspumoso
+  }
+  const esRosadoTranquilo = vino => (vino.tipo === 'rosado' || (vino.tipo === 'espumoso' && pareceRosado(vino))) && !esEspumosoRosado(vino)
+  const esGranFormato = isLargeFormatWine
+  const seccionesPdfGoiko = [
+    {
+      id: 'pdf-sidras',
+      label: 'Sidras / Sagardoak',
+      sinRegion: true,
+      filtro: vino => vino.tipo === 'sidra' && !esGranFormato(vino),
+    },
+    {
+      id: 'pdf-generosos',
+      label: 'Generosos / Ardo oparoak',
+      ordenRegiones: ['jerez', 'manzanilla', 'montilla'],
+      filtro: vino => vino.tipo === 'generoso' && !esGranFormato(vino),
+    },
+    {
+      id: 'pdf-espumosos-blancos',
+      label: 'Espumosos blancos / Apardun txuriak',
+      ordenRegiones: ['sin ig', 'cava', 'penedes', 'corpinnat', 'champagne', 'cotes des blancs', 'cotes des bar', 'montagne de reims', 'vallee de la marne', 'vouvray', 'sudsteiermark'],
+      filtro: vino => vino.tipo === 'espumoso' && !pareceRosado(vino) && !esGranFormato(vino),
+    },
+    {
+      id: 'pdf-espumosos-rosados',
+      label: 'Espumosos rosados / Apardun gorriak',
+      ordenRegiones: ['cava', 'corpinnat', 'champagne'],
+      filtro: vino => esEspumosoRosado(vino) && !esGranFormato(vino),
+    },
+    {
+      id: 'pdf-rosados',
+      label: 'Rosados / Ardo gorriak',
+      ordenRegiones: ['navarra', 'manchuela', 'ribera', 'rioja', 'vin de france', 'rose de riceys', 'getariako', 'bizkaiko'],
+      filtro: vino => esRosadoTranquilo(vino) && !esGranFormato(vino),
+    },
+    {
+      id: 'pdf-blancos',
+      label: 'Blancos / Ardo txuriak',
+      ordenRegiones: ['navarra', 'rioja', 'rias baixas', 'ribeiro', 'galicia', 'monterrei', 'valdeorras', 'ribeira sacra', 'bierzo', 'rueda', 'segovia', 'castilla', 'salamanca', 'valdejalon', 'penedes', 'costers del segre', 'alella', 'terra alta', 'cadiz', 'orotava', 'canarias', 'lanzarote', 'irouleguy', 'jurancon', 'sancerre', 'saumur', 'savennieres', 'pouilly', 'vouvray', 'anjou', 'chablis', 'bourgogne', 'chassagne', 'saint romain', 'meursault', 'macon', 'aligote', 'rhone', 'crozes', 'roussillon', 'jura', 'arbois', 'alsace', 'austria', 'mosel', 'dao', 'portugal', 'alemania', 'grecia', 'italia'],
+      filtro: vino => (vino.tipo === 'blanco' || vino.tipo === 'naranja') && !esGranFormato(vino),
+    },
+    {
+      id: 'pdf-tintos',
+      label: 'Tintos / Ardo beltzak',
+      ordenRegiones: ['rioja alavesa', 'rioja alta', 'rioja oriental', 'rioja', 'navarra', 'arlanza', 'valdeorras', 'galicia', 'ribeira sacra', 'ribeiro', 'monterrei', 'rias baixas', 'bierzo', 'ribera', 'castilla', 'mentrida', 'toro', 'valdejalon', 'costers del segre', 'terra alta', 'montsant', 'mallorca', 'manchuela', 'terrerazo', 'jumilla', 'orotava', 'irouleguy', 'madiran', 'bordeaux', 'margaux', 'estephe', 'pessac', 'loire', 'chinon', 'anjou', 'saumur', 'sancerre', 'bourgogne', 'hautes cotes de nuits', 'cotes de nuits', 'aloxe', 'marsannay', 'fixin', 'gevrey', 'nuits saint georges', 'chassagne', 'volnay', 'corton', 'clos vougeot', 'macon', 'beaujolais', 'morgon', 'fleurie', 'jura', 'rhone', 'cotes du rhone', 'crozes', 'saint joseph', 'chateauneuf', 'vivarais', 'brunello', 'barolo', 'romagna', 'chianti', 'siciliana', 'douro', 'bairrada', 'dao', 'alentejo', 'peloponnese', 'primosten'],
+      filtro: vino => vino.tipo === 'tinto' && !esGranFormato(vino),
+    },
+    {
+      id: 'pdf-grandes-formatos',
+      label: 'Grandes formatos',
+      porTipo: true,
+      tipos: ['espumoso', 'blanco', 'rosado', 'tinto', 'generoso', 'dulce', 'naranja'],
+      filtro: esGranFormato,
+    },
+  ].map(seccion => ({
+    ...seccion,
+    vinos: vinosFiltrados.filter(seccion.filtro),
+  })).filter(seccion => seccion.vinos.length > 0)
 
   useEffect(() => {
     if (loading || seccionInicialAplicada || seccionAbierta || busquedaOFiltrado) return
@@ -663,15 +785,24 @@ setPerfiles(nuevosPerfiles)
         setSeccionInicialAplicada(true)
         return
       }
+      if (estructuraPdfGoiko && seccionesPdfGoiko.length > 0) {
+        setSeccionAbierta(seccionesPdfGoiko[0].id)
+        setSeccionInicialAplicada(true)
+        return
+      }
       const primerAmbito = gruposAmbito.find(ambito => vinosFiltrados.some(v => ambitoComercial(v) === ambito.id))
       if (primerAmbito) setSeccionAbierta(primerAmbito.id)
       if (primerAmbito || vinosFiltrados.length > 0) setSeccionInicialAplicada(true)
     }, 0)
     return () => clearTimeout(timer)
-  }, [loading, seccionInicialAplicada, seccionAbierta, busquedaOFiltrado, vinosPorCopaFiltrados.length, vinosFiltrados.length])
+  }, [loading, seccionInicialAplicada, seccionAbierta, busquedaOFiltrado, vinosPorCopaFiltrados.length, vinosFiltrados.length, estructuraPdfGoiko, seccionesPdfGoiko.length])
 
-  function prioridadRegion(region) {
+  function prioridadRegion(region, ordenPersonalizado = null) {
     const r = normalizarTexto(region)
+    if (ordenPersonalizado?.length) {
+      const index = ordenPersonalizado.findIndex(term => r.includes(term))
+      if (index >= 0) return index + 1
+    }
     const orden = [
       ['rioja', 1],
       ['ribera', 2],
@@ -693,105 +824,10 @@ setPerfiles(nuevosPerfiles)
   }
 
   function regionOrden(vino) {
-    const region = normalizarTexto(vino.region || '')
-    if (!region) return 'Sin D.O.'
-
-    const reglas = [
-      ['sierras de malaga', 'D.O. Sierras de Málaga'],
-      ['malaga ancestral', 'Málaga Ancestral'],
-      ['malaga', 'D.O. Málaga'],
-      ['manzanilla', 'D.O. Manzanilla-Sanlúcar'],
-      ['jerez', 'D.O. Jerez'],
-      ['montilla', 'D.O. Montilla-Moriles'],
-      ['cadiz', 'V.T. Cádiz'],
-      ['v.t. granada', 'V.T. Granada'],
-      ['granada', 'D.O. Granada'],
-      ['v.t. alicante', 'V.T. Alicante'],
-      ['v.t. pened', 'V.T. Penedès'],
-      ['v.t. sierra de gredos', 'V.T. Sierra de Gredos'],
-      ['v.t. murcia', 'V.T. Murcia'],
-      ['v.t. valencia', 'V.T. Valencia'],
-      ['v.t. portugal', 'V.T. Portugal'],
-      ['v.t. toledo', 'V.T. Toledo'],
-      ['rioja', 'D.O.Ca. Rioja'],
-      ['ribera del duero', 'D.O. Ribera del Duero'],
-      ['toro', 'D.O. Toro'],
-      ['bierzo', 'D.O. Bierzo'],
-      ['priorat', 'D.O.Q. Priorat'],
-      ['montsant', 'D.O. Montsant'],
-      ['rias baixas', 'D.O. Rías Baixas'],
-      ['ribeiro', 'D.O. Ribeiro'],
-      ['ribeira sacra', 'D.O. Ribeira Sacra'],
-      ['valdeorras', 'D.O. Valdeorras'],
-      ['rueda', 'D.O. Rueda'],
-      ['jumilla', 'D.O. Jumilla'],
-      ['yecla', 'D.O. Yecla'],
-      ['alicante', 'D.O. Alicante'],
-      ['almansa', 'D.O. Almansa'],
-      ['valdepenas', 'D.O. Valdepeñas'],
-      ['carinena', 'D.O.P. Cariñena'],
-      ['pago de otazu', 'D.O.P. Pago de Otazu'],
-      ['cava', 'D.O. Cava'],
-      ['corpinnat', 'Corpinnat'],
-      ['penedes', 'D.O. Penedès'],
-      ['mallorca', 'D.O. Mallorca'],
-      ['monterrei', 'D.O. Monterrei'],
-      ['navarra', 'Navarra'],
-      ['prado irache', 'D.O.P. Prado Irache'],
-      ['txakoli', 'D.O. Txakoli'],
-      ['txacoli', 'D.O. Txakoli'],
-      ['valle de la orotava', 'D.O. Valle de la Orotava'],
-      ['gredos', 'Sierra de Gredos'],
-      ['madrid', 'D.O. Vinos de Madrid'],
-      ['calatayud', 'D.O. Calatayud'],
-      ['castilla-la mancha', 'Castilla-La Mancha'],
-      ['castilla y leon', 'Castilla y León'],
-      ['castilla leon', 'Castilla y León'],
-      ['castilla', 'Castilla'],
-      ['catalunya', 'Catalunya'],
-      ['extremadura', 'Extremadura'],
-      ['murcia', 'V.T. Murcia'],
-      ['valencia', 'V.T. Valencia'],
-      ['toledo', 'V.T. Toledo'],
-      ['champagne', 'AOC Champagne'],
-      ['coteaux champenois', 'AOC Coteaux Champenois'],
-      ['chablis', 'AOC Chablis'],
-      ['chassagne', 'AOC Chassagne-Montrachet'],
-      ['montrachet', 'AOC Chassagne-Montrachet'],
-      ['gevrey', 'AOC Gevrey-Chambertin'],
-      ['chambertin', 'AOC Gevrey-Chambertin'],
-      ['corton', 'AOC Corton'],
-      ['bourgogne', 'AOC Bourgogne'],
-      ['borgogne', 'AOC Bourgogne'],
-      ['borgona', 'AOC Bourgogne'],
-      ['borogogne', 'AOC Bourgogne'],
-      ['beajolais', 'AOC Beaujolais'],
-      ['beaujolais', 'AOC Beaujolais'],
-      ['sancerre', 'AOC Sancerre'],
-      ['anjou', 'AOC Anjou'],
-      ['loire', 'Loire'],
-      ['jura', 'AOC Jura'],
-      ['alsace', 'AOC Alsace'],
-      ['alsacia', 'AOC Alsace'],
-      ['rhone', 'AOC Côtes du Rhône'],
-      ['rodano', 'AOC Côtes du Rhône'],
-      ['rhodano', 'AOC Côtes du Rhône'],
-      ['chateauneuf', 'AOC Châteauneuf-du-Pape'],
-      ['margaux', 'AOC Margaux'],
-      ['sicilia', 'IGT Terre Siciliane'],
-      ['siciliane', 'IGT Terre Siciliane'],
-      ['mosel', 'Mosel'],
-      ['vinho verde', 'DOC Vinho Verde'],
-      ['oporto', 'Oporto'],
-      ['portugal', 'Portugal'],
-      ['normandie', 'Normandie'],
-      ['sudafrica', 'Sudáfrica'],
-    ]
-
-    return reglas.find(([term]) => region.includes(term))?.[1] || vino.region || 'Sin D.O.'
+    return canonicalWineRegion(vino)
   }
 
-  function agruparPorRegion(lista) {
+  function agruparPorRegion(lista, opciones = {}) {
     const grupos = lista.reduce((acc, vino) => {
       const region = regionOrden(vino)
       if (!acc[region]) acc[region] = []
@@ -800,11 +836,47 @@ setPerfiles(nuevosPerfiles)
     }, {})
 
     return Object.entries(grupos)
-      .sort(([a], [b]) => prioridadRegion(a) - prioridadRegion(b) || a.localeCompare(b, 'es'))
+      .sort(([a], [b]) => prioridadRegion(a, opciones.ordenRegiones) - prioridadRegion(b, opciones.ordenRegiones) || a.localeCompare(b, 'es'))
       .map(([region, items]) => ({
         region,
-        vinos: items.sort((a, b) => Number(a.precio_botella || 0) - Number(b.precio_botella || 0) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'))
+        vinos: opciones.preservarOrden ? items : items.sort((a, b) => Number(a.precio_botella || 0) - Number(b.precio_botella || 0) || String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'))
       }))
+  }
+
+  function renderBloquePdfGoiko(seccion, opciones = {}) {
+    const lista = seccion.vinos
+    if (!lista.length) return null
+    if (seccion.porTipo) {
+      const tiposSeccion = seccion.tipos || tiposOrdenados
+      return tiposSeccion.map(tipo => {
+        const vinosTipo = lista.filter(v => v.tipo === tipo)
+        if (!vinosTipo.length) return null
+        return (
+          <div key={`${seccion.id}-${tipo}`} className={styles.regionSubgroup}>
+            <p className={styles.regionName}>{i.tipoPlural[tipo] || tipo}</p>
+            {agruparPorRegion(vinosTipo, { preservarOrden: true }).map(grupoRegion => (
+              <div key={`${seccion.id}-${tipo}-${grupoRegion.region}`} className={styles.regionSubgroup}>
+                <p className={styles.regionDo}>{grupoRegion.region}</p>
+                {grupoRegion.vinos.map(v => renderVinoCard(v, opciones))}
+              </div>
+            ))}
+          </div>
+        )
+      })
+    }
+    if (seccion.sinRegion) {
+      return (
+        <div className={styles.regionGroup}>
+          {lista.map(v => renderVinoCard(v, opciones))}
+        </div>
+      )
+    }
+    return agruparPorRegion(lista, { ordenRegiones: seccion.ordenRegiones, preservarOrden: true }).map(grupoRegion => (
+      <div key={`${seccion.id}-${grupoRegion.region}`} className={styles.regionSubgroup}>
+        <p className={styles.regionName}>{grupoRegion.region}</p>
+        {grupoRegion.vinos.map(v => renderVinoCard(v, opciones))}
+      </div>
+    ))
   }
 
   function renderBloqueAmbito(ambito, lista, opciones = {}) {
@@ -812,8 +884,8 @@ setPerfiles(nuevosPerfiles)
     if (!vinosAmbito.length) return null
     return (
       <div key={`${opciones.prefix || 'ambito'}-${ambito.id}`} className={styles.regionGroup}>
-        <h3 className={styles.regionTitle}>{ambito.label}</h3>
-        {tiposPorCopaOrdenados.map(tipo => {
+        {!opciones.ocultarAmbitoLabel && <h3 className={styles.regionTitle}>{ambito.label}</h3>}
+        {(opciones.precioCopaPrincipal ? tiposPorCopaOrdenados : tiposOrdenados).map(tipo => {
           const vinosTipo = vinosAmbito.filter(v => v.tipo === tipo)
           if (!vinosTipo.length) return null
           return (
@@ -834,8 +906,9 @@ setPerfiles(nuevosPerfiles)
 
   function renderVinoCard(v, opciones = {}) {
     const enComparador = vinosComparador.find(vc => vc.id === v.id)
-    const precioCopaPrincipal = opciones.precioCopaPrincipal && Number(v.precio_copa) > 0
-    const tieneCopa = Number(v.precio_copa) > 0
+    const tieneCopa = precioValido(v.precio_copa)
+    const tieneBotella = precioValido(v.precio_botella)
+    const precioCopaPrincipal = tieneCopa && (opciones.precioCopaPrincipal || !tieneBotella)
     const etiquetas = etiquetasVino(v)
     const recomendadoConsultor = etiquetas.some(etiqueta => etiqueta.tipo === 'consultor')
     const notaSeleccion = notaCorta(limpiarNotaSeleccion(seleccionDeVino(v)?.nota_personal))
@@ -849,7 +922,7 @@ setPerfiles(nuevosPerfiles)
           <div className={styles.wineTop}>
             <span className={styles.dot} style={{ background: tipoDot[v.tipo] || colorPrimario }} />
             <div className={styles.wineTitleBlock}>
-              <h3 className={styles.wineName}>{v.nombre}</h3>
+              <h3 className={styles.wineName}>{nombreVinoCarta(v)}</h3>
               {v.anada && <span className={styles.vintagePill}>{v.anada}</span>}
             </div>
           </div>
@@ -876,27 +949,24 @@ setPerfiles(nuevosPerfiles)
           {precioCopaPrincipal ? (
             <>
               <div className={styles.mainPrice}>
-                <span className={styles.formattedPrice}>{precioCopaPrincipal ? precioCopaCarta(v.precio_copa) : precioBotellaCarta(v.precio_botella)}</span>
-                <span>{v.precio_copa} €</span>
+                <span className={styles.formattedPrice}>{precioCopaCarta(v.precio_copa)}</span>
                 <small>{i.copa}</small>
               </div>
-              {v.precio_botella && <p className={styles.priceMeta}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
-              {v.precio_botella && <p className={styles.secondaryPrice}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
-              <p className={styles.glassPrice}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>
-              <p className={styles.bottlePrice}>{v.precio_copa} €</p>
-              <p className={styles.glassPrice}>{i.copa}</p>
+              {tieneBotella && <p className={styles.priceMeta}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
+              {tieneBotella && <p className={styles.secondaryPrice}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
+              {tieneBotella && <p className={styles.glassPrice}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
             </>
           ) : (
             <>
               <div className={styles.mainPrice}>
-                <span className={styles.formattedPrice}>{precioCopaPrincipal ? precioCopaCarta(v.precio_copa) : precioBotellaCarta(v.precio_botella)}</span>
-                <span>{v.precio_botella} €</span>
+                <span className={styles.formattedPrice}>{precioCopaPrincipal ? precioCopaCarta(v.precio_copa) : precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</span>
+                <span>{precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</span>
                 <small>{i.botella}</small>
               </div>
               {tieneCopa && <p className={styles.priceMeta}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
               {tieneCopa && <p className={styles.secondaryPrice}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
-              {v.precio_copa && <p className={styles.glassPrice}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
-              <p className={styles.bottlePrice}>{v.precio_botella} €</p>
+              {tieneCopa && <p className={styles.glassPrice}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
+              {tieneBotella && <p className={styles.bottlePrice}>{precioBotellaCarta(v.precio_botella)}</p>}
             </>
           )}
           <button
@@ -1010,7 +1080,7 @@ setPerfiles(nuevosPerfiles)
           {vinosComparador.map((v, idx) => (
             <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: coloresVino[idx] }} />
-              <p style={{ margin: 0, fontSize: 13, color: '#111', fontWeight: 500 }}>{v.nombre}</p>
+              <p style={{ margin: 0, fontSize: 13, color: '#111', fontWeight: 500 }}>{nombreVinoCarta(v)}</p>
             </div>
           ))}
         </div>
@@ -1067,7 +1137,7 @@ setPerfiles(nuevosPerfiles)
             {vinosComparador.map((v, idx) => (
               <div key={v.id} style={{ background: '#fff', padding: '12px 16px', textAlign: 'center' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: coloresVino[idx], margin: '0 auto 4px' }} />
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: '#111' }}>{v.nombre}</p>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: '#111' }}>{nombreVinoCarta(v)}</p>
                 <p style={{ margin: '2px 0 0', fontSize: 10, color: '#bbb' }}>{[v.bodega, v.uva].filter(Boolean).join(' · ')}</p>
               </div>
             ))}
@@ -1093,7 +1163,7 @@ setPerfiles(nuevosPerfiles)
             </div>
             {vinosComparador.map(v => (
               <div key={v.id + '_precio'} style={{ background: '#fff', padding: '10px 16px', textAlign: 'center' }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#111' }}>{v.precio_botella} €</p>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#111' }}>{precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</p>
               </div>
             ))}
           </div>
@@ -1126,7 +1196,7 @@ setPerfiles(nuevosPerfiles)
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: tipoDot[vinoSeleccionado.tipo] }} />
           <span style={{ fontSize: 12, color: '#999', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{i.tipoLabel[vinoSeleccionado.tipo]}</span>
         </div>
-        <h1 style={{ fontSize: 30, fontWeight: 300, color: '#111', margin: '0 0 8px', fontFamily: fontTitulo, lineHeight: 1.3 }}>{vinoSeleccionado.nombre}</h1>
+        <h1 style={{ fontSize: 30, fontWeight: 300, color: '#111', margin: '0 0 8px', fontFamily: fontTitulo, lineHeight: 1.3 }}>{nombreVinoCarta(vinoSeleccionado)}</h1>
         <p style={{ fontSize: 16, color: '#888', margin: '0 0 32px', fontWeight: 300 }}>{vinoSeleccionado.bodega}</p>
         <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0f0', overflow: 'hidden', marginBottom: 20 }}>
           {[
@@ -1162,7 +1232,7 @@ setPerfiles(nuevosPerfiles)
   )
 
   if (vista === 'carta') return (
-    <div className={styles.shell} style={{ paddingBottom: 80 }}>
+    <div className={`${styles.shell} ${claseTipografia}`} style={{ paddingBottom: 80 }}>
       {demoPresentacion && (
         <div className={styles.demoPresentationBar}>
           <span>Vista cliente · Carta</span>
@@ -1173,7 +1243,6 @@ setPerfiles(nuevosPerfiles)
         <div className={styles.heroTop}>
           <div>
             {renderHeroLogo()}
-
             <p className={styles.kicker}>{i.carta}</p>
             <h1 className={styles.title}>{restaurante.nombre}</h1>
             <a className={styles.heroCredit} href="/cartavinos" target="_blank" rel="noreferrer">
@@ -1325,13 +1394,13 @@ setPerfiles(nuevosPerfiles)
               aria-expanded={soloCopa || busquedaOFiltrado || seccionAbierta === 'copas'}
             >
               <div>
-                <h2 className={styles.sectionTitle}>Vinos por copa</h2>
+                <h2 className={styles.sectionTitle}>{i.vinosPorCopa || 'Vinos por copa'}</h2>
                 <p className={styles.sectionSub}>{vinosPorCopaFiltrados.length} {i.referencias}</p>
               </div>
               <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'copas' ? '−' : '+'}</span>
             </button>
             {(soloCopa || busquedaOFiltrado || seccionAbierta === 'copas') && gruposAmbito.map(ambito =>
-              renderBloqueAmbito(ambito, vinosPorCopaFiltrados, { precioCopaPrincipal: true, prefix: 'copas' })
+              renderBloqueAmbito(ambito, vinosPorCopaFiltrados, { precioCopaPrincipal: true, prefix: 'copas', ocultarAmbitoLabel: estructuraPdfGoiko })
             )}
           </section>
         )}
@@ -1352,12 +1421,12 @@ setPerfiles(nuevosPerfiles)
               <article key={s.id} className={styles.featuredCard} onClick={() => abrirFichaVino(s.vinos)}>
                 <div className={styles.wineTop}>
                   <span className={styles.dot} style={{ background: tipoDot[s.vinos?.tipo] || colorPrimario }} />
-                  <h3 className={styles.wineName}>{s.vinos?.nombre}</h3>
+                  <h3 className={styles.wineName}>{nombreVinoCarta(s.vinos)}</h3>
                 </div>
                 <p className={styles.wineNotes}>{limpiarNotaSeleccion(s.nota_personal)}</p>
                 <div className={styles.priceBlock} style={{ marginTop: 12 }}>
                   <p className={styles.wineMeta} style={{ margin: 0 }}>{resumenVino(s.vinos || {})}</p>
-                  <p className={styles.bottlePrice}>{s.vinos?.precio_botella} €</p>
+                  {precioValido(s.vinos?.precio_botella) && <p className={styles.bottlePrice}>{precioBotellaCarta(s.vinos.precio_botella)}</p>}
                 </div>
               </article>
             ))}
@@ -1379,12 +1448,12 @@ setPerfiles(nuevosPerfiles)
               <article key={s.id} className={styles.featuredCard} onClick={() => abrirFichaVino(s.vinos)}>
                 <div className={styles.wineTop}>
                   <span className={styles.dot} style={{ background: tipoDot[s.vinos?.tipo] || colorPrimario }} />
-                  <h3 className={styles.wineName}>{s.vinos?.nombre}</h3>
+                  <h3 className={styles.wineName}>{nombreVinoCarta(s.vinos)}</h3>
                 </div>
                 <p className={styles.wineNotes}>{limpiarNotaSeleccion(s.nota_personal)}</p>
                 <div className={styles.priceBlock} style={{ marginTop: 12 }}>
                   <p className={styles.wineMeta} style={{ margin: 0 }}>{resumenVino(s.vinos || {})}</p>
-                  <p className={styles.bottlePrice}>{s.vinos?.precio_botella} €</p>
+                  {precioValido(s.vinos?.precio_botella) && <p className={styles.bottlePrice}>{precioBotellaCarta(s.vinos.precio_botella)}</p>}
                 </div>
               </article>
             ))}
@@ -1406,7 +1475,7 @@ setPerfiles(nuevosPerfiles)
               aria-expanded={soloCopa || busquedaOFiltrado || seccionAbierta === 'copas'}
             >
               <div>
-                <h2 className={styles.sectionTitle}>Vinos por copa</h2>
+                <h2 className={styles.sectionTitle}>{i.vinosPorCopa || 'Vinos por copa'}</h2>
                 <p className={styles.sectionSub}>{vinosFiltrados.filter(v => Number(v.precio_copa) > 0).length} {i.referencias}</p>
               </div>
               <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'copas' ? '−' : '+'}</span>
@@ -1427,12 +1496,31 @@ setPerfiles(nuevosPerfiles)
               )
             })}
             {(soloCopa || busquedaOFiltrado || seccionAbierta === 'copas') && gruposAmbito.map(ambito =>
-              renderBloqueAmbito(ambito, vinosFiltrados.filter(v => Number(v.precio_copa) > 0), { precioCopaPrincipal: true, prefix: 'copas' })
+              renderBloqueAmbito(ambito, vinosFiltrados.filter(v => Number(v.precio_copa) > 0), { precioCopaPrincipal: true, prefix: 'copas', ocultarAmbitoLabel: estructuraPdfGoiko })
             )}
           </section>
         )}
 
-        {gruposAmbito.map(ambito => {
+        {estructuraPdfGoiko ? seccionesPdfGoiko.map(seccion => {
+          const abierta = busquedaOFiltrado || seccionAbierta === seccion.id
+          return (
+            <section key={seccion.id} className={styles.accordionSection}>
+              <button
+                type="button"
+                className={styles.accordionHead}
+                onClick={evento => toggleSeccion(seccion.id, evento)}
+                aria-expanded={abierta}
+              >
+                <div>
+                  <h2 className={styles.sectionTitle}>{seccion.label}</h2>
+                  <p className={styles.sectionSub}>{seccion.vinos.length} {i.referencias}</p>
+                </div>
+                <span className={styles.accordionIcon}>{abierta ? '−' : '+'}</span>
+              </button>
+              {abierta && renderBloquePdfGoiko(seccion)}
+            </section>
+          )
+        }) : gruposAmbito.map(ambito => {
           const grupo = vinosFiltrados.filter(v => ambitoComercial(v) === ambito.id)
           if (!grupo.length) return null
           const abierta = busquedaOFiltrado || seccionAbierta === ambito.id
@@ -1486,13 +1574,13 @@ setPerfiles(nuevosPerfiles)
                     <div className={styles.wineInfo} onClick={() => abrirFichaVino(v)}>
                       <div className={styles.wineTop}>
                         <span className={styles.dot} style={{ background: tipoDot[v.tipo] || colorPrimario }} />
-                        <h3 className={styles.wineName}>{v.nombre}</h3>
+                        <h3 className={styles.wineName}>{nombreVinoCarta(v)}</h3>
                       </div>
                       {resumenVinoListado(v) && <p className={styles.wineMeta}>{resumenVinoListado(v)}</p>}
                     </div>
                     <div className={styles.priceBlock}>
-                      {v.precio_copa && <p className={styles.glassPrice}>{v.precio_copa} € · {i.copa.toLowerCase()}</p>}
-                      <p className={styles.bottlePrice}>{v.precio_botella} €</p>
+                      {precioValido(v.precio_copa) && <p className={styles.glassPrice}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa.toLowerCase())}</p>}
+                      {precioValido(v.precio_botella) && <p className={styles.bottlePrice}>{precioBotellaCarta(v.precio_botella)}</p>}
                       <button
                         className={`${styles.compareButton} ${enComparador ? styles.compareActive : ''}`}
                         onClick={() => toggleComparador(v)}
@@ -1537,7 +1625,7 @@ setPerfiles(nuevosPerfiles)
   )
 
   if (vista === 'sommelier') return (
-    <div className={styles.shell}>
+    <div className={`${styles.shell} ${claseTipografia}`}>
       {demoPresentacion && (
         <div className={styles.demoPresentationBar}>
           <span>Vista cliente · ArmonIA</span>
@@ -1548,7 +1636,6 @@ setPerfiles(nuevosPerfiles)
         <div className={styles.heroTop}>
           <div>
             {renderHeroLogo()}
-
             <p className={styles.kicker}>{i.sommelier}</p>
             <h1 className={styles.title}>{restaurante.nombre}</h1>
             <a className={styles.heroCredit} href="/cartavinos" target="_blank" rel="noreferrer">
@@ -1593,8 +1680,8 @@ setPerfiles(nuevosPerfiles)
         {modoSommelier === 'quiz' && (() => {
           const preguntas = [
             { id: 'tipo', q: i.quizQ1, ops: [
-              { v: 'blanco', l: 'Blanco' }, { v: 'tinto', l: 'Tinto' }, { v: 'espumoso', l: 'Espumoso' },
-              { v: 'rosado', l: 'Rosado' }, { v: 'generoso', l: 'Generoso' }, { v: null, l: idioma === 'en' ? 'No preference' : 'Me da igual' },
+              { v: 'blanco', l: i.tipoLabel.blanco }, { v: 'tinto', l: i.tipoLabel.tinto }, { v: 'espumoso', l: i.tipoLabel.espumoso },
+              { v: 'rosado', l: i.tipoLabel.rosado }, { v: 'generoso', l: i.tipoLabel.generoso }, { v: null, l: idioma === 'en' ? 'No preference' : 'Me da igual' },
             ]},
             { id: 'estilo', q: i.quizQ2, ops: [
               { v: 'fresco', l: idioma === 'en' ? 'Fresh & light' : 'Fresco y ligero' },
@@ -1673,7 +1760,7 @@ setPerfiles(nuevosPerfiles)
             {vinoMandatoCliente ? (
               <article className={styles.wineChoiceCard} onClick={() => abrirFichaVino(vinoMandatoCliente)}>
                 <div>
-                  <h3>{vinoMandatoCliente.nombre}</h3>
+                  <h3>{nombreVinoCarta(vinoMandatoCliente)}</h3>
                   <p>{[vinoMandatoCliente.bodega, vinoMandatoCliente.uva, vinoMandatoCliente.region].filter(Boolean).join(' · ')}</p>
                 </div>
                 <strong>{precioBotellaCarta(vinoMandatoCliente.precio_botella)}</strong>
@@ -1697,7 +1784,7 @@ setPerfiles(nuevosPerfiles)
                     >
                       <span className={styles.dot} style={{ background: tipoDot[vino.tipo] || colorPrimario }} />
                       <span>
-                        <strong>{vino.nombre}</strong>
+                        <strong>{nombreVinoCarta(vino)}</strong>
                         <em>{[vino.bodega, vino.uva, vino.region].filter(Boolean).join(' · ')}</em>
                       </span>
                       <b>{precioBotellaCarta(vino.precio_botella)}</b>
@@ -2000,8 +2087,8 @@ setPerfiles(nuevosPerfiles)
         style={{ background: '#f5f2ee', borderRadius: 12, padding: '16px', marginBottom: 10, cursor: 'pointer', border: `1px solid ${colorPrimario}22` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[s.vinos?.tipo] || '#888', flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111', flex: 1, fontFamily: fontTitulo }}>{s.vinos?.nombre}</p>
-          <div style={{ background: colorPrimario, color: '#fff', fontSize: 13, fontWeight: 500, padding: '4px 12px', borderRadius: 20, flexShrink: 0 }}>{s.vinos?.precio_botella} €</div>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111', flex: 1, fontFamily: fontTitulo }}>{nombreVinoCarta(s.vinos)}</p>
+          {precioValido(s.vinos?.precio_botella) && <div style={{ background: colorPrimario, color: '#fff', fontSize: 13, fontWeight: 500, padding: '4px 12px', borderRadius: 20, flexShrink: 0 }}>{precioBotellaCarta(s.vinos.precio_botella)}</div>}
         </div>
         <p style={{ margin: '0 0 10px 18px', fontSize: 13, color: '#555', lineHeight: 1.8, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>{limpiarNotaSeleccion(s.nota_personal)}</p>
         <p style={{ margin: '0 0 0 18px', fontSize: 11, color: '#aaa' }}>{s.vinos?.bodega}{s.vinos?.region ? ` · ${s.vinos.region}` : ''}</p>
@@ -2027,8 +2114,8 @@ setPerfiles(nuevosPerfiles)
         style={{ background: '#f5f2ee', borderRadius: 12, padding: '16px', marginBottom: 10, cursor: 'pointer', border: `1px solid ${colorPrimario}22` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[s.vinos?.tipo] || '#888', flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111', flex: 1, fontFamily: fontTitulo }}>{s.vinos?.nombre}</p>
-          <div style={{ background: colorPrimario, color: '#fff', fontSize: 13, fontWeight: 500, padding: '4px 12px', borderRadius: 20, flexShrink: 0 }}>{s.vinos?.precio_botella} €</div>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111', flex: 1, fontFamily: fontTitulo }}>{nombreVinoCarta(s.vinos)}</p>
+          {precioValido(s.vinos?.precio_botella) && <div style={{ background: colorPrimario, color: '#fff', fontSize: 13, fontWeight: 500, padding: '4px 12px', borderRadius: 20, flexShrink: 0 }}>{precioBotellaCarta(s.vinos.precio_botella)}</div>}
         </div>
         <p style={{ margin: '0 0 10px 18px', fontSize: 13, color: '#555', lineHeight: 1.8, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>{limpiarNotaSeleccion(s.nota_personal)}</p>
         <p style={{ margin: '0 0 0 18px', fontSize: 11, color: '#aaa' }}>{s.vinos?.bodega}{s.vinos?.region ? ` · ${s.vinos.region}` : ''}</p>
@@ -2044,7 +2131,7 @@ setPerfiles(nuevosPerfiles)
             {vinosFiltrados.length === 0 && (
               <p style={{ textAlign: 'center', color: '#bbb', fontSize: 15, padding: '40px 0' }}>{i.sinResultados}</p>
             )}
-            {['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja'].map(tipo => {
+            {tiposOrdenados.map(tipo => {
               const grupo = vinosFiltrados.filter(v => v.tipo === tipo)
               if (!grupo.length) return null
               return (
@@ -2063,16 +2150,16 @@ setPerfiles(nuevosPerfiles)
                         <div onClick={() => abrirFichaVino(v)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, cursor: 'pointer' }}>
                           <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[v.tipo], flexShrink: 0 }} />
                           <div style={{ flex: 1 }}>
-                            <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111' }}>{v.nombre}</p>
+                            <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111' }}>{nombreVinoCarta(v)}</p>
                             <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>
                               {[v.bodega, v.anada].filter(Boolean).join(' · ')}
                             </p>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            {v.precio_copa && (
-                              <p style={{ margin: '0 0 2px', fontSize: 12, color: '#999' }}>{v.precio_copa} € <span style={{ fontSize: 10, color: '#ccc' }}>{i.copa.toLowerCase()}</span></p>
+                            {precioValido(v.precio_copa) && (
+                              <p style={{ margin: '0 0 2px', fontSize: 12, color: '#999' }}>{precioCopaCarta(v.precio_copa)} <span style={{ fontSize: 10, color: '#ccc' }}>{i.copa.toLowerCase()}</span></p>
                             )}
-                            <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111' }}>{v.precio_botella} € <span style={{ fontSize: 10, color: '#ccc', fontWeight: 400 }}>{i.btl}</span></p>
+                            {precioValido(v.precio_botella) && <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111' }}>{precioBotellaCarta(v.precio_botella)} <span style={{ fontSize: 10, color: '#ccc', fontWeight: 400 }}>{i.btl}</span></p>}
                           </div>
                         </div>
                         <button
@@ -2128,8 +2215,8 @@ setPerfiles(nuevosPerfiles)
           {modoSommelier === 'quiz' && (() => {
             const preguntas = [
               { id: 'tipo', q: i.quizQ1, ops: [
-                { v: 'blanco', l: 'Blanco' }, { v: 'tinto', l: 'Tinto' }, { v: 'espumoso', l: 'Espumoso' },
-                { v: 'rosado', l: 'Rosado' }, { v: 'generoso', l: 'Generoso' }, { v: null, l: idioma === 'en' ? 'No preference' : 'Me da igual' },
+              { v: 'blanco', l: i.tipoLabel.blanco }, { v: 'tinto', l: i.tipoLabel.tinto }, { v: 'espumoso', l: i.tipoLabel.espumoso },
+                { v: 'rosado', l: i.tipoLabel.rosado }, { v: 'generoso', l: i.tipoLabel.generoso }, { v: null, l: idioma === 'en' ? 'No preference' : 'Me da igual' },
               ]},
               { id: 'estilo', q: i.quizQ2, ops: [
                 { v: 'fresco', l: idioma === 'en' ? 'Fresh & light' : 'Fresco y ligero' },

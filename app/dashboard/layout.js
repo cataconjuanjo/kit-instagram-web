@@ -19,6 +19,98 @@ const icon = {
   ajustes: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
 }
 
+function formatoTrial(segundos) {
+  if (segundos == null) return ''
+  const totalMinutos = Math.max(0, Math.ceil(Number(segundos || 0) / 60))
+  const horas = Math.floor(totalMinutos / 60)
+  const minutos = totalMinutos % 60
+  if (!horas) return `${minutos} min`
+  return minutos ? `${horas} h ${minutos} min` : `${horas} h`
+}
+
+function fechaTrial(fecha) {
+  if (!fecha) return ''
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+  }).format(new Date(fecha))
+}
+
+function TrialUsageNotice({ trial }) {
+  if (!trial?.enabled) return null
+
+  const remaining = trial.remaining_seconds
+  const low = remaining != null && remaining <= 60 * 60
+  const exhausted = trial.expired || trial.blocked
+  const reasonText = trial.reason === 'date_limit'
+    ? 'La fecha de prueba ha vencido.'
+    : trial.reason === 'usage_limit'
+      ? 'Se han consumido las horas incluidas.'
+      : ''
+
+  return (
+    <div style={{
+      margin: '0 0 16px',
+      padding: '12px 16px',
+      border: exhausted ? '1px solid #e0b4aa' : low ? '1px solid #d8c18b' : '1px solid #e8e3d8',
+      background: exhausted ? '#fff4f1' : low ? '#fff9e8' : '#fbfaf6',
+      color: '#2a2723',
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: 12,
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      fontSize: 13,
+    }}>
+      <span>
+        <strong>{exhausted ? 'Prueba finalizada' : 'Prueba por horas reales'}</strong>
+        {' · '}
+        {remaining != null ? `${formatoTrial(remaining)} restantes` : 'Sin limite de horas'}
+        {trial.expires_at ? ` · disponible hasta ${fechaTrial(trial.expires_at)}` : ''}
+      </span>
+      {reasonText && <span>{reasonText}</span>}
+    </div>
+  )
+}
+
+function TrialExpiredScreen({ trial, onLogout }) {
+  return (
+    <main style={{ padding: '56px 24px', minHeight: '60vh', display: 'grid', placeItems: 'center' }}>
+      <section style={{ maxWidth: 560, border: '1px solid #eee', padding: 28, background: '#fff' }}>
+        <p style={{ margin: '0 0 10px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#999' }}>Prueba finalizada</p>
+        <h1 style={{ margin: '0 0 12px', fontSize: 28, fontWeight: 400, color: '#111' }}>Has consumido la prueba de Carta Viva</h1>
+        <p style={{ margin: '0 0 18px', color: '#666', lineHeight: 1.6 }}>
+          {trial?.reason === 'date_limit'
+            ? 'La ventana de calendario de la prueba ha vencido.'
+            : 'Se han consumido las horas reales incluidas en la prueba.'}
+          {' '}Para continuar, contacta con Carta Viva y activamos el acceso definitivo.
+        </p>
+        <button type="button" onClick={onLogout} style={{ border: 'none', background: '#111', color: '#fff', padding: '12px 18px', cursor: 'pointer' }}>
+          Salir
+        </button>
+      </section>
+    </main>
+  )
+}
+
+function PendingStripeScreen({ restaurante, onLogout }) {
+  return (
+    <main style={{ padding: '56px 24px', minHeight: '60vh', display: 'grid', placeItems: 'center' }}>
+      <section style={{ maxWidth: 560, border: '1px solid #eee', padding: 28, background: '#fff' }}>
+        <p style={{ margin: '0 0 10px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#999' }}>Prueba pendiente</p>
+        <h1 style={{ margin: '0 0 12px', fontSize: 28, fontWeight: 400, color: '#111' }}>Activa la prueba gratuita de Carta Viva</h1>
+        <p style={{ margin: '0 0 18px', color: '#666', lineHeight: 1.6 }}>
+          El acceso de {restaurante?.nombre || 'tu restaurante'} esta preparado. Para abrir la prueba gratuita, completa primero el enlace de Stripe que te hemos enviado.
+          No se cobra nada durante el periodo de prueba y puedes cancelar antes de que empiece el cobro.
+        </p>
+        <button type="button" onClick={onLogout} style={{ border: 'none', background: '#111', color: '#fff', padding: '12px 18px', cursor: 'pointer' }}>
+          Salir
+        </button>
+      </section>
+    </main>
+  )
+}
+
 export default function DashboardLayout({ children }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -37,6 +129,8 @@ export default function DashboardLayout({ children }) {
   ))
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [shortcutMessage, setShortcutMessage] = useState('')
+  const [trialInfo, setTrialInfo] = useState(null)
+  const [isAdminSession, setIsAdminSession] = useState(false)
   const [demoPresentacion] = useState(() => (
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_presentacion') === '1'
   ))
@@ -47,7 +141,8 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     async function cargar() {
-      const { email, restauranteId } = await getEffectiveRestaurantEmail(supabase)
+      const { email, restauranteId, isAdmin } = await getEffectiveRestaurantEmail(supabase)
+      setIsAdminSession(Boolean(isAdmin))
       if (!email && !restauranteId) return
       const queryRestaurante = supabase.from('restaurantes').select('*')
       const { data: rest } = restauranteId
@@ -213,6 +308,7 @@ export default function DashboardLayout({ children }) {
         { href: '/dashboard/bodega', label: 'Stock y pedido', hint: 'Compra sugerida', feature: 'bodega' },
         ...(perfilBodega ? [
           { href: '/dashboard/menu-engineering', label: 'Estrellas y joyas', hint: 'Salida, margen y capital', feature: 'estadisticas' },
+          { href: '/dashboard/menu-engineering#winemapping', label: 'Wine mapping', hint: 'Gamas por ticket medio', feature: 'estadisticas' },
           { href: '/dashboard/catalogo', label: 'Catalogo distribuidores', hint: 'Tarifas y altas', feature: 'bodega' },
           { href: '/dashboard/constructor', label: 'Constructor de carta', hint: 'Ordenar y exportar', feature: 'bodega' },
         ] : []),
@@ -246,7 +342,7 @@ export default function DashboardLayout({ children }) {
     ? searchItems.filter(item => `${item.nombre || ''} ${item.meta || ''} ${item.tipo}`.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
     : []
   const turnoAbierto = Boolean(restaurante?.actividad_real_desde)
-  const pinActivo = Boolean(restaurante?.camarero_pin_configurado || restaurante?.camarero_pin_hash || restaurante?.camarero_pin)
+  const pinActivo = Boolean(restaurante?.camarero_pin_bloqueo_activo)
   const entidadNombre = restaurante?.nombre || (perfilBodega ? 'Bodega' : 'Restaurante')
   const entidadUbicacion = [restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' · ') || (perfilBodega ? 'Sin ubicacion de bodega' : 'Sin ubicacion')
   const estadoActividad = perfilBodega
@@ -256,7 +352,7 @@ export default function DashboardLayout({ children }) {
   return (
     <GuideModeProvider restaurantId={restaurante?.id}>
     <div className={`${styles.shell} ${darkMode ? styles.darkShell : ''}`}>
-      {restaurante && <UsageTracker restauranteId={restaurante.id} />}
+      {restaurante && <UsageTracker restauranteId={restaurante.id} onTrialChange={setTrialInfo} />}
       <nav id="dashboard-navigation" aria-label="Navegación principal" className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <div className={styles.brandHeader}>
@@ -442,6 +538,7 @@ export default function DashboardLayout({ children }) {
           </div>
         </header>
         <GuidePanel />
+        <TrialUsageNotice trial={trialInfo} />
         {shortcutMessage && <div className={styles.shortcutToast} role="status">{shortcutMessage}</div>}
         {shortcutsOpen && (
           <div className={styles.shortcutsBackdrop} role="dialog" aria-modal="true" aria-labelledby="dashboard-shortcuts-title" onClick={() => setShortcutsOpen(false)}>
@@ -461,7 +558,11 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
         )}
-        {children}
+        {!isAdminSession && restaurante && !['active', 'trialing'].includes(restaurante.subscription_status || 'trialing') ? (
+          <PendingStripeScreen restaurante={restaurante} onLogout={cerrarSesion} />
+        ) : trialInfo?.blocked ? (
+          <TrialExpiredScreen trial={trialInfo} onLogout={cerrarSesion} />
+        ) : children}
       </div>
     </div>
     </GuideModeProvider>

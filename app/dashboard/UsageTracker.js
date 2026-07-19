@@ -6,7 +6,7 @@ import { getEffectiveRestaurantEmail } from '../demo'
 
 const PULSE_MS = 60 * 1000
 
-export default function UsageTracker({ restauranteId }) {
+export default function UsageTracker({ restauranteId, onTrialChange }) {
   useEffect(() => {
     let sesionId = ''
     let timer = null
@@ -30,6 +30,19 @@ export default function UsageTracker({ restauranteId }) {
       if (accion === 'inicio' && res.ok) {
         const data = await res.json()
         sesionId = data.sesion_id || ''
+        if (data.trial) onTrialChange?.(data.trial)
+        return
+      }
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.trial) onTrialChange?.(data.trial)
+        return
+      }
+
+      if (res.status === 402) {
+        const data = await res.json().catch(() => null)
+        if (data?.trial) onTrialChange?.({ ...data.trial, blocked: true })
       }
     }
 
@@ -55,7 +68,7 @@ export default function UsageTracker({ restauranteId }) {
       window.removeEventListener('pagehide', finalizar)
       finalizar()
     }
-  }, [restauranteId])
+  }, [restauranteId, onTrialChange])
 
   return null
 }

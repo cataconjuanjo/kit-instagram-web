@@ -38,13 +38,14 @@ function escapeHtml(value = '') {
 }
 
 export async function POST(req) {
-  const { nombre, email, restaurante, mensaje } = await req.json()
+  const { nombre, email, restaurante, mensaje, source } = await req.json()
 
   try {
     const nombreLimpio = String(nombre || '').trim().slice(0, 120)
     const emailLimpio = String(email || '').trim().toLowerCase().slice(0, 160)
     const restauranteLimpio = String(restaurante || '').trim().slice(0, 160)
     const mensajeLimpio = String(mensaje || '').trim().slice(0, 2000)
+    const sourceLimpio = String(source || '').trim().slice(0, 140)
 
     if (!nombreLimpio || !emailLimpio || !mensajeLimpio || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLimpio)) {
       return Response.json({ ok: false, error: 'Datos no validos.' }, { status: 400 })
@@ -58,12 +59,13 @@ export async function POST(req) {
     await resend.emails.send({
       from: 'Cata con Juanjo <onboarding@resend.dev>',
       to: 'cataconjuanjo@gmail.com',
-      subject: `Nuevo contacto: ${restauranteLimpio || 'Cata con Juanjo'}`,
+      subject: `${sourceLimpio || 'Nuevo contacto'}: ${restauranteLimpio || 'Cata con Juanjo'}`,
       html: `
         <h2>Nuevo mensaje desde cataconjuanjo.com</h2>
         <p><strong>Nombre:</strong> ${escapeHtml(nombreLimpio)}</p>
         <p><strong>Email:</strong> ${escapeHtml(emailLimpio)}</p>
         <p><strong>Restaurante:</strong> ${escapeHtml(restauranteLimpio)}</p>
+        <p><strong>Origen:</strong> ${escapeHtml(sourceLimpio || 'No indicado')}</p>
         <p><strong>Mensaje:</strong></p>
         <p>${escapeHtml(mensajeLimpio).replace(/\n/g, '<br>')}</p>
       `

@@ -7,6 +7,7 @@ import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
 import { origenConsumoCarta } from '../../lib/cartaPruebaToken'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { guardarAtribucionDesdeEventos } from '../../lib/recommendationAttribution'
+import { isLargeFormatWine } from '../../lib/wineFormat'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -38,6 +39,10 @@ function getIP(request) {
 
 function normalizarTexto(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+}
+
+function esBebidaFueraMaridaje(vino = {}) {
+  return normalizarTexto(vino.tipo || '') === 'sidra' || isLargeFormatWine(vino)
 }
 
 function lineaVino(vino, soloCopa = false) {
@@ -384,6 +389,7 @@ export async function POST(request) {
     const esSucesion = normalizarTexto(modoMesa).includes('sucesion')
     const soloCopa = esSucesion || normalizarTexto(modoMesa).includes('copa') || normalizarTexto(modoMesa).includes('glass')
     const vinosDisponibles = normalizarStockParaMaridaje(vinosData || [])
+      .filter(vino => !esBebidaFueraMaridaje(vino))
     const vinos = soloCopa
       ? vinosDisponibles.filter(vino => Number(vino.precio_copa) > 0)
       : vinosDisponibles

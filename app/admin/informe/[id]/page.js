@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../supabase'
 import { isAdminEmail } from '../../../demo'
+import { isLocalWine, localTermsForRestaurant } from '../../../lib/wineRegion'
 
 function normalizar(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -175,15 +176,9 @@ function analizar(restaurante, vinos = [], platos = [], estadisticas = [], propu
   const platosQueso = platosActivos.filter(p => incluye(textoPlato(p), ['queso', 'quesos', 'curado', 'cabra']))
   const platosCarne = platosActivos.filter(p => incluye(textoPlato(p), ['brasa', 'vaca', 'ternera', 'presa', 'solomillo', 'rabo', 'cordero', 'cerdo']))
 
-  const zona = normalizar(`${restaurante?.ciudad || ''} ${restaurante?.provincia || ''}`)
-  const terminosLocales = [
-    ...zona.split(/[^a-z0-9]+/).filter(t => t.length > 3),
-    zona.includes('malaga') && 'sierras de malaga',
-    zona.includes('jerez') && 'jerez',
-    zona.includes('cadiz') && 'cadiz'
-  ].filter(Boolean)
+  const terminosLocales = localTermsForRestaurant(restaurante)
   const locales = terminosLocales.length
-    ? activos.filter(v => terminosLocales.some(t => normalizar(textoVino(v)).includes(t)))
+    ? activos.filter(v => isLocalWine(v, restaurante))
     : []
 
   const vinosConPrecio = activos.filter(v => decimal(v.precio_botella) > 0)

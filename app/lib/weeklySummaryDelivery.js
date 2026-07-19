@@ -103,8 +103,8 @@ export function construirMensajeResumenSemanal({ resumen = {}, restaurante = {},
 
   const html = `<!doctype html>
 <html>
-  <body style="margin:0;background:#f4f4f1;color:#171416;font-family:Arial,Helvetica,sans-serif;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f4f1;padding:24px;">
+  <body style="margin:0;background:#f8f3eb;color:#171416;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8f3eb;padding:24px;">
       <tr>
         <td align="center">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;background:#fffdf8;border:1px solid #ddd6cb;border-radius:8px;overflow:hidden;">
@@ -119,15 +119,15 @@ export function construirMensajeResumenSemanal({ resumen = {}, restaurante = {},
               <td style="padding:20px 24px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                   <tr>
-                    <td style="padding:10px;border:1px solid #e5dfd5;border-radius:8px;"><span style="display:block;color:#8b3f5c;font-size:11px;font-weight:700;">Ganado</span><strong style="font-size:22px;">${escapeHtml(kpi(resumen, 'beneficio_bruto_texto'))}</strong></td>
+                    <td style="padding:10px;border:1px solid #e5dfd5;border-radius:8px;"><span style="display:block;color:#74223d;font-size:11px;font-weight:700;">Ganado</span><strong style="font-size:22px;">${escapeHtml(kpi(resumen, 'beneficio_bruto_texto'))}</strong></td>
                     <td style="width:10px;"></td>
-                    <td style="padding:10px;border:1px solid #e5dfd5;border-radius:8px;"><span style="display:block;color:#8b3f5c;font-size:11px;font-weight:700;">Por capturar</span><strong style="font-size:22px;">${escapeHtml(kpi(resumen, 'recuperable_semana_texto'))}</strong></td>
+                    <td style="padding:10px;border:1px solid #e5dfd5;border-radius:8px;"><span style="display:block;color:#74223d;font-size:11px;font-weight:700;">Por capturar</span><strong style="font-size:22px;">${escapeHtml(kpi(resumen, 'recuperable_semana_texto'))}</strong></td>
                   </tr>
                   <tr><td colspan="3" style="height:10px;"></td></tr>
                   <tr>
-                    <td style="padding:10px;border:1px solid #e5dfd5;border-radius:8px;"><span style="display:block;color:#8b3f5c;font-size:11px;font-weight:700;">Recomendacion</span><strong style="font-size:18px;">${escapeHtml(kpi(resumen, 'beneficio_recomendacion_texto'))}</strong></td>
+                    <td style="padding:10px;border:1px solid #e5dfd5;border-radius:8px;"><span style="display:block;color:#74223d;font-size:11px;font-weight:700;">Recomendacion</span><strong style="font-size:18px;">${escapeHtml(kpi(resumen, 'beneficio_recomendacion_texto'))}</strong></td>
                     <td style="width:10px;"></td>
-                    <td style="padding:10px;border:1px solid #e5dfd5;border-radius:8px;"><span style="display:block;color:#8b3f5c;font-size:11px;font-weight:700;">Escenarios</span><strong style="font-size:18px;">${escapeHtml(kpi(resumen, 'oportunidad_anual_texto'))}</strong></td>
+                    <td style="padding:10px;border:1px solid #e5dfd5;border-radius:8px;"><span style="display:block;color:#74223d;font-size:11px;font-weight:700;">Escenarios</span><strong style="font-size:18px;">${escapeHtml(kpi(resumen, 'oportunidad_anual_texto'))}</strong></td>
                   </tr>
                 </table>
                 <h2 style="margin:22px 0 10px;font-size:16px;">3 decisiones</h2>

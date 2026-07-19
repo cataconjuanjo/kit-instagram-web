@@ -21,6 +21,20 @@ function generarPassword() {
   return `CartaViva-${parte}-${sufijo}!`
 }
 
+function segundosPrueba(valor) {
+  if (valor === '' || valor === undefined || valor === null) return null
+  const numero = Number(valor)
+  if (!Number.isFinite(numero) || numero <= 0) return null
+  return Math.round(numero * 60 * 60)
+}
+
+function fechaPrueba(valor) {
+  const texto = String(valor || '').trim()
+  if (!texto) return null
+  const fecha = new Date(texto)
+  return Number.isNaN(fecha.getTime()) ? null : fecha.toISOString()
+}
+
 async function validarAdmin(req) {
   const auth = req.headers.get('authorization') || ''
   const token = auth.replace(/^Bearer\s+/i, '')
@@ -107,7 +121,7 @@ export async function POST(req) {
         slug,
         email,
         ciudad,
-        color_primario: body.color_primario || '#531827',
+        color_primario: body.color_primario || '#74223d',
         color_fondo: body.color_fondo || '#fffaf3',
         color_acento: body.color_acento || '#bfa984',
         tipografia: body.tipografia || 'serif',
@@ -118,6 +132,9 @@ export async function POST(req) {
         facebook_url: body.facebook_url || null,
         plan: body.plan || 'basic',
         subscription_status: body.subscription_status || 'trialing',
+        trial_active_seconds_limit: segundosPrueba(body.trial_hours_limit),
+        trial_expires_at: fechaPrueba(body.trial_expires_at),
+        trial_started_at: body.subscription_status === 'trialing' ? new Date().toISOString() : null,
         ticket_medio_comida: body.ticket_medio_comida === '' || body.ticket_medio_comida === undefined ? null : Number(body.ticket_medio_comida) || null,
         banner_zoom: 100,
         banner_x: 50,
@@ -266,7 +283,7 @@ export async function PATCH(req) {
       email,
       ciudad,
       slug,
-      color_primario: body.color_primario || '#531827',
+      color_primario: body.color_primario || '#74223d',
       color_fondo: body.color_fondo || '#fffaf3',
       color_acento: body.color_acento || '#bfa984',
       tipografia: body.tipografia || 'serif',
@@ -277,6 +294,9 @@ export async function PATCH(req) {
       facebook_url: body.facebook_url || null,
       plan: body.plan || 'basic',
       subscription_status: body.subscription_status || 'trialing',
+      trial_active_seconds_limit: segundosPrueba(body.trial_hours_limit),
+      trial_expires_at: fechaPrueba(body.trial_expires_at),
+      trial_started_at: body.trial_started_at || (body.subscription_status === 'trialing' ? new Date().toISOString() : null),
       ticket_medio_comida: body.ticket_medio_comida === '' || body.ticket_medio_comida === undefined ? null : Number(body.ticket_medio_comida) || null
     }
 

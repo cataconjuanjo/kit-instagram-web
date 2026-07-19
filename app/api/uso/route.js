@@ -18,12 +18,43 @@ async function restauranteDelUsuario(user) {
   const email = (user.email || '').toLowerCase()
   const { data, error } = await supabaseAdmin
     .from('restaurantes')
-    .select('id')
+    .select('id, subscription_status, trial_active_seconds_limit, trial_expires_at')
     .eq('email', email)
     .single()
 
   if (error || !data) return null
   return data
+}
+
+async function segundosUsados(restauranteId) {
+  const { data, error } = await supabaseAdmin
+    .from('sesiones_uso')
+    .select('active_seconds')
+    .eq('restaurante_id', restauranteId)
+
+  if (error) throw error
+  return (data || []).reduce((total, sesion) => total + (Number(sesion.active_seconds) || 0), 0)
+}
+
+function estadoPrueba(restaurante, activeSeconds = 0) {
+  const limit = Number(restaurante?.trial_active_seconds_limit) || 0
+  const expiresAt = restaurante?.trial_expires_at || null
+  const hasUsageLimit = limit > 0
+  const hasCalendarLimit = Boolean(expiresAt)
+  const remaining = hasUsageLimit ? Math.max(0, limit - activeSeconds) : null
+  const expiredByUsage = hasUsageLimit && activeSeconds >= limit
+  const expiredByDate = hasCalendarLimit && new Date(expiresAt).getTime() <= Date.now()
+  const enabled = (restaurante?.subscription_status || 'trialing') === 'trialing' && (hasUsageLimit || hasCalendarLimit)
+
+  return {
+    enabled,
+    active_seconds: activeSeconds,
+    limit_seconds: hasUsageLimit ? limit : null,
+    remaining_seconds: remaining,
+    expires_at: expiresAt,
+    expired: enabled && (expiredByUsage || expiredByDate),
+    reason: expiredByUsage ? 'usage_limit' : expiredByDate ? 'date_limit' : null,
+  }
 }
 
 export async function POST(req) {
@@ -36,6 +67,15 @@ export async function POST(req) {
 
     const body = await req.json()
     const accion = body.accion === 'fin' ? 'fin' : body.accion === 'pulso' ? 'pulso' : 'inicio'
+    const activeSeconds = await segundosUsados(restaurante.id)
+    const trial = estadoPrueba(restaurante, activeSeconds)
+
+    if (trial.expired && accion === 'inicio') {
+      return Response.json({
+        error: 'La prueba ha finalizado.',
+        trial,
+      }, { status: 402 })
+    }
 
     if (accion === 'inicio') {
       const { data, error } = await supabaseAdmin
@@ -49,7 +89,7 @@ export async function POST(req) {
         .single()
 
       if (error) throw error
-      return Response.json({ sesion_id: data.id })
+      return Response.json({ sesion_id: data.id, trial })
     }
 
     const sesionId = String(body.sesion_id || '').trim()
@@ -71,7 +111,10 @@ export async function POST(req) {
     })
     if (error) throw error
 
-    return Response.json({ ok: true })
+    const updatedActiveSeconds = await segundosUsados(restaurante.id)
+    const updatedTrial = estadoPrueba(restaurante, updatedActiveSeconds)
+
+    return Response.json({ ok: true, trial: updatedTrial })
   } catch (error) {
     console.error('Error registrando uso:', error)
     return Response.json({ error: 'No se pudo registrar el uso.' }, { status: 500 })

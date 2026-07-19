@@ -1,6 +1,7 @@
 import { analizarConGrafo } from '../../lib/chartierGraph'
 import { analizarConGoldstein } from '../../lib/goldsteinStructural'
 import { analizarMaridaje } from '../../lib/maridajeEngine'
+import { isLargeFormatWine } from '../../lib/wineFormat'
 
 function compactarCandidato(item) {
   const vino = item.vino || {}
@@ -77,7 +78,7 @@ function claveVino(vino = {}) {
 
 function vinosDisponibles(vinos = []) {
   return vinos
-    .filter(vino => vino?.activo !== false && vino?.stock !== 0 && Number(vino?.precio_botella) > 0)
+    .filter(vino => vino?.activo !== false && vino?.stock !== 0 && !isLargeFormatWine(vino) && Number(vino?.precio_botella) > 0)
     .slice(0, 120)
     .map(vino => ({
       id: vino.id,
