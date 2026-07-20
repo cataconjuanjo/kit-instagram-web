@@ -324,6 +324,7 @@ export default function DashboardLayout({ children }) {
         : [
             { href: '/dashboard/vinos', label: 'Vinos', hint: 'Precios y perfiles', stat: vinoCount || null },
             { href: '/dashboard/platos', label: 'Platos', hint: 'Pistas para maridar', stat: platoCount || null },
+            { href: '/dashboard/plantillas', label: 'Plantillas', hint: 'Experiencias listas' },
           ],
     },
     {
