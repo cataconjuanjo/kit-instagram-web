@@ -65,9 +65,9 @@ export default function CookieConsent() {
       )}
 
       {!consent && (
-        <section className="cookie-consent" aria-label="Aviso de cookies">
+        <section className="cookie-consent" aria-label="Aviso de cookies" aria-live="polite">
           <p>
-            Usamos cookies analíticas para medir visitas y mejorar la web. Puedes aceptar o rechazar.
+            Cookies analíticas para mejorar Carta Viva.
           </p>
           <div className="cookie-consent__actions">
             <button type="button" className="cookie-consent__secondary" onClick={reject}>

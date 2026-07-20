@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useParams } from 'next/navigation'
 import { chartierKb, fuenteChartier } from '../../lib/chartierKb'
 import { buscarPlatoKb } from '../../data/platos_kb'
 import {
@@ -18,6 +19,31 @@ import { isLargeFormatWine } from '../../lib/wineFormat'
 import styles from './camarero.module.css'
 
 const PERFIL_CLIENTE_NEUTRO = { bebe: 'ninguno', estilo: 'ninguno', gama: 'auto' }
+
+function slugDesdeRuta(routeParams, segmento) {
+  const param = routeParams?.slug
+  if (Array.isArray(param)) return param[0] || ''
+  if (typeof param === 'string') return param
+  if (typeof window === 'undefined') return ''
+  const partes = window.location.pathname.split('/').filter(Boolean)
+  const indice = partes.indexOf(segmento)
+  return indice >= 0 ? decodeURIComponent(partes[indice + 1] || '') : ''
+}
+
+function reportarErrorCliente(digest, error) {
+  if (typeof window === 'undefined') return
+  const message = error instanceof Error ? error.message : String(error || 'Error de carga')
+  console.warn(`[${digest}]`, error)
+  fetch('/api/client-error', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      digest,
+      message,
+      path: `${window.location.pathname}${window.location.search}`,
+    }),
+  }).catch(() => {})
+}
 
 function esPerfilGoiko(restaurante = {}) {
   const texto = `${restaurante?.slug || ''} ${restaurante?.nombre || ''}`.toLowerCase()
@@ -57,17 +83,22 @@ function ordenTiposVino(restaurante = {}) {
   return esPerfilGoiko(restaurante) ? ['sidra', ...base] : base
 }
 
-export default function Camarero({ params }) {
+export default function Camarero() {
+  const routeParams = useParams()
+  const slug = slugDesdeRuta(routeParams, 'camarero')
   const [restaurante, setRestaurante] = useState(null)
   const [vinos, setVinos] = useState([])
   const [platos, setPlatos] = useState([])
   const [busqueda, setBusqueda] = useState('')
   const [vinoSeleccionado, setVinoSeleccionado] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [loadRetryKey, setLoadRetryKey] = useState(0)
   const [pin, setPin] = useState('')
   const [autenticado, setAutenticado] = useState(false)
   const [intentandoAccesoAbierto, setIntentandoAccesoAbierto] = useState(false)
   const [errorPin, setErrorPin] = useState(false)
+  const [accessError, setAccessError] = useState('')
   const [salaToken, setSalaToken] = useState('')
   const [filtro, setFiltro] = useState('todos')
   const [vinosComparador, setVinosComparador] = useState([])
@@ -105,6 +136,11 @@ export default function Camarero({ params }) {
   const [mensajeServicio, setMensajeServicio] = useState('')
   const ultimaRecomendacionRegistrada = useRef('')
   const demoFocusAplicado = useRef(false)
+  const iniciarSesionSalaRef = useRef(null)
+
+  const reintentarCarga = () => {
+    setLoadRetryKey(key => key + 1)
+  }
 
   const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87', sidra: '#8A8F3A' }
   const etiquetasTipo = etiquetasTipoVino(restaurante)
@@ -121,9 +157,9 @@ export default function Camarero({ params }) {
       { id: 'generoso', label: tipoLabel.generoso },
     ],
     estilo: [
-      { id: 'facil', label: 'Facil de beber' },
+      { id: 'facil', label: 'Fácil de beber' },
       { id: 'fresco', label: 'Fresco' },
-      { id: 'clasico', label: 'Clasico' },
+      { id: 'clasico', label: 'Clásico' },
       { id: 'local', label: 'De la zona' },
       { id: 'especial', label: 'Algo especial' },
     ],
@@ -146,13 +182,35 @@ export default function Camarero({ params }) {
   }))
 
   useEffect(() => {
+    if (!slug) return
+    let cancelado = false
+
     async function cargar() {
       const esDemo = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1'
-      const slug = (await params).slug
-      const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}`)
-      const data = res.ok ? await res.json() : {}
-      const rest = data.restaurante
-      if (rest) {
+      setLoading(true)
+      setLoadError(null)
+      setAccessError('')
+      setErrorPin(false)
+      try {
+        const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}`)
+        if (res.status === 404) {
+          if (!cancelado) {
+            setRestaurante(null)
+            setLoadError({ type: 'not_found' })
+          }
+          return
+        }
+        const data = res.ok ? await res.json() : {}
+        if (!res.ok) throw new Error(`GET camarero restaurante ${res.status}`)
+        const rest = data.restaurante
+        if (!rest) {
+          if (!cancelado) {
+            setRestaurante(null)
+            setLoadError({ type: 'not_found' })
+          }
+          return
+        }
+        if (cancelado) return
         setRestaurante(rest)
         const objetivoGuardado = typeof window !== 'undefined' ? window.localStorage.getItem(`cartavinos_objetivo_${rest.id}`) : null
         const mapaObjetivo = { vender_copas: 'copas', subir_ticket: 'ticket', rotar_stock: 'rotar', vino_local: 'local' }
@@ -170,11 +228,21 @@ export default function Camarero({ params }) {
         if (esDemo) {
           setDemoActivo(true)
         }
+      } catch (error) {
+        if (!cancelado) {
+          setRestaurante(null)
+          setLoadError({ type: 'network' })
+          reportarErrorCliente('camarero_carga', error)
+        }
+      } finally {
+        if (!cancelado) setLoading(false)
       }
-      setLoading(false)
     }
     cargar()
-  }, [])
+    return () => {
+      cancelado = true
+    }
+  }, [slug, loadRetryKey])
 
   async function comprobarPin() {
     if (!restaurante?.id) return
@@ -183,25 +251,36 @@ export default function Camarero({ params }) {
 
   async function iniciarSesionSala(rest, pinIntroducido, demo = false, accesoAbierto = false) {
     if (accesoAbierto) setIntentandoAccesoAbierto(true)
-    const res = await fetch('/api/camarero/sesion', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ restaurante_id: rest.id, pin: pinIntroducido, demo }),
-    })
-    if (!res.ok) {
+    setAccessError('')
+    try {
+      const res = await fetch('/api/camarero/sesion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurante_id: rest.id, pin: pinIntroducido, demo }),
+      })
+      if (!res.ok) {
+        if (!accesoAbierto) {
+          setErrorPin(true)
+        } else {
+          setAccessError('No se pudo preparar el acceso de sala. Reintenta en unos segundos.')
+        }
+        return
+      }
+      const data = await res.json()
+      setSalaToken(data.sala_token)
+      setAutenticado(true)
+      setErrorPin(false)
+      await Promise.all([
+        cargarDatosSala(rest, data.sala_token, demo),
+        cargarHistorialSala(rest.id, data.sala_token),
+      ])
+    } catch (error) {
       if (!accesoAbierto) setErrorPin(true)
+      setAccessError('No se pudo preparar el acceso de sala. Reintenta en unos segundos.')
+      reportarErrorCliente('camarero_sesion', error)
+    } finally {
       setIntentandoAccesoAbierto(false)
-      return
     }
-    const data = await res.json()
-    setSalaToken(data.sala_token)
-    setAutenticado(true)
-    setIntentandoAccesoAbierto(false)
-    setErrorPin(false)
-    await Promise.all([
-      cargarDatosSala(rest, data.sala_token, demo),
-      cargarHistorialSala(rest.id, data.sala_token),
-    ])
   }
 
   async function cargarDatosSala(rest, token, demo = false) {
@@ -210,7 +289,7 @@ export default function Camarero({ params }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ restaurante_id: rest.id, sala_token: token }),
     })
-    if (!res.ok) return
+    if (!res.ok) throw new Error(`POST camarero datos ${res.status}`)
     const data = await res.json()
     setRestaurante({ ...rest, ...data.restaurante })
     setVinos(data.vinos || [])
@@ -225,28 +304,34 @@ export default function Camarero({ params }) {
 
   async function cargarHistorialSala(restauranteId, token) {
     if (!restauranteId) return
-    const query = new URLSearchParams({ restaurante_id: restauranteId })
-    const res = await fetch(`/api/estadisticas?${query.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!res.ok) return
-    const data = await res.json()
-    setHistorialVenta((data.ventas || []).map(item => {
-      try { return JSON.parse(item.detalle || '{}') } catch { return null }
-    }).filter(Boolean))
-    setHistorialRecomendaciones((data.recomendaciones || []).map(item => {
-      try { return JSON.parse(item.detalle || '{}') } catch { return null }
-    }).filter(Boolean))
+    try {
+      const query = new URLSearchParams({ restaurante_id: restauranteId })
+      const res = await fetch(`/api/estadisticas?${query.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error(`GET historial sala ${res.status}`)
+      const data = await res.json()
+      setHistorialVenta((data.ventas || []).map(item => {
+        try { return JSON.parse(item.detalle || '{}') } catch { return null }
+      }).filter(Boolean))
+      setHistorialRecomendaciones((data.recomendaciones || []).map(item => {
+        try { return JSON.parse(item.detalle || '{}') } catch { return null }
+      }).filter(Boolean))
+    } catch (error) {
+      reportarErrorCliente('camarero_historial', error)
+    }
   }
+
+  iniciarSesionSalaRef.current = iniciarSesionSala
 
   useEffect(() => {
     if (!restaurante?.id || autenticado) return
     if (demoActivo) {
-      iniciarSesionSala(restaurante, '', true)
+      iniciarSesionSalaRef.current?.(restaurante, '', true)
       return
     }
     if (restaurante.camarero_pin_bloqueo_activo !== true) {
-      iniciarSesionSala(restaurante, '', false, true)
+      iniciarSesionSalaRef.current?.(restaurante, '', false, true)
     }
   }, [demoActivo, restaurante, autenticado])
 
@@ -816,7 +901,7 @@ export default function Camarero({ params }) {
       min,
       ideal,
       max,
-      lectura: `Mesa estimada ${ticketComida.toFixed(2)} EUR: botella logica entre ${min.toFixed(0)} y ${max.toFixed(0)} EUR.`,
+      lectura: `Mesa estimada ${ticketComida.toFixed(2)} EUR: botella lógica entre ${min.toFixed(0)} y ${max.toFixed(0)} EUR.`,
     }
   }
 
@@ -1012,7 +1097,7 @@ export default function Camarero({ params }) {
       return {
         compatible: false,
         penalizacion: 85,
-        razon: 'Los vinos dulces o semidulces quedan reservados para postres, quesos, picante o platos claramente dulces; en platos salados normales conviene una opcion seca.'
+        razon: 'Los vinos dulces o semidulces quedan reservados para postres, quesos, picante o platos claramente dulces; en platos salados normales conviene una opción seca.'
       }
     }
 
@@ -1140,19 +1225,19 @@ export default function Camarero({ params }) {
     const platos = numeroPlatos > 1 ? `${numeroPlatos} platos` : 'la mesa'
 
     if (vino.tipo === 'blanco') {
-      if (metodo.gratinado) return `aporta frescura para limpiar la parte cremosa y suficiente volumen para acompanar ${platos}`
-      if (metodo.vegetalVerde) return `acompana los matices verdes del plato con frescura y deja una sensacion ligera en la mesa`
-      return `tiene frescura y amplitud para acompanar ${platos} sin hacerse pesado`
+      if (metodo.gratinado) return `aporta frescura para limpiar la parte cremosa y suficiente volumen para acompañar ${platos}`
+      if (metodo.vegetalVerde) return `acompaña los matices verdes del plato con frescura y deja una sensación ligera en la mesa`
+      return `tiene frescura y amplitud para acompañar ${platos} sin hacerse pesado`
     }
     if (vino.tipo === 'espumoso') return `su acidez y burbuja limpian el paladar y funcionan muy bien cuando la mesa comparte varios bocados`
     if (vino.tipo === 'generoso') return `su perfil salino y seco da profundidad al plato y limpia la boca entre bocados`
     if (vino.tipo === 'rosado') return `ofrece fruta, frescura y cuerpo medio para moverse bien entre platos distintos`
     if (vino.tipo === 'tinto') {
       if (metodo.brasa || textoVino.includes('crianza') || textoVino.includes('barrica')) return `tiene fruta y estructura para sostener la intensidad del plato sin secar el paladar`
-      return `aporta fruta y cuerpo medio, una opcion amable para acompanar ${platos}`
+      return `aporta fruta y cuerpo medio, una opción amable para acompañar ${platos}`
     }
-    if (vino.tipo === 'dulce') return `funciona por contraste y afinidad aromatica cuando el plato tiene dulzor, queso o final de postre`
-    return `mantiene equilibrio entre frescura, cuerpo y aroma para acompanar ${platos}`
+    if (vino.tipo === 'dulce') return `funciona por contraste y afinidad aromática cuando el plato tiene dulzor, queso o final de postre`
+    return `mantiene equilibrio entre frescura, cuerpo y aroma para acompañar ${platos}`
   }
 
   function ajusteAprendizajeVenta(vino, contexto) {
@@ -1306,7 +1391,7 @@ export default function Camarero({ params }) {
     } else if (resumen.ventasEventos >= 1 && (valorMedio >= 35 || precio >= (opciones.umbralUpsell || 35))) {
       tipo = 'upsell'
       label = 'Buen upsell'
-      texto = 'Ya se vendio como opcion de mas valor. Usalo cuando la mesa acepte algo especial.'
+      texto = 'Ya se vendió como opción de más valor. Úsalo cuando la mesa acepte algo especial.'
       ajusteBase = 2.4
     } else if (recomendaciones >= 2 && !totalFeedback) {
       tipo = 'medir'
@@ -1417,12 +1502,12 @@ export default function Camarero({ params }) {
     if (esJamonCurado(consultaNormalizada)) {
       if (esGenerosoSeco(vino, textoVino)) {
         score += 28
-        motivo = 'fino o manzanilla es la lectura mas directa: salinidad, crianza biologica y boca seca para grasa, sal y umami del jamon'
-        fuente = fuente || 'Regla de sala: jamon curado'
+        motivo = 'fino o manzanilla es la lectura más directa: salinidad, crianza biológica y boca seca para grasa, sal y umami del jamón'
+        fuente = fuente || 'Regla de sala: jamón curado'
       } else if (esEspumosoSeco(vino, textoVino)) {
         score += 18
-        motivo = 'la burbuja seca limpia la grasa del jamon y respeta la sal sin endurecer taninos'
-        fuente = fuente || 'Regla de sala: jamon curado'
+        motivo = 'la burbuja seca limpia la grasa del jamón y respeta la sal sin endurecer taninos'
+        fuente = fuente || 'Regla de sala: jamón curado'
       } else if (vino.tipo === 'blanco') {
         score += 4
       }
@@ -1536,7 +1621,7 @@ export default function Camarero({ params }) {
         motivo: item.riesgos?.length && penalizacionRiesgo >= bonus
           ? item.riesgos[0]
           : `${motivoGrafo}; ${resultado.motivo}`,
-        fuente: `${directo ? 'Grafo Chartier unificado: evidencia directa' : 'Grafo Chartier unificado: familia aromatica'}${goldsteinActivo ? ' + validacion estructural Goldstein' : ''}`,
+        fuente: `${directo ? 'Grafo Chartier unificado: evidencia directa' : 'Grafo Chartier unificado: familia aromática'}${goldsteinActivo ? ' + validación estructural Goldstein' : ''}`,
         chartierGrafo: item,
         goldsteinEstructural: goldsteinActivo ? item.goldstein : null,
       }
@@ -1613,7 +1698,7 @@ export default function Camarero({ params }) {
           score -= Math.min(9, (distanciaIdeal / tolerancia) * 3)
           if (objetivoVenta === 'ticket' && precio > rangoTicket.max && precio <= rangoTicket.max * 1.35) {
             score += 4
-            motivo = `${motivo}; se puede ofrecer como opcion un poco mas especial sin romper el presupuesto`
+            motivo = `${motivo}; se puede ofrecer como opción un poco más especial sin romper el presupuesto`
           }
         }
       }
@@ -1853,7 +1938,7 @@ export default function Camarero({ params }) {
 
     return candidatos.slice(0, 6).map((item, index) => ({
       ...item,
-      label: ['Mejor encaje', 'Segunda opcion', 'Alternativa segura', 'Opcion fresca', 'Opcion con cuerpo', 'Para compartir'][index] || `Opcion ${index + 1}`,
+      label: ['Mejor encaje', 'Segunda opción', 'Alternativa segura', 'Opción fresca', 'Opción con cuerpo', 'Para compartir'][index] || `Opción ${index + 1}`,
     }))
   }
 
@@ -1940,6 +2025,8 @@ export default function Camarero({ params }) {
       return !busquedaVinoMandato || texto.includes(normalizar(busquedaVinoMandato))
     })
     .slice(0, 30)
+  const consultaVentaActual = consultaVentaActiva() || consultaDesdePerfilCliente()
+  const hayConsultaVentaActual = hayConsultaVenta()
   const recomendacionPrincipal = modoRecomendacionVenta === 'vino' ? null : recomendacionesVenta[0] || null
   const recomendacionActivaVenta = modoRecomendacionVenta === 'vino'
     ? null
@@ -1966,9 +2053,9 @@ export default function Camarero({ params }) {
   }), [vinos, busqueda, filtro])
 
   useEffect(() => {
-    if (!autenticado || vistaServicio !== 'venta' || modoRecomendacionVenta === 'vino' || !restaurante?.id || !hayConsultaVenta() || !recomendacionesVenta.length) return
+    if (!autenticado || vistaServicio !== 'venta' || modoRecomendacionVenta === 'vino' || !restaurante?.id || !hayConsultaVentaActual || !recomendacionesVenta.length) return
 
-    const consulta = consultaVentaActiva() || consultaDesdePerfilCliente()
+    const consulta = consultaVentaActual
     const firma = `${restaurante.id}|${consulta}|${objetivoVenta}|${perfilClienteVenta.bebe}|${perfilClienteVenta.estilo}|${perfilClienteVenta.gama}|${rotacionVenta}|${recomendacionesVenta.map(item => item.vino.id).join(',')}`
     if (ultimaRecomendacionRegistrada.current === firma) return
     ultimaRecomendacionRegistrada.current = firma
@@ -1996,7 +2083,7 @@ export default function Camarero({ params }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sala_token: salaToken, eventos }),
     })
-  }, [autenticado, vistaServicio, modoRecomendacionVenta, restaurante?.id, recomendacionesVenta, objetivoVenta, perfilClienteVenta, rotacionVenta, consultaVenta, platosMesaVenta, salaToken])
+  }, [autenticado, vistaServicio, modoRecomendacionVenta, restaurante?.id, hayConsultaVentaActual, consultaVentaActual, recomendacionesVenta, objetivoVenta, perfilClienteVenta, rotacionVenta, salaToken])
 
   useEffect(() => {
     if (demoFocusAplicado.current || !demoActivo || !autenticado || !recomendacionesVenta.length) return
@@ -2013,25 +2100,66 @@ export default function Camarero({ params }) {
 
   const cx = 150, cy = 150, r = 100
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#111', fontFamily: 'sans-serif' }}>
-      <p style={{ fontSize: 12, letterSpacing: '0.15em', color: '#666' }}>CARGANDO</p>
-    </div>
-  )
+  function renderEstadoCamarero({ title, text, eyebrow = 'Modo camarero', retryable = false, loadingState = false }) {
+    return (
+      <main className={styles.stateScreen}>
+        <section className={styles.stateCard} aria-live="polite">
+          {loadingState && <span className={styles.stateSpinner} aria-hidden="true" />}
+          <p className={styles.stateEyebrow}>{eyebrow}</p>
+          <h1 className={styles.stateTitle}>{title}</h1>
+          {text && <p className={styles.stateText}>{text}</p>}
+          <div className={styles.stateActions}>
+            {retryable && (
+              <button type="button" className={styles.stateButton} onClick={reintentarCarga}>
+                Reintentar
+              </button>
+            )}
+            <a className={styles.stateLink} href="/cartavinos">
+              Carta Viva
+            </a>
+          </div>
+        </section>
+      </main>
+    )
+  }
 
-  if (restaurante && !restaurante.sala_disponible) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif', padding: 24, textAlign: 'center' }}>
-      <p style={{ fontSize: 11, color: '#666', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 8px' }}>Carta Viva</p>
-      <p style={{ fontSize: 26, fontWeight: 300, color: 'white', fontFamily: 'Georgia, serif', margin: '0 0 14px' }}>Modo camarero no incluido</p>
-      <p style={{ maxWidth: 360, color: '#aaa', fontSize: 14, lineHeight: 1.5, margin: 0 }}>Este acceso queda reservado para el Plan Sala o Acompanado.</p>
-    </div>
-  )
+  if (loading) return renderEstadoCamarero({
+    title: 'Preparando sala',
+    text: 'Cargando vinos, platos y contexto de servicio.',
+    loadingState: true,
+  })
+
+  if (loadError?.type === 'network') return renderEstadoCamarero({
+    title: 'No hemos podido cargar el modo camarero',
+    text: 'Revisa la conexión o vuelve a intentarlo en unos segundos.',
+    retryable: true,
+  })
+
+  if (!restaurante) return renderEstadoCamarero({
+    title: 'Restaurante no encontrado',
+    text: 'Revisa el enlace o vuelve a abrir el QR desde Carta Viva.',
+  })
+
+  if (restaurante && !restaurante.sala_disponible) return renderEstadoCamarero({
+    title: 'Modo camarero no incluido',
+    text: 'Este acceso queda reservado para el Plan Sala o Acompañado.',
+    eyebrow: 'Carta Viva',
+    retryable: true,
+  })
 
   if (!autenticado && restaurante?.camarero_pin_bloqueo_activo !== true) return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif', padding: 24 }}>
       <p style={{ fontSize: 11, color: '#666', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 8px' }}>Modo camarero</p>
       <p style={{ fontSize: 20, fontWeight: 300, color: 'white', fontFamily: 'Georgia, serif', margin: '0 0 16px' }}>{restaurante?.nombre}</p>
       <p style={{ fontSize: 12, color: '#777', margin: 0 }}>{intentandoAccesoAbierto ? 'Entrando sin PIN...' : 'Preparando acceso de sala...'}</p>
+      {accessError && (
+        <>
+          <p style={{ maxWidth: 340, color: '#c9a84c', fontSize: 13, lineHeight: 1.5, margin: '18px 0 0', textAlign: 'center' }}>{accessError}</p>
+          <button type="button" onClick={() => iniciarSesionSala(restaurante, '', demoActivo, true)} style={{ marginTop: 16, background: 'white', color: '#111', border: 'none', borderRadius: 6, padding: '12px 24px', fontSize: 12, fontWeight: 800, textTransform: 'uppercase', cursor: 'pointer' }}>
+            Reintentar
+          </button>
+        </>
+      )}
     </div>
   )
 
@@ -2256,7 +2384,7 @@ export default function Camarero({ params }) {
                         : 'Orienta la venta antes de elegir la comida'}
                   </p>
                 </div>
-                <select aria-label="Objetivo de recomendacion" value={objetivoVenta} onChange={e => cambiarObjetivoVenta(e.target.value)} className={styles.select}>
+                <select aria-label="Objetivo de recomendación" value={objetivoVenta} onChange={e => cambiarObjetivoVenta(e.target.value)} className={styles.select}>
                   <option value="equilibrado">Mejor maridaje</option>
                   <option value="copas">Por copas</option>
                   <option value="sucesion_copas">Sucesión copas</option>
@@ -2272,7 +2400,7 @@ export default function Camarero({ params }) {
                   <span className={hayConsultaVenta() && !recomendacionesVenta.length ? styles.serviceJourneyActive : ''}><b>2</b>Recomienda</span>
                   <span className={recomendacionesVenta.length ? styles.serviceJourneyActive : ''}><b>3</b>Registra</span>
                 </div>
-                <div className={styles.recommendModeTabs} role="tablist" aria-label="Modo de recomendacion">
+                <div className={styles.recommendModeTabs} role="tablist" aria-label="Modo de recomendación">
                   <button
                     type="button"
                     role="tab"
@@ -2303,10 +2431,10 @@ export default function Camarero({ params }) {
                 </div>
                 <p className={styles.modeHint}>
                   {modoRecomendacionVenta === 'platos'
-                    ? 'Elige uno o varios platos. Chartier y Goldstein buscan el vino que mejor acompana la mesa.'
+                    ? 'Elige uno o varios platos. Chartier y Goldstein buscan el vino que mejor acompaña la mesa.'
                     : modoRecomendacionVenta === 'vino'
                       ? 'Primero eliges el vino. Despues la carta se ordena por los platos que mejor lo hacen brillar.'
-                      : 'Haz una o dos preguntas. La recomendacion parte de lo que busca el cliente.'}
+                      : 'Haz una o dos preguntas. La recomendación parte de lo que busca el cliente.'}
                 </p>
 
                 {modoRecomendacionVenta === 'vino' && (
@@ -2382,7 +2510,7 @@ export default function Camarero({ params }) {
                       <p className={styles.statValue}>{ticketActualVenta.toFixed(2)} EUR</p>
                     </div>
                     <div className={styles.stat}>
-                      <p className={styles.statLabel}>Botella logica</p>
+                      <p className={styles.statLabel}>Botella lógica</p>
                       <p className={styles.statValue}>{rangoActualVenta.min.toFixed(0)}-{rangoActualVenta.max.toFixed(0)} EUR</p>
                     </div>
                   </div>
@@ -2399,7 +2527,7 @@ export default function Camarero({ params }) {
                   <div className={styles.guideHeader}>
                     <div>
                       <p className={styles.sectionLabel} style={{ margin: 0 }}>{mostrarAfinadoCliente ? 'Afinado opcional' : 'Preguntas al cliente'}</p>
-                      <p className={styles.guideTitle}>{mostrarAfinadoCliente ? 'Matiza el maridaje' : 'Orienta la recomendacion'}</p>
+                      <p className={styles.guideTitle}>{mostrarAfinadoCliente ? 'Matiza el maridaje' : 'Orienta la recomendación'}</p>
                     </div>
                     <button
                       type="button"
@@ -2543,7 +2671,7 @@ export default function Camarero({ params }) {
                       ? 'Cruzando grafo Chartier...'
                       : grafoVenta?.consulta === consultaGrafoVenta && grafoVenta?.candidatos?.length
                         ? 'Chartier + Goldstein activos'
-                        : platosMesaVenta.length > 1 ? 'Botella puente para la mesa' : hayConsultaVenta() ? 'Tres opciones para la mesa' : 'Esperando seleccion'}
+                        : platosMesaVenta.length > 1 ? 'Botella puente para la mesa' : hayConsultaVenta() ? 'Tres opciones para la mesa' : 'Esperando selección'}
                   </p>
                 </div>
                 {modoRecomendacionVenta !== 'vino' && recomendacionesVenta.length > 0 && (
@@ -2712,16 +2840,16 @@ export default function Camarero({ params }) {
                     {modoRecomendacionVenta === 'vino'
                       ? vinoMandatoVenta
                         ? 'No encuentro platos suficientemente seguros para ese vino en la carta activa.'
-                        : 'Elige un vino de la carta para ver que platos le van mejor y por que.'
+                        : 'Elige un vino de la carta para ver qué platos le van mejor y por qué.'
                       : consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta
                       ? 'Validando compatibilidad...'
                       : perfilClienteVenta.estilo === 'local'
                         ? 'No hay vinos de la zona compatibles con el plato y los filtros elegidos.'
                         : hayConsultaVenta()
-                          ? 'Sin recomendacion disponible.'
+                          ? 'Sin recomendación disponible.'
                           : modoRecomendacionVenta === 'platos'
                             ? 'Selecciona uno o varios platos para encontrar el mejor vino para la mesa.'
-                            : 'Haz una o dos preguntas al cliente para orientar la recomendacion.'}
+                            : 'Haz una o dos preguntas al cliente para orientar la recomendación.'}
                   </p>
                 )}
 
@@ -2902,7 +3030,7 @@ export default function Camarero({ params }) {
               <p style={{ fontSize: 18, color: '#fff', margin: 0, fontWeight: 600 }}>{ticketActualVenta.toFixed(2)} EUR</p>
             </div>
             <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 10, padding: '10px 12px' }}>
-              <p style={{ fontSize: 10, color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 4px' }}>Botella logica</p>
+              <p style={{ fontSize: 10, color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 4px' }}>Botella lógica</p>
               <p style={{ fontSize: 18, color: '#fff', margin: 0, fontWeight: 600 }}>{rangoActualVenta.min.toFixed(0)}-{rangoActualVenta.max.toFixed(0)} EUR</p>
             </div>
           </div>
@@ -3106,7 +3234,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         )}
         {item.chartierGrafo && (
           <p className={styles.statusLine} style={{ color: chartierDirecto ? '#1f7a61' : '#6f767d' }}>
-            {chartierDirecto ? 'Chartier directo' : 'Chartier por familia aromatica'}
+            {chartierDirecto ? 'Chartier directo' : 'Chartier por familia aromática'}
           </p>
         )}
         {goldsteinActivo && (
@@ -3118,7 +3246,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
           </p>
         )}
         {stockCritico && (
-          <p className={styles.statusLine} style={{ color: '#bc8c2a' }}>Ultimas {vino.stock} botellas</p>
+          <p className={styles.statusLine} style={{ color: '#bc8c2a' }}>Últimas {vino.stock} botellas</p>
         )}
         {ajusteAprendido && (
           <p className={styles.statusLine} style={{ color: aprendizaje.ajuste > 0 ? '#1f7a61' : '#bc8c2a' }}>
@@ -3136,7 +3264,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
           Vendida
         </button>
         <details className={styles.feedbackMenu}>
-          <summary>Mas resultados</summary>
+          <summary>Más resultados</summary>
           <div className={styles.feedbackGrid}>
             {acciones.filter(accion => accion.key !== 'vendida').map(accion => {
               const enviado = feedbackVenta[`${vino.id}-${accion.key}-${consultaVenta}`]
@@ -3172,7 +3300,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         <p style={{ margin: 0, fontSize: 12, color: '#aaa', lineHeight: 1.55 }}>{fraseVenta(vino, motivo)}</p>
         {item.chartierGrafo && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: chartierDirecto ? '#7BAF8A' : '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            {chartierDirecto ? 'Chartier directo' : 'Chartier por familia aromatica'}
+            {chartierDirecto ? 'Chartier directo' : 'Chartier por familia aromática'}
           </p>
         )}
         {goldsteinActivo && (
@@ -3186,7 +3314,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
           </p>
         )}
         {stockCritico && (
-          <p style={{ margin: '10px 0 0', fontSize: 10, color: '#C4A55A', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Ultimas {vino.stock} botellas</p>
+          <p style={{ margin: '10px 0 0', fontSize: 10, color: '#C4A55A', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Últimas {vino.stock} botellas</p>
         )}
         {ajusteAprendido && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: aprendizaje.ajuste > 0 ? '#7BAF8A' : '#C4A55A', letterSpacing: '0.08em', textTransform: 'uppercase' }}>

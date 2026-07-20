@@ -247,7 +247,7 @@ export default function ConstructorCarta() {
             <div className={styles.panelHead}>
               <div>
                 <h2 className={styles.panelTitle}>Importar o empezar desde cero</h2>
-                <p className={styles.panelSub}>Pega una referencia por linea. Usa "Nombre - Bodega - Region" o separa por barras.</p>
+                <p className={styles.panelSub}>Pega una referencia por linea. Usa &quot;Nombre - Bodega - Region&quot; o separa por barras.</p>
               </div>
             </div>
             <div className={styles.panelBody}>

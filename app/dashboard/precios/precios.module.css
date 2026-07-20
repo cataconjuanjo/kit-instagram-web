@@ -71,7 +71,7 @@
 .results strong {
   margin: 8px 0 5px;
   color: #fffaf3;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 34px;
   line-height: 1;
   font-weight: 500;

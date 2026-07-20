@@ -1,5 +1,13 @@
 # Ruta de implementacion dashboard hostelero
 
+## Roadmap estrategico vinculado
+
+La ruta completa para llevar al limite menu engineering, wine mapping, KPIs, rentabilidad, venta inferida, simulador, TPV/CSV, automatizacion y pulido premium esta en:
+
+- `ROADMAP_RENTABILIDAD_CARTA_VINO.md`
+
+Este documento sigue siendo la ruta tactica del dashboard. El roadmap de rentabilidad manda cuando haya conflicto de prioridad economica.
+
 ## Objetivo
 
 Convertir el dashboard en una herramienta diaria para hosteleros: menos ruido, mas decisiones claras y menos trabajo duplicado.

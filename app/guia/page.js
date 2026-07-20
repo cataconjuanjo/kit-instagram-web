@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+
 import { useEffect, useState } from 'react'
 
 async function descargarPDF() {
@@ -637,7 +639,7 @@ export default function GuiaCartaViva() {
             </div>
             <div className="cover-foot">
               <span>Carta · Sala · Bodega · Decisión</span>
-              <img className="cover-mark" src="/brand/carta-viva/isotipo.png" alt="" />
+              <Image className="cover-mark" src="/brand/carta-viva/isotipo.png" alt="" width={512} height={512} priority />
             </div>
           </div>
         </section>

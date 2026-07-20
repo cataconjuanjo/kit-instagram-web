@@ -55,8 +55,8 @@ export default function CatalogoProveedores() {
   const [hasMore, setHasMore] = useState(false)
   const [token, setToken] = useState('')
 
-  const cargarCatalogo = useCallback(async ({ restId, accessToken, q = busqueda, proveedorFiltro = proveedor, pageNumber = page } = {}) => {
-    const id = restId || restaurante?.id
+  const cargarCatalogo = useCallback(async ({ restId, accessToken, q = '', proveedorFiltro = '', pageNumber = 1 } = {}) => {
+    const id = restId
     if (!id) return
     setLoadingCatalogo(true)
     setError('')
@@ -68,7 +68,7 @@ export default function CatalogoProveedores() {
       })
       if (q.trim()) params.set('q', q.trim())
       if (proveedorFiltro) params.set('proveedor', proveedorFiltro)
-      const res = await fetch(`/api/proveedores-catalogo?${params}`, { headers: { Authorization: `Bearer ${accessToken || token || ''}` } })
+      const res = await fetch(`/api/proveedores-catalogo?${params}`, { headers: { Authorization: `Bearer ${accessToken || ''}` } })
       const payload = await res.json()
       if (!res.ok) throw new Error(payload.error || 'No se pudo cargar el catalogo.')
       setItems(payload.items || [])
@@ -82,7 +82,7 @@ export default function CatalogoProveedores() {
       setHasMore(false)
     }
     setLoadingCatalogo(false)
-  }, [busqueda, page, proveedor, restaurante?.id, token])
+  }, [])
 
   useEffect(() => {
     async function cargar() {
@@ -102,16 +102,16 @@ export default function CatalogoProveedores() {
       setLoading(false)
     }
     cargar()
-  }, [])
+  }, [cargarCatalogo])
 
   useEffect(() => {
     if (!restaurante?.id || loading) return
     const timeout = setTimeout(() => {
       setPage(1)
-      cargarCatalogo({ pageNumber: 1 })
+      cargarCatalogo({ restId: restaurante.id, accessToken: token, q: busqueda, proveedorFiltro: proveedor, pageNumber: 1 })
     }, 260)
     return () => clearTimeout(timeout)
-  }, [busqueda, proveedor, restaurante?.id])
+  }, [busqueda, proveedor, restaurante?.id, loading, token, cargarCatalogo])
 
   if (loading) return <LoadingState />
   if (!restaurante) return null
@@ -125,7 +125,7 @@ export default function CatalogoProveedores() {
   function cambiarPagina(nextPage) {
     const safePage = Math.max(1, nextPage)
     setPage(safePage)
-    cargarCatalogo({ pageNumber: safePage })
+    cargarCatalogo({ restId: restaurante.id, accessToken: token, q: busqueda, proveedorFiltro: proveedor, pageNumber: safePage })
   }
 
   return (

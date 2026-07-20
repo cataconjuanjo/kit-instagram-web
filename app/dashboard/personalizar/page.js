@@ -605,7 +605,10 @@ export default function Personalizar() {
               <div style={{ position: 'relative', overflow: 'hidden', padding: '14px 16px', background: colorPrimario }}>
                 {bannerUrl && <div aria-hidden="true" style={bannerCss(bannerZoom, bannerX, bannerY)} />}
                 <div style={{ position: 'relative', zIndex: 1 }}>
-                  {logoUrl && <img src={logoUrl} alt="Logo" loading="lazy" style={{ height: 28, objectFit: 'contain', display: 'block', marginBottom: 8 }} />}
+                  {logoUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element -- Preview configurable: puede ser blob local o URL externa antes de guardarse.
+                    <img src={logoUrl} alt="Logo" loading="lazy" style={{ height: 28, objectFit: 'contain', display: 'block', marginBottom: 8 }} />
+                  )}
                   <p style={{ margin: '0 0 2px', color: 'rgba(255,255,255,0.55)', fontSize: 9, fontWeight: 850, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Carta de vinos</p>
                   <p style={{ margin: 0, color: '#fff', fontSize: 18, fontFamily: fontPreview }}>{restaurante?.nombre}</p>
                 </div>
@@ -819,6 +822,7 @@ export default function Personalizar() {
             >
               <div style={{ display: 'contents' }}>
               {hubMostrarLogo && (logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- Preview configurable: puede ser blob local o URL externa antes de guardarse.
                 <img src={logoUrl} alt="Logo" loading="lazy" style={{ width: 68, height: 68, objectFit: 'contain', borderRadius: 999, background: colorPrimario, padding: 8, boxSizing: 'border-box' }} />
               ) : (
                 <div style={{ width: 68, height: 68, borderRadius: 999, background: colorPrimario, color: '#fff', display: 'grid', placeItems: 'center', fontFamily: fontPreview }}>
@@ -879,6 +883,7 @@ export default function Personalizar() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
             <div style={{ width: 72, height: 72, border: '1px solid #dfddd6', borderRadius: 8, display: 'grid', placeItems: 'center', background: colorPrimario, overflow: 'hidden', flexShrink: 0 }}>
               {logoUrl
+                // eslint-disable-next-line @next/next/no-img-element -- Preview configurable: puede ser blob local o URL externa antes de guardarse.
                 ? <img src={logoUrl} alt="Logo" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 : <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>Sin logo</span>
               }

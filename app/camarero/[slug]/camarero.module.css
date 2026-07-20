@@ -3,7 +3,7 @@
   background: #0f1115;
   color: #f7f7f2;
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  padding-bottom: 88px;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
 }
 
 .topbar {
@@ -1474,7 +1474,7 @@
   position: fixed;
   left: 16px;
   right: 16px;
-  bottom: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
   z-index: 60;
   display: flex;
   justify-content: space-between;
@@ -1495,6 +1495,105 @@
   color: #777f86;
   text-align: center;
   font-size: 14px;
+}
+
+.stateScreen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #0f1115;
+  color: #f7f7f2;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.stateCard {
+  width: min(100%, 430px);
+  border: 1px solid #252b31;
+  border-radius: 8px;
+  background: #15191e;
+  padding: 28px;
+  text-align: center;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+}
+
+.stateSpinner {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 16px;
+  border: 2px solid rgba(247, 247, 242, 0.16);
+  border-top-color: #f7f7f2;
+  border-radius: 50%;
+  animation: stateSpin 0.9s linear infinite;
+}
+
+.stateEyebrow {
+  margin: 0 0 8px;
+  color: #8b929b;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.stateTitle {
+  margin: 0;
+  color: #ffffff;
+  font-family: Georgia, serif;
+  font-size: 30px;
+  font-weight: 420;
+  line-height: 1.08;
+}
+
+.stateText {
+  max-width: 340px;
+  margin: 14px auto 0;
+  color: #aeb5bc;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.stateActions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.stateButton,
+.stateLink {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.stateButton {
+  border: 1px solid #f7f7f2;
+  background: #f7f7f2;
+  color: #17191d;
+  cursor: pointer;
+}
+
+.stateLink {
+  border: 1px solid #2c333a;
+  background: #101318;
+  color: #d5d9dd;
+}
+
+@keyframes stateSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 920px) {
@@ -1573,7 +1672,7 @@
 
   .resultShortcut {
     position: sticky;
-    bottom: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
     z-index: 8;
     box-shadow: 0 12px 28px rgba(23, 25, 29, 0.2);
   }
@@ -1639,7 +1738,7 @@
   .compareBar {
     left: 8px;
     right: 8px;
-    bottom: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
     padding: 10px 12px;
   }
 

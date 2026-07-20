@@ -27,8 +27,137 @@ function formatoFecha(fecha) {
   }).format(new Date(fecha))
 }
 
+function formatoFechaDia(fecha) {
+  if (!fecha) return 'Sin fecha'
+  const d = new Date(fecha)
+  if (Number.isNaN(d.getTime())) return 'Sin fecha'
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+  }).format(d)
+}
+
 function formatoCosteIa(importe = 0) {
   return `${Number(importe || 0).toFixed(2)} USD`
+}
+
+function estadoPublicacionAdmin(restaurante = {}) {
+  if (!Object.prototype.hasOwnProperty.call(restaurante, 'carta_publica_activa')) {
+    return {
+      label: 'Migracion pendiente',
+      detail: 'Aplica SQL para controlar borrador/publicado',
+      tone: 'warning',
+      done: false,
+    }
+  }
+  if (restaurante.carta_publica_activa === false) {
+    return {
+      label: 'Borrador',
+      detail: 'No visible publicamente',
+      tone: 'pending',
+      done: false,
+    }
+  }
+  return {
+    label: 'Publicada',
+    detail: 'QR y enlaces publicos activos',
+    tone: 'ok',
+    done: true,
+  }
+}
+
+function estadoSuscripcionAdmin(restaurante = {}) {
+  const estado = restaurante.subscription_status || 'trialing'
+  if (estado === 'active') return { label: 'Activo', detail: 'Suscripcion al dia', tone: 'ok', done: true }
+  if (estado === 'past_due') return { label: 'Pago pendiente', detail: 'Resolver Stripe antes de operar', tone: 'danger', done: false }
+  if (['cancelled', 'canceled'].includes(estado)) return { label: 'Cancelado', detail: 'Cuenta sin servicio activo', tone: 'muted', done: false }
+
+  if (estado === 'trialing') {
+    const expira = restaurante.trial_expires_at ? new Date(restaurante.trial_expires_at) : null
+    if (expira && !Number.isNaN(expira.getTime())) {
+      const dias = Math.ceil((expira.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+      if (dias < 0) return { label: 'Prueba vencida', detail: `Caducada el ${formatoFechaDia(expira)}`, tone: 'danger', done: false }
+      if (dias <= 7) return { label: 'Prueba corta', detail: `${dias} dias restantes`, tone: 'warning', done: true }
+      return { label: 'En prueba', detail: `Hasta ${formatoFechaDia(expira)}`, tone: 'ok', done: true }
+    }
+    return { label: 'En prueba', detail: 'Sin caducidad configurada', tone: 'warning', done: true }
+  }
+
+  return { label: estado, detail: 'Estado no estandar', tone: 'warning', done: false }
+}
+
+function pasosAltaAdmin(restaurante = {}, resumenUso = {}) {
+  const publicacion = estadoPublicacionAdmin(restaurante)
+  const suscripcion = estadoSuscripcionAdmin(restaurante)
+  const accesoProbado = Boolean(resumenUso?.sesiones || resumenUso?.ultimo_acceso)
+  return [
+    {
+      label: accesoProbado ? 'Acceso probado' : 'Cliente sin acceso',
+      detail: accesoProbado ? `${resumenUso.sesiones || 0} sesiones` : 'Reenviar enlace o acompanar bienvenida',
+      done: accesoProbado,
+    },
+    {
+      label: publicacion.done ? 'Carta publicada' : publicacion.label,
+      detail: publicacion.done ? 'Lista para QR' : publicacion.detail,
+      done: publicacion.done,
+    },
+    {
+      label: suscripcion.done ? suscripcion.label : 'Resolver estado',
+      detail: suscripcion.detail,
+      done: suscripcion.done,
+    },
+  ]
+}
+
+function normalizarUsoAdmin(usoData = {}) {
+  return {
+    resumen: usoData.resumen || {},
+    recientes: usoData.recientes || [],
+    ia: {
+      resumen: usoData.ia?.resumen || {},
+      preparacion: {
+        resumen: usoData.ia?.preparacion?.resumen || {},
+        total: usoData.ia?.preparacion?.total || {},
+      },
+      total: usoData.ia?.total || {},
+      disponible: Boolean(usoData.ia?.disponible),
+    },
+  }
+}
+
+function resumenContenidoPublicacionAdmin(resumen = {}) {
+  return [
+    `${resumen.vinosActivos || 0} vinos`,
+    `${resumen.vinosConPrecio || 0} con precio`,
+    `${resumen.platosActivos || 0} platos`,
+  ].join(' · ')
+}
+
+function esRestauracionPublicacionAdmin(evento = {}) {
+  return evento?.contenido_resumen?.restauracion?.tipo === 'snapshot'
+}
+
+function textoEventoPublicacionAdmin(evento) {
+  if (!evento) return null
+  if (esRestauracionPublicacionAdmin(evento)) {
+    const version = evento.contenido_resumen?.restauracion?.version_number
+    return {
+      titulo: version ? `Version v${version} restaurada` : 'Version restaurada',
+      detalle: `${formatoFecha(evento.created_at)} · ${evento.actor_email || 'responsable'} · ${resumenContenidoPublicacionAdmin(evento.contenido_resumen)}`,
+    }
+  }
+  return {
+    titulo: evento.accion === 'publicar' ? 'Ultima publicacion' : 'Ultima pausa',
+    detalle: `${formatoFecha(evento.created_at)} · ${evento.actor_email || 'responsable'} · ${resumenContenidoPublicacionAdmin(evento.contenido_resumen)}`,
+  }
+}
+
+function textoSnapshotPublicacionAdmin(snapshot) {
+  if (!snapshot) return null
+  return {
+    titulo: `Version publicada v${snapshot.version_number}`,
+    detalle: `${formatoFecha(snapshot.created_at)} · ${snapshot.actor_email || 'responsable'} · ${resumenContenidoPublicacionAdmin(snapshot.contenido_resumen)}`,
+  }
 }
 
 function generarPassword() {
@@ -108,12 +237,14 @@ function AdminPageContent() {
   }
 
   function copiarRestaurante(restaurante) {
+    const publicacion = estadoPublicacionAdmin(restaurante)
     const texto = [
       restaurante.nombre,
       restaurante.email,
       [restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · '),
       `/${restaurante.slug}`,
-      restaurante.subscription_status || ''
+      restaurante.subscription_status || '',
+      `Carta: ${publicacion.label}`
     ].filter(Boolean).join('\n')
     navigator.clipboard.writeText(texto)
     setMenuAccionesId(null)
@@ -138,15 +269,23 @@ function AdminPageContent() {
         const draft = JSON.parse(window.localStorage.getItem('admin_alta_restaurante_draft') || 'null')
         if (draft?.nombre || draft?.email || draft?.slug) setNuevoRestaurante(prev => ({ ...prev, ...draft }))
       } catch {}
-      const { data } = await supabase.from('restaurantes').select('*').order('nombre')
-      setRestaurantes(data || [])
       const token = await tokenAdmin()
+      const restaurantesRes = await fetch('/api/admin/restaurantes', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const restaurantesData = await restaurantesRes.json().catch(() => ({}))
+      if (restaurantesRes.ok) {
+        setRestaurantes(restaurantesData.restaurantes || [])
+      } else {
+        const { data } = await supabase.from('restaurantes').select('*').order('nombre')
+        setRestaurantes(data || [])
+      }
       const usoRes = await fetch('/api/uso', {
         headers: { Authorization: `Bearer ${token}` }
       })
       const usoData = await usoRes.json()
       if (usoRes.ok) {
-        setUso(usoData)
+        setUso(normalizarUsoAdmin(usoData))
       } else {
         setUsoError(usoData.error || 'No se pudo cargar el uso.')
       }
@@ -159,6 +298,12 @@ function AdminPageContent() {
     setAdminRestaurantEmail(restaurante.email)
     setAdminRestaurantId(restaurante.id)
     router.push(`/dashboard?restaurante_id=${restaurante.id}`)
+  }
+
+  function abrirPublicacion(restaurante) {
+    setAdminRestaurantEmail(restaurante.email)
+    setAdminRestaurantId(restaurante.id)
+    router.push('/dashboard/qr')
   }
 
   function empezarEdicion(restaurante) {
@@ -345,7 +490,7 @@ function AdminPageContent() {
 
   function copiarAcceso() {
     if (!altaCreada) return
-    const texto = `Bienvenido a Carta Viva 🍷\n\nHola, te hemos dado de alta en Carta Viva.\n\nRevisa tu email (${altaCreada.invitacion.email}) — recibirás un enlace para activar tu cuenta y elegir tu contraseña.\n\nUna vez activo, accede a tu panel desde:\nhttps://cataconjuanjo.com/login\n\nTu carta pública: https://cataconjuanjo.com${altaCreada.urls.carta}\nModo sala (camareros): https://cataconjuanjo.com${altaCreada.urls.camarero}`
+    const texto = `Bienvenido a Carta Viva 🍷\n\nHola, te hemos dado de alta en Carta Viva.\n\nRevisa tu email (${altaCreada.invitacion.email}) — recibirás un enlace para activar tu cuenta y elegir tu contraseña.\n\nUna vez activo, accede a tu panel desde:\nhttps://cataconjuanjo.com/login\n\nTu carta queda en borrador hasta revisarla desde QR y accesos.\nModo sala (camareros): https://cataconjuanjo.com${altaCreada.urls.camarero}`
     navigator.clipboard.writeText(texto)
     setCopiado(true)
     setTimeout(() => setCopiado(false), 2500)
@@ -478,7 +623,7 @@ function AdminPageContent() {
             <div className="alta-wizard-intro">
               <p className="admin-kicker">Alta nueva</p>
               <h2>Crear restaurante y acceso privado</h2>
-              <p>Genera la ficha, el usuario de login y las URLs de carta pública y modo sala.</p>
+              <p>Genera la ficha, el usuario de login, la carta en borrador y el acceso de sala.</p>
             </div>
             <div className="alta-wizard-progress" aria-label={`Progreso: ${progresoAlta}%`}>
               <div className="alta-wizard-bar"><span style={{ width: `${progresoAlta}%` }} /></div>
@@ -513,7 +658,7 @@ function AdminPageContent() {
                         {estadoCampo('nombre') === 'error' && <i className="alta-error">×</i>}
                       </span>
                       <input value={nuevoRestaurante.nombre} onChange={e => actualizarCampo('nombre', e.target.value)} placeholder="Ej. Casa Pepe" required />
-                      <small>Visible en panel, carta pública e informes</small>
+                      <small>Visible en panel, borrador de carta e informes</small>
                     </label>
                     <label className="alta-field">
                       <span>Email de acceso <b>*</b>
@@ -539,7 +684,7 @@ function AdminPageContent() {
                   </span>
                   <span className="alta-step-info">
                     <strong>Ubicación y URL</strong>
-                    <small>Ciudad y slug de la carta pública</small>
+                    <small>Ciudad y slug reservado para la carta</small>
                   </span>
                   <span className="alta-step-icon">{acordeonAlta === 'ubicacion' ? '▲' : '▼'}</span>
                 </button>
@@ -629,9 +774,18 @@ function AdminPageContent() {
                 <strong>{altaCreada.restaurante.nombre} creado</strong>
                 <span>Invitación enviada a <b>{altaCreada.invitacion.email}</b></span>
                 <small>El restaurante recibirá un enlace para activar su cuenta. Caduca en 24 h.</small>
+                {altaCreada.publication_migration_pending && (
+                  <small className="alta-success-warning">Aplica supabase/add_publication_status.sql: este alta se ha creado sin control de borrador/publicado porque falta la columna.</small>
+                )}
                 <div className="alta-success-urls">
-                  <code>Carta: {altaCreada.urls.carta}</code>
+                  <code>Borrador carta: {altaCreada.urls.carta}</code>
                   <code>Sala: {altaCreada.urls.camarero}</code>
+                </div>
+                <div className="alta-success-next">
+                  <span>1. Cliente activa cuenta</span>
+                  <span>2. Dashboard carga vinos y platos</span>
+                  <span>3. QR prueba la carta sin publicar</span>
+                  <span>4. Publicar carta cuando este revisada</span>
                 </div>
                 <button type="button" onClick={copiarAcceso}>
                   {copiado ? '✓ Copiado' : 'Copiar mensaje de bienvenida'}
@@ -699,15 +853,21 @@ function AdminPageContent() {
             <option value={25}>25 por pagina</option>
             <option value={50}>50 por pagina</option>
           </select>
-          <button type="button" onClick={() => navigator.clipboard.writeText(restaurantesOrdenados.map(r => [r.nombre, r.email, r.ciudad, r.slug, r.subscription_status].join(',')).join('\n'))}>Copiar CSV</button>
+          <button type="button" onClick={() => navigator.clipboard.writeText(restaurantesOrdenados.map(r => [r.nombre, r.email, r.ciudad, r.slug, r.subscription_status, estadoPublicacionAdmin(r).label].join(',')).join('\n'))}>Copiar CSV</button>
           <button type="button" onClick={() => window.print()}>Imprimir / PDF</button>
         </div>
 
         <div className="admin-access-list">
           {restaurantesPagina.map(restaurante => {
-            const resumenUso = uso.resumen[restaurante.id]
+            const resumenUso = uso.resumen?.[restaurante.id]
             const resumenIa = uso.ia?.resumen?.[restaurante.id]
             const resumenPreparacionIa = uso.ia?.preparacion?.resumen?.[restaurante.id]
+            const publicacion = estadoPublicacionAdmin(restaurante)
+            const suscripcion = estadoSuscripcionAdmin(restaurante)
+            const eventoPublicacion = textoEventoPublicacionAdmin(restaurante.publication_last_event)
+            const snapshotPublicacion = textoSnapshotPublicacionAdmin(restaurante.publication_last_snapshot)
+            const pasosAlta = pasosAltaAdmin(restaurante, resumenUso)
+            const pasosPendientes = pasosAlta.filter(paso => !paso.done)
             return (
             <article className="admin-card admin-access-card" key={restaurante.id}>
               {editandoId === restaurante.id && edicion ? (
@@ -799,6 +959,56 @@ function AdminPageContent() {
                 <p>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || 'Sin ubicación'}</p>
                 <span>{restaurante.email}</span>
                 <small className="admin-slug">/{restaurante.slug}</small>
+                <div className="admin-operational-status">
+                  <span className={`admin-status-chip is-${publicacion.tone}`}>
+                    <strong>{publicacion.label}</strong>
+                    <small>{publicacion.detail}</small>
+                  </span>
+                  <span className={`admin-status-chip is-${suscripcion.tone}`}>
+                    <strong>{suscripcion.label}</strong>
+                    <small>{suscripcion.detail}</small>
+                  </span>
+                </div>
+                <div className="admin-next-steps">
+                  <div>
+                    <strong>{pasosPendientes.length ? 'Siguiente activacion' : 'Alta operativa lista'}</strong>
+                    <span>{pasosAlta.filter(paso => paso.done).length} de {pasosAlta.length} señales listas</span>
+                  </div>
+                  {pasosAlta.map(paso => (
+                    <small className={paso.done ? 'is-done' : ''} key={`${restaurante.id}-${paso.label}`}>
+                      <b>{paso.done ? 'Listo' : 'Pendiente'}</b>
+                      {paso.label} · {paso.detail}
+                    </small>
+                  ))}
+                </div>
+                {(eventoPublicacion || snapshotPublicacion || restaurante.publication_history_pending || restaurante.publication_snapshot_pending) && (
+                  <div className="admin-publication-last">
+                    {eventoPublicacion && (
+                      <>
+                        <strong>{eventoPublicacion.titulo}</strong>
+                        <span>{eventoPublicacion.detalle}</span>
+                      </>
+                    )}
+                    {snapshotPublicacion && (
+                      <>
+                        <strong>{snapshotPublicacion.titulo}</strong>
+                        <span>{snapshotPublicacion.detalle}</span>
+                      </>
+                    )}
+                    {restaurante.publication_history_pending && (
+                      <>
+                        <strong>Historial pendiente</strong>
+                        <span>Aplica supabase/add_publication_history.sql para auditar publicar/pausar.</span>
+                      </>
+                    )}
+                    {restaurante.publication_snapshot_pending && (
+                      <>
+                        <strong>Versiones pendientes</strong>
+                        <span>Aplica supabase/add_publication_snapshots.sql para guardar fotos de cada publicacion.</span>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div className="admin-usage-stats">
                   <span className={resumenUso?.activo_ahora ? 'is-online' : ''}>
                     {resumenUso?.activo_ahora ? 'Activo ahora' : `Último acceso: ${formatoFecha(resumenUso?.ultimo_acceso)}`}
@@ -836,6 +1046,7 @@ function AdminPageContent() {
                   )}
                 </div>
                 <button onClick={() => gestionar(restaurante)}>Abrir dashboard</button>
+                <button className="admin-plain-button" onClick={() => abrirPublicacion(restaurante)}>QR/publicar</button>
                 <button className="admin-plain-button" onClick={() => empezarEdicion(restaurante)}>Editar</button>
                 <button
                   className="admin-plain-button"

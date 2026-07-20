@@ -3,6 +3,11 @@
 const DEMO_EMAIL_KEY = 'cartavinos_demo_email'
 const ADMIN_RESTAURANT_EMAIL_KEY = 'carta_viva_admin_restaurant_email'
 const ADMIN_RESTAURANT_ID_KEY = 'carta_viva_admin_restaurant_id'
+const DEMO_PRESENTATION_PARAMS = new Set(['demo_presentacion', 'demo_sumiller'])
+const DEMO_EMAILS = new Set([
+  'demo@taberna-del-puerto.com',
+  'sumiller.demo@cartaviva.local',
+])
 
 export const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
 
@@ -52,12 +57,26 @@ export function clearAdminRestaurantEmail() {
   window.localStorage.removeItem(ADMIN_RESTAURANT_ID_KEY)
 }
 
+function isDemoPresentationRoute() {
+  if (typeof window === 'undefined') return false
+  const params = new URLSearchParams(window.location.search)
+  return Array.from(DEMO_PRESENTATION_PARAMS).some(param => params.get(param) === '1')
+}
+
+function isAllowedDemoEmail(email) {
+  return Boolean(email && DEMO_EMAILS.has(email.toLowerCase()))
+}
+
 export async function getEffectiveRestaurantEmail(supabase) {
   const { data: { user } } = await supabase.auth.getUser()
-  const demoEmail = process.env.NEXT_PUBLIC_SHOW_DEMO === 'true' ? getDemoEmail() : null
+  const storedDemoEmail = getDemoEmail()
+  const demoEmail = (
+    process.env.NEXT_PUBLIC_SHOW_DEMO === 'true' ||
+    (isDemoPresentationRoute() && isAllowedDemoEmail(storedDemoEmail))
+  ) ? storedDemoEmail : null
 
-  if (!user && demoEmail) return { email: demoEmail, user: null, isAdmin: false }
-  if (!user) return { email: null, user: null, isAdmin: false }
+  if (!user && demoEmail) return { email: demoEmail, user: null, isAdmin: false, isDemo: true }
+  if (!user) return { email: null, user: null, isAdmin: false, isDemo: false }
 
   if (isAdminEmail(user.email)) {
     const restauranteIdUrl = typeof window !== 'undefined'
@@ -69,8 +88,9 @@ export async function getEffectiveRestaurantEmail(supabase) {
       restauranteId: restauranteIdUrl || getAdminRestaurantId(),
       user,
       isAdmin: true,
+      isDemo: false,
     }
   }
 
-  return { email: user.email, restauranteId: null, user, isAdmin: false }
+  return { email: user.email, restauranteId: null, user, isAdmin: false, isDemo: false }
 }

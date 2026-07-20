@@ -45,7 +45,7 @@
 
 .header h2 {
   margin: 0;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 27px;
   font-weight: 400;
   line-height: 1.12;

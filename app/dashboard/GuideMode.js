@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import styles from './guideMode.module.css'
 
@@ -167,25 +167,38 @@ const FALLBACK_GUIDE = {
 }
 
 export function GuideModeProvider({ restaurantId, children }) {
-  const [enabled, setEnabled] = useState(false)
-  const [ready, setReady] = useState(false)
   const storageKey = `carta_viva_guide_mode_${restaurantId || 'user'}`
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem(storageKey)
-    setEnabled(saved === '1')
-    setReady(true)
+  const subscribe = useCallback((callback) => {
+    if (typeof window === 'undefined') return () => {}
+    const eventName = `${storageKey}:changed`
+    const onStorage = event => {
+      if (event.key === storageKey) callback()
+    }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener(eventName, callback)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener(eventName, callback)
+    }
   }, [storageKey])
+
+  const getSnapshot = useCallback(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem(storageKey) === '1'
+  }, [storageKey])
+
+  const enabled = useSyncExternalStore(subscribe, getSnapshot, () => false)
 
   const value = useMemo(() => ({
     enabled,
-    ready,
-    toggle: () => setEnabled(current => {
-      const next = !current
+    ready: true,
+    toggle: () => {
+      const next = !enabled
       window.localStorage.setItem(storageKey, next ? '1' : '0')
-      return next
-    }),
-  }), [enabled, ready, storageKey])
+      window.dispatchEvent(new Event(`${storageKey}:changed`))
+    },
+  }), [enabled, storageKey])
 
   return <GuideContext.Provider value={value}>{children}</GuideContext.Provider>
 }

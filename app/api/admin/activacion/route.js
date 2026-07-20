@@ -132,7 +132,7 @@ function emailActivacion({ restaurante, accessLink, checkoutUrl, trialEnd }) {
       </p>
       <p>No se cobrara nada hasta el <strong>${fecha}</strong>. Puedes cancelar antes en cualquier momento sin coste.</p>
       <p>Una vez creada la contrasena, podras entrar desde:<br><a href="${SITE_URL}/login">${SITE_URL}/login</a></p>
-      <p>Tu carta publica esta preparada aqui:<br><a href="${SITE_URL}/carta/${escapeHtml(restaurante.slug)}">${SITE_URL}/carta/${escapeHtml(restaurante.slug)}</a></p>
+      <p>Tu carta queda preparada en borrador. Desde el panel podras probarla sin publicarla y activarla cuando precios, platos y QR esten revisados.</p>
       <p>Un saludo,<br>Juanjo</p>
     </div>
   `

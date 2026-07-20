@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import BrandLogo from './BrandLogo'
 
 const labels = {
   home: 'Consultoría',
@@ -17,7 +18,7 @@ export default function PublicNav({ active = 'home', eyebrow = 'Consultoría de 
   return (
     <nav className={`topbar${open ? ' nav-open' : ''}`}>
       <Link href="/cartavinos" className="brand brand-logo" onClick={close}>
-        <img src="/brand/carta-viva/logo-horizontal.png" alt="Carta Viva" />
+        <BrandLogo priority />
       </Link>
 
       <button

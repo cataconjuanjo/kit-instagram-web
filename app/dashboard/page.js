@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { getEffectiveRestaurantEmail } from '../demo'
+import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceDay'
 import { esPerfilBodega, puedeUsar } from '../lib/plans'
+import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationReadiness'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -42,6 +44,19 @@ function fechaLocalClave() {
 
 function claveCierreDia(restauranteId) {
   return `carta_viva_cierre_${restauranteId}_${fechaLocalClave()}`
+}
+
+function leerActivacionReciente() {
+  if (typeof window === 'undefined') return false
+  const params = new URLSearchParams(window.location.search)
+  let marcada = false
+  try {
+    marcada = window.localStorage.getItem('carta_viva_recien_activado') === '1'
+    if (marcada) window.localStorage.removeItem('carta_viva_recien_activado')
+  } catch {
+    marcada = false
+  }
+  return params.get('bienvenida') === '1' || marcada
 }
 
 async function tokenSesion() {
@@ -115,6 +130,18 @@ function normalizarPreferenciasDraft(preferencias = {}, rest = {}) {
   }
 }
 
+const ESTADO_LANZAMIENTO_INICIAL = {
+  loading: false,
+  previewAprobada: false,
+  previewObsoleta: false,
+  previewPendiente: false,
+  analyticsPendiente: false,
+  qrPreparado: false,
+  eventosEntrega: 0,
+  escaneosReales: 0,
+  error: '',
+}
+
 export default function DashboardHome() {
   const [restaurante, setRestaurante] = useState(null)
   const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, incidenciasSala: 0, dudasSala: 0 })
@@ -137,9 +164,11 @@ export default function DashboardHome() {
   const [resumenPrefsDraft, setResumenPrefsDraft] = useState(preferenciasResumenPorDefecto())
   const [resumenSemanalError, setResumenSemanalError] = useState('')
   const [resumenSemanalMensaje, setResumenSemanalMensaje] = useState('')
+  const [activacionReciente, setActivacionReciente] = useState(false)
+  const [estadoLanzamiento, setEstadoLanzamiento] = useState(ESTADO_LANZAMIENTO_INICIAL)
   const [loading, setLoading] = useState(true)
 
-  async function cargarRadarDiario(restauranteId) {
+  const cargarRadarDiario = useCallback(async (restauranteId) => {
     const token = await tokenSesion()
     if (!token || !restauranteId) {
       setRadarAcciones([])
@@ -164,7 +193,7 @@ export default function DashboardHome() {
     } finally {
       setRadarLoading(false)
     }
-  }
+  }, [])
 
   async function actualizarRadarDiario(accion, estado) {
     if (!accion?.id || !restaurante?.id || !radarPersistidas) return
@@ -188,11 +217,11 @@ export default function DashboardHome() {
     }
   }
 
-  function aplicarPreferenciasSemanal(preferencias, rest = restaurante) {
+  const aplicarPreferenciasSemanal = useCallback((preferencias, rest = {}) => {
     setResumenPrefsDraft(normalizarPreferenciasDraft(preferencias || {}, rest || {}))
-  }
+  }, [])
 
-  async function cargarResumenSemanal(restauranteId, restActual = restaurante) {
+  const cargarResumenSemanal = useCallback(async (restauranteId, restActual = {}) => {
     const token = await tokenSesion()
     if (!token || !restauranteId) {
       setResumenSemanal(null)
@@ -216,7 +245,55 @@ export default function DashboardHome() {
     } finally {
       setResumenSemanalLoading(false)
     }
-  }
+  }, [aplicarPreferenciasSemanal])
+
+  const cargarEstadoLanzamiento = useCallback(async (restauranteId, restActual = {}) => {
+    if (!restauranteId || esPerfilBodega(restActual)) {
+      setEstadoLanzamiento(ESTADO_LANZAMIENTO_INICIAL)
+      return
+    }
+    const token = await tokenSesion()
+    if (!token) return
+    setEstadoLanzamiento(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      const destino = restActual?.hub_activo ? 'hub' : 'carta'
+      const previewQuery = new URLSearchParams({ restaurante_id: restauranteId, destino })
+      const analyticsQuery = new URLSearchParams({ restaurante_id: restauranteId, days: '30' })
+      const [previewRes, analyticsRes] = await Promise.all([
+        fetch(`/api/publicacion/preview-approval?${previewQuery}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`/api/publicacion/analytics?${analyticsQuery}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ])
+      const previewData = await previewRes.json().catch(() => ({}))
+      const analyticsData = await analyticsRes.json().catch(() => ({}))
+      const resumenEntrega = analyticsData.resumen || {}
+      const accionesMaterial = (resumenEntrega.qr_downloaded || 0) +
+        (resumenEntrega.qr_print_opened || 0) +
+        (resumenEntrega.public_link_copied || 0) +
+        (resumenEntrega.team_message_copied || 0)
+
+      setEstadoLanzamiento({
+        loading: false,
+        previewAprobada: Boolean(previewRes.ok && previewData.aprobacion_vigente),
+        previewObsoleta: Boolean(previewRes.ok && previewData.aprobacion_obsoleta),
+        previewPendiente: Boolean(previewData.aprobaciones_pendientes),
+        analyticsPendiente: Boolean(analyticsData.analytics_pendiente),
+        qrPreparado: accionesMaterial > 0,
+        eventosEntrega: analyticsData.eventos?.length || 0,
+        escaneosReales: analyticsData.uso_real?.escaneos_total || 0,
+        error: '',
+      })
+    } catch (error) {
+      setEstadoLanzamiento(prev => ({
+        ...prev,
+        loading: false,
+        error: error.message || 'No se pudo cargar el estado de lanzamiento.',
+      }))
+    }
+  }, [])
 
   async function copiarResumenSemanal() {
     if (!resumenSemanal?.copy_text) return
@@ -309,10 +386,56 @@ export default function DashboardHome() {
     }
   }
 
+  function marcarTareaInicio(tareaId) {
+    if (!tareaId) return
+    setTareasOcultas(prev => {
+      if (prev.includes(tareaId)) return prev
+      const siguientes = [...prev, tareaId]
+      if (typeof window !== 'undefined' && restaurante?.id) {
+        try {
+          window.localStorage.setItem(`carta_viva_inicio_${restaurante.id}`, JSON.stringify(siguientes))
+        } catch {
+          // El checklist sigue funcionando aunque el navegador bloquee localStorage.
+        }
+      }
+      return siguientes
+    })
+  }
+
   useEffect(() => {
     async function cargar() {
-      const { email, restauranteId } = await getEffectiveRestaurantEmail(supabase)
+      const { email, restauranteId, isDemo } = await getEffectiveRestaurantEmail(supabase)
       if (!email && !restauranteId) { window.location.href = '/login'; return }
+
+      if (isDemo) {
+        const demo = await cargarDemoDashboard(email)
+        if (demo?.restaurante) {
+          const rest = demo.restaurante
+          setRestaurante(rest)
+          setActivacionReciente(false)
+          if (typeof window !== 'undefined') {
+            try {
+              const guardadas = JSON.parse(window.localStorage.getItem(`carta_viva_inicio_${rest.id}`) || '[]')
+              setTareasOcultas(Array.isArray(guardadas) ? guardadas : [])
+            } catch {
+              setTareasOcultas([])
+            }
+          }
+          setEtiquetaDia(demo.etiquetaDia || 'hoy')
+          setTurnoCerrado(Boolean(demo.turnoCerrado))
+          setVinos(demo.vinos || [])
+          setPlatos(demo.platos || [])
+          setPropuestas(demo.propuestas || [])
+          setStats(demo.stats || { escaneos: 0, sommelier: 0, ventasHoy: 0, incidenciasSala: 0, dudasSala: 0 })
+          setRadarAcciones([])
+          setRadarPersistidas(false)
+          setResumenSemanal(null)
+          setEstadoLanzamiento(ESTADO_LANZAMIENTO_INICIAL)
+        }
+        setLoading(false)
+        return
+      }
+
       const queryRestaurante = supabase.from('restaurantes').select('*')
       const { data: rest } = restauranteId
         ? await queryRestaurante.eq('id', restauranteId).single()
@@ -320,6 +443,7 @@ export default function DashboardHome() {
       if (rest) {
         setRestaurante(rest)
         if (typeof window !== 'undefined') {
+          setActivacionReciente(leerActivacionReciente())
           try {
             const guardadas = JSON.parse(window.localStorage.getItem(`carta_viva_inicio_${rest.id}`) || '[]')
             setTareasOcultas(Array.isArray(guardadas) ? guardadas : [])
@@ -368,12 +492,13 @@ export default function DashboardHome() {
         await Promise.all([
           cargarRadarDiario(rest.id),
           cargarResumenSemanal(rest.id, rest),
+          cargarEstadoLanzamiento(rest.id, rest),
         ])
       }
       setLoading(false)
     }
     cargar()
-  }, [])
+  }, [cargarEstadoLanzamiento, cargarRadarDiario, cargarResumenSemanal])
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#fff', fontFamily: 'system-ui, sans-serif' }}>
@@ -404,6 +529,12 @@ export default function DashboardHome() {
     (porcentaje(vinosActivos.length - vinosSinPrecio.length, vinosActivos.length) * 0.1)
   )
   const calidadGlobal = perfilBodega ? calidadBodega : Math.round((calidadVinos * 0.58) + (calidadPlatos * 0.42))
+  const contenidoPublicacion = resumirContenidoCarta(vinosActivos, platos)
+  const cartaPublicable = puedePublicarCarta(contenidoPublicacion)
+  const cartaPublicada = restaurante?.carta_publica_activa !== false
+  const previewLista = Boolean(estadoLanzamiento.previewAprobada && !estadoLanzamiento.previewObsoleta)
+  const qrPreparado = Boolean(estadoLanzamiento.qrPreparado || estadoLanzamiento.escaneosReales > 0)
+  const primerEscaneoReal = Boolean(estadoLanzamiento.escaneosReales > 0 || stats.escaneos > 0)
   const estadoCarta = perfilBodega
     ? calidadGlobal >= 80 ? 'Bodega bajo control' : calidadGlobal >= 55 ? 'Bodega con pendientes' : 'Bodega por ordenar'
     : calidadGlobal >= 80 ? 'Lista para trabajar' : calidadGlobal >= 55 ? 'Necesita ajustes' : 'Requiere orden'
@@ -428,6 +559,83 @@ export default function DashboardHome() {
   const accionesRadarAbiertas = radarAcciones.filter(item => !['hecha', 'descartada'].includes(item.estado))
   const accionesRadarHechas = radarAcciones.filter(item => item.estado === 'hecha').length
   const radarPrincipal = accionesRadarAbiertas[0] || null
+  const pasosLanzamiento = perfilBodega ? [] : [
+    {
+      id: 'contenido',
+      titulo: 'Contenido publicable',
+      texto: cartaPublicable
+        ? `${contenidoPublicacion.vinosActivos} vinos activos y ${contenidoPublicacion.vinosConPrecio} con precio.`
+        : `${contenidoPublicacion.vinosActivos} vinos activos, ${contenidoPublicacion.vinosSinPrecio} sin precio.`,
+      href: cartaPublicable ? '/dashboard/qr' : '/dashboard/vinos?filtro=pendientes',
+      ok: cartaPublicable,
+      requerido: true,
+    },
+    {
+      id: 'platos',
+      titulo: 'Maridaje con contexto',
+      texto: platos.length
+        ? `${platos.length} platos activos${platosSinDescripcion.length ? `, ${platosSinDescripcion.length} sin descripcion interna` : ''}.`
+        : 'Aun no hay platos activos para orientar ArmonIA.',
+      href: '/dashboard/platos',
+      ok: platos.length > 0 && platosSinDescripcion.length === 0,
+      requerido: false,
+    },
+    {
+      id: 'preview',
+      titulo: 'Preview aprobada',
+      texto: estadoLanzamiento.previewPendiente
+        ? 'Falta activar la tabla de aprobaciones.'
+        : previewLista
+          ? 'La ultima preview vigente esta aprobada.'
+          : estadoLanzamiento.previewObsoleta
+            ? 'La carta cambio despues de aprobar la preview.'
+            : 'Genera y aprueba la preview privada.',
+      href: '/dashboard/qr#preview-privada',
+      ok: previewLista,
+      requerido: true,
+    },
+    {
+      id: 'publicacion',
+      titulo: 'Destino publicado',
+      texto: cartaPublicada ? 'El QR publico responde sin token.' : 'La carta sigue en borrador.',
+      href: '/dashboard/qr',
+      ok: cartaPublicada,
+      requerido: true,
+    },
+    {
+      id: 'material',
+      titulo: 'QR preparado',
+      texto: qrPreparado
+        ? 'Ya hay descarga, impresion, copia de enlace o escaneo real.'
+        : 'Descarga o imprime el QR despues de publicar.',
+      href: '/dashboard/qr',
+      ok: qrPreparado,
+      requerido: true,
+    },
+    {
+      id: 'escaneo',
+      titulo: 'Primer escaneo real',
+      texto: primerEscaneoReal
+        ? `${Math.max(estadoLanzamiento.escaneosReales, stats.escaneos)} escaneos detectados.`
+        : 'Aun no hay escaneos reales de clientes.',
+      href: '/dashboard/qr',
+      ok: primerEscaneoReal,
+      requerido: false,
+    },
+  ]
+  const pasosLanzamientoRequeridos = pasosLanzamiento.filter(paso => paso.requerido)
+  const pasosLanzamientoCompletados = pasosLanzamiento.filter(paso => paso.ok).length
+  const pasosLanzamientoRequeridosCompletados = pasosLanzamientoRequeridos.filter(paso => paso.ok).length
+  const progresoLanzamiento = porcentaje(pasosLanzamientoCompletados, pasosLanzamiento.length)
+  const lanzamientoListoMesa = Boolean(pasosLanzamientoRequeridos.length && pasosLanzamientoRequeridosCompletados === pasosLanzamientoRequeridos.length)
+  const siguienteLanzamiento = pasosLanzamiento.find(paso => !paso.ok && paso.requerido) || pasosLanzamiento.find(paso => !paso.ok) || null
+  const mostrarChecklistLanzamiento = !perfilBodega && (
+    cartaPublicable ||
+    previewLista ||
+    cartaPublicada ||
+    estadoLanzamiento.eventosEntrega > 0 ||
+    estadoLanzamiento.loading
+  )
 
   const tareasInicio = perfilBodega
     ? [
@@ -435,11 +643,11 @@ export default function DashboardHome() {
         { id: 'bodega_control', titulo: 'Completar control de bodega', texto: 'Coste, proveedor y stock actual convierten la lista en una herramienta de gestion.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || (sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 && sinStockMinimo.length === 0) },
       ]
     : [
-        { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio, uva y stock inicial.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
+        { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio visible antes de publicar.', href: '/dashboard/vinos?importar=1', autoHide: () => cartaPublicable },
         { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
         { id: 'descripciones_platos', titulo: 'Definir platos para maridaje', texto: 'Describe técnica, salsa, intensidad e ingredientes clave. Es información interna: no se muestra como receta en la carta pública.', href: '/dashboard/platos?filtro=descripcion', autoHide: () => platos.length === 0 || platosSinDescripcion.length === 0 },
         { id: 'bodega', titulo: 'Completar margen, proveedor y stock', texto: 'Coste, proveedor y stock actual convierten la carta en control de bodega.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 },
-        { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la carta pública, revisa móvil y decide si sala entra con PIN o sin PIN.', href: '/dashboard/qr', autoHide: () => Boolean(restaurante?.slug) },
+        { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la prueba interna, revisa móvil y publica solo cuando la pantalla QR confirme contenido mínimo.', href: '/dashboard/qr', autoHide: () => previewLista && cartaPublicada && qrPreparado },
       ]
   const tareasInicioVisibles = tareasInicio.filter(tarea =>
     !tareasOcultas.includes(tarea.id) &&
@@ -453,6 +661,8 @@ export default function DashboardHome() {
   const siguienteActivacion = tareasInicioVisibles[0]
   const colaActivacion = tareasInicioVisibles.slice(1)
   const mostrarOperativaDiaria = tareasInicioVisibles.length === 0 || activacionCompacta
+  const enlaceRevisionActivacion = perfilBodega ? '/dashboard/bodega' : cartaPublicable ? '/dashboard/qr' : '/dashboard/vinos?filtro=pendientes'
+  const textoRevisionActivacion = perfilBodega ? 'Abrir bodega' : cartaPublicable ? 'Revisar QR' : 'Completar carta'
 
   const alertasSala = stats.incidenciasSala + stats.dudasSala
   const haySenalesSala = stats.ventasHoy + alertasSala > 0
@@ -560,15 +770,23 @@ export default function DashboardHome() {
             <div className={styles.activationHead}>
               <div>
                 <p className={styles.eyebrow}>Puesta en marcha</p>
-                <h1>{perfilBodega ? 'Ordena tu bodega profesional' : 'Publica tu primera Carta Viva'}</h1>
-                <p>{perfilBodega ? 'Completa estos pasos para controlar stock, coste, proveedor y reposicion desde el primer dia.' : 'Completa estos pasos en orden. Cuando termines, tendrás carta pública, maridaje y QR listos para probar.'}</p>
+                <h1>{perfilBodega ? 'Ordena tu bodega profesional' : activacionReciente ? 'Tu cuenta está activa. Publiquemos la carta.' : 'Publica tu primera Carta Viva'}</h1>
+                <p>{perfilBodega ? 'Completa estos pasos para controlar stock, coste, proveedor y reposición desde el primer día.' : 'Completa estos pasos en orden. Cuando termines, tendrás carta pública, maridaje y QR revisados antes de llevarlos a mesa.'}</p>
               </div>
               <div className={styles.activationProgress}>
                 <strong>{progresoActivacion}%</strong>
                 <span>{tareasInicioCompletadas} de {tareasInicioAplicables.length} pasos</span>
               </div>
             </div>
-            <div className={styles.activationBar}><span style={{ width: `${progresoActivacion}%` }} /></div>
+            {activacionReciente && !perfilBodega && (
+              <div className={styles.activationWelcome}>
+                <strong>Cuenta activada</strong>
+                <span>Ahora deja la carta lista para enseñar: primero contenido, después prueba pública y QR.</span>
+              </div>
+            )}
+            <div className={styles.activationBar} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progresoActivacion}>
+              <span style={{ width: `${progresoActivacion}%` }} />
+            </div>
             <div className={styles.activationStepsFocused}>
               {siguienteActivacion && (
                 <article className={styles.activationCurrent}>
@@ -578,7 +796,10 @@ export default function DashboardHome() {
                     <strong>{siguienteActivacion.titulo}</strong>
                     <p>{siguienteActivacion.texto}</p>
                   </div>
-                  <Link href={siguienteActivacion.href}>Continuar</Link>
+                  <div className={styles.activationStepActions}>
+                    <Link href={siguienteActivacion.href}>Continuar</Link>
+                    <button type="button" onClick={() => marcarTareaInicio(siguienteActivacion.id)}>Marcar revisado</button>
+                  </div>
                 </article>
               )}
               {colaActivacion.length > 0 && (
@@ -594,9 +815,62 @@ export default function DashboardHome() {
               )}
             </div>
             <div className={styles.activationTrust}>
-              <span>Los cambios se guardan automáticamente</span>
+              <span>Avanza paso a paso sin publicar nada por sorpresa</span>
               <span>{perfilBodega ? 'El criterio del sumiller sigue al mando' : 'Tu carta no se publica sola'}</span>
-              <Link href={perfilBodega ? '/dashboard/bodega' : '/dashboard/qr'}>{perfilBodega ? 'Abrir bodega' : 'Revisar QR'}</Link>
+              <Link href={enlaceRevisionActivacion}>{textoRevisionActivacion}</Link>
+            </div>
+          </section>
+        )}
+
+        {mostrarChecklistLanzamiento && (
+          <section className={styles.launchPanel}>
+            <div className={styles.launchHead}>
+              <div>
+                <p className={styles.eyebrow}>Lanzamiento de mesa</p>
+                <h2>{lanzamientoListoMesa ? 'QR listo para servicio' : 'Checklist antes de poner el QR'}</h2>
+                <p>
+                  {lanzamientoListoMesa
+                    ? 'Contenido, aprobacion, publicacion y material estan alineados para trabajar en sala.'
+                    : 'Sigue estos controles para evitar publicar una carta incompleta, sin aprobar o sin material probado.'}
+                </p>
+              </div>
+              <div className={styles.launchProgress}>
+                <strong>{progresoLanzamiento}%</strong>
+                <span>{pasosLanzamientoCompletados} de {pasosLanzamiento.length} controles</span>
+              </div>
+            </div>
+            <div className={styles.launchBar} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progresoLanzamiento}>
+              <span style={{ width: `${progresoLanzamiento}%` }} />
+            </div>
+            <div className={styles.launchSteps}>
+              {pasosLanzamiento.map((paso, index) => (
+                <Link
+                  key={paso.id}
+                  href={paso.href}
+                  className={`${styles.launchStep} ${paso.ok ? styles.launchStepOk : siguienteLanzamiento?.id === paso.id ? styles.launchStepCurrent : ''}`}
+                >
+                  <span>{paso.ok ? 'OK' : index + 1}</span>
+                  <strong>{paso.titulo}</strong>
+                  <small>{paso.texto}</small>
+                  <em>{paso.requerido ? 'Obligatorio' : 'Recomendado'}</em>
+                </Link>
+              ))}
+            </div>
+            <div className={styles.launchDecision}>
+              <div>
+                <strong>{estadoLanzamiento.loading ? 'Comprobando estado de lanzamiento' : lanzamientoListoMesa ? 'Preparado para mesa' : siguienteLanzamiento?.titulo || 'Revisar lanzamiento'}</strong>
+                <span>
+                  {estadoLanzamiento.error ||
+                    (estadoLanzamiento.analyticsPendiente
+                      ? 'La analitica de entrega esta pendiente de base de datos.'
+                      : lanzamientoListoMesa
+                        ? `${estadoLanzamiento.escaneosReales || stats.escaneos || 0} escaneos reales detectados.`
+                        : siguienteLanzamiento?.texto)}
+                </span>
+              </div>
+              <Link href={siguienteLanzamiento?.href || '/dashboard/qr'}>
+                {lanzamientoListoMesa ? 'Abrir QR' : 'Resolver siguiente'}
+              </Link>
             </div>
           </section>
         )}

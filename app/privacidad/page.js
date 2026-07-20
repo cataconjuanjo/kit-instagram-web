@@ -1,28 +1,29 @@
 import Link from 'next/link'
+import BrandLogo from '../components/BrandLogo'
 
 export const metadata = {
   title: 'Privacidad y cookies',
-  description: 'Politica de privacidad y cookies de Cata con Juanjo.',
+  description: 'Política de privacidad y cookies de Cata con Juanjo.',
 }
 
 export default function Privacidad() {
   return (
     <main className="legal-page">
       <Link href="/cartavinos" className="brand brand-logo">
-        <img src="/brand/carta-viva/logo-horizontal.svg" alt="Carta Viva" />
+        <BrandLogo variant="horizontalSvg" priority />
         <small>Volver a la web</small>
       </Link>
       <h1>Privacidad y cookies</h1>
 
       <h2>Responsable</h2>
       <p>
-        El responsable del tratamiento es Juanjo Garcia. Puedes contactar en
+        El responsable del tratamiento es Juanjo García. Puedes contactar en
         {' '}<a href="mailto:cataconjuanjo@gmail.com">cataconjuanjo@gmail.com</a>.
       </p>
 
       <h2>Datos que se recogen</h2>
       <p>
-        A traves de los formularios se pueden recoger nombre, email, restaurante o negocio y mensaje enviado. Si usas
+        A través de los formularios se pueden recoger nombre, email, restaurante o negocio y mensaje enviado. Si usas
         Carta Viva como cliente, también se tratan datos necesarios para operar la carta digital, panel privado,
         estadísticas y herramientas asociadas.
       </p>

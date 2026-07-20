@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { supabase } from '../supabase'
 import styles from './layout.module.css'
 import { GuideModeProvider, GuidePanel, GuideToggle } from '../dashboard/GuideMode'
+import BrandLogo from '../components/BrandLogo'
 
 export default function AdminLayout({ children }) {
   const [restaurantes, setRestaurantes] = useState([])
@@ -54,6 +55,7 @@ export default function AdminLayout({ children }) {
     { label: 'Panel', href: '/admin/consultoria' },
     pathname === '/admin/consultoria' && { label: 'Radar' },
     pathname === '/admin/acciones' && { label: 'Acciones' },
+    pathname === '/admin/demo' && { label: 'Embudo demo' },
     pathname === '/admin/simulador-cartas' && { label: 'Simulador cartas' },
     pathname === '/admin/alertas' && { label: 'Alertas' },
     pathname === '/admin/sugerencias' && { label: 'Buzon sugerencias' },
@@ -68,7 +70,7 @@ export default function AdminLayout({ children }) {
       <nav className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <div className={styles.brandIdentity}>
-            <img className={styles.brandMark} src="/brand/carta-viva/isotipo-dark.svg" alt="Carta Viva" />
+            <BrandLogo variant="markDark" className={styles.brandMark} />
             <div className={styles.brandText}>
               <p className={styles.brandLabel}>Panel consultor</p>
               <p className={styles.brandName}>Carta Viva</p>
@@ -92,6 +94,13 @@ export default function AdminLayout({ children }) {
               onClick={() => setMenuOpen(false)}
             >
               Alertas
+            </Link>
+            <Link
+              href="/admin/demo"
+              className={`${styles.navLink} ${pathname === '/admin/demo' ? styles.navActive : ''}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              Embudo demo
             </Link>
             <Link
               href="/admin/acciones"

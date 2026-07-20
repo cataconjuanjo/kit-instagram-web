@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 function HubIcon({ tipo, titulo }) {
   const texto = `${tipo || ''} ${titulo || ''}`
@@ -75,30 +75,92 @@ function limpiarTextoPublico(texto = '') {
     .trim()
 }
 
+function registrarEscaneoHub(restauranteId, pruebaToken) {
+  if (!restauranteId) return
+  fetch('/api/estadisticas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      restaurante_id: restauranteId,
+      tipo: 'escaneo',
+      detalle: 'hub',
+      prueba_token: pruebaToken,
+    }),
+  }).catch(() => {})
+}
+
 export default function RestauranteHub({ params }) {
   const [restaurante, setRestaurante] = useState(null)
   const [links, setLinks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [previewAprobacion, setPreviewAprobacion] = useState({ aprobada: false, loading: false, error: '' })
+  const [previewApprovalOpen, setPreviewApprovalOpen] = useState(false)
+  const [previewApprovalForm, setPreviewApprovalForm] = useState({ reviewer_name: '', reviewer_email: '', note: '' })
   const [demoPresentacion] = useState(() => (
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_presentacion') === '1'
   ))
+  const [pruebaToken] = useState(() => (
+    typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('prueba') || '' : ''
+  ))
+  const escaneoRegistradoRef = useRef('')
 
   useEffect(() => {
     async function cargar() {
       const slug = (await params).slug
-      const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}?hub=1`)
+      const query = new URLSearchParams({ hub: '1' })
+      if (pruebaToken) query.set('prueba', pruebaToken)
+      const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}?${query.toString()}`)
       const data = res.ok ? await res.json() : {}
       const rest = data.restaurante
 
       if (rest?.hub_activo && rest?.hub_disponible) {
         setRestaurante(rest)
         setLinks(data.links || [])
+        const claveEscaneo = `${rest.id}:${pruebaToken || 'publico'}`
+        if (escaneoRegistradoRef.current !== claveEscaneo) {
+          escaneoRegistradoRef.current = claveEscaneo
+          registrarEscaneoHub(rest.id, pruebaToken)
+        }
       }
 
       setLoading(false)
     }
     cargar()
-  }, [params])
+  }, [params, pruebaToken])
+
+  function updatePreviewApprovalField(field, value) {
+    setPreviewApprovalForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  async function aprobarPreviewHub(event) {
+    event?.preventDefault()
+    if (!restaurante?.id || !pruebaToken || previewAprobacion.loading || previewAprobacion.aprobada) return
+    setPreviewAprobacion({ aprobada: false, loading: true, error: '' })
+    try {
+      const res = await fetch('/api/publicacion/preview-approval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurante_id: restaurante.id,
+          preview_token: pruebaToken,
+          destino: 'hub',
+          reviewer_name: previewApprovalForm.reviewer_name,
+          reviewer_email: previewApprovalForm.reviewer_email,
+          note: previewApprovalForm.note,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'No se pudo registrar la aprobacion.')
+      setPreviewAprobacion({ aprobada: true, loading: false, error: '' })
+      setPreviewApprovalOpen(false)
+    } catch (error) {
+      setPreviewAprobacion({
+        aprobada: false,
+        loading: false,
+        error: error.message || 'No se pudo registrar la aprobacion.',
+      })
+    }
+  }
 
   if (loading) {
     return (
@@ -121,7 +183,10 @@ export default function RestauranteHub({ params }) {
 
   const titulo = limpiarTextoPublico(restaurante.hub_titulo || restaurante.nombre)
   const subtitulo = limpiarTextoPublico(restaurante.hub_subtitulo || [restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · '))
-  const queryDemo = demoPresentacion ? '?demo_presentacion=1' : ''
+  const queryCartaParams = new URLSearchParams()
+  if (demoPresentacion) queryCartaParams.set('demo_presentacion', '1')
+  if (pruebaToken) queryCartaParams.set('prueba', pruebaToken)
+  const queryCarta = queryCartaParams.toString() ? `?${queryCartaParams.toString()}` : ''
   const mostrarLogo = restaurante.hub_mostrar_logo !== false
   const mostrarNombre = restaurante.hub_mostrar_nombre !== false
   const mostrarDireccion = restaurante.hub_mostrar_direccion !== false
@@ -145,7 +210,7 @@ export default function RestauranteHub({ params }) {
   const hrefLink = link => {
     const tituloLimpio = limpiarTextoPublico(link.titulo).toLowerCase()
     if (link.tipo === 'carta' || link.tipo === 'carta_vinos' || link.url === '#carta' || tituloLimpio.includes('carta de vinos')) {
-      return `/carta/${restaurante.slug}${queryDemo}`
+      return `/carta/${restaurante.slug}${queryCarta}`
     }
     return link.url || '#'
   }
@@ -169,50 +234,110 @@ export default function RestauranteHub({ params }) {
           <a href="/demo/taberna-del-puerto">Volver a la muestra</a>
         </div>
       )}
-      <section className="hub-card">
-        {mostrarIdentidad && (
-          <div className="hub-identity">
-            {mostrarLogo && (restaurante.logo_url ? (
-              <img className="hub-logo" src={restaurante.logo_url} alt={restaurante.nombre} loading="lazy" />
-            ) : (
-              <div className="hub-logo hub-logo-text">{restaurante.nombre?.slice(0, 2)}</div>
-            ))}
+      <div className="hub-preview-stack">
+        {restaurante.modo_prueba && (
+          <div className={`hub-preview-banner ${previewApprovalOpen ? 'hub-preview-banner-open' : ''}`} role="status">
             <div>
-              {mostrarNombre && <h1>{titulo}</h1>}
-              {mostrarDireccion && subtitulo && <p className="hub-location">{subtitulo}</p>}
+              <strong>{previewAprobacion.aprobada ? 'Preview aprobada' : 'Vista previa privada'}</strong>
+              <span>
+                {previewAprobacion.aprobada
+                  ? 'La revision ha quedado registrada. Ya se puede publicar desde el dashboard.'
+                  : 'No es una pagina publicada. Revisa enlaces y carta antes de compartir el QR real.'}
+              </span>
+              {previewAprobacion.error && <small>{previewAprobacion.error}</small>}
             </div>
+            {!previewApprovalOpen && (
+              <button
+                type="button"
+                onClick={() => setPreviewApprovalOpen(true)}
+                disabled={previewAprobacion.loading || previewAprobacion.aprobada}
+              >
+                {previewAprobacion.loading ? 'Registrando...' : previewAprobacion.aprobada ? 'Aprobada' : 'Aprobar preview'}
+              </button>
+            )}
+            {previewApprovalOpen && !previewAprobacion.aprobada && (
+              <form className="hub-preview-approval-form" onSubmit={aprobarPreviewHub}>
+                <input
+                  type="text"
+                  value={previewApprovalForm.reviewer_name}
+                  onChange={event => updatePreviewApprovalField('reviewer_name', event.target.value)}
+                  placeholder="Nombre, cargo o equipo"
+                  maxLength={120}
+                  autoComplete="name"
+                />
+                <input
+                  type="email"
+                  value={previewApprovalForm.reviewer_email}
+                  onChange={event => updatePreviewApprovalField('reviewer_email', event.target.value)}
+                  placeholder="Email opcional"
+                  maxLength={180}
+                  autoComplete="email"
+                />
+                <textarea
+                  value={previewApprovalForm.note}
+                  onChange={event => updatePreviewApprovalField('note', event.target.value)}
+                  placeholder="Nota opcional"
+                  maxLength={800}
+                  rows={2}
+                />
+                <div>
+                  <button type="submit" disabled={previewAprobacion.loading}>
+                    {previewAprobacion.loading ? 'Registrando...' : 'Confirmar aprobacion'}
+                  </button>
+                  <button type="button" onClick={() => setPreviewApprovalOpen(false)} disabled={previewAprobacion.loading}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         )}
+        <section className="hub-card">
+          {mostrarIdentidad && (
+            <div className="hub-identity">
+              {mostrarLogo && (restaurante.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- Logo configurable del restaurante: puede venir de Supabase u otra URL externa no controlada por next/image.
+                <img className="hub-logo" src={restaurante.logo_url} alt={restaurante.nombre} loading="lazy" />
+              ) : (
+                <div className="hub-logo hub-logo-text">{restaurante.nombre?.slice(0, 2)}</div>
+              ))}
+              <div>
+                {mostrarNombre && <h1>{titulo}</h1>}
+                {mostrarDireccion && subtitulo && <p className="hub-location">{subtitulo}</p>}
+              </div>
+            </div>
+          )}
 
-        <div className="hub-links">
-          {linksPrincipales.map(link => (
-            <a
-              key={link.id}
-              className="hub-link"
-              href={hrefLink(link)}
-              target={hrefLink(link).startsWith('/') ? '_self' : '_blank'}
-              rel="noreferrer"
-            >
-              <span className="hub-link-icon"><HubIcon tipo={link.tipo} titulo={link.titulo} /></span>
-              <span className="hub-link-text">{limpiarTextoPublico(link.titulo)}</span>
-            </a>
-          ))}
-        </div>
-
-        {linksSociales.length > 0 && (
-          <div className="hub-socials">
-            {linksSociales.map(link => (
-              <a key={link.id} href={link.url} target="_blank" rel="noreferrer" aria-label={link.tipo}>
-                <SocialIcon tipo={link.tipo} />
+          <div className="hub-links">
+            {linksPrincipales.map(link => (
+              <a
+                key={link.id}
+                className="hub-link"
+                href={hrefLink(link)}
+                target={hrefLink(link).startsWith('/') ? '_self' : '_blank'}
+                rel="noreferrer"
+              >
+                <span className="hub-link-icon"><HubIcon tipo={link.tipo} titulo={link.titulo} /></span>
+                <span className="hub-link-text">{limpiarTextoPublico(link.titulo)}</span>
               </a>
             ))}
           </div>
-        )}
 
-        <a className="hub-credit" href="https://cataconjuanjo.com/cartavinos" target="_blank" rel="noreferrer">
-          Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
-        </a>
-      </section>
+          {linksSociales.length > 0 && (
+            <div className="hub-socials">
+              {linksSociales.map(link => (
+                <a key={link.id} href={link.url} target="_blank" rel="noreferrer" aria-label={link.tipo}>
+                  <SocialIcon tipo={link.tipo} />
+                </a>
+              ))}
+            </div>
+          )}
+
+          <a className="hub-credit" href="https://cataconjuanjo.com/cartavinos" target="_blank" rel="noreferrer">
+            Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
+          </a>
+        </section>
+      </div>
     </main>
   )
 }

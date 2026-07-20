@@ -57,7 +57,7 @@
 .restaurantName {
   margin: 0;
   color: #fffaf3;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 17px;
   line-height: 1.2;
   white-space: nowrap;
@@ -114,7 +114,7 @@
 .title {
   margin: 0;
   color: #171416;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 34px;
   font-weight: 400;
   line-height: 1.08;
@@ -152,7 +152,7 @@
   color: #74223d;
   padding: 0;
   cursor: pointer;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 17px;
   font-weight: 850;
   line-height: 1;
@@ -290,7 +290,7 @@
   background: #f8f4ea;
   color: #74223d;
   cursor: pointer;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 13px;
   font-weight: 850;
   line-height: 1;
@@ -430,6 +430,70 @@
   color: rgba(255, 250, 243, 0.58);
 }
 
+.publishReadiness {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.readinessItem {
+  min-width: 0;
+  min-height: 112px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  border: 1px solid rgba(255, 250, 243, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.05);
+  padding: 12px;
+}
+
+.readinessItem span {
+  color: rgba(255, 250, 243, 0.46);
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.readinessItem strong {
+  color: #fffaf3;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.readinessItem small {
+  color: rgba(255, 250, 243, 0.62);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.readinessItem a {
+  width: fit-content;
+  margin-top: 2px;
+  color: #fffaf3;
+  font-size: 11px;
+  font-weight: 850;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.readinessOk {
+  border-color: rgba(73, 154, 101, 0.42);
+  background: rgba(237, 245, 234, 0.08);
+}
+
+.readinessBlocked {
+  border-color: rgba(221, 184, 184, 0.52);
+  background: rgba(255, 240, 238, 0.08);
+}
+
+.readinessPending {
+  border-color: rgba(221, 196, 123, 0.45);
+  background: rgba(255, 246, 216, 0.07);
+}
+
 .sectionHead {
   display: flex;
   justify-content: space-between;
@@ -516,7 +580,7 @@
   max-width: 680px;
   margin: 0;
   color: #fffaf3;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 34px;
   font-weight: 400;
   line-height: 1.08;
@@ -647,7 +711,7 @@
   max-width: 720px;
   margin: 0;
   color: #fffaf3;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 34px;
   font-weight: 400;
   line-height: 1.08;
@@ -941,7 +1005,7 @@
 .qrHero h2 {
   margin: 0;
   color: #171416;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 30px;
   font-weight: 400;
   line-height: 1.1;
@@ -1010,6 +1074,143 @@
   border: 1px solid #fed7aa;
 }
 
+.handoffHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, auto);
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 16px;
+  border: 1px solid rgba(83, 24, 39, 0.14);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, #fffaf3 0%, #f7f0e2 54%, #efe5d1 100%);
+  padding: 22px;
+  box-shadow: 0 18px 44px rgba(40, 30, 20, 0.08);
+}
+
+.handoffCopy {
+  min-width: 0;
+}
+
+.handoffCopy h2 {
+  margin: 0;
+  color: #171416;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 34px;
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.handoffCopy p:not(.eyebrow) {
+  max-width: 680px;
+  margin: 10px 0 0;
+  color: #5f5851;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.handoffMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.handoffMeta span {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(116, 34, 61, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.58);
+  color: #5f4230;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.handoffAction {
+  min-width: 190px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  justify-items: stretch;
+  border: 1px solid rgba(116, 34, 61, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+  padding: 12px;
+}
+
+.handoffAction > span {
+  color: #8b8278;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.handoffSteps {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.handoffStep {
+  min-width: 0;
+  min-height: 94px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  border: 1px solid #e2d8c9;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.54);
+  padding: 12px;
+}
+
+.handoffStep span {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #f2eadc;
+  color: #74223d;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.handoffStep strong {
+  color: #171416;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.handoffStep small {
+  color: #706a64;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.handoffStepOk {
+  border-color: rgba(73, 154, 101, 0.34);
+  background: rgba(236, 253, 245, 0.72);
+}
+
+.handoffStepOk span {
+  background: #d8f3e2;
+  color: #146c43;
+}
+
+.handoffStepPending {
+  border-color: rgba(221, 196, 123, 0.42);
+}
+
+.handoffStepCurrent {
+  border-color: rgba(116, 34, 61, 0.42);
+  box-shadow: 0 0 0 3px rgba(116, 34, 61, 0.08);
+}
+
 .qrHero {
   background:
     linear-gradient(135deg, rgba(83, 24, 39, 0.96), rgba(23, 20, 22, 0.94));
@@ -1053,7 +1254,7 @@
   max-width: 230px;
   margin: 0;
   color: #74223d;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 24px;
   line-height: 1.05;
   text-align: center;
@@ -1124,7 +1325,7 @@
   max-width: 560px;
   margin: 0;
   color: #fffaf3;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 34px;
   font-weight: 400;
   line-height: 1.04;
@@ -1209,7 +1410,7 @@
 
 .cellarPage .statValue {
   color: var(--cellar-wine);
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-weight: 700;
 }
 
@@ -1226,7 +1427,7 @@
 }
 
 .cellarPage .panelTitle {
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-weight: 600;
 }
 
@@ -1261,7 +1462,7 @@
 .cellarCockpit .cellarHeroCopy h2 {
   max-width: 680px;
   color: #fffaf3;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 34px;
   font-weight: 400;
   line-height: 1.04;
@@ -2047,6 +2248,257 @@ button.itemCard {
   padding: 28px;
 }
 
+.deliveryPackLayout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.deliveryPackPreview {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #e2d8c8;
+  border-radius: 8px;
+  background: #f8f3eb;
+  padding: 16px;
+}
+
+.deliveryMaterial {
+  width: min(100%, 360px);
+  aspect-ratio: 3 / 4.4;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;
+  gap: 14px;
+  box-sizing: border-box;
+  border: 1px solid #e2d8c8;
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--pack-bg), #fffaf3);
+  color: #171416;
+  padding: 22px;
+  box-shadow: 0 18px 38px rgba(23, 20, 22, 0.12);
+}
+
+.deliveryMaterial_cartel {
+  width: min(100%, 420px);
+  aspect-ratio: 4 / 5;
+  padding: 26px;
+}
+
+.deliveryMaterial_tarjeta {
+  width: min(100%, 430px);
+  aspect-ratio: 1.75 / 1;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  grid-template-rows: auto 1fr auto;
+  align-items: center;
+  padding: 18px;
+}
+
+.deliveryMaterial_historia {
+  width: min(100%, 330px);
+  aspect-ratio: 9 / 16;
+  padding: 24px 20px;
+}
+
+.deliveryMaterialBrand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.deliveryMaterialBrand span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--pack-primary);
+  color: #fffaf3;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.deliveryMaterialBrand strong {
+  color: var(--pack-primary);
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.deliveryMaterialCopy {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: 8px;
+}
+
+.deliveryMaterialCopy small {
+  color: #9b7430;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.deliveryMaterialCopy h3 {
+  margin: 0;
+  color: #171416;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1.02;
+  overflow-wrap: anywhere;
+}
+
+.deliveryMaterialCopy p {
+  margin: 0;
+  color: #625a53;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.deliveryMaterialQr {
+  width: min(100%, 220px);
+  aspect-ratio: 1;
+  display: grid;
+  justify-self: center;
+  place-items: center;
+  border: 10px solid #fff;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 26px rgba(23, 20, 22, 0.1);
+}
+
+.deliveryMaterialQr img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.deliveryMaterialQr span {
+  color: #74223d;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.deliveryMaterialUrl {
+  margin: 0;
+  color: #706a64;
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.deliveryMaterialFooter {
+  color: var(--pack-primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.deliveryMaterial_tarjeta .deliveryMaterialBrand {
+  grid-column: 1 / 2;
+}
+
+.deliveryMaterial_tarjeta .deliveryMaterialCopy {
+  grid-column: 1 / 2;
+}
+
+.deliveryMaterial_tarjeta .deliveryMaterialQr {
+  width: 126px;
+  grid-row: 1 / 4;
+  grid-column: 2 / 3;
+  border-width: 6px;
+}
+
+.deliveryMaterial_tarjeta .deliveryMaterialUrl {
+  grid-column: 1 / 2;
+  text-align: left;
+}
+
+.deliveryMaterial_tarjeta .deliveryMaterialFooter {
+  display: none;
+}
+
+.deliveryMaterial_historia .deliveryMaterialCopy h3 {
+  font-size: 40px;
+}
+
+.deliveryMaterial_historia .deliveryMaterialQr {
+  width: min(100%, 240px);
+}
+
+.deliveryPackControls {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 14px;
+}
+
+.deliveryFormatGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.deliveryFormatButton,
+.deliveryFormatActive {
+  min-height: 72px;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  border: 1px solid #e2d8c8;
+  border-radius: 8px;
+  background: #fffaf3;
+  color: #171416;
+  padding: 10px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.deliveryFormatActive {
+  border-color: #74223d;
+  background: #f3e7db;
+}
+
+.deliveryFormatButton strong,
+.deliveryFormatActive strong {
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.deliveryFormatButton span,
+.deliveryFormatActive span {
+  color: #706a64;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.deliveryCopyGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.deliveryCopyGrid .itemCard {
+  min-height: 116px;
+}
+
+.deliveryCopyGrid button {
+  align-self: start;
+}
+
 .urlBox {
   word-break: break-word;
   background: #fffaf3;
@@ -2054,9 +2506,135 @@ button.itemCard {
   border-radius: 8px;
   padding: 16px;
   color: #171416;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 15px;
   line-height: 1.45;
+}
+
+.previewBuilder {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  border: 1px solid #dfddd6;
+  border-radius: 8px;
+  background: #fffaf3;
+  padding: 16px;
+}
+
+.previewBuilderHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.previewBuilderHead > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.previewBuilderHead strong {
+  color: #171416;
+  font-size: 16px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.previewBuilderHead small {
+  color: #706a64;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.previewDestinationControl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.previewDestinationControlSingle {
+  grid-template-columns: 1fr;
+}
+
+.previewDestinationButton,
+.previewDestinationActive {
+  min-width: 0;
+  min-height: 70px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  border: 1px solid #dfddd6;
+  border-radius: 8px;
+  background: #fff;
+  color: #171416;
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.previewDestinationButton strong,
+.previewDestinationActive strong {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.previewDestinationButton span,
+.previewDestinationActive span {
+  color: #706a64;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.previewDestinationActive {
+  border-color: rgba(116, 34, 61, 0.48);
+  background: #74223d;
+  color: #fffaf3;
+  box-shadow: 0 0 0 3px rgba(116, 34, 61, 0.08);
+}
+
+.previewDestinationActive span {
+  color: rgba(255, 250, 243, 0.68);
+}
+
+.previewResultCard {
+  display: grid;
+  gap: 0;
+  margin-top: 14px;
+  border: 1px solid rgba(116, 34, 61, 0.18);
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+}
+
+.previewInstruction {
+  margin-top: 12px;
+  border: 1px solid #e5ded1;
+  border-radius: 8px;
+  background: #f8f4ea;
+  padding: 12px;
+}
+
+.previewInstruction span {
+  display: block;
+  margin-bottom: 6px;
+  color: #9b7430;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.previewInstruction p {
+  margin: 0;
+  color: #4d453e;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 .previewCard {
@@ -2507,7 +3085,7 @@ button.itemCard {
   max-width: 720px;
   margin: 0;
   color: #fffaf3;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 34px;
   font-weight: 400;
   line-height: 1.08;
@@ -3003,6 +3581,7 @@ button.itemCard {
   .execActionGrid,
   .hubGrid,
   .qrLayout,
+  .deliveryPackLayout,
   .helpBox,
   .pendingStrip {
     grid-template-columns: 1fr;
@@ -3016,6 +3595,8 @@ button.itemCard {
   .formGrid,
   .formGridThree,
   .helpGrid,
+  .deliveryFormatGrid,
+  .deliveryCopyGrid,
   .pendingGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3024,6 +3605,18 @@ button.itemCard {
 @media (max-width: 900px) {
   .wrap {
     padding: 22px 16px 44px;
+  }
+
+  .handoffHero {
+    grid-template-columns: 1fr;
+  }
+
+  .handoffAction {
+    min-width: 0;
+  }
+
+  .handoffSteps {
+    grid-template-columns: 1fr 1fr;
   }
 
   .menuPage,
@@ -3479,6 +4072,58 @@ button.itemCard {
 
   .panelTitle {
     font-size: 16px;
+  }
+
+  .handoffHero {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .handoffCopy h2 {
+    font-size: 27px;
+  }
+
+  .handoffAction {
+    min-width: 0;
+  }
+
+  .handoffSteps {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .previewBuilderHead {
+    display: grid;
+  }
+
+  .previewDestinationControl {
+    grid-template-columns: 1fr;
+  }
+
+  .deliveryFormatGrid,
+  .deliveryCopyGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .deliveryMaterial {
+    width: 100%;
+  }
+
+  .deliveryMaterial_tarjeta {
+    aspect-ratio: 3 / 4;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto auto auto;
+  }
+
+  .deliveryMaterial_tarjeta .deliveryMaterialBrand,
+  .deliveryMaterial_tarjeta .deliveryMaterialCopy,
+  .deliveryMaterial_tarjeta .deliveryMaterialUrl {
+    grid-column: auto;
+  }
+
+  .deliveryMaterial_tarjeta .deliveryMaterialQr {
+    width: min(100%, 210px);
+    grid-row: auto;
+    grid-column: auto;
   }
 
   .qrLayout {

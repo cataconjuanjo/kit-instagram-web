@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { supabase } from '../../supabase'
+import BrandLogo from '../../components/BrandLogo'
 
 export default function AdminSidebar() {
   const [restaurantes, setRestaurantes] = useState([])
@@ -23,7 +24,7 @@ export default function AdminSidebar() {
   return (
     <aside className="admin-sidebar admin-sidebar-ng">
       <div className="asng-brand">
-        <img src="/brand/carta-viva/logo-horizontal-dark.svg" alt="Carta Viva" />
+        <BrandLogo variant="horizontalDark" />
         <span>Panel consultor</span>
       </div>
 

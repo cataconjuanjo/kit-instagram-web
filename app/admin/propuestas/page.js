@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
 import AdminOverlay from '../components/AdminOverlay'
@@ -66,19 +66,19 @@ export default function PropuestasConsultor() {
   const [formAbierto, setFormAbierto] = useState(false)
   const [borrarPendiente, setBorrarPendiente] = useState(null)
 
-  async function tokenAdmin() {
+  const tokenAdmin = useCallback(async () => {
     const { data: sessionData } = await supabase.auth.getSession()
     return sessionData?.session?.access_token
-  }
+  }, [])
 
-  async function cargarPropuestas() {
+  const cargarPropuestas = useCallback(async () => {
     const token = await tokenAdmin()
     const res = await fetch('/api/admin/propuestas', {
       headers: { Authorization: `Bearer ${token}` }
     })
     const data = await res.json()
     setPropuestas(res.ok ? data.propuestas || [] : [])
-  }
+  }, [tokenAdmin])
 
   useEffect(() => {
     async function cargar() {
@@ -105,7 +105,7 @@ export default function PropuestasConsultor() {
       setLoading(false)
     }
     cargar()
-  }, [])
+  }, [cargarPropuestas, tokenAdmin])
 
   useEffect(() => {
     if (!restaurantes.length) return

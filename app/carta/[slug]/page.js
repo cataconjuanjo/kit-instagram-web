@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams } from 'next/navigation'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
+import BrandLogo from '../../components/BrandLogo'
 import styles from './carta.module.css'
 
 const FONT_MAP = {
@@ -14,7 +16,6 @@ const FONT_MAP = {
 }
 
 const DEFAULT_RESTAURANT_BANNER = '/images/wine-cellar-hero.png'
-const DEFAULT_RESTAURANT_LOGO = '/brand/carta-viva/logo-horizontal-dark.svg'
 
 function cargarGoogleFont(tipografia) {
   const font = FONT_MAP[tipografia]
@@ -27,10 +28,112 @@ function cargarGoogleFont(tipografia) {
   document.head.appendChild(link)
 }
 
+function slugDesdeRuta(routeParams, segmento) {
+  const param = routeParams?.slug
+  if (Array.isArray(param)) return param[0] || ''
+  if (typeof param === 'string') return param
+  if (typeof window === 'undefined') return ''
+  const partes = window.location.pathname.split('/').filter(Boolean)
+  const indice = partes.indexOf(segmento)
+  return indice >= 0 ? decodeURIComponent(partes[indice + 1] || '') : ''
+}
+
+function reportarErrorCliente(digest, error) {
+  if (typeof window === 'undefined') return
+  const message = error instanceof Error ? error.message : String(error || 'Error de carga')
+  console.warn(`[${digest}]`, error)
+  fetch('/api/client-error', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      digest,
+      message,
+      path: `${window.location.pathname}${window.location.search}`,
+    }),
+  }).catch(() => {})
+}
+
+function PreviewModeBanner({ styles, approved = false, approving = false, error = '', onApprove }) {
+  const [formOpen, setFormOpen] = useState(false)
+  const [approvalForm, setApprovalForm] = useState({ reviewer_name: '', reviewer_email: '', note: '' })
+
+  function updateApprovalField(field, value) {
+    setApprovalForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  function submitApproval(event) {
+    event.preventDefault()
+    onApprove?.(approvalForm)
+  }
+
+  return (
+    <div className={`${styles.previewModeBar} ${formOpen ? styles.previewModeBarOpen : ''}`} role="status">
+      <div>
+        <strong>{approved ? 'Preview aprobada' : 'Vista previa privada'}</strong>
+        <span>
+          {approved
+            ? 'La revisión ha quedado registrada. Ya se puede publicar desde el dashboard.'
+            : 'No es una carta publicada. Revisa contenido, precios y enlaces antes de compartir el QR real.'}
+        </span>
+        {error && <small>{error}</small>}
+      </div>
+      {onApprove && !formOpen && (
+        <button type="button" onClick={() => setFormOpen(true)} disabled={approving || approved}>
+          {approving ? 'Registrando...' : approved ? 'Aprobada' : 'Aprobar preview'}
+        </button>
+      )}
+      {onApprove && formOpen && !approved && (
+        <form className={styles.previewApprovalForm} onSubmit={submitApproval}>
+          <input
+            type="text"
+            value={approvalForm.reviewer_name}
+            onChange={event => updateApprovalField('reviewer_name', event.target.value)}
+            placeholder="Nombre, cargo o equipo"
+            maxLength={120}
+            autoComplete="name"
+          />
+          <input
+            type="email"
+            value={approvalForm.reviewer_email}
+            onChange={event => updateApprovalField('reviewer_email', event.target.value)}
+            placeholder="Email opcional"
+            maxLength={180}
+            autoComplete="email"
+          />
+          <textarea
+            value={approvalForm.note}
+            onChange={event => updateApprovalField('note', event.target.value)}
+            placeholder="Nota opcional"
+            maxLength={800}
+            rows={2}
+          />
+          <div>
+            <button type="submit" disabled={approving}>
+              {approving ? 'Registrando...' : 'Confirmar aprobacion'}
+            </button>
+            <button type="button" onClick={() => setFormOpen(false)} disabled={approving}>
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  )
+}
+
 const t = {
   es: {
     cargando: 'CARGANDO',
     noEncontrado: 'Restaurante no encontrado.',
+    noEncontradoTexto: 'El enlace puede haber cambiado o la carta todavía no está publicada.',
+    errorCargaTitulo: 'No hemos podido cargar la carta.',
+    errorCargaTexto: 'Revisa la conexión o vuelve a intentarlo en unos segundos.',
+    reintentar: 'Reintentar',
+    volverCartaViva: 'Volver a Carta Viva',
+    cartaNoDisponible: 'Carta no disponible temporalmente.',
+    cartaNoDisponibleTexto: 'El restaurante está revisando su carta. Vuelve a intentarlo más tarde.',
+    cartaRevisionTitulo: 'Carta en revisión.',
+    cartaRevisionTexto: 'El restaurante está ajustando su carta antes de volver a publicarla.',
     referencias: 'referencias',
     carta: 'Carta',
     sommelier: 'ArmonIA',
@@ -55,7 +158,7 @@ const t = {
     quePedir: '¿Qué vas a pedir?',
     seleccionaPlatos: 'Selecciona tus platos y afinamos una recomendación de vino.',
     vinoManda: 'Ya tengo vino',
-    vinoMandaSub: 'Elige el vino que quieres beber y te decimos que platos pedir.',
+    vinoMandaSub: 'Elige el vino que quieres beber y te decimos qué platos pedir.',
     buscarVino: 'Buscar vino...',
     eligeVino: 'Elige un vino de la carta',
     vinoElegido: 'Vino elegido',
@@ -96,6 +199,15 @@ const t = {
   en: {
     cargando: 'LOADING',
     noEncontrado: 'Restaurant not found.',
+    noEncontradoTexto: 'The link may have changed or the wine list is not published yet.',
+    errorCargaTitulo: 'We could not load the wine list.',
+    errorCargaTexto: 'Check the connection or try again in a few seconds.',
+    reintentar: 'Try again',
+    volverCartaViva: 'Back to Carta Viva',
+    cartaNoDisponible: 'Wine list temporarily unavailable.',
+    cartaNoDisponibleTexto: 'The restaurant is reviewing its wine list. Please try again later.',
+    cartaRevisionTitulo: 'Wine list under review.',
+    cartaRevisionTexto: 'The restaurant is adjusting its wine list before publishing it again.',
     referencias: 'wines',
     carta: 'Wine list',
     sommelier: 'Pairing guide',
@@ -221,7 +333,9 @@ function nombreVinoCarta(vino = {}) {
     .trim()
 }
 
-export default function CartaPublica({ params }) {
+export default function CartaPublica() {
+  const routeParams = useParams()
+  const slug = slugDesdeRuta(routeParams, 'carta')
   const [restaurante, setRestaurante] = useState(null)
   const [vinos, setVinos] = useState([])
   const [platos, setPlatos] = useState([])
@@ -236,6 +350,9 @@ export default function CartaPublica({ params }) {
   const [respuesta, setRespuesta] = useState('')
   const [cargandoIA, setCargandoIA] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [loadRetryKey, setLoadRetryKey] = useState(0)
+  const [previewAprobacion, setPreviewAprobacion] = useState({ aprobada: false, loading: false, error: '' })
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
   const [soloInternacional, setSoloInternacional] = useState(false)
   const [soloCopa, setSoloCopa] = useState(false)
@@ -264,8 +381,40 @@ export default function CartaPublica({ params }) {
     ? new URLSearchParams(window.location.search).get('prueba') || ''
     : ''
 
+  const reintentarCarga = () => {
+    setLoadRetryKey(key => key + 1)
+  }
+
+  async function aprobarPreviewPublica(destino = 'carta', approvalData = {}) {
+    if (!restaurante?.id || !tokenPrueba || previewAprobacion.loading || previewAprobacion.aprobada) return
+    setPreviewAprobacion({ aprobada: false, loading: true, error: '' })
+    try {
+      const res = await fetch('/api/publicacion/preview-approval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurante_id: restaurante.id,
+          preview_token: tokenPrueba,
+          destino,
+          reviewer_name: approvalData.reviewer_name,
+          reviewer_email: approvalData.reviewer_email,
+          note: approvalData.note,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'No se pudo registrar la aprobacion.')
+      setPreviewAprobacion({ aprobada: true, loading: false, error: '' })
+    } catch (error) {
+      setPreviewAprobacion({
+        aprobada: false,
+        loading: false,
+        error: error.message || 'No se pudo registrar la aprobacion.',
+      })
+    }
+  }
+
   const estructuraPdfGoiko = esPerfilGoiko(restaurante)
-  const i = copyCartaRestaurante(t[idioma], restaurante)
+  const i = useMemo(() => copyCartaRestaurante(t[idioma], restaurante), [idioma, restaurante])
   const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87', sidra: '#8A8F3A' }
   const seleccionJuanjo = seleccion.filter(item => !esSugerenciaRestaurante(item))
   const seleccionRestaurante = seleccion.filter(esSugerenciaRestaurante)
@@ -324,34 +473,74 @@ export default function CartaPublica({ params }) {
   }, [vinoSeleccionado])
 
   useEffect(() => {
+    if (!slug) return
+    let cancelado = false
+
     async function cargar() {
-      const slug = (await params).slug
-      const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}?carta=1`)
-      const data = res.ok ? await res.json() : {}
-      const rest = data.restaurante
-      if (!rest) { setLoading(false); return }
-      setRestaurante(rest)
-      if (rest.color_primario) document.documentElement.style.setProperty('--color-primario', rest.color_primario)
-      if (rest.color_fondo) document.documentElement.style.setProperty('--color-fondo', rest.color_fondo)
-      if (rest.color_acento) document.documentElement.style.setProperty('--color-acento', rest.color_acento)
-      cargarGoogleFont(rest.tipografia)
-      document.documentElement.style.setProperty('--font-titulo', (FONT_MAP[rest.tipografia] || FONT_MAP.serif).family)
-      const vinosData = data.vinos
-      const vinosActivos = vinosData || []
-      setVinos(vinosActivos.filter(vino => vino.disponible !== false))
-      const platosData = data.platos
-      setPlatos(platosData || [])
-      const selData = data.seleccion
-      setSeleccion(selData || [])
-      fetch('/api/estadisticas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ restaurante_id: rest.id, tipo: 'escaneo', detalle: 'carta', prueba_token: tokenPrueba }),
-      })
-      setLoading(false)
+      setLoading(true)
+      setLoadError(null)
+      try {
+        const query = new URLSearchParams({ carta: '1' })
+        if (tokenPrueba) query.set('prueba', tokenPrueba)
+        const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}?${query.toString()}`)
+        const data = await res.json().catch(() => ({}))
+        if (res.status === 404) {
+          if (!cancelado) {
+            setRestaurante(null)
+            setLoadError({ type: 'not_found' })
+          }
+          return
+        }
+        if (res.status === 409) {
+          if (!cancelado) {
+            setRestaurante(null)
+            setLoadError({ type: 'not_ready', message: data.error })
+          }
+          return
+        }
+        if (!res.ok) throw new Error(`GET carta publica ${res.status}`)
+        const rest = data.restaurante
+        if (!rest) {
+          if (!cancelado) {
+            setRestaurante(null)
+            setLoadError({ type: 'not_found' })
+          }
+          return
+        }
+        if (cancelado) return
+        setRestaurante(rest)
+        if (rest.color_primario) document.documentElement.style.setProperty('--color-primario', rest.color_primario)
+        if (rest.color_fondo) document.documentElement.style.setProperty('--color-fondo', rest.color_fondo)
+        if (rest.color_acento) document.documentElement.style.setProperty('--color-acento', rest.color_acento)
+        cargarGoogleFont(rest.tipografia)
+        document.documentElement.style.setProperty('--font-titulo', (FONT_MAP[rest.tipografia] || FONT_MAP.serif).family)
+        const vinosData = data.vinos
+        const vinosActivos = vinosData || []
+        setVinos(vinosActivos.filter(vino => vino.disponible !== false))
+        const platosData = data.platos
+        setPlatos(platosData || [])
+        const selData = data.seleccion
+        setSeleccion(selData || [])
+        fetch('/api/estadisticas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ restaurante_id: rest.id, tipo: 'escaneo', detalle: 'carta', prueba_token: tokenPrueba }),
+        }).catch(error => reportarErrorCliente('carta_publica_estadisticas', error))
+      } catch (error) {
+        if (!cancelado) {
+          setRestaurante(null)
+          setLoadError({ type: 'network' })
+          reportarErrorCliente('carta_publica_carga', error)
+        }
+      } finally {
+        if (!cancelado) setLoading(false)
+      }
     }
     cargar()
-  }, [])
+    return () => {
+      cancelado = true
+    }
+  }, [slug, tokenPrueba, loadRetryKey])
 
   useEffect(() => {
     if (!loading && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('print') === '1') {
@@ -513,7 +702,7 @@ export default function CartaPublica({ params }) {
       }),
     })
     if (!res.ok) {
-      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Intentalo de nuevo.')
+      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
       setCargandoIA(false)
       return
     }
@@ -614,14 +803,14 @@ setPerfiles(nuevosPerfiles)
   const preciosDisponibles = [...new Set(vinos.map(v => v.precio_botella).filter(Boolean).sort((a, b) => a - b))]
   const precioMaximo = preciosDisponibles[preciosDisponibles.length - 1] || 100
 
-  const vinosFiltrados = vinos.filter(v => {
+  const vinosFiltrados = useMemo(() => vinos.filter(v => {
     const matchTipo = filtro === 'todos' || v.tipo === filtro
     const matchBusqueda = !busqueda || v.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (v.bodega && v.bodega.toLowerCase().includes(busqueda.toLowerCase())) || (v.uva && v.uva.toLowerCase().includes(busqueda.toLowerCase()))
     const matchPrecio = !precioMax || v.precio_botella <= precioMax
     const matchInternacional = !soloInternacional || v.internacional === true
     const matchCopa = !soloCopa || Number(v.precio_copa) > 0
     return matchTipo && matchBusqueda && matchPrecio && matchInternacional && matchCopa
-  })
+  }), [vinos, filtro, busqueda, precioMax, soloInternacional, soloCopa])
 
   const tiposDisponibles = [...new Set(vinos.map(v => v.tipo).filter(Boolean))]
   const tiposBaseOrdenados = i.tiposOrdenados || ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol', 'sidra']
@@ -650,13 +839,21 @@ setPerfiles(nuevosPerfiles)
   }
 
   function renderHeroLogo() {
-    const logoUrl = restaurante?.logo_url || DEFAULT_RESTAURANT_LOGO
+    if (!restaurante?.logo_url) {
+      return (
+        <span className={styles.logoFrame}>
+          <BrandLogo variant="horizontalDark" className={`${styles.logo} ${styles.logoFallback}`} />
+        </span>
+      )
+    }
+
     return (
       <span className={styles.logoFrame}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- Logo configurable del restaurante: puede venir de Supabase u otra URL externa no controlada por next/image. */}
         <img
-          src={logoUrl}
-          alt={restaurante?.logo_url ? restaurante.nombre : 'Carta Viva'}
-          className={`${styles.logo} ${!restaurante?.logo_url ? styles.logoFallback : ''}`}
+          src={restaurante.logo_url}
+          alt={restaurante.nombre}
+          className={styles.logo}
           loading="lazy"
         />
       </span>
@@ -667,7 +864,7 @@ setPerfiles(nuevosPerfiles)
     ...categoriasBase.filter(categoria => platos.some(plato => plato.categoria === categoria)),
     ...[...new Set(platos.map(plato => plato.categoria || 'Otros'))].filter(categoria => !categoriasBase.includes(categoria))
   ]
-  const normalizarTexto = texto => String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const normalizarTexto = useCallback(texto => String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), [])
   const busquedaPlatosLimpia = normalizarTexto(busquedaPlatos)
   const platosSommelierFiltrados = platos.filter(plato => {
     if (!busquedaPlatosLimpia) return true
@@ -701,28 +898,28 @@ setPerfiles(nuevosPerfiles)
   const vinosCoravinFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && esCoravin(v))
   const vinosPorCopaFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && !esCoravin(v))
 
-  function ambitoComercial(vino) {
+  const ambitoComercial = useCallback((vino) => {
     return commercialScopeForWine(vino, restaurante)
-  }
+  }, [restaurante])
 
-  const gruposAmbito = [
+  const gruposAmbito = useMemo(() => [
     { id: 'local', label: i.gruposAmbito?.local || localWineLabel(restaurante) },
     { id: 'espana', label: i.gruposAmbito?.espana || 'España' },
     { id: 'internacional', label: i.gruposAmbito?.internacional || 'Internacionales' },
     { id: 'sin_origen', label: i.gruposAmbito?.sin_origen || 'Sin D.O. / otros' },
-  ]
-  const pareceRosado = vino => {
+  ], [i.gruposAmbito, restaurante])
+  const pareceRosado = useCallback((vino) => {
     const texto = normalizarTexto(textoVinoOrden(vino))
     return ['rose', 'rosado', 'rosat', 'saignee', 'rose de riceys'].some(term => texto.includes(term))
-  }
-  const esEspumosoRosado = vino => {
+  }, [normalizarTexto])
+  const esEspumosoRosado = useCallback((vino) => {
     const texto = normalizarTexto(textoVinoOrden(vino))
     const pareceEspumoso = ['champagne', 'cava', 'corpinnat', 'brut', 'petillant', 'ancestral'].some(term => texto.includes(term))
     return pareceRosado(vino) && pareceEspumoso
-  }
-  const esRosadoTranquilo = vino => (vino.tipo === 'rosado' || (vino.tipo === 'espumoso' && pareceRosado(vino))) && !esEspumosoRosado(vino)
+  }, [normalizarTexto, pareceRosado])
+  const esRosadoTranquilo = useCallback((vino) => (vino.tipo === 'rosado' || (vino.tipo === 'espumoso' && pareceRosado(vino))) && !esEspumosoRosado(vino), [pareceRosado, esEspumosoRosado])
   const esGranFormato = isLargeFormatWine
-  const seccionesPdfGoiko = [
+  const seccionesPdfGoiko = useMemo(() => [
     {
       id: 'pdf-sidras',
       label: 'Sidras / Sagardoak',
@@ -775,7 +972,7 @@ setPerfiles(nuevosPerfiles)
   ].map(seccion => ({
     ...seccion,
     vinos: vinosFiltrados.filter(seccion.filtro),
-  })).filter(seccion => seccion.vinos.length > 0)
+  })).filter(seccion => seccion.vinos.length > 0), [vinosFiltrados, pareceRosado, esEspumosoRosado, esRosadoTranquilo, esGranFormato])
 
   useEffect(() => {
     if (loading || seccionInicialAplicada || seccionAbierta || busquedaOFiltrado) return
@@ -795,7 +992,7 @@ setPerfiles(nuevosPerfiles)
       if (primerAmbito || vinosFiltrados.length > 0) setSeccionInicialAplicada(true)
     }, 0)
     return () => clearTimeout(timer)
-  }, [loading, seccionInicialAplicada, seccionAbierta, busquedaOFiltrado, vinosPorCopaFiltrados.length, vinosFiltrados.length, estructuraPdfGoiko, seccionesPdfGoiko.length])
+  }, [loading, seccionInicialAplicada, seccionAbierta, busquedaOFiltrado, vinosPorCopaFiltrados.length, vinosFiltrados, estructuraPdfGoiko, seccionesPdfGoiko, gruposAmbito, ambitoComercial])
 
   function prioridadRegion(region, ordenPersonalizado = null) {
     const r = normalizarTexto(region)
@@ -1015,23 +1212,57 @@ setPerfiles(nuevosPerfiles)
     setMostrarFiltros(false)
   }
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#fff', fontFamily: 'sans-serif' }}>
-      <p style={{ fontSize: 12, letterSpacing: '0.15em', color: '#bbb' }}>{i.cargando}</p>
-    </div>
-  )
+  function renderEstadoCarta({ title, text, eyebrow = 'Carta Viva', retryable = false, loadingState = false }) {
+    return (
+      <main className={styles.stateScreen}>
+        <section className={styles.stateCard} aria-live="polite">
+          {loadingState && <span className={styles.stateSpinner} aria-hidden="true" />}
+          <p className={styles.stateEyebrow}>{eyebrow}</p>
+          <h1 className={styles.stateTitle}>{title}</h1>
+          {text && <p className={styles.stateText}>{text}</p>}
+          <div className={styles.stateActions}>
+            {retryable && (
+              <button type="button" className={styles.stateButton} onClick={reintentarCarga}>
+                {i.reintentar}
+              </button>
+            )}
+            <a className={styles.stateLink} href="/cartavinos">
+              {i.volverCartaViva}
+            </a>
+          </div>
+        </section>
+      </main>
+    )
+  }
 
-  if (!restaurante) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#fff', fontFamily: 'sans-serif' }}>
-      <p style={{ color: '#999' }}>{i.noEncontrado}</p>
-    </div>
-  )
+  if (loading) return renderEstadoCarta({
+    title: i.cargando,
+    text: idioma === 'en' ? 'Preparing the live wine list.' : 'Preparando la carta viva del restaurante.',
+    loadingState: true,
+  })
 
-  if (!restaurante.carta_disponible) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#fff', fontFamily: 'sans-serif', padding: 24, textAlign: 'center' }}>
-      <p style={{ color: '#999', lineHeight: 1.5 }}>Carta no disponible temporalmente.</p>
-    </div>
-  )
+  if (loadError?.type === 'network') return renderEstadoCarta({
+    title: i.errorCargaTitulo,
+    text: i.errorCargaTexto,
+    retryable: true,
+  })
+
+  if (loadError?.type === 'not_ready') return renderEstadoCarta({
+    title: i.cartaRevisionTitulo,
+    text: i.cartaRevisionTexto,
+    retryable: true,
+  })
+
+  if (!restaurante) return renderEstadoCarta({
+    title: i.noEncontrado,
+    text: i.noEncontradoTexto,
+  })
+
+  if (!restaurante.carta_disponible) return renderEstadoCarta({
+    title: i.cartaNoDisponible,
+    text: i.cartaNoDisponibleTexto,
+    retryable: true,
+  })
 
  if (mostrarComparador) {
   const ejes = ['dulzor', 'acidez', 'taninos', 'alcohol', 'cuerpo', 'intensidad', 'final']
@@ -1232,7 +1463,16 @@ setPerfiles(nuevosPerfiles)
   )
 
   if (vista === 'carta') return (
-    <div className={`${styles.shell} ${claseTipografia}`} style={{ paddingBottom: 80 }}>
+    <div className={`${styles.shell} ${claseTipografia}`}>
+      {restaurante?.modo_prueba && (
+        <PreviewModeBanner
+          styles={styles}
+          approved={previewAprobacion.aprobada}
+          approving={previewAprobacion.loading}
+          error={previewAprobacion.error}
+          onApprove={data => aprobarPreviewPublica('carta', data)}
+        />
+      )}
       {demoPresentacion && (
         <div className={styles.demoPresentationBar}>
           <span>Vista cliente · Carta</span>
@@ -1626,6 +1866,15 @@ setPerfiles(nuevosPerfiles)
 
   if (vista === 'sommelier') return (
     <div className={`${styles.shell} ${claseTipografia}`}>
+      {restaurante?.modo_prueba && (
+        <PreviewModeBanner
+          styles={styles}
+          approved={previewAprobacion.aprobada}
+          approving={previewAprobacion.loading}
+          error={previewAprobacion.error}
+          onApprove={data => aprobarPreviewPublica('carta', data)}
+        />
+      )}
       {demoPresentacion && (
         <div className={styles.demoPresentationBar}>
           <span>Vista cliente · ArmonIA</span>
@@ -1978,12 +2227,22 @@ setPerfiles(nuevosPerfiles)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-fondo, #fafafa)', fontFamily: 'system-ui, sans-serif', paddingBottom: 80 }}>
+      {restaurante?.modo_prueba && (
+        <PreviewModeBanner
+          styles={styles}
+          approved={previewAprobacion.aprobada}
+          approving={previewAprobacion.loading}
+          error={previewAprobacion.error}
+          onApprove={data => aprobarPreviewPublica('carta', data)}
+        />
+      )}
 
       {/* Header */}
       <div style={{ background: colorPrimario, padding: '36px 24px 24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             {restaurante.logo_url && (
+              // eslint-disable-next-line @next/next/no-img-element -- Logo configurable del restaurante en vista legacy.
               <img src={restaurante.logo_url} alt={restaurante.nombre} loading="lazy" style={{ height: 48, maxWidth: 160, objectFit: 'contain', marginBottom: 16, display: 'block' }} />
             )}
             <h1 style={{ fontSize: 30, fontWeight: 300, color: '#fff', margin: '0 0 6px', fontFamily: fontTitulo }}>{restaurante.nombre}</h1>

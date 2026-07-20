@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import DemoAnalyticsLink from '../components/DemoAnalyticsLink'
 import LeadForm from '../components/LeadForm'
 import PublicNav from '../components/PublicNav'
 import PublicFooter from '../components/PublicFooter'
@@ -52,12 +53,12 @@ const lineasProducto = [
     texto: 'Para sumilleres que no quieren otra carta QR, sino una mesa de control para ordenar bodega, proveedores y gamas.',
     puntos: ['KPIs de bodega', 'Mapa de gamas editable', 'Catálogo de distribuidores', 'Constructor de carta'],
     precio: 'Desde 149 EUR/mes',
-    cta: 'Ver membresia sumiller',
+    cta: 'Ver membresía sumiller',
   },
 ]
 
 const sumillerFunciones = [
-  ['Inventario vivo', 'Stock, coste, proveedor, margen, mínimo y alertas para dejar atras el Excel de bodega.'],
+  ['Inventario vivo', 'Stock, coste, proveedor, margen, mínimo y alertas para dejar atrás el Excel de bodega.'],
   ['Mapa de gamas', 'Lectura por tramos según ticket medio editable: baja, media, alta, muy alta y premium.'],
   ['Vinos estrella y joyas', 'Lectura de referencias con potencial, rotación, margen y oportunidades de carta.'],
   ['Catálogo conectado', 'Búsqueda en el catálogo de distribuidores para localizar referencias e incorporarlas con criterio.'],
@@ -94,14 +95,14 @@ const demoSegura = [
 
 const faq = [
   ['¿Hay permanencia mínima?', 'No. Puedes cancelar cuando quieras. La suscripción se adapta al momento de tu restaurante.'],
-  ['¿Cuánto tarda en estar listo?', 'La puestá en marcha suele llevar entre 1 y 3 días. Depende del tamaño de la carta y de si ya tienes los vinos en un listado o hay que construirlo desde cero.'],
+  ['¿Cuánto tarda en estar listo?', 'La puesta en marcha suele llevar entre 1 y 3 días. Depende del tamaño de la carta y de si ya tienes los vinos en un listado o hay que construirlo desde cero.'],
   ['¿La configuración inicial tiene coste aparte?', 'Depende del volumen y del estado de la carta. Antes de empezar valoramos la carga inicial y te indicamos el importe con claridad. Está incluida en el plan Acompañado.'],
   ['¿Puedo cambiar de plan más adelante?', 'Sí, en cualquier momento. Puedes subir de Básico a Sala o a Acompañado según lo que necesites.'],
   ['¿Qué pasa con mis datos si cancelo?', 'Antes de cerrar la cuenta te entrego toda tu información en formato descargable. Nada desaparece sin que lo tengas guardado.'],
   ['¿Necesito instalar algo?', 'No. Carta Viva funciona desde el navegador en móvil, tablet y escritorio. Sin apps, sin instalaciones.'],
   ['¿El maridaje recomienda vinos de fuera de mi carta?', 'No. El motor de maridaje solo trabaja con los vinos que tú tienes dados de alta. Nunca sugiere referencias que no puedes servir.'],
   ['Carta Viva Sumiller ¿Carta Viva Sumiller sustituye al sumiller?', 'No. Ordena stock, proveedores, coste, gamas, rentabilidad y oportunidades para que el sumiller decida mejor. No decide armonías por el profesional.'],
-  ['Carta Viva Sumiller ¿Carta Viva Sumiller incluye carta pública o QR?', 'No es el foco. La membresia Sumiller está pensada como gestión interna de bodega, constructor de carta, catálogo, mapa de gamas y control de referencias.'],
+  ['Carta Viva Sumiller ¿Carta Viva Sumiller incluye carta pública o QR?', 'No es el foco. La membresía Sumiller está pensada como gestión interna de bodega, constructor de carta, catálogo, mapa de gamas y control de referencias.'],
 ]
 
 const modalidades = [
@@ -331,13 +332,13 @@ export default function CartaVivaPage() {
       <section className="section cv-comparison-section">
         <div className="section-head">
           <p className="eyebrow">Carta Viva vs PDF o Excel</p>
-          <h2>Una carta estatica informa. Una carta viva ayuda a decidir.</h2>
+          <h2>Una carta estática informa. Una carta viva ayuda a decidir.</h2>
         </div>
         <div className="comparison-grid">
           <article>
             <span>PDF</span>
-            <h3>Bonito, pero rigido</h3>
-            <p>Sirve para mostrar la carta, pero no sabe si queda stock, que vino conviene empujar o que plato necesita una recomendacion mejor.</p>
+            <h3>Bonito, pero rígido</h3>
+            <p>Sirve para mostrar la carta, pero no sabe si queda stock, qué vino conviene empujar o qué plato necesita una recomendación mejor.</p>
           </article>
           <article>
             <span>Excel</span>
@@ -355,7 +356,7 @@ export default function CartaVivaPage() {
 
       <section className="section cv-product-lines">
         <div className="section-head">
-          <p className="eyebrow">Dos formás de usar Carta Viva</p>
+          <p className="eyebrow">Dos formas de usar Carta Viva</p>
           <h2>Una para vender mejor. Otra para gestionar mejor.</h2>
         </div>
         <div className="product-lines-grid">
@@ -379,7 +380,7 @@ export default function CartaVivaPage() {
       <section className="section cv-activation-path" id="prueba">
         <div className="section-head narrow">
           <p className="eyebrow">Prueba guiada de 14 días</p>
-          <h2>Tu primera carta públicada, no otra herramienta abandonada.</h2>
+          <h2>Tu primera carta publicada, no otra herramienta abandonada.</h2>
           <p>La prueba empieza con un objetivo concreto: cargar la base, comprobar el maridaje y poner el QR delante de un cliente real.</p>
         </div>
         <div className="cv-activation-grid">
@@ -536,8 +537,8 @@ export default function CartaVivaPage() {
           cta="Solicitar prueba Sumiller"
           title="Datos para preparar la prueba"
           successTitle="Solicitud Sumiller recibida"
-          successText="Te respondere con el siguiente paso para activar la prueba privada de Carta Viva Sumiller."
-          intro="2 minutos - acceso privado - respuesta personal"
+          successText="Te responderé con el siguiente paso para activar la prueba privada de Carta Viva Sumiller."
+          intro="2 minutos · acceso privado · respuesta personal"
           negocioLabel="Restaurante / bodega / proyecto"
           referenciasLabel="Referencias apróximadas en bodega"
           problemaLabel="Qué quieres resolver primero"
@@ -548,7 +549,7 @@ export default function CartaVivaPage() {
             'Quiero rehacer o estructurar la carta',
             'Quiero analizar gamas, margen y oportunidades',
           ]}
-          mensajeLabel="Algo que deba saber antes de prepararte la prueba? (opcional)"
+          mensajeLabel="¿Algo que deba saber antes de prepararte la prueba? (opcional)"
         />
       </section>
 
@@ -580,14 +581,19 @@ export default function CartaVivaPage() {
             <strong>¿Quieres verlo con tu carta real?</strong>
             <p>Te enseño el sistema completo con un restaurante de prueba. Sin datos tuyos, sin compromisos.</p>
           </div>
-          <Link href="#contacto" className="btn btn-primary">Pedir demo privada</Link>
+          <div className="demo-note-actions">
+            <DemoAnalyticsLink href="/demo/taberna-del-puerto" className="btn btn-secondary" target="/demo/taberna-del-puerto">
+              Ver demo guiada
+            </DemoAnalyticsLink>
+            <Link href="#contacto" className="btn btn-primary">Pedir demo privada</Link>
+          </div>
         </div>
       </section>
 
       <section className="section cv-modalidades" id="planes">
         <div className="section-head">
           <p className="eyebrow">Planes para restaurantes</p>
-          <h2>Elige cuanto quieres que trabaje tu carta de vinos en sala.</h2>
+          <h2>Elige cuánto quieres que trabaje tu carta de vinos en sala.</h2>
         </div>
         <div className="pricing-grid">
           {planes.map((item) => (
@@ -671,7 +677,7 @@ export default function CartaVivaPage() {
           <p className="eyebrow">Demo privada</p>
           <h2>Enséñame tu carta y te digo qué haría.</h2>
           <p>
-            Manda el nombre del restaurante y una idea de tu carta actual. Te responderé con una propuestá clara.
+            Manda el nombre del restaurante y una idea de tu carta actual. Te responderé con una propuesta clara.
           </p>
         </div>
         <LeadForm

@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../supabase'
 import { isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../../../demo'
+import OpenCartaPruebaButton from '../../../dashboard/OpenCartaPruebaButton'
 
 
 function normalizar(texto = '') {
@@ -497,6 +498,25 @@ export default function RestauranteWorkspace() {
   const RESTAURANTE_PREFIX = '[RESTAURANTE] '
   const esSeleccionJuanjo = item => !String(item.nota_personal || '').startsWith(RESTAURANTE_PREFIX)
 
+  const cargarConsultoriaFase1 = useCallback(async (tokenRecibido) => {
+    if (!id) return
+    setCargandoFase1(true)
+    setErrorFase1('')
+    try {
+      const token = tokenRecibido || await tokenAdmin()
+      const res = await fetch(`/api/admin/consultoria-fase1/recalcular?restaurante_id=${id}`, {
+        headers: { Authorization: `Bearer ${token || ''}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la consultoria inteligente.')
+      setConsultoriaFase1(data)
+    } catch (error) {
+      setErrorFase1(error.message || 'No se pudo cargar la consultoria inteligente.')
+    } finally {
+      setCargandoFase1(false)
+    }
+  }, [id])
+
   useEffect(() => {
     async function cargar() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -531,7 +551,7 @@ export default function RestauranteWorkspace() {
       cargarConsultoriaFase1(token)
     }
     if (id) cargar()
-  }, [id])
+  }, [id, cargarConsultoriaFase1])
 
   useEffect(() => {
     if (!id) return
@@ -573,25 +593,6 @@ export default function RestauranteWorkspace() {
       ? prev.filter(item => String(item) !== idVino)
       : [...prev, idVino]
     )
-  }
-
-  async function cargarConsultoriaFase1(tokenRecibido) {
-    if (!id) return
-    setCargandoFase1(true)
-    setErrorFase1('')
-    try {
-      const token = tokenRecibido || await tokenAdmin()
-      const res = await fetch(`/api/admin/consultoria-fase1/recalcular?restaurante_id=${id}`, {
-        headers: { Authorization: `Bearer ${token || ''}` },
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la consultoria inteligente.')
-      setConsultoriaFase1(data)
-    } catch (error) {
-      setErrorFase1(error.message || 'No se pudo cargar la consultoria inteligente.')
-    } finally {
-      setCargandoFase1(false)
-    }
   }
 
   async function recalcularConsultoriaFase1() {
@@ -989,7 +990,7 @@ export default function RestauranteWorkspace() {
               <button onClick={gestionar}>Abrir dashboard</button>
               <button onClick={() => window.print()} aria-label="Imprimir esta pagina">Imprimir pagina</button>
               <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer">Descargar informe</a>
-              <a href={`/carta/${restaurante.slug}`} target="_blank" rel="noreferrer">Ver carta ↗</a>
+              <OpenCartaPruebaButton restauranteId={restaurante.id}>Probar carta</OpenCartaPruebaButton>
             </div>
             <div className="ws-actions-mobile">
               <button
@@ -1006,7 +1007,7 @@ export default function RestauranteWorkspace() {
                   <button onClick={() => { gestionar(); setAccionesMobileOpen(false) }}>Abrir dashboard</button>
                   <button onClick={() => { window.print(); setAccionesMobileOpen(false) }}>Imprimir página</button>
                   <a href={`/admin/informe/${id}`} target="_blank" rel="noreferrer" onClick={() => setAccionesMobileOpen(false)}>Descargar informe</a>
-                  <a href={`/carta/${restaurante.slug}`} target="_blank" rel="noreferrer" onClick={() => setAccionesMobileOpen(false)}>Ver carta ↗</a>
+                  <OpenCartaPruebaButton restauranteId={restaurante.id}>Probar carta</OpenCartaPruebaButton>
                 </div>
               )}
             </div>

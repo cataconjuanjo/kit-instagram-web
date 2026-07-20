@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '../supabase'
+import BrandLogo from '../components/BrandLogo'
 
 export default function Bienvenida() {
-  // estado: 'cargando' | 'listo' | 'sin-token' | 'exito' | 'error-expirado'
   const [estado, setEstado] = useState('cargando')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -13,25 +13,20 @@ export default function Bienvenida() {
   const [guardando, setGuardando] = useState(false)
 
   useEffect(() => {
-    // Supabase detecta automáticamente el access_token en el hash de la URL
-    // y dispara onAuthStateChange con el evento correspondiente
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') && session) {
         setEstado('listo')
       }
     })
 
-    // También comprobamos si ya hay sesión activa (ej. el usuario vuelve a la página)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setEstado('listo')
         return
       }
-      // Si no hay sesión y no hay token en la URL → no tiene acceso
       if (typeof window !== 'undefined' && !window.location.hash.includes('access_token')) {
         setEstado('sin-token')
       }
-      // Si hay hash con access_token, esperamos a que onAuthStateChange lo procese
     })
 
     return () => subscription.unsubscribe()
@@ -54,7 +49,7 @@ export default function Bienvenida() {
     const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
-      setErrorMsg('No se pudo establecer la contraseña. El enlace puede haber caducado — pide al equipo de Carta Viva que te envíe uno nuevo.')
+      setErrorMsg('No se pudo establecer la contraseña. El enlace puede haber caducado; pide al equipo de Carta Viva que te envíe uno nuevo.')
       setGuardando(false)
       return
     }
@@ -66,32 +61,30 @@ export default function Bienvenida() {
     setTimeout(() => { window.location.href = '/dashboard?bienvenida=1' }, 2500)
   }
 
-  // ── Cargando ────────────────────────────────────────────────
   if (estado === 'cargando') {
     return (
       <main className="login-page">
         <section className="login-brand-panel">
           <Link href="/cartavinos" className="brand login-brand login-brand-logo">
-            <img src="/brand/carta-viva/logo-horizontal-negative.png" alt="Carta Viva" />
+            <BrandLogo variant="horizontalNegative" priority />
             <small>por Cata con Juanjo</small>
           </Link>
         </section>
         <section className="login-form-panel">
           <div className="login-card" style={{ justifyContent: 'center', alignItems: 'center' }}>
-            <p style={{ color: '#888', fontSize: 15 }}>Verificando tu invitación…</p>
+            <p style={{ color: '#888', fontSize: 15 }}>Verificando tu invitación...</p>
           </div>
         </section>
       </main>
     )
   }
 
-  // ── Sin token válido ─────────────────────────────────────────
   if (estado === 'sin-token') {
     return (
       <main className="login-page">
         <section className="login-brand-panel">
           <Link href="/cartavinos" className="brand login-brand login-brand-logo">
-            <img src="/brand/carta-viva/logo-horizontal-negative.png" alt="Carta Viva" />
+            <BrandLogo variant="horizontalNegative" priority />
             <small>por Cata con Juanjo</small>
           </Link>
         </section>
@@ -114,13 +107,12 @@ export default function Bienvenida() {
     )
   }
 
-  // ── Éxito ────────────────────────────────────────────────────
   if (estado === 'exito') {
     return (
       <main className="login-page">
         <section className="login-brand-panel">
           <Link href="/cartavinos" className="brand login-brand login-brand-logo">
-            <img src="/brand/carta-viva/logo-horizontal-negative.png" alt="Carta Viva" />
+            <BrandLogo variant="horizontalNegative" priority />
             <small>por Cata con Juanjo</small>
           </Link>
           <div className="login-brand-copy">
@@ -131,8 +123,8 @@ export default function Bienvenida() {
         </section>
         <section className="login-form-panel">
           <div className="login-card" style={{ justifyContent: 'center', alignItems: 'center', gap: 16 }}>
-            <span style={{ fontSize: 40 }}>🎉</span>
-            <h2 style={{ textAlign: 'center', fontSize: 22 }}>¡Bienvenido a Carta Viva!</h2>
+            <span style={{ fontSize: 40 }}>✓</span>
+            <h2 style={{ textAlign: 'center', fontSize: 22 }}>Bienvenido a Carta Viva</h2>
             <p className="login-muted" style={{ textAlign: 'center' }}>
               Tu contraseña está guardada. El siguiente paso será cargar vinos y platos.
             </p>
@@ -142,12 +134,11 @@ export default function Bienvenida() {
     )
   }
 
-  // ── Formulario principal ─────────────────────────────────────
   return (
     <main className="login-page">
       <section className="login-brand-panel">
         <Link href="/cartavinos" className="brand login-brand login-brand-logo">
-          <img src="/brand/carta-viva/logo-horizontal-negative.png" alt="Carta Viva" />
+          <BrandLogo variant="horizontalNegative" priority />
           <small>por Cata con Juanjo</small>
         </Link>
         <div className="login-brand-copy">
@@ -203,7 +194,7 @@ export default function Bienvenida() {
           {errorMsg && <p className="login-error">{errorMsg}</p>}
 
           <button type="submit" className="btn btn-primary login-submit" disabled={guardando}>
-            {guardando ? 'Activando cuenta…' : 'Activar mi cuenta'}
+            {guardando ? 'Activando cuenta...' : 'Activar mi cuenta'}
           </button>
 
           <div className="login-help">

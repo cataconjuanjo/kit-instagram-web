@@ -2,7 +2,7 @@
   min-height: 100vh;
   background: var(--color-fondo, #f4f1eb);
   color: #171416;
-  padding-bottom: 88px;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
@@ -24,11 +24,129 @@
   backdrop-filter: blur(12px);
   font-size: 11px;
   font-weight: 850;
+  max-width: calc(100vw - 24px);
+  white-space: nowrap;
+}
+
+.demoPresentationBar span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .demoPresentationBar a {
+  flex-shrink: 0;
   color: #d8c898;
   text-decoration: none;
+}
+
+.previewModeBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(116, 34, 61, 0.18);
+  background: #fff6df;
+  color: #4b2a12;
+  padding: 9px 14px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.previewModeBarOpen {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.previewModeBar > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.previewModeBar strong {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.previewModeBar span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.previewModeBar small {
+  color: #8e3c28;
+  font-size: 11px;
+}
+
+.previewModeBar button {
+  flex-shrink: 0;
+  min-height: 32px;
+  border: 1px solid rgba(75, 42, 18, 0.22);
+  border-radius: 8px;
+  background: #4b2a12;
+  color: #fffaf3;
+  padding: 0 11px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.previewModeBar button:disabled {
+  opacity: 0.64;
+  cursor: default;
+}
+
+.previewApprovalForm {
+  width: min(100%, 560px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.previewApprovalForm input,
+.previewApprovalForm textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(75, 42, 18, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #2f2118;
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.previewApprovalForm textarea {
+  grid-column: 1 / -1;
+  resize: vertical;
+}
+
+.previewApprovalForm input:focus,
+.previewApprovalForm textarea:focus {
+  border-color: rgba(75, 42, 18, 0.48);
+  box-shadow: 0 0 0 3px rgba(75, 42, 18, 0.08);
+}
+
+.previewApprovalForm > div {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.previewApprovalForm > div button:last-child {
+  background: rgba(255, 255, 255, 0.7);
+  color: #4b2a12;
 }
 
 .brandCredit {
@@ -1087,7 +1205,7 @@
   position: fixed;
   left: max(12px, env(safe-area-inset-left));
   right: max(12px, env(safe-area-inset-right));
-  bottom: calc(70px + env(safe-area-inset-bottom));
+  bottom: calc(74px + env(safe-area-inset-bottom));
   z-index: 95;
   max-width: 680px;
   display: flex;
@@ -1194,7 +1312,7 @@
   position: fixed;
   left: 12px;
   right: 12px;
-  bottom: 76px;
+  bottom: calc(76px + env(safe-area-inset-bottom));
   z-index: 99;
   display: flex;
   align-items: center;
@@ -1226,9 +1344,25 @@
 /* ── Optimizaciones mobile (max-width: 768px) ── */
 @media (max-width: 768px) {
 
+  .demoPresentationBar {
+    top: max(8px, env(safe-area-inset-top));
+    left: 10px;
+    right: 10px;
+    justify-content: space-between;
+    gap: 8px;
+    transform: none;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+
   /* 1. HEADER Y NAVEGACIÓN */
   .hero {
     padding: 28px 18px 20px;
+  }
+
+  .demoPresentationBar + .hero {
+    padding-top: 66px;
   }
 
   .logoFrame {
@@ -1480,8 +1614,28 @@
 }
 
 @media (max-width: 560px) {
+  .previewModeBar {
+    display: grid;
+    gap: 3px;
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .previewModeBar button {
+    justify-self: center;
+    margin-top: 4px;
+  }
+
+  .previewApprovalForm {
+    grid-template-columns: 1fr;
+  }
+
   .hero {
     padding: 22px 14px 14px;
+  }
+
+  .demoPresentationBar + .hero {
+    padding-top: 62px;
   }
 
   .modeGrid {
@@ -1586,7 +1740,7 @@
   .compareBar {
     left: 8px;
     right: 8px;
-    bottom: 72px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
     padding: 10px 12px;
     gap: 8px;
   }
@@ -1606,13 +1760,15 @@
   grid-template-columns: 1fr 1fr;
   background: #fffaf3;
   border-top: 1px solid #e8e2d8;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .bottomNavBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px 8px 16px;
+  min-height: 58px;
+  padding: 11px 8px 13px;
   border: none;
   border-top: 3px solid transparent;
   background: transparent;
@@ -1621,7 +1777,7 @@
   transition: color 0.15s, border-color 0.15s;
   font-size: 16px;
   font-weight: 820;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -1679,6 +1835,105 @@
   font-size: 14px;
 }
 
+.stateScreen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--color-fondo, #f4f1eb);
+  color: var(--color-primario, #171416);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.stateCard {
+  width: min(100%, 430px);
+  border: 1px solid #e0d7ca;
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.82);
+  padding: 28px;
+  text-align: center;
+  box-shadow: 0 20px 54px rgba(23, 20, 22, 0.08);
+}
+
+.stateSpinner {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 16px;
+  border: 2px solid rgba(23, 20, 22, 0.14);
+  border-top-color: var(--color-primario, #171416);
+  border-radius: 50%;
+  animation: stateSpin 0.9s linear infinite;
+}
+
+.stateEyebrow {
+  margin: 0 0 8px;
+  color: color-mix(in srgb, var(--color-primario, #171416) 58%, #9d9285);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.stateTitle {
+  margin: 0;
+  color: var(--color-primario, #171416);
+  font-family: var(--font-titulo, Georgia, serif);
+  font-size: 30px;
+  font-weight: 520;
+  line-height: 1.08;
+}
+
+.stateText {
+  margin: 14px auto 0;
+  max-width: 340px;
+  color: #6d6258;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.stateActions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.stateButton,
+.stateLink {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.stateButton {
+  border: 1px solid var(--color-primario, #171416);
+  background: var(--color-primario, #171416);
+  color: #fffaf3;
+  cursor: pointer;
+}
+
+.stateLink {
+  border: 1px solid #d8cfc1;
+  background: #fffaf3;
+  color: var(--color-primario, #171416);
+}
+
+@keyframes stateSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (min-width: 720px) {
   .fontGaramond .title {
     font-size: 38px;
@@ -1712,6 +1967,7 @@
   .compareButton,
   .compareBar,
   .bottomNav,
+  .previewModeBar,
   .brandCredit,
   .heroCredit,
   .langButton {

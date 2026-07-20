@@ -1,0 +1,308 @@
+.page {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  color: #171416;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  border: 1px solid #e6e2da;
+  border-radius: 8px;
+  background: #fff;
+  padding: 22px;
+}
+
+.kicker {
+  margin: 0 0 8px;
+  color: #7a5b23;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.header p {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: #69645d;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.actions select,
+.actions button {
+  min-height: 38px;
+  border: 1px solid #d8d1c6;
+  border-radius: 8px;
+  background: #fff;
+  color: #171416;
+  padding: 0 12px;
+  font-weight: 750;
+}
+
+.actions button {
+  border-color: #171416;
+  background: #171416;
+  color: #fff;
+  cursor: pointer;
+}
+
+.actions button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.notice,
+.error {
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.notice {
+  border: 1px solid #ead8a5;
+  background: #fff8e4;
+  color: #4f3c13;
+}
+
+.notice strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.notice p,
+.error {
+  margin: 0;
+}
+
+.error {
+  border: 1px solid #e3b2aa;
+  background: #fff4f1;
+  color: #8d2f22;
+}
+
+.statsGrid,
+.gridTwo {
+  display: grid;
+  gap: 12px;
+}
+
+.statsGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.gridTwo {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.statCard,
+.panel {
+  border: 1px solid #e6e2da;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.statCard {
+  min-height: 132px;
+  display: grid;
+  align-content: end;
+  gap: 5px;
+  padding: 18px;
+}
+
+.statCard span {
+  color: #7c766e;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.statCard strong {
+  color: #171416;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.statCard p {
+  margin: 0;
+  color: #7c766e;
+  font-size: 13px;
+}
+
+.panel {
+  padding: 18px;
+}
+
+.panelHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.panelHead h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.panelHead span {
+  color: #7c766e;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.empty {
+  margin: 0;
+  color: #8b857d;
+  font-size: 14px;
+}
+
+.barRow {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.barRow:last-child {
+  margin-bottom: 0;
+}
+
+.barRow div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.barRow span {
+  color: #4b4741;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.barRow strong {
+  font-size: 13px;
+}
+
+.barRow > i {
+  height: 8px;
+  display: block;
+  border-radius: 999px;
+  background: #176053;
+}
+
+.dayChart {
+  display: grid;
+  gap: 9px;
+}
+
+.dayRow {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 34px;
+  gap: 10px;
+  align-items: center;
+}
+
+.dayRow span,
+.dayRow strong {
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.dayRow span {
+  color: #7c766e;
+}
+
+.dayRow div {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f1eee8;
+}
+
+.dayRow i {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: #74223d;
+}
+
+.eventList {
+  display: grid;
+  gap: 8px;
+}
+
+.eventList article {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.7fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #efebe4;
+  border-radius: 8px;
+  padding: 11px 12px;
+}
+
+.eventList strong {
+  font-size: 13px;
+}
+
+.eventList span,
+.eventList small {
+  color: #706a62;
+  font-size: 12px;
+}
+
+@media (max-width: 960px) {
+  .header,
+  .gridTwo {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    display: grid;
+  }
+
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 14px;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions,
+  .actions select,
+  .actions button {
+    width: 100%;
+  }
+
+  .actions {
+    display: grid;
+  }
+
+  .eventList article {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}

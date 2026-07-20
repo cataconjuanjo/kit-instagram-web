@@ -52,6 +52,105 @@ async function validarAdmin(req) {
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
 
+function textoErrorSupabase(error) {
+  return [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].filter(Boolean).join(' ').toLowerCase()
+}
+
+function historialPublicacionPendiente(error) {
+  const texto = textoErrorSupabase(error)
+  return texto.includes('publication_events') || ['42P01', 'PGRST205'].includes(String(error?.code || ''))
+}
+
+function snapshotsPublicacionPendiente(error) {
+  const texto = textoErrorSupabase(error)
+  return texto.includes('publication_snapshots') || ['42P01', 'PGRST205'].includes(String(error?.code || ''))
+}
+
+async function leerUltimosEventosPublicacion(adminSupabase) {
+  const { data, error } = await adminSupabase
+    .from('publication_events')
+    .select('id, restaurante_id, accion, estado_anterior, estado_nuevo, contenido_resumen, actor_email, created_at')
+    .order('created_at', { ascending: false })
+    .limit(300)
+
+  if (historialPublicacionPendiente(error)) return { eventosPorRestaurante: {}, pendiente: true }
+  if (error) return { error }
+
+  const eventosPorRestaurante = {}
+  for (const evento of data || []) {
+    if (!eventosPorRestaurante[evento.restaurante_id]) eventosPorRestaurante[evento.restaurante_id] = evento
+  }
+  return { eventosPorRestaurante, pendiente: false }
+}
+
+async function leerUltimosSnapshotsPublicacion(adminSupabase) {
+  const { data, error } = await adminSupabase
+    .from('publication_snapshots')
+    .select('id, restaurante_id, publication_event_id, version_number, contenido_resumen, restaurante_resumen, actor_email, created_at')
+    .order('version_number', { ascending: false })
+    .limit(300)
+
+  if (snapshotsPublicacionPendiente(error)) return { snapshotsPorRestaurante: {}, pendiente: true }
+  if (error) return { error }
+
+  const snapshotsPorRestaurante = {}
+  for (const snapshot of data || []) {
+    if (!snapshotsPorRestaurante[snapshot.restaurante_id]) snapshotsPorRestaurante[snapshot.restaurante_id] = snapshot
+  }
+  return { snapshotsPorRestaurante, pendiente: false }
+}
+
+export async function GET(req) {
+  try {
+    if (!serviceRoleKey) {
+      return Response.json({ error: 'Falta SUPABASE_SERVICE_ROLE_KEY.' }, { status: 500 })
+    }
+
+    const admin = await validarAdmin(req)
+    if (admin.error) return Response.json({ error: admin.error }, { status: admin.status })
+
+    const adminSupabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    })
+
+    const { data: restaurantes, error } = await adminSupabase
+      .from('restaurantes')
+      .select('*')
+      .order('nombre')
+    if (error) throw error
+
+    const eventosRes = await leerUltimosEventosPublicacion(adminSupabase)
+    if (eventosRes.error) throw eventosRes.error
+    const snapshotsRes = await leerUltimosSnapshotsPublicacion(adminSupabase)
+    if (snapshotsRes.error) throw snapshotsRes.error
+
+    return Response.json({
+      restaurantes: (restaurantes || []).map(restaurante => ({
+        ...restaurante,
+        publication_last_event: eventosRes.eventosPorRestaurante[restaurante.id] || null,
+        publication_last_snapshot: snapshotsRes.snapshotsPorRestaurante[restaurante.id] || null,
+        publication_history_pending: Boolean(eventosRes.pendiente),
+        publication_snapshot_pending: Boolean(snapshotsRes.pendiente),
+      })),
+      publication_history_pending: Boolean(eventosRes.pendiente),
+      publication_snapshot_pending: Boolean(snapshotsRes.pendiente),
+      sql: eventosRes.pendiente
+        ? 'supabase/add_publication_history.sql'
+        : snapshotsRes.pendiente
+          ? 'supabase/add_publication_snapshots.sql'
+          : null,
+    })
+  } catch (error) {
+    console.error('Error cargando restaurantes desde admin:', error)
+    return Response.json({ error: 'No se pudieron cargar los restaurantes.' }, { status: 500 })
+  }
+}
+
 export async function POST(req) {
   try {
     if (!serviceRoleKey) {
@@ -114,40 +213,65 @@ export async function POST(req) {
       }
     }
 
-    const { data: restaurante, error: restauranteError } = await adminSupabase
+    const payloadRestaurante = {
+      nombre,
+      slug,
+      email,
+      ciudad,
+      color_primario: body.color_primario || '#74223d',
+      color_fondo: body.color_fondo || '#fffaf3',
+      color_acento: body.color_acento || '#bfa984',
+      tipografia: body.tipografia || 'serif',
+      hub_activo: Boolean(body.hub_activo),
+      hub_titulo: body.hub_titulo || null,
+      hub_subtitulo: body.hub_subtitulo || null,
+      instagram_url: body.instagram_url || null,
+      facebook_url: body.facebook_url || null,
+      plan: body.plan || 'basic',
+      subscription_status: body.subscription_status || 'trialing',
+      trial_active_seconds_limit: segundosPrueba(body.trial_hours_limit),
+      trial_expires_at: fechaPrueba(body.trial_expires_at),
+      trial_started_at: body.subscription_status === 'trialing' ? new Date().toISOString() : null,
+      ticket_medio_comida: body.ticket_medio_comida === '' || body.ticket_medio_comida === undefined ? null : Number(body.ticket_medio_comida) || null,
+      carta_publica_activa: false,
+      banner_zoom: 100,
+      banner_x: 50,
+      banner_y: 50
+    }
+
+    let publicationMigrationPending = false
+    let insertRes = await adminSupabase
       .from('restaurantes')
-      .insert([{
-        nombre,
-        slug,
-        email,
-        ciudad,
-        color_primario: body.color_primario || '#74223d',
-        color_fondo: body.color_fondo || '#fffaf3',
-        color_acento: body.color_acento || '#bfa984',
-        tipografia: body.tipografia || 'serif',
-        hub_activo: Boolean(body.hub_activo),
-        hub_titulo: body.hub_titulo || null,
-        hub_subtitulo: body.hub_subtitulo || null,
-        instagram_url: body.instagram_url || null,
-        facebook_url: body.facebook_url || null,
-        plan: body.plan || 'basic',
-        subscription_status: body.subscription_status || 'trialing',
-        trial_active_seconds_limit: segundosPrueba(body.trial_hours_limit),
-        trial_expires_at: fechaPrueba(body.trial_expires_at),
-        trial_started_at: body.subscription_status === 'trialing' ? new Date().toISOString() : null,
-        ticket_medio_comida: body.ticket_medio_comida === '' || body.ticket_medio_comida === undefined ? null : Number(body.ticket_medio_comida) || null,
-        banner_zoom: 100,
-        banner_x: 50,
-        banner_y: 50
-      }])
+      .insert([payloadRestaurante])
       .select('*')
       .single()
+
+    const insertErrorText = [
+      insertRes.error?.message,
+      insertRes.error?.details,
+      insertRes.error?.hint,
+      insertRes.error?.code,
+    ].filter(Boolean).join(' ').toLowerCase()
+
+    if (insertRes.error && insertErrorText.includes('carta_publica_activa')) {
+      publicationMigrationPending = true
+      const payloadSinPublicacion = { ...payloadRestaurante }
+      delete payloadSinPublicacion.carta_publica_activa
+      insertRes = await adminSupabase
+        .from('restaurantes')
+        .insert([payloadSinPublicacion])
+        .select('*')
+        .single()
+    }
+
+    const { data: restaurante, error: restauranteError } = insertRes
 
     if (restauranteError) throw restauranteError
 
     return Response.json({
       restaurante,
       invitacion: { enviada: true, email },
+      publication_migration_pending: publicationMigrationPending,
       urls: {
         bienvenida: `${SITE_URL}/bienvenida`,
         carta: `/carta/${slug}`,

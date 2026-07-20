@@ -184,7 +184,7 @@ export default function TrazabilidadEconomica() {
   const advertencias = trace?.advertencias || []
   const cambiosSnapshot = trace?.cambios_snapshot || []
   const beneficioLineas = trace?.beneficio_lineas || []
-  const defensaCifras = trace?.defensa_cifras || []
+  const defensaCifras = useMemo(() => trace?.defensa_cifras || [], [trace])
   const reports = trace?.reports || []
 
   const informeCorto = useMemo(() => {

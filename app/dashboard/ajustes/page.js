@@ -48,6 +48,7 @@ export default function AjustesHub() {
   const urlMapa = `${origin}/dashboard/menu-engineering`
   const urlInventario = `${origin}/dashboard/inventario`
   const actividadIniciada = Boolean(restaurante?.actividad_real_desde)
+  const cartaPublicada = restaurante?.carta_publica_activa !== false
 
   const checklist = perfilBodega ? [
     {
@@ -63,7 +64,7 @@ export default function AjustesHub() {
     { titulo: 'QR probado en movil', detalle: restaurante?.hub_activo ? 'El QR abre el hub publico.' : 'El QR abre la carta directa.', href: '/dashboard/qr' },
     { titulo: 'Marca revisada', detalle: 'Logo, colores, banner y estilo visual de la carta.', href: '/dashboard/personalizar' },
     { titulo: 'Acceso de sala revisado', detalle: pinConfigurado ? 'El modo camarero pide PIN.' : 'El modo camarero queda abierto sin PIN.', href: '#pin-sala' },
-    { titulo: 'Carta publica abierta', detalle: 'Comprueba que precios, platos y enlaces cargan bien.', href: destino },
+    { titulo: cartaPublicada ? 'Carta publica abierta' : 'Carta en borrador', detalle: cartaPublicada ? 'Comprueba que precios, platos y enlaces cargan bien.' : 'Publicala desde QR cuando marca, precios y contenido esten revisados.', href: cartaPublicada ? destino : '/dashboard/qr', pendiente: !cartaPublicada },
   ]
   const checklistPendiente = checklist.some(item => item.pendiente)
 
@@ -359,8 +360,8 @@ export default function AjustesHub() {
                 </>
               ) : (
                 <>
-                  <button className={styles.ghost} onClick={() => copiar(urlPublica, 'publica')}>{copiado === 'publica' ? 'Copiado' : 'Copiar experiencia publica'}</button>
-                  <button className={styles.ghost} onClick={() => copiar(urlCarta, 'carta')}>{copiado === 'carta' ? 'Copiado' : 'Copiar carta directa'}</button>
+                  <button className={styles.ghost} onClick={() => copiar(urlPublica, 'publica')} disabled={!cartaPublicada}>{copiado === 'publica' ? 'Copiado' : 'Copiar experiencia publica'}</button>
+                  <button className={styles.ghost} onClick={() => copiar(urlCarta, 'carta')} disabled={!cartaPublicada}>{copiado === 'carta' ? 'Copiado' : 'Copiar carta directa'}</button>
                   <button className={styles.ghost} onClick={() => copiar(urlCamarero, 'camarero')}>{copiado === 'camarero' ? 'Copiado' : 'Copiar modo camarero'}</button>
                 </>
               )}

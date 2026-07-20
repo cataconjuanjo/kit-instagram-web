@@ -1,15 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail } from '../demo'
+import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { esPerfilBodega, nombrePlan, puedeUsar } from '../lib/plans'
 import UsageTracker from './UsageTracker'
 import styles from './layout.module.css'
 import OpenCartaPruebaButton from './OpenCartaPruebaButton'
 import { GuideModeProvider, GuidePanel, GuideToggle } from './GuideMode'
+import BrandLogo from '../components/BrandLogo'
 
 const icon = {
   home: <svg viewBox="0 0 20 20" fill="currentColor" width={16} height={16}><path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7a1 1 0 0 0 1.414 1.414L4 10.414V17a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-3h2v3a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6.586l.293.293a1 1 0 0 0 1.414-1.414l-7-7z"/></svg>,
@@ -17,6 +19,25 @@ const icon = {
   bodega: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><path d="M4 20h16"/><path d="M6 20V7l6-3 6 3v13"/><path d="M9 20v-6h6v6"/><path d="M8 10h2M14 10h2"/></svg>,
   sala: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><path d="M8 3h8"/><path d="M9 3v5a3 3 0 0 1-6 0V3h6Z"/><path d="M15 3v18"/><path d="M19 8v13"/><path d="M5 21h14"/></svg>,
   ajustes: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width={16} height={16}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+}
+
+const DARK_MODE_KEY = 'dashboard_dark_mode'
+const DARK_MODE_EVENT = `${DARK_MODE_KEY}:changed`
+
+function getDarkModeSnapshot() {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(DARK_MODE_KEY) === '1'
+}
+
+function subscribeLocationSearch(callback) {
+  if (typeof window === 'undefined') return () => {}
+  window.addEventListener('popstate', callback)
+  return () => window.removeEventListener('popstate', callback)
+}
+
+function getLocationSearchSnapshot() {
+  if (typeof window === 'undefined') return ''
+  return window.location.search
 }
 
 function formatoTrial(segundos) {
@@ -114,6 +135,8 @@ function PendingStripeScreen({ restaurante, onLogout }) {
 export default function DashboardLayout({ children }) {
   const pathname = usePathname()
   const router = useRouter()
+  const locationSearch = useSyncExternalStore(subscribeLocationSearch, getLocationSearchSnapshot, () => '')
+  const searchParams = new URLSearchParams(locationSearch)
   const [restaurante, setRestaurante] = useState(null)
   const [vinoCount, setVinoCount] = useState(0)
   const [platoCount, setPlatoCount] = useState(0)
@@ -124,26 +147,47 @@ export default function DashboardLayout({ children }) {
   const [query, setQuery] = useState('')
   const [searchItems, setSearchItems] = useState([])
   const [clock, setClock] = useState('')
-  const [darkMode, setDarkMode] = useState(() => (
-    typeof window !== 'undefined' && window.localStorage.getItem('dashboard_dark_mode') === '1'
-  ))
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [shortcutMessage, setShortcutMessage] = useState('')
   const [trialInfo, setTrialInfo] = useState(null)
   const [isAdminSession, setIsAdminSession] = useState(false)
-  const [demoPresentacion] = useState(() => (
-    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_presentacion') === '1'
-  ))
-  const [demoSumiller] = useState(() => (
-    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_sumiller') === '1'
-  ))
+  const [isDemoSession, setIsDemoSession] = useState(false)
+  const subscribeDarkMode = useCallback((callback) => {
+    if (typeof window === 'undefined') return () => {}
+    window.addEventListener(DARK_MODE_EVENT, callback)
+    return () => window.removeEventListener(DARK_MODE_EVENT, callback)
+  }, [])
+  const darkMode = useSyncExternalStore(subscribeDarkMode, getDarkModeSnapshot, () => false)
+  const demoPresentacion = searchParams.get('demo_presentacion') === '1'
+  const demoSumiller = searchParams.get('demo_sumiller') === '1'
   const perfilBodega = esPerfilBodega(restaurante)
 
   useEffect(() => {
     async function cargar() {
-      const { email, restauranteId, isAdmin } = await getEffectiveRestaurantEmail(supabase)
+      const { email, restauranteId, isAdmin, isDemo } = await getEffectiveRestaurantEmail(supabase)
       setIsAdminSession(Boolean(isAdmin))
+      setIsDemoSession(Boolean(isDemo))
       if (!email && !restauranteId) return
+
+      if (isDemo) {
+        const demo = await cargarDemoDashboard(email)
+        if (!demo?.restaurante) return
+        const rest = demo.restaurante
+        setRestaurante(rest)
+        const vinosDemo = demo.vinos || []
+        const platosDemo = demo.platos || []
+        const propuestasDemo = demo.propuestas || []
+        setVinoCount(vinosDemo.filter(vino => vino.activo !== false).length)
+        setPlatoCount(platosDemo.length)
+        setPropuestasCount(propuestasDemo.filter(item => !['descartada', 'incorporada'].includes(item.estado)).length)
+        const nextSearchItems = [
+          ...vinosDemo.filter(vino => vino.activo !== false).slice(0, 80).map(item => ({ ...item, tipo: 'Vino', href: '/dashboard/vinos', meta: [item.bodega, item.region].filter(Boolean).join(' - ') })),
+          ...(esPerfilBodega(rest) ? [] : platosDemo.slice(0, 80).map(item => ({ ...item, tipo: 'Plato', href: '/dashboard/platos', meta: item.categoria || '' }))),
+        ]
+        setSearchItems(nextSearchItems)
+        return
+      }
+
       const queryRestaurante = supabase.from('restaurantes').select('*')
       const { data: rest } = restauranteId
         ? await queryRestaurante.eq('id', restauranteId).single()
@@ -247,11 +291,9 @@ export default function DashboardLayout({ children }) {
   }, [pathname, router, perfilBodega])
 
   function toggleDarkMode() {
-    setDarkMode(value => {
-      const next = !value
-      window.localStorage.setItem('dashboard_dark_mode', next ? '1' : '0')
-      return next
-    })
+    const next = !darkMode
+    window.localStorage.setItem(DARK_MODE_KEY, next ? '1' : '0')
+    window.dispatchEvent(new Event(DARK_MODE_EVENT))
   }
 
   async function cerrarSesion() {
@@ -329,6 +371,7 @@ export default function DashboardLayout({ children }) {
         ? []
         : [
             { href: '/dashboard/qr', label: 'QR y accesos', hint: 'Mesa y camarero' },
+            { href: '/dashboard/versiones', label: 'Versiones publicadas', hint: 'Cambios frente a actual' },
             { href: '/dashboard/personalizar', label: 'Diseño de carta', hint: 'Logo y colores' },
           ],
     },
@@ -358,9 +401,10 @@ export default function DashboardLayout({ children }) {
           <div className={styles.brandHeader}>
             <div className={styles.brandIdentity}>
               {restaurante?.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- Logo configurable del restaurante: puede venir de Supabase u otra URL externa no controlada por next/image.
                 <img className={styles.brandLogo} src={restaurante.logo_url} alt={restaurante.nombre || (perfilBodega ? 'Logo bodega' : 'Logo restaurante')} loading="lazy" />
               ) : (
-                <img className={styles.brandLogo} src="/brand/carta-viva/isotipo-dark.svg" alt="Carta Viva" />
+                <BrandLogo variant="markDark" className={styles.brandLogo} />
               )}
               <div className={styles.brandText}>
                 <p className={styles.brandLabel}>{perfilBodega ? 'Panel bodega' : 'Panel restaurante'}</p>
@@ -558,7 +602,7 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
         )}
-        {!isAdminSession && restaurante && !['active', 'trialing'].includes(restaurante.subscription_status || 'trialing') ? (
+        {!isAdminSession && !isDemoSession && restaurante && !['active', 'trialing'].includes(restaurante.subscription_status || 'trialing') ? (
           <PendingStripeScreen restaurante={restaurante} onLogout={cerrarSesion} />
         ) : trialInfo?.blocked ? (
           <TrialExpiredScreen trial={trialInfo} onLogout={cerrarSesion} />
