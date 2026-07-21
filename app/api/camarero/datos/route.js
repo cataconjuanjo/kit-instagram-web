@@ -11,7 +11,7 @@ const SELECT_RESTAURANTE_SALA = CAMPOS_RESTAURANTE_SALA.join(', ')
 const SELECT_VINO_SALA = [
   'id', 'restaurante_id', 'nombre', 'bodega', 'tipo', 'region', 'uva', 'anada',
   'precio_copa', 'precio_botella', 'notas_cata', 'activo', 'stock',
-  'stock_minimo', 'internacional',
+  'internacional',
 ].join(', ')
 const SELECT_PLATO_SALA = 'id, restaurante_id, nombre, categoria, precio, descripcion, activo, familias_aromaticas'
 
