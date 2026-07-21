@@ -175,6 +175,7 @@ export default function QRPage() {
   const [historialPublicacionError, setHistorialPublicacionError] = useState('')
   const [loading, setLoading] = useState(true)
   const [copiado, setCopiado] = useState('')
+  const [mensajeCopia, setMensajeCopia] = useState('')
   const [vistaRapida, setVistaRapida] = useState(false)
   const [guardandoPublicacion, setGuardandoPublicacion] = useState(false)
   const [mensajePublicacion, setMensajePublicacion] = useState('')
@@ -668,6 +669,40 @@ export default function QRPage() {
     }
   }, [urlDirecta])
 
+  async function copiarAlPortapapeles(texto) {
+    if (!texto || typeof window === 'undefined' || typeof document === 'undefined') return false
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(texto)
+        return true
+      }
+    } catch {}
+
+    let textarea = null
+    try {
+      textarea = document.createElement('textarea')
+      textarea.value = texto
+      textarea.setAttribute('readonly', '')
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      textarea.style.top = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      textarea.setSelectionRange(0, textarea.value.length)
+      return document.execCommand('copy')
+    } catch {
+      return false
+    } finally {
+      if (textarea?.parentNode) textarea.parentNode.removeChild(textarea)
+    }
+  }
+
+  function avisarCopiaManual() {
+    setMensajeCopia('No se pudo copiar automáticamente. Selecciona el texto visible y cópialo manualmente.')
+    setTimeout(() => setMensajeCopia(''), 2600)
+  }
+
   function descargar() {
     const canvas = canvasRef.current
     if (!canvas || !restaurante?.slug) return
@@ -723,7 +758,11 @@ export default function QRPage() {
 
   async function copiar(texto, tipo) {
     if (!texto) return
-    await navigator.clipboard?.writeText(texto)
+    const copiadoOk = await copiarAlPortapapeles(texto)
+    if (!copiadoOk) {
+      avisarCopiaManual()
+      return
+    }
     setCopiado(tipo)
     const eventoPorTipo = {
       url: 'public_link_copied',
@@ -801,16 +840,16 @@ export default function QRPage() {
       setPreviewLink(enlace)
       setPreviewLinkDestino(data.destino || destinoSolicitud)
       setPreviewCaducaAt(data.caduca_at || '')
-      await navigator.clipboard?.writeText(enlace)
-      setCopiado('preview')
+      const copiadoPreview = await copiarAlPortapapeles(enlace)
+      if (copiadoPreview) setCopiado('preview')
       registrarDeliveryEvent('preview_generated', {
         destino: data.destino || destinoSolicitud,
         duracion_horas: Number(previewDuracionHoras) || 24,
         caduca_at: data.caduca_at || '',
         source: 'dashboard_qr',
       })
-      setMensajePreview(`Preview de ${data.destino === 'hub' ? 'hub' : 'carta'} copiada. Caduca ${data.caduca_en_minutos >= 60 ? `en ${Math.round(data.caduca_en_minutos / 60)} h` : `en ${data.caduca_en_minutos} min`}.`)
-      setTimeout(() => setCopiado(''), 1800)
+      setMensajePreview(`Preview de ${data.destino === 'hub' ? 'hub' : 'carta'} ${copiadoPreview ? 'copiada' : 'generada'}. Caduca ${data.caduca_en_minutos >= 60 ? `en ${Math.round(data.caduca_en_minutos / 60)} h` : `en ${data.caduca_en_minutos} min`}.${copiadoPreview ? '' : ' Copia el enlace visible manualmente.'}`)
+      if (copiadoPreview) setTimeout(() => setCopiado(''), 1800)
     } catch (error) {
       setMensajePreview(error.message || 'No se pudo crear la vista previa privada.')
     } finally {
@@ -979,6 +1018,8 @@ export default function QRPage() {
           ))}
         </div>
       </section>
+
+      {mensajeCopia && <p className={styles.panelSub} style={{ margin: '0 0 16px' }}>{mensajeCopia}</p>}
 
       <section className={styles.panelDark} style={{ marginBottom: 16 }}>
         <div className={styles.panelHead}>
