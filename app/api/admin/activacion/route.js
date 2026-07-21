@@ -120,19 +120,19 @@ function emailActivacion({ restaurante, accessLink, checkoutUrl, trialEnd }) {
   const fecha = escapeHtml(fechaLarga(trialEnd))
   return `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;color:#222;line-height:1.55">
-      <h1 style="font-size:24px;font-weight:500;margin:0 0 16px">Activacion de Carta Viva</h1>
+      <h1 style="font-size:24px;font-weight:500;margin:0 0 16px">Activación de Carta Viva</h1>
       <p>Hola,</p>
       <p>Te dejo preparada la prueba gratuita de <strong>Carta Viva</strong> para <strong>${nombre}</strong>.</p>
       <p>Para activarla, completa estos dos pasos:</p>
       <p style="margin:24px 0">
-        <a href="${accessLink}" style="background:#111;color:#fff;text-decoration:none;padding:12px 18px;display:inline-block">Crear contrasena</a>
+        <a href="${accessLink}" style="background:#111;color:#fff;text-decoration:none;padding:12px 18px;display:inline-block">Crear contraseña</a>
       </p>
       <p style="margin:24px 0">
         <a href="${checkoutUrl}" style="background:#74223d;color:#fff;text-decoration:none;padding:12px 18px;display:inline-block">Activar prueba gratuita en Stripe</a>
       </p>
-      <p>No se cobrara nada hasta el <strong>${fecha}</strong>. Puedes cancelar antes en cualquier momento sin coste.</p>
-      <p>Una vez creada la contrasena, podras entrar desde:<br><a href="${SITE_URL}/login">${SITE_URL}/login</a></p>
-      <p>Tu carta queda preparada en borrador. Desde el panel podras probarla sin publicarla y activarla cuando precios, platos y QR esten revisados.</p>
+      <p>No se cobrará nada hasta el <strong>${fecha}</strong>. Puedes cancelar antes en cualquier momento sin coste.</p>
+      <p>Una vez creada la contraseña, podrás entrar desde:<br><a href="${SITE_URL}/login">${SITE_URL}/login</a></p>
+      <p>Tu carta queda preparada en borrador. Desde el panel podrás probarla sin publicarla y activarla cuando precios, platos y QR estén revisados.</p>
       <p>Un saludo,<br>Juanjo</p>
     </div>
   `
@@ -182,7 +182,7 @@ export async function POST(req) {
       from: FROM,
       to: restaurante.email,
       bcc: ADMIN_EMAIL,
-      subject: `Activacion de Carta Viva para ${restaurante.nombre}`,
+      subject: `Activación de Carta Viva para ${restaurante.nombre}`,
       html: emailActivacion({ restaurante, accessLink, checkoutUrl: checkout.url, trialEnd }),
     })
 

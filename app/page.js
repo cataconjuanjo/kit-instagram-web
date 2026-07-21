@@ -52,7 +52,7 @@ const activaciones = [
 
 const metodologia = [
   ['01', 'Diagnóstico', 'Vemos qué hay en carta, qué se vende, qué ocupa espacio, qué falta y qué está frenando margen o experiencia.'],
-  ['02', 'Estrategia', 'Diseñamos una arquitectura de vinos ajustada al ticket, cocina, sala, publico y posicionamiento del restaurante.'],
+  ['02', 'Estrategia', 'Diseñamos una arquitectura de vinos ajustada al ticket, cocina, sala, público y posicionamiento del restaurante.'],
   ['03', 'Implementación', 'Lo bajamos a carta, proveedores, formación, QR, seguimiento y rutinas para que no se quede en un informe.'],
 ]
 
@@ -196,7 +196,7 @@ export default function Home() {
         </div>
         <div className="copy-stack">
           <p>
-            Mi forma de trabajar mezcla dos mundos: la mirada analitica de la ingenieria y el criterio sensorial del
+            Mi forma de trabajar mezcla dos mundos: la mirada analítica de la ingeniería y el criterio sensorial del
             vino. Me interesan las cartas que tienen alma, pero también números: rotación, margen, ticket medio y
             facilidad de venta.
           </p>

@@ -153,14 +153,14 @@ export default function RestauranteHub({ params }) {
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'No se pudo registrar la aprobacion.')
+      if (!res.ok) throw new Error(data.error || 'No se pudo registrar la aprobación.')
       setPreviewAprobacion({ aprobada: true, loading: false, error: '' })
       setPreviewApprovalOpen(false)
     } catch (error) {
       setPreviewAprobacion({
         aprobada: false,
         loading: false,
-        error: error.message || 'No se pudo registrar la aprobacion.',
+        error: error.message || 'No se pudo registrar la aprobación.',
       })
     }
   }
@@ -245,8 +245,8 @@ export default function RestauranteHub({ params }) {
               <strong>{previewAprobacion.aprobada ? 'Preview aprobada' : 'Vista previa privada'}</strong>
               <span>
                 {previewAprobacion.aprobada
-                  ? 'La revision ha quedado registrada. Ya se puede publicar desde el dashboard.'
-                  : 'No es una pagina publicada. Revisa enlaces y carta antes de compartir el QR real.'}
+                  ? 'La revisión ha quedado registrada. Ya se puede publicar desde el dashboard.'
+                  : 'No es una página publicada. Revisa enlaces y carta antes de compartir el QR real.'}
               </span>
               {previewAprobacion.error && <small>{previewAprobacion.error}</small>}
             </div>
@@ -286,7 +286,7 @@ export default function RestauranteHub({ params }) {
                 />
                 <div>
                   <button type="submit" disabled={previewAprobacion.loading}>
-                    {previewAprobacion.loading ? 'Registrando...' : 'Confirmar aprobacion'}
+                    {previewAprobacion.loading ? 'Registrando...' : 'Confirmar aprobación'}
                   </button>
                   <button type="button" onClick={() => setPreviewApprovalOpen(false)} disabled={previewAprobacion.loading}>
                     Cancelar

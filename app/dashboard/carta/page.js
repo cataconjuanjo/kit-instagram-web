@@ -51,8 +51,8 @@ export default function CartaHub() {
       <ModuleShell
         restaurante={restaurante}
         eyebrow="Bodega"
-        title="Carta publica no incluida en Sommelier"
-        subtitle="Esta membresia esta pensada para que el sumiller gestione referencias, compras, stock, inventario, rentabilidad y mapa estrella/joya."
+        title="Carta pública no incluida en Sommelier"
+        subtitle="Esta membresía está pensada para que el sumiller gestione referencias, compras, stock, inventario, rentabilidad y mapa estrella/joya."
         actions={<Link className={styles.secondary} href="/dashboard/vinos">Gestionar referencias</Link>}
         narrow
       >
@@ -126,7 +126,7 @@ export default function CartaHub() {
         <div className={styles.stat}><p className={styles.statValue}>{pendientesMotor}</p><p className={styles.statLabel}>Faltan para recomendar</p></div>
       </section>
 
-      <section className={styles.quickActionBar} aria-label="Acciones rapidas de carta">
+      <section className={styles.quickActionBar} aria-label="Acciones rápidas de carta">
         {accionesRapidas.map(accion => (
           accion.action
             ? <button key={accion.label} type="button" className={styles.secondary} onClick={accion.action}>{accion.label}</button>
@@ -186,14 +186,14 @@ export default function CartaHub() {
         <Link className={styles.hubCard} href="/dashboard/platos">
           <p className={styles.eyebrow}>Maridaje</p>
           <h2>Platos</h2>
-          <p>Carta de comida, categorias y pistas de venta para que la recomendacion encaje.</p>
+          <p>Carta de comida, categorías y pistas de venta para que la recomendación encaje.</p>
           <span>{platosSinDescripcion.length} necesitan pistas de venta</span>
         </Link>
         <button type="button" className={`${styles.hubCard} ${styles.hubCardDark}`} onClick={() => setMostrarSugerencia(true)}>
           <p className={styles.eyebrow}>Escaparate</p>
           <h2>Sugerencia de la casa</h2>
           <p>La Selección Juanjo la mantiene el consultor. Aquí podéis añadir una recomendación propia del restaurante.</p>
-          <span>{sugerenciasRestaurante.length ? `${sugerenciasRestaurante.length} vinos recomendados` : 'Sin recomendacion propia'}</span>
+          <span>{sugerenciasRestaurante.length ? `${sugerenciasRestaurante.length} vinos recomendados` : 'Sin recomendación propia'}</span>
         </button>
       </section>
       <SuggestionDialog

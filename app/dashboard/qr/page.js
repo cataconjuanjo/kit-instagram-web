@@ -64,9 +64,9 @@ function esRestauracionSnapshot(evento = {}) {
 function tituloEventoPublicacion(evento = {}) {
   if (esRestauracionSnapshot(evento)) {
     const version = evento.contenido_resumen?.restauracion?.version_number
-    return version ? `Restauro version v${version}` : 'Restauro una version'
+    return version ? `Restauró versión v${version}` : 'Restauró una versión'
   }
-  return evento.accion === 'publicar' ? 'Publico la carta' : 'Pauso la carta'
+  return evento.accion === 'publicar' ? 'Publicó la carta' : 'Pausó la carta'
 }
 
 const DELIVERY_EVENT_LABELS = {
@@ -75,15 +75,15 @@ const DELIVERY_EVENT_LABELS = {
   preview_message_copied: 'Mensaje privado copiado',
   preview_opened_from_dashboard: 'Preview abierta',
   preview_approved: 'Preview aprobada',
-  preview_approval_refreshed: 'Aprobacion actualizada',
+  preview_approval_refreshed: 'Aprobación actualizada',
   publication_published: 'Carta publicada',
   publication_paused: 'Carta pausada',
   qr_downloaded: 'QR descargado',
-  qr_print_opened: 'Impresion abierta',
-  public_link_copied: 'Enlace publico copiado',
+  qr_print_opened: 'Impresión abierta',
+  public_link_copied: 'Enlace público copiado',
   team_message_copied: 'Mensaje para equipo copiado',
-  public_destination_opened: 'Destino publico abierto',
-  quick_view_opened: 'Vista rapida abierta',
+  public_destination_opened: 'Destino público abierto',
+  quick_view_opened: 'Vista rápida abierta',
 }
 
 const USO_REAL_INICIAL = {
@@ -120,7 +120,7 @@ const FORMATOS_ENTREGA = [
     id: 'historia',
     label: 'Historia',
     detail: 'Instagram / WhatsApp',
-    tagline: 'Nuestra carta viva ya esta disponible',
+    tagline: 'Nuestra carta viva ya está disponible',
   },
 ]
 
@@ -217,14 +217,14 @@ export default function QRPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo cargar el historial de publicacion.')
+      if (!res.ok) throw new Error(data.error || 'No se pudo cargar el historial de publicación.')
       setHistorialPublicacion(data.historial || [])
       setHistorialPublicacionPendiente(Boolean(data.historial_pendiente))
       setSnapshotPublicacionPendiente(Boolean(data.snapshot_pendiente))
       setUltimoSnapshot(data.ultimo_snapshot || null)
     } catch (error) {
       setHistorialPublicacion([])
-      setHistorialPublicacionError(error.message || 'No se pudo cargar el historial de publicacion.')
+      setHistorialPublicacionError(error.message || 'No se pudo cargar el historial de publicación.')
     }
   }
 
@@ -240,7 +240,7 @@ export default function QRPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la aprobacion de preview.')
+      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la aprobación de preview.')
       setPreviewApproval(data.ultima_aprobacion_vigente || data.ultima_aprobacion || null)
       setPreviewApprovalVigente(Boolean(data.aprobacion_vigente))
       setPreviewApprovalObsoleta(Boolean(data.aprobacion_obsoleta))
@@ -250,7 +250,7 @@ export default function QRPage() {
       setPreviewApprovalVigente(false)
       setPreviewApprovalObsoleta(false)
       setPreviewApprovalPendiente(false)
-      setPreviewApprovalError(error.message || 'No se pudo cargar la aprobacion de preview.')
+      setPreviewApprovalError(error.message || 'No se pudo cargar la aprobación de preview.')
     } finally {
       setPreviewApprovalLoading(false)
     }
@@ -266,7 +266,7 @@ export default function QRPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la analitica de entrega.')
+      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la analítica de entrega.')
       setDeliveryAnalytics({
         eventos: data.eventos || [],
         resumen: data.resumen || { por_destino: { carta: 0, hub: 0 } },
@@ -280,7 +280,7 @@ export default function QRPage() {
         ...prev,
         eventos: [],
         loading: false,
-        error: error.message || 'No se pudo cargar la analitica de entrega.',
+        error: error.message || 'No se pudo cargar la analítica de entrega.',
       }))
     }
   }
@@ -340,7 +340,7 @@ export default function QRPage() {
       }
       if (res.ok) cargarDeliveryAnalytics(restaurante.id)
     } catch {
-      // La analitica nunca debe bloquear una accion operativa del QR.
+      // La analítica nunca debe bloquear una acción operativa del QR.
     }
   }
 
@@ -423,14 +423,14 @@ export default function QRPage() {
   const previewApprovalLista = Boolean(previewApprovalVigente && previewApproval && previewApproval.destino === destinoPreview)
   const previewApprovalBloqueada = !previewApprovalLoading && !previewApprovalPendiente && !previewApprovalLista
   const previewApprovalDetalle = previewApprovalLoading
-    ? 'Comprobando aprobacion'
+    ? 'Comprobando aprobación'
     : previewApprovalPendiente
       ? 'Falta tabla de aprobaciones'
       : previewApprovalLista
         ? `${formatoFechaHistorial(previewApproval.approved_at)} por ${firmantePreview(previewApproval)}`
         : previewApprovalObsoleta
           ? 'La carta cambio despues de aprobar'
-          : `Sin aprobacion de ${destinoPreview === 'hub' ? 'hub' : 'carta'}`
+          : `Sin aprobación de ${destinoPreview === 'hub' ? 'hub' : 'carta'}`
   const criteriosContenido = [
     {
       label: 'Vinos visibles',
@@ -495,7 +495,7 @@ export default function QRPage() {
     {
       label: 'Preview',
       detail: previewApprovalLoading
-        ? 'Comprobando aprobacion'
+        ? 'Comprobando aprobación'
         : previewApprovalLista
           ? 'Aprobada y vigente'
           : previewApprovalObsoleta
@@ -512,7 +512,7 @@ export default function QRPage() {
     },
     {
       label: 'Entrega',
-      detail: cartaPublicada ? 'QR y enlace listos' : 'Esperando publicacion',
+      detail: cartaPublicada ? 'QR y enlace listos' : 'Esperando publicación',
       ok: cartaPublicada,
       current: cartaPublicada,
     },
@@ -523,14 +523,14 @@ export default function QRPage() {
       ? 'Lista para publicar'
       : 'Preparando entrega'
   const entregaDetalle = cartaPublicada
-    ? 'El enlace publico, el QR y la version de impresion ya estan disponibles.'
+    ? 'El enlace público, el QR y la versión de impresión ya están disponibles.'
     : contenidoBloqueado
-      ? 'Completa el contenido minimo para evitar una carta vacia o sin precios.'
+      ? 'Completa el contenido mínimo para evitar una carta vacía o sin precios.'
       : previewApprovalObsoleta
-        ? 'La carta cambio despues de la aprobacion. Hace falta una nueva preview firmada.'
+        ? 'La carta cambió después de la aprobación. Hace falta una nueva preview firmada.'
         : previewApprovalLista
-          ? 'La preview esta aprobada. Publica cuando quieras abrir el destino al cliente.'
-          : 'Genera una preview privada y pide aprobacion antes de publicar.'
+          ? 'La preview está aprobada. Publica cuando quieras abrir el destino al cliente.'
+          : 'Genera una preview privada y pide aprobación antes de publicar.'
   const entregaAccion = cartaPublicada
     ? { label: 'Descargar QR', hint: 'Material final', onClick: descargar, disabled: false }
     : migracionPublicacionPendiente || previewApprovalPendiente
@@ -554,12 +554,12 @@ export default function QRPage() {
       hint: 'Firmas recibidas desde preview',
     },
     {
-      label: 'Publicacion',
+      label: 'Publicación',
       value: (deliveryResumen.publication_published || 0) + (deliveryResumen.publication_paused || 0),
       hint: 'Cambios publicar/pausar',
     },
     {
-      label: 'QR e impresion',
+      label: 'QR e impresión',
       value: (deliveryResumen.qr_downloaded || 0) + (deliveryResumen.qr_print_opened || 0),
       hint: 'Material preparado',
     },
@@ -568,7 +568,7 @@ export default function QRPage() {
       value: (deliveryResumen.public_link_copied || 0) +
         (deliveryResumen.team_message_copied || 0) +
         (deliveryResumen.public_destination_opened || 0),
-      hint: 'Copias y aperturas publicas',
+      hint: 'Copias y aperturas públicas',
     },
     {
       label: 'Uso real',
@@ -587,20 +587,20 @@ export default function QRPage() {
     : 0
   const experienciasUsoReal = Array.isArray(usoReal.experiencias) ? usoReal.experiencias.slice(0, 3) : []
   const lecturaUsoReal = !usoReal.actividad_iniciada
-    ? 'La actividad real no esta iniciada. Cuando actives el servicio diario, los escaneos de clientes se compararan con la entrega.'
+    ? 'La actividad real no está iniciada. Cuando actives el servicio diario, los escaneos de clientes se compararán con la entrega.'
     : usoReal.escaneos_total > 0
       ? `${usoReal.escaneos_total} escaneos reales detectados: ${usoReal.escaneos_hub || 0} desde hub y ${usoReal.escaneos_carta || 0} desde carta.`
       : accionesMaterial > 0
-        ? 'El material ya se preparo, pero aun no hay escaneos reales en el periodo. Revisa si el QR esta en mesa o si sala lo esta ofreciendo.'
-        : 'Todavia no hay preparacion de material ni escaneos reales en el periodo.'
+        ? 'El material ya se preparó, pero aún no hay escaneos reales en el periodo. Revisa si el QR está en mesa o si sala lo está ofreciendo.'
+        : 'Todavía no hay preparación de material ni escaneos reales en el periodo.'
   const formatoEntregaActivo = FORMATOS_ENTREGA.find(formato => formato.id === formatoEntrega) || FORMATOS_ENTREGA[0]
   const lecturaExperienciaReal = !experienciaActiva
     ? 'Activa una plantilla para atribuir escaneos a una experiencia concreta.'
     : !usoReal.actividad_iniciada
-      ? 'La medicion real aun no esta iniciada para comparar esta experiencia.'
+      ? 'La medición real aún no está iniciada para comparar esta experiencia.'
       : escaneosExperienciaActiva > 0
         ? `${escaneosExperienciaActiva} escaneos reales llegaron con ${experienciaActiva.label}.`
-        : 'Todavia no hay escaneos reales atribuidos a la experiencia activa.'
+        : 'Todavía no hay escaneos reales atribuidos a la experiencia activa.'
   const nombreMaterial = restaurante?.nombre || 'Carta Viva'
   const destinoMaterial = restaurante?.hub_activo ? 'Hub digital' : 'Carta digital'
   const detalleMaterial = restaurante?.ciudad || restaurante?.provincia
@@ -616,25 +616,25 @@ export default function QRPage() {
     : experienciaEntrega.pendiente
       ? 'Aplica supabase/add_experience_activation_plans.sql para personalizar el pack por plantilla.'
       : experienciaEntrega.error
-        ? 'No se pudo cargar la experiencia activa. El pack usa texto generico.'
+        ? 'No se pudo cargar la experiencia activa. El pack usa texto genérico.'
         : experienciaActiva
           ? `Usando ${experienciaActiva.label}. ${progresoExperiencia}.`
-          : 'El pack usa texto generico. Activa una plantilla para orientar los copys.'
+          : 'El pack usa texto genérico. Activa una plantilla para orientar los copys.'
   const textoMaterialEquipo = [
     `Carta Viva de ${nombreMaterial}`,
     experienciaActiva ? `Experiencia: ${experienciaActiva.label}` : null,
     experienciaActiva?.responsable ? `Responsable: ${experienciaActiva.responsable}` : null,
     experienciaActiva?.objetivo ? `Fecha objetivo: ${experienciaActiva.objetivo}` : null,
     urlDirecta,
-    experienciaActiva?.sala || 'Antes de llevar el QR a mesa: escanear desde movil, comprobar precios y confirmar que abre sin token.',
+    experienciaActiva?.sala || 'Antes de llevar el QR a mesa: escanear desde móvil, comprobar precios y confirmar que abre sin token.',
   ].filter(Boolean).join('\n')
   const textoMaterialWhatsApp = [
     `${experienciaActiva?.whatsapp || 'Hola, te paso la carta digital de'} ${nombreMaterial}.`,
     urlDirecta,
-    experienciaActiva?.cliente || 'Desde ahi puedes ver la carta actualizada y las recomendaciones.',
+    experienciaActiva?.cliente || 'Desde ahí puedes ver la carta actualizada y las recomendaciones.',
   ].join('\n\n')
   const textoMaterialInstagram = [
-    experienciaActiva ? `${experienciaActiva.instagram} ${nombreMaterial}.` : `La carta viva de ${nombreMaterial} ya esta disponible.`,
+    experienciaActiva ? `${experienciaActiva.instagram} ${nombreMaterial}.` : `La carta viva de ${nombreMaterial} ya está disponible.`,
     experienciaActiva?.cliente || 'Escanea el QR en mesa o abre el enlace para ver vinos y recomendaciones.',
     urlDirecta,
   ].join('\n')
@@ -830,7 +830,7 @@ export default function QRPage() {
           ? 'Aplica supabase/add_preview_approvals.sql para registrar aprobaciones antes de publicar.'
           : previewApprovalError ||
             (previewApprovalObsoleta
-              ? 'La carta cambio despues de la aprobacion. Genera una nueva preview y apruebala antes de publicar.'
+              ? 'La carta cambió después de la aprobación. Genera una nueva preview y apruébala antes de publicar.'
               : `Aprueba primero la preview privada de ${destinoPreview === 'hub' ? 'hub' : 'carta'} antes de publicar.`)
       )
       return
@@ -884,7 +884,7 @@ export default function QRPage() {
       setMensajePublicacion(activa ? 'Carta publicada. El enlace público ya puede compartirse.' : 'Carta pausada. Solo se podrá abrir con prueba interna.')
     }
     } catch {
-      setMensajePublicacion('No se pudo conectar con el servidor para cambiar la publicacion.')
+      setMensajePublicacion('No se pudo conectar con el servidor para cambiar la publicación.')
     } finally {
       setGuardandoPublicacion(false)
     }
@@ -898,14 +898,14 @@ export default function QRPage() {
         restaurante={restaurante}
         eyebrow="Accesos"
         title="QR no incluido en Sommelier"
-        subtitle="La membresia sommelier trabaja con bodega interna: referencias, stock, inventario, TPV y mapa estrella/joya. No genera carta publica ni QR de mesa."
+        subtitle="La membresía sommelier trabaja con bodega interna: referencias, stock, inventario, TPV y mapa estrella/joya. No genera carta pública ni QR de mesa."
         actions={<Link className={styles.secondary} href="/dashboard/ajustes">Volver a ajustes</Link>}
         narrow
       >
         <section className={styles.empty}>
           <div>
-            <strong>Sin carta publica</strong>
-            <p>Para esta cuenta, los accesos utiles estan en Referencias, Bodega, Inventario y Estrellas/Joyas.</p>
+            <strong>Sin carta pública</strong>
+            <p>Para esta cuenta, los accesos útiles están en Referencias, Bodega, Inventario y Estrellas/Joyas.</p>
           </div>
         </section>
       </ModuleShell>
@@ -947,8 +947,8 @@ export default function QRPage() {
           <h2>{entregaTitulo}</h2>
           <p>{entregaDetalle}</p>
           <div className={styles.handoffMeta}>
-            <span>{destino === 'r' ? 'Hub publico' : 'Carta publica'}</span>
-            <span>{migracionPublicacionPendiente ? 'Migracion pendiente' : estadoPublicacion}</span>
+            <span>{destino === 'r' ? 'Hub público' : 'Carta pública'}</span>
+            <span>{migracionPublicacionPendiente ? 'Migración pendiente' : estadoPublicacion}</span>
             <span>{contenidoCarta.vinosActivos} vinos</span>
           </div>
         </div>
@@ -994,7 +994,7 @@ export default function QRPage() {
         </div>
         <div className={styles.panelBody}>
           {contenidoCarta.loading ? (
-            <p className={styles.panelSub} style={{ marginBottom: 14 }}>Comprobando contenido antes de permitir la publicacion...</p>
+            <p className={styles.panelSub} style={{ marginBottom: 14 }}>Comprobando contenido antes de permitir la publicación...</p>
           ) : (
             <div className={styles.publishReadiness} aria-label="Contenido minimo para publicar">
               {criteriosContenido.map(criterio => (
@@ -1011,12 +1011,12 @@ export default function QRPage() {
             </div>
           )}
           {contenidoCarta.error && <p className={styles.panelSub} style={{ marginBottom: 14 }}>{contenidoCarta.error}</p>}
-          {contenidoBloqueado && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavia: faltan referencias activas o precios visibles para que el cliente no llegue a una carta vacia.</p>}
-          {!cartaPublicada && !contenidoBloqueado && previewApprovalLoading && <p className={styles.panelSub} style={{ marginBottom: 14 }}>Comprobando si la preview privada ya esta aprobada...</p>}
-          {!cartaPublicada && !contenidoBloqueado && previewApprovalPendiente && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavia: falta aplicar supabase/add_preview_approvals.sql para registrar la aprobacion de preview.</p>}
+          {contenidoBloqueado && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavía: faltan referencias activas o precios visibles para que el cliente no llegue a una carta vacía.</p>}
+          {!cartaPublicada && !contenidoBloqueado && previewApprovalLoading && <p className={styles.panelSub} style={{ marginBottom: 14 }}>Comprobando si la preview privada ya está aprobada...</p>}
+          {!cartaPublicada && !contenidoBloqueado && previewApprovalPendiente && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavía: falta aplicar supabase/add_preview_approvals.sql para registrar la aprobación de preview.</p>}
           {!cartaPublicada && !contenidoBloqueado && !previewApprovalPendiente && previewApprovalError && <p className={styles.panelSub} style={{ marginBottom: 14 }}>{previewApprovalError}</p>}
-          {!cartaPublicada && !contenidoBloqueado && previewApprovalObsoleta && !previewApprovalError && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavia: la carta cambio despues de la aprobacion. Genera una nueva preview y vuelve a aprobarla.</p>}
-          {!cartaPublicada && !contenidoBloqueado && previewApprovalBloqueada && !previewApprovalObsoleta && !previewApprovalError && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavia: comparte la preview privada y pide que pulsen Aprobar preview desde el enlace.</p>}
+          {!cartaPublicada && !contenidoBloqueado && previewApprovalObsoleta && !previewApprovalError && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavía: la carta cambió después de la aprobación. Genera una nueva preview y vuelve a aprobarla.</p>}
+          {!cartaPublicada && !contenidoBloqueado && previewApprovalBloqueada && !previewApprovalObsoleta && !previewApprovalError && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavía: comparte la preview privada y pide que pulsen Aprobar preview desde el enlace.</p>}
           <div className={styles.actionRow}>
             <OpenCartaPruebaButton className={styles.secondary} restauranteId={restaurante?.id}>Probar sin publicar</OpenCartaPruebaButton>
             {cartaPublicada ? (
@@ -1061,7 +1061,7 @@ export default function QRPage() {
           ) : historialPublicacionError ? (
             <p className={styles.panelSub}>{historialPublicacionError}</p>
           ) : historialPublicacion.length === 0 ? (
-            <p className={styles.panelSub}>Todavia no hay cambios registrados. El proximo publicar, pausar o restaurar quedara guardado aqui.</p>
+            <p className={styles.panelSub}>Todavía no hay cambios registrados. El próximo publicar, pausar o restaurar quedará guardado aquí.</p>
           ) : (
             <div className={styles.itemStack}>
               {historialPublicacion.map(evento => (
@@ -1085,16 +1085,16 @@ export default function QRPage() {
       <section className={styles.panel} style={{ marginBottom: 16 }}>
         <div className={styles.panelHead}>
           <div>
-            <h2 className={styles.panelTitle}>Analitica de entrega</h2>
-            <p className={styles.panelSub}>Senales de uso del embudo de preview, aprobacion, QR y enlaces en los ultimos 30 dias.</p>
+            <h2 className={styles.panelTitle}>Analítica de entrega</h2>
+            <p className={styles.panelSub}>Señales de uso del embudo de preview, aprobación, QR y enlaces en los últimos 30 días.</p>
           </div>
           <span className={styles.badge}>
-            {deliveryAnalytics.pendiente ? 'SQL pendiente' : deliveryAnalytics.loading ? 'Cargando' : '30 dias'}
+            {deliveryAnalytics.pendiente ? 'SQL pendiente' : deliveryAnalytics.loading ? 'Cargando' : '30 días'}
           </span>
         </div>
         <div className={styles.panelBody}>
           {deliveryAnalytics.pendiente ? (
-            <p className={styles.panelSub}>Aplica supabase/add_publication_delivery_events.sql para activar la analitica de entrega.</p>
+            <p className={styles.panelSub}>Aplica supabase/add_publication_delivery_events.sql para activar la analítica de entrega.</p>
           ) : deliveryAnalytics.error ? (
             <p className={styles.panelSub}>{deliveryAnalytics.error}</p>
           ) : (
@@ -1240,10 +1240,10 @@ export default function QRPage() {
                   {exportandoMaterial ? 'Exportando...' : 'Descargar material PNG'}
                 </button>
                 <button type="button" className={styles.secondary} onClick={descargar} disabled={!cartaPublicada}>Descargar solo QR</button>
-                <button type="button" className={styles.ghost} onClick={imprimir} disabled={!cartaPublicada}>Imprimir pagina</button>
+                <button type="button" className={styles.ghost} onClick={imprimir} disabled={!cartaPublicada}>Imprimir página</button>
               </div>
               {!cartaPublicada && (
-                <p className={styles.panelSub}>Publica primero la carta para generar material final. Mientras este en borrador, usa la preview privada.</p>
+                <p className={styles.panelSub}>Publica primero la carta para generar material final. Mientras esté en borrador, usa la preview privada.</p>
               )}
               <article className={styles.itemCard}>
                 <div className={styles.sectionHead} style={{ margin: 0 }}>
@@ -1303,7 +1303,7 @@ export default function QRPage() {
             <div className={styles.panelBody}>
               {previewApprovalLoading ? (
                 <article className={styles.itemCard} style={{ marginBottom: 14 }}>
-                  <h3 className={styles.sectionTitle}>Comprobando aprobacion</h3>
+                  <h3 className={styles.sectionTitle}>Comprobando aprobación</h3>
                   <p className={styles.sectionText}>Estamos verificando si la preview privada ya fue aprobada.</p>
                 </article>
               ) : previewApprovalPendiente ? (
@@ -1332,7 +1332,7 @@ export default function QRPage() {
                     <div>
                       <h3 className={styles.sectionTitle}>Aprobacion obsoleta</h3>
                       <p className={styles.sectionText}>
-                        Ultima aprobacion: {formatoFechaHistorial(previewApproval.approved_at)} · {firmantePreview(previewApproval)}. La carta cambio despues; genera otra preview y apruebala de nuevo.
+                        Última aprobación: {formatoFechaHistorial(previewApproval.approved_at)} · {firmantePreview(previewApproval)}. La carta cambió después; genera otra preview y apruébala de nuevo.
                       </p>
                       {previewApproval.note && <p className={styles.sectionText}>Nota anterior: {previewApproval.note}</p>}
                     </div>
@@ -1341,7 +1341,7 @@ export default function QRPage() {
                 </article>
               ) : (
                 <article className={styles.itemCard} style={{ marginBottom: 14 }}>
-                  <h3 className={styles.sectionTitle}>Sin aprobacion registrada</h3>
+                  <h3 className={styles.sectionTitle}>Sin aprobación registrada</h3>
                   <p className={styles.sectionText}>Comparte el enlace privado para que puedan revisar y pulsar Aprobar preview antes de publicar.</p>
                 </article>
               )}
@@ -1353,7 +1353,7 @@ export default function QRPage() {
                   onClick={actualizarAprobacionPreview}
                   disabled={!restaurante?.id || previewApprovalLoading}
                 >
-                  {previewApprovalLoading ? 'Actualizando...' : 'Actualizar aprobacion'}
+                  {previewApprovalLoading ? 'Actualizando...' : 'Actualizar aprobación'}
                 </button>
               </div>
               <div className={styles.previewBuilder}>
@@ -1363,11 +1363,11 @@ export default function QRPage() {
                     <strong>{previewDestinoActivoLabel}</strong>
                     <small>
                       {previewDestinoActivo === destinoPreview
-                        ? 'Este es el destino que desbloquea la publicacion actual.'
-                        : 'Util para revisar la carta directa, aunque el QR final abra el hub.'}
+                        ? 'Este es el destino que desbloquea la publicación actual.'
+                        : 'Útil para revisar la carta directa, aunque el QR final abra el hub.'}
                     </small>
                   </div>
-                  <span className={styles.badge}>No publico</span>
+                  <span className={styles.badge}>No público</span>
                 </div>
                 <div
                   className={`${styles.previewDestinationControl} ${previewOpcionesDestino.length === 1 ? styles.previewDestinationControlSingle : ''}`}
@@ -1388,7 +1388,7 @@ export default function QRPage() {
                   ))}
                 </div>
                 <p className={styles.sectionText}>
-                  El revisor vera un boton de aprobacion dentro del enlace. Si despues cambias la carta, tendra que aprobar otra preview.
+                  El revisor verá un botón de aprobación dentro del enlace. Si después cambias la carta, tendrá que aprobar otra preview.
                 </p>
               </div>
               <div className={styles.formGrid}>

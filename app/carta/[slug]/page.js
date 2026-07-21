@@ -109,7 +109,7 @@ function PreviewModeBanner({ styles, approved = false, approving = false, error 
           />
           <div>
             <button type="submit" disabled={approving}>
-              {approving ? 'Registrando...' : 'Confirmar aprobacion'}
+              {approving ? 'Registrando...' : 'Confirmar aprobación'}
             </button>
             <button type="button" onClick={() => setFormOpen(false)} disabled={approving}>
               Cancelar
@@ -413,13 +413,13 @@ export default function CartaPublica() {
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'No se pudo registrar la aprobacion.')
+      if (!res.ok) throw new Error(data.error || 'No se pudo registrar la aprobación.')
       setPreviewAprobacion({ aprobada: true, loading: false, error: '' })
     } catch (error) {
       setPreviewAprobacion({
         aprobada: false,
         loading: false,
-        error: error.message || 'No se pudo registrar la aprobacion.',
+        error: error.message || 'No se pudo registrar la aprobación.',
       })
     }
   }

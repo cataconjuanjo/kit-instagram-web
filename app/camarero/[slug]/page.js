@@ -928,7 +928,7 @@ export default function Camarero() {
     const tAlta = Math.max(tMedia + 14, ticket * 1.65)
     const tMuyAlta = Math.max(tAlta + 24, ticket * 2.50)
     const rangos = [
-      { id: 'auto', label: 'Sin limite', min: 0, max: Infinity, helper: 'sin filtro' },
+      { id: 'auto', label: 'Sin límite', min: 0, max: Infinity, helper: 'sin filtro' },
       { id: 'baja', label: 'Baja', min: 0, max: tBaja },
       { id: 'media', label: 'Media', min: tBaja, max: tMedia },
       { id: 'alta', label: 'Alta', min: tMedia, max: tAlta },

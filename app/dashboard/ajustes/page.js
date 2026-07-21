@@ -53,18 +53,18 @@ export default function AjustesHub() {
   const checklist = perfilBodega ? [
     {
       titulo: 'Actividad real definida',
-      detalle: actividadIniciada ? `Cuenta desde ${etiquetaActividadReal(restaurante)}` : 'Define desde cuando cuentan ventas, stock y movimientos.',
+      detalle: actividadIniciada ? `Cuenta desde ${etiquetaActividadReal(restaurante)}` : 'Define desde cuándo cuentan ventas, stock y movimientos.',
       href: '#actividad-real',
       pendiente: !actividadIniciada,
     },
-    { titulo: 'Referencias completas', detalle: 'Revisa coste, proveedor, stock minimo y perfil comercial.', href: '/dashboard/vinos?filtro=pendientes' },
+    { titulo: 'Referencias completas', detalle: 'Revisa coste, proveedor, stock mínimo y perfil comercial.', href: '/dashboard/vinos?filtro=pendientes' },
     { titulo: 'Mapa estrella/joya revisado', detalle: 'Detecta estrellas, joyas, caballos de batalla y referencias a archivar.', href: '/dashboard/menu-engineering' },
-    { titulo: 'Inventario preparado', detalle: 'Conteo fisico, bajo minimo y capital inmovilizado.', href: '/dashboard/inventario' },
+    { titulo: 'Inventario preparado', detalle: 'Conteo físico, bajo mínimo y capital inmovilizado.', href: '/dashboard/inventario' },
   ] : [
-    { titulo: 'QR probado en movil', detalle: restaurante?.hub_activo ? 'El QR abre el hub publico.' : 'El QR abre la carta directa.', href: '/dashboard/qr' },
+    { titulo: 'QR probado en móvil', detalle: restaurante?.hub_activo ? 'El QR abre el hub público.' : 'El QR abre la carta directa.', href: '/dashboard/qr' },
     { titulo: 'Marca revisada', detalle: 'Logo, colores, banner y estilo visual de la carta.', href: '/dashboard/personalizar' },
     { titulo: 'Acceso de sala revisado', detalle: pinConfigurado ? 'El modo camarero pide PIN.' : 'El modo camarero queda abierto sin PIN.', href: '#pin-sala' },
-    { titulo: cartaPublicada ? 'Carta publica abierta' : 'Carta en borrador', detalle: cartaPublicada ? 'Comprueba que precios, platos y enlaces cargan bien.' : 'Publicala desde QR cuando marca, precios y contenido esten revisados.', href: cartaPublicada ? destino : '/dashboard/qr', pendiente: !cartaPublicada },
+    { titulo: cartaPublicada ? 'Carta pública abierta' : 'Carta en borrador', detalle: cartaPublicada ? 'Comprueba que precios, platos y enlaces cargan bien.' : 'Publícala desde QR cuando marca, precios y contenido estén revisados.', href: cartaPublicada ? destino : '/dashboard/qr', pendiente: !cartaPublicada },
   ]
   const checklistPendiente = checklist.some(item => item.pendiente)
 
@@ -147,33 +147,33 @@ export default function AjustesHub() {
       eyebrow="Ajustes"
       title={perfilBodega ? 'Cuenta y puesta en marcha de bodega' : 'Accesos, marca y puesta en marcha'}
       subtitle={perfilBodega
-        ? 'Ajustes operativos de la membresia sommelier: actividad real, accesos internos y enlaces de trabajo. Sin QR, sin carta publica.'
-        : 'Configuracion que se toca poco, pero que debe quedar perfecta antes de entregar la carta al restaurante.'}
+        ? 'Ajustes operativos de la membresía sommelier: actividad real, accesos internos y enlaces de trabajo. Sin QR, sin carta pública.'
+        : 'Configuración que se toca poco, pero que debe quedar perfecta antes de entregar la carta al restaurante.'}
       actions={perfilBodega
         ? <Link className={styles.secondary} href="/dashboard/menu-engineering">Ver mapa estrella/joya</Link>
         : <OpenCartaPruebaButton className={styles.secondary} restauranteId={restaurante?.id}>Probar carta</OpenCartaPruebaButton>}
       help={perfilBodega ? {
-        title: 'Ajustes de membresia sommelier',
+        title: 'Ajustes de membresía sommelier',
         intro: 'Esta zona deja la cuenta lista para trabajar con datos reales de bodega.',
         items: [
-          { title: 'Actividad real', text: 'Separa pruebas de datos que alimentan compras, inventario y decisiones economicas.' },
-          { title: 'Accesos internos', text: 'Vuelve rapido a referencias, stock, inventario y mapa estrella/joya.' },
-          { title: 'Datos de bodega', text: 'El foco esta en coste, rotacion, proveedor, stock minimo y capital inmovilizado.' },
+          { title: 'Actividad real', text: 'Separa pruebas de datos que alimentan compras, inventario y decisiones económicas.' },
+          { title: 'Accesos internos', text: 'Vuelve rápido a referencias, stock, inventario y mapa estrella/joya.' },
+          { title: 'Datos de bodega', text: 'El foco está en coste, rotación, proveedor, stock mínimo y capital inmovilizado.' },
         ],
       } : {
-        title: 'Cuando tocar ajustes',
+        title: 'Cuándo tocar ajustes',
         intro: 'Esta zona se usa sobre todo al dar de alta el restaurante o cuando cambia la identidad visual.',
         items: [
           { title: 'QR y accesos', text: 'Comprueba si el QR debe abrir la carta de vinos directa o el hub con reservas y otros enlaces.' },
-          { title: 'Diseno', text: 'Ajusta logo, banner, colores y tipografia para que la carta parezca del restaurante, no de una plantilla.' },
-          { title: 'Despues de lanzar', text: 'No hace falta revisarlo a diario. Solo vuelve aqui si cambias enlaces, imagen o material impreso.' },
+          { title: 'Diseño', text: 'Ajusta logo, banner, colores y tipografía para que la carta parezca del restaurante, no de una plantilla.' },
+          { title: 'Después de lanzar', text: 'No hace falta revisarlo a diario. Solo vuelve aquí si cambias enlaces, imagen o material impreso.' },
         ],
       }}
     >
       <section className={styles.statsGrid}>
         {perfilBodega ? (
           <>
-            <div className={styles.stat}><p className={styles.statValue}>Sommelier</p><p className={styles.statLabel}>Membresia</p></div>
+            <div className={styles.stat}><p className={styles.statValue}>Sommelier</p><p className={styles.statLabel}>Membresía</p></div>
             <div className={styles.stat}><p className={styles.statValue}>{etiquetaActividadReal(restaurante)}</p><p className={styles.statLabel}>Actividad real</p></div>
             <div className={styles.stat}><p className={styles.statValue}>{restaurante?.slug || '-'}</p><p className={styles.statLabel}>Identificador interno</p></div>
             <div className={styles.stat}><p className={styles.statValue}>{esAdmin ? 'Admin' : 'Cliente'}</p><p className={styles.statLabel}>Acceso</p></div>
@@ -182,7 +182,7 @@ export default function AjustesHub() {
           <>
             <div className={styles.stat}><p className={styles.statValue}>{restaurante?.hub_activo ? 'Hub' : 'Carta'}</p><p className={styles.statLabel}>Destino del QR</p></div>
             <div className={styles.stat}><p className={styles.statValue}>{pinConfigurado ? 'Activo' : 'Sin PIN'}</p><p className={styles.statLabel}>PIN camarero</p></div>
-            <div className={styles.stat}><p className={styles.statValue}>{restaurante?.slug || '-'}</p><p className={styles.statLabel}>Slug publico</p></div>
+            <div className={styles.stat}><p className={styles.statValue}>{restaurante?.slug || '-'}</p><p className={styles.statLabel}>Slug público</p></div>
             <div className={styles.stat}><p className={styles.statValue}>{etiquetaActividadReal(restaurante)}</p><p className={styles.statLabel}>Actividad real</p></div>
           </>
         )}
@@ -258,7 +258,7 @@ export default function AjustesHub() {
             <Link className={styles.hubCard} href="/dashboard/qr">
               <p className={styles.eyebrow}>Mesas</p>
               <h2>QR y accesos</h2>
-              <p>Descarga el QR y revisa a donde envia: carta o hub publico.</p>
+              <p>Descarga el QR y revisa adónde envía: carta o hub público.</p>
               <span>{restaurante?.hub_activo ? 'Hub activo' : 'Carta directa'}</span>
             </Link>
             <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/personalizar">
@@ -346,7 +346,7 @@ export default function AjustesHub() {
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>{perfilBodega ? 'Enlaces internos de trabajo' : 'Enlaces para compartir'}</h2>
-              <p className={styles.panelSub}>{perfilBodega ? 'Atajos para compartir con el equipo de bodega o volver rapido a pantallas clave.' : 'Utiles para imprenta, equipo de sala, WhatsApp o pruebas rapidas.'}</p>
+              <p className={styles.panelSub}>{perfilBodega ? 'Atajos para compartir con el equipo de bodega o volver rápido a pantallas clave.' : 'Útiles para imprenta, equipo de sala, WhatsApp o pruebas rápidas.'}</p>
             </div>
           </div>
           <div className={styles.panelBody}>

@@ -274,10 +274,10 @@ export default function DashboardHome() {
         body: JSON.stringify({ id: accion.id, restaurante_id: restaurante.id, estado }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo actualizar la accion.')
+      if (!res.ok) throw new Error(data.error || 'No se pudo actualizar la acción.')
       setRadarAcciones(prev => prev.map(item => item.id === accion.id ? data.accion : item))
     } catch (error) {
-      setRadarError(error.message || 'No se pudo actualizar la accion.')
+      setRadarError(error.message || 'No se pudo actualizar la acción.')
     } finally {
       setAccionandoRadar('')
     }
@@ -666,9 +666,9 @@ export default function DashboardHome() {
       texto: estadoLanzamiento.previewPendiente
         ? 'Falta activar la tabla de aprobaciones.'
         : previewLista
-          ? 'La ultima preview vigente esta aprobada.'
+          ? 'La última preview vigente está aprobada.'
           : estadoLanzamiento.previewObsoleta
-            ? 'La carta cambio despues de aprobar la preview.'
+            ? 'La carta cambió después de aprobar la preview.'
             : 'Genera y aprueba la preview privada.',
       href: '/dashboard/qr#preview-privada',
       ok: previewLista,
@@ -677,7 +677,7 @@ export default function DashboardHome() {
     {
       id: 'publicacion',
       titulo: 'Destino publicado',
-      texto: cartaPublicada ? 'El QR publico responde sin token.' : 'La carta sigue en borrador.',
+      texto: cartaPublicada ? 'El QR público responde sin token.' : 'La carta sigue en borrador.',
       href: '/dashboard/qr',
       ok: cartaPublicada,
       requerido: true,
@@ -686,8 +686,8 @@ export default function DashboardHome() {
       id: 'material',
       titulo: 'QR preparado',
       texto: qrPreparado
-        ? 'Ya hay descarga, impresion, copia de enlace o escaneo real.'
-        : 'Descarga o imprime el QR despues de publicar.',
+        ? 'Ya hay descarga, impresión, copia de enlace o escaneo real.'
+        : 'Descarga o imprime el QR después de publicar.',
       href: '/dashboard/qr',
       ok: qrPreparado,
       requerido: true,
@@ -697,7 +697,7 @@ export default function DashboardHome() {
       titulo: 'Primer escaneo real',
       texto: primerEscaneoReal
         ? `${Math.max(estadoLanzamiento.escaneosReales, stats.escaneos)} escaneos detectados.`
-        : 'Aun no hay escaneos reales de clientes.',
+        : 'Aún no hay escaneos reales de clientes.',
       href: '/dashboard/qr',
       ok: primerEscaneoReal,
       requerido: false,
@@ -716,14 +716,14 @@ export default function DashboardHome() {
       titulo: 'Carta incompleta',
       texto: contenidoPublicacion.vinosSinPrecio
         ? `${contenidoPublicacion.vinosSinPrecio} vinos activos siguen sin precio.`
-        : 'Falta contenido minimo para publicar con seguridad.',
+        : 'Falta contenido mínimo para publicar con seguridad.',
       href: '/dashboard/vinos?filtro=pendientes',
     },
     !experienciaElegida && {
       id: 'experiencia',
       tipo: 'Entrega',
       titulo: 'Sin experiencia activa',
-      texto: 'El QR y los copys todavia no tienen objetivo operativo.',
+      texto: 'El QR y los copys todavía no tienen objetivo operativo.',
       href: '/dashboard/plantillas',
     },
     estadoLanzamiento.previewPendiente && {
@@ -735,18 +735,18 @@ export default function DashboardHome() {
     },
     cartaPublicable && !previewLista && !estadoLanzamiento.previewPendiente && {
       id: 'preview',
-      tipo: 'Revision',
+      tipo: 'Revisión',
       titulo: estadoLanzamiento.previewObsoleta ? 'Preview obsoleta' : 'Preview sin aprobar',
       texto: estadoLanzamiento.previewObsoleta
-        ? 'La carta cambio despues de la ultima aprobacion.'
-        : 'Genera un enlace privado y apruebalo antes de publicar.',
+        ? 'La carta cambió después de la última aprobación.'
+        : 'Genera un enlace privado y apruébalo antes de publicar.',
       href: '/dashboard/qr#preview-privada',
     },
     previewLista && !cartaPublicada && {
       id: 'publicacion',
-      tipo: 'Publicacion',
+      tipo: 'Publicación',
       titulo: 'Destino en borrador',
-      texto: 'La preview esta aprobada, pero el QR publico aun no esta abierto.',
+      texto: 'La preview está aprobada, pero el QR público aún no está abierto.',
       href: '/dashboard/qr',
     },
     cartaPublicada && !qrPreparado && {
@@ -758,15 +758,15 @@ export default function DashboardHome() {
     },
     estadoLanzamiento.analyticsPendiente && {
       id: 'analytics',
-      tipo: 'Medicion',
-      titulo: 'Analitica pendiente',
+      tipo: 'Medición',
+      titulo: 'Analítica pendiente',
       texto: 'Falta activar eventos de entrega para medir el lanzamiento completo.',
       href: '/dashboard/qr',
     },
   ].filter(Boolean).slice(0, 3)
   const lecturaDecisionLanzamiento = estadoLanzamiento.error ||
     (estadoLanzamiento.analyticsPendiente
-      ? 'La analitica de entrega esta pendiente de base de datos.'
+      ? 'La analítica de entrega está pendiente de base de datos.'
       : lanzamientoListoMesa
         ? `${estadoLanzamiento.escaneosReales || stats.escaneos || 0} escaneos reales detectados.`
         : bloqueosLanzamiento.length
@@ -975,7 +975,7 @@ export default function DashboardHome() {
                 <h2>{lanzamientoListoMesa ? 'QR listo para servicio' : 'Checklist antes de poner el QR'}</h2>
                 <p>
                   {lanzamientoListoMesa
-                    ? 'Contenido, aprobacion, publicacion y material estan alineados para trabajar en sala.'
+                    ? 'Contenido, aprobación, publicación y material están alineados para trabajar en sala.'
                     : 'Sigue estos controles para evitar publicar una carta incompleta, sin aprobar o sin material probado.'}
                 </p>
               </div>
@@ -1089,7 +1089,7 @@ export default function DashboardHome() {
                 <div className={styles.cellarCommandGrid}>
                   <Link href="/dashboard/menu-engineering">
                     <span>Mapa estrella/joya</span>
-                    <strong>Ver vinos que empujan o estan ocultos</strong>
+                    <strong>Ver vinos que empujan o están ocultos</strong>
                   </Link>
                   <Link href="/dashboard/bodega#pedido">
                     <span>Pedido inteligente</span>
@@ -1114,9 +1114,9 @@ export default function DashboardHome() {
                     <p className={styles.eyebrow}>Resumen semanal</p>
                     <h2>{resumenSemanal?.titular || 'Preparando lectura ejecutiva'}</h2>
                     <p>
-                      {resumenSemanal?.rango?.label || 'Ultimos 7 dias'} · confianza {resumenSemanal?.confianza || 'calculando'}
+                      {resumenSemanal?.rango?.label || 'Últimos 7 días'} · confianza {resumenSemanal?.confianza || 'calculando'}
                       {persistenciaSemanal.guardado ? ' · foto guardada' : ' · foto sin guardar'}
-                      {` - envio ${etiquetaEntregaSemanal}`}
+                      {` - envío ${etiquetaEntregaSemanal}`}
                     </p>
                   </div>
                   <div className={styles.weeklyActions}>
@@ -1145,7 +1145,7 @@ export default function DashboardHome() {
                       <div className={styles.weeklyRoutineState}>
                         <span>Rutina semanal</span>
                         <strong>{resumenPrefsDraft.enabled ? 'Activa' : 'Pausada'} - {diaRutinaSemanal} {String(resumenPrefsDraft.send_hour).padStart(2, '0')}:00</strong>
-                        <small>{resumenPrefsDraft.channel === 'email' ? destinatarioSemanal || 'sin destinatario' : 'envio manual'} - estado {etiquetaEntregaSemanal}</small>
+                        <small>{resumenPrefsDraft.channel === 'email' ? destinatarioSemanal || 'sin destinatario' : 'envío manual'} - estado {etiquetaEntregaSemanal}</small>
                       </div>
                       <label className={styles.weeklyCheck}>
                         <input
@@ -1226,13 +1226,13 @@ export default function DashboardHome() {
                       <article>
                         <span>Escenarios</span>
                         <strong>{kpisSemanales.oportunidad_anual_texto || '0 EUR'}</strong>
-                        <small>Impacto anual pendiente de decision</small>
+                        <small>Impacto anual pendiente de decisión</small>
                       </article>
                     </div>
 
                     {comparacionSemanal && (
                       <div className={styles.weeklyEvolution}>
-                        <span>Evolucion vs foto anterior</span>
+                        <span>Evolución vs foto anterior</span>
                         <strong>{comparacionSemanal.beneficio_bruto_delta >= 0 ? '+' : ''}{comparacionSemanal.beneficio_bruto_delta} EUR ganado</strong>
                         <strong>{comparacionSemanal.recuperable_semana_delta >= 0 ? '+' : ''}{comparacionSemanal.recuperable_semana_delta} EUR por capturar</strong>
                         <strong>{comparacionSemanal.ventas_kpi_delta >= 0 ? '+' : ''}{comparacionSemanal.ventas_kpi_delta} ventas KPI</strong>
@@ -1250,7 +1250,7 @@ export default function DashboardHome() {
                               <small>{decision.accion}</small>
                             </Link>
                           )) : (
-                            <p>Sin decision urgente. Mantener briefing y revisar una oportunidad rentable.</p>
+                            <p>Sin decisión urgente. Mantener briefing y revisar una oportunidad rentable.</p>
                           )}
                         </div>
                       </div>
@@ -1285,11 +1285,11 @@ export default function DashboardHome() {
                 <div className={styles.dailyRadarHead}>
                   <div>
                     <p className={styles.eyebrow}>Radar diario</p>
-                    <h2>{accionesRadarAbiertas.length ? 'Acciones operativas de hoy' : 'Dia operativo controlado'}</h2>
+                    <h2>{accionesRadarAbiertas.length ? 'Acciones operativas de hoy' : 'Día operativo controlado'}</h2>
                     <p>
                       {radarPersistidas
                         ? `${accionesRadarHechas} hechas · ${accionesRadarAbiertas.length} abiertas`
-                        : 'Lectura generada; aplica la migracion para guardar estados.'}
+                        : 'Lectura generada; aplica la migración para guardar estados.'}
                     </p>
                   </div>
                   <button type="button" onClick={() => cargarRadarDiario(restaurante?.id)} disabled={radarLoading || !restaurante?.id}>

@@ -42,10 +42,10 @@ async function userExists(adminSupabase, email) {
 function resetEmail(link) {
   return `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#222;line-height:1.55">
-      <h1 style="font-size:24px;font-weight:500;margin:0 0 16px">Restablecer contrasena</h1>
-      <p>Hemos recibido una solicitud para cambiar la contrasena de tu cuenta de Carta Viva.</p>
+      <h1 style="font-size:24px;font-weight:500;margin:0 0 16px">Restablecer contraseña</h1>
+      <p>Hemos recibido una solicitud para cambiar la contraseña de tu cuenta de Carta Viva.</p>
       <p style="margin:24px 0">
-        <a href="${link}" style="background:#111;color:#fff;text-decoration:none;padding:12px 18px;display:inline-block">Crear nueva contrasena</a>
+        <a href="${link}" style="background:#111;color:#fff;text-decoration:none;padding:12px 18px;display:inline-block">Crear nueva contraseña</a>
       </p>
       <p>Si no has solicitado este cambio, puedes ignorar este mensaje.</p>
     </div>
@@ -86,7 +86,7 @@ export async function POST(req) {
       await resend.emails.send({
         from: FROM,
         to: emailLimpio,
-        subject: 'Restablecer contrasena de Carta Viva',
+        subject: 'Restablecer contraseña de Carta Viva',
         html: resetEmail(data?.properties?.action_link),
       })
     }
