@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
+import { alternarVinoComparador } from '../../lib/wineComparator'
 import { WINE_TYPE_COLORS, esPerfilGoiko } from '../../lib/winePresentation'
 import { cargarPerfilesVino } from '../../lib/wineProfileClient'
 import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS, radarGridPath as gridPath, radarPath } from '../../lib/wineProfileRadar'
@@ -755,12 +756,8 @@ export default function CartaPublica() {
   }
 
   function toggleComparador(vino) {
-    if (vinosComparador.find(v => v.id === vino.id)) {
-      setVinosComparador(vinosComparador.filter(v => v.id !== vino.id))
-    } else {
-      if (vinosComparador.length >= 4) return
-      setVinosComparador([...vinosComparador, vino])
-    }
+    const siguientesVinos = alternarVinoComparador(vinosComparador, vino)
+    if (siguientesVinos !== vinosComparador) setVinosComparador(siguientesVinos)
   }
 async function cargarPerfiles(vinosACargar) {
   setCargandoPerfiles(true)

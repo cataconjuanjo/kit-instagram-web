@@ -17,6 +17,7 @@ import { isLocalWine } from '../../lib/wineRegion'
 import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
+import { alternarVinoComparador } from '../../lib/wineComparator'
 import { WINE_TYPE_COLORS, etiquetasTipoVino, ordenTiposVino } from '../../lib/winePresentation'
 import { cargarPerfilesVino } from '../../lib/wineProfileClient'
 import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS, radarGridPath as gridPath, radarPath } from '../../lib/wineProfileRadar'
@@ -278,12 +279,8 @@ export default function Camarero() {
   }, [demoActivo, restaurante, autenticado])
 
   function toggleComparador(vino) {
-    if (vinosComparador.find(v => v.id === vino.id)) {
-      setVinosComparador(vinosComparador.filter(v => v.id !== vino.id))
-    } else {
-      if (vinosComparador.length >= 4) return
-      setVinosComparador([...vinosComparador, vino])
-    }
+    const siguientesVinos = alternarVinoComparador(vinosComparador, vino)
+    if (siguientesVinos !== vinosComparador) setVinosComparador(siguientesVinos)
   }
 
   async function cargarPerfiles(vinosACargar) {
