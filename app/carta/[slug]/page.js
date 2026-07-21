@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
+import { WINE_TYPE_COLORS, esPerfilGoiko } from '../../lib/winePresentation'
 import BrandLogo from '../../components/BrandLogo'
 import styles from './carta.module.css'
 
@@ -266,11 +267,6 @@ const precioValido = valor => Number(valor) > 0
 const _formatPrecio = (valor, decimalesMax) => Number(valor || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: decimalesMax })
 const precioCartaSeguro = (valor, formatter) => precioValido(valor) ? formatter(valor) : ''
 
-function esPerfilGoiko(restaurante = {}) {
-  const texto = `${restaurante?.slug || ''} ${restaurante?.nombre || ''}`.toLowerCase()
-  return texto.includes('goiko') || texto.includes('janardoa')
-}
-
 function copyCartaRestaurante(base, restaurante = {}) {
   if (!esPerfilGoiko(restaurante)) return base
   return {
@@ -402,7 +398,7 @@ export default function CartaPublica() {
 
   const estructuraPdfGoiko = esPerfilGoiko(restaurante)
   const i = useMemo(() => copyCartaRestaurante(t[idioma], restaurante), [idioma, restaurante])
-  const tipoDot = { tinto: '#7B2D2D', blanco: '#C4A55A', rosado: '#C47A8A', espumoso: '#4A8C6F', generoso: '#854F0B', dulce: '#993556', naranja: '#D85A30', sin_alcohol: '#7B9E87', sidra: '#8A8F3A' }
+  const tipoDot = WINE_TYPE_COLORS
   const seleccionJuanjo = seleccion.filter(item => !esSugerenciaRestaurante(item))
   const seleccionRestaurante = seleccion.filter(esSugerenciaRestaurante)
   const vinoEnSeleccion = (vino, lista) => lista.some(item => String(item.vino_id || item.vinos?.id) === String(vino.id))
