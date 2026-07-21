@@ -21,8 +21,9 @@ import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpe
 import { alternarVinoComparador } from '../../lib/wineComparator'
 import { WINE_TYPE_COLORS, etiquetasTipoVino, ordenTiposVino } from '../../lib/winePresentation'
 import { cargarPerfilesVino } from '../../lib/wineProfileClient'
-import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS, radarGridPath as gridPath, radarPath } from '../../lib/wineProfileRadar'
+import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS } from '../../lib/wineProfileRadar'
 import PublicStateScreen from '../../components/PublicStateScreen'
+import WineProfileRadarChart from '../../components/WineProfileRadarChart'
 import styles from './camarero.module.css'
 
 const PERFIL_CLIENTE_NEUTRO = { bebe: 'ninguno', estilo: 'ninguno', gama: 'auto' }
@@ -1999,8 +2000,6 @@ export default function Camarero() {
     }
   }, [demoActivo, autenticado, recomendacionesVenta.length])
 
-  const cx = 150, cy = 150, r = 100
-
   function renderEstadoCamarero({ title, text, eyebrow = 'Modo camarero', retryable = false, loadingState = false, secondaryHref = '', secondaryLabel = '' }) {
     return (
       <PublicStateScreen
@@ -2110,37 +2109,16 @@ export default function Camarero() {
           </div>
         ) : (
           <div style={{ background: '#1a1a1a', borderRadius: 12, padding: '20px', marginBottom: 20, display: 'flex', justifyContent: 'center' }}>
-            <svg width={300} height={300} viewBox="0 0 300 300">
-              {[0.2, 0.4, 0.6, 0.8, 1].map(level => (
-                <path key={level} d={gridPath(level, cx, cy, r)} fill="none" stroke="#333" strokeWidth={1} />
-              ))}
-              {ejes.map((_, idx) => {
-                const angle = (Math.PI * 2 * idx) / ejes.length - Math.PI / 2
-                return <line key={idx} x1={cx} y1={cy} x2={cx + r * Math.cos(angle)} y2={cy + r * Math.sin(angle)} stroke="#333" strokeWidth={1} />
-              })}
-              {ejes.map((eje, idx) => {
-                const angle = (Math.PI * 2 * idx) / ejes.length - Math.PI / 2
-                const lx = cx + (r + 20) * Math.cos(angle)
-                const ly = cy + (r + 20) * Math.sin(angle)
-                return (
-                  <text key={eje} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle" fontSize={9} fill="#555">
-                    {etiquetas[eje]}
-                  </text>
-                )
-              })}
-              {vinosComparador.map((v, idx) => {
-                const perfil = perfiles[v.id]
-                if (!perfil) return null
-                const dashPatterns = ['none', '6,3', 'none', '6,3']
-                return (
-                  <path key={v.id} d={radarPath(perfil, cx, cy, r)}
-                    fill={coloresVino[idx]} fillOpacity={0.15}
-                    stroke={coloresVino[idx]} strokeWidth={idx % 2 === 0 ? 2.5 : 1.5}
-                    strokeDasharray={dashPatterns[idx]}
-                  />
-                )
-              })}
-            </svg>
+            <WineProfileRadarChart
+              vinos={vinosComparador}
+              perfiles={perfiles}
+              coloresVino={coloresVino}
+              ejes={ejes}
+              etiquetas={etiquetas}
+              gridStroke="#333"
+              labelFill="#555"
+              fillOpacity={0.15}
+            />
           </div>
         )}
 
