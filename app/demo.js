@@ -3,11 +3,14 @@
 const DEMO_EMAIL_KEY = 'cartavinos_demo_email'
 const ADMIN_RESTAURANT_EMAIL_KEY = 'carta_viva_admin_restaurant_email'
 const ADMIN_RESTAURANT_ID_KEY = 'carta_viva_admin_restaurant_id'
+const TABERNA_DEMO_EMAIL = 'demo@taberna-del-puerto.com'
+const SUMILLER_DEMO_EMAIL = 'sumiller.demo@cartaviva.local'
 const DEMO_PRESENTATION_PARAMS = new Set(['demo_presentacion', 'demo_sumiller'])
-const DEMO_EMAILS = new Set([
-  'demo@taberna-del-puerto.com',
-  'sumiller.demo@cartaviva.local',
-])
+const DEMO_EMAILS = new Set([TABERNA_DEMO_EMAIL, SUMILLER_DEMO_EMAIL])
+const DEMO_EMAIL_BY_PRESENTATION_PARAM = {
+  demo_presentacion: TABERNA_DEMO_EMAIL,
+  demo_sumiller: SUMILLER_DEMO_EMAIL,
+}
 
 export const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
 
@@ -17,17 +20,25 @@ export function isAdminEmail(email) {
 
 export function setDemoEmail(email) {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(DEMO_EMAIL_KEY, email)
+  try {
+    window.localStorage.setItem(DEMO_EMAIL_KEY, email)
+  } catch {}
 }
 
 export function getDemoEmail() {
   if (typeof window === 'undefined') return null
-  return window.localStorage.getItem(DEMO_EMAIL_KEY)
+  try {
+    return window.localStorage.getItem(DEMO_EMAIL_KEY)
+  } catch {
+    return null
+  }
 }
 
 export function clearDemoEmail() {
   if (typeof window === 'undefined') return
-  window.localStorage.removeItem(DEMO_EMAIL_KEY)
+  try {
+    window.localStorage.removeItem(DEMO_EMAIL_KEY)
+  } catch {}
 }
 
 export function setAdminRestaurantEmail(email) {
@@ -67,13 +78,40 @@ function isAllowedDemoEmail(email) {
   return Boolean(email && DEMO_EMAILS.has(email.toLowerCase()))
 }
 
+function isDashboardRoute() {
+  if (typeof window === 'undefined') return false
+  return window.location.pathname === '/dashboard' || window.location.pathname.startsWith('/dashboard/')
+}
+
+function getRouteDemoEmail() {
+  if (typeof window === 'undefined') return null
+  const params = new URLSearchParams(window.location.search)
+  for (const param of DEMO_PRESENTATION_PARAMS) {
+    if (params.get(param) !== '1') continue
+    const email = DEMO_EMAIL_BY_PRESENTATION_PARAM[param]
+    if (email === SUMILLER_DEMO_EMAIL && process.env.NEXT_PUBLIC_SHOW_DEMO !== 'true') return null
+    return email
+  }
+  return null
+}
+
+function getDemoSessionEmail() {
+  const routeDemoEmail = getRouteDemoEmail()
+  if (routeDemoEmail) {
+    setDemoEmail(routeDemoEmail)
+    return routeDemoEmail
+  }
+
+  const storedDemoEmail = getDemoEmail()
+  const canUseStoredDemo = process.env.NEXT_PUBLIC_SHOW_DEMO === 'true' || (!isDemoPresentationRoute() && isDashboardRoute())
+  if (!canUseStoredDemo || !isAllowedDemoEmail(storedDemoEmail)) return null
+  if (storedDemoEmail.toLowerCase() === SUMILLER_DEMO_EMAIL && process.env.NEXT_PUBLIC_SHOW_DEMO !== 'true') return null
+  return storedDemoEmail
+}
+
 export async function getEffectiveRestaurantEmail(supabase) {
   const { data: { user } } = await supabase.auth.getUser()
-  const storedDemoEmail = getDemoEmail()
-  const demoEmail = (
-    process.env.NEXT_PUBLIC_SHOW_DEMO === 'true' ||
-    (isDemoPresentationRoute() && isAllowedDemoEmail(storedDemoEmail))
-  ) ? storedDemoEmail : null
+  const demoEmail = getDemoSessionEmail()
 
   if (!user && demoEmail) return { email: demoEmail, user: null, isAdmin: false, isDemo: true }
   if (!user) return { email: null, user: null, isAdmin: false, isDemo: false }
