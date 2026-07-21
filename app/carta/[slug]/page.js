@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
+import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import BrandLogo from '../../components/BrandLogo'
 import styles from './carta.module.css'
 
@@ -26,31 +27,6 @@ function cargarGoogleFont(tipografia) {
   link.href = `https://fonts.googleapis.com/css2?family=${font.googleFont}&display=swap`
   link.setAttribute('data-gfont', tipografia)
   document.head.appendChild(link)
-}
-
-function slugDesdeRuta(routeParams, segmento) {
-  const param = routeParams?.slug
-  if (Array.isArray(param)) return param[0] || ''
-  if (typeof param === 'string') return param
-  if (typeof window === 'undefined') return ''
-  const partes = window.location.pathname.split('/').filter(Boolean)
-  const indice = partes.indexOf(segmento)
-  return indice >= 0 ? decodeURIComponent(partes[indice + 1] || '') : ''
-}
-
-function reportarErrorCliente(digest, error) {
-  if (typeof window === 'undefined') return
-  const message = error instanceof Error ? error.message : String(error || 'Error de carga')
-  console.warn(`[${digest}]`, error)
-  fetch('/api/client-error', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      digest,
-      message,
-      path: `${window.location.pathname}${window.location.search}`,
-    }),
-  }).catch(() => {})
 }
 
 function PreviewModeBanner({ styles, approved = false, approving = false, error = '', onApprove }) {

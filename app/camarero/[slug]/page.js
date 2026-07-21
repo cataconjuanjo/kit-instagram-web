@@ -16,34 +16,10 @@ import {
 import { isLocalWine } from '../../lib/wineRegion'
 import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import { isLargeFormatWine } from '../../lib/wineFormat'
+import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import styles from './camarero.module.css'
 
 const PERFIL_CLIENTE_NEUTRO = { bebe: 'ninguno', estilo: 'ninguno', gama: 'auto' }
-
-function slugDesdeRuta(routeParams, segmento) {
-  const param = routeParams?.slug
-  if (Array.isArray(param)) return param[0] || ''
-  if (typeof param === 'string') return param
-  if (typeof window === 'undefined') return ''
-  const partes = window.location.pathname.split('/').filter(Boolean)
-  const indice = partes.indexOf(segmento)
-  return indice >= 0 ? decodeURIComponent(partes[indice + 1] || '') : ''
-}
-
-function reportarErrorCliente(digest, error) {
-  if (typeof window === 'undefined') return
-  const message = error instanceof Error ? error.message : String(error || 'Error de carga')
-  console.warn(`[${digest}]`, error)
-  fetch('/api/client-error', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      digest,
-      message,
-      path: `${window.location.pathname}${window.location.search}`,
-    }),
-  }).catch(() => {})
-}
 
 function esPerfilGoiko(restaurante = {}) {
   const texto = `${restaurante?.slug || ''} ${restaurante?.nombre || ''}`.toLowerCase()
