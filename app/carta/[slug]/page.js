@@ -121,6 +121,17 @@ function PreviewModeBanner({ styles, approved = false, approving = false, error 
   )
 }
 
+function ExperienceSignal({ experiencia }) {
+  if (!experiencia) return null
+  return (
+    <div className={styles.experienceSignal}>
+      <span>{experiencia.badge}</span>
+      <strong>{experiencia.headline}</strong>
+      <p>{experiencia.text}</p>
+    </div>
+  )
+}
+
 const t = {
   es: {
     cargando: 'CARGANDO',
@@ -524,7 +535,15 @@ export default function CartaPublica() {
         fetch('/api/estadisticas', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ restaurante_id: rest.id, tipo: 'escaneo', detalle: 'carta', prueba_token: tokenPrueba }),
+          body: JSON.stringify({
+            restaurante_id: rest.id,
+            tipo: 'escaneo',
+            detalle: {
+              destino: 'carta',
+              experiencia_id: rest.experiencia_publica?.id || null,
+            },
+            prueba_token: tokenPrueba,
+          }),
         }).catch(error => reportarErrorCliente('carta_publica_estadisticas', error))
       } catch (error) {
         if (!cancelado) {
@@ -1489,6 +1508,7 @@ setPerfiles(nuevosPerfiles)
               Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
             </a>
             <p className={styles.meta}>{vinos.length} {i.referencias} · {restaurante.ciudad}</p>
+            <ExperienceSignal experiencia={restaurante.experiencia_publica} />
           </div>
           <button className={styles.langButton} onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')}>
             {idioma === 'es' ? 'EN' : 'ES'}
@@ -1891,6 +1911,7 @@ setPerfiles(nuevosPerfiles)
               Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
             </a>
             <p className={styles.meta}>{restaurante.ciudad} · {platos.length} platos disponibles</p>
+            <ExperienceSignal experiencia={restaurante.experiencia_publica} />
           </div>
           <button className={styles.langButton} onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')}>
             {idioma === 'es' ? 'EN' : 'ES'}
@@ -2247,6 +2268,13 @@ setPerfiles(nuevosPerfiles)
             )}
             <h1 style={{ fontSize: 30, fontWeight: 300, color: '#fff', margin: '0 0 6px', fontFamily: fontTitulo }}>{restaurante.nombre}</h1>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{vinos.length} {i.referencias} · {restaurante.ciudad}</p>
+            {restaurante.experiencia_publica && (
+              <div style={{ marginTop: 14, borderLeft: '2px solid rgba(255,250,243,0.52)', paddingLeft: 12, maxWidth: 420 }}>
+                <p style={{ margin: '0 0 4px', color: 'rgba(255,250,243,0.64)', fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{restaurante.experiencia_publica.badge}</p>
+                <strong style={{ display: 'block', color: '#fffaf3', fontSize: 17, lineHeight: 1.18 }}>{restaurante.experiencia_publica.headline}</strong>
+                <p style={{ margin: '5px 0 0', color: 'rgba(255,250,243,0.72)', fontSize: 12, lineHeight: 1.45 }}>{restaurante.experiencia_publica.text}</p>
+              </div>
+            )}
           </div>
           <button onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 13, padding: '6px 14px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, marginTop: 4 }}>
             {idioma === 'es' ? 'EN' : 'ES'}

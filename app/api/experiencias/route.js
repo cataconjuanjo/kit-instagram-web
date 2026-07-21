@@ -1,7 +1,8 @@
 import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
+import { EXPERIENCE_TEMPLATE_IDS } from '../../lib/experienceTemplates'
 
-const TEMPLATE_IDS = new Set(['lanzamiento', 'temporada', 'degustacion', 'premium', 'evento'])
+const TEMPLATE_IDS = new Set(EXPERIENCE_TEMPLATE_IDS)
 
 function texto(valor, limite = 240) {
   return String(valor || '').trim().slice(0, limite)

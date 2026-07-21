@@ -75,7 +75,7 @@ function limpiarTextoPublico(texto = '') {
     .trim()
 }
 
-function registrarEscaneoHub(restauranteId, pruebaToken) {
+function registrarEscaneoHub(restauranteId, pruebaToken, experienciaId = '') {
   if (!restauranteId) return
   fetch('/api/estadisticas', {
     method: 'POST',
@@ -83,7 +83,10 @@ function registrarEscaneoHub(restauranteId, pruebaToken) {
     body: JSON.stringify({
       restaurante_id: restauranteId,
       tipo: 'escaneo',
-      detalle: 'hub',
+      detalle: {
+        destino: 'hub',
+        experiencia_id: experienciaId || null,
+      },
       prueba_token: pruebaToken,
     }),
   }).catch(() => {})
@@ -119,7 +122,7 @@ export default function RestauranteHub({ params }) {
         const claveEscaneo = `${rest.id}:${pruebaToken || 'publico'}`
         if (escaneoRegistradoRef.current !== claveEscaneo) {
           escaneoRegistradoRef.current = claveEscaneo
-          registrarEscaneoHub(rest.id, pruebaToken)
+          registrarEscaneoHub(rest.id, pruebaToken, rest.experiencia_publica?.id)
         }
       }
 
@@ -197,6 +200,7 @@ export default function RestauranteHub({ params }) {
   const fondoHub = restaurante.hub_fondo_url || ''
   const estilo = restaurante.hub_estilo || 'nubes'
   const overlay = Number(restaurante.hub_overlay ?? 0.48)
+  const experienciaPublica = restaurante.experiencia_publica || null
   const linksSocialesBase = [
     restaurante.instagram_url && { id: 'instagram-url', tipo: 'instagram', url: restaurante.instagram_url },
     restaurante.facebook_url && { id: 'facebook-url', tipo: 'facebook', url: restaurante.facebook_url },
@@ -305,6 +309,14 @@ export default function RestauranteHub({ params }) {
                 {mostrarNombre && <h1>{titulo}</h1>}
                 {mostrarDireccion && subtitulo && <p className="hub-location">{subtitulo}</p>}
               </div>
+            </div>
+          )}
+
+          {experienciaPublica && (
+            <div className="hub-experience">
+              <span>{limpiarTextoPublico(experienciaPublica.badge)}</span>
+              <strong>{limpiarTextoPublico(experienciaPublica.headline)}</strong>
+              <p>{limpiarTextoPublico(experienciaPublica.hub_text || experienciaPublica.text)}</p>
             </div>
           )}
 

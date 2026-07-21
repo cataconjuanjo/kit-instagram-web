@@ -265,6 +265,40 @@
   line-height: 1.45;
 }
 
+.experienceSignal {
+  max-width: 520px;
+  display: grid;
+  gap: 5px;
+  margin-top: 15px;
+  border-left: 2px solid rgba(203, 185, 140, 0.78);
+  padding-left: 12px;
+}
+
+.experienceSignal span {
+  color: #cbb98c;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.experienceSignal strong {
+  color: #fffaf3;
+  font-family: var(--font-titulo, Georgia, serif);
+  font-size: clamp(18px, 3.8vw, 25px);
+  font-weight: 500;
+  line-height: 1.12;
+}
+
+.experienceSignal p {
+  margin: 0;
+  color: rgba(255, 250, 243, 0.72);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .heroCredit {
   display: inline-flex;
   margin-top: 10px;
@@ -2015,6 +2049,16 @@
     color: #6c6761;
     font-family: Arial, sans-serif;
     font-size: 9pt;
+  }
+
+  .experienceSignal {
+    border-left-color: #7b5c22;
+  }
+
+  .experienceSignal span,
+  .experienceSignal strong,
+  .experienceSignal p {
+    color: #171416;
   }
 
   .content {

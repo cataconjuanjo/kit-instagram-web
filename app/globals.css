@@ -3325,6 +3325,54 @@ h3 {
   font-size: 0.98rem;
 }
 
+.hub-experience {
+  width: min(100%, 430px);
+  box-sizing: border-box;
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(255,255,255,0.48);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.78);
+  color: #1f211f;
+  padding: 14px 16px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.1);
+}
+
+.hub-page-photo .hub-experience {
+  border-color: rgba(255,255,255,0.24);
+  background: rgba(23,20,22,0.58);
+  color: #fffaf3;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+}
+
+.hub-experience span {
+  color: var(--hub-accent, #bfa984);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.hub-page:not(.hub-page-photo) .hub-experience span {
+  color: var(--hub-color, #24423c);
+}
+
+.hub-experience strong {
+  font-family: Georgia, serif;
+  font-size: clamp(1.15rem, 5vw, 1.55rem);
+  font-weight: 500;
+  line-height: 1.08;
+}
+
+.hub-experience p {
+  margin: 0;
+  color: color-mix(in srgb, currentColor 72%, transparent);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
 .hub-links {
   width: min(100%, 400px);
   box-sizing: border-box;
@@ -3502,6 +3550,10 @@ h3 {
   .hub-logo {
     width: 88px;
     height: 88px;
+  }
+
+  .hub-experience {
+    padding: 12px 13px;
   }
 
   .hub-link {

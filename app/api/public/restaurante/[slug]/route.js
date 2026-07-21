@@ -2,6 +2,7 @@ import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { puedeUsar } from '../../../../lib/plans'
 import { validarTokenPruebaCarta } from '../../../../lib/cartaPruebaToken'
 import { puedePublicarCarta, resumirContenidoCarta } from '../../../../lib/publicationReadiness'
+import { experienciaPublicaDesdePlan } from '../../../../lib/experienceTemplates'
 
 const CAMPOS_RESTAURANTE = [
   'id', 'slug', 'nombre', 'ciudad', 'provincia', 'region',
@@ -36,6 +37,43 @@ function seleccionarCampos(fila, campos) {
 function esPerfilGoiko(restaurante = {}) {
   const texto = `${restaurante?.slug || ''} ${restaurante?.nombre || ''}`.toLowerCase()
   return texto.includes('goiko') || texto.includes('janardoa')
+}
+
+function errorIncluye(error, textoBuscado) {
+  return [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].filter(Boolean).join(' ').toLowerCase().includes(textoBuscado)
+}
+
+function experienciaPublicaPendiente(error) {
+  return errorIncluye(error, 'experience_activation_plans') ||
+    errorIncluye(error, 'schema cache') ||
+    ['42P01', 'PGRST204', 'PGRST205'].includes(String(error?.code || ''))
+}
+
+async function cargarExperienciaPublica(restauranteId) {
+  const { data, error } = await supabaseAdmin
+    .from('experience_activation_plans')
+    .select('template_id, updated_at')
+    .eq('restaurante_id', restauranteId)
+    .eq('is_active', true)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (experienciaPublicaPendiente(error)) return null
+  if (error) {
+    console.error('[public-restaurante:experiencia]', {
+      restauranteId,
+      code: error.code || '',
+      message: error.message || 'Error consultando experiencia activa',
+    })
+    return null
+  }
+  return experienciaPublicaDesdePlan(data)
 }
 
 export async function GET(req, { params }) {
@@ -81,6 +119,11 @@ export async function GET(req, { params }) {
         sala_disponible: puedeUsar(restaurante, 'modo_camarero'),
       },
     }
+
+    if (incluirCarta || incluirHub) {
+      respuesta.restaurante.experiencia_publica = await cargarExperienciaPublica(restaurante.id)
+    }
+
     if (incluirCarta && respuesta.restaurante.carta_disponible) {
       let vinosQuery = supabaseAdmin
         .from('vinos')

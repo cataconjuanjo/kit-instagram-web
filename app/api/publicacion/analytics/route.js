@@ -1,6 +1,7 @@
 import { requireRestaurantAccess } from '../../_lib/auth'
 import { actividadRealDesdeISO, maxFechaISO } from '../../../lib/actividadReal'
 import { deliveryAnalyticsPendiente, guardarDeliveryEvent, normalizarDeliveryDestino, normalizarDeliveryEvent } from '../../../lib/publicationDeliveryAnalytics'
+import { experienciaLabel } from '../../../lib/experienceTemplates'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 
 function texto(valor, limite = 160) {
@@ -22,7 +23,22 @@ function resumenEventos(eventos = []) {
   }, { por_destino: { carta: 0, hub: 0 } })
 }
 
+function detalleEscaneo(detalle = '') {
+  if (detalle && typeof detalle === 'object') return detalle
+  const textoDetalle = typeof detalle === 'string' ? detalle : JSON.stringify(detalle || {})
+  try {
+    const parsed = JSON.parse(textoDetalle)
+    if (parsed && typeof parsed === 'object') return parsed
+  } catch {
+    // Los escaneos antiguos guardaban detalle como texto plano.
+  }
+  return { destino: textoDetalle }
+}
+
 function destinoEscaneo(detalle = '') {
+  const normalizado = detalleEscaneo(detalle)
+  if (normalizado.destino === 'hub' || normalizado.detalle === 'hub') return 'hub'
+  if (normalizado.destino === 'carta' || normalizado.detalle === 'carta') return 'carta'
   const textoDetalle = typeof detalle === 'string' ? detalle : JSON.stringify(detalle || {})
   const limpio = textoDetalle.toLowerCase()
   if (limpio.includes('hub')) return 'hub'
@@ -30,12 +46,29 @@ function destinoEscaneo(detalle = '') {
   return 'otro'
 }
 
+function experienciaEscaneo(detalle = '') {
+  const normalizado = detalleEscaneo(detalle)
+  return texto(normalizado.experiencia_id || normalizado.experiencia || normalizado.template_id, 60)
+}
+
 function resumenUsoReal(eventos = [], desde = null, actividadIniciada = false) {
   const porDestino = { carta: 0, hub: 0, otro: 0 }
+  const porExperiencia = {}
   eventos.forEach(evento => {
     const destino = destinoEscaneo(evento.detalle)
     porDestino[destino] = (porDestino[destino] || 0) + 1
+    const experienciaId = experienciaEscaneo(evento.detalle)
+    if (experienciaId) {
+      porExperiencia[experienciaId] = (porExperiencia[experienciaId] || 0) + 1
+    }
   })
+  const experiencias = Object.entries(porExperiencia)
+    .map(([id, total]) => ({
+      id,
+      label: experienciaLabel(id) || id,
+      total,
+    }))
+    .sort((a, b) => b.total - a.total)
 
   return {
     actividad_iniciada: actividadIniciada,
@@ -45,10 +78,13 @@ function resumenUsoReal(eventos = [], desde = null, actividadIniciada = false) {
     escaneos_hub: porDestino.hub,
     escaneos_otro: porDestino.otro,
     por_destino: porDestino,
+    por_experiencia: porExperiencia,
+    experiencias,
     ultimos_escaneos: eventos.slice(0, 10).map(evento => ({
       id: evento.id,
       detalle: evento.detalle,
       destino: destinoEscaneo(evento.detalle),
+      experiencia_id: experienciaEscaneo(evento.detalle),
       created_at: evento.created_at,
     })),
   }

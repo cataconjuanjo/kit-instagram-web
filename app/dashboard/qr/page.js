@@ -7,6 +7,7 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { esPerfilBodega } from '../../lib/plans'
 import { CONTENIDO_INICIAL, puedePublicarCarta, resumirContenidoCarta } from '../../lib/publicationReadiness'
+import { EXPERIENCIA_ENTREGA_INICIAL, experienciaEntregaDesdePlan, experienciaTemplateExiste } from '../../lib/experienceTemplates'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
@@ -123,6 +124,31 @@ const FORMATOS_ENTREGA = [
   },
 ]
 
+function clavePlantillaEntrega(restauranteId) {
+  return `carta_viva_plantilla_activa_${restauranteId}`
+}
+
+function clavePlanEntrega(restauranteId, plantillaId) {
+  return `carta_viva_plan_activacion_${restauranteId}_${plantillaId}`
+}
+
+function leerExperienciaEntregaLocal(restauranteId) {
+  if (!restauranteId || typeof window === 'undefined') return null
+  try {
+    const plantillaId = window.localStorage.getItem(clavePlantillaEntrega(restauranteId))
+    if (!experienciaTemplateExiste(plantillaId)) return null
+    const planLocal = JSON.parse(window.localStorage.getItem(clavePlanEntrega(restauranteId, plantillaId)) || 'null') || {}
+    return experienciaEntregaDesdePlan({
+      template_id: plantillaId,
+      completed_steps: planLocal.completados || {},
+      objective_date: planLocal.objetivo || '',
+      responsible: planLocal.responsable || '',
+    })
+  } catch {
+    return null
+  }
+}
+
 function tituloEventoEntrega(evento = {}) {
   return DELIVERY_EVENT_LABELS[evento.event] || 'Evento de entrega'
 }
@@ -130,7 +156,13 @@ function tituloEventoEntrega(evento = {}) {
 function detalleEventoEntrega(evento = {}) {
   const destinoTexto = evento.destino === 'hub' ? 'hub' : 'carta'
   const responsable = evento.actor_email || evento.metadata?.reviewer_email || 'sistema'
-  return `${formatoFechaHistorial(evento.created_at)} - ${destinoTexto} - ${responsable}`
+  const experiencia = evento.metadata?.experiencia_label || evento.metadata?.experiencia
+  return [
+    formatoFechaHistorial(evento.created_at),
+    destinoTexto,
+    responsable,
+    experiencia,
+  ].filter(Boolean).join(' - ')
 }
 
 export default function QRPage() {
@@ -163,6 +195,7 @@ export default function QRPage() {
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [exportandoMaterial, setExportandoMaterial] = useState(false)
   const [mensajeMaterial, setMensajeMaterial] = useState('')
+  const [experienciaEntrega, setExperienciaEntrega] = useState(EXPERIENCIA_ENTREGA_INICIAL)
   const [deliveryAnalytics, setDeliveryAnalytics] = useState({
     eventos: [],
     resumen: { por_destino: { carta: 0, hub: 0 } },
@@ -252,10 +285,41 @@ export default function QRPage() {
     }
   }
 
+  async function cargarExperienciaEntrega(restauranteId) {
+    if (!restauranteId) return
+    setExperienciaEntrega(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      const token = await tokenSesion()
+      const query = new URLSearchParams({ restaurante_id: restauranteId })
+      const res = await fetch(`/api/experiencias?${query}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la experiencia activa.')
+      if (data.experience_pending) {
+        setExperienciaEntrega({ ...EXPERIENCIA_ENTREGA_INICIAL, pendiente: true })
+        return
+      }
+      const experiencia = experienciaEntregaDesdePlan(data.active_plan) || leerExperienciaEntregaLocal(restauranteId)
+      setExperienciaEntrega(experiencia || { ...EXPERIENCIA_ENTREGA_INICIAL })
+    } catch (error) {
+      const experienciaLocal = leerExperienciaEntregaLocal(restauranteId)
+      setExperienciaEntrega(experienciaLocal || {
+        ...EXPERIENCIA_ENTREGA_INICIAL,
+        error: error.message || 'No se pudo cargar la experiencia activa.',
+      })
+    }
+  }
+
   async function registrarDeliveryEvent(event, metadata = {}) {
     if (!restaurante?.id || !event) return
     try {
       const token = await tokenSesion()
+      const metadataConExperiencia = {
+        ...metadata,
+        experiencia: metadata.experiencia || experienciaEntrega.id || null,
+        experiencia_label: metadata.experiencia_label || experienciaEntrega.label || null,
+      }
       const res = await fetch('/api/publicacion/analytics', {
         method: 'POST',
         headers: {
@@ -265,8 +329,8 @@ export default function QRPage() {
         body: JSON.stringify({
           restaurante_id: restaurante.id,
           event,
-          destino: metadata.destino || destinoPreview,
-          metadata,
+          destino: metadataConExperiencia.destino || destinoPreview,
+          metadata: metadataConExperiencia,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -306,6 +370,7 @@ export default function QRPage() {
         cargarHistorialPublicacion(rest.id)
         cargarAprobacionPreview(rest.id, rest.hub_activo ? 'hub' : 'carta')
         cargarDeliveryAnalytics(rest.id)
+        cargarExperienciaEntrega(rest.id)
       } else {
         setContenidoCarta({ ...CONTENIDO_INICIAL, loading: false, error: 'No se encontro el restaurante.' })
       }
@@ -516,6 +581,11 @@ export default function QRPage() {
     (deliveryResumen.qr_print_opened || 0) +
     (deliveryResumen.public_link_copied || 0) +
     (deliveryResumen.team_message_copied || 0)
+  const experienciaActiva = experienciaEntrega.id ? experienciaEntrega : null
+  const escaneosExperienciaActiva = experienciaActiva
+    ? Number(usoReal.por_experiencia?.[experienciaActiva.id] || 0)
+    : 0
+  const experienciasUsoReal = Array.isArray(usoReal.experiencias) ? usoReal.experiencias.slice(0, 3) : []
   const lecturaUsoReal = !usoReal.actividad_iniciada
     ? 'La actividad real no esta iniciada. Cuando actives el servicio diario, los escaneos de clientes se compararan con la entrega.'
     : usoReal.escaneos_total > 0
@@ -524,24 +594,48 @@ export default function QRPage() {
         ? 'El material ya se preparo, pero aun no hay escaneos reales en el periodo. Revisa si el QR esta en mesa o si sala lo esta ofreciendo.'
         : 'Todavia no hay preparacion de material ni escaneos reales en el periodo.'
   const formatoEntregaActivo = FORMATOS_ENTREGA.find(formato => formato.id === formatoEntrega) || FORMATOS_ENTREGA[0]
+  const lecturaExperienciaReal = !experienciaActiva
+    ? 'Activa una plantilla para atribuir escaneos a una experiencia concreta.'
+    : !usoReal.actividad_iniciada
+      ? 'La medicion real aun no esta iniciada para comparar esta experiencia.'
+      : escaneosExperienciaActiva > 0
+        ? `${escaneosExperienciaActiva} escaneos reales llegaron con ${experienciaActiva.label}.`
+        : 'Todavia no hay escaneos reales atribuidos a la experiencia activa.'
   const nombreMaterial = restaurante?.nombre || 'Carta Viva'
   const destinoMaterial = restaurante?.hub_activo ? 'Hub digital' : 'Carta digital'
   const detalleMaterial = restaurante?.ciudad || restaurante?.provincia
     ? [restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' - ')
     : 'Carta Viva'
+  const etiquetaMaterial = experienciaActiva?.badge || destinoMaterial
+  const taglineMaterial = experienciaActiva?.tagline || formatoEntregaActivo.tagline
+  const progresoExperiencia = experienciaActiva?.total
+    ? `${experienciaActiva.completados}/${experienciaActiva.total} pasos listos (${experienciaActiva.progreso}%)`
+    : 'Checklist sin pasos marcados'
+  const estadoExperienciaEntrega = experienciaEntrega.loading
+    ? 'Cargando experiencia activa.'
+    : experienciaEntrega.pendiente
+      ? 'Aplica supabase/add_experience_activation_plans.sql para personalizar el pack por plantilla.'
+      : experienciaEntrega.error
+        ? 'No se pudo cargar la experiencia activa. El pack usa texto generico.'
+        : experienciaActiva
+          ? `Usando ${experienciaActiva.label}. ${progresoExperiencia}.`
+          : 'El pack usa texto generico. Activa una plantilla para orientar los copys.'
   const textoMaterialEquipo = [
     `Carta Viva de ${nombreMaterial}`,
+    experienciaActiva ? `Experiencia: ${experienciaActiva.label}` : null,
+    experienciaActiva?.responsable ? `Responsable: ${experienciaActiva.responsable}` : null,
+    experienciaActiva?.objetivo ? `Fecha objetivo: ${experienciaActiva.objetivo}` : null,
     urlDirecta,
-    'Antes de llevar el QR a mesa: escanear desde movil, comprobar precios y confirmar que abre sin token.',
-  ].join('\n')
+    experienciaActiva?.sala || 'Antes de llevar el QR a mesa: escanear desde movil, comprobar precios y confirmar que abre sin token.',
+  ].filter(Boolean).join('\n')
   const textoMaterialWhatsApp = [
-    `Hola, te paso la carta digital de ${nombreMaterial}.`,
+    `${experienciaActiva?.whatsapp || 'Hola, te paso la carta digital de'} ${nombreMaterial}.`,
     urlDirecta,
-    'Desde ahi puedes ver la carta actualizada y las recomendaciones.',
+    experienciaActiva?.cliente || 'Desde ahi puedes ver la carta actualizada y las recomendaciones.',
   ].join('\n\n')
   const textoMaterialInstagram = [
-    `La carta viva de ${nombreMaterial} ya esta disponible.`,
-    'Escanea el QR en mesa o abre el enlace para ver vinos y recomendaciones.',
+    experienciaActiva ? `${experienciaActiva.instagram} ${nombreMaterial}.` : `La carta viva de ${nombreMaterial} ya esta disponible.`,
+    experienciaActiva?.cliente || 'Escanea el QR en mesa o abre el enlace para ver vinos y recomendaciones.',
     urlDirecta,
   ].join('\n')
   const textoMaterialImprenta = [
@@ -549,7 +643,9 @@ export default function QRPage() {
     `Destino: ${destinoMaterial}`,
     `URL final: ${urlDirecta}`,
     `Formato seleccionado: ${formatoEntregaActivo.label}`,
-  ].join('\n')
+    `Mensaje principal: ${taglineMaterial}`,
+    experienciaActiva ? `Experiencia activa: ${experienciaActiva.label}` : null,
+  ].filter(Boolean).join('\n')
   const textosMaterial = [
     { id: 'material-equipo', label: 'Equipo', texto: textoMaterialEquipo },
     { id: 'material-whatsapp', label: 'WhatsApp', texto: textoMaterialWhatsApp },
@@ -614,6 +710,7 @@ export default function QRPage() {
         destino: destinoPreview,
         source: 'delivery_pack',
         formato: formatoEntrega,
+        experiencia: experienciaActiva?.id || null,
       })
       setMensajeMaterial('Material exportado en PNG.')
     } catch {
@@ -1025,6 +1122,22 @@ export default function QRPage() {
                   </span>
                 </div>
               </article>
+              <article className={styles.itemCard} style={{ marginBottom: 12 }}>
+                <div className={styles.sectionHead} style={{ margin: 0 }}>
+                  <div>
+                    <h3 className={styles.sectionTitle}>Experiencia activa</h3>
+                    <p className={styles.sectionText}>{lecturaExperienciaReal}</p>
+                    {experienciasUsoReal.length > 0 && (
+                      <p className={styles.sectionText}>
+                        {experienciasUsoReal.map(item => `${item.label}: ${item.total}`).join(' - ')}
+                      </p>
+                    )}
+                  </div>
+                  <span className={styles.badge}>
+                    {experienciaActiva ? experienciaActiva.badge : 'Generico'}
+                  </span>
+                </div>
+              </article>
               {deliveryEventosRecientes.length === 0 ? (
                 <p className={styles.panelSub}>Todavia no hay eventos de entrega. Genera una preview, copia un enlace o descarga el QR para empezar a medir.</p>
               ) : (
@@ -1064,7 +1177,7 @@ export default function QRPage() {
         <div className={styles.panelHead}>
           <div>
             <h2 className={styles.panelTitle}>Pack de entrega</h2>
-            <p className={styles.panelSub}>Crea una pieza lista para mesa, barra, tarjeta o redes con el QR final.</p>
+            <p className={styles.panelSub}>Crea una pieza lista para mesa, barra, tarjeta o redes con el QR final. {estadoExperienciaEntrega}</p>
           </div>
           <span className={styles.badge}>{formatoEntregaActivo.label}</span>
         </div>
@@ -1086,8 +1199,8 @@ export default function QRPage() {
                   <strong>{nombreMaterial}</strong>
                 </div>
                 <div className={styles.deliveryMaterialCopy}>
-                  <small>{destinoMaterial}</small>
-                  <h3>{formatoEntregaActivo.tagline}</h3>
+                  <small>{etiquetaMaterial}</small>
+                  <h3>{taglineMaterial}</h3>
                   <p>{detalleMaterial}</p>
                 </div>
                 <div className={styles.deliveryMaterialQr}>
@@ -1132,6 +1245,15 @@ export default function QRPage() {
               {!cartaPublicada && (
                 <p className={styles.panelSub}>Publica primero la carta para generar material final. Mientras este en borrador, usa la preview privada.</p>
               )}
+              <article className={styles.itemCard}>
+                <div className={styles.sectionHead} style={{ margin: 0 }}>
+                  <div>
+                    <h3 className={styles.sectionTitle}>{experienciaActiva ? experienciaActiva.label : 'Plantilla activa'}</h3>
+                    <p className={styles.sectionText}>{estadoExperienciaEntrega}</p>
+                  </div>
+                  <Link className={styles.ghost} href="/dashboard/plantillas">Plantillas</Link>
+                </div>
+              </article>
               {mensajeMaterial && <p className={styles.panelSub}>{mensajeMaterial}</p>}
               <div className={styles.deliveryCopyGrid}>
                 {textosMaterial.map(item => (
