@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { normalizarTexto as normalizarTextoBase } from '../../lib/textNormalize'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
@@ -847,7 +848,7 @@ setPerfiles(nuevosPerfiles)
     ...categoriasBase.filter(categoria => platos.some(plato => plato.categoria === categoria)),
     ...[...new Set(platos.map(plato => plato.categoria || 'Otros'))].filter(categoria => !categoriasBase.includes(categoria))
   ]
-  const normalizarTexto = useCallback(texto => String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), [])
+  const normalizarTexto = useCallback(normalizarTextoBase, [])
   const busquedaPlatosLimpia = normalizarTexto(busquedaPlatos)
   const platosSommelierFiltrados = platos.filter(plato => {
     if (!busquedaPlatosLimpia) return true

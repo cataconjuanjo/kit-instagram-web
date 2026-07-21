@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
+import { normalizarTexto as normalizar } from '../../lib/textNormalize'
 import { chartierKb, fuenteChartier } from '../../lib/chartierKb'
 import { buscarPlatoKb } from '../../data/platos_kb'
 import {
@@ -374,10 +375,6 @@ export default function Camarero() {
       setMensajeServicio(`${textoResultado}: ${vino.nombre}`)
       setTimeout(() => setMensajeServicio(''), 2200)
     }
-  }
-
-  function normalizar(texto) {
-    return (texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   }
 
   function incluyeTerminoCompleto(texto, termino) {
