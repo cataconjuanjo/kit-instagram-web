@@ -6,6 +6,28 @@ import { guardarAtribucionDesdeEventos } from '../../lib/recommendationAttributi
 
 const TIPOS_PERMITIDOS = new Set(['escaneo', 'sommelier', 'recomendacion', 'venta', 'incidencia', 'inventario'])
 const TIPOS_PUBLICOS = new Set(['escaneo'])
+const RATE_LIMIT_PUBLICO = 180
+const RATE_WINDOW_MS = 60 * 60 * 1000
+
+function getIP(req) {
+  return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('x-real-ip') ||
+    '0.0.0.0'
+}
+
+async function checkRateLimitPublico(ip) {
+  const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
+  const { count } = await supabaseAdmin
+    .from('rate_limits')
+    .select('*', { count: 'exact', head: true })
+    .eq('ip', ip)
+    .eq('endpoint', 'estadisticas-publicas')
+    .gte('created_at', since)
+
+  if ((count || 0) >= RATE_LIMIT_PUBLICO) return false
+  await supabaseAdmin.from('rate_limits').insert({ ip, endpoint: 'estadisticas-publicas' })
+  return true
+}
 
 function limpiarEvento(evento = {}) {
   const restaurante_id = String(evento.restaurante_id || '').trim()
@@ -63,6 +85,8 @@ export async function POST(req) {
       }
       const acceso = validarAccesoSala(restauranteIds[0], body.sala_token)
       if (acceso.error) return Response.json({ error: acceso.error }, { status: acceso.status })
+    } else if (!await checkRateLimitPublico(getIP(req))) {
+      return Response.json({ error: 'Demasiados eventos. Prueba de nuevo más tarde.' }, { status: 429 })
     }
 
     const { data: eventosInsertados, error } = await supabaseAdmin
