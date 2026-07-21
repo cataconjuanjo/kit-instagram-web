@@ -18,6 +18,7 @@ import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { WINE_TYPE_COLORS, etiquetasTipoVino, ordenTiposVino } from '../../lib/winePresentation'
+import { cargarPerfilesVino } from '../../lib/wineProfileClient'
 import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS, radarGridPath as gridPath, radarPath } from '../../lib/wineProfileRadar'
 import PublicStateScreen from '../../components/PublicStateScreen'
 import styles from './camarero.module.css'
@@ -287,23 +288,7 @@ export default function Camarero() {
 
   async function cargarPerfiles(vinosACargar) {
     setCargandoPerfiles(true)
-    const resultados = await Promise.all(
-      vinosACargar.map(async v => {
-        try {
-          const res = await fetch('/api/perfil', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nombre: v.nombre, tipo: v.tipo, region: v.region, uva: v.uva, anada: v.anada, restaurante_id: restaurante.id })
-          })
-          const data = await res.json()
-          return { id: v.id, perfil: data.perfil }
-        } catch (e) {
-          return { id: v.id, perfil: { dulzor: 2, acidez: 3, taninos: 3, alcohol: 3, cuerpo: 3, intensidad: 3, final: 3 } }
-        }
-      })
-    )
-    const nuevosPerfiles = {}
-    resultados.forEach(r => { nuevosPerfiles[r.id] = r.perfil })
+    const nuevosPerfiles = await cargarPerfilesVino(vinosACargar, { restaurante })
     setPerfiles(nuevosPerfiles)
     setCargandoPerfiles(false)
   }

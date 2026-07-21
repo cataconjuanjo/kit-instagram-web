@@ -6,6 +6,7 @@ import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { WINE_TYPE_COLORS, esPerfilGoiko } from '../../lib/winePresentation'
+import { cargarPerfilesVino } from '../../lib/wineProfileClient'
 import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS, radarGridPath as gridPath, radarPath } from '../../lib/wineProfileRadar'
 import BrandLogo from '../../components/BrandLogo'
 import PublicStateScreen from '../../components/PublicStateScreen'
@@ -763,25 +764,17 @@ export default function CartaPublica() {
   }
 async function cargarPerfiles(vinosACargar) {
   setCargandoPerfiles(true)
-  const resultados = await Promise.all(
-    vinosACargar.map(async v => {
-      try {
-  const res = await fetch('/api/perfil', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre: v.nombre, tipo: v.tipo, region: v.region, uva: v.uva, anada: v.anada, restaurante_id: restaurante.id, prueba_token: tokenPrueba })
+  const nuevosPerfiles = await cargarPerfilesVino(vinosACargar, {
+    restaurante,
+    pruebaToken: tokenPrueba,
+    incluirPruebaToken: true,
+    onPerfilRecibido: (vino, data) => {
+      console.log('Perfil recibido para', vino.nombre, ':', JSON.stringify(data))
+    },
+    onPerfilError: (vino, error) => {
+      console.log('Error perfil para', vino.nombre, ':', error.message)
+    },
   })
-  const data = await res.json()
-  console.log('Perfil recibido para', v.nombre, ':', JSON.stringify(data))
-  return { id: v.id, perfil: data.perfil }
-} catch (e) {
-  console.log('Error perfil para', v.nombre, ':', e.message)
-  return { id: v.id, perfil: { dulzor: 2, acidez: 3, taninos: 3, alcohol: 3, cuerpo: 3, intensidad: 3, final: 3 } }
-}
-    })
-  )
-const nuevosPerfiles = {}
-resultados.forEach(r => { nuevosPerfiles[r.id] = r.perfil })
 console.log('Perfiles a guardar:', JSON.stringify(nuevosPerfiles))
 setPerfiles(nuevosPerfiles)
   setCargandoPerfiles(false)
