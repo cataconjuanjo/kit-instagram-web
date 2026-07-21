@@ -7,6 +7,7 @@ import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { WINE_TYPE_COLORS, esPerfilGoiko } from '../../lib/winePresentation'
 import BrandLogo from '../../components/BrandLogo'
+import PublicStateScreen from '../../components/PublicStateScreen'
 import styles from './carta.module.css'
 
 const FONT_MAP = {
@@ -1205,24 +1206,17 @@ setPerfiles(nuevosPerfiles)
 
   function renderEstadoCarta({ title, text, eyebrow = 'Carta Viva', retryable = false, loadingState = false }) {
     return (
-      <main className={styles.stateScreen}>
-        <section className={styles.stateCard} aria-live="polite">
-          {loadingState && <span className={styles.stateSpinner} aria-hidden="true" />}
-          <p className={styles.stateEyebrow}>{eyebrow}</p>
-          <h1 className={styles.stateTitle}>{title}</h1>
-          {text && <p className={styles.stateText}>{text}</p>}
-          <div className={styles.stateActions}>
-            {retryable && (
-              <button type="button" className={styles.stateButton} onClick={reintentarCarga}>
-                {i.reintentar}
-              </button>
-            )}
-            <a className={styles.stateLink} href="/cartavinos">
-              {i.volverCartaViva}
-            </a>
-          </div>
-        </section>
-      </main>
+      <PublicStateScreen
+        styles={styles}
+        title={title}
+        text={text}
+        eyebrow={eyebrow}
+        retryable={retryable}
+        retryLabel={i.reintentar}
+        loadingState={loadingState}
+        onRetry={reintentarCarga}
+        homeLabel={i.volverCartaViva}
+      />
     )
   }
 

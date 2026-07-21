@@ -18,6 +18,7 @@ import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { WINE_TYPE_COLORS, etiquetasTipoVino, ordenTiposVino } from '../../lib/winePresentation'
+import PublicStateScreen from '../../components/PublicStateScreen'
 import styles from './camarero.module.css'
 
 const PERFIL_CLIENTE_NEUTRO = { bebe: 'ninguno', estilo: 'ninguno', gama: 'auto' }
@@ -2041,29 +2042,19 @@ export default function Camarero() {
 
   function renderEstadoCamarero({ title, text, eyebrow = 'Modo camarero', retryable = false, loadingState = false, secondaryHref = '', secondaryLabel = '' }) {
     return (
-      <main className={styles.stateScreen}>
-        <section className={styles.stateCard} aria-live="polite">
-          {loadingState && <span className={styles.stateSpinner} aria-hidden="true" />}
-          <p className={styles.stateEyebrow}>{eyebrow}</p>
-          <h1 className={styles.stateTitle}>{title}</h1>
-          {text && <p className={styles.stateText}>{text}</p>}
-          <div className={styles.stateActions}>
-            {retryable && (
-              <button type="button" className={styles.stateButton} onClick={reintentarCarga}>
-                Reintentar
-              </button>
-            )}
-            {secondaryHref && (
-              <a className={styles.stateButton} href={secondaryHref}>
-                {secondaryLabel}
-              </a>
-            )}
-            <a className={styles.stateLink} href="/cartavinos">
-              Carta Viva
-            </a>
-          </div>
-        </section>
-      </main>
+      <PublicStateScreen
+        styles={styles}
+        title={title}
+        text={text}
+        eyebrow={eyebrow}
+        retryable={retryable}
+        retryLabel="Reintentar"
+        loadingState={loadingState}
+        onRetry={reintentarCarga}
+        secondaryHref={secondaryHref}
+        secondaryLabel={secondaryLabel}
+        homeLabel="Carta Viva"
+      />
     )
   }
 
