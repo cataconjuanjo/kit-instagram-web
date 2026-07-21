@@ -11,6 +11,14 @@ import { isLargeFormatWine } from '../../lib/wineFormat'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+const SELECT_RESTAURANTE_MARIDAJE = 'id, plan, subscription_status, actividad_real_desde'
+const SELECT_VINO_MARIDAJE = [
+  'id', 'nombre', 'bodega', 'tipo', 'region', 'uva', 'anada',
+  'precio_copa', 'precio_botella', 'notas_cata', 'activo', 'stock',
+  'stock_minimo', 'internacional',
+].join(', ')
+const SELECT_PLATO_MARIDAJE = 'id, nombre, categoria, precio, descripcion, activo, familias_aromaticas'
+
 // ── Rate limiting ──────────────────────────────────────────────────────────
 const RATE_LIMIT = 20
 const RATE_WINDOW_MS = 60 * 60 * 1000
@@ -377,9 +385,9 @@ export async function POST(request) {
     }
 
     const [{ data: restaurante }, { data: vinosData }, { data: platos }] = await Promise.all([
-      supabaseAdmin.from('restaurantes').select('*').eq('id', restaurante_id).single(),
-      supabaseAdmin.from('vinos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
-      supabaseAdmin.from('platos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
+      supabaseAdmin.from('restaurantes').select(SELECT_RESTAURANTE_MARIDAJE).eq('id', restaurante_id).single(),
+      supabaseAdmin.from('vinos').select(SELECT_VINO_MARIDAJE).eq('restaurante_id', restaurante_id).eq('activo', true),
+      supabaseAdmin.from('platos').select(SELECT_PLATO_MARIDAJE).eq('restaurante_id', restaurante_id).eq('activo', true),
     ])
 
     if (!restaurante || !puedeUsar(restaurante, 'maridaje_cliente')) {

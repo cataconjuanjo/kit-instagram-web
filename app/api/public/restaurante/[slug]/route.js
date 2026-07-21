@@ -3,9 +3,10 @@ import { puedeUsar } from '../../../../lib/plans'
 import { validarTokenPruebaCarta } from '../../../../lib/cartaPruebaToken'
 import { puedePublicarCarta, resumirContenidoCarta } from '../../../../lib/publicationReadiness'
 import { experienciaPublicaDesdePlan } from '../../../../lib/experienceTemplates'
+import { isInternationalWine } from '../../../../lib/wineRegion'
 
 const CAMPOS_RESTAURANTE = [
-  'id', 'slug', 'nombre', 'ciudad', 'provincia', 'region',
+  'id', 'slug', 'nombre', 'ciudad',
   'color_acento', 'color_primario', 'color_fondo', 'tipografia',
   'logo_url', 'banner_url', 'banner_zoom', 'banner_x', 'banner_y',
   'carta_mostrar_euro', 'carta_copa_decimales', 'carta_pie_texto',
@@ -17,10 +18,12 @@ const CAMPOS_RESTAURANTE = [
   'carta_publica_activa',
 ]
 
+const CAMPOS_RESTAURANTE_CONTROL = ['plan', 'subscription_status']
+
 const CAMPOS_VINO = [
   'id', 'nombre', 'bodega', 'tipo', 'region', 'uva',
   'anada', 'precio_copa', 'precio_botella', 'notas_cata', 'activo',
-  'taninos', 'acidez', 'alcohol', 'dulzor', 'cuerpo', 'intensidad', 'final',
+  'internacional',
 ]
 
 const CAMPOS_PLATO = [
@@ -28,10 +31,53 @@ const CAMPOS_PLATO = [
   'activo', 'familias_aromaticas',
 ]
 
+const CAMPOS_LINK_HUB = ['id', 'restaurante_id', 'titulo', 'url', 'tipo', 'orden', 'visible']
+const SELECT_RESTAURANTE_PUBLICO = [...CAMPOS_RESTAURANTE, ...CAMPOS_RESTAURANTE_CONTROL].join(', ')
+const SELECT_VINO_PUBLICO = [...CAMPOS_VINO, 'stock'].join(', ')
+const SELECT_PLATO_PUBLICO = CAMPOS_PLATO.join(', ')
+const SELECT_LINK_HUB_PUBLICO = CAMPOS_LINK_HUB.join(', ')
+
 function seleccionarCampos(fila, campos) {
   return Object.fromEntries(campos
     .filter(campo => Object.prototype.hasOwnProperty.call(fila || {}, campo))
     .map(campo => [campo, fila[campo]]))
+}
+
+function slugPublicoValido(slug) {
+  return /^[a-z0-9_-]{1,120}$/i.test(String(slug || '').trim())
+}
+
+function normalizarUrlPublica(valor, { allowHash = false, imageOnly = false } = {}) {
+  const raw = String(valor || '').trim().slice(0, 2048)
+  if (!raw) return ''
+  if (raw.startsWith('/') && !raw.startsWith('//')) return raw
+  if (!imageOnly && allowHash && /^#[a-z0-9_-]{1,80}$/i.test(raw)) return raw
+  try {
+    const url = new URL(raw)
+    const protocolos = imageOnly ? ['http:', 'https:'] : ['http:', 'https:', 'mailto:', 'tel:']
+    return protocolos.includes(url.protocol) ? url.toString() : ''
+  } catch {
+    return ''
+  }
+}
+
+function normalizarRestaurantePublico(restaurante) {
+  const publico = seleccionarCampos(restaurante, CAMPOS_RESTAURANTE)
+  ;['logo_url', 'banner_url', 'hub_fondo_url'].forEach(campo => {
+    if (publico[campo]) publico[campo] = normalizarUrlPublica(publico[campo], { imageOnly: true })
+  })
+  ;['instagram_url', 'facebook_url'].forEach(campo => {
+    if (publico[campo]) publico[campo] = normalizarUrlPublica(publico[campo])
+  })
+  return publico
+}
+
+function normalizarLinkHub(link) {
+  const publico = seleccionarCampos(link, CAMPOS_LINK_HUB)
+  publico.url = normalizarUrlPublica(publico.url, { allowHash: true })
+  const esCarta = ['carta', 'carta_vinos'].includes(publico.tipo) || publico.url === '#carta'
+  if (!publico.url && !esCarta) return null
+  return publico
 }
 
 function esPerfilGoiko(restaurante = {}) {
@@ -78,15 +124,18 @@ async function cargarExperienciaPublica(restauranteId) {
 
 export async function GET(req, { params }) {
   try {
-    const { slug } = await params
+    const slug = String((await params).slug || '').trim()
+    if (!slugPublicoValido(slug)) {
+      return Response.json({ error: 'Restaurante no encontrado.' }, { status: 404 })
+    }
     const { searchParams } = new URL(req.url)
     const incluirCarta = searchParams.get('carta') === '1'
     const incluirHub = searchParams.get('hub') === '1'
-    const tokenPrueba = searchParams.get('prueba') || ''
+    const tokenPrueba = String(searchParams.get('prueba') || '').trim().slice(0, 3000)
 
     const { data: restaurante, error } = await supabaseAdmin
       .from('restaurantes')
-      .select('*')
+      .select(SELECT_RESTAURANTE_PUBLICO)
       .eq('slug', slug)
       .single()
 
@@ -111,7 +160,7 @@ export async function GET(req, { params }) {
 
     const respuesta = {
       restaurante: {
-        ...seleccionarCampos(restaurante, CAMPOS_RESTAURANTE),
+        ...normalizarRestaurantePublico(restaurante),
         carta_publica_activa: cartaPublicaActiva,
         modo_prueba: modoPrueba,
         carta_disponible: puedeUsar(restaurante, 'carta_qr'),
@@ -127,7 +176,7 @@ export async function GET(req, { params }) {
     if (incluirCarta && respuesta.restaurante.carta_disponible) {
       let vinosQuery = supabaseAdmin
         .from('vinos')
-        .select('*')
+        .select(SELECT_VINO_PUBLICO)
         .eq('restaurante_id', restaurante.id)
         .eq('activo', true)
       if (esPerfilGoiko(restaurante)) {
@@ -135,7 +184,7 @@ export async function GET(req, { params }) {
       }
       const [vinosRes, platosRes, seleccionRes] = await Promise.all([
         vinosQuery,
-        supabaseAdmin.from('platos').select('*').eq('restaurante_id', restaurante.id).eq('activo', true),
+        supabaseAdmin.from('platos').select(SELECT_PLATO_PUBLICO).eq('restaurante_id', restaurante.id).eq('activo', true),
         supabaseAdmin
           .from('seleccion_especial')
           .select('id, restaurante_id, vino_id, orden, activo, vinos(nombre, bodega, tipo, region, uva, anada, precio_copa, precio_botella, notas_cata)')
@@ -159,6 +208,7 @@ export async function GET(req, { params }) {
       const controlStockActivo = vinosActivos.some(vino => Number(vino.stock) > 0)
       respuesta.vinos = vinosActivos.map(vino => ({
         ...seleccionarCampos(vino, CAMPOS_VINO),
+        internacional: vino.internacional === true || isInternationalWine(vino),
         disponible: !controlStockActivo || Number(vino.stock) > 0,
       }))
       respuesta.platos = (platos || []).map(plato => seleccionarCampos(plato, CAMPOS_PLATO))
@@ -178,7 +228,7 @@ export async function GET(req, { params }) {
     if (incluirHub && respuesta.restaurante.hub_disponible) {
       const { data: links, error: linksError } = await supabaseAdmin
         .from('restaurante_links')
-        .select('id, restaurante_id, titulo, url, tipo, orden, visible')
+        .select(SELECT_LINK_HUB_PUBLICO)
         .eq('restaurante_id', restaurante.id)
         .eq('visible', true)
         .order('orden')
@@ -190,7 +240,7 @@ export async function GET(req, { params }) {
         })
         return Response.json({ error: 'No se pudo cargar el hub.' }, { status: 503 })
       }
-      respuesta.links = links || []
+      respuesta.links = (links || []).map(normalizarLinkHub).filter(Boolean)
     }
 
     return Response.json(respuesta, {

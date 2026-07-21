@@ -4,6 +4,10 @@ import { puedeUsar } from '../../../lib/plans'
 
 const RATE_LIMIT = 20
 const RATE_WINDOW_MS = 60 * 60 * 1000
+const SELECT_RESTAURANTE_SESION = [
+  'id', 'slug', 'plan', 'subscription_status',
+  'camarero_pin_bloqueo_activo', 'camarero_pin_hash',
+].join(', ')
 
 function getIP(req) {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -43,7 +47,7 @@ export async function POST(req) {
 
     const { data: restaurante, error } = await supabaseAdmin
       .from('restaurantes')
-      .select('*')
+      .select(SELECT_RESTAURANTE_SESION)
       .eq('id', restaurante_id)
       .single()
 
