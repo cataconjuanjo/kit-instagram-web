@@ -8,6 +8,7 @@ import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceDay'
 import { esPerfilBodega, puedeUsar } from '../lib/plans'
 import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationReadiness'
+import { experienciaEntregaDesdePlan, experienciaLabel, experienciaTemplateExiste } from '../lib/experienceTemplates'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -142,14 +143,6 @@ const ESTADO_LANZAMIENTO_INICIAL = {
   error: '',
 }
 
-const EXPERIENCIAS_CARTA = {
-  lanzamiento: 'Lanzamiento QR en sala',
-  temporada: 'Carta de temporada',
-  degustacion: 'Menu degustacion con maridaje',
-  premium: 'Bodega premium por botella',
-  evento: 'Evento privado o grupo',
-}
-
 const EXPERIENCIA_LANZAMIENTO_INICIAL = {
   id: '',
   nombre: '',
@@ -164,14 +157,14 @@ function leerExperienciaLanzamiento(restauranteId) {
   if (!restauranteId || typeof window === 'undefined') return EXPERIENCIA_LANZAMIENTO_INICIAL
   try {
     const id = window.localStorage.getItem(`carta_viva_plantilla_activa_${restauranteId}`) || ''
-    if (!id || !EXPERIENCIAS_CARTA[id]) return EXPERIENCIA_LANZAMIENTO_INICIAL
+    if (!id || !experienciaTemplateExiste(id)) return EXPERIENCIA_LANZAMIENTO_INICIAL
     const plan = JSON.parse(window.localStorage.getItem(`carta_viva_plan_activacion_${restauranteId}_${id}`) || '{}')
     const estados = Object.values(plan.completados || {})
     const completados = estados.filter(Boolean).length
     const total = estados.length
     return {
       id,
-      nombre: EXPERIENCIAS_CARTA[id],
+      nombre: experienciaLabel(id),
       progreso: total ? Math.round((completados / total) * 100) : 0,
       completados,
       total,
@@ -184,18 +177,16 @@ function leerExperienciaLanzamiento(restauranteId) {
 }
 
 function experienciaDesdePlanRemoto(plan) {
-  if (!plan?.template_id || !EXPERIENCIAS_CARTA[plan.template_id]) return null
-  const estados = Object.values(plan.completed_steps || {})
-  const completados = estados.filter(Boolean).length
-  const total = estados.length
+  const experiencia = experienciaEntregaDesdePlan(plan)
+  if (!experiencia) return null
   return {
-    id: plan.template_id,
-    nombre: EXPERIENCIAS_CARTA[plan.template_id],
-    progreso: total ? Math.round((completados / total) * 100) : 0,
-    completados,
-    total,
-    objetivo: plan.objective_date || '',
-    responsable: plan.responsible || '',
+    id: experiencia.id,
+    nombre: experiencia.label,
+    progreso: experiencia.progreso,
+    completados: experiencia.completados,
+    total: experiencia.total,
+    objetivo: experiencia.objetivo,
+    responsable: experiencia.responsable,
   }
 }
 
@@ -718,6 +709,69 @@ export default function DashboardHome() {
   const progresoLanzamiento = porcentaje(pasosLanzamientoCompletados, pasosLanzamiento.length)
   const lanzamientoListoMesa = Boolean(pasosLanzamientoRequeridos.length && pasosLanzamientoRequeridosCompletados === pasosLanzamientoRequeridos.length)
   const siguienteLanzamiento = pasosLanzamiento.find(paso => !paso.ok && paso.requerido) || pasosLanzamiento.find(paso => !paso.ok) || null
+  const bloqueosLanzamiento = perfilBodega ? [] : [
+    !cartaPublicable && {
+      id: 'contenido',
+      tipo: 'Contenido',
+      titulo: 'Carta incompleta',
+      texto: contenidoPublicacion.vinosSinPrecio
+        ? `${contenidoPublicacion.vinosSinPrecio} vinos activos siguen sin precio.`
+        : 'Falta contenido minimo para publicar con seguridad.',
+      href: '/dashboard/vinos?filtro=pendientes',
+    },
+    !experienciaElegida && {
+      id: 'experiencia',
+      tipo: 'Entrega',
+      titulo: 'Sin experiencia activa',
+      texto: 'El QR y los copys todavia no tienen objetivo operativo.',
+      href: '/dashboard/plantillas',
+    },
+    estadoLanzamiento.previewPendiente && {
+      id: 'preview-sql',
+      tipo: 'Base de datos',
+      titulo: 'Aprobaciones pendientes',
+      texto: 'Falta activar el registro de aprobaciones de preview.',
+      href: '/dashboard/qr#preview-privada',
+    },
+    cartaPublicable && !previewLista && !estadoLanzamiento.previewPendiente && {
+      id: 'preview',
+      tipo: 'Revision',
+      titulo: estadoLanzamiento.previewObsoleta ? 'Preview obsoleta' : 'Preview sin aprobar',
+      texto: estadoLanzamiento.previewObsoleta
+        ? 'La carta cambio despues de la ultima aprobacion.'
+        : 'Genera un enlace privado y apruebalo antes de publicar.',
+      href: '/dashboard/qr#preview-privada',
+    },
+    previewLista && !cartaPublicada && {
+      id: 'publicacion',
+      tipo: 'Publicacion',
+      titulo: 'Destino en borrador',
+      texto: 'La preview esta aprobada, pero el QR publico aun no esta abierto.',
+      href: '/dashboard/qr',
+    },
+    cartaPublicada && !qrPreparado && {
+      id: 'material',
+      tipo: 'Material',
+      titulo: 'QR sin preparar',
+      texto: 'Descarga, imprime o copia el enlace final antes de llevarlo a mesa.',
+      href: '/dashboard/qr#pack-entrega',
+    },
+    estadoLanzamiento.analyticsPendiente && {
+      id: 'analytics',
+      tipo: 'Medicion',
+      titulo: 'Analitica pendiente',
+      texto: 'Falta activar eventos de entrega para medir el lanzamiento completo.',
+      href: '/dashboard/qr',
+    },
+  ].filter(Boolean).slice(0, 3)
+  const lecturaDecisionLanzamiento = estadoLanzamiento.error ||
+    (estadoLanzamiento.analyticsPendiente
+      ? 'La analitica de entrega esta pendiente de base de datos.'
+      : lanzamientoListoMesa
+        ? `${estadoLanzamiento.escaneosReales || stats.escaneos || 0} escaneos reales detectados.`
+        : bloqueosLanzamiento.length
+          ? bloqueosLanzamiento.map(item => item.titulo).join(' - ')
+          : siguienteLanzamiento?.texto)
   const mostrarChecklistLanzamiento = !perfilBodega && (
     cartaPublicable ||
     previewLista ||
@@ -947,6 +1001,17 @@ export default function DashboardHome() {
               </div>
               <Link href="/dashboard/plantillas">{experienciaElegida ? 'Abrir plan' : 'Elegir plantilla'}</Link>
             </div>
+            {bloqueosLanzamiento.length > 0 && (
+              <div className={styles.launchBlockers}>
+                {bloqueosLanzamiento.map(bloqueo => (
+                  <Link href={bloqueo.href} key={bloqueo.id}>
+                    <span>{bloqueo.tipo}</span>
+                    <strong>{bloqueo.titulo}</strong>
+                    <small>{bloqueo.texto}</small>
+                  </Link>
+                ))}
+              </div>
+            )}
             <div className={styles.launchSteps}>
               {pasosLanzamiento.map((paso, index) => (
                 <Link
@@ -965,12 +1030,7 @@ export default function DashboardHome() {
               <div>
                 <strong>{estadoLanzamiento.loading ? 'Comprobando estado de lanzamiento' : lanzamientoListoMesa ? 'Preparado para mesa' : siguienteLanzamiento?.titulo || 'Revisar lanzamiento'}</strong>
                 <span>
-                  {estadoLanzamiento.error ||
-                    (estadoLanzamiento.analyticsPendiente
-                      ? 'La analitica de entrega esta pendiente de base de datos.'
-                      : lanzamientoListoMesa
-                        ? `${estadoLanzamiento.escaneosReales || stats.escaneos || 0} escaneos reales detectados.`
-                        : siguienteLanzamiento?.texto)}
+                  {lecturaDecisionLanzamiento}
                 </span>
               </div>
               <Link href={siguienteLanzamiento?.href || '/dashboard/qr'}>

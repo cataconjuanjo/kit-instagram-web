@@ -564,6 +564,47 @@
   font-weight: 900;
 }
 
+.launchBlockers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.launchBlockers a {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  border: 1px solid #ead2bd;
+  border-left: 3px solid #c45335;
+  border-radius: 8px;
+  background: #fff7ee;
+  color: #171416;
+  padding: 11px 12px;
+  text-decoration: none;
+}
+
+.launchBlockers span {
+  color: #9b4b2f;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.09em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.launchBlockers strong {
+  color: #171416;
+  font-size: 13px;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.launchBlockers small {
+  color: #625a53;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .launchStep {
   min-width: 0;
   min-height: 128px;
@@ -2603,6 +2644,10 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .launchBlockers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .prioritySide {
     justify-items: start;
   }
@@ -2755,6 +2800,10 @@
   }
 
   .launchSteps {
+    grid-template-columns: 1fr;
+  }
+
+  .launchBlockers {
     grid-template-columns: 1fr;
   }
 
