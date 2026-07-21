@@ -96,6 +96,8 @@ export default function RestauranteHub({ params }) {
   const [restaurante, setRestaurante] = useState(null)
   const [links, setLinks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [currentSlug, setCurrentSlug] = useState('')
   const [previewAprobacion, setPreviewAprobacion] = useState({ aprobada: false, loading: false, error: '' })
   const [previewApprovalOpen, setPreviewApprovalOpen] = useState(false)
   const [previewApprovalForm, setPreviewApprovalForm] = useState({ reviewer_name: '', reviewer_email: '', note: '' })
@@ -109,24 +111,35 @@ export default function RestauranteHub({ params }) {
 
   useEffect(() => {
     async function cargar() {
-      const slug = (await params).slug
-      const query = new URLSearchParams({ hub: '1' })
-      if (pruebaToken) query.set('prueba', pruebaToken)
-      const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}?${query.toString()}`)
-      const data = res.ok ? await res.json() : {}
-      const rest = data.restaurante
+      try {
+        setLoadError('')
+        const slug = (await params).slug
+        setCurrentSlug(slug)
+        const query = new URLSearchParams({ hub: '1' })
+        if (pruebaToken) query.set('prueba', pruebaToken)
+        const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}?${query.toString()}`)
+        const data = res.ok ? await res.json().catch(() => ({})) : {}
+        const rest = data.restaurante
 
-      if (rest?.hub_activo && rest?.hub_disponible) {
-        setRestaurante(rest)
-        setLinks(data.links || [])
-        const claveEscaneo = `${rest.id}:${pruebaToken || 'publico'}`
-        if (escaneoRegistradoRef.current !== claveEscaneo) {
-          escaneoRegistradoRef.current = claveEscaneo
-          registrarEscaneoHub(rest.id, pruebaToken, rest.experiencia_publica?.id)
+        if (rest?.hub_activo && rest?.hub_disponible) {
+          setRestaurante(rest)
+          setLinks(data.links || [])
+          const claveEscaneo = `${rest.id}:${pruebaToken || 'publico'}`
+          if (escaneoRegistradoRef.current !== claveEscaneo) {
+            escaneoRegistradoRef.current = claveEscaneo
+            registrarEscaneoHub(rest.id, pruebaToken, rest.experiencia_publica?.id)
+          }
+        } else {
+          setRestaurante(null)
+          setLinks([])
         }
+      } catch {
+        setRestaurante(null)
+        setLinks([])
+        setLoadError('No hemos podido cargar el hub. Revisa la conexión o vuelve a intentarlo en unos segundos.')
+      } finally {
+        setLoading(false)
       }
-
-      setLoading(false)
     }
     cargar()
   }, [params, pruebaToken])
@@ -174,11 +187,23 @@ export default function RestauranteHub({ params }) {
   }
 
   if (!restaurante) {
+    const cartaDirecta = currentSlug ? `/carta/${currentSlug}` : '/cartavinos'
     return (
       <main className="hub-page">
-        <section className="hub-card">
+        <section className="hub-card hub-state-card" aria-live="polite">
+          <p className="hub-state-eyebrow">Carta Viva</p>
           <h1>Hub no disponible</h1>
-          <p>Este restaurante no tiene activada la página de enlaces.</p>
+          <p>{loadError || 'El enlace puede haber cambiado o el hub todavía no está publicado.'}</p>
+          <div className="hub-state-actions">
+            {currentSlug && (
+              <a className="hub-state-link hub-state-primary" href={cartaDirecta}>
+                Abrir carta directa
+              </a>
+            )}
+            <a className="hub-state-link" href="/cartavinos">
+              Volver a Carta Viva
+            </a>
+          </div>
         </section>
       </main>
     )

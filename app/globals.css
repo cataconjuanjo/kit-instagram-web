@@ -3116,6 +3116,66 @@ h3 {
   text-align: center;
 }
 
+.hub-state-card {
+  width: min(100%, 520px);
+  box-sizing: border-box;
+  gap: 14px;
+  border: 1px solid rgba(32, 32, 32, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 250, 243, 0.82);
+  padding: clamp(24px, 7vw, 40px);
+  box-shadow: 0 18px 48px rgba(32, 32, 32, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.hub-state-eyebrow {
+  margin: 0;
+  color: rgba(32, 32, 32, 0.58);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hub-state-card p:not(.hub-state-eyebrow) {
+  margin: 0;
+  max-width: 36rem;
+  color: rgba(32, 32, 32, 0.68);
+  font-size: 0.96rem;
+  line-height: 1.6;
+}
+
+.hub-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.hub-state-link {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(32, 32, 32, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.64);
+  color: #202020;
+  padding: 0 14px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.hub-state-primary {
+  border-color: #202020;
+  background: #202020;
+  color: #fffaf3;
+}
+
 .hub-preview-stack {
   width: min(100%, 680px);
   display: grid;

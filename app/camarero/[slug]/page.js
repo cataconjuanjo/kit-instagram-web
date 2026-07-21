@@ -2100,7 +2100,7 @@ export default function Camarero() {
 
   const cx = 150, cy = 150, r = 100
 
-  function renderEstadoCamarero({ title, text, eyebrow = 'Modo camarero', retryable = false, loadingState = false }) {
+  function renderEstadoCamarero({ title, text, eyebrow = 'Modo camarero', retryable = false, loadingState = false, secondaryHref = '', secondaryLabel = '' }) {
     return (
       <main className={styles.stateScreen}>
         <section className={styles.stateCard} aria-live="polite">
@@ -2113,6 +2113,11 @@ export default function Camarero() {
               <button type="button" className={styles.stateButton} onClick={reintentarCarga}>
                 Reintentar
               </button>
+            )}
+            {secondaryHref && (
+              <a className={styles.stateButton} href={secondaryHref}>
+                {secondaryLabel}
+              </a>
             )}
             <a className={styles.stateLink} href="/cartavinos">
               Carta Viva
@@ -2136,15 +2141,16 @@ export default function Camarero() {
   })
 
   if (!restaurante) return renderEstadoCamarero({
-    title: 'Restaurante no encontrado',
-    text: 'Revisa el enlace o vuelve a abrir el QR desde Carta Viva.',
+    title: 'Acceso de sala no encontrado',
+    text: 'Comprueba que el enlace pertenece al restaurante correcto o vuelve a abrir el QR interno de sala.',
   })
 
   if (restaurante && !restaurante.sala_disponible) return renderEstadoCamarero({
-    title: 'Modo camarero no incluido',
-    text: 'Este acceso queda reservado para el Plan Sala o Acompañado.',
+    title: 'Modo sala pendiente de activar',
+    text: 'Este restaurante todavía no tiene activado el acceso de sala. Puedes abrir la carta pública o pedir al gerente que active el Plan Sala.',
     eyebrow: 'Carta Viva',
-    retryable: true,
+    secondaryHref: `/carta/${slug}`,
+    secondaryLabel: 'Abrir carta pública',
   })
 
   if (!autenticado && restaurante?.camarero_pin_bloqueo_activo !== true) return (
