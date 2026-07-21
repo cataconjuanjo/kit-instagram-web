@@ -6608,12 +6608,15 @@ h3 {
   }
 
   .demo-presentation-bar {
+    position: sticky;
     top: max(8px, env(safe-area-inset-top));
-    left: 10px;
-    right: 10px;
+    left: auto;
+    right: auto;
     justify-content: space-between;
     transform: none;
     border-radius: 8px;
+    width: auto;
+    margin: 8px 10px 0;
     padding: 7px 10px;
     font-size: 10px;
   }
@@ -6844,6 +6847,7 @@ h3 {
   background: rgba(23, 20, 22, 0.96);
   color: #fffaf3;
   box-shadow: 0 22px 70px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
 }
 
 .cookie-consent p {
@@ -6857,6 +6861,7 @@ h3 {
   display: flex;
   flex-shrink: 0;
   gap: 10px;
+  pointer-events: auto;
 }
 
 .cookie-consent button {
@@ -6867,6 +6872,7 @@ h3 {
   letter-spacing: 0;
   text-transform: uppercase;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .cookie-consent__secondary {
