@@ -6,6 +6,7 @@ import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { WINE_TYPE_COLORS, esPerfilGoiko } from '../../lib/winePresentation'
+import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS, radarGridPath as gridPath, radarPath } from '../../lib/wineProfileRadar'
 import BrandLogo from '../../components/BrandLogo'
 import PublicStateScreen from '../../components/PublicStateScreen'
 import styles from './carta.module.css'
@@ -1250,30 +1251,9 @@ setPerfiles(nuevosPerfiles)
   })
 
  if (mostrarComparador) {
-  const ejes = ['dulzor', 'acidez', 'taninos', 'alcohol', 'cuerpo', 'intensidad', 'final']
-  const etiquetas = { dulzor: 'Dulzor', acidez: 'Acidez', taninos: 'Taninos', alcohol: 'Alcohol', cuerpo: 'Cuerpo', intensidad: 'Intensidad', final: 'Final' }
+  const ejes = WINE_PROFILE_AXES
+  const etiquetas = WINE_PROFILE_LABELS
   const coloresVino = ['#7B2D2D', '#C4A55A', '#534AB7', '#4A8C6F']
-
-  function radarPath(perfil, cx, cy, r) {
-    const n = ejes.length
-    return ejes.map((eje, idx) => {
-      const angle = (Math.PI * 2 * idx) / n - Math.PI / 2
-      const val = (perfil[eje] || 1) / 5
-      const x = cx + r * val * Math.cos(angle)
-      const y = cy + r * val * Math.sin(angle)
-      return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`
-    }).join(' ') + ' Z'
-  }
-
-  function gridPath(level, cx, cy, r) {
-    const n = ejes.length
-    return ejes.map((_, idx) => {
-      const angle = (Math.PI * 2 * idx) / n - Math.PI / 2
-      const x = cx + r * level * Math.cos(angle)
-      const y = cy + r * level * Math.sin(angle)
-      return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`
-    }).join(' ') + ' Z'
-  }
 
   const cx = 150, cy = 150, r = 100
 

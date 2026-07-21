@@ -18,6 +18,7 @@ import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { WINE_TYPE_COLORS, etiquetasTipoVino, ordenTiposVino } from '../../lib/winePresentation'
+import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS, radarGridPath as gridPath, radarPath } from '../../lib/wineProfileRadar'
 import PublicStateScreen from '../../components/PublicStateScreen'
 import styles from './camarero.module.css'
 
@@ -105,8 +106,8 @@ export default function Camarero() {
     ],
   }
   const coloresVino = ['#7B2D2D', '#C4A55A', '#534AB7', '#4A8C6F']
-  const ejes = ['dulzor', 'acidez', 'taninos', 'alcohol', 'cuerpo', 'intensidad', 'final']
-  const etiquetas = { dulzor: 'Dulzor', acidez: 'Acidez', taninos: 'Taninos', alcohol: 'Alcohol', cuerpo: 'Cuerpo', intensidad: 'Intensidad', final: 'Final' }
+  const ejes = WINE_PROFILE_AXES
+  const etiquetas = WINE_PROFILE_LABELS
   const chartierBusqueda = (chartierKb || []).map(capitulo => ({
     capitulo,
     textoBusqueda: normalizar([
@@ -305,25 +306,6 @@ export default function Camarero() {
     resultados.forEach(r => { nuevosPerfiles[r.id] = r.perfil })
     setPerfiles(nuevosPerfiles)
     setCargandoPerfiles(false)
-  }
-
-  function radarPath(perfil, cx, cy, r) {
-    return ejes.map((eje, idx) => {
-      const angle = (Math.PI * 2 * idx) / ejes.length - Math.PI / 2
-      const val = (perfil[eje] || 1) / 5
-      const x = cx + r * val * Math.cos(angle)
-      const y = cy + r * val * Math.sin(angle)
-      return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`
-    }).join(' ') + ' Z'
-  }
-
-  function gridPath(level, cx, cy, r) {
-    return ejes.map((_, idx) => {
-      const angle = (Math.PI * 2 * idx) / ejes.length - Math.PI / 2
-      const x = cx + r * level * Math.cos(angle)
-      const y = cy + r * level * Math.sin(angle)
-      return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`
-    }).join(' ') + ' Z'
   }
 
   async function registrarFeedbackVenta(vino, resultado, label, cantidad = 1) {
