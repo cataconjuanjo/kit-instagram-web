@@ -36,6 +36,7 @@ const SELECT_RESTAURANTE_PUBLICO = [...CAMPOS_RESTAURANTE, ...CAMPOS_RESTAURANTE
 const SELECT_VINO_PUBLICO = [...CAMPOS_VINO, 'stock'].join(', ')
 const SELECT_PLATO_PUBLICO = CAMPOS_PLATO.join(', ')
 const SELECT_LINK_HUB_PUBLICO = CAMPOS_LINK_HUB.join(', ')
+const DEMO_PRESENTACION_SLUGS = new Set(['taberna-del-puerto'])
 
 function seleccionarCampos(fila, campos) {
   return Object.fromEntries(campos
@@ -45,6 +46,10 @@ function seleccionarCampos(fila, campos) {
 
 function slugPublicoValido(slug) {
   return /^[a-z0-9_-]{1,120}$/i.test(String(slug || '').trim())
+}
+
+function demoPresentacionAutorizada(slug, searchParams) {
+  return searchParams.get('demo_presentacion') === '1' && DEMO_PRESENTACION_SLUGS.has(String(slug || '').toLowerCase())
 }
 
 function normalizarUrlPublica(valor, { allowHash = false, imageOnly = false } = {}) {
@@ -132,6 +137,7 @@ export async function GET(req, { params }) {
     const incluirCarta = searchParams.get('carta') === '1'
     const incluirHub = searchParams.get('hub') === '1'
     const tokenPrueba = String(searchParams.get('prueba') || '').trim().slice(0, 3000)
+    const modoDemoPresentacion = demoPresentacionAutorizada(slug, searchParams)
 
     const { data: restaurante, error } = await supabaseAdmin
       .from('restaurantes')
@@ -154,7 +160,7 @@ export async function GET(req, { params }) {
 
     const modoPrueba = validarTokenPruebaCarta(tokenPrueba, restaurante.id)
     const cartaPublicaActiva = restaurante.carta_publica_activa !== false
-    if ((incluirCarta || incluirHub) && !cartaPublicaActiva && !modoPrueba) {
+    if ((incluirCarta || incluirHub) && !cartaPublicaActiva && !modoPrueba && !modoDemoPresentacion) {
       return Response.json({ error: 'Carta no publicada.' }, { status: 404 })
     }
 
@@ -163,6 +169,7 @@ export async function GET(req, { params }) {
         ...normalizarRestaurantePublico(restaurante),
         carta_publica_activa: cartaPublicaActiva,
         modo_prueba: modoPrueba,
+        modo_demo_presentacion: modoDemoPresentacion,
         carta_disponible: puedeUsar(restaurante, 'carta_qr'),
         hub_disponible: puedeUsar(restaurante, 'hub'),
         sala_disponible: puedeUsar(restaurante, 'modo_camarero'),

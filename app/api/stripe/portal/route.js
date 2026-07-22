@@ -3,6 +3,15 @@ import { createClient } from '@supabase/supabase-js'
 import { requireRestaurantAccess } from '../../_lib/auth'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
+const SELECT_RESTAURANTE_PORTAL = 'stripe_customer_id, nombre, email'
+
+async function leerBody(req) {
+  try {
+    return await req.json()
+  } catch {
+    return {}
+  }
+}
 
 // Redirige al restaurante al portal de cliente de Stripe
 // donde puede cambiar de plan, actualizar tarjeta o cancelar
@@ -11,8 +20,11 @@ export async function POST(req) {
     if (!process.env.STRIPE_SECRET_KEY) {
       return Response.json({ error: 'Stripe no configurado.' }, { status: 503 })
     }
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return Response.json({ error: 'Supabase no configurado para facturacion.' }, { status: 503 })
+    }
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-    const { restaurante_id } = await req.json()
+    const { restaurante_id } = await leerBody(req)
     if (!restaurante_id) {
       return Response.json({ error: 'restaurante_id obligatorio.' }, { status: 400 })
     }
@@ -27,7 +39,7 @@ export async function POST(req) {
 
     const { data: rest } = await adminSupabase
       .from('restaurantes')
-      .select('stripe_customer_id, nombre, email')
+      .select(SELECT_RESTAURANTE_PORTAL)
       .eq('id', restaurante_id)
       .single()
 

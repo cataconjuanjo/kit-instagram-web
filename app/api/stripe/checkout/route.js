@@ -5,6 +5,26 @@ import { requireRestaurantAccess } from '../../_lib/auth'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
 const SELECT_RESTAURANTE_CHECKOUT = 'id, email, nombre, stripe_customer_id'
+const PLAN_LABEL = {
+  basic: 'Basico',
+  pro: 'Sala',
+  bodega: 'Bodega',
+  premium: 'Acompanado',
+}
+
+function trialPeriodDays() {
+  const days = Number(process.env.STRIPE_TRIAL_DAYS || 14)
+  if (!Number.isFinite(days) || days < 1 || days > 365) return 14
+  return Math.floor(days)
+}
+
+async function leerBody(req) {
+  try {
+    return await req.json()
+  } catch {
+    return {}
+  }
+}
 
 function stripeTrialEnd(value) {
   if (!value) return null
@@ -20,6 +40,9 @@ export async function POST(req) {
     if (!process.env.STRIPE_SECRET_KEY) {
       return Response.json({ error: 'Stripe no configurado.' }, { status: 503 })
     }
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return Response.json({ error: 'Supabase no configurado para checkout.' }, { status: 503 })
+    }
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
     const PRICE_IDS = {
       basic:   process.env.STRIPE_PRICE_BASIC,
@@ -27,7 +50,16 @@ export async function POST(req) {
       bodega:  process.env.STRIPE_PRICE_BODEGA,
       premium: process.env.STRIPE_PRICE_PREMIUM,
     }
-    const { plan, restaurante_id, email, nombre, trial_end } = await req.json()
+    const body = await leerBody(req)
+    const plan = String(body.plan || '').trim()
+    const { restaurante_id, email, nombre, trial_end } = body
+
+    if (plan && Object.prototype.hasOwnProperty.call(PRICE_IDS, plan) && !PRICE_IDS[plan]) {
+      return Response.json(
+        { error: `El plan ${PLAN_LABEL[plan] || plan} no tiene precio Stripe configurado.` },
+        { status: 503 }
+      )
+    }
 
     if (!plan || !PRICE_IDS[plan]) {
       return Response.json({ error: 'Plan no válido.' }, { status: 400 })
@@ -105,7 +137,7 @@ export async function POST(req) {
           restaurante_id: restaurante_id || '',
           plan,
         },
-        ...(customTrialEnd ? { trial_end: customTrialEnd } : { trial_period_days: 14 }),
+        ...(customTrialEnd ? { trial_end: customTrialEnd } : { trial_period_days: trialPeriodDays() }),
       },
       locale: 'es',
       allow_promotion_codes: true,

@@ -14,13 +14,13 @@ const checks = [
     expectText: ['La Taberna del Puerto', 'Ver como gerente'],
   },
   {
-    path: `/api/public/restaurante/${demoSlug}?hub=1`,
+    path: `/api/public/restaurante/${demoSlug}?hub=1&demo_presentacion=1`,
     label: 'Datos hub demo',
     json: true,
     expectJson: body => body?.restaurante?.slug === demoSlug,
   },
   {
-    path: `/api/public/restaurante/${demoSlug}?carta=1`,
+    path: `/api/public/restaurante/${demoSlug}?carta=1&demo_presentacion=1`,
     label: 'Datos carta demo',
     json: true,
     expectJson: body => body?.restaurante?.slug === demoSlug && Array.isArray(body?.vinos) && body.vinos.length > 0,

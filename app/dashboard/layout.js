@@ -13,6 +13,7 @@ import styles from './layout.module.css'
 import OpenCartaPruebaButton from './OpenCartaPruebaButton'
 import { GuideModeProvider, GuidePanel, GuideToggle } from './GuideMode'
 import BrandLogo from '../components/BrandLogo'
+import BillingPanel from './BillingPanel'
 
 const icon = {
   home: <svg viewBox="0 0 20 20" fill="currentColor" width={16} height={16}><path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7a1 1 0 0 0 1.414 1.414L4 10.414V17a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-3h2v3a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6.586l.293.293a1 1 0 0 0 1.414-1.414l-7-7z"/></svg>,
@@ -119,13 +120,14 @@ function PendingStripeScreen({ restaurante, onLogout }) {
   return (
     <main style={{ padding: '56px 24px', minHeight: '60vh', display: 'grid', placeItems: 'center' }}>
       <section style={{ maxWidth: 560, border: '1px solid #eee', padding: 28, background: '#fff' }}>
-        <p style={{ margin: '0 0 10px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#999' }}>Prueba pendiente</p>
-        <h1 style={{ margin: '0 0 12px', fontSize: 28, fontWeight: 400, color: '#111' }}>Activa la prueba gratuita de Carta Viva</h1>
+        <p style={{ margin: '0 0 10px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#999' }}>Stripe pendiente</p>
+        <h1 style={{ margin: '0 0 12px', fontSize: 28, fontWeight: 400, color: '#111' }}>Activa Carta Viva con Stripe</h1>
         <p style={{ margin: '0 0 18px', color: '#666', lineHeight: 1.6 }}>
-          El acceso de {restaurante?.nombre || 'tu restaurante'} esta preparado. Para abrir la prueba gratuita, completa primero el enlace de Stripe que te hemos enviado.
-          No se cobra nada durante el periodo de prueba y puedes cancelar antes de que empiece el cobro.
+          El acceso de {restaurante?.nombre || 'tu restaurante'} esta preparado, pero la suscripcion aun no esta activa.
+          Inicia la prueba gratuita desde Stripe para desbloquear el panel. No se cobra nada durante el periodo de prueba y puedes cancelar antes de que empiece el cobro.
         </p>
-        <button type="button" onClick={onLogout} style={{ border: 'none', background: '#111', color: '#fff', padding: '12px 18px', cursor: 'pointer' }}>
+        <BillingPanel restaurante={restaurante} compact />
+        <button type="button" onClick={onLogout} style={{ marginTop: 14, border: 'none', background: '#111', color: '#fff', padding: '12px 18px', cursor: 'pointer' }}>
           Salir
         </button>
       </section>

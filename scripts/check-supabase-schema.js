@@ -40,6 +40,11 @@ const requiredChecks = [
     select: 'id, slug, nombre, email, ciudad, color_acento, color_primario, color_fondo, tipografia, logo_url, banner_url, banner_zoom, banner_x, banner_y, carta_mostrar_euro, carta_copa_decimales, carta_pie_texto, hub_activo, hub_titulo, hub_subtitulo, hub_fondo_url, hub_fondo_zoom, hub_fondo_x, hub_fondo_y, hub_overlay, hub_estilo, hub_mostrar_logo, hub_mostrar_nombre, hub_mostrar_direccion, instagram_url, facebook_url, camarero_pin_requerido, camarero_pin_bloqueo_activo, carta_publica_activa, plan, subscription_status, actividad_real_desde, trial_active_seconds_limit, trial_expires_at, trial_started_at, ticket_medio_comida, created_at',
   },
   {
+    label: 'restaurantes stripe billing',
+    table: 'restaurantes',
+    select: 'id, stripe_customer_id, stripe_subscription_id, stripe_price_id',
+  },
+  {
     label: 'vinos admin client',
     table: 'vinos',
     select: 'id, restaurante_id, nombre, bodega, tipo, region, uva, anada, precio_botella, precio_copa, coste_compra, stock, stock_minimo, proveedor, referencia_proveedor, formato_compra, activo, notas_cata',

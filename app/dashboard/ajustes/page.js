@@ -10,6 +10,7 @@ import { esPerfilBodega } from '../../lib/plans'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
+import BillingPanel from '../BillingPanel'
 
 export default function AjustesHub() {
   const [restaurante, setRestaurante] = useState(null)
@@ -273,6 +274,8 @@ export default function AjustesHub() {
       </section>
 
       <section className={styles.gridTwo} style={{ marginTop: 16 }}>
+        <BillingPanel restaurante={restaurante} />
+
         {(esAdmin || perfilBodega) && <div className={styles.panel} id="actividad-real">
           <div className={styles.panelHead}>
             <div>
