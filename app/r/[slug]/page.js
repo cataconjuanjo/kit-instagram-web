@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { enviarAprobacionPreview } from '../../lib/previewApprovalClient'
+import {
+  crearLinksPrincipalesHub,
+  crearLinksSocialesHub,
+  crearQueryCartaHub,
+  hrefLinkHub,
+  targetLinkHub,
+} from '../../lib/publicHub'
 import { cargarRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { limpiarTextoPublico } from '../../lib/publicText'
 import { enviarEstadisticas } from '../../lib/statsClient'
@@ -189,10 +196,7 @@ export default function RestauranteHub({ params }) {
 
   const titulo = limpiarTextoPublico(restaurante.hub_titulo || restaurante.nombre)
   const subtitulo = limpiarTextoPublico(restaurante.hub_subtitulo || [restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · '))
-  const queryCartaParams = new URLSearchParams()
-  if (demoPresentacion) queryCartaParams.set('demo_presentacion', '1')
-  if (pruebaToken) queryCartaParams.set('prueba', pruebaToken)
-  const queryCarta = queryCartaParams.toString() ? `?${queryCartaParams.toString()}` : ''
+  const queryCarta = crearQueryCartaHub({ demoPresentacion, pruebaToken })
   const mostrarLogo = restaurante.hub_mostrar_logo !== false
   const mostrarNombre = restaurante.hub_mostrar_nombre !== false
   const mostrarDireccion = restaurante.hub_mostrar_direccion !== false
@@ -204,23 +208,8 @@ export default function RestauranteHub({ params }) {
   const estilo = restaurante.hub_estilo || 'nubes'
   const overlay = Number(restaurante.hub_overlay ?? 0.48)
   const experienciaPublica = restaurante.experiencia_publica || null
-  const linksSocialesBase = [
-    restaurante.instagram_url && { id: 'instagram-url', tipo: 'instagram', url: restaurante.instagram_url },
-    restaurante.facebook_url && { id: 'facebook-url', tipo: 'facebook', url: restaurante.facebook_url },
-    ...links.filter(link => ['instagram', 'facebook'].includes(link.tipo))
-  ].filter(Boolean)
-  const linksSociales = linksSocialesBase.filter((link, index, lista) => {
-    const clave = `${link.tipo}-${link.url}`
-    return lista.findIndex(item => `${item.tipo}-${item.url}` === clave) === index
-  })
-  const linksPrincipales = links.filter(link => !['instagram', 'facebook'].includes(link.tipo))
-  const hrefLink = link => {
-    const tituloLimpio = limpiarTextoPublico(link.titulo).toLowerCase()
-    if (link.tipo === 'carta' || link.tipo === 'carta_vinos' || link.url === '#carta' || tituloLimpio.includes('carta de vinos')) {
-      return `/carta/${restaurante.slug}${queryCarta}`
-    }
-    return link.url || '#'
-  }
+  const linksSociales = crearLinksSocialesHub(restaurante, links)
+  const linksPrincipales = crearLinksPrincipalesHub(links)
 
   return (
     <main
@@ -327,18 +316,21 @@ export default function RestauranteHub({ params }) {
           )}
 
           <div className="hub-links">
-            {linksPrincipales.map(link => (
-              <a
-                key={link.id}
-                className="hub-link"
-                href={hrefLink(link)}
-                target={hrefLink(link).startsWith('/') ? '_self' : '_blank'}
-                rel="noreferrer"
-              >
-                <span className="hub-link-icon"><HubIcon tipo={link.tipo} titulo={link.titulo} /></span>
-                <span className="hub-link-text">{limpiarTextoPublico(link.titulo)}</span>
-              </a>
-            ))}
+            {linksPrincipales.map(link => {
+              const href = hrefLinkHub(link, restaurante.slug, queryCarta)
+              return (
+                <a
+                  key={link.id}
+                  className="hub-link"
+                  href={href}
+                  target={targetLinkHub(href)}
+                  rel="noreferrer"
+                >
+                  <span className="hub-link-icon"><HubIcon tipo={link.tipo} titulo={link.titulo} /></span>
+                  <span className="hub-link-text">{limpiarTextoPublico(link.titulo)}</span>
+                </a>
+              )
+            })}
           </div>
 
           {linksSociales.length > 0 && (
