@@ -2714,6 +2714,22 @@ button.itemCard {
   line-height: 1.45;
 }
 
+.visualTemplateSwatches {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+}
+
+.visualTemplateSwatches i {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(23, 20, 22, 0.14);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 250, 243, 0.42);
+}
+
 .templateWorkspace {
   display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);

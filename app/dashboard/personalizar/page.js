@@ -31,6 +31,104 @@ const FONT_MAP = {
   garamond:  { family: '"Cormorant Garamond", Georgia, serif', label: 'Carta vino', sample: 'Vino', googleFont: 'Cormorant+Garamond:wght@400;500;600;700' },
 }
 
+const VISUAL_TEMPLATES = [
+  {
+    id: 'alta-gastronomia',
+    etiqueta: 'Premium',
+    nombre: 'Alta gastronomia',
+    descripcion: 'Sobria, editorial y con mucho aire para cartas de ticket alto.',
+    emocion: 'Cuidado, criterio y confianza.',
+    primario: '#171416',
+    fondo: '#fffaf3',
+    acento: '#bfa984',
+    tipografia: 'garamond',
+    hubEstilo: 'solido',
+    hubOverlay: 0.62,
+    hubMostrarLogo: true,
+    hubMostrarNombre: true,
+    hubMostrarDireccion: true,
+    cartaMostrarEuro: true,
+    cartaCopaDecimales: true,
+    cartaPieTexto: 'Precios en euros e IVA incluido. Consulta al equipo para anadas o disponibilidad.',
+  },
+  {
+    id: 'mediterraneo-claro',
+    etiqueta: 'Cercana',
+    nombre: 'Mediterranea luminosa',
+    descripcion: 'Clara, fresca y amable para restaurantes de producto y sala informal.',
+    emocion: 'Apertura, frescura y facilidad.',
+    primario: '#164c5b',
+    fondo: '#f7fbf8',
+    acento: '#d48745',
+    tipografia: 'sans',
+    hubEstilo: 'nubes',
+    hubOverlay: 0.46,
+    hubMostrarLogo: true,
+    hubMostrarNombre: true,
+    hubMostrarDireccion: true,
+    cartaMostrarEuro: true,
+    cartaCopaDecimales: false,
+    cartaPieTexto: 'Precios en euros e IVA incluido. La disponibilidad puede cambiar durante el servicio.',
+  },
+  {
+    id: 'bodega-clasica',
+    etiqueta: 'Tradicion',
+    nombre: 'Bodega clasica',
+    descripcion: 'Calida y reconocible para restaurantes con relato de vino y seleccion amplia.',
+    emocion: 'Raiz, oficio y bodega viva.',
+    primario: '#4a1830',
+    fondo: '#fff8ec',
+    acento: '#c9a95d',
+    tipografia: 'serif',
+    hubEstilo: 'nubes',
+    hubOverlay: 0.56,
+    hubMostrarLogo: true,
+    hubMostrarNombre: true,
+    hubMostrarDireccion: true,
+    cartaMostrarEuro: true,
+    cartaCopaDecimales: true,
+    cartaPieTexto: 'Precios en euros e IVA incluido. Pregunta por recomendaciones fuera de carta.',
+  },
+  {
+    id: 'bistro-urbano',
+    etiqueta: 'Sala',
+    nombre: 'Bistro urbano',
+    descripcion: 'Directa, compacta y con presencia para cartas de mucha rotacion.',
+    emocion: 'Ritmo, decision y claridad.',
+    primario: '#1f2933',
+    fondo: '#faf7f0',
+    acento: '#c4603a',
+    tipografia: 'condensed',
+    hubEstilo: 'solido',
+    hubOverlay: 0.58,
+    hubMostrarLogo: true,
+    hubMostrarNombre: true,
+    hubMostrarDireccion: false,
+    cartaMostrarEuro: true,
+    cartaCopaDecimales: false,
+    cartaPieTexto: 'Precios en euros e IVA incluido. El equipo puede ayudarte a elegir por copa o botella.',
+  },
+  {
+    id: 'minimal-premium',
+    etiqueta: 'Minimal',
+    nombre: 'Minimal premium',
+    descripcion: 'Blanca, precisa y muy legible cuando la marca ya tiene fuerza propia.',
+    emocion: 'Silencio, orden y seguridad.',
+    primario: '#101010',
+    fondo: '#ffffff',
+    acento: '#6f8a70',
+    tipografia: 'display',
+    hubEstilo: 'nubes',
+    hubOverlay: 0.5,
+    hubMostrarLogo: true,
+    hubMostrarNombre: false,
+    hubMostrarDireccion: true,
+    cartaMostrarEuro: true,
+    cartaCopaDecimales: true,
+    cartaPieTexto: 'Precios en euros e IVA incluido. Carta sujeta a disponibilidad de bodega.',
+  },
+]
+
 function hexToRgb(hex = '') {
   const clean = hex.replace('#', '').trim()
   if (!/^[0-9a-f]{6}$/i.test(clean)) return null
@@ -148,6 +246,33 @@ export default function Personalizar() {
     setColorFondo(p.fondo)
     setColorAcento(p.acento)
     setTipografia(p.tipografia)
+  }
+
+  function aplicarPlantillaVisual(template) {
+    aplicarPaleta(template)
+    setHubEstilo(template.hubEstilo)
+    setHubOverlay(template.hubOverlay)
+    setHubMostrarLogo(template.hubMostrarLogo)
+    setHubMostrarNombre(template.hubMostrarNombre)
+    setHubMostrarDireccion(template.hubMostrarDireccion)
+    setCartaMostrarEuro(template.cartaMostrarEuro)
+    setCartaCopaDecimales(template.cartaCopaDecimales)
+    setCartaPieTexto(template.cartaPieTexto)
+  }
+
+  function plantillaVisualActiva(template) {
+    return colorPrimario === template.primario &&
+      colorFondo === template.fondo &&
+      colorAcento === template.acento &&
+      tipografia === template.tipografia &&
+      hubEstilo === template.hubEstilo &&
+      Math.abs(Number(hubOverlay) - template.hubOverlay) < 0.01 &&
+      hubMostrarLogo === template.hubMostrarLogo &&
+      hubMostrarNombre === template.hubMostrarNombre &&
+      hubMostrarDireccion === template.hubMostrarDireccion &&
+      cartaMostrarEuro === template.cartaMostrarEuro &&
+      cartaCopaDecimales === template.cartaCopaDecimales &&
+      cartaPieTexto === template.cartaPieTexto
   }
 
   function nombreArchivoStorage(tipo, file) {
@@ -500,6 +625,45 @@ export default function Personalizar() {
               {item.label}: {item.text}
             </span>
           ))}
+        </div>
+      </section>
+
+      <section className={styles.panel}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2 className={styles.panelTitle}>Plantillas visuales</h2>
+            <p className={styles.panelSub}>Aplica un paquete completo de carta, hub y formato de precios. Despues puedes ajustar cualquier detalle.</p>
+          </div>
+          <span className={styles.badge}>Carta + hub</span>
+        </div>
+        <div className={styles.panelBody}>
+          <div className={styles.templateGrid}>
+            {VISUAL_TEMPLATES.map(template => {
+              const activa = plantillaVisualActiva(template)
+              return (
+                <button
+                  key={template.id}
+                  type="button"
+                  className={activa ? styles.templateCardActive : styles.templateCard}
+                  onClick={() => aplicarPlantillaVisual(template)}
+                  aria-pressed={activa}
+                >
+                  <span>{template.etiqueta}</span>
+                  <strong>{template.nombre}</strong>
+                  <small>{template.descripcion}</small>
+                  <div className={styles.visualTemplateSwatches} aria-hidden="true">
+                    <i style={{ background: template.primario }} />
+                    <i style={{ background: template.fondo }} />
+                    <i style={{ background: template.acento }} />
+                  </div>
+                  <small>{template.emocion}</small>
+                </button>
+              )
+            })}
+          </div>
+          <p className={styles.tiny} style={{ margin: '12px 0 0' }}>
+            La plantilla queda aplicada en vista previa. Guarda cambios para llevarla a carta y hub publicos.
+          </p>
         </div>
       </section>
 
