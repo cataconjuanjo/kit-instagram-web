@@ -2032,6 +2032,164 @@ button.itemCard {
   gap: 10px;
 }
 
+.exportPreviewShell {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #dfddd6;
+  border-radius: 8px;
+  background: #f2eee6;
+  padding: 16px;
+}
+
+.exportDocument {
+  width: min(100%, 820px);
+  min-width: 620px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  border: 1px solid #e1d7c7;
+  border-radius: 8px;
+  background: #fffaf3;
+  color: #171416;
+  padding: 36px 42px 28px;
+}
+
+.exportDocumentHeader {
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid #dfddd6;
+  padding-bottom: 18px;
+}
+
+.exportDocumentHeader p,
+.exportDocumentHeader span {
+  margin: 0;
+  color: #74223d;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.exportDocumentHeader h2 {
+  margin: 0;
+  color: #171416;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 38px;
+  font-weight: 450;
+  letter-spacing: 0;
+  line-height: 1.02;
+  overflow-wrap: anywhere;
+}
+
+.exportDocumentBody {
+  display: grid;
+  gap: 22px;
+  padding: 24px 0;
+}
+
+.exportSection {
+  break-inside: avoid;
+}
+
+.exportSection h3 {
+  margin: 0 0 10px;
+  color: #74223d;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.exportWineList {
+  display: grid;
+  gap: 8px;
+}
+
+.exportWineRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  border-bottom: 1px solid rgba(23, 20, 22, 0.08);
+  padding-bottom: 8px;
+}
+
+.exportWineRow strong {
+  display: block;
+  color: #171416;
+  font-size: 14px;
+  font-weight: 820;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.exportWineRow small,
+.exportWineRow em {
+  display: block;
+  margin-top: 3px;
+  color: #756c63;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.exportWineRow em {
+  color: #8d6938;
+}
+
+.exportWineRow span {
+  color: #171416;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.35;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.exportDocumentFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid #dfddd6;
+  padding-top: 14px;
+  color: #847b72;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.exportEmpty {
+  margin: 0;
+  color: #706a64;
+  font-size: 13px;
+}
+
+.exportDocument_clasica {
+  border-color: #c8b991;
+  background: #fffdf8;
+}
+
+.exportDocument_clasica .exportDocumentHeader {
+  text-align: center;
+}
+
+.exportDocument_minimalista {
+  border-color: #e3e3df;
+  background: #ffffff;
+}
+
+.exportDocument_minimalista .exportDocumentHeader h2 {
+  font-family: system-ui, sans-serif;
+  font-size: 30px;
+  font-weight: 760;
+}
+
+.exportDocumentInternal {
+  background: #fff8ea;
+}
+
 .quickActionBar {
   display: flex;
   flex-wrap: wrap;
@@ -4373,6 +4531,29 @@ button.itemCard {
 
   .deliveryMaterial {
     width: 100%;
+  }
+
+  .exportPreviewShell {
+    padding: 10px;
+  }
+
+  .exportDocument {
+    min-width: 0;
+    padding: 24px 20px 20px;
+  }
+
+  .exportDocumentHeader h2 {
+    font-size: 28px;
+  }
+
+  .exportWineRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .exportWineRow span {
+    text-align: left;
+    white-space: normal;
   }
 
   .deliveryMaterial_tarjeta {

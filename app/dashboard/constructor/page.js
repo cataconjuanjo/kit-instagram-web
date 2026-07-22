@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
@@ -9,6 +9,7 @@ import {
   SELECT_CLIENT_VINO_DASHBOARD,
 } from '../../lib/clientSupabaseSelects'
 import { esPerfilBodega } from '../../lib/plans'
+import { downloadElementAsPdf, downloadElementAsPng } from '../../lib/visualExportClient'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
@@ -81,7 +82,9 @@ export default function ConstructorCarta() {
   const [plantilla, setPlantilla] = useState('gastronomica')
   const [modoSalida, setModoSalida] = useState('cliente')
   const [mensaje, setMensaje] = useState('')
+  const [exportando, setExportando] = useState('')
   const [loading, setLoading] = useState(true)
+  const exportRef = useRef(null)
 
   useEffect(() => {
     async function cargar() {
@@ -217,6 +220,41 @@ export default function ConstructorCarta() {
     URL.revokeObjectURL(url)
   }
 
+  function nombreArchivoBase() {
+    const tipo = modoSalida === 'interna' ? 'borrador-interno-bodega' : 'carta-vinos'
+    return `${tipo}-${restaurante?.slug || 'sumiller'}`
+  }
+
+  async function descargarImagen() {
+    if (!exportRef.current || exportando) return
+    setExportando('png')
+    setMensaje('')
+    try {
+      await downloadElementAsPng(exportRef.current, nombreArchivoBase(), { backgroundColor: '#fffaf3' })
+      setMensaje('Imagen exportada')
+      setTimeout(() => setMensaje(''), 1800)
+    } catch {
+      setMensaje('No se pudo exportar la imagen.')
+    } finally {
+      setExportando('')
+    }
+  }
+
+  async function descargarPdf() {
+    if (!exportRef.current || exportando) return
+    setExportando('pdf')
+    setMensaje('')
+    try {
+      await downloadElementAsPdf(exportRef.current, nombreArchivoBase(), { backgroundColor: '#fffaf3' })
+      setMensaje('PDF exportado')
+      setTimeout(() => setMensaje(''), 1800)
+    } catch {
+      setMensaje('No se pudo exportar el PDF.')
+    } finally {
+      setExportando('')
+    }
+  }
+
   return (
     <FeatureGate restaurante={restaurante} feature="bodega" title="Constructor no incluido">
       <ModuleShell
@@ -291,7 +329,70 @@ export default function ConstructorCarta() {
               <div className={styles.actionRow} style={{ marginTop: 12 }}>
                 <button className={styles.primary} type="button" onClick={copiarSalida}>Copiar</button>
                 <button className={styles.secondary} type="button" onClick={descargarTxt}>Descargar TXT</button>
+                <button className={styles.secondary} type="button" onClick={descargarImagen} disabled={Boolean(exportando)}>PNG</button>
+                <button className={styles.secondary} type="button" onClick={descargarPdf} disabled={Boolean(exportando)}>PDF</button>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.panel} style={{ marginTop: 16 }}>
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>Vista exportable</h2>
+              <p className={styles.panelSub}>Previsualiza una version limpia para enviar, imprimir o seguir maquetando fuera de Carta Viva.</p>
+            </div>
+            <div className={styles.actionRow}>
+              <button className={styles.secondary} type="button" onClick={descargarImagen} disabled={Boolean(exportando)}>{exportando === 'png' ? 'Exportando...' : 'Descargar PNG'}</button>
+              <button className={styles.primary} type="button" onClick={descargarPdf} disabled={Boolean(exportando)}>{exportando === 'pdf' ? 'Exportando...' : 'Descargar PDF'}</button>
+            </div>
+          </div>
+          <div className={styles.panelBody}>
+            <div className={styles.exportPreviewShell}>
+              <article
+                ref={exportRef}
+                className={`${styles.exportDocument} ${styles[`exportDocument_${plantilla}`] || ''} ${modoSalida === 'interna' ? styles.exportDocumentInternal : ''}`}
+              >
+                <header className={styles.exportDocumentHeader}>
+                  <p>{modoSalida === 'interna' ? 'Borrador interno de bodega' : 'Carta de vinos'}</p>
+                  <h2>{restaurante?.nombre || 'Carta Viva'}</h2>
+                  <span>{plantilla === 'minimalista' ? 'Formato minimalista' : plantilla === 'clasica' ? 'Formato clasico' : 'Formato gastronomico'}</span>
+                </header>
+
+                <div className={styles.exportDocumentBody}>
+                  {agrupado.length ? agrupado.map(grupo => (
+                    <section key={grupo.seccion} className={styles.exportSection}>
+                      <h3>{grupo.seccion}</h3>
+                      <div className={styles.exportWineList}>
+                        {grupo.vinos.map(vino => {
+                          const precio = [vino.precio_copa ? `Copa ${eur(vino.precio_copa)}` : '', vino.precio_botella ? `Botella ${eur(vino.precio_botella)}` : ''].filter(Boolean).join(' / ')
+                          const detalle = [vino.bodega, vino.region, vino.uva, vino.anada].filter(Boolean).join(' - ')
+                          const control = modoSalida === 'interna'
+                            ? [vino.proveedor && `Proveedor ${vino.proveedor}`, vino.coste_compra && `Coste ${eur(vino.coste_compra)}`, vino.stock !== '' && vino.stock != null && `Stock ${vino.stock}`, vino.stock_minimo && `Min ${vino.stock_minimo}`].filter(Boolean).join(' | ')
+                            : ''
+                          return (
+                            <article key={vino.tempId} className={styles.exportWineRow}>
+                              <div>
+                                <strong>{vino.nombre}</strong>
+                                {detalle && <small>{detalle}</small>}
+                                {control && <em>{control}</em>}
+                              </div>
+                              {precio && <span>{precio}</span>}
+                            </article>
+                          )
+                        })}
+                      </div>
+                    </section>
+                  )) : (
+                    <p className={styles.exportEmpty}>Anade referencias al borrador para generar una carta exportable.</p>
+                  )}
+                </div>
+
+                <footer className={styles.exportDocumentFooter}>
+                  <span>{draft.length} referencias</span>
+                  <span>{new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date())}</span>
+                </footer>
+              </article>
             </div>
           </div>
         </section>
