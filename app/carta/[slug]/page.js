@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { normalizarTexto as normalizarTextoBase } from '../../lib/textNormalize'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
+import { enviarAprobacionPreview } from '../../lib/previewApprovalClient'
 import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { enviarEstadisticas } from '../../lib/statsClient'
@@ -380,19 +381,14 @@ export default function CartaPublica() {
     if (!restaurante?.id || !tokenPrueba || previewAprobacion.loading || previewAprobacion.aprobada) return
     setPreviewAprobacion({ aprobada: false, loading: true, error: '' })
     try {
-      const res = await fetch('/api/publicacion/preview-approval', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          restaurante_id: restaurante.id,
-          preview_token: tokenPrueba,
-          destino,
-          reviewer_name: approvalData.reviewer_name,
-          reviewer_email: approvalData.reviewer_email,
-          note: approvalData.note,
-        }),
+      const { res, data } = await enviarAprobacionPreview({
+        restauranteId: restaurante.id,
+        previewToken: tokenPrueba,
+        destino,
+        reviewerName: approvalData.reviewer_name,
+        reviewerEmail: approvalData.reviewer_email,
+        note: approvalData.note,
       })
-      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'No se pudo registrar la aprobación.')
       setPreviewAprobacion({ aprobada: true, loading: false, error: '' })
     } catch (error) {

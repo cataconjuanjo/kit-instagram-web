@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { enviarAprobacionPreview } from '../../lib/previewApprovalClient'
 import { cargarRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { enviarEstadisticas } from '../../lib/statsClient'
 import { normalizarTexto } from '../../lib/textNormalize'
@@ -149,19 +150,14 @@ export default function RestauranteHub({ params }) {
     if (!restaurante?.id || !pruebaToken || previewAprobacion.loading || previewAprobacion.aprobada) return
     setPreviewAprobacion({ aprobada: false, loading: true, error: '' })
     try {
-      const res = await fetch('/api/publicacion/preview-approval', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          restaurante_id: restaurante.id,
-          preview_token: pruebaToken,
-          destino: 'hub',
-          reviewer_name: previewApprovalForm.reviewer_name,
-          reviewer_email: previewApprovalForm.reviewer_email,
-          note: previewApprovalForm.note,
-        }),
+      const { res, data } = await enviarAprobacionPreview({
+        restauranteId: restaurante.id,
+        previewToken: pruebaToken,
+        destino: 'hub',
+        reviewerName: previewApprovalForm.reviewer_name,
+        reviewerEmail: previewApprovalForm.reviewer_email,
+        note: previewApprovalForm.note,
       })
-      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'No se pudo registrar la aprobación.')
       setPreviewAprobacion({ aprobada: true, loading: false, error: '' })
       setPreviewApprovalOpen(false)
