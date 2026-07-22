@@ -20,6 +20,7 @@ import { isLargeFormatWine } from '../../lib/wineFormat'
 import { cargarDatosCamarero, cargarHistorialCamarero, solicitarSesionCamarero } from '../../lib/camareroClient'
 import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
+import { enviarEstadisticas } from '../../lib/statsClient'
 import { alternarVinoComparador } from '../../lib/wineComparator'
 import { WINE_TYPE_COLORS, etiquetasTipoVino, ordenTiposVino } from '../../lib/winePresentation'
 import { cargarPerfilesVino } from '../../lib/wineProfileClient'
@@ -309,13 +310,9 @@ export default function Camarero() {
       cantidad: cantidadNormalizada,
     })
 
-    const res = await fetch('/api/estadisticas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sala_token: salaToken,
-        eventos: [{ restaurante_id: restaurante.id, tipo: 'venta', detalle }],
-      }),
+    const res = await enviarEstadisticas({
+      sala_token: salaToken,
+      eventos: [{ restaurante_id: restaurante.id, tipo: 'venta', detalle }],
     })
 
     if (!res.ok) {
@@ -1955,11 +1952,7 @@ export default function Camarero() {
       }),
     }))
 
-    fetch('/api/estadisticas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sala_token: salaToken, eventos }),
-    })
+    enviarEstadisticas({ sala_token: salaToken, eventos })
   }, [autenticado, vistaServicio, modoRecomendacionVenta, restaurante?.id, hayConsultaVentaActual, consultaVentaActual, recomendacionesVenta, objetivoVenta, perfilClienteVenta, rotacionVenta, salaToken])
 
   useEffect(() => {

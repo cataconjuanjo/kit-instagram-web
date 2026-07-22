@@ -7,6 +7,7 @@ import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
 import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
+import { enviarEstadisticas } from '../../lib/statsClient'
 import { alternarVinoComparador } from '../../lib/wineComparator'
 import { WINE_TYPE_COLORS, esPerfilGoiko } from '../../lib/winePresentation'
 import { cargarPerfilesVino } from '../../lib/wineProfileClient'
@@ -499,18 +500,14 @@ export default function CartaPublica() {
         setPlatos(platosData || [])
         const selData = data.seleccion
         setSeleccion(selData || [])
-        fetch('/api/estadisticas', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            restaurante_id: rest.id,
-            tipo: 'escaneo',
-            detalle: {
-              destino: 'carta',
-              experiencia_id: rest.experiencia_publica?.id || null,
-            },
-            prueba_token: tokenPrueba,
-          }),
+        enviarEstadisticas({
+          restaurante_id: rest.id,
+          tipo: 'escaneo',
+          detalle: {
+            destino: 'carta',
+            experiencia_id: rest.experiencia_publica?.id || null,
+          },
+          prueba_token: tokenPrueba,
         }).catch(error => reportarErrorCliente('carta_publica_estadisticas', error))
       } catch (error) {
         if (!cancelado) {
