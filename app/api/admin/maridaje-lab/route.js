@@ -6,6 +6,11 @@ import { analizarConGrafo } from '../../../lib/chartierGraph'
 import { analizarFlavor, consultaEnriquecidaFlavor } from '../../../lib/flavorKnowledge'
 
 const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+const SELECT_VINO_MARIDAJE_LAB = [
+  'id', 'nombre', 'bodega', 'tipo', 'region', 'uva', 'anada',
+  'precio_botella', 'precio_copa', 'coste_compra', 'stock',
+  'stock_minimo', 'notas_cata', 'activo',
+].join(', ')
 
 function compactarVino(vino = {}) {
   return {
@@ -221,7 +226,7 @@ export async function POST(request) {
       platoResult,
     ] = await Promise.all([
       supabaseAdmin.from('restaurantes').select('id, nombre').eq('id', restaurante_id).single(),
-      supabaseAdmin.from('vinos').select('*').eq('restaurante_id', restaurante_id).eq('activo', true),
+      supabaseAdmin.from('vinos').select(SELECT_VINO_MARIDAJE_LAB).eq('restaurante_id', restaurante_id).eq('activo', true),
       plato_id
         ? supabaseAdmin
           .from('platos')
