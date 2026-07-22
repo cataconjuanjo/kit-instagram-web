@@ -767,6 +767,129 @@
   font-weight: 900;
 }
 
+.managerInsightsPanel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #d8c898;
+  border-radius: 8px;
+  background: #fffaf3;
+  padding: 16px;
+}
+
+.managerInsightsHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.managerInsightsHead h2 {
+  margin: 0;
+  color: #171416;
+  font-size: 20px;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.managerInsightsHead p:not(.eyebrow) {
+  max-width: 720px;
+  margin: 6px 0 0;
+  color: #625a53;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.managerInsightsHead a {
+  min-height: 38px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #171416;
+  color: #fffaf3;
+  padding: 0 13px;
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.managerInsightGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.managerInsightCard {
+  min-width: 0;
+  min-height: 184px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border: 1px solid #e2d8c8;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #171416;
+  padding: 13px;
+  text-decoration: none;
+}
+
+.managerInsightCard span {
+  width: fit-content;
+  border-radius: 999px;
+  background: rgba(116, 34, 61, 0.08);
+  color: #74223d;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.managerInsightCard strong {
+  color: #171416;
+  font-size: 15px;
+  font-weight: 950;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+}
+
+.managerInsightCard p {
+  margin: 0;
+  color: #625a53;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.managerInsightMeta {
+  align-self: end;
+  display: grid;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.managerInsightMeta small,
+.managerInsightMeta em {
+  display: block;
+  color: #625a53;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.managerInsightMeta small {
+  color: #9b7430;
+  font-weight: 900;
+}
+
+.managerInsightMeta em {
+  font-style: normal;
+}
+
 .dailyRadarPanel {
   display: grid;
   gap: 12px;
@@ -2656,6 +2779,10 @@
     text-align: left;
   }
 
+  .managerInsightGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .todayActionList {
     grid-template-columns: 1fr;
   }
@@ -2822,6 +2949,27 @@
 
   .priorityPanel h1 {
     font-size: 22px;
+  }
+
+  .managerInsightsPanel {
+    padding: 14px;
+  }
+
+  .managerInsightsHead {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .managerInsightsHead a {
+    width: 100%;
+  }
+
+  .managerInsightGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .managerInsightCard {
+    min-height: auto;
   }
 
   .dailyRadarPanel {

@@ -15,6 +15,7 @@ import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceD
 import { esPerfilBodega, puedeUsar } from '../lib/plans'
 import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationReadiness'
 import { experienciaEntregaDesdePlan, experienciaLabel, experienciaTemplateExiste } from '../lib/experienceTemplates'
+import { construirInsightsGerencia } from '../lib/managerInsights'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -912,6 +913,35 @@ export default function DashboardHome() {
   ).length
   const vinosPorCopa = vinosActivos.filter(vino => decimal(vino.precio_copa) > 0).length
   const referenciasCriticas = bajoMinimo.length + vinosSinStock.length
+  const insightsGerencia = construirInsightsGerencia({
+    perfilBodega,
+    calidadGlobal,
+    stats,
+    alertasSala,
+    turnoCerrado,
+    etiquetaServicio,
+    cartaPublicable,
+    experienciaElegida,
+    previewLista,
+    cartaPublicada,
+    qrPreparado,
+    contenidoPublicacion,
+    estadoLanzamiento,
+    kpisSemanales,
+    decisionesSemanales,
+    accionesRadar: accionesRadarAbiertas,
+    counts: {
+      vinosSinPrecio: vinosSinPrecio.length,
+      vinosSinPerfil: vinosSinPerfil.length,
+      platosSinDescripcion: platosSinDescripcion.length,
+      bajoMinimo: bajoMinimo.length,
+      sinCosteCompra: sinCosteCompra.length,
+      sinProveedor: sinProveedor.length,
+      referenciasCriticas,
+      propuestasActivas: propuestasActivas.length,
+    },
+  })
+  const insightPrincipalGerencia = insightsGerencia[0]
 
   return (
     <main>
@@ -1059,6 +1089,32 @@ export default function DashboardHome() {
                 <Link href={accionPrincipal.href}>Abrir tarea</Link>
               </div>
             </section>
+
+            {insightsGerencia.length > 0 && (
+              <section className={styles.managerInsightsPanel} aria-labelledby="manager-insights-title">
+                <div className={styles.managerInsightsHead}>
+                  <div>
+                    <p className={styles.eyebrow}>Lectura gerente</p>
+                    <h2 id="manager-insights-title">Decisiones con impacto</h2>
+                    <p>Prioriza lo que afecta a venta, margen, stock o lanzamiento usando las senales actuales de Carta Viva.</p>
+                  </div>
+                  <Link href={insightPrincipalGerencia.href}>Abrir decision clave</Link>
+                </div>
+                <div className={styles.managerInsightGrid}>
+                  {insightsGerencia.map((insight, index) => (
+                    <Link href={insight.href} className={styles.managerInsightCard} key={insight.id}>
+                      <span>{index + 1} - {insight.area} - {insight.prioridad}</span>
+                      <strong>{insight.titulo}</strong>
+                      <p>{insight.lectura}</p>
+                      <div className={styles.managerInsightMeta}>
+                        <small>{insight.impacto}</small>
+                        <em>{insight.accion}</em>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {perfilBodega && (
               <section className={styles.cellarCommandPanel}>
