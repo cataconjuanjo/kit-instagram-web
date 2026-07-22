@@ -14,6 +14,12 @@ function numero(valor) {
   return Number(valor) || 0
 }
 
+const SELECT_AUTOMATION_RUN_RECENT = [
+  'id', 'job_key', 'job_type', 'status', 'started_at', 'duration_ms',
+  'processed_count', 'success_count', 'error_count', 'skipped_count',
+  'error_message',
+].join(', ')
+
 export async function iniciarAutomationRun({
   supabase,
   jobKey,
@@ -92,7 +98,7 @@ export async function leerAutomationRunsRecientes({ supabase, dias = 7, limit = 
   const desde = new Date(Date.now() - Math.max(1, Number(dias) || 7) * 24 * 60 * 60 * 1000).toISOString()
   let query = supabase
     .from('automation_run_logs')
-    .select('*')
+    .select(SELECT_AUTOMATION_RUN_RECENT)
     .gte('started_at', desde)
     .order('started_at', { ascending: false })
     .limit(limit)

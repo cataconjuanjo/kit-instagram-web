@@ -4,6 +4,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+const SELECT_HUB_LINK = 'id, restaurante_id, titulo, url, tipo, orden, visible, created_at'
 
 async function validarAdmin(req) {
   const auth = req.headers.get('authorization') || ''
@@ -38,7 +39,7 @@ export async function GET(req) {
 
     const { data, error } = await adminClient()
       .from('restaurante_links')
-      .select('*')
+      .select(SELECT_HUB_LINK)
       .eq('restaurante_id', restauranteId)
       .order('orden')
 
@@ -72,7 +73,7 @@ export async function POST(req) {
     const { data, error } = await adminClient()
       .from('restaurante_links')
       .insert([payload])
-      .select('*')
+      .select(SELECT_HUB_LINK)
       .single()
 
     if (error) throw error
@@ -101,7 +102,7 @@ export async function PATCH(req) {
         visible: body.visible !== false
       })
       .eq('id', body.id)
-      .select('*')
+      .select(SELECT_HUB_LINK)
       .single()
 
     if (error) throw error
