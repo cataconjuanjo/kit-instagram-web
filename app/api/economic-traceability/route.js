@@ -10,6 +10,34 @@ function texto(valor, limite = 240) {
   return String(valor || '').trim().slice(0, limite)
 }
 
+const SELECT_ECONOMIC_SETTINGS = [
+  'id', 'restaurante_id', 'formula_version', 'iva_venta_pct', 'pvp_incluye_iva',
+  'coste_incluye_iva', 'formato_botella_ml', 'copas_por_botella', 'merma_copa_pct',
+  'margen_objetivo_botella_pct', 'margen_objetivo_copa_pct', 'precio_minimo_copa',
+  'stock_seguridad_default', 'created_at', 'updated_at',
+].join(', ')
+const SELECT_RESTAURANTE_TRACE = 'id, nombre, slug, email, plan, subscription_status, actividad_real_desde'
+const SELECT_VINO_TRACE = 'id, nombre, bodega, precio_botella, precio_copa, coste_compra, stock, stock_minimo, activo'
+const SELECT_EXPOSURE_TRACE = [
+  'id', 'restaurante_id', 'vino_id', 'vino_nombre', 'detalle', 'precio_botella_snapshot',
+  'coste_snapshot', 'stock_snapshot', 'servicio_fecha', 'formula_version', 'created_at',
+].join(', ')
+const SELECT_OUTCOME_TRACE = [
+  'id', 'restaurante_id', 'vino_id', 'vino_nombre', 'detalle', 'cantidad', 'importe_estimado',
+  'formato_venta', 'fuente', 'estado', 'confidence_pct', 'servicio_fecha',
+  'formula_version', 'created_at',
+].join(', ')
+const SELECT_POS_LINE_TRACE = 'id, restaurante_id, vino_id, fecha, created_at'
+const SELECT_PROFIT_SCENARIO_TRACE = [
+  'id', 'restaurante_id', 'nombre', 'formula_version', 'impacto_margen', 'impacto_capital',
+  'estado', 'created_at',
+].join(', ')
+const SELECT_DAILY_RADAR_TRACE = 'id, restaurante_id, fecha_operativa, estado, created_at'
+const SELECT_TRACE_REPORT = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin', 'formula_version',
+  'resumen', 'fuentes', 'advertencias', 'cambios_snapshot', 'metadata', 'created_at',
+].join(', ')
+
 function esTablaNoExiste(error) {
   return error?.code === 'PGRST205' || /Could not find the table|relation .* does not exist/i.test(error?.message || '')
 }
@@ -28,7 +56,7 @@ async function optionalQuery(nombre, query, fallback = []) {
 async function cargarSettings(restauranteId) {
   const { data, error } = await supabaseAdmin
     .from('restaurant_economic_settings')
-    .select('*')
+    .select(SELECT_ECONOMIC_SETTINGS)
     .eq('restaurante_id', restauranteId)
     .maybeSingle()
 
@@ -51,14 +79,14 @@ async function cargarBase(restauranteId) {
   ] = await Promise.all([
     optionalQuery(
       'restaurantes',
-      supabaseAdmin.from('restaurantes').select('*').eq('id', restauranteId).single(),
+      supabaseAdmin.from('restaurantes').select(SELECT_RESTAURANTE_TRACE).eq('id', restauranteId).single(),
       null
     ),
     optionalQuery(
       'vinos',
       supabaseAdmin
         .from('vinos')
-        .select('id, nombre, bodega, precio_botella, precio_copa, coste_compra, stock, stock_minimo, activo')
+        .select(SELECT_VINO_TRACE)
         .eq('restaurante_id', restauranteId),
       []
     ),
@@ -66,7 +94,7 @@ async function cargarBase(restauranteId) {
       'recommendation_exposures',
       supabaseAdmin
         .from('recommendation_exposures')
-        .select('*')
+        .select(SELECT_EXPOSURE_TRACE)
         .eq('restaurante_id', restauranteId)
         .order('created_at', { ascending: false })
         .limit(600),
@@ -76,7 +104,7 @@ async function cargarBase(restauranteId) {
       'recommendation_outcomes',
       supabaseAdmin
         .from('recommendation_outcomes')
-        .select('*')
+        .select(SELECT_OUTCOME_TRACE)
         .eq('restaurante_id', restauranteId)
         .order('created_at', { ascending: false })
         .limit(600),
@@ -86,7 +114,7 @@ async function cargarBase(restauranteId) {
       'pos_sale_lines',
       supabaseAdmin
         .from('pos_sale_lines')
-        .select('*')
+        .select(SELECT_POS_LINE_TRACE)
         .eq('restaurante_id', restauranteId)
         .order('fecha', { ascending: false })
         .limit(600),
@@ -96,7 +124,7 @@ async function cargarBase(restauranteId) {
       'profit_scenarios',
       supabaseAdmin
         .from('profit_scenarios')
-        .select('*, items:profit_scenario_items(*)')
+        .select(SELECT_PROFIT_SCENARIO_TRACE)
         .eq('restaurante_id', restauranteId)
         .order('created_at', { ascending: false })
         .limit(40),
@@ -106,7 +134,7 @@ async function cargarBase(restauranteId) {
       'daily_radar_actions',
       supabaseAdmin
         .from('daily_radar_actions')
-        .select('*')
+        .select(SELECT_DAILY_RADAR_TRACE)
         .eq('restaurante_id', restauranteId)
         .order('created_at', { ascending: false })
         .limit(120),
@@ -116,7 +144,7 @@ async function cargarBase(restauranteId) {
       'economic_trace_reports',
       supabaseAdmin
         .from('economic_trace_reports')
-        .select('*')
+        .select(SELECT_TRACE_REPORT)
         .eq('restaurante_id', restauranteId)
         .order('created_at', { ascending: false })
         .limit(12),
@@ -191,7 +219,7 @@ export async function PATCH(req) {
     const { data, error } = await supabaseAdmin
       .from('restaurant_economic_settings')
       .upsert(settings, { onConflict: 'restaurante_id' })
-      .select('*')
+      .select(SELECT_ECONOMIC_SETTINGS)
       .single()
 
     if (error) {
@@ -240,7 +268,7 @@ export async function POST(req) {
     const { data, error } = await supabaseAdmin
       .from('economic_trace_reports')
       .insert(report)
-      .select('*')
+      .select(SELECT_TRACE_REPORT)
       .single()
 
     if (error) {

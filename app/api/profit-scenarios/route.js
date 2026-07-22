@@ -4,6 +4,17 @@ import { supabaseAdmin } from '../../lib/supabaseAdmin'
 const ESTADOS = new Set(['borrador', 'propuesto', 'aplicado', 'descartado'])
 const CONFIANZAS = new Set(['alta', 'media', 'baja'])
 const FORMULA_VERSION = 'profit-simulator-v1'
+const SELECT_SCENARIO = [
+  'id', 'restaurante_id', 'nombre', 'descripcion', 'formula_version', 'input',
+  'impacto_margen', 'impacto_capital', 'impacto_stock', 'impacto_ticket',
+  'confianza', 'estado', 'created_at', 'updated_at', 'applied_at', 'discarded_at',
+].join(', ')
+const SELECT_SCENARIO_ITEM = [
+  'id', 'scenario_id', 'restaurante_id', 'vino_id', 'tipo', 'titulo', 'detalle',
+  'accion', 'href', 'formula_version', 'input', 'impacto_margen', 'impacto_capital',
+  'impacto_stock', 'impacto_ticket', 'confianza', 'estado', 'created_at', 'updated_at',
+].join(', ')
+const SELECT_SCENARIO_WITH_ITEMS = `${SELECT_SCENARIO}, items:profit_scenario_items(${SELECT_SCENARIO_ITEM})`
 
 function texto(valor, limite = 500) {
   return String(valor || '').trim().slice(0, limite)
@@ -49,7 +60,7 @@ function limpiarItem(item = {}, restauranteId) {
 async function cargarEscenarios(restauranteId) {
   const { data, error } = await supabaseAdmin
     .from('profit_scenarios')
-    .select('*, items:profit_scenario_items(*)')
+    .select(SELECT_SCENARIO_WITH_ITEMS)
     .eq('restaurante_id', restauranteId)
     .order('created_at', { ascending: false })
     .limit(20)
@@ -107,7 +118,7 @@ export async function POST(req) {
     const { data: creado, error } = await supabaseAdmin
       .from('profit_scenarios')
       .insert(escenario)
-      .select('*')
+      .select(SELECT_SCENARIO)
       .single()
     if (error) throw error
 
@@ -153,7 +164,7 @@ export async function PATCH(req) {
       .update(update)
       .eq('id', id)
       .eq('restaurante_id', restauranteId)
-      .select('*')
+      .select(SELECT_SCENARIO)
       .single()
     if (error) throw error
 
