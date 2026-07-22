@@ -17,6 +17,7 @@ import {
 import { isLocalWine } from '../../lib/wineRegion'
 import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import { isLargeFormatWine } from '../../lib/wineFormat'
+import { cargarDatosCamarero, cargarHistorialCamarero, solicitarSesionCamarero } from '../../lib/camareroClient'
 import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { alternarVinoComparador } from '../../lib/wineComparator'
@@ -192,11 +193,7 @@ export default function Camarero() {
     if (accesoAbierto) setIntentandoAccesoAbierto(true)
     setAccessError('')
     try {
-      const res = await fetch('/api/camarero/sesion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ restaurante_id: rest.id, pin: pinIntroducido, demo }),
-      })
+      const { res, data } = await solicitarSesionCamarero({ restauranteId: rest.id, pin: pinIntroducido, demo })
       if (!res.ok) {
         if (!accesoAbierto) {
           setErrorPin(true)
@@ -205,7 +202,6 @@ export default function Camarero() {
         }
         return
       }
-      const data = await res.json()
       setSalaToken(data.sala_token)
       setAutenticado(true)
       setErrorPin(false)
@@ -223,13 +219,7 @@ export default function Camarero() {
   }
 
   async function cargarDatosSala(rest, token, demo = false) {
-    const res = await fetch('/api/camarero/datos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ restaurante_id: rest.id, sala_token: token }),
-    })
-    if (!res.ok) throw new Error(`POST camarero datos ${res.status}`)
-    const data = await res.json()
+    const data = await cargarDatosCamarero({ restauranteId: rest.id, salaToken: token })
     setRestaurante({ ...rest, ...data.restaurante })
     setVinos(data.vinos || [])
     setPlatos(data.platos || [])
@@ -244,18 +234,9 @@ export default function Camarero() {
   async function cargarHistorialSala(restauranteId, token) {
     if (!restauranteId) return
     try {
-      const query = new URLSearchParams({ restaurante_id: restauranteId })
-      const res = await fetch(`/api/estadisticas?${query.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) throw new Error(`GET historial sala ${res.status}`)
-      const data = await res.json()
-      setHistorialVenta((data.ventas || []).map(item => {
-        try { return JSON.parse(item.detalle || '{}') } catch { return null }
-      }).filter(Boolean))
-      setHistorialRecomendaciones((data.recomendaciones || []).map(item => {
-        try { return JSON.parse(item.detalle || '{}') } catch { return null }
-      }).filter(Boolean))
+      const historial = await cargarHistorialCamarero({ restauranteId, salaToken: token })
+      setHistorialVenta(historial.ventas)
+      setHistorialRecomendaciones(historial.recomendaciones)
     } catch (error) {
       reportarErrorCliente('camarero_historial', error)
     }
