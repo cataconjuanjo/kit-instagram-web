@@ -51,17 +51,33 @@ function experienciaEscaneo(detalle = '') {
   return texto(normalizado.experiencia_id || normalizado.experiencia || normalizado.template_id, 60)
 }
 
+function incrementarMapa(mapa, clave) {
+  if (!clave) return
+  mapa[clave] = (mapa[clave] || 0) + 1
+}
+
 function resumenUsoReal(eventos = [], desde = null, actividadIniciada = false) {
   const porDestino = { carta: 0, hub: 0, otro: 0 }
   const porExperiencia = {}
+  const porCampania = {}
+  const porFormato = {}
+  const porMesa = {}
   eventos.forEach(evento => {
-    const destino = destinoEscaneo(evento.detalle)
+    const detalle = detalleEscaneo(evento.detalle)
+    const destino = destinoEscaneo(detalle)
     porDestino[destino] = (porDestino[destino] || 0) + 1
-    const experienciaId = experienciaEscaneo(evento.detalle)
+    const experienciaId = experienciaEscaneo(detalle)
     if (experienciaId) {
       porExperiencia[experienciaId] = (porExperiencia[experienciaId] || 0) + 1
     }
+    incrementarMapa(porCampania, texto(detalle.qr_campaign, 80))
+    incrementarMapa(porFormato, texto(detalle.qr_format, 40))
+    incrementarMapa(porMesa, texto(detalle.qr_table, 40))
   })
+  const top = (mapa, limite = 5) => Object.entries(mapa)
+    .map(([id, total]) => ({ id, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, limite)
   const experiencias = Object.entries(porExperiencia)
     .map(([id, total]) => ({
       id,
@@ -79,7 +95,13 @@ function resumenUsoReal(eventos = [], desde = null, actividadIniciada = false) {
     escaneos_otro: porDestino.otro,
     por_destino: porDestino,
     por_experiencia: porExperiencia,
+    por_campania: porCampania,
+    por_formato: porFormato,
+    por_mesa: porMesa,
     experiencias,
+    campanias: top(porCampania),
+    formatos: top(porFormato),
+    mesas: top(porMesa),
     ultimos_escaneos: eventos.slice(0, 10).map(evento => ({
       id: evento.id,
       detalle: evento.detalle,

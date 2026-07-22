@@ -10,6 +10,7 @@ import {
   targetLinkHub,
 } from '../../lib/publicHub'
 import { cargarRestaurantePublico } from '../../lib/publicRestaurantClient'
+import { leerAtribucionPublica } from '../../lib/publicAttribution'
 import { limpiarTextoPublico } from '../../lib/publicText'
 import { enviarEstadisticas } from '../../lib/statsClient'
 import { normalizarTexto } from '../../lib/textNormalize'
@@ -69,7 +70,7 @@ function SocialIcon({ tipo }) {
   return tipo === 'facebook' ? <FacebookIcon /> : <InstagramIcon />
 }
 
-function registrarEscaneoHub(restauranteId, pruebaToken, experienciaId = '') {
+function registrarEscaneoHub(restauranteId, pruebaToken, experienciaId = '', atribucion = {}) {
   if (!restauranteId) return
   enviarEstadisticas({
     restaurante_id: restauranteId,
@@ -77,6 +78,7 @@ function registrarEscaneoHub(restauranteId, pruebaToken, experienciaId = '') {
     detalle: {
       destino: 'hub',
       experiencia_id: experienciaId || null,
+      ...atribucion,
     },
     prueba_token: pruebaToken,
   }).catch(() => {})
@@ -97,6 +99,11 @@ export default function RestauranteHub({ params }) {
   const [pruebaToken] = useState(() => (
     typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('prueba') || '' : ''
   ))
+  const [atribucionPublica] = useState(() => (
+    typeof window !== 'undefined'
+      ? leerAtribucionPublica(new URLSearchParams(window.location.search))
+      : {}
+  ))
   const escaneoRegistradoRef = useRef('')
 
   useEffect(() => {
@@ -114,10 +121,10 @@ export default function RestauranteHub({ params }) {
         if (rest?.hub_activo && rest?.hub_disponible) {
           setRestaurante(rest)
           setLinks(data.links || [])
-          const claveEscaneo = `${rest.id}:${pruebaToken || 'publico'}`
+          const claveEscaneo = `${rest.id}:${pruebaToken || 'publico'}:${JSON.stringify(atribucionPublica)}`
           if (escaneoRegistradoRef.current !== claveEscaneo) {
             escaneoRegistradoRef.current = claveEscaneo
-            registrarEscaneoHub(rest.id, pruebaToken, rest.experiencia_publica?.id)
+            registrarEscaneoHub(rest.id, pruebaToken, rest.experiencia_publica?.id, atribucionPublica)
           }
         } else {
           setRestaurante(null)
@@ -132,7 +139,7 @@ export default function RestauranteHub({ params }) {
       }
     }
     cargar()
-  }, [params, pruebaToken])
+  }, [params, pruebaToken, atribucionPublica])
 
   function updatePreviewApprovalField(field, value) {
     setPreviewApprovalForm(prev => ({ ...prev, [field]: value }))

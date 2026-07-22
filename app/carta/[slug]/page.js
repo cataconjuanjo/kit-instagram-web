@@ -8,6 +8,7 @@ import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
 import { enviarAprobacionPreview } from '../../lib/previewApprovalClient'
 import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
+import { leerAtribucionPublica } from '../../lib/publicAttribution'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { estadoCartaPublica } from '../../lib/publicRouteState'
 import { enviarEstadisticas } from '../../lib/statsClient'
@@ -383,6 +384,11 @@ export default function CartaPublica() {
   const tokenPrueba = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('prueba') || ''
     : ''
+  const [atribucionPublica] = useState(() => (
+    typeof window !== 'undefined'
+      ? leerAtribucionPublica(new URLSearchParams(window.location.search))
+      : {}
+  ))
 
   const reintentarCarga = () => {
     setLoadRetryKey(key => key + 1)
@@ -513,6 +519,7 @@ export default function CartaPublica() {
           detalle: {
             destino: 'carta',
             experiencia_id: rest.experiencia_publica?.id || null,
+            ...atribucionPublica,
           },
           prueba_token: tokenPrueba,
         }).catch(error => reportarErrorCliente('carta_publica_estadisticas', error))
@@ -530,7 +537,7 @@ export default function CartaPublica() {
     return () => {
       cancelado = true
     }
-  }, [slug, tokenPrueba, loadRetryKey])
+  }, [slug, tokenPrueba, loadRetryKey, atribucionPublica])
 
   useEffect(() => {
     if (!loading && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('print') === '1') {

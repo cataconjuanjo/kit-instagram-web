@@ -6,6 +6,7 @@ import QRCode from 'qrcode'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
+import { aplicarAtribucionUrl } from '../../lib/publicAttribution'
 import { esPerfilBodega } from '../../lib/plans'
 import { CONTENIDO_INICIAL, puedePublicarCarta, resumirContenidoCarta } from '../../lib/publicationReadiness'
 import { EXPERIENCIA_ENTREGA_INICIAL, experienciaEntregaDesdePlan, experienciaTemplateExiste } from '../../lib/experienceTemplates'
@@ -158,12 +159,22 @@ function detalleEventoEntrega(evento = {}) {
   const destinoTexto = evento.destino === 'hub' ? 'hub' : 'carta'
   const responsable = evento.actor_email || evento.metadata?.reviewer_email || 'sistema'
   const experiencia = evento.metadata?.experiencia_label || evento.metadata?.experiencia
+  const campania = evento.metadata?.qr_campaign ? `campana ${evento.metadata.qr_campaign}` : null
+  const mesa = evento.metadata?.qr_table ? `zona ${evento.metadata.qr_table}` : null
   return [
     formatoFechaHistorial(evento.created_at),
     destinoTexto,
     responsable,
     experiencia,
+    campania,
+    mesa,
   ].filter(Boolean).join(' - ')
+}
+
+function listaAtribucion(items = []) {
+  return items.length
+    ? items.map(item => `${item.id}: ${item.total}`).join(' - ')
+    : ''
 }
 
 export default function QRPage() {
@@ -194,6 +205,8 @@ export default function QRPage() {
   const [generandoPreview, setGenerandoPreview] = useState(false)
   const [mensajePreview, setMensajePreview] = useState('')
   const [formatoEntrega, setFormatoEntrega] = useState('sobremesa')
+  const [qrCampania, setQrCampania] = useState('qr-mesa')
+  const [qrMesa, setQrMesa] = useState('')
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [exportandoMaterial, setExportandoMaterial] = useState(false)
   const [mensajeMaterial, setMensajeMaterial] = useState('')
@@ -588,6 +601,9 @@ export default function QRPage() {
     ? Number(usoReal.por_experiencia?.[experienciaActiva.id] || 0)
     : 0
   const experienciasUsoReal = Array.isArray(usoReal.experiencias) ? usoReal.experiencias.slice(0, 3) : []
+  const campaniasUsoReal = Array.isArray(usoReal.campanias) ? usoReal.campanias.slice(0, 3) : []
+  const formatosUsoReal = Array.isArray(usoReal.formatos) ? usoReal.formatos.slice(0, 3) : []
+  const mesasUsoReal = Array.isArray(usoReal.mesas) ? usoReal.mesas.slice(0, 3) : []
   const lecturaUsoReal = !usoReal.actividad_iniciada
     ? 'La actividad real no está iniciada. Cuando actives el servicio diario, los escaneos de clientes se compararán con la entrega.'
     : usoReal.escaneos_total > 0
@@ -596,6 +612,14 @@ export default function QRPage() {
         ? 'El material ya se preparó, pero aún no hay escaneos reales en el periodo. Revisa si el QR está en mesa o si sala lo está ofreciendo.'
         : 'Todavía no hay preparación de material ni escaneos reales en el periodo.'
   const formatoEntregaActivo = FORMATOS_ENTREGA.find(formato => formato.id === formatoEntrega) || FORMATOS_ENTREGA[0]
+  const atribucionQr = {
+    source: 'qr',
+    campaign: qrCampania || formatoEntregaActivo.id,
+    format: formatoEntregaActivo.id,
+    table: qrMesa,
+    experience: experienciaActiva?.id || '',
+  }
+  const urlMedible = aplicarAtribucionUrl(urlDirecta, atribucionQr)
   const lecturaExperienciaReal = !experienciaActiva
     ? 'Activa una plantilla para atribuir escaneos a una experiencia concreta.'
     : !usoReal.actividad_iniciada
@@ -603,6 +627,15 @@ export default function QRPage() {
       : escaneosExperienciaActiva > 0
         ? `${escaneosExperienciaActiva} escaneos reales llegaron con ${experienciaActiva.label}.`
         : 'Todavía no hay escaneos reales atribuidos a la experiencia activa.'
+  const lecturaAtribucionReal = !usoReal.actividad_iniciada
+    ? 'Activa el servicio real para medir campanas, formatos y mesas.'
+    : campaniasUsoReal.length || formatosUsoReal.length || mesasUsoReal.length
+      ? [
+          listaAtribucion(campaniasUsoReal) ? `Campanas: ${listaAtribucion(campaniasUsoReal)}` : null,
+          listaAtribucion(formatosUsoReal) ? `Formatos: ${listaAtribucion(formatosUsoReal)}` : null,
+          listaAtribucion(mesasUsoReal) ? `Mesas/zonas: ${listaAtribucion(mesasUsoReal)}` : null,
+        ].filter(Boolean).join(' | ')
+      : 'Los escaneos reales todavia no traen parametros de QR. Genera el nuevo material medible y colocalo en sala.'
   const nombreMaterial = restaurante?.nombre || 'Carta Viva'
   const destinoMaterial = restaurante?.hub_activo ? 'Hub digital' : 'Carta digital'
   const detalleMaterial = restaurante?.ciudad || restaurante?.provincia
@@ -627,23 +660,23 @@ export default function QRPage() {
     experienciaActiva ? `Experiencia: ${experienciaActiva.label}` : null,
     experienciaActiva?.responsable ? `Responsable: ${experienciaActiva.responsable}` : null,
     experienciaActiva?.objetivo ? `Fecha objetivo: ${experienciaActiva.objetivo}` : null,
-    urlDirecta,
+    urlMedible,
     experienciaActiva?.sala || 'Antes de llevar el QR a mesa: escanear desde móvil, comprobar precios y confirmar que abre sin token.',
   ].filter(Boolean).join('\n')
   const textoMaterialWhatsApp = [
     `${experienciaActiva?.whatsapp || 'Hola, te paso la carta digital de'} ${nombreMaterial}.`,
-    urlDirecta,
+    urlMedible,
     experienciaActiva?.cliente || 'Desde ahí puedes ver la carta actualizada y las recomendaciones.',
   ].join('\n\n')
   const textoMaterialInstagram = [
     experienciaActiva ? `${experienciaActiva.instagram} ${nombreMaterial}.` : `La carta viva de ${nombreMaterial} ya está disponible.`,
     experienciaActiva?.cliente || 'Escanea el QR en mesa o abre el enlace para ver vinos y recomendaciones.',
-    urlDirecta,
+    urlMedible,
   ].join('\n')
   const textoMaterialImprenta = [
     `Material QR ${nombreMaterial}`,
     `Destino: ${destinoMaterial}`,
-    `URL final: ${urlDirecta}`,
+    `URL final medible: ${urlMedible}`,
     `Formato seleccionado: ${formatoEntregaActivo.label}`,
     `Mensaje principal: ${taglineMaterial}`,
     experienciaActiva ? `Experiencia activa: ${experienciaActiva.label}` : null,
@@ -656,19 +689,19 @@ export default function QRPage() {
   ]
 
   useEffect(() => {
-    if (urlDirecta && canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, urlDirecta, {
+    if (urlMedible && canvasRef.current) {
+      QRCode.toCanvas(canvasRef.current, urlMedible, {
         width: 300,
         margin: 2,
         color: { dark: '#171416', light: '#ffffff' }
       })
-      QRCode.toDataURL(urlDirecta, {
+      QRCode.toDataURL(urlMedible, {
         width: 880,
         margin: 2,
         color: { dark: '#171416', light: '#ffffff' },
       }).then(setQrDataUrl).catch(() => setQrDataUrl(''))
     }
-  }, [urlDirecta])
+  }, [urlMedible])
 
   async function copiarAlPortapapeles(texto) {
     if (!texto || typeof window === 'undefined' || typeof document === 'undefined') return false
@@ -715,6 +748,10 @@ export default function QRPage() {
       destino: destinoPreview,
       slug: restaurante.slug,
       source: 'dashboard_qr',
+      qr_campaign: atribucionQr.campaign,
+      qr_format: atribucionQr.format,
+      qr_table: atribucionQr.table,
+      qr_url: urlMedible,
     })
   }
 
@@ -723,6 +760,9 @@ export default function QRPage() {
     registrarDeliveryEvent('qr_print_opened', {
       destino: destinoPreview,
       source: 'dashboard_qr',
+      qr_campaign: atribucionQr.campaign,
+      qr_format: atribucionQr.format,
+      qr_table: atribucionQr.table,
     })
     window.print()
   }
@@ -747,6 +787,10 @@ export default function QRPage() {
         source: 'delivery_pack',
         formato: formatoEntrega,
         experiencia: experienciaActiva?.id || null,
+        qr_campaign: atribucionQr.campaign,
+        qr_format: atribucionQr.format,
+        qr_table: atribucionQr.table,
+        qr_url: urlMedible,
       })
       setMensajeMaterial('Material exportado en PNG.')
     } catch {
@@ -781,6 +825,9 @@ export default function QRPage() {
       registrarDeliveryEvent(evento, {
         destino: tipo?.startsWith('preview') ? previewDestinoGenerado : destinoPreview,
         source: tipo,
+        qr_campaign: tipo?.startsWith('material') ? atribucionQr.campaign : undefined,
+        qr_format: tipo?.startsWith('material') ? atribucionQr.format : undefined,
+        qr_table: tipo?.startsWith('material') ? atribucionQr.table : undefined,
       })
     }
     setTimeout(() => setCopiado(''), 1800)
@@ -1180,6 +1227,17 @@ export default function QRPage() {
                   </span>
                 </div>
               </article>
+              <article className={styles.itemCard} style={{ marginBottom: 12 }}>
+                <div className={styles.sectionHead} style={{ margin: 0 }}>
+                  <div>
+                    <h3 className={styles.sectionTitle}>QR por campana y mesa</h3>
+                    <p className={styles.sectionText}>{lecturaAtribucionReal}</p>
+                  </div>
+                  <span className={styles.badge}>
+                    {campaniasUsoReal.length || formatosUsoReal.length || mesasUsoReal.length ? 'Medible' : 'Sin datos'}
+                  </span>
+                </div>
+              </article>
               {deliveryEventosRecientes.length === 0 ? (
                 <p className={styles.panelSub}>Todavia no hay eventos de entrega. Genera una preview, copia un enlace o descarga el QR para empezar a medir.</p>
               ) : (
@@ -1255,11 +1313,40 @@ export default function QRPage() {
                     <span>QR</span>
                   )}
                 </div>
-                <p className={styles.deliveryMaterialUrl}>{urlDirecta}</p>
+                <p className={styles.deliveryMaterialUrl}>{urlMedible}</p>
                 <span className={styles.deliveryMaterialFooter}>Carta Viva - @cataconjuanjo</span>
               </article>
             </div>
             <div className={styles.deliveryPackControls}>
+              <div>
+                <span className={styles.label}>Atribucion</span>
+                <div className={styles.formGrid}>
+                  <label>
+                    <span className={styles.label}>Campana</span>
+                    <input
+                      className={styles.input}
+                      value={qrCampania}
+                      onChange={event => setQrCampania(event.target.value)}
+                      maxLength={80}
+                      placeholder="qr-mesa"
+                    />
+                  </label>
+                  <label>
+                    <span className={styles.label}>Mesa o zona</span>
+                    <input
+                      className={styles.input}
+                      value={qrMesa}
+                      onChange={event => setQrMesa(event.target.value)}
+                      maxLength={40}
+                      placeholder="terraza, barra, mesa-12"
+                    />
+                  </label>
+                </div>
+                <p className={styles.panelSub} style={{ marginTop: 8 }}>
+                  El QR añade estos parametros al enlace para medir que material fisico genera escaneos.
+                </p>
+                <div className={styles.urlBox} style={{ marginTop: 10 }}>{urlMedible}</div>
+              </div>
               <div>
                 <span className={styles.label}>Formato</span>
                 <div className={styles.deliveryFormatGrid} role="group" aria-label="Formato del material de entrega">
