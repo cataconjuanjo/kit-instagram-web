@@ -19,6 +19,7 @@ import { isLocalWine } from '../../lib/wineRegion'
 import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { cargarDatosCamarero, cargarHistorialCamarero, solicitarSesionCamarero } from '../../lib/camareroClient'
+import { elegirConRotacion, hashTexto, incluyeTerminoCompleto, palabrasClave, textoPlano } from '../../lib/camareroTextUtils'
 import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { estadoModoCamarero } from '../../lib/publicRouteState'
@@ -361,51 +362,12 @@ export default function Camarero() {
     }
   }
 
-  function incluyeTerminoCompleto(texto, termino) {
-    const textoDelimitado = ` ${normalizar(texto).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()} `
-    const terminoDelimitado = normalizar(termino).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
-    return terminoDelimitado && textoDelimitado.includes(` ${terminoDelimitado} `)
-  }
-
   function precioBotella(vino) {
     return Number(vino.precio_botella) || 0
   }
 
   function esVinoDeZona(vino) {
     return isLocalWine(vino, restaurante)
-  }
-
-  function textoPlano(valor) {
-    if (!valor) return ''
-    if (typeof valor === 'string') return valor
-    if (Array.isArray(valor)) return valor.map(textoPlano).join(' ')
-    if (typeof valor === 'object') return Object.values(valor).map(textoPlano).join(' ')
-    return ''
-  }
-
-  function palabrasClave(texto) {
-    const stop = new Set(['con', 'del', 'para', 'por', 'una', 'uno', 'los', 'las', 'que', 'vino', 'vinos', 'tipo', 'como', 'tambien', 'sobre'])
-    return normalizar(texto).split(/[^a-z0-9]+/).filter(p => p.length > 3 && !stop.has(p))
-  }
-
-  function hashTexto(texto) {
-    return normalizar(texto).split('').reduce((acc, char) => ((acc << 5) - acc + char.charCodeAt(0)) | 0, 0)
-  }
-
-  function ordenarConRotacion(items, semilla) {
-    return [...items].sort((a, b) => {
-      const scoreDiff = b.score - a.score
-      if (Math.abs(scoreDiff) > 10) return scoreDiff
-      const aHash = Math.abs(hashTexto(`${a.vino.id}-${semilla}`)) % 1000
-      const bHash = Math.abs(hashTexto(`${b.vino.id}-${semilla}`)) % 1000
-      return aHash - bHash
-    })
-  }
-
-  function elegirConRotacion(items, semilla, offset = 0) {
-    if (!items.length) return null
-    const ordenados = ordenarConRotacion(items, semilla)
-    return ordenados[Math.abs(offset) % ordenados.length]
   }
 
   function terminosVinoDesdeCapitulo(capitulo) {
