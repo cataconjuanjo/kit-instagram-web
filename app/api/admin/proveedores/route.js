@@ -4,6 +4,16 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+const SELECT_PROVEEDOR = [
+  'id', 'nombre', 'contacto', 'email', 'telefono', 'zona', 'notas',
+  'visible_restaurantes', 'created_at', 'updated_at',
+].join(', ')
+const SELECT_CATALOGO_VINO = [
+  'id', 'proveedor_id', 'nombre', 'bodega', 'tipo', 'region', 'uva',
+  'anada', 'referencia', 'formato', 'coste_estimado', 'pvp_recomendado',
+  'disponibilidad', 'notas', 'activo', 'favorito', 'created_at',
+  'updated_at', 'proveedores_vino(nombre)',
+].join(', ')
 
 async function validarAdmin(req) {
   const auth = req.headers.get('authorization') || ''
@@ -125,11 +135,11 @@ export async function GET(req) {
 
     const supabase = adminClient()
     const [{ data: proveedores, error: proveedoresError }, vinos] = await Promise.all([
-      supabase.from('proveedores_vino').select('*').order('nombre'),
+      supabase.from('proveedores_vino').select(SELECT_PROVEEDOR).order('nombre'),
       seleccionarTodo(
         supabase
           .from('proveedor_catalogo_vinos')
-          .select('*, proveedores_vino(nombre)')
+          .select(SELECT_CATALOGO_VINO)
           .order('created_at', { ascending: false })
       )
     ])
@@ -181,7 +191,7 @@ export async function POST(req) {
       const { data, error } = await supabase
         .from('proveedor_catalogo_vinos')
         .insert(payload)
-        .select('*, proveedores_vino(nombre)')
+        .select(SELECT_CATALOGO_VINO)
 
       if (error) throw error
       return Response.json({ vinos: data || [] })
@@ -196,7 +206,7 @@ export async function POST(req) {
       const { data, error } = await supabase
         .from('proveedor_catalogo_vinos')
         .insert([dataPayload])
-        .select('*, proveedores_vino(nombre)')
+        .select(SELECT_CATALOGO_VINO)
         .single()
 
       if (error) throw error
@@ -209,7 +219,7 @@ export async function POST(req) {
     const { data, error } = await supabase
       .from('proveedores_vino')
       .insert([dataPayload])
-      .select('*')
+      .select(SELECT_PROVEEDOR)
       .single()
 
     if (error) throw error
@@ -250,7 +260,7 @@ export async function PATCH(req) {
         .from('proveedor_catalogo_vinos')
         .update(dataPayload)
         .eq('id', body.id)
-        .select('*, proveedores_vino(nombre)')
+        .select(SELECT_CATALOGO_VINO)
         .single()
 
       if (error) throw error
@@ -264,7 +274,7 @@ export async function PATCH(req) {
       .from('proveedores_vino')
       .update(dataPayload)
       .eq('id', body.id)
-      .select('*')
+      .select(SELECT_PROVEEDOR)
       .single()
 
     if (error) throw error
