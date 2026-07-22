@@ -41,7 +41,7 @@ function hasExpectedText(body, expected = []) {
 }
 
 async function waitForVisibleText(page, text, label) {
-  await page.getByText(text, { exact: false }).first().waitFor({ state: 'visible', timeout: 20000 })
+  await page.getByText(text, { exact: false }).filter({ visible: true }).first().waitFor({ state: 'visible', timeout: 20000 })
   console.log(`PASS ${label} contiene "${text}"`)
 }
 
@@ -49,11 +49,100 @@ async function assertNotLogin(page, label) {
   if (new URL(page.url()).pathname === '/login') throw new Error(`${label} termino en /login`)
 }
 
+async function gotoAndExpect(page, path, label, expectedTexts = [], { notLogin = false } = {}) {
+  await page.goto(`${baseUrl}${path}`, { waitUntil: 'domcontentloaded' })
+  if (notLogin) await assertNotLogin(page, label)
+  for (const text of expectedTexts) await waitForVisibleText(page, text, label)
+}
+
+async function clickFirstLinkToPath(page, path, label) {
+  const link = page.locator(`a[href*="${path}"]`).first()
+  await link.waitFor({ state: 'visible', timeout: 20000 })
+  await link.click()
+  await page.waitForURL(url => url.pathname === path, { timeout: 20000 })
+  console.log(`PASS ${label} navega a ${path}`)
+}
+
+async function runPublicExperienceChecks(browser) {
+  const context = await browser.newContext({ viewport: { width: 1366, height: 900 } })
+  const page = await context.newPage()
+
+  await gotoAndExpect(page, '/cartavinos', 'Landing Carta Viva desktop', [
+    'Carta Viva',
+    'Solicitar prueba',
+  ])
+
+  await gotoAndExpect(page, `/demo/${demoSlug}`, 'Demo comercial desktop', [
+    'La Taberna del Puerto',
+    'Ver como cliente',
+    'Ver como camarero',
+    'Ver como gerente',
+  ])
+
+  await gotoAndExpect(page, `/r/${demoSlug}?demo_presentacion=1`, 'Hub publico demo desktop', [
+    'La Taberna del Puerto',
+    'Vista cliente',
+    'Carta Viva',
+  ])
+  await clickFirstLinkToPath(page, `/carta/${demoSlug}`, 'Hub publico demo')
+  await waitForVisibleText(page, 'La Taberna del Puerto', 'Carta publica desde hub')
+  await waitForVisibleText(page, 'ArmonIA', 'Carta publica desde hub')
+
+  await gotoAndExpect(page, `/carta/${demoSlug}?demo_presentacion=1`, 'Carta publica directa desktop', [
+    'La Taberna del Puerto',
+    'ArmonIA',
+  ])
+
+  await gotoAndExpect(page, `/camarero/${demoSlug}?demo=1&demo_focus=1`, 'Modo camarero demo desktop', [
+    'La Taberna del Puerto',
+    'Modo camarero',
+    'Venta',
+    'Maridaje por platos',
+  ], { notLogin: true })
+
+  await context.close()
+}
+
+async function runMobilePublicChecks(browser) {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  })
+  const page = await context.newPage()
+
+  await gotoAndExpect(page, '/cartavinos', 'Landing Carta Viva mobile', [
+    'Carta Viva',
+    'Solicitar prueba',
+  ])
+
+  await gotoAndExpect(page, `/r/${demoSlug}?demo_presentacion=1`, 'Hub publico demo mobile', [
+    'La Taberna del Puerto',
+    'Carta Viva',
+  ])
+
+  await gotoAndExpect(page, `/carta/${demoSlug}?demo_presentacion=1`, 'Carta publica directa mobile', [
+    'La Taberna del Puerto',
+    'ArmonIA',
+  ])
+
+  await gotoAndExpect(page, `/camarero/${demoSlug}?demo=1&demo_focus=1`, 'Modo camarero demo mobile', [
+    'La Taberna del Puerto',
+    'Modo camarero',
+    'Venta',
+  ], { notLogin: true })
+
+  await context.close()
+}
+
 async function runBrowserChecks() {
   const { chromium } = await import('playwright')
   const browser = await chromium.launch()
 
   try {
+    await runPublicExperienceChecks(browser)
+    await runMobilePublicChecks(browser)
+
     const context = await browser.newContext()
     const page = await context.newPage()
 
@@ -78,7 +167,6 @@ async function runBrowserChecks() {
     await cleanPage.goto(`${baseUrl}/dashboard?demo_presentacion=1`, { waitUntil: 'domcontentloaded' })
     await assertNotLogin(cleanPage, 'Demo gerente directa')
     await waitForVisibleText(cleanPage, 'Vista gerente - Demo La Taberna', 'Demo gerente directa')
-    await waitForVisibleText(cleanPage, 'La Taberna del Puerto', 'Dashboard demo directo')
     await cleanContext.close()
   } finally {
     await browser.close()
@@ -121,10 +209,10 @@ if (runBrowserSmoke) {
     await runBrowserChecks()
   } catch (error) {
     failures += 1
-    console.log(`FAIL Flujo navegador demo gerente ${error.message}`)
+    console.log(`FAIL Flujos navegador Carta Viva ${error.message}`)
   }
 } else {
-  console.log('SKIP Flujo navegador demo gerente (usa SMOKE_BROWSER=1 para activarlo).')
+  console.log('SKIP Flujos navegador Carta Viva (usa SMOKE_BROWSER=1 para activarlo).')
 }
 
 if (failures) {
