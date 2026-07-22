@@ -5,6 +5,27 @@ const DEMO_EMAILS = new Set([
   'sumiller.demo@cartaviva.local',
 ])
 
+const SELECT_RESTAURANTE_DEMO = [
+  'id', 'slug', 'nombre', 'email', 'ciudad', 'logo_url',
+  'plan', 'subscription_status', 'actividad_real_desde',
+  'camarero_pin_bloqueo_activo', 'carta_publica_activa', 'hub_activo',
+].join(', ')
+
+const SELECT_VINO_DEMO = [
+  'id', 'restaurante_id', 'nombre', 'bodega', 'tipo', 'region', 'uva', 'anada',
+  'precio_copa', 'precio_botella', 'coste_compra', 'stock', 'stock_minimo',
+  'proveedor', 'referencia_proveedor', 'formato_compra', 'notas_cata', 'activo',
+].join(', ')
+
+const SELECT_PLATO_DEMO = [
+  'id', 'restaurante_id', 'nombre', 'descripcion', 'categoria', 'precio', 'activo',
+].join(', ')
+
+const SELECT_PROPUESTA_DEMO = [
+  'id', 'restaurante_id', 'titulo', 'motivo', 'tipo', 'zona', 'prioridad',
+  'estado', 'vino', 'created_at',
+].join(', ')
+
 function leerDetalle(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return {} }
 }
@@ -28,34 +49,52 @@ export async function GET(req) {
       return Response.json({ error: 'Demo no disponible.' }, { status: 403 })
     }
 
-    const { data: restaurante } = await supabaseAdmin
+    const { data: restaurante, error: restauranteError } = await supabaseAdmin
       .from('restaurantes')
-      .select('*')
+      .select(SELECT_RESTAURANTE_DEMO)
       .eq('email', email)
       .single()
+
+    if (restauranteError && restauranteError.code !== 'PGRST116') {
+      console.error('[demo-dashboard:restaurante]', {
+        email,
+        code: restauranteError.code || '',
+        message: restauranteError.message || 'Error consultando restaurante demo',
+      })
+      return Response.json({ error: 'No se pudo cargar la demo.' }, { status: 503 })
+    }
 
     if (!restaurante) {
       return Response.json({ error: 'Restaurante demo no encontrado.' }, { status: 404 })
     }
 
     const [
-      { data: vinos },
-      { data: platos },
-      { data: propuestas },
-      { data: eventos },
+      vinosRes,
+      platosRes,
+      propuestasRes,
+      eventosRes,
     ] = await Promise.all([
-      supabaseAdmin.from('vinos').select('*').eq('restaurante_id', restaurante.id),
-      supabaseAdmin.from('platos').select('*').eq('restaurante_id', restaurante.id).eq('activo', true),
-      supabaseAdmin.from('consultor_propuestas').select('*').eq('restaurante_id', restaurante.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
+      supabaseAdmin.from('vinos').select(SELECT_VINO_DEMO).eq('restaurante_id', restaurante.id),
+      supabaseAdmin.from('platos').select(SELECT_PLATO_DEMO).eq('restaurante_id', restaurante.id).eq('activo', true),
+      supabaseAdmin.from('consultor_propuestas').select(SELECT_PROPUESTA_DEMO).eq('restaurante_id', restaurante.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
       supabaseAdmin.from('estadisticas').select('tipo, detalle, created_at').eq('restaurante_id', restaurante.id).order('created_at', { ascending: false }).limit(500),
     ])
+    const consultaError = vinosRes.error || platosRes.error || propuestasRes.error || eventosRes.error
+    if (consultaError) {
+      console.error('[demo-dashboard]', {
+        email,
+        code: consultaError.code || '',
+        message: consultaError.message || 'Error consultando datos de demo',
+      })
+      return Response.json({ error: 'No se pudo cargar la demo.' }, { status: 503 })
+    }
 
     return Response.json({
       restaurante,
-      vinos: vinos || [],
-      platos: platos || [],
-      propuestas: propuestas || [],
-      stats: calcularStats(eventos || []),
+      vinos: vinosRes.data || [],
+      platos: platosRes.data || [],
+      propuestas: propuestasRes.data || [],
+      stats: calcularStats(eventosRes.data || []),
       etiquetaDia: restaurante.slug === 'taberna-del-puerto' ? 'ultimo_dia_demo' : 'hoy',
       turnoCerrado: false,
     }, {
