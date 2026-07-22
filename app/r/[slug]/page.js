@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { cargarRestaurantePublico } from '../../lib/publicRestaurantClient'
+import { enviarEstadisticas } from '../../lib/statsClient'
+import { normalizarTexto } from '../../lib/textNormalize'
 
 function HubIcon({ tipo, titulo }) {
-  const texto = `${tipo || ''} ${titulo || ''}`
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+  const texto = normalizarTexto(`${tipo || ''} ${titulo || ''}`)
 
   if (tipo === 'tarta' || texto.includes('tarta') || texto.includes('postre')) {
     return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8Z"/><path d="M4 11c0-2.2 1.8-4 4-4s4 1.8 4 1.8S13.8 7 16 7s4 1.8 4 4"/><path d="M12 3v4"/><path d="M11 3h2"/></svg>
@@ -77,18 +77,14 @@ function limpiarTextoPublico(texto = '') {
 
 function registrarEscaneoHub(restauranteId, pruebaToken, experienciaId = '') {
   if (!restauranteId) return
-  fetch('/api/estadisticas', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      restaurante_id: restauranteId,
-      tipo: 'escaneo',
-      detalle: {
-        destino: 'hub',
-        experiencia_id: experienciaId || null,
-      },
-      prueba_token: pruebaToken,
-    }),
+  enviarEstadisticas({
+    restaurante_id: restauranteId,
+    tipo: 'escaneo',
+    detalle: {
+      destino: 'hub',
+      experiencia_id: experienciaId || null,
+    },
+    prueba_token: pruebaToken,
   }).catch(() => {})
 }
 
@@ -115,11 +111,11 @@ export default function RestauranteHub({ params }) {
         setLoadError('')
         const slug = (await params).slug
         setCurrentSlug(slug)
-        const query = new URLSearchParams({ hub: '1' })
-        if (pruebaToken) query.set('prueba', pruebaToken)
-        const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}?${query.toString()}`)
-        const data = res.ok ? await res.json().catch(() => ({})) : {}
-        const rest = data.restaurante
+        const { data, restaurante: rest } = await cargarRestaurantePublico(slug, {
+          hub: true,
+          pruebaToken,
+          jsonSoloSiOk: true,
+        })
 
         if (rest?.hub_activo && rest?.hub_disponible) {
           setRestaurante(rest)

@@ -1,9 +1,11 @@
 export function urlRestaurantePublico(slug, {
   carta = false,
+  hub = false,
   pruebaToken = '',
 } = {}) {
   const query = new URLSearchParams()
   if (carta) query.set('carta', '1')
+  if (hub) query.set('hub', '1')
   if (pruebaToken) query.set('prueba', pruebaToken)
 
   const queryString = query.toString()
