@@ -14,6 +14,7 @@ import {
   prioridadEstiloCarneRoja,
   prioridadEstiloJamon,
 } from '../../lib/maridajeEngine'
+import { consultarMaridajeGrafo } from '../../lib/maridajeGraphClient'
 import { isLocalWine } from '../../lib/wineRegion'
 import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import { isLargeFormatWine } from '../../lib/wineFormat'
@@ -1855,18 +1856,17 @@ export default function Camarero() {
     const controller = new AbortController()
     let cancelado = false
 
-    fetch('/api/maridaje-grafo', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ consulta: consultaGrafoVenta, vinos: vinosGrafoPayload }),
-      signal: controller.signal,
-    })
-      .then(res => res.ok ? res.json() : null)
+    consultarMaridajeGrafo(
+      { consulta: consultaGrafoVenta, vinos: vinosGrafoPayload },
+      { signal: controller.signal }
+    )
       .then(data => {
         if (!cancelado) setGrafoVenta(data ? { ...data, consulta: consultaGrafoVenta } : null)
       })
-      .catch(() => {
-        if (!cancelado) setGrafoVenta(null)
+      .catch(error => {
+        if (cancelado) return
+        setGrafoVenta(null)
+        reportarErrorCliente('camarero_maridaje_grafo', error)
       })
 
     return () => {
