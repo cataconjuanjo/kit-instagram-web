@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
 const FROM = process.env.CARTA_VIVA_FROM || 'Carta Viva <onboarding@resend.dev>'
+const SELECT_RESTAURANTE_ACTIVACION = 'id, nombre, email'
 
 function escapeHtml(value = '') {
   return String(value)
@@ -156,7 +157,7 @@ export async function POST(req) {
 
     const { data: restaurante, error: restError } = await adminSupabase
       .from('restaurantes')
-      .select('*')
+      .select(SELECT_RESTAURANTE_ACTIVACION)
       .eq('id', restauranteId)
       .single()
     if (restError || !restaurante) return Response.json({ error: 'Restaurante no encontrado.' }, { status: 404 })

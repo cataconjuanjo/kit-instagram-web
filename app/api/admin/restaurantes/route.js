@@ -4,6 +4,17 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+const SELECT_ADMIN_RESTAURANTE_BASE = [
+  'id', 'nombre', 'email', 'ciudad', 'slug', 'color_primario', 'color_fondo',
+  'color_acento', 'tipografia', 'hub_activo', 'hub_titulo', 'hub_subtitulo',
+  'instagram_url', 'facebook_url', 'plan', 'subscription_status',
+  'trial_active_seconds_limit', 'trial_expires_at', 'trial_started_at',
+  'ticket_medio_comida', 'created_at',
+].join(', ')
+const SELECT_ADMIN_RESTAURANTE = [
+  SELECT_ADMIN_RESTAURANTE_BASE,
+  'carta_publica_activa',
+].join(', ')
 
 function normalizarSlug(texto = '') {
   return texto
@@ -120,7 +131,7 @@ export async function GET(req) {
 
     const { data: restaurantes, error } = await adminSupabase
       .from('restaurantes')
-      .select('*')
+      .select(SELECT_ADMIN_RESTAURANTE)
       .order('nombre')
     if (error) throw error
 
@@ -243,7 +254,7 @@ export async function POST(req) {
     let insertRes = await adminSupabase
       .from('restaurantes')
       .insert([payloadRestaurante])
-      .select('*')
+      .select(SELECT_ADMIN_RESTAURANTE)
       .single()
 
     const insertErrorText = [
@@ -260,7 +271,7 @@ export async function POST(req) {
       insertRes = await adminSupabase
         .from('restaurantes')
         .insert([payloadSinPublicacion])
-        .select('*')
+        .select(SELECT_ADMIN_RESTAURANTE_BASE)
         .single()
     }
 
@@ -428,7 +439,7 @@ export async function PATCH(req) {
       .from('restaurantes')
       .update(cambios)
       .eq('id', id)
-      .select('*')
+      .select(SELECT_ADMIN_RESTAURANTE)
       .single()
 
     if (error) throw error
