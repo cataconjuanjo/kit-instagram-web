@@ -64,9 +64,9 @@ textarea {
 }
 
 :where(a, button, input, textarea, select, [tabindex]):focus-visible {
-  outline: 3px solid #F59E0B;
-  outline-offset: 3px;
-  box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.18);
+  outline: 3px solid #F59E0B !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.18) !important;
 }
 
 :where(button, input, textarea, select) {

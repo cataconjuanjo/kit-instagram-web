@@ -56,6 +56,12 @@ import styles from './camarero.module.css'
 
 const PERFIL_CLIENTE_NEUTRO = { bebe: 'ninguno', estilo: 'ninguno', gama: 'auto' }
 
+function activarConTeclado(event, accion) {
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  accion()
+}
+
 export default function Camarero() {
   const routeParams = useParams()
   const slug = slugDesdeRuta(routeParams, 'camarero')
@@ -2059,6 +2065,7 @@ export default function Camarero() {
                       <>
                         <input
                           type="text"
+                          aria-label="Buscar vino"
                           placeholder="Buscar vino"
                           value={busquedaVinoMandato}
                           onChange={e => setBusquedaVinoMandato(e.target.value)}
@@ -2555,13 +2562,14 @@ export default function Camarero() {
           </div>
         )}
         <input type="text" placeholder="Buscar vino, bodega, uva, región..."
+          aria-label="Buscar vino, bodega, uva o region"
           value={busqueda} onChange={e => setBusqueda(e.target.value)} autoFocus
           style={{ width: '100%', padding: '10px 0', fontSize: 16, border: 'none', borderBottom: '1px solid #333', background: 'transparent', color: 'white', outline: 'none', boxSizing: 'border-box', marginBottom: 12 }}
         />
         {/* Filtros por tipo */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {tipos.map(t => (
-            <button key={t} onClick={() => { setFiltro(t); setTipoVinoAbierto(t === 'todos' ? null : t) }} style={{
+            <button key={t} type="button" aria-pressed={filtro === t} onClick={() => { setFiltro(t); setTipoVinoAbierto(t === 'todos' ? null : t) }} style={{
               padding: '4px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: 'none',
               background: filtro === t ? '#fff' : '#222',
               color: filtro === t ? '#111' : '#666',
@@ -2583,7 +2591,7 @@ export default function Camarero() {
               {platosMesaVenta.length > 1 ? `Botella puente para ${platosMesaVenta.length} platos` : 'Recomendación para defender en mesa'}
             </p>
           </div>
-          <select value={objetivoVenta} onChange={e => cambiarObjetivoVenta(e.target.value)}
+          <select aria-label="Objetivo de recomendacion" value={objetivoVenta} onChange={e => cambiarObjetivoVenta(e.target.value)}
             style={{ background: '#222', color: '#aaa', border: '1px solid #333', borderRadius: 8, padding: '8px 10px', fontSize: 12, outline: 'none' }}>
             <option value="equilibrado">Mejor maridaje</option>
             <option value="copas">Por copas</option>
@@ -2594,7 +2602,7 @@ export default function Camarero() {
           </select>
         </div>
 
-        <button onClick={() => setRotacionVenta(rotacionVenta + 1)}
+        <button type="button" onClick={() => setRotacionVenta(rotacionVenta + 1)}
           style={{ width: '100%', background: '#222', color: '#aaa', border: '1px solid #333', borderRadius: 10, padding: '9px 12px', fontSize: 12, cursor: 'pointer', marginBottom: 10 }}>
           Otras opciones compatibles
         </button>
@@ -2603,7 +2611,7 @@ export default function Camarero() {
           <div style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 10, padding: 10, marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               <p style={{ fontSize: 10, color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', margin: 0 }}>Mesa seleccionada</p>
-              <button onClick={() => { setPlatosMesaVenta([]); setConsultaVenta(''); setRotacionVenta(0) }}
+              <button type="button" onClick={() => { setPlatosMesaVenta([]); setConsultaVenta(''); setRotacionVenta(0) }}
                 style={{ background: 'transparent', color: '#666', border: 'none', fontSize: 11, cursor: 'pointer' }}>
                 Limpiar
               </button>
@@ -2883,7 +2891,13 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
 
   return (
     <div style={{ textAlign: 'left', background: '#202020', border: '1px solid #303030', borderRadius: 12, padding: 14, color: '#fff' }}>
-      <div onClick={() => onSelect(vino)} style={{ cursor: 'pointer' }}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect(vino)}
+        onKeyDown={event => activarConTeclado(event, () => onSelect(vino))}
+        style={{ cursor: 'pointer' }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[vino.tipo] || '#666', flexShrink: 0 }} />
@@ -2956,7 +2970,13 @@ function VinoRow({ v, tipoDot, tipoLabel, enComparador, onSelect, onComparador, 
   const filaBodegaCompacta = true
   if (filaBodegaCompacta) return (
     <div className={`${styles.wineRow} ${enComparador ? styles.wineRowSelected : ''}`}>
-      <div onClick={() => onSelect(v)} className={styles.wineRowMain}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect(v)}
+        onKeyDown={event => activarConTeclado(event, () => onSelect(v))}
+        className={styles.wineRowMain}
+      >
         <span className={styles.dot} style={{ background: tipoDot[v.tipo] || '#444' }} />
         <div className={styles.wineRowText}>
           <p className={styles.wineRowName}>{v.nombre}</p>
@@ -2980,7 +3000,13 @@ function VinoRow({ v, tipoDot, tipoLabel, enComparador, onSelect, onComparador, 
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: '1px solid #1a1a1a', background: enComparador ? '#1a1a1a' : 'transparent' }}>
-      <div onClick={() => onSelect(v)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, cursor: 'pointer' }}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect(v)}
+        onKeyDown={event => activarConTeclado(event, () => onSelect(v))}
+        style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, cursor: 'pointer' }}
+      >
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[v.tipo] || '#444', flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

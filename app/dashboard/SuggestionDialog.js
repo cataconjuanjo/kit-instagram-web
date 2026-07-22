@@ -99,7 +99,7 @@ export default function SuggestionDialog({ open, onClose, restaurante, vinos, se
         <div className={styles.formGrid}>
           <div className={styles.full}>
             <label className={styles.label}>Vino</label>
-            <select className={styles.select} value={vinoElegido} onChange={event => setVinoElegido(event.target.value)}>
+            <select className={styles.select} aria-label="Vino sugerido de la casa" value={vinoElegido} onChange={event => setVinoElegido(event.target.value)}>
               <option value="">Selecciona un vino…</option>
               {disponibles.map(vino => (
                 <option key={vino.id} value={vino.id}>{vino.nombre} · {vino.bodega}</option>
@@ -109,6 +109,7 @@ export default function SuggestionDialog({ open, onClose, restaurante, vinos, se
           <div className={styles.full}>
             <label className={styles.label}>Nota personal</label>
             <textarea
+              aria-label="Nota de la sugerencia de la casa"
               className={styles.textarea}
               value={nota}
               onChange={event => setNota(event.target.value)}

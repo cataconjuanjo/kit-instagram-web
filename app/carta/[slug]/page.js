@@ -74,6 +74,7 @@ function PreviewModeBanner({ styles, approved = false, approving = false, error 
         <form className={styles.previewApprovalForm} onSubmit={submitApproval}>
           <input
             type="text"
+            aria-label="Nombre de quien aprueba la preview"
             value={approvalForm.reviewer_name}
             onChange={event => updateApprovalField('reviewer_name', event.target.value)}
             placeholder="Nombre, cargo o equipo"
@@ -82,6 +83,7 @@ function PreviewModeBanner({ styles, approved = false, approving = false, error 
           />
           <input
             type="email"
+            aria-label="Email de quien aprueba la preview"
             value={approvalForm.reviewer_email}
             onChange={event => updateApprovalField('reviewer_email', event.target.value)}
             placeholder="Email opcional"
@@ -89,6 +91,7 @@ function PreviewModeBanner({ styles, approved = false, approving = false, error 
             autoComplete="email"
           />
           <textarea
+            aria-label="Nota de aprobacion de la preview"
             value={approvalForm.note}
             onChange={event => updateApprovalField('note', event.target.value)}
             placeholder="Nota opcional"
@@ -325,6 +328,12 @@ function nombreVinoCarta(vino = {}) {
     .replace(/([a-záéíóúñ])(?=(Bodegas|Domaine|Château|Chateau|Maison|Viña|Vina|Celler|Clos|Pago|Tempos|Marqués|Marques|Mestres|Jacquesson|Albamar|Fulcro|Zárate|Zarate|Rafael|Artuke|Frontonio|Sierra|CVNE|Antídoto|Antidoto|Bollinger|Bérêche|Bereche|Moët|Moet|Louis|Valette|Dard|Mas|Teso|Bruno)\b)/g, '$1 ')
     .replace(/\s{2,}/g, ' ')
     .trim()
+}
+
+function activarConTeclado(event, accion) {
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  accion()
 }
 
 export default function CartaPublica() {
@@ -1084,7 +1093,13 @@ export default function CartaPublica() {
         className={`${styles.wineCard} ${recomendadoConsultor ? styles.wineCardConsultant : ''}`}
         style={enComparador ? { borderColor: colorPrimario } : undefined}
       >
-        <div className={styles.wineInfo} onClick={() => abrirFichaVino(v)}>
+        <div
+          className={styles.wineInfo}
+          role="button"
+          tabIndex={0}
+          onClick={() => abrirFichaVino(v)}
+          onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(v))}
+        >
           <div className={styles.wineTop}>
             <span className={styles.dot} style={{ background: tipoDot[v.tipo] || colorPrimario }} />
             <div className={styles.wineTitleBlock}>
@@ -1382,6 +1397,7 @@ export default function CartaPublica() {
             <input
               className={styles.search}
               type="text"
+              aria-label={i.buscar}
               placeholder={i.buscar}
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
@@ -1417,6 +1433,7 @@ export default function CartaPublica() {
                 <input
                   className={styles.range}
                   type="range"
+                  aria-label={i.precioMaximo}
                   min={0}
                   max={precioMaximo}
                   step={5}
@@ -1431,6 +1448,8 @@ export default function CartaPublica() {
                 <button
                   type="button"
                   className={`${styles.switch} ${soloInternacional ? styles.switchOn : ''}`}
+                  aria-label={i.soloInternacionales}
+                  aria-pressed={soloInternacional}
                   onClick={() => setSoloInternacional(!soloInternacional)}
                   style={{ background: soloInternacional ? colorPrimario : '#d8d1c4' }}
                 >
@@ -1443,6 +1462,8 @@ export default function CartaPublica() {
                 <button
                   type="button"
                   className={`${styles.switch} ${soloCopa ? styles.switchOn : ''}`}
+                  aria-label="Solo por copa"
+                  aria-pressed={soloCopa}
                   onClick={() => setSoloCopa(!soloCopa)}
                   style={{ background: soloCopa ? colorPrimario : '#d8d1c4' }}
                 >
@@ -1539,7 +1560,14 @@ export default function CartaPublica() {
               </div>
                 </div>
             {seleccionJuanjo.map(s => (
-              <article key={s.id} className={styles.featuredCard} onClick={() => abrirFichaVino(s.vinos)}>
+              <article
+                key={s.id}
+                className={styles.featuredCard}
+                role="button"
+                tabIndex={0}
+                onClick={() => abrirFichaVino(s.vinos)}
+                onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(s.vinos))}
+              >
                 <div className={styles.wineTop}>
                   <span className={styles.dot} style={{ background: tipoDot[s.vinos?.tipo] || colorPrimario }} />
                   <h3 className={styles.wineName}>{nombreVinoCarta(s.vinos)}</h3>
@@ -1566,7 +1594,14 @@ export default function CartaPublica() {
               </div>
 
             {seleccionRestaurante.map(s => (
-              <article key={s.id} className={styles.featuredCard} onClick={() => abrirFichaVino(s.vinos)}>
+              <article
+                key={s.id}
+                className={styles.featuredCard}
+                role="button"
+                tabIndex={0}
+                onClick={() => abrirFichaVino(s.vinos)}
+                onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(s.vinos))}
+              >
                 <div className={styles.wineTop}>
                   <span className={styles.dot} style={{ background: tipoDot[s.vinos?.tipo] || colorPrimario }} />
                   <h3 className={styles.wineName}>{nombreVinoCarta(s.vinos)}</h3>
@@ -1889,7 +1924,13 @@ export default function CartaPublica() {
             <p className={styles.selectedHead}>{vinoMandatoCliente ? i.vinoElegido : i.eligeVino}</p>
 
             {vinoMandatoCliente ? (
-              <article className={styles.wineChoiceCard} onClick={() => abrirFichaVino(vinoMandatoCliente)}>
+              <article
+                className={styles.wineChoiceCard}
+                role="button"
+                tabIndex={0}
+                onClick={() => abrirFichaVino(vinoMandatoCliente)}
+                onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(vinoMandatoCliente))}
+              >
                 <div>
                   <h3>{nombreVinoCarta(vinoMandatoCliente)}</h3>
                   <p>{[vinoMandatoCliente.bodega, vinoMandatoCliente.uva, vinoMandatoCliente.region].filter(Boolean).join(' · ')}</p>
@@ -1901,6 +1942,7 @@ export default function CartaPublica() {
                 <input
                   className={styles.darkSearch}
                   type="text"
+                  aria-label={i.buscarVino}
                   placeholder={i.buscarVino}
                   value={busquedaVinoSommelier}
                   onChange={e => setBusquedaVinoSommelier(e.target.value)}
@@ -1959,6 +2001,7 @@ export default function CartaPublica() {
             <input
               className={styles.search}
               type="text"
+              aria-label={i.buscarPlato}
               placeholder={i.buscarPlato}
               value={busquedaPlatos}
               onChange={e => setBusquedaPlatos(e.target.value)}
@@ -2151,12 +2194,13 @@ export default function CartaPublica() {
             <div style={{ display: 'flex', gap: 8 }}>
               <input
                 type="text"
+                aria-label={i.buscar}
                 placeholder={i.buscar}
                 value={busqueda}
                 onChange={e => setBusqueda(e.target.value)}
                 style={{ flex: 1, padding: '11px 14px', border: '1px solid #e8e8e8', borderRadius: 10, fontSize: 15, outline: 'none', color: '#111', background: '#fafafa' }}
               />
-              <button onClick={() => setMostrarFiltros(!mostrarFiltros)} style={{
+              <button type="button" aria-expanded={mostrarFiltros} onClick={() => setMostrarFiltros(!mostrarFiltros)} style={{
                 padding: '11px 16px', borderRadius: 10, cursor: 'pointer',
                 background: mostrarFiltros ? `${colorPrimario}12` : '#fafafa',
                 color: mostrarFiltros ? colorPrimario : '#888',
@@ -2171,7 +2215,7 @@ export default function CartaPublica() {
               <div style={{ paddingTop: 12 }}>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
                   {tipos.map(t => (
-                    <button key={t} onClick={() => setFiltro(t)} style={{
+                    <button key={t} type="button" aria-pressed={filtro === t} onClick={() => setFiltro(t)} style={{
                       padding: '6px 16px', borderRadius: 20, fontSize: 12, cursor: 'pointer',
                       background: filtro === t ? colorPrimario : 'transparent',
                       color: filtro === t ? '#fff' : '#aaa',
@@ -2186,7 +2230,7 @@ export default function CartaPublica() {
                     <span style={{ fontSize: 12, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{i.precioMaximo}</span>
                     <span style={{ fontSize: 13, color: '#111', fontWeight: 500 }}>{precioMax ? `${precioMax} €` : i.sinLimite}</span>
                   </div>
-                  <input type="range" min={0} max={precioMaximo} step={5}
+                  <input type="range" aria-label={i.precioMaximo} min={0} max={precioMaximo} step={5}
                     value={precioMax || precioMaximo}
                     onChange={e => setPrecioMax(parseInt(e.target.value) === precioMaximo ? null : parseInt(e.target.value))}
                     style={{ width: '100%', accentColor: colorPrimario }}
@@ -2194,12 +2238,12 @@ export default function CartaPublica() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
                   <span style={{ fontSize: 12, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{i.soloInternacionales}</span>
-                  <div onClick={() => setSoloInternacional(!soloInternacional)} style={{
-                    width: 38, height: 22, borderRadius: 11, background: soloInternacional ? colorPrimario : '#e0e0e0',
+                  <button type="button" aria-label={i.soloInternacionales} aria-pressed={soloInternacional} onClick={() => setSoloInternacional(!soloInternacional)} style={{
+                    width: 44, minHeight: 44, border: 'none', padding: 0, borderRadius: 22, background: soloInternacional ? colorPrimario : '#e0e0e0',
                     cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0
                   }}>
-                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: soloInternacional ? 18 : 2, transition: 'left 0.2s' }} />
-                  </div>
+                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#fff', position: 'absolute', top: 12, left: soloInternacional ? 22 : 2, transition: 'left 0.2s' }} />
+                  </button>
                 </div>
                 {(precioMax || filtro !== 'todos') && (
                   <button onClick={() => { setPrecioMax(null); setFiltro('todos'); setSoloInternacional(false) }} style={{
@@ -2295,7 +2339,13 @@ export default function CartaPublica() {
                         background: '#fff', borderRadius: 10, border: `1px solid ${enComparador ? colorPrimario : '#f0f0f0'}`,
                         padding: '14px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12
                       }}>
-                        <div onClick={() => abrirFichaVino(v)} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, cursor: 'pointer' }}>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => abrirFichaVino(v)}
+                          onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(v))}
+                          style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, cursor: 'pointer' }}
+                        >
                           <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[v.tipo], flexShrink: 0 }} />
                           <div style={{ flex: 1 }}>
                             <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111' }}>{nombreVinoCarta(v)}</p>
@@ -2439,13 +2489,13 @@ export default function CartaPublica() {
             <div style={{ background: '#fff', borderRadius: 12, padding: '16px', marginBottom: 24, border: '1px solid #f0f0f0' }}>
               <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>{i.tuSeleccion}</p>
               {platosSeleccionados.map((p, idx) => (
-                <div key={idx} onClick={() => setPlatosSeleccionados(platosSeleccionados.filter((_, j) => j !== idx))} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '10px 0', borderBottom: idx < platosSeleccionados.length - 1 ? '1px solid #f5f5f5' : 'none', cursor: 'pointer'
+                <button key={idx} type="button" aria-label={`Quitar ${p.nombre} de la seleccion`} onClick={() => setPlatosSeleccionados(platosSeleccionados.filter((_, j) => j !== idx))} style={{
+                  width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '10px 0', border: 'none', borderBottom: idx < platosSeleccionados.length - 1 ? '1px solid #f5f5f5' : 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left'
                 }}>
                   <p style={{ margin: 0, fontSize: 15, color: '#111' }}>{p.nombre}</p>
                   <span style={{ fontSize: 18, color: '#ccc' }}>×</span>
-                </div>
+                </button>
               ))}
               <div style={{ marginTop: 16 }}>
                 <p style={{ fontSize: 12, color: '#bbb', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>{i.comoQuieres}</p>
@@ -2499,14 +2549,14 @@ export default function CartaPublica() {
                   {grupo.map((p, idx) => {
                     const seleccionado = platosSeleccionados.some(s => s.id === p.id)
                     return (
-                      <div key={p.id} onClick={() => {
+                      <button key={p.id} type="button" aria-pressed={seleccionado} onClick={() => {
                         if (seleccionado) setPlatosSeleccionados(platosSeleccionados.filter(s => s.id !== p.id))
                         else setPlatosSeleccionados([...platosSeleccionados, p])
                         setRespuesta('')
                       }} style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '15px 16px', borderBottom: idx < grupo.length - 1 ? '1px solid #f8f8f8' : 'none',
-                        cursor: 'pointer', background: seleccionado ? '#f9f9f9' : 'transparent'
+                        width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '15px 16px', border: 'none', borderBottom: idx < grupo.length - 1 ? '1px solid #f8f8f8' : 'none',
+                        cursor: 'pointer', background: seleccionado ? '#f9f9f9' : 'transparent', textAlign: 'left'
                       }}>
                         <div>
                           <p style={{ margin: 0, fontSize: 15, color: '#111', fontWeight: seleccionado ? 500 : 400 }}>{p.nombre}</p>
@@ -2517,7 +2567,7 @@ export default function CartaPublica() {
                             {seleccionado ? '✓' : '+'}
                           </span>
                         </div>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
