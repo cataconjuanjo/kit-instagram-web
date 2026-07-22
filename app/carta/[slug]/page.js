@@ -560,26 +560,31 @@ export default function CartaPublica() {
   async function preguntarQuizCon(respuestas) {
     setCargandoIA(true)
     setRespuestaQuiz('')
-    const res = await fetch('/api/maridaje', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        modo: 'quiz',
-        perfilQuiz: respuestas,
-        restaurante_id: restaurante.id,
-        idioma,
-        historial: [],
-        prueba_token: tokenPrueba,
-      }),
-    })
-    if (!res.ok) {
+    try {
+      const res = await fetch('/api/maridaje', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          modo: 'quiz',
+          perfilQuiz: respuestas,
+          restaurante_id: restaurante.id,
+          idioma,
+          historial: [],
+          prueba_token: tokenPrueba,
+        }),
+      })
+      if (!res.ok) {
+        setRespuestaQuiz(idioma === 'en' ? 'Error. Please try again.' : 'Error al consultar. Inténtalo de nuevo.')
+        return
+      }
+      let texto = ''
+      await leerStream(res, chunk => { texto += chunk; setRespuestaQuiz(texto) }, () => {})
+    } catch (error) {
       setRespuestaQuiz(idioma === 'en' ? 'Error. Please try again.' : 'Error al consultar. Inténtalo de nuevo.')
+      reportarErrorCliente('carta_publica_quiz_maridaje', error)
+    } finally {
       setCargandoIA(false)
-      return
     }
-    let texto = ''
-    await leerStream(res, chunk => { texto += chunk; setRespuestaQuiz(texto) }, () => {})
-    setCargandoIA(false)
   }
 
   function responderQuiz(campo, valor) {
@@ -620,7 +625,8 @@ export default function CartaPublica() {
         ? 'a harmonic glass succession: one BTG wine per dish building an aromatic arc from lighter to fuller'
         : 'sucesion_copas: una copa diferente por plato siguiendo un arco armónico de menos a más cuerpo — solo vinos disponibles por copa',
     }
-    const res = await fetch('/api/maridaje', {
+    try {
+      const res = await fetch('/api/maridaje', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -651,7 +657,12 @@ export default function CartaPublica() {
         ])
       }
     )
-    setCargandoIA(false)
+      setCargandoIA(false)
+    } catch (error) {
+      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+      setCargandoIA(false)
+      reportarErrorCliente('carta_publica_sommelier_mesa', error)
+    }
   }
 
   async function preguntarPlatosParaVino() {
@@ -668,7 +679,8 @@ export default function CartaPublica() {
       vinoMandatoCliente.uva ? `uva: ${vinoMandatoCliente.uva}` : '',
       vinoMandatoCliente.notas_cata ? `notas: ${vinoMandatoCliente.notas_cata}` : '',
     ].filter(Boolean).join(', ')
-    const res = await fetch('/api/maridaje', {
+    try {
+      const res = await fetch('/api/maridaje', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -699,7 +711,12 @@ export default function CartaPublica() {
         ])
       }
     )
-    setCargandoIA(false)
+      setCargandoIA(false)
+    } catch (error) {
+      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+      setCargandoIA(false)
+      reportarErrorCliente('carta_publica_sommelier_vino', error)
+    }
   }
 
   async function preguntarSeguimiento() {
@@ -708,7 +725,8 @@ export default function CartaPublica() {
     setInputSeguimiento('')
     setCargandoIA(true)
     setRespuesta('')
-    const res = await fetch('/api/maridaje', {
+    try {
+      const res = await fetch('/api/maridaje', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -736,7 +754,12 @@ export default function CartaPublica() {
         ])
       }
     )
-    setCargandoIA(false)
+      setCargandoIA(false)
+    } catch (error) {
+      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+      setCargandoIA(false)
+      reportarErrorCliente('carta_publica_sommelier_seguimiento', error)
+    }
   }
 
   function toggleComparador(vino) {
