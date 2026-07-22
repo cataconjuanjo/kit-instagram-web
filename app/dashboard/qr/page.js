@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { esPerfilBodega } from '../../lib/plans'
 import { CONTENIDO_INICIAL, puedePublicarCarta, resumirContenidoCarta } from '../../lib/publicationReadiness'
 import { EXPERIENCIA_ENTREGA_INICIAL, experienciaEntregaDesdePlan, experienciaTemplateExiste } from '../../lib/experienceTemplates'
@@ -349,7 +350,7 @@ export default function QRPage() {
     async function cargar() {
       const { email } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
         setPreviewDestinoSeleccionado(rest.hub_activo ? 'hub' : 'carta')

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { cargarDemoDashboard } from '../../lib/demoDashboardClient'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
@@ -244,7 +245,7 @@ export default function PlantillasPage() {
         return
       }
 
-      const queryRestaurante = supabase.from('restaurantes').select('*')
+      const queryRestaurante = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
       const { data: rest } = restauranteId
         ? await queryRestaurante.eq('id', restauranteId).single()
         : await queryRestaurante.eq('email', email).single()

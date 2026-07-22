@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { esPerfilBodega } from '../../lib/plans'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
@@ -98,7 +99,7 @@ export default function Personalizar() {
     async function cargar() {
       const { email } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
         setColorPrimario(rest.color_primario || '#111111')

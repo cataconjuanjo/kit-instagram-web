@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { supabase } from '../../supabase'
+import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { esPerfilBodega } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
@@ -91,7 +92,7 @@ export default function TrazabilidadEconomica() {
         return
       }
 
-      const consulta = supabase.from('restaurantes').select('*')
+      const consulta = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
       const { data: rest } = restauranteId
         ? await consulta.eq('id', restauranteId).single()
         : await consulta.eq('email', email).single()

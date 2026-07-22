@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail } from '../demo'
+import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../lib/clientSupabaseSelects'
 import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { esPerfilBodega, nombrePlan, puedeUsar } from '../lib/plans'
 import UsageTracker from './UsageTracker'
@@ -188,7 +189,7 @@ export default function DashboardLayout({ children }) {
         return
       }
 
-      const queryRestaurante = supabase.from('restaurantes').select('*')
+      const queryRestaurante = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
       const { data: rest } = restauranteId
         ? await queryRestaurante.eq('id', restauranteId).single()
         : await queryRestaurante.eq('email', email).single()

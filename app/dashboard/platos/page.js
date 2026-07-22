@@ -4,6 +4,10 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { ADMIN_EMAIL, getEffectiveRestaurantEmail } from '../../demo'
+import {
+  SELECT_CLIENT_PLATO_DASHBOARD,
+  SELECT_CLIENT_RESTAURANTE_DASHBOARD,
+} from '../../lib/clientSupabaseSelects'
 import { esPerfilBodega } from '../../lib/plans'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
@@ -225,10 +229,10 @@ export default function Platos() {
       if (!email) { window.location.href = '/login'; return }
       const { data: sessionData } = await supabase.auth.getSession()
       setPuedeAnalizarChartier((sessionData.session?.user?.email || '').toLowerCase() === ADMIN_EMAIL.toLowerCase())
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
-        const { data } = await supabase.from('platos').select('*').eq('restaurante_id', rest.id).order('categoria')
+        const { data } = await supabase.from('platos').select(SELECT_CLIENT_PLATO_DASHBOARD).eq('restaurante_id', rest.id).order('categoria')
         setPlatos(data || [])
       }
       setLoading(false)
@@ -295,7 +299,7 @@ export default function Platos() {
       precio: parseFloat(nuevoPlato.precio) || 0,
       restaurante_id: restaurante.id,
       activo: true
-    }]).select()
+    }]).select(SELECT_CLIENT_PLATO_DASHBOARD)
     if (!error) {
       setPlatos([...platos, data[0]])
       setNuevoPlato({ nombre: '', descripcion: '', categoria: 'Entrantes fríos', precio: '' })
@@ -371,7 +375,7 @@ export default function Platos() {
         precio: parseFloat(plato.precio) || 0,
         restaurante_id: restaurante.id,
         activo: true,
-      }))).select()
+      }))).select(SELECT_CLIENT_PLATO_DASHBOARD)
       data = insert.data || []
       error = insert.error
     }
@@ -385,7 +389,7 @@ export default function Platos() {
           categoria: plato.categoria || actual.categoria,
           descripcion: plato.descripcion || actual.descripcion || '',
         }
-        const update = await supabase.from('platos').update(cambios).eq('id', actual.id).select()
+        const update = await supabase.from('platos').update(cambios).eq('id', actual.id).select(SELECT_CLIENT_PLATO_DASHBOARD)
         if (update.error) {
           error = update.error
           break
@@ -436,7 +440,7 @@ export default function Platos() {
       precio: Number(plato.precio) || 0,
       activo: false,
     }
-    const { data, error } = await supabase.from('platos').insert([copia]).select()
+    const { data, error } = await supabase.from('platos').insert([copia]).select(SELECT_CLIENT_PLATO_DASHBOARD)
     if (!error && data?.[0]) {
       setPlatos([...platos, data[0]])
       setMensajePlatos('Plato duplicado como borrador oculto')

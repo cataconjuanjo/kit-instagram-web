@@ -5,6 +5,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
+import {
+  SELECT_CLIENT_ESTADISTICA_DASHBOARD,
+  SELECT_CLIENT_MOVIMIENTO_STOCK_DASHBOARD,
+  SELECT_CLIENT_PROPUESTA_ADMIN,
+  SELECT_CLIENT_RESTAURANTE_DASHBOARD,
+  SELECT_CLIENT_VINO_DASHBOARD,
+} from '../../lib/clientSupabaseSelects'
 import { esPerfilBodega } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
@@ -117,23 +124,23 @@ export default function ControlBodega() {
     async function cargar() {
       const { email } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
         const desdeActividad = actividadRealDesdeISO(rest)
         let ventasQuery = Promise.resolve({ data: [] })
         if (desdeActividad) {
-          ventasQuery = supabase.from('estadisticas').select('*').eq('restaurante_id', rest.id).eq('tipo', 'venta').gte('created_at', desdeActividad).order('created_at', { ascending: false }).limit(80)
+          ventasQuery = supabase.from('estadisticas').select(SELECT_CLIENT_ESTADISTICA_DASHBOARD).eq('restaurante_id', rest.id).eq('tipo', 'venta').gte('created_at', desdeActividad).order('created_at', { ascending: false }).limit(80)
         }
         const token = (await supabase.auth.getSession()).data.session?.access_token
         const proveedoresQuery = token
           ? fetch(`/api/proveedores-visibles?${new URLSearchParams({ restaurante_id: rest.id })}`, { headers: { Authorization: `Bearer ${token}` } })
           : Promise.resolve(null)
         const [{ data: vinosData }, { data: propuestasData }, { data: incidenciasData }, { data: movimientosData }, proveedoresRes] = await Promise.all([
-          supabase.from('vinos').select('*').eq('restaurante_id', rest.id).order('nombre'),
-          supabase.from('consultor_propuestas').select('*').eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
+          supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id).order('nombre'),
+          supabase.from('consultor_propuestas').select(SELECT_CLIENT_PROPUESTA_ADMIN).eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
           ventasQuery,
-          supabase.from('movimientos_stock').select('*, vinos(nombre, bodega)').eq('restaurante_id', rest.id).order('created_at', { ascending: false }).limit(10),
+          supabase.from('movimientos_stock').select(SELECT_CLIENT_MOVIMIENTO_STOCK_DASHBOARD).eq('restaurante_id', rest.id).order('created_at', { ascending: false }).limit(10),
           proveedoresQuery,
         ])
         const proveedoresData = proveedoresRes?.ok ? await proveedoresRes.json() : {}

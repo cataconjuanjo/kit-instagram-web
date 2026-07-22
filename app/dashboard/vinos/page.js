@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import {
+  SELECT_CLIENT_RESTAURANTE_DASHBOARD,
+  SELECT_CLIENT_VINO_DASHBOARD,
+} from '../../lib/clientSupabaseSelects'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import { esPerfilBodega, limiteVinosPlan, nombrePlan, puedeUsar } from '../../lib/plans'
 import styles from '../module.module.css'
@@ -176,10 +180,10 @@ const inputPdfRef = useRef(null)
     async function cargarDatos() {
       const { email } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
-        const { data: vinosData } = await supabase.from('vinos').select('*').eq('restaurante_id', rest.id)
+        const { data: vinosData } = await supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id)
         setVinos(vinosData || [])
         const token = (await supabase.auth.getSession()).data.session?.access_token
         if (token) {
@@ -236,7 +240,7 @@ const vinosActivos = vinos.filter(vino => vino.activo !== false)
       stock_minimo: parseInt(nuevoVino.stock_minimo) || 0,
       proveedor: nuevoVino.proveedor || '',
 notas_cata: [nuevoVino.notas_cata, notasCata].filter(Boolean).join('. '),
-    }]).select()
+    }]).select(SELECT_CLIENT_VINO_DASHBOARD)
 
 setGenerandoCata(false)
     if (!error) {
@@ -377,7 +381,7 @@ async function guardarImportacionVinos() {
     notas_cata: vino.notas_cata || '',
     restaurante_id: restaurante.id,
     activo: true,
-  }))).select()
+  }))).select(SELECT_CLIENT_VINO_DASHBOARD)
 
   if (!error) {
     setVinos([...vinos, ...(data || [])])
@@ -463,7 +467,7 @@ async function duplicarVino(vino) {
     notas_cata: vino.notas_cata || '',
     activo: false,
   }
-  const { data, error } = await supabase.from('vinos').insert([copia]).select()
+  const { data, error } = await supabase.from('vinos').insert([copia]).select(SELECT_CLIENT_VINO_DASHBOARD)
   if (!error && data?.[0]) {
     setVinos([...vinos, data[0]])
     setMensajeVinos('Vino duplicado como borrador oculto')

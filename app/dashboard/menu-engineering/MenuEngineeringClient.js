@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
+import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { esPerfilBodega } from '../../lib/plans'
 import { priorizarVentas } from '../../lib/salesPriority'
 import { calcularWineMapping, ticketReferencia } from '../../lib/wineMapping'
@@ -135,7 +136,7 @@ export default function MenuEngineering() {
     async function cargar() {
       const { email, restauranteId } = await getEffectiveRestaurantEmail(supabase)
       if (!email && !restauranteId) { window.location.href = '/login'; return }
-      const queryRestaurante = supabase.from('restaurantes').select('*')
+      const queryRestaurante = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
       const { data: rest } = restauranteId
         ? await queryRestaurante.eq('id', restauranteId).single()
         : await queryRestaurante.eq('email', email).single()
@@ -338,7 +339,7 @@ export default function MenuEngineering() {
         .from('restaurantes')
         .update({ ticket_medio_comida: valor })
         .eq('id', restaurante.id)
-        .select('*')
+        .select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
         .single()
       if (error) throw error
       setRestaurante(data || { ...restaurante, ticket_medio_comida: valor })

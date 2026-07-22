@@ -4,6 +4,12 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import {
+  SELECT_CLIENT_PLATO_DASHBOARD,
+  SELECT_CLIENT_RESTAURANTE_DASHBOARD,
+  SELECT_CLIENT_SELECCION_ESPECIAL_ADMIN,
+  SELECT_CLIENT_VINO_DASHBOARD,
+} from '../../lib/clientSupabaseSelects'
 import { esPerfilBodega } from '../../lib/plans'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
@@ -27,13 +33,13 @@ export default function CartaHub() {
     async function cargar() {
       const { email } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
         const [{ data: vinosData }, { data: platosData }, { data: seleccionData }] = await Promise.all([
-          supabase.from('vinos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
-          supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
-          supabase.from('seleccion_especial').select('*').eq('restaurante_id', rest.id).eq('activo', true),
+          supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true),
+          supabase.from('platos').select(SELECT_CLIENT_PLATO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true),
+          supabase.from('seleccion_especial').select(SELECT_CLIENT_SELECCION_ESPECIAL_ADMIN).eq('restaurante_id', rest.id).eq('activo', true),
         ])
         setVinos(vinosData || [])
         setPlatos(platosData || [])

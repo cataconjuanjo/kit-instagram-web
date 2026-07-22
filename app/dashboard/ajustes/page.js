@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { etiquetaActividadReal } from '../../lib/actividadReal'
+import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { esPerfilBodega } from '../../lib/plans'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
@@ -27,7 +28,7 @@ export default function AjustesHub() {
       const { email, isAdmin } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
       setEsAdmin(Boolean(isAdmin))
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       setRestaurante(rest || null)
       setPinConfigurado(Boolean(rest?.camarero_pin_bloqueo_activo))
       setLoading(false)
@@ -129,7 +130,7 @@ export default function AjustesHub() {
       .from('restaurantes')
       .update({ actividad_real_desde: fechaISO })
       .eq('id', restaurante.id)
-      .select()
+      .select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
       .single()
 
     if (!error && data) {

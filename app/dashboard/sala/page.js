@@ -4,6 +4,12 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import {
+  SELECT_CLIENT_ESTADISTICA_DASHBOARD,
+  SELECT_CLIENT_PLATO_DASHBOARD,
+  SELECT_CLIENT_RESTAURANTE_DASHBOARD,
+  SELECT_CLIENT_VINO_DASHBOARD,
+} from '../../lib/clientSupabaseSelects'
 import { aplicarVentana, resolverVentanaDiaOperativo } from '../../lib/demoServiceDay'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
@@ -146,7 +152,7 @@ export default function SalaHub() {
     async function cargar() {
       const { email } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
         const ventanaDia = await resolverVentanaDiaOperativo(supabase, rest, { tipo: 'venta' })
@@ -155,13 +161,13 @@ export default function SalaHub() {
           aplicarVentana(
             supabase
               .from('estadisticas')
-              .select('*')
+              .select(SELECT_CLIENT_ESTADISTICA_DASHBOARD)
               .eq('restaurante_id', rest.id)
               .order('created_at', { ascending: false }),
             ventanaDia
           ),
-          supabase.from('vinos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
-          supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
+          supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true),
+          supabase.from('platos').select(SELECT_CLIENT_PLATO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true),
         ])
         setEventos((estadisticas || []).map(item => ({ ...item, parsed: leerDetalle(item.detalle) })))
         setBriefing(prepararBriefing(vinos || [], platos || [], rest))

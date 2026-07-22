@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import {
+  SELECT_CLIENT_ESTADISTICA_DASHBOARD,
+  SELECT_CLIENT_RESTAURANTE_DASHBOARD,
+  SELECT_CLIENT_VINO_DASHBOARD,
+} from '../../lib/clientSupabaseSelects'
 import { maxFechaISO } from '../../lib/actividadReal'
 import { aplicarAjustesStock } from '../../lib/stockClient'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
@@ -57,16 +62,16 @@ export default function InventarioSemanal() {
     async function cargar() {
       const { email } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
         const desdeActividad = rest.actividad_real_desde ? maxFechaISO(haceDiasISO(7), rest.actividad_real_desde) : null
         const [{ data: vinosData }, { data: statsData }] = await Promise.all([
-          supabase.from('vinos').select('*').eq('restaurante_id', rest.id).eq('activo', true).order('nombre'),
+          supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true).order('nombre'),
           desdeActividad
             ? supabase
               .from('estadisticas')
-              .select('*')
+              .select(SELECT_CLIENT_ESTADISTICA_DASHBOARD)
               .eq('restaurante_id', rest.id)
               .eq('tipo', 'venta')
               .gte('created_at', desdeActividad)

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { esPerfilBodega } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
@@ -71,7 +72,7 @@ export default function ImportarTPV() {
         window.location.href = '/login'
         return
       }
-      const consulta = supabase.from('restaurantes').select('*')
+      const consulta = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
       const { data: rest } = restauranteId
         ? await consulta.eq('id', restauranteId).single()
         : await consulta.eq('email', email).single()

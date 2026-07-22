@@ -4,6 +4,12 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { getEffectiveRestaurantEmail } from '../demo'
+import {
+  SELECT_CLIENT_PLATO_DASHBOARD,
+  SELECT_CLIENT_PROPUESTA_ADMIN,
+  SELECT_CLIENT_RESTAURANTE_DASHBOARD,
+  SELECT_CLIENT_VINO_DASHBOARD,
+} from '../lib/clientSupabaseSelects'
 import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceDay'
 import { esPerfilBodega, puedeUsar } from '../lib/plans'
@@ -503,7 +509,7 @@ export default function DashboardHome() {
         return
       }
 
-      const queryRestaurante = supabase.from('restaurantes').select('*')
+      const queryRestaurante = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
       const { data: rest } = restauranteId
         ? await queryRestaurante.eq('id', restauranteId).single()
         : await queryRestaurante.eq('email', email).single()
@@ -527,13 +533,13 @@ export default function DashboardHome() {
           { data: statsHoy },
           { data: propuestasData },
         ] = await Promise.all([
-          supabase.from('vinos').select('*').eq('restaurante_id', rest.id),
-          supabase.from('platos').select('*').eq('restaurante_id', rest.id).eq('activo', true),
+          supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id),
+          supabase.from('platos').select(SELECT_CLIENT_PLATO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true),
           aplicarVentana(
             supabase.from('estadisticas').select('tipo, detalle, created_at').eq('restaurante_id', rest.id),
             ventanaDia
           ),
-          supabase.from('consultor_propuestas').select('*').eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
+          supabase.from('consultor_propuestas').select(SELECT_CLIENT_PROPUESTA_ADMIN).eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
         ])
         const eventosVentaHoy = (statsHoy || []).filter(s => s.tipo === 'venta')
         const ventasHoy = eventosVentaHoy.map(s => leerDetalle(s.detalle))

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { supabase } from '../supabase'
+import { SELECT_CLIENT_SELECCION_ESPECIAL_ADMIN } from '../lib/clientSupabaseSelects'
 import ResponsiveOverlay from './ResponsiveOverlay'
 import styles from './module.module.css'
 
@@ -30,7 +31,7 @@ export default function SuggestionDialog({ open, onClose, restaurante, vinos, se
       vino_id: vinoElegido,
       nota_personal: `${RESTAURANTE_PREFIX}${nota.trim()}`,
       orden: 0,
-    }]).select().single()
+    }]).select(SELECT_CLIENT_SELECCION_ESPECIAL_ADMIN).single()
 
     if (insertError) {
       setError('No se ha podido guardar. Inténtalo de nuevo.')

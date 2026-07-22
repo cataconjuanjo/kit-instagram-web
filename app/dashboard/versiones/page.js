@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
 import ConfirmationDialog from '../ConfirmationDialog'
@@ -234,7 +235,7 @@ export default function VersionesPublicacionPage() {
     async function cargar() {
       const { email } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       setRestaurante(rest || null)
       if (rest?.id) await cargarVersiones(rest.id)
       setLoading(false)

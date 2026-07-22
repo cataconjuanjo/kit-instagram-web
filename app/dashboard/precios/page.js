@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 import priceStyles from './precios.module.css'
@@ -99,7 +100,7 @@ export default function PreciosMargenes() {
         return
       }
 
-      const consulta = supabase.from('restaurantes').select('*')
+      const consulta = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
       const { data: rest } = restauranteId
         ? await consulta.eq('id', restauranteId).single()
         : await consulta.eq('email', email).single()

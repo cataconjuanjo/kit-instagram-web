@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
+import {
+  SELECT_CLIENT_ESTADISTICA_DASHBOARD,
+  SELECT_CLIENT_RESTAURANTE_DASHBOARD,
+  SELECT_CLIENT_VINO_DASHBOARD,
+} from '../../lib/clientSupabaseSelects'
 import { BY_THE_GLASS_REFERENCE, POSITIONING_MARKUP_REFERENCE, beneficioBruto, costeNetoCompra, margenBrutoPct, margenObjetivoContextual, numero, precioCopaObjetivo, precioNetoVenta, redondear, anadirIva, copasVendibles } from '../../lib/wineEconomics'
 import { esPerfilBodega } from '../../lib/plans'
 import { priorizarVentas, esVentaTPV } from '../../lib/salesPriority'
@@ -416,7 +421,7 @@ export default function SimuladorRentabilidad() {
         return
       }
 
-      const queryRestaurante = supabase.from('restaurantes').select('*')
+      const queryRestaurante = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
       const { data: rest } = restauranteId
         ? await queryRestaurante.eq('id', restauranteId).single()
         : await queryRestaurante.eq('email', email).single()

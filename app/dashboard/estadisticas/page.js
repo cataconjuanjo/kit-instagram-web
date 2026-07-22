@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO, etiquetaActividadReal } from '../../lib/actividadReal'
+import {
+  SELECT_CLIENT_ESTADISTICA_DASHBOARD,
+  SELECT_CLIENT_RESTAURANTE_DASHBOARD,
+  SELECT_CLIENT_VINO_DASHBOARD,
+} from '../../lib/clientSupabaseSelects'
 import { esVentaTPV, priorizarVentas } from '../../lib/salesPriority'
 import { esPerfilBodega } from '../../lib/plans'
 import { beneficioBruto, costeNetoCompra, copasVendibles, margenBrutoPct, numero, precioNetoVenta, redondear } from '../../lib/wineEconomics'
@@ -189,7 +194,7 @@ export default function Estadisticas() {
       const { email, isAdmin } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
       setEsAdmin(Boolean(isAdmin))
-      const { data: rest } = await supabase.from('restaurantes').select('*').eq('email', email).single()
+      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
         const desdeActividad = actividadRealDesdeISO(rest)
@@ -200,13 +205,13 @@ export default function Estadisticas() {
         }
         let query = supabase
           .from('estadisticas')
-          .select('*')
+          .select(SELECT_CLIENT_ESTADISTICA_DASHBOARD)
           .eq('restaurante_id', rest.id)
           .order('created_at', { ascending: false })
         if (desdeActividad) query = query.gte('created_at', desdeActividad)
         const [{ data }, { data: vinosData }] = await Promise.all([
           query,
-          supabase.from('vinos').select('*').eq('restaurante_id', rest.id),
+          supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id),
         ])
         setStats(data || [])
         setVinos(vinosData || [])
