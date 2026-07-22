@@ -158,14 +158,14 @@ export default function AdminLayout({ children }) {
                 className={styles.subnavAdminLink}
                 onClick={() => setMenuOpen(false)}
               >
-                Fichas e importacion
+                Fichas e importación
               </Link>
               <Link
                 href="/admin/proveedores?vista=catalogo"
                 className={styles.subnavAdminLink}
                 onClick={() => setMenuOpen(false)}
               >
-                Catalogo comun
+                Catálogo común
               </Link>
             </div>
           </li>
@@ -184,7 +184,7 @@ export default function AdminLayout({ children }) {
             >
               <span className={styles.restName}>{r.nombre}</span>
               <span className={styles.restMeta}>
-                <span>{r.ciudad || r.provincia || 'Sin ubicacion'}</span>
+                <span>{r.ciudad || r.provincia || 'Sin ubicación'}</span>
                 <span className={styles.restStatus}>{r.subscription_status || 'activo'}</span>
               </span>
             </Link>
@@ -240,7 +240,7 @@ export default function AdminLayout({ children }) {
                 {filteredRestaurants.map(restaurante => (
                   <Link key={restaurante.id} href={`/admin/restaurante/${restaurante.id}`} onClick={() => setSearch('')}>
                     <strong>{restaurante.nombre}</strong>
-                    <span>{restaurante.ciudad || 'Sin ubicacion'}</span>
+                    <span>{restaurante.ciudad || 'Sin ubicación'}</span>
                   </Link>
                 ))}
               </div>
@@ -262,7 +262,7 @@ export default function AdminLayout({ children }) {
               <div className={styles.notificationsDropdown}>
                 <strong>Alertas operativas</strong>
                 {pendientes === 0 ? (
-                  <p>Sin restaurantes con accion pendiente.</p>
+                  <p>Sin restaurantes con acción pendiente.</p>
                 ) : restaurantes
                   .filter(restaurante => restaurante.subscription_status === 'trialing' || restaurante.subscription_status === 'past_due')
                   .slice(0, 6)
@@ -287,7 +287,7 @@ export default function AdminLayout({ children }) {
                 <div className={styles.profileDropdown}>
                   <strong>{userEmail || 'Consultor'}</strong>
                   <Link href="/admin?vista=accesos" onClick={() => setProfileOpen(false)}>Accesos</Link>
-                  <button type="button" onClick={cerrarSesion}>Cerrar sesion</button>
+                  <button type="button" onClick={cerrarSesion}>Cerrar sesión</button>
                 </div>
               )}
             </div>

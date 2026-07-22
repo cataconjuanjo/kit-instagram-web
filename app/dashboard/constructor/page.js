@@ -153,8 +153,8 @@ export default function ConstructorCarta() {
     const lineas = [
       titulo,
       modoSalida === 'interna'
-        ? 'Version interna: proveedor, coste, stock y notas de control'
-        : plantilla === 'minimalista' ? 'Formato minimalista' : plantilla === 'clasica' ? 'Formato clasico' : 'Formato gastronomico',
+        ? 'Versión interna: proveedor, coste, stock y notas de control'
+        : plantilla === 'minimalista' ? 'Formato minimalista' : plantilla === 'clasica' ? 'Formato clásico' : 'Formato gastronómico',
       '',
       ...agrupado.flatMap(grupo => [
         grupo.seccion.toUpperCase(),
@@ -165,7 +165,7 @@ export default function ConstructorCarta() {
               vino.proveedor ? `Proveedor: ${vino.proveedor}` : 'Proveedor pendiente',
               vino.coste_compra ? `Coste: ${eur(vino.coste_compra)}` : 'Coste pendiente',
               vino.stock !== '' && vino.stock != null ? `Stock: ${vino.stock}` : '',
-              vino.stock_minimo ? `Minimo: ${vino.stock_minimo}` : '',
+              vino.stock_minimo ? `Mínimo: ${vino.stock_minimo}` : '',
             ].filter(Boolean).join(' | ')
             return `${lineaCarta(vino)}${precio ? ` | ${precio}` : ''} | ${control}`
           }
@@ -185,7 +185,7 @@ export default function ConstructorCarta() {
     if (!nuevos.length) return
     setDraft(actual => [...nuevos, ...actual])
     setTextoImportar('')
-    setMensaje(`${nuevos.length} referencias anadidas al borrador`)
+    setMensaje(`${nuevos.length} referencias añadidas al borrador`)
     setTimeout(() => setMensaje(''), 1800)
   }
 
@@ -222,14 +222,14 @@ export default function ConstructorCarta() {
         subtitle={esPerfilBodega(restaurante)
           ? 'Crea una carta desde cero o desde tu bodega, ordena secciones, asigna proveedores y exporta una salida limpia para maquetar en Word.'
           : 'Constructor interno para preparar una carta estructurada antes de publicarla o maquetarla.'}
-        actions={<Link className={styles.secondary} href="/dashboard/catalogo">Buscar en catalogo</Link>}
+        actions={<Link className={styles.secondary} href="/dashboard/catalogo">Buscar en catálogo</Link>}
         help={{
           title: 'Flujo recomendado',
-          intro: 'Primero estructura contenido y datos. La decoracion final puede hacerse despues en Word o una plantilla propia.',
+          intro: 'Primero estructura contenido y datos. La decoración final puede hacerse después en Word o una plantilla propia.',
           items: [
             { title: 'Desde bodega', text: 'Parte de tus referencias activas y reordena secciones.' },
-            { title: 'Desde cero', text: 'Pega una lista de vinos y completa proveedor, precio o seccion.' },
-            { title: 'Exportar', text: 'Copia una salida limpia para Word, PDF o maquetacion externa.' },
+            { title: 'Desde cero', text: 'Pega una lista de vinos y completa proveedor, precio o sección.' },
+            { title: 'Exportar', text: 'Copia una salida limpia para Word, PDF o maquetación externa.' },
           ],
         }}
       >
@@ -247,7 +247,7 @@ export default function ConstructorCarta() {
             <div className={styles.panelHead}>
               <div>
                 <h2 className={styles.panelTitle}>Importar o empezar desde cero</h2>
-                <p className={styles.panelSub}>Pega una referencia por linea. Usa &quot;Nombre - Bodega - Region&quot; o separa por barras.</p>
+                <p className={styles.panelSub}>Pega una referencia por línea. Usa &quot;Nombre - Bodega - Región&quot; o separa por barras.</p>
               </div>
             </div>
             <div className={styles.panelBody}>
@@ -259,7 +259,7 @@ export default function ConstructorCarta() {
                 placeholder={'Veronica Ortega Quite - Bierzo\nZarate Albarino | Zarate | Rias Baixas'}
               />
               <div className={styles.actionRow} style={{ marginTop: 12 }}>
-                <button className={styles.primary} type="button" onClick={importarTexto}>Anadir al borrador</button>
+                <button className={styles.primary} type="button" onClick={importarTexto}>Añadir al borrador</button>
                 <button className={styles.ghost} type="button" onClick={() => setDraft(vinos)}>Reiniciar desde bodega</button>
               </div>
             </div>
@@ -269,19 +269,19 @@ export default function ConstructorCarta() {
             <div className={styles.panelHead}>
               <div>
                 <h2 className={styles.panelTitle}>Salida estructurada</h2>
-                <p className={styles.panelSub}>Contenido limpio para pasarlo a Word y rematar formato, decoracion o portada.</p>
+                <p className={styles.panelSub}>Contenido limpio para pasarlo a Word y rematar formato, decoración o portada.</p>
               </div>
             </div>
             <div className={styles.panelBody}>
               <label className={styles.label}>Plantilla</label>
               <select className={styles.select} value={plantilla} onChange={event => setPlantilla(event.target.value)}>
-                <option value="gastronomica">Gastronomica</option>
-                <option value="clasica">Clasica</option>
+                <option value="gastronomica">Gastronómica</option>
+                <option value="clasica">Clásica</option>
                 <option value="minimalista">Minimalista</option>
               </select>
               <div className={styles.actionRow} style={{ marginTop: 10 }}>
                 <button className={modoSalida === 'cliente' ? styles.primary : styles.secondary} type="button" onClick={() => setModoSalida('cliente')}>Carta cliente</button>
-                <button className={modoSalida === 'interna' ? styles.primary : styles.secondary} type="button" onClick={() => setModoSalida('interna')}>Version interna</button>
+                <button className={modoSalida === 'interna' ? styles.primary : styles.secondary} type="button" onClick={() => setModoSalida('interna')}>Versión interna</button>
               </div>
               <pre style={{ whiteSpace: 'pre-wrap', maxHeight: 280, overflow: 'auto', marginTop: 14, color: '#fffaf3', fontSize: 12, lineHeight: 1.55 }}>{textoSalida}</pre>
               <div className={styles.actionRow} style={{ marginTop: 12 }}>
@@ -296,7 +296,7 @@ export default function ConstructorCarta() {
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Borrador de carta</h2>
-              <p className={styles.panelSub}>Ajusta seccion, proveedor y precio antes de exportar.</p>
+              <p className={styles.panelSub}>Ajusta sección, proveedor y precio antes de exportar.</p>
             </div>
             <span className={styles.badge}>{draft.length} refs.</span>
           </div>
@@ -306,15 +306,15 @@ export default function ConstructorCarta() {
                 <article key={vino.tempId} className={styles.itemCard}>
                   <div className={styles.sectionHead} style={{ margin: 0 }}>
                     <div>
-                      <p className={styles.eyebrow}>{vino.origen === 'catalogo' ? 'Catalogo' : vino.origen === 'manual' ? 'Manual' : 'Bodega'}</p>
+                      <p className={styles.eyebrow}>{vino.origen === 'catalogo' ? 'Catálogo' : vino.origen === 'manual' ? 'Manual' : 'Bodega'}</p>
                       <h3 className={styles.sectionTitle}>{vino.nombre}</h3>
-                      <p className={styles.sectionText}>{[vino.bodega, vino.region, vino.uva, vino.anada].filter(Boolean).join(' - ') || 'Completa bodega, zona o anada si lo necesitas.'}</p>
+                      <p className={styles.sectionText}>{[vino.bodega, vino.region, vino.uva, vino.anada].filter(Boolean).join(' - ') || 'Completa bodega, zona o añada si lo necesitas.'}</p>
                     </div>
                     <button className={styles.ghost} type="button" onClick={() => quitar(vino.tempId)}>Quitar</button>
                   </div>
                   <div className={styles.formGrid} style={{ marginTop: 12 }}>
                     <div>
-                      <label className={styles.label}>Seccion</label>
+                      <label className={styles.label}>Sección</label>
                       <select className={styles.select} value={vino.seccion} onChange={event => actualizar(vino.tempId, { seccion: event.target.value })}>
                         {SECCIONES.map(seccion => <option key={seccion} value={seccion}>{seccion}</option>)}
                       </select>
@@ -336,7 +336,7 @@ export default function ConstructorCarta() {
                       <input className={styles.input} value={vino.coste_compra || ''} onChange={event => actualizar(vino.tempId, { coste_compra: event.target.value })} />
                     </div>
                     <div>
-                      <label className={styles.label}>Stock minimo</label>
+                      <label className={styles.label}>Stock mínimo</label>
                       <input className={styles.input} value={vino.stock_minimo || ''} onChange={event => actualizar(vino.tempId, { stock_minimo: event.target.value })} />
                     </div>
                   </div>

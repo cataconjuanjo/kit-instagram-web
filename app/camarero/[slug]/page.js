@@ -2312,7 +2312,7 @@ export default function Camarero() {
                         <span className={styles.dot} style={{ background: tipoDot[vinoMandatoVenta.tipo] || '#666' }} />
                         <span>
                           <strong>{vinoMandatoVenta.nombre}</strong>
-                          <em>{[tipoLabel[vinoMandatoVenta.tipo], vinoMandatoVenta.bodega, vinoMandatoVenta.precio_botella ? `${vinoMandatoVenta.precio_botella} EUR` : null].filter(Boolean).join(' Â· ')}</em>
+                          <em>{[tipoLabel[vinoMandatoVenta.tipo], vinoMandatoVenta.bodega, vinoMandatoVenta.precio_botella ? `${vinoMandatoVenta.precio_botella} EUR` : null].filter(Boolean).join(' · ')}</em>
                         </span>
                       </button>
                     ) : (
@@ -2331,7 +2331,7 @@ export default function Camarero() {
                               <span className={styles.dot} style={{ background: tipoDot[vino.tipo] || '#666' }} />
                               <span>
                                 <strong>{vino.nombre}</strong>
-                                <em>{[tipoLabel[vino.tipo], vino.bodega, vino.precio_botella ? `${vino.precio_botella} EUR` : null].filter(Boolean).join(' Â· ')}</em>
+                                <em>{[tipoLabel[vino.tipo], vino.bodega, vino.precio_botella ? `${vino.precio_botella} EUR` : null].filter(Boolean).join(' · ')}</em>
                               </span>
                             </button>
                           ))}

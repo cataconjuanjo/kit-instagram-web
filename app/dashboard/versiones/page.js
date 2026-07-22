@@ -72,11 +72,11 @@ function lecturaOperativa({ totalCambios, cambiosPrecio, retirados, agregados, v
   if (totalCambios === 0) {
     return {
       etiqueta: 'Segura',
-      titulo: 'La carta actual coincide con la version seleccionada',
+      titulo: 'La carta actual coincide con la versión seleccionada',
       texto: cartaPublicada
-        ? 'Puedes usar QR, enlace o impresion con bajo riesgo: no hay diferencias detectadas frente a la foto publicada.'
-        : 'La carta coincide con esta version, pero sigue en borrador. Revisa la preview antes de volver a publicar.',
-      accion: versionSeleccionadaEsUltima ? 'Mantener version actual' : 'Puedes comparar con la ultima version publicada antes de decidir.',
+        ? 'Puedes usar QR, enlace o impresión con bajo riesgo: no hay diferencias detectadas frente a la foto publicada.'
+        : 'La carta coincide con esta versión, pero sigue en borrador. Revisa la preview antes de volver a publicar.',
+      accion: versionSeleccionadaEsUltima ? 'Mantener versión actual' : 'Puedes comparar con la última versión publicada antes de decidir.',
     }
   }
 
@@ -84,24 +84,24 @@ function lecturaOperativa({ totalCambios, cambiosPrecio, retirados, agregados, v
     return {
       etiqueta: 'Revisar',
       titulo: 'Hay cambios sensibles antes de imprimir o publicar',
-      texto: `${cambiosPrecio} cambios de precio y ${retirados} elementos retirados pueden afectar a mesa, imprenta o aprobacion previa.`,
-      accion: 'Si necesitas volver a una base fiable, restaura esta version como borrador y genera una nueva preview.',
+      texto: `${cambiosPrecio} cambios de precio y ${retirados} elementos retirados pueden afectar a mesa, imprenta o aprobación previa.`,
+      accion: 'Si necesitas volver a una base fiable, restaura esta versión como borrador y genera una nueva preview.',
     }
   }
 
   if (agregados > 0) {
     return {
       etiqueta: 'Moderada',
-      titulo: 'La carta actual ha crecido desde esta version',
-      texto: `${agregados} elementos nuevos no estaban en la version publicada seleccionada.`,
+      titulo: 'La carta actual ha crecido desde esta versión',
+      texto: `${agregados} elementos nuevos no estaban en la versión publicada seleccionada.`,
       accion: 'Revisa que las altas tengan precio y encajen con el QR antes de publicar.',
     }
   }
 
   return {
     etiqueta: 'Ligera',
-    titulo: 'Hay cambios de contenido no criticos',
-    texto: 'No se detectan retiradas ni cambios de precio, pero si ajustes de datos visibles para el cliente.',
+    titulo: 'Hay cambios de contenido no críticos',
+    texto: 'No se detectan retiradas ni cambios de precio, pero sí ajustes de datos visibles para el cliente.',
     accion: 'Haz una prueba privada y aprueba la preview antes de publicar de nuevo.',
   }
 }
@@ -127,7 +127,7 @@ function DiffList({ title, items = [], empty, type = 'changed' }) {
                     {type === 'changed' ? (
                       <p className={styles.sectionText}>{item.cambios.map(cambioTexto).join(' · ')}</p>
                     ) : (
-                      <p className={styles.sectionText}>{type === 'added' ? 'Existe ahora, no estaba en la version publicada.' : 'Estaba publicado y ya no existe en la carta actual.'}</p>
+                      <p className={styles.sectionText}>{type === 'added' ? 'Existe ahora, no estaba en la versión publicada.' : 'Estaba publicado y ya no existe en la carta actual.'}</p>
                     )}
                   </div>
                   <span className={styles.badge}>{type === 'added' ? 'Nuevo' : type === 'removed' ? 'Quitado' : 'Cambio'}</span>
@@ -215,16 +215,16 @@ export default function VersionesPublicacionPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo restaurar la version.')
+      if (!res.ok) throw new Error(data.error || 'No se pudo restaurar la versión.')
       setRestaurante(prev => prev ? { ...prev, carta_publica_activa: false } : prev)
       setConfirmarRestauracion(null)
       setMensaje(data.historial_error
-        ? 'Version restaurada como borrador, pero no se pudo registrar el historial.'
-        : `Version v${data.snapshot?.version_number || confirmarRestauracion.version_number} restaurada como borrador. Revisa y publica cuando este lista.`
+        ? 'Versión restaurada como borrador, pero no se pudo registrar el historial.'
+        : `Versión v${data.snapshot?.version_number || confirmarRestauracion.version_number} restaurada como borrador. Revisa y publica cuando esté lista.`
       )
       await cargarVersiones(restaurante.id, confirmarRestauracion.id)
     } catch (err) {
-      setError(err.message || 'No se pudo restaurar la version.')
+      setError(err.message || 'No se pudo restaurar la versión.')
     } finally {
       setRestaurando(false)
     }
@@ -263,7 +263,7 @@ export default function VersionesPublicacionPage() {
   return (
     <ModuleShell
       restaurante={restaurante}
-      eyebrow="Publicacion"
+      eyebrow="Publicación"
       title="Versiones publicadas"
       subtitle="Compara una foto publicada de la carta con el contenido actual antes de volver a imprimir, compartir o revisar QR."
       actions={
@@ -273,11 +273,11 @@ export default function VersionesPublicacionPage() {
         </>
       }
       help={{
-        title: 'Como leer una version',
-        intro: 'Cada version es una foto del contenido visible cuando pulsaste Publicar carta.',
+        title: 'Cómo leer una versión',
+        intro: 'Cada versión es una foto del contenido visible cuando pulsaste Publicar carta.',
         items: [
-          { title: 'Cambios de precio', text: 'Son los mas sensibles antes de imprimir o compartir materiales.' },
-          { title: 'Altas y bajas', text: 'Ayudan a detectar si el QR publico esta mostrando algo distinto a lo aprobado.' },
+          { title: 'Cambios de precio', text: 'Son los más sensibles antes de imprimir o compartir materiales.' },
+          { title: 'Altas y bajas', text: 'Ayudan a detectar si el QR público está mostrando algo distinto a lo aprobado.' },
           { title: 'Restaurar', text: 'Devuelve vinos y platos visibles a esa foto y deja la carta en borrador para revisar antes de publicar.' },
         ],
       }}
@@ -285,7 +285,7 @@ export default function VersionesPublicacionPage() {
       {mensaje && (
         <section className={styles.empty} style={{ marginBottom: 16 }}>
           <div>
-            <strong>Restauracion completada</strong>
+            <strong>Restauración completada</strong>
             <p>{mensaje}</p>
           </div>
         </section>
@@ -307,7 +307,7 @@ export default function VersionesPublicacionPage() {
       ) : snapshots.length === 0 ? (
         <section className={styles.empty}>
           <div>
-            <strong>Aun no hay versiones publicadas</strong>
+            <strong>Aún no hay versiones publicadas</strong>
             <p>Publica la carta desde QR para crear la primera foto versionada.</p>
           </div>
         </section>
@@ -316,7 +316,7 @@ export default function VersionesPublicacionPage() {
           <section className={styles.panelDark} style={{ marginBottom: 16 }}>
             <div className={styles.panelHead}>
               <div>
-                <h2 className={styles.panelTitle}>Version segura</h2>
+                <h2 className={styles.panelTitle}>Versión segura</h2>
                 <p className={styles.panelSub}>Lectura operativa antes de imprimir, compartir QR o volver a publicar.</p>
               </div>
               <span className={styles.badge}>{lectura.etiqueta}</span>
@@ -324,20 +324,20 @@ export default function VersionesPublicacionPage() {
             <div className={styles.panelBody}>
               <div className={styles.gridTwo}>
                 <article className={styles.itemCard}>
-                  <h3 className={styles.sectionTitle}>Version seleccionada</h3>
+                  <h3 className={styles.sectionTitle}>Versión seleccionada</h3>
                   <p className={styles.sectionText}>
                     {snapshot
                       ? `v${snapshot.version_number} - ${formatoFecha(snapshot.created_at)} - ${snapshot.actor_email || 'responsable'}`
-                      : 'Sin version seleccionada'}
+                      : 'Sin versión seleccionada'}
                   </p>
                   <p className={styles.sectionText}>
-                    {versionSeleccionadaEsUltima ? 'Es la ultima version publicada.' : `No es la ultima version publicada${ultimaVersion ? `: la mas reciente es v${ultimaVersion.version_number}` : ''}.`}
+                    {versionSeleccionadaEsUltima ? 'Es la última versión publicada.' : `No es la última versión publicada${ultimaVersion ? `: la más reciente es v${ultimaVersion.version_number}` : ''}.`}
                   </p>
                 </article>
                 <article className={styles.itemCard}>
                   <h3 className={styles.sectionTitle}>Carta actual</h3>
                   <p className={styles.sectionText}>{actual ? resumenContenido(actual.contenido_resumen) : '-'}</p>
-                  <p className={styles.sectionText}>{cartaPublicada ? 'La carta esta publicada.' : 'La carta esta en borrador.'}</p>
+                  <p className={styles.sectionText}>{cartaPublicada ? 'La carta está publicada.' : 'La carta está en borrador.'}</p>
                 </article>
               </div>
               <article className={styles.itemCard} style={{ marginTop: 12 }}>
@@ -357,7 +357,7 @@ export default function VersionesPublicacionPage() {
                   onClick={() => setConfirmarRestauracion(snapshot)}
                   disabled={!snapshot || restaurando || cargandoVersion}
                 >
-                  {restaurando ? 'Restaurando...' : 'Restaurar esta version'}
+                  {restaurando ? 'Restaurando...' : 'Restaurar esta versión'}
                 </button>
                 <OpenCartaPruebaButton className={styles.secondary} restauranteId={restaurante?.id}>Probar borrador</OpenCartaPruebaButton>
                 <Link className={styles.secondary} href="/dashboard/qr">Ir a QR</Link>
@@ -366,7 +366,7 @@ export default function VersionesPublicacionPage() {
           </section>
 
           <section className={styles.statsGrid}>
-            <div className={styles.stat}><p className={styles.statValue}>v{snapshot?.version_number || '-'}</p><p className={styles.statLabel}>Version seleccionada</p></div>
+            <div className={styles.stat}><p className={styles.statValue}>v{snapshot?.version_number || '-'}</p><p className={styles.statLabel}>Versión seleccionada</p></div>
             <div className={styles.stat}><p className={styles.statValue}>{snapshots.length}</p><p className={styles.statLabel}>Versiones guardadas</p></div>
             <div className={styles.stat}><p className={styles.statValue}>{totalCambios}</p><p className={styles.statLabel}>Cambios frente a actual</p></div>
             <div className={styles.stat}><p className={styles.statValue}>{cambiosPrecio}</p><p className={styles.statLabel}>Cambios de precio</p></div>
@@ -378,7 +378,7 @@ export default function VersionesPublicacionPage() {
               <div className={styles.panelHead}>
                 <div>
                   <h2 className={styles.panelTitle}>Versiones</h2>
-                  <p className={styles.panelSub}>Elige una version para compararla con la carta actual.</p>
+                  <p className={styles.panelSub}>Elige una versión para compararla con la carta actual.</p>
                 </div>
                 {cargandoVersion && <span className={styles.badge}>Cargando</span>}
               </div>
@@ -393,12 +393,12 @@ export default function VersionesPublicacionPage() {
                     >
                       <div className={styles.sectionHead} style={{ margin: 0 }}>
                         <div>
-                          <h3 className={styles.sectionTitle}>Version v{item.version_number}</h3>
+                          <h3 className={styles.sectionTitle}>Versión v{item.version_number}</h3>
                           <p className={styles.sectionText}>{formatoFecha(item.created_at)} · {item.actor_email || 'responsable'}</p>
                           <p className={styles.sectionText}>{resumenContenido(item.contenido_resumen)}</p>
                         </div>
                         <span className={styles.badge}>
-                          {snapshot?.id === item.id ? 'Seleccionada' : item.id === ultimaVersion?.id ? 'Ultima' : 'Ver'}
+                          {snapshot?.id === item.id ? 'Seleccionada' : item.id === ultimaVersion?.id ? 'Última' : 'Ver'}
                         </span>
                       </div>
                     </button>
@@ -428,11 +428,11 @@ export default function VersionesPublicacionPage() {
                   <div className={styles.gridTwo}>
                     <div className={styles.itemCard}>
                       <h3 className={styles.sectionTitle}>Cambios sensibles</h3>
-                      <p className={styles.sectionText}>{cambiosPrecio} cambios de precio Â· {retirados} retirados</p>
+                      <p className={styles.sectionText}>{cambiosPrecio} cambios de precio · {retirados} retirados</p>
                     </div>
                     <div className={styles.itemCard}>
                       <h3 className={styles.sectionTitle}>Altas nuevas</h3>
-                      <p className={styles.sectionText}>{agregados} elementos nuevos frente a esta version.</p>
+                      <p className={styles.sectionText}>{agregados} elementos nuevos frente a esta versión.</p>
                     </div>
                   </div>
                   <div className={styles.actionRow}>
@@ -456,13 +456,13 @@ export default function VersionesPublicacionPage() {
             <section className={styles.itemStack} style={{ marginTop: 16 }}>
               <DiffList title="Vinos con precio o datos cambiados" items={comparacion.vinos.cambiados} empty="No hay cambios en vinos comunes." />
               <div className={styles.gridTwo}>
-                <DiffList title="Vinos añadidos" items={comparacion.vinos.agregados} empty="No hay vinos nuevos frente a la version." type="added" />
-                <DiffList title="Vinos quitados" items={comparacion.vinos.eliminados} empty="No hay vinos retirados frente a la version." type="removed" />
+                <DiffList title="Vinos añadidos" items={comparacion.vinos.agregados} empty="No hay vinos nuevos frente a la versión." type="added" />
+                <DiffList title="Vinos quitados" items={comparacion.vinos.eliminados} empty="No hay vinos retirados frente a la versión." type="removed" />
               </div>
               <DiffList title="Platos con cambios" items={comparacion.platos.cambiados} empty="No hay cambios en platos comunes." />
               <div className={styles.gridTwo}>
-                <DiffList title="Platos añadidos" items={comparacion.platos.agregados} empty="No hay platos nuevos frente a la version." type="added" />
-                <DiffList title="Platos quitados" items={comparacion.platos.eliminados} empty="No hay platos retirados frente a la version." type="removed" />
+                <DiffList title="Platos añadidos" items={comparacion.platos.agregados} empty="No hay platos nuevos frente a la versión." type="added" />
+                <DiffList title="Platos quitados" items={comparacion.platos.eliminados} empty="No hay platos retirados frente a la versión." type="removed" />
               </div>
             </section>
           )}
@@ -472,14 +472,14 @@ export default function VersionesPublicacionPage() {
         open={Boolean(confirmarRestauracion)}
         onClose={() => setConfirmarRestauracion(null)}
         onConfirm={restaurarSnapshot}
-        title={`Restaurar version v${confirmarRestauracion?.version_number || ''}`}
-        description="La carta publica se pausara y los vinos y platos visibles volveran a la foto seleccionada. Despues tendras que revisar, generar preview y aprobar antes de publicar."
+        title={`Restaurar versión v${confirmarRestauracion?.version_number || ''}`}
+        description="La carta pública se pausará y los vinos y platos visibles volverán a la foto seleccionada. Después tendrás que revisar, generar preview y aprobar antes de publicar."
         confirmLabel="Restaurar borrador"
         busy={restaurando}
       >
         <div className={styles.itemStack}>
           <div className={styles.itemCard}>
-            <h3 className={styles.sectionTitle}>Version seleccionada</h3>
+            <h3 className={styles.sectionTitle}>Versión seleccionada</h3>
             <p className={styles.sectionText}>
               {confirmarRestauracion
                 ? `${formatoFecha(confirmarRestauracion.created_at)} · ${resumenContenido(confirmarRestauracion.contenido_resumen)}`
@@ -487,9 +487,9 @@ export default function VersionesPublicacionPage() {
             </p>
           </div>
           <div className={styles.itemCard}>
-            <h3 className={styles.sectionTitle}>Que ocurrira</h3>
+            <h3 className={styles.sectionTitle}>Qué ocurrirá</h3>
             <p className={styles.sectionText}>
-              Los elementos actuales que no pertenezcan a esa version quedaran ocultos. No se publicara automaticamente ni saltara el control de aprobacion.
+              Los elementos actuales que no pertenezcan a esa versión quedarán ocultos. No se publicará automáticamente ni saltará el control de aprobación.
             </p>
           </div>
         </div>

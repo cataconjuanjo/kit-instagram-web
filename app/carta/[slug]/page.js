@@ -751,23 +751,16 @@ export default function CartaPublica() {
     const siguientesVinos = alternarVinoComparador(vinosComparador, vino)
     if (siguientesVinos !== vinosComparador) setVinosComparador(siguientesVinos)
   }
-async function cargarPerfiles(vinosACargar) {
-  setCargandoPerfiles(true)
-  const nuevosPerfiles = await cargarPerfilesVino(vinosACargar, {
-    restaurante,
-    pruebaToken: tokenPrueba,
-    incluirPruebaToken: true,
-    onPerfilRecibido: (vino, data) => {
-      console.log('Perfil recibido para', vino.nombre, ':', JSON.stringify(data))
-    },
-    onPerfilError: (vino, error) => {
-      console.log('Error perfil para', vino.nombre, ':', error.message)
-    },
-  })
-console.log('Perfiles a guardar:', JSON.stringify(nuevosPerfiles))
-setPerfiles(nuevosPerfiles)
-  setCargandoPerfiles(false)
-}
+  async function cargarPerfiles(vinosACargar) {
+    setCargandoPerfiles(true)
+    const nuevosPerfiles = await cargarPerfilesVino(vinosACargar, {
+      restaurante,
+      pruebaToken: tokenPrueba,
+      incluirPruebaToken: true,
+    })
+    setPerfiles(nuevosPerfiles)
+    setCargandoPerfiles(false)
+  }
 
   // Formateadores de precio dependientes de la configuración del restaurante
   const moneda = restaurante?.carta_mostrar_euro !== false ? ' €' : ''

@@ -322,25 +322,6 @@ function ProveedoresPageContent() {
     })
   }, [vinosFiltradosBase, ordenReferencias, busquedaReferencias])
 
-  useEffect(() => {
-    if (ordenReferencias.campo !== 'pvp') return
-    const total = vinosFiltrados.length
-    console.log('[DEBUG-PVP-SORT] dir=' + ordenReferencias.dir + ' total=' + total)
-    vinosFiltrados.forEach((vino, i) => {
-      const costeRaw = vino.coste_estimado
-      const c = numeroCoste(costeRaw)
-      let pvpSort = 0
-      if (c > 0) {
-        const pvpSinIva = c > 11 ? c + 20 : c > 6 ? 2 * c + 9 : c * 3.5
-        pvpSort = pvpSinIva * 1.10
-      }
-      const esMiradas = vino.nombre.toLowerCase().includes('miradas')
-      if (total <= 150 || esMiradas) {
-        console.log(`[pos ${i}/${total}] "${vino.nombre}" coste=${c} pvpSort=${pvpSort.toFixed(2)}`)
-      }
-    })
-  }, [vinosFiltrados, ordenReferencias])
-
   const proveedorPorId = useMemo(
     () => Object.fromEntries(proveedores.map(proveedor => [proveedor.id, proveedor])),
     [proveedores]

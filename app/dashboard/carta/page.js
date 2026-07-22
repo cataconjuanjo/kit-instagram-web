@@ -58,7 +58,7 @@ export default function CartaHub() {
       >
         <section className={styles.empty}>
           <div>
-            <strong>Foco en gestion de bodega</strong>
+            <strong>Foco en gestión de bodega</strong>
             <p>Los maridajes, QR y publicaciones quedan fuera de esta experiencia para no mezclar sala con control de bodega.</p>
           </div>
         </section>
@@ -85,10 +85,10 @@ export default function CartaHub() {
     { titulo: 'Platos con precio', valor: platos.length - platosSinPrecio.length, total: platos.length, href: '/dashboard/platos?filtro=sin_precio' },
   ]
   const pendientesPrioritarios = [
-    ...vinosSinPrecio.slice(0, 3).map(vino => ({ tipo: 'Publicacion', nombre: vino.nombre, detalle: 'Vino sin precio', href: '/dashboard/vinos?filtro=pendientes' })),
-    ...platosSinPrecio.slice(0, 2).map(plato => ({ tipo: 'Publicacion', nombre: plato.nombre, detalle: 'Plato sin precio', href: '/dashboard/platos?filtro=sin_precio' })),
-    ...vinosSinPerfil.slice(0, 3).map(vino => ({ tipo: 'Recomendacion', nombre: vino.nombre, detalle: 'Falta perfil de venta', href: '/dashboard/vinos?filtro=pendientes' })),
-    ...platosSinDescripcion.slice(0, 3).map(plato => ({ tipo: 'Recomendacion', nombre: plato.nombre, detalle: 'Faltan pistas para maridar', href: '/dashboard/platos?filtro=descripcion' })),
+    ...vinosSinPrecio.slice(0, 3).map(vino => ({ tipo: 'Publicación', nombre: vino.nombre, detalle: 'Vino sin precio', href: '/dashboard/vinos?filtro=pendientes' })),
+    ...platosSinPrecio.slice(0, 2).map(plato => ({ tipo: 'Publicación', nombre: plato.nombre, detalle: 'Plato sin precio', href: '/dashboard/platos?filtro=sin_precio' })),
+    ...vinosSinPerfil.slice(0, 3).map(vino => ({ tipo: 'Recomendación', nombre: vino.nombre, detalle: 'Falta perfil de venta', href: '/dashboard/vinos?filtro=pendientes' })),
+    ...platosSinDescripcion.slice(0, 3).map(plato => ({ tipo: 'Recomendación', nombre: plato.nombre, detalle: 'Faltan pistas para maridar', href: '/dashboard/platos?filtro=descripcion' })),
   ].slice(0, 5)
   const accionesRapidas = [
     { label: 'Importar vinos', href: '/dashboard/vinos?importar=1' },
@@ -114,7 +114,7 @@ export default function CartaHub() {
         intro: 'Esta pestaña es la base comercial de la carta. Si está bien alimentada, el resto de la app trabaja mejor.',
         items: [
           { title: 'Primero vinos', text: 'Comprueba precios, stock y perfil de venta. Sin eso, la carta pública y el modo camarero pierden fuerza.' },
-          { title: 'Luego platos', text: 'Los platos necesitan descripcion interna: tecnica, salsa, intensidad o ingrediente clave. No se muestra como receta en la carta publica.' },
+          { title: 'Luego platos', text: 'Los platos necesitan descripción interna: técnica, salsa, intensidad o ingrediente clave. No se muestra como receta en la carta pública.' },
           { title: 'Destacados al final', text: 'Úsalos cuando quieras empujar margen, producto local, novedad o una referencia con buen relato de sala.' },
         ],
       }}
