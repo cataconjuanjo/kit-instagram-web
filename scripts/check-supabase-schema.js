@@ -30,14 +30,14 @@ function isStrictOptional() {
 
 const requiredChecks = [
   {
-    label: 'restaurantes core',
+    label: 'restaurantes admin client',
     table: 'restaurantes',
-    select: 'id, nombre, email, slug, ciudad, plan, subscription_status, ticket_medio_comida',
+    select: 'id, nombre, email, ciudad, slug, logo_url, color_primario, color_fondo, color_acento, tipografia, hub_activo, hub_titulo, hub_subtitulo, instagram_url, facebook_url, plan, subscription_status, trial_active_seconds_limit, trial_expires_at, trial_started_at, ticket_medio_comida, carta_publica_activa, created_at',
   },
   {
-    label: 'vinos core',
+    label: 'vinos admin client',
     table: 'vinos',
-    select: 'id, restaurante_id, nombre, bodega, tipo, region, uva, anada, precio_botella, precio_copa, coste_compra, stock, stock_minimo, proveedor, activo, notas_cata',
+    select: 'id, restaurante_id, nombre, bodega, tipo, region, uva, anada, precio_botella, precio_copa, coste_compra, stock, stock_minimo, proveedor, referencia_proveedor, formato_compra, activo, notas_cata',
   },
   {
     label: 'platos core',
@@ -63,6 +63,11 @@ const requiredChecks = [
     label: 'consultor propuestas',
     table: 'consultor_propuestas',
     select: 'id, restaurante_id, titulo, vino, tipo, zona, proveedor_sugerido, coste_estimado, precio_recomendado, margen_objetivo, plato_objetivo, motivo, prioridad, estado, created_at, updated_at',
+  },
+  {
+    label: 'seleccion especial admin client',
+    table: 'seleccion_especial',
+    select: 'id, restaurante_id, vino_id, orden, nota_personal, activo, created_at, vinos(nombre, bodega, tipo, region)',
   },
   {
     label: 'consultant diagnostics',

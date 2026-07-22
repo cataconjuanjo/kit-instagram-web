@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../demo'
+import { SELECT_CLIENT_RESTAURANTE_ADMIN } from '../lib/clientSupabaseSelects'
 import AdminOverlay from './components/AdminOverlay'
 
 const PLAN_LABEL = { basic: 'Básico', pro: 'Sala', bodega: 'Bodega', premium: 'Acompañado' }
@@ -277,7 +278,7 @@ function AdminPageContent() {
       if (restaurantesRes.ok) {
         setRestaurantes(restaurantesData.restaurantes || [])
       } else {
-        const { data } = await supabase.from('restaurantes').select('*').order('nombre')
+        const { data } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_ADMIN).order('nombre')
         setRestaurantes(data || [])
       }
       const usoRes = await fetch('/api/uso', {

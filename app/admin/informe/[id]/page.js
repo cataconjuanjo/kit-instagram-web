@@ -5,6 +5,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../supabase'
 import { isAdminEmail } from '../../../demo'
+import {
+  SELECT_CLIENT_ESTADISTICA_ADMIN,
+  SELECT_CLIENT_PLATO_ADMIN,
+  SELECT_CLIENT_PROPUESTA_ADMIN,
+  SELECT_CLIENT_RESTAURANTE_ADMIN,
+  SELECT_CLIENT_VINO_ADMIN,
+} from '../../../lib/clientSupabaseSelects'
 import { isLocalWine, localTermsForRestaurant } from '../../../lib/wineRegion'
 
 function normalizar(texto = '') {
@@ -319,11 +326,11 @@ export default function InformeConsultor() {
           }).then(async res => res.ok ? res.json() : null).catch(() => null)
         : Promise.resolve(null)
       const [{ data: rest }, { data: vinosData }, { data: platosData }, { data: statsData }, { data: propuestasData }, consultoriaData] = await Promise.all([
-        supabase.from('restaurantes').select('*').eq('id', id).single(),
-        supabase.from('vinos').select('*').eq('restaurante_id', id),
-        supabase.from('platos').select('*').eq('restaurante_id', id),
-        supabase.from('estadisticas').select('*').eq('restaurante_id', id).gte('created_at', desde),
-        supabase.from('consultor_propuestas').select('*').eq('restaurante_id', id).order('created_at', { ascending: false }),
+        supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_ADMIN).eq('id', id).single(),
+        supabase.from('vinos').select(SELECT_CLIENT_VINO_ADMIN).eq('restaurante_id', id),
+        supabase.from('platos').select(SELECT_CLIENT_PLATO_ADMIN).eq('restaurante_id', id),
+        supabase.from('estadisticas').select(SELECT_CLIENT_ESTADISTICA_ADMIN).eq('restaurante_id', id).gte('created_at', desde),
+        supabase.from('consultor_propuestas').select(SELECT_CLIENT_PROPUESTA_ADMIN).eq('restaurante_id', id).order('created_at', { ascending: false }),
         consultoriaPromise,
       ])
       setRestaurante(rest)

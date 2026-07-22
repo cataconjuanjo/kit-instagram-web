@@ -5,6 +5,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../supabase'
 import { isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../../../demo'
+import {
+  SELECT_CLIENT_ESTADISTICA_ADMIN,
+  SELECT_CLIENT_PLATO_ADMIN,
+  SELECT_CLIENT_PROPUESTA_ADMIN,
+  SELECT_CLIENT_RESTAURANTE_ADMIN,
+  SELECT_CLIENT_SELECCION_ESPECIAL_ADMIN,
+  SELECT_CLIENT_VINO_ADMIN,
+} from '../../../lib/clientSupabaseSelects'
 import OpenCartaPruebaButton from '../../../dashboard/OpenCartaPruebaButton'
 
 
@@ -525,12 +533,12 @@ export default function RestauranteWorkspace() {
       const desde = haceDiasISO(30)
       const token = await tokenAdmin()
       const [{ data: rest }, { data: vinosData }, { data: platosData }, { data: statsData }, { data: propuestasData }, { data: selData }, catalogoRes] = await Promise.all([
-        supabase.from('restaurantes').select('*').eq('id', id).single(),
-        supabase.from('vinos').select('*').eq('restaurante_id', id),
-        supabase.from('platos').select('*').eq('restaurante_id', id),
-        supabase.from('estadisticas').select('*').eq('restaurante_id', id).gte('created_at', desde),
-        supabase.from('consultor_propuestas').select('*').eq('restaurante_id', id).order('created_at', { ascending: false }),
-        supabase.from('seleccion_especial').select('*, vinos(nombre, bodega, tipo, region)').eq('restaurante_id', id).eq('activo', true).order('orden'),
+        supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_ADMIN).eq('id', id).single(),
+        supabase.from('vinos').select(SELECT_CLIENT_VINO_ADMIN).eq('restaurante_id', id),
+        supabase.from('platos').select(SELECT_CLIENT_PLATO_ADMIN).eq('restaurante_id', id),
+        supabase.from('estadisticas').select(SELECT_CLIENT_ESTADISTICA_ADMIN).eq('restaurante_id', id).gte('created_at', desde),
+        supabase.from('consultor_propuestas').select(SELECT_CLIENT_PROPUESTA_ADMIN).eq('restaurante_id', id).order('created_at', { ascending: false }),
+        supabase.from('seleccion_especial').select(SELECT_CLIENT_SELECCION_ESPECIAL_ADMIN).eq('restaurante_id', id).eq('activo', true).order('orden'),
         fetch('/api/admin/proveedores', { headers: { Authorization: `Bearer ${token}` } }),
       ])
       const catalogoData = await catalogoRes.json().catch(() => ({}))
@@ -948,7 +956,7 @@ export default function RestauranteWorkspace() {
       vino_id: vinoElegido,
       nota_personal: notaSeleccion,
       orden: seleccion.length
-    }]).select('*, vinos(nombre, bodega, tipo, region)')
+    }]).select(SELECT_CLIENT_SELECCION_ESPECIAL_ADMIN)
     if (!error && data?.[0]) {
       setSeleccion(prev => [...prev, data[0]])
       setVinoElegido('')

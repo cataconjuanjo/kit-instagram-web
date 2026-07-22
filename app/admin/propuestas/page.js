@@ -4,6 +4,11 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
+import {
+  SELECT_CLIENT_PLATO_ADMIN,
+  SELECT_CLIENT_RESTAURANTE_ADMIN,
+  SELECT_CLIENT_VINO_ADMIN,
+} from '../../lib/clientSupabaseSelects'
 import AdminOverlay from '../components/AdminOverlay'
 
 const inicial = {
@@ -90,9 +95,9 @@ export default function PropuestasConsultor() {
       setUser(user)
       const token = await tokenAdmin()
       const [{ data: rests }, { data: vinosData }, { data: platosData }, catalogoRes] = await Promise.all([
-        supabase.from('restaurantes').select('*').order('nombre'),
-        supabase.from('vinos').select('*').order('nombre'),
-        supabase.from('platos').select('*').order('nombre'),
+        supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_ADMIN).order('nombre'),
+        supabase.from('vinos').select(SELECT_CLIENT_VINO_ADMIN).order('nombre'),
+        supabase.from('platos').select(SELECT_CLIENT_PLATO_ADMIN).order('nombre'),
         fetch('/api/admin/proveedores', { headers: { Authorization: `Bearer ${token}` } })
       ])
       const catalogoData = await catalogoRes.json().catch(() => ({}))

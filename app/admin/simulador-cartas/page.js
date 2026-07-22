@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
+import {
+  SELECT_CLIENT_RESTAURANTE_ADMIN,
+  SELECT_CLIENT_VINO_ADMIN,
+} from '../../lib/clientSupabaseSelects'
 
 const ESCENARIOS = {
   conservador: {
@@ -347,7 +351,7 @@ async function seleccionarVinosCarta() {
   while (true) {
     const { data, error } = await supabase
       .from('vinos')
-      .select('*')
+      .select(SELECT_CLIENT_VINO_ADMIN)
       .order('nombre')
       .range(from, from + 999)
 
@@ -421,7 +425,7 @@ export default function SimuladorCartas() {
 
       const token = await tokenAdmin()
       const [{ data: rests, error: restError }, vinosResult, catalogoRes] = await Promise.all([
-        supabase.from('restaurantes').select('*').order('nombre'),
+        supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_ADMIN).order('nombre'),
         seleccionarVinosCarta()
           .then(data => ({ data }))
           .catch(error => ({ error })),

@@ -4,6 +4,13 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../../demo'
+import {
+  SELECT_CLIENT_ESTADISTICA_ADMIN,
+  SELECT_CLIENT_PLATO_ADMIN,
+  SELECT_CLIENT_PROPUESTA_ADMIN,
+  SELECT_CLIENT_RESTAURANTE_ADMIN,
+  SELECT_CLIENT_VINO_ADMIN,
+} from '../../lib/clientSupabaseSelects'
 import { isLocalWine, localTermsForRestaurant } from '../../lib/wineRegion'
 import AdminOverlay from '../components/AdminOverlay'
 
@@ -431,11 +438,11 @@ export default function RadarConsultoria() {
             .catch(() => null)
         : Promise.resolve(null)
       const [{ data: rests }, { data: vinosData }, { data: platosData }, { data: estadisticasData }, { data: propuestasData }, radarData] = await Promise.all([
-        supabase.from('restaurantes').select('*').order('nombre'),
-        supabase.from('vinos').select('*'),
-        supabase.from('platos').select('*'),
-        supabase.from('estadisticas').select('*').gte('created_at', desde),
-        supabase.from('consultor_propuestas').select('*').order('created_at', { ascending: false }),
+        supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_ADMIN).order('nombre'),
+        supabase.from('vinos').select(SELECT_CLIENT_VINO_ADMIN),
+        supabase.from('platos').select(SELECT_CLIENT_PLATO_ADMIN),
+        supabase.from('estadisticas').select(SELECT_CLIENT_ESTADISTICA_ADMIN).gte('created_at', desde),
+        supabase.from('consultor_propuestas').select(SELECT_CLIENT_PROPUESTA_ADMIN).order('created_at', { ascending: false }),
         radarPromise,
       ])
       setRestaurantes(rests || [])
