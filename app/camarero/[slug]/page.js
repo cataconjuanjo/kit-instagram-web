@@ -25,6 +25,11 @@ import {
   calcularSenalComercialSala,
 } from '../../lib/camareroSalesMemory'
 import {
+  crearFirmaRecomendacionVenta,
+  crearGrupoRecomendacionVenta,
+  crearIdRecomendacionVenta,
+} from '../../lib/camareroRecommendationIds'
+import {
   calcularGamaActivaVenta,
   calcularGamasVenta,
   calcularPrecioMedioVinosVenta,
@@ -657,25 +662,25 @@ export default function Camarero() {
   }
 
   function firmaRecomendacionVenta(consulta = consultaVentaActiva() || consultaDesdePerfilCliente()) {
-    return [
-      restaurante?.id || 'sin-restaurante',
-      normalizar(consulta).slice(0, 180),
+    return crearFirmaRecomendacionVenta({
+      restauranteId: restaurante?.id,
+      consulta,
       objetivoVenta,
-      perfilClienteVenta.bebe || '',
-      perfilClienteVenta.estilo || '',
-      perfilClienteVenta.gama || '',
+      perfilClienteVenta,
       rotacionVenta,
-    ].join('|')
+    })
   }
 
   function grupoRecomendacionVenta(consulta = consultaVentaActiva() || consultaDesdePerfilCliente()) {
-    return `grp_${Math.abs(hashTexto(firmaRecomendacionVenta(consulta)))}`
+    return crearGrupoRecomendacionVenta(firmaRecomendacionVenta(consulta))
   }
 
   function idRecomendacionVenta(item, index = 0, consulta = consultaVentaActiva() || consultaDesdePerfilCliente()) {
-    const vino = item?.vino || {}
-    const vinoId = vino.id || vino.nombre || ''
-    return `rec_${Math.abs(hashTexto(`${firmaRecomendacionVenta(consulta)}|${vinoId}|${item?.label || ''}|${index + 1}`))}`
+    return crearIdRecomendacionVenta({
+      firma: firmaRecomendacionVenta(consulta),
+      item,
+      index,
+    })
   }
 
   function recomendacionActualParaVino(vino, label) {
