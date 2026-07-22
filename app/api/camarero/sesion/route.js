@@ -41,7 +41,7 @@ export async function POST(req) {
   try {
     const { restaurante_id, pin, demo = false } = await req.json()
     if (!restaurante_id) return Response.json({ error: 'Restaurante obligatorio.' }, { status: 400 })
-    if (!await checkRateLimit(getIP(req))) {
+    if (demo !== true && !await checkRateLimit(getIP(req))) {
       return Response.json({ error: 'Demasiados intentos. Prueba de nuevo más tarde.' }, { status: 429 })
     }
 
@@ -59,6 +59,13 @@ export async function POST(req) {
     const demoPermitida = demo &&
       process.env.NEXT_PUBLIC_SHOW_DEMO === 'true' &&
       esSlugDemoPermitido(restaurante.slug)
+    const demoExentaRateLimit = demo === true &&
+      esSlugDemoPermitido(restaurante.slug) &&
+      (demoPermitida || restaurante.camarero_pin_bloqueo_activo !== true)
+    if (!demoExentaRateLimit && demo === true && !await checkRateLimit(getIP(req))) {
+      return Response.json({ error: 'Demasiados intentos. Prueba de nuevo mas tarde.' }, { status: 429 })
+    }
+
     let pinValido = demoPermitida
     if (!pinValido && restaurante.camarero_pin_bloqueo_activo !== true) {
       pinValido = true
