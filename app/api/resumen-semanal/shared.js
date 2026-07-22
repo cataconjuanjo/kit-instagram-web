@@ -6,6 +6,34 @@ import {
 } from '../../lib/weeklyExecutiveSummary'
 import { normalizarPreferenciasResumen } from '../../lib/weeklySummaryDelivery'
 
+export const SELECT_RESTAURANTE_RESUMEN = 'id, nombre, email, slug, actividad_real_desde, created_at'
+const SELECT_WEEKLY_SUMMARY_PREFERENCES = [
+  'id', 'restaurante_id', 'enabled', 'channel', 'recipient_email',
+  'cc_email', 'send_day', 'send_hour', 'timezone', 'last_sent_at',
+  'last_error', 'created_at', 'updated_at',
+].join(', ')
+const SELECT_WEEKLY_SUMMARY_SAVED = [
+  'id', 'restaurante_id', 'periodo_key', 'periodo_inicio', 'periodo_fin',
+  'formula_version', 'titular', 'confianza', 'resumen', 'kpis', 'ganado',
+  'pendiente', 'decisiones', 'senales', 'copy_text', 'metadata',
+  'generated_by_email', 'generated_at', 'sent_at', 'sent_channel',
+  'created_at', 'updated_at',
+].join(', ')
+const SELECT_WEEKLY_SUMMARY_DELIVERY = [
+  SELECT_WEEKLY_SUMMARY_SAVED,
+  'delivery_status', 'delivery_channel', 'recipient_email', 'delivery_error',
+  'last_send_attempt_at', 'provider_message_id',
+].join(', ')
+const SELECT_VINO_RESUMEN = 'id, nombre, activo, precio_botella, precio_copa, coste_compra, stock, stock_minimo'
+const SELECT_DAILY_RADAR_RESUMEN = [
+  'id', 'restaurante_id', 'fecha_operativa', 'clave', 'area', 'titulo',
+  'detalle', 'accion', 'href', 'prioridad', 'estado', 'created_at',
+  'updated_at',
+].join(', ')
+const SELECT_PROFIT_SCENARIO_RESUMEN = 'id, restaurante_id, nombre, impacto_margen, estado, created_at'
+const SELECT_POS_LINE_RESUMEN = 'id, restaurante_id, vino_id, fecha, created_at'
+const SELECT_POS_LINE_RESUMEN_DUPLICADA = 'id, restaurante_id, vino_id, fecha, duplicada, created_at'
+
 export function esTablaNoExiste(error) {
   return error?.code === 'PGRST205' || /Could not find the table/i.test(error?.message || '')
 }
@@ -20,7 +48,7 @@ export function esEsquemaNoExiste(error) {
 export async function leerOpcional(nombre, query) {
   const { data, error } = await query
   if (error) {
-    if (esTablaNoExiste(error)) return { data: [], pending: nombre }
+    if (esEsquemaNoExiste(error)) return { data: [], pending: nombre }
     throw error
   }
   return { data: data || [], pending: null }
@@ -53,7 +81,7 @@ export async function resolverRestaurante(req, restauranteId) {
   const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
   if (auth.error) return auth
 
-  let query = supabaseAdmin.from('restaurantes').select('*')
+  let query = supabaseAdmin.from('restaurantes').select(SELECT_RESTAURANTE_RESUMEN)
   if (restauranteId) query = query.eq('id', restauranteId)
   else query = query.eq('email', auth.user.email)
 
@@ -65,12 +93,12 @@ export async function resolverRestaurante(req, restauranteId) {
 export async function leerPreferenciasResumen(restaurante) {
   const { data, error } = await supabaseAdmin
     .from('weekly_summary_preferences')
-    .select('*')
+    .select(SELECT_WEEKLY_SUMMARY_PREFERENCES)
     .eq('restaurante_id', restaurante.id)
     .maybeSingle()
 
   if (error) {
-    if (esTablaNoExiste(error)) {
+    if (esEsquemaNoExiste(error)) {
       return {
         preferencias: normalizarPreferenciasResumen({}, restaurante),
         guardada: false,
@@ -105,11 +133,11 @@ export async function guardarPreferenciasResumen({ restaurante, preferencias }) 
   const { data, error } = await supabaseAdmin
     .from('weekly_summary_preferences')
     .upsert(payload, { onConflict: 'restaurante_id' })
-    .select('*')
+    .select(SELECT_WEEKLY_SUMMARY_PREFERENCES)
     .single()
 
   if (error) {
-    if (esTablaNoExiste(error)) return { preferencias: normalizadas, data: null, pending: 'weekly_summary_preferences' }
+    if (esEsquemaNoExiste(error)) return { preferencias: normalizadas, data: null, pending: 'weekly_summary_preferences' }
     throw error
   }
 
@@ -197,7 +225,7 @@ export async function leerHistorialSemanal(restauranteId, periodoActualKey) {
     'weekly_executive_summaries',
     supabaseAdmin
       .from('weekly_executive_summaries')
-      .select('*')
+      .select(SELECT_WEEKLY_SUMMARY_SAVED)
       .eq('restaurante_id', restauranteId)
       .order('periodo_inicio', { ascending: false })
       .limit(8)
@@ -215,6 +243,27 @@ export async function leerHistorialSemanal(restauranteId, periodoActualKey) {
   }
 }
 
+async function leerPosLinesResumen(restauranteId, periodo) {
+  const query = (select) => supabaseAdmin
+    .from('pos_sale_lines')
+    .select(select)
+    .eq('restaurante_id', restauranteId)
+    .gte('fecha', periodo.fechaInicio)
+    .lte('fecha', periodo.fechaFin)
+
+  const conDuplicada = await leerOpcional(
+    'pos_sale_lines',
+    query(SELECT_POS_LINE_RESUMEN_DUPLICADA)
+  )
+  if (!conDuplicada.pending) return conDuplicada
+
+  const base = await leerOpcional('pos_sale_lines', query(SELECT_POS_LINE_RESUMEN))
+  return {
+    ...base,
+    data: (base.data || []).map(item => ({ ...item, duplicada: false })),
+  }
+}
+
 export async function calcularResumenSemanal({ restaurante, periodo, user = null }) {
   const [
     vinosRes,
@@ -225,7 +274,7 @@ export async function calcularResumenSemanal({ restaurante, periodo, user = null
   ] = await Promise.all([
     supabaseAdmin
       .from('vinos')
-      .select('*')
+      .select(SELECT_VINO_RESUMEN)
       .eq('restaurante_id', restaurante.id),
     supabaseAdmin
       .from('estadisticas')
@@ -238,7 +287,7 @@ export async function calcularResumenSemanal({ restaurante, periodo, user = null
       'daily_radar_actions',
       supabaseAdmin
         .from('daily_radar_actions')
-        .select('*')
+        .select(SELECT_DAILY_RADAR_RESUMEN)
         .eq('restaurante_id', restaurante.id)
         .gte('fecha_operativa', periodo.fechaInicio)
         .lte('fecha_operativa', periodo.fechaFin)
@@ -248,21 +297,13 @@ export async function calcularResumenSemanal({ restaurante, periodo, user = null
       'profit_scenarios',
       supabaseAdmin
         .from('profit_scenarios')
-        .select('*')
+        .select(SELECT_PROFIT_SCENARIO_RESUMEN)
         .eq('restaurante_id', restaurante.id)
         .neq('estado', 'descartado')
         .order('created_at', { ascending: false })
         .limit(20)
     ),
-    leerOpcional(
-      'pos_sale_lines',
-      supabaseAdmin
-        .from('pos_sale_lines')
-        .select('*')
-        .eq('restaurante_id', restaurante.id)
-        .gte('fecha', periodo.fechaInicio)
-        .lte('fecha', periodo.fechaFin)
-    ),
+    leerPosLinesResumen(restaurante.id, periodo),
   ])
 
   if (vinosRes.error) throw vinosRes.error
@@ -360,7 +401,7 @@ export async function guardarResumenSemanal({ resumen, user = null }) {
   const { data, error } = await supabaseAdmin
     .from('weekly_executive_summaries')
     .upsert(payload, { onConflict: 'restaurante_id,periodo_key' })
-    .select('*')
+    .select(SELECT_WEEKLY_SUMMARY_SAVED)
     .single()
 
   if (error) {
@@ -393,7 +434,7 @@ export async function actualizarEntregaResumen({ resumenId, restauranteId, deliv
     .from('weekly_executive_summaries')
     .update(payload)
     .eq('id', resumenId)
-    .select('*')
+    .select(SELECT_WEEKLY_SUMMARY_DELIVERY)
     .single()
 
   if (error) {

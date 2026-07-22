@@ -7,6 +7,15 @@ import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
 const ESTADOS = new Set(['pendiente', 'en_progreso', 'hecha', 'descartada'])
 const ORIGEN = 'radar_diario_fase7'
+const SELECT_RESTAURANTE_RADAR = 'id, nombre, email, slug, actividad_real_desde'
+const SELECT_VINO_RADAR = 'id, nombre, activo, stock, stock_minimo, coste_compra, precio_botella, precio_copa'
+const SELECT_PLATO_RADAR = 'id, nombre, descripcion'
+const SELECT_DAILY_RADAR_ACTION = [
+  'id', 'restaurante_id', 'fecha_operativa', 'clave', 'area', 'titulo',
+  'detalle', 'accion', 'href', 'prioridad', 'impacto', 'esfuerzo',
+  'estado', 'origen', 'metricas', 'periodo_inicio', 'periodo_fin',
+  'created_at', 'updated_at', 'hecha_at', 'descartada_at',
+].join(', ')
 
 function esTablaNoExiste(error) {
   return error?.code === 'PGRST205' || /Could not find the table/i.test(error?.message || '')
@@ -290,8 +299,8 @@ function generarAcciones({ restaurante, vinos, platos, propuestas, stats, ventan
 async function cargarDatos(restaurante) {
   const ventana = await resolverVentanaDiaOperativo(supabaseAdmin, restaurante, { tipo: 'venta' })
   const [vinosRes, platosRes, propuestasRes, statsRes] = await Promise.all([
-    supabaseAdmin.from('vinos').select('*').eq('restaurante_id', restaurante.id),
-    supabaseAdmin.from('platos').select('*').eq('restaurante_id', restaurante.id).eq('activo', true),
+    supabaseAdmin.from('vinos').select(SELECT_VINO_RADAR).eq('restaurante_id', restaurante.id),
+    supabaseAdmin.from('platos').select(SELECT_PLATO_RADAR).eq('restaurante_id', restaurante.id).eq('activo', true),
     supabaseAdmin.from('consultor_propuestas').select('id, estado').eq('restaurante_id', restaurante.id),
     aplicarVentana(
       supabaseAdmin
@@ -319,7 +328,7 @@ async function resolverRestaurante(req, restauranteId) {
   const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
   if (auth.error) return auth
 
-  let query = supabaseAdmin.from('restaurantes').select('*')
+  let query = supabaseAdmin.from('restaurantes').select(SELECT_RESTAURANTE_RADAR)
   if (restauranteId) query = query.eq('id', restauranteId)
   else query = query.eq('email', auth.user.email)
 
@@ -331,7 +340,7 @@ async function resolverRestaurante(req, restauranteId) {
 async function asegurarAccionesPersistidas(acciones, fechaOperativa, restauranteId) {
   const { data: existentes, error: existentesError } = await supabaseAdmin
     .from('daily_radar_actions')
-    .select('*')
+    .select(SELECT_DAILY_RADAR_ACTION)
     .eq('restaurante_id', restauranteId)
     .eq('fecha_operativa', fechaOperativa)
 
@@ -389,7 +398,7 @@ async function asegurarAccionesPersistidas(acciones, fechaOperativa, restaurante
 
   const { data: finales, error: finalesError } = await supabaseAdmin
     .from('daily_radar_actions')
-    .select('*')
+    .select(SELECT_DAILY_RADAR_ACTION)
     .eq('restaurante_id', restauranteId)
     .eq('fecha_operativa', fechaOperativa)
     .order('created_at', { ascending: true })
@@ -485,7 +494,7 @@ export async function PATCH(req) {
       .update(update)
       .eq('id', id)
       .eq('restaurante_id', restauranteId)
-      .select('*')
+      .select(SELECT_DAILY_RADAR_ACTION)
       .single()
 
     if (error) {

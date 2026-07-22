@@ -6,6 +6,7 @@ import {
   calcularYGuardarResumenSemanal,
   leerPreferenciasResumen,
   resolverPeriodo,
+  SELECT_RESTAURANTE_RESUMEN,
 } from '../shared'
 
 function autorizarCron(req) {
@@ -23,7 +24,7 @@ function autorizarCron(req) {
 async function cargarRestaurantes(restauranteId) {
   let query = supabaseAdmin
     .from('restaurantes')
-    .select('*')
+    .select(SELECT_RESTAURANTE_RESUMEN)
     .order('created_at', { ascending: false })
 
   if (restauranteId) query = query.eq('id', restauranteId)
