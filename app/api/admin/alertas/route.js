@@ -4,6 +4,18 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+const SELECT_VINO_OPERATIVO = 'id, restaurante_id, activo, precio_botella, coste_compra, stock_minimo, stock'
+const SELECT_ALERT = [
+  'id', 'restaurante_id', 'entidad_tipo', 'entidad_id', 'severidad', 'clave',
+  'titulo', 'detalle', 'impacto', 'accion_sugerida', 'estado',
+  'periodo_inicio', 'periodo_fin', 'created_at', 'updated_at',
+  'resuelta_at', 'descartada_at', 'motivo_cierre', 'asignado_a',
+  'ultima_deteccion_at', 'veces_detectada',
+].join(', ')
+const SELECT_ALERT_HISTORY = [
+  'id', 'alert_id', 'restaurante_id', 'accion', 'estado_anterior',
+  'estado_nuevo', 'comentario', 'created_by', 'created_at',
+].join(', ')
 
 async function validarAdmin(req) {
   const auth = req.headers.get('authorization') || ''
@@ -64,7 +76,7 @@ async function asegurarAlertasOperativas(supabase) {
     { data: existentes, error: existentesError },
   ] = await Promise.all([
     supabase.from('restaurantes').select('id, nombre'),
-    supabase.from('vinos').select('*'),
+    supabase.from('vinos').select(SELECT_VINO_OPERATIVO),
     supabase.from('consultor_propuestas').select('id, restaurante_id, estado'),
     supabase.from('alerts').select('id, restaurante_id, clave, estado').in('estado', ['abierta', 'en_progreso']),
   ])
@@ -219,7 +231,7 @@ export async function GET(req) {
 
     let query = supabase
       .from('alerts')
-      .select('*')
+      .select(SELECT_ALERT)
       .order('created_at', { ascending: false })
       .limit(250)
 
@@ -247,7 +259,7 @@ export async function GET(req) {
     if (ids.length) {
       const { data: histData, error: histError } = await supabase
         .from('alert_history')
-        .select('*')
+        .select(SELECT_ALERT_HISTORY)
         .in('alert_id', ids)
         .order('created_at', { ascending: false })
         .limit(500)
@@ -272,7 +284,7 @@ export async function PATCH(req) {
     const supabase = adminClient()
     const { data: alertaActual, error: actualError } = await supabase
       .from('alerts')
-      .select('*')
+      .select(SELECT_ALERT)
       .eq('id', body.id)
       .single()
     if (actualError) throw actualError
@@ -282,7 +294,7 @@ export async function PATCH(req) {
       .from('alerts')
       .update(update)
       .eq('id', body.id)
-      .select('*')
+      .select(SELECT_ALERT)
       .single()
     if (error) throw error
 
