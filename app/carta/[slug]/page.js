@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { normalizarTexto as normalizarTextoBase } from '../../lib/textNormalize'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
+import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { alternarVinoComparador } from '../../lib/wineComparator'
 import { WINE_TYPE_COLORS, esPerfilGoiko } from '../../lib/winePresentation'
@@ -469,30 +470,18 @@ export default function CartaPublica() {
       setLoading(true)
       setLoadError(null)
       try {
-        const query = new URLSearchParams({ carta: '1' })
-        if (tokenPrueba) query.set('prueba', tokenPrueba)
-        const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}?${query.toString()}`)
-        const data = await res.json().catch(() => ({}))
-        if (res.status === 404) {
+        const { res, data, restaurante: rest } = await cargarRestaurantePublico(slug, {
+          carta: true,
+          pruebaToken: tokenPrueba,
+        })
+        const errorCarga = evaluarRespuestaRestaurantePublico(res, data, {
+          aceptarNoLista: true,
+          prefijoError: 'GET carta publica',
+        })
+        if (errorCarga) {
           if (!cancelado) {
             setRestaurante(null)
-            setLoadError({ type: 'not_found' })
-          }
-          return
-        }
-        if (res.status === 409) {
-          if (!cancelado) {
-            setRestaurante(null)
-            setLoadError({ type: 'not_ready', message: data.error })
-          }
-          return
-        }
-        if (!res.ok) throw new Error(`GET carta publica ${res.status}`)
-        const rest = data.restaurante
-        if (!rest) {
-          if (!cancelado) {
-            setRestaurante(null)
-            setLoadError({ type: 'not_found' })
+            setLoadError(errorCarga)
           }
           return
         }

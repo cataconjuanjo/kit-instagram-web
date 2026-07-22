@@ -17,6 +17,7 @@ import {
 import { isLocalWine } from '../../lib/wineRegion'
 import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import { isLargeFormatWine } from '../../lib/wineFormat'
+import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { alternarVinoComparador } from '../../lib/wineComparator'
 import { WINE_TYPE_COLORS, etiquetasTipoVino, ordenTiposVino } from '../../lib/winePresentation'
@@ -137,21 +138,14 @@ export default function Camarero() {
       setAccessError('')
       setErrorPin(false)
       try {
-        const res = await fetch(`/api/public/restaurante/${encodeURIComponent(slug)}`)
-        if (res.status === 404) {
+        const { res, data, restaurante: rest } = await cargarRestaurantePublico(slug, { jsonSoloSiOk: true })
+        const errorCarga = evaluarRespuestaRestaurantePublico(res, data, {
+          prefijoError: 'GET camarero restaurante',
+        })
+        if (errorCarga) {
           if (!cancelado) {
             setRestaurante(null)
-            setLoadError({ type: 'not_found' })
-          }
-          return
-        }
-        const data = res.ok ? await res.json() : {}
-        if (!res.ok) throw new Error(`GET camarero restaurante ${res.status}`)
-        const rest = data.restaurante
-        if (!rest) {
-          if (!cancelado) {
-            setRestaurante(null)
-            setLoadError({ type: 'not_found' })
+            setLoadError(errorCarga)
           }
           return
         }
