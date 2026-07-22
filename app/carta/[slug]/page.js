@@ -486,6 +486,7 @@ export default function CartaPublica() {
       try {
         const { res, data, restaurante: rest } = await cargarRestaurantePublico(slug, {
           carta: true,
+          demoPresentacion,
           pruebaToken: tokenPrueba,
         })
         const errorCarga = evaluarRespuestaRestaurantePublico(res, data, {
@@ -537,7 +538,7 @@ export default function CartaPublica() {
     return () => {
       cancelado = true
     }
-  }, [slug, tokenPrueba, loadRetryKey, atribucionPublica])
+  }, [slug, demoPresentacion, tokenPrueba, loadRetryKey, atribucionPublica])
 
   useEffect(() => {
     if (!loading && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('print') === '1') {

@@ -114,6 +114,7 @@ export default function RestauranteHub({ params }) {
         setCurrentSlug(slug)
         const { data, restaurante: rest } = await cargarRestaurantePublico(slug, {
           hub: true,
+          demoPresentacion,
           pruebaToken,
           jsonSoloSiOk: true,
         })
@@ -139,7 +140,7 @@ export default function RestauranteHub({ params }) {
       }
     }
     cargar()
-  }, [params, pruebaToken, atribucionPublica])
+  }, [params, demoPresentacion, pruebaToken, atribucionPublica])
 
   function updatePreviewApprovalField(field, value) {
     setPreviewApprovalForm(prev => ({ ...prev, [field]: value }))
