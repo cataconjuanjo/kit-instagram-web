@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { comprobarCuotaIaRestaurante, registrarConsumoAnthropic, responderCuotaIaAgotada } from '../../lib/anthropicUsage'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { origenConsumoCarta } from '../../lib/cartaPruebaToken'
 
@@ -41,6 +41,14 @@ export async function POST(req) {
       return Response.json({ error: 'Demasiadas consultas. Inténtalo de nuevo más tarde.' }, { status: 429 })
     }
 
+    const origenConsumo = origenConsumoCarta({ pruebaToken: prueba_token, restauranteId: restaurante_id })
+    const cuotaIa = await comprobarCuotaIaRestaurante({
+      restauranteId: restaurante_id,
+      endpoint: 'perfil_comparador',
+      origen: origenConsumo,
+    })
+    if (!cuotaIa.ok) return responderCuotaIaAgotada(cuotaIa)
+
     const modelo = 'claude-sonnet-4-6'
     const message = await anthropic.messages.create({
       model: modelo,
@@ -77,7 +85,7 @@ Devuelve SOLO este JSON con valores del 1 al 5:
       usage: message.usage,
       metadata: {
         vino: nombre,
-        origen: origenConsumoCarta({ pruebaToken: prueba_token, restauranteId: restaurante_id }),
+        origen: origenConsumo,
       },
     })
 

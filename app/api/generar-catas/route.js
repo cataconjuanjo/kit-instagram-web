@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin as supabase } from '../../lib/supabaseAdmin'
 import { requireRestaurantAccess } from '../_lib/auth'
-import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { comprobarCuotaIaRestaurante, registrarConsumoAnthropic, responderCuotaIaAgotada } from '../../lib/anthropicUsage'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
@@ -42,11 +42,21 @@ export async function POST(request) {
     const auth = await requireRestaurantAccess(request, supabase, restaurante_id)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
 
-    const { data: vinos } = await supabase
+    const { data: vinos, error: vinosError } = await supabase
       .from('vinos')
-      .select('*')
+      .select('id, nombre, bodega, tipo, region, uva, anada')
       .eq('restaurante_id', restaurante_id)
       .is('notas_cata', null)
+
+    if (vinosError) return Response.json({ error: vinosError.message }, { status: 500 })
+    if (!vinos?.length) return Response.json({ ok: true, actualizados: 0 })
+
+    const cuotaIa = await comprobarCuotaIaRestaurante({
+      restauranteId: restaurante_id,
+      endpoint: 'generar_catas_batch',
+      solicitudesEstimadas: vinos.length,
+    })
+    if (!cuotaIa.ok) return responderCuotaIaAgotada(cuotaIa)
 
     let actualizados = 0
 

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import * as XLSX from 'xlsx'
 import { requireRestaurantAccess } from '../_lib/auth'
-import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { comprobarCuotaIaRestaurante, registrarConsumoAnthropic, responderCuotaIaAgotada } from '../../lib/anthropicUsage'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -71,6 +71,12 @@ export async function POST(req) {
     if (String(data).length > MAX_BASE64_LENGTH) {
       return Response.json({ vinos: [], error: 'Archivo demasiado grande. Usa un PDF de hasta 3 MB.' }, { status: 413 })
     }
+
+    const cuotaIa = await comprobarCuotaIaRestaurante({
+      restauranteId: restaurante_id,
+      endpoint: 'importar_vinos',
+    })
+    if (!cuotaIa.ok) return responderCuotaIaAgotada(cuotaIa)
 
     let entrada
 

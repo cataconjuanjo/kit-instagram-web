@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { requireRestaurantAccess } from '../_lib/auth'
-import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { comprobarCuotaIaRestaurante, registrarConsumoAnthropic, responderCuotaIaAgotada } from '../../lib/anthropicUsage'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
 const anthropic = new Anthropic({
@@ -15,6 +15,12 @@ export async function POST(request) {
     if (!String(nombre || '').trim() || !String(tipo || '').trim()) {
       return Response.json({ notas: '', error: 'Nombre y tipo son obligatorios.' }, { status: 400 })
     }
+
+    const cuotaIa = await comprobarCuotaIaRestaurante({
+      restauranteId: restaurante_id,
+      endpoint: 'nota_cata',
+    })
+    if (!cuotaIa.ok) return responderCuotaIaAgotada(cuotaIa)
 
     const modelo = 'claude-haiku-4-5-20251001'
     const message = await anthropic.messages.create({

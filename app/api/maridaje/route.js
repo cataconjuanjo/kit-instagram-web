@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { analizarMaridaje, resumenAnalisisParaPrompt, estimarPerfil } from '../../lib/maridajeEngine'
 import { analizarConGoldstein } from '../../lib/goldsteinStructural'
 import { puedeUsar } from '../../lib/plans'
-import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { comprobarCuotaIaRestaurante, registrarConsumoAnthropic, responderCuotaIaAgotada } from '../../lib/anthropicUsage'
 import { origenConsumoCarta } from '../../lib/cartaPruebaToken'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { guardarAtribucionDesdeEventos } from '../../lib/recommendationAttribution'
@@ -394,6 +394,15 @@ export async function POST(request) {
       return Response.json({ error: 'Funcion no incluida en el plan activo.' }, { status: 403 })
     }
 
+    const origenConsumo = origenConsumoCarta({ pruebaToken: prueba_token, restauranteId: restaurante_id })
+    const cuotaIa = await comprobarCuotaIaRestaurante({
+      restauranteId: restaurante_id,
+      restaurante,
+      endpoint: 'maridaje_cliente',
+      origen: origenConsumo,
+    })
+    if (!cuotaIa.ok) return responderCuotaIaAgotada(cuotaIa)
+
     const esSucesion = normalizarTexto(modoMesa).includes('sucesion')
     const soloCopa = esSucesion || normalizarTexto(modoMesa).includes('copa') || normalizarTexto(modoMesa).includes('glass')
     const vinosDisponibles = normalizarStockParaMaridaje(vinosData || [])
@@ -489,7 +498,7 @@ export async function POST(request) {
         ].filter(Boolean).join('\n\n')
 
         // Registrar estadísticas
-        if (actividadRealDesdeISO(restaurante) && origenConsumoCarta({ pruebaToken: prueba_token, restauranteId: restaurante_id }) === 'cliente_real') {
+        if (actividadRealDesdeISO(restaurante) && origenConsumo === 'cliente_real') {
         const eventos = [{ restaurante_id, tipo: 'sommelier', detalle: String(consulta || '').slice(0, 200) }]
         if (motorAnalisis?.recomendados?.length) {
           motorAnalisis.recomendados.forEach((item, index) => {
@@ -638,7 +647,7 @@ export async function POST(request) {
       metadata: {
         seguimiento: esSeguimiento,
         modo: modo || 'seguimiento',
-        origen: origenConsumoCarta({ pruebaToken: prueba_token, restauranteId: restaurante_id }),
+        origen: origenConsumo,
       },
     })
 

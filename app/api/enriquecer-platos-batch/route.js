@@ -7,7 +7,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
-import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { comprobarCuotaIaRestaurante, registrarConsumoAnthropic, responderCuotaIaAgotada } from '../../lib/anthropicUsage'
 import { requireRestaurantAccess } from '../_lib/auth'
 
 const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
@@ -166,6 +166,13 @@ export async function POST(req) {
     if (!platos?.length) {
       return Response.json({ procesados: 0, errores: 0, total: 0, mensaje: 'Todos los platos ya tienen perfil aromático' })
     }
+
+    const cuotaIa = await comprobarCuotaIaRestaurante({
+      restauranteId: restaurante_id,
+      endpoint: 'enriquecer_platos_batch',
+      solicitudesEstimadas: platos.length,
+    })
+    if (!cuotaIa.ok) return responderCuotaIaAgotada(cuotaIa)
 
     const resultados = await procesarEnLotes(platos, restaurante_id, 3)
 
