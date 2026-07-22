@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { normalizarTexto as normalizarTextoBase } from '../../lib/textNormalize'
+import { consultarMaridaje } from '../../lib/maridajeClient'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
 import { enviarAprobacionPreview } from '../../lib/previewApprovalClient'
@@ -561,17 +562,13 @@ export default function CartaPublica() {
     setCargandoIA(true)
     setRespuestaQuiz('')
     try {
-      const res = await fetch('/api/maridaje', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          modo: 'quiz',
-          perfilQuiz: respuestas,
-          restaurante_id: restaurante.id,
-          idioma,
-          historial: [],
-          prueba_token: tokenPrueba,
-        }),
+      const res = await consultarMaridaje({
+        modo: 'quiz',
+        perfilQuiz: respuestas,
+        restaurante_id: restaurante.id,
+        idioma,
+        historial: [],
+        prueba_token: tokenPrueba,
       })
       if (!res.ok) {
         setRespuestaQuiz(idioma === 'en' ? 'Error. Please try again.' : 'Error al consultar. Inténtalo de nuevo.')
@@ -626,10 +623,7 @@ export default function CartaPublica() {
         : 'sucesion_copas: una copa diferente por plato siguiendo un arco armónico de menos a más cuerpo — solo vinos disponibles por copa',
     }
     try {
-      const res = await fetch('/api/maridaje', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      const res = await consultarMaridaje({
         consulta: consultaPlatos,
         modo: 'mesa',
         modoMesa: modosTexto[modoMesa],
@@ -638,25 +632,24 @@ export default function CartaPublica() {
         idioma,
         historial: [],
         prueba_token: tokenPrueba,
-      }),
-    })
-    if (!res.ok) {
-      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
-      setCargandoIA(false)
-      return
-    }
-    let textoAcumulado = ''
-    const promptUsuario = `El cliente va a pedir: ${consultaPlatos}. Quiere: ${modosTexto[modoMesa]}.`
-    await leerStream(
-      res,
-      chunk => { textoAcumulado += chunk; setRespuesta(textoAcumulado) },
-      prefill => {
-        setHistorialSommelier([
-          { role: 'user', content: promptUsuario },
-          { role: 'assistant', content: prefill + textoAcumulado },
-        ])
+      })
+      if (!res.ok) {
+        setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+        setCargandoIA(false)
+        return
       }
-    )
+      let textoAcumulado = ''
+      const promptUsuario = `El cliente va a pedir: ${consultaPlatos}. Quiere: ${modosTexto[modoMesa]}.`
+      await leerStream(
+        res,
+        chunk => { textoAcumulado += chunk; setRespuesta(textoAcumulado) },
+        prefill => {
+          setHistorialSommelier([
+            { role: 'user', content: promptUsuario },
+            { role: 'assistant', content: prefill + textoAcumulado },
+          ])
+        }
+      )
       setCargandoIA(false)
     } catch (error) {
       setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
@@ -680,37 +673,33 @@ export default function CartaPublica() {
       vinoMandatoCliente.notas_cata ? `notas: ${vinoMandatoCliente.notas_cata}` : '',
     ].filter(Boolean).join(', ')
     try {
-      const res = await fetch('/api/maridaje', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      const res = await consultarMaridaje({
         consulta: consultaVino,
         modo: 'vino',
         restaurante_id: restaurante.id,
         idioma,
         historial: [],
         prueba_token: tokenPrueba,
-      }),
-    })
-    if (!res.ok) {
-      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
-      setCargandoIA(false)
-      return
-    }
-    let textoAcumulado = ''
-    const promptUsuario = idioma === 'en'
-      ? `The customer wants to drink this wine: ${consultaVino}. Suggest dishes from the menu.`
-      : `El cliente quiere beber este vino: ${consultaVino}. Sugiere platos de la carta.`
-    await leerStream(
-      res,
-      chunk => { textoAcumulado += chunk; setRespuesta(textoAcumulado) },
-      prefill => {
-        setHistorialSommelier([
-          { role: 'user', content: promptUsuario },
-          { role: 'assistant', content: prefill + textoAcumulado },
-        ])
+      })
+      if (!res.ok) {
+        setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+        setCargandoIA(false)
+        return
       }
-    )
+      let textoAcumulado = ''
+      const promptUsuario = idioma === 'en'
+        ? `The customer wants to drink this wine: ${consultaVino}. Suggest dishes from the menu.`
+        : `El cliente quiere beber este vino: ${consultaVino}. Sugiere platos de la carta.`
+      await leerStream(
+        res,
+        chunk => { textoAcumulado += chunk; setRespuesta(textoAcumulado) },
+        prefill => {
+          setHistorialSommelier([
+            { role: 'user', content: promptUsuario },
+            { role: 'assistant', content: prefill + textoAcumulado },
+          ])
+        }
+      )
       setCargandoIA(false)
     } catch (error) {
       setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
@@ -726,34 +715,30 @@ export default function CartaPublica() {
     setCargandoIA(true)
     setRespuesta('')
     try {
-      const res = await fetch('/api/maridaje', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      const res = await consultarMaridaje({
         mensajeSeguimiento: msg,
         restaurante_id: restaurante.id,
         idioma,
         historial: historialSommelier,
         prueba_token: tokenPrueba,
-      }),
-    })
-    if (!res.ok) {
-      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
-      setCargandoIA(false)
-      return
-    }
-    let textoAcumulado = ''
-    await leerStream(
-      res,
-      chunk => { textoAcumulado += chunk; setRespuesta(textoAcumulado) },
-      () => {
-        setHistorialSommelier(prev => [
-          ...prev,
-          { role: 'user', content: msg },
-          { role: 'assistant', content: textoAcumulado },
-        ])
+      })
+      if (!res.ok) {
+        setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+        setCargandoIA(false)
+        return
       }
-    )
+      let textoAcumulado = ''
+      await leerStream(
+        res,
+        chunk => { textoAcumulado += chunk; setRespuesta(textoAcumulado) },
+        () => {
+          setHistorialSommelier(prev => [
+            ...prev,
+            { role: 'user', content: msg },
+            { role: 'assistant', content: textoAcumulado },
+          ])
+        }
+      )
       setCargandoIA(false)
     } catch (error) {
       setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
