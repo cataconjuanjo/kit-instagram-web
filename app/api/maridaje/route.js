@@ -27,7 +27,7 @@ async function checkRateLimit(ip) {
   const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
   const { count } = await supabaseAdmin
     .from('rate_limits')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('ip', ip)
     .eq('endpoint', 'maridaje')
     .gte('created_at', since)
