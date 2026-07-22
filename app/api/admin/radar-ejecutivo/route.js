@@ -6,6 +6,69 @@ import { crearAgendaConsultorSemanal, crearLecturaSemanalConsultor } from '../..
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+const SELECT_RESTAURANTE_RADAR = [
+  'id', 'nombre', 'ciudad', 'email', 'slug',
+].join(', ')
+const SELECT_CONSULTANT_DIAGNOSTIC = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin', 'score',
+  'prioridad', 'resumen_ejecutivo', 'estado_actual',
+  'problema_principal', 'quick_wins', 'medio_plazo', 'estrategico',
+  'problemas_detectados', 'created_at',
+].join(', ')
+const SELECT_OPPORTUNITY_SNAPSHOT = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin',
+  'recuperacion_anual_estimada', 'impacto_acciones_rapidas',
+  'impacto_medio_plazo', 'impacto_estrategico',
+  'capital_liberable_estimado', 'confianza_media_pct',
+  'oportunidades_total', 'resumen', 'created_at',
+].join(', ')
+const SELECT_INVENTORY_SNAPSHOT = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin',
+  'referencias_activas', 'unidades_totales', 'valor_coste_total',
+  'valor_venta_total', 'stock_inmovilizado_refs', 'stock_inmovilizado_valor',
+  'referencias_lentas', 'exceso_stock_refs', 'proveedor_principal',
+  'proveedor_principal_pct', 'merma_unidades', 'tasa_merma_pct',
+  'created_at',
+].join(', ')
+const SELECT_WINE_LIST_SNAPSHOT = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin',
+  'referencias_total', 'referencias_con_venta', 'ventas_totales',
+  'pareto_top20_refs', 'pareto_top20_ventas_pct', 'bottom10_refs',
+  'productividad_media', 'huecos_precio', 'resumen_gamas',
+  'concentracion_tipos', 'concentracion_regiones', 'carta_inflada',
+  'motivo_principal', 'created_at',
+].join(', ')
+const SELECT_BTG_SNAPSHOT = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin',
+  'referencias_activas', 'referencias_por_copa', 'cobertura_copa_pct',
+  'candidatos_copa', 'candidatos_copa_premium', 'candidatos_coravin',
+  'beneficio_potencial_estimado', 'motivo_principal', 'created_at',
+].join(', ')
+const SELECT_ALERT = [
+  'id', 'restaurante_id', 'entidad_tipo', 'entidad_id', 'severidad',
+  'clave', 'titulo', 'detalle', 'impacto', 'accion_sugerida', 'estado',
+  'periodo_inicio', 'periodo_fin', 'created_at', 'updated_at',
+  'resuelta_at', 'descartada_at', 'motivo_cierre', 'asignado_a',
+  'ultima_deteccion_at', 'veces_detectada',
+].join(', ')
+const SELECT_RECOMMENDATION = [
+  'id', 'restaurante_id', 'entidad_tipo', 'entidad_id', 'tipo', 'titulo',
+  'detalle', 'accion', 'prioridad', 'esfuerzo', 'origen', 'estado',
+  'coeficientes', 'periodo_inicio', 'periodo_fin', 'created_at', 'updated_at',
+].join(', ')
+const SELECT_WEEKLY_SUMMARY = [
+  'id', 'restaurante_id', 'periodo_key', 'periodo_inicio', 'periodo_fin',
+  'formula_version', 'titular', 'confianza', 'resumen', 'kpis', 'ganado',
+  'pendiente', 'decisiones', 'senales', 'copy_text', 'metadata',
+  'generated_by_email', 'generated_at', 'sent_at', 'sent_channel',
+  'delivery_status', 'delivery_channel', 'recipient_email', 'delivery_error',
+  'last_send_attempt_at', 'provider_message_id', 'created_at', 'updated_at',
+].join(', ')
+const SELECT_WEEKLY_PREFERENCES = [
+  'id', 'restaurante_id', 'enabled', 'channel', 'recipient_email',
+  'cc_email', 'send_day', 'send_hour', 'timezone', 'last_sent_at',
+  'last_error', 'created_at', 'updated_at',
+].join(', ')
 
 function adminClient() {
   if (!serviceRoleKey) throw new Error('Falta SUPABASE_SERVICE_ROLE_KEY')
@@ -247,16 +310,16 @@ export async function GET(req) {
       automationRuns,
       traceReports,
     ] = await Promise.all([
-      supabase.from('restaurantes').select('id, nombre, ciudad, provincia, email, slug, ticket_medio, ticket_medio_comida, ticket_comida').order('nombre'),
-      leerOpcional(supabase.from('consultant_diagnostics').select('*').order('created_at', { ascending: false }).limit(800)),
-      leerOpcional(supabase.from('opportunity_snapshots').select('*').order('created_at', { ascending: false }).limit(800)),
-      leerOpcional(supabase.from('inventory_snapshots').select('*').order('created_at', { ascending: false }).limit(800)),
-      leerOpcional(supabase.from('wine_list_snapshots').select('*').order('created_at', { ascending: false }).limit(800)),
-      leerOpcional(supabase.from('btg_snapshots').select('*').order('created_at', { ascending: false }).limit(800)),
-      leerOpcional(supabase.from('alerts').select('*').in('estado', ['abierta', 'en_progreso']).order('created_at', { ascending: false }).limit(2000)),
-      leerOpcional(supabase.from('recommendations').select('*').in('estado', ['pendiente', 'en_progreso']).order('created_at', { ascending: false }).limit(2000)),
-      leerOpcional(supabase.from('weekly_executive_summaries').select('*').order('periodo_fin', { ascending: false }).limit(1200)),
-      leerOpcional(supabase.from('weekly_summary_preferences').select('*')),
+      supabase.from('restaurantes').select(SELECT_RESTAURANTE_RADAR).order('nombre'),
+      leerOpcional(supabase.from('consultant_diagnostics').select(SELECT_CONSULTANT_DIAGNOSTIC).order('created_at', { ascending: false }).limit(800)),
+      leerOpcional(supabase.from('opportunity_snapshots').select(SELECT_OPPORTUNITY_SNAPSHOT).order('created_at', { ascending: false }).limit(800)),
+      leerOpcional(supabase.from('inventory_snapshots').select(SELECT_INVENTORY_SNAPSHOT).order('created_at', { ascending: false }).limit(800)),
+      leerOpcional(supabase.from('wine_list_snapshots').select(SELECT_WINE_LIST_SNAPSHOT).order('created_at', { ascending: false }).limit(800)),
+      leerOpcional(supabase.from('btg_snapshots').select(SELECT_BTG_SNAPSHOT).order('created_at', { ascending: false }).limit(800)),
+      leerOpcional(supabase.from('alerts').select(SELECT_ALERT).in('estado', ['abierta', 'en_progreso']).order('created_at', { ascending: false }).limit(2000)),
+      leerOpcional(supabase.from('recommendations').select(SELECT_RECOMMENDATION).in('estado', ['pendiente', 'en_progreso']).order('created_at', { ascending: false }).limit(2000)),
+      leerOpcional(supabase.from('weekly_executive_summaries').select(SELECT_WEEKLY_SUMMARY).order('periodo_fin', { ascending: false }).limit(1200)),
+      leerOpcional(supabase.from('weekly_summary_preferences').select(SELECT_WEEKLY_PREFERENCES)),
       leerAutomationRunsRecientes({ supabase, dias: 7, limit: 120, jobKeys: ['radar_diario', 'resumen_semanal_recalcular'] }),
       leerOpcional(supabase.from('economic_trace_reports').select('id, restaurante_id, created_at, resumen, metadata').order('created_at', { ascending: false }).limit(1200)),
     ])

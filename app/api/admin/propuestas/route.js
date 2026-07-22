@@ -4,6 +4,13 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+const SELECT_PROPUESTA_ADMIN = [
+  'id', 'restaurante_id', 'titulo', 'vino', 'tipo', 'zona',
+  'proveedor_sugerido', 'coste_estimado', 'precio_recomendado',
+  'margen_objetivo', 'plato_objetivo', 'motivo', 'prioridad',
+  'estado', 'created_at', 'updated_at',
+  'restaurantes(nombre, slug, ciudad)',
+].join(', ')
 
 async function validarAdmin(req) {
   const auth = req.headers.get('authorization') || ''
@@ -55,7 +62,7 @@ export async function GET(req) {
     const restauranteId = searchParams.get('restaurante_id')
     let query = adminClient()
       .from('consultor_propuestas')
-      .select('*, restaurantes(nombre, slug, ciudad)')
+      .select(SELECT_PROPUESTA_ADMIN)
       .order('created_at', { ascending: false })
 
     if (restauranteId) query = query.eq('restaurante_id', restauranteId)
@@ -83,7 +90,7 @@ export async function POST(req) {
     const { data, error } = await adminClient()
       .from('consultor_propuestas')
       .insert([dataPayload])
-      .select('*, restaurantes(nombre, slug, ciudad)')
+      .select(SELECT_PROPUESTA_ADMIN)
       .single()
 
     if (error) throw error
@@ -106,7 +113,7 @@ export async function PATCH(req) {
       .from('consultor_propuestas')
       .update(payload(body))
       .eq('id', body.id)
-      .select('*, restaurantes(nombre, slug, ciudad)')
+      .select(SELECT_PROPUESTA_ADMIN)
       .single()
 
     if (error) throw error
