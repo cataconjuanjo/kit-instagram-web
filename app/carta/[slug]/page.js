@@ -9,6 +9,7 @@ import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../
 import { enviarAprobacionPreview } from '../../lib/previewApprovalClient'
 import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
+import { estadoCartaPublica } from '../../lib/publicRouteState'
 import { enviarEstadisticas } from '../../lib/statsClient'
 import { alternarVinoComparador } from '../../lib/wineComparator'
 import { WINE_TYPE_COLORS, esPerfilGoiko } from '../../lib/winePresentation'
@@ -1180,50 +1181,16 @@ export default function CartaPublica() {
     setMostrarFiltros(false)
   }
 
-  function renderEstadoCarta({ title, text, eyebrow = 'Carta Viva', retryable = false, loadingState = false }) {
-    return (
-      <PublicStateScreen
-        styles={styles}
-        title={title}
-        text={text}
-        eyebrow={eyebrow}
-        retryable={retryable}
-        retryLabel={i.reintentar}
-        loadingState={loadingState}
-        onRetry={reintentarCarga}
-        homeLabel={i.volverCartaViva}
-      />
-    )
-  }
-
-  if (loading) return renderEstadoCarta({
-    title: i.cargando,
-    text: idioma === 'en' ? 'Preparing the live wine list.' : 'Preparando la carta viva del restaurante.',
-    loadingState: true,
-  })
-
-  if (loadError?.type === 'network') return renderEstadoCarta({
-    title: i.errorCargaTitulo,
-    text: i.errorCargaTexto,
-    retryable: true,
-  })
-
-  if (loadError?.type === 'not_ready') return renderEstadoCarta({
-    title: i.cartaRevisionTitulo,
-    text: i.cartaRevisionTexto,
-    retryable: true,
-  })
-
-  if (!restaurante) return renderEstadoCarta({
-    title: i.noEncontrado,
-    text: i.noEncontradoTexto,
-  })
-
-  if (!restaurante.carta_disponible) return renderEstadoCarta({
-    title: i.cartaNoDisponible,
-    text: i.cartaNoDisponibleTexto,
-    retryable: true,
-  })
+  const estadoCargaCarta = estadoCartaPublica({ loading, loadError, restaurante, idioma, textos: i })
+  if (estadoCargaCarta) return (
+    <PublicStateScreen
+      styles={styles}
+      {...estadoCargaCarta}
+      retryLabel={i.reintentar}
+      onRetry={reintentarCarga}
+      homeLabel={i.volverCartaViva}
+    />
+  )
 
  if (mostrarComparador) {
   const ejes = WINE_PROFILE_AXES

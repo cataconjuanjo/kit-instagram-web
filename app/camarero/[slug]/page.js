@@ -21,6 +21,7 @@ import { isLargeFormatWine } from '../../lib/wineFormat'
 import { cargarDatosCamarero, cargarHistorialCamarero, solicitarSesionCamarero } from '../../lib/camareroClient'
 import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
+import { estadoModoCamarero } from '../../lib/publicRouteState'
 import { enviarEstadisticas } from '../../lib/statsClient'
 import { alternarVinoComparador } from '../../lib/wineComparator'
 import { WINE_TYPE_COLORS, etiquetasTipoVino, ordenTiposVino } from '../../lib/winePresentation'
@@ -1981,48 +1982,16 @@ export default function Camarero() {
     }
   }, [demoActivo, autenticado, recomendacionesVenta.length])
 
-  function renderEstadoCamarero({ title, text, eyebrow = 'Modo camarero', retryable = false, loadingState = false, secondaryHref = '', secondaryLabel = '' }) {
-    return (
-      <PublicStateScreen
-        styles={styles}
-        title={title}
-        text={text}
-        eyebrow={eyebrow}
-        retryable={retryable}
-        retryLabel="Reintentar"
-        loadingState={loadingState}
-        onRetry={reintentarCarga}
-        secondaryHref={secondaryHref}
-        secondaryLabel={secondaryLabel}
-        homeLabel="Carta Viva"
-      />
-    )
-  }
-
-  if (loading) return renderEstadoCamarero({
-    title: 'Preparando sala',
-    text: 'Cargando vinos, platos y contexto de servicio.',
-    loadingState: true,
-  })
-
-  if (loadError?.type === 'network') return renderEstadoCamarero({
-    title: 'No hemos podido cargar el modo camarero',
-    text: 'Revisa la conexión o vuelve a intentarlo en unos segundos.',
-    retryable: true,
-  })
-
-  if (!restaurante) return renderEstadoCamarero({
-    title: 'Acceso de sala no encontrado',
-    text: 'Comprueba que el enlace pertenece al restaurante correcto o vuelve a abrir el QR interno de sala.',
-  })
-
-  if (restaurante && !restaurante.sala_disponible) return renderEstadoCamarero({
-    title: 'Modo sala pendiente de activar',
-    text: 'Este restaurante todavía no tiene activado el acceso de sala. Puedes abrir la carta pública o pedir al gerente que active el Plan Sala.',
-    eyebrow: 'Carta Viva',
-    secondaryHref: `/carta/${slug}`,
-    secondaryLabel: 'Abrir carta pública',
-  })
+  const estadoCargaCamarero = estadoModoCamarero({ loading, loadError, restaurante, slug })
+  if (estadoCargaCamarero) return (
+    <PublicStateScreen
+      styles={styles}
+      {...estadoCargaCamarero}
+      retryLabel="Reintentar"
+      onRetry={reintentarCarga}
+      homeLabel="Carta Viva"
+    />
+  )
 
   if (!autenticado && restaurante?.camarero_pin_bloqueo_activo !== true) return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif', padding: 24 }}>

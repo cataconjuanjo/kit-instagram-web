@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { enviarAprobacionPreview } from '../../lib/previewApprovalClient'
 import { cargarRestaurantePublico } from '../../lib/publicRestaurantClient'
+import { limpiarTextoPublico } from '../../lib/publicText'
 import { enviarEstadisticas } from '../../lib/statsClient'
 import { normalizarTexto } from '../../lib/textNormalize'
 
@@ -59,21 +60,6 @@ function FacebookIcon() {
 
 function SocialIcon({ tipo }) {
   return tipo === 'facebook' ? <FacebookIcon /> : <InstagramIcon />
-}
-
-function limpiarTextoPublico(texto = '') {
-  return String(texto || '')
-    .replace(/Â·/g, '·')
-    .replace(/Ã—/g, '×')
-    .replace(/â‚¬/g, '€')
-    .replace(/\s+\?\s+/g, ' · ')
-    .replace(/malague\?as/gi, match => match[0] === 'M' ? 'Malagueñas' : 'malagueñas')
-    .replace(/gustar\?a/gi, match => match[0] === 'G' ? 'Gustaría' : 'gustaría')
-    .replace(/\bqu\?/gi, match => match[0] === 'Q' ? 'Qué' : 'qué')
-    .replace(/\bm\?s\b/gi, match => match[0] === 'M' ? 'Más' : 'más')
-    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
 }
 
 function registrarEscaneoHub(restauranteId, pruebaToken, experienciaId = '') {
