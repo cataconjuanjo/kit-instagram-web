@@ -4,7 +4,7 @@ import { resumirContenidoCarta } from './publicationReadiness'
 export const PUBLICATION_FINGERPRINT_VERSION = 1
 
 const RESTAURANTE_BASE_FIELDS = [
-  'id', 'slug', 'nombre', 'ciudad', 'provincia', 'region',
+  'id', 'slug', 'nombre', 'ciudad',
   'color_acento', 'color_primario', 'color_fondo', 'tipografia',
   'logo_url', 'banner_url', 'banner_zoom', 'banner_x', 'banner_y',
   'carta_mostrar_euro', 'carta_copa_decimales', 'carta_pie_texto',

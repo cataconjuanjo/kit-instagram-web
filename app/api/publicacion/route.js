@@ -8,6 +8,19 @@ function texto(valor, limite = 100) {
   return String(valor || '').trim().slice(0, limite)
 }
 
+const SELECT_RESTAURANTE_PUBLICACION = [
+  'id', 'slug', 'nombre', 'email', 'ciudad', 'logo_url', 'plan',
+  'subscription_status', 'carta_publica_activa', 'hub_activo',
+].join(', ')
+const SELECT_RESTAURANTE_SNAPSHOT = [
+  'id', 'slug', 'nombre', 'ciudad', 'color_primario', 'color_fondo',
+  'color_acento', 'tipografia', 'hub_activo',
+].join(', ')
+const SELECT_PUBLICATION_SNAPSHOT_RESUMEN = [
+  'id', 'restaurante_id', 'publication_event_id', 'version_number',
+  'contenido_resumen', 'restaurante_resumen', 'actor_email', 'created_at',
+].join(', ')
+
 function errorIncluye(error, textoBuscado) {
   return [
     error?.message,
@@ -133,7 +146,6 @@ function compactarRestauranteSnapshot(restaurante = {}) {
     slug: restaurante.slug,
     nombre: restaurante.nombre,
     ciudad: restaurante.ciudad,
-    provincia: restaurante.provincia,
     color_primario: restaurante.color_primario,
     color_fondo: restaurante.color_fondo,
     color_acento: restaurante.color_acento,
@@ -176,7 +188,7 @@ async function crearSnapshotPublicacion({ restauranteId, publicationEventId, con
   const [restRes, vinosRes, platosRes] = await Promise.all([
     supabaseAdmin
       .from('restaurantes')
-      .select('id, slug, nombre, ciudad, provincia, color_primario, color_fondo, color_acento, tipografia, hub_activo')
+      .select(SELECT_RESTAURANTE_SNAPSHOT)
       .eq('id', restauranteId)
       .single(),
     supabaseAdmin
@@ -208,7 +220,7 @@ async function crearSnapshotPublicacion({ restauranteId, publicationEventId, con
   const { data, error } = await supabaseAdmin
     .from('publication_snapshots')
     .insert(payload)
-    .select('id, restaurante_id, publication_event_id, version_number, contenido_resumen, restaurante_resumen, actor_email, created_at')
+    .select(SELECT_PUBLICATION_SNAPSHOT_RESUMEN)
     .single()
 
   if (snapshotPendiente(error)) return { pendiente: true }
@@ -341,7 +353,7 @@ export async function POST(req) {
       .from('restaurantes')
       .update({ carta_publica_activa: activa })
       .eq('id', restauranteId)
-      .select('*')
+      .select(SELECT_RESTAURANTE_PUBLICACION)
       .single()
 
     if (errorIncluye(error, 'carta_publica_activa')) {

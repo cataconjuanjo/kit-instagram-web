@@ -6,6 +6,18 @@ function texto(valor, limite = 100) {
   return String(valor || '').trim().slice(0, limite)
 }
 
+const SELECT_SNAPSHOT_LIST = [
+  'id', 'restaurante_id', 'publication_event_id', 'version_number',
+  'contenido_resumen', 'actor_email', 'created_at',
+].join(', ')
+const SELECT_SNAPSHOT_DETAIL = [
+  'id', 'restaurante_id', 'publication_event_id', 'version_number',
+  'contenido_resumen', 'restaurante_resumen', 'vinos_snapshot',
+  'platos_snapshot', 'actor_email', 'created_at',
+].join(', ')
+const SELECT_VINO_ACTUAL = 'id, nombre, bodega, tipo, region, uva, anada, precio_copa, precio_botella, notas_cata'
+const SELECT_PLATO_ACTUAL = 'id, nombre, descripcion, categoria, precio, familias_aromaticas'
+
 function numeroPrecio(valor) {
   if (valor === null || valor === undefined || valor === '') return 0
   const numero = Number(String(valor).replace(',', '.'))
@@ -162,12 +174,12 @@ async function cargarActual(restauranteId) {
   const [vinosRes, platosRes] = await Promise.all([
     supabaseAdmin
       .from('vinos')
-      .select('id, nombre, bodega, tipo, region, uva, anada, precio_copa, precio_botella, notas_cata')
+      .select(SELECT_VINO_ACTUAL)
       .eq('restaurante_id', restauranteId)
       .eq('activo', true),
     supabaseAdmin
       .from('platos')
-      .select('id, nombre, descripcion, categoria, precio, familias_aromaticas')
+      .select(SELECT_PLATO_ACTUAL)
       .eq('restaurante_id', restauranteId)
       .eq('activo', true),
   ])
@@ -194,7 +206,7 @@ export async function GET(req) {
 
     const { data: snapshots, error: listError } = await supabaseAdmin
       .from('publication_snapshots')
-      .select('id, restaurante_id, publication_event_id, version_number, contenido_resumen, actor_email, created_at')
+      .select(SELECT_SNAPSHOT_LIST)
       .eq('restaurante_id', restauranteId)
       .order('version_number', { ascending: false })
       .limit(30)
@@ -213,7 +225,7 @@ export async function GET(req) {
     if (objetivoId) {
       const { data, error } = await supabaseAdmin
         .from('publication_snapshots')
-        .select('*')
+        .select(SELECT_SNAPSHOT_DETAIL)
         .eq('restaurante_id', restauranteId)
         .eq('id', objetivoId)
         .single()

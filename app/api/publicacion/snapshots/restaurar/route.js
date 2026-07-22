@@ -7,6 +7,16 @@ function texto(valor, limite = 120) {
   return String(valor || '').trim().slice(0, limite)
 }
 
+const SELECT_SNAPSHOT_RESTORE = [
+  'id', 'restaurante_id', 'publication_event_id', 'version_number',
+  'contenido_resumen', 'vinos_snapshot', 'platos_snapshot', 'actor_email',
+  'created_at',
+].join(', ')
+const SELECT_RESTAURANTE_RESTORE = [
+  'id', 'slug', 'nombre', 'email', 'ciudad', 'logo_url', 'plan',
+  'subscription_status', 'carta_publica_activa', 'hub_activo',
+].join(', ')
+
 function textoLargo(valor, limite = 1200) {
   return String(valor || '').trim().slice(0, limite)
 }
@@ -196,7 +206,7 @@ export async function POST(req) {
 
     const { data: snapshot, error: snapshotError } = await supabaseAdmin
       .from('publication_snapshots')
-      .select('*')
+      .select(SELECT_SNAPSHOT_RESTORE)
       .eq('restaurante_id', restauranteId)
       .eq('id', snapshotId)
       .maybeSingle()
@@ -234,7 +244,7 @@ export async function POST(req) {
       .from('restaurantes')
       .update({ carta_publica_activa: false })
       .eq('id', restauranteId)
-      .select('*')
+      .select(SELECT_RESTAURANTE_RESTORE)
       .single()
 
     if (pausaError) throw pausaError
