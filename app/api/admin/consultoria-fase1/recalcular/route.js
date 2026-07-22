@@ -4,6 +4,112 @@ import { calcularConsultoriaFase1, limpiarPayloadPersistencia } from '../../../.
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const SELECT_RESTAURANTE_CONSULTORIA = 'id, nombre, ticket_medio_comida'
+const SELECT_VINO_CONSULTORIA = [
+  'id', 'nombre', 'bodega', 'tipo', 'region', 'uva', 'notas_cata',
+  'activo', 'precio_botella', 'precio_copa', 'coste_compra', 'stock',
+  'stock_minimo', 'proveedor',
+].join(', ')
+const SELECT_ESTADISTICA_CONSULTORIA = 'id, restaurante_id, tipo, detalle, created_at'
+const SELECT_MOVIMIENTO_CONSULTORIA = 'id, restaurante_id, vino_id, tipo, cantidad, created_at'
+const SELECT_PLATO_CONSULTORIA = 'id, nombre, descripcion, categoria, activo'
+const SELECT_KPI_HISTORY = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin', 'clave',
+  'nombre', 'valor', 'unidad', 'categoria', 'fuente', 'coeficientes',
+  'interpretacion', 'created_at',
+].join(', ')
+const SELECT_ALERT = [
+  'id', 'restaurante_id', 'entidad_tipo', 'entidad_id', 'severidad',
+  'clave', 'titulo', 'detalle', 'impacto', 'accion_sugerida', 'estado',
+  'periodo_inicio', 'periodo_fin', 'created_at', 'updated_at',
+  'resuelta_at', 'descartada_at', 'motivo_cierre', 'asignado_a',
+  'ultima_deteccion_at', 'veces_detectada',
+].join(', ')
+const SELECT_RECOMMENDATION = [
+  'id', 'restaurante_id', 'entidad_tipo', 'entidad_id', 'tipo', 'titulo',
+  'detalle', 'accion', 'prioridad', 'esfuerzo', 'origen', 'estado',
+  'coeficientes', 'periodo_inicio', 'periodo_fin', 'created_at', 'updated_at',
+].join(', ')
+const SELECT_WINE_CLASSIFICATION = [
+  'id', 'restaurante_id', 'vino_id', 'periodo_inicio', 'periodo_fin',
+  'categoria', 'categoria_ingles', 'margen_bruto_pct', 'popularidad_pct',
+  'umbral_margen_pct', 'umbral_popularidad_pct', 'explicacion',
+  'acciones', 'created_at', 'vinos(nombre, bodega, tipo, region, precio_botella, coste_compra)',
+].join(', ')
+const SELECT_WINE_PERFORMANCE = [
+  'id', 'restaurante_id', 'vino_id', 'periodo_inicio', 'periodo_fin',
+  'ventas_unidades', 'ingresos_estimados', 'coste_estimado',
+  'beneficio_bruto', 'margen_bruto_pct', 'popularidad_pct',
+  'rotacion_estimada', 'stock_actual', 'valor_stock_coste',
+  'created_at', 'vinos(nombre, bodega, tipo, region, precio_botella, coste_compra)',
+].join(', ')
+const SELECT_INVENTORY_SNAPSHOT = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin',
+  'referencias_activas', 'unidades_totales', 'valor_coste_total',
+  'valor_venta_total', 'stock_inmovilizado_refs', 'stock_inmovilizado_valor',
+  'referencias_lentas', 'exceso_stock_refs', 'proveedor_principal',
+  'proveedor_principal_pct', 'merma_unidades', 'tasa_merma_pct',
+  'created_at',
+].join(', ')
+const SELECT_INVENTORY_ITEM = [
+  'id', 'snapshot_id', 'restaurante_id', 'vino_id', 'proveedor',
+  'stock_actual', 'stock_minimo', 'ventas_unidades', 'coste_compra',
+  'precio_botella', 'valor_stock_coste', 'dias_cobertura',
+  'estado_inventario', 'motivo', 'created_at',
+  'vinos(nombre, bodega, tipo, region)',
+].join(', ')
+const SELECT_WINE_LIST_SNAPSHOT = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin',
+  'referencias_total', 'referencias_con_venta', 'ventas_totales',
+  'pareto_top20_refs', 'pareto_top20_ventas_pct', 'bottom10_refs',
+  'productividad_media', 'huecos_precio', 'resumen_gamas',
+  'concentracion_tipos', 'concentracion_regiones', 'carta_inflada',
+  'motivo_principal', 'created_at',
+].join(', ')
+const SELECT_WINE_LIST_ITEM = [
+  'id', 'snapshot_id', 'restaurante_id', 'vino_id', 'nombre', 'bodega',
+  'tipo', 'region', 'gama', 'precio_botella', 'ventas_unidades',
+  'margen_bruto_pct', 'popularidad_pct', 'productividad_score',
+  'valor_stock_coste', 'es_top20', 'es_bottom10', 'motivo', 'created_at',
+  'vinos(nombre, bodega, tipo, region)',
+].join(', ')
+const SELECT_BTG_SNAPSHOT = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin',
+  'referencias_activas', 'referencias_por_copa', 'cobertura_copa_pct',
+  'candidatos_copa', 'candidatos_copa_premium', 'candidatos_coravin',
+  'beneficio_potencial_estimado', 'motivo_principal', 'created_at',
+].join(', ')
+const SELECT_BTG_CANDIDATE = [
+  'id', 'snapshot_id', 'restaurante_id', 'vino_id', 'nombre', 'bodega',
+  'tipo', 'region', 'categoria_copa', 'score_copa', 'coste_botella',
+  'pvp_botella', 'precio_copa_actual', 'precio_copa_sugerido',
+  'copas_por_botella', 'merma_pct', 'ingresos_por_botella_copa',
+  'beneficio_por_botella_copa', 'margen_copa_pct', 'riesgo_apertura',
+  'motivo', 'accion', 'created_at', 'vinos(nombre, bodega, tipo, region)',
+].join(', ')
+const SELECT_CONSULTANT_DIAGNOSTIC = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin', 'score',
+  'prioridad', 'resumen_ejecutivo', 'estado_actual',
+  'problema_principal', 'quick_wins', 'medio_plazo', 'estrategico',
+  'problemas_detectados', 'created_at',
+].join(', ')
+const SELECT_CONSULTANT_ACTION = [
+  'id', 'diagnostic_id', 'restaurante_id', 'fase', 'titulo', 'detalle',
+  'accion', 'prioridad', 'impacto', 'esfuerzo', 'estado', 'origen',
+  'created_at', 'updated_at',
+].join(', ')
+const SELECT_OPPORTUNITY_SNAPSHOT = [
+  'id', 'restaurante_id', 'periodo_inicio', 'periodo_fin',
+  'recuperacion_anual_estimada', 'impacto_acciones_rapidas',
+  'impacto_medio_plazo', 'impacto_estrategico',
+  'capital_liberable_estimado', 'confianza_media_pct',
+  'oportunidades_total', 'resumen', 'created_at',
+].join(', ')
+const SELECT_OPPORTUNITY_ITEM = [
+  'id', 'snapshot_id', 'restaurante_id', 'area', 'titulo', 'detalle',
+  'accion', 'impacto_estimado', 'tipo_impacto', 'horizonte',
+  'dificultad', 'confianza_pct', 'prioridad', 'formula', 'created_at',
+].join(', ')
 
 function adminClient() {
   if (!serviceRoleKey) throw new Error('Falta SUPABASE_SERVICE_ROLE_KEY')
@@ -97,7 +203,7 @@ async function guardarAlertasDeduplicadas(supabase, restauranteId, alertas, peri
 
   const { data: existentes, error } = await supabase
     .from('alerts')
-    .select('*')
+    .select(SELECT_ALERT)
     .eq('restaurante_id', restauranteId)
     .in('estado', ['abierta', 'en_progreso'])
 
@@ -182,11 +288,11 @@ export async function GET(req) {
       { data: clasificaciones, error: clasificacionesError },
       { data: performance, error: performanceError },
     ] = await Promise.all([
-      supabase.from('kpi_history').select('*').eq('restaurante_id', restauranteId).order('created_at', { ascending: false }).limit(40),
-      supabase.from('alerts').select('*').eq('restaurante_id', restauranteId).in('estado', ['abierta', 'en_progreso']).order('created_at', { ascending: false }).limit(30),
-      supabase.from('recommendations').select('*').eq('restaurante_id', restauranteId).in('estado', ['pendiente', 'en_progreso']).order('created_at', { ascending: false }).limit(30),
-      supabase.from('wine_classifications').select('*, vinos(nombre, bodega, tipo, region, precio_botella, coste_compra)').eq('restaurante_id', restauranteId).order('created_at', { ascending: false }).limit(80),
-      supabase.from('wine_performance').select('*, vinos(nombre, bodega, tipo, region, precio_botella, coste_compra)').eq('restaurante_id', restauranteId).order('created_at', { ascending: false }).limit(80),
+      supabase.from('kpi_history').select(SELECT_KPI_HISTORY).eq('restaurante_id', restauranteId).order('created_at', { ascending: false }).limit(40),
+      supabase.from('alerts').select(SELECT_ALERT).eq('restaurante_id', restauranteId).in('estado', ['abierta', 'en_progreso']).order('created_at', { ascending: false }).limit(30),
+      supabase.from('recommendations').select(SELECT_RECOMMENDATION).eq('restaurante_id', restauranteId).in('estado', ['pendiente', 'en_progreso']).order('created_at', { ascending: false }).limit(30),
+      supabase.from('wine_classifications').select(SELECT_WINE_CLASSIFICATION).eq('restaurante_id', restauranteId).order('created_at', { ascending: false }).limit(80),
+      supabase.from('wine_performance').select(SELECT_WINE_PERFORMANCE).eq('restaurante_id', restauranteId).order('created_at', { ascending: false }).limit(80),
     ])
 
     const error = kpisError || alertasError || recomendacionesError || clasificacionesError || performanceError
@@ -210,7 +316,7 @@ export async function GET(req) {
     let oportunidadPendienteMigracion = false
     const { data: snapshots, error: snapshotsError } = await supabase
       .from('inventory_snapshots')
-      .select('*')
+      .select(SELECT_INVENTORY_SNAPSHOT)
       .eq('restaurante_id', restauranteId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -222,7 +328,7 @@ export async function GET(req) {
       if (snapshot?.id) {
         const { data: items, error: itemsError } = await supabase
           .from('inventory_snapshot_items')
-          .select('*, vinos(nombre, bodega, tipo, region)')
+          .select(SELECT_INVENTORY_ITEM)
           .eq('snapshot_id', snapshot.id)
           .order('valor_stock_coste', { ascending: false })
           .limit(80)
@@ -236,7 +342,7 @@ export async function GET(req) {
     }
     const { data: wineListSnapshots, error: wineListError } = await supabase
       .from('wine_list_snapshots')
-      .select('*')
+      .select(SELECT_WINE_LIST_SNAPSHOT)
       .eq('restaurante_id', restauranteId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -248,7 +354,7 @@ export async function GET(req) {
       if (cartaSnapshot?.id) {
         const { data: items, error: itemsError } = await supabase
           .from('wine_list_snapshot_items')
-          .select('*, vinos(nombre, bodega, tipo, region)')
+          .select(SELECT_WINE_LIST_ITEM)
           .eq('snapshot_id', cartaSnapshot.id)
           .order('productividad_score', { ascending: true })
           .limit(100)
@@ -262,7 +368,7 @@ export async function GET(req) {
     }
     const { data: btgSnapshots, error: btgError } = await supabase
       .from('btg_snapshots')
-      .select('*')
+      .select(SELECT_BTG_SNAPSHOT)
       .eq('restaurante_id', restauranteId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -274,7 +380,7 @@ export async function GET(req) {
       if (copaSnapshot?.id) {
         const { data: candidates, error: candidatesError } = await supabase
           .from('btg_candidates')
-          .select('*, vinos(nombre, bodega, tipo, region)')
+          .select(SELECT_BTG_CANDIDATE)
           .eq('snapshot_id', copaSnapshot.id)
           .order('score_copa', { ascending: false })
           .limit(80)
@@ -288,7 +394,7 @@ export async function GET(req) {
     }
     const { data: diagnostics, error: diagnosticError } = await supabase
       .from('consultant_diagnostics')
-      .select('*')
+      .select(SELECT_CONSULTANT_DIAGNOSTIC)
       .eq('restaurante_id', restauranteId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -300,7 +406,7 @@ export async function GET(req) {
       if (consultorDiagnostic?.id) {
         const { data: items, error: itemsError } = await supabase
           .from('consultant_action_items')
-          .select('*')
+          .select(SELECT_CONSULTANT_ACTION)
           .eq('diagnostic_id', consultorDiagnostic.id)
           .order('created_at', { ascending: true })
         if (itemsError) {
@@ -313,7 +419,7 @@ export async function GET(req) {
     }
     const { data: opportunitySnapshots, error: opportunityError } = await supabase
       .from('opportunity_snapshots')
-      .select('*')
+      .select(SELECT_OPPORTUNITY_SNAPSHOT)
       .eq('restaurante_id', restauranteId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -325,7 +431,7 @@ export async function GET(req) {
       if (oportunidadSnapshot?.id) {
         const { data: items, error: itemsError } = await supabase
           .from('opportunity_items')
-          .select('*')
+          .select(SELECT_OPPORTUNITY_ITEM)
           .eq('snapshot_id', oportunidadSnapshot.id)
           .order('impacto_estimado', { ascending: false })
         if (itemsError) {
@@ -385,11 +491,11 @@ export async function POST(req) {
       { data: movimientos, error: movimientosError },
       { data: platos, error: platosError },
     ] = await Promise.all([
-      supabase.from('restaurantes').select('*').eq('id', restauranteId).single(),
-      supabase.from('vinos').select('*').eq('restaurante_id', restauranteId),
-      supabase.from('estadisticas').select('*').eq('restaurante_id', restauranteId).gte('created_at', periodoInicio),
-      supabase.from('movimientos_stock').select('*').eq('restaurante_id', restauranteId).gte('created_at', periodoInicio),
-      supabase.from('platos').select('nombre,descripcion,categoria,activo').eq('restaurante_id', restauranteId),
+      supabase.from('restaurantes').select(SELECT_RESTAURANTE_CONSULTORIA).eq('id', restauranteId).single(),
+      supabase.from('vinos').select(SELECT_VINO_CONSULTORIA).eq('restaurante_id', restauranteId),
+      supabase.from('estadisticas').select(SELECT_ESTADISTICA_CONSULTORIA).eq('restaurante_id', restauranteId).gte('created_at', periodoInicio),
+      supabase.from('movimientos_stock').select(SELECT_MOVIMIENTO_CONSULTORIA).eq('restaurante_id', restauranteId).gte('created_at', periodoInicio),
+      supabase.from('platos').select(SELECT_PLATO_CONSULTORIA).eq('restaurante_id', restauranteId),
     ])
 
     const error = restError || vinosError || estadisticasError || movimientosError
@@ -440,7 +546,7 @@ export async function POST(req) {
     const { data: snapshotData, error: snapshotError } = await supabase
       .from('inventory_snapshots')
       .insert([payload.inventarioSnapshot])
-      .select()
+      .select(SELECT_INVENTORY_SNAPSHOT)
       .single()
     if (snapshotError) {
       if (esTablaNoExiste(snapshotError)) {
@@ -467,7 +573,7 @@ export async function POST(req) {
     const { data: cartaSnapshotData, error: cartaSnapshotError } = await supabase
       .from('wine_list_snapshots')
       .insert([payload.cartaSnapshot])
-      .select()
+      .select(SELECT_WINE_LIST_SNAPSHOT)
       .single()
     if (cartaSnapshotError) {
       if (esTablaNoExiste(cartaSnapshotError)) {
@@ -494,7 +600,7 @@ export async function POST(req) {
     const { data: copaSnapshotData, error: copaSnapshotError } = await supabase
       .from('btg_snapshots')
       .insert([payload.copaSnapshot])
-      .select()
+      .select(SELECT_BTG_SNAPSHOT)
       .single()
     if (copaSnapshotError) {
       if (esTablaNoExiste(copaSnapshotError)) {
@@ -521,7 +627,7 @@ export async function POST(req) {
     const { data: diagnosticData, error: diagnosticInsertError } = await supabase
       .from('consultant_diagnostics')
       .insert([payload.consultorDiagnostic])
-      .select()
+      .select(SELECT_CONSULTANT_DIAGNOSTIC)
       .single()
     if (diagnosticInsertError) {
       if (esTablaNoExiste(diagnosticInsertError)) {
@@ -548,7 +654,7 @@ export async function POST(req) {
     const { data: oportunidadSnapshotData, error: oportunidadSnapshotError } = await supabase
       .from('opportunity_snapshots')
       .insert([payload.oportunidadSnapshot])
-      .select()
+      .select(SELECT_OPPORTUNITY_SNAPSHOT)
       .single()
     if (oportunidadSnapshotError) {
       if (esTablaNoExiste(oportunidadSnapshotError)) {
