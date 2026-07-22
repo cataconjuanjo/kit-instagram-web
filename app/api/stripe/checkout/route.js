@@ -4,6 +4,7 @@ import { requireRestaurantAccess } from '../../_lib/auth'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+const SELECT_RESTAURANTE_CHECKOUT = 'id, email, nombre, stripe_customer_id'
 
 function stripeTrialEnd(value) {
   if (!value) return null
@@ -48,11 +49,18 @@ export async function POST(req) {
     // Buscar o crear el customer en Stripe
     let stripeCustomerId = null
 
-    const { data: rest } = await adminSupabase
+    const { data: rest, error: restError } = await adminSupabase
       .from('restaurantes')
-      .select('*')
+      .select(SELECT_RESTAURANTE_CHECKOUT)
       .eq('id', restaurante_id)
       .single()
+
+    if (restError || !rest) {
+      if (restError?.code === 'PGRST116') {
+        return Response.json({ error: 'Restaurante no encontrado.' }, { status: 404 })
+      }
+      throw restError
+    }
 
     stripeCustomerId = rest?.stripe_customer_id
     const customerEmail = rest?.email || email
