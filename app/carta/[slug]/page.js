@@ -1233,10 +1233,10 @@ setPerfiles(nuevosPerfiles)
     <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ background: colorPrimario, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button onClick={() => setMostrarComparador(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#fff', padding: '0 8px', minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>←</button>
+          <button type="button" aria-label="Volver a la carta" onClick={() => setMostrarComparador(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#fff', padding: '0 8px', minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>←</button>
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{i.comparar}</span>
         </div>
-        <button onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>
+        <button type="button" aria-label="Cambiar idioma" onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>
           {idioma === 'es' ? 'EN' : 'ES'}
         </button>
       </div>
@@ -1311,7 +1311,7 @@ setPerfiles(nuevosPerfiles)
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <button onClick={() => { setVinosComparador([]); setMostrarComparador(false) }} style={{ width: '100%', background: 'none', border: '1px solid #e8e8e8', padding: '12px', fontSize: 12, color: '#aaa', cursor: 'pointer', borderRadius: 10 }}>
+          <button type="button" onClick={() => { setVinosComparador([]); setMostrarComparador(false) }} style={{ width: '100%', background: 'none', border: '1px solid #e8e8e8', padding: '12px', fontSize: 12, color: '#aaa', cursor: 'pointer', borderRadius: 10 }}>
             {i.cerrarComparador}
           </button>
         </div>
@@ -1325,10 +1325,10 @@ setPerfiles(nuevosPerfiles)
     <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ background: colorPrimario, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button onClick={cerrarFichaVino} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#fff', padding: '0 8px', minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', gap: 8 }}>←<span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', opacity: 0.75 }}>Volver</span></button>
+          <button type="button" onClick={cerrarFichaVino} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#fff', padding: '0 8px', minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', gap: 8 }}>←<span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.04em', opacity: 0.75 }}>Volver</span></button>
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{i.fichaVino}</span>
         </div>
-        <button onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>
+        <button type="button" aria-label="Cambiar idioma" onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>
           {idioma === 'es' ? 'EN' : 'ES'}
         </button>
       </div>
@@ -1401,7 +1401,7 @@ setPerfiles(nuevosPerfiles)
             <p className={styles.meta}>{vinos.length} {i.referencias} · {restaurante.ciudad}</p>
             <ExperienceSignal experiencia={restaurante.experiencia_publica} />
           </div>
-          <button className={styles.langButton} onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')}>
+          <button type="button" className={styles.langButton} aria-label="Cambiar idioma" onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')}>
             {idioma === 'es' ? 'EN' : 'ES'}
           </button>
         </div>
@@ -1418,7 +1418,7 @@ setPerfiles(nuevosPerfiles)
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
             />
-            <button className={styles.filterButton} onClick={() => setMostrarFiltros(!mostrarFiltros)}>
+            <button type="button" className={styles.filterButton} aria-expanded={mostrarFiltros} onClick={() => setMostrarFiltros(!mostrarFiltros)}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
               {i.filtros}
             </button>
@@ -1431,6 +1431,8 @@ setPerfiles(nuevosPerfiles)
                   <button
                     key={tipo}
                     className={`${styles.chip} ${filtro === tipo ? styles.chipActive : ''}`}
+                    type="button"
+                    aria-pressed={filtro === tipo}
                     onClick={() => setFiltro(tipo)}
                     style={filtro === tipo ? { background: colorAcento, borderColor: colorAcento } : undefined}
                   >

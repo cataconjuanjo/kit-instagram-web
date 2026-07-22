@@ -2031,13 +2031,13 @@ export default function Camarero() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif', padding: 24 }}>
       <p style={{ fontSize: 11, color: '#666', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 8px' }}>Modo camarero</p>
       <p style={{ fontSize: 20, fontWeight: 300, color: 'white', fontFamily: 'Georgia, serif', margin: '0 0 32px' }}>{restaurante?.nombre}</p>
-      <input type="password" placeholder="PIN" value={pin}
+      <input type="password" aria-label="PIN de sala" placeholder="PIN" value={pin}
         onChange={e => setPin(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && comprobarPin()}
         style={{ width: '100%', maxWidth: 200, padding: '14px', textAlign: 'center', fontSize: 24, letterSpacing: '0.3em', border: 'none', borderBottom: '1px solid #333', background: 'transparent', color: 'white', outline: 'none', marginBottom: 16 }}
       />
       {errorPin && <p style={{ fontSize: 12, color: '#c07070', margin: '0 0 16px' }}>PIN incorrecto</p>}
-      <button onClick={comprobarPin} style={{ background: 'white', color: '#111', border: 'none', padding: '12px 32px', fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
+      <button type="button" onClick={comprobarPin} style={{ background: 'white', color: '#111', border: 'none', padding: '12px 32px', fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
         Entrar
       </button>
       <a href="/cartavinos" target="_blank" rel="noreferrer" style={{
@@ -2058,7 +2058,7 @@ export default function Camarero() {
   if (mostrarComparador) return (
     <div style={{ minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #222' }}>
-        <button onClick={() => setMostrarComparador(false)} style={{ background: 'none', border: 'none', color: '#666', fontSize: 20, cursor: 'pointer', padding: 0 }}>←</button>
+        <button type="button" aria-label="Volver al modo camarero" onClick={() => setMostrarComparador(false)} style={{ background: 'none', border: 'none', color: '#666', fontSize: 20, cursor: 'pointer', padding: 0 }}>←</button>
         <span style={{ fontSize: 12, color: '#555', letterSpacing: '0.08em' }}>COMPARAR</span>
       </div>
       <div style={{ padding: '20px' }}>
@@ -2128,7 +2128,7 @@ export default function Camarero() {
           </div>
         </div>
 
-        <button onClick={() => { setVinosComparador([]); setMostrarComparador(false) }}
+        <button type="button" onClick={() => { setVinosComparador([]); setMostrarComparador(false) }}
           style={{ width: '100%', marginTop: 16, background: 'none', border: '1px solid #333', padding: '12px', fontSize: 12, color: '#666', cursor: 'pointer', borderRadius: 8 }}>
           Cerrar comparador
         </button>
@@ -2140,7 +2140,7 @@ export default function Camarero() {
   if (vinoSeleccionado) return (
     <div style={{ minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #222' }}>
-        <button onClick={() => setVinoSeleccionado(null)} style={{ background: 'none', border: 'none', color: '#666', fontSize: 20, cursor: 'pointer', padding: 0 }}>←</button>
+        <button type="button" aria-label="Volver al modo camarero" onClick={() => setVinoSeleccionado(null)} style={{ background: 'none', border: 'none', color: '#666', fontSize: 20, cursor: 'pointer', padding: 0 }}>←</button>
         <span style={{ fontSize: 12, color: '#555', letterSpacing: '0.08em' }}>FICHA DEL VINO</span>
       </div>
       <div style={{ padding: '28px 20px' }}>
@@ -2171,7 +2171,7 @@ export default function Camarero() {
             <p style={{ fontSize: 14, color: '#aaa', lineHeight: 1.8, margin: 0, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>{vinoSeleccionado.notas_cata}</p>
           </div>
         )}
-        <button onClick={() => toggleComparador(vinoSeleccionado)}
+        <button type="button" onClick={() => toggleComparador(vinoSeleccionado)}
           style={{ width: '100%', marginTop: 20, padding: '14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13,
             background: vinosComparador.find(v => v.id === vinoSeleccionado.id) ? '#fff' : '#222',
             color: vinosComparador.find(v => v.id === vinoSeleccionado.id) ? '#111' : '#aaa' }}>

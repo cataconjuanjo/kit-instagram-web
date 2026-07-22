@@ -280,6 +280,7 @@ export default function RestauranteHub({ params }) {
               <form className="hub-preview-approval-form" onSubmit={aprobarPreviewHub}>
                 <input
                   type="text"
+                  aria-label="Nombre de quien aprueba"
                   value={previewApprovalForm.reviewer_name}
                   onChange={event => updatePreviewApprovalField('reviewer_name', event.target.value)}
                   placeholder="Nombre, cargo o equipo"
@@ -288,6 +289,7 @@ export default function RestauranteHub({ params }) {
                 />
                 <input
                   type="email"
+                  aria-label="Email de quien aprueba"
                   value={previewApprovalForm.reviewer_email}
                   onChange={event => updatePreviewApprovalField('reviewer_email', event.target.value)}
                   placeholder="Email opcional"
@@ -295,6 +297,7 @@ export default function RestauranteHub({ params }) {
                   autoComplete="email"
                 />
                 <textarea
+                  aria-label="Nota de aprobacion"
                   value={previewApprovalForm.note}
                   onChange={event => updatePreviewApprovalField('note', event.target.value)}
                   placeholder="Nota opcional"
