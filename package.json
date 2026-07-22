@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint app next.config.mjs",
     "smoke": "node scripts/launch-smoke.mjs",
+    "schema:audit": "node scripts/check-supabase-schema.js",
     "qa": "npm run lint && npm run build && npm run smoke"
   },
   "dependencies": {
