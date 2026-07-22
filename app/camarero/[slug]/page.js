@@ -310,10 +310,19 @@ export default function Camarero() {
       cantidad: cantidadNormalizada,
     })
 
-    const res = await enviarEstadisticas({
-      sala_token: salaToken,
-      eventos: [{ restaurante_id: restaurante.id, tipo: 'venta', detalle }],
-    })
+    let res
+    try {
+      res = await enviarEstadisticas({
+        sala_token: salaToken,
+        eventos: [{ restaurante_id: restaurante.id, tipo: 'venta', detalle }],
+      })
+    } catch (error) {
+      setFeedbackVenta(prev => ({ ...prev, [clave]: false }))
+      setMensajeServicio('No se pudo guardar. Reintenta en un momento.')
+      setTimeout(() => setMensajeServicio(''), 2200)
+      reportarErrorCliente('camarero_feedback_venta', error)
+      return
+    }
 
     if (!res.ok) {
       setFeedbackVenta(prev => ({ ...prev, [clave]: false }))
@@ -1953,6 +1962,10 @@ export default function Camarero() {
     }))
 
     enviarEstadisticas({ sala_token: salaToken, eventos })
+      .then(res => {
+        if (!res.ok) throw new Error(`POST recomendaciones sala ${res.status}`)
+      })
+      .catch(error => reportarErrorCliente('camarero_recomendaciones_estadisticas', error))
   }, [autenticado, vistaServicio, modoRecomendacionVenta, restaurante?.id, hayConsultaVentaActual, consultaVentaActual, recomendacionesVenta, objetivoVenta, perfilClienteVenta, rotacionVenta, salaToken])
 
   useEffect(() => {
