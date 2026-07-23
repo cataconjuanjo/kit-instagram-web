@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
+import { cargarDemoDashboard } from '../../lib/demoDashboardClient'
 import {
   SELECT_CLIENT_RESTAURANTE_DASHBOARD,
   SELECT_CLIENT_VINO_DASHBOARD,
@@ -88,8 +89,21 @@ export default function ConstructorCarta() {
 
   useEffect(() => {
     async function cargar() {
-      const { email, restauranteId } = await getEffectiveRestaurantEmail(supabase)
+      const { email, restauranteId, isDemo } = await getEffectiveRestaurantEmail(supabase)
       if (!email && !restauranteId) { window.location.href = '/login'; return }
+
+      if (isDemo) {
+        const demo = await cargarDemoDashboard(email)
+        if (demo?.restaurante) {
+          setRestaurante(demo.restaurante)
+          const base = (demo.vinos || []).filter(v => v.activo).map(vino => ({ ...vino, tempId: vino.id, seccion: seccionPorTipo(vino), origen: 'bodega' }))
+          setVinos(base)
+          setDraft(base)
+        }
+        setLoading(false)
+        return
+      }
+
       const queryRestaurante = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
       const { data: rest } = restauranteId
         ? await queryRestaurante.eq('id', restauranteId).single()
