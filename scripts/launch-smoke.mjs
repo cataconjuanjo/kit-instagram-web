@@ -63,6 +63,42 @@ async function clickFirstLinkToPath(page, path, label) {
   console.log(`PASS ${label} navega a ${path}`)
 }
 
+async function assertLocatorExists(page, selector, label) {
+  const locator = page.locator(selector).first()
+  await locator.waitFor({ state: 'attached', timeout: 20000 })
+  console.log(`PASS ${label}`)
+}
+
+async function assertSkipLink(page, href, targetId, label) {
+  const link = page.locator(`a[href="${href}"]`).first()
+  await link.waitFor({ state: 'attached', timeout: 20000 })
+  await assertLocatorExists(page, `#${targetId}`, `${label} tiene destino #${targetId}`)
+
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    window.scrollTo(0, 0)
+  })
+
+  let visibleOnKeyboardFocus = false
+  for (let index = 0; index < 20; index += 1) {
+    await page.keyboard.press('Tab')
+    await page.waitForTimeout(180)
+    visibleOnKeyboardFocus = await page.evaluate(expectedHref => {
+      const active = document.activeElement
+      if (active?.getAttribute?.('href') === expectedHref) {
+        const styles = window.getComputedStyle(active)
+        const rect = active.getBoundingClientRect()
+        return Number(styles.opacity) > 0.9 && rect.top >= 0 && rect.height >= 40
+      }
+      return false
+    }, href)
+    if (visibleOnKeyboardFocus) break
+  }
+
+  if (!visibleOnKeyboardFocus) throw new Error(`${label} no se muestra al recibir foco`)
+  console.log(`PASS ${label} visible al enfocar`)
+}
+
 async function runPublicExperienceChecks(browser) {
   const context = await browser.newContext({ viewport: { width: 1366, height: 900 } })
   const page = await context.newPage()
@@ -71,6 +107,8 @@ async function runPublicExperienceChecks(browser) {
     'Carta Viva',
     'Solicitar prueba',
   ])
+  await assertSkipLink(page, '#page-content', 'page-content', 'Skip link publico')
+  await assertLocatorExists(page, 'a[href="/cartavinos"][aria-current="page"]', 'Navegacion publica marca Carta Viva activa')
 
   await gotoAndExpect(page, `/demo/${demoSlug}`, 'Demo comercial desktop', [
     'La Taberna del Puerto',
@@ -155,10 +193,12 @@ async function runBrowserChecks() {
     await assertNotLogin(page, 'Demo gerente desde CTA')
     await waitForVisibleText(page, 'Vista gerente - Demo La Taberna', 'Demo gerente desde CTA')
     await waitForVisibleText(page, 'La Taberna del Puerto', 'Dashboard demo desde CTA')
+    await assertSkipLink(page, '#dashboard-main-content', 'dashboard-main-content', 'Skip link dashboard')
 
     await page.goto(`${baseUrl}/dashboard/vinos`, { waitUntil: 'domcontentloaded' })
     await assertNotLogin(page, 'Sesion demo persistente')
     await waitForVisibleText(page, 'La Taberna del Puerto', 'Sesion demo persistente')
+    await assertLocatorExists(page, 'a[href="/dashboard/vinos"][aria-current="page"]', 'Navegacion dashboard marca Vinos activa')
 
     await context.close()
 

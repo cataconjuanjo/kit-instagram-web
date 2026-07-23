@@ -89,11 +89,14 @@ export default function RootLayout({ children }) {
   return (
     <html lang="es" className={cormorantGaramond.variable}>
       <body>
+        <a href="#page-content" className="skip-link">Saltar al contenido</a>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {children}
+        <div id="page-content" tabIndex={-1}>
+          {children}
+        </div>
         <CookieConsent />
       </body>
     </html>

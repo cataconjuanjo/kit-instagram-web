@@ -400,6 +400,7 @@ export default function DashboardLayout({ children }) {
     <GuideModeProvider restaurantId={restaurante?.id}>
     <div className={`${styles.shell} ${darkMode ? styles.darkShell : ''}`}>
       {restaurante && <UsageTracker restauranteId={restaurante.id} onTrialChange={setTrialInfo} />}
+      <a href="#dashboard-main-content" className={styles.skipLink}>Saltar al panel</a>
       <nav id="dashboard-navigation" aria-label="Navegación principal" className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <div className={styles.brandHeader}>
@@ -426,12 +427,14 @@ export default function DashboardLayout({ children }) {
 
         <ul className={styles.nav}>
           {navItems.map(item => {
-            const active = isActive(item.href, item.exact) || item.children?.some(child => isActive(child.href))
+            const selfActive = isActive(item.href, item.exact)
+            const active = selfActive || item.children?.some(child => isActive(child.href))
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   className={`${styles.navLink} ${active ? styles.navActive : ''}`}
+                  aria-current={selfActive ? 'page' : undefined}
                   onClick={() => setMenuOpen(false)}
                 >
                   <span className={styles.navIcon}>{item.icon}</span>
@@ -444,21 +447,25 @@ export default function DashboardLayout({ children }) {
                 </Link>
                 {(active || menuOpen) && item.children?.length > 0 && (
                   <div className={styles.subnav}>
-                    {item.children.map(child => (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        className={`${styles.subnavLink} ${isActive(child.href, child.exact) ? styles.subnavActive : ''}`}
-                        onClick={() => setMenuOpen(false)}
-                      >
-                        <span className={styles.subnavCopy}>
-                          <span>{child.label}</span>
-                          {child.hint && <small>{child.hint}</small>}
-                        </span>
-                        {child.alert != null && <span className={styles.navAlert}>{child.alert}</span>}
-                        {child.stat != null && <span className={styles.navStat}>{child.stat}</span>}
-                      </Link>
-                    ))}
+                    {item.children.map(child => {
+                      const childActive = isActive(child.href, child.exact)
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={`${styles.subnavLink} ${childActive ? styles.subnavActive : ''}`}
+                          aria-current={childActive ? 'page' : undefined}
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          <span className={styles.subnavCopy}>
+                            <span>{child.label}</span>
+                            {child.hint && <small>{child.hint}</small>}
+                          </span>
+                          {child.alert != null && <span className={styles.navAlert}>{child.alert}</span>}
+                          {child.stat != null && <span className={styles.navStat}>{child.stat}</span>}
+                        </Link>
+                      )
+                    })}
                   </div>
                 )}
               </li>
@@ -488,7 +495,7 @@ export default function DashboardLayout({ children }) {
 
       {menuOpen && <div className={styles.overlay} onClick={() => setMenuOpen(false)} />}
 
-      <div className={styles.main}>
+      <div id="dashboard-main-content" className={styles.main} tabIndex={-1}>
         {(demoPresentacion || demoSumiller) && (
           <div className={styles.demoManagerBar}>
             {demoSumiller ? (
