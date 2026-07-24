@@ -4,7 +4,7 @@ import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM   = process.env.CARTA_VIVA_FROM || 'Carta Viva <onboarding@resend.dev>'
-const ADMIN  = 'jjgarciapozo@gmail.com'
+const ADMIN  = 'cataconjuanjo@gmail.com'
 
 const LABELS = { 1: '😢 Muy malo', 2: '😟 Malo', 3: '😐 Regular', 4: '🙂 Bueno', 5: '😄 Excelente' }
 

@@ -121,14 +121,6 @@ function FeedbackWidget({ slug }) {
   const [sugerencia,  setSugerencia]  = useState('')
   const [enviando,    setEnviando]    = useState(false)
   const [enviado,     setEnviado]     = useState(false)
-  const [yaVoto,      setYaVoto]      = useState(false)
-
-  useEffect(() => {
-    try {
-      const ts = localStorage.getItem(`kf-${slug}`)
-      if (ts && Date.now() - Number(ts) < 24 * 60 * 60 * 1000) setYaVoto(true)
-    } catch {}
-  }, [slug])
 
   async function enviar(r, sug) {
     setEnviando(true)
@@ -138,7 +130,6 @@ function FeedbackWidget({ slug }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating: r, sugerencia: sug }),
       })
-      localStorage.setItem(`kf-${slug}`, String(Date.now()))
     } catch {}
     setEnviando(false)
     setEnviado(true)
@@ -150,7 +141,6 @@ function FeedbackWidget({ slug }) {
     else { await enviar(r, '') }
   }
 
-  if (yaVoto)  return null
   if (enviado) return (
     <div className={styles.feedbackThanks}>¡Gracias por tu opinión! 🙏</div>
   )
@@ -927,7 +917,7 @@ export default function KioskoPage() {
           <FeedbackWidget slug={slug} />
 
           <a
-            href="https://cataconjuanjo.com/kiosko"
+            href="https://www.cataconjuanjo.com/"
             target="_blank"
             rel="noreferrer"
             className={styles.kioskoCredit}
