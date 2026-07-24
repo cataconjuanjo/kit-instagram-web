@@ -61,6 +61,7 @@ export default function AdminLayout({ children }) {
     pathname === '/admin/sugerencias' && { label: 'Buzon sugerencias' },
     pathname === '/admin/proveedores' && { label: 'Proveedores' },
     pathname === '/admin' && { label: 'Restaurantes' },
+    pathname === '/admin/kioscos' && { label: 'Kioscos' },
     activeRestaurant && { label: activeRestaurant.nombre },
   ].filter(Boolean)
 
@@ -143,6 +144,20 @@ export default function AdminLayout({ children }) {
                 Accesos
               </Link>
             </div>
+          </li>
+
+          <li className={styles.navGroup}>
+            <p className={styles.navGroupTitle}><span>🏬</span> Kioscos</p>
+            <Link
+              href="/admin/kioscos"
+              className={`${styles.navLink} ${pathname === '/admin/kioscos' ? styles.navActive : ''}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              Gestionar kioscos
+            </Link>
+            <a href="/kiosko/contratar" target="_blank" rel="noreferrer" className={styles.navLink}>
+              Página de contratación ↗
+            </a>
           </li>
 
           <li className={styles.navGroup}>

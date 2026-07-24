@@ -1,0 +1,160 @@
+.page {
+  min-height: 100vh;
+  background: #f8f6f2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 20px 60px;
+}
+
+.brand {
+  margin-bottom: 36px;
+}
+.brand a {
+  display: inline-flex;
+  align-items: center;
+}
+
+.card {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 4px 32px rgba(0,0,0,.08);
+  width: 100%;
+  max-width: 520px;
+  overflow: hidden;
+}
+
+.cardHeader {
+  background: #1a1a2e;
+  padding: 36px 36px 28px;
+  color: #fff;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #c9a96e;
+  margin: 0 0 10px;
+}
+
+.titulo {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.desc {
+  font-size: 14px;
+  color: rgba(255,255,255,.7);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 24px 36px;
+  background: #f8f6f2;
+  border-bottom: 1px solid #ece9e3;
+}
+
+.feat {
+  font-size: 13px;
+  color: #444;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.form {
+  padding: 28px 36px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.form input {
+  padding: 11px 14px;
+  border: 1.5px solid #e0ddd6;
+  border-radius: 10px;
+  font-size: 15px;
+  color: #1a1a2e;
+  background: #fafaf8;
+  transition: border-color .15s;
+}
+.form input:focus {
+  outline: none;
+  border-color: #1a1a2e;
+  background: #fff;
+}
+
+.errorMsg {
+  background: #fee;
+  border: 1px solid #f99;
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-size: 13px;
+  color: #c00;
+  margin: 0;
+}
+
+.btnPagar {
+  background: #c9a96e;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 12px;
+  padding: 15px 24px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+  margin-top: 4px;
+}
+.btnPagar:hover:not(:disabled) {
+  background: #b8965c;
+  transform: translateY(-1px);
+}
+.btnPagar:disabled {
+  opacity: .7;
+  cursor: not-allowed;
+}
+
+.legal {
+  font-size: 11px;
+  color: #aaa;
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.footer {
+  margin-top: 28px;
+  font-size: 13px;
+  color: #888;
+}
+.footer a {
+  color: #1a1a2e;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .card { border-radius: 16px; }
+  .cardHeader, .form { padding-left: 24px; padding-right: 24px; }
+  .features { grid-template-columns: 1fr; padding: 20px 24px; }
+}

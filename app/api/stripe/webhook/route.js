@@ -1,5 +1,70 @@
 import Stripe from 'stripe'
+import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
+import { randomUUID } from 'crypto'
+
+const SITE_URL    = process.env.NEXT_PUBLIC_SITE_URL   || 'https://cataconjuanjo.com'
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+const FROM        = process.env.CARTA_VIVA_FROM        || 'Carta Viva <onboarding@resend.dev>'
+
+function randomPassword() {
+  return `Kiosko-${randomUUID().slice(0, 8)}-${Math.random().toString(36).slice(2, 6)}!`
+}
+
+function escapeHtml(v = '') {
+  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
+async function findUserByEmail(sb, email) {
+  let page = 1
+  while (page < 20) {
+    const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 100 })
+    if (error) throw error
+    const found = data.users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+    if (found) return found
+    if (!data.users.length || data.users.length < 100) return null
+    page++
+  }
+  return null
+}
+
+async function ensureUser(sb, email, nombre) {
+  const existing = await findUserByEmail(sb, email)
+  if (existing) return existing
+  const { data, error } = await sb.auth.admin.createUser({
+    email,
+    password: randomPassword(),
+    email_confirm: true,
+    user_metadata: { kiosko: nombre },
+  })
+  if (error) throw error
+  return data.user
+}
+
+async function emailBienvenidaKiosko({ nombre, email, slug, accessLink }) {
+  const n = escapeHtml(nombre)
+  return `
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a1a2e;line-height:1.6">
+  <h1 style="font-size:22px;font-weight:600;margin:0 0 20px;color:#1a1a2e">¡Tu Kiosko Virtual ya está activo!</h1>
+  <p>Hola,</p>
+  <p>El pago se ha completado correctamente. Tu kiosko digital <strong>${n}</strong> está listo para usar.</p>
+
+  <div style="background:#f4f3f0;border-radius:10px;padding:20px;margin:24px 0">
+    <p style="margin:0 0 12px;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#888">Crea tu contraseña de acceso</p>
+    <p style="margin:0 0 16px;font-size:14px;color:#555">Pulsa el botón para establecer tu contraseña y entrar al panel.</p>
+    <a href="${accessLink}" style="display:inline-block;background:#1a1a2e;color:#c9a96e;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:14px">
+      Crear contraseña y entrar →
+    </a>
+  </div>
+
+  <p style="font-size:14px;color:#666">
+    Una vez creada la contraseña, entra desde:<br>
+    <a href="${SITE_URL}/login" style="color:#1a1a2e">${SITE_URL}/login</a>
+  </p>
+  <p style="font-size:14px;color:#666">Tu kiosko estará disponible en: <a href="${SITE_URL}/kiosko/${slug}" style="color:#1a1a2e">${SITE_URL}/kiosko/${slug}</a></p>
+  <p style="font-size:13px;color:#999;margin-top:32px">Juanjo · cataconjuanjo.com</p>
+</div>`
+}
 
 // Mapa de price_id → plan interno
 function planDesdePriceId(priceId) {
@@ -76,10 +141,105 @@ export async function POST(req) {
 
       // ── Pago completado: activar suscripción ─────────────────
       case 'checkout.session.completed': {
-        const session = event.data.object
-        const restaurante_id = session.metadata?.restaurante_id
-        const customerId     = session.customer
+        const session     = event.data.object
+        const customerId  = session.customer
         const subscriptionId = session.subscription
+        const tipo        = session.metadata?.tipo
+
+        // ── Kiosko admin-created: activar tienda existente ──────
+        if (tipo === 'kiosko') {
+          const tiendaId = session.metadata?.tienda_id
+          if (!tiendaId) break
+
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+          await adminSupabase.from('tiendas').update({
+            activo:                 true,
+            subscription_status:    estadoDesdeStripe(subscription.status),
+            stripe_customer_id:     customerId,
+            stripe_subscription_id: subscriptionId,
+          }).eq('id', tiendaId)
+
+          // Generar link de acceso y enviar email de bienvenida
+          const { data: tienda } = await adminSupabase.from('tiendas').select('nombre, email, slug').eq('id', tiendaId).single()
+          if (tienda?.email) {
+            const { data: linkData } = await adminSupabase.auth.admin.generateLink({
+              type:    'recovery',
+              email:   tienda.email,
+              options: { redirectTo: `${SITE_URL}/kiosko-admin/${tienda.slug}` },
+            })
+            const accessLink = linkData?.properties?.action_link
+            if (accessLink) {
+              const resend = new Resend(process.env.RESEND_API_KEY)
+              await resend.emails.send({
+                from:    FROM,
+                to:      tienda.email,
+                bcc:     ADMIN_EMAIL,
+                subject: `¡Tu kiosko está activo! — ${tienda.nombre}`,
+                html:    await emailBienvenidaKiosko({ nombre: tienda.nombre, email: tienda.email, slug: tienda.slug, accessLink }),
+              })
+            }
+          }
+          console.log(`✓ checkout.session.completed kiosko — tienda ${tiendaId} activada`)
+          break
+        }
+
+        // ── Kiosko self-service: crear tienda + usuario ──────────
+        if (tipo === 'kiosko_nuevo') {
+          const { nombre, email, ciudad, slug } = session.metadata || {}
+          if (!nombre || !email || !slug) break
+
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+
+          // Comprobar que el slug sigue libre (por si hubo una carrera)
+          const { data: existente } = await adminSupabase.from('tiendas').select('id').eq('slug', slug).single()
+          const tiendaSlug = existente ? `${slug}-${Date.now().toString(36)}` : slug
+
+          const { data: tienda, error: tiendaErr } = await adminSupabase.from('tiendas').insert({
+            nombre:              nombre.trim(),
+            email:               email.trim().toLowerCase(),
+            slug:                tiendaSlug,
+            ciudad:              ciudad || null,
+            color_primario:      '#1a1a2e',
+            color_acento:        '#c9a96e',
+            activo:              true,
+            subscription_status: estadoDesdeStripe(subscription.status),
+            stripe_customer_id:  customerId,
+            stripe_subscription_id: subscriptionId,
+          }).select().single()
+
+          if (tiendaErr) {
+            console.error('[webhook kiosko_nuevo] tienda:', tiendaErr)
+            break
+          }
+
+          // Crear usuario
+          await ensureUser(adminSupabase, email.trim(), nombre.trim())
+
+          // Link para crear contraseña
+          const { data: linkData } = await adminSupabase.auth.admin.generateLink({
+            type:    'recovery',
+            email:   email.trim(),
+            options: { redirectTo: `${SITE_URL}/kiosko-admin/${tiendaSlug}` },
+          })
+          const accessLink = linkData?.properties?.action_link
+
+          if (accessLink) {
+            const resend = new Resend(process.env.RESEND_API_KEY)
+            await resend.emails.send({
+              from:    FROM,
+              to:      email.trim(),
+              bcc:     ADMIN_EMAIL,
+              subject: `¡Tu kiosko está activo! — ${nombre.trim()}`,
+              html:    await emailBienvenidaKiosko({ nombre, email, slug: tiendaSlug, accessLink }),
+            })
+          }
+
+          console.log(`✓ checkout.session.completed kiosko_nuevo — tienda ${tienda.id} (${tiendaSlug}) creada`)
+          break
+        }
+
+        // ── Restaurante (flujo existente) ────────────────────────
+        const restaurante_id = session.metadata?.restaurante_id
         if (!restaurante_id) break
         const { data: restauranteActual } = await adminSupabase
           .from('restaurantes')
@@ -91,7 +251,6 @@ export async function POST(req) {
           break
         }
 
-        // Obtener el plan desde la suscripción
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         const priceId = subscription.items.data[0]?.price?.id
         const plan = planDesdePriceId(priceId) || session.metadata?.plan || 'basic'
@@ -130,6 +289,11 @@ export async function POST(req) {
 
         await actualizarRestauranteStripe(adminSupabase, { campo: 'eq', args: ['stripe_customer_id', customerId] }, update)
 
+        // También actualizar tiendas si corresponde
+        await adminSupabase.from('tiendas')
+          .update({ subscription_status, stripe_subscription_id: sub.id })
+          .eq('stripe_customer_id', customerId)
+
         console.log(`✓ subscription.updated — customer ${customerId} → ${subscription_status} / plan ${plan}`)
         break
       }
@@ -141,10 +305,11 @@ export async function POST(req) {
 
         await adminSupabase
           .from('restaurantes')
-          .update({
-            subscription_status:    'cancelled',
-            stripe_subscription_id: null,
-          })
+          .update({ subscription_status: 'cancelled', stripe_subscription_id: null })
+          .eq('stripe_customer_id', customerId)
+
+        await adminSupabase.from('tiendas')
+          .update({ activo: false, subscription_status: 'cancelled', stripe_subscription_id: null })
           .eq('stripe_customer_id', customerId)
 
         console.log(`✓ subscription.deleted — customer ${customerId} → cancelled`)
@@ -161,6 +326,10 @@ export async function POST(req) {
           .update({ subscription_status: 'past_due' })
           .eq('stripe_customer_id', customerId)
 
+        await adminSupabase.from('tiendas')
+          .update({ subscription_status: 'past_due' })
+          .eq('stripe_customer_id', customerId)
+
         console.log(`✓ invoice.payment_failed — customer ${customerId} → past_due`)
         break
       }
@@ -174,6 +343,11 @@ export async function POST(req) {
             .from('restaurantes')
             .update({ subscription_status: 'active' })
             .eq('stripe_customer_id', customerId)
+
+          await adminSupabase.from('tiendas')
+            .update({ activo: true, subscription_status: 'active' })
+            .eq('stripe_customer_id', customerId)
+
           console.log(`✓ invoice.payment_succeeded — customer ${customerId} → active`)
         }
         break

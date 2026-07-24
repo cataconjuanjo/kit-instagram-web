@@ -24,7 +24,25 @@ export default function Login() {
     } else {
       clearAdminRestaurantEmail()
       clearDemoEmail()
-      window.location.href = isAdminEmail(email) ? '/admin/consultoria' : '/dashboard'
+      if (isAdminEmail(email)) {
+        window.location.href = '/admin/consultoria'
+      } else {
+        // Comprobar si este usuario tiene un kiosko asociado
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.access_token) {
+            const res  = await fetch('/api/kiosko/me', {
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            })
+            const data = await res.json()
+            if (data.tienda?.slug) {
+              window.location.href = `/kiosko-admin/${data.tienda.slug}`
+              return
+            }
+          }
+        } catch { /* si falla, continúa al dashboard normal */ }
+        window.location.href = '/dashboard'
+      }
     }
     setLoading(false)
   }

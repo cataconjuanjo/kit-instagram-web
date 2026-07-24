@@ -1,0 +1,79 @@
+.page {
+  min-height: 100vh;
+  background: #f8f6f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 4px 32px rgba(0,0,0,.08);
+  padding: 48px 40px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+}
+
+.icon {
+  font-size: 52px;
+  margin-bottom: 20px;
+}
+
+.titulo {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 16px;
+}
+
+.desc {
+  font-size: 15px;
+  color: #555;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.pasos {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 28px 0 32px;
+  text-align: left;
+}
+
+.paso {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 14px;
+  color: #333;
+}
+
+.pasoNum {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #1a1a2e;
+  color: #c9a96e;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btnLogin {
+  display: inline-block;
+  background: #1a1a2e;
+  color: #c9a96e;
+  text-decoration: none;
+  padding: 14px 32px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.btnLogin:hover { background: #2a2a4e; }
