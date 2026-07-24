@@ -4,7 +4,7 @@
 /* ── Base ────────────────────────────────────────────────────────────────── */
 .kiosko {
   min-height: 100dvh;
-  font-family: 'Open Sans', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-family, 'Playfair Display', Georgia, serif);
   font-size: 18px;
   color: var(--texto);
   background: var(--color-primario);

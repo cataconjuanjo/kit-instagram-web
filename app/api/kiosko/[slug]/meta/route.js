@@ -6,7 +6,7 @@ export async function GET(request, { params }) {
 
   const { data: tienda, error } = await supabaseAdmin
     .from('tiendas')
-    .select('id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url')
+    .select('id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family')
     .eq('slug', slug)
     .eq('activo', true)
     .single()

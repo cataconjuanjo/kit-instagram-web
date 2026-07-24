@@ -8,6 +8,295 @@ import { isAdminEmail } from '../../demo'
 
 const TIPOS = ['tinto','blanco','rosado','espumoso','generoso','dulce','naranja','sin_alcohol']
 
+// ── Constantes de personalización ─────────────────────────────────────────────
+
+const PALETAS = [
+  { id: 'clasico',  label: 'Clásico',         primario: '#0d0d1a', acento: '#c9a96e' },
+  { id: 'blanco',   label: 'Blanco elegante',  primario: '#FAFAF8', acento: '#1a1a2e' },
+  { id: 'verde',    label: 'Verde vinoteca',   primario: '#122012', acento: '#7cb87c' },
+  { id: 'burdeos',  label: 'Burdeos',          primario: '#1a0408', acento: '#c45069' },
+  { id: 'azul',     label: 'Azul pizarra',     primario: '#0f1729', acento: '#7099cf' },
+  { id: 'arena',    label: 'Arena cálida',     primario: '#f5f0e8', acento: '#8b6341' },
+]
+
+const FUENTES = [
+  { id: 'clasica',  label: 'Clásica',   muestra: 'El arte del vino',  css: "'Playfair Display', Georgia, serif",    google: 'Playfair+Display:ital,wght@0,400;0,700;1,400' },
+  { id: 'moderna',  label: 'Moderna',   muestra: 'El arte del vino',  css: "'Inter', system-ui, sans-serif",         google: null },
+  { id: 'elegante', label: 'Elegante',  muestra: 'El arte del vino',  css: "'Cormorant Garamond', Palatino, serif",  google: 'Cormorant+Garamond:ital,wght@0,400;0,600;1,400' },
+  { id: 'natural',  label: 'Natural',   muestra: 'El arte del vino',  css: "'Lato', Trebuchet MS, sans-serif",       google: 'Lato:wght@400;700' },
+]
+
+function esColorClaro(hex) {
+  if (!hex || hex[0] !== '#' || hex.length < 7) return false
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
+  return (r*299 + g*587 + b*114)/1000 > 145
+}
+
+// ── Componente de ajustes ──────────────────────────────────────────────────────
+
+function AjustesTab({ slug, tienda, onSaved }) {
+  const [ajustes, setAjustes] = useState({
+    nombre:         tienda?.nombre         || '',
+    ciudad:         tienda?.ciudad         || '',
+    descripcion:    tienda?.descripcion    || '',
+    logo_url:       tienda?.logo_url       || '',
+    color_primario: tienda?.color_primario || '#0d0d1a',
+    color_acento:   tienda?.color_acento   || '#c9a96e',
+    font_family:    tienda?.font_family    || 'clasica',
+  })
+  const [logoFile,     setLogoFile]     = useState(null)
+  const [logoPreview,  setLogoPreview]  = useState(tienda?.logo_url || '')
+  const [draggingLogo, setDraggingLogo] = useState(false)
+  const [subiendoLogo, setSubiendoLogo] = useState(false)
+  const [guardando,    setGuardando]    = useState(false)
+  const [msg,          setMsg]          = useState('')
+  const logoInputRef = useRef(null)
+
+  useEffect(() => {
+    const fonts = [
+      'Playfair+Display:ital,wght@0,400;0,700;1,400',
+      'Cormorant+Garamond:ital,wght@0,400;0,600;1,400',
+      'Lato:wght@400;700',
+    ]
+    fonts.forEach(f => {
+      const id = `gfont-${f.split(':')[0].replace(/\+/g, '-')}`
+      if (!document.getElementById(id)) {
+        const link = document.createElement('link')
+        link.id = id; link.rel = 'stylesheet'
+        link.href = `https://fonts.googleapis.com/css2?family=${f}&display=swap`
+        document.head.appendChild(link)
+      }
+    })
+  }, [])
+
+  function cambiar(k, v) { setAjustes(prev => ({ ...prev, [k]: v })) }
+
+  function aplicarPaleta(p) {
+    setAjustes(prev => ({ ...prev, color_primario: p.primario, color_acento: p.acento }))
+  }
+
+  function onFileLogo(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    if (logoPreview?.startsWith('blob:')) URL.revokeObjectURL(logoPreview)
+    setLogoFile(file)
+    setLogoPreview(URL.createObjectURL(file))
+  }
+
+  function onDropLogo(e) {
+    e.preventDefault(); setDraggingLogo(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) onFileLogo({ target: { files: [file], value: '' } })
+  }
+
+  function eliminarLogo() {
+    if (logoPreview?.startsWith('blob:')) URL.revokeObjectURL(logoPreview)
+    setLogoFile(null); setLogoPreview('')
+    cambiar('logo_url', '')
+  }
+
+  async function guardar() {
+    setGuardando(true); setMsg('')
+    try {
+      let logoUrl = ajustes.logo_url
+
+      if (logoFile) {
+        setSubiendoLogo(true)
+        const fd = new FormData()
+        fd.append('logo', logoFile)
+        const r = await fetch(`/api/kiosko/${slug}/admin/upload-logo`, { method: 'POST', body: fd })
+        const d = await r.json()
+        setSubiendoLogo(false)
+        if (!r.ok) throw new Error(d.error || 'Error subiendo logo')
+        logoUrl = d.url
+        setLogoPreview(logoUrl)
+        setLogoFile(null)
+      }
+
+      const r = await fetch(`/api/kiosko/${slug}/admin/ajustes`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...ajustes, logo_url: logoUrl }),
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || 'Error al guardar')
+
+      setMsg('✓ Ajustes guardados')
+      onSaved()
+    } catch (e) { setMsg(e.message) }
+    finally { setGuardando(false); setSubiendoLogo(false) }
+  }
+
+  const temaClaro  = esColorClaro(ajustes.color_primario)
+  const textoColor = temaClaro ? '#141413' : '#f0ede8'
+  const textoMedio = temaClaro ? 'rgba(20,20,19,.55)' : 'rgba(240,237,232,.55)'
+  const panelColor = temaClaro ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.08)'
+  const fontCss    = FUENTES.find(f => f.id === ajustes.font_family)?.css || FUENTES[0].css
+
+  return (
+    <div className={styles.ajustesWrap}>
+      {/* ── Panel izquierdo ── */}
+      <div className={styles.ajustesPanelLeft}>
+
+        {/* Logo */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>Logotipo</p>
+          <div
+            className={`${styles.logoZone} ${logoPreview ? styles.logoZoneHasLogo : ''} ${draggingLogo ? styles.logoZoneDrag : ''}`}
+            onDrop={onDropLogo}
+            onDragOver={e => { e.preventDefault(); setDraggingLogo(true) }}
+            onDragLeave={() => setDraggingLogo(false)}
+            onClick={() => logoInputRef.current?.click()}
+          >
+            {subiendoLogo ? (
+              <div className={styles.logoSpinner} />
+            ) : logoPreview ? (
+              <img src={logoPreview} alt="Logo" className={styles.logoPreviewImg} />
+            ) : (
+              <>
+                <span className={styles.logoZoneIcon}>🏷️</span>
+                <span className={styles.logoZoneText}>Arrastra o haz clic para subir</span>
+                <span className={styles.logoZoneHint}>PNG · JPG · SVG · máx 2 MB</span>
+              </>
+            )}
+          </div>
+          {logoPreview && (
+            <div className={styles.logoActions}>
+              <button type="button" className={styles.btnSecundario} onClick={() => logoInputRef.current?.click()}>
+                Cambiar
+              </button>
+              <button type="button" className={`${styles.btnSecundario} ${styles.btnDanger}`} onClick={eliminarLogo}>
+                Quitar logo
+              </button>
+            </div>
+          )}
+          <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" style={{ display: 'none' }} onChange={onFileLogo} />
+        </div>
+
+        {/* Paleta de colores */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>Paleta de colores</p>
+          <div className={styles.paletas}>
+            {PALETAS.map(p => (
+              <button
+                key={p.id} type="button"
+                className={`${styles.paletaItem} ${ajustes.color_primario === p.primario && ajustes.color_acento === p.acento ? styles.paletaItemActivo : ''}`}
+                onClick={() => aplicarPaleta(p)} title={p.label}
+              >
+                <span className={styles.paletaSwatch} style={{ background: p.primario }} />
+                <span className={styles.paletaAcento} style={{ background: p.acento }} />
+                <span className={styles.paletaLabel}>{p.label}</span>
+              </button>
+            ))}
+          </div>
+          <p className={styles.ajustesSecSubtitulo} style={{ marginTop: '1rem' }}>Personalizar colores</p>
+          <div className={styles.colorPickers}>
+            <div className={styles.colorPickerItem}>
+              <label>Color de fondo</label>
+              <div className={styles.colorPickerRow}>
+                <input type="color" value={ajustes.color_primario} onChange={e => cambiar('color_primario', e.target.value)} />
+                <input type="text" value={ajustes.color_primario} maxLength={7}
+                  onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) cambiar('color_primario', e.target.value) }} />
+              </div>
+            </div>
+            <div className={styles.colorPickerItem}>
+              <label>Color acento</label>
+              <div className={styles.colorPickerRow}>
+                <input type="color" value={ajustes.color_acento} onChange={e => cambiar('color_acento', e.target.value)} />
+                <input type="text" value={ajustes.color_acento} maxLength={7}
+                  onChange={e => { if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) cambiar('color_acento', e.target.value) }} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tipografía */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>Tipografía</p>
+          <div className={styles.fuenteGrid}>
+            {FUENTES.map(f => (
+              <button
+                key={f.id} type="button"
+                className={`${styles.fuenteBtn} ${ajustes.font_family === f.id ? styles.fuenteBtnActivo : ''}`}
+                onClick={() => cambiar('font_family', f.id)}
+              >
+                <span className={styles.fuenteNombre}>{f.label}</span>
+                <span className={styles.fuenteMuestra} style={{ fontFamily: f.css }}>{f.muestra}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Info tienda */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>Información de la tienda</p>
+          <div className={styles.ajustesFormGrid}>
+            <div className={styles.ajustesFormField}>
+              <label>Nombre de la tienda</label>
+              <input value={ajustes.nombre} onChange={e => cambiar('nombre', e.target.value)} placeholder="Mi Vinoteca" />
+            </div>
+            <div className={styles.ajustesFormField}>
+              <label>Ciudad</label>
+              <input value={ajustes.ciudad} onChange={e => cambiar('ciudad', e.target.value)} placeholder="Madrid" />
+            </div>
+            <div className={styles.ajustesFormField}>
+              <label>Descripción (aparece en la bienvenida del kiosko)</label>
+              <textarea rows={3} value={ajustes.descripcion} onChange={e => cambiar('descripcion', e.target.value)}
+                placeholder="Selección artesanal de los mejores vinos del mundo…" />
+            </div>
+          </div>
+        </div>
+
+        {/* Guardar */}
+        <div className={styles.ajustesActions}>
+          {msg && <span className={msg.startsWith('✓') ? styles.msgOk : styles.msgError}>{msg}</span>}
+          <button type="button" className={styles.btnPrimario} onClick={guardar} disabled={guardando || subiendoLogo}>
+            {guardando ? 'Guardando…' : 'Guardar ajustes'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Preview en vivo ── */}
+      <div className={styles.ajustesPreviewSticky}>
+        <p className={styles.previewTitle}>Vista previa del kiosko</p>
+        <div className={styles.previewBox} style={{ background: ajustes.color_primario, fontFamily: fontCss }}>
+          {logoPreview
+            ? <img src={logoPreview} alt="Logo" className={styles.previewLogo} />
+            : <span className={styles.previewWine}>🍷</span>
+          }
+          <p className={styles.previewNombrePlaceholder} style={{ color: ajustes.color_acento }}>
+            {ajustes.nombre || 'Tu Vinoteca'}
+          </p>
+          {ajustes.descripcion ? (
+            <p className={styles.previewDescPlaceholder} style={{ color: textoMedio }}>
+              {ajustes.descripcion.slice(0, 70)}{ajustes.descripcion.length > 70 ? '…' : ''}
+            </p>
+          ) : null}
+          <div className={styles.previewBtns}>
+            <button type="button" className={styles.previewBtnPrim}
+              style={{ background: ajustes.color_acento, color: ajustes.color_primario }}>
+              🍾 Explorar vinos
+            </button>
+            <button type="button" className={styles.previewBtnSec}
+              style={{ border: `1.5px solid ${ajustes.color_acento}`, color: ajustes.color_acento }}>
+              🤔 Ayúdame a elegir
+            </button>
+          </div>
+          <div className={styles.previewCard} style={{ background: panelColor }}>
+            <div className={styles.previewCardImg} style={{ background: `${ajustes.color_acento}22` }}>🍷</div>
+            <div className={styles.previewCardInfo}>
+              <p className={styles.previewCardNombre} style={{ color: textoColor }}>Ribera del Duero 2020</p>
+              <p className={styles.previewCardBodega} style={{ color: textoMedio }}>Vega Sicilia</p>
+            </div>
+            <p className={styles.previewCardPrecio} style={{ color: ajustes.color_acento }}>45 €</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const VINO_VACIO = {
   nombre:'', bodega:'', tipo:'', uva:'', anada:'', region:'', pais:'España',
   precio_pvp:'', precio_coste:'', stock:'', ubicacion_estanteria:'',
@@ -36,6 +325,8 @@ export default function AdminKioskoPage() {
   const [subiendoFoto, setSubiendoFoto] = useState(null)  // vinoId
   const fotoInputFilaRef  = useRef(null)
   const fotoVinoTargetRef = useRef(null)
+
+  const [tab, setTab] = useState('catalogo')
 
   const [busqueda, setBusqueda]         = useState('')
   const [filtroTipo, setFiltroTipo]     = useState('')
@@ -325,19 +616,37 @@ export default function AdminKioskoPage() {
           <a href={`/kiosko/${slug}`} target="_blank" rel="noreferrer" className={styles.btnSecundario}>
             Ver kiosko →
           </a>
-          <button onClick={exportarCSV} type="button" className={styles.btnSecundario}>
-            Exportar CSV
-          </button>
-          <button onClick={() => { setModalImport(true); setResultImport(null) }} type="button" className={styles.btnSecundario}>
-            Importar catálogo
-          </button>
-          <button onClick={abrirNuevo} type="button" className={styles.btnPrimario}>
-            + Añadir vino
-          </button>
+          {tab === 'catalogo' && <>
+            <button onClick={exportarCSV} type="button" className={styles.btnSecundario}>
+              Exportar CSV
+            </button>
+            <button onClick={() => { setModalImport(true); setResultImport(null) }} type="button" className={styles.btnSecundario}>
+              Importar catálogo
+            </button>
+            <button onClick={abrirNuevo} type="button" className={styles.btnPrimario}>
+              + Añadir vino
+            </button>
+          </>}
         </div>
       </header>
 
-      {/* Toolbar */}
+      {/* Tab nav */}
+      <nav className={styles.tabNav}>
+        <button type="button" className={`${styles.tabBtn} ${tab === 'catalogo' ? styles.tabBtnActive : ''}`} onClick={() => setTab('catalogo')}>
+          Catálogo
+        </button>
+        <button type="button" className={`${styles.tabBtn} ${tab === 'ajustes' ? styles.tabBtnActive : ''}`} onClick={() => setTab('ajustes')}>
+          Ajustes
+        </button>
+      </nav>
+
+      {/* Ajustes */}
+      {tab === 'ajustes' && tienda && (
+        <AjustesTab slug={slug} tienda={tienda} onSaved={cargar} />
+      )}
+
+      {/* Catálogo: toolbar + tabla */}
+      {tab === 'catalogo' && <>
       <div className={styles.toolbar}>
         <input
           className={styles.busqueda}
@@ -548,6 +857,7 @@ export default function AdminKioskoPage() {
           </tbody>
         </table>
       </div>
+      </>}
 
       {/* ── Modal importar ──────────────────────────────────────────────────── */}
       {modalImport && (

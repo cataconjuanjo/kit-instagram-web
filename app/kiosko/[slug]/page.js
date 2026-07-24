@@ -19,6 +19,13 @@ const TIPO_COLORS = {
 }
 const TIPO_ORDER = ['tinto','blanco','rosado','espumoso','generoso','dulce','naranja','sin_alcohol']
 
+const FONT_CSS = {
+  clasica:  { css: "'Playfair Display', Georgia, serif",    google: 'Playfair+Display:ital,wght@0,400;0,700;1,400' },
+  moderna:  { css: "'Inter', system-ui, sans-serif",         google: null },
+  elegante: { css: "'Cormorant Garamond', Palatino, serif",  google: 'Cormorant+Garamond:ital,wght@0,400;0,600;1,400' },
+  natural:  { css: "'Lato', Trebuchet MS, sans-serif",       google: 'Lato:wght@400;700' },
+}
+
 const SUGERENCIAS_MARIDAJE = [
   'Cigalas a la plancha','Cordero al horno','Queso manchego','Jamón ibérico',
   'Paella de mariscos','Chuletón de buey','Aperitivo con amigos','Postre de chocolate','Celebración especial',
@@ -709,6 +716,19 @@ export default function KioskoPage() {
     return () => events.forEach(e => window.removeEventListener(e, resetIdle))
   }, [resetIdle])
 
+  useEffect(() => {
+    const fontDef = FONT_CSS[tienda?.font_family]
+    if (fontDef?.google) {
+      const id = 'gfont-kiosko'
+      if (!document.getElementById(id)) {
+        const link = document.createElement('link')
+        link.id = id; link.rel = 'stylesheet'
+        link.href = `https://fonts.googleapis.com/css2?family=${fontDef.google}&display=swap`
+        document.head.appendChild(link)
+      }
+    }
+  }, [tienda?.font_family])
+
   function abrirDetalle(vino) { setVinoDetalle(vino); setView(VIEWS.DETAIL) }
   function volverDeDetalle() { setView(VIEWS.BROWSE); setVinoDetalle(null) }
   function abrirPairingDesdeDetalle() { setVinoDetalle(null); setView(VIEWS.PAIRING) }
@@ -719,9 +739,10 @@ export default function KioskoPage() {
 
   const colorPrimario = tienda?.color_primario || '#0d0d1a'
   const colorAcento   = tienda?.color_acento   || '#c9a96e'
-  const temaClaro = esColorClaro(colorPrimario)
+  const temaClaro     = esColorClaro(colorPrimario)
+  const fontCss       = FONT_CSS[tienda?.font_family]?.css || FONT_CSS.clasica.css
   const themeVars = {
-    '--color-primario': colorPrimario, '--color-acento': colorAcento,
+    '--color-primario': colorPrimario, '--color-acento': colorAcento, '--font-family': fontCss,
     '--texto':    temaClaro ? '#141413'            : '#f0ede8',
     '--texto-m':  temaClaro ? 'rgba(20,20,19,.6)'  : 'rgba(240,237,232,.6)',
     '--texto-d':  temaClaro ? 'rgba(20,20,19,.38)' : 'rgba(240,237,232,.4)',

@@ -789,3 +789,237 @@
   color: #c44;
   margin-top: .5rem;
 }
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.tabNav {
+  background: #1a1a2e;
+  border-top: 1px solid rgba(255,255,255,.07);
+  display: flex;
+  padding: 0 1.75rem;
+}
+
+.tabBtn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(240,237,232,.5);
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+  padding: .75rem 1.25rem;
+  transition: color .15s, border-color .15s;
+}
+
+.tabBtnActive {
+  border-bottom-color: #c9a96e;
+  color: #c9a96e;
+}
+
+.tabBtn:not(.tabBtnActive):hover { color: rgba(240,237,232,.8); }
+
+/* ── Ajustes layout ───────────────────────────────────────────────────────── */
+.ajustesWrap {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.75rem;
+  padding: 1.75rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .ajustesWrap { grid-template-columns: 1fr; }
+}
+
+.ajustesPanelLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ajustesSec {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+
+.ajustesSecTitulo {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #999;
+  margin: 0 0 .9rem;
+}
+
+.ajustesSecSubtitulo {
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #bbb;
+  margin: 0 0 .5rem;
+}
+
+/* ── Logo ─────────────────────────────────────────────────────────────────── */
+.logoZone {
+  border: 2px dashed #ddd9d4;
+  border-radius: 10px;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  cursor: pointer;
+  transition: border-color .15s;
+  padding: 1rem;
+}
+.logoZone:hover, .logoZoneDrag { border-color: #c9a96e; }
+.logoZoneHasLogo { border-style: solid; border-color: #c9a96e; }
+.logoPreviewImg { max-height: 72px; max-width: 260px; object-fit: contain; }
+.logoZoneIcon { font-size: 1.8rem; opacity: .35; }
+.logoZoneText { font-size: .85rem; color: #666; }
+.logoZoneHint { font-size: .72rem; color: #aaa; }
+.logoSpinner {
+  width: 28px; height: 28px;
+  border: 3px solid rgba(0,0,0,.1);
+  border-top-color: #c9a96e;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+.logoActions { display: flex; gap: .5rem; margin-top: .6rem; }
+.btnDanger { color: #c44 !important; border-color: #c44 !important; }
+.btnDanger:hover { background: #fff5f5 !important; }
+
+/* ── Paletas ──────────────────────────────────────────────────────────────── */
+.paletas {
+  display: flex;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+
+.paletaItem {
+  width: 64px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform .1s, box-shadow .15s;
+  background: none;
+  padding: 0;
+}
+.paletaItem:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.paletaItemActivo { box-shadow: 0 0 0 2px #1a1a2e, 0 0 0 4px #c9a96e; }
+
+.paletaSwatch { height: 32px; width: 100%; display: block; }
+.paletaAcento { height: 8px; width: 100%; display: block; }
+.paletaLabel {
+  font-size: .58rem; text-align: center; color: #666;
+  padding: 3px 2px 4px; line-height: 1.2; display: block;
+}
+
+/* ── Color pickers ────────────────────────────────────────────────────────── */
+.colorPickers { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: .25rem; }
+.colorPickerItem { flex: 1; min-width: 130px; }
+.colorPickerItem label { display: block; font-size: .75rem; font-weight: 600; color: #666; margin-bottom: .4rem; }
+.colorPickerRow { display: flex; align-items: center; gap: .5rem; }
+.colorPickerRow input[type="color"] {
+  width: 44px; height: 38px; border: 1px solid #ddd;
+  border-radius: 7px; cursor: pointer; padding: 2px; background: #fff;
+}
+.colorPickerRow input[type="text"] {
+  flex: 1; border: 1px solid #ddd; border-radius: 7px;
+  font-size: .85rem; padding: .45rem .6rem; font-family: monospace;
+  background: #fafaf8;
+}
+.colorPickerRow input[type="text"]:focus { outline: none; border-color: #c9a96e; }
+
+/* ── Fuentes ──────────────────────────────────────────────────────────────── */
+.fuenteGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+.fuenteBtn {
+  background: #f7f6f3;
+  border: 2px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  padding: .8rem 1rem;
+  text-align: left;
+  transition: border-color .15s, background .15s;
+}
+.fuenteBtn:hover { background: #f0ede8; }
+.fuenteBtnActivo { border-color: #c9a96e; background: #fdfaf5; }
+.fuenteNombre { font-size: .65rem; font-weight: 700; color: #999; letter-spacing: .07em; text-transform: uppercase; display: block; margin-bottom: .35rem; }
+.fuenteMuestra { font-size: 1.05rem; color: #1a1a2e; display: block; line-height: 1.3; }
+
+/* ── Info tienda form ─────────────────────────────────────────────────────── */
+.ajustesFormGrid { display: flex; flex-direction: column; gap: .75rem; }
+.ajustesFormField label { display: block; font-size: .75rem; font-weight: 600; color: #666; margin-bottom: .3rem; }
+.ajustesFormField input,
+.ajustesFormField textarea {
+  width: 100%; border: 1px solid #e0ddd8; border-radius: 7px;
+  font-size: .9rem; padding: .5rem .7rem; font-family: inherit;
+  background: #fafaf8; box-sizing: border-box; transition: border-color .15s;
+}
+.ajustesFormField input:focus,
+.ajustesFormField textarea:focus { outline: none; border-color: #c9a96e; }
+.ajustesFormField textarea { resize: vertical; min-height: 72px; }
+
+/* ── Acciones guardado ────────────────────────────────────────────────────── */
+.ajustesActions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
+/* ── Preview ──────────────────────────────────────────────────────────────── */
+.ajustesPreviewSticky { position: sticky; top: 1.5rem; }
+.previewTitle { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #999; margin: 0 0 .75rem; }
+
+.previewBox {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 6px 30px rgba(0,0,0,.2);
+  aspect-ratio: 9/16;
+  max-height: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.75rem 1.25rem;
+  gap: .85rem;
+  transition: background .25s;
+}
+
+.previewLogo { max-height: 52px; max-width: 160px; object-fit: contain; }
+.previewWine { font-size: 2.2rem; line-height: 1; }
+
+.previewNombrePlaceholder {
+  font-size: 1rem; font-weight: 700; text-align: center;
+  line-height: 1.25; transition: color .25s, font-family .25s;
+}
+.previewDescPlaceholder {
+  font-size: .62rem; opacity: .6; text-align: center;
+  line-height: 1.4; max-width: 180px;
+}
+
+.previewBtns { display: flex; flex-direction: column; gap: .4rem; width: 100%; }
+.previewBtnPrim {
+  border: none; border-radius: 9px; font-size: .72rem; font-weight: 700;
+  padding: .55rem .75rem; width: 100%; cursor: default; transition: background .25s, color .25s;
+}
+.previewBtnSec {
+  background: transparent; border-radius: 9px; font-size: .67rem; font-weight: 600;
+  padding: .5rem .75rem; width: 100%; cursor: default; transition: border-color .25s, color .25s;
+}
+
+.previewCard {
+  border-radius: 10px; padding: .65rem .9rem;
+  display: flex; gap: .6rem; align-items: center;
+  width: 100%; transition: background .25s;
+}
+.previewCardImg {
+  width: 34px; height: 46px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+}
+.previewCardInfo { flex: 1; min-width: 0; }
+.previewCardNombre { font-size: .68rem; font-weight: 600; margin: 0 0 2px; transition: color .25s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.previewCardBodega { font-size: .58rem; margin: 0; opacity: .6; }
+.previewCardPrecio { font-size: .72rem; font-weight: 700; white-space: nowrap; transition: color .25s; }
