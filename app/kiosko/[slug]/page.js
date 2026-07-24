@@ -895,6 +895,15 @@ export default function KioskoPage() {
               <button className={`${styles.welcomeBtn} ${styles.welcomeBtnSecondary}`} style={{ borderColor: colorAcento, color: colorAcento }}
                 onClick={() => setView(VIEWS.PAIRING)} type="button">🍽️ ¿Con qué lo tomo?</button>
             </div>
+
+            <a
+              href="https://www.cataconjuanjo.com/"
+              target="_blank"
+              rel="noreferrer"
+              className={styles.kioskoCredit}
+            >
+              Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
+            </a>
           </div>
 
           {vinos.filter(v => v.destacado).length > 0 && (
@@ -915,15 +924,6 @@ export default function KioskoPage() {
           )}
 
           <FeedbackWidget slug={slug} />
-
-          <a
-            href="https://www.cataconjuanjo.com/"
-            target="_blank"
-            rel="noreferrer"
-            className={styles.kioskoCredit}
-          >
-            Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
-          </a>
         </div>
       )}
 
