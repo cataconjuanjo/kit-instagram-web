@@ -99,9 +99,11 @@ function buildWizardQuery(w) {
     const e = ESTILOS.find(x => x.id === w.estilo)
     if (e) parts.push(`Estilo preferido: ${e.label.replace(/^[^\w]+/, '')}`)
   }
-  if (w.presupuesto === 'bajo')  parts.push('Presupuesto: hasta 15€')
-  if (w.presupuesto === 'medio') parts.push('Presupuesto: entre 15 y 30€')
-  if (w.presupuesto === 'alto')  parts.push('Presupuesto: entre 30 y 60€')
+  if (w.presupuesto === 'bajo')   parts.push('Presupuesto: hasta 15€')
+  if (w.presupuesto === 'medio')  parts.push('Presupuesto: entre 15 y 30€')
+  if (w.presupuesto === 'alto')   parts.push('Presupuesto: entre 30 y 60€')
+  if (w.presupuesto === 'custom' && w.precioMin != null)
+    parts.push(`Presupuesto: entre ${w.precioMin}€ y ${w.precioMax}€`)
   return parts.join('. ')
 }
 
@@ -187,6 +189,38 @@ function FeedbackWidget({ slug }) {
   )
 }
 
+// ── Slider de precio doble ────────────────────────────────────────────────────
+
+function PriceRangeSlider({ minAll, maxAll, valueMin, valueMax, onChangeMin, onChangeMax, acento }) {
+  const range = maxAll - minAll || 1
+  const pct1 = ((valueMin - minAll) / range) * 100
+  const pct2 = ((valueMax - minAll) / range) * 100
+
+  return (
+    <div className={styles.priceSlider}>
+      <div className={styles.priceSliderTrack}>
+        <div className={styles.priceSliderFill} style={{ left: `${pct1}%`, width: `${pct2 - pct1}%`, background: acento }} />
+      </div>
+      <div className={styles.priceSliderInputs}>
+        <input type="range" min={minAll} max={maxAll} value={valueMin}
+          className={styles.priceSliderInput}
+          style={{ '--thumb': acento }}
+          onChange={e => { const v = Number(e.target.value); if (v < valueMax) onChangeMin(v) }}
+        />
+        <input type="range" min={minAll} max={maxAll} value={valueMax}
+          className={styles.priceSliderInput}
+          style={{ '--thumb': acento }}
+          onChange={e => { const v = Number(e.target.value); if (v > valueMin) onChangeMax(v) }}
+        />
+      </div>
+      <div className={styles.priceSliderValues}>
+        <span>{valueMin} €</span>
+        <span>{valueMax} €</span>
+      </div>
+    </div>
+  )
+}
+
 // ── Componentes auxiliares ────────────────────────────────────────────────────
 
 function TipoChip({ tipo, size = 'sm' }) {
@@ -234,17 +268,16 @@ function WineCard({ vino, onClick }) {
 
 function WineDetail({ vino, slug, colorAcento, onClose, onPairingFrom }) {
   const [ficha, setFicha] = useState(null)
-  const [cargandoFicha, setCargandoFicha] = useState(false)
+  const [fichaReady, setFichaReady] = useState(false)
 
   useEffect(() => {
     if (!vino?.id) return
-    // Intentar cargar ficha IA solo si faltan notas
-    setCargandoFicha(true)
+    setFichaReady(false)
     fetch(`/api/kiosko/${slug}/ficha/${vino.id}`)
       .then(r => r.json())
       .then(d => { if (d.ficha) setFicha(d.ficha) })
       .catch(() => {})
-      .finally(() => setCargandoFicha(false))
+      .finally(() => setFichaReady(true))
   }, [vino?.id, slug])
 
   const notasMostrar = ficha?.notas || vino.descripcion || vino.notas_cata
@@ -286,14 +319,19 @@ function WineDetail({ vino, slug, colorAcento, onClose, onPairingFrom }) {
               </div>
             )}
 
-            {/* Notas de cata */}
-            {cargandoFicha && !notasMostrar && (
-              <p className={styles.fichaLoading}>Generando ficha...</p>
-            )}
-            {notasMostrar && <p className={styles.detailNotas}>{notasMostrar}</p>}
+            {/* Notas de cata — skeleton mientras carga */}
+            {!fichaReady ? (
+              <div className={styles.skelNotas}>
+                <div className={styles.skelLine} />
+                <div className={styles.skelLine} style={{ width: '82%' }} />
+                <div className={styles.skelLine} style={{ width: '68%' }} />
+              </div>
+            ) : notasMostrar ? (
+              <p className={styles.detailNotas + ' ' + styles.detailNotasFadeIn}>{notasMostrar}</p>
+            ) : null}
 
             {/* Datos extra de la ficha IA */}
-            {ficha && (
+            {fichaReady && ficha && (
               <div className={styles.fichaExtra}>
                 {(ficha.temperatura || ficha.copa) && (
                   <div className={styles.fichaServicio}>
@@ -331,16 +369,28 @@ function WineDetail({ vino, slug, colorAcento, onClose, onPairingFrom }) {
 
 // ── Wizard "Ayúdame a elegir" ─────────────────────────────────────────────────
 
-function WizardView({ slug, colorAcento, colorPrimario, onWineSelect, onBack }) {
+function WizardView({ slug, colorAcento, colorPrimario, onWineSelect, onBack, vinos = [] }) {
   const [step, setStep]       = useState(0)
   const [wizard, setWizard]   = useState({ ocasion: '', plato: '', estilo: '', presupuesto: '' })
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
   const [error, setError]     = useState('')
+  const [mostrarRango, setMostrarRango] = useState(false)
+
+  const wizardPrecios = useMemo(() => {
+    const ps = vinos.map(v => v.precio_pvp).filter(Boolean)
+    return ps.length ? { min: Math.floor(Math.min(...ps)), max: Math.ceil(Math.max(...ps)) } : { min: 5, max: 200 }
+  }, [vinos])
+  const [wPrecioMin, setWPrecioMin] = useState(wizardPrecios.min)
+  const [wPrecioMax, setWPrecioMax] = useState(wizardPrecios.max)
 
   function selOcasion(id) { setWizard(w => ({ ...w, ocasion: id })); setStep(1) }
   function selPresupuesto(id) {
     const next = { ...wizard, presupuesto: id }
+    if (id === 'custom') {
+      next.precioMin = wPrecioMin
+      next.precioMax = wPrecioMax
+    }
     setWizard(next)
     consultar(next)
   }
@@ -454,7 +504,38 @@ function WizardView({ slug, colorAcento, colorPrimario, onWineSelect, onBack }) 
                 {p.label}
               </button>
             ))}
+            <button className={`${styles.wizardPresupuestoBtn} ${styles.wizardPresupuestoBtnCustom}`}
+              onClick={() => setMostrarRango(true)} type="button"
+              style={{ '--acento': colorAcento }}>
+              🎯 Mi rango
+            </button>
           </div>
+
+          {mostrarRango && (
+            <div className={styles.rangoOverlay} onClick={e => { if (e.target === e.currentTarget) setMostrarRango(false) }}>
+              <div className={styles.rangoSheet}>
+                <p className={styles.rangoSheetTitle}>Elige tu presupuesto</p>
+                <PriceRangeSlider
+                  minAll={wizardPrecios.min} maxAll={wizardPrecios.max}
+                  valueMin={wPrecioMin} valueMax={wPrecioMax}
+                  onChangeMin={setWPrecioMin} onChangeMax={setWPrecioMax}
+                  acento={colorAcento}
+                />
+                <p className={styles.rangoSheetDisplay} style={{ color: colorAcento }}>
+                  {wPrecioMin} € — {wPrecioMax} €
+                </p>
+                <button className={styles.rangoSheetBtn}
+                  style={{ background: colorAcento, color: colorPrimario }}
+                  onClick={() => { setMostrarRango(false); selPresupuesto('custom') }}
+                  type="button">
+                  Buscar con este rango →
+                </button>
+                <button className={styles.rangoSheetCancel} onClick={() => setMostrarRango(false)} type="button">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -686,25 +767,48 @@ function BrowseView({ vinos, colorAcento, onWineSelect, onBack }) {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroPais, setFiltroPais] = useState('')
+  const [filtroRegion, setFiltroRegion] = useState('')
 
-  const tipos  = useMemo(() => TIPO_ORDER.filter(t => vinos.some(v => v.tipo === t)), [vinos])
-  const paises = useMemo(() => extraerValoresUnicos(vinos, 'pais'), [vinos])
+  const tipos    = useMemo(() => TIPO_ORDER.filter(t => vinos.some(v => v.tipo === t)), [vinos])
+  const paises   = useMemo(() => extraerValoresUnicos(vinos, 'pais'), [vinos])
+  const regiones = useMemo(() => extraerValoresUnicos(vinos, 'region'), [vinos])
+
+  const preciosAll = useMemo(() => {
+    const ps = vinos.map(v => v.precio_pvp).filter(Boolean)
+    if (!ps.length) return null
+    return { min: Math.floor(Math.min(...ps)), max: Math.ceil(Math.max(...ps)) }
+  }, [vinos])
+
+  const [precioMin, setPrecioMin] = useState(0)
+  const [precioMax, setPrecioMax] = useState(9999)
+  useEffect(() => {
+    if (preciosAll) { setPrecioMin(preciosAll.min); setPrecioMax(preciosAll.max) }
+  }, [preciosAll?.min, preciosAll?.max])
+
+  const sliderActivo = preciosAll && (precioMin > preciosAll.min || precioMax < preciosAll.max)
 
   const vinosFiltrados = useMemo(() => {
     const qNorm = normalizarTexto(busqueda)
     return vinos.filter(v => {
       if (filtroTipo !== 'todos' && v.tipo !== filtroTipo) return false
       if (filtroPais && v.pais !== filtroPais) return false
+      if (filtroRegion && v.region !== filtroRegion) return false
+      if (preciosAll && v.precio_pvp != null) {
+        if (v.precio_pvp < precioMin || v.precio_pvp > precioMax) return false
+      }
       if (qNorm) {
         const txt = normalizarTexto([v.nombre, v.bodega, v.uva, v.region].filter(Boolean).join(' '))
         if (!txt.includes(qNorm)) return false
       }
       return true
     })
-  }, [vinos, filtroTipo, busqueda, filtroPais])
+  }, [vinos, filtroTipo, busqueda, filtroPais, filtroRegion, precioMin, precioMax, preciosAll])
 
-  function limpiar() { setBusqueda(''); setFiltroTipo('todos'); setFiltroPais('') }
-  const filtroActivo = filtroTipo !== 'todos' || busqueda || filtroPais
+  function limpiar() {
+    setBusqueda(''); setFiltroTipo('todos'); setFiltroPais(''); setFiltroRegion('')
+    if (preciosAll) { setPrecioMin(preciosAll.min); setPrecioMax(preciosAll.max) }
+  }
+  const filtroActivo = filtroTipo !== 'todos' || busqueda || filtroPais || filtroRegion || sliderActivo
 
   return (
     <div className={styles.browseView}>
@@ -737,6 +841,35 @@ function BrowseView({ vinos, colorAcento, onWineSelect, onBack }) {
             </select>
           )}
         </div>
+
+        {regiones.length > 1 && (
+          <div className={styles.doBar}>
+            <button className={`${styles.doChipBtn} ${!filtroRegion ? styles.doChipBtnActive : ''}`}
+              onClick={() => setFiltroRegion('')} type="button"
+              style={!filtroRegion ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}>
+              Todas las D.O.
+            </button>
+            {regiones.map(r => (
+              <button key={r} className={`${styles.doChipBtn} ${filtroRegion === r ? styles.doChipBtnActive : ''}`}
+                onClick={() => setFiltroRegion(filtroRegion === r ? '' : r)} type="button"
+                style={filtroRegion === r ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}>
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {preciosAll && preciosAll.min < preciosAll.max && (
+          <div className={styles.priceRow}>
+            <span className={styles.priceRowLabel}>Precio</span>
+            <PriceRangeSlider
+              minAll={preciosAll.min} maxAll={preciosAll.max}
+              valueMin={precioMin} valueMax={precioMax}
+              onChangeMin={setPrecioMin} onChangeMax={setPrecioMax}
+              acento={colorAcento}
+            />
+          </div>
+        )}
       </div>
       <div className={styles.browseResults}>
         {vinosFiltrados.length === 0
@@ -930,7 +1063,7 @@ export default function KioskoPage() {
       {/* WIZARD */}
       {view === VIEWS.WIZARD && (
         <WizardView slug={slug} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} />
+          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} vinos={vinos} />
       )}
 
       {/* EXPLORAR */}
