@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  productionBrowserSourceMaps: false,
   async headers() {
     const noIndexProposal = [
       { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
@@ -44,6 +45,14 @@ const nextConfig = {
       {
         source: '/camarero/propuesta-:slug',
         headers: noIndexProposal,
+      },
+      {
+        source: '/kiosko/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }],
+      },
+      {
+        source: '/kiosko-admin/:path*',
+        headers: noIndexPrivate,
       },
     ]
   },
