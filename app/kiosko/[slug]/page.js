@@ -105,6 +105,98 @@ function buildWizardQuery(w) {
   return parts.join('. ')
 }
 
+// ── Widget de satisfacción ────────────────────────────────────────────────────
+
+const FEEDBACK_EMOJIS = [
+  { emoji: '😢', label: 'Muy malo'   },
+  { emoji: '😟', label: 'Malo'       },
+  { emoji: '😐', label: 'Regular'    },
+  { emoji: '🙂', label: 'Bueno'      },
+  { emoji: '😄', label: 'Excelente'  },
+]
+
+function FeedbackWidget({ slug }) {
+  const [rating,      setRating]      = useState(null)
+  const [mostrarForm, setMostrarForm] = useState(false)
+  const [sugerencia,  setSugerencia]  = useState('')
+  const [enviando,    setEnviando]    = useState(false)
+  const [enviado,     setEnviado]     = useState(false)
+  const [yaVoto,      setYaVoto]      = useState(false)
+
+  useEffect(() => {
+    try {
+      const ts = localStorage.getItem(`kf-${slug}`)
+      if (ts && Date.now() - Number(ts) < 24 * 60 * 60 * 1000) setYaVoto(true)
+    } catch {}
+  }, [slug])
+
+  async function enviar(r, sug) {
+    setEnviando(true)
+    try {
+      await fetch(`/api/kiosko/${slug}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: r, sugerencia: sug }),
+      })
+      localStorage.setItem(`kf-${slug}`, String(Date.now()))
+    } catch {}
+    setEnviando(false)
+    setEnviado(true)
+  }
+
+  async function votar(r) {
+    setRating(r)
+    if (r <= 2) { setMostrarForm(true) }
+    else { await enviar(r, '') }
+  }
+
+  if (yaVoto)  return null
+  if (enviado) return (
+    <div className={styles.feedbackThanks}>¡Gracias por tu opinión! 🙏</div>
+  )
+
+  return (
+    <div className={styles.feedbackWidget}>
+      {!mostrarForm ? (
+        <>
+          <p className={styles.feedbackLabel}>¿Cómo ha sido tu experiencia?</p>
+          <div className={styles.feedbackEmojis}>
+            {FEEDBACK_EMOJIS.map((f, i) => (
+              <button key={i} type="button" className={styles.feedbackEmoji}
+                onClick={() => votar(i + 1)} title={f.label} aria-label={f.label}>
+                {f.emoji}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className={styles.feedbackForm}>
+          <p className={styles.feedbackFormTitle}>¿Qué podría mejorar?</p>
+          <textarea
+            className={styles.feedbackTextarea}
+            value={sugerencia}
+            onChange={e => setSugerencia(e.target.value)}
+            placeholder="Cuéntanos tu experiencia…"
+            rows={3}
+            autoFocus
+          />
+          <div className={styles.feedbackFormBtns}>
+            <button type="button" className={styles.feedbackCancel}
+              onClick={() => { setMostrarForm(false); setRating(null) }}>
+              Cancelar
+            </button>
+            <button type="button" className={styles.feedbackSubmit}
+              disabled={enviando || !sugerencia.trim()}
+              onClick={() => enviar(rating, sugerencia)}>
+              {enviando ? 'Enviando…' : 'Enviar'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Componentes auxiliares ────────────────────────────────────────────────────
 
 function TipoChip({ tipo, size = 'sm' }) {
@@ -831,6 +923,17 @@ export default function KioskoPage() {
               </div>
             </div>
           )}
+
+          <FeedbackWidget slug={slug} />
+
+          <a
+            href="https://cataconjuanjo.com/kiosko"
+            target="_blank"
+            rel="noreferrer"
+            className={styles.kioskoCredit}
+          >
+            Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
+          </a>
         </div>
       )}
 

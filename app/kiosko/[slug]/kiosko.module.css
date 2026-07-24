@@ -205,6 +205,149 @@
   margin: 0;
 }
 
+/* ── Feedback widget ──────────────────────────────────────────────────────── */
+.feedbackWidget {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .6rem;
+  padding: 1rem 1.25rem;
+  background: var(--sup1);
+  border-radius: 16px;
+  border: 1px solid var(--borde);
+  width: 100%;
+  max-width: 340px;
+}
+
+.feedbackLabel {
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--texto-m);
+  margin: 0;
+  text-align: center;
+}
+
+.feedbackEmojis {
+  display: flex;
+  gap: .35rem;
+}
+
+.feedbackEmoji {
+  background: none;
+  border: none;
+  font-size: 1.75rem;
+  cursor: pointer;
+  padding: .2rem;
+  border-radius: 8px;
+  transition: transform .15s, background .15s;
+  line-height: 1;
+}
+
+.feedbackEmoji:hover {
+  transform: scale(1.25);
+  background: var(--sup2);
+}
+
+.feedbackEmoji:active { transform: scale(1.05); }
+
+.feedbackThanks {
+  margin-top: 1.5rem;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--texto-m);
+  text-align: center;
+  padding: .6rem 1rem;
+  background: var(--sup1);
+  border-radius: 10px;
+  border: 1px solid var(--borde);
+}
+
+.feedbackForm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+
+.feedbackFormTitle {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--texto);
+  margin: 0;
+  text-align: center;
+}
+
+.feedbackTextarea {
+  background: var(--sup2);
+  border: 1px solid var(--borde-f);
+  border-radius: 10px;
+  color: var(--texto);
+  font-family: inherit;
+  font-size: .85rem;
+  padding: .65rem .8rem;
+  resize: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color .15s;
+}
+
+.feedbackTextarea:focus {
+  outline: none;
+  border-color: var(--color-acento);
+}
+
+.feedbackTextarea::placeholder { color: var(--texto-d); }
+
+.feedbackFormBtns {
+  display: flex;
+  gap: .5rem;
+  justify-content: flex-end;
+}
+
+.feedbackCancel {
+  background: var(--sup2);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  color: var(--texto-m);
+  cursor: pointer;
+  font-size: .78rem;
+  padding: .45rem .9rem;
+  transition: background .15s;
+}
+
+.feedbackCancel:hover { background: var(--sup3); }
+
+.feedbackSubmit {
+  background: var(--color-acento);
+  border: none;
+  border-radius: 8px;
+  color: var(--color-primario);
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: .45rem .9rem;
+  transition: opacity .15s;
+}
+
+.feedbackSubmit:disabled { opacity: .45; cursor: default; }
+
+/* ── Crédito de autoría ───────────────────────────────────────────────────── */
+.kioskoCredit {
+  margin-top: 1.25rem;
+  color: var(--texto-d);
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-decoration: none;
+  text-transform: uppercase;
+  opacity: .6;
+  transition: opacity .2s;
+}
+
+.kioskoCredit:hover { opacity: 1; }
+
 /* ── Browse view ─────────────────────────────────────────────────────────── */
 .browseView {
   display: flex;
