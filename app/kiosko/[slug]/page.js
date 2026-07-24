@@ -267,18 +267,25 @@ function WineCard({ vino, onClick }) {
 // ── Ficha de vino enriquecida ─────────────────────────────────────────────────
 
 function WineDetail({ vino, slug, colorAcento, onClose, onPairingFrom }) {
-  const [ficha, setFicha] = useState(null)
-  const [fichaReady, setFichaReady] = useState(false)
+  // ficha_ia ya viaja en el objeto vino (select * en la API de vinos)
+  const fichaInicial = useMemo(() => {
+    if (!vino?.ficha_ia) return null
+    try { return typeof vino.ficha_ia === 'string' ? JSON.parse(vino.ficha_ia) : vino.ficha_ia }
+    catch { return null }
+  }, [vino?.ficha_ia])
+
+  const [ficha, setFicha] = useState(fichaInicial)
+  const [fichaReady, setFichaReady] = useState(!!fichaInicial)
 
   useEffect(() => {
-    if (!vino?.id) return
+    if (!vino?.id || fichaInicial) return  // ya cacheada: sin llamada a API
     setFichaReady(false)
     fetch(`/api/kiosko/${slug}/ficha/${vino.id}`)
       .then(r => r.json())
       .then(d => { if (d.ficha) setFicha(d.ficha) })
       .catch(() => {})
       .finally(() => setFichaReady(true))
-  }, [vino?.id, slug])
+  }, [vino?.id, slug, fichaInicial])
 
   const notasMostrar = ficha?.notas || vino.descripcion || vino.notas_cata
 
