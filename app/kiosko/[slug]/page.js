@@ -27,8 +27,9 @@ const FONT_CSS = {
 }
 
 const SUGERENCIAS_MARIDAJE = [
-  'Cigalas a la plancha','Cordero al horno','Queso manchego','Jamón ibérico',
-  'Paella de mariscos','Chuletón de buey','Aperitivo con amigos','Postre de chocolate','Celebración especial',
+  'Jamón Extrem 100% Bellota','Tabla de quesos canarios','Queso con trufa manchega',
+  'Carpaccio de pulpo','Langostinos con salsa San Simón','Trio de croquetas',
+  'Espárrago con trufa de verano','Gofre de sardinas bravas','Hot dog de pulpo',
 ]
 
 const OCASIONES = [
@@ -719,19 +720,6 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBa
   const [error, setError] = useState('')
   const textareaRef = useRef(null)
 
-  const sugerenciasRapidas = useMemo(() => {
-    const counts = {}
-    vinos.forEach(v => {
-      if (!v.ficha_ia) return
-      try {
-        const ficha = typeof v.ficha_ia === 'string' ? JSON.parse(v.ficha_ia) : v.ficha_ia
-        ;(ficha?.maridajes || []).forEach(m => { counts[m] = (counts[m] || 0) + 1 })
-      } catch {}
-    })
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 9).map(([m]) => m)
-    return sorted.length >= 3 ? sorted : SUGERENCIAS_MARIDAJE
-  }, [vinos])
-
   useEffect(() => { textareaRef.current?.focus() }, [])
 
   async function consultar(texto) {
@@ -779,7 +767,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBa
         <div className={styles.sugerencias}>
           <p className={styles.sugerenciasLabel}>Ideas rápidas:</p>
           <div className={styles.sugerenciasGrid}>
-            {sugerenciasRapidas.map(s => (
+            {SUGERENCIAS_MARIDAJE.map(s => (
               <button key={s} className={styles.sugerenciaBtn} onClick={() => { setConsulta(s); consultar(s) }} type="button">{s}</button>
             ))}
           </div>
