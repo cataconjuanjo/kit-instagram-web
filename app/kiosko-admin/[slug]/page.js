@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useMemo } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import styles from './admin.module.css'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
@@ -469,7 +469,9 @@ const VINO_VACIO = {
 }
 
 export default function AdminKioskoPage() {
-  const { slug } = useParams()
+  const { slug }       = useParams()
+  const searchParams   = useSearchParams()
+  const previewTrial   = searchParams.get('preview_trial') === '1'
 
   const [tienda, setTienda]         = useState(null)
   const [vinos, setVinos]           = useState([])
@@ -503,6 +505,7 @@ export default function AdminKioskoPage() {
 
   useEffect(() => {
     if (tienda?.plan !== 'trial') return
+    if (previewTrial) return  // modo preview: no arranca el reloj
     let cleanup
     async function iniciarTrial() {
       let expiresAt = tienda.trial_expires_at
@@ -521,7 +524,7 @@ export default function AdminKioskoPage() {
     }
     iniciarTrial()
     return () => cleanup?.()
-  }, [tienda?.plan, tienda?.trial_expires_at, slug])
+  }, [tienda?.plan, tienda?.trial_expires_at, slug, previewTrial])
 
   const [busqueda, setBusqueda]           = useState('')
   const [filtroTipo, setFiltroTipo]       = useState('')
@@ -991,8 +994,8 @@ export default function AdminKioskoPage() {
         )}
       </header>
 
-      {/* Pantalla de conversión al expirar el trial */}
-      {tienda?.plan === 'trial' && trialSegsRestantes === 0 && (
+      {/* Pantalla de conversión al expirar el trial (o en preview) */}
+      {tienda?.plan === 'trial' && (previewTrial || trialSegsRestantes === 0) && (
         <TrialGate tienda={tienda} />
       )}
 
