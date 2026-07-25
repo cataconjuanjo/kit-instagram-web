@@ -326,7 +326,9 @@ export default function AdminKioskoPage() {
   const fotoInputFilaRef  = useRef(null)
   const fotoVinoTargetRef = useRef(null)
 
-  const [tab, setTab] = useState('catalogo')
+  const [tab, setTab]               = useState('catalogo')
+  const [analitica, setAnalitica]   = useState(null)
+  const [analiticaLoad, setAnaliticaLoad] = useState(false)
 
   const [busqueda, setBusqueda]           = useState('')
   const [filtroTipo, setFiltroTipo]       = useState('')
@@ -644,6 +646,16 @@ export default function AdminKioskoPage() {
     conFichaIA:  vinos.filter(v => v.has_ficha_ia).length,
   }), [vinos])
 
+  async function cargarAnalitica() {
+    setAnaliticaLoad(true)
+    try {
+      const res  = await fetch(`/api/kiosko/${slug}/admin/analitica`)
+      const data = await res.json()
+      setAnalitica(data)
+    } catch {}
+    finally { setAnaliticaLoad(false) }
+  }
+
   function exportarCSV() {
     const a = document.createElement('a')
     a.href = `/api/kiosko/${slug}/admin/exportar`
@@ -706,6 +718,10 @@ export default function AdminKioskoPage() {
         <button type="button" className={`${styles.tabBtn} ${tab === 'catalogo' ? styles.tabBtnActive : ''}`} onClick={() => setTab('catalogo')}>
           Catálogo
         </button>
+        <button type="button" className={`${styles.tabBtn} ${tab === 'analitica' ? styles.tabBtnActive : ''}`}
+          onClick={() => { setTab('analitica'); if (!analitica && !analiticaLoad) cargarAnalitica() }}>
+          Analítica
+        </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'ajustes' ? styles.tabBtnActive : ''}`} onClick={() => setTab('ajustes')}>
           Ajustes
         </button>
@@ -714,6 +730,104 @@ export default function AdminKioskoPage() {
       {/* Ajustes */}
       {tab === 'ajustes' && tienda && (
         <AjustesTab slug={slug} tienda={tienda} onSaved={cargar} />
+      )}
+
+      {/* Analítica */}
+      {tab === 'analitica' && (
+        <div className={styles.analiticaWrap}>
+          {analiticaLoad && <p className={styles.analiticaLoading}>Cargando datos…</p>}
+          {!analiticaLoad && analitica?.vacio && (
+            <div className={styles.analiticaVacio}>
+              <p className={styles.analiticaVacioIcon}>📊</p>
+              <p className={styles.analiticaVacioTitulo}>Todavía no hay búsquedas registradas</p>
+              <p className={styles.analiticaVacioTexto}>En cuanto los clientes usen el buscador de maridaje o el wizard de ocasiones, aquí aparecerán sus consultas y los vinos más recomendados.</p>
+            </div>
+          )}
+          {!analiticaLoad && analitica && !analitica.vacio && (
+            <>
+              {/* KPIs */}
+              <div className={styles.analiticaKpis}>
+                <div className={styles.analiticaKpi}>
+                  <span className={styles.analiticaKpiNum}>{analitica.total}</span>
+                  <span className={styles.analiticaKpiLabel}>Búsquedas (30 días)</span>
+                </div>
+                <div className={styles.analiticaKpi}>
+                  <span className={styles.analiticaKpiNum}>{analitica.semanaActual}</span>
+                  <span className={styles.analiticaKpiLabel}>
+                    Esta semana
+                    {analitica.semanaAnterior > 0 && (
+                      <em className={analitica.semanaActual >= analitica.semanaAnterior ? styles.kpiUp : styles.kpiDown}>
+                        {analitica.semanaActual >= analitica.semanaAnterior ? ' ↑' : ' ↓'} vs semana anterior ({analitica.semanaAnterior})
+                      </em>
+                    )}
+                  </span>
+                </div>
+                <div className={styles.analiticaKpi}>
+                  <span className={styles.analiticaKpiNum}>{analitica.modos.maridaje}</span>
+                  <span className={styles.analiticaKpiLabel}>¿Con qué lo tomo? (plato)</span>
+                </div>
+                <div className={styles.analiticaKpi}>
+                  <span className={styles.analiticaKpiNum}>{analitica.modos.wizard}</span>
+                  <span className={styles.analiticaKpiLabel}>Ayúdame a elegir (ocasión)</span>
+                </div>
+              </div>
+
+              <div className={styles.analiticaGrid}>
+                {/* Top búsquedas */}
+                <div className={styles.analiticaBloque}>
+                  <h3 className={styles.analiticaBloqueTitle}>Qué buscan los clientes</h3>
+                  <p className={styles.analiticaBloqueDesc}>Las consultas más frecuentes al sumiller virtual en los últimos 30 días</p>
+                  <div className={styles.analiticaList}>
+                    {analitica.topConsultas.map((c, i) => (
+                      <div key={i} className={styles.analiticaListRow}>
+                        <span className={styles.analiticaRank}>{i + 1}</span>
+                        <span className={styles.analiticaConsulta}>{c.consulta}</span>
+                        <span className={styles.analiticaVeces}>{c.veces}×</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Vinos más recomendados */}
+                <div className={styles.analiticaBloque}>
+                  <h3 className={styles.analiticaBloqueTitle}>Vinos más recomendados</h3>
+                  <p className={styles.analiticaBloqueDesc}>Los que el sumiller virtual propone con más frecuencia — si no se venden, revisa precio o visibilidad</p>
+                  <div className={styles.analiticaList}>
+                    {analitica.topVinos.map((v, i) => (
+                      <div key={v.id} className={styles.analiticaListRow}>
+                        <span className={styles.analiticaRank}>{i + 1}</span>
+                        <span className={styles.analiticaConsulta}>{v.nombre}</span>
+                        <span className={styles.analiticaVeces}>{v.veces}×</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Búsquedas recientes */}
+              <div className={styles.analiticaBloque} style={{ marginTop: '1.5rem' }}>
+                <div className={styles.analiticaBloqueHeader}>
+                  <h3 className={styles.analiticaBloqueTitle}>Últimas búsquedas</h3>
+                  <button type="button" className={styles.btnSecundario} onClick={cargarAnalitica} style={{ background: '#f0ede8', color: '#1a1a2e', border: '1px solid #d0cdc8' }}>
+                    Actualizar
+                  </button>
+                </div>
+                <div className={styles.analiticaRecientes}>
+                  {analitica.recientes.map((r, i) => (
+                    <div key={i} className={styles.analiticaRecienteRow}>
+                      <span className={`${styles.analiticaMode} ${r.mode === 'wizard' ? styles.analiticaModeWizard : styles.analiticaModeMaridaje}`}>
+                        {r.mode === 'wizard' ? 'Ocasión' : 'Plato'}
+                      </span>
+                      <span className={styles.analiticaRecienteConsulta}>{r.consulta}</span>
+                      <span className={styles.analiticaRecienteVinos}>{r.vinos.join(', ')}</span>
+                      <span className={styles.analiticaRecienteFecha}>{new Date(r.fecha).toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {/* Catálogo: toolbar + tabla */}

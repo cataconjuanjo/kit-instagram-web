@@ -325,6 +325,15 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'No se encontraron vinos coincidentes' }, { status: 500 })
     }
 
+    // Log de búsqueda (fire-and-forget, nunca bloquea la respuesta)
+    supabaseAdmin.from('kiosko_searches').insert({
+      tienda_id: tienda.id,
+      consulta:  consultaLimpia,
+      mode,
+      vinos_ids:     recomendaciones.map(v => String(v.id)),
+      vinos_nombres: recomendaciones.map(v => v.nombre),
+    }).then(() => {}).catch(() => {})
+
     return NextResponse.json({ intro: parsed.intro || '', recomendaciones })
 
   } catch (err) {
