@@ -83,6 +83,7 @@ const T = {
   es: {
     explorar: 'Explorar vinos', elegir: 'Ayúdame\na elegir', maridaje: '¿Con qué\nlo tomo?',
     volver: '← Volver', inicio: 'Inicio', atras: 'Atrás', nuevaBusqueda: 'Empezar de nuevo',
+    referencias: n => `${n} referencias`, disponibles: n => `${n} disponibles`, destacados: '★ Destacados',
     pairingTitle: '¿Para qué buscas el vino?',
     pairingSub: 'Dinos el plato, momento u ocasión y te recomendamos el vino perfecto de nuestra selección',
     pairingPlaceholder: 'Ej: cigalas a la plancha, cordero asado, queso curado, celebración especial…',
@@ -90,10 +91,17 @@ const T = {
     intentarDeNuevo: 'Intentar de nuevo',
     wizardTitle: 'Ayúdame a elegir',
     q0: '¿Para qué ocasión buscas el vino?', q1: '¿Qué estilo suele gustar?', q2: '¿Cuál es el presupuesto?',
+    browseInicio: '← Inicio', buscarPlaceholder: 'Buscar vino, bodega, uva…',
+    vinos: n => `${n} vinos`, todos: 'Todos', pais: 'País', region: 'D.O.', precio: 'Precio',
+    sinResultados: 'No hay vinos con estos filtros.', limpiarFiltros: 'Limpiar filtros', limpiar: 'Limpiar',
+    destacado: '★ Vino destacado', uva: 'Uva', anada: 'Añada', do: 'D.O.', paisLabel: 'País',
+    encuentraEn: 'Encuéntralo en', maridaCon: 'Marida con',
+    tipoLabels: { tinto:'Tinto', blanco:'Blanco', rosado:'Rosado', espumoso:'Espumoso', generoso:'Generoso', dulce:'Dulce', naranja:'Naranja', sin_alcohol:'Sin alcohol' },
   },
   en: {
     explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?',
     volver: '← Back', inicio: 'Home', atras: 'Back', nuevaBusqueda: 'Start over',
+    referencias: n => `${n} wines`, disponibles: n => `${n} available`, destacados: '★ Featured',
     pairingTitle: 'What are you looking for?',
     pairingSub: 'Tell us the dish, occasion or moment and we\'ll recommend the perfect wine from our selection',
     pairingPlaceholder: 'E.g: grilled prawns, roast lamb, aged cheese, special celebration…',
@@ -101,10 +109,17 @@ const T = {
     intentarDeNuevo: 'Try again',
     wizardTitle: 'Help me choose',
     q0: 'What occasion are you shopping for?', q1: 'What style do you prefer?', q2: 'What\'s your budget?',
+    browseInicio: '← Home', buscarPlaceholder: 'Search wine, winery, grape…',
+    vinos: n => `${n} wines`, todos: 'All', pais: 'Country', region: 'Region', precio: 'Price',
+    sinResultados: 'No wines match these filters.', limpiarFiltros: 'Clear filters', limpiar: 'Clear',
+    destacado: '★ Featured wine', uva: 'Grape', anada: 'Vintage', do: 'Region', paisLabel: 'Country',
+    encuentraEn: 'Find it at', maridaCon: 'Pairs with',
+    tipoLabels: { tinto:'Red', blanco:'White', rosado:'Rosé', espumoso:'Sparkling', generoso:'Fortified', dulce:'Sweet', naranja:'Orange', sin_alcohol:'Alcohol-free' },
   },
   fr: {
     explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?',
     volver: '← Retour', inicio: 'Accueil', atras: 'Retour', nuevaBusqueda: 'Recommencer',
+    referencias: n => `${n} vins`, disponibles: n => `${n} disponibles`, destacados: '★ En vedette',
     pairingTitle: 'Pour quel plat cherchez-vous ?',
     pairingSub: 'Dites-nous le plat, le moment ou l\'occasion et nous vous recommandons le vin parfait',
     pairingPlaceholder: 'Ex : homard grillé, agneau rôti, fromage affiné, occasion spéciale…',
@@ -112,10 +127,17 @@ const T = {
     intentarDeNuevo: 'Réessayer',
     wizardTitle: 'Aidez-moi à choisir',
     q0: 'Pour quelle occasion cherchez-vous ?', q1: 'Quel style préférez-vous ?', q2: 'Quel est votre budget ?',
+    browseInicio: '← Accueil', buscarPlaceholder: 'Chercher vin, domaine, cépage…',
+    vinos: n => `${n} vins`, todos: 'Tous', pais: 'Pays', region: 'Région', precio: 'Prix',
+    sinResultados: 'Aucun vin ne correspond à ces filtres.', limpiarFiltros: 'Effacer les filtres', limpiar: 'Effacer',
+    destacado: '★ Vin vedette', uva: 'Cépage', anada: 'Millésime', do: 'Région', paisLabel: 'Pays',
+    encuentraEn: 'Trouvez-le au', maridaCon: 'S\'accompagne avec',
+    tipoLabels: { tinto:'Rouge', blanco:'Blanc', rosado:'Rosé', espumoso:'Pétillant', generoso:'Fortifié', dulce:'Doux', naranja:'Orange', sin_alcohol:'Sans alcool' },
   },
   de: {
     explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?',
     volver: '← Zurück', inicio: 'Start', atras: 'Zurück', nuevaBusqueda: 'Neu starten',
+    referencias: n => `${n} Weine`, disponibles: n => `${n} verfügbar`, destacados: '★ Empfohlen',
     pairingTitle: 'Für welches Gericht suchen Sie?',
     pairingSub: 'Sagen Sie uns das Gericht oder den Anlass und wir empfehlen den perfekten Wein',
     pairingPlaceholder: 'Z.B.: Gegrillte Garnelen, Lammbraten, gereifter Käse, besonderer Anlass…',
@@ -123,6 +145,12 @@ const T = {
     intentarDeNuevo: 'Erneut versuchen',
     wizardTitle: 'Hilf mir wählen',
     q0: 'Für welchen Anlass suchen Sie?', q1: 'Welchen Stil bevorzugen Sie?', q2: 'Was ist Ihr Budget?',
+    browseInicio: '← Start', buscarPlaceholder: 'Wein, Weingut, Traube suchen…',
+    vinos: n => `${n} Weine`, todos: 'Alle', pais: 'Land', region: 'Region', precio: 'Preis',
+    sinResultados: 'Keine Weine mit diesen Filtern.', limpiarFiltros: 'Filter löschen', limpiar: 'Löschen',
+    destacado: '★ Empfohlener Wein', uva: 'Traube', anada: 'Jahrgang', do: 'Region', paisLabel: 'Land',
+    encuentraEn: 'Finden Sie es bei', maridaCon: 'Passt zu',
+    tipoLabels: { tinto:'Rotwein', blanco:'Weißwein', rosado:'Rosé', espumoso:'Schaumwein', generoso:'Likörwein', dulce:'Süßwein', naranja:'Orangenwein', sin_alcohol:'Alkoholfrei' },
   },
 }
 
@@ -325,7 +353,7 @@ function WineCard({ vino, onClick }) {
 
 // ── Ficha de vino enriquecida ─────────────────────────────────────────────────
 
-function WineDetail({ vino, slug, colorAcento, onClose }) {
+function WineDetail({ vino, slug, colorAcento, onClose, lang = 'es' }) {
   const fichaInicial = useMemo(() => {
     if (!vino?.ficha_ia) return null
     try { return typeof vino.ficha_ia === 'string' ? JSON.parse(vino.ficha_ia) : vino.ficha_ia }
@@ -362,7 +390,7 @@ function WineDetail({ vino, slug, colorAcento, onClose }) {
               ? <img src={vino.foto_url} alt={vino.nombre} className={styles.detailPhoto} />
               : <div className={styles.detailPhotoPlaceholder} style={{ background: `linear-gradient(135deg, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}44, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}99)` }}><span>🍷</span></div>
             }
-            {vino.destacado && <div className={styles.detailDestacado} style={{ color: colorAcento }}>★ Vino destacado</div>}
+            {vino.destacado && <div className={styles.detailDestacado} style={{ color: colorAcento }}>{T[lang].destacado}</div>}
           </div>
 
           <div className={styles.detailRight}>
@@ -374,10 +402,10 @@ function WineDetail({ vino, slug, colorAcento, onClose }) {
             {vino.bodega && <p className={styles.detailBodega}>{vino.bodega}</p>}
 
             <div className={styles.detailMeta}>
-              {vino.uva   && <span><strong>Uva</strong> {vino.uva}</span>}
-              {vino.anada && <span><strong>Añada</strong> {vino.anada}</span>}
-              {vino.region && <span><strong>D.O.</strong> {vino.region}</span>}
-              {vino.pais && vino.pais !== 'España' && <span><strong>País</strong> {vino.pais}</span>}
+              {vino.uva   && <span><strong>{T[lang].uva}</strong> {vino.uva}</span>}
+              {vino.anada && <span><strong>{T[lang].anada}</strong> {vino.anada}</span>}
+              {vino.region && <span><strong>{T[lang].do}</strong> {vino.region}</span>}
+              {vino.pais && vino.pais !== 'España' && <span><strong>{T[lang].paisLabel}</strong> {vino.pais}</span>}
             </div>
 
             {vino.precio_oferta
@@ -390,7 +418,7 @@ function WineDetail({ vino, slug, colorAcento, onClose }) {
 
             {vino.ubicacion_estanteria && (
               <div className={styles.detailUbicacion}>
-                <span className={styles.detailUbicacionLabel}>Encuéntralo en</span>
+                <span className={styles.detailUbicacionLabel}>{T[lang].encuentraEn}</span>
                 <span className={styles.detailUbicacionValor} style={{ color: colorAcento }}>📍 {vino.ubicacion_estanteria}</span>
               </div>
             )}
@@ -417,7 +445,7 @@ function WineDetail({ vino, slug, colorAcento, onClose }) {
                 )}
                 {ficha.maridajes?.length > 0 && (
                   <div className={styles.fichaMaridajes}>
-                    <p className={styles.fichaMaridajesLabel}>Marida con</p>
+                    <p className={styles.fichaMaridajesLabel}>{T[lang].maridaCon}</p>
                     <div className={styles.fichaMaridajesGrid}>
                       {ficha.maridajes.map((m, i) => (
                         <span key={i} className={styles.fichaMaridajeTag}>
@@ -821,7 +849,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBa
 
 // ── Vista Browse ──────────────────────────────────────────────────────────────
 
-function BrowseView({ vinos, colorAcento, onWineSelect, onBack }) {
+function BrowseView({ vinos, colorAcento, onWineSelect, onBack, lang = 'es' }) {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroPais, setFiltroPais] = useState('')
@@ -872,35 +900,35 @@ function BrowseView({ vinos, colorAcento, onWineSelect, onBack }) {
     <div className={styles.browseView}>
       <div className={styles.browseTopBar}>
         <div className={styles.browseTopRow}>
-          <button className={styles.backBtn} onClick={onBack} type="button">← Inicio</button>
+          <button className={styles.backBtn} onClick={onBack} type="button">{T[lang].browseInicio}</button>
           <div className={styles.searchWrap}>
             <input className={styles.searchInput} type="search" value={busqueda}
-              onChange={e => setBusqueda(e.target.value)} placeholder="Buscar vino, bodega, uva..." />
+              onChange={e => setBusqueda(e.target.value)} placeholder={T[lang].buscarPlaceholder} />
             {busqueda && <button className={styles.searchClear} onClick={() => setBusqueda('')} type="button">✕</button>}
           </div>
-          <span className={styles.resultCount}>{vinosFiltrados.length} vinos</span>
-          {filtroActivo && <button className={styles.clearBtn} onClick={limpiar} type="button">Limpiar</button>}
+          <span className={styles.resultCount}>{T[lang].vinos(vinosFiltrados.length)}</span>
+          {filtroActivo && <button className={styles.clearBtn} onClick={limpiar} type="button">{T[lang].limpiar}</button>}
         </div>
         <div className={styles.tipoBar}>
           <button className={`${styles.tipoChipBtn} ${filtroTipo === 'todos' ? styles.tipoChipBtnActive : ''}`}
             onClick={() => setFiltroTipo('todos')}
             style={filtroTipo === 'todos' ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}
-            type="button">Todos</button>
+            type="button">{T[lang].todos}</button>
           {tipos.map(tipo => (
             <button key={tipo} className={`${styles.tipoChipBtn} ${filtroTipo === tipo ? styles.tipoChipBtnActive : ''}`}
               onClick={() => setFiltroTipo(tipo === filtroTipo ? 'todos' : tipo)}
               style={filtroTipo === tipo ? { background: TIPO_COLORS[tipo], borderColor: TIPO_COLORS[tipo], color: '#fff' } : {}}
-              type="button">{TIPO_LABELS[tipo] || tipo}</button>
+              type="button">{T[lang].tipoLabels[tipo] || tipo}</button>
           ))}
           {paises.length > 1 && (
             <select className={styles.paisSelect} value={filtroPais} onChange={e => setFiltroPais(e.target.value)}>
-              <option value="">País</option>
+              <option value="">{T[lang].pais}</option>
               {paises.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           )}
           {regiones.length > 1 && (
             <select className={styles.doSelect} value={filtroRegion} onChange={e => setFiltroRegion(e.target.value)}>
-              <option value="">D.O.</option>
+              <option value="">{T[lang].region}</option>
               {regiones.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           )}
@@ -908,7 +936,7 @@ function BrowseView({ vinos, colorAcento, onWineSelect, onBack }) {
 
         {preciosAll && preciosAll.min < preciosAll.max && (
           <div className={styles.priceRow}>
-            <span className={styles.priceRowLabel}>Precio</span>
+            <span className={styles.priceRowLabel}>{T[lang].precio}</span>
             <PriceRangeSlider
               minAll={preciosAll.min} maxAll={preciosAll.max}
               valueMin={precioMin} valueMax={precioMax}
@@ -920,7 +948,7 @@ function BrowseView({ vinos, colorAcento, onWineSelect, onBack }) {
       </div>
       <div className={styles.browseResults}>
         {vinosFiltrados.length === 0
-          ? <div className={styles.noResults}><p>No hay vinos con estos filtros.</p><button onClick={limpiar} style={{ color: colorAcento }} type="button">Limpiar filtros</button></div>
+          ? <div className={styles.noResults}><p>{T[lang].sinResultados}</p><button onClick={limpiar} style={{ color: colorAcento }} type="button">{T[lang].limpiarFiltros}</button></div>
           : <div className={styles.wineGrid}>{vinosFiltrados.map(v => <WineCard key={v.id} vino={v} onClick={onWineSelect} />)}</div>
         }
       </div>
@@ -1065,8 +1093,8 @@ export default function KioskoPage() {
             </h1>
             {tienda?.descripcion && <p className={styles.welcomeDesc}>{tienda.descripcion}</p>}
             <div className={styles.welcomeStats}>
-              <span>{vinos.length} referencias</span>
-              {(() => { const d = vinos.filter(v => v.stock > 0).length; return d > 0 && d < vinos.length ? <span>{d} disponibles</span> : null })()}
+              <span>{T[lang].referencias(vinos.length)}</span>
+              {(() => { const d = vinos.filter(v => v.stock > 0).length; return d > 0 && d < vinos.length ? <span>{T[lang].disponibles(d)}</span> : null })()}
             </div>
           </div>
 
@@ -1106,7 +1134,7 @@ export default function KioskoPage() {
 
           {vinos.filter(v => v.destacado).length > 0 && (
             <div className={styles.welcomeFeatured}>
-              <p className={styles.featuredLabel} style={{ color: colorAcento }}>★ Destacados</p>
+              <p className={styles.featuredLabel} style={{ color: colorAcento }}>{T[lang].destacados}</p>
               <div className={styles.featuredStrip}>
                 {vinos.filter(v => v.destacado).slice(0, 8).map(v => (
                   <button key={v.id} className={styles.featuredCard} onClick={() => abrirDetalle(v)} type="button">
@@ -1134,7 +1162,7 @@ export default function KioskoPage() {
       {/* EXPLORAR */}
       {view === VIEWS.BROWSE && (
         <BrowseView vinos={vinos} colorAcento={colorAcento}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} />
+          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} />
       )}
 
       {/* MARIDAJE */}
@@ -1146,7 +1174,7 @@ export default function KioskoPage() {
       {/* DETALLE */}
       {view === VIEWS.DETAIL && vinoDetalle && (
         <WineDetail vino={vinoDetalle} slug={slug} colorAcento={colorAcento}
-          onClose={volverDeDetalle} />
+          onClose={volverDeDetalle} lang={lang} />
       )}
     </div>
   )
