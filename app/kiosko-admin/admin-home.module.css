@@ -156,6 +156,19 @@
 .activo   { background: #d4f0d4; color: #2a6e2a; }
 .inactivo { background: #f0d4d4; color: #6e2a2a; }
 
+.planBadge {
+  font-size: .6rem; font-weight: 800; padding: .15rem .55rem;
+  border-radius: 20px; letter-spacing: .05em; text-transform: uppercase;
+  margin-left: auto;
+}
+.planPremium { background: #c9a96e; color: #1a1a2e; }
+.planBasico  { background: #e0e0e0; color: #666; }
+
+.cardLogo {
+  height: 32px; max-width: 120px; object-fit: contain;
+  margin: .4rem 0 .2rem;
+}
+
 .cardNombre {
   font-size: 1.15rem;
   font-weight: 800;

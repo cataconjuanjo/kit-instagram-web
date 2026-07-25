@@ -366,6 +366,7 @@
 }
 .stockConfirmOk { background: #3a8a3a; color: #fff; }
 .stockConfirmNo { background: #e0e0e0; color: #555; }
+.stockConfirmOkText { color: #3a8a3a; font-weight: 700; }
 
 /* ── Tipo badges ─────────────────────────────────────────────────────────── */
 .tipoBadge {
@@ -916,6 +917,20 @@
   text-transform: uppercase;
   color: #999;
   margin: 0 0 .9rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.premiumTag {
+  background: #c9a96e;
+  color: #1a1a2e;
+  font-size: .58rem;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 20px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
 }
 
 .ajustesSecSubtitulo {
@@ -1040,54 +1055,86 @@
 .previewBox {
   border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 6px 30px rgba(0,0,0,.2);
-  aspect-ratio: 9/16;
-  max-height: 520px;
+  box-shadow: 0 6px 30px rgba(0,0,0,.25);
+  aspect-ratio: 9/19;
+  max-height: 560px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 1.75rem 1.25rem;
-  gap: .85rem;
+  padding: 1.5rem 1rem 1rem;
+  gap: .6rem;
   transition: background .25s;
 }
 
-.previewLogo { max-height: 52px; max-width: 160px; object-fit: contain; }
-.previewWine { font-size: 2.2rem; line-height: 1; }
+/* Cabecera del preview */
+.previewHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .35rem;
+  width: 100%;
+}
+.previewLogo { max-height: 44px; max-width: 140px; object-fit: contain; }
+.previewWine { font-size: 2rem; line-height: 1; }
+.previewNombre {
+  font-size: .95rem; font-weight: 800; text-align: center;
+  line-height: 1.2; transition: color .25s, font-family .25s; margin: 0;
+}
+.previewDesc {
+  font-size: .58rem; text-align: center; line-height: 1.4;
+  max-width: 170px; margin: 0; opacity: .75;
+}
+.previewStats {
+  display: flex; gap: .4rem; font-size: .56rem; opacity: .55;
+}
 
-.previewNombrePlaceholder {
-  font-size: 1rem; font-weight: 700; text-align: center;
-  line-height: 1.25; transition: color .25s, font-family .25s;
+/* Tarjetas acción 3 columnas */
+.previewActions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .35rem;
+  width: 100%;
 }
-.previewDescPlaceholder {
-  font-size: .62rem; opacity: .6; text-align: center;
-  line-height: 1.4; max-width: 180px;
+.previewActionCard {
+  border-radius: 10px;
+  padding: .6rem .3rem .5rem;
+  display: flex; flex-direction: column; align-items: center; gap: .25rem;
+  transition: background .25s, border-color .25s;
+}
+.previewActionIcon { font-size: 1.1rem; line-height: 1; }
+.previewActionLabel {
+  font-size: .48rem; font-weight: 700; text-align: center;
+  line-height: 1.25; transition: color .25s; white-space: pre-line;
 }
 
-.previewBtns { display: flex; flex-direction: column; gap: .4rem; width: 100%; }
-.previewBtnPrim {
-  border: none; border-radius: 9px; font-size: .72rem; font-weight: 700;
-  padding: .55rem .75rem; width: 100%; cursor: default; transition: background .25s, color .25s;
+/* Strip de destacados */
+.previewFeaturedStrip { width: 100%; }
+.previewFeaturedLabel {
+  font-size: .56rem; font-weight: 700; margin: 0 0 .3rem;
+  transition: color .25s;
 }
-.previewBtnSec {
-  background: transparent; border-radius: 9px; font-size: .67rem; font-weight: 600;
-  padding: .5rem .75rem; width: 100%; cursor: default; transition: border-color .25s, color .25s;
+.previewFeaturedCards {
+  display: flex; gap: .3rem; overflow: hidden;
 }
-
-.previewCard {
-  border-radius: 10px; padding: .65rem .9rem;
-  display: flex; gap: .6rem; align-items: center;
-  width: 100%; transition: background .25s;
+.previewFeaturedCard {
+  flex: 1; border-radius: 7px; padding: .4rem .35rem;
+  display: flex; flex-direction: column; gap: .25rem;
+  align-items: center; transition: background .25s;
 }
-.previewCardImg {
-  width: 34px; height: 46px; border-radius: 5px;
+.previewFeaturedThumb {
+  width: 100%; aspect-ratio: 1; border-radius: 4px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.1rem; flex-shrink: 0;
+  font-size: .9rem;
 }
-.previewCardInfo { flex: 1; min-width: 0; }
-.previewCardNombre { font-size: .68rem; font-weight: 600; margin: 0 0 2px; transition: color .25s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.previewCardBodega { font-size: .58rem; margin: 0; opacity: .6; }
-.previewCardPrecio { font-size: .72rem; font-weight: 700; white-space: nowrap; transition: color .25s; }
+.previewFeaturedNombre {
+  font-size: .44rem; font-weight: 600; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  width: 100%; margin: 0; transition: color .25s;
+}
+.previewCredit {
+  font-size: .45rem; opacity: .4; margin: auto 0 0;
+  text-transform: uppercase; letter-spacing: .07em;
+}
 
 /* ── Stats strip ─────────────────────────────────────────────────────────── */
 .statsStrip {
@@ -1130,6 +1177,16 @@
 .statWarn .statNum { color: #c44; }
 
 /* ── Header brand ────────────────────────────────────────────────────────── */
+.headerBack {
+  font-size: 1.4rem;
+  color: rgba(240,237,232,.4);
+  text-decoration: none;
+  line-height: 1;
+  padding: 0 .25rem;
+  transition: color .15s;
+}
+.headerBack:hover { color: #c9a96e; }
+
 .headerBrand {
   display: flex;
   align-items: center;

@@ -108,7 +108,13 @@ export default function KioskoAdminHome() {
                   <span className={`${styles.estado} ${t.activo ? styles.activo : styles.inactivo}`}>
                     {t.activo ? 'Activo' : 'Inactivo'}
                   </span>
+                  {t.plan && (
+                    <span className={`${styles.planBadge} ${t.plan === 'premium' ? styles.planPremium : styles.planBasico}`}>
+                      {t.plan === 'premium' ? 'Premium' : 'Básico'}
+                    </span>
+                  )}
                 </div>
+                {t.logo_url && <img src={t.logo_url} alt="" className={styles.cardLogo} />}
                 <h2 className={styles.cardNombre}>{t.nombre}</h2>
                 {t.ciudad && <p className={styles.cardCiudad}>{t.ciudad}</p>}
                 <p className={styles.cardSlug}>/{t.slug}</p>

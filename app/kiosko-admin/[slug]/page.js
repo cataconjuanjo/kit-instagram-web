@@ -34,7 +34,21 @@ function esColorClaro(hex) {
 
 // ── Componente de ajustes ──────────────────────────────────────────────────────
 
+function PremiumLock({ children, label = 'Premium' }) {
+  return (
+    <div style={{ position: 'relative', opacity: .45, pointerEvents: 'none', userSelect: 'none' }}>
+      {children}
+      <span style={{
+        position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)',
+        background: '#c9a96e', color: '#1a1a2e', fontSize: '.62rem', fontWeight: 800,
+        padding: '2px 7px', borderRadius: 20, letterSpacing: '.05em',
+      }}>{label}</span>
+    </div>
+  )
+}
+
 function AjustesTab({ slug, tienda, onSaved }) {
+  const esPremium = !tienda?.plan || tienda.plan === 'premium'
   const [ajustes, setAjustes] = useState({
     nombre:         tienda?.nombre         || '',
     ciudad:         tienda?.ciudad         || '',
@@ -250,23 +264,37 @@ function AjustesTab({ slug, tienda, onSaved }) {
         </div>
 
         {/* Informe semanal */}
-        <div className={styles.ajustesSec}>
-          <p className={styles.ajustesSecTitulo}>Informe semanal por email</p>
-          <div className={styles.ajustesFormGrid}>
-            <div className={styles.ajustesFormField}>
-              <label>Email donde recibir el informe</label>
-              <input
-                type="email"
-                value={ajustes.informe_email}
-                onChange={e => cambiar('informe_email', e.target.value)}
-                placeholder="propietario@tienda.com"
-              />
+        {esPremium ? (
+          <div className={styles.ajustesSec}>
+            <p className={styles.ajustesSecTitulo}>Informe semanal por email <span className={styles.premiumTag}>Premium</span></p>
+            <div className={styles.ajustesFormGrid}>
+              <div className={styles.ajustesFormField}>
+                <label>Email donde recibir el informe</label>
+                <input
+                  type="email"
+                  value={ajustes.informe_email}
+                  onChange={e => cambiar('informe_email', e.target.value)}
+                  placeholder="propietario@tienda.com"
+                />
+              </div>
             </div>
+            <p style={{ fontSize: '.75rem', color: '#aaa', margin: '.5rem 0 0' }}>
+              Cada lunes a las 8:00 recibirás un resumen con las búsquedas de la semana, los vinos más recomendados y alertas de stock. Deja el campo vacío para no recibir el informe.
+            </p>
           </div>
-          <p style={{ fontSize: '.75rem', color: '#aaa', margin: '.5rem 0 0' }}>
-            Cada lunes a las 8:00 recibirás un resumen con las búsquedas de la semana, los vinos más recomendados y alertas de stock. Deja el campo vacío para no recibir el informe.
-          </p>
-        </div>
+        ) : (
+          <PremiumLock>
+            <div className={styles.ajustesSec}>
+              <p className={styles.ajustesSecTitulo}>Informe semanal por email</p>
+              <div className={styles.ajustesFormGrid}>
+                <div className={styles.ajustesFormField}>
+                  <label>Email donde recibir el informe</label>
+                  <input type="email" disabled placeholder="Disponible en plan Premium" />
+                </div>
+              </div>
+            </div>
+          </PremiumLock>
+        )}
 
         {/* Widget embebible */}
         <div className={styles.ajustesSec}>
@@ -302,36 +330,58 @@ function AjustesTab({ slug, tienda, onSaved }) {
       <div className={styles.ajustesPreviewSticky}>
         <p className={styles.previewTitle}>Vista previa del kiosko</p>
         <div className={styles.previewBox} style={{ background: ajustes.color_primario, fontFamily: fontCss }}>
-          {logoPreview
-            ? <img src={logoPreview} alt="Logo" className={styles.previewLogo} />
-            : <span className={styles.previewWine}>🍷</span>
-          }
-          <p className={styles.previewNombrePlaceholder} style={{ color: ajustes.color_acento }}>
-            {ajustes.nombre || 'Tu Vinoteca'}
-          </p>
-          {ajustes.descripcion ? (
-            <p className={styles.previewDescPlaceholder} style={{ color: textoMedio }}>
-              {ajustes.descripcion.slice(0, 70)}{ajustes.descripcion.length > 70 ? '…' : ''}
+          {/* Cabecera */}
+          <div className={styles.previewHeader}>
+            {logoPreview
+              ? <img src={logoPreview} alt="Logo" className={styles.previewLogo} />
+              : <span className={styles.previewWine}>🍷</span>}
+            <p className={styles.previewNombre} style={{ color: ajustes.color_acento }}>
+              {ajustes.nombre || 'Tu Vinoteca'}
             </p>
-          ) : null}
-          <div className={styles.previewBtns}>
-            <button type="button" className={styles.previewBtnPrim}
-              style={{ background: ajustes.color_acento, color: ajustes.color_primario }}>
-              🍾 Explorar vinos
-            </button>
-            <button type="button" className={styles.previewBtnSec}
-              style={{ border: `1.5px solid ${ajustes.color_acento}`, color: ajustes.color_acento }}>
-              🤔 Ayúdame a elegir
-            </button>
-          </div>
-          <div className={styles.previewCard} style={{ background: panelColor }}>
-            <div className={styles.previewCardImg} style={{ background: `${ajustes.color_acento}22` }}>🍷</div>
-            <div className={styles.previewCardInfo}>
-              <p className={styles.previewCardNombre} style={{ color: textoColor }}>Ribera del Duero 2020</p>
-              <p className={styles.previewCardBodega} style={{ color: textoMedio }}>Vega Sicilia</p>
+            {ajustes.descripcion && (
+              <p className={styles.previewDesc} style={{ color: textoMedio }}>
+                {ajustes.descripcion.slice(0, 60)}{ajustes.descripcion.length > 60 ? '…' : ''}
+              </p>
+            )}
+            <div className={styles.previewStats} style={{ color: textoMedio }}>
+              <span>42 referencias</span>
+              <span>·</span>
+              <span>38 disponibles</span>
             </div>
-            <p className={styles.previewCardPrecio} style={{ color: ajustes.color_acento }}>45 €</p>
           </div>
+
+          {/* Tarjetas de acción — igual que el kiosko real */}
+          <div className={styles.previewActions}>
+            {[
+              { icon: '🍾', label: 'Explorar vinos' },
+              { icon: '🤔', label: 'Ayúdame\na elegir' },
+              { icon: '🍽️', label: '¿Con qué\nlo tomo?' },
+            ].map(a => (
+              <div key={a.label} className={styles.previewActionCard}
+                style={{ background: panelColor, border: `1px solid ${ajustes.color_acento}22` }}>
+                <span className={styles.previewActionIcon}>{a.icon}</span>
+                <span className={styles.previewActionLabel} style={{ color: ajustes.color_acento }}>{a.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Strip destacados */}
+          <div className={styles.previewFeaturedStrip}>
+            <p className={styles.previewFeaturedLabel} style={{ color: ajustes.color_acento }}>★ Destacados</p>
+            <div className={styles.previewFeaturedCards}>
+              {['Ribera 2020','Albariño','Cava Brut'].map(n => (
+                <div key={n} className={styles.previewFeaturedCard} style={{ background: panelColor }}>
+                  <div className={styles.previewFeaturedThumb} style={{ background: `${ajustes.color_acento}22` }}>🍷</div>
+                  <p className={styles.previewFeaturedNombre} style={{ color: textoColor }}>{n}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Crédito */}
+          <p className={styles.previewCredit} style={{ color: textoMedio }}>
+            Kiosko Virtual × @cataconjuanjo
+          </p>
         </div>
       </div>
     </div>
@@ -528,7 +578,11 @@ export default function AdminKioskoPage() {
     const { id, anterior, nuevo } = stockPending
     setStockPending(null)
     const vino    = vinos.find(v => v.id === id)
-    const updates = { stock: nuevo, ...(nuevo === 0 ? { activo: false } : {}) }
+    const updates = {
+      stock: nuevo,
+      ...(nuevo === 0 ? { activo: false } : {}),
+      ...(nuevo > 0 && !vino?.activo ? { activo: true } : {}),
+    }
     const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -803,6 +857,7 @@ export default function AdminKioskoPage() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerBrand}>
+          <a href="/kiosko-admin" className={styles.headerBack} title="Todas las tiendas">‹</a>
           {tienda?.logo_url
             ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.headerLogo} />
             : <span className={styles.headerLogoPlaceholder}>🍷</span>
@@ -1328,6 +1383,7 @@ export default function AdminKioskoPage() {
                       <span className={styles.stockConfirmText}>
                         {stockPending.anterior} → {stockPending.nuevo}
                         {stockPending.nuevo === 0 && <span className={styles.stockConfirmWarn}> · inactivo</span>}
+                        {stockPending.nuevo > 0 && stockPending.anterior === 0 && (() => { const v = vinos.find(w => w.id === stockPending.id); return !v?.activo ? <span className={styles.stockConfirmOkText}> · se activa</span> : null })()}
                       </span>
                       <button className={styles.stockConfirmOk} onClick={e => { e.stopPropagation(); confirmarStock() }}>✓</button>
                       <button className={styles.stockConfirmNo} onClick={e => { e.stopPropagation(); cancelarStock() }}>✗</button>
