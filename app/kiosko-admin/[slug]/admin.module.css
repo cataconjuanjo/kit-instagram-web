@@ -302,6 +302,33 @@
   font-weight: 700;
 }
 
+.stockConfirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.stockConfirmText {
+  font-size: 0.78rem;
+  color: #555;
+}
+.stockConfirmWarn {
+  color: #c44;
+  font-weight: 700;
+}
+.stockConfirmOk,
+.stockConfirmNo {
+  border: none;
+  border-radius: 3px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.stockConfirmOk { background: #3a8a3a; color: #fff; }
+.stockConfirmNo { background: #e0e0e0; color: #555; }
+
 /* ── Tipo badges ─────────────────────────────────────────────────────────── */
 .tipoBadge {
   display: inline-block;

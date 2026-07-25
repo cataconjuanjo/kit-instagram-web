@@ -340,7 +340,8 @@ export default function AdminKioskoPage() {
   const [draggingFoto, setDraggingFoto]   = useState(false)
   const fotoInputModalRef = useRef(null)
 
-  const [inlineEdit, setInlineEdit] = useState(null)  // { id, campo, valor }
+  const [inlineEdit,   setInlineEdit]   = useState(null)  // { id, campo, valor }
+  const [stockPending, setStockPending] = useState(null)  // { id, anterior, nuevo }
 
   const [subiendoFoto, setSubiendoFoto] = useState(null)  // vinoId
   const fotoInputFilaRef  = useRef(null)
@@ -484,6 +485,13 @@ export default function AdminKioskoPage() {
       ? (valor !== '' && valor !== null ? Number(valor) : (campo === 'stock' ? 0 : null))
       : (String(valor).trim() || null)
 
+    if (campo === 'stock') {
+      const anterior = vinos.find(v => v.id === id)?.stock ?? 0
+      if (valorFinal === anterior) return
+      setStockPending({ id, anterior, nuevo: valorFinal })
+      return
+    }
+
     const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -493,6 +501,21 @@ export default function AdminKioskoPage() {
       setVinos(prev => prev.map(v => v.id === id ? { ...v, [campo]: valorFinal } : v))
     }
   }
+
+  async function confirmarStock() {
+    if (!stockPending) return
+    const { id, nuevo } = stockPending
+    setStockPending(null)
+    const updates = { stock: nuevo, ...(nuevo === 0 ? { activo: false } : {}) }
+    const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    })
+    if (res.ok) setVinos(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v))
+  }
+
+  function cancelarStock() { setStockPending(null) }
 
   // ── Toggle ─────────────────────────────────────────────────────────────────
   async function toggleCampo(id, campo, valorActual) {
@@ -1234,9 +1257,18 @@ export default function AdminKioskoPage() {
                 {/* Stock inline */}
                 <td
                   className={`${styles.tdEditable} ${v.stock === 0 ? styles.stockCero : ''}`}
-                  onClick={e => startInline(v.id, 'stock', v.stock, e)}
+                  onClick={stockPending?.id === v.id ? undefined : e => startInline(v.id, 'stock', v.stock, e)}
                 >
-                  {inlineEdit?.id === v.id && inlineEdit.campo === 'stock' ? (
+                  {stockPending?.id === v.id ? (
+                    <span className={styles.stockConfirm}>
+                      <span className={styles.stockConfirmText}>
+                        {stockPending.anterior} → {stockPending.nuevo}
+                        {stockPending.nuevo === 0 && <span className={styles.stockConfirmWarn}> · inactivo</span>}
+                      </span>
+                      <button className={styles.stockConfirmOk} onClick={e => { e.stopPropagation(); confirmarStock() }}>✓</button>
+                      <button className={styles.stockConfirmNo} onClick={e => { e.stopPropagation(); cancelarStock() }}>✗</button>
+                    </span>
+                  ) : inlineEdit?.id === v.id && inlineEdit.campo === 'stock' ? (
                     <input
                       className={styles.inlineInput}
                       type="number" min="0"
