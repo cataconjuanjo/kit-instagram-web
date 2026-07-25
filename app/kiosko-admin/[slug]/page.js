@@ -49,6 +49,48 @@ function PremiumLock({ children, label = 'Premium' }) {
   )
 }
 
+function CambiarPassword() {
+  const [pass1, setPass1]   = useState('')
+  const [pass2, setPass2]   = useState('')
+  const [msg,   setMsg]     = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function actualizar() {
+    if (pass1.length < 6) return setMsg('Mínimo 6 caracteres')
+    if (pass1 !== pass2)  return setMsg('Las contraseñas no coinciden')
+    setSaving(true); setMsg('')
+    const { error } = await supabase.auth.updateUser({ password: pass1 })
+    setSaving(false)
+    if (error) setMsg(error.message)
+    else { setMsg('✓ Contraseña actualizada'); setPass1(''); setPass2('') }
+  }
+
+  return (
+    <div className={styles.ajustesSec} style={{ marginTop: '1.5rem', borderTop: '1px solid #e8e5e0', paddingTop: '1.5rem' }}>
+      <p className={styles.ajustesSecTitulo}>Seguridad</p>
+      <div className={styles.ajustesFormGrid}>
+        <div className={styles.ajustesFormField}>
+          <label>Nueva contraseña</label>
+          <input type="password" value={pass1} onChange={e => setPass1(e.target.value)}
+            placeholder="Mínimo 6 caracteres" />
+        </div>
+        <div className={styles.ajustesFormField}>
+          <label>Confirmar contraseña</label>
+          <input type="password" value={pass2} onChange={e => setPass2(e.target.value)}
+            placeholder="Repite la contraseña"
+            onKeyDown={e => e.key === 'Enter' && actualizar()} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', marginTop: '.75rem' }}>
+        {msg && <span className={msg.startsWith('✓') ? styles.msgOk : styles.msgError}>{msg}</span>}
+        <button type="button" className={styles.btnPrimario} onClick={actualizar} disabled={saving || !pass1}>
+          {saving ? 'Guardando…' : 'Actualizar contraseña'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function AjustesTab({ slug, tienda, onSaved }) {
   const esPremium = !tienda?.plan || tienda.plan === 'premium'
   const [ajustes, setAjustes] = useState({
@@ -340,6 +382,9 @@ function AjustesTab({ slug, tienda, onSaved }) {
             {guardando ? 'Guardando…' : 'Guardar ajustes'}
           </button>
         </div>
+
+        {/* Cambiar contraseña */}
+        <CambiarPassword />
       </div>
 
       {/* ── Preview en vivo ── */}
