@@ -32,7 +32,6 @@ const SUGERENCIAS_MARIDAJE = [
 ]
 
 const OCASIONES = [
-  { id: 'maridaje',    icon: '🍽️', label: 'Maridar\ncon un plato'    },
   { id: 'regalo',      icon: '🎁', label: 'Es un\nregalo'            },
   { id: 'celebracion', icon: '🥂', label: 'Celebración\no aperitivo' },
   { id: 'casa',        icon: '🏠', label: 'Para tomar\nen casa'       },
@@ -91,8 +90,7 @@ function esColorClaro(hex) {
 }
 function buildWizardQuery(w) {
   const parts = []
-  if (w.ocasion === 'maridaje' && w.plato) parts.push(`Para maridar con: ${w.plato}`)
-  else if (w.ocasion === 'regalo')      parts.push('Es un regalo')
+  if (w.ocasion === 'regalo')           parts.push('Es un regalo')
   else if (w.ocasion === 'celebracion') parts.push('Para una celebración o aperitivo')
   else if (w.ocasion === 'casa')        parts.push('Para tomar en casa tranquilamente')
   if (w.estilo) {
@@ -431,7 +429,7 @@ function WineDetail({ vino, slug, colorAcento, colorPrimario, onClose, onPairing
 
 function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onBack, vinos = [] }) {
   const [step, setStep]       = useState(0)
-  const [wizard, setWizard]   = useState({ ocasion: '', plato: '', estilo: '', presupuesto: '' })
+  const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '' })
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
   const [error, setError]     = useState('')
@@ -457,7 +455,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
   function selEstilo(id) {
     const next = { ...wizard, estilo: id }
     setWizard(next)
-    setStep(wizard.ocasion === 'maridaje' ? 2 : 2)
+    setStep(2)
   }
 
   async function consultar(w = wizard) {
@@ -471,7 +469,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       const res = await fetch(`/api/kiosko/${slug}/maridaje`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consulta: q, mode: w.ocasion === 'maridaje' ? 'maridaje' : 'wizard' }),
+        body: JSON.stringify({ consulta: q, mode: 'wizard' }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error en la consulta')
@@ -484,7 +482,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
     }
   }
 
-  function reset() { setStep(0); setWizard({ ocasion: '', plato: '', estilo: '', presupuesto: '' }); setResultado(null); setError('') }
+  function reset() { setStep(0); setWizard({ ocasion: '', estilo: '', presupuesto: '' }); setResultado(null); setError('') }
 
   return (
     <div className={styles.wizardView}>
@@ -517,35 +515,8 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
         </div>
       )}
 
-      {/* Paso 1a — Plato (solo maridaje) */}
-      {step === 1 && wizard.ocasion === 'maridaje' && (
-        <div className={styles.wizardStep}>
-          <p className={styles.wizardQuestion}>¿Qué vas a cocinar o comer?</p>
-          <div className={styles.wizardPlatoArea}>
-            <input
-              className={styles.wizardPlatoInput}
-              type="text"
-              placeholder="Ej: lubina a la sal, cordero asado, pasta con trufa..."
-              value={wizard.plato}
-              onChange={e => setWizard(w => ({ ...w, plato: e.target.value }))}
-              onKeyDown={e => { if (e.key === 'Enter' && wizard.plato.trim()) setStep(2) }}
-              autoFocus
-            />
-            <button className={styles.wizardNextBtn} style={{ background: colorAcento, color: colorPrimario }}
-              onClick={() => { if (wizard.plato.trim()) setStep(2) }} disabled={!wizard.plato.trim()} type="button">
-              Continuar →
-            </button>
-          </div>
-          <div className={styles.wizardSugerencias}>
-            {['Lubina a la plancha','Cordero al horno','Pasta con trufa','Jamón ibérico','Queso curado','Paella'].map(s => (
-              <button key={s} className={styles.wizardSugBtn} onClick={() => { setWizard(w => ({ ...w, plato: s })); setStep(2) }} type="button">{s}</button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Paso 1b — Estilo (regalo / celebración / casa) */}
-      {step === 1 && wizard.ocasion !== 'maridaje' && (
+      {/* Paso 1 — Estilo */}
+      {step === 1 && (
         <div className={styles.wizardStep}>
           <p className={styles.wizardQuestion}>¿Qué estilo suele gustar?</p>
           <div className={styles.wizardEstilos}>
@@ -741,12 +712,25 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
 
 // ── Vista Pairing ─────────────────────────────────────────────────────────────
 
-function PairingView({ tienda, slug, colorAcento, onWineSelect, onBack }) {
+function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBack }) {
   const [consulta, setConsulta] = useState('')
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
   const [error, setError] = useState('')
   const textareaRef = useRef(null)
+
+  const sugerenciasRapidas = useMemo(() => {
+    const counts = {}
+    vinos.forEach(v => {
+      if (!v.ficha_ia) return
+      try {
+        const ficha = typeof v.ficha_ia === 'string' ? JSON.parse(v.ficha_ia) : v.ficha_ia
+        ;(ficha?.maridajes || []).forEach(m => { counts[m] = (counts[m] || 0) + 1 })
+      } catch {}
+    })
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 9).map(([m]) => m)
+    return sorted.length >= 3 ? sorted : SUGERENCIAS_MARIDAJE
+  }, [vinos])
 
   useEffect(() => { textareaRef.current?.focus() }, [])
 
@@ -795,7 +779,7 @@ function PairingView({ tienda, slug, colorAcento, onWineSelect, onBack }) {
         <div className={styles.sugerencias}>
           <p className={styles.sugerenciasLabel}>Ideas rápidas:</p>
           <div className={styles.sugerenciasGrid}>
-            {SUGERENCIAS_MARIDAJE.map(s => (
+            {sugerenciasRapidas.map(s => (
               <button key={s} className={styles.sugerenciaBtn} onClick={() => { setConsulta(s); consultar(s) }} type="button">{s}</button>
             ))}
           </div>
@@ -1141,7 +1125,7 @@ export default function KioskoPage() {
 
       {/* MARIDAJE */}
       {view === VIEWS.PAIRING && (
-        <PairingView tienda={tienda} slug={slug} colorAcento={colorAcento}
+        <PairingView tienda={tienda} slug={slug} colorAcento={colorAcento} vinos={vinos}
           onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} />
       )}
 
