@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM   = 'Kiosko Vinos <kiosko@cataconjuanjo.com>'
