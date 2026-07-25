@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import styles from './admin.module.css'
 import { supabase } from '../../supabase'
@@ -328,9 +328,25 @@ export default function AdminKioskoPage() {
 
   const [tab, setTab] = useState('catalogo')
 
-  const [busqueda, setBusqueda]         = useState('')
-  const [filtroTipo, setFiltroTipo]     = useState('')
-  const [filtroEstado, setFiltroEstado] = useState('todos')
+  const [busqueda, setBusqueda]           = useState('')
+  const [filtroTipo, setFiltroTipo]       = useState('')
+  const [filtroEstado, setFiltroEstado]   = useState('todos')
+  const [filtroRegion, setFiltroRegion]   = useState('')
+  const [filtroPais, setFiltroPais]       = useState('')
+  const [filtroStock, setFiltroStock]     = useState('todos')
+  const [precioMin, setPrecioMin]         = useState('')
+  const [precioMax, setPrecioMax]         = useState('')
+  const [ordenPor, setOrdenPor]           = useState('nombre')
+  const [ordenDir, setOrdenDir]           = useState('asc')
+
+  const [filtroRegion, setFiltroRegion]     = useState('')
+  const [filtroPais, setFiltroPais]         = useState('')
+  const [filtroStock, setFiltroStock]       = useState('todos')   // 'todos' | 'con' | 'sin'
+  const [filtroDestacado, setFiltroDestacado] = useState('todos') // 'todos' | 'destacado' | 'sin_foto' | 'sin_ia'
+  const [precioMin, setPrecioMin]           = useState('')
+  const [precioMax, setPrecioMax]           = useState('')
+  const [ordenPor, setOrdenPor]             = useState('nombre')
+  const [ordenDir, setOrdenDir]             = useState('asc')
 
   const [modalImport, setModalImport]     = useState(false)
   const [archivoImport, setArchivoImport] = useState(null)
@@ -570,14 +586,68 @@ export default function AdminKioskoPage() {
   }
 
   // ── Filtros ────────────────────────────────────────────────────────────────
-  const vinosFiltrados = vinos.filter(v => {
-    if (filtroTipo && v.tipo !== filtroTipo) return false
-    if (filtroEstado === 'activo'   && !v.activo)  return false
-    if (filtroEstado === 'inactivo' &&  v.activo)  return false
-    if (!busqueda) return true
-    const q = busqueda.toLowerCase()
-    return [v.nombre, v.bodega, v.tipo, v.uva, v.region].filter(Boolean).join(' ').toLowerCase().includes(q)
-  })
+  const regiones = useMemo(() => [...new Set(vinos.map(v => v.region).filter(Boolean))].sort(), [vinos])
+  const paises   = useMemo(() => [...new Set(vinos.map(v => v.pais).filter(Boolean))].sort(), [vinos])
+
+  const vinosFiltrados = useMemo(() => {
+    return vinos
+      .filter(v => {
+        if (filtroTipo      && v.tipo   !== filtroTipo)   return false
+        if (filtroEstado === 'activo'   && !v.activo)     return false
+        if (filtroEstado === 'inactivo' &&  v.activo)     return false
+        if (filtroRegion    && v.region !== filtroRegion) return false
+        if (filtroPais      && v.pais   !== filtroPais)   return false
+        if (filtroStock === 'sin' && Number(v.stock) > 0) return false
+        if (filtroStock === 'con' && !(Number(v.stock) > 0)) return false
+        if (filtroDestacado === 'destacado' && !v.destacado) return false
+        if (filtroDestacado === 'sin_foto'  && v.foto_url)   return false
+        if (filtroDestacado === 'sin_ia'    && v.ficha_ia)   return false
+        if (precioMin !== '' && Number(v.precio_pvp || 0) < Number(precioMin)) return false
+        if (precioMax !== '' && Number(v.precio_pvp || 0) > Number(precioMax)) return false
+        if (!busqueda) return true
+        const q = busqueda.toLowerCase()
+        return [v.nombre, v.bodega, v.tipo, v.uva, v.region, v.pais, v.notas_cata, v.descripcion, v.ubicacion_estanteria]
+          .filter(Boolean).join(' ').toLowerCase().includes(q)
+      })
+      .sort((a, b) => {
+        let va = a[ordenPor], vb = b[ordenPor]
+        if (['precio_pvp', 'stock', 'puntuacion'].includes(ordenPor)) {
+          va = Number(va) || 0; vb = Number(vb) || 0
+        } else {
+          va = String(va || '').toLowerCase(); vb = String(vb || '').toLowerCase()
+        }
+        if (va < vb) return ordenDir === 'asc' ? -1 : 1
+        if (va > vb) return ordenDir === 'asc' ? 1 : -1
+        return 0
+      })
+  }, [vinos, filtroTipo, filtroEstado, filtroRegion, filtroPais, filtroStock, filtroDestacado, precioMin, precioMax, busqueda, ordenPor, ordenDir])
+
+  const hayFiltrosActivos = filtroTipo || filtroEstado !== 'todos' || filtroRegion || filtroPais ||
+    filtroStock !== 'todos' || filtroDestacado !== 'todos' || precioMin !== '' || precioMax !== '' || busqueda
+
+  function limpiarFiltros() {
+    setBusqueda(''); setFiltroTipo(''); setFiltroEstado('todos')
+    setFiltroRegion(''); setFiltroPais(''); setFiltroStock('todos')
+    setFiltroDestacado('todos'); setPrecioMin(''); setPrecioMax('')
+  }
+
+  function sortHead(campo) {
+    if (ordenPor === campo) setOrdenDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setOrdenPor(campo); setOrdenDir('asc') }
+  }
+
+  function sortArrow(campo) {
+    if (ordenPor !== campo) return ' ↕'
+    return ordenDir === 'asc' ? ' ↑' : ' ↓'
+  }
+
+  // Stats
+  const vinosActivos  = vinos.filter(v => v.activo)
+  const sinFoto       = vinos.filter(v => !v.foto_url).length
+  const sinPrecio     = vinos.filter(v => !v.precio_pvp).length
+  const sinStock      = vinos.filter(v => !Number(v.stock)).length
+  const nDestacados   = vinos.filter(v => v.destacado).length
+  const conFichaIA    = vinos.filter(v => v.ficha_ia).length
 
   function exportarCSV() {
     const a = document.createElement('a')
@@ -608,9 +678,15 @@ export default function AdminKioskoPage() {
 
       {/* Header */}
       <header className={styles.header}>
-        <div>
-          <h1 className={styles.titulo}>Admin Kiosko</h1>
-          {tienda && <p className={styles.subtitulo}>{tienda.nombre} · {tienda.ciudad}</p>}
+        <div className={styles.headerBrand}>
+          {tienda?.logo_url
+            ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.headerLogo} />
+            : <span className={styles.headerLogoPlaceholder}>🍷</span>
+          }
+          <div>
+            <p className={styles.titulo}>{tienda?.nombre || 'Kiosko Admin'}</p>
+            {tienda?.ciudad && <p className={styles.subtitulo}>{tienda.ciudad}</p>}
+          </div>
         </div>
         <div className={styles.headerActions}>
           <a href={`/kiosko/${slug}`} target="_blank" rel="noreferrer" className={styles.btnSecundario}>
@@ -621,7 +697,7 @@ export default function AdminKioskoPage() {
               Exportar CSV
             </button>
             <button onClick={() => { setModalImport(true); setResultImport(null) }} type="button" className={styles.btnSecundario}>
-              Importar catálogo
+              Importar
             </button>
             <button onClick={abrirNuevo} type="button" className={styles.btnPrimario}>
               + Añadir vino
@@ -647,25 +723,91 @@ export default function AdminKioskoPage() {
 
       {/* Catálogo: toolbar + tabla */}
       {tab === 'catalogo' && <>
+
+      {/* Stats strip */}
+      <div className={styles.statsStrip}>
+        <div className={styles.statCard}>
+          <span className={styles.statNum}>{vinos.length}</span>
+          <span className={styles.statLabel}>Total</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statNum}>{vinosActivos.length}</span>
+          <span className={styles.statLabel}>Activos</span>
+        </div>
+        <div className={`${styles.statCard} ${sinFoto ? styles.statWarn : ''}`}>
+          <span className={styles.statNum}>{sinFoto}</span>
+          <span className={styles.statLabel}>Sin foto</span>
+        </div>
+        <div className={`${styles.statCard} ${sinPrecio ? styles.statWarn : ''}`}>
+          <span className={styles.statNum}>{sinPrecio}</span>
+          <span className={styles.statLabel}>Sin PVP</span>
+        </div>
+        <div className={`${styles.statCard} ${sinStock ? styles.statWarn : ''}`}>
+          <span className={styles.statNum}>{sinStock}</span>
+          <span className={styles.statLabel}>Sin stock</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statNum}>{nDestacados}</span>
+          <span className={styles.statLabel}>Destacados</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statNum}>{conFichaIA}</span>
+          <span className={styles.statLabel}>Fichas IA</span>
+        </div>
+      </div>
+
       <div className={styles.toolbar}>
         <input
           className={styles.busqueda}
           type="search"
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
-          placeholder="Buscar por nombre, bodega, tipo…"
+          placeholder="Buscar nombre, bodega, uva, D.O., país…"
         />
         <select className={styles.filtroSelect} value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}>
-          <option value="">Todos los tipos</option>
+          <option value="">Tipo</option>
           {TIPOS.map(t => (
             <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1).replace('_',' ')}</option>
           ))}
         </select>
+        {regiones.length > 0 && (
+          <select className={styles.filtroSelect} value={filtroRegion} onChange={e => setFiltroRegion(e.target.value)}>
+            <option value="">D.O. / Región</option>
+            {regiones.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        )}
+        {paises.length > 1 && (
+          <select className={styles.filtroSelect} value={filtroPais} onChange={e => setFiltroPais(e.target.value)}>
+            <option value="">País</option>
+            {paises.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        )}
         <select className={styles.filtroSelect} value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
-          <option value="todos">Todos</option>
+          <option value="todos">Estado</option>
           <option value="activo">Activos</option>
           <option value="inactivo">Inactivos</option>
         </select>
+        <select className={styles.filtroSelect} value={filtroStock} onChange={e => setFiltroStock(e.target.value)}>
+          <option value="todos">Stock</option>
+          <option value="con">Con stock</option>
+          <option value="sin">Sin stock</option>
+        </select>
+        <select className={styles.filtroSelect} value={filtroDestacado} onChange={e => setFiltroDestacado(e.target.value)}>
+          <option value="todos">Ver</option>
+          <option value="destacado">Destacados</option>
+          <option value="sin_foto">Sin foto</option>
+          <option value="sin_ia">Sin ficha IA</option>
+        </select>
+        <div className={styles.precioRange}>
+          <input type="number" className={styles.precioInput} placeholder="€ min" value={precioMin}
+            onChange={e => setPrecioMin(e.target.value)} min="0" />
+          <span className={styles.precioSep}>–</span>
+          <input type="number" className={styles.precioInput} placeholder="€ max" value={precioMax}
+            onChange={e => setPrecioMax(e.target.value)} min="0" />
+        </div>
+        {hayFiltrosActivos && (
+          <button onClick={limpiarFiltros} type="button" className={styles.btnLimpiar}>× Limpiar</button>
+        )}
         <span className={styles.total}>{vinosFiltrados.length} / {vinos.length} vinos</span>
       </div>
 
@@ -675,12 +817,14 @@ export default function AdminKioskoPage() {
           <thead>
             <tr>
               <th className={styles.thFoto}>Foto</th>
-              <th>Nombre</th>
-              <th>Bodega</th>
+              <th className={styles.thSortable} onClick={() => sortHead('nombre')}>Nombre{sortArrow('nombre')}</th>
+              <th className={styles.thSortable} onClick={() => sortHead('bodega')}>Bodega{sortArrow('bodega')}</th>
               <th>Tipo</th>
-              <th>Añada</th>
-              <th>PVP €</th>
-              <th>Stock</th>
+              <th className={styles.thSortable} onClick={() => sortHead('region')}>D.O.{sortArrow('region')}</th>
+              <th className={styles.thSortable} onClick={() => sortHead('uva')}>Uva{sortArrow('uva')}</th>
+              <th className={styles.thSortable} onClick={() => sortHead('anada')}>Añada{sortArrow('anada')}</th>
+              <th className={styles.thSortable} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>
+              <th className={styles.thSortable} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>
               <th>Estantería</th>
               <th className={styles.thCenter}>★</th>
               <th className={styles.thCenter}>Estado</th>
@@ -721,6 +865,9 @@ export default function AdminKioskoPage() {
                     : <em className={styles.dash}>—</em>
                   }
                 </td>
+
+                <td className={styles.tdTrunc}>{v.region || <em className={styles.dash}>—</em>}</td>
+                <td className={styles.tdTrunc}>{v.uva    || <em className={styles.dash}>—</em>}</td>
 
                 {/* Añada inline */}
                 <td
@@ -849,7 +996,7 @@ export default function AdminKioskoPage() {
             ))}
             {vinosFiltrados.length === 0 && (
               <tr>
-                <td colSpan={11} className={styles.empty}>
+                <td colSpan={13} className={styles.empty}>
                   No hay vinos{busqueda ? ' con esa búsqueda' : ''}.
                 </td>
               </tr>
