@@ -292,7 +292,13 @@ function WineDetail({ vino, slug, colorAcento, onClose, onPairingFrom }) {
   return (
     <div className={styles.detailOverlay}>
       <div className={styles.detailPanel}>
-        <button className={styles.detailClose} onClick={onClose} type="button" aria-label="Cerrar">✕</button>
+        {/* Barra superior sticky en móvil */}
+        <div className={styles.detailTopBar}>
+          <div className={styles.detailHandle} />
+          <button className={`${styles.detailClose} ${styles.detailCloseMobile}`} onClick={onClose} type="button" aria-label="Cerrar">✕</button>
+        </div>
+        {/* Botón de cierre para escritorio */}
+        <button className={`${styles.detailClose} ${styles.detailCloseDesktop}`} onClick={onClose} type="button" aria-label="Cerrar">✕</button>
         <div className={styles.detailContent}>
           <div className={styles.detailLeft}>
             {vino.foto_url
@@ -418,7 +424,7 @@ function WizardView({ slug, colorAcento, colorPrimario, onWineSelect, onBack, vi
       const res = await fetch(`/api/kiosko/${slug}/maridaje`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consulta: q }),
+        body: JSON.stringify({ consulta: q, mode: w.ocasion === 'maridaje' ? 'maridaje' : 'wizard' }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error en la consulta')
@@ -1009,6 +1015,7 @@ export default function KioskoPage() {
       {/* BIENVENIDA */}
       {view === VIEWS.WELCOME && (
         <div className={styles.welcomeView}>
+          {/* Cabecera: logo, nombre, descripción */}
           <div className={styles.welcomeContent}>
             {tienda?.logo_url && <img src={tienda.logo_url} alt={tienda?.nombre} className={styles.welcomeLogo} />}
             <h1
@@ -1026,31 +1033,41 @@ export default function KioskoPage() {
               <span>{vinos.length} referencias</span>
               {(() => { const d = vinos.filter(v => v.stock > 0).length; return d > 0 && d < vinos.length ? <span>{d} disponibles</span> : null })()}
             </div>
-
-            <div className={styles.welcomeActions}>
-              <button className={styles.welcomeBtn} style={{ background: colorAcento, color: colorPrimario }}
-                onClick={() => setView(VIEWS.BROWSE)} type="button">🍾 Explorar vinos</button>
-              <button className={`${styles.welcomeBtn} ${styles.welcomeBtnWizard}`} style={{ borderColor: colorAcento, color: colorAcento }}
-                onClick={() => setView(VIEWS.WIZARD)} type="button">🤔 Ayúdame a elegir</button>
-              <button className={`${styles.welcomeBtn} ${styles.welcomeBtnSecondary}`} style={{ borderColor: colorAcento, color: colorAcento }}
-                onClick={() => setView(VIEWS.PAIRING)} type="button">🍽️ ¿Con qué lo tomo?</button>
-            </div>
-
-            <a
-              href="https://www.cataconjuanjo.com/"
-              target="_blank"
-              rel="noreferrer"
-              className={styles.kioskoCredit}
-            >
-              Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
-            </a>
           </div>
+
+          {/* Acciones — tarjetas con icono grande centradas en el kiosko */}
+          <div className={styles.welcomeActions}>
+            <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.BROWSE)} type="button"
+              style={{ '--acento': colorAcento }}>
+              <span className={styles.welcomeActionIcon}>🍾</span>
+              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>Explorar vinos</span>
+            </button>
+            <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.WIZARD)} type="button"
+              style={{ '--acento': colorAcento }}>
+              <span className={styles.welcomeActionIcon}>🤔</span>
+              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>Ayúdame a elegir</span>
+            </button>
+            <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.PAIRING)} type="button"
+              style={{ '--acento': colorAcento }}>
+              <span className={styles.welcomeActionIcon}>🍽️</span>
+              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>¿Con qué lo tomo?</span>
+            </button>
+          </div>
+
+          <a
+            href="https://www.cataconjuanjo.com/"
+            target="_blank"
+            rel="noreferrer"
+            className={styles.kioskoCredit}
+          >
+            Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
+          </a>
 
           {vinos.filter(v => v.destacado).length > 0 && (
             <div className={styles.welcomeFeatured}>
               <p className={styles.featuredLabel} style={{ color: colorAcento }}>★ Destacados</p>
               <div className={styles.featuredStrip}>
-                {vinos.filter(v => v.destacado).slice(0, 6).map(v => (
+                {vinos.filter(v => v.destacado).slice(0, 8).map(v => (
                   <button key={v.id} className={styles.featuredCard} onClick={() => abrirDetalle(v)} type="button">
                     {v.foto_url
                       ? <img src={v.foto_url} alt={v.nombre} className={styles.featuredPhoto} loading="lazy" />
