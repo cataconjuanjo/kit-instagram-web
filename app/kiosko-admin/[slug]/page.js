@@ -853,40 +853,42 @@ export default function AdminKioskoPage() {
         </div>
       )}
 
-      {/* Rentabilidad */}
-      {tab === 'analitica' && rentabilidad && (
+      {/* Rentabilidad — siempre visible en pestaña analítica */}
+      {tab === 'analitica' && (
         <div style={{ padding: '0 1.75rem 1.75rem' }}>
           <div className={styles.analiticaBloque}>
             <div className={styles.analiticaBloqueHeader}>
               <div>
                 <h3 className={styles.analiticaBloqueTitle}>Análisis de rentabilidad</h3>
                 <p className={styles.analiticaBloqueDesc}>
-                  Cruce entre margen bruto y popularidad (veces recomendado por el sumiller) — umbral margen {rentabilidad.margenMedio}%, umbral recomendaciones {rentabilidad.recomMedio}
-                  {rentabilidad.sinCoste > 0 && ` · ${rentabilidad.sinCoste} vino${rentabilidad.sinCoste > 1 ? 's' : ''} activo${rentabilidad.sinCoste > 1 ? 's' : ''} sin precio de coste (no aparecen)`}
+                  {rentabilidad
+                    ? <>Cruce entre margen bruto y popularidad (veces recomendado por el sumiller) — umbral margen {rentabilidad.margenMedio}%, umbral recomendaciones {rentabilidad.recomMedio}{rentabilidad.sinCoste > 0 && ` · ${rentabilidad.sinCoste} vino${rentabilidad.sinCoste > 1 ? 's' : ''} activo${rentabilidad.sinCoste > 1 ? 's' : ''} sin precio de coste (no aparecen)`}</>
+                    : 'Introduce el precio de coste en la columna "Coste €" del Catálogo para activar este análisis. Necesitas al menos 2 vinos con coste.'}
                 </p>
               </div>
             </div>
             <div className={styles.bcgGrid}>
               {[
-                { id:'estrella', icon:'⭐', label:'Estrella', desc:'Alto margen · Alta demanda', color:'#7a5a1a', borde:'#d4a636', fondo:'#fdf8ee' },
-                { id:'joya',     icon:'💎', label:'Joya oculta', desc:'Alto margen · Baja demanda', color:'#2e6b47', borde:'#4a9c69', fondo:'#eef7f2' },
-                { id:'caballo',  icon:'🐎', label:'Caballo de batalla', desc:'Bajo margen · Alta demanda', color:'#1a4f7a', borde:'#2e7ab8', fondo:'#eef4fb' },
-                { id:'revisar',  icon:'⚠️',  label:'Revisar', desc:'Bajo margen · Baja demanda', color:'#7a2020', borde:'#c03030', fondo:'#fdf0f0' },
+                { id:'estrella', icon:'⭐', label:'Estrella',          desc:'Alto margen · Alta demanda', color:'#7a5a1a', borde:'#d4a636', fondo:'#fdf8ee' },
+                { id:'joya',     icon:'💎', label:'Joya oculta',       desc:'Alto margen · Baja demanda', color:'#2e6b47', borde:'#4a9c69', fondo:'#eef7f2' },
+                { id:'caballo',  icon:'🐎', label:'Caballo de batalla',desc:'Bajo margen · Alta demanda', color:'#1a4f7a', borde:'#2e7ab8', fondo:'#eef4fb' },
+                { id:'revisar',  icon:'⚠️', label:'Revisar',           desc:'Bajo margen · Baja demanda', color:'#7a2020', borde:'#c03030', fondo:'#fdf0f0' },
               ].map(cat => {
-                const lista = rentabilidad.clasificados.filter(v => v.categoria === cat.id)
+                const lista = rentabilidad ? rentabilidad.clasificados.filter(v => v.categoria === cat.id) : []
                 return (
                   <div key={cat.id} className={styles.bcgCuadrante} style={{ borderColor: cat.borde, background: cat.fondo }}>
-                    <p className={styles.bcgCuadranteTitle} style={{ color: cat.color }}>{cat.icon} {cat.label} <span className={styles.bcgCount}>{lista.length}</span></p>
+                    <p className={styles.bcgCuadranteTitle} style={{ color: cat.color }}>{cat.icon} {cat.label} {rentabilidad && <span className={styles.bcgCount}>{lista.length}</span>}</p>
                     <p className={styles.bcgCuadranteDesc}>{cat.desc}</p>
                     <div className={styles.bcgVinoList}>
-                      {lista.slice(0,8).map(v => (
+                      {!rentabilidad && <p className={styles.bcgVacio}>Añade precios de coste para ver qué vinos aparecen aquí</p>}
+                      {rentabilidad && lista.slice(0,8).map(v => (
                         <div key={v.id} className={styles.bcgVinoItem}>
                           <span className={styles.bcgVinoNombre}>{v.nombre}</span>
                           <span className={styles.bcgVinoStats}>{v.margenPct}% · {v.recomendaciones}×</span>
                         </div>
                       ))}
-                      {lista.length > 8 && <p className={styles.bcgMas}>+{lista.length - 8} más</p>}
-                      {lista.length === 0 && <p className={styles.bcgVacio}>Ninguno</p>}
+                      {rentabilidad && lista.length > 8 && <p className={styles.bcgMas}>+{lista.length - 8} más</p>}
+                      {rentabilidad && lista.length === 0 && <p className={styles.bcgVacio}>Ninguno</p>}
                     </div>
                   </div>
                 )
