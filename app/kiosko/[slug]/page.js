@@ -73,11 +73,58 @@ function iconoMaridaje(texto = '') {
 const VIEWS = { WELCOME: 'welcome', BROWSE: 'browse', PAIRING: 'pairing', DETAIL: 'detail', WIZARD: 'wizard', SHOWCASE: 'showcase' }
 
 const IDIOMAS = [
-  { id: 'es', flag: '🇪🇸', label: 'ES' },
-  { id: 'en', flag: '🇬🇧', label: 'EN' },
-  { id: 'fr', flag: '🇫🇷', label: 'FR' },
-  { id: 'de', flag: '🇩🇪', label: 'DE' },
+  { id: 'es', flag: '🇪🇸' },
+  { id: 'en', flag: '🇬🇧' },
+  { id: 'fr', flag: '🇫🇷' },
+  { id: 'de', flag: '🇩🇪' },
 ]
+
+const T = {
+  es: {
+    explorar: 'Explorar vinos', elegir: 'Ayúdame\na elegir', maridaje: '¿Con qué\nlo tomo?',
+    volver: '← Volver', inicio: 'Inicio', atras: 'Atrás', nuevaBusqueda: 'Empezar de nuevo',
+    pairingTitle: '¿Para qué buscas el vino?',
+    pairingSub: 'Dinos el plato, momento u ocasión y te recomendamos el vino perfecto de nuestra selección',
+    pairingPlaceholder: 'Ej: cigalas a la plancha, cordero asado, queso curado, celebración especial…',
+    buscando: '⏳ Consultando…', buscar: '🔍 Buscar vinos', ideasRapidas: 'Ideas rápidas:',
+    intentarDeNuevo: 'Intentar de nuevo',
+    wizardTitle: 'Ayúdame a elegir',
+    q0: '¿Para qué ocasión buscas el vino?', q1: '¿Qué estilo suele gustar?', q2: '¿Cuál es el presupuesto?',
+  },
+  en: {
+    explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?',
+    volver: '← Back', inicio: 'Home', atras: 'Back', nuevaBusqueda: 'Start over',
+    pairingTitle: 'What are you looking for?',
+    pairingSub: 'Tell us the dish, occasion or moment and we\'ll recommend the perfect wine from our selection',
+    pairingPlaceholder: 'E.g: grilled prawns, roast lamb, aged cheese, special celebration…',
+    buscando: '⏳ Searching…', buscar: '🔍 Find wines', ideasRapidas: 'Quick ideas:',
+    intentarDeNuevo: 'Try again',
+    wizardTitle: 'Help me choose',
+    q0: 'What occasion are you shopping for?', q1: 'What style do you prefer?', q2: 'What\'s your budget?',
+  },
+  fr: {
+    explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?',
+    volver: '← Retour', inicio: 'Accueil', atras: 'Retour', nuevaBusqueda: 'Recommencer',
+    pairingTitle: 'Pour quel plat cherchez-vous ?',
+    pairingSub: 'Dites-nous le plat, le moment ou l\'occasion et nous vous recommandons le vin parfait',
+    pairingPlaceholder: 'Ex : homard grillé, agneau rôti, fromage affiné, occasion spéciale…',
+    buscando: '⏳ Recherche…', buscar: '🔍 Trouver des vins', ideasRapidas: 'Idées rapides :',
+    intentarDeNuevo: 'Réessayer',
+    wizardTitle: 'Aidez-moi à choisir',
+    q0: 'Pour quelle occasion cherchez-vous ?', q1: 'Quel style préférez-vous ?', q2: 'Quel est votre budget ?',
+  },
+  de: {
+    explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?',
+    volver: '← Zurück', inicio: 'Start', atras: 'Zurück', nuevaBusqueda: 'Neu starten',
+    pairingTitle: 'Für welches Gericht suchen Sie?',
+    pairingSub: 'Sagen Sie uns das Gericht oder den Anlass und wir empfehlen den perfekten Wein',
+    pairingPlaceholder: 'Z.B.: Gegrillte Garnelen, Lammbraten, gereifter Käse, besonderer Anlass…',
+    buscando: '⏳ Suche…', buscar: '🔍 Weine suchen', ideasRapidas: 'Schnelle Ideen:',
+    intentarDeNuevo: 'Erneut versuchen',
+    wizardTitle: 'Hilf mir wählen',
+    q0: 'Für welchen Anlass suchen Sie?', q1: 'Welchen Stil bevorzugen Sie?', q2: 'Was ist Ihr Budget?',
+  },
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -462,15 +509,15 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       )}
       <div className={styles.wizardHeader}>
         <button className={styles.backBtn} onClick={resultado ? reset : (step === 0 ? onBack : () => setStep(s => s - 1))} type="button">
-          ← {resultado ? 'Empezar de nuevo' : step === 0 ? 'Inicio' : 'Atrás'}
+          ← {resultado ? T[lang].nuevaBusqueda : step === 0 ? T[lang].inicio : T[lang].atras}
         </button>
-        <h2 className={styles.wizardTitle}>Ayúdame a elegir</h2>
+        <h2 className={styles.wizardTitle}>{T[lang].wizardTitle}</h2>
       </div>
 
       {/* Paso 0 — Ocasión */}
       {step === 0 && (
         <div className={styles.wizardStep}>
-          <p className={styles.wizardQuestion}>¿Para qué ocasión buscas el vino?</p>
+          <p className={styles.wizardQuestion}>{T[lang].q0}</p>
           <div className={styles.wizardOcasiones}>
             {OCASIONES.map(o => (
               <button key={o.id} className={styles.wizardOcasionBtn} onClick={() => selOcasion(o.id)} type="button"
@@ -486,7 +533,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       {/* Paso 1 — Estilo */}
       {step === 1 && (
         <div className={styles.wizardStep}>
-          <p className={styles.wizardQuestion}>¿Qué estilo suele gustar?</p>
+          <p className={styles.wizardQuestion}>{T[lang].q1}</p>
           <div className={styles.wizardEstilos}>
             {ESTILOS.map(e => (
               <button key={e.id} className={styles.wizardEstiloBtn} onClick={() => selEstilo(e.id)} type="button"
@@ -501,7 +548,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       {/* Paso 2 — Presupuesto */}
       {step === 2 && (
         <div className={styles.wizardStep}>
-          <p className={styles.wizardQuestion}>¿Cuál es el presupuesto?</p>
+          <p className={styles.wizardQuestion}>{T[lang].q2}</p>
           <div className={styles.wizardPresupuestos}>
             {PRESUPUESTOS.map(p => (
               <button key={p.id} className={styles.wizardPresupuestoBtn} onClick={() => selPresupuesto(p.id)} type="button"
@@ -714,25 +761,25 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBa
         </div>
       )}
       <div className={styles.pairingHeader}>
-        <button className={styles.backBtn} onClick={onBack} type="button">← Volver</button>
-        <h2 className={styles.pairingTitle}>¿Para qué buscas el vino?</h2>
-        <p className={styles.pairingSubtitle}>Dinos el plato, momento u ocasión y te recomendamos el vino perfecto de nuestra selección</p>
+        <button className={styles.backBtn} onClick={onBack} type="button">{T[lang].volver}</button>
+        <h2 className={styles.pairingTitle}>{T[lang].pairingTitle}</h2>
+        <p className={styles.pairingSubtitle}>{T[lang].pairingSub}</p>
       </div>
       <div className={styles.pairingInputArea}>
         <textarea ref={textareaRef} className={styles.pairingTextarea} value={consulta}
           onChange={e => setConsulta(e.target.value)}
-          placeholder="Ej: cigalas a la plancha, cordero asado, queso curado, celebración especial..."
+          placeholder={T[lang].pairingPlaceholder}
           rows={3} maxLength={400}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); consultar() } }}
         />
         <button className={styles.pairingSubmitBtn} style={{ background: colorAcento }}
           onClick={() => consultar()} disabled={cargando || !consulta.trim()} type="button">
-          {cargando ? '⏳ Consultando...' : '🔍 Buscar vinos'}
+          {cargando ? T[lang].buscando : T[lang].buscar}
         </button>
       </div>
       {!resultado && !cargando && !error && (
         <div className={styles.sugerencias}>
-          <p className={styles.sugerenciasLabel}>Ideas rápidas:</p>
+          <p className={styles.sugerenciasLabel}>{T[lang].ideasRapidas}</p>
           <div className={styles.sugerenciasGrid}>
             {SUGERENCIAS_MARIDAJE.map(s => (
               <button key={s} className={styles.sugerenciaBtn} onClick={() => { setConsulta(s); consultar(s) }} type="button">{s}</button>
@@ -740,7 +787,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBa
           </div>
         </div>
       )}
-      {error && <div className={styles.pairingError}><p>{error}</p><button onClick={() => setError('')} type="button">Intentar de nuevo</button></div>}
+      {error && <div className={styles.pairingError}><p>{error}</p><button onClick={() => setError('')} type="button">{T[lang].intentarDeNuevo}</button></div>}
       {resultado && (
         <div className={styles.pairingResultados}>
           {resultado.intro && <p className={styles.pairingIntro}>{resultado.intro}</p>}
@@ -1028,17 +1075,17 @@ export default function KioskoPage() {
             <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.BROWSE)} type="button"
               style={{ '--acento': colorAcento }}>
               <span className={styles.welcomeActionIcon}>🍾</span>
-              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>Explorar vinos</span>
+              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].explorar}</span>
             </button>
             <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.WIZARD)} type="button"
               style={{ '--acento': colorAcento }}>
               <span className={styles.welcomeActionIcon}>🤔</span>
-              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>Ayúdame a elegir</span>
+              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].elegir}</span>
             </button>
             <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.PAIRING)} type="button"
               style={{ '--acento': colorAcento }}>
               <span className={styles.welcomeActionIcon}>🍽️</span>
-              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>¿Con qué lo tomo?</span>
+              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].maridaje}</span>
             </button>
           </div>
 
@@ -1047,8 +1094,8 @@ export default function KioskoPage() {
               <button key={i.id} type="button"
                 className={`${styles.langBtn} ${lang === i.id ? styles.langBtnActive : ''}`}
                 onClick={() => setLang(i.id)}
-                style={lang === i.id ? { borderColor: colorAcento, color: colorAcento } : {}}>
-                {i.flag} {i.label}
+                style={lang === i.id ? { borderColor: colorAcento } : {}}>
+                {i.flag}
               </button>
             ))}
           </div>

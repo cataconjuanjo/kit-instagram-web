@@ -296,26 +296,40 @@ function AjustesTab({ slug, tienda, onSaved }) {
           </PremiumLock>
         )}
 
-        {/* Widget embebible */}
-        <div className={styles.ajustesSec}>
-          <p className={styles.ajustesSecTitulo}>Widget para tu web</p>
-          <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
-            Pega este código en cualquier web para añadir un botón flotante que abre el kiosko en un panel lateral.
-          </p>
-          {(() => {
-            const base = typeof window !== 'undefined' ? window.location.origin : 'https://cataconjuanjo.com'
-            const code = `<script src="${base}/api/kiosko/${slug}/widget"><\/script>`
-            return (
-              <div className={styles.widgetEmbedBox}>
-                <code className={styles.widgetEmbedCode}>{code}</code>
-                <button type="button" className={styles.widgetCopyBtn}
-                  onClick={() => { navigator.clipboard?.writeText(code); }}>
-                  Copiar
-                </button>
+        {/* Widget embebible — solo Premium */}
+        {esPremium ? (
+          <div className={styles.ajustesSec}>
+            <p className={styles.ajustesSecTitulo}>Widget para tu web <span className={styles.premiumTag}>Premium</span></p>
+            <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
+              Pega este código en cualquier web para añadir un botón flotante que abre el kiosko en un panel lateral.
+            </p>
+            {(() => {
+              const base = typeof window !== 'undefined' ? window.location.origin : 'https://cataconjuanjo.com'
+              const code = `<script src="${base}/api/kiosko/${slug}/widget"><\/script>`
+              return (
+                <div className={styles.widgetEmbedBox}>
+                  <code className={styles.widgetEmbedCode}>{code}</code>
+                  <button type="button" className={styles.widgetCopyBtn}
+                    onClick={() => { navigator.clipboard?.writeText(code); }}>
+                    Copiar
+                  </button>
+                </div>
+              )
+            })()}
+          </div>
+        ) : (
+          <PremiumLock>
+            <div className={styles.ajustesSec}>
+              <p className={styles.ajustesSecTitulo}>Widget para tu web</p>
+              <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
+                Añade el kiosko como botón flotante en tu web. Disponible en plan Premium.
+              </p>
+              <div className={styles.widgetEmbedBox} style={{ opacity: .45 }}>
+                <code className={styles.widgetEmbedCode}>&lt;script src="..."&gt;&lt;/script&gt;</code>
               </div>
-            )
-          })()}
-        </div>
+            </div>
+          </PremiumLock>
+        )}
 
         {/* Guardar */}
         <div className={styles.ajustesActions}>
@@ -904,8 +918,19 @@ export default function AdminKioskoPage() {
         <AjustesTab slug={slug} tienda={tienda} onSaved={cargar} />
       )}
 
-      {/* Analítica */}
-      {tab === 'analitica' && (
+      {/* Analítica — bloqueada en plan Básico */}
+      {tab === 'analitica' && tienda?.plan === 'basico' && (
+        <div className={styles.premiumGateWrap}>
+          <div className={styles.premiumGateBox}>
+            <span className={styles.premiumGateIcon}>📊</span>
+            <p className={styles.premiumGateTitle}>Analítica — Plan Premium</p>
+            <p className={styles.premiumGateDesc}>Accede a búsquedas, vinos más recomendados, tendencias semanales, predicción de agotamiento y alertas de stock.</p>
+            <span className={styles.premiumGateBadge}>Premium</span>
+          </div>
+        </div>
+      )}
+
+      {tab === 'analitica' && tienda?.plan !== 'basico' && (
         <div className={styles.analiticaWrap}>
           {analiticaLoad && <p className={styles.analiticaLoading}>Cargando datos…</p>}
           {!analiticaLoad && analitica && (() => {
@@ -1070,8 +1095,8 @@ export default function AdminKioskoPage() {
         </div>
       )}
 
-      {/* Rentabilidad — siempre visible en pestaña analítica */}
-      {tab === 'analitica' && (
+      {/* Rentabilidad — solo en Premium */}
+      {tab === 'analitica' && esPremium && (
         <div style={{ padding: '0 1.75rem 1.75rem' }}>
           <div className={styles.analiticaBloque}>
             <div className={styles.analiticaBloqueHeader}>
