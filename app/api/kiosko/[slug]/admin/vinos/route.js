@@ -17,13 +17,16 @@ export async function GET(request, { params }) {
 
   const { data, error } = await supabaseAdmin
     .from('vinos_tienda')
-    .select('*')
+    .select('id, nombre, bodega, tipo, uva, region, pais, anada, precio_pvp, precio_coste, stock, ubicacion_estanteria, foto_url, notas_cata, descripcion, puntuacion, destacado, activo, ficha_ia')
     .eq('tienda_id', tiendaId)
     .order('destacado', { ascending: false })
     .order('nombre')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ vinos: data || [] })
+
+  // Sustituir ficha_ia (JSON grande) por booleano para reducir payload
+  const vinos = (data || []).map(({ ficha_ia, ...v }) => ({ ...v, has_ficha_ia: ficha_ia != null }))
+  return NextResponse.json({ vinos })
 }
 
 export async function POST(request, { params }) {

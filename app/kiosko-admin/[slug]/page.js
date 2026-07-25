@@ -594,7 +594,7 @@ export default function AdminKioskoPage() {
         if (filtroStock === 'con' && !(Number(v.stock) > 0)) return false
         if (filtroDestacado === 'destacado' && !v.destacado) return false
         if (filtroDestacado === 'sin_foto'  && v.foto_url)   return false
-        if (filtroDestacado === 'sin_ia'    && v.ficha_ia)   return false
+        if (filtroDestacado === 'sin_ia'    && v.has_ficha_ia) return false
         if (precioMin !== '' && Number(v.precio_pvp || 0) < Number(precioMin)) return false
         if (precioMax !== '' && Number(v.precio_pvp || 0) > Number(precioMax)) return false
         if (!busqueda) return true
@@ -634,13 +634,15 @@ export default function AdminKioskoPage() {
     return ordenDir === 'asc' ? ' ↑' : ' ↓'
   }
 
-  // Stats
-  const vinosActivos  = vinos.filter(v => v.activo)
-  const sinFoto       = vinos.filter(v => !v.foto_url).length
-  const sinPrecio     = vinos.filter(v => !v.precio_pvp).length
-  const sinStock      = vinos.filter(v => !Number(v.stock)).length
-  const nDestacados   = vinos.filter(v => v.destacado).length
-  const conFichaIA    = vinos.filter(v => v.ficha_ia).length
+  // Stats (memoizadas — se recalculan solo cuando cambia el catálogo)
+  const { sinFoto, sinPrecio, sinStock, nActivos, nDestacados, conFichaIA } = useMemo(() => ({
+    sinFoto:     vinos.filter(v => !v.foto_url).length,
+    sinPrecio:   vinos.filter(v => !v.precio_pvp).length,
+    sinStock:    vinos.filter(v => !Number(v.stock)).length,
+    nActivos:    vinos.filter(v => v.activo).length,
+    nDestacados: vinos.filter(v => v.destacado).length,
+    conFichaIA:  vinos.filter(v => v.has_ficha_ia).length,
+  }), [vinos])
 
   function exportarCSV() {
     const a = document.createElement('a')
@@ -724,7 +726,7 @@ export default function AdminKioskoPage() {
           <span className={styles.statLabel}>Total</span>
         </div>
         <div className={styles.statCard}>
-          <span className={styles.statNum}>{vinosActivos.length}</span>
+          <span className={styles.statNum}>{nActivos}</span>
           <span className={styles.statLabel}>Activos</span>
         </div>
         <div className={`${styles.statCard} ${sinFoto ? styles.statWarn : ''}`}>
