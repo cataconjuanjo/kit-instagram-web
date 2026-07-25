@@ -265,7 +265,7 @@ function WineCard({ vino, onClick }) {
 
 // ── Ficha de vino enriquecida ─────────────────────────────────────────────────
 
-function WineDetail({ vino, slug, colorAcento, colorPrimario, onClose, onPairingFrom }) {
+function WineDetail({ vino, slug, colorAcento, onClose }) {
   const fichaInicial = useMemo(() => {
     if (!vino?.ficha_ia) return null
     try { return typeof vino.ficha_ia === 'string' ? JSON.parse(vino.ficha_ia) : vino.ficha_ia }
@@ -274,8 +274,6 @@ function WineDetail({ vino, slug, colorAcento, colorPrimario, onClose, onPairing
 
   const [ficha, setFicha] = useState(fichaInicial)
   const [fichaReady, setFichaReady] = useState(!!fichaInicial)
-  const [mostrarFoodPairing, setMostrarFoodPairing] = useState(false)
-
   useEffect(() => {
     if (!vino?.id || fichaInicial) return  // ya cacheada: sin llamada a API
     setFichaReady(false)
@@ -369,59 +367,9 @@ function WineDetail({ vino, slug, colorAcento, colorPrimario, onClose, onPairing
               </div>
             )}
 
-            <button className={styles.detailPairingBtn} onClick={() => setMostrarFoodPairing(true)} type="button">
-              ¿Con qué lo tomo?
-            </button>
           </div>
         </div>
       </div>
-
-      {/* Overlay: maridajes específicos de este vino */}
-      {mostrarFoodPairing && (
-        <div className={styles.foodPairingOverlay} onClick={() => setMostrarFoodPairing(false)}>
-          <div className={styles.foodPairingPanel} onClick={e => e.stopPropagation()}>
-            <div className={styles.detailHandle} />
-            <p className={styles.foodPairingTitle}>
-              Este {TIPO_LABELS[vino.tipo] || 'vino'} va bien con
-            </p>
-
-            {!fichaReady ? (
-              <div className={styles.skelNotas}>
-                <div className={styles.skelLine} />
-                <div className={styles.skelLine} style={{ width: '70%' }} />
-              </div>
-            ) : ficha?.maridajes?.length > 0 ? (
-              <div className={styles.foodPairingTags}>
-                {ficha.maridajes.map((m, i) => (
-                  <span key={i} className={styles.foodPairingTag}>
-                    <span className={styles.foodPairingTagIcon}>{iconoMaridaje(m)}</span>
-                    {m}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className={styles.foodPairingEmpty}>Sin datos de maridaje disponibles</p>
-            )}
-
-            {fichaReady && ficha?.notas && (
-              <p className={styles.foodPairingNotas}>{ficha.notas}</p>
-            )}
-
-            <div className={styles.foodPairingActions}>
-              <button className={styles.foodPairingSearch}
-                style={{ background: colorAcento, color: colorPrimario }}
-                onClick={() => { setMostrarFoodPairing(false); onPairingFrom(vino) }}
-                type="button">
-                Buscar otro vino para mi plato →
-              </button>
-              <button className={styles.foodPairingClose}
-                onClick={() => setMostrarFoodPairing(false)} type="button">
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -1119,8 +1067,8 @@ export default function KioskoPage() {
 
       {/* DETALLE */}
       {view === VIEWS.DETAIL && vinoDetalle && (
-        <WineDetail vino={vinoDetalle} slug={slug} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onClose={volverDeDetalle} onPairingFrom={abrirPairingDesdeDetalle} />
+        <WineDetail vino={vinoDetalle} slug={slug} colorAcento={colorAcento}
+          onClose={volverDeDetalle} />
       )}
     </div>
   )

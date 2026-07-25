@@ -1362,10 +1362,10 @@
 }
 .wizardOcasiones {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.2rem;
   width: 100%;
-  max-width: 600px;
+  max-width: 700px;
 }
 .wizardOcasionBtn {
   display: flex;
@@ -1637,7 +1637,7 @@
 }
 
 @media (max-width: 600px) {
-  .wizardOcasiones { grid-template-columns: 1fr 1fr; gap: .8rem; }
+  .wizardOcasiones { grid-template-columns: 1fr; gap: .8rem; }
   .wizardEstilos { grid-template-columns: 1fr 1fr; }
   .wizardPresupuestos { grid-template-columns: 1fr 1fr; }
   .fichaExtra { padding: .9rem; }
