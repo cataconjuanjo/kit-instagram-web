@@ -339,14 +339,7 @@ export default function AdminKioskoPage() {
   const [ordenPor, setOrdenPor]           = useState('nombre')
   const [ordenDir, setOrdenDir]           = useState('asc')
 
-  const [filtroRegion, setFiltroRegion]     = useState('')
-  const [filtroPais, setFiltroPais]         = useState('')
-  const [filtroStock, setFiltroStock]       = useState('todos')   // 'todos' | 'con' | 'sin'
-  const [filtroDestacado, setFiltroDestacado] = useState('todos') // 'todos' | 'destacado' | 'sin_foto' | 'sin_ia'
-  const [precioMin, setPrecioMin]           = useState('')
-  const [precioMax, setPrecioMax]           = useState('')
-  const [ordenPor, setOrdenPor]             = useState('nombre')
-  const [ordenDir, setOrdenDir]             = useState('asc')
+  const [filtroDestacado, setFiltroDestacado] = useState('todos')
 
   const [modalImport, setModalImport]     = useState(false)
   const [archivoImport, setArchivoImport] = useState(null)
