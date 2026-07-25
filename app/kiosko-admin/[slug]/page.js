@@ -606,7 +606,7 @@ export default function AdminKioskoPage() {
       })
       .sort((a, b) => {
         let va = a[ordenPor], vb = b[ordenPor]
-        if (['precio_pvp', 'stock', 'puntuacion'].includes(ordenPor)) {
+        if (['precio_pvp', 'precio_coste', 'stock', 'puntuacion'].includes(ordenPor)) {
           va = Number(va) || 0; vb = Number(vb) || 0
         } else {
           va = String(va || '').toLowerCase(); vb = String(vb || '').toLowerCase()
@@ -637,9 +637,10 @@ export default function AdminKioskoPage() {
   }
 
   // Stats (memoizadas — se recalculan solo cuando cambia el catálogo)
-  const { sinFoto, sinPrecio, sinStock, nActivos, nDestacados, conFichaIA } = useMemo(() => ({
+  const { sinFoto, sinPrecio, sinCoste, sinStock, nActivos, nDestacados, conFichaIA } = useMemo(() => ({
     sinFoto:     vinos.filter(v => !v.foto_url).length,
     sinPrecio:   vinos.filter(v => !v.precio_pvp).length,
+    sinCoste:    vinos.filter(v => v.precio_pvp && !v.precio_coste).length,
     sinStock:    vinos.filter(v => !Number(v.stock)).length,
     nActivos:    vinos.filter(v => v.activo).length,
     nDestacados: vinos.filter(v => v.destacado).length,
@@ -655,6 +656,28 @@ export default function AdminKioskoPage() {
     } catch {}
     finally { setAnaliticaLoad(false) }
   }
+
+  const rentabilidad = useMemo(() => {
+    const conCoste = vinos.filter(v => v.activo && Number(v.precio_pvp) > 0 && Number(v.precio_coste) > 0)
+    if (conCoste.length < 2) return null
+    const popularidad = {}
+    if (analitica?.topVinos) analitica.topVinos.forEach(v => { popularidad[String(v.id)] = v.veces })
+    const calculados = conCoste.map(v => ({
+      id: v.id, nombre: v.nombre, bodega: v.bodega, tipo: v.tipo,
+      margenPct: Math.round(((Number(v.precio_pvp) - Number(v.precio_coste)) / Number(v.precio_pvp)) * 100),
+      recomendaciones: popularidad[String(v.id)] || 0,
+    }))
+    const margenMedio = calculados.reduce((s, v) => s + v.margenPct, 0) / calculados.length
+    const recomMedio  = calculados.reduce((s, v) => s + v.recomendaciones, 0) / calculados.length
+    const clasificados = calculados.map(v => ({
+      ...v,
+      categoria: v.margenPct >= margenMedio && v.recomendaciones >= recomMedio ? 'estrella'
+        : v.margenPct <  margenMedio && v.recomendaciones >= recomMedio ? 'caballo'
+        : v.margenPct >= margenMedio && v.recomendaciones <  recomMedio ? 'joya'
+        : 'revisar',
+    }))
+    return { clasificados, margenMedio: Math.round(margenMedio), recomMedio: Math.round(recomMedio), sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length }
+  }, [vinos, analitica])
 
   function exportarCSV() {
     const a = document.createElement('a')
@@ -830,6 +853,49 @@ export default function AdminKioskoPage() {
         </div>
       )}
 
+      {/* Rentabilidad */}
+      {tab === 'analitica' && rentabilidad && (
+        <div style={{ padding: '0 1.75rem 1.75rem' }}>
+          <div className={styles.analiticaBloque}>
+            <div className={styles.analiticaBloqueHeader}>
+              <div>
+                <h3 className={styles.analiticaBloqueTitle}>Análisis de rentabilidad</h3>
+                <p className={styles.analiticaBloqueDesc}>
+                  Cruce entre margen bruto y popularidad (veces recomendado por el sumiller) — umbral margen {rentabilidad.margenMedio}%, umbral recomendaciones {rentabilidad.recomMedio}
+                  {rentabilidad.sinCoste > 0 && ` · ${rentabilidad.sinCoste} vino${rentabilidad.sinCoste > 1 ? 's' : ''} activo${rentabilidad.sinCoste > 1 ? 's' : ''} sin precio de coste (no aparecen)`}
+                </p>
+              </div>
+            </div>
+            <div className={styles.bcgGrid}>
+              {[
+                { id:'estrella', icon:'⭐', label:'Estrella', desc:'Alto margen · Alta demanda', color:'#7a5a1a', borde:'#d4a636', fondo:'#fdf8ee' },
+                { id:'joya',     icon:'💎', label:'Joya oculta', desc:'Alto margen · Baja demanda', color:'#2e6b47', borde:'#4a9c69', fondo:'#eef7f2' },
+                { id:'caballo',  icon:'🐎', label:'Caballo de batalla', desc:'Bajo margen · Alta demanda', color:'#1a4f7a', borde:'#2e7ab8', fondo:'#eef4fb' },
+                { id:'revisar',  icon:'⚠️',  label:'Revisar', desc:'Bajo margen · Baja demanda', color:'#7a2020', borde:'#c03030', fondo:'#fdf0f0' },
+              ].map(cat => {
+                const lista = rentabilidad.clasificados.filter(v => v.categoria === cat.id)
+                return (
+                  <div key={cat.id} className={styles.bcgCuadrante} style={{ borderColor: cat.borde, background: cat.fondo }}>
+                    <p className={styles.bcgCuadranteTitle} style={{ color: cat.color }}>{cat.icon} {cat.label} <span className={styles.bcgCount}>{lista.length}</span></p>
+                    <p className={styles.bcgCuadranteDesc}>{cat.desc}</p>
+                    <div className={styles.bcgVinoList}>
+                      {lista.slice(0,8).map(v => (
+                        <div key={v.id} className={styles.bcgVinoItem}>
+                          <span className={styles.bcgVinoNombre}>{v.nombre}</span>
+                          <span className={styles.bcgVinoStats}>{v.margenPct}% · {v.recomendaciones}×</span>
+                        </div>
+                      ))}
+                      {lista.length > 8 && <p className={styles.bcgMas}>+{lista.length - 8} más</p>}
+                      {lista.length === 0 && <p className={styles.bcgVacio}>Ninguno</p>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Catálogo: toolbar + tabla */}
       {tab === 'catalogo' && <>
 
@@ -850,6 +916,10 @@ export default function AdminKioskoPage() {
         <div className={`${styles.statCard} ${sinPrecio ? styles.statWarn : ''}`}>
           <span className={styles.statNum}>{sinPrecio}</span>
           <span className={styles.statLabel}>Sin PVP</span>
+        </div>
+        <div className={`${styles.statCard} ${sinCoste ? styles.statWarn : ''}`}>
+          <span className={styles.statNum}>{sinCoste}</span>
+          <span className={styles.statLabel}>Sin coste</span>
         </div>
         <div className={`${styles.statCard} ${sinStock ? styles.statWarn : ''}`}>
           <span className={styles.statNum}>{sinStock}</span>
@@ -933,6 +1003,8 @@ export default function AdminKioskoPage() {
               <th className={styles.thSortable} onClick={() => sortHead('uva')}>Uva{sortArrow('uva')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('anada')}>Añada{sortArrow('anada')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>
+              <th className={styles.thSortable} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>
+              <th>Margen</th>
               <th className={styles.thSortable} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>
               <th>Estantería</th>
               <th className={styles.thCenter}>★</th>
@@ -1025,6 +1097,34 @@ export default function AdminKioskoPage() {
                       <span className={styles.editIcon}>✎</span>
                     </span>
                   )}
+                </td>
+
+                {/* Coste inline */}
+                <td className={styles.tdEditable} onClick={e => startInline(v.id, 'precio_coste', v.precio_coste, e)}>
+                  {inlineEdit?.id === v.id && inlineEdit.campo === 'precio_coste' ? (
+                    <input
+                      className={styles.inlineInput}
+                      type="number" min="0" step="0.01"
+                      value={inlineEdit.valor}
+                      onChange={e => setInlineEdit(p => ({ ...p, valor: e.target.value }))}
+                      onBlur={guardarInline}
+                      onKeyDown={e => { if (e.key === 'Enter') guardarInline(); if (e.key === 'Escape') setInlineEdit(null) }}
+                      autoFocus
+                      onClick={e => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span className={styles.inlineValue}>
+                      {v.precio_coste ? `${Number(v.precio_coste).toFixed(2)} €` : <em className={styles.dash}>—</em>}
+                      <span className={styles.editIcon}>✎</span>
+                    </span>
+                  )}
+                </td>
+
+                {/* Margen */}
+                <td>
+                  {Number(v.precio_pvp) > 0 && Number(v.precio_coste) > 0
+                    ? (() => { const m = Math.round(((Number(v.precio_pvp) - Number(v.precio_coste)) / Number(v.precio_pvp)) * 100); return <span className={`${styles.margenBadge} ${m >= 65 ? styles.margenHigh : m >= 50 ? styles.margenMid : styles.margenLow}`}>{m}%</span> })()
+                    : <em className={styles.dash}>—</em>}
                 </td>
 
                 {/* Stock inline */}

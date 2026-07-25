@@ -1131,6 +1131,20 @@
 
 .thSortable:hover { color: #c9a96e !important; }
 
+/* ── Margen badge ─────────────────────────────────────────────────────────── */
+.margenBadge {
+  display: inline-block;
+  font-size: .72rem;
+  font-weight: 700;
+  padding: .15rem .5rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.margenHigh { background: #d4f0d4; color: #1a6a1a; }
+.margenMid  { background: #fdf5dc; color: #7a5f00; }
+.margenLow  { background: #fce8e8; color: #c44; }
+
 /* ── Analítica ───────────────────────────────────────────────────────────── */
 .analiticaWrap {
   padding: 1.75rem;
@@ -1358,4 +1372,93 @@
 @media (max-width: 600px) {
   .analiticaRecienteRow { grid-template-columns: 60px 1fr auto; }
   .analiticaRecienteVinos { display: none; }
+}
+
+/* ── BCG Rentabilidad ────────────────────────────────────────────────────── */
+.bcgGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 700px) {
+  .bcgGrid { grid-template-columns: 1fr; }
+}
+
+.bcgCuadrante {
+  border: 1.5px solid;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+}
+
+.bcgCuadranteTitle {
+  font-size: .9rem;
+  font-weight: 800;
+  margin: 0 0 .15rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+
+.bcgCount {
+  font-size: .7rem;
+  font-weight: 700;
+  background: rgba(0,0,0,.08);
+  border-radius: 20px;
+  padding: .1rem .45rem;
+  margin-left: auto;
+}
+
+.bcgCuadranteDesc {
+  font-size: .73rem;
+  opacity: .65;
+  margin: 0 0 .75rem;
+}
+
+.bcgVinoList {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+
+.bcgVinoItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .3rem .4rem;
+  border-radius: 6px;
+  background: rgba(0,0,0,.03);
+}
+
+.bcgVinoNombre {
+  font-size: .8rem;
+  font-weight: 500;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bcgVinoStats {
+  font-size: .72rem;
+  opacity: .6;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.bcgMas {
+  font-size: .75rem;
+  opacity: .5;
+  text-align: right;
+  margin: .25rem 0 0;
+  font-style: italic;
+}
+
+.bcgVacio {
+  font-size: .8rem;
+  opacity: .4;
+  font-style: italic;
+  padding: .25rem .4rem;
 }
