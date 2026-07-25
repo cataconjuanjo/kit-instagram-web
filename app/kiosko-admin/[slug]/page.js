@@ -8,7 +8,7 @@ import { isAdminEmail } from '../../demo'
 
 const TIPOS = ['tinto','blanco','rosado','espumoso','generoso','dulce','naranja','sin_alcohol']
 
-const WHATSAPP_VENTAS = '34600000000' // ← reemplaza con tu número real
+const WHATSAPP_VENTAS = '34601502868'
 
 // ── Constantes de personalización ─────────────────────────────────────────────
 
@@ -478,6 +478,7 @@ export default function AdminKioskoPage() {
   const [cargando, setCargando]     = useState(true)
   const [error, setError]           = useState('')
   const [accesoDenegado, setAccesoDenegado] = useState(false)
+  const [esAdminUsuario, setEsAdminUsuario] = useState(false)
 
   const [modal, setModal]         = useState(null)  // null | 'nuevo' | vino
   const [form, setForm]           = useState(VINO_VACIO)
@@ -505,7 +506,8 @@ export default function AdminKioskoPage() {
 
   useEffect(() => {
     if (tienda?.plan !== 'trial') return
-    if (previewTrial) return  // modo preview: no arranca el reloj
+    if (previewTrial) return   // modo preview: no arranca el reloj
+    if (esAdminUsuario) return // admin nunca consume el trial
     let cleanup
     async function iniciarTrial() {
       let expiresAt = tienda.trial_expires_at
@@ -524,7 +526,7 @@ export default function AdminKioskoPage() {
     }
     iniciarTrial()
     return () => cleanup?.()
-  }, [tienda?.plan, tienda?.trial_expires_at, slug, previewTrial])
+  }, [tienda?.plan, tienda?.trial_expires_at, slug, previewTrial, esAdminUsuario])
 
   const [busqueda, setBusqueda]           = useState('')
   const [filtroTipo, setFiltroTipo]       = useState('')
@@ -563,6 +565,7 @@ export default function AdminKioskoPage() {
       })
       const meData = await meRes.json()
       const esAdmin  = isAdminEmail(session.user?.email)
+      setEsAdminUsuario(esAdmin)
       const esPropio = meData.tienda?.slug === slug
       if (!esAdmin && !esPropio) {
         setAccesoDenegado(true)
