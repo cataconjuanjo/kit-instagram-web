@@ -8,6 +8,8 @@ import { isAdminEmail } from '../../demo'
 
 const TIPOS = ['tinto','blanco','rosado','espumoso','generoso','dulce','naranja','sin_alcohol']
 
+const WHATSAPP_VENTAS = '34600000000' // ← reemplaza con tu número real
+
 // ── Constantes de personalización ─────────────────────────────────────────────
 
 const PALETAS = [
@@ -402,6 +404,64 @@ function AjustesTab({ slug, tienda, onSaved }) {
   )
 }
 
+function TrialGate({ tienda }) {
+  const precioBasico   = 49
+  const setupFee       = tienda.setup_fee_incluido ? null : 100
+  const precioPremium  = tienda.precio_especial || 129
+  const esEspecial     = !!tienda.precio_especial
+
+  function waMsg(plan) {
+    const txt = encodeURIComponent(`Hola, acabo de probar el Kiosko Virtual de ${tienda.nombre || 'mi tienda'} y me interesa el plan ${plan}. ¿Cuándo podemos hablarlo?`)
+    return `https://wa.me/${WHATSAPP_VENTAS}?text=${txt}`
+  }
+
+  return (
+    <div className={styles.trialGate}>
+      <p className={styles.trialGateTitle}>Tu prueba ha terminado 🍷</p>
+      <p className={styles.trialGateDesc}>
+        Has explorado el Kiosko Virtual al completo. Elige tu plan para seguir ofreciendo a tus clientes una experiencia premium.
+      </p>
+      <div className={styles.trialGatePlans}>
+
+        {/* Básico */}
+        <div className={styles.trialPlanCard}>
+          <p className={styles.trialPlanNombre}>Plan Básico</p>
+          <p className={styles.trialPlanPrecio}>{precioBasico} <span style={{ fontSize: '1rem' }}>€/mes</span></p>
+          {setupFee && <p className={styles.trialPlanPrecioSub}>+ {setupFee} € puesta en marcha</p>}
+          <ul className={styles.trialPlanFeatures}>
+            <li>Kiosko táctil completo</li>
+            <li>Catálogo y gestión de stock</li>
+            <li>Precios oferta y multi-idioma</li>
+            <li>Historial de movimientos</li>
+          </ul>
+          <a href={waMsg('Básico')} target="_blank" rel="noreferrer" className={`${styles.trialPlanCta} ${styles.trialPlanCtaSecundario}`}>
+            Quiero el Básico
+          </a>
+        </div>
+
+        {/* Premium */}
+        <div className={`${styles.trialPlanCard} ${styles.trialPlanCardPremium}`}>
+          <span className={styles.trialPlanBadge}>Recomendado</span>
+          <p className={styles.trialPlanNombre}>Plan Premium</p>
+          <p className={styles.trialPlanPrecio}>{precioPremium} <span style={{ fontSize: '1rem' }}>€/mes</span></p>
+          {setupFee && <p className={styles.trialPlanPrecioSub}>+ {setupFee} € puesta en marcha</p>}
+          {esEspecial && <span className={styles.trialPlanEspecial}>★ Precio fundador · Puesta en marcha incluida</span>}
+          <ul className={styles.trialPlanFeatures}>
+            <li>Todo lo del plan Básico</li>
+            <li>Analítica completa de búsquedas</li>
+            <li>Informe semanal por email</li>
+            <li>Alertas de stock y predicción</li>
+            <li>Widget embebible para tu web</li>
+          </ul>
+          <a href={waMsg('Premium')} target="_blank" rel="noreferrer" className={styles.trialPlanCta}>
+            Quiero el Premium →
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const VINO_VACIO = {
   nombre:'', bodega:'', tipo:'', uva:'', anada:'', region:'', pais:'España',
   precio_pvp:'', precio_coste:'', stock:'', ubicacion_estanteria:'',
@@ -436,7 +496,32 @@ export default function AdminKioskoPage() {
   const [analitica, setAnalitica]   = useState(null)
   const [analiticaLoad, setAnaliticaLoad] = useState(false)
 
-  const esPremium = !tienda?.plan || tienda.plan === 'premium'
+  const esPremium = !tienda?.plan || tienda.plan === 'premium' || tienda.plan === 'trial'
+
+  // ── Trial ──────────────────────────────────────────────────────────────────
+  const [trialSegsRestantes, setTrialSegsRestantes] = useState(null)
+
+  useEffect(() => {
+    if (tienda?.plan !== 'trial') return
+    let cleanup
+    async function iniciarTrial() {
+      let expiresAt = tienda.trial_expires_at
+      if (!expiresAt) {
+        const res = await fetch(`/api/kiosko/${slug}/admin/trial-start`, { method: 'POST' })
+        const d = await res.json()
+        expiresAt = d.trial_expires_at
+      }
+      if (!expiresAt) return
+      function tick() {
+        setTrialSegsRestantes(Math.max(0, Math.round((new Date(expiresAt) - Date.now()) / 1000)))
+      }
+      tick()
+      const iv = setInterval(tick, 1000)
+      cleanup = () => clearInterval(iv)
+    }
+    iniciarTrial()
+    return () => cleanup?.()
+  }, [tienda?.plan, tienda?.trial_expires_at, slug])
 
   const [busqueda, setBusqueda]           = useState('')
   const [filtroTipo, setFiltroTipo]       = useState('')
@@ -899,7 +984,17 @@ export default function AdminKioskoPage() {
             </button>
           </>}
         </div>
+        {tienda?.plan === 'trial' && trialSegsRestantes !== null && (
+          <span className={`${styles.trialPill} ${trialSegsRestantes < 600 ? styles.trialPillRed : trialSegsRestantes < 1800 ? styles.trialPillAmber : ''}`}>
+            ⏳ Prueba: {String(Math.floor(trialSegsRestantes / 3600)).padStart(2,'0')}:{String(Math.floor((trialSegsRestantes % 3600) / 60)).padStart(2,'0')}:{String(trialSegsRestantes % 60).padStart(2,'0')}
+          </span>
+        )}
       </header>
+
+      {/* Pantalla de conversión al expirar el trial */}
+      {tienda?.plan === 'trial' && trialSegsRestantes === 0 && (
+        <TrialGate tienda={tienda} />
+      )}
 
       {/* Tab nav */}
       <nav className={styles.tabNav}>
