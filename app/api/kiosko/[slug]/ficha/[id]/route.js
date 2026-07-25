@@ -38,7 +38,7 @@ export async function GET(request, { params }) {
       max_tokens: 600,
       messages: [{
         role: 'user',
-        content: `Eres un sumiller experto generando la ficha para el kiosko de una vinoteca.
+        content: `Eres un experto en vinos generando la ficha para el kiosko de una tienda de vinos.
 
 Datos del vino: ${info}
 ${notasExistentes ? `\nDescripción actual de la tienda: "${notasExistentes}"` : ''}

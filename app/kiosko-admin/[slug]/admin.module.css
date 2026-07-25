@@ -1403,6 +1403,107 @@
   .analiticaRecienteVinos { display: none; }
 }
 
+/* ── Alertas de reposición ───────────────────────────────────────────────── */
+.alertasBloque {
+  background: #fff8f0;
+  border: 1.5px solid #f5c06a;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+
+.alertasBloqueOk {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 10px;
+  padding: .6rem 1rem;
+  font-size: .82rem;
+  color: #166534;
+}
+
+.alertasTitulo {
+  font-size: .9rem;
+  font-weight: 800;
+  color: #92400e;
+  margin: 0 0 .2rem;
+}
+
+.alertasDesc {
+  font-size: .75rem;
+  color: #b45309;
+  margin: 0 0 .75rem;
+}
+
+.alertasList { display: flex; flex-direction: column; gap: .4rem; }
+
+.alertaItem {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .45rem .65rem;
+  border-radius: 8px;
+  font-size: .83rem;
+}
+
+.alertaCritico { background: #fef2f2; border: 1px solid #fca5a5; }
+.alertaBajo    { background: #fffbeb; border: 1px solid #fde68a; }
+
+.alertaIcon    { font-size: 1rem; flex-shrink: 0; }
+.alertaNombre  { flex: 1; font-weight: 600; color: #1a1a2e; }
+.alertaStats   { font-size: .75rem; color: #888; white-space: nowrap; }
+
+/* ── Tendencias semanales ────────────────────────────────────────────────── */
+.tendenciasChart {
+  display: flex;
+  align-items: flex-end;
+  gap: .35rem;
+  margin-top: .75rem;
+  overflow-x: auto;
+  padding-bottom: .25rem;
+}
+
+.tendenciaCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .2rem;
+  flex: 1;
+  min-width: 32px;
+}
+
+.tendenciaBarWrap {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  position: relative;
+}
+
+.tendenciaBarFill {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px 4px 0 0;
+  overflow: hidden;
+  min-height: 3px;
+  transition: height .3s;
+}
+
+.tendenciaSegWizard   { background: #6b8cda; flex-shrink: 0; min-height: 2px; }
+.tendenciaSegMaridaje { background: #c9a96e; flex-shrink: 0; min-height: 2px; }
+
+.tendenciaLabel {
+  font-size: .63rem;
+  color: #bbb;
+  white-space: nowrap;
+  text-align: center;
+  margin-top: .15rem;
+}
+
+.tendenciaNum {
+  font-size: .65rem;
+  font-weight: 700;
+  color: #888;
+}
+
 /* ── BCG Rentabilidad ────────────────────────────────────────────────────── */
 .bcgGrid {
   display: grid;

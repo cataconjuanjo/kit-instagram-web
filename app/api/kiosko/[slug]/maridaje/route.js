@@ -113,7 +113,7 @@ function lineaVino(v) {
 // ── System prompt para el wizard de preferencias ──────────────────────────────
 
 function buildSystemWizard(tienda, listaVinos) {
-  return `Eres el sumiller experto de ${tienda.nombre}, una tienda de vinos${tienda.ciudad ? ` en ${tienda.ciudad}` : ''}.
+  return `Eres el asesor experto en vinos de ${tienda.nombre}, una tienda de vinos${tienda.ciudad ? ` en ${tienda.ciudad}` : ''}.
 El cliente NO busca un maridaje con comida — busca un vino según su ocasión y estilo preferido.
 
 Criterios de selección:
@@ -145,7 +145,7 @@ ${listaVinos}`
 // ── System prompt con metodología Chartier ────────────────────────────────────
 
 function buildSystem(tienda, listaVinos, contextoCriterios) {
-  return `Eres el sumiller experto de ${tienda.nombre}, una tienda especializada en vinos${tienda.ciudad ? ` en ${tienda.ciudad}` : ''}.
+  return `Eres el asesor experto en vinos de ${tienda.nombre}, una tienda especializada en vinos${tienda.ciudad ? ` en ${tienda.ciudad}` : ''}.
 Tu misión: ayudar al cliente a encontrar el vino perfecto para llevarse a casa.
 
 Tu razonamiento:
@@ -338,6 +338,6 @@ export async function POST(request, { params }) {
 
   } catch (err) {
     console.error('kiosko/maridaje error:', err)
-    return NextResponse.json({ error: 'Error al consultar el sumiller' }, { status: 500 })
+    return NextResponse.json({ error: 'Error al consultar el asistente' }, { status: 500 })
   }
 }

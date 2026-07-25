@@ -68,6 +68,23 @@ export async function GET(request, { params }) {
   const semanaActual  = searches.filter(s => s.created_at >= desde7).length
   const semanaAnterior = searches.filter(s => s.created_at >= desde14 && s.created_at < desde7).length
 
+  // ── Tendencias semanales (últimas 8 semanas) ────────────────────────────────
+  const ahora = Date.now()
+  const tendencias = Array.from({ length: 8 }, (_, i) => {
+    const inicioMs = ahora - (8 - i) * 7 * 24 * 60 * 60 * 1000
+    const finMs    = ahora - (7 - i) * 7 * 24 * 60 * 60 * 1000
+    const inicio   = new Date(inicioMs).toISOString()
+    const fin      = new Date(finMs).toISOString()
+    const semana   = searches.filter(s => s.created_at >= inicio && s.created_at < fin)
+    const d        = new Date(inicioMs)
+    return {
+      label:    `${d.getDate()}/${d.getMonth() + 1}`,
+      total:    semana.length,
+      wizard:   semana.filter(s => s.mode === 'wizard').length,
+      maridaje: semana.filter(s => s.mode === 'maridaje').length,
+    }
+  })
+
   return NextResponse.json({
     vacio: false,
     total: searches.length,
@@ -77,6 +94,7 @@ export async function GET(request, { params }) {
     topVinos,
     modos: { wizard: totalWizard, maridaje: totalMaridaje },
     timeline,
+    tendencias,
     recientes: searches.slice(0, 20).map(s => ({
       consulta: s.consulta,
       mode: s.mode,

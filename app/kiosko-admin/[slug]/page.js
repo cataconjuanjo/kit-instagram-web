@@ -43,6 +43,7 @@ function AjustesTab({ slug, tienda, onSaved }) {
     color_primario: tienda?.color_primario || '#0d0d1a',
     color_acento:   tienda?.color_acento   || '#c9a96e',
     font_family:    tienda?.font_family    || 'clasica',
+    informe_email:  tienda?.informe_email  || '',
   })
   const [logoFile,     setLogoFile]     = useState(null)
   const [logoPreview,  setLogoPreview]  = useState(tienda?.logo_url || '')
@@ -246,6 +247,25 @@ function AjustesTab({ slug, tienda, onSaved }) {
                 placeholder="Selección artesanal de los mejores vinos del mundo…" />
             </div>
           </div>
+        </div>
+
+        {/* Informe semanal */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>Informe semanal por email</p>
+          <div className={styles.ajustesFormGrid}>
+            <div className={styles.ajustesFormField}>
+              <label>Email donde recibir el informe</label>
+              <input
+                type="email"
+                value={ajustes.informe_email}
+                onChange={e => cambiar('informe_email', e.target.value)}
+                placeholder="propietario@tienda.com"
+              />
+            </div>
+          </div>
+          <p style={{ fontSize: '.75rem', color: '#aaa', margin: '.5rem 0 0' }}>
+            Cada lunes a las 8:00 recibirás un resumen con las búsquedas de la semana, los vinos más recomendados y alertas de stock. Deja el campo vacío para no recibir el informe.
+          </p>
         </div>
 
         {/* Guardar */}
@@ -679,6 +699,20 @@ export default function AdminKioskoPage() {
     return { clasificados, margenMedio: Math.round(margenMedio), recomMedio: Math.round(recomMedio), sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length }
   }, [vinos, analitica])
 
+  const alertasStock = useMemo(() => {
+    if (!analitica?.topVinos?.length) return []
+    return analitica.topVinos
+      .map(tv => {
+        const v = vinos.find(w => String(w.id) === String(tv.id))
+        if (!v || !v.activo) return null
+        const stock = Number(v.stock)
+        if (stock > 5) return null
+        return { id: v.id, nombre: v.nombre, bodega: v.bodega, stock, recomendaciones: tv.veces, critico: stock === 0 }
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.recomendaciones - a.recomendaciones)
+  }, [vinos, analitica])
+
   function exportarCSV() {
     const a = document.createElement('a')
     a.href = `/api/kiosko/${slug}/admin/exportar`
@@ -771,6 +805,27 @@ export default function AdminKioskoPage() {
                   </div>
                 )}
 
+                {/* Alertas de reposición */}
+                {alertasStock.length > 0 ? (
+                  <div className={styles.alertasBloque}>
+                    <p className={styles.alertasTitulo}>⚠️ Alertas de reposición</p>
+                    <p className={styles.alertasDesc}>Vinos que el asistente recomienda con frecuencia pero tienen stock bajo</p>
+                    <div className={styles.alertasList}>
+                      {alertasStock.map(a => (
+                        <div key={a.id} className={`${styles.alertaItem} ${a.critico ? styles.alertaCritico : styles.alertaBajo}`}>
+                          <span className={styles.alertaIcon}>{a.critico ? '🔴' : '🟡'}</span>
+                          <span className={styles.alertaNombre}>{a.nombre}{a.bodega ? ` · ${a.bodega}` : ''}</span>
+                          <span className={styles.alertaStats}>{a.recomendaciones}× recomendado · {a.stock === 0 ? 'Sin stock' : `${a.stock} ud.`}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : analitica?.topVinos?.length > 0 ? (
+                  <div className={styles.alertasBloqueOk}>
+                    <span>✅ Stock OK — ningún vino frecuentemente recomendado tiene stock bajo</span>
+                  </div>
+                ) : null}
+
                 {/* KPIs */}
                 <div className={styles.analiticaKpis}>
                   <div className={styles.analiticaKpi}>
@@ -802,7 +857,7 @@ export default function AdminKioskoPage() {
                   {/* Top búsquedas */}
                   <div className={styles.analiticaBloque}>
                     <h3 className={styles.analiticaBloqueTitle}>Qué buscan los clientes</h3>
-                    <p className={styles.analiticaBloqueDesc}>Las consultas más frecuentes al sumiller virtual en los últimos 30 días</p>
+                    <p className={styles.analiticaBloqueDesc}>Las consultas más frecuentes al asistente en los últimos 30 días</p>
                     <div className={styles.analiticaList}>
                       {vacio
                         ? SKELETON.map((w, i) => <div key={i} className={styles.analiticaSkeleton} style={{ width: `${w}%` }} />)
@@ -820,7 +875,7 @@ export default function AdminKioskoPage() {
                   {/* Vinos más recomendados */}
                   <div className={styles.analiticaBloque}>
                     <h3 className={styles.analiticaBloqueTitle}>Vinos más recomendados</h3>
-                    <p className={styles.analiticaBloqueDesc}>Los que el sumiller virtual propone con más frecuencia — si no se venden, revisa precio o visibilidad</p>
+                    <p className={styles.analiticaBloqueDesc}>Los que el asistente propone con más frecuencia — si no se venden, revisa precio o visibilidad</p>
                     <div className={styles.analiticaList}>
                       {vacio
                         ? SKELETON.map((w, i) => <div key={i} className={styles.analiticaSkeleton} style={{ width: `${w}%` }} />)
@@ -835,6 +890,31 @@ export default function AdminKioskoPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Tendencias semanales */}
+                {!vacio && analitica.tendencias?.length > 0 && (() => {
+                  const maxT = Math.max(...analitica.tendencias.map(t => t.total), 1)
+                  return (
+                    <div className={styles.analiticaBloque} style={{ marginTop: '1.5rem' }}>
+                      <h3 className={styles.analiticaBloqueTitle}>Actividad semanal</h3>
+                      <p className={styles.analiticaBloqueDesc}>Consultas al asistente por semana — azul: por ocasión · ámbar: por maridaje</p>
+                      <div className={styles.tendenciasChart}>
+                        {analitica.tendencias.map((t, i) => (
+                          <div key={i} className={styles.tendenciaCol}>
+                            <div className={styles.tendenciaBarWrap} style={{ height: 80 }}>
+                              <div className={styles.tendenciaBarFill} style={{ height: `${(t.total / maxT) * 100}%` }}>
+                                <div className={styles.tendenciaSegWizard} style={{ flex: t.wizard || 0 }} />
+                                <div className={styles.tendenciaSegMaridaje} style={{ flex: t.maridaje || 0 }} />
+                              </div>
+                            </div>
+                            <span className={styles.tendenciaLabel}>{t.label}</span>
+                            {t.total > 0 && <span className={styles.tendenciaNum}>{t.total}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* Búsquedas recientes */}
                 <div className={styles.analiticaBloque} style={{ marginTop: '1.5rem' }}>
@@ -884,7 +964,7 @@ export default function AdminKioskoPage() {
                 <h3 className={styles.analiticaBloqueTitle}>Análisis de rentabilidad</h3>
                 <p className={styles.analiticaBloqueDesc}>
                   {rentabilidad
-                    ? <>Cruce entre margen bruto y popularidad (veces recomendado por el sumiller) — umbral margen {rentabilidad.margenMedio}%, umbral recomendaciones {rentabilidad.recomMedio}{rentabilidad.sinCoste > 0 && ` · ${rentabilidad.sinCoste} vino${rentabilidad.sinCoste > 1 ? 's' : ''} activo${rentabilidad.sinCoste > 1 ? 's' : ''} sin precio de coste (no aparecen)`}</>
+                    ? <>Cruce entre margen bruto y popularidad (veces recomendado por el asistente) — umbral margen {rentabilidad.margenMedio}%, umbral recomendaciones {rentabilidad.recomMedio}{rentabilidad.sinCoste > 0 && ` · ${rentabilidad.sinCoste} vino${rentabilidad.sinCoste > 1 ? 's' : ''} activo${rentabilidad.sinCoste > 1 ? 's' : ''} sin precio de coste (no aparecen)`}</>
                     : 'Introduce el precio de coste en la columna "Coste €" del Catálogo para activar este análisis. Necesitas al menos 2 vinos con coste.'}
                 </p>
               </div>

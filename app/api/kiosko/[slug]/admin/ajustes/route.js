@@ -4,6 +4,7 @@ import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 const PERMITIDOS = new Set([
   'nombre', 'ciudad', 'descripcion',
   'logo_url', 'color_primario', 'color_acento', 'font_family', 'banner_url',
+  'informe_email',
 ])
 
 export async function PATCH(request, { params }) {
