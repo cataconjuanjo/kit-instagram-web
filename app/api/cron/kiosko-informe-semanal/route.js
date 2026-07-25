@@ -61,10 +61,13 @@ async function obtenerDatos(tiendaId) {
     .map(([consulta, veces]) => ({ consulta, veces }))
 
   const vinoCount = {}
+  const vinoCount7 = {}
   searches.forEach(s => {
-    (s.vinos_ids || []).forEach((id, i) => {
+    const en7d = s.created_at >= desde7
+    ;(s.vinos_ids || []).forEach((id, i) => {
       if (!vinoCount[id]) vinoCount[id] = { nombre: s.vinos_nombres?.[i] || id, veces: 0 }
       vinoCount[id].veces++
+      if (en7d) vinoCount7[id] = (vinoCount7[id] || 0) + 1
     })
   })
   const topVinos = Object.entries(vinoCount)
@@ -83,7 +86,26 @@ async function obtenerDatos(tiendaId) {
     .filter(v => topVinoIds.has(String(v.id)))
     .map(v => ({ nombre: v.nombre, stock: Number(v.stock) }))
 
-  return { vacio: false, semanaActual, semanaAnterior, topConsultas, topVinos, alertas, totalMes: searches.length }
+  // Sugerencia de reposición: vinos populares con stock < 2 semanas de runway
+  const { data: todosVinos } = await supabaseAdmin
+    .from('vinos_tienda')
+    .select('id, nombre, stock')
+    .eq('tienda_id', tiendaId)
+    .eq('activo', true)
+    .gt('stock', 0)
+
+  const reposicion = (todosVinos || [])
+    .map(v => {
+      const recom7d = vinoCount7[String(v.id)] || 0
+      if (!recom7d) return null
+      const diasRestantes = Math.round(Number(v.stock) / (recom7d / 7))
+      return diasRestantes <= 14 ? { nombre: v.nombre, stock: Number(v.stock), diasRestantes } : null
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.diasRestantes - b.diasRestantes)
+    .slice(0, 5)
+
+  return { vacio: false, semanaActual, semanaAnterior, topConsultas, topVinos, alertas, reposicion, totalMes: searches.length }
 }
 
 function deltaTexto(actual, anterior) {
@@ -156,6 +178,13 @@ async function enviarEmail(tienda, datos) {
     <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:18px">
       <p style="margin:0;font-size:.82rem;color:#166534">✅ Stock OK en todos los vinos recomendados</p>
     </div>`}
+
+    ${datos.reposicion?.length ? `
+    <div style="background:#fefce8;border:1.5px solid #fde047;border-radius:8px;padding:12px 14px;margin-bottom:18px">
+      <p style="margin:0 0 8px;font-size:.82rem;font-weight:700;color:#713f12">📦 Sugerencia de reposición</p>
+      <p style="margin:0 0 8px;font-size:.75rem;color:#92400e">Vinos con alta demanda que se agotarán pronto al ritmo actual:</p>
+      ${datos.reposicion.map(r => `<p style="margin:4px 0;font-size:.82rem">⏱️ <strong>${r.nombre}</strong> — ${r.stock} ud. · se agota en ~${r.diasRestantes} días</p>`).join('')}
+    </div>` : ''}
 
     <div style="text-align:center;margin-top:8px">
       <a href="${adminUrl}" style="display:inline-block;background:#c9a96e;color:#1a1a2e;font-weight:700;font-size:.88rem;padding:11px 28px;border-radius:9px;text-decoration:none">Ver analítica completa →</a>

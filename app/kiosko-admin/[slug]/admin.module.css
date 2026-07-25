@@ -297,6 +297,44 @@
   color: #1a1a2e;
 }
 
+.ofertaCeldaBadge {
+  background: #fef3f3;
+  color: #c44;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: .8rem;
+}
+
+.widgetEmbedBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f4f3f0;
+  border: 1px solid #e0ddd8;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.widgetEmbedCode {
+  flex: 1;
+  font-family: monospace;
+  font-size: .72rem;
+  color: #1a1a2e;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+.widgetCopyBtn {
+  flex-shrink: 0;
+  background: #1a1a2e;
+  color: #c9a96e;
+  border: none;
+  border-radius: 5px;
+  padding: 5px 12px;
+  font-size: .75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .stockCero {
   color: #c44;
   font-weight: 700;

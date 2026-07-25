@@ -180,6 +180,15 @@ Solo recomienda vinos de esta lista. No inventes vinos:
 ${listaVinos}`
 }
 
+// ── Instrucción de idioma ─────────────────────────────────────────────────────
+
+function langInstruction(lang) {
+  if (lang === 'en') return '\n\nRespond entirely in English. All text in the JSON response (intro, razon fields) must be in English.'
+  if (lang === 'fr') return '\n\nRéponds entièrement en français. Tout le texte dans la réponse JSON (champs intro, razon) doit être en français.'
+  if (lang === 'de') return '\n\nAntworte vollständig auf Deutsch. Der gesamte Text in der JSON-Antwort (Felder intro, razon) muss auf Deutsch sein.'
+  return ''
+}
+
 // ── Handler principal ─────────────────────────────────────────────────────────
 
 export async function POST(request, { params }) {
@@ -198,6 +207,7 @@ export async function POST(request, { params }) {
 
   const consulta = String(body?.consulta || '').trim()
   const mode     = String(body?.mode     || 'maridaje') // 'maridaje' | 'wizard'
+  const lang     = ['en','fr','de'].includes(body?.lang) ? body.lang : 'es'
 
   if (consulta.length < 2) {
     return NextResponse.json({ error: 'Indica para qué buscas el vino' }, { status: 400 })
@@ -236,7 +246,7 @@ export async function POST(request, { params }) {
   if (mode === 'wizard') {
     // Wizard: sin capas Goldstein/Chartier — solo preferencias de estilo/ocasión
     listaVinos = vinosBrutos.slice(0, 80).map(lineaVino).join('\n')
-    systemPrompt = buildSystemWizard(tienda, listaVinos)
+    systemPrompt = buildSystemWizard(tienda, listaVinos) + langInstruction(lang)
   } else {
     // ── Capa 1: Goldstein — veto duro de incompatibilidades estructurales ──────
     const goldstein = analizarConGoldstein(consultaLimpia, vinosBrutos)
@@ -291,7 +301,7 @@ export async function POST(request, { params }) {
     }
 
     listaVinos = vinosFinales.map(lineaVino).join('\n')
-    systemPrompt = buildSystem(tienda, listaVinos, contextoCriterios)
+    systemPrompt = buildSystem(tienda, listaVinos, contextoCriterios) + langInstruction(lang)
   }
 
   // ── Llamada a Claude ──────────────────────────────────────────────────────────

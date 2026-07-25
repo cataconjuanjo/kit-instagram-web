@@ -72,6 +72,13 @@ function iconoMaridaje(texto = '') {
 
 const VIEWS = { WELCOME: 'welcome', BROWSE: 'browse', PAIRING: 'pairing', DETAIL: 'detail', WIZARD: 'wizard', SHOWCASE: 'showcase' }
 
+const IDIOMAS = [
+  { id: 'es', flag: '🇪🇸', label: 'ES' },
+  { id: 'en', flag: '🇬🇧', label: 'EN' },
+  { id: 'fr', flag: '🇫🇷', label: 'FR' },
+  { id: 'de', flag: '🇩🇪', label: 'DE' },
+]
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function normalizarTexto(t = '') {
@@ -255,7 +262,13 @@ function WineCard({ vino, onClick }) {
         {vino.bodega && <p className={styles.cardBodega}>{vino.bodega}</p>}
         <p className={styles.cardMeta}>{[vino.uva, vino.anada, vino.region].filter(Boolean).join(' · ')}</p>
         <div className={styles.cardFooter}>
-          {vino.precio_pvp && <span className={styles.cardPrecio}>{formatPrecio(vino.precio_pvp)}</span>}
+          {vino.precio_oferta
+            ? <span className={styles.cardPrecioOferta}>
+                <s className={styles.cardPrecioTachado}>{formatPrecio(vino.precio_pvp)}</s>
+                <span className={styles.cardPrecioOfertaValor}>{formatPrecio(vino.precio_oferta)}</span>
+                <span className={styles.ofertaBadge}>OFERTA</span>
+              </span>
+            : vino.precio_pvp && <span className={styles.cardPrecio}>{formatPrecio(vino.precio_pvp)}</span>}
           {vino.ubicacion_estanteria && <span className={styles.cardUbicacion}>📍 {vino.ubicacion_estanteria}</span>}
         </div>
       </div>
@@ -320,7 +333,13 @@ function WineDetail({ vino, slug, colorAcento, onClose }) {
               {vino.pais && vino.pais !== 'España' && <span><strong>País</strong> {vino.pais}</span>}
             </div>
 
-            {vino.precio_pvp && <div className={styles.detailPrecio} style={{ color: colorAcento }}>{formatPrecio(vino.precio_pvp)}</div>}
+            {vino.precio_oferta
+              ? <div className={styles.detailPrecioOferta}>
+                  <s className={styles.detailPrecioTachado}>{formatPrecio(vino.precio_pvp)}</s>
+                  <span className={styles.detailPrecioOfertaValor} style={{ color: colorAcento }}>{formatPrecio(vino.precio_oferta)}</span>
+                  <span className={styles.ofertaBadgeLg}>OFERTA</span>
+                </div>
+              : vino.precio_pvp && <div className={styles.detailPrecio} style={{ color: colorAcento }}>{formatPrecio(vino.precio_pvp)}</div>}
 
             {vino.ubicacion_estanteria && (
               <div className={styles.detailUbicacion}>
@@ -376,7 +395,7 @@ function WineDetail({ vino, slug, colorAcento, onClose }) {
 
 // ── Wizard "Ayúdame a elegir" ─────────────────────────────────────────────────
 
-function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onBack, vinos = [] }) {
+function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onBack, vinos = [], lang = 'es' }) {
   const [step, setStep]       = useState(0)
   const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '' })
   const [cargando, setCargando] = useState(false)
@@ -418,7 +437,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       const res = await fetch(`/api/kiosko/${slug}/maridaje`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consulta: q, mode: 'wizard' }),
+        body: JSON.stringify({ consulta: q, mode: 'wizard', lang }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error en la consulta')
@@ -661,7 +680,7 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
 
 // ── Vista Pairing ─────────────────────────────────────────────────────────────
 
-function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBack }) {
+function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBack, lang = 'es' }) {
   const [consulta, setConsulta] = useState('')
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
@@ -677,7 +696,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBa
     try {
       const res = await fetch(`/api/kiosko/${slug}/maridaje`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consulta: q }),
+        body: JSON.stringify({ consulta: q, lang }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error en la consulta')
@@ -876,6 +895,7 @@ export default function KioskoPage() {
   const [view, setView]             = useState(modoMostrador ? VIEWS.SHOWCASE : VIEWS.WELCOME)
   const [vinoDetalle, setVinoDetalle] = useState(null)
   const [longPressTimer, setLongPressTimer] = useState(null)
+  const [lang, setLang]             = useState('es')
 
   const idleTimer = useRef(null)
 
@@ -1022,6 +1042,17 @@ export default function KioskoPage() {
             </button>
           </div>
 
+          <div className={styles.langSelector}>
+            {IDIOMAS.map(i => (
+              <button key={i.id} type="button"
+                className={`${styles.langBtn} ${lang === i.id ? styles.langBtnActive : ''}`}
+                onClick={() => setLang(i.id)}
+                style={lang === i.id ? { borderColor: colorAcento, color: colorAcento } : {}}>
+                {i.flag} {i.label}
+              </button>
+            ))}
+          </div>
+
           <span className={styles.kioskoCredit}>
             Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
           </span>
@@ -1050,7 +1081,7 @@ export default function KioskoPage() {
       {/* WIZARD */}
       {view === VIEWS.WIZARD && (
         <WizardView slug={slug} tienda={tienda} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} vinos={vinos} />
+          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} vinos={vinos} lang={lang} />
       )}
 
       {/* EXPLORAR */}
@@ -1062,7 +1093,7 @@ export default function KioskoPage() {
       {/* MARIDAJE */}
       {view === VIEWS.PAIRING && (
         <PairingView tienda={tienda} slug={slug} colorAcento={colorAcento} vinos={vinos}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} />
+          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} />
       )}
 
       {/* DETALLE */}

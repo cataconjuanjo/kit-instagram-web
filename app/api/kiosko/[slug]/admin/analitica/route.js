@@ -40,15 +40,38 @@ export async function GET(request, { params }) {
 
   // ── Vinos más recomendados ──────────────────────────────────────────────────
   const vinoCount = {}
+  const vinoCount7 = {}
   searches.forEach(s => {
-    (s.vinos_ids || []).forEach((id, i) => {
+    const en7d = s.created_at >= desde7
+    ;(s.vinos_ids || []).forEach((id, i) => {
       if (!vinoCount[id]) vinoCount[id] = { nombre: s.vinos_nombres?.[i] || id, veces: 0 }
       vinoCount[id].veces++
+      if (en7d) vinoCount7[id] = (vinoCount7[id] || 0) + 1
     })
   })
-  const topVinos = Object.entries(vinoCount)
+  const topVinosIds = Object.entries(vinoCount)
     .sort((a, b) => b[1].veces - a[1].veces).slice(0, 10)
-    .map(([id, { nombre, veces }]) => ({ id, nombre, veces }))
+    .map(([id]) => id)
+
+  // Fetch stock actual para predecir agotamiento
+  const { data: stockData } = await supabaseAdmin
+    .from('vinos_tienda')
+    .select('id, stock')
+    .eq('tienda_id', tiendaId)
+    .in('id', topVinosIds.length ? topVinosIds : ['00000000-0000-0000-0000-000000000000'])
+
+  const stockMap = {}
+  ;(stockData || []).forEach(v => { stockMap[String(v.id)] = Number(v.stock ?? 0) })
+
+  const topVinos = topVinosIds.map(id => {
+    const { nombre, veces } = vinoCount[id]
+    const stock   = stockMap[id] ?? null
+    const recom7d = vinoCount7[id] || 0
+    const diasRestantes = (stock !== null && recom7d > 0)
+      ? Math.round(stock / (recom7d / 7))
+      : null
+    return { id, nombre, veces, stock, diasRestantes }
+  })
 
   // ── Distribución wizard vs maridaje ────────────────────────────────────────
   const totalWizard   = searches.filter(s => s.mode === 'wizard').length

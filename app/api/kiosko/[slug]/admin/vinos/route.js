@@ -17,7 +17,7 @@ export async function GET(request, { params }) {
 
   const { data, error } = await supabaseAdmin
     .from('vinos_tienda')
-    .select('id, nombre, bodega, tipo, uva, region, pais, anada, precio_pvp, precio_coste, stock, ubicacion_estanteria, foto_url, notas_cata, descripcion, puntuacion, destacado, activo, ficha_ia')
+    .select('id, nombre, bodega, tipo, uva, region, pais, anada, precio_pvp, precio_coste, precio_oferta, stock, ubicacion_estanteria, foto_url, notas_cata, descripcion, puntuacion, destacado, activo, ficha_ia')
     .eq('tienda_id', tiendaId)
     .order('destacado', { ascending: false })
     .order('nombre')

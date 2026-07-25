@@ -268,6 +268,27 @@ function AjustesTab({ slug, tienda, onSaved }) {
           </p>
         </div>
 
+        {/* Widget embebible */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>Widget para tu web</p>
+          <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
+            Pega este código en cualquier web para añadir un botón flotante que abre el kiosko en un panel lateral.
+          </p>
+          {(() => {
+            const base = typeof window !== 'undefined' ? window.location.origin : 'https://cataconjuanjo.com'
+            const code = `<script src="${base}/api/kiosko/${slug}/widget"><\/script>`
+            return (
+              <div className={styles.widgetEmbedBox}>
+                <code className={styles.widgetEmbedCode}>{code}</code>
+                <button type="button" className={styles.widgetCopyBtn}
+                  onClick={() => { navigator.clipboard?.writeText(code); }}>
+                  Copiar
+                </button>
+              </div>
+            )
+          })()}
+        </div>
+
         {/* Guardar */}
         <div className={styles.ajustesActions}>
           {msg && <span className={msg.startsWith('✓') ? styles.msgOk : styles.msgError}>{msg}</span>}
@@ -480,7 +501,7 @@ export default function AdminKioskoPage() {
     const { id, campo, valor } = inlineEdit
     setInlineEdit(null)
 
-    const numericos  = ['precio_pvp', 'precio_coste', 'stock', 'puntuacion']
+    const numericos  = ['precio_pvp', 'precio_coste', 'precio_oferta', 'stock', 'puntuacion']
     const valorFinal = numericos.includes(campo)
       ? (valor !== '' && valor !== null ? Number(valor) : (campo === 'stock' ? 0 : null))
       : (String(valor).trim() || null)
@@ -504,15 +525,30 @@ export default function AdminKioskoPage() {
 
   async function confirmarStock() {
     if (!stockPending) return
-    const { id, nuevo } = stockPending
+    const { id, anterior, nuevo } = stockPending
     setStockPending(null)
+    const vino    = vinos.find(v => v.id === id)
     const updates = { stock: nuevo, ...(nuevo === 0 ? { activo: false } : {}) }
     const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
       method:  'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
     })
-    if (res.ok) setVinos(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v))
+    if (res.ok) {
+      setVinos(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v))
+      // Log historial
+      fetch(`/api/kiosko/${slug}/admin/stock-log`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vino_id: id, vino_nombre: vino?.nombre, stock_anterior: anterior, stock_nuevo: nuevo }),
+      }).catch(() => {})
+      // Alerta instantánea si stock bajo
+      if (nuevo <= 3) {
+        fetch(`/api/kiosko/${slug}/admin/alerta-stock`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vino_nombre: vino?.nombre || id, stock_nuevo: nuevo }),
+        }).catch(() => {})
+      }
+    }
   }
 
   function cancelarStock() { setStockPending(null) }
@@ -649,7 +685,7 @@ export default function AdminKioskoPage() {
       })
       .sort((a, b) => {
         let va = a[ordenPor], vb = b[ordenPor]
-        if (['precio_pvp', 'precio_coste', 'stock', 'puntuacion'].includes(ordenPor)) {
+        if (['precio_pvp', 'precio_coste', 'precio_oferta', 'stock', 'puntuacion'].includes(ordenPor)) {
           va = Number(va) || 0; vb = Number(vb) || 0
         } else {
           va = String(va || '').toLowerCase(); vb = String(vb || '').toLowerCase()
@@ -729,11 +765,12 @@ export default function AdminKioskoPage() {
         const v = vinos.find(w => String(w.id) === String(tv.id))
         if (!v || !v.activo) return null
         const stock = Number(v.stock)
-        if (stock > 5) return null
-        return { id: v.id, nombre: v.nombre, bodega: v.bodega, stock, recomendaciones: tv.veces, critico: stock === 0 }
+        if (stock > 5 && tv.diasRestantes === null) return null
+        if (stock > 5 && (tv.diasRestantes === null || tv.diasRestantes > 14)) return null
+        return { id: v.id, nombre: v.nombre, bodega: v.bodega, stock, recomendaciones: tv.veces, critico: stock === 0, diasRestantes: tv.diasRestantes }
       })
       .filter(Boolean)
-      .sort((a, b) => b.recomendaciones - a.recomendaciones)
+      .sort((a, b) => (a.diasRestantes ?? 999) - (b.diasRestantes ?? 999) || b.recomendaciones - a.recomendaciones)
   }, [vinos, analitica])
 
   function exportarCSV() {
@@ -838,7 +875,7 @@ export default function AdminKioskoPage() {
                         <div key={a.id} className={`${styles.alertaItem} ${a.critico ? styles.alertaCritico : styles.alertaBajo}`}>
                           <span className={styles.alertaIcon}>{a.critico ? '🔴' : '🟡'}</span>
                           <span className={styles.alertaNombre}>{a.nombre}{a.bodega ? ` · ${a.bodega}` : ''}</span>
-                          <span className={styles.alertaStats}>{a.recomendaciones}× recomendado · {a.stock === 0 ? 'Sin stock' : `${a.stock} ud.`}</span>
+                          <span className={styles.alertaStats}>{a.recomendaciones}× recomendado · {a.stock === 0 ? 'Sin stock' : `${a.stock} ud.`}{a.diasRestantes !== null && a.diasRestantes !== undefined ? ` · ~${a.diasRestantes}d` : ''}</span>
                         </div>
                       ))}
                     </div>
@@ -1132,6 +1169,7 @@ export default function AdminKioskoPage() {
               <th className={styles.thSortable} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>
               <th>Margen</th>
+              <th className={styles.thSortable} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>
               <th>Estantería</th>
               <th className={styles.thCenter}>★</th>
@@ -1252,6 +1290,32 @@ export default function AdminKioskoPage() {
                   {Number(v.precio_pvp) > 0 && Number(v.precio_coste) > 0
                     ? (() => { const m = Math.round(((Number(v.precio_pvp) - Number(v.precio_coste)) / Number(v.precio_pvp)) * 100); return <span className={`${styles.margenBadge} ${m >= 65 ? styles.margenHigh : m >= 50 ? styles.margenMid : styles.margenLow}`}>{m}%</span> })()
                     : <em className={styles.dash}>—</em>}
+                </td>
+
+                {/* Oferta inline */}
+                <td
+                  className={styles.tdEditable}
+                  onClick={e => startInline(v.id, 'precio_oferta', v.precio_oferta, e)}
+                >
+                  {inlineEdit?.id === v.id && inlineEdit.campo === 'precio_oferta' ? (
+                    <input
+                      className={styles.inlineInput}
+                      type="number" min="0" step="0.01"
+                      value={inlineEdit.valor}
+                      onChange={e => setInlineEdit(p => ({ ...p, valor: e.target.value }))}
+                      onBlur={guardarInline}
+                      onKeyDown={e => { if (e.key === 'Enter') guardarInline(); if (e.key === 'Escape') setInlineEdit(null) }}
+                      autoFocus
+                      onClick={e => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span className={styles.inlineValue}>
+                      {v.precio_oferta
+                        ? <span className={styles.ofertaCeldaBadge}>{Number(v.precio_oferta).toFixed(2)} €</span>
+                        : <em className={styles.dash}>—</em>}
+                      <span className={styles.editIcon}>✎</span>
+                    </span>
+                  )}
                 </td>
 
                 {/* Stock inline */}

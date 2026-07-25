@@ -384,6 +384,79 @@
 
 .kioskoCredit:hover { opacity: 1; }
 
+/* ── Selector de idioma ──────────────────────────────────────────────────── */
+.langSelector {
+  display: flex;
+  gap: 6px;
+  align-self: center;
+  margin-bottom: .5rem;
+}
+.langBtn {
+  background: transparent;
+  border: 1.5px solid var(--borde);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: .72rem;
+  font-weight: 600;
+  color: var(--texto-m);
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.langBtnActive {
+  font-weight: 700;
+}
+
+/* ── Oferta badges ───────────────────────────────────────────────────────── */
+.cardPrecioOferta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.cardPrecioTachado {
+  color: var(--texto-d);
+  font-size: .78rem;
+  text-decoration: line-through;
+}
+.cardPrecioOfertaValor {
+  font-weight: 700;
+  color: #c44;
+}
+.ofertaBadge {
+  background: #c44;
+  color: #fff;
+  font-size: .6rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: .06em;
+}
+.detailPrecioOferta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: .5rem 0;
+  flex-wrap: wrap;
+}
+.detailPrecioTachado {
+  color: var(--texto-d);
+  font-size: 1rem;
+  text-decoration: line-through;
+}
+.detailPrecioOfertaValor {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+.ofertaBadgeLg {
+  background: #c44;
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: .06em;
+}
+
 /* ── Browse view ─────────────────────────────────────────────────────────── */
 .browseView {
   display: flex;
