@@ -436,6 +436,8 @@ export default function AdminKioskoPage() {
   const [analitica, setAnalitica]   = useState(null)
   const [analiticaLoad, setAnaliticaLoad] = useState(false)
 
+  const esPremium = !tienda?.plan || tienda.plan === 'premium'
+
   const [busqueda, setBusqueda]           = useState('')
   const [filtroTipo, setFiltroTipo]       = useState('')
   const [filtroEstado, setFiltroEstado]   = useState('todos')
@@ -799,8 +801,8 @@ export default function AdminKioskoPage() {
     try {
       const res  = await fetch(`/api/kiosko/${slug}/admin/analitica`)
       const data = await res.json()
-      setAnalitica(data)
-    } catch {}
+      setAnalitica(res.ok ? data : { vacio: true })
+    } catch { setAnalitica({ vacio: true }) }
     finally { setAnaliticaLoad(false) }
   }
 
@@ -905,8 +907,8 @@ export default function AdminKioskoPage() {
           Catálogo
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'analitica' ? styles.tabBtnActive : ''}`}
-          onClick={() => { setTab('analitica'); if (!analitica && !analiticaLoad) cargarAnalitica() }}>
-          Analítica
+          onClick={() => { setTab('analitica'); if (esPremium && !analitica && !analiticaLoad) cargarAnalitica() }}>
+          Analítica{!esPremium && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'ajustes' ? styles.tabBtnActive : ''}`} onClick={() => setTab('ajustes')}>
           Ajustes
@@ -919,7 +921,7 @@ export default function AdminKioskoPage() {
       )}
 
       {/* Analítica — bloqueada en plan Básico */}
-      {tab === 'analitica' && tienda?.plan === 'basico' && (
+      {tab === 'analitica' && !esPremium && (
         <div className={styles.premiumGateWrap}>
           <div className={styles.premiumGateBox}>
             <span className={styles.premiumGateIcon}>📊</span>
@@ -930,7 +932,7 @@ export default function AdminKioskoPage() {
         </div>
       )}
 
-      {tab === 'analitica' && tienda?.plan !== 'basico' && (
+      {tab === 'analitica' && esPremium && (
         <div className={styles.analiticaWrap}>
           {analiticaLoad && <p className={styles.analiticaLoading}>Cargando datos…</p>}
           {!analiticaLoad && analitica && (() => {

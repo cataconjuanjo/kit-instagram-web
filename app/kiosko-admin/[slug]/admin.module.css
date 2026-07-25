@@ -884,6 +884,16 @@
 
 .tabBtn:not(.tabBtnActive):hover { color: rgba(240,237,232,.8); }
 
+.tabPremiumBadge {
+  display: inline-block;
+  margin-left: .35rem;
+  font-size: .6rem;
+  vertical-align: super;
+  color: #c9a96e;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
 /* ── Ajustes layout ───────────────────────────────────────────────────────── */
 .ajustesWrap {
   display: grid;

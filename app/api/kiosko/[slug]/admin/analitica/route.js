@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 
 async function getTiendaId(slug) {
   const { data } = await supabaseAdmin
-    .from('tiendas').select('id').eq('slug', slug).eq('activo', true).single()
+    .from('tiendas').select('id').eq('slug', slug).single()
   return data?.id || null
 }
 
