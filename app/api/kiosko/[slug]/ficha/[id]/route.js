@@ -20,12 +20,17 @@ export async function GET(request, { params }) {
     try { return NextResponse.json({ ficha: JSON.parse(vino.ficha_ia) }) } catch {}
   }
 
+  const notasExistentes = (vino.notas_cata || vino.descripcion || '').trim()
+
   const info = [
     vino.nombre, vino.bodega, vino.tipo, vino.uva, vino.region,
     vino.pais, vino.anada ? `Añada ${vino.anada}` : '',
     vino.precio_pvp ? `${vino.precio_pvp}€` : '',
-    vino.notas_cata || vino.descripcion || '',
   ].filter(Boolean).join(' | ')
+
+  const notasInstruction = notasExistentes
+    ? `Para el campo "notas", parte de la siguiente descripción de la tienda/productor y mejórala: "${notasExistentes}". Mantén la esencia pero hazla más evocadora y accesible, sin tecnicismos.`
+    : `Para el campo "notas", genera 2-3 frases de cata en lenguaje sencillo y evocador, sin tecnicismos.`
 
   try {
     const response = await anthropic.messages.create({
@@ -33,13 +38,16 @@ export async function GET(request, { params }) {
       max_tokens: 600,
       messages: [{
         role: 'user',
-        content: `Eres un sumiller experto. Con los datos de este vino, genera una ficha atractiva y accesible para el cliente de una vinoteca.
+        content: `Eres un sumiller experto generando la ficha para el kiosko de una vinoteca.
 
-Datos: ${info}
+Datos del vino: ${info}
+${notasExistentes ? `\nDescripción actual de la tienda: "${notasExistentes}"` : ''}
+
+${notasInstruction}
 
 Responde SOLO con JSON válido:
 {
-  "notas": "2-3 frases de cata en lenguaje sencillo y evocador, sin tecnicismos",
+  "notas": "2-3 frases de cata",
   "temperatura": "temperatura de servicio, ej: 16-18°C",
   "copa": "tipo de copa ideal, ej: Bordelesa",
   "maridajes": ["plato o comida 1", "plato o comida 2", "plato o comida 3"],

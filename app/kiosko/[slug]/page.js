@@ -266,8 +266,7 @@ function WineCard({ vino, onClick }) {
 
 // ── Ficha de vino enriquecida ─────────────────────────────────────────────────
 
-function WineDetail({ vino, slug, colorAcento, onClose, onPairingFrom }) {
-  // ficha_ia ya viaja en el objeto vino (select * en la API de vinos)
+function WineDetail({ vino, slug, colorAcento, colorPrimario, onClose, onPairingFrom }) {
   const fichaInicial = useMemo(() => {
     if (!vino?.ficha_ia) return null
     try { return typeof vino.ficha_ia === 'string' ? JSON.parse(vino.ficha_ia) : vino.ficha_ia }
@@ -276,6 +275,7 @@ function WineDetail({ vino, slug, colorAcento, onClose, onPairingFrom }) {
 
   const [ficha, setFicha] = useState(fichaInicial)
   const [fichaReady, setFichaReady] = useState(!!fichaInicial)
+  const [mostrarFoodPairing, setMostrarFoodPairing] = useState(false)
 
   useEffect(() => {
     if (!vino?.id || fichaInicial) return  // ya cacheada: sin llamada a API
@@ -370,19 +370,66 @@ function WineDetail({ vino, slug, colorAcento, onClose, onPairingFrom }) {
               </div>
             )}
 
-            <button className={styles.detailPairingBtn} onClick={() => onPairingFrom(vino)} type="button">
+            <button className={styles.detailPairingBtn} onClick={() => setMostrarFoodPairing(true)} type="button">
               ¿Con qué lo tomo?
             </button>
           </div>
         </div>
       </div>
+
+      {/* Overlay: maridajes específicos de este vino */}
+      {mostrarFoodPairing && (
+        <div className={styles.foodPairingOverlay} onClick={() => setMostrarFoodPairing(false)}>
+          <div className={styles.foodPairingPanel} onClick={e => e.stopPropagation()}>
+            <div className={styles.detailHandle} />
+            <p className={styles.foodPairingTitle}>
+              Este {TIPO_LABELS[vino.tipo] || 'vino'} va bien con
+            </p>
+
+            {!fichaReady ? (
+              <div className={styles.skelNotas}>
+                <div className={styles.skelLine} />
+                <div className={styles.skelLine} style={{ width: '70%' }} />
+              </div>
+            ) : ficha?.maridajes?.length > 0 ? (
+              <div className={styles.foodPairingTags}>
+                {ficha.maridajes.map((m, i) => (
+                  <span key={i} className={styles.foodPairingTag}>
+                    <span className={styles.foodPairingTagIcon}>{iconoMaridaje(m)}</span>
+                    {m}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.foodPairingEmpty}>Sin datos de maridaje disponibles</p>
+            )}
+
+            {fichaReady && ficha?.notas && (
+              <p className={styles.foodPairingNotas}>{ficha.notas}</p>
+            )}
+
+            <div className={styles.foodPairingActions}>
+              <button className={styles.foodPairingSearch}
+                style={{ background: colorAcento, color: colorPrimario }}
+                onClick={() => { setMostrarFoodPairing(false); onPairingFrom(vino) }}
+                type="button">
+                Buscar otro vino para mi plato →
+              </button>
+              <button className={styles.foodPairingClose}
+                onClick={() => setMostrarFoodPairing(false)} type="button">
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 // ── Wizard "Ayúdame a elegir" ─────────────────────────────────────────────────
 
-function WizardView({ slug, colorAcento, colorPrimario, onWineSelect, onBack, vinos = [] }) {
+function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onBack, vinos = [] }) {
   const [step, setStep]       = useState(0)
   const [wizard, setWizard]   = useState({ ocasion: '', plato: '', estilo: '', presupuesto: '' })
   const [cargando, setCargando] = useState(false)
@@ -441,6 +488,12 @@ function WizardView({ slug, colorAcento, colorPrimario, onWineSelect, onBack, vi
 
   return (
     <div className={styles.wizardView}>
+      {tienda?.nombre && (
+        <div className={styles.pairingBrand}>
+          <span className={styles.pairingBrandNombre}>{tienda.nombre}</span>
+          <span className={styles.pairingBrandCredit}>× @cataconjuanjo</span>
+        </div>
+      )}
       <div className={styles.wizardHeader}>
         <button className={styles.backBtn} onClick={resultado ? reset : (step === 0 ? onBack : () => setStep(s => s - 1))} type="button">
           ← {resultado ? 'Empezar de nuevo' : step === 0 ? 'Inicio' : 'Atrás'}
@@ -715,6 +768,12 @@ function PairingView({ tienda, slug, colorAcento, onWineSelect, onBack }) {
 
   return (
     <div className={styles.pairingView}>
+      {tienda?.nombre && (
+        <div className={styles.pairingBrand}>
+          <span className={styles.pairingBrandNombre}>{tienda.nombre}</span>
+          <span className={styles.pairingBrandCredit}>× @cataconjuanjo</span>
+        </div>
+      )}
       <div className={styles.pairingHeader}>
         <button className={styles.backBtn} onClick={onBack} type="button">← Volver</button>
         <h2 className={styles.pairingTitle}>¿Para qué buscas el vino?</h2>
@@ -849,28 +908,17 @@ function BrowseView({ vinos, colorAcento, onWineSelect, onBack }) {
           ))}
           {paises.length > 1 && (
             <select className={styles.paisSelect} value={filtroPais} onChange={e => setFiltroPais(e.target.value)}>
-              <option value="">Todos los países</option>
+              <option value="">País</option>
               {paises.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           )}
+          {regiones.length > 1 && (
+            <select className={styles.doSelect} value={filtroRegion} onChange={e => setFiltroRegion(e.target.value)}>
+              <option value="">D.O.</option>
+              {regiones.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          )}
         </div>
-
-        {regiones.length > 1 && (
-          <div className={styles.doBar}>
-            <button className={`${styles.doChipBtn} ${!filtroRegion ? styles.doChipBtnActive : ''}`}
-              onClick={() => setFiltroRegion('')} type="button"
-              style={!filtroRegion ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}>
-              Todas las D.O.
-            </button>
-            {regiones.map(r => (
-              <button key={r} className={`${styles.doChipBtn} ${filtroRegion === r ? styles.doChipBtnActive : ''}`}
-                onClick={() => setFiltroRegion(filtroRegion === r ? '' : r)} type="button"
-                style={filtroRegion === r ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}>
-                {r}
-              </button>
-            ))}
-          </div>
-        )}
 
         {preciosAll && preciosAll.min < preciosAll.max && (
           <div className={styles.priceRow}>
@@ -1054,14 +1102,9 @@ export default function KioskoPage() {
             </button>
           </div>
 
-          <a
-            href="https://www.cataconjuanjo.com/"
-            target="_blank"
-            rel="noreferrer"
-            className={styles.kioskoCredit}
-          >
+          <span className={styles.kioskoCredit}>
             Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
-          </a>
+          </span>
 
           {vinos.filter(v => v.destacado).length > 0 && (
             <div className={styles.welcomeFeatured}>
@@ -1086,7 +1129,7 @@ export default function KioskoPage() {
 
       {/* WIZARD */}
       {view === VIEWS.WIZARD && (
-        <WizardView slug={slug} colorAcento={colorAcento} colorPrimario={colorPrimario}
+        <WizardView slug={slug} tienda={tienda} colorAcento={colorAcento} colorPrimario={colorPrimario}
           onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} vinos={vinos} />
       )}
 
@@ -1104,7 +1147,7 @@ export default function KioskoPage() {
 
       {/* DETALLE */}
       {view === VIEWS.DETAIL && vinoDetalle && (
-        <WineDetail vino={vinoDetalle} slug={slug} colorAcento={colorAcento}
+        <WineDetail vino={vinoDetalle} slug={slug} colorAcento={colorAcento} colorPrimario={colorPrimario}
           onClose={volverDeDetalle} onPairingFrom={abrirPairingDesdeDetalle} />
       )}
     </div>

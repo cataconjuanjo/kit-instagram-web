@@ -238,7 +238,8 @@
 
 /* ── Feedback widget ──────────────────────────────────────────────────────── */
 .feedbackWidget {
-  margin-top: 1.5rem;
+  align-self: center;
+  margin: 0 0 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -247,8 +248,8 @@
   background: var(--sup1);
   border-radius: 16px;
   border: 1px solid var(--borde);
-  width: 100%;
-  max-width: 340px;
+  width: calc(100% - 4rem);
+  max-width: 320px;
 }
 
 .feedbackLabel {
@@ -284,7 +285,10 @@
 .feedbackEmoji:active { transform: scale(1.05); }
 
 .feedbackThanks {
-  margin-top: 1.5rem;
+  align-self: center;
+  margin: 0 0 2rem;
+  max-width: 320px;
+  width: calc(100% - 4rem);
   font-size: .82rem;
   font-weight: 600;
   color: var(--texto-m);
@@ -509,7 +513,8 @@
 .tipoChipBtn:active { transform: scale(.96); }
 .tipoChipBtnActive { /* color set inline */ }
 
-.paisSelect {
+.paisSelect,
+.doSelect {
   flex-shrink: 0;
   background: var(--panel);
   border: 2px solid var(--borde);
@@ -524,7 +529,8 @@
   outline: none;
 }
 
-.paisSelect option { background: var(--select-bg); }
+.paisSelect option,
+.doSelect option { background: var(--select-bg); }
 
 /* ── Resultados ──────────────────────────────────────────────────────────── */
 .browseResults {
@@ -952,6 +958,36 @@
 .detailPairingBtn:hover {
   background: var(--color-acento);
   color: #fff;
+}
+
+/* ── Branding strip (pairing + wizard views) ────────────────────────────── */
+.pairingBrand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .1rem;
+  padding: .6rem 1rem .5rem;
+  border-bottom: 1px solid var(--borde);
+  background: var(--color-primario);
+}
+
+.pairingBrandNombre {
+  font-family: 'Mulish', system-ui, sans-serif;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--texto-m);
+  margin: 0;
+}
+
+.pairingBrandCredit {
+  font-size: .54rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  color: var(--texto-d);
+  opacity: .55;
+  margin: 0;
 }
 
 /* ── Pairing view ────────────────────────────────────────────────────────── */
@@ -1834,6 +1870,119 @@
   text-align: center;
   padding: .25rem;
 }
+
+/* ── Overlay: maridaje específico del vino ────────────────────────────────── */
+.foodPairingOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.65);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.foodPairingPanel {
+  background: var(--panel);
+  border-radius: 20px 20px 0 0;
+  padding: 1.75rem 1.5rem 2.5rem;
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  animation: slideUp .25s ease;
+  position: relative;
+}
+
+.foodPairingTitle {
+  font-family: 'Mulish', system-ui, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--texto);
+  margin: 0;
+  text-align: center;
+}
+
+.foodPairingTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  justify-content: center;
+}
+
+.foodPairingTag {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  background: var(--sup2);
+  border: 1.5px solid var(--borde);
+  border-radius: 30px;
+  padding: .65rem 1.3rem;
+  font-size: .95rem;
+  color: var(--texto);
+  font-weight: 600;
+}
+
+.foodPairingTagIcon { font-size: 1.2rem; line-height: 1; }
+
+.foodPairingNotas {
+  font-size: .88rem;
+  color: var(--texto-m);
+  font-style: italic;
+  text-align: center;
+  margin: 0;
+  line-height: 1.55;
+  border-left: 3px solid var(--color-acento);
+  padding-left: .85rem;
+  text-align: left;
+}
+
+.foodPairingEmpty {
+  color: var(--texto-d);
+  font-size: .9rem;
+  text-align: center;
+  margin: 0;
+}
+
+.foodPairingActions {
+  display: flex;
+  gap: .75rem;
+  flex-direction: column;
+  padding-top: .25rem;
+}
+
+.foodPairingClose {
+  background: var(--sup2);
+  border: 1.5px solid var(--borde);
+  border-radius: 12px;
+  color: var(--texto-m);
+  cursor: pointer;
+  font-family: 'Mulish', system-ui, sans-serif;
+  font-size: .9rem;
+  font-weight: 700;
+  padding: .85rem 1.25rem;
+  text-align: center;
+  transition: background .15s;
+}
+
+.foodPairingClose:hover { background: var(--sup3); }
+
+.foodPairingSearch {
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: 'Mulish', system-ui, sans-serif;
+  font-size: .9rem;
+  font-weight: 700;
+  padding: .85rem 1.25rem;
+  text-align: center;
+  transition: opacity .15s;
+}
+
+.foodPairingSearch:active { opacity: .85; }
 
 /* ── Mobile adaptations ───────────────────────────────────────────────────── */
 @media (max-width: 800px) {
