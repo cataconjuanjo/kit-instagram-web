@@ -70,7 +70,7 @@ function iconoMaridaje(texto = '') {
   return '🍴'
 }
 
-const VIEWS = { WELCOME: 'welcome', BROWSE: 'browse', PAIRING: 'pairing', DETAIL: 'detail', WIZARD: 'wizard', SHOWCASE: 'showcase' }
+const VIEWS = { WELCOME: 'welcome', BROWSE: 'browse', PAIRING: 'pairing', DETAIL: 'detail', WIZARD: 'wizard', SHOWCASE: 'showcase', COMPARE: 'compare' }
 
 const IDIOMAS = [
   { id: 'es', flag: '🇪🇸' },
@@ -102,6 +102,7 @@ const T = {
     sinLimite: 'Sin límite', miRango: '🎯 Mi rango', elegirPresupuesto: 'Elige tu presupuesto',
     buscarRango: 'Buscar con este rango →', cancelar: 'Cancelar',
     buscandoVino: 'Buscando el vino perfecto para ti…',
+    comparar: 'Comparar', compararBtn: 'Comparar →', seleccionaMas: 'Selecciona otro vino', comparacion: 'Comparación', notasCata: 'Notas de cata', servicio: 'Servicio',
   },
   en: {
     explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?',
@@ -125,6 +126,7 @@ const T = {
     sinLimite: 'No limit', miRango: '🎯 My range', elegirPresupuesto: 'Choose your budget',
     buscarRango: 'Search this range →', cancelar: 'Cancel',
     buscandoVino: 'Finding the perfect wine for you…',
+    comparar: 'Compare', compararBtn: 'Compare →', seleccionaMas: 'Select another wine', comparacion: 'Comparison', notasCata: 'Tasting notes', servicio: 'Service',
   },
   fr: {
     explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?',
@@ -148,6 +150,7 @@ const T = {
     sinLimite: 'Sans limite', miRango: '🎯 Ma fourchette', elegirPresupuesto: 'Choisissez votre budget',
     buscarRango: 'Rechercher cette fourchette →', cancelar: 'Annuler',
     buscandoVino: 'Nous cherchons le vin parfait pour vous…',
+    comparar: 'Comparer', compararBtn: 'Comparer →', seleccionaMas: 'Sélectionnez un autre vin', comparacion: 'Comparaison', notasCata: 'Notes de dégustation', servicio: 'Service',
   },
   de: {
     explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?',
@@ -171,6 +174,7 @@ const T = {
     sinLimite: 'Kein Limit', miRango: '🎯 Mein Bereich', elegirPresupuesto: 'Budget wählen',
     buscarRango: 'In diesem Bereich suchen →', cancelar: 'Abbrechen',
     buscandoVino: 'Wir suchen den perfekten Wein für Sie…',
+    comparar: 'Vergleichen', compararBtn: 'Vergleichen →', seleccionaMas: 'Weiteren Wein wählen', comparacion: 'Vergleich', notasCata: 'Verkostungsnotizen', servicio: 'Service',
   },
 }
 
@@ -342,33 +346,45 @@ function WineCardPlaceholder({ tipo }) {
   )
 }
 
-function WineCard({ vino, onClick }) {
+function WineCard({ vino, onClick, onAddComparar, enComparacion, comparadorLleno }) {
   return (
-    <button className={styles.wineCard} onClick={() => onClick(vino)} type="button">
-      <div className={styles.cardImg}>
-        {vino.foto_url ? <img src={vino.foto_url} alt={vino.nombre} className={styles.cardImgPhoto} loading="lazy" /> : <WineCardPlaceholder tipo={vino.tipo} />}
-        {vino.destacado && <span className={styles.cardDestacado}>★ Destacado</span>}
-      </div>
-      <div className={styles.cardBody}>
-        <div className={styles.cardTop}>
-          {vino.tipo && <TipoChip tipo={vino.tipo} />}
-          {vino.puntuacion && <span className={styles.cardPuntuacion}>{vino.puntuacion} pts</span>}
+    <div className={styles.wineCardWrap}>
+      <button className={styles.wineCard} onClick={() => onClick(vino)} type="button">
+        <div className={styles.cardImg}>
+          {vino.foto_url ? <img src={vino.foto_url} alt={vino.nombre} className={styles.cardImgPhoto} loading="lazy" /> : <WineCardPlaceholder tipo={vino.tipo} />}
+          {vino.destacado && <span className={styles.cardDestacado}>★ Destacado</span>}
         </div>
-        <p className={styles.cardNombre}>{vino.nombre}</p>
-        {vino.bodega && <p className={styles.cardBodega}>{vino.bodega}</p>}
-        <p className={styles.cardMeta}>{[vino.uva, vino.anada, vino.region].filter(Boolean).join(' · ')}</p>
-        <div className={styles.cardFooter}>
-          {vino.precio_oferta
-            ? <span className={styles.cardPrecioOferta}>
-                <s className={styles.cardPrecioTachado}>{formatPrecio(vino.precio_pvp)}</s>
-                <span className={styles.cardPrecioOfertaValor}>{formatPrecio(vino.precio_oferta)}</span>
-                <span className={styles.ofertaBadge}>OFERTA</span>
-              </span>
-            : vino.precio_pvp && <span className={styles.cardPrecio}>{formatPrecio(vino.precio_pvp)}</span>}
-          {vino.ubicacion_estanteria && <span className={styles.cardUbicacion}>📍 {vino.ubicacion_estanteria}</span>}
+        <div className={styles.cardBody}>
+          <div className={styles.cardTop}>
+            {vino.tipo && <TipoChip tipo={vino.tipo} />}
+            {vino.puntuacion && <span className={styles.cardPuntuacion}>{vino.puntuacion} pts</span>}
+          </div>
+          <p className={styles.cardNombre}>{vino.nombre}</p>
+          {vino.bodega && <p className={styles.cardBodega}>{vino.bodega}</p>}
+          <p className={styles.cardMeta}>{[vino.uva, vino.anada, vino.region].filter(Boolean).join(' · ')}</p>
+          <div className={styles.cardFooter}>
+            {vino.precio_oferta
+              ? <span className={styles.cardPrecioOferta}>
+                  <s className={styles.cardPrecioTachado}>{formatPrecio(vino.precio_pvp)}</s>
+                  <span className={styles.cardPrecioOfertaValor}>{formatPrecio(vino.precio_oferta)}</span>
+                  <span className={styles.ofertaBadge}>OFERTA</span>
+                </span>
+              : vino.precio_pvp && <span className={styles.cardPrecio}>{formatPrecio(vino.precio_pvp)}</span>}
+            {vino.ubicacion_estanteria && <span className={styles.cardUbicacion}>📍 {vino.ubicacion_estanteria}</span>}
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+      {onAddComparar && (
+        <button
+          type="button"
+          className={`${styles.compareBtnCard} ${enComparacion ? styles.compareBtnCardOn : ''} ${comparadorLleno ? styles.compareBtnCardDisabled : ''}`}
+          onClick={e => { e.stopPropagation(); if (!comparadorLleno) onAddComparar(vino) }}
+          title={enComparacion ? 'Quitar de comparación' : 'Añadir a comparación'}
+        >
+          {enComparacion ? '✓' : '+'}
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -485,6 +501,100 @@ function WineDetail({ vino, slug, colorAcento, onClose, lang = 'es' }) {
 
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Comparador de vinos ───────────────────────────────────────────────────────
+
+function CompareView({ vino1, vino2, slug, colorAcento, lang, onBack }) {
+  const [ficha1, setFicha1] = useState(null)
+  const [ficha2, setFicha2] = useState(null)
+  const [ready1, setReady1] = useState(false)
+  const [ready2, setReady2] = useState(false)
+
+  useEffect(() => {
+    const cached = vino1?.ficha_ia
+    if (cached && lang === 'es') {
+      try { setFicha1(typeof cached === 'string' ? JSON.parse(cached) : cached); setReady1(true); return } catch {}
+    }
+    fetch(`/api/kiosko/${slug}/ficha/${vino1.id}?lang=${lang}`)
+      .then(r => r.json()).then(d => { if (d.ficha) setFicha1(d.ficha) }).catch(() => {}).finally(() => setReady1(true))
+  }, [vino1?.id, lang])
+
+  useEffect(() => {
+    const cached = vino2?.ficha_ia
+    if (cached && lang === 'es') {
+      try { setFicha2(typeof cached === 'string' ? JSON.parse(cached) : cached); setReady2(true); return } catch {}
+    }
+    fetch(`/api/kiosko/${slug}/ficha/${vino2.id}?lang=${lang}`)
+      .then(r => r.json()).then(d => { if (d.ficha) setFicha2(d.ficha) }).catch(() => {}).finally(() => setReady2(true))
+  }, [vino2?.id, lang])
+
+  function renderCol(vino, ficha, ready) {
+    const notas = ficha?.notas || vino.descripcion || vino.notas_cata
+    return (
+      <div className={styles.compareCol}>
+        {vino.foto_url
+          ? <img src={vino.foto_url} alt={vino.nombre} className={styles.comparePhoto} />
+          : <div className={styles.comparePhotoPlaceholder} style={{ background: `${TIPO_COLORS[vino.tipo] || '#333'}44` }}>🍷</div>
+        }
+        {vino.tipo && <TipoChip tipo={vino.tipo} />}
+        <p className={styles.compareNombre}>{vino.nombre}</p>
+        {vino.bodega && <p className={styles.compareBodega}>{vino.bodega}</p>}
+        {vino.precio_pvp && <p className={styles.comparePrecio} style={{ color: colorAcento }}>{formatPrecio(vino.precio_pvp)}</p>}
+        <div className={styles.compareMeta}>
+          {vino.uva    && <span><strong>{T[lang].uva}</strong> {vino.uva}</span>}
+          {vino.anada  && <span><strong>{T[lang].anada}</strong> {vino.anada}</span>}
+          {vino.region && <span><strong>{T[lang].do}</strong> {vino.region}</span>}
+        </div>
+        <p className={styles.compareSecLabel}>{T[lang].notasCata}</p>
+        {!ready ? (
+          <div>
+            <div className={styles.compareSkel} />
+            <div className={styles.compareSkel} style={{ width: '78%' }} />
+            <div className={styles.compareSkel} style={{ width: '60%' }} />
+          </div>
+        ) : notas ? (
+          <p className={styles.compareNotas}>{notas}</p>
+        ) : <p className={styles.compareNotas} style={{ opacity: .35 }}>—</p>}
+        {ready && ficha && (ficha.temperatura || ficha.copa) && (
+          <>
+            <p className={styles.compareSecLabel}>{T[lang].servicio}</p>
+            <div className={styles.compareServicio}>
+              {ficha.temperatura && <span>🌡️ {ficha.temperatura}</span>}
+              {ficha.copa && <span>🍷 {ficha.copa}</span>}
+            </div>
+          </>
+        )}
+        {ready && ficha?.maridajes?.length > 0 && (
+          <>
+            <p className={styles.compareSecLabel}>{T[lang].maridaCon}</p>
+            <div className={styles.compareMaridajesGrid}>
+              {ficha.maridajes.map((m, i) => (
+                <span key={i} className={styles.compareMaridajeTag}>{iconoMaridaje(m)} {m}</span>
+              ))}
+            </div>
+          </>
+        )}
+        {ready && ficha?.curiosidad && (
+          <p className={styles.compareCuriosidad}>💡 {ficha.curiosidad}</p>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.compareView} style={{ '--color-acento': colorAcento }}>
+      <div className={styles.compareTopBar}>
+        <button className={styles.compareBackBtn} onClick={onBack} type="button">{T[lang].volver}</button>
+        <span className={styles.compareTitle}>{T[lang].comparacion}</span>
+        <div style={{ width: 80 }} />
+      </div>
+      <div className={styles.compareGrid}>
+        {renderCol(vino1, ficha1, ready1)}
+        {renderCol(vino2, ficha2, ready2)}
       </div>
     </div>
   )
@@ -871,7 +981,8 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBa
 
 // ── Vista Browse ──────────────────────────────────────────────────────────────
 
-function BrowseView({ vinos, colorAcento, onWineSelect, onBack, lang = 'es' }) {
+function BrowseView({ vinos, colorAcento, onWineSelect, onBack, lang = 'es',
+  vinosComparar = [], onAddComparar, onCompare, onClearComparar, esPremiumComparar = false }) {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroPais, setFiltroPais] = useState('')
@@ -971,9 +1082,42 @@ function BrowseView({ vinos, colorAcento, onWineSelect, onBack, lang = 'es' }) {
       <div className={styles.browseResults}>
         {vinosFiltrados.length === 0
           ? <div className={styles.noResults}><p>{T[lang].sinResultados}</p><button onClick={limpiar} style={{ color: colorAcento }} type="button">{T[lang].limpiarFiltros}</button></div>
-          : <div className={styles.wineGrid}>{vinosFiltrados.map(v => <WineCard key={v.id} vino={v} onClick={onWineSelect} />)}</div>
+          : <div className={`${styles.wineGrid} ${vinosComparar.length > 0 ? styles.browseResultsWithTray : ''}`}>{vinosFiltrados.map(v => (
+              <WineCard key={v.id} vino={v} onClick={onWineSelect}
+                onAddComparar={esPremiumComparar ? onAddComparar : null}
+                enComparacion={vinosComparar.some(c => c.id === v.id)}
+                comparadorLleno={vinosComparar.length >= 2 && !vinosComparar.some(c => c.id === v.id)}
+              />
+            ))}</div>
         }
       </div>
+
+      {/* Compare tray */}
+      {esPremiumComparar && vinosComparar.length > 0 && (
+        <div className={styles.compareTray} style={{ '--color-acento': colorAcento }}>
+          {[0, 1].map(i => (
+            vinosComparar[i] ? (
+              vinosComparar[i].foto_url
+                ? <img key={i} src={vinosComparar[i].foto_url} className={styles.compareTrayThumb} alt="" />
+                : <div key={i} className={styles.compareTrayPlaceholder}>🍷</div>
+            ) : (
+              <div key={i} className={styles.compareTrayEmpty}>+</div>
+            )
+          ))}
+          <span className={styles.compareTrayText}>
+            {vinosComparar.length < 2
+              ? T[lang].seleccionaMas
+              : `${vinosComparar[0]?.nombre} vs ${vinosComparar[1]?.nombre}`}
+          </span>
+          {vinosComparar.length === 2 && (
+            <button className={styles.compareTrayBtn} onClick={onCompare} type="button"
+              style={{ background: colorAcento, color: '#fff' }}>
+              {T[lang].compararBtn}
+            </button>
+          )}
+          <button className={styles.compareTrayClose} onClick={onClearComparar} type="button">✕</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -993,6 +1137,9 @@ export default function KioskoPage() {
   const [vinoDetalle, setVinoDetalle] = useState(null)
   const [longPressTimer, setLongPressTimer] = useState(null)
   const [lang, setLang]             = useState('es')
+  const [vinosComparar, setVinosComparar] = useState([])
+
+  const esPremiumComparar = !tienda?.plan || tienda.plan === 'premium' || tienda.plan === 'trial'
 
   const idleTimer = useRef(null)
 
@@ -1018,7 +1165,7 @@ export default function KioskoPage() {
   const resetIdle = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current)
     if (view !== VIEWS.WELCOME && view !== VIEWS.SHOWCASE) {
-      idleTimer.current = setTimeout(() => { setView(VIEWS.WELCOME); setVinoDetalle(null) }, IDLE_TIMEOUT_MS)
+      idleTimer.current = setTimeout(() => { setView(VIEWS.WELCOME); setVinoDetalle(null); setVinosComparar([]) }, IDLE_TIMEOUT_MS)
     }
   }, [view])
 
@@ -1041,6 +1188,15 @@ export default function KioskoPage() {
       }
     }
   }, [tienda?.font_family])
+
+  function addToComparar(vino) {
+    setVinosComparar(prev => {
+      if (prev.some(v => v.id === vino.id)) return prev.filter(v => v.id !== vino.id)
+      if (prev.length >= 2) return prev
+      return [...prev, vino]
+    })
+  }
+  function clearComparar() { setVinosComparar([]) }
 
   function abrirDetalle(vino) { setVinoDetalle(vino); setView(VIEWS.DETAIL) }
   function volverDeDetalle() { setView(VIEWS.BROWSE); setVinoDetalle(null) }
@@ -1184,7 +1340,21 @@ export default function KioskoPage() {
       {/* EXPLORAR */}
       {view === VIEWS.BROWSE && (
         <BrowseView vinos={vinos} colorAcento={colorAcento}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} />
+          onWineSelect={abrirDetalle} onBack={() => { setView(VIEWS.WELCOME); clearComparar() }} lang={lang}
+          vinosComparar={vinosComparar} onAddComparar={addToComparar}
+          onCompare={() => setView(VIEWS.COMPARE)}
+          onClearComparar={clearComparar}
+          esPremiumComparar={esPremiumComparar}
+        />
+      )}
+
+      {/* COMPARADOR */}
+      {view === VIEWS.COMPARE && vinosComparar.length === 2 && (
+        <CompareView
+          vino1={vinosComparar[0]} vino2={vinosComparar[1]}
+          slug={slug} colorAcento={colorAcento} lang={lang}
+          onBack={() => setView(VIEWS.BROWSE)}
+        />
       )}
 
       {/* MARIDAJE */}

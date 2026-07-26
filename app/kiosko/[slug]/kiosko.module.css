@@ -2134,6 +2134,193 @@
   .detailNombre { font-size: clamp(1.3rem, 5vw, 1.8rem); }
 }
 
+/* ── Comparador de vinos ─────────────────────────────────────────────────── */
+.wineCardWrap { position: relative; }
+
+.compareBtnCard {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 2px solid var(--color-acento);
+  color: var(--color-acento);
+  font-size: .9rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 5;
+  transition: background .15s, color .15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  line-height: 1;
+}
+.compareBtnCardOn {
+  background: var(--color-acento);
+  color: var(--panel);
+}
+.compareBtnCardDisabled {
+  opacity: .3;
+  cursor: not-allowed;
+}
+
+.compareTray {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--panel);
+  border-top: 2px solid var(--color-acento);
+  padding: .65rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  z-index: 100;
+  box-shadow: 0 -4px 24px rgba(0,0,0,.3);
+}
+.compareTrayThumb {
+  width: 40px; height: 52px;
+  object-fit: contain;
+  border-radius: 5px;
+  background: var(--sup2);
+  flex-shrink: 0;
+}
+.compareTrayPlaceholder {
+  width: 40px; height: 52px;
+  border: 2px solid var(--color-acento);
+  border-radius: 5px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; color: var(--texto-d);
+  background: var(--sup1);
+}
+.compareTrayEmpty {
+  width: 40px; height: 52px;
+  border: 2px dashed var(--borde-f);
+  border-radius: 5px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; color: var(--texto-d);
+}
+.compareTrayText {
+  flex: 1;
+  font-size: .82rem;
+  color: var(--texto-m);
+  line-height: 1.35;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compareTrayBtn {
+  border: none;
+  border-radius: 10px;
+  padding: .6rem 1.1rem;
+  font-size: .88rem; font-weight: 700;
+  cursor: pointer; flex-shrink: 0;
+  transition: opacity .15s;
+}
+.compareTrayBtn:hover { opacity: .88; }
+.compareTrayClose {
+  background: none; border: none;
+  color: var(--texto-d); font-size: 1.3rem;
+  cursor: pointer; padding: .2rem; line-height: 1;
+  flex-shrink: 0;
+}
+
+.browseResultsWithTray { padding-bottom: 88px; }
+
+/* Compare view */
+.compareView {
+  min-height: 100dvh;
+  display: flex; flex-direction: column;
+  background: var(--color-primario);
+  color: var(--texto);
+  font-family: var(--font-family);
+}
+.compareTopBar {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .8rem 1.25rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--borde);
+  position: sticky; top: 0; z-index: 20;
+}
+.compareBackBtn {
+  background: var(--btn-back);
+  border: 1px solid var(--btn-back-b);
+  border-radius: 8px;
+  color: var(--texto);
+  font-size: .85rem; font-weight: 600;
+  padding: .45rem .85rem;
+  cursor: pointer; flex-shrink: 0;
+}
+.compareTitle {
+  flex: 1; font-size: .95rem; font-weight: 700;
+  color: var(--texto); text-align: center;
+}
+.compareGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  overflow-y: auto;
+}
+.compareCol {
+  padding: 1.1rem .85rem 3rem;
+  border-right: 1px solid var(--borde);
+  display: flex; flex-direction: column; gap: .65rem;
+}
+.compareCol:last-child { border-right: none; }
+.comparePhoto {
+  width: 100%; max-height: 180px;
+  object-fit: contain; border-radius: 8px;
+}
+.comparePhotoPlaceholder {
+  width: 100%; height: 140px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem;
+}
+.compareNombre {
+  font-size: clamp(.82rem, 2.8vw, 1rem);
+  font-weight: 800; color: var(--texto); margin: 0; line-height: 1.25;
+}
+.compareBodega {
+  font-size: .75rem; color: var(--texto-m); margin: 0;
+}
+.comparePrecio {
+  font-size: 1.25rem; font-weight: 800; margin: 0;
+}
+.compareMeta {
+  display: flex; flex-direction: column; gap: .2rem;
+  font-size: .75rem; color: var(--texto-m);
+}
+.compareMeta span strong { color: var(--texto); }
+.compareSecLabel {
+  font-size: .6rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--texto-d); margin: .3rem 0 0;
+}
+.compareNotas {
+  font-size: .78rem; color: var(--texto-m);
+  line-height: 1.55; margin: 0;
+}
+.compareServicio {
+  display: flex; flex-direction: column; gap: .18rem;
+  font-size: .75rem; color: var(--texto-m);
+}
+.compareMaridajesGrid {
+  display: flex; flex-wrap: wrap; gap: .28rem;
+}
+.compareMaridajeTag {
+  font-size: .68rem; padding: .18rem .45rem;
+  border-radius: 20px;
+  background: var(--sup3); color: var(--texto-m);
+}
+.compareCuriosidad {
+  font-size: .73rem; color: var(--texto-d);
+  font-style: italic; line-height: 1.5; margin: 0;
+}
+.compareSkel {
+  height: 11px; margin: .22rem 0;
+  background: var(--sup3); border-radius: 6px;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
 @media (max-width: 600px) {
 
   /* Welcome screen */
