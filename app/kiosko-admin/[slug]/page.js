@@ -1149,10 +1149,10 @@ export default function AdminKioskoPage() {
             Ver kiosko →
           </a>
           {tab === 'catalogo' && <>
-            <button onClick={exportarCSV} type="button" className={styles.btnSecundario}>
+            <button onClick={exportarCSV} type="button" className={`${styles.btnSecundario} ${styles.btnHideMobile}`}>
               Exportar CSV
             </button>
-            <button onClick={() => { setModalImport(true); setResultImport(null) }} type="button" className={styles.btnSecundario}>
+            <button onClick={() => { setModalImport(true); setResultImport(null) }} type="button" className={`${styles.btnSecundario} ${styles.btnHideMobile}`}>
               Importar
             </button>
             <button onClick={abrirNuevo} type="button" className={styles.btnPrimario}>

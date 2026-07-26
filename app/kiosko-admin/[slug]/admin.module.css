@@ -1983,3 +1983,74 @@
   border-radius: 20px;
   margin-top: .25rem;
 }
+
+/* ── Mobile responsiveness ──────────────────────────────────────────────── */
+.btnHideMobile { /* visible on desktop */ }
+
+@media (max-width: 640px) {
+  /* Header */
+  .header        { padding: .7rem 1rem; gap: .5rem; }
+  .titulo        { font-size: 1rem; }
+  .subtitulo     { font-size: .72rem; }
+  .headerLogo    { height: 30px; }
+  .headerBrand   { gap: .5rem; }
+  .headerBack    { font-size: 1.1rem; }
+  .btnHideMobile { display: none; }
+  .trialPill     { font-size: .7rem; padding: .2rem .55rem; }
+
+  /* Tab nav: fill full width, give space for ★ PREMIUM badge */
+  .tabNav { padding: 10px .5rem 0; }
+  .tabBtn { flex: 1; padding: .65rem .5rem; font-size: .8rem; min-width: 0; text-align: center; }
+
+  /* Stats strip */
+  .statCard  { padding: .45rem .6rem; min-width: 52px; }
+  .statNum   { font-size: 1.1rem; }
+  .statLabel { font-size: .58rem; }
+
+  /* Toolbar */
+  .toolbar      { padding: .65rem .75rem; gap: .4rem; }
+  .busqueda     { min-width: 0; flex: 1 1 100%; max-width: 100%; }
+  .filtroSelect { font-size: .8rem; padding: .42rem .5rem; }
+  .precioRange  { flex: 1 1 100%; }
+  .precioInput  { width: 58px; }
+
+  /* Catalog table: slim padding + hide 11 secondary columns */
+  .tableWrap { padding: .5rem .5rem 2rem; }
+  .table     { font-size: .8rem; }
+  .table th,
+  .table td  { padding: .38rem .45rem; }
+
+  /* Keep: Foto(1) Nombre(2) PVP(8) Estado(15) Acciones(16)
+     Hide: Bodega(3) Tipo(4) D.O.(5) Uva(6) Añada(7) Coste(9) Margen(10) Oferta(11) Stock(12) Estantería(13) ★(14) */
+  .table th:nth-child(3), .table td:nth-child(3),
+  .table th:nth-child(4), .table td:nth-child(4),
+  .table th:nth-child(5), .table td:nth-child(5),
+  .table th:nth-child(6), .table td:nth-child(6),
+  .table th:nth-child(7), .table td:nth-child(7),
+  .table th:nth-child(9), .table td:nth-child(9),
+  .table th:nth-child(10),.table td:nth-child(10),
+  .table th:nth-child(11),.table td:nth-child(11),
+  .table th:nth-child(12),.table td:nth-child(12),
+  .table th:nth-child(13),.table td:nth-child(13),
+  .table th:nth-child(14),.table td:nth-child(14) { display: none; }
+
+  .tdNombre { max-width: 140px; }
+
+  /* Ajustes */
+  .ajustesWrap { padding: 1rem; gap: 1rem; }
+  .ajustesSec  { padding: 1rem 1.1rem; }
+
+  /* Analytics */
+  .analiticaWrap  { padding: 1.25rem 1rem; }
+  .analiticaKpiNum { font-size: 1.5rem; }
+
+  /* Trial conversion gate */
+  .trialGateTitle  { font-size: 1.2rem; }
+  .trialGateDesc   { font-size: .88rem; }
+  .trialGatePlans  { flex-direction: column; align-items: stretch; }
+  .trialPlanCard   { min-width: 0; max-width: 100%; }
+
+  /* Premium gate (analytics locked) */
+  .premiumGateWrap { padding: .75rem; }
+  .premiumGateBox  { padding: 2rem 1.25rem; }
+}
