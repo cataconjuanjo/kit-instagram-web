@@ -74,9 +74,11 @@
 .table tr:last-child td { border-bottom: none; }
 .table tr:hover td { background: #faf9f7; }
 
-.tdNombre { font-weight: 600; }
-.tdEmail  { color: #555; }
-.tdFecha  { color: #888; white-space: nowrap; }
+.tdNombre   { font-weight: 600; }
+.tdEmail    { color: #555; font-size: 12px; }
+.tdFecha    { color: #888; white-space: nowrap; font-size: 12px; }
+.tdTrial    { white-space: nowrap; font-size: 12px; }
+.tdAcciones { white-space: nowrap; display: flex; gap: 6px; align-items: center; }
 
 .empty {
   text-align: center;
@@ -128,6 +130,29 @@
 .trialNone { color: #aaa; font-style: italic; }
 .trialExp  { color: #c0392b; font-weight: 700; }
 .trialOk   { color: #1a6a3a; font-weight: 600; }
+
+.btnEditar {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #d0c8bc;
+  background: #fff;
+  color: #3a2a1a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btnEditar:hover { background: #f5f0e8; }
+
+.checkLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #3a2a1a;
+  cursor: pointer;
+  padding-top: 22px;
+}
+.checkLabel input[type=checkbox] { margin-top: 2px; flex-shrink: 0; }
 
 /* ── Modal ── */
 .modalOverlay {

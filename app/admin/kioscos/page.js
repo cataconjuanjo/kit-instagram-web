@@ -16,29 +16,43 @@ function Badge({ status }) {
   const s = ESTADOS[status] || ESTADOS.inactive
   return (
     <span style={{
-      display: 'inline-block',
-      padding: '2px 10px',
-      borderRadius: 12,
-      fontSize: 12,
-      fontWeight: 600,
-      background: s.color + '22',
-      color: s.color,
+      display: 'inline-block', padding: '2px 10px', borderRadius: 12,
+      fontSize: 12, fontWeight: 600, background: s.color + '22', color: s.color,
     }}>{s.label}</span>
   )
 }
 
-export default function AdminKioscosPage() {
-  const [tiendas, setTiendas]   = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [token, setToken]       = useState(null)
-  const [modal, setModal]       = useState(false)
-  const [enviando, setEnviando] = useState(false)
-  const [resultado, setResultado] = useState(null)
-  const [error, setError]       = useState('')
+function fmtSeg(s) {
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const ss = s % 60
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`
+}
 
+function fmtFecha(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })
+}
+
+export default function AdminKioscosPage() {
+  const [tiendas, setTiendas]     = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [token, setToken]         = useState(null)
+
+  // modal nueva tienda
+  const [modal, setModal]         = useState(false)
+  const [enviando, setEnviando]   = useState(false)
+  const [resultado, setResultado] = useState(null)
+  const [error, setError]         = useState('')
   const [form, setForm] = useState({
     nombre: '', email: '', slug: '', ciudad: '', color_primario: '#1a1a2e', color_acento: '#c9a96e',
   })
+
+  // modal edición
+  const [editando, setEditando]   = useState(null) // tienda completa
+  const [editForm, setEditForm]   = useState({})
+  const [editGuardando, setEditGuardando] = useState(false)
+  const [editMsg, setEditMsg]     = useState('')
 
   const cargar = useCallback(async (tok) => {
     setLoading(true)
@@ -112,6 +126,48 @@ export default function AdminKioscosPage() {
     }
   }
 
+  function abrirEdicion(tienda) {
+    setEditando(tienda)
+    setEditForm({
+      plan:              tienda.plan || '',
+      precio_especial:   tienda.precio_especial ?? '',
+      setup_fee_incluido: tienda.setup_fee_incluido ?? false,
+      propietario_email: tienda.propietario_email || '',
+      reset_trial:       false,
+    })
+    setEditMsg('')
+  }
+
+  async function guardarEdicion(e) {
+    e.preventDefault()
+    setEditGuardando(true)
+    setEditMsg('')
+    try {
+      const payload = {
+        id:                editando.id,
+        plan:              editForm.plan || null,
+        precio_especial:   editForm.precio_especial !== '' ? Number(editForm.precio_especial) : null,
+        setup_fee_incluido: editForm.setup_fee_incluido,
+        propietario_email: editForm.propietario_email || null,
+      }
+      if (editForm.reset_trial) payload.trial_expires_at = null
+
+      const res = await fetch('/api/admin/kiosko/lista', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body:    JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al guardar')
+      setTiendas(prev => prev.map(t => t.id === editando.id ? { ...t, ...payload, trial_expires_at: editForm.reset_trial ? null : t.trial_expires_at } : t))
+      setEditando(null)
+    } catch (err) {
+      setEditMsg(err.message)
+    } finally {
+      setEditGuardando(false)
+    }
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -134,6 +190,7 @@ export default function AdminKioscosPage() {
                 <th>Slug</th>
                 <th>Plan</th>
                 <th>Trial</th>
+                <th>Inicio trial</th>
                 <th>Estado</th>
                 <th>Activo</th>
                 <th>Alta</th>
@@ -142,60 +199,57 @@ export default function AdminKioscosPage() {
             </thead>
             <tbody>
               {tiendas.length === 0 && (
-                <tr><td colSpan={8} className={styles.empty}>Sin tiendas todavía</td></tr>
+                <tr><td colSpan={10} className={styles.empty}>Sin tiendas todavía</td></tr>
               )}
               {tiendas.map(t => {
                 const esTrial = t.plan === 'trial'
                 const expMs = t.trial_expires_at ? new Date(t.trial_expires_at).getTime() : null
+                const inicioMs = expMs ? expMs - 2 * 3600 * 1000 : null
                 const segsRestantes = esTrial && expMs ? Math.max(0, Math.round((expMs - Date.now()) / 1000)) : null
-                const fmtSeg = s => {
-                  const h = Math.floor(s / 3600)
-                  const m = Math.floor((s % 3600) / 60)
-                  const ss = s % 60
-                  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`
-                }
                 return (
-                <tr key={t.id}>
-                  <td className={styles.tdNombre}>{t.nombre}</td>
-                  <td className={styles.tdEmail}>{t.propietario_email || t.email || '—'}</td>
-                  <td>
-                    <a href={`/kiosko/${t.slug}`} target="_blank" rel="noreferrer" className={styles.slugLink}>
-                      {t.slug}
-                    </a>
-                  </td>
-                  <td>
-                    {t.plan ? (
-                      <span className={`${styles.planBadge} ${t.plan === 'premium' ? styles.planPremium : t.plan === 'trial' ? styles.planTrial : styles.planBasico}`}>
-                        {t.plan}{t.precio_especial ? ` · ${t.precio_especial}€` : ''}
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td className={styles.tdTrial}>
-                    {!esTrial ? '—' : expMs === null ? (
-                      <span className={styles.trialNone}>Sin iniciar</span>
-                    ) : segsRestantes === 0 ? (
-                      <span className={styles.trialExp}>Expirado</span>
-                    ) : (
-                      <span className={styles.trialOk}>{fmtSeg(segsRestantes)} restante</span>
-                    )}
-                  </td>
-                  <td><Badge status={t.subscription_status} /></td>
-                  <td>
-                    <button
-                      className={t.activo ? styles.toggleOn : styles.toggleOff}
-                      onClick={() => toggleActivo(t)}
-                      title={t.activo ? 'Desactivar' : 'Activar'}
-                    >
-                      {t.activo ? '✓ Sí' : '✗ No'}
-                    </button>
-                  </td>
-                  <td className={styles.tdFecha}>{t.created_at ? new Date(t.created_at).toLocaleDateString('es-ES') : '—'}</td>
-                  <td>
-                    <a href={`/kiosko-admin/${t.slug}`} target="_blank" rel="noreferrer" className={styles.linkAdmin}>
-                      Panel →
-                    </a>
-                  </td>
-                </tr>
+                  <tr key={t.id}>
+                    <td className={styles.tdNombre}>{t.nombre}</td>
+                    <td className={styles.tdEmail}>{t.propietario_email || t.email || '—'}</td>
+                    <td>
+                      <a href={`/kiosko/${t.slug}`} target="_blank" rel="noreferrer" className={styles.slugLink}>
+                        {t.slug}
+                      </a>
+                    </td>
+                    <td>
+                      {t.plan ? (
+                        <span className={`${styles.planBadge} ${t.plan === 'premium' ? styles.planPremium : t.plan === 'trial' ? styles.planTrial : styles.planBasico}`}>
+                          {t.plan}{t.precio_especial ? ` · ${t.precio_especial}€` : ''}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className={styles.tdTrial}>
+                      {!esTrial ? '—' : expMs === null ? (
+                        <span className={styles.trialNone}>Sin iniciar</span>
+                      ) : segsRestantes === 0 ? (
+                        <span className={styles.trialExp}>Expirado</span>
+                      ) : (
+                        <span className={styles.trialOk}>{fmtSeg(segsRestantes)} restante</span>
+                      )}
+                    </td>
+                    <td className={styles.tdFecha}>{inicioMs ? fmtFecha(new Date(inicioMs).toISOString()) : '—'}</td>
+                    <td><Badge status={t.subscription_status} /></td>
+                    <td>
+                      <button
+                        className={t.activo ? styles.toggleOn : styles.toggleOff}
+                        onClick={() => toggleActivo(t)}
+                        title={t.activo ? 'Desactivar' : 'Activar'}
+                      >
+                        {t.activo ? '✓ Sí' : '✗ No'}
+                      </button>
+                    </td>
+                    <td className={styles.tdFecha}>{t.created_at ? new Date(t.created_at).toLocaleDateString('es-ES') : '—'}</td>
+                    <td className={styles.tdAcciones}>
+                      <button className={styles.btnEditar} onClick={() => abrirEdicion(t)}>Editar</button>
+                      <a href={`/kiosko-admin/${t.slug}`} target="_blank" rel="noreferrer" className={styles.linkAdmin}>
+                        Panel →
+                      </a>
+                    </td>
+                  </tr>
                 )
               })}
             </tbody>
@@ -203,6 +257,80 @@ export default function AdminKioscosPage() {
         </div>
       )}
 
+      {/* Modal edición */}
+      {editando && (
+        <div className={styles.modalOverlay} onClick={() => setEditando(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>Editar: {editando.nombre}</h2>
+              <button className={styles.modalClose} onClick={() => setEditando(null)}>✕</button>
+            </div>
+            <form className={styles.form} onSubmit={guardarEdicion}>
+              <div className={styles.row2}>
+                <label>
+                  Plan
+                  <select value={editForm.plan} onChange={e => setEditForm(f => ({ ...f, plan: e.target.value }))}>
+                    <option value="">Sin plan</option>
+                    <option value="trial">Trial</option>
+                    <option value="basico">Básico</option>
+                    <option value="premium">Premium</option>
+                  </select>
+                </label>
+                <label>
+                  Precio especial (€/mes)
+                  <input
+                    type="number" min="0" step="1"
+                    value={editForm.precio_especial}
+                    onChange={e => setEditForm(f => ({ ...f, precio_especial: e.target.value }))}
+                    placeholder="129"
+                  />
+                </label>
+              </div>
+              <div className={styles.row2}>
+                <label>
+                  Email propietario
+                  <input
+                    type="email"
+                    value={editForm.propietario_email}
+                    onChange={e => setEditForm(f => ({ ...f, propietario_email: e.target.value }))}
+                    placeholder="cliente@ejemplo.com"
+                  />
+                </label>
+                <label className={styles.checkLabel}>
+                  <input
+                    type="checkbox"
+                    checked={editForm.setup_fee_incluido}
+                    onChange={e => setEditForm(f => ({ ...f, setup_fee_incluido: e.target.checked }))}
+                  />
+                  Puesta en marcha incluida (sin cobrar alta)
+                </label>
+              </div>
+
+              {editando.plan === 'trial' && (
+                <label className={styles.checkLabel}>
+                  <input
+                    type="checkbox"
+                    checked={editForm.reset_trial}
+                    onChange={e => setEditForm(f => ({ ...f, reset_trial: e.target.checked }))}
+                  />
+                  Reiniciar contador trial (las 2h vuelven a estar disponibles desde cero)
+                </label>
+              )}
+
+              {editMsg && <p className={styles.formError}>{editMsg}</p>}
+
+              <div className={styles.formActions}>
+                <button type="button" className={styles.btnCancel} onClick={() => setEditando(null)}>Cancelar</button>
+                <button type="submit" className={styles.btnNuevo} disabled={editGuardando}>
+                  {editGuardando ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal nueva tienda */}
       {modal && (
         <div className={styles.modalOverlay} onClick={cerrarModal}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>

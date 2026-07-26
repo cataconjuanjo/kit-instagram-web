@@ -47,7 +47,7 @@ export async function PATCH(req) {
     const { id, ...campos } = await req.json()
     if (!id) return Response.json({ error: 'Falta id' }, { status: 400 })
 
-    const permitidos = ['activo', 'nombre', 'ciudad', 'color_primario', 'color_acento', 'subscription_status']
+    const permitidos = ['activo', 'nombre', 'ciudad', 'color_primario', 'color_acento', 'subscription_status', 'plan', 'precio_especial', 'setup_fee_incluido', 'propietario_email', 'trial_expires_at']
     const update = Object.fromEntries(Object.entries(campos).filter(([k]) => permitidos.includes(k)))
     if (!Object.keys(update).length) return Response.json({ error: 'Sin campos válidos' }, { status: 400 })
 
