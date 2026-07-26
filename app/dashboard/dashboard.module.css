@@ -3385,3 +3385,272 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Distinción visual: navegación vs. cambio de estado ── */
+
+.btnNav {
+  text-underline-offset: 2px;
+  letter-spacing: 0.01em;
+}
+
+.btnEstado {
+  opacity: 0.78;
+  border-style: dashed;
+}
+
+.btnEstado:hover {
+  opacity: 1;
+}
+
+.btnDestructivo {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+.btnDestructivo:hover {
+  opacity: 1;
+}
+
+/* ── Toast de deshacer (Hecha / Descartar) ── */
+
+.radarToast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #171416;
+  color: #fffaf3;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 28px rgba(0, 0, 0, 0.22);
+  z-index: 9999;
+  white-space: nowrap;
+  animation: radarToastIn 0.18s ease;
+}
+
+@keyframes radarToastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.radarToastUndo {
+  background: transparent;
+  border: 1px solid rgba(255, 250, 243, 0.35);
+  color: #fffaf3;
+  border-radius: 6px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.radarToastUndo:hover {
+  background: rgba(255, 250, 243, 0.12);
+}
+
+/* ── Secciones colapsables (Radar / Semana / Lanzamiento) ── */
+
+.colapsablePanel {
+  border: 1px solid #e8e0d4;
+  border-radius: 10px;
+  background: #fffdf9;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.colapsableTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: #171416;
+  font-family: inherit;
+}
+
+.colapsableTrigger:hover {
+  background: #f7f2eb;
+}
+
+.colapsableTrigger > span:first-child {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.colapsableTrigger small {
+  font-size: 11px;
+  color: #7a7065;
+  font-weight: 400;
+}
+
+.colapsableTrigger em {
+  font-style: normal;
+  font-size: 13px;
+  color: #9e9085;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.colapsableContent {
+  border-top: 1px solid #e8e0d4;
+  padding: 0;
+}
+
+/* Kioskos panel */
+.kioskosPanel {
+  margin: 0 auto;
+  max-width: 900px;
+  padding: 32px 20px 48px;
+}
+
+.kioskosHead {
+  margin-bottom: 20px;
+}
+
+.kioskosHead h2 {
+  margin: 4px 0 2px;
+  font-size: 18px;
+  font-weight: 750;
+  color: #171416;
+}
+
+.kioskosHead p {
+  margin: 0;
+  font-size: 12px;
+  color: #706a64;
+}
+
+.kioskosGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.kioskosCard {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #e2d8c8;
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 16px;
+}
+
+.kioskosCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kioskosCardHead strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: #171416;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kioskosBadge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.kioskosBadgePremium {
+  background: #f5e8c8;
+  color: #7a4a00;
+}
+
+.kioskosBadgeTrial {
+  background: #e8f0ff;
+  color: #1a3a8a;
+}
+
+.kioskosBadgeBasico {
+  background: #eee9e3;
+  color: #5a4a3a;
+}
+
+.kioskosTrialInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: #4a4540;
+  background: #f5f0e8;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.kioskosTrialInfo strong {
+  font-weight: 750;
+  color: #171416;
+}
+
+.kioskosTrialNone {
+  font-size: 12px;
+  color: #888;
+  font-style: italic;
+}
+
+.kioskosTrialExpired {
+  font-size: 12px;
+  color: #c0392b;
+  font-weight: 700;
+}
+
+.kioskosEmail {
+  font-size: 11px;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kioskosPrecio {
+  font-size: 11px;
+  color: #7a4a00;
+  font-weight: 600;
+}
+
+.kioskosLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 12px;
+  border-radius: 7px;
+  background: #171416;
+  color: #fffaf3;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.kioskosLink:hover {
+  opacity: 0.82;
+}

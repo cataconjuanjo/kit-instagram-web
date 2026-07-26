@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../supabase'
-import { getEffectiveRestaurantEmail } from '../demo'
+import { getEffectiveRestaurantEmail, isAdminEmail } from '../demo'
 import {
   SELECT_CLIENT_PLATO_DASHBOARD,
   SELECT_CLIENT_PROPUESTA_ADMIN,
@@ -35,7 +35,38 @@ function eur(valor, decimales = 0) {
   return `${decimal(valor).toLocaleString('es-ES', {
     minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
-  })} EUR`
+  })} €`
+}
+
+function labelNavegacion(href = '') {
+  if (!href || href === '/dashboard') return 'Ir al panel →'
+  if (href.includes('cierre#incidencias')) return 'Ir a incidencias →'
+  if (href.includes('cierre#dudas')) return 'Ir a dudas de sala →'
+  if (href.includes('cierre')) return 'Ir al cierre →'
+  if (href.includes('bodega#pedido')) return 'Ir a pedido →'
+  if (href.includes('bodega#referencias-sin-coste')) return 'Completar costes →'
+  if (href.includes('bodega#referencias-pendientes')) return 'Ir a bodega →'
+  if (href.includes('bodega#propuestas')) return 'Ver propuestas →'
+  if (href.includes('bodega')) return 'Ir a bodega →'
+  if (href.includes('vinos?filtro=pendientes')) return 'Completar vinos →'
+  if (href.includes('vinos?importar')) return 'Importar vinos →'
+  if (href.includes('vinos')) return 'Ir a vinos →'
+  if (href.includes('platos?filtro=descripcion')) return 'Completar platos →'
+  if (href.includes('platos?importar')) return 'Importar platos →'
+  if (href.includes('platos')) return 'Ir a platos →'
+  if (href.includes('qr#preview-privada')) return 'Ir a preview →'
+  if (href.includes('qr#pack-entrega')) return 'Ir a material QR →'
+  if (href.includes('qr')) return 'Ir al QR →'
+  if (href.includes('plantillas')) return 'Ir a plantillas →'
+  if (href.includes('sala')) return 'Ir a sala →'
+  if (href.includes('estadisticas')) return 'Ver estadísticas →'
+  if (href.includes('simulador')) return 'Ir al simulador →'
+  if (href.includes('menu-engineering')) return 'Ver mapa de carta →'
+  if (href.includes('catalogo')) return 'Ir al catálogo →'
+  if (href.includes('constructor')) return 'Ir al constructor →'
+  if (href.includes('inventario')) return 'Ir a inventario →'
+  if (href.includes('ajustes')) return 'Ir a ajustes →'
+  return 'Ir al panel →'
 }
 
 function leerDetalle(detalle) {
@@ -105,10 +136,10 @@ const DIAS_ENVIO_RESUMEN = [
   { value: 0, label: 'Domingo' },
   { value: 1, label: 'Lunes' },
   { value: 2, label: 'Martes' },
-  { value: 3, label: 'Miercoles' },
+  { value: 3, label: 'Miércoles' },
   { value: 4, label: 'Jueves' },
   { value: 5, label: 'Viernes' },
-  { value: 6, label: 'Sabado' },
+  { value: 6, label: 'Sábado' },
 ]
 
 function preferenciasResumenPorDefecto(rest = {}) {
@@ -228,6 +259,7 @@ export default function DashboardHome() {
   const [radarLoading, setRadarLoading] = useState(false)
   const [radarError, setRadarError] = useState('')
   const [accionandoRadar, setAccionandoRadar] = useState('')
+  const [radarUndo, setRadarUndo] = useState(null)
   const [resumenSemanal, setResumenSemanal] = useState(null)
   const [resumenSemanalLoading, setResumenSemanalLoading] = useState(false)
   const [resumenSemanalSaving, setResumenSemanalSaving] = useState(false)
@@ -239,6 +271,7 @@ export default function DashboardHome() {
   const [activacionReciente, setActivacionReciente] = useState(false)
   const [estadoLanzamiento, setEstadoLanzamiento] = useState(ESTADO_LANZAMIENTO_INICIAL)
   const [experienciaLanzamiento, setExperienciaLanzamiento] = useState(EXPERIENCIA_LANZAMIENTO_INICIAL)
+  const [kioskos, setKioskos] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const cargarRadarDiario = useCallback(async (restauranteId) => {
@@ -288,6 +321,29 @@ export default function DashboardHome() {
     } finally {
       setAccionandoRadar('')
     }
+  }
+
+  function ejecutarRadarConUndo(accion, estadoNuevo) {
+    if (!accion?.id || !restaurante?.id || !radarPersistidas) return
+    const estadoPrevio = accion.estado
+    setRadarAcciones(prev => prev.map(item =>
+      item.id === accion.id ? { ...item, estado: estadoNuevo } : item
+    ))
+    if (radarUndo?.timer) clearTimeout(radarUndo.timer)
+    const timer = setTimeout(() => {
+      actualizarRadarDiario({ ...accion, estado: estadoPrevio }, estadoNuevo)
+      setRadarUndo(null)
+    }, 4000)
+    setRadarUndo({ accion: { ...accion, estado: estadoPrevio }, estadoNuevo, timer })
+  }
+
+  function deshacerRadar() {
+    if (!radarUndo) return
+    clearTimeout(radarUndo.timer)
+    setRadarAcciones(prev => prev.map(item =>
+      item.id === radarUndo.accion.id ? { ...item, estado: radarUndo.accion.estado } : item
+    ))
+    setRadarUndo(null)
   }
 
   const aplicarPreferenciasSemanal = useCallback((preferencias, rest = {}) => {
@@ -480,6 +536,15 @@ export default function DashboardHome() {
       const { email, restauranteId, isDemo } = await getEffectiveRestaurantEmail(supabase)
       if (!email && !restauranteId) { window.location.href = '/login'; return }
 
+      if (isAdminEmail(email)) {
+        const tok = await tokenSesion()
+        const res = await fetch('/api/admin/kiosko/lista', {
+          headers: { Authorization: `Bearer ${tok}` },
+        })
+        const data = await res.json().catch(() => ({}))
+        setKioskos(data.tiendas || [])
+      }
+
       if (isDemo) {
         const demo = await cargarDemoDashboard(email)
         if (demo?.restaurante) {
@@ -617,7 +682,7 @@ export default function DashboardHome() {
     : calidadGlobal >= 80 ? 'Lista para trabajar' : calidadGlobal >= 55 ? 'Necesita ajustes' : 'Requiere orden'
 
   const acciones = (perfilBodega ? [
-    bajoMinimo.length > 0 && { texto: `Preparar reposicion de ${bajoMinimo.length} vinos`, href: '/dashboard/bodega#pedido', tipo: 'Compra' },
+    bajoMinimo.length > 0 && { texto: `Preparar reposición de ${bajoMinimo.length} vinos`, href: '/dashboard/bodega#pedido', tipo: 'Compra' },
     sinCosteCompra.length > 0 && { texto: `Completar coste de ${sinCosteCompra.length} referencias`, href: '/dashboard/bodega#referencias-sin-coste', tipo: 'Margen' },
     sinProveedor.length > 0 && { texto: `Asignar proveedor a ${sinProveedor.length} vinos`, href: '/dashboard/bodega#referencias-sin-proveedor', tipo: 'Proveedor' },
     vinosSinStock.length > 0 && { texto: `Registrar stock actual de ${vinosSinStock.length} vinos`, href: '/dashboard/bodega#referencias-sin-stock', tipo: 'Stock' },
@@ -651,8 +716,8 @@ export default function DashboardHome() {
       id: 'platos',
       titulo: 'Maridaje con contexto',
       texto: platos.length
-        ? `${platos.length} platos activos${platosSinDescripcion.length ? `, ${platosSinDescripcion.length} sin descripcion interna` : ''}.`
-        : 'Aun no hay platos activos para orientar ArmonIA.',
+        ? `${platos.length} platos activos${platosSinDescripcion.length ? `, ${platosSinDescripcion.length} sin descripción interna` : ''}.`
+        : 'Aún no hay platos activos para orientar ArmonIA.',
       href: '/dashboard/platos',
       ok: platos.length > 0 && platosSinDescripcion.length === 0,
       requerido: false,
@@ -791,14 +856,14 @@ export default function DashboardHome() {
   const tareasInicio = perfilBodega
     ? [
         { id: 'bodega_vinos', titulo: 'Cargar referencias de bodega', texto: 'Importa o crea los vinos con stock inicial, precio y datos principales.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
-        { id: 'bodega_control', titulo: 'Completar control de bodega', texto: 'Coste, proveedor y stock actual convierten la lista en una herramienta de gestion.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || (sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 && sinStockMinimo.length === 0) },
+        { id: 'bodega_control', titulo: 'Completar control de bodega', texto: 'Coste, proveedor y stock actual convierten la lista en una herramienta de gestión.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || (sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 && sinStockMinimo.length === 0) },
       ]
     : [
         { id: 'vinos', titulo: 'Cargar carta de vinos', texto: 'Importa o crea las referencias principales con precio visible antes de publicar.', href: '/dashboard/vinos?importar=1', autoHide: () => cartaPublicable },
         { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
         { id: 'descripciones_platos', titulo: 'Definir platos para maridaje', texto: 'Describe técnica, salsa, intensidad e ingredientes clave. Es información interna: no se muestra como receta en la carta pública.', href: '/dashboard/platos?filtro=descripcion', autoHide: () => platos.length === 0 || platosSinDescripcion.length === 0 },
         { id: 'bodega', titulo: 'Completar margen, proveedor y stock', texto: 'Coste, proveedor y stock actual convierten la carta en control de bodega.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 },
-        { id: 'plantillas', titulo: 'Elegir experiencia de entrega', texto: 'Define si vas a lanzar QR, temporada, degustacion, premium o evento privado antes de preparar el material.', href: '/dashboard/plantillas', autoHide: () => experienciaElegida },
+        { id: 'plantillas', titulo: 'Elegir experiencia de entrega', texto: 'Define si vas a lanzar QR, temporada, degustación, premium o evento privado antes de preparar el material.', href: '/dashboard/plantillas', autoHide: () => experienciaElegida },
         { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la prueba interna, revisa móvil y publica solo cuando la pantalla QR confirme contenido mínimo.', href: '/dashboard/qr', autoHide: () => previewLista && cartaPublicada && qrPreparado },
       ]
   const tareasInicioVisibles = tareasInicio.filter(tarea =>
@@ -867,7 +932,7 @@ export default function DashboardHome() {
   const resumenOperativo = perfilBodega
     ? [
         `${calidadGlobal}% control de bodega`,
-        `${bajoMinimo.length} bajo minimo`,
+        `${bajoMinimo.length} bajo mínimo`,
         `${sinCosteCompra.length + sinProveedor.length + sinStockMinimo.length} datos pendientes`,
       ].join(' · ')
     : [
@@ -978,8 +1043,8 @@ export default function DashboardHome() {
                     <p>{siguienteActivacion.texto}</p>
                   </div>
                   <div className={styles.activationStepActions}>
-                    <Link href={siguienteActivacion.href}>Continuar</Link>
-                    <button type="button" onClick={() => marcarTareaInicio(siguienteActivacion.id)}>Marcar revisado</button>
+                    <Link href={siguienteActivacion.href} className={styles.btnNav}>{labelNavegacion(siguienteActivacion.href)}</Link>
+                    <button type="button" className={styles.btnEstado} onClick={() => marcarTareaInicio(siguienteActivacion.id)}>Marcar como hecho ✓</button>
                   </div>
                 </article>
               )}
@@ -998,7 +1063,7 @@ export default function DashboardHome() {
             <div className={styles.activationTrust}>
               <span>Avanza paso a paso sin publicar nada por sorpresa</span>
               <span>{perfilBodega ? 'El criterio del sumiller sigue al mando' : 'Tu carta no se publica sola'}</span>
-              <Link href={enlaceRevisionActivacion}>{textoRevisionActivacion}</Link>
+              <Link href={enlaceRevisionActivacion} className={styles.btnNav}>{labelNavegacion(enlaceRevisionActivacion)}</Link>
             </div>
           </section>
         )}
@@ -1035,7 +1100,7 @@ export default function DashboardHome() {
                     : 'Elige una plantilla para orientar copy, QR, preview y material.'}
                 </small>
               </div>
-              <Link href="/dashboard/plantillas">{experienciaElegida ? 'Abrir plan' : 'Elegir plantilla'}</Link>
+              <Link href="/dashboard/plantillas" className={styles.btnNav}>{experienciaElegida ? 'Ver plan de lanzamiento →' : 'Elegir experiencia →'}</Link>
             </div>
             {bloqueosLanzamiento.length > 0 && (
               <div className={styles.launchBlockers}>
@@ -1069,8 +1134,8 @@ export default function DashboardHome() {
                   {lecturaDecisionLanzamiento}
                 </span>
               </div>
-              <Link href={siguienteLanzamiento?.href || '/dashboard/qr'}>
-                {lanzamientoListoMesa ? 'Abrir QR' : 'Resolver siguiente'}
+              <Link href={siguienteLanzamiento?.href || '/dashboard/qr'} className={styles.btnNav}>
+                {lanzamientoListoMesa ? 'Ir al panel QR →' : `Completar: ${siguienteLanzamiento?.titulo || 'siguiente paso'} →`}
               </Link>
             </div>
           </section>
@@ -1086,7 +1151,7 @@ export default function DashboardHome() {
               </div>
               <div className={styles.prioritySide}>
                 <span>{resumenOperativo}</span>
-                <Link href={accionPrincipal.href}>Abrir tarea</Link>
+                <Link href={accionPrincipal.href} className={styles.btnNav}>{labelNavegacion(accionPrincipal.href)}</Link>
               </div>
             </section>
 
@@ -1096,9 +1161,9 @@ export default function DashboardHome() {
                   <div>
                     <p className={styles.eyebrow}>Lectura gerente</p>
                     <h2 id="manager-insights-title">Decisiones con impacto</h2>
-                    <p>Prioriza lo que afecta a venta, margen, stock o lanzamiento usando las senales actuales de Carta Viva.</p>
+                    <p>Prioriza lo que afecta a venta, margen, stock o lanzamiento usando las señales actuales de Carta Viva.</p>
                   </div>
-                  <Link href={insightPrincipalGerencia.href}>Abrir decision clave</Link>
+                  <Link href={insightPrincipalGerencia.href} className={styles.btnNav}>{`Ver ${insightPrincipalGerencia.area} →`}</Link>
                 </div>
                 <div className={styles.managerInsightGrid}>
                   {insightsGerencia.map((insight, index) => (
@@ -1120,9 +1185,9 @@ export default function DashboardHome() {
               <section className={styles.cellarCommandPanel}>
                 <div className={styles.cellarCommandHead}>
                   <div>
-                    <p className={styles.eyebrow}>Direccion de bodega</p>
+                    <p className={styles.eyebrow}>Dirección de bodega</p>
                     <h2>Carta Viva Sumiller</h2>
-                    <p>Lectura ejecutiva para decidir compras, margen, rotacion y altas sin volver al Excel.</p>
+                    <p>Lectura ejecutiva para decidir compras, margen, rotación y altas sin volver al Excel.</p>
                   </div>
                   <Link href="/dashboard/simulador">Simular rentabilidad</Link>
                 </div>
@@ -1130,12 +1195,12 @@ export default function DashboardHome() {
                   <article>
                     <span>Referencias activas</span>
                     <strong>{vinosActivos.length}</strong>
-                    <small>{referenciasListas} listas con coste, proveedor, minimo y PVP</small>
+                    <small>{referenciasListas} listas con coste, proveedor, mínimo y PVP</small>
                   </article>
                   <article>
                     <span>Valor de stock</span>
                     <strong>{eur(valorStock)}</strong>
-                    <small>{referenciasCriticas} referencias criticas por stock o minimo</small>
+                    <small>{referenciasCriticas} referencias críticas por stock o mínimo</small>
                   </article>
                   <article>
                     <span>Margen medio</span>
@@ -1155,10 +1220,10 @@ export default function DashboardHome() {
                   </Link>
                   <Link href="/dashboard/bodega#pedido">
                     <span>Pedido inteligente</span>
-                    <strong>Preparar reposicion y evitar compras de mas</strong>
+                    <strong>Preparar reposición y evitar compras de más</strong>
                   </Link>
                   <Link href="/dashboard/catalogo">
-                    <span>Catalogo distribuidores</span>
+                    <span>Catálogo distribuidores</span>
                     <strong>Buscar referencias reales y crear candidatas</strong>
                   </Link>
                   <Link href="/dashboard/constructor">
@@ -1168,6 +1233,7 @@ export default function DashboardHome() {
                 </div>
               </section>
             )}
+
 
             {mostrarResumenSemanal && (
               <section className={styles.weeklyPanel}>
@@ -1194,7 +1260,7 @@ export default function DashboardHome() {
                     <button type="button" onClick={copiarResumenSemanal} disabled={!resumenSemanal?.copy_text}>
                       Copiar
                     </button>
-                    <Link href="/dashboard/estadisticas">Ver detalle</Link>
+                    <Link href="/dashboard/estadisticas" className={styles.btnNav}>Ver estadísticas completas →</Link>
                   </div>
                 </div>
 
@@ -1237,7 +1303,7 @@ export default function DashboardHome() {
                         </select>
                       </label>
                       <label>
-                        <span>Dia</span>
+                        <span>Día</span>
                         <select
                           value={resumenPrefsDraft.send_day}
                           onChange={event => setResumenPrefsDraft(prev => ({ ...prev, send_day: Number(event.target.value) }))}
@@ -1266,20 +1332,20 @@ export default function DashboardHome() {
                     <div className={styles.weeklyMetrics}>
                       <article>
                         <span>Ganado</span>
-                        <strong>{kpisSemanales.beneficio_bruto_texto || '0 EUR'}</strong>
+                        <strong>{kpisSemanales.beneficio_bruto_texto || '0 €'}</strong>
                         <small>
                           {kpisSemanales.ventas_kpi || 0} ventas KPI · margen {kpisSemanales.margen_medio_texto || '0%'}
                           {comparacionSemanal ? ` · ${comparacionSemanal.beneficio_bruto_delta >= 0 ? '+' : ''}${comparacionSemanal.beneficio_bruto_delta} EUR vs anterior` : ''}
                         </small>
                       </article>
                       <article>
-                        <span>Recomendacion</span>
-                        <strong>{kpisSemanales.beneficio_recomendacion_texto || '0 EUR'}</strong>
-                        <small>{kpisSemanales.conversion_recomendacion_texto || '0%'} conversion · {kpisSemanales.ventas_tpv_atribuidas || 0} TPV atribuidas</small>
+                        <span>Recomendación</span>
+                        <strong>{kpisSemanales.beneficio_recomendacion_texto || '0 €'}</strong>
+                        <small>{kpisSemanales.conversion_recomendacion_texto || '0%'} conversión · {kpisSemanales.ventas_tpv_atribuidas || 0} TPV atribuidas</small>
                       </article>
                       <article>
                         <span>Por capturar</span>
-                        <strong>{kpisSemanales.recuperable_semana_texto || '0 EUR'}</strong>
+                        <strong>{kpisSemanales.recuperable_semana_texto || '0 €'}</strong>
                         <small>
                           {kpisSemanales.ventas_tpv_no_atribuidas || 0} TPV sin atribuir · {kpisSemanales.ventas_sin_coste || 0} ventas sin coste
                           {comparacionSemanal ? ` · ${comparacionSemanal.recuperable_semana_delta >= 0 ? '+' : ''}${comparacionSemanal.recuperable_semana_delta} EUR vs anterior` : ''}
@@ -1287,7 +1353,7 @@ export default function DashboardHome() {
                       </article>
                       <article>
                         <span>Escenarios</span>
-                        <strong>{kpisSemanales.oportunidad_anual_texto || '0 EUR'}</strong>
+                        <strong>{kpisSemanales.oportunidad_anual_texto || '0 €'}</strong>
                         <small>Impacto anual pendiente de decisión</small>
                       </article>
                     </div>
@@ -1369,21 +1435,34 @@ export default function DashboardHome() {
                         <p>{accion.accion}</p>
                       </div>
                       <div className={styles.dailyRadarActions}>
-                        <Link href={accion.href || '/dashboard'}>Abrir</Link>
+                        <Link href={accion.href || '/dashboard'} className={styles.btnNav}>{labelNavegacion(accion.href)}</Link>
                         {radarPersistidas && !['hecha', 'descartada'].includes(accion.estado) && (
                           <>
                             <button
                               type="button"
+                              className={styles.btnEstado}
                               disabled={accionandoRadar === accion.id}
                               onClick={() => actualizarRadarDiario(accion, accion.estado === 'en_progreso' ? 'pendiente' : 'en_progreso')}
                             >
-                              {accion.estado === 'en_progreso' ? 'Pausar' : 'En curso'}
+                              {accion.estado === 'en_progreso' ? 'Pausar ⏸' : 'En curso ▶'}
                             </button>
-                            <button type="button" disabled={accionandoRadar === accion.id} onClick={() => actualizarRadarDiario(accion, 'hecha')}>
-                              Hecha
+                            <button
+                              type="button"
+                              className={styles.btnDestructivo}
+                              disabled={accionandoRadar === accion.id}
+                              onClick={() => ejecutarRadarConUndo(accion, 'hecha')}
+                              title="Se puede deshacer durante 4 segundos"
+                            >
+                              Hecha ✓
                             </button>
-                            <button type="button" disabled={accionandoRadar === accion.id} onClick={() => actualizarRadarDiario(accion, 'descartada')}>
-                              Descartar
+                            <button
+                              type="button"
+                              className={styles.btnDestructivo}
+                              disabled={accionandoRadar === accion.id}
+                              onClick={() => ejecutarRadarConUndo(accion, 'descartada')}
+                              title="No volverá a aparecer hoy. Se puede deshacer durante 4 segundos"
+                            >
+                              Descartar ×
                             </button>
                           </>
                         )}
@@ -1414,7 +1493,7 @@ export default function DashboardHome() {
                 <div className={styles.stateRows}>
                   <span><strong>{calidadGlobal}%</strong> {perfilBodega ? 'control de bodega' : 'salud de carta'}</span>
                   <span><strong>{estadoTurno}</strong> {perfilBodega ? 'bodega' : 'sala'}</span>
-                  <span><strong>{perfilBodega ? bajoMinimo.length : alertasSala}</strong> {perfilBodega ? 'bajo minimo' : 'señales pendientes'}</span>
+                  <span><strong>{perfilBodega ? bajoMinimo.length : alertasSala}</strong> {perfilBodega ? 'bajo mínimo' : 'señales pendientes'}</span>
                 </div>
                 <div className={styles.stateCallout}>
                   {perfilBodega
@@ -1467,6 +1546,69 @@ export default function DashboardHome() {
         )}
 
       </div>
+
+      {kioskos !== null && (
+        <section className={styles.kioskosPanel}>
+          <div className={styles.kioskosHead}>
+            <p className={styles.eyebrow}>Kioskos</p>
+            <h2>Panel de tiendas activas</h2>
+            <p>{kioskos.length} tienda{kioskos.length !== 1 ? 's' : ''} registrada{kioskos.length !== 1 ? 's' : ''}</p>
+          </div>
+          <div className={styles.kioskosGrid}>
+            {kioskos.map(tienda => {
+              const esTrial = tienda.plan === 'trial'
+              const ahora = Date.now()
+              const expMs = tienda.trial_expires_at ? new Date(tienda.trial_expires_at).getTime() : null
+              const segsRestantes = esTrial && expMs ? Math.max(0, Math.round((expMs - ahora) / 1000)) : null
+              const segsConsumidos = esTrial && expMs ? Math.max(0, 7200 - segsRestantes) : null
+              const fmtSeg = s => {
+                const h = Math.floor(s / 3600)
+                const m = Math.floor((s % 3600) / 60)
+                const ss = s % 60
+                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+              }
+              return (
+                <article key={tienda.slug} className={styles.kioskosCard}>
+                  <div className={styles.kioskosCardHead}>
+                    <strong>{tienda.nombre || tienda.slug}</strong>
+                    <span className={`${styles.kioskosBadge} ${tienda.plan === 'premium' ? styles.kioskosBadgePremium : tienda.plan === 'trial' ? styles.kioskosBadgeTrial : styles.kioskosBadgeBasico}`}>
+                      {tienda.plan || '—'}
+                    </span>
+                  </div>
+                  {esTrial && (
+                    <div className={styles.kioskosTrialInfo}>
+                      {expMs === null ? (
+                        <span className={styles.kioskosTrialNone}>Trial sin iniciar</span>
+                      ) : segsRestantes === 0 ? (
+                        <span className={styles.kioskosTrialExpired}>Trial expirado</span>
+                      ) : (
+                        <>
+                          <span>Restante: <strong>{fmtSeg(segsRestantes)}</strong></span>
+                          <span>Consumido: <strong>{fmtSeg(segsConsumidos)}</strong></span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {tienda.propietario_email && <small className={styles.kioskosEmail}>{tienda.propietario_email}</small>}
+                  {tienda.precio_especial && <small className={styles.kioskosPrecio}>Precio especial: {tienda.precio_especial} €/mes</small>}
+                  <Link href={`/kiosko-admin/${tienda.slug}`} className={styles.kioskosLink}>Gestionar →</Link>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {radarUndo && (
+        <div className={styles.radarToast} role="status" aria-live="polite">
+          <span>
+            {radarUndo.estadoNuevo === 'hecha' ? 'Acción marcada como hecha' : 'Acción descartada'}
+          </span>
+          <button type="button" onClick={deshacerRadar} className={styles.radarToastUndo}>
+            Deshacer
+          </button>
+        </div>
+      )}
     </main>
   )
 }

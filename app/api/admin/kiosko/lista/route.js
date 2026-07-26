@@ -25,7 +25,7 @@ export async function GET(req) {
 
     const { data, error } = await sb
       .from('tiendas')
-      .select('id, nombre, email, slug, ciudad, activo, subscription_status, stripe_customer_id, created_at')
+      .select('id, nombre, email, slug, ciudad, activo, subscription_status, stripe_customer_id, created_at, plan, trial_expires_at, propietario_email, precio_especial')
       .order('created_at', { ascending: false })
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
