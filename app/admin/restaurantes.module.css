@@ -1,0 +1,162 @@
+/* Tabla de restaurantes — misma estética que kioscos.module.css */
+
+.tableWrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid #e8e5df;
+  margin-top: 20px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: #f8f6f2;
+  color: #888;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e8e5df;
+  white-space: nowrap;
+}
+.table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f0ede8;
+  color: #1a1a2e;
+  vertical-align: middle;
+}
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover td { background: #faf9f7; }
+
+.tdNombre  { font-weight: 600; min-width: 160px; }
+.tdEmail   { color: #555; font-size: 12px; min-width: 180px; }
+.tdFecha   { color: #888; white-space: nowrap; font-size: 12px; }
+.tdNum     { color: #444; text-align: right; font-variant-numeric: tabular-nums; }
+.tdAcciones { white-space: nowrap; }
+
+.empty {
+  text-align: center;
+  color: #999;
+  padding: 32px !important;
+  font-style: italic;
+}
+
+/* Plan badge */
+.planBadge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.planBasic   { background: #eee9e3; color: #5a4a3a; border: 1px solid #d0c8bc; }
+.planPro     { background: #e8f5ff; color: #1a4a7a; border: 1px solid #a0c8f0; }
+.planBodega  { background: #f0e8ff; color: #4a1a7a; border: 1px solid #c0a0f0; }
+.planPremium { background: #f5e8c8; color: #7a4a00; border: 1px solid #e5c880; }
+
+/* Estado suscripción / carta */
+.estadoBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.estadoOk      { background: #3ab77e22; color: #1a6a3a; }
+.estadoWarning { background: #e8a83e22; color: #7a5000; }
+.estadoDanger  { background: #e85e3e22; color: #8a1a00; }
+.estadoMuted   { background: #99999922; color: #555; }
+.estadoPending { background: #e8a83e22; color: #7a5000; }
+
+/* Acciones */
+.accionesWrap {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btnEditar {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #d0c8bc;
+  background: #fff;
+  color: #3a2a1a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btnEditar:hover { background: #f5f0e8; }
+
+.btnDash {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: none;
+  background: #1a1a2e;
+  color: #c9a96e;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btnDash:hover { opacity: .85; }
+
+.menuWrap {
+  position: relative;
+}
+
+.btnMenu {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #d0c8bc;
+  background: #fff;
+  color: #555;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+}
+.btnMenu:hover { background: #f5f0e8; }
+
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 50;
+  background: #fff;
+  border: 1px solid #e8e5df;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  min-width: 200px;
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+}
+.dropdown button,
+.dropdown a {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 9px 16px;
+  font-size: 13px;
+  color: #1a1a2e;
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+}
+.dropdown button:hover,
+.dropdown a:hover { background: #f5f0e8; }
+.dropdown .divider { height: 1px; background: #f0ede8; margin: 4px 0; }
+.dropdown .danger  { color: #c0392b; }

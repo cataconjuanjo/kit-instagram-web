@@ -7,6 +7,7 @@ import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../demo'
 import { SELECT_CLIENT_RESTAURANTE_ADMIN } from '../lib/clientSupabaseSelects'
 import AdminOverlay from './components/AdminOverlay'
+import rs from './restaurantes.module.css'
 
 const PLAN_LABEL = { basic: 'Básico', pro: 'Sala', bodega: 'Bodega', premium: 'Acompañado' }
 
@@ -865,286 +866,145 @@ function AdminPageContent() {
           <button type="button" onClick={() => window.print()}>Imprimir / PDF</button>
         </div>
 
-        <div className="admin-access-list">
-          {restaurantesPagina.map(restaurante => {
-            const resumenUso = uso.resumen?.[restaurante.id]
-            const resumenIa = uso.ia?.resumen?.[restaurante.id]
-            const resumenPreparacionIa = uso.ia?.preparacion?.resumen?.[restaurante.id]
-            const publicacion = estadoPublicacionAdmin(restaurante)
-            const suscripcion = estadoSuscripcionAdmin(restaurante)
-            const eventoPublicacion = textoEventoPublicacionAdmin(restaurante.publication_last_event)
-            const snapshotPublicacion = textoSnapshotPublicacionAdmin(restaurante.publication_last_snapshot)
-            const pasosAlta = pasosAltaAdmin(restaurante, resumenUso)
-            const pasosPendientes = pasosAlta.filter(paso => !paso.done)
-            return (
-            <article className="admin-card admin-access-card" key={restaurante.id}>
-              {editandoId === restaurante.id && edicion ? (
-                <form className="admin-edit-form" onSubmit={guardarEdicion}>
-                  <label>Nombre<input value={edicion.nombre} onChange={e => actualizarEdicion('nombre', e.target.value)} required /></label>
-                  <label>Email<input type="email" value={edicion.email} onChange={e => actualizarEdicion('email', e.target.value)} required /></label>
-                  <label>Ciudad<input value={edicion.ciudad} onChange={e => actualizarEdicion('ciudad', e.target.value)} /></label>
-                  <label>Slug<input value={edicion.slug} onChange={e => actualizarEdicion('slug', e.target.value)} required /></label>
-                  <div className="admin-color-row">
-                    <label>Principal<input type="color" value={edicion.color_primario} onChange={e => actualizarEdicion('color_primario', e.target.value)} /></label>
-                    <label>Fondo<input type="color" value={edicion.color_fondo} onChange={e => actualizarEdicion('color_fondo', e.target.value)} /></label>
-                    <label>Acento<input type="color" value={edicion.color_acento} onChange={e => actualizarEdicion('color_acento', e.target.value)} /></label>
-                  </div>
-                  <label>Tipografía<select value={edicion.tipografia} onChange={e => actualizarEdicion('tipografia', e.target.value)}><option value="serif">Serif</option><option value="sans">Sans</option></select></label>
-                  <label>Plan<select value={edicion.plan} onChange={e => actualizarEdicion('plan', e.target.value)}><option value="basic">Basico</option><option value="pro">Sala</option><option value="bodega">Bodega</option><option value="premium">Acompanado</option></select></label>
-                  <label>Estado<select value={edicion.subscription_status} onChange={e => actualizarEdicion('subscription_status', e.target.value)}><option value="trialing">Prueba</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="cancelled">Cancelado</option></select></label>
-                  <label>Horas prueba<input type="number" min="0" step="0.5" value={edicion.trial_hours_limit} onChange={e => actualizarEdicion('trial_hours_limit', e.target.value)} placeholder="5" /></label>
-                  <label>Caduca prueba<input type="date" value={edicion.trial_expires_at} onChange={e => actualizarEdicion('trial_expires_at', e.target.value)} /></label>
-                  <label className="admin-hub-switch">
-                    <input type="checkbox" checked={edicion.hub_activo} onChange={e => actualizarEdicion('hub_activo', e.target.checked)} />
-                    Activar hub tipo link en bio
-                  </label>
-                  {edicion.hub_activo && (
-                    <>
-                      <label>Título hub<input value={edicion.hub_titulo} onChange={e => actualizarEdicion('hub_titulo', e.target.value)} placeholder={edicion.nombre} /></label>
-                      <label>Subtítulo hub<input value={edicion.hub_subtitulo} onChange={e => actualizarEdicion('hub_subtitulo', e.target.value)} placeholder="Restaurante · ciudad" /></label>
-                      <label>Instagram<input value={edicion.instagram_url} onChange={e => actualizarEdicion('instagram_url', e.target.value)} placeholder="https://instagram.com/..." /></label>
-                      <label>Facebook<input value={edicion.facebook_url} onChange={e => actualizarEdicion('facebook_url', e.target.value)} placeholder="https://facebook.com/..." /></label>
-                      <div className="admin-hub-links">
-                        <strong>Botones del hub</strong>
-                        {hubLinks.map(link => (
-                          <div className="admin-hub-link-row" key={link.id}>
-                            <input value={link.titulo} onChange={e => setHubLinks(hubLinks.map(item => item.id === link.id ? { ...item, titulo: e.target.value } : item))} onBlur={() => guardarHubLink(hubLinks.find(item => item.id === link.id) || link)} />
-                            <input value={link.url} onChange={e => setHubLinks(hubLinks.map(item => item.id === link.id ? { ...item, url: e.target.value } : item))} onBlur={() => guardarHubLink(hubLinks.find(item => item.id === link.id) || link)} />
-                            <select value={link.tipo || 'link'} onChange={e => guardarHubLink({ ...link, tipo: e.target.value })}>
-                              <option value="link">Link</option>
-                              <option value="tarta">Tarta</option>
-                              <option value="carta">Carta</option>
-                              <option value="carta_vinos">Carta vinos</option>
-                              <option value="gintonics">Gintonics</option>
-                              <option value="pdf">PDF</option>
-                              <option value="reservas">Reservas</option>
-                              <option value="grupos">Grupos</option>
-                              <option value="alergenos">Alérgenos</option>
-                              <option value="instagram">Instagram</option>
-                              <option value="facebook">Facebook</option>
-                              <option value="maps">Maps</option>
-                            </select>
-                            <button type="button" onClick={() => borrarHubLink(link.id)}>×</button>
-                          </div>
-                        ))}
-                        <div className="admin-hub-link-row">
-                          <input value={nuevoLink.titulo} onChange={e => setNuevoLink({ ...nuevoLink, titulo: e.target.value })} placeholder="Carta restaurante" />
-                          <input value={nuevoLink.url} onChange={e => setNuevoLink({ ...nuevoLink, url: e.target.value })} placeholder="https://..." />
-                          <select value={nuevoLink.tipo} onChange={e => setNuevoLink({ ...nuevoLink, tipo: e.target.value })}>
-                            <option value="link">Link</option>
-                            <option value="tarta">Tarta</option>
-                            <option value="carta">Carta</option>
-                            <option value="carta_vinos">Carta vinos</option>
-                            <option value="gintonics">Gintonics</option>
-                            <option value="pdf">PDF</option>
-                            <option value="reservas">Reservas</option>
-                            <option value="grupos">Grupos</option>
-                            <option value="alergenos">Alérgenos</option>
-                            <option value="instagram">Instagram</option>
-                            <option value="facebook">Facebook</option>
-                            <option value="maps">Maps</option>
-                          </select>
-                          <button type="button" onClick={crearHubLink}>+</button>
+        <div className={rs.tableWrap}>
+          <table className={rs.table}>
+            <thead>
+              <tr>
+                <th>Restaurante</th>
+                <th>Email</th>
+                <th>Ciudad</th>
+                <th>Plan</th>
+                <th>Estado</th>
+                <th>Carta</th>
+                <th>Último acceso</th>
+                <th>Sesiones</th>
+                <th>Uso activo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {restaurantesPagina.length === 0 && (
+                <tr><td colSpan={10} className={rs.empty}>Sin restaurantes todavía</td></tr>
+              )}
+              {restaurantesPagina.map(restaurante => {
+                const resumenUso = uso.resumen?.[restaurante.id]
+                const publicacion = estadoPublicacionAdmin(restaurante)
+                const suscripcion = estadoSuscripcionAdmin(restaurante)
+                const planClass = rs[`plan${restaurante.plan ? restaurante.plan.charAt(0).toUpperCase() + restaurante.plan.slice(1) : 'Basic'}`] || rs.planBasic
+                const estadoClass = rs[`estado${suscripcion.tone ? suscripcion.tone.charAt(0).toUpperCase() + suscripcion.tone.slice(1) : 'Muted'}`] || rs.estadoMuted
+                const cartaClass = rs[`estado${publicacion.tone ? publicacion.tone.charAt(0).toUpperCase() + publicacion.tone.slice(1) : 'Muted'}`] || rs.estadoMuted
+                return (
+                  <tr key={restaurante.id}>
+                    <td className={rs.tdNombre}>
+                      {restaurante.nombre}
+                      <span className={`${rs.planBadge} ${planClass}`}>{PLAN_LABEL[restaurante.plan] || restaurante.plan || 'sin plan'}</span>
+                    </td>
+                    <td className={rs.tdEmail}>{restaurante.email}</td>
+                    <td>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || '—'}</td>
+                    <td><span className={`${rs.estadoBadge} ${estadoClass}`}>{suscripcion.label}</span></td>
+                    <td><span className={`${rs.estadoBadge} ${cartaClass}`}>{publicacion.label}</span></td>
+                    <td className={rs.tdFecha}>
+                      {resumenUso?.activo_ahora
+                        ? <span style={{ color: '#1a6a3a', fontWeight: 700 }}>● Activo ahora</span>
+                        : formatoFecha(resumenUso?.ultimo_acceso)}
+                    </td>
+                    <td className={rs.tdNum}>{resumenUso?.sesiones || 0}</td>
+                    <td className={rs.tdFecha}>{formatoDuracion(resumenUso?.active_seconds)}</td>
+                    <td className={rs.tdAcciones}>
+                      <div className={rs.accionesWrap}>
+                        <button className={rs.btnEditar} onClick={() => empezarEdicion(restaurante)}>Editar</button>
+                        <button className={rs.btnDash} onClick={() => gestionar(restaurante)}>Dashboard →</button>
+                        <div className={rs.menuWrap}>
+                          <button
+                            className={rs.btnMenu}
+                            onClick={() => setMenuAccionesId(menuAccionesId === restaurante.id ? null : restaurante.id)}
+                          >⋮</button>
+                          {menuAccionesId === restaurante.id && (
+                            <div className={rs.dropdown}>
+                              <button onClick={() => { abrirPublicacion(restaurante); setMenuAccionesId(null) }}>QR / publicar</button>
+                              <button onClick={() => { setResetResult(null); setAccionAcceso({ tipo: 'email', restaurante }); setMenuAccionesId(null) }}>Enviar enlace de acceso</button>
+                              <button onClick={() => { setResetResult(null); setAccionAcceso({ tipo: 'manual', restaurante }); setMenuAccionesId(null) }}>Pass manual</button>
+                              <button onClick={() => { enviarActivacion(restaurante); setMenuAccionesId(null) }}>Enviar activación Stripe</button>
+                              <button onClick={() => { copiarRestaurante(restaurante); setMenuAccionesId(null) }}>Copiar datos</button>
+                              <Link href={`/admin/restaurante/${restaurante.id}`} onClick={() => setMenuAccionesId(null)}>Ver ficha consultor</Link>
+                              <div className={rs.divider} />
+                              <button className={rs.danger} onClick={() => { setBajaId(restaurante.id); setBajaError(''); setResetResult(null); setMenuAccionesId(null) }}>Dar de baja</button>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </>
-                  )}
-                  {errorEdicion && <p className="admin-inline-error">{errorEdicion}</p>}
-                  <div className="admin-card-actions">
-                    <button type="submit" disabled={guardandoEdicion}>{guardandoEdicion ? 'Guardando...' : 'Guardar cambios'}</button>
-                    <button type="button" className="admin-plain-button" onClick={() => { setEditandoId(null); setEdicion(null); setErrorEdicion('') }}>Cancelar</button>
-                  </div>
-                </form>
-              ) : (
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <AdminOverlay
+          open={Boolean(editandoId && edicion)}
+          onClose={() => { setEditandoId(null); setEdicion(null); setErrorEdicion('') }}
+          size="panel"
+          eyebrow="Editar restaurante"
+          title={edicion?.nombre || 'Editar'}
+        >
+          {edicion && (
+            <form className="admin-edit-form" onSubmit={guardarEdicion}>
+              <label>Nombre<input value={edicion.nombre} onChange={e => actualizarEdicion('nombre', e.target.value)} required /></label>
+              <label>Email<input type="email" value={edicion.email} onChange={e => actualizarEdicion('email', e.target.value)} required /></label>
+              <label>Ciudad<input value={edicion.ciudad} onChange={e => actualizarEdicion('ciudad', e.target.value)} /></label>
+              <label>Slug<input value={edicion.slug} onChange={e => actualizarEdicion('slug', e.target.value)} required /></label>
+              <div className="admin-color-row">
+                <label>Principal<input type="color" value={edicion.color_primario} onChange={e => actualizarEdicion('color_primario', e.target.value)} /></label>
+                <label>Fondo<input type="color" value={edicion.color_fondo} onChange={e => actualizarEdicion('color_fondo', e.target.value)} /></label>
+                <label>Acento<input type="color" value={edicion.color_acento} onChange={e => actualizarEdicion('color_acento', e.target.value)} /></label>
+              </div>
+              <label>Tipografía<select value={edicion.tipografia} onChange={e => actualizarEdicion('tipografia', e.target.value)}><option value="serif">Serif</option><option value="sans">Sans</option></select></label>
+              <label>Plan<select value={edicion.plan} onChange={e => actualizarEdicion('plan', e.target.value)}><option value="basic">Básico</option><option value="pro">Sala</option><option value="bodega">Bodega</option><option value="premium">Acompañado</option></select></label>
+              <label>Estado<select value={edicion.subscription_status} onChange={e => actualizarEdicion('subscription_status', e.target.value)}><option value="trialing">Prueba</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="cancelled">Cancelado</option></select></label>
+              <label>Horas prueba<input type="number" min="0" step="0.5" value={edicion.trial_hours_limit} onChange={e => actualizarEdicion('trial_hours_limit', e.target.value)} placeholder="5" /></label>
+              <label>Caduca prueba<input type="date" value={edicion.trial_expires_at} onChange={e => actualizarEdicion('trial_expires_at', e.target.value)} /></label>
+              <label className="admin-hub-switch">
+                <input type="checkbox" checked={edicion.hub_activo} onChange={e => actualizarEdicion('hub_activo', e.target.checked)} />
+                Activar hub tipo link en bio
+              </label>
+              {edicion.hub_activo && (
                 <>
-              <div className="admin-access-main">
-                <div className="admin-access-title">
-                  <h3>{restaurante.nombre}</h3>
-                  <span className={`admin-plan-pill admin-plan-${restaurante.plan || 'basic'}`}>
-                    {PLAN_LABEL[restaurante.plan] || restaurante.plan}
-                  </span>
-                </div>
-                <p>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || 'Sin ubicación'}</p>
-                <span>{restaurante.email}</span>
-                <small className="admin-slug">/{restaurante.slug}</small>
-                <div className="admin-operational-status">
-                  <span className={`admin-status-chip is-${publicacion.tone}`}>
-                    <strong>{publicacion.label}</strong>
-                    <small>{publicacion.detail}</small>
-                  </span>
-                  <span className={`admin-status-chip is-${suscripcion.tone}`}>
-                    <strong>{suscripcion.label}</strong>
-                    <small>{suscripcion.detail}</small>
-                  </span>
-                </div>
-                <div className="admin-next-steps">
-                  <div>
-                    <strong>{pasosPendientes.length ? 'Siguiente activacion' : 'Alta operativa lista'}</strong>
-                    <span>{pasosAlta.filter(paso => paso.done).length} de {pasosAlta.length} señales listas</span>
-                  </div>
-                  {pasosAlta.map(paso => (
-                    <small className={paso.done ? 'is-done' : ''} key={`${restaurante.id}-${paso.label}`}>
-                      <b>{paso.done ? 'Listo' : 'Pendiente'}</b>
-                      {paso.label} · {paso.detail}
-                    </small>
-                  ))}
-                </div>
-                {(eventoPublicacion || snapshotPublicacion || restaurante.publication_history_pending || restaurante.publication_snapshot_pending) && (
-                  <div className="admin-publication-last">
-                    {eventoPublicacion && (
-                      <>
-                        <strong>{eventoPublicacion.titulo}</strong>
-                        <span>{eventoPublicacion.detalle}</span>
-                      </>
-                    )}
-                    {snapshotPublicacion && (
-                      <>
-                        <strong>{snapshotPublicacion.titulo}</strong>
-                        <span>{snapshotPublicacion.detalle}</span>
-                      </>
-                    )}
-                    {restaurante.publication_history_pending && (
-                      <>
-                        <strong>Historial pendiente</strong>
-                        <span>Aplica supabase/add_publication_history.sql para auditar publicar/pausar.</span>
-                      </>
-                    )}
-                    {restaurante.publication_snapshot_pending && (
-                      <>
-                        <strong>Versiones pendientes</strong>
-                        <span>Aplica supabase/add_publication_snapshots.sql para guardar fotos de cada publicacion.</span>
-                      </>
-                    )}
-                  </div>
-                )}
-                <div className="admin-usage-stats">
-                  <span className={resumenUso?.activo_ahora ? 'is-online' : ''}>
-                    {resumenUso?.activo_ahora ? 'Activo ahora' : `Último acceso: ${formatoFecha(resumenUso?.ultimo_acceso)}`}
-                  </span>
-                  <span>{resumenUso?.sesiones || 0} sesiones</span>
-                  <span>{formatoDuracion(resumenUso?.active_seconds)} de uso activo</span>
-                  <span>Media: {formatoDuracion(resumenUso?.sesiones ? resumenUso.active_seconds / resumenUso.sesiones : 0)}</span>
-                  <span>IA operativa este mes: {resumenIa?.consultas || 0} consultas</span>
-                  <span>Coste IA operativo: {formatoCosteIa(resumenIa?.coste_estimado_usd)}</span>
-                  {(resumenIa?.consultas || 0) > 0 && (
-                    <span>Clientes: {resumenIa?.origenes?.cliente_real?.consultas || 0} · Pruebas restaurante: {resumenIa?.origenes?.restaurante_prueba?.consultas || 0}</span>
-                  )}
-                  {(resumenPreparacionIa?.consultas || 0) > 0 && (
-                    <span>Preparación interna IA: {resumenPreparacionIa.consultas} consultas · {formatoCosteIa(resumenPreparacionIa.coste_estimado_usd)}</span>
-                  )}
-                </div>
-              </div>
-              <div className="admin-access-actions">
-                <div className="admin-context-menu">
-                  <button
-                    type="button"
-                    className="admin-menu-button"
-                    title="Mas acciones"
-                    aria-label="Mas acciones"
-                    onClick={() => setMenuAccionesId(menuAccionesId === restaurante.id ? null : restaurante.id)}
-                  >
-                    ⋮
-                  </button>
-                  {menuAccionesId === restaurante.id && (
-                    <div className="admin-context-dropdown">
-                      <button type="button" onClick={() => copiarRestaurante(restaurante)}>Copiar datos</button>
-                      <Link href={`/admin/restaurante/${restaurante.id}`} onClick={() => setMenuAccionesId(null)}>Ver ficha consultor</Link>
-                      <button type="button" onClick={() => setMenuAccionesId(null)}>Cerrar menu</button>
+                  <label>Título hub<input value={edicion.hub_titulo} onChange={e => actualizarEdicion('hub_titulo', e.target.value)} placeholder={edicion.nombre} /></label>
+                  <label>Subtítulo hub<input value={edicion.hub_subtitulo} onChange={e => actualizarEdicion('hub_subtitulo', e.target.value)} placeholder="Restaurante · ciudad" /></label>
+                  <label>Instagram<input value={edicion.instagram_url} onChange={e => actualizarEdicion('instagram_url', e.target.value)} placeholder="https://instagram.com/..." /></label>
+                  <label>Facebook<input value={edicion.facebook_url} onChange={e => actualizarEdicion('facebook_url', e.target.value)} placeholder="https://facebook.com/..." /></label>
+                  <div className="admin-hub-links">
+                    <strong>Botones del hub</strong>
+                    {hubLinks.map(link => (
+                      <div className="admin-hub-link-row" key={link.id}>
+                        <input value={link.titulo} onChange={e => setHubLinks(hubLinks.map(item => item.id === link.id ? { ...item, titulo: e.target.value } : item))} onBlur={() => guardarHubLink(hubLinks.find(item => item.id === link.id) || link)} />
+                        <input value={link.url} onChange={e => setHubLinks(hubLinks.map(item => item.id === link.id ? { ...item, url: e.target.value } : item))} onBlur={() => guardarHubLink(hubLinks.find(item => item.id === link.id) || link)} />
+                        <select value={link.tipo || 'link'} onChange={e => guardarHubLink({ ...link, tipo: e.target.value })}>
+                          <option value="link">Link</option><option value="tarta">Tarta</option><option value="carta">Carta</option><option value="carta_vinos">Carta vinos</option><option value="gintonics">Gintonics</option><option value="pdf">PDF</option><option value="reservas">Reservas</option><option value="grupos">Grupos</option><option value="alergenos">Alérgenos</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="maps">Maps</option>
+                        </select>
+                        <button type="button" onClick={() => borrarHubLink(link.id)}>×</button>
+                      </div>
+                    ))}
+                    <div className="admin-hub-link-row">
+                      <input value={nuevoLink.titulo} onChange={e => setNuevoLink({ ...nuevoLink, titulo: e.target.value })} placeholder="Carta restaurante" />
+                      <input value={nuevoLink.url} onChange={e => setNuevoLink({ ...nuevoLink, url: e.target.value })} placeholder="https://..." />
+                      <select value={nuevoLink.tipo} onChange={e => setNuevoLink({ ...nuevoLink, tipo: e.target.value })}>
+                        <option value="link">Link</option><option value="tarta">Tarta</option><option value="carta">Carta</option><option value="carta_vinos">Carta vinos</option><option value="gintonics">Gintonics</option><option value="pdf">PDF</option><option value="reservas">Reservas</option><option value="grupos">Grupos</option><option value="alergenos">Alérgenos</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="maps">Maps</option>
+                      </select>
+                      <button type="button" onClick={crearHubLink}>+</button>
                     </div>
-                  )}
-                </div>
-                <button onClick={() => gestionar(restaurante)}>Abrir dashboard</button>
-                <button className="admin-plain-button" onClick={() => abrirPublicacion(restaurante)}>QR/publicar</button>
-                <button className="admin-plain-button" onClick={() => empezarEdicion(restaurante)}>Editar</button>
-                <button
-                  className="admin-plain-button"
-                  onClick={() => { setResetResult(null); setAccionAcceso({ tipo: 'email', restaurante }) }}
-                  disabled={resetandoId === restaurante.id && !resetResult}
-                >
-                  {resetandoId === restaurante.id && !resetResult ? 'Enviando...' : 'Enviar enlace de acceso'}
-                </button>
-                <button
-                  className="admin-plain-button"
-                  onClick={() => { setResetResult(null); setAccionAcceso({ tipo: 'manual', restaurante }) }}
-                  disabled={resetandoId === restaurante.id && !resetResult}
-                  title="Genera una contraseña aleatoria sin mandar email"
-                >
-                  Pass manual
-                </button>
-                <button
-                  className="admin-plain-button"
-                  onClick={() => enviarActivacion(restaurante)}
-                  disabled={stripeandoId === restaurante.id}
-                  title="Envia email con contrasena y Stripe gratis hasta el 1 de septiembre"
-                >
-                  {stripeandoId === restaurante.id ? 'Enviando...' : 'Enviar activacion'}
-                </button>
-                <button
-                  className="admin-plain-button"
-                  style={{ color: '#c0392b' }}
-                  onClick={() => { setBajaId(restaurante.id); setBajaError(''); setResetResult(null) }}
-                >
-                  Dar de baja
-                </button>
-              </div>
-
-              {resetandoId === restaurante.id && resetResult && (
-                <div className={`admin-alert ${resetResult.ok ? 'admin-alert-ok' : 'admin-alert-error'}`} style={{ marginTop: 10 }}>
-                  {resetResult.ok && resetResult.modo === 'email' ? (
-                    <>
-                      <span>✓ Enlace de activación generado para <strong>{resetResult.email}</strong></span>
-                      <span style={{ fontSize: 12, color: '#555' }}>
-                        Si Supabase no ha enviado el email, usa el botón de copiar y envíalo tú manualmente.
-                      </span>
-                      <button
-                        type="button"
-                        onClick={copiarReset}
-                        style={{ marginTop: 8, background: copiadoReset ? '#3a6b4e' : '#111', color: '#fff', border: 'none', padding: '8px 16px', fontSize: 11, cursor: 'pointer' }}
-                      >
-                        {copiadoReset ? '✓ Copiado' : 'Copiar enlace para enviar'}
-                      </button>
-                    </>
-                  ) : resetResult.ok && resetResult.modo === 'manual' ? (
-                    <>
-                      <span>Email: <strong>{resetResult.email}</strong></span>
-                      <span>Contraseña: <strong style={{ fontFamily: 'monospace' }}>{resetResult.password}</strong></span>
-                      <button
-                        type="button"
-                        onClick={copiarReset}
-                        style={{ marginTop: 8, background: copiadoReset ? '#3a6b4e' : '#111', color: '#fff', border: 'none', padding: '8px 16px', fontSize: 11, cursor: 'pointer' }}
-                      >
-                        {copiadoReset ? '✓ Copiado' : 'Copiar para enviar'}
-                      </button>
-                    </>
-                  ) : (
-                    <span>{resetResult.error}</span>
-                  )}
-                </div>
-              )}
-              {stripeResult?.restaurante_id === restaurante.id && (
-                <div className={`admin-alert ${stripeResult.ok ? 'admin-alert-ok' : 'admin-alert-error'}`} style={{ marginTop: 10 }}>
-                  {stripeResult.ok ? (
-                    <>
-                      <span>Activacion enviada a <strong>{stripeResult.email}</strong>. Incluye contrasena y Stripe hasta el 1 de septiembre.</span>
-                      <button
-                        type="button"
-                        onClick={copiarStripe}
-                        style={{ marginTop: 8, background: copiadoStripe ? '#3a6b4e' : '#111', color: '#fff', border: 'none', padding: '8px 16px', fontSize: 11, cursor: 'pointer' }}
-                      >
-                        {copiadoStripe ? '✓ Copiado' : 'Copiar enlace Stripe'}
-                      </button>
-                    </>
-                  ) : (
-                    <span>{stripeResult.error}</span>
-                  )}
-                </div>
-              )}
+                  </div>
                 </>
               )}
-            </article>
-            )
-          })}
-        </div>
+              {errorEdicion && <p className="admin-inline-error">{errorEdicion}</p>}
+              <div className="admin-card-actions">
+                <button type="submit" disabled={guardandoEdicion}>{guardandoEdicion ? 'Guardando...' : 'Guardar cambios'}</button>
+                <button type="button" className="admin-plain-button" onClick={() => { setEditandoId(null); setEdicion(null); setErrorEdicion('') }}>Cancelar</button>
+              </div>
+            </form>
+          )}
+        </AdminOverlay>
+
         <AdminOverlay
           open={Boolean(accionAcceso)}
           onClose={() => setAccionAcceso(null)}
