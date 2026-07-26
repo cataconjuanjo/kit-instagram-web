@@ -302,7 +302,7 @@ export default function AdminKioscosPage() {
                 <th>Slug</th>
                 <th>Plan</th>
                 <th>Trial</th>
-                <th>Inicio trial</th>
+                <th>Uso</th>
                 <th>Estado</th>
                 <th>Activo</th>
                 <th>Alta</th>
@@ -342,15 +342,34 @@ export default function AdminKioscosPage() {
                         ) : '—'}
                       </td>
                       <td className={styles.tdTrial}>
-                        {!esTrial ? '—' : expMs === null ? (
-                          <span className={styles.trialNone}>Sin iniciar</span>
-                        ) : segsRestantes === 0 ? (
-                          <span className={styles.trialExp}>Expirado</span>
-                        ) : (
-                          <span className={styles.trialOk}>{fmtSeg(segsRestantes)} restante</span>
-                        )}
+                        {!esTrial ? '—' :
+                          t.trial_used_seconds != null ? (
+                            /* Nuevo sistema: trial_used_seconds */
+                            segsRestantes === 0 ? (
+                              <span className={styles.trialExp}>Expirado</span>
+                            ) : t.trial_used_seconds === 0 ? (
+                              <span className={styles.trialNone}>Sin usar aún</span>
+                            ) : (
+                              <span className={styles.trialOk}>{fmtSeg(segsRestantes)} restante</span>
+                            )
+                          ) : expMs === null ? (
+                            /* Viejo sistema sin arrancar */
+                            <span className={styles.trialNone}>Sin iniciar</span>
+                          ) : segsRestantes === 0 ? (
+                            <span className={styles.trialExp}>Expirado</span>
+                          ) : (
+                            <span className={styles.trialOk}>{fmtSeg(segsRestantes)} restante</span>
+                          )
+                        }
                       </td>
-                      <td className={styles.tdFecha}>{inicioMs ? fmtFecha(new Date(inicioMs).toISOString()) : '—'}</td>
+                      <td className={styles.tdFecha}>
+                        {t.trial_used_seconds != null
+                          ? t.trial_used_seconds === 0
+                            ? '—'
+                            : `${Math.floor(t.trial_used_seconds / 60)} min usados`
+                          : inicioMs ? fmtFecha(new Date(inicioMs).toISOString()) : '—'
+                        }
+                      </td>
                       <td><Badge status={t.subscription_status} /></td>
                       <td>
                         <button
