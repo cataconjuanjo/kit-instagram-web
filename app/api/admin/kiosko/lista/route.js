@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
+const ADMIN_EMAILS = new Set(
+  ['cataconjuanjo@gmail.com', process.env.NEXT_PUBLIC_ADMIN_EMAIL].filter(Boolean).map(e => e.toLowerCase())
+)
 
 async function validarAdmin(req) {
   const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
@@ -8,7 +10,7 @@ async function validarAdmin(req) {
   const sc = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
   const { data, error } = await sc.auth.getUser(token)
   if (error || !data?.user) return { error: 'Sesión inválida', status: 401 }
-  if (data.user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) return { error: 'No autorizado', status: 403 }
+  if (!ADMIN_EMAILS.has(data.user.email?.toLowerCase())) return { error: 'No autorizado', status: 403 }
   return { user: data.user }
 }
 

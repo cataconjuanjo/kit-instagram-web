@@ -1012,6 +1012,58 @@ export default function DashboardHome() {
 
   return (
     <main>
+      {kioskos !== null && (
+        <section className={styles.kioskosPanel}>
+          <div className={styles.kioskosHead}>
+            <p className={styles.eyebrow}>Kioskos</p>
+            <h2>Panel de tiendas activas</h2>
+            <p>{kioskos.length} tienda{kioskos.length !== 1 ? 's' : ''} registrada{kioskos.length !== 1 ? 's' : ''}</p>
+          </div>
+          <div className={styles.kioskosGrid}>
+            {kioskos.map(tienda => {
+              const esTrial = tienda.plan === 'trial'
+              const ahora = Date.now()
+              const expMs = tienda.trial_expires_at ? new Date(tienda.trial_expires_at).getTime() : null
+              const segsRestantes = esTrial && expMs ? Math.max(0, Math.round((expMs - ahora) / 1000)) : null
+              const segsConsumidos = esTrial && expMs ? Math.max(0, 7200 - segsRestantes) : null
+              const fmtSeg = s => {
+                const h = Math.floor(s / 3600)
+                const m = Math.floor((s % 3600) / 60)
+                const ss = s % 60
+                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+              }
+              return (
+                <article key={tienda.slug} className={styles.kioskosCard}>
+                  <div className={styles.kioskosCardHead}>
+                    <strong>{tienda.nombre || tienda.slug}</strong>
+                    <span className={`${styles.kioskosBadge} ${tienda.plan === 'premium' ? styles.kioskosBadgePremium : tienda.plan === 'trial' ? styles.kioskosBadgeTrial : styles.kioskosBadgeBasico}`}>
+                      {tienda.plan || '—'}
+                    </span>
+                  </div>
+                  {esTrial && (
+                    <div className={styles.kioskosTrialInfo}>
+                      {expMs === null ? (
+                        <span className={styles.kioskosTrialNone}>Trial sin iniciar</span>
+                      ) : segsRestantes === 0 ? (
+                        <span className={styles.kioskosTrialExpired}>Trial expirado</span>
+                      ) : (
+                        <>
+                          <span>Restante: <strong>{fmtSeg(segsRestantes)}</strong></span>
+                          <span>Consumido: <strong>{fmtSeg(segsConsumidos)}</strong></span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {tienda.propietario_email && <small className={styles.kioskosEmail}>{tienda.propietario_email}</small>}
+                  {tienda.precio_especial && <small className={styles.kioskosPrecio}>Precio especial: {tienda.precio_especial} €/mes</small>}
+                  <Link href={`/kiosko-admin/${tienda.slug}`} className={styles.kioskosLink}>Gestionar →</Link>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       <div className={styles.wrap}>
         {tareasInicioVisibles.length > 0 && (
           <section className={`${styles.activationPanel} ${activacionCompacta ? styles.activationCompact : ''}`}>
@@ -1548,58 +1600,6 @@ export default function DashboardHome() {
         )}
 
       </div>
-
-      {kioskos !== null && (
-        <section className={styles.kioskosPanel}>
-          <div className={styles.kioskosHead}>
-            <p className={styles.eyebrow}>Kioskos</p>
-            <h2>Panel de tiendas activas</h2>
-            <p>{kioskos.length} tienda{kioskos.length !== 1 ? 's' : ''} registrada{kioskos.length !== 1 ? 's' : ''}</p>
-          </div>
-          <div className={styles.kioskosGrid}>
-            {kioskos.map(tienda => {
-              const esTrial = tienda.plan === 'trial'
-              const ahora = Date.now()
-              const expMs = tienda.trial_expires_at ? new Date(tienda.trial_expires_at).getTime() : null
-              const segsRestantes = esTrial && expMs ? Math.max(0, Math.round((expMs - ahora) / 1000)) : null
-              const segsConsumidos = esTrial && expMs ? Math.max(0, 7200 - segsRestantes) : null
-              const fmtSeg = s => {
-                const h = Math.floor(s / 3600)
-                const m = Math.floor((s % 3600) / 60)
-                const ss = s % 60
-                return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
-              }
-              return (
-                <article key={tienda.slug} className={styles.kioskosCard}>
-                  <div className={styles.kioskosCardHead}>
-                    <strong>{tienda.nombre || tienda.slug}</strong>
-                    <span className={`${styles.kioskosBadge} ${tienda.plan === 'premium' ? styles.kioskosBadgePremium : tienda.plan === 'trial' ? styles.kioskosBadgeTrial : styles.kioskosBadgeBasico}`}>
-                      {tienda.plan || '—'}
-                    </span>
-                  </div>
-                  {esTrial && (
-                    <div className={styles.kioskosTrialInfo}>
-                      {expMs === null ? (
-                        <span className={styles.kioskosTrialNone}>Trial sin iniciar</span>
-                      ) : segsRestantes === 0 ? (
-                        <span className={styles.kioskosTrialExpired}>Trial expirado</span>
-                      ) : (
-                        <>
-                          <span>Restante: <strong>{fmtSeg(segsRestantes)}</strong></span>
-                          <span>Consumido: <strong>{fmtSeg(segsConsumidos)}</strong></span>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {tienda.propietario_email && <small className={styles.kioskosEmail}>{tienda.propietario_email}</small>}
-                  {tienda.precio_especial && <small className={styles.kioskosPrecio}>Precio especial: {tienda.precio_especial} €/mes</small>}
-                  <Link href={`/kiosko-admin/${tienda.slug}`} className={styles.kioskosLink}>Gestionar →</Link>
-                </article>
-              )
-            })}
-          </div>
-        </section>
-      )}
 
       {radarUndo && (
         <div className={styles.radarToast} role="status" aria-live="polite">
