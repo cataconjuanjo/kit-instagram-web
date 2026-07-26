@@ -143,6 +143,56 @@
 }
 .btnEditar:hover { background: #f5f0e8; }
 
+.btnStripe {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: none;
+  background: #635bff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btnStripe:hover { background: #4c45e0; }
+.btnStripe:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Fila de resultado de activación */
+.trResult td {
+  padding: 6px 14px 8px !important;
+  background: #f8f6f2 !important;
+  border-bottom: 2px solid #e8e5df !important;
+}
+.resultOk {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #1a6a3a;
+}
+.resultError {
+  font-size: 12px;
+  color: #c0392b;
+}
+.resultUrlLink {
+  color: #635bff;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 12px;
+}
+.resultUrlLink:hover { text-decoration: underline; }
+.btnCopiar {
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid #d0c8bc;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #3a2a1a;
+}
+.btnCopiar:hover { background: #f5f0e8; }
+
 .checkLabel {
   display: flex;
   align-items: flex-start;

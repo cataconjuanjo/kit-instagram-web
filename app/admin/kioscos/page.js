@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../supabase'
 import styles from './kioscos.module.css'
 
@@ -53,6 +53,11 @@ export default function AdminKioscosPage() {
   const [editForm, setEditForm]   = useState({})
   const [editGuardando, setEditGuardando] = useState(false)
   const [editMsg, setEditMsg]     = useState('')
+
+  // activación Stripe por kiosko
+  const [activando, setActivando]     = useState({}) // { [id]: bool }
+  const [activResult, setActivResult] = useState({}) // { [id]: { ok, url, email, error } }
+  const [copiadoActiv, setCopiadoActiv] = useState({}) // { [id]: bool }
 
   const cargar = useCallback(async (tok) => {
     setLoading(true)
@@ -138,6 +143,38 @@ export default function AdminKioscosPage() {
     setEditMsg('')
   }
 
+  async function enviarActivacionKiosko(tienda) {
+    const plan = tienda.plan && tienda.plan !== 'trial' ? tienda.plan : 'premium'
+    setActivando(prev => ({ ...prev, [tienda.id]: true }))
+    setActivResult(prev => { const n = { ...prev }; delete n[tienda.id]; return n })
+    try {
+      const res = await fetch('/api/admin/kiosko/activacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tienda_slug: tienda.slug, plan }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setActivResult(prev => ({ ...prev, [tienda.id]: { ok: true, url: data.checkout_url, email: data.email } }))
+        setTiendas(prev => prev.map(t => t.id === tienda.id ? { ...t, subscription_status: 'pending' } : t))
+      } else {
+        setActivResult(prev => ({ ...prev, [tienda.id]: { ok: false, error: data.error || 'Error al enviar activación' } }))
+      }
+    } catch (err) {
+      setActivResult(prev => ({ ...prev, [tienda.id]: { ok: false, error: err.message } }))
+    } finally {
+      setActivando(prev => { const n = { ...prev }; delete n[tienda.id]; return n })
+    }
+  }
+
+  function copiarUrlActivacion(tiendaId) {
+    const url = activResult[tiendaId]?.url
+    if (!url) return
+    navigator.clipboard.writeText(url)
+    setCopiadoActiv(prev => ({ ...prev, [tiendaId]: true }))
+    setTimeout(() => setCopiadoActiv(prev => ({ ...prev, [tiendaId]: false })), 2500)
+  }
+
   async function guardarEdicion(e) {
     e.preventDefault()
     setEditGuardando(true)
@@ -206,50 +243,78 @@ export default function AdminKioscosPage() {
                 const expMs = t.trial_expires_at ? new Date(t.trial_expires_at).getTime() : null
                 const inicioMs = expMs ? expMs - 2 * 3600 * 1000 : null
                 const segsRestantes = esTrial && expMs ? Math.max(0, Math.round((expMs - Date.now()) / 1000)) : null
+                const res = activResult[t.id]
                 return (
-                  <tr key={t.id}>
-                    <td className={styles.tdNombre}>{t.nombre}</td>
-                    <td className={styles.tdEmail}>{t.propietario_email || t.email || '—'}</td>
-                    <td>
-                      <a href={`/kiosko/${t.slug}`} target="_blank" rel="noreferrer" className={styles.slugLink}>
-                        {t.slug}
-                      </a>
-                    </td>
-                    <td>
-                      {t.plan ? (
-                        <span className={`${styles.planBadge} ${t.plan === 'premium' ? styles.planPremium : t.plan === 'trial' ? styles.planTrial : styles.planBasico}`}>
-                          {t.plan}{t.precio_especial ? ` · ${t.precio_especial}€` : ''}
-                        </span>
-                      ) : '—'}
-                    </td>
-                    <td className={styles.tdTrial}>
-                      {!esTrial ? '—' : expMs === null ? (
-                        <span className={styles.trialNone}>Sin iniciar</span>
-                      ) : segsRestantes === 0 ? (
-                        <span className={styles.trialExp}>Expirado</span>
-                      ) : (
-                        <span className={styles.trialOk}>{fmtSeg(segsRestantes)} restante</span>
-                      )}
-                    </td>
-                    <td className={styles.tdFecha}>{inicioMs ? fmtFecha(new Date(inicioMs).toISOString()) : '—'}</td>
-                    <td><Badge status={t.subscription_status} /></td>
-                    <td>
-                      <button
-                        className={t.activo ? styles.toggleOn : styles.toggleOff}
-                        onClick={() => toggleActivo(t)}
-                        title={t.activo ? 'Desactivar' : 'Activar'}
-                      >
-                        {t.activo ? '✓ Sí' : '✗ No'}
-                      </button>
-                    </td>
-                    <td className={styles.tdFecha}>{t.created_at ? new Date(t.created_at).toLocaleDateString('es-ES') : '—'}</td>
-                    <td className={styles.tdAcciones}>
-                      <button className={styles.btnEditar} onClick={() => abrirEdicion(t)}>Editar</button>
-                      <a href={`/kiosko-admin/${t.slug}`} target="_blank" rel="noreferrer" className={styles.linkAdmin}>
-                        Panel →
-                      </a>
-                    </td>
-                  </tr>
+                  <React.Fragment key={t.id}>
+                    <tr>
+                      <td className={styles.tdNombre}>{t.nombre}</td>
+                      <td className={styles.tdEmail}>{t.propietario_email || t.email || '—'}</td>
+                      <td>
+                        <a href={`/kiosko/${t.slug}`} target="_blank" rel="noreferrer" className={styles.slugLink}>
+                          {t.slug}
+                        </a>
+                      </td>
+                      <td>
+                        {t.plan ? (
+                          <span className={`${styles.planBadge} ${t.plan === 'premium' ? styles.planPremium : t.plan === 'trial' ? styles.planTrial : styles.planBasico}`}>
+                            {t.plan}{t.precio_especial ? ` · ${t.precio_especial}€` : ''}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className={styles.tdTrial}>
+                        {!esTrial ? '—' : expMs === null ? (
+                          <span className={styles.trialNone}>Sin iniciar</span>
+                        ) : segsRestantes === 0 ? (
+                          <span className={styles.trialExp}>Expirado</span>
+                        ) : (
+                          <span className={styles.trialOk}>{fmtSeg(segsRestantes)} restante</span>
+                        )}
+                      </td>
+                      <td className={styles.tdFecha}>{inicioMs ? fmtFecha(new Date(inicioMs).toISOString()) : '—'}</td>
+                      <td><Badge status={t.subscription_status} /></td>
+                      <td>
+                        <button
+                          className={t.activo ? styles.toggleOn : styles.toggleOff}
+                          onClick={() => toggleActivo(t)}
+                          title={t.activo ? 'Desactivar' : 'Activar'}
+                        >
+                          {t.activo ? '✓ Sí' : '✗ No'}
+                        </button>
+                      </td>
+                      <td className={styles.tdFecha}>{t.created_at ? new Date(t.created_at).toLocaleDateString('es-ES') : '—'}</td>
+                      <td className={styles.tdAcciones}>
+                        <button className={styles.btnEditar} onClick={() => abrirEdicion(t)}>Editar</button>
+                        <a href={`/kiosko-admin/${t.slug}`} target="_blank" rel="noreferrer" className={styles.linkAdmin}>
+                          Panel →
+                        </a>
+                        <button
+                          className={styles.btnStripe}
+                          onClick={() => enviarActivacionKiosko(t)}
+                          disabled={activando[t.id]}
+                          title="Enviar email de activación con link de pago Stripe"
+                        >
+                          {activando[t.id] ? '...' : 'Stripe'}
+                        </button>
+                      </td>
+                    </tr>
+                    {res && (
+                      <tr className={styles.trResult}>
+                        <td colSpan={10}>
+                          {res.ok ? (
+                            <span className={styles.resultOk}>
+                              ✓ Email enviado a <strong>{res.email}</strong>
+                              <a href={res.url} target="_blank" rel="noreferrer" className={styles.resultUrlLink}>Ver checkout</a>
+                              <button className={styles.btnCopiar} onClick={() => copiarUrlActivacion(t.id)}>
+                                {copiadoActiv[t.id] ? '✓ Copiado' : 'Copiar URL'}
+                              </button>
+                            </span>
+                          ) : (
+                            <span className={styles.resultError}>Error: {res.error}</span>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 )
               })}
             </tbody>
