@@ -157,6 +157,20 @@
 .btnStripe:hover { background: #4c45e0; }
 .btnStripe:disabled { opacity: .5; cursor: not-allowed; }
 
+.btnTrial {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: none;
+  background: #0e7a5e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btnTrial:hover { background: #0a5e48; }
+.btnTrial:disabled { opacity: .5; cursor: not-allowed; }
+
 /* Fila de resultado de activación */
 .trResult td {
   padding: 6px 14px 8px !important;

@@ -27,7 +27,7 @@ export async function GET(req) {
 
     const { data, error } = await sb
       .from('tiendas')
-      .select('id, nombre, email, slug, ciudad, activo, subscription_status, stripe_customer_id, created_at, plan, trial_expires_at, propietario_email, precio_especial')
+      .select('id, nombre, email, slug, ciudad, activo, subscription_status, stripe_customer_id, created_at, plan, trial_expires_at, trial_used_seconds, propietario_email, precio_especial')
       .order('created_at', { ascending: false })
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
@@ -47,7 +47,7 @@ export async function PATCH(req) {
     const { id, ...campos } = await req.json()
     if (!id) return Response.json({ error: 'Falta id' }, { status: 400 })
 
-    const permitidos = ['activo', 'nombre', 'ciudad', 'color_primario', 'color_acento', 'subscription_status', 'plan', 'precio_especial', 'setup_fee_incluido', 'propietario_email', 'trial_expires_at']
+    const permitidos = ['activo', 'nombre', 'ciudad', 'color_primario', 'color_acento', 'subscription_status', 'plan', 'precio_especial', 'setup_fee_incluido', 'propietario_email', 'trial_expires_at', 'trial_used_seconds']
     const update = Object.fromEntries(Object.entries(campos).filter(([k]) => permitidos.includes(k)))
     if (!Object.keys(update).length) return Response.json({ error: 'Sin campos válidos' }, { status: 400 })
 

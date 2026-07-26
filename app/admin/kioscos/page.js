@@ -62,6 +62,13 @@ export default function AdminKioscosPage() {
   const [activResult, setActivResult] = useState({}) // { [id]: { ok, url, email, error } }
   const [copiadoActiv, setCopiadoActiv] = useState({}) // { [id]: bool }
 
+  // trial 2h por kiosko
+  const [confirmTrial, setConfirmTrial]     = useState(null) // tienda pendiente de confirmar trial
+  const [previewTrialData, setPreviewTrialData] = useState(null) // { access_link, email, email_html }
+  const [previewing2, setPreviewing2]       = useState(false)
+  const [enviandoTrial, setEnviandoTrial]   = useState({}) // { [id]: bool }
+  const [trialResult, setTrialResult]       = useState({}) // { [id]: { ok, email, error } }
+
   const cargar = useCallback(async (tok) => {
     setLoading(true)
     const res = await fetch('/api/admin/kiosko/lista', {
@@ -193,6 +200,48 @@ export default function AdminKioscosPage() {
     }
   }
 
+  async function previsualizarTrial(tienda) {
+    setPreviewing2(true)
+    setPreviewTrialData(null)
+    try {
+      const res = await fetch('/api/admin/kiosko/trial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tienda_slug: tienda.slug, preview: true }),
+      })
+      const data = await res.json()
+      if (res.ok) setPreviewTrialData({ ...data, tienda })
+      else setPreviewTrialData({ error: data.error || 'Error al generar preview', tienda })
+    } catch (err) {
+      setPreviewTrialData({ error: err.message, tienda })
+    } finally {
+      setPreviewing2(false)
+    }
+  }
+
+  async function enviarTrial(tienda) {
+    setEnviandoTrial(prev => ({ ...prev, [tienda.id]: true }))
+    setTrialResult(prev => { const n = { ...prev }; delete n[tienda.id]; return n })
+    try {
+      const res = await fetch('/api/admin/kiosko/trial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tienda_slug: tienda.slug }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setTrialResult(prev => ({ ...prev, [tienda.id]: { ok: true, email: data.email } }))
+        setTiendas(prev => prev.map(t => t.id === tienda.id ? { ...t, plan: 'trial', trial_used_seconds: 0 } : t))
+      } else {
+        setTrialResult(prev => ({ ...prev, [tienda.id]: { ok: false, error: data.error || 'Error al enviar trial' } }))
+      }
+    } catch (err) {
+      setTrialResult(prev => ({ ...prev, [tienda.id]: { ok: false, error: err.message } }))
+    } finally {
+      setEnviandoTrial(prev => { const n = { ...prev }; delete n[tienda.id]; return n })
+    }
+  }
+
   function copiarUrlActivacion(tiendaId) {
     const url = activResult[tiendaId]?.url
     if (!url) return
@@ -213,7 +262,7 @@ export default function AdminKioscosPage() {
         setup_fee_incluido: editForm.setup_fee_incluido,
         propietario_email: editForm.propietario_email || null,
       }
-      if (editForm.reset_trial) payload.trial_expires_at = null
+      if (editForm.reset_trial) { payload.trial_expires_at = null; payload.trial_used_seconds = 0 }
 
       const res = await fetch('/api/admin/kiosko/lista', {
         method:  'PATCH',
@@ -222,7 +271,7 @@ export default function AdminKioscosPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al guardar')
-      setTiendas(prev => prev.map(t => t.id === editando.id ? { ...t, ...payload, trial_expires_at: editForm.reset_trial ? null : t.trial_expires_at } : t))
+      setTiendas(prev => prev.map(t => t.id === editando.id ? { ...t, ...payload, trial_expires_at: editForm.reset_trial ? null : t.trial_expires_at, trial_used_seconds: editForm.reset_trial ? 0 : t.trial_used_seconds } : t))
       setEditando(null)
     } catch (err) {
       setEditMsg(err.message)
@@ -268,7 +317,12 @@ export default function AdminKioscosPage() {
                 const esTrial = t.plan === 'trial'
                 const expMs = t.trial_expires_at ? new Date(t.trial_expires_at).getTime() : null
                 const inicioMs = expMs ? expMs - 2 * 3600 * 1000 : null
-                const segsRestantes = esTrial && expMs ? Math.max(0, Math.round((expMs - Date.now()) / 1000)) : null
+                // Nuevo sistema: trial_used_seconds. Viejo: wall-clock via trial_expires_at
+                const segsRestantes = esTrial
+                  ? t.trial_used_seconds != null
+                    ? Math.max(0, 7200 - t.trial_used_seconds)
+                    : expMs ? Math.max(0, Math.round((expMs - Date.now()) / 1000)) : null
+                  : null
                 const res = activResult[t.id]
                 return (
                   <React.Fragment key={t.id}>
@@ -314,6 +368,14 @@ export default function AdminKioscosPage() {
                           Panel →
                         </a>
                         <button
+                          className={styles.btnTrial}
+                          onClick={() => { setConfirmTrial(t); setPreviewTrialData(null) }}
+                          disabled={enviandoTrial[t.id]}
+                          title="Enviar email de prueba gratuita 2h (sin pago)"
+                        >
+                          {enviandoTrial[t.id] ? '...' : 'Trial 2h'}
+                        </button>
+                        <button
                           className={styles.btnStripe}
                           onClick={() => setConfirmActivacion(t)}
                           disabled={activando[t.id]}
@@ -340,11 +402,114 @@ export default function AdminKioscosPage() {
                         </td>
                       </tr>
                     )}
+                    {trialResult[t.id] && (
+                      <tr className={styles.trResult}>
+                        <td colSpan={10}>
+                          {trialResult[t.id].ok ? (
+                            <span className={styles.resultOk}>
+                              ✓ Trial enviado a <strong>{trialResult[t.id].email}</strong>
+                            </span>
+                          ) : (
+                            <span className={styles.resultError}>Error trial: {trialResult[t.id].error}</span>
+                          )}
+                        </td>
+                      </tr>
+                    )}
                   </React.Fragment>
                 )
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal trial 2h — dos fases: preview → envío */}
+      {confirmTrial && (
+        <div className={styles.modalOverlay} onClick={() => { setConfirmTrial(null); setPreviewTrialData(null) }}>
+          <div className={styles.modal} style={{ maxWidth: 620 }} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>{previewTrialData && !previewTrialData.error ? 'Revisar antes de enviar' : 'Enviar trial gratuito 2h'}</h2>
+              <button className={styles.modalClose} onClick={() => { setConfirmTrial(null); setPreviewTrialData(null) }}>✕</button>
+            </div>
+            <div className={styles.form}>
+
+              {!previewTrialData ? (
+                /* ── Fase 1: confirmación ── */
+                <>
+                  <p style={{ margin: 0, fontSize: 14, color: '#444', lineHeight: 1.6 }}>
+                    Destinatario: <strong>{confirmTrial.propietario_email || confirmTrial.email}</strong>
+                  </p>
+                  <p style={{ margin: 0, fontSize: 14, color: '#444', lineHeight: 1.6 }}>
+                    El cliente recibirá un enlace para crear contraseña y tendrá <strong>2 horas de uso real</strong> con acceso completo. El tiempo solo corre cuando tiene la pantalla abierta.
+                  </p>
+                  <div className={styles.formActions}>
+                    <button className={styles.btnCancel} onClick={() => { setConfirmTrial(null); setPreviewTrialData(null) }}>Cancelar</button>
+                    <button
+                      className={styles.btnCancel}
+                      disabled={previewing2}
+                      onClick={() => previsualizarTrial(confirmTrial)}
+                    >
+                      {previewing2 ? 'Generando...' : 'Ver enlaces primero'}
+                    </button>
+                    <button
+                      className={styles.btnNuevo}
+                      disabled={previewing2}
+                      onClick={() => {
+                        const t = confirmTrial
+                        setConfirmTrial(null)
+                        setPreviewTrialData(null)
+                        enviarTrial(t)
+                      }}
+                    >
+                      Enviar directamente
+                    </button>
+                  </div>
+                </>
+              ) : previewTrialData.error ? (
+                /* ── Error en preview ── */
+                <>
+                  <p style={{ margin: 0, fontSize: 13, color: '#c00' }}>Error: {previewTrialData.error}</p>
+                  <div className={styles.formActions}>
+                    <button className={styles.btnCancel} onClick={() => setPreviewTrialData(null)}>Volver</button>
+                  </div>
+                </>
+              ) : (
+                /* ── Fase 2: muestra el enlace real ── */
+                <>
+                  <p style={{ margin: 0, fontSize: 13, color: '#888' }}>
+                    Enlace generado. Pruébalo antes de enviarlo.
+                  </p>
+                  <div className={styles.previewBox}>
+                    <p className={styles.previewLabel}>Enlace crear contraseña (para el cliente)</p>
+                    <a href={previewTrialData.access_link} target="_blank" rel="noreferrer" className={styles.previewLink}>
+                      Abrir enlace →
+                    </a>
+                  </div>
+                  <details style={{ fontSize: 13, color: '#555' }}>
+                    <summary style={{ cursor: 'pointer', marginBottom: 8 }}>Ver email completo que recibirá el cliente</summary>
+                    <div
+                      style={{ border: '1px solid #e8e5df', borderRadius: 8, padding: 16, background: '#fafafa', maxHeight: 320, overflowY: 'auto' }}
+                      dangerouslySetInnerHTML={{ __html: previewTrialData.email_html }}
+                    />
+                  </details>
+                  <div className={styles.formActions}>
+                    <button className={styles.btnCancel} onClick={() => setPreviewTrialData(null)}>Volver</button>
+                    <button
+                      className={styles.btnNuevo}
+                      onClick={() => {
+                        const t = confirmTrial
+                        setConfirmTrial(null)
+                        setPreviewTrialData(null)
+                        enviarTrial(t)
+                      }}
+                    >
+                      Todo correcto — Enviar email al cliente
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

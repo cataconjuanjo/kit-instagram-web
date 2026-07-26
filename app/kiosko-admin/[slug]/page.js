@@ -557,8 +557,53 @@ export default function AdminKioskoPage() {
     if (tienda?.plan !== 'trial') return
     if (previewTrial) return   // modo preview: no arranca el reloj
     if (esAdminUsuario) return // admin nunca consume el trial
-    let cleanup
-    async function iniciarTrial() {
+
+    const LIMIT = 7200 // 2 horas
+
+    // ── Nuevo sistema: trial_used_seconds (tiempo de uso real) ──────────────
+    if (tienda.trial_used_seconds != null) {
+      let localRemaining = Math.max(0, LIMIT - tienda.trial_used_seconds)
+      setTrialSegsRestantes(localRemaining)
+      if (localRemaining === 0) return // ya expirado
+
+      // Tick local: solo decrementa cuando la pestaña está visible
+      const tickIv = setInterval(() => {
+        if (document.visibilityState === 'hidden') return
+        localRemaining = Math.max(0, localRemaining - 1)
+        setTrialSegsRestantes(localRemaining)
+      }, 1000)
+
+      // Heartbeat cada 30s: suma al servidor solo cuando está visible
+      const PING_SECS = 30
+      let sinceLastPing = 0 // en unidades de 5s
+      const pingIv = setInterval(async () => {
+        if (document.visibilityState === 'hidden') return
+        sinceLastPing++
+        if (sinceLastPing < PING_SECS / 5) return
+        sinceLastPing = 0
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) return
+          const res = await fetch(`/api/kiosko/${slug}/admin/trial-ping`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ seconds: PING_SECS }),
+          })
+          if (!res.ok) return
+          const data = await res.json()
+          if (typeof data.trial_remaining_seconds === 'number') {
+            // Sincronizar con el valor real del servidor
+            localRemaining = Math.max(0, data.trial_remaining_seconds)
+            setTrialSegsRestantes(localRemaining)
+          }
+        } catch { /* ignorar errores de red — el contador local sigue */ }
+      }, 5000) // comprobamos cada 5s
+
+      return () => { clearInterval(tickIv); clearInterval(pingIv) }
+    }
+
+    // ── Sistema antiguo: wall-clock via trial_expires_at (retrocompatibilidad) ──
+    async function iniciarTrialAntiguo() {
       let expiresAt = tienda.trial_expires_at
       if (!expiresAt) {
         const res = await fetch(`/api/kiosko/${slug}/admin/trial-start`, { method: 'POST' })
@@ -570,12 +615,12 @@ export default function AdminKioskoPage() {
         setTrialSegsRestantes(Math.max(0, Math.round((new Date(expiresAt) - Date.now()) / 1000)))
       }
       tick()
-      const iv = setInterval(tick, 1000)
-      cleanup = () => clearInterval(iv)
+      return setInterval(tick, 1000)
     }
-    iniciarTrial()
-    return () => cleanup?.()
-  }, [tienda?.plan, tienda?.trial_expires_at, slug, previewTrial, esAdminUsuario])
+    let iv
+    iniciarTrialAntiguo().then(interval => { iv = interval })
+    return () => clearInterval(iv)
+  }, [tienda?.plan, tienda?.trial_used_seconds, tienda?.trial_expires_at, slug, previewTrial, esAdminUsuario])
 
   const [busqueda, setBusqueda]           = useState('')
   const [filtroTipo, setFiltroTipo]       = useState('')
