@@ -92,7 +92,7 @@ function CambiarPassword() {
 }
 
 function AjustesTab({ slug, tienda, onSaved }) {
-  const esPremium = !tienda?.plan || tienda.plan === 'premium'
+  const esPremium = !tienda?.plan || tienda.plan === 'premium' || tienda.plan === 'trial'
   const [ajustes, setAjustes] = useState({
     nombre:         tienda?.nombre         || '',
     ciudad:         tienda?.ciudad         || '',
