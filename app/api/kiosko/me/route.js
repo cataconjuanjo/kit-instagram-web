@@ -8,12 +8,23 @@ export async function GET(request) {
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
   if (error || !user?.email) return NextResponse.json({ tienda: null })
 
-  const { data: tienda } = await supabaseAdmin
+  const email = user.email.toLowerCase()
+
+  // Buscar por propietario_email primero, luego por email genérico de la tienda
+  let { data: tienda } = await supabaseAdmin
     .from('tiendas')
     .select('slug, nombre, ciudad')
-    .eq('email', user.email)
-    .eq('activo', true)
-    .single()
+    .eq('propietario_email', email)
+    .maybeSingle()
+
+  if (!tienda) {
+    const { data: tiendaFallback } = await supabaseAdmin
+      .from('tiendas')
+      .select('slug, nombre, ciudad')
+      .eq('email', email)
+      .maybeSingle()
+    tienda = tiendaFallback
+  }
 
   return NextResponse.json({ tienda: tienda || null })
 }
