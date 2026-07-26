@@ -32,24 +32,24 @@ const SUGERENCIAS_MARIDAJE = [
   'Espárrago con trufa de verano','Gofre de sardinas bravas','Hot dog de pulpo',
 ]
 
-const OCASIONES = [
-  { id: 'regalo',      icon: '🎁', label: 'Es un\nregalo'            },
-  { id: 'celebracion', icon: '🥂', label: 'Celebración\no aperitivo' },
-  { id: 'casa',        icon: '🏠', label: 'Para tomar\nen casa'       },
+const OCASIONES_IDS = [
+  { id: 'regalo',      icon: '🎁' },
+  { id: 'celebracion', icon: '🥂' },
+  { id: 'casa',        icon: '🏠' },
 ]
-const PRESUPUESTOS = [
+const PRESUPUESTOS_IDS = [
   { id: 'bajo',  label: 'Hasta 15 €' },
   { id: 'medio', label: '15 – 30 €'  },
   { id: 'alto',  label: '30 – 60 €'  },
-  { id: 'libre', label: 'Sin límite'  },
+  { id: 'libre', label: null },  // label viene de T
 ]
-const ESTILOS = [
-  { id: 'afrutado', label: '🍓 Afrutado'          },
-  { id: 'seco',     label: '🍂 Seco y elegante'    },
-  { id: 'cuerpo',   label: '💪 Con mucho cuerpo'   },
-  { id: 'ligero',   label: '☁️ Ligero y fresco'    },
-  { id: 'espumoso', label: '✨ Espumoso'            },
-  { id: 'dulce',    label: '🍯 Dulce o generoso'   },
+const ESTILOS_IDS = [
+  { id: 'afrutado' },
+  { id: 'seco'     },
+  { id: 'cuerpo'   },
+  { id: 'ligero'   },
+  { id: 'espumoso' },
+  { id: 'dulce'    },
 ]
 
 const MARIDAJE_ICONOS = {
@@ -97,6 +97,11 @@ const T = {
     destacado: '★ Vino destacado', uva: 'Uva', anada: 'Añada', do: 'D.O.', paisLabel: 'País',
     encuentraEn: 'Encuéntralo en', maridaCon: 'Marida con',
     tipoLabels: { tinto:'Tinto', blanco:'Blanco', rosado:'Rosado', espumoso:'Espumoso', generoso:'Generoso', dulce:'Dulce', naranja:'Naranja', sin_alcohol:'Sin alcohol' },
+    ocasionLabels: { regalo:'Es un\nregalo', celebracion:'Celebración\no aperitivo', casa:'Para tomar\nen casa' },
+    estiloLabels: { afrutado:'🍓 Afrutado', seco:'🍂 Seco y elegante', cuerpo:'💪 Con mucho cuerpo', ligero:'☁️ Ligero y fresco', espumoso:'✨ Espumoso', dulce:'🍯 Dulce o generoso' },
+    sinLimite: 'Sin límite', miRango: '🎯 Mi rango', elegirPresupuesto: 'Elige tu presupuesto',
+    buscarRango: 'Buscar con este rango →', cancelar: 'Cancelar',
+    buscandoVino: 'Buscando el vino perfecto para ti…',
   },
   en: {
     explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?',
@@ -115,6 +120,11 @@ const T = {
     destacado: '★ Featured wine', uva: 'Grape', anada: 'Vintage', do: 'Region', paisLabel: 'Country',
     encuentraEn: 'Find it at', maridaCon: 'Pairs with',
     tipoLabels: { tinto:'Red', blanco:'White', rosado:'Rosé', espumoso:'Sparkling', generoso:'Fortified', dulce:'Sweet', naranja:'Orange', sin_alcohol:'Alcohol-free' },
+    ocasionLabels: { regalo:'A gift', celebracion:'Celebration\nor aperitif', casa:'Drink at\nhome' },
+    estiloLabels: { afrutado:'🍓 Fruity', seco:'🍂 Dry & elegant', cuerpo:'💪 Full-bodied', ligero:'☁️ Light & fresh', espumoso:'✨ Sparkling', dulce:'🍯 Sweet or fortified' },
+    sinLimite: 'No limit', miRango: '🎯 My range', elegirPresupuesto: 'Choose your budget',
+    buscarRango: 'Search this range →', cancelar: 'Cancel',
+    buscandoVino: 'Finding the perfect wine for you…',
   },
   fr: {
     explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?',
@@ -133,6 +143,11 @@ const T = {
     destacado: '★ Vin vedette', uva: 'Cépage', anada: 'Millésime', do: 'Région', paisLabel: 'Pays',
     encuentraEn: 'Trouvez-le au', maridaCon: 'S\'accompagne avec',
     tipoLabels: { tinto:'Rouge', blanco:'Blanc', rosado:'Rosé', espumoso:'Pétillant', generoso:'Fortifié', dulce:'Doux', naranja:'Orange', sin_alcohol:'Sans alcool' },
+    ocasionLabels: { regalo:'Un cadeau', celebracion:'Fête ou\napéritif', casa:'À déguster\nchez soi' },
+    estiloLabels: { afrutado:'🍓 Fruité', seco:'🍂 Sec et élégant', cuerpo:'💪 Corsé', ligero:'☁️ Léger et frais', espumoso:'✨ Pétillant', dulce:'🍯 Doux ou fortifié' },
+    sinLimite: 'Sans limite', miRango: '🎯 Ma fourchette', elegirPresupuesto: 'Choisissez votre budget',
+    buscarRango: 'Rechercher cette fourchette →', cancelar: 'Annuler',
+    buscandoVino: 'Nous cherchons le vin parfait pour vous…',
   },
   de: {
     explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?',
@@ -151,6 +166,11 @@ const T = {
     destacado: '★ Empfohlener Wein', uva: 'Traube', anada: 'Jahrgang', do: 'Region', paisLabel: 'Land',
     encuentraEn: 'Finden Sie es bei', maridaCon: 'Passt zu',
     tipoLabels: { tinto:'Rotwein', blanco:'Weißwein', rosado:'Rosé', espumoso:'Schaumwein', generoso:'Likörwein', dulce:'Süßwein', naranja:'Orangenwein', sin_alcohol:'Alkoholfrei' },
+    ocasionLabels: { regalo:'Ein Geschenk', celebracion:'Feier oder\nAperitif', casa:'Für zu\nHause' },
+    estiloLabels: { afrutado:'🍓 Fruchtig', seco:'🍂 Trocken & elegant', cuerpo:'💪 Vollmundig', ligero:'☁️ Leicht & frisch', espumoso:'✨ Schaumwein', dulce:'🍯 Süß oder likör' },
+    sinLimite: 'Kein Limit', miRango: '🎯 Mein Bereich', elegirPresupuesto: 'Budget wählen',
+    buscarRango: 'In diesem Bereich suchen →', cancelar: 'Abbrechen',
+    buscandoVino: 'Wir suchen den perfekten Wein für Sie…',
   },
 }
 
@@ -363,14 +383,15 @@ function WineDetail({ vino, slug, colorAcento, onClose, lang = 'es' }) {
   const [ficha, setFicha] = useState(fichaInicial)
   const [fichaReady, setFichaReady] = useState(!!fichaInicial)
   useEffect(() => {
-    if (!vino?.id || fichaInicial) return  // ya cacheada: sin llamada a API
+    // La ficha cacheada es en español — si el idioma es distinto, regeneramos
+    if (fichaInicial && lang === 'es') return
     setFichaReady(false)
-    fetch(`/api/kiosko/${slug}/ficha/${vino.id}`)
+    fetch(`/api/kiosko/${slug}/ficha/${vino.id}?lang=${lang}`)
       .then(r => r.json())
       .then(d => { if (d.ficha) setFicha(d.ficha) })
       .catch(() => {})
       .finally(() => setFichaReady(true))
-  }, [vino?.id, slug, fichaInicial])
+  }, [vino?.id, slug, fichaInicial, lang])
 
   const notasMostrar = ficha?.notas || vino.descripcion || vino.notas_cata
 
@@ -547,11 +568,11 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
         <div className={styles.wizardStep}>
           <p className={styles.wizardQuestion}>{T[lang].q0}</p>
           <div className={styles.wizardOcasiones}>
-            {OCASIONES.map(o => (
+            {OCASIONES_IDS.map(o => (
               <button key={o.id} className={styles.wizardOcasionBtn} onClick={() => selOcasion(o.id)} type="button"
                 style={{ '--acento': colorAcento }}>
                 <span className={styles.wizardOcasionIcon}>{o.icon}</span>
-                <span className={styles.wizardOcasionLabel}>{o.label}</span>
+                <span className={styles.wizardOcasionLabel}>{T[lang].ocasionLabels[o.id]}</span>
               </button>
             ))}
           </div>
@@ -563,10 +584,10 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
         <div className={styles.wizardStep}>
           <p className={styles.wizardQuestion}>{T[lang].q1}</p>
           <div className={styles.wizardEstilos}>
-            {ESTILOS.map(e => (
+            {ESTILOS_IDS.map(e => (
               <button key={e.id} className={styles.wizardEstiloBtn} onClick={() => selEstilo(e.id)} type="button"
                 style={{ '--acento': colorAcento }}>
-                {e.label}
+                {T[lang].estiloLabels[e.id]}
               </button>
             ))}
           </div>
@@ -578,23 +599,23 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
         <div className={styles.wizardStep}>
           <p className={styles.wizardQuestion}>{T[lang].q2}</p>
           <div className={styles.wizardPresupuestos}>
-            {PRESUPUESTOS.map(p => (
+            {PRESUPUESTOS_IDS.map(p => (
               <button key={p.id} className={styles.wizardPresupuestoBtn} onClick={() => selPresupuesto(p.id)} type="button"
                 style={{ '--acento': colorAcento }}>
-                {p.label}
+                {p.label ?? T[lang].sinLimite}
               </button>
             ))}
             <button className={`${styles.wizardPresupuestoBtn} ${styles.wizardPresupuestoBtnCustom}`}
               onClick={() => setMostrarRango(true)} type="button"
               style={{ '--acento': colorAcento }}>
-              🎯 Mi rango
+              {T[lang].miRango}
             </button>
           </div>
 
           {mostrarRango && (
             <div className={styles.rangoOverlay} onClick={e => { if (e.target === e.currentTarget) setMostrarRango(false) }}>
               <div className={styles.rangoSheet}>
-                <p className={styles.rangoSheetTitle}>Elige tu presupuesto</p>
+                <p className={styles.rangoSheetTitle}>{T[lang].elegirPresupuesto}</p>
                 <PriceRangeSlider
                   minAll={wizardPrecios.min} maxAll={wizardPrecios.max}
                   valueMin={wPrecioMin} valueMax={wPrecioMax}
@@ -608,10 +629,10 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
                   style={{ background: colorAcento, color: colorPrimario }}
                   onClick={() => { setMostrarRango(false); selPresupuesto('custom') }}
                   type="button">
-                  Buscar con este rango →
+                  {T[lang].buscarRango}
                 </button>
                 <button className={styles.rangoSheetCancel} onClick={() => setMostrarRango(false)} type="button">
-                  Cancelar
+                  {T[lang].cancelar}
                 </button>
               </div>
             </div>
@@ -623,7 +644,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       {step === 99 && cargando && (
         <div className={styles.wizardLoading}>
           <div className={styles.wizardSpinner} style={{ borderTopColor: colorAcento }} />
-          <p style={{ color: colorAcento }}>Buscando el vino perfecto para ti...</p>
+          <p style={{ color: colorAcento }}>{T[lang].buscandoVino}</p>
         </div>
       )}
 
@@ -631,7 +652,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       {error && (
         <div className={styles.pairingError}>
           <p>{error}</p>
-          <button onClick={reset} type="button">Intentar de nuevo</button>
+          <button onClick={reset} type="button">{T[lang].intentarDeNuevo}</button>
         </div>
       )}
 

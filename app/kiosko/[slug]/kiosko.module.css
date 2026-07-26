@@ -113,14 +113,14 @@
 
 .welcomeActionCard {
   flex: 1;
-  max-width: 280px;
+  max-width: 320px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1.25rem;
-  min-height: 230px;
-  padding: 2rem 1.5rem;
+  gap: 1.5rem;
+  min-height: 280px;
+  padding: 2.5rem 1.5rem;
   background: var(--sup1);
   border: 2px solid var(--borde);
   border-radius: 0;
@@ -136,7 +136,7 @@
 .welcomeActionCard:active { transform: scale(.96); }
 
 .welcomeActionIcon {
-  font-size: clamp(3rem, 5vw, 5.5rem);
+  font-size: clamp(3.5rem, 6vw, 6.5rem);
   line-height: 1;
 }
 
@@ -185,7 +185,7 @@
 
 .featuredCard {
   flex-shrink: 0;
-  width: 260px;
+  width: 140px;
   background: var(--sup1);
   border: 1px solid var(--borde);
   border-radius: 0;
@@ -200,7 +200,7 @@
 
 .featuredPhoto {
   width: 100%;
-  height: 300px;
+  height: 160px;
   object-fit: contain;
   background: var(--sup2);
   padding: .75rem;
@@ -209,11 +209,11 @@
 
 .featuredPhotoPlaceholder {
   width: 100%;
-  height: 300px;
+  height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 4rem;
+  font-size: 2.5rem;
   background: var(--sup2);
 }
 
@@ -2169,10 +2169,10 @@
   }
   .kioskoCredit { margin-bottom: .5rem; }
 
-  /* Destacados más pequeños en móvil */
-  .featuredCard { width: 200px; }
-  .featuredPhoto { height: 230px; }
-  .featuredPhotoPlaceholder { height: 230px; font-size: 3rem; }
+  /* Destacados en móvil */
+  .featuredCard { width: 120px; }
+  .featuredPhoto { height: 140px; }
+  .featuredPhotoPlaceholder { height: 140px; font-size: 2rem; }
 
   /* Browse: compact filter bar */
   .browseTopBar {
@@ -2217,7 +2217,7 @@
   .cardDestacado { font-size: .65rem; padding: .15rem .4rem; }
 
   /* Featured en móvil estrecho */
-  .featuredCard { width: 170px; }
-  .featuredPhoto { height: 200px; }
-  .featuredPhotoPlaceholder { height: 200px; }
+  .featuredCard { width: 110px; }
+  .featuredPhoto { height: 120px; }
+  .featuredPhotoPlaceholder { height: 120px; }
 }
