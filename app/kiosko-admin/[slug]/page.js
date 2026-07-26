@@ -1177,10 +1177,20 @@ export default function AdminKioskoPage() {
         <button type="button" className={`${styles.tabBtn} ${tab === 'catalogo' ? styles.tabBtnActive : ''}`} onClick={() => setTab('catalogo')}>
           Catálogo
         </button>
-        <button type="button" className={`${styles.tabBtn} ${tab === 'analitica' ? styles.tabBtnActive : ''}`}
-          onClick={() => { setTab('analitica'); if (esPremium && !analitica && !analiticaLoad) cargarAnalitica() }}>
-          Analítica{!esPremium && <span className={styles.tabPremiumBadge}>★</span>}
-        </button>
+        <div style={{ position: 'relative' }}>
+          {tienda?.plan === 'trial' && (
+            <span style={{
+              position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)',
+              background: '#c9a96e', color: '#1a1a2e', fontSize: '.56rem', fontWeight: 800,
+              padding: '2px 8px', borderRadius: 20, letterSpacing: '.06em', whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+            }}>★ PREMIUM</span>
+          )}
+          <button type="button" className={`${styles.tabBtn} ${tab === 'analitica' ? styles.tabBtnActive : ''}`}
+            onClick={() => { setTab('analitica'); if (esPremium && !analitica && !analiticaLoad) cargarAnalitica() }}>
+            Analítica{!esPremium && <span className={styles.tabPremiumBadge}>★</span>}
+          </button>
+        </div>
         <button type="button" className={`${styles.tabBtn} ${tab === 'ajustes' ? styles.tabBtnActive : ''}`} onClick={() => setTab('ajustes')}>
           Ajustes
         </button>
