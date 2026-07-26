@@ -536,13 +536,15 @@ export default function DashboardHome() {
       const { email, restauranteId, isDemo, isAdmin } = await getEffectiveRestaurantEmail(supabase)
       if (!email && !restauranteId) { window.location.href = '/login'; return }
 
-      if (isAdmin) {
-        const tok = await tokenSesion()
+      const tok = await tokenSesion()
+      if (tok) {
         const res = await fetch('/api/admin/kiosko/lista', {
           headers: { Authorization: `Bearer ${tok}` },
         })
-        const data = await res.json().catch(() => ({}))
-        setKioskos(data.tiendas || [])
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}))
+          setKioskos(data.tiendas || [])
+        }
       }
 
       if (isDemo) {
