@@ -128,7 +128,7 @@ export async function POST(req) {
     const admin = await validarAdmin(req)
     if (admin.error) return Response.json({ error: admin.error }, { status: admin.status })
 
-    const { tienda_slug, plan = 'premium' } = await req.json()
+    const { tienda_slug, plan = 'premium', preview = false } = await req.json()
     if (!tienda_slug) return Response.json({ error: 'tienda_slug obligatorio' }, { status: 400 })
     if (!PRICE_IDS[plan]) return Response.json({ error: `Plan '${plan}' no válido` }, { status: 400 })
 
@@ -143,6 +143,18 @@ export async function POST(req) {
     await ensureUser(sb, tienda.propietario_email, tienda.nombre)
     const accessLink = await linkContrasena(sb, tienda.propietario_email, tienda.slug)
     const checkout   = await crearCheckout({ tienda, plan })
+
+    // En modo preview solo devolvemos los enlaces sin enviar el email ni actualizar el estado
+    if (preview) {
+      return Response.json({
+        ok: true,
+        preview: true,
+        email: tienda.propietario_email,
+        checkout_url: checkout.url,
+        access_link: accessLink,
+        email_html: emailActivacion({ tienda, accessLink, checkoutUrl: checkout.url, plan }),
+      })
+    }
 
     // Marcar como pendiente de pago
     await sb.from('tiendas').update({

@@ -334,6 +334,37 @@
 }
 .btnCancel:hover { background: #f5f5f5; }
 
+/* ── Preview activación ── */
+.previewBox {
+  background: #f4f3f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.previewLabel {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #888;
+  margin: 0;
+}
+.previewLink {
+  display: inline-block;
+  background: #1a1a2e;
+  color: #c9a96e;
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.previewLink:hover { opacity: .85; }
+
 /* ── Resultados ── */
 .resultados {
   padding: 24px;

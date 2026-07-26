@@ -56,6 +56,8 @@ export default function AdminKioscosPage() {
 
   // activación Stripe por kiosko
   const [confirmActivacion, setConfirmActivacion] = useState(null) // tienda pendiente de confirmar
+  const [preview, setPreview]         = useState(null)  // { url, access_link, email, email_html }
+  const [previewing, setPreviewing]   = useState(false)
   const [activando, setActivando]     = useState({}) // { [id]: bool }
   const [activResult, setActivResult] = useState({}) // { [id]: { ok, url, email, error } }
   const [copiadoActiv, setCopiadoActiv] = useState({}) // { [id]: bool }
@@ -144,8 +146,31 @@ export default function AdminKioscosPage() {
     setEditMsg('')
   }
 
-  async function enviarActivacionKiosko(tienda) {
+  async function previsualizarActivacion(tienda) {
     const plan = tienda.plan && tienda.plan !== 'trial' ? tienda.plan : 'premium'
+    setPreviewing(true)
+    setPreview(null)
+    try {
+      const res = await fetch('/api/admin/kiosko/activacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tienda_slug: tienda.slug, plan, preview: true }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setPreview({ ...data, tienda, plan })
+      } else {
+        setPreview({ error: data.error || 'Error al generar preview', tienda, plan })
+      }
+    } catch (err) {
+      setPreview({ error: err.message, tienda, plan })
+    } finally {
+      setPreviewing(false)
+    }
+  }
+
+  async function enviarActivacionKiosko(tienda, previewData) {
+    const plan = previewData?.plan || (tienda.plan && tienda.plan !== 'trial' ? tienda.plan : 'premium')
     setActivando(prev => ({ ...prev, [tienda.id]: true }))
     setActivResult(prev => { const n = { ...prev }; delete n[tienda.id]; return n })
     try {
@@ -323,45 +348,110 @@ export default function AdminKioscosPage() {
         </div>
       )}
 
-      {/* Modal confirmación activación Stripe */}
+      {/* Modal activación Stripe — dos fases: preview → envío */}
       {confirmActivacion && (
-        <div className={styles.modalOverlay} onClick={() => setConfirmActivacion(null)}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+        <div className={styles.modalOverlay} onClick={() => { setConfirmActivacion(null); setPreview(null) }}>
+          <div className={styles.modal} style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2>Confirmar activación Stripe</h2>
-              <button className={styles.modalClose} onClick={() => setConfirmActivacion(null)}>✕</button>
+              <h2>{preview ? 'Revisar antes de enviar' : 'Activación Stripe'}</h2>
+              <button className={styles.modalClose} onClick={() => { setConfirmActivacion(null); setPreview(null) }}>✕</button>
             </div>
             <div className={styles.form}>
-              <p style={{ margin: 0, fontSize: 14, color: '#444', lineHeight: 1.6 }}>
-                Se enviará un email de activación a:<br />
-                <strong>{confirmActivacion.propietario_email || confirmActivacion.email}</strong>
-              </p>
-              <p style={{ margin: 0, fontSize: 14, color: '#444', lineHeight: 1.6 }}>
-                Plan: <strong>
-                  {confirmActivacion.plan && confirmActivacion.plan !== 'trial'
-                    ? confirmActivacion.plan
-                    : 'premium'}
-                  {' · '}
-                  {(confirmActivacion.plan === 'basico') ? '59 €/mes' : '99 €/mes'}
-                </strong>
-                {confirmActivacion.precio_especial ? ` (precio especial: ${confirmActivacion.precio_especial} €)` : ''}
-              </p>
-              <p style={{ margin: 0, fontSize: 13, color: '#888' }}>
-                El cliente recibirá el enlace para crear su contraseña y el enlace de pago de Stripe.
-              </p>
-              <div className={styles.formActions}>
-                <button className={styles.btnCancel} onClick={() => setConfirmActivacion(null)}>Cancelar</button>
-                <button
-                  className={styles.btnNuevo}
-                  onClick={() => {
-                    const t = confirmActivacion
-                    setConfirmActivacion(null)
-                    enviarActivacionKiosko(t)
-                  }}
-                >
-                  Sí, enviar activación
-                </button>
-              </div>
+
+              {!preview ? (
+                /* ── Fase 1: confirmación inicial ── */
+                <>
+                  <p style={{ margin: 0, fontSize: 14, color: '#444', lineHeight: 1.6 }}>
+                    Destinatario: <strong>{confirmActivacion.propietario_email || confirmActivacion.email}</strong>
+                  </p>
+                  <p style={{ margin: 0, fontSize: 14, color: '#444', lineHeight: 1.6 }}>
+                    Plan: <strong>
+                      {confirmActivacion.plan && confirmActivacion.plan !== 'trial' ? confirmActivacion.plan : 'premium'}
+                      {' · '}
+                      {confirmActivacion.plan === 'basico' ? '59 €/mes' : '99 €/mes'}
+                    </strong>
+                    {confirmActivacion.precio_especial ? ` (precio especial: ${confirmActivacion.precio_especial} €)` : ''}
+                  </p>
+                  {preview?.error && (
+                    <p style={{ margin: 0, fontSize: 13, color: '#c00' }}>Error: {preview.error}</p>
+                  )}
+                  <div className={styles.formActions}>
+                    <button className={styles.btnCancel} onClick={() => { setConfirmActivacion(null); setPreview(null) }}>Cancelar</button>
+                    <button
+                      className={styles.btnCancel}
+                      disabled={previewing}
+                      onClick={() => previsualizarActivacion(confirmActivacion)}
+                    >
+                      {previewing ? 'Generando...' : 'Ver enlaces primero'}
+                    </button>
+                    <button
+                      className={styles.btnNuevo}
+                      disabled={previewing}
+                      onClick={() => {
+                        const t = confirmActivacion
+                        setConfirmActivacion(null)
+                        setPreview(null)
+                        enviarActivacionKiosko(t, null)
+                      }}
+                    >
+                      Enviar directamente
+                    </button>
+                  </div>
+                </>
+              ) : preview.error ? (
+                /* ── Error en preview ── */
+                <>
+                  <p style={{ margin: 0, fontSize: 13, color: '#c00' }}>Error al generar enlaces: {preview.error}</p>
+                  <div className={styles.formActions}>
+                    <button className={styles.btnCancel} onClick={() => setPreview(null)}>Volver</button>
+                  </div>
+                </>
+              ) : (
+                /* ── Fase 2: muestra los enlaces reales ── */
+                <>
+                  <p style={{ margin: 0, fontSize: 13, color: '#888' }}>
+                    Se han generado los enlaces reales. Pruébalos antes de enviar el email.
+                  </p>
+
+                  <div className={styles.previewBox}>
+                    <p className={styles.previewLabel}>1 · Enlace crear contraseña (para el cliente)</p>
+                    <a href={preview.access_link} target="_blank" rel="noreferrer" className={styles.previewLink}>
+                      Abrir enlace →
+                    </a>
+                  </div>
+
+                  <div className={styles.previewBox}>
+                    <p className={styles.previewLabel}>2 · Enlace de pago Stripe</p>
+                    <a href={preview.checkout_url} target="_blank" rel="noreferrer" className={styles.previewLink}>
+                      Abrir checkout →
+                    </a>
+                  </div>
+
+                  <details style={{ fontSize: 13, color: '#555' }}>
+                    <summary style={{ cursor: 'pointer', marginBottom: 8 }}>Ver email completo que recibirá el cliente</summary>
+                    <div
+                      style={{ border: '1px solid #e8e5df', borderRadius: 8, padding: 16, background: '#fafafa', maxHeight: 320, overflowY: 'auto' }}
+                      dangerouslySetInnerHTML={{ __html: preview.email_html }}
+                    />
+                  </details>
+
+                  <div className={styles.formActions}>
+                    <button className={styles.btnCancel} onClick={() => setPreview(null)}>Volver</button>
+                    <button
+                      className={styles.btnNuevo}
+                      onClick={() => {
+                        const t = confirmActivacion
+                        const p = preview
+                        setConfirmActivacion(null)
+                        setPreview(null)
+                        enviarActivacionKiosko(t, p)
+                      }}
+                    >
+                      Todo correcto — Enviar email al cliente
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
