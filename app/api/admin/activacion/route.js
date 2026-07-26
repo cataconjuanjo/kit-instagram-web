@@ -153,6 +153,7 @@ export async function POST(req) {
     const restauranteId = String(body.restaurante_id || '').trim()
     const plan = body.plan || 'premium'
     const trialEnd = body.trial_end || '2026-09-01T00:00:00+02:00'
+    const preview = Boolean(body.preview)
     if (!restauranteId) return Response.json({ error: 'restaurante_id obligatorio.' }, { status: 400 })
 
     const { data: restaurante, error: restError } = await adminSupabase
@@ -167,11 +168,23 @@ export async function POST(req) {
     const accessLink = await linkContrasena(adminSupabase, restaurante.email)
     const checkout = await crearCheckout({ restaurante, plan, trialEnd })
 
+    // En modo preview solo devolvemos los enlaces sin enviar email ni tocar la BD
+    if (preview) {
+      return Response.json({
+        ok: true,
+        preview: true,
+        email: restaurante.email,
+        checkout_url: checkout.url,
+        access_link: accessLink,
+        email_html: emailActivacion({ restaurante, accessLink, checkoutUrl: checkout.url, trialEnd }),
+      })
+    }
+
     await adminSupabase
       .from('restaurantes')
       .update({
         plan,
-        subscription_status: 'past_due',
+        subscription_status: 'pending',
         trial_expires_at: new Date(trialEnd).toISOString(),
         trial_started_at: new Date().toISOString(),
         trial_active_seconds_limit: null,

@@ -190,6 +190,9 @@ function AdminPageContent() {
   const [stripeandoId, setStripeandoId] = useState(null)
   const [stripeResult, setStripeResult] = useState(null)
   const [copiadoStripe, setCopiadoStripe] = useState(false)
+  const [confirmActivacionRest, setConfirmActivacionRest] = useState(null)
+  const [previewRest, setPreviewRest] = useState(null)
+  const [previewing, setPreviewing] = useState(false)
   const [mostrarAlta, setMostrarAlta] = useState(false)
   const [bajaId, setBajaId] = useState(null) // id del restaurante pendiente de confirmar baja
   const [dandoDeBaja, setDandoDeBaja] = useState(false)
@@ -533,6 +536,26 @@ function AdminPageContent() {
     }
   }
 
+  async function previsualizarActivacionRest(restaurante) {
+    setPreviewing(true)
+    setPreviewRest(null)
+    const token = await tokenAdmin()
+    try {
+      const res = await fetch('/api/admin/activacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ restaurante_id: restaurante.id, plan: restaurante.plan || 'premium', trial_end: '2026-09-01T00:00:00+02:00', preview: true }),
+      })
+      const data = await res.json()
+      if (res.ok) setPreviewRest({ ...data, restaurante })
+      else setPreviewRest({ error: data.error || 'Error al generar preview', restaurante })
+    } catch (err) {
+      setPreviewRest({ error: err.message, restaurante })
+    } finally {
+      setPreviewing(false)
+    }
+  }
+
   async function enviarActivacion(restaurante) {
     setStripeandoId(restaurante.id)
     setStripeResult(null)
@@ -541,11 +564,7 @@ function AdminPageContent() {
     const res = await fetch('/api/admin/activacion', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        restaurante_id: restaurante.id,
-        plan: restaurante.plan || 'premium',
-        trial_end: '2026-09-01T00:00:00+02:00',
-      })
+      body: JSON.stringify({ restaurante_id: restaurante.id, plan: restaurante.plan || 'premium', trial_end: '2026-09-01T00:00:00+02:00' }),
     })
     const data = await res.json()
     if (res.ok) {
@@ -924,7 +943,7 @@ function AdminPageContent() {
                               <button onClick={() => { abrirPublicacion(restaurante); setMenuAccionesId(null) }}>QR / publicar</button>
                               <button onClick={() => { setResetResult(null); setAccionAcceso({ tipo: 'email', restaurante }); setMenuAccionesId(null) }}>Enviar enlace de acceso</button>
                               <button onClick={() => { setResetResult(null); setAccionAcceso({ tipo: 'manual', restaurante }); setMenuAccionesId(null) }}>Pass manual</button>
-                              <button onClick={() => { enviarActivacion(restaurante); setMenuAccionesId(null) }}>Enviar activación Stripe</button>
+                              <button onClick={() => { setConfirmActivacionRest(restaurante); setPreviewRest(null); setMenuAccionesId(null) }}>Enviar activación Stripe</button>
                               <button onClick={() => { copiarRestaurante(restaurante); setMenuAccionesId(null) }}>Copiar datos</button>
                               <Link href={`/admin/restaurante/${restaurante.id}`} onClick={() => setMenuAccionesId(null)}>Ver ficha consultor</Link>
                               <div className={rs.divider} />
@@ -1004,6 +1023,68 @@ function AdminPageContent() {
             </form>
           )}
         </AdminOverlay>
+
+        {/* Modal activación Stripe restaurante */}
+        {confirmActivacionRest && (
+          <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:200,padding:20 }}
+            onClick={() => { setConfirmActivacionRest(null); setPreviewRest(null) }}>
+            <div style={{ background:'#fff',borderRadius:16,width:'100%',maxWidth:580,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,.2)' }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'20px 24px 16px',borderBottom:'1px solid #f0ede8' }}>
+                <h2 style={{ fontSize:17,fontWeight:700,color:'#1a1a2e',margin:0 }}>{previewRest ? 'Revisar antes de enviar' : 'Activación Stripe'}</h2>
+                <button style={{ background:'none',border:'none',fontSize:18,color:'#888',cursor:'pointer' }} onClick={() => { setConfirmActivacionRest(null); setPreviewRest(null) }}>✕</button>
+              </div>
+              <div style={{ padding:'20px 24px 24px',display:'flex',flexDirection:'column',gap:14 }}>
+                {!previewRest ? (
+                  <>
+                    <p style={{ margin:0,fontSize:14,color:'#444' }}>Destinatario: <strong>{confirmActivacionRest.email}</strong></p>
+                    <p style={{ margin:0,fontSize:14,color:'#444' }}>Plan: <strong>{confirmActivacionRest.plan || 'premium'}</strong></p>
+                    {previewRest?.error && <p style={{ margin:0,fontSize:13,color:'#c00' }}>Error: {previewRest.error}</p>}
+                    <div style={{ display:'flex',gap:10,justifyContent:'flex-end',marginTop:4 }}>
+                      <button className="admin-plain-button" onClick={() => { setConfirmActivacionRest(null); setPreviewRest(null) }}>Cancelar</button>
+                      <button className="admin-plain-button" disabled={previewing} onClick={() => previsualizarActivacionRest(confirmActivacionRest)}>
+                        {previewing ? 'Generando...' : 'Ver enlaces primero'}
+                      </button>
+                      <button className="is-primary" disabled={previewing} onClick={() => { const r = confirmActivacionRest; setConfirmActivacionRest(null); setPreviewRest(null); enviarActivacion(r) }}>
+                        Enviar directamente
+                      </button>
+                    </div>
+                  </>
+                ) : previewRest.error ? (
+                  <>
+                    <p style={{ margin:0,fontSize:13,color:'#c00' }}>Error: {previewRest.error}</p>
+                    <div style={{ display:'flex',gap:10,justifyContent:'flex-end' }}>
+                      <button className="admin-plain-button" onClick={() => setPreviewRest(null)}>Volver</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ margin:0,fontSize:13,color:'#888' }}>Prueba los enlaces antes de enviar el email al cliente.</p>
+                    <div style={{ background:'#f4f3f0',borderRadius:8,padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+                      <span style={{ fontSize:12,fontWeight:700,textTransform:'uppercase',color:'#888' }}>1 · Enlace crear contraseña</span>
+                      <a href={previewRest.access_link} target="_blank" rel="noreferrer" style={{ background:'#1a1a2e',color:'#c9a96e',padding:'8px 14px',borderRadius:6,fontSize:13,fontWeight:600,textDecoration:'none' }}>Abrir →</a>
+                    </div>
+                    <div style={{ background:'#f4f3f0',borderRadius:8,padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+                      <span style={{ fontSize:12,fontWeight:700,textTransform:'uppercase',color:'#888' }}>2 · Enlace de pago Stripe</span>
+                      <a href={previewRest.checkout_url} target="_blank" rel="noreferrer" style={{ background:'#74223d',color:'#fff',padding:'8px 14px',borderRadius:6,fontSize:13,fontWeight:600,textDecoration:'none' }}>Abrir →</a>
+                    </div>
+                    <details style={{ fontSize:13,color:'#555' }}>
+                      <summary style={{ cursor:'pointer',marginBottom:8 }}>Ver email completo</summary>
+                      <div style={{ border:'1px solid #e8e5df',borderRadius:8,padding:16,background:'#fafafa',maxHeight:300,overflowY:'auto' }}
+                        dangerouslySetInnerHTML={{ __html: previewRest.email_html }} />
+                    </details>
+                    <div style={{ display:'flex',gap:10,justifyContent:'flex-end',marginTop:4 }}>
+                      <button className="admin-plain-button" onClick={() => setPreviewRest(null)}>Volver</button>
+                      <button className="is-primary" onClick={() => { const r = confirmActivacionRest; setConfirmActivacionRest(null); setPreviewRest(null); enviarActivacion(r) }}>
+                        Todo correcto — Enviar email al cliente
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <AdminOverlay
           open={Boolean(accionAcceso)}

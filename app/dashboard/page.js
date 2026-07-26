@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../supabase'
 import { getEffectiveRestaurantEmail, isAdminEmail } from '../demo'
@@ -245,8 +246,13 @@ async function cargarExperienciaLanzamientoRemota(restauranteId) {
   }
 }
 
-export default function DashboardHome() {
+function DashboardHome() {
+  const searchParams = useSearchParams()
+  const checkoutOk   = searchParams.get('checkout') === 'ok'
+
   const [restaurante, setRestaurante] = useState(null)
+  const [generandoCheckout, setGenerandoCheckout] = useState(false)
+  const [esperandoWebhook, setEsperandoWebhook]   = useState(false)
   const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, incidenciasSala: 0, dudasSala: 0 })
   const [vinos, setVinos] = useState([])
   const [platos, setPlatos] = useState([])
@@ -643,9 +649,81 @@ export default function DashboardHome() {
     cargar()
   }, [cargarEstadoLanzamiento, cargarRadarDiario, cargarResumenSemanal])
 
+  async function irACheckoutRestaurante() {
+    if (!restaurante?.id) return
+    setGenerandoCheckout(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ restaurante_id: restaurante.id, plan: restaurante.plan || 'premium' }),
+      })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    } catch {}
+    finally { setGenerandoCheckout(false) }
+  }
+
+  // Polling tras pago exitoso: espera a que el webhook actualice subscription_status
+  useEffect(() => {
+    if (!checkoutOk || !restaurante) return
+    if (restaurante.subscription_status !== 'pending') return
+    setEsperandoWebhook(true)
+    let intentos = 0
+    const intervalo = setInterval(async () => {
+      intentos++
+      const { data: rest } = await supabase
+        .from('restaurantes')
+        .select('subscription_status')
+        .eq('id', restaurante.id)
+        .single()
+      if (rest?.subscription_status !== 'pending') {
+        clearInterval(intervalo)
+        setEsperandoWebhook(false)
+        setRestaurante(prev => ({ ...prev, subscription_status: rest.subscription_status }))
+      }
+      if (intentos >= 10) { clearInterval(intervalo); setEsperandoWebhook(false) }
+    }, 3000)
+    return () => clearInterval(intervalo)
+  }, [checkoutOk, restaurante?.subscription_status])
+
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#fff', fontFamily: 'system-ui, sans-serif' }}>
       <p style={{ fontSize: 12, letterSpacing: '0.15em', color: '#bbb' }}>CARGANDO</p>
+    </div>
+  )
+
+  // Gate de pago: si la suscripción está pendiente y no es admin
+  const esAdmin = isAdminEmail(restaurante?.email)
+  if (!esAdmin && restaurante?.subscription_status === 'pending') return (
+    <div style={{ minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f4f3f0',padding:24 }}>
+      <div style={{ background:'#fff',borderRadius:16,padding:'48px 40px',maxWidth:460,width:'100%',boxShadow:'0 8px 32px rgba(0,0,0,.08)',textAlign:'center' }}>
+        {esperandoWebhook ? (
+          <>
+            <div style={{ fontSize:48,marginBottom:16 }}>⏳</div>
+            <h2 style={{ fontSize:22,fontWeight:700,color:'#1a1a2e',margin:'0 0 12px' }}>Activando tu cuenta...</h2>
+            <p style={{ fontSize:15,color:'#666',lineHeight:1.6,margin:0 }}>Pago recibido. Estamos activando tu acceso, tardará solo unos segundos.</p>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize:48,marginBottom:16 }}>🔒</div>
+            <h2 style={{ fontSize:22,fontWeight:700,color:'#1a1a2e',margin:'0 0 12px' }}>Activa tu suscripción</h2>
+            <p style={{ fontSize:15,color:'#666',lineHeight:1.6,margin:'0 0 32px' }}>
+              Tu cuenta está lista. Para acceder al panel de Carta Viva necesitas activar tu suscripción.
+            </p>
+            <button
+              onClick={irACheckoutRestaurante}
+              disabled={generandoCheckout}
+              style={{ background:'#1a1a2e',color:'#c9a96e',border:'none',borderRadius:10,padding:'14px 32px',fontSize:16,fontWeight:700,cursor:'pointer',width:'100%' }}
+            >
+              {generandoCheckout ? 'Preparando pago...' : 'Activar suscripción →'}
+            </button>
+            <p style={{ fontSize:12,color:'#aaa',marginTop:16 }}>Pago seguro con Stripe · Cancela cuando quieras</p>
+          </>
+        )}
+      </div>
     </div>
   )
 
@@ -1613,4 +1691,8 @@ export default function DashboardHome() {
       )}
     </main>
   )
+}
+
+export default function Dashboard() {
+  return <Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}><p style={{color:'#bbb',fontSize:12,letterSpacing:'.15em'}}>CARGANDO</p></div>}><DashboardHome /></Suspense>
 }
