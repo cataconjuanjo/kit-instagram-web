@@ -533,10 +533,10 @@ export default function DashboardHome() {
 
   useEffect(() => {
     async function cargar() {
-      const { email, restauranteId, isDemo } = await getEffectiveRestaurantEmail(supabase)
+      const { email, restauranteId, isDemo, isAdmin } = await getEffectiveRestaurantEmail(supabase)
       if (!email && !restauranteId) { window.location.href = '/login'; return }
 
-      if (isAdminEmail(email)) {
+      if (isAdmin) {
         const tok = await tokenSesion()
         const res = await fetch('/api/admin/kiosko/lista', {
           headers: { Authorization: `Bearer ${tok}` },
