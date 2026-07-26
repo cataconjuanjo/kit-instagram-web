@@ -459,7 +459,7 @@ export default function AdminKioscosPage() {
                     Destinatario: <strong>{confirmTrial.propietario_email || confirmTrial.email}</strong>
                   </p>
                   <p style={{ margin: 0, fontSize: 14, color: '#444', lineHeight: 1.6 }}>
-                    El cliente recibirá un enlace para crear contraseña y tendrá <strong>2 horas de uso real</strong> con acceso completo. El tiempo solo corre cuando tiene la pantalla abierta.
+                    El cliente recibirá un enlace para crear contraseña y tendrá <strong>1 hora de uso real</strong> con acceso completo. El tiempo solo corre cuando tiene la pantalla abierta.
                   </p>
                   <div className={styles.formActions}>
                     <button className={styles.btnCancel} onClick={() => { setConfirmTrial(null); setPreviewTrialData(null) }}>Cancelar</button>
