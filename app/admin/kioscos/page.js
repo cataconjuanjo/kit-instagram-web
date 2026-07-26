@@ -134,6 +134,7 @@ export default function AdminKioscosPage() {
                 <th>Slug</th>
                 <th>Plan</th>
                 <th>Trial</th>
+                <th>Estado</th>
                 <th>Activo</th>
                 <th>Alta</th>
                 <th></th>
@@ -178,6 +179,7 @@ export default function AdminKioscosPage() {
                       <span className={styles.trialOk}>{fmtSeg(segsRestantes)} restante</span>
                     )}
                   </td>
+                  <td><Badge status={t.subscription_status} /></td>
                   <td>
                     <button
                       className={t.activo ? styles.toggleOn : styles.toggleOff}
