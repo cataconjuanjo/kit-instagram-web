@@ -320,7 +320,7 @@ export default function AdminKioscosPage() {
                 // Nuevo sistema: trial_used_seconds. Viejo: wall-clock via trial_expires_at
                 const segsRestantes = esTrial
                   ? t.trial_used_seconds != null
-                    ? Math.max(0, 7200 - t.trial_used_seconds)
+                    ? Math.max(0, 3600 - t.trial_used_seconds)
                     : expMs ? Math.max(0, Math.round((expMs - Date.now()) / 1000)) : null
                   : null
                 const res = activResult[t.id]

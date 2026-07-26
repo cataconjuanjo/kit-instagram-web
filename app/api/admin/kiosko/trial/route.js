@@ -59,10 +59,10 @@ function emailTrial({ tienda, accessLink }) {
   const nombre = escapeHtml(tienda.nombre || 'tu tienda')
   return `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;color:#222;line-height:1.6">
-      <h1 style="font-size:22px;font-weight:600;margin:0 0 16px">Prueba gratuita de Carta Viva — 2 horas de uso real</h1>
+      <h1 style="font-size:22px;font-weight:600;margin:0 0 16px">Prueba gratuita de Carta Viva — 1 hora de uso real</h1>
       <p>Hola,</p>
       <p>Te dejo listo el acceso de prueba a <strong>Carta Viva</strong> para <strong>${nombre}</strong>.</p>
-      <p>Tienes <strong>2 horas de uso real</strong> para explorar todas las funciones con acceso completo. El tiempo solo cuenta cuando tienes la pantalla abierta — puedes cerrar y volver cuando quieras y el tiempo restante se conserva.</p>
+      <p>Tienes <strong>1 hora de uso real</strong> para explorar todas las funciones con acceso completo. El tiempo solo cuenta cuando tienes la pantalla abierta — puedes cerrar y volver cuando quieras y el tiempo restante se conserva.</p>
 
       <p style="margin:28px 0">
         <a href="${accessLink}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:14px 22px;border-radius:6px;font-size:15px">Crear contraseña y entrar →</a>

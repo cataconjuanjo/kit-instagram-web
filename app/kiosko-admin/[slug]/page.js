@@ -558,7 +558,7 @@ export default function AdminKioskoPage() {
     if (previewTrial) return   // modo preview: no arranca el reloj
     if (esAdminUsuario) return // admin nunca consume el trial
 
-    const LIMIT = 7200 // 2 horas
+    const LIMIT = 3600 // 1 hora
 
     // ── Nuevo sistema: trial_used_seconds (tiempo de uso real) ──────────────
     if (tienda.trial_used_seconds != null) {

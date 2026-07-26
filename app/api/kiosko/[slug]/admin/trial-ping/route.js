@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 
-const TRIAL_LIMIT = 7200 // 2 horas en segundos
+const TRIAL_LIMIT = 3600 // 1 hora en segundos
 
 export async function POST(request, { params }) {
   const { slug } = await params
