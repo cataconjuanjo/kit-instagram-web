@@ -524,6 +524,7 @@ export default function AdminKioskoPage() {
   const [error, setError]           = useState('')
   const [accesoDenegado, setAccesoDenegado] = useState(false)
   const [esAdminUsuario, setEsAdminUsuario] = useState(false)
+  const [generandoCheckout, setGenerandoCheckout] = useState(false)
 
   const [modal, setModal]         = useState(null)  // null | 'nuevo' | vino
   const [form, setForm]           = useState(VINO_VACIO)
@@ -624,10 +625,24 @@ export default function AdminKioskoPage() {
       if (!r1.ok) throw new Error('Tienda no encontrada')
       const meta = await r1.json()
       const dv   = await r2.json()
-      setTienda(meta.tienda)
+      setTienda({ ...meta.tienda, _token: session.access_token })
       setVinos(dv.vinos || [])
     } catch (e) { setError(e.message) }
     finally     { setCargando(false)  }
+  }
+
+  async function irACheckout() {
+    if (!tienda?._token) return
+    setGenerandoCheckout(true)
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/checkout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tienda._token}` },
+      })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    } catch {}
+    finally { setGenerandoCheckout(false) }
   }
 
   // ── Modal añadir / editar ──────────────────────────────────────────────────
@@ -997,6 +1012,32 @@ export default function AdminKioskoPage() {
     </div>
   )
   if (error) return <div className={styles.error}>{error}</div>
+
+  // Gate de pago: si la tienda no está activa y no es admin, mostrar pantalla de activación
+  const pendienteDePago = !esAdminUsuario && !tienda?.activo && tienda?.subscription_status !== 'active'
+  if (pendienteDePago) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f3f0', padding: 24 }}>
+      <div style={{ background: '#fff', borderRadius: 16, padding: '48px 40px', maxWidth: 460, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,.08)', textAlign: 'center' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', margin: '0 0 12px' }}>
+          Activa tu kiosko
+        </h2>
+        <p style={{ fontSize: 15, color: '#666', lineHeight: 1.6, margin: '0 0 32px' }}>
+          Tu cuenta está lista. Para empezar a usar el kiosko de vinos necesitas activar la suscripción.
+        </p>
+        <button
+          onClick={irACheckout}
+          disabled={generandoCheckout}
+          style={{ background: '#1a1a2e', color: '#c9a96e', border: 'none', borderRadius: 10, padding: '14px 32px', fontSize: 16, fontWeight: 700, cursor: 'pointer', width: '100%' }}
+        >
+          {generandoCheckout ? 'Preparando pago...' : 'Activar suscripción →'}
+        </button>
+        <p style={{ fontSize: 12, color: '#aaa', marginTop: 16 }}>
+          Pago seguro con Stripe · Cancela cuando quieras
+        </p>
+      </div>
+    </div>
+  )
 
   return (
     <div className={styles.admin}>
