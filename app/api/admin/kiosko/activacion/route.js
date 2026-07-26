@@ -82,6 +82,8 @@ async function crearCheckout({ tienda, plan }) {
     cancel_url:  `${SITE_URL}/kiosko-admin/${tienda.slug}?checkout=cancel`,
     metadata: { tipo: 'kiosko', tienda_id: tienda.id, tienda_slug: tienda.slug, plan },
     subscription_data: { metadata: { tipo: 'kiosko', tienda_id: tienda.id, tienda_slug: tienda.slug, plan } },
+    automatic_tax: { enabled: true },
+    customer_update: { address: 'auto', name: 'auto' },
     locale: 'es',
     allow_promotion_codes: true,
   })
