@@ -1087,7 +1087,8 @@ export default function AdminKioskoPage() {
   if (error) return <div className={styles.error}>{error}</div>
 
   // Gate de pago: si el pago está pendiente y no es admin, mostrar pantalla de activación
-  const pendienteDePago = !esAdminUsuario && tienda?.subscription_status === 'pending'
+  // Plan trial nunca pasa por el gate de pago aunque tenga subscription_status='pending' de un intento anterior
+  const pendienteDePago = !esAdminUsuario && tienda?.subscription_status === 'pending' && tienda?.plan !== 'trial'
   if (pendienteDePago) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f3f0', padding: 24 }}>
       <div style={{ background: '#fff', borderRadius: 16, padding: '48px 40px', maxWidth: 460, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,.08)', textAlign: 'center' }}>
