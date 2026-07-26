@@ -191,18 +191,19 @@ function esColorClaro(hex) {
   const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
   return (r*299 + g*587 + b*114)/1000 > 145
 }
+const ESTILO_ES = {
+  afrutado: 'Afrutado', seco: 'Seco y elegante', cuerpo: 'Con mucho cuerpo',
+  ligero: 'Ligero y fresco', espumoso: 'Espumoso', dulce: 'Dulce o generoso',
+}
 function buildWizardQuery(w) {
   const parts = []
   if (w.ocasion === 'regalo')           parts.push('Es un regalo')
   else if (w.ocasion === 'celebracion') parts.push('Para una celebración o aperitivo')
   else if (w.ocasion === 'casa')        parts.push('Para tomar en casa tranquilamente')
-  if (w.estilo) {
-    const e = ESTILOS.find(x => x.id === w.estilo)
-    if (e) parts.push(`Estilo preferido: ${e.label.replace(/^[^\w]+/, '')}`)
-  }
-  if (w.presupuesto === 'bajo')   parts.push('Presupuesto: hasta 15€')
-  if (w.presupuesto === 'medio')  parts.push('Presupuesto: entre 15 y 30€')
-  if (w.presupuesto === 'alto')   parts.push('Presupuesto: entre 30 y 60€')
+  if (w.estilo && ESTILO_ES[w.estilo])  parts.push(`Estilo preferido: ${ESTILO_ES[w.estilo]}`)
+  if (w.presupuesto === 'bajo')         parts.push('Presupuesto: hasta 15€')
+  if (w.presupuesto === 'medio')        parts.push('Presupuesto: entre 15 y 30€')
+  if (w.presupuesto === 'alto')         parts.push('Presupuesto: entre 30 y 60€')
   if (w.presupuesto === 'custom' && w.precioMin != null)
     parts.push(`Presupuesto: entre ${w.precioMin}€ y ${w.precioMax}€`)
   return parts.join('. ')
