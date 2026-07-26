@@ -54,7 +54,7 @@ async function linkContrasena(sb, email, slug) {
   const { data, error } = await sb.auth.admin.generateLink({
     type: 'recovery',
     email,
-    options: { redirectTo: `${SITE_URL}/kiosko-admin/${slug}` },
+    options: { redirectTo: `${SITE_URL}/kiosko-activar/${slug}` },
   })
   if (error) throw error
   return data?.properties?.action_link
