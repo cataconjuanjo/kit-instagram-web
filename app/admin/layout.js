@@ -128,22 +128,13 @@ export default function AdminLayout({ children }) {
 
           <li className={styles.navGroup}>
             <p className={styles.navGroupTitle}><span>🏪</span> Restaurantes</p>
-            <div className={styles.subnavAdmin}>
-              <Link
-                href="/admin?vista=altas"
-                className={styles.subnavAdminLink}
-                onClick={() => setMenuOpen(false)}
-              >
-                Altas
-              </Link>
-              <Link
-                href="/admin?vista=accesos"
-                className={styles.subnavAdminLink}
-                onClick={() => setMenuOpen(false)}
-              >
-                Accesos
-              </Link>
-            </div>
+            <Link
+              href="/admin"
+              className={`${styles.navLink} ${pathname === '/admin' ? styles.navActive : ''}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              Accesos
+            </Link>
           </li>
 
           <li className={styles.navGroup}>
@@ -291,7 +282,7 @@ export default function AdminLayout({ children }) {
                       <small>{restaurante.subscription_status === 'past_due' ? 'Pago pendiente' : 'En prueba'}</small>
                     </Link>
                   ))}
-                <Link href="/admin?vista=accesos" onClick={() => setNotificationOpen(false)}>Ver todos los accesos</Link>
+                <Link href="/admin" onClick={() => setNotificationOpen(false)}>Ver todos los accesos</Link>
               </div>
             )}
             <div className={styles.profileMenu}>
@@ -301,7 +292,7 @@ export default function AdminLayout({ children }) {
               {profileOpen && (
                 <div className={styles.profileDropdown}>
                   <strong>{userEmail || 'Consultor'}</strong>
-                  <Link href="/admin?vista=accesos" onClick={() => setProfileOpen(false)}>Accesos</Link>
+                  <Link href="/admin" onClick={() => setProfileOpen(false)}>Accesos</Link>
                   <button type="button" onClick={cerrarSesion}>Cerrar sesión</button>
                 </div>
               )}

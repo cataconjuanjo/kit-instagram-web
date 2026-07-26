@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../demo'
@@ -171,9 +171,6 @@ function generarPassword() {
 
 function AdminPageContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const vistaAdmin = searchParams.get('vista') === 'accesos' ? 'accesos' : 'altas'
-  const esAltas = vistaAdmin === 'altas'
   const [user, setUser] = useState(null)
   const [restaurantes, setRestaurantes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -192,6 +189,7 @@ function AdminPageContent() {
   const [stripeandoId, setStripeandoId] = useState(null)
   const [stripeResult, setStripeResult] = useState(null)
   const [copiadoStripe, setCopiadoStripe] = useState(false)
+  const [mostrarAlta, setMostrarAlta] = useState(false)
   const [bajaId, setBajaId] = useState(null) // id del restaurante pendiente de confirmar baja
   const [dandoDeBaja, setDandoDeBaja] = useState(false)
   const [bajaError, setBajaError] = useState('')
@@ -472,6 +470,7 @@ function AdminPageContent() {
 
       setRestaurantes(prev => [...prev, data.restaurante].sort((a, b) => a.nombre.localeCompare(b.nombre)))
       setAltaCreada(data)
+      setTimeout(() => { setMostrarAlta(false); setAltaCreada(null) }, 4000)
       setNuevoRestaurante({
         nombre: '',
         email: '',
@@ -614,11 +613,21 @@ function AdminPageContent() {
         <div className="admin-head">
           <div>
             <p className="eyebrow">Restaurantes</p>
-            <h2>{esAltas ? 'Alta de restaurante y entrega de acceso.' : 'Accesos y gestion rapida de restaurantes.'}</h2>
+            <h2>Accesos y gestión de restaurantes.</h2>
           </div>
+          <button type="button" className="admin-access-new" onClick={() => { setMostrarAlta(true); setAltaCreada(null); setErrorAlta('') }}>
+            + Nuevo restaurante
+          </button>
         </div>
 
-        {esAltas && (
+        <AdminOverlay
+          open={mostrarAlta}
+          onClose={() => { setMostrarAlta(false); setAltaCreada(null); setErrorAlta('') }}
+          size="panel"
+          eyebrow="Alta nueva"
+          title="Crear restaurante y acceso privado"
+          description="Genera la ficha, el usuario de login, la carta en borrador y el acceso de sala."
+        >
         <section className="alta-wizard">
           <header className="alta-wizard-head">
             <div className="alta-wizard-intro">
@@ -795,16 +804,14 @@ function AdminPageContent() {
             </div>
           )}
         </section>
-        )}
+        </AdminOverlay>
 
-        {!esAltas && (
         <section className="admin-access-panel">
           <div className="admin-access-toolbar">
             <div>
               <p className="eyebrow">Accesos</p>
               <h3>{restaurantes.length} restaurantes</h3>
             </div>
-            <Link href="/admin?vista=altas" className="admin-access-new">Nueva alta</Link>
           </div>
 
         <div className="admin-usage-overview">
@@ -1207,9 +1214,8 @@ function AdminPageContent() {
           </div>
         </div>
         </section>
-        )}
 
-        {!esAltas && restaurantes.length === 0 && (
+        {restaurantes.length === 0 && !loading && (
           <div className="admin-empty">
             <p>No hay restaurantes creados todavia.</p>
           </div>
