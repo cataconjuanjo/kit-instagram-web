@@ -112,6 +112,23 @@
 .toggleOn  { background: #3ab77e22; color: #3ab77e; }
 .toggleOff { background: #99999922; color: #888; }
 
+.planBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.planPremium { background: #f5e8c822; color: #7a4a00; border: 1px solid #e5c880; }
+.planTrial   { background: #e8f0ff;   color: #1a3a8a; border: 1px solid #b0c8f0; }
+.planBasico  { background: #eee9e3;   color: #5a4a3a; border: 1px solid #d0c8bc; }
+
+.tdTrial { white-space: nowrap; font-size: 12px; }
+.trialNone { color: #aaa; font-style: italic; }
+.trialExp  { color: #c0392b; font-weight: 700; }
+.trialOk   { color: #1a6a3a; font-weight: 600; }
+
 /* ── Modal ── */
 .modalOverlay {
   position: fixed;

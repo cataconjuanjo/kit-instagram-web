@@ -130,10 +130,10 @@ export default function AdminKioscosPage() {
             <thead>
               <tr>
                 <th>Tienda</th>
-                <th>Email</th>
+                <th>Email propietario</th>
                 <th>Slug</th>
-                <th>Ciudad</th>
-                <th>Estado</th>
+                <th>Plan</th>
+                <th>Trial</th>
                 <th>Activo</th>
                 <th>Alta</th>
                 <th></th>
@@ -143,17 +143,41 @@ export default function AdminKioscosPage() {
               {tiendas.length === 0 && (
                 <tr><td colSpan={8} className={styles.empty}>Sin tiendas todavía</td></tr>
               )}
-              {tiendas.map(t => (
+              {tiendas.map(t => {
+                const esTrial = t.plan === 'trial'
+                const expMs = t.trial_expires_at ? new Date(t.trial_expires_at).getTime() : null
+                const segsRestantes = esTrial && expMs ? Math.max(0, Math.round((expMs - Date.now()) / 1000)) : null
+                const fmtSeg = s => {
+                  const h = Math.floor(s / 3600)
+                  const m = Math.floor((s % 3600) / 60)
+                  const ss = s % 60
+                  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`
+                }
+                return (
                 <tr key={t.id}>
                   <td className={styles.tdNombre}>{t.nombre}</td>
-                  <td className={styles.tdEmail}>{t.email || '—'}</td>
+                  <td className={styles.tdEmail}>{t.propietario_email || t.email || '—'}</td>
                   <td>
                     <a href={`/kiosko/${t.slug}`} target="_blank" rel="noreferrer" className={styles.slugLink}>
                       {t.slug}
                     </a>
                   </td>
-                  <td>{t.ciudad || '—'}</td>
-                  <td><Badge status={t.subscription_status} /></td>
+                  <td>
+                    {t.plan ? (
+                      <span className={`${styles.planBadge} ${t.plan === 'premium' ? styles.planPremium : t.plan === 'trial' ? styles.planTrial : styles.planBasico}`}>
+                        {t.plan}{t.precio_especial ? ` · ${t.precio_especial}€` : ''}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className={styles.tdTrial}>
+                    {!esTrial ? '—' : expMs === null ? (
+                      <span className={styles.trialNone}>Sin iniciar</span>
+                    ) : segsRestantes === 0 ? (
+                      <span className={styles.trialExp}>Expirado</span>
+                    ) : (
+                      <span className={styles.trialOk}>{fmtSeg(segsRestantes)} restante</span>
+                    )}
+                  </td>
                   <td>
                     <button
                       className={t.activo ? styles.toggleOn : styles.toggleOff}
@@ -170,7 +194,8 @@ export default function AdminKioscosPage() {
                     </a>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
