@@ -390,9 +390,9 @@ export default function AdminKioscosPage() {
                           className={styles.btnTrial}
                           onClick={() => { setConfirmTrial(t); setPreviewTrialData(null) }}
                           disabled={enviandoTrial[t.id]}
-                          title="Enviar email de prueba gratuita 2h (sin pago)"
+                          title="Enviar email de prueba gratuita 1h (sin pago)"
                         >
-                          {enviandoTrial[t.id] ? '...' : 'Trial 2h'}
+                          {enviandoTrial[t.id] ? '...' : 'Trial 1h'}
                         </button>
                         <button
                           className={styles.btnStripe}
