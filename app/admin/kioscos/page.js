@@ -55,6 +55,7 @@ export default function AdminKioscosPage() {
   const [editMsg, setEditMsg]     = useState('')
 
   // activación Stripe por kiosko
+  const [confirmActivacion, setConfirmActivacion] = useState(null) // tienda pendiente de confirmar
   const [activando, setActivando]     = useState({}) // { [id]: bool }
   const [activResult, setActivResult] = useState({}) // { [id]: { ok, url, email, error } }
   const [copiadoActiv, setCopiadoActiv] = useState({}) // { [id]: bool }
@@ -289,7 +290,7 @@ export default function AdminKioscosPage() {
                         </a>
                         <button
                           className={styles.btnStripe}
-                          onClick={() => enviarActivacionKiosko(t)}
+                          onClick={() => setConfirmActivacion(t)}
                           disabled={activando[t.id]}
                           title="Enviar email de activación con link de pago Stripe"
                         >
@@ -319,6 +320,50 @@ export default function AdminKioscosPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal confirmación activación Stripe */}
+      {confirmActivacion && (
+        <div className={styles.modalOverlay} onClick={() => setConfirmActivacion(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>Confirmar activación Stripe</h2>
+              <button className={styles.modalClose} onClick={() => setConfirmActivacion(null)}>✕</button>
+            </div>
+            <div className={styles.form}>
+              <p style={{ margin: 0, fontSize: 14, color: '#444', lineHeight: 1.6 }}>
+                Se enviará un email de activación a:<br />
+                <strong>{confirmActivacion.propietario_email || confirmActivacion.email}</strong>
+              </p>
+              <p style={{ margin: 0, fontSize: 14, color: '#444', lineHeight: 1.6 }}>
+                Plan: <strong>
+                  {confirmActivacion.plan && confirmActivacion.plan !== 'trial'
+                    ? confirmActivacion.plan
+                    : 'premium'}
+                  {' · '}
+                  {(confirmActivacion.plan === 'basico') ? '59 €/mes' : '99 €/mes'}
+                </strong>
+                {confirmActivacion.precio_especial ? ` (precio especial: ${confirmActivacion.precio_especial} €)` : ''}
+              </p>
+              <p style={{ margin: 0, fontSize: 13, color: '#888' }}>
+                El cliente recibirá el enlace para crear su contraseña y el enlace de pago de Stripe.
+              </p>
+              <div className={styles.formActions}>
+                <button className={styles.btnCancel} onClick={() => setConfirmActivacion(null)}>Cancelar</button>
+                <button
+                  className={styles.btnNuevo}
+                  onClick={() => {
+                    const t = confirmActivacion
+                    setConfirmActivacion(null)
+                    enviarActivacionKiosko(t)
+                  }}
+                >
+                  Sí, enviar activación
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
