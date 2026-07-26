@@ -518,6 +518,8 @@ export default function AdminKioskoPage() {
   const searchParams   = useSearchParams()
   const previewTrial   = searchParams.get('preview_trial') === '1'
 
+  const checkoutOk     = searchParams.get('checkout') === 'ok'
+
   const [tienda, setTienda]         = useState(null)
   const [vinos, setVinos]           = useState([])
   const [cargando, setCargando]     = useState(true)
@@ -525,6 +527,7 @@ export default function AdminKioskoPage() {
   const [accesoDenegado, setAccesoDenegado] = useState(false)
   const [esAdminUsuario, setEsAdminUsuario] = useState(false)
   const [generandoCheckout, setGenerandoCheckout] = useState(false)
+  const [esperandoWebhook, setEsperandoWebhook] = useState(false)
 
   const [modal, setModal]         = useState(null)  // null | 'nuevo' | vino
   const [form, setForm]           = useState(VINO_VACIO)
@@ -595,6 +598,31 @@ export default function AdminKioskoPage() {
   const [draggingImport, setDraggingImport] = useState(false)
 
   useEffect(() => { if (slug) cargar() }, [slug])
+
+  // Tras un pago exitoso, el webhook puede tardar unos segundos.
+  // Si subscription_status sigue en 'pending', reintentamos cada 3s hasta 30s.
+  useEffect(() => {
+    if (!checkoutOk || !tienda) return
+    if (tienda.subscription_status !== 'pending') return
+
+    setEsperandoWebhook(true)
+    let intentos = 0
+    const intervalo = setInterval(async () => {
+      intentos++
+      const res = await fetch(`/api/kiosko/${slug}/meta`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.tienda?.subscription_status !== 'pending') {
+          clearInterval(intervalo)
+          setEsperandoWebhook(false)
+          await cargar()
+        }
+      }
+      if (intentos >= 10) { clearInterval(intervalo); setEsperandoWebhook(false) }
+    }, 3000)
+
+    return () => clearInterval(intervalo)
+  }, [checkoutOk, tienda?.subscription_status])
 
   // ── Datos ──────────────────────────────────────────────────────────────────
   async function cargar() {
@@ -1018,23 +1046,33 @@ export default function AdminKioskoPage() {
   if (pendienteDePago) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f3f0', padding: 24 }}>
       <div style={{ background: '#fff', borderRadius: 16, padding: '48px 40px', maxWidth: 460, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,.08)', textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', margin: '0 0 12px' }}>
-          Activa tu kiosko
-        </h2>
-        <p style={{ fontSize: 15, color: '#666', lineHeight: 1.6, margin: '0 0 32px' }}>
-          Tu cuenta está lista. Para empezar a usar el kiosko de vinos necesitas activar la suscripción.
-        </p>
-        <button
-          onClick={irACheckout}
-          disabled={generandoCheckout}
-          style={{ background: '#1a1a2e', color: '#c9a96e', border: 'none', borderRadius: 10, padding: '14px 32px', fontSize: 16, fontWeight: 700, cursor: 'pointer', width: '100%' }}
-        >
-          {generandoCheckout ? 'Preparando pago...' : 'Activar suscripción →'}
-        </button>
-        <p style={{ fontSize: 12, color: '#aaa', marginTop: 16 }}>
-          Pago seguro con Stripe · Cancela cuando quieras
-        </p>
+        {esperandoWebhook ? (
+          <>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', margin: '0 0 12px' }}>Activando tu kiosko...</h2>
+            <p style={{ fontSize: 15, color: '#666', lineHeight: 1.6, margin: 0 }}>
+              Pago recibido. Estamos activando tu acceso, tardará solo unos segundos.
+            </p>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', margin: '0 0 12px' }}>Activa tu kiosko</h2>
+            <p style={{ fontSize: 15, color: '#666', lineHeight: 1.6, margin: '0 0 32px' }}>
+              Tu cuenta está lista. Para empezar a usar el kiosko de vinos necesitas activar la suscripción.
+            </p>
+            <button
+              onClick={irACheckout}
+              disabled={generandoCheckout}
+              style={{ background: '#1a1a2e', color: '#c9a96e', border: 'none', borderRadius: 10, padding: '14px 32px', fontSize: 16, fontWeight: 700, cursor: 'pointer', width: '100%' }}
+            >
+              {generandoCheckout ? 'Preparando pago...' : 'Activar suscripción →'}
+            </button>
+            <p style={{ fontSize: 12, color: '#aaa', marginTop: 16 }}>
+              Pago seguro con Stripe · Cancela cuando quieras
+            </p>
+          </>
+        )}
       </div>
     </div>
   )
