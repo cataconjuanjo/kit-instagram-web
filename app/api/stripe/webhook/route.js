@@ -160,11 +160,12 @@ export async function POST(req) {
           }).eq('id', tiendaId)
 
           // Generar link de acceso y enviar email de bienvenida
-          const { data: tienda } = await adminSupabase.from('tiendas').select('nombre, email, slug').eq('id', tiendaId).single()
-          if (tienda?.email) {
+          const { data: tienda } = await adminSupabase.from('tiendas').select('nombre, email, propietario_email, slug').eq('id', tiendaId).single()
+          const destinatario = tienda?.propietario_email || tienda?.email
+          if (destinatario) {
             const { data: linkData } = await adminSupabase.auth.admin.generateLink({
               type:    'recovery',
-              email:   tienda.email,
+              email:   destinatario,
               options: { redirectTo: `${SITE_URL}/kiosko-admin/${tienda.slug}` },
             })
             const accessLink = linkData?.properties?.action_link
@@ -172,10 +173,10 @@ export async function POST(req) {
               const resend = new Resend(process.env.RESEND_API_KEY)
               await resend.emails.send({
                 from:    FROM,
-                to:      tienda.email,
+                to:      destinatario,
                 bcc:     ADMIN_EMAIL,
                 subject: `¡Tu kiosko está activo! — ${tienda.nombre}`,
-                html:    await emailBienvenidaKiosko({ nombre: tienda.nombre, email: tienda.email, slug: tienda.slug, accessLink }),
+                html:    await emailBienvenidaKiosko({ nombre: tienda.nombre, email: destinatario, slug: tienda.slug, accessLink }),
               })
             }
           }

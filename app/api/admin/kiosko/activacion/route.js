@@ -80,8 +80,8 @@ async function crearCheckout({ tienda, plan }) {
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${SITE_URL}/kiosko-admin/${tienda.slug}?checkout=ok`,
     cancel_url:  `${SITE_URL}/kiosko-admin/${tienda.slug}?checkout=cancel`,
-    metadata: { tienda_id: tienda.id, tienda_slug: tienda.slug, plan },
-    subscription_data: { metadata: { tienda_id: tienda.id, tienda_slug: tienda.slug, plan } },
+    metadata: { tipo: 'kiosko', tienda_id: tienda.id, tienda_slug: tienda.slug, plan },
+    subscription_data: { metadata: { tipo: 'kiosko', tienda_id: tienda.id, tienda_slug: tienda.slug, plan } },
     locale: 'es',
     allow_promotion_codes: true,
   })
