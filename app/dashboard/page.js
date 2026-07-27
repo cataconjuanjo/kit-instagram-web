@@ -543,7 +543,7 @@ function DashboardHome() {
       if (!email && !restauranteId) { window.location.href = '/login'; return }
 
       const tok = await tokenSesion()
-      if (tok) {
+      if (tok && isAdmin) {
         const res = await fetch('/api/admin/kiosko/lista', {
           headers: { Authorization: `Bearer ${tok}` },
         })
