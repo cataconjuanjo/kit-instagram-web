@@ -15,7 +15,6 @@ import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceDay'
 import { esPerfilBodega, puedeUsar } from '../lib/plans'
 import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationReadiness'
-import { experienciaEntregaDesdePlan, experienciaLabel, experienciaTemplateExiste } from '../lib/experienceTemplates'
 import { construirInsightsGerencia } from '../lib/managerInsights'
 import styles from './dashboard.module.css'
 
@@ -170,81 +169,6 @@ function normalizarPreferenciasDraft(preferencias = {}, rest = {}) {
   }
 }
 
-const ESTADO_LANZAMIENTO_INICIAL = {
-  loading: false,
-  previewAprobada: false,
-  previewObsoleta: false,
-  previewPendiente: false,
-  analyticsPendiente: false,
-  qrPreparado: false,
-  eventosEntrega: 0,
-  escaneosReales: 0,
-  error: '',
-}
-
-const EXPERIENCIA_LANZAMIENTO_INICIAL = {
-  id: '',
-  nombre: '',
-  progreso: 0,
-  completados: 0,
-  total: 0,
-  objetivo: '',
-  responsable: '',
-}
-
-function leerExperienciaLanzamiento(restauranteId) {
-  if (!restauranteId || typeof window === 'undefined') return EXPERIENCIA_LANZAMIENTO_INICIAL
-  try {
-    const id = window.localStorage.getItem(`carta_viva_plantilla_activa_${restauranteId}`) || ''
-    if (!id || !experienciaTemplateExiste(id)) return EXPERIENCIA_LANZAMIENTO_INICIAL
-    const plan = JSON.parse(window.localStorage.getItem(`carta_viva_plan_activacion_${restauranteId}_${id}`) || '{}')
-    const estados = Object.values(plan.completados || {})
-    const completados = estados.filter(Boolean).length
-    const total = estados.length
-    return {
-      id,
-      nombre: experienciaLabel(id),
-      progreso: total ? Math.round((completados / total) * 100) : 0,
-      completados,
-      total,
-      objetivo: plan.objetivo || '',
-      responsable: plan.responsable || '',
-    }
-  } catch {
-    return EXPERIENCIA_LANZAMIENTO_INICIAL
-  }
-}
-
-function experienciaDesdePlanRemoto(plan) {
-  const experiencia = experienciaEntregaDesdePlan(plan)
-  if (!experiencia) return null
-  return {
-    id: experiencia.id,
-    nombre: experiencia.label,
-    progreso: experiencia.progreso,
-    completados: experiencia.completados,
-    total: experiencia.total,
-    objetivo: experiencia.objetivo,
-    responsable: experiencia.responsable,
-  }
-}
-
-async function cargarExperienciaLanzamientoRemota(restauranteId) {
-  const local = leerExperienciaLanzamiento(restauranteId)
-  try {
-    const token = await tokenSesion()
-    if (!token || !restauranteId) return local
-    const query = new URLSearchParams({ restaurante_id: restauranteId })
-    const res = await fetch(`/api/experiencias?${query}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok || data.experience_pending) return local
-    return experienciaDesdePlanRemoto(data.active_plan) || local
-  } catch {
-    return local
-  }
-}
 
 function DashboardHome() {
   const searchParams = useSearchParams()
@@ -275,8 +199,6 @@ function DashboardHome() {
   const [resumenSemanalError, setResumenSemanalError] = useState('')
   const [resumenSemanalMensaje, setResumenSemanalMensaje] = useState('')
   const [activacionReciente, setActivacionReciente] = useState(false)
-  const [estadoLanzamiento, setEstadoLanzamiento] = useState(ESTADO_LANZAMIENTO_INICIAL)
-  const [experienciaLanzamiento, setExperienciaLanzamiento] = useState(EXPERIENCIA_LANZAMIENTO_INICIAL)
   const [kioskos, setKioskos] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -381,54 +303,6 @@ function DashboardHome() {
       setResumenSemanalLoading(false)
     }
   }, [aplicarPreferenciasSemanal])
-
-  const cargarEstadoLanzamiento = useCallback(async (restauranteId, restActual = {}) => {
-    if (!restauranteId || esPerfilBodega(restActual)) {
-      setEstadoLanzamiento(ESTADO_LANZAMIENTO_INICIAL)
-      return
-    }
-    const token = await tokenSesion()
-    if (!token) return
-    setEstadoLanzamiento(prev => ({ ...prev, loading: true, error: '' }))
-    try {
-      const destino = restActual?.hub_activo ? 'hub' : 'carta'
-      const previewQuery = new URLSearchParams({ restaurante_id: restauranteId, destino })
-      const analyticsQuery = new URLSearchParams({ restaurante_id: restauranteId, days: '30' })
-      const [previewRes, analyticsRes] = await Promise.all([
-        fetch(`/api/publicacion/preview-approval?${previewQuery}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`/api/publicacion/analytics?${analyticsQuery}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ])
-      const previewData = await previewRes.json().catch(() => ({}))
-      const analyticsData = await analyticsRes.json().catch(() => ({}))
-      const resumenEntrega = analyticsData.resumen || {}
-      const accionesMaterial = (resumenEntrega.qr_downloaded || 0) +
-        (resumenEntrega.qr_print_opened || 0) +
-        (resumenEntrega.public_link_copied || 0) +
-        (resumenEntrega.team_message_copied || 0)
-
-      setEstadoLanzamiento({
-        loading: false,
-        previewAprobada: Boolean(previewRes.ok && previewData.aprobacion_vigente),
-        previewObsoleta: Boolean(previewRes.ok && previewData.aprobacion_obsoleta),
-        previewPendiente: Boolean(previewData.aprobaciones_pendientes),
-        analyticsPendiente: Boolean(analyticsData.analytics_pendiente),
-        qrPreparado: accionesMaterial > 0,
-        eventosEntrega: analyticsData.eventos?.length || 0,
-        escaneosReales: analyticsData.uso_real?.escaneos_total || 0,
-        error: '',
-      })
-    } catch (error) {
-      setEstadoLanzamiento(prev => ({
-        ...prev,
-        loading: false,
-        error: error.message || 'No se pudo cargar el estado de lanzamiento.',
-      }))
-    }
-  }, [])
 
   async function copiarResumenSemanal() {
     if (!resumenSemanal?.copy_text) return
@@ -561,7 +435,6 @@ function DashboardHome() {
           const rest = demo.restaurante
           setRestaurante(rest)
           setActivacionReciente(false)
-          setExperienciaLanzamiento(leerExperienciaLanzamiento(rest.id))
           if (typeof window !== 'undefined') {
             try {
               const guardadas = JSON.parse(window.localStorage.getItem(`carta_viva_inicio_${rest.id}`) || '[]')
@@ -579,7 +452,6 @@ function DashboardHome() {
           setRadarAcciones([])
           setRadarPersistidas(false)
           setResumenSemanal(null)
-          setEstadoLanzamiento(ESTADO_LANZAMIENTO_INICIAL)
         }
         setLoading(false)
         return
@@ -591,7 +463,6 @@ function DashboardHome() {
         : await queryRestaurante.eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
-        setExperienciaLanzamiento(leerExperienciaLanzamiento(rest.id))
         if (typeof window !== 'undefined') {
           setActivacionReciente(leerActivacionReciente())
           try {
@@ -642,14 +513,12 @@ function DashboardHome() {
         await Promise.all([
           cargarRadarDiario(rest.id),
           cargarResumenSemanal(rest.id, rest),
-          cargarEstadoLanzamiento(rest.id, rest),
-          cargarExperienciaLanzamientoRemota(rest.id).then(setExperienciaLanzamiento),
         ])
       }
       setLoading(false)
     }
     cargar()
-  }, [cargarEstadoLanzamiento, cargarRadarDiario, cargarResumenSemanal])
+  }, [cargarRadarDiario, cargarResumenSemanal])
 
   async function irACheckoutRestaurante() {
     if (!restaurante?.id) return
@@ -755,10 +624,6 @@ function DashboardHome() {
   const contenidoPublicacion = resumirContenidoCarta(vinosActivos, platos)
   const cartaPublicable = puedePublicarCarta(contenidoPublicacion)
   const cartaPublicada = restaurante?.carta_publica_activa !== false
-  const previewLista = Boolean(estadoLanzamiento.previewAprobada && !estadoLanzamiento.previewObsoleta)
-  const qrPreparado = Boolean(estadoLanzamiento.qrPreparado || estadoLanzamiento.escaneosReales > 0)
-  const primerEscaneoReal = Boolean(estadoLanzamiento.escaneosReales > 0 || stats.escaneos > 0)
-  const experienciaElegida = Boolean(experienciaLanzamiento.id)
   const estadoCarta = perfilBodega
     ? calidadGlobal >= 80 ? 'Bodega bajo control' : calidadGlobal >= 55 ? 'Bodega con pendientes' : 'Bodega por ordenar'
     : calidadGlobal >= 80 ? 'Lista para trabajar' : calidadGlobal >= 55 ? 'Necesita ajustes' : 'Requiere orden'
@@ -783,158 +648,6 @@ function DashboardHome() {
   const accionesRadarAbiertas = radarAcciones.filter(item => !['hecha', 'descartada'].includes(item.estado))
   const accionesRadarHechas = radarAcciones.filter(item => item.estado === 'hecha').length
   const radarPrincipal = accionesRadarAbiertas[0] || null
-  const pasosLanzamiento = perfilBodega ? [] : [
-    {
-      id: 'contenido',
-      titulo: 'Contenido publicable',
-      texto: cartaPublicable
-        ? `${contenidoPublicacion.vinosActivos} vinos activos y ${contenidoPublicacion.vinosConPrecio} con precio.`
-        : `${contenidoPublicacion.vinosActivos} vinos activos, ${contenidoPublicacion.vinosSinPrecio} sin precio.`,
-      href: cartaPublicable ? '/dashboard/qr' : '/dashboard/vinos?filtro=pendientes',
-      ok: cartaPublicable,
-      requerido: true,
-    },
-    {
-      id: 'platos',
-      titulo: 'Maridaje con contexto',
-      texto: platos.length
-        ? `${platos.length} platos activos${platosSinDescripcion.length ? `, ${platosSinDescripcion.length} sin descripción interna` : ''}.`
-        : 'Aún no hay platos activos para orientar ArmonIA.',
-      href: '/dashboard/platos',
-      ok: platos.length > 0 && platosSinDescripcion.length === 0,
-      requerido: false,
-    },
-    {
-      id: 'experiencia',
-      titulo: 'Experiencia elegida',
-      texto: experienciaElegida
-        ? `${experienciaLanzamiento.nombre}${experienciaLanzamiento.total ? ` - ${experienciaLanzamiento.progreso}% del plan marcado` : ''}.`
-        : 'Elige el formato de entrega antes de preparar preview y QR.',
-      href: '/dashboard/plantillas',
-      ok: experienciaElegida,
-      requerido: true,
-    },
-    {
-      id: 'preview',
-      titulo: 'Preview aprobada',
-      texto: estadoLanzamiento.previewPendiente
-        ? 'Falta activar la tabla de aprobaciones.'
-        : previewLista
-          ? 'La última preview vigente está aprobada.'
-          : estadoLanzamiento.previewObsoleta
-            ? 'La carta cambió después de aprobar la preview.'
-            : 'Genera y aprueba la preview privada.',
-      href: '/dashboard/qr#preview-privada',
-      ok: previewLista,
-      requerido: true,
-    },
-    {
-      id: 'publicacion',
-      titulo: 'Destino publicado',
-      texto: cartaPublicada ? 'El QR público responde sin token.' : 'La carta sigue en borrador.',
-      href: '/dashboard/qr',
-      ok: cartaPublicada,
-      requerido: true,
-    },
-    {
-      id: 'material',
-      titulo: 'QR preparado',
-      texto: qrPreparado
-        ? 'Ya hay descarga, impresión, copia de enlace o escaneo real.'
-        : 'Descarga o imprime el QR después de publicar.',
-      href: '/dashboard/qr',
-      ok: qrPreparado,
-      requerido: true,
-    },
-    {
-      id: 'escaneo',
-      titulo: 'Primer escaneo real',
-      texto: primerEscaneoReal
-        ? `${Math.max(estadoLanzamiento.escaneosReales, stats.escaneos)} escaneos detectados.`
-        : 'Aún no hay escaneos reales de clientes.',
-      href: '/dashboard/qr',
-      ok: primerEscaneoReal,
-      requerido: false,
-    },
-  ]
-  const pasosLanzamientoRequeridos = pasosLanzamiento.filter(paso => paso.requerido)
-  const pasosLanzamientoCompletados = pasosLanzamiento.filter(paso => paso.ok).length
-  const pasosLanzamientoRequeridosCompletados = pasosLanzamientoRequeridos.filter(paso => paso.ok).length
-  const progresoLanzamiento = porcentaje(pasosLanzamientoCompletados, pasosLanzamiento.length)
-  const lanzamientoListoMesa = Boolean(pasosLanzamientoRequeridos.length && pasosLanzamientoRequeridosCompletados === pasosLanzamientoRequeridos.length)
-  const siguienteLanzamiento = pasosLanzamiento.find(paso => !paso.ok && paso.requerido) || pasosLanzamiento.find(paso => !paso.ok) || null
-  const bloqueosLanzamiento = perfilBodega ? [] : [
-    !cartaPublicable && {
-      id: 'contenido',
-      tipo: 'Contenido',
-      titulo: 'Carta incompleta',
-      texto: contenidoPublicacion.vinosSinPrecio
-        ? `${contenidoPublicacion.vinosSinPrecio} vinos activos siguen sin precio.`
-        : 'Falta contenido mínimo para publicar con seguridad.',
-      href: '/dashboard/vinos?filtro=pendientes',
-    },
-    !experienciaElegida && {
-      id: 'experiencia',
-      tipo: 'Entrega',
-      titulo: 'Sin experiencia activa',
-      texto: 'El QR y los copys todavía no tienen objetivo operativo.',
-      href: '/dashboard/plantillas',
-    },
-    estadoLanzamiento.previewPendiente && {
-      id: 'preview-sql',
-      tipo: 'Base de datos',
-      titulo: 'Aprobaciones pendientes',
-      texto: 'Falta activar el registro de aprobaciones de preview.',
-      href: '/dashboard/qr#preview-privada',
-    },
-    cartaPublicable && !previewLista && !estadoLanzamiento.previewPendiente && {
-      id: 'preview',
-      tipo: 'Revisión',
-      titulo: estadoLanzamiento.previewObsoleta ? 'Preview obsoleta' : 'Preview sin aprobar',
-      texto: estadoLanzamiento.previewObsoleta
-        ? 'La carta cambió después de la última aprobación.'
-        : 'Genera un enlace privado y apruébalo antes de publicar.',
-      href: '/dashboard/qr#preview-privada',
-    },
-    previewLista && !cartaPublicada && {
-      id: 'publicacion',
-      tipo: 'Publicación',
-      titulo: 'Destino en borrador',
-      texto: 'La preview está aprobada, pero el QR público aún no está abierto.',
-      href: '/dashboard/qr',
-    },
-    cartaPublicada && !qrPreparado && {
-      id: 'material',
-      tipo: 'Material',
-      titulo: 'QR sin preparar',
-      texto: 'Descarga, imprime o copia el enlace final antes de llevarlo a mesa.',
-      href: '/dashboard/qr#pack-entrega',
-    },
-    estadoLanzamiento.analyticsPendiente && {
-      id: 'analytics',
-      tipo: 'Medición',
-      titulo: 'Analítica pendiente',
-      texto: 'Falta activar eventos de entrega para medir el lanzamiento completo.',
-      href: '/dashboard/qr',
-    },
-  ].filter(Boolean).slice(0, 3)
-  const lecturaDecisionLanzamiento = estadoLanzamiento.error ||
-    (estadoLanzamiento.analyticsPendiente
-      ? 'La analítica de entrega está pendiente de base de datos.'
-      : lanzamientoListoMesa
-        ? `${estadoLanzamiento.escaneosReales || stats.escaneos || 0} escaneos reales detectados.`
-        : bloqueosLanzamiento.length
-          ? bloqueosLanzamiento.map(item => item.titulo).join(' - ')
-          : siguienteLanzamiento?.texto)
-  const mostrarChecklistLanzamiento = !perfilBodega && (
-    cartaPublicable ||
-    previewLista ||
-    cartaPublicada ||
-    estadoLanzamiento.eventosEntrega > 0 ||
-    experienciaElegida ||
-    estadoLanzamiento.loading
-  )
-
   const tareasInicio = perfilBodega
     ? [
         { id: 'bodega_vinos', titulo: 'Cargar referencias de bodega', texto: 'Importa o crea los vinos con stock inicial, precio y datos principales.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
@@ -945,8 +658,7 @@ function DashboardHome() {
         { id: 'platos', titulo: 'Cargar platos clave', texto: 'Añade los platos que más se venden para que el maridaje tenga contexto real.', href: '/dashboard/platos?importar=1', autoHide: () => platos.length > 0 },
         { id: 'descripciones_platos', titulo: 'Definir platos para maridaje', texto: 'Describe técnica, salsa, intensidad e ingredientes clave. Es información interna: no se muestra como receta en la carta pública.', href: '/dashboard/platos?filtro=descripcion', autoHide: () => platos.length === 0 || platosSinDescripcion.length === 0 },
         { id: 'bodega', titulo: 'Completar margen, proveedor y stock', texto: 'Coste, proveedor y stock actual convierten la carta en control de bodega.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 },
-        { id: 'plantillas', titulo: 'Elegir experiencia de entrega', texto: 'Define si vas a lanzar QR, temporada, degustación, premium o evento privado antes de preparar el material.', href: '/dashboard/plantillas', autoHide: () => experienciaElegida },
-        { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la prueba interna, revisa móvil y publica solo cuando la pantalla QR confirme contenido mínimo.', href: '/dashboard/qr', autoHide: () => previewLista && cartaPublicada && qrPreparado },
+        { id: 'qr', titulo: 'Probar QR y modo camarero', texto: 'Abre la prueba interna, revisa móvil y publica solo cuando la pantalla QR confirme contenido mínimo.', href: '/dashboard/qr', autoHide: () => cartaPublicada },
       ]
   const tareasInicioVisibles = tareasInicio.filter(tarea =>
     !tareasOcultas.includes(tarea.id) &&
@@ -1068,12 +780,8 @@ function DashboardHome() {
     turnoCerrado,
     etiquetaServicio,
     cartaPublicable,
-    experienciaElegida,
-    previewLista,
     cartaPublicada,
-    qrPreparado,
     contenidoPublicacion,
-    estadoLanzamiento,
     kpisSemanales,
     decisionesSemanales,
     accionesRadar: accionesRadarAbiertas,
@@ -1198,79 +906,6 @@ function DashboardHome() {
               <span>Avanza paso a paso sin publicar nada por sorpresa</span>
               <span>{perfilBodega ? 'El criterio del sumiller sigue al mando' : 'Tu carta no se publica sola'}</span>
               <Link href={enlaceRevisionActivacion} className={styles.btnNav}>{labelNavegacion(enlaceRevisionActivacion)}</Link>
-            </div>
-          </section>
-        )}
-
-        {mostrarChecklistLanzamiento && (
-          <section className={styles.launchPanel}>
-            <div className={styles.launchHead}>
-              <div>
-                <p className={styles.eyebrow}>Lanzamiento de mesa</p>
-                <h2>{lanzamientoListoMesa ? 'QR listo para servicio' : 'Checklist antes de poner el QR'}</h2>
-                <p>
-                  {lanzamientoListoMesa
-                    ? 'Contenido, aprobación, publicación y material están alineados para trabajar en sala.'
-                    : 'Sigue estos controles para evitar publicar una carta incompleta, sin aprobar o sin material probado.'}
-                </p>
-              </div>
-              <div className={styles.launchProgress}>
-                <strong>{progresoLanzamiento}%</strong>
-                <span>{pasosLanzamientoCompletados} de {pasosLanzamiento.length} controles</span>
-              </div>
-            </div>
-            <div className={styles.launchBar} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progresoLanzamiento}>
-              <span style={{ width: `${progresoLanzamiento}%` }} />
-            </div>
-            <div className={styles.launchExperience}>
-              <div>
-                <span>Experiencia de entrega</span>
-                <strong>{experienciaElegida ? experienciaLanzamiento.nombre : 'Sin experiencia elegida'}</strong>
-                <small>
-                  {experienciaElegida
-                    ? experienciaLanzamiento.total
-                      ? `${experienciaLanzamiento.completados}/${experienciaLanzamiento.total} pasos del plan marcados${experienciaLanzamiento.responsable ? ` - ${experienciaLanzamiento.responsable}` : ''}.`
-                      : 'Plantilla elegida. Completa el plan operativo cuando prepares la entrega.'
-                    : 'Elige una plantilla para orientar copy, QR, preview y material.'}
-                </small>
-              </div>
-              <Link href="/dashboard/plantillas" className={styles.btnNav}>{experienciaElegida ? 'Ver plan de lanzamiento →' : 'Elegir experiencia →'}</Link>
-            </div>
-            {bloqueosLanzamiento.length > 0 && (
-              <div className={styles.launchBlockers}>
-                {bloqueosLanzamiento.map(bloqueo => (
-                  <Link href={bloqueo.href} key={bloqueo.id}>
-                    <span>{bloqueo.tipo}</span>
-                    <strong>{bloqueo.titulo}</strong>
-                    <small>{bloqueo.texto}</small>
-                  </Link>
-                ))}
-              </div>
-            )}
-            <div className={styles.launchSteps}>
-              {pasosLanzamiento.map((paso, index) => (
-                <Link
-                  key={paso.id}
-                  href={paso.href}
-                  className={`${styles.launchStep} ${paso.ok ? styles.launchStepOk : siguienteLanzamiento?.id === paso.id ? styles.launchStepCurrent : ''}`}
-                >
-                  <span>{paso.ok ? 'OK' : index + 1}</span>
-                  <strong>{paso.titulo}</strong>
-                  <small>{paso.texto}</small>
-                  <em>{paso.requerido ? 'Obligatorio' : 'Recomendado'}</em>
-                </Link>
-              ))}
-            </div>
-            <div className={styles.launchDecision}>
-              <div>
-                <strong>{estadoLanzamiento.loading ? 'Comprobando estado de lanzamiento' : lanzamientoListoMesa ? 'Preparado para mesa' : siguienteLanzamiento?.titulo || 'Revisar lanzamiento'}</strong>
-                <span>
-                  {lecturaDecisionLanzamiento}
-                </span>
-              </div>
-              <Link href={siguienteLanzamiento?.href || '/dashboard/qr'} className={styles.btnNav}>
-                {lanzamientoListoMesa ? 'Ir al panel QR →' : `Completar: ${siguienteLanzamiento?.titulo || 'siguiente paso'} →`}
-              </Link>
             </div>
           </section>
         )}

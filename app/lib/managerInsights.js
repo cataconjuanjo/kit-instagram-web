@@ -75,12 +75,8 @@ export function construirInsightsGerencia({
   turnoCerrado = false,
   etiquetaServicio = 'hoy',
   cartaPublicable = true,
-  experienciaElegida = true,
-  previewLista = true,
   cartaPublicada = true,
-  qrPreparado = true,
   contenidoPublicacion = {},
-  estadoLanzamiento = {},
   counts = {},
   kpisSemanales = {},
   decisionesSemanales = [],
@@ -187,60 +183,6 @@ export function construirInsightsGerencia({
         impacto: 'Riesgo directo de abandono o confusion en mesa',
         accion: 'Completar precios y contenido minimo antes del QR.',
         href: '/dashboard/vinos?filtro=pendientes',
-      })
-    }
-
-    if (cartaPublicable && !experienciaElegida) {
-      add({
-        id: 'experiencia-sin-elegir',
-        area: 'Lanzamiento',
-        prioridad: 'media',
-        titulo: 'Lanzamiento sin objetivo',
-        lectura: 'La carta puede publicarse, pero no tiene plantilla de entrega activa.',
-        impacto: 'Reduce claridad comercial y viralidad del QR',
-        accion: 'Elegir una experiencia antes de preparar material.',
-        href: '/dashboard/plantillas',
-      })
-    }
-
-    if (cartaPublicable && experienciaElegida && !previewLista && !estadoLanzamiento.previewPendiente) {
-      add({
-        id: 'preview-pendiente',
-        area: 'Revision',
-        prioridad: 'media',
-        titulo: 'Preview sin aprobar',
-        lectura: estadoLanzamiento.previewObsoleta
-          ? 'La carta cambio despues de la ultima aprobacion.'
-          : 'Aun falta validar la experiencia privada antes de publicar.',
-        impacto: 'Evita sacar a mesa una version incompleta',
-        accion: 'Generar y aprobar la preview privada.',
-        href: '/dashboard/qr#preview-privada',
-      })
-    }
-
-    if (previewLista && !cartaPublicada) {
-      add({
-        id: 'publicacion-borrador',
-        area: 'Publicacion',
-        prioridad: 'media',
-        titulo: 'Preview aprobada, QR cerrado',
-        lectura: 'El contenido ya esta revisado, pero la carta publica sigue en borrador.',
-        impacto: 'El trabajo no llega todavia a clientes',
-        accion: 'Abrir destino publico desde QR cuando gerencia lo confirme.',
-        href: '/dashboard/qr',
-      })
-    }
-
-    if (cartaPublicada && !qrPreparado) {
-      add({
-        id: 'qr-sin-material',
-        area: 'Mesa',
-        prioridad: 'media',
-        titulo: 'QR publicado sin material',
-        lectura: 'No hay descarga, impresion, copia de enlace ni escaneo real detectado.',
-        impacto: 'El lanzamiento puede quedarse invisible',
-        accion: 'Descargar pack, imprimir o copiar el enlace final.',
-        href: '/dashboard/qr#pack-entrega',
       })
     }
 
