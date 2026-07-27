@@ -667,41 +667,6 @@ export default function Personalizar() {
         </div>
       </section>
 
-      {/* Paletas curadas */}
-      <section className={styles.panel}>
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Paletas curadas</h2>
-            <p className={styles.panelSub}>Punto de partida testeado. Puedes ajustar cualquier color después.</p>
-          </div>
-        </div>
-        <div className={styles.panelBody}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 10 }}>
-            {PALETTES.map(p => {
-              const activa = colorPrimario === p.primario && colorFondo === p.fondo && colorAcento === p.acento
-              return (
-                <button
-                  key={p.nombre}
-                  onClick={() => aplicarPaleta(p)}
-                  style={{
-                    border: activa ? `2px solid ${p.primario}` : '2px solid transparent',
-                    borderRadius: 10, padding: 0, cursor: 'pointer', background: p.fondo, overflow: 'hidden',
-                    boxShadow: activa ? `0 0 0 2px ${p.primario}` : '0 1px 4px rgba(0,0,0,0.08)',
-                  }}
-                >
-                  <div style={{ background: p.primario, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.acento }} />
-                  </div>
-                  <div style={{ padding: '6px 8px 8px' }}>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: p.primario, fontFamily: (FONT_MAP[p.tipografia] || FONT_MAP.serif).family }}>{p.nombre}</p>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
       {/* Colores + tipografía */}
       <section className={styles.gridTwo} style={{ marginTop: 16 }}>
         <div className={styles.panel}>
@@ -876,6 +841,7 @@ export default function Personalizar() {
       </section>
 
       {/* Hub */}
+      {restaurante?.hub_activo && (
       <section className={styles.panel} style={{ marginTop: 16 }}>
         <div className={styles.panelHead}>
           <div>
@@ -1035,6 +1001,7 @@ export default function Personalizar() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Logo */}
       <section className={styles.panel} style={{ marginTop: 16 }}>

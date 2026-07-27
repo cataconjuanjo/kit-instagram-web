@@ -120,7 +120,7 @@ function DiffList({ title, items = [], empty, type = 'changed' }) {
       <div className={styles.panelBody}>
         {items.length ? (
           <div className={styles.itemStack}>
-            {items.slice(0, 8).map((item, index) => (
+            {items.slice(0, 3).map((item, index) => (
               <article className={styles.itemCard} key={`${title}-${item.id || item.nombre}-${index}`}>
                 <div className={styles.sectionHead} style={{ margin: 0 }}>
                   <div>
@@ -135,8 +135,8 @@ function DiffList({ title, items = [], empty, type = 'changed' }) {
                 </div>
               </article>
             ))}
-            {items.length > 8 && (
-              <p className={styles.panelSub}>Mostrando los primeros 8 cambios. Revisa la carta completa antes de publicar.</p>
+            {items.length > 3 && (
+              <p className={styles.panelSub}>Y {items.length - 3} más. Revisa la carta completa antes de publicar.</p>
             )}
           </div>
         ) : (
@@ -364,14 +364,6 @@ export default function VersionesPublicacionPage() {
                 <Link className={styles.secondary} href="/dashboard/qr">Ir a QR</Link>
               </div>
             </div>
-          </section>
-
-          <section className={styles.statsGrid}>
-            <div className={styles.stat}><p className={styles.statValue}>v{snapshot?.version_number || '-'}</p><p className={styles.statLabel}>Versión seleccionada</p></div>
-            <div className={styles.stat}><p className={styles.statValue}>{snapshots.length}</p><p className={styles.statLabel}>Versiones guardadas</p></div>
-            <div className={styles.stat}><p className={styles.statValue}>{totalCambios}</p><p className={styles.statLabel}>Cambios frente a actual</p></div>
-            <div className={styles.stat}><p className={styles.statValue}>{cambiosPrecio}</p><p className={styles.statLabel}>Cambios de precio</p></div>
-            <div className={styles.stat}><p className={styles.statValue}>{retirados}</p><p className={styles.statLabel}>Elementos retirados</p></div>
           </section>
 
           <section className={styles.gridTwo}>

@@ -13,7 +13,6 @@ import { EXPERIENCIA_ENTREGA_INICIAL, experienciaEntregaDesdePlan, experienciaTe
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
-import ResponsiveOverlay from '../ResponsiveOverlay'
 
 async function tokenSesion() {
   const { data } = await supabase.auth.getSession()
@@ -188,7 +187,6 @@ export default function QRPage() {
   const [loading, setLoading] = useState(true)
   const [copiado, setCopiado] = useState('')
   const [mensajeCopia, setMensajeCopia] = useState('')
-  const [vistaRapida, setVistaRapida] = useState(false)
   const [guardandoPublicacion, setGuardandoPublicacion] = useState(false)
   const [mensajePublicacion, setMensajePublicacion] = useState('')
   const [previewDestinoSeleccionado, setPreviewDestinoSeleccionado] = useState('carta')
@@ -668,24 +666,9 @@ export default function QRPage() {
     urlMedible,
     experienciaActiva?.cliente || 'Desde ahí puedes ver la carta actualizada y las recomendaciones.',
   ].join('\n\n')
-  const textoMaterialInstagram = [
-    experienciaActiva ? `${experienciaActiva.instagram} ${nombreMaterial}.` : `La carta viva de ${nombreMaterial} ya está disponible.`,
-    experienciaActiva?.cliente || 'Escanea el QR en mesa o abre el enlace para ver vinos y recomendaciones.',
-    urlMedible,
-  ].join('\n')
-  const textoMaterialImprenta = [
-    `Material QR ${nombreMaterial}`,
-    `Destino: ${destinoMaterial}`,
-    `URL final medible: ${urlMedible}`,
-    `Formato seleccionado: ${formatoEntregaActivo.label}`,
-    `Mensaje principal: ${taglineMaterial}`,
-    experienciaActiva ? `Experiencia activa: ${experienciaActiva.label}` : null,
-  ].filter(Boolean).join('\n')
   const textosMaterial = [
     { id: 'material-equipo', label: 'Equipo', texto: textoMaterialEquipo },
     { id: 'material-whatsapp', label: 'WhatsApp', texto: textoMaterialWhatsApp },
-    { id: 'material-instagram', label: 'Instagram', texto: textoMaterialInstagram },
-    { id: 'material-imprenta', label: 'Imprenta', texto: textoMaterialImprenta },
   ]
 
   useEffect(() => {
@@ -833,13 +816,6 @@ export default function QRPage() {
     setTimeout(() => setCopiado(''), 1800)
   }
 
-  function abrirVistaRapida() {
-    setVistaRapida(true)
-    registrarDeliveryEvent('quick_view_opened', {
-      destino: destinoPreview,
-      source: 'dashboard_qr',
-    })
-  }
 
   function irAPreviewPrivada() {
     if (typeof document === 'undefined') return
@@ -1015,7 +991,6 @@ export default function QRPage() {
       actions={
         <>
           <Link className={styles.secondary} href="/dashboard/versiones">Ver versiones</Link>
-          <button type="button" className={styles.primary} onClick={abrirVistaRapida}>Vista rápida</button>
         </>
       }
       help={{
@@ -1048,9 +1023,6 @@ export default function QRPage() {
               {entregaAccion.label}
             </button>
           )}
-          <button type="button" className={styles.ghost} onClick={abrirVistaRapida}>
-            Vista rapida
-          </button>
         </div>
         <div className={styles.handoffSteps}>
           {entregaPasos.map((paso, index) => (
@@ -1120,143 +1092,6 @@ export default function QRPage() {
           </div>
           {migracionPublicacionPendiente && <p className={styles.panelSub} style={{ marginTop: 12 }}>Aplica supabase/add_publication_status.sql para activar el control de borrador/publicado. Hasta entonces, las cartas existentes siguen respondiendo como antes.</p>}
           {mensajePublicacion && <p className={styles.panelSub} style={{ marginTop: 12 }}>{mensajePublicacion}</p>}
-        </div>
-      </section>
-
-      <section className={styles.panel} style={{ marginBottom: 16 }}>
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Historial de publicación</h2>
-            <p className={styles.panelSub}>Últimos cambios de borrador/publicado con responsable y contenido revisado.</p>
-          </div>
-          <span className={styles.badge}>{historialPublicacionPendiente || snapshotPublicacionPendiente ? 'SQL pendiente' : `${historialPublicacion.length} eventos`}</span>
-        </div>
-        <div className={styles.panelBody}>
-          {snapshotPublicacionPendiente ? (
-            <p className={styles.panelSub} style={{ marginBottom: 14 }}>Aplica supabase/add_publication_snapshots.sql para guardar versiones de carta al publicar.</p>
-          ) : ultimoSnapshot ? (
-            <article className={styles.itemCard} style={{ marginBottom: 12 }}>
-              <div className={styles.sectionHead} style={{ margin: 0 }}>
-                <div>
-                  <h3 className={styles.sectionTitle}>Última versión publicada</h3>
-                  <p className={styles.sectionText}>{textoSnapshot(ultimoSnapshot)}</p>
-                </div>
-                <span className={styles.badge}>v{ultimoSnapshot.version_number}</span>
-              </div>
-            </article>
-          ) : null}
-          {historialPublicacionPendiente ? (
-            <p className={styles.panelSub}>Aplica supabase/add_publication_history.sql para guardar el historial de publicar, pausar y restaurar.</p>
-          ) : historialPublicacionError ? (
-            <p className={styles.panelSub}>{historialPublicacionError}</p>
-          ) : historialPublicacion.length === 0 ? (
-            <p className={styles.panelSub}>Todavía no hay cambios registrados. El próximo publicar, pausar o restaurar quedará guardado aquí.</p>
-          ) : (
-            <div className={styles.itemStack}>
-              {historialPublicacion.map(evento => (
-                <article className={styles.itemCard} key={evento.id}>
-                  <div className={styles.sectionHead} style={{ margin: 0 }}>
-                    <div>
-                      <h3 className={styles.sectionTitle}>{tituloEventoPublicacion(evento)}</h3>
-                      <p className={styles.sectionText}>
-                        {formatoFechaHistorial(evento.created_at)} · {evento.actor_email || 'responsable'} · {resumenContenidoHistorial(evento.contenido_resumen)}
-                      </p>
-                    </div>
-                    <span className={styles.badge}>{evento.estado_anterior} → {evento.estado_nuevo}</span>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className={styles.panel} style={{ marginBottom: 16 }}>
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Analítica de entrega</h2>
-            <p className={styles.panelSub}>Señales de uso del embudo de preview, aprobación, QR y enlaces en los últimos 30 días.</p>
-          </div>
-          <span className={styles.badge}>
-            {deliveryAnalytics.pendiente ? 'SQL pendiente' : deliveryAnalytics.loading ? 'Cargando' : '30 días'}
-          </span>
-        </div>
-        <div className={styles.panelBody}>
-          {deliveryAnalytics.pendiente ? (
-            <p className={styles.panelSub}>Aplica supabase/add_publication_delivery_events.sql para activar la analítica de entrega.</p>
-          ) : deliveryAnalytics.error ? (
-            <p className={styles.panelSub}>{deliveryAnalytics.error}</p>
-          ) : (
-            <>
-              <div className={styles.statsGrid}>
-                {deliveryStats.map(stat => (
-                  <article className={styles.stat} key={stat.label}>
-                    <p className={styles.statValue}>{stat.value}</p>
-                    <p className={styles.statLabel}>{stat.label}</p>
-                    <p className={styles.statHint}>{stat.hint}</p>
-                  </article>
-                ))}
-              </div>
-              <article className={styles.itemCard} style={{ marginBottom: 12 }}>
-                <div className={styles.sectionHead} style={{ margin: 0 }}>
-                  <div>
-                    <h3 className={styles.sectionTitle}>Lectura de uso real</h3>
-                    <p className={styles.sectionText}>{lecturaUsoReal}</p>
-                    {usoReal.actividad_iniciada && usoReal.desde && (
-                      <p className={styles.sectionText}>Periodo real desde {formatoFechaHistorial(usoReal.desde)}.</p>
-                    )}
-                  </div>
-                  <span className={styles.badge}>
-                    {usoReal.actividad_iniciada ? `${usoReal.escaneos_total || 0} escaneos` : 'Sin servicio'}
-                  </span>
-                </div>
-              </article>
-              <article className={styles.itemCard} style={{ marginBottom: 12 }}>
-                <div className={styles.sectionHead} style={{ margin: 0 }}>
-                  <div>
-                    <h3 className={styles.sectionTitle}>Experiencia activa</h3>
-                    <p className={styles.sectionText}>{lecturaExperienciaReal}</p>
-                    {experienciasUsoReal.length > 0 && (
-                      <p className={styles.sectionText}>
-                        {experienciasUsoReal.map(item => `${item.label}: ${item.total}`).join(' - ')}
-                      </p>
-                    )}
-                  </div>
-                  <span className={styles.badge}>
-                    {experienciaActiva ? experienciaActiva.badge : 'Generico'}
-                  </span>
-                </div>
-              </article>
-              <article className={styles.itemCard} style={{ marginBottom: 12 }}>
-                <div className={styles.sectionHead} style={{ margin: 0 }}>
-                  <div>
-                    <h3 className={styles.sectionTitle}>QR por campana y mesa</h3>
-                    <p className={styles.sectionText}>{lecturaAtribucionReal}</p>
-                  </div>
-                  <span className={styles.badge}>
-                    {campaniasUsoReal.length || formatosUsoReal.length || mesasUsoReal.length ? 'Medible' : 'Sin datos'}
-                  </span>
-                </div>
-              </article>
-              {deliveryEventosRecientes.length === 0 ? (
-                <p className={styles.panelSub}>Todavia no hay eventos de entrega. Genera una preview, copia un enlace o descarga el QR para empezar a medir.</p>
-              ) : (
-                <div className={styles.itemStack}>
-                  {deliveryEventosRecientes.map(evento => (
-                    <article className={styles.itemCard} key={evento.id}>
-                      <div className={styles.sectionHead} style={{ margin: 0 }}>
-                        <div>
-                          <h3 className={styles.sectionTitle}>{tituloEventoEntrega(evento)}</h3>
-                          <p className={styles.sectionText}>{detalleEventoEntrega(evento)}</p>
-                        </div>
-                        <span className={styles.badge}>{evento.destino === 'hub' ? 'Hub' : 'Carta'}</span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
         </div>
       </section>
 
@@ -1627,23 +1462,6 @@ export default function QRPage() {
           </div>
         </div>
       </section>
-      <ResponsiveOverlay
-        open={vistaRapida}
-        onClose={() => setVistaRapida(false)}
-        size="modal"
-        eyebrow="QR y accesos"
-        title="Acceso rápido"
-        description="Comparte o prueba el enlace público desde el móvil. La página completa sigue disponible para imprimir."
-        footer={<button type="button" className={styles.ghost} onClick={() => setVistaRapida(false)}>Cerrar</button>}
-      >
-        <div className={styles.itemStack}>
-          <div className={styles.urlBox}>{urlDirecta}</div>
-          {cartaPublicada ? <a className={styles.primary} href={urlDirecta} target="_blank" rel="noreferrer" onClick={() => registrarDeliveryEvent('public_destination_opened', { destino: destinoPreview, source: 'quick_overlay' })}>Abrir destino público</a> : <button type="button" className={styles.primary} disabled>Abrir destino público</button>}
-          <button className={styles.secondary} onClick={() => copiar(urlDirecta, 'quick')} disabled={!cartaPublicada}>{copiado === 'quick' ? 'Enlace copiado' : 'Copiar enlace'}</button>
-          <button className={styles.secondary} onClick={descargar} disabled={!cartaPublicada}>Descargar QR</button>
-          {cartaPublicada ? <a className={styles.ghost} href={urlPrint} target="_blank" rel="noreferrer" onClick={() => registrarDeliveryEvent('qr_print_opened', { destino: destinoPreview, source: 'quick_overlay' })}>Abrir impresión / PDF</a> : <button type="button" className={styles.ghost} disabled>Abrir impresión / PDF</button>}
-        </div>
-      </ResponsiveOverlay>
     </ModuleShell>
   )
 }
