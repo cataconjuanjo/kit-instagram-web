@@ -539,14 +539,13 @@ function DashboardHome() {
 
   useEffect(() => {
     async function cargar() {
-      const { email, restauranteId, isDemo, isAdmin } = await getEffectiveRestaurantEmail(supabase)
+      const { email, restauranteId, isDemo, isAdmin, user } = await getEffectiveRestaurantEmail(supabase)
       if (!email && !restauranteId) { window.location.href = '/login'; return }
 
       const tok = await tokenSesion()
-      const restauranteIdUrl = typeof window !== 'undefined'
-        ? new URLSearchParams(window.location.search).get('restaurante_id')
-        : null
-      if (tok && isAdmin && !restauranteIdUrl) {
+      // Solo mostrar kioskos cuando el admin está en su propia vista, no cuando impersona un restaurante
+      const viendoRestaurante = isAdmin && email !== user?.email
+      if (tok && isAdmin && !viendoRestaurante) {
         const res = await fetch('/api/admin/kiosko/lista', {
           headers: { Authorization: `Bearer ${tok}` },
         })
