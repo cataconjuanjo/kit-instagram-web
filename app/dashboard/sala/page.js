@@ -218,14 +218,7 @@ export default function SalaHub() {
         ],
       }}
     >
-      <section className={styles.statsGrid}>
-        <div className={styles.stat}><p className={styles.statValue}>{ventas}</p><p className={styles.statLabel}>Ventas marcadas {etiquetaServicio}</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{incidencias}</p><p className={styles.statLabel}>Incidencias de stock</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{dudas}</p><p className={styles.statLabel}>Dudas o cambios</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{consultas}</p><p className={styles.statLabel}>Consultas maridaje</p></div>
-      </section>
-
-      <section className={styles.panel} style={{ marginTop: 16 }}>
+      <section className={styles.panel}>
         <div className={styles.panelHead}>
           <div>
             <p className={styles.eyebrow}>Antes de abrir</p>

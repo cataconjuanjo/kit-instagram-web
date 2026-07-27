@@ -474,6 +474,31 @@
   text-align: right;
 }
 
+.priorityStats {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.priorityStats span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: #706a64;
+  font-size: 11px;
+  font-weight: 500;
+  text-align: right;
+}
+
+.priorityStats strong {
+  display: block;
+  color: #171416;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .prioritySide a {
   min-height: 42px;
   display: inline-flex;
