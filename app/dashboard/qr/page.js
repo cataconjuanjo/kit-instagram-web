@@ -1374,15 +1374,6 @@ export default function QRPage() {
               {!cartaPublicada && (
                 <p className={styles.panelSub}>Publica primero la carta para generar material final. Mientras esté en borrador, usa la preview privada.</p>
               )}
-              <article className={styles.itemCard}>
-                <div className={styles.sectionHead} style={{ margin: 0 }}>
-                  <div>
-                    <h3 className={styles.sectionTitle}>{experienciaActiva ? experienciaActiva.label : 'Plantilla activa'}</h3>
-                    <p className={styles.sectionText}>{estadoExperienciaEntrega}</p>
-                  </div>
-                  <Link className={styles.ghost} href="/dashboard/plantillas">Plantillas</Link>
-                </div>
-              </article>
               {mensajeMaterial && <p className={styles.panelSub}>{mensajeMaterial}</p>}
               <div className={styles.deliveryCopyGrid}>
                 {textosMaterial.map(item => (
