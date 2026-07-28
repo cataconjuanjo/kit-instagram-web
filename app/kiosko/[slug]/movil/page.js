@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import styles from './movil.module.css'
@@ -20,23 +20,39 @@ const TIPO_EMOJI = {
   generoso: '🫙', dulce: '🍯', naranja: '🍊', sin_alcohol: '🧃',
 }
 
-export default function MovilPage() {
+function MovilContent() {
   const { slug } = useParams()
   const searchParams = useSearchParams()
   const [data, setData] = useState(null)
   const [estado, setEstado] = useState('cargando')
-
-  const ids = searchParams.get('ids') || ''
-  const from = searchParams.get('from') || 'selection'
-  const lang = searchParams.get('lang') || 'es'
+  const [errorDetail, setErrorDetail] = useState('')
 
   useEffect(() => {
-    if (!ids) { setEstado('error'); return }
+    if (!slug) return
 
-    fetch(`/api/kiosko/${slug}/movil?ids=${encodeURIComponent(ids)}`)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    const ids = searchParams?.get('ids') || ''
+    const from = searchParams?.get('from') || 'selection'
+    const lang = searchParams?.get('lang') || 'es'
+
+    if (!ids) {
+      setErrorDetail('Sin IDs en la URL')
+      setEstado('error')
+      return
+    }
+
+    const url = `/api/kiosko/${slug}/movil?ids=${encodeURIComponent(ids)}`
+
+    fetch(url)
+      .then(async r => {
+        if (r.ok) return r.json()
+        const body = await r.json().catch(() => ({}))
+        throw new Error(`HTTP ${r.status}: ${body.error || r.statusText}`)
+      })
       .then(d => { setData(d); setEstado('ok') })
-      .catch(() => setEstado('error'))
+      .catch(err => {
+        setErrorDetail(err.message || String(err))
+        setEstado('error')
+      })
 
     // Registrar apertura para analítica (fire-and-forget)
     fetch(`/api/kiosko/${slug}/movil`, {
@@ -44,7 +60,7 @@ export default function MovilPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: ids.split(','), source: `qr_${from}`, lang }),
     }).catch(() => {})
-  }, [slug, ids, from, lang])
+  }, [slug, searchParams])
 
   if (estado === 'cargando') {
     return (
@@ -62,7 +78,12 @@ export default function MovilPage() {
         <div className={styles.error}>
           <h2>Selección no disponible</h2>
           <p>Es posible que el QR haya caducado o los vinos ya no estén disponibles.</p>
-          <Link href={`/kiosko/${slug}`} className={styles.back}>Volver al kiosko</Link>
+          {errorDetail && (
+            <p style={{ fontSize: '.72rem', color: '#b0a496', marginTop: '.5rem', wordBreak: 'break-all' }}>
+              {errorDetail}
+            </p>
+          )}
+          <Link href={slug ? `/kiosko/${slug}` : '/'} className={styles.back}>Volver al kiosko</Link>
         </div>
       </div>
     )
@@ -87,7 +108,7 @@ export default function MovilPage() {
 
       <div className={styles.body}>
         <p className={styles.heading}>
-          {vinos.length} {vinos.length === 1 ? 'vino seleccionado' : 'vinos seleccionados'}
+          {vinos.length} {vinos.length === 1 ? 'vino seleccionado' : 'vinos guardados'}
         </p>
 
         <div className={styles.wineList}>
@@ -126,5 +147,17 @@ export default function MovilPage() {
         </Link>
       </div>
     </div>
+  )
+}
+
+export default function MovilPage() {
+  return (
+    <Suspense fallback={
+      <div className={styles.page}>
+        <div className={styles.loading}><span>Cargando…</span></div>
+      </div>
+    }>
+      <MovilContent />
+    </Suspense>
   )
 }
