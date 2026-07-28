@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../../lib/supabaseAdmin'
 const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com').toLowerCase()
 
 export const ADMIN_TIENDA_SELECT =
-  'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, informe_email, trial_expires_at, trial_used_seconds, precio_especial, setup_fee_incluido, activo, subscription_status, propietario_email, email, kiosko_icon_style, kiosko_orders_enabled'
+  'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, informe_email, trial_expires_at, trial_used_seconds, precio_especial, setup_fee_incluido, activo, subscription_status, propietario_email, email'
 
 export const ADMIN_VINO_SELECT =
   'id, nombre, bodega, tipo, uva, region, pais, anada, precio_pvp, precio_coste, precio_oferta, stock, ubicacion_estanteria, foto_url, notas_cata, descripcion, puntuacion, destacado, activo, ficha_ia'
@@ -63,14 +63,20 @@ export async function requireKioskoAccess(request, slug, { select = 'id, plan, p
 }
 
 export async function getPublicTienda(slug) {
+  // Solo columnas que existen en todas las versiones del schema (sin columnas de migraciones opcionales)
   const publicSelect =
-    'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, activo, kiosko_icon_style, kiosko_orders_enabled'
+    'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, activo'
 
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('tiendas')
     .select(publicSelect)
     .eq('slug', slug)
     .single()
+
+  if (error) {
+    console.error('[getPublicTienda]', slug, error.message)
+    return null
+  }
 
   return data || null
 }
