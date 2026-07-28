@@ -78,7 +78,7 @@
   border-radius: 50%;
   color: var(--color-acento);
   background: color-mix(in srgb, var(--color-acento) 8%, transparent);
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1.35rem;
   font-weight: 900;
   letter-spacing: .05em;
@@ -86,7 +86,7 @@
 }
 
 .welcomeNombre {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: clamp(2.5rem, 6vw, 5rem);
   font-weight: 800;
   letter-spacing: .06em;
@@ -108,7 +108,7 @@
 .welcomeStats {
   display: flex;
   gap: 2rem;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: .1em;
@@ -190,7 +190,7 @@
 }
 
 .welcomeActionLabel {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: clamp(.85rem, 1.6vw, 1.15rem);
   font-weight: 800;
   letter-spacing: .08em;
@@ -210,7 +210,7 @@
 }
 
 .featuredLabel {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .85rem;
   font-weight: 700;
   letter-spacing: .14em;
@@ -288,7 +288,7 @@
 }
 
 .featuredPrecio {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1rem;
   font-weight: 800;
   padding: 0 .75rem .65rem;
@@ -607,7 +607,7 @@
   border: 2px solid var(--borde);
   border-radius: 0;
   color: var(--texto);
-  font-family: 'Open Sans', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1.1rem;
   padding: .7rem 3rem .7rem 1.1rem;
   min-height: 64px;
@@ -635,7 +635,7 @@
 }
 
 .resultCount {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .85rem;
   font-weight: 700;
   letter-spacing: .1em;
@@ -649,7 +649,7 @@
   border: 1px solid var(--borde);
   border-radius: 0;
   color: var(--texto-m);
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .85rem;
   font-weight: 700;
   letter-spacing: .05em;
@@ -682,7 +682,7 @@
   border: 2px solid var(--borde);
   border-radius: 0;
   color: var(--texto);
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: .05em;
@@ -704,7 +704,7 @@
   border: 2px solid var(--borde);
   border-radius: 0;
   color: var(--texto);
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .95rem;
   font-weight: 700;
   padding: .6rem 1rem;
@@ -812,7 +812,7 @@
   right: .6rem;
   background: var(--color-acento);
   color: #fff;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .72rem;
   font-weight: 800;
   padding: .2rem .55rem;
@@ -837,7 +837,7 @@
 }
 
 .cardPuntuacion {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .8rem;
   font-weight: 700;
   color: var(--color-acento);
@@ -893,7 +893,7 @@
 }
 
 .cardPrecio {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1.3rem;
   font-weight: 800;
   color: var(--color-acento);
@@ -928,7 +928,7 @@
 .tipoChip {
   display: inline-block;
   padding: .18rem .55rem;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .7rem;
   font-weight: 700;
   letter-spacing: .07em;
@@ -948,7 +948,7 @@
   border: 2px solid var(--btn-back-b);
   border-radius: 0;
   color: var(--texto);
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .9rem;
   font-weight: 800;
   letter-spacing: .06em;
@@ -1061,7 +1061,7 @@
 }
 
 .detailDestacado {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .85rem;
   font-weight: 800;
   letter-spacing: .12em;
@@ -1082,7 +1082,7 @@
 }
 
 .detailPuntuacion {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1.15rem;
   font-weight: 800;
   margin-left: auto;
@@ -1115,7 +1115,7 @@
 
 .detailMeta strong {
   color: var(--texto-d);
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .72rem;
   text-transform: uppercase;
   letter-spacing: .1em;
@@ -1123,7 +1123,7 @@
 }
 
 .detailPrecio {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 800;
   letter-spacing: .02em;
@@ -1144,7 +1144,7 @@
 }
 
 .detailUbicacionLabel {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .75rem;
   font-weight: 700;
   letter-spacing: .12em;
@@ -1180,7 +1180,7 @@
   border-radius: 10px;
   background: var(--color-acento);
   color: #fff;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .92rem;
   font-weight: 900;
   letter-spacing: .08em;
@@ -1208,7 +1208,7 @@
   margin-top: auto;
   background: transparent;
   border: 2px solid var(--color-acento);
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: .1em;
@@ -1268,7 +1268,7 @@
 
 .mobileQrEyebrow {
   margin: .35rem 0 .4rem;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .72rem;
   font-weight: 900;
   letter-spacing: .14em;
@@ -1535,7 +1535,7 @@
   border: 0;
   border-radius: 10px;
   color: #fff;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .82rem;
   font-weight: 900;
   letter-spacing: .04em;
@@ -1634,7 +1634,7 @@
   border: 0;
   border-radius: 10px;
   color: #fff;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-weight: 900;
   cursor: pointer;
 }
@@ -1747,7 +1747,7 @@
   border: 0;
   border-radius: 10px;
   cursor: pointer;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-weight: 900;
 }
 
@@ -1798,7 +1798,7 @@
 }
 
 .pairingBrandNombre {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .72rem;
   font-weight: 800;
   letter-spacing: .14em;
@@ -1834,7 +1834,7 @@
 }
 
 .pairingTitle {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: clamp(1.6rem, 4vw, 2.4rem);
   font-weight: 800;
   letter-spacing: .03em;
@@ -1863,7 +1863,7 @@
   background: var(--panel);
   border: 2px solid var(--borde);
   color: var(--texto);
-  font-family: 'Open Sans', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1.1rem;
   padding: 1.1rem 1.25rem;
   resize: none;
@@ -1878,7 +1878,7 @@
   min-height: 96px;
   padding: 1rem 1.5rem;
   border: none;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: .08em;
@@ -1897,7 +1897,7 @@
 .sugerencias { margin-top: .75rem; }
 
 .sugerenciasLabel {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .78rem;
   font-weight: 700;
   letter-spacing: .12em;
@@ -1916,7 +1916,7 @@
   background: transparent;
   border: 2px solid var(--borde);
   color: var(--texto-m);
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .95rem;
   font-weight: 600;
   letter-spacing: .03em;
@@ -2042,7 +2042,7 @@
 }
 
 .pairingWinePrecio {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1.05rem;
   font-weight: 800;
   color: var(--color-acento);
@@ -2073,7 +2073,7 @@
   display: inline-flex;
   align-items: center;
   gap: .3rem;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .88rem;
   font-weight: 700;
   color: var(--color-acento);
@@ -2091,7 +2091,7 @@
   min-height: 42px;
   border-radius: 9px;
   padding: .65rem .9rem;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .78rem;
   font-weight: 900;
   letter-spacing: .06em;
@@ -2131,7 +2131,7 @@
   background: transparent;
   border: 2px solid var(--borde);
   color: var(--texto-m);
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .9rem;
   font-weight: 700;
   letter-spacing: .08em;
@@ -2224,7 +2224,7 @@
   flex-shrink: 0;
 }
 .wizardTitle {
-  font-family: 'Mulish', sans-serif;
+  font-family: var(--font-family);
   font-size: clamp(1.2rem, 3vw, 1.6rem);
   font-weight: 800;
   color: var(--texto);
@@ -2239,7 +2239,7 @@
   gap: 2rem;
 }
 .wizardQuestion {
-  font-family: 'Mulish', sans-serif;
+  font-family: var(--font-family);
   font-size: clamp(1.2rem, 3.5vw, 1.8rem);
   font-weight: 700;
   text-align: center;
@@ -2443,14 +2443,14 @@
   padding: clamp(1.5rem, 4vw, 3rem);
 }
 .showcaseTienda {
-  font-family: 'Mulish', sans-serif;
+  font-family: var(--font-family);
   font-size: clamp(1rem, 2.5vw, 1.4rem);
   font-weight: 700;
   color: rgba(255,255,255,.7);
   margin: 0;
 }
 .showcaseHora {
-  font-family: 'Mulish', sans-serif;
+  font-family: var(--font-family);
   font-size: clamp(1.4rem, 4vw, 2.2rem);
   font-weight: 800;
   color: #fff;
@@ -2479,7 +2479,7 @@
   margin-bottom: 1rem;
 }
 .showcaseNombre {
-  font-family: 'Mulish', sans-serif;
+  font-family: var(--font-family);
   font-size: clamp(2rem, 6vw, 5rem);
   font-weight: 800;
   color: #fff;
@@ -2503,7 +2503,7 @@
   color: rgba(255,255,255,.6);
 }
 .showcasePrecio {
-  font-family: 'Mulish', sans-serif;
+  font-family: var(--font-family);
   font-size: clamp(1.6rem, 5vw, 3rem);
   font-weight: 800;
   margin: 0 0 .5rem;
@@ -2815,7 +2815,7 @@
 }
 
 .foodPairingTitle {
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: 1.1rem;
   font-weight: 800;
   letter-spacing: .04em;
@@ -2883,7 +2883,7 @@
   border-radius: 12px;
   color: var(--texto-m);
   cursor: pointer;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .9rem;
   font-weight: 700;
   padding: .85rem 1.25rem;
@@ -2897,7 +2897,7 @@
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: var(--font-family);
   font-size: .9rem;
   font-weight: 700;
   padding: .85rem 1.25rem;
