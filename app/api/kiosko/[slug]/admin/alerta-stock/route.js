@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
+import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM   = 'Kiosko Vinos <kiosko@cataconjuanjo.com>'
@@ -8,11 +9,11 @@ const FROM   = 'Kiosko Vinos <kiosko@cataconjuanjo.com>'
 export async function POST(request, { params }) {
   const { slug } = await params
 
-  const { data: tienda } = await supabaseAdmin
-    .from('tiendas')
-    .select('id, nombre, logo_url, informe_email, slug')
-    .eq('slug', slug)
-    .single()
+  const access = await requireKioskoAccess(request, slug, {
+    select: 'id, nombre, logo_url, informe_email, slug, propietario_email, email',
+  })
+  if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
+  const tienda = access.tienda
 
   if (!tienda || !tienda.informe_email) {
     return NextResponse.json({ ok: true, skipped: true })

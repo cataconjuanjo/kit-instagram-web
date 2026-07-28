@@ -1,24 +1,16 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
-
-async function getTiendaId(slug) {
-  const { data } = await supabaseAdmin
-    .from('tiendas')
-    .select('id')
-    .eq('slug', slug)
-    .single()
-  return data?.id || null
-}
+import { ADMIN_VINO_SELECT, pickWritableVinoFields, requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
 export async function GET(request, { params }) {
   const { slug } = await params
-  const tiendaId = await getTiendaId(slug)
-  if (!tiendaId) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+  const access = await requireKioskoAccess(request, slug)
+  if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
 
   const { data, error } = await supabaseAdmin
     .from('vinos_tienda')
-    .select('id, nombre, bodega, tipo, uva, region, pais, anada, precio_pvp, precio_coste, precio_oferta, stock, ubicacion_estanteria, foto_url, notas_cata, descripcion, puntuacion, destacado, activo, ficha_ia')
-    .eq('tienda_id', tiendaId)
+    .select(ADMIN_VINO_SELECT)
+    .eq('tienda_id', access.tienda.id)
     .order('destacado', { ascending: false })
     .order('nombre')
 
@@ -31,20 +23,23 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   const { slug } = await params
-  const tiendaId = await getTiendaId(slug)
-  if (!tiendaId) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+  const access = await requireKioskoAccess(request, slug)
+  if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
 
   let body
   try { body = await request.json() } catch {
     return NextResponse.json({ error: 'Petición inválida' }, { status: 400 })
   }
 
-  const { id: _id, created_at: _c, updated_at: _u, tienda_id: _t, ...campos } = body
+  const campos = pickWritableVinoFields(body)
+  if (!String(campos.nombre || '').trim()) {
+    return NextResponse.json({ error: 'El nombre es obligatorio' }, { status: 400 })
+  }
 
   const { data, error } = await supabaseAdmin
     .from('vinos_tienda')
-    .insert({ ...campos, tienda_id: tiendaId })
-    .select()
+    .insert({ ...campos, tienda_id: access.tienda.id })
+    .select(ADMIN_VINO_SELECT)
     .single()
 
   if (error) {
@@ -52,5 +47,6 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ vino: data }, { status: 201 })
+  const { ficha_ia, ...vino } = data
+  return NextResponse.json({ vino: { ...vino, has_ficha_ia: ficha_ia != null } }, { status: 201 })
 }

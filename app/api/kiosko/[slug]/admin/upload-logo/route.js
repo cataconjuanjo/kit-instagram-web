@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
+import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
 const BUCKET    = 'kiosko-logos'
 const MAX_BYTES = 2 * 1024 * 1024
@@ -15,9 +16,9 @@ async function ensureBucket() {
 export async function POST(request, { params }) {
   const { slug } = await params
 
-  const { data: tienda } = await supabaseAdmin
-    .from('tiendas').select('id').eq('slug', slug).single()
-  if (!tienda) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+  const access = await requireKioskoAccess(request, slug)
+  if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
+  const tienda = access.tienda
 
   let fd
   try { fd = await request.formData() } catch {

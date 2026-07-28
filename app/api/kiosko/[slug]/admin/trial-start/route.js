@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
+import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
 export async function POST(request, { params }) {
   const { slug } = await params
 
-  const { data: tienda } = await supabaseAdmin
-    .from('tiendas')
-    .select('id, plan, trial_expires_at')
-    .eq('slug', slug)
-    .single()
+  const access = await requireKioskoAccess(request, slug, {
+    select: 'id, plan, trial_expires_at, propietario_email, email',
+  })
+  if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
+  const tienda = access.tienda
 
-  if (!tienda) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
   if (tienda.plan !== 'trial') return NextResponse.json({ error: 'No es una tienda en prueba' }, { status: 400 })
   if (tienda.trial_expires_at) return NextResponse.json({ trial_expires_at: tienda.trial_expires_at })
 

@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
-
-async function getTiendaId(slug) {
-  const { data } = await supabaseAdmin.from('tiendas').select('id').eq('slug', slug).single()
-  return data?.id || null
-}
+import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
 const TIPOS_VALIDOS = new Set([
   'tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol',
@@ -42,7 +38,7 @@ function parseCSV(text) {
   }
 
   const headers = parseLine(lines[0]).map(h =>
-    h.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''))
+    h.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
   const filas = []
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i].trim()) continue
@@ -67,7 +63,7 @@ async function parseXLSX(arrayBuffer) {
     for (const [k, v] of Object.entries(row)) {
       const key = String(k)
         .toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[\s/]+/g, '_')
         .replace(/[^a-z0-9_]/g, '')
       norm[key] = String(v ?? '').trim()
@@ -159,8 +155,9 @@ function mapFila(row, tiendaId) {
 // ── POST ───────────────────────────────────────────────────────────────────────
 export async function POST(request, { params }) {
   const { slug } = await params
-  const tiendaId = await getTiendaId(slug)
-  if (!tiendaId) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+  const access = await requireKioskoAccess(request, slug)
+  if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
+  const tiendaId = access.tienda.id
 
   let archivo, reemplazar
   try {

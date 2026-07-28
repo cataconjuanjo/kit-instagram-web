@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
+import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
 const BUCKET   = 'kiosko-fotos'
 const MAX_BYTES = 5 * 1024 * 1024
@@ -12,15 +13,11 @@ async function ensureBucket() {
   }
 }
 
-async function getTiendaId(slug) {
-  const { data } = await supabaseAdmin.from('tiendas').select('id').eq('slug', slug).single()
-  return data?.id || null
-}
-
 export async function POST(request, { params }) {
   const { slug } = await params
-  const tiendaId = await getTiendaId(slug)
-  if (!tiendaId) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+  const access = await requireKioskoAccess(request, slug)
+  if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
+  const tiendaId = access.tienda.id
 
   let fd
   try { fd = await request.formData() } catch {
@@ -68,8 +65,9 @@ export async function POST(request, { params }) {
 
 export async function DELETE(request, { params }) {
   const { slug } = await params
-  const tiendaId = await getTiendaId(slug)
-  if (!tiendaId) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+  const access = await requireKioskoAccess(request, slug)
+  if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
+  const tiendaId = access.tienda.id
 
   let body
   try { body = await request.json() } catch {

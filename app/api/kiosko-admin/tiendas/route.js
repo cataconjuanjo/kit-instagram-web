@@ -1,33 +1,38 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { isAdminEmail } from '../../../demo'
+import { getKioskoUser, isKioskoAdminEmail } from '../../_lib/kioskoAuth'
 
 // Lista tiendas para el panel multi-tienda.
 // Si es superadmin → devuelve todas.
 // Si tiene propietario_email → devuelve solo las suyas.
 export async function GET(request) {
-  const auth  = request.headers.get('authorization') || ''
-  const token = auth.replace('Bearer ', '').trim()
-
-  // Resolver usuario desde token Supabase
-  let userEmail = null
-  if (token) {
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token)
-    userEmail = user?.email || null
-  }
-
-  let query = supabaseAdmin
-    .from('tiendas')
-    .select('id, nombre, slug, logo_url, ciudad, plan, activo, created_at')
-    .order('nombre')
+  const auth = await getKioskoUser(request)
+  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const userEmail = auth.email
+  const selectTiendas = 'id, nombre, slug, logo_url, ciudad, plan, activo, created_at'
 
   // Superadmin ve todo; usuario normal solo sus tiendas
-  if (userEmail && !isAdminEmail(userEmail)) {
-    query = query.eq('propietario_email', userEmail)
+  if (isKioskoAdminEmail(userEmail)) {
+    const { data, error } = await supabaseAdmin
+      .from('tiendas')
+      .select(selectTiendas)
+      .order('nombre')
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ tiendas: data || [] })
   }
 
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const [porPropietario, porEmail] = await Promise.all([
+    supabaseAdmin.from('tiendas').select(selectTiendas).eq('propietario_email', userEmail).order('nombre'),
+    supabaseAdmin.from('tiendas').select(selectTiendas).eq('email', userEmail).order('nombre'),
+  ])
 
-  return NextResponse.json({ tiendas: data || [] })
+  if (porPropietario.error) return NextResponse.json({ error: porPropietario.error.message }, { status: 500 })
+  if (porEmail.error) return NextResponse.json({ error: porEmail.error.message }, { status: 500 })
+
+  const tiendasMap = new Map()
+  for (const tienda of [...(porPropietario.data || []), ...(porEmail.data || [])]) {
+    tiendasMap.set(tienda.id, tienda)
+  }
+
+  return NextResponse.json({ tiendas: [...tiendasMap.values()] })
 }

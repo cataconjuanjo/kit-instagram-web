@@ -35,7 +35,7 @@ function getIP(request) {
 // ── Normalización ─────────────────────────────────────────────────────────────
 
 function norm(texto = '') {
-  return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
 // ── Filtro estructural adaptado a vinos_tienda ────────────────────────────────

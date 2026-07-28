@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import styles from './admin-home.module.css'
+import { supabase } from '../supabase'
+import { isAdminEmail } from '../demo'
 
 const FORM_VACIO = {
   nombre: '', slug: '', ciudad: '', descripcion: '', direccion: '',
@@ -13,9 +15,9 @@ function slugificar(texto) {
   return texto
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+    .replace(/^-+|-+$/g, '')
     .slice(0, 60)
 }
 
@@ -27,16 +29,36 @@ export default function KioskoAdminHome() {
   const [slugManual, setSlugManual] = useState(false)
   const [guardando, setGuardando]   = useState(false)
   const [msg, setMsg]               = useState('')
+  const [token, setToken]           = useState('')
+  const [esAdmin, setEsAdmin]       = useState(false)
+  const [accesoDenegado, setAccesoDenegado] = useState(false)
 
-  useEffect(() => { cargar() }, [])
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.access_token) {
+        setAccesoDenegado(true)
+        setCargando(false)
+        return
+      }
+      setToken(session.access_token)
+      setEsAdmin(isAdminEmail(session.user?.email))
+      cargar(session.access_token)
+    })
+  }, [])
 
-  async function cargar() {
+  async function cargar(tok = token) {
     setCargando(true)
     try {
-      const res = await fetch('/api/kiosko/admin/tiendas')
+      const res = await fetch('/api/kiosko-admin/tiendas', {
+        headers: { Authorization: `Bearer ${tok}` },
+      })
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'No autorizado')
       setTiendas(data.tiendas || [])
-    } catch { /* silent */ }
+      setAccesoDenegado(false)
+    } catch {
+      setAccesoDenegado(true)
+    }
     setCargando(false)
   }
 
@@ -63,7 +85,7 @@ export default function KioskoAdminHome() {
     try {
       const res = await fetch('/api/kiosko/admin/tiendas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(form),
       })
       const data = await res.json()
@@ -85,20 +107,29 @@ export default function KioskoAdminHome() {
           <h1 className={styles.titulo}>Kiosko Admin</h1>
           <p className={styles.subtitulo}>Gestión de tiendas y kioscos virtuales de vino</p>
         </div>
-        <button className={styles.btnPrimario} onClick={() => { setModal(true); setMsg('') }} type="button">
-          + Nueva tienda
-        </button>
+        {esAdmin && (
+          <button className={styles.btnPrimario} onClick={() => { setModal(true); setMsg('') }} type="button">
+            + Nueva tienda
+          </button>
+        )}
       </header>
 
       <div className={styles.contenido}>
         {cargando ? (
           <p className={styles.cargando}>Cargando...</p>
+        ) : accesoDenegado ? (
+          <div className={styles.vacio}>
+            <p>Acceso no autorizado.</p>
+            <a href="/login" className={styles.btnPrimario}>Iniciar sesion</a>
+          </div>
         ) : tiendas.length === 0 ? (
           <div className={styles.vacio}>
             <p>No hay tiendas todavía.</p>
-            <button className={styles.btnPrimario} onClick={() => setModal(true)} type="button">
-              Crear la primera tienda
-            </button>
+            {esAdmin && (
+              <button className={styles.btnPrimario} onClick={() => setModal(true)} type="button">
+                Crear la primera tienda
+              </button>
+            )}
           </div>
         ) : (
           <div className={styles.grid}>

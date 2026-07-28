@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { PUBLIC_VINO_SELECT } from '../../../_lib/kioskoAuth'
 
 function normalizarTexto(texto = '') {
-  return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
 export async function GET(request, { params }) {
@@ -22,7 +23,7 @@ export async function GET(request, { params }) {
 
   let query = supabaseAdmin
     .from('vinos_tienda')
-    .select('*')
+    .select(PUBLIC_VINO_SELECT)
     .eq('tienda_id', tienda.id)
     .eq('activo', true)
     .order('destacado', { ascending: false })

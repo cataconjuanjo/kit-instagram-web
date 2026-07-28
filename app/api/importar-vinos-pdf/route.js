@@ -21,6 +21,7 @@ Cada objeto debe tener esta forma exacta:
   "anada": "añada si aparece o vacío",
   "precio_copa": número mayor que 0 si existe precio de copa, si no 0,
   "precio_botella": número mayor que 0 si existe precio de botella, si no 0,
+  "foto_url": "URL publica de etiqueta/imagen si aparece en el archivo, o vacío",
   "notas_cata": "perfiles útiles si son evidentes; si no, vacío"
 }
 
@@ -57,6 +58,100 @@ function csvATexto(base64) {
   return Buffer.from(base64, 'base64').toString('utf-8')
 }
 
+function normalizarClave(valor = '') {
+  return String(valor)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
+
+function filasDesdeArchivoEstructurado(base64, tipo) {
+  if (tipo.includes('spreadsheetml') || tipo.includes('ms-excel') || tipo.includes('excel')) {
+    const workbook = XLSX.read(Buffer.from(base64, 'base64'), { type: 'buffer' })
+    const sheet = workbook.Sheets[workbook.SheetNames[0]]
+    return XLSX.utils.sheet_to_json(sheet, { defval: '' })
+  }
+  const texto = csvATexto(base64)
+  const workbook = XLSX.read(texto, { type: 'string' })
+  const sheet = workbook.Sheets[workbook.SheetNames[0]]
+  return XLSX.utils.sheet_to_json(sheet, { defval: '' })
+}
+
+function valorCampo(rowNormalizada, aliases) {
+  for (const alias of aliases) {
+    const valor = rowNormalizada[normalizarClave(alias)]
+    if (valor !== undefined && String(valor).trim() !== '') return String(valor).trim()
+  }
+  return ''
+}
+
+function numeroPrecio(valor) {
+  const limpio = String(valor || '')
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\.(?=\d{3}(?:\D|$))/g, '')
+    .replace(',', '.')
+  const numero = Number(limpio)
+  return Number.isFinite(numero) && numero > 0 ? numero : null
+}
+
+function urlImagen(valor) {
+  const raw = String(valor || '').trim().slice(0, 2048)
+  if (!raw) return ''
+  if (raw.startsWith('/') && !raw.startsWith('//')) return raw
+  try {
+    const url = new URL(raw)
+    return ['http:', 'https:'].includes(url.protocol) ? url.toString() : ''
+  } catch {
+    return ''
+  }
+}
+
+function tipoDesdeTexto(texto = '') {
+  const normalizado = String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  if (normalizado.includes('blanco') || normalizado.includes('white')) return 'blanco'
+  if (normalizado.includes('rosado') || normalizado.includes('rose')) return 'rosado'
+  if (normalizado.includes('espumoso') || normalizado.includes('sparkling') || normalizado.includes('cava') || normalizado.includes('champagne')) return 'espumoso'
+  if (normalizado.includes('generoso') || normalizado.includes('jerez') || normalizado.includes('sherry')) return 'generoso'
+  if (normalizado.includes('dulce') || normalizado.includes('sweet')) return 'dulce'
+  if (normalizado.includes('naranja') || normalizado.includes('orange')) return 'naranja'
+  if (normalizado.includes('sidra') || normalizado.includes('cider')) return 'sidra'
+  if (normalizado.includes('tinto') || normalizado.includes('red')) return 'tinto'
+  return 'tinto'
+}
+
+function extraerVinosEstructurados(base64, tipo) {
+  if (tipo.startsWith('image/') || tipo === 'application/pdf') return []
+  let filas = []
+  try {
+    filas = filasDesdeArchivoEstructurado(base64, tipo)
+  } catch {
+    return []
+  }
+
+  return filas.map(row => {
+    const normalizada = Object.fromEntries(Object.entries(row).map(([key, value]) => [normalizarClave(key), value]))
+    const nombre = valorCampo(normalizada, ['nombre', 'vino', 'producto', 'item', 'item_name', 'name'])
+    if (!nombre) return null
+
+    const categorias = valorCampo(normalizada, ['categorias', 'categoria', 'category', 'tipo'])
+    const descripcion = valorCampo(normalizada, ['descripcion', 'description', 'notas_cata', 'notas'])
+    return {
+      nombre,
+      bodega: valorCampo(normalizada, ['bodega', 'producer', 'productor', 'marca', 'brand']),
+      tipo: tipoDesdeTexto(valorCampo(normalizada, ['tipo', 'type']) || categorias || descripcion || nombre),
+      region: valorCampo(normalizada, ['region', 'zona', 'do', 'd_o', 'denominacion']),
+      uva: valorCampo(normalizada, ['uva', 'variedad', 'grape', 'varietal']),
+      anada: valorCampo(normalizada, ['anada', 'añada', 'vintage', 'year']),
+      precio_copa: numeroPrecio(valorCampo(normalizada, ['precio_copa', 'copa', 'glass_price'])),
+      precio_botella: numeroPrecio(valorCampo(normalizada, ['precio_botella', 'precio_pvp', 'precio', 'pvp', 'price', 'amount'])),
+      foto_url: urlImagen(valorCampo(normalizada, ['foto_url', 'imagen_principal', 'imagen', 'image_url', 'image', 'foto', 'photo', 'url_imagen', 'main_image'])),
+      notas_cata: descripcion,
+    }
+  }).filter(Boolean).slice(0, 120)
+}
+
 export async function POST(req) {
   try {
     const { fileBase64, pdfBase64, mediaType, restaurante_id } = await req.json()
@@ -70,6 +165,11 @@ export async function POST(req) {
     }
     if (String(data).length > MAX_BASE64_LENGTH) {
       return Response.json({ vinos: [], error: 'Archivo demasiado grande. Usa un PDF de hasta 3 MB.' }, { status: 413 })
+    }
+
+    const vinosEstructurados = extraerVinosEstructurados(data, tipo)
+    if (vinosEstructurados.length > 0) {
+      return Response.json({ vinos: vinosEstructurados, modo: 'estructurado' })
     }
 
     const cuotaIa = await comprobarCuotaIaRestaurante({

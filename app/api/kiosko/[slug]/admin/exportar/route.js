@@ -1,18 +1,10 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
-
-async function getTiendaId(slug) {
-  const { data } = await supabaseAdmin
-    .from('tiendas')
-    .select('id')
-    .eq('slug', slug)
-    .single()
-  return data?.id || null
-}
+import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
 const CAMPOS = [
   'nombre', 'bodega', 'tipo', 'uva', 'anada', 'region', 'pais',
-  'precio_pvp', 'precio_coste', 'stock', 'ubicacion_estanteria',
+  'precio_pvp', 'precio_coste', 'precio_oferta', 'stock', 'ubicacion_estanteria',
   'foto_url', 'descripcion', 'notas_cata', 'puntuacion', 'destacado', 'activo',
 ]
 
@@ -27,13 +19,13 @@ function esc(val) {
 
 export async function GET(request, { params }) {
   const { slug } = await params
-  const tiendaId = await getTiendaId(slug)
-  if (!tiendaId) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+  const access = await requireKioskoAccess(request, slug)
+  if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
 
   const { data, error } = await supabaseAdmin
     .from('vinos_tienda')
     .select(CAMPOS.join(', '))
-    .eq('tienda_id', tiendaId)
+    .eq('tienda_id', access.tienda.id)
     .order('nombre')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

@@ -75,7 +75,7 @@ export default function KioskoActivar({ params }) {
 
   if (estado === 'exito') return (
     <div style={estilos.page}>
-      <div style={estilos.card} style={{ ...estilos.card, textAlign: 'center' }}>
+      <div style={{ ...estilos.card, textAlign: 'center' }}>
         <div style={{ fontSize: 40, marginBottom: 16 }}>✓</div>
         <h2 style={estilos.titulo}>Contraseña guardada</h2>
         <p style={estilos.sub}>Entrando a tu kiosko...</p>

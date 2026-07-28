@@ -1,10 +1,35 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
+import { PUBLIC_VINO_SELECT } from '../../../../_lib/kioskoAuth'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const LANG_NAMES = { es: 'Spanish', en: 'English', fr: 'French', de: 'German' }
+const RATE_LIMIT = 80
+const RATE_WINDOW_MS = 60 * 60 * 1000
+
+function getIP(request) {
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    '0.0.0.0'
+  )
+}
+
+async function checkRateLimit(ip) {
+  const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
+  const { count } = await supabaseAdmin
+    .from('rate_limits')
+    .select('id', { count: 'exact', head: true })
+    .eq('ip', ip)
+    .eq('endpoint', 'kiosko_ficha_ia')
+    .gte('created_at', since)
+
+  if ((count || 0) >= RATE_LIMIT) return false
+  await supabaseAdmin.from('rate_limits').insert({ ip, endpoint: 'kiosko_ficha_ia' })
+  return true
+}
 
 export async function GET(request, { params }) {
   const { slug, id } = await params
@@ -15,12 +40,22 @@ export async function GET(request, { params }) {
   if (!tienda) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
 
   const { data: vino } = await supabaseAdmin
-    .from('vinos_tienda').select('*').eq('id', id).eq('tienda_id', tienda.id).single()
+    .from('vinos_tienda')
+    .select(`${PUBLIC_VINO_SELECT}, ficha_ia`)
+    .eq('id', id)
+    .eq('tienda_id', tienda.id)
+    .eq('activo', true)
+    .single()
   if (!vino) return NextResponse.json({ error: 'Vino no encontrado' }, { status: 404 })
 
   // La caché (ficha_ia) solo es válida para español
   if (lang === 'es' && vino.ficha_ia) {
     try { return NextResponse.json({ ficha: JSON.parse(vino.ficha_ia) }) } catch {}
+  }
+
+  const allowed = await checkRateLimit(getIP(request))
+  if (!allowed) {
+    return NextResponse.json({ error: 'Demasiadas fichas generadas. Intentalo en unos minutos.' }, { status: 429 })
   }
 
   const notasExistentes = (vino.notas_cata || vino.descripcion || '').trim()
@@ -70,6 +105,7 @@ Reply ONLY with valid JSON:
       await supabaseAdmin.from('vinos_tienda')
         .update({ ficha_ia: JSON.stringify(ficha) })
         .eq('id', id)
+        .eq('tienda_id', tienda.id)
     }
 
     return NextResponse.json({ ficha })
