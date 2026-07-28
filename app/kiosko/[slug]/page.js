@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
+import QRCode from 'qrcode'
 import styles from './kiosko.module.css'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
 const IDLE_TIMEOUT_MS = 60_000
 const SHOWCASE_INTERVAL_MS = 7_000
+const MOBILE_SELECTION_MAX = 6
+const COUNTER_ORDERS_IN_DEVELOPMENT = true
 
 const TIPO_LABELS = {
   tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso',
@@ -33,9 +36,9 @@ const SUGERENCIAS_MARIDAJE = [
 ]
 
 const OCASIONES_IDS = [
-  { id: 'regalo',      icon: '🎁' },
-  { id: 'celebracion', icon: '🥂' },
-  { id: 'casa',        icon: '🏠' },
+  { id: 'regalo',      emoji: '🎁' },
+  { id: 'celebracion', emoji: '🥂' },
+  { id: 'casa',        emoji: '🏠' },
 ]
 const PRESUPUESTOS_IDS = [
   { id: 'bajo',  label: 'Hasta 15 €' },
@@ -52,31 +55,28 @@ const ESTILOS_IDS = [
   { id: 'dulce'    },
 ]
 
-const MARIDAJE_ICONOS = {
-  'carne':     '🥩', 'cordero': '🥩', 'buey': '🥩', 'ternera': '🥩',
-  'pescado':   '🐟', 'marisco': '🦞', 'cigala': '🦞', 'langosta': '🦞',
-  'queso':     '🧀', 'jamón':   '🥓', 'embutido': '🥓',
-  'pasta':     '🍝', 'arroz':   '🍚', 'paella': '🥘',
-  'verdura':   '🥗', 'ensalada': '🥗',
-  'postre':    '🍰', 'chocolate': '🍫',
-  'aperitivo': '🫒', 'solo':    '🍷',
-}
-
-function iconoMaridaje(texto = '') {
-  const t = texto.toLowerCase()
-  for (const [k, v] of Object.entries(MARIDAJE_ICONOS)) {
-    if (t.includes(k)) return v
-  }
-  return '🍴'
-}
-
 const VIEWS = { WELCOME: 'welcome', BROWSE: 'browse', PAIRING: 'pairing', DETAIL: 'detail', WIZARD: 'wizard', SHOWCASE: 'showcase' }
 
 const IDIOMAS = [
-  { id: 'es', flag: '🇪🇸' },
-  { id: 'en', flag: '🇬🇧' },
-  { id: 'fr', flag: '🇫🇷' },
-  { id: 'de', flag: '🇩🇪' },
+  { id: 'es', label: 'Español', flagClass: 'langFlagEs' },
+  { id: 'en', label: 'English', flagClass: 'langFlagGb' },
+  { id: 'fr', label: 'Français', flagClass: 'langFlagFr' },
+  { id: 'de', label: 'Deutsch', flagClass: 'langFlagDe' },
+]
+
+const WELCOME_ACTION_EMOJIS = {
+  browse: '🍾',
+  choose: '🤔',
+  pairing: '🍽️',
+}
+
+const MARIDAJE_ICONOS = [
+  { icon: '🧀', terms: ['queso', 'trufa', 'manchego', 'manchega', 'curado', 'curada'] },
+  { icon: '🥩', terms: ['jamon', 'iberico', 'bellota', 'carne', 'cordero', 'solomillo', 'ternera'] },
+  { icon: '🐟', terms: ['pescado', 'sardina', 'atun', 'bacalao', 'merluza'] },
+  { icon: '🦞', terms: ['marisco', 'cigala', 'langostino', 'gamba', 'pulpo', 'bogavante'] },
+  { icon: '🫒', terms: ['oliva', 'aceituna', 'esparrago', 'verdura', 'ensalada'] },
+  { icon: '🍯', terms: ['dulce', 'postre', 'miel', 'chocolate'] },
 ]
 
 const T = {
@@ -100,8 +100,8 @@ const T = {
     ocasionLabels: { regalo:'Es un\nregalo', celebracion:'Celebración\no aperitivo', casa:'Para tomar\nen casa' },
     estiloLabels: { afrutado:'🍓 Afrutado', seco:'🍂 Seco y elegante', cuerpo:'💪 Con mucho cuerpo', ligero:'☁️ Ligero y fresco', espumoso:'✨ Espumoso', dulce:'🍯 Dulce o generoso' },
     sinLimite: 'Sin límite', miRango: '🎯 Mi rango', elegirPresupuesto: 'Elige tu presupuesto',
-    buscarRango: 'Buscar con este rango →', cancelar: 'Cancelar',
-    buscandoVino: 'Buscando el vino perfecto para ti…',
+    buscarRango: '🔍 Buscar con este rango →', cancelar: 'Cancelar',
+    buscandoVino: '⏳ Buscando el vino perfecto para ti…',
   },
   en: {
     explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?',
@@ -123,8 +123,8 @@ const T = {
     ocasionLabels: { regalo:'A gift', celebracion:'Celebration\nor aperitif', casa:'Drink at\nhome' },
     estiloLabels: { afrutado:'🍓 Fruity', seco:'🍂 Dry & elegant', cuerpo:'💪 Full-bodied', ligero:'☁️ Light & fresh', espumoso:'✨ Sparkling', dulce:'🍯 Sweet or fortified' },
     sinLimite: 'No limit', miRango: '🎯 My range', elegirPresupuesto: 'Choose your budget',
-    buscarRango: 'Search this range →', cancelar: 'Cancel',
-    buscandoVino: 'Finding the perfect wine for you…',
+    buscarRango: '🔍 Search this range →', cancelar: 'Cancel',
+    buscandoVino: '⏳ Finding the perfect wine for you…',
   },
   fr: {
     explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?',
@@ -146,8 +146,8 @@ const T = {
     ocasionLabels: { regalo:'Un cadeau', celebracion:'Fête ou\napéritif', casa:'À déguster\nchez soi' },
     estiloLabels: { afrutado:'🍓 Fruité', seco:'🍂 Sec et élégant', cuerpo:'💪 Corsé', ligero:'☁️ Léger et frais', espumoso:'✨ Pétillant', dulce:'🍯 Doux ou fortifié' },
     sinLimite: 'Sans limite', miRango: '🎯 Ma fourchette', elegirPresupuesto: 'Choisissez votre budget',
-    buscarRango: 'Rechercher cette fourchette →', cancelar: 'Annuler',
-    buscandoVino: 'Nous cherchons le vin parfait pour vous…',
+    buscarRango: '🔍 Rechercher cette fourchette →', cancelar: 'Annuler',
+    buscandoVino: '⏳ Nous cherchons le vin parfait pour vous…',
   },
   de: {
     explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?',
@@ -169,19 +169,32 @@ const T = {
     ocasionLabels: { regalo:'Ein Geschenk', celebracion:'Feier oder\nAperitif', casa:'Für zu\nHause' },
     estiloLabels: { afrutado:'🍓 Fruchtig', seco:'🍂 Trocken & elegant', cuerpo:'💪 Vollmundig', ligero:'☁️ Leicht & frisch', espumoso:'✨ Schaumwein', dulce:'🍯 Süß oder likör' },
     sinLimite: 'Kein Limit', miRango: '🎯 Mein Bereich', elegirPresupuesto: 'Budget wählen',
-    buscarRango: 'In diesem Bereich suchen →', cancelar: 'Abbrechen',
-    buscandoVino: 'Wir suchen den perfekten Wein für Sie…',
+    buscarRango: '🔍 In diesem Bereich suchen →', cancelar: 'Abbrechen',
+    buscandoVino: '⏳ Wir suchen den perfekten Wein für Sie…',
   },
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function normalizarTexto(t = '') {
-  return String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+function iconoMaridaje(texto = '') {
+  const normal = normalizarTexto(texto)
+  return MARIDAJE_ICONOS.find(item => item.terms.some(term => normal.includes(term)))?.icon || '🍴'
+}
+function inicialesTienda(nombre = '') {
+  const partes = String(nombre || '').trim().split(/\s+/).filter(Boolean)
+  if (!partes.length) return 'V'
+  return partes.slice(0, 2).map(p => p[0]).join('').toUpperCase()
 }
 function formatPrecio(p) {
   if (!p) return ''
   return Number(p).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+}
+
+function precioActual(vino) {
+  return Number(vino?.precio_oferta || vino?.precio_pvp || 0)
 }
 function extraerValoresUnicos(vinos, campo) {
   return [...new Set(vinos.map(v => v[campo]).filter(Boolean))].sort()
@@ -325,6 +338,282 @@ function PriceRangeSlider({ minAll, maxAll, valueMin, valueMax, onChangeMin, onC
 
 // ── Componentes auxiliares ────────────────────────────────────────────────────
 
+function KioskIcon({ name }) {
+  if (name === 'choose') return (
+    <svg className={styles.welcomeActionSvg} viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="24" r="17" />
+      <path d="M28.5 19.5 20 22l-2.5 8.5 8.5-2.5 2.5-8.5Z" />
+      <circle cx="24" cy="24" r="2" />
+    </svg>
+  )
+
+  if (name === 'pairing') return (
+    <svg className={styles.welcomeActionSvg} viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M16 8v16" />
+      <path d="M11 8v9c0 4 2 7 5 7s5-3 5-7V8" />
+      <path d="M16 24v16" />
+      <path d="M31 8c4 3 6 8 5 14-.5 3-2 5-5 6v12" />
+      <path d="M29 8v32" />
+    </svg>
+  )
+
+  return (
+    <svg className={styles.welcomeActionSvg} viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M21 7h6" />
+      <path d="M22 7v9l-5 7v15c0 2 1.5 3 3 3h8c1.5 0 3-1 3-3V23l-5-7V7" />
+      <path d="M17 28h14" />
+      <path d="M18 35h12" />
+    </svg>
+  )
+}
+
+function WelcomeActionIcon({ name, variant }) {
+  if (variant === 'lineal') return <KioskIcon name={name} />
+  return <span className={styles.welcomeActionEmoji} aria-hidden="true">{WELCOME_ACTION_EMOJIS[name]}</span>
+}
+
+function SafeImage({ src, alt, className, fallback, ...props }) {
+  const [failedSrc, setFailedSrc] = useState('')
+  const failed = Boolean(src && failedSrc === src)
+
+  if (!src || failed) return fallback ?? null
+
+  return (
+    <img
+      src={src}
+      alt={alt || ''}
+      className={className}
+      onError={() => setFailedSrc(src)}
+      {...props}
+    />
+  )
+}
+
+function LogoFallback({ nombre }) {
+  return (
+    <div className={styles.welcomeLogoFallback} aria-hidden="true">
+      {inicialesTienda(nombre)}
+    </div>
+  )
+}
+
+function MobileQrModal({
+  selection,
+  onClose,
+  onRemove,
+  colorAcento,
+  ordersEnabled = false,
+  order,
+}) {
+  const [qrDataUrl, setQrDataUrl] = useState('')
+  const [copiado, setCopiado] = useState(false)
+  const [counterMode, setCounterMode] = useState('options')
+  const vinos = selection?.vinos || (selection?.vino ? [selection.vino] : [])
+  const total = vinos.reduce((sum, vino) => sum + precioActual(vino), 0)
+
+  useEffect(() => {
+    if (!selection?.url || ordersEnabled) {
+      queueMicrotask(() => setQrDataUrl(''))
+      return
+    }
+    queueMicrotask(() => setQrDataUrl(''))
+    QRCode.toDataURL(selection.url, {
+      width: 760,
+      margin: 2,
+      color: { dark: '#171416', light: '#ffffff' },
+    }).then(setQrDataUrl).catch(() => setQrDataUrl(''))
+  }, [ordersEnabled, selection?.url])
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setCounterMode('options')
+      setCopiado(false)
+    })
+  }, [selection?.url])
+
+  if (!selection || vinos.length === 0) return null
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(selection.url)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 1600)
+    } catch {}
+  }
+
+  return (
+    <div className={styles.mobileQrOverlay} onClick={onClose}>
+      <div className={styles.mobileQrPanel} onClick={e => e.stopPropagation()}>
+        <button className={styles.mobileQrClose} type="button" onClick={onClose} aria-label="Cerrar">&times;</button>
+        <p className={styles.mobileQrEyebrow}>Carrito de vinos</p>
+        <h3>{vinos.length} {vinos.length === 1 ? 'vino guardado' : 'vinos guardados'}</h3>
+        <p className={styles.mobileQrBodega}>
+          {ordersEnabled
+            ? 'Elige cómo quieres terminar esta selección en tienda.'
+            : 'Cuando termines, escanea este QR para llevarte la lista al móvil.'}
+        </p>
+        {total > 0 && (
+          <div className={styles.mobileQrTotal}>
+            <span>Total orientativo</span>
+            <strong>{formatPrecio(total)}</strong>
+          </div>
+        )}
+        <div className={styles.mobileQrWineList}>
+          {vinos.map(vino => (
+            <div key={vino.id} className={styles.mobileQrWineRow}>
+              <span>
+                <strong>{vino.nombre}</strong>
+                {vino.bodega && <small>{vino.bodega}</small>}
+              </span>
+              {precioActual(vino) > 0 && <em>{formatPrecio(precioActual(vino))}</em>}
+              {onRemove && (
+                <button type="button" onClick={() => onRemove(vino.id)} aria-label={`Quitar ${vino.nombre}`}>
+                  &times;
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        {ordersEnabled && (
+          <div className={styles.counterOrderBox}>
+            {order ? (
+              <div className={styles.counterOrderSuccess}>
+                <span>Pendiente de pago</span>
+                <strong>{order.order_code}</strong>
+                <p>Ya aparece en caja para cobrar, confirmar disponibilidad y preparar los vinos.</p>
+              </div>
+            ) : (
+              <>
+                <div className={styles.counterChoiceList}>
+                  <button
+                    type="button"
+                    className={`${styles.counterChoiceBtn} ${counterMode === 'show' ? styles.counterChoiceActive : ''}`}
+                    onClick={() => setCounterMode('show')}
+                  >
+                    <span>1</span>
+                    <strong>Mostrar en caja</strong>
+                    <em>El dependiente termina el pedido.</em>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.counterChoiceBtn} ${styles.counterChoiceDevelopment}`}
+                    disabled
+                  >
+                    <span>2</span>
+                    <strong>
+                      Pedir en caja
+                      <small>En desarrollo</small>
+                    </strong>
+                    <em>Estamos pausando esta funcion hasta cerrar bien el flujo operativo.</em>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.counterChoiceBtn} ${counterMode === 'payment' ? styles.counterChoiceActive : ''}`}
+                    onClick={() => setCounterMode('payment')}
+                  >
+                    <span>3</span>
+                    <strong>Pagar ahora</strong>
+                    <em>Pasarela de pago de la tienda.</em>
+                  </button>
+                </div>
+                {counterMode === 'show' && (
+                  <div className={styles.counterChoiceNotice}>
+                    <strong>Modo caja listo</strong>
+                    <p>Enseña esta pantalla al equipo. Puede revisar los vinos de arriba, confirmar precio y terminar la venta.</p>
+                  </div>
+                )}
+                {counterMode === 'payment' && (
+                  <div className={styles.counterChoiceNotice}>
+                    <strong>Pago online pendiente</strong>
+                    <p>Esta opción queda reservada para abrir la pasarela de pago de la tienda cuando la conectemos.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+        {!ordersEnabled && (
+          <>
+            <div className={styles.mobileQrBox}>
+              {qrDataUrl
+                ? <img src={qrDataUrl} alt="QR para abrir la seleccion en el movil" className={styles.mobileQrImg} />
+                : <div className={styles.mobileQrLoading}>Generando QR...</div>}
+            </div>
+            <p className={styles.mobileQrHint}>La lista conserva nombres, precios, ubicaciones y notas para enseñarla en caja o guardarla.</p>
+            <div className={styles.mobileQrActions}>
+              <button type="button" onClick={copiar} style={{ background: colorAcento }}>
+                {copiado ? 'Enlace copiado' : 'Copiar enlace'}
+              </button>
+              <button type="button" onClick={onClose} className={styles.mobileQrSecondary}>Cerrar</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function WineCartIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M14 18h20l-2 21H16L14 18Z" />
+      <path d="M18 18c0-5 2.8-8 6-8s6 3 6 8" />
+      <path d="M23 22h4" />
+      <path d="M24 22v5l-3 4v5h10v-5l-3-4v-5" />
+      <path d="M22 32h8" />
+    </svg>
+  )
+}
+
+function MobileSelectionTray({ vinos, notice, onOpen, onClear, colorAcento, ordersEnabled = false }) {
+  if (!vinos.length) return null
+  const total = vinos.reduce((sum, vino) => sum + precioActual(vino), 0)
+
+  return (
+    <div className={styles.mobileSelectionTray}>
+      <div className={styles.mobileSelectionCartIcon} aria-hidden="true">
+        <WineCartIcon className={styles.mobileSelectionCartSvg} />
+        <span>{vinos.length}</span>
+      </div>
+      <div className={styles.mobileSelectionInfo}>
+        <span>Carrito de vinos</span>
+        <strong>{notice || `${vinos.length} ${vinos.length === 1 ? 'vino guardado' : 'vinos guardados'}`}</strong>
+      </div>
+      <div className={styles.mobileSelectionNames}>
+        {vinos.slice(0, 3).map(vino => vino.nombre).join(' · ')}
+        {vinos.length > 3 ? ` · +${vinos.length - 3}` : ''}
+      </div>
+      {total > 0 && <div className={styles.mobileSelectionTotal}>{formatPrecio(total)}</div>}
+      <button className={styles.mobileSelectionQrBtn} type="button" onClick={onOpen} style={{ background: colorAcento }}>
+        {ordersEnabled ? 'Ver opciones' : 'Ver carrito y QR'}
+      </button>
+      <button className={styles.mobileSelectionClearBtn} type="button" onClick={onClear} aria-label="Vaciar carrito">
+        &times;
+      </button>
+    </div>
+  )
+}
+
+function BottleMark({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M21 7h6" />
+      <path d="M22 7v9l-5 7v15c0 2 1.5 3 3 3h8c1.5 0 3-1 3-3V23l-5-7V7" />
+      <path d="M18 29h12" />
+      <path d="M19 36h10" />
+    </svg>
+  )
+}
+
+function LocationMark({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 21s7-6.1 7-12a7 7 0 0 0-14 0c0 5.9 7 12 7 12Z" />
+      <circle cx="12" cy="9" r="2.4" />
+    </svg>
+  )
+}
+
 function TipoChip({ tipo, size = 'sm' }) {
   return (
     <span className={`${styles.tipoChip} ${size === 'lg' ? styles.tipoChipLg : ''}`} style={{ background: TIPO_COLORS[tipo] || '#666' }}>
@@ -337,7 +626,7 @@ function WineCardPlaceholder({ tipo }) {
   const color = TIPO_COLORS[tipo] || '#2a2a2a'
   return (
     <div className={styles.cardImgPlaceholder} style={{ background: `linear-gradient(135deg, ${color}33, ${color}88)` }}>
-      <span className={styles.cardImgIcon}>🍷</span>
+      <BottleMark className={styles.cardImgIcon} />
     </div>
   )
 }
@@ -346,7 +635,13 @@ function WineCard({ vino, onClick }) {
   return (
     <button className={styles.wineCard} onClick={() => onClick(vino)} type="button">
       <div className={styles.cardImg}>
-        {vino.foto_url ? <img src={vino.foto_url} alt={vino.nombre} className={styles.cardImgPhoto} loading="lazy" /> : <WineCardPlaceholder tipo={vino.tipo} />}
+        <SafeImage
+          src={vino.foto_url}
+          alt={vino.nombre}
+          className={styles.cardImgPhoto}
+          loading="lazy"
+          fallback={<WineCardPlaceholder tipo={vino.tipo} />}
+        />
         {vino.destacado && <span className={styles.cardDestacado}>★ Destacado</span>}
       </div>
       <div className={styles.cardBody}>
@@ -365,7 +660,12 @@ function WineCard({ vino, onClick }) {
                 <span className={styles.ofertaBadge}>OFERTA</span>
               </span>
             : vino.precio_pvp && <span className={styles.cardPrecio}>{formatPrecio(vino.precio_pvp)}</span>}
-          {vino.ubicacion_estanteria && <span className={styles.cardUbicacion}>📍 {vino.ubicacion_estanteria}</span>}
+          {vino.ubicacion_estanteria && (
+            <span className={styles.cardUbicacion}>
+              <LocationMark className={styles.locationIcon} />
+              {vino.ubicacion_estanteria}
+            </span>
+          )}
         </div>
       </div>
     </button>
@@ -374,7 +674,7 @@ function WineCard({ vino, onClick }) {
 
 // ── Ficha de vino enriquecida ─────────────────────────────────────────────────
 
-function WineDetail({ vino, slug, colorAcento, onClose, lang = 'es' }) {
+function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es' }) {
   const fichaInicial = useMemo(() => {
     if (!vino?.ficha_ia) return null
     try { return typeof vino.ficha_ia === 'string' ? JSON.parse(vino.ficha_ia) : vino.ficha_ia }
@@ -385,8 +685,14 @@ function WineDetail({ vino, slug, colorAcento, onClose, lang = 'es' }) {
   const [fichaReady, setFichaReady] = useState(!!fichaInicial)
   useEffect(() => {
     // La ficha cacheada es en español — si el idioma es distinto, regeneramos
-    if (fichaInicial && lang === 'es') return
-    setFichaReady(false)
+    if (fichaInicial && lang === 'es') {
+      queueMicrotask(() => {
+        setFicha(fichaInicial)
+        setFichaReady(true)
+      })
+      return
+    }
+    queueMicrotask(() => setFichaReady(false))
     fetch(`/api/kiosko/${slug}/ficha/${vino.id}?lang=${lang}`)
       .then(r => r.json())
       .then(d => { if (d.ficha) setFicha(d.ficha) })
@@ -408,10 +714,16 @@ function WineDetail({ vino, slug, colorAcento, onClose, lang = 'es' }) {
         <button className={`${styles.detailClose} ${styles.detailCloseDesktop}`} onClick={onClose} type="button" aria-label="Cerrar">✕</button>
         <div className={styles.detailContent}>
           <div className={styles.detailLeft}>
-            {vino.foto_url
-              ? <img src={vino.foto_url} alt={vino.nombre} className={styles.detailPhoto} />
-              : <div className={styles.detailPhotoPlaceholder} style={{ background: `linear-gradient(135deg, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}44, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}99)` }}><span>🍷</span></div>
-            }
+            <SafeImage
+              src={vino.foto_url}
+              alt={vino.nombre}
+              className={styles.detailPhoto}
+              fallback={
+                <div className={styles.detailPhotoPlaceholder} style={{ background: `linear-gradient(135deg, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}44, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}99)` }}>
+                  <BottleMark className={styles.detailPhotoIcon} />
+                </div>
+              }
+            />
             {vino.destacado && <div className={styles.detailDestacado} style={{ color: colorAcento }}>{T[lang].destacado}</div>}
           </div>
 
@@ -441,9 +753,17 @@ function WineDetail({ vino, slug, colorAcento, onClose, lang = 'es' }) {
             {vino.ubicacion_estanteria && (
               <div className={styles.detailUbicacion}>
                 <span className={styles.detailUbicacionLabel}>{T[lang].encuentraEn}</span>
-                <span className={styles.detailUbicacionValor} style={{ color: colorAcento }}>📍 {vino.ubicacion_estanteria}</span>
+                <span className={styles.detailUbicacionValor} style={{ color: colorAcento }}>
+                  <LocationMark className={styles.locationIcon} />
+                  {vino.ubicacion_estanteria}
+                </span>
               </div>
             )}
+
+            <button className={styles.mobileCarryBtn} type="button" onClick={() => onMobile?.(vino, 'detail')}>
+              <span aria-hidden="true">+</span>
+              Añadir al carrito
+            </button>
 
             {/* Notas de cata — skeleton mientras carga */}
             {!fichaReady ? (
@@ -462,7 +782,7 @@ function WineDetail({ vino, slug, colorAcento, onClose, lang = 'es' }) {
                 {(ficha.temperatura || ficha.copa) && (
                   <div className={styles.fichaServicio}>
                     {ficha.temperatura && <span>🌡️ {ficha.temperatura}</span>}
-                    {ficha.copa && <span>🍷 Copa {ficha.copa}</span>}
+                    {ficha.copa && <span>Copa {ficha.copa}</span>}
                   </div>
                 )}
                 {ficha.maridajes?.length > 0 && (
@@ -471,7 +791,8 @@ function WineDetail({ vino, slug, colorAcento, onClose, lang = 'es' }) {
                     <div className={styles.fichaMaridajesGrid}>
                       {ficha.maridajes.map((m, i) => (
                         <span key={i} className={styles.fichaMaridajeTag}>
-                          {iconoMaridaje(m)} {m}
+                          <span className={styles.foodPairingTagIcon} aria-hidden="true">{iconoMaridaje(m)}</span>
+                          {m}
                         </span>
                       ))}
                     </div>
@@ -492,7 +813,7 @@ function WineDetail({ vino, slug, colorAcento, onClose, lang = 'es' }) {
 
 // ── Wizard "Ayúdame a elegir" ─────────────────────────────────────────────────
 
-function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onBack, vinos = [], lang = 'es' }) {
+function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, vinos = [], lang = 'es' }) {
   const [step, setStep]       = useState(0)
   const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '' })
   const [cargando, setCargando] = useState(false)
@@ -572,7 +893,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
             {OCASIONES_IDS.map(o => (
               <button key={o.id} className={styles.wizardOcasionBtn} onClick={() => selOcasion(o.id)} type="button"
                 style={{ '--acento': colorAcento }}>
-                <span className={styles.wizardOcasionIcon}>{o.icon}</span>
+                <span className={styles.wizardOcasionIcon}>{o.emoji}</span>
                 <span className={styles.wizardOcasionLabel}>{T[lang].ocasionLabels[o.id]}</span>
               </button>
             ))}
@@ -663,12 +984,14 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
           {resultado.intro && <p className={styles.pairingIntro}>{resultado.intro}</p>}
           <div className={styles.pairingWines}>
             {resultado.recomendaciones.map(vino => (
-              <button key={vino.id} className={styles.pairingWineCard} onClick={() => onWineSelect(vino)} type="button">
+              <article key={vino.id} className={styles.pairingWineCard}>
                 <div className={styles.pairingWineLeft}>
-                  {vino.foto_url
-                    ? <img src={vino.foto_url} alt={vino.nombre} className={styles.pairingWinePhoto} />
-                    : <div className={styles.pairingWinePhotoPlaceholder} style={{ background: `${TIPO_COLORS[vino.tipo] || '#333'}66` }}>🍷</div>
-                  }
+                  <SafeImage
+                    src={vino.foto_url}
+                    alt={vino.nombre}
+                    className={styles.pairingWinePhoto}
+                    fallback={<div className={styles.pairingWinePhotoPlaceholder} style={{ background: `${TIPO_COLORS[vino.tipo] || '#333'}66` }}><BottleMark className={styles.pairingWineIcon} /></div>}
+                  />
                 </div>
                 <div className={styles.pairingWineInfo}>
                   <div className={styles.pairingWineTop}>
@@ -678,9 +1001,22 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
                   <p className={styles.pairingWineNombre}>{vino.nombre}</p>
                   {vino.bodega && <p className={styles.pairingWineBodega}>{vino.bodega}</p>}
                   <p className={styles.pairingWineRazon}>{vino.razon}</p>
-                  {vino.ubicacion_estanteria && <p className={styles.pairingWineUbicacion}>📍 {vino.ubicacion_estanteria}</p>}
+                  {vino.ubicacion_estanteria && (
+                    <p className={styles.pairingWineUbicacion}>
+                      <LocationMark className={styles.locationIcon} />
+                      {vino.ubicacion_estanteria}
+                    </p>
+                  )}
+                  <div className={styles.pairingWineActions}>
+                    <button className={styles.pairingWineOpenBtn} type="button" onClick={() => onWineSelect(vino)}>
+                      Ver ficha
+                    </button>
+                    <button className={styles.pairingWineMobileBtn} type="button" onClick={() => onMobile?.(vino, 'wizard', vino.razon)}>
+                      Añadir al carrito
+                    </button>
+                  </div>
                 </div>
-              </button>
+              </article>
             ))}
           </div>
           <button className={styles.pairingReiniciarBtn} onClick={reset} type="button">Nueva búsqueda</button>
@@ -728,7 +1064,16 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
     <div className={styles.showcaseView} onClick={onExit} style={{ '--acento': colorAcento, '--primario': colorPrimario }}>
       {/* Fondo con foto */}
       <div className={`${styles.showcaseBg} ${fade ? styles.showcaseFadeIn : styles.showcaseFadeOut}`}>
-        <img src={vino.foto_url} alt={vino.nombre} className={styles.showcaseBgImg} />
+        <SafeImage
+          src={vino.foto_url}
+          alt={vino.nombre}
+          className={styles.showcaseBgImg}
+          fallback={
+            <div className={styles.showcaseBgFallback} style={{ background: `radial-gradient(circle at 50% 30%, ${TIPO_COLORS[vino.tipo] || '#333'}55, transparent 42%), linear-gradient(135deg, #11111a, #050506)` }}>
+              <BottleMark className={styles.showcaseBgIcon} />
+            </div>
+          }
+        />
         <div className={styles.showcaseBgOverlay} />
       </div>
 
@@ -757,7 +1102,10 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
           <p className={styles.showcasePrecio} style={{ color: colorAcento }}>{formatPrecio(vino.precio_pvp)}</p>
         )}
         {vino.ubicacion_estanteria && (
-          <p className={styles.showcaseUbicacion}>📍 Estantería {vino.ubicacion_estanteria}</p>
+          <p className={styles.showcaseUbicacion}>
+            <LocationMark className={styles.showcaseLocationIcon} />
+            Estantería {vino.ubicacion_estanteria}
+          </p>
         )}
       </div>
 
@@ -777,7 +1125,7 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
 
 // ── Vista Pairing ─────────────────────────────────────────────────────────────
 
-function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBack, lang = 'es' }) {
+function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMobile, onBack, lang = 'es' }) {
   const [consulta, setConsulta] = useState('')
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
@@ -843,11 +1191,14 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBa
           {resultado.intro && <p className={styles.pairingIntro}>{resultado.intro}</p>}
           <div className={styles.pairingWines}>
             {resultado.recomendaciones.map(vino => (
-              <button key={vino.id} className={styles.pairingWineCard} onClick={() => onWineSelect(vino)} type="button">
+              <article key={vino.id} className={styles.pairingWineCard}>
                 <div className={styles.pairingWineLeft}>
-                  {vino.foto_url
-                    ? <img src={vino.foto_url} alt={vino.nombre} className={styles.pairingWinePhoto} />
-                    : <div className={styles.pairingWinePhotoPlaceholder} style={{ background: `${TIPO_COLORS[vino.tipo] || '#333'}66` }}>🍷</div>}
+                  <SafeImage
+                    src={vino.foto_url}
+                    alt={vino.nombre}
+                    className={styles.pairingWinePhoto}
+                    fallback={<div className={styles.pairingWinePhotoPlaceholder} style={{ background: `${TIPO_COLORS[vino.tipo] || '#333'}66` }}><BottleMark className={styles.pairingWineIcon} /></div>}
+                  />
                 </div>
                 <div className={styles.pairingWineInfo}>
                   <div className={styles.pairingWineTop}>
@@ -857,9 +1208,22 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onBa
                   <p className={styles.pairingWineNombre}>{vino.nombre}</p>
                   {vino.bodega && <p className={styles.pairingWineBodega}>{vino.bodega}</p>}
                   <p className={styles.pairingWineRazon}>{vino.razon}</p>
-                  {vino.ubicacion_estanteria && <p className={styles.pairingWineUbicacion}>📍 {vino.ubicacion_estanteria}</p>}
+                  {vino.ubicacion_estanteria && (
+                    <p className={styles.pairingWineUbicacion}>
+                      <LocationMark className={styles.locationIcon} />
+                      {vino.ubicacion_estanteria}
+                    </p>
+                  )}
+                  <div className={styles.pairingWineActions}>
+                    <button className={styles.pairingWineOpenBtn} type="button" onClick={() => onWineSelect(vino)}>
+                      Ver ficha
+                    </button>
+                    <button className={styles.pairingWineMobileBtn} type="button" onClick={() => onMobile?.(vino, 'pairing', vino.razon)}>
+                      Añadir al carrito
+                    </button>
+                  </div>
                 </div>
-              </button>
+              </article>
             ))}
           </div>
           <button className={styles.pairingReiniciarBtn} onClick={() => { setResultado(null); setConsulta('') }} type="button">Nueva búsqueda</button>
@@ -890,8 +1254,12 @@ function BrowseView({ vinos, colorAcento, onWineSelect, onBack, lang = 'es' }) {
   const [precioMin, setPrecioMin] = useState(0)
   const [precioMax, setPrecioMax] = useState(9999)
   useEffect(() => {
-    if (preciosAll) { setPrecioMin(preciosAll.min); setPrecioMax(preciosAll.max) }
-  }, [preciosAll?.min, preciosAll?.max])
+    if (!preciosAll) return
+    queueMicrotask(() => {
+      setPrecioMin(preciosAll.min)
+      setPrecioMax(preciosAll.max)
+    })
+  }, [preciosAll])
 
   const sliderActivo = preciosAll && (precioMin > preciosAll.min || precioMax < preciosAll.max)
 
@@ -991,10 +1359,15 @@ export default function KioskoPage() {
   const [error, setError]           = useState('')
   const [view, setView]             = useState(modoMostrador ? VIEWS.SHOWCASE : VIEWS.WELCOME)
   const [vinoDetalle, setVinoDetalle] = useState(null)
+  const [mobileVinos, setMobileVinos] = useState([])
+  const [mobileSelection, setMobileSelection] = useState(null)
+  const [cartNotice, setCartNotice] = useState('')
+  const [kioskOrder, setKioskOrder] = useState(null)
   const [longPressTimer, setLongPressTimer] = useState(null)
   const [lang, setLang]             = useState('es')
 
   const idleTimer = useRef(null)
+  const cartNoticeTimer = useRef(null)
 
   useEffect(() => {
     if (!slug) return
@@ -1018,7 +1391,13 @@ export default function KioskoPage() {
   const resetIdle = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current)
     if (view !== VIEWS.WELCOME && view !== VIEWS.SHOWCASE) {
-      idleTimer.current = setTimeout(() => { setView(VIEWS.WELCOME); setVinoDetalle(null) }, IDLE_TIMEOUT_MS)
+      idleTimer.current = setTimeout(() => {
+        setView(VIEWS.WELCOME)
+        setVinoDetalle(null)
+        setMobileVinos([])
+        setMobileSelection(null)
+        setCartNotice('')
+      }, IDLE_TIMEOUT_MS)
     }
   }, [view])
 
@@ -1045,6 +1424,59 @@ export default function KioskoPage() {
   function abrirDetalle(vino) { setVinoDetalle(vino); setView(VIEWS.DETAIL) }
   function volverDeDetalle() { setView(VIEWS.BROWSE); setVinoDetalle(null) }
   function abrirPairingDesdeDetalle() { setVinoDetalle(null); setView(VIEWS.PAIRING) }
+  function normalizarMobileVinos(lista) {
+    const vistos = new Set()
+    return lista
+      .filter(vino => vino?.id && !vistos.has(vino.id) && vistos.add(vino.id))
+      .slice(0, MOBILE_SELECTION_MAX)
+  }
+  function mobileUrl(lista, source = 'selection', reason = '') {
+    const seleccion = normalizarMobileVinos(Array.isArray(lista) ? lista : [lista])
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.cataconjuanjo.com'
+    const params = new URLSearchParams({
+      ids: seleccion.map(vino => vino.id).join(','),
+      from: source,
+      lang,
+    })
+    if (reason) params.set('motivo', String(reason).slice(0, 320))
+    return `${origin}/kiosko/${slug}/movil?${params.toString()}`
+  }
+  function abrirMobileQrLista(lista = mobileVinos, source = 'selection', reason = '') {
+    const seleccion = normalizarMobileVinos(lista)
+    if (!seleccion.length) return
+    setMobileVinos(seleccion)
+    setKioskOrder(null)
+    setMobileSelection({ vinos: seleccion, source, reason, url: mobileUrl(seleccion, source, reason) })
+  }
+  function abrirMobileQr(vino) {
+    const estaba = mobileVinos.some(v => v.id === vino.id)
+    const seleccion = normalizarMobileVinos([...mobileVinos, vino])
+    setMobileVinos(seleccion)
+    setMobileSelection(null)
+    setCartNotice(estaba ? 'Este vino ya estaba en el carrito' : `${vino.nombre} añadido`)
+    if (cartNoticeTimer.current) clearTimeout(cartNoticeTimer.current)
+    cartNoticeTimer.current = setTimeout(() => setCartNotice(''), 1800)
+  }
+  function quitarMobileVino(id) {
+    const seleccion = mobileVinos.filter(vino => vino.id !== id)
+    setMobileVinos(seleccion)
+    setCartNotice('')
+    setKioskOrder(null)
+    if (!seleccion.length) {
+      setMobileSelection(null)
+      return
+    }
+    setMobileSelection(prev => prev
+      ? { ...prev, vinos: seleccion, url: mobileUrl(seleccion, prev.source, prev.reason) }
+      : prev
+    )
+  }
+  function vaciarMobileVinos() {
+    setMobileVinos([])
+    setMobileSelection(null)
+    setCartNotice('')
+    setKioskOrder(null)
+  }
 
   // Long press en el logo → modo mostrador
   function onLogoPress()   { setLongPressTimer(setTimeout(() => setView(VIEWS.SHOWCASE), 2000)) }
@@ -1054,6 +1486,8 @@ export default function KioskoPage() {
   const colorAcento   = tienda?.color_acento   || '#c9a96e'
   const temaClaro     = esColorClaro(colorPrimario)
   const fontCss       = FONT_CSS[tienda?.font_family]?.css || FONT_CSS.clasica.css
+  const iconStyle      = tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji'
+  const pedidosMostradorActivos = tienda?.kiosko_orders_enabled === true && !COUNTER_ORDERS_IN_DEVELOPMENT
   const themeVars = {
     '--color-primario': colorPrimario, '--color-acento': colorAcento, '--font-family': fontCss,
     '--texto':    temaClaro ? '#141413'            : '#f0ede8',
@@ -1090,6 +1524,24 @@ export default function KioskoPage() {
 
   return (
     <div className={styles.kiosko} style={themeVars}>
+      <MobileQrModal
+        selection={mobileSelection}
+        onClose={() => setMobileSelection(null)}
+        onRemove={kioskOrder ? null : quitarMobileVino}
+        colorAcento={colorAcento}
+        ordersEnabled={pedidosMostradorActivos}
+        order={kioskOrder}
+      />
+      {view !== VIEWS.SHOWCASE && !mobileSelection && (
+        <MobileSelectionTray
+          vinos={mobileVinos}
+          notice={cartNotice}
+          onOpen={() => abrirMobileQrLista(mobileVinos)}
+          onClear={vaciarMobileVinos}
+          colorAcento={colorAcento}
+          ordersEnabled={pedidosMostradorActivos}
+        />
+      )}
 
       {/* MODO MOSTRADOR */}
       {view === VIEWS.SHOWCASE && (
@@ -1102,7 +1554,14 @@ export default function KioskoPage() {
         <div className={styles.welcomeView}>
           {/* Cabecera: logo, nombre, descripción */}
           <div className={styles.welcomeContent}>
-            {tienda?.logo_url && <img src={tienda.logo_url} alt={tienda?.nombre} className={styles.welcomeLogo} />}
+            {tienda?.logo_url && (
+              <SafeImage
+                src={tienda.logo_url}
+                alt={tienda?.nombre}
+                className={styles.welcomeLogo}
+                fallback={<LogoFallback nombre={tienda?.nombre} />}
+              />
+            )}
             <h1
               className={styles.welcomeNombre}
               style={{ color: colorAcento }}
@@ -1124,17 +1583,23 @@ export default function KioskoPage() {
           <div className={styles.welcomeActions}>
             <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.BROWSE)} type="button"
               style={{ '--acento': colorAcento }}>
-              <span className={styles.welcomeActionIcon}>🍾</span>
+              <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
+                <WelcomeActionIcon name="browse" variant={iconStyle} />
+              </span>
               <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].explorar}</span>
             </button>
             <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.WIZARD)} type="button"
               style={{ '--acento': colorAcento }}>
-              <span className={styles.welcomeActionIcon}>🤔</span>
+              <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
+                <WelcomeActionIcon name="choose" variant={iconStyle} />
+              </span>
               <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].elegir}</span>
             </button>
             <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.PAIRING)} type="button"
               style={{ '--acento': colorAcento }}>
-              <span className={styles.welcomeActionIcon}>🍽️</span>
+              <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
+                <WelcomeActionIcon name="pairing" variant={iconStyle} />
+              </span>
               <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].maridaje}</span>
             </button>
           </div>
@@ -1144,8 +1609,10 @@ export default function KioskoPage() {
               <button key={i.id} type="button"
                 className={`${styles.langBtn} ${lang === i.id ? styles.langBtnActive : ''}`}
                 onClick={() => setLang(i.id)}
+                title={i.label}
+                aria-label={i.label}
                 style={lang === i.id ? { borderColor: colorAcento } : {}}>
-                {i.flag}
+                <span className={`${styles.langFlag} ${styles[i.flagClass]}`} aria-hidden="true" />
               </button>
             ))}
           </div>
@@ -1160,9 +1627,13 @@ export default function KioskoPage() {
               <div className={styles.featuredStrip}>
                 {vinos.filter(v => v.destacado).slice(0, 8).map(v => (
                   <button key={v.id} className={styles.featuredCard} onClick={() => abrirDetalle(v)} type="button">
-                    {v.foto_url
-                      ? <img src={v.foto_url} alt={v.nombre} className={styles.featuredPhoto} loading="lazy" />
-                      : <div className={styles.featuredPhotoPlaceholder} style={{ background: `${TIPO_COLORS[v.tipo] || '#333'}88` }}>🍷</div>}
+                    <SafeImage
+                      src={v.foto_url}
+                      alt={v.nombre}
+                      className={styles.featuredPhoto}
+                      loading="lazy"
+                      fallback={<div className={styles.featuredPhotoPlaceholder} style={{ background: `${TIPO_COLORS[v.tipo] || '#333'}88` }}><BottleMark className={styles.featuredPhotoIcon} /></div>}
+                    />
                     <p className={styles.featuredNombre}>{v.nombre}</p>
                     {v.precio_pvp && <p className={styles.featuredPrecio} style={{ color: colorAcento }}>{formatPrecio(v.precio_pvp)}</p>}
                   </button>
@@ -1178,7 +1649,7 @@ export default function KioskoPage() {
       {/* WIZARD */}
       {view === VIEWS.WIZARD && (
         <WizardView slug={slug} tienda={tienda} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} vinos={vinos} lang={lang} />
+          onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} vinos={vinos} lang={lang} />
       )}
 
       {/* EXPLORAR */}
@@ -1190,13 +1661,13 @@ export default function KioskoPage() {
       {/* MARIDAJE */}
       {view === VIEWS.PAIRING && (
         <PairingView tienda={tienda} slug={slug} colorAcento={colorAcento} vinos={vinos}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} />
+          onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} lang={lang} />
       )}
 
       {/* DETALLE */}
       {view === VIEWS.DETAIL && vinoDetalle && (
         <WineDetail vino={vinoDetalle} slug={slug} colorAcento={colorAcento}
-          onClose={volverDeDetalle} lang={lang} />
+          onClose={volverDeDetalle} onMobile={abrirMobileQr} lang={lang} />
       )}
     </div>
   )

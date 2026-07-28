@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useMemo } from 'react'
+import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import styles from './admin.module.css'
 import { supabase } from '../../supabase'
@@ -9,6 +10,7 @@ import { isAdminEmail } from '../../demo'
 const TIPOS = ['tinto','blanco','rosado','espumoso','generoso','dulce','naranja','sin_alcohol']
 
 const WHATSAPP_VENTAS = '34601502868'
+const COUNTER_ORDERS_IN_DEVELOPMENT = true
 
 // ── Constantes de personalización ─────────────────────────────────────────────
 
@@ -27,6 +29,63 @@ const FUENTES = [
   { id: 'elegante', label: 'Elegante',  muestra: 'El arte del vino',  css: "'Cormorant Garamond', Palatino, serif",  google: 'Cormorant+Garamond:ital,wght@0,400;0,600;1,400' },
   { id: 'natural',  label: 'Natural',   muestra: 'El arte del vino',  css: "'Lato', Trebuchet MS, sans-serif",       google: 'Lato:wght@400;700' },
 ]
+
+const ICON_STYLE_OPTIONS = [
+  { id: 'emoji', label: 'Emojis', desc: 'Más cercano y rápido para venta asistida.', preview: ['🍾', '🤔', '🍽️'] },
+  { id: 'lineal', label: 'Iconos lineales', desc: 'Más sobrio para tiendas con estética premium.', preview: null },
+]
+
+const PREVIEW_ACTIONS = [
+  { icon: '🍾', iconName: 'browse', label: 'Explorar vinos' },
+  { icon: '🤔', iconName: 'choose', label: 'Ayúdame\na elegir' },
+  { icon: '🍽️', iconName: 'pairing', label: '¿Con qué\nlo tomo?' },
+]
+
+const PEDIDO_STATUS = [
+  { id: 'pendiente_pago', label: 'Pendiente pago' },
+  { id: 'preparando', label: 'Preparando' },
+  { id: 'cerrado', label: 'Entregado' },
+  { id: 'cancelado', label: 'Cancelado' },
+]
+
+function pedidoVisualStatus(status) {
+  return status === 'nuevo' ? 'pendiente_pago' : status
+}
+
+function AdminThumbImage({ src, alt = '', className, fallback }) {
+  const [failedSrc, setFailedSrc] = useState(null)
+  if (!src || failedSrc === src) return fallback
+  return <img src={src} alt={alt} className={className} loading="lazy" onError={() => setFailedSrc(src)} />
+}
+
+function PreviewKioskIcon({ name }) {
+  if (name === 'choose') return (
+    <svg className={styles.previewActionSvg} viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="24" r="17" />
+      <path d="M28.5 19.5 20 22l-2.5 8.5 8.5-2.5 2.5-8.5Z" />
+      <circle cx="24" cy="24" r="2" />
+    </svg>
+  )
+
+  if (name === 'pairing') return (
+    <svg className={styles.previewActionSvg} viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M16 8v16" />
+      <path d="M11 8v9c0 4 2 7 5 7s5-3 5-7V8" />
+      <path d="M16 24v16" />
+      <path d="M31 8c4 3 6 8 5 14-.5 3-2 5-5 6v12" />
+      <path d="M29 8v32" />
+    </svg>
+  )
+
+  return (
+    <svg className={styles.previewActionSvg} viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M21 7h6" />
+      <path d="M22 7v9l-5 7v15c0 2 1.5 3 3 3h8c1.5 0 3-1 3-3V23l-5-7V7" />
+      <path d="M17 28h14" />
+      <path d="M18 35h12" />
+    </svg>
+  )
+}
 
 function esColorClaro(hex) {
   if (!hex || hex[0] !== '#' || hex.length < 7) return false
@@ -101,6 +160,8 @@ function AjustesTab({ slug, tienda, onSaved }) {
     color_primario: tienda?.color_primario || '#0d0d1a',
     color_acento:   tienda?.color_acento   || '#c9a96e',
     font_family:    tienda?.font_family    || 'clasica',
+    kiosko_icon_style: tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji',
+    kiosko_orders_enabled: tienda?.kiosko_orders_enabled === true,
     informe_email:  tienda?.informe_email  || '',
   })
   const [logoFile,     setLogoFile]     = useState(null)
@@ -110,6 +171,7 @@ function AjustesTab({ slug, tienda, onSaved }) {
   const [guardando,    setGuardando]    = useState(false)
   const [msg,          setMsg]          = useState('')
   const logoInputRef = useRef(null)
+  const authHeaders = tienda?._token ? { Authorization: `Bearer ${tienda._token}` } : {}
 
   useEffect(() => {
     const fonts = [
@@ -164,7 +226,7 @@ function AjustesTab({ slug, tienda, onSaved }) {
         setSubiendoLogo(true)
         const fd = new FormData()
         fd.append('logo', logoFile)
-        const r = await fetch(`/api/kiosko/${slug}/admin/upload-logo`, { method: 'POST', body: fd })
+        const r = await fetch(`/api/kiosko/${slug}/admin/upload-logo`, { method: 'POST', headers: authHeaders, body: fd })
         const d = await r.json()
         setSubiendoLogo(false)
         if (!r.ok) throw new Error(d.error || 'Error subiendo logo')
@@ -175,7 +237,7 @@ function AjustesTab({ slug, tienda, onSaved }) {
 
       const r = await fetch(`/api/kiosko/${slug}/admin/ajustes`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...ajustes, logo_url: logoUrl }),
       })
       const d = await r.json()
@@ -287,6 +349,46 @@ function AjustesTab({ slug, tienda, onSaved }) {
           </div>
         </div>
 
+        {/* Estilo visual */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>Iconos de bienvenida</p>
+          <div className={styles.iconStyleGrid}>
+            {ICON_STYLE_OPTIONS.map(option => (
+              <button
+                key={option.id}
+                type="button"
+                className={`${styles.iconStyleBtn} ${ajustes.kiosko_icon_style === option.id ? styles.iconStyleBtnActivo : ''}`}
+                onClick={() => cambiar('kiosko_icon_style', option.id)}
+              >
+                <span className={styles.iconStylePreview}>
+                  {option.preview
+                    ? option.preview.map(icon => <span key={icon}>{icon}</span>)
+                    : PREVIEW_ACTIONS.map(action => <PreviewKioskIcon key={action.iconName} name={action.iconName} />)}
+                </span>
+                <span className={styles.iconStyleLabel}>{option.label}</span>
+                <span className={styles.iconStyleDesc}>{option.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>Pedido de mostrador</p>
+          <button
+            type="button"
+            className={`${styles.settingToggleCard} ${styles.settingToggleCardDisabled}`}
+            disabled
+          >
+            <span className={styles.settingToggleText}>
+              <strong>En desarrollo</strong>
+              <small>La creación de pedidos desde el carrito está pausada hasta cerrar bien el flujo operativo.</small>
+            </span>
+            <span className={styles.settingSwitch} aria-hidden="true">
+              <span />
+            </span>
+          </button>
+        </div>
+
         {/* Info tienda */}
         <div className={styles.ajustesSec}>
           <p className={styles.ajustesSecTitulo}>Información de la tienda</p>
@@ -369,7 +471,7 @@ function AjustesTab({ slug, tienda, onSaved }) {
                 Añade el kiosko como botón flotante en tu web. Disponible en plan Premium.
               </p>
               <div className={styles.widgetEmbedBox} style={{ opacity: .45 }}>
-                <code className={styles.widgetEmbedCode}>&lt;script src="..."&gt;&lt;/script&gt;</code>
+                <code className={styles.widgetEmbedCode}>&lt;script src=&quot;...&quot;&gt;&lt;/script&gt;</code>
               </div>
             </div>
           </PremiumLock>
@@ -413,14 +515,15 @@ function AjustesTab({ slug, tienda, onSaved }) {
 
           {/* Tarjetas de acción — igual que el kiosko real */}
           <div className={styles.previewActions}>
-            {[
-              { icon: '🍾', label: 'Explorar vinos' },
-              { icon: '🤔', label: 'Ayúdame\na elegir' },
-              { icon: '🍽️', label: '¿Con qué\nlo tomo?' },
-            ].map(a => (
+            {PREVIEW_ACTIONS.map(a => (
               <div key={a.label} className={styles.previewActionCard}
                 style={{ background: panelColor, border: `1px solid ${ajustes.color_acento}22` }}>
-                <span className={styles.previewActionIcon}>{a.icon}</span>
+                <span
+                  className={`${styles.previewActionIcon} ${ajustes.kiosko_icon_style === 'emoji' ? styles.previewActionIconEmoji : ''}`}
+                  style={{ color: ajustes.color_acento }}
+                >
+                  {ajustes.kiosko_icon_style === 'lineal' ? <PreviewKioskIcon name={a.iconName} /> : a.icon}
+                </span>
                 <span className={styles.previewActionLabel} style={{ color: ajustes.color_acento }}>{a.label}</span>
               </div>
             ))}
@@ -513,6 +616,42 @@ const VINO_VACIO = {
   foto_url:'', notas_cata:'', descripcion:'', puntuacion:'', destacado:false, activo:true,
 }
 
+const QUALITY_CHECKS = [
+  { id: 'sin_foto', label: 'Sin foto', desc: 'La tarjeta publica pierde confianza.' },
+  { id: 'sin_pvp', label: 'Sin PVP', desc: 'El cliente vuelve a preguntar precio.' },
+  { id: 'sin_ubicacion', label: 'Sin ubicacion', desc: 'Cuesta encontrarlo en tienda.' },
+  { id: 'sin_stock', label: 'Sin stock', desc: 'No aparece disponible para vender.' },
+  { id: 'sin_texto', label: 'Sin texto de venta', desc: 'Falta descripcion, notas o ficha IA.' },
+]
+
+function hasText(value) {
+  return String(value || '').trim().length > 0
+}
+
+function vinoTieneQualityIssue(vino, issueId) {
+  if (!vino || vino.activo === false) return false
+  switch (issueId) {
+    case 'sin_foto':
+      return !hasText(vino.foto_url)
+    case 'sin_pvp':
+      return !(Number(vino.precio_pvp) > 0)
+    case 'sin_ubicacion':
+      return !hasText(vino.ubicacion_estanteria)
+    case 'sin_stock':
+      return !(Number(vino.stock) > 0)
+    case 'sin_texto':
+      return !hasText(vino.descripcion) && !hasText(vino.notas_cata) && !vino.has_ficha_ia
+    case 'pendientes':
+      return QUALITY_CHECKS.some(check => vinoTieneQualityIssue(vino, check.id))
+    default:
+      return false
+  }
+}
+
+function qualityIssuesForVino(vino) {
+  return QUALITY_CHECKS.filter(check => vinoTieneQualityIssue(vino, check.id))
+}
+
 export default function AdminKioskoPage() {
   const { slug }       = useParams()
   const searchParams   = useSearchParams()
@@ -547,8 +686,20 @@ export default function AdminKioskoPage() {
   const [tab, setTab]               = useState('catalogo')
   const [analitica, setAnalitica]   = useState(null)
   const [analiticaLoad, setAnaliticaLoad] = useState(false)
+  const [pedidos, setPedidos]       = useState(null)
+  const [pedidosLoad, setPedidosLoad] = useState(false)
+  const [pedidoMsg, setPedidoMsg]   = useState('')
 
   const esPremium = !tienda?.plan || tienda.plan === 'premium' || tienda.plan === 'trial'
+  const pedidosMostradorActivos = tienda?.kiosko_orders_enabled === true && !COUNTER_ORDERS_IN_DEVELOPMENT
+  const authHeaders = useMemo(
+    () => tienda?._token ? { Authorization: `Bearer ${tienda._token}` } : {},
+    [tienda?._token]
+  )
+  const jsonAuthHeaders = useMemo(
+    () => ({ ...authHeaders, 'Content-Type': 'application/json' }),
+    [authHeaders]
+  )
 
   // ── Trial ──────────────────────────────────────────────────────────────────
   const [trialSegsRestantes, setTrialSegsRestantes] = useState(null)
@@ -606,7 +757,12 @@ export default function AdminKioskoPage() {
     async function iniciarTrialAntiguo() {
       let expiresAt = tienda.trial_expires_at
       if (!expiresAt) {
-        const res = await fetch(`/api/kiosko/${slug}/admin/trial-start`, { method: 'POST' })
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+        const res = await fetch(`/api/kiosko/${slug}/admin/trial-start`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
         const d = await res.json()
         expiresAt = d.trial_expires_at
       }
@@ -628,6 +784,7 @@ export default function AdminKioskoPage() {
   const [filtroRegion, setFiltroRegion]   = useState('')
   const [filtroPais, setFiltroPais]       = useState('')
   const [filtroStock, setFiltroStock]     = useState('todos')
+  const [filtroCalidad, setFiltroCalidad] = useState('')
   const [precioMin, setPrecioMin]         = useState('')
   const [precioMax, setPrecioMax]         = useState('')
   const [ordenPor, setOrdenPor]           = useState('nombre')
@@ -644,6 +801,10 @@ export default function AdminKioskoPage() {
 
   useEffect(() => { if (slug) cargar() }, [slug])
 
+  useEffect(() => {
+    if (tab === 'pedidos' && tienda && (tienda.kiosko_orders_enabled !== true || COUNTER_ORDERS_IN_DEVELOPMENT)) setTab('catalogo')
+  }, [tab, tienda])
+
   // Tras un pago exitoso, el webhook puede tardar unos segundos.
   // Si subscription_status sigue en 'pending', reintentamos cada 3s hasta 30s.
   useEffect(() => {
@@ -654,7 +815,7 @@ export default function AdminKioskoPage() {
     let intentos = 0
     const intervalo = setInterval(async () => {
       intentos++
-      const res = await fetch(`/api/kiosko/${slug}/meta`)
+      const res = await fetch(`/api/kiosko/${slug}/meta`, { headers: authHeaders })
       if (res.ok) {
         const data = await res.json()
         if (data.tienda?.subscription_status !== 'pending') {
@@ -667,7 +828,7 @@ export default function AdminKioskoPage() {
     }, 3000)
 
     return () => clearInterval(intervalo)
-  }, [checkoutOk, tienda?.subscription_status])
+  }, [authHeaders, checkoutOk, slug, tienda?.subscription_status])
 
   // ── Datos ──────────────────────────────────────────────────────────────────
   async function cargar() {
@@ -691,9 +852,10 @@ export default function AdminKioskoPage() {
         return
       }
 
+      const requestHeaders = { Authorization: `Bearer ${session.access_token}` }
       const [r1, r2] = await Promise.all([
-        fetch(`/api/kiosko/${slug}/meta`),
-        fetch(`/api/kiosko/${slug}/admin/vinos`),
+        fetch(`/api/kiosko/${slug}/meta`, { headers: requestHeaders }),
+        fetch(`/api/kiosko/${slug}/admin/vinos`, { headers: requestHeaders }),
       ])
       if (!r1.ok) throw new Error('Tienda no encontrada')
       const meta = await r1.json()
@@ -749,7 +911,7 @@ export default function AdminKioskoPage() {
 
       const res = await fetch(url, {
         method:  esNuevo ? 'POST' : 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonAuthHeaders,
         body: JSON.stringify({
           ...form,
           foto_url:     fotoUrl,
@@ -776,7 +938,7 @@ export default function AdminKioskoPage() {
 
   async function eliminar(id) {
     if (!confirm('¿Eliminar este vino?')) return
-    await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE' })
+    await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
     setVinos(prev => prev.filter(v => v.id !== id))
   }
 
@@ -805,7 +967,7 @@ export default function AdminKioskoPage() {
 
     const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
       method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: jsonAuthHeaders,
       body: JSON.stringify({ [campo]: valorFinal }),
     })
     if (res.ok) {
@@ -825,20 +987,20 @@ export default function AdminKioskoPage() {
     }
     const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
       method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: jsonAuthHeaders,
       body: JSON.stringify(updates),
     })
     if (res.ok) {
       setVinos(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v))
       // Log historial
       fetch(`/api/kiosko/${slug}/admin/stock-log`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: jsonAuthHeaders,
         body: JSON.stringify({ vino_id: id, vino_nombre: vino?.nombre, stock_anterior: anterior, stock_nuevo: nuevo }),
       }).catch(() => {})
       // Alerta instantánea si stock bajo
       if (nuevo <= 3) {
         fetch(`/api/kiosko/${slug}/admin/alerta-stock`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: jsonAuthHeaders,
           body: JSON.stringify({ vino_nombre: vino?.nombre || id, stock_nuevo: nuevo }),
         }).catch(() => {})
       }
@@ -852,7 +1014,7 @@ export default function AdminKioskoPage() {
     const nuevo = !valorActual
     const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
       method:  'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: jsonAuthHeaders,
       body: JSON.stringify({ [campo]: nuevo }),
     })
     if (res.ok) {
@@ -873,7 +1035,7 @@ export default function AdminKioskoPage() {
       const fd = new FormData()
       fd.append('foto', file)
       fd.append('vinoId', vinoId)
-      const res  = await fetch(`/api/kiosko/${slug}/admin/upload-foto`, { method: 'POST', body: fd })
+      const res  = await fetch(`/api/kiosko/${slug}/admin/upload-foto`, { method: 'POST', headers: authHeaders, body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al subir foto')
       setVinos(prev => prev.map(v => v.id === vinoId ? { ...v, foto_url: data.url } : v))
@@ -917,7 +1079,7 @@ export default function AdminKioskoPage() {
     if (modal !== 'nuevo') {
       await fetch(`/api/kiosko/${slug}/admin/upload-foto`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: jsonAuthHeaders,
         body: JSON.stringify({ vinoId: modal.id }),
       })
     }
@@ -934,7 +1096,7 @@ export default function AdminKioskoPage() {
     fd.append('file', archivoImport)
     fd.append('reemplazar', modoImport === 'reemplazar' ? '1' : '0')
     try {
-      const res  = await fetch(`/api/kiosko/${slug}/admin/importar`, { method: 'POST', body: fd })
+      const res  = await fetch(`/api/kiosko/${slug}/admin/importar`, { method: 'POST', headers: authHeaders, body: fd })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al importar')
       setResultImport(data)
@@ -967,6 +1129,7 @@ export default function AdminKioskoPage() {
         if (filtroPais      && v.pais   !== filtroPais)   return false
         if (filtroStock === 'sin' && Number(v.stock) > 0) return false
         if (filtroStock === 'con' && !(Number(v.stock) > 0)) return false
+        if (filtroCalidad && !vinoTieneQualityIssue(v, filtroCalidad)) return false
         if (filtroDestacado === 'destacado' && !v.destacado) return false
         if (filtroDestacado === 'sin_foto'  && v.foto_url)   return false
         if (filtroDestacado === 'sin_ia'    && v.has_ficha_ia) return false
@@ -988,15 +1151,30 @@ export default function AdminKioskoPage() {
         if (va > vb) return ordenDir === 'asc' ? 1 : -1
         return 0
       })
-  }, [vinos, filtroTipo, filtroEstado, filtroRegion, filtroPais, filtroStock, filtroDestacado, precioMin, precioMax, busqueda, ordenPor, ordenDir])
+  }, [vinos, filtroTipo, filtroEstado, filtroRegion, filtroPais, filtroStock, filtroCalidad, filtroDestacado, precioMin, precioMax, busqueda, ordenPor, ordenDir])
 
   const hayFiltrosActivos = filtroTipo || filtroEstado !== 'todos' || filtroRegion || filtroPais ||
-    filtroStock !== 'todos' || filtroDestacado !== 'todos' || precioMin !== '' || precioMax !== '' || busqueda
+    filtroStock !== 'todos' || filtroCalidad || filtroDestacado !== 'todos' || precioMin !== '' || precioMax !== '' || busqueda
 
   function limpiarFiltros() {
     setBusqueda(''); setFiltroTipo(''); setFiltroEstado('todos')
     setFiltroRegion(''); setFiltroPais(''); setFiltroStock('todos')
-    setFiltroDestacado('todos'); setPrecioMin(''); setPrecioMax('')
+    setFiltroCalidad(''); setFiltroDestacado('todos'); setPrecioMin(''); setPrecioMax('')
+  }
+
+  function aplicarFiltroCalidad(issueId) {
+    setBusqueda('')
+    setFiltroTipo('')
+    setFiltroEstado('todos')
+    setFiltroRegion('')
+    setFiltroPais('')
+    setFiltroStock('todos')
+    setFiltroDestacado('todos')
+    setPrecioMin('')
+    setPrecioMax('')
+    setFiltroCalidad(issueId)
+    setOrdenPor('nombre')
+    setOrdenDir('asc')
   }
 
   function sortHead(campo) {
@@ -1020,14 +1198,72 @@ export default function AdminKioskoPage() {
     conFichaIA:  vinos.filter(v => v.has_ficha_ia).length,
   }), [vinos])
 
+  const catalogoChecklist = useMemo(() => {
+    const activos = vinos.filter(v => v.activo !== false)
+    const checks = QUALITY_CHECKS.map(check => {
+      const afectados = activos.filter(v => vinoTieneQualityIssue(v, check.id))
+      return { ...check, count: afectados.length, afectados }
+    })
+    const pendientesIds = new Set()
+    checks.forEach(check => check.afectados.forEach(v => pendientesIds.add(v.id)))
+    const pendientes = pendientesIds.size
+    const score = activos.length ? Math.max(0, Math.round(((activos.length - pendientes) / activos.length) * 100)) : 100
+    return { activos: activos.length, checks, pendientes, score }
+  }, [vinos])
+
+  const vinosPorId = useMemo(() => {
+    const map = new Map()
+    vinos.forEach(v => map.set(String(v.id), v))
+    return map
+  }, [vinos])
+
   async function cargarAnalitica() {
     setAnaliticaLoad(true)
     try {
-      const res  = await fetch(`/api/kiosko/${slug}/admin/analitica`)
+      const res  = await fetch(`/api/kiosko/${slug}/admin/analitica`, { headers: authHeaders })
       const data = await res.json()
       setAnalitica(res.ok ? data : { vacio: true })
     } catch { setAnalitica({ vacio: true }) }
     finally { setAnaliticaLoad(false) }
+  }
+
+  async function cargarPedidos() {
+    setPedidosLoad(true)
+    setPedidoMsg('')
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/admin/pedidos`, { headers: authHeaders })
+      const data = await res.json()
+      setPedidos(res.ok ? data : { pendiente: false, pedidos: [], resumen: { total: 0, abiertos: 0, nuevos: 0, totalImporte: 0 } })
+    } catch {
+      setPedidos({ pendiente: false, pedidos: [], resumen: { total: 0, abiertos: 0, nuevos: 0, totalImporte: 0 } })
+    } finally {
+      setPedidosLoad(false)
+    }
+  }
+
+  async function cambiarEstadoPedido(id, status) {
+    setPedidoMsg('')
+    const anterior = pedidos
+    setPedidos(prev => {
+      if (!prev) return prev
+      const lista = (prev.pedidos || []).map(p => p.id === id ? { ...p, status } : p)
+      const abiertos = lista.filter(p => ['nuevo', 'preparando'].includes(p.status)).length
+      const nuevos = lista.filter(p => p.status === 'nuevo').length
+      const totalImporte = lista.reduce((sum, p) => sum + Number(p.total || 0), 0)
+      return { ...prev, pedidos: lista, resumen: { total: lista.length, abiertos, nuevos, totalImporte } }
+    })
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/admin/pedidos`, {
+        method: 'PATCH',
+        headers: jsonAuthHeaders,
+        body: JSON.stringify({ id, status }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'No se pudo actualizar el pedido')
+    } catch (error) {
+      setPedidos(anterior)
+      setPedidoMsg(error.message || 'No se pudo actualizar el pedido')
+    }
   }
 
   const rentabilidad = useMemo(() => {
@@ -1067,14 +1303,211 @@ export default function AdminKioskoPage() {
       .sort((a, b) => (a.diasRestantes ?? 999) - (b.diasRestantes ?? 999) || b.recomendaciones - a.recomendaciones)
   }, [vinos, analitica])
 
-  function exportarCSV() {
-    const a = document.createElement('a')
-    a.href = `/api/kiosko/${slug}/admin/exportar`
-    a.download = `kiosko-${slug}-vinos.csv`
-    a.click()
+  const accionesAnalitica = useMemo(() => {
+    if (!analitica || analitica.vacio) return []
+    const acciones = []
+    const usados = new Set()
+    const add = accion => {
+      if (!accion?.key || usados.has(accion.key)) return
+      usados.add(accion.key)
+      acciones.push(accion)
+    }
+
+    const topVinos = (analitica.topVinos || [])
+      .map(tv => ({ ...tv, vino: vinosPorId.get(String(tv.id)) }))
+      .filter(tv => tv.vino)
+
+    alertasStock.slice(0, 2).forEach(a => add({
+      key: `stock-${a.id}`,
+      tone: a.critico ? 'danger' : 'warn',
+      badge: a.critico ? 'Stock crítico' : 'Stock bajo',
+      title: `Reponer ${a.nombre}`,
+      desc: `${a.recomendaciones} recomendaciones en 30 días${a.stock === 0 ? ' y sin stock disponible.' : ` y solo ${a.stock} ud. en tienda.`}`,
+      cta: 'Actualizar stock',
+      kind: 'edit',
+      vinoId: a.id,
+    }))
+
+    const demandadoSinDestacar = topVinos.find(tv => tv.vino.activo && !tv.vino.destacado)
+    if (demandadoSinDestacar) add({
+      key: `destacar-${demandadoSinDestacar.vino.id}`,
+      tone: 'opportunity',
+      badge: 'Demanda',
+      title: `Destacar ${demandadoSinDestacar.vino.nombre}`,
+      desc: `Sale en ${demandadoSinDestacar.veces} recomendaciones y aún no aparece como destacado.`,
+      cta: 'Destacar ahora',
+      kind: 'destacar',
+      vinoId: demandadoSinDestacar.vino.id,
+    })
+
+    const demandadoSinFoto = topVinos.find(tv => tv.vino.activo && !hasText(tv.vino.foto_url))
+    if (demandadoSinFoto) add({
+      key: `foto-${demandadoSinFoto.vino.id}`,
+      tone: 'warn',
+      badge: 'Ficha incompleta',
+      title: `Añadir foto a ${demandadoSinFoto.vino.nombre}`,
+      desc: 'Es un vino que el asistente propone; una tarjeta sin foto pierde confianza en el kiosko.',
+      cta: 'Abrir ficha',
+      kind: 'edit',
+      vinoId: demandadoSinFoto.vino.id,
+    })
+
+    const movilSinUbicacion = (analitica.movil?.topVinos || [])
+      .map(tv => ({ ...tv, vino: vinosPorId.get(String(tv.id)) }))
+      .find(tv => tv.vino && tv.vino.activo && !hasText(tv.vino.ubicacion_estanteria))
+    if (movilSinUbicacion) add({
+      key: `ubicacion-${movilSinUbicacion.vino.id}`,
+      tone: 'opportunity',
+      badge: 'Caja / sala',
+      title: `Ubicar ${movilSinUbicacion.vino.nombre}`,
+      desc: `Los clientes se lo llevan al móvil, pero no tiene estantería para encontrarlo rápido.`,
+      cta: 'Añadir ubicación',
+      kind: 'edit',
+      vinoId: movilSinUbicacion.vino.id,
+    })
+
+    const joya = rentabilidad?.clasificados?.find(v => v.categoria === 'joya' && !vinosPorId.get(String(v.id))?.destacado)
+    if (joya) add({
+      key: `joya-${joya.id}`,
+      tone: 'opportunity',
+      badge: 'Margen alto',
+      title: `Dar visibilidad a ${joya.nombre}`,
+      desc: `${joya.margenPct}% de margen y pocas recomendaciones: buen candidato para destacar.`,
+      cta: 'Destacar',
+      kind: 'destacar',
+      vinoId: joya.id,
+    })
+
+    const caballo = rentabilidad?.clasificados?.find(v => v.categoria === 'caballo')
+    if (caballo) add({
+      key: `margen-${caballo.id}`,
+      tone: 'warn',
+      badge: 'Margen bajo',
+      title: `Revisar precio de ${caballo.nombre}`,
+      desc: `${caballo.recomendaciones} recomendaciones y ${caballo.margenPct}% de margen: vende interes, pero cuida rentabilidad.`,
+      cta: 'Editar precio',
+      kind: 'edit',
+      vinoId: caballo.id,
+    })
+
+    return acciones.slice(0, 5)
+  }, [alertasStock, analitica, rentabilidad, vinosPorId])
+
+  async function exportarCSV() {
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/admin/exportar`, { headers: authHeaders })
+      if (!res.ok) throw new Error('No se pudo exportar el catalogo')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `kiosko-${slug}-vinos.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      alert(e.message)
+    }
   }
 
   function formatPVP(v) { return v != null ? `${Number(v).toFixed(2)} €` : null }
+
+  function renderQualityBadges(v, max = 3) {
+    const issues = qualityIssuesForVino(v)
+    if (!issues.length) return null
+    return (
+      <span className={styles.qualityBadges}>
+        {issues.slice(0, max).map(issue => (
+          <span key={issue.id}>{issue.label}</span>
+        ))}
+        {issues.length > max && <span>+{issues.length - max}</span>}
+      </span>
+    )
+  }
+
+  function startInlineFromKeyboard(e, id, campo, valorActual) {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
+    startInline(id, campo, valorActual, e)
+  }
+
+  function renderMobileInlineField(v, campo, label, valorActual, opts = {}) {
+    const activo = inlineEdit?.id === v.id && inlineEdit.campo === campo
+    const display = opts.display ? opts.display(v) : (valorActual || <em className={styles.dash}>-</em>)
+    const className = `${styles.mobileWineFact} ${opts.wide ? styles.mobileWineFactWide : ''}`
+
+    if (activo) {
+      return (
+        <label className={`${className} ${styles.mobileWineFactEditing}`}>
+          <span>{label}</span>
+          <input
+            className={styles.inlineInput}
+            type={opts.type || 'text'}
+            min={opts.min}
+            step={opts.step}
+            value={inlineEdit.valor}
+            onChange={e => setInlineEdit(p => ({ ...p, valor: e.target.value }))}
+            onBlur={guardarInline}
+            onKeyDown={e => { if (e.key === 'Enter') guardarInline(); if (e.key === 'Escape') setInlineEdit(null) }}
+            autoFocus
+            onClick={e => e.stopPropagation()}
+          />
+        </label>
+      )
+    }
+
+    return (
+      <div
+        className={className}
+        role="button"
+        tabIndex={0}
+        onClick={e => startInline(v.id, campo, valorActual, e)}
+        onKeyDown={e => startInlineFromKeyboard(e, v.id, campo, valorActual)}
+      >
+        <span>{label}</span>
+        <strong>{display}</strong>
+        <small>Editar</small>
+      </div>
+    )
+  }
+
+  function renderMobileStockField(v) {
+    if (stockPending?.id === v.id) {
+      return (
+        <div className={`${styles.mobileWineFact} ${styles.mobileWineFactConfirm}`}>
+          <span>Stock</span>
+          <strong>{stockPending.anterior} {'->'} {stockPending.nuevo}</strong>
+          <div className={styles.mobileStockConfirmActions}>
+            <button type="button" className={styles.stockConfirmOk} onClick={confirmarStock}>OK</button>
+            <button type="button" className={styles.stockConfirmNo} onClick={cancelarStock}>No</button>
+          </div>
+        </div>
+      )
+    }
+
+    return renderMobileInlineField(v, 'stock', 'Stock', v.stock, {
+      type: 'number',
+      min: '0',
+      display: wine => Number(wine.stock || 0),
+    })
+  }
+
+  async function ejecutarAccionAnalitica(accion) {
+    const vino = accion?.vinoId ? vinosPorId.get(String(accion.vinoId)) : null
+    if (accion?.kind === 'destacar' && vino) {
+      await toggleCampo(vino.id, 'destacado', vino.destacado)
+      return
+    }
+    if (accion?.kind === 'edit' && vino) {
+      abrirEditar(vino)
+      return
+    }
+    if (accion?.kind === 'catalogo') {
+      setTab('catalogo')
+      limpiarFiltros()
+      if (accion.filtroCalidad) setFiltroCalidad(accion.filtroCalidad)
+      if (vino?.nombre) setBusqueda(vino.nombre)
+    }
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (cargando) return <div className={styles.loading}>Cargando...</div>
@@ -1134,7 +1567,7 @@ export default function AdminKioskoPage() {
       {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerBrand}>
-          <a href="/kiosko-admin" className={styles.headerBack} title="Todas las tiendas">‹</a>
+          <Link href="/kiosko-admin" className={styles.headerBack} title="Todas las tiendas">‹</Link>
           {tienda?.logo_url
             ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.headerLogo} />
             : <span className={styles.headerLogoPlaceholder}>🍷</span>
@@ -1177,6 +1610,12 @@ export default function AdminKioskoPage() {
         <button type="button" className={`${styles.tabBtn} ${tab === 'catalogo' ? styles.tabBtnActive : ''}`} onClick={() => setTab('catalogo')}>
           Catálogo
         </button>
+        {pedidosMostradorActivos && (
+          <button type="button" className={`${styles.tabBtn} ${tab === 'pedidos' ? styles.tabBtnActive : ''}`}
+            onClick={() => { setTab('pedidos'); if (!pedidos && !pedidosLoad) cargarPedidos() }}>
+            Pedidos
+          </button>
+        )}
         <div style={{ position: 'relative' }}>
           {tienda?.plan === 'trial' && (
             <span style={{
@@ -1199,6 +1638,116 @@ export default function AdminKioskoPage() {
       {/* Ajustes */}
       {tab === 'ajustes' && tienda && (
         <AjustesTab slug={slug} tienda={tienda} onSaved={cargar} />
+      )}
+
+      {/* Pedidos de mostrador */}
+      {tab === 'pedidos' && pedidosMostradorActivos && (
+        <div className={styles.pedidosWrap}>
+          <div className={styles.pedidosHeader}>
+            <div>
+              <p className={styles.pedidosKicker}>Mostrador</p>
+              <h2>Pedidos para preparar ahora</h2>
+              <p>Comandas creadas desde el carrito móvil del kiosko. El cliente paga y recoge en tienda.</p>
+            </div>
+            <button type="button" className={styles.btnSecundario} onClick={cargarPedidos} disabled={pedidosLoad}>
+              {pedidosLoad ? 'Actualizando...' : 'Actualizar'}
+            </button>
+          </div>
+
+          {pedidos?.pendiente && (
+            <div className={styles.analiticaBanner}>
+              <span className={styles.analiticaBannerIcon}>SQL</span>
+              <span>La cola de pedidos aún no está disponible en Supabase. Aplica la migración de pedidos de mostrador.</span>
+            </div>
+          )}
+
+          {pedidoMsg && <p className={styles.pedidosError}>{pedidoMsg}</p>}
+          {pedidosLoad && <p className={styles.analiticaLoading}>Cargando pedidos...</p>}
+
+          {!pedidosLoad && pedidos && !pedidos.pendiente && (
+            <>
+              <div className={styles.pedidosStats}>
+                <div className={styles.pedidoStat}>
+                  <span>{pedidos.resumen?.abiertos ?? 0}</span>
+                  <small>Abiertos</small>
+                </div>
+                <div className={styles.pedidoStat}>
+                  <span>{pedidos.resumen?.pendientesPago ?? pedidos.resumen?.nuevos ?? 0}</span>
+                  <small>Pendiente pago</small>
+                </div>
+                <div className={styles.pedidoStat}>
+                  <span>{pedidos.resumen?.total ?? 0}</span>
+                  <small>Últimos pedidos</small>
+                </div>
+                <div className={styles.pedidoStat}>
+                  <span>{formatPVP(pedidos.resumen?.totalImporte || 0)}</span>
+                  <small>Total orientativo</small>
+                </div>
+              </div>
+
+              {(pedidos.pedidos || []).length ? (
+                <div className={styles.pedidosList}>
+                  {pedidos.pedidos.map(pedido => {
+                    const lines = Array.isArray(pedido.lines) ? pedido.lines : []
+                    const visualStatus = pedidoVisualStatus(pedido.status)
+                    const statusLabel = PEDIDO_STATUS.find(s => s.id === visualStatus)?.label || pedido.status
+                    return (
+                      <article key={pedido.id} className={`${styles.pedidoCard} ${styles[`pedido_${visualStatus}`] || ''}`}>
+                        <div className={styles.pedidoCardTop}>
+                          <div>
+                            <span className={styles.pedidoStatus}>{statusLabel}</span>
+                            <h3>{pedido.order_code}</h3>
+                            <p>
+                              {new Date(pedido.created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              {pedido.customer_label ? ` · ${pedido.customer_label}` : ''}
+                            </p>
+                          </div>
+                          <div className={styles.pedidoTotalBox}>
+                            <strong>{formatPVP(pedido.total || 0)}</strong>
+                            <span>{pedido.item_count} ref.</span>
+                          </div>
+                        </div>
+
+                        {pedido.customer_note && <p className={styles.pedidoNote}>{pedido.customer_note}</p>}
+
+                        <div className={styles.pedidoLines}>
+                          {lines.map((line, i) => (
+                            <div key={`${pedido.id}-${line.vino_id || i}`} className={styles.pedidoLine}>
+                              <span>{i + 1}</span>
+                              <strong>{line.nombre}</strong>
+                              <small>
+                                {[line.bodega, line.ubicacion_estanteria].filter(Boolean).join(' · ') || 'Sin ubicación'}
+                              </small>
+                              <em>{Number(line.precio || 0) > 0 ? formatPVP(line.precio) : '-'}</em>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className={styles.pedidoActions}>
+                          {PEDIDO_STATUS.map(status => (
+                            <button
+                              key={status.id}
+                              type="button"
+                              className={visualStatus === status.id ? styles.pedidoActionActive : ''}
+                              onClick={() => cambiarEstadoPedido(pedido.id, status.id)}
+                            >
+                              {status.label}
+                            </button>
+                          ))}
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className={styles.pedidosEmpty}>
+                  <p>Sin pedidos de mostrador todavía.</p>
+                  <span>Cuando un cliente cree un pedido desde su carrito móvil aparecerá aquí.</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {/* Analítica — bloqueada en plan Básico */}
@@ -1226,6 +1775,36 @@ export default function AdminKioskoPage() {
                     <span className={styles.analiticaBannerIcon}>📊</span>
                     <span>Todavía sin búsquedas — los datos aparecen aquí automáticamente cuando los clientes usen el kiosko</span>
                   </div>
+                )}
+                {analitica.movil?.pendiente && (
+                  <div className={styles.analiticaBanner}>
+                    <span className={styles.analiticaBannerIcon}>QR</span>
+                    <span>La métrica Llevar al móvil todavía no está disponible en Supabase. Aplica la migración para activarla.</span>
+                  </div>
+                )}
+
+                {!vacio && accionesAnalitica.length > 0 && (
+                  <section className={styles.accionesAnalitica}>
+                    <div className={styles.accionesAnaliticaHeader}>
+                      <div>
+                        <p className={styles.accionesAnaliticaKicker}>Acciones recomendadas</p>
+                        <h3>Qué haría ahora</h3>
+                      </div>
+                      <span>{accionesAnalitica.length} prioridad{accionesAnalitica.length > 1 ? 'es' : ''}</span>
+                    </div>
+                    <div className={styles.accionesAnaliticaGrid}>
+                      {accionesAnalitica.map(accion => (
+                        <article key={accion.key} className={`${styles.accionAnaliticaCard} ${styles[`accionAnalitica_${accion.tone}`] || ''}`}>
+                          <span className={styles.accionAnaliticaBadge}>{accion.badge}</span>
+                          <h4>{accion.title}</h4>
+                          <p>{accion.desc}</p>
+                          <button type="button" onClick={() => ejecutarAccionAnalitica(accion)}>
+                            {accion.cta}
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
                 )}
 
                 {/* Alertas de reposición */}
@@ -1265,6 +1844,10 @@ export default function AdminKioskoPage() {
                         </em>
                       )}
                     </span>
+                  </div>
+                  <div className={styles.analiticaKpi}>
+                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.movil?.total ?? 0}</span>
+                    <span className={styles.analiticaKpiLabel}>Llevados al móvil</span>
                   </div>
                   <div className={styles.analiticaKpi}>
                     <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.modos?.maridaje ?? 0}</span>
@@ -1309,6 +1892,26 @@ export default function AdminKioskoPage() {
                               <span className={styles.analiticaVeces}>{v.veces}×</span>
                             </div>
                           ))
+                      }
+                    </div>
+                  </div>
+
+                  {/* Vinos llevados al móvil */}
+                  <div className={styles.analiticaBloque}>
+                    <h3 className={styles.analiticaBloqueTitle}>Vinos llevados al móvil</h3>
+                    <p className={styles.analiticaBloqueDesc}>Referencias que el cliente quiso guardar o enseñar al equipo en tienda</p>
+                    <div className={styles.analiticaList}>
+                      {vacio
+                        ? SKELETON.map((w, i) => <div key={i} className={styles.analiticaSkeleton} style={{ width: `${w}%` }} />)
+                        : analitica.movil?.topVinos?.length
+                          ? analitica.movil.topVinos.map((v, i) => (
+                              <div key={v.id} className={styles.analiticaListRow}>
+                                <span className={styles.analiticaRank}>{i + 1}</span>
+                                <span className={styles.analiticaConsulta}>{v.nombre}{v.bodega ? ` · ${v.bodega}` : ''}</span>
+                                <span className={styles.analiticaVeces}>{v.veces}×</span>
+                              </div>
+                            ))
+                          : <p className={styles.analiticaEmptyLine}>Sin vinos llevados al móvil todavía.</p>
                       }
                     </div>
                   </div>
@@ -1462,6 +2065,55 @@ export default function AdminKioskoPage() {
         </div>
       </div>
 
+      <section className={styles.catalogChecklist}>
+        <div className={styles.catalogChecklistHeader}>
+          <div>
+            <p className={styles.catalogChecklistKicker}>Checklist de catálogo</p>
+            <h2>Preparado para el kiosko</h2>
+            <p>Revisa los campos que más influyen en que el cliente encuentre, entienda y compre el vino sin preguntar.</p>
+          </div>
+          <button
+            type="button"
+            className={styles.catalogScore}
+            onClick={() => catalogoChecklist.pendientes ? aplicarFiltroCalidad('pendientes') : undefined}
+            disabled={!catalogoChecklist.pendientes}
+          >
+            <span>{catalogoChecklist.score}%</span>
+            <small>{catalogoChecklist.pendientes ? `${catalogoChecklist.pendientes} por revisar` : 'Todo listo'}</small>
+          </button>
+        </div>
+
+        <div className={styles.catalogChecklistGrid}>
+          {catalogoChecklist.checks.map(check => (
+            <button
+              key={check.id}
+              type="button"
+              className={`${styles.catalogCheckCard} ${check.count ? styles.catalogCheckWarn : styles.catalogCheckOk} ${filtroCalidad === check.id ? styles.catalogCheckActive : ''}`}
+              onClick={() => check.count ? aplicarFiltroCalidad(check.id) : undefined}
+              disabled={!check.count}
+            >
+              <span className={styles.catalogCheckStatus}>{check.count ? '!' : 'OK'}</span>
+              <span className={styles.catalogCheckBody}>
+                <strong>{check.label}</strong>
+                <small>{check.desc}</small>
+              </span>
+              <span className={styles.catalogCheckCount}>{check.count}</span>
+            </button>
+          ))}
+        </div>
+
+        {filtroCalidad && (
+          <div className={styles.catalogChecklistFilter}>
+            <span>
+              Mostrando: {filtroCalidad === 'pendientes'
+                ? 'todos los vinos con alguna incidencia'
+                : QUALITY_CHECKS.find(check => check.id === filtroCalidad)?.label}
+            </span>
+            <button type="button" onClick={() => setFiltroCalidad('')}>Quitar filtro</button>
+          </div>
+        )}
+      </section>
+
       <div className={styles.toolbar}>
         <input
           className={styles.busqueda}
@@ -1548,10 +2200,12 @@ export default function AdminKioskoPage() {
                 <td className={styles.tdFoto} onClick={() => abrirFotoFila(v.id)} title="Clic para cambiar foto">
                   {subiendoFoto === v.id ? (
                     <div className={styles.thumbSpinner} />
-                  ) : v.foto_url ? (
-                    <img src={v.foto_url} alt="" className={styles.thumb} loading="lazy" />
                   ) : (
-                    <div className={styles.thumbPlaceholder}>+</div>
+                    <AdminThumbImage
+                      src={v.foto_url}
+                      className={styles.thumb}
+                      fallback={<div className={styles.thumbPlaceholder}>+</div>}
+                    />
                   )}
                 </td>
 
@@ -1562,6 +2216,7 @@ export default function AdminKioskoPage() {
                   title="Clic para editar"
                 >
                   {v.nombre}
+                  {renderQualityBadges(v)}
                 </td>
 
                 <td className={styles.tdTrunc}>{v.bodega || <em className={styles.dash}>—</em>}</td>
@@ -1769,13 +2424,85 @@ export default function AdminKioskoPage() {
             ))}
             {vinosFiltrados.length === 0 && (
               <tr>
-                <td colSpan={13} className={styles.empty}>
-                  No hay vinos{busqueda ? ' con esa búsqueda' : ''}.
+                <td colSpan={16} className={styles.empty}>
+                  No hay vinos{busqueda ? ' con esa búsqueda' : filtroCalidad ? ' con ese filtro de checklist' : ''}.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className={styles.mobileCatalogList} aria-label="Listado movil de catalogo">
+        {vinosFiltrados.map(v => (
+          <article key={v.id} className={`${styles.mobileWineCard} ${!v.activo ? styles.mobileWineCardInactive : ''}`}>
+            <button
+              type="button"
+              className={styles.mobileWinePhoto}
+              onClick={() => abrirFotoFila(v.id)}
+              title="Cambiar foto"
+            >
+              {subiendoFoto === v.id ? (
+                <span className={styles.thumbSpinner} />
+              ) : (
+                <AdminThumbImage
+                  src={v.foto_url}
+                  fallback={<span className={styles.mobileWinePhotoPlaceholder}>+</span>}
+                />
+              )}
+            </button>
+
+            <div className={styles.mobileWineMain}>
+              <div className={styles.mobileWineTop}>
+                {v.tipo
+                  ? <span className={`${styles.tipoBadge} ${styles['tipo_' + v.tipo]}`}>{v.tipo.replace('_',' ')}</span>
+                  : <span className={styles.mobileWineMuted}>Sin tipo</span>}
+                {v.destacado && <span className={styles.mobileWineFeatured}>Destacado</span>}
+                <span className={`${styles.mobileWineState} ${v.activo ? styles.mobileWineStateOn : styles.mobileWineStateOff}`}>
+                  {v.activo ? 'Activo' : 'Inactivo'}
+                </span>
+              </div>
+
+              <button type="button" className={styles.mobileWineName} onClick={() => abrirEditar(v)}>
+                {v.nombre}
+              </button>
+              <p className={styles.mobileWineMeta}>
+                {[v.bodega, v.region, v.uva, v.anada].filter(Boolean).join(' - ') || 'Sin datos de origen'}
+              </p>
+              {renderQualityBadges(v)}
+            </div>
+
+            <div className={styles.mobileWineFacts}>
+              {renderMobileInlineField(v, 'precio_pvp', 'PVP', v.precio_pvp, {
+                type: 'number',
+                min: '0',
+                step: '0.01',
+                display: wine => Number(wine.precio_pvp) > 0 ? formatPVP(wine.precio_pvp) : <em className={styles.dash}>-</em>,
+              })}
+              {renderMobileStockField(v)}
+              {renderMobileInlineField(v, 'ubicacion_estanteria', 'Ubicacion', v.ubicacion_estanteria, {
+                wide: true,
+                display: wine => wine.ubicacion_estanteria || <em className={styles.dash}>Sin ubicar</em>,
+              })}
+            </div>
+
+            <div className={styles.mobileWineActions}>
+              <button type="button" className={styles.btnEdit} onClick={() => abrirEditar(v)}>Editar</button>
+              <button type="button" className={styles.mobileWineSoftBtn} onClick={() => toggleCampo(v.id, 'destacado', v.destacado)}>
+                {v.destacado ? 'Quitar destacado' : 'Destacar'}
+              </button>
+              <button type="button" className={styles.mobileWineSoftBtn} onClick={() => toggleCampo(v.id, 'activo', v.activo)}>
+                {v.activo ? 'Desactivar' : 'Activar'}
+              </button>
+              <button type="button" className={styles.btnDelete} onClick={() => eliminar(v.id)}>Eliminar</button>
+            </div>
+          </article>
+        ))}
+        {vinosFiltrados.length === 0 && (
+          <div className={styles.mobileCatalogEmpty}>
+            No hay vinos{busqueda ? ' con esa busqueda' : filtroCalidad ? ' con ese filtro de checklist' : ''}.
+          </div>
+        )}
       </div>
       </>}
 
