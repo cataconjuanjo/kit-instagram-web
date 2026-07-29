@@ -1787,34 +1787,63 @@
 }
 
 /* ── Branding strip (pairing + wizard views) ────────────────────────────── */
-.pairingBrand {
+/* ── Brand bar compartida: wizard y pairing ──────────────────────────────── */
+.viewBrandBar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: .1rem;
-  padding: .6rem 1rem .5rem;
+  gap: .55rem;
+  padding: 1.4rem 1.5rem 1rem;
   border-bottom: 1px solid var(--borde);
   background: var(--color-primario);
+  text-align: center;
+  flex-shrink: 0;
 }
 
-.pairingBrandNombre {
+/* Dentro de pairingView (que tiene padding: 2rem) hay que salir del padding */
+.viewBrandBarInset {
+  margin: -2rem -2rem 0;
+}
+
+.viewBrandLogo {
+  max-width: 72px;
+  max-height: 72px;
+  object-fit: contain;
+}
+
+.viewBrandLogoFallback {
+  width: 52px;
+  height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid color-mix(in srgb, var(--color-acento) 45%, transparent);
+  border-radius: 50%;
+  color: var(--color-acento);
+  background: color-mix(in srgb, var(--color-acento) 8%, transparent);
   font-family: var(--font-family);
-  font-size: .72rem;
-  font-weight: 800;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-  color: var(--texto-m);
-  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: .05em;
 }
 
-.pairingBrandCredit {
-  font-size: .54rem;
-  font-weight: 600;
-  letter-spacing: .1em;
-  color: var(--texto-d);
-  opacity: .55;
+.viewBrandNombre {
+  font-family: var(--font-family);
+  font-size: clamp(1.5rem, 3.5vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  line-height: 1.05;
   margin: 0;
+  padding-bottom: .3rem;
+  border-bottom: 3px solid var(--color-acento);
+  color: var(--color-acento);
 }
+
+/* Clases antiguas — se mantienen por si hay otras referencias */
+.pairingBrand { display: none; }
+.pairingBrandNombre { display: none; }
+.pairingBrandCredit { display: none; }
 
 /* ── Pairing view ────────────────────────────────────────────────────────── */
 .pairingView {

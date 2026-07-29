@@ -873,9 +873,12 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
   return (
     <div className={styles.wizardView}>
       {tienda?.nombre && (
-        <div className={styles.pairingBrand}>
-          <span className={styles.pairingBrandNombre}>{tienda.nombre}</span>
-          <span className={styles.pairingBrandCredit}>× @cataconjuanjo</span>
+        <div className={styles.viewBrandBar}>
+          {tienda.logo_url
+            ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.viewBrandLogo} />
+            : <div className={styles.viewBrandLogoFallback}>{tienda.nombre[0]}</div>
+          }
+          <p className={styles.viewBrandNombre}>{tienda.nombre}</p>
         </div>
       )}
       <div className={styles.wizardHeader}>
@@ -1153,9 +1156,12 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMo
   return (
     <div className={styles.pairingView}>
       {tienda?.nombre && (
-        <div className={styles.pairingBrand}>
-          <span className={styles.pairingBrandNombre}>{tienda.nombre}</span>
-          <span className={styles.pairingBrandCredit}>× @cataconjuanjo</span>
+        <div className={`${styles.viewBrandBar} ${styles.viewBrandBarInset}`}>
+          {tienda.logo_url
+            ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.viewBrandLogo} />
+            : <div className={styles.viewBrandLogoFallback}>{tienda.nombre[0]}</div>
+          }
+          <p className={styles.viewBrandNombre}>{tienda.nombre}</p>
         </div>
       )}
       <div className={styles.pairingHeader}>
