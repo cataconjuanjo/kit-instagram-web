@@ -1787,22 +1787,18 @@
 }
 
 /* ── Branding strip (pairing + wizard views) ────────────────────────────── */
-/* ── Brand bar compartida: wizard y pairing ──────────────────────────────── */
+/* ── Brand bar compartida: abajo de wizard y pairing ────────────────────── */
 .viewBrandBar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: .55rem;
-  padding: 1.4rem 1.5rem 1rem;
-  border-bottom: 1px solid var(--borde);
+  gap: .45rem;
+  padding: 1.1rem 1.5rem 1.4rem;
+  border-top: 1px solid var(--borde);
   background: var(--color-primario);
   text-align: center;
   flex-shrink: 0;
-}
-
-/* Dentro de pairingView (que tiene padding: 2rem) hay que salir del padding */
-.viewBrandBarInset {
-  margin: -2rem -2rem 0;
+  margin-top: auto;
 }
 
 .viewBrandLogo {
@@ -1838,6 +1834,15 @@
   padding-bottom: .3rem;
   border-bottom: 3px solid var(--color-acento);
   color: var(--color-acento);
+}
+
+.viewBrandCredit {
+  font-size: .62rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  color: var(--texto-d);
+  opacity: .45;
+  margin: 0;
 }
 
 /* Clases antiguas — se mantienen por si hay otras referencias */

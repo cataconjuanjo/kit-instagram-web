@@ -872,15 +872,6 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
 
   return (
     <div className={styles.wizardView}>
-      {tienda?.nombre && (
-        <div className={styles.viewBrandBar}>
-          {tienda.logo_url
-            ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.viewBrandLogo} />
-            : <div className={styles.viewBrandLogoFallback}>{tienda.nombre[0]}</div>
-          }
-          <p className={styles.viewBrandNombre}>{tienda.nombre}</p>
-        </div>
-      )}
       <div className={styles.wizardHeader}>
         <button className={styles.backBtn} onClick={resultado ? reset : (step === 0 ? onBack : () => setStep(s => s - 1))} type="button">
           ← {resultado ? T[lang].nuevaBusqueda : step === 0 ? T[lang].inicio : T[lang].atras}
@@ -1025,6 +1016,16 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
           <button className={styles.pairingReiniciarBtn} onClick={reset} type="button">Nueva búsqueda</button>
         </div>
       )}
+      {tienda?.nombre && (
+        <div className={styles.viewBrandBar}>
+          {tienda.logo_url
+            ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.viewBrandLogo} />
+            : <div className={styles.viewBrandLogoFallback}>{tienda.nombre[0]}</div>
+          }
+          <p className={styles.viewBrandNombre}>{tienda.nombre}</p>
+          <span className={styles.viewBrandCredit}>× @cataconjuanjo</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -1155,15 +1156,6 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMo
 
   return (
     <div className={styles.pairingView}>
-      {tienda?.nombre && (
-        <div className={`${styles.viewBrandBar} ${styles.viewBrandBarInset}`}>
-          {tienda.logo_url
-            ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.viewBrandLogo} />
-            : <div className={styles.viewBrandLogoFallback}>{tienda.nombre[0]}</div>
-          }
-          <p className={styles.viewBrandNombre}>{tienda.nombre}</p>
-        </div>
-      )}
       <div className={styles.pairingHeader}>
         <button className={styles.backBtn} onClick={onBack} type="button">{T[lang].volver}</button>
         <h2 className={styles.pairingTitle}>{T[lang].pairingTitle}</h2>
@@ -1233,6 +1225,16 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMo
             ))}
           </div>
           <button className={styles.pairingReiniciarBtn} onClick={() => { setResultado(null); setConsulta('') }} type="button">Nueva búsqueda</button>
+        </div>
+      )}
+      {tienda?.nombre && (
+        <div className={styles.viewBrandBar}>
+          {tienda.logo_url
+            ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.viewBrandLogo} />
+            : <div className={styles.viewBrandLogoFallback}>{tienda.nombre[0]}</div>
+          }
+          <p className={styles.viewBrandNombre}>{tienda.nombre}</p>
+          <span className={styles.viewBrandCredit}>× @cataconjuanjo</span>
         </div>
       )}
     </div>
