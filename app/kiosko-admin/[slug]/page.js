@@ -162,7 +162,7 @@ function AjustesTab({ slug, tienda, onSaved }) {
     font_family:    tienda?.font_family    || 'clasica',
     kiosko_icon_style: tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji',
     kiosko_orders_enabled: tienda?.kiosko_orders_enabled === true,
-    informe_email:  tienda?.informe_email  || '',
+    informe_email:  tienda?.informe_email  || tienda?.propietario_email || tienda?.email || '',
   })
   const [logoFile,     setLogoFile]     = useState(null)
   const [logoPreview,  setLogoPreview]  = useState(tienda?.logo_url || '')
