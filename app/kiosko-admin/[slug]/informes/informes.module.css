@@ -1,0 +1,132 @@
+.page {
+  display: flex;
+  height: 100dvh;
+  background: #0d0d1a;
+  color: #f0ede8;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(255,255,255,.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebarHeader {
+  padding: 1.25rem 1.25rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.backBtn {
+  background: none;
+  border: none;
+  color: rgba(240,237,232,.4);
+  font-size: .78rem;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: .5rem;
+  display: block;
+}
+.backBtn:hover { color: #c9a96e; }
+
+.title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #c9a96e;
+  margin: 0 0 .15rem;
+}
+
+.sub {
+  font-size: .72rem;
+  color: rgba(240,237,232,.3);
+  margin: 0;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: .5rem 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.item {
+  padding: .75rem 1.25rem;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background .1s;
+}
+.item:hover { background: rgba(255,255,255,.04); }
+.itemActive {
+  background: rgba(201,169,110,.08);
+  border-left-color: #c9a96e;
+}
+
+.itemSemana {
+  display: block;
+  font-size: .88rem;
+  font-weight: 600;
+  color: #f0ede8;
+}
+
+.itemFecha {
+  display: block;
+  font-size: .72rem;
+  color: rgba(240,237,232,.35);
+  margin: .15rem 0 .4rem;
+}
+
+.itemStats {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  font-size: .72rem;
+  color: rgba(240,237,232,.45);
+}
+
+.alertBadge {
+  background: rgba(245,192,106,.15);
+  color: #f5c06a;
+  border-radius: 20px;
+  padding: .1rem .45rem;
+  font-size: .68rem;
+}
+
+.catBadge {
+  background: rgba(201,169,110,.12);
+  color: #c9a96e;
+  border-radius: 20px;
+  padding: .1rem .45rem;
+  font-size: .68rem;
+}
+
+/* ── Viewer ── */
+.viewer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f3f0;
+  overflow: hidden;
+}
+
+.iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.viewerLoading,
+.viewerEmpty,
+.loading,
+.empty {
+  color: #999;
+  font-size: .9rem;
+  text-align: center;
+  padding: 2rem;
+  line-height: 1.7;
+}

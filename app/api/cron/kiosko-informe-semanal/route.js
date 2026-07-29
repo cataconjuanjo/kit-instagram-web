@@ -24,7 +24,10 @@ export async function GET(request) {
   for (const tienda of tiendas) {
     try {
       const datos = await obtenerDatos(tienda.id)
-      if (!datos.vacio) await enviarEmail(tienda, datos)
+      if (!datos.vacio) {
+        const html = await enviarEmail(tienda, datos)
+        await guardarInforme(tienda, datos, html)
+      }
       resultados.push({ slug: tienda.slug, ok: true, vacio: datos.vacio })
     } catch (e) {
       resultados.push({ slug: tienda.slug, error: e.message })
@@ -282,5 +285,26 @@ async function enviarEmail(tienda, datos) {
     to: tienda.informe_email,
     subject: `Kiosko ${tienda.nombre} — informe semana ${semana}`,
     html,
+  })
+
+  return html
+}
+
+async function guardarInforme(tienda, datos, html) {
+  const ahora = new Date()
+  const lunes = new Date(ahora)
+  lunes.setDate(ahora.getDate() - ((ahora.getDay() + 6) % 7))
+  const semanaInicio = lunes.toISOString().slice(0, 10)
+  const semanaLabel  = ahora.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })
+
+  await supabaseAdmin.from('kiosko_informes').insert({
+    tienda_id:    tienda.id,
+    slug:         tienda.slug,
+    semana_label: semanaLabel,
+    semana_inicio: semanaInicio,
+    datos:        datos,
+    html:         html,
+    email_destino: tienda.informe_email,
+    enviado_ok:   true,
   })
 }
