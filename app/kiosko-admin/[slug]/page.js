@@ -553,13 +553,24 @@ function AjustesTab({ slug, tienda, onSaved }) {
 }
 
 function TrialGate({ tienda }) {
-  const precioBasico   = 49
-  const setupFee       = tienda.setup_fee_incluido ? null : 100
-  const precioPremium  = tienda.precio_especial || 129
-  const esEspecial     = !!tienda.precio_especial
+  const [periodo, setPeriodo] = useState('mensual')
+  const esAnual = periodo === 'anual'
+
+  const precioPremiumMensual = tienda.precio_especial || 129
+  const esEspecial           = !!tienda.precio_especial
+  const ahorroPremiumAnual   = precioPremiumMensual * 2
+
+  const precioBasico  = esAnual ? 590  : 59
+  const precioPremium = esAnual ? precioPremiumMensual * 10 : precioPremiumMensual
+  const sufijo        = esAnual ? '€/año' : '€/mes'
+
+  // Setup fee: solo en Básico mensual; anual y Premium siempre lo incluyen
+  const setupFeeBasico = (!esAnual && !tienda.setup_fee_incluido) ? 100 : null
 
   function waMsg(plan) {
-    const txt = encodeURIComponent(`Hola, acabo de probar el Kiosko Virtual de ${tienda.nombre || 'mi tienda'} y me interesa el plan ${plan}. ¿Cuándo podemos hablarlo?`)
+    const txt = encodeURIComponent(
+      `Hola, acabo de probar el Kiosko Virtual de ${tienda.nombre || 'mi tienda'} y me interesa el plan ${plan} (facturación ${periodo}). ¿Cuándo podemos hablarlo?`
+    )
     return `https://wa.me/${WHATSAPP_VENTAS}?text=${txt}`
   }
 
@@ -569,18 +580,41 @@ function TrialGate({ tienda }) {
       <p className={styles.trialGateDesc}>
         Has explorado el Kiosko Virtual al completo. Elige tu plan para seguir ofreciendo a tus clientes una experiencia premium.
       </p>
+
+      {/* Toggle mensual / anual */}
+      <div className={styles.trialPeriodoToggle}>
+        <button
+          className={`${styles.trialPeriodoBtn} ${!esAnual ? styles.trialPeriodoBtnActive : ''}`}
+          onClick={() => setPeriodo('mensual')}
+        >
+          Mensual
+        </button>
+        <button
+          className={`${styles.trialPeriodoBtn} ${esAnual ? styles.trialPeriodoBtnActive : ''}`}
+          onClick={() => setPeriodo('anual')}
+        >
+          Anual <span className={styles.trialPeriodoBadge}>2 meses gratis</span>
+        </button>
+      </div>
+
       <div className={styles.trialGatePlans}>
 
         {/* Básico */}
         <div className={styles.trialPlanCard}>
           <p className={styles.trialPlanNombre}>Plan Básico</p>
-          <p className={styles.trialPlanPrecio}>{precioBasico} <span style={{ fontSize: '1rem' }}>€/mes</span></p>
-          {setupFee && <p className={styles.trialPlanPrecioSub}>+ {setupFee} € puesta en marcha</p>}
+          <p className={styles.trialPlanPrecio}>{precioBasico} <span style={{ fontSize: '1rem' }}>{sufijo}</span></p>
+          {setupFeeBasico
+            ? <p className={styles.trialPlanPrecioSub}>+ {setupFeeBasico} € puesta en marcha (pago único)</p>
+            : esAnual && <p className={styles.trialPlanPrecioSub}>Puesta en marcha incluida</p>
+          }
           <ul className={styles.trialPlanFeatures}>
-            <li>Kiosko táctil completo</li>
-            <li>Catálogo y gestión de stock</li>
-            <li>Precios oferta y multi-idioma</li>
-            <li>Historial de movimientos</li>
+            <li>Kiosko digital táctil para tus clientes</li>
+            <li>Catálogo completo con gestión de stock</li>
+            <li>Asistente que ayuda a elegir según gusto y presupuesto</li>
+            <li>Alta, edición y foto de cada vino desde el panel</li>
+            <li>Importación masiva de catálogo por Excel</li>
+            <li>Personalización total: colores, logo y banner</li>
+            <li>Filtros y búsqueda avanzada en administración</li>
           </ul>
           <a href={waMsg('Básico')} target="_blank" rel="noreferrer" className={`${styles.trialPlanCta} ${styles.trialPlanCtaSecundario}`}>
             Quiero el Básico
@@ -591,21 +625,39 @@ function TrialGate({ tienda }) {
         <div className={`${styles.trialPlanCard} ${styles.trialPlanCardPremium}`}>
           <span className={styles.trialPlanBadge}>Recomendado</span>
           <p className={styles.trialPlanNombre}>Plan Premium</p>
-          <p className={styles.trialPlanPrecio}>{precioPremium} <span style={{ fontSize: '1rem' }}>€/mes</span></p>
-          {setupFee && <p className={styles.trialPlanPrecioSub}>+ {setupFee} € puesta en marcha</p>}
-          {esEspecial && <span className={styles.trialPlanEspecial}>★ Precio fundador · Puesta en marcha incluida</span>}
+          <p className={styles.trialPlanPrecio}>{precioPremium} <span style={{ fontSize: '1rem' }}>{sufijo}</span></p>
+          <p className={styles.trialPlanPrecioSub}>
+            {esAnual
+              ? `Ahorras ${ahorroPremiumAnual} € · Puesta en marcha incluida`
+              : 'Puesta en marcha incluida'}
+          </p>
+          {esEspecial && (
+            <span className={styles.trialPlanEspecial}>
+              ★ Precio fundador · Bloqueado para siempre
+            </span>
+          )}
           <ul className={styles.trialPlanFeatures}>
             <li>Todo lo del plan Básico</li>
-            <li>Analítica completa de búsquedas</li>
-            <li>Informe semanal por email</li>
-            <li>Alertas de stock y predicción</li>
-            <li>Widget embebible para tu web</li>
+            <li>Fichas de vino generadas por IA</li>
+            <li>Analítica completa de búsquedas y recomendaciones</li>
+            <li>Cuadrante de rentabilidad (margen × popularidad)</li>
+            <li>Tendencias de uso a 8 semanas</li>
+            <li>Alertas de stock bajo en vinos muy recomendados</li>
+            <li>Informe semanal automático cada lunes por email</li>
+            <li>Badge de margen y coste visible en tu panel</li>
           </ul>
           <a href={waMsg('Premium')} target="_blank" rel="noreferrer" className={styles.trialPlanCta}>
             Quiero el Premium →
           </a>
         </div>
       </div>
+
+      {esEspecial && (
+        <p className={styles.trialGateFounderNote}>
+          El precio de referencia para nuevos clientes es {esAnual ? '1.290' : '129'} €/{esAnual ? 'año' : 'mes'}.
+          Como cliente fundador, tu precio queda fijado en {esAnual ? precioPremiumMensual * 10 : precioPremiumMensual} €/{esAnual ? 'año' : 'mes'}.
+        </p>
+      )}
     </div>
   )
 }

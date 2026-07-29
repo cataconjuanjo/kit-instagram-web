@@ -246,6 +246,58 @@
 
 .trialPlanCtaSecundario:hover { border-color: rgba(255,255,255,.3); opacity: 1; }
 
+.trialPeriodoToggle {
+  display: flex;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.trialPeriodoBtn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: rgba(240,237,232,.5);
+  font-size: .85rem;
+  font-weight: 700;
+  padding: .5rem 1.25rem;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.trialPeriodoBtnActive {
+  background: rgba(255,255,255,.1);
+  color: #f0ede8;
+}
+
+.trialPeriodoBadge {
+  background: #c9a96e;
+  color: #1a1a2e;
+  font-size: .6rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: .1rem .45rem;
+  border-radius: 20px;
+}
+
+.trialGateFounderNote {
+  font-size: .78rem;
+  color: rgba(240,237,232,.4);
+  text-align: center;
+  max-width: 480px;
+  margin: -.5rem 0 0;
+  line-height: 1.5;
+}
+
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 .btnPrimario {
   background: #c9a96e;
