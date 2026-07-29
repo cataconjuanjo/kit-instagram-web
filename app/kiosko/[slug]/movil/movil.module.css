@@ -1,30 +1,35 @@
 .page {
   min-height: 100dvh;
   background: #faf9f7;
-  font-family: 'Mulish', system-ui, sans-serif;
+  font-family: system-ui, sans-serif;
   color: #171416;
 }
 
+/* ── Header ───────────────────────────────────────────────────────────── */
+
 .header {
-  padding: 1.25rem 1rem 1rem;
+  padding: 1.1rem 1rem .9rem;
   background: #fff;
   border-bottom: 1px solid #ede9e2;
   display: flex;
   align-items: center;
   gap: .75rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .logo {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
   object-fit: cover;
   flex-shrink: 0;
 }
 
 .logoPlaceholder {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
   background: #171416;
   flex-shrink: 0;
@@ -32,16 +37,18 @@
 
 .headerText {}
 .headerName {
-  font-size: 1rem;
+  font-size: .95rem;
   font-weight: 800;
   line-height: 1.2;
   margin: 0;
 }
 .headerSub {
-  font-size: .78rem;
+  font-size: .75rem;
   color: #8a7e72;
   margin: 0;
 }
+
+/* ── Body ─────────────────────────────────────────────────────────────── */
 
 .body {
   padding: 1rem;
@@ -49,27 +56,80 @@
   margin: 0 auto;
 }
 
-.heading {
-  font-size: 1.05rem;
-  font-weight: 800;
-  margin: .5rem 0 1rem;
+/* ── Purpose banner ───────────────────────────────────────────────────── */
+
+.purposeBanner {
+  display: flex;
+  gap: .6rem;
+  align-items: flex-start;
+  background: #fffbf0;
+  border: 1px solid #ede9e2;
+  border-radius: 12px;
+  padding: .75rem .9rem;
+  margin-bottom: 1.1rem;
 }
+
+.purposeIcon {
+  font-size: 1.1rem;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.purposeText {
+  font-size: .82rem;
+  color: #5c4f3d;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── List heading ─────────────────────────────────────────────────────── */
+
+.heading {
+  font-size: .95rem;
+  font-weight: 800;
+  margin: 0 0 .75rem;
+  color: #4a3f33;
+}
+
+/* ── Wine list ────────────────────────────────────────────────────────── */
 
 .wineList {
   display: flex;
   flex-direction: column;
-  gap: .65rem;
+  gap: .75rem;
 }
 
 .wineCard {
   background: #fff;
   border: 1px solid #ede9e2;
-  border-radius: 12px;
-  padding: .85rem 1rem;
-  display: grid;
-  grid-template-columns: 48px 1fr auto;
-  gap: .75rem;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+}
+
+.wineNumber {
+  width: 32px;
+  flex-shrink: 0;
+  background: #171416;
+  color: #fff;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  font-size: .75rem;
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+
+.wineMain {
+  flex: 1;
+  min-width: 0;
+  padding: .85rem .9rem;
+}
+
+.wineTop {
+  display: flex;
+  gap: .75rem;
+  align-items: flex-start;
 }
 
 .wineFoto {
@@ -77,6 +137,7 @@
   height: 64px;
   object-fit: cover;
   border-radius: 6px;
+  flex-shrink: 0;
 }
 
 .wineFotoEmpty {
@@ -88,68 +149,140 @@
   align-items: center;
   justify-content: center;
   font-size: 1.4rem;
+  flex-shrink: 0;
 }
 
-.wineInfo {}
+.wineInfo {
+  flex: 1;
+  min-width: 0;
+}
+
 .wineName {
   font-size: .9rem;
   font-weight: 800;
   line-height: 1.3;
-  margin: 0 0 .15rem;
-}
-.wineBodega {
-  font-size: .78rem;
-  color: #8a7e72;
-  margin: 0 0 .1rem;
-}
-.wineTipo {
-  font-size: .72rem;
-  color: #b0a496;
-  text-transform: capitalize;
-  margin: 0;
-}
-.wineUbicacion {
-  font-size: .7rem;
-  color: #c9a96e;
-  font-weight: 700;
-  margin: .25rem 0 0;
+  margin: 0 0 .2rem;
 }
 
-.winePrecio {
-  font-size: 1rem;
-  font-weight: 900;
-  color: #171416;
+.wineBodega {
+  font-size: .77rem;
+  color: #8a7e72;
+  margin: 0 0 .35rem;
+}
+
+.wineMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  margin-bottom: .35rem;
+}
+
+.wineTipoBadge,
+.wineAnadaBadge {
+  font-size: .68rem;
+  font-weight: 600;
+  color: #8a7e72;
+  background: #f5f0e8;
+  border-radius: 20px;
+  padding: .15rem .5rem;
   white-space: nowrap;
 }
 
-.total {
+.winePrecio {
+  font-size: .88rem;
+  font-weight: 900;
+  color: #171416;
+  margin: .1rem 0 0;
+}
+
+/* ── Shelf location — the hero info ───────────────────────────────────── */
+
+.ubicacionRow {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .75rem;
+  padding: .55rem .7rem;
+  background: #faf9f7;
+  border-radius: 8px;
+  border-left: 3px solid #c9a96e;
+}
+
+.ubicacionIcon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.ubicacionLabel {
+  display: block;
+  font-size: .65rem;
+  color: #8a7e72;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  line-height: 1.1;
+}
+
+.ubicacionValor {
+  display: block;
+  font-size: .9rem;
+  font-weight: 800;
+  color: #c9a96e;
+  line-height: 1.3;
+}
+
+/* ── Price summary ────────────────────────────────────────────────────── */
+
+.resumen {
   margin: 1.25rem 0 .5rem;
-  background: #171416;
-  color: #fff;
+  background: #f5f0e8;
   border-radius: 12px;
   padding: .85rem 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: .9rem;
-  font-weight: 700;
 }
-.totalLabel { opacity: .7; }
-.totalAmount { font-size: 1.15rem; font-weight: 900; }
+
+.resumenLabel {
+  font-size: .82rem;
+  color: #8a7e72;
+  font-weight: 600;
+}
+
+.resumenAmount {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #171416;
+}
+
+/* ── Disclaimer ───────────────────────────────────────────────────────── */
+
+.disclaimer {
+  font-size: .72rem;
+  color: #b0a496;
+  text-align: center;
+  margin: .5rem 0 1rem;
+  line-height: 1.5;
+}
+
+/* ── Back button ──────────────────────────────────────────────────────── */
 
 .back {
   display: block;
   text-align: center;
-  margin: 1.25rem 0 2rem;
+  margin: .5rem 0 2rem;
   padding: .85rem;
-  border: 1.5px solid #ede9e2;
+  border: 1.5px solid #c9a96e;
   border-radius: 10px;
   font-size: .85rem;
   font-weight: 700;
-  color: #8a7e72;
+  color: #c9a96e;
   text-decoration: none;
   background: #fff;
 }
+
+/* ── Loading / Error ──────────────────────────────────────────────────── */
 
 .loading {
   display: flex;
