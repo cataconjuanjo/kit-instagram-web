@@ -1,0 +1,19 @@
+{
+  "name": "Kiosko de Vinos",
+  "short_name": "Kiosko",
+  "description": "Kiosko táctil de vinos para tiendas especializadas",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0d0d1a",
+  "theme_color": "#0d0d1a",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

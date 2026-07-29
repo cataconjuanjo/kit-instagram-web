@@ -3134,3 +3134,33 @@
     padding: .95rem;
   }
 }
+
+/* ── Kiosko portrait (tablet vertical): ficha vino ocupa toda la pantalla ── */
+@media (orientation: portrait) and (min-width: 500px) {
+  .detailOverlay {
+    align-items: flex-start;
+    padding: 1rem;
+  }
+  .detailPanel {
+    min-height: calc(100dvh - 2rem);
+    display: flex;
+    flex-direction: column;
+  }
+  .detailContent {
+    flex: 1;
+  }
+  .detailLeft {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* ── Kiosko grande (≥ 800 px): tarjetas destacadas más grandes ──────────── */
+@media (min-width: 800px) {
+  .featuredCard { width: 190px; }
+  .featuredPhoto { height: 220px; }
+  .featuredPhotoPlaceholder { height: 220px; }
+  .featuredNombre { font-size: 1rem; }
+  .featuredPrecio { font-size: 1.1rem; }
+  .welcomeFeatured { padding: 1.5rem 2rem 3rem; }
+}
