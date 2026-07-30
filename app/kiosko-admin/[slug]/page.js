@@ -150,7 +150,7 @@ function CambiarPassword() {
   )
 }
 
-function AjustesTab({ slug, tienda, onSaved }) {
+function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
   const esPremium = !tienda?.plan || tienda.plan === 'premium' || tienda.plan === 'trial'
   const [ajustes, setAjustes] = useState({
     nombre:         tienda?.nombre         || '',
@@ -427,7 +427,7 @@ function AjustesTab({ slug, tienda, onSaved }) {
             <p style={{ fontSize: '.75rem', color: '#aaa', margin: '.5rem 0 0' }}>
               Cada lunes a las 8:00 recibirás un resumen con las búsquedas de la semana, los vinos más recomendados y alertas de stock. Deja el campo vacío para no recibir el informe.
             </p>
-            {esAdminUsuario && (
+            {esAdmin && (
               <a href={`/kiosko-admin/${slug}/informes`} style={{ display: 'inline-block', marginTop: '.75rem', fontSize: '.78rem', color: '#c9a96e', textDecoration: 'underline' }}>
                 Ver historial de informes →
               </a>
@@ -1198,11 +1198,17 @@ export default function AdminKioskoPage() {
           .filter(Boolean).join(' ').toLowerCase().includes(q)
       })
       .sort((a, b) => {
-        let va = a[ordenPor], vb = b[ordenPor]
-        if (['precio_pvp', 'precio_coste', 'precio_oferta', 'stock', 'puntuacion'].includes(ordenPor)) {
-          va = Number(va) || 0; vb = Number(vb) || 0
+        let va, vb
+        if (ordenPor === 'margen') {
+          va = Number(a.precio_pvp) > 0 && Number(a.precio_coste) > 0 ? (Number(a.precio_pvp) - Number(a.precio_coste)) / Number(a.precio_pvp) : -1
+          vb = Number(b.precio_pvp) > 0 && Number(b.precio_coste) > 0 ? (Number(b.precio_pvp) - Number(b.precio_coste)) / Number(b.precio_pvp) : -1
         } else {
-          va = String(va || '').toLowerCase(); vb = String(vb || '').toLowerCase()
+          va = a[ordenPor]; vb = b[ordenPor]
+          if (['precio_pvp', 'precio_coste', 'precio_oferta', 'stock', 'puntuacion'].includes(ordenPor)) {
+            va = Number(va) || 0; vb = Number(vb) || 0
+          } else {
+            va = String(va || '').toLowerCase(); vb = String(vb || '').toLowerCase()
+          }
         }
         if (va < vb) return ordenDir === 'asc' ? -1 : 1
         if (va > vb) return ordenDir === 'asc' ? 1 : -1
@@ -1246,10 +1252,10 @@ export default function AdminKioskoPage() {
 
   // Stats (memoizadas — se recalculan solo cuando cambia el catálogo)
   const { sinFoto, sinPrecio, sinCoste, sinStock, nActivos, nDestacados, conFichaIA } = useMemo(() => ({
-    sinFoto:     vinos.filter(v => !v.foto_url).length,
-    sinPrecio:   vinos.filter(v => !v.precio_pvp).length,
-    sinCoste:    vinos.filter(v => v.precio_pvp && !v.precio_coste).length,
-    sinStock:    vinos.filter(v => !Number(v.stock)).length,
+    sinFoto:     vinos.filter(v => v.activo !== false && !v.foto_url).length,
+    sinPrecio:   vinos.filter(v => v.activo !== false && !v.precio_pvp).length,
+    sinCoste:    vinos.filter(v => v.activo !== false && v.precio_pvp && !v.precio_coste).length,
+    sinStock:    vinos.filter(v => v.activo !== false && !Number(v.stock)).length,
     nActivos:    vinos.filter(v => v.activo).length,
     nDestacados: vinos.filter(v => v.destacado).length,
     conFichaIA:  vinos.filter(v => v.has_ficha_ia).length,
@@ -1326,23 +1332,32 @@ export default function AdminKioskoPage() {
   const rentabilidad = useMemo(() => {
     const conCoste = vinos.filter(v => v.activo && Number(v.precio_pvp) > 0 && Number(v.precio_coste) > 0)
     if (conCoste.length < 2) return null
+    // Ventas Square como eje de popularidad; si no hay aún, fallback a recomendaciones IA
+    const ventasSquare = analitica?.ventasPorVino || {}
+    const hayVentasSquare = Object.keys(ventasSquare).length > 0
     const popularidad = {}
-    if (analitica?.topVinos) analitica.topVinos.forEach(v => { popularidad[String(v.id)] = v.veces })
+    if (hayVentasSquare) {
+      Object.entries(ventasSquare).forEach(([id, uds]) => { popularidad[id] = uds })
+    } else if (analitica?.topVinos) {
+      analitica.topVinos.forEach(v => { popularidad[String(v.id)] = v.veces })
+    }
     const calculados = conCoste.map(v => ({
       id: v.id, nombre: v.nombre, bodega: v.bodega, tipo: v.tipo,
       margenPct: Math.round(((Number(v.precio_pvp) - Number(v.precio_coste)) / Number(v.precio_pvp)) * 100),
-      recomendaciones: popularidad[String(v.id)] || 0,
+      ventas: popularidad[String(v.id)] || 0,
     }))
     const margenMedio = calculados.reduce((s, v) => s + v.margenPct, 0) / calculados.length
-    const recomMedio  = calculados.reduce((s, v) => s + v.recomendaciones, 0) / calculados.length
+    const totalVentas = calculados.reduce((s, v) => s + v.ventas, 0)
+    if (totalVentas < 20) return { clasificados: [], margenMedio: Math.round(margenMedio), recomMedio: 0, sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length, coldStart: true, usandoVentas: hayVentasSquare }
+    const ventasMedio = totalVentas / calculados.length
     const clasificados = calculados.map(v => ({
       ...v,
-      categoria: v.margenPct >= margenMedio && v.recomendaciones >= recomMedio ? 'estrella'
-        : v.margenPct <  margenMedio && v.recomendaciones >= recomMedio ? 'caballo'
-        : v.margenPct >= margenMedio && v.recomendaciones <  recomMedio ? 'joya'
+      categoria: v.margenPct >= margenMedio && v.ventas >= ventasMedio ? 'estrella'
+        : v.margenPct <  margenMedio && v.ventas >= ventasMedio ? 'caballo'
+        : v.margenPct >= margenMedio && v.ventas <  ventasMedio ? 'joya'
         : 'revisar',
     }))
-    return { clasificados, margenMedio: Math.round(margenMedio), recomMedio: Math.round(recomMedio), sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length }
+    return { clasificados, margenMedio: Math.round(margenMedio), ventasMedio: Math.round(ventasMedio), sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length, coldStart: false, usandoVentas: hayVentasSquare }
   }, [vinos, analitica])
 
   const alertasStock = useMemo(() => {
@@ -1532,7 +1547,8 @@ export default function AdminKioskoPage() {
       return (
         <div className={`${styles.mobileWineFact} ${styles.mobileWineFactConfirm}`}>
           <span>Stock</span>
-          <strong>{stockPending.anterior} {'->'} {stockPending.nuevo}</strong>
+          <strong>{stockPending.anterior} → {stockPending.nuevo}</strong>
+          {(() => { const v = vinos.find(w => w.id === stockPending?.id); return v?.square_catalog_id ? <span className={styles.stockConfirmWarn} style={{fontSize:'.7rem',display:'block',marginTop:'.2rem'}}>⚠ Sincronizado con Square · la próxima venta sobreescribirá este valor</span> : null })()}
           <div className={styles.mobileStockConfirmActions}>
             <button type="button" className={styles.stockConfirmOk} onClick={confirmarStock}>OK</button>
             <button type="button" className={styles.stockConfirmNo} onClick={cancelarStock}>No</button>
@@ -1694,7 +1710,7 @@ export default function AdminKioskoPage() {
 
       {/* Ajustes */}
       {tab === 'ajustes' && tienda && (
-        <AjustesTab slug={slug} tienda={tienda} onSaved={cargar} />
+        <AjustesTab slug={slug} tienda={tienda} onSaved={cargar} esAdmin={esAdminUsuario} />
       )}
 
       {/* Pedidos de mostrador */}
@@ -2046,9 +2062,12 @@ export default function AdminKioskoPage() {
               <div>
                 <h3 className={styles.analiticaBloqueTitle}>Análisis de rentabilidad</h3>
                 <p className={styles.analiticaBloqueDesc}>
-                  {rentabilidad
-                    ? <>Cruce entre margen bruto y popularidad (veces recomendado por el asistente) — umbral margen {rentabilidad.margenMedio}%, umbral recomendaciones {rentabilidad.recomMedio}{rentabilidad.sinCoste > 0 && ` · ${rentabilidad.sinCoste} vino${rentabilidad.sinCoste > 1 ? 's' : ''} activo${rentabilidad.sinCoste > 1 ? 's' : ''} sin precio de coste (no aparecen)`}</>
-                    : 'Introduce el precio de coste en la columna "Coste €" del Catálogo para activar este análisis. Necesitas al menos 2 vinos con coste.'}
+                  {!rentabilidad
+                    ? 'Introduce el precio de coste en la columna "Coste €" del Catálogo para activar este análisis. Necesitas al menos 2 vinos con coste.'
+                    : rentabilidad.coldStart
+                    ? 'El cuadrante se activará cuando se registren al menos 20 unidades vendidas vía TPV. Los datos de margen ya están listos.'
+                    : <>Cruce entre margen bruto y unidades vendidas (TPV Square){!rentabilidad.usandoVentas && ' · usando recomendaciones del kiosko como aproximación'} — umbral margen {rentabilidad.margenMedio}%, umbral ventas {rentabilidad.ventasMedio} ud{rentabilidad.sinCoste > 0 && ` · ${rentabilidad.sinCoste} vino${rentabilidad.sinCoste > 1 ? 's' : ''} sin precio de coste`}</>
+                  }
                 </p>
               </div>
             </div>
@@ -2069,7 +2088,7 @@ export default function AdminKioskoPage() {
                       {rentabilidad && lista.slice(0,8).map(v => (
                         <div key={v.id} className={styles.bcgVinoItem}>
                           <span className={styles.bcgVinoNombre}>{v.nombre}</span>
-                          <span className={styles.bcgVinoStats}>{v.margenPct}% · {v.recomendaciones}×</span>
+                          <span className={styles.bcgVinoStats}>{v.margenPct}% · {v.ventas} ud</span>
                         </div>
                       ))}
                       {rentabilidad && lista.length > 8 && <p className={styles.bcgMas}>+{lista.length - 8} más</p>}
@@ -2240,7 +2259,7 @@ export default function AdminKioskoPage() {
               <th className={styles.thSortable} onClick={() => sortHead('anada')}>Añada{sortArrow('anada')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>
-              <th>Margen</th>
+              <th className={styles.thSortable} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>
               <th>Estantería</th>
@@ -2363,7 +2382,7 @@ export default function AdminKioskoPage() {
                 {/* Margen */}
                 <td>
                   {Number(v.precio_pvp) > 0 && Number(v.precio_coste) > 0
-                    ? (() => { const m = Math.round(((Number(v.precio_pvp) - Number(v.precio_coste)) / Number(v.precio_pvp)) * 100); return <span className={`${styles.margenBadge} ${m >= 65 ? styles.margenHigh : m >= 50 ? styles.margenMid : styles.margenLow}`}>{m}%</span> })()
+                    ? (() => { const m = Math.round(((Number(v.precio_pvp) - Number(v.precio_coste)) / Number(v.precio_pvp)) * 100); return <span className={`${styles.margenBadge} ${m >= 40 ? styles.margenHigh : m >= 25 ? styles.margenMid : styles.margenLow}`}>{m}%</span> })()
                     : <em className={styles.dash}>—</em>}
                 </td>
 
@@ -2404,6 +2423,7 @@ export default function AdminKioskoPage() {
                         {stockPending.anterior} → {stockPending.nuevo}
                         {stockPending.nuevo === 0 && <span className={styles.stockConfirmWarn}> · inactivo</span>}
                         {stockPending.nuevo > 0 && stockPending.anterior === 0 && (() => { const v = vinos.find(w => w.id === stockPending.id); return !v?.activo ? <span className={styles.stockConfirmOkText}> · se activa</span> : null })()}
+                        {(() => { const v = vinos.find(w => w.id === stockPending.id); return v?.square_catalog_id ? <span className={styles.stockConfirmWarn}> · sincronizado con Square, la próxima venta sobreescribirá este valor</span> : null })()}
                       </span>
                       <button className={styles.stockConfirmOk} onClick={e => { e.stopPropagation(); confirmarStock() }}>✓</button>
                       <button className={styles.stockConfirmNo} onClick={e => { e.stopPropagation(); cancelarStock() }}>✗</button>
