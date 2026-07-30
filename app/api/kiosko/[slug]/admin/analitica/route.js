@@ -148,6 +148,24 @@ export async function GET(request, { params }) {
     }
   })
 
+  // ── Ventas reales desde Square ──────────────────────────────────────────────
+  const { data: syncLogs } = await supabaseAdmin
+    .from('square_sync_log')
+    .select('lineas, created_at')
+    .eq('tienda_slug', slug)
+    .eq('ok', true)
+
+  const ventasPorVino = {}
+  let ultimoSyncAt = null
+  for (const log of syncLogs || []) {
+    if (!ultimoSyncAt || log.created_at > ultimoSyncAt) ultimoSyncAt = log.created_at
+    for (const linea of log.lineas || []) {
+      if (linea.status === 'ok' && linea.vino_id) {
+        ventasPorVino[linea.vino_id] = (ventasPorVino[linea.vino_id] || 0) + (linea.quantity || 1)
+      }
+    }
+  }
+
   return NextResponse.json({
     vacio: false,
     total: searches.length,
@@ -170,6 +188,8 @@ export async function GET(request, { params }) {
         fecha: m.created_at,
       })),
     },
+    ventasPorVino,
+    ultimoSyncAt,
     timeline,
     tendencias,
     recientes: searches.slice(0, 20).map(s => ({

@@ -1483,6 +1483,17 @@ export default function AdminKioskoPage() {
 
   function formatPVP(v) { return v != null ? `${Number(v).toFixed(2)} €` : null }
 
+  function formatSyncDate(iso) {
+    if (!iso) return null
+    const d = new Date(iso)
+    const hoy = new Date()
+    const hora = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+    if (d.toDateString() === hoy.toDateString()) return `Hoy, ${hora}`
+    const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1)
+    if (d.toDateString() === ayer.toDateString()) return `Ayer, ${hora}`
+    return `${d.getDate()} ${d.toLocaleString('es-ES', { month: 'short' })}, ${hora}`
+  }
+
   function renderQualityBadges(v, max = 3) {
     const issues = qualityIssuesForVino(v)
     if (!issues.length) return null
@@ -1843,6 +1854,13 @@ export default function AdminKioskoPage() {
             const SKELETON = [88, 72, 60, 48, 36]
             return (
               <>
+                {analitica.ultimoSyncAt && (
+                  <div className={styles.syncChip}>
+                    <span className={styles.syncDot} />
+                    TPV sincronizado · Última sincronización: {formatSyncDate(analitica.ultimoSyncAt)}
+                  </div>
+                )}
+
                 {vacio && (
                   <div className={styles.analiticaBanner}>
                     <span className={styles.analiticaBannerIcon}>📊</span>

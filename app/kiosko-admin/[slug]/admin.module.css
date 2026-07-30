@@ -2206,6 +2206,27 @@
   text-align: center;
 }
 
+.syncChip {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  background: #eaf7ee;
+  color: #1a6a3a;
+  font-size: .75rem;
+  font-weight: 600;
+  padding: .35rem .75rem;
+  border-radius: 20px;
+  border: 1px solid #b8e8c8;
+  align-self: flex-start;
+}
+.syncDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2ea55a;
+  flex-shrink: 0;
+}
+
 .analiticaBanner {
   display: flex;
   align-items: center;
