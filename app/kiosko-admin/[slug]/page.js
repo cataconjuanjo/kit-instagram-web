@@ -2102,6 +2102,81 @@ export default function AdminKioskoPage() {
         </div>
       )}
 
+      {/* Rendimiento por vino — Square TPV */}
+      {tab === 'analitica' && esPremium && analitica && Object.keys(analitica.ventasPorVino || {}).length > 0 && (() => {
+        const vp = analitica.ventasPorVino
+        const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: '#c03030' }
+        const filas = vinos
+          .filter(v => v.activo && vp[v.id])
+          .map(v => {
+            const uds     = vp[v.id] || 0
+            const pvp     = Number(v.precio_pvp || 0)
+            const coste   = Number(v.precio_coste || 0)
+            const ingresos = uds * pvp
+            const margen  = pvp > 0 && coste > 0 ? Math.round(((pvp - coste) / pvp) * 100) : null
+            const categoria = rentabilidad?.clasificados?.find(c => c.id === v.id)?.categoria || null
+            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria }
+          })
+          .sort((a, b) => b.ingresos - a.ingresos)
+        if (!filas.length) return null
+        const totalUds      = filas.reduce((s, f) => s + f.uds, 0)
+        const totalIngresos = filas.reduce((s, f) => s + f.ingresos, 0)
+        return (
+          <div style={{ padding: '0 1.75rem 1.75rem' }}>
+            <div className={styles.analiticaBloque}>
+              <div className={styles.analiticaBloqueHeader}>
+                <div>
+                  <h3 className={styles.analiticaBloqueTitle}>Rendimiento por vino</h3>
+                  <p className={styles.analiticaBloqueDesc}>
+                    Ventas registradas vía TPV Square · {filas.length} vino{filas.length !== 1 ? 's' : ''} vendido{filas.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table className={styles.rendTable}>
+                  <thead>
+                    <tr>
+                      <th className={styles.rendThNombre}>Vino</th>
+                      <th className={styles.rendThNum}>Vendidas (uds.)</th>
+                      <th className={styles.rendThNum}>Ingresos</th>
+                      <th className={styles.rendThNum}>Margen bruto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filas.map(f => (
+                      <tr key={f.id} className={styles.rendRow}>
+                        <td className={styles.rendTdNombre}>
+                          {f.categoria && (
+                            <span className={styles.rendDot} style={{ background: catColor[f.categoria] }} title={f.categoria} />
+                          )}
+                          <span className={styles.rendVinoNombre}>{f.nombre}</span>
+                          {f.bodega && <span className={styles.rendBodega}> · {f.bodega}</span>}
+                        </td>
+                        <td className={styles.rendTdNum}>{f.uds}</td>
+                        <td className={styles.rendTdNum}>{f.ingresos > 0 ? `${f.ingresos.toFixed(0)} €` : '—'}</td>
+                        <td className={styles.rendTdNum}>
+                          {f.margen !== null
+                            ? <span className={`${styles.margenBadge} ${f.margen >= 40 ? styles.margenHigh : f.margen >= 25 ? styles.margenMid : styles.margenLow}`}>{f.margen}%</span>
+                            : <em className={styles.dash}>—</em>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className={styles.rendTotalRow}>
+                      <td className={styles.rendTdNombre}>Total</td>
+                      <td className={styles.rendTdNum}>{totalUds} ud.</td>
+                      <td className={styles.rendTdNum}>{totalIngresos.toFixed(0)} €</td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Catálogo: toolbar + tabla */}
       {tab === 'catalogo' && <>
 
