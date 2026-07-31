@@ -2270,6 +2270,53 @@
 .paginacionBtnActivo { background: #1a1a2e !important; color: #f0ede8 !important; border-color: #1a1a2e !important; font-weight: 700; }
 .paginacionDots { font-size: .78rem; color: #bbb; padding: 0 .2rem; line-height: 32px; }
 
+/* ── Selección múltiple ──────────────────────────────────────────────────── */
+.thCheck, .tdCheck {
+  width: 36px;
+  padding: 0 0 0 .75rem;
+  text-align: center;
+}
+.rowSeleccionado { background: #f0f4ff !important; }
+
+.bulkBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 1.75rem;
+  background: #1a1a2e;
+  color: #f0ede8;
+  box-shadow: 0 -4px 20px rgba(0,0,0,.18);
+  flex-wrap: wrap;
+}
+.bulkCount { font-size: .82rem; font-weight: 700; margin-right: .5rem; }
+.bulkBtn {
+  padding: .35rem .85rem;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.1);
+  color: #f0ede8;
+  border-radius: 6px;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .12s;
+}
+.bulkBtn:hover { background: rgba(255,255,255,.2); }
+.bulkBtnDanger { border-color: #c44; color: #f08080; }
+.bulkBtnDanger:hover { background: rgba(204,68,68,.25); }
+.bulkBtnClose {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: rgba(240,237,232,.5);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: .25rem .5rem;
+}
+.bulkBtnClose:hover { color: #f0ede8; }
+
 .syncChip {
   display: inline-flex;
   align-items: center;

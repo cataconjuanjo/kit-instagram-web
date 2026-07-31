@@ -685,7 +685,7 @@ function TrialGate({ tienda }) {
 
 const VINO_VACIO = {
   nombre:'', bodega:'', tipo:'', uva:'', anada:'', region:'', pais:'España',
-  precio_pvp:'', precio_coste:'', stock:'', ubicacion_estanteria:'',
+  precio_pvp:'', precio_coste:'', precio_oferta:'', stock:'', stock_minimo:0, ubicacion_estanteria:'',
   foto_url:'', notas_cata:'', descripcion:'', puntuacion:'', destacado:false, activo:true,
 }
 
@@ -866,6 +866,7 @@ export default function AdminKioskoPage() {
   const [porPagina, setPorPagina]         = useState(20)
 
   const [subTabAnalitica, setSubTabAnalitica] = useState('resumen')
+  const [seleccionados, setSeleccionados]     = useState(new Set())
 
   const [filtroDestacado, setFiltroDestacado] = useState('todos')
 
@@ -1509,6 +1510,44 @@ export default function AdminKioskoPage() {
     return acciones.slice(0, 5)
   }, [alertasStock, analitica, rentabilidad, vinosPorId])
 
+  function toggleSeleccion(id) {
+    setSeleccionados(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSeleccionTodos() {
+    if (vinosPaginados.every(v => seleccionados.has(v.id))) {
+      setSeleccionados(prev => { const n = new Set(prev); vinosPaginados.forEach(v => n.delete(v.id)); return n })
+    } else {
+      setSeleccionados(prev => { const n = new Set(prev); vinosPaginados.forEach(v => n.add(v.id)); return n })
+    }
+  }
+
+  async function accionMasiva(campo, valor) {
+    const ids = [...seleccionados]
+    await Promise.all(ids.map(id =>
+      fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
+        method: 'PATCH',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [campo]: valor }),
+      })
+    ))
+    setSeleccionados(new Set())
+    await cargar()
+  }
+
+  async function eliminarMasivo() {
+    if (!confirm(`¿Eliminar ${seleccionados.size} vinos? Esta acción no se puede deshacer.`)) return
+    await Promise.all([...seleccionados].map(id =>
+      fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
+    ))
+    setSeleccionados(new Set())
+    await cargar()
+  }
+
   async function exportarCSV() {
     try {
       const res = await fetch(`/api/kiosko/${slug}/admin/exportar`, { headers: authHeaders })
@@ -1981,11 +2020,41 @@ export default function AdminKioskoPage() {
                   </div>
                 ) : null}
 
+                {/* KPIs en Resumen */}
+                <div className={styles.analiticaKpis}>
+                  <div className={styles.analiticaKpi}>
+                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.total ?? 0}</span>
+                    <span className={styles.analiticaKpiLabel}>Búsquedas (30 días)</span>
+                  </div>
+                  <div className={styles.analiticaKpi}>
+                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.semanaActual ?? 0}</span>
+                    <span className={styles.analiticaKpiLabel}>
+                      Esta semana
+                      {!vacio && analitica.semanaAnterior > 0 && (
+                        <em className={analitica.semanaActual >= analitica.semanaAnterior ? styles.kpiUp : styles.kpiDown}>
+                          {analitica.semanaActual >= analitica.semanaAnterior ? ' ↑' : ' ↓'} vs ant. ({analitica.semanaAnterior})
+                        </em>
+                      )}
+                    </span>
+                  </div>
+                  <div className={styles.analiticaKpi}>
+                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{Object.keys(analitica.ventasPorVino || {}).length}</span>
+                    <span className={styles.analiticaKpiLabel}>Vinos vendidos (TPV)</span>
+                  </div>
+                  <div className={styles.analiticaKpi}>
+                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{alertasStock.length}</span>
+                    <span className={styles.analiticaKpiLabel}>Alertas de stock</span>
+                  </div>
+                  <div className={styles.analiticaKpi}>
+                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.movil?.total ?? 0}</span>
+                    <span className={styles.analiticaKpiLabel}>Llevados al móvil</span>
+                  </div>
+                </div>
+
                 </>}
 
                 {/* ── Búsquedas ── */}
                 {subTabAnalitica === 'busquedas' && <>
-                {/* KPIs */}
                 <div className={styles.analiticaKpis}>
                   <div className={styles.analiticaKpi}>
                     <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.total ?? 0}</span>
@@ -2138,6 +2207,62 @@ export default function AdminKioskoPage() {
           })()}
         </div>
       )}
+
+      {/* Vinos sin movimiento */}
+      {tab === 'analitica' && esPremium && subTabAnalitica === 'ventas' && analitica && (() => {
+        const vp = analitica.ventasPorVino || {}
+        const sinMovimiento = vinos.filter(v =>
+          v.activo && Number(v.precio_pvp) > 0 && Number(v.stock ?? 0) > 0 && !vp[v.id]
+        ).sort((a, b) => Number(b.stock) - Number(a.stock))
+        if (!sinMovimiento.length) return null
+        const valorParado = sinMovimiento.reduce((s, v) => s + Number(v.stock) * Number(v.precio_pvp), 0)
+        return (
+          <div style={{ padding: '0 1.75rem 1.75rem' }}>
+            <div className={styles.analiticaBloque}>
+              <div className={styles.analiticaBloqueHeader}>
+                <div>
+                  <h3 className={styles.analiticaBloqueTitle}>Vinos sin movimiento</h3>
+                  <p className={styles.analiticaBloqueDesc}>
+                    Activos con stock pero sin ventas Square registradas · {sinMovimiento.length} vinos · {valorParado.toFixed(0)} € parados en lineal
+                  </p>
+                </div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table className={styles.rendTable}>
+                  <thead>
+                    <tr>
+                      <th className={styles.rendThNombre}>Vino</th>
+                      <th className={styles.rendThNum}>Stock</th>
+                      <th className={styles.rendThNum}>PVP</th>
+                      <th className={styles.rendThNum}>Valor parado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sinMovimiento.slice(0, 15).map(v => (
+                      <tr key={v.id} className={styles.rendRow}>
+                        <td className={styles.rendTdNombre}>
+                          <span className={styles.rendVinoNombre}>{v.nombre}</span>
+                          {v.bodega && <span className={styles.rendBodega}> · {v.bodega}</span>}
+                        </td>
+                        <td className={styles.rendTdNum}>{v.stock}</td>
+                        <td className={styles.rendTdNum}>{Number(v.precio_pvp).toFixed(2)} €</td>
+                        <td className={styles.rendTdNum}>{(Number(v.stock) * Number(v.precio_pvp)).toFixed(0)} €</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {sinMovimiento.length > 15 && (
+                    <tfoot>
+                      <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: '#aaa', fontStyle: 'italic' }}>
+                        +{sinMovimiento.length - 15} más no mostrados
+                      </td></tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Rentabilidad — solo en Premium */}
       {tab === 'analitica' && esPremium && subTabAnalitica === 'rentabilidad' && (
@@ -2425,6 +2550,12 @@ export default function AdminKioskoPage() {
         <table className={styles.table}>
           <thead>
             <tr>
+              <th className={styles.thCheck}>
+                <input type="checkbox"
+                  checked={vinosPaginados.length > 0 && vinosPaginados.every(v => seleccionados.has(v.id))}
+                  onChange={toggleSeleccionTodos}
+                />
+              </th>
               <th className={styles.thFoto}>Foto</th>
               <th className={styles.thSortable} onClick={() => sortHead('nombre')}>Nombre{sortArrow('nombre')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('bodega')}>Bodega{sortArrow('bodega')}</th>
@@ -2446,7 +2577,10 @@ export default function AdminKioskoPage() {
           </thead>
           <tbody>
             {vinosPaginados.map(v => (
-              <tr key={v.id} className={!v.activo ? styles.rowInactivo : ''}>
+              <tr key={v.id} className={`${!v.activo ? styles.rowInactivo : ''} ${seleccionados.has(v.id) ? styles.rowSeleccionado : ''}`}>
+                <td className={styles.tdCheck} onClick={e => e.stopPropagation()}>
+                  <input type="checkbox" checked={seleccionados.has(v.id)} onChange={() => toggleSeleccion(v.id)} />
+                </td>
 
                 {/* Foto */}
                 <td className={styles.tdFoto} onClick={() => abrirFotoFila(v.id)} title="Clic para cambiar foto">
@@ -2783,6 +2917,19 @@ export default function AdminKioskoPage() {
         )}
       </div>
 
+      {/* Barra de acción masiva */}
+      {seleccionados.size > 0 && (
+        <div className={styles.bulkBar}>
+          <span className={styles.bulkCount}>{seleccionados.size} seleccionado{seleccionados.size > 1 ? 's' : ''}</span>
+          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('activo', true)}>Activar</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('activo', false)}>Desactivar</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('destacado', true)}>★ Destacar</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('destacado', false)}>Quitar destacado</button>
+          <button type="button" className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={eliminarMasivo}>Eliminar</button>
+          <button type="button" className={styles.bulkBtnClose} onClick={() => setSeleccionados(new Set())}>✕</button>
+        </div>
+      )}
+
       {/* Paginación */}
       {totalPaginas > 1 && (
         <div className={styles.paginacionBar}>
@@ -3011,8 +3158,16 @@ export default function AdminKioskoPage() {
                     <input type="number" min="0" step="0.01" value={form.precio_coste} onChange={e => cambiar('precio_coste', e.target.value)} placeholder="0.00" />
                   </div>
                   <div className={styles.formField}>
+                    <label>Precio oferta (€)</label>
+                    <input type="number" min="0" step="0.01" value={form.precio_oferta} onChange={e => cambiar('precio_oferta', e.target.value)} placeholder="0.00" />
+                  </div>
+                  <div className={styles.formField}>
                     <label>Stock</label>
                     <input type="number" min="0" value={form.stock} onChange={e => cambiar('stock', e.target.value)} placeholder="0" />
+                  </div>
+                  <div className={styles.formField}>
+                    <label>Stock mínimo</label>
+                    <input type="number" min="0" value={form.stock_minimo ?? 0} onChange={e => cambiar('stock_minimo', e.target.value)} placeholder="0" />
                   </div>
                   <div className={styles.formField}>
                     <label>Estantería</label>
