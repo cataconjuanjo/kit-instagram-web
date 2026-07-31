@@ -52,6 +52,22 @@ function pedidoVisualStatus(status) {
   return status === 'nuevo' ? 'pendiente_pago' : status
 }
 
+function Sparkline({ data, width = 72, height = 24 }) {
+  const max = Math.max(...data, 1)
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width
+    const y = height - Math.round((v / max) * (height - 2)) - 1
+    return `${x.toFixed(1)},${y}`
+  }).join(' ')
+  const trend = data[data.length - 1] - data[0]
+  const color = trend > 0 ? '#2ea55a' : trend < 0 ? '#c03030' : '#bbb'
+  return (
+    <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function AdminThumbImage({ src, alt = '', className, fallback }) {
   const [failedSrc, setFailedSrc] = useState(null)
   if (!src || failedSrc === src) return fallback
@@ -2123,17 +2139,19 @@ export default function AdminKioskoPage() {
       {/* Rendimiento por vino — Square TPV */}
       {tab === 'analitica' && esPremium && analitica && Object.keys(analitica.ventasPorVino || {}).length > 0 && (() => {
         const vp = analitica.ventasPorVino
+        const tp = analitica.tendenciaPorVino || {}
         const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: '#c03030' }
         const filas = vinos
           .filter(v => v.activo && vp[v.id])
           .map(v => {
-            const uds     = vp[v.id] || 0
-            const pvp     = Number(v.precio_pvp || 0)
-            const coste   = Number(v.precio_coste || 0)
+            const uds      = vp[v.id] || 0
+            const pvp      = Number(v.precio_pvp || 0)
+            const coste    = Number(v.precio_coste || 0)
             const ingresos = uds * pvp
-            const margen  = pvp > 0 && coste > 0 ? Math.round(((pvp - coste) / pvp) * 100) : null
-            const categoria = rentabilidad?.clasificados?.find(c => c.id === v.id)?.categoria || null
-            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria }
+            const margen   = pvp > 0 && coste > 0 ? Math.round(((pvp - coste) / pvp) * 100) : null
+            const categoria  = rentabilidad?.clasificados?.find(c => c.id === v.id)?.categoria || null
+            const tendencia  = tp[v.id] || null
+            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, tendencia }
           })
           .sort((a, b) => b.ingresos - a.ingresos)
         if (!filas.length) return null
@@ -2158,6 +2176,7 @@ export default function AdminKioskoPage() {
                       <th className={styles.rendThNum}>Vendidas (uds.)</th>
                       <th className={styles.rendThNum}>Ingresos</th>
                       <th className={styles.rendThNum}>Margen bruto</th>
+                      <th className={styles.rendThNum}>Tendencia</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2177,6 +2196,9 @@ export default function AdminKioskoPage() {
                             ? <span className={`${styles.margenBadge} ${f.margen >= 40 ? styles.margenHigh : f.margen >= 25 ? styles.margenMid : styles.margenLow}`}>{f.margen}%</span>
                             : <em className={styles.dash}>—</em>}
                         </td>
+                        <td className={styles.rendTdSparkline}>
+                          {f.tendencia ? <Sparkline data={f.tendencia} /> : <em className={styles.dash}>—</em>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -2185,7 +2207,7 @@ export default function AdminKioskoPage() {
                       <td className={styles.rendTdNombre}>Total</td>
                       <td className={styles.rendTdNum}>{totalUds} ud.</td>
                       <td className={styles.rendTdNum}>{totalIngresos.toFixed(0)} €</td>
-                      <td />
+                      <td /><td />
                     </tr>
                   </tfoot>
                 </table>

@@ -156,12 +156,23 @@ export async function GET(request, { params }) {
     .eq('ok', true)
 
   const ventasPorVino = {}
+  const tendenciaPorVino = {}
   let ultimoSyncAt = null
+  const NUM_SEMANAS = 8
+  const ahoraMs = Date.now()
   for (const log of syncLogs || []) {
     if (!ultimoSyncAt || log.created_at > ultimoSyncAt) ultimoSyncAt = log.created_at
+    const logMs = new Date(log.created_at).getTime()
+    const semanasAtras = Math.floor((ahoraMs - logMs) / (7 * 24 * 60 * 60 * 1000))
+    const weekIdx = NUM_SEMANAS - 1 - semanasAtras // 7 = esta semana, 0 = hace 8 semanas
     for (const linea of log.lineas || []) {
       if (linea.status === 'ok' && linea.vino_id) {
-        ventasPorVino[linea.vino_id] = (ventasPorVino[linea.vino_id] || 0) + (linea.quantity || 1)
+        const id = linea.vino_id
+        ventasPorVino[id] = (ventasPorVino[id] || 0) + (linea.quantity || 1)
+        if (weekIdx >= 0 && weekIdx < NUM_SEMANAS) {
+          if (!tendenciaPorVino[id]) tendenciaPorVino[id] = Array(NUM_SEMANAS).fill(0)
+          tendenciaPorVino[id][weekIdx] += (linea.quantity || 1)
+        }
       }
     }
   }
@@ -189,6 +200,7 @@ export async function GET(request, { params }) {
       })),
     },
     ventasPorVino,
+    tendenciaPorVino,
     ultimoSyncAt,
     timeline,
     tendencias,

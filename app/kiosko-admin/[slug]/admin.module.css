@@ -2184,6 +2184,11 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.rendTdSparkline {
+  padding: .35rem .75rem;
+  text-align: right;
+  vertical-align: middle;
+}
 .rendTotalRow { background: #faf9f7; }
 .rendTotalRow .rendTdNombre,
 .rendTotalRow .rendTdNum {
