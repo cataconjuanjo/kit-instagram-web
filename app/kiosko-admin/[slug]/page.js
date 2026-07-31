@@ -862,6 +862,10 @@ export default function AdminKioskoPage() {
   const [precioMax, setPrecioMax]         = useState('')
   const [ordenPor, setOrdenPor]           = useState('nombre')
   const [ordenDir, setOrdenDir]           = useState('asc')
+  const [paginaActual, setPaginaActual]   = useState(1)
+  const [porPagina, setPorPagina]         = useState(20)
+
+  const [subTabAnalitica, setSubTabAnalitica] = useState('resumen')
 
   const [filtroDestacado, setFiltroDestacado] = useState('todos')
 
@@ -873,6 +877,8 @@ export default function AdminKioskoPage() {
   const [draggingImport, setDraggingImport] = useState(false)
 
   useEffect(() => { if (slug) cargar() }, [slug])
+
+  useEffect(() => { setPaginaActual(1) }, [busqueda, filtroTipo, filtroEstado, filtroCalidad, filtroDestacado, ordenPor, ordenDir, porPagina])
 
   useEffect(() => {
     if (tab === 'pedidos' && tienda && (tienda.kiosko_orders_enabled !== true || COUNTER_ORDERS_IN_DEVELOPMENT)) setTab('catalogo')
@@ -1231,6 +1237,12 @@ export default function AdminKioskoPage() {
         return 0
       })
   }, [vinos, filtroTipo, filtroEstado, filtroRegion, filtroPais, filtroStock, filtroCalidad, filtroDestacado, precioMin, precioMax, busqueda, ordenPor, ordenDir])
+
+  const totalPaginas   = Math.ceil(vinosFiltrados.length / porPagina)
+  const vinosPaginados = useMemo(() => {
+    const start = (paginaActual - 1) * porPagina
+    return vinosFiltrados.slice(start, start + porPagina)
+  }, [vinosFiltrados, paginaActual, porPagina])
 
   const hayFiltrosActivos = filtroTipo || filtroEstado !== 'todos' || filtroRegion || filtroPais ||
     filtroStock !== 'todos' || filtroCalidad || filtroDestacado !== 'todos' || precioMin !== '' || precioMax !== '' || busqueda
@@ -1880,12 +1892,30 @@ export default function AdminKioskoPage() {
 
       {tab === 'analitica' && esPremium && (
         <div className={styles.analiticaWrap}>
+          {/* Sub-tabs */}
+          <nav className={styles.subTabNav}>
+            {[
+              { id: 'resumen',       label: 'Resumen' },
+              { id: 'busquedas',     label: 'Búsquedas' },
+              { id: 'ventas',        label: 'Ventas TPV' },
+              { id: 'rentabilidad',  label: 'Rentabilidad' },
+            ].map(st => (
+              <button key={st.id} type="button"
+                className={`${styles.subTabBtn} ${subTabAnalitica === st.id ? styles.subTabBtnActive : ''}`}
+                onClick={() => setSubTabAnalitica(st.id)}>
+                {st.label}
+              </button>
+            ))}
+          </nav>
+
           {analiticaLoad && <p className={styles.analiticaLoading}>Cargando datos…</p>}
           {!analiticaLoad && analitica && (() => {
             const vacio = analitica.vacio
             const SKELETON = [88, 72, 60, 48, 36]
             return (
               <>
+                {/* ── Resumen ── */}
+                {subTabAnalitica === 'resumen' && <>
                 {analitica.ultimoSyncAt && (
                   <div className={styles.syncChip}>
                     <span className={styles.syncDot} />
@@ -1951,6 +1981,10 @@ export default function AdminKioskoPage() {
                   </div>
                 ) : null}
 
+                </>}
+
+                {/* ── Búsquedas ── */}
+                {subTabAnalitica === 'busquedas' && <>
                 {/* KPIs */}
                 <div className={styles.analiticaKpis}>
                   <div className={styles.analiticaKpi}>
@@ -2098,6 +2132,7 @@ export default function AdminKioskoPage() {
                     }
                   </div>
                 </div>
+                </>}
               </>
             )
           })()}
@@ -2105,7 +2140,7 @@ export default function AdminKioskoPage() {
       )}
 
       {/* Rentabilidad — solo en Premium */}
-      {tab === 'analitica' && esPremium && (
+      {tab === 'analitica' && esPremium && subTabAnalitica === 'rentabilidad' && (
         <div style={{ padding: '0 1.75rem 1.75rem' }}>
           <div className={styles.analiticaBloque}>
             <div className={styles.analiticaBloqueHeader}>
@@ -2153,7 +2188,7 @@ export default function AdminKioskoPage() {
       )}
 
       {/* Rendimiento por vino — Square TPV */}
-      {tab === 'analitica' && esPremium && analitica && Object.keys(analitica.ventasPorVino || {}).length > 0 && (() => {
+      {tab === 'analitica' && esPremium && subTabAnalitica === 'ventas' && analitica && (() => {
         const vp = analitica.ventasPorVino
         const tp = analitica.tendenciaPorVino || {}
         const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: '#c03030' }
@@ -2170,7 +2205,16 @@ export default function AdminKioskoPage() {
             return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, tendencia }
           })
           .sort((a, b) => b.ingresos - a.ingresos)
-        if (!filas.length) return null
+        if (!filas.length) return (
+          <div style={{ padding: '0 1.75rem 1.75rem' }}>
+            <div className={styles.analiticaBloque}>
+              <div className={styles.analiticaBloqueHeader}><div>
+                <h3 className={styles.analiticaBloqueTitle}>Rendimiento por vino</h3>
+                <p className={styles.analiticaBloqueDesc}>Sin ventas registradas vía TPV Square todavía. Los datos aparecerán aquí automáticamente con cada venta sincronizada.</p>
+              </div></div>
+            </div>
+          </div>
+        )
         const totalUds      = filas.reduce((s, f) => s + f.uds, 0)
         const totalIngresos = filas.reduce((s, f) => s + f.ingresos, 0)
         return (
@@ -2401,7 +2445,7 @@ export default function AdminKioskoPage() {
             </tr>
           </thead>
           <tbody>
-            {vinosFiltrados.map(v => (
+            {vinosPaginados.map(v => (
               <tr key={v.id} className={!v.activo ? styles.rowInactivo : ''}>
 
                 {/* Foto */}
@@ -2668,7 +2712,7 @@ export default function AdminKioskoPage() {
       </div>
 
       <div className={styles.mobileCatalogList} aria-label="Listado movil de catalogo">
-        {vinosFiltrados.map(v => (
+        {vinosPaginados.map(v => (
           <article key={v.id} className={`${styles.mobileWineCard} ${!v.activo ? styles.mobileWineCardInactive : ''}`}>
             <button
               type="button"
@@ -2738,6 +2782,30 @@ export default function AdminKioskoPage() {
           </div>
         )}
       </div>
+
+      {/* Paginación */}
+      {totalPaginas > 1 && (
+        <div className={styles.paginacionBar}>
+          <div className={styles.paginacionInfo}>
+            {((paginaActual - 1) * porPagina) + 1}–{Math.min(paginaActual * porPagina, vinosFiltrados.length)} de {vinosFiltrados.length} vinos
+          </div>
+          <div className={styles.paginacionControls}>
+            <button type="button" className={styles.paginacionBtn} onClick={() => setPaginaActual(p => Math.max(1, p - 1))} disabled={paginaActual === 1}>‹</button>
+            {Array.from({ length: totalPaginas }, (_, i) => i + 1).filter(p => p === 1 || p === totalPaginas || Math.abs(p - paginaActual) <= 1).reduce((acc, p, idx, arr) => {
+              if (idx > 0 && p - arr[idx - 1] > 1) acc.push(<span key={`dots-${p}`} className={styles.paginacionDots}>…</span>)
+              acc.push(<button key={p} type="button" className={`${styles.paginacionBtn} ${p === paginaActual ? styles.paginacionBtnActivo : ''}`} onClick={() => setPaginaActual(p)}>{p}</button>)
+              return acc
+            }, [])}
+            <button type="button" className={styles.paginacionBtn} onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))} disabled={paginaActual === totalPaginas}>›</button>
+          </div>
+          <div className={styles.paginacionPorPagina}>
+            <span>Ver</span>
+            {[10, 20, 30].map(n => (
+              <button key={n} type="button" className={`${styles.paginacionBtn} ${porPagina === n ? styles.paginacionBtnActivo : ''}`} onClick={() => setPorPagina(n)}>{n}</button>
+            ))}
+          </div>
+        </div>
+      )}
       </>}
 
       {/* ── Modal importar ──────────────────────────────────────────────────── */}

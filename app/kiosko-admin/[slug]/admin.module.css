@@ -2217,6 +2217,59 @@
   text-align: center;
 }
 
+/* ── Sub-tabs Analítica ──────────────────────────────────────────────────── */
+.subTabNav {
+  display: flex;
+  gap: .35rem;
+  padding-bottom: .25rem;
+  border-bottom: 2px solid #f0ece6;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+.subTabBtn {
+  background: none;
+  border: none;
+  padding: .45rem .9rem;
+  border-radius: 8px;
+  font-size: .82rem;
+  font-weight: 500;
+  color: #888;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.subTabBtn:hover { background: #f4f2ef; color: #1a1a2e; }
+.subTabBtnActive { background: #1a1a2e !important; color: #f0ede8 !important; font-weight: 700; }
+
+/* ── Paginación ──────────────────────────────────────────────────────────── */
+.paginacionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem 1.75rem;
+  border-top: 1px solid #f0ece6;
+  flex-wrap: wrap;
+}
+.paginacionInfo { font-size: .78rem; color: #999; }
+.paginacionControls { display: flex; gap: .25rem; align-items: center; }
+.paginacionPorPagina { display: flex; align-items: center; gap: .35rem; font-size: .78rem; color: #999; }
+.paginacionBtn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 .5rem;
+  border: 1px solid #e8e5e0;
+  background: #fff;
+  border-radius: 6px;
+  font-size: .78rem;
+  color: #555;
+  cursor: pointer;
+  transition: background .12s;
+}
+.paginacionBtn:hover:not(:disabled) { background: #f4f2ef; }
+.paginacionBtn:disabled { opacity: .35; cursor: default; }
+.paginacionBtnActivo { background: #1a1a2e !important; color: #f0ede8 !important; border-color: #1a1a2e !important; font-weight: 700; }
+.paginacionDots { font-size: .78rem; color: #bbb; padding: 0 .2rem; line-height: 32px; }
+
 .syncChip {
   display: inline-flex;
   align-items: center;
