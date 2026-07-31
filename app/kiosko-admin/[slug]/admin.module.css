@@ -587,6 +587,12 @@
   font-weight: 700;
 }
 
+.stockBajoMinimo {
+  background: #fff8f0;
+  color: #b85c00;
+  font-weight: 700;
+}
+
 .stockConfirm {
   display: inline-flex;
   align-items: center;

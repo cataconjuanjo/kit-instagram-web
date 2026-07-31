@@ -1377,18 +1377,34 @@ export default function AdminKioskoPage() {
   }, [vinos, analitica])
 
   const alertasStock = useMemo(() => {
-    if (!analitica?.topVinos?.length) return []
-    return analitica.topVinos
-      .map(tv => {
+    // Incluye vinos bajo su mínimo aunque no aparezcan en topVinos (Square)
+    const vistos = new Set()
+    const alertas = []
+
+    // 1. Vinos con mínimo configurado que están por debajo
+    vinos.forEach(v => {
+      if (!v.activo) return
+      const stock = Number(v.stock ?? 0)
+      const minimo = Number(v.stock_minimo ?? 0)
+      if (minimo > 0 && stock <= minimo) {
+        vistos.add(String(v.id))
+        alertas.push({ id: v.id, nombre: v.nombre, bodega: v.bodega, stock, minimo, recomendaciones: 0, critico: stock === 0, diasRestantes: null, porMinimo: true })
+      }
+    })
+
+    // 2. Vinos de topVinos con stock bajo (lógica anterior)
+    if (analitica?.topVinos?.length) {
+      analitica.topVinos.forEach(tv => {
+        if (vistos.has(String(tv.id))) return
         const v = vinos.find(w => String(w.id) === String(tv.id))
-        if (!v || !v.activo) return null
-        const stock = Number(v.stock)
-        if (stock > 5 && tv.diasRestantes === null) return null
-        if (stock > 5 && (tv.diasRestantes === null || tv.diasRestantes > 14)) return null
-        return { id: v.id, nombre: v.nombre, bodega: v.bodega, stock, recomendaciones: tv.veces, critico: stock === 0, diasRestantes: tv.diasRestantes }
+        if (!v || !v.activo) return
+        const stock = Number(v.stock ?? 0)
+        if (stock > 5 && (tv.diasRestantes === null || tv.diasRestantes > 14)) return
+        alertas.push({ id: v.id, nombre: v.nombre, bodega: v.bodega, stock, minimo: Number(v.stock_minimo ?? 0), recomendaciones: tv.veces, critico: stock === 0, diasRestantes: tv.diasRestantes, porMinimo: false })
       })
-      .filter(Boolean)
-      .sort((a, b) => (a.diasRestantes ?? 999) - (b.diasRestantes ?? 999) || b.recomendaciones - a.recomendaciones)
+    }
+
+    return alertas.sort((a, b) => (a.diasRestantes ?? 999) - (b.diasRestantes ?? 999) || b.recomendaciones - a.recomendaciones)
   }, [vinos, analitica])
 
   const accionesAnalitica = useMemo(() => {
@@ -2377,6 +2393,7 @@ export default function AdminKioskoPage() {
               <th className={styles.thSortable} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>
+              <th title="Stock mínimo — alerta si stock ≤ este valor">Mín.</th>
               <th>Estantería</th>
               <th className={styles.thCenter}>★</th>
               <th className={styles.thCenter}>Estado</th>
@@ -2557,6 +2574,31 @@ export default function AdminKioskoPage() {
                   ) : (
                     <span className={styles.inlineValue}>
                       {v.stock ?? 0}
+                      <span className={styles.editIcon}>✎</span>
+                    </span>
+                  )}
+                </td>
+
+                {/* Stock mínimo inline */}
+                <td
+                  className={`${styles.tdEditable} ${Number(v.stock ?? 0) <= Number(v.stock_minimo ?? 0) && Number(v.stock_minimo ?? 0) > 0 ? styles.stockBajoMinimo : ''}`}
+                  onClick={e => startInline(v.id, 'stock_minimo', v.stock_minimo ?? 0, e)}
+                >
+                  {inlineEdit?.id === v.id && inlineEdit.campo === 'stock_minimo' ? (
+                    <input
+                      className={styles.inlineInput}
+                      type="number" min="0"
+                      value={inlineEdit.valor}
+                      onChange={e => setInlineEdit(p => ({ ...p, valor: e.target.value }))}
+                      onBlur={guardarInline}
+                      onKeyDown={e => { if (e.key === 'Enter') guardarInline(); if (e.key === 'Escape') setInlineEdit(null) }}
+                      autoFocus
+                      onClick={e => e.stopPropagation()}
+                      style={{ width: 48 }}
+                    />
+                  ) : (
+                    <span className={styles.inlineValue}>
+                      {v.stock_minimo ?? 0}
                       <span className={styles.editIcon}>✎</span>
                     </span>
                   )}
