@@ -866,256 +866,309 @@ export default function SimuladorCartas() {
 
   return (
     <main className="sim-page">
-      <section className="sim-hero no-print">
-        <div>
-          <p className="eyebrow">Consultoria de carta</p>
-          <h1>Simulador de cartas para restaurantes</h1>
-          <p>{simulacion?.cfg.descripcion}</p>
+      <header className="sim-topbar no-print">
+        <div className="sim-topbar-title">
+          <p className="sim-topbar-eyebrow">Consultoría · Simulador de cartas</p>
+          <h1 className="sim-topbar-h1">
+            {restaurante?.nombre || 'Selecciona un restaurante'}
+            {simulacion ? <em className="sim-topbar-badge">{simulacion.cfg.label}</em> : null}
+          </h1>
         </div>
-        <div className="sim-hero-actions">
-          <button type="button" className="sim-btn sim-btn-secondary" onClick={copiarPropuesta} disabled={!simulacionEditada}>Copiar propuesta</button>
-          <button type="button" className="sim-btn sim-btn-secondary" onClick={() => window.print()} disabled={!simulacionEditada}>Imprimir / PDF</button>
+        <div className="sim-topbar-actions">
+          <button type="button" className="sim-btn sim-btn-ghost" onClick={copiarPropuesta} disabled={!simulacionEditada}>
+            Copiar propuesta
+          </button>
+          <button type="button" className="sim-btn sim-btn-ghost" onClick={() => window.print()} disabled={!simulacionEditada}>
+            PDF
+          </button>
           <button type="button" className="sim-btn sim-btn-primary" onClick={guardarPropuestas} disabled={!simulacionEditada || guardando}>
             {guardando ? 'Guardando...' : 'Guardar propuestas'}
           </button>
         </div>
-      </section>
+      </header>
 
-      {error ? <div className="sim-alert sim-alert-error no-print">{error}</div> : null}
-      {status ? <div className="sim-alert sim-alert-ok no-print">{status}</div> : null}
+      <div className="sim-workbench">
+        <aside className="sim-sidebar no-print">
+          <div className="sim-sidebar-block">
+            <span className="sim-label">Restaurante</span>
+            <select className="sim-select" value={restauranteId} onChange={event => { setRestauranteId(event.target.value); limpiarManual() }}>
+              {restaurantes.map(rest => <option key={rest.id} value={rest.id}>{rest.nombre}</option>)}
+            </select>
+          </div>
 
-      <section className="sim-controls no-print">
-        <label>
-          Restaurante
-          <select value={restauranteId} onChange={event => { setRestauranteId(event.target.value); limpiarManual() }}>
-            {restaurantes.map(rest => <option key={rest.id} value={rest.id}>{rest.nombre}</option>)}
-          </select>
-        </label>
-        <label>
-          Escenario
-          <select value={escenario} onChange={event => { setEscenario(event.target.value); limpiarManual() }}>
-            {Object.entries(ESCENARIOS).map(([key, cfg]) => <option key={key} value={key}>{cfg.label}</option>)}
-          </select>
-        </label>
-        <label>
-          Proveedor
-          <select value={proveedorId} onChange={event => { setProveedorId(event.target.value); limpiarManual() }}>
-            <option value="">Todos los proveedores</option>
-            {proveedores.map(proveedor => <option key={proveedor.id} value={proveedor.id}>{proveedor.nombre}</option>)}
-          </select>
-        </label>
-        <label className="sim-check">
-          <input type="checkbox" checked={soloConCoste} onChange={event => { setSoloConCoste(event.target.checked); limpiarManual() }} />
-          Solo catalogo con coste
-        </label>
-        <label className="sim-check">
-          <input type="checkbox" checked={soloFavoritos} onChange={event => { setSoloFavoritos(event.target.checked); limpiarManual() }} />
-          Solo favoritos
-        </label>
-        <button type="button" className="sim-btn sim-btn-primary" onClick={generar}>Generar simulacion</button>
-      </section>
-
-      {simulacion && simulacionEditada ? (
-        <>
-          <section className="sim-manual-grid no-print">
-            <article className="sim-panel">
-              <div className="sim-panel-head">
-                <h2>Añadir altas manualmente</h2>
-                <span>{soloFavoritos ? `${totalFavoritosDisponibles} favoritos` : `${catalogoManualBase.length} refs disponibles`}</span>
-              </div>
-              <div className="sim-selector-entry">
-                <strong>{simulacionEditada.altas.length} altas incluidas</strong>
-                <span>Filtra el catalogo, marca varias referencias y recogelos en la propuesta de una vez.</span>
-                <button type="button" className="sim-btn sim-btn-primary" onClick={abrirSelectorAltas}>Abrir selector de catalogo</button>
-              </div>
-              <div className="sim-search-box">
-                <input
-                  value={busquedaAlta}
-                  onChange={event => setBusquedaAlta(event.target.value)}
-                  placeholder="Buscar por vino, bodega, zona, uva o proveedor..."
-                />
-              </div>
-              <div className="sim-search-meta">
-                {busquedaAlta.trim()
-                  ? <span>{catalogoManual.length} resultados mostrados</span>
-                  : <span>{soloFavoritos ? `${catalogoManual.length} favoritos disponibles` : 'Escribe para buscar en el catalogo filtrado'}</span>}
-                {soloFavoritos ? <button type="button" onClick={() => setSoloFavoritos(false)}>Ver todo</button> : null}
-              </div>
-              <div className="sim-pick-list">
-                {catalogoManual.map(vino => {
-                  const coste = numero(vino.coste_estimado)
-                  const rb = pvpBotella(coste)
-                  return (
-                    <button type="button" key={vino.id} onClick={() => agregarAltaManual(vino)}>
-                      <strong>{vino.nombre}</strong>
-                      <span>{[vino.bodega, vino.region, vino.formato, proveedorNombre(vino, proveedoresPorId)].filter(Boolean).join(' · ')}</span>
-                      <em>{dinero(coste)} · {rb ? dinero(rb.pvp) : dinero(vino.pvp_recomendado)}</em>
-                    </button>
-                  )
-                })}
-                {!busquedaAlta.trim() && !soloFavoritos ? <p>Busca por vino, bodega, proveedor, zona, uva, formato o referencia.</p> : null}
-                {!busquedaAlta.trim() && soloFavoritos && catalogoManual.length === 0 ? <p>No hay favoritos disponibles con estos filtros.</p> : null}
-                {busquedaAlta.trim() && catalogoManual.length === 0 ? <p>No hay referencias con ese filtro. Revisa favoritos, proveedor o coste.</p> : null}
-              </div>
-            </article>
-
-            <article className="sim-panel">
-              <div className="sim-panel-head">
-                <h2>Marcar bajas manualmente</h2>
-                <span>{vinosRestaurante.filter(activoCarta).length} refs carta</span>
-              </div>
-              <div className="sim-search-box">
-                <input
-                  value={busquedaBaja}
-                  onChange={event => setBusquedaBaja(event.target.value)}
-                  placeholder="Buscar una referencia de la carta actual..."
-                />
-              </div>
-              <div className="sim-search-meta">
-                {busquedaBaja.trim()
-                  ? <span>{vinosBajaManual.length} resultados mostrados</span>
-                  : <span>Escribe para buscar en la carta actual</span>}
-              </div>
-              <div className="sim-pick-list">
-                {vinosBajaManual.map(vino => (
-                  <button type="button" key={vino.id} onClick={() => agregarBajaManual(vino)}>
-                    <strong>{vino.nombre}</strong>
-                    <span>{[vino.bodega, vino.region, vino.tipo, vino.proveedor].filter(Boolean).join(' · ')}</span>
-                    <em>{dinero(vino.coste_compra)} · {dinero(vino.precio_botella)}</em>
-                  </button>
-                ))}
-                {!busquedaBaja.trim() ? <p>Busca por vino, bodega, zona, tipo o proveedor.</p> : null}
-                {busquedaBaja.trim() && vinosBajaManual.length === 0 ? <p>No hay referencias con ese filtro.</p> : null}
-              </div>
-            </article>
-          </section>
-
-          <section className="sim-stats no-print">
-            <Stat label="Referencias actuales" value={simulacion.metricas.total} />
-            <Stat label="PVP medio actual" value={dinero(simulacion.metricas.pvpMedio)} />
-            <Stat label="Margen medio actual" value={porcentaje(simulacion.metricas.margenMedio ?? NaN)} />
-            <Stat label="Referencias finales" value={simulacionEditada.metricasSimuladas.total} trend={`${simulacionEditada.altas.length} altas · ${simulacionEditada.bajas.length} bajas`} />
-            <Stat label="PVP medio final" value={dinero(simulacionEditada.metricasSimuladas.pvpMedio)} />
-            <Stat label="Margen medio final" value={porcentaje(simulacionEditada.metricasSimuladas.margenMedio ?? NaN)} />
-          </section>
-
-          <section className="sim-workgrid no-print">
-            <article className="sim-panel">
-              <div className="sim-panel-head">
-                <h2>Bajas propuestas</h2>
-                <div className="sim-panel-tools">
-                  <button type="button" onClick={() => setBajasSeleccionadas(bajasDisponibles.map(item => String(item.vino.id)))}>Todas</button>
-                  <button type="button" onClick={() => setBajasSeleccionadas([])}>Ninguna</button>
-                  <span>{simulacionEditada.bajas.length}/{bajasDisponibles.length} incluidas</span>
-                </div>
-              </div>
-              <div className="sim-table sim-table-bajas">
-                <div className="sim-table-head">
-                  <span></span>
-                  <span>Vino</span>
-                  <span>Coste</span>
-                  <span>PVP</span>
-                  <span>Margen</span>
-                  <span>Motivo</span>
-                </div>
-                {bajasDisponibles.map(item => (
-                  <div className={`sim-table-row ${bajasSet.has(String(item.vino.id)) ? '' : 'is-muted'}`} key={item.vino.id}>
-                    <label className="sim-row-check" title="Incluir en propuesta">
-                      <input type="checkbox" checked={bajasSet.has(String(item.vino.id))} onChange={() => toggleBaja(item.vino.id)} />
-                    </label>
-                    <strong>{item.vino.nombre}</strong>
-                    <span>{dinero(item.vino.coste_compra)}</span>
-                    <span>{dinero(item.vino.precio_botella)}</span>
-                    <span>{porcentaje(item.margen ?? NaN)}</span>
-                    <span>{item.razones.join(' · ')}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className="sim-panel">
-              <div className="sim-panel-head">
-                <h2>Altas desde catalogo</h2>
-                <div className="sim-panel-tools">
-                  <button type="button" onClick={() => setAltasSeleccionadas(altasDisponibles.map(item => String(item.vino.id)))}>Todas</button>
-                  <button type="button" onClick={() => setAltasSeleccionadas([])}>Ninguna</button>
-                  <span>{simulacionEditada.altas.length}/{altasDisponibles.length} incluidas</span>
-                </div>
-              </div>
-              <div className="sim-table sim-table-altas">
-                <div className="sim-table-head">
-                  <span></span>
-                  <span>Vino</span>
-                  <span>Proveedor</span>
-                  <span>Coste</span>
-                  <span>PVP</span>
-                  <span>Motivo</span>
-                </div>
-                {altasDisponibles.map(item => (
-                  <div className={`sim-table-row ${altasSet.has(String(item.vino.id)) ? '' : 'is-muted'}`} key={item.vino.id}>
-                    <label className="sim-row-check" title="Incluir en propuesta">
-                      <input type="checkbox" checked={altasSet.has(String(item.vino.id))} onChange={() => toggleAlta(item.vino.id)} />
-                    </label>
-                    <strong>
-                      {item.vino.nombre}
-                      <small>{[item.vino.bodega, item.vino.region, item.vino.formato].filter(Boolean).join(' · ')}</small>
-                    </strong>
-                    <span>{proveedorNombre(item.vino, proveedoresPorId)}</span>
-                    <span>{dinero(item.coste)}</span>
-                    <span>{dinero(item.pvp)} <small>{item.regla}</small></span>
-                    <span>{item.razones.join(' · ')}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-          </section>
-
-          <section className="sim-client-proposal">
-            <div className="sim-proposal-head">
-              <div>
-                <p>Propuesta de carta</p>
-                <h2>{restaurante?.nombre || 'Restaurante'}</h2>
-                <span>{restaurante?.ciudad || restaurante?.provincia || 'Carta simulada'} · Escenario {simulacion.cfg.label}</span>
-              </div>
-              <div>
-                <strong>{simulacionEditada.metricasSimuladas.total}</strong>
-                <span>referencias finales</span>
-              </div>
-            </div>
-
-            <div className="sim-client-summary">
-              <span>Altas incluidas <strong>{simulacionEditada.altas.length}</strong></span>
-              <span>Bajas incluidas <strong>{simulacionEditada.bajas.length}</strong></span>
-              <span>Margen medio <strong>{porcentaje(simulacionEditada.metricasSimuladas.margenMedio ?? NaN)}</strong></span>
-              <span>PVP medio <strong>{dinero(simulacionEditada.metricasSimuladas.pvpMedio)}</strong></span>
-            </div>
-
-            <div className="sim-client-grid">
-              {Object.entries(cartaAgrupada).map(([tipo, vinosGrupo]) => (
-                <section key={tipo} className="sim-menu-section">
-                  <h3>{labelTipo(tipo)}</h3>
-                  {vinosGrupo
-                    .sort((a, b) => (a.pvp || 0) - (b.pvp || 0))
-                    .map((vino, index) => (
-                      <div className={`sim-menu-row ${vino.origen === 'alta' ? 'is-new' : ''}`} key={`${tipo}-${vino.nombre}-${index}`}>
-                        <div>
-                          <strong>{vino.nombre}</strong>
-                          <span>{[vino.bodega, vino.zona, vino.proveedor].filter(Boolean).join(' · ')}</span>
-                        </div>
-                        <em>{vino.pvp ? dinero(vino.pvp) : 'S/P'}</em>
-                      </div>
-                    ))}
-                </section>
+          <div className="sim-sidebar-block">
+            <span className="sim-label">Escenario</span>
+            <div className="sim-scenario-grid">
+              {Object.entries(ESCENARIOS).map(([key, cfg]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`sim-scenario-card ${escenario === key ? 'is-active' : ''}`}
+                  onClick={() => { setEscenario(key); limpiarManual() }}
+                >
+                  <strong>{cfg.label}</strong>
+                  <span>{cfg.bajas} bajas · {cfg.altas} altas · obj. {cfg.objetivoMargen}%</span>
+                </button>
               ))}
             </div>
-          </section>
-        </>
-      ) : (
-        <section className="sim-empty">
-          <h2>Selecciona un restaurante para empezar.</h2>
-          <p>El simulador necesita una carta actual y el catalogo comun de proveedores.</p>
-        </section>
-      )}
+          </div>
+
+          <div className="sim-sidebar-block">
+            <span className="sim-label">Proveedor</span>
+            <select className="sim-select" value={proveedorId} onChange={event => { setProveedorId(event.target.value); limpiarManual() }}>
+              <option value="">Todos los proveedores</option>
+              {proveedores.map(proveedor => <option key={proveedor.id} value={proveedor.id}>{proveedor.nombre}</option>)}
+            </select>
+          </div>
+
+          <div className="sim-sidebar-block sim-sidebar-checks">
+            <label className="sim-check-row">
+              <input type="checkbox" checked={soloConCoste} onChange={event => { setSoloConCoste(event.target.checked); limpiarManual() }} />
+              Solo catálogo con coste
+            </label>
+            <label className="sim-check-row">
+              <input type="checkbox" checked={soloFavoritos} onChange={event => { setSoloFavoritos(event.target.checked); limpiarManual() }} />
+              Solo favoritos
+            </label>
+          </div>
+
+          <div className="sim-sidebar-block">
+            <button type="button" className="sim-btn sim-btn-primary sim-btn-full" onClick={generar}>
+              Generar simulación
+            </button>
+          </div>
+
+          {error ? <div className="sim-sidebar-alert sim-sidebar-alert-error">{error}</div> : null}
+          {status ? <div className="sim-sidebar-alert sim-sidebar-alert-ok">{status}</div> : null}
+        </aside>
+
+        <div className="sim-main">
+          {simulacion && simulacionEditada ? (
+            <>
+              <section className="sim-kpis no-print">
+                <div className="sim-kpi-group">
+                  <span className="sim-kpi-group-label">Carta actual</span>
+                  <div className="sim-kpi-cells">
+                    <div className="sim-kpi">
+                      <span>Referencias</span>
+                      <strong>{simulacion.metricas.total}</strong>
+                    </div>
+                    <div className="sim-kpi">
+                      <span>PVP medio</span>
+                      <strong>{dinero(simulacion.metricas.pvpMedio)}</strong>
+                    </div>
+                    <div className="sim-kpi">
+                      <span>Margen medio</span>
+                      <strong>{porcentaje(simulacion.metricas.margenMedio ?? NaN)}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sim-kpi-arrow" aria-hidden="true">→</div>
+
+                <div className="sim-kpi-group sim-kpi-group-after">
+                  <span className="sim-kpi-group-label">Propuesta · {simulacion.cfg.label}</span>
+                  <div className="sim-kpi-cells">
+                    <div className="sim-kpi">
+                      <span>Referencias</span>
+                      <strong>{simulacionEditada.metricasSimuladas.total}</strong>
+                      <em>+{simulacionEditada.altas.length} −{simulacionEditada.bajas.length}</em>
+                    </div>
+                    <div className="sim-kpi">
+                      <span>PVP medio</span>
+                      <strong>{dinero(simulacionEditada.metricasSimuladas.pvpMedio)}</strong>
+                      {(() => {
+                        const delta = simulacionEditada.metricasSimuladas.pvpMedio - simulacion.metricas.pvpMedio
+                        if (!delta) return null
+                        return <em className={delta > 0 ? 'is-up' : 'is-down'}>{delta > 0 ? '+' : ''}{dinero(Math.abs(delta))}</em>
+                      })()}
+                    </div>
+                    <div className="sim-kpi">
+                      <span>Margen medio</span>
+                      <strong>{porcentaje(simulacionEditada.metricasSimuladas.margenMedio ?? NaN)}</strong>
+                      {(() => {
+                        const m1 = simulacionEditada.metricasSimuladas.margenMedio
+                        const m0 = simulacion.metricas.margenMedio
+                        if (m1 === null || m0 === null) return null
+                        const delta = m1 - m0
+                        return <em className={delta > 0 ? 'is-up' : delta < 0 ? 'is-down' : ''}>{delta > 0 ? '+' : ''}{Math.round(delta)} pp</em>
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="sim-workgrid no-print">
+                <article className="sim-panel">
+                  <div className="sim-panel-head">
+                    <div className="sim-panel-head-info">
+                      <span className="sim-panel-badge sim-panel-badge-baja">Retirar</span>
+                      <h2>Bajas propuestas</h2>
+                    </div>
+                    <div className="sim-panel-tools">
+                      <span className="sim-panel-count">{simulacionEditada.bajas.length}/{bajasDisponibles.length}</span>
+                      <button type="button" onClick={() => setBajasSeleccionadas(bajasDisponibles.map(item => String(item.vino.id)))}>Todas</button>
+                      <button type="button" onClick={() => setBajasSeleccionadas([])}>Ninguna</button>
+                    </div>
+                  </div>
+
+                  <div className="sim-wine-list">
+                    {bajasDisponibles.map(item => (
+                      <label key={item.vino.id} className={`sim-wine-row ${bajasSet.has(String(item.vino.id)) ? '' : 'is-muted'}`}>
+                        <input type="checkbox" className="sim-wine-check" checked={bajasSet.has(String(item.vino.id))} onChange={() => toggleBaja(item.vino.id)} />
+                        <div className="sim-wine-info">
+                          <strong>{item.vino.nombre}</strong>
+                          <span>{[item.vino.bodega, item.vino.region].filter(Boolean).join(' · ')}</span>
+                          <div className="sim-wine-tags">
+                            {item.razones.slice(0, 2).map((r, i) => <span key={i} className="sim-tag">{r}</span>)}
+                          </div>
+                        </div>
+                        <div className="sim-wine-nums">
+                          <em className={item.margen !== null && item.margen < 50 ? 'is-low' : ''}>{porcentaje(item.margen ?? NaN)}</em>
+                          <span>{dinero(item.vino.precio_botella)}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="sim-panel-add">
+                    <input
+                      className="sim-panel-add-input"
+                      value={busquedaBaja}
+                      onChange={event => setBusquedaBaja(event.target.value)}
+                      placeholder="+ Añadir baja manualmente..."
+                    />
+                    {vinosBajaManual.length > 0 && (
+                      <div className="sim-panel-add-results">
+                        {vinosBajaManual.slice(0, 6).map(vino => (
+                          <button key={vino.id} type="button" onClick={() => agregarBajaManual(vino)}>
+                            <strong>{vino.nombre}</strong>
+                            <span>{[vino.bodega, vino.tipo].filter(Boolean).join(' · ')}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </article>
+
+                <article className="sim-panel">
+                  <div className="sim-panel-head">
+                    <div className="sim-panel-head-info">
+                      <span className="sim-panel-badge sim-panel-badge-alta">Incorporar</span>
+                      <h2>Altas desde catálogo</h2>
+                    </div>
+                    <div className="sim-panel-tools">
+                      <span className="sim-panel-count">{simulacionEditada.altas.length}/{altasDisponibles.length}</span>
+                      <button type="button" onClick={() => setAltasSeleccionadas(altasDisponibles.map(item => String(item.vino.id)))}>Todas</button>
+                      <button type="button" onClick={() => setAltasSeleccionadas([])}>Ninguna</button>
+                      <button type="button" className="sim-btn-catalog" onClick={abrirSelectorAltas}>Catálogo</button>
+                    </div>
+                  </div>
+
+                  <div className="sim-wine-list">
+                    {altasDisponibles.map(item => (
+                      <label key={item.vino.id} className={`sim-wine-row ${altasSet.has(String(item.vino.id)) ? '' : 'is-muted'}`}>
+                        <input type="checkbox" className="sim-wine-check" checked={altasSet.has(String(item.vino.id))} onChange={() => toggleAlta(item.vino.id)} />
+                        <div className="sim-wine-info">
+                          <strong>{item.vino.nombre}</strong>
+                          <span>{[item.vino.bodega, proveedorNombre(item.vino, proveedoresPorId)].filter(Boolean).join(' · ')}</span>
+                          <div className="sim-wine-tags">
+                            {item.razones.slice(0, 2).map((r, i) => <span key={i} className="sim-tag">{r}</span>)}
+                          </div>
+                        </div>
+                        <div className="sim-wine-nums">
+                          <em>{porcentaje(item.margen ?? NaN)}</em>
+                          <span>{dinero(item.pvp)}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="sim-panel-add">
+                    <input
+                      className="sim-panel-add-input"
+                      value={busquedaAlta}
+                      onChange={event => setBusquedaAlta(event.target.value)}
+                      placeholder="+ Buscar en catálogo para añadir..."
+                    />
+                    {busquedaAlta.trim() && (
+                      <div className="sim-panel-add-results">
+                        {catalogoManual.slice(0, 6).map(vino => {
+                          const coste = numero(vino.coste_estimado)
+                          const rb = pvpBotella(coste)
+                          return (
+                            <button key={vino.id} type="button" onClick={() => agregarAltaManual(vino)}>
+                              <strong>{vino.nombre}</strong>
+                              <span>{[vino.bodega, proveedorNombre(vino, proveedoresPorId)].filter(Boolean).join(' · ')}</span>
+                              <em>{coste ? dinero(coste) : '—'} → {rb ? dinero(rb.pvp) : dinero(vino.pvp_recomendado)}</em>
+                            </button>
+                          )
+                        })}
+                        {catalogoManual.length === 0 ? <p>Sin resultados con ese filtro.</p> : null}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              </section>
+
+              <section className="sim-carta">
+                <div className="sim-carta-head">
+                  <div>
+                    <p className="sim-carta-eyebrow">Propuesta de carta</p>
+                    <h2 className="sim-carta-title">{restaurante?.nombre || 'Restaurante'}</h2>
+                    <span className="sim-carta-sub">
+                      {[restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(', ') || 'Carta simulada'}
+                      {' · Escenario '}{simulacion.cfg.label}
+                    </span>
+                  </div>
+                  <div className="sim-carta-totals">
+                    <div className="sim-carta-total-item">
+                      <strong>{simulacionEditada.metricasSimuladas.total}</strong>
+                      <span>referencias</span>
+                    </div>
+                    <div className="sim-carta-total-item">
+                      <strong>{simulacionEditada.altas.length}</strong>
+                      <span>altas</span>
+                    </div>
+                    <div className="sim-carta-total-item">
+                      <strong>{simulacionEditada.bajas.length}</strong>
+                      <span>bajas</span>
+                    </div>
+                    <div className="sim-carta-total-item">
+                      <strong>{porcentaje(simulacionEditada.metricasSimuladas.margenMedio ?? NaN)}</strong>
+                      <span>margen</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sim-carta-grid">
+                  {Object.entries(cartaAgrupada).map(([tipo, vinosGrupo]) => (
+                    <section key={tipo} className="sim-menu-section">
+                      <h3>{labelTipo(tipo)}</h3>
+                      {vinosGrupo
+                        .sort((a, b) => (a.pvp || 0) - (b.pvp || 0))
+                        .map((vino, index) => (
+                          <div className={`sim-menu-row ${vino.origen === 'alta' ? 'is-new' : ''}`} key={`${tipo}-${vino.nombre}-${index}`}>
+                            <div>
+                              <strong>{vino.nombre}</strong>
+                              <span>{[vino.bodega, vino.zona].filter(Boolean).join(' · ')}</span>
+                            </div>
+                            <em>{vino.pvp ? dinero(vino.pvp) : 'S/P'}</em>
+                          </div>
+                        ))}
+                    </section>
+                  ))}
+                </div>
+              </section>
+            </>
+          ) : (
+            <div className="sim-empty">
+              <h2>Selecciona un restaurante y genera la simulación.</h2>
+              <p>El motor analizará la carta actual, detectará referencias con margen bajo o stock vacío, y sugerirá altas del catálogo de proveedores.</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {selectorAltasAbierto ? (
         <div className="sim-modal-backdrop no-print" role="dialog" aria-modal="true" aria-label="Selector de catalogo">
