@@ -45,18 +45,27 @@ async function fetchAllCatalogItems() {
 export async function POST(request, { params }) {
   const { slug } = await params
 
-  // Auth: solo el propietario o admin puede lanzar el sync
   const access = await requireKioskoAccess(request, slug)
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status || 403 })
 
   try {
     const { items, imageMap } = await fetchAllCatalogItems()
 
-    let insertados = 0, actualizados = 0, sinCambios = 0, errores = 0
+    // 1 sola consulta: todos los vinos de esta tienda que ya tienen square_catalog_id
+    const { data: existentes } = await supabaseAdmin
+      .from('vinos_tienda')
+      .select('id, square_catalog_id')
+      .eq('tienda_slug', slug)
+      .not('square_catalog_id', 'is', null)
+
+    const existingMap = {}
+    for (const v of (existentes || [])) existingMap[v.square_catalog_id] = v.id
+
+    const toInsert = []
+    const toUpdate = []
 
     for (const item of items) {
       if (item.type !== 'ITEM') continue
-
       const d      = item.item_data || {}
       const nombre = d.name?.trim()
       if (!nombre) continue
@@ -67,7 +76,7 @@ export async function POST(request, { params }) {
       const descripcion = d.description_plaintext || d.description || null
       const foto_url    = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
 
-      const registro = {
+      const base = {
         nombre,
         precio_pvp,
         descripcion,
@@ -76,28 +85,33 @@ export async function POST(request, { params }) {
         updated_at: new Date().toISOString(),
       }
 
-      const { data: existente } = await supabaseAdmin
-        .from('vinos_tienda')
-        .select('id')
-        .eq('tienda_slug', slug)
-        .eq('square_catalog_id', item.id)
-        .single()
-
-      if (existente) {
-        const { error } = await supabaseAdmin
-          .from('vinos_tienda')
-          .update(registro)
-          .eq('id', existente.id)
-        error ? errores++ : actualizados++
+      if (existingMap[item.id]) {
+        toUpdate.push({ id: existingMap[item.id], ...base })
       } else {
-        const { error } = await supabaseAdmin
-          .from('vinos_tienda')
-          .insert({ ...registro, tienda_slug: slug, square_catalog_id: item.id, stock: 0 })
-        error ? errores++ : insertados++
+        toInsert.push({ tienda_slug: slug, square_catalog_id: item.id, stock: 0, ...base })
       }
     }
 
-    return NextResponse.json({ ok: true, insertados, actualizados, sinCambios, errores, total: items.length })
+    let insertados = 0, actualizados = 0, errores = 0
+
+    // 1 sola INSERT batch para todos los nuevos
+    if (toInsert.length > 0) {
+      const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
+      if (error) { console.error('[square-sync] insert error:', error.message); errores += toInsert.length }
+      else insertados = toInsert.length
+    }
+
+    // 1 sola UPSERT batch para los existentes (Supabase upsert por id)
+    if (toUpdate.length > 0) {
+      const { error } = await supabaseAdmin
+        .from('vinos_tienda')
+        .upsert(toUpdate, { onConflict: 'id' })
+      if (error) { console.error('[square-sync] upsert error:', error.message); errores += toUpdate.length }
+      else actualizados = toUpdate.length
+    }
+
+    console.log(`[square-sync] ${slug}: ${insertados} nuevos, ${actualizados} actualizados, ${errores} errores`)
+    return NextResponse.json({ ok: true, insertados, actualizados, errores, total: items.length })
   } catch (e) {
     console.error('[square-sync]', e.message)
     return NextResponse.json({ error: e.message }, { status: 500 })

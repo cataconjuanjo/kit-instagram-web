@@ -1223,15 +1223,18 @@ export default function AdminKioskoPage() {
   // ── Sync Square manual ────────────────────────────────────────────────────
   async function syncSquare() {
     setSquareSyncing(true); setSquareSyncResult(null)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 25_000)
     try {
-      const res  = await fetch(`/api/kiosko/${slug}/admin/square-sync`, { method: 'POST', headers: authHeaders })
+      const res  = await fetch(`/api/kiosko/${slug}/admin/square-sync`, { method: 'POST', headers: authHeaders, signal: controller.signal })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error al sincronizar')
       setSquareSyncResult(data)
       await cargar()
     } catch (e) {
-      setSquareSyncResult({ error: e.message })
+      setSquareSyncResult({ error: e.name === 'AbortError' ? 'Tiempo de espera agotado (>25 s)' : e.message })
     } finally {
+      clearTimeout(timer)
       setSquareSyncing(false)
     }
   }
