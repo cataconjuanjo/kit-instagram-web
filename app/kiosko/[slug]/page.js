@@ -373,6 +373,36 @@ function WelcomeActionIcon({ name, variant }) {
   return <span className={styles.welcomeActionEmoji} aria-hidden="true">{WELCOME_ACTION_EMOJIS[name]}</span>
 }
 
+function WizardOcasionIcon({ id }) {
+  if (id === 'regalo') return (
+    <svg className={styles.wizardOcasionSvg} viewBox="0 0 48 48" aria-hidden="true">
+      <rect x="6" y="20" width="36" height="6" rx="1" />
+      <path d="M10 26v16h28V26" />
+      <path d="M24 20V42" />
+      <path d="M24 20c0-5-5-9-9-5s0 9 9 5Z" />
+      <path d="M24 20c0-5 5-9 9-5s0 9-9 5Z" />
+    </svg>
+  )
+  if (id === 'celebracion') return (
+    <svg className={styles.wizardOcasionSvg} viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M17 8l-5 20c0 5 5 9 12 9s12-4 12-9l-5-20" />
+      <path d="M12 22h24" />
+      <path d="M17 8h14" />
+      <path d="M21 37v7" />
+      <path d="M27 37v7" />
+      <path d="M15 44h18" />
+    </svg>
+  )
+  if (id === 'casa') return (
+    <svg className={styles.wizardOcasionSvg} viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M8 24L24 10l16 14" />
+      <path d="M14 22v18h20V22" />
+      <path d="M20 40V28h8v12" />
+    </svg>
+  )
+  return null
+}
+
 function SafeImage({ src, alt, className, fallback, ...props }) {
   const [failedSrc, setFailedSrc] = useState('')
   const failed = Boolean(src && failedSrc === src)
@@ -814,7 +844,7 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es' })
 
 // ── Wizard "Ayúdame a elegir" ─────────────────────────────────────────────────
 
-function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, vinos = [], lang = 'es' }) {
+function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, vinos = [], lang = 'es', iconStyle = 'emoji' }) {
   const [step, setStep]       = useState(0)
   const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '' })
   const [cargando, setCargando] = useState(false)
@@ -888,7 +918,10 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
             {OCASIONES_IDS.map(o => (
               <button key={o.id} className={styles.wizardOcasionBtn} onClick={() => selOcasion(o.id)} type="button"
                 style={{ '--acento': colorAcento }}>
-                <span className={styles.wizardOcasionIcon}>{o.emoji}</span>
+                {iconStyle === 'lineal'
+                  ? <WizardOcasionIcon id={o.id} />
+                  : <span className={styles.wizardOcasionIcon}>{o.emoji}</span>
+                }
                 <span className={styles.wizardOcasionLabel}>{T[lang].ocasionLabels[o.id]}</span>
               </button>
             ))}
@@ -904,7 +937,9 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
             {ESTILOS_IDS.map(e => (
               <button key={e.id} className={styles.wizardEstiloBtn} onClick={() => selEstilo(e.id)} type="button"
                 style={{ '--acento': colorAcento }}>
-                {T[lang].estiloLabels[e.id]}
+                {iconStyle === 'lineal'
+                  ? T[lang].estiloLabels[e.id].replace(/^\p{Emoji_Presentation}+\s*/u, '')
+                  : T[lang].estiloLabels[e.id]}
               </button>
             ))}
           </div>
@@ -1692,7 +1727,7 @@ export default function KioskoPage() {
       {/* WIZARD */}
       {view === VIEWS.WIZARD && (
         <WizardView slug={slug} tienda={tienda} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} vinos={vinos} lang={lang} />
+          onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} vinos={vinos} lang={lang} iconStyle={iconStyle} />
       )}
 
       {/* EXPLORAR */}
