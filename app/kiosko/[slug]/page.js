@@ -1373,6 +1373,7 @@ export default function KioskoPage() {
   const [kioskOrder, setKioskOrder] = useState(null)
   const [longPressTimer, setLongPressTimer] = useState(null)
   const [lang, setLang]             = useState('es')
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const idleTimer = useRef(null)
   const cartNoticeTimer = useRef(null)
@@ -1428,6 +1429,24 @@ export default function KioskoPage() {
       }
     }
   }, [tienda?.font_family])
+
+  useEffect(() => {
+    function onFsChange() {
+      setIsFullscreen(!!(document.fullscreenElement || document.webkitFullscreenElement))
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    document.addEventListener('webkitfullscreenchange', onFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      document.removeEventListener('webkitfullscreenchange', onFsChange)
+    }
+  }, [])
+
+  function entrarPantallaCompleta() {
+    const el = document.documentElement
+    if (el.requestFullscreen) el.requestFullscreen()
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
+  }
 
   function abrirDetalle(vino) { setVinoDetalle(vino); setView(VIEWS.DETAIL) }
   function volverDeDetalle() { setView(VIEWS.BROWSE); setVinoDetalle(null) }
@@ -1628,6 +1647,24 @@ export default function KioskoPage() {
           <span className={styles.kioskoCredit}>
             Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
           </span>
+
+          {!isFullscreen && (
+            <button
+              type="button"
+              onClick={entrarPantallaCompleta}
+              className={styles.fullscreenBtn}
+              title="Pantalla completa"
+              aria-label="Activar pantalla completa"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="15 3 21 3 21 9" />
+                <polyline points="9 21 3 21 3 15" />
+                <line x1="21" y1="3" x2="14" y2="10" />
+                <line x1="3" y1="21" x2="10" y2="14" />
+              </svg>
+              Pantalla completa
+            </button>
+          )}
 
           {vinos.filter(v => v.destacado).length > 0 && (
             <div className={styles.welcomeFeatured}>

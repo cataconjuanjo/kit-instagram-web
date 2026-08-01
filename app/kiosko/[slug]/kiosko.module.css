@@ -446,6 +446,28 @@
 
 .kioskoCredit:hover { opacity: 1; }
 
+/* ── Botón pantalla completa ─────────────────────────────────────────────── */
+.fullscreenBtn {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin: 0 0 1rem;
+  padding: .45rem .9rem;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 99px;
+  color: var(--texto-d);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: .7;
+  transition: opacity .2s, background .2s;
+}
+.fullscreenBtn:hover { opacity: 1; background: rgba(255,255,255,.13); }
+
 /* ── Selector de idioma ──────────────────────────────────────────────────── */
 .langSelector {
   display: flex;
