@@ -1,14 +1,28 @@
 import Link from 'next/link'
+import PublicNav from './components/PublicNav'
+import PublicFooter from './components/PublicFooter'
+
+export const metadata = {
+  title: 'Página no encontrada · Cata con Juanjo',
+}
 
 export default function NotFound() {
   return (
-    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#f8f3eb', padding: 20, fontFamily: 'system-ui, sans-serif' }}>
-      <section style={{ maxWidth: 520, textAlign: 'center' }}>
-        <p style={{ color: '#74223d', fontSize: 11, fontWeight: 900, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Error 404</p>
-        <h1 style={{ margin: '0 0 12px', color: '#222', fontSize: 30 }}>Esta página no existe.</h1>
-        <p style={{ color: '#625a53', lineHeight: 1.6 }}>Puede que el enlace haya cambiado o que la carta ya no esté disponible.</p>
-        <Link href="/" style={{ minHeight: 42, display: 'inline-flex', alignItems: 'center', marginTop: 16, borderRadius: 8, background: '#74223d', color: '#fff', padding: '0 18px', textDecoration: 'none', fontWeight: 850 }}>Volver al inicio</Link>
+    <main className="site-shell">
+      <PublicNav />
+      <section className="section" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center' }}>
+        <div style={{ maxWidth: 520 }}>
+          <p className="eyebrow">Error 404</p>
+          <h1 style={{ fontSize: 'clamp(2rem, 4.2vw, 4rem)', marginBottom: '1rem' }}>
+            Esta página no existe.
+          </h1>
+          <p className="lead" style={{ marginBottom: '2rem' }}>
+            Puede que el enlace haya cambiado o que la carta ya no esté disponible.
+          </p>
+          <Link href="/" className="btn btn-primary">Volver al inicio</Link>
+        </div>
       </section>
+      <PublicFooter />
     </main>
   )
 }

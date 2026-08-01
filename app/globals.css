@@ -15116,7 +15116,7 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 14px;
-  color: var(--gold);
+  color: #7a5b23; /* darkened gold: 5.35:1 on --paper, WCAG AA */
   font-size: 0.63rem;
   font-weight: 700;
   letter-spacing: 0.2em;
@@ -15477,7 +15477,7 @@ html, body {
   line-height: 0.85;
   letter-spacing: -0.05em;
   color: var(--ink);
-  opacity: 0.15;
+  opacity: 0.28;
   font-weight: 300;
   margin-bottom: 20px;
 }
@@ -15490,28 +15490,28 @@ html, body {
 /* 2. Metodología — ordinales a escala de revista, no de label */
 .site-shell .step span {
   font-family: var(--font-cormorant-garamond), Georgia, serif;
-  font-size: clamp(3rem, 5vw, 6rem);
+  font-size: clamp(4rem, 7vw, 8rem);
   font-weight: 300;
-  line-height: 1;
-  letter-spacing: -0.04em;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
   color: var(--ink);
-  opacity: 0.22;
-  margin-bottom: 24px;
+  opacity: 0.40;
+  margin-bottom: 20px;
 }
 
 /* 3. Activaciones — numeración como titulares, no como etiquetas */
 .site-shell .activacion-card {
-  grid-template-columns: clamp(3rem, 5.5vw, 5rem) minmax(0, 1fr) minmax(0, 1.65fr);
+  grid-template-columns: clamp(3.5rem, 6vw, 5.5rem) minmax(0, 1fr) minmax(0, 1.65fr);
 }
 .site-shell .activacion-num {
   font-family: var(--font-cormorant-garamond), Georgia, serif;
-  font-size: clamp(1.8rem, 3.5vw, 3.5rem);
+  font-size: clamp(2.2rem, 4.5vw, 4.5rem);
   font-weight: 300;
-  line-height: 1;
-  letter-spacing: -0.03em;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
   color: var(--ink);
-  opacity: 0.3;
-  padding-top: 0;
+  opacity: 0.42;
+  padding-top: 2px;
 }
 
 /* 4. Proof cards — título a escala editorial */
@@ -15578,7 +15578,7 @@ html, body {
   line-height: 0.85;
   letter-spacing: -0.05em;
   color: var(--ink);
-  opacity: 0.15;
+  opacity: 0.28;
   font-weight: 300;
   margin-bottom: 20px;
 }
@@ -15657,7 +15657,7 @@ html, body {
   line-height: 0.85;
   letter-spacing: -0.05em;
   color: var(--ink);
-  opacity: 0.15;
+  opacity: 0.28;
   font-weight: 300;
   margin-bottom: 20px;
 }
@@ -15675,4 +15675,138 @@ html, body {
   .carta-viva-page .control-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* ===================================================================
+   RECURSOS: layout editorial — primer artículo destacado + ordinals
+   Rompe la rejilla de 4 columnas uniformes que no tiene personalidad.
+================================================================== */
+.resources-page .resource-grid {
+  counter-reset: recurso;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.resources-page .resource-card {
+  counter-increment: recurso;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: rgba(255, 250, 240, 0.8);
+  padding: 28px 26px 24px;
+  justify-content: flex-start;
+  gap: 0;
+  transition: background 0.18s ease;
+}
+
+.resources-page .resource-card:hover {
+  background: #fff;
+  transform: none;
+}
+
+/* Ordinal ghost en todas las tarjetas */
+.resources-page .resource-card::before {
+  content: counter(recurso, decimal-leading-zero);
+  display: block;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: clamp(2.8rem, 4.5vw, 4.8rem);
+  font-weight: 300;
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  opacity: 0.22;
+  margin-bottom: 16px;
+}
+
+.resources-page .resource-card > div:first-of-type {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.resources-page .resource-meta {
+  margin-top: 18px;
+}
+
+.resources-page .resource-card .btn {
+  margin-top: 20px;
+  align-self: flex-start;
+}
+
+/* Primer artículo: protagonista a doble columna */
+.resources-page .resource-card:first-child {
+  grid-column: span 2;
+  background: rgba(23, 18, 15, 0.04);
+  padding: 36px 32px 28px;
+}
+
+.resources-page .resource-card:first-child::before {
+  font-size: clamp(5rem, 9vw, 10rem);
+  opacity: 0.14;
+  margin-bottom: 12px;
+}
+
+.resources-page .resource-card:first-child h2 {
+  font-size: clamp(1.65rem, 2.6vw, 2.4rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-top: 0;
+}
+
+.resources-page .resource-card:first-child p {
+  font-size: clamp(0.9rem, 1.5vw, 1.05rem);
+  max-width: 520px;
+}
+
+/* Mobile */
+@media (max-width: 760px) {
+  .resources-page .resource-grid {
+    grid-template-columns: 1fr;
+  }
+  .resources-page .resource-card:first-child {
+    grid-column: span 1;
+  }
+  .resources-page .resource-card::before {
+    font-size: 2.4rem;
+  }
+}
+
+/* ===================================================================
+   CARTA VIVA: quote band — pausa editorial entre funciones y control
+================================================================== */
+.cv-quote-band {
+  margin: 0;
+  padding: clamp(52px, 8vw, 88px) clamp(20px, 5vw, 64px);
+  background: var(--wine-deep);
+  border-top: 1px solid rgba(175,139,82,0.18);
+  border-bottom: 1px solid rgba(175,139,82,0.18);
+  text-align: center;
+}
+
+.cv-quote-band p {
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: clamp(1.8rem, 4vw, 3.8rem);
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.2;
+  letter-spacing: -0.018em;
+  color: rgba(255, 250, 241, 0.94);
+  max-width: 820px;
+  margin: 0 auto 20px;
+}
+
+.cv-quote-band cite {
+  display: block;
+  font-family: inherit;
+  font-style: normal;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(175, 139, 82, 0.8);
 }

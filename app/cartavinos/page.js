@@ -519,6 +519,11 @@ export default function CartaVivaPage() {
         </div>
       </section>
 
+      <blockquote className="cv-quote-band">
+        <p>Una botella vendida con argumento vale más que diez vendidas por inercia.</p>
+        <cite>Carta Viva · criterio de sumiller para el servicio de cada noche</cite>
+      </blockquote>
+
       <section className="section cv-control-section">
         <div className="section-head">
           <p className="eyebrow">Para dirección y propiedad</p>

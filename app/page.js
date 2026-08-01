@@ -3,8 +3,6 @@ import LeadForm from './components/LeadForm'
 import PublicNav from './components/PublicNav'
 import PublicFooter from './components/PublicFooter'
 import AuthHashRedirect from './components/AuthHashRedirect'
-import { recursos } from './recursos/content'
-
 export const metadata = {
   alternates: {
     canonical: '/',
@@ -62,12 +60,6 @@ const bodegaChart = [
   { label: 'Espumosos',  pct: 51, color: '#a08c72', trend: 'flat' },
   { label: 'Rosados',    pct: 28, color: '#c4707a', trend: 'down' },
 ]
-
-const recursosDestacados = recursos.filter((recurso) => [
-  'como-hacer-carta-vinos-rentable',
-  'margen-vino-por-copa',
-  'control-stock-vino-restaurante',
-].includes(recurso.slug))
 
 export default function Home() {
   return (
@@ -229,24 +221,12 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section resource-preview-section">
-        <div className="section-head">
-          <p className="eyebrow">Recursos para restaurantes</p>
-          <h2>Guías para mejorar carta, margen y control de bodega.</h2>
+      <section className="section resource-cta-band">
+        <div>
+          <p className="eyebrow">Recursos</p>
+          <h2>Guías prácticas sobre carta, bodega y sala.</h2>
         </div>
-        <div className="resource-grid compact">
-          {recursosDestacados.map((recurso) => (
-            <article className="resource-card" key={recurso.slug}>
-              <span className="resource-category">{recurso.category}</span>
-              <h3><Link href={`/recursos/${recurso.slug}`}>{recurso.title}</Link></h3>
-              <p>{recurso.description}</p>
-            </article>
-          ))}
-        </div>
-        <div className="section-inline-cta">
-          <Link href="/recursos" className="btn btn-primary">Ver todos los recursos</Link>
-          <Link href="/formacion-sala" className="btn btn-secondary">Formación de sala</Link>
-        </div>
+        <Link href="/recursos" className="btn btn-primary">Ver guías</Link>
       </section>
 
       <section className="section proof-section">

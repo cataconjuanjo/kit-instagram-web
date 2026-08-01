@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-01T00:00:00Z",
+  "generatedAt": "2026-08-01T08:17:34.092Z",
   "title": "Design System: Cata con Juanjo · Carta Viva",
   "extensions": {
     "colorMeta": {
@@ -8,111 +8,296 @@
         "role": "primary",
         "displayName": "Borgoña de Guardia",
         "canonical": "#74223d",
-        "tonalRamp": ["#0f0509", "#1a0a10", "#2b101b", "#52162a", "#74223d", "#9e4a65", "#c98fa5", "#f1e4e7"]
+        "tonalRamp": [
+          "#0f0509",
+          "#1a0a10",
+          "#2b101b",
+          "#52162a",
+          "#74223d",
+          "#9e4a65",
+          "#c98fa5",
+          "#f1e4e7"
+        ]
       },
       "borgona-profundo": {
         "role": "primary",
         "displayName": "Borgoña Profundo",
         "canonical": "#2b101b",
-        "tonalRamp": ["#0a0308", "#150810", "#2b101b", "#3e1827", "#522034", "#7a4560", "#b08a9e", "#ecd9e3"]
+        "tonalRamp": [
+          "#0a0308",
+          "#150810",
+          "#2b101b",
+          "#3e1827",
+          "#522034",
+          "#7a4560",
+          "#b08a9e",
+          "#ecd9e3"
+        ]
       },
       "borgona-suave": {
         "role": "primary",
         "displayName": "Borgoña Suave",
         "canonical": "#f1e4e7",
-        "tonalRamp": ["#74223d", "#9e4a65", "#c98fa5", "#dbbcc8", "#e9d2da", "#f1e4e7", "#f7eff2", "#fdf8f9"]
+        "tonalRamp": [
+          "#74223d",
+          "#9e4a65",
+          "#c98fa5",
+          "#dbbcc8",
+          "#e9d2da",
+          "#f1e4e7",
+          "#f7eff2",
+          "#fdf8f9"
+        ]
       },
       "oro-anada": {
         "role": "secondary",
         "displayName": "Oro de Añada",
         "canonical": "#af8b52",
-        "tonalRamp": ["#2a1f0a", "#4a3618", "#7a5d30", "#af8b52", "#c9a871", "#ddc595", "#eeddbb", "#f9f5ed"]
+        "tonalRamp": [
+          "#2a1f0a",
+          "#4a3618",
+          "#7a5d30",
+          "#af8b52",
+          "#c9a871",
+          "#ddc595",
+          "#eeddbb",
+          "#f9f5ed"
+        ]
       },
       "tinta-base": {
         "role": "neutral",
         "displayName": "Tinta de Fondo",
         "canonical": "#17120f",
-        "tonalRamp": ["#17120f", "#2c2520", "#453c36", "#5e534b", "#756d63", "#9e958d", "#c8c2bc", "#f3eee5"]
+        "tonalRamp": [
+          "#17120f",
+          "#2c2520",
+          "#453c36",
+          "#5e534b",
+          "#756d63",
+          "#9e958d",
+          "#c8c2bc",
+          "#f3eee5"
+        ]
       },
       "piedra-caliza": {
         "role": "neutral",
         "displayName": "Piedra Caliza",
         "canonical": "#756d63",
-        "tonalRamp": ["#2c2520", "#453c36", "#5e534b", "#756d63", "#9e958d", "#bfbab4", "#dcd9d5", "#f3eee5"]
+        "tonalRamp": [
+          "#2c2520",
+          "#453c36",
+          "#5e534b",
+          "#756d63",
+          "#9e958d",
+          "#bfbab4",
+          "#dcd9d5",
+          "#f3eee5"
+        ]
       },
       "papel-crema": {
         "role": "neutral",
         "displayName": "Papel Crema",
         "canonical": "#fffaf0",
-        "tonalRamp": ["#f3eee5", "#f8f3eb", "#fbf6ec", "#fdf9f2", "#fffaf0", "#fffcf5", "#fffef9", "#ffffff"]
+        "tonalRamp": [
+          "#f3eee5",
+          "#f8f3eb",
+          "#fbf6ec",
+          "#fdf9f2",
+          "#fffaf0",
+          "#fffcf5",
+          "#fffef9",
+          "#ffffff"
+        ]
       },
       "arena-dashboard": {
         "role": "neutral",
         "displayName": "Arena Dashboard",
         "canonical": "#f8f3eb",
-        "tonalRamp": ["#e0d4bc", "#e8ddc9", "#f0e8d5", "#f4efdf", "#f8f3eb", "#fbf8f2", "#fdfbf7", "#ffffff"]
+        "tonalRamp": [
+          "#e0d4bc",
+          "#e8ddc9",
+          "#f0e8d5",
+          "#f4efdf",
+          "#f8f3eb",
+          "#fbf8f2",
+          "#fdfbf7",
+          "#ffffff"
+        ]
       },
       "noche-cata": {
         "role": "neutral",
         "displayName": "Noche de Cata",
         "canonical": "#11100e",
-        "tonalRamp": ["#11100e", "#1f1c19", "#2e2a25", "#3d3832", "#52504a", "#7a7870", "#a8a49e", "#e5e1db"]
+        "tonalRamp": [
+          "#11100e",
+          "#1f1c19",
+          "#2e2a25",
+          "#3d3832",
+          "#52504a",
+          "#7a7870",
+          "#a8a49e",
+          "#e5e1db"
+        ]
       },
       "verde-bodega": {
         "role": "tertiary",
         "displayName": "Verde Bodega",
         "canonical": "#385f4f",
-        "tonalRamp": ["#0f1f19", "#1e3829", "#2c5039", "#385f4f", "#4d7d6a", "#7aa696", "#aed0c6", "#dcede9"]
+        "tonalRamp": [
+          "#0f1f19",
+          "#1e3829",
+          "#2c5039",
+          "#385f4f",
+          "#4d7d6a",
+          "#7aa696",
+          "#aed0c6",
+          "#dcede9"
+        ]
       },
       "ambar-foco": {
         "role": "neutral",
         "displayName": "Ámbar de Foco",
         "canonical": "#F59E0B",
-        "tonalRamp": ["#3d2602", "#7a4d05", "#b87208", "#F59E0B", "#f8b840", "#fbd07a", "#fde4b0", "#fff5dc"]
+        "tonalRamp": [
+          "#3d2602",
+          "#7a4d05",
+          "#b87208",
+          "#F59E0B",
+          "#f8b840",
+          "#fbd07a",
+          "#fde4b0",
+          "#fff5dc"
+        ]
       },
       "estado-exito": {
         "role": "neutral",
         "displayName": "Estado Éxito",
         "canonical": "#4CAF50",
-        "tonalRamp": ["#0d2e0e", "#1a5c1b", "#2d8a2f", "#4CAF50", "#70c772", "#9bda9d", "#c5ecC6", "#e8f8e8"]
+        "tonalRamp": [
+          "#0d2e0e",
+          "#1a5c1b",
+          "#2d8a2f",
+          "#4CAF50",
+          "#70c772",
+          "#9bda9d",
+          "#c5ecC6",
+          "#e8f8e8"
+        ]
       },
       "estado-alerta": {
         "role": "neutral",
         "displayName": "Estado Alerta",
         "canonical": "#FF9800",
-        "tonalRamp": ["#331e00", "#663c00", "#995a00", "#cc7800", "#FF9800", "#ffb340", "#ffcc80", "#ffe5bf"]
+        "tonalRamp": [
+          "#331e00",
+          "#663c00",
+          "#995a00",
+          "#cc7800",
+          "#FF9800",
+          "#ffb340",
+          "#ffcc80",
+          "#ffe5bf"
+        ]
       },
       "estado-error": {
         "role": "neutral",
         "displayName": "Estado Error",
         "canonical": "#F44336",
-        "tonalRamp": ["#33100d", "#66201a", "#993026", "#cc4033", "#F44336", "#f77066", "#faa89d", "#fdd8d6"]
+        "tonalRamp": [
+          "#33100d",
+          "#66201a",
+          "#993026",
+          "#cc4033",
+          "#F44336",
+          "#f77066",
+          "#faa89d",
+          "#fdd8d6"
+        ]
       }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Titulares héroe en la web pública. Solo Cormorant Garamond." },
-      "headline": { "displayName": "Headline", "purpose": "Titulares de sección en la web pública." },
-      "title": { "displayName": "Title", "purpose": "Sub-secciones y nombre de restaurante en topbar (Cormorant en editorial, Geist en app)." },
-      "body": { "displayName": "Body", "purpose": "Párrafos en la web pública. Máximo 65ch. Inter." },
-      "label": { "displayName": "Label / Eyebrow", "purpose": "Eyebrows, categorías, versalitas doradas. Siempre uppercase con tracking 0.2em." }
+      "display": {
+        "displayName": "Display",
+        "purpose": "Titulares héroe en la web pública. Solo Cormorant Garamond."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Titulares de sección en la web pública."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Sub-secciones y nombre de restaurante en topbar (Cormorant en editorial, Geist en app)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Párrafos en la web pública. Máximo 65ch. Inter."
+      },
+      "label": {
+        "displayName": "Label / Eyebrow",
+        "purpose": "Eyebrows, categorías, versalitas doradas. Siempre uppercase con tracking 0.2em."
+      }
     },
     "shadows": [
-      { "name": "wine-glow", "value": "0 4px 16px rgba(116, 34, 61, 0.22)", "purpose": "Botón primario en reposo. Refuerza el acento borgoña." },
-      { "name": "wine-glow-lifted", "value": "0 8px 28px rgba(116, 34, 61, 0.34)", "purpose": "Botón primario en hover. La sombra crece." },
-      { "name": "ambient-deep", "value": "0 26px 70px rgba(23, 13, 8, 0.16)", "purpose": "Hero panels oscuros. Difusa y ambiental." },
-      { "name": "card-subtle", "value": "0 2px 8px rgba(0, 0, 0, 0.06)", "purpose": "Cards del dashboard en reposo." }
+      {
+        "name": "wine-glow",
+        "value": "0 4px 16px rgba(116, 34, 61, 0.22)",
+        "purpose": "Botón primario en reposo. Refuerza el acento borgoña."
+      },
+      {
+        "name": "wine-glow-lifted",
+        "value": "0 8px 28px rgba(116, 34, 61, 0.34)",
+        "purpose": "Botón primario en hover. La sombra crece."
+      },
+      {
+        "name": "ambient-deep",
+        "value": "0 26px 70px rgba(23, 13, 8, 0.16)",
+        "purpose": "Hero panels oscuros. Difusa y ambiental."
+      },
+      {
+        "name": "card-subtle",
+        "value": "0 2px 8px rgba(0, 0, 0, 0.06)",
+        "purpose": "Cards del dashboard en reposo."
+      }
     ],
     "motion": [
-      { "name": "ease-color", "value": "0.18s ease", "purpose": "Transiciones de color, borde, opacidad." },
-      { "name": "ease-bg", "value": "0.2s ease", "purpose": "Transiciones de fondo y sombra." },
-      { "name": "ease-lift", "value": "0.15s ease", "purpose": "TranslateY en hover de botones." },
-      { "name": "ease-hamburger", "value": "0.22s ease", "purpose": "Animación del menú hamburger." }
+      {
+        "name": "ease-color",
+        "value": "0.18s ease",
+        "purpose": "Transiciones de color, borde, opacidad."
+      },
+      {
+        "name": "ease-bg",
+        "value": "0.2s ease",
+        "purpose": "Transiciones de fondo y sombra."
+      },
+      {
+        "name": "ease-lift",
+        "value": "0.15s ease",
+        "purpose": "TranslateY en hover de botones."
+      },
+      {
+        "name": "ease-hamburger",
+        "value": "0.22s ease",
+        "purpose": "Animación del menú hamburger."
+      }
     ],
     "breakpoints": [
-      { "name": "mobile", "value": "640px" },
-      { "name": "tablet", "value": "768px" },
-      { "name": "desktop", "value": "1024px" },
-      { "name": "wide", "value": "1280px" }
+      {
+        "name": "mobile",
+        "value": "640px"
+      },
+      {
+        "name": "tablet",
+        "value": "768px"
+      },
+      {
+        "name": "desktop",
+        "value": "1024px"
+      },
+      {
+        "name": "wide",
+        "value": "1280px"
+      }
     ]
   },
   "components": [
@@ -193,11 +378,31 @@
       "Bordes cálidos ocres, sombras de vino, sin elevación Material Design"
     ],
     "rules": [
-      { "name": "The Borgoña Raro Rule", "body": "El borgoña de guardia es el acento de acción: CTAs, estados activos, identidad de marca. No como fondo de sección ni de card. Su rareza en pantalla es el punto.", "section": "colors" },
-      { "name": "The Oro Secundario Rule", "body": "El oro no decora; señala categoría y jerarquía editorial (eyebrows, labels). Nunca en un botón, nunca en texto corrido largo.", "section": "colors" },
-      { "name": "The Two Voices Rule", "body": "Nunca mezcles Cormorant Garamond con Inter/Geist dentro del mismo componente. Cormorant es identidad pública; Inter/Geist es herramienta operativa.", "section": "typography" },
-      { "name": "The Tight Display Rule", "body": "Los títulos display tienen tracking negativo y line-height por debajo de 1. No los aflojes a los valores de párrafo; su densidad óptica es parte de la identidad editorial.", "section": "typography" },
-      { "name": "The Flat-By-Default Rule", "body": "Superficies, cards e inputs son flat en reposo. Las sombras son respuesta al estado (hover, panel elevado) o señal de importancia (hero panel). No las uses como decoración de grid.", "section": "elevation" }
+      {
+        "name": "The Borgoña Raro Rule",
+        "body": "El borgoña de guardia es el acento de acción: CTAs, estados activos, identidad de marca. No como fondo de sección ni de card. Su rareza en pantalla es el punto.",
+        "section": "colors"
+      },
+      {
+        "name": "The Oro Secundario Rule",
+        "body": "El oro no decora; señala categoría y jerarquía editorial (eyebrows, labels). Nunca en un botón, nunca en texto corrido largo.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Voices Rule",
+        "body": "Nunca mezcles Cormorant Garamond con Inter/Geist dentro del mismo componente. Cormorant es identidad pública; Inter/Geist es herramienta operativa.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tight Display Rule",
+        "body": "Los títulos display tienen tracking negativo y line-height por debajo de 1. No los aflojes a los valores de párrafo; su densidad óptica es parte de la identidad editorial.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Superficies, cards e inputs son flat en reposo. Las sombras son respuesta al estado (hover, panel elevado) o señal de importancia (hero panel). No las uses como decoración de grid.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do usar Cormorant Garamond para títulos de la web pública y Geist/Inter para el dashboard — dos voces, no una.",
