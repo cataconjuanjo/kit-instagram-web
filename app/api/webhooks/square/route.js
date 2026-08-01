@@ -33,6 +33,88 @@ async function fetchOrder(orderId) {
   return json.order
 }
 
+async function searchRecentCatalogItems() {
+  const items = []
+  let cursor = null
+  do {
+    const body = { object_types: ['ITEM'], include_related_objects: false }
+    if (cursor) body.cursor = cursor
+    const res = await fetch(`${SQUARE_API_BASE}/v2/catalog/search`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SQUARE_ACCESS_TOKEN}`,
+        'Square-Version': '2024-01-18',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) throw new Error(`Square Catalog API ${res.status}: ${await res.text()}`)
+    const data = await res.json()
+    items.push(...(data.objects || []))
+    cursor = data.cursor || null
+  } while (cursor)
+  return items
+}
+
+// ── Catalog upsert handler ────────────────────────────────────────────────────
+async function handleCatalogUpdate(tiendaSlug) {
+  // Square no incluye qué cambió en el evento — buscamos todos los ITEM
+  const items = await searchRecentCatalogItems()
+
+  let insertados = 0, actualizados = 0, errores = 0
+
+  for (const item of items) {
+    if (item.type !== 'ITEM') continue
+
+    const d = item.item_data || {}
+    const nombre = d.name?.trim()
+    if (!nombre) continue
+
+    // Precio desde la primera variación activa
+    const varData = (d.variations || []).find(v => !v.is_deleted)?.item_variation_data
+    const precioCents = varData?.price_money?.amount
+    const precio_pvp = precioCents ? +(precioCents / 100).toFixed(2) : null
+
+    // Descripción
+    const descripcion = d.description_plaintext || d.description || null
+
+    // Imagen — los image_ids apuntan a objetos relacionados; la URL requiere fetch extra
+    // Se omite aquí; el admin puede añadir foto_url manualmente si hace falta
+
+    const registro = {
+      nombre,
+      precio_pvp,
+      descripcion,
+      activo: !item.is_deleted,
+      updated_at: new Date().toISOString(),
+    }
+
+    // Upsert por square_catalog_id + tienda_slug
+    const { data: existente } = await supabaseAdmin
+      .from('vinos_tienda')
+      .select('id')
+      .eq('tienda_slug', tiendaSlug)
+      .eq('square_catalog_id', item.id)
+      .single()
+
+    if (existente) {
+      const { error } = await supabaseAdmin
+        .from('vinos_tienda')
+        .update(registro)
+        .eq('id', existente.id)
+      error ? errores++ : actualizados++
+    } else {
+      const { error } = await supabaseAdmin
+        .from('vinos_tienda')
+        .insert({ ...registro, tienda_slug: tiendaSlug, square_catalog_id: item.id, stock: 0 })
+      error ? errores++ : insertados++
+    }
+  }
+
+  console.log(`[square-webhook] catalog.version.updated → ${insertados} nuevos, ${actualizados} actualizados, ${errores} errores`)
+  return NextResponse.json({ ok: true, insertados, actualizados, errores })
+}
+
 // ── Inventory restock handler ─────────────────────────────────────────────────
 async function handleInventoryUpdate(event) {
   const counts = event.data?.object?.inventory_counts || []
@@ -84,6 +166,11 @@ export async function POST(request) {
 
   const eventId = event.event_id
   const type    = event.type
+
+  // Catálogo: nuevo producto / modificación
+  if (type === 'catalog.version.updated') {
+    return handleCatalogUpdate('sibaris-gourmet')
+  }
 
   // Reposición de stock
   if (type === 'inventory.count.updated') {
