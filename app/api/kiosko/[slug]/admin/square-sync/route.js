@@ -51,11 +51,13 @@ export async function POST(request, { params }) {
   try {
     const { items, imageMap } = await fetchAllCatalogItems()
 
+    const tiendaId = access.tienda.id
+
     // 1 sola consulta: todos los vinos de esta tienda que ya tienen square_catalog_id
     const { data: existentes } = await supabaseAdmin
       .from('vinos_tienda')
       .select('id, square_catalog_id')
-      .eq('tienda_slug', slug)
+      .eq('tienda_id', tiendaId)
       .not('square_catalog_id', 'is', null)
 
     const existingMap = {}
@@ -88,7 +90,7 @@ export async function POST(request, { params }) {
       if (existingMap[item.id]) {
         toUpdate.push({ id: existingMap[item.id], ...base })
       } else {
-        toInsert.push({ tienda_slug: slug, square_catalog_id: item.id, stock: 0, ...base })
+        toInsert.push({ tienda_id: tiendaId, square_catalog_id: item.id, stock: 0, ...base })
       }
     }
 
