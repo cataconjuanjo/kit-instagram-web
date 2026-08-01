@@ -3,7 +3,7 @@
   "short_name": "Kiosko",
   "description": "Kiosko táctil de vinos para tiendas especializadas",
   "display": "fullscreen",
-  "orientation": "landscape",
+  "orientation": "portrait",
   "background_color": "#0d0d1a",
   "theme_color": "#0d0d1a",
   "start_url": "/kiosko/sibaris-gourmet",

@@ -3225,3 +3225,50 @@
   .featuredPrecio { font-size: 1.1rem; }
   .welcomeFeatured { padding: 1.5rem 2rem 3rem; }
 }
+
+/* ── Portrait kiosko (tablet vertical, dispositivo más alto que ancho) ───── */
+@media (orientation: portrait) {
+  /* Logo hero ocupa más ancho de pantalla */
+  .welcomeLogoHero {
+    max-width: min(72vw, 420px);
+    max-height: 28vh;
+  }
+
+  /* Acciones: columna vertical con filas anchas */
+  .welcomeActions {
+    flex-direction: column;
+    gap: .85rem;
+    padding: .75rem 1.5rem;
+    max-width: 100%;
+  }
+  .welcomeActionCard {
+    flex: none;
+    max-width: none;
+    width: 100%;
+    flex-direction: row;
+    min-height: 80px;
+    padding: 1.1rem 1.75rem;
+    gap: 1.25rem;
+    justify-content: flex-start;
+  }
+  .welcomeActionIcon {
+    width: 54px;
+    height: 54px;
+    flex: 0 0 54px;
+  }
+  .welcomeActionLabel {
+    font-size: 1.1rem;
+    text-align: left;
+  }
+
+  /* Brand bar en wizard y pairing: logo más grande en portrait */
+  .viewBrandLogo {
+    max-width: min(55vw, 220px);
+    max-height: 14vh;
+  }
+
+  /* Estadísticas de bienvenida */
+  .welcomeStats {
+    font-size: 1rem;
+  }
+}
