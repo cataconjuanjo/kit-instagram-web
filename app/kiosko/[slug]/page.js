@@ -23,10 +23,11 @@ const TIPO_COLORS = {
 const TIPO_ORDER = ['tinto','blanco','rosado','espumoso','generoso','dulce','naranja','sin_alcohol']
 
 const FONT_CSS = {
-  clasica:  { css: "'Playfair Display', Georgia, serif",    google: 'Playfair+Display:ital,wght@0,400;0,700;1,400' },
-  moderna:  { css: "'Inter', system-ui, sans-serif",         google: null },
-  elegante: { css: "'Cormorant Garamond', Palatino, serif",  google: 'Cormorant+Garamond:ital,wght@0,400;0,600;1,400' },
-  natural:  { css: "'Lato', Trebuchet MS, sans-serif",       google: 'Lato:wght@400;700' },
+  clasica:    { css: "'Playfair Display', Georgia, serif",    google: 'Playfair+Display:ital,wght@0,400;0,700;1,400' },
+  moderna:    { css: "'Inter', system-ui, sans-serif",         google: null },
+  elegante:   { css: "'Cormorant Garamond', Palatino, serif",  google: 'Cormorant+Garamond:ital,wght@0,400;0,600;1,400' },
+  natural:    { css: "'Lato', Trebuchet MS, sans-serif",       google: 'Lato:wght@400;700' },
+  redondeada: { css: "'Nunito', system-ui, sans-serif",        google: 'Nunito:wght@400;700;800' },
 }
 
 const SUGERENCIAS_MARIDAJE = [

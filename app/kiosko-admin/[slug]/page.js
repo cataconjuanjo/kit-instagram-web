@@ -16,6 +16,7 @@ const COUNTER_ORDERS_IN_DEVELOPMENT = true
 
 const PALETAS = [
   { id: 'clasico',  label: 'Clásico',         primario: '#0d0d1a', acento: '#c9a96e' },
+  { id: 'sibaris',  label: 'Síbaris Gourmet', primario: '#1e1b22', acento: '#c48e10' },
   { id: 'blanco',   label: 'Blanco elegante',  primario: '#FAFAF8', acento: '#1a1a2e' },
   { id: 'verde',    label: 'Verde vinoteca',   primario: '#122012', acento: '#7cb87c' },
   { id: 'burdeos',  label: 'Burdeos',          primario: '#1a0408', acento: '#c45069' },
@@ -24,10 +25,11 @@ const PALETAS = [
 ]
 
 const FUENTES = [
-  { id: 'clasica',  label: 'Clásica',   muestra: 'El arte del vino',  css: "'Playfair Display', Georgia, serif",    google: 'Playfair+Display:ital,wght@0,400;0,700;1,400' },
-  { id: 'moderna',  label: 'Moderna',   muestra: 'El arte del vino',  css: "'Inter', system-ui, sans-serif",         google: null },
-  { id: 'elegante', label: 'Elegante',  muestra: 'El arte del vino',  css: "'Cormorant Garamond', Palatino, serif",  google: 'Cormorant+Garamond:ital,wght@0,400;0,600;1,400' },
-  { id: 'natural',  label: 'Natural',   muestra: 'El arte del vino',  css: "'Lato', Trebuchet MS, sans-serif",       google: 'Lato:wght@400;700' },
+  { id: 'clasica',   label: 'Clásica',      muestra: 'El arte del vino',  css: "'Playfair Display', Georgia, serif",    google: 'Playfair+Display:ital,wght@0,400;0,700;1,400' },
+  { id: 'moderna',   label: 'Moderna',      muestra: 'El arte del vino',  css: "'Inter', system-ui, sans-serif",         google: null },
+  { id: 'elegante',  label: 'Elegante',     muestra: 'El arte del vino',  css: "'Cormorant Garamond', Palatino, serif",  google: 'Cormorant+Garamond:ital,wght@0,400;0,600;1,400' },
+  { id: 'natural',   label: 'Natural',      muestra: 'El arte del vino',  css: "'Lato', Trebuchet MS, sans-serif",       google: 'Lato:wght@400;700' },
+  { id: 'redondeada',label: 'Redondeada',   muestra: 'El arte del vino',  css: "'Nunito', system-ui, sans-serif",        google: 'Nunito:wght@400;700;800' },
 ]
 
 const ICON_STYLE_OPTIONS = [
