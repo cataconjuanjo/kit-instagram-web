@@ -180,6 +180,9 @@ const T = {
 function normalizarTexto(t = '') {
   return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
+function stripEmoji(s) {
+  return String(s).replace(/\p{Extended_Pictographic}\ufe0f?/gu, '').trim()
+}
 function iconoMaridaje(texto = '') {
   const normal = normalizarTexto(texto)
   return MARIDAJE_ICONOS.find(item => item.terms.some(term => normal.includes(term)))?.icon || '🍴'
@@ -938,7 +941,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
               <button key={e.id} className={styles.wizardEstiloBtn} onClick={() => selEstilo(e.id)} type="button"
                 style={{ '--acento': colorAcento }}>
                 {iconStyle === 'lineal'
-                  ? T[lang].estiloLabels[e.id].replace(/^\p{Emoji_Presentation}+\s*/u, '')
+                  ? stripEmoji(T[lang].estiloLabels[e.id])
                   : T[lang].estiloLabels[e.id]}
               </button>
             ))}
@@ -960,7 +963,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
             <button className={`${styles.wizardPresupuestoBtn} ${styles.wizardPresupuestoBtnCustom}`}
               onClick={() => setMostrarRango(true)} type="button"
               style={{ '--acento': colorAcento }}>
-              {T[lang].miRango}
+              {iconStyle === 'lineal' ? stripEmoji(T[lang].miRango) : T[lang].miRango}
             </button>
           </div>
 
@@ -981,7 +984,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
                   style={{ background: colorAcento, color: colorPrimario }}
                   onClick={() => { setMostrarRango(false); selPresupuesto('custom') }}
                   type="button">
-                  {T[lang].buscarRango}
+                  {iconStyle === 'lineal' ? stripEmoji(T[lang].buscarRango) : T[lang].buscarRango}
                 </button>
                 <button className={styles.rangoSheetCancel} onClick={() => setMostrarRango(false)} type="button">
                   {T[lang].cancelar}
@@ -996,7 +999,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       {step === 99 && cargando && (
         <div className={styles.wizardLoading}>
           <div className={styles.wizardSpinner} style={{ borderTopColor: colorAcento }} />
-          <p style={{ color: colorAcento }}>{T[lang].buscandoVino}</p>
+          <p style={{ color: colorAcento }}>{iconStyle === 'lineal' ? stripEmoji(T[lang].buscandoVino) : T[lang].buscandoVino}</p>
         </div>
       )}
 
@@ -1030,7 +1033,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
                   </div>
                   <p className={styles.pairingWineNombre}>{vino.nombre}</p>
                   {vino.bodega && <p className={styles.pairingWineBodega}>{vino.bodega}</p>}
-                  <p className={styles.pairingWineRazon}>{vino.razon}</p>
+                  <p className={styles.pairingWineRazon}>{iconStyle === 'lineal' ? stripEmoji(vino.razon) : vino.razon}</p>
                   {vino.ubicacion_estanteria && (
                     <p className={styles.pairingWineUbicacion}>
                       <LocationMark className={styles.locationIcon} />
@@ -1164,7 +1167,7 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
 
 // ── Vista Pairing ─────────────────────────────────────────────────────────────
 
-function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMobile, onBack, lang = 'es' }) {
+function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMobile, onBack, lang = 'es', iconStyle = 'emoji' }) {
   const [consulta, setConsulta] = useState('')
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
@@ -1205,7 +1208,9 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMo
         />
         <button className={styles.pairingSubmitBtn} style={{ background: colorAcento }}
           onClick={() => consultar()} disabled={cargando || !consulta.trim()} type="button">
-          {cargando ? T[lang].buscando : T[lang].buscar}
+          {iconStyle === 'lineal'
+            ? stripEmoji(cargando ? T[lang].buscando : T[lang].buscar)
+            : (cargando ? T[lang].buscando : T[lang].buscar)}
         </button>
       </div>
       {!resultado && !cargando && !error && (
@@ -1240,7 +1245,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMo
                   </div>
                   <p className={styles.pairingWineNombre}>{vino.nombre}</p>
                   {vino.bodega && <p className={styles.pairingWineBodega}>{vino.bodega}</p>}
-                  <p className={styles.pairingWineRazon}>{vino.razon}</p>
+                  <p className={styles.pairingWineRazon}>{iconStyle === 'lineal' ? stripEmoji(vino.razon) : vino.razon}</p>
                   {vino.ubicacion_estanteria && (
                     <p className={styles.pairingWineUbicacion}>
                       <LocationMark className={styles.locationIcon} />
@@ -1763,7 +1768,7 @@ export default function KioskoPage() {
       {/* MARIDAJE */}
       {view === VIEWS.PAIRING && (
         <PairingView tienda={tienda} slug={slug} colorAcento={colorAcento} vinos={vinos}
-          onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} lang={lang} />
+          onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} lang={lang} iconStyle={iconStyle} />
       )}
 
       {/* DETALLE */}
