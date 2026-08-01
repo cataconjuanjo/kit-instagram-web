@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import DemoBookingSection from './components/DemoBookingSection'
 import LeadForm from './components/LeadForm'
 import PublicNav from './components/PublicNav'
 import PublicFooter from './components/PublicFooter'
@@ -76,7 +77,7 @@ export default function Home() {
             botella, qué falta por reponer y cómo convertir la carta en venta real en sala, estés donde estés.
           </p>
           <div className="hero-actions">
-            <Link href="#contacto" className="btn btn-primary">Reserva un diagnóstico</Link>
+            <Link href="#demo" className="btn btn-primary">Reservar demo</Link>
             <Link href="/cartavinos#demo-segura" className="btn btn-secondary">Ver demo segura</Link>
           </div>
         </div>
@@ -164,7 +165,7 @@ export default function Home() {
         </div>
         <div className="product-actions">
           <Link href="/cartavinos" className="btn btn-primary">Descubrir Carta Viva</Link>
-          <Link href="/cartavinos#demo-segura" className="btn btn-secondary">Ver demo segura</Link>
+          <Link href="#demo" className="btn btn-secondary">Reservar demo</Link>
         </div>
       </section>
 
@@ -243,17 +244,19 @@ export default function Home() {
             <strong>Ver Carta Viva</strong>
             <span>QR, dashboard, guía de maridaje y vista de sala.</span>
           </Link>
-          <Link href="#contacto" className="proof-card">
-            <strong>Auditar mi bodega</strong>
-            <span>Una primera conversación sobre carta, margen y sala.</span>
+          <Link href="#demo" className="proof-card">
+            <strong>Reservar una demo</strong>
+            <span>Carta Viva Restaurantes, Carta Viva Sumiller o Kiosko en 30 minutos.</span>
           </Link>
         </div>
       </section>
 
+      <DemoBookingSection />
+
       <section id="contacto" className="section contact-section">
         <div>
           <p className="eyebrow">Contacto</p>
-          <h2>Hablemos de tu carta de vinos.</h2>
+          <h2>¿Prefieres escribir antes de reservar?</h2>
           <p>
             Escríbeme si tienes un restaurante, hotel o espacio singular y quieres mejorar tu carta, digitalizarla o
             formar al equipo de sala.
@@ -273,7 +276,7 @@ export default function Home() {
             <a href="mailto:cataconjuanjo@gmail.com">cataconjuanjo@gmail.com</a>
           </p>
         </div>
-        <LeadForm source="Home Cata con Juanjo" />
+        <LeadForm source="Home Cata con Juanjo" cta="Enviar mensaje" />
       </section>
 
       <PublicFooter />

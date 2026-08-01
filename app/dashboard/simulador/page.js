@@ -587,7 +587,7 @@ export default function SimuladorRentabilidad() {
     <FeatureGate restaurante={restaurante} feature="precios_margenes" title="Simulador no incluido">
       <ModuleShell
         restaurante={restaurante}
-        eyebrow="Fase 5"
+        eyebrow="Bodega"
         title="Simulador de rentabilidad"
         subtitle={perfilBodega
           ? 'Simula PVP, coste, stock y rotacion con criterio de bodega. La copa solo aparece cuando el precio y el stock son defendibles.'

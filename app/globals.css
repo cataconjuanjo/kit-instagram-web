@@ -818,6 +818,212 @@ h3 {
   color: #fff;
 }
 
+.demo-booking-section {
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(420px, 1.14fr);
+  gap: clamp(36px, 6vw, 76px);
+  align-items: start;
+  background:
+    linear-gradient(145deg, rgba(116,34,61,0.22), transparent 44%),
+    linear-gradient(180deg, #17110e, #0f0d0b);
+  color: #fffaf0;
+  border-top: 1px solid rgba(175,139,82,0.2);
+  border-bottom: 1px solid rgba(175,139,82,0.2);
+}
+
+.demo-booking-section .eyebrow {
+  color: var(--gold);
+}
+
+.demo-booking-section h2 {
+  color: #fffaf0;
+  max-width: 720px;
+}
+
+.demo-booking-lead {
+  max-width: 64ch;
+  margin: 26px 0 0;
+  color: rgba(255, 250, 241, 0.7);
+  font-size: 1.02rem;
+  line-height: 1.76;
+}
+
+.booking-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.booking-facts li {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 250, 241, 0.14);
+  border-radius: 999px;
+  color: rgba(255, 250, 241, 0.78);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.booking-product-list {
+  display: grid;
+  margin-top: 34px;
+  border-top: 1px solid rgba(255, 250, 241, 0.12);
+}
+
+.booking-product {
+  display: grid;
+  grid-template-columns: minmax(128px, 0.46fr) 1fr;
+  gap: 16px;
+  padding: 17px 0;
+  border-bottom: 1px solid rgba(255, 250, 241, 0.12);
+}
+
+.booking-product strong {
+  display: block;
+  color: #fffaf0;
+  font-size: 0.92rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.booking-product span {
+  display: block;
+  margin-top: 5px;
+  color: rgba(175, 139, 82, 0.86);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.booking-product p {
+  margin: 0;
+  color: rgba(255, 250, 241, 0.66);
+  font-size: 0.88rem;
+  line-height: 1.58;
+}
+
+.booking-calendar-shell {
+  min-height: 700px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(175, 139, 82, 0.28);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 26px 70px rgba(23, 13, 8, 0.24);
+}
+
+.booking-calendar-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  min-height: 56px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(52, 35, 23, 0.14);
+  background: #fffaf3;
+  color: var(--ink);
+}
+
+.booking-calendar-meta strong {
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.booking-calendar-meta a {
+  color: var(--wine);
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.booking-calendar-meta a:hover {
+  text-decoration: underline;
+}
+
+.booking-mobile-fallback {
+  display: none;
+}
+
+.calendly-frame {
+  flex: 1;
+  width: 100%;
+  min-height: 640px;
+  border: 0;
+  background: #fff;
+}
+
+@media (max-width: 1080px) {
+  .demo-booking-section {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-calendar-shell {
+    min-height: 720px;
+  }
+}
+
+@media (max-width: 760px) {
+  .demo-booking-section {
+    padding-top: 68px;
+    padding-bottom: 78px;
+  }
+
+  .booking-product {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .booking-calendar-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .booking-calendar-shell {
+    min-height: auto;
+    background: #fffaf3;
+  }
+
+  .booking-mobile-fallback {
+    display: grid;
+    gap: 16px;
+    padding: 24px 18px;
+    background:
+      linear-gradient(135deg, rgba(116, 34, 61, 0.08), transparent 45%),
+      #fffaf3;
+    color: var(--ink);
+  }
+
+  .booking-mobile-fallback strong {
+    font-family: var(--font-cormorant-garamond), Georgia, serif;
+    font-size: 1.6rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.08;
+  }
+
+  .booking-mobile-fallback p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.62;
+  }
+
+  .booking-mobile-fallback .btn {
+    width: 100%;
+  }
+
+  .calendly-frame {
+    display: none;
+  }
+}
+
 .contact-links {
   display: flex;
   gap: 20px;
@@ -1409,7 +1615,7 @@ h3 {
 
 .product-lines-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
 
@@ -6956,6 +7162,7 @@ h3 {
   .mini-service-grid,
   .control-grid,
   .safe-demo-grid,
+  .product-lines-grid,
   .proof-grid,
   .pricing-grid,
   .cv-flow,

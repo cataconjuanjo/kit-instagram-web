@@ -141,7 +141,7 @@ const t = {
     vistaReferencias: 'Referencias',
     vistaEtiquetas: 'Etiquetas',
     carta: 'Carta',
-    sommelier: 'ArmonIA',
+    sommelier: 'Armonia',
     buscar: 'Buscar vino, bodega o uva...',
     filtros: 'Filtros',
     todos: 'Todos',
@@ -658,7 +658,7 @@ export default function CartaPublica() {
         prueba_token: tokenPrueba,
       })
       if (!res.ok) {
-        setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+        setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar Armonia. Inténtalo de nuevo.')
         setCargandoIA(false)
         return
       }
@@ -676,7 +676,7 @@ export default function CartaPublica() {
       )
       setCargandoIA(false)
     } catch (error) {
-      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar Armonia. Inténtalo de nuevo.')
       setCargandoIA(false)
       reportarErrorCliente('carta_publica_sommelier_mesa', error)
     }
@@ -706,7 +706,7 @@ export default function CartaPublica() {
         prueba_token: tokenPrueba,
       })
       if (!res.ok) {
-        setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+        setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar Armonia. Inténtalo de nuevo.')
         setCargandoIA(false)
         return
       }
@@ -726,7 +726,7 @@ export default function CartaPublica() {
       )
       setCargandoIA(false)
     } catch (error) {
-      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar Armonia. Inténtalo de nuevo.')
       setCargandoIA(false)
       reportarErrorCliente('carta_publica_sommelier_vino', error)
     }
@@ -747,7 +747,7 @@ export default function CartaPublica() {
         prueba_token: tokenPrueba,
       })
       if (!res.ok) {
-        setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+        setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar Armonia. Inténtalo de nuevo.')
         setCargandoIA(false)
         return
       }
@@ -765,7 +765,7 @@ export default function CartaPublica() {
       )
       setCargandoIA(false)
     } catch (error) {
-      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar ArmonIA. Inténtalo de nuevo.')
+      setRespuesta(idioma === 'en' ? 'Error contacting the pairing guide. Please try again.' : 'Error al consultar Armonia. Inténtalo de nuevo.')
       setCargandoIA(false)
       reportarErrorCliente('carta_publica_sommelier_seguimiento', error)
     }
@@ -1900,7 +1900,7 @@ export default function CartaPublica() {
       )}
       {demoPresentacion && (
         <div className={styles.demoPresentationBar}>
-          <span>Vista cliente · ArmonIA</span>
+          <span>Vista cliente · Armonia</span>
           <a href="/demo/taberna-del-puerto">Volver a la muestra</a>
         </div>
       )}

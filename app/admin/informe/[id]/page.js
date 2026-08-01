@@ -440,7 +440,7 @@ export default function InformeConsultor() {
     `Impacto mensual de Carta Viva - ${restaurante.nombre}`,
     '',
     oportunidadSnapshot ? `Oportunidad economica anual estimada: ${eur(oportunidadSnapshot.recuperacion_anual_estimada)} y ${eur(oportunidadSnapshot.capital_liberable_estimado)} de capital liberable estimado.` : '',
-    `En los ultimos 30 dias, ArmonIA ha ayudado a controlar ${informe.metricas.escaneos30} escaneos de carta, ${informe.metricas.sommelier30} consultas de maridaje y ${informe.metricas.ventasMarcadas} ventas marcadas desde sala.`,
+    `En los ultimos 30 dias, Armonia ha ayudado a controlar ${informe.metricas.escaneos30} escaneos de carta, ${informe.metricas.sommelier30} consultas de maridaje y ${informe.metricas.ventasMarcadas} ventas marcadas desde sala.`,
     `Margen bajo control: ${eur(impacto.margenAsistido)} de margen bruto monitorizado en ventas con coste y precio informados (${impacto.ventasConMargen} ventas con margen trazable).`,
     `Riesgo operativo detectado: ${informe.metricas.incidenciasStock} incidencias de stock, ${informe.metricas.bajoMinimo} referencias bajo minimo, ${informe.metricas.sinCoste} sin coste y ${informe.metricas.sinProveedor} sin proveedor.`,
     `Tiempo operativo estimado: ${minutosAHoras(impacto.minutosAhorrados)} de apoyo mensual entre consultas resueltas, ventas registradas, alertas y seguimiento de propuestas.`,
@@ -465,7 +465,7 @@ export default function InformeConsultor() {
   ].join('\n') : [
     `Evolucion mensual - ${restaurante.nombre}`,
     '',
-    'Aun no hay una foto anterior guardada para este restaurante. Guarda la foto de este informe y el siguiente mes ArmonIA comparara automaticamente el progreso.',
+    'Aun no hay una foto anterior guardada para este restaurante. Guarda la foto de este informe y el siguiente mes Armonia comparara automaticamente el progreso.',
   ].join('\n')
 
   async function copiarImpactoMensual() {
@@ -552,7 +552,7 @@ export default function InformeConsultor() {
           <div className="report-section-head">
             <div>
               <p className="report-kicker">Valor defendible</p>
-              <h2>Impacto mensual de ArmonIA</h2>
+              <h2>Impacto mensual de Armonia</h2>
             </div>
             <button
               type="button"
@@ -677,7 +677,7 @@ export default function InformeConsultor() {
             <div className="report-panel">
               <p>
                 Aún no hay una foto anterior guardada para este restaurante. Guarda la foto de este informe y el mes que viene
-                ArmonIA podrá comparar costes completados, proveedores, margen, stock y uso real de sala.
+                Armonia podrá comparar costes completados, proveedores, margen, stock y uso real de sala.
               </p>
             </div>
           )}

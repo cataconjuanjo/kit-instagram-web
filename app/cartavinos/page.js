@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import DemoAnalyticsLink from '../components/DemoAnalyticsLink'
+import DemoBookingSection from '../components/DemoBookingSection'
 import LeadForm from '../components/LeadForm'
 import PublicNav from '../components/PublicNav'
 import PublicFooter from '../components/PublicFooter'
@@ -41,21 +42,30 @@ const controles = [
 const lineasProducto = [
   {
     nombre: 'Carta Viva Restaurantes',
-    etiqueta: 'Carta pública, sala y dirección',
-    texto: 'Para restaurantes donde el vino pesa en la experiencia y no puede depender de un PDF desactualizado o de argumentos improvisados.',
-    puntos: ['QR editable, no PDF', 'Maridaje con platos reales', 'Argumentos para sala', 'Señales de margen y rotación'],
-    precio: 'Desde 59 EUR/mes',
+    etiqueta: 'Bodega de restaurante + carta pública',
+    texto: 'Para restaurantes que necesitan gestionar bodega, publicar una carta QR con Armonia y dar argumentos útiles al equipo de sala.',
+    puntos: ['Carta QR con Armonia', 'Gestión de bodega', 'Argumentos para sala', 'Stock, margen y seguimiento'],
+    precio: 'Desde 59 €/mes',
     cta: 'Ver planes de restaurante',
     href: '#planes',
   },
   {
     nombre: 'Carta Viva Sumiller',
-    etiqueta: 'Sala, bodega y criterio profesional',
-    texto: 'Para responsables de vino que quieren convertir criterio, bodega, compras y gamas en una herramienta diaria de servicio y control.',
-    puntos: ['Argumentos de servicio', 'Mapa de gamas editable', 'Coste y margen por vino', 'Constructor de carta'],
-    precio: 'Desde 149 EUR/mes',
+    etiqueta: 'Bodega y criterio sin carta pública',
+    texto: 'Para sumilleres, jefes de sala o dueños que quieren gestionar directamente el vino del negocio sin publicar una carta al cliente.',
+    puntos: ['Inventario y stock', 'Coste y margen por vino', 'Compras y proveedores', 'Argumentos internos'],
+    precio: 'Desde 149 €/mes',
     cta: 'Ver membresía sumiller',
     href: '#sumiller',
+  },
+  {
+    nombre: 'Kiosko',
+    etiqueta: 'Autoservicio para tiendas de vino',
+    texto: 'Para vinotecas y tiendas que quieren un puesto tipo autoservicio donde el cliente simula su pedido y el dueño controla stock y actividad.',
+    puntos: ['Puesto digital en tienda', 'Simulación de pedido', 'Catálogo de vinos', 'Dashboard de stock e informes'],
+    precio: 'Planes Kiosko',
+    cta: 'Ver Kiosko',
+    href: '/kiosko/contratar',
   },
 ]
 
@@ -70,8 +80,8 @@ const argumentosPorPerfil = [
       'Coherencia con cocina',
       'Frases de servicio naturales',
     ],
-    cta: 'Reforzar sala',
-    href: '/cartavinos#contacto',
+    cta: 'Reservar demo',
+    href: '/cartavinos#demo',
   },
   {
     etiqueta: 'Dirección y propiedad',
@@ -83,8 +93,8 @@ const argumentosPorPerfil = [
       'Pedidos por proveedor',
       'Lectura mensual de retorno',
     ],
-    cta: 'Ver rentabilidad',
-    href: '/cartavinos#contacto',
+    cta: 'Reservar demo',
+    href: '/cartavinos#demo',
   },
 ]
 
@@ -230,14 +240,14 @@ const MinusIcon = () => (
 )
 
 export const metadata = {
-  title: 'Carta Viva · Carta de vinos operativa para restaurantes',
-  description: 'Carta Viva no es un PDF con QR ni un inventario genérico: conecta carta pública, sala, cocina, margen, rotación y compras para restaurantes con cartas de vino serias.',
+  title: 'Carta Viva · Gestión de vino para restaurantes, sumilleres y tiendas',
+  description: 'Carta Viva reúne gestión de bodega para restaurantes, herramienta interna para sumilleres y Kiosko para tiendas de vino con stock, margen, argumentos e informes reales.',
   alternates: {
     canonical: '/cartavinos',
   },
   openGraph: {
-    title: 'Carta Viva · Carta de vinos operativa para restaurantes',
-    description: 'Carta pública, argumentos de sala y lectura de rentabilidad para restaurantes con cartas de vino serias.',
+    title: 'Carta Viva · Gestión de vino para restaurantes, sumilleres y tiendas',
+    description: 'Carta Viva Restaurantes, Carta Viva Sumiller y Kiosko: tres formas de gestionar vino con criterio, stock, margen e informes reales.',
     url: '/cartavinos',
     images: [{ url: '/assets/og-carta-viva-2026.jpg', width: 1200, height: 630 }],
   },
@@ -289,8 +299,8 @@ export default function CartaVivaPage() {
             para sala y en una decisión medible para propiedad: margen, rotación, stock, compras y retorno mensual.
           </p>
           <div className="hero-actions">
-            <Link href="#prueba" className="btn btn-primary">Solicitar diagnóstico de carta</Link>
-            <Link href="#sala-direccion" className="btn btn-secondary">Ver argumentos por perfil</Link>
+            <Link href="#demo" className="btn btn-primary">Reservar demo de 30 min</Link>
+            <Link href="#demo-segura" className="btn btn-secondary">Ver demo segura</Link>
           </div>
           <div className="cv-trust-line">
             <span>Maridaje con cocina real</span>
@@ -419,8 +429,8 @@ export default function CartaVivaPage() {
 
       <section className="section cv-product-lines">
         <div className="section-head">
-          <p className="eyebrow">Dos niveles de trabajo</p>
-          <h2>Una capa para servicio. Otra para bodega, compras y carta.</h2>
+          <p className="eyebrow">Líneas de producto</p>
+          <h2>Restaurante, Sumiller y Kiosko no resuelven el mismo problema.</h2>
         </div>
         <div className="product-lines-grid">
           {lineasProducto.map((linea) => (
@@ -457,7 +467,7 @@ export default function CartaVivaPage() {
             <strong>Sin permanencia. Con una decisión clara al final.</strong>
             <span>Seguir, ajustar o descartarlo con criterio operativo y económico.</span>
           </div>
-          <Link href="/cartavinos#contacto" className="btn btn-primary">Solicitar diagnóstico</Link>
+          <Link href="/cartavinos#demo" className="btn btn-primary">Reservar demo</Link>
         </div>
       </section>
 
@@ -653,10 +663,12 @@ export default function CartaVivaPage() {
             <DemoAnalyticsLink href="/demo/taberna-del-puerto" className="btn btn-secondary" target="/demo/taberna-del-puerto">
               Ver demo guiada
             </DemoAnalyticsLink>
-            <Link href="/cartavinos#contacto" className="btn btn-primary">Pedir demo privada</Link>
+            <Link href="/cartavinos#demo" className="btn btn-primary">Pedir demo privada</Link>
           </div>
         </div>
       </section>
+
+      <DemoBookingSection />
 
       <section className="section cv-modalidades" id="planes">
         <div className="section-head">
@@ -678,7 +690,7 @@ export default function CartaVivaPage() {
               <ul>
                 {item.incluye.map((linea) => <li key={linea}>{linea}</li>)}
               </ul>
-              <Link href="/cartavinos#contacto" className={item.destacado ? 'btn btn-primary' : 'btn btn-secondary'}>{item.cta}</Link>
+              <Link href="/cartavinos#demo" className={item.destacado ? 'btn btn-primary' : 'btn btn-secondary'}>{item.cta}</Link>
             </article>
           ))}
         </div>
@@ -731,37 +743,37 @@ export default function CartaVivaPage() {
 
       <section className="section cv-closing">
         <div>
-          <p className="eyebrow">Diagnóstico privado</p>
-          <h2>Vemos tu carta como la usa sala y como la mira dirección.</h2>
+          <p className="eyebrow">Demo privada</p>
+          <h2>Vemos si necesitas carta pública, gestión interna o Kiosko para tienda.</h2>
         </div>
         <p>
-          La primera conversación sirve para detectar si necesitas una carta pública mejor, argumentos de servicio,
-          control económico o una revisión completa de carta y bodega. Sin automatismos baratos. Con contexto.
+          La primera conversación sirve para detectar si necesitas Carta Viva Restaurantes, Carta Viva Sumiller o
+          Kiosko. Sin automatismos baratos. Con contexto.
         </p>
       </section>
 
       <section id="contacto" className="section contact-section">
         <div>
-          <p className="eyebrow">Demo privada</p>
-          <h2>Enséñame tu carta y vemos dónde pierde servicio o margen.</h2>
+          <p className="eyebrow">Contacto</p>
+          <h2>¿Prefieres escribir antes de reservar?</h2>
           <p>
-            Manda el nombre del restaurante y una idea de tu carta actual. Te responderé con una propuesta clara para sala y dirección.
+            Manda el nombre del restaurante, vinoteca o proyecto y una idea de lo que necesitas. Te responderé con una propuesta clara.
           </p>
         </div>
         <LeadForm
           source="Carta Viva · prueba guiada 14 días"
-          cta="Solicitar diagnóstico de Carta Viva"
-          title="Datos para revisar tu carta"
+          cta="Enviar mensaje"
+          title="Datos para orientar la demo"
           successTitle="Prueba solicitada"
-          successText="Te responderé con el siguiente paso para revisar tu carta desde servicio, margen y retorno."
+          successText="Te responderé con el siguiente paso para ver qué producto encaja mejor."
           problemaOptions={[
-            'Sala necesita mejores argumentos',
-            'No veo margen y rotación con claridad',
-            'La carta sigue siendo un PDF con QR',
-            'Compramos vino sin lectura mensual',
-            'Quiero conectar cocina, carta y bodega',
+            'Gestionar bodega de restaurante',
+            'Publicar carta QR con Armonia',
+            'Gestionar vino sin carta pública',
+            'Poner un Kiosko en una tienda de vino',
+            'No sé qué producto necesito',
           ]}
-          mensajeLabel="Qué te gustaría mejorar primero"
+          mensajeLabel="Qué te gustaría ver en la demo"
         />
       </section>
 

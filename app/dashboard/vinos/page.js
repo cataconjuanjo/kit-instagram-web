@@ -964,8 +964,6 @@ async function aplicarAccionMasiva(confirmado = false) {
         : 'Controla precios, stock, perfiles de cata e importaciones para que sala y maridaje trabajen con la misma información.'}
       actions={
         <>
-          {puedeUsar(restaurante, 'precios_margenes') && <a href="/dashboard/precios" className={styles.secondary}>Calcular precios</a>}
-          {puedeUsar(restaurante, 'bodega') && <a href="/dashboard/bodega" className={styles.secondary}>Control bodega</a>}
           {puedeUsar(restaurante, 'importador_pdf') && (
             <button
               onClick={() => { setMostrarImportador(!mostrarImportador); setMostrarFormulario(false); setMostrarImportadorEtiquetas(false) }}

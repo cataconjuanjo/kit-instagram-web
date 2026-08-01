@@ -217,7 +217,7 @@ export default function TrazabilidadEconomica() {
     <FeatureGate restaurante={restaurante} feature="precios_margenes" title="Trazabilidad no incluida">
       <ModuleShell
         restaurante={restaurante}
-        eyebrow="Fase 8"
+        eyebrow="Bodega"
         title="Trazabilidad económica"
         subtitle={perfilBodega
           ? 'Separa TPV real, movimientos confirmados, inferidos y estimados para defender la foto economica de la bodega.'

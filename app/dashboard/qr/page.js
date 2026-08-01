@@ -462,7 +462,7 @@ export default function QRPage() {
       href: '/dashboard/vinos',
     },
     {
-      label: 'Platos para ArmonIA',
+      label: 'Platos para Armonia',
       detail: contenidoCarta.platosActivos ? `${contenidoCarta.platosActivos} platos activos` : 'Sin platos activos',
       ok: contenidoCarta.platosActivos > 0,
       required: false,
@@ -976,7 +976,7 @@ export default function QRPage() {
   }
 
   const pruebas = [
-    { titulo: 'Abrir enlace público', detalle: cartaPublicada ? (restaurante?.hub_activo ? 'El QR abre el hub público. Si consultas ArmonIA, contará como cliente real.' : 'El QR abre la carta digital. Si consultas ArmonIA, contará como cliente real.') : 'Aún está en borrador. Usa la prueba interna y publica cuando esté lista.', href: urlDirecta, publico: true, evento: 'public_destination_opened' },
+    { titulo: 'Abrir enlace público', detalle: cartaPublicada ? (restaurante?.hub_activo ? 'El QR abre el hub público. Si consultas Armonia, contará como cliente real.' : 'El QR abre la carta digital. Si consultas Armonia, contará como cliente real.') : 'Aún está en borrador. Usa la prueba interna y publica cuando esté lista.', href: urlDirecta, publico: true, evento: 'public_destination_opened' },
     { titulo: 'Carta directa', detalle: 'Comprueba platos, vinos, precios y tiempos de carga. Esta apertura se registra como prueba interna.', pruebaCarta: true },
     { titulo: 'Versión impresión', detalle: cartaPublicada ? 'Abre la vista preparada para imprimir o guardar PDF.' : 'Disponible cuando publiques la carta.', href: urlPrint, publico: true, evento: 'qr_print_opened' },
   ]

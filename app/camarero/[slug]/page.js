@@ -1320,7 +1320,7 @@ export default function Camarero() {
       const contexto = contextoVenta(consultaNormalizada)
       let score = Number(resultado.score) || 0
       let motivo = resultado.motivo || motivoMesaVenta(vino, consultas.length, consultaNormalizada)
-      const fuente = resultado.fuente || 'Motor ArmonIA central'
+      const fuente = resultado.fuente || 'Motor Armonia central'
 
       if (objetivoVenta === 'rotar') {
         if (vino.stock > 3) score += Math.min(vino.stock, 18) / 2
@@ -1577,8 +1577,8 @@ export default function Camarero() {
           vino: vinoMandatoVenta,
           score: -100,
           compatible: false,
-          motivo: 'No encuentro un encaje suficientemente claro desde ArmonIA central.',
-          fuente: 'Motor ArmonIA central',
+          motivo: 'No encuentro un encaje suficientemente claro desde Armonia central.',
+          fuente: 'Motor Armonia central',
         }
         if (plato?.familias_aromaticas?.familias?.length) {
           const { bonus, motivo: motivoChartier, riesgos } = bonusChartierFamilias(vinoMandatoVenta, plato.familias_aromaticas.familias)

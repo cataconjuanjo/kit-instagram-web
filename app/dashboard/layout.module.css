@@ -634,9 +634,9 @@ button.footerLink {
 }
 
 .alertPillOk {
-  border-color: rgba(16, 185, 129, 0.35) !important;
-  background: rgba(16, 185, 129, 0.12) !important;
-  color: #05734f !important;
+  border-color: rgba(155, 116, 48, 0.35) !important;
+  background: rgba(155, 116, 48, 0.08) !important;
+  color: #7a5820 !important;
 }
 
 .clock {
