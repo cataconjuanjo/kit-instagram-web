@@ -881,6 +881,24 @@ export default function AdminKioskoPage() {
 
   useEffect(() => { if (slug) cargar() }, [slug])
 
+  // Polling silencioso: recarga el catálogo cada 30 s para reflejar sincronizaciones de Square
+  const authHeadersRef = useRef({})
+  useEffect(() => { authHeadersRef.current = authHeaders }, [authHeaders])
+  useEffect(() => {
+    if (!slug) return
+    const iv = setInterval(async () => {
+      const headers = authHeadersRef.current
+      if (!headers.Authorization) return
+      try {
+        const res = await fetch(`/api/kiosko/${slug}/admin/vinos`, { headers })
+        if (!res.ok) return
+        const data = await res.json()
+        setVinos(data.vinos || [])
+      } catch {}
+    }, 30_000)
+    return () => clearInterval(iv)
+  }, [slug])
+
   useEffect(() => { setPaginaActual(1) }, [busqueda, filtroTipo, filtroEstado, filtroCalidad, filtroDestacado, ordenPor, ordenDir, porPagina])
 
   useEffect(() => {
