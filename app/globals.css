@@ -15477,7 +15477,7 @@ html, body {
   line-height: 0.85;
   letter-spacing: -0.05em;
   color: var(--ink);
-  opacity: 0.08;
+  opacity: 0.15;
   font-weight: 300;
   margin-bottom: 20px;
 }
@@ -15495,7 +15495,7 @@ html, body {
   line-height: 1;
   letter-spacing: -0.04em;
   color: var(--ink);
-  opacity: 0.12;
+  opacity: 0.22;
   margin-bottom: 24px;
 }
 
@@ -15510,7 +15510,7 @@ html, body {
   line-height: 1;
   letter-spacing: -0.03em;
   color: var(--ink);
-  opacity: 0.18;
+  opacity: 0.3;
   padding-top: 0;
 }
 
@@ -15528,5 +15528,151 @@ html, body {
   }
   .site-shell .activacion-num {
     font-size: clamp(1.4rem, 4vw, 1.8rem);
+  }
+}
+
+/* === EDITORIAL PASS — otras páginas públicas ===*/
+
+/* FORMACIÓN DE SALA: misma arquitectura editorial que servicios en homepage */
+.service-landing .service-grid {
+  counter-reset: modulo;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1.8fr) repeat(3, minmax(0, 1fr));
+}
+.service-landing .service-card {
+  counter-increment: modulo;
+  background: rgba(255, 250, 240, 0.72);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 32px 24px;
+  min-height: 240px;
+  gap: 0;
+  transition: background 0.2s;
+}
+.service-landing .service-card:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: none;
+  box-shadow: none;
+}
+.service-landing .service-card .card-mark { display: none; }
+.service-landing .service-card::before {
+  content: counter(modulo, decimal-leading-zero);
+  display: block;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 0.88rem;
+  color: var(--gold);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  margin-bottom: 18px;
+}
+.service-landing .service-card:first-child {
+  background: rgba(23, 18, 15, 0.03);
+}
+.service-landing .service-card:first-child::before {
+  font-size: clamp(4rem, 7vw, 8.5rem);
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+  opacity: 0.15;
+  font-weight: 300;
+  margin-bottom: 20px;
+}
+.service-landing .service-card:first-child h3 {
+  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+@media (max-width: 760px) {
+  .service-landing .service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* CATAS: precio como titular de display — el número hace el trabajo */
+.site-shell .tasting-card h3 {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 0 0 4px;
+}
+.site-shell .tasting-card .price strong {
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: clamp(2rem, 3.8vw, 3.8rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--wine);
+  display: block;
+  margin: 8px 0 20px;
+}
+
+/* CARTA VIVA: editorial counter en service-grid + control-grid asimétrico */
+.carta-viva-page .service-grid {
+  counter-reset: feature;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1.8fr) repeat(3, minmax(0, 1fr));
+}
+.carta-viva-page .service-card {
+  counter-increment: feature;
+  background: rgba(255, 250, 240, 0.72);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  gap: 0;
+  padding: 32px 24px;
+  transition: background 0.2s;
+}
+.carta-viva-page .service-card:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: none;
+  box-shadow: none;
+}
+.carta-viva-page .service-card .card-mark { display: none; }
+.carta-viva-page .service-card::before {
+  content: counter(feature, decimal-leading-zero);
+  display: block;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 0.88rem;
+  color: var(--gold);
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  margin-bottom: 18px;
+}
+.carta-viva-page .service-card:first-child {
+  background: rgba(23, 18, 15, 0.03);
+}
+.carta-viva-page .service-card:first-child::before {
+  font-size: clamp(4rem, 7vw, 8.5rem);
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+  opacity: 0.15;
+  font-weight: 300;
+  margin-bottom: 20px;
+}
+.carta-viva-page .service-card:first-child h3 {
+  font-size: clamp(1.4rem, 2.2vw, 2rem);
+  line-height: 1.15;
+}
+.carta-viva-page .control-grid {
+  grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 760px) {
+  .carta-viva-page .service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .carta-viva-page .control-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
