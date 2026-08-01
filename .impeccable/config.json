@@ -3,7 +3,8 @@
     "ignoreRules": [],
     "ignoreFiles": [
       "app/kiosko/[slug]/kiosko.module.css",
-      "app/kiosko/[slug]/page.js"
+      "app/kiosko/[slug]/page.js",
+      "app/kiosko-admin/[slug]/admin.module.css"
     ],
     "ignoreValues": [
       {

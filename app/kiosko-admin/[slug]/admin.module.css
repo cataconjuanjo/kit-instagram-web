@@ -73,6 +73,19 @@
   color: #d47a14;
 }
 
+.syncResultPill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(80,160,80,.15);
+  border: 1px solid rgba(80,160,80,.35);
+  border-radius: 20px;
+  padding: .28rem .75rem;
+  font-size: .78rem;
+  font-weight: 600;
+  color: #3a8a3a;
+  white-space: nowrap;
+}
+
 .trialPillRed {
   background: rgba(200,50,50,.18);
   border-color: rgba(200,50,50,.45);

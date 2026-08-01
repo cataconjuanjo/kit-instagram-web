@@ -878,6 +878,8 @@ export default function AdminKioskoPage() {
   const [importando, setImportando]       = useState(false)
   const [resultImport, setResultImport]   = useState(null)
   const [draggingImport, setDraggingImport] = useState(false)
+  const [squareSyncing, setSquareSyncing] = useState(false)
+  const [squareSyncResult, setSquareSyncResult] = useState(null)
 
   useEffect(() => { if (slug) cargar() }, [slug])
 
@@ -1216,6 +1218,22 @@ export default function AdminKioskoPage() {
     if (form.foto_url?.startsWith('blob:')) URL.revokeObjectURL(form.foto_url)
     cambiar('foto_url', '')
     setFotoFileModal(null)
+  }
+
+  // ── Sync Square manual ────────────────────────────────────────────────────
+  async function syncSquare() {
+    setSquareSyncing(true); setSquareSyncResult(null)
+    try {
+      const res  = await fetch(`/api/kiosko/${slug}/admin/square-sync`, { method: 'POST', headers: authHeaders })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al sincronizar')
+      setSquareSyncResult(data)
+      await cargar()
+    } catch (e) {
+      setSquareSyncResult({ error: e.message })
+    } finally {
+      setSquareSyncing(false)
+    }
   }
 
   // ── Importar ───────────────────────────────────────────────────────────────
@@ -1806,6 +1824,19 @@ export default function AdminKioskoPage() {
             <button onClick={() => { setModalImport(true); setResultImport(null) }} type="button" className={`${styles.btnSecundario} ${styles.btnHideMobile}`}>
               Importar
             </button>
+            {tienda?.square_catalog_id !== undefined || true ? (
+              <button onClick={syncSquare} type="button" className={`${styles.btnSecundario} ${styles.btnHideMobile}`}
+                disabled={squareSyncing} title="Traer productos del catálogo de Square">
+                {squareSyncing ? 'Sincronizando…' : '⟳ Square'}
+              </button>
+            ) : null}
+            {squareSyncResult && (
+              <span className={styles.syncResultPill} title={squareSyncResult.error || `${squareSyncResult.insertados} nuevos · ${squareSyncResult.actualizados} actualizados`}>
+                {squareSyncResult.error
+                  ? '✗ Error sync'
+                  : `✓ ${squareSyncResult.insertados} nuevos · ${squareSyncResult.actualizados} act.`}
+              </span>
+            )}
             <button onClick={abrirNuevo} type="button" className={styles.btnPrimario}>
               + Añadir vino
             </button>
