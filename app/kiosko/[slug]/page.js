@@ -1644,10 +1644,6 @@ export default function KioskoPage() {
             ))}
           </div>
 
-          <span className={styles.kioskoCredit}>
-            Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
-          </span>
-
           {!isFullscreen && (
             <button
               type="button"
@@ -1663,6 +1659,10 @@ export default function KioskoPage() {
               </svg>
             </button>
           )}
+
+          <span className={styles.kioskoCredit}>
+            Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
+          </span>
 
           {vinos.filter(v => v.destacado).length > 0 && (
             <div className={styles.welcomeFeatured}>
