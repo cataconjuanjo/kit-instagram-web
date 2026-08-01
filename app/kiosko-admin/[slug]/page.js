@@ -1866,11 +1866,9 @@ export default function AdminKioskoPage() {
         <button type="button" className={`${styles.tabBtn} ${tab === 'catalogo' ? styles.tabBtnActive : ''}`} onClick={() => setTab('catalogo')}>
           Catálogo
         </button>
-        {vinosOtro.length > 0 && (
-          <button type="button" className={`${styles.tabBtn} ${tab === 'otros' ? styles.tabBtnActive : ''}`} onClick={() => setTab('otros')}>
-            Otros{vinosOtro.length > 0 && <span className={styles.tabBadge}>{vinosOtro.length}</span>}
-          </button>
-        )}
+        <button type="button" className={`${styles.tabBtn} ${tab === 'otros' ? styles.tabBtnActive : ''}`} onClick={() => setTab('otros')}>
+          Otros{vinosOtro.length > 0 && <span className={styles.tabBadge}>{vinosOtro.length}</span>}
+        </button>
         {pedidosMostradorActivos && (
           <button type="button" className={`${styles.tabBtn} ${tab === 'pedidos' ? styles.tabBtnActive : ''}`}
             onClick={() => { setTab('pedidos'); if (!pedidos && !pedidosLoad) cargarPedidos() }}>
@@ -2984,6 +2982,19 @@ export default function AdminKioskoPage() {
                 {/* Acciones */}
                 <td className={styles.acciones}>
                   <button onClick={() => abrirEditar(v)} type="button" className={styles.btnEdit}>Editar</button>
+                  <button
+                    onClick={async () => {
+                      await fetch(`/api/kiosko/${slug}/admin/vinos/${v.id}`, {
+                        method: 'PATCH',
+                        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ categoria: 'otro' }),
+                      })
+                      await cargar()
+                    }}
+                    type="button"
+                    className={styles.btnEdit}
+                    title="Mover a Otros productos"
+                  >→ Otros</button>
                   <button onClick={() => eliminar(v.id)} type="button" className={styles.btnDelete}>✕</button>
                 </td>
               </tr>
