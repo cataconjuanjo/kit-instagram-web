@@ -35,9 +35,10 @@ async function fetchOrder(orderId) {
 
 async function searchRecentCatalogItems() {
   const items = []
+  const imageMap = {}  // image_id → url
   let cursor = null
   do {
-    const body = { object_types: ['ITEM'], include_related_objects: false }
+    const body = { object_types: ['ITEM'], include_related_objects: true }
     if (cursor) body.cursor = cursor
     const res = await fetch(`${SQUARE_API_BASE}/v2/catalog/search`, {
       method: 'POST',
@@ -51,15 +52,20 @@ async function searchRecentCatalogItems() {
     if (!res.ok) throw new Error(`Square Catalog API ${res.status}: ${await res.text()}`)
     const data = await res.json()
     items.push(...(data.objects || []))
+    for (const rel of (data.related_objects || [])) {
+      if (rel.type === 'IMAGE' && rel.image_data?.url) {
+        imageMap[rel.id] = rel.image_data.url
+      }
+    }
     cursor = data.cursor || null
   } while (cursor)
-  return items
+  return { items, imageMap }
 }
 
 // ── Catalog upsert handler ────────────────────────────────────────────────────
 async function handleCatalogUpdate(tiendaSlug) {
   // Square no incluye qué cambió en el evento — buscamos todos los ITEM
-  const items = await searchRecentCatalogItems()
+  const { items, imageMap } = await searchRecentCatalogItems()
 
   let insertados = 0, actualizados = 0, errores = 0
 
@@ -78,13 +84,14 @@ async function handleCatalogUpdate(tiendaSlug) {
     // Descripción
     const descripcion = d.description_plaintext || d.description || null
 
-    // Imagen — los image_ids apuntan a objetos relacionados; la URL requiere fetch extra
-    // Se omite aquí; el admin puede añadir foto_url manualmente si hace falta
+    // Foto: primer image_id del ítem resuelto en el imageMap de related_objects
+    const foto_url = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
 
     const registro = {
       nombre,
       precio_pvp,
       descripcion,
+      ...(foto_url && { foto_url }),
       activo: !item.is_deleted,
       updated_at: new Date().toISOString(),
     }
