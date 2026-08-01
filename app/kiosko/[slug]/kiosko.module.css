@@ -1044,7 +1044,7 @@
 
 .detailContent {
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 44% 1fr;
 }
 
 @media (max-width: 800px) {
@@ -1063,7 +1063,7 @@
 
 .detailPhoto {
   width: 100%;
-  max-height: 800px;
+  max-height: 70vh;
   object-fit: contain;
 }
 
@@ -1116,7 +1116,7 @@
 }
 
 .detailNombre {
-  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-size: clamp(2.2rem, 4vw, 3.5rem);
   font-weight: 800;
   line-height: 1.1;
   margin: 0;
@@ -1151,7 +1151,7 @@
 
 .detailPrecio {
   font-family: var(--font-family);
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(2.4rem, 5vw, 3.8rem);
   font-weight: 800;
   letter-spacing: .02em;
   border-bottom: 3px solid var(--color-acento);
@@ -3277,5 +3277,31 @@
   /* Estadísticas de bienvenida */
   .welcomeStats {
     font-size: 1rem;
+  }
+
+  /* Ficha de vino en kiosko portrait grande (21,5") */
+  .detailOverlay {
+    padding: .75rem;
+  }
+  .detailPanel {
+    max-width: 100%;
+    min-height: calc(100dvh - 1.5rem);
+    display: flex;
+    flex-direction: column;
+  }
+  .detailContent {
+    flex: 1;
+    grid-template-columns: 46% 1fr;
+  }
+  .detailLeft {
+    padding: 2rem 1.5rem;
+  }
+  .detailPhoto {
+    max-height: 72vh;
+  }
+  .detailRight {
+    padding: 2.5rem 2rem;
+    overflow-y: auto;
+    max-height: calc(100dvh - 1.5rem);
   }
 }
