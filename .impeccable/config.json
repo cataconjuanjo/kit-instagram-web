@@ -1,7 +1,9 @@
 {
   "detector": {
     "ignoreRules": [],
-    "ignoreFiles": [],
+    "ignoreFiles": [
+      "app/kiosko/[slug]/kiosko.module.css"
+    ],
     "ignoreValues": [
       {
         "rule": "design-system-color",

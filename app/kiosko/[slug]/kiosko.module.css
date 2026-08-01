@@ -448,25 +448,23 @@
 
 /* ── Botón pantalla completa ─────────────────────────────────────────────── */
 .fullscreenBtn {
-  align-self: center;
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  z-index: 10;
   display: flex;
   align-items: center;
-  gap: .4rem;
-  margin: 0 0 1rem;
-  padding: .45rem .9rem;
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 99px;
-  color: var(--texto-d);
-  font-size: .72rem;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(255,255,255,.18);
   cursor: pointer;
-  opacity: .7;
-  transition: opacity .2s, background .2s;
+  transition: color .2s;
 }
-.fullscreenBtn:hover { opacity: 1; background: rgba(255,255,255,.13); }
+.fullscreenBtn:hover { color: rgba(255,255,255,.55); }
 
 /* ── Selector de idioma ──────────────────────────────────────────────────── */
 .langSelector {
