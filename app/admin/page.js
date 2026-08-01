@@ -656,7 +656,7 @@ function AdminPageContent() {
               <p>Genera la ficha, el usuario de login, la carta en borrador y el acceso de sala.</p>
             </div>
             <div className="alta-wizard-progress" aria-label={`Progreso: ${progresoAlta}%`}>
-              <div className="alta-wizard-bar"><span style={{ width: `${progresoAlta}%` }} /></div>
+              <div className="alta-wizard-bar"><span style={{ transform: `scaleX(${progresoAlta / 100})` }} /></div>
               <p>{camposAltaCompletos} de {camposAlta.length} campos · {progresoAlta}% completado</p>
             </div>
           </header>

@@ -105,7 +105,7 @@
   gap: 24px;
 }
 
-.activationHead h1 {
+.activationHead h2 {
   margin: 0;
   color: #fffaf3;
   font-size: 25px;
@@ -173,6 +173,7 @@
   height: 100%;
   border-radius: inherit;
   background: #bfa984;
+  transition: width 280ms ease;
 }
 
 .activationSteps {
@@ -440,7 +441,6 @@
   align-items: center;
   margin-bottom: 16px;
   border: 1px solid #ddd6cb;
-  border-left: 5px solid #74223d;
   border-radius: 8px;
   background: #fffdf8;
   padding: 20px;
@@ -448,7 +448,7 @@
 
 .priorityPanel h1 {
   margin: 0;
-  color: #222222;
+  color: #171416;
   font-size: 26px;
   font-weight: 900;
   line-height: 1.12;
@@ -505,8 +505,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #222222;
-  color: #ffffff;
+  background: #171416;
+  color: #fffaf3;
   padding: 0 14px;
   text-decoration: none;
   font-size: 12px;

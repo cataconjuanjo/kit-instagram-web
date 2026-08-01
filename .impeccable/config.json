@@ -26,6 +26,36 @@
         "value": "#c4707a",
         "createdAt": "2026-08-01T05:48:54.661Z",
         "reason": "Color de categoria del bodega chart — Rosados"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#171416",
+        "createdAt": "2026-08-01T06:08:07.089Z",
+        "reason": "Dashboard dark base color — distinct from public site tinta-base #17120f, intentional dashboard palette"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#a79f96",
+        "createdAt": "2026-08-01T06:08:55.440Z",
+        "reason": "Warm muted gray for loading states — dashboard variant of piedra-caliza, lighter for low-contrast indicator text"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#f8f3eb",
+        "createdAt": "2026-08-01T06:08:55.507Z",
+        "reason": "arena-dashboard token — dashboard sand background, intentional dashboard palette"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(23,20,22,0.10)",
+        "createdAt": "2026-08-01T06:09:21.590Z",
+        "reason": "Dashboard card shadow tonal — dark base at 10% opacity, intentional dashboard palette"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#6c6761",
+        "createdAt": "2026-08-01T06:09:21.665Z",
+        "reason": "Dashboard secondary text color — warm muted, intentional dashboard palette"
       }
     ]
   }
