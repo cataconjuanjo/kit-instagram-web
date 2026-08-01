@@ -112,11 +112,8 @@ export async function POST(request, { params }) {
 
     let insertados = 0, actualizados = 0, errores = 0
 
-    // Upsert por square_catalog_id: maneja duplicados de syncs anteriores con tienda_id incorrecto
     if (toInsert.length > 0) {
-      const { error } = await supabaseAdmin
-        .from('vinos_tienda')
-        .upsert(toInsert, { onConflict: 'square_catalog_id' })
+      const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
       if (error) { console.error('[square-sync] insert error:', error.message); errores += toInsert.length }
       else insertados = toInsert.length
     }

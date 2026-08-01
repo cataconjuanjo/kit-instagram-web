@@ -7,18 +7,25 @@ export async function GET(request, { params }) {
   const access = await requireKioskoAccess(request, slug)
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
 
-  const { data, error } = await supabaseAdmin
-    .from('vinos_tienda')
-    .select(ADMIN_VINO_SELECT)
-    .eq('tienda_id', access.tienda.id)
-    .order('destacado', { ascending: false })
-    .order('nombre')
-    .limit(5000)
+  const PAGE = 1000
+  let allData = [], from = 0
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('vinos_tienda')
+      .select(ADMIN_VINO_SELECT)
+      .eq('tienda_id', access.tienda.id)
+      .order('destacado', { ascending: false })
+      .order('nombre')
+      .range(from, from + PAGE - 1)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!data?.length) break
+    allData.push(...data)
+    if (data.length < PAGE) break
+    from += PAGE
+  }
 
-  // Sustituir ficha_ia (JSON grande) por booleano para reducir payload
-  const vinos = (data || []).map(({ ficha_ia, ...v }) => ({ ...v, has_ficha_ia: ficha_ia != null }))
+  const vinos = allData.map(({ ficha_ia, ...v }) => ({ ...v, has_ficha_ia: ficha_ia != null }))
   return NextResponse.json({ vinos })
 }
 
