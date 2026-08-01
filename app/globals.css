@@ -2865,10 +2865,18 @@ h3 {
 .login-help {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px 16px;
   justify-content: center;
   color: var(--muted);
   font-size: 0.88rem;
+}
+
+.login-help a,
+.login-help button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
 }
 
 .login-help a {

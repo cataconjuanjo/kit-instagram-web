@@ -4,7 +4,7 @@ import PublicFooter from '../components/PublicFooter'
 import { recursos } from './content'
 
 export const metadata = {
-  title: 'Recursos sobre cartas de vino, bodega y gestión de sala',
+  title: 'Guías de carta, bodega y sala para restaurantes',
   description: 'Guías prácticas para restaurantes: rentabilidad de carta, inventario inteligente, venta por copa, sala, bodega y oportunidad económica.',
   alternates: {
     canonical: '/recursos',
@@ -25,7 +25,7 @@ export default function RecursosPage() {
       <section className="resources-hero">
         <div>
           <p className="eyebrow">Blog y recursos</p>
-          <h1>Guías prácticas para vender y gestionar mejor el vino.</h1>
+          <h1>Todo lo que necesitas para que tu carta de vinos trabaje.</h1>
           <p className="lead">
             Ideas nacidas del trabajo con cartas, bodegas y equipos de sala:
             carta rentable, inventario inteligente, venta por copa, formación y oportunidad económica.
