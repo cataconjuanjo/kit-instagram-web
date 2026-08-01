@@ -1267,12 +1267,16 @@ export default function AdminKioskoPage() {
     if (file) setArchivoImport(file)
   }
 
-  // ── Filtros ────────────────────────────────────────────────────────────────
-  const regiones = useMemo(() => [...new Set(vinos.map(v => v.region).filter(Boolean))].sort(), [vinos])
-  const paises   = useMemo(() => [...new Set(vinos.map(v => v.pais).filter(Boolean))].sort(), [vinos])
+  // ── Split por categoría ────────────────────────────────────────────────────
+  const vinosVino = useMemo(() => vinos.filter(v => v.categoria !== 'otro'), [vinos])
+  const vinosOtro = useMemo(() => vinos.filter(v => v.categoria === 'otro'), [vinos])
+
+  // ── Filtros (solo aplican al tab Catálogo / vinos) ─────────────────────────
+  const regiones = useMemo(() => [...new Set(vinosVino.map(v => v.region).filter(Boolean))].sort(), [vinosVino])
+  const paises   = useMemo(() => [...new Set(vinosVino.map(v => v.pais).filter(Boolean))].sort(), [vinosVino])
 
   const vinosFiltrados = useMemo(() => {
-    return vinos
+    return vinosVino
       .filter(v => {
         if (filtroTipo      && v.tipo   !== filtroTipo)   return false
         if (filtroEstado === 'activo'   && !v.activo)     return false
@@ -1309,7 +1313,7 @@ export default function AdminKioskoPage() {
         if (va > vb) return ordenDir === 'asc' ? 1 : -1
         return 0
       })
-  }, [vinos, filtroTipo, filtroEstado, filtroRegion, filtroPais, filtroStock, filtroCalidad, filtroDestacado, precioMin, precioMax, busqueda, ordenPor, ordenDir])
+  }, [vinosVino, filtroTipo, filtroEstado, filtroRegion, filtroPais, filtroStock, filtroCalidad, filtroDestacado, precioMin, precioMax, busqueda, ordenPor, ordenDir])
 
   const totalPaginas   = Math.ceil(vinosFiltrados.length / porPagina)
   const vinosPaginados = useMemo(() => {
@@ -1351,16 +1355,16 @@ export default function AdminKioskoPage() {
     return ordenDir === 'asc' ? ' ↑' : ' ↓'
   }
 
-  // Stats (memoizadas — se recalculan solo cuando cambia el catálogo)
+  // Stats (memoizadas — solo sobre vinos, no otros productos)
   const { sinFoto, sinPrecio, sinCoste, sinStock, nActivos, nDestacados, conFichaIA } = useMemo(() => ({
-    sinFoto:     vinos.filter(v => v.activo !== false && !v.foto_url).length,
-    sinPrecio:   vinos.filter(v => v.activo !== false && !v.precio_pvp).length,
-    sinCoste:    vinos.filter(v => v.activo !== false && v.precio_pvp && !v.precio_coste).length,
-    sinStock:    vinos.filter(v => v.activo !== false && !Number(v.stock)).length,
-    nActivos:    vinos.filter(v => v.activo).length,
-    nDestacados: vinos.filter(v => v.destacado).length,
-    conFichaIA:  vinos.filter(v => v.has_ficha_ia).length,
-  }), [vinos])
+    sinFoto:     vinosVino.filter(v => v.activo !== false && !v.foto_url).length,
+    sinPrecio:   vinosVino.filter(v => v.activo !== false && !v.precio_pvp).length,
+    sinCoste:    vinosVino.filter(v => v.activo !== false && v.precio_pvp && !v.precio_coste).length,
+    sinStock:    vinosVino.filter(v => v.activo !== false && !Number(v.stock)).length,
+    nActivos:    vinosVino.filter(v => v.activo).length,
+    nDestacados: vinosVino.filter(v => v.destacado).length,
+    conFichaIA:  vinosVino.filter(v => v.has_ficha_ia).length,
+  }), [vinosVino])
 
   const catalogoChecklist = useMemo(() => {
     const activos = vinos.filter(v => v.activo !== false)
@@ -1862,6 +1866,11 @@ export default function AdminKioskoPage() {
         <button type="button" className={`${styles.tabBtn} ${tab === 'catalogo' ? styles.tabBtnActive : ''}`} onClick={() => setTab('catalogo')}>
           Catálogo
         </button>
+        {vinosOtro.length > 0 && (
+          <button type="button" className={`${styles.tabBtn} ${tab === 'otros' ? styles.tabBtnActive : ''}`} onClick={() => setTab('otros')}>
+            Otros{vinosOtro.length > 0 && <span className={styles.tabBadge}>{vinosOtro.length}</span>}
+          </button>
+        )}
         {pedidosMostradorActivos && (
           <button type="button" className={`${styles.tabBtn} ${tab === 'pedidos' ? styles.tabBtnActive : ''}`}
             onClick={() => { setTab('pedidos'); if (!pedidos && !pedidosLoad) cargarPedidos() }}>
@@ -2487,6 +2496,66 @@ export default function AdminKioskoPage() {
         )
       })()}
 
+      {/* Otros productos (Square) */}
+      {tab === 'otros' && (
+        <div style={{ padding: '1.5rem 1.75rem' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted, #888)', fontSize: '.875rem' }}>
+            Productos importados de Square que no son vinos. Muévelos a Catálogo cuando sea necesario.
+          </p>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th className={styles.thFoto}>Foto</th>
+                  <th>Nombre</th>
+                  <th>PVP €</th>
+                  <th>Stock</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {vinosOtro.map(v => (
+                  <tr key={v.id} className={!v.activo ? styles.rowInactivo : ''}>
+                    <td className={styles.tdFoto}>
+                      <AdminThumbImage src={v.foto_url} className={styles.thumb} fallback={<div className={styles.thumbPlaceholder}>—</div>} />
+                    </td>
+                    <td><strong>{v.nombre}</strong></td>
+                    <td>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : '—'}</td>
+                    <td>{v.stock ?? '—'}</td>
+                    <td>
+                      <span className={`${styles.toggleEstado} ${v.activo ? styles.estadoActivo : styles.estadoInactivo}`}>
+                        {v.activo ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.btnSecundario}
+                        style={{ fontSize: '.75rem', padding: '.25rem .6rem' }}
+                        onClick={async () => {
+                          await fetch(`/api/kiosko/${slug}/admin/vinos/${v.id}`, {
+                            method: 'PATCH',
+                            headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ categoria: 'vino' }),
+                          })
+                          await cargar()
+                        }}
+                      >
+                        → Mover a Vinos
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {vinosOtro.length === 0 && (
+                  <tr><td colSpan={6} className={styles.empty}>Sin otros productos</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Catálogo: toolbar + tabla */}
       {tab === 'catalogo' && <>
 
@@ -2627,7 +2696,7 @@ export default function AdminKioskoPage() {
         {hayFiltrosActivos && (
           <button onClick={limpiarFiltros} type="button" className={styles.btnLimpiar}>× Limpiar</button>
         )}
-        <span className={styles.total}>{vinosFiltrados.length} / {vinos.length} vinos</span>
+        <span className={styles.total}>{vinosFiltrados.length} / {vinosVino.length} vinos</span>
       </div>
 
       {/* Tabla */}

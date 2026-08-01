@@ -90,7 +90,7 @@ export async function POST(request, { params }) {
       if (existingMap[item.id]) {
         toUpdate.push({ id: existingMap[item.id], ...base })
       } else {
-        toInsert.push({ tienda_id: tiendaId, square_catalog_id: item.id, stock: 0, ...base })
+        toInsert.push({ tienda_id: tiendaId, square_catalog_id: item.id, stock: 0, categoria: 'otro', ...base })
       }
     }
 

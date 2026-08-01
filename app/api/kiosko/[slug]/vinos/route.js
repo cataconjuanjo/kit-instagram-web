@@ -26,6 +26,7 @@ export async function GET(request, { params }) {
     .select(PUBLIC_VINO_SELECT)
     .eq('tienda_id', tienda.id)
     .eq('activo', true)
+    .or('categoria.eq.vino,categoria.is.null')
     .order('destacado', { ascending: false })
     .order('nombre')
 
