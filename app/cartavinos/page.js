@@ -5,111 +5,144 @@ import PublicNav from '../components/PublicNav'
 import PublicFooter from '../components/PublicFooter'
 
 const pilares = [
-  ['Cliente', 'Carta QR elegante, filtros útiles y recomendaciones de vino según lo que va a comer.'],
-  ['Sala', 'Argumentos sencillos para recomendar, comparar y vender mejor sin memorizar toda la bodega.'],
-  ['Gestión', 'Panel privado para mantener vinos, platos, stock, selección destacada y señales de uso.'],
+  ['Cliente', 'Una carta pública clara, elegante y actualizada, con recomendaciones que nacen de los platos reales del restaurante.'],
+  ['Sala y sumillería', 'Argumentos de servicio para explicar por qué un vino encaja, qué alternativa ofrecer y qué referencia conviene mover.'],
+  ['Dirección', 'Margen, rotación, stock, compras y señales mensuales para decidir si la bodega está trabajando o reteniendo dinero.'],
 ]
 
 const funciones = [
   {
-    titulo: 'Carta viva por QR',
-    texto: 'Una carta digital que se actualiza, se entiende y respeta la identidad del restaurante.',
+    titulo: 'Carta pública editable, no PDF',
+    texto: 'El QR abre una carta viva: filtros útiles, fichas claras, disponibilidad actualizada y una lectura cómoda durante el servicio.',
   },
   {
-    titulo: 'Guía de maridaje con carta real',
-    texto: 'Recomienda solo vinos disponibles en tu bodega y los conecta con los platos reales del local.',
+    titulo: 'Maridaje con cocina real',
+    texto: 'Relaciona vinos disponibles con platos concretos, técnicas, intensidad, salsas y ticket, sin recomendar referencias que no puedes servir.',
   },
   {
-    titulo: 'Modo sala',
-    texto: 'Ayuda al equipo a vender: maridaje, ticket, rotación, copa, premium y frase de servicio.',
+    titulo: 'Modo sala con argumentos',
+    texto: 'Da al equipo frases de servicio, alternativas por estilo y precio, opciones por copa y señales para empujar vinos estratégicos sin forzar la venta.',
   },
   {
-    titulo: 'Criterio de Juanjo',
-    texto: 'La tecnología se acompaña con revisión, selección especial y recomendaciones de mejora.',
+    titulo: 'Lectura económica de la carta',
+    texto: 'Cruza coste, PVP, margen, rotación, stock, proveedor e incidencias para que dirección pueda revisar compras y retorno mensual.',
   },
 ]
 
 const controles = [
-  ['Coste y PVP', 'Margen por referencia y valor real de lo que tienes parado en bodega.'],
-  ['Stock mínimo', 'Avisos de reposición antes de que sala descubra que no queda una botella.'],
-  ['Proveedor', 'Pedido sugerido por distribuidor, referencia y formato de compra.'],
-  ['Incidencias de sala', 'No quedaba, no convenció, pidió otra: señales para decidir después del servicio.'],
-  ['Rotación', 'Vinos con salida, vinos inmovilizados y referencias que conviene empujar o retirar.'],
-  ['Maridaje vendible', 'Recomendaciones desde tu carta real, ajustadas a cocina, ticket y objetivo de venta.'],
+  ['Margen por referencia', 'Coste, PVP y beneficio bruto para saber qué vinos sostienen rentabilidad y cuáles necesitan revisión.'],
+  ['Stock mínimo operativo', 'Alertas antes de que sala descubra en mesa que no queda una botella importante.'],
+  ['Compra por proveedor', 'Pedidos sugeridos por distribuidor, referencia y formato para comprar mejor, no solo reponer por costumbre.'],
+  ['Incidencias de sala', 'No quedaba, no convenció, pidió otra opción: señales breves que después se convierten en decisiones.'],
+  ['Rotación e inmovilizado', 'Vinos con salida real, referencias lentas y botellas que retienen capital sin aportar al servicio.'],
+  ['Retorno mensual', 'Lectura periódica de oportunidades: copa, premium, margen bajo, carta inflada, huecos de gama y compras a ajustar.'],
 ]
 
 const lineasProducto = [
   {
     nombre: 'Carta Viva Restaurantes',
-    etiqueta: 'QR, sala y cliente final',
-    texto: 'Para restaurantes que quieren que la carta de vinos trabaje de cara al cliente y al equipo de sala.',
-    puntos: ['Carta pública por QR', 'Maridaje para clientes', 'Modo sala con PIN', 'Datos de uso y stock'],
+    etiqueta: 'Carta pública, sala y dirección',
+    texto: 'Para restaurantes donde el vino pesa en la experiencia y no puede depender de un PDF desactualizado o de argumentos improvisados.',
+    puntos: ['QR editable, no PDF', 'Maridaje con platos reales', 'Argumentos para sala', 'Señales de margen y rotación'],
     precio: 'Desde 59 EUR/mes',
     cta: 'Ver planes de restaurante',
+    href: '#planes',
   },
   {
     nombre: 'Carta Viva Sumiller',
-    etiqueta: 'Bodega, compra y rentabilidad',
-    texto: 'Para sumilleres que no quieren otra carta QR, sino una mesa de control para ordenar bodega, proveedores y gamas.',
-    puntos: ['KPIs de bodega', 'Mapa de gamas editable', 'Catálogo de distribuidores', 'Constructor de carta'],
+    etiqueta: 'Sala, bodega y criterio profesional',
+    texto: 'Para responsables de vino que quieren convertir criterio, bodega, compras y gamas en una herramienta diaria de servicio y control.',
+    puntos: ['Argumentos de servicio', 'Mapa de gamas editable', 'Coste y margen por vino', 'Constructor de carta'],
     precio: 'Desde 149 EUR/mes',
     cta: 'Ver membresía sumiller',
+    href: '#sumiller',
+  },
+]
+
+const argumentosPorPerfil = [
+  {
+    etiqueta: 'Sala y sumillería',
+    titulo: 'Para una sala que necesita recomendar sin improvisar.',
+    texto: 'Elena necesita que el equipo hable de vino con coherencia cuando el servicio aprieta: qué encaja, qué alternativa ofrecer y cómo sostener el relato de cocina sin convertir cada mesa en una clase.',
+    puntos: [
+      'Argumentos por plato',
+      'Alternativas si falta stock',
+      'Coherencia con cocina',
+      'Frases de servicio naturales',
+    ],
+    cta: 'Reforzar sala',
+    href: '/cartavinos#contacto',
+  },
+  {
+    etiqueta: 'Dirección y propiedad',
+    titulo: 'Para una dirección que necesita ver margen, rotación y retorno.',
+    texto: 'Miguel necesita saber si la bodega trabaja para el negocio: qué referencias inmovilizan capital, dónde se pierde margen, qué compras conviene ajustar y qué oportunidades revisar cada mes.',
+    puntos: [
+      'Margen, coste y PVP',
+      'Rotación y stock parado',
+      'Pedidos por proveedor',
+      'Lectura mensual de retorno',
+    ],
+    cta: 'Ver rentabilidad',
+    href: '/cartavinos#contacto',
   },
 ]
 
 const sumillerFunciones = [
-  ['Inventario vivo', 'Stock, coste, proveedor, margen, mínimo y alertas para dejar atrás el Excel de bodega.'],
-  ['Mapa de gamas', 'Lectura por tramos según ticket medio editable: baja, media, alta, muy alta y premium.'],
-  ['Vinos estrella y joyas', 'Lectura de referencias con potencial, rotación, margen y oportunidades de carta.'],
-  ['Catálogo conectado', 'Búsqueda en el catálogo de distribuidores para localizar referencias e incorporarlas con criterio.'],
-  ['Constructor de carta', 'Salida estructurada para armar o rehacer la carta antes de llevarla a Word o a diseño final.'],
-  ['Copa con cabeza', 'Simulador de rentabilidad para valorar si una referencia tiene sentido por copa sin precios absurdos.'],
+  ['Argumentos de servicio', 'Explicaciones claras para recomendar por plato, intensidad, textura, precio y objetivo de venta.'],
+  ['Alternativas disponibles', 'Opciones por estilo y gama cuando falta una referencia o el cliente pide otro tramo de precio.'],
+  ['Coherencia con cocina', 'Lectura de maridaje sobre platos reales para que sala no recomiende desde teoría genérica.'],
+  ['Inventario vivo', 'Stock, coste, proveedor, margen, mínimo y alertas para que la bodega no dependa de memoria o libreta.'],
+  ['Mapa de gamas', 'Tramos según ticket medio editable para detectar huecos, saturaciones y premium sin apoyo de sala.'],
+  ['Copa con cabeza', 'Simulador para valorar si una referencia tiene sentido por copa con margen, merma y rotación prudente.'],
 ]
 
 const demoSegura = [
   {
+    etiqueta: 'Sala',
+    titulo: 'Argumentos activos',
+    dato: '12 platos',
+    filas: ['Lubina · godello con textura', 'Steak tartar · tinto atlántico', 'Quesos · generoso seco'],
+  },
+  {
+    etiqueta: 'Dirección',
+    titulo: 'Retorno mensual',
+    dato: '3 acciones',
+    filas: ['Revisar PVP bajo margen', 'Activar copa premium', 'Frenar compra lenta'],
+  },
+  {
     etiqueta: 'Bodega',
     titulo: 'Pedido sugerido',
-    dato: '7 referencias',
-    filas: ['Albariño casa · pedir 6', 'Tinto crianza · pedir 12', 'Espumoso seco · revisar margen'],
+    dato: '7 refs',
+    filas: ['Albariño casa · pedir 6', 'Crianza carta · pedir 12', 'Espumoso seco · revisar margen'],
   },
   {
-    etiqueta: 'Inventario',
-    titulo: 'Diferencia a coste',
-    dato: '184 EUR',
-    filas: ['Premium sin confirmar', 'Copa con alta rotación', 'Merma pendiente de motivo'],
-  },
-  {
-    etiqueta: 'Sala',
-    titulo: 'Cierre de servicio',
+    etiqueta: 'Servicio',
+    titulo: 'Cierre de turno',
     dato: '4 señales',
     filas: ['2 ventas marcadas', '1 no quedaba', '1 pidió otra opción'],
-  },
-  {
-    etiqueta: 'Sumiller',
-    titulo: 'Mapa de gamas',
-    dato: '5 gamas',
-    filas: ['Ticket medio editable', 'Huecos por gama', 'Familias y vinos por tramo'],
   },
 ]
 
 const faq = [
+  ['¿Esto es solo un PDF con QR?', 'No. Un PDF con QR muestra una lista. Carta Viva conecta carta pública, platos, disponibilidad, argumentos de sala, coste, margen, rotación y seguimiento.'],
+  ['¿Es un inventario genérico de vinos?', 'No. El inventario es solo una parte. La diferencia está en cruzar bodega con cocina, servicio, PVP, proveedor, incidencias y decisiones mensuales de compra o carta.'],
+  ['¿Sirve si ya tengo sumiller o jefe de sala?', 'Sí. No sustituye su criterio: lo ordena para que el equipo lo use mejor y dirección pueda ver qué decisiones salen de ese criterio.'],
+  ['¿Cómo se mide el retorno mensual?', 'Se revisan oportunidades concretas: referencias inmovilizadas, margen bajo, candidatos por copa, stock crítico, compras evitables, gamas saturadas y vinos que necesitan apoyo de sala.'],
+  ['¿El equipo tiene que saber mucho vino?', 'No. Carta Viva no pretende convertir a todo el equipo en sumiller. Les da argumentos breves, alternativas y recomendaciones defendibles para el servicio real.'],
   ['¿Hay permanencia mínima?', 'No. Puedes cancelar cuando quieras. La suscripción se adapta al momento de tu restaurante.'],
   ['¿Cuánto tarda en estar listo?', 'La puesta en marcha suele llevar entre 1 y 3 días. Depende del tamaño de la carta y de si ya tienes los vinos en un listado o hay que construirlo desde cero.'],
   ['¿La configuración inicial tiene coste aparte?', 'Depende del volumen y del estado de la carta. Antes de empezar valoramos la carga inicial y te indicamos el importe con claridad. Está incluida en el plan Acompañado.'],
-  ['¿Puedo cambiar de plan más adelante?', 'Sí, en cualquier momento. Puedes subir de Básico a Sala o a Acompañado según lo que necesites.'],
   ['¿Qué pasa con mis datos si cancelo?', 'Antes de cerrar la cuenta te entrego toda tu información en formato descargable. Nada desaparece sin que lo tengas guardado.'],
-  ['¿Necesito instalar algo?', 'No. Carta Viva funciona desde el navegador en móvil, tablet y escritorio. Sin apps, sin instalaciones.'],
   ['¿El maridaje recomienda vinos de fuera de mi carta?', 'No. El motor de maridaje solo trabaja con los vinos que tú tienes dados de alta. Nunca sugiere referencias que no puedes servir.'],
-  ['Carta Viva Sumiller ¿Carta Viva Sumiller sustituye al sumiller?', 'No. Ordena stock, proveedores, coste, gamas, rentabilidad y oportunidades para que el sumiller decida mejor. No decide armonías por el profesional.'],
-  ['Carta Viva Sumiller ¿Carta Viva Sumiller incluye carta pública o QR?', 'No es el foco. La membresía Sumiller está pensada como gestión interna de bodega, constructor de carta, catálogo, mapa de gamas y control de referencias.'],
+  ['¿Necesito instalar algo?', 'No. Carta Viva funciona desde el navegador en móvil, tablet y escritorio. Sin apps, sin instalaciones.'],
 ]
 
 const modalidades = [
   {
     nombre: 'Digitalización',
     etiqueta: 'Para ordenar la carta',
-    texto: 'Carta QR, panel de gestión, personalización visual, vinos y platos conectados.',
+    texto: 'Carta pública editable, panel privado, personalización visual, vinos y platos conectados.',
   },
   {
     nombre: 'Acompañamiento',
@@ -128,58 +161,58 @@ const planes = [
   {
     nombre: 'Básico',
     precio: '59',
-    etiqueta: 'Carta digital viva',
-    texto: 'Para restaurantes que quieren sustituir el PDF por una carta digital cuidada, actualizable y con maridaje para el cliente.',
-    incluye: ['Carta digital por QR', 'Carta de vinos actualizable', 'Fichas de vino claras', 'Maridaje para el cliente', 'Personalización visual'],
-    cta: 'Empezar con carta digital',
+    etiqueta: 'Carta pública editable',
+    texto: 'Para restaurantes que quieren dejar atrás el PDF y ofrecer una carta de vinos clara, actualizable y conectada con cocina.',
+    incluye: ['QR editable, no PDF estático', 'Carta de vinos actualizable', 'Fichas claras para cliente', 'Maridaje desde platos reales', 'Personalización visual'],
+    cta: 'Empezar con carta viva',
   },
   {
     nombre: 'Sala',
     precio: '99',
-    etiqueta: 'El plan más operativo',
-    texto: 'Para restaurantes que quieren que su equipo recomiende mejor y venda vino con más seguridad durante el servicio.',
-    incluye: ['Todo el plan Básico', 'Modo camarero con PIN', 'Recomendaciones por plato o mesa', 'Objetivos de venta en sala', 'Estadísticas y control de bodega'],
+    etiqueta: 'Servicio y venta',
+    texto: 'Para restaurantes que quieren que sala recomiende con seguridad, cuide la experiencia y mueva referencias con intención.',
+    incluye: ['Todo el plan Básico', 'Modo sala con PIN', 'Argumentos por plato o mesa', 'Alternativas según disponibilidad', 'Objetivos de venta y rotación'],
     destacado: true,
-    cta: 'Probar modo sala',
+    cta: 'Reforzar sala',
   },
   {
     nombre: 'Acompañado',
     precio: '199',
-    etiqueta: 'Software + consultor',
-    texto: 'Para restaurantes que quieren además una lectura mensual de su carta, oportunidades de venta y criterio profesional continuo.',
-    incluye: ['Todo el plan Sala', 'Revisión mensual del consultor', 'Lectura profesional de oportunidades', 'Ajuste experto de maridajes y carta', 'Soporte prioritario'],
+    etiqueta: 'Software + lectura mensual',
+    texto: 'Para restaurantes que quieren revisar margen, rotación, compras, carta y oportunidades con criterio profesional continuo.',
+    incluye: ['Todo el plan Sala', 'Revisión mensual de retorno', 'Lectura profesional de oportunidades', 'Ajuste de carta, copa y compras', 'Soporte prioritario'],
     premium: true,
     desde: true,
-    cta: 'Quiero acompañamiento',
+    cta: 'Ver retorno mensual',
   },
 ]
 
 const comparativaPlanes = [
   {
-    grupo: 'Carta digital',
+    grupo: 'Carta pública',
     filas: [
-      ['Carta digital por QR', true, true, true],
+      ['QR editable, no PDF estático', true, true, true],
       ['Carta de vinos actualizable', true, true, true],
-      ['Maridaje para el cliente', true, true, true],
+      ['Maridaje con platos reales', true, true, true],
       ['Personalización visual', true, true, true],
     ],
   },
   {
-    grupo: 'Gestión y sala',
+    grupo: 'Sala y dirección',
     filas: [
-      ['Modo camarero con PIN', false, true, true],
-      ['Recomendaciones por plato o mesa', false, true, true],
-      ['Objetivos de venta en sala', false, true, true],
-      ['Estadísticas de recomendaciones', false, true, true],
+      ['Modo sala con PIN', false, true, true],
+      ['Argumentos por plato o mesa', false, true, true],
+      ['Alternativas según disponibilidad', false, true, true],
+      ['Señales de margen y rotación', false, true, true],
       ['Control de stock y bodega', false, true, true],
     ],
   },
   {
-    grupo: 'Acompañamiento del consultor',
+    grupo: 'Acompañamiento y retorno',
     filas: [
-      ['Revisión mensual del consultor', false, false, true],
+      ['Revisión mensual de retorno', false, false, true],
       ['Lectura profesional de oportunidades', false, false, true],
-      ['Ajuste experto de maridajes y carta', false, false, true],
+      ['Ajuste de carta, copa y compras', false, false, true],
     ],
   },
 ]
@@ -197,14 +230,14 @@ const MinusIcon = () => (
 )
 
 export const metadata = {
-  title: 'Carta Viva · Carta digital de vino con IA',
-  description: 'Carta Viva une carta digital QR, guía de maridaje, modo sala y consultoría de vino para restaurantes con criterio WSET Level 3.',
+  title: 'Carta Viva · Carta de vinos operativa para restaurantes',
+  description: 'Carta Viva no es un PDF con QR ni un inventario genérico: conecta carta pública, sala, cocina, margen, rotación y compras para restaurantes con cartas de vino serias.',
   alternates: {
     canonical: '/cartavinos',
   },
   openGraph: {
-    title: 'Carta Viva · Carta digital de vino con IA para restaurantes',
-    description: 'Carta digital QR, guía de maridaje y consultoría de vino para restaurantes. Por Juanjo García, WSET Level 3.',
+    title: 'Carta Viva · Carta de vinos operativa para restaurantes',
+    description: 'Carta pública, argumentos de sala y lectura de rentabilidad para restaurantes con cartas de vino serias.',
     url: '/cartavinos',
     images: [{ url: '/assets/og-carta-viva-2026.jpg', width: 1200, height: 630 }],
   },
@@ -249,20 +282,20 @@ export default function CartaVivaPage() {
 
       <section className="cv-hero">
         <div className="cv-hero-copy">
-          <p className="eyebrow">Sistema de vino para restaurantes y sumilleres</p>
-          <h1>Carta Viva: carta QR, sala y bodega conectadas.</h1>
+          <p className="eyebrow">Carta de vinos operativa para restaurantes</p>
+          <h1>Carta Viva no es un PDF con QR. Es una carta que trabaja en sala y en dirección.</h1>
           <p className="lead">
-            Dos caminos bajo la misma marca: carta digital y modo sala para restaurantes; gestión de bodega,
-            proveedores y mapa de gamas para sumilleres.
+            Para restaurantes con una carta de vinos seria: convierte cada referencia en una recomendación defendible
+            para sala y en una decisión medible para propiedad: margen, rotación, stock, compras y retorno mensual.
           </p>
           <div className="hero-actions">
-            <Link href="#prueba" className="btn btn-primary">Solicitar prueba 14 días</Link>
-            <Link href="#sumiller" className="btn btn-secondary">Ver Carta Viva Sumiller</Link>
+            <Link href="#prueba" className="btn btn-primary">Solicitar diagnóstico de carta</Link>
+            <Link href="#sala-direccion" className="btn btn-secondary">Ver argumentos por perfil</Link>
           </div>
           <div className="cv-trust-line">
-            <span>Configuración acompañada</span>
-            <span>Sin permanencia</span>
-            <span>Restaurante o sumiller</span>
+            <span>Maridaje con cocina real</span>
+            <span>Argumentos para sala</span>
+            <span>Lectura económica mensual</span>
           </div>
         </div>
 
@@ -272,18 +305,18 @@ export default function CartaVivaPage() {
               <span />
               <span />
               <span />
-              <strong>Panel Carta Viva</strong>
+              <strong>Dirección Carta Viva</strong>
             </div>
             <div className="app-dashboard-grid">
               <section className="app-main-panel">
                 <div className="app-panel-head">
-                  <span>Bodega hoy</span>
+                  <span>Valor en bodega</span>
                   <strong>18.420 EUR</strong>
                 </div>
                 <div className="app-kpi-row">
-                  <div><strong>7</strong><span>stock bajo</span></div>
-                  <div><strong>12</strong><span>por copa</span></div>
-                  <div><strong>31%</strong><span>margen medio</span></div>
+                  <div><strong>7</strong><span>stock crítico</span></div>
+                  <div><strong>12</strong><span>rotación lenta</span></div>
+                  <div><strong>64%</strong><span>margen medio</span></div>
                 </div>
                 <div className="app-chart" aria-hidden="true">
                   <span style={{ height: '44%' }} />
@@ -305,59 +338,89 @@ export default function CartaVivaPage() {
           </div>
           <div className="app-phone">
             <div className="app-phone-top" />
-            <span>Modo sala</span>
-            <strong>Recomienda con seguridad</strong>
+            <span>Sala / sumillería</span>
+            <strong>Argumento listo para servicio</strong>
             <p>Lubina a la brasa</p>
             <div className="app-wine-card">
-              <small>Mejor opción</small>
+              <small>Recomendación defendible</small>
               <b>Godello con textura</b>
-              <em>Sube ticket y encaja con el plato</em>
+              <em>Frescura, volumen y margen correcto</em>
             </div>
           </div>
           <div className="cv-floating-panel app-floating-panel">
-            <span>Carta pública por QR</span>
-            <strong>Cliente, sala y bodega conectados</strong>
-            <p>Una vista para vender, otra para recomendar y otra para decidir qué comprar.</p>
+            <span>No es un PDF</span>
+            <strong>Carta, sala y dirección con la misma base</strong>
+            <p>Cliente entiende, sala defiende y dirección mide compras, rotación y rentabilidad.</p>
           </div>
         </div>
       </section>
 
       <section className="cv-statement">
         <p>
-          Carta Viva ya no es una sola promesa. Para restaurantes, hace visible y vendible la carta. Para sumilleres,
-          convierte la bodega en un sistema de control: stock, proveedores, costes, gamas y oportunidades.
+          Carta Viva transforma una carta de vinos seria en un sistema de servicio y gestión. No sustituye el criterio
+          del sumiller; lo hace visible para el equipo y medible para dirección.
         </p>
       </section>
 
       <section className="section cv-comparison-section">
         <div className="section-head">
-          <p className="eyebrow">Carta Viva vs PDF o Excel</p>
-          <h2>Una carta estática informa. Una carta viva ayuda a decidir.</h2>
+          <p className="eyebrow">No es un PDF con QR ni un inventario genérico</p>
+          <h2>La carta deja de ser un archivo y empieza a comportarse como una herramienta.</h2>
         </div>
         <div className="comparison-grid">
           <article>
             <span>PDF</span>
-            <h3>Bonito, pero rígido</h3>
-            <p>Sirve para mostrar la carta, pero no sabe si queda stock, qué vino conviene empujar o qué plato necesita una recomendación mejor.</p>
+            <h3>Muestra, pero no acompaña el servicio</h3>
+            <p>Un QR que abre un PDF sigue siendo una carta estática: no sabe qué queda, qué combina con cocina ni qué argumento necesita sala.</p>
           </article>
           <article>
-            <span>Excel</span>
-            <h3>Control interno sin venta</h3>
-            <p>Puede ordenar costes y proveedores, pero rara vez llega al cliente o al camarero cuando tiene que recomendar durante el servicio.</p>
+            <span>Inventario</span>
+            <h3>Cuenta botellas, pero no vende vino</h3>
+            <p>Un inventario genérico puede registrar stock, pero no relaciona coste, PVP, platos, rotación, incidencias y criterio comercial.</p>
           </article>
           <article className="featured">
             <span>Carta Viva</span>
-            <h3>Cliente, sala y bodega conectados</h3>
-            <p>Une QR, modo sala, maridaje, stock, coste, proveedor y seguimiento para que la misma información trabaje en todo el restaurante.</p>
+            <h3>Conecta experiencia y rentabilidad</h3>
+            <p>Cada vino tiene contexto de servicio y lectura económica: recomendación, disponibilidad, margen, proveedor, rotación y acción siguiente.</p>
           </article>
         </div>
         <Link href="/recursos/carta-viva-vs-pdf-excel" className="btn btn-secondary">Leer comparativa completa</Link>
       </section>
 
+      <section className="section cv-audience-section" id="sala-direccion">
+        <div className="audience-section-head">
+          <div>
+            <p className="eyebrow">Dos perfiles, una misma carta</p>
+            <h2>Sala necesita argumentos. Dirección necesita decisiones.</h2>
+          </div>
+          <p>
+            Carta Viva separa las preguntas sin separar los datos: el equipo trabaja con lenguaje de servicio y
+            propiedad ve margen, rotación, compras y retorno mensual.
+          </p>
+        </div>
+        <div className="audience-grid">
+          {argumentosPorPerfil.map((perfil) => (
+            <article className="audience-card" key={perfil.etiqueta}>
+              <header className="audience-card-head">
+                <span className="plan-label">{perfil.etiqueta}</span>
+                <h3>{perfil.titulo}</h3>
+              </header>
+              <p>{perfil.texto}</p>
+              <ul>
+                {perfil.puntos.map((punto) => <li key={punto}>{punto}</li>)}
+              </ul>
+              <footer className="audience-card-footer">
+                <Link href={perfil.href} className="btn btn-secondary">{perfil.cta}</Link>
+              </footer>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="section cv-product-lines">
         <div className="section-head">
-          <p className="eyebrow">Dos formas de usar Carta Viva</p>
-          <h2>Una para vender mejor. Otra para gestionar mejor.</h2>
+          <p className="eyebrow">Dos niveles de trabajo</p>
+          <h2>Una capa para servicio. Otra para bodega, compras y carta.</h2>
         </div>
         <div className="product-lines-grid">
           {lineasProducto.map((linea) => (
@@ -370,7 +433,7 @@ export default function CartaVivaPage() {
               </ul>
               <div className="product-line-footer">
                 <strong>{linea.precio}</strong>
-                <Link href={linea.nombre.includes('Sumiller') ? '#prueba-sumiller' : '#planes'} className="btn btn-secondary">{linea.cta}</Link>
+                <Link href={linea.href} className="btn btn-secondary">{linea.cta}</Link>
               </div>
             </article>
           ))}
@@ -380,28 +443,28 @@ export default function CartaVivaPage() {
       <section className="section cv-activation-path" id="prueba">
         <div className="section-head narrow">
           <p className="eyebrow">Prueba guiada de 14 días</p>
-          <h2>Tu primera carta publicada, no otra herramienta abandonada.</h2>
-          <p>La prueba empieza con un objetivo concreto: cargar la base, comprobar el maridaje y poner el QR delante de un cliente real.</p>
+          <h2>Tu primera carta útil en servicio, no otra herramienta abandonada.</h2>
+          <p>La prueba tiene un objetivo concreto: publicar una carta que sala pueda usar y que dirección pueda medir.</p>
         </div>
         <div className="cv-activation-grid">
-          <article><span>1</span><strong>Me envías tu carta</strong><p>PDF, Excel o listado. Te digo qué está listo y qué falta.</p></article>
-          <article><span>2</span><strong>Montamos la base</strong><p>Vinos, platos, precios y perfiles esenciales para recomendar.</p></article>
-          <article><span>3</span><strong>Pruebas sala y QR</strong><p>Validas carta pública, modo camarero y primeras recomendaciones.</p></article>
-          <article><span>4</span><strong>Decides con datos</strong><p>Al final de los 14 días sabes si aporta valor al restaurante.</p></article>
+          <article><span>1</span><strong>Analizamos tu carta</strong><p>PDF, Excel o listado. Revisamos estructura, datos críticos, huecos de margen y coherencia con cocina.</p></article>
+          <article><span>2</span><strong>Construimos la base</strong><p>Vinos, platos, precios, costes, disponibilidad y perfiles esenciales para recomendar.</p></article>
+          <article><span>3</span><strong>Probamos en sala</strong><p>Validas QR, argumentos, alternativas y recomendaciones delante de mesas reales.</p></article>
+          <article><span>4</span><strong>Revisamos retorno</strong><p>Al final sabes qué se consulta, qué rota, qué falta y qué compra conviene ajustar.</p></article>
         </div>
         <div className="cv-activation-cta">
           <div>
-            <strong>Sin permanencia. Sin compromiso de continuidad.</strong>
-            <span>La configuración inicial se valora según el volumen de la carta.</span>
+            <strong>Sin permanencia. Con una decisión clara al final.</strong>
+            <span>Seguir, ajustar o descartarlo con criterio operativo y económico.</span>
           </div>
-          <Link href="#contacto" className="btn btn-primary">Solicitar mi prueba</Link>
+          <Link href="/cartavinos#contacto" className="btn btn-primary">Solicitar diagnóstico</Link>
         </div>
       </section>
 
       <section id="como-funciona" className="section cv-flow-section">
         <div className="section-head">
           <p className="eyebrow">Tres lecturas de la misma carta</p>
-          <h2>Una herramienta, tres usuarios.</h2>
+          <h2>La misma carta responde preguntas distintas.</h2>
         </div>
         <div className="cv-flow">
           {pilares.map(([titulo, texto], index) => (
@@ -422,20 +485,20 @@ export default function CartaVivaPage() {
             <span />
           </div>
           <div className="cv-dashboard-preview">
-            <p className="eyebrow">Panel privado</p>
-            <h3>Lo que la carta te está diciendo</h3>
-            <div className="cv-insight-row"><strong>Vinos por copa</strong><span>Oportunidad clara</span></div>
+            <p className="eyebrow">Lectura mensual</p>
+            <h3>Lo que el vino está moviendo</h3>
+            <div className="cv-insight-row"><strong>Carta por copa</strong><span>2 candidatas</span></div>
             <div className="cv-insight-row"><strong>Stock bajo</strong><span>3 referencias</span></div>
-            <div className="cv-insight-row"><strong>Maridaje</strong><span>Frituras sin cobertura</span></div>
+            <div className="cv-insight-row"><strong>Margen bajo</strong><span>Revisar PVP</span></div>
           </div>
         </div>
         <div>
-          <p className="eyebrow">No solo tecnología</p>
-          <h2>El software detecta señales. El criterio decide qué hacer con ellas.</h2>
+          <p className="eyebrow">Criterio + datos</p>
+          <h2>La sala necesita argumentos. La dirección necesita decisiones.</h2>
           <p>
-            Carta Viva ordena información que normalmente está dispersa: vinos, platos, precios, stock, selección y
-            comportamiento del cliente. A partir de ahí, el acompañamiento convierte datos en decisiones: qué mantener,
-            qué destacar, qué formar y qué retirar.
+            Carta Viva ordena información que normalmente está dispersa: vinos, platos, precios, costes, stock,
+            proveedores y señales de servicio. A partir de ahí, convierte datos en decisiones concretas: qué recomendar,
+            qué comprar, qué destacar, qué formar y qué retirar.
           </p>
         </div>
       </section>
@@ -443,7 +506,7 @@ export default function CartaVivaPage() {
       <section className="section cv-features">
         <div className="section-head">
           <p className="eyebrow">Qué incluye</p>
-          <h2>Una capa digital para vender vino con más criterio.</h2>
+          <h2>Funciones pensadas para restaurantes donde el vino importa.</h2>
         </div>
         <div className="service-grid">
           {funciones.map((item) => (
@@ -458,8 +521,8 @@ export default function CartaVivaPage() {
 
       <section className="section cv-control-section">
         <div className="section-head">
-          <p className="eyebrow">Lo que controlas</p>
-          <h2>La bodega deja de ser una lista y pasa a ser un cuadro de mando.</h2>
+          <p className="eyebrow">Para dirección y propiedad</p>
+          <h2>Margen, rotación y compras sin convertir la bodega en un Excel eterno.</h2>
         </div>
         <div className="control-grid">
           {controles.map(([titulo, texto]) => (
@@ -474,11 +537,11 @@ export default function CartaVivaPage() {
 
       <section className="section cv-sumiller-section" id="sumiller">
         <div className="section-head">
-          <p className="eyebrow">Carta Viva Sumiller</p>
-          <h2>El Excel de bodega convertido en una herramienta profesional.</h2>
+          <p className="eyebrow">Sala y sumillería</p>
+          <h2>El criterio del sumiller convertido en argumentos de servicio.</h2>
           <p>
-            Pensado para sumilleres que ya tienen criterio y necesitan menos trabajo mecánico:
-            inventario, proveedores, catálogo, rentabilidad, mapa de gamas y salida estructurada de carta.
+            Pensado para sumilleres, jefes de sala y responsables de bodega que ya tienen criterio y necesitan que
+            ese criterio llegue al equipo: platos reales, alternativas, copa, gamas, stock y argumentos de venta.
           </p>
         </div>
         <div className="sumiller-dashboard">
@@ -512,42 +575,42 @@ export default function CartaVivaPage() {
         </div>
         <div className="sumiller-note">
           <strong>No sustituye al sumiller.</strong>
-          <p>Le quita fricción: no decide armonías por el profesional, pero le muestra que referencias faltan, sobran, rotan, inmovilizan dinero o tienen sentido por copa.</p>
+          <p>Convierte su criterio en lenguaje usable por el equipo: por qué encaja, cuándo ofrecer alternativa, qué vino merece salir y cómo defender una copa premium.</p>
         </div>
         <div className="sumiller-section-cta">
           <div>
-            <strong>Prueba privada para sumilleres</strong>
-            <span>Te preparo un acceso de prueba y vemos si encaja con tu forma de gestionar la bodega.</span>
+            <strong>Prueba privada para sala y sumillería</strong>
+            <span>Te preparo un acceso de prueba y vemos si encaja con tu forma de recomendar, formar y gestionar la bodega.</span>
           </div>
-          <Link href="#prueba-sumiller" className="btn btn-primary">Solicitar prueba Sumiller</Link>
+          <Link href="#prueba-sumiller" className="btn btn-primary">Solicitar prueba de sala</Link>
         </div>
       </section>
 
       <section id="prueba-sumiller" className="section contact-section sumiller-trial-section">
         <div>
-          <p className="eyebrow">Prueba privada Sumiller</p>
-          <h2>Solicita acceso a Carta Viva Sumiller.</h2>
+          <p className="eyebrow">Prueba privada sala / sumillería</p>
+          <h2>Prueba Carta Viva con una carta real de servicio.</h2>
           <p>
-            Pensado para sumilleres, jefes de sala o responsables de bodega que quieren probar la herramienta
-            con un acceso privado antes de decidir. La activación se revisa manualmente para que no entre cualquiera.
+            Pensado para sumilleres, jefes de sala o responsables de bodega que quieren probar la herramienta con
+            una carta real antes de decidir. La activación se revisa manualmente para que tenga sentido operativo.
           </p>
         </div>
         <LeadForm
-          source="Carta Viva Sumiller - solicitud de prueba privada"
-          cta="Solicitar prueba Sumiller"
+          source="Carta Viva sala y sumillería - solicitud de prueba privada"
+          cta="Solicitar prueba de sala"
           title="Datos para preparar la prueba"
-          successTitle="Solicitud Sumiller recibida"
-          successText="Te responderé con el siguiente paso para activar la prueba privada de Carta Viva Sumiller."
+          successTitle="Solicitud recibida"
+          successText="Te responderé con el siguiente paso para preparar una prueba útil con tu carta real."
           intro="2 minutos · acceso privado · respuesta personal"
           negocioLabel="Restaurante / bodega / proyecto"
-          referenciasLabel="Referencias apróximadas en bodega"
+          referenciasLabel="Referencias aproximadas en bodega"
           problemaLabel="Qué quieres resolver primero"
           problemaOptions={[
-            'Gestiono la bodega con Excel',
-            'No controlo stock y reposición',
-            'Quiero ordenar proveedores y costes',
-            'Quiero rehacer o estructurar la carta',
-            'Quiero analizar gamas, margen y oportunidades',
+            'Sala no tiene argumentos homogéneos',
+            'Las recomendaciones no siguen la cocina',
+            'Cuesta vender referencias premium',
+            'Quiero ordenar copa, gamas y alternativas',
+            'Quiero analizar margen, rotación y compras',
           ]}
           mensajeLabel="¿Algo que deba saber antes de prepararte la prueba? (opcional)"
         />
@@ -556,10 +619,10 @@ export default function CartaVivaPage() {
       <section className="section cv-demo-section" id="demo-segura">
         <div className="section-head narrow">
           <p className="eyebrow">Ve cómo funciona</p>
-          <h2>Cuatro pantallas reales con datos de ejemplo.</h2>
+          <h2>Cuatro pantallas con decisiones, no solo datos.</h2>
           <p>
-            Lo que ves abajo es Carta Viva funcionando: bodega, inventario y cierre de servicio. Los datos son inventados
-            para proteger a los restaurantes que ya lo usan. Si quieres verlo con tu carta real, te hago una demo en directo sin compromiso.
+            Lo que ves abajo es Carta Viva funcionando: argumentos de sala, lectura de dirección, compra y cierre de
+            servicio. Los datos son inventados para proteger a los restaurantes que ya lo usan.
           </p>
         </div>
         <div className="safe-demo-grid">
@@ -579,13 +642,13 @@ export default function CartaVivaPage() {
         <div className="demo-note">
           <div>
             <strong>¿Quieres verlo con tu carta real?</strong>
-            <p>Te enseño el sistema completo con un restaurante de prueba. Sin datos tuyos, sin compromisos.</p>
+            <p>Te enseño el sistema completo con un restaurante de prueba o con una lectura inicial de tu propia carta.</p>
           </div>
           <div className="demo-note-actions">
             <DemoAnalyticsLink href="/demo/taberna-del-puerto" className="btn btn-secondary" target="/demo/taberna-del-puerto">
               Ver demo guiada
             </DemoAnalyticsLink>
-            <Link href="#contacto" className="btn btn-primary">Pedir demo privada</Link>
+            <Link href="/cartavinos#contacto" className="btn btn-primary">Pedir demo privada</Link>
           </div>
         </div>
       </section>
@@ -593,7 +656,7 @@ export default function CartaVivaPage() {
       <section className="section cv-modalidades" id="planes">
         <div className="section-head">
           <p className="eyebrow">Planes para restaurantes</p>
-          <h2>Elige cuánto quieres que trabaje tu carta de vinos en sala.</h2>
+          <h2>Elige cuánto quieres que Carta Viva trabaje en servicio y en rentabilidad.</h2>
         </div>
         <div className="pricing-grid">
           {planes.map((item) => (
@@ -610,12 +673,12 @@ export default function CartaVivaPage() {
               <ul>
                 {item.incluye.map((linea) => <li key={linea}>{linea}</li>)}
               </ul>
-              <Link href="#contacto" className={item.destacado ? 'btn btn-primary' : 'btn btn-secondary'}>{item.cta}</Link>
+              <Link href="/cartavinos#contacto" className={item.destacado ? 'btn btn-primary' : 'btn btn-secondary'}>{item.cta}</Link>
             </article>
           ))}
         </div>
         <p className="pricing-note">
-          * Precios mensuales orientativos para un restaurante independiente. La configuración inicial se valora según el volumen y el estado de la carta.
+          * Precios mensuales orientativos para un restaurante independiente. La configuración inicial se valora según volumen, estado de datos, número de platos y nivel de acompañamiento.
         </p>
         <div className="plans-comparison" aria-label="Comparativa de planes Carta Viva">
           <div className="plans-col-header">
@@ -648,8 +711,8 @@ export default function CartaVivaPage() {
 
       <section className="section cv-faq">
         <div className="section-head narrow">
-          <p className="eyebrow">Preguntas frecuentes</p>
-          <h2>Lo que suelen preguntar antes de contratar.</h2>
+          <p className="eyebrow">Objeciones habituales</p>
+          <h2>Lo que conviene aclarar antes de decidir.</h2>
         </div>
         <div className="faq-list">
           {faq.map(([pregunta, respuesta]) => (
@@ -664,27 +727,36 @@ export default function CartaVivaPage() {
       <section className="section cv-closing">
         <div>
           <p className="eyebrow">Diagnóstico privado</p>
-          <h2>Vemos tu carta, tu sala y el papel que el vino juega en tu negocio.</h2>
+          <h2>Vemos tu carta como la usa sala y como la mira dirección.</h2>
         </div>
         <p>
-          La primera conversación sirve para decidir si necesitas digitalización, consultoría o ambas cosas. Sin
-          automatismos baratos. Con contexto.
+          La primera conversación sirve para detectar si necesitas una carta pública mejor, argumentos de servicio,
+          control económico o una revisión completa de carta y bodega. Sin automatismos baratos. Con contexto.
         </p>
       </section>
 
       <section id="contacto" className="section contact-section">
         <div>
           <p className="eyebrow">Demo privada</p>
-          <h2>Enséñame tu carta y te digo qué haría.</h2>
+          <h2>Enséñame tu carta y vemos dónde pierde servicio o margen.</h2>
           <p>
-            Manda el nombre del restaurante y una idea de tu carta actual. Te responderé con una propuesta clara.
+            Manda el nombre del restaurante y una idea de tu carta actual. Te responderé con una propuesta clara para sala y dirección.
           </p>
         </div>
         <LeadForm
           source="Carta Viva · prueba guiada 14 días"
-          cta="Solicitar prueba de 14 días"
-          title="Solicita tu prueba guiada"
+          cta="Solicitar diagnóstico de Carta Viva"
+          title="Datos para revisar tu carta"
           successTitle="Prueba solicitada"
+          successText="Te responderé con el siguiente paso para revisar tu carta desde servicio, margen y retorno."
+          problemaOptions={[
+            'Sala necesita mejores argumentos',
+            'No veo margen y rotación con claridad',
+            'La carta sigue siendo un PDF con QR',
+            'Compramos vino sin lectura mensual',
+            'Quiero conectar cocina, carta y bodega',
+          ]}
+          mensajeLabel="Qué te gustaría mejorar primero"
         />
       </section>
 

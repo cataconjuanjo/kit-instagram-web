@@ -11,7 +11,7 @@ export const SELECT_CLIENT_VINO_ADMIN = [
   'id', 'restaurante_id', 'nombre', 'bodega', 'tipo', 'region',
   'uva', 'anada', 'precio_botella', 'precio_copa', 'coste_compra',
   'stock', 'stock_minimo', 'proveedor', 'referencia_proveedor',
-  'formato_compra', 'activo', 'notas_cata',
+  'formato_compra', 'activo', 'notas_cata', 'foto_url',
 ].join(', ')
 
 export const SELECT_CLIENT_PLATO_ADMIN = [
@@ -55,7 +55,7 @@ export const SELECT_CLIENT_VINO_DASHBOARD = [
   'id', 'restaurante_id', 'nombre', 'bodega', 'tipo', 'region',
   'uva', 'anada', 'precio_botella', 'precio_copa', 'coste_compra',
   'stock', 'stock_minimo', 'proveedor', 'referencia_proveedor',
-  'formato_compra', 'notas_cata', 'activo', 'internacional',
+  'formato_compra', 'notas_cata', 'activo', 'internacional', 'foto_url',
 ].join(', ')
 
 export const SELECT_CLIENT_PLATO_DASHBOARD = [

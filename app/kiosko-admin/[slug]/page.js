@@ -1016,6 +1016,36 @@ export default function AdminKioskoPage() {
     finally     { setGuardando(false) }
   }
 
+  async function duplicar() {
+    if (!form.nombre.trim()) return setMsg('El nombre es obligatorio')
+    setGuardando(true); setMsg('')
+    try {
+      const { id: _id, square_catalog_id: _sq, ficha_ia: _fi, ...rest } = form
+      const fotoUrl = form.foto_url?.startsWith('blob:') ? null : (form.foto_url?.trim() || null)
+      const res = await fetch(`/api/kiosko/${slug}/admin/vinos`, {
+        method: 'POST',
+        headers: jsonAuthHeaders,
+        body: JSON.stringify({
+          ...rest,
+          nombre:        `${form.nombre} (copia)`,
+          foto_url:      fotoUrl,
+          precio_pvp:    form.precio_pvp    ? Number(form.precio_pvp)    : null,
+          precio_coste:  form.precio_coste  ? Number(form.precio_coste)  : null,
+          precio_oferta: form.precio_oferta ? Number(form.precio_oferta) : null,
+          stock:         form.stock         ? Number(form.stock)         : 0,
+          stock_minimo:  form.stock_minimo  ? Number(form.stock_minimo)  : 0,
+          puntuacion:    form.puntuacion    ? Number(form.puntuacion)    : null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error al duplicar')
+      setMsg('✓ Vino duplicado')
+      await cargar()
+      setTimeout(cerrarModal, 800)
+    } catch (e) { setMsg(e.message) }
+    finally { setGuardando(false) }
+  }
+
   async function eliminar(id) {
     if (!confirm('¿Eliminar este vino?')) return
     await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
@@ -1175,6 +1205,7 @@ export default function AdminKioskoPage() {
     const fd = new FormData()
     fd.append('file', archivoImport)
     fd.append('reemplazar', modoImport === 'reemplazar' ? '1' : '0')
+    fd.append('modo', modoImport)
     try {
       const res  = await fetch(`/api/kiosko/${slug}/admin/importar`, { method: 'POST', headers: authHeaders, body: fd })
       const data = await res.json()
@@ -2003,7 +2034,7 @@ export default function AdminKioskoPage() {
                 {alertasStock.length > 0 ? (
                   <div className={styles.alertasBloque}>
                     <p className={styles.alertasTitulo}>⚠️ Alertas de reposición</p>
-                    <p className={styles.alertasDesc}>Vinos que el asistente recomienda con frecuencia pero tienen stock bajo</p>
+                    <p className={styles.alertasDesc}>Stock bajo — por mínimo configurado o por alta demanda en el asistente</p>
                     <div className={styles.alertasList}>
                       {alertasStock.map(a => (
                         <div key={a.id} className={`${styles.alertaItem} ${a.critico ? styles.alertaCritico : styles.alertaBajo}`}>
@@ -2836,7 +2867,7 @@ export default function AdminKioskoPage() {
             ))}
             {vinosFiltrados.length === 0 && (
               <tr>
-                <td colSpan={16} className={styles.empty}>
+                <td colSpan={18} className={styles.empty}>
                   No hay vinos{busqueda ? ' con esa búsqueda' : filtroCalidad ? ' con ese filtro de checklist' : ''}.
                 </td>
               </tr>
@@ -3007,6 +3038,16 @@ export default function AdminKioskoPage() {
                       <span>Añadir al catálogo existente</span>
                     </label>
                     <label>
+                      <input type="radio" name="modo" value="solo_precios"
+                        checked={modoImport === 'solo_precios'} onChange={() => setModoImport('solo_precios')} />
+                      <span>Actualizar solo precios (PVP / coste) — por nombre + bodega</span>
+                    </label>
+                    <label>
+                      <input type="radio" name="modo" value="solo_stock"
+                        checked={modoImport === 'solo_stock'} onChange={() => setModoImport('solo_stock')} />
+                      <span>Actualizar solo stock — por nombre + bodega</span>
+                    </label>
+                    <label>
                       <input type="radio" name="modo" value="reemplazar"
                         checked={modoImport === 'reemplazar'} onChange={() => setModoImport('reemplazar')} />
                       <span className={styles.modoReemplazar}>Reemplazar todo el catálogo</span>
@@ -3023,7 +3064,9 @@ export default function AdminKioskoPage() {
               ) : (
                 <div className={styles.importResultado}>
                   <p className={styles.importOk}>✓ Importación completada</p>
-                  <p>{resultImport.insertados} vinos importados correctamente</p>
+                  {resultImport.insertados > 0 && <p>{resultImport.insertados} vinos importados correctamente</p>}
+                  {resultImport.actualizados > 0 && <p>{resultImport.actualizados} vinos actualizados</p>}
+                  {resultImport.sinCambios > 0 && <p style={{ color: '#aaa' }}>{resultImport.sinCambios} vinos no encontrados (omitidos)</p>}
                   {resultImport.omitidos > 0 && (
                     <p className={styles.importWarn}>{resultImport.omitidos} filas sin nombre omitidas</p>
                   )}
@@ -3195,6 +3238,20 @@ export default function AdminKioskoPage() {
                       Activo (visible en kiosko)
                     </label>
                   </div>
+                  {modal !== 'nuevo' && form.ficha_ia && (
+                    <div className={`${styles.formField} ${styles.formFieldFull}`}>
+                      <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Ficha IA</span>
+                        <span style={{ fontSize: '.72rem', color: '#aaa', fontWeight: 400 }}>Solo lectura</span>
+                      </label>
+                      <textarea
+                        readOnly
+                        rows={4}
+                        value={typeof form.ficha_ia === 'string' ? form.ficha_ia : JSON.stringify(form.ficha_ia, null, 2)}
+                        style={{ resize: 'vertical', background: 'rgba(255,255,255,.04)', color: '#bbb', cursor: 'default', fontSize: '.8rem' }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -3202,6 +3259,11 @@ export default function AdminKioskoPage() {
             <div className={styles.modalFooter}>
               {msg && <span className={msg.startsWith('✓') ? styles.msgOk : styles.msgError}>{msg}</span>}
               <button onClick={cerrarModal} type="button" className={styles.btnSecundario}>Cancelar</button>
+              {modal !== 'nuevo' && (
+                <button onClick={duplicar} disabled={guardando} type="button" className={styles.btnSecundario}>
+                  Duplicar
+                </button>
+              )}
               <button onClick={guardar} disabled={guardando} type="button" className={styles.btnPrimario}>
                 {guardando ? 'Guardando…' : modal === 'nuevo' ? 'Añadir vino' : 'Guardar cambios'}
               </button>

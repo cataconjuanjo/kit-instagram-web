@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 
 const GA_ID = 'G-393413201'
 const CONSENT_KEY = 'ccj_cookie_consent'
-const PRIVATE_PREFIXES = ['/admin', '/dashboard', '/login', '/carta', '/camarero', '/r']
+const PRIVATE_PREFIXES = ['/admin', '/dashboard', '/login', '/carta', '/camarero', '/r', '/kiosko', '/kiosko-admin']
 
 function isPrivateRoute(pathname) {
   return PRIVATE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))

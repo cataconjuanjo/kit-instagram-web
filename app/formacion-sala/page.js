@@ -7,12 +7,12 @@ export const metadata = {
   title: 'Formación de sala en vino para restaurantes',
   description: 'Formación de sala en vino para restaurantes: recomendaciones, maridaje, servicio y argumentos sencillos para vender mejor la carta.',
   alternates: {
-    canonical: '/formación-sala',
+    canonical: '/formacion-sala',
   },
   openGraph: {
     title: 'Formación de sala en vino para restaurantes · Cata con Juanjo',
     description: 'Entrenamiento práctico sobre la carta real del restaurante para que sala recomiende vino con seguridad.',
-    url: '/formación-sala',
+    url: '/formacion-sala',
     images: [{ url: '/assets/og-carta-viva-2026.jpg', width: 1200, height: 630 }],
   },
 }

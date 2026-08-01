@@ -138,6 +138,8 @@ const t = {
     cartaRevisionTitulo: 'Carta en revisión.',
     cartaRevisionTexto: 'El restaurante está ajustando su carta antes de volver a publicarla. Puedes reintentarlo en unos segundos.',
     referencias: 'referencias',
+    vistaReferencias: 'Referencias',
+    vistaEtiquetas: 'Etiquetas',
     carta: 'Carta',
     sommelier: 'ArmonIA',
     buscar: 'Buscar vino, bodega o uva...',
@@ -212,6 +214,8 @@ const t = {
     cartaRevisionTitulo: 'Wine list under review.',
     cartaRevisionTexto: 'The restaurant is adjusting its wine list before publishing it again. You can try again in a few seconds.',
     referencias: 'wines',
+    vistaReferencias: 'References',
+    vistaEtiquetas: 'Labels',
     carta: 'Wine list',
     sommelier: 'Pairing guide',
     buscar: 'Search wine, winery or grape...',
@@ -351,6 +355,7 @@ export default function CartaPublica() {
   const [precioMax, setPrecioMax] = useState(null)
   const [vinoSeleccionado, setVinoSeleccionado] = useState(null)
   const [vista, setVista] = useState('carta')
+  const [modoCarta, setModoCarta] = useState('referencias')
   const [respuesta, setRespuesta] = useState('')
   const [cargandoIA, setCargandoIA] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -544,6 +549,7 @@ export default function CartaPublica() {
     if (!loading && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('print') === '1') {
       window.requestAnimationFrame(() => {
         setVista('carta')
+        setModoCarta('referencias')
         setBusqueda('')
         setFiltro('todos')
         setPrecioMax(null)
@@ -1175,6 +1181,63 @@ export default function CartaPublica() {
     )
   }
 
+  function renderEtiquetaCard(v) {
+    const enComparador = vinosComparador.find(vc => vc.id === v.id)
+    const tieneCopa = precioValido(v.precio_copa)
+    const tieneBotella = precioValido(v.precio_botella)
+    const etiquetaUrl = String(v.foto_url || '').trim()
+    const meta = resumenVinoListado(v)
+    return (
+      <article
+        key={`etiqueta-${v.id}`}
+        className={styles.labelCard}
+        style={enComparador ? { borderColor: colorPrimario } : undefined}
+      >
+        <button
+          type="button"
+          className={`${styles.labelImageButton} ${!etiquetaUrl ? styles.labelImageMissing : ''}`}
+          onClick={() => abrirFichaVino(v)}
+          aria-label={`${i.fichaVino}: ${nombreVinoCarta(v)}`}
+        >
+          {etiquetaUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- Etiqueta publica subida por el restaurante. */}
+              <img src={etiquetaUrl} alt={nombreVinoCarta(v)} loading="lazy" />
+            </>
+          ) : (
+            <span>
+              <i style={{ background: tipoDot[v.tipo] || colorPrimario }} />
+              {i.vistaEtiquetas}
+            </span>
+          )}
+        </button>
+        <div className={styles.labelCardBody}>
+          <button type="button" className={styles.labelTextButton} onClick={() => abrirFichaVino(v)}>
+            <h3>{nombreVinoCarta(v)}</h3>
+            {meta && <p>{meta}</p>}
+          </button>
+          {(tieneBotella || tieneCopa) && (
+            <div className={styles.labelPriceRow}>
+              <strong>{tieneBotella ? precioBotellaCarta(v.precio_botella) : precioCopaCarta(v.precio_copa)}</strong>
+              {tieneBotella && tieneCopa && <span>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</span>}
+              {!tieneBotella && tieneCopa && <span>{i.copa}</span>}
+            </div>
+          )}
+          <button
+            type="button"
+            className={`${styles.labelCompareButton} ${enComparador ? styles.compareActive : ''}`}
+            onClick={() => toggleComparador(v)}
+            disabled={vinosComparador.length >= 4 && !enComparador}
+            style={enComparador ? { background: colorPrimario, borderColor: colorPrimario } : undefined}
+            aria-label={enComparador ? i.quitarComparador : i.comparar}
+          >
+            {enComparador ? i.quitarComparador : i.comparar}
+          </button>
+        </div>
+      </article>
+    )
+  }
+
   function limpiarFiltrosCarta() {
     setPrecioMax(null)
     setFiltro('todos')
@@ -1330,6 +1393,12 @@ export default function CartaPublica() {
         </div>
         <h1 style={{ fontSize: 30, fontWeight: 300, color: '#111', margin: '0 0 8px', fontFamily: fontTitulo, lineHeight: 1.3 }}>{nombreVinoCarta(vinoSeleccionado)}</h1>
         <p style={{ fontSize: 16, color: '#888', margin: '0 0 32px', fontWeight: 300 }}>{vinoSeleccionado.bodega}</p>
+        {vinoSeleccionado.foto_url && (
+          <div className={styles.detailLabelFrame}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- Etiqueta publica subida por el restaurante. */}
+            <img src={vinoSeleccionado.foto_url} alt={nombreVinoCarta(vinoSeleccionado)} loading="lazy" />
+          </div>
+        )}
         <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0f0', overflow: 'hidden', marginBottom: 20 }}>
           {[
             { label: i.region, valor: vinoSeleccionado.region },
@@ -1488,6 +1557,24 @@ export default function CartaPublica() {
           )}
         </section>
 
+        <section className={styles.catalogViewToggle} role="group" aria-label="Vista de carta">
+          {[
+            { id: 'referencias', label: i.vistaReferencias },
+            { id: 'etiquetas', label: i.vistaEtiquetas },
+          ].map(opcion => (
+            <button
+              key={opcion.id}
+              type="button"
+              className={modoCarta === opcion.id ? styles.catalogViewActive : ''}
+              onClick={() => setModoCarta(opcion.id)}
+              aria-pressed={modoCarta === opcion.id}
+              style={modoCarta === opcion.id ? { background: colorPrimario, borderColor: colorPrimario } : undefined}
+            >
+              {opcion.label}
+            </button>
+          ))}
+        </section>
+
         {!busqueda && (
           <section className={styles.shortcutPanel}>
             <button
@@ -1515,7 +1602,19 @@ export default function CartaPublica() {
           </section>
         )}
 
-        {vinosCoravinFiltrados.length > 0 && filtro === 'todos' && (
+        {modoCarta === 'etiquetas' && vinosFiltrados.length > 0 && (
+          <section className={styles.labelGallerySection}>
+            <div className={styles.labelGalleryHead}>
+              <h2 className={styles.sectionTitle}>{i.vistaEtiquetas}</h2>
+              <p className={styles.sectionSub}>{vinosFiltrados.length} {i.referencias}</p>
+            </div>
+            <div className={styles.labelGrid}>
+              {vinosFiltrados.map(renderEtiquetaCard)}
+            </div>
+          </section>
+        )}
+
+        {modoCarta === 'referencias' && vinosCoravinFiltrados.length > 0 && filtro === 'todos' && (
           <section className={styles.accordionSection}>
             <button
               type="button"
@@ -1535,7 +1634,7 @@ export default function CartaPublica() {
           </section>
         )}
 
-        {vinosPorCopaFiltrados.length > 0 && filtro === 'todos' && (
+        {modoCarta === 'referencias' && vinosPorCopaFiltrados.length > 0 && filtro === 'todos' && (
           <section className={styles.accordionSection}>
             <button
               type="button"
@@ -1665,7 +1764,7 @@ export default function CartaPublica() {
           </section>
         )}
 
-        {estructuraPdfGoiko ? seccionesPdfGoiko.map(seccion => {
+        {modoCarta === 'referencias' && (estructuraPdfGoiko ? seccionesPdfGoiko.map(seccion => {
           const abierta = busquedaOFiltrado || seccionAbierta === seccion.id
           return (
             <section key={seccion.id} className={styles.accordionSection}>
@@ -1705,7 +1804,7 @@ export default function CartaPublica() {
               {abierta && renderBloqueAmbito(ambito, vinosFiltrados, { prefix: 'carta' })}
             </section>
           )
-        })}
+        }))}
 
         {false && tiposOrdenados.map(tipo => {
           const grupo = vinosFiltrados.filter(v => v.tipo === tipo)

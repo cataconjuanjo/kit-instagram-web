@@ -33,6 +33,63 @@ function normalizar(texto = '') {
   return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
+function normalizarUrlImagenCliente(valor = '') {
+  const raw = String(valor || '').trim().slice(0, 2048)
+  if (!raw) return ''
+  if (raw.startsWith('/') && !raw.startsWith('//')) return raw
+  try {
+    const url = new URL(raw)
+    return ['http:', 'https:'].includes(url.protocol) ? url.toString() : ''
+  } catch {
+    return ''
+  }
+}
+
+const TIPOS_ETIQUETA_OK = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
+const MAX_ETIQUETA_BYTES = 5 * 1024 * 1024
+const MATCH_ETIQUETA_MINIMO = 42
+const STOPWORDS_ETIQUETA = new Set([
+  'etiqueta', 'label', 'labels', 'vino', 'wine', 'wines', 'botella', 'bottle',
+  'foto', 'photo', 'image', 'img', 'front', 'frontal', 'scan', 'carta',
+  'jpg', 'jpeg', 'png', 'webp', 'heic',
+])
+
+function normalizarMatch(texto = '') {
+  return normalizar(texto)
+    .replace(/\.[a-z0-9]{2,5}$/i, ' ')
+    .replace(/[_-]+/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function tokensMatch(texto = '') {
+  return normalizarMatch(texto)
+    .split(' ')
+    .filter(token => token.length > 1 && !STOPWORDS_ETIQUETA.has(token))
+}
+
+function scoreEtiquetaArchivo(fileName, vino = {}) {
+  const archivo = normalizarMatch(fileName)
+  const nombre = normalizarMatch(vino.nombre)
+  const bodega = normalizarMatch(vino.bodega)
+  const anada = normalizarMatch(vino.anada)
+  const tokensArchivo = tokensMatch(fileName)
+  const tokensVino = new Set(tokensMatch(`${vino.nombre || ''} ${vino.bodega || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.anada || ''}`))
+  if (!archivo || !tokensArchivo.length || !tokensVino.size) return 0
+
+  const interseccion = tokensArchivo.filter(token => tokensVino.has(token)).length
+  const coberturaArchivo = interseccion / Math.max(tokensArchivo.length, 1)
+  const coberturaVino = interseccion / Math.max(Math.min(tokensVino.size, 7), 1)
+  let score = Math.round(coberturaArchivo * 55 + Math.min(coberturaVino, 1) * 20)
+
+  if (nombre && archivo.includes(nombre)) score += 30
+  if (bodega && archivo.includes(bodega)) score += 12
+  if (anada && archivo.includes(anada)) score += 8
+  if (vino.foto_url) score -= 6
+  return Math.max(0, Math.min(score, 99))
+}
+
 function csvValor(valor = '') {
   return `"${String(valor ?? '').replace(/"/g, '""')}"`
 }
@@ -146,7 +203,9 @@ export default function Dashboard() {
   const [mostrarImportador, setMostrarImportador] = useState(() => (
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('importar') === '1'
   ))
+  const [mostrarImportadorEtiquetas, setMostrarImportadorEtiquetas] = useState(false)
   const [arrastrandoPdf, setArrastrandoPdf] = useState(false)
+  const [arrastrandoEtiquetas, setArrastrandoEtiquetas] = useState(false)
   const [progresoPdf, setProgresoPdf] = useState('')
   const [busquedaVinos, setBusquedaVinos] = useState('')
   const [filtroVinos, setFiltroVinos] = useState('todos')
@@ -173,7 +232,14 @@ const [valorMasivo, setValorMasivo] = useState('')
 const [aplicandoMasivo, setAplicandoMasivo] = useState(false)
 const [confirmacion, setConfirmacion] = useState(null)
 const [borrandoId, setBorrandoId] = useState('')
+const [subiendoEtiqueta, setSubiendoEtiqueta] = useState('')
+const [etiquetasImportar, setEtiquetasImportar] = useState([])
+const [importandoEtiquetas, setImportandoEtiquetas] = useState(false)
+const [errorEtiquetas, setErrorEtiquetas] = useState('')
 const inputPdfRef = useRef(null)
+const inputEtiquetaRef = useRef(null)
+const inputEtiquetasMasivoRef = useRef(null)
+const etiquetaTargetRef = useRef(null)
   const [nuevoVino, setNuevoVino] = useState(vinoInicialDesdeUrl)
 
   useEffect(() => {
@@ -282,6 +348,209 @@ async function authHeaders() {
     : { 'Content-Type': 'application/json' }
 }
 
+async function authBearerHeaders() {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+function abrirSelectorEtiqueta(vinoId) {
+  etiquetaTargetRef.current = vinoId
+  inputEtiquetaRef.current?.click()
+}
+
+function aplicarEtiquetaEnEstado(vinoId, url) {
+  setVinos(actual => actual.map(vino => vino.id === vinoId ? { ...vino, foto_url: url } : vino))
+  setEditandoVino(actual => actual?.id === vinoId ? { ...actual, foto_url: url } : actual)
+}
+
+async function enviarEtiqueta(vinoId, file) {
+  const fd = new FormData()
+  fd.append('foto', file)
+  const res = await fetch(`/api/vinos/${vinoId}/etiqueta`, {
+    method: 'POST',
+    headers: await authBearerHeaders(),
+    body: fd,
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'No se pudo subir la etiqueta.')
+  return data.url
+}
+
+async function subirEtiqueta(vinoId, file) {
+  if (!vinoId || !file) return
+  setSubiendoEtiqueta(vinoId)
+  setErrorBodega('')
+  try {
+    const url = await enviarEtiqueta(vinoId, file)
+    aplicarEtiquetaEnEstado(vinoId, url)
+    setMensajeVinos('Etiqueta actualizada')
+  } catch (error) {
+    setErrorBodega(error.message || 'No se pudo subir la etiqueta.')
+  } finally {
+    setSubiendoEtiqueta('')
+  }
+}
+
+async function archivoEtiquetaSeleccionado(event) {
+  const file = event.target.files?.[0]
+  const vinoId = etiquetaTargetRef.current
+  event.target.value = ''
+  if (file && vinoId) await subirEtiqueta(vinoId, file)
+}
+
+async function quitarEtiqueta(vino) {
+  if (!vino?.id || !vino.foto_url) return
+  setSubiendoEtiqueta(vino.id)
+  setErrorBodega('')
+  try {
+    const res = await fetch(`/api/vinos/${vino.id}/etiqueta`, {
+      method: 'DELETE',
+      headers: await authBearerHeaders(),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'No se pudo quitar la etiqueta.')
+    setVinos(actual => actual.map(item => item.id === vino.id ? { ...item, foto_url: null } : item))
+    setEditandoVino(actual => actual?.id === vino.id ? { ...actual, foto_url: null } : actual)
+    setMensajeVinos('Etiqueta retirada')
+  } catch (error) {
+    setErrorBodega(error.message || 'No se pudo quitar la etiqueta.')
+  } finally {
+    setSubiendoEtiqueta('')
+  }
+}
+
+function mejorMatchEtiqueta(file, vinosDisponibles, usados = new Set()) {
+  return vinosDisponibles.reduce((mejor, vino) => {
+    if (usados.has(String(vino.id))) return mejor
+    const score = scoreEtiquetaArchivo(file.name, vino)
+    return score > mejor.score ? { vino, score } : mejor
+  }, { vino: null, score: 0 })
+}
+
+function revocarPreviewsEtiquetas(lista = etiquetasImportar) {
+  lista.forEach(item => {
+    if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
+  })
+}
+
+function prepararImportacionEtiquetas(files) {
+  const lista = Array.from(files || [])
+  if (!lista.length) return
+  const validos = []
+  const rechazados = []
+
+  lista.forEach(file => {
+    if (!TIPOS_ETIQUETA_OK.has(file.type)) {
+      rechazados.push(`${file.name}: formato no permitido`)
+      return
+    }
+    if (file.size > MAX_ETIQUETA_BYTES) {
+      rechazados.push(`${file.name}: supera 5 MB`)
+      return
+    }
+    validos.push(file)
+  })
+
+  setErrorEtiquetas(rechazados.join('. '))
+  if (!validos.length) return
+
+  revocarPreviewsEtiquetas()
+  const usados = new Set()
+  const filas = validos.map((file, index) => {
+    const match = mejorMatchEtiqueta(file, vinos, usados)
+    const vinoId = match.score >= MATCH_ETIQUETA_MINIMO ? String(match.vino.id) : ''
+    if (vinoId) usados.add(vinoId)
+    return {
+      id: `${Date.now()}-${index}-${file.name}`,
+      file,
+      fileName: file.name,
+      previewUrl: URL.createObjectURL(file),
+      vinoId,
+      score: match.score,
+      estado: vinoId ? 'pendiente' : 'revisar',
+      manual: false,
+      error: '',
+    }
+  })
+  setEtiquetasImportar(filas)
+}
+
+function archivoEtiquetasMasivasSeleccionado(event) {
+  const files = event.target.files
+  event.target.value = ''
+  prepararImportacionEtiquetas(files)
+}
+
+function handleEtiquetasDragOver(event) {
+  event.preventDefault()
+  setArrastrandoEtiquetas(true)
+}
+
+function handleEtiquetasDragLeave(event) {
+  if (!event.currentTarget.contains(event.relatedTarget)) setArrastrandoEtiquetas(false)
+}
+
+function handleEtiquetasDrop(event) {
+  event.preventDefault()
+  setArrastrandoEtiquetas(false)
+  prepararImportacionEtiquetas(event.dataTransfer.files)
+}
+
+function actualizarEtiquetaImportar(id, cambios) {
+  setEtiquetasImportar(actual => actual.map(item => item.id === id ? { ...item, ...cambios } : item))
+}
+
+function quitarEtiquetaImportar(id) {
+  setEtiquetasImportar(actual => {
+    const item = actual.find(fila => fila.id === id)
+    if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl)
+    return actual.filter(fila => fila.id !== id)
+  })
+}
+
+function limpiarImportadorEtiquetas() {
+  revocarPreviewsEtiquetas()
+  setEtiquetasImportar([])
+  setErrorEtiquetas('')
+  setArrastrandoEtiquetas(false)
+}
+
+function confianzaEtiqueta(fila) {
+  if (fila.manual) return 'Manual'
+  if (!fila.vinoId) return 'Revisar'
+  if (fila.score >= 72) return 'Alta'
+  return 'Probable'
+}
+
+async function guardarImportacionEtiquetas() {
+  const pendientes = etiquetasImportar.filter(fila => fila.vinoId && fila.estado !== 'subida')
+  if (!pendientes.length || importandoEtiquetas) return
+  setImportandoEtiquetas(true)
+  setErrorEtiquetas('')
+  let ok = 0
+  let fallos = 0
+
+  for (const fila of pendientes) {
+    actualizarEtiquetaImportar(fila.id, { estado: 'subiendo', error: '' })
+    try {
+      const url = await enviarEtiqueta(fila.vinoId, fila.file)
+      aplicarEtiquetaEnEstado(fila.vinoId, url)
+      actualizarEtiquetaImportar(fila.id, { estado: 'subida', error: '', urlSubida: url })
+      ok += 1
+    } catch (error) {
+      actualizarEtiquetaImportar(fila.id, {
+        estado: 'error',
+        error: error.message || 'No se pudo subir',
+      })
+      fallos += 1
+    }
+  }
+
+  setMensajeVinos(`${ok} etiquetas subidas${fallos ? `, ${fallos} con error` : ''}`)
+  setImportandoEtiquetas(false)
+}
+
 async function procesarArchivos(files) {
   const lista = Array.from(files)
   const grandes = lista.filter(f => f.size > 3 * 1024 * 1024)
@@ -328,6 +597,7 @@ async function procesarArchivos(files) {
       precio_botella: Number(vino.precio_botella) > 0 ? vino.precio_botella : '',
       stock: 1,
       notas_cata: vino.notas_cata || '',
+      foto_url: normalizarUrlImagenCliente(vino.foto_url),
       activo: true,
     })))
   }
@@ -379,6 +649,7 @@ async function guardarImportacionVinos() {
     precio_botella: decimalOpcional(vino.precio_botella),
     stock: parseInt(vino.stock) || 0,
     notas_cata: vino.notas_cata || '',
+    foto_url: normalizarUrlImagenCliente(vino.foto_url) || null,
     restaurante_id: restaurante.id,
     activo: true,
   }))).select(SELECT_CLIENT_VINO_DASHBOARD)
@@ -541,6 +812,7 @@ function vinoComoFila(vino) {
     vino.precio_botella,
     vino.stock,
     vino.proveedor,
+    vino.foto_url ? 'Con etiqueta' : 'Sin etiqueta',
     vino.activo === false ? 'Oculto' : 'Activo',
   ]
 }
@@ -622,6 +894,7 @@ async function aplicarAccionMasiva(confirmado = false) {
       (filtroVinos === 'activos' && vino.activo !== false) ||
       (filtroVinos === 'ocultos' && vino.activo === false) ||
       (filtroVinos === 'pendientes' && (!Number(vino.precio_botella) || !vino.notas_cata || vino.notas_cata.length < 12)) ||
+      (filtroVinos === 'sin_etiqueta' && !String(vino.foto_url || '').trim()) ||
       (filtroVinos === 'stock' && Number(vino.stock_minimo || 0) > 0 && Number(vino.stock) <= Number(vino.stock_minimo || 0)) ||
       (filtroVinos === 'sin_stock' && Number(vino.stock) <= 0) ||
       (filtroVinos === 'sin_coste' && !Number(vino.coste_compra)) ||
@@ -649,21 +922,26 @@ async function aplicarAccionMasiva(confirmado = false) {
   const visiblesSeleccionados = vinosPagina.filter(vino => seleccionados.includes(vino.id)).length
   const todosVisiblesSeleccionados = vinosPagina.length > 0 && visiblesSeleccionados === vinosPagina.length
   const rangoVinos = vinosVisibles.length === 0 ? '0' : `${inicioVinos + 1}-${inicioVinos + vinosPagina.length}`
-  const cabeceraVinos = ['Nombre', 'Bodega', 'Region', 'Tipo', 'Uva', 'Anada', 'Precio copa', 'Precio botella', 'Stock', 'Proveedor', 'Estado']
+  const cabeceraVinos = ['Nombre', 'Bodega', 'Region', 'Tipo', 'Uva', 'Anada', 'Precio copa', 'Precio botella', 'Stock', 'Proveedor', 'Etiqueta', 'Estado']
   const csvVinos = [cabeceraVinos, ...vinosVisibles.map(vinoComoFila)].map(fila => fila.map(csvValor).join(',')).join('\n')
   const vinosActivos = vinos.filter(vino => vino.activo !== false)
   const vinosSinPrecio = vinosActivos.filter(vino => !Number(vino.precio_botella))
   const vinosSinPerfil = vinosActivos.filter(vino => !vino.notas_cata || vino.notas_cata.length < 12)
+  const vinosSinEtiqueta = vinosActivos.filter(vino => !String(vino.foto_url || '').trim())
   const vinosSinStock = vinosActivos.filter(vino => Number(vino.stock) <= 0)
   const vinosSinCoste = vinosActivos.filter(vino => !Number(vino.coste_compra))
   const vinosSinProveedor = vinosActivos.filter(vino => !String(vino.proveedor || '').trim())
   const pendientesVinos = [
     { label: 'Sin precio', count: vinosSinPrecio.length, href: '?filtro=pendientes', filter: 'pendientes', text: 'Bloquea publicacion y venta.' },
     { label: 'Sin perfil', count: vinosSinPerfil.length, href: '?filtro=pendientes', filter: 'pendientes', text: perfilBodega ? 'Debilita búsqueda, inventario y lectura interna.' : 'Debilita maridaje y modo camarero.' },
+    { label: 'Sin etiqueta', count: vinosSinEtiqueta.length, href: '?filtro=sin_etiqueta', filter: 'sin_etiqueta', text: 'Impide usar bien la vista visual de etiquetas.' },
     { label: 'Sin stock', count: vinosSinStock.length, href: '?filtro=sin_stock', filter: 'sin_stock', text: perfilBodega ? 'Bloquea compra y reposición fiable.' : 'Puede crear incidencias en sala.' },
     { label: 'Sin coste', count: vinosSinCoste.length, href: '?filtro=sin_coste', filter: 'sin_coste', text: 'Impide leer margen real.' },
     { label: 'Sin proveedor', count: vinosSinProveedor.length, href: '?filtro=sin_proveedor', filter: 'sin_proveedor', text: 'Complica el pedido.' },
   ]
+  const vinosOrdenadosSelector = [...vinos].sort((a, b) => normalizar(a.nombre || '').localeCompare(normalizar(b.nombre || '')))
+  const etiquetasConMatch = etiquetasImportar.filter(fila => fila.vinoId && fila.estado !== 'subida').length
+  const etiquetasSinMatch = etiquetasImportar.filter(fila => !fila.vinoId).length
 
   async function copiarVinos() {
     const texto = [cabeceraVinos, ...vinosVisibles.map(vinoComoFila)].map(fila => fila.join('\t')).join('\n')
@@ -690,15 +968,22 @@ async function aplicarAccionMasiva(confirmado = false) {
           {puedeUsar(restaurante, 'bodega') && <a href="/dashboard/bodega" className={styles.secondary}>Control bodega</a>}
           {puedeUsar(restaurante, 'importador_pdf') && (
             <button
-              onClick={() => { setMostrarImportador(!mostrarImportador); setMostrarFormulario(false) }}
+              onClick={() => { setMostrarImportador(!mostrarImportador); setMostrarFormulario(false); setMostrarImportadorEtiquetas(false) }}
               className={mostrarImportador ? styles.ghost : styles.secondary}
             >
               {mostrarImportador ? 'Cerrar importador' : (perfilBodega ? 'Importar referencias' : 'Importar carta')}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => { setMostrarImportadorEtiquetas(!mostrarImportadorEtiquetas); setMostrarFormulario(false); setMostrarImportador(false) }}
+            className={mostrarImportadorEtiquetas ? styles.ghost : styles.secondary}
+          >
+            {mostrarImportadorEtiquetas ? 'Cerrar etiquetas' : 'Importar etiquetas'}
+          </button>
             <button
               data-shortcut-edit="true"
-              onClick={() => { setMostrarFormulario(!mostrarFormulario); setMostrarImportador(false) }}
+              onClick={() => { setMostrarFormulario(!mostrarFormulario); setMostrarImportador(false); setMostrarImportadorEtiquetas(false) }}
             className={mostrarFormulario ? styles.ghost : styles.primary}
           >
             {mostrarFormulario ? 'Cancelar' : 'Añadir vino'}
@@ -721,6 +1006,21 @@ async function aplicarAccionMasiva(confirmado = false) {
         ],
       }}
     >
+      <input
+        ref={inputEtiquetaRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        style={{ display: 'none' }}
+        onChange={archivoEtiquetaSeleccionado}
+      />
+      <input
+        ref={inputEtiquetasMasivoRef}
+        type="file"
+        multiple
+        accept="image/jpeg,image/png,image/webp"
+        style={{ display: 'none' }}
+        onChange={archivoEtiquetasMasivasSeleccionado}
+      />
       <div className={styles.winePage}>
         {errorBodega && <div className={styles.empty} style={{ minHeight: 70, marginBottom: 16, color: '#9b3535' }}>{errorBodega}</div>}
         <section className={styles.pendingStrip}>
@@ -744,6 +1044,104 @@ async function aplicarAccionMasiva(confirmado = false) {
             ))}
           </div>
         </section>
+
+        {mostrarImportadorEtiquetas && (
+          <section className={styles.labelImportPanel}>
+            <div className={styles.labelImportHead}>
+              <div>
+                <p className={styles.eyebrow}>Etiquetas por lote</p>
+                <h2>Emparejar fotos con vinos</h2>
+                <p>Nombra los archivos con vino, bodega o aÃ±ada. Ejemplo: barbazul-tinto-2021.webp.</p>
+              </div>
+              <div className={styles.labelImportActions}>
+                {etiquetasImportar.length > 0 && (
+                  <button type="button" className={styles.ghost} onClick={limpiarImportadorEtiquetas} disabled={importandoEtiquetas}>
+                    Limpiar
+                  </button>
+                )}
+                <button type="button" className={styles.primary} onClick={() => inputEtiquetasMasivoRef.current?.click()} disabled={importandoEtiquetas}>
+                  Elegir fotos
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={`${styles.labelDropzone} ${arrastrandoEtiquetas ? styles.labelDropzoneActive : ''}`}
+              onClick={() => !importandoEtiquetas && inputEtiquetasMasivoRef.current?.click()}
+              onDragOver={handleEtiquetasDragOver}
+              onDragLeave={handleEtiquetasDragLeave}
+              onDrop={handleEtiquetasDrop}
+              role="button"
+              tabIndex={0}
+              onKeyDown={event => {
+                if ((event.key === 'Enter' || event.key === ' ') && !importandoEtiquetas) inputEtiquetasMasivoRef.current?.click()
+              }}
+            >
+              <strong>Arrastra JPG, PNG o WebP</strong>
+              <span>El sistema propone el vino por similitud con el nombre del archivo. Max. 5 MB por imagen.</span>
+            </div>
+
+            {errorEtiquetas && <p className={styles.labelImportError}>{errorEtiquetas}</p>}
+
+            {etiquetasImportar.length > 0 && (
+              <>
+                <div className={styles.labelImportSummary}>
+                  <span>{etiquetasImportar.length} fotos</span>
+                  <span>{etiquetasConMatch} listas para subir</span>
+                  {etiquetasSinMatch > 0 && <span>{etiquetasSinMatch} por revisar</span>}
+                  <button type="button" className={styles.primary} onClick={guardarImportacionEtiquetas} disabled={importandoEtiquetas || etiquetasConMatch === 0}>
+                    {importandoEtiquetas ? 'Subiendo...' : `Subir ${etiquetasConMatch}`}
+                  </button>
+                </div>
+
+                <div className={styles.labelImportTable}>
+                  {etiquetasImportar.map(fila => {
+                    const vinoAsignado = vinos.find(vino => String(vino.id) === String(fila.vinoId))
+                    return (
+                      <div key={fila.id} className={styles.labelImportRow}>
+                        <div className={styles.labelImportPreview}>
+                          {/* eslint-disable-next-line @next/next/no-img-element -- Preview local de etiqueta antes de subir. */}
+                          <img src={fila.previewUrl} alt="" />
+                        </div>
+                        <div className={styles.labelImportFile}>
+                          <strong>{fila.fileName}</strong>
+                          {vinoAsignado?.foto_url && <span>Este vino ya tiene etiqueta; se sustituira si subes esta fila.</span>}
+                          {fila.error && <span className={styles.labelImportError}>{fila.error}</span>}
+                        </div>
+                        <select
+                          value={fila.vinoId}
+                          onChange={event => actualizarEtiquetaImportar(fila.id, {
+                            vinoId: event.target.value,
+                            manual: true,
+                            estado: event.target.value ? 'pendiente' : 'revisar',
+                            error: '',
+                          })}
+                          disabled={importandoEtiquetas || fila.estado === 'subiendo'}
+                        >
+                          <option value="">Sin match</option>
+                          {vinosOrdenadosSelector.map(vino => (
+                            <option key={vino.id} value={vino.id}>
+                              {vino.nombre}{vino.bodega ? ` - ${vino.bodega}` : ''}{vino.anada ? ` (${vino.anada})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <span className={`${styles.labelMatchBadge} ${!fila.vinoId ? styles.labelMatchReview : ''}`}>
+                          {confianzaEtiqueta(fila)}
+                        </span>
+                        <span className={styles.labelImportStatus}>
+                          {fila.estado === 'subiendo' ? 'Subiendo...' : fila.estado === 'subida' ? 'Subida' : fila.estado === 'error' ? 'Error' : fila.vinoId ? 'Pendiente' : 'Revisar'}
+                        </span>
+                        <button type="button" className={styles.ghost} onClick={() => quitarEtiquetaImportar(fila.id)} disabled={importandoEtiquetas || fila.estado === 'subiendo'}>
+                          Quitar
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+          </section>
+        )}
 
         {mostrarImportador && (
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
@@ -794,6 +1192,7 @@ async function aplicarAccionMasiva(confirmado = false) {
                         <input value={vino.precio_copa} onChange={e => actualizarVinoImportar(index, { precio_copa: e.target.value })} placeholder="Copa" style={{ border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: 12, color: '#777', background: 'transparent' }} />
                         <div>
                           <input value={vino.precio_botella} onChange={e => actualizarVinoImportar(index, { precio_botella: e.target.value })} placeholder="Botella" style={{ width: '100%', border: 'none', borderBottom: '1px solid #eee', outline: 'none', fontSize: 12, color: '#777', background: 'transparent' }} />
+                          {vino.foto_url && <p style={{ fontSize: 10, color: '#6f8a70', margin: '4px 0 0' }}>Etiqueta incluida</p>}
                           {duplicado && <p style={{ fontSize: 10, color: '#c07070', margin: '4px 0 0' }}>Ya existe</p>}
                         </div>
                       </div>
@@ -882,6 +1281,7 @@ async function aplicarAccionMasiva(confirmado = false) {
               <option value="todos">Todos los vinos</option>
               <option value="activos">Activos</option>
               <option value="pendientes">Pendientes</option>
+              <option value="sin_etiqueta">Sin etiqueta</option>
               <option value="stock">Stock bajo</option>
               <option value="sin_stock">Sin stock</option>
               <option value="sin_coste">Sin coste</option>
@@ -984,6 +1384,24 @@ async function aplicarAccionMasiva(confirmado = false) {
               }}>
                 <div className={styles.wineNameCell}>
                   <input type="checkbox" checked={seleccionados.includes(v.id)} onChange={() => alternarSeleccion(v.id)} aria-label={`Seleccionar ${v.nombre}`} />
+                  <button
+                    type="button"
+                    className={styles.wineLabelThumbButton}
+                    onClick={() => abrirSelectorEtiqueta(v.id)}
+                    title={v.foto_url ? 'Cambiar etiqueta' : 'Subir etiqueta'}
+                    aria-label={`${v.foto_url ? 'Cambiar' : 'Subir'} etiqueta de ${v.nombre}`}
+                  >
+                    {subiendoEtiqueta === v.id ? (
+                      <span className={styles.wineLabelSpinner} />
+                    ) : v.foto_url ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element -- Miniatura de etiqueta subida por el restaurante. */}
+                        <img src={v.foto_url} alt="" loading="lazy" />
+                      </>
+                    ) : (
+                      <span>+</span>
+                    )}
+                  </button>
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: tipoDot[v.tipo], flexShrink: 0 }} />
                   <div>
                     <p style={{ margin: 0, fontSize: 14, color: '#111' }}>{v.nombre}</p>
@@ -1042,6 +1460,8 @@ async function aplicarAccionMasiva(confirmado = false) {
                   <summary aria-label={`Acciones para ${v.nombre}`}>...</summary>
                   <div className={styles.rowMenuDropdown}>
                     <button data-shortcut-edit="true" aria-label={`Editar ${v.nombre}`} onClick={() => { setEditandoVino({...v, precio_copa: v.precio_copa || '', precio_botella: v.precio_botella || '', coste_compra: v.coste_compra || '', stock_minimo: v.stock_minimo || '', proveedor: v.proveedor || ''}); }}>Editar</button>
+                    <button onClick={() => abrirSelectorEtiqueta(v.id)}>{v.foto_url ? 'Cambiar etiqueta' : 'Subir etiqueta'}</button>
+                    {v.foto_url && <button onClick={() => quitarEtiqueta(v)}>Quitar etiqueta</button>}
                     <button onClick={() => copiarVino(v)}>Copiar fila</button>
                     <button onClick={() => duplicarVino(v)}>Duplicar</button>
                     <button onClick={() => toggleActivo(v)}>{perfilBodega ? (v.activo ? 'Archivar' : 'Activar') : (v.activo ? 'Ocultar' : 'Mostrar')}</button>
@@ -1064,6 +1484,37 @@ async function aplicarAccionMasiva(confirmado = false) {
                   }
                 >
                   <div className={styles.wineFormGrid}>
+                    <div className={styles.wineLabelField}>
+                      <label>Etiqueta</label>
+                      <div className={styles.wineLabelEditor}>
+                        <button
+                          type="button"
+                          className={styles.wineLabelPreview}
+                          onClick={() => abrirSelectorEtiqueta(editandoVino.id)}
+                        >
+                          {subiendoEtiqueta === editandoVino.id ? (
+                            <span className={styles.wineLabelSpinner} />
+                          ) : editandoVino.foto_url ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element -- Previsualizacion de etiqueta subida por el restaurante. */}
+                              <img src={editandoVino.foto_url} alt="" />
+                            </>
+                          ) : (
+                            <span>Subir etiqueta</span>
+                          )}
+                        </button>
+                        <div>
+                          <button type="button" className={styles.secondary} onClick={() => abrirSelectorEtiqueta(editandoVino.id)}>
+                            {editandoVino.foto_url ? 'Cambiar etiqueta' : 'Subir etiqueta'}
+                          </button>
+                          {editandoVino.foto_url && (
+                            <button type="button" className={styles.ghost} onClick={() => quitarEtiqueta(editandoVino)}>
+                              Quitar etiqueta
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                     {[
                       { label: 'Nombre *', key: 'nombre' },
                       { label: 'Bodega', key: 'bodega' },

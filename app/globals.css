@@ -15457,3 +15457,76 @@ html, body {
     scroll-behavior: auto;
   }
 }
+
+/* === EDITORIAL PASS — asimetría de grid + tipografía display ===
+   Objetico: romper la uniformidad de las 4 rejillas de cards idénticas.
+   Scoped a .site-shell para no afectar dashboard ni otras superficies.
+================================================================== */
+
+/* 1. Servicios — primera tarjeta destaca por columna más ancha */
+@media (min-width: 761px) {
+  .site-shell #servicios .service-grid {
+    grid-template-columns: minmax(0, 1.8fr) repeat(3, minmax(0, 1fr));
+  }
+}
+.site-shell #servicios .service-card:first-child {
+  background: rgba(23, 18, 15, 0.03);
+}
+.site-shell #servicios .service-card:first-child::before {
+  font-size: clamp(4rem, 7vw, 8.5rem);
+  line-height: 0.85;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+  opacity: 0.08;
+  font-weight: 300;
+  margin-bottom: 20px;
+}
+.site-shell #servicios .service-card:first-child h3 {
+  font-size: clamp(1.5rem, 2.4vw, 2.1rem);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+/* 2. Metodología — ordinales a escala de revista, no de label */
+.site-shell .step span {
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: clamp(3rem, 5vw, 6rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  opacity: 0.12;
+  margin-bottom: 24px;
+}
+
+/* 3. Activaciones — numeración como titulares, no como etiquetas */
+.site-shell .activacion-card {
+  grid-template-columns: clamp(3rem, 5.5vw, 5rem) minmax(0, 1fr) minmax(0, 1.65fr);
+}
+.site-shell .activacion-num {
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: clamp(1.8rem, 3.5vw, 3.5rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  opacity: 0.18;
+  padding-top: 0;
+}
+
+/* 4. Proof cards — título a escala editorial */
+.site-shell .proof-card strong {
+  font-size: clamp(1.5rem, 2.3vw, 2.1rem);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+/* Mobile — restaurar activaciones a 2 columnas (num + contenido) */
+@media (max-width: 1080px) {
+  .site-shell .activacion-card {
+    grid-template-columns: 2.8rem 1fr;
+  }
+  .site-shell .activacion-num {
+    font-size: clamp(1.4rem, 4vw, 1.8rem);
+  }
+}

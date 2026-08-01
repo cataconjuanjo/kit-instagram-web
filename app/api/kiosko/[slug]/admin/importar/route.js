@@ -159,12 +159,13 @@ export async function POST(request, { params }) {
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
   const tiendaId = access.tienda.id
 
-  let archivo, reemplazar
+  let archivo, reemplazar, modo
   try {
     const fd  = await request.formData()
     archivo   = fd.get('file')
     if (!archivo) return NextResponse.json({ error: 'Falta el archivo' }, { status: 400 })
-    reemplazar = fd.get('reemplazar') === '1' || fd.get('reemplazar') === 'true'
+    modo       = fd.get('modo') || 'añadir'
+    reemplazar = modo === 'reemplazar'
   } catch {
     return NextResponse.json({ error: 'Error al leer el archivo' }, { status: 400 })
   }
@@ -192,6 +193,49 @@ export async function POST(request, { params }) {
     return NextResponse.json({
       error: 'No se encontraron vinos. Revisa que el archivo tenga una columna "nombre".',
     }, { status: 400 })
+  }
+
+  // ── Modo "solo precios" o "solo stock": PATCH por nombre+bodega ────────────
+  if (modo === 'solo_precios' || modo === 'solo_stock') {
+    const { data: existentes } = await supabaseAdmin
+      .from('vinos_tienda')
+      .select('id, nombre, bodega')
+      .eq('tienda_id', tiendaId)
+
+    const norm = s => (s || '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const existMap = new Map()
+    for (const v of existentes || []) {
+      existMap.set(`${norm(v.nombre)}|${norm(v.bodega)}`, v.id)
+    }
+
+    let actualizados = 0
+    let sinCambios   = 0
+    const errores    = []
+
+    for (const fila of filas) {
+      const key = `${norm(fila.nombre || '')}|${norm(fila.bodega || '')}`
+      const id  = existMap.get(key)
+      if (!id) { sinCambios++; continue }
+
+      let patch
+      if (modo === 'solo_precios') {
+        patch = {}
+        if (fila.precio_pvp   !== undefined && fila.precio_pvp   !== '') patch.precio_pvp   = num(fila.precio_pvp)
+        if (fila.precio_coste !== undefined && fila.precio_coste !== '') patch.precio_coste = num(fila.precio_coste)
+        if (fila.precio_oferta !== undefined && fila.precio_oferta !== '') patch.precio_oferta = num(fila.precio_oferta)
+      } else {
+        const stockVal = num(fila.stock)
+        if (stockVal === null) { sinCambios++; continue }
+        patch = { stock: stockVal }
+      }
+
+      if (!Object.keys(patch).length) { sinCambios++; continue }
+      const { error } = await supabaseAdmin.from('vinos_tienda').update(patch).eq('id', id)
+      if (error) errores.push(`${fila.nombre}: ${error.message}`)
+      else       actualizados++
+    }
+
+    return NextResponse.json({ insertados: 0, actualizados, sinCambios, omitidos: filas.length - vinos.length, errores })
   }
 
   if (reemplazar) {

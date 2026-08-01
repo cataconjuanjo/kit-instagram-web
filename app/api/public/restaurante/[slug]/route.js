@@ -23,7 +23,7 @@ const CAMPOS_RESTAURANTE_CONTROL = ['plan', 'subscription_status']
 const CAMPOS_VINO = [
   'id', 'nombre', 'bodega', 'tipo', 'region', 'uva',
   'anada', 'precio_copa', 'precio_botella', 'notas_cata', 'activo',
-  'internacional',
+  'internacional', 'foto_url',
 ]
 
 const CAMPOS_PLATO = [
@@ -194,7 +194,7 @@ export async function GET(req, { params }) {
         supabaseAdmin.from('platos').select(SELECT_PLATO_PUBLICO).eq('restaurante_id', restaurante.id).eq('activo', true),
         supabaseAdmin
           .from('seleccion_especial')
-          .select('id, restaurante_id, vino_id, orden, activo, vinos(nombre, bodega, tipo, region, uva, anada, precio_copa, precio_botella, notas_cata)')
+          .select('id, restaurante_id, vino_id, orden, activo, vinos(nombre, bodega, tipo, region, uva, anada, precio_copa, precio_botella, notas_cata, foto_url)')
           .eq('restaurante_id', restaurante.id)
           .eq('activo', true)
           .order('orden'),
@@ -215,6 +215,7 @@ export async function GET(req, { params }) {
       const controlStockActivo = vinosActivos.some(vino => Number(vino.stock) > 0)
       respuesta.vinos = vinosActivos.map(vino => ({
         ...seleccionarCampos(vino, CAMPOS_VINO),
+        foto_url: normalizarUrlPublica(vino.foto_url, { imageOnly: true }),
         internacional: vino.internacional === true || isInternationalWine(vino),
         disponible: !controlStockActivo || Number(vino.stock) > 0,
       }))
