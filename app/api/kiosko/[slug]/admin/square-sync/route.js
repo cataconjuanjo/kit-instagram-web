@@ -103,7 +103,8 @@ export async function POST(request, { params }) {
       }
 
       if (existingMap[item.id]) {
-        toUpdate.push({ id: existingMap[item.id], ...base })
+        // Incluimos tienda_id para que el upsert nunca falle por null si la fila desapareciera
+        toUpdate.push({ id: existingMap[item.id], tienda_id: tiendaId, square_catalog_id: item.id, ...base })
       } else {
         toInsert.push({ tienda_id: tiendaId, square_catalog_id: item.id, stock: 0, categoria: detectarCategoria(d, categoryMap), ...base })
       }
@@ -111,14 +112,16 @@ export async function POST(request, { params }) {
 
     let insertados = 0, actualizados = 0, errores = 0
 
-    // 1 sola INSERT batch para todos los nuevos
+    // Upsert por square_catalog_id: maneja duplicados de syncs anteriores con tienda_id incorrecto
     if (toInsert.length > 0) {
-      const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
+      const { error } = await supabaseAdmin
+        .from('vinos_tienda')
+        .upsert(toInsert, { onConflict: 'square_catalog_id' })
       if (error) { console.error('[square-sync] insert error:', error.message); errores += toInsert.length }
       else insertados = toInsert.length
     }
 
-    // 1 sola UPSERT batch para los existentes (Supabase upsert por id)
+    // Upsert por id para los ya conocidos
     if (toUpdate.length > 0) {
       const { error } = await supabaseAdmin
         .from('vinos_tienda')
