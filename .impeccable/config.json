@@ -1,0 +1,32 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-color",
+        "value": "#6b1a2e",
+        "createdAt": "2026-08-01T05:48:54.456Z",
+        "reason": "Color de categoria del bodega chart — Tintos"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#c4a84a",
+        "createdAt": "2026-08-01T05:48:54.531Z",
+        "reason": "Color de categoria del bodega chart — Blancos"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#a08c72",
+        "createdAt": "2026-08-01T05:48:54.596Z",
+        "reason": "Color de categoria del bodega chart — Espumosos"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#c4707a",
+        "createdAt": "2026-08-01T05:48:54.661Z",
+        "reason": "Color de categoria del bodega chart — Rosados"
+      }
+    ]
+  }
+}

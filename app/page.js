@@ -78,10 +78,10 @@ export default function Home() {
       <section className="hero hero-consultoria">
         <div className="hero-copy">
           <p className="eyebrow">Control de bodega, margen y experiencia de sala</p>
-          <h1>Consultoría de carta de vinos para restaurantes en Málaga y España.</h1>
+          <h1>Consultoría online de carta de vinos para restaurantes.</h1>
           <p className="lead">
             Ayudo a restaurantes, hoteles boutique y espacios singulares a saber qué tienen, qué margen deja cada
-            botella, qué falta por reponer y cómo convertir la carta en venta real en sala.
+            botella, qué falta por reponer y cómo convertir la carta en venta real en sala, estés donde estés.
           </p>
           <div className="hero-actions">
             <Link href="#contacto" className="btn btn-primary">Reserva un diagnóstico</Link>
@@ -96,7 +96,10 @@ export default function Home() {
             No entrego recomendaciones que se quedan en un cajón. Analizo, rediseño, digitalizo y conecto carta,
             bodega, sala y reposición para que cada decisión tenga contexto.
           </p>
-          <div className="bodega-chart" aria-label="Ejemplo de análisis de bodega — datos simulados">
+          <span className="bodega-ejemplo-badge" aria-label="Datos de ejemplo">
+            Datos de ejemplo
+          </span>
+          <div className="bodega-chart" aria-label="Ejemplo de análisis de bodega con datos simulados">
             {bodegaChart.map(({ label, pct, color, trend }) => (
               <div key={label} className="bodega-row">
                 <span className="bodega-cat">{label}</span>
@@ -109,7 +112,7 @@ export default function Home() {
                 </span>
               </div>
             ))}
-            <p className="bodega-caption">margen medio · rotación · datos simulados</p>
+            <p className="bodega-caption">margen medio · rotación · no datos reales</p>
           </div>
         </aside>
       </section>
@@ -175,7 +178,7 @@ export default function Home() {
 
       <section id="metodologia" className="section">
         <div className="section-head narrow">
-          <p className="eyebrow">Metodo</p>
+          <p className="eyebrow">Método</p>
           <h2>Del diagnóstico a la implantación.</h2>
         </div>
         <div className="steps">
@@ -191,7 +194,7 @@ export default function Home() {
 
       <section className="section split">
         <div>
-          <p className="eyebrow">Sobre mi</p>
+          <p className="eyebrow">Sobre mí</p>
           <h2>Soy Juanjo García. Ingeniero de formación, WSET Level 3 por vocación.</h2>
         </div>
         <div className="copy-stack">
@@ -204,6 +207,25 @@ export default function Home() {
             Acompaño a negocios que quieren profesionalizar su oferta de vinos sin convertirla en algo frío. El vino
             tiene que vender, sí. Pero también tiene que emocionar.
           </p>
+          <div className="sobre-credentials">
+            <div className="credential-item">
+              <span>Certificación</span>
+              <strong>WSET Level 3 Award in Wines</strong>
+            </div>
+            <div className="credential-item">
+              <span>Especialidad</span>
+              <strong>Consultoría online para hospitality</strong>
+            </div>
+            <a
+              href="https://instagram.com/cataconjuanjo"
+              className="credential-instagram"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Perfil de Instagram @cataconjuanjo"
+            >
+              @cataconjuanjo
+            </a>
+          </div>
         </div>
       </section>
 
@@ -223,13 +245,13 @@ export default function Home() {
         </div>
         <div className="section-inline-cta">
           <Link href="/recursos" className="btn btn-primary">Ver todos los recursos</Link>
-          <Link href="/formación-sala" className="btn btn-secondary">Formación de sala</Link>
+          <Link href="/formacion-sala" className="btn btn-secondary">Formación de sala</Link>
         </div>
       </section>
 
       <section className="section proof-section">
         <div className="section-head">
-          <p className="eyebrow">Primer paso</p>
+          <p className="eyebrow">Por dónde empezar</p>
           <h2>Antes de cambiar tu carta, entendamos qué está pasando.</h2>
         </div>
         <div className="proof-grid">
@@ -267,6 +289,9 @@ export default function Home() {
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
             </a>
           </div>
+          <p className="contact-email-visible">
+            <a href="mailto:cataconjuanjo@gmail.com">cataconjuanjo@gmail.com</a>
+          </p>
         </div>
         <LeadForm source="Home Cata con Juanjo" />
       </section>

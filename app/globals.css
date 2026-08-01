@@ -508,11 +508,11 @@ h3 {
 .bodega-trend--down { color: #e09090; }
 
 .bodega-caption {
-  font-size: 0.61rem;
-  color: rgba(255, 250, 241, 0.26);
+  font-size: 0.72rem;
+  color: rgba(255, 250, 241, 0.62);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-top: 6px;
+  margin-top: 8px;
   text-align: right;
 }
 
@@ -1469,6 +1469,186 @@ h3 {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 1.25rem;
   font-weight: 400;
+}
+
+.cv-audience-section {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,250,243,0.96)),
+    #fff;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.audience-section-head {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(320px, 0.58fr);
+  gap: clamp(28px, 6vw, 76px);
+  align-items: end;
+  margin-bottom: clamp(34px, 5vw, 64px);
+}
+
+.audience-section-head h2 {
+  max-width: 760px;
+}
+
+.audience-section-head > p {
+  max-width: 520px;
+  margin: 0 0 8px;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.audience-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(20px, 3vw, 32px);
+}
+
+.audience-card {
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(175,139,82,0.11), transparent 38%),
+    #fffaf3;
+  padding: clamp(28px, 4.4vw, 52px);
+  box-shadow: 0 22px 64px rgba(35,20,12,0.08);
+}
+
+.audience-card:nth-child(2) {
+  border-color: rgba(116,34,61,0.32);
+  background:
+    linear-gradient(145deg, rgba(175,139,82,0.16), transparent 42%),
+    var(--wine-deep);
+  color: #fff;
+}
+
+.audience-card-head {
+  display: grid;
+  gap: 18px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(116,34,61,0.12);
+}
+
+.audience-card:nth-child(2) .audience-card-head {
+  border-bottom-color: rgba(255,255,255,0.13);
+}
+
+.audience-card h3 {
+  max-width: 620px;
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 1.04;
+}
+
+.audience-card p {
+  max-width: 660px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.78;
+}
+
+.audience-card:nth-child(2) p {
+  color: rgba(255,255,255,0.68);
+}
+
+.audience-card ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audience-card li {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.68);
+  color: var(--ink);
+  padding: 14px 14px 14px 34px;
+  font-size: 0.88rem;
+  font-weight: 760;
+  line-height: 1.45;
+}
+
+.audience-card li::before {
+  content: '';
+  position: absolute;
+  left: 16px;
+  top: 21px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gold);
+}
+
+.audience-card:nth-child(2) li {
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.86);
+}
+
+.audience-card:nth-child(2) .btn-secondary {
+  border-color: rgba(255,255,255,0.24);
+  background: rgba(255,255,255,0.08);
+  color: #fffaf3;
+}
+
+.audience-card:nth-child(2) .btn-secondary:hover {
+  border-color: rgba(255,255,255,0.36);
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+}
+
+.audience-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.audience-card .btn {
+  align-self: flex-start;
+}
+
+@media (max-width: 900px) {
+  .audience-section-head {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .audience-section-head > p {
+    max-width: 680px;
+  }
+
+  .audience-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audience-card {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .audience-card {
+    gap: 22px;
+    padding: 24px 20px;
+  }
+
+  .audience-card ul {
+    grid-template-columns: 1fr;
+  }
+
+  .audience-card h3 {
+    font-size: 2rem;
+  }
 }
 
 .cv-product-split {
@@ -15160,5 +15340,108 @@ html, body {
     justify-content: center;
     width: 100%;
     max-width: 280px;
+  }
+}
+
+/* ===================================================================
+   Mejoras P1/P2 — Credenciales, email visible, proof cards
+   =================================================================== */
+
+/* Credenciales en sección Sobre mí */
+.sobre-credentials {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px 32px;
+  margin-top: 20px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.credential-item {
+  display: grid;
+  gap: 3px;
+}
+
+.credential-item span {
+  color: var(--gold);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.credential-item strong {
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.credential-instagram {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: end;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-decoration: none;
+  padding-bottom: 2px;
+  border-bottom: 1px solid transparent;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.credential-instagram:hover {
+  color: var(--wine);
+  border-bottom-color: var(--wine);
+}
+
+/* Email visible en sección contacto */
+.contact-email-visible {
+  margin: 14px 0 0;
+  font-size: 0.88rem;
+}
+
+.contact-email-visible a {
+  color: rgba(255, 250, 241, 0.65);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  border-bottom: 1px solid rgba(255, 250, 241, 0.2);
+  padding-bottom: 1px;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.contact-email-visible a:hover {
+  color: rgba(255, 250, 241, 0.95);
+  border-bottom-color: rgba(255, 250, 241, 0.5);
+}
+
+/* Proof cards con tipografía Cormorant en site-shell */
+.site-shell .proof-card strong {
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 1.6rem;
+  letter-spacing: -0.01em;
+}
+
+/* Badge "Ejemplo" en bodega chart */
+.bodega-ejemplo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  background: rgba(175, 139, 82, 0.14);
+  border: 1px solid rgba(175, 139, 82, 0.28);
+  border-radius: 999px;
+  color: rgba(175, 139, 82, 0.9);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 640px) {
+  .sobre-credentials {
+    gap: 14px 20px;
   }
 }
