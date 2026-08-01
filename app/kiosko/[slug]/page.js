@@ -1171,7 +1171,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMo
   const [error, setError] = useState('')
   const textareaRef = useRef(null)
 
-  useEffect(() => { textareaRef.current?.focus() }, [])
+  // No autoFocus: opening keyboard immediately would exit fullscreen on some devices
 
   async function consultar(texto) {
     const q = texto || consulta
@@ -1465,14 +1465,38 @@ export default function KioskoPage() {
   }, [tienda?.font_family])
 
   useEffect(() => {
+    let keyboardCausedExit = false
+
     function onFsChange() {
-      setIsFullscreen(!!(document.fullscreenElement || document.webkitFullscreenElement))
+      const inFs = !!(document.fullscreenElement || document.webkitFullscreenElement)
+      setIsFullscreen(inFs)
+      if (!inFs) {
+        const active = document.activeElement
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+          keyboardCausedExit = true
+        }
+      } else {
+        keyboardCausedExit = false
+      }
     }
+
+    function onTouchStart() {
+      if (!keyboardCausedExit) return
+      const active = document.activeElement
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return
+      keyboardCausedExit = false
+      const el = document.documentElement
+      if (el.requestFullscreen) el.requestFullscreen().catch(() => {})
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
+    }
+
     document.addEventListener('fullscreenchange', onFsChange)
     document.addEventListener('webkitfullscreenchange', onFsChange)
+    document.addEventListener('touchstart', onTouchStart, { passive: true })
     return () => {
       document.removeEventListener('fullscreenchange', onFsChange)
       document.removeEventListener('webkitfullscreenchange', onFsChange)
+      document.removeEventListener('touchstart', onTouchStart)
     }
   }, [])
 
