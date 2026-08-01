@@ -69,8 +69,8 @@
 }
 
 .welcomeLogoHero {
-  max-width: 340px;
-  max-height: 220px;
+  max-width: 420px;
+  max-height: 260px;
   width: auto;
   object-fit: contain;
   margin-bottom: .5rem;
@@ -1829,8 +1829,8 @@
 }
 
 .viewBrandLogo {
-  max-width: 72px;
-  max-height: 72px;
+  max-width: 180px;
+  max-height: 100px;
   object-fit: contain;
 }
 

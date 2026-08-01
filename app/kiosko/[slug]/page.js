@@ -1023,7 +1023,6 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
             ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.viewBrandLogo} />
             : <div className={styles.viewBrandLogoFallback}>{tienda.nombre[0]}</div>
           }
-          <p className={styles.viewBrandNombre}>{tienda.nombre}</p>
           <span className={styles.viewBrandCredit}>× @cataconjuanjo</span>
         </div>
       )}
@@ -1234,7 +1233,6 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMo
             ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.viewBrandLogo} />
             : <div className={styles.viewBrandLogoFallback}>{tienda.nombre[0]}</div>
           }
-          <p className={styles.viewBrandNombre}>{tienda.nombre}</p>
           <span className={styles.viewBrandCredit}>× @cataconjuanjo</span>
         </div>
       )}
