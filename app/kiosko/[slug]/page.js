@@ -1582,24 +1582,25 @@ export default function KioskoPage() {
         <div className={styles.welcomeView}>
           {/* Cabecera: logo, nombre, descripción */}
           <div className={styles.welcomeContent}>
-            {tienda?.logo_url && (
+            {tienda?.logo_url ? (
               <SafeImage
                 src={tienda.logo_url}
                 alt={tienda?.nombre}
-                className={styles.welcomeLogo}
+                className={styles.welcomeLogoHero}
                 fallback={<LogoFallback nombre={tienda?.nombre} />}
               />
+            ) : (
+              <h1
+                className={styles.welcomeNombre}
+                style={{ color: colorAcento }}
+                onMouseDown={onLogoPress}
+                onMouseUp={onLogoRelease}
+                onTouchStart={onLogoPress}
+                onTouchEnd={onLogoRelease}
+              >
+                {tienda?.nombre || 'Nuestra Selección de Vinos'}
+              </h1>
             )}
-            <h1
-              className={styles.welcomeNombre}
-              style={{ color: colorAcento }}
-              onMouseDown={onLogoPress}
-              onMouseUp={onLogoRelease}
-              onTouchStart={onLogoPress}
-              onTouchEnd={onLogoRelease}
-            >
-              {tienda?.nombre || 'Nuestra Selección de Vinos'}
-            </h1>
             {tienda?.descripcion && <p className={styles.welcomeDesc}>{tienda.descripcion}</p>}
             <div className={styles.welcomeStats}>
               <span>{T[lang].referencias(vinos.length)}</span>

@@ -68,6 +68,14 @@
   object-fit: contain;
 }
 
+.welcomeLogoHero {
+  max-width: 340px;
+  max-height: 220px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: .5rem;
+}
+
 .welcomeLogoFallback {
   width: 76px;
   height: 76px;
