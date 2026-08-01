@@ -1419,8 +1419,8 @@ export default function KioskoPage() {
 
   useEffect(() => {
     if (!slug) return
-    async function cargar() {
-      setCargando(true); setError('')
+    async function cargar(silencioso = false) {
+      if (!silencioso) { setCargando(true); setError('') }
       try {
         const [r1, r2] = await Promise.all([
           fetch(`/api/kiosko/${slug}/vinos`),
@@ -1430,10 +1430,12 @@ export default function KioskoPage() {
         if (!r1.ok) throw new Error(d1.error || 'Tienda no encontrada')
         setVinos(d1.vinos || [])
         if (r2.ok) { const d2 = await r2.json(); setTienda(d2.tienda) }
-      } catch (err) { setError(err.message) }
-      finally { setCargando(false) }
+      } catch (err) { if (!silencioso) setError(err.message) }
+      finally { if (!silencioso) setCargando(false) }
     }
     cargar()
+    const intervalo = setInterval(() => cargar(true), 5 * 60 * 1000)
+    return () => clearInterval(intervalo)
   }, [slug])
 
   const resetIdle = useCallback(() => {
