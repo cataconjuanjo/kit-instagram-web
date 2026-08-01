@@ -5,12 +5,15 @@ import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN
 const SQUARE_API_BASE     = 'https://connect.squareup.com'
 
+const WINE_KEYWORDS = /vino|wine|bodega|winery/i
+
 async function fetchAllCatalogItems() {
   if (!SQUARE_ACCESS_TOKEN) throw new Error('SQUARE_ACCESS_TOKEN no configurado en Vercel')
 
-  const items    = []
-  const imageMap = {}
-  let cursor     = null
+  const items       = []
+  const imageMap    = {}
+  const categoryMap = {}  // category_id → name
+  let cursor        = null
 
   do {
     const body = { object_types: ['ITEM'], include_related_objects: true }
@@ -32,14 +35,26 @@ async function fetchAllCatalogItems() {
     const data = await res.json()
     items.push(...(data.objects || []))
     for (const rel of (data.related_objects || [])) {
-      if (rel.type === 'IMAGE' && rel.image_data?.url) {
-        imageMap[rel.id] = rel.image_data.url
-      }
+      if (rel.type === 'IMAGE' && rel.image_data?.url) imageMap[rel.id] = rel.image_data.url
+      if (rel.type === 'CATEGORY' && rel.category_data?.name) categoryMap[rel.id] = rel.category_data.name
     }
     cursor = data.cursor || null
   } while (cursor)
 
-  return { items, imageMap }
+  return { items, imageMap, categoryMap }
+}
+
+function detectarCategoria(itemData, categoryMap) {
+  // Categoria explícita de Square
+  const catIds = [
+    itemData.category_id,
+    ...(itemData.categories || []).map(c => c.id),
+  ].filter(Boolean)
+  for (const id of catIds) {
+    if (categoryMap[id] && WINE_KEYWORDS.test(categoryMap[id])) return 'vino'
+  }
+  // Ninguna categoría de vino encontrada
+  return 'otro'
 }
 
 export async function POST(request, { params }) {
@@ -49,7 +64,7 @@ export async function POST(request, { params }) {
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status || 403 })
 
   try {
-    const { items, imageMap } = await fetchAllCatalogItems()
+    const { items, imageMap, categoryMap } = await fetchAllCatalogItems()
 
     const tiendaId = access.tienda.id
 
@@ -90,7 +105,7 @@ export async function POST(request, { params }) {
       if (existingMap[item.id]) {
         toUpdate.push({ id: existingMap[item.id], ...base })
       } else {
-        toInsert.push({ tienda_id: tiendaId, square_catalog_id: item.id, stock: 0, categoria: 'otro', ...base })
+        toInsert.push({ tienda_id: tiendaId, square_catalog_id: item.id, stock: 0, categoria: detectarCategoria(d, categoryMap), ...base })
       }
     }
 

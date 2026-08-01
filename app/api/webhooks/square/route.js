@@ -33,9 +33,20 @@ async function fetchOrder(orderId) {
   return json.order
 }
 
+const WINE_KEYWORDS = /vino|wine|bodega|winery/i
+
+function detectarCategoria(itemData, categoryMap) {
+  const catIds = [itemData.category_id, ...(itemData.categories || []).map(c => c.id)].filter(Boolean)
+  for (const id of catIds) {
+    if (categoryMap[id] && WINE_KEYWORDS.test(categoryMap[id])) return 'vino'
+  }
+  return 'otro'
+}
+
 async function searchRecentCatalogItems() {
-  const items = []
-  const imageMap = {}  // image_id → url
+  const items       = []
+  const imageMap    = {}
+  const categoryMap = {}
   let cursor = null
   do {
     const body = { object_types: ['ITEM'], include_related_objects: true }
@@ -53,13 +64,12 @@ async function searchRecentCatalogItems() {
     const data = await res.json()
     items.push(...(data.objects || []))
     for (const rel of (data.related_objects || [])) {
-      if (rel.type === 'IMAGE' && rel.image_data?.url) {
-        imageMap[rel.id] = rel.image_data.url
-      }
+      if (rel.type === 'IMAGE' && rel.image_data?.url) imageMap[rel.id] = rel.image_data.url
+      if (rel.type === 'CATEGORY' && rel.category_data?.name) categoryMap[rel.id] = rel.category_data.name
     }
     cursor = data.cursor || null
   } while (cursor)
-  return { items, imageMap }
+  return { items, imageMap, categoryMap }
 }
 
 // ── Catalog upsert handler ────────────────────────────────────────────────────
@@ -78,7 +88,7 @@ async function handleCatalogUpdate(tiendaSlug) {
   const tiendaId = tienda.id
 
   // Square no incluye qué cambió en el evento — buscamos todos los ITEM
-  const { items, imageMap } = await searchRecentCatalogItems()
+  const { items, imageMap, categoryMap } = await searchRecentCatalogItems()
 
   // Fetch existing wines with square_catalog_id for this store (batch)
   const { data: existentes } = await supabaseAdmin
@@ -114,7 +124,7 @@ async function handleCatalogUpdate(tiendaSlug) {
     if (existingMap[item.id]) {
       toUpdate.push({ id: existingMap[item.id], ...base })
     } else {
-      toInsert.push({ tienda_id: tiendaId, square_catalog_id: item.id, stock: 0, categoria: 'otro', ...base })
+      toInsert.push({ tienda_id: tiendaId, square_catalog_id: item.id, stock: 0, categoria: detectarCategoria(d, categoryMap), ...base })
     }
   }
 
