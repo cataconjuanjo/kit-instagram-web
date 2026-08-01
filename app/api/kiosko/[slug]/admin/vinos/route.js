@@ -13,6 +13,7 @@ export async function GET(request, { params }) {
     .eq('tienda_id', access.tienda.id)
     .order('destacado', { ascending: false })
     .order('nombre')
+    .limit(5000)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

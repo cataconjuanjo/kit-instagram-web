@@ -29,6 +29,7 @@ export async function GET(request, { params }) {
     .or('categoria.eq.vino,categoria.is.null')
     .order('destacado', { ascending: false })
     .order('nombre')
+    .limit(5000)
 
   const tipo        = searchParams.get('tipo')
   const uva         = searchParams.get('uva')
