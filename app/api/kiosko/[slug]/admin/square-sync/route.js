@@ -125,12 +125,13 @@ export async function POST(request, { params }) {
       if (itemId !== undefined) itemStockMap[itemId] = qty
     }
 
-    // Todos los productos de esta tienda que ya tienen square_catalog_id
+    // Buscar por square_catalog_id sin filtrar por tienda_id:
+    // así encontramos filas con tienda_id incorrecto y las corregimos en el upsert
+    const squareItemIds = items.filter(i => i.type === 'ITEM').map(i => i.id)
     const { data: existentes } = await supabaseAdmin
       .from('vinos_tienda')
       .select('id, square_catalog_id')
-      .eq('tienda_id', tiendaId)
-      .not('square_catalog_id', 'is', null)
+      .in('square_catalog_id', squareItemIds)
 
     const existingMap = {}
     for (const v of (existentes || [])) existingMap[v.square_catalog_id] = v.id
