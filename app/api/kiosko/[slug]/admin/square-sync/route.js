@@ -196,8 +196,34 @@ export async function POST(request, { params }) {
 
     if (toInsert.length > 0) {
       const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
-      if (error) { console.error('[square-sync] insert error:', error.message); errores += toInsert.length }
-      else insertados = toInsert.length
+      if (error) {
+        // Duplicate key = fila ya existe con tienda_id incorrecto; recuperar por square_catalog_id y reclasificar como update
+        if (error.message.includes('duplicate key') || error.code === '23505') {
+          console.warn('[square-sync] insert conflicto, rescatando por square_catalog_id...')
+          const rescatados = []
+          for (const row of toInsert) {
+            const { data: existente } = await supabaseAdmin
+              .from('vinos_tienda')
+              .select('id')
+              .eq('square_catalog_id', row.square_catalog_id)
+              .maybeSingle()
+            if (existente) rescatados.push({ ...row, id: existente.id })
+            else errores++
+          }
+          if (rescatados.length > 0) {
+            const { error: e2 } = await supabaseAdmin
+              .from('vinos_tienda')
+              .upsert(rescatados, { onConflict: 'id' })
+            if (e2) { console.error('[square-sync] rescue upsert error:', e2.message); errores += rescatados.length }
+            else { insertados = rescatados.length }
+          }
+        } else {
+          console.error('[square-sync] insert error:', error.message)
+          errores += toInsert.length
+        }
+      } else {
+        insertados = toInsert.length
+      }
     }
 
     if (toUpdate.length > 0) {
