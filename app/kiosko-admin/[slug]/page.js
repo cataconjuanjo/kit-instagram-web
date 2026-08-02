@@ -2194,7 +2194,7 @@ export default function AdminKioskoPage() {
                     </span>
                   </div>
                   <div className={styles.analiticaKpi}>
-                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{Object.keys(analitica.ventasPorVino || {}).length}</span>
+                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{(() => { const ids = new Set(vinosVino.map(v => String(v.id))); return Object.keys(analitica.ventasPorVino || {}).filter(id => ids.has(id)).length })()}</span>
                     <span className={styles.analiticaKpiLabel}>Vinos vendidos (TPV)</span>
                   </div>
                   <div className={styles.analiticaKpi}>
@@ -2367,7 +2367,7 @@ export default function AdminKioskoPage() {
       {/* Vinos sin movimiento */}
       {tab === 'analitica' && esPremium && subTabAnalitica === 'ventas' && analitica && (() => {
         const vp = analitica.ventasPorVino || {}
-        const sinMovimiento = vinos.filter(v =>
+        const sinMovimiento = vinosVino.filter(v =>
           v.activo && Number(v.precio_pvp) > 0 && Number(v.stock ?? 0) > 0 && !vp[v.id]
         ).sort((a, b) => Number(b.stock) - Number(a.stock))
         if (!sinMovimiento.length) return null
@@ -2473,7 +2473,7 @@ export default function AdminKioskoPage() {
         const vp = analitica.ventasPorVino
         const tp = analitica.tendenciaPorVino || {}
         const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: '#c03030' }
-        const filas = vinos
+        const filas = vinosVino
           .filter(v => v.activo && vp[v.id])
           .map(v => {
             const uds      = vp[v.id] || 0
