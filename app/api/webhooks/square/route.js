@@ -153,11 +153,19 @@ async function handleInventoryUpdate(event) {
     const catalogId  = count.catalog_object_id
     const nuevoStock = Math.max(0, parseInt(count.quantity, 10) || 0)
 
-    const { data: vino } = await supabaseAdmin
+    // inventory_counts también usa variation IDs — buscar por square_variation_id primero
+    let { data: vino } = await supabaseAdmin
       .from('vinos_tienda')
       .select('id, stock')
-      .eq('square_catalog_id', catalogId)
-      .single()
+      .eq('square_variation_id', catalogId)
+      .maybeSingle()
+    if (!vino) {
+      ;({ data: vino } = await supabaseAdmin
+        .from('vinos_tienda')
+        .select('id, stock')
+        .eq('square_catalog_id', catalogId)
+        .maybeSingle())
+    }
 
     if (!vino) continue
 
@@ -248,11 +256,20 @@ export async function POST(request) {
       const catalogId = li.catalog_object_id
       const qty       = parseInt(li.quantity, 10) || 1
 
-      const { data: vino } = await supabaseAdmin
+      // catalog_object_id en pedidos Square es el ID de variación (ITEM_VARIATION),
+      // no el ITEM — buscamos primero por square_variation_id y usamos square_catalog_id como fallback
+      let { data: vino } = await supabaseAdmin
         .from('vinos_tienda')
         .select('id, nombre, stock')
-        .eq('square_catalog_id', catalogId)
-        .single()
+        .eq('square_variation_id', catalogId)
+        .maybeSingle()
+      if (!vino) {
+        ;({ data: vino } = await supabaseAdmin
+          .from('vinos_tienda')
+          .select('id, nombre, stock')
+          .eq('square_catalog_id', catalogId)
+          .maybeSingle())
+      }
 
       if (!vino) {
         lineas.push({ catalog_object_id: catalogId, quantity: qty, status: 'not_found' })
