@@ -223,15 +223,15 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, skipped: `status:${paymentStatus}` })
   }
 
-  // Idempotencia: check if already processed
+  // Idempotencia nivel evento: mismo event_id ya procesado
   const { data: yaExiste } = await supabaseAdmin
     .from('square_sync_log')
     .select('id')
     .eq('event_id', eventId)
-    .single()
+    .maybeSingle()
 
   if (yaExiste) {
-    return NextResponse.json({ ok: true, duplicate: true })
+    return NextResponse.json({ ok: true, duplicate: 'event' })
   }
 
   const payment = event.data?.object?.payment
@@ -241,6 +241,30 @@ export async function POST(request) {
 
   const paymentId = payment.id
   const orderId   = payment.order_id
+  const tiendaSlug = 'sibaris-gourmet'
+
+  // Idempotencia nivel pago: mismo payment_id ya descontó stock en un evento anterior
+  const { data: pagoAnterior } = await supabaseAdmin
+    .from('square_sync_log')
+    .select('id, lineas')
+    .eq('payment_id', paymentId)
+    .eq('ok', true)
+    .maybeSingle()
+
+  const yaDescontado = pagoAnterior?.lineas?.some(l => l.status === 'ok')
+  if (yaDescontado) {
+    await supabaseAdmin.from('square_sync_log').insert({
+      event_id:    eventId,
+      payment_id:  paymentId,
+      order_id:    orderId,
+      tienda_slug: tiendaSlug,
+      lineas:      [],
+      ok:          true,
+      error_msg:   'already_processed',
+    })
+    console.log(`[square-webhook] Pago ${paymentId} ya procesado, evento ${eventId} ignorado`)
+    return NextResponse.json({ ok: true, duplicate: 'payment', payment_id: paymentId })
+  }
 
   let order, lineas = [], errMsg = null
   try {
@@ -296,9 +320,6 @@ export async function POST(request) {
     errMsg = e.message
     console.error('[square-webhook] Error procesando pago:', e.message)
   }
-
-  // Determine tienda slug from the merchant info or location
-  const tiendaSlug = 'sibaris-gourmet'
 
   // Log the processed event (for idempotency + audit)
   await supabaseAdmin.from('square_sync_log').insert({
