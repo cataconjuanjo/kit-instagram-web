@@ -69,6 +69,7 @@ const WELCOME_ACTION_EMOJIS = {
   browse: '🍾',
   choose: '🤔',
   pairing: '🍽️',
+  cesta: '🎁',
 }
 
 const MARIDAJE_ICONOS = [
@@ -358,6 +359,21 @@ function KioskIcon({ name }) {
       <path d="M16 24v16" />
       <path d="M31 8c4 3 6 8 5 14-.5 3-2 5-5 6v12" />
       <path d="M29 8v32" />
+    </svg>
+  )
+
+  if (name === 'cesta') return (
+    <svg className={styles.welcomeActionSvg} viewBox="0 0 48 48" aria-hidden="true">
+      {/* caja */}
+      <rect x="8" y="23" width="32" height="19" rx="2"/>
+      {/* tapa */}
+      <rect x="6" y="16" width="36" height="8" rx="2"/>
+      {/* lazo vertical */}
+      <path d="M24 16v26"/>
+      {/* lazo izquierdo */}
+      <path d="M24 16 C18 5 8 10 14 16 C18 19 24 16"/>
+      {/* lazo derecho */}
+      <path d="M24 16 C30 5 40 10 34 16 C30 19 24 16"/>
     </svg>
   )
 
@@ -2279,7 +2295,7 @@ export default function KioskoPage() {
               <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.CESTA)} type="button"
                 style={{ '--acento': colorAcento }}>
                 <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
-                  <span style={{ fontSize: 'clamp(3rem, 6vw, 5rem)', lineHeight: 1 }}>🎁</span>
+                  <WelcomeActionIcon name="cesta" variant={iconStyle} />
                 </span>
                 <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>Cesta regalo</span>
               </button>
