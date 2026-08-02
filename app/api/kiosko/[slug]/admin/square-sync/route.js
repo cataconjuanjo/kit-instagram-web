@@ -197,17 +197,23 @@ export async function POST(request, { params }) {
     if (toInsert.length > 0) {
       const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
       if (error) {
-        // Duplicate key = fila ya existe con tienda_id incorrecto; recuperar por square_catalog_id y reclasificar como update
         if (error.message.includes('duplicate key') || error.code === '23505') {
-          console.warn('[square-sync] insert conflicto, rescatando por square_catalog_id...')
+          // Rescate por lotes: una sola query IN en vez de N queries individuales
+          console.warn(`[square-sync] insert conflicto (${toInsert.length} filas), rescatando por lotes...`)
+          const conflictIds = toInsert.map(r => r.square_catalog_id)
+          const BATCH = 500
+          const idMap  = {}  // square_catalog_id → id (PK)
+          for (let i = 0; i < conflictIds.length; i += BATCH) {
+            const { data: rows } = await supabaseAdmin
+              .from('vinos_tienda')
+              .select('id, square_catalog_id')
+              .in('square_catalog_id', conflictIds.slice(i, i + BATCH))
+            for (const r of (rows || [])) idMap[r.square_catalog_id] = r.id
+          }
           const rescatados = []
           for (const row of toInsert) {
-            const { data: existente } = await supabaseAdmin
-              .from('vinos_tienda')
-              .select('id')
-              .eq('square_catalog_id', row.square_catalog_id)
-              .maybeSingle()
-            if (existente) rescatados.push({ ...row, id: existente.id })
+            const pk = idMap[row.square_catalog_id]
+            if (pk) rescatados.push({ ...row, id: pk })
             else errores++
           }
           if (rescatados.length > 0) {
@@ -215,7 +221,7 @@ export async function POST(request, { params }) {
               .from('vinos_tienda')
               .upsert(rescatados, { onConflict: 'id' })
             if (e2) { console.error('[square-sync] rescue upsert error:', e2.message); errores += rescatados.length }
-            else { insertados = rescatados.length }
+            else insertados = rescatados.length
           }
         } else {
           console.error('[square-sync] insert error:', error.message)

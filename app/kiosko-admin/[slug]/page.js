@@ -1224,7 +1224,7 @@ export default function AdminKioskoPage() {
   async function syncSquare() {
     setSquareSyncing(true); setSquareSyncResult(null)
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 25_000)
+    const timer = setTimeout(() => controller.abort(), 120_000)
     try {
       const res  = await fetch(`/api/kiosko/${slug}/admin/square-sync`, { method: 'POST', headers: authHeaders, signal: controller.signal })
       const data = await res.json()
