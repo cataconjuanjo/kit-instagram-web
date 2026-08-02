@@ -886,7 +886,7 @@ export default function AdminKioskoPage() {
   }, [tienda?.plan, tienda?.trial_used_seconds, tienda?.trial_expires_at, slug, previewTrial, esAdminUsuario])
 
   const [busqueda, setBusqueda]           = useState('')
-  const [verSinStock, setVerSinStock]     = useState(false)
+  const [verInactivos, setVerInactivos]   = useState(false)
   const [filtroTipo, setFiltroTipo]       = useState('')
   const [filtroEstado, setFiltroEstado]   = useState('todos')
   const [filtroRegion, setFiltroRegion]   = useState('')
@@ -939,7 +939,7 @@ export default function AdminKioskoPage() {
     return () => clearInterval(iv)
   }, [slug])
 
-  useEffect(() => { setPaginaActual(1) }, [busqueda, filtroTipo, filtroEstado, filtroCalidad, filtroDestacado, ordenPor, ordenDir, porPagina, verSinStock])
+  useEffect(() => { setPaginaActual(1) }, [busqueda, filtroTipo, filtroEstado, filtroCalidad, filtroDestacado, ordenPor, ordenDir, porPagina, verInactivos])
 
   useEffect(() => {
     if (!moreMenuOpen) return
@@ -1330,7 +1330,7 @@ export default function AdminKioskoPage() {
   const vinosFiltrados = useMemo(() => {
     return vinosVino
       .filter(v => {
-        if (!verSinStock && !(Number(v.stock) > 0)) return false
+        if (!verInactivos && filtroEstado !== 'inactivo' && v.activo === false) return false
         if (filtroTipo      && v.tipo   !== filtroTipo)   return false
         if (filtroEstado === 'activo'   && !v.activo)     return false
         if (filtroEstado === 'inactivo' &&  v.activo)     return false
@@ -1366,7 +1366,7 @@ export default function AdminKioskoPage() {
         if (va > vb) return ordenDir === 'asc' ? 1 : -1
         return 0
       })
-  }, [vinosVino, filtroTipo, filtroEstado, filtroRegion, filtroPais, filtroStock, filtroCalidad, filtroDestacado, precioMin, precioMax, busqueda, ordenPor, ordenDir, verSinStock])
+  }, [vinosVino, filtroTipo, filtroEstado, filtroRegion, filtroPais, filtroStock, filtroCalidad, filtroDestacado, precioMin, precioMax, busqueda, ordenPor, ordenDir, verInactivos])
 
   const totalPaginas   = Math.ceil(vinosFiltrados.length / porPagina)
   const vinosPaginados = useMemo(() => {
@@ -1414,12 +1414,13 @@ export default function AdminKioskoPage() {
   }
 
   // Stats (memoizadas — solo sobre vinos, no otros productos)
-  const { sinFoto, sinPrecio, sinCoste, sinStock, nActivos, nDestacados, conFichaIA } = useMemo(() => ({
+  const { sinFoto, sinPrecio, sinCoste, sinStock, nActivos, nInactivos, nDestacados, conFichaIA } = useMemo(() => ({
     sinFoto:     vinosVino.filter(v => v.activo !== false && !v.foto_url).length,
     sinPrecio:   vinosVino.filter(v => v.activo !== false && !v.precio_pvp).length,
     sinCoste:    vinosVino.filter(v => v.activo !== false && v.precio_pvp && !v.precio_coste).length,
     sinStock:    vinosVino.filter(v => v.activo !== false && !Number(v.stock)).length,
     nActivos:    vinosVino.filter(v => v.activo).length,
+    nInactivos:  vinosVino.filter(v => v.activo === false).length,
     nDestacados: vinosVino.filter(v => v.destacado).length,
     conFichaIA:  vinosVino.filter(v => v.has_ficha_ia).length,
   }), [vinosVino])
@@ -2859,11 +2860,11 @@ export default function AdminKioskoPage() {
             </div>
           )}
         </div>
-        {sinStock > 0 && (
+        {nInactivos > 0 && (
           <button type="button"
-            className={`${styles.filtrosBtn} ${verSinStock ? styles.filtrosBtnActivo : ''}`}
-            onClick={() => setVerSinStock(v => !v)}>
-            {verSinStock ? 'Ocultar sin stock' : `Sin stock (${sinStock})`}
+            className={`${styles.filtrosBtn} ${verInactivos ? styles.filtrosBtnActivo : ''}`}
+            onClick={() => setVerInactivos(v => !v)}>
+            {verInactivos ? 'Ocultar inactivos' : `Inactivos (${nInactivos})`}
           </button>
         )}
         <span className={styles.total}>{vinosFiltrados.length} / {vinosVino.length} vinos</span>
