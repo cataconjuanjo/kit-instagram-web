@@ -164,14 +164,17 @@ export async function POST(request, { params }) {
       const foto_url    = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
       const stock       = itemStockMap[item.id] ?? 0
 
+      const categoria = detectarCategoria(d, categoryMap)
+
       const base = {
         nombre,
         precio_pvp,
         descripcion,
         stock,
+        categoria,
         square_variation_id: variationId,
         ...(foto_url && { foto_url }),
-        activo:     !item.is_deleted,
+        activo:     !item.is_deleted && stock > 0,
         updated_at: new Date().toISOString(),
       }
 
@@ -182,7 +185,6 @@ export async function POST(request, { params }) {
           tienda_id:         tiendaId,
           square_catalog_id: item.id,
           stock,
-          categoria:         detectarCategoria(d, categoryMap),
           ...(uva    && { uva }),
           ...(bodega && { bodega }),
           ...(region && { region }),
