@@ -2390,16 +2390,12 @@ export default function KioskoPage() {
               <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].maridaje}</span>
             </button>
             {cestaActiva && (
-              <button className={`${styles.welcomeActionCard} ${styles.welcomeActionCardCesta}`} onClick={() => setView(VIEWS.CESTA)} type="button"
+              <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.CESTA)} type="button"
                 style={{ '--acento': colorAcento }}>
                 <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
                   <WelcomeActionIcon name="cesta" variant={iconStyle} />
                 </span>
                 <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].cesta}</span>
-                <span className={styles.cestaBadges}>
-                  <span className={styles.cestaBadgePremium}>★ Premium</span>
-                  <span className={styles.cestaBadgeBeta}>Beta</span>
-                </span>
               </button>
             )}
           </div>

@@ -395,7 +395,8 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         <div className={styles.ajustesSec}>
           <p className={styles.ajustesSecTitulo}>
             Cesta regalo
-            <span className={styles.premiumTag} style={{ background: '#e8a020', color: '#fff', marginLeft: '.5rem' }}>BETA</span>
+            <span className={styles.premiumTag}>Premium</span>
+            <span className={styles.premiumTag} style={{ background: '#e8a020', color: '#fff' }}>BETA</span>
           </p>
           <button
             type="button"
