@@ -104,6 +104,30 @@ const T = {
     sinLimite: 'Sin límite', miRango: '🎯 Mi rango', elegirPresupuesto: 'Elige tu presupuesto',
     buscarRango: '🔍 Buscar con este rango →', cancelar: 'Cancelar',
     buscandoVino: '⏳ Buscando el vino perfecto para ti…',
+    cestaTitle: 'Arma tu cesta regalo', cestaBack3: 'Cambiar preferencias',
+    cestaQ0: '¿Para quién es el regalo?', cestaQ1: '¿Cuál es tu presupuesto?', cestaQ2: '¿Alguna preferencia especial?',
+    cestaInputLabel: 'Introduce tu presupuesto en euros', cestaInputPh: 'p.ej. 85',
+    cestaContinuar: 'Continuar →', cestaVerOpciones: '← Ver opciones predefinidas',
+    cestaSinAlcohol: 'Sin alcohol', cestaVegano: 'Apto para veganos',
+    cestaCrear: 'Crear mi cesta →', cestaArmando: 'Armando tu cesta…',
+    cestaProductos: n => `${n} productos · Total:`, cestaPresupuesto: n => `/ ${n} € presupuesto`,
+    cestaVacia: 'No hay suficientes productos para este presupuesto y preferencias.',
+    cestaCambiarPresup: 'Cambiar presupuesto', cestaOtraCombi: '↺ Otra combinación', cestaNueva: 'Nueva cesta',
+    cestaOcasiones: {
+      enamorar:    { label: 'Para enamorar',    sub: 'pareja, aniversario…' },
+      impresionar: { label: 'Para impresionar', sub: 'jefe, médico, favor…' },
+      compartir:   { label: 'Para compartir',   sub: 'amigos, familia…' },
+      celebrar:    { label: 'Para celebrar',    sub: 'cumpleaños, ascenso…' },
+      capricho:    { label: 'Un capricho',      sub: 'para ti o alguien especial' },
+    },
+    cestaPresups: { '30': 'Hasta 30€', '50': 'Hasta 50€', '75': 'Hasta 75€', '100': 'Hasta 100€', libre: 'Importe libre' },
+    cestaFrases: {
+      enamorar:    ['Una cesta para decirlo sin palabras', 'El regalo que enamora', 'Para vuestro próximo momento juntos'],
+      impresionar: ['Una selección que habla por ti', 'Para ese momento en que el detalle importa', 'El regalo que deja huella'],
+      compartir:   ['Para convertir cualquier plan en noche épica', 'Para compartir lo mejor', 'La cesta de los grandes momentos juntos'],
+      celebrar:    ['Para brindar por lo que llega', 'Que suenen los corchos', 'La cesta de las grandes ocasiones'],
+      capricho:    ['Porque tú también te lo mereces', 'Para el placer sin excusas', 'Tu momento, tu selección'],
+    },
   },
   en: {
     explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?', cesta: 'Gift\nbasket',
@@ -127,6 +151,30 @@ const T = {
     sinLimite: 'No limit', miRango: '🎯 My range', elegirPresupuesto: 'Choose your budget',
     buscarRango: '🔍 Search this range →', cancelar: 'Cancel',
     buscandoVino: '⏳ Finding the perfect wine for you…',
+    cestaTitle: 'Build your gift basket', cestaBack3: 'Change preferences',
+    cestaQ0: 'Who is the gift for?', cestaQ1: 'What is your budget?', cestaQ2: 'Any special preferences?',
+    cestaInputLabel: 'Enter your budget in euros', cestaInputPh: 'e.g. 85',
+    cestaContinuar: 'Continue →', cestaVerOpciones: '← See preset options',
+    cestaSinAlcohol: 'Alcohol-free', cestaVegano: 'Vegan-friendly',
+    cestaCrear: 'Create my basket →', cestaArmando: 'Preparing your basket…',
+    cestaProductos: n => `${n} items · Total:`, cestaPresupuesto: n => `/ €${n} budget`,
+    cestaVacia: 'Not enough products for this budget and preferences.',
+    cestaCambiarPresup: 'Change budget', cestaOtraCombi: '↺ Try another combination', cestaNueva: 'New basket',
+    cestaOcasiones: {
+      enamorar:    { label: 'To impress',          sub: 'partner, anniversary…' },
+      impresionar: { label: 'To make a statement', sub: 'boss, doctor, favour…' },
+      compartir:   { label: 'To share',            sub: 'friends, family…' },
+      celebrar:    { label: 'To celebrate',        sub: 'birthday, promotion…' },
+      capricho:    { label: 'A treat',             sub: 'for you or someone special' },
+    },
+    cestaPresups: { '30': 'Up to €30', '50': 'Up to €50', '75': 'Up to €75', '100': 'Up to €100', libre: 'Custom amount' },
+    cestaFrases: {
+      enamorar:    ['A basket that speaks without words', 'The gift that enchants', 'For your next special moment together'],
+      impresionar: ['A selection that speaks for you', 'For when every detail matters', 'The gift that leaves a mark'],
+      compartir:   ['Turn any night into an epic one', 'Share the very best', 'The basket for great moments together'],
+      celebrar:    ["Toast to what's coming", 'Let the corks fly', 'The basket for big occasions'],
+      capricho:    ['Because you deserve it too', 'Pleasure, no excuses', 'Your moment, your selection'],
+    },
   },
   fr: {
     explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?', cesta: 'Panier\ncadeau',
@@ -150,6 +198,30 @@ const T = {
     sinLimite: 'Sans limite', miRango: '🎯 Ma fourchette', elegirPresupuesto: 'Choisissez votre budget',
     buscarRango: '🔍 Rechercher cette fourchette →', cancelar: 'Annuler',
     buscandoVino: '⏳ Nous cherchons le vin parfait pour vous…',
+    cestaTitle: 'Composez votre panier cadeau', cestaBack3: 'Changer les préférences',
+    cestaQ0: 'Pour qui est le cadeau ?', cestaQ1: 'Quel est votre budget ?', cestaQ2: 'Des préférences particulières ?',
+    cestaInputLabel: 'Entrez votre budget en euros', cestaInputPh: 'ex. 85',
+    cestaContinuar: 'Continuer →', cestaVerOpciones: '← Voir les options prédéfinies',
+    cestaSinAlcohol: 'Sans alcool', cestaVegano: 'Convient aux véganes',
+    cestaCrear: 'Créer mon panier →', cestaArmando: 'Préparation du panier…',
+    cestaProductos: n => `${n} produits · Total :`, cestaPresupuesto: n => `/ ${n} € de budget`,
+    cestaVacia: 'Pas assez de produits pour ce budget et ces préférences.',
+    cestaCambiarPresup: 'Changer le budget', cestaOtraCombi: '↺ Une autre combinaison', cestaNueva: 'Nouveau panier',
+    cestaOcasiones: {
+      enamorar:    { label: 'Pour séduire',       sub: 'couple, anniversaire…' },
+      impresionar: { label: 'Pour impressionner', sub: 'patron, médecin, service…' },
+      compartir:   { label: 'Pour partager',      sub: 'amis, famille…' },
+      celebrar:    { label: 'Pour fêter',         sub: 'anniversaire, promotion…' },
+      capricho:    { label: 'Un plaisir',         sub: "pour soi ou quelqu'un de spécial" },
+    },
+    cestaPresups: { '30': "Jusqu'à 30 €", '50': "Jusqu'à 50 €", '75': "Jusqu'à 75 €", '100': "Jusqu'à 100 €", libre: 'Montant libre' },
+    cestaFrases: {
+      enamorar:    ['Un panier qui parle sans mots', 'Le cadeau qui enchante', 'Pour votre prochain moment ensemble'],
+      impresionar: ['Une sélection qui parle pour vous', 'Pour les moments où chaque détail compte', 'Le cadeau qui laisse une trace'],
+      compartir:   ["Transformez n'importe quelle soirée en soirée épique", 'Pour partager le meilleur', 'Le panier des grands moments'],
+      celebrar:    ['Trinquer à ce qui arrive', 'Que les bouchons sautent', 'Le panier des grandes occasions'],
+      capricho:    ['Parce que vous le méritez aussi', 'Le plaisir sans excuses', 'Votre moment, votre sélection'],
+    },
   },
   de: {
     explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?', cesta: 'Geschenk-\nkorb',
@@ -173,6 +245,30 @@ const T = {
     sinLimite: 'Kein Limit', miRango: '🎯 Mein Bereich', elegirPresupuesto: 'Budget wählen',
     buscarRango: '🔍 In diesem Bereich suchen →', cancelar: 'Abbrechen',
     buscandoVino: '⏳ Wir suchen den perfekten Wein für Sie…',
+    cestaTitle: 'Stellen Sie Ihren Geschenkkorb zusammen', cestaBack3: 'Einstellungen ändern',
+    cestaQ0: 'Für wen ist das Geschenk?', cestaQ1: 'Was ist Ihr Budget?', cestaQ2: 'Besondere Vorlieben?',
+    cestaInputLabel: 'Budget in Euro eingeben', cestaInputPh: 'z.B. 85',
+    cestaContinuar: 'Weiter →', cestaVerOpciones: '← Vordefinierte Optionen',
+    cestaSinAlcohol: 'Alkoholfrei', cestaVegano: 'Veganfreundlich',
+    cestaCrear: 'Meinen Korb erstellen →', cestaArmando: 'Korb wird zusammengestellt…',
+    cestaProductos: n => `${n} Produkte · Gesamt:`, cestaPresupuesto: n => `/ ${n} € Budget`,
+    cestaVacia: 'Nicht genug Produkte für dieses Budget und diese Präferenzen.',
+    cestaCambiarPresup: 'Budget ändern', cestaOtraCombi: '↺ Andere Kombination', cestaNueva: 'Neuer Korb',
+    cestaOcasiones: {
+      enamorar:    { label: 'Zum Verlieben',    sub: 'Partner, Jubiläum…' },
+      impresionar: { label: 'Zum Beeindrucken', sub: 'Chef, Arzt, Gefallen…' },
+      compartir:   { label: 'Zum Teilen',       sub: 'Freunde, Familie…' },
+      celebrar:    { label: 'Zum Feiern',       sub: 'Geburtstag, Beförderung…' },
+      capricho:    { label: 'Eine Verwöhnung',  sub: 'für dich oder jemand Besonderes' },
+    },
+    cestaPresups: { '30': 'Bis 30 €', '50': 'Bis 50 €', '75': 'Bis 75 €', '100': 'Bis 100 €', libre: 'Freier Betrag' },
+    cestaFrases: {
+      enamorar:    ['Ein Korb, der ohne Worte spricht', 'Das Geschenk, das verzaubert', 'Für Euren nächsten besonderen Moment'],
+      impresionar: ['Eine Auswahl, die für Sie spricht', 'Wenn jedes Detail zählt', 'Das Geschenk, das bleibt'],
+      compartir:   ['Machen Sie jeden Abend unvergesslich', 'Teilen Sie das Beste', 'Der Korb für großartige Momente'],
+      celebrar:    ['Anstoßen auf das, was kommt', 'Die Korken knallen lassen', 'Der Korb für besondere Anlässe'],
+      capricho:    ['Denn Sie haben es sich verdient', 'Genuss ohne Ausreden', 'Ihr Moment, Ihre Auswahl'],
+    },
   },
 }
 
@@ -1187,7 +1283,7 @@ function CestaIcon({ name, className }) {
   return null
 }
 
-function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconStyle = 'emoji' }) {
+function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconStyle = 'emoji', lang = 'es' }) {
   const [step, setStep]               = useState(0)  // 0=ocasion 1=presupuesto 2=prefs 3=resultado
   const [ocasionId, setOcasionId]     = useState('')
   const [presupuesto, setPresupuesto] = useState(50)
@@ -1252,20 +1348,20 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconS
     <div className={styles.cestaView}>
       <div className={styles.wizardHeader}>
         <button className={styles.backBtn} onClick={volvAtras} type="button">
-          ← {step === 0 ? 'Inicio' : step === 3 ? 'Cambiar preferencias' : 'Atrás'}
+          ← {step === 0 ? T[lang].inicio : step === 3 ? T[lang].cestaBack3 : T[lang].atras}
         </button>
         <h2 className={styles.wizardTitle}>
           {iconStyle === 'lineal'
             ? <CestaIcon name="impresionar" className={styles.cestaLinealIconTitle} />
             : '🎁 '}
-          Arma tu cesta regalo
+          {T[lang].cestaTitle}
         </h2>
       </div>
 
       {/* Paso 0 — Ocasión */}
       {step === 0 && (
         <div className={styles.wizardStep}>
-          <p className={styles.wizardQuestion}>¿Para quién es el regalo?</p>
+          <p className={styles.wizardQuestion}>{T[lang].cestaQ0}</p>
           <div className={styles.cestaOcasiones}>
             {CESTA_OCASIONES.map(o => (
               <button key={o.id} type="button" className={styles.cestaOcasionBtn}
@@ -1275,8 +1371,8 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconS
                     ? <CestaIcon name={o.id} />
                     : o.emoji}
                 </span>
-                <span className={styles.cestaOcasionLabel}>{o.label}</span>
-                {o.sub && <span className={styles.cestaOcasionSub}>{o.sub}</span>}
+                <span className={styles.cestaOcasionLabel}>{T[lang].cestaOcasiones?.[o.id]?.label || o.label}</span>
+                {o.sub && <span className={styles.cestaOcasionSub}>{T[lang].cestaOcasiones?.[o.id]?.sub || o.sub}</span>}
               </button>
             ))}
           </div>
@@ -1286,24 +1382,24 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconS
       {/* Paso 1 — Presupuesto */}
       {step === 1 && (
         <div className={styles.wizardStep}>
-          <p className={styles.wizardQuestion}>¿Cuál es tu presupuesto?</p>
+          <p className={styles.wizardQuestion}>{T[lang].cestaQ1}</p>
           {!modoInput ? (
             <div className={styles.cestaPresupuestos}>
               {CESTA_PRESUPUESTOS.map(p => (
                 <button key={p.id} type="button" className={styles.cestaPresupuestoBtn}
                   style={{ '--acento': colorAcento }} onClick={() => elegirPresupuesto(p)}>
-                  {p.label}
+                  {T[lang].cestaPresups?.[p.id] || p.label}
                 </button>
               ))}
             </div>
           ) : (
             <div className={styles.cestaInputWrap}>
-              <p className={styles.cestaInputLabel}>Introduce tu presupuesto en euros</p>
+              <p className={styles.cestaInputLabel}>{T[lang].cestaInputLabel}</p>
               <div className={styles.cestaInputRow}>
                 <input
                   type="number"
                   className={styles.cestaInputNum}
-                  placeholder="p.ej. 85"
+                  placeholder={T[lang].cestaInputPh}
                   value={inputPresup}
                   min="10" max="500"
                   onChange={e => setInputPresup(e.target.value)}
@@ -1317,11 +1413,11 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconS
                 style={{ background: colorAcento }}
                 onClick={confirmarPresupuestoLibre}
                 disabled={!inputPresup || parseFloat(inputPresup) < 10}>
-                Continuar →
+                {T[lang].cestaContinuar}
               </button>
               <button type="button" className={styles.cestaVolver}
                 onClick={() => setModoInput(false)}>
-                ← Ver opciones predefinidas
+                {T[lang].cestaVerOpciones}
               </button>
             </div>
           )}
@@ -1331,27 +1427,27 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconS
       {/* Paso 2 — Preferencias */}
       {step === 2 && (
         <div className={styles.wizardStep}>
-          <p className={styles.wizardQuestion}>¿Alguna preferencia especial?</p>
+          <p className={styles.wizardQuestion}>{T[lang].cestaQ2}</p>
           <div className={styles.cestaPrefs}>
             <label className={styles.cestaPrefToggle}>
               <input type="checkbox" checked={sinAlcohol} onChange={e => setSinAlcohol(e.target.checked)} />
               <span className={styles.cestaPrefLabel}>
                 {iconStyle === 'lineal' ? <CestaIcon name="sin-alcohol" className={styles.cestaLinealIconPref} /> : '🫗 '}
-                Sin alcohol
+                {T[lang].cestaSinAlcohol}
               </span>
             </label>
             <label className={styles.cestaPrefToggle}>
               <input type="checkbox" checked={vegano} onChange={e => setVegano(e.target.checked)} />
               <span className={styles.cestaPrefLabel}>
                 {iconStyle === 'lineal' ? <CestaIcon name="vegano" className={styles.cestaLinealIconPref} /> : '🌱 '}
-                Apto para veganos
+                {T[lang].cestaVegano}
               </span>
             </label>
           </div>
           <button type="button" className={styles.cestaGenerarBtn}
             style={{ background: colorAcento }}
             onClick={() => generarCesta()}>
-            Crear mi cesta →
+            {T[lang].cestaCrear}
           </button>
         </div>
       )}
@@ -1360,7 +1456,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconS
       {cargando && (
         <div className={styles.cestaLoading}>
           <div className={styles.cestaSpinner} style={{ borderTopColor: colorAcento }} />
-          <p>Armando tu cesta…</p>
+          <p>{T[lang].cestaArmando}</p>
         </div>
       )}
 
@@ -1368,22 +1464,24 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconS
       {step === 3 && cesta && !cargando && (
         <div className={styles.cestaResultado}>
           <div className={styles.cestaResultHeader}>
-            <p className={styles.cestaFrase} style={{ color: colorAcento }}>{cesta.frase}</p>
+            <p className={styles.cestaFrase} style={{ color: colorAcento }}>
+              {(T[lang].cestaFrases?.[ocasionId] || T[lang].cestaFrases?.capricho || [])[semilla % 3] || cesta.frase}
+            </p>
             {cesta.descripcion && (
               <p className={styles.cestaDescripcion}>{cesta.descripcion}</p>
             )}
             <p className={styles.cestaResumen}>
-              {cesta.items.length} productos · Total:{' '}
+              {T[lang].cestaProductos(cesta.items.length)}{' '}
               <strong style={{ color: colorAcento }}>{cesta.total.toFixed(2)} €</strong>
-              {' '}/ {presupuesto} € presupuesto
+              {' '}{T[lang].cestaPresupuesto(presupuesto)}
             </p>
           </div>
 
           {cesta.items.length === 0 ? (
             <div className={styles.cestaVacia}>
-              <p>No hay suficientes productos para este presupuesto y preferencias.</p>
+              <p>{T[lang].cestaVacia}</p>
               <button type="button" className={styles.cestaVolver} onClick={() => setStep(1)}>
-                Cambiar presupuesto
+                {T[lang].cestaCambiarPresup}
               </button>
             </div>
           ) : (
@@ -1424,12 +1522,12 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconS
                 <button type="button" className={styles.cestaRegenerarBtn}
                   style={{ borderColor: colorAcento, color: colorAcento }}
                   onClick={regenerar}>
-                  ↺ Otra combinación
+                  {T[lang].cestaOtraCombi}
                 </button>
                 <button type="button" className={styles.cestaGenerarBtn}
                   style={{ background: colorAcento }}
                   onClick={reiniciar}>
-                  {iconStyle !== 'lineal' && '🎁 '}Nueva cesta
+                  {iconStyle !== 'lineal' && '🎁 '}{T[lang].cestaNueva}
                 </button>
               </div>
             </>
@@ -2292,12 +2390,16 @@ export default function KioskoPage() {
               <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].maridaje}</span>
             </button>
             {cestaActiva && (
-              <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.CESTA)} type="button"
+              <button className={`${styles.welcomeActionCard} ${styles.welcomeActionCardCesta}`} onClick={() => setView(VIEWS.CESTA)} type="button"
                 style={{ '--acento': colorAcento }}>
                 <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
                   <WelcomeActionIcon name="cesta" variant={iconStyle} />
                 </span>
                 <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].cesta}</span>
+                <span className={styles.cestaBadges}>
+                  <span className={styles.cestaBadgePremium}>★ Premium</span>
+                  <span className={styles.cestaBadgeBeta}>Beta</span>
+                </span>
               </button>
             )}
           </div>
@@ -2381,7 +2483,7 @@ export default function KioskoPage() {
       {/* CESTA REGALO — solo si la tienda la tiene activada en ajustes */}
       {cestaActiva && view === VIEWS.CESTA && (
         <CestaView slug={slug} vinos={vinos} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onBack={() => setView(VIEWS.WELCOME)} iconStyle={iconStyle} />
+          onBack={() => setView(VIEWS.WELCOME)} iconStyle={iconStyle} lang={lang} />
       )}
 
       {/* DETALLE */}

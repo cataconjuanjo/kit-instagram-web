@@ -153,6 +153,7 @@
   border-radius: 8px;
   cursor: pointer;
   box-shadow: 0 12px 36px rgba(0,0,0,.08);
+  position: relative;
   transition: background .15s, border-color .15s, transform .12s, box-shadow .15s;
 }
 
@@ -163,6 +164,40 @@
 }
 
 .welcomeActionCard:active { transform: scale(.96); }
+
+.cestaBadges {
+  position: absolute;
+  bottom: .65rem;
+  display: flex;
+  gap: .3rem;
+  align-items: center;
+  pointer-events: none;
+}
+
+.cestaBadgePremium {
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--acento, #c9a96e);
+  border: 1px solid currentColor;
+  border-radius: 20px;
+  padding: .12rem .45rem;
+  opacity: .85;
+  line-height: 1.4;
+}
+
+.cestaBadgeBeta {
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #fff;
+  background: #e8a020;
+  border-radius: 20px;
+  padding: .12rem .45rem;
+  line-height: 1.4;
+}
 
 .welcomeActionIcon {
   width: clamp(86px, 9vw, 128px);
