@@ -886,6 +886,7 @@ export default function AdminKioskoPage() {
   }, [tienda?.plan, tienda?.trial_used_seconds, tienda?.trial_expires_at, slug, previewTrial, esAdminUsuario])
 
   const [busqueda, setBusqueda]           = useState('')
+  const [verSinStock, setVerSinStock]     = useState(false)
   const [filtroTipo, setFiltroTipo]       = useState('')
   const [filtroEstado, setFiltroEstado]   = useState('todos')
   const [filtroRegion, setFiltroRegion]   = useState('')
@@ -938,7 +939,7 @@ export default function AdminKioskoPage() {
     return () => clearInterval(iv)
   }, [slug])
 
-  useEffect(() => { setPaginaActual(1) }, [busqueda, filtroTipo, filtroEstado, filtroCalidad, filtroDestacado, ordenPor, ordenDir, porPagina])
+  useEffect(() => { setPaginaActual(1) }, [busqueda, filtroTipo, filtroEstado, filtroCalidad, filtroDestacado, ordenPor, ordenDir, porPagina, verSinStock])
 
   useEffect(() => {
     if (!moreMenuOpen) return
@@ -1329,6 +1330,7 @@ export default function AdminKioskoPage() {
   const vinosFiltrados = useMemo(() => {
     return vinosVino
       .filter(v => {
+        if (!verSinStock && !(Number(v.stock) > 0)) return false
         if (filtroTipo      && v.tipo   !== filtroTipo)   return false
         if (filtroEstado === 'activo'   && !v.activo)     return false
         if (filtroEstado === 'inactivo' &&  v.activo)     return false
@@ -1364,7 +1366,7 @@ export default function AdminKioskoPage() {
         if (va > vb) return ordenDir === 'asc' ? 1 : -1
         return 0
       })
-  }, [vinosVino, filtroTipo, filtroEstado, filtroRegion, filtroPais, filtroStock, filtroCalidad, filtroDestacado, precioMin, precioMax, busqueda, ordenPor, ordenDir])
+  }, [vinosVino, filtroTipo, filtroEstado, filtroRegion, filtroPais, filtroStock, filtroCalidad, filtroDestacado, precioMin, precioMax, busqueda, ordenPor, ordenDir, verSinStock])
 
   const totalPaginas   = Math.ceil(vinosFiltrados.length / porPagina)
   const vinosPaginados = useMemo(() => {
@@ -2857,6 +2859,13 @@ export default function AdminKioskoPage() {
             </div>
           )}
         </div>
+        {sinStock > 0 && (
+          <button type="button"
+            className={`${styles.filtrosBtn} ${verSinStock ? styles.filtrosBtnActivo : ''}`}
+            onClick={() => setVerSinStock(v => !v)}>
+            {verSinStock ? 'Ocultar sin stock' : `Sin stock (${sinStock})`}
+          </button>
+        )}
         <span className={styles.total}>{vinosFiltrados.length} / {vinosVino.length} vinos</span>
       </div>
 
