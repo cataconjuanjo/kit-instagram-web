@@ -54,9 +54,9 @@ async function fetchInventoryCounts(variationIds) {
     const chunk = variationIds.slice(i, i + CHUNK)
     let cursor = null
     do {
-      const body = { catalog_object_ids: chunk, states: ['IN_STOCK'] }
+      const body = { catalog_object_ids: chunk }
       if (cursor) body.cursor = cursor
-      const res = await fetch(`${SQUARE_API_BASE}/v2/inventory/counts`, {
+      const res = await fetch(`${SQUARE_API_BASE}/v2/inventory/batch-retrieve-counts`, {
         method: 'POST',
         headers: {
           Authorization:    `Bearer ${SQUARE_ACCESS_TOKEN}`,
