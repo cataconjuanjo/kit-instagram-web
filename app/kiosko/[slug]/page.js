@@ -83,7 +83,7 @@ const MARIDAJE_ICONOS = [
 
 const T = {
   es: {
-    explorar: 'Explorar vinos', elegir: 'Ayúdame\na elegir', maridaje: '¿Con qué\nlo tomo?',
+    explorar: 'Explorar vinos', elegir: 'Ayúdame\na elegir', maridaje: '¿Con qué\nlo tomo?', cesta: 'Cesta\nregalo',
     volver: '← Volver', inicio: 'Inicio', atras: 'Atrás', nuevaBusqueda: 'Empezar de nuevo',
     referencias: n => `${n} referencias`, disponibles: n => `${n} disponibles`, destacados: '★ Destacados',
     pairingTitle: '¿Para qué buscas el vino?',
@@ -106,7 +106,7 @@ const T = {
     buscandoVino: '⏳ Buscando el vino perfecto para ti…',
   },
   en: {
-    explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?',
+    explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?', cesta: 'Gift\nbasket',
     volver: '← Back', inicio: 'Home', atras: 'Back', nuevaBusqueda: 'Start over',
     referencias: n => `${n} wines`, disponibles: n => `${n} available`, destacados: '★ Featured',
     pairingTitle: 'What are you looking for?',
@@ -129,7 +129,7 @@ const T = {
     buscandoVino: '⏳ Finding the perfect wine for you…',
   },
   fr: {
-    explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?',
+    explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?', cesta: 'Panier\ncadeau',
     volver: '← Retour', inicio: 'Accueil', atras: 'Retour', nuevaBusqueda: 'Recommencer',
     referencias: n => `${n} vins`, disponibles: n => `${n} disponibles`, destacados: '★ En vedette',
     pairingTitle: 'Pour quel plat cherchez-vous ?',
@@ -152,7 +152,7 @@ const T = {
     buscandoVino: '⏳ Nous cherchons le vin parfait pour vous…',
   },
   de: {
-    explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?',
+    explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?', cesta: 'Geschenk-\nkorb',
     volver: '← Zurück', inicio: 'Start', atras: 'Zurück', nuevaBusqueda: 'Neu starten',
     referencias: n => `${n} Weine`, disponibles: n => `${n} verfügbar`, destacados: '★ Empfohlen',
     pairingTitle: 'Für welches Gericht suchen Sie?',
@@ -2297,7 +2297,7 @@ export default function KioskoPage() {
                 <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
                   <WelcomeActionIcon name="cesta" variant={iconStyle} />
                 </span>
-                <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>Cesta regalo</span>
+                <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].cesta}</span>
               </button>
             )}
           </div>
