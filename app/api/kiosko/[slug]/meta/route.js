@@ -7,7 +7,7 @@ import {
 } from '../../../_lib/kioskoAuth'
 
 // Columnas añadidas por migraciones opcionales — pueden no existir en todos los entornos
-const OPTIONAL_COLS = 'kiosko_icon_style, kiosko_orders_enabled'
+const OPTIONAL_COLS = 'kiosko_icon_style, kiosko_orders_enabled, cesta_activa'
 
 async function getOptionalCols(slug) {
   const { data } = await supabaseAdmin

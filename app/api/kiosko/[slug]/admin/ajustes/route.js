@@ -5,7 +5,7 @@ import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 const PERMITIDOS = new Set([
   'nombre', 'ciudad', 'descripcion',
   'logo_url', 'color_primario', 'color_acento', 'font_family', 'kiosko_icon_style', 'kiosko_orders_enabled', 'banner_url',
-  'informe_email',
+  'informe_email', 'cesta_activa',
 ])
 
 const ICON_STYLES = new Set(['emoji', 'lineal'])
@@ -13,6 +13,7 @@ const COUNTER_ORDERS_IN_DEVELOPMENT = true
 const OPTIONAL_MIGRATIONS = {
   kiosko_icon_style: 'supabase/kiosko_icon_style.sql',
   kiosko_orders_enabled: 'supabase/kiosko_assisted_orders.sql',
+  cesta_activa: 'supabase/cesta_activa.sql',
 }
 
 function missingOptionalFields(error, updates) {
@@ -42,6 +43,10 @@ export async function PATCH(request, { params }) {
     }
     if (k === 'kiosko_orders_enabled') {
       if (COUNTER_ORDERS_IN_DEVELOPMENT) continue
+      updates[k] = v === true
+      continue
+    }
+    if (k === 'cesta_activa') {
       updates[k] = v === true
       continue
     }

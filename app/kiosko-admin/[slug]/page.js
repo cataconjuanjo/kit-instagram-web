@@ -180,6 +180,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
     font_family:    tienda?.font_family    || 'clasica',
     kiosko_icon_style: tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji',
     kiosko_orders_enabled: tienda?.kiosko_orders_enabled === true,
+    cesta_activa: tienda?.cesta_activa === true,
     informe_email:  tienda?.informe_email  || tienda?.propietario_email || tienda?.email || '',
   })
   const [logoFile,     setLogoFile]     = useState(null)
@@ -388,6 +389,36 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Cesta regalo (beta) */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>
+            Cesta regalo
+            <span className={styles.premiumTag} style={{ background: '#e8a020', color: '#fff', marginLeft: '.5rem' }}>BETA</span>
+          </p>
+          <button
+            type="button"
+            className={`${styles.settingToggleCard} ${ajustes.cesta_activa ? styles.settingToggleCardOn : ''}`}
+            onClick={() => cambiar('cesta_activa', !ajustes.cesta_activa)}
+          >
+            <span className={styles.settingToggleText}>
+              <strong>Mostrar cesta regalo en el kiosko</strong>
+              <small>
+                {ajustes.cesta_activa
+                  ? 'Activa — los clientes pueden crear cestas personalizadas con vinos y productos gourmet.'
+                  : 'Inactiva — el kiosko funciona exactamente igual que hasta ahora, sin cambios.'}
+              </small>
+              {ajustes.cesta_activa && (
+                <small style={{ color: '#b45309', marginTop: '.2rem' }}>
+                  Función en fase beta. Actívala solo si has revisado el catálogo de productos gourmet (pestaña Otros).
+                </small>
+              )}
+            </span>
+            <span className={styles.settingSwitch} aria-hidden="true">
+              <span />
+            </span>
+          </button>
         </div>
 
         <div className={styles.ajustesSec}>
@@ -2527,7 +2558,7 @@ export default function AdminKioskoPage() {
       {tab === 'otros' && (
         <div style={{ padding: '1.5rem 1.75rem' }}>
           <p style={{ marginBottom: '1rem', color: 'var(--text-muted, #888)', fontSize: '.875rem' }}>
-            Productos importados de Square que no son vinos. Muévelos a Catálogo cuando sea necesario.
+            Productos importados de Square que no son vinos. Configura manualmente qué aparece en la cesta regalo y sus atributos.
           </p>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
@@ -2535,47 +2566,99 @@ export default function AdminKioskoPage() {
                 <tr>
                   <th className={styles.thFoto}>Foto</th>
                   <th>Nombre</th>
-                  <th>PVP €</th>
+                  <th>PVP</th>
+                  <th title="Categoría detectada automáticamente por el nombre">Categoría</th>
+                  <th title="¿Aparece en la cesta regalo? Auto = detectado por nombre">En cesta</th>
+                  <th title="¿Es apto para veganos?">Vegano</th>
+                  <th title="¿Contiene alcohol?">Alcohol</th>
                   <th>Stock</th>
-                  <th>Estado</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {vinosOtro.map(v => (
-                  <tr key={v.id} className={!v.activo ? styles.rowInactivo : ''}>
-                    <td className={styles.tdFoto}>
-                      <AdminThumbImage src={v.foto_url} className={styles.thumb} fallback={<div className={styles.thumbPlaceholder}>—</div>} />
-                    </td>
-                    <td><strong>{v.nombre}</strong></td>
-                    <td>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : '—'}</td>
-                    <td>{v.stock ?? '—'}</td>
-                    <td>
-                      <span className={`${styles.toggleEstado} ${v.activo ? styles.estadoActivo : styles.estadoInactivo}`}>
-                        {v.activo ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className={styles.btnSecundario}
-                        style={{ fontSize: '.75rem', padding: '.25rem .6rem' }}
-                        onClick={async () => {
-                          await fetch(`/api/kiosko/${slug}/admin/vinos/${v.id}`, {
-                            method: 'PATCH',
-                            headers: { ...authHeaders, 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ categoria: 'vino' }),
-                          })
-                          await cargar()
-                        }}
-                      >
-                        → Mover a Vinos
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {vinosOtro.map(v => {
+                  const catAuto = (() => {
+                    const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+                    const n = norm(v.nombre), t = norm(`${v.nombre} ${v.descripcion||''}`)
+                    if (/vermut|vermouth|vermell\b|sidra\b|cerveza\b|kombucha/.test(n)) return 'Vermut·Sidra'
+                    if (/jamon|iberic|paleta|lomo\b|chorizo|salchich|fuet|sobrasada|cecina|morcill|embutido|presa\b|butifarra|longaniz|salami|bresaola|panceta|bacon|tocino/.test(n)) return 'Embutido'
+                    if (/queso|manchego|brie|camembert|gorgonzola|parmesano|gouda|idiazabal|tetilla|rulo\b|cabra\b|ricota|burrata|mozzarell|feta\b|roquefort|stilton|cheddar/.test(n)) return 'Queso'
+                    if (/conserva|chipiron|calamar|pulpo|ventresca|bonito|caballa|sardin|anchoa|almeja|mejillon|berberecho|atun|bacalao|ahumado/.test(t)) return 'Conserva mar'
+                    if (/chocolate|bombon|turron|mazapan|nougat|polvoron/.test(t)) return 'Dulce'
+                    if (/foie|pate\b|trufa/.test(t)) return 'Foie·Paté'
+                    if (/fruto\s*seco|almendra|nuez\b|pistacho|avellana|anacardo/.test(t)) return 'Frutos secos'
+                    if (/galleta|cookie|cracker|snack|patata\s*frita|chips\b|nachos/.test(t)) return 'Snack'
+                    if (/aceite|aove|oliva|vinagre/.test(t)) return 'Aceite·AOVE'
+                    if (/miel|mermelada/.test(t)) return 'Miel·Mermelada'
+                    if (/esparrago|alcachofa|pimiento|tomate\b|seta|hongo/.test(t)) return 'Verdura'
+                    return 'Otros'
+                  })()
+
+                  async function patchOtro(campo, valor) {
+                    const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${v.id}`, {
+                      method: 'PATCH',
+                      headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ [campo]: valor }),
+                    })
+                    if (res.ok) await cargar()
+                  }
+
+                  // Tri-state cycle: null → true → false → null
+                  function nextTriState(val) {
+                    if (val === null || val === undefined) return true
+                    if (val === true) return false
+                    return null
+                  }
+
+                  return (
+                    <tr key={v.id} className={!v.activo ? styles.rowInactivo : ''}>
+                      <td className={styles.tdFoto}>
+                        <AdminThumbImage src={v.foto_url} className={styles.thumb} fallback={<div className={styles.thumbPlaceholder}>—</div>} />
+                      </td>
+                      <td><strong className={styles.tdTrunc} style={{ maxWidth: 200 }}>{v.nombre}</strong></td>
+                      <td>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : <span className={styles.dash}>—</span>}</td>
+                      <td><span className={styles.otrosCatBadge}>{catAuto}</span></td>
+
+                      {/* En cesta: null=auto, true=sí, false=no */}
+                      <td>
+                        <button type="button" className={`${styles.otrosFlag} ${v.apto_cesta === true ? styles.otrosFlagSi : v.apto_cesta === false ? styles.otrosFlagNo : styles.otrosFlagAuto}`}
+                          onClick={() => patchOtro('apto_cesta', nextTriState(v.apto_cesta))}
+                          title="Click para cambiar: Auto → Sí → No → Auto">
+                          {v.apto_cesta === true ? '✓ Sí' : v.apto_cesta === false ? '✗ No' : 'Auto'}
+                        </button>
+                      </td>
+
+                      {/* Vegano: null=desconocido, true=sí, false=no */}
+                      <td>
+                        <button type="button" className={`${styles.otrosFlag} ${v.es_vegano === true ? styles.otrosFlagSi : v.es_vegano === false ? styles.otrosFlagNo : styles.otrosFlagNeutro}`}
+                          onClick={() => patchOtro('es_vegano', nextTriState(v.es_vegano))}
+                          title="Click para cambiar: ? → Sí → No → ?">
+                          {v.es_vegano === true ? '✓ Sí' : v.es_vegano === false ? '✗ No' : '?'}
+                        </button>
+                      </td>
+
+                      {/* Con alcohol: null=auto, true=sí, false=no */}
+                      <td>
+                        <button type="button" className={`${styles.otrosFlag} ${v.con_alcohol === true ? styles.otrosFlagAlerta : v.con_alcohol === false ? styles.otrosFlagSi : styles.otrosFlagNeutro}`}
+                          onClick={() => patchOtro('con_alcohol', nextTriState(v.con_alcohol))}
+                          title="Click para cambiar: ? → Sí → No → ?">
+                          {v.con_alcohol === true ? '🍶 Sí' : v.con_alcohol === false ? 'No' : '?'}
+                        </button>
+                      </td>
+
+                      <td>{v.stock ?? <span className={styles.dash}>—</span>}</td>
+                      <td>
+                        <button type="button" className={styles.btnSecundario}
+                          style={{ fontSize: '.72rem', padding: '.2rem .55rem', whiteSpace: 'nowrap' }}
+                          onClick={() => patchOtro('categoria', 'vino')}>
+                          → Vinos
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
                 {vinosOtro.length === 0 && (
-                  <tr><td colSpan={6} className={styles.empty}>Sin otros productos</td></tr>
+                  <tr><td colSpan={9} className={styles.empty}>Sin otros productos</td></tr>
                 )}
               </tbody>
             </table>

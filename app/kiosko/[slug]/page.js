@@ -56,7 +56,7 @@ const ESTILOS_IDS = [
   { id: 'dulce'    },
 ]
 
-const VIEWS = { WELCOME: 'welcome', BROWSE: 'browse', PAIRING: 'pairing', DETAIL: 'detail', WIZARD: 'wizard', SHOWCASE: 'showcase' }
+const VIEWS = { WELCOME: 'welcome', BROWSE: 'browse', PAIRING: 'pairing', DETAIL: 'detail', WIZARD: 'wizard', SHOWCASE: 'showcase', CESTA: 'cesta' }
 
 const IDIOMAS = [
   { id: 'es', label: 'Español', flagClass: 'langFlagEs' },
@@ -845,6 +845,585 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es' })
   )
 }
 
+// ── Cesta regalo ──────────────────────────────────────────────────────────────
+
+// Detecta la categoría gastronómica de un producto gourmet por su nombre/descripción.
+// IMPORTANTE: embutido y queso se detectan solo por nombre — las descripciones suelen decir
+// "marida con embutido/queso" sin que el producto lo sea (falso positivo como con Vermell/vermut).
+function detectarCatGourmet(nombre = '', descripcion = '') {
+  const n = normalizarTexto(nombre)
+  const t = normalizarTexto(`${nombre} ${descripcion}`)
+
+  // Bebidas artesanales — antes que nada para evitar falsos positivos
+  if (/vermut|vermouth|vermell\b|aperitivo\b|sidra\b|cerveza\b|kombucha/.test(n)) return 'bebida'
+
+  // Embutido y queso: nombre solo (las descripciones dicen "ideal con embutido/queso")
+  if (/jamon|iberic|paleta|lomo\b|chorizo|salchich|fuet|sobrasada|cecina|morcill|embutido|presa\b|butifarra|longaniz|salami|bresaola|copa\s*iberic|panceta|bacon|tocino|fiambre/.test(n)) return 'embutido'
+  if (/queso|manchego|brie|camembert|gorgonzola|parmesano|gouda|idiazabal|tetilla|rulo\b|cabra\b|ricota|ricotta|burrata|mozzarell|mozarell|feta\b|halloumi|roquefort|stilton|cheddar|emmental|gruyere|raclette|pecorino|requesón|requesó|cottage|torta\s*del\s*casar|torta\s*extremena|queso\s*fresco/.test(n)) return 'queso'
+
+  // El resto puede usar texto completo — son categorías que no aparecen como sugerencias de maridaje
+  if (/conserva|chipiron|calamar|pulpo|ventresca|bonito|caballa|sardin|anchoa|navaja|almeja|mejillon|berberecho|zamburina|necora|gamba|langostin|bogavante|centollo|atun|bacalao|ahumado|escabeche/.test(t)) return 'conserva'
+  if (/chocolate|bombon|turron|mazapan|nougat|polvoron|mantecado/.test(t)) return 'dulce'
+  if (/foie|pate\b|trufa/.test(t)) return 'foie_pate'
+  if (/fruto\s*seco|almendra|nuez\b|pistacho|avellana|anacardo/.test(t)) return 'fruto_seco'
+  if (/galleta|cookie|cracker|snack|patata\s*frita|chips\b|nachos/.test(t)) return 'snack'
+  if (/aceite|aove|oliva|vinagre/.test(t)) return 'aceite_oliva'
+  if (/miel|mermelada/.test(t)) return 'miel_mermelada'
+  if (/esparrago|alcachofa|pimiento|tomate\b|seta|hongo/.test(t)) return 'conserva_vegetal'
+  return 'otro'
+}
+
+// Afinidad vino→gourmet (invierte la lógica Chartier/WSET): qué gourmet potencia cada tipo de vino
+const AFINIDAD_VINO_GOURMET = {
+  tinto:       { embutido: 9, queso: 7, conserva_vegetal: 6, fruto_seco: 5, aceite_oliva: 4, snack: 3 },
+  blanco:      { conserva: 10, queso: 7, aceite_oliva: 7, conserva_vegetal: 6, snack: 4, fruto_seco: 4 },
+  rosado:      { embutido: 8, conserva: 7, queso: 6, snack: 5, fruto_seco: 5, aceite_oliva: 4 },
+  espumoso:    { conserva: 10, foie_pate: 9, queso: 8, embutido: 6, fruto_seco: 5, snack: 4 },
+  generoso:    { embutido: 10, fruto_seco: 9, conserva: 8, queso: 7, aceite_oliva: 6 },
+  dulce:       { foie_pate: 10, dulce: 9, queso: 8, fruto_seco: 7, miel_mermelada: 7 },
+  naranja:     { queso: 9, embutido: 8, conserva_vegetal: 7, fruto_seco: 6, aceite_oliva: 6 },
+  sin_alcohol: { snack: 8, fruto_seco: 7, queso: 6, conserva: 5, dulce: 5 },
+}
+
+// Bebidas artesanales (vermut, sidra…) tienen afinidad propia con snacks y embutido
+const AFINIDAD_BEBIDA = { embutido: 7, conserva: 6, queso: 5, snack: 5, fruto_seco: 4 }
+
+// Boost por ocasión — qué tipos de gourmet encajan con el momento
+const OCASION_GOURMET_BOOST = {
+  enamorar:    { dulce: 4, foie_pate: 4, queso: 2, miel_mermelada: 2 },
+  impresionar: { foie_pate: 6, embutido: 5, queso: 4, aceite_oliva: 3 },  // nada de snacks
+  compartir:   { conserva: 3, snack: 4, embutido: 2, fruto_seco: 2 },
+  celebrar:    { foie_pate: 5, conserva: 3, fruto_seco: 2, dulce: 2 },
+  capricho:    { foie_pate: 3, dulce: 3, fruto_seco: 2, queso: 2 },
+}
+
+// Explicación legible de por qué este gourmet acompaña ese vino
+const RAZON_MARIDAJE_GOURMET = {
+  tinto:       { embutido: 'El tanino del tinto abraza la grasa del ibérico', queso: 'Potencia los quesos curados y semicurados', conserva_vegetal: 'La intensidad del tinto complementa la conserva', fruto_seco: 'Aromas tostados compartidos' },
+  blanco:      { conserva: 'La acidez levanta los matices del mar en conserva', queso: 'Corta la untuosidad del queso con frescura', aceite_oliva: 'Acento mineral con el AOVE', conserva_vegetal: 'Frescura que equilibra el sabor concentrado' },
+  rosado:      { embutido: 'El rosado equilibra la grasa del embutido', conserva: 'Armoniza con la salinidad de las conservas', queso: 'Frescura frutal que redondea los quesos', fruto_seco: 'Elegancia que realza los frutos secos' },
+  espumoso:    { conserva: 'La burbuja levanta los sabores yodados del mar', foie_pate: 'La acidez equilibra la untuosidad del foie', queso: 'La burbuja seca limpia la grasa del queso', embutido: 'Contraste clásico: burbuja y sal del ibérico' },
+  generoso:    { embutido: 'La lectura clásica: fino con ibérico', fruto_seco: 'Comparte aromas secos y tostados', conserva: 'La salinidad abraza los sabores del mar', queso: 'Profundidad oxidativa que enriquece el queso' },
+  dulce:       { foie_pate: 'El dulzor potencia la riqueza del foie', dulce: 'Dulce con dulce: armonía de postres', queso: 'Contraste clásico con quesos azules', miel_mermelada: 'Matices dulces que se fusionan' },
+  naranja:     { queso: 'El tanino del naranja convive con la textura del queso', embutido: 'Profundidad que realza los curados', conserva_vegetal: 'Acidez oxidativa que complementa la conserva' },
+  sin_alcohol: { snack: 'Aperitivo refrescante ideal para compartir', fruto_seco: 'Combinación ligera y equilibrada', queso: 'Frescura sin alcohol que acompaña los quesos suaves' },
+}
+
+const CAT_LABEL_GOURMET = {
+  embutido: 'Embutido', queso: 'Queso', conserva: 'Conserva del mar', dulce: 'Dulce artesano',
+  foie_pate: 'Foie · Paté', fruto_seco: 'Frutos secos', snack: 'Snack',
+  aceite_oliva: 'Aceite oliva', miel_mermelada: 'Miel · Mermelada', conserva_vegetal: 'Conserva vegetal',
+  bebida: 'Vermut · Sidra', otro: 'Gourmet',
+}
+
+function razonGourmetItem(cat, tiposVinos) {
+  for (const tipo of tiposVinos) {
+    const r = RAZON_MARIDAJE_GOURMET[tipo]?.[cat]
+    if (r) return r
+  }
+  return 'Complemento gourmet para la cesta'
+}
+
+// Detecta ingredientes con connotaciones afrodisíacas o especialmente románticas
+function esAfrodisiaco(nombre = '', descripcion = '') {
+  const t = normalizarTexto(`${nombre} ${descripcion}`)
+  return /ostra|anchoa|caviar|trufa|foie|chocolate|fresa|frambuesa|granada|higo|datil|miel|vainilla|canela|jengibre|azafran|pistacho|almendra|champan|cava/.test(t)
+}
+
+const RAZON_AFRODISIACO = {
+  dulce:         'El chocolate es el clásico aliado del romanticismo',
+  foie_pate:     'La trufa y el foie despiertan todos los sentidos',
+  miel_mermelada:'La miel suaviza el momento y el paladar',
+  conserva:      'Las anchoas son símbolo de seducción desde la Antigüedad',
+  fruto_seco:    'Los pistachos y almendras, afrodisíacos de siempre',
+  queso:         'Un queso suave y cremoso para compartir en intimidad',
+  conserva_vegetal: 'El espárrago, afrodisíaco reconocido desde el Renacimiento',
+}
+
+const CESTA_OCASIONES = [
+  { id: 'enamorar',    emoji: '❤️',  label: 'Para enamorar',    sub: 'pareja, aniversario…',      tipos: ['rosado', 'espumoso', 'dulce', 'naranja'] },
+  { id: 'impresionar', emoji: '🎁',  label: 'Para impresionar', sub: 'jefe, médico, favor…',       tipos: ['tinto', 'espumoso', 'generoso'] },
+  { id: 'compartir',   emoji: '🥂',  label: 'Para compartir',   sub: 'amigos, familia…',           tipos: ['tinto', 'blanco', 'rosado', 'espumoso'] },
+  { id: 'celebrar',    emoji: '🎉',  label: 'Para celebrar',    sub: 'cumpleaños, ascenso…',       tipos: ['espumoso', 'tinto'] },
+  { id: 'capricho',    emoji: '🍾',  label: 'Un capricho',      sub: 'para ti o alguien especial', tipos: [] },
+]
+
+const CESTA_FRASES = {
+  enamorar:    ['Una cesta para decirlo sin palabras', 'El regalo que enamora', 'Para vuestro próximo momento juntos'],
+  impresionar: ['Una selección que habla por ti', 'Para ese momento en que el detalle importa', 'El regalo que deja huella'],
+  compartir:   ['Para convertir cualquier plan en noche épica', 'Para compartir lo mejor', 'La cesta de los grandes momentos juntos'],
+  celebrar:    ['Para brindar por lo que llega', 'Que suenen los corchos', 'La cesta de las grandes ocasiones'],
+  capricho:    ['Porque tú también te lo mereces', 'Para el placer sin excusas', 'Tu momento, tu selección'],
+}
+
+const CESTA_PRESUPUESTOS = [
+  { id: '30',  label: 'Hasta 30€',  max: 30 },
+  { id: '50',  label: 'Hasta 50€',  max: 50 },
+  { id: '75',  label: 'Hasta 75€',  max: 75 },
+  { id: '100', label: 'Hasta 100€', max: 100 },
+  { id: 'otro', label: 'Otro…',     max: null },
+]
+
+function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, semilla = 0 }) {
+  const ocasion = CESTA_OCASIONES.find(o => o.id === ocasionId)
+  const tiposOk = ocasion?.tipos ?? []
+  const tolerance = presupuesto * 0.06
+
+  // Filter wines: must fit within 80% of budget so gourmet always gets room
+  let wines = vinos.filter(v => v.activo && Number(v.stock) > 0 && Number(v.precio_pvp) > 0 && Number(v.precio_pvp) <= presupuesto * 0.80)
+
+  if (sinAlcohol) {
+    wines = wines.filter(v => v.tipo === 'sin_alcohol')
+  }
+  // vegano en vinos: no se puede garantizar sin etiqueta explícita — se omite el filtro de vino
+
+  // Score wines using index-based shuffle (id is UUID, not numeric)
+  wines = wines.map((v, i) => {
+    let score = 0
+    if (tiposOk.includes(v.tipo)) score += 10
+    if (ocasionId === 'enamorar') {
+      const txt = normalizarTexto(`${v.nombre || ''} ${v.descripcion || ''} ${v.notas_cata || ''}`)
+      // Nombres o etiquetas con carga romántica
+      if (/amor|amour|enamorar|pasion|passion|seducc|tentac|encanto|deseo|noche|luna|beso|venus|eros|roman|intim|secret|magia|magico|misterio|capricho|placer|atardecer|medianoch|flor\b|florido|primaver/.test(txt)) score += 7
+      // Notas de cata florales o de fruta roja delicada
+      if (/floral|petalo|rosa\b|violeta|lavanda|jazmin|nectar|fresa|frambuesa|cereza|frutos\s*rojos/.test(txt)) score += 4
+    }
+    if (ocasionId === 'impresionar') {
+      const txt = normalizarTexto(`${v.nombre || ''} ${v.notas_cata || ''} ${v.descripcion || ''}`)
+      if (/crianza|reserva|gran reserva|barrica|roble/.test(txt)) score += 6
+      score += Math.min(Number(v.precio_pvp), presupuesto * 0.5) * 0.15  // dentro del presupuesto, más caro mejor
+    }
+    if (ocasionId === 'capricho') score += Number(v.precio_pvp)
+    score += ((i * 7 + semilla * 13) % 100) / 14
+    return { ...v, _score: score, _kind: 'vino' }
+  }).sort((a, b) => b._score - a._score)
+
+  // Cap wine slots and budget: reserve at least 40% for gourmet items
+  const maxWines = presupuesto <= 30 ? 1 : presupuesto <= 60 ? 2 : 3
+  const wineBudgetCap = presupuesto * 0.60
+
+  const basket = []
+  let total = 0
+
+  for (const wine of wines) {
+    if (basket.filter(b => b._kind === 'vino').length >= maxWines) break
+    if (total + Number(wine.precio_pvp) <= wineBudgetCap + tolerance) {
+      basket.push(wine)
+      total += Number(wine.precio_pvp)
+    }
+  }
+
+  // Types of wines selected — used to score gourmet by pairing affinity
+  const tiposVinos = basket.filter(b => b._kind === 'vino').map(v => v.tipo).filter(Boolean)
+  const ocasionBoost = OCASION_GOURMET_BOOST[ocasionId] || {}
+
+  // Score gourmet items: affinity with wine types + occasion boost + aphrodisiac boost + shuffle noise
+  const CATS_NO_VEGANO = new Set(['embutido', 'queso', 'foie_pate', 'miel_mermelada'])
+  const scoredGourmet = [...gourmet]
+    .map((g, i) => {
+      const cat = detectarCatGourmet(g.nombre, g.descripcion)
+      return { ...g, _cat: cat }
+    })
+    .filter(g => {
+      if (Number(g.precio_pvp) <= 0) return false
+      // Filtro sin alcohol: excluir bebidas con alcohol (flag manual o categoría bebida)
+      if (sinAlcohol) {
+        if (g.con_alcohol === true) return false
+        if (g.con_alcohol === null && g._cat === 'bebida') return false
+      }
+      // Filtro vegano: usar flag manual si existe; si no, excluir categorías nunca veganas
+      if (vegano) {
+        if (g.es_vegano === false) return false
+        if (g.es_vegano === null && CATS_NO_VEGANO.has(g._cat)) return false
+      }
+      return true
+    })
+    .map((g, i) => {
+      const afinidad = tiposVinos.reduce((sum, tipo) => sum + (AFINIDAD_VINO_GOURMET[tipo]?.[g._cat] || 0), 0)
+      const boost = ocasionBoost[g._cat] || 0
+      const afroBoost = (ocasionId === 'enamorar' && esAfrodisiaco(g.nombre, g.descripcion)) ? 6 : 0
+      const noise = ((i * 7 + semilla * 11) % 100) / 1000
+      return { ...g, _afinidad: afinidad + boost + afroBoost + noise, _esAfro: afroBoost > 0 }
+    })
+    .sort((a, b) => b._afinidad - a._afinidad)
+
+  // Max 1 item per gourmet category to guarantee variety (no basket full of trufa)
+  const catsUsadas = new Set()
+  for (const item of scoredGourmet) {
+    if (catsUsadas.has(item._cat)) continue
+    if (total + Number(item.precio_pvp) <= presupuesto + tolerance) {
+      const razon = (item._esAfro && RAZON_AFRODISIACO[item._cat])
+        ? RAZON_AFRODISIACO[item._cat]
+        : razonGourmetItem(item._cat, tiposVinos)
+      basket.push({ ...item, _kind: 'gourmet', _razon: razon })
+      total += Number(item.precio_pvp)
+      catsUsadas.add(item._cat)
+    }
+  }
+
+  // Second pass: if budget still has room, allow a second item per cat (no repeating same product)
+  const usadosIds = new Set(basket.map(b => b.id))
+  for (const item of scoredGourmet) {
+    if (usadosIds.has(item.id)) continue
+    if (total + Number(item.precio_pvp) <= presupuesto + tolerance) {
+      const razon = (item._esAfro && RAZON_AFRODISIACO[item._cat])
+        ? RAZON_AFRODISIACO[item._cat]
+        : razonGourmetItem(item._cat, tiposVinos)
+      basket.push({ ...item, _kind: 'gourmet', _razon: razon })
+      total += Number(item.precio_pvp)
+      usadosIds.add(item.id)
+    }
+  }
+
+  // Dynamic description: what actually ended up in the basket
+  const vinosCesta = basket.filter(b => b._kind === 'vino')
+  const gourmetCesta = basket.filter(b => b._kind === 'gourmet')
+  const catLabels = [...new Set(gourmetCesta.map(g => CAT_LABEL_GOURMET[g._cat] || 'gourmet'))]
+  let descripcion = ''
+  if (vinosCesta.length && catLabels.length) {
+    const tipoLabel = vinosCesta[0].tipo ? vinosCesta[0].tipo.charAt(0).toUpperCase() + vinosCesta[0].tipo.slice(1) : 'Vino'
+    descripcion = `${tipoLabel} con ${catLabels.slice(0, 2).join(' y ').toLowerCase()}`
+    if (vinosCesta.length > 1) descripcion += ` — ${vinosCesta.length} botellas`
+  }
+
+  const frase = (CESTA_FRASES[ocasionId] || CESTA_FRASES.capricho)[semilla % 3]
+  return { items: basket, total: Math.round(total * 100) / 100, frase, descripcion }
+}
+
+function CestaIcon({ name, className }) {
+  const cls = className || styles.cestaLinealIcon
+
+  // Corazón — enamorar
+  if (name === 'enamorar') return (
+    <svg viewBox="0 0 48 48" className={cls} aria-hidden="true">
+      <path d="M24 36C16 29 8 22 8 15a8 8 0 0 1 16-2 8 8 0 0 1 16 2c0 7-8 14-16 21Z" />
+    </svg>
+  )
+
+  // Caja de regalo con lazo — impresionar
+  if (name === 'impresionar') return (
+    <svg viewBox="0 0 48 48" className={cls} aria-hidden="true">
+      <rect x="10" y="22" width="28" height="18" rx="2" />
+      <path d="M8 16h32v6H8Z" />
+      <path d="M24 16V40" />
+      <path d="M24 16c-1-5-7-7-8-3 0 2 3 4 8 3" />
+      <path d="M24 16c1-5 7-7 8-3 0 2-3 4-8 3" />
+    </svg>
+  )
+
+  // Dos personas (compartir/amigos) — compartir
+  if (name === 'compartir') return (
+    <svg viewBox="0 0 48 48" className={cls} aria-hidden="true">
+      <circle cx="17" cy="14" r="5" />
+      <path d="M6 38c0-8 5-13 11-13h1" />
+      <circle cx="31" cy="14" r="5" />
+      <path d="M42 38c0-8-5-13-11-13h-1" />
+      <path d="M18 25h12" />
+    </svg>
+  )
+
+  // Copa de champán con burbujas — celebrar
+  if (name === 'celebrar') return (
+    <svg viewBox="0 0 48 48" className={cls} aria-hidden="true">
+      <path d="M16 10h16L27 28h-6L16 10Z" />
+      <path d="M24 28v10M18 38h12" />
+      <circle cx="32" cy="12" r="2" />
+      <circle cx="35" cy="8" r="1.5" />
+      <circle cx="30" cy="7" r="1.5" />
+    </svg>
+  )
+
+  // Botella de vino — capricho
+  if (name === 'capricho') return (
+    <svg viewBox="0 0 48 48" className={cls} aria-hidden="true">
+      <path d="M20 6h8l2 9H18L20 6Z" />
+      <path d="M18 15v3c0 3 3 5 6 5s6-2 6-5v-3" />
+      <rect x="18" y="23" width="12" height="19" rx="3" />
+    </svg>
+  )
+
+  // Tenedor y cuchillo — placeholder gourmet
+  if (name === 'gourmet') return (
+    <svg viewBox="0 0 48 48" className={cls} aria-hidden="true">
+      <path d="M16 8v10M13 10h6M16 18v22" />
+      <path d="M32 8v32" />
+      <path d="M28 8v10a4 4 0 0 0 8 0V8" />
+    </svg>
+  )
+
+  // Copa tachada — sin alcohol
+  if (name === 'sin-alcohol') return (
+    <svg viewBox="0 0 48 48" className={cls} aria-hidden="true">
+      <path d="M17 9h14l-5 19v10M16 38h16" />
+      <path d="M10 10L38 38" />
+    </svg>
+  )
+
+  // Hoja — vegano
+  if (name === 'vegano') return (
+    <svg viewBox="0 0 48 48" className={cls} aria-hidden="true">
+      <path d="M36 12C24 10 12 16 12 30c0 4 2 7 5 9" />
+      <path d="M36 12C38 24 32 36 18 40" />
+      <path d="M18 40L36 12" />
+    </svg>
+  )
+
+  return null
+}
+
+function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconStyle = 'emoji' }) {
+  const [step, setStep]               = useState(0)  // 0=ocasion 1=presupuesto 2=prefs 3=resultado
+  const [ocasionId, setOcasionId]     = useState('')
+  const [presupuesto, setPresupuesto] = useState(50)
+  const [inputPresup, setInputPresup] = useState('')
+  const [modoInput, setModoInput]     = useState(false)
+  const [sinAlcohol, setSinAlcohol]   = useState(false)
+  const [vegano, setVegano]           = useState(false)
+  const [gourmet, setGourmet]         = useState([])
+  const [cesta, setCesta]             = useState(null)
+  const [semilla, setSemilla]         = useState(0)
+  const [cargando, setCargando]       = useState(false)
+
+  useEffect(() => {
+    fetch(`/api/kiosko/${slug}/gourmet`)
+      .then(r => r.ok ? r.json() : { items: [] })
+      .then(d => setGourmet(d.items || []))
+      .catch(() => {})
+  }, [slug])
+
+  function elegirOcasion(id) { setOcasionId(id); setStep(1) }
+
+  function elegirPresupuesto(preset) {
+    if (preset.max === null) { setModoInput(true); return }
+    setModoInput(false)
+    setPresupuesto(preset.max)
+    setStep(2)
+  }
+
+  function confirmarPresupuestoLibre() {
+    const v = parseFloat(inputPresup)
+    if (!v || v < 10) return
+    setPresupuesto(v)
+    setStep(2)
+  }
+
+  function generarCesta(s = semilla) {
+    setCargando(true)
+    const resultado = generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, semilla: s })
+    setTimeout(() => { setCesta(resultado); setCargando(false); setStep(3) }, 380)
+  }
+
+  function regenerar() {
+    const s = semilla + 1
+    setSemilla(s)
+    setCesta(null)
+    setCargando(true)
+    const resultado = generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, semilla: s })
+    setTimeout(() => { setCesta(resultado); setCargando(false) }, 380)
+  }
+
+  function reiniciar() {
+    setStep(0); setOcasionId(''); setPresupuesto(50); setInputPresup(''); setModoInput(false)
+    setSinAlcohol(false); setVegano(false); setCesta(null); setSemilla(0)
+  }
+
+  const volvAtras = step === 0 ? onBack : () => {
+    if (step === 3) { setCesta(null); setStep(2) }
+    else setStep(s => s - 1)
+  }
+
+  return (
+    <div className={styles.cestaView}>
+      <div className={styles.wizardHeader}>
+        <button className={styles.backBtn} onClick={volvAtras} type="button">
+          ← {step === 0 ? 'Inicio' : step === 3 ? 'Cambiar preferencias' : 'Atrás'}
+        </button>
+        <h2 className={styles.wizardTitle}>
+          {iconStyle === 'lineal'
+            ? <CestaIcon name="impresionar" className={styles.cestaLinealIconTitle} />
+            : '🎁 '}
+          Arma tu cesta regalo
+        </h2>
+      </div>
+
+      {/* Paso 0 — Ocasión */}
+      {step === 0 && (
+        <div className={styles.wizardStep}>
+          <p className={styles.wizardQuestion}>¿Para quién es el regalo?</p>
+          <div className={styles.cestaOcasiones}>
+            {CESTA_OCASIONES.map(o => (
+              <button key={o.id} type="button" className={styles.cestaOcasionBtn}
+                style={{ '--acento': colorAcento }} onClick={() => elegirOcasion(o.id)}>
+                <span className={styles.cestaOcasionEmoji}>
+                  {iconStyle === 'lineal'
+                    ? <CestaIcon name={o.id} />
+                    : o.emoji}
+                </span>
+                <span className={styles.cestaOcasionLabel}>{o.label}</span>
+                {o.sub && <span className={styles.cestaOcasionSub}>{o.sub}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Paso 1 — Presupuesto */}
+      {step === 1 && (
+        <div className={styles.wizardStep}>
+          <p className={styles.wizardQuestion}>¿Cuál es tu presupuesto?</p>
+          {!modoInput ? (
+            <div className={styles.cestaPresupuestos}>
+              {CESTA_PRESUPUESTOS.map(p => (
+                <button key={p.id} type="button" className={styles.cestaPresupuestoBtn}
+                  style={{ '--acento': colorAcento }} onClick={() => elegirPresupuesto(p)}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.cestaInputWrap}>
+              <p className={styles.cestaInputLabel}>Introduce tu presupuesto en euros</p>
+              <div className={styles.cestaInputRow}>
+                <input
+                  type="number"
+                  className={styles.cestaInputNum}
+                  placeholder="p.ej. 85"
+                  value={inputPresup}
+                  min="10" max="500"
+                  onChange={e => setInputPresup(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && confirmarPresupuestoLibre()}
+                  autoFocus
+                  style={{ borderColor: colorAcento }}
+                />
+                <span className={styles.cestaInputEuro}>€</span>
+              </div>
+              <button type="button" className={styles.cestaGenerarBtn}
+                style={{ background: colorAcento }}
+                onClick={confirmarPresupuestoLibre}
+                disabled={!inputPresup || parseFloat(inputPresup) < 10}>
+                Continuar →
+              </button>
+              <button type="button" className={styles.cestaVolver}
+                onClick={() => setModoInput(false)}>
+                ← Ver opciones predefinidas
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Paso 2 — Preferencias */}
+      {step === 2 && (
+        <div className={styles.wizardStep}>
+          <p className={styles.wizardQuestion}>¿Alguna preferencia especial?</p>
+          <div className={styles.cestaPrefs}>
+            <label className={styles.cestaPrefToggle}>
+              <input type="checkbox" checked={sinAlcohol} onChange={e => setSinAlcohol(e.target.checked)} />
+              <span className={styles.cestaPrefLabel}>
+                {iconStyle === 'lineal' ? <CestaIcon name="sin-alcohol" className={styles.cestaLinealIconPref} /> : '🫗 '}
+                Sin alcohol
+              </span>
+            </label>
+            <label className={styles.cestaPrefToggle}>
+              <input type="checkbox" checked={vegano} onChange={e => setVegano(e.target.checked)} />
+              <span className={styles.cestaPrefLabel}>
+                {iconStyle === 'lineal' ? <CestaIcon name="vegano" className={styles.cestaLinealIconPref} /> : '🌱 '}
+                Apto para veganos
+              </span>
+            </label>
+          </div>
+          <button type="button" className={styles.cestaGenerarBtn}
+            style={{ background: colorAcento }}
+            onClick={() => generarCesta()}>
+            Crear mi cesta →
+          </button>
+        </div>
+      )}
+
+      {/* Cargando */}
+      {cargando && (
+        <div className={styles.cestaLoading}>
+          <div className={styles.cestaSpinner} style={{ borderTopColor: colorAcento }} />
+          <p>Armando tu cesta…</p>
+        </div>
+      )}
+
+      {/* Paso 3 — Resultado */}
+      {step === 3 && cesta && !cargando && (
+        <div className={styles.cestaResultado}>
+          <div className={styles.cestaResultHeader}>
+            <p className={styles.cestaFrase} style={{ color: colorAcento }}>{cesta.frase}</p>
+            {cesta.descripcion && (
+              <p className={styles.cestaDescripcion}>{cesta.descripcion}</p>
+            )}
+            <p className={styles.cestaResumen}>
+              {cesta.items.length} productos · Total:{' '}
+              <strong style={{ color: colorAcento }}>{cesta.total.toFixed(2)} €</strong>
+              {' '}/ {presupuesto} € presupuesto
+            </p>
+          </div>
+
+          {cesta.items.length === 0 ? (
+            <div className={styles.cestaVacia}>
+              <p>No hay suficientes productos para este presupuesto y preferencias.</p>
+              <button type="button" className={styles.cestaVolver} onClick={() => setStep(1)}>
+                Cambiar presupuesto
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className={styles.cestaItems}>
+                {cesta.items.map((item, i) => (
+                  <div key={item.id ?? i} className={styles.cestaItem}>
+                    {item.foto_url ? (
+                      <img src={item.foto_url} alt={item.nombre} className={styles.cestaItemFoto} />
+                    ) : (
+                      <div className={styles.cestaItemFotoPlaceholder}>
+                        {item._kind === 'vino'
+                          ? (iconStyle === 'lineal' ? <BottleMark className={styles.cestaPlaceholderIcon} /> : '🍷')
+                          : (iconStyle === 'lineal' ? <CestaIcon name="gourmet" className={styles.cestaPlaceholderIcon} /> : '🧺')}
+                      </div>
+                    )}
+                    <div className={styles.cestaItemInfo}>
+                      <p className={styles.cestaItemNombre}>{item.nombre}</p>
+                      {item.bodega && <p className={styles.cestaItemMeta}>{item.bodega}</p>}
+                      {item._kind === 'vino' && item.tipo && (
+                        <span className={styles.cestaItemTipo}>{item.tipo.charAt(0).toUpperCase() + item.tipo.slice(1)}</span>
+                      )}
+                      {item._kind === 'gourmet' && item._cat && (
+                        <span className={styles.cestaItemCat}>{CAT_LABEL_GOURMET[item._cat] || 'Gourmet'}</span>
+                      )}
+                      {item._kind === 'gourmet' && item._razon && (
+                        <span className={styles.cestaItemRazon}>{item._razon}</span>
+                      )}
+                    </div>
+                    <p className={styles.cestaItemPrecio} style={{ color: colorAcento }}>
+                      {Number(item.precio_pvp).toFixed(2)} €
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles.cestaAcciones}>
+                <button type="button" className={styles.cestaRegenerarBtn}
+                  style={{ borderColor: colorAcento, color: colorAcento }}
+                  onClick={regenerar}>
+                  ↺ Otra combinación
+                </button>
+                <button type="button" className={styles.cestaGenerarBtn}
+                  style={{ background: colorAcento }}
+                  onClick={reiniciar}>
+                  {iconStyle !== 'lineal' && '🎁 '}Nueva cesta
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Wizard "Ayúdame a elegir" ─────────────────────────────────────────────────
 
 function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, vinos = [], lang = 'es', iconStyle = 'emoji' }) {
@@ -1579,6 +2158,7 @@ export default function KioskoPage() {
   const temaClaro     = esColorClaro(colorPrimario)
   const fontCss       = FONT_CSS[tienda?.font_family]?.css || FONT_CSS.clasica.css
   const iconStyle      = tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji'
+  const cestaActiva    = tienda?.cesta_activa === true
   const pedidosMostradorActivos = tienda?.kiosko_orders_enabled === true && !COUNTER_ORDERS_IN_DEVELOPMENT
   const themeVars = {
     '--color-primario': colorPrimario, '--color-acento': colorAcento, '--font-family': fontCss,
@@ -1695,6 +2275,15 @@ export default function KioskoPage() {
               </span>
               <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].maridaje}</span>
             </button>
+            {cestaActiva && (
+              <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.CESTA)} type="button"
+                style={{ '--acento': colorAcento }}>
+                <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
+                  <span style={{ fontSize: 'clamp(3rem, 6vw, 5rem)', lineHeight: 1 }}>🎁</span>
+                </span>
+                <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>Cesta regalo</span>
+              </button>
+            )}
           </div>
 
           <div className={styles.langSelector}>
@@ -1771,6 +2360,12 @@ export default function KioskoPage() {
       {view === VIEWS.PAIRING && (
         <PairingView tienda={tienda} slug={slug} colorAcento={colorAcento} vinos={vinos}
           onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} lang={lang} iconStyle={iconStyle} />
+      )}
+
+      {/* CESTA REGALO — solo si la tienda la tiene activada en ajustes */}
+      {cestaActiva && view === VIEWS.CESTA && (
+        <CestaView slug={slug} vinos={vinos} colorAcento={colorAcento} colorPrimario={colorPrimario}
+          onBack={() => setView(VIEWS.WELCOME)} iconStyle={iconStyle} />
       )}
 
       {/* DETALLE */}
