@@ -1838,10 +1838,10 @@ export default function AdminKioskoPage() {
               </button>
             ) : null}
             {squareSyncResult && (
-              <span className={styles.syncResultPill} title={squareSyncResult.error || `${squareSyncResult.insertados} nuevos · ${squareSyncResult.actualizados} actualizados`}>
+              <span className={styles.syncResultPill} title={squareSyncResult.error || `${squareSyncResult.insertados} nuevos · ${squareSyncResult.actualizados} actualizados · ${squareSyncResult.stockSincronizados ?? 0} con stock real`}>
                 {squareSyncResult.error
                   ? '✗ Error sync'
-                  : `✓ ${squareSyncResult.insertados} nuevos · ${squareSyncResult.actualizados} act.`}
+                  : `✓ ${squareSyncResult.insertados} nuevos · ${squareSyncResult.actualizados} act. · ${squareSyncResult.stockSincronizados ?? 0} stock`}
               </span>
             )}
             <button onClick={abrirNuevo} type="button" className={styles.btnPrimario}>
