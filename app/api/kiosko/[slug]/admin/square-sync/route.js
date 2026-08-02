@@ -197,38 +197,12 @@ export async function POST(request, { params }) {
     let insertados = 0, actualizados = 0, errores = 0
 
     if (toInsert.length > 0) {
-      const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
+      const { error } = await supabaseAdmin
+        .from('vinos_tienda')
+        .upsert(toInsert, { onConflict: 'square_catalog_id' })
       if (error) {
-        if (error.message.includes('duplicate key') || error.code === '23505') {
-          // Rescate por lotes: una sola query IN en vez de N queries individuales
-          console.warn(`[square-sync] insert conflicto (${toInsert.length} filas), rescatando por lotes...`)
-          const conflictIds = toInsert.map(r => r.square_catalog_id)
-          const BATCH = 500
-          const idMap  = {}  // square_catalog_id → id (PK)
-          for (let i = 0; i < conflictIds.length; i += BATCH) {
-            const { data: rows } = await supabaseAdmin
-              .from('vinos_tienda')
-              .select('id, square_catalog_id')
-              .in('square_catalog_id', conflictIds.slice(i, i + BATCH))
-            for (const r of (rows || [])) idMap[r.square_catalog_id] = r.id
-          }
-          const rescatados = []
-          for (const row of toInsert) {
-            const pk = idMap[row.square_catalog_id]
-            if (pk) rescatados.push({ ...row, id: pk })
-            else errores++
-          }
-          if (rescatados.length > 0) {
-            const { error: e2 } = await supabaseAdmin
-              .from('vinos_tienda')
-              .upsert(rescatados, { onConflict: 'id' })
-            if (e2) { console.error('[square-sync] rescue upsert error:', e2.message); errores += rescatados.length }
-            else insertados = rescatados.length
-          }
-        } else {
-          console.error('[square-sync] insert error:', error.message)
-          errores += toInsert.length
-        }
+        console.error('[square-sync] upsert nuevos error:', error.message)
+        errores += toInsert.length
       } else {
         insertados = toInsert.length
       }
