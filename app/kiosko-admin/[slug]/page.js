@@ -1903,7 +1903,7 @@ export default function AdminKioskoPage() {
       {/* Tab nav */}
       <nav className={styles.tabNav}>
         <button type="button" className={`${styles.tabBtn} ${tab === 'catalogo' ? styles.tabBtnActive : ''}`} onClick={() => setTab('catalogo')}>
-          Catálogo
+          Vinos
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'otros' ? styles.tabBtnActive : ''}`} onClick={() => setTab('otros')}>
           Otros{vinosOtro.length > 0 && <span className={styles.tabBadge}>{vinosOtro.length}</span>}
@@ -2589,7 +2589,7 @@ export default function AdminKioskoPage() {
       {/* Stats strip */}
       <div className={styles.statsStrip}>
         <div className={styles.statCard}>
-          <span className={styles.statNum}>{vinos.length}</span>
+          <span className={styles.statNum}>{vinosVino.length}</span>
           <span className={styles.statLabel}>Total</span>
         </div>
         <div className={styles.statCard}>
