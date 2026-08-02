@@ -5,7 +5,25 @@ import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN
 const SQUARE_API_BASE     = 'https://connect.squareup.com'
 
-const WINE_KEYWORDS = /vino|wine|bodega|winery/i
+const WINE_KEYWORDS    = /vino|wine|bodega|winery/i
+const PREFIJOS_INTERNOS = /^\s*(VBN|VTN|VBR|VRN|VBG|BOT|RBN|RTN|VRP|AOC|AOP)\s+/i
+
+// Extrae nombre limpio y campos adicionales del formato Square: "VBN Nombre I Uva I Bodega X I DO Y"
+function parsearNombreSquare(raw) {
+  const partes = (raw || '').split(' I ').map(s => s.trim())
+  const es5seg  = partes.length >= 5
+  const nombreRaw = es5seg ? partes[1] : partes[0]
+  const nombre    = nombreRaw.replace(PREFIJOS_INTERNOS, '').trim() || raw.trim()
+  const uva       = partes.length >= 4 ? partes[es5seg ? 2 : 1] : null
+  const bodega    = partes.length >= 4
+    ? partes[es5seg ? 3 : 2].replace(/^(Bodega|Bodegas)\s+/i, '').trim()
+    : null
+  const region    = partes.length >= 4
+    ? partes[es5seg ? 0 : 3].replace(/^(DO|DOC|DOP|IGP)\s+/i, '').trim()
+    : null
+  const pais      = es5seg && partes.length >= 5 ? partes[4] : null
+  return { nombre, uva: uva || null, bodega: bodega || null, region: region || null, pais: pais || null }
+}
 
 async function fetchAllCatalogItems() {
   if (!SQUARE_ACCESS_TOKEN) throw new Error('SQUARE_ACCESS_TOKEN no configurado en Vercel')
@@ -142,8 +160,10 @@ export async function POST(request, { params }) {
     for (const item of items) {
       if (item.type !== 'ITEM') continue
       const d      = item.item_data || {}
-      const nombre = d.name?.trim()
-      if (!nombre) continue
+      const rawNombre = d.name?.trim()
+      if (!rawNombre) continue
+
+      const { nombre, uva, bodega, region, pais } = parsearNombreSquare(rawNombre)
 
       const varData     = (d.variations || []).find(v => !v.is_deleted)?.item_variation_data
       const precioCents = varData?.price_money?.amount
@@ -163,9 +183,21 @@ export async function POST(request, { params }) {
       }
 
       if (existingMap[item.id]) {
+        // Actualizar sin tocar uva/bodega/region/pais — pueden haber sido editados manualmente
         toUpdate.push({ id: existingMap[item.id], tienda_id: tiendaId, square_catalog_id: item.id, ...base })
       } else {
-        toInsert.push({ tienda_id: tiendaId, square_catalog_id: item.id, stock, categoria: detectarCategoria(d, categoryMap), ...base })
+        // Item nuevo: rellenar todos los campos extraídos del nombre Square
+        toInsert.push({
+          tienda_id: tiendaId,
+          square_catalog_id: item.id,
+          stock,
+          categoria: detectarCategoria(d, categoryMap),
+          ...(uva    && { uva }),
+          ...(bodega && { bodega }),
+          ...(region && { region }),
+          ...(pais   && { pais }),
+          ...base,
+        })
       }
     }
 
