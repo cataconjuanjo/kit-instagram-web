@@ -194,18 +194,33 @@ export async function POST(request, { params }) {
       }
     }
 
+    // Detectar rows que existen en BD con distinto tienda_id y moverlas a toUpdate
+    if (toInsert.length > 0) {
+      const catalogIds = toInsert.map(r => r.square_catalog_id)
+      const orphanMap  = {}
+      for (let i = 0; i < catalogIds.length; i += 500) {
+        const { data: found } = await supabaseAdmin
+          .from('vinos_tienda')
+          .select('id, square_catalog_id')
+          .in('square_catalog_id', catalogIds.slice(i, i + 500))
+        for (const r of (found || [])) orphanMap[r.square_catalog_id] = r.id
+      }
+      const stillNew = []
+      for (const row of toInsert) {
+        const pk = orphanMap[row.square_catalog_id]
+        if (pk) toUpdate.push({ id: pk, ...row })
+        else     stillNew.push(row)
+      }
+      toInsert.length = 0
+      toInsert.push(...stillNew)
+    }
+
     let insertados = 0, actualizados = 0, errores = 0
 
     if (toInsert.length > 0) {
-      const { error } = await supabaseAdmin
-        .from('vinos_tienda')
-        .upsert(toInsert, { onConflict: 'square_catalog_id' })
-      if (error) {
-        console.error('[square-sync] upsert nuevos error:', error.message)
-        errores += toInsert.length
-      } else {
-        insertados = toInsert.length
-      }
+      const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
+      if (error) { console.error('[square-sync] insert error:', error.message); errores += toInsert.length }
+      else insertados = toInsert.length
     }
 
     if (toUpdate.length > 0) {
