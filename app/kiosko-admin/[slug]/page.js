@@ -881,6 +881,11 @@ export default function AdminKioskoPage() {
   const [squareSyncing, setSquareSyncing] = useState(false)
   const [squareSyncResult, setSquareSyncResult] = useState(null)
 
+  const [moreMenuOpen, setMoreMenuOpen]         = useState(false)
+  const moreMenuRef = useRef(null)
+  const [filtrosPanelOpen, setFiltrosPanelOpen] = useState(false)
+  const filtrosPanelRef = useRef(null)
+
   useEffect(() => { if (slug) cargar() }, [slug])
 
   // Polling silencioso: recarga el catálogo cada 30 s para reflejar sincronizaciones de Square
@@ -902,6 +907,20 @@ export default function AdminKioskoPage() {
   }, [slug])
 
   useEffect(() => { setPaginaActual(1) }, [busqueda, filtroTipo, filtroEstado, filtroCalidad, filtroDestacado, ordenPor, ordenDir, porPagina])
+
+  useEffect(() => {
+    if (!moreMenuOpen) return
+    function h(e) { if (!moreMenuRef.current?.contains(e.target)) setMoreMenuOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [moreMenuOpen])
+
+  useEffect(() => {
+    if (!filtrosPanelOpen) return
+    function h(e) { if (!filtrosPanelRef.current?.contains(e.target)) setFiltrosPanelOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [filtrosPanelOpen])
 
   useEffect(() => {
     if (tab === 'pedidos' && tienda && (tienda.kiosko_orders_enabled !== true || COUNTER_ORDERS_IN_DEVELOPMENT)) setTab('catalogo')
@@ -1323,6 +1342,11 @@ export default function AdminKioskoPage() {
 
   const hayFiltrosActivos = filtroTipo || filtroEstado !== 'todos' || filtroRegion || filtroPais ||
     filtroStock !== 'todos' || filtroCalidad || filtroDestacado !== 'todos' || precioMin !== '' || precioMax !== '' || busqueda
+
+  const filtrosActivosCount = [
+    filtroTipo !== '', filtroEstado !== 'todos', filtroRegion !== '', filtroPais !== '',
+    filtroStock !== 'todos', filtroDestacado !== 'todos', precioMin !== '', precioMax !== '',
+  ].filter(Boolean).length
 
   function limpiarFiltros() {
     setBusqueda(''); setFiltroTipo(''); setFiltroEstado('todos')
@@ -1819,24 +1843,17 @@ export default function AdminKioskoPage() {
             <p className={styles.titulo}>{tienda?.nombre || 'Kiosko Admin'}</p>
             {tienda?.ciudad && <p className={styles.subtitulo}>{tienda.ciudad}</p>}
           </div>
+          {tienda?.plan === 'trial'
+            ? <span className={styles.planBadgeTrial}>★ TRIAL</span>
+            : esPremium
+              ? <span className={styles.planBadgePremium}>★ PREMIUM</span>
+              : null}
         </div>
         <div className={styles.headerActions}>
           <a href={`/kiosko/${slug}`} target="_blank" rel="noreferrer" className={styles.btnSecundario}>
             Ver kiosko →
           </a>
           {tab === 'catalogo' && <>
-            <button onClick={exportarCSV} type="button" className={`${styles.btnSecundario} ${styles.btnHideMobile}`}>
-              Exportar CSV
-            </button>
-            <button onClick={() => { setModalImport(true); setResultImport(null) }} type="button" className={`${styles.btnSecundario} ${styles.btnHideMobile}`}>
-              Importar
-            </button>
-            {tienda?.square_catalog_id !== undefined || true ? (
-              <button onClick={syncSquare} type="button" className={`${styles.btnSecundario} ${styles.btnHideMobile}`}
-                disabled={squareSyncing} title="Traer productos del catálogo de Square">
-                {squareSyncing ? 'Sincronizando…' : '⟳ Square'}
-              </button>
-            ) : null}
             {squareSyncResult && (
               <span className={styles.syncResultPill} title={squareSyncResult.error || `${squareSyncResult.insertados} nuevos · ${squareSyncResult.actualizados} actualizados · ${squareSyncResult.stockSincronizados ?? 0} con stock real`}>
                 {squareSyncResult.error
@@ -1844,6 +1861,28 @@ export default function AdminKioskoPage() {
                   : `✓ ${squareSyncResult.insertados} nuevos · ${squareSyncResult.actualizados} act. · ${squareSyncResult.stockSincronizados ?? 0} stock`}
               </span>
             )}
+            <div className={styles.moreMenuWrap} ref={moreMenuRef}>
+              <button
+                type="button"
+                className={styles.btnSecundario}
+                onClick={() => setMoreMenuOpen(o => !o)}
+                aria-label="Más acciones"
+              >···</button>
+              {moreMenuOpen && (
+                <div className={styles.moreMenu}>
+                  <button type="button" className={styles.moreMenuItem} onClick={() => { exportarCSV(); setMoreMenuOpen(false) }}>
+                    Exportar CSV
+                  </button>
+                  <button type="button" className={styles.moreMenuItem} onClick={() => { setModalImport(true); setResultImport(null); setMoreMenuOpen(false) }}>
+                    Importar CSV
+                  </button>
+                  <button type="button" className={styles.moreMenuItem} onClick={() => { syncSquare(); setMoreMenuOpen(false) }}
+                    disabled={squareSyncing}>
+                    {squareSyncing ? 'Sincronizando…' : '⟳ Square'}
+                  </button>
+                </div>
+              )}
+            </div>
             <button onClick={abrirNuevo} type="button" className={styles.btnPrimario}>
               + Añadir vino
             </button>
@@ -1875,20 +1914,10 @@ export default function AdminKioskoPage() {
             Pedidos
           </button>
         )}
-        <div style={{ position: 'relative' }}>
-          {tienda?.plan === 'trial' && (
-            <span style={{
-              position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)',
-              background: '#c9a96e', color: '#1a1a2e', fontSize: '.56rem', fontWeight: 800,
-              padding: '2px 8px', borderRadius: 20, letterSpacing: '.06em', whiteSpace: 'nowrap',
-              pointerEvents: 'none',
-            }}>★ PREMIUM</span>
-          )}
-          <button type="button" className={`${styles.tabBtn} ${tab === 'analitica' ? styles.tabBtnActive : ''}`}
-            onClick={() => { setTab('analitica'); if (esPremium && !analitica && !analiticaLoad) cargarAnalitica() }}>
-            Analítica{!esPremium && <span className={styles.tabPremiumBadge}>★</span>}
-          </button>
-        </div>
+        <button type="button" className={`${styles.tabBtn} ${tab === 'analitica' ? styles.tabBtnActive : ''}`}
+          onClick={() => { setTab('analitica'); if (esPremium && !analitica && !analiticaLoad) cargarAnalitica() }}>
+          Analítica{!esPremium && <span className={styles.tabPremiumBadge}>★</span>}
+        </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'ajustes' ? styles.tabBtnActive : ''}`} onClick={() => setTab('ajustes')}>
           Ajustes
         </button>
@@ -2567,22 +2596,40 @@ export default function AdminKioskoPage() {
           <span className={styles.statNum}>{nActivos}</span>
           <span className={styles.statLabel}>Activos</span>
         </div>
-        <div className={`${styles.statCard} ${sinFoto ? styles.statWarn : ''}`}>
+        <button
+          type="button"
+          className={`${styles.statCard} ${styles.statCardClickable} ${sinFoto ? styles.statWarn : styles.statResolved}`}
+          onClick={() => sinFoto ? aplicarFiltroCalidad('sin_foto') : undefined}
+          disabled={!sinFoto}
+          title={sinFoto ? `${sinFoto} vinos activos sin foto — clic para filtrar` : 'Todas las fotos están al día'}
+        >
           <span className={styles.statNum}>{sinFoto}</span>
           <span className={styles.statLabel}>Sin foto</span>
-        </div>
-        <div className={`${styles.statCard} ${sinPrecio ? styles.statWarn : ''}`}>
+        </button>
+        <button
+          type="button"
+          className={`${styles.statCard} ${styles.statCardClickable} ${sinPrecio ? styles.statWarn : styles.statResolved}`}
+          onClick={() => sinPrecio ? aplicarFiltroCalidad('sin_pvp') : undefined}
+          disabled={!sinPrecio}
+          title={sinPrecio ? `${sinPrecio} vinos activos sin precio — clic para filtrar` : 'Todos los precios están definidos'}
+        >
           <span className={styles.statNum}>{sinPrecio}</span>
           <span className={styles.statLabel}>Sin PVP</span>
-        </div>
+        </button>
         <div className={`${styles.statCard} ${sinCoste ? styles.statWarn : ''}`}>
           <span className={styles.statNum}>{sinCoste}</span>
           <span className={styles.statLabel}>Sin coste</span>
         </div>
-        <div className={`${styles.statCard} ${sinStock ? styles.statWarn : ''}`}>
+        <button
+          type="button"
+          className={`${styles.statCard} ${styles.statCardClickable} ${sinStock ? styles.statWarn : styles.statResolved}`}
+          onClick={() => sinStock ? aplicarFiltroCalidad('sin_stock') : undefined}
+          disabled={!sinStock}
+          title={sinStock ? `${sinStock} vinos activos sin stock — clic para filtrar` : 'Todos los stocks están cubiertos'}
+        >
           <span className={styles.statNum}>{sinStock}</span>
           <span className={styles.statLabel}>Sin stock</span>
-        </div>
+        </button>
         <div className={styles.statCard}>
           <span className={styles.statNum}>{nDestacados}</span>
           <span className={styles.statLabel}>Destacados</span>
@@ -2600,15 +2647,21 @@ export default function AdminKioskoPage() {
             <h2>Preparado para el kiosko</h2>
             <p>Revisa los campos que más influyen en que el cliente encuentre, entienda y compre el vino sin preguntar.</p>
           </div>
-          <button
-            type="button"
-            className={styles.catalogScore}
-            onClick={() => catalogoChecklist.pendientes ? aplicarFiltroCalidad('pendientes') : undefined}
-            disabled={!catalogoChecklist.pendientes}
-          >
-            <span>{catalogoChecklist.score}%</span>
-            <small>{catalogoChecklist.pendientes ? `${catalogoChecklist.pendientes} por revisar` : 'Todo listo'}</small>
-          </button>
+          <div className={styles.checkProgressWrap}>
+            <span className={styles.checkProgressScore}>{catalogoChecklist.score}%</span>
+            <div className={styles.checkProgressBar}>
+              <div
+                className={styles.checkProgressBarFill}
+                style={{
+                  width: `${catalogoChecklist.score}%`,
+                  background: catalogoChecklist.score >= 80 ? '#2a8a4a' : catalogoChecklist.score >= 50 ? '#c9a96e' : '#c44',
+                }}
+              />
+            </div>
+            <small className={styles.checkProgressLabel}>
+              {catalogoChecklist.pendientes ? `${catalogoChecklist.pendientes} por revisar` : 'Todo listo'}
+            </small>
+          </div>
         </div>
 
         <div className={styles.catalogChecklistGrid}>
@@ -2620,12 +2673,11 @@ export default function AdminKioskoPage() {
               onClick={() => check.count ? aplicarFiltroCalidad(check.id) : undefined}
               disabled={!check.count}
             >
-              <span className={styles.catalogCheckStatus}>{check.count ? '!' : 'OK'}</span>
               <span className={styles.catalogCheckBody}>
                 <strong>{check.label}</strong>
                 <small>{check.desc}</small>
               </span>
-              <span className={styles.catalogCheckCount}>{check.count}</span>
+              {check.count > 0 && <span className={styles.catalogCheckCount}>{check.count}</span>}
             </button>
           ))}
         </div>
@@ -2650,50 +2702,77 @@ export default function AdminKioskoPage() {
           onChange={e => setBusqueda(e.target.value)}
           placeholder="Buscar nombre, bodega, uva, D.O., país…"
         />
-        <select className={styles.filtroSelect} value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}>
-          <option value="">Tipo</option>
-          {TIPOS.map(t => (
-            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1).replace('_',' ')}</option>
-          ))}
-        </select>
-        {regiones.length > 0 && (
-          <select className={styles.filtroSelect} value={filtroRegion} onChange={e => setFiltroRegion(e.target.value)}>
-            <option value="">D.O. / Región</option>
-            {regiones.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-        )}
-        {paises.length > 1 && (
-          <select className={styles.filtroSelect} value={filtroPais} onChange={e => setFiltroPais(e.target.value)}>
-            <option value="">País</option>
-            {paises.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-        )}
-        <select className={styles.filtroSelect} value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
-          <option value="todos">Estado</option>
-          <option value="activo">Activos</option>
-          <option value="inactivo">Inactivos</option>
-        </select>
-        <select className={styles.filtroSelect} value={filtroStock} onChange={e => setFiltroStock(e.target.value)}>
-          <option value="todos">Stock</option>
-          <option value="con">Con stock</option>
-          <option value="sin">Sin stock</option>
-        </select>
-        <select className={styles.filtroSelect} value={filtroDestacado} onChange={e => setFiltroDestacado(e.target.value)}>
-          <option value="todos">Ver</option>
-          <option value="destacado">Destacados</option>
-          <option value="sin_foto">Sin foto</option>
-          <option value="sin_ia">Sin ficha IA</option>
-        </select>
-        <div className={styles.precioRange}>
-          <input type="number" className={styles.precioInput} placeholder="€ min" value={precioMin}
-            onChange={e => setPrecioMin(e.target.value)} min="0" />
-          <span className={styles.precioSep}>–</span>
-          <input type="number" className={styles.precioInput} placeholder="€ max" value={precioMax}
-            onChange={e => setPrecioMax(e.target.value)} min="0" />
+        <div className={styles.filtrosBtnWrap} ref={filtrosPanelRef}>
+          <button
+            type="button"
+            className={`${styles.filtrosBtn} ${filtrosActivosCount > 0 ? styles.filtrosBtnActivo : ''}`}
+            onClick={() => setFiltrosPanelOpen(o => !o)}
+          >
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none" aria-hidden="true" style={{ opacity: .7 }}>
+              <rect x="0" y="0" width="14" height="1.5" rx=".75" fill="currentColor"/>
+              <rect x="2" y="4" width="10" height="1.5" rx=".75" fill="currentColor"/>
+              <rect x="4" y="8" width="6" height="1.5" rx=".75" fill="currentColor"/>
+            </svg>
+            Filtros
+            {filtrosActivosCount > 0 && <span className={styles.filtrosBadge}>{filtrosActivosCount}</span>}
+          </button>
+          {filtrosPanelOpen && (
+            <div className={styles.filtrosPanel}>
+              <div className={styles.filtrosPanelRow}>
+                <select className={styles.filtroSelect} value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}>
+                  <option value="">Tipo</option>
+                  {TIPOS.map(t => (
+                    <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1).replace('_',' ')}</option>
+                  ))}
+                </select>
+                {regiones.length > 0 && (
+                  <select className={styles.filtroSelect} value={filtroRegion} onChange={e => setFiltroRegion(e.target.value)}>
+                    <option value="">D.O. / Región</option>
+                    {regiones.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                )}
+                {paises.length > 1 && (
+                  <select className={styles.filtroSelect} value={filtroPais} onChange={e => setFiltroPais(e.target.value)}>
+                    <option value="">País</option>
+                    {paises.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                )}
+              </div>
+              <div className={styles.filtrosPanelRow}>
+                <select className={styles.filtroSelect} value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+                  <option value="todos">Estado</option>
+                  <option value="activo">Activos</option>
+                  <option value="inactivo">Inactivos</option>
+                </select>
+                <select className={styles.filtroSelect} value={filtroStock} onChange={e => setFiltroStock(e.target.value)}>
+                  <option value="todos">Stock</option>
+                  <option value="con">Con stock</option>
+                  <option value="sin">Sin stock</option>
+                </select>
+                <select className={styles.filtroSelect} value={filtroDestacado} onChange={e => setFiltroDestacado(e.target.value)}>
+                  <option value="todos">Ver</option>
+                  <option value="destacado">Destacados</option>
+                  <option value="sin_foto">Sin foto</option>
+                  <option value="sin_ia">Sin ficha IA</option>
+                </select>
+              </div>
+              <div className={styles.filtrosPanelRow}>
+                <div className={styles.precioRange}>
+                  <input type="number" className={styles.precioInput} placeholder="€ min" value={precioMin}
+                    onChange={e => setPrecioMin(e.target.value)} min="0" />
+                  <span className={styles.precioSep}>–</span>
+                  <input type="number" className={styles.precioInput} placeholder="€ max" value={precioMax}
+                    onChange={e => setPrecioMax(e.target.value)} min="0" />
+                </div>
+                {hayFiltrosActivos && (
+                  <button onClick={() => { limpiarFiltros(); setFiltrosPanelOpen(false) }} type="button" className={styles.btnLimpiar}>
+                    × Limpiar todo
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-        {hayFiltrosActivos && (
-          <button onClick={limpiarFiltros} type="button" className={styles.btnLimpiar}>× Limpiar</button>
-        )}
         <span className={styles.total}>{vinosFiltrados.length} / {vinosVino.length} vinos</span>
       </div>
 
