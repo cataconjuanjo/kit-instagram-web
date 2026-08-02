@@ -3653,3 +3653,44 @@
 .otrosFlagAuto   { background: #e8e5e0; color: #888; }
 .otrosFlagNeutro { background: #eeeae4; color: #999; }
 .otrosFlagAlerta { background: #fff4d4; color: #8a5a00; }
+
+/* ── Gráfico barras ventas semanales TPV ─────────────────────────────────── */
+.ventasChartBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 90px;
+  padding-bottom: 1.4rem;
+  position: relative;
+}
+.ventasChartCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 3px;
+  position: relative;
+}
+.ventasChartVal {
+  font-size: .65rem;
+  font-weight: 600;
+  color: #7a6a5a;
+  min-height: 1em;
+  line-height: 1;
+}
+.ventasChartBar {
+  width: 100%;
+  background: #c9a96e;
+  border-radius: 3px 3px 0 0;
+  min-height: 3px;
+  transition: height .25s ease;
+}
+.ventasChartLabel {
+  position: absolute;
+  bottom: -1.3rem;
+  font-size: .6rem;
+  color: #bbb;
+  white-space: nowrap;
+}

@@ -2498,8 +2498,32 @@ export default function AdminKioskoPage() {
         )
         const totalUds      = filas.reduce((s, f) => s + f.uds, 0)
         const totalIngresos = filas.reduce((s, f) => s + f.ingresos, 0)
+        const weeklyTotals  = Array(8).fill(0)
+        Object.values(tp).forEach(weeks => { weeks.forEach((u, i) => { weeklyTotals[i] += u }) })
+        const maxW = Math.max(...weeklyTotals, 1)
+        const hoy  = new Date()
+        const weekLabels = Array.from({ length: 8 }, (_, i) => {
+          const d = new Date(hoy.getTime() - (7 - i) * 7 * 24 * 60 * 60 * 1000)
+          return `${d.getDate()}/${d.getMonth() + 1}`
+        })
         return (
           <div style={{ padding: '0 1.75rem 1.75rem' }}>
+            {weeklyTotals.some(v => v > 0) && (
+              <div className={styles.analiticaBloque} style={{ marginBottom: '1rem' }}>
+                <p className={styles.analiticaBloqueDesc} style={{ marginBottom: '.85rem' }}>
+                  Ventas semanales (TPV) · últimas 8 semanas · <strong>{totalUds} ud. totales</strong>
+                </p>
+                <div className={styles.ventasChartBars}>
+                  {weeklyTotals.map((v, i) => (
+                    <div key={i} className={styles.ventasChartCol}>
+                      <span className={styles.ventasChartVal}>{v > 0 ? v : ''}</span>
+                      <div className={styles.ventasChartBar} style={{ height: `${Math.round((v / maxW) * 100)}%`, opacity: i === 7 ? 1 : 0.6 + (i / 7) * 0.4 }} />
+                      <span className={styles.ventasChartLabel}>{weekLabels[i]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className={styles.analiticaBloque}>
               <div className={styles.analiticaBloqueHeader}>
                 <div>
