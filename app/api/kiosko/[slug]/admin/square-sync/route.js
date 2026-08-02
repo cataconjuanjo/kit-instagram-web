@@ -6,7 +6,7 @@ const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN
 const SQUARE_API_BASE     = 'https://connect.squareup.com'
 
 const WINE_KEYWORDS    = /vino|wine|bodega|winery/i
-const PREFIJOS_INTERNOS = /^\s*(VBN|VTN|VBR|VRN|VBG|BOT|RBN|RTN|VRP|AOC|AOP)\s+/i
+const PREFIJOS_INTERNOS = /^\s*(V[A-Z]{2,3}|BOT|RBN|RTN|AOC|AOP)\s+/i
 
 // Extrae nombre limpio y campos adicionales del formato Square: "VBN Nombre I Uva I Bodega X I DO Y"
 function parsearNombreSquare(raw) {
