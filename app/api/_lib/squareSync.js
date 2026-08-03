@@ -147,7 +147,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug) {
       nombre, precio_pvp, descripcion, stock, categoria,
       square_variation_id: variationId,
       ...(foto_url && { foto_url }),
-      activo:     !item.is_deleted && stock > 0,
+      activo:     !item.is_deleted && (categoria !== 'vino' || stock > 0),
       updated_at: new Date().toISOString(),
     }
 

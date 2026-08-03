@@ -54,6 +54,23 @@ function pedidoVisualStatus(status) {
   return status === 'nuevo' ? 'pendiente_pago' : status
 }
 
+function detectarCatGourmet(nombre, descripcion) {
+  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const n = norm(nombre), t = norm(`${nombre} ${descripcion || ''}`)
+  if (/vermut|vermouth|vermell\b|sidra\b|cerveza\b|kombucha/.test(n)) return 'Vermut·Sidra'
+  if (/jamon|iberic|paleta|lomo\b|chorizo|salchich|fuet|sobrasada|cecina|morcill|embutido|presa\b|butifarra|longaniz|salami|bresaola|panceta|bacon|tocino/.test(n)) return 'Embutido'
+  if (/queso|manchego|brie|camembert|gorgonzola|parmesano|gouda|idiazabal|tetilla|rulo\b|cabra\b|ricota|burrata|mozzarell|feta\b|roquefort|stilton|cheddar/.test(n)) return 'Queso'
+  if (/conserva|chipiron|calamar|pulpo|ventresca|bonito|caballa|sardin|anchoa|almeja|mejillon|berberecho|atun|bacalao|ahumado/.test(t)) return 'Conserva mar'
+  if (/chocolate|bombon|turron|mazapan|nougat|polvoron/.test(t)) return 'Dulce'
+  if (/foie|pate\b|trufa/.test(t)) return 'Foie·Paté'
+  if (/fruto\s*seco|almendra|nuez\b|pistacho|avellana|anacardo/.test(t)) return 'Frutos secos'
+  if (/galleta|cookie|cracker|snack|patata\s*frita|chips\b|nachos/.test(t)) return 'Snack'
+  if (/aceite|aove|oliva|vinagre/.test(t)) return 'Aceite·AOVE'
+  if (/miel|mermelada/.test(t)) return 'Miel·Mermelada'
+  if (/esparrago|alcachofa|pimiento|tomate\b|seta|hongo/.test(t)) return 'Verdura'
+  return 'Otros'
+}
+
 function Sparkline({ data, width = 72, height = 24 }) {
   const max = Math.max(...data, 1)
   const pts = data.map((v, i) => {
@@ -887,6 +904,9 @@ export default function AdminKioskoPage() {
 
   const [busqueda, setBusqueda]           = useState('')
   const [verInactivos, setVerInactivos]   = useState(false)
+  const [filtroOtrosCat, setFiltroOtrosCat] = useState('todas')
+  const [paginaOtros, setPaginaOtros]       = useState(1)
+  const POR_PAGINA_OTROS = 20
   const [filtroTipo, setFiltroTipo]       = useState('')
   const [filtroEstado, setFiltroEstado]   = useState('todos')
   const [filtroRegion, setFiltroRegion]   = useState('')
@@ -940,6 +960,7 @@ export default function AdminKioskoPage() {
   }, [slug])
 
   useEffect(() => { setPaginaActual(1) }, [busqueda, filtroTipo, filtroEstado, filtroCalidad, filtroDestacado, ordenPor, ordenDir, porPagina, verInactivos])
+  useEffect(() => { setPaginaOtros(1) }, [filtroOtrosCat])
 
   useEffect(() => {
     if (!moreMenuOpen) return
@@ -1323,6 +1344,12 @@ export default function AdminKioskoPage() {
   const vinosVino  = useMemo(() => vinos.filter(v => v.categoria !== 'otro'), [vinos])
   const vinosOtro  = useMemo(() => vinos.filter(v => v.categoria === 'otro'), [vinos])
   const usaSquare  = useMemo(() => vinos.some(v => v.square_catalog_id), [vinos])
+
+  const otrosConCat    = useMemo(() => vinosOtro.map(v => ({ ...v, catAuto: detectarCatGourmet(v.nombre, v.descripcion) })), [vinosOtro])
+  const categoriasOtros = useMemo(() => [...new Set(otrosConCat.map(v => v.catAuto))].sort(), [otrosConCat])
+  const otrosFiltrados  = useMemo(() => filtroOtrosCat === 'todas' ? otrosConCat : otrosConCat.filter(v => v.catAuto === filtroOtrosCat), [otrosConCat, filtroOtrosCat])
+  const totalPaginasOtros = Math.ceil(otrosFiltrados.length / POR_PAGINA_OTROS)
+  const otrosPaginados  = useMemo(() => { const s = (paginaOtros - 1) * POR_PAGINA_OTROS; return otrosFiltrados.slice(s, s + POR_PAGINA_OTROS) }, [otrosFiltrados, paginaOtros])
 
   // ── Filtros (solo aplican al tab Catálogo / vinos) ─────────────────────────
   const regiones = useMemo(() => [...new Set(vinosVino.map(v => v.region).filter(Boolean))].sort(), [vinosVino])
@@ -2591,6 +2618,25 @@ export default function AdminKioskoPage() {
           <p style={{ marginBottom: '1rem', color: 'var(--text-muted, #888)', fontSize: '.875rem' }}>
             Productos importados de Square que no son vinos. Configura manualmente qué aparece en la cesta regalo y sus atributos.
           </p>
+
+          {/* Filtros por categoría */}
+          {categoriasOtros.length > 1 && (
+            <div className={styles.otrosFiltros}>
+              <button type="button"
+                className={`${styles.otrosFiltroBtn} ${filtroOtrosCat === 'todas' ? styles.otrosFiltroBtnActivo : ''}`}
+                onClick={() => setFiltroOtrosCat('todas')}>
+                Todas <span className={styles.otrosFiltroCnt}>{otrosConCat.length}</span>
+              </button>
+              {categoriasOtros.map(cat => (
+                <button key={cat} type="button"
+                  className={`${styles.otrosFiltroBtn} ${filtroOtrosCat === cat ? styles.otrosFiltroBtnActivo : ''}`}
+                  onClick={() => setFiltroOtrosCat(cat)}>
+                  {cat} <span className={styles.otrosFiltroCnt}>{otrosConCat.filter(v => v.catAuto === cat).length}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
@@ -2607,24 +2653,7 @@ export default function AdminKioskoPage() {
                 </tr>
               </thead>
               <tbody>
-                {vinosOtro.map(v => {
-                  const catAuto = (() => {
-                    const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
-                    const n = norm(v.nombre), t = norm(`${v.nombre} ${v.descripcion||''}`)
-                    if (/vermut|vermouth|vermell\b|sidra\b|cerveza\b|kombucha/.test(n)) return 'Vermut·Sidra'
-                    if (/jamon|iberic|paleta|lomo\b|chorizo|salchich|fuet|sobrasada|cecina|morcill|embutido|presa\b|butifarra|longaniz|salami|bresaola|panceta|bacon|tocino/.test(n)) return 'Embutido'
-                    if (/queso|manchego|brie|camembert|gorgonzola|parmesano|gouda|idiazabal|tetilla|rulo\b|cabra\b|ricota|burrata|mozzarell|feta\b|roquefort|stilton|cheddar/.test(n)) return 'Queso'
-                    if (/conserva|chipiron|calamar|pulpo|ventresca|bonito|caballa|sardin|anchoa|almeja|mejillon|berberecho|atun|bacalao|ahumado/.test(t)) return 'Conserva mar'
-                    if (/chocolate|bombon|turron|mazapan|nougat|polvoron/.test(t)) return 'Dulce'
-                    if (/foie|pate\b|trufa/.test(t)) return 'Foie·Paté'
-                    if (/fruto\s*seco|almendra|nuez\b|pistacho|avellana|anacardo/.test(t)) return 'Frutos secos'
-                    if (/galleta|cookie|cracker|snack|patata\s*frita|chips\b|nachos/.test(t)) return 'Snack'
-                    if (/aceite|aove|oliva|vinagre/.test(t)) return 'Aceite·AOVE'
-                    if (/miel|mermelada/.test(t)) return 'Miel·Mermelada'
-                    if (/esparrago|alcachofa|pimiento|tomate\b|seta|hongo/.test(t)) return 'Verdura'
-                    return 'Otros'
-                  })()
-
+                {otrosPaginados.map(v => {
                   async function patchOtro(campo, valor) {
                     const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${v.id}`, {
                       method: 'PATCH',
@@ -2634,7 +2663,6 @@ export default function AdminKioskoPage() {
                     if (res.ok) await cargar()
                   }
 
-                  // Tri-state cycle: null → true → false → null
                   function nextTriState(val) {
                     if (val === null || val === undefined) return true
                     if (val === true) return false
@@ -2648,7 +2676,7 @@ export default function AdminKioskoPage() {
                       </td>
                       <td><strong className={styles.tdTrunc} style={{ maxWidth: 200 }}>{v.nombre}</strong></td>
                       <td>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : <span className={styles.dash}>—</span>}</td>
-                      <td><span className={styles.otrosCatBadge}>{catAuto}</span></td>
+                      <td><span className={styles.otrosCatBadge}>{v.catAuto}</span></td>
 
                       {/* En cesta: null=auto, true=sí, false=no */}
                       <td>
@@ -2690,12 +2718,24 @@ export default function AdminKioskoPage() {
                     </tr>
                   )
                 })}
-                {vinosOtro.length === 0 && (
-                  <tr><td colSpan={9} className={styles.empty}>Sin otros productos</td></tr>
+                {otrosFiltrados.length === 0 && (
+                  <tr><td colSpan={9} className={styles.empty}>{vinosOtro.length === 0 ? 'Sin otros productos' : 'Sin productos en esta categoría'}</td></tr>
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* Paginación */}
+          {totalPaginasOtros > 1 && (
+            <div className={styles.paginacion}>
+              <span className={styles.paginacionInfo}>{(paginaOtros - 1) * POR_PAGINA_OTROS + 1}–{Math.min(paginaOtros * POR_PAGINA_OTROS, otrosFiltrados.length)} de {otrosFiltrados.length}</span>
+              <button type="button" className={styles.paginacionBtn} onClick={() => setPaginaOtros(p => Math.max(1, p - 1))} disabled={paginaOtros === 1}>‹</button>
+              {Array.from({ length: totalPaginasOtros }, (_, i) => i + 1).map(p => (
+                <button key={p} type="button" className={`${styles.paginacionBtn} ${p === paginaOtros ? styles.paginacionBtnActivo : ''}`} onClick={() => setPaginaOtros(p)}>{p}</button>
+              ))}
+              <button type="button" className={styles.paginacionBtn} onClick={() => setPaginaOtros(p => Math.min(totalPaginasOtros, p + 1))} disabled={paginaOtros === totalPaginasOtros}>›</button>
+            </div>
+          )}
         </div>
       )}
 
