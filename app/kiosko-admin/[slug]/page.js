@@ -2704,11 +2704,12 @@ export default function AdminKioskoPage() {
               </thead>
               <tbody>
                 {otrosPaginados.map(v => {
-                  async function patchOtro(campo, valor) {
+                  async function patchOtro(campoOObj, valor) {
+                    const body = typeof campoOObj === 'object' ? campoOObj : { [campoOObj]: valor }
                     const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${v.id}`, {
                       method: 'PATCH',
                       headers: { ...authHeaders, 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ [campo]: valor }),
+                      body: JSON.stringify(body),
                     })
                     if (res.ok) {
                       const data = await res.json()
@@ -2730,7 +2731,8 @@ export default function AdminKioskoPage() {
                           onChange={e => {
                             const val = e.target.value
                             if (val === '__vino__') {
-                              if (window.confirm(`¿Mover "${v.nombre}" a la pestaña Vinos? Aparecerá en el catálogo principal.`)) patchOtro('categoria', 'vino')
+                              if (window.confirm(`¿Mover "${v.nombre}" a la pestaña Vinos? Aparecerá en el catálogo principal.`))
+                                patchOtro({ categoria: 'vino', activo: (v.stock ?? 0) > 0 })
                             } else {
                               patchOtro('cat_gourmet', val || null)
                             }
