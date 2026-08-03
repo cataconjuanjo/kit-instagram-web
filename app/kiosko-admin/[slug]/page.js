@@ -938,6 +938,9 @@ export default function AdminKioskoPage() {
   const moreMenuRef = useRef(null)
   const [filtrosPanelOpen, setFiltrosPanelOpen] = useState(false)
   const filtrosPanelRef = useRef(null)
+  const [filtrosPanelOtrosOpen, setFiltrosPanelOtrosOpen] = useState(false)
+  const filtrosPanelOtrosRef = useRef(null)
+  const [busquedaOtros, setBusquedaOtros] = useState('')
 
   useEffect(() => { if (slug) cargar() }, [slug])
 
@@ -960,7 +963,7 @@ export default function AdminKioskoPage() {
   }, [slug])
 
   useEffect(() => { setPaginaActual(1) }, [busqueda, filtroTipo, filtroEstado, filtroCalidad, filtroDestacado, ordenPor, ordenDir, porPagina, verInactivos])
-  useEffect(() => { setPaginaOtros(1) }, [filtroOtrosCat])
+  useEffect(() => { setPaginaOtros(1) }, [filtroOtrosCat, busquedaOtros])
 
   useEffect(() => {
     if (!moreMenuOpen) return
@@ -975,6 +978,13 @@ export default function AdminKioskoPage() {
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [filtrosPanelOpen])
+
+  useEffect(() => {
+    if (!filtrosPanelOtrosOpen) return
+    function h(e) { if (!filtrosPanelOtrosRef.current?.contains(e.target)) setFiltrosPanelOtrosOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [filtrosPanelOtrosOpen])
 
   useEffect(() => {
     if (tab === 'pedidos' && tienda && (tienda.kiosko_orders_enabled !== true || COUNTER_ORDERS_IN_DEVELOPMENT)) setTab('catalogo')
@@ -1347,7 +1357,11 @@ export default function AdminKioskoPage() {
 
   const otrosConCat    = useMemo(() => vinosOtro.map(v => ({ ...v, catAuto: detectarCatGourmet(v.nombre, v.descripcion) })), [vinosOtro])
   const categoriasOtros = useMemo(() => [...new Set(otrosConCat.map(v => v.catAuto))].sort(), [otrosConCat])
-  const otrosFiltrados  = useMemo(() => filtroOtrosCat === 'todas' ? otrosConCat : otrosConCat.filter(v => v.catAuto === filtroOtrosCat), [otrosConCat, filtroOtrosCat])
+  const otrosFiltrados  = useMemo(() => {
+    let r = filtroOtrosCat === 'todas' ? otrosConCat : otrosConCat.filter(v => v.catAuto === filtroOtrosCat)
+    if (busquedaOtros) { const q = busquedaOtros.toLowerCase(); r = r.filter(v => [v.nombre, v.descripcion].filter(Boolean).join(' ').toLowerCase().includes(q)) }
+    return r
+  }, [otrosConCat, filtroOtrosCat, busquedaOtros])
   const totalPaginasOtros = Math.ceil(otrosFiltrados.length / POR_PAGINA_OTROS)
   const otrosPaginados  = useMemo(() => { const s = (paginaOtros - 1) * POR_PAGINA_OTROS; return otrosFiltrados.slice(s, s + POR_PAGINA_OTROS) }, [otrosFiltrados, paginaOtros])
 
@@ -2613,30 +2627,55 @@ export default function AdminKioskoPage() {
       })()}
 
       {/* Otros productos (Square) */}
-      {tab === 'otros' && (
-        <div style={{ padding: '1.5rem 1.75rem' }}>
-          <p style={{ marginBottom: '1rem', color: 'var(--text-muted, #888)', fontSize: '.875rem' }}>
-            Productos importados de Square que no son vinos. Configura manualmente qué aparece en la cesta regalo y sus atributos.
-          </p>
+      {tab === 'otros' && <>
+        <p style={{ padding: '.85rem 1.75rem 0', color: '#999', fontSize: '.8rem' }}>
+          Productos importados de Square que no son vinos. Configura qué aparece en la cesta regalo y sus atributos.
+        </p>
 
-          {/* Filtros por categoría */}
-          {categoriasOtros.length > 1 && (
-            <div className={styles.otrosFiltros}>
-              <button type="button"
-                className={`${styles.otrosFiltroBtn} ${filtroOtrosCat === 'todas' ? styles.otrosFiltroBtnActivo : ''}`}
-                onClick={() => setFiltroOtrosCat('todas')}>
-                Todas <span className={styles.otrosFiltroCnt}>{otrosConCat.length}</span>
-              </button>
-              {categoriasOtros.map(cat => (
-                <button key={cat} type="button"
-                  className={`${styles.otrosFiltroBtn} ${filtroOtrosCat === cat ? styles.otrosFiltroBtnActivo : ''}`}
-                  onClick={() => setFiltroOtrosCat(cat)}>
-                  {cat} <span className={styles.otrosFiltroCnt}>{otrosConCat.filter(v => v.catAuto === cat).length}</span>
-                </button>
-              ))}
-            </div>
-          )}
+        <div className={styles.toolbar}>
+          <input
+            className={styles.busqueda}
+            type="search"
+            value={busquedaOtros}
+            onChange={e => setBusquedaOtros(e.target.value)}
+            placeholder="Buscar producto…"
+          />
+          <div className={styles.filtrosBtnWrap} ref={filtrosPanelOtrosRef}>
+            <button
+              type="button"
+              className={`${styles.filtrosBtn} ${filtroOtrosCat !== 'todas' ? styles.filtrosBtnActivo : ''}`}
+              onClick={() => setFiltrosPanelOtrosOpen(o => !o)}
+            >
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="none" aria-hidden="true" style={{ opacity: .7 }}>
+                <rect x="0" y="0" width="14" height="1.5" rx=".75" fill="currentColor"/>
+                <rect x="2" y="4" width="10" height="1.5" rx=".75" fill="currentColor"/>
+                <rect x="4" y="8" width="6" height="1.5" rx=".75" fill="currentColor"/>
+              </svg>
+              Filtros
+              {filtroOtrosCat !== 'todas' && <span className={styles.filtrosBadge}>1</span>}
+            </button>
+            {filtrosPanelOtrosOpen && (
+              <div className={styles.filtrosPanel}>
+                <div className={styles.filtrosPanelRow}>
+                  <select className={styles.filtroSelect} value={filtroOtrosCat} onChange={e => setFiltroOtrosCat(e.target.value)}>
+                    <option value="todas">Categoría</option>
+                    {categoriasOtros.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                  </select>
+                </div>
+                {filtroOtrosCat !== 'todas' && (
+                  <div className={styles.filtrosPanelRow}>
+                    <button onClick={() => { setFiltroOtrosCat('todas'); setFiltrosPanelOtrosOpen(false) }} type="button" className={styles.btnLimpiar}>
+                      × Limpiar
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <span className={styles.total}>{otrosFiltrados.length} / {vinosOtro.length} productos</span>
+        </div>
 
+        <div style={{ padding: '0 1.75rem 1.75rem' }}>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
@@ -2737,7 +2776,8 @@ export default function AdminKioskoPage() {
             </div>
           )}
         </div>
-      )}
+      </div>
+      </> }
 
       {/* Catálogo: toolbar + tabla */}
       {tab === 'catalogo' && <>

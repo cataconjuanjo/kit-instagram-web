@@ -3654,35 +3654,6 @@
 .otrosFlagNeutro { background: #eeeae4; color: #999; }
 .otrosFlagAlerta { background: #fff4d4; color: #8a5a00; }
 
-/* ── Filtros pestaña Otros ───────────────────────────────────────────────── */
-.otrosFiltros {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .4rem;
-  margin-bottom: 1rem;
-}
-.otrosFiltroBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: .35rem;
-  border: 1px solid #d0cdc8;
-  border-radius: 20px;
-  background: #faf9f6;
-  color: #555;
-  font-size: .78rem;
-  padding: .28rem .75rem;
-  cursor: pointer;
-  transition: background .12s, border-color .12s, color .12s;
-  white-space: nowrap;
-}
-.otrosFiltroBtn:hover { border-color: #c9a96e; color: #333; }
-.otrosFiltroBtnActivo { background: #c9a96e; border-color: #c9a96e; color: #fff; font-weight: 600; }
-.otrosFiltroBtnActivo:hover { background: #b8935a; border-color: #b8935a; color: #fff; }
-.otrosFiltroCnt {
-  font-size: .7rem;
-  opacity: .75;
-  font-weight: 400;
-}
 
 /* ── Gráfico barras ventas semanales TPV ─────────────────────────────────── */
 .ventasChartBars {
