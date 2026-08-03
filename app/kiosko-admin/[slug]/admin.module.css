@@ -3622,37 +3622,43 @@
 }
 
 /* ── Otros (gourmet) table ───────────────────────────────────────────────── */
-.otrosCatBadge {
-  display: inline-block;
-  padding: .13rem .5rem;
+.otrosCatSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #ddd8d0;
   border-radius: 20px;
   font-size: .7rem;
   font-weight: 700;
-  background: #f0ede8;
+  background: #f0ede8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a6a5a'/%3E%3C/svg%3E") no-repeat right .45rem center;
   color: #7a6a5a;
   white-space: nowrap;
   letter-spacing: .02em;
+  padding: .13rem 1.4rem .13rem .5rem;
+  cursor: pointer;
+  max-width: 140px;
 }
+.otrosCatSelect:focus { outline: none; border-color: #bbb; }
 
-.otrosFlag {
-  border: none;
+.otrosBoolSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #ddd8d0;
   border-radius: 20px;
   font-size: .72rem;
   font-weight: 700;
-  padding: .22rem .65rem;
+  padding: .18rem 1.3rem .18rem .55rem;
   cursor: pointer;
-  transition: opacity .12s, transform .1s;
-  white-space: nowrap;
   min-width: 58px;
+  background-color: #eeeae4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .4rem center;
+  color: #999;
 }
-
-.otrosFlag:hover { opacity: .78; transform: scale(1.04); }
-
-.otrosFlagSi  { background: #d4f0d4; color: #1a6a1a; }
-.otrosFlagNo  { background: #fce8e8; color: #c44;    }
-.otrosFlagAuto   { background: #e8e5e0; color: #888; }
-.otrosFlagNeutro { background: #eeeae4; color: #999; }
-.otrosFlagAlerta { background: #fff4d4; color: #8a5a00; }
+.otrosBoolSelect:focus { outline: none; border-color: #bbb; }
+.otrosBoolSi  { background-color: #d4f0d4; color: #1a6a1a; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231a6a1a'/%3E%3C/svg%3E"); }
+.otrosBoolNo  { background-color: #fce8e8; color: #c44;    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c44'/%3E%3C/svg%3E"); }
+.otrosBoolAlerta { background-color: #fff4d4; color: #8a5a00; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a5a00'/%3E%3C/svg%3E"); }
 
 
 /* ── Gráfico barras ventas semanales TPV ─────────────────────────────────── */

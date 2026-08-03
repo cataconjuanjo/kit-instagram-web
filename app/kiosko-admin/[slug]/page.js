@@ -78,6 +78,12 @@ function detectarCatGourmet(nombre, descripcion) {
   return 'Otros'
 }
 
+const CATS_GOURMET = [
+  'Aceite·AOVE', 'Aceituna·Olivada', 'Condimento', 'Conserva mar', 'Dulce',
+  'Embutido', 'Foie·Paté', 'Frutos secos', 'Miel·Mermelada', 'Panadería',
+  'Queso', 'Snack', 'Verdura', 'Vermut·Sidra', 'Vinagre·Balsámico', 'Otros',
+]
+
 function Sparkline({ data, width = 72, height = 24 }) {
   const max = Math.max(...data, 1)
   const pts = data.map((v, i) => {
@@ -1362,7 +1368,7 @@ export default function AdminKioskoPage() {
   const vinosOtro  = useMemo(() => vinos.filter(v => v.categoria === 'otro'), [vinos])
   const usaSquare  = useMemo(() => vinos.some(v => v.square_catalog_id), [vinos])
 
-  const otrosConCat    = useMemo(() => vinosOtro.map(v => ({ ...v, catAuto: detectarCatGourmet(v.nombre, v.descripcion) })), [vinosOtro])
+  const otrosConCat    = useMemo(() => vinosOtro.map(v => ({ ...v, catAuto: v.cat_gourmet || detectarCatGourmet(v.nombre, v.descripcion) })), [vinosOtro])
   const categoriasOtros = useMemo(() => [...new Set(otrosConCat.map(v => v.catAuto))].sort(), [otrosConCat])
   const otrosFiltrados  = useMemo(() => {
     let r = filtroOtrosCat === 'todas' ? otrosConCat : otrosConCat.filter(v => v.catAuto === filtroOtrosCat)
@@ -2708,12 +2714,6 @@ export default function AdminKioskoPage() {
                     if (res.ok) await cargar()
                   }
 
-                  function nextTriState(val) {
-                    if (val === null || val === undefined) return true
-                    if (val === true) return false
-                    return null
-                  }
-
                   return (
                     <tr key={v.id} className={!v.activo ? styles.rowInactivo : ''}>
                       <td className={styles.tdFoto}>
@@ -2721,33 +2721,51 @@ export default function AdminKioskoPage() {
                       </td>
                       <td><strong className={styles.tdTrunc} style={{ maxWidth: 200 }}>{v.nombre}</strong></td>
                       <td>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : <span className={styles.dash}>—</span>}</td>
-                      <td><span className={styles.otrosCatBadge}>{v.catAuto}</span></td>
-
-                      {/* En cesta: null=auto, true=sí, false=no */}
                       <td>
-                        <button type="button" className={`${styles.otrosFlag} ${v.apto_cesta === true ? styles.otrosFlagSi : v.apto_cesta === false ? styles.otrosFlagNo : styles.otrosFlagAuto}`}
-                          onClick={() => patchOtro('apto_cesta', nextTriState(v.apto_cesta))}
-                          title="Click para cambiar: Auto → Sí → No → Auto">
-                          {v.apto_cesta === true ? '✓ Sí' : v.apto_cesta === false ? '✗ No' : 'Auto'}
-                        </button>
+                        <select
+                          className={styles.otrosCatSelect}
+                          value={v.cat_gourmet || ''}
+                          onChange={e => patchOtro('cat_gourmet', e.target.value || null)}
+                        >
+                          <option value="">{v.cat_gourmet ? '— auto' : v.catAuto}</option>
+                          {CATS_GOURMET.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
                       </td>
 
-                      {/* Vegano: null=desconocido, true=sí, false=no */}
                       <td>
-                        <button type="button" className={`${styles.otrosFlag} ${v.es_vegano === true ? styles.otrosFlagSi : v.es_vegano === false ? styles.otrosFlagNo : styles.otrosFlagNeutro}`}
-                          onClick={() => patchOtro('es_vegano', nextTriState(v.es_vegano))}
-                          title="Click para cambiar: ? → Sí → No → ?">
-                          {v.es_vegano === true ? '✓ Sí' : v.es_vegano === false ? '✗ No' : '?'}
-                        </button>
+                        <select
+                          className={`${styles.otrosBoolSelect} ${v.apto_cesta === true ? styles.otrosBoolSi : v.apto_cesta === false ? styles.otrosBoolNo : ''}`}
+                          value={v.apto_cesta === true ? 'si' : v.apto_cesta === false ? 'no' : ''}
+                          onChange={e => patchOtro('apto_cesta', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
+                        >
+                          <option value="">Auto</option>
+                          <option value="si">Sí</option>
+                          <option value="no">No</option>
+                        </select>
                       </td>
 
-                      {/* Con alcohol: null=auto, true=sí, false=no */}
                       <td>
-                        <button type="button" className={`${styles.otrosFlag} ${v.con_alcohol === true ? styles.otrosFlagAlerta : v.con_alcohol === false ? styles.otrosFlagSi : styles.otrosFlagNeutro}`}
-                          onClick={() => patchOtro('con_alcohol', nextTriState(v.con_alcohol))}
-                          title="Click para cambiar: ? → Sí → No → ?">
-                          {v.con_alcohol === true ? '🍶 Sí' : v.con_alcohol === false ? 'No' : '?'}
-                        </button>
+                        <select
+                          className={`${styles.otrosBoolSelect} ${v.es_vegano === true ? styles.otrosBoolSi : v.es_vegano === false ? styles.otrosBoolNo : ''}`}
+                          value={v.es_vegano === true ? 'si' : v.es_vegano === false ? 'no' : ''}
+                          onChange={e => patchOtro('es_vegano', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
+                        >
+                          <option value="">—</option>
+                          <option value="si">Sí</option>
+                          <option value="no">No</option>
+                        </select>
+                      </td>
+
+                      <td>
+                        <select
+                          className={`${styles.otrosBoolSelect} ${v.con_alcohol === true ? styles.otrosBoolAlerta : v.con_alcohol === false ? styles.otrosBoolSi : ''}`}
+                          value={v.con_alcohol === true ? 'si' : v.con_alcohol === false ? 'no' : ''}
+                          onChange={e => patchOtro('con_alcohol', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
+                        >
+                          <option value="">—</option>
+                          <option value="si">Sí</option>
+                          <option value="no">No</option>
+                        </select>
                       </td>
 
                       <td>{v.stock ?? <span className={styles.dash}>—</span>}</td>
