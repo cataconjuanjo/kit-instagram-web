@@ -2776,7 +2776,6 @@ export default function AdminKioskoPage() {
             </div>
           )}
         </div>
-      </div>
       </> }
 
       {/* Catálogo: toolbar + tabla */}
