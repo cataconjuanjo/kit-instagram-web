@@ -965,36 +965,36 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es' })
 function detectarCatGourmet(nombre = '', descripcion = '') {
   const n = normalizarTexto(nombre)
   const t = normalizarTexto(`${nombre} ${descripcion}`)
+  const d = normalizarTexto(descripcion)
 
-  // Bebidas artesanales — antes que nada para evitar falsos positivos
   if (/vermut|vermouth|vermell\b|aperitivo\b|sidra\b|cerveza\b|kombucha/.test(n)) return 'bebida'
-
-  // Embutido y queso: nombre solo (las descripciones dicen "ideal con embutido/queso")
-  if (/jamon|iberic|paleta|lomo\b|chorizo|salchich|fuet|sobrasada|cecina|morcill|embutido|presa\b|butifarra|longaniz|salami|bresaola|copa\s*iberic|panceta|bacon|tocino|fiambre/.test(n)) return 'embutido'
-  if (/queso|manchego|brie|camembert|gorgonzola|parmesano|gouda|idiazabal|tetilla|rulo\b|cabra\b|ricota|ricotta|burrata|mozzarell|mozarell|feta\b|halloumi|roquefort|stilton|cheddar|emmental|gruyere|raclette|pecorino|requesón|requesó|cottage|torta\s*del\s*casar|torta\s*extremena|queso\s*fresco/.test(n)) return 'queso'
-
-  // El resto puede usar texto completo — son categorías que no aparecen como sugerencias de maridaje
-  if (/conserva|chipiron|calamar|pulpo|ventresca|bonito|caballa|sardin|anchoa|navaja|almeja|mejillon|berberecho|zamburina|necora|gamba|langostin|bogavante|centollo|atun|bacalao|ahumado|escabeche/.test(t)) return 'conserva'
+  if (/jamon|iberic|paleta|lomo\b|chorizo|salchich|fuet|sobrasada|cecina|morcill|embutido|presa\b|butifarra|longaniz|salami|bresaola|copa\s*iberic|panceta|bacon|tocino|fiambre|oreja\b|pulled\s*pork/.test(n)) return 'embutido'
+  if (/queso|manchego|brie|camembert|gorgonzola|parmesano|gouda|idiazabal|tetilla|rulo\b|cabra\b|ricota|ricotta|burrata|mozzarell|mozarell|feta\b|halloumi|roquefort|stilton|cheddar|emmental|gruyere|raclette|pecorino|requesón|requesó|cottage|torta\s*del\s*casar|torta\s*extremena|queso\s*fresco|mahon/.test(n)) return 'queso'
+  // Snack antes que foie_pate — evita falsos positivos con "trufa" en crackers
+  if (/galleta|cookie|cracker|snack|papas?\s*fritas?|\bpapas\b|patata\s*fritas?|chips\b|nachos|batatito/.test(n)) return 'snack'
+  if (/conserva|chipiron|calamar|pulpo|ventresca|bonito|caballa|sardin|anchoa|navaja|navajas|almeja|mejillon|berberecho|zamburina|necora|gamba|langostin|bogavante|centollo|atun|bacalao|ahumado|escabeche|txangurro|boquer/.test(t)) return 'conserva'
+  if (/foie|pate\b|trufa|almogrote|hummus|tahini|mousse\b|rillet|crema\s+de\b/.test(t)) return 'foie_pate'
+  if (/aceituna|olivada|tapenade/.test(n)) return 'aceituna'
+  if (/esparrago|alcachofa|pimiento|piquillo|tomate\b|seta|hongo|puerro|banderilla|guindilla/.test(n)) return 'conserva_vegetal'
   if (/chocolate|bombon|turron|mazapan|nougat|polvoron|mantecado/.test(t)) return 'dulce'
-  if (/foie|pate\b|trufa/.test(t)) return 'foie_pate'
   if (/fruto\s*seco|almendra|nuez\b|pistacho|avellana|anacardo/.test(t)) return 'fruto_seco'
-  if (/galleta|cookie|cracker|snack|patata\s*frita|chips\b|nachos/.test(t)) return 'snack'
-  if (/aceite|aove|oliva|vinagre/.test(t)) return 'aceite_oliva'
   if (/miel|mermelada/.test(t)) return 'miel_mermelada'
-  if (/esparrago|alcachofa|pimiento|tomate\b|seta|hongo/.test(t)) return 'conserva_vegetal'
+  // Aceite: solo si el nombre identifica el producto, no si es un ingrediente en la descripción
+  if (/^aceite|virgen\s*extra|\baove\b|aceite\s+de\s+oliva|vinagre|balsamic/.test(n)) return 'aceite_oliva'
+  if (/aceite\s+de\s+oliva\s+virgen|\baove\b/.test(d)) return 'aceite_oliva'
   return 'otro'
 }
 
 // Afinidad vino→gourmet (invierte la lógica Chartier/WSET): qué gourmet potencia cada tipo de vino
 const AFINIDAD_VINO_GOURMET = {
-  tinto:       { embutido: 9, queso: 7, conserva_vegetal: 6, fruto_seco: 5, aceite_oliva: 4, snack: 3 },
-  blanco:      { conserva: 10, queso: 7, aceite_oliva: 7, conserva_vegetal: 6, snack: 4, fruto_seco: 4 },
-  rosado:      { embutido: 8, conserva: 7, queso: 6, snack: 5, fruto_seco: 5, aceite_oliva: 4 },
-  espumoso:    { conserva: 10, foie_pate: 9, queso: 8, embutido: 6, fruto_seco: 5, snack: 4 },
-  generoso:    { embutido: 10, fruto_seco: 9, conserva: 8, queso: 7, aceite_oliva: 6 },
+  tinto:       { embutido: 9, queso: 7, conserva_vegetal: 6, fruto_seco: 5, aceite_oliva: 4, aceituna: 4, snack: 3 },
+  blanco:      { conserva: 10, queso: 7, aceite_oliva: 7, conserva_vegetal: 6, aceituna: 5, snack: 4, fruto_seco: 4 },
+  rosado:      { embutido: 8, conserva: 7, queso: 6, aceituna: 5, snack: 5, fruto_seco: 5, aceite_oliva: 4 },
+  espumoso:    { conserva: 10, foie_pate: 9, queso: 8, aceituna: 5, embutido: 6, fruto_seco: 5, snack: 4 },
+  generoso:    { embutido: 10, fruto_seco: 9, conserva: 8, aceituna: 8, queso: 7, aceite_oliva: 6 },
   dulce:       { foie_pate: 10, dulce: 9, queso: 8, fruto_seco: 7, miel_mermelada: 7 },
-  naranja:     { queso: 9, embutido: 8, conserva_vegetal: 7, fruto_seco: 6, aceite_oliva: 6 },
-  sin_alcohol: { snack: 8, fruto_seco: 7, queso: 6, conserva: 5, dulce: 5 },
+  naranja:     { queso: 9, embutido: 8, conserva_vegetal: 7, aceituna: 6, fruto_seco: 6, aceite_oliva: 6 },
+  sin_alcohol: { snack: 8, fruto_seco: 7, queso: 6, aceituna: 6, conserva: 5, dulce: 5 },
 }
 
 // Bebidas artesanales (vermut, sidra…) tienen afinidad propia con snacks y embutido
@@ -1011,21 +1011,21 @@ const OCASION_GOURMET_BOOST = {
 
 // Explicación legible de por qué este gourmet acompaña ese vino
 const RAZON_MARIDAJE_GOURMET = {
-  tinto:       { embutido: 'El tanino del tinto abraza la grasa del ibérico', queso: 'Potencia los quesos curados y semicurados', conserva_vegetal: 'La intensidad del tinto complementa la conserva', fruto_seco: 'Aromas tostados compartidos' },
-  blanco:      { conserva: 'La acidez levanta los matices del mar en conserva', queso: 'Corta la untuosidad del queso con frescura', aceite_oliva: 'Acento mineral con el AOVE', conserva_vegetal: 'Frescura que equilibra el sabor concentrado' },
-  rosado:      { embutido: 'El rosado equilibra la grasa del embutido', conserva: 'Armoniza con la salinidad de las conservas', queso: 'Frescura frutal que redondea los quesos', fruto_seco: 'Elegancia que realza los frutos secos' },
-  espumoso:    { conserva: 'La burbuja levanta los sabores yodados del mar', foie_pate: 'La acidez equilibra la untuosidad del foie', queso: 'La burbuja seca limpia la grasa del queso', embutido: 'Contraste clásico: burbuja y sal del ibérico' },
-  generoso:    { embutido: 'La lectura clásica: fino con ibérico', fruto_seco: 'Comparte aromas secos y tostados', conserva: 'La salinidad abraza los sabores del mar', queso: 'Profundidad oxidativa que enriquece el queso' },
+  tinto:       { embutido: 'El tanino del tinto abraza la grasa del ibérico', queso: 'Potencia los quesos curados y semicurados', conserva_vegetal: 'La intensidad del tinto complementa la conserva', fruto_seco: 'Aromas tostados compartidos', aceituna: 'El punto salado de las aceitunas realza los taninos del tinto' },
+  blanco:      { conserva: 'La acidez levanta los matices del mar en conserva', queso: 'Corta la untuosidad del queso con frescura', aceite_oliva: 'Acento mineral con el AOVE', conserva_vegetal: 'Frescura que equilibra el sabor concentrado', aceituna: 'Acidez y sal: el aperitivo perfecto junto a un blanco' },
+  rosado:      { embutido: 'El rosado equilibra la grasa del embutido', conserva: 'Armoniza con la salinidad de las conservas', queso: 'Frescura frutal que redondea los quesos', fruto_seco: 'Elegancia que realza los frutos secos', aceituna: 'La frescura del rosado armoniza con las aceitunas aliñadas' },
+  espumoso:    { conserva: 'La burbuja levanta los sabores yodados del mar', foie_pate: 'La acidez equilibra la untuosidad del foie', queso: 'La burbuja seca limpia la grasa del queso', embutido: 'Contraste clásico: burbuja y sal del ibérico', aceituna: 'La burbuja limpia y eleva el sabor de las aceitunas' },
+  generoso:    { embutido: 'La lectura clásica: fino con ibérico', fruto_seco: 'Comparte aromas secos y tostados', conserva: 'La salinidad abraza los sabores del mar', queso: 'Profundidad oxidativa que enriquece el queso', aceituna: 'Fino con aceitunas: el maridaje más clásico de Andalucía' },
   dulce:       { foie_pate: 'El dulzor potencia la riqueza del foie', dulce: 'Dulce con dulce: armonía de postres', queso: 'Contraste clásico con quesos azules', miel_mermelada: 'Matices dulces que se fusionan' },
-  naranja:     { queso: 'El tanino del naranja convive con la textura del queso', embutido: 'Profundidad que realza los curados', conserva_vegetal: 'Acidez oxidativa que complementa la conserva' },
-  sin_alcohol: { snack: 'Aperitivo refrescante ideal para compartir', fruto_seco: 'Combinación ligera y equilibrada', queso: 'Frescura sin alcohol que acompaña los quesos suaves' },
+  naranja:     { queso: 'El tanino del naranja convive con la textura del queso', embutido: 'Profundidad que realza los curados', conserva_vegetal: 'Acidez oxidativa que complementa la conserva', aceituna: 'Los taninos del naranja conviven con la grasa vegetal de la aceituna' },
+  sin_alcohol: { snack: 'Aperitivo perfecto para compartir en cualquier momento', fruto_seco: 'Combinación ligera, equilibrada y llena de textura', queso: 'Los quesos suaves ganan protagonismo sin el vino', embutido: 'El ibérico es un placer que no necesita excusas', conserva: 'La salinidad del mar brilla sola, sin vino de por medio', foie_pate: 'La untuosidad del paté, apreciada en todo su esplendor', dulce: 'El punto dulce que convierte cualquier momento en celebración', miel_mermelada: 'Un toque natural y artesano que endulza la ocasión', aceite_oliva: 'El mejor AOVE merece protagonismo propio', conserva_vegetal: 'Sabores de temporada en su estado más puro', aceituna: 'La aceituna: aperitivo eterno, sin necesidad de copa', bebida: 'La mejor compañía para un momento sin alcohol' },
 }
 
 const CAT_LABEL_GOURMET = {
   embutido: 'Embutido', queso: 'Queso', conserva: 'Conserva del mar', dulce: 'Dulce artesano',
   foie_pate: 'Foie · Paté', fruto_seco: 'Frutos secos', snack: 'Snack',
   aceite_oliva: 'Aceite oliva', miel_mermelada: 'Miel · Mermelada', conserva_vegetal: 'Conserva vegetal',
-  bebida: 'Vermut · Sidra', otro: 'Gourmet',
+  aceituna: 'Aceituna', bebida: 'Vermut · Sidra', otro: 'Gourmet',
 }
 
 function razonGourmetItem(cat, tiposVinos) {
@@ -1076,10 +1076,19 @@ const CESTA_PRESUPUESTOS = [
   { id: 'otro', label: 'Otro…',     max: null },
 ]
 
+const ADMIN_TO_KIOSKO_CAT = {
+  'Embutido': 'embutido', 'Queso': 'queso', 'Conserva mar': 'conserva',
+  'Foie·Paté': 'foie_pate', 'Snack': 'snack', 'Aceite·AOVE': 'aceite_oliva',
+  'Miel·Mermelada': 'miel_mermelada', 'Dulce': 'dulce', 'Frutos secos': 'fruto_seco',
+  'Verdura': 'conserva_vegetal', 'Aceituna·Olivada': 'aceituna',
+  'Vermut·Sidra': 'bebida', 'Vinagre·Balsámico': 'aceite_oliva',
+  'Condimento': 'aceite_oliva', 'Panadería': 'snack',
+}
+
 function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, semilla = 0 }) {
   const ocasion = CESTA_OCASIONES.find(o => o.id === ocasionId)
   const tiposOk = ocasion?.tipos ?? []
-  const tolerance = presupuesto * 0.06
+  const tolerance = 0.001  // solo para imprecisión de punto flotante, no margen comercial
 
   // Filter wines: must fit within 80% of budget so gourmet always gets room
   let wines = vinos.filter(v => v.activo && Number(v.stock) > 0 && Number(v.precio_pvp) > 0 && Number(v.precio_pvp) <= presupuesto * 0.80)
@@ -1127,13 +1136,15 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
 
   // Types of wines selected — used to score gourmet by pairing affinity
   const tiposVinos = basket.filter(b => b._kind === 'vino').map(v => v.tipo).filter(Boolean)
+  // When no wines (sin_alcohol basket), use 'sin_alcohol' so pairing notes stay varied
+  const tiposParaMaridaje = tiposVinos.length > 0 ? tiposVinos : sinAlcohol ? ['sin_alcohol'] : []
   const ocasionBoost = OCASION_GOURMET_BOOST[ocasionId] || {}
 
   // Score gourmet items: affinity with wine types + occasion boost + aphrodisiac boost + shuffle noise
   const CATS_NO_VEGANO = new Set(['embutido', 'queso', 'foie_pate', 'miel_mermelada'])
   const scoredGourmet = [...gourmet]
     .map((g, i) => {
-      const cat = detectarCatGourmet(g.nombre, g.descripcion)
+      const cat = (g.cat_gourmet && ADMIN_TO_KIOSKO_CAT[g.cat_gourmet]) || detectarCatGourmet(g.nombre, g.descripcion)
       return { ...g, _cat: cat }
     })
     .filter(g => {
@@ -1166,7 +1177,7 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
     if (total + Number(item.precio_pvp) <= presupuesto + tolerance) {
       const razon = (item._esAfro && RAZON_AFRODISIACO[item._cat])
         ? RAZON_AFRODISIACO[item._cat]
-        : razonGourmetItem(item._cat, tiposVinos)
+        : razonGourmetItem(item._cat, tiposParaMaridaje)
       basket.push({ ...item, _kind: 'gourmet', _razon: razon })
       total += Number(item.precio_pvp)
       catsUsadas.add(item._cat)
@@ -1180,7 +1191,7 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
     if (total + Number(item.precio_pvp) <= presupuesto + tolerance) {
       const razon = (item._esAfro && RAZON_AFRODISIACO[item._cat])
         ? RAZON_AFRODISIACO[item._cat]
-        : razonGourmetItem(item._cat, tiposVinos)
+        : razonGourmetItem(item._cat, tiposParaMaridaje)
       basket.push({ ...item, _kind: 'gourmet', _razon: razon })
       total += Number(item.precio_pvp)
       usadosIds.add(item.id)
@@ -1192,8 +1203,11 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
   const gourmetCesta = basket.filter(b => b._kind === 'gourmet')
   const catLabels = [...new Set(gourmetCesta.map(g => CAT_LABEL_GOURMET[g._cat] || 'gourmet'))]
   let descripcion = ''
-  if (vinosCesta.length && catLabels.length) {
-    const tipoLabel = vinosCesta[0].tipo ? vinosCesta[0].tipo.charAt(0).toUpperCase() + vinosCesta[0].tipo.slice(1) : 'Vino'
+  if (catLabels.length) {
+    const tiposUnicos = [...new Set(vinosCesta.map(v => v.tipo).filter(Boolean))]
+    const tipoLabel = tiposUnicos.length > 0
+      ? tiposUnicos.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(' y ')
+      : sinAlcohol ? 'Sin alcohol' : 'Selección'
     descripcion = `${tipoLabel} con ${catLabels.slice(0, 2).join(' y ').toLowerCase()}`
     if (vinosCesta.length > 1) descripcion += ` — ${vinosCesta.length} botellas`
   }
@@ -1283,7 +1297,7 @@ function CestaIcon({ name, className }) {
   return null
 }
 
-function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconStyle = 'emoji', lang = 'es' }) {
+function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAddToCart, iconStyle = 'emoji', lang = 'es' }) {
   const [step, setStep]               = useState(0)  // 0=ocasion 1=presupuesto 2=prefs 3=resultado
   const [ocasionId, setOcasionId]     = useState('')
   const [presupuesto, setPresupuesto] = useState(50)
@@ -1530,6 +1544,14 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, iconS
                   {iconStyle !== 'lineal' && '🎁 '}{T[lang].cestaNueva}
                 </button>
               </div>
+              {onAddToCart && (
+                <button type="button" className={styles.cestaComprarBtn}
+                  style={{ background: colorAcento }}
+                  onClick={() => onAddToCart(cesta.items, 'cesta', cesta.frase)}>
+                  {iconStyle !== 'lineal' && '🛒 '}
+                  {lang === 'en' ? 'Add to cart' : lang === 'fr' ? 'Ajouter au panier' : 'Añadir al carrito'}
+                </button>
+              )}
             </>
           )}
         </div>
@@ -2479,7 +2501,8 @@ export default function KioskoPage() {
       {/* CESTA REGALO — solo si la tienda la tiene activada en ajustes */}
       {cestaActiva && view === VIEWS.CESTA && (
         <CestaView slug={slug} vinos={vinos} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onBack={() => setView(VIEWS.WELCOME)} iconStyle={iconStyle} lang={lang} />
+          onBack={() => setView(VIEWS.WELCOME)} iconStyle={iconStyle} lang={lang}
+          onAddToCart={abrirMobileQrLista} />
       )}
 
       {/* DETALLE */}

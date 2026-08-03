@@ -3684,6 +3684,24 @@
 
 .cestaRegenerarBtn:hover { background: var(--sup2); }
 
+.cestaComprarBtn {
+  display: block;
+  width: 100%;
+  max-width: 380px;
+  margin: .5rem auto 0;
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+  cursor: pointer;
+  letter-spacing: .02em;
+  transition: opacity .15s, transform .1s;
+  box-shadow: 0 4px 18px rgba(0,0,0,.18);
+}
+.cestaComprarBtn:hover { opacity: .9; transform: translateY(-1px); }
+
 .cestaVacia {
   text-align: center;
   color: var(--texto-m);
