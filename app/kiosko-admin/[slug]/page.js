@@ -56,18 +56,25 @@ function pedidoVisualStatus(status) {
 
 function detectarCatGourmet(nombre, descripcion) {
   const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-  const n = norm(nombre), t = norm(`${nombre} ${descripcion || ''}`)
+  const n = norm(nombre)
+  const t = norm(`${nombre} ${descripcion || ''}`)
+  const d = norm(descripcion || '')
   if (/vermut|vermouth|vermell\b|sidra\b|cerveza\b|kombucha/.test(n)) return 'Vermut·Sidra'
-  if (/jamon|iberic|paleta|lomo\b|chorizo|salchich|fuet|sobrasada|cecina|morcill|embutido|presa\b|butifarra|longaniz|salami|bresaola|panceta|bacon|tocino/.test(n)) return 'Embutido'
-  if (/queso|manchego|brie|camembert|gorgonzola|parmesano|gouda|idiazabal|tetilla|rulo\b|cabra\b|ricota|burrata|mozzarell|feta\b|roquefort|stilton|cheddar/.test(n)) return 'Queso'
-  if (/conserva|chipiron|calamar|pulpo|ventresca|bonito|caballa|sardin|anchoa|almeja|mejillon|berberecho|atun|bacalao|ahumado/.test(t)) return 'Conserva mar'
+  if (/jamon|iberic|paleta|lomo\b|chorizo|salchich|fuet|sobrasada|cecina|morcill|embutido|presa\b|butifarra|longaniz|salami|bresaola|panceta|bacon|tocino|oreja\b|pulled\s*pork/.test(n)) return 'Embutido'
+  if (/queso|manchego|brie|camembert|gorgonzola|parmesano|gouda|idiazabal|tetilla|rulo\b|cabra\b|ricota|burrata|mozzarell|feta\b|roquefort|stilton|cheddar|mahon/.test(n)) return 'Queso'
+  if (/galleta|cookie|cracker|snack|papas?\s*fritas?|\bpapas\b|patata\s*fritas?|chips\b|nachos|batatito/.test(n)) return 'Snack'
+  if (/conserva|chipiron|calamar|pulpo|ventresca|bonito|caballa|sardin|anchoa|almeja|mejillon|berberecho|atun|bacalao|ahumado|navajas|zamburin|txangurro|boquer/.test(t)) return 'Conserva mar'
+  if (/foie|pate\b|trufa|hummus|tahini|mousse\b|rillet|almogrote|crema\s+de\b/.test(t)) return 'Foie·Paté'
+  if (/aceituna|olivada|tapenade/.test(n)) return 'Aceituna·Olivada'
+  if (/esparrago|alcachofa|pimiento|piquillo|tomate\b|seta|hongo|puerro|banderilla|guindilla/.test(n)) return 'Verdura'
   if (/chocolate|bombon|turron|mazapan|nougat|polvoron/.test(t)) return 'Dulce'
-  if (/foie|pate\b|trufa/.test(t)) return 'Foie·Paté'
   if (/fruto\s*seco|almendra|nuez\b|pistacho|avellana|anacardo/.test(t)) return 'Frutos secos'
-  if (/galleta|cookie|cracker|snack|patata\s*frita|chips\b|nachos/.test(t)) return 'Snack'
-  if (/aceite|aove|oliva|vinagre/.test(t)) return 'Aceite·AOVE'
   if (/miel|mermelada/.test(t)) return 'Miel·Mermelada'
-  if (/esparrago|alcachofa|pimiento|tomate\b|seta|hongo/.test(t)) return 'Verdura'
+  if (/vinagre|balsamic/.test(n)) return 'Vinagre·Balsámico'
+  if (/condimento|aliño|aderezo/.test(n)) return 'Condimento'
+  if (/^aceite|virgen\s*extra|\baove\b|aceite\s+de\s+oliva/.test(n)) return 'Aceite·AOVE'
+  if (/aceite\s+de\s+oliva\s+virgen|\baove\b/.test(d)) return 'Aceite·AOVE'
+  if (/\bpan\b/.test(n)) return 'Panadería'
   return 'Otros'
 }
 
