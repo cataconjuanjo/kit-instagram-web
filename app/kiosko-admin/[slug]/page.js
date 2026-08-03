@@ -2699,6 +2699,7 @@ export default function AdminKioskoPage() {
                   <th title="¿Aparece en la cesta regalo? Auto = detectado por nombre">En cesta</th>
                   <th title="¿Es apto para veganos?">Vegano</th>
                   <th title="¿Contiene alcohol?">Alcohol</th>
+                  <th title="¿Es sin gluten?">Sin gluten</th>
                   <th>Stock</th>
                 </tr>
               </thead>
@@ -2780,12 +2781,24 @@ export default function AdminKioskoPage() {
                         </select>
                       </td>
 
+                      <td>
+                        <select
+                          className={`${styles.otrosBoolSelect} ${v.sin_gluten === true ? styles.otrosBoolSi : v.sin_gluten === false ? styles.otrosBoolNo : ''}`}
+                          value={v.sin_gluten === true ? 'si' : v.sin_gluten === false ? 'no' : ''}
+                          onChange={e => patchOtro('sin_gluten', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
+                        >
+                          <option value="">—</option>
+                          <option value="si">Sí</option>
+                          <option value="no">No</option>
+                        </select>
+                      </td>
+
                       <td>{v.stock ?? <span className={styles.dash}>—</span>}</td>
                     </tr>
                   )
                 })}
                 {otrosFiltrados.length === 0 && (
-                  <tr><td colSpan={8} className={styles.empty}>{vinosOtro.length === 0 ? 'Sin otros productos' : 'Sin productos en esta categoría'}</td></tr>
+                  <tr><td colSpan={9} className={styles.empty}>{vinosOtro.length === 0 ? 'Sin otros productos' : 'Sin productos en esta categoría'}</td></tr>
                 )}
               </tbody>
             </table>

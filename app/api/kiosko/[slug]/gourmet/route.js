@@ -34,7 +34,7 @@ export async function GET(request, { params }) {
   // Sin filtro activo ni stock — para gourmet solo importa que tenga precio razonable (mín. 3€)
   const { data: raw, error } = await supabaseAdmin
     .from('vinos_tienda')
-    .select('id, nombre, precio_pvp, foto_url, descripcion, apto_cesta, es_vegano, con_alcohol, cat_gourmet')
+    .select('id, nombre, precio_pvp, foto_url, descripcion, apto_cesta, es_vegano, con_alcohol, cat_gourmet, sin_gluten')
     .eq('tienda_id', tienda.id)
     .eq('categoria', 'otro')
     .gte('precio_pvp', 3)

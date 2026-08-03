@@ -108,7 +108,7 @@ const T = {
     cestaQ0: '¿Para quién es el regalo?', cestaQ1: '¿Cuál es tu presupuesto?', cestaQ2: '¿Alguna preferencia especial?',
     cestaInputLabel: 'Introduce tu presupuesto en euros', cestaInputPh: 'p.ej. 85',
     cestaContinuar: 'Continuar →', cestaVerOpciones: '← Ver opciones predefinidas',
-    cestaSinAlcohol: 'Sin alcohol', cestaVegano: 'Apto para veganos',
+    cestaSinAlcohol: 'Sin alcohol', cestaVegano: 'Apto para veganos', cestaSinGluten: 'Sin gluten',
     cestaCrear: 'Crear mi cesta →', cestaArmando: 'Armando tu cesta…',
     cestaProductos: n => `${n} productos · Total:`, cestaPresupuesto: n => `/ ${n} € presupuesto`,
     cestaVacia: 'No hay suficientes productos para este presupuesto y preferencias.',
@@ -155,7 +155,7 @@ const T = {
     cestaQ0: 'Who is the gift for?', cestaQ1: 'What is your budget?', cestaQ2: 'Any special preferences?',
     cestaInputLabel: 'Enter your budget in euros', cestaInputPh: 'e.g. 85',
     cestaContinuar: 'Continue →', cestaVerOpciones: '← See preset options',
-    cestaSinAlcohol: 'Alcohol-free', cestaVegano: 'Vegan-friendly',
+    cestaSinAlcohol: 'Alcohol-free', cestaVegano: 'Vegan-friendly', cestaSinGluten: 'Gluten-free',
     cestaCrear: 'Create my basket →', cestaArmando: 'Preparing your basket…',
     cestaProductos: n => `${n} items · Total:`, cestaPresupuesto: n => `/ €${n} budget`,
     cestaVacia: 'Not enough products for this budget and preferences.',
@@ -202,7 +202,7 @@ const T = {
     cestaQ0: 'Pour qui est le cadeau ?', cestaQ1: 'Quel est votre budget ?', cestaQ2: 'Des préférences particulières ?',
     cestaInputLabel: 'Entrez votre budget en euros', cestaInputPh: 'ex. 85',
     cestaContinuar: 'Continuer →', cestaVerOpciones: '← Voir les options prédéfinies',
-    cestaSinAlcohol: 'Sans alcool', cestaVegano: 'Convient aux véganes',
+    cestaSinAlcohol: 'Sans alcool', cestaVegano: 'Convient aux véganes', cestaSinGluten: 'Sans gluten',
     cestaCrear: 'Créer mon panier →', cestaArmando: 'Préparation du panier…',
     cestaProductos: n => `${n} produits · Total :`, cestaPresupuesto: n => `/ ${n} € de budget`,
     cestaVacia: 'Pas assez de produits pour ce budget et ces préférences.',
@@ -249,7 +249,7 @@ const T = {
     cestaQ0: 'Für wen ist das Geschenk?', cestaQ1: 'Was ist Ihr Budget?', cestaQ2: 'Besondere Vorlieben?',
     cestaInputLabel: 'Budget in Euro eingeben', cestaInputPh: 'z.B. 85',
     cestaContinuar: 'Weiter →', cestaVerOpciones: '← Vordefinierte Optionen',
-    cestaSinAlcohol: 'Alkoholfrei', cestaVegano: 'Veganfreundlich',
+    cestaSinAlcohol: 'Alkoholfrei', cestaVegano: 'Veganfreundlich', cestaSinGluten: 'Glutenfrei',
     cestaCrear: 'Meinen Korb erstellen →', cestaArmando: 'Korb wird zusammengestellt…',
     cestaProductos: n => `${n} Produkte · Gesamt:`, cestaPresupuesto: n => `/ ${n} € Budget`,
     cestaVacia: 'Nicht genug Produkte für dieses Budget und diese Präferenzen.',
@@ -320,6 +320,7 @@ function buildWizardQuery(w) {
   if (w.presupuesto === 'alto')         parts.push('Presupuesto: entre 30 y 60€')
   if (w.presupuesto === 'custom' && w.precioMin != null)
     parts.push(`Presupuesto: entre ${w.precioMin}€ y ${w.precioMax}€`)
+  if (w.canarias) parts.push('Solo vinos de las Islas Canarias (producidos en Canarias)')
   return parts.join('. ')
 }
 
@@ -1085,7 +1086,7 @@ const ADMIN_TO_KIOSKO_CAT = {
   'Condimento': 'aceite_oliva', 'Panadería': 'snack',
 }
 
-function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, semilla = 0 }) {
+function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, sinGluten = false, semilla = 0 }) {
   const ocasion = CESTA_OCASIONES.find(o => o.id === ocasionId)
   const tiposOk = ocasion?.tipos ?? []
   const tolerance = 0.001  // solo para imprecisión de punto flotante, no margen comercial
@@ -1141,7 +1142,6 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
   const ocasionBoost = OCASION_GOURMET_BOOST[ocasionId] || {}
 
   // Score gourmet items: affinity with wine types + occasion boost + aphrodisiac boost + shuffle noise
-  const CATS_NO_VEGANO = new Set(['embutido', 'queso', 'foie_pate', 'miel_mermelada'])
   const scoredGourmet = [...gourmet]
     .map((g, i) => {
       const cat = (g.cat_gourmet && ADMIN_TO_KIOSKO_CAT[g.cat_gourmet]) || detectarCatGourmet(g.nombre, g.descripcion)
@@ -1154,11 +1154,10 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
         if (g.con_alcohol === true) return false
         if (g.con_alcohol === null && g._cat === 'bebida') return false
       }
-      // Filtro vegano: usar flag manual si existe; si no, excluir categorías nunca veganas
-      if (vegano) {
-        if (g.es_vegano === false) return false
-        if (g.es_vegano === null && CATS_NO_VEGANO.has(g._cat)) return false
-      }
+      // Filtro vegano: estricto — solo productos con es_vegano === true confirmado
+      if (vegano && g.es_vegano !== true) return false
+      // Filtro sin gluten: estricto — solo productos con sin_gluten === true confirmado
+      if (sinGluten && g.sin_gluten !== true) return false
       return true
     })
     .map((g, i) => {
@@ -1305,6 +1304,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
   const [modoInput, setModoInput]     = useState(false)
   const [sinAlcohol, setSinAlcohol]   = useState(false)
   const [vegano, setVegano]           = useState(false)
+  const [sinGluten, setSinGluten]     = useState(false)
   const [gourmet, setGourmet]         = useState([])
   const [cesta, setCesta]             = useState(null)
   const [semilla, setSemilla]         = useState(0)
@@ -1316,6 +1316,9 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
       .then(d => setGourmet(d.items || []))
       .catch(() => {})
   }, [slug])
+
+  const hayVeganos    = useMemo(() => gourmet.some(g => g.es_vegano === true), [gourmet])
+  const hayGlutenFree = useMemo(() => gourmet.some(g => g.sin_gluten === true), [gourmet])
 
   function elegirOcasion(id) { setOcasionId(id); setStep(1) }
 
@@ -1335,7 +1338,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
 
   function generarCesta(s = semilla) {
     setCargando(true)
-    const resultado = generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, semilla: s })
+    const resultado = generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, sinGluten, semilla: s })
     setTimeout(() => { setCesta(resultado); setCargando(false); setStep(3) }, 380)
   }
 
@@ -1344,13 +1347,13 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
     setSemilla(s)
     setCesta(null)
     setCargando(true)
-    const resultado = generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, semilla: s })
+    const resultado = generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, sinGluten, semilla: s })
     setTimeout(() => { setCesta(resultado); setCargando(false) }, 380)
   }
 
   function reiniciar() {
     setStep(0); setOcasionId(''); setPresupuesto(50); setInputPresup(''); setModoInput(false)
-    setSinAlcohol(false); setVegano(false); setCesta(null); setSemilla(0)
+    setSinAlcohol(false); setVegano(false); setSinGluten(false); setCesta(null); setSemilla(0)
   }
 
   const volvAtras = step === 0 ? onBack : () => {
@@ -1450,13 +1453,24 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
                 {T[lang].cestaSinAlcohol}
               </span>
             </label>
-            <label className={styles.cestaPrefToggle}>
-              <input type="checkbox" checked={vegano} onChange={e => setVegano(e.target.checked)} />
-              <span className={styles.cestaPrefLabel}>
-                {iconStyle === 'lineal' ? <CestaIcon name="vegano" className={styles.cestaLinealIconPref} /> : '🌱 '}
-                {T[lang].cestaVegano}
-              </span>
-            </label>
+            {hayVeganos && (
+              <label className={styles.cestaPrefToggle}>
+                <input type="checkbox" checked={vegano} onChange={e => setVegano(e.target.checked)} />
+                <span className={styles.cestaPrefLabel}>
+                  {iconStyle === 'lineal' ? <CestaIcon name="vegano" className={styles.cestaLinealIconPref} /> : '🌱 '}
+                  {T[lang].cestaVegano}
+                </span>
+              </label>
+            )}
+            {hayGlutenFree && (
+              <label className={styles.cestaPrefToggle}>
+                <input type="checkbox" checked={sinGluten} onChange={e => setSinGluten(e.target.checked)} />
+                <span className={styles.cestaPrefLabel}>
+                  {iconStyle !== 'lineal' && '🌾 '}
+                  {T[lang].cestaSinGluten}
+                </span>
+              </label>
+            )}
           </div>
           <button type="button" className={styles.cestaGenerarBtn}
             style={{ background: colorAcento }}
@@ -1564,7 +1578,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
 
 function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, vinos = [], lang = 'es', iconStyle = 'emoji' }) {
   const [step, setStep]       = useState(0)
-  const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '' })
+  const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '', canarias: false })
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
   const [error, setError]     = useState('')
@@ -1617,7 +1631,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
     }
   }
 
-  function reset() { setStep(0); setWizard({ ocasion: '', estilo: '', presupuesto: '' }); setResultado(null); setError('') }
+  function reset() { setStep(0); setWizard({ ocasion: '', estilo: '', presupuesto: '', canarias: false }); setResultado(null); setError('') }
 
   return (
     <div className={styles.wizardView}>
@@ -1644,6 +1658,11 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
               </button>
             ))}
           </div>
+          <label className={styles.wizardCanariasToggle}>
+            <input type="checkbox" checked={wizard.canarias}
+              onChange={e => setWizard(w => ({ ...w, canarias: e.target.checked }))} />
+            <span>🌋 Solo vinos de Canarias</span>
+          </label>
         </div>
       )}
 

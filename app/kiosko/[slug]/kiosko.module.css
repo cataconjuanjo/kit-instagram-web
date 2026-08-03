@@ -3512,6 +3512,18 @@
 
 .cestaPrefLabel { font-size: 1.05rem; font-weight: 700; color: var(--texto); }
 
+.wizardCanariasToggle {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin: 1.2rem auto 0;
+  cursor: pointer;
+  font-size: .9rem;
+  color: var(--texto-suave, #888);
+}
+.wizardCanariasToggle input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--acento); }
+.wizardCanariasToggle:has(input:checked) { color: var(--acento); font-weight: 700; }
+
 .cestaLoading {
   flex: 1;
   display: flex;
