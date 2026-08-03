@@ -284,13 +284,13 @@ export async function POST(request) {
       // no el ITEM — buscamos primero por square_variation_id y usamos square_catalog_id como fallback
       let { data: vino } = await supabaseAdmin
         .from('vinos_tienda')
-        .select('id, nombre, stock')
+        .select('id, nombre, stock, categoria')
         .eq('square_variation_id', catalogId)
         .maybeSingle()
       if (!vino) {
         ;({ data: vino } = await supabaseAdmin
           .from('vinos_tienda')
-          .select('id, nombre, stock')
+          .select('id, nombre, stock, categoria')
           .eq('square_catalog_id', catalogId)
           .maybeSingle())
       }
@@ -311,6 +311,7 @@ export async function POST(request) {
         quantity: qty,
         vino_id: vino.id,
         vino_nombre: vino.nombre,
+        categoria: vino.categoria || 'otro',
         stock_antes: vino.stock,
         stock_despues: nuevoStock,
         status: updateErr ? 'error' : 'ok',
@@ -336,8 +337,11 @@ export async function POST(request) {
     return NextResponse.json({ error: errMsg }, { status: 500 })
   }
 
-  const actualizados = lineas.filter(l => l.status === 'ok').length
-  console.log(`[square-webhook] Pago ${paymentId}: ${actualizados}/${lineas.length} vinos actualizados`)
+  const lineasOk    = lineas.filter(l => l.status === 'ok')
+  const actualizados = lineasOk.length
+  const nVinos  = lineasOk.filter(l => l.categoria === 'vino').length
+  const nOtros  = lineasOk.filter(l => l.categoria !== 'vino').length
+  console.log(`[square-webhook] Pago ${paymentId}: ${actualizados}/${lineas.length} productos actualizados (${nVinos} vino, ${nOtros} otro)`)
 
   return NextResponse.json({ ok: true, lineas })
 }
