@@ -904,9 +904,9 @@ export default function AdminKioskoPage() {
 
   const [busqueda, setBusqueda]           = useState('')
   const [verInactivos, setVerInactivos]   = useState(false)
-  const [filtroOtrosCat, setFiltroOtrosCat] = useState('todas')
-  const [paginaOtros, setPaginaOtros]       = useState(1)
-  const POR_PAGINA_OTROS = 20
+  const [filtroOtrosCat, setFiltroOtrosCat]   = useState('todas')
+  const [paginaOtros, setPaginaOtros]         = useState(1)
+  const [porPaginaOtros, setPorPaginaOtros]   = useState(20)
   const [filtroTipo, setFiltroTipo]       = useState('')
   const [filtroEstado, setFiltroEstado]   = useState('todos')
   const [filtroRegion, setFiltroRegion]   = useState('')
@@ -963,7 +963,7 @@ export default function AdminKioskoPage() {
   }, [slug])
 
   useEffect(() => { setPaginaActual(1) }, [busqueda, filtroTipo, filtroEstado, filtroCalidad, filtroDestacado, ordenPor, ordenDir, porPagina, verInactivos])
-  useEffect(() => { setPaginaOtros(1) }, [filtroOtrosCat, busquedaOtros])
+  useEffect(() => { setPaginaOtros(1) }, [filtroOtrosCat, busquedaOtros, porPaginaOtros])
 
   useEffect(() => {
     if (!moreMenuOpen) return
@@ -1362,8 +1362,8 @@ export default function AdminKioskoPage() {
     if (busquedaOtros) { const q = busquedaOtros.toLowerCase(); r = r.filter(v => [v.nombre, v.descripcion].filter(Boolean).join(' ').toLowerCase().includes(q)) }
     return r
   }, [otrosConCat, filtroOtrosCat, busquedaOtros])
-  const totalPaginasOtros = Math.ceil(otrosFiltrados.length / POR_PAGINA_OTROS)
-  const otrosPaginados  = useMemo(() => { const s = (paginaOtros - 1) * POR_PAGINA_OTROS; return otrosFiltrados.slice(s, s + POR_PAGINA_OTROS) }, [otrosFiltrados, paginaOtros])
+  const totalPaginasOtros = Math.ceil(otrosFiltrados.length / porPaginaOtros)
+  const otrosPaginados    = useMemo(() => { const s = (paginaOtros - 1) * porPaginaOtros; return otrosFiltrados.slice(s, s + porPaginaOtros) }, [otrosFiltrados, paginaOtros, porPaginaOtros])
 
   // ── Filtros (solo aplican al tab Catálogo / vinos) ─────────────────────────
   const regiones = useMemo(() => [...new Set(vinosVino.map(v => v.region).filter(Boolean))].sort(), [vinosVino])
@@ -2675,8 +2675,7 @@ export default function AdminKioskoPage() {
           <span className={styles.total}>{otrosFiltrados.length} / {vinosOtro.length} productos</span>
         </div>
 
-        <div style={{ padding: '0 1.75rem 1.75rem' }}>
-          <div className={styles.tableWrap}>
+        <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -2764,18 +2763,29 @@ export default function AdminKioskoPage() {
             </table>
           </div>
 
-          {/* Paginación */}
-          {totalPaginasOtros > 1 && (
-            <div className={styles.paginacion}>
-              <span className={styles.paginacionInfo}>{(paginaOtros - 1) * POR_PAGINA_OTROS + 1}–{Math.min(paginaOtros * POR_PAGINA_OTROS, otrosFiltrados.length)} de {otrosFiltrados.length}</span>
-              <button type="button" className={styles.paginacionBtn} onClick={() => setPaginaOtros(p => Math.max(1, p - 1))} disabled={paginaOtros === 1}>‹</button>
-              {Array.from({ length: totalPaginasOtros }, (_, i) => i + 1).map(p => (
-                <button key={p} type="button" className={`${styles.paginacionBtn} ${p === paginaOtros ? styles.paginacionBtnActivo : ''}`} onClick={() => setPaginaOtros(p)}>{p}</button>
-              ))}
-              <button type="button" className={styles.paginacionBtn} onClick={() => setPaginaOtros(p => Math.min(totalPaginasOtros, p + 1))} disabled={paginaOtros === totalPaginasOtros}>›</button>
-            </div>
-          )}
+      {/* Paginación */}
+      {totalPaginasOtros > 1 && (
+        <div className={styles.paginacionBar}>
+          <div className={styles.paginacionInfo}>
+            {((paginaOtros - 1) * porPaginaOtros) + 1}–{Math.min(paginaOtros * porPaginaOtros, otrosFiltrados.length)} de {otrosFiltrados.length} productos
+          </div>
+          <div className={styles.paginacionControls}>
+            <button type="button" className={styles.paginacionBtn} onClick={() => setPaginaOtros(p => Math.max(1, p - 1))} disabled={paginaOtros === 1}>‹</button>
+            {Array.from({ length: totalPaginasOtros }, (_, i) => i + 1).filter(p => p === 1 || p === totalPaginasOtros || Math.abs(p - paginaOtros) <= 1).reduce((acc, p, idx, arr) => {
+              if (idx > 0 && p - arr[idx - 1] > 1) acc.push(<span key={`dots-${p}`} className={styles.paginacionDots}>…</span>)
+              acc.push(<button key={p} type="button" className={`${styles.paginacionBtn} ${p === paginaOtros ? styles.paginacionBtnActivo : ''}`} onClick={() => setPaginaOtros(p)}>{p}</button>)
+              return acc
+            }, [])}
+            <button type="button" className={styles.paginacionBtn} onClick={() => setPaginaOtros(p => Math.min(totalPaginasOtros, p + 1))} disabled={paginaOtros === totalPaginasOtros}>›</button>
+          </div>
+          <div className={styles.paginacionPorPagina}>
+            <span>Ver</span>
+            {[10, 20, 30].map(n => (
+              <button key={n} type="button" className={`${styles.paginacionBtn} ${porPaginaOtros === n ? styles.paginacionBtnActivo : ''}`} onClick={() => setPorPaginaOtros(n)}>{n}</button>
+            ))}
+          </div>
         </div>
+      )}
       </> }
 
       {/* Catálogo: toolbar + tabla */}
