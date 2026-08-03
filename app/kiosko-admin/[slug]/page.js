@@ -1320,8 +1320,9 @@ export default function AdminKioskoPage() {
   }
 
   // ── Split por categoría ────────────────────────────────────────────────────
-  const vinosVino = useMemo(() => vinos.filter(v => v.categoria !== 'otro'), [vinos])
-  const vinosOtro = useMemo(() => vinos.filter(v => v.categoria === 'otro'), [vinos])
+  const vinosVino  = useMemo(() => vinos.filter(v => v.categoria !== 'otro'), [vinos])
+  const vinosOtro  = useMemo(() => vinos.filter(v => v.categoria === 'otro'), [vinos])
+  const usaSquare  = useMemo(() => vinos.some(v => v.square_catalog_id), [vinos])
 
   // ── Filtros (solo aplican al tab Catálogo / vinos) ─────────────────────────
   const regiones = useMemo(() => [...new Set(vinosVino.map(v => v.region).filter(Boolean))].sort(), [vinosVino])
@@ -1918,9 +1919,11 @@ export default function AdminKioskoPage() {
                 </div>
               )}
             </div>
-            <button onClick={abrirNuevo} type="button" className={styles.btnPrimario}>
-              + Añadir vino
-            </button>
+            {!usaSquare && (
+              <button onClick={abrirNuevo} type="button" className={styles.btnPrimario}>
+                + Añadir vino
+              </button>
+            )}
           </>}
         </div>
         {tienda?.plan === 'trial' && trialSegsRestantes !== null && (
@@ -2678,7 +2681,9 @@ export default function AdminKioskoPage() {
                       <td>
                         <button type="button" className={styles.btnSecundario}
                           style={{ fontSize: '.72rem', padding: '.2rem .55rem', whiteSpace: 'nowrap' }}
-                          onClick={() => patchOtro('categoria', 'vino')}>
+                          onClick={() => {
+                            if (window.confirm(`¿Mover "${v.nombre}" a la pestaña Vinos? Aparecerá en el catálogo principal.`)) patchOtro('categoria', 'vino')
+                          }}>
                           → Vinos
                         </button>
                       </td>
