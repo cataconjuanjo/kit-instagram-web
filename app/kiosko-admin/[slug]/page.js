@@ -3186,6 +3186,7 @@ export default function AdminKioskoPage() {
                   <button onClick={() => abrirEditar(v)} type="button" className={styles.btnEdit}>Editar</button>
                   <button
                     onClick={async () => {
+                      if (!window.confirm(`¿Mover "${v.nombre}" a Otros productos? Dejará de aparecer en el catálogo de vinos.`)) return
                       await fetch(`/api/kiosko/${slug}/admin/vinos/${v.id}`, {
                         method: 'PATCH',
                         headers: { ...authHeaders, 'Content-Type': 'application/json' },
