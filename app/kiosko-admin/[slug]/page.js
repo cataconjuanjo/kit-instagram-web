@@ -2695,12 +2695,11 @@ export default function AdminKioskoPage() {
                   <th className={styles.thFoto}>Foto</th>
                   <th>Nombre</th>
                   <th>PVP</th>
-                  <th title="Categoría detectada automáticamente por el nombre">Categoría</th>
+                  <th title="Categoría detectada automáticamente por el nombre. Selecciona '→ Vinos' para mover al catálogo principal.">Categoría</th>
                   <th title="¿Aparece en la cesta regalo? Auto = detectado por nombre">En cesta</th>
                   <th title="¿Es apto para veganos?">Vegano</th>
                   <th title="¿Contiene alcohol?">Alcohol</th>
                   <th>Stock</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -2728,10 +2727,18 @@ export default function AdminKioskoPage() {
                         <select
                           className={styles.otrosCatSelect}
                           value={v.cat_gourmet || ''}
-                          onChange={e => patchOtro('cat_gourmet', e.target.value || null)}
+                          onChange={e => {
+                            const val = e.target.value
+                            if (val === '__vino__') {
+                              if (window.confirm(`¿Mover "${v.nombre}" a la pestaña Vinos? Aparecerá en el catálogo principal.`)) patchOtro('categoria', 'vino')
+                            } else {
+                              patchOtro('cat_gourmet', val || null)
+                            }
+                          }}
                         >
                           <option value="">{v.cat_gourmet ? '— auto' : v.catAuto}</option>
                           {CATS_GOURMET.map(c => <option key={c} value={c}>{c}</option>)}
+                          <option value="__vino__">→ Mover a Vinos</option>
                         </select>
                       </td>
 
@@ -2772,20 +2779,11 @@ export default function AdminKioskoPage() {
                       </td>
 
                       <td>{v.stock ?? <span className={styles.dash}>—</span>}</td>
-                      <td>
-                        <button type="button" className={styles.btnSecundario}
-                          style={{ fontSize: '.72rem', padding: '.2rem .55rem', whiteSpace: 'nowrap' }}
-                          onClick={() => {
-                            if (window.confirm(`¿Mover "${v.nombre}" a la pestaña Vinos? Aparecerá en el catálogo principal.`)) patchOtro('categoria', 'vino')
-                          }}>
-                          → Vinos
-                        </button>
-                      </td>
                     </tr>
                   )
                 })}
                 {otrosFiltrados.length === 0 && (
-                  <tr><td colSpan={9} className={styles.empty}>{vinosOtro.length === 0 ? 'Sin otros productos' : 'Sin productos en esta categoría'}</td></tr>
+                  <tr><td colSpan={8} className={styles.empty}>{vinosOtro.length === 0 ? 'Sin otros productos' : 'Sin productos en esta categoría'}</td></tr>
                 )}
               </tbody>
             </table>
