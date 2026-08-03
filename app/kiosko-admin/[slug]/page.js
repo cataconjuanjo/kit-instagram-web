@@ -2711,7 +2711,10 @@ export default function AdminKioskoPage() {
                       headers: { ...authHeaders, 'Content-Type': 'application/json' },
                       body: JSON.stringify({ [campo]: valor }),
                     })
-                    if (res.ok) await cargar()
+                    if (res.ok) {
+                      const data = await res.json()
+                      if (data.vino) setVinos(prev => prev.map(w => w.id === v.id ? { ...w, ...data.vino } : w))
+                    }
                   }
 
                   return (
