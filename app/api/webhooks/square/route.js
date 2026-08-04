@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
+import { squareSyncForTienda } from '../../_lib/squareSync'
 
 const SQUARE_ACCESS_TOKEN    = process.env.SQUARE_ACCESS_TOKEN
 const SQUARE_SIGNATURE_KEY   = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY
@@ -33,114 +34,30 @@ async function fetchOrder(orderId) {
   return json.order
 }
 
-const WINE_KEYWORDS = /vino|wine|bodega|winery/i
-
-function detectarCategoria(itemData, categoryMap) {
-  const catIds = [itemData.category_id, ...(itemData.categories || []).map(c => c.id)].filter(Boolean)
-  for (const id of catIds) {
-    if (categoryMap[id] && WINE_KEYWORDS.test(categoryMap[id])) return 'vino'
-  }
-  return 'otro'
-}
-
-async function searchRecentCatalogItems() {
-  const items       = []
-  const imageMap    = {}
-  const categoryMap = {}
-  let cursor = null
-  do {
-    const body = { object_types: ['ITEM'], include_related_objects: true }
-    if (cursor) body.cursor = cursor
-    const res = await fetch(`${SQUARE_API_BASE}/v2/catalog/search`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${SQUARE_ACCESS_TOKEN}`,
-        'Square-Version': '2024-01-18',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    })
-    if (!res.ok) throw new Error(`Square Catalog API ${res.status}: ${await res.text()}`)
-    const data = await res.json()
-    items.push(...(data.objects || []))
-    for (const rel of (data.related_objects || [])) {
-      if (rel.type === 'IMAGE' && rel.image_data?.url) imageMap[rel.id] = rel.image_data.url
-      if (rel.type === 'CATEGORY' && rel.category_data?.name) categoryMap[rel.id] = rel.category_data.name
-    }
-    cursor = data.cursor || null
-  } while (cursor)
-  return { items, imageMap, categoryMap }
-}
-
 // ── Catalog upsert handler ────────────────────────────────────────────────────
-async function handleCatalogUpdate(tiendaSlug) {
-  // Resolve slug → tienda_id
-  const { data: tienda } = await supabaseAdmin
+async function handleCatalogUpdate() {
+  // Fetch all active tiendas with Square integration
+  const { data: tiendas, error: tiendasErr } = await supabaseAdmin
     .from('tiendas')
-    .select('id')
-    .eq('slug', tiendaSlug)
-    .single()
+    .select('id, slug')
+    .eq('activo', true)
 
-  if (!tienda) {
-    console.error(`[square-webhook] Tienda no encontrada: ${tiendaSlug}`)
-    return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
-  }
-  const tiendaId = tienda.id
-
-  // Square no incluye qué cambió en el evento — buscamos todos los ITEM
-  const { items, imageMap, categoryMap } = await searchRecentCatalogItems()
-
-  // Fetch existing wines with square_catalog_id for this store (batch)
-  const { data: existentes } = await supabaseAdmin
-    .from('vinos_tienda')
-    .select('id, square_catalog_id')
-    .eq('tienda_id', tiendaId)
-    .not('square_catalog_id', 'is', null)
-
-  const existingMap = {}
-  for (const v of (existentes || [])) existingMap[v.square_catalog_id] = v.id
-
-  const toInsert = [], toUpdate = []
-
-  for (const item of items) {
-    if (item.type !== 'ITEM') continue
-    const d = item.item_data || {}
-    const nombre = d.name?.trim()
-    if (!nombre) continue
-
-    const varData = (d.variations || []).find(v => !v.is_deleted)?.item_variation_data
-    const precioCents = varData?.price_money?.amount
-    const precio_pvp = precioCents ? +(precioCents / 100).toFixed(2) : null
-    const descripcion = d.description_plaintext || d.description || null
-    const foto_url = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
-
-    const base = {
-      nombre, precio_pvp, descripcion,
-      ...(foto_url && { foto_url }),
-      activo: !item.is_deleted,
-      updated_at: new Date().toISOString(),
-    }
-
-    if (existingMap[item.id]) {
-      toUpdate.push({ id: existingMap[item.id], ...base })
-    } else {
-      toInsert.push({ tienda_id: tiendaId, square_catalog_id: item.id, stock: 0, categoria: detectarCategoria(d, categoryMap), ...base })
-    }
+  if (tiendasErr || !tiendas?.length) {
+    console.error('[square-webhook] No se encontraron tiendas activas:', tiendasErr?.message)
+    return NextResponse.json({ ok: true, skipped: 'no_tiendas' })
   }
 
-  let insertados = 0, actualizados = 0, errores = 0
-
-  if (toInsert.length > 0) {
-    const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
-    error ? (errores += toInsert.length, console.error('[square-webhook] insert error:', error.message)) : (insertados = toInsert.length)
-  }
-  if (toUpdate.length > 0) {
-    const { error } = await supabaseAdmin.from('vinos_tienda').upsert(toUpdate, { onConflict: 'id' })
-    error ? (errores += toUpdate.length, console.error('[square-webhook] upsert error:', error.message)) : (actualizados = toUpdate.length)
+  // Delegate to squareSyncForTienda which handles orphan detection,
+  // categoria preservation, activo calculation, and idempotent upserts.
+  const results = []
+  for (const tienda of tiendas) {
+    const result = await squareSyncForTienda(tienda.id, tienda.slug)
+    console.log(`[square-webhook] catalog.version.updated [${tienda.slug}] → ${result.insertados} nuevos, ${result.actualizados} act., ${result.errores} errores`)
+    results.push({ slug: tienda.slug, ...result })
   }
 
-  console.log(`[square-webhook] catalog.version.updated → ${insertados} nuevos, ${actualizados} actualizados, ${errores} errores`)
-  return NextResponse.json({ ok: true, insertados, actualizados, errores })
+  const totalErrores = results.reduce((s, r) => s + r.errores, 0)
+  return NextResponse.json({ ok: totalErrores === 0, results })
 }
 
 // ── Inventory restock handler ─────────────────────────────────────────────────
@@ -205,7 +122,7 @@ export async function POST(request) {
 
   // Catálogo: nuevo producto / modificación
   if (type === 'catalog.version.updated') {
-    return handleCatalogUpdate('sibaris-gourmet')
+    return handleCatalogUpdate()
   }
 
   // Reposición de stock
