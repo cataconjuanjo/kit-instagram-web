@@ -144,7 +144,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug) {
     const categoria   = detectarCategoria(d, categoryMap)
 
     const base = {
-      nombre, precio_pvp, descripcion, stock, categoria,
+      nombre, precio_pvp, descripcion, stock,
       square_variation_id: variationId,
       ...(foto_url && { foto_url }),
       activo:     !item.is_deleted && (categoria !== 'vino' || stock > 0),
@@ -152,10 +152,11 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug) {
     }
 
     if (existingMap[item.id]) {
+      // No incluimos categoria en updates — respetamos la que el admin haya fijado
       toUpdate.push({ id: existingMap[item.id], tienda_id: tiendaId, square_catalog_id: item.id, ...base })
     } else {
       toInsert.push({
-        tienda_id: tiendaId, square_catalog_id: item.id, stock,
+        tienda_id: tiendaId, square_catalog_id: item.id, stock, categoria,
         ...(uva    && { uva }),
         ...(bodega && { bodega }),
         ...(region && { region }),
@@ -179,8 +180,13 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug) {
     const stillNew = []
     for (const row of toInsert) {
       const pk = orphanMap[row.square_catalog_id]
-      if (pk) toUpdate.push({ id: pk, ...row })
-      else     stillNew.push(row)
+      if (pk) {
+        // Huérfano ya existe en BD: actualizamos sin sobreescribir categoria
+        const { categoria: _drop, ...rowSinCat } = row
+        toUpdate.push({ id: pk, ...rowSinCat })
+      } else {
+        stillNew.push(row)
+      }
     }
     toInsert.length = 0
     toInsert.push(...stillNew)
