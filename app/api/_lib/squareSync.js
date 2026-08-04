@@ -117,13 +117,13 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug) {
 
   const { data: existentes, error: existError } = await supabaseAdmin
     .from('vinos_tienda')
-    .select('id, square_catalog_id')
+    .select('id, square_catalog_id, categoria')
     .eq('tienda_id', tiendaId)
     .not('square_catalog_id', 'is', null)
   if (existError) throw new Error(`Leyendo existentes: ${existError.message}`)
 
   const existingMap = {}
-  for (const v of (existentes || [])) existingMap[v.square_catalog_id] = v.id
+  for (const v of (existentes || [])) existingMap[v.square_catalog_id] = { id: v.id, categoria: v.categoria }
 
   const toInsert = [], toUpdate = []
 
@@ -141,27 +141,30 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug) {
     const descripcion = d.description_plaintext || d.description || null
     const foto_url    = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
     const stock       = itemStockMap[item.id] ?? 0
-    const categoria   = detectarCategoria(d, categoryMap)
+    const categoriaDetectada = detectarCategoria(d, categoryMap)
 
-    const base = {
+    const baseFields = {
       nombre, precio_pvp, descripcion, stock,
       square_variation_id: variationId,
       ...(foto_url && { foto_url }),
-      activo:     !item.is_deleted && (categoria !== 'vino' || stock > 0),
       updated_at: new Date().toISOString(),
     }
 
     if (existingMap[item.id]) {
-      // No incluimos categoria en updates — respetamos la que el admin haya fijado
-      toUpdate.push({ id: existingMap[item.id], tienda_id: tiendaId, square_catalog_id: item.id, ...base })
+      // Usamos la categoria guardada en BD (no la de Square) para calcular activo
+      const existing = existingMap[item.id]
+      const catEfectiva = existing.categoria || categoriaDetectada
+      const activo = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
+      toUpdate.push({ id: existing.id, tienda_id: tiendaId, square_catalog_id: item.id, ...baseFields, activo })
     } else {
+      const activo = !item.is_deleted && (categoriaDetectada !== 'vino' || stock > 0)
       toInsert.push({
-        tienda_id: tiendaId, square_catalog_id: item.id, stock, categoria,
+        tienda_id: tiendaId, square_catalog_id: item.id, stock, categoria: categoriaDetectada, activo,
         ...(uva    && { uva }),
         ...(bodega && { bodega }),
         ...(region && { region }),
         ...(pais   && { pais }),
-        ...base,
+        ...baseFields,
       })
     }
   }
@@ -173,17 +176,19 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug) {
     for (let i = 0; i < catalogIds.length; i += 500) {
       const { data: found } = await supabaseAdmin
         .from('vinos_tienda')
-        .select('id, square_catalog_id')
+        .select('id, square_catalog_id, categoria')
         .in('square_catalog_id', catalogIds.slice(i, i + 500))
-      for (const r of (found || [])) orphanMap[r.square_catalog_id] = r.id
+      for (const r of (found || [])) orphanMap[r.square_catalog_id] = { id: r.id, categoria: r.categoria }
     }
     const stillNew = []
     for (const row of toInsert) {
-      const pk = orphanMap[row.square_catalog_id]
-      if (pk) {
-        // Huérfano ya existe en BD: actualizamos sin sobreescribir categoria
-        const { categoria: _drop, ...rowSinCat } = row
-        toUpdate.push({ id: pk, ...rowSinCat })
+      const existing = orphanMap[row.square_catalog_id]
+      if (existing) {
+        // Huérfano ya existe: no sobreescribir categoria, recalcular activo con cat de BD
+        const { categoria: _drop, activo: _dropActivo, ...rowBase } = row
+        const catEfectiva = existing.categoria || row.categoria
+        const activo = catEfectiva !== 'vino' || (row.stock ?? 0) > 0
+        toUpdate.push({ id: existing.id, ...rowBase, activo })
       } else {
         stillNew.push(row)
       }
