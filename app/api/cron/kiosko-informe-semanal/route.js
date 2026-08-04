@@ -13,7 +13,7 @@ export async function GET(request) {
 
   const { data: tiendas } = await supabaseAdmin
     .from('tiendas')
-    .select('id, nombre, slug, logo_url, informe_email, color_acento, tipografia')
+    .select('id, nombre, slug, logo_url, informe_email, color_acento, font_family')
     .not('informe_email', 'is', null)
     .neq('informe_email', '')
     .eq('activo', true)
@@ -160,7 +160,7 @@ async function enviarEmail(tienda, datos) {
   const semana    = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })
   const color     = datos.semanaActual >= datos.semanaAnterior ? '#3a8a3a' : '#c44'
   const acento    = tienda.color_acento || '#c9a96e'
-  const fontInfo  = FONT_MAP[tienda.tipografia] || {}
+  const fontInfo  = FONT_MAP[tienda.font_family] || {}
   const fontFace  = fontInfo.family || 'system-ui,-apple-system,sans-serif'
   const googleLink = fontInfo.google
     ? `<link href="https://fonts.googleapis.com/css2?family=${fontInfo.google}&display=swap" rel="stylesheet">`
