@@ -988,26 +988,23 @@ function detectarCatGourmet(nombre = '', descripcion = '') {
 
 // Afinidad vino→gourmet (invierte la lógica Chartier/WSET): qué gourmet potencia cada tipo de vino
 const AFINIDAD_VINO_GOURMET = {
-  tinto:       { embutido: 9, queso: 7, conserva_vegetal: 6, fruto_seco: 5, aceite_oliva: 4, aceituna: 4, snack: 3 },
-  blanco:      { conserva: 10, queso: 7, aceite_oliva: 7, conserva_vegetal: 6, aceituna: 5, snack: 4, fruto_seco: 4 },
-  rosado:      { embutido: 8, conserva: 7, queso: 6, aceituna: 5, snack: 5, fruto_seco: 5, aceite_oliva: 4 },
-  espumoso:    { conserva: 10, foie_pate: 9, queso: 8, aceituna: 5, embutido: 6, fruto_seco: 5, snack: 4 },
-  generoso:    { embutido: 10, fruto_seco: 9, conserva: 8, aceituna: 8, queso: 7, aceite_oliva: 6 },
-  dulce:       { foie_pate: 10, dulce: 9, queso: 8, fruto_seco: 7, miel_mermelada: 7 },
-  naranja:     { queso: 9, embutido: 8, conserva_vegetal: 7, aceituna: 6, fruto_seco: 6, aceite_oliva: 6 },
-  sin_alcohol: { snack: 8, fruto_seco: 7, queso: 6, aceituna: 6, conserva: 5, dulce: 5 },
+  tinto:       { embutido: 9, queso: 7, conserva_vegetal: 6, fruto_seco: 5, aceite_oliva: 4, aceituna: 4, snack: 3, bebida: 2 },
+  blanco:      { conserva: 10, queso: 7, aceite_oliva: 7, conserva_vegetal: 6, aceituna: 5, snack: 4, fruto_seco: 4, bebida: 3 },
+  rosado:      { embutido: 8, conserva: 7, queso: 6, aceituna: 5, snack: 5, fruto_seco: 5, aceite_oliva: 4, bebida: 5 },
+  espumoso:    { conserva: 10, foie_pate: 9, queso: 8, aceituna: 5, embutido: 6, fruto_seco: 5, snack: 4, aceite_oliva: 4, bebida: 4 },
+  generoso:    { embutido: 10, fruto_seco: 9, conserva: 8, aceituna: 8, queso: 7, aceite_oliva: 6, bebida: 4 },
+  dulce:       { foie_pate: 10, dulce: 9, queso: 8, fruto_seco: 7, miel_mermelada: 7, aceite_oliva: 3 },
+  naranja:     { queso: 9, embutido: 8, conserva_vegetal: 7, aceituna: 6, fruto_seco: 6, aceite_oliva: 6, bebida: 4 },
+  sin_alcohol: { snack: 8, fruto_seco: 7, queso: 6, aceituna: 6, conserva: 5, dulce: 5, aceite_oliva: 5, bebida: 3 },
 }
-
-// Bebidas artesanales (vermut, sidra…) tienen afinidad propia con snacks y embutido
-const AFINIDAD_BEBIDA = { embutido: 7, conserva: 6, queso: 5, snack: 5, fruto_seco: 4 }
 
 // Boost por ocasión — qué tipos de gourmet encajan con el momento
 const OCASION_GOURMET_BOOST = {
   enamorar:    { dulce: 4, foie_pate: 4, queso: 2, miel_mermelada: 2 },
-  impresionar: { foie_pate: 6, embutido: 5, queso: 4, aceite_oliva: 3 },  // nada de snacks
-  compartir:   { conserva: 3, snack: 4, embutido: 2, fruto_seco: 2 },
-  celebrar:    { foie_pate: 5, conserva: 3, fruto_seco: 2, dulce: 2 },
-  capricho:    { foie_pate: 3, dulce: 3, fruto_seco: 2, queso: 2 },
+  impresionar: { foie_pate: 6, embutido: 5, queso: 4, aceite_oliva: 3 },
+  compartir:   { conserva: 3, snack: 4, embutido: 2, fruto_seco: 2, bebida: 4 },
+  celebrar:    { foie_pate: 5, conserva: 3, fruto_seco: 2, dulce: 2, bebida: 3, aceite_oliva: 2 },
+  capricho:    { foie_pate: 3, dulce: 3, fruto_seco: 2, queso: 2, aceite_oliva: 2 },
 }
 
 // Explicación legible de por qué este gourmet acompaña ese vino
