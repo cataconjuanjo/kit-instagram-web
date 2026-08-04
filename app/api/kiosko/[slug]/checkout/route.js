@@ -19,6 +19,9 @@ export async function POST(req, { params }) {
   const { data: { user }, error: authErr } = await sc.auth.getUser(token)
   if (authErr || !user) return Response.json({ error: 'Sesión inválida' }, { status: 401 })
 
+  const body        = await req.json().catch(() => ({}))
+  const planElegido = body?.plan
+
   const { data: tienda } = await supabaseAdmin
     .from('tiendas')
     .select('id, nombre, slug, plan, propietario_email, email')
@@ -31,7 +34,10 @@ export async function POST(req, { params }) {
   const emailTienda = tienda.propietario_email?.toLowerCase() || tienda.email?.toLowerCase()
   if (email !== emailTienda) return Response.json({ error: 'No autorizado' }, { status: 403 })
 
-  const plan = tienda.plan && tienda.plan !== 'trial' ? tienda.plan : 'premium'
+  // Plan: usa el elegido si es válido; si no, el plan actual (si ya tiene uno real) o premium por defecto
+  const plan = (planElegido && PRICE_IDS[planElegido])
+    ? planElegido
+    : (tienda.plan && tienda.plan !== 'trial' ? tienda.plan : 'premium')
   const priceId = PRICE_IDS[plan]
   if (!priceId) return Response.json({ error: 'Plan sin precio configurado' }, { status: 400 })
 
@@ -52,7 +58,7 @@ export async function POST(req, { params }) {
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${SITE_URL}/kiosko-admin/${slug}?checkout=ok`,
     cancel_url:  `${SITE_URL}/kiosko-admin/${slug}`,
-    metadata: { tipo: 'kiosko', tienda_id: tienda.id, tienda_slug: tienda.slug, plan },
+    metadata: { tipo: 'kiosko', tienda_id: tienda.id, tienda_slug: tienda.slug, plan, price_id: priceId },
     subscription_data: { metadata: { tipo: 'kiosko', tienda_id: tienda.id, tienda_slug: tienda.slug, plan } },
     automatic_tax: { enabled: true },
     customer_update: { address: 'auto', name: 'auto' },

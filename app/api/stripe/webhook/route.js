@@ -66,13 +66,22 @@ async function emailBienvenidaKiosko({ nombre, email, slug, accessLink }) {
 </div>`
 }
 
-// Mapa de price_id → plan interno
+// Mapa de price_id → plan interno (Carta Viva / restaurantes)
 function planDesdePriceId(priceId) {
   if (priceId === process.env.STRIPE_PRICE_BASIC)   return 'basic'
   if (priceId === process.env.STRIPE_PRICE_PRO)     return 'pro'
   if (priceId === process.env.STRIPE_PRICE_BODEGA)  return 'bodega'
   if (priceId === process.env.STRIPE_PRICE_PREMIUM) return 'premium'
   return null
+}
+
+// Mapa de price_id → plan interno (Kiosko)
+const KIOSKO_PRICE_PLAN = {
+  [process.env.STRIPE_PRICE_KIOSKO_BASICO  || 'price_1TwhPQJewpUM60dKMDpfQ4dP']: 'basico',
+  [process.env.STRIPE_PRICE_KIOSKO_PREMIUM || 'price_1TxLdbJewpUM60dKJ4zEkO4D']: 'premium',
+}
+function planKioscoDesdePriceId(priceId) {
+  return KIOSKO_PRICE_PLAN[priceId] || null
 }
 
 function estadoDesdeStripe(status) {
@@ -152,8 +161,12 @@ export async function POST(req) {
           if (!tiendaId) break
 
           const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+          const priceId      = subscription.items.data[0]?.price?.id
+          const plan         = planKioscoDesdePriceId(priceId) || session.metadata?.plan || 'premium'
+
           await adminSupabase.from('tiendas').update({
             activo:                 true,
+            plan,
             subscription_status:    estadoDesdeStripe(subscription.status),
             stripe_customer_id:     customerId,
             stripe_subscription_id: subscriptionId,
@@ -291,8 +304,13 @@ export async function POST(req) {
         await actualizarRestauranteStripe(adminSupabase, { campo: 'eq', args: ['stripe_customer_id', customerId] }, update)
 
         // También actualizar tiendas si corresponde
+        const kioskoplan = planKioscoDesdePriceId(priceId)
         await adminSupabase.from('tiendas')
-          .update({ subscription_status, stripe_subscription_id: sub.id })
+          .update({
+            subscription_status,
+            stripe_subscription_id: sub.id,
+            ...(kioskoplan ? { plan: kioskoplan } : {}),
+          })
           .eq('stripe_customer_id', customerId)
 
         console.log(`✓ subscription.updated — customer ${customerId} → ${subscription_status} / plan ${plan}`)

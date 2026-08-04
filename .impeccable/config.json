@@ -4,7 +4,9 @@
     "ignoreFiles": [
       "app/kiosko/[slug]/kiosko.module.css",
       "app/kiosko/[slug]/page.js",
-      "app/kiosko-admin/[slug]/admin.module.css"
+      "app/kiosko-admin/[slug]/admin.module.css",
+      "app/api/cron/kiosko-informe-semanal/route.js",
+      "app/api/stripe/webhook/route.js"
     ],
     "ignoreValues": [
       {

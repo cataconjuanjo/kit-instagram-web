@@ -637,7 +637,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
   )
 }
 
-function TrialGate({ tienda }) {
+function TrialGate({ tienda, onCheckout, generandoCheckout }) {
   const [periodo, setPeriodo] = useState('mensual')
   const esAnual = periodo === 'anual'
 
@@ -701,9 +701,10 @@ function TrialGate({ tienda }) {
             <li>Personalización total: colores, logo y banner</li>
             <li>Filtros y búsqueda avanzada en administración</li>
           </ul>
-          <a href={waMsg('Básico')} target="_blank" rel="noreferrer" className={`${styles.trialPlanCta} ${styles.trialPlanCtaSecundario}`}>
-            Quiero el Básico
-          </a>
+          {esEspecial
+            ? <a href={waMsg('Básico')} target="_blank" rel="noreferrer" className={`${styles.trialPlanCta} ${styles.trialPlanCtaSecundario}`}>Quiero el Básico</a>
+            : <button disabled={generandoCheckout} onClick={() => onCheckout('basico')} className={`${styles.trialPlanCta} ${styles.trialPlanCtaSecundario}`}>{generandoCheckout ? 'Preparando pago…' : 'Quiero el Básico'}</button>
+          }
         </div>
 
         {/* Premium */}
@@ -731,9 +732,10 @@ function TrialGate({ tienda }) {
             <li>Informe semanal automático cada lunes por email</li>
             <li>Badge de margen y coste visible en tu panel</li>
           </ul>
-          <a href={waMsg('Premium')} target="_blank" rel="noreferrer" className={styles.trialPlanCta}>
-            Quiero el Premium →
-          </a>
+          {esEspecial
+            ? <a href={waMsg('Premium')} target="_blank" rel="noreferrer" className={styles.trialPlanCta}>Quiero el Premium →</a>
+            : <button disabled={generandoCheckout} onClick={() => onCheckout('premium')} className={styles.trialPlanCta}>{generandoCheckout ? 'Preparando pago…' : 'Quiero el Premium →'}</button>
+          }
         </div>
       </div>
 
@@ -1064,13 +1066,14 @@ export default function AdminKioskoPage() {
     finally     { setCargando(false)  }
   }
 
-  async function irACheckout() {
+  async function irACheckout(planElegido = 'premium') {
     if (!tienda?._token) return
     setGenerandoCheckout(true)
     try {
       const res = await fetch(`/api/kiosko/${slug}/checkout`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${tienda._token}` },
+        headers: { Authorization: `Bearer ${tienda._token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planElegido }),
       })
       const data = await res.json()
       if (data.url) window.location.href = data.url
@@ -1989,7 +1992,7 @@ export default function AdminKioskoPage() {
 
       {/* Pantalla de conversión al expirar el trial (o en preview) */}
       {tienda?.plan === 'trial' && (previewTrial || trialSegsRestantes === 0) && (
-        <TrialGate tienda={tienda} />
+        <TrialGate tienda={tienda} onCheckout={irACheckout} generandoCheckout={generandoCheckout} />
       )}
 
       {/* Tab nav */}
