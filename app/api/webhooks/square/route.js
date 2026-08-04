@@ -64,6 +64,7 @@ async function handleCatalogUpdate() {
 async function handleInventoryUpdate(event) {
   const counts = event.data?.object?.inventory_counts || []
   let actualizados = 0
+  const categoriasActualizadas = []
 
   for (const count of counts) {
     if (count.state !== 'IN_STOCK') continue
@@ -73,13 +74,13 @@ async function handleInventoryUpdate(event) {
     // inventory_counts también usa variation IDs — buscar por square_variation_id primero
     let { data: vino } = await supabaseAdmin
       .from('vinos_tienda')
-      .select('id, stock')
+      .select('id, stock, categoria')
       .eq('square_variation_id', catalogId)
       .maybeSingle()
     if (!vino) {
       ;({ data: vino } = await supabaseAdmin
         .from('vinos_tienda')
-        .select('id, stock')
+        .select('id, stock, categoria')
         .eq('square_catalog_id', catalogId)
         .maybeSingle())
     }
@@ -95,9 +96,12 @@ async function handleInventoryUpdate(event) {
       .eq('id', vino.id)
 
     actualizados++
+    categoriasActualizadas.push(vino.categoria || 'otro')
   }
 
-  console.log(`[square-webhook] inventory.count.updated: ${actualizados} vinos actualizados`)
+  const nVinos = categoriasActualizadas.filter(c => c === 'vino').length
+  const nOtros = categoriasActualizadas.filter(c => c !== 'vino').length
+  console.log(`[square-webhook] inventory.count.updated: ${actualizados} productos actualizados (${nVinos} vino, ${nOtros} otro)`)
   return NextResponse.json({ ok: true, actualizados })
 }
 
