@@ -505,7 +505,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
               </div>
             </div>
             <p style={{ fontSize: '.75rem', color: '#aaa', margin: '.5rem 0 0' }}>
-              Cada lunes a las 8:00 recibirás un resumen con las búsquedas de la semana, los vinos más recomendados y alertas de stock. Deja el campo vacío para no recibir el informe.
+              Cada martes a las 8:00 recibirás un resumen con las búsquedas de la semana, los vinos más recomendados y alertas de stock. Deja el campo vacío para no recibir el informe.
             </p>
             {esAdmin && (
               <a href={`/kiosko-admin/${slug}/informes`} style={{ display: 'inline-block', marginTop: '.75rem', fontSize: '.78rem', color: '#c9a96e', textDecoration: 'underline' }}>
