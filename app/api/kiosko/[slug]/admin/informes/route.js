@@ -1,38 +1,12 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-async function verificarAcceso(request, slug) {
-  const auth = request.headers.get('authorization')
-  if (!auth?.startsWith('Bearer ')) return null
-
-  const token = auth.slice(7)
-  const client = createClient(supabaseUrl, supabaseAnon)
-  const { data: { user } } = await client.auth.getUser(token)
-  if (!user) return null
-
-  const { data: tienda } = await supabaseAdmin
-    .from('tiendas')
-    .select('id')
-    .eq('slug', slug)
-    .or(`propietario_email.eq.${user.email},email.eq.${user.email}`)
-    .single()
-
-  // Permitir también a admins de cataconjuanjo
-  const esAdmin = user.email?.endsWith('@cataconjuanjo.com') || user.email === 'jjgarciapozo@gmail.com'
-  if (!tienda && !esAdmin) return null
-
-  return user
-}
+import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
 export async function GET(request, { params }) {
   const { slug } = await params
 
-  const user = await verificarAcceso(request, slug)
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const access = await requireKioskoAccess(request, slug)
+  if (access.error) return NextResponse.json({ error: access.error }, { status: access.status || 401 })
 
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
