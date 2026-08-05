@@ -633,7 +633,6 @@ export default function RadarConsultoria() {
     <div className="admin-main radar-main">
       <div className="radar-header">
             <div>
-              <p className="admin-kicker">Centro de mando</p>
               <h2>Radar ejecutivo</h2>
               <p>{informes.length} restaurantes · {alta} prioridad alta · {media} prioridad media</p>
               <p className="radar-data-note">
@@ -646,8 +645,7 @@ export default function RadarConsultoria() {
           <section className="product-readiness-panel">
             <div className="product-readiness-head">
               <div>
-                <p className="admin-kicker">Cierre de producto</p>
-                <h3>Estado para venderlo con confianza</h3>
+                <h3>Cierre de producto</h3>
                 <p>{resumenCierre.ok || 0}/{resumenCierre.total_checks || 0} checks listos · {resumenCierre.blockers || 0} bloqueos · {resumenCierre.warnings || 0} avisos.</p>
               </div>
               <div className="product-readiness-score">
@@ -706,8 +704,7 @@ export default function RadarConsultoria() {
           <section className="consultant-weekly-briefing">
             <div className="consultant-weekly-head">
               <div>
-                <p className="admin-kicker">Resumen consultor</p>
-                <h3>Agenda semanal por rentabilidad y datos</h3>
+                <h3>Agenda semanal por rentabilidad</h3>
                 <p>{resumenSemanalConsultor.restaurantes || 0} restaurantes medidos desde la foto semanal y el estado real de entrega.</p>
               </div>
               <div className="consultant-weekly-status">
@@ -777,8 +774,7 @@ export default function RadarConsultoria() {
           <section className="automation-health-panel">
             <div className="automation-health-head">
               <div>
-                <p className="admin-kicker">Automatismos</p>
-                <h3>Salud operativa de los últimos 7 días</h3>
+                <h3>Automatismos · últimos 7 días</h3>
               </div>
               <span className={`radar-tag ${automatismosPendientes.length ? 'is-warning' : claseAutomatismo((resumenAutomatismos.failed || 0) > 0 ? 'failed' : 'success')}`}>
                 {automatismosPendientes.length ? 'Migracion pendiente' : `${resumenAutomatismos.success || 0} OK`}
@@ -823,8 +819,7 @@ export default function RadarConsultoria() {
           <section className="economic-defense-panel">
             <div className="economic-defense-head">
               <div>
-                <p className="admin-kicker">Defensa económica</p>
-                <h3>Cifras listas para presentar a gerencia</h3>
+                <h3>Defensa económica</h3>
                 <p>{resumenDefensaEconomica.con_foto || 0}/{resumenDefensaEconomica.restaurantes || informes.length} restaurantes tienen foto económica guardada.</p>
               </div>
               <span className={`radar-tag ${(resumenDefensaEconomica.no_presentar || resumenDefensaEconomica.sin_foto) ? 'is-warning' : 'is-ok'}`}>
@@ -892,7 +887,6 @@ export default function RadarConsultoria() {
           <section className="consultant-agenda">
             <div className="consultant-agenda-head">
               <div>
-                <p className="admin-kicker">Agenda recomendada</p>
                 <h3>Los 3 restaurantes que atendería hoy</h3>
                 <p>{restaurantesConAccion} restaurantes tienen una acción concreta abierta.</p>
               </div>

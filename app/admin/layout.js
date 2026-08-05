@@ -81,7 +81,10 @@ export default function AdminLayout({ children }) {
 
         <ul className={styles.nav}>
           <li className={styles.navGroup}>
-            <p className={styles.navGroupTitle}><span>🎯</span> Trabajo</p>
+            <p className={styles.navGroupTitle}>
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.3"/><circle cx="5.5" cy="5.5" r="1.5" fill="currentColor"/></svg>
+              Trabajo
+            </p>
             <Link
               href="/admin/consultoria"
               className={`${styles.navLink} ${pathname === '/admin/consultoria' ? styles.navActive : ''}`}
@@ -127,7 +130,10 @@ export default function AdminLayout({ children }) {
           </li>
 
           <li className={styles.navGroup}>
-            <p className={styles.navGroupTitle}><span>🏪</span> Restaurantes</p>
+            <p className={styles.navGroupTitle}>
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><path d="M1.5 10.5V5L5.5 1.5 9.5 5v5.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M4 10.5V7.5h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
+              Restaurantes
+            </p>
             <Link
               href="/admin"
               className={`${styles.navLink} ${pathname === '/admin' ? styles.navActive : ''}`}
@@ -138,7 +144,10 @@ export default function AdminLayout({ children }) {
           </li>
 
           <li className={styles.navGroup}>
-            <p className={styles.navGroupTitle}><span>🏬</span> Kioscos</p>
+            <p className={styles.navGroupTitle}>
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><rect x="1" y="1.5" width="9" height="6" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M4 9.5h3M5.5 7.5v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+              Kioscos
+            </p>
             <Link
               href="/admin/kioscos"
               className={`${styles.navLink} ${pathname === '/admin/kioscos' ? styles.navActive : ''}`}
@@ -152,7 +161,10 @@ export default function AdminLayout({ children }) {
           </li>
 
           <li className={styles.navGroup}>
-            <p className={styles.navGroupTitle}><span>🤝</span> Proveedores</p>
+            <p className={styles.navGroupTitle}>
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><path d="M1 8l4.5 2L10 8" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M1 5.5l4.5 2L10 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M1 3l4.5 2L10 3" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
+              Proveedores
+            </p>
             <div
               className={`${styles.navLink} ${pathname === '/admin/proveedores' ? styles.navActive : ''}`}
             >
