@@ -160,3 +160,171 @@
 .dropdown a:hover { background: #f5f0e8; }
 .dropdown .divider { height: 1px; background: #f0ede8; margin: 4px 0; }
 .dropdown .danger  { color: #c0392b; }
+
+/* ── Estructura de página (estilo kioscos) ── */
+
+.page {
+  padding: 32px 40px;
+  max-width: 1200px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+
+.sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.btnNuevo {
+  background: var(--wine);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btnNuevo:hover { opacity: .88; }
+.btnNuevo:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Bloque de uso / IA ── */
+
+.usageBlock {
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  background: #fffaf3;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+.usageBlockHead {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.usageBlockHead strong {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.usageBlockHead span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.usageEmpty {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.usageRecent {
+  display: flex;
+  flex-direction: column;
+}
+
+.usageRow {
+  display: grid;
+  grid-template-columns: 160px minmax(0,1fr) 160px 80px;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding: 5px 0;
+  border-top: 1px solid rgba(52,35,23,.06);
+}
+.usageRow strong {
+  color: var(--ink);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Toolbar filtros ── */
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.toolbar input,
+.toolbar select {
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+  color: var(--ink);
+  background: #fff;
+}
+.toolbar input { min-width: 220px; }
+.toolbar select { min-width: 140px; }
+.toolbar input:focus,
+.toolbar select:focus { outline: none; border-color: var(--wine); }
+
+.toolbarBtn {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.toolbarBtn:hover { background: #fffaf3; color: var(--ink); }
+
+/* ── Paginación ── */
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  gap: 10px;
+}
+.pagination > div { display: flex; gap: 6px; }
+.pagination button {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.75rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+.pagination button:disabled { opacity: .4; cursor: not-allowed; }
+.pagination button:not(:disabled):hover { background: #fffaf3; }
+
+/* ── Estado activo en tabla ── */
+
+.activeNow {
+  color: #2d7a50;
+  font-weight: 700;
+}
