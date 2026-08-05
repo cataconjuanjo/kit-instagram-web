@@ -11,6 +11,18 @@ const TIPO_LABEL = {
   otro: 'Otro',
 }
 
+function limpiarTexto(texto = '') {
+  return String(texto || '')
+    .replace(/gustar\?a/gi, m => m[0] === 'G' ? 'Gustaría' : 'gustaría')
+    .replace(/\bqu\?/gi,    m => m[0] === 'Q' ? 'Qué'      : 'qué')
+    .replace(/\bm\?s\b/gi,  m => m[0] === 'M' ? 'Más'      : 'más')
+    .replace(/\br\?pido/gi, m => m[0] === 'R' ? 'Rápido'   : 'rápido')
+    .replace(/\bfunci\?n/gi,m => m[0] === 'F' ? 'Función'  : 'función')
+    .replace(/\btambi\?n/gi,m => m[0] === 'T' ? 'También'  : 'también')
+    .replace(/\bsecci\?n/gi,m => m[0] === 'S' ? 'Sección'  : 'sección')
+    .replace(/\brap\?do/gi, m => m[0] === 'R' ? 'Rápido'   : 'rápido')
+}
+
 const ESTADOS = ['nueva', 'revisando', 'resuelta', 'descartada']
 
 function fecha(value) {
@@ -92,7 +104,7 @@ export default function AdminSugerenciasPage() {
               </div>
               <span className={`consult-badge consult-badge--${item.estado}`}>{item.estado}</span>
             </div>
-            <p className="consult-card-text">{item.mensaje}</p>
+            <p className="consult-card-text">{limpiarTexto(item.mensaje)}</p>
             {item.pagina && <p className="consult-muted">Contexto: {item.pagina}</p>}
             <div className="consult-card-actions">
               <button type="button" onClick={() => setSugerenciaActiva({ ...item })}>Revisar y responder</button>
@@ -120,7 +132,7 @@ export default function AdminSugerenciasPage() {
           <div className="admin-detail-stack">
             <div className="admin-detail-box">
               <h3>Mensaje del restaurante</h3>
-              <p>{sugerenciaActiva.mensaje}</p>
+              <p>{limpiarTexto(sugerenciaActiva.mensaje)}</p>
             </div>
             <label className="consult-field">
               Estado

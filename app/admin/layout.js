@@ -100,13 +100,6 @@ export default function AdminLayout({ children }) {
               Alertas
             </Link>
             <Link
-              href="/admin/demo"
-              className={`${styles.navLink} ${pathname === '/admin/demo' ? styles.navActive : ''}`}
-              onClick={() => setMenuOpen(false)}
-            >
-              Embudo demo
-            </Link>
-            <Link
               href="/admin/acciones"
               className={`${styles.navLink} ${pathname === '/admin/acciones' ? styles.navActive : ''}`}
               onClick={() => setMenuOpen(false)}
@@ -213,11 +206,6 @@ export default function AdminLayout({ children }) {
         </div>
 
         <div className={styles.sidebarFooter}>
-          <div className={styles.footerLinks}>
-            <a href="/taberna-del-puerto" target="_blank" rel="noreferrer" className={styles.demoFooterLink}>
-              Demo La Taberna
-            </a>
-          </div>
           <button type="button" onClick={cerrarSesion} className={styles.logoutButton}>Salir</button>
         </div>
       </nav>
