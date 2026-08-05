@@ -883,7 +883,6 @@ function ProveedoresPageContent() {
     <div className="admin-main supplier-main">
           <div className="consult-hero supplier-hero">
             <div>
-              <p className="eyebrow">Base privada de compra</p>
               <h2>Catálogo de distribuidores para preparar propuestas sin exponer precios.</h2>
               <p>Guarda contactos, zonas, referencias, coste estimado, PVP recomendado y disponibilidad. Por defecto queda fuera de la vista del restaurante.</p>
             </div>
@@ -940,10 +939,15 @@ function ProveedoresPageContent() {
                         <input value={proveedorForm.telefono} onChange={e => cambiarProveedor('telefono', e.target.value)} placeholder="+34..." />
                       </div>
                     </div>
-                    <label className="admin-hub-switch" style={{ marginTop: 4 }}>
-                      <input type="checkbox" checked={proveedorForm.visible_restaurantes} onChange={e => cambiarProveedor('visible_restaurantes', e.target.checked)} />
-                      Preparado para mostrar a restaurantes
-                    </label>
+                    <div className="supplier-visibility-block">
+                      <label className="admin-hub-switch">
+                        <input type="checkbox" checked={proveedorForm.visible_restaurantes} onChange={e => cambiarProveedor('visible_restaurantes', e.target.checked)} />
+                        <div>
+                          <strong>{proveedorForm.visible_restaurantes ? 'Visible para restaurantes' : 'Privado — solo consultor'}</strong>
+                          <span>{proveedorForm.visible_restaurantes ? 'El restaurante puede ver este proveedor y su catálogo de referencias.' : 'Los precios de compra permanecen ocultos para el restaurante.'}</span>
+                        </div>
+                      </label>
+                    </div>
                     <div className="alta-field" style={{ marginTop: 12 }}>
                       <label>Notas privadas</label>
                       <textarea value={proveedorForm.notas} onChange={e => cambiarProveedor('notas', e.target.value)} placeholder="Condiciones, zonas fuertes, mínimos, tipo de catálogo, relación comercial..." />
@@ -970,7 +974,6 @@ function ProveedoresPageContent() {
           <>
           <section className="admin-create supplier-panel">
             <div>
-              <p className="eyebrow">Comparador de compra</p>
               <h2>Buscar en el fondo común</h2>
               <p>Busca un vino y compara qué distribuidor lo tiene, a qué coste, en qué formato y dónde sale más barato.</p>
             </div>
@@ -1003,7 +1006,7 @@ function ProveedoresPageContent() {
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                             <div>
                               <strong>{vino.proveedorNombre}</strong>
-                              <p style={{ margin: '5px 0 0', color: '#777' }}>
+                              <p style={{ margin: '5px 0 0', color: 'var(--muted)' }}>
                                 {[vino.formato, vino.referencia, vino.disponibilidad].filter(Boolean).join(' · ') || 'Sin formato/referencia'}
                               </p>
                             </div>
@@ -1045,9 +1048,8 @@ function ProveedoresPageContent() {
               {acordeonAbierto === 'importar' && (
                 <div className="supplier-accordion-body">
             <div className="admin-card" style={{ marginBottom: 18 }}>
-              <p className="eyebrow">Importar tarifa PDF</p>
-              <h3 style={{ marginTop: 0 }}>Catálogo del distribuidor</h3>
-              <p style={{ color: '#777', lineHeight: 1.6 }}>
+              <h3>Catálogo del distribuidor</h3>
+              <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>
                 Sube el PDF que te ha mandado el proveedor. La app extrae vinos, referencias, formatos, coste y disponibilidad para revisar antes de guardar.
               </p>
               <div className="admin-card-actions" style={{ justifyContent: 'flex-start' }}>
@@ -1056,7 +1058,7 @@ function ProveedoresPageContent() {
                   {proveedores.map(proveedor => <option key={proveedor.id} value={proveedor.id}>{proveedor.nombre}</option>)}
                 </select>
               </div>
-              <label style={{ display: 'grid', gap: 8, marginTop: 14, color: '#555', fontSize: 13 }}>
+              <label style={{ display: 'grid', gap: 8, marginTop: 14, color: 'var(--muted)', fontSize: 13 }}>
                 PDF, Excel, CSV o imagen del catálogo
                 <input
                   ref={catalogoRef}
@@ -1064,20 +1066,20 @@ function ProveedoresPageContent() {
                   accept=".pdf,.csv,.xlsx,.xls,image/*,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
                   onChange={e => procesarCatalogoProveedor(e.target.files)}
                   disabled={leyendoCatalogo || !proveedorImportacion}
-                  style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #ddd', borderRadius: 12, padding: 10, background: proveedorImportacion ? '#fff' : '#f3f3f3' }}
+                  style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--line)', borderRadius: 12, padding: 10, background: proveedorImportacion ? '#fff' : '#f3f3f3' }}
                 />
               </label>
               {!proveedorImportacion && <p className="admin-alert admin-alert-error">Selecciona o crea un proveedor antes de subir el catálogo.</p>}
               {leyendoCatalogo && <p className="admin-slug">Leyendo catálogo, puede tardar unos segundos...</p>}
               <div style={{ marginTop: 14 }}>
-                <label style={{ display: 'grid', gap: 8, color: '#555', fontSize: 13 }}>
+                <label style={{ display: 'grid', gap: 8, color: 'var(--muted)', fontSize: 13 }}>
                   Alternativa para PDFs pesados: pega texto del catálogo
                   <textarea
                     value={textoCatalogo}
                     onChange={e => setTextoCatalogo(e.target.value)}
                     placeholder="Abre el PDF, copia las páginas de tarifa o el listado de vinos y pégalo aquí..."
                     rows={5}
-                    style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #ddd', borderRadius: 12, padding: 12, font: 'inherit' }}
+                    style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--line)', borderRadius: 12, padding: 12, font: 'inherit' }}
                   />
                 </label>
                 <div className="admin-card-actions" style={{ justifyContent: 'flex-start', marginTop: 10 }}>
@@ -1515,8 +1517,8 @@ function ProveedoresPageContent() {
                       </span>
                     </div>
                     <div className="supplier-row-btns">
-                      <button type="button" className="supplier-btn-edit" onClick={() => editarProveedor(proveedor)}>✏ Editar</button>
-                      <button type="button" className="supplier-btn-danger" onClick={() => setBorradoPendiente({ id: proveedor.id, kind: 'proveedor', nombre: proveedor.nombre })}>✕ Borrar</button>
+                      <button type="button" className="supplier-btn-edit" onClick={() => editarProveedor(proveedor)}>Editar</button>
+                      <button type="button" className="supplier-btn-danger" onClick={() => setBorradoPendiente({ id: proveedor.id, kind: 'proveedor', nombre: proveedor.nombre })}>Borrar</button>
                     </div>
                   </div>
                 ))}
@@ -1544,9 +1546,12 @@ function ProveedoresPageContent() {
                       <span className="supplier-row-badge">{conteoPorProveedor[proveedor.id]} referencias</span>
                     </div>
                     <div className="supplier-row-btns">
-                      <button type="button" className="supplier-btn-primary" onClick={() => { setProveedorSeleccionado(proveedor.id); cambiarVistaProveedores('catalogo') }}>
-                        → Ver catálogo
+                      <button type="button" className="supplier-btn-edit" onClick={() => { setProveedorSeleccionado(proveedor.id); cambiarVistaProveedores('catalogo') }}>
+                        Ver catálogo
                       </button>
+                      <a href={`/admin/simulador-cartas?proveedor=${proveedor.id}`} className="supplier-btn-primary">
+                        Simular carta
+                      </a>
                     </div>
                   </div>
                 ))}

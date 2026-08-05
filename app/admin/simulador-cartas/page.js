@@ -457,6 +457,8 @@ export default function SimuladorCartas() {
       const params = new URLSearchParams(window.location.search)
       const restauranteUrl = params.get('restaurante')
       setRestauranteId(restauranteUrl || restaurantesData[0]?.id || '')
+      const proveedorUrl = params.get('proveedor')
+      if (proveedorUrl) setProveedorId(proveedorUrl)
       setLoading(false)
     }
 

@@ -13673,6 +13673,39 @@ html, body {
   background: #6b1130;
 }
 
+/* ── Supplier visibility toggle ── */
+
+.supplier-visibility-block {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffaf3;
+}
+
+.supplier-visibility-block .admin-hub-switch {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.supplier-visibility-block strong {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--ink);
+}
+
+.supplier-visibility-block span {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* anchor used as primary button */
+a.supplier-btn-primary {
+  text-decoration: none;
+}
+
 /* ── Proveedor ficha form (inside accordion) ── */
 
 .supplier-ficha-form {
