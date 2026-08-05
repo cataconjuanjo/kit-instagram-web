@@ -910,7 +910,7 @@ export default function RadarConsultoria() {
                         <span>{alertasCriticasRadar(informe)} alertas críticas</span>
                       </div>
                     </div>
-                    <Link href={`/admin/restaurante/${informe.restaurante.id}`}>Trabajar ahora →</Link>
+                    <Link href={`/admin/restaurante/${informe.restaurante.id}`}>Trabajar ahora</Link>
                   </article>
                 )
               })}
@@ -941,7 +941,9 @@ export default function RadarConsultoria() {
                   onClick={event => toggleFavorito(event, informe.restaurante.id)}
                   aria-label="Marcar restaurante como favorito"
                 >
-                  ⭐
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+                    <path d="M6.5 1.5l1.3 2.8 3.1.45-2.2 2.15.52 3.1L6.5 8.5l-2.72 1.5.52-3.1L2.1 4.75l3.1-.45z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                  </svg>
                 </button>
                 <Link href={`/admin/restaurante/${informe.restaurante.id}`} className="radar-card-link">
                 <div className={`radar-score radar-score-${informe.prioridad.toLowerCase()}`}>

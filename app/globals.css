@@ -8452,7 +8452,7 @@ h3 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
-  margin: 22px 0;
+  margin: 22px 32px;
 }
 
 .executive-radar-summary article {
@@ -8571,7 +8571,7 @@ h3 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0 0 20px;
+  margin: 0 32px 20px;
 }
 
 .radar-command-bar a {
@@ -10588,20 +10588,33 @@ html, body {
   top: 18px;
   left: 16px;
   z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 28px;
   height: 28px;
   border: 1px solid #e8e2d9;
   border-radius: 8px;
   background: #fffaf0;
   cursor: pointer;
-  filter: grayscale(1);
+  color: #c0b49a;
+  transition: border-color 120ms, background 120ms, color 120ms;
 }
 
-.radar-favorite.is-active,
 .radar-favorite:hover {
-  filter: none;
-  border-color: #F59E0B;
+  border-color: #d4a93a;
+  background: #fffaeb;
+  color: #b97a1a;
+}
+
+.radar-favorite.is-active {
+  border-color: #d4a93a;
   background: #fff6dc;
+  color: #b97a1a;
+}
+
+.radar-favorite.is-active svg path {
+  fill: #f5c84280;
 }
 
 .radar-score {
@@ -15200,7 +15213,7 @@ a.supplier-btn-primary {
   border: 1px solid #d8c898;
   border-radius: 8px;
   background: #fffaf3;
-  color: #74223d;
+  color: var(--wine);
   padding: 5px 9px;
   cursor: pointer;
   font-size: 11px;
