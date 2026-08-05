@@ -868,7 +868,6 @@ export default function SimuladorCartas() {
     <main className="sim-page">
       <header className="sim-topbar no-print">
         <div className="sim-topbar-title">
-          <p className="sim-topbar-eyebrow">Consultoría · Simulador de cartas</p>
           <h1 className="sim-topbar-h1">
             {restaurante?.nombre || 'Selecciona un restaurante'}
             {simulacion ? <em className="sim-topbar-badge">{simulacion.cfg.label}</em> : null}
@@ -964,7 +963,9 @@ export default function SimuladorCartas() {
                   </div>
                 </div>
 
-                <div className="sim-kpi-arrow" aria-hidden="true">→</div>
+                <div className="sim-kpi-arrow" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3.5 9h11M10 4.5l4.5 4.5L10 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
 
                 <div className="sim-kpi-group sim-kpi-group-after">
                   <span className="sim-kpi-group-label">Propuesta · {simulacion.cfg.label}</span>
@@ -1114,7 +1115,6 @@ export default function SimuladorCartas() {
               <section className="sim-carta">
                 <div className="sim-carta-head">
                   <div>
-                    <p className="sim-carta-eyebrow">Propuesta de carta</p>
                     <h2 className="sim-carta-title">{restaurante?.nombre || 'Restaurante'}</h2>
                     <span className="sim-carta-sub">
                       {[restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(', ') || 'Carta simulada'}

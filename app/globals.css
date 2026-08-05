@@ -13766,15 +13766,6 @@ html, body {
   background: #f8f3eb;
 }
 
-.sim-topbar-eyebrow {
-  margin: 0 0 3px;
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
 .sim-topbar-h1 {
   margin: 0;
   font-size: clamp(1.2rem, 2vw, 1.65rem);
@@ -13965,8 +13956,9 @@ html, body {
   gap: 14px;
   padding: 16px;
   border: 1px solid var(--line);
+  border-top: 2px solid var(--wine);
   border-radius: 10px;
-  background: #fff;
+  background: #fffaf3;
 }
 
 .sim-kpi-group {
@@ -14004,8 +13996,12 @@ html, body {
 }
 
 .sim-kpi-group-after .sim-kpi {
-  background: #f6fdf9;
-  border-color: rgba(31, 111, 74, 0.18);
+  background: #f3fbf6;
+  border-color: rgba(31, 111, 74, 0.25);
+}
+
+.sim-kpi-group-after .sim-kpi strong {
+  color: #1a5e3a;
 }
 
 .sim-kpi span {
@@ -14018,23 +14014,26 @@ html, body {
 
 .sim-kpi strong {
   color: var(--ink);
-  font-size: 1.3rem;
-  line-height: 1.05;
+  font-size: 1.65rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .sim-kpi em {
   font-style: normal;
-  font-size: 0.74rem;
+  font-size: 0.8rem;
   font-weight: 800;
   color: var(--muted);
 }
 
 .sim-kpi em.is-up {
   color: #1f7a4a;
+  font-size: 0.84rem;
 }
 
 .sim-kpi em.is-down {
   color: #b0362a;
+  font-size: 0.84rem;
 }
 
 .sim-kpi-arrow {
@@ -14042,9 +14041,9 @@ html, body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 1.3rem;
   color: var(--muted);
   padding: 0 4px;
+  opacity: 0.5;
 }
 
 /* ── Workgrid ── */
@@ -14717,15 +14716,6 @@ html, body {
   gap: 20px;
   padding: 18px 22px;
   border-bottom: 1px solid var(--line);
-}
-
-.sim-carta-eyebrow {
-  margin: 0 0 3px;
-  color: var(--muted);
-  font-size: 0.69rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .sim-carta-title {
