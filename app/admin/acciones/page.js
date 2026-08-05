@@ -161,13 +161,13 @@ export default function AdminAccionesPage() {
           <div><span>30 dias</span><strong>{resumen.rapidas}</strong></div>
         </div>
 
+        <div className="actions-filterbar">
+          {ESTADOS.map(([value, label]) => (
+            <button key={value} type="button" className={estado === value ? 'is-active' : ''} onClick={() => setEstado(value)}>{label}</button>
+          ))}
+        </div>
+
         <div className="alerts-toolbar">
-          <label>
-            Estado
-            <select value={estado} onChange={e => setEstado(e.target.value)}>
-              {ESTADOS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
           <label>
             Fase
             <select value={fase} onChange={e => setFase(e.target.value)}>
@@ -180,9 +180,9 @@ export default function AdminAccionesPage() {
               {PRIORIDADES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
-          <label>
+          <label className="alerts-toolbar-search">
             Buscar
-            <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Restaurante, accion, origen..." />
+            <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Restaurante, acción, origen..." />
           </label>
         </div>
 
@@ -211,9 +211,9 @@ export default function AdminAccionesPage() {
                   </div>
                 </div>
                 <div className="alert-work-actions">
-                  <button disabled={accionando === key} onClick={() => actualizarAccion(accion, 'en_progreso')}>En progreso</button>
+                  <button className="is-primary" disabled={accionando === key} onClick={() => actualizarAccion(accion, 'en_progreso')}>En progreso</button>
                   <button disabled={accionando === key} onClick={() => actualizarAccion(accion, 'hecha')}>Hecha</button>
-                  <button disabled={accionando === key} onClick={() => actualizarAccion(accion, 'descartada')}>Descartar</button>
+                  <button className="is-ghost" disabled={accionando === key} onClick={() => actualizarAccion(accion, 'descartada')}>Descartar</button>
                 </div>
               </article>
             )
