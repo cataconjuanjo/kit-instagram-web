@@ -632,7 +632,6 @@ function AdminPageContent() {
     <div className="admin-main">
         <div className="admin-head">
           <div>
-            <p className="eyebrow">Restaurantes</p>
             <h2>Accesos y gestión de restaurantes.</h2>
           </div>
           <button type="button" className="admin-access-new" onClick={() => { setMostrarAlta(true); setAltaCreada(null); setErrorAlta('') }}>
@@ -836,7 +835,6 @@ function AdminPageContent() {
 
         <div className="admin-usage-overview">
           <div>
-            <p className="eyebrow">Uso del panel</p>
             <h3>Actividad reciente</h3>
             {uso.ia?.disponible && (
               <>

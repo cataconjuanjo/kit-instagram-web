@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import AdminOverlay from '../components/AdminOverlay'
@@ -24,6 +25,15 @@ function limpiarTexto(texto = '') {
 }
 
 const ESTADOS = ['nueva', 'revisando', 'resuelta', 'descartada']
+
+const FILTROS = [
+  ['pendientes', 'Pendientes'],
+  ['nueva', 'Nueva'],
+  ['revisando', 'Revisando'],
+  ['resuelta', 'Resueltas'],
+  ['descartada', 'Descartadas'],
+  ['todas', 'Todas'],
+]
 
 function fecha(value) {
   return new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -73,25 +83,30 @@ export default function AdminSugerenciasPage() {
   }), [sugerencias, filtro])
 
   return (
-    <main className="consult-page">
-      <section className="consult-hero">
-        <div>
-          <p className="consult-eyebrow">Producto</p>
-          <h2>Buzón de sugerencias</h2>
-          <p>Feedback directo de los restaurantes para decidir qué corregir y qué construir después.</p>
+    <div className="admin-main sugerencias-workspace">
+      <div className="ws-header">
+        <div className="ws-header-left">
+          <Link href="/admin/consultoria" className="ws-back">Radar</Link>
+          <div>
+            <h2 className="ws-title">Buzón de sugerencias</h2>
+            <span className="ws-sub">Feedback directo de los restaurantes para decidir qué corregir y qué construir después.</span>
+          </div>
         </div>
-        <span className="consult-count">{sugerencias.filter(item => item.estado === 'nueva').length} nuevas</span>
-      </section>
+        <div className="ws-header-actions">
+          <span className="ws-badge">{sugerencias.filter(item => item.estado === 'nueva').length} nuevas</span>
+        </div>
+      </div>
 
-      <section className="consult-toolbar">
-        {['pendientes', 'nueva', 'revisando', 'resuelta', 'descartada', 'todas'].map(item => (
-          <button type="button" key={item} className={filtro === item ? 'is-selected' : ''} onClick={() => setFiltro(item)}>
-            {item}
+      <section className="ws-section">
+      <div className="consult-toolbar">
+        {FILTROS.map(([value, label]) => (
+          <button type="button" key={value} className={filtro === value ? 'is-selected' : ''} onClick={() => setFiltro(value)}>
+            {label}
           </button>
         ))}
-      </section>
+      </div>
 
-      <section className="consult-grid">
+      <div className="consult-grid">
         {loading && <p className="consult-empty">Cargando sugerencias...</p>}
         {!loading && visibles.length === 0 && <p className="consult-empty">No hay sugerencias en esta vista.</p>}
         {visibles.map(item => (
@@ -111,6 +126,7 @@ export default function AdminSugerenciasPage() {
             </div>
           </article>
         ))}
+      </div>
       </section>
       <AdminOverlay
         open={Boolean(sugerenciaActiva)}
@@ -159,6 +175,6 @@ export default function AdminSugerenciasPage() {
           </div>
         )}
       </AdminOverlay>
-    </main>
+    </div>
   )
 }

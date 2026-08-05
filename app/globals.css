@@ -11778,6 +11778,10 @@ html, body {
   margin-bottom: 16px;
 }
 
+.alerts-workspace .alerts-toolbar {
+  grid-template-columns: 160px minmax(0, 1fr);
+}
+
 .alerts-toolbar label {
   display: grid;
   gap: 6px;

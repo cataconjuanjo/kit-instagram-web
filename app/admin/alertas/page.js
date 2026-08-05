@@ -187,13 +187,13 @@ export default function AdminAlertasPage() {
           <div><span>En progreso</span><strong>{resumen.progreso}</strong></div>
         </div>
 
+        <div className="actions-filterbar">
+          {ESTADOS.map(([value, label]) => (
+            <button key={value} type="button" className={estado === value ? 'is-active' : ''} onClick={() => setEstado(value)}>{label}</button>
+          ))}
+        </div>
+
         <div className="alerts-toolbar">
-          <label>
-            Estado
-            <select value={estado} onChange={e => setEstado(e.target.value)}>
-              {ESTADOS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
           <label>
             Severidad
             <select value={severidad} onChange={e => setSeveridad(e.target.value)}>
