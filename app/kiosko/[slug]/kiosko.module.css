@@ -3732,3 +3732,67 @@
   .cestaItemFoto, .cestaItemFotoPlaceholder { width: 56px; height: 74px; }
   .cestaAcciones { flex-direction: column-reverse; align-items: stretch; }
 }
+
+/* Arrow buttons: hidden on touch kiosks, shown only in PC demo mode */
+.featuredArrowBtn { display: none; }
+.featuredStripWrap { display: contents; }
+
+/* ── PC demo mode (≥1280px) — overrides that let content flow naturally ────── */
+@media (min-width: 1280px) {
+  .kiosko {
+    height: auto;
+    overflow: visible;
+  }
+  .loadingScreen,
+  .errorScreen {
+    min-height: 50vh;
+  }
+  .welcomeView {
+    height: auto;
+    min-height: 0;
+    overflow-y: visible;
+    padding-bottom: 24px;
+  }
+  .welcomeActions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .welcomeLogoHero {
+    max-height: 150px;
+  }
+
+  /* ── Featured strip: wrapper + arrow buttons ────────────────────────────── */
+  .featuredStripWrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 .25rem;
+  }
+  .featuredArrowBtn {
+    /* visible only in PC mode */
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--borde, rgba(255,255,255,.15));
+    background: var(--sup1, rgba(255,255,255,.06));
+    color: var(--texto, #fff);
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    user-select: none;
+  }
+  .featuredArrowBtn:hover {
+    background: var(--sup2, rgba(255,255,255,.12));
+    border-color: var(--acento, var(--color-acento));
+  }
+  /* Strip inside the wrapper takes remaining space */
+  .featuredStripWrap .featuredStrip {
+    flex: 1;
+    min-width: 0;
+  }
+}

@@ -2196,6 +2196,7 @@ export default function KioskoPage() {
 
   const idleTimer = useRef(null)
   const cartNoticeTimer = useRef(null)
+  const stripRef = useRef(null)
 
   useEffect(() => {
     if (!slug) return
@@ -2245,6 +2246,19 @@ export default function KioskoPage() {
     events.forEach(e => window.addEventListener(e, resetIdle, { passive: true }))
     return () => events.forEach(e => window.removeEventListener(e, resetIdle))
   }, [resetIdle])
+
+  useEffect(() => {
+    const el = stripRef.current
+    if (!el || !window.matchMedia('(pointer: fine)').matches) return
+    const onWheel = e => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      if (el.scrollWidth <= el.clientWidth) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [view])
 
   useEffect(() => {
     const fontDef = FONT_CSS[tienda?.font_family]
@@ -2531,20 +2545,24 @@ export default function KioskoPage() {
           {vinos.filter(v => v.destacado).length > 0 && (
             <div className={styles.welcomeFeatured}>
               <p className={styles.featuredLabel} style={{ color: colorAcento }}>{T[lang].destacados}</p>
-              <div className={styles.featuredStrip}>
-                {vinos.filter(v => v.destacado).slice(0, 8).map(v => (
-                  <button key={v.id} className={styles.featuredCard} onClick={() => abrirDetalle(v)} type="button">
-                    <SafeImage
-                      src={v.foto_url}
-                      alt={v.nombre}
-                      className={styles.featuredPhoto}
-                      loading="lazy"
-                      fallback={<div className={styles.featuredPhotoPlaceholder} style={{ background: `${TIPO_COLORS[v.tipo] || '#333'}88` }}><BottleMark className={styles.featuredPhotoIcon} /></div>}
-                    />
-                    <p className={styles.featuredNombre}>{v.nombre}</p>
-                    {v.precio_pvp && <p className={styles.featuredPrecio} style={{ color: colorAcento }}>{formatPrecio(v.precio_pvp)}</p>}
-                  </button>
-                ))}
+              <div className={styles.featuredStripWrap}>
+                <button className={styles.featuredArrowBtn} onClick={() => stripRef.current?.scrollBy({ left: -280, behavior: 'smooth' })} type="button" aria-label="Anterior">‹</button>
+                <div className={styles.featuredStrip} ref={stripRef}>
+                  {vinos.filter(v => v.destacado).slice(0, 8).map(v => (
+                    <button key={v.id} className={styles.featuredCard} onClick={() => abrirDetalle(v)} type="button">
+                      <SafeImage
+                        src={v.foto_url}
+                        alt={v.nombre}
+                        className={styles.featuredPhoto}
+                        loading="lazy"
+                        fallback={<div className={styles.featuredPhotoPlaceholder} style={{ background: `${TIPO_COLORS[v.tipo] || '#333'}88` }}><BottleMark className={styles.featuredPhotoIcon} /></div>}
+                      />
+                      <p className={styles.featuredNombre}>{v.nombre}</p>
+                      {v.precio_pvp && <p className={styles.featuredPrecio} style={{ color: colorAcento }}>{formatPrecio(v.precio_pvp)}</p>}
+                    </button>
+                  ))}
+                </div>
+                <button className={styles.featuredArrowBtn} onClick={() => stripRef.current?.scrollBy({ left: 280, behavior: 'smooth' })} type="button" aria-label="Siguiente">›</button>
               </div>
             </div>
           )}
