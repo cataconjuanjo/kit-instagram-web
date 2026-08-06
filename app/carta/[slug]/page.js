@@ -1576,23 +1576,7 @@ export default function CartaPublica() {
           )}
         </section>
 
-        <section className={styles.catalogViewToggle} role="group" aria-label="Vista de carta">
-          {[
-            { id: 'referencias', label: i.vistaReferencias },
-            { id: 'etiquetas', label: i.vistaEtiquetas },
-          ].map(opcion => (
-            <button
-              key={opcion.id}
-              type="button"
-              className={modoCarta === opcion.id ? styles.catalogViewActive : ''}
-              onClick={() => setModoCarta(opcion.id)}
-              aria-pressed={modoCarta === opcion.id}
-              style={modoCarta === opcion.id ? { background: colorPrimario, borderColor: colorPrimario } : undefined}
-            >
-              {opcion.label}
-            </button>
-          ))}
-        </section>
+        {/* Vista etiquetas pendiente de desarrollo — toggle oculto temporalmente */}
 
         {!busqueda && (
           <section className={styles.shortcutPanel}>
@@ -1621,17 +1605,7 @@ export default function CartaPublica() {
           </section>
         )}
 
-        {modoCarta === 'etiquetas' && vinosFiltrados.length > 0 && (
-          <section className={styles.labelGallerySection}>
-            <div className={styles.labelGalleryHead}>
-              <h2 className={styles.sectionTitle}>{i.vistaEtiquetas}</h2>
-              <p className={styles.sectionSub}>{vinosFiltrados.length} {i.referencias}</p>
-            </div>
-            <div className={styles.labelGrid}>
-              {vinosFiltrados.map(renderEtiquetaCard)}
-            </div>
-          </section>
-        )}
+        {/* Galería de etiquetas pendiente de desarrollo — oculta temporalmente */}
 
         {modoCarta === 'referencias' && vinosCoravinFiltrados.length > 0 && filtro === 'todos' && (
           <section className={styles.accordionSection}>
