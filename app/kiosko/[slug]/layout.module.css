@@ -81,12 +81,15 @@
 
 /* Mobile / tablet: invisible passthrough */
 @media (max-width: 1279px) {
+  /* display:contents removes the box but keeps text nodes — .badge has text so use none */
+  .badge {
+    display: none;
+  }
   .shell,
   .device,
   .deviceTop,
   .camera,
-  .frame,
-  .badge {
+  .frame {
     display: contents;
   }
 }
