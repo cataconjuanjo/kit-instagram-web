@@ -30,11 +30,49 @@ const FONT_CSS = {
   redondeada: { css: "'Nunito', system-ui, sans-serif",        google: 'Nunito:wght@400;700;800' },
 }
 
-const SUGERENCIAS_MARIDAJE = [
-  'Jamón Extrem 100% Bellota','Tabla de quesos canarios','Queso con trufa manchega',
-  'Carpaccio de pulpo','Langostinos con salsa San Simón','Trio de croquetas',
-  'Espárrago con trufa de verano','Gofre de sardinas bravas','Hot dog de pulpo',
+const SUGERENCIAS_MARIDAJE_FALLBACK = [
+  'Tabla de quesos','Embutido ibérico','Conservas del mar',
+  'Pulpo a la gallega','Mejillones al vapor','Cecina con picos',
+  'Boquerones en vinagre','Sardinillas en aceite','Croquetas caseras',
 ]
+
+const REGION_TO_CCAA = {
+  'Rías Baixas': 'Galicia', 'Ribeiro': 'Galicia', 'Ribeira Sacra': 'Galicia',
+  'Valdeorras': 'Galicia', 'Monterrei': 'Galicia',
+  'Canarias': 'Canarias', 'Lanzarote': 'Canarias', 'La Palma': 'Canarias',
+  'El Hierro': 'Canarias', 'Abona': 'Canarias', 'Tacoronte-Acentejo': 'Canarias',
+  'Valle de Güímar': 'Canarias', 'Ycoden-Daute-Isora': 'Canarias', 'Gran Canaria': 'Canarias',
+  'Rioja': 'La Rioja', 'La Rioja': 'La Rioja',
+  'Ribera del Duero': 'Castilla y León', 'Rueda': 'Castilla y León', 'Toro': 'Castilla y León',
+  'Bierzo': 'Castilla y León', 'Cigales': 'Castilla y León', 'Arribes': 'Castilla y León',
+  'Priorat': 'Cataluña', 'Penedès': 'Cataluña', 'Catalunya': 'Cataluña',
+  'Cava': 'Cataluña', 'Costers del Segre': 'Cataluña', 'Empordà': 'Cataluña',
+  'Montsant': 'Cataluña', 'Terra Alta': 'Cataluña',
+  'Jerez': 'Andalucía', 'Manzanilla': 'Andalucía', 'Montilla-Moriles': 'Andalucía',
+  'Condado de Huelva': 'Andalucía', 'Málaga': 'Andalucía',
+  'Rias Baixas': 'Galicia',
+  'Navarra': 'Navarra',
+  'Somontano': 'Aragón', 'Campo de Borja': 'Aragón', 'Cariñena': 'Aragón',
+  'Alicante': 'Comunitat Valenciana', 'Valencia': 'Comunitat Valenciana', 'Utiel-Requena': 'Comunitat Valenciana',
+  'Jumilla': 'Murcia', 'Yecla': 'Murcia', 'Bullas': 'Murcia',
+  'La Mancha': 'Castilla-La Mancha', 'Valdepeñas': 'Castilla-La Mancha', 'Manchuela': 'Castilla-La Mancha',
+  'Mentida': 'Castilla-La Mancha', 'Almansa': 'Castilla-La Mancha',
+  'Vinho Verde': 'Portugal', 'Douro': 'Portugal', 'Alentejo': 'Portugal',
+  'Bordeaux': 'Francia', 'Bourgogne': 'Francia', 'Champagne': 'Francia', 'Val de Loire': 'Francia',
+  'Alsace': 'Francia', 'Côtes du Rhône': 'Francia',
+}
+
+function dominantCCAA(vinos) {
+  const counts = {}
+  for (const v of vinos) {
+    const ccaa = REGION_TO_CCAA[v.region]
+    if (ccaa) counts[ccaa] = (counts[ccaa] || 0) + 1
+  }
+  const total = vinos.filter(v => REGION_TO_CCAA[v.region]).length
+  if (!total) return null
+  const [top, n] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] || []
+  return n / total >= 0.3 ? top : null
+}
 
 const OCASIONES_IDS = [
   { id: 'regalo',      emoji: '🎁' },
@@ -309,7 +347,7 @@ const ESTILO_ES = {
   afrutado: 'Afrutado', seco: 'Seco y elegante', cuerpo: 'Con mucho cuerpo',
   ligero: 'Ligero y fresco', espumoso: 'Espumoso', dulce: 'Dulce o generoso',
 }
-function buildWizardQuery(w) {
+function buildWizardQuery(w, regionLabel) {
   const parts = []
   if (w.ocasion === 'regalo')           parts.push('Es un regalo')
   else if (w.ocasion === 'celebracion') parts.push('Para una celebración o aperitivo')
@@ -320,7 +358,7 @@ function buildWizardQuery(w) {
   if (w.presupuesto === 'alto')         parts.push('Presupuesto: entre 30 y 60€')
   if (w.presupuesto === 'custom' && w.precioMin != null)
     parts.push(`Presupuesto: entre ${w.precioMin}€ y ${w.precioMax}€`)
-  if (w.canarias) parts.push('Solo vinos de las Islas Canarias (producidos en Canarias)')
+  if (w.soloRegion && regionLabel) parts.push(`Solo vinos de ${regionLabel}`)
   return parts.join('. ')
 }
 
@@ -1575,11 +1613,13 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
 
 function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, vinos = [], lang = 'es', iconStyle = 'emoji' }) {
   const [step, setStep]       = useState(0)
-  const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '', canarias: false })
+  const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '', soloRegion: false })
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
   const [error, setError]     = useState('')
   const [mostrarRango, setMostrarRango] = useState(false)
+
+  const regionLabel = useMemo(() => dominantCCAA(vinos), [vinos])
 
   const wizardPrecios = useMemo(() => {
     const ps = vinos.map(v => v.precio_pvp).filter(Boolean)
@@ -1605,7 +1645,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
   }
 
   async function consultar(w = wizard) {
-    const q = buildWizardQuery(w)
+    const q = buildWizardQuery(w, regionLabel)
     if (!q) return
     setCargando(true)
     setError('')
@@ -1628,7 +1668,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
     }
   }
 
-  function reset() { setStep(0); setWizard({ ocasion: '', estilo: '', presupuesto: '', canarias: false }); setResultado(null); setError('') }
+  function reset() { setStep(0); setWizard({ ocasion: '', estilo: '', presupuesto: '', soloRegion: false }); setResultado(null); setError('') }
 
   return (
     <div className={styles.wizardView}>
@@ -1655,11 +1695,13 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
               </button>
             ))}
           </div>
-          <label className={styles.wizardCanariasToggle}>
-            <input type="checkbox" checked={wizard.canarias}
-              onChange={e => setWizard(w => ({ ...w, canarias: e.target.checked }))} />
-            <span>🌋 Solo vinos de Canarias</span>
-          </label>
+          {regionLabel && (
+            <label className={styles.wizardCanariasToggle}>
+              <input type="checkbox" checked={wizard.soloRegion}
+                onChange={e => setWizard(w => ({ ...w, soloRegion: e.target.checked }))} />
+              <span>📍 Solo vinos de {regionLabel}</span>
+            </label>
+          )}
         </div>
       )}
 
@@ -1898,12 +1940,18 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
 
 // ── Vista Pairing ─────────────────────────────────────────────────────────────
 
-function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMobile, onBack, lang = 'es', iconStyle = 'emoji' }) {
+function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWineSelect, onMobile, onBack, lang = 'es', iconStyle = 'emoji' }) {
   const [consulta, setConsulta] = useState('')
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
   const [error, setError] = useState('')
   const textareaRef = useRef(null)
+
+  const sugerencias = useMemo(() => {
+    if (!gourmet.length) return SUGERENCIAS_MARIDAJE_FALLBACK
+    const sorted = [...gourmet].sort((a, b) => (b.destacado ? 1 : 0) - (a.destacado ? 1 : 0))
+    return sorted.slice(0, 9).map(g => g.nombre)
+  }, [gourmet])
 
   // No autoFocus: opening keyboard immediately would exit fullscreen on some devices
 
@@ -1948,7 +1996,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], onWineSelect, onMo
         <div className={styles.sugerencias}>
           <p className={styles.sugerenciasLabel}>{T[lang].ideasRapidas}</p>
           <div className={styles.sugerenciasGrid}>
-            {SUGERENCIAS_MARIDAJE.map(s => (
+            {sugerencias.map(s => (
               <button key={s} className={styles.sugerenciaBtn} onClick={() => { setConsulta(s); consultar(s) }} type="button">{s}</button>
             ))}
           </div>
@@ -2510,7 +2558,7 @@ export default function KioskoPage() {
 
       {/* MARIDAJE */}
       {view === VIEWS.PAIRING && (
-        <PairingView tienda={tienda} slug={slug} colorAcento={colorAcento} vinos={vinos}
+        <PairingView tienda={tienda} slug={slug} colorAcento={colorAcento} vinos={vinos} gourmet={gourmet}
           onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} lang={lang} iconStyle={iconStyle} />
       )}
 
