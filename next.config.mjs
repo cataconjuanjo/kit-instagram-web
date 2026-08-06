@@ -1,23 +1,10 @@
 /** @type {import('next').NextConfig} */
 
-// Fuentes de imágenes permitidas (amplía si usas más CDNs)
-const IMG_SOURCES = [
-  "'self'",
-  'data:',
-  'blob:',
-  'https://*.supabase.co',
-  // Instagram CDN (fotos de perfil y posts)
-  'https://cdninstagram.com',
-  'https://*.cdninstagram.com',
-  'https://scontent.cdninstagram.com',
-  'https://scontent-*.cdninstagram.com',
-  // Square: fotos de productos del catálogo (Sibaris y otros con integración Square)
-  'https://*.squarecdn.com',
-  'https://items-images-production.s3.us-west-2.amazonaws.com',
-  'https://items-images-sandbox.s3.us-west-2.amazonaws.com',
-  // Weebly/Square CDN (imágenes subidas desde webs Weebly vinculadas a Square)
-  'https://*.editmysite.com',
-].join(' ')
+// Las imágenes pueden venir de cualquier dominio externo:
+// bodegas, Square/Weebly, PDFs importados, XLSX de proveedor, etc.
+// Usar https: (cualquier HTTPS) es la opción correcta para un SaaS multi-tenant.
+// La protección anti-XSS real está en script-src y connect-src, no en img-src.
+const IMG_SOURCES = ['https:', 'data:', 'blob:'].join(' ')
 
 // APIs que el JS del cliente puede llamar con fetch/XHR
 // connect-src es la protección más importante contra exfiltración de datos en caso de XSS
