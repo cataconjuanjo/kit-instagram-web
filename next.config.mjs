@@ -11,6 +11,10 @@ const IMG_SOURCES = [
   'https://*.cdninstagram.com',
   'https://scontent.cdninstagram.com',
   'https://scontent-*.cdninstagram.com',
+  // Square: fotos de productos del catálogo (Sibaris y otros con integración Square)
+  'https://*.squarecdn.com',
+  'https://items-images-production.s3.us-west-2.amazonaws.com',
+  'https://items-images-sandbox.s3.us-west-2.amazonaws.com',
 ].join(' ')
 
 // APIs que el JS del cliente puede llamar con fetch/XHR
