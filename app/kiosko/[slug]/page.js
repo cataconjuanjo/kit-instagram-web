@@ -2247,6 +2247,8 @@ export default function KioskoPage() {
     return () => events.forEach(e => window.removeEventListener(e, resetIdle))
   }, [resetIdle])
 
+  const destacadosLen = vinos.filter(v => v.destacado).length
+
   useEffect(() => {
     const el = stripRef.current
     if (!el || !window.matchMedia('(pointer: fine)').matches) return
@@ -2258,7 +2260,7 @@ export default function KioskoPage() {
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [view])
+  }, [view, destacadosLen])
 
   useEffect(() => {
     const fontDef = FONT_CSS[tienda?.font_family]
