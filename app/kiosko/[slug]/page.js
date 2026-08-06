@@ -2181,6 +2181,7 @@ export default function KioskoPage() {
 
   const [tienda, setTienda]         = useState(null)
   const [vinos, setVinos]           = useState([])
+  const [gourmet, setGourmet]       = useState([])
   const [cargando, setCargando]     = useState(true)
   const [error, setError]           = useState('')
   const [view, setView]             = useState(modoMostrador ? VIEWS.SHOWCASE : VIEWS.WELCOME)
@@ -2215,6 +2216,14 @@ export default function KioskoPage() {
     cargar()
     const intervalo = setInterval(() => cargar(true), 5 * 60 * 1000)
     return () => clearInterval(intervalo)
+  }, [slug])
+
+  useEffect(() => {
+    if (!slug) return
+    fetch(`/api/kiosko/${slug}/gourmet`)
+      .then(r => r.ok ? r.json() : { items: [] })
+      .then(d => setGourmet(d.items || []))
+      .catch(() => {})
   }, [slug])
 
   const resetIdle = useCallback(() => {
