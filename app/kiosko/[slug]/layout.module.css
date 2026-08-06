@@ -1,6 +1,7 @@
 /* ── Desktop demo mode (≥1280px) ─────────────────────────────────────────────
-   Tablet-device mockup so screen-share demos look polished.
-   On ≤1279px both elements are display:contents — zero effect on real kiosks.
+   Renders the kiosko at natural size then scales it to 80% so all content
+   fits on any laptop/desktop screen regardless of viewport height.
+   On ≤1279px every element is display:contents — zero effect on real kiosks.
    ─────────────────────────────────────────────────────────────────────────── */
 
 @media (min-width: 1280px) {
@@ -13,8 +14,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
-    padding: 32px;
+    gap: 14px;
+    padding: 24px;
     background:
       radial-gradient(ellipse 80% 60% at 50% 42%, #21160a 0%, transparent 68%),
       linear-gradient(170deg, #130e09 0%, #0a0806 50%, #100c08 100%);
@@ -34,13 +35,13 @@
       0 48px 120px rgba(0, 0, 0, 0.5);
   }
 
-  /* Fake status bar at the top of the device */
+  /* Fake status bar */
   .deviceTop {
-    height: 22px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
   }
 
   .camera {
@@ -51,10 +52,17 @@
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
   }
 
-  /* The actual kiosko viewport */
+  /*
+   * The kiosko viewport.
+   * zoom: 0.80 scales the whole kiosko (including all dvh-based children) to
+   * 80% of their natural size so everything fits on any laptop screen height.
+   * The kiosko renders at full 430 × 100dvh then gets uniformly scaled down.
+   * This avoids any clipping of the bottom buttons.
+   */
   .frame {
-    width: 480px;
-    height: min(83vh, 860px);
+    width: 430px;
+    height: 100dvh;
+    zoom: 0.80;
     border-radius: 26px;
     overflow: hidden;
     position: relative;
