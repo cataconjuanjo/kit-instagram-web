@@ -15,6 +15,8 @@ const IMG_SOURCES = [
   'https://*.squarecdn.com',
   'https://items-images-production.s3.us-west-2.amazonaws.com',
   'https://items-images-sandbox.s3.us-west-2.amazonaws.com',
+  // Weebly/Square CDN (imágenes subidas desde webs Weebly vinculadas a Square)
+  'https://*.editmysite.com',
 ].join(' ')
 
 // APIs que el JS del cliente puede llamar con fetch/XHR
