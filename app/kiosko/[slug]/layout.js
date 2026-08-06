@@ -22,9 +22,15 @@ export const metadata = {
 export default function KioskoLayout({ children }) {
   return (
     <div className={styles.shell}>
-      <div className={styles.frame}>
-        {children}
+      <div className={styles.device}>
+        <div className={styles.deviceTop}>
+          <span className={styles.camera} />
+        </div>
+        <div className={styles.frame}>
+          {children}
+        </div>
       </div>
+      <span className={styles.badge}>Carta Viva</span>
     </div>
   )
 }
