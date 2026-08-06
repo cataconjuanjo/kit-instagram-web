@@ -1,0 +1,40 @@
+/* ── Desktop demo mode (≥1280px) ─────────────────────────────────────────────
+   Shows the kiosko as a centred tablet frame so screen-sharing demos look good.
+   On tablet/mobile (≤1279px) both elements are display:contents — zero effect.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+@media (min-width: 1280px) {
+  .shell {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0a0806;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% 50%, #1a120880 0%, transparent 70%);
+    padding: 32px;
+    z-index: 0;
+  }
+
+  .frame {
+    width: 440px;
+    height: min(88vh, 880px);
+    border-radius: 28px;
+    overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 8px 32px rgba(0, 0, 0, 0.5),
+      0 32px 100px rgba(0, 0, 0, 0.75);
+  }
+}
+
+/* Mobile / tablet: passthrough — no visual effect at all */
+@media (max-width: 1279px) {
+  .shell,
+  .frame {
+    display: contents;
+  }
+}

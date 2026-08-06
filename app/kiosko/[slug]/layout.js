@@ -1,3 +1,5 @@
+import styles from './layout.module.css'
+
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -18,5 +20,11 @@ export const metadata = {
 }
 
 export default function KioskoLayout({ children }) {
-  return children
+  return (
+    <div className={styles.shell}>
+      <div className={styles.frame}>
+        {children}
+      </div>
+    </div>
+  )
 }
