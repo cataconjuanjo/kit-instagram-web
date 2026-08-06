@@ -2222,6 +2222,75 @@
   }
 }
 
+/* ── Burbuja flotante Armonía ─────────────────────────────────────────────── */
+@keyframes armoniaRing {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 90, 43, 0.45); }
+  60%       { box-shadow: 0 0 0 10px rgba(139, 90, 43, 0); }
+}
+
+.armoniaBubble {
+  position: fixed;
+  bottom: calc(58px + env(safe-area-inset-bottom) + 14px);
+  right: 14px;
+  z-index: 99;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: linear-gradient(135deg, #2a1a0e 0%, #4a2c14 100%);
+  border: 1px solid rgba(255, 200, 120, 0.2);
+  border-radius: 28px;
+  padding: 10px 14px 10px 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  animation: armoniaRing 2.4s ease-in-out infinite;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.armoniaBubble:hover {
+  transform: translateY(-2px);
+}
+.armoniaBubbleIcon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.armoniaBubbleText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.armoniaBubbleLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 200, 120, 0.7);
+  line-height: 1;
+}
+.armoniaBubbleTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+}
+.armoniaBubbleClose {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.35);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 0 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.armoniaBubbleClose:hover {
+  color: rgba(255,255,255,0.7);
+}
+
+@media print {
+  .armoniaBubble { display: none !important; }
+}
+/* ─────────────────────────────────────────────────────────────────────────── */
+
 @media print {
   @page {
     size: A4;
