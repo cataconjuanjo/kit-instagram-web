@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { useParams } from 'next/navigation'
 import { normalizarTexto as normalizarTextoBase } from '../../lib/textNormalize'
 import { consultarMaridaje } from '../../lib/maridajeClient'
@@ -443,17 +444,13 @@ export default function CartaPublica() {
     const elemento = evento?.currentTarget
     const topAntes = elemento?.getBoundingClientRect().top
     const scrollAntes = window.scrollY
-    accion()
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (elemento && document.body.contains(elemento) && topAntes !== undefined) {
-          const topDespues = elemento.getBoundingClientRect().top
-          window.scrollBy({ top: topDespues - topAntes, left: 0, behavior: 'auto' })
-        } else {
-          window.scrollTo({ top: scrollAntes, left: 0, behavior: 'auto' })
-        }
-      })
-    })
+    flushSync(() => { accion() })
+    if (elemento && document.body.contains(elemento) && topAntes !== undefined) {
+      const topDespues = elemento.getBoundingClientRect().top
+      window.scrollBy({ top: topDespues - topAntes, left: 0, behavior: 'instant' })
+    } else {
+      window.scrollTo({ top: scrollAntes, left: 0, behavior: 'instant' })
+    }
   }
 
   const toggleSeccion = (id, evento) => {
