@@ -382,6 +382,7 @@ export default function CartaPublica() {
   const [pasoQuiz, setPasoQuiz] = useState(1)
   const [respuestasQuiz, setRespuestasQuiz] = useState({})
   const [respuestaQuiz, setRespuestaQuiz] = useState('')
+  const [bannerArmoniaCerrado, setBannerArmoniaCerrado] = useState(false)
   const [demoPresentacion] = useState(() => (
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_presentacion') === '1'
   ))
@@ -1447,6 +1448,24 @@ export default function CartaPublica() {
         <div className={styles.demoPresentationBar}>
           <span>Vista cliente · Carta</span>
           <a href="/demo/taberna-del-puerto">Volver a la muestra</a>
+        </div>
+      )}
+      {!bannerArmoniaCerrado && (
+        <div style={{ background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 16px', gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => { setVista('sommelier'); setBannerArmoniaCerrado(true) }}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', flex: 1 }}
+          >
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.12em', textTransform: 'uppercase', display: 'block', lineHeight: 1 }}>Sumiller virtual</span>
+            <span style={{ fontSize: 13, color: '#fff', fontWeight: 500, lineHeight: 1.3 }}>Prueba Armonía · te ayudo a elegir vino</span>
+          </button>
+          <button
+            type="button"
+            aria-label="Cerrar"
+            onClick={() => setBannerArmoniaCerrado(true)}
+            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: 18, cursor: 'pointer', padding: '4px 6px', lineHeight: 1, flexShrink: 0 }}
+          >×</button>
         </div>
       )}
       <header className={styles.hero} style={heroStyle()}>
