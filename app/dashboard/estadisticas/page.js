@@ -33,7 +33,64 @@ function resumenVenta(detalle) {
 }
 
 function leerJSON(detalle) {
+  if (detalle && typeof detalle === 'object') return detalle
   try { return JSON.parse(detalle || '{}') } catch { return null }
+}
+
+function etiquetaDestinoEscaneo(detalle = {}) {
+  const destino = String(detalle.destino || detalle.detalle || '').toLowerCase()
+  if (destino === 'hub') return 'Hub'
+  if (destino === 'carta') return 'Carta'
+  return 'Carta'
+}
+
+function resumenEscaneo(detalleRaw) {
+  const detalle = leerJSON(detalleRaw) || {}
+  const partes = [
+    etiquetaDestinoEscaneo(detalle),
+    detalle.qr_campaign ? `campana ${detalle.qr_campaign}` : null,
+    detalle.qr_format ? `formato ${detalle.qr_format}` : null,
+    detalle.qr_table ? `mesa/zona ${detalle.qr_table}` : null,
+    detalle.experiencia_id || detalle.qr_experience ? `experiencia ${detalle.experiencia_id || detalle.qr_experience}` : null,
+  ].filter(Boolean)
+
+  return partes.join(' · ')
+}
+
+function textoDetalleCorto(detalle, limite = 46) {
+  const texto = typeof detalle === 'string'
+    ? detalle
+    : JSON.stringify(detalle || '')
+  return `${texto.substring(0, limite)}${texto.length > limite ? '...' : ''}`
+}
+
+function resumenActividad(s = {}) {
+  if (s.tipo === 'escaneo') {
+    return {
+      titulo: 'Escaneo de carta',
+      detalle: resumenEscaneo(s.detalle),
+    }
+  }
+  if (s.tipo === 'venta') {
+    return {
+      titulo: `Venta sala: ${resumenVenta(s.detalle)}`,
+      detalle: '',
+    }
+  }
+  if (s.tipo === 'recomendacion') {
+    const detalle = leerJSON(s.detalle) || {}
+    return {
+      titulo: `Recomendado: ${detalle.vino || 'vino'}`,
+      detalle: [detalle.consulta || detalle.plato, detalle.etiqueta || detalle.posicion ? `opcion ${detalle.etiqueta || detalle.posicion}` : null]
+        .filter(Boolean)
+        .join(' · '),
+    }
+  }
+
+  return {
+    titulo: `Maridaje: ${textoDetalleCorto(s.detalle)}`,
+    detalle: '',
+  }
 }
 
 function fechaLocalISO(fecha) {
@@ -2295,30 +2352,28 @@ export default function Estadisticas() {
         <div className={styles.panelBody}>
           {statsFiltradas.length ? (
             <div className={styles.itemStack}>
-              {statsFiltradas.slice(0, 10).map(s => (
-                <article className={styles.itemCard} key={s.id}>
-                  <div className={styles.sectionHead} style={{ margin: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span
-                        className={styles.dot}
-                        style={{ background: s.tipo === 'escaneo' ? '#4A8C6F' : s.tipo === 'venta' ? '#bfa984' : s.tipo === 'recomendacion' ? '#3266a8' : '#74223d' }}
-                      />
-                      <p className={styles.sectionTitle}>
-                        {s.tipo === 'escaneo'
-                          ? 'Escaneo de carta'
-                          : s.tipo === 'venta'
-                            ? `Venta sala: ${resumenVenta(s.detalle)}`
-                            : s.tipo === 'recomendacion'
-                              ? `Recomendado: ${leerJSON(s.detalle)?.vino || 'vino'}`
-                              : `Maridaje: ${s.detalle?.substring(0, 46)}${s.detalle?.length > 46 ? '...' : ''}`}
+              {statsFiltradas.slice(0, 10).map(s => {
+                const actividad = resumenActividad(s)
+                return (
+                  <article className={styles.itemCard} key={s.id}>
+                    <div className={styles.sectionHead} style={{ margin: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span
+                          className={styles.dot}
+                          style={{ background: s.tipo === 'escaneo' ? '#4A8C6F' : s.tipo === 'venta' ? '#bfa984' : s.tipo === 'recomendacion' ? '#3266a8' : '#74223d' }}
+                        />
+                        <div>
+                          <p className={styles.sectionTitle}>{actividad.titulo}</p>
+                          {actividad.detalle && <p className={styles.sectionText}>{actividad.detalle}</p>}
+                        </div>
+                      </div>
+                      <p className={styles.tiny}>
+                        {new Date(s.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
-                    <p className={styles.tiny}>
-                      {new Date(s.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                )
+              })}
             </div>
           ) : (
             <div className={styles.empty}>Sin actividad aún.</div>
