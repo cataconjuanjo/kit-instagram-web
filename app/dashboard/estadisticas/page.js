@@ -46,13 +46,16 @@ function etiquetaDestinoEscaneo(detalle = {}) {
 
 function resumenEscaneo(detalleRaw) {
   const detalle = leerJSON(detalleRaw) || {}
-  const partes = [
-    etiquetaDestinoEscaneo(detalle),
+  const qrPartes = [
     detalle.qr_campaign ? `campana ${detalle.qr_campaign}` : null,
     detalle.qr_format ? `formato ${detalle.qr_format}` : null,
     detalle.qr_table ? `mesa/zona ${detalle.qr_table}` : null,
     detalle.experiencia_id || detalle.qr_experience ? `experiencia ${detalle.experiencia_id || detalle.qr_experience}` : null,
   ].filter(Boolean)
+  const partes = [
+    etiquetaDestinoEscaneo(detalle),
+    ...(qrPartes.length ? qrPartes : ['sin datos de QR']),
+  ]
 
   return partes.join(' · ')
 }
