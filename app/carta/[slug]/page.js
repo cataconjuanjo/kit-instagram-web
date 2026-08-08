@@ -376,7 +376,10 @@ function BottomNav({ vista, onCartaClick, onSommelierClick, colorPrimario, i }) 
         onClick={onSommelierClick}
         style={vista === 'sommelier' ? { color: colorPrimario, borderTopColor: colorPrimario } : {}}
       >
-        {i.sommelier}
+        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+          <span>{i.sommelier}</span>
+          <span style={{ fontSize: 9, fontWeight: 400, letterSpacing: '0.06em', opacity: 0.6, textTransform: 'uppercase' }}>Armonía</span>
+        </span>
       </button>
     </nav>
   )
