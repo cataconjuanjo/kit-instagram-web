@@ -239,8 +239,12 @@ export async function POST(request, { params }) {
   }
 
   if (reemplazar) {
+    // Solo eliminar vinos (categoria='vino' o sin categoria) — nunca los productos gourmet (categoria='otro')
     const { error: delErr } = await supabaseAdmin
-      .from('vinos_tienda').delete().eq('tienda_id', tiendaId)
+      .from('vinos_tienda')
+      .delete()
+      .eq('tienda_id', tiendaId)
+      .or('categoria.eq.vino,categoria.is.null')
     if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
   }
 
