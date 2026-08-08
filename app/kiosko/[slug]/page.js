@@ -1613,7 +1613,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
 
 function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, vinos = [], lang = 'es', iconStyle = 'emoji' }) {
   const [step, setStep]       = useState(0)
-  const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '', soloRegion: false })
+  const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '', soloRegion: true })
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
   const [error, setError]     = useState('')
@@ -1655,7 +1655,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       const res = await fetch(`/api/kiosko/${slug}/maridaje`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consulta: q, mode: 'wizard', lang }),
+        body: JSON.stringify({ consulta: q, mode: 'wizard', lang, ...(w.soloRegion && regionLabel ? { regionCCAA: regionLabel } : {}) }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error en la consulta')
@@ -1668,7 +1668,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
     }
   }
 
-  function reset() { setStep(0); setWizard({ ocasion: '', estilo: '', presupuesto: '', soloRegion: false }); setResultado(null); setError('') }
+  function reset() { setStep(0); setWizard({ ocasion: '', estilo: '', presupuesto: '', soloRegion: true }); setResultado(null); setError('') }
 
   return (
     <div className={styles.wizardView}>

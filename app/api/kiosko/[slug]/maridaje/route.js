@@ -38,6 +38,36 @@ function norm(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
+// ── Mapa región → CCAA (para filtro soloRegion del wizard) ───────────────────
+const REGION_TO_CCAA = {
+  'Rías Baixas': 'Galicia', 'Ribeiro': 'Galicia', 'Ribeira Sacra': 'Galicia',
+  'Valdeorras': 'Galicia', 'Monterrei': 'Galicia',
+  'Canarias': 'Canarias', 'Lanzarote': 'Canarias', 'La Palma': 'Canarias',
+  'Tenerife': 'Canarias', 'Gran Canaria': 'Canarias', 'El Hierro': 'Canarias',
+  'La Gomera': 'Canarias', 'Fuerteventura': 'Canarias',
+  'Ycoden-Daute-Isora': 'Canarias', 'Tacoronte-Acentejo': 'Canarias',
+  'Valle de Güímar': 'Canarias', 'Valle de la Orotava': 'Canarias',
+  'Abona': 'Canarias', 'Gran Canaria DO': 'Canarias', 'Islas Canarias': 'Canarias',
+  'Rioja': 'La Rioja', 'Ribera del Duero': 'Castilla y León',
+  'Rueda': 'Castilla y León', 'Toro': 'Castilla y León', 'Bierzo': 'Castilla y León',
+  'Cigales': 'Castilla y León', 'Arlanza': 'Castilla y León',
+  'Priorat': 'Cataluña', 'Penedès': 'Cataluña', 'Empordà': 'Cataluña',
+  'Costers del Segre': 'Cataluña', 'Conca de Barberà': 'Cataluña',
+  'Navarra': 'Navarra',
+  'Jerez': 'Andalucía', 'Manzanilla': 'Andalucía', 'Montilla-Moriles': 'Andalucía',
+  'Málaga': 'Andalucía', 'Sierras de Málaga': 'Andalucía',
+  'Jumilla': 'Murcia', 'Yecla': 'Murcia', 'Bullas': 'Murcia',
+  'La Mancha': 'Castilla-La Mancha', 'Valdepeñas': 'Castilla-La Mancha',
+  'Manchuela': 'Castilla-La Mancha',
+  'Alicante': 'Comunidad Valenciana', 'Utiel-Requena': 'Comunidad Valenciana',
+  'Valencia': 'Comunidad Valenciana',
+  'Txakoli': 'País Vasco', 'Getariako Txakolina': 'País Vasco',
+  'Somontano': 'Aragón', 'Calatayud': 'Aragón', 'Campo de Borja': 'Aragón',
+  'Vinho Verde': 'Portugal', 'Douro': 'Portugal', 'Alentejo': 'Portugal',
+  'Champagne': 'Francia', 'Bourgogne': 'Francia', 'Bordeaux': 'Francia',
+  'Alsace': 'Francia', 'Côtes du Rhône': 'Francia',
+}
+
 // ── Filtro estructural adaptado a vinos_tienda ────────────────────────────────
 // Usa estimarPerfil (de maridajeEngine) con los campos de vinos_tienda.
 // No usa precio_botella ni coste_compra — eso es lógica de restaurante.
@@ -205,9 +235,10 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'Petición inválida' }, { status: 400 })
   }
 
-  const consulta = String(body?.consulta || '').trim()
-  const mode     = String(body?.mode     || 'maridaje') // 'maridaje' | 'wizard'
-  const lang     = ['en','fr','de'].includes(body?.lang) ? body.lang : 'es'
+  const consulta    = String(body?.consulta  || '').trim()
+  const mode        = String(body?.mode      || 'maridaje') // 'maridaje' | 'wizard'
+  const lang        = ['en','fr','de'].includes(body?.lang) ? body.lang : 'es'
+  const regionCCAA  = typeof body?.regionCCAA === 'string' ? body.regionCCAA.trim() : null
 
   if (consulta.length < 2) {
     return NextResponse.json({ error: 'Indica para qué buscas el vino' }, { status: 400 })
@@ -224,14 +255,19 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
   }
 
-  const { data: vinosBrutos } = await supabaseAdmin
+  const { data: vinosBrutosRaw } = await supabaseAdmin
     .from('vinos_tienda')
-    .select('id, nombre, bodega, tipo, region, uva, anada, pais, precio_pvp, foto_url, notas_cata, descripcion, ubicacion_estanteria, destacado, stock')
+    .select('id, nombre, bodega, tipo, region, uva, anada, pais, precio_pvp, foto_url, notas_cata, descripcion, ubicacion_estanteria, destacado, stock, categoria')
     .eq('tienda_id', tienda.id)
     .eq('activo', true)
     .gt('stock', 0)
     .order('destacado', { ascending: false })
     .limit(200)
+
+  // Excluir productos gourmet (categoria='otro') y filtrar por CCAA si el wizard lo pide
+  const vinosBrutos = (vinosBrutosRaw || [])
+    .filter(v => v.categoria !== 'otro')
+    .filter(v => !regionCCAA || REGION_TO_CCAA[v.region] === regionCCAA)
 
   if (!vinosBrutos?.length) {
     return NextResponse.json({ error: 'No hay vinos disponibles en este momento' }, { status: 404 })
