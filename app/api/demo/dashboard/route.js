@@ -94,6 +94,7 @@ export async function GET(req) {
       vinos: vinosRes.data || [],
       platos: platosRes.data || [],
       propuestas: propuestasRes.data || [],
+      eventos: eventosRes.data || [],
       stats: calcularStats(eventosRes.data || []),
       etiquetaDia: restaurante.slug === 'taberna-del-puerto' ? 'ultimo_dia_demo' : 'hoy',
       turnoCerrado: false,

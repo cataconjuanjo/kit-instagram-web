@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO, etiquetaActividadReal } from '../../lib/actividadReal'
+import { cargarDemoDashboard } from '../../lib/demoDashboardClient'
 import {
   SELECT_CLIENT_ESTADISTICA_DASHBOARD,
   SELECT_CLIENT_RESTAURANTE_DASHBOARD,
@@ -251,9 +252,19 @@ export default function Estadisticas() {
 
   useEffect(() => {
     async function cargar() {
-      const { email, isAdmin } = await getEffectiveRestaurantEmail(supabase)
+      const { email, isAdmin, isDemo } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
       setEsAdmin(Boolean(isAdmin))
+      if (isDemo) {
+        const demo = await cargarDemoDashboard(email)
+        if (demo?.restaurante) {
+          setRestaurante(demo.restaurante)
+          setVinos(demo.vinos || [])
+          setStats([])
+        }
+        setLoading(false)
+        return
+      }
       const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
@@ -282,7 +293,18 @@ export default function Estadisticas() {
   }, [])
 
   if (loading) return <LoadingState />
-  if (!restaurante) return null
+  if (!restaurante) return (
+    <ModuleShell
+      eyebrow="Estadisticas"
+      title="No se pudo cargar la actividad"
+      subtitle="La pantalla esta lista, pero falta una sesion de restaurante o la demo local no ha devuelto datos."
+      narrow
+    >
+      <section className={styles.empty}>
+        Inicia sesion con un restaurante o vuelve a cargar la demo para ver indicadores, brechas de datos e informe.
+      </section>
+    </ModuleShell>
+  )
   const perfilBodega = esPerfilBodega(restaurante)
   const actividadIniciada = Boolean(actividadRealDesdeISO(restaurante))
 
@@ -1435,6 +1457,38 @@ export default function Estadisticas() {
     { label: 'Conv. recomendacion', valor: recomendacionesTrazadasIds.size ? `${conversionRecomendacion}%` : '-' },
     { label: 'Aceptación sala', valor: feedbackSala.length ? `${tasaVenta}%` : '-' },
   ]
+  const valorMetricaConBase = valor => {
+    const texto = String(valor)
+    return texto !== '-' && texto !== '0' && texto !== '0 €' && texto !== '0%'
+  }
+  const metricasPrincipales = metricas.filter(metrica => valorMetricaConBase(metrica.valor)).slice(0, 6)
+  const brechasDatos = [
+    !actividadIniciada && {
+      label: 'Actividad real',
+      text: 'Activa el inicio real para separar pruebas de decisiones del restaurante.',
+      href: '/dashboard/ajustes',
+    },
+    actividadIniciada && ventasTPV === 0 && {
+      label: 'Ventas TPV',
+      text: 'Sin ventas TPV no se puede defender margen ni atribucion con fuerza.',
+      href: '/dashboard/tpv',
+    },
+    ventasSinCoste > 0 && {
+      label: 'Costes',
+      text: `${ventasSinCoste} ventas no pueden calcular beneficio bruto hasta completar coste.`,
+      href: '/dashboard/vinos?filtro=sin_coste',
+    },
+    fiabilidadConBase.length === 0 && {
+      label: 'Fiabilidad',
+      text: 'Faltan datos de coste, venta o cierre para convertir actividad en decision.',
+      href: '/dashboard/cierre',
+    },
+    recomendaciones.length === 0 && {
+      label: 'Sala',
+      text: 'Aun no hay recomendaciones suficientes para leer conversion de servicio.',
+      href: '/dashboard/sala',
+    },
+  ].filter(Boolean).slice(0, 3)
 
   const periodoInforme = fechaInicio || fechaFin
     ? `${fechaInicio || 'inicio'} a ${fechaFin || 'hoy'}${servicio !== 'todos' ? ` · ${servicio}` : ''}`
@@ -1600,15 +1654,62 @@ export default function Estadisticas() {
         </div>
       </section>
 
-      <section className={styles.statsGrid}>
-        {metricas.map(metrica => (
-          <StatCard
-            key={metrica.label}
-            value={metrica.valor}
-            label={metrica.label}
-            info={explicarMetrica(metrica.label)}
-          />
-        ))}
+      <section className={styles.analyticsFocusPanel}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2 className={styles.panelTitle}>Lectura ejecutiva</h2>
+            <p className={styles.panelSub}>Primero mostramos datos con base. Lo que no sirve para decidir queda como tarea de completitud.</p>
+          </div>
+          <button type="button" className={styles.secondary} onClick={copiarInforme}>
+            Copiar informe
+          </button>
+        </div>
+        <div className={styles.panelBody}>
+          {metricasPrincipales.length ? (
+            <section className={styles.statsGrid}>
+              {metricasPrincipales.map(metrica => (
+                <StatCard
+                  key={metrica.label}
+                  value={metrica.valor}
+                  label={metrica.label}
+                  info={explicarMetrica(metrica.label)}
+                  showInfo={false}
+                />
+              ))}
+            </section>
+          ) : (
+            <div className={styles.empty}>
+              Aun no hay datos reales suficientes para pintar indicadores fiables. Completa la puesta en marcha y usa Sala o TPV unos servicios.
+            </div>
+          )}
+          {brechasDatos.length > 0 && (
+            <div className={styles.dataGapGrid}>
+              {brechasDatos.map(brecha => (
+                <a key={brecha.label} href={brecha.href}>
+                  <span>{brecha.label}</span>
+                  <strong>{brecha.text}</strong>
+                </a>
+              ))}
+            </div>
+          )}
+          <details className={styles.metricDetails}>
+            <summary>
+              <span>Ver todas las metricas tecnicas</span>
+              <strong>{metricas.length}</strong>
+            </summary>
+            <section className={styles.statsGrid}>
+              {metricas.map(metrica => (
+                <StatCard
+                  key={metrica.label}
+                  value={metrica.valor}
+                  label={metrica.label}
+                  info={explicarMetrica(metrica.label)}
+                  showInfo={false}
+                />
+              ))}
+            </section>
+          </details>
+        </div>
       </section>
 
       <section className={styles.panelDark} style={{ marginBottom: 16 }}>

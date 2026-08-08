@@ -8,6 +8,7 @@ import {
   SELECT_CLIENT_RESTAURANTE_DASHBOARD,
   SELECT_CLIENT_VINO_DASHBOARD,
 } from '../../lib/clientSupabaseSelects'
+import { cargarDemoDashboard } from '../../lib/demoDashboardClient'
 import { maxFechaISO } from '../../lib/actividadReal'
 import { aplicarAjustesStock } from '../../lib/stockClient'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
@@ -60,8 +61,18 @@ export default function InventarioSemanal() {
 
   useEffect(() => {
     async function cargar() {
-      const { email } = await getEffectiveRestaurantEmail(supabase)
+      const { email, isDemo } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
+      if (isDemo) {
+        const demo = await cargarDemoDashboard(email)
+        if (demo?.restaurante) {
+          setRestaurante(demo.restaurante)
+          setVinos(demo.vinos || [])
+          setEventos((demo.eventos || []).map(item => ({ ...item, parsed: leerDetalle(item.detalle) })))
+        }
+        setLoading(false)
+        return
+      }
       const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
@@ -189,7 +200,20 @@ export default function InventarioSemanal() {
   }
 
   if (loading) return <LoadingState />
-  if (!restaurante) return null
+  if (!restaurante) {
+    return (
+      <ModuleShell
+        restaurante={null}
+        eyebrow="Inventario inteligente"
+        title="No se pudo cargar el inventario"
+        subtitle="La pantalla esta lista, pero falta una sesion de restaurante o la demo local no ha devuelto datos."
+      >
+        <div className={styles.empty}>
+          Inicia sesion con un restaurante o vuelve a cargar la demo para ver referencias, prioridades y conteo semanal.
+        </div>
+      </ModuleShell>
+    )
+  }
 
   const ajustesPorId = new Set(datos.ajustes.map(ajuste => ajuste.vino.id))
   const vinosInventarioBase = soloAjustes
@@ -233,6 +257,13 @@ export default function InventarioSemanal() {
     ['sin_coste', 'Sin coste', sinCoste],
     ['todo', 'Todo', datos.enriquecidos.length],
   ]
+  const filtrosVisibles = filtros.filter(([id, , total]) => id === 'todo' || total > 0 || id === filtro)
+  const filtrosOcultos = filtros.length - filtrosVisibles.length
+  const resumenInventario = datos.ajustes.length
+    ? 'Revisa los ajustes preparados antes de aplicarlos. El impacto económico se calcula con coste y precio de venta.'
+    : bajoMinimo || incidencias
+      ? 'Hay referencias con prioridad operativa. Cuenta primero esas botellas y deja el resto para una segunda tanda.'
+      : 'No hay alertas fuertes ahora mismo. Usa la búsqueda o revisa todo solo si toca cierre semanal.'
 
   return (
     <FeatureGate restaurante={restaurante} feature="inventario" title="Inventario no incluido">
@@ -305,11 +336,34 @@ export default function InventarioSemanal() {
         </div>
       </ResponsiveOverlay>
 
-      <section className={`${styles.statsGrid} ${styles.inventoryStats}`}>
-        <div className={styles.stat}><p className={styles.statValue}>{datos.filtrados.length}</p><p className={styles.statLabel}>Referencias a revisar</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{datos.ajustes.length}</p><p className={styles.statLabel}>Ajustes preparados</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{eur(costeDiferencia)}</p><p className={styles.statLabel}>Diferencia a coste</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{eur(ventaDiferencia)}</p><p className={styles.statLabel}>Diferencia a venta</p></div>
+      <section className={styles.workflowStrip} aria-label="Resumen del inventario">
+        <div>
+          <p className={styles.eyebrow}>Trabajo de hoy</p>
+          <h2>{datos.ajustes.length ? `${datos.ajustes.length} ajustes listos para confirmar` : 'Empieza por las referencias de riesgo'}</h2>
+          <p>{resumenInventario}</p>
+        </div>
+        <div className={styles.workflowStats}>
+          <article>
+            <strong>{datos.filtrados.length}</strong>
+            <span>Referencias visibles</span>
+          </article>
+          <article>
+            <strong>{eur(costeDiferencia)}</strong>
+            <span>Diferencia a coste</span>
+          </article>
+          <article>
+            <strong>{eur(ventaDiferencia)}</strong>
+            <span>Diferencia a venta</span>
+          </article>
+        </div>
+        <div className={styles.workflowActions}>
+          <button type="button" className={styles.secondary} onClick={() => { setFiltro('prioridad'); setPagina(1) }}>
+            Ver prioridad
+          </button>
+          <button type="button" className={styles.primary} onClick={() => setConfirmarAjustes(true)} disabled={aplicando || !datos.ajustes.length}>
+            Aplicar ajustes
+          </button>
+        </div>
       </section>
 
       <section className={styles.panelDark} style={{ marginBottom: 16 }}>
@@ -321,13 +375,18 @@ export default function InventarioSemanal() {
         </div>
         <div className={styles.panelBody}>
           <div className={styles.inventoryFilterGrid}>
-            {filtros.map(([id, label, total]) => (
+            {filtrosVisibles.map(([id, label, total]) => (
               <button key={id} className={filtro === id ? styles.inventoryFilterActive : styles.inventoryFilter} onClick={() => { setFiltro(id); setPagina(1) }}>
                 <span>{label}</span>
                 <strong>{total}</strong>
               </button>
             ))}
           </div>
+          {filtrosOcultos > 0 && (
+            <p className={styles.sectionText} style={{ marginTop: 10 }}>
+              {filtrosOcultos} filtros sin datos quedan ocultos para reducir ruido.
+            </p>
+          )}
         </div>
       </section>
 

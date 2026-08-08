@@ -168,6 +168,22 @@ function normalizarPreferenciasDraft(preferencias = {}, rest = {}) {
   }
 }
 
+function DashboardLoading() {
+  return (
+    <div className={styles.loadingShell}>
+      <div className={styles.loadingCard} role="status" aria-live="polite">
+        <p className={styles.loadingTitle}>Preparando Carta Viva</p>
+        <p className={styles.loadingText}>Ordenando carta, bodega y sala antes de mostrar el panel.</p>
+        <div className={styles.loadingBars} aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 function DashboardHome() {
   const searchParams = useSearchParams()
@@ -559,11 +575,7 @@ function DashboardHome() {
     return () => clearInterval(intervalo)
   }, [checkoutOk, restaurante?.subscription_status])
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f8f3eb' }}>
-      <p style={{ fontSize: 12, letterSpacing: '0.15em', color: '#a79f96' }}>CARGANDO</p>
-    </div>
-  )
+  if (loading) return <DashboardLoading />
 
   // Gate de pago: si la suscripción está pendiente y no es admin
   const esAdmin = isAdminEmail(restaurante?.email)
@@ -849,6 +861,24 @@ function DashboardHome() {
               </div>
             </section>
 
+            <section className={styles.todaySnapshotGrid} aria-label="Resumen operativo de hoy">
+              <Link href="/dashboard/qr">
+                <span>Carta publica</span>
+                <strong>{cartaPublicada && cartaPublicable ? 'Lista para mesa' : 'Revisar antes de publicar'}</strong>
+                <p>{cartaPublicable ? `${contenidoPublicacion.vinos} vinos y ${contenidoPublicacion.platos} platos con contenido minimo.` : 'Falta contenido minimo para que el QR tenga sentido.'}</p>
+              </Link>
+              <Link href="/dashboard/sala">
+                <span>Servicio</span>
+                <strong>{alertasSala ? `${alertasSala} senales abiertas` : 'Briefing preparado'}</strong>
+                <p>{haySenalesSala ? `${stats.ventasHoy} ventas y ${alertasSala} dudas o incidencias ${etiquetaServicio}.` : 'Argumentos y foco de sala listos para revisar antes del turno.'}</p>
+              </Link>
+              <Link href="/dashboard/bodega">
+                <span>Bodega</span>
+                <strong>{bajoMinimo.length ? `${bajoMinimo.length} bajo minimo` : 'Sin compra urgente'}</strong>
+                <p>{sinCosteCompra.length + sinProveedor.length ? `${sinCosteCompra.length + sinProveedor.length} datos bloquean margen o pedido.` : 'Coste, proveedor y stock no muestran bloqueos graves.'}</p>
+              </Link>
+            </section>
+
             {perfilBodega && (
               <section className={styles.cellarCommandPanel}>
                 <div className={styles.cellarCommandHead}>
@@ -992,5 +1022,5 @@ function DashboardHome() {
 }
 
 export default function Dashboard() {
-  return <Suspense fallback={<div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',background:'#f8f3eb'}}><p style={{color:'#a79f96',fontSize:12,letterSpacing:'.15em'}}>CARGANDO</p></div>}><DashboardHome /></Suspense>
+  return <Suspense fallback={<DashboardLoading />}><DashboardHome /></Suspense>
 }

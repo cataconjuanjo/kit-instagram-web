@@ -939,6 +939,10 @@ async function aplicarAccionMasiva(confirmado = false) {
     { label: 'Sin coste', count: vinosSinCoste.length, href: '?filtro=sin_coste', filter: 'sin_coste', text: 'Impide leer margen real.' },
     { label: 'Sin proveedor', count: vinosSinProveedor.length, href: '?filtro=sin_proveedor', filter: 'sin_proveedor', text: 'Complica el pedido.' },
   ]
+  const pendientesVinosVisibles = pendientesVinos.filter(item => item.count > 0)
+  const totalPendientesVinos = pendientesVinosVisibles.reduce((total, item) => total + item.count, 0)
+  const prioridadVinos = pendientesVinosVisibles[0] || null
+  const filtrosColumnaActivos = Object.values(filtrosColumnaVinos).filter(Boolean).length
   const vinosOrdenadosSelector = [...vinos].sort((a, b) => normalizar(a.nombre || '').localeCompare(normalizar(b.nombre || '')))
   const etiquetasConMatch = etiquetasImportar.filter(fila => fila.vinoId && fila.estado !== 'subida').length
   const etiquetasSinMatch = etiquetasImportar.filter(fila => !fila.vinoId).length
@@ -964,24 +968,9 @@ async function aplicarAccionMasiva(confirmado = false) {
         : 'Controla precios, stock, perfiles de cata e importaciones para que sala y maridaje trabajen con la misma información.'}
       actions={
         <>
-          {puedeUsar(restaurante, 'importador_pdf') && (
-            <button
-              onClick={() => { setMostrarImportador(!mostrarImportador); setMostrarFormulario(false); setMostrarImportadorEtiquetas(false) }}
-              className={mostrarImportador ? styles.ghost : styles.secondary}
-            >
-              {mostrarImportador ? 'Cerrar importador' : (perfilBodega ? 'Importar referencias' : 'Importar carta')}
-            </button>
-          )}
           <button
-            type="button"
-            onClick={() => { setMostrarImportadorEtiquetas(!mostrarImportadorEtiquetas); setMostrarFormulario(false); setMostrarImportador(false) }}
-            className={mostrarImportadorEtiquetas ? styles.ghost : styles.secondary}
-          >
-            {mostrarImportadorEtiquetas ? 'Cerrar etiquetas' : 'Importar etiquetas'}
-          </button>
-            <button
-              data-shortcut-edit="true"
-              onClick={() => { setMostrarFormulario(!mostrarFormulario); setMostrarImportador(false); setMostrarImportadorEtiquetas(false) }}
+            data-shortcut-edit="true"
+            onClick={() => { setMostrarFormulario(!mostrarFormulario); setMostrarImportador(false); setMostrarImportadorEtiquetas(false) }}
             className={mostrarFormulario ? styles.ghost : styles.primary}
           >
             {mostrarFormulario ? 'Cancelar' : 'Añadir vino'}
@@ -1021,14 +1010,57 @@ async function aplicarAccionMasiva(confirmado = false) {
       />
       <div className={styles.winePage}>
         {errorBodega && <div className={styles.empty} style={{ minHeight: 70, marginBottom: 16, color: '#9b3535' }}>{errorBodega}</div>}
+        <section className={styles.workflowStrip}>
+          <div>
+            <p className={styles.eyebrow}>Trabajo de hoy</p>
+            <h2>{prioridadVinos ? prioridadVinos.label : 'La base de vinos esta limpia'}</h2>
+            <p>
+              {prioridadVinos
+                ? `${prioridadVinos.count} referencias necesitan atencion. ${prioridadVinos.text}`
+                : 'No hay bloqueos visibles en precio, perfil, etiqueta, stock, coste o proveedor.'}
+            </p>
+          </div>
+          <div className={styles.workflowStats}>
+            <article>
+              <strong>{vinosActivos.length}</strong>
+              <span>activas</span>
+            </article>
+            <article>
+              <strong>{totalPendientesVinos}</strong>
+              <span>pendientes</span>
+            </article>
+            <article>
+              <strong>{vinosVisibles.length}</strong>
+              <span>en vista</span>
+            </article>
+          </div>
+          <div className={styles.workflowActions}>
+            {puedeUsar(restaurante, 'importador_pdf') && (
+              <button
+                type="button"
+                onClick={() => { setMostrarImportador(!mostrarImportador); setMostrarFormulario(false); setMostrarImportadorEtiquetas(false) }}
+                className={mostrarImportador ? styles.ghost : styles.secondary}
+              >
+                {mostrarImportador ? 'Cerrar importador' : (perfilBodega ? 'Importar referencias' : 'Importar carta')}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => { setMostrarImportadorEtiquetas(!mostrarImportadorEtiquetas); setMostrarFormulario(false); setMostrarImportador(false) }}
+              className={mostrarImportadorEtiquetas ? styles.ghost : styles.secondary}
+            >
+              {mostrarImportadorEtiquetas ? 'Cerrar etiquetas' : 'Importar etiquetas'}
+            </button>
+          </div>
+        </section>
         <section className={styles.pendingStrip}>
           <div>
             <p className={styles.eyebrow}>Cola de mejora</p>
             <h2>{perfilBodega ? 'Lo que hace que la bodega sea controlable' : 'Lo que hace que la carta venda mejor'}</h2>
-            <p>{perfilBodega ? 'Stock, coste, proveedor y perfil primero. Después margen, compra y rotación.' : 'Precio, perfil y stock primero. Coste y proveedor afinan bodega y margen.'}</p>
+            <p>{pendientesVinosVisibles.length ? (perfilBodega ? 'Mostramos solo bloqueos con trabajo pendiente. Lo demas queda fuera para no meter ruido.' : 'Mostramos solo bloqueos con trabajo pendiente. Precio, perfil y stock van primero.') : 'Sin bloqueos operativos: puedes seguir filtrando o editar referencias concretas desde la tabla.'}</p>
           </div>
           <div className={styles.pendingGrid}>
-            {pendientesVinos.map(item => (
+            {pendientesVinosVisibles.length ? pendientesVinosVisibles.map(item => (
               <button
                 key={item.label}
                 type="button"
@@ -1039,7 +1071,9 @@ async function aplicarAccionMasiva(confirmado = false) {
                 <span>{item.label}</span>
                 <small>{item.text}</small>
               </button>
-            ))}
+            )) : (
+              <div className={styles.emptyCompact}>Sin pendientes que bloqueen trabajo ahora.</div>
+            )}
           </div>
         </section>
 
@@ -1291,7 +1325,7 @@ async function aplicarAccionMasiva(confirmado = false) {
           <div className={styles.toolbarSummary}>
             <p className={styles.resultCount}>{rangoVinos} de {vinosVisibles.length} referencias</p>
             <label className={styles.pageSizeControl}>
-              <span>Por pagina</span>
+              <span>Por página</span>
               <select value={pageSizeVinos} onChange={e => { setPageSizeVinos(Number(e.target.value)); setPaginaVinos(1) }}>
                 <option value={10}>10</option>
                 <option value={25}>25</option>
@@ -1354,7 +1388,12 @@ async function aplicarAccionMasiva(confirmado = false) {
             ))}
           </div>
 
-          <div className={styles.inlineColumnFilters}>
+          <details className={styles.advancedFilterBox} open={filtrosColumnaActivos > 0}>
+            <summary>
+              <span>Filtros avanzados y orden</span>
+              <strong>{filtrosColumnaActivos ? `${filtrosColumnaActivos} activos` : 'Abrir'}</strong>
+            </summary>
+            <div className={styles.inlineColumnFilters}>
             <button type="button" onClick={() => ordenarPorVino('nombre')}>Vino {ordenVinos.key === 'nombre' ? (ordenVinos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <button type="button" onClick={() => ordenarPorVino('bodega')}>Bodega {ordenVinos.key === 'bodega' ? (ordenVinos.dir === 'asc' ? '↑' : '↓') : ''}</button>
             <button type="button" onClick={() => ordenarPorVino('precio_copa')}>Copa {ordenVinos.key === 'precio_copa' ? (ordenVinos.dir === 'asc' ? '↑' : '↓') : ''}</button>
@@ -1367,7 +1406,8 @@ async function aplicarAccionMasiva(confirmado = false) {
             <input aria-label="Filtrar precio" value={filtrosColumnaVinos.precio} onChange={e => { setFiltrosColumnaVinos({ ...filtrosColumnaVinos, precio: e.target.value }); setPaginaVinos(1) }} placeholder="Precio" />
             <input aria-label="Filtrar stock" value={filtrosColumnaVinos.stock} onChange={e => { setFiltrosColumnaVinos({ ...filtrosColumnaVinos, stock: e.target.value }); setPaginaVinos(1) }} placeholder="Stock" />
             <span />
-          </div>
+            </div>
+          </details>
 
           {vinosVisibles.length === 0 ? (
             <div style={{ padding: '60px 20px', textAlign: 'center' }}>

@@ -6,10 +6,21 @@ import { nombrePlan, puedeUsar } from '../lib/plans'
 import styles from './module.module.css'
 import { useGuideMode } from './GuideMode'
 
-export function LoadingState() {
+export function LoadingState({
+  title = 'Preparando el panel',
+  text = 'Ordenando carta, bodega y sala con los datos del restaurante.',
+} = {}) {
   return (
     <div className={styles.loading}>
-      <p className={styles.loadingText}>Cargando</p>
+      <div className={styles.loadingCard} role="status" aria-live="polite">
+        <p className={styles.loadingText}>{title}</p>
+        <p className={styles.loadingHint}>{text}</p>
+        <div className={styles.loadingSkeleton} aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
     </div>
   )
 }
@@ -30,12 +41,14 @@ export function MetricInfo({ title, children }) {
   )
 }
 
-export function StatCard({ value, label, info, hint, valueStyle }) {
+export function StatCard({ value, label, info, hint, valueStyle, showInfo }) {
+  const shouldShowInfo = showInfo ?? Boolean(info && hint)
+
   return (
     <div className={styles.stat}>
       <div className={styles.statTop}>
         <p className={styles.statValue} style={valueStyle}>{value}</p>
-        <MetricInfo title={label}>{info}</MetricInfo>
+        {shouldShowInfo && <MetricInfo title={label}>{info}</MetricInfo>}
       </div>
       <p className={styles.statLabel}>{label}</p>
       {hint && <p className={styles.statHint}>{hint}</p>}

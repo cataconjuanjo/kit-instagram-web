@@ -6,6 +6,7 @@ import QRCode from 'qrcode'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
+import { cargarDemoDashboard } from '../../lib/demoDashboardClient'
 import { aplicarAtribucionUrl } from '../../lib/publicAttribution'
 import { esPerfilBodega } from '../../lib/plans'
 import { CONTENIDO_INICIAL, puedePublicarCarta, resumirContenidoCarta } from '../../lib/publicationReadiness'
@@ -359,8 +360,22 @@ export default function QRPage() {
 
   useEffect(() => {
     async function cargar() {
-      const { email } = await getEffectiveRestaurantEmail(supabase)
+      const { email, isDemo } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
+      if (isDemo) {
+        const demo = await cargarDemoDashboard(email)
+        if (demo?.restaurante) {
+          const rest = demo.restaurante
+          setRestaurante(rest)
+          setPreviewDestinoSeleccionado(rest.hub_activo ? 'hub' : 'carta')
+          setContenidoCarta(resumirContenidoCarta(demo.vinos || [], demo.platos || []))
+          setExperienciaEntrega(leerExperienciaEntregaLocal(rest.id) || { ...EXPERIENCIA_ENTREGA_INICIAL })
+        } else {
+          setContenidoCarta({ ...CONTENIDO_INICIAL, loading: false, error: 'No se encontro el restaurante demo.' })
+        }
+        setLoading(false)
+        return
+      }
       const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
@@ -545,7 +560,7 @@ export default function QRPage() {
           ? 'La preview está aprobada. Publica cuando quieras abrir el destino al cliente.'
           : 'Genera una preview privada y pide aprobación antes de publicar.'
   const entregaAccion = cartaPublicada
-    ? { label: 'Descargar QR', hint: 'Material final', onClick: descargar, disabled: false }
+    ? { label: 'Descargar QR', hint: 'Material final', onClick: descargar, disabled: !qrDataUrl }
     : migracionPublicacionPendiente || previewApprovalPendiente
       ? { label: 'SQL pendiente', hint: 'Base de datos', disabled: true }
       : !contenidoPreparado
@@ -553,6 +568,14 @@ export default function QRPage() {
         : !previewApprovalLista
           ? { label: previewApprovalObsoleta ? 'Reaprobar preview' : 'Generar preview', hint: 'Siguiente paso', onClick: irAPreviewPrivada, disabled: previewApprovalLoading }
           : { label: guardandoPublicacion ? 'Publicando...' : 'Publicar carta', hint: 'Siguiente paso', onClick: () => cambiarPublicacion(true), disabled: publicacionDeshabilitada }
+  const estadoPublicacionRequiereAtencion = !cartaPublicada ||
+    contenidoBloqueado ||
+    previewApprovalPendiente ||
+    Boolean(previewApprovalError) ||
+    previewApprovalObsoleta ||
+    previewApprovalBloqueada ||
+    migracionPublicacionPendiente ||
+    Boolean(contenidoCarta.error)
   const deliveryResumen = deliveryAnalytics.resumen || {}
   const usoReal = deliveryAnalytics.usoReal || USO_REAL_INICIAL
   const deliveryStats = [
@@ -589,6 +612,9 @@ export default function QRPage() {
       hint: usoReal.actividad_iniciada ? 'Escaneos de clientes' : 'Actividad no iniciada',
     },
   ]
+  const deliveryStatsPrincipales = deliveryStats.filter(stat =>
+    ['QR e impresión', 'Enlaces', 'Uso real'].includes(stat.label)
+  )
   const deliveryEventosRecientes = deliveryAnalytics.eventos?.slice(0, 5) || []
   const accionesMaterial = (deliveryResumen.qr_downloaded || 0) +
     (deliveryResumen.qr_print_opened || 0) +
@@ -610,6 +636,11 @@ export default function QRPage() {
         ? 'El material ya se preparó, pero aún no hay escaneos reales en el periodo. Revisa si el QR está en mesa o si sala lo está ofreciendo.'
         : 'Todavía no hay preparación de material ni escaneos reales en el periodo.'
   const formatoEntregaActivo = FORMATOS_ENTREGA.find(formato => formato.id === formatoEntrega) || FORMATOS_ENTREGA[0]
+  const opcionesMaterialAbiertas = !cartaPublicada ||
+    formatoEntrega !== 'sobremesa' ||
+    qrCampania !== 'qr-mesa' ||
+    Boolean(qrMesa) ||
+    Boolean(mensajeMaterial)
   const atribucionQr = {
     source: 'qr',
     campaign: qrCampania || formatoEntregaActivo.id,
@@ -672,18 +703,22 @@ export default function QRPage() {
   ]
 
   useEffect(() => {
-    if (urlMedible && canvasRef.current) {
+    if (!urlMedible) {
+      setQrDataUrl('')
+      return
+    }
+    if (canvasRef.current) {
       QRCode.toCanvas(canvasRef.current, urlMedible, {
         width: 300,
         margin: 2,
         color: { dark: '#171416', light: '#ffffff' }
-      })
-      QRCode.toDataURL(urlMedible, {
-        width: 880,
-        margin: 2,
-        color: { dark: '#171416', light: '#ffffff' },
-      }).then(setQrDataUrl).catch(() => setQrDataUrl(''))
+      }).catch(() => {})
     }
+    QRCode.toDataURL(urlMedible, {
+      width: 880,
+      margin: 2,
+      color: { dark: '#171416', light: '#ffffff' },
+    }).then(setQrDataUrl).catch(() => setQrDataUrl(''))
   }, [urlMedible])
 
   async function copiarAlPortapapeles(texto) {
@@ -721,11 +756,10 @@ export default function QRPage() {
   }
 
   function descargar() {
-    const canvas = canvasRef.current
-    if (!canvas || !restaurante?.slug) return
+    if (!qrDataUrl || !restaurante?.slug) return
     const link = document.createElement('a')
     link.download = `qr-${restaurante.slug}.png`
-    link.href = canvas.toDataURL()
+    link.href = qrDataUrl
     link.click()
     registrarDeliveryEvent('qr_downloaded', {
       destino: destinoPreview,
@@ -954,6 +988,21 @@ export default function QRPage() {
   }
 
   if (loading) return <LoadingState />
+  if (!restaurante) {
+    return (
+      <ModuleShell
+        restaurante={null}
+        eyebrow="Código QR"
+        title="No se pudo cargar la entrega"
+        subtitle="La pantalla esta lista, pero falta una sesion de restaurante o la demo local no ha devuelto datos."
+        narrow
+      >
+        <div className={styles.empty}>
+          Inicia sesion con un restaurante o vuelve a cargar la demo para ver el enlace publico, el QR y el pack de mesa.
+        </div>
+      </ModuleShell>
+    )
+  }
 
   if (esPerfilBodega(restaurante)) {
     return (
@@ -1041,18 +1090,19 @@ export default function QRPage() {
 
       {mensajeCopia && <p className={styles.panelSub} style={{ margin: '0 0 16px' }}>{mensajeCopia}</p>}
 
-      <section className={styles.panelDark} style={{ marginBottom: 16 }}>
-        <div className={styles.panelHead}>
+      <details className={`${styles.panelDetails} ${styles.publicationDetails}`} open={estadoPublicacionRequiereAtencion}>
+        <summary>
           <div>
-            <h2 className={styles.panelTitle}>Estado de publicación</h2>
-            <p className={styles.panelSub}>
+            <span className={styles.eyebrow}>Estado de publicación</span>
+            <strong>{migracionPublicacionPendiente ? 'Migración pendiente' : estadoPublicacion}</strong>
+            <small>
               {cartaPublicada
                 ? 'La experiencia pública responde sin token. Lista para QR, Instagram o materiales de mesa.'
                 : 'La carta está en borrador. Puedes probarla internamente sin abrirla a clientes.'}
-            </p>
+            </small>
           </div>
-          <span className={styles.badge}>{migracionPublicacionPendiente ? 'Migración pendiente' : estadoPublicacion}</span>
-        </div>
+          <span>{estadoPublicacionRequiereAtencion ? 'Revisar' : 'Ver detalle'}</span>
+        </summary>
         <div className={styles.panelBody}>
           {contenidoCarta.loading ? (
             <p className={styles.panelSub} style={{ marginBottom: 14 }}>Comprobando contenido antes de permitir la publicación...</p>
@@ -1093,20 +1143,7 @@ export default function QRPage() {
           {migracionPublicacionPendiente && <p className={styles.panelSub} style={{ marginTop: 12 }}>Aplica supabase/add_publication_status.sql para activar el control de borrador/publicado. Hasta entonces, las cartas existentes siguen respondiendo como antes.</p>}
           {mensajePublicacion && <p className={styles.panelSub} style={{ marginTop: 12 }}>{mensajePublicacion}</p>}
         </div>
-      </section>
-
-      <section className={styles.qrHero}>
-        <div>
-          <p className={styles.eyebrow}>Material de mesa</p>
-          <h2>{cartaPublicada ? 'QR listo para imprimir' : 'QR en borrador'}</h2>
-          <p>{cartaPublicada ? 'Una pieza limpia para sobremesa, metacrilato o carta física. Prueba el destino antes de mandar a imprenta.' : 'Primero prueba la carta internamente. Publica cuando precios, platos y marca estén revisados.'}</p>
-        </div>
-        <div className={styles.qrHeroActions}>
-          <button className={styles.primary} onClick={descargar} disabled={!cartaPublicada}>Descargar QR</button>
-          <button className={styles.secondary} onClick={imprimir} disabled={!cartaPublicada}>Imprimir esta página</button>
-          <button className={styles.ghost} onClick={() => copiar(urlDirecta, 'url')} disabled={!cartaPublicada}>{copiado === 'url' ? 'Copiado' : 'Copiar enlace'}</button>
-        </div>
-      </section>
+      </details>
 
       <section className={styles.panel} style={{ marginBottom: 16 }} id="pack-entrega">
         <div className={styles.panelHead}>
@@ -1153,100 +1190,141 @@ export default function QRPage() {
               </article>
             </div>
             <div className={styles.deliveryPackControls}>
-              <div>
-                <span className={styles.label}>Atribucion</span>
-                <div className={styles.formGrid}>
-                  <label>
-                    <span className={styles.label}>Campana</span>
-                    <input
-                      className={styles.input}
-                      value={qrCampania}
-                      onChange={event => setQrCampania(event.target.value)}
-                      maxLength={80}
-                      placeholder="qr-mesa"
-                    />
-                  </label>
-                  <label>
-                    <span className={styles.label}>Mesa o zona</span>
-                    <input
-                      className={styles.input}
-                      value={qrMesa}
-                      onChange={event => setQrMesa(event.target.value)}
-                      maxLength={40}
-                      placeholder="terraza, barra, mesa-12"
-                    />
-                  </label>
+              <div className={styles.deliveryPrimaryActions}>
+                <div>
+                  <span className={styles.label}>Material listo</span>
+                  <h3>{cartaPublicada ? `Descarga ${formatoEntregaActivo.label.toLowerCase()}` : 'Pendiente de publicación'}</h3>
+                  <p>{cartaPublicada ? 'Usa el PNG completo para sala o descarga solo el QR si ya tienes diseño de imprenta.' : 'Publica primero la carta para generar material final. Mientras esté en borrador, usa la preview privada.'}</p>
                 </div>
-                <p className={styles.panelSub} style={{ marginTop: 8 }}>
-                  El QR añade estos parametros al enlace para medir que material fisico genera escaneos.
-                </p>
-                <div className={styles.urlBox} style={{ marginTop: 10 }}>{urlMedible}</div>
-              </div>
-              <div>
-                <span className={styles.label}>Formato</span>
-                <div className={styles.deliveryFormatGrid} role="group" aria-label="Formato del material de entrega">
-                  {FORMATOS_ENTREGA.map(formato => (
-                    <button
-                      type="button"
-                      key={formato.id}
-                      className={formato.id === formatoEntrega ? styles.deliveryFormatActive : styles.deliveryFormatButton}
-                      onClick={() => setFormatoEntrega(formato.id)}
-                      aria-pressed={formato.id === formatoEntrega}
-                    >
-                      <strong>{formato.label}</strong>
-                      <span>{formato.detail}</span>
-                    </button>
-                  ))}
+                <div className={styles.actionRow}>
+                  <button type="button" className={styles.primary} onClick={descargarMaterial} disabled={!cartaPublicada || !qrDataUrl || exportandoMaterial}>
+                    {exportandoMaterial ? 'Exportando...' : 'Descargar material PNG'}
+                  </button>
+                  <button type="button" className={styles.secondary} onClick={descargar} disabled={!cartaPublicada || !qrDataUrl}>Descargar solo QR</button>
+                  <button type="button" className={styles.ghost} onClick={imprimir} disabled={!cartaPublicada}>Imprimir página</button>
                 </div>
               </div>
-              <div className={styles.actionRow}>
-                <button type="button" className={styles.primary} onClick={descargarMaterial} disabled={!cartaPublicada || !qrDataUrl || exportandoMaterial}>
-                  {exportandoMaterial ? 'Exportando...' : 'Descargar material PNG'}
-                </button>
-                <button type="button" className={styles.secondary} onClick={descargar} disabled={!cartaPublicada}>Descargar solo QR</button>
-                <button type="button" className={styles.ghost} onClick={imprimir} disabled={!cartaPublicada}>Imprimir página</button>
-              </div>
-              {!cartaPublicada && (
-                <p className={styles.panelSub}>Publica primero la carta para generar material final. Mientras esté en borrador, usa la preview privada.</p>
-              )}
               {mensajeMaterial && <p className={styles.panelSub}>{mensajeMaterial}</p>}
-              <div className={styles.deliveryCopyGrid}>
-                {textosMaterial.map(item => (
-                  <article className={styles.itemCard} key={item.id}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <h3 className={styles.sectionTitle}>{item.label}</h3>
-                        <p className={styles.sectionText}>{item.texto}</p>
-                      </div>
-                      <button type="button" className={styles.ghost} onClick={() => copiar(item.texto, item.id)} disabled={!cartaPublicada}>
-                        {copiado === item.id ? 'Copiado' : 'Copiar'}
-                      </button>
+
+              <details className={styles.deliveryOptionsDetails} open={opcionesMaterialAbiertas}>
+                <summary>
+                  <div>
+                    <strong>Opciones de material</strong>
+                    <small>Formato, atribución de escaneos y textos para equipo.</small>
+                  </div>
+                  <span>{formatoEntregaActivo.label}</span>
+                </summary>
+                <div className={styles.deliveryOptionsBody}>
+                  <div>
+                    <span className={styles.label}>Atribucion</span>
+                    <div className={styles.formGrid}>
+                      <label>
+                        <span className={styles.label}>Campana</span>
+                        <input
+                          className={styles.input}
+                          value={qrCampania}
+                          onChange={event => setQrCampania(event.target.value)}
+                          maxLength={80}
+                          placeholder="qr-mesa"
+                        />
+                      </label>
+                      <label>
+                        <span className={styles.label}>Mesa o zona</span>
+                        <input
+                          className={styles.input}
+                          value={qrMesa}
+                          onChange={event => setQrMesa(event.target.value)}
+                          maxLength={40}
+                          placeholder="terraza, barra, mesa-12"
+                        />
+                      </label>
                     </div>
-                  </article>
-                ))}
-              </div>
+                    <p className={styles.panelSub} style={{ marginTop: 8 }}>
+                      El QR añade estos parametros al enlace para medir que material fisico genera escaneos.
+                    </p>
+                    <div className={styles.urlBox} style={{ marginTop: 10 }}>{urlMedible}</div>
+                  </div>
+                  <div>
+                    <span className={styles.label}>Formato</span>
+                    <div className={styles.deliveryFormatGrid} role="group" aria-label="Formato del material de entrega">
+                      {FORMATOS_ENTREGA.map(formato => (
+                        <button
+                          type="button"
+                          key={formato.id}
+                          className={formato.id === formatoEntrega ? styles.deliveryFormatActive : styles.deliveryFormatButton}
+                          onClick={() => setFormatoEntrega(formato.id)}
+                          aria-pressed={formato.id === formatoEntrega}
+                        >
+                          <strong>{formato.label}</strong>
+                          <span>{formato.detail}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className={styles.deliveryCopyGrid}>
+                    {textosMaterial.map(item => (
+                      <article className={styles.itemCard} key={item.id}>
+                        <div className={styles.sectionHead} style={{ margin: 0 }}>
+                          <div>
+                            <h3 className={styles.sectionTitle}>{item.label}</h3>
+                            <p className={styles.sectionText}>{item.texto}</p>
+                          </div>
+                          <button type="button" className={styles.ghost} onClick={() => copiar(item.texto, item.id)} disabled={!cartaPublicada}>
+                            {copiado === item.id ? 'Copiado' : 'Copiar'}
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
         </div>
       </section>
 
-      <section className={styles.qrLayout}>
-        <div className={styles.qrCard}>
-          <div className={styles.tableTentPreview}>
-            <p>Escanea para ver la carta viva</p>
-            <canvas ref={canvasRef} />
-            <span>{restaurante?.nombre}</span>
+      <section className={styles.analyticsFocusPanel} aria-label="Lectura de uso del QR">
+        <div className={styles.panelHead}>
+          <div>
+            <h2 className={styles.panelTitle}>Lectura del QR</h2>
+            <p className={styles.panelSub}>{lecturaUsoReal}</p>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <p className={styles.sectionTitle}>{restaurante?.nombre}</p>
-            <p className={styles.sectionText}>{restaurante?.hub_activo ? 'Hub público' : 'Carta digital'}</p>
-          </div>
-          <button className={styles.primary} onClick={descargar} disabled={!cartaPublicada}>Descargar PNG</button>
-          {cartaPublicada ? <a className={styles.secondary} href={urlPrint} target="_blank" rel="noreferrer" onClick={() => registrarDeliveryEvent('qr_print_opened', { destino: destinoPreview, source: 'qr_card' })}>Imprimir / PDF</a> : <button type="button" className={styles.secondary} disabled>Imprimir / PDF</button>}
-          <button className={styles.ghost} onClick={imprimir} disabled={!cartaPublicada}>Imprimir página</button>
+          <span className={styles.badge}>{deliveryAnalytics.pendiente ? 'Analítica pendiente' : 'Medición'}</span>
         </div>
+        <div className={styles.panelBody}>
+          <div className={styles.deliveryInsightGrid}>
+            {deliveryStatsPrincipales.map(stat => (
+              <article key={stat.label} className={styles.deliveryInsightCard}>
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+                <small>{stat.hint}</small>
+              </article>
+            ))}
+          </div>
+          <div className={styles.deliverySignalText}>
+            <p>{lecturaExperienciaReal}</p>
+            <p>{lecturaAtribucionReal}</p>
+          </div>
+          <details className={styles.metricDetails}>
+            <summary>
+              <span>Eventos recientes de entrega</span>
+              <strong>{deliveryEventosRecientes.length}</strong>
+            </summary>
+            <div className={styles.deliveryEventsList}>
+              {deliveryEventosRecientes.length ? deliveryEventosRecientes.map(evento => (
+                <article key={evento.id || `${evento.event}-${evento.created_at}`}>
+                  <strong>{tituloEventoEntrega(evento)}</strong>
+                  <span>{detalleEventoEntrega(evento)}</span>
+                </article>
+              )) : (
+                <div className={styles.emptyCompact}>Aún no hay eventos de entrega en este periodo.</div>
+              )}
+            </div>
+          </details>
+        </div>
+      </section>
 
-        <div className={styles.itemStack}>
+      <section className={styles.itemStack} aria-label="Enlaces y pruebas">
           <div className={styles.panel} id="preview-privada">
             <div className={styles.panelHead}>
               <div>
@@ -1460,7 +1538,6 @@ export default function QRPage() {
               </div>
             </div>
           </div>
-        </div>
       </section>
     </ModuleShell>
   )

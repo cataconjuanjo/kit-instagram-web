@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
+import { cargarDemoDashboard } from '../../lib/demoDashboardClient'
 import {
   SELECT_CLIENT_ESTADISTICA_DASHBOARD,
   SELECT_CLIENT_MOVIMIENTO_STOCK_DASHBOARD,
@@ -122,8 +123,22 @@ export default function ControlBodega() {
 
   useEffect(() => {
     async function cargar() {
-      const { email } = await getEffectiveRestaurantEmail(supabase)
+      const { email, isDemo } = await getEffectiveRestaurantEmail(supabase)
       if (!email) { window.location.href = '/login'; return }
+      if (isDemo) {
+        const demo = await cargarDemoDashboard(email)
+        if (demo?.restaurante) {
+          setRestaurante(demo.restaurante)
+          setVinos(demo.vinos || [])
+          setPropuestas(demo.propuestas || [])
+          setMovimientos([])
+          setEventosSala([])
+          setIncidencias([])
+          setProveedoresContacto([])
+        }
+        setLoading(false)
+        return
+      }
       const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
@@ -380,7 +395,18 @@ export default function ControlBodega() {
   }
 
   if (loading) return <LoadingState />
-  if (!restaurante) return null
+  if (!restaurante) return (
+    <ModuleShell
+      eyebrow="Bodega"
+      title="No se pudo cargar la bodega"
+      subtitle="La pantalla esta lista, pero falta una sesion de restaurante o la demo local no ha devuelto datos."
+      narrow
+    >
+      <section className={styles.empty}>
+        Inicia sesion con un restaurante o vuelve a cargar la demo para ver stock, margen y pedido.
+      </section>
+    </ModuleShell>
+  )
 
   const perfilBodega = esPerfilBodega(restaurante)
   const datosPendientesTotal = datos.sinCoste.length + datos.sinProveedor.length + datos.sinStockActual.length + datos.sinStockMinimo.length + datos.sinPrecio.length
@@ -677,6 +703,32 @@ export default function ControlBodega() {
         </div>
       </section>
 
+      <section className={styles.cellarDecisionGrid} aria-label="Decisiones principales de bodega">
+        <article>
+          <span>Pedido sugerido</span>
+          <strong>{pedidoCombinado.length ? `${pedidoCombinado.length} referencias` : 'Sin compra urgente'}</strong>
+          <p>{pedidoCombinado.length ? 'Preparado por minimo, ventas recientes y stock actual.' : 'No hay roturas claras con los datos actuales.'}</p>
+          <button type="button" onClick={() => setVistaBodega('compras')}>Abrir pedido</button>
+        </article>
+        <article>
+          <span>Bloquea margen</span>
+          <strong>{datos.sinCoste.length + datos.sinProveedor.length + datos.sinPrecio.length}</strong>
+          <p>Coste, proveedor o PVP pendientes antes de decidir rentabilidad.</p>
+          <button type="button" onClick={() => { setVistaBodega('stock'); abrirReferencias('pendientes') }}>Completar datos</button>
+        </article>
+        <article>
+          <span>Stock a vigilar</span>
+          <strong>{sinStockReal.length + datos.bajoMinimo.length}</strong>
+          <p>Referencias sin unidades o por debajo del minimo definido.</p>
+          <Link href="/dashboard/vinos?filtro=stock">Ver referencias</Link>
+        </article>
+      </section>
+
+      <details className={styles.diagnosticDetails}>
+        <summary>
+          <span>Diagnostico de disponibilidad y riesgo</span>
+          <strong>{disponibilidad}% disponible</strong>
+        </summary>
       <section className={styles.cellarCockpitDeck}>
         <div className={styles.cellarCockpitGrid}>
           <article className={styles.cellarGlassPanel}>
@@ -743,6 +795,7 @@ export default function ControlBodega() {
           </div>
         </article>
       </section>
+      </details>
 
       <nav className={styles.innerTabs} aria-label="Secciones de bodega">
         <button type="button" className={vistaBodega === 'resumen' ? styles.innerTabActive : ''} onClick={() => setVistaBodega('resumen')}>
