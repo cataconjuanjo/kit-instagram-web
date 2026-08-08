@@ -142,7 +142,8 @@ const t = {
     vistaReferencias: 'Referencias',
     vistaEtiquetas: 'Etiquetas',
     carta: 'Carta',
-    sommelier: 'Armonia',
+    sommelier: '¿Qué pido?',
+    sommelierHint: 'Vino para tu plato',
     buscar: 'Buscar vino, bodega o uva...',
     filtros: 'Filtros',
     todos: 'Todos',
@@ -218,7 +219,8 @@ const t = {
     vistaReferencias: 'References',
     vistaEtiquetas: 'Labels',
     carta: 'Wine list',
-    sommelier: 'Pairing guide',
+    sommelier: 'What to drink?',
+    sommelierHint: 'Wine for your dish',
     buscar: 'Search wine, winery or grape...',
     filtros: 'Filters',
     todos: 'All',
@@ -342,6 +344,44 @@ function activarConTeclado(event, accion) {
   accion()
 }
 
+const TRACK_EVENTS = true
+
+function trackArmoniaEvento(restauranteId, evento) {
+  if (!TRACK_EVENTS || !restauranteId) return
+  enviarEstadisticas({
+    restaurante_id: restauranteId,
+    tipo: 'evento_carta',
+    detalle: { evento },
+  }).catch(() => {})
+}
+
+function BottomNav({ vista, onCartaClick, onSommelierClick, colorPrimario, i }) {
+  return (
+    <nav className={styles.bottomNav} role="tablist" aria-label="Navegación principal">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={vista === 'carta'}
+        className={`${styles.bottomNavBtn} ${vista === 'carta' ? styles.bottomNavActive : ''}`}
+        onClick={onCartaClick}
+        style={vista === 'carta' ? { color: colorPrimario, borderTopColor: colorPrimario } : {}}
+      >
+        {i.carta}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={vista === 'sommelier'}
+        className={`${styles.bottomNavBtn} ${vista === 'sommelier' ? styles.bottomNavActive : ''}`}
+        onClick={onSommelierClick}
+        style={vista === 'sommelier' ? { color: colorPrimario, borderTopColor: colorPrimario } : {}}
+      >
+        {i.sommelier}
+      </button>
+    </nav>
+  )
+}
+
 export default function CartaPublica() {
   const routeParams = useParams()
   const slug = slugDesdeRuta(routeParams, 'carta')
@@ -383,7 +423,10 @@ export default function CartaPublica() {
   const [pasoQuiz, setPasoQuiz] = useState(1)
   const [respuestasQuiz, setRespuestasQuiz] = useState({})
   const [respuestaQuiz, setRespuestaQuiz] = useState('')
-  const [bannerArmoniaCerrado, setBannerArmoniaCerrado] = useState(false)
+  const [bannerArmoniaCerrado, setBannerArmoniaCerrado] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try { return sessionStorage.getItem('armonia_bubble_closed') === '1' } catch (_) { return false }
+  })
   const [demoPresentacion] = useState(() => (
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_presentacion') === '1'
   ))
@@ -399,6 +442,15 @@ export default function CartaPublica() {
 
   const reintentarCarga = () => {
     setLoadRetryKey(key => key + 1)
+  }
+
+  function irAArmonía(source) {
+    setVista('sommelier')
+    if (!bannerArmoniaCerrado) {
+      setBannerArmoniaCerrado(true)
+      try { sessionStorage.setItem('armonia_bubble_closed', '1') } catch (_) {}
+    }
+    trackArmoniaEvento(restaurante?.id, `armonia_${source}_click`)
   }
 
   async function aprobarPreviewPublica(destino = 'carta', approvalData = {}) {
@@ -1448,26 +1500,18 @@ export default function CartaPublica() {
         </div>
       )}
       {!bannerArmoniaCerrado && (
-        <div className={styles.armoniaBubble} role="group">
-          <button
-            type="button"
-            aria-label="Probar Armonía, sumiller virtual"
-            onClick={() => { setVista('sommelier'); setBannerArmoniaCerrado(true) }}
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 9 }}
-          >
-            <span className={styles.armoniaBubbleIcon}>🍷</span>
-            <span className={styles.armoniaBubbleText}>
-              <span className={styles.armoniaBubbleLabel}>Sumiller virtual</span>
-              <span className={styles.armoniaBubbleTitle}>Prueba Armonía</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            aria-label="Cerrar"
-            className={styles.armoniaBubbleClose}
-            onClick={() => setBannerArmoniaCerrado(true)}
-          >×</button>
-        </div>
+        <button
+          type="button"
+          className={styles.armoniaBubble}
+          aria-label="Sumiller virtual: ¿qué pido con mi plato?"
+          onClick={() => irAArmonía('bubble')}
+        >
+          <span className={styles.armoniaBubbleIcon}>🍷</span>
+          <span className={styles.armoniaBubbleText}>
+            <span className={styles.armoniaBubbleLabel}>Sumiller virtual</span>
+            <span className={styles.armoniaBubbleTitle}>¿Qué pido?</span>
+          </span>
+        </button>
       )}
       <header className={styles.hero} style={heroStyle()}>
         <div className={styles.heroTop}>
@@ -1599,11 +1643,28 @@ export default function CartaPublica() {
               <span>Frescos</span>
               <small>{filtro === 'blanco' ? 'Toca para quitar' : 'Blancos y afines'}</small>
             </button>
-            <button className={styles.shortcut} onClick={() => setVista('sommelier')}>
-              <span>Para mi comida</span>
-              <small>{i.sommelier}</small>
+            <button className={styles.shortcut} onClick={() => irAArmonía('shortcut')}>
+              <span>Vino para tu plato</span>
+              <small>{i.sommelierHint}</small>
             </button>
           </section>
+        )}
+
+        {!busqueda && filtro === 'todos' && (
+          <div className={styles.armoniaCard} style={{ borderLeftColor: colorAcento }}>
+            <div className={styles.armoniaCardContent}>
+              <p className={styles.armoniaCardTitle} style={{ color: colorPrimario }}>¿No sabes qué pedir?</p>
+              <p className={styles.armoniaCardSub}>Dinos tu plato y te recomendamos el vino ideal</p>
+            </div>
+            <button
+              type="button"
+              className={styles.armoniaCardBtn}
+              style={{ background: colorAcento }}
+              onClick={() => irAArmonía('card')}
+            >
+              Probar →
+            </button>
+          </div>
         )}
 
         {/* Galería de etiquetas pendiente de desarrollo — oculta temporalmente */}
@@ -1874,10 +1935,13 @@ export default function CartaPublica() {
         <a href="/cartavinos" target="_blank" rel="noreferrer">Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo</a>
       </footer>
 
-      <nav className={styles.bottomNav}>
-        <button className={`${styles.bottomNavBtn} ${styles.bottomNavActive}`} onClick={() => setVista('carta')} style={{ color: colorPrimario, borderTopColor: colorPrimario }}>{i.carta}</button>
-        <button className={styles.bottomNavBtn} onClick={() => setVista('sommelier')} style={{ background: '#c9a84c', color: '#fff', borderTop: '3px solid #a8893a', fontWeight: 900 }}>{i.sommelier} ✦</button>
-      </nav>
+      <BottomNav
+        vista={vista}
+        onCartaClick={() => setVista('carta')}
+        onSommelierClick={() => irAArmonía('tab')}
+        colorPrimario={colorPrimario}
+        i={i}
+      />
     </div>
   )
 
@@ -2244,10 +2308,13 @@ export default function CartaPublica() {
         </div>
       )}
 
-      <nav className={styles.bottomNav}>
-        <button className={styles.bottomNavBtn} onClick={() => setVista('carta')}>{i.carta}</button>
-        <button className={`${styles.bottomNavBtn} ${styles.bottomNavActive}`} onClick={() => setVista('sommelier')} style={{ background: colorPrimario, color: '#fff', borderTop: `3px solid ${colorPrimario}`, fontWeight: 900 }}>{i.sommelier} ✦</button>
-      </nav>
+      <BottomNav
+        vista={vista}
+        onCartaClick={() => setVista('carta')}
+        onSommelierClick={() => irAArmonía('tab')}
+        colorPrimario={colorPrimario}
+        i={i}
+      />
     </div>
   )
 
