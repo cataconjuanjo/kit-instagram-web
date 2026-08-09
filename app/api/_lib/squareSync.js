@@ -120,14 +120,18 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
 
   const { data: existentes, error: existError } = await supabaseAdmin
     .from('vinos_tienda')
-    .select('id, square_catalog_id, categoria')
+    .select('id, square_catalog_id, square_variation_id, categoria')
     .eq('tienda_id', tiendaId)
-    .not('square_catalog_id', 'is', null)
+    .or('square_catalog_id.not.is.null,square_variation_id.not.is.null')
     .limit(10000)
   if (existError) throw new Error(`Leyendo existentes: ${existError.message}`)
 
-  const existingMap = {}
-  for (const v of (existentes || [])) existingMap[v.square_catalog_id] = { id: v.id, categoria: v.categoria }
+  const existingByCatalog   = {}
+  const existingByVariation = {}
+  for (const v of (existentes || [])) {
+    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]     = { id: v.id, categoria: v.categoria }
+    if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria }
+  }
 
   const toInsert = [], toUpdate = []
 
@@ -154,8 +158,8 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
       updated_at: new Date().toISOString(),
     }
 
-    if (existingMap[item.id]) {
-      const existing = existingMap[item.id]
+    const existing = existingByCatalog[item.id] || (variationId ? existingByVariation[variationId] : null)
+    if (existing) {
       const catEfectiva = existing.categoria || categoriaDetectada
       const activo = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
       toUpdate.push({ id: existing.id, tienda_id: tiendaId, square_catalog_id: item.id, ...baseFields, activo })
@@ -177,7 +181,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   if (toInsert.length > 0) {
     const { error } = await supabaseAdmin
       .from('vinos_tienda')
-      .upsert(toInsert, { onConflict: 'square_catalog_id', ignoreDuplicates: false })
+      .upsert(toInsert, { onConflict: 'square_catalog_id', ignoreDuplicates: true })
     if (error) { console.error('[square-sync] insert error:', error.message); errores += toInsert.length }
     else insertados = toInsert.length
   }
