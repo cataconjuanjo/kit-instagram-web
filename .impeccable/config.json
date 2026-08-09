@@ -6,7 +6,9 @@
       "app/kiosko/[slug]/page.js",
       "app/kiosko-admin/[slug]/admin.module.css",
       "app/api/cron/kiosko-informe-semanal/route.js",
-      "app/api/stripe/webhook/route.js"
+      "app/api/stripe/webhook/route.js",
+      "app/kiosko/[slug]/layout.module.css",
+      "app/api/kiosko/[slug]/lead/route.js"
     ],
     "ignoreValues": [
       {
