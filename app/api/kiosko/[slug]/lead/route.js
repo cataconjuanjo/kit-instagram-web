@@ -4,67 +4,107 @@ import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+const TIPO_COLOR = {
+  tinto:        '#8B1A1A',
+  blanco:       '#B8973A',
+  rosado:       '#C4556A',
+  espumoso:     '#5A9AB5',
+  generoso:     '#B47C3C',
+  dulce:        '#A0467A',
+  naranja:      '#C4843C',
+  sin_alcohol:  '#4A8C4A',
+}
+const TIPO_LABEL = {
+  tinto: 'Tinto', blanco: 'Blanco', rosado: 'Rosado', espumoso: 'Espumoso',
+  generoso: 'Generoso', dulce: 'Dulce', naranja: 'Naranja', sin_alcohol: 'Sin alcohol',
+}
+
 function isValidEmail(e) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 }
 
-function buildEmailHtml({ tiendaNombre, colorAcento, logoUrl, vinos }) {
+function buildEmailHtml({ tiendaNombre, colorAcento, logoUrl, vinos, unsubscribeUrl }) {
   const acento = colorAcento || '#b5873a'
-  const vinosHtml = (vinos || []).map(v => `
+
+  const vinosHtml = (vinos || []).map(v => {
+    const tipoColor = TIPO_COLOR[v.tipo] || acento
+    const tipoLabel = TIPO_LABEL[v.tipo] || ''
+    const precio = v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2).replace('.', ',')} €` : ''
+
+    return `
     <tr>
-      <td style="padding:14px 0;border-bottom:1px solid #f0ede8;">
-        <div style="font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:2px;">${v.nombre || ''}</div>
-        ${v.bodega ? `<div style="font-size:13px;color:#888;margin-bottom:4px;">${v.bodega}</div>` : ''}
-        ${v.descripcion ? `<div style="font-size:13px;color:#555;line-height:1.5;">${v.descripcion}</div>` : ''}
-        ${v.precio_pvp ? `<div style="font-size:14px;font-weight:700;color:${acento};margin-top:6px;">${Number(v.precio_pvp).toFixed(2)} €</div>` : ''}
+      <td style="padding:20px 0;border-bottom:1px solid #ede9e1;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="vertical-align:middle;">
+              ${tipoLabel ? `<span style="display:inline-block;background:${tipoColor};color:#fff;font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding:3px 9px;border-radius:20px;">${tipoLabel}</span>` : ''}
+            </td>
+            ${precio ? `<td align="right" style="vertical-align:middle;font-family:Arial,sans-serif;font-size:17px;font-weight:700;color:${acento};white-space:nowrap;">${precio}</td>` : ''}
+          </tr>
+        </table>
+        <div style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#1a1a1a;margin-top:10px;line-height:1.3;">${v.nombre || ''}</div>
+        ${v.bodega ? `<div style="font-family:Arial,sans-serif;font-size:12px;color:#999;margin-top:3px;text-transform:uppercase;letter-spacing:.5px;">${v.bodega}</div>` : ''}
+        ${v.descripcion ? `<div style="font-family:Arial,sans-serif;font-size:13px;color:#555;line-height:1.65;margin-top:8px;">${v.descripcion}</div>` : ''}
       </td>
-    </tr>
-  `).join('')
+    </tr>`
+  }).join('')
 
   const logoHtml = logoUrl
-    ? `<img src="${logoUrl}" alt="${tiendaNombre}" style="height:40px;object-fit:contain;margin-bottom:12px;" />`
-    : `<div style="font-size:22px;font-weight:700;color:${acento};">${tiendaNombre}</div>`
+    ? `<img src="${logoUrl}" alt="${tiendaNombre}" style="max-height:44px;max-width:160px;object-fit:contain;" />`
+    : `<div style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#fff;letter-spacing:.5px;">${tiendaNombre}</div>`
 
   return `<!DOCTYPE html>
 <html lang="es">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f7f4ef;font-family:Georgia,serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f4ef;padding:40px 16px;">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tu selección de vino · ${tiendaNombre}</title>
+</head>
+<body style="margin:0;padding:0;background:#f0ece4;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0ece4;padding:48px 16px;">
     <tr><td align="center">
-      <table width="580" cellpadding="0" cellspacing="0" style="max-width:580px;width:100%;background:#fff;border-radius:12px;overflow:hidden;">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
         <!-- Header -->
         <tr>
-          <td style="background:${acento};padding:32px 40px;text-align:center;">
-            <div style="color:#fff;font-size:13px;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">Tu selección de vino</div>
-            ${logoHtml.replace(/color:[^;]+/, 'color:#fff')}
+          <td style="background:${acento};border-radius:16px 16px 0 0;padding:40px 48px;text-align:center;">
+            <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:20px;">Tu selección de vino</div>
+            ${logoHtml}
           </td>
         </tr>
 
-        <!-- Intro -->
+        <!-- Body -->
         <tr>
-          <td style="padding:32px 40px 8px;">
-            <p style="margin:0;font-size:16px;color:#444;line-height:1.7;">
-              Aquí tienes los vinos que te hemos recomendado hoy en <strong>${tiendaNombre}</strong>. Guarda este correo para consultarlos cuando quieras.
+          <td style="background:#fff;padding:40px 48px 0;">
+            <p style="margin:0 0 8px;font-family:Georgia,serif;font-size:20px;color:#1a1a1a;line-height:1.4;">
+              Aquí tienes tu selección de hoy
             </p>
+            <p style="margin:0 0 32px;font-family:Arial,sans-serif;font-size:14px;color:#888;line-height:1.6;">
+              Guarda este correo para consultarlo cuando estés en casa.
+            </p>
+
+            <table width="100%" cellpadding="0" cellspacing="0">
+              ${vinosHtml || `<tr><td style="padding:20px 0;font-family:Arial,sans-serif;font-size:14px;color:#aaa;">Sin vinos guardados.</td></tr>`}
+            </table>
           </td>
         </tr>
 
-        <!-- Vinos -->
+        <!-- CTA -->
         <tr>
-          <td style="padding:8px 40px 32px;">
-            <table width="100%" cellpadding="0" cellspacing="0">
-              ${vinosHtml || '<tr><td style="padding:20px 0;color:#888;font-size:14px;">Sin recomendaciones guardadas.</td></tr>'}
-            </table>
+          <td style="background:#fff;padding:32px 48px 40px;text-align:center;">
+            <p style="margin:0;font-family:Arial,sans-serif;font-size:13px;color:#aaa;line-height:1.7;">
+              Estos vinos están disponibles en <strong style="color:#888;">${tiendaNombre}</strong>.
+            </p>
           </td>
         </tr>
 
         <!-- Footer -->
         <tr>
-          <td style="background:#f7f4ef;padding:24px 40px;text-align:center;border-top:1px solid #ede9e1;">
-            <p style="margin:0;font-size:12px;color:#aaa;line-height:1.6;">
+          <td style="background:#e8e3d8;border-radius:0 0 16px 16px;padding:24px 48px;text-align:center;">
+            <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;color:#aaa;line-height:1.8;">
               Recibiste este email porque lo solicitaste en ${tiendaNombre}.<br>
-              Si no fuiste tú, ignora este mensaje.
+              <a href="${unsubscribeUrl}" style="color:#aaa;text-decoration:underline;">Cancelar suscripción</a>
             </p>
           </td>
         </tr>
@@ -72,12 +112,14 @@ function buildEmailHtml({ tiendaNombre, colorAcento, logoUrl, vinos }) {
       </table>
     </td></tr>
   </table>
+
 </body>
 </html>`
 }
 
 export async function POST(request, { params }) {
   const { slug } = await params
+  const baseUrl = `${request.nextUrl.protocol}//${request.nextUrl.host}`
 
   let body
   try { body = await request.json() } catch {
@@ -102,9 +144,8 @@ export async function POST(request, { params }) {
   if (!tienda) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
 
   const emailClean = email.toLowerCase().trim()
-
-  // Deduplicar: mismo email en los últimos 7 días
   const desde7 = new Date(Date.now() - 7 * 86400000).toISOString()
+
   const { data: existing } = await supabaseAdmin
     .from('kiosko_leads')
     .select('id')
@@ -115,37 +156,42 @@ export async function POST(request, { params }) {
     .limit(1)
 
   if (existing?.length) {
-    // Lead ya existe pero mandamos el email igualmente
-    await enviarSeleccion({ email: emailClean, tienda, vinos: vinos_recomendados })
+    await enviarSeleccion({ email: emailClean, tienda, vinos: vinos_recomendados, leadId: existing[0].id, baseUrl })
     return NextResponse.json({ ok: true, duplicado: true })
   }
 
-  const { error } = await supabaseAdmin.from('kiosko_leads').insert({
-    tienda_id:          tienda.id,
-    email:              emailClean,
-    source:             source || 'kiosko',
-    preferencias:       preferencias || null,
-    vinos_recomendados: vinos_recomendados || null,
-    consentimiento_at:  new Date().toISOString(),
-  })
+  const { data: inserted, error } = await supabaseAdmin
+    .from('kiosko_leads')
+    .insert({
+      tienda_id:          tienda.id,
+      email:              emailClean,
+      source:             source || 'kiosko',
+      preferencias:       preferencias || null,
+      vinos_recomendados: vinos_recomendados || null,
+      consentimiento_at:  new Date().toISOString(),
+    })
+    .select('id')
+    .single()
 
   if (error) {
     console.error('[kiosko-lead]', error.message)
     return NextResponse.json({ error: 'Error al guardar' }, { status: 500 })
   }
 
-  await enviarSeleccion({ email: emailClean, tienda, vinos: vinos_recomendados })
+  await enviarSeleccion({ email: emailClean, tienda, vinos: vinos_recomendados, leadId: inserted.id, baseUrl })
 
   return NextResponse.json({ ok: true })
 }
 
-async function enviarSeleccion({ email, tienda, vinos }) {
+async function enviarSeleccion({ email, tienda, vinos, leadId, baseUrl }) {
   try {
+    const unsubscribeUrl = `${baseUrl}/api/kiosko/lead/unsubscribe?id=${leadId}`
     const html = buildEmailHtml({
       tiendaNombre: tienda.nombre,
       colorAcento:  tienda.color_acento,
       logoUrl:      tienda.logo_url,
       vinos:        vinos || [],
+      unsubscribeUrl,
     })
     await resend.emails.send({
       from:    'Kiosko Vinos <kiosko@cataconjuanjo.com>',
@@ -155,6 +201,5 @@ async function enviarSeleccion({ email, tienda, vinos }) {
     })
   } catch (e) {
     console.error('[kiosko-lead] Error enviando email:', e.message)
-    // No bloqueamos la respuesta si el email falla
   }
 }

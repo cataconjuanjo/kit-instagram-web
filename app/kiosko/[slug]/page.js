@@ -1743,7 +1743,10 @@ function LeadCapture({ slug, source, preferencias, vinosRecomendados, lang = 'es
           consentimiento: true,
           source,
           preferencias,
-          vinos_recomendados: (vinosRecomendados || []).map(v => ({ id: v.id, nombre: v.nombre })),
+          vinos_recomendados: (vinosRecomendados || []).map(v => ({
+                id: v.id, nombre: v.nombre, bodega: v.bodega,
+                tipo: v.tipo, descripcion: v.descripcion, precio_pvp: v.precio_pvp,
+              })),
         }),
       })
       const data = await res.json()
