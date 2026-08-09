@@ -92,9 +92,12 @@ async function obtenerDatos(tiendaId) {
   // Sugerencia de reposición: vinos populares con stock < 2 semanas de runway
   const { data: todosVinos } = await supabaseAdmin
     .from('vinos_tienda')
-    .select('id, nombre, stock')
+    .select('id, nombre, bodega, stock, stock_minimo, precio_pvp, ubicacion_estanteria, destacado, foto_url')
     .eq('tienda_id', tiendaId)
     .eq('activo', true)
+
+  const todosVinosMap = {}
+  ;(todosVinos || []).forEach(v => { todosVinosMap[String(v.id)] = v })
 
   const reposicion = (todosVinos || [])
     .filter(v => Number(v.stock) > 0)
@@ -102,7 +105,11 @@ async function obtenerDatos(tiendaId) {
       const recom7d = vinoCount7[String(v.id)] || 0
       if (!recom7d) return null
       const diasRestantes = Math.round(Number(v.stock) / (recom7d / 7))
-      return diasRestantes <= 14 ? { nombre: v.nombre, stock: Number(v.stock), diasRestantes } : null
+      if (diasRestantes > 14) return null
+      const stockMin  = Math.max(Number(v.stock_minimo || 0), 6)
+      const sugerido  = Math.max(0, stockMin - Number(v.stock))
+      const pvp       = Number(v.precio_pvp || 0)
+      return { id: String(v.id), nombre: v.nombre, bodega: v.bodega || null, stock: Number(v.stock), diasRestantes, stockMin, sugerido, pvp }
     })
     .filter(Boolean)
     .sort((a, b) => a.diasRestantes - b.diasRestantes)
@@ -136,7 +143,69 @@ async function obtenerDatos(tiendaId) {
     categorias = grupos
   }
 
-  return { vacio: false, semanaActual, semanaAnterior, topConsultas, topVinos, alertas, reposicion, categorias, totalMes: searches.length }
+  // ── Acciones accionables (top 3 por impacto) ───────────────────────────────
+  const acciones = []
+
+  // 1. REPONER — vinos populares que se agotan pronto
+  for (const r of reposicion.slice(0, 3)) {
+    const impactoEur = r.sugerido > 0 && r.pvp > 0 ? Math.round(r.sugerido * r.pvp) : null
+    acciones.push({
+      tipo:        'reponer',
+      emoji:       '📦',
+      titulo:      `Repón "${r.nombre}"`,
+      desc:        `Stock actual: ${r.stock} ud. — se agota en ~${r.diasRestantes} días al ritmo actual. Pedido sugerido: ${r.sugerido || '6+'} ud.`,
+      impactoEur,
+      impactoDesc: impactoEur ? `~${impactoEur} € en ventas potenciales` : null,
+    })
+    if (acciones.length >= 3) break
+  }
+
+  // 2. UBICAR — vinos populares sin ubicación en estantería
+  if (acciones.length < 3) {
+    const topIdsSet = new Set(topVinos.map(v => v.id))
+    for (const id of [...topIdsSet]) {
+      const vino = todosVinosMap[id]
+      if (!vino || vino.ubicacion_estanteria) continue
+      acciones.push({
+        tipo:        'ubicar',
+        emoji:       '📍',
+        titulo:      `Añade la ubicación de "${vino.nombre}"`,
+        desc:        'Es uno de los vinos más buscados pero no tiene estantería configurada. Los clientes no saben dónde encontrarlo.',
+        impactoEur:  null,
+        impactoDesc: 'Reducción de preguntas al dependiente',
+      })
+      if (acciones.length >= 3) break
+    }
+  }
+
+  // 3. DESTACAR — vinos con alta demanda que no están en destacados
+  if (acciones.length < 3) {
+    const topIdsSet = new Set(topVinos.map(v => v.id))
+    for (const id of [...topIdsSet]) {
+      const vino = todosVinosMap[id]
+      if (!vino || vino.destacado) continue
+      acciones.push({
+        tipo:        'destacar',
+        emoji:       '⭐',
+        titulo:      `Destaca "${vino.nombre}" en el kiosko`,
+        desc:        'Es de los más recomendados esta semana pero no aparece en el carrusel de destacados. Ponlo en primera fila.',
+        impactoEur:  null,
+        impactoDesc: 'Mayor visibilidad = más conversiones',
+      })
+      if (acciones.length >= 3) break
+    }
+  }
+
+  // ── Pedido de reposición por bodega ────────────────────────────────────────
+  const pedidoMap = {}
+  for (const r of reposicion) {
+    const bodega = r.bodega || 'Sin bodega'
+    if (!pedidoMap[bodega]) pedidoMap[bodega] = []
+    pedidoMap[bodega].push(r)
+  }
+  const pedidoReposicion = Object.entries(pedidoMap).map(([bodega, lineas]) => ({ bodega, lineas }))
+
+  return { vacio: false, semanaActual, semanaAnterior, topConsultas, topVinos, alertas, reposicion, categorias, acciones, pedidoReposicion, totalMes: searches.length }
 }
 
 function deltaTexto(actual, anterior) {
@@ -189,6 +258,19 @@ async function enviarEmail(tienda, datos) {
   </div>
 
   <div style="background:#fff;padding:22px 24px">
+
+    ${datos.acciones?.length ? `
+    <p style="margin:0 0 10px;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#aaa">Esta semana, haz esto</p>
+    ${datos.acciones.map((a, i) => `
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:10px;background:#f9f8f6;margin-bottom:8px;border-left:3px solid ${a.tipo === 'reponer' ? '#f59e0b' : a.tipo === 'ubicar' ? '#3b82f6' : acento}">
+      <span style="font-size:1.3rem;line-height:1;flex-shrink:0">${a.emoji}</span>
+      <div style="flex:1;min-width:0">
+        <p style="margin:0 0 2px;font-size:.87rem;font-weight:700;color:#1a1a2e">${i + 1}. ${a.titulo}</p>
+        <p style="margin:0;font-size:.76rem;color:#666;line-height:1.4">${a.desc}</p>
+        ${a.impactoDesc ? `<p style="margin:5px 0 0;font-size:.73rem;font-weight:700;color:${a.tipo === 'reponer' ? '#92400e' : '#2e6b47'};background:${a.tipo === 'reponer' ? '#fef3c7' : '#f0fdf4'};display:inline-block;padding:2px 8px;border-radius:20px">${a.impactoDesc}</p>` : ''}
+      </div>
+    </div>`).join('')}
+    <div style="height:1px;background:#f0ede8;margin:18px 0"></div>` : ''}
 
     <table width="100%" cellpadding="0" cellspacing="12" style="margin-bottom:20px">
       <tr>
@@ -267,6 +349,31 @@ async function enviarEmail(tienda, datos) {
       <p style="margin:0 0 4px;font-size:.82rem;font-weight:700;color:#1a1a2e">⭐ Clasificación de carta — próximamente</p>
       <p style="margin:0;font-size:.75rem;color:#999">Con más semanas de datos podrás ver qué vinos son estrellas, joyas ocultas, caballos de batalla o candidatos a revisar.</p>
     </div>`}
+
+    ${datos.pedidoReposicion?.length ? `
+    <div style="border-top:1px solid #f0ede8;margin:4px 0 18px"></div>
+    <p style="margin:0 0 10px;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#aaa">Pedido de reposición</p>
+    ${datos.pedidoReposicion.map(({ bodega, lineas }) => `
+    <div style="margin-bottom:12px">
+      <p style="margin:0 0 6px;font-size:.8rem;font-weight:700;color:#1a1a2e">${bodega}</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+        <thead>
+          <tr style="background:#f9f8f6">
+            <th style="text-align:left;font-size:.68rem;color:#aaa;font-weight:600;padding:5px 8px;border-bottom:1px solid #f0ede8">Vino</th>
+            <th style="text-align:right;font-size:.68rem;color:#aaa;font-weight:600;padding:5px 8px;border-bottom:1px solid #f0ede8">Stock</th>
+            <th style="text-align:right;font-size:.68rem;color:#aaa;font-weight:600;padding:5px 8px;border-bottom:1px solid #f0ede8">Pedir</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${lineas.map(r => `
+          <tr>
+            <td style="font-size:.8rem;padding:6px 8px;border-bottom:1px solid #f7f4f0;color:#333">${r.nombre}</td>
+            <td style="font-size:.8rem;padding:6px 8px;border-bottom:1px solid #f7f4f0;text-align:right;color:#999">${r.stock} ud.</td>
+            <td style="font-size:.82rem;padding:6px 8px;border-bottom:1px solid #f7f4f0;text-align:right;font-weight:700;color:#92400e">${r.sugerido > 0 ? `${r.sugerido} ud.` : '6+ ud.'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`).join('')}` : ''}
 
     <div style="text-align:center;margin-top:18px">
       <a href="${adminUrl}" style="display:inline-block;background:${acento};color:#1a1a2e;font-weight:700;font-size:.88rem;padding:11px 28px;border-radius:9px;text-decoration:none">Ver analítica completa →</a>

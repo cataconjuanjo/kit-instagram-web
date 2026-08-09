@@ -1121,6 +1121,79 @@ const ADMIN_TO_KIOSKO_CAT = {
   'Condimento': 'aceite_oliva', 'Panadería': 'snack',
 }
 
+// ── Cross-sell gourmet para flujos de recomendación ──────────────────────────
+
+function sugerirGourmetParaVinos(vinosRecomendados = [], gourmetTodos = [], max = 2) {
+  if (!gourmetTodos.length) return []
+  const tiposVinos = [...new Set(vinosRecomendados.map(v => v.tipo).filter(Boolean))]
+
+  const scored = gourmetTodos
+    .filter(g => Number(g.stock ?? 1) > 0)
+    .map(g => {
+      const cat = (g.cat_gourmet && ADMIN_TO_KIOSKO_CAT[g.cat_gourmet]) || detectarCatGourmet(g.nombre, g.descripcion)
+      const score = tiposVinos.reduce((best, tipo) => {
+        const s = AFINIDAD_VINO_GOURMET[tipo]?.[cat] ?? 0
+        return Math.max(best, s)
+      }, 0)
+      const razon = razonGourmetItem(cat, tiposVinos)
+      return { ...g, _cat: cat, _score: score, _razon: razon }
+    })
+    .filter(g => g._score > 0)
+    .sort((a, b) => b._score - a._score)
+
+  // Diversidad: máximo 1 por categoría
+  const usedCats = new Set()
+  const result = []
+  for (const g of scored) {
+    if (result.length >= max) break
+    if (usedCats.has(g._cat)) continue
+    usedCats.add(g._cat)
+    result.push(g)
+  }
+  return result
+}
+
+function GourmetCrossSell({ vinosRecomendados, gourmet, colorAcento, lang = 'es' }) {
+  const sugeridos = useMemo(
+    () => sugerirGourmetParaVinos(vinosRecomendados, gourmet, 2),
+    [vinosRecomendados, gourmet]
+  )
+  if (!sugeridos.length) return null
+
+  const titulo = {
+    es: 'Para acompañar', en: 'To go with it', fr: 'Pour accompagner', de: 'Dazu passend',
+  }[lang] || 'Para acompañar'
+
+  return (
+    <div style={{ margin: '1rem 0', padding: '1rem 1.1rem', background: '#faf9f7', border: '1px solid #ece8e2', borderRadius: 14 }}>
+      <p style={{ margin: '0 0 .65rem', fontSize: '.68rem', fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: '#aaa' }}>
+        {titulo}
+      </p>
+      <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}>
+        {sugeridos.map(g => (
+          <div key={g.id} style={{ flex: '1 1 140px', display: 'flex', gap: '.6rem', alignItems: 'flex-start', background: '#fff', borderRadius: 10, padding: '.65rem .75rem', border: '1px solid #ece8e2' }}>
+            {g.foto_url ? (
+              <img src={g.foto_url} alt={g.nombre} style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} onError={e => { e.target.style.display = 'none' }} />
+            ) : (
+              <div style={{ width: 44, height: 44, borderRadius: 6, background: `${colorAcento}22`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+                🧺
+              </div>
+            )}
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: '0 0 .15rem', fontSize: '.82rem', fontWeight: 700, color: '#1a1a2e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.nombre}</p>
+              {g.precio_pvp && <p style={{ margin: '0 0 .2rem', fontSize: '.75rem', color: colorAcento, fontWeight: 600 }}>{Number(g.precio_pvp).toFixed(2)} €</p>}
+              <p style={{ margin: 0, fontSize: '.72rem', color: '#888', lineHeight: 1.35 }}>{g._razon}</p>
+              {g.ubicacion_estanteria && (
+                <p style={{ margin: '.25rem 0 0', fontSize: '.68rem', color: '#bbb' }}>📍 {g.ubicacion_estanteria}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, sinGluten = false, semilla = 0 }) {
   const ocasion = CESTA_OCASIONES.find(o => o.id === ocasionId)
   const tiposOk = ocasion?.tipos ?? []
@@ -1609,9 +1682,125 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
   )
 }
 
+// ── CRM: captación opt-in al final de un flujo ───────────────────────────────
+
+function LeadCapture({ slug, source, preferencias, vinosRecomendados, lang = 'es' }) {
+  const [email, setEmail]         = useState('')
+  const [consent, setConsent]     = useState(false)
+  const [estado, setEstado]       = useState('idle') // idle | enviando | ok | error
+  const [msgError, setMsgError]   = useState('')
+
+  const T = {
+    es: {
+      titulo:    '¿Guardamos tu selección?',
+      desc:      'Recibe por email los vinos que te hemos recomendado para consultarlos en casa.',
+      placeholder: 'tu@email.com',
+      consent:   'Acepto recibir esta selección por email. Puedo cancelar en cualquier momento.',
+      cta:       'Enviarme la selección',
+      ok:        '¡Listo! Revisa tu bandeja de entrada.',
+      ya:        'Ya tienes esta selección guardada.',
+    },
+    en: {
+      titulo:    'Save your selection?',
+      desc:      'Get the recommended wines by email to check at home.',
+      placeholder: 'your@email.com',
+      consent:   'I agree to receive this selection by email. I can unsubscribe anytime.',
+      cta:       'Send me the selection',
+      ok:        'Done! Check your inbox.',
+      ya:        'You already have this selection saved.',
+    },
+    fr: {
+      titulo:    'Sauvegarder votre sélection?',
+      desc:      'Recevez les vins recommandés par email pour les consulter chez vous.',
+      placeholder: 'votre@email.com',
+      consent:   "J'accepte de recevoir cette sélection par email. Je peux me désinscrire à tout moment.",
+      cta:       "M'envoyer la sélection",
+      ok:        'Fait ! Vérifiez votre boîte mail.',
+      ya:        'Vous avez déjà cette sélection sauvegardée.',
+    },
+    de: {
+      titulo:    'Auswahl speichern?',
+      desc:      'Erhalten Sie die empfohlenen Weine per E-Mail.',
+      placeholder: 'ihre@email.com',
+      consent:   'Ich stimme zu, diese Auswahl per E-Mail zu erhalten. Ich kann jederzeit abbestellen.',
+      cta:       'Auswahl zusenden',
+      ok:        'Fertig! Prüfen Sie Ihren Posteingang.',
+      ya:        'Sie haben diese Auswahl bereits gespeichert.',
+    },
+  }
+  const tx = T[lang] || T.es
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!consent) return
+    setEstado('enviando')
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/lead`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          consentimiento: true,
+          source,
+          preferencias,
+          vinos_recomendados: (vinosRecomendados || []).map(v => ({ id: v.id, nombre: v.nombre })),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setMsgError(data.error || 'Error'); setEstado('error'); return }
+      setEstado(data.duplicado ? 'ya' : 'ok')
+    } catch {
+      setMsgError('Error de red'); setEstado('error')
+    }
+  }
+
+  if (estado === 'ok' || estado === 'ya') {
+    return (
+      <div style={{ margin: '1.25rem 0', padding: '1rem 1.25rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 12, textAlign: 'center' }}>
+        <p style={{ margin: 0, fontSize: '.85rem', color: '#166534', fontWeight: 600 }}>
+          ✓ {estado === 'ya' ? tx.ya : tx.ok}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ margin: '1.25rem 0', padding: '1.1rem 1.25rem', background: '#f9f8f6', border: '1px solid #e8e4de', borderRadius: 14 }}>
+      <p style={{ margin: '0 0 .25rem', fontSize: '.9rem', fontWeight: 700, color: '#1a1a2e' }}>{tx.titulo}</p>
+      <p style={{ margin: '0 0 .85rem', fontSize: '.78rem', color: '#888', lineHeight: 1.4 }}>{tx.desc}</p>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder={tx.placeholder}
+          style={{ padding: '.55rem .75rem', border: '1.5px solid #e0ddd8', borderRadius: 8, fontSize: '.85rem', color: '#1a1a2e', background: '#fff', outline: 'none' }}
+        />
+        <label style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', cursor: 'pointer', fontSize: '.74rem', color: '#666', lineHeight: 1.4 }}>
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={e => setConsent(e.target.checked)}
+            style={{ marginTop: 2, flexShrink: 0, accentColor: '#c9a96e' }}
+          />
+          {tx.consent}
+        </label>
+        {estado === 'error' && <p style={{ margin: 0, fontSize: '.75rem', color: '#c44' }}>{msgError}</p>}
+        <button
+          type="submit"
+          disabled={!consent || estado === 'enviando'}
+          style={{ padding: '.6rem 1rem', borderRadius: 8, border: 'none', background: consent ? '#1a1a2e' : '#ddd', color: consent ? '#fff' : '#999', fontSize: '.82rem', fontWeight: 700, cursor: consent ? 'pointer' : 'default', transition: 'background .2s' }}>
+          {estado === 'enviando' ? '…' : tx.cta}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 // ── Wizard "Ayúdame a elegir" ─────────────────────────────────────────────────
 
-function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, vinos = [], lang = 'es', iconStyle = 'emoji' }) {
+function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, vinos = [], gourmet = [], lang = 'es', iconStyle = 'emoji' }) {
   const [step, setStep]       = useState(0)
   const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '', soloRegion: true })
   const [cargando, setCargando] = useState(false)
@@ -1825,6 +2014,14 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
               </article>
             ))}
           </div>
+          <GourmetCrossSell vinosRecomendados={resultado.recomendaciones} gourmet={gourmet} colorAcento={colorAcento} lang={lang} />
+          <LeadCapture
+            slug={slug}
+            source="wizard"
+            preferencias={{ ocasion: wizard.ocasion, estilo: wizard.estilo, presupuesto: wizard.presupuesto }}
+            vinosRecomendados={resultado.recomendaciones}
+            lang={lang}
+          />
           <button className={styles.pairingReiniciarBtn} onClick={reset} type="button">Nueva búsqueda</button>
         </div>
       )}
@@ -2043,6 +2240,14 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
               </article>
             ))}
           </div>
+          <GourmetCrossSell vinosRecomendados={resultado.recomendaciones} gourmet={gourmet} colorAcento={colorAcento} lang={lang} />
+          <LeadCapture
+            slug={slug}
+            source="pairing"
+            preferencias={{ consulta }}
+            vinosRecomendados={resultado.recomendaciones}
+            lang={lang}
+          />
           <button className={styles.pairingReiniciarBtn} onClick={() => { setResultado(null); setConsulta('') }} type="button">Nueva búsqueda</button>
         </div>
       )}
@@ -2200,8 +2405,10 @@ export default function KioskoPage() {
 
   useEffect(() => {
     if (!slug) return
-    async function cargar(silencioso = false) {
-      if (!silencioso) { setCargando(true); setError('') }
+    let lastSync = null
+
+    async function cargarInicial() {
+      setCargando(true); setError('')
       try {
         const [r1, r2] = await Promise.all([
           fetch(`/api/kiosko/${slug}/vinos`),
@@ -2210,12 +2417,34 @@ export default function KioskoPage() {
         const d1 = await r1.json()
         if (!r1.ok) throw new Error(d1.error || 'Tienda no encontrada')
         setVinos(d1.vinos || [])
+        lastSync = new Date().toISOString()
         if (r2.ok) { const d2 = await r2.json(); setTienda(d2.tienda) }
-      } catch (err) { if (!silencioso) setError(err.message) }
-      finally { if (!silencioso) setCargando(false) }
+      } catch (err) { setError(err.message) }
+      finally { setCargando(false) }
     }
-    cargar()
-    const intervalo = setInterval(() => cargar(true), 5 * 60 * 1000)
+
+    async function pollStock() {
+      if (!lastSync) return
+      try {
+        const res = await fetch(`/api/kiosko/${slug}/stock?since=${encodeURIComponent(lastSync)}`)
+        if (!res.ok) return
+        const { items, serverTime } = await res.json()
+        if (items.length > 0) {
+          setVinos(prev => {
+            const map = new Map(items.map(i => [String(i.id), i]))
+            return prev.map(v => {
+              const upd = map.get(String(v.id))
+              if (!upd) return v
+              return { ...v, stock: upd.stock, activo: upd.activo }
+            }).filter(v => v.activo)
+          })
+        }
+        lastSync = serverTime
+      } catch { /* silencioso */ }
+    }
+
+    cargarInicial()
+    const intervalo = setInterval(pollStock, 5 * 60 * 1000)
     return () => clearInterval(intervalo)
   }, [slug])
 
@@ -2576,7 +2805,7 @@ export default function KioskoPage() {
       {/* WIZARD */}
       {view === VIEWS.WIZARD && (
         <WizardView slug={slug} tienda={tienda} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} vinos={vinos} lang={lang} iconStyle={iconStyle} />
+          onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} vinos={vinos} gourmet={gourmet} lang={lang} iconStyle={iconStyle} />
       )}
 
       {/* EXPLORAR */}

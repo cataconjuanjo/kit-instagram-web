@@ -75,19 +75,27 @@ export async function GET(request, { params }) {
     .sort((a, b) => b[1].veces - a[1].veces).slice(0, 10)
     .map(([id]) => id)
 
-  // Fetch stock actual para predecir agotamiento
-  const { data: stockData } = await supabaseAdmin
-    .from('vinos_tienda')
-    .select('id, stock')
-    .eq('tienda_id', tiendaId)
-    .in('id', topVinosIds.length ? topVinosIds : ['00000000-0000-0000-0000-000000000000'])
+  const todosVinoIds = Object.keys(vinoCount)
 
-  const stockMap = {}
-  ;(stockData || []).forEach(v => { stockMap[String(v.id)] = Number(v.stock ?? 0) })
+  // Fetch stock + datos de conversión para todos los vinos recomendados
+  const { data: vinoDataArr } = await supabaseAdmin
+    .from('vinos_tienda')
+    .select('id, stock, precio_pvp, foto_url, ubicacion_estanteria')
+    .eq('tienda_id', tiendaId)
+    .in('id', todosVinoIds.length ? todosVinoIds.slice(0, 100) : ['00000000-0000-0000-0000-000000000000'])
+
+  const stockMap = {}, precioMap = {}, fotoMap = {}, ubicacionMap = {}
+  for (const v of vinoDataArr || []) {
+    const id = String(v.id)
+    stockMap[id]     = Number(v.stock ?? 0)
+    precioMap[id]    = v.precio_pvp ? Number(v.precio_pvp) : null
+    fotoMap[id]      = v.foto_url || null
+    ubicacionMap[id] = v.ubicacion_estanteria || null
+  }
 
   const topVinos = topVinosIds.map(id => {
     const { nombre, veces } = vinoCount[id]
-    const stock   = stockMap[id] ?? null
+    const stock   = stockMap[id] !== undefined ? stockMap[id] : null
     const recom7d = vinoCount7[id] || 0
     const diasRestantes = (stock !== null && recom7d > 0)
       ? Math.round(stock / (recom7d / 7))
@@ -177,6 +185,40 @@ export async function GET(request, { params }) {
     }
   }
 
+  // ── Motor de conversión ─────────────────────────────────────────────────────
+  const movilPorVinoId = {}
+  mobileIntents.forEach(m => {
+    const id = String(m.vino_id || '')
+    if (id && id !== 'null') movilPorVinoId[id] = (movilPorVinoId[id] || 0) + 1
+  })
+
+  const conversionPorVino = Object.entries(vinoCount).map(([id, { nombre, veces }]) => {
+    const vendido_n      = ventasPorVino[id] ?? 0
+    const movil_n        = movilPorVinoId[id] ?? 0
+    const precio_pvp     = precioMap[id] ?? null
+    const fuga           = veces >= 5 && vendido_n === 0
+    const tasa_conv      = veces > 0 ? vendido_n / veces : 0
+    const euros_perdidos = precio_pvp ? Math.max(0, veces - vendido_n) * precio_pvp : null
+    const causas = []
+    if (!fotoMap[id])       causas.push('sin_foto')
+    if (!precio_pvp)        causas.push('sin_pvp')
+    if (!ubicacionMap[id])  causas.push('sin_ubicacion')
+    if ((stockMap[id] ?? 0) === 0) causas.push('sin_stock')
+    return { id, nombre, recomendado_n: veces, movil_n, vendido_n, tasa_conv, euros_perdidos, fuga, causas }
+  }).sort((a, b) => (b.euros_perdidos ?? 0) - (a.euros_perdidos ?? 0))
+
+  const hayDatosTPV        = Object.keys(ventasPorVino).length > 0
+  const fugasCount         = conversionPorVino.filter(v => v.fuga).length
+  const totalEurosPerdidos = conversionPorVino.reduce((s, v) => s + (v.euros_perdidos ?? 0), 0)
+  const avgConvPct         = conversionPorVino.length
+    ? Math.round((conversionPorVino.reduce((s, v) => s + v.tasa_conv, 0) / conversionPorVino.length) * 100)
+    : 0
+
+  const conversion = {
+    porVino: conversionPorVino.slice(0, 30),
+    resumen: { totalEurosPerdidos, fugasCount, avgConvPct, hayDatosTPV },
+  }
+
   return NextResponse.json({
     vacio: false,
     total: searches.length,
@@ -202,6 +244,7 @@ export async function GET(request, { params }) {
     ventasPorVino,
     tendenciaPorVino,
     ultimoSyncAt,
+    conversion,
     timeline,
     tendencias,
     recientes: searches.slice(0, 20).map(s => ({

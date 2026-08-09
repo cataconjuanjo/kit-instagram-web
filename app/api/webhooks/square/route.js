@@ -160,9 +160,21 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, skipped: 'no order_id' })
   }
 
-  const paymentId = payment.id
-  const orderId   = payment.order_id
-  const tiendaSlug = 'sibaris-gourmet'
+  const paymentId  = payment.id
+  const orderId    = payment.order_id
+  const locationId = payment.location_id || null
+
+  // Resolver tienda por square_location_id; fallback a la primera tienda activa con Square
+  let tiendaSlug = 'sibaris-gourmet'
+  if (locationId) {
+    const { data: tiendaPorLocation } = await supabaseAdmin
+      .from('tiendas')
+      .select('slug')
+      .eq('square_location_id', locationId)
+      .eq('activo', true)
+      .maybeSingle()
+    if (tiendaPorLocation) tiendaSlug = tiendaPorLocation.slug
+  }
 
   // Idempotencia nivel pago: mismo payment_id ya descontó stock en un evento anterior
   const { data: pagoAnterior } = await supabaseAdmin

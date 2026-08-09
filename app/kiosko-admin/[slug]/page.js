@@ -825,6 +825,8 @@ export default function AdminKioskoPage() {
   const [tab, setTab]               = useState('catalogo')
   const [analitica, setAnalitica]   = useState(null)
   const [analiticaLoad, setAnaliticaLoad] = useState(false)
+  const [leads, setLeads]           = useState(null)
+  const [leadsLoad, setLeadsLoad]   = useState(false)
   const [pedidos, setPedidos]       = useState(null)
   const [pedidosLoad, setPedidosLoad] = useState(false)
   const [pedidoMsg, setPedidoMsg]   = useState('')
@@ -1512,6 +1514,22 @@ export default function AdminKioskoPage() {
     finally { setAnaliticaLoad(false) }
   }
 
+  async function cargarLeads() {
+    setLeadsLoad(true)
+    try {
+      const res  = await fetch(`/api/kiosko/${slug}/admin/leads`, { headers: authHeaders })
+      const data = await res.json()
+      setLeads(res.ok ? data.leads : [])
+    } catch { setLeads([]) }
+    finally { setLeadsLoad(false) }
+  }
+
+  async function borrarLead(id) {
+    if (!confirm('¿Eliminar este lead? El email se borrará permanentemente (RGPD).')) return
+    await fetch(`/api/kiosko/${slug}/admin/leads?id=${id}`, { method: 'DELETE', headers: authHeaders })
+    setLeads(prev => prev.filter(l => l.id !== id))
+  }
+
   async function cargarPedidos() {
     setPedidosLoad(true)
     setPedidoMsg('')
@@ -2013,6 +2031,10 @@ export default function AdminKioskoPage() {
           onClick={() => { setTab('analitica'); if (esPremium && !analitica && !analiticaLoad) cargarAnalitica() }}>
           Analítica{!esPremium && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
+        <button type="button" className={`${styles.tabBtn} ${tab === 'leads' ? styles.tabBtnActive : ''}`}
+          onClick={() => { setTab('leads'); if (!leads && !leadsLoad) cargarLeads() }}>
+          Leads{!esPremium && <span className={styles.tabPremiumBadge}>★</span>}
+        </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'ajustes' ? styles.tabBtnActive : ''}`} onClick={() => setTab('ajustes')}>
           Ajustes
         </button>
@@ -2152,6 +2174,8 @@ export default function AdminKioskoPage() {
             {[
               { id: 'resumen',       label: 'Resumen' },
               { id: 'busquedas',     label: 'Búsquedas' },
+              { id: 'conversion',    label: 'Conversión' },
+              { id: 'precios',       label: 'Precios' },
               { id: 'ventas',        label: 'Ventas TPV' },
               { id: 'rentabilidad',  label: 'Rentabilidad' },
             ].map(st => (
@@ -2641,6 +2665,448 @@ export default function AdminKioskoPage() {
           </div>
         )
       })()}
+
+      {/* Motor de conversión */}
+      {tab === 'analitica' && esPremium && subTabAnalitica === 'conversion' && analitica && (() => {
+        const conv = analitica.conversion
+        if (!conv) return (
+          <div style={{ padding: '0 1.75rem 1.75rem' }}>
+            <div className={styles.analiticaBloque}>
+              <p className={styles.analiticaBloqueDesc}>Los datos de conversión se calcularán con más búsquedas.</p>
+            </div>
+          </div>
+        )
+        const { porVino, resumen } = conv
+        const { totalEurosPerdidos, fugasCount, avgConvPct, hayDatosTPV } = resumen
+        const causaLabel = { sin_foto: 'Sin foto', sin_pvp: 'Sin PVP', sin_ubicacion: 'Sin ubicación', sin_stock: 'Sin stock' }
+        return (
+          <div style={{ padding: '0 1.75rem 1.75rem' }}>
+            {/* KPIs */}
+            <div className={styles.analiticaKpis} style={{ marginBottom: '1.25rem' }}>
+              <div className={styles.analiticaKpi}>
+                <span className={styles.analiticaKpiNum} style={{ color: fugasCount > 0 ? '#c03030' : '#2e6b47' }}>
+                  {fugasCount}
+                </span>
+                <span className={styles.analiticaKpiLabel}>Fugas detectadas</span>
+                <span className={styles.analiticaKpiSub}>Recomendados ≥5 veces sin venta</span>
+              </div>
+              <div className={styles.analiticaKpi}>
+                <span className={styles.analiticaKpiNum}>
+                  {hayDatosTPV ? `${totalEurosPerdidos.toFixed(0)} €` : '—'}
+                </span>
+                <span className={styles.analiticaKpiLabel}>Euros no capturados</span>
+                <span className={styles.analiticaKpiSub}>{hayDatosTPV ? 'Estimación basada en PVP' : 'Conecta Square para ver'}</span>
+              </div>
+              <div className={styles.analiticaKpi}>
+                <span className={styles.analiticaKpiNum}>
+                  {hayDatosTPV ? `${avgConvPct}%` : '—'}
+                </span>
+                <span className={styles.analiticaKpiLabel}>Tasa de conversión media</span>
+                <span className={styles.analiticaKpiSub}>Recomendaciones que acaban en venta</span>
+              </div>
+            </div>
+
+            {!hayDatosTPV && (
+              <div className={styles.analiticaBanner} style={{ marginBottom: '1rem' }}>
+                <span className={styles.analiticaBannerIcon}>💡</span>
+                <span>Conecta Square TPV para ver qué porcentaje de recomendaciones acaban en venta real. Sin TPV, las columnas de venta aparecen como —.</span>
+              </div>
+            )}
+
+            {/* Tabla de conversión */}
+            <div className={styles.analiticaBloque}>
+              <div className={styles.analiticaBloqueHeader}>
+                <div>
+                  <h3 className={styles.analiticaBloqueTitle}>Embudo por vino</h3>
+                  <p className={styles.analiticaBloqueDesc}>
+                    {porVino.length} vino{porVino.length !== 1 ? 's' : ''} recomendado{porVino.length !== 1 ? 's' : ''} en los últimos 30 días · ordenados por euros no capturados
+                  </p>
+                </div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table className={styles.rendTable}>
+                  <thead>
+                    <tr>
+                      <th className={styles.rendThNombre}>Vino</th>
+                      <th className={styles.rendThNum}>Recomendado</th>
+                      <th className={styles.rendThNum}>Al móvil</th>
+                      <th className={styles.rendThNum}>Vendido</th>
+                      <th className={styles.rendThNum}>Conversión</th>
+                      <th className={styles.rendThNum}>No capturado</th>
+                      <th className={styles.rendThNum}>Causas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {porVino.map(v => (
+                      <tr key={v.id} className={`${styles.rendRow} ${v.fuga ? styles.rendRowFuga : ''}`}>
+                        <td className={styles.rendTdNombre}>
+                          {v.fuga && <span className={styles.rendDot} style={{ background: '#c03030' }} title="Fuga: recomendado sin venta" />}
+                          <span className={styles.rendVinoNombre}>{v.nombre}</span>
+                        </td>
+                        <td className={styles.rendTdNum}>{v.recomendado_n}</td>
+                        <td className={styles.rendTdNum}>{v.movil_n > 0 ? v.movil_n : <em className={styles.dash}>—</em>}</td>
+                        <td className={styles.rendTdNum}>{hayDatosTPV ? v.vendido_n : <em className={styles.dash}>—</em>}</td>
+                        <td className={styles.rendTdNum}>
+                          {hayDatosTPV
+                            ? <span className={`${styles.margenBadge} ${v.tasa_conv >= 0.3 ? styles.margenHigh : v.tasa_conv >= 0.1 ? styles.margenMid : styles.margenLow}`}>
+                                {Math.round(v.tasa_conv * 100)}%
+                              </span>
+                            : <em className={styles.dash}>—</em>}
+                        </td>
+                        <td className={styles.rendTdNum}>
+                          {v.euros_perdidos !== null && v.euros_perdidos > 0
+                            ? <span style={{ color: '#c03030', fontWeight: 600 }}>{v.euros_perdidos.toFixed(0)} €</span>
+                            : <em className={styles.dash}>—</em>}
+                        </td>
+                        <td className={styles.rendTdNum}>
+                          {v.causas.length > 0
+                            ? <span style={{ color: '#b06000', fontSize: '.75rem' }}>{v.causas.map(c => causaLabel[c] || c).join(', ')}</span>
+                            : <em className={styles.dash}>—</em>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Optimización de precios */}
+      {tab === 'analitica' && esPremium && subTabAnalitica === 'precios' && (() => {
+        const vinosPorId = new Map(vinosVino.map(v => [String(v.id), v]))
+
+        if (!rentabilidad || rentabilidad.coldStart || !rentabilidad.clasificados.length) return (
+          <div style={{ padding: '0 1.75rem 1.75rem' }}>
+            <div className={styles.analiticaBloque}>
+              <p className={styles.analiticaBloqueDesc}>
+                {!rentabilidad
+                  ? 'Añade precio de coste en al menos 2 vinos para activar las sugerencias de precio.'
+                  : 'Necesitas más datos de ventas (mínimo 20 unidades) para generar sugerencias de precio fiables.'}
+              </p>
+            </div>
+          </div>
+        )
+
+        const FACTOR_ANUAL = 12
+        const SUBIDA_PCT   = 0.07 // +7% sugerido para caballos
+
+        function pvpSugerido(pvpActual) {
+          const raw = pvpActual * (1 + SUBIDA_PCT)
+          return Math.round(raw * 2) / 2 // redondea a 0,50€ más próximo
+        }
+
+        const sugerencias = rentabilidad.clasificados.map(c => {
+          const v = vinosPorId.get(String(c.id))
+          if (!v) return null
+          const pvp   = Number(v.precio_pvp)
+          const coste = Number(v.precio_coste)
+
+          if (c.categoria === 'caballo') {
+            const pvpNew    = pvpSugerido(pvp)
+            const delta     = pvpNew - pvp
+            const impacto   = Math.round(delta * c.ventas * FACTOR_ANUAL)
+            const margenNew = Math.round(((pvpNew - coste) / pvpNew) * 100)
+            return { ...c, pvp, pvpNew, delta, impacto, margenNew, accion: 'subir_precio', prioridad: impacto }
+          }
+          if (c.categoria === 'joya') {
+            const impactoEst = Math.round(c.margenPct / 100 * pvp * rentabilidad.ventasMedio * FACTOR_ANUAL)
+            return { ...c, pvp, accion: 'destacar', impacto: impactoEst, prioridad: impactoEst }
+          }
+          if (c.categoria === 'revisar') {
+            return { ...c, pvp, accion: 'revisar', impacto: 0, prioridad: -1 }
+          }
+          return null
+        }).filter(Boolean).sort((a, b) => b.prioridad - a.prioridad)
+
+        const caballos  = sugerencias.filter(s => s.accion === 'subir_precio')
+        const joyas     = sugerencias.filter(s => s.accion === 'destacar')
+        const revisar   = sugerencias.filter(s => s.accion === 'revisar')
+        const totalOportunidad = caballos.reduce((s, c) => s + c.impacto, 0)
+          + joyas.reduce((s, j) => s + j.impacto, 0)
+
+        return (
+          <div style={{ padding: '0 1.75rem 1.75rem' }}>
+            {/* KPIs */}
+            <div className={styles.analiticaKpis} style={{ marginBottom: '1.25rem' }}>
+              <div className={styles.analiticaKpi}>
+                <span className={styles.analiticaKpiNum} style={{ color: caballos.length > 0 ? '#b06000' : '#2e6b47' }}>
+                  {caballos.length}
+                </span>
+                <span className={styles.analiticaKpiLabel}>Caballos de batalla</span>
+                <span className={styles.analiticaKpiSub}>Alta demanda, margen por debajo de la media</span>
+              </div>
+              <div className={styles.analiticaKpi}>
+                <span className={styles.analiticaKpiNum}>{joyas.length}</span>
+                <span className={styles.analiticaKpiLabel}>Joyas ocultas</span>
+                <span className={styles.analiticaKpiSub}>Alto margen, poca visibilidad</span>
+              </div>
+              <div className={styles.analiticaKpi}>
+                <span className={styles.analiticaKpiNum} style={{ color: totalOportunidad > 0 ? '#2e6b47' : '#aaa' }}>
+                  {totalOportunidad > 0 ? `${totalOportunidad.toLocaleString('es-ES')} €` : '—'}
+                </span>
+                <span className={styles.analiticaKpiLabel}>Oportunidad estimada/año</span>
+                <span className={styles.analiticaKpiSub}>Si aplicas las sugerencias</span>
+              </div>
+            </div>
+
+            {/* Caballos — subir precio */}
+            {caballos.length > 0 && (
+              <div className={styles.analiticaBloque} style={{ marginBottom: '1rem' }}>
+                <div className={styles.analiticaBloqueHeader}>
+                  <div>
+                    <h3 className={styles.analiticaBloqueTitle}>🐎 Caballos de batalla — sube el precio</h3>
+                    <p className={styles.analiticaBloqueDesc}>
+                      Alta demanda pero margen bajo. Una subida acotada (+7%) apenas nota el cliente y mejora la rentabilidad.
+                    </p>
+                  </div>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className={styles.rendTable}>
+                    <thead>
+                      <tr>
+                        <th className={styles.rendThNombre}>Vino</th>
+                        <th className={styles.rendThNum}>Margen actual</th>
+                        <th className={styles.rendThNum}>PVP actual</th>
+                        <th className={styles.rendThNum}>PVP sugerido</th>
+                        <th className={styles.rendThNum}>Margen nuevo</th>
+                        <th className={styles.rendThNum}>Impacto /año</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {caballos.map(c => (
+                        <tr key={c.id} className={styles.rendRow}>
+                          <td className={styles.rendTdNombre}>
+                            <span className={styles.rendVinoNombre}>{c.nombre}</span>
+                            {c.bodega && <span className={styles.rendBodega}> · {c.bodega}</span>}
+                          </td>
+                          <td className={styles.rendTdNum}>
+                            <span className={`${styles.margenBadge} ${styles.margenLow}`}>{c.margenPct}%</span>
+                          </td>
+                          <td className={styles.rendTdNum}>{c.pvp.toFixed(2)} €</td>
+                          <td className={styles.rendTdNum} style={{ fontWeight: 700, color: '#2e6b47' }}>
+                            {c.pvpNew.toFixed(2)} €
+                            <span style={{ fontSize: '.68rem', color: '#aaa', marginLeft: 3 }}>+{c.delta.toFixed(2)} €</span>
+                          </td>
+                          <td className={styles.rendTdNum}>
+                            <span className={`${styles.margenBadge} ${c.margenNew >= 40 ? styles.margenHigh : styles.margenMid}`}>{c.margenNew}%</span>
+                          </td>
+                          <td className={styles.rendTdNum} style={{ fontWeight: 600, color: '#2e6b47' }}>
+                            ~{c.impacto.toLocaleString('es-ES')} €
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p style={{ margin: '.6rem 0 0', fontSize: '.72rem', color: '#bbb', padding: '0 .5rem' }}>
+                  Sugerencia: +7% redondeado a 0,50 € · impacto anualizado basado en el ritmo de ventas actual · solo una sugerencia, tú decides.
+                </p>
+              </div>
+            )}
+
+            {/* Joyas — destacar */}
+            {joyas.length > 0 && (
+              <div className={styles.analiticaBloque} style={{ marginBottom: '1rem' }}>
+                <div className={styles.analiticaBloqueHeader}>
+                  <div>
+                    <h3 className={styles.analiticaBloqueTitle}>💎 Joyas ocultas — dales visibilidad</h3>
+                    <p className={styles.analiticaBloqueDesc}>
+                      Buen margen pero poca demanda. Destacarlos en el kiosko o bajar el precio puede activarlos.
+                    </p>
+                  </div>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className={styles.rendTable}>
+                    <thead>
+                      <tr>
+                        <th className={styles.rendThNombre}>Vino</th>
+                        <th className={styles.rendThNum}>Margen</th>
+                        <th className={styles.rendThNum}>PVP</th>
+                        <th className={styles.rendThNum}>¿Destacado?</th>
+                        <th className={styles.rendThNum}>Potencial /año</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {joyas.map(j => {
+                        const v = vinosPorId.get(String(j.id))
+                        return (
+                          <tr key={j.id} className={styles.rendRow}>
+                            <td className={styles.rendTdNombre}>
+                              <span className={styles.rendVinoNombre}>{j.nombre}</span>
+                              {j.bodega && <span className={styles.rendBodega}> · {j.bodega}</span>}
+                            </td>
+                            <td className={styles.rendTdNum}>
+                              <span className={`${styles.margenBadge} ${j.margenPct >= 40 ? styles.margenHigh : styles.margenMid}`}>{j.margenPct}%</span>
+                            </td>
+                            <td className={styles.rendTdNum}>{j.pvp.toFixed(2)} €</td>
+                            <td className={styles.rendTdNum}>
+                              {v?.destacado
+                                ? <span style={{ color: '#2e6b47', fontSize: '.8rem' }}>✓ Sí</span>
+                                : <span style={{ color: '#c03030', fontSize: '.8rem' }}>✗ No — destácalo</span>}
+                            </td>
+                            <td className={styles.rendTdNum} style={{ fontWeight: 600, color: '#666' }}>
+                              {j.impacto > 0 ? `~${j.impacto.toLocaleString('es-ES')} €` : '—'}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* A revisar */}
+            {revisar.length > 0 && (
+              <div className={styles.analiticaBloque}>
+                <div className={styles.analiticaBloqueHeader}>
+                  <div>
+                    <h3 className={styles.analiticaBloqueTitle}>⚠️ A revisar — bajo margen y baja demanda</h3>
+                    <p className={styles.analiticaBloqueDesc}>
+                      Poco margen y poca salida. Considera bajar el precio para activar demanda, o retirar la referencia.
+                    </p>
+                  </div>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className={styles.rendTable}>
+                    <thead>
+                      <tr>
+                        <th className={styles.rendThNombre}>Vino</th>
+                        <th className={styles.rendThNum}>Margen</th>
+                        <th className={styles.rendThNum}>PVP actual</th>
+                        <th className={styles.rendThNum}>Ventas</th>
+                        <th className={styles.rendThNum}>Sugerencia</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {revisar.map(r => (
+                        <tr key={r.id} className={styles.rendRow}>
+                          <td className={styles.rendTdNombre}>
+                            <span className={styles.rendVinoNombre}>{r.nombre}</span>
+                            {r.bodega && <span className={styles.rendBodega}> · {r.bodega}</span>}
+                          </td>
+                          <td className={styles.rendTdNum}>
+                            <span className={`${styles.margenBadge} ${styles.margenLow}`}>{r.margenPct}%</span>
+                          </td>
+                          <td className={styles.rendTdNum}>{r.pvp.toFixed(2)} €</td>
+                          <td className={styles.rendTdNum}>{r.ventas} ud.</td>
+                          <td className={styles.rendTdNum} style={{ fontSize: '.75rem', color: '#b06000' }}>
+                            Baja precio o retira
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {sugerencias.length === 0 && (
+              <div className={styles.analiticaBanner}>
+                <span className={styles.analiticaBannerIcon}>✓</span>
+                <span>No hay sugerencias de precio por ahora. Los precios parecen bien calibrados para la demanda actual.</span>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* Leads CRM */}
+      {tab === 'leads' && esPremium && (
+        <div style={{ padding: '0 1.75rem 1.75rem' }}>
+          <div className={styles.analiticaBloque}>
+            <div className={styles.analiticaBloqueHeader}>
+              <div>
+                <h3 className={styles.analiticaBloqueTitle}>Leads captados</h3>
+                <p className={styles.analiticaBloqueDesc}>
+                  Clientes que dieron su email tras una recomendación, con consentimiento explícito.
+                </p>
+              </div>
+              {leads?.length > 0 && (
+                <button
+                  type="button"
+                  className={styles.btnSecundario}
+                  style={{ padding: '.45rem .9rem', fontSize: '.78rem' }}
+                  onClick={async () => {
+                    const res = await fetch(`/api/kiosko/${slug}/admin/leads?formato=csv`, { headers: authHeaders })
+                    const blob = await res.blob()
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url; a.download = `leads-${slug}.csv`; a.click()
+                    URL.revokeObjectURL(url)
+                  }}
+                >
+                  Exportar CSV
+                </button>
+              )}
+            </div>
+
+            {leadsLoad && <p className={styles.analiticaLoading}>Cargando leads…</p>}
+            {!leadsLoad && leads !== null && leads.length === 0 && (
+              <div className={styles.analiticaBanner} style={{ margin: '1rem 0 0' }}>
+                <span className={styles.analiticaBannerIcon}>✉️</span>
+                <span>Todavía sin leads. Aparecerán aquí cuando un cliente deje su email al final de una recomendación.</span>
+              </div>
+            )}
+            {!leadsLoad && leads?.length > 0 && (
+              <div style={{ overflowX: 'auto', marginTop: '.75rem' }}>
+                <table className={styles.rendTable}>
+                  <thead>
+                    <tr>
+                      <th className={styles.rendThNombre}>Email</th>
+                      <th className={styles.rendThNum}>Fuente</th>
+                      <th className={styles.rendThNum}>Preferencias</th>
+                      <th className={styles.rendThNum}>Vinos</th>
+                      <th className={styles.rendThNum}>Fecha</th>
+                      <th className={styles.rendThNum}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leads.map(l => {
+                      const p = l.preferencias || {}
+                      const vinos = (l.vinos_recomendados || []).map(v => v.nombre).join(', ')
+                      const prefStr = [p.ocasion, p.estilo, p.presupuesto ? `${p.presupuesto}€` : '', p.consulta].filter(Boolean).join(' · ')
+                      return (
+                        <tr key={l.id} className={styles.rendRow}>
+                          <td className={styles.rendTdNombre}><span className={styles.rendVinoNombre}>{l.email}</span></td>
+                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem' }}>{l.source}</td>
+                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 160 }}>{prefStr || '—'}</td>
+                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 180 }}>{vinos || '—'}</td>
+                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }}>
+                            {new Date(l.created_at).toLocaleDateString('es-ES')}
+                          </td>
+                          <td className={styles.rendTdNum}>
+                            <button
+                              type="button"
+                              onClick={() => borrarLead(l.id)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c44', fontSize: '.72rem', padding: '2px 6px' }}
+                              title="Eliminar (RGPD)"
+                            >
+                              ×
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                <p style={{ margin: '.75rem 0 0', fontSize: '.72rem', color: '#bbb' }}>
+                  Los emails se eliminan permanentemente al hacer clic en × (derecho de supresión RGPD).
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'leads' && !esPremium && (
+        <div style={{ padding: '2rem 1.75rem', textAlign: 'center' }}>
+          <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e', margin: '0 0 .5rem' }}>Función Premium</p>
+          <p style={{ fontSize: '.85rem', color: '#888', margin: 0 }}>Suscríbete al plan Premium para captar y gestionar leads de tus clientes.</p>
+        </div>
+      )}
 
       {/* Otros productos (Square) */}
       {tab === 'otros' && <>

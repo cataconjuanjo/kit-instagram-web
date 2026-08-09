@@ -2247,6 +2247,8 @@
 .rendThNum { text-align: right; }
 .rendRow { border-bottom: 1px solid #f7f4f0; }
 .rendRow:hover { background: #faf9f7; }
+.rendRowFuga { background: #fff8f8; }
+.rendRowFuga:hover { background: #ffeeed; }
 .rendTdNombre {
   padding: .55rem .75rem;
   display: flex;
@@ -2631,6 +2633,12 @@
   color: #888;
   letter-spacing: .03em;
   line-height: 1.4;
+}
+
+.analiticaKpiSub {
+  font-size: .68rem;
+  color: #bbb;
+  line-height: 1.3;
 }
 
 .kpiUp { color: #3a8a3a; font-style: normal; font-weight: 700; font-size: .72rem; }
