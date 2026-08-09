@@ -1,7 +1,6 @@
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
-const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN
-const SQUARE_API_BASE     = 'https://connect.squareup.com'
+const SQUARE_API_BASE = 'https://connect.squareup.com'
 
 const WINE_KEYWORDS     = /vino|wine|bodega|winery/i
 const PREFIJOS_INTERNOS = /^\s*(V[A-Z]{2,3}|BOT|RBN|RTN|AOC|AOP)\s+/i
@@ -22,8 +21,8 @@ function parsearNombreSquare(raw) {
   return { nombre, uva: uva || null, bodega: bodega || null, region: region || null, pais: pais || null }
 }
 
-async function fetchAllCatalogItems() {
-  if (!SQUARE_ACCESS_TOKEN) throw new Error('SQUARE_ACCESS_TOKEN no configurado')
+async function fetchAllCatalogItems(token) {
+  if (!token) throw new Error('Token de Square no configurado para esta tienda')
 
   const items = [], imageMap = {}, categoryMap = {}
   let cursor = null
@@ -35,7 +34,7 @@ async function fetchAllCatalogItems() {
     const res = await fetch(`${SQUARE_API_BASE}/v2/catalog/search`, {
       method: 'POST',
       headers: {
-        Authorization:    `Bearer ${SQUARE_ACCESS_TOKEN}`,
+        Authorization:    `Bearer ${token}`,
         'Square-Version': '2024-01-18',
         'Content-Type':   'application/json',
       },
@@ -54,8 +53,8 @@ async function fetchAllCatalogItems() {
   return { items, imageMap, categoryMap }
 }
 
-async function fetchInventoryCounts(variationIds) {
-  if (!variationIds.length || !SQUARE_ACCESS_TOKEN) return {}
+async function fetchInventoryCounts(variationIds, token) {
+  if (!variationIds.length || !token) return {}
   const inventoryMap = {}
 
   for (let i = 0; i < variationIds.length; i += 100) {
@@ -67,7 +66,7 @@ async function fetchInventoryCounts(variationIds) {
       const res = await fetch(`${SQUARE_API_BASE}/v2/inventory/batch-retrieve-counts`, {
         method: 'POST',
         headers: {
-          Authorization:    `Bearer ${SQUARE_ACCESS_TOKEN}`,
+          Authorization:    `Bearer ${token}`,
           'Square-Version': '2024-01-18',
           'Content-Type':   'application/json',
         },
@@ -94,8 +93,12 @@ function detectarCategoria(itemData, categoryMap) {
   return 'otro'
 }
 
-export async function squareSyncForTienda(tiendaId, tiendaSlug) {
-  const { items, imageMap, categoryMap } = await fetchAllCatalogItems()
+// squareToken: token específico de la tienda; fallback al env global para compatibilidad
+export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
+  const token = squareToken || process.env.SQUARE_ACCESS_TOKEN
+  if (!token) throw new Error('No hay token de Square configurado para esta tienda')
+
+  const { items, imageMap, categoryMap } = await fetchAllCatalogItems(token)
 
   const variationIds = [], variationToItem = {}, itemToVariation = {}
   for (const item of items) {
@@ -108,7 +111,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug) {
     }
   }
 
-  const inventoryMap = await fetchInventoryCounts(variationIds)
+  const inventoryMap = await fetchInventoryCounts(variationIds, token)
   const itemStockMap = {}
   for (const [varId, qty] of Object.entries(inventoryMap)) {
     const itemId = variationToItem[varId]
@@ -151,7 +154,6 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug) {
     }
 
     if (existingMap[item.id]) {
-      // Usamos la categoria guardada en BD (no la de Square) para calcular activo
       const existing = existingMap[item.id]
       const catEfectiva = existing.categoria || categoriaDetectada
       const activo = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
@@ -168,10 +170,6 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug) {
       })
     }
   }
-
-  // (orphan check removed — it was querying all tiendas without tienda_id filter,
-  //  causing cross-contamination between tiendas when syncing a new tienda with
-  //  a shared Square catalog)
 
   let insertados = 0, actualizados = 0, errores = 0
 

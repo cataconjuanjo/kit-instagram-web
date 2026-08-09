@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 import { squareSyncForTienda } from '../../../../../api/_lib/squareSync'
 
@@ -10,12 +11,24 @@ export async function POST(request, { params }) {
   const access = await requireKioskoAccess(request, slug)
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status || 403 })
 
-  if (!process.env.SQUARE_ACCESS_TOKEN) {
-    return NextResponse.json({ error: 'SQUARE_ACCESS_TOKEN no configurado en Vercel' }, { status: 500 })
+  // Obtener el token de Square específico de esta tienda
+  const { data: tiendaData } = await supabaseAdmin
+    .from('tiendas')
+    .select('square_access_token')
+    .eq('id', access.tienda.id)
+    .single()
+
+  const squareToken = tiendaData?.square_access_token || process.env.SQUARE_ACCESS_TOKEN
+
+  if (!squareToken) {
+    return NextResponse.json(
+      { error: 'Esta tienda no tiene un token de Square configurado. Ve a Ajustes → Square.' },
+      { status: 400 }
+    )
   }
 
   try {
-    const result = await squareSyncForTienda(access.tienda.id, slug)
+    const result = await squareSyncForTienda(access.tienda.id, slug, squareToken)
     return NextResponse.json(result)
   } catch (e) {
     console.error('[square-sync]', e.message)

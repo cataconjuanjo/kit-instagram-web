@@ -298,6 +298,9 @@ function CambiarPassword() {
 function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
   const esPremium = !tienda?.plan || tienda.plan === 'premium' || tienda.plan === 'trial'
   const [ajustesUpgradeModal, setAjustesUpgradeModal] = useState(null)
+  const [squareTokenInput, setSquareTokenInput] = useState('')
+  const [guardandoSquare, setGuardandoSquare] = useState(false)
+  const [squareMsg, setSquareMsg] = useState('')
   const [ajustes, setAjustes] = useState({
     nombre:         tienda?.nombre         || '',
     ciudad:         tienda?.ciudad         || '',
@@ -319,6 +322,24 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
   const [msg,          setMsg]          = useState('')
   const logoInputRef = useRef(null)
   const authHeaders = tienda?._token ? { Authorization: `Bearer ${tienda._token}` } : {}
+
+  async function guardarSquareToken() {
+    if (!squareTokenInput.trim()) return
+    setGuardandoSquare(true); setSquareMsg('')
+    try {
+      const r = await fetch(`/api/kiosko/${slug}/admin/ajustes`, {
+        method: 'PATCH',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ square_access_token: squareTokenInput.trim() }),
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || 'Error al guardar')
+      setSquareMsg('✓ Token guardado')
+      setSquareTokenInput('')
+      onSaved()
+    } catch (e) { setSquareMsg(e.message) }
+    finally { setGuardandoSquare(false) }
+  }
 
   useEffect(() => {
     const fonts = [
@@ -672,6 +693,37 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
             }} aria-label="Ver plan Premium" />
           </div>
         )}
+
+        {/* Square — token por tienda */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>
+            Integración Square
+            {tienda?.has_square_token
+              ? <span style={{ marginLeft: 8, fontSize: '.75rem', color: '#4caf50' }}>✓ Configurado</span>
+              : <span style={{ marginLeft: 8, fontSize: '.75rem', color: '#888' }}>Sin configurar</span>}
+          </p>
+          <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
+            Token de acceso de tu cuenta Square. Permite sincronizar el catálogo de esta tienda de forma independiente.
+          </p>
+          <div style={{ display: 'flex', gap: '.5rem' }}>
+            <input
+              type="password"
+              placeholder={tienda?.has_square_token ? 'Introduce nuevo token para reemplazar' : 'EAAAl...'}
+              value={squareTokenInput}
+              onChange={e => setSquareTokenInput(e.target.value)}
+              style={{ flex: 1, padding: '.5rem .75rem', borderRadius: 8, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.06)', color: 'inherit', fontSize: '.85rem' }}
+            />
+            <button
+              type="button"
+              className={styles.btnSecundario}
+              onClick={guardarSquareToken}
+              disabled={guardandoSquare || !squareTokenInput.trim()}
+            >
+              {guardandoSquare ? 'Guardando…' : 'Guardar'}
+            </button>
+          </div>
+          {squareMsg && <p style={{ fontSize: '.78rem', marginTop: '.5rem', color: squareMsg.startsWith('✓') ? '#4caf50' : '#e57373' }}>{squareMsg}</p>}
+        </div>
 
         {/* Guardar */}
         <div className={styles.ajustesActions}>
@@ -2101,10 +2153,12 @@ export default function AdminKioskoPage() {
                   <button type="button" className={styles.moreMenuItem} onClick={() => { setModalImport(true); setResultImport(null); setMoreMenuOpen(false) }}>
                     Importar CSV
                   </button>
-                  <button type="button" className={styles.moreMenuItem} onClick={() => { syncSquare(); setMoreMenuOpen(false) }}
-                    disabled={squareSyncing}>
-                    {squareSyncing ? 'Sincronizando…' : '⟳ Square'}
-                  </button>
+                  {(tienda?.has_square_token || usaSquare) && (
+                    <button type="button" className={styles.moreMenuItem} onClick={() => { syncSquare(); setMoreMenuOpen(false) }}
+                      disabled={squareSyncing}>
+                      {squareSyncing ? 'Sincronizando…' : '⟳ Square'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

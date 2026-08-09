@@ -6,8 +6,7 @@ import {
   requireKioskoAccess,
 } from '../../../_lib/kioskoAuth'
 
-// Columnas añadidas por migraciones opcionales — pueden no existir en todos los entornos
-const OPTIONAL_COLS = 'kiosko_icon_style, kiosko_orders_enabled, cesta_activa'
+const OPTIONAL_COLS = 'kiosko_icon_style, kiosko_orders_enabled, cesta_activa, square_access_token'
 
 async function getOptionalCols(slug) {
   const { data } = await supabaseAdmin
@@ -15,7 +14,10 @@ async function getOptionalCols(slug) {
     .select(OPTIONAL_COLS)
     .eq('slug', slug)
     .single()
-  return data || {}
+  if (!data) return {}
+  // Nunca exponer el token real al frontend; solo indicar si está configurado
+  const { square_access_token, ...rest } = data
+  return { ...rest, has_square_token: !!square_access_token }
 }
 
 export async function GET(request, { params }) {

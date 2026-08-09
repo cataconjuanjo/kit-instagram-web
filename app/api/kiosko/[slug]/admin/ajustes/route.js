@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
-import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
+import { requireKioskoAccess, getKioskoUser, isKioskoAdminEmail } from '../../../../_lib/kioskoAuth'
 
 const PERMITIDOS = new Set([
   'nombre', 'ciudad', 'descripcion',
@@ -14,6 +14,7 @@ const OPTIONAL_MIGRATIONS = {
   kiosko_icon_style: 'supabase/kiosko_icon_style.sql',
   kiosko_orders_enabled: 'supabase/kiosko_assisted_orders.sql',
   cesta_activa: 'supabase/cesta_activa.sql',
+  square_access_token: 'supabase/square_access_token.sql',
 }
 
 function missingOptionalFields(error, updates) {
@@ -25,16 +26,34 @@ function missingOptionalFields(error, updates) {
 export async function PATCH(request, { params }) {
   const { slug } = await params
 
+  const auth = await getKioskoUser(request)
+  if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
   const access = await requireKioskoAccess(request, slug)
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
+
+  const esMasterAdmin = isKioskoAdminEmail(auth.email)
 
   let body
   try { body = await request.json() } catch {
     return NextResponse.json({ error: 'Petición inválida' }, { status: 400 })
   }
 
+  // square_access_token: cualquier propietario puede configurar el suyo
+  if (body.square_access_token !== undefined) {
+    const tokenVal = (body.square_access_token || '').trim() || null
+    await supabaseAdmin
+      .from('tiendas')
+      .update({ square_access_token: tokenVal })
+      .eq('id', access.tienda.id)
+    // Si solo venía el token, devolver OK
+    const soloToken = Object.keys(body).every(k => k === 'square_access_token')
+    if (soloToken) return NextResponse.json({ ok: true })
+  }
+
   const updates = {}
   for (const [k, v] of Object.entries(body || {})) {
+    if (k === 'square_access_token') continue
     if (!PERMITIDOS.has(k)) continue
     if (k === 'kiosko_icon_style') {
       const value = String(v || '').trim()
