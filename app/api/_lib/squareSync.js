@@ -179,9 +179,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   let insertados = 0, actualizados = 0, errores = 0
 
   if (toInsert.length > 0) {
-    const { error } = await supabaseAdmin
-      .from('vinos_tienda')
-      .upsert(toInsert, { onConflict: 'square_catalog_id', ignoreDuplicates: true })
+    const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
     if (error) { console.error('[square-sync] insert error:', error.message); errores += toInsert.length }
     else insertados = toInsert.length
   }
