@@ -32,12 +32,14 @@ export async function GET(request, { params }) {
   }
 
   // Sin filtro activo ni stock — para gourmet solo importa que tenga precio razonable (mín. 3€)
+  // categoria='carta' = platos de la carta del restaurante (sin foto, siempre incluidos)
   const { data: raw, error } = await supabaseAdmin
     .from('vinos_tienda')
-    .select('id, nombre, precio_pvp, foto_url, descripcion, apto_cesta, es_vegano, con_alcohol, cat_gourmet, sin_gluten')
+    .select('id, nombre, precio_pvp, foto_url, descripcion, apto_cesta, es_vegano, con_alcohol, cat_gourmet, sin_gluten, categoria')
     .eq('tienda_id', tienda.id)
-    .eq('categoria', 'otro')
+    .in('categoria', ['otro', 'carta'])
     .gte('precio_pvp', 3)
+    .order('categoria')   // carta primero
     .order('precio_pvp')
     .limit(500)
 
@@ -47,6 +49,8 @@ export async function GET(request, { params }) {
   }
 
   const items = (raw || []).filter(item => {
+    // Platos de la carta: siempre incluidos
+    if (item.categoria === 'carta') return true
     if (!item.foto_url) return false
     // Respeta la decisión manual si está fijada; si no, auto-detecta
     if (item.apto_cesta === true) return true

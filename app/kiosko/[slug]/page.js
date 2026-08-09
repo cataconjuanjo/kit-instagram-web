@@ -1144,8 +1144,11 @@ function sugerirGourmetParaVinos(vinosRecomendados = [], gourmetTodos = [], max 
         const s = AFINIDAD_VINO_GOURMET[tipo]?.[cat] ?? 0
         return Math.max(best, s)
       }, 0)
-      // Items marcados como carta de comida siempre aparecen (score mínimo 2)
-      const score = g.apto_cesta === true ? Math.max(afinity, 2) : afinity
+      // Carta del restaurante: prioridad máxima (score 8+)
+      // Items con apto_cesta manual: prioridad media (score 2+)
+      const score = g.categoria === 'carta'
+        ? Math.max(afinity, 8)
+        : g.apto_cesta === true ? Math.max(afinity, 2) : afinity
       const razon = razonGourmetItem(cat, tiposVinos)
       return { ...g, _cat: cat, _score: score, _razon: razon }
     })
@@ -1187,10 +1190,13 @@ function GourmetCrossSell({ vinosRecomendados, gourmet, colorAcento, lang = 'es'
               <img src={g.foto_url} alt={g.nombre} style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} onError={e => { e.target.style.display = 'none' }} />
             ) : (
               <div style={{ width: 44, height: 44, borderRadius: 6, background: `${colorAcento}22`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
-                🧺
+                {g.categoria === 'carta' ? '🍽️' : '🧺'}
               </div>
             )}
             <div style={{ minWidth: 0 }}>
+              {g.categoria === 'carta' && (
+                <span style={{ display: 'inline-block', fontSize: '.6rem', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: colorAcento, border: `1px solid ${colorAcento}55`, borderRadius: 4, padding: '1px 5px', marginBottom: '.2rem' }}>De la carta</span>
+              )}
               <p style={{ margin: '0 0 .15rem', fontSize: '.82rem', fontWeight: 700, color: '#1a1a2e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.nombre}</p>
               {g.precio_pvp && <p style={{ margin: '0 0 .2rem', fontSize: '.75rem', color: colorAcento, fontWeight: 600 }}>{Number(g.precio_pvp).toFixed(2)} €</p>}
               <p style={{ margin: 0, fontSize: '.72rem', color: '#888', lineHeight: 1.35 }}>{g._razon}</p>
