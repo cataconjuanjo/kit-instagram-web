@@ -1483,8 +1483,8 @@ export default function AdminKioskoPage() {
   }
 
   // ── Split por categoría ────────────────────────────────────────────────────
-  const vinosVino  = useMemo(() => vinos.filter(v => v.categoria !== 'otro'), [vinos])
-  const vinosOtro  = useMemo(() => vinos.filter(v => v.categoria === 'otro'), [vinos])
+  const vinosVino  = useMemo(() => vinos.filter(v => v.categoria !== 'otro' && v.categoria !== 'carta'), [vinos])
+  const vinosOtro  = useMemo(() => vinos.filter(v => v.categoria === 'otro' || v.categoria === 'carta'), [vinos])
   const usaSquare  = useMemo(() => vinos.some(v => v.square_catalog_id), [vinos])
 
   const otrosConCat    = useMemo(() => vinosOtro.map(v => ({ ...v, catAuto: v.cat_gourmet || detectarCatGourmet(v.nombre, v.descripcion) })), [vinosOtro])
@@ -3314,7 +3314,10 @@ export default function AdminKioskoPage() {
                       <td className={styles.tdFoto}>
                         <AdminThumbImage src={v.foto_url} className={styles.thumb} fallback={<div className={styles.thumbPlaceholder}>—</div>} />
                       </td>
-                      <td><strong className={styles.tdTrunc} style={{ maxWidth: 200 }}>{v.nombre}</strong></td>
+                      <td>
+                        <strong className={styles.tdTrunc} style={{ maxWidth: 200 }}>{v.nombre}</strong>
+                        {v.categoria === 'carta' && <span style={{ marginLeft: 6, fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#c9a96e', border: '1px solid #c9a96e55', borderRadius: 4, padding: '1px 5px' }}>Carta</span>}
+                      </td>
                       <td>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : <span className={styles.dash}>—</span>}</td>
                       <td>
                         <select
