@@ -26,7 +26,10 @@ function isValidEmail(e) {
 function buildEmailHtml({ tiendaNombre, colorAcento, logoUrl, vinos, unsubscribeUrl }) {
   const acento = colorAcento || '#b5873a'
 
-  const vinosHtml = (vinos || []).map(v => {
+  const soloVinos  = (vinos || []).filter(v => v._seccion !== 'gourmet')
+  const soloGourmet = (vinos || []).filter(v => v._seccion === 'gourmet')
+
+  const vinosHtml = soloVinos.map(v => {
     const tipoColor = TIPO_COLOR[v.tipo] || acento
     const tipoLabel = TIPO_LABEL[v.tipo] || ''
     const precio = v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2).replace('.', ',')} €` : ''
@@ -48,6 +51,29 @@ function buildEmailHtml({ tiendaNombre, colorAcento, logoUrl, vinos, unsubscribe
       </td>
     </tr>`
   }).join('')
+
+  const gourmetHtml = soloGourmet.length ? `
+    <tr>
+      <td style="padding:28px 0 8px;">
+        <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#bbb;">Para acompañar</div>
+      </td>
+    </tr>
+    ${soloGourmet.map(g => {
+      const precio = g.precio_pvp ? `${Number(g.precio_pvp).toFixed(2).replace('.', ',')} €` : ''
+      return `
+    <tr>
+      <td style="padding:12px 0;border-bottom:1px solid #ede9e1;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="vertical-align:top;">
+              <div style="font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:#1a1a1a;">${g.nombre || ''}</div>
+              ${g._razon ? `<div style="font-family:Arial,sans-serif;font-size:12px;color:#888;margin-top:2px;line-height:1.5;">${g._razon}</div>` : ''}
+            </td>
+            ${precio ? `<td align="right" style="vertical-align:top;white-space:nowrap;padding-left:12px;font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:${acento};">${precio}</td>` : ''}
+          </tr>
+        </table>
+      </td>
+    </tr>`}).join('')}` : ''
 
   const logoHtml = logoUrl
     ? `<img src="${logoUrl}" alt="${tiendaNombre}" style="max-height:44px;max-width:160px;object-fit:contain;" />`
@@ -86,6 +112,7 @@ function buildEmailHtml({ tiendaNombre, colorAcento, logoUrl, vinos, unsubscribe
 
             <table width="100%" cellpadding="0" cellspacing="0">
               ${vinosHtml || `<tr><td style="padding:20px 0;font-family:Arial,sans-serif;font-size:14px;color:#aaa;">Sin vinos guardados.</td></tr>`}
+              ${gourmetHtml}
             </table>
           </td>
         </tr>

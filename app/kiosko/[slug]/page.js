@@ -39,9 +39,11 @@ const SUGERENCIAS_MARIDAJE_FALLBACK = [
 const REGION_TO_CCAA = {
   'Rías Baixas': 'Galicia', 'Ribeiro': 'Galicia', 'Ribeira Sacra': 'Galicia',
   'Valdeorras': 'Galicia', 'Monterrei': 'Galicia',
-  'Canarias': 'Canarias', 'Lanzarote': 'Canarias', 'La Palma': 'Canarias',
-  'El Hierro': 'Canarias', 'Abona': 'Canarias', 'Tacoronte-Acentejo': 'Canarias',
-  'Valle de Güímar': 'Canarias', 'Ycoden-Daute-Isora': 'Canarias', 'Gran Canaria': 'Canarias',
+  'Canarias': 'Canarias', 'Tenerife': 'Canarias', 'Lanzarote': 'Canarias', 'La Palma': 'Canarias',
+  'El Hierro': 'Canarias', 'La Gomera': 'Canarias', 'Fuerteventura': 'Canarias',
+  'Abona': 'Canarias', 'Tacoronte-Acentejo': 'Canarias', 'Ycoden-Daute-Isora': 'Canarias',
+  'Valle de Güímar': 'Canarias', 'Valle de la Orotava': 'Canarias', 'Gran Canaria': 'Canarias',
+  'Islas Canarias': 'Canarias',
   'Rioja': 'La Rioja', 'La Rioja': 'La Rioja',
   'Ribera del Duero': 'Castilla y León', 'Rueda': 'Castilla y León', 'Toro': 'Castilla y León',
   'Bierzo': 'Castilla y León', 'Cigales': 'Castilla y León', 'Arribes': 'Castilla y León',
@@ -60,6 +62,13 @@ const REGION_TO_CCAA = {
   'Vinho Verde': 'Portugal', 'Douro': 'Portugal', 'Alentejo': 'Portugal',
   'Bordeaux': 'Francia', 'Bourgogne': 'Francia', 'Champagne': 'Francia', 'Val de Loire': 'Francia',
   'Alsace': 'Francia', 'Côtes du Rhône': 'Francia',
+}
+
+const CIUDAD_TO_CCAA = {
+  'Tenerife': 'Canarias', 'Santa Cruz de Tenerife': 'Canarias',
+  'Las Palmas': 'Canarias', 'Las Palmas de Gran Canaria': 'Canarias',
+  'Gran Canaria': 'Canarias', 'Lanzarote': 'Canarias', 'La Palma': 'Canarias',
+  'El Hierro': 'Canarias', 'La Gomera': 'Canarias', 'Fuerteventura': 'Canarias',
 }
 
 function dominantCCAA(vinos) {
@@ -1131,10 +1140,12 @@ function sugerirGourmetParaVinos(vinosRecomendados = [], gourmetTodos = [], max 
     .filter(g => Number(g.stock ?? 1) > 0)
     .map(g => {
       const cat = (g.cat_gourmet && ADMIN_TO_KIOSKO_CAT[g.cat_gourmet]) || detectarCatGourmet(g.nombre, g.descripcion)
-      const score = tiposVinos.reduce((best, tipo) => {
+      const afinity = tiposVinos.reduce((best, tipo) => {
         const s = AFINIDAD_VINO_GOURMET[tipo]?.[cat] ?? 0
         return Math.max(best, s)
       }, 0)
+      // Items marcados como carta de comida siempre aparecen (score mínimo 2)
+      const score = g.apto_cesta === true ? Math.max(afinity, 2) : afinity
       const razon = razonGourmetItem(cat, tiposVinos)
       return { ...g, _cat: cat, _score: score, _razon: razon }
     })
@@ -1684,7 +1695,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
 
 // ── CRM: captación opt-in al final de un flujo ───────────────────────────────
 
-function LeadCapture({ slug, source, preferencias, vinosRecomendados, lang = 'es' }) {
+function LeadCapture({ slug, source, preferencias, vinosRecomendados, gourmet = [], lang = 'es' }) {
   const [email, setEmail]         = useState('')
   const [consent, setConsent]     = useState(false)
   const [estado, setEstado]       = useState('idle') // idle | enviando | ok | error
@@ -1743,10 +1754,18 @@ function LeadCapture({ slug, source, preferencias, vinosRecomendados, lang = 'es
           consentimiento: true,
           source,
           preferencias,
-          vinos_recomendados: (vinosRecomendados || []).map(v => ({
-                id: v.id, nombre: v.nombre, bodega: v.bodega,
-                tipo: v.tipo, descripcion: v.descripcion, precio_pvp: v.precio_pvp,
-              })),
+          vinos_recomendados: [
+                ...(vinosRecomendados || []).map(v => ({
+                  id: v.id, nombre: v.nombre, bodega: v.bodega,
+                  tipo: v.tipo, descripcion: v.descripcion, precio_pvp: v.precio_pvp,
+                  _seccion: 'vino',
+                })),
+                ...sugerirGourmetParaVinos(vinosRecomendados, gourmet, 2).map(g => ({
+                  id: g.id, nombre: g.nombre, precio_pvp: g.precio_pvp,
+                  descripcion: g.descripcion, foto_url: g.foto_url, _razon: g._razon,
+                  _seccion: 'gourmet',
+                })),
+              ],
         }),
       })
       const data = await res.json()
@@ -1811,7 +1830,10 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
   const [error, setError]     = useState('')
   const [mostrarRango, setMostrarRango] = useState(false)
 
-  const regionLabel = useMemo(() => dominantCCAA(vinos), [vinos])
+  const regionLabel = useMemo(() => {
+    if (tienda?.ciudad && CIUDAD_TO_CCAA[tienda.ciudad]) return CIUDAD_TO_CCAA[tienda.ciudad]
+    return dominantCCAA(vinos)
+  }, [vinos, tienda])
 
   const wizardPrecios = useMemo(() => {
     const ps = vinos.map(v => v.precio_pvp).filter(Boolean)
@@ -2023,6 +2045,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
             source="wizard"
             preferencias={{ ocasion: wizard.ocasion, estilo: wizard.estilo, presupuesto: wizard.presupuesto }}
             vinosRecomendados={resultado.recomendaciones}
+            gourmet={gourmet}
             lang={lang}
           />
           <button className={styles.pairingReiniciarBtn} onClick={reset} type="button">Nueva búsqueda</button>
@@ -2249,6 +2272,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
             source="pairing"
             preferencias={{ consulta }}
             vinosRecomendados={resultado.recomendaciones}
+            gourmet={gourmet}
             lang={lang}
           />
           <button className={styles.pairingReiniciarBtn} onClick={() => { setResultado(null); setConsulta('') }} type="button">Nueva búsqueda</button>
