@@ -1,3 +1,23 @@
+// ── Config de precios del Kiosko (fuente única — leer desde aquí en toda la app) ──
+export const KIOSKO_PLANS = {
+  basic: {
+    id: 'basic',
+    name: 'Básico',
+    price: 59,
+    currency: 'EUR',
+    period: 'mes',
+    recommended: false,
+  },
+  premium: {
+    id: 'premium',
+    name: 'Premium',
+    price: 99,
+    currency: 'EUR',
+    period: 'mes',
+    recommended: true,
+  },
+}
+
 export const PLANES = {
   basic: {
     nombre: 'Basico',
@@ -9,7 +29,7 @@ export const PLANES = {
     nombre: 'Sala',
     precioOrientativo: '99 EUR/mes',
     limiteVinos: 200,
-    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf'],
+    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'vista_etiquetas_publica'],
   },
   bodega: {
     nombre: 'Bodega',
@@ -21,7 +41,7 @@ export const PLANES = {
     nombre: 'Acompanado',
     precioOrientativo: 'Presupuesto personalizado',
     limiteVinos: 9999,
-    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'informes', 'proveedores', 'consultoria'],
+    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'informes', 'proveedores', 'consultoria', 'vista_etiquetas_publica'],
   },
 }
 
