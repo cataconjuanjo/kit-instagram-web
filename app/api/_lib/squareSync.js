@@ -169,33 +169,9 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug) {
     }
   }
 
-  // Reclasificar huérfanos
-  if (toInsert.length > 0) {
-    const catalogIds = toInsert.map(r => r.square_catalog_id)
-    const orphanMap  = {}
-    for (let i = 0; i < catalogIds.length; i += 500) {
-      const { data: found } = await supabaseAdmin
-        .from('vinos_tienda')
-        .select('id, square_catalog_id, categoria')
-        .in('square_catalog_id', catalogIds.slice(i, i + 500))
-      for (const r of (found || [])) orphanMap[r.square_catalog_id] = { id: r.id, categoria: r.categoria }
-    }
-    const stillNew = []
-    for (const row of toInsert) {
-      const existing = orphanMap[row.square_catalog_id]
-      if (existing) {
-        // Huérfano ya existe: no sobreescribir categoria, recalcular activo con cat de BD
-        const { categoria: _drop, activo: _dropActivo, ...rowBase } = row
-        const catEfectiva = existing.categoria || row.categoria
-        const activo = catEfectiva !== 'vino' || (row.stock ?? 0) > 0
-        toUpdate.push({ id: existing.id, ...rowBase, activo })
-      } else {
-        stillNew.push(row)
-      }
-    }
-    toInsert.length = 0
-    toInsert.push(...stillNew)
-  }
+  // (orphan check removed — it was querying all tiendas without tienda_id filter,
+  //  causing cross-contamination between tiendas when syncing a new tienda with
+  //  a shared Square catalog)
 
   let insertados = 0, actualizados = 0, errores = 0
 
