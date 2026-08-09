@@ -2192,8 +2192,11 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
 
   const sugerencias = useMemo(() => {
     if (!gourmet.length) return SUGERENCIAS_MARIDAJE_FALLBACK
-    const sorted = [...gourmet].sort((a, b) => (b.destacado ? 1 : 0) - (a.destacado ? 1 : 0))
-    return sorted.slice(0, 9).map(g => g.nombre)
+    // Carta primero, luego destacados, luego el resto — cada render mezcla dentro de cada grupo
+    const carta    = gourmet.filter(g => g.categoria === 'carta').sort(() => Math.random() - 0.5)
+    const destacados = gourmet.filter(g => g.categoria !== 'carta' && g.destacado).sort(() => Math.random() - 0.5)
+    const resto    = gourmet.filter(g => g.categoria !== 'carta' && !g.destacado).sort(() => Math.random() - 0.5)
+    return [...carta, ...destacados, ...resto].slice(0, 9).map(g => g.nombre)
   }, [gourmet])
 
   // No autoFocus: opening keyboard immediately would exit fullscreen on some devices
