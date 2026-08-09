@@ -123,6 +123,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     .select('id, square_catalog_id, categoria')
     .eq('tienda_id', tiendaId)
     .not('square_catalog_id', 'is', null)
+    .limit(10000)
   if (existError) throw new Error(`Leyendo existentes: ${existError.message}`)
 
   const existingMap = {}
@@ -174,7 +175,9 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   let insertados = 0, actualizados = 0, errores = 0
 
   if (toInsert.length > 0) {
-    const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
+    const { error } = await supabaseAdmin
+      .from('vinos_tienda')
+      .upsert(toInsert, { onConflict: 'square_catalog_id', ignoreDuplicates: false })
     if (error) { console.error('[square-sync] insert error:', error.message); errores += toInsert.length }
     else insertados = toInsert.length
   }
