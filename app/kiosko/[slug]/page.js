@@ -1685,6 +1685,13 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
                   {lang === 'en' ? 'Add to cart' : lang === 'fr' ? 'Ajouter au panier' : 'Añadir al carrito'}
                 </button>
               )}
+              <LeadCapture
+                slug={slug}
+                source="cesta"
+                preferencias={{ ocasion: ocasionId, presupuesto }}
+                itemsCesta={cesta.items}
+                lang={lang}
+              />
             </>
           )}
         </div>
@@ -1695,7 +1702,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
 
 // ── CRM: captación opt-in al final de un flujo ───────────────────────────────
 
-function LeadCapture({ slug, source, preferencias, vinosRecomendados, gourmet = [], lang = 'es' }) {
+function LeadCapture({ slug, source, preferencias, vinosRecomendados, gourmet = [], itemsCesta, lang = 'es' }) {
   const [email, setEmail]         = useState('')
   const [consent, setConsent]     = useState(false)
   const [estado, setEstado]       = useState('idle') // idle | enviando | ok | error
@@ -1754,7 +1761,14 @@ function LeadCapture({ slug, source, preferencias, vinosRecomendados, gourmet = 
           consentimiento: true,
           source,
           preferencias,
-          vinos_recomendados: [
+          vinos_recomendados: itemsCesta
+              ? itemsCesta.map(item => ({
+                  id: item.id, nombre: item.nombre, bodega: item.bodega,
+                  tipo: item.tipo, descripcion: item.descripcion, precio_pvp: item.precio_pvp,
+                  _razon: item._razon,
+                  _seccion: item._kind === 'gourmet' ? 'gourmet' : 'vino',
+                }))
+              : [
                 ...(vinosRecomendados || []).map(v => ({
                   id: v.id, nombre: v.nombre, bodega: v.bodega,
                   tipo: v.tipo, descripcion: v.descripcion, precio_pvp: v.precio_pvp,
