@@ -3055,6 +3055,23 @@
   margin-top: .25rem;
 }
 
+.premiumGateCta {
+  background: #17120f;
+  color: #c9a96e;
+  border: 1.5px solid rgba(201,169,110,.4);
+  border-radius: 8px;
+  padding: .55rem 1.25rem;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: .25rem;
+  transition: background .15s, border-color .15s;
+}
+.premiumGateCta:hover {
+  background: #1e1710;
+  border-color: #c9a96e;
+}
+
 /* ── Mobile responsiveness ──────────────────────────────────────────────── */
 .btnHideMobile { /* visible on desktop */ }
 

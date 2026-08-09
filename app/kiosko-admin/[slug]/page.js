@@ -156,6 +156,103 @@ function PremiumLock({ children, label = 'Premium' }) {
   )
 }
 
+const UPGRADE_CONFIG = {
+  analitica: {
+    icon: '📊',
+    title: 'Analítica avanzada',
+    bullets: [
+      'Qué buscan tus clientes y qué vinos recomiendan más',
+      'Motor de conversión: ventas perdidas y € no capturados por vino',
+      'Cuadrante de rentabilidad, precios y márgenes',
+    ],
+  },
+  leads: {
+    icon: '📧',
+    title: 'Captación de clientes',
+    bullets: [
+      'Recoge emails de clientes con opt-in RGPD automático',
+      'Les envías su selección de vino por email al instante',
+      'Construyes tu propia base de datos de clientes fieles',
+    ],
+  },
+  informe: {
+    icon: '📬',
+    title: 'Informe semanal por email',
+    bullets: [
+      'Resumen automático cada semana sin hacer nada',
+      'Ventas perdidas, alertas de stock y tendencias',
+      'Toma decisiones con datos, no con intuición',
+    ],
+  },
+  widget: {
+    icon: '🌐',
+    title: 'Widget para tu web',
+    bullets: [
+      'Añade el kiosko como botón flotante en tu propia web',
+      'Sin código: copia y pega un script de una línea',
+      'Más visitas al kiosko = más ventas y leads capturados',
+    ],
+  },
+}
+
+function UpgradeModal({ feature, onClose }) {
+  const cfg = UPGRADE_CONFIG[feature]
+  if (!cfg) return null
+  return (
+    <div className={styles.overlay} onClick={onClose} style={{ background: 'rgba(10,8,6,.72)', zIndex: 400 }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: '#17120f', borderRadius: 20, maxWidth: 440, width: '100%',
+        border: '1.5px solid rgba(201,169,110,.35)', boxShadow: '0 16px 56px rgba(0,0,0,.55)',
+        padding: '2.25rem 2rem 2rem', position: 'relative',
+      }}>
+        <button onClick={onClose} style={{
+          position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.08)',
+          border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer',
+          color: '#fff', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>×</button>
+
+        <div style={{ fontSize: '2.4rem', lineHeight: 1, marginBottom: '1rem' }}>{cfg.icon}</div>
+        <div style={{ fontFamily: 'system-ui,sans-serif', fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: '#c9a96e', marginBottom: '.4rem' }}>
+          Plan Premium
+        </div>
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', margin: '0 0 1.25rem', lineHeight: 1.2 }}>
+          {cfg.title}
+        </h2>
+
+        <ul style={{ margin: '0 0 1.75rem', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '.7rem' }}>
+          {cfg.bullets.map((b, i) => (
+            <li key={i} style={{ display: 'flex', gap: '.65rem', alignItems: 'flex-start' }}>
+              <span style={{ width: 18, height: 18, flexShrink: 0, marginTop: 2 }}>
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <circle cx="9" cy="9" r="9" fill="#c9a96e" fillOpacity=".18" />
+                  <path d="M5.5 9l2.5 2.5 4.5-5" stroke="#c9a96e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <span style={{ fontFamily: 'system-ui,sans-serif', fontSize: '.88rem', color: '#d4c8b0', lineHeight: 1.55 }}>{b}</span>
+            </li>
+          ))}
+        </ul>
+
+        <a href="/planes" target="_blank" rel="noreferrer" onClick={onClose} style={{
+          display: 'block', textAlign: 'center', fontFamily: 'system-ui,sans-serif',
+          fontWeight: 700, fontSize: '.95rem', color: '#17120f',
+          background: '#c9a96e', borderRadius: 10, padding: '13px 0', textDecoration: 'none',
+          marginBottom: '.85rem',
+        }}>
+          Ver planes y precios →
+        </a>
+        <button onClick={onClose} style={{
+          display: 'block', width: '100%', background: 'transparent', border: 'none',
+          fontFamily: 'system-ui,sans-serif', fontSize: '.82rem', color: 'rgba(255,255,255,.35)',
+          cursor: 'pointer', padding: '4px 0',
+        }}>
+          Ahora no
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function CambiarPassword() {
   const [pass1, setPass1]   = useState('')
   const [pass2, setPass2]   = useState('')
@@ -200,6 +297,7 @@ function CambiarPassword() {
 
 function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
   const esPremium = !tienda?.plan || tienda.plan === 'premium' || tienda.plan === 'trial'
+  const [ajustesUpgradeModal, setAjustesUpgradeModal] = useState(null)
   const [ajustes, setAjustes] = useState({
     nombre:         tienda?.nombre         || '',
     ciudad:         tienda?.ciudad         || '',
@@ -305,6 +403,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
   const fontCss    = FUENTES.find(f => f.id === ajustes.font_family)?.css || FUENTES[0].css
 
   return (
+    <>
     <div className={styles.ajustesWrap}>
       {/* ── Panel izquierdo ── */}
       <div className={styles.ajustesPanelLeft}>
@@ -514,17 +613,23 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
             )}
           </div>
         ) : (
-          <PremiumLock>
-            <div className={styles.ajustesSec}>
-              <p className={styles.ajustesSecTitulo}>Informe semanal por email</p>
-              <div className={styles.ajustesFormGrid}>
-                <div className={styles.ajustesFormField}>
-                  <label>Email donde recibir el informe</label>
-                  <input type="email" disabled placeholder="Disponible en plan Premium" />
+          <div style={{ position: 'relative' }}>
+            <div style={{ opacity: .45, pointerEvents: 'none', userSelect: 'none' }}>
+              <div className={styles.ajustesSec}>
+                <p className={styles.ajustesSecTitulo}>Informe semanal por email</p>
+                <div className={styles.ajustesFormGrid}>
+                  <div className={styles.ajustesFormField}>
+                    <label>Email donde recibir el informe</label>
+                    <input type="email" disabled placeholder="Disponible en plan Premium" />
+                  </div>
                 </div>
               </div>
             </div>
-          </PremiumLock>
+            <button onClick={() => setAjustesUpgradeModal('informe')} style={{
+              position: 'absolute', inset: 0, width: '100%', background: 'transparent',
+              border: 'none', cursor: 'pointer',
+            }} aria-label="Ver plan Premium" />
+          </div>
         )}
 
         {/* Widget embebible — solo Premium */}
@@ -549,17 +654,23 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
             })()}
           </div>
         ) : (
-          <PremiumLock>
-            <div className={styles.ajustesSec}>
-              <p className={styles.ajustesSecTitulo}>Widget para tu web</p>
-              <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
-                Añade el kiosko como botón flotante en tu web. Disponible en plan Premium.
-              </p>
-              <div className={styles.widgetEmbedBox} style={{ opacity: .45 }}>
-                <code className={styles.widgetEmbedCode}>&lt;script src=&quot;...&quot;&gt;&lt;/script&gt;</code>
+          <div style={{ position: 'relative' }}>
+            <div style={{ opacity: .45, pointerEvents: 'none', userSelect: 'none' }}>
+              <div className={styles.ajustesSec}>
+                <p className={styles.ajustesSecTitulo}>Widget para tu web</p>
+                <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
+                  Añade el kiosko como botón flotante en tu web. Disponible en plan Premium.
+                </p>
+                <div className={styles.widgetEmbedBox}>
+                  <code className={styles.widgetEmbedCode}>&lt;script src=&quot;...&quot;&gt;&lt;/script&gt;</code>
+                </div>
               </div>
             </div>
-          </PremiumLock>
+            <button onClick={() => setAjustesUpgradeModal('widget')} style={{
+              position: 'absolute', inset: 0, width: '100%', background: 'transparent',
+              border: 'none', cursor: 'pointer',
+            }} aria-label="Ver plan Premium" />
+          </div>
         )}
 
         {/* Guardar */}
@@ -634,6 +745,8 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         </div>
       </div>
     </div>
+    {ajustesUpgradeModal && <UpgradeModal feature={ajustesUpgradeModal} onClose={() => setAjustesUpgradeModal(null)} />}
+    </>
   )
 }
 
@@ -823,6 +936,7 @@ export default function AdminKioskoPage() {
   const fotoVinoTargetRef = useRef(null)
 
   const [tab, setTab]               = useState('catalogo')
+  const [upgradeModal, setUpgradeModal] = useState(null)
   const [analitica, setAnalitica]   = useState(null)
   const [analiticaLoad, setAnaliticaLoad] = useState(false)
   const [leads, setLeads]           = useState(null)
@@ -2028,11 +2142,11 @@ export default function AdminKioskoPage() {
           </button>
         )}
         <button type="button" className={`${styles.tabBtn} ${tab === 'analitica' ? styles.tabBtnActive : ''}`}
-          onClick={() => { setTab('analitica'); if (esPremium && !analitica && !analiticaLoad) cargarAnalitica() }}>
+          onClick={() => { if (!esPremium) { setUpgradeModal('analitica'); return } setTab('analitica'); if (!analitica && !analiticaLoad) cargarAnalitica() }}>
           Analítica{!esPremium && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'leads' ? styles.tabBtnActive : ''}`}
-          onClick={() => { setTab('leads'); if (!leads && !leadsLoad) cargarLeads() }}>
+          onClick={() => { if (!esPremium) { setUpgradeModal('leads'); return } setTab('leads'); if (!leads && !leadsLoad) cargarLeads() }}>
           Leads{!esPremium && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'ajustes' ? styles.tabBtnActive : ''}`} onClick={() => setTab('ajustes')}>
@@ -2162,7 +2276,9 @@ export default function AdminKioskoPage() {
             <span className={styles.premiumGateIcon}>📊</span>
             <p className={styles.premiumGateTitle}>Analítica — Plan Premium</p>
             <p className={styles.premiumGateDesc}>Accede a búsquedas, vinos más recomendados, tendencias semanales, predicción de agotamiento y alertas de stock.</p>
-            <span className={styles.premiumGateBadge}>Premium</span>
+            <button onClick={() => setUpgradeModal('analitica')} className={styles.premiumGateCta}>
+              Ver qué incluye Premium →
+            </button>
           </div>
         </div>
       )}
@@ -3102,9 +3218,15 @@ export default function AdminKioskoPage() {
       )}
 
       {tab === 'leads' && !esPremium && (
-        <div style={{ padding: '2rem 1.75rem', textAlign: 'center' }}>
-          <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1a1a2e', margin: '0 0 .5rem' }}>Función Premium</p>
-          <p style={{ fontSize: '.85rem', color: '#888', margin: 0 }}>Suscríbete al plan Premium para captar y gestionar leads de tus clientes.</p>
+        <div className={styles.premiumGateWrap}>
+          <div className={styles.premiumGateBox}>
+            <span className={styles.premiumGateIcon}>📧</span>
+            <p className={styles.premiumGateTitle}>Captación de clientes — Plan Premium</p>
+            <p className={styles.premiumGateDesc}>Recoge emails con consentimiento RGPD, envía la selección de vino al instante y construye tu base de clientes fieles.</p>
+            <button onClick={() => setUpgradeModal('leads')} className={styles.premiumGateCta}>
+              Ver qué incluye Premium →
+            </button>
+          </div>
         </div>
       )}
 
@@ -4207,6 +4329,9 @@ export default function AdminKioskoPage() {
           </div>
         </div>
       )}
+
+      {/* Modal upgrade Premium */}
+      {upgradeModal && <UpgradeModal feature={upgradeModal} onClose={() => setUpgradeModal(null)} />}
     </div>
   )
 }
