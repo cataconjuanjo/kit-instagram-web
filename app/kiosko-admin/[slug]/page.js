@@ -3524,7 +3524,7 @@ export default function AdminKioskoPage() {
                     </label>
                     {modoImport === 'reemplazar' && (
                       <p className={styles.importWarning}>
-                        ⚠ Esto borrará los {vinos.length} vinos actuales y los reemplazará con el contenido del archivo.
+                        ⚠ Esto borrará los {vinosVino.length} vinos del catálogo y los reemplazará con el archivo. Los productos de &ldquo;Otros&rdquo; (gourmet, Square) no se borran.
                       </p>
                     )}
                   </div>
