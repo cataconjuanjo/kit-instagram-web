@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import { supabaseAdmin } from './supabaseAdmin'
 
 const FALLBACK_OG_IMAGE = '/assets/og-carta-viva-2026.jpg'
@@ -62,7 +63,7 @@ function metadataFallback(tipo, slug) {
   }
 }
 
-async function cargarRestauranteSeo(slug) {
+async function consultarRestauranteSeo(slug) {
   if (!slugValido(slug)) return null
   const { data, error } = await supabaseAdmin
     .from('restaurantes')
@@ -81,6 +82,15 @@ async function cargarRestauranteSeo(slug) {
 
   return data || null
 }
+
+const cargarRestauranteSeo = unstable_cache(
+  consultarRestauranteSeo,
+  ['public-restaurant-seo'],
+  {
+    revalidate: 60,
+    tags: ['public-restaurant-seo'],
+  }
+)
 
 export async function metadataCartaPublica(slug) {
   const restaurante = await cargarRestauranteSeo(slug)
