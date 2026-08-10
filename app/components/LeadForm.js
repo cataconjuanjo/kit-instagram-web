@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 
 export default function LeadForm({
@@ -21,12 +22,12 @@ export default function LeadForm({
   ],
   mensajeLabel = 'Qué necesitas',
 }) {
-  const [form, setForm] = useState({ nombre: '', email: '', restaurante: '', referencias: '', problema: '', mensaje: '' })
+  const [form, setForm] = useState({ nombre: '', email: '', restaurante: '', referencias: '', problema: '', mensaje: '', consentimiento: false })
   const [estado, setEstado] = useState('idle')
 
   async function enviar(event) {
     event.preventDefault()
-    if (!form.nombre || !form.email || !form.restaurante) return
+    if (!form.nombre || !form.email || !form.restaurante || !form.consentimiento) return
     setEstado('sending')
     try {
       const res = await fetch('/api/contacto', {
@@ -43,6 +44,7 @@ export default function LeadForm({
             '',
             `Origen: ${source}`,
           ].join('\n'),
+          consentimiento: form.consentimiento,
         }),
       })
       const data = await res.json()
@@ -101,7 +103,37 @@ export default function LeadForm({
         <textarea rows={5} value={form.mensaje} onChange={(e) => setForm({ ...form, mensaje: e.target.value })} />
       </label>
       {estado === 'error' && <p className="form-error">No se ha podido enviar. Escríbeme directamente a cataconjuanjo@gmail.com.</p>}
-      <button type="submit" className="btn btn-primary" disabled={estado === 'sending'}>
+      <label
+        className="lead-form-consent"
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          color: 'rgba(255,255,255,0.66)',
+          fontSize: '0.76rem',
+          lineHeight: 1.45,
+          letterSpacing: 0,
+          textTransform: 'none',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={form.consentimiento}
+          onChange={(e) => setForm({ ...form, consentimiento: e.target.checked })}
+          required
+          style={{
+            width: 16,
+            minWidth: 16,
+            height: 16,
+            marginTop: 2,
+            accentColor: '#fff',
+          }}
+        />
+        <span>
+          He leido la <Link href="/privacidad" style={{ color: '#fff', textDecoration: 'underline', textUnderlineOffset: 3 }}>politica de privacidad</Link> y acepto que mis datos se usen para responder a esta solicitud.
+        </span>
+      </label>
+      <button type="submit" className="btn btn-primary" disabled={estado === 'sending' || !form.consentimiento}>
         {estado === 'sending' ? 'Enviando...' : cta}
       </button>
       <p className="lead-form-privacy">

@@ -45,6 +45,12 @@ export default function sitemap() {
       changeFrequency: 'yearly',
       priority: 0.2,
     },
+    {
+      url: `${base}/terminos`,
+      lastModified: new Date(),
+      changeFrequency: 'yearly',
+      priority: 0.2,
+    },
   ]
 
   const resourceRoutes = recursos.map((recurso) => ({

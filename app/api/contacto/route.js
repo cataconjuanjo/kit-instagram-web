@@ -38,7 +38,7 @@ function escapeHtml(value = '') {
 }
 
 export async function POST(req) {
-  const { nombre, email, restaurante, mensaje, source } = await req.json()
+  const { nombre, email, restaurante, mensaje, source, consentimiento } = await req.json()
 
   try {
     const nombreLimpio = String(nombre || '').trim().slice(0, 120)
@@ -49,6 +49,10 @@ export async function POST(req) {
 
     if (!nombreLimpio || !emailLimpio || !mensajeLimpio || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLimpio)) {
       return Response.json({ ok: false, error: 'Datos no validos.' }, { status: 400 })
+    }
+
+    if (consentimiento !== true) {
+      return Response.json({ ok: false, error: 'Se requiere aceptar la politica de privacidad.' }, { status: 400 })
     }
 
     const allowed = await checkRateLimit(getIP(req))
@@ -66,6 +70,7 @@ export async function POST(req) {
         <p><strong>Email:</strong> ${escapeHtml(emailLimpio)}</p>
         <p><strong>Restaurante:</strong> ${escapeHtml(restauranteLimpio)}</p>
         <p><strong>Origen:</strong> ${escapeHtml(sourceLimpio || 'No indicado')}</p>
+        <p><strong>Consentimiento:</strong> Politica de privacidad aceptada en formulario web.</p>
         <p><strong>Mensaje:</strong></p>
         <p>${escapeHtml(mensajeLimpio).replace(/\n/g, '<br>')}</p>
       `
