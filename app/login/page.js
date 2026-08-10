@@ -18,13 +18,38 @@ export default function Login() {
     event.preventDefault()
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError('Email o contraseña incorrectos')
+    const emailLimpio = email.trim().toLowerCase()
+
+    let data = null
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailLimpio, password }),
+      })
+      data = await res.json().catch(() => null)
+      if (!res.ok || !data?.session) {
+        setError(data?.error || 'Email o contraseña incorrecta.')
+        setLoading(false)
+        return
+      }
+    } catch {
+      setError('No se pudo iniciar sesión. Inténtalo de nuevo.')
+      setLoading(false)
+      return
+    }
+
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    })
+
+    if (sessionError) {
+      setError('No se pudo iniciar sesión. Inténtalo de nuevo.')
     } else {
       clearAdminRestaurantEmail()
       clearDemoEmail()
-      if (isAdminEmail(email)) {
+      if (isAdminEmail(emailLimpio)) {
         window.location.href = '/admin/consultoria'
       } else {
         // Comprobar si este usuario tiene un kiosko asociado
