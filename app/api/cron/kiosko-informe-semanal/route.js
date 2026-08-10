@@ -7,7 +7,10 @@ const FROM   = 'Kiosko Vinos <kiosko@cataconjuanjo.com>'
 
 export async function GET(request) {
   const auth = request.headers.get('authorization')
-  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET) {
+    return NextResponse.json({ error: 'CRON_SECRET no configurado' }, { status: 503 })
+  }
+  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

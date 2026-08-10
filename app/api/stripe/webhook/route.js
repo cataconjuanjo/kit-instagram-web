@@ -126,6 +126,9 @@ export async function POST(req) {
   if (!process.env.STRIPE_SECRET_KEY) {
     return new Response('Stripe no configurado.', { status: 503 })
   }
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    return new Response('Stripe webhook no configurado.', { status: 503 })
+  }
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
   const body      = await req.text()

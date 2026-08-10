@@ -10,8 +10,8 @@ const SQUARE_API_BASE        = 'https://connect.squareup.com'
 // ── Signature verification ────────────────────────────────────────────────────
 function verifySignature(rawBody, signatureHeader, webhookUrl) {
   if (!SQUARE_SIGNATURE_KEY) {
-    console.warn('[square-webhook] SQUARE_WEBHOOK_SIGNATURE_KEY no configurada — verificación desactivada')
-    return true
+    console.error('[square-webhook] SQUARE_WEBHOOK_SIGNATURE_KEY no configurada')
+    return false
   }
   const expected = crypto
     .createHmac('sha256', SQUARE_SIGNATURE_KEY)
@@ -107,6 +107,10 @@ async function handleInventoryUpdate(event) {
 
 // ── POST handler ──────────────────────────────────────────────────────────────
 export async function POST(request) {
+  if (!SQUARE_SIGNATURE_KEY) {
+    return NextResponse.json({ error: 'SQUARE_WEBHOOK_SIGNATURE_KEY no configurada' }, { status: 503 })
+  }
+
   const rawBody = await request.text()
   const sig     = request.headers.get('x-square-hmacsha256-signature') || ''
   const url     = `${request.nextUrl.protocol}//${request.nextUrl.host}/api/webhooks/square`
