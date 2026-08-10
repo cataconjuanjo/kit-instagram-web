@@ -93,14 +93,13 @@ function detectarCategoria(itemData, categoryMap) {
   return 'otro'
 }
 
-// squareToken: token específico de la tienda; fallback al env global para compatibilidad
 export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   const token = squareToken || process.env.SQUARE_ACCESS_TOKEN
   if (!token) throw new Error('No hay token de Square configurado para esta tienda')
 
   const { items: rawItems, imageMap, categoryMap } = await fetchAllCatalogItems(token)
 
-  // Deduplicar items por id (la paginación de Square puede devolver duplicados entre páginas)
+  // Dedup por id (paginación puede devolver duplicados)
   const seenItemIds = new Set()
   const items = rawItems.filter(item => {
     if (seenItemIds.has(item.id)) return false
@@ -108,7 +107,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     return true
   })
   if (rawItems.length !== items.length) {
-    console.warn(`[square-sync] dedup: ${rawItems.length - items.length} items duplicados eliminados`)
+    console.warn(`[square-sync] dedup: ${rawItems.length - items.length} duplicados eliminados`)
   }
 
   const variationIds = [], variationToItem = {}, itemToVariation = {}
@@ -129,22 +128,23 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     if (itemId !== undefined) itemStockMap[itemId] = qty
   }
 
+  // Leer TODAS las filas de esta tienda para construir los mapas de existentes
   const { data: existentes, error: existError } = await supabaseAdmin
     .from('vinos_tienda')
     .select('id, square_catalog_id, square_variation_id, categoria')
     .eq('tienda_id', tiendaId)
-    .or('square_catalog_id.not.is.null,square_variation_id.not.is.null')
     .limit(10000)
   if (existError) throw new Error(`Leyendo existentes: ${existError.message}`)
 
   const existingByCatalog   = {}
   const existingByVariation = {}
   for (const v of (existentes || [])) {
-    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]     = { id: v.id, categoria: v.categoria }
+    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria }
     if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria }
   }
 
-  const toInsert = [], toUpdate = []
+  const toUpsertById = []   // filas ya existentes: upsert por id (sin riesgo de conflicto de índices)
+  const toInsertNew  = []   // filas genuinamente nuevas
 
   for (const item of items) {
     if (item.type !== 'ITEM') continue
@@ -153,59 +153,64 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     if (!rawNombre) continue
 
     const { nombre, uva, bodega, region, pais } = parsearNombreSquare(rawNombre)
-    const variationId = itemToVariation[item.id] || null
-    const varData     = (d.variations || []).find(v => !v.is_deleted)?.item_variation_data
-    const precioCents = varData?.price_money?.amount
-    const precio_pvp  = precioCents ? +(precioCents / 100).toFixed(2) : null
-    const descripcion = d.description_plaintext || d.description || null
-    const foto_url    = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
-    const stock       = itemStockMap[item.id] ?? 0
-    const categoriaDetectada = detectarCategoria(d, categoryMap)
+    const variationId  = itemToVariation[item.id] || null
+    const varData      = (d.variations || []).find(v => !v.is_deleted)?.item_variation_data
+    const precioCents  = varData?.price_money?.amount
+    const precio_pvp   = precioCents ? +(precioCents / 100).toFixed(2) : null
+    const descripcion  = d.description_plaintext || d.description || null
+    const foto_url     = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
+    const stock        = itemStockMap[item.id] ?? 0
+    const catDetectada = detectarCategoria(d, categoryMap)
 
-    const baseFields = {
-      nombre, precio_pvp, descripcion, stock,
+    const existing    = existingByCatalog[item.id] || (variationId ? existingByVariation[variationId] : null)
+    const catEfectiva = existing?.categoria || catDetectada
+    const activo      = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
+
+    const fields = {
+      tienda_id:           tiendaId,
+      square_catalog_id:   item.id,
       square_variation_id: variationId,
+      nombre, precio_pvp, descripcion, stock, activo,
+      categoria:  catEfectiva,
+      uva:        uva    || null,
+      bodega:     bodega || null,
+      region:     region || null,
+      pais:       pais   || null,
       ...(foto_url && { foto_url }),
       updated_at: new Date().toISOString(),
     }
 
-    const existing = existingByCatalog[item.id] || (variationId ? existingByVariation[variationId] : null)
     if (existing) {
-      const catEfectiva = existing.categoria || categoriaDetectada
-      const activo = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
-      toUpdate.push({ id: existing.id, tienda_id: tiendaId, square_catalog_id: item.id, ...baseFields, activo })
+      toUpsertById.push({ id: existing.id, ...fields })
     } else {
-      const activo = !item.is_deleted && (categoriaDetectada !== 'vino' || stock > 0)
-      toInsert.push({
-        tienda_id: tiendaId, square_catalog_id: item.id, stock, categoria: categoriaDetectada, activo,
-        ...(uva    && { uva }),
-        ...(bodega && { bodega }),
-        ...(region && { region }),
-        ...(pais   && { pais }),
-        ...baseFields,
-      })
+      toInsertNew.push(fields)
     }
   }
 
-  let insertados = 0, actualizados = 0, errores = 0
+  const countNuevos = toInsertNew.length
+  const countAct    = toUpsertById.length
 
-  if (toInsert.length > 0) {
-    const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
-    if (error) { console.error('[square-sync] insert error:', error.message); errores += toInsert.length }
-    else insertados = toInsert.length
+  let errores = 0
+  const BATCH = 500
+
+  for (let i = 0; i < toUpsertById.length; i += BATCH) {
+    const chunk = toUpsertById.slice(i, i + BATCH)
+    const { error } = await supabaseAdmin.from('vinos_tienda').upsert(chunk, { onConflict: 'id' })
+    if (error) { console.error('[square-sync] upsert(id) error:', error.message); errores += chunk.length }
   }
 
-  if (toUpdate.length > 0) {
-    const { error } = await supabaseAdmin
-      .from('vinos_tienda')
-      .upsert(toUpdate, { onConflict: 'id' })
-    if (error) { console.error('[square-sync] upsert error:', error.message); errores += toUpdate.length }
-    else actualizados = toUpdate.length
+  for (let i = 0; i < toInsertNew.length; i += BATCH) {
+    const chunk = toInsertNew.slice(i, i + BATCH)
+    const { error } = await supabaseAdmin.from('vinos_tienda').insert(chunk)
+    if (error) {
+      console.error('[square-sync] insert error:', error.message, '|code:', error.code, '|detail:', error.details)
+      errores += chunk.length
+    }
   }
 
   const stockSincronizados = Object.keys(itemStockMap).length
   const slug = tiendaSlug || tiendaId
-  console.log(`[square-sync] ${slug}: ${insertados} nuevos, ${actualizados} act., ${errores} errores, ${stockSincronizados} stock`)
+  console.log(`[square-sync] ${slug}: ${countNuevos} nuevos, ${countAct} act., ${errores} errores, ${stockSincronizados} stock`)
 
-  return { ok: errores === 0, insertados, actualizados, errores, total: items.length, stockSincronizados }
+  return { ok: errores === 0, insertados: countNuevos, actualizados: countAct, errores, total: items.length, stockSincronizados }
 }

@@ -4800,6 +4800,69 @@ button.itemCard {
   object-fit: contain;
 }
 
+.labelCropper {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.labelCropperStage {
+  width: min(100%, 320px);
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: 1px solid #e2d8c9;
+  border-radius: 8px;
+  background: #f8f4ea;
+  box-shadow: 0 12px 30px rgba(23, 13, 8, 0.10);
+}
+
+.labelCropperCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  background: #f8f4ea;
+}
+
+.labelCropperCanvas:active {
+  cursor: grabbing;
+}
+
+.labelCropperControls {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #eee6da;
+  border-radius: 8px;
+  background: #fffdf8;
+}
+
+.labelCropperControls label {
+  color: #756d63;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.labelCropperControls input[type="range"] {
+  width: 100%;
+  accent-color: #74223d;
+}
+
+.labelCropperHint {
+  grid-column: 2;
+  margin: -8px 0 0;
+  color: #8b8278;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .menuPage {
   max-width: 860px;
   width: 100%;
@@ -4850,6 +4913,20 @@ button.itemCard {
 }
 
 @media (max-width: 980px) {
+  .labelCropper {
+    grid-template-columns: 1fr;
+  }
+
+  .labelCropperStage {
+    width: min(100%, 280px);
+    justify-self: center;
+  }
+
+  .labelCropperHint {
+    grid-column: 1;
+    margin-top: -4px;
+  }
+
   .hero,
   .gridTwo,
   .gridThree,

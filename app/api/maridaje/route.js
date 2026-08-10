@@ -8,6 +8,7 @@ import { origenConsumoCarta } from '../../lib/cartaPruebaToken'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { guardarAtribucionDesdeEventos } from '../../lib/recommendationAttribution'
 import { isLargeFormatWine } from '../../lib/wineFormat'
+import { limpiarMarcadorPerfiles } from '../../lib/wineProfileTags'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -62,7 +63,7 @@ function lineaVino(vino, soloCopa = false) {
     vino.anada ? `añada: ${vino.anada}` : '',
     vino.precio_copa ? `copa: ${vino.precio_copa}€` : '',
     soloCopa ? '' : `botella: ${vino.precio_botella}€`,
-    vino.notas_cata ? `notas: ${vino.notas_cata}` : '',
+    limpiarMarcadorPerfiles(vino.notas_cata) ? `notas: ${limpiarMarcadorPerfiles(vino.notas_cata)}` : '',
   ].filter(Boolean).join(', ')})`
 }
 
@@ -71,6 +72,34 @@ function lineaPlato(plato) {
 }
 
 // ── Prompt maestro — basado en metodología Chartier ───────────────────────
+const REGLA_CONTEXTO_TEMPORAL_ES = 'No menciones horas, dias ni momentos subjetivos del servicio: evita "hoy", "esta noche", "esta cena" o "esta comida". Usa formulas neutras como "estos platos", "esta eleccion", "esta mesa" o "el conjunto".'
+const REGLA_CONTEXTO_TEMPORAL_EN = 'Do not mention hours, days or subjective service moments: avoid "today", "tonight", "this dinner" or "this lunch". Use neutral wording such as "these dishes", "this selection", "this table" or "the set".'
+
+function limpiarMencionesTemporales(texto = '') {
+  return String(texto || '')
+    .replace(/\bpara\s+esta\s+noche\b/gi, 'para esta eleccion')
+    .replace(/\besta\s+noche\b/gi, 'esta eleccion')
+    .replace(/\bpara\s+esta\s+cena\b/gi, 'para estos platos')
+    .replace(/\besta\s+cena\b/gi, 'esta seleccion')
+    .replace(/\bpara\s+esta\s+comida\b/gi, 'para estos platos')
+    .replace(/\besta\s+comida\b/gi, 'esta seleccion')
+    .replace(/\bpara\s+hoy\b/gi, 'para estos platos')
+    .replace(/\bhoy\b/gi, '')
+    .replace(/\bfor\s+tonight\b/gi, 'for this selection')
+    .replace(/\btonight\b/gi, 'this selection')
+    .replace(/\bfor\s+this\s+dinner\b/gi, 'for these dishes')
+    .replace(/\bthis\s+dinner\b/gi, 'this selection')
+    .replace(/\bfor\s+this\s+lunch\b/gi, 'for these dishes')
+    .replace(/\bthis\s+lunch\b/gi, 'this selection')
+    .replace(/\bfor\s+this\s+meal\b/gi, 'for these dishes')
+    .replace(/\bthis\s+meal\b/gi, 'this selection')
+    .replace(/\bfor\s+today\b/gi, 'for these dishes')
+    .replace(/\btoday\b/gi, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+([,.])/g, '$1')
+    .trim()
+}
+
 function limpiarPrefijoRecomendacion(linea = '') {
   return String(linea).trim().replace(/^(?:[-*•]\s*|\d+[.)]\s*)/, '')
 }
@@ -202,6 +231,7 @@ Voice:
 - Use everyday sensory words: fresh, juicy, saline, soft, smoky, creamy, clean, light, deep.
 - Avoid jargon. Do not mention molecules, aromatic families, lactones, terpenes or methodology.
 - Make the guest feel safe, especially if they do not usually drink wine.
+- ${REGLA_CONTEXTO_TEMPORAL_EN}
 
 FORMAT — exactly this, nothing more:
 [Wine name] — [1 natural sentence explaining why it will taste good with the dish]. ${precioLabel}
@@ -248,6 +278,7 @@ Voz:
 - Usa palabras sensoriales sencillas: fresco, jugoso, salino, suave, ahumado, cremoso, limpio, ligero, profundo.
 - Evita tecnicismos. No menciones moléculas, familias aromáticas, lactonas, terpenos ni metodología.
 - Haz que el cliente no habitual se sienta seguro, no examinado.
+- ${REGLA_CONTEXTO_TEMPORAL_ES}
 
 FORMATO — exactamente esto, nada más:
 [Nombre del vino] — [1 frase natural explicando por qué va a estar rico con el plato]. ${precioLabelEs}
@@ -273,6 +304,7 @@ Each wine must pair with its dish AND flow naturally from the previous glass to 
 Avoid repeating the same wine twice unless the list is very small.
 
 Voice: calm sommelier at the table. Sensory words only. No jargon, no methodology names.
+${REGLA_CONTEXTO_TEMPORAL_EN}
 
 FORMAT — exactly this, one line per dish, nothing more:
 1. [Wine name] with [dish] — [1 sentence: why it pairs and how it connects to what follows]. [copa price]€/glass
@@ -295,6 +327,7 @@ Cada vino debe maridar con su plato Y encadenar bien con la copa anterior y la s
 No repitas el mismo vino dos veces salvo que la carta sea muy pequeña.
 
 Voz: sumiller tranquilo en mesa. Solo palabras sensoriales. Sin tecnicismos ni nombres de metodología.
+${REGLA_CONTEXTO_TEMPORAL_ES}
 
 FORMATO — exactamente este, una línea por plato, nada más:
 1. [Nombre del vino] con [plato] — [1 frase: por qué marida y cómo enlaza con lo siguiente]. [precio copa]€/copa
@@ -320,6 +353,7 @@ Reasoning:
 4. If the fit is not reliable, do not include that dish.
 
 Voice: natural table language, sensory and concise. No technical method names.
+${REGLA_CONTEXTO_TEMPORAL_EN}
 
 FORMAT - repeat this format for 5 or 6 dishes, ordered from strongest fit to lighter alternative:
 [Dish name] — [1 natural sentence explaining why it fits that wine]. [price]€
@@ -340,6 +374,7 @@ Razonamiento:
 4. Si el encaje no es fiable, no incluyas ese plato.
 
 Voz: lenguaje natural de mesa, sensorial y concreto. Sin nombres de metodologias.
+${REGLA_CONTEXTO_TEMPORAL_ES}
 
 FORMATO - repite este formato para 5 o 6 platos, ordenados del encaje mas fuerte a la alternativa mas ligera:
 [Nombre del plato] — [1 frase natural explicando por que encaja con ese vino]. [precio]€
@@ -652,9 +687,10 @@ export async function POST(request) {
     })
 
     const respuestaClaude = msg.content?.[0]?.text || ''
-    const textoRespuesta = (esSeguimiento || esSucesion || esModoPlatosParaVino)
+    const textoRespuestaBase = (esSeguimiento || esSucesion || esModoPlatosParaVino)
       ? respuestaClaude
       : respuestaSoloConCarta(respuestaClaude, vinosParaClaude, fallbackCandidatos, idioma, soloCopa)
+    const textoRespuesta = limpiarMencionesTemporales(textoRespuestaBase)
 
     // ── Devolver como SSE para que el cliente lo lea igual que antes ──────
     const encoder = new TextEncoder()

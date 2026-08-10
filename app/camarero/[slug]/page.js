@@ -18,6 +18,7 @@ import { consultarMaridajeGrafo } from '../../lib/maridajeGraphClient'
 import { isLocalWine } from '../../lib/wineRegion'
 import { bonusChartierFamilias } from '../../data/chartierFamilias'
 import { isLargeFormatWine } from '../../lib/wineFormat'
+import { limpiarMarcadorPerfiles, textoVinoParaMaridaje } from '../../lib/wineProfileTags'
 import { cargarDatosCamarero, cargarHistorialCamarero, solicitarSesionCamarero } from '../../lib/camareroClient'
 import {
   calcularAjusteAprendizajeVenta,
@@ -791,7 +792,7 @@ export default function Camarero() {
   }
 
   function ajustePreferenciasCliente(vino) {
-    const textoVino = normalizar(`${vino.nombre || ''} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
+    const textoVino = normalizar(textoVinoParaMaridaje(vino))
     let score = 0
     const motivos = []
 
@@ -882,7 +883,7 @@ export default function Camarero() {
     .filter(plato => plato.activo !== false)
 
   function compatibilidadContexto(vino, contexto, consultaNormalizada) {
-    const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
+    const textoVino = normalizar(textoVinoParaMaridaje(vino))
     const esTawnyOPorto = textoVino.includes('tawny') || textoVino.includes('porto') || textoVino.includes('oporto')
     const generosoSeco = esGenerosoSeco(vino, textoVino)
     const esPx = !generosoSeco && (
@@ -1026,7 +1027,7 @@ export default function Camarero() {
   }
 
   function motivoMesaVenta(vino, numeroPlatos, consultaNormalizada) {
-    const textoVino = normalizar(`${vino.nombre || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
+    const textoVino = normalizar(textoVinoParaMaridaje(vino))
     const metodo = metodosPlato(consultaNormalizada)
     const platos = numeroPlatos > 1 ? `${numeroPlatos} platos` : 'la mesa'
 
@@ -1078,7 +1079,7 @@ export default function Camarero() {
   }
 
   function puntuarParaVenta(vino, matchesKb, objetivo, precioMedio, contexto, consultaNormalizada, rangoTicket = null) {
-    const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
+    const textoVino = normalizar(textoVinoParaMaridaje(vino))
     let score = 0
     let motivo = 'buena elección para este tipo de plato'
     let fuente = ''
@@ -1476,7 +1477,7 @@ export default function Camarero() {
       return esJamonCurado(texto) || contexto === 'aperitivo' || contexto === 'fritura' || metodo.frito || metodo.gratinado || contexto === 'pescado'
     })
     const esVinoSalinoOBurbuja = vino => {
-      const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
+      const textoVino = normalizar(textoVinoParaMaridaje(vino))
       return esGenerosoSeco(vino, textoVino) || esEspumosoSeco(vino, textoVino)
     }
     const esUpsellTicket = vino => precioBotella(vino) >= umbralUpsell
@@ -1924,10 +1925,10 @@ export default function Camarero() {
             </div>
           ))}
         </div>
-        {vinoSeleccionado.notas_cata && (
+        {limpiarMarcadorPerfiles(vinoSeleccionado.notas_cata) && (
           <div style={{ marginTop: 20, padding: '16px', background: '#1a1a1a', borderRadius: 8 }}>
             <p style={{ fontSize: 10, color: '#555', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 10px' }}>Notas de cata</p>
-            <p style={{ fontSize: 14, color: '#aaa', lineHeight: 1.8, margin: 0, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>{vinoSeleccionado.notas_cata}</p>
+            <p style={{ fontSize: 14, color: '#aaa', lineHeight: 1.8, margin: 0, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>{limpiarMarcadorPerfiles(vinoSeleccionado.notas_cata)}</p>
           </div>
         )}
         <button type="button" onClick={() => toggleComparador(vinoSeleccionado)}
