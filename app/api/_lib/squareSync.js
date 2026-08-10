@@ -98,7 +98,18 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   const token = squareToken || process.env.SQUARE_ACCESS_TOKEN
   if (!token) throw new Error('No hay token de Square configurado para esta tienda')
 
-  const { items, imageMap, categoryMap } = await fetchAllCatalogItems(token)
+  const { items: rawItems, imageMap, categoryMap } = await fetchAllCatalogItems(token)
+
+  // Deduplicar items por id (la paginación de Square puede devolver duplicados entre páginas)
+  const seenItemIds = new Set()
+  const items = rawItems.filter(item => {
+    if (seenItemIds.has(item.id)) return false
+    seenItemIds.add(item.id)
+    return true
+  })
+  if (rawItems.length !== items.length) {
+    console.warn(`[square-sync] dedup: ${rawItems.length - items.length} items duplicados eliminados`)
+  }
 
   const variationIds = [], variationToItem = {}, itemToVariation = {}
   for (const item of items) {
