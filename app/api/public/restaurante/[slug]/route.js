@@ -5,6 +5,7 @@ import { puedePublicarCarta, resumirContenidoCarta } from '../../../../lib/publi
 import { experienciaPublicaDesdePlan } from '../../../../lib/experienceTemplates'
 import { isInternationalWine } from '../../../../lib/wineRegion'
 import { limpiarMarcadorPerfiles, resolverPerfilesVino } from '../../../../lib/wineProfileTags'
+import { noStoreHeaders, publicCdnCacheHeaders } from '../../../../lib/publicCacheHeaders'
 
 const CAMPOS_RESTAURANTE = [
   'id', 'slug', 'nombre', 'ciudad',
@@ -265,7 +266,9 @@ export async function GET(req, { params }) {
     }
 
     return Response.json(respuesta, {
-      headers: { 'Cache-Control': 'no-store' },
+      headers: tokenPrueba
+        ? noStoreHeaders()
+        : publicCdnCacheHeaders({ cdnMaxAge: 60, staleWhileRevalidate: 300 }),
     })
   } catch (error) {
     console.error('[public-restaurante]', error)

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { publicCdnCacheHeaders } from '../../../../lib/publicCacheHeaders'
 
 function norm(s = '') {
   return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -60,5 +61,8 @@ export async function GET(request, { params }) {
 
   console.log(`[gourmet] ${raw?.length ?? 0} otros → ${items.length} gourmet aptos`)
 
-  return NextResponse.json({ items })
+  return NextResponse.json(
+    { items },
+    { headers: publicCdnCacheHeaders({ cdnMaxAge: 60, staleWhileRevalidate: 300 }) }
+  )
 }

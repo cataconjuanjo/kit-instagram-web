@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { PUBLIC_VINO_SELECT } from '../../../_lib/kioskoAuth'
+import { noStoreHeaders, publicCdnCacheHeaders } from '../../../../lib/publicCacheHeaders'
 
 function normalizarTexto(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -9,6 +10,7 @@ function normalizarTexto(texto = '') {
 export async function GET(request, { params }) {
   const { slug } = await params
   const { searchParams } = new URL(request.url)
+  const hasFilters = searchParams.size > 0
 
   const { data: tienda, error: tiendaError } = await supabaseAdmin
     .from('tiendas')
@@ -73,5 +75,12 @@ export async function GET(request, { params }) {
     })
   }
 
-  return NextResponse.json({ vinos: resultado, total: resultado.length })
+  return NextResponse.json(
+    { vinos: resultado, total: resultado.length },
+    {
+      headers: hasFilters
+        ? noStoreHeaders()
+        : publicCdnCacheHeaders({ cdnMaxAge: 30, staleWhileRevalidate: 120 }),
+    }
+  )
 }

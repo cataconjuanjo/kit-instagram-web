@@ -5,6 +5,7 @@ import {
   getPublicTienda,
   requireKioskoAccess,
 } from '../../../_lib/kioskoAuth'
+import { noStoreHeaders, publicCdnCacheHeaders } from '../../../../lib/publicCacheHeaders'
 
 const OPTIONAL_COLS = 'kiosko_icon_style, kiosko_orders_enabled, cesta_activa, square_access_token'
 
@@ -28,12 +29,18 @@ export async function GET(request, { params }) {
     const access = await requireKioskoAccess(request, slug, { select: ADMIN_TIENDA_SELECT })
     if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
     const extra = await getOptionalCols(slug)
-    return NextResponse.json({ tienda: { ...access.tienda, ...extra } })
+    return NextResponse.json(
+      { tienda: { ...access.tienda, ...extra } },
+      { headers: noStoreHeaders() }
+    )
   }
 
   const tienda = await getPublicTienda(slug)
   if (!tienda) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
 
   const extra = await getOptionalCols(slug)
-  return NextResponse.json({ tienda: { ...tienda, ...extra } })
+  return NextResponse.json(
+    { tienda: { ...tienda, ...extra } },
+    { headers: publicCdnCacheHeaders({ cdnMaxAge: 60, staleWhileRevalidate: 300 }) }
+  )
 }
