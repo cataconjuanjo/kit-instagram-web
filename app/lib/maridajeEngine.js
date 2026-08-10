@@ -1,13 +1,12 @@
 import { chartierKb, fuenteChartier } from './chartierKb'
 import { buscarPlatoKb } from '../data/platos_kb'
 import { beneficioBruto, margenBrutoPct, numero, redondear } from './wineEconomics'
+import { textoVinoParaMaridaje } from './wineProfileTags'
 
 // Estima el perfil estructural de un vino (1-5) a partir de sus datos.
 // Permite matching estructural directo: taninos, acidez, cuerpo, etc.
 export function estimarPerfil(vino) {
-  const texto = normalizar(
-    `${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.nombre || ''} ${vino.notas_cata || ''}`
-  )
+  const texto = normalizar(textoVinoParaMaridaje(vino))
 
   const base = {
     tinto:    { taninos: 3, acidez: 3, alcohol: 3, dulzor: 1, cuerpo: 3 },
@@ -259,7 +258,7 @@ function esBlancoSalinoParaJamon(vino, textoVino = '') {
 }
 
 export function prioridadEstiloJamon(vino) {
-  const textoVino = normalizar(`${vino?.nombre || ''} ${vino?.bodega || ''} ${vino?.tipo || ''} ${vino?.region || ''} ${vino?.uva || ''} ${vino?.notas_cata || ''}`)
+  const textoVino = normalizar(textoVinoParaMaridaje(vino || {}))
   if (esGenerosoSeco(vino, textoVino)) return 1
   if (esEspumosoSeco(vino, textoVino)) return 2
   if (esBlancoSalinoParaJamon(vino, textoVino)) return 3
@@ -272,7 +271,7 @@ export function prioridadEstiloCarneRoja(vino, consulta = '') {
   const contexto = contextoVenta(consultaNormalizada)
   if (contexto !== 'carne' && !esCarneRojaPotenteConsulta(consultaNormalizada)) return 9
 
-  const textoVino = normalizar(`${vino?.nombre || ''} ${vino?.bodega || ''} ${vino?.tipo || ''} ${vino?.region || ''} ${vino?.uva || ''} ${vino?.notas_cata || ''}`)
+  const textoVino = normalizar(textoVinoParaMaridaje(vino || {}))
   const perfil = estimarPerfil(vino || {})
   if (vino?.tipo === 'tinto') {
     let prioridad = 3
@@ -452,7 +451,7 @@ function capitulosParaConsulta(consultaNormalizada) {
 }
 
 function compatibilidadContexto(vino, contexto, consultaNormalizada) {
-  const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
+  const textoVino = normalizar(textoVinoParaMaridaje(vino))
   const esTawnyOPorto = textoVino.includes('tawny') || textoVino.includes('porto') || textoVino.includes('oporto')
   const generosoSeco = esGenerosoSeco(vino, textoVino)
   const esPx = !generosoSeco && (
@@ -536,7 +535,7 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
   const contexto = contextoVenta(consultaNormalizada)
   const metodo = metodosPlato(consultaNormalizada)
   const matchesKb = capitulosParaConsulta(consultaNormalizada)
-  const textoVino = normalizar(`${vino.nombre} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`)
+  const textoVino = normalizar(textoVinoParaMaridaje(vino))
   const compatibilidad = compatibilidadContexto(vino, contexto, consultaNormalizada)
   let score = 0
   let motivo = 'busca afinidad aromática y estructural con el plato'

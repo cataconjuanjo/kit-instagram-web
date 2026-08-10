@@ -4,6 +4,7 @@ import { validarTokenPruebaCarta } from '../../../../lib/cartaPruebaToken'
 import { puedePublicarCarta, resumirContenidoCarta } from '../../../../lib/publicationReadiness'
 import { experienciaPublicaDesdePlan } from '../../../../lib/experienceTemplates'
 import { isInternationalWine } from '../../../../lib/wineRegion'
+import { limpiarMarcadorPerfiles, resolverPerfilesVino } from '../../../../lib/wineProfileTags'
 
 const CAMPOS_RESTAURANTE = [
   'id', 'slug', 'nombre', 'ciudad',
@@ -168,6 +169,7 @@ export async function GET(req, { params }) {
       restaurante: {
         ...normalizarRestaurantePublico(restaurante),
         carta_publica_activa: cartaPublicaActiva,
+        etiquetas_publicas_activas: puedeUsar(restaurante, 'vista_etiquetas_publica'),
         modo_prueba: modoPrueba,
         modo_demo_presentacion: modoDemoPresentacion,
         carta_disponible: puedeUsar(restaurante, 'carta_qr'),
@@ -215,6 +217,8 @@ export async function GET(req, { params }) {
       const controlStockActivo = vinosActivos.some(vino => Number(vino.stock) > 0)
       respuesta.vinos = vinosActivos.map(vino => ({
         ...seleccionarCampos(vino, CAMPOS_VINO),
+        perfiles_maridaje: resolverPerfilesVino(vino),
+        notas_cata: limpiarMarcadorPerfiles(vino.notas_cata),
         foto_url: normalizarUrlPublica(vino.foto_url, { imageOnly: true }),
         internacional: vino.internacional === true || isInternationalWine(vino),
         disponible: !controlStockActivo || Number(vino.stock) > 0,
@@ -230,7 +234,16 @@ export async function GET(req, { params }) {
       const vinosDisponibles = new Set(
         respuesta.vinos.filter(vino => vino.disponible).map(vino => String(vino.id))
       )
-      respuesta.seleccion = (seleccion || []).filter(item => vinosDisponibles.has(String(item.vino_id)))
+      respuesta.seleccion = (seleccion || [])
+        .filter(item => vinosDisponibles.has(String(item.vino_id)))
+        .map(item => ({
+          ...item,
+          vinos: item.vinos ? {
+            ...item.vinos,
+            perfiles_maridaje: resolverPerfilesVino(item.vinos),
+            notas_cata: limpiarMarcadorPerfiles(item.vinos.notas_cata),
+          } : item.vinos,
+        }))
     }
 
     if (incluirHub && respuesta.restaurante.hub_disponible) {

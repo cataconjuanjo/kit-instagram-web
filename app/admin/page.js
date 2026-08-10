@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../demo'
 import { SELECT_CLIENT_RESTAURANTE_ADMIN } from '../lib/clientSupabaseSelects'
+import { puedeUsar } from '../lib/plans'
 import AdminOverlay from './components/AdminOverlay'
 import rs from './restaurantes.module.css'
 
@@ -66,6 +67,12 @@ function estadoPublicacionAdmin(restaurante = {}) {
     tone: 'ok',
     done: true,
   }
+}
+
+function estadoEtiquetasPublicasAdmin(restaurante = {}) {
+  return puedeUsar(restaurante, 'vista_etiquetas_publica')
+    ? { label: 'Incluidas', tone: 'ok', done: true }
+    : { label: 'No incluidas', tone: 'muted', done: false }
 }
 
 function estadoSuscripcionAdmin(restaurante = {}) {
@@ -884,6 +891,7 @@ function AdminPageContent() {
                 <th>Plan</th>
                 <th>Estado</th>
                 <th>Carta</th>
+                <th>Etiquetas</th>
                 <th>Último acceso</th>
                 <th>Sesiones</th>
                 <th>Uso activo</th>
@@ -892,7 +900,7 @@ function AdminPageContent() {
             </thead>
             <tbody>
               {restaurantesPagina.length === 0 && (
-                <tr><td colSpan={10} className={rs.empty}>Sin restaurantes todavía</td></tr>
+                <tr><td colSpan={11} className={rs.empty}>Sin restaurantes todavía</td></tr>
               )}
               {restaurantesPagina.map(restaurante => {
                 const resumenUso = uso.resumen?.[restaurante.id]
@@ -901,16 +909,19 @@ function AdminPageContent() {
                 const planClass = rs[`plan${restaurante.plan ? restaurante.plan.charAt(0).toUpperCase() + restaurante.plan.slice(1) : 'Basic'}`] || rs.planBasic
                 const estadoClass = rs[`estado${suscripcion.tone ? suscripcion.tone.charAt(0).toUpperCase() + suscripcion.tone.slice(1) : 'Muted'}`] || rs.estadoMuted
                 const cartaClass = rs[`estado${publicacion.tone ? publicacion.tone.charAt(0).toUpperCase() + publicacion.tone.slice(1) : 'Muted'}`] || rs.estadoMuted
+                const etiquetas = estadoEtiquetasPublicasAdmin(restaurante)
+                const etiquetasClass = rs[`estado${etiquetas.tone ? etiquetas.tone.charAt(0).toUpperCase() + etiquetas.tone.slice(1) : 'Muted'}`] || rs.estadoMuted
                 return (
                   <tr key={restaurante.id}>
                     <td className={rs.tdNombre}>
                       {restaurante.nombre}
-                      <span className={`${rs.planBadge} ${planClass}`}>{PLAN_LABEL[restaurante.plan] || restaurante.plan || 'sin plan'}</span>
                     </td>
                     <td className={rs.tdEmail}>{restaurante.email}</td>
                     <td>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || '—'}</td>
+                    <td><span className={`${rs.planBadge} ${planClass}`}>{PLAN_LABEL[restaurante.plan] || restaurante.plan || 'sin plan'}</span></td>
                     <td><span className={`${rs.estadoBadge} ${estadoClass}`}>{suscripcion.label}</span></td>
                     <td><span className={`${rs.estadoBadge} ${cartaClass}`}>{publicacion.label}</span></td>
+                    <td><span className={`${rs.estadoBadge} ${etiquetasClass}`}>{etiquetas.label}</span></td>
                     <td className={rs.tdFecha}>
                       {resumenUso?.activo_ahora
                         ? <span className={rs.activeNow}>● Activo ahora</span>

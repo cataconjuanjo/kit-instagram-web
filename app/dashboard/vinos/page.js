@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import {
@@ -12,22 +12,15 @@ import { esPerfilBodega, limiteVinosPlan, nombrePlan, puedeUsar } from '../../li
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 import ConfirmationDialog from '../ConfirmationDialog'
-
-const perfilesVino = [
-  { label: 'Fresco', texto: 'perfil fresco' },
-  { label: 'Alta acidez', texto: 'alta acidez' },
-  { label: 'Salino', texto: 'salino' },
-  { label: 'Mineral', texto: 'mineral' },
-  { label: 'Floral', texto: 'floral' },
-  { label: 'Baja graduación', texto: 'baja graduacion' },
-  { label: 'Fruta madura', texto: 'fruta madura' },
-  { label: 'Con cuerpo', texto: 'con cuerpo' },
-  { label: 'Tanino amable', texto: 'tanino amable' },
-  { label: 'Madera', texto: 'madera' },
-  { label: 'Tostado', texto: 'tostado' },
-  { label: 'Oxidativo', texto: 'oxidativo' },
-  { label: 'Dulce', texto: 'dulce' },
-]
+import {
+  WINE_PROFILE_GROUPS,
+  WINE_PROFILE_TAGS,
+  alternarPerfilVino,
+  escribirPerfilesVino,
+  leerPerfilesVino,
+  limpiarMarcadorPerfiles,
+  vinoTienePerfil,
+} from '../../lib/wineProfileTags'
 
 function normalizar(texto = '') {
   return texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -46,7 +39,13 @@ function normalizarUrlImagenCliente(valor = '') {
 }
 
 const TIPOS_ETIQUETA_OK = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
+const TIPOS_ETIQUETA_RECORTABLES = new Set([...TIPOS_ETIQUETA_OK, 'image/heic', 'image/heif'])
+const EXTENSIONES_ETIQUETA_RECORTABLES = /\.(jpe?g|png|webp|heic|heif)$/i
 const MAX_ETIQUETA_BYTES = 5 * 1024 * 1024
+const LABEL_CROP_OUTPUT = { width: 900, height: 1200 }
+const LABEL_CROP_ZOOM_MIN = 0.55
+const LABEL_CROP_ZOOM_MAX = 3
+const LABEL_CROP_QUALITY = 0.9
 const MATCH_ETIQUETA_MINIMO = 42
 const STOPWORDS_ETIQUETA = new Set([
   'etiqueta', 'label', 'labels', 'vino', 'wine', 'wines', 'botella', 'bottle',
@@ -137,56 +136,45 @@ function vinoInicialDesdeUrl() {
   }
 }
 
-function notasConPerfil(notas = '', perfil) {
-  const limpias = notas.trim()
-  const textoNormalizado = normalizar(limpias)
-  const perfilNormalizado = normalizar(perfil.texto)
-
-  if (textoNormalizado.includes(perfilNormalizado)) {
-    return limpias
-      .replace(new RegExp(`(^|[,.;] )${perfil.texto}([,.;]|$)`, 'i'), '$1')
-      .replace(/\s{2,}/g, ' ')
-      .replace(/\s+([,.;])/g, '$1')
-      .replace(/[,.;]\s*$/, '')
-      .trim()
-  }
-
-  return limpias ? `${limpias}. ${perfil.texto}` : perfil.texto
-}
-
 function PerfilVino({ vino, onChange, perfilBodega = false }) {
   return (
     <div style={{ gridColumn: '1 / -1' }}>
       <p style={{ fontSize: 10, color: '#bbb', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '4px 0 10px' }}>
-        {perfilBodega ? 'Perfil técnico interno' : 'Perfil para maridaje y venta'}
+        {perfilBodega ? 'Perfil tecnico interno' : 'Perfil para maridaje y venta'}
       </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {perfilesVino.map(perfil => {
-          const activo = normalizar(vino.notas_cata || '').includes(normalizar(perfil.texto))
-          return (
-            <button
-              key={perfil.texto}
-              type="button"
-              onClick={() => onChange({ ...vino, notas_cata: notasConPerfil(vino.notas_cata, perfil) })}
-              style={{
-                background: activo ? '#111' : '#fff',
-                color: activo ? '#fff' : '#777',
-                border: activo ? '1px solid #111' : '1px solid #e8e8e8',
-                borderRadius: 999,
-                padding: '7px 11px',
-                fontSize: 11,
-                cursor: 'pointer'
-              }}
-            >
-              {perfil.label}
-            </button>
-          )
-        })}
-      </div>
+      {WINE_PROFILE_GROUPS.map(group => (
+        <div key={group.id} style={{ marginBottom: 12 }}>
+          <p style={{ fontSize: 11, color: '#888', margin: '0 0 6px', fontWeight: 600 }}>{group.label}</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {WINE_PROFILE_TAGS.filter(perfil => perfil.group === group.id).map(perfil => {
+              const activo = vinoTienePerfil(vino, perfil.id)
+              return (
+                <button
+                  key={perfil.id}
+                  type="button"
+                  onClick={() => onChange({ ...vino, notas_cata: alternarPerfilVino(vino.notas_cata, perfil.id, vino) })}
+                  title={activo ? 'Activo: pulsa para descartar esta lectura' : 'Inactivo: pulsa para confirmar esta lectura'}
+                  style={{
+                    background: activo ? '#111' : '#fff',
+                    color: activo ? '#fff' : '#777',
+                    border: activo ? '1px solid #111' : '1px solid #e8e8e8',
+                    borderRadius: 999,
+                    padding: '7px 11px',
+                    fontSize: 11,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {perfil.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
       <p style={{ fontSize: 11, color: '#bbb', margin: '10px 0 0', lineHeight: 1.5 }}>
         {perfilBodega
-          ? 'Estos perfiles ayudan a filtrar, inventariar y explicar estilos sin depender de memoria.'
-          : 'Estos perfiles ayudan al modo camarero a distinguir, por ejemplo, un blanco salino para fritura de un blanco floral para queso o aperitivo.'}
+          ? 'La IA propone una primera lectura. El revisor puede confirmar o descartar cada rasgo.'
+          : 'La IA propone una primera lectura. El perfil tecnico pesa mas en maridaje; las familias WSET ayudan a explicar afinidades.'}
       </p>
     </div>
   )
@@ -233,6 +221,7 @@ const [aplicandoMasivo, setAplicandoMasivo] = useState(false)
 const [confirmacion, setConfirmacion] = useState(null)
 const [borrandoId, setBorrandoId] = useState('')
 const [subiendoEtiqueta, setSubiendoEtiqueta] = useState('')
+const [recorteEtiqueta, setRecorteEtiqueta] = useState(null)
 const [etiquetasImportar, setEtiquetasImportar] = useState([])
 const [importandoEtiquetas, setImportandoEtiquetas] = useState(false)
 const [errorEtiquetas, setErrorEtiquetas] = useState('')
@@ -240,6 +229,8 @@ const inputPdfRef = useRef(null)
 const inputEtiquetaRef = useRef(null)
 const inputEtiquetasMasivoRef = useRef(null)
 const etiquetaTargetRef = useRef(null)
+const recorteCanvasRef = useRef(null)
+const recorteDragRef = useRef(null)
   const [nuevoVino, setNuevoVino] = useState(vinoInicialDesdeUrl)
 
   useEffect(() => {
@@ -263,6 +254,35 @@ const etiquetaTargetRef = useRef(null)
     }
     cargarDatos()
   }, [])
+
+  const dibujarRecorteEtiqueta = useCallback((config = recorteEtiqueta) => {
+    const canvas = recorteCanvasRef.current
+    const imagen = config?.imagen
+    if (!canvas || !imagen) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const { width, height } = LABEL_CROP_OUTPUT
+    canvas.width = width
+    canvas.height = height
+    ctx.fillStyle = '#f8f4ea'
+    ctx.fillRect(0, 0, width, height)
+
+    const baseScale = Math.max(width / imagen.naturalWidth, height / imagen.naturalHeight)
+    const scale = baseScale * config.zoom
+    const drawWidth = imagen.naturalWidth * scale
+    const drawHeight = imagen.naturalHeight * scale
+    const x = (width - drawWidth) / 2 + config.offsetX
+    const y = (height - drawHeight) / 2 + config.offsetY
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(imagen, x, y, drawWidth, drawHeight)
+  }, [recorteEtiqueta])
+
+  useEffect(() => {
+    if (!recorteEtiqueta) return
+    dibujarRecorteEtiqueta(recorteEtiqueta)
+  }, [dibujarRecorteEtiqueta, recorteEtiqueta])
 
 async function añadirVino() {
 const limiteVinos = restaurante ? limiteVinosPlan(restaurante) : 60
@@ -305,7 +325,10 @@ const vinosActivos = vinos.filter(vino => vino.activo !== false)
       coste_compra: parseFloat(nuevoVino.coste_compra) || 0,
       stock_minimo: parseInt(nuevoVino.stock_minimo) || 0,
       proveedor: nuevoVino.proveedor || '',
-notas_cata: [nuevoVino.notas_cata, notasCata].filter(Boolean).join('. '),
+notas_cata: escribirPerfilesVino(
+  [limpiarMarcadorPerfiles(nuevoVino.notas_cata), notasCata].filter(Boolean).join('. '),
+  leerPerfilesVino(nuevoVino.notas_cata)
+),
     }]).select(SELECT_CLIENT_VINO_DASHBOARD)
 
 setGenerandoCata(false)
@@ -392,11 +415,144 @@ async function subirEtiqueta(vinoId, file) {
   }
 }
 
+function esArchivoEtiquetaRecortable(file) {
+  return TIPOS_ETIQUETA_RECORTABLES.has(file.type) || EXTENSIONES_ETIQUETA_RECORTABLES.test(file.name || '')
+}
+
+function esHeicEtiqueta(file) {
+  return ['image/heic', 'image/heif'].includes(file.type) || /\.(heic|heif)$/i.test(file.name || '')
+}
+
+function validarArchivoEtiqueta(file) {
+  if (!esArchivoEtiquetaRecortable(file)) {
+    return 'Formato no permitido. Usa JPG, PNG, WebP o HEIC.'
+  }
+  if (file.size > MAX_ETIQUETA_BYTES) {
+    return 'La imagen supera 5 MB. Recortala o comprime antes de subirla.'
+  }
+  return ''
+}
+
+function limitarOffsetRecorte(config, offsetX, offsetY) {
+  const imagen = config?.imagen
+  if (!imagen) return { offsetX: 0, offsetY: 0 }
+  const baseScale = Math.max(LABEL_CROP_OUTPUT.width / imagen.naturalWidth, LABEL_CROP_OUTPUT.height / imagen.naturalHeight)
+  const scale = baseScale * config.zoom
+  const maxX = Math.max(0, (imagen.naturalWidth * scale - LABEL_CROP_OUTPUT.width) / 2)
+  const maxY = Math.max(0, (imagen.naturalHeight * scale - LABEL_CROP_OUTPUT.height) / 2)
+  return {
+    offsetX: Math.max(-maxX, Math.min(maxX, offsetX)),
+    offsetY: Math.max(-maxY, Math.min(maxY, offsetY)),
+  }
+}
+
+function cerrarRecorteEtiqueta() {
+  setRecorteEtiqueta(actual => {
+    if (actual?.previewUrl) URL.revokeObjectURL(actual.previewUrl)
+    return null
+  })
+  recorteDragRef.current = null
+}
+
+function abrirRecorteEtiqueta(vinoId, file) {
+  const error = validarArchivoEtiqueta(file)
+  if (error) {
+    setErrorBodega(error)
+    return
+  }
+
+  const previewUrl = URL.createObjectURL(file)
+  const imagen = new Image()
+  imagen.onload = () => {
+    setRecorteEtiqueta(actual => {
+      if (actual?.previewUrl) URL.revokeObjectURL(actual.previewUrl)
+      return {
+        vinoId,
+        fileName: file.name,
+        previewUrl,
+        imagen,
+        zoom: 1,
+        offsetX: 0,
+        offsetY: 0,
+      }
+    })
+  }
+  imagen.onerror = () => {
+    URL.revokeObjectURL(previewUrl)
+    setErrorBodega(esHeicEtiqueta(file)
+      ? 'No se pudo leer esta foto HEIC en este navegador. Cambiala a JPG desde Fotos/iPhone o sube una captura JPG.'
+      : 'No se pudo leer la imagen. Usa JPG, PNG o WebP.')
+  }
+  imagen.src = previewUrl
+}
+
 async function archivoEtiquetaSeleccionado(event) {
   const file = event.target.files?.[0]
   const vinoId = etiquetaTargetRef.current
   event.target.value = ''
-  if (file && vinoId) await subirEtiqueta(vinoId, file)
+  if (file && vinoId) abrirRecorteEtiqueta(vinoId, file)
+}
+
+function iniciarArrastreRecorte(event) {
+  if (!recorteEtiqueta) return
+  event.currentTarget.setPointerCapture?.(event.pointerId)
+  recorteDragRef.current = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    offsetX: recorteEtiqueta.offsetX,
+    offsetY: recorteEtiqueta.offsetY,
+  }
+}
+
+function moverArrastreRecorte(event) {
+  const drag = recorteDragRef.current
+  const canvas = recorteCanvasRef.current
+  if (!drag || !canvas || drag.pointerId !== event.pointerId) return
+  const rect = canvas.getBoundingClientRect()
+  const factorX = LABEL_CROP_OUTPUT.width / Math.max(rect.width, 1)
+  const factorY = LABEL_CROP_OUTPUT.height / Math.max(rect.height, 1)
+  const offsetX = drag.offsetX + (event.clientX - drag.startX) * factorX
+  const offsetY = drag.offsetY + (event.clientY - drag.startY) * factorY
+  setRecorteEtiqueta(actual => {
+    if (!actual) return actual
+    const limitado = limitarOffsetRecorte(actual, offsetX, offsetY)
+    return { ...actual, ...limitado }
+  })
+}
+
+function terminarArrastreRecorte(event) {
+  event.currentTarget.releasePointerCapture?.(event.pointerId)
+  recorteDragRef.current = null
+}
+
+function actualizarZoomRecorte(valor) {
+  const zoom = Math.max(LABEL_CROP_ZOOM_MIN, Math.min(LABEL_CROP_ZOOM_MAX, Number(valor) || 1))
+  setRecorteEtiqueta(actual => {
+    if (!actual) return actual
+    const siguiente = { ...actual, zoom }
+    return { ...siguiente, ...limitarOffsetRecorte(siguiente, siguiente.offsetX, siguiente.offsetY) }
+  })
+}
+
+function centrarRecorteEtiqueta() {
+  setRecorteEtiqueta(actual => actual ? { ...actual, zoom: 1, offsetX: 0, offsetY: 0 } : actual)
+}
+
+async function confirmarRecorteEtiqueta() {
+  const canvas = recorteCanvasRef.current
+  const config = recorteEtiqueta
+  if (!canvas || !config) return
+  dibujarRecorteEtiqueta(config)
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', LABEL_CROP_QUALITY))
+  if (!blob) {
+    setErrorBodega('No se pudo preparar el recorte de etiqueta.')
+    return
+  }
+  const nombreBase = config.fileName.replace(/\.[a-z0-9]+$/i, '') || 'etiqueta'
+  const file = new File([blob], `${nombreBase}-etiqueta.jpg`, { type: 'image/jpeg' })
+  cerrarRecorteEtiqueta()
+  await subirEtiqueta(config.vinoId, file)
 }
 
 async function quitarEtiqueta(vino) {
@@ -442,7 +598,7 @@ function prepararImportacionEtiquetas(files) {
 
   lista.forEach(file => {
     if (!TIPOS_ETIQUETA_OK.has(file.type)) {
-      rechazados.push(`${file.name}: formato no permitido`)
+      rechazados.push(`${file.name}: formato no permitido en lote; usa JPG, PNG o WebP`)
       return
     }
     if (file.size > MAX_ETIQUETA_BYTES) {
@@ -996,7 +1152,7 @@ async function aplicarAccionMasiva(confirmado = false) {
       <input
         ref={inputEtiquetaRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
         style={{ display: 'none' }}
         onChange={archivoEtiquetaSeleccionado}
       />
@@ -1277,9 +1433,12 @@ async function aplicarAccionMasiva(confirmado = false) {
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{perfilBodega ? 'Notas técnicas internas' : 'Notas de cata y venta'}</label>
                 <textarea
-                  value={nuevoVino.notas_cata}
-                  onChange={e => setNuevoVino({ ...nuevoVino, notas_cata: e.target.value })}
-                  placeholder="Ej. Perfil fresco, salino, alta acidez"
+                  value={limpiarMarcadorPerfiles(nuevoVino.notas_cata)}
+                  onChange={e => setNuevoVino({
+                    ...nuevoVino,
+                    notas_cata: escribirPerfilesVino(e.target.value, leerPerfilesVino(nuevoVino.notas_cata)),
+                  })}
+                  placeholder="Ej. Fruta blanca, cítrico, final limpio. Marca abajo los perfiles revisados."
                   rows={3}
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, boxSizing: 'border-box', outline: 'none', background: 'transparent', color: '#111', resize: 'vertical', fontFamily: 'system-ui, sans-serif' }}
                 />
@@ -1611,8 +1770,11 @@ async function aplicarAccionMasiva(confirmado = false) {
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>{perfilBodega ? 'Notas técnicas internas' : 'Notas de cata y venta'}</label>
                       <textarea
-                        value={editandoVino.notas_cata || ''}
-                        onChange={e => setEditandoVino({ ...editandoVino, notas_cata: e.target.value })}
+                        value={limpiarMarcadorPerfiles(editandoVino.notas_cata || '')}
+                        onChange={e => setEditandoVino({
+                          ...editandoVino,
+                          notas_cata: escribirPerfilesVino(e.target.value, leerPerfilesVino(editandoVino.notas_cata)),
+                        })}
                         rows={3}
                         style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, boxSizing: 'border-box', outline: 'none', background: 'transparent', color: '#111', resize: 'vertical', fontFamily: 'system-ui, sans-serif' }}
                       />
@@ -1636,6 +1798,49 @@ async function aplicarAccionMasiva(confirmado = false) {
             </button>
           </nav>
         )}
+        <ResponsiveOverlay
+          open={Boolean(recorteEtiqueta)}
+          onClose={cerrarRecorteEtiqueta}
+          eyebrow="Etiqueta del vino"
+          title="Encuadrar etiqueta"
+          description="Ajusta la foto para que la carta muestre la etiqueta y solo la parte de botella necesaria."
+          footer={
+            <>
+              <button type="button" className={styles.ghost} onClick={cerrarRecorteEtiqueta}>Cancelar</button>
+              <button type="button" className={styles.primary} onClick={confirmarRecorteEtiqueta}>Guardar encuadre</button>
+            </>
+          }
+        >
+          <div className={styles.labelCropper}>
+            <div className={styles.labelCropperStage}>
+              <canvas
+                ref={recorteCanvasRef}
+                className={styles.labelCropperCanvas}
+                aria-label="Vista previa del encuadre de etiqueta"
+                onPointerDown={iniciarArrastreRecorte}
+                onPointerMove={moverArrastreRecorte}
+                onPointerUp={terminarArrastreRecorte}
+                onPointerCancel={terminarArrastreRecorte}
+              />
+            </div>
+            <div className={styles.labelCropperControls}>
+              <label htmlFor="zoom-etiqueta">Tamaño</label>
+              <input
+                id="zoom-etiqueta"
+                type="range"
+                min={LABEL_CROP_ZOOM_MIN}
+                max={LABEL_CROP_ZOOM_MAX}
+                step="0.05"
+                value={recorteEtiqueta?.zoom || 1}
+                onChange={event => actualizarZoomRecorte(event.target.value)}
+              />
+              <button type="button" className={styles.secondary} onClick={centrarRecorteEtiqueta}>
+                Centrar
+              </button>
+            </div>
+            <p className={styles.labelCropperHint}>Arrastra la imagen dentro del marco. Baja el tamaño si la etiqueta queda demasiado cerca.</p>
+          </div>
+        </ResponsiveOverlay>
         <ConfirmationDialog
           open={Boolean(confirmacion)}
           onClose={() => setConfirmacion(null)}

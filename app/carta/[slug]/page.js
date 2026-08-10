@@ -5,6 +5,7 @@ import { flushSync } from 'react-dom'
 import { useParams } from 'next/navigation'
 import { normalizarTexto as normalizarTextoBase } from '../../lib/textNormalize'
 import { consultarMaridaje } from '../../lib/maridajeClient'
+import { analizarMaridaje } from '../../lib/maridajeEngine'
 import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
 import { enviarAprobacionPreview } from '../../lib/previewApprovalClient'
@@ -17,6 +18,7 @@ import { alternarVinoComparador } from '../../lib/wineComparator'
 import { WINE_TYPE_COLORS, esPerfilGoiko } from '../../lib/winePresentation'
 import { cargarPerfilesVino } from '../../lib/wineProfileClient'
 import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS } from '../../lib/wineProfileRadar'
+import { limpiarMarcadorPerfiles } from '../../lib/wineProfileTags'
 import BrandLogo from '../../components/BrandLogo'
 import PublicStateScreen from '../../components/PublicStateScreen'
 import WineProfileRadarChart from '../../components/WineProfileRadarChart'
@@ -144,7 +146,7 @@ const t = {
     carta: 'Carta',
     sommelier: '¿Qué pido?',
     sommelierHint: 'Vino para tu plato',
-    buscar: 'Buscar vino, bodega o uva...',
+    buscar: 'Buscar vino, bodega, uva o D.O...',
     filtros: 'Filtros',
     todos: 'Todos',
     precioMaximo: 'Precio máximo',
@@ -162,6 +164,7 @@ const t = {
     copa: 'Copa',
     botella: 'Botella',
     notasCata: 'Notas de cata',
+    cuandoPedir: 'Cuándo pedir este vino',
     quePedir: '¿Qué vas a pedir?',
     seleccionaPlatos: 'Selecciona tus platos y afinamos una recomendación de vino.',
     vinoManda: 'Ya tengo vino',
@@ -221,7 +224,7 @@ const t = {
     carta: 'Wine list',
     sommelier: 'What to drink?',
     sommelierHint: 'Wine for your dish',
-    buscar: 'Search wine, winery or grape...',
+    buscar: 'Search wine, winery, grape or region...',
     filtros: 'Filters',
     todos: 'All',
     precioMaximo: 'Maximum price',
@@ -239,6 +242,7 @@ const t = {
     copa: 'Glass',
     botella: 'Bottle',
     notasCata: 'Tasting notes',
+    cuandoPedir: 'When to order this wine',
     quePedir: 'What are you having?',
     seleccionaPlatos: 'Select your dishes and we will refine one wine recommendation.',
     vinoManda: 'I have a wine',
@@ -327,7 +331,7 @@ function copyCartaRestaurante(base, restaurante = {}) {
 }
 
 function textoVinoOrden(vino = {}) {
-  return `${vino.nombre || ''} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${vino.notas_cata || ''}`
+  return `${vino.nombre || ''} ${vino.bodega || ''} ${vino.tipo || ''} ${vino.region || ''} ${vino.uva || ''} ${limpiarMarcadorPerfiles(vino.notas_cata || '')}`
 }
 
 function nombreVinoCarta(vino = {}) {
@@ -342,6 +346,285 @@ function activarConTeclado(event, accion) {
   if (event.key !== 'Enter' && event.key !== ' ') return
   event.preventDefault()
   accion()
+}
+
+function perfilesTextoVino(vino = {}) {
+  const perfiles = Array.isArray(vino.perfiles_maridaje) ? vino.perfiles_maridaje : []
+  const notas = normalizarTextoBase(`${perfiles.join(' ')} ${limpiarMarcadorPerfiles(vino.notas_cata || '')}`)
+  return { perfiles, notas }
+}
+
+function tienePerfilVino(vino, terminos = []) {
+  const { perfiles, notas } = perfilesTextoVino(vino)
+  return terminos.some(termino => perfiles.includes(termino) || notas.includes(normalizarTextoBase(termino)))
+}
+
+function crearUsoContextualVino(vino = {}, { idioma = 'es', platos = [], precioBotellaCarta } = {}) {
+  const esEn = idioma === 'en'
+  const tipo = String(vino.tipo || '').toLowerCase()
+  const precioBotella = Number(vino.precio_botella)
+  const tieneCopa = Number(vino.precio_copa) > 0
+  const nombresPlatos = (platos || []).map(plato => plato?.nombre).filter(Boolean).slice(0, 2)
+  const contextoPlatos = nombresPlatos.length
+    ? esEn
+      ? `With ${nombresPlatos.join(' + ')}, use it as a practical table option rather than as an encyclopedic wine choice.`
+      : `Con ${nombresPlatos.join(' + ')}, funciona como opción práctica de mesa más que como ficha enciclopédica.`
+    : ''
+
+  let momento = esEn
+    ? 'Order it when you want a reliable bottle for the table.'
+    : 'Pídelo cuando quieras una botella fiable para la mesa.'
+  if (tipo === 'espumoso') {
+    momento = esEn
+      ? 'Order it when the table needs freshness, rhythm and an easy first glass.'
+      : 'Pídelo cuando la mesa necesite frescura, ritmo y una primera copa fácil.'
+  } else if (tipo === 'generoso') {
+    momento = esEn
+      ? 'Order it when salt, fried food, cured flavours or snacks are leading the table.'
+      : 'Pídelo cuando manden la sal, la fritura, los curados o el aperitivo.'
+  } else if (tipo === 'dulce') {
+    momento = esEn
+      ? 'Order it for dessert, blue cheese or a short final glass.'
+      : 'Pídelo para postre, queso azul o una copa final corta.'
+  } else if (tipo === 'blanco' || tipo === 'rosado' || tienePerfilVino(vino, ['fresco', 'alta acidez', 'salino', 'mineral', 'floral'])) {
+    momento = esEn
+      ? 'Order it when the food asks for freshness and a clean finish.'
+      : 'Pídelo cuando la comida pida frescura y un final limpio.'
+  } else if (tipo === 'tinto' && tienePerfilVino(vino, ['madera', 'tostado', 'fruta madura', 'con cuerpo'])) {
+    momento = esEn
+      ? 'Order it when the table moves toward grilled, roasted or deeper flavours.'
+      : 'Pídelo cuando la mesa vaya hacia brasa, asados o sabores más profundos.'
+  } else if (tipo === 'tinto') {
+    momento = esEn
+      ? 'Order it when you want a red that can accompany the table without overcomplicating the choice.'
+      : 'Pídelo cuando quieras un tinto que acompañe la mesa sin complicar la decisión.'
+  }
+
+  const formato = tieneCopa
+    ? esEn
+      ? `It also works by the glass, so it is useful if only part of the table wants this style.`
+      : `También funciona por copa, útil si solo una parte de la mesa busca este estilo.`
+    : precioBotella
+      ? esEn
+        ? `As a bottle, it sits at ${precioBotellaCarta?.(precioBotella) || `${precioBotella} EUR`}, so it is best chosen with the whole table in mind.`
+        : `Como botella está en ${precioBotellaCarta?.(precioBotella) || `${precioBotella} EUR`}, así que conviene pensarlo para el conjunto de la mesa.`
+      : ''
+
+  const perfil = [
+    tienePerfilVino(vino, ['fresco', 'alta acidez']) ? (esEn ? 'freshness' : 'frescura') : '',
+    tienePerfilVino(vino, ['salino', 'mineral']) ? (esEn ? 'a saline line' : 'un punto salino') : '',
+    tienePerfilVino(vino, ['floral']) ? (esEn ? 'a floral lift' : 'un lado floral') : '',
+    tienePerfilVino(vino, ['tanino amable']) ? (esEn ? 'soft tannin' : 'tanino amable') : '',
+    tienePerfilVino(vino, ['madera', 'tostado']) ? (esEn ? 'a discreet oak note' : 'un toque de madera') : '',
+    tienePerfilVino(vino, ['dulce']) ? (esEn ? 'sweetness' : 'dulzor') : '',
+  ].filter(Boolean).slice(0, 2)
+
+  const aporta = perfil.length
+    ? esEn
+      ? `At the table it brings ${perfil.join(' and ')}, without needing a technical explanation.`
+      : `En mesa aporta ${perfil.join(' y ')}, sin necesitar una explicación técnica.`
+    : esEn
+      ? 'It is easiest to explain from its style, price and place on the list.'
+      : 'Se defiende mejor desde su estilo, precio y lugar dentro de la carta.'
+
+  return [contextoPlatos, momento, aporta, formato].filter(Boolean)
+}
+
+function textoPlatoParaMaridaje(plato = {}) {
+  return [
+    plato.nombre,
+    plato.categoria,
+    Number(plato.precio) > 0 ? `(${plato.precio} EUR)` : '',
+  ].filter(Boolean).join(' ')
+}
+
+function motivoPlatoParaVino(resultado, idioma = 'es') {
+  const motivo = String(resultado?.motivo || '').replace(/\s+/g, ' ').trim()
+  if (!motivo) return idioma === 'en' ? 'Good fit for this wine style.' : 'Buen encaje para el estilo del vino.'
+  const frase = motivo.charAt(0).toUpperCase() + motivo.slice(1)
+  return frase.length > 118 ? `${frase.slice(0, 115).trim()}...` : frase
+}
+
+function tipoVinoSimple(vino = {}) {
+  return String(vino.tipo || '').toLowerCase()
+}
+
+function textoPlatoNormalizado(plato = {}) {
+  return normalizarTextoBase([
+    plato.nombre,
+    plato.categoria,
+    plato.descripcion,
+    JSON.stringify(plato.familias_aromaticas || {}),
+  ].filter(Boolean).join(' '))
+}
+
+function rasgosPlatoContextual(plato = {}) {
+  const texto = textoPlatoNormalizado(plato)
+  return {
+    carneRoja: ['ternera', 'solomillo de ternera', 'vaca', 'buey', 'entrecot', 'chuleton'].some(t => texto.includes(t)),
+    cerdoIberico: ['iberico', 'presa', 'pluma', 'secreto', 'solomillo iberico'].some(t => texto.includes(t)),
+    brasa: ['brasa', 'parrilla', 'asado', 'asada', 'ahumado', 'humo'].some(t => texto.includes(t)),
+    guiso: ['guiso', 'guisado', 'estofado', 'carrillera', 'rabo', 'meloso'].some(t => texto.includes(t)),
+    fritura: ['frito', 'frita', 'fritura', 'croqueta', 'buñuelo', 'calamar'].some(t => texto.includes(t)),
+    marino: ['atun', 'atún', 'pescado', 'marisco', 'gamba', 'langostino', 'bacalao', 'lubina', 'boqueron', 'anchoa'].some(t => texto.includes(t)),
+    grasoSalino: ['atun en manteca', 'manteca', 'jamon', 'jamón', 'anchoa', 'salazon', 'salazón', 'curado'].some(t => texto.includes(t)),
+    vegetal: ['ensalada', 'tomate', 'verdura', 'berenjena', 'alcachofa', 'esparrago', 'espárrago'].some(t => texto.includes(t)),
+    queso: ['queso', 'torta', 'payoyo'].some(t => texto.includes(t)),
+    postre: ['postre', 'tarta', 'chocolate', 'helado', 'torrija', 'dulce'].some(t => texto.includes(t)),
+    arrozPasta: ['arroz', 'risotto', 'pasta', 'fideo'].some(t => texto.includes(t)),
+  }
+}
+
+function puntuarPlatoParaFicha(vino = {}, plato = {}) {
+  const tipo = tipoVinoSimple(vino)
+  const rasgos = rasgosPlatoContextual(plato)
+  const textoVino = perfilesTextoVino(vino).notas
+  const tintoConCuerpo = tipo === 'tinto' && (
+    tienePerfilVino(vino, ['con cuerpo', 'madera', 'tostado', 'fruta madura']) ||
+    ['ribera', 'rioja', 'toro', 'jumilla', 'monastrell', 'tempranillo', 'syrah'].some(t => textoVino.includes(t))
+  )
+  const tintoAmable = tipo === 'tinto' && (
+    tienePerfilVino(vino, ['tanino amable', 'fresco', 'floral']) ||
+    ['garnacha', 'pinot', 'mencia', 'mencía'].some(t => textoVino.includes(t))
+  )
+  let score = 0
+
+  if (tipo === 'tinto') {
+    if (rasgos.carneRoja) score += tintoConCuerpo ? 34 : 20
+    if (rasgos.cerdoIberico) score += tintoAmable ? 28 : 22
+    if (rasgos.brasa) score += tintoConCuerpo ? 18 : 8
+    if (rasgos.guiso) score += 18
+    if (rasgos.arrozPasta) score += tintoAmable ? 10 : 4
+    if (rasgos.queso) score += tintoAmable ? 6 : -18
+    if (rasgos.marino && !rasgos.grasoSalino && !rasgos.brasa) score -= 32
+    if (rasgos.fritura) score -= 26
+    if (rasgos.vegetal && !rasgos.brasa) score -= 12
+    if (rasgos.postre) score -= 45
+  } else if (tipo === 'blanco' || tipo === 'rosado' || tipo === 'naranja') {
+    if (rasgos.marino) score += 28
+    if (rasgos.fritura) score += 20
+    if (rasgos.vegetal) score += 18
+    if (rasgos.arrozPasta) score += 14
+    if (rasgos.queso) score += 10
+    if (rasgos.carneRoja && rasgos.brasa) score -= 22
+  } else if (tipo === 'espumoso') {
+    if (rasgos.fritura) score += 30
+    if (rasgos.marino) score += 22
+    if (rasgos.grasoSalino) score += 20
+    if (rasgos.vegetal) score += 10
+    if (rasgos.postre && !tienePerfilVino(vino, ['dulce'])) score -= 16
+  } else if (tipo === 'generoso') {
+    if (rasgos.grasoSalino) score += 30
+    if (rasgos.fritura) score += 26
+    if (rasgos.queso) score += 18
+    if (rasgos.marino) score += 14
+    if (rasgos.carneRoja && rasgos.brasa) score -= 18
+  } else if (tipo === 'dulce') {
+    if (rasgos.postre) score += 32
+    if (rasgos.queso) score += 24
+    if (!rasgos.postre && !rasgos.queso) score -= 34
+  }
+
+  return score
+}
+
+function motivoPlatoContextual(plato = {}, vino = {}, idioma = 'es') {
+  const esEn = idioma === 'en'
+  const tipo = tipoVinoSimple(vino)
+  const rasgos = rasgosPlatoContextual(plato)
+  if (tipo === 'tinto' && rasgos.carneRoja) return esEn ? 'The meat softens the tannin and lets the red show its depth.' : 'La carne suaviza el tanino y deja que el tinto muestre profundidad.'
+  if (tipo === 'tinto' && rasgos.cerdoIberico) return esEn ? 'The juicy Iberian pork works well with a red that has fruit and softness.' : 'El ibérico jugoso encaja bien con un tinto de fruta y tacto amable.'
+  if (tipo === 'tinto' && rasgos.brasa) return esEn ? 'Grill and roasted notes connect naturally with the wine’s darker side.' : 'La brasa y el tostado conectan con el lado más profundo del vino.'
+  if ((tipo === 'blanco' || tipo === 'rosado') && rasgos.marino) return esEn ? 'Freshness keeps the seafood side clean and lively.' : 'La frescura mantiene limpio y vivo el lado marino del plato.'
+  if ((tipo === 'blanco' || tipo === 'espumoso' || tipo === 'generoso') && rasgos.fritura) return esEn ? 'Acidity, salinity or bubbles clean the fried texture between bites.' : 'Acidez, salinidad o burbuja limpian la fritura entre bocados.'
+  if (tipo === 'generoso' && rasgos.grasoSalino) return esEn ? 'Its dry saline profile handles salt, fat and cured flavours.' : 'Su perfil seco y salino aguanta sal, grasa y curados.'
+  if (tipo === 'dulce' && rasgos.postre) return esEn ? 'Sweetness in the wine keeps the dessert from making it taste hard.' : 'El dulzor del vino evita que el postre lo vuelva duro.'
+  if (rasgos.queso) return esEn ? 'It has enough texture for the cheese without turning the choice heavy.' : 'Tiene textura para el queso sin volver pesada la elección.'
+  return esEn ? 'It is one of the cleaner matches for this wine on the menu.' : 'Es uno de los encajes más limpios para este vino dentro de la carta.'
+}
+
+function recomendarPlatosCartaParaVino(vino = {}, platosCarta = [], limite = 3) {
+  const vistos = new Set()
+  const categoriasUsadas = new Map()
+  const candidatos = (platosCarta || [])
+    .filter(plato => plato?.activo !== false && plato?.nombre)
+    .map(plato => {
+      const scoreFicha = puntuarPlatoParaFicha(vino, plato)
+      if (scoreFicha <= 0) return null
+      try {
+        const analisis = analizarMaridaje(textoPlatoParaMaridaje(plato), [{ ...vino, activo: true }])
+        const resultado = analisis?.candidatos?.[0] || analisis?.recomendados?.[0]
+        if (!resultado?.compatible) return null
+        return { plato, resultado, score: scoreFicha + Math.min(18, Math.max(0, Number(resultado.score) || 0) / 3) }
+      } catch {
+        return { plato, resultado: null, score: scoreFicha }
+      }
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score)
+    .filter(item => {
+      const clave = String(item.plato.id || item.plato.nombre)
+      if (vistos.has(clave)) return false
+      vistos.add(clave)
+      const categoria = String(item.plato.categoria || 'Otros')
+      const usosCategoria = categoriasUsadas.get(categoria) || 0
+      if (usosCategoria >= 2) return false
+      categoriasUsadas.set(categoria, usosCategoria + 1)
+      return true
+    })
+    .slice(0, limite)
+  return candidatos
+}
+
+function resumenServicioVino(vino = {}, idioma = 'es') {
+  const esEn = idioma === 'en'
+  const tipo = String(vino.tipo || '').toLowerCase()
+  const tieneCopa = Number(vino.precio_copa) > 0
+  const perfil = [
+    tienePerfilVino(vino, ['fresco', 'alta acidez']) ? (esEn ? 'freshness' : 'frescura') : '',
+    tienePerfilVino(vino, ['salino', 'mineral']) ? (esEn ? 'a saline line' : 'un punto salino') : '',
+    tienePerfilVino(vino, ['floral']) ? (esEn ? 'a floral lift' : 'un lado floral') : '',
+    tienePerfilVino(vino, ['tanino amable']) ? (esEn ? 'soft tannin' : 'tanino amable') : '',
+    tienePerfilVino(vino, ['madera', 'tostado']) ? (esEn ? 'a discreet oak note' : 'un toque de madera') : '',
+    tienePerfilVino(vino, ['dulce']) ? (esEn ? 'sweetness' : 'dulzor') : '',
+  ].filter(Boolean).slice(0, 2)
+
+  const aporte = perfil.length
+    ? esEn
+      ? `It brings ${perfil.join(' and ')} to the pairing.`
+      : `Aporta ${perfil.join(' y ')} al maridaje.`
+    : esEn
+      ? 'Choose it when its style matches the food, not for a long tasting note.'
+      : 'Tiene sentido cuando su estilo encaja con el plato, no por una nota de cata larga.'
+  const formato = tieneCopa
+    ? esEn ? 'It is also available by the glass.' : 'También está disponible por copa.'
+    : tipo === 'espumoso'
+      ? esEn ? 'Best when the table wants freshness from the first glass.' : 'Mejor cuando la mesa quiere frescura desde la primera copa.'
+      : ''
+  return [aporte, formato].filter(Boolean).join(' ')
+}
+
+function crearUsoContextualVinoConPlatos(vino = {}, { idioma = 'es', platosCarta = [], platosSeleccionados = [] } = {}) {
+  const esEn = idioma === 'en'
+  const seleccionados = (platosSeleccionados || []).filter(plato => plato?.nombre)
+  const platosBase = seleccionados.length ? seleccionados : platosCarta
+  const platosRecomendados = recomendarPlatosCartaParaVino(vino, platosBase, seleccionados.length ? 4 : 3)
+  const sugerenciasCarta = seleccionados.length && platosRecomendados.length < 2
+    ? recomendarPlatosCartaParaVino(vino, platosCarta, 3)
+        .filter(item => !seleccionados.some(plato => String(plato.id || plato.nombre) === String(item.plato.id || item.plato.nombre)))
+        .slice(0, 2)
+    : []
+
+  return {
+    tituloPlatos: seleccionados.length ? (esEn ? 'With your selection' : 'Con tu selección') : (esEn ? 'Dishes from this menu' : 'Platos de esta carta'),
+    intro: platosRecomendados.length
+      ? (esEn ? 'This wine makes most sense with:' : 'Este vino tiene más sentido con:')
+      : (esEn ? 'No clear dish match found in this menu yet.' : 'Aún no encuentro un plato claramente asociado en esta carta.'),
+    platos: platosRecomendados,
+    sugerenciasCarta,
+    sugerenciasTitulo: esEn ? 'Also look at' : 'También miraría',
+    resumen: resumenServicioVino(vino, idioma),
+  }
 }
 
 const TRACK_EVENTS = true
@@ -612,6 +895,12 @@ export default function CartaPublica() {
     }
   }, [loading])
 
+  useEffect(() => {
+    if (restaurante?.etiquetas_publicas_activas !== true && modoCarta === 'etiquetas') {
+      setModoCarta('referencias')
+    }
+  }, [modoCarta, restaurante?.etiquetas_publicas_activas])
+
   async function leerStream(res, onChunk, onDone) {
     const reader = res.body.getReader()
     const decoder = new TextDecoder()
@@ -850,7 +1139,16 @@ export default function CartaPublica() {
 
   const vinosFiltrados = useMemo(() => vinos.filter(v => {
     const matchTipo = filtro === 'todos' || v.tipo === filtro
-    const matchBusqueda = !busqueda || v.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (v.bodega && v.bodega.toLowerCase().includes(busqueda.toLowerCase())) || (v.uva && v.uva.toLowerCase().includes(busqueda.toLowerCase()))
+    const busquedaLimpia = normalizarTextoBase(busqueda)
+    const textoBusquedaVino = normalizarTextoBase([
+      v.nombre,
+      v.bodega,
+      v.uva,
+      v.region,
+      v.tipo,
+      v.anada,
+    ].filter(Boolean).join(' '))
+    const matchBusqueda = !busquedaLimpia || textoBusquedaVino.includes(busquedaLimpia)
     const matchPrecio = !precioMax || v.precio_botella <= precioMax
     const matchInternacional = !soloInternacional || v.internacional === true
     const matchCopa = !soloCopa || Number(v.precio_copa) > 0
@@ -867,6 +1165,7 @@ export default function CartaPublica() {
   const tipos = ['todos', ...tiposOrdenados]
   const colorPrimario = restaurante?.color_primario || '#111111'
   const colorAcento = restaurante?.color_acento || colorPrimario
+  const etiquetasPublicasActivas = restaurante?.etiquetas_publicas_activas === true
   const fontTitulo = (FONT_MAP[restaurante?.tipografia] || FONT_MAP.serif).family
   const claseTipografia = restaurante?.tipografia === 'garamond' ? styles.fontGaramond : ''
 
@@ -1428,7 +1727,13 @@ export default function CartaPublica() {
 }
 
   // Vista ficha vino
-  if (vinoSeleccionado) return (
+  if (vinoSeleccionado) {
+    const usoContextualVino = crearUsoContextualVinoConPlatos(vinoSeleccionado, {
+      idioma,
+      platosCarta: platos,
+      platosSeleccionados,
+    })
+    return (
     <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ background: colorPrimario, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -1466,10 +1771,43 @@ export default function CartaPublica() {
             </div>
           ))}
         </div>
-        {vinoSeleccionado.notas_cata && (
+        {limpiarMarcadorPerfiles(vinoSeleccionado.notas_cata) && (
           <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0f0', padding: '20px', marginBottom: 20 }}>
             <p style={{ fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 12px' }}>{i.notasCata}</p>
-            <p style={{ fontSize: 15, color: '#444', lineHeight: 1.8, margin: 0, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>{vinoSeleccionado.notas_cata}</p>
+            <p style={{ fontSize: 15, color: '#444', lineHeight: 1.8, margin: 0, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>{limpiarMarcadorPerfiles(vinoSeleccionado.notas_cata)}</p>
+          </div>
+        )}
+        {(usoContextualVino.platos.length > 0 || usoContextualVino.resumen) && (
+          <div className={styles.contextWineBox}>
+            <p className={styles.contextWineLabel}>{i.cuandoPedir}</p>
+            <p className={styles.contextWineIntro}>{usoContextualVino.tituloPlatos}</p>
+            {usoContextualVino.platos.length > 0 && (
+              <>
+                <p className={styles.contextWineHint}>{usoContextualVino.intro}</p>
+                <div className={styles.contextDishList}>
+                  {usoContextualVino.platos.map(({ plato, resultado }) => (
+                    <article key={plato.id || plato.nombre} className={styles.contextDishItem}>
+                      <strong>{plato.nombre}</strong>
+                      <span>{[plato.categoria, motivoPlatoContextual(plato, vinoSeleccionado, idioma)].filter(Boolean).join(' · ')}</span>
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
+            {usoContextualVino.sugerenciasCarta.length > 0 && (
+              <>
+                <p className={styles.contextWineHint}>{usoContextualVino.sugerenciasTitulo}</p>
+                <div className={styles.contextDishList}>
+                  {usoContextualVino.sugerenciasCarta.map(({ plato, resultado }) => (
+                    <article key={plato.id || plato.nombre} className={styles.contextDishItem}>
+                      <strong>{plato.nombre}</strong>
+                      <span>{[plato.categoria, motivoPlatoContextual(plato, vinoSeleccionado, idioma)].filter(Boolean).join(' · ')}</span>
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
+            {usoContextualVino.resumen && <p className={styles.contextWineFoot}>{usoContextualVino.resumen}</p>}
           </div>
         )}
         <button
@@ -1483,7 +1821,8 @@ export default function CartaPublica() {
         </button>
       </div>
     </div>
-  )
+    )
+  }
 
   if (vista === 'carta') return (
     <div className={`${styles.shell} ${claseTipografia}`}>
@@ -1624,7 +1963,25 @@ export default function CartaPublica() {
           )}
         </section>
 
-        {/* Vista etiquetas pendiente de desarrollo — toggle oculto temporalmente */}
+        {etiquetasPublicasActivas && (
+          <section className={styles.viewModeSwitch} aria-label="Cambiar vista de carta">
+            {[
+              { id: 'referencias', label: i.vistaReferencias },
+              { id: 'etiquetas', label: i.vistaEtiquetas },
+            ].map(modo => (
+              <button
+                key={modo.id}
+                type="button"
+                className={`${styles.viewModeButton} ${modoCarta === modo.id ? styles.viewModeButtonActive : ''}`}
+                aria-pressed={modoCarta === modo.id}
+                onClick={() => setModoCarta(modo.id)}
+                style={modoCarta === modo.id ? { background: colorPrimario, borderColor: colorPrimario } : undefined}
+              >
+                {modo.label}
+              </button>
+            ))}
+          </section>
+        )}
 
         {!busqueda && (
           <section className={styles.shortcutPanel}>
@@ -1670,7 +2027,19 @@ export default function CartaPublica() {
           </div>
         )}
 
-        {/* Galería de etiquetas pendiente de desarrollo — oculta temporalmente */}
+        {etiquetasPublicasActivas && modoCarta === 'etiquetas' && (
+          <section className={styles.labelGallerySection}>
+            <div className={styles.labelGalleryHead}>
+              <div>
+                <h2 className={styles.sectionTitle}>{i.vistaEtiquetas}</h2>
+                <p className={styles.sectionSub}>{vinosFiltrados.length} {i.referencias}</p>
+              </div>
+            </div>
+            <div className={styles.labelGrid}>
+              {vinosFiltrados.map(vino => renderEtiquetaCard(vino))}
+            </div>
+          </section>
+        )}
 
         {modoCarta === 'referencias' && vinosCoravinFiltrados.length > 0 && filtro === 'todos' && (
           <section className={styles.accordionSection}>
@@ -1948,8 +2317,10 @@ export default function CartaPublica() {
     </div>
   )
 
+  const mostrarDockSeleccionPlatos = modoSommelier === 'platos' && platosSeleccionados.length > 0 && !respuesta
+
   if (vista === 'sommelier') return (
-    <div className={`${styles.shell} ${claseTipografia}`}>
+    <div className={`${styles.shell} ${mostrarDockSeleccionPlatos ? styles.shellWithSelectionDock : ''} ${claseTipografia}`}>
       {restaurante?.modo_prueba && (
         <PreviewModeBanner
           styles={styles}
@@ -2299,7 +2670,7 @@ export default function CartaPublica() {
         })}
       </main>
 
-      {modoSommelier === 'platos' && platosSeleccionados.length > 0 && !respuesta && (
+      {mostrarDockSeleccionPlatos && (
         <div className={styles.selectionDock}>
           <div>
             <strong>{platosSeleccionados.length}</strong>

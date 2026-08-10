@@ -1,0 +1,932 @@
+.page {
+  min-height: 100dvh;
+  background: #f7f5f0;
+  color: #171416;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  padding: 1rem;
+}
+
+.loading,
+.empty {
+  min-height: calc(100dvh - 2rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.empty h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.empty p {
+  margin: 0;
+  color: #6d665c;
+  line-height: 1.5;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: .7rem;
+  padding: 1rem 0 1.2rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #8a8176;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.photoWrap {
+  width: min(72vw, 260px);
+  aspect-ratio: 2/3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid #e8e2d8;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 14px 38px rgba(23,20,16,.12);
+}
+
+.photo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.photoFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photoIcon {
+  width: 82px;
+  height: 82px;
+  fill: none;
+  stroke: rgba(255,255,255,.52);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tipo {
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: .22rem .55rem;
+}
+
+.hero h1 {
+  max-width: 720px;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 11vw, 3.5rem);
+  line-height: 1;
+}
+
+.bodega {
+  margin: 0;
+  color: #6d665c;
+  font-size: 1rem;
+}
+
+.price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .65rem;
+  margin: .2rem 0 0;
+  color: var(--accent);
+  font-size: 1.8rem;
+  font-weight: 900;
+}
+
+.price s {
+  color: #9b9388;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .75rem;
+  max-width: 720px;
+  margin: 0 auto 1rem;
+}
+
+.infoCard,
+.section {
+  background: #fff;
+  border: 1px solid #ebe5dc;
+  border-radius: 12px;
+  box-shadow: 0 1px 7px rgba(23,20,16,.05);
+}
+
+.infoCard {
+  padding: 1rem;
+}
+
+.infoCard span,
+.section h2 {
+  display: block;
+  margin: 0 0 .35rem;
+  color: #9b9388;
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.infoCard strong {
+  display: block;
+  color: #171416;
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.infoCard p {
+  margin: .35rem 0 0;
+  color: #756d62;
+  font-size: .9rem;
+  line-height: 1.45;
+}
+
+.section {
+  max-width: 720px;
+  margin: 0 auto .75rem;
+  padding: 1rem;
+}
+
+.section p {
+  margin: 0;
+  color: #4d463f;
+  font-size: .98rem;
+  line-height: 1.6;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.tags span {
+  background: #f4efe7;
+  border-radius: 999px;
+  color: #4d463f;
+  font-size: .86rem;
+  font-weight: 700;
+  padding: .45rem .75rem;
+}
+
+.actions {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .55rem;
+  max-width: 720px;
+  margin: 1rem auto 0;
+  padding: .75rem 0 calc(.75rem + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, #f7f5f0 78%, rgba(247,245,240,0));
+}
+
+.primaryBtn,
+.secondaryBtn,
+.whatsappBtn {
+  min-height: 48px;
+  border-radius: 10px;
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: .65rem .7rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+.primaryBtn:disabled,
+.secondaryBtn:disabled,
+.whatsappBtn:disabled {
+  opacity: .62;
+  cursor: not-allowed;
+}
+
+.primaryBtn {
+  grid-column: 1 / -1;
+  background: var(--accent);
+  color: #fff;
+}
+
+.whatsappBtn {
+  background: #1f8f4f;
+  color: #fff;
+}
+
+.secondaryBtn {
+  background: #fff;
+  color: #171416;
+  border: 1px solid #e3ddd3;
+}
+
+.actions .secondaryBtn:last-child {
+  grid-column: 1 / -1;
+}
+
+.supportActions .secondaryBtn:last-child {
+  grid-column: auto;
+}
+
+.checkoutActions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.checkoutActions .primaryBtn,
+.checkoutActions .secondaryBtn {
+  grid-column: auto;
+  min-height: 56px;
+  padding-inline: .45rem;
+  font-size: .7rem;
+  line-height: 1.15;
+}
+
+.checkoutActions .secondaryBtn:last-child {
+  grid-column: auto;
+}
+
+.developmentBtn {
+  flex-direction: column;
+  gap: .16rem;
+  background: #d8d3ca;
+  color: #665e55;
+  border: 1px solid #cbc3b7;
+}
+
+.developmentBtn span {
+  line-height: 1.05;
+}
+
+.developmentBtn small {
+  color: #746c63;
+  font-size: .58rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.selectionHero {
+  max-width: 720px;
+  margin: 0 auto 1rem;
+  padding: 1.25rem 0 .5rem;
+}
+
+.selectionHero h1 {
+  margin: .35rem 0 .55rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 10vw, 3.4rem);
+  line-height: 1;
+}
+
+.selectionHero > p:not(.eyebrow):not(.selectionTotal) {
+  margin: 0;
+  color: #5f564e;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.selectionReason {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #ebe5dc;
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.selectionReason span {
+  display: block;
+  color: #9b9388;
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: .35rem;
+}
+
+.selectionReason strong {
+  display: block;
+  color: #342d27;
+  font-size: .98rem;
+  line-height: 1.45;
+}
+
+.selectionTotal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .8rem;
+  margin: 1rem 0 0;
+  padding: .85rem 1rem;
+  border-radius: 12px;
+  background: #171416;
+  color: #e8e2d8;
+  font-size: .82rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.selectionTotal strong {
+  color: var(--accent);
+  font-size: 1.25rem;
+}
+
+.selectionOfferNotice {
+  margin: .65rem 0 0;
+  color: #8a5d0d;
+  background: #fff6df;
+  border: 1px solid #eed795;
+  border-radius: 10px;
+  padding: .7rem .85rem;
+  font-size: .86rem;
+  line-height: 1.4;
+}
+
+.counterMode {
+  max-width: 720px;
+  margin: 0 auto 1rem;
+  padding: 1rem;
+  background: #171416;
+  color: #f8f4ec;
+  border-radius: 16px;
+  box-shadow: 0 18px 46px rgba(23,20,16,.22);
+}
+
+.counterHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .9rem;
+}
+
+.counterHeader span {
+  display: block;
+  color: var(--accent);
+  font-size: .7rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: .25rem;
+}
+
+.counterHeader h2 {
+  margin: 0;
+  color: #fff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.6rem;
+  line-height: 1.05;
+}
+
+.counterHeader p {
+  margin: .25rem 0 0;
+  color: rgba(248,244,236,.68);
+  font-size: .9rem;
+}
+
+.counterHeader button {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.counterList {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.counterItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: .65rem;
+  align-items: center;
+  padding: .7rem;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  background: rgba(255,255,255,.07);
+}
+
+.counterNumber {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.12);
+  color: var(--accent);
+  font-size: .85rem;
+  font-weight: 900;
+}
+
+.counterItemMain {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+
+.counterItemMain strong {
+  color: #fff;
+  font-size: .98rem;
+  line-height: 1.2;
+}
+
+.counterItemMain small {
+  color: rgba(248,244,236,.66);
+  font-size: .82rem;
+}
+
+.counterItemMain em {
+  color: #f2dcae;
+  font-size: .78rem;
+  font-style: normal;
+  line-height: 1.3;
+}
+
+.counterItemPrice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .15rem;
+}
+
+.counterItemPrice span {
+  color: #f2dcae;
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.counterItemPrice strong {
+  color: var(--accent);
+  font-size: .9rem;
+  white-space: nowrap;
+}
+
+.counterTotal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .8rem;
+  margin: .9rem 0 0;
+  padding-top: .85rem;
+  border-top: 1px solid rgba(255,255,255,.16);
+  color: rgba(248,244,236,.7);
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.counterTotal strong {
+  color: var(--accent);
+  font-size: 1.25rem;
+}
+
+.counterDisclaimer {
+  margin: .65rem 0 0;
+  color: rgba(248,244,236,.58);
+  font-size: .78rem;
+  line-height: 1.4;
+}
+
+.orderPanel,
+.paymentPanel {
+  max-width: 720px;
+  margin: 0 auto 1rem;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #e2d8c8;
+  border-radius: 16px;
+  box-shadow: 0 14px 36px rgba(23,20,16,.12);
+}
+
+.orderPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .85rem;
+}
+
+.orderPanelHeader span {
+  display: block;
+  color: var(--accent);
+  font-size: .7rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: .25rem;
+}
+
+.orderPanelHeader h2 {
+  margin: 0;
+  color: #171416;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.6rem;
+  line-height: 1.05;
+}
+
+.orderPanelHeader p {
+  margin: .25rem 0 0;
+  color: #7d7368;
+  font-size: .9rem;
+}
+
+.orderPanelHeader button {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: #f2eee8;
+  color: #171416;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.orderIntro {
+  margin: 0 0 .9rem;
+  color: #5f564e;
+  font-size: .95rem;
+  line-height: 1.5;
+}
+
+.orderForm {
+  display: grid;
+  gap: .75rem;
+}
+
+.orderForm label {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+
+.orderForm span {
+  color: #82786e;
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.orderForm input,
+.orderForm textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ddd4c8;
+  border-radius: 10px;
+  background: #fbfaf8;
+  color: #171416;
+  font: inherit;
+  font-size: .95rem;
+  padding: .75rem .85rem;
+  outline: none;
+}
+
+.orderForm textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+.orderForm input:focus,
+.orderForm textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(201,169,110,.15);
+}
+
+.orderMessage {
+  margin: .75rem 0 0;
+  color: #9a3412;
+  background: #fff3e9;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  padding: .7rem .85rem;
+  font-size: .84rem;
+  line-height: 1.4;
+}
+
+.orderSubmit {
+  width: 100%;
+  min-height: 50px;
+  margin-top: .85rem;
+  border: 0;
+  border-radius: 10px;
+  background: #171416;
+  color: #fff;
+  font-size: .82rem;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.orderSubmit:disabled {
+  opacity: .62;
+  cursor: wait;
+}
+
+.orderSuccess {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+  border-radius: 14px;
+  background: #171416;
+  color: #fff;
+  padding: 1.2rem 1rem;
+  text-align: center;
+}
+
+.orderSuccess span {
+  color: var(--accent);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.orderSuccess strong {
+  color: #fff;
+  font-size: 2rem;
+  letter-spacing: .08em;
+}
+
+.orderSuccess p {
+  max-width: 520px;
+  margin: 0;
+  color: rgba(248,244,236,.78);
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+.orderSuccess small {
+  color: #f2dcae;
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.selectionList {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.selectionWine {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 1rem;
+  padding: .9rem;
+  background: #fff;
+  border: 1px solid #ebe5dc;
+  border-radius: 14px;
+  box-shadow: 0 1px 7px rgba(23,20,16,.05);
+}
+
+.selectionWinePhotoWrap {
+  width: 96px;
+  aspect-ratio: 2/3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f4efe7;
+}
+
+.selectionWinePhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: .55rem;
+  box-sizing: border-box;
+}
+
+.selectionWineFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selectionWineIcon {
+  width: 48px;
+  height: 48px;
+  fill: none;
+  stroke: rgba(255,255,255,.54);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.selectionWineInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+
+.selectionWineTop {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+}
+
+.selectionRank {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f4efe7;
+  color: #6e655d;
+  font-size: .78rem;
+  font-weight: 900;
+}
+
+.selectionWinePrice {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: .95rem;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
+  gap: .35rem;
+}
+
+.selectionWinePrice s {
+  color: #9b9388;
+  font-size: .72rem;
+}
+
+.selectionOfferBadge {
+  border-radius: 999px;
+  background: #fff6df;
+  color: #9a6e00;
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: .18rem .45rem;
+}
+
+.selectionWine h2 {
+  margin: .1rem 0 0;
+  color: #171416;
+  font-size: 1.15rem;
+  line-height: 1.15;
+}
+
+.selectionWineBodega,
+.selectionWineMeta,
+.selectionWineNotes {
+  margin: 0;
+  color: #6d665c;
+  font-size: .88rem;
+  line-height: 1.45;
+}
+
+.selectionWineLocation {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .35rem;
+  margin: .15rem 0;
+}
+
+.selectionWineLocation span {
+  color: #9b9388;
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.selectionWineLocation strong {
+  color: var(--accent);
+  font-size: .98rem;
+}
+
+.selectionWineNotesBlock {
+  margin-top: .1rem;
+}
+
+.selectionWineNotesBlock span {
+  display: block;
+  color: #9b9388;
+  font-size: .66rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: .2rem;
+}
+
+.selectionWineNotes {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (min-width: 680px) {
+  .infoGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .actions {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .primaryBtn {
+    grid-column: span 2;
+  }
+
+  .checkoutActions {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .checkoutActions .primaryBtn,
+  .checkoutActions .secondaryBtn {
+    grid-column: auto;
+  }
+
+  .checkoutActions .secondaryBtn:last-child {
+    grid-column: auto;
+  }
+
+  .actions .secondaryBtn:last-child {
+    grid-column: auto;
+  }
+
+  .supportActions .secondaryBtn:last-child {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .selectionWine {
+    grid-template-columns: 74px minmax(0, 1fr);
+    gap: .75rem;
+    padding: .75rem;
+  }
+
+  .selectionWinePhotoWrap { width: 74px; }
+  .selectionWineTop { flex-wrap: wrap; }
+  .selectionWinePrice { margin-left: 0; }
+  .selectionWine h2 { font-size: 1.02rem; }
+  .counterItem {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .counterItemPrice {
+    grid-column: 2;
+    align-items: flex-start;
+  }
+}

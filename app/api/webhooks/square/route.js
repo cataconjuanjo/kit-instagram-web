@@ -47,11 +47,19 @@ async function handleCatalogUpdate() {
     return NextResponse.json({ ok: true, skipped: 'no_tiendas' })
   }
 
-  // Delegate to squareSyncForTienda which handles orphan detection,
-  // categoria preservation, activo calculation, and idempotent upserts.
   const results = []
   for (const tienda of tiendas) {
-    const result = await squareSyncForTienda(tienda.id, tienda.slug)
+    const { data: td } = await supabaseAdmin
+      .from('tiendas')
+      .select('square_access_token')
+      .eq('id', tienda.id)
+      .single()
+    const token = td?.square_access_token || SQUARE_ACCESS_TOKEN
+    if (!token) {
+      console.log(`[square-webhook] ${tienda.slug}: sin token, saltando`)
+      continue
+    }
+    const result = await squareSyncForTienda(tienda.id, tienda.slug, token)
     console.log(`[square-webhook] catalog.version.updated [${tienda.slug}] → ${result.insertados} nuevos, ${result.actualizados} act., ${result.errores} errores`)
     results.push({ slug: tienda.slug, ...result })
   }
