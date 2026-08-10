@@ -38,9 +38,9 @@ function escapeHtml(value = '') {
 }
 
 export async function POST(req) {
-  const { nombre, email, restaurante, mensaje, source, consentimiento } = await req.json()
-
   try {
+    const { nombre, email, restaurante, mensaje, source, consentimiento } = await req.json()
+
     const nombreLimpio = String(nombre || '').trim().slice(0, 120)
     const emailLimpio = String(email || '').trim().toLowerCase().slice(0, 160)
     const restauranteLimpio = String(restaurante || '').trim().slice(0, 160)
