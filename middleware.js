@@ -10,10 +10,20 @@ function getAppOrigin() {
   return (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '')
 }
 
+function isSameOrigin(origin, request) {
+  if (!origin) return true
+  try {
+    const originHost = new URL(origin).host
+    const requestHost = request.headers.get('host') || ''
+    return originHost === requestHost
+  } catch {
+    return false
+  }
+}
+
 function buildAllowedOrigins() {
   const appOrigin = getAppOrigin()
 
-  // Añade automáticamente la variante www/no-www del dominio configurado
   const wwwVariant = appOrigin.includes('://www.')
     ? appOrigin.replace('://www.', '://')
     : appOrigin.replace('://', '://www.')
@@ -49,7 +59,7 @@ export function middleware(request) {
 
   const isPublicPath = PUBLIC_API_PATHS.some(p => pathname.startsWith(p))
   const allowedOrigins = buildAllowedOrigins()
-  const originIsAllowed = !origin || isPublicPath || allowedOrigins.has(origin)
+  const originIsAllowed = !origin || isPublicPath || allowedOrigins.has(origin) || isSameOrigin(origin, request)
 
   // Preflight (OPTIONS)
   if (request.method === 'OPTIONS') {
