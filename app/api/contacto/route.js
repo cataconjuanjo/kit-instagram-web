@@ -77,6 +77,9 @@ export async function POST(req) {
     })
     return Response.json({ ok: true })
   } catch (error) {
+    if (error instanceof SyntaxError) {
+      return Response.json({ ok: false, error: 'Datos no validos.' }, { status: 400 })
+    }
     return Response.json({ ok: false }, { status: 500 })
   }
 }
