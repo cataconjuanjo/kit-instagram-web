@@ -93,9 +93,23 @@ const durations = results.map(item => item.ms)
 const failures = results.filter(item => !item.ok)
 const statusCounts = new Map()
 const cacheCounts = new Map()
+const pathStats = new Map()
 for (const result of results) {
   statusCounts.set(result.status, (statusCounts.get(result.status) || 0) + 1)
   cacheCounts.set(result.cache, (cacheCounts.get(result.cache) || 0) + 1)
+  const current = pathStats.get(result.path) || {
+    count: 0,
+    failures: 0,
+    durations: [],
+    cacheCounts: new Map(),
+    statusCounts: new Map(),
+  }
+  current.count += 1
+  if (!result.ok) current.failures += 1
+  current.durations.push(result.ms)
+  current.cacheCounts.set(result.cache, (current.cacheCounts.get(result.cache) || 0) + 1)
+  current.statusCounts.set(result.status, (current.statusCounts.get(result.status) || 0) + 1)
+  pathStats.set(result.path, current)
 }
 
 console.log(`Base URL: ${baseUrl}`)
@@ -107,6 +121,16 @@ console.log(`Duracion total: ${totalMs} ms`)
 console.log(`Latencia p50/p95/max: ${percentile(durations, 50)} / ${percentile(durations, 95)} / ${Math.max(...durations)} ms`)
 console.log(`Estados: ${JSON.stringify(Object.fromEntries(statusCounts))}`)
 console.log(`x-vercel-cache: ${JSON.stringify(Object.fromEntries(cacheCounts))}`)
+console.log('Por ruta:')
+for (const [path, stats] of pathStats) {
+  console.log([
+    `- ${path}`,
+    `count=${stats.count}`,
+    `p95=${percentile(stats.durations, 95)}ms`,
+    `status=${JSON.stringify(Object.fromEntries(stats.statusCounts))}`,
+    `cache=${JSON.stringify(Object.fromEntries(stats.cacheCounts))}`,
+  ].join(' '))
+}
 
 if (failures.length) {
   console.log('Fallos:')
