@@ -3,6 +3,7 @@ import { crearSesionCamarero } from '../../../lib/camareroSession'
 import { puedeUsar } from '../../../lib/plans'
 
 const RATE_LIMIT = 20
+const RESTAURANTE_RATE_LIMIT = 60
 const RATE_WINDOW_MS = 60 * 60 * 1000
 const SELECT_RESTAURANTE_SESION = [
   'id', 'slug', 'plan', 'subscription_status',
@@ -15,17 +16,17 @@ function getIP(req) {
     '0.0.0.0'
 }
 
-async function checkRateLimit(ip) {
+async function checkRateLimit(key, endpoint = 'camarero-sesion', max = RATE_LIMIT) {
   const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
   const { count } = await supabaseAdmin
     .from('rate_limits')
     .select('id', { count: 'exact', head: true })
-    .eq('ip', ip)
-    .eq('endpoint', 'camarero-sesion')
+    .eq('ip', key)
+    .eq('endpoint', endpoint)
     .gte('created_at', since)
 
-  if ((count || 0) >= RATE_LIMIT) return false
-  await supabaseAdmin.from('rate_limits').insert({ ip, endpoint: 'camarero-sesion' })
+  if ((count || 0) >= max) return false
+  await supabaseAdmin.from('rate_limits').insert({ ip: key, endpoint })
   return true
 }
 
@@ -41,7 +42,7 @@ export async function POST(req) {
   try {
     const { restaurante_id, pin, demo = false } = await req.json()
     if (!restaurante_id) return Response.json({ error: 'Restaurante obligatorio.' }, { status: 400 })
-    if (demo !== true && !await checkRateLimit(getIP(req))) {
+    if (demo !== true && !await checkRateLimit(getIP(req), 'camarero-sesion-ip', RATE_LIMIT)) {
       return Response.json({ error: 'Demasiados intentos. Prueba de nuevo más tarde.' }, { status: 429 })
     }
 
@@ -62,8 +63,19 @@ export async function POST(req) {
     const demoExentaRateLimit = demo === true &&
       esSlugDemoPermitido(restaurante.slug) &&
       (demoPermitida || restaurante.camarero_pin_bloqueo_activo !== true)
-    if (!demoExentaRateLimit && demo === true && !await checkRateLimit(getIP(req))) {
+    if (!demoExentaRateLimit && demo === true && !await checkRateLimit(getIP(req), 'camarero-sesion-ip', RATE_LIMIT)) {
       return Response.json({ error: 'Demasiados intentos. Prueba de nuevo mas tarde.' }, { status: 429 })
+    }
+
+    if (!demoPermitida && restaurante.camarero_pin_bloqueo_activo === true) {
+      const restauranteAllowed = await checkRateLimit(
+        `rest:${restaurante.id}`,
+        'camarero-sesion-restaurante',
+        RESTAURANTE_RATE_LIMIT
+      )
+      if (!restauranteAllowed) {
+        return Response.json({ error: 'Demasiados intentos para esta sala. Prueba de nuevo mas tarde.' }, { status: 429 })
+      }
     }
 
     let pinValido = demoPermitida

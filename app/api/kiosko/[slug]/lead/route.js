@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { createHash } from 'crypto'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { checkRateLimit } from '../../../../lib/security'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+const IP_RATE_LIMIT = 12
+const EMAIL_RATE_LIMIT = 3
+const RATE_WINDOW_MS = 60 * 60 * 1000
 
 const TIPO_COLOR = {
   tinto:        '#8B1A1A',
@@ -21,6 +26,25 @@ const TIPO_LABEL = {
 
 function isValidEmail(e) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+}
+
+function requestIp(request) {
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    '0.0.0.0'
+  )
+}
+
+function hashIdentifier(value) {
+  const pepper = process.env.LOGIN_RATE_LIMIT_PEPPER ||
+    process.env.SALA_SESSION_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    'carta-viva-kiosko-lead-rate-limit'
+
+  return createHash('sha256')
+    .update(`${pepper}:${value}`)
+    .digest('hex')
 }
 
 function buildEmailHtml({ tiendaNombre, colorAcento, logoUrl, vinos, unsubscribeUrl }) {
@@ -147,6 +171,15 @@ function buildEmailHtml({ tiendaNombre, colorAcento, logoUrl, vinos, unsubscribe
 export async function POST(request, { params }) {
   const { slug } = await params
   const baseUrl = `${request.nextUrl.protocol}//${request.nextUrl.host}`
+  const ip = requestIp(request)
+
+  const ipAllowed = await checkRateLimit(`${slug}:${ip}`, 'kiosko-lead-ip', {
+    max: IP_RATE_LIMIT,
+    windowMs: RATE_WINDOW_MS,
+  })
+  if (!ipAllowed) {
+    return NextResponse.json({ error: 'Demasiadas solicitudes. Espera unos minutos.' }, { status: 429 })
+  }
 
   let body
   try { body = await request.json() } catch {
@@ -171,6 +204,14 @@ export async function POST(request, { params }) {
   if (!tienda) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
 
   const emailClean = email.toLowerCase().trim()
+  const emailAllowed = await checkRateLimit(`${slug}:acct:${hashIdentifier(emailClean)}`, 'kiosko-lead-email', {
+    max: EMAIL_RATE_LIMIT,
+    windowMs: RATE_WINDOW_MS,
+  })
+  if (!emailAllowed) {
+    return NextResponse.json({ error: 'Demasiadas solicitudes para este email. Espera unos minutos.' }, { status: 429 })
+  }
+
   const desde7 = new Date(Date.now() - 7 * 86400000).toISOString()
 
   const { data: existing } = await supabaseAdmin

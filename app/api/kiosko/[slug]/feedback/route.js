@@ -1,15 +1,33 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { checkRateLimit } from '../../../../lib/security'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM   = process.env.CARTA_VIVA_FROM || 'Carta Viva <onboarding@resend.dev>'
 const ADMIN  = 'cataconjuanjo@gmail.com'
+const RATE_LIMIT = 10
+const RATE_WINDOW_MS = 60 * 60 * 1000
 
 const LABELS = { 1: '😢 Muy malo', 2: '😟 Malo', 3: '😐 Regular', 4: '🙂 Bueno', 5: '😄 Excelente' }
 
+function requestIp(request) {
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    '0.0.0.0'
+  )
+}
+
 export async function POST(request, { params }) {
   const { slug } = await params
+  const allowed = await checkRateLimit(`${slug}:${requestIp(request)}`, 'kiosko-feedback', {
+    max: RATE_LIMIT,
+    windowMs: RATE_WINDOW_MS,
+  })
+  if (!allowed) {
+    return NextResponse.json({ error: 'Demasiados mensajes. Espera unos minutos.' }, { status: 429 })
+  }
 
   let body
   try { body = await request.json() } catch {

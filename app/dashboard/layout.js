@@ -14,6 +14,7 @@ import OpenCartaPruebaButton from './OpenCartaPruebaButton'
 import { GuideModeProvider, GuidePanel, GuideToggle } from './GuideMode'
 import BrandLogo from '../components/BrandLogo'
 import BillingPanel from './BillingPanel'
+import PrivateSessionTimeout from '../components/PrivateSessionTimeout'
 
 const icon = {
   home: <svg viewBox="0 0 20 20" fill="currentColor" width={16} height={16}><path d="M10.707 2.293a1 1 0 0 0-1.414 0l-7 7a1 1 0 0 0 1.414 1.414L4 10.414V17a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-3h2v3a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-6.586l.293.293a1 1 0 0 0 1.414-1.414l-7-7z"/></svg>,
@@ -397,6 +398,7 @@ export default function DashboardLayout({ children }) {
 
   return (
     <GuideModeProvider restaurantId={restaurante?.id}>
+    <PrivateSessionTimeout timeoutMinutes={60} />
     <div className={`${styles.shell} ${darkMode ? styles.darkShell : ''}`}>
       {restaurante && <UsageTracker restauranteId={restaurante.id} onTrialChange={setTrialInfo} />}
       <a href="#dashboard-main-content" className={styles.skipLink}>Saltar al panel</a>

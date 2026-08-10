@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { getPublicTienda } from '../../../_lib/kioskoAuth'
+import { checkRateLimit as checkPersistentRateLimit } from '../../../../lib/security'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const MAX_IDS = 8
 const MAX_PEDIDOS_WINDOW = 6
 const RATE_WINDOW_MS = 10 * 60 * 1000
-const rateLimit = new Map()
 const COUNTER_ORDERS_IN_DEVELOPMENT = true
 
 function requestIp(request) {
@@ -53,19 +53,6 @@ function makeOrderCode() {
   return `K-${stamp}-${rand}`
 }
 
-function checkRateLimit(key) {
-  const now = Date.now()
-  const bucket = rateLimit.get(key) || []
-  const fresh = bucket.filter(ts => now - ts < RATE_WINDOW_MS)
-  if (fresh.length >= MAX_PEDIDOS_WINDOW) {
-    rateLimit.set(key, fresh)
-    return false
-  }
-  fresh.push(now)
-  rateLimit.set(key, fresh)
-  return true
-}
-
 async function getVinos(tiendaId, ids) {
   if (!ids.length) return []
 
@@ -92,7 +79,11 @@ export async function POST(request, { params }) {
   }
 
   const ip = requestIp(request)
-  if (!checkRateLimit(`${slug}:${ip || 'anon'}`)) {
+  const allowed = await checkPersistentRateLimit(`${slug}:${ip || 'anon'}`, 'kiosko-pedido', {
+    max: MAX_PEDIDOS_WINDOW,
+    windowMs: RATE_WINDOW_MS,
+  })
+  if (!allowed) {
     return NextResponse.json({ error: 'Demasiados pedidos seguidos. Espera unos minutos.' }, { status: 429 })
   }
 

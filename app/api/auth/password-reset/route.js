@@ -1,11 +1,13 @@
 import { Resend } from 'resend'
+import { createHash } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
 const FROM = process.env.CARTA_VIVA_FROM || 'Carta Viva <onboarding@resend.dev>'
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
-const RATE_LIMIT = 5
+const IP_RATE_LIMIT = 5
+const ACCOUNT_RATE_LIMIT = 3
 const RATE_WINDOW_MS = 60 * 60 * 1000
 
 function getIP(request) {
@@ -14,16 +16,27 @@ function getIP(request) {
     '0.0.0.0'
 }
 
-async function checkRateLimit(ip) {
+function hashIdentifier(value) {
+  const pepper = process.env.LOGIN_RATE_LIMIT_PEPPER ||
+    process.env.SALA_SESSION_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    'carta-viva-password-reset-rate-limit'
+
+  return createHash('sha256')
+    .update(`${pepper}:${value}`)
+    .digest('hex')
+}
+
+async function checkRateLimit(key, endpoint, max) {
   const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
   const { count } = await supabaseAdmin
     .from('rate_limits')
     .select('id', { count: 'exact', head: true })
-    .eq('ip', ip)
-    .eq('endpoint', 'password-reset')
+    .eq('ip', key)
+    .eq('endpoint', endpoint)
     .gte('created_at', since)
-  if ((count || 0) >= RATE_LIMIT) return false
-  await supabaseAdmin.from('rate_limits').insert({ ip, endpoint: 'password-reset' })
+  if ((count || 0) >= max) return false
+  await supabaseAdmin.from('rate_limits').insert({ ip: key, endpoint })
   return true
 }
 
@@ -59,7 +72,9 @@ export async function POST(req) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLimpio)) {
       return Response.json({ ok: true })
     }
-    if (!await checkRateLimit(getIP(req))) {
+    const ipAllowed = await checkRateLimit(getIP(req), 'password-reset-ip', IP_RATE_LIMIT)
+    const accountAllowed = await checkRateLimit(`acct:${hashIdentifier(emailLimpio)}`, 'password-reset-account', ACCOUNT_RATE_LIMIT)
+    if (!ipAllowed || !accountAllowed) {
       return Response.json({ ok: true })
     }
 

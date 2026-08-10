@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { getPublicTienda, PUBLIC_VINO_SELECT } from '../../../_lib/kioskoAuth'
+import { checkRateLimit } from '../../../../lib/security'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const MAX_IDS = 8
+const RATE_LIMIT = 120
+const RATE_WINDOW_MS = 60 * 60 * 1000
 
 function requestIp(request) {
   return (
@@ -73,6 +76,14 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   const { slug } = await params
+  const allowed = await checkRateLimit(`${slug}:${requestIp(request) || 'anon'}`, 'kiosko-mobile-intent', {
+    max: RATE_LIMIT,
+    windowMs: RATE_WINDOW_MS,
+  })
+  if (!allowed) {
+    return NextResponse.json({ ok: true, skipped: true, limited: true })
+  }
+
   const tienda = await getPublicTienda(slug, { select: 'id, slug, nombre, activo' })
   if (!tienda) return NextResponse.json({ ok: true, skipped: true })
 

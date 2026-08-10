@@ -7,6 +7,7 @@ import { supabase } from '../supabase'
 import styles from './layout.module.css'
 import { GuideModeProvider, GuidePanel, GuideToggle } from '../dashboard/GuideMode'
 import BrandLogo from '../components/BrandLogo'
+import PrivateSessionTimeout from '../components/PrivateSessionTimeout'
 
 export default function AdminLayout({ children }) {
   const [restaurantes, setRestaurantes] = useState([])
@@ -67,6 +68,7 @@ export default function AdminLayout({ children }) {
 
   return (
     <GuideModeProvider restaurantId="consultor">
+    <PrivateSessionTimeout timeoutMinutes={30} />
     <div className={styles.shell}>
       <nav className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>

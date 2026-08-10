@@ -51,6 +51,15 @@ function genericFailure(status = 401) {
 }
 
 export async function POST(request) {
+  const ip = getIP(request)
+  const ipAllowed = await checkRateLimit(ip, 'auth-login-ip', IP_ATTEMPT_LIMIT)
+  if (!ipAllowed) {
+    return Response.json({
+      ok: false,
+      error: 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.',
+    }, { status: 429 })
+  }
+
   let body
   try {
     body = await request.json()
@@ -65,12 +74,10 @@ export async function POST(request) {
     return genericFailure()
   }
 
-  const ip = getIP(request)
   const accountKey = `acct:${hashIdentifier(email)}`
-  const ipAllowed = await checkRateLimit(ip, 'auth-login-ip', IP_ATTEMPT_LIMIT)
   const accountAllowed = await checkRateLimit(accountKey, 'auth-login-account', ACCOUNT_ATTEMPT_LIMIT)
 
-  if (!ipAllowed || !accountAllowed) {
+  if (!accountAllowed) {
     return Response.json({
       ok: false,
       error: 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.',
