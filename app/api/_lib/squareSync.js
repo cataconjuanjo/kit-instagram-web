@@ -167,9 +167,9 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     const activo      = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
 
     if (existing) {
-      // Solo actualiza precio — no toca activo, stock, nombre ni variation_id de vinos ya creados
+      // Actualiza precio; variation_id se pobla en un paso separado (best-effort, sin riesgo de 23505)
       if (precio_pvp != null) {
-        toUpsertById.push({ id: existing.id, precio_pvp, updated_at: new Date().toISOString() })
+        toUpsertById.push({ id: existing.id, precio_pvp, _variationId: variationId, updated_at: new Date().toISOString() })
       }
     } else {
       toInsertNew.push({
@@ -202,6 +202,8 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   const UPDATE_CONCURRENCY = 50
   for (let i = 0; i < toUpsertById.length; i += UPDATE_CONCURRENCY) {
     const chunk = toUpsertById.slice(i, i + UPDATE_CONCURRENCY)
+
+    // Paso 1: precio (siempre, crítico)
     await Promise.all(chunk.map(({ id, precio_pvp, updated_at }) =>
       supabaseAdmin.from('vinos_tienda')
         .update({ precio_pvp, updated_at })
@@ -210,6 +212,17 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
           if (error) { console.error('[square-sync] update(precio) error:', id, error.message); errores++ }
         })
     ))
+
+    // Paso 2: poblar square_variation_id si aún es null (best-effort, errores ignorados)
+    await Promise.allSettled(chunk
+      .filter(r => r._variationId)
+      .map(({ id, _variationId }) =>
+        supabaseAdmin.from('vinos_tienda')
+          .update({ square_variation_id: _variationId })
+          .eq('id', id)
+          .is('square_variation_id', null)
+      )
+    )
   }
 
   // Nuevos CON variation_id → upsert sobre la constraint real; si ya existía, actualiza campos completos

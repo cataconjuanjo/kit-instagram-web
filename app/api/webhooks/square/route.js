@@ -93,7 +93,10 @@ async function handleInventoryUpdate(event) {
         .maybeSingle())
     }
 
-    if (!vino) continue
+    if (!vino) {
+      console.warn(`[square-webhook] inventory: ID no encontrado en vinos_tienda (buscado square_variation_id="${catalogId}" y square_catalog_id="${catalogId}")`)
+      continue
+    }
 
     // Solo actualizamos si el stock sube (reposición) — las ventas las gestiona payment.updated
     if (nuevoStock <= (vino.stock || 0)) continue
@@ -241,6 +244,7 @@ export async function POST(request) {
       }
 
       if (!vino) {
+        console.warn(`[square-webhook] payment: ID no encontrado en vinos_tienda (buscado square_variation_id="${catalogId}" y square_catalog_id="${catalogId}") — ¿square_variation_id sin poblar? Ejecuta sync de catálogo.`)
         lineas.push({ catalog_object_id: catalogId, quantity: qty, status: 'not_found' })
         continue
       }
