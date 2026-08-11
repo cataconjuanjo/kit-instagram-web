@@ -8,6 +8,7 @@ const PRICE_IDS = {
   basico:  process.env.STRIPE_PRICE_KIOSKO_BASICO  || 'price_1TwhPQJewpUM60dKMDpfQ4dP',
   premium: process.env.STRIPE_PRICE_KIOSKO_PREMIUM || 'price_1TxLdbJewpUM60dKJ4zEkO4D',
 }
+const SETUP_FEE_PRICE_ID = process.env.STRIPE_PRICE_KIOSKO_SETUP_FEE || 'price_1U2wUSJewpUM60dKyuWt0Fq0'
 
 export async function POST(req, { params }) {
   const { slug } = await params
@@ -24,15 +25,17 @@ export async function POST(req, { params }) {
 
   const { data: tienda } = await supabaseAdmin
     .from('tiendas')
-    .select('id, nombre, slug, plan, propietario_email, email')
+    .select('id, nombre, slug, plan, propietario_email, email, setup_fee_incluido')
     .eq('slug', slug)
     .single()
 
   if (!tienda) return Response.json({ error: 'Tienda no encontrada' }, { status: 404 })
 
+  const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || '').toLowerCase().split(',').map(e => e.trim())
   const email = user.email?.toLowerCase()
-  const emailTienda = tienda.propietario_email?.toLowerCase() || tienda.email?.toLowerCase()
-  if (email !== emailTienda) return Response.json({ error: 'No autorizado' }, { status: 403 })
+  const esAdmin = ADMIN_EMAILS.includes(email)
+  const esOwner = email === tienda.propietario_email?.toLowerCase() || email === tienda.email?.toLowerCase()
+  if (!esAdmin && !esOwner) return Response.json({ error: 'No autorizado' }, { status: 403 })
 
   // Plan: usa el elegido si es válido; si no, el plan actual (si ya tiene uno real) o premium por defecto
   const plan = (planElegido && PRICE_IDS[planElegido])
@@ -43,6 +46,8 @@ export async function POST(req, { params }) {
 
   if (!process.env.STRIPE_SECRET_KEY) return Response.json({ error: 'Stripe no configurado' }, { status: 500 })
 
+  const emailTienda = (tienda.propietario_email || tienda.email || '').toLowerCase()
+
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
   const existing = await stripe.customers.list({ email: emailTienda, limit: 1 })
   const customer = existing.data[0] || await stripe.customers.create({
@@ -51,17 +56,20 @@ export async function POST(req, { params }) {
     metadata: { tienda_id: tienda.id, tienda_slug: tienda.slug },
   })
 
+  const lineItems = [{ price: priceId, quantity: 1 }]
+  if (plan === 'basico' && !tienda.setup_fee_incluido) {
+    lineItems.push({ price: SETUP_FEE_PRICE_ID, quantity: 1 })
+  }
+
   const session = await stripe.checkout.sessions.create({
     customer: customer.id,
     mode: 'subscription',
     payment_method_types: ['card'],
-    line_items: [{ price: priceId, quantity: 1 }],
+    line_items: lineItems,
     success_url: `${SITE_URL}/kiosko-admin/${slug}?checkout=ok`,
     cancel_url:  `${SITE_URL}/kiosko-admin/${slug}`,
     metadata: { tipo: 'kiosko', tienda_id: tienda.id, tienda_slug: tienda.slug, plan, price_id: priceId },
     subscription_data: { metadata: { tipo: 'kiosko', tienda_id: tienda.id, tienda_slug: tienda.slug, plan } },
-    automatic_tax: { enabled: true },
-    customer_update: { address: 'auto', name: 'auto' },
     locale: 'es',
   })
 
