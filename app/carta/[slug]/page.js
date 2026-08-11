@@ -163,10 +163,13 @@ const t = {
     anada: 'Añada',
     copa: 'Copa',
     botella: 'Botella',
+    precio: 'Precio',
     notasCata: 'Notas de cata',
     cuandoPedir: 'Cuándo pedir este vino',
     quePedir: '¿Qué vas a pedir?',
     seleccionaPlatos: 'Selecciona tus platos y afinamos una recomendación de vino.',
+    avisoIa: 'Recomendación asistida por IA con la carta real del restaurante. El equipo puede confirmar disponibilidad, precio y alérgenos.',
+    avisoIaResultado: 'Resultado generado con ayuda de IA y criterios de Carta Viva. Úsalo como apoyo para decidir, no como indicación sanitaria o legal.',
     vinoManda: 'Ya tengo vino',
     vinoMandaSub: 'Elige el vino que quieres beber y te decimos qué platos pedir.',
     buscarVino: 'Buscar vino...',
@@ -241,10 +244,13 @@ const t = {
     anada: 'Vintage',
     copa: 'Glass',
     botella: 'Bottle',
+    precio: 'Price',
     notasCata: 'Tasting notes',
     cuandoPedir: 'When to order this wine',
     quePedir: 'What are you having?',
     seleccionaPlatos: 'Select your dishes and we will refine one wine recommendation.',
+    avisoIa: 'AI-assisted recommendation using the restaurant wine list. The team can confirm availability, price and allergens.',
+    avisoIaResultado: 'Generated with AI support and Carta Viva criteria. Use it as decision support, not as health or legal advice.',
     vinoManda: 'I have a wine',
     vinoMandaSub: 'Choose the wine you want to drink and we will suggest what to order.',
     buscarVino: 'Search wine...',
@@ -462,6 +468,9 @@ function rasgosPlatoContextual(plato = {}) {
   const texto = textoPlatoNormalizado(plato)
   return {
     carneRoja: ['ternera', 'solomillo de ternera', 'vaca', 'buey', 'entrecot', 'chuleton'].some(t => texto.includes(t)),
+    solomillo: ['solomillo'].some(t => texto.includes(t)),
+    albondiga: ['albondiga', 'hamburgues', 'hamburguesa'].some(t => texto.includes(t)),
+    entrecot: ['entrecot', 'chuleton', 'buey'].some(t => texto.includes(t)),
     cerdoIberico: ['iberico', 'presa', 'pluma', 'secreto', 'solomillo iberico'].some(t => texto.includes(t)),
     brasa: ['brasa', 'parrilla', 'asado', 'asada', 'ahumado', 'humo'].some(t => texto.includes(t)),
     guiso: ['guiso', 'guisado', 'estofado', 'carrillera', 'rabo', 'meloso'].some(t => texto.includes(t)),
@@ -528,19 +537,23 @@ function puntuarPlatoParaFicha(vino = {}, plato = {}) {
   return score
 }
 
-function motivoPlatoContextual(plato = {}, vino = {}, idioma = 'es') {
-  const esEn = idioma === 'en'
+function motivoPlatoContextual(plato = {}, vino = {}, idioma = ‘es’) {
+  const esEn = idioma === ‘en’
   const tipo = tipoVinoSimple(vino)
   const rasgos = rasgosPlatoContextual(plato)
-  if (tipo === 'tinto' && rasgos.carneRoja) return esEn ? 'The meat softens the tannin and lets the red show its depth.' : 'La carne suaviza el tanino y deja que el tinto muestre profundidad.'
-  if (tipo === 'tinto' && rasgos.cerdoIberico) return esEn ? 'The juicy Iberian pork works well with a red that has fruit and softness.' : 'El ibérico jugoso encaja bien con un tinto de fruta y tacto amable.'
-  if (tipo === 'tinto' && rasgos.brasa) return esEn ? 'Grill and roasted notes connect naturally with the wine’s darker side.' : 'La brasa y el tostado conectan con el lado más profundo del vino.'
-  if ((tipo === 'blanco' || tipo === 'rosado') && rasgos.marino) return esEn ? 'Freshness keeps the seafood side clean and lively.' : 'La frescura mantiene limpio y vivo el lado marino del plato.'
-  if ((tipo === 'blanco' || tipo === 'espumoso' || tipo === 'generoso') && rasgos.fritura) return esEn ? 'Acidity, salinity or bubbles clean the fried texture between bites.' : 'Acidez, salinidad o burbuja limpian la fritura entre bocados.'
-  if (tipo === 'generoso' && rasgos.grasoSalino) return esEn ? 'Its dry saline profile handles salt, fat and cured flavours.' : 'Su perfil seco y salino aguanta sal, grasa y curados.'
-  if (tipo === 'dulce' && rasgos.postre) return esEn ? 'Sweetness in the wine keeps the dessert from making it taste hard.' : 'El dulzor del vino evita que el postre lo vuelva duro.'
-  if (rasgos.queso) return esEn ? 'It has enough texture for the cheese without turning the choice heavy.' : 'Tiene textura para el queso sin volver pesada la elección.'
-  return esEn ? 'It is one of the cleaner matches for this wine on the menu.' : 'Es uno de los encajes más limpios para este vino dentro de la carta.'
+  if (tipo === ‘tinto’ && rasgos.solomillo) return esEn ? ‘The fine fat of the sirloin tames the tannin and stretches the finish.’ : ‘La grasa fina del solomillo doma el tanino y alarga el final.’
+  if (tipo === ‘tinto’ && rasgos.albondiga) return esEn ? ‘The juicy mince and spices give the red fruit something solid to rest on.’ : ‘La carne picada y las especias dan al tinto un sustrato sabroso donde apoyarse.’
+  if (tipo === ‘tinto’ && rasgos.entrecot) return esEn ? ‘The crust and marbling call for a red with enough backbone to hold up.’ : ‘La costra y el marmoleo piden un tinto con estructura que no se desdibuje.’
+  if (tipo === ‘tinto’ && rasgos.carneRoja) return esEn ? ‘The red meat softens the tannin and lets the wine show its depth.’ : ‘La carne roja suaviza el tanino y abre la profundidad del tinto.’
+  if (tipo === ‘tinto’ && rasgos.cerdoIberico) return esEn ? ‘Iberian fat and fruit in the wine create a long, almost seamless finish.’ : ‘La grasa ibérica y la fruta del vino crean un final largo y casi sin fisuras.’
+  if (tipo === ‘tinto’ && rasgos.brasa) return esEn ? ‘Char and smoke lock onto the wine’s darker, earthier register.’ : ‘El ahumado y la brasa engancha el lado más oscuro y terroso del vino.’
+  if (tipo === ‘tinto’ && rasgos.guiso) return esEn ? ‘The slow-cooked sauce and the wine share the same deep, savoury tone.’ : ‘La salsa del guiso y el vino comparten el mismo tono profundo y sabroso.’
+  if ((tipo === ‘blanco’ || tipo === ‘rosado’) && rasgos.marino) return esEn ? ‘Freshness keeps the seafood side clean and lively.’ : ‘La frescura del vino mantiene limpio y vivo el lado marino del plato.’
+  if ((tipo === ‘blanco’ || tipo === ‘espumoso’ || tipo === ‘generoso’) && rasgos.fritura) return esEn ? ‘Acidity or bubbles cut through the fried texture between bites.’ : ‘La acidez o la burbuja limpian la fritura entre bocado y bocado.’
+  if (tipo === ‘generoso’ && rasgos.grasoSalino) return esEn ? ‘Its dry saline profile handles salt, fat and cured flavours without blinking.’ : ‘Su perfil seco y salino aguanta sal, grasa y curados sin inmutarse.’
+  if (tipo === ‘dulce’ && rasgos.postre) return esEn ? ‘Sweetness in the wine keeps the dessert from turning the palate sharp.’ : ‘El dulzor del vino evita que el postre afine el paladar de forma brusca.’
+  if (rasgos.queso) return esEn ? ‘Enough texture and acidity for cheese without making the pairing feel heavy.’ : ‘Textura y acidez suficientes para el queso sin que el conjunto se haga pesado.’
+  return esEn ? ‘One of the cleaner matches for this wine on the menu.’ : ‘Uno de los encajes más limpios para este vino dentro de la carta.’
 }
 
 function recomendarPlatosCartaParaVino(vino = {}, platosCarta = [], limite = 3) {
@@ -1134,6 +1147,18 @@ export default function CartaPublica() {
   const precioCopaCarta = valor => _formatPrecio(valor, restaurante?.carta_copa_decimales !== false ? 2 : 0) + moneda
   const precioUnidadCarta = (precio, unidad) => `${precio} / ${String(unidad || '').toLowerCase()}`
 
+  const etiquetaPrecioVino = v => {
+    const decimalesCopa = restaurante?.carta_copa_decimales !== false ? 2 : 0
+    const copa = precioValido(v.precio_copa) ? _formatPrecio(v.precio_copa, decimalesCopa) : null
+    const botella = precioValido(v.precio_botella) ? _formatPrecio(v.precio_botella, 0) : null
+    if (!copa && !botella) return ''
+    const partes = [
+      copa ? `${copa}/${i.copa.toLowerCase()}` : null,
+      botella ? `${botella}/${i.botella.toLowerCase()}` : null,
+    ].filter(Boolean)
+    return `${i.precio} ${partes.join(' ')}`
+  }
+
   const preciosDisponibles = [...new Set(vinos.map(v => v.precio_botella).filter(Boolean).sort((a, b) => a - b))]
   const precioMaximo = preciosDisponibles[preciosDisponibles.length - 1] || 100
 
@@ -1493,29 +1518,7 @@ export default function CartaPublica() {
           {notaSeleccion && <p className={styles.wineNotes}>{notaSeleccion}</p>}
         </div>
         <div className={styles.priceBlock}>
-          {precioCopaPrincipal ? (
-            <>
-              <div className={styles.mainPrice}>
-                <span className={styles.formattedPrice}>{precioCopaCarta(v.precio_copa)}</span>
-                <small>{i.copa}</small>
-              </div>
-              {tieneBotella && <p className={styles.priceMeta}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
-              {tieneBotella && <p className={styles.secondaryPrice}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
-              {tieneBotella && <p className={styles.glassPrice}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
-            </>
-          ) : (
-            <>
-              <div className={styles.mainPrice}>
-                <span className={styles.formattedPrice}>{precioCopaPrincipal ? precioCopaCarta(v.precio_copa) : precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</span>
-                <span>{precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</span>
-                <small>{i.botella}</small>
-              </div>
-              {tieneCopa && <p className={styles.priceMeta}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
-              {tieneCopa && <p className={styles.secondaryPrice}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
-              {tieneCopa && <p className={styles.glassPrice}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
-              {tieneBotella && <p className={styles.bottlePrice}>{precioBotellaCarta(v.precio_botella)}</p>}
-            </>
-          )}
+          {etiquetaPrecioVino(v) && <p className={styles.winePriceLabel}>{etiquetaPrecioVino(v)}</p>}
           <button
             className={`${styles.compareButton} ${enComparador ? styles.compareActive : ''}`}
             onClick={() => toggleComparador(v)}
@@ -1568,13 +1571,7 @@ export default function CartaPublica() {
             <h3>{nombreVinoCarta(v)}</h3>
             {meta && <p>{meta}</p>}
           </button>
-          {(tieneBotella || tieneCopa) && (
-            <div className={styles.labelPriceRow}>
-              <strong>{tieneBotella ? precioBotellaCarta(v.precio_botella) : precioCopaCarta(v.precio_copa)}</strong>
-              {tieneBotella && tieneCopa && <span>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</span>}
-              {!tieneBotella && tieneCopa && <span>{i.copa}</span>}
-            </div>
-          )}
+          {etiquetaPrecioVino(v) && <p className={styles.labelPriceLabel}>{etiquetaPrecioVino(v)}</p>}
           <button
             type="button"
             className={`${styles.labelCompareButton} ${enComparador ? styles.compareActive : ''}`}
@@ -1633,7 +1630,7 @@ export default function CartaPublica() {
  if (mostrarComparador) {
   const ejes = WINE_PROFILE_AXES
   const etiquetas = WINE_PROFILE_LABELS
-  const coloresVino = ['#7B2D2D', '#C4A55A', '#534AB7', '#4A8C6F']
+  const coloresVino = ['#C0392B', '#2471A3', '#1E8449', '#D35400']
 
   return (
     <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'system-ui, sans-serif' }}>
@@ -1650,26 +1647,38 @@ export default function CartaPublica() {
       <div style={{ padding: '24px 16px' }}>
 
         {/* Leyenda */}
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
-          {vinosComparador.map((v, idx) => (
-            <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: coloresVino[idx] }} />
-              <p style={{ margin: 0, fontSize: 13, color: '#111', fontWeight: 500 }}>{nombreVinoCarta(v)}</p>
-            </div>
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24, background: '#fff', borderRadius: 10, border: '1px solid #f0f0f0', padding: '12px 16px' }}>
+          {vinosComparador.map((v, idx) => {
+            const dashPatterns = ['none', '8,4', '4,4', '10,4,2,4']
+            const strokeWidths = [2.5, 2.5, 2, 2]
+            return (
+              <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <svg width={32} height={12} aria-hidden>
+                  <line x1={0} y1={6} x2={32} y2={6} stroke={coloresVino[idx]} strokeWidth={strokeWidths[idx]} strokeDasharray={dashPatterns[idx]} strokeLinecap="round" />
+                </svg>
+                <p style={{ margin: 0, fontSize: 13, color: '#111', fontWeight: 500, lineHeight: 1.3 }}>{nombreVinoCarta(v)}</p>
+              </div>
+            )
+          })}
         </div>
 
         {/* Radar */}
         {cargandoPerfiles || vinosComparador.some(v => !perfiles[v.id]) ? (
-  <div style={{ textAlign: 'center', padding: '60px 0' }}>
-    <p style={{ fontSize: 12, color: '#bbb', letterSpacing: '0.15em' }}>ANALIZANDO...</p>
-  </div>
+          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0f0', padding: '32px 24px', marginBottom: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+            <div style={{ position: 'relative', width: 120, height: 120 }}>
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px dashed #e8e0d8', animation: 'comparadorPulse 1.4s ease-in-out infinite' }} />
+              <div style={{ position: 'absolute', inset: 16, borderRadius: '50%', border: '1.5px dashed #ede5d8', animation: 'comparadorPulse 1.4s ease-in-out 0.3s infinite' }} />
+              <div style={{ position: 'absolute', inset: 32, borderRadius: '50%', border: '1px dashed #f0eae0', animation: 'comparadorPulse 1.4s ease-in-out 0.6s infinite' }} />
+            </div>
+            <p style={{ margin: 0, fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Calculando perfil sensorial…</p>
+          </div>
         ) : (
           <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0f0', padding: '24px', marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
             <WineProfileRadarChart
               vinos={vinosComparador}
               perfiles={perfiles}
               coloresVino={coloresVino}
+              fillOpacity={0.08}
               ejes={ejes}
               etiquetas={etiquetas}
               labelStyle={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
@@ -1706,11 +1715,11 @@ export default function CartaPublica() {
               </>
             ))}
             <div style={{ background: '#fafafa', padding: '10px 16px', display: 'flex', alignItems: 'center' }}>
-              <p style={{ margin: 0, fontSize: 12, color: '#888' }}>{i.botella}</p>
+              <p style={{ margin: 0, fontSize: 12, color: '#888' }}>{i.precio}</p>
             </div>
             {vinosComparador.map(v => (
               <div key={v.id + '_precio'} style={{ background: '#fff', padding: '10px 16px', textAlign: 'center' }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#111' }}>{precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</p>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 500, color: '#111', lineHeight: 1.45 }}>{etiquetaPrecioVino(v)}</p>
               </div>
             ))}
           </div>
@@ -1762,12 +1771,11 @@ export default function CartaPublica() {
             { label: i.region, valor: vinoSeleccionado.region },
             { label: i.uva, valor: vinoSeleccionado.uva },
             { label: i.anada, valor: vinoSeleccionado.anada },
-            { label: i.copa, valor: vinoSeleccionado.precio_copa ? precioCopaCarta(vinoSeleccionado.precio_copa) : null },
-            { label: i.botella, valor: vinoSeleccionado.precio_botella ? precioBotellaCarta(vinoSeleccionado.precio_botella) : null },
+            { label: i.precio, valor: etiquetaPrecioVino(vinoSeleccionado) || null },
           ].filter(f => f.valor).map((f, idx, arr) => (
             <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: idx < arr.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
-              <span style={{ fontSize: 14, color: '#aaa' }}>{f.label}</span>
-              <span style={{ fontSize: 15, color: '#111', fontWeight: 500 }}>{f.valor}</span>
+              <span style={{ fontSize: 14, color: '#aaa', whiteSpace: 'nowrap' }}>{f.label}</span>
+              <span style={{ fontSize: 15, color: '#111', fontWeight: 500, textAlign: 'right' }}>{f.valor}</span>
             </div>
           ))}
         </div>
@@ -1785,12 +1793,20 @@ export default function CartaPublica() {
               <>
                 <p className={styles.contextWineHint}>{usoContextualVino.intro}</p>
                 <div className={styles.contextDishList}>
-                  {usoContextualVino.platos.map(({ plato, resultado }) => (
-                    <article key={plato.id || plato.nombre} className={styles.contextDishItem}>
-                      <strong>{plato.nombre}</strong>
-                      <span>{[plato.categoria, motivoPlatoContextual(plato, vinoSeleccionado, idioma)].filter(Boolean).join(' · ')}</span>
-                    </article>
-                  ))}
+                  {(() => {
+                    const vistasDesc = new Set()
+                    return usoContextualVino.platos.map(({ plato }) => {
+                      const motivo = motivoPlatoContextual(plato, vinoSeleccionado, idioma)
+                      if (vistasDesc.has(motivo)) return null
+                      vistasDesc.add(motivo)
+                      return (
+                        <article key={plato.id || plato.nombre} className={styles.contextDishItem}>
+                          <strong>{plato.nombre}</strong>
+                          <span>{[plato.categoria, motivo].filter(Boolean).join(' · ')}</span>
+                        </article>
+                      )
+                    })
+                  })()}
                 </div>
               </>
             )}
@@ -1798,12 +1814,20 @@ export default function CartaPublica() {
               <>
                 <p className={styles.contextWineHint}>{usoContextualVino.sugerenciasTitulo}</p>
                 <div className={styles.contextDishList}>
-                  {usoContextualVino.sugerenciasCarta.map(({ plato, resultado }) => (
-                    <article key={plato.id || plato.nombre} className={styles.contextDishItem}>
-                      <strong>{plato.nombre}</strong>
-                      <span>{[plato.categoria, motivoPlatoContextual(plato, vinoSeleccionado, idioma)].filter(Boolean).join(' · ')}</span>
-                    </article>
-                  ))}
+                  {(() => {
+                    const vistasDesc = new Set()
+                    return usoContextualVino.sugerenciasCarta.map(({ plato }) => {
+                      const motivo = motivoPlatoContextual(plato, vinoSeleccionado, idioma)
+                      if (vistasDesc.has(motivo)) return null
+                      vistasDesc.add(motivo)
+                      return (
+                        <article key={plato.id || plato.nombre} className={styles.contextDishItem}>
+                          <strong>{plato.nombre}</strong>
+                          <span>{[plato.categoria, motivo].filter(Boolean).join(' · ')}</span>
+                        </article>
+                      )
+                    })
+                  })()}
                 </div>
               </>
             )}
@@ -1825,7 +1849,7 @@ export default function CartaPublica() {
   }
 
   if (vista === 'carta') return (
-    <div className={`${styles.shell} ${claseTipografia}`}>
+    <div className={`${styles.shell} ${claseTipografia} ${!bannerArmoniaCerrado ? styles.shellWithBubble : ''}`}>
       {restaurante?.modo_prueba && (
         <PreviewModeBanner
           styles={styles}
@@ -2359,6 +2383,7 @@ export default function CartaPublica() {
         <section className={styles.sommelierIntro}>
           <h2 className={styles.sommelierTitle}>{modoSommelier === 'quiz' ? i.recomendame : modoSommelier === 'vino' ? i.vinoManda : i.quePedir}</h2>
           <p className={styles.sommelierText}>{modoSommelier === 'quiz' ? i.quizSubtitulo : modoSommelier === 'vino' ? i.vinoMandaSub : i.seleccionaPlatos}</p>
+          <p className={styles.aiNotice}>{i.avisoIa}</p>
           <div className={styles.journeyStrip} aria-label={idioma === 'en' ? 'Recommendation steps' : 'Pasos de la recomendación'}>
             <span className={modoSommelier === 'platos' && !platosSeleccionados.length ? styles.journeyActive : ''}><b>1</b>{idioma === 'en' ? 'Choose' : 'Elige'}</span>
             <span className={modoSommelier === 'platos' && platosSeleccionados.length > 0 && !respuesta ? styles.journeyActive : ''}><b>2</b>{idioma === 'en' ? 'Adjust' : 'Ajusta'}</span>
@@ -2447,7 +2472,10 @@ export default function CartaPublica() {
                   </div>
                   {cargandoIA && !respuestaQuiz && <p className={styles.sommelierText}>{i.consultando}</p>}
                   {respuestaQuiz && (
-                    <p className={styles.answerText} style={{ whiteSpace: 'pre-wrap', marginBottom: 16 }}>{respuestaQuiz}</p>
+                    <>
+                      <p className={styles.answerText} style={{ whiteSpace: 'pre-wrap', marginBottom: 16 }}>{respuestaQuiz}</p>
+                      <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
+                    </>
                   )}
                   <button onClick={reiniciarQuiz} className={styles.clearButton} style={{ color: '#fffaf3', borderColor: 'rgba(255,250,243,0.2)', marginTop: 8 }}>
                     {i.quizEmpezar}
@@ -2530,6 +2558,7 @@ export default function CartaPublica() {
               <div className={styles.answerBox}>
                 <p className={styles.selectedHead}>{i.sommelier}</p>
                 <p className={styles.answerText}>{respuesta}</p>
+                <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
               </div>
             )}
           </section>
@@ -2602,6 +2631,7 @@ export default function CartaPublica() {
               <div className={styles.answerBox} aria-live="polite">
                 <p className={styles.selectedHead}>{i.sommelier}</p>
                 <p className={styles.answerText}>{respuesta}</p>
+                <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
 
                 <div className={styles.answerActions}>
                   <button type="button" onClick={() => setVista('carta')}>{i.carta}</button>

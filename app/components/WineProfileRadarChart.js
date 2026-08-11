@@ -2,7 +2,8 @@
 
 import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS, radarGridPath, radarPath } from '../lib/wineProfileRadar'
 
-const DASH_PATTERNS = ['none', '6,3', 'none', '6,3']
+const DASH_PATTERNS = ['none', '8,4', '4,4', '10,4,2,4']
+const STROKE_WIDTHS = [2.5, 2.5, 2, 2]
 
 export default function WineProfileRadarChart({
   vinos,
@@ -48,7 +49,7 @@ export default function WineProfileRadarChart({
             fill={coloresVino[idx]}
             fillOpacity={fillOpacity}
             stroke={coloresVino[idx]}
-            strokeWidth={idx % 2 === 0 ? 2.5 : 1.5}
+            strokeWidth={STROKE_WIDTHS[idx] ?? 2}
             strokeDasharray={DASH_PATTERNS[idx]}
           />
         )

@@ -10,6 +10,10 @@
   padding-bottom: calc(168px + env(safe-area-inset-bottom));
 }
 
+.shellWithBubble {
+  padding-bottom: calc(128px + env(safe-area-inset-bottom));
+}
+
 .demoPresentationBar {
   position: fixed;
   top: 12px;
@@ -826,6 +830,17 @@
   display: none;
 }
 
+.winePriceLabel {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 660;
+  color: #4f4840;
+  line-height: 1.4;
+  text-align: right;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
 .mainPrice {
   display: flex;
   align-items: baseline;
@@ -1035,16 +1050,27 @@
   font-size: 14px;
   font-weight: 760;
   line-height: 1.22;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .labelTextButton p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
   margin: 4px 0 0;
   color: #766e64;
   font-size: 11px;
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.labelPriceLabel {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 660;
+  color: #4f4840;
+  line-height: 1.4;
 }
 
 .labelPriceRow {
@@ -1235,6 +1261,14 @@
   color: #766e64;
   font-size: 14px;
   line-height: 1.55;
+}
+
+.aiNotice {
+  margin: 12px 0 0;
+  color: #6f665d;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
 }
 
 .journeyStrip {
@@ -1533,6 +1567,13 @@
   font-weight: 400;
   line-height: 1.7;
   white-space: pre-wrap;
+}
+
+.aiResultNotice {
+  margin: 12px 0 0;
+  color: rgba(255, 250, 243, 0.58);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .answerActions {
@@ -2320,6 +2361,11 @@
   border: 1px solid #d8cfc1;
   background: #fffaf3;
   color: var(--color-primario, #171416);
+}
+
+@keyframes comparadorPulse {
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 1; }
 }
 
 @keyframes stateSpin {
