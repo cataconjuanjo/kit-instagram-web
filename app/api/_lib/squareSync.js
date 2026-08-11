@@ -193,23 +193,41 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     }
   }
 
+  // Nuevos: separar los que tienen variation_id (upsert seguro) de los que no (insert clásico)
+  const newConVariacion    = toInsertNew.filter(r => r.square_variation_id)
+  const newSinVariacion    = toInsertNew.filter(r => !r.square_variation_id)
+
   const countNuevos = toInsertNew.length
   const countAct    = toUpsertById.length
 
   let errores = 0
   const BATCH = 500
 
+  // Existentes encontrados por id interno → solo precio
   for (let i = 0; i < toUpsertById.length; i += BATCH) {
     const chunk = toUpsertById.slice(i, i + BATCH)
     const { error } = await supabaseAdmin.from('vinos_tienda').upsert(chunk, { onConflict: 'id' })
     if (error) { console.error('[square-sync] upsert(id) error:', error.message); errores += chunk.length }
   }
 
-  for (let i = 0; i < toInsertNew.length; i += BATCH) {
-    const chunk = toInsertNew.slice(i, i + BATCH)
+  // Nuevos CON variation_id → upsert sobre la constraint real; si ya existía, actualiza campos completos
+  for (let i = 0; i < newConVariacion.length; i += BATCH) {
+    const chunk = newConVariacion.slice(i, i + BATCH)
+    const { error } = await supabaseAdmin
+      .from('vinos_tienda')
+      .upsert(chunk, { onConflict: 'tienda_id,square_variation_id' })
+    if (error) {
+      console.error('[square-sync] upsert(variation) error:', error.message, '|code:', error.code)
+      errores += chunk.length
+    }
+  }
+
+  // Nuevos SIN variation_id → insert normal con log por fila si falla
+  for (let i = 0; i < newSinVariacion.length; i += BATCH) {
+    const chunk = newSinVariacion.slice(i, i + BATCH)
     const { error } = await supabaseAdmin.from('vinos_tienda').insert(chunk)
     if (error) {
-      console.error('[square-sync] insert error:', error.message, '|code:', error.code, '|detail:', error.details)
+      console.error('[square-sync] insert(sin-variation) error:', error.message, '|code:', error.code, '|detail:', error.details)
       errores += chunk.length
     }
   }
