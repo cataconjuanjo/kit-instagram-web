@@ -1579,10 +1579,10 @@ export default function CartaPublica() {
           {(tieneBotella || tieneCopa) && (
             <div className={styles.labelPriceRow}>
               {tieneCopa && <strong>{_formatPrecio(v.precio_copa, decimalesCopa)}</strong>}
-              {tieneCopa && <span>{i.copa.toLowerCase()}</span>}
+              {tieneCopa && <span>/ {i.copa.toLowerCase()}</span>}
               {tieneCopa && tieneBotella && <span>·</span>}
               {tieneBotella && <strong>{_formatPrecio(v.precio_botella, 0)}</strong>}
-              {tieneBotella && <span>{i.botella.toLowerCase()}</span>}
+              {tieneBotella && <span>/ {i.botella.toLowerCase()}</span>}
             </div>
           )}
           <button
