@@ -13,9 +13,11 @@ import {
   SELECT_CLIENT_RESTAURANTE_DASHBOARD,
   SELECT_CLIENT_VINO_DASHBOARD,
 } from '../../lib/clientSupabaseSelects'
+import { margenBrutoPct } from '../../lib/wineEconomics'
 import { esPerfilBodega } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
+import bStyles from './bodega.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 
 function eur(valor) {
@@ -38,15 +40,14 @@ function telefonoWhatsApp(telefono = '') {
   return limpio.replace(/^\+/, '')
 }
 
-function margen(vino) {
-  const venta = decimal(vino.precio_botella)
-  const coste = decimal(vino.coste_compra)
-  if (!venta || !coste) return null
-  return Math.round(((venta - coste) / venta) * 100)
+function margenDisplay(pvp, coste) {
+  if (!decimal(pvp) || !decimal(coste)) return null
+  return margenBrutoPct(pvp, coste)
 }
 
 function margenColor(valor) {
   if (valor == null) return '#8b8278'
+  if (valor < 0) return '#b85454'
   if (valor >= 68) return '#4A8C6F'
   if (valor >= 55) return '#b8860b'
   return '#b85454'
@@ -106,10 +107,8 @@ export default function ControlBodega() {
   const [eventosSala, setEventosSala] = useState([])
   const [movimientos, setMovimientos] = useState([])
   const [editando, setEditando] = useState(null)
-  const [mostrarPropuestas, setMostrarPropuestas] = useState(false)
-  const [mostrarReferencias, setMostrarReferencias] = useState(false)
-  const [mostrarMovimientos, setMostrarMovimientos] = useState(false)
-  const [vistaBodega, setVistaBodega] = useState('resumen')
+  const [inlineEdit, setInlineEdit] = useState(null)
+  const [panelAbierto, setPanelAbierto] = useState(null)
   const [filtroReferencias, setFiltroReferencias] = useState('todos')
   const [busquedaReferencias, setBusquedaReferencias] = useState('')
   const [pedidoRapido, setPedidoRapido] = useState({})
@@ -178,7 +177,8 @@ export default function ControlBodega() {
     if (loading || typeof window === 'undefined') return
     const hash = window.location.hash
     window.requestAnimationFrame(() => {
-      if (hash === '#pedido') setVistaBodega('compras')
+      if (hash === '#pedido') { setPanelAbierto('compras'); return }
+      if (hash === '#propuestas') { setPanelAbierto('propuestas'); return }
       const filtrosPorHash = {
         '#referencias-pendientes': 'pendientes',
         '#referencias-sin-coste': 'sin_coste',
@@ -186,16 +186,7 @@ export default function ControlBodega() {
         '#referencias-sin-stock': 'sin_stock',
         '#referencias-sin-minimo': 'sin_minimo',
       }
-      if (['#referencias', '#proveedores', '#rotacion', '#movimientos', ...Object.keys(filtrosPorHash)].includes(hash)) setVistaBodega('stock')
-      if (hash === '#referencias') setMostrarReferencias(true)
-      if (filtrosPorHash[hash]) {
-        setFiltroReferencias(filtrosPorHash[hash])
-        setMostrarReferencias(true)
-      }
-      if (hash === '#propuestas') {
-        setVistaBodega('propuestas')
-        setMostrarPropuestas(true)
-      }
+      if (filtrosPorHash[hash]) setFiltroReferencias(filtrosPorHash[hash])
     })
   }, [loading, propuestas.length])
 
@@ -217,12 +208,12 @@ export default function ControlBodega() {
     const valorCoste = activos.reduce((sum, vino) => sum + decimal(vino.stock) * decimal(vino.coste_compra), 0)
     const valorVenta = activos.reduce((sum, vino) => sum + decimal(vino.stock) * decimal(vino.precio_botella), 0)
     const margenMedio = conCoste.length
-      ? Math.round(conCoste.reduce((sum, vino) => sum + (margen(vino) || 0), 0) / conCoste.length)
+      ? Math.round(conCoste.reduce((sum, vino) => sum + margenBrutoPct(vino.precio_botella, vino.coste_compra), 0) / conCoste.length)
       : null
     const margenPotencial = Math.max(0, valorVenta - valorCoste)
     const bajoMinimo = activos.filter(vino => decimal(vino.stock_minimo) > 0 && decimal(vino.stock) <= decimal(vino.stock_minimo))
     const sinCoste = activos.filter(vino => !decimal(vino.coste_compra))
-    const margenBajo = conCoste.filter(vino => (margen(vino) || 0) < 55)
+    const margenBajo = conCoste.filter(vino => margenBrutoPct(vino.precio_botella, vino.coste_compra) < 55)
     const sinPrecio = activos.filter(vino => !decimal(vino.precio_botella))
     const sinProveedor = activos.filter(vino => !vino.proveedor)
     const sinStockActual = activos.filter(vino => vino.stock === null || vino.stock === undefined || decimal(vino.stock) === 0)
@@ -284,60 +275,65 @@ export default function ControlBodega() {
   }
 
   function editarProveedorDesdePedido(vino) {
-    setVistaBodega('stock')
+    setPanelAbierto(null)
     setFiltroReferencias('todos')
-    setMostrarReferencias(true)
     iniciarEdicion(vino)
     window.requestAnimationFrame(() => {
-      document.getElementById('referencias')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      document.getElementById('bodega-tabla')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
   }
 
   function abrirReferencias(filtro = 'todos') {
-    setVistaBodega('stock')
+    setPanelAbierto(null)
     setFiltroReferencias(filtro)
-    setMostrarReferencias(true)
     setEditando(null)
     window.requestAnimationFrame(() => {
-      document.getElementById('referencias')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      document.getElementById('bodega-tabla')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
   }
 
   function abrirPropuestas() {
-    setVistaBodega('propuestas')
-    setMostrarPropuestas(true)
+    setPanelAbierto('propuestas')
     window.requestAnimationFrame(() => {
       document.getElementById('propuestas')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
-
-  function abrirMovimientos() {
-    setVistaBodega('stock')
-    setMostrarMovimientos(true)
-    window.requestAnimationFrame(() => {
-      document.getElementById('movimientos')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
   }
 
   function abrirAccionBodega(event, href) {
     if (!href?.startsWith('#')) return
     event.preventDefault()
-    if (href === '#pedido') {
-      setVistaBodega('compras')
-      return
-    }
-    if (href === '#propuestas') {
-      abrirPropuestas()
-      return
-    }
-    setVistaBodega('stock')
-    if (href === '#movimientos') setMostrarMovimientos(true)
-    if (href === '#referencias') setMostrarReferencias(true)
-    if (href === '#referencias-pendientes') abrirReferencias('pendientes')
-    if (href === '#referencias-sin-coste') abrirReferencias('sin_coste')
-    if (href === '#referencias-sin-proveedor') abrirReferencias('sin_proveedor')
-    if (href === '#referencias-sin-stock') abrirReferencias('sin_stock')
-    if (href === '#referencias-sin-minimo') abrirReferencias('sin_minimo')
+    if (href === '#pedido') { setPanelAbierto('compras'); return }
+    if (href === '#propuestas') { abrirPropuestas(); return }
+    if (href === '#referencias-pendientes') { abrirReferencias('pendientes'); return }
+    if (href === '#referencias-sin-coste') { abrirReferencias('sin_coste'); return }
+    if (href === '#referencias-sin-proveedor') { abrirReferencias('sin_proveedor'); return }
+    if (href === '#referencias-sin-stock') { abrirReferencias('sin_stock'); return }
+    if (href === '#referencias-sin-minimo') { abrirReferencias('sin_minimo'); return }
+    abrirReferencias('todos')
+  }
+
+  function startInline(vino, campo) {
+    setEditando(null)
+    setInlineEdit({ id: vino.id, campo, valor: vino[campo] ?? '' })
+  }
+
+  async function saveInline() {
+    if (!inlineEdit) return
+    const { id, campo, valor } = inlineEdit
+    setInlineEdit(null)
+    const numericFields = ['coste_compra', 'precio_botella', 'precio_copa']
+    const intFields = ['stock', 'stock_minimo']
+    let parsed
+    if (numericFields.includes(campo)) parsed = parseFloat(valor) || null
+    else if (intFields.includes(campo)) parsed = parseInt(valor, 10) || 0
+    else parsed = valor || ''
+    const { error: err } = await supabase.from('vinos').update({ [campo]: parsed }).eq('id', id)
+    if (!err) setVinos(prev => prev.map(v => v.id === id ? { ...v, [campo]: parsed } : v))
+  }
+
+  function margenCopaDisplay(pvpCopa, costeCompra, copas = 5) {
+    if (!decimal(pvpCopa) || !decimal(costeCompra)) return null
+    return margenBrutoPct(decimal(pvpCopa) * copas, costeCompra)
   }
 
   function moverEdicion(direccion) {
@@ -638,6 +634,16 @@ export default function ControlBodega() {
     )
   }
 
+  const editandoPosicion = referenciasVisibles.findIndex(v => v.id === editando?.id)
+
+  function margenCls(valor) {
+    if (valor == null) return ''
+    if (valor < 0)   return bStyles.tdMargenNeg
+    if (valor >= 68) return bStyles.tdMargenOk
+    if (valor >= 55) return bStyles.tdMargenMid
+    return bStyles.tdMargenBad
+  }
+
   return (
     <FeatureGate restaurante={restaurante} feature="bodega" title="Bodega no incluida">
     <ModuleShell
@@ -645,591 +651,375 @@ export default function ControlBodega() {
       eyebrow="Bodega"
       title={perfilBodega ? 'Control de bodega para sumiller' : 'Stock, margen y reposición'}
       subtitle={perfilBodega
-        ? 'KPI, compras, margen, proveedor e inventario para dejar atrás el Excel sin perder criterio profesional.'
-        : 'Vista operativa: cuánto hay en bodega, qué comprar y qué datos faltan. La edición completa queda plegada.'}
+        ? 'Tabla de inventario editable con margen, proveedor y reposición en una sola vista.'
+        : 'Inventario editable: coste, PVP, proveedor y stock directamente en la tabla.'}
       actions={<Link className={styles.secondary} href="/dashboard/inventario">Inventario</Link>}
       help={{
         title: perfilBodega ? 'Rutina del sumiller' : 'Qué hacer aquí',
-        intro: perfilBodega
-          ? 'Bodega concentra decisiones de compra, margen, rotación y proveedor. La IA ordena señales; el criterio lo mantiene el sumiller.'
-          : 'Bodega es la pantalla de control, no la de carga masiva. Sirve para ver riesgos y preparar compras.',
-        items: perfilBodega ? [
-          { title: 'Compra primero', text: 'Bajo mínimo y punto de pedido convierten stock real en una lista preparada por proveedor.' },
-          { title: 'Defiende margen', text: 'Coste, PVP y ventas recientes separan vinos estrella, joyas y referencias que revisar.' },
-          { title: 'Limpia Excel', text: 'Proveedor, referencia y stock mínimo quedan en ficha para inventario, pedidos y reporting.' },
-        ] : [
-          { title: 'Mira urgencias', text: 'Bajo mínimo, margen bajo y datos sin completar son las acciones que más impacto tienen.' },
-          { title: 'Prepara pedido', text: 'Usa la lista sugerida como punto de partida antes de hablar con proveedor o consultor.' },
-          { title: 'Edita lo necesario', text: 'Coste, proveedor y stock mínimo alimentan margen, reposición e inventario inteligente.' },
+        intro: 'La tabla es el inventario. Edita celdas directamente. Usa el checklist para filtrar referencias incompletas y los paneles para pedido y propuestas.',
+        items: [
+          { title: 'Edita en la tabla', text: 'Clic en cualquier celda sombreada (proveedor, coste, PVP, stock, mínimo). Enter o clic fuera para guardar.' },
+          { title: 'Filtra con el checklist', text: 'Cada chip filtra la tabla al instante. "Sin coste" muestra solo las referencias que bloquean el margen.' },
+          { title: 'Pedido y propuestas', text: 'Los paneles se abren sobre la tabla sin cambiar de pantalla. Simulador y Trazabilidad tienen sus propias vistas.' },
         ],
       }}
     >
       {error && <div className={styles.empty} style={{ minHeight: 70, marginBottom: 16, color: '#9b3535' }}>{error}</div>}
 
-      <div className={styles.cellarPage}>
-      <section className={styles.cellarCockpit}>
-        <div className={styles.cellarHeroCopy}>
-          <p className={styles.eyebrow}>{perfilBodega ? 'Carta Viva Bodega' : 'Cava viva'}</p>
-          <h2>{perfilBodega ? 'Tu bodega, en criterio y números' : 'Compra, margen y stock en una sola mirada'}</h2>
-          <p>
-            {perfilBodega
-              ? 'Primero lo que hay que decidir hoy: pedido, margen, stock inmovilizado y referencias que conviene mover.'
-              : 'Primero lo que hay que decidir hoy: pedido, datos que bloquean margen e incidencias que debe cerrar sala.'}
-          </p>
-          <div className={styles.cellarLiveBadge}><span />Actualizado al momento</div>
-          <div className={styles.cellarHeroActions}>
-            <button type="button" className={styles.primary} onClick={() => setVistaBodega('compras')}>Preparar pedido</button>
-            {perfilBodega ? (
-              <Link className={styles.secondary} href="/dashboard/menu-engineering">Ver estrellas y joyas</Link>
-            ) : (
-              <button type="button" className={styles.secondary} onClick={abrirPropuestas}>Ver propuestas</button>
-            )}
-            <Link className={styles.ghost} href="/dashboard/vinos?filtro=stock">Stock bajo</Link>
-          </div>
-        </div>
-        <div className={styles.cellarHeroMetrics}>
-          <article>
-            <strong>{datos.activos.length.toLocaleString('es-ES')}</strong>
-            <span>referencias totales</span>
-          </article>
-          <article>
-            <strong>{referenciasEnStock.toLocaleString('es-ES')}</strong>
-            <span>en stock - {disponibilidad}%</span>
-          </article>
-          <article>
-            <strong>{sinStockReal.length + datos.bajoMinimo.length}</strong>
-            <span>sin stock o minimo</span>
-          </article>
-        </div>
-      </section>
+      <div className={bStyles.cellarPage}>
 
-      <section className={styles.cellarDecisionGrid} aria-label="Decisiones principales de bodega">
-        <article>
-          <span>Pedido sugerido</span>
-          <strong>{pedidoCombinado.length ? `${pedidoCombinado.length} referencias` : 'Sin compra urgente'}</strong>
-          <p>{pedidoCombinado.length ? 'Preparado por minimo, ventas recientes y stock actual.' : 'No hay roturas claras con los datos actuales.'}</p>
-          <button type="button" onClick={() => setVistaBodega('compras')}>Abrir pedido</button>
-        </article>
-        <article>
-          <span>Bloquea margen</span>
-          <strong>{datos.sinCoste.length + datos.sinProveedor.length + datos.sinPrecio.length}</strong>
-          <p>Coste, proveedor o PVP pendientes antes de decidir rentabilidad.</p>
-          <button type="button" onClick={() => { setVistaBodega('stock'); abrirReferencias('pendientes') }}>Completar datos</button>
-        </article>
-        <article>
-          <span>Stock a vigilar</span>
-          <strong>{sinStockReal.length + datos.bajoMinimo.length}</strong>
-          <p>Referencias sin unidades o por debajo del minimo definido.</p>
-          <Link href="/dashboard/vinos?filtro=stock">Ver referencias</Link>
-        </article>
-      </section>
+        {/* ── KPIs ─────────────────────────────────────────── */}
+        <section className={styles.statsGrid}>
+          <StatCard value={eur(datos.valorCoste)} label="Valor a coste" hint="Dinero inmovilizado en bodega." info="Suma stock × coste de compra de cada referencia activa." />
+          <StatCard value={datos.margenMedio == null ? '—' : `${datos.margenMedio}%`} label="Margen medio" valueStyle={{ color: margenColor(datos.margenMedio) }} hint="Referencias con coste y PVP. PVP neto sin IVA (10%)." info="Media del margen bruto. El margen medio cambia respecto al anterior porque ahora descuenta IVA del PVP: es el cálculo correcto." />
+          <StatCard value={datos.bajoMinimo.length} label="Bajo mínimo" hint="Riesgo de rotura de stock." info="Vinos cuyo stock actual está en el mínimo definido o por debajo." />
+          <StatCard value={pedidoCombinado.length} label="Pedido sugerido" hint="Reposición calculada." info="Referencias a reponer por bajo stock, mínimo, venta reciente o pedido manual." />
+        </section>
 
-      <details className={styles.diagnosticDetails}>
-        <summary>
-          <span>Diagnostico de disponibilidad y riesgo</span>
-          <strong>{disponibilidad}% disponible</strong>
-        </summary>
-      <section className={styles.cellarCockpitDeck}>
-        <div className={styles.cellarCockpitGrid}>
-          <article className={styles.cellarGlassPanel}>
-            <div className={styles.cellarPanelTop}>
-              <h3>Disponibilidad por categoria</h3>
-              <strong>{disponibilidad}%</strong>
-            </div>
-            <div className={styles.cellarDonut} style={{ '--availability': `${disponibilidad}%` }}>
-              <span>{disponibilidad}%</span>
-              <small>Disponible</small>
-            </div>
-            <div className={styles.cellarCategoryList}>
-              {(categoriasDisponibilidad.length ? categoriasDisponibilidad : [{ categoria: 'Sin categorias', porcentaje: disponibilidad, total: datos.activos.length }]).map(item => (
-                <div key={item.categoria}>
-                  <span>{item.categoria}</span>
-                  <strong>{item.porcentaje}%</strong>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className={styles.cellarGlassPanel}>
-            <div className={styles.cellarPanelTop}>
-              <h3>Alertas de stock</h3>
-              <button type="button" onClick={() => { setVistaBodega('stock'); abrirReferencias('sin_stock') }}>Ver stock</button>
-            </div>
-            <div className={styles.cellarAlertList}>
-              {alertasStock.length ? alertasStock.map(alerta => (
-                <button type="button" key={`${alerta.estado}-${alerta.vino.id}`} onClick={() => { setVistaBodega('stock'); abrirReferencias(alerta.severidad === 'danger' ? 'sin_stock' : 'todos') }} className={styles[`cellarAlert${alerta.severidad.charAt(0).toUpperCase()}${alerta.severidad.slice(1)}`]}>
-                  <span />
-                  <strong>{alerta.vino.nombre}</strong>
-                  <small>{alerta.detalle}</small>
-                </button>
-              )) : (
-                <p className={styles.cellarQuietText}>Sin alertas criticas con los datos actuales.</p>
-              )}
-            </div>
-          </article>
-        </div>
-
-        <article className={styles.cellarRiskPanel}>
-          <div className={styles.cellarPanelTop}>
-            <h3>Top vinos en riesgo de quiebre</h3>
-            <button type="button" onClick={() => setVistaBodega('compras')}>Preparar pedido</button>
-          </div>
-          <div className={styles.cellarBottleGrid}>
-            {(topQuiebre.length ? topQuiebre : datos.bajoMinimo.slice(0, 4)).map(vino => {
-              const stock = decimal(vino.stock)
-              const minimo = Math.max(1, decimal(vino.stock_minimo) || vino.reposicion?.puntoPedido || 1)
-              const ratio = Math.max(6, Math.min(100, Math.round((stock / minimo) * 100)))
-              return (
-                <button type="button" key={vino.id} className={styles.cellarBottleCard} onClick={() => setVistaBodega('compras')}>
-                  <span className={`${styles.cellarBottleArt} ${styles[`cellarBottle${bottleTone(vino)}`]}`} />
-                  <strong>{vino.nombre}</strong>
-                  <small>{vino.bodega || vino.proveedor || 'Sin bodega'}</small>
-                  <em>Stock: {stock} uds.</em>
-                  <i><span style={{ width: `${ratio}%` }} /></i>
-                </button>
-              )
-            })}
-            {!topQuiebre.length && !datos.bajoMinimo.length && (
-              <p className={styles.cellarQuietText}>No hay referencias en riesgo inmediato.</p>
-            )}
-          </div>
-        </article>
-      </section>
-      </details>
-
-      <nav className={styles.innerTabs} aria-label="Secciones de bodega">
-        <button type="button" className={vistaBodega === 'resumen' ? styles.innerTabActive : ''} onClick={() => setVistaBodega('resumen')}>
-          Resumen
-        </button>
-        <button type="button" className={vistaBodega === 'compras' ? styles.innerTabActive : ''} onClick={() => setVistaBodega('compras')}>
-          Compras {pedidoCombinado.length > 0 && <span>{pedidoCombinado.length}</span>}
-        </button>
-        <button type="button" className={vistaBodega === 'stock' ? styles.innerTabActive : ''} onClick={() => setVistaBodega('stock')}>
-          Stock {datosPendientesTotal > 0 && <span>{datosPendientesTotal}</span>}
-        </button>
-        <button type="button" className={vistaBodega === 'propuestas' ? styles.innerTabActive : ''} onClick={abrirPropuestas}>
-          Propuestas {propuestas.length > 0 && <span>{propuestas.length}</span>}
-        </button>
-      </nav>
-
-      {vistaBodega === 'resumen' && <section className={styles.statsGrid}>
-        <StatCard
-          value={eur(datos.valorCoste)}
-          label="Valor a coste"
-          hint="Dinero inmovilizado en bodega."
-          info="Suma el stock actual de cada vino multiplicado por su coste de compra. Si falta coste o stock, esa referencia pesa como cero y conviene completarla."
-        />
-        <StatCard
-          value={datos.margenMedio == null ? '-' : `${datos.margenMedio}%`}
-          label="Margen medio"
-          valueStyle={{ color: margenColor(datos.margenMedio) }}
-          hint="Solo referencias con coste y PVP."
-          info="Media del margen bruto de los vinos que tienen coste de compra y precio de venta. Sirve para detectar si la carta esta vendiendo demasiado barato o si falta dato economico."
-        />
-        <StatCard
-          value={datos.bajoMinimo.length}
-          label="Bajo mínimo"
-          hint="Riesgo de rotura de stock."
-          info="Cuenta los vinos cuyo stock actual esta en el minimo definido o por debajo. Es una senal de compra o de sustituto antes del servicio."
-        />
-        <StatCard
-          value={pedidoCombinado.length}
-          label="Pedido sugerido"
-          hint="Reposicion calculada."
-          info="Referencias que la app propone pedir por bajo stock, minimo definido, venta reciente o pedido manual. No compra automaticamente: prepara la decision."
-        />
-      </section>}
-
-      {(vistaBodega === 'resumen' || vistaBodega === 'compras') && <section className={`${styles.gridTwo} ${styles.singleView}`}>
-        {vistaBodega === 'resumen' && <div className={styles.panelDark}>
-          <div className={styles.panelHead}>
-            <div>
-              <h2 className={styles.panelTitle}>Qué mirar ahora</h2>
-              <p className={styles.panelSub}>{perfilBodega ? 'Compra, margen y datos pendientes con lectura de stock, proveedor y venta real.' : 'Compra, margen y datos pendientes. Las incidencias se resuelven en Cierre.'}</p>
-            </div>
-            <span className={styles.badge}>{acciones.length}</span>
-          </div>
-          <div className={styles.panelBody}>
-            {acciones.length ? (
-              <div className={styles.itemStack}>
-                {acciones.slice(0, 5).map(accion => (
-                  <Link key={accion.texto} href={accion.href} onClick={event => abrirAccionBodega(event, accion.href)} className={styles.itemCard} style={{ background: '#231e20', borderColor: '#3a3033', textDecoration: 'none' }}>
-                    <p className={styles.eyebrow}>{accion.tipo}</p>
-                    <p className={styles.sectionTitle} style={{ color: '#fffaf3' }}>{accion.texto}</p>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className={styles.panelSub}>Sin urgencias de bodega con los datos actuales.</p>
-            )}
-          </div>
-        </div>}
-
-        {vistaBodega === 'compras' && <div className={styles.panel} id="pedido">
-          <div className={styles.panelHead}>
-            <div>
-              <h2 className={styles.panelTitle}>Pedido sugerido</h2>
-              <p className={styles.panelSub}>Agrupado por proveedor. Se activa por stock minimo, ventas recientes, plazo de entrega y colchon de seguridad.</p>
-            </div>
-            <div className={styles.actionRow}>
-              <span className={styles.badge}>{pedidoCombinado.length}</span>
-              {pedidoCombinado.length > 0 && (
-                <>
-                  <button className={styles.ghost} onClick={copiarPedido}>{pedidoCopiado ? 'Copiado' : 'Copiar para WhatsApp'}</button>
-                  <button className={styles.ghost} onClick={abrirWhatsAppPedido}>Abrir WhatsApp</button>
-                </>
-              )}
-            </div>
-          </div>
-          <div className={styles.panelBody}>
-            {pedidoCombinado.length ? (
-              <div className={styles.itemStack}>
-                {pedidoPorProveedor.map(renderGrupoPedido)}
-              </div>
-            ) : (
-              <div className={styles.empty}>No hay pedido sugerido ahora.</div>
-            )}
-          </div>
-        </div>}
-      </section>}
-
-      {vistaBodega === 'stock' && <section className={styles.gridTwo} id="rotacion" style={{ marginTop: 16 }}>
-        <div className={styles.panel}>
-          <div className={styles.panelHead}>
-            <div>
-              <h2 className={styles.panelTitle}>Stock alto sin salida</h2>
-              <p className={styles.panelSub}>Dinero inmovilizado que conviene destacar, formar o retirar.</p>
-            </div>
-            <span className={styles.badge}>{datos.sinRotacion.length}</span>
-          </div>
-          <div className={styles.panelBody}>
-            {datos.sinRotacion.length ? (
-              <div className={styles.itemStack}>
-                {datos.sinRotacion.slice(0, 5).map(vino => (
-                  <article key={vino.id} className={styles.itemCard}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <h3 className={styles.sectionTitle}>{vino.nombre}</h3>
-                        <p className={styles.sectionText}>{vino.proveedor || 'Sin proveedor'} · stock {vino.stock || 0} · coste inmovilizado {eur(decimal(vino.stock) * decimal(vino.coste_compra))}</p>
-                      </div>
-                      <span className={styles.badge}>{perfilBodega ? 'Sin ventas recientes' : 'Sin ventas marcadas'}</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.empty}>No hay stock alto sin salida marcada.</div>
-            )}
-          </div>
-        </div>
-
-        <div className={styles.panel}>
-          <div className={styles.panelHead}>
-            <div>
-              <h2 className={styles.panelTitle}>Referencias con tracción</h2>
-              <p className={styles.panelSub}>{perfilBodega ? 'Vinos con salida real que conviene proteger, reponer o defender ante dirección.' : 'Vinos que sala está consiguiendo vender o defender.'}</p>
-            </div>
-            <span className={styles.badge}>{datos.topRotacion.length}</span>
-          </div>
-          <div className={styles.panelBody}>
-            {datos.topRotacion.length ? (
-              <div className={styles.itemStack}>
-                {datos.topRotacion.map(vino => (
-                  <article key={vino.id} className={styles.itemCard}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <h3 className={styles.sectionTitle}>{vino.nombre}</h3>
-                        <p className={styles.sectionText}>{vino.bodega || 'Sin bodega'} · margen {margen(vino) ?? '-'}%</p>
-                      </div>
-                      <span className={styles.badge}>{vino.ventasMarcadas} ventas</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className={styles.empty}>{perfilBodega ? 'Aún no hay ventas recientes registradas.' : 'Aún no hay ventas marcadas desde sala.'}</div>
-            )}
-          </div>
-        </div>
-      </section>}
-
-      {vistaBodega === 'stock' && <section className={styles.panel} id="movimientos" style={{ marginTop: 16 }}>
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Libro de movimientos</h2>
-            <p className={styles.panelSub}>Últimos cambios de stock con motivo y trazabilidad.</p>
-          </div>
-          <div className={styles.actionRow}>
-            <span className={styles.badge}>{movimientos.length}</span>
-            <button className={styles.ghost} onClick={() => setMostrarMovimientos(!mostrarMovimientos)}>
-              {mostrarMovimientos ? 'Ocultar' : 'Ver movimientos'}
+        {/* ── Checklist filtrable ───────────────────────────── */}
+        <div className={bStyles.cellarChecklist}>
+          {[
+            { id: 'sin_coste',     label: 'Sin coste',     count: datos.sinCoste.length },
+            { id: 'sin_proveedor', label: 'Sin proveedor', count: datos.sinProveedor.length },
+            { id: 'sin_pvp',       label: 'Sin PVP',       count: datos.sinPrecio.length },
+            { id: 'bajo_minimo',   label: 'Bajo mínimo',   count: datos.bajoMinimo.length },
+            { id: 'sin_stock',     label: 'Sin stock',     count: datos.sinStockActual.length },
+          ].map(({ id, label, count }) => (
+            <button
+              key={id}
+              type="button"
+              className={`${bStyles.checklistChip}${filtroReferencias === id ? ` ${bStyles.checklistChipActive}` : ''}`}
+              onClick={() => setFiltroReferencias(filtroReferencias === id ? 'todos' : id)}
+            >
+              {label}<span className={bStyles.checklistCount}>{count}</span>
             </button>
-          </div>
-        </div>
-        {mostrarMovimientos && <div className={styles.panelBody}>
-          {movimientos.length ? (
-            <div className={styles.itemStack}>
-              {movimientos.map(mov => (
-                <article key={mov.id} className={styles.itemCard}>
-                  <div className={styles.sectionHead} style={{ margin: 0 }}>
-                    <div>
-                      <p className={styles.eyebrow}>{mov.tipo}</p>
-                      <h3 className={styles.sectionTitle}>{mov.vinos?.nombre || 'Vino'}</h3>
-                      <p className={styles.sectionText}>{mov.motivo || 'Sin motivo'} · {mov.stock_anterior ?? '-'} → {mov.stock_nuevo ?? '-'}</p>
-                    </div>
-                    <span className={styles.badge}>{mov.cantidad > 0 ? `+${mov.cantidad}` : mov.cantidad}</span>
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className={styles.empty}>Aún no hay movimientos de stock registrados.</div>
+          ))}
+          {filtroReferencias !== 'todos' && (
+            <button type="button" className={bStyles.checklistClear} onClick={() => setFiltroReferencias('todos')}>
+              × Limpiar filtro
+            </button>
           )}
-        </div>}
-      </section>}
+        </div>
 
-      {vistaBodega === 'stock' && <section className={styles.gridTwo} id="proveedores" style={{ marginTop: 16 }}>
-        <div className={styles.panel}>
-          <div className={styles.panelHead}>
-            <div>
-              <h2 className={styles.panelTitle}>Datos pendientes</h2>
-              <p className={styles.panelSub}>Completar esto convierte la bodega en una herramienta fiable.</p>
-            </div>
-          </div>
-          <div className={styles.panelBody}>
-            <div className={styles.itemStack}>
-              <article className={styles.itemCard}>
-                <div className={styles.sectionHead} style={{ margin: 0 }}>
-                  <p className={styles.sectionTitle}>{datos.sinCoste.length} vinos sin coste de compra</p>
-                  <button className={styles.ghost} onClick={() => abrirReferencias('sin_coste')}>Completar</button>
-                </div>
-              </article>
-              <article className={styles.itemCard}>
-                <div className={styles.sectionHead} style={{ margin: 0 }}>
-                  <p className={styles.sectionTitle}>{datos.sinProveedor.length} vinos sin proveedor</p>
-                  <button className={styles.ghost} onClick={() => abrirReferencias('sin_proveedor')}>Completar</button>
-                </div>
-              </article>
-              <article className={styles.itemCard}>
-                <div className={styles.sectionHead} style={{ margin: 0 }}>
-                  <p className={styles.sectionTitle}>{datos.sinStockMinimo.length} vinos sin stock minimo</p>
-                  <button className={styles.ghost} onClick={() => abrirReferencias('sin_minimo')}>Completar</button>
-                </div>
-              </article>
-              <article className={styles.itemCard}>
-                <div className={styles.sectionHead} style={{ margin: 0 }}>
-                  <p className={styles.sectionTitle}>{datos.sinPrecio.length} vinos sin precio de venta</p>
-                  <Link className={styles.ghost} href="/dashboard/vinos?filtro=pendientes">Completar</Link>
-                </div>
-              </article>
-            </div>
+        {/* ── Toolbar ──────────────────────────────────────── */}
+        <div className={bStyles.cellarToolbar}>
+          <input
+            className={bStyles.cellarToolbarSearch}
+            value={busquedaReferencias}
+            onChange={e => setBusquedaReferencias(e.target.value)}
+            placeholder="Buscar vino, bodega, proveedor..."
+          />
+          <div className={bStyles.cellarToolbarActions}>
+            <button
+              type="button"
+              className={panelAbierto === 'compras' ? styles.secondary : styles.ghost}
+              onClick={() => setPanelAbierto(panelAbierto === 'compras' ? null : 'compras')}
+            >
+              Pedido {pedidoCombinado.length > 0 && <span className={styles.badge}>{pedidoCombinado.length}</span>}
+            </button>
+            <button
+              type="button"
+              className={panelAbierto === 'propuestas' ? styles.secondary : styles.ghost}
+              onClick={() => setPanelAbierto(panelAbierto === 'propuestas' ? null : 'propuestas')}
+            >
+              Propuestas {propuestas.length > 0 && <span className={styles.badge}>{propuestas.length}</span>}
+            </button>
+            <Link className={styles.ghost} href="/dashboard/simulador">Simulador</Link>
+            <Link className={styles.ghost} href="/dashboard/trazabilidad">Trazabilidad</Link>
           </div>
         </div>
 
-        <div className={styles.panel}>
-          <div className={styles.panelHead}>
-            <div>
-              <h2 className={styles.panelTitle}>Proveedores</h2>
-              <p className={styles.panelSub}>Peso aproximado por proveedor.</p>
+        {/* ── Panel: Pedido sugerido ────────────────────────── */}
+        {panelAbierto === 'compras' && (
+          <section className={styles.panel} id="pedido">
+            <div className={styles.panelHead}>
+              <div>
+                <h2 className={styles.panelTitle}>Pedido sugerido</h2>
+                <p className={styles.panelSub}>Agrupado por proveedor. Se activa por stock mínimo, ventas recientes, plazo de entrega y colchón de seguridad.</p>
+              </div>
+              <div className={styles.actionRow}>
+                <span className={styles.badge}>{pedidoCombinado.length}</span>
+                {pedidoCombinado.length > 0 && (
+                  <>
+                    <button className={styles.ghost} onClick={copiarPedido}>{pedidoCopiado ? 'Copiado' : 'Copiar'}</button>
+                    <button className={styles.ghost} onClick={abrirWhatsAppPedido}>WhatsApp</button>
+                  </>
+                )}
+                <button className={styles.ghost} onClick={() => setPanelAbierto(null)}>Cerrar ×</button>
+              </div>
             </div>
-          </div>
-          <div className={styles.panelBody}>
-            {datos.proveedores.length ? (
-              <div className={styles.itemStack}>
-                {datos.proveedores.map(([proveedor, info]) => (
-                  <article className={styles.itemCard} key={proveedor}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <h3 className={styles.sectionTitle}>{proveedor}</h3>
-                        <p className={styles.sectionText}>
-                          {info.refs} referencias · retorno {info.retorno == null ? '-' : `${info.retorno.toFixed(2)}x`}
-                        </p>
+            <div className={styles.panelBody}>
+              {pedidoCombinado.length
+                ? <div className={styles.itemStack}>{pedidoPorProveedor.map(renderGrupoPedido)}</div>
+                : <div className={styles.empty}>No hay pedido sugerido ahora. Con stock mínimo y ventas marcadas se genera automáticamente.</div>
+              }
+            </div>
+          </section>
+        )}
+
+        {/* ── Panel: Propuestas ─────────────────────────────── */}
+        {panelAbierto === 'propuestas' && (
+          <section className={`${styles.panelDark} ${styles.notificationFocus}`} id="propuestas">
+            <div className={styles.panelHead}>
+              <div>
+                <h2 className={styles.panelTitle}>Propuestas recibidas</h2>
+                <p className={styles.panelSub}>Ideas de compra o ajuste listas para decidir.</p>
+              </div>
+              <button className={styles.ghost} onClick={() => setPanelAbierto(null)}>Cerrar ×</button>
+            </div>
+            {propuestas.length > 0 ? (
+              <div className={styles.panelBody}>
+                <div className={styles.itemStack}>
+                  {propuestas.map(propuesta => (
+                    <article key={propuesta.id} className={styles.itemCard} style={{ background: '#231e20', borderColor: '#3a3033' }}>
+                      <div className={styles.sectionHead} style={{ margin: 0 }}>
+                        <div>
+                          <p className={styles.eyebrow}>{propuesta.prioridad} · {propuesta.estado}</p>
+                          <h3 className={styles.sectionTitle} style={{ color: '#fffaf3' }}>{propuesta.titulo}</h3>
+                          <p className={styles.sectionText} style={{ color: 'rgba(255,250,243,0.62)' }}>{[propuesta.vino, propuesta.tipo, propuesta.zona].filter(Boolean).join(' · ') || 'Propuesta'}</p>
+                        </div>
                       </div>
-                      <span className={styles.badge}>{eur(info.coste)}</span>
-                    </div>
-                  </article>
-                ))}
+                      {propuesta.motivo && <p className={styles.lead} style={{ color: 'rgba(255,250,243,0.72)', marginTop: 12 }}>{propuesta.motivo}</p>}
+                      <div className={styles.actionRow} style={{ marginTop: 14 }}>
+                        <button className={styles.secondary} onClick={() => cambiarEstadoPropuesta(propuesta, 'interesa')}>Me interesa</button>
+                        <button className={styles.ghost} onClick={() => cambiarEstadoPropuesta(propuesta, 'incorporada')}>Incorporada</button>
+                        <button className={styles.ghost} onClick={() => cambiarEstadoPropuesta(propuesta, 'descartada')}>Descartar</button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
               </div>
             ) : (
-              <div className={styles.empty}>Aún no hay proveedores informados.</div>
+              <div className={styles.panelBody}><div className={styles.empty}>No hay propuestas pendientes ahora.</div></div>
             )}
-          </div>
-        </div>
-      </section>}
+          </section>
+        )}
 
-      {vistaBodega === 'propuestas' && <section className={`${styles.panelDark} ${styles.notificationFocus}`} id="propuestas" style={{ marginTop: 16 }}>
-          <div className={styles.panelHead}>
-            <div>
-              <h2 className={styles.panelTitle}>Propuestas recibidas</h2>
-              <p className={styles.panelSub}>Ideas de compra o ajuste listas para decidir.</p>
-            </div>
-            <button className={styles.secondary} onClick={() => setMostrarPropuestas(!mostrarPropuestas)}>
-              {mostrarPropuestas ? 'Ocultar' : `Ver ${propuestas.length}`}
-            </button>
-          </div>
-          {mostrarPropuestas && propuestas.length > 0 && (
-            <div className={styles.panelBody}>
-              <div className={styles.itemStack}>
-                {propuestas.map(propuesta => (
-                  <article key={propuesta.id} className={styles.itemCard} style={{ background: '#231e20', borderColor: '#3a3033' }}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <p className={styles.eyebrow}>{propuesta.prioridad} · {propuesta.estado}</p>
-                        <h3 className={styles.sectionTitle} style={{ color: '#fffaf3' }}>{propuesta.titulo}</h3>
-                        <p className={styles.sectionText} style={{ color: 'rgba(255,250,243,0.62)' }}>{[propuesta.vino, propuesta.tipo, propuesta.zona].filter(Boolean).join(' · ') || 'Propuesta'}</p>
-                      </div>
-                    </div>
-                    {propuesta.motivo && <p className={styles.lead} style={{ color: 'rgba(255,250,243,0.72)', marginTop: 12 }}>{propuesta.motivo}</p>}
-                    <div className={styles.actionRow} style={{ marginTop: 14 }}>
-                      <button className={styles.secondary} onClick={() => cambiarEstadoPropuesta(propuesta, 'interesa')}>Me interesa</button>
-                      <button className={styles.ghost} onClick={() => cambiarEstadoPropuesta(propuesta, 'incorporada')}>Incorporada</button>
-                      <button className={styles.ghost} onClick={() => cambiarEstadoPropuesta(propuesta, 'descartada')}>Descartar</button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          )}
-          {mostrarPropuestas && propuestas.length === 0 && (
-            <div className={styles.panelBody}>
-              <div className={styles.empty}>No hay propuestas pendientes ahora.</div>
-            </div>
-          )}
-        </section>}
+        {/* ── La tabla ─────────────────────────────────────── */}
+        <datalist id="proveedores-bodega">
+          {datos.proveedoresExistentes.map(p => <option key={p} value={p} />)}
+        </datalist>
 
-      {vistaBodega === 'stock' && <section className={styles.panel} id="referencias" style={{ marginTop: 16 }}>
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Referencias de bodega</h2>
-            <p className={styles.panelSub}>{modoCompletarDatos ? 'Completa primero stock actual, coste, proveedor y mínimo de aviso. El pedido queda para la vista de compras.' : 'Edición avanzada de stock actual, coste, proveedor, stock mínimo y pedido manual.'}</p>
-          </div>
-          <button className={styles.ghost} onClick={() => setMostrarReferencias(!mostrarReferencias)}>
-            {mostrarReferencias ? 'Ocultar' : `Editar ${etiquetaFiltroReferencias}`}
-          </button>
-        </div>
-        {mostrarReferencias && (
-          <div className={styles.panelBody}>
-            <div style={{ marginBottom: 12 }}>
-              <label className={styles.label}>Buscar referencia</label>
-              <input
-                className={styles.input}
-                value={busquedaReferencias}
-                onChange={e => setBusquedaReferencias(e.target.value)}
-                placeholder="Nombre, bodega, proveedor o referencia..."
-              />
-            </div>
-            <div className={styles.actionRow} style={{ marginBottom: 12 }}>
-              <button className={filtroReferencias === 'todos' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('todos')}>Todas</button>
-              <button className={filtroReferencias === 'pendientes' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('pendientes')}>Pendientes</button>
-              <button className={filtroReferencias === 'sin_coste' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('sin_coste')}>Sin coste</button>
-              <button className={filtroReferencias === 'sin_proveedor' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('sin_proveedor')}>Sin proveedor</button>
-              <button className={filtroReferencias === 'sin_stock' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('sin_stock')}>Sin stock actual</button>
-              <button className={filtroReferencias === 'sin_minimo' ? styles.secondary : styles.ghost} onClick={() => setFiltroReferencias('sin_minimo')}>Sin stock minimo</button>
-            </div>
-            <div className={styles.itemStack}>
+        <div className={bStyles.cellarTableWrap} id="bodega-tabla">
+          <table className={bStyles.cellarTable}>
+            <thead>
+              <tr>
+                <th>Vino</th>
+                <th>Tipo</th>
+                <th title="Editable">Proveedor ✎</th>
+                <th title="Editable">Coste € ✎</th>
+                <th title="Editable">PVP bot. € ✎</th>
+                <th title="Editable">PVP copa € ✎</th>
+                <th>Mrg. bot.</th>
+                <th>Mrg. copa</th>
+                <th title="Editable">Stock ✎</th>
+                <th title="Editable">Mín. ✎</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {referenciasVisibles.length === 0 && (
+                <tr>
+                  <td colSpan={11} className={bStyles.cellarTableEmpty}>
+                    {filtroReferencias !== 'todos' ? 'No hay referencias con ese filtro.' : 'No hay referencias activas.'}
+                  </td>
+                </tr>
+              )}
               {referenciasVisibles.map(vino => {
-                const m = margen(vino)
-                const bajo = decimal(vino.stock_minimo) > 0 && decimal(vino.stock) <= decimal(vino.stock_minimo)
-                const isEditing = editando?.id === vino.id
-                const posicion = referenciasVisibles.findIndex(item => item.id === vino.id)
-                const cantidadManual = parseInt(pedidoManual[vino.id], 10) || 0
+                const mBotella = margenDisplay(vino.precio_botella, vino.coste_compra)
+                const mCopa    = margenCopaDisplay(vino.precio_copa, vino.coste_compra)
+                function cell(campo, type, step, listId, fmt) {
+                  const editing = inlineEdit?.id === vino.id && inlineEdit?.campo === campo
+                  return (
+                    <td
+                      className={`${bStyles.tdEditable}${editing ? ` ${bStyles.tdEditando}` : ''}`}
+                      onClick={() => !editing && startInline(vino, campo)}
+                    >
+                      {editing ? (
+                        <input
+                          className={bStyles.inlineInput}
+                          type={type || 'number'} step={step} list={listId}
+                          value={inlineEdit.valor ?? ''}
+                          onChange={e => setInlineEdit({ ...inlineEdit, valor: e.target.value })}
+                          onBlur={saveInline}
+                          onKeyDown={e => { if (e.key === 'Enter') saveInline(); if (e.key === 'Escape') setInlineEdit(null) }}
+                          autoFocus
+                        />
+                      ) : fmt ? fmt(vino[campo])
+                        : (vino[campo] != null && vino[campo] !== '')
+                          ? vino[campo]
+                          : <span className={bStyles.tdEmpty}>—</span>
+                      }
+                    </td>
+                  )
+                }
+                const eurCell = v => v ? eur(v) : <span className={bStyles.tdEmpty}>—</span>
                 return (
-                  <article key={vino.id} className={styles.itemCard}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <h3 className={styles.sectionTitle}>{vino.nombre}</h3>
-                        <p className={styles.sectionText}>{vino.bodega || 'Sin bodega'} · stock {vino.stock || 0} · venta {eur(vino.precio_botella)}</p>
-                      </div>
-                      <div className={styles.actionRow}>
-                        {bajo && <span className={styles.badge}>Bajo mínimo</span>}
-                        {cantidadManual > 0 && <span className={styles.badge}>Manual {cantidadManual}</span>}
-                        <span className={styles.badge} style={{ color: margenColor(m) }}>{m == null ? 'Sin margen' : `${m}% margen`}</span>
-                        <button className={styles.ghost} onClick={() => isEditing ? setEditando(null) : iniciarEdicion(vino)}>{isEditing ? 'Cerrar' : 'Editar'}</button>
-                      </div>
-                    </div>
-
-                    {!modoCompletarDatos && <div className={styles.actionRow} style={{ marginTop: 12 }}>
-                      <input
-                        className={styles.input}
-                        type="number"
-                        min="1"
-                        value={pedidoRapido[vino.id] || ''}
-                        onChange={e => cambiarPedidoRapido(vino.id, e.target.value)}
-                        placeholder="Pedir"
-                        style={{ maxWidth: 110 }}
-                      />
-                      <button className={styles.ghost} onClick={() => anadirPedidoManual(vino)}>Añadir al pedido</button>
-                      {cantidadManual > 0 && (
-                        <button className={styles.ghost} onClick={() => quitarPedidoManual(vino.id)}>Quitar manual</button>
-                      )}
-                    </div>}
-
-                    {isEditing && (
-                      <ResponsiveOverlay
-                        open
-                        onClose={() => !guardando && setEditando(null)}
-                        eyebrow="Control de bodega"
-                        title={`Editar ${editando.nombre}`}
-                        description={`${editando.bodega || 'Sin bodega'} · stock ${editando.stock || 0} · venta ${eur(editando.precio_botella)}`}
-                        footer={
-                          <>
-                            <button type="button" className={styles.ghost} onClick={() => setEditando(null)} disabled={guardando}>Cancelar</button>
-                            <button type="button" className={styles.secondary} onClick={() => guardarBodega({ siguiente: true })} disabled={guardando || posicion >= referenciasVisibles.length - 1}>Guardar y siguiente</button>
-                            <button type="button" className={styles.primary} onClick={() => guardarBodega({ cerrar: true })} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</button>
-                          </>
-                        }
-                      >
-                      <div className={styles.formGrid}>
-                        <div>
-                          <label className={styles.label}>Coste compra</label>
-                          <input className={styles.input} type="number" step="0.01" value={editando.coste_compra} onChange={e => setEditando({ ...editando, coste_compra: e.target.value })} />
-                          {parseFloat(editando.coste_compra) > 0 && (
-                            <p style={{ margin: '5px 0 0', fontSize: 11, color: '#8b8278' }}>
-                              x2 {(parseFloat(editando.coste_compra) * 2).toFixed(2)} € · x3 {(parseFloat(editando.coste_compra) * 3).toFixed(2)} €
-                            </p>
-                          )}
-                        </div>
-                        <div>
-                          <label className={styles.label}>Stock actual</label>
-                          <input className={styles.input} type="number" min="0" value={editando.stock} onChange={e => setEditando({ ...editando, stock: e.target.value })} />
-                          <p style={{ margin: '5px 0 0', fontSize: 11, color: '#8b8278' }}>Botellas reales ahora mismo.</p>
-                        </div>
-                        <div>
-                          <label className={styles.label}>Stock mínimo (aviso)</label>
-                          <input className={styles.input} type="number" min="0" value={editando.stock_minimo} onChange={e => setEditando({ ...editando, stock_minimo: e.target.value })} />
-                          <p style={{ margin: '5px 0 0', fontSize: 11, color: '#8b8278' }}>Umbral para avisar o preparar reposición.</p>
-                        </div>
-                        <div>
-                          <label className={styles.label}>Proveedor</label>
-                          <input
-                            className={styles.input}
-                            list="proveedores-bodega"
-                            value={editando.proveedor}
-                            onChange={e => setEditando({ ...editando, proveedor: e.target.value })}
-                          />
-                          <datalist id="proveedores-bodega">
-                            {datos.proveedoresExistentes.map(proveedor => <option key={proveedor} value={proveedor} />)}
-                          </datalist>
-                        </div>
-                        <div><label className={styles.label}>Referencia proveedor</label><input className={styles.input} value={editando.referencia_proveedor} onChange={e => setEditando({ ...editando, referencia_proveedor: e.target.value })} /></div>
-                        <div className={styles.full}><label className={styles.label}>Formato compra</label><input className={styles.input} placeholder="Caja 6, caja 12, unidad..." value={editando.formato_compra} onChange={e => setEditando({ ...editando, formato_compra: e.target.value })} /></div>
-                        <div className={styles.full}>
-                          <div className={styles.actionRow}>
-                            <button className={styles.ghost} onClick={() => moverEdicion(-1)} disabled={guardando || posicion <= 0}>Anterior</button>
-                            <button className={styles.ghost} onClick={() => moverEdicion(1)} disabled={guardando || posicion >= referenciasVisibles.length - 1}>Siguiente</button>
-                          </div>
-                          {guardadoBodega && <p className={styles.tiny}>{guardadoBodega}</p>}
-                        </div>
-                      </div>
-                      </ResponsiveOverlay>
-                    )}
-                  </article>
+                  <tr key={vino.id}>
+                    <td className={bStyles.tdNombre}>
+                      <strong>{vino.nombre}</strong>
+                      {vino.bodega && <small>{vino.bodega}</small>}
+                    </td>
+                    <td>{tipoVino(vino)}</td>
+                    {cell('proveedor', 'text', undefined, 'proveedores-bodega')}
+                    {cell('coste_compra',   'number', '0.01', undefined, eurCell)}
+                    {cell('precio_botella', 'number', '0.01', undefined, eurCell)}
+                    {cell('precio_copa',    'number', '0.01', undefined, eurCell)}
+                    <td className={margenCls(mBotella)}>{mBotella == null ? <span className={bStyles.tdEmpty}>—</span> : `${mBotella}%`}</td>
+                    <td className={margenCls(mCopa)}>{mCopa == null ? <span className={bStyles.tdEmpty}>—</span> : `${mCopa}%`}</td>
+                    {cell('stock',        'number', '1')}
+                    {cell('stock_minimo', 'number', '1')}
+                    <td className={bStyles.tdActions}>
+                      <button className={styles.ghost} onClick={() => iniciarEdicion(vino)}>Editar</button>
+                    </td>
+                  </tr>
                 )
               })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── Modal edición completa ───────────────────────── */}
+        {editando && (
+          <ResponsiveOverlay
+            open
+            onClose={() => !guardando && setEditando(null)}
+            eyebrow="Control de bodega"
+            title={`Editar ${editando.nombre}`}
+            description={`${editando.bodega || 'Sin bodega'} · stock ${editando.stock || 0} · venta ${eur(editando.precio_botella)}`}
+            footer={
+              <>
+                <button type="button" className={styles.ghost} onClick={() => setEditando(null)} disabled={guardando}>Cancelar</button>
+                <button type="button" className={styles.secondary} onClick={() => guardarBodega({ siguiente: true })} disabled={guardando || editandoPosicion >= referenciasVisibles.length - 1}>Guardar y siguiente</button>
+                <button type="button" className={styles.primary} onClick={() => guardarBodega({ cerrar: true })} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</button>
+              </>
+            }
+          >
+            <div className={styles.formGrid}>
+              <div>
+                <label className={styles.label}>Coste compra</label>
+                <input className={styles.input} type="number" step="0.01" value={editando.coste_compra} onChange={e => setEditando({ ...editando, coste_compra: e.target.value })} />
+                {parseFloat(editando.coste_compra) > 0 && (
+                  <p style={{ margin: '5px 0 0', fontSize: 11, color: '#8b8278' }}>
+                    x2 {(parseFloat(editando.coste_compra) * 2).toFixed(2)} € · x3 {(parseFloat(editando.coste_compra) * 3).toFixed(2)} €
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className={styles.label}>Stock actual</label>
+                <input className={styles.input} type="number" min="0" value={editando.stock} onChange={e => setEditando({ ...editando, stock: e.target.value })} />
+                <p style={{ margin: '5px 0 0', fontSize: 11, color: '#8b8278' }}>Botellas reales ahora mismo.</p>
+              </div>
+              <div>
+                <label className={styles.label}>Stock mínimo (aviso)</label>
+                <input className={styles.input} type="number" min="0" value={editando.stock_minimo} onChange={e => setEditando({ ...editando, stock_minimo: e.target.value })} />
+                <p style={{ margin: '5px 0 0', fontSize: 11, color: '#8b8278' }}>Umbral para avisar o preparar reposición.</p>
+              </div>
+              <div>
+                <label className={styles.label}>Proveedor</label>
+                <input className={styles.input} list="proveedores-bodega" value={editando.proveedor} onChange={e => setEditando({ ...editando, proveedor: e.target.value })} />
+              </div>
+              <div>
+                <label className={styles.label}>Referencia proveedor</label>
+                <input className={styles.input} value={editando.referencia_proveedor} onChange={e => setEditando({ ...editando, referencia_proveedor: e.target.value })} />
+              </div>
+              <div className={styles.full}>
+                <label className={styles.label}>Formato compra</label>
+                <input className={styles.input} placeholder="Caja 6, caja 12, unidad..." value={editando.formato_compra} onChange={e => setEditando({ ...editando, formato_compra: e.target.value })} />
+              </div>
+              <div className={styles.full}>
+                <div className={styles.actionRow}>
+                  <button className={styles.ghost} onClick={() => moverEdicion(-1)} disabled={guardando || editandoPosicion <= 0}>Anterior</button>
+                  <button className={styles.ghost} onClick={() => moverEdicion(1)} disabled={guardando || editandoPosicion >= referenciasVisibles.length - 1}>Siguiente</button>
+                </div>
+                {guardadoBodega && <p className={styles.tiny}>{guardadoBodega}</p>}
+              </div>
             </div>
-          </div>
+          </ResponsiveOverlay>
         )}
-      </section>}
+
+        {/* ── Diagnóstico colapsable ───────────────────────── */}
+        <details className={bStyles.cellarDiagnostic}>
+          <summary>
+            <span>Diagnóstico avanzado · disponibilidad {disponibilidad}% · {datos.sinRotacion.length} sin salida</span>
+            <span>{movimientos.length} movimientos</span>
+          </summary>
+          <div className={bStyles.cellarDiagnosticBody}>
+            <section className={styles.gridTwo}>
+              <div className={styles.panel}>
+                <div className={styles.panelHead}>
+                  <div><h2 className={styles.panelTitle}>Stock alto sin salida</h2><p className={styles.panelSub}>Dinero inmovilizado que conviene destacar, formar o retirar.</p></div>
+                  <span className={styles.badge}>{datos.sinRotacion.length}</span>
+                </div>
+                <div className={styles.panelBody}>
+                  {datos.sinRotacion.length ? (
+                    <div className={styles.itemStack}>
+                      {datos.sinRotacion.slice(0, 5).map(vino => (
+                        <article key={vino.id} className={styles.itemCard}>
+                          <div className={styles.sectionHead} style={{ margin: 0 }}>
+                            <div>
+                              <h3 className={styles.sectionTitle}>{vino.nombre}</h3>
+                              <p className={styles.sectionText}>{vino.proveedor || 'Sin proveedor'} · stock {vino.stock || 0} · inmovilizado {eur(decimal(vino.stock) * decimal(vino.coste_compra))}</p>
+                            </div>
+                            <span className={styles.badge}>{perfilBodega ? 'Sin ventas recientes' : 'Sin ventas marcadas'}</span>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : <div className={styles.empty}>No hay stock alto sin salida.</div>}
+                </div>
+              </div>
+              <div className={styles.panel}>
+                <div className={styles.panelHead}>
+                  <div><h2 className={styles.panelTitle}>Referencias con tracción</h2><p className={styles.panelSub}>{perfilBodega ? 'Vinos con salida real que conviene proteger y reponer.' : 'Vinos que sala está vendiendo.'}</p></div>
+                  <span className={styles.badge}>{datos.topRotacion.length}</span>
+                </div>
+                <div className={styles.panelBody}>
+                  {datos.topRotacion.length ? (
+                    <div className={styles.itemStack}>
+                      {datos.topRotacion.map(vino => (
+                        <article key={vino.id} className={styles.itemCard}>
+                          <div className={styles.sectionHead} style={{ margin: 0 }}>
+                            <div>
+                              <h3 className={styles.sectionTitle}>{vino.nombre}</h3>
+                              <p className={styles.sectionText}>{vino.bodega || 'Sin bodega'} · margen {margenDisplay(vino.precio_botella, vino.coste_compra) ?? '—'}%</p>
+                            </div>
+                            <span className={styles.badge}>{vino.ventasMarcadas} ventas</span>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : <div className={styles.empty}>{perfilBodega ? 'Sin ventas recientes registradas.' : 'Sin ventas marcadas desde sala.'}</div>}
+                </div>
+              </div>
+            </section>
+            <section className={styles.panel} id="movimientos">
+              <div className={styles.panelHead}>
+                <div><h2 className={styles.panelTitle}>Libro de movimientos</h2><p className={styles.panelSub}>Últimos cambios de stock con motivo y trazabilidad.</p></div>
+                <span className={styles.badge}>{movimientos.length}</span>
+              </div>
+              {movimientos.length ? (
+                <div className={styles.panelBody}>
+                  <div className={styles.itemStack}>
+                    {movimientos.map(mov => (
+                      <article key={mov.id} className={styles.itemCard}>
+                        <div className={styles.sectionHead} style={{ margin: 0 }}>
+                          <div>
+                            <p className={styles.eyebrow}>{mov.tipo}</p>
+                            <h3 className={styles.sectionTitle}>{mov.vinos?.nombre || 'Vino'}</h3>
+                            <p className={styles.sectionText}>{mov.motivo || 'Sin motivo'} · {mov.stock_anterior ?? '—'} → {mov.stock_nuevo ?? '—'}</p>
+                          </div>
+                          <span className={styles.badge}>{mov.cantidad > 0 ? `+${mov.cantidad}` : mov.cantidad}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              ) : <div className={styles.panelBody}><div className={styles.empty}>Sin movimientos de stock registrados.</div></div>}
+            </section>
+          </div>
+        </details>
+
       </div>
     </ModuleShell>
     </FeatureGate>
