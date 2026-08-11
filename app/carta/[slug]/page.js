@@ -546,7 +546,7 @@ function motivoPlatoContextual(plato = {}, vino = {}, idioma = 'es') {
   if (tipo === 'tinto' && rasgos.entrecot) return esEn ? 'The crust and marbling call for a red with enough backbone to hold up.' : 'La costra y el marmoleo piden un tinto con estructura que no se desdibuje.'
   if (tipo === 'tinto' && rasgos.carneRoja) return esEn ? 'The red meat softens the tannin and lets the wine show its depth.' : 'La carne roja suaviza el tanino y abre la profundidad del tinto.'
   if (tipo === 'tinto' && rasgos.cerdoIberico) return esEn ? 'Iberian fat and fruit in the wine create a long, almost seamless finish.' : 'La grasa ibérica y la fruta del vino crean un final largo y casi sin fisuras.'
-  if (tipo === 'tinto' && rasgos.brasa) return esEn ? 'Char and smoke lock onto the wine's darker, earthier register.' : 'El ahumado y la brasa engancha el lado más oscuro y terroso del vino.'
+  if (tipo === 'tinto' && rasgos.brasa) return esEn ? 'Char and smoke connect with the dark, earthy register of this wine.' : 'El ahumado y la brasa engancha el lado más oscuro y terroso del vino.'
   if (tipo === 'tinto' && rasgos.guiso) return esEn ? 'The slow-cooked sauce and the wine share the same deep, savoury tone.' : 'La salsa del guiso y el vino comparten el mismo tono profundo y sabroso.'
   if ((tipo === 'blanco' || tipo === 'rosado') && rasgos.marino) return esEn ? 'Freshness keeps the seafood side clean and lively.' : 'La frescura del vino mantiene limpio y vivo el lado marino del plato.'
   if ((tipo === 'blanco' || tipo === 'espumoso' || tipo === 'generoso') && rasgos.fritura) return esEn ? 'Acidity or bubbles cut through the fried texture between bites.' : 'La acidez o la burbuja limpian la fritura entre bocado y bocado.'
