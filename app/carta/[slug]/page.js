@@ -1507,21 +1507,21 @@ export default function CartaPublica() {
           {notaSeleccion && <p className={styles.wineNotes}>{notaSeleccion}</p>}
         </div>
         <div className={styles.priceBlock}>
-          {(tieneBotella || tieneCopa) && (
+          {precioCopaPrincipal ? (
             <>
-              <p className={styles.priceMeta}>{i.precio}</p>
-              {tieneCopa && (
-                <div className={styles.mainPrice}>
-                  <span className={styles.formattedPrice}>{_formatPrecio(v.precio_copa, decimalesCopa)}</span>
-                  <small>{i.copa}</small>
-                </div>
-              )}
-              {tieneBotella && (
-                <div className={styles.mainPrice}>
-                  <span className={styles.formattedPrice}>{_formatPrecio(v.precio_botella, 0)}</span>
-                  <small>{i.botella}</small>
-                </div>
-              )}
+              <div className={styles.mainPrice}>
+                <span className={styles.formattedPrice}>{precioCopaCarta(v.precio_copa)}</span>
+                <small>{i.copa}</small>
+              </div>
+              {tieneBotella && <p className={styles.priceMeta}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
+            </>
+          ) : (
+            <>
+              <div className={styles.mainPrice}>
+                <span className={styles.formattedPrice}>{precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</span>
+                <small>{i.botella}</small>
+              </div>
+              {tieneCopa && <p className={styles.priceMeta}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
             </>
           )}
           <button
