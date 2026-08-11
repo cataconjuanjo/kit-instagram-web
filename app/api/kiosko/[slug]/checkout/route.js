@@ -70,6 +70,8 @@ export async function POST(req, { params }) {
     cancel_url:  `${SITE_URL}/kiosko-admin/${slug}`,
     metadata: { tipo: 'kiosko', tienda_id: tienda.id, tienda_slug: tienda.slug, plan, price_id: priceId },
     subscription_data: { metadata: { tipo: 'kiosko', tienda_id: tienda.id, tienda_slug: tienda.slug, plan } },
+    automatic_tax: { enabled: true },
+    customer_update: { address: 'auto', name: 'auto' },
     locale: 'es',
   })
 
