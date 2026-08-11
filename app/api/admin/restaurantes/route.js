@@ -360,13 +360,13 @@ export async function PUT(req) {
       }
       const { error: updateError } = await adminSupabase.auth.admin.updateUserById(found.id, { password })
       if (updateError) throw updateError
-      return Response.json({ ok: true, modo: 'manual', email, password })
+      return Response.json({ ok: true, modo: 'manual', email })
     }
 
     const { error: updateError } = await adminSupabase.auth.admin.updateUserById(authUser.id, { password })
     if (updateError) throw updateError
 
-    return Response.json({ ok: true, modo: 'manual', email, password })
+    return Response.json({ ok: true, modo: 'manual', email })
   } catch (error) {
     console.error('Error reseteando contraseña:', error)
     return Response.json({ error: 'No se pudo cambiar la contraseña.' }, { status: 500 })

@@ -1,6 +1,7 @@
 import { createHash } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
+import { logSecurityEvent } from '../../../lib/securityEvents'
 
 const GENERIC_LOGIN_ERROR = 'Email o contraseña incorrecta.'
 const RATE_WINDOW_MS = 15 * 60 * 1000
@@ -41,7 +42,15 @@ async function checkRateLimit(key, endpoint, max) {
     .eq('endpoint', endpoint)
     .gte('created_at', since)
 
-  if ((count || 0) >= max) return false
+  if ((count || 0) >= max) {
+    logSecurityEvent('rate_limit_exceeded', {
+      endpoint,
+      key,
+      reason: `max_${max}_window_${RATE_WINDOW_MS}`,
+      status: 429,
+    })
+    return false
+  }
   await supabaseAdmin.from('rate_limits').insert({ ip: key, endpoint })
   return true
 }

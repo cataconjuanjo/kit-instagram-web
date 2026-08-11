@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
+import { checkRateLimit, getClientIp } from '../../../../../lib/security'
 import { getPublicTienda, PUBLIC_VINO_SELECT } from '../../../../_lib/kioskoAuth'
 
-function requestIp(request) {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    ''
-  )
-}
+const RATE_LIMIT = 80
+const RATE_WINDOW_MS = 60 * 60 * 1000
 
 function migrationPending(error) {
   const text = `${error?.code || ''} ${error?.message || ''}`.toLowerCase()
@@ -49,6 +45,13 @@ export async function GET(_request, { params }) {
 
 export async function POST(request, { params }) {
   const { slug, id } = await params
+  const ip = getClientIp(request)
+  const allowed = await checkRateLimit(`${slug}:${ip}`, 'kiosko-mobile-detail-intent', {
+    max: RATE_LIMIT,
+    windowMs: RATE_WINDOW_MS,
+  })
+  if (!allowed) return NextResponse.json({ ok: true, skipped: true }, { status: 202 })
+
   const tienda = await getPublicTienda(slug, { select: 'id, slug, nombre, activo' })
   if (!tienda) return NextResponse.json({ ok: true, skipped: true })
 
@@ -76,7 +79,7 @@ export async function POST(request, { params }) {
     source,
     lang,
     user_agent: request.headers.get('user-agent') || '',
-    ip: requestIp(request),
+    ip,
   })
 
   if (error) {

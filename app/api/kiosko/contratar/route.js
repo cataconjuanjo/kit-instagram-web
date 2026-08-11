@@ -1,7 +1,18 @@
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import {
+  checkRateLimit,
+  getClientIp,
+  is,
+  rateLimitResponse,
+  sanitizeEmail,
+  sanitizeText,
+  validationErrorResponse,
+} from '../../../lib/security'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
+const RATE_LIMIT = 8
+const RATE_WINDOW_MS = 60 * 60 * 1000
 
 function slugify(str) {
   return str
@@ -14,12 +25,28 @@ function slugify(str) {
 
 export async function POST(req) {
   try {
-    if (!process.env.STRIPE_SECRET_KEY) throw new Error('Stripe no configurado')
-    if (!process.env.STRIPE_PRICE_KIOSKO) throw new Error('Falta STRIPE_PRICE_KIOSKO en .env.local')
+    const allowed = await checkRateLimit(getClientIp(req), 'kiosko-contratar', {
+      max: RATE_LIMIT,
+      windowMs: RATE_WINDOW_MS,
+    })
+    if (!allowed) return rateLimitResponse('Demasiados intentos. Prueba de nuevo mas tarde.')
 
-    const { nombre, email, ciudad } = await req.json()
-    if (!nombre?.trim() || !email?.trim()) {
-      return Response.json({ error: 'nombre y email son obligatorios' }, { status: 400 })
+    if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRICE_KIOSKO) {
+      console.error('[kiosko/contratar] missing Stripe configuration', {
+        stripe: Boolean(process.env.STRIPE_SECRET_KEY),
+        price: Boolean(process.env.STRIPE_PRICE_KIOSKO),
+      })
+      return Response.json({ error: 'Contratacion no disponible en este momento.' }, { status: 503 })
+    }
+
+    const body = await req.json().catch(() => null)
+    if (!body) return validationErrorResponse('Peticion invalida.')
+
+    const nombre = sanitizeText(body.nombre, 120)
+    const email = sanitizeEmail(body.email)
+    const ciudad = sanitizeText(body.ciudad, 120)
+    if (nombre.length < 2 || !is.email(email)) {
+      return validationErrorResponse('Nombre y email validos son obligatorios.')
     }
 
     const sb = createClient(
@@ -28,8 +55,8 @@ export async function POST(req) {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Generar slug único
-    let base = slugify(nombre.trim())
+    let base = slugify(nombre)
+    if (!base) return validationErrorResponse('Nombre no valido.')
     let slug = base
     let intento = 0
     while (intento < 10) {
@@ -40,37 +67,37 @@ export async function POST(req) {
     }
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-    const existing = await stripe.customers.list({ email: email.trim(), limit: 1 })
+    const existing = await stripe.customers.list({ email, limit: 1 })
     const customer = existing.data[0] || await stripe.customers.create({
-      email:    email.trim(),
-      name:     nombre.trim(),
+      email,
+      name: nombre,
       metadata: { slug },
     })
 
     const session = await stripe.checkout.sessions.create({
-      customer:             customer.id,
-      mode:                 'subscription',
+      customer: customer.id,
+      mode: 'subscription',
       payment_method_types: ['card'],
-      line_items:           [{ price: process.env.STRIPE_PRICE_KIOSKO, quantity: 1 }],
-      success_url:          `${SITE_URL}/kiosko/bienvenida?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:           `${SITE_URL}/kiosko/contratar?cancelado=1`,
+      line_items: [{ price: process.env.STRIPE_PRICE_KIOSKO, quantity: 1 }],
+      success_url: `${SITE_URL}/kiosko/bienvenida?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${SITE_URL}/kiosko/contratar?cancelado=1`,
       metadata: {
-        tipo:    'kiosko_nuevo',
-        nombre:  nombre.trim(),
-        email:   email.trim().toLowerCase(),
-        ciudad:  ciudad?.trim() || '',
+        tipo: 'kiosko_nuevo',
+        nombre,
+        email,
+        ciudad,
         slug,
       },
       subscription_data: {
         metadata: { tipo: 'kiosko_nuevo', slug },
       },
-      locale:                 'es',
-      allow_promotion_codes:  true,
+      locale: 'es',
+      allow_promotion_codes: true,
     })
 
     return Response.json({ url: session.url })
   } catch (err) {
     console.error('[kiosko/contratar]', err)
-    return Response.json({ error: err.message }, { status: 500 })
+    return Response.json({ error: 'No se pudo iniciar la contratacion.' }, { status: 500 })
   }
 }

@@ -2,13 +2,16 @@ import { Resend } from 'resend'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { DEMO_BOOKING_CONFIG, generateDemoSlots, isValidDemoSlot } from '../../lib/demoBookingAvailability'
 import { createDemoIcs, createGoogleCalendarEvent, formatBookingDate } from '../../lib/calendarInvites'
+import { checkRateLimit, getClientIp, is, sanitizeEmail, sanitizeText } from '../../lib/security'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
 const FROM = process.env.CARTA_VIVA_FROM || 'Cata con Juanjo <onboarding@resend.dev>'
+const RATE_LIMIT = 10
+const RATE_WINDOW_MS = 60 * 60 * 1000
 
 function clean(value, limit = 200) {
-  return String(value || '').trim().slice(0, limit)
+  return sanitizeText(value, limit)
 }
 
 function escapeHtml(value = '') {
@@ -108,16 +111,28 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const body = await request.json()
+    const allowed = await checkRateLimit(getClientIp(request), 'demo-bookings', {
+      max: RATE_LIMIT,
+      windowMs: RATE_WINDOW_MS,
+    })
+    if (!allowed) {
+      return Response.json({ ok: false, error: 'Demasiadas solicitudes. Prueba de nuevo mas tarde.' }, { status: 429 })
+    }
+
+    const body = await request.json().catch(() => null)
+    if (!body) {
+      return Response.json({ ok: false, error: 'Peticion invalida.' }, { status: 400 })
+    }
+
     const slotStart = clean(body.slotStart, 80)
     const name = clean(body.name, 120)
-    const email = clean(body.email, 160).toLowerCase()
+    const email = sanitizeEmail(body.email)
     const phone = clean(body.phone, 60)
     const company = clean(body.company, 160)
     const productInterest = clean(body.productInterest, 80)
     const message = clean(body.message, 1200)
 
-    if (!slotStart || !name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!slotStart || !name || !is.email(email)) {
       return Response.json({ ok: false, error: 'Completa nombre, email y hora.' }, { status: 400 })
     }
 

@@ -9,6 +9,8 @@
     "lint": "eslint app next.config.mjs",
     "smoke": "node scripts/launch-smoke.mjs",
     "schema:audit": "node scripts/check-supabase-schema.js",
+    "security:anon": "node scripts/audit-anon-access.mjs",
+    "security:routes": "node scripts/audit-api-security.mjs",
     "qa": "npm run lint && npm run build && npm run smoke",
     "load:public": "node scripts/load-test-public.mjs"
   },

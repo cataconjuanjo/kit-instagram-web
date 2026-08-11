@@ -3,6 +3,7 @@
  * Import from here instead of duplicating logic across endpoints.
  */
 import { supabaseAdmin } from './supabaseAdmin'
+import { logSecurityEvent } from './securityEvents'
 
 // ── Rate limiting (Supabase-backed, survives restarts) ────────────
 
@@ -24,7 +25,15 @@ export async function checkRateLimit(ip, endpoint, { max = 10, windowMs = 3_600_
     .eq('endpoint', endpoint)
     .gte('created_at', since)
 
-  if ((count || 0) >= max) return false
+  if ((count || 0) >= max) {
+    logSecurityEvent('rate_limit_exceeded', {
+      endpoint,
+      key: ip,
+      reason: `max_${max}_window_${windowMs}`,
+      status: 429,
+    })
+    return false
+  }
 
   await supabaseAdmin.from('rate_limits').insert({ ip, endpoint })
   return true

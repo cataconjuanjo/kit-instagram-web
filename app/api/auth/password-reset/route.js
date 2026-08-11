@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import { createHash } from 'crypto'
 import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
+import { logSecurityEvent } from '../../../lib/securityEvents'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cataconjuanjo.com'
 const FROM = process.env.CARTA_VIVA_FROM || 'Carta Viva <onboarding@resend.dev>'
@@ -35,7 +36,15 @@ async function checkRateLimit(key, endpoint, max) {
     .eq('ip', key)
     .eq('endpoint', endpoint)
     .gte('created_at', since)
-  if ((count || 0) >= max) return false
+  if ((count || 0) >= max) {
+    logSecurityEvent('rate_limit_exceeded', {
+      endpoint,
+      key,
+      reason: `max_${max}_window_${RATE_WINDOW_MS}`,
+      status: 429,
+    })
+    return false
+  }
   await supabaseAdmin.from('rate_limits').insert({ ip: key, endpoint })
   return true
 }
