@@ -830,17 +830,6 @@
   display: none;
 }
 
-.winePriceLabel {
-  margin: 0 0 4px;
-  font-size: 11px;
-  font-weight: 660;
-  color: #4f4840;
-  line-height: 1.4;
-  text-align: right;
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-
 .mainPrice {
   display: flex;
   align-items: baseline;
@@ -1063,14 +1052,6 @@
   color: #766e64;
   font-size: 11px;
   line-height: 1.35;
-}
-
-.labelPriceLabel {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 660;
-  color: #4f4840;
-  line-height: 1.4;
 }
 
 .labelPriceRow {

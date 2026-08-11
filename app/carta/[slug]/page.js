@@ -1144,20 +1144,9 @@ export default function CartaPublica() {
   // Formateadores de precio dependientes de la configuración del restaurante
   const moneda = restaurante?.carta_mostrar_euro !== false ? ' €' : ''
   const precioBotellaCarta = valor => _formatPrecio(valor, 0) + moneda
-  const precioCopaCarta = valor => _formatPrecio(valor, restaurante?.carta_copa_decimales !== false ? 2 : 0) + moneda
+  const decimalesCopa = restaurante?.carta_copa_decimales !== false ? 2 : 0
+  const precioCopaCarta = valor => _formatPrecio(valor, decimalesCopa) + moneda
   const precioUnidadCarta = (precio, unidad) => `${precio} / ${String(unidad || '').toLowerCase()}`
-
-  const etiquetaPrecioVino = v => {
-    const decimalesCopa = restaurante?.carta_copa_decimales !== false ? 2 : 0
-    const copa = precioValido(v.precio_copa) ? _formatPrecio(v.precio_copa, decimalesCopa) : null
-    const botella = precioValido(v.precio_botella) ? _formatPrecio(v.precio_botella, 0) : null
-    if (!copa && !botella) return ''
-    const partes = [
-      copa ? `${copa}/${i.copa.toLowerCase()}` : null,
-      botella ? `${botella}/${i.botella.toLowerCase()}` : null,
-    ].filter(Boolean)
-    return `${i.precio} ${partes.join(' ')}`
-  }
 
   const preciosDisponibles = [...new Set(vinos.map(v => v.precio_botella).filter(Boolean).sort((a, b) => a - b))]
   const precioMaximo = preciosDisponibles[preciosDisponibles.length - 1] || 100
@@ -1518,7 +1507,23 @@ export default function CartaPublica() {
           {notaSeleccion && <p className={styles.wineNotes}>{notaSeleccion}</p>}
         </div>
         <div className={styles.priceBlock}>
-          {etiquetaPrecioVino(v) && <p className={styles.winePriceLabel}>{etiquetaPrecioVino(v)}</p>}
+          {(tieneBotella || tieneCopa) && (
+            <>
+              <p className={styles.priceMeta}>{i.precio}</p>
+              {tieneCopa && (
+                <div className={styles.mainPrice}>
+                  <span className={styles.formattedPrice}>{_formatPrecio(v.precio_copa, decimalesCopa)}</span>
+                  <small>{i.copa}</small>
+                </div>
+              )}
+              {tieneBotella && (
+                <div className={styles.mainPrice}>
+                  <span className={styles.formattedPrice}>{_formatPrecio(v.precio_botella, 0)}</span>
+                  <small>{i.botella}</small>
+                </div>
+              )}
+            </>
+          )}
           <button
             className={`${styles.compareButton} ${enComparador ? styles.compareActive : ''}`}
             onClick={() => toggleComparador(v)}
@@ -1571,7 +1576,15 @@ export default function CartaPublica() {
             <h3>{nombreVinoCarta(v)}</h3>
             {meta && <p>{meta}</p>}
           </button>
-          {etiquetaPrecioVino(v) && <p className={styles.labelPriceLabel}>{etiquetaPrecioVino(v)}</p>}
+          {(tieneBotella || tieneCopa) && (
+            <div className={styles.labelPriceRow}>
+              {tieneCopa && <strong>{_formatPrecio(v.precio_copa, decimalesCopa)}</strong>}
+              {tieneCopa && <span>{i.copa.toLowerCase()}</span>}
+              {tieneCopa && tieneBotella && <span>·</span>}
+              {tieneBotella && <strong>{_formatPrecio(v.precio_botella, 0)}</strong>}
+              {tieneBotella && <span>{i.botella.toLowerCase()}</span>}
+            </div>
+          )}
           <button
             type="button"
             className={`${styles.labelCompareButton} ${enComparador ? styles.compareActive : ''}`}
@@ -1719,7 +1732,16 @@ export default function CartaPublica() {
             </div>
             {vinosComparador.map(v => (
               <div key={v.id + '_precio'} style={{ background: '#fff', padding: '10px 16px', textAlign: 'center' }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 500, color: '#111', lineHeight: 1.45 }}>{etiquetaPrecioVino(v)}</p>
+                {precioValido(v.precio_copa) && (
+                  <p style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 500, color: '#111' }}>
+                    {_formatPrecio(v.precio_copa, decimalesCopa)}<span style={{ fontSize: 10, color: '#bbb', fontWeight: 400 }}> /{i.copa.toLowerCase()}</span>
+                  </p>
+                )}
+                {precioValido(v.precio_botella) && (
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#111' }}>
+                    {_formatPrecio(v.precio_botella, 0)}<span style={{ fontSize: 10, color: '#bbb', fontWeight: 400 }}> /{i.botella.toLowerCase()}</span>
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -1771,7 +1793,8 @@ export default function CartaPublica() {
             { label: i.region, valor: vinoSeleccionado.region },
             { label: i.uva, valor: vinoSeleccionado.uva },
             { label: i.anada, valor: vinoSeleccionado.anada },
-            { label: i.precio, valor: etiquetaPrecioVino(vinoSeleccionado) || null },
+            { label: i.copa, valor: precioValido(vinoSeleccionado.precio_copa) ? _formatPrecio(vinoSeleccionado.precio_copa, decimalesCopa) : null },
+            { label: i.botella, valor: precioValido(vinoSeleccionado.precio_botella) ? _formatPrecio(vinoSeleccionado.precio_botella, 0) : null },
           ].filter(f => f.valor).map((f, idx, arr) => (
             <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: idx < arr.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
               <span style={{ fontSize: 14, color: '#aaa', whiteSpace: 'nowrap' }}>{f.label}</span>
