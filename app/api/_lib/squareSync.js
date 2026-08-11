@@ -166,24 +166,30 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     const catEfectiva = existing?.categoria || catDetectada
     const activo      = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
 
-    const fields = {
-      tienda_id:           tiendaId,
-      square_catalog_id:   item.id,
-      square_variation_id: variationId,
-      nombre, precio_pvp, descripcion, stock, activo,
-      categoria:  catEfectiva,
-      uva:        uva    || null,
-      bodega:     bodega || null,
-      region:     region || null,
-      pais:       pais   || null,
-      ...(foto_url && { foto_url }),
-      updated_at: new Date().toISOString(),
-    }
-
     if (existing) {
-      toUpsertById.push({ id: existing.id, ...fields })
+      // Solo actualiza precio — no toca activo, stock ni nombre de vinos ya creados
+      if (precio_pvp != null) {
+        toUpsertById.push({
+          id:                  existing.id,
+          precio_pvp,
+          square_variation_id: variationId,
+          updated_at:          new Date().toISOString(),
+        })
+      }
     } else {
-      toInsertNew.push(fields)
+      toInsertNew.push({
+        tienda_id:           tiendaId,
+        square_catalog_id:   item.id,
+        square_variation_id: variationId,
+        nombre, precio_pvp, descripcion, stock, activo,
+        categoria:  catEfectiva,
+        uva:        uva    || null,
+        bodega:     bodega || null,
+        region:     region || null,
+        pais:       pais   || null,
+        ...(foto_url && { foto_url }),
+        updated_at: new Date().toISOString(),
+      })
     }
   }
 
