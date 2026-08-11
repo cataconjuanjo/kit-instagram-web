@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
@@ -537,23 +537,23 @@ function puntuarPlatoParaFicha(vino = {}, plato = {}) {
   return score
 }
 
-function motivoPlatoContextual(plato = {}, vino = {}, idioma = ‘es’) {
-  const esEn = idioma === ‘en’
+function motivoPlatoContextual(plato = {}, vino = {}, idioma = 'es') {
+  const esEn = idioma === 'en'
   const tipo = tipoVinoSimple(vino)
   const rasgos = rasgosPlatoContextual(plato)
-  if (tipo === ‘tinto’ && rasgos.solomillo) return esEn ? ‘The fine fat of the sirloin tames the tannin and stretches the finish.’ : ‘La grasa fina del solomillo doma el tanino y alarga el final.’
-  if (tipo === ‘tinto’ && rasgos.albondiga) return esEn ? ‘The juicy mince and spices give the red fruit something solid to rest on.’ : ‘La carne picada y las especias dan al tinto un sustrato sabroso donde apoyarse.’
-  if (tipo === ‘tinto’ && rasgos.entrecot) return esEn ? ‘The crust and marbling call for a red with enough backbone to hold up.’ : ‘La costra y el marmoleo piden un tinto con estructura que no se desdibuje.’
-  if (tipo === ‘tinto’ && rasgos.carneRoja) return esEn ? ‘The red meat softens the tannin and lets the wine show its depth.’ : ‘La carne roja suaviza el tanino y abre la profundidad del tinto.’
-  if (tipo === ‘tinto’ && rasgos.cerdoIberico) return esEn ? ‘Iberian fat and fruit in the wine create a long, almost seamless finish.’ : ‘La grasa ibérica y la fruta del vino crean un final largo y casi sin fisuras.’
-  if (tipo === ‘tinto’ && rasgos.brasa) return esEn ? ‘Char and smoke lock onto the wine’s darker, earthier register.’ : ‘El ahumado y la brasa engancha el lado más oscuro y terroso del vino.’
-  if (tipo === ‘tinto’ && rasgos.guiso) return esEn ? ‘The slow-cooked sauce and the wine share the same deep, savoury tone.’ : ‘La salsa del guiso y el vino comparten el mismo tono profundo y sabroso.’
-  if ((tipo === ‘blanco’ || tipo === ‘rosado’) && rasgos.marino) return esEn ? ‘Freshness keeps the seafood side clean and lively.’ : ‘La frescura del vino mantiene limpio y vivo el lado marino del plato.’
-  if ((tipo === ‘blanco’ || tipo === ‘espumoso’ || tipo === ‘generoso’) && rasgos.fritura) return esEn ? ‘Acidity or bubbles cut through the fried texture between bites.’ : ‘La acidez o la burbuja limpian la fritura entre bocado y bocado.’
-  if (tipo === ‘generoso’ && rasgos.grasoSalino) return esEn ? ‘Its dry saline profile handles salt, fat and cured flavours without blinking.’ : ‘Su perfil seco y salino aguanta sal, grasa y curados sin inmutarse.’
-  if (tipo === ‘dulce’ && rasgos.postre) return esEn ? ‘Sweetness in the wine keeps the dessert from turning the palate sharp.’ : ‘El dulzor del vino evita que el postre afine el paladar de forma brusca.’
-  if (rasgos.queso) return esEn ? ‘Enough texture and acidity for cheese without making the pairing feel heavy.’ : ‘Textura y acidez suficientes para el queso sin que el conjunto se haga pesado.’
-  return esEn ? ‘One of the cleaner matches for this wine on the menu.’ : ‘Uno de los encajes más limpios para este vino dentro de la carta.’
+  if (tipo === 'tinto' && rasgos.solomillo) return esEn ? 'The fine fat of the sirloin tames the tannin and stretches the finish.' : 'La grasa fina del solomillo doma el tanino y alarga el final.'
+  if (tipo === 'tinto' && rasgos.albondiga) return esEn ? 'The juicy mince and spices give the red fruit something solid to rest on.' : 'La carne picada y las especias dan al tinto un sustrato sabroso donde apoyarse.'
+  if (tipo === 'tinto' && rasgos.entrecot) return esEn ? 'The crust and marbling call for a red with enough backbone to hold up.' : 'La costra y el marmoleo piden un tinto con estructura que no se desdibuje.'
+  if (tipo === 'tinto' && rasgos.carneRoja) return esEn ? 'The red meat softens the tannin and lets the wine show its depth.' : 'La carne roja suaviza el tanino y abre la profundidad del tinto.'
+  if (tipo === 'tinto' && rasgos.cerdoIberico) return esEn ? 'Iberian fat and fruit in the wine create a long, almost seamless finish.' : 'La grasa ibérica y la fruta del vino crean un final largo y casi sin fisuras.'
+  if (tipo === 'tinto' && rasgos.brasa) return esEn ? 'Char and smoke lock onto the wine's darker, earthier register.' : 'El ahumado y la brasa engancha el lado más oscuro y terroso del vino.'
+  if (tipo === 'tinto' && rasgos.guiso) return esEn ? 'The slow-cooked sauce and the wine share the same deep, savoury tone.' : 'La salsa del guiso y el vino comparten el mismo tono profundo y sabroso.'
+  if ((tipo === 'blanco' || tipo === 'rosado') && rasgos.marino) return esEn ? 'Freshness keeps the seafood side clean and lively.' : 'La frescura del vino mantiene limpio y vivo el lado marino del plato.'
+  if ((tipo === 'blanco' || tipo === 'espumoso' || tipo === 'generoso') && rasgos.fritura) return esEn ? 'Acidity or bubbles cut through the fried texture between bites.' : 'La acidez o la burbuja limpian la fritura entre bocado y bocado.'
+  if (tipo === 'generoso' && rasgos.grasoSalino) return esEn ? 'Its dry saline profile handles salt, fat and cured flavours without blinking.' : 'Su perfil seco y salino aguanta sal, grasa y curados sin inmutarse.'
+  if (tipo === 'dulce' && rasgos.postre) return esEn ? 'Sweetness in the wine keeps the dessert from turning the palate sharp.' : 'El dulzor del vino evita que el postre afine el paladar de forma brusca.'
+  if (rasgos.queso) return esEn ? 'Enough texture and acidity for cheese without making the pairing feel heavy.' : 'Textura y acidez suficientes para el queso sin que el conjunto se haga pesado.'
+  return esEn ? 'One of the cleaner matches for this wine on the menu.' : 'Uno de los encajes más limpios para este vino dentro de la carta.'
 }
 
 function recomendarPlatosCartaParaVino(vino = {}, platosCarta = [], limite = 3) {
