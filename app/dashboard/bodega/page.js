@@ -20,6 +20,7 @@ import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleCompo
 import styles from '../module.module.css'
 import bStyles from './bodega.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
+import InventarioPanel from '../inventario/InventarioPanel'
 
 function eur(valor) {
   return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
@@ -668,7 +669,7 @@ export default function ControlBodega() {
       subtitle={perfilBodega
         ? 'Tabla de inventario editable con margen, proveedor y reposición en una sola vista.'
         : 'Inventario editable: coste, PVP, proveedor y stock directamente en la tabla.'}
-      actions={<Link className={styles.secondary} href="/dashboard/inventario">Inventario</Link>}
+      actions={null}
       help={{
         title: perfilBodega ? 'Rutina del sumiller' : 'Qué hacer aquí',
         intro: 'La tabla es el inventario. Edita celdas directamente. Usa el checklist para filtrar referencias incompletas y los paneles para pedido y propuestas.',
@@ -738,6 +739,13 @@ export default function ControlBodega() {
               onClick={() => setPanelAbierto(panelAbierto === 'propuestas' ? null : 'propuestas')}
             >
               Propuestas {propuestas.length > 0 && <span className={styles.badge}>{propuestas.length}</span>}
+            </button>
+            <button
+              type="button"
+              className={panelAbierto === 'conteo' ? styles.secondary : styles.ghost}
+              onClick={() => setPanelAbierto(panelAbierto === 'conteo' ? null : 'conteo')}
+            >
+              Conteo
             </button>
             <Link className={styles.ghost} href="/dashboard/simulador">Simulador</Link>
             {puedeVerTrazabilidad(sessionEmail) && (
@@ -809,6 +817,22 @@ export default function ControlBodega() {
             ) : (
               <div className={styles.panelBody}><div className={styles.empty}>No hay propuestas pendientes ahora.</div></div>
             )}
+          </section>
+        )}
+
+        {/* ── Panel: Conteo / Inventario ───────────────────── */}
+        {panelAbierto === 'conteo' && (
+          <section className={styles.panel} id="conteo">
+            <InventarioPanel
+              restauranteId={restaurante.id}
+              vinos={datos.activos}
+              actividadDesde={restaurante.actividad_real_desde}
+              onStockActualizado={stockMap => setVinos(prev => prev.map(v =>
+                stockMap.has(String(v.id)) ? { ...v, stock: stockMap.get(String(v.id)) } : v
+              ))}
+              compact
+              onClose={() => setPanelAbierto(null)}
+            />
           </section>
         )}
 
