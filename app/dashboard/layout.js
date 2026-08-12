@@ -361,8 +361,6 @@ export default function DashboardLayout({ children }) {
         { href: '/dashboard/precios', label: 'Márgenes', hint: 'Precio y coste', feature: 'precios_margenes' },
         { href: '/dashboard/simulador', label: 'Simulador de rentabilidad', hint: 'Copa, margen y escenarios', feature: 'precios_margenes' },
         { href: '/dashboard/trazabilidad', label: 'Trazabilidad', hint: 'Fuentes y formulas', feature: 'precios_margenes' },
-        { href: '/dashboard/bodega#propuestas', label: 'Propuestas', hint: 'Ideas por decidir', feature: 'bodega', alert: propuestasCount || null },
-        { href: '/dashboard/bodega#movimientos', label: 'Movimientos', hint: 'Historial de stock', feature: 'bodega' },
         { href: '/dashboard/inventario', label: 'Inventario físico', hint: 'Conteo real', feature: 'inventario' },
       ],
     },
@@ -375,7 +373,6 @@ export default function DashboardLayout({ children }) {
         ? []
         : [
             { href: '/dashboard/qr', label: 'QR y accesos', hint: 'Mesa y camarero' },
-            { href: '/dashboard/versiones', label: 'Versiones publicadas', hint: 'Cambios frente a actual' },
             { href: '/dashboard/personalizar', label: 'Diseño de carta', hint: 'Logo y colores' },
           ],
     },
