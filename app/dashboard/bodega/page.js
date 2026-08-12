@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
-import { getEffectiveRestaurantEmail } from '../../demo'
+import { getEffectiveRestaurantEmail, puedeVerTrazabilidad } from '../../demo'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { cargarDemoDashboard } from '../../lib/demoDashboardClient'
 import {
@@ -119,11 +119,13 @@ export default function ControlBodega() {
   const [guardando, setGuardando] = useState(false)
   const [guardadoBodega, setGuardadoBodega] = useState('')
   const [error, setError] = useState('')
+  const [sessionEmail, setSessionEmail] = useState('')
 
   useEffect(() => {
     async function cargar() {
-      const { email, isDemo } = await getEffectiveRestaurantEmail(supabase)
-      if (!email) { window.location.href = '/login'; return }
+      const { email, restauranteId, isDemo, user } = await getEffectiveRestaurantEmail(supabase)
+      if (!email && !restauranteId) { window.location.href = '/login'; return }
+      setSessionEmail(user?.email || email || '')
       if (isDemo) {
         const demo = await cargarDemoDashboard(email)
         if (demo?.restaurante) {
@@ -138,7 +140,10 @@ export default function ControlBodega() {
         setLoading(false)
         return
       }
-      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
+      const queryRestaurante = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
+      const { data: rest } = restauranteId
+        ? await queryRestaurante.eq('id', restauranteId).single()
+        : await queryRestaurante.eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
         const desdeActividad = actividadRealDesdeISO(rest)
@@ -725,7 +730,9 @@ export default function ControlBodega() {
               Propuestas {propuestas.length > 0 && <span className={styles.badge}>{propuestas.length}</span>}
             </button>
             <Link className={styles.ghost} href="/dashboard/simulador">Simulador</Link>
-            <Link className={styles.ghost} href="/dashboard/trazabilidad">Trazabilidad</Link>
+            {puedeVerTrazabilidad(sessionEmail) && (
+              <Link className={styles.ghost} href="/dashboard/trazabilidad">Trazabilidad</Link>
+            )}
           </div>
         </div>
 

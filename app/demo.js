@@ -18,6 +18,10 @@ export function isAdminEmail(email) {
   return Boolean(email && email.toLowerCase() === ADMIN_EMAIL.toLowerCase())
 }
 
+export function puedeVerTrazabilidad(email) {
+  return isAdminEmail(email)
+}
+
 export function setDemoEmail(email) {
   if (typeof window === 'undefined') return
   try {

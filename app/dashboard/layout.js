@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../supabase'
-import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail } from '../demo'
+import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail, puedeVerTrazabilidad } from '../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../lib/clientSupabaseSelects'
 import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { esPerfilBodega, nombrePlan, puedeUsar } from '../lib/plans'
@@ -156,6 +156,7 @@ export default function DashboardLayout({ children }) {
   const [trialInfo, setTrialInfo] = useState(null)
   const [isAdminSession, setIsAdminSession] = useState(false)
   const [isDemoSession, setIsDemoSession] = useState(false)
+  const [sessionEmail, setSessionEmail] = useState('')
   const subscribeDarkMode = useCallback((callback) => {
     if (typeof window === 'undefined') return () => {}
     window.addEventListener(DARK_MODE_EVENT, callback)
@@ -168,9 +169,10 @@ export default function DashboardLayout({ children }) {
 
   useEffect(() => {
     async function cargar() {
-      const { email, restauranteId, isAdmin, isDemo } = await getEffectiveRestaurantEmail(supabase)
+      const { email, restauranteId, isAdmin, isDemo, user } = await getEffectiveRestaurantEmail(supabase)
       setIsAdminSession(Boolean(isAdmin))
       setIsDemoSession(Boolean(isDemo))
+      setSessionEmail(user?.email || email || '')
       if (!email && !restauranteId) return
 
       if (isDemo) {
@@ -360,7 +362,7 @@ export default function DashboardLayout({ children }) {
         ] : []),
         { href: '/dashboard/precios', label: 'Márgenes', hint: 'Precio y coste', feature: 'precios_margenes' },
         { href: '/dashboard/simulador', label: 'Simulador de rentabilidad', hint: 'Copa, margen y escenarios', feature: 'precios_margenes' },
-        { href: '/dashboard/trazabilidad', label: 'Trazabilidad', hint: 'Fuentes y formulas', feature: 'precios_margenes' },
+        ...(puedeVerTrazabilidad(sessionEmail) ? [{ href: '/dashboard/trazabilidad', label: 'Trazabilidad', hint: 'Fuentes y formulas', feature: 'precios_margenes' }] : []),
         { href: '/dashboard/inventario', label: 'Inventario físico', hint: 'Conteo real', feature: 'inventario' },
       ],
     },
