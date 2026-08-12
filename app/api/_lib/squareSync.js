@@ -218,16 +218,19 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     const catEfectiva = existing?.categoria || catDetectada
     const activo      = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
 
+    const now = new Date().toISOString()
+
     if (existing) {
       // Actualiza precio; variation_id se pobla en un paso separado (best-effort, sin riesgo de 23505)
       if (precio_pvp != null) {
         toUpsertById.push({
           id: existing.id,
           precio_pvp,
+          square_last_seen_at: now,
           _catalogId: item.id,
           _variationId: variationId,
           _skipIdNormalization: Boolean(legacyVariationMatch && variationMatch && legacyVariationMatch.id !== variationMatch.id),
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         })
       }
     } else {
@@ -238,10 +241,11 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
         toUpsertById.push({
           id:                   nullMatches[0].id,
           precio_pvp,
+          square_last_seen_at:  now,
           _catalogId:           item.id,
           _variationId:         variationId,
           _skipIdNormalization: false,
-          updated_at:           new Date().toISOString(),
+          updated_at:           now,
         })
         nullIdByNombre[nombre] = [] // consumido: evitar que otro item Square reclame el mismo registro
       } else {
@@ -250,13 +254,14 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
           square_catalog_id:   item.id,
           square_variation_id: variationId,
           nombre, precio_pvp, descripcion, stock, activo,
-          categoria:  catEfectiva,
+          categoria:           catEfectiva,
+          square_last_seen_at: now,
           uva:        uva    || null,
           bodega:     bodega || null,
           region:     region || null,
           pais:       pais   || null,
           ...(foto_url && { foto_url }),
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         })
       }
     }
@@ -277,10 +282,10 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   for (let i = 0; i < toUpsertById.length; i += UPDATE_CONCURRENCY) {
     const chunk = toUpsertById.slice(i, i + UPDATE_CONCURRENCY)
 
-    // Paso 1: precio (siempre, crítico)
-    await Promise.all(chunk.map(({ id, precio_pvp, updated_at }) =>
+    // Paso 1: precio + last_seen (siempre, crítico)
+    await Promise.all(chunk.map(({ id, precio_pvp, updated_at, square_last_seen_at }) =>
       supabaseAdmin.from('vinos_tienda')
-        .update({ precio_pvp, updated_at })
+        .update({ precio_pvp, updated_at, square_last_seen_at })
         .eq('id', id)
         .then(({ error }) => {
           if (error) { console.error('[square-sync] update(precio) error:', id, error.message); errores++ }
