@@ -4,6 +4,51 @@ const SQUARE_API_BASE = 'https://connect.squareup.com'
 
 const WINE_KEYWORDS     = /vino|wine|bodega|winery/i
 const PREFIJOS_INTERNOS = /^\s*(V[A-Z]{2,3}|BOT|RBN|RTN|AOC|AOP)\s+/i
+const GLOBAL_SQUARE_TIENDA_ID = process.env.SQUARE_TIENDA_ID || process.env.SQUARE_DEFAULT_TIENDA_ID || null
+const GLOBAL_SQUARE_TIENDA_SLUG = process.env.SQUARE_TIENDA_SLUG || process.env.SQUARE_DEFAULT_TIENDA_SLUG || null
+
+function getTokenForTienda(tienda) {
+  const tiendaToken = (tienda?.square_access_token || '').trim()
+  if (tiendaToken) return { token: tiendaToken, source: 'tienda' }
+
+  const envToken = (process.env.SQUARE_ACCESS_TOKEN || '').trim()
+  if (!envToken) return { token: null, source: null }
+
+  const matchesId = GLOBAL_SQUARE_TIENDA_ID && tienda?.id === GLOBAL_SQUARE_TIENDA_ID
+  const matchesSlug = GLOBAL_SQUARE_TIENDA_SLUG && tienda?.slug === GLOBAL_SQUARE_TIENDA_SLUG
+  if (matchesId || matchesSlug) return { token: envToken, source: 'env_target' }
+
+  return { token: null, source: null }
+}
+
+export async function listSquareSyncTiendas() {
+  const { data: tiendas, error } = await supabaseAdmin
+    .from('tiendas')
+    .select('id, slug, square_access_token, square_location_id')
+    .eq('activo', true)
+    .order('slug')
+
+  if (error) throw new Error(`Leyendo tiendas Square: ${error.message}`)
+
+  return (tiendas || [])
+    .map(tienda => {
+      const { token, source } = getTokenForTienda(tienda)
+      return token ? { ...tienda, squareToken: token, squareTokenSource: source } : null
+    })
+    .filter(Boolean)
+}
+
+export async function resolveSquareTiendaByLocation(locationId) {
+  const tiendas = await listSquareSyncTiendas()
+  if (locationId) {
+    const tienda = tiendas.find(t => t.square_location_id === locationId)
+    if (tienda) return { ...tienda, squareLocationResolvedBy: 'location_id' }
+  }
+  if (tiendas.length === 1) {
+    return { ...tiendas[0], squareLocationResolvedBy: locationId ? 'single_configured_tienda' : 'single_no_location' }
+  }
+  return null
+}
 
 function parsearNombreSquare(raw) {
   const partes    = (raw || '').split(' I ').map(s => s.trim())
@@ -94,7 +139,7 @@ function detectarCategoria(itemData, categoryMap) {
 }
 
 export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
-  const token = squareToken || process.env.SQUARE_ACCESS_TOKEN
+  const token = (squareToken || '').trim()
   if (!token) throw new Error('No hay token de Square configurado para esta tienda')
 
   const { items: rawItems, imageMap, categoryMap } = await fetchAllCatalogItems(token)
@@ -131,16 +176,21 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   // Leer TODAS las filas de esta tienda para construir los mapas de existentes
   const { data: existentes, error: existError } = await supabaseAdmin
     .from('vinos_tienda')
-    .select('id, square_catalog_id, square_variation_id, categoria')
+    .select('id, square_catalog_id, square_variation_id, categoria, nombre')
     .eq('tienda_id', tiendaId)
     .limit(10000)
   if (existError) throw new Error(`Leyendo existentes: ${existError.message}`)
 
   const existingByCatalog   = {}
   const existingByVariation = {}
+  const nullIdByNombre      = {} // vinos sin IDs Square, para fusionar en lugar de duplicar
   for (const v of (existentes || [])) {
-    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria }
-    if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria }
+    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
+    if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
+    if (!v.square_catalog_id && !v.square_variation_id && v.nombre) {
+      if (!nullIdByNombre[v.nombre]) nullIdByNombre[v.nombre] = []
+      nullIdByNombre[v.nombre].push({ id: v.id, categoria: v.categoria })
+    }
   }
 
   const toUpsertById = []   // filas ya existentes: upsert por id (sin riesgo de conflicto de índices)
@@ -162,29 +212,53 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     const stock        = itemStockMap[item.id] ?? 0
     const catDetectada = detectarCategoria(d, categoryMap)
 
-    const existing    = existingByCatalog[item.id] || (variationId ? existingByVariation[variationId] : null)
+    const legacyVariationMatch = variationId ? existingByCatalog[variationId] : null
+    const variationMatch = variationId ? existingByVariation[variationId] : null
+    const existing = legacyVariationMatch || variationMatch || existingByCatalog[item.id]
     const catEfectiva = existing?.categoria || catDetectada
     const activo      = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
 
     if (existing) {
       // Actualiza precio; variation_id se pobla en un paso separado (best-effort, sin riesgo de 23505)
       if (precio_pvp != null) {
-        toUpsertById.push({ id: existing.id, precio_pvp, _variationId: variationId, updated_at: new Date().toISOString() })
+        toUpsertById.push({
+          id: existing.id,
+          precio_pvp,
+          _catalogId: item.id,
+          _variationId: variationId,
+          _skipIdNormalization: Boolean(legacyVariationMatch && variationMatch && legacyVariationMatch.id !== variationMatch.id),
+          updated_at: new Date().toISOString(),
+        })
       }
     } else {
-      toInsertNew.push({
-        tienda_id:           tiendaId,
-        square_catalog_id:   item.id,
-        square_variation_id: variationId,
-        nombre, precio_pvp, descripcion, stock, activo,
-        categoria:  catEfectiva,
-        uva:        uva    || null,
-        bodega:     bodega || null,
-        region:     region || null,
-        pais:       pais   || null,
-        ...(foto_url && { foto_url }),
-        updated_at: new Date().toISOString(),
-      })
+      // Fusionar con vino sin IDs Square si el nombre coincide de forma unívoca (1:1).
+      // Si hay múltiples sin IDs con el mismo nombre, no fusionar (demasiado ambiguo).
+      const nullMatches = nullIdByNombre[nombre]
+      if (nullMatches?.length === 1) {
+        toUpsertById.push({
+          id:                   nullMatches[0].id,
+          precio_pvp,
+          _catalogId:           item.id,
+          _variationId:         variationId,
+          _skipIdNormalization: false,
+          updated_at:           new Date().toISOString(),
+        })
+        nullIdByNombre[nombre] = [] // consumido: evitar que otro item Square reclame el mismo registro
+      } else {
+        toInsertNew.push({
+          tienda_id:           tiendaId,
+          square_catalog_id:   item.id,
+          square_variation_id: variationId,
+          nombre, precio_pvp, descripcion, stock, activo,
+          categoria:  catEfectiva,
+          uva:        uva    || null,
+          bodega:     bodega || null,
+          region:     region || null,
+          pais:       pais   || null,
+          ...(foto_url && { foto_url }),
+          updated_at: new Date().toISOString(),
+        })
+      }
     }
   }
 
@@ -213,16 +287,17 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
         })
     ))
 
-    // Paso 2: poblar square_variation_id si aún es null (best-effort, errores ignorados)
-    await Promise.allSettled(chunk
-      .filter(r => r._variationId)
-      .map(({ id, _variationId }) =>
-        supabaseAdmin.from('vinos_tienda')
-          .update({ square_variation_id: _variationId })
-          .eq('id', id)
-          .is('square_variation_id', null)
-      )
-    )
+    // Paso 2: normalizar ids Square heredados de imports antiguos.
+    await Promise.all(chunk.filter(r => !r._skipIdNormalization).map(({ id, _catalogId, _variationId }) => {
+      const idsUpdate = { square_catalog_id: _catalogId }
+      if (_variationId) idsUpdate.square_variation_id = _variationId
+      return supabaseAdmin.from('vinos_tienda')
+        .update(idsUpdate)
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('[square-sync] update(ids) error:', id, error.message)
+        })
+    }))
   }
 
   // Nuevos CON variation_id → upsert sobre la constraint real; si ya existía, actualiza campos completos
