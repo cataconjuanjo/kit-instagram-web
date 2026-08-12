@@ -173,13 +173,21 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     if (itemId !== undefined) itemStockMap[itemId] = qty
   }
 
-  // Leer TODAS las filas de esta tienda para construir los mapas de existentes
-  const { data: existentes, error: existError } = await supabaseAdmin
-    .from('vinos_tienda')
-    .select('id, square_catalog_id, square_variation_id, categoria, nombre')
-    .eq('tienda_id', tiendaId)
-    .limit(10000)
-  if (existError) throw new Error(`Leyendo existentes: ${existError.message}`)
+  // Leer TODAS las filas de esta tienda paginando de 1000 en 1000
+  // (Supabase/PostgREST tiene max_rows=1000 por defecto; .limit() no lo sobreescribe)
+  const PAGE = 1000
+  let existentes = [], pageFrom = 0
+  while (true) {
+    const { data: page, error: existError } = await supabaseAdmin
+      .from('vinos_tienda')
+      .select('id, square_catalog_id, square_variation_id, categoria, nombre')
+      .eq('tienda_id', tiendaId)
+      .range(pageFrom, pageFrom + PAGE - 1)
+    if (existError) throw new Error(`Leyendo existentes: ${existError.message}`)
+    existentes = existentes.concat(page || [])
+    if (!page || page.length < PAGE) break
+    pageFrom += PAGE
+  }
 
   const existingByCatalog   = {}
   const existingByVariation = {}
@@ -216,12 +224,6 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     const variationMatch = variationId ? existingByVariation[variationId] : null
     const existing = legacyVariationMatch || variationMatch || existingByCatalog[item.id]
 
-    // DEBUG TEMPORAL: detectar mismatch entre mapa en memoria y BD
-    if (!existing && item.id.startsWith('QMDX34J6')) {
-      const clavesCatalog = Object.keys(existingByCatalog).filter(k => k.startsWith('QMDX34'))
-      const clavesVar     = Object.keys(existingByVariation).filter(k => k.startsWith('VFHFO37'))
-      console.log(`[debug] AQUABONA miss: item.id="${item.id}" var="${variationId}" clavesCatalog=${JSON.stringify(clavesCatalog)} clavesVar=${JSON.stringify(clavesVar)} directCatalog=${existingByCatalog[item.id]?.id} directVar=${existingByVariation[variationId]?.id}`)
-    }
     const catEfectiva = existing?.categoria || catDetectada
     const activo      = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
 
