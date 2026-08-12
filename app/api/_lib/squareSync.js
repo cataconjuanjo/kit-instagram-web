@@ -274,6 +274,11 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   const countNuevos = toInsertNew.length
   const countAct    = toUpsertById.length
 
+  if (toInsertNew.length > 0) {
+    const muestra = toInsertNew.slice(0, 30).map(r => `"${r.nombre}" [cat:${r.square_catalog_id?.slice(0,8)} var:${r.square_variation_id?.slice(0,8)}]`).join(', ')
+    console.log(`[square-sync] ${tiendaSlug || tiendaId}: lookup miss (${toInsertNew.length}): ${muestra}`)
+  }
+
   let errores = 0
   const BATCH = 500
 
