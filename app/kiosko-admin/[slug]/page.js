@@ -815,7 +815,7 @@ function TrialGate({ tienda, onCheckout, generandoCheckout }) {
   const sufijo        = esAnual ? '€/año' : '€/mes'
 
   // Setup fee: solo en Básico mensual; anual y Premium siempre lo incluyen
-  const setupFeeBasico = (!esAnual && !tienda.setup_fee_incluido) ? 100 : null
+  const setupFeeBasico = !esAnual ? 100 : null
 
   function waMsg(plan) {
     const txt = encodeURIComponent(
@@ -855,7 +855,7 @@ function TrialGate({ tienda, onCheckout, generandoCheckout }) {
           <p className={styles.trialPlanPrecio}>{precioBasico} <span style={{ fontSize: '1rem' }}>{sufijo}</span></p>
           {setupFeeBasico
             ? <p className={styles.trialPlanPrecioSub}>+ {setupFeeBasico} € puesta en marcha (pago único)</p>
-            : esAnual && <p className={styles.trialPlanPrecioSub}>Puesta en marcha incluida</p>
+            : <p className={styles.trialPlanPrecioSub}>Puesta en marcha incluida</p>
           }
           <ul className={styles.trialPlanFeatures}>
             <li>Kiosko digital táctil para tus clientes</li>
@@ -866,10 +866,7 @@ function TrialGate({ tienda, onCheckout, generandoCheckout }) {
             <li>Personalización total: colores, logo y banner</li>
             <li>Filtros y búsqueda avanzada en administración</li>
           </ul>
-          {esEspecial
-            ? <a href={waMsg('Básico')} target="_blank" rel="noreferrer" className={`${styles.trialPlanCta} ${styles.trialPlanCtaSecundario}`}>Quiero el Básico</a>
-            : <button disabled={generandoCheckout} onClick={() => onCheckout('basico')} className={`${styles.trialPlanCta} ${styles.trialPlanCtaSecundario}`}>{generandoCheckout ? 'Preparando pago…' : 'Quiero el Básico'}</button>
-          }
+          <button disabled={generandoCheckout} onClick={() => onCheckout('basico')} className={`${styles.trialPlanCta} ${styles.trialPlanCtaSecundario}`}>{generandoCheckout ? 'Preparando pago…' : 'Quiero el Básico'}</button>
         </div>
 
         {/* Premium */}
@@ -897,10 +894,7 @@ function TrialGate({ tienda, onCheckout, generandoCheckout }) {
             <li>Informe semanal automático cada lunes por email</li>
             <li>Badge de margen y coste visible en tu panel</li>
           </ul>
-          {esEspecial
-            ? <a href={waMsg('Premium')} target="_blank" rel="noreferrer" className={styles.trialPlanCta}>Quiero el Premium →</a>
-            : <button disabled={generandoCheckout} onClick={() => onCheckout('premium')} className={styles.trialPlanCta}>{generandoCheckout ? 'Preparando pago…' : 'Quiero el Premium →'}</button>
-          }
+          <button disabled={generandoCheckout} onClick={() => onCheckout('premium')} className={styles.trialPlanCta}>{generandoCheckout ? 'Preparando pago…' : 'Quiero el Premium →'}</button>
         </div>
       </div>
 
@@ -996,6 +990,7 @@ export default function AdminKioskoPage() {
   const [pedidos, setPedidos]       = useState(null)
   const [pedidosLoad, setPedidosLoad] = useState(false)
   const [pedidoMsg, setPedidoMsg]   = useState('')
+  const [lastSync, setLastSync]     = useState(null) // { ultimoPagoAt, ultimoCatalogoAt }
 
   const esPremium = !tienda?.plan || tienda.plan === 'premium' || tienda.plan === 'trial'
   const pedidosMostradorActivos = tienda?.kiosko_orders_enabled === true && !COUNTER_ORDERS_IN_DEVELOPMENT
@@ -1221,13 +1216,15 @@ export default function AdminKioskoPage() {
       }
 
       const requestHeaders = { Authorization: `Bearer ${session.access_token}` }
-      const [r1, r2] = await Promise.all([
+      const [r1, r2, r3] = await Promise.all([
         fetch(`/api/kiosko/${slug}/meta`, { headers: requestHeaders }),
         fetch(`/api/kiosko/${slug}/admin/vinos`, { headers: requestHeaders }),
+        fetch(`/api/kiosko/${slug}/admin/last-sync`, { headers: requestHeaders }),
       ])
       if (!r1.ok) throw new Error('Tienda no encontrada')
       const meta = await r1.json()
       const dv   = await r2.json()
+      if (r3.ok) { const ls = await r3.json(); setLastSync(ls) }
       setTienda({ ...meta.tienda, _token: session.access_token })
       setVinos(dv.vinos || [])
     } catch (e) { setError(e.message) }
@@ -1235,6 +1232,7 @@ export default function AdminKioskoPage() {
   }
 
   async function irACheckout(planElegido = 'premium') {
+    if (previewTrial) { alert('Modo preview — el pago no se procesa. El cliente verá este flujo real.'); return }
     if (!tienda?._token) return
     setGenerandoCheckout(true)
     try {
@@ -1245,7 +1243,10 @@ export default function AdminKioskoPage() {
       })
       const data = await res.json()
       if (data.url) window.location.href = data.url
-    } catch {}
+      else alert(data.error || 'No se pudo iniciar el pago. Contacta con soporte.')
+    } catch {
+      alert('Error de conexión. Inténtalo de nuevo.')
+    }
     finally { setGenerandoCheckout(false) }
   }
 
@@ -2196,12 +2197,12 @@ export default function AdminKioskoPage() {
           </button>
         )}
         <button type="button" className={`${styles.tabBtn} ${tab === 'analitica' ? styles.tabBtnActive : ''}`}
-          onClick={() => { if (!esPremium) { setUpgradeModal('analitica'); return } setTab('analitica'); if (!analitica && !analiticaLoad) cargarAnalitica() }}>
-          Analítica{!esPremium && <span className={styles.tabPremiumBadge}>★</span>}
+          onClick={() => { if (!esPremium && !esAdminUsuario) { setUpgradeModal('analitica'); return } setTab('analitica'); if (!analitica && !analiticaLoad) cargarAnalitica() }}>
+          Analítica{!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'leads' ? styles.tabBtnActive : ''}`}
-          onClick={() => { if (!esPremium) { setUpgradeModal('leads'); return } setTab('leads'); if (!leads && !leadsLoad) cargarLeads() }}>
-          Leads{!esPremium && <span className={styles.tabPremiumBadge}>★</span>}
+          onClick={() => { if (!esPremium && !esAdminUsuario) { setUpgradeModal('leads'); return } setTab('leads'); if (!leads && !leadsLoad) cargarLeads() }}>
+          Leads{!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'ajustes' ? styles.tabBtnActive : ''}`} onClick={() => setTab('ajustes')}>
           Ajustes
@@ -2323,8 +2324,8 @@ export default function AdminKioskoPage() {
         </div>
       )}
 
-      {/* Analítica — bloqueada en plan Básico */}
-      {tab === 'analitica' && !esPremium && (
+      {/* Analítica — bloqueada en plan Básico (salvo superadmin) */}
+      {tab === 'analitica' && !esPremium && !esAdminUsuario && (
         <div className={styles.premiumGateWrap}>
           <div className={styles.premiumGateBox}>
             <span className={styles.premiumGateIcon}>📊</span>
@@ -2337,7 +2338,7 @@ export default function AdminKioskoPage() {
         </div>
       )}
 
-      {tab === 'analitica' && esPremium && (
+      {tab === 'analitica' && (esPremium || esAdminUsuario) && (
         <div className={styles.analiticaWrap}>
           {/* Sub-tabs */}
           <nav className={styles.subTabNav}>
@@ -3184,7 +3185,7 @@ export default function AdminKioskoPage() {
       })()}
 
       {/* Leads CRM */}
-      {tab === 'leads' && esPremium && (
+      {tab === 'leads' && (esPremium || esAdminUsuario) && (
         <div style={{ padding: '0 1.75rem 1.75rem' }}>
           <div className={styles.analiticaBloque}>
             <div className={styles.analiticaBloqueHeader}>
@@ -3271,7 +3272,7 @@ export default function AdminKioskoPage() {
         </div>
       )}
 
-      {tab === 'leads' && !esPremium && (
+      {tab === 'leads' && !esPremium && !esAdminUsuario && (
         <div className={styles.premiumGateWrap}>
           <div className={styles.premiumGateBox}>
             <span className={styles.premiumGateIcon}>📧</span>
@@ -3533,6 +3534,17 @@ export default function AdminKioskoPage() {
           <span className={styles.statLabel}>Fichas IA</span>
         </div>
       </div>
+
+      {lastSync && (lastSync.ultimoPagoAt || lastSync.ultimoCatalogoAt) && (
+        <div style={{ padding: '.55rem 1.75rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '.78rem', color: '#999', borderBottom: '1px solid rgba(0,0,0,.06)' }}>
+          {lastSync.ultimoCatalogoAt && (
+            <span>Catálogo Square sincronizado: <strong style={{ color: '#555' }}>{formatSyncDate(lastSync.ultimoCatalogoAt)}</strong></span>
+          )}
+          {lastSync.ultimoPagoAt && (
+            <span>Último pago TPV registrado: <strong style={{ color: '#555' }}>{formatSyncDate(lastSync.ultimoPagoAt)}</strong></span>
+          )}
+        </div>
+      )}
 
       <section className={styles.catalogChecklist}>
         <div className={styles.catalogChecklistHeader}>
