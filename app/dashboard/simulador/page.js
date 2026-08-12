@@ -685,33 +685,37 @@ export default function SimuladorRentabilidad() {
           </div>
         )}
 
-        <section className={styles.panel} style={{ marginBottom: 16 }}>
-          <div className={styles.panelHead}>
-            <div>
-              <p className={styles.eyebrow}>Base metodologica</p>
-              <h2 className={styles.panelTitle}>{perfilBodega ? 'Copa solo cuando tiene sentido' : 'Por que miramos copa y botella juntas'}</h2>
-              <p className={styles.panelSub}>
-                {perfilBodega
-                  ? 'El simulador no recomienda abrir cualquier vino por copa. Primero descarta referencias de alta gama, bajo stock, poca senal de demanda o precios de copa fuera de mercado; despues estima si una prueba controlada puede tener sentido.'
-                  : `Un estudio del Journal of Wine Economics observo que los vinos tambien vendidos por copa tenian, de media y controlando coste, calidad y varietal, +${BY_THE_GLASS_REFERENCE.bottlePriceLiftPct}% de PVP botella, +${BY_THE_GLASS_REFERENCE.bottleMarginLiftPct}% de margen botella y cerca de +${BY_THE_GLASS_REFERENCE.markupLiftPct}% de markup. Carta Viva lo usa como referencia para simular escenarios, no como promesa automatica.`}
-              </p>
+        <details style={{ marginBottom: 16 }}>
+          <summary className={styles.eyebrow} style={{ cursor: 'pointer', padding: '10px 0', listStyle: 'none' }}>
+            Base metodológica ▸
+          </summary>
+          <section className={styles.panel} style={{ marginTop: 8, marginBottom: 8 }}>
+            <div className={styles.panelHead}>
+              <div>
+                <p className={styles.eyebrow}>Copa y botella</p>
+                <h2 className={styles.panelTitle}>{perfilBodega ? 'Copa solo cuando tiene sentido' : 'Por que miramos copa y botella juntas'}</h2>
+                <p className={styles.panelSub}>
+                  {perfilBodega
+                    ? 'El simulador no recomienda abrir cualquier vino por copa. Primero descarta referencias de alta gama, bajo stock, poca senal de demanda o precios de copa fuera de mercado; despues estima si una prueba controlada puede tener sentido.'
+                    : `Un estudio del Journal of Wine Economics observo que los vinos tambien vendidos por copa tenian, de media y controlando coste, calidad y varietal, +${BY_THE_GLASS_REFERENCE.bottlePriceLiftPct}% de PVP botella, +${BY_THE_GLASS_REFERENCE.bottleMarginLiftPct}% de margen botella y cerca de +${BY_THE_GLASS_REFERENCE.markupLiftPct}% de markup. Carta Viva lo usa como referencia para simular escenarios, no como promesa automatica.`}
+                </p>
+              </div>
+              <span className={styles.badge}>Referencia externa</span>
             </div>
-            <span className={styles.badge}>Referencia externa</span>
-          </div>
-        </section>
-
-        <section className={styles.panel} style={{ marginBottom: 16 }}>
-          <div className={styles.panelHead}>
-            <div>
-              <p className={styles.eyebrow}>Base metodologica</p>
-              <h2 className={styles.panelTitle}>Por que el margen cambia segun restaurante</h2>
-              <p className={styles.panelSub}>
-                {POSITIONING_MARKUP_REFERENCE.source} senala que el mark-up se explica por la banda de coste del vino y por el posicionamiento: ticket medio, estilo fine dining y efecto hotel. En este escenario Carta Viva aplica el perfil {simulacion.posicionamiento.label.toLowerCase()}{simulacion.posicionamiento.ticket ? ` con ticket de referencia ${eur(simulacion.posicionamiento.ticket)}` : ''}, y ajusta cada vino por su coste para no tratar igual una entrada de carta que una botella premium.
-              </p>
+          </section>
+          <section className={styles.panel} style={{ marginBottom: 8 }}>
+            <div className={styles.panelHead}>
+              <div>
+                <p className={styles.eyebrow}>Margen contextual</p>
+                <h2 className={styles.panelTitle}>Por que el margen cambia segun restaurante</h2>
+                <p className={styles.panelSub}>
+                  {POSITIONING_MARKUP_REFERENCE.source} senala que el mark-up se explica por la banda de coste del vino y por el posicionamiento: ticket medio, estilo fine dining y efecto hotel. En este escenario Carta Viva aplica el perfil {simulacion.posicionamiento.label.toLowerCase()}{simulacion.posicionamiento.ticket ? ` con ticket de referencia ${eur(simulacion.posicionamiento.ticket)}` : ''}, y ajusta cada vino por su coste para no tratar igual una entrada de carta que una botella premium.
+                </p>
+              </div>
+              <span className={styles.badge}>Margen contextual</span>
             </div>
-            <span className={styles.badge}>Margen contextual</span>
-          </div>
-        </section>
+          </section>
+        </details>
 
         <section className={styles.panel} style={{ marginBottom: 16 }}>
           <div className={styles.panelHead}>

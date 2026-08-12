@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
+import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 import priceStyles from './precios.module.css'
@@ -23,50 +24,6 @@ function euros(valor, decimales = 2) {
     minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
   })} €`
-}
-
-function redondearBotella(valor) {
-  const base = Math.floor(numero(valor))
-  const decimales = numero(valor) - base
-  return decimales >= 0.51 ? base + 1 : base
-}
-
-function redondearCopa(valor) {
-  return Math.round(numero(valor) * 2) / 2
-}
-
-function calcularPrecios(costeValor, ajustes) {
-  const coste = numero(costeValor)
-  const margenObjetivo = Math.min(90, Math.max(5, numero(ajustes.margen))) / 100
-  const copas = Math.min(10, Math.max(1, numero(ajustes.copas) || AJUSTES_INICIALES.copas))
-
-  if (!coste) {
-    return {
-      baseBotella: 0,
-      botella: 0,
-      baseCopa: 0,
-      copa: 0,
-      margenBotella: 0,
-      margenCopas: 0,
-      ingresoCopas: 0,
-    }
-  }
-
-  const baseBotella = coste / (1 - margenObjetivo)
-  const botella = redondearBotella(baseBotella)
-  const baseCopa = botella / copas
-  const copa = redondearCopa(baseCopa)
-  const ingresoCopas = copa * copas
-
-  return {
-    baseBotella,
-    botella,
-    baseCopa,
-    copa,
-    ingresoCopas,
-    margenBotella: botella > 0 ? ((botella - coste) / botella) * 100 : 0,
-    margenCopas: ingresoCopas > 0 ? ((ingresoCopas - coste) / ingresoCopas) * 100 : 0,
-  }
 }
 
 function diferencia(actual, recomendado) {
@@ -138,7 +95,7 @@ export default function PreciosMargenes() {
   }
 
   async function aplicarPrecio(vino) {
-    const recomendado = calcularPrecios(vino.coste_compra, ajustes)
+    const recomendado = calcularPreciosSugeridos(vino.coste_compra, ajustes)
     if (!recomendado.botella || !recomendado.copa) return
 
     setGuardandoId(vino.id)
@@ -158,7 +115,7 @@ export default function PreciosMargenes() {
     setGuardandoId(null)
   }
 
-  const resultadoSimulacion = calcularPrecios(simulacion.coste, ajustes)
+  const resultadoSimulacion = calcularPreciosSugeridos(simulacion.coste, ajustes)
 
   const referencias = useMemo(() => {
     const termino = busqueda.trim().toLowerCase()
@@ -168,7 +125,7 @@ export default function PreciosMargenes() {
         if (filtro === 'sin_coste') return !numero(vino.coste_compra)
         if (filtro === 'revisar') {
           if (!numero(vino.coste_compra)) return false
-          const recomendado = calcularPrecios(vino.coste_compra, ajustes)
+          const recomendado = calcularPreciosSugeridos(vino.coste_compra, ajustes)
           return numero(vino.precio_botella) !== recomendado.botella || numero(vino.precio_copa) !== recomendado.copa
         }
         return true
@@ -178,7 +135,7 @@ export default function PreciosMargenes() {
 
   const conCoste = vinos.filter(vino => vino.activo !== false && numero(vino.coste_compra) > 0)
   const porRevisar = conCoste.filter(vino => {
-    const recomendado = calcularPrecios(vino.coste_compra, ajustes)
+    const recomendado = calcularPreciosSugeridos(vino.coste_compra, ajustes)
     return numero(vino.precio_botella) !== recomendado.botella || numero(vino.precio_copa) !== recomendado.copa
   })
   const totalPaginas = Math.max(1, Math.ceil(referencias.length / 10))
@@ -318,7 +275,7 @@ export default function PreciosMargenes() {
 
             <div className={priceStyles.priceList}>
               {referenciasPagina.map(vino => {
-                const recomendado = calcularPrecios(vino.coste_compra, ajustes)
+                const recomendado = calcularPreciosSugeridos(vino.coste_compra, ajustes)
                 const botella = diferencia(vino.precio_botella, recomendado.botella)
                 const copa = diferencia(vino.precio_copa, recomendado.copa)
                 const sinCoste = !numero(vino.coste_compra)
