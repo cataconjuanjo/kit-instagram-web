@@ -215,6 +215,13 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     const legacyVariationMatch = variationId ? existingByCatalog[variationId] : null
     const variationMatch = variationId ? existingByVariation[variationId] : null
     const existing = legacyVariationMatch || variationMatch || existingByCatalog[item.id]
+
+    // DEBUG TEMPORAL: detectar mismatch entre mapa en memoria y BD
+    if (!existing && item.id.startsWith('QMDX34J6')) {
+      const clavesCatalog = Object.keys(existingByCatalog).filter(k => k.startsWith('QMDX34'))
+      const clavesVar     = Object.keys(existingByVariation).filter(k => k.startsWith('VFHFO37'))
+      console.log(`[debug] AQUABONA miss: item.id="${item.id}" var="${variationId}" clavesCatalog=${JSON.stringify(clavesCatalog)} clavesVar=${JSON.stringify(clavesVar)} directCatalog=${existingByCatalog[item.id]?.id} directVar=${existingByVariation[variationId]?.id}`)
+    }
     const catEfectiva = existing?.categoria || catDetectada
     const activo      = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
 
