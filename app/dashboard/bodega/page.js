@@ -14,6 +14,7 @@ import {
   SELECT_CLIENT_VINO_DASHBOARD,
 } from '../../lib/clientSupabaseSelects'
 import { margenBrutoPct } from '../../lib/wineEconomics'
+import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
 import { esPerfilBodega } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
@@ -120,6 +121,7 @@ export default function ControlBodega() {
   const [guardadoBodega, setGuardadoBodega] = useState('')
   const [error, setError] = useState('')
   const [sessionEmail, setSessionEmail] = useState('')
+  const [aplicandoPrecio, setAplicandoPrecio] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -334,6 +336,14 @@ export default function ControlBodega() {
     else parsed = valor || ''
     const { error: err } = await supabase.from('vinos').update({ [campo]: parsed }).eq('id', id)
     if (!err) setVinos(prev => prev.map(v => v.id === id ? { ...v, [campo]: parsed } : v))
+  }
+
+  async function aplicarPrecioSugerido(vino, precios) {
+    setAplicandoPrecio(vino.id)
+    const cambios = { precio_botella: precios.botella, precio_copa: precios.copa }
+    const { error: err } = await supabase.from('vinos').update(cambios).eq('id', vino.id)
+    if (!err) setVinos(prev => prev.map(v => v.id === vino.id ? { ...v, ...cambios } : v))
+    setAplicandoPrecio(null)
   }
 
   function margenCopaDisplay(pvpCopa, costeCompra, copas = 5) {
@@ -819,6 +829,7 @@ export default function ControlBodega() {
                 <th title="Editable">PVP copa € ✎</th>
                 <th>Mrg. bot.</th>
                 <th>Mrg. copa</th>
+                <th title="PVP sugerido al 65% de margen">PVP sug.</th>
                 <th title="Editable">Stock ✎</th>
                 <th title="Editable">Mín. ✎</th>
                 <th></th>
@@ -827,7 +838,7 @@ export default function ControlBodega() {
             <tbody>
               {referenciasVisibles.length === 0 && (
                 <tr>
-                  <td colSpan={11} className={bStyles.cellarTableEmpty}>
+                  <td colSpan={12} className={bStyles.cellarTableEmpty}>
                     {filtroReferencias !== 'todos' ? 'No hay referencias con ese filtro.' : 'No hay referencias activas.'}
                   </td>
                 </tr>
@@ -835,6 +846,10 @@ export default function ControlBodega() {
               {referenciasVisibles.map(vino => {
                 const mBotella = margenDisplay(vino.precio_botella, vino.coste_compra)
                 const mCopa    = margenCopaDisplay(vino.precio_copa, vino.coste_compra)
+                const preciosSug = decimal(vino.coste_compra)
+                  ? calcularPreciosSugeridos(vino.coste_compra, { margen: 65, copas: 5 })
+                  : null
+                const mostrarSug = preciosSug && (!decimal(vino.precio_botella) || mBotella != null && mBotella < 55)
                 function cell(campo, type, step, listId, fmt) {
                   const editing = inlineEdit?.id === vino.id && inlineEdit?.campo === campo
                   return (
@@ -874,6 +889,21 @@ export default function ControlBodega() {
                     {cell('precio_copa',    'number', '0.01', undefined, eurCell)}
                     <td className={margenCls(mBotella)}>{mBotella == null ? <span className={bStyles.tdEmpty}>—</span> : `${mBotella}%`}</td>
                     <td className={margenCls(mCopa)}>{mCopa == null ? <span className={bStyles.tdEmpty}>—</span> : `${mCopa}%`}</td>
+                    <td className={bStyles.tdPvpSug}>
+                      {mostrarSug ? (
+                        <>
+                          <span className={bStyles.pvpSugValor}>{eur(preciosSug.botella)} / {eur(preciosSug.copa)}</span>
+                          <button
+                            type="button"
+                            className={bStyles.pvpSugBtn}
+                            disabled={aplicandoPrecio === vino.id}
+                            onClick={() => aplicarPrecioSugerido(vino, preciosSug)}
+                          >
+                            {aplicandoPrecio === vino.id ? '…' : 'Aplicar'}
+                          </button>
+                        </>
+                      ) : <span className={bStyles.tdEmpty}>—</span>}
+                    </td>
                     {cell('stock',        'number', '1')}
                     {cell('stock_minimo', 'number', '1')}
                     <td className={bStyles.tdActions}>
