@@ -2620,7 +2620,7 @@ export default function AdminKioskoPage() {
       )}
 
       {/* Vinos sin movimiento */}
-      {tab === 'analitica' && esPremium && subTabAnalitica === 'ventas' && analitica && (() => {
+      {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'ventas' && analitica && (() => {
         const vp = analitica.ventasPorVino || {}
         const sinMovimiento = vinosVino.filter(v =>
           v.activo && Number(v.precio_pvp) > 0 && Number(v.stock ?? 0) > 0 && !vp[v.id]
@@ -2676,7 +2676,7 @@ export default function AdminKioskoPage() {
       })()}
 
       {/* Rentabilidad — solo en Premium */}
-      {tab === 'analitica' && esPremium && subTabAnalitica === 'rentabilidad' && (
+      {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'rentabilidad' && (
         <div style={{ padding: '0 1.75rem 1.75rem' }}>
           <div className={styles.analiticaBloque}>
             <div className={styles.analiticaBloqueHeader}>
@@ -2724,7 +2724,7 @@ export default function AdminKioskoPage() {
       )}
 
       {/* Rendimiento por vino — Square TPV */}
-      {tab === 'analitica' && esPremium && subTabAnalitica === 'ventas' && analitica && (() => {
+      {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'ventas' && analitica && (() => {
         const vp = analitica.ventasPorVino
         const tp = analitica.tendenciaPorVino || {}
         const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: '#c03030' }
@@ -2838,7 +2838,7 @@ export default function AdminKioskoPage() {
       })()}
 
       {/* Motor de conversión */}
-      {tab === 'analitica' && esPremium && subTabAnalitica === 'conversion' && analitica && (() => {
+      {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'conversion' && analitica && (() => {
         const conv = analitica.conversion
         if (!conv) return (
           <div style={{ padding: '0 1.75rem 1.75rem' }}>
@@ -2945,7 +2945,7 @@ export default function AdminKioskoPage() {
       })()}
 
       {/* Optimización de precios */}
-      {tab === 'analitica' && esPremium && subTabAnalitica === 'precios' && (() => {
+      {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'precios' && (() => {
         const vinosPorId = new Map(vinosVino.map(v => [String(v.id), v]))
 
         if (!rentabilidad || rentabilidad.coldStart || !rentabilidad.clasificados.length) return (
