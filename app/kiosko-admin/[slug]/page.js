@@ -1653,7 +1653,7 @@ export default function AdminKioskoPage() {
   }), [vinosVino])
 
   const catalogoChecklist = useMemo(() => {
-    const activos = vinos.filter(v => v.activo !== false)
+    const activos = vinosVino.filter(v => v.activo !== false)
     const checks = QUALITY_CHECKS.map(check => {
       const afectados = activos.filter(v => vinoTieneQualityIssue(v, check.id))
       return { ...check, count: afectados.length, afectados }
@@ -1663,7 +1663,7 @@ export default function AdminKioskoPage() {
     const pendientes = pendientesIds.size
     const score = activos.length ? Math.max(0, Math.round(((activos.length - pendientes) / activos.length) * 100)) : 100
     return { activos: activos.length, checks, pendientes, score }
-  }, [vinos])
+  }, [vinosVino])
 
   const vinosPorId = useMemo(() => {
     const map = new Map()
