@@ -21,6 +21,7 @@ import styles from '../module.module.css'
 import bStyles from './bodega.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 import InventarioPanel from '../inventario/InventarioPanel'
+import PreciosPanel from './PreciosPanel'
 
 function eur(valor) {
   return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
@@ -123,6 +124,7 @@ export default function ControlBodega() {
   const [error, setError] = useState('')
   const [sessionEmail, setSessionEmail] = useState('')
   const [aplicandoPrecio, setAplicandoPrecio] = useState(null)
+  const [ajustesBodega, setAjustesBodega] = useState({ margen: 65, copas: 5 })
 
   useEffect(() => {
     async function cargar() {
@@ -149,6 +151,12 @@ export default function ControlBodega() {
         : await queryRestaurante.eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
+        try {
+          const guardados = JSON.parse(window.localStorage.getItem(`precios_margenes_${rest.id}`) || '{}')
+          if (guardados.margen || guardados.copas) {
+            setAjustesBodega({ margen: Number(guardados.margen) || 65, copas: Number(guardados.copas) || 5 })
+          }
+        } catch {}
         const desdeActividad = actividadRealDesdeISO(rest)
         let ventasQuery = Promise.resolve({ data: [] })
         if (desdeActividad) {
@@ -745,9 +753,15 @@ export default function ControlBodega() {
               className={panelAbierto === 'conteo' ? styles.secondary : styles.ghost}
               onClick={() => setPanelAbierto(panelAbierto === 'conteo' ? null : 'conteo')}
             >
-              Conteo
+              Inventario
             </button>
-            <Link className={styles.ghost} href="/dashboard/simulador">Simulador</Link>
+            <button
+              type="button"
+              className={panelAbierto === 'precios' ? styles.secondary : styles.ghost}
+              onClick={() => setPanelAbierto(panelAbierto === 'precios' ? null : 'precios')}
+            >
+              Precios
+            </button>
             {puedeVerTrazabilidad(sessionEmail) && (
               <Link className={styles.ghost} href="/dashboard/trazabilidad">Trazabilidad</Link>
             )}
@@ -836,6 +850,26 @@ export default function ControlBodega() {
           </section>
         )}
 
+        {/* ── Drawer: Precios ──────────────────────────────── */}
+        {panelAbierto === 'precios' && (
+          <ResponsiveOverlay
+            open
+            onClose={() => setPanelAbierto(null)}
+            eyebrow="Bodega"
+            title="Precios y márgenes"
+            description="Ajusta el criterio de cálculo. Los cambios se reflejan en la columna PVP sugerido de la tabla."
+          >
+            <PreciosPanel
+              restauranteId={restaurante.id}
+              vinos={datos.activos}
+              onPreciosActualizados={({ id, precio_botella, precio_copa }) => {
+                setVinos(prev => prev.map(v => v.id === id ? { ...v, precio_botella, precio_copa } : v))
+              }}
+              onAjustesChange={setAjustesBodega}
+            />
+          </ResponsiveOverlay>
+        )}
+
         {/* ── La tabla ─────────────────────────────────────── */}
         <datalist id="proveedores-bodega">
           {datos.proveedoresExistentes.map(p => <option key={p} value={p} />)}
@@ -853,7 +887,7 @@ export default function ControlBodega() {
                 <th title="Editable">PVP copa € ✎</th>
                 <th>Mrg. bot.</th>
                 <th>Mrg. copa</th>
-                <th title="PVP sugerido al 65% de margen">PVP sug.</th>
+                <th title={`PVP sugerido al ${ajustesBodega.margen}% de margen`}>PVP sug.</th>
                 <th title="Editable">Stock ✎</th>
                 <th title="Editable">Mín. ✎</th>
                 <th></th>
@@ -871,7 +905,7 @@ export default function ControlBodega() {
                 const mBotella = margenDisplay(vino.precio_botella, vino.coste_compra)
                 const mCopa    = margenCopaDisplay(vino.precio_copa, vino.coste_compra)
                 const preciosSug = decimal(vino.coste_compra)
-                  ? calcularPreciosSugeridos(vino.coste_compra, { margen: 65, copas: 5 })
+                  ? calcularPreciosSugeridos(vino.coste_compra, ajustesBodega)
                   : null
                 const mostrarSug = preciosSug && (!decimal(vino.precio_botella) || mBotella != null && mBotella < 55)
                 function cell(campo, type, step, listId, fmt) {

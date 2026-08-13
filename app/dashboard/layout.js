@@ -360,10 +360,6 @@ export default function DashboardLayout({ children }) {
           { href: '/dashboard/catalogo', label: 'Catalogo distribuidores', hint: 'Tarifas y altas', feature: 'bodega' },
           { href: '/dashboard/constructor', label: 'Constructor de carta', hint: 'Ordenar y exportar', feature: 'bodega' },
         ] : []),
-        { href: '/dashboard/precios', label: 'Márgenes', hint: 'Precio y coste', feature: 'precios_margenes' },
-        { href: '/dashboard/simulador', label: 'Simulador de rentabilidad', hint: 'Copa, margen y escenarios', feature: 'precios_margenes' },
-        ...(puedeVerTrazabilidad(sessionEmail) ? [{ href: '/dashboard/trazabilidad', label: 'Trazabilidad', hint: 'Fuentes y formulas', feature: 'precios_margenes' }] : []),
-        { href: '/dashboard/inventario', label: 'Inventario físico', hint: 'Conteo real', feature: 'inventario' },
       ],
     },
     {
