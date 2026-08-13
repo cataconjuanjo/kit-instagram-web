@@ -47,7 +47,7 @@ export default function InventarioPanel({ restauranteId, vinos, actividadDesde, 
   const [eventos, setEventos] = useState([])
   const [conteos, setConteos] = useState({})
   const [motivos, setMotivos] = useState({})
-  const [filtro, setFiltro] = useState('prioridad')
+  const [filtro, setFiltro] = useState(compact ? 'diferencias' : 'prioridad')
   const [busqueda, setBusqueda] = useState('')
   const [pagina, setPagina] = useState(1)
   const [soloAjustes, setSoloAjustes] = useState(false)
@@ -107,6 +107,10 @@ export default function InventarioPanel({ restauranteId, vinos, actividadDesde, 
     }).sort((a, b) => b.prioridad - a.prioridad || a.nombre.localeCompare(b.nombre))
 
     const filtrados = enriquecidos.filter(vino => {
+      if (filtro === 'diferencias') {
+        const contado = conteos[vino.id]
+        return contado !== '' && contado !== undefined && contado !== null && Number(contado) !== decimal(vino.stock)
+      }
       if (filtro === 'prioridad') return vino.prioridad > 0
       if (filtro === 'premium') return vino.premium
       if (filtro === 'copa') return vino.porCopa
@@ -187,7 +191,13 @@ export default function InventarioPanel({ restauranteId, vinos, actividadDesde, 
   const sinCoste = datos.enriquecidos.filter(v => v.sinCoste).length
   const progreso = vinosInventario.length ? Math.round((revisadosFiltro / vinosInventario.length) * 100) : 0
 
+  const diferenciasSinDatos = compact && filtro === 'diferencias' && vinosInventario.length === 0
+  const vinosAMostrar = compact
+    ? (diferenciasSinDatos ? datos.enriquecidos.filter(v => v.prioridad > 0) : vinosInventario)
+    : vinosTanda
+
   const filtros = [
+    ...(compact ? [['diferencias', 'Diferencias', datos.ajustes.length]] : []),
     ['prioridad', 'Revisar primero', datos.enriquecidos.filter(v => v.prioridad > 0).length],
     ['minimo', 'Bajo mínimo', bajoMinimo],
     ['incidencias', 'Incidencias', incidencias],
@@ -327,26 +337,36 @@ export default function InventarioPanel({ restauranteId, vinos, actividadDesde, 
             </label>
           </div>
 
-          <div className={styles.inventoryToolbar}>
-            <div>
-              <p className={styles.eyebrow}>Progreso de revisión</p>
-              <strong>{revisadosFiltro} de {vinosInventario.length} visibles revisados</strong>
-            </div>
-            <div className={styles.inventoryProgressTrack} aria-label={`Progreso ${progreso}%`}>
-              <span style={{ width: `${progreso}%` }} />
-            </div>
-          </div>
-
-          {vinosInventario.length ? (
-            <>
-              <div className={styles.inventoryPager}>
-                <button type="button" onClick={() => setPagina(Math.max(1, paginaActual - 1))} disabled={paginaActual === 1}>Anterior</button>
-                <span>Tanda {paginaActual} de {totalPaginas} · {rangoTanda} de {vinosInventario.length}</span>
-                <button type="button" onClick={() => setPagina(Math.min(totalPaginas, paginaActual + 1))} disabled={paginaActual === totalPaginas}>Siguiente tanda</button>
+          {!compact && (
+            <div className={styles.inventoryToolbar}>
+              <div>
+                <p className={styles.eyebrow}>Progreso de revisión</p>
+                <strong>{revisadosFiltro} de {vinosInventario.length} visibles revisados</strong>
               </div>
+              <div className={styles.inventoryProgressTrack} aria-label={`Progreso ${progreso}%`}>
+                <span style={{ width: `${progreso}%` }} />
+              </div>
+            </div>
+          )}
+
+          {diferenciasSinDatos && (
+            <div className={styles.empty} style={{ marginBottom: 12 }}>
+              Aún no hay diferencias. Empieza por las prioridades.
+            </div>
+          )}
+
+          {vinosAMostrar.length > 0 ? (
+            <>
+              {!compact && (
+                <div className={styles.inventoryPager}>
+                  <button type="button" onClick={() => setPagina(Math.max(1, paginaActual - 1))} disabled={paginaActual === 1}>Anterior</button>
+                  <span>Tanda {paginaActual} de {totalPaginas} · {rangoTanda} de {vinosInventario.length}</span>
+                  <button type="button" onClick={() => setPagina(Math.min(totalPaginas, paginaActual + 1))} disabled={paginaActual === totalPaginas}>Siguiente tanda</button>
+                </div>
+              )}
 
               <div className={styles.itemStack}>
-                {vinosTanda.map(vino => {
+                {vinosAMostrar.map(vino => {
                   const stockActual = decimal(vino.stock)
                   const minimo = decimal(vino.stock_minimo)
                   const contado = conteos[vino.id]
@@ -417,7 +437,7 @@ export default function InventarioPanel({ restauranteId, vinos, actividadDesde, 
                 })}
               </div>
 
-              {totalPaginas > 1 && (
+              {!compact && totalPaginas > 1 && (
                 <div className={styles.inventoryPager}>
                   <button type="button" onClick={() => setPagina(Math.max(1, paginaActual - 1))} disabled={paginaActual === 1}>Anterior</button>
                   <span>Tanda {paginaActual} de {totalPaginas}</span>
@@ -426,9 +446,11 @@ export default function InventarioPanel({ restauranteId, vinos, actividadDesde, 
               )}
             </>
           ) : (
-            <div className={styles.empty}>
-              {soloAjustes ? 'No hay ajustes preparados en este filtro.' : 'No hay vinos en este filtro.'}
-            </div>
+            !diferenciasSinDatos && (
+              <div className={styles.empty}>
+                {soloAjustes ? 'No hay ajustes preparados en este filtro.' : 'No hay vinos en este filtro.'}
+              </div>
+            )
           )}
         </div>
       </section>
