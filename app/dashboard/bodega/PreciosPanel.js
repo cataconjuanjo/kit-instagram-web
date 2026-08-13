@@ -6,8 +6,6 @@ import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
 import styles from '../module.module.css'
 import priceStyles from '../precios/precios.module.css'
 
-const AJUSTES_INICIALES = { margen: 65, copas: 5 }
-
 const ESCENARIOS_CONFIG = [
   { key: 'prudente',    label: 'Prudente',    margen: 60, descripcion: 'Cambios fáciles de defender, bajo riesgo.' },
   { key: 'equilibrado', label: 'Equilibrado', margen: 63, descripcion: 'Mejora margen y copa sin rediseñar la carta.' },
@@ -31,9 +29,11 @@ function diff(actual, recomendado) {
   return { texto: `${delta > 0 ? '+' : ''}${eur(delta, delta % 1 === 0 ? 0 : 2)}`, tono: delta > 0 ? 'up' : 'down' }
 }
 
-export default function PreciosPanel({ restauranteId, vinos = [], onPreciosActualizados, onAjustesChange }) {
+export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, vinos = [], onPreciosActualizados, onAjustesChange }) {
   const [tab, setTab] = useState('precios')
-  const [ajustes, setAjustes] = useState(AJUSTES_INICIALES)
+  const [trabajando, setTrabajando] = useState(settings)
+  const [guardandoConfig, setGuardandoConfig] = useState(false)
+  const [mensajeConfig, setMensajeConfig] = useState('')
   const [sim, setSim] = useState({ coste: '' })
   const [busqueda, setBusqueda] = useState('')
   const [filtro, setFiltro] = useState('todos')
@@ -42,21 +42,23 @@ export default function PreciosPanel({ restauranteId, vinos = [], onPreciosActua
   const [mensaje, setMensaje] = useState('')
 
   useEffect(() => {
-    if (!restauranteId) return
-    try {
-      const guardados = JSON.parse(window.localStorage.getItem(`precios_margenes_${restauranteId}`) || '{}')
-      const next = { ...AJUSTES_INICIALES, ...guardados, copas: num(guardados.copas) || AJUSTES_INICIALES.copas }
-      setAjustes(next)
-      onAjustesChange?.(next)
-    } catch {}
-  }, [restauranteId])
+    setTrabajando(settings)
+  }, [settings])
 
-  function cambiarAjuste(campo, valor) {
-    const next = { ...ajustes, [campo]: valor }
-    setAjustes(next)
-    setPagina(1)
-    if (restauranteId) window.localStorage.setItem(`precios_margenes_${restauranteId}`, JSON.stringify(next))
-    onAjustesChange?.(next)
+  const ajustes = useMemo(() => ({
+    margen: num(trabajando.margen_objetivo_botella_pct),
+    copas: num(trabajando.copas_por_botella),
+  }), [trabajando.margen_objetivo_botella_pct, trabajando.copas_por_botella])
+
+  function cambiarCriterio(campo, valor) {
+    const next = { ...trabajando, [campo]: num(valor) }
+    setTrabajando(next)
+    onAjustesChange?.({ margen: num(next.margen_objetivo_botella_pct), copas: num(next.copas_por_botella) })
+  }
+
+  async function guardarCriterio() {
+    const result = await guardarAjustes(trabajando)
+    if (!result.ok) setMensaje(`Error al guardar: ${result.error}`)
   }
 
   async function aplicarPrecio(vino) {
@@ -73,6 +75,19 @@ export default function PreciosPanel({ restauranteId, vinos = [], onPreciosActua
       setMensaje(`Precios actualizados en ${vino.nombre}.`)
     }
     setGuardandoId(null)
+  }
+
+  async function guardarConfiguracion() {
+    setGuardandoConfig(true)
+    setMensajeConfig('')
+    const result = await guardarAjustes(trabajando)
+    setGuardandoConfig(false)
+    if (result.ok) {
+      setMensajeConfig(result.fallback ? 'Guardado localmente.' : 'Configuración guardada.')
+      onAjustesChange?.({ margen: num(trabajando.margen_objetivo_botella_pct), copas: num(trabajando.copas_por_botella) })
+    } else {
+      setMensajeConfig(`Error: ${result.error}`)
+    }
   }
 
   const resultadoSim = calcularPreciosSugeridos(sim.coste, ajustes)
@@ -106,9 +121,9 @@ export default function PreciosPanel({ restauranteId, vinos = [], onPreciosActua
     const muestra = conCoste.slice(0, 5)
     return ESCENARIOS_CONFIG.map(cfg => ({
       ...cfg,
-      pvps: muestra.map(v => ({ vino: v, ...calcularPreciosSugeridos(v.coste_compra, { copas: num(ajustes.copas) || 5, margen: cfg.margen }) })),
+      pvps: muestra.map(v => ({ vino: v, ...calcularPreciosSugeridos(v.coste_compra, { copas: num(trabajando.copas_por_botella) || 5, margen: cfg.margen }) })),
     }))
-  }, [conCoste, ajustes.copas])
+  }, [conCoste, trabajando.copas_por_botella])
 
   const tabStyle = active => ({
     padding: '7px 16px',
@@ -129,6 +144,7 @@ export default function PreciosPanel({ restauranteId, vinos = [], onPreciosActua
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" style={tabStyle(tab === 'precios')} onClick={() => setTab('precios')}>Precios y márgenes</button>
         <button type="button" style={tabStyle(tab === 'escenarios')} onClick={() => setTab('escenarios')}>Escenarios</button>
+        <button type="button" style={tabStyle(tab === 'configuracion')} onClick={() => setTab('configuracion')}>Configuración</button>
       </div>
 
       {tab === 'precios' && (
@@ -146,14 +162,17 @@ export default function PreciosPanel({ restauranteId, vinos = [], onPreciosActua
                 <div>
                   <label className={styles.label}>Margen bruto objetivo</label>
                   <div className={priceStyles.inputSuffix}>
-                    <input className={styles.input} type="number" min="5" max="90" value={ajustes.margen} onChange={e => cambiarAjuste('margen', e.target.value)} />
+                    <input className={styles.input} type="number" min="5" max="90" value={trabajando.margen_objetivo_botella_pct} onChange={e => cambiarCriterio('margen_objetivo_botella_pct', e.target.value)} />
                     <span>%</span>
                   </div>
                 </div>
                 <div>
                   <label className={styles.label}>Copas servidas por botella</label>
-                  <input className={styles.input} type="number" min="1" max="10" step="1" value={ajustes.copas} onChange={e => cambiarAjuste('copas', e.target.value)} />
+                  <input className={styles.input} type="number" min="1" max="10" step="1" value={trabajando.copas_por_botella} onChange={e => cambiarCriterio('copas_por_botella', e.target.value)} />
                 </div>
+              </div>
+              <div className={styles.actionRow} style={{ marginTop: 12 }}>
+                <button type="button" className={styles.ghost} onClick={guardarCriterio}>Guardar criterio</button>
               </div>
             </div>
           </section>
@@ -315,13 +334,13 @@ export default function PreciosPanel({ restauranteId, vinos = [], onPreciosActua
                 </div>
                 <div>
                   <label className={styles.label}>Copas por botella</label>
-                  <input className={styles.input} type="number" min="1" max="10" step="1" value={ajustes.copas} onChange={e => cambiarAjuste('copas', e.target.value)} />
+                  <input className={styles.input} type="number" min="1" max="10" step="1" value={trabajando.copas_por_botella} onChange={e => cambiarCriterio('copas_por_botella', e.target.value)} />
                 </div>
               </div>
               {num(sim.coste) > 0 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                   {ESCENARIOS_CONFIG.map(cfg => {
-                    const rec = calcularPreciosSugeridos(sim.coste, { copas: num(ajustes.copas) || 5, margen: cfg.margen })
+                    const rec = calcularPreciosSugeridos(sim.coste, { copas: num(trabajando.copas_por_botella) || 5, margen: cfg.margen })
                     return (
                       <div key={cfg.key} style={{ padding: '12px 14px', border: '1px solid #e0d4bc', borderRadius: 8, background: '#fffaf3' }}>
                         <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 850, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#9b7430' }}>{cfg.label} · {cfg.margen}%</p>
@@ -335,6 +354,85 @@ export default function PreciosPanel({ restauranteId, vinos = [], onPreciosActua
             </div>
           </section>
         </div>
+      )}
+
+      {tab === 'configuracion' && (
+        <section className={styles.panel}>
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>Configuración económica</h2>
+              <p className={styles.panelSub}>Parámetros base para el cálculo de márgenes, copas y precios sugeridos.</p>
+            </div>
+          </div>
+          <div className={styles.panelBody}>
+            <div className={styles.formGrid}>
+              <div>
+                <label className={styles.label}>Margen objetivo botella (%)</label>
+                <div className={priceStyles.inputSuffix}>
+                  <input className={styles.input} type="number" min="5" max="90" value={trabajando.margen_objetivo_botella_pct} onChange={e => setTrabajando(prev => ({ ...prev, margen_objetivo_botella_pct: num(e.target.value) }))} />
+                  <span>%</span>
+                </div>
+              </div>
+              <div>
+                <label className={styles.label}>Margen objetivo copa (%)</label>
+                <div className={priceStyles.inputSuffix}>
+                  <input className={styles.input} type="number" min="5" max="90" value={trabajando.margen_objetivo_copa_pct} onChange={e => setTrabajando(prev => ({ ...prev, margen_objetivo_copa_pct: num(e.target.value) }))} />
+                  <span>%</span>
+                </div>
+              </div>
+              <div>
+                <label className={styles.label}>Copas por botella</label>
+                <input className={styles.input} type="number" min="1" max="10" step="1" value={trabajando.copas_por_botella} onChange={e => setTrabajando(prev => ({ ...prev, copas_por_botella: num(e.target.value) }))} />
+              </div>
+              <div>
+                <label className={styles.label}>Merma copa (%)</label>
+                <div className={priceStyles.inputSuffix}>
+                  <input className={styles.input} type="number" min="0" max="30" step="1" value={trabajando.merma_copa_pct} onChange={e => setTrabajando(prev => ({ ...prev, merma_copa_pct: num(e.target.value) }))} />
+                  <span>%</span>
+                </div>
+              </div>
+              <div>
+                <label className={styles.label}>IVA venta (%)</label>
+                <div className={priceStyles.inputSuffix}>
+                  <input className={styles.input} type="number" min="0" max="25" step="0.1" value={trabajando.iva_venta_pct} onChange={e => setTrabajando(prev => ({ ...prev, iva_venta_pct: num(e.target.value) }))} />
+                  <span>%</span>
+                </div>
+              </div>
+              <div>
+                <label className={styles.label}>Formato botella (ml)</label>
+                <input className={styles.input} type="number" min="100" max="1500" step="1" value={trabajando.formato_botella_ml} onChange={e => setTrabajando(prev => ({ ...prev, formato_botella_ml: num(e.target.value) }))} />
+              </div>
+              <div>
+                <label className={styles.label}>Precio mínimo copa (€)</label>
+                <div className={priceStyles.inputSuffix}>
+                  <input className={styles.input} type="number" min="0" step="0.5" value={trabajando.precio_minimo_copa} onChange={e => setTrabajando(prev => ({ ...prev, precio_minimo_copa: num(e.target.value) }))} />
+                  <span>€</span>
+                </div>
+              </div>
+              <div>
+                <label className={styles.label}>PVP incluye IVA</label>
+                <select className={styles.select} value={String(trabajando.pvp_incluye_iva)} onChange={e => setTrabajando(prev => ({ ...prev, pvp_incluye_iva: e.target.value === 'true' }))}>
+                  <option value="true">Sí</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+              <div>
+                <label className={styles.label}>Coste incluye IVA</label>
+                <select className={styles.select} value={String(trabajando.coste_incluye_iva)} onChange={e => setTrabajando(prev => ({ ...prev, coste_incluye_iva: e.target.value === 'true' }))}>
+                  <option value="true">Sí</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+            </div>
+            {mensajeConfig && <div className={priceStyles.notice} role="status" style={{ marginTop: 12 }}>{mensajeConfig}</div>}
+            <div className={styles.actionRow} style={{ marginTop: 16 }}>
+              <button type="button" className={styles.primary} onClick={guardarConfiguracion} disabled={guardandoConfig}>
+                {guardandoConfig ? 'Guardando...' : 'Guardar configuración'}
+              </button>
+              {!apiDisponible && <span className={styles.tiny}>Sin API — se guarda localmente.</span>}
+            </div>
+          </div>
+        </section>
       )}
     </div>
   )
