@@ -1,4 +1,9 @@
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
+import {
+  decryptTpvCredential,
+  missingEncryptedCredentialColumn,
+  resolveSquareAccessToken,
+} from '../../lib/tpvCredentials'
 
 const SQUARE_API_BASE = 'https://connect.squareup.com'
 
@@ -6,12 +11,14 @@ const WINE_KEYWORDS     = /vino|wine|bodega|winery/i
 const PREFIJOS_INTERNOS = /^\s*(V[A-Z]{2,3}|BOT|RBN|RTN|AOC|AOP)\s+/i
 const GLOBAL_SQUARE_TIENDA_ID = process.env.SQUARE_TIENDA_ID || process.env.SQUARE_DEFAULT_TIENDA_ID || null
 const GLOBAL_SQUARE_TIENDA_SLUG = process.env.SQUARE_TIENDA_SLUG || process.env.SQUARE_DEFAULT_TIENDA_SLUG || null
+const SQUARE_TIENDA_SELECT = 'id, slug, square_access_token, square_access_token_encrypted, square_location_id'
+const SQUARE_TIENDA_LEGACY_SELECT = 'id, slug, square_access_token, square_location_id'
 
 function getTokenForTienda(tienda) {
-  const tiendaToken = (tienda?.square_access_token || '').trim()
-  if (tiendaToken) return { token: tiendaToken, source: 'tienda' }
+  const tiendaCredential = resolveSquareAccessToken(tienda)
+  if (tiendaCredential.token) return tiendaCredential
 
-  const envToken = (process.env.SQUARE_ACCESS_TOKEN || '').trim()
+  const envToken = decryptTpvCredential(process.env.SQUARE_ACCESS_TOKEN || '')
   if (!envToken) return { token: null, source: null }
 
   const matchesId = GLOBAL_SQUARE_TIENDA_ID && tienda?.id === GLOBAL_SQUARE_TIENDA_ID
@@ -22,18 +29,34 @@ function getTokenForTienda(tienda) {
 }
 
 export async function listSquareSyncTiendas() {
-  const { data: tiendas, error } = await supabaseAdmin
+  let { data: tiendas, error } = await supabaseAdmin
     .from('tiendas')
-    .select('id, slug, square_access_token, square_location_id')
+    .select(SQUARE_TIENDA_SELECT)
     .eq('activo', true)
     .order('slug')
+
+  if (error && missingEncryptedCredentialColumn(error)) {
+    const legacy = await supabaseAdmin
+      .from('tiendas')
+      .select(SQUARE_TIENDA_LEGACY_SELECT)
+      .eq('activo', true)
+      .order('slug')
+    tiendas = legacy.data
+    error = legacy.error
+  }
 
   if (error) throw new Error(`Leyendo tiendas Square: ${error.message}`)
 
   return (tiendas || [])
     .map(tienda => {
-      const { token, source } = getTokenForTienda(tienda)
-      return token ? { ...tienda, squareToken: token, squareTokenSource: source } : null
+      try {
+        const { token, source } = getTokenForTienda(tienda)
+        const { square_access_token, square_access_token_encrypted, ...safeTienda } = tienda
+        return token ? { ...safeTienda, squareToken: token, squareTokenSource: source } : null
+      } catch (error) {
+        console.error(`[square-sync] Credencial TPV invalida para tienda ${tienda.slug}: ${error.message}`)
+        return null
+      }
     })
     .filter(Boolean)
 }
