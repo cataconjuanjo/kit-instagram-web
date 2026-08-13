@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { squareSyncForTienda } from '../../_lib/squareSync'
+import {
+  isSquareSyncTemporarilyPaused,
+  resolveSquareTiendaByLocation,
+  squareSyncForTienda,
+  squareSyncPausedPayload,
+} from '../../_lib/squareSync'
 
 const SQUARE_ACCESS_TOKEN    = process.env.SQUARE_ACCESS_TOKEN
 const SQUARE_SIGNATURE_KEY   = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY
@@ -49,6 +54,20 @@ async function handleCatalogUpdate() {
 
   const results = []
   for (const tienda of tiendas) {
+    if (isSquareSyncTemporarilyPaused(tienda)) {
+      console.warn(`[square-webhook] catalog.version.updated [${tienda.slug}]: pausa temporal activa`)
+      results.push({
+        slug: tienda.slug,
+        ...squareSyncPausedPayload(tienda, 'catalog.version.updated'),
+        insertados: 0,
+        actualizados: 0,
+        errores: 0,
+        total: 0,
+        stockSincronizados: 0,
+      })
+      continue
+    }
+
     const { data: td } = await supabaseAdmin
       .from('tiendas')
       .select('square_access_token')
@@ -73,11 +92,24 @@ async function handleInventoryUpdate(event) {
   const counts = event.data?.object?.inventory_counts || []
   let actualizados = 0
   const categoriasActualizadas = []
+  const tiendaCache = new Map()
 
   for (const count of counts) {
     if (count.state !== 'IN_STOCK') continue
     const catalogId  = count.catalog_object_id
     const nuevoStock = Math.max(0, parseInt(count.quantity, 10) || 0)
+    const locationId = count.location_id || event.location_id || null
+    const cacheKey = locationId || '__square_inventory_no_location__'
+
+    if (!tiendaCache.has(cacheKey)) {
+      tiendaCache.set(cacheKey, locationId ? await resolveSquareTiendaByLocation(locationId) : null)
+    }
+
+    const tienda = tiendaCache.get(cacheKey)
+    if ((tienda && isSquareSyncTemporarilyPaused(tienda)) || (!tienda && !locationId && isSquareSyncTemporarilyPaused('sibaris-gourmet'))) {
+      console.warn(`[square-webhook] inventory.count.updated [${tienda?.slug || 'sibaris-gourmet'}]: pausa temporal activa`)
+      continue
+    }
 
     // inventory_counts también usa variation IDs — buscar por square_variation_id primero
     let { data: vino } = await supabaseAdmin
@@ -189,6 +221,11 @@ export async function POST(request) {
       .eq('activo', true)
       .maybeSingle()
     if (tiendaPorLocation) tiendaSlug = tiendaPorLocation.slug
+  }
+
+  if (isSquareSyncTemporarilyPaused({ slug: tiendaSlug })) {
+    console.warn(`[square-webhook] payment.updated [${tiendaSlug}]: pausa temporal activa; payment_id="${paymentId}"`)
+    return NextResponse.json(squareSyncPausedPayload({ slug: tiendaSlug }, type))
   }
 
   // Idempotencia nivel pago: mismo payment_id ya descontó stock en un evento anterior

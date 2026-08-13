@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
-import { squareSyncForTienda } from '../../../../../api/_lib/squareSync'
+import {
+  isSquareSyncTemporarilyPaused,
+  squareSyncForTienda,
+  squareSyncPausedPayload,
+} from '../../../../../api/_lib/squareSync'
 
 export const maxDuration = 120
 
@@ -10,6 +14,18 @@ export async function POST(request, { params }) {
 
   const access = await requireKioskoAccess(request, slug)
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status || 403 })
+
+  const tienda = { ...access.tienda, slug }
+  if (isSquareSyncTemporarilyPaused(tienda)) {
+    return NextResponse.json(
+      {
+        ...squareSyncPausedPayload(tienda, 'admin_square_sync'),
+        ok: false,
+        error: 'Sincronizacion con Square pausada temporalmente para esta tienda.',
+      },
+      { status: 423 }
+    )
+  }
 
   // Obtener el token de Square específico de esta tienda
   const { data: tiendaData } = await supabaseAdmin

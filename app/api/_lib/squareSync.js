@@ -6,6 +6,40 @@ const WINE_KEYWORDS     = /vino|wine|bodega|winery/i
 const PREFIJOS_INTERNOS = /^\s*(V[A-Z]{2,3}|BOT|RBN|RTN|AOC|AOP)\s+/i
 const GLOBAL_SQUARE_TIENDA_ID = process.env.SQUARE_TIENDA_ID || process.env.SQUARE_DEFAULT_TIENDA_ID || null
 const GLOBAL_SQUARE_TIENDA_SLUG = process.env.SQUARE_TIENDA_SLUG || process.env.SQUARE_DEFAULT_TIENDA_SLUG || null
+const TRUE_ENV_FLAG = /^(1|true|yes|on)$/i
+const TEMPORARILY_PAUSED_SQUARE_SYNC_SLUGS = parseEnvList('sibaris-gourmet')
+const SQUARE_SYNC_FORCE_ENABLED_SLUGS = parseEnvList(process.env.SQUARE_SYNC_FORCE_ENABLED_SLUGS || process.env.SQUARE_SYNC_ENABLED_SLUGS)
+const SQUARE_SYNC_DISABLED_ALL = TRUE_ENV_FLAG.test(String(process.env.SQUARE_SYNC_DISABLED || '').trim())
+const SQUARE_SYNC_DISABLED_SLUGS = parseEnvList(process.env.SQUARE_SYNC_DISABLED_SLUGS || process.env.SQUARE_SYNC_PAUSED_SLUGS)
+const SQUARE_SYNC_DISABLED_TIENDA_IDS = parseEnvList(process.env.SQUARE_SYNC_DISABLED_TIENDA_IDS || process.env.SQUARE_SYNC_PAUSED_TIENDA_IDS)
+
+function parseEnvList(value) {
+  return new Set(String(value || '')
+    .split(',')
+    .map(item => item.trim().toLowerCase())
+    .filter(Boolean))
+}
+
+export function isSquareSyncTemporarilyPaused(tienda = {}) {
+  const slug = String(typeof tienda === 'string' ? tienda : tienda?.slug || '').trim().toLowerCase()
+  const id = String(typeof tienda === 'string' ? '' : tienda?.id || '').trim().toLowerCase()
+  if (slug && SQUARE_SYNC_FORCE_ENABLED_SLUGS.has(slug)) return false
+  return SQUARE_SYNC_DISABLED_ALL ||
+    (slug && TEMPORARILY_PAUSED_SQUARE_SYNC_SLUGS.has(slug)) ||
+    (slug && SQUARE_SYNC_DISABLED_SLUGS.has(slug)) ||
+    (id && SQUARE_SYNC_DISABLED_TIENDA_IDS.has(id))
+}
+
+export function squareSyncPausedPayload(tienda = {}, trigger = 'square_sync') {
+  return {
+    ok: true,
+    skipped: 'square_sync_temporarily_paused',
+    syncPaused: true,
+    trigger,
+    slug: typeof tienda === 'string' ? tienda : tienda?.slug || null,
+    tiendaId: typeof tienda === 'string' ? null : tienda?.id || null,
+  }
+}
 
 function getTokenForTienda(tienda) {
   const tiendaToken = (tienda?.square_access_token || '').trim()
@@ -21,7 +55,7 @@ function getTokenForTienda(tienda) {
   return { token: null, source: null }
 }
 
-export async function listSquareSyncTiendas() {
+export async function listSquareSyncTiendas({ includePaused = false } = {}) {
   const { data: tiendas, error } = await supabaseAdmin
     .from('tiendas')
     .select('id, slug, square_access_token, square_location_id')
@@ -32,20 +66,28 @@ export async function listSquareSyncTiendas() {
 
   return (tiendas || [])
     .map(tienda => {
+      const { square_access_token, ...safeTienda } = tienda
+      if (isSquareSyncTemporarilyPaused(safeTienda)) {
+        return includePaused
+          ? { ...safeTienda, squareToken: null, squareTokenSource: 'paused', squareSyncPaused: true }
+          : null
+      }
+
       const { token, source } = getTokenForTienda(tienda)
-      return token ? { ...tienda, squareToken: token, squareTokenSource: source } : null
+      return token ? { ...safeTienda, squareToken: token, squareTokenSource: source, squareSyncPaused: false } : null
     })
     .filter(Boolean)
 }
 
 export async function resolveSquareTiendaByLocation(locationId) {
-  const tiendas = await listSquareSyncTiendas()
+  const tiendas = await listSquareSyncTiendas({ includePaused: true })
   if (locationId) {
     const tienda = tiendas.find(t => t.square_location_id === locationId)
     if (tienda) return { ...tienda, squareLocationResolvedBy: 'location_id' }
   }
-  if (tiendas.length === 1) {
-    return { ...tiendas[0], squareLocationResolvedBy: locationId ? 'single_configured_tienda' : 'single_no_location' }
+  const activeTiendas = tiendas.filter(t => !t.squareSyncPaused)
+  if (activeTiendas.length === 1) {
+    return { ...activeTiendas[0], squareLocationResolvedBy: locationId ? 'single_configured_tienda' : 'single_no_location' }
   }
   return null
 }
@@ -139,6 +181,18 @@ function detectarCategoria(itemData, categoryMap) {
 }
 
 export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
+  if (isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug })) {
+    console.warn(`[square-sync] ${tiendaSlug || tiendaId}: pausa temporal activa`)
+    return {
+      ...squareSyncPausedPayload({ id: tiendaId, slug: tiendaSlug }, 'square_sync_for_tienda'),
+      insertados: 0,
+      actualizados: 0,
+      errores: 0,
+      total: 0,
+      stockSincronizados: 0,
+    }
+  }
+
   const token = (squareToken || '').trim()
   if (!token) throw new Error('No hay token de Square configurado para esta tienda')
 

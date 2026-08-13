@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { squareSyncForTienda } from '../../_lib/squareSync'
+import { isSquareSyncTemporarilyPaused, squareSyncForTienda, squareSyncPausedPayload } from '../../_lib/squareSync'
 
 export const maxDuration = 300
 
@@ -37,6 +37,21 @@ export async function GET(request) {
 
   const results = []
   for (const tiendaId of tiendaIds) {
+    const tienda = { id: tiendaId, slug: slugMap[tiendaId] }
+    if (isSquareSyncTemporarilyPaused(tienda)) {
+      results.push({
+        tiendaId,
+        slug: tienda.slug,
+        ...squareSyncPausedPayload(tienda, 'cron_square_sync'),
+        insertados: 0,
+        actualizados: 0,
+        errores: 0,
+        total: 0,
+        stockSincronizados: 0,
+      })
+      continue
+    }
+
     try {
       const result = await squareSyncForTienda(tiendaId, slugMap[tiendaId])
       results.push({ tiendaId, slug: slugMap[tiendaId], ...result })
