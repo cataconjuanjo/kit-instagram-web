@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess, getKioskoUser, isKioskoAdminEmail } from '../../../../_lib/kioskoAuth'
-import {
-  encryptTpvCredential,
-  missingEncryptedCredentialColumn,
-} from '../../../../../lib/tpvCredentials'
 
 const PERMITIDOS = new Set([
   'nombre', 'ciudad', 'descripcion',
@@ -19,54 +15,12 @@ const OPTIONAL_MIGRATIONS = {
   kiosko_orders_enabled: 'supabase/kiosko_assisted_orders.sql',
   cesta_activa: 'supabase/cesta_activa.sql',
   square_access_token: 'supabase/square_access_token.sql',
-  square_access_token_encrypted: 'supabase/encrypt_square_credentials.sql',
 }
 
 function missingOptionalFields(error, updates) {
   const texto = `${error?.code || ''} ${error?.message || ''}`.toLowerCase()
   if (!texto.includes('column') && !texto.includes('schema cache') && !texto.includes('pgrst204')) return []
   return Object.keys(OPTIONAL_MIGRATIONS).filter(field => updates[field] !== undefined && texto.includes(field))
-}
-
-function keepLegacyPlaintextCredential() {
-  return ['1', 'true', 'yes'].includes(
-    String(process.env.TPV_CREDENTIALS_KEEP_LEGACY_PLAINTEXT || '').toLowerCase()
-  )
-}
-
-async function updateSquareAccessToken(tiendaId, tokenVal) {
-  let encryptedToken = null
-
-  if (tokenVal) {
-    try {
-      encryptedToken = encryptTpvCredential(tokenVal)
-    } catch (error) {
-      console.error('[kiosko-ajustes] No se pudo cifrar la credencial Square:', error.message)
-    }
-  }
-
-  if (encryptedToken || !tokenVal) {
-    const updates = {
-      square_access_token_encrypted: encryptedToken,
-      square_access_token: keepLegacyPlaintextCredential() ? tokenVal : null,
-    }
-
-    const { error } = await supabaseAdmin
-      .from('tiendas')
-      .update(updates)
-      .eq('id', tiendaId)
-
-    if (!error) return { encrypted: Boolean(encryptedToken) }
-    if (!missingEncryptedCredentialColumn(error)) throw error
-  }
-
-  const { error: legacyError } = await supabaseAdmin
-    .from('tiendas')
-    .update({ square_access_token: tokenVal })
-    .eq('id', tiendaId)
-
-  if (legacyError) throw legacyError
-  return { encrypted: false }
 }
 
 export async function PATCH(request, { params }) {
@@ -88,7 +42,10 @@ export async function PATCH(request, { params }) {
   // square_access_token: cualquier propietario puede configurar el suyo
   if (body.square_access_token !== undefined) {
     const tokenVal = (body.square_access_token || '').trim() || null
-    await updateSquareAccessToken(access.tienda.id, tokenVal)
+    await supabaseAdmin
+      .from('tiendas')
+      .update({ square_access_token: tokenVal })
+      .eq('id', access.tienda.id)
     // Si solo venía el token, devolver OK
     const soloToken = Object.keys(body).every(k => k === 'square_access_token')
     if (soloToken) return NextResponse.json({ ok: true })
