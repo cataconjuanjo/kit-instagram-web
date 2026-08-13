@@ -7,9 +7,15 @@ const PREFIJOS_INTERNOS = /^\s*(V[A-Z]{2,3}|BOT|RBN|RTN|AOC|AOP)\s+/i
 const GLOBAL_SQUARE_TIENDA_ID = process.env.SQUARE_TIENDA_ID || process.env.SQUARE_DEFAULT_TIENDA_ID || null
 const GLOBAL_SQUARE_TIENDA_SLUG = process.env.SQUARE_TIENDA_SLUG || process.env.SQUARE_DEFAULT_TIENDA_SLUG || null
 const TRUE_ENV_FLAG = /^(1|true|yes|on)$/i
+const FALSE_ENV_FLAG = /^(0|false|no|off)$/i
+const SQUARE_SYNC_ENABLED = !FALSE_ENV_FLAG.test(String(process.env.SQUARE_SYNC_ENABLED ?? 'true').trim())
+const SQUARE_REQUEST_TIMEOUT_MS = Math.max(
+  1000,
+  parseInt(process.env.SQUARE_REQUEST_TIMEOUT_MS || process.env.SQUARE_FETCH_TIMEOUT_MS || '8000', 10) || 8000
+)
 const TEMPORARILY_PAUSED_SQUARE_SYNC_SLUGS = parseEnvList('sibaris-gourmet')
 const SQUARE_SYNC_FORCE_ENABLED_SLUGS = parseEnvList(process.env.SQUARE_SYNC_FORCE_ENABLED_SLUGS || process.env.SQUARE_SYNC_ENABLED_SLUGS)
-const SQUARE_SYNC_DISABLED_ALL = TRUE_ENV_FLAG.test(String(process.env.SQUARE_SYNC_DISABLED || '').trim())
+const SQUARE_SYNC_DISABLED_ALL = !SQUARE_SYNC_ENABLED || TRUE_ENV_FLAG.test(String(process.env.SQUARE_SYNC_DISABLED || '').trim())
 const SQUARE_SYNC_DISABLED_SLUGS = parseEnvList(process.env.SQUARE_SYNC_DISABLED_SLUGS || process.env.SQUARE_SYNC_PAUSED_SLUGS)
 const SQUARE_SYNC_DISABLED_TIENDA_IDS = parseEnvList(process.env.SQUARE_SYNC_DISABLED_TIENDA_IDS || process.env.SQUARE_SYNC_PAUSED_TIENDA_IDS)
 
@@ -23,11 +29,15 @@ function parseEnvList(value) {
 export function isSquareSyncTemporarilyPaused(tienda = {}) {
   const slug = String(typeof tienda === 'string' ? tienda : tienda?.slug || '').trim().toLowerCase()
   const id = String(typeof tienda === 'string' ? '' : tienda?.id || '').trim().toLowerCase()
+  if (SQUARE_SYNC_DISABLED_ALL) return true
   if (slug && SQUARE_SYNC_FORCE_ENABLED_SLUGS.has(slug)) return false
-  return SQUARE_SYNC_DISABLED_ALL ||
-    (slug && TEMPORARILY_PAUSED_SQUARE_SYNC_SLUGS.has(slug)) ||
+  return (slug && TEMPORARILY_PAUSED_SQUARE_SYNC_SLUGS.has(slug)) ||
     (slug && SQUARE_SYNC_DISABLED_SLUGS.has(slug)) ||
     (id && SQUARE_SYNC_DISABLED_TIENDA_IDS.has(id))
+}
+
+export function isSquareSyncGloballyPaused() {
+  return SQUARE_SYNC_DISABLED_ALL
 }
 
 export function squareSyncPausedPayload(tienda = {}, trigger = 'square_sync') {
@@ -38,6 +48,28 @@ export function squareSyncPausedPayload(tienda = {}, trigger = 'square_sync') {
     trigger,
     slug: typeof tienda === 'string' ? tienda : tienda?.slug || null,
     tiendaId: typeof tienda === 'string' ? null : tienda?.id || null,
+    squareSyncEnabled: SQUARE_SYNC_ENABLED,
+  }
+}
+
+export async function fetchSquareJson(url, options = {}, context = 'Square API') {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), SQUARE_REQUEST_TIMEOUT_MS)
+
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal })
+    const body = await res.text()
+    if (!res.ok) {
+      throw new Error(`${context} ${res.status}: ${body.slice(0, 500)}`)
+    }
+    return body ? JSON.parse(body) : {}
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`${context} timeout after ${SQUARE_REQUEST_TIMEOUT_MS}ms`)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
@@ -118,7 +150,7 @@ async function fetchAllCatalogItems(token) {
     const body = { object_types: ['ITEM'], include_related_objects: true }
     if (cursor) body.cursor = cursor
 
-    const res = await fetch(`${SQUARE_API_BASE}/v2/catalog/search`, {
+    const data = await fetchSquareJson(`${SQUARE_API_BASE}/v2/catalog/search`, {
       method: 'POST',
       headers: {
         Authorization:    `Bearer ${token}`,
@@ -126,9 +158,7 @@ async function fetchAllCatalogItems(token) {
         'Content-Type':   'application/json',
       },
       body: JSON.stringify(body),
-    })
-    if (!res.ok) throw new Error(`Square API ${res.status}: ${await res.text()}`)
-    const data = await res.json()
+    }, 'Square catalog/search')
     items.push(...(data.objects || []))
     for (const rel of (data.related_objects || [])) {
       if (rel.type === 'IMAGE'    && rel.image_data?.url)     imageMap[rel.id]    = rel.image_data.url
@@ -150,17 +180,21 @@ async function fetchInventoryCounts(variationIds, token) {
     do {
       const body = { catalog_object_ids: chunk }
       if (cursor) body.cursor = cursor
-      const res = await fetch(`${SQUARE_API_BASE}/v2/inventory/batch-retrieve-counts`, {
-        method: 'POST',
-        headers: {
-          Authorization:    `Bearer ${token}`,
-          'Square-Version': '2024-01-18',
-          'Content-Type':   'application/json',
-        },
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) { console.error('[square-sync] inventory:', await res.text()); break }
-      const data = await res.json()
+      let data
+      try {
+        data = await fetchSquareJson(`${SQUARE_API_BASE}/v2/inventory/batch-retrieve-counts`, {
+          method: 'POST',
+          headers: {
+            Authorization:    `Bearer ${token}`,
+            'Square-Version': '2024-01-18',
+            'Content-Type':   'application/json',
+          },
+          body: JSON.stringify(body),
+        }, 'Square inventory/batch-retrieve-counts')
+      } catch (error) {
+        console.error('[square-sync] inventory:', error.message)
+        break
+      }
       for (const c of (data.counts || [])) {
         if (c.state === 'IN_STOCK' && c.catalog_object_id) {
           inventoryMap[c.catalog_object_id] = Math.max(0, parseInt(c.quantity, 10) || 0)
@@ -170,6 +204,191 @@ async function fetchInventoryCounts(variationIds, token) {
     } while (cursor)
   }
   return inventoryMap
+}
+
+function chunkArray(items, size) {
+  const chunks = []
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size))
+  return chunks
+}
+
+function uniqueStrings(values) {
+  return [...new Set((values || []).map(v => String(v || '').trim()).filter(Boolean))]
+}
+
+function priceFromVariation(variation) {
+  const amount = variation?.item_variation_data?.price_money?.amount
+  if (amount === undefined || amount === null) return null
+  const cents = Number(amount)
+  return Number.isFinite(cents) ? +(cents / 100).toFixed(2) : null
+}
+
+function pricesDiffer(current, next) {
+  if (next === null || next === undefined) return false
+  return Number(current) !== Number(next)
+}
+
+async function fetchCatalogObjects(objectIds, token) {
+  const ids = uniqueStrings(objectIds)
+  if (!ids.length || !token) return { objects: [], related_objects: [] }
+
+  const objects = []
+  const relatedObjects = []
+  for (const chunk of chunkArray(ids, 100)) {
+    const data = await fetchSquareJson(`${SQUARE_API_BASE}/v2/catalog/batch-retrieve`, {
+      method: 'POST',
+      headers: {
+        Authorization:    `Bearer ${token}`,
+        'Square-Version': '2024-01-18',
+        'Content-Type':   'application/json',
+      },
+      body: JSON.stringify({
+        object_ids: chunk,
+        include_related_objects: true,
+      }),
+    }, 'Square catalog/batch-retrieve')
+    objects.push(...(data.objects || []))
+    relatedObjects.push(...(data.related_objects || []))
+  }
+
+  return { objects, related_objects: relatedObjects }
+}
+
+function collectCatalogVariations(objects, relatedObjects) {
+  const byId = new Map()
+  for (const object of [...(objects || []), ...(relatedObjects || [])]) {
+    if (object?.id) byId.set(object.id, object)
+  }
+
+  const variations = new Map()
+  const addVariation = (variation, itemId = null) => {
+    if (!variation?.id || variation.is_deleted) return
+    const variationData = variation.item_variation_data || {}
+    const parentItemId = itemId || variationData.item_id || null
+    variations.set(variation.id, {
+      itemId: parentItemId,
+      variationId: variation.id,
+      precio_pvp: priceFromVariation(variation),
+    })
+  }
+
+  for (const object of objects || []) {
+    if (object?.type === 'ITEM') {
+      for (const variation of object.item_data?.variations || []) {
+        addVariation(variation, object.id)
+      }
+    } else if (object?.type === 'ITEM_VARIATION') {
+      addVariation(object)
+      const parent = object.item_variation_data?.item_id ? byId.get(object.item_variation_data.item_id) : null
+      if (parent?.type === 'ITEM') {
+        for (const variation of parent.item_data?.variations || []) {
+          if (variation.id === object.id) addVariation(variation, parent.id)
+        }
+      }
+    }
+  }
+
+  return [...variations.values()]
+}
+
+export async function selectVinosBySquareIds(tiendaId, variationIds, catalogIds = []) {
+  const bySquareId = new Map()
+  const idsByVariation = uniqueStrings(variationIds)
+  const idsByCatalog = uniqueStrings(catalogIds)
+
+  if (idsByVariation.length) {
+    const { data, error } = await supabaseAdmin
+      .from('vinos_tienda')
+      .select('id, precio_pvp, stock, activo, categoria, nombre, square_catalog_id, square_variation_id')
+      .eq('tienda_id', tiendaId)
+      .in('square_variation_id', idsByVariation)
+    if (error) throw new Error(`Leyendo vinos por square_variation_id: ${error.message}`)
+    for (const vino of data || []) {
+      if (vino.square_variation_id) bySquareId.set(vino.square_variation_id, vino)
+    }
+  }
+
+  const unresolvedCatalogIds = idsByCatalog.filter(id => !bySquareId.has(id))
+  if (unresolvedCatalogIds.length) {
+    const { data, error } = await supabaseAdmin
+      .from('vinos_tienda')
+      .select('id, precio_pvp, stock, activo, categoria, nombre, square_catalog_id, square_variation_id')
+      .eq('tienda_id', tiendaId)
+      .in('square_catalog_id', unresolvedCatalogIds)
+    if (error) throw new Error(`Leyendo vinos por square_catalog_id: ${error.message}`)
+    for (const vino of data || []) {
+      if (vino.square_catalog_id) bySquareId.set(vino.square_catalog_id, vino)
+      if (vino.square_variation_id) bySquareId.set(vino.square_variation_id, vino)
+    }
+  }
+
+  return bySquareId
+}
+
+export async function squareCatalogUpdateForTiendaObjects(tiendaId, tiendaSlug, squareToken, objectIds) {
+  if (isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug })) {
+    return {
+      ...squareSyncPausedPayload({ id: tiendaId, slug: tiendaSlug }, 'catalog.objects.updated'),
+      actualizados: 0,
+      errores: 0,
+      total: 0,
+    }
+  }
+
+  const ids = uniqueStrings(objectIds)
+  if (!ids.length) {
+    return { ok: true, skipped: 'no_catalog_object_ids', actualizados: 0, errores: 0, total: 0 }
+  }
+
+  const token = (squareToken || '').trim()
+  if (!token) throw new Error('No hay token de Square configurado para esta tienda')
+
+  const { objects, related_objects: relatedObjects } = await fetchCatalogObjects(ids, token)
+  const variations = collectCatalogVariations(objects, relatedObjects)
+  if (!variations.length) {
+    return { ok: true, skipped: 'no_item_variations', actualizados: 0, errores: 0, total: objects.length }
+  }
+
+  const variationIds = variations.map(v => v.variationId)
+  const catalogIds = variations.flatMap(v => [v.itemId, v.variationId]).filter(Boolean)
+  const vinosBySquareId = await selectVinosBySquareIds(tiendaId, variationIds, catalogIds)
+  const now = new Date().toISOString()
+  let actualizados = 0
+  let errores = 0
+
+  for (const variation of variations) {
+    const vino = vinosBySquareId.get(variation.variationId) || vinosBySquareId.get(variation.itemId)
+    if (!vino) continue
+
+    const patch = {}
+    if (pricesDiffer(vino.precio_pvp, variation.precio_pvp)) patch.precio_pvp = variation.precio_pvp
+    if (variation.itemId && vino.square_catalog_id !== variation.itemId) patch.square_catalog_id = variation.itemId
+    if (variation.variationId && vino.square_variation_id !== variation.variationId) patch.square_variation_id = variation.variationId
+
+    if (!Object.keys(patch).length) continue
+
+    patch.updated_at = now
+    patch.square_last_seen_at = now
+    const { error } = await supabaseAdmin
+      .from('vinos_tienda')
+      .update(patch)
+      .eq('id', vino.id)
+
+    if (error) {
+      errores++
+      console.error('[square-sync] catalog object update error:', vino.id, error.message)
+    } else {
+      actualizados++
+    }
+  }
+
+  return {
+    ok: errores === 0,
+    actualizados,
+    errores,
+    total: variations.length,
+    catalogObjectIds: ids,
+  }
 }
 
 function detectarCategoria(itemData, categoryMap) {
@@ -234,7 +453,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   while (true) {
     const { data: page, error: existError } = await supabaseAdmin
       .from('vinos_tienda')
-      .select('id, square_catalog_id, square_variation_id, categoria, nombre')
+      .select('id, square_catalog_id, square_variation_id, categoria, nombre, precio_pvp')
       .eq('tienda_id', tiendaId)
       .range(pageFrom, pageFrom + PAGE - 1)
     if (existError) throw new Error(`Leyendo existentes: ${existError.message}`)
@@ -247,11 +466,11 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   const existingByVariation = {}
   const nullIdByNombre      = {} // vinos sin IDs Square, para fusionar en lugar de duplicar
   for (const v of (existentes || [])) {
-    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
-    if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
+    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
+    if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
     if (!v.square_catalog_id && !v.square_variation_id && v.nombre) {
       if (!nullIdByNombre[v.nombre]) nullIdByNombre[v.nombre] = []
-      nullIdByNombre[v.nombre].push({ id: v.id, categoria: v.categoria })
+      nullIdByNombre[v.nombre].push({ id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp })
     }
   }
 
@@ -284,15 +503,23 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     const now = new Date().toISOString()
 
     if (existing) {
-      // Actualiza precio; variation_id se pobla en un paso separado (best-effort, sin riesgo de 23505)
-      if (precio_pvp != null) {
+      const skipIdNormalization = Boolean(legacyVariationMatch && variationMatch && legacyVariationMatch.id !== variationMatch.id)
+      const updatePrice = pricesDiffer(existing.precio_pvp, precio_pvp)
+      const updateIds = !skipIdNormalization && (
+        existing.square_catalog_id !== item.id ||
+        (variationId && existing.square_variation_id !== variationId)
+      )
+
+      if (updatePrice || updateIds) {
         toUpsertById.push({
           id: existing.id,
           precio_pvp,
           square_last_seen_at: now,
           _catalogId: item.id,
           _variationId: variationId,
-          _skipIdNormalization: Boolean(legacyVariationMatch && variationMatch && legacyVariationMatch.id !== variationMatch.id),
+          _skipIdNormalization: skipIdNormalization,
+          _updatePrice: updatePrice,
+          _updateIds: updateIds,
           updated_at: now,
         })
       }
@@ -301,6 +528,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
       // Si hay múltiples sin IDs con el mismo nombre, no fusionar (demasiado ambiguo).
       const nullMatches = nullIdByNombre[nombre]
       if (nullMatches?.length === 1) {
+        const updatePrice = pricesDiffer(nullMatches[0].precio_pvp, precio_pvp)
         toUpsertById.push({
           id:                   nullMatches[0].id,
           precio_pvp,
@@ -308,6 +536,8 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
           _catalogId:           item.id,
           _variationId:         variationId,
           _skipIdNormalization: false,
+          _updatePrice:         updatePrice,
+          _updateIds:           true,
           updated_at:           now,
         })
         nullIdByNombre[nombre] = [] // consumido: evitar que otro item Square reclame el mismo registro
@@ -349,9 +579,11 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   const UPDATE_CONCURRENCY = 50
   for (let i = 0; i < toUpsertById.length; i += UPDATE_CONCURRENCY) {
     const chunk = toUpsertById.slice(i, i + UPDATE_CONCURRENCY)
+    const priceUpdates = chunk.filter(r => r._updatePrice)
+    const idUpdates = chunk.filter(r => r._updateIds && !r._skipIdNormalization)
 
     // Paso 1: precio + last_seen (siempre, crítico)
-    await Promise.all(chunk.map(({ id, precio_pvp, updated_at, square_last_seen_at }) =>
+    await Promise.all(priceUpdates.map(({ id, precio_pvp, updated_at, square_last_seen_at }) =>
       supabaseAdmin.from('vinos_tienda')
         .update({ precio_pvp, updated_at, square_last_seen_at })
         .eq('id', id)
@@ -361,8 +593,8 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     ))
 
     // Paso 2: normalizar ids Square heredados de imports antiguos.
-    await Promise.all(chunk.filter(r => !r._skipIdNormalization).map(({ id, _catalogId, _variationId }) => {
-      const idsUpdate = { square_catalog_id: _catalogId }
+    await Promise.all(idUpdates.map(({ id, _catalogId, _variationId, updated_at, square_last_seen_at }) => {
+      const idsUpdate = { square_catalog_id: _catalogId, updated_at, square_last_seen_at }
       if (_variationId) idsUpdate.square_variation_id = _variationId
       return supabaseAdmin.from('vinos_tienda')
         .update(idsUpdate)

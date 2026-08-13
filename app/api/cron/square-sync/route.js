@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { isSquareSyncTemporarilyPaused, squareSyncForTienda, squareSyncPausedPayload } from '../../_lib/squareSync'
+import {
+  isSquareSyncGloballyPaused,
+  isSquareSyncTemporarilyPaused,
+  squareSyncForTienda,
+  squareSyncPausedPayload,
+} from '../../_lib/squareSync'
 
 export const maxDuration = 300
 
@@ -11,6 +16,10 @@ export async function GET(request) {
   }
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  if (isSquareSyncGloballyPaused()) {
+    return NextResponse.json(squareSyncPausedPayload({}, 'cron_square_sync'))
   }
 
   if (!process.env.SQUARE_ACCESS_TOKEN) {

@@ -2,299 +2,517 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import {
+  fetchSquareJson,
+  isSquareSyncGloballyPaused,
   isSquareSyncTemporarilyPaused,
+  listSquareSyncTiendas,
   resolveSquareTiendaByLocation,
-  squareSyncForTienda,
+  selectVinosBySquareIds,
+  squareCatalogUpdateForTiendaObjects,
   squareSyncPausedPayload,
 } from '../../_lib/squareSync'
 
-const SQUARE_ACCESS_TOKEN    = process.env.SQUARE_ACCESS_TOKEN
-const SQUARE_SIGNATURE_KEY   = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY
-const SQUARE_API_BASE        = 'https://connect.squareup.com'
+export const runtime = 'nodejs'
+export const maxDuration = 20
 
-// ── Signature verification ────────────────────────────────────────────────────
+const SQUARE_SIGNATURE_KEY = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY
+const SQUARE_API_BASE = 'https://connect.squareup.com'
+const LOG_SELECT = 'id, event_id, payment_id, order_id, tienda_slug, lineas, ok, error_msg'
+const PROCESSING_PREFIX = 'processing:'
+const PROCESSING_STALE_MS = 2 * 60 * 1000
+const HANDLED_TYPES = new Set([
+  'catalog.version.updated',
+  'inventory.count.updated',
+  'payment.updated',
+])
+
 function verifySignature(rawBody, signatureHeader, webhookUrl) {
   if (!SQUARE_SIGNATURE_KEY) {
     console.error('[square-webhook] SQUARE_WEBHOOK_SIGNATURE_KEY no configurada')
     return false
   }
+
   const expected = crypto
     .createHmac('sha256', SQUARE_SIGNATURE_KEY)
     .update(webhookUrl + rawBody)
     .digest('base64')
-  return expected === signatureHeader
+
+  const expectedBuffer = Buffer.from(expected)
+  const receivedBuffer = Buffer.from(signatureHeader || '')
+  return expectedBuffer.length === receivedBuffer.length &&
+    crypto.timingSafeEqual(expectedBuffer, receivedBuffer)
 }
 
-// ── Fetch order from Square API ───────────────────────────────────────────────
-async function fetchOrder(orderId) {
-  const res = await fetch(`${SQUARE_API_BASE}/v2/orders/${orderId}`, {
-    headers: {
-      Authorization: `Bearer ${SQUARE_ACCESS_TOKEN}`,
-      'Square-Version': '2024-01-18',
-      'Content-Type': 'application/json',
-    },
-  })
-  if (!res.ok) throw new Error(`Square Orders API ${res.status}: ${await res.text()}`)
-  const json = await res.json()
-  return json.order
+function json(payload, status = 200) {
+  return NextResponse.json(payload, { status })
 }
 
-// ── Catalog upsert handler ────────────────────────────────────────────────────
-async function handleCatalogUpdate() {
-  // Fetch all active tiendas with Square integration
-  const { data: tiendas, error: tiendasErr } = await supabaseAdmin
-    .from('tiendas')
-    .select('id, slug')
-    .eq('activo', true)
-
-  if (tiendasErr || !tiendas?.length) {
-    console.error('[square-webhook] No se encontraron tiendas activas:', tiendasErr?.message)
-    return NextResponse.json({ ok: true, skipped: 'no_tiendas' })
-  }
-
-  const results = []
-  for (const tienda of tiendas) {
-    if (isSquareSyncTemporarilyPaused(tienda)) {
-      console.warn(`[square-webhook] catalog.version.updated [${tienda.slug}]: pausa temporal activa`)
-      results.push({
-        slug: tienda.slug,
-        ...squareSyncPausedPayload(tienda, 'catalog.version.updated'),
-        insertados: 0,
-        actualizados: 0,
-        errores: 0,
-        total: 0,
-        stockSincronizados: 0,
-      })
-      continue
-    }
-
-    const { data: td } = await supabaseAdmin
-      .from('tiendas')
-      .select('square_access_token')
-      .eq('id', tienda.id)
-      .single()
-    const token = td?.square_access_token || SQUARE_ACCESS_TOKEN
-    if (!token) {
-      console.log(`[square-webhook] ${tienda.slug}: sin token, saltando`)
-      continue
-    }
-    const result = await squareSyncForTienda(tienda.id, tienda.slug, token)
-    console.log(`[square-webhook] catalog.version.updated [${tienda.slug}] → ${result.insertados} nuevos, ${result.actualizados} act., ${result.errores} errores`)
-    results.push({ slug: tienda.slug, ...result })
-  }
-
-  const totalErrores = results.reduce((s, r) => s + r.errores, 0)
-  return NextResponse.json({ ok: totalErrores === 0, results })
+function asRequired(value, fallback) {
+  const text = String(value || '').trim()
+  return text || fallback
 }
 
-// ── Inventory restock handler ─────────────────────────────────────────────────
-async function handleInventoryUpdate(event) {
-  const counts = event.data?.object?.inventory_counts || []
-  let actualizados = 0
-  const categoriasActualizadas = []
-  const tiendaCache = new Map()
-
-  for (const count of counts) {
-    if (count.state !== 'IN_STOCK') continue
-    const catalogId  = count.catalog_object_id
-    const nuevoStock = Math.max(0, parseInt(count.quantity, 10) || 0)
-    const locationId = count.location_id || event.location_id || null
-    const cacheKey = locationId || '__square_inventory_no_location__'
-
-    if (!tiendaCache.has(cacheKey)) {
-      tiendaCache.set(cacheKey, locationId ? await resolveSquareTiendaByLocation(locationId) : null)
-    }
-
-    const tienda = tiendaCache.get(cacheKey)
-    if ((tienda && isSquareSyncTemporarilyPaused(tienda)) || (!tienda && !locationId && isSquareSyncTemporarilyPaused('sibaris-gourmet'))) {
-      console.warn(`[square-webhook] inventory.count.updated [${tienda?.slug || 'sibaris-gourmet'}]: pausa temporal activa`)
-      continue
-    }
-
-    // inventory_counts también usa variation IDs — buscar por square_variation_id primero
-    let { data: vino } = await supabaseAdmin
-      .from('vinos_tienda')
-      .select('id, stock, categoria')
-      .eq('square_variation_id', catalogId)
-      .maybeSingle()
-    if (!vino) {
-      ;({ data: vino } = await supabaseAdmin
-        .from('vinos_tienda')
-        .select('id, stock, categoria')
-        .eq('square_catalog_id', catalogId)
-        .maybeSingle())
-    }
-
-    if (!vino) {
-      console.warn(`[square-webhook] inventory: ID no encontrado en vinos_tienda (buscado square_variation_id="${catalogId}" y square_catalog_id="${catalogId}")`)
-      continue
-    }
-
-    // Solo actualizamos si el stock sube (reposición) — las ventas las gestiona payment.updated
-    if (nuevoStock <= (vino.stock || 0)) continue
-
-    await supabaseAdmin
-      .from('vinos_tienda')
-      .update({ stock: nuevoStock, activo: true, updated_at: new Date().toISOString() })
-      .eq('id', vino.id)
-
-    actualizados++
-    categoriasActualizadas.push(vino.categoria || 'otro')
-  }
-
-  const nVinos = categoriasActualizadas.filter(c => c === 'vino').length
-  const nOtros = categoriasActualizadas.filter(c => c !== 'vino').length
-  console.log(`[square-webhook] inventory.count.updated: ${actualizados} productos actualizados (${nVinos} vino, ${nOtros} otro)`)
-  return NextResponse.json({ ok: true, actualizados })
+function processingMark() {
+  return `${PROCESSING_PREFIX}${Date.now()}`
 }
 
-// ── POST handler ──────────────────────────────────────────────────────────────
-export async function POST(request) {
-  if (!SQUARE_SIGNATURE_KEY) {
-    return NextResponse.json({ error: 'SQUARE_WEBHOOK_SIGNATURE_KEY no configurada' }, { status: 503 })
-  }
+function isDuplicateKeyError(error) {
+  return error?.code === '23505' || /duplicate key|unique constraint/i.test(error?.message || '')
+}
 
-  const rawBody = await request.text()
-  const sig     = request.headers.get('x-square-hmacsha256-signature') || ''
-  const url     = `${request.nextUrl.protocol}//${request.nextUrl.host}/api/webhooks/square`
+function isProcessingStale(errorMsg) {
+  if (!String(errorMsg || '').startsWith(PROCESSING_PREFIX)) return false
+  const startedAt = parseInt(String(errorMsg).slice(PROCESSING_PREFIX.length), 10)
+  return Number.isFinite(startedAt) && Date.now() - startedAt > PROCESSING_STALE_MS
+}
 
-  if (!verifySignature(rawBody, sig, url)) {
-    console.error('[square-webhook] Firma inválida')
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-  }
-
-  let event
-  try { event = JSON.parse(rawBody) } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
-
-  const eventId = event.event_id
-  const type    = event.type
-
-  // Catálogo: nuevo producto / modificación
-  if (type === 'catalog.version.updated') {
-    return handleCatalogUpdate()
-  }
-
-  // Reposición de stock
-  if (type === 'inventory.count.updated') {
-    return handleInventoryUpdate(event)
-  }
-
-  // Solo procesamos payment.updated con status COMPLETED
-  if (type !== 'payment.updated') {
-    return NextResponse.json({ ok: true, skipped: type })
-  }
-
-  const paymentStatus = event.data?.object?.payment?.status
-  if (paymentStatus !== 'COMPLETED') {
-    return NextResponse.json({ ok: true, skipped: `status:${paymentStatus}` })
-  }
-
-  // Idempotencia nivel evento: mismo event_id ya procesado
-  const { data: yaExiste } = await supabaseAdmin
+async function readSquareEventLog(eventId) {
+  const { data, error } = await supabaseAdmin
     .from('square_sync_log')
-    .select('id')
+    .select(LOG_SELECT)
     .eq('event_id', eventId)
     .maybeSingle()
 
-  if (yaExiste) {
-    return NextResponse.json({ ok: true, duplicate: 'event' })
+  if (error) throw new Error(`Leyendo square_sync_log: ${error.message}`)
+  return data
+}
+
+async function claimSquareEvent({ eventId, type, paymentId, orderId, tiendaSlug }) {
+  if (!eventId) return { claimed: true, log: null }
+
+  const row = {
+    event_id: eventId,
+    payment_id: asRequired(paymentId, `event:${eventId}`),
+    order_id: asRequired(orderId, type || 'unknown'),
+    tienda_slug: asRequired(tiendaSlug, 'unknown'),
+    lineas: [],
+    ok: false,
+    error_msg: processingMark(),
   }
 
-  const payment = event.data?.object?.payment
-  if (!payment?.order_id) {
-    return NextResponse.json({ ok: true, skipped: 'no order_id' })
-  }
-
-  const paymentId  = payment.id
-  const orderId    = payment.order_id
-  const locationId = payment.location_id || null
-
-  // Resolver tienda por square_location_id; fallback a la primera tienda activa con Square
-  let tiendaSlug = 'sibaris-gourmet'
-  if (locationId) {
-    const { data: tiendaPorLocation } = await supabaseAdmin
-      .from('tiendas')
-      .select('slug')
-      .eq('square_location_id', locationId)
-      .eq('activo', true)
-      .maybeSingle()
-    if (tiendaPorLocation) tiendaSlug = tiendaPorLocation.slug
-  }
-
-  if (isSquareSyncTemporarilyPaused({ slug: tiendaSlug })) {
-    console.warn(`[square-webhook] payment.updated [${tiendaSlug}]: pausa temporal activa; payment_id="${paymentId}"`)
-    return NextResponse.json(squareSyncPausedPayload({ slug: tiendaSlug }, type))
-  }
-
-  // Idempotencia nivel pago: mismo payment_id ya descontó stock en un evento anterior
-  const { data: pagoAnterior } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('square_sync_log')
-    .select('id, lineas')
-    .eq('payment_id', paymentId)
-    .eq('ok', true)
+    .insert(row)
+    .select(LOG_SELECT)
     .maybeSingle()
 
-  const yaDescontado = pagoAnterior?.lineas?.some(l => l.status === 'ok')
-  if (yaDescontado) {
-    await supabaseAdmin.from('square_sync_log').insert({
-      event_id:    eventId,
-      payment_id:  paymentId,
-      order_id:    orderId,
-      tienda_slug: tiendaSlug,
-      lineas:      [],
-      ok:          true,
-      error_msg:   'already_processed',
-    })
-    console.log(`[square-webhook] Pago ${paymentId} ya procesado, evento ${eventId} ignorado`)
-    return NextResponse.json({ ok: true, duplicate: 'payment', payment_id: paymentId })
+  if (!error) return { claimed: true, log: data }
+
+  if (!isDuplicateKeyError(error)) {
+    console.error('[square-webhook] No se pudo reclamar event_id:', error.message)
+    return {
+      claimed: false,
+      response: json({ ok: false, skipped: 'event_log_unavailable', event_id: eventId }),
+    }
   }
 
-  let order, lineas = [], errMsg = null
+  let existing
   try {
-    order = await fetchOrder(orderId)
+    existing = await readSquareEventLog(eventId)
+  } catch (readErr) {
+    console.error('[square-webhook] No se pudo leer event_id duplicado:', readErr.message)
+    return {
+      claimed: false,
+      response: json({ ok: true, duplicate: 'event_log_read_failed', event_id: eventId }),
+    }
+  }
+  if (!existing) return { claimed: true, log: null }
 
-    // Filter to sold item line items only
-    const lineItems = (order.line_items || []).filter(li =>
-      li.item_type === 'ITEM' && li.catalog_object_id
+  if (existing.ok) {
+    return {
+      claimed: false,
+      response: json({ ok: true, duplicate: 'event', event_id: eventId }),
+    }
+  }
+
+  if (String(existing.error_msg || '').startsWith(PROCESSING_PREFIX) && !isProcessingStale(existing.error_msg)) {
+    return {
+      claimed: false,
+      response: json({ ok: true, duplicate: 'event_in_progress', event_id: eventId }),
+    }
+  }
+
+  const { error: updateErr } = await supabaseAdmin
+    .from('square_sync_log')
+    .update({
+      payment_id: asRequired(paymentId, existing.payment_id || `event:${eventId}`),
+      order_id: asRequired(orderId, existing.order_id || type || 'unknown'),
+      tienda_slug: asRequired(tiendaSlug, existing.tienda_slug || 'unknown'),
+      lineas: existing.lineas || [],
+      ok: false,
+      error_msg: processingMark(),
+    })
+    .eq('event_id', eventId)
+
+  if (updateErr) {
+    console.error('[square-webhook] No se pudo reintentar event_id:', updateErr.message)
+    return {
+      claimed: false,
+      response: json({ ok: false, skipped: 'event_log_unavailable', event_id: eventId }),
+    }
+  }
+
+  return { claimed: true, log: existing }
+}
+
+async function finishSquareEvent(eventId, patch = {}) {
+  if (!eventId) return
+
+  const update = {}
+  for (const key of ['payment_id', 'order_id', 'tienda_slug', 'lineas', 'ok', 'error_msg']) {
+    if (patch[key] !== undefined) update[key] = patch[key]
+  }
+
+  if (!Object.keys(update).length) return
+
+  const { error } = await supabaseAdmin
+    .from('square_sync_log')
+    .update(update)
+    .eq('event_id', eventId)
+
+  if (error) console.error('[square-webhook] No se pudo cerrar square_sync_log:', error.message)
+}
+
+async function finishAndReturn(eventId, responsePayload, logPatch = {}, status = 200) {
+  await finishSquareEvent(eventId, logPatch)
+  return json(responsePayload, status)
+}
+
+async function fetchOrder(orderId, squareToken) {
+  if (!squareToken) throw new Error('Token de Square no configurado para obtener la orden')
+  const data = await fetchSquareJson(`${SQUARE_API_BASE}/v2/orders/${orderId}`, {
+    headers: {
+      Authorization: `Bearer ${squareToken}`,
+      'Square-Version': '2024-01-18',
+      'Content-Type': 'application/json',
+    },
+  }, 'Square Orders API')
+  return data.order
+}
+
+function extractCatalogObjectIds(event) {
+  const ids = []
+  const add = value => {
+    const id = String(value || '').trim()
+    if (id) ids.push(id)
+  }
+
+  const data = event.data || {}
+  const object = data.object || {}
+  const catalogObject = object.catalog_object || data.catalog_object || null
+
+  if (data.type === 'catalog_object') add(data.id)
+  if (catalogObject?.id) add(catalogObject.id)
+  if (object.catalog_object_id) add(object.catalog_object_id)
+  if (object.object?.id) add(object.object.id)
+  if (object.type === 'ITEM' || object.type === 'ITEM_VARIATION') add(object.id)
+
+  for (const item of object.catalog_objects || object.objects || []) add(item?.id)
+  return [...new Set(ids)]
+}
+
+function parseQuantity(value) {
+  const qty = parseInt(value, 10)
+  return Number.isFinite(qty) && qty > 0 ? qty : 1
+}
+
+function groupInventoryCounts(event) {
+  const groups = new Map()
+  const counts = event.data?.object?.inventory_counts || []
+
+  for (const count of counts) {
+    if (count.state !== 'IN_STOCK' || !count.catalog_object_id) continue
+    const locationId = count.location_id || event.location_id || null
+    const groupKey = locationId || '__no_location__'
+    if (!groups.has(groupKey)) groups.set(groupKey, { locationId, counts: new Map() })
+    groups.get(groupKey).counts.set(count.catalog_object_id, Math.max(0, parseInt(count.quantity, 10) || 0))
+  }
+
+  return [...groups.values()]
+}
+
+async function handleCatalogUpdate(event, eventId) {
+  const objectIds = extractCatalogObjectIds(event)
+  if (!objectIds.length) {
+    return finishAndReturn(
+      eventId,
+      { ok: true, skipped: 'catalog_update_without_object_ids', fullSync: false },
+      {
+        ok: true,
+        lineas: [{ status: 'skipped', reason: 'catalog_update_without_object_ids' }],
+        error_msg: 'catalog_update_without_object_ids',
+      }
     )
+  }
 
-    // Decrementar stock por cada línea de venta
-    for (const li of lineItems) {
-      const catalogId = li.catalog_object_id
-      const qty       = parseInt(li.quantity, 10) || 1
+  try {
+    const tiendas = await listSquareSyncTiendas()
+    if (!tiendas.length) {
+      return finishAndReturn(
+        eventId,
+        { ok: true, skipped: 'no_square_tiendas', fullSync: false, objectIds },
+        { ok: true, lineas: [], error_msg: 'no_square_tiendas' }
+      )
+    }
 
-      // catalog_object_id en pedidos Square es el ID de variación (ITEM_VARIATION),
-      // no el ITEM — buscamos primero por square_variation_id y usamos square_catalog_id como fallback
-      let { data: vino } = await supabaseAdmin
-        .from('vinos_tienda')
-        .select('id, nombre, stock, categoria')
-        .eq('square_variation_id', catalogId)
-        .maybeSingle()
-      if (!vino) {
-        ;({ data: vino } = await supabaseAdmin
-          .from('vinos_tienda')
-          .select('id, nombre, stock, categoria')
-          .eq('square_catalog_id', catalogId)
-          .maybeSingle())
+    const results = []
+    for (const tienda of tiendas) {
+      const result = await squareCatalogUpdateForTiendaObjects(tienda.id, tienda.slug, tienda.squareToken, objectIds)
+      results.push({ slug: tienda.slug, ...result })
+    }
+
+    const errores = results.reduce((sum, result) => sum + (result.errores || 0), 0)
+    return finishAndReturn(
+      eventId,
+      { ok: errores === 0, fullSync: false, objectIds, results },
+      {
+        ok: errores === 0,
+        lineas: results,
+        error_msg: errores ? 'catalog_object_update_errors' : null,
+      }
+    )
+  } catch (error) {
+    console.error('[square-webhook] Error en catalog update:', error.message)
+    return finishAndReturn(
+      eventId,
+      { ok: false, error: error.message, fullSync: false },
+      { ok: false, lineas: [], error_msg: error.message }
+    )
+  }
+}
+
+async function handleInventoryUpdate(event, eventId) {
+  const groups = groupInventoryCounts(event)
+  if (!groups.length) {
+    return finishAndReturn(
+      eventId,
+      { ok: true, skipped: 'no_inventory_counts' },
+      { ok: true, lineas: [], error_msg: 'no_inventory_counts' }
+    )
+  }
+
+  const lineas = []
+  let actualizados = 0
+  let errores = 0
+
+  try {
+    for (const group of groups) {
+      const tienda = await resolveSquareTiendaByLocation(group.locationId)
+      if (!tienda) {
+        for (const [catalogId, quantity] of group.counts) {
+          lineas.push({ catalog_object_id: catalogId, quantity, status: 'skipped', reason: 'no_tienda_for_location' })
+        }
+        continue
       }
 
+      if (isSquareSyncTemporarilyPaused(tienda)) {
+        for (const [catalogId, quantity] of group.counts) {
+          lineas.push({ catalog_object_id: catalogId, quantity, tienda_slug: tienda.slug, status: 'skipped', reason: 'square_sync_paused' })
+        }
+        continue
+      }
+
+      const catalogIds = [...group.counts.keys()]
+      const vinosBySquareId = await selectVinosBySquareIds(tienda.id, catalogIds, catalogIds)
+      const now = new Date().toISOString()
+
+      for (const [catalogId, nuevoStock] of group.counts) {
+        const vino = vinosBySquareId.get(catalogId)
+        if (!vino) {
+          lineas.push({ catalog_object_id: catalogId, quantity: nuevoStock, tienda_slug: tienda.slug, status: 'not_found' })
+          continue
+        }
+
+        const activo = nuevoStock > 0
+        if ((vino.stock || 0) === nuevoStock && Boolean(vino.activo) === activo) {
+          lineas.push({
+            catalog_object_id: catalogId,
+            quantity: nuevoStock,
+            tienda_slug: tienda.slug,
+            vino_id: vino.id,
+            status: 'unchanged',
+          })
+          continue
+        }
+
+        const { error } = await supabaseAdmin
+          .from('vinos_tienda')
+          .update({ stock: nuevoStock, activo, updated_at: now })
+          .eq('id', vino.id)
+
+        if (error) errores++
+        else actualizados++
+
+        lineas.push({
+          catalog_object_id: catalogId,
+          quantity: nuevoStock,
+          tienda_slug: tienda.slug,
+          vino_id: vino.id,
+          vino_nombre: vino.nombre,
+          categoria: vino.categoria || 'otro',
+          stock_antes: vino.stock,
+          stock_despues: nuevoStock,
+          status: error ? 'error' : 'ok',
+        })
+      }
+    }
+
+    return finishAndReturn(
+      eventId,
+      { ok: errores === 0, actualizados, lineas },
+      { ok: errores === 0, lineas, error_msg: errores ? 'inventory_update_errors' : null }
+    )
+  } catch (error) {
+    console.error('[square-webhook] Error en inventory update:', error.message)
+    return finishAndReturn(
+      eventId,
+      { ok: false, error: error.message, actualizados, lineas },
+      { ok: false, lineas, error_msg: error.message }
+    )
+  }
+}
+
+async function handlePaymentUpdated(eventId, payment) {
+  const paymentId = payment.id
+  const orderId = payment.order_id
+  const locationId = payment.location_id || null
+
+  let tienda
+  try {
+    tienda = await resolveSquareTiendaByLocation(locationId)
+  } catch (error) {
+    console.error('[square-webhook] Error resolviendo tienda:', error.message)
+    return finishAndReturn(
+      eventId,
+      { ok: false, error: error.message },
+      { payment_id: paymentId, order_id: orderId, ok: false, error_msg: error.message }
+    )
+  }
+
+  if (!tienda) {
+    return finishAndReturn(
+      eventId,
+      { ok: true, skipped: 'no_tienda_for_location', payment_id: paymentId },
+      {
+        payment_id: paymentId,
+        order_id: orderId,
+        tienda_slug: 'unknown',
+        lineas: [],
+        ok: true,
+        error_msg: 'no_tienda_for_location',
+      }
+    )
+  }
+
+  if (isSquareSyncTemporarilyPaused(tienda)) {
+    console.warn(`[square-webhook] payment.updated [${tienda.slug}]: pausa temporal activa; payment_id="${paymentId}"`)
+    return finishAndReturn(
+      eventId,
+      squareSyncPausedPayload(tienda, 'payment.updated'),
+      {
+        payment_id: paymentId,
+        order_id: orderId,
+        tienda_slug: tienda.slug,
+        lineas: [],
+        ok: true,
+        error_msg: 'square_sync_temporarily_paused',
+      }
+    )
+  }
+
+  if (!tienda.squareToken) {
+    return finishAndReturn(
+      eventId,
+      { ok: false, skipped: 'no_square_token', payment_id: paymentId },
+      {
+        payment_id: paymentId,
+        order_id: orderId,
+        tienda_slug: tienda.slug,
+        lineas: [],
+        ok: false,
+        error_msg: 'no_square_token',
+      }
+    )
+  }
+
+  try {
+    const { data: pagosAnteriores, error: pagoErr } = await supabaseAdmin
+      .from('square_sync_log')
+      .select('id, lineas')
+      .eq('payment_id', paymentId)
+      .eq('tienda_slug', tienda.slug)
+      .eq('ok', true)
+
+    if (pagoErr) throw new Error(`Leyendo pagos previos: ${pagoErr.message}`)
+
+    const yaDescontado = (pagosAnteriores || []).some(log =>
+      Array.isArray(log.lineas) && log.lineas.some(linea => linea.status === 'ok')
+    )
+
+    if (yaDescontado) {
+      console.log(`[square-webhook] Pago ${paymentId} ya procesado, evento ${eventId} ignorado`)
+      return finishAndReturn(
+        eventId,
+        { ok: true, duplicate: 'payment', payment_id: paymentId },
+        {
+          payment_id: paymentId,
+          order_id: orderId,
+          tienda_slug: tienda.slug,
+          lineas: [],
+          ok: true,
+          error_msg: 'already_processed',
+        }
+      )
+    }
+
+    const order = await fetchOrder(orderId, tienda.squareToken)
+    const quantities = new Map()
+    for (const lineItem of order.line_items || []) {
+      if (lineItem.item_type !== 'ITEM' || !lineItem.catalog_object_id) continue
+      quantities.set(
+        lineItem.catalog_object_id,
+        (quantities.get(lineItem.catalog_object_id) || 0) + parseQuantity(lineItem.quantity)
+      )
+    }
+
+    const lineas = []
+    const catalogIds = [...quantities.keys()]
+    const vinosBySquareId = await selectVinosBySquareIds(tienda.id, catalogIds, catalogIds)
+    const now = new Date().toISOString()
+
+    for (const [catalogId, qty] of quantities) {
+      const vino = vinosBySquareId.get(catalogId)
       if (!vino) {
-        console.warn(`[square-webhook] payment: ID no encontrado en vinos_tienda (buscado square_variation_id="${catalogId}" y square_catalog_id="${catalogId}") — ¿square_variation_id sin poblar? Ejecuta sync de catálogo.`)
-        lineas.push({ catalog_object_id: catalogId, quantity: qty, status: 'not_found' })
+        lineas.push({ catalog_object_id: catalogId, quantity: qty, tienda_slug: tienda.slug, status: 'not_found' })
         continue
       }
 
       const nuevoStock = Math.max(0, (vino.stock || 0) - qty)
+      const activo = nuevoStock > 0
+      if ((vino.stock || 0) === nuevoStock && Boolean(vino.activo) === activo) {
+        lineas.push({
+          catalog_object_id: catalogId,
+          quantity: qty,
+          tienda_slug: tienda.slug,
+          vino_id: vino.id,
+          vino_nombre: vino.nombre,
+          categoria: vino.categoria || 'otro',
+          stock_antes: vino.stock,
+          stock_despues: nuevoStock,
+          status: 'unchanged',
+        })
+        continue
+      }
+
       const { error: updateErr } = await supabaseAdmin
         .from('vinos_tienda')
-        .update({ stock: nuevoStock, activo: nuevoStock > 0, updated_at: new Date().toISOString() })
+        .update({ stock: nuevoStock, activo, updated_at: now })
         .eq('id', vino.id)
 
       lineas.push({
         catalog_object_id: catalogId,
         quantity: qty,
+        tienda_slug: tienda.slug,
         vino_id: vino.id,
         vino_nombre: vino.nombre,
         categoria: vino.categoria || 'otro',
@@ -303,31 +521,102 @@ export async function POST(request) {
         status: updateErr ? 'error' : 'ok',
       })
     }
-  } catch (e) {
-    errMsg = e.message
-    console.error('[square-webhook] Error procesando pago:', e.message)
+
+    const hasError = lineas.some(linea => linea.status === 'error')
+    const actualizados = lineas.filter(linea => linea.status === 'ok').length
+    const nVinos = lineas.filter(linea => linea.status === 'ok' && linea.categoria === 'vino').length
+    const nOtros = lineas.filter(linea => linea.status === 'ok' && linea.categoria !== 'vino').length
+    console.log(`[square-webhook] Pago ${paymentId}: ${actualizados}/${lineas.length} productos actualizados (${nVinos} vino, ${nOtros} otro)`)
+
+    return finishAndReturn(
+      eventId,
+      { ok: !hasError, lineas },
+      {
+        payment_id: paymentId,
+        order_id: orderId,
+        tienda_slug: tienda.slug,
+        lineas,
+        ok: !hasError,
+        error_msg: hasError ? 'payment_update_errors' : null,
+      }
+    )
+  } catch (error) {
+    console.error('[square-webhook] Error procesando pago:', error.message)
+    return finishAndReturn(
+      eventId,
+      { ok: false, error: error.message, payment_id: paymentId },
+      {
+        payment_id: paymentId,
+        order_id: orderId,
+        tienda_slug: tienda.slug,
+        lineas: [],
+        ok: false,
+        error_msg: error.message,
+      }
+    )
+  }
+}
+
+export async function POST(request) {
+  if (!SQUARE_SIGNATURE_KEY) {
+    return json({ error: 'SQUARE_WEBHOOK_SIGNATURE_KEY no configurada' }, 503)
   }
 
-  // Log the processed event (for idempotency + audit)
-  await supabaseAdmin.from('square_sync_log').insert({
-    event_id:    eventId,
-    payment_id:  paymentId,
-    order_id:    orderId,
-    tienda_slug: tiendaSlug,
-    lineas,
-    ok:          !errMsg,
-    error_msg:   errMsg,
-  })
+  const rawBody = await request.text()
+  const sig = request.headers.get('x-square-hmacsha256-signature') || ''
+  const url = `${request.nextUrl.protocol}//${request.nextUrl.host}/api/webhooks/square`
 
-  if (errMsg) {
-    return NextResponse.json({ error: errMsg }, { status: 500 })
+  if (!verifySignature(rawBody, sig, url)) {
+    console.error('[square-webhook] Firma invalida')
+    return json({ error: 'Invalid signature' }, 401)
   }
 
-  const lineasOk    = lineas.filter(l => l.status === 'ok')
-  const actualizados = lineasOk.length
-  const nVinos  = lineasOk.filter(l => l.categoria === 'vino').length
-  const nOtros  = lineasOk.filter(l => l.categoria !== 'vino').length
-  console.log(`[square-webhook] Pago ${paymentId}: ${actualizados}/${lineas.length} productos actualizados (${nVinos} vino, ${nOtros} otro)`)
+  let event
+  try {
+    event = JSON.parse(rawBody)
+  } catch {
+    return json({ error: 'Invalid JSON' }, 400)
+  }
 
-  return NextResponse.json({ ok: true, lineas })
+  const eventId = event.event_id || event.id || null
+  const type = event.type
+
+  if (isSquareSyncGloballyPaused()) {
+    return json({ ...squareSyncPausedPayload({}, type), event_id: eventId })
+  }
+
+  if (!HANDLED_TYPES.has(type)) {
+    return json({ ok: true, skipped: type })
+  }
+
+  if (type === 'payment.updated') {
+    const payment = event.data?.object?.payment
+    const paymentStatus = payment?.status
+    if (paymentStatus !== 'COMPLETED') {
+      return json({ ok: true, skipped: `status:${paymentStatus}` })
+    }
+
+    if (!payment?.id || !payment?.order_id) {
+      return json({ ok: true, skipped: 'missing payment id or order_id' })
+    }
+
+    const claim = await claimSquareEvent({
+      eventId,
+      type,
+      paymentId: payment.id,
+      orderId: payment.order_id,
+      tiendaSlug: 'unknown',
+    })
+    if (!claim.claimed) return claim.response
+    return handlePaymentUpdated(eventId, payment)
+  }
+
+  const claim = await claimSquareEvent({ eventId, type, tiendaSlug: 'webhook' })
+  if (!claim.claimed) return claim.response
+
+  if (type === 'catalog.version.updated') {
+    return handleCatalogUpdate(event, eventId)
+  }
+
+  return handleInventoryUpdate(event, eventId)
 }
