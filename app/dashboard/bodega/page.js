@@ -1,9 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
-import { getEffectiveRestaurantEmail, puedeVerTrazabilidad } from '../../demo'
+import { getEffectiveRestaurantEmail } from '../../demo'
 import { useEconomicSettings } from '../../lib/economicSettings'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { cargarDemoDashboard } from '../../lib/demoDashboardClient'
@@ -124,7 +123,6 @@ export default function ControlBodega() {
   const [guardando, setGuardando] = useState(false)
   const [guardadoBodega, setGuardadoBodega] = useState('')
   const [error, setError] = useState('')
-  const [sessionEmail, setSessionEmail] = useState('')
   const [aplicandoPrecio, setAplicandoPrecio] = useState(null)
   const [ajustesBodega, setAjustesBodega] = useState({ margen: 65, copas: 5 })
 
@@ -139,7 +137,6 @@ export default function ControlBodega() {
     async function cargar() {
       const { email, restauranteId, isDemo, user } = await getEffectiveRestaurantEmail(supabase)
       if (!email && !restauranteId) { window.location.href = '/login'; return }
-      setSessionEmail(user?.email || email || '')
       if (isDemo) {
         const demo = await cargarDemoDashboard(email)
         if (demo?.restaurante) {
@@ -765,9 +762,6 @@ export default function ControlBodega() {
             >
               Precios
             </button>
-            {puedeVerTrazabilidad(sessionEmail) && (
-              <Link className={styles.ghost} href="/dashboard/trazabilidad">Trazabilidad</Link>
-            )}
           </div>
         </div>
 
