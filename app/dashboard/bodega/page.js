@@ -1,9 +1,9 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
-import { getEffectiveRestaurantEmail, puedeVerTrazabilidad } from '../../demo'
+import { getEffectiveRestaurantEmail } from '../../demo'
+import { useEconomicSettings } from '../../lib/economicSettings'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { cargarDemoDashboard } from '../../lib/demoDashboardClient'
 import {
@@ -103,6 +103,7 @@ function planReposicion(vino, ventasMarcadas = 0) {
 
 export default function ControlBodega() {
   const [restaurante, setRestaurante] = useState(null)
+  const { settings: economicSettings, guardarAjustes, apiDisponible } = useEconomicSettings(restaurante?.id || null)
   const [vinos, setVinos] = useState([])
   const [proveedoresContacto, setProveedoresContacto] = useState([])
   const [propuestas, setPropuestas] = useState([])
@@ -122,15 +123,20 @@ export default function ControlBodega() {
   const [guardando, setGuardando] = useState(false)
   const [guardadoBodega, setGuardadoBodega] = useState('')
   const [error, setError] = useState('')
-  const [sessionEmail, setSessionEmail] = useState('')
   const [aplicandoPrecio, setAplicandoPrecio] = useState(null)
   const [ajustesBodega, setAjustesBodega] = useState({ margen: 65, copas: 5 })
+
+  useEffect(() => {
+    setAjustesBodega({
+      margen: economicSettings.margen_objetivo_botella_pct,
+      copas: economicSettings.copas_por_botella,
+    })
+  }, [economicSettings.margen_objetivo_botella_pct, economicSettings.copas_por_botella])
 
   useEffect(() => {
     async function cargar() {
       const { email, restauranteId, isDemo, user } = await getEffectiveRestaurantEmail(supabase)
       if (!email && !restauranteId) { window.location.href = '/login'; return }
-      setSessionEmail(user?.email || email || '')
       if (isDemo) {
         const demo = await cargarDemoDashboard(email)
         if (demo?.restaurante) {
@@ -151,12 +157,6 @@ export default function ControlBodega() {
         : await queryRestaurante.eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
-        try {
-          const guardados = JSON.parse(window.localStorage.getItem(`precios_margenes_${rest.id}`) || '{}')
-          if (guardados.margen || guardados.copas) {
-            setAjustesBodega({ margen: Number(guardados.margen) || 65, copas: Number(guardados.copas) || 5 })
-          }
-        } catch {}
         const desdeActividad = actividadRealDesdeISO(rest)
         let ventasQuery = Promise.resolve({ data: [] })
         if (desdeActividad) {
@@ -762,9 +762,6 @@ export default function ControlBodega() {
             >
               Precios
             </button>
-            {puedeVerTrazabilidad(sessionEmail) && (
-              <Link className={styles.ghost} href="/dashboard/trazabilidad">Trazabilidad</Link>
-            )}
           </div>
         </div>
 
@@ -860,7 +857,9 @@ export default function ControlBodega() {
             description="Ajusta el criterio de cálculo. Los cambios se reflejan en la columna PVP sugerido de la tabla."
           >
             <PreciosPanel
-              restauranteId={restaurante.id}
+              settings={economicSettings}
+              guardarAjustes={guardarAjustes}
+              apiDisponible={apiDisponible}
               vinos={datos.activos}
               onPreciosActualizados={({ id, precio_botella, precio_copa }) => {
                 setVinos(prev => prev.map(v => v.id === id ? { ...v, precio_botella, precio_copa } : v))
