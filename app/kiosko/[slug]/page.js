@@ -9,7 +9,7 @@ import styles from './kiosko.module.css'
 
 const IDLE_TIMEOUT_MS = 60_000
 const SHOWCASE_INTERVAL_MS = 7_000
-const MOBILE_SELECTION_MAX = 6
+const MOBILE_SELECTION_MAX = 20
 const COUNTER_ORDERS_IN_DEVELOPMENT = true
 
 const TIPO_LABELS = {
@@ -1251,54 +1251,45 @@ const CESTA_SHAPE = {
 function cestaTargets(presupuesto, ocasionId, sinAlcohol) {
   const shape = CESTA_SHAPE[ocasionId] || CESTA_SHAPE.capricho
   const budget = Math.max(10, Number(presupuesto) || 50)
-  const baseItems =
-    budget <= 30 ? 3 :
-    budget <= 50 ? 4 :
-    budget <= 75 ? 5 :
-    budget <= 100 ? 6 :
-    Math.min(56, 6 + Math.floor((budget - 100) / 20))
+  const cajaCost = 8
+  const productBudget = Math.max(2, budget - cajaCost)
+  const ceiling = productBudget        // never exceed for products
+  const objetivo = productBudget * 0.98  // 2 % cushion to avoid float overshoots
 
-  const targetItems = clampNumber(baseItems + shape.itemOffset, 2, 60)
+  // targetWines uses productBudget (= budget - 8) to mirror original budget thresholds
   let targetWines = sinAlcohol ? 0 : 1
   if (!sinAlcohol) {
     targetWines =
-      budget >= 900 ? 18 :
-      budget >= 700 ? 15 :
-      budget >= 500 ? 12 :
-      budget >= 350 ? 9 :
-      budget >= 220 ? 6 :
-      budget >= 140 ? 4 :
-      ocasionId === 'compartir' && budget >= 75 ? 2 :
-      ocasionId !== 'impresionar' && budget >= 90 ? 2 :
-      budget >= 120 ? 2 :
+      productBudget >= 892 ? 18 :
+      productBudget >= 692 ? 15 :
+      productBudget >= 492 ? 12 :
+      productBudget >= 342 ? 9 :
+      productBudget >= 212 ? 6 :
+      productBudget >= 132 ? 4 :
+      (ocasionId === 'compartir' && productBudget >= 67) ? 2 :
+      (ocasionId !== 'impresionar' && productBudget >= 82) ? 2 :
+      productBudget >= 112 ? 2 :
       1
 
-    if (ocasionId === 'compartir' && budget >= 140) targetWines += budget >= 500 ? 2 : 1
-    if (ocasionId === 'enamorar' && budget >= 220) targetWines -= budget >= 500 ? 2 : 1
-    targetWines = clampNumber(targetWines + shape.wineBias, 1, Math.max(1, targetItems - 3))
+    if (ocasionId === 'compartir' && productBudget >= 132) targetWines += productBudget >= 492 ? 2 : 1
+    if (ocasionId === 'enamorar' && productBudget >= 212) targetWines -= productBudget >= 492 ? 2 : 1
+    targetWines = clampNumber(targetWines + shape.wineBias, 1, 18)
   }
 
-  const wineBudgetCap = targetWines > 0
-    ? Math.min(budget * 0.62, Math.max(18 * targetWines, budget * shape.wineShare))
-    : 0
-  const targetWinePrice = targetWines > 0
-    ? Math.max(12, Math.min(wineBudgetCap / targetWines, budget * 0.38) * shape.premiumBias)
-    : 0
-  const maxWineUnitPrice = targetWines > 0
-    ? Math.max(18, Math.min(wineBudgetCap, Math.max(targetWinePrice * 2.2, budget >= 700 ? 90 : budget >= 250 ? 60 : 18)))
-    : 0
-  const gourmetSlots = Math.max(1, targetItems - targetWines)
-  const gourmetBudget = Math.max(0, budget - wineBudgetCap)
+  // Price range for each wine: wineShare of productBudget, divided per bottle
+  const wineQuota = productBudget * shape.wineShare
+  const wineUnitQuota = wineQuota / Math.max(1, targetWines)
+  const winePriceMin = Math.max(5, wineUnitQuota * 0.70)
+  const winePriceMax = Math.max(winePriceMin + 2, wineUnitQuota)
 
   return {
-    targetItems,
-    maxItems: Math.min(72, Math.max(targetItems + (budget >= 80 ? 1 : 0), targetItems + Math.floor(budget / 80))),
+    cajaCost,
+    ceiling,
+    objetivo,
     targetWines,
-    wineBudgetCap,
-    targetWinePrice,
-    maxWineUnitPrice,
-    targetGourmetPrice: clampNumber(gourmetBudget / gourmetSlots, 5, 55),
-    targetSpend: budget <= 100 ? budget * 0.9 : budget * 0.88,
+    winePriceMin,
+    winePriceMax,
+    maxItems: 20,
   }
 }
 
@@ -1307,46 +1298,38 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
   const tiposOk = ocasion?.tipos ?? []
   const avoidSet = new Set((evitarIds || []).map(id => String(id)))
   const targets = cestaTargets(presupuesto, ocasionId, sinAlcohol)
-  const tolerance = 0.001  // solo para imprecisión de punto flotante, no margen comercial
+  const tolerance = 0.001
+  const productCeiling = targets.ceiling  // presupuesto - 8; never exceed for products
 
-  // Filter wines: must fit within 80% of budget so gourmet always gets room
+  // ── 1. Filter and score wines ──
   let wines = vinos.filter(v => (
     v.activo &&
     Number(v.stock) > 0 &&
-    Number(v.precio_pvp) > 0 &&
-    Number(v.precio_pvp) <= targets.maxWineUnitPrice
+    Number(v.precio_pvp) > 0
   ))
-  if (!wines.length) {
-    wines = vinos.filter(v => v.activo && Number(v.stock) > 0 && Number(v.precio_pvp) > 0 && Number(v.precio_pvp) <= presupuesto * 0.75)
-  }
-
-  if (sinAlcohol) {
-    wines = wines.filter(v => v.tipo === 'sin_alcohol')
-  }
+  if (sinAlcohol) wines = wines.filter(v => v.tipo === 'sin_alcohol')
   wines = withoutAvoidIfEnough(wines, avoidSet, Math.max(1, targets.targetWines))
-  // vegano en vinos: no se puede garantizar sin etiqueta explícita — se omite el filtro de vino
 
-  // Score wines using index-based shuffle (id is UUID, not numeric)
   wines = wines.map((v, i) => {
     let score = 0
     if (tiposOk.includes(v.tipo)) score += 10
+    const price = Number(v.precio_pvp)
+    // Bonus for landing inside the target price band
+    if (price >= targets.winePriceMin && price <= targets.winePriceMax) {
+      score += 15
+    } else if (price < targets.winePriceMin) {
+      score += Math.max(0, 8 - (targets.winePriceMin - price) * 0.4)
+    } else {
+      score += Math.max(0, 8 - (price - targets.winePriceMax) * 0.4)
+    }
     if (ocasionId === 'enamorar') {
       const txt = normalizarTexto(`${v.nombre || ''} ${v.descripcion || ''} ${v.notas_cata || ''}`)
-      // Nombres o etiquetas con carga romántica
       if (/amor|amour|enamorar|pasion|passion|seducc|tentac|encanto|deseo|noche|luna|beso|venus|eros|roman|intim|secret|magia|magico|misterio|capricho|placer|atardecer|medianoch|flor\b|florido|primaver/.test(txt)) score += 7
-      // Notas de cata florales o de fruta roja delicada
       if (/floral|petalo|rosa\b|violeta|lavanda|jazmin|nectar|fresa|frambuesa|cereza|frutos\s*rojos/.test(txt)) score += 4
     }
     if (ocasionId === 'impresionar') {
       const txt = normalizarTexto(`${v.nombre || ''} ${v.notas_cata || ''} ${v.descripcion || ''}`)
       if (/crianza|reserva|gran reserva|barrica|roble/.test(txt)) score += 6
-      score += Math.max(0, 8 - Math.abs(Number(v.precio_pvp) - targets.targetWinePrice) * 0.25)
-    }
-    if (ocasionId === 'capricho') {
-      score += Math.max(0, 8 - Math.abs(Number(v.precio_pvp) - targets.targetWinePrice) * 0.3)
-    }
-    if (ocasionId !== 'impresionar' && ocasionId !== 'capricho') {
-      score += Math.max(0, 6 - Math.abs(Number(v.precio_pvp) - targets.targetWinePrice) * 0.25)
     }
     if (avoidSet.has(String(v.id))) score -= 12
     score += stableNoise(v.id || v.nombre || i, semilla) * 7
@@ -1354,27 +1337,37 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
   }).sort((a, b) => b._score - a._score)
 
   const basket = []
-  let total = 0
+  let productTotal = 0
 
-  for (const wine of wines) {
+  // ── 2. Pick wines within price range ──
+  // Prefer the target band; fall back to a wider range if not enough candidates
+  let winesInRange = wines.filter(v => {
+    const p = Number(v.precio_pvp)
+    return p >= targets.winePriceMin && p <= targets.winePriceMax + tolerance
+  })
+  if (winesInRange.length < targets.targetWines) {
+    winesInRange = wines.filter(v => Number(v.precio_pvp) <= targets.winePriceMax * 1.3 + tolerance)
+  }
+  if (!winesInRange.length) winesInRange = wines
+
+  for (const wine of winesInRange) {
     if (basket.filter(b => b._kind === 'vino').length >= targets.targetWines) break
-    if (total + Number(wine.precio_pvp) <= targets.wineBudgetCap + tolerance) {
+    if (productTotal + Number(wine.precio_pvp) <= productCeiling + tolerance) {
       basket.push(wine)
-      total += Number(wine.precio_pvp)
+      productTotal += Number(wine.precio_pvp)
     }
   }
 
   if (!sinAlcohol && !basket.some(b => b._kind === 'vino')) {
-    const fallbackWine = wines.find(w => Number(w.precio_pvp) <= presupuesto * 0.75)
+    const fallbackWine = wines.find(w => Number(w.precio_pvp) <= productCeiling)
     if (fallbackWine) {
       basket.push(fallbackWine)
-      total += Number(fallbackWine.precio_pvp)
+      productTotal += Number(fallbackWine.precio_pvp)
     }
   }
 
-  // Types of wines selected — used to score gourmet by pairing affinity
+  // ── 3. Prepare and score gourmet candidates ──
   const tiposVinos = basket.filter(b => b._kind === 'vino').map(v => v.tipo).filter(Boolean)
-  // When no wines (sin_alcohol basket), use 'sin_alcohol' so pairing notes stay varied
   const tiposParaMaridaje = tiposVinos.length > 0 ? tiposVinos : sinAlcohol ? ['sin_alcohol'] : []
   const ocasionBoost = OCASION_GOURMET_BOOST[ocasionId] || {}
 
@@ -1386,25 +1379,17 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
     })
     .filter(g => {
       if (Number(g.precio_pvp) <= 0) return false
-      // Filtro sin alcohol: excluir bebidas con alcohol (flag manual o categoría bebida)
       if (sinAlcohol) {
         if (g.con_alcohol === true) return false
         if (g.con_alcohol === null && g._cat === 'bebida') return false
       }
-      // Filtro vegano: estricto — solo productos con es_vegano === true confirmado
       if (vegano && g.es_vegano !== true) return false
-      // Filtro sin gluten: estricto — solo productos con sin_gluten === true confirmado
       if (sinGluten && g.sin_gluten !== true) return false
       return true
     })
 
-  gourmetCandidates = withoutAvoidIfEnough(
-    gourmetCandidates,
-    avoidSet,
-    Math.max(1, targets.targetItems - basket.length)
-  )
+  gourmetCandidates = withoutAvoidIfEnough(gourmetCandidates, avoidSet, 3)
 
-  // Score gourmet items: affinity with wine types + occasion boost + aphrodisiac boost + shuffle noise
   const scoredGourmet = gourmetCandidates
     .map((g, i) => {
       const afinidad = tiposVinos.reduce((sum, tipo) => sum + (AFINIDAD_VINO_GOURMET[tipo]?.[g._cat] || 0), 0)
@@ -1412,83 +1397,99 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
       const afroBoost = (ocasionId === 'enamorar' && esAfrodisiaco(g.nombre, g.descripcion)) ? 6 : 0
       const noise = stableNoise(g.id || g.nombre || i, semilla)
       const avoidPenalty = avoidSet.has(String(g.id)) ? 7 : 0
-      const priceScore = Math.max(0, 5 - Math.abs(Number(g.precio_pvp) - targets.targetGourmetPrice) * 0.12)
-      return { ...g, _afinidad: afinidad + boost + afroBoost + priceScore + noise * 4 - avoidPenalty, _esAfro: afroBoost > 0 }
+      return { ...g, _afinidad: afinidad + boost + afroBoost + noise * 3 - avoidPenalty, _esAfro: afroBoost > 0 }
     })
     .sort((a, b) => b._afinidad - a._afinidad)
 
-  // Max 1 item per gourmet category to guarantee variety (no basket full of trufa)
-  const catsUsadas = new Set()
-  for (const item of scoredGourmet) {
-    if (catsUsadas.has(item._cat)) continue
-    if (total + Number(item.precio_pvp) <= presupuesto + tolerance) {
-      const razon = (item._esAfro && RAZON_AFRODISIACO[item._cat])
-        ? RAZON_AFRODISIACO[item._cat]
-        : razonGourmetItem(item._cat, tiposParaMaridaje)
-      basket.push({ ...item, _kind: 'gourmet', _razon: razon })
-      total += Number(item.precio_pvp)
-      catsUsadas.add(item._cat)
-      if (basket.length >= targets.targetItems) break
-    }
+  // ── 4. First pass: one per category (variety), most expensive per category ──
+  // catOrder respects affinity ranking (scoredGourmet is sorted by afinidad)
+  const catOrder = []
+  const seenCats = new Set()
+  for (const g of scoredGourmet) {
+    if (!seenCats.has(g._cat)) { catOrder.push(g._cat); seenCats.add(g._cat) }
   }
 
-  // Second pass: if budget still has room, allow a second item per cat (no repeating same product)
   const usadosIds = new Set(basket.map(b => String(b.id)))
-  for (const item of scoredGourmet) {
+
+  for (const cat of catOrder) {
     if (basket.length >= targets.maxItems) break
-    if (usadosIds.has(String(item.id))) continue
-    if (total + Number(item.precio_pvp) <= presupuesto + tolerance) {
-      const razon = (item._esAfro && RAZON_AFRODISIACO[item._cat])
-        ? RAZON_AFRODISIACO[item._cat]
-        : razonGourmetItem(item._cat, tiposParaMaridaje)
-      basket.push({ ...item, _kind: 'gourmet', _razon: razon })
-      total += Number(item.precio_pvp)
-      usadosIds.add(String(item.id))
-    }
+    const remaining = productCeiling - productTotal
+    const candidates = scoredGourmet
+      .filter(g => g._cat === cat && !usadosIds.has(String(g.id)) && Number(g.precio_pvp) <= remaining + tolerance)
+      .sort((a, b) => Number(b.precio_pvp) - Number(a.precio_pvp))
+    if (!candidates.length) continue
+    const item = candidates[0]
+    const razon = (item._esAfro && RAZON_AFRODISIACO[item._cat])
+      ? RAZON_AFRODISIACO[item._cat]
+      : razonGourmetItem(item._cat, tiposParaMaridaje)
+    basket.push({ ...item, _kind: 'gourmet', _razon: razon })
+    productTotal += Number(item.precio_pvp)
+    usadosIds.add(String(item.id))
   }
 
-  // High custom budgets should use available room instead of stopping at the minimum basket shape.
-  if (total < targets.targetSpend - tolerance && basket.length < targets.maxItems) {
-    const remainingSlots = Math.max(1, targets.maxItems - basket.length)
-    const idealPrice = clampNumber((presupuesto - total) / remainingSlots, 6, 90)
-    const fillers = [
-      ...scoredGourmet
-        .filter(item => !usadosIds.has(String(item.id)))
-        .map(item => ({
-          ...item,
-          _fillKind: 'gourmet',
-          _fillScore: item._afinidad + Math.max(0, 8 - Math.abs(Number(item.precio_pvp) - idealPrice) * 0.12),
-        })),
-      ...(sinAlcohol ? [] : wines
-        .filter(item => !usadosIds.has(String(item.id)))
-        .map((item, i) => ({
-          ...item,
-          _fillKind: 'vino',
-          _fillScore: item._score + Math.max(0, 10 - Math.abs(Number(item.precio_pvp) - idealPrice) * 0.1) + stableNoise(item.id || item.nombre || i, semilla + 31) * 5,
-        }))),
-    ].sort((a, b) => b._fillScore - a._fillScore)
+  // ── 5. Second pass: fill remaining budget, allow repeat categories ──
+  let anyAdded = true
+  while (anyAdded && basket.length < targets.maxItems) {
+    anyAdded = false
+    const remaining = productCeiling - productTotal
+    if (remaining < 0.5) break
+    const candidates = scoredGourmet
+      .filter(g => !usadosIds.has(String(g.id)) && Number(g.precio_pvp) <= remaining + tolerance)
+      .sort((a, b) => Number(b.precio_pvp) - Number(a.precio_pvp))
+    if (!candidates.length) break
+    const item = candidates[0]
+    const razon = (item._esAfro && RAZON_AFRODISIACO[item._cat])
+      ? RAZON_AFRODISIACO[item._cat]
+      : razonGourmetItem(item._cat, tiposParaMaridaje)
+    basket.push({ ...item, _kind: 'gourmet', _razon: razon })
+    productTotal += Number(item.precio_pvp)
+    usadosIds.add(String(item.id))
+    anyAdded = true
+  }
 
-    for (const item of fillers) {
-      if (basket.length >= targets.maxItems) break
-      if (usadosIds.has(String(item.id))) continue
-      const price = Number(item.precio_pvp)
-      if (!price || total + price > presupuesto + tolerance) continue
-
-      if (item._fillKind === 'gourmet') {
-        const razon = (item._esAfro && RAZON_AFRODISIACO[item._cat])
-          ? RAZON_AFRODISIACO[item._cat]
-          : razonGourmetItem(item._cat, tiposParaMaridaje)
-        basket.push({ ...item, _kind: 'gourmet', _razon: razon })
-      } else {
-        basket.push({ ...item, _kind: 'vino' })
+  // ── 6. Swap step: if slack > 5 €, upgrade the cheapest complement to a pricier same-category item ──
+  let slack = productCeiling - productTotal
+  if (slack > 5) {
+    const gourmetInBasket = basket
+      .filter(b => b._kind === 'gourmet')
+      .sort((a, b) => Number(a.precio_pvp) - Number(b.precio_pvp))
+    for (const item of gourmetInBasket) {
+      const swapBudget = productCeiling - (productTotal - Number(item.precio_pvp))
+      const upgrade = scoredGourmet
+        .filter(g =>
+          !usadosIds.has(String(g.id)) &&
+          g._cat === item._cat &&
+          Number(g.precio_pvp) > Number(item.precio_pvp) &&
+          Number(g.precio_pvp) <= swapBudget + tolerance
+        )
+        .sort((a, b) => Number(b.precio_pvp) - Number(a.precio_pvp))[0]
+      if (upgrade) {
+        const idx = basket.findIndex(b => b.id === item.id)
+        const razon = (upgrade._esAfro && RAZON_AFRODISIACO[upgrade._cat])
+          ? RAZON_AFRODISIACO[upgrade._cat]
+          : razonGourmetItem(upgrade._cat, tiposParaMaridaje)
+        basket[idx] = { ...upgrade, _kind: 'gourmet', _razon: razon }
+        productTotal = productTotal - Number(item.precio_pvp) + Number(upgrade.precio_pvp)
+        usadosIds.delete(String(item.id))
+        usadosIds.add(String(upgrade.id))
+        slack = productCeiling - productTotal
+        if (slack <= 5) break
       }
-      total += price
-      usadosIds.add(String(item.id))
-      if (basket.length >= targets.targetItems && total >= targets.targetSpend - tolerance) break
     }
   }
 
-  // Dynamic description: what actually ended up in the basket
+  // ── 7. Add fixed gift box (always included, cost was pre-reserved from the budget) ──
+  basket.push({
+    id: 'caja-regalo',
+    nombre: 'Caja de regalo',
+    precio_pvp: targets.cajaCost,
+    _kind: 'caja',
+    foto_url: null,
+    _razon: 'Presentación incluida',
+  })
+  const total = Math.round((productTotal + targets.cajaCost) * 100) / 100
+
+  // ── 8. Build description ──
   const vinosCesta = basket.filter(b => b._kind === 'vino')
   const gourmetCesta = basket.filter(b => b._kind === 'gourmet')
   const catLabels = [...new Set(gourmetCesta.map(g => CAT_LABEL_GOURMET[g._cat] || 'gourmet'))]
@@ -1503,7 +1504,7 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
   }
 
   const frase = (CESTA_FRASES[ocasionId] || CESTA_FRASES.capricho)[semilla % 3]
-  return { items: basket, total: Math.round(total * 100) / 100, frase, descripcion }
+  return { items: basket, total, frase, descripcion }
 }
 
 function CestaIcon({ name, className }) {
@@ -1813,7 +1814,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
               <p className={styles.cestaDescripcion}>{cesta.descripcion}</p>
             )}
             <p className={styles.cestaResumen}>
-              {T[lang].cestaProductos(cesta.items.length)}{' '}
+              {T[lang].cestaProductos(cesta.items.filter(i => i._kind !== 'caja').length)}{' '}
               <strong style={{ color: colorAcento }}>{cesta.total.toFixed(2)} €</strong>
               {' '}{T[lang].cestaPresupuesto(presupuesto)}
             </p>
@@ -1835,9 +1836,11 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
                       <img src={item.foto_url} alt={item.nombre} className={styles.cestaItemFoto} />
                     ) : (
                       <div className={styles.cestaItemFotoPlaceholder}>
-                        {item._kind === 'vino'
-                          ? (iconStyle === 'lineal' ? <BottleMark className={styles.cestaPlaceholderIcon} /> : '🍷')
-                          : (iconStyle === 'lineal' ? <CestaIcon name="gourmet" className={styles.cestaPlaceholderIcon} /> : '🧺')}
+                        {item._kind === 'caja'
+                          ? (iconStyle === 'lineal' ? <CestaIcon name="impresionar" className={styles.cestaPlaceholderIcon} /> : '🎁')
+                          : item._kind === 'vino'
+                            ? (iconStyle === 'lineal' ? <BottleMark className={styles.cestaPlaceholderIcon} /> : '🍷')
+                            : (iconStyle === 'lineal' ? <CestaIcon name="gourmet" className={styles.cestaPlaceholderIcon} /> : '🧺')}
                       </div>
                     )}
                     <div className={styles.cestaItemInfo}>
@@ -2795,7 +2798,7 @@ export default function KioskoPage() {
   function normalizarMobileVinos(lista) {
     const vistos = new Set()
     return lista
-      .filter(vino => vino?.id && !vistos.has(vino.id) && vistos.add(vino.id))
+      .filter(vino => vino?.id && vino._kind !== 'caja' && !vistos.has(vino.id) && vistos.add(vino.id))
       .slice(0, MOBILE_SELECTION_MAX)
   }
   function mobileUrl(lista, source = 'selection', reason = '') {
