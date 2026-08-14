@@ -54,6 +54,15 @@ function isLocationsRequest(request) {
   return TRUE_PARAM.test(String(url.searchParams.get('locations') || url.searchParams.get('listLocations') || '').trim())
 }
 
+function getCategoryFilter(request) {
+  const url = new URL(request.url)
+  return url.searchParams.get('category') ||
+    url.searchParams.get('categoria') ||
+    url.searchParams.get('onlyCategory') ||
+    url.searchParams.get('only_category') ||
+    null
+}
+
 export async function POST(request, { params }) {
   const { slug } = await params
   const dryRun = isDryRunRequest(request)
@@ -62,6 +71,7 @@ export async function POST(request, { params }) {
   const stockReconcileOptions = {
     syncActive: isSyncActiveRequest(request),
     stockOnly: isStockOnlyRequest(request),
+    categoryFilter: getCategoryFilter(request),
     forceMassiveWrite: isForceReconcileRequest(request),
   }
 

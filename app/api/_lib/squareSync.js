@@ -309,6 +309,17 @@ export function squareActivoFromStock(categoriaOrRow, stock) {
   return isSquareWineCategory(categoria) ? Number(stock || 0) > 0 : true
 }
 
+function normalizeReconcileCategoryFilter(value) {
+  const values = Array.isArray(value) ? value : String(value || '').split(',')
+  return uniqueStrings(values)
+    .map(item => item.toLowerCase())
+    .filter(item => item && item !== 'all' && item !== '*')
+}
+
+function matchesReconcileCategory(categoryFilter, categoria) {
+  return !categoryFilter.length || categoryFilter.includes(String(categoria || 'otro').trim().toLowerCase())
+}
+
 async function fetchCatalogObjects(objectIds, token) {
   const ids = uniqueStrings(objectIds)
   if (!ids.length || !token) return { objects: [], related_objects: [] }
@@ -793,8 +804,11 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
     : options.syncActive === true
       ? 'all_categories'
       : 'wine_only'
+  const categoryFilter = normalizeReconcileCategoryFilter(
+    options.categoryFilter || options.category || options.onlyCategory
+  )
 
-  const { items: rawItems } = await fetchAllCatalogItems(token)
+  const { items: rawItems, categoryMap } = await fetchAllCatalogItems(token)
   const seenItemIds = new Set()
   const items = rawItems.filter(item => {
     if (seenItemIds.has(item.id)) return false
@@ -846,12 +860,19 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
   const changes = []
   const unchanged = []
   const missing = []
+  let filteredOut = 0
   for (const item of items) {
     if (item.type !== 'ITEM') continue
     const variationId = itemToVariation[item.id] || null
     if (!variationId) continue
 
     const vino = existingByVariation[variationId] || existingByCatalog[item.id] || existingByCatalog[variationId]
+    const categoria = vino?.categoria || detectarCategoria(item.item_data || {}, categoryMap)
+    if (!matchesReconcileCategory(categoryFilter, categoria)) {
+      filteredOut++
+      continue
+    }
+
     const targetStock = itemStockMap[item.id] ?? 0
 
     if (!vino) {
@@ -859,6 +880,7 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
         square_catalog_id: item.id,
         square_variation_id: variationId,
         nombre: item.item_data?.name || null,
+        categoria,
         squareStock: targetStock,
       })
       continue
@@ -876,7 +898,7 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
     const row = {
       id: vino.id,
       nombre: vino.nombre,
-      categoria: vino.categoria || 'otro',
+      categoria: categoria || 'otro',
       square_catalog_id: vino.square_catalog_id || item.id,
       square_variation_id: vino.square_variation_id || variationId,
       currentStock,
@@ -931,6 +953,7 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
     tiendaSlug,
     activePolicy,
     syncActive: activePolicy !== 'stock_only',
+    categoryFilter,
     inventoryInfo,
     changes,
     unchanged,
@@ -938,6 +961,7 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
     stats: {
       syncActive: activePolicy !== 'stock_only',
       activePolicy,
+      categoryFilter,
       rawCatalogItems: rawItems.length,
       dedupedCatalogItems: items.length,
       squareVariationIds: variationIds.length,
@@ -948,6 +972,7 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
       inventoryLocationIdsRequested: inventoryInfo.inventoryLocationIdsRequested,
       inventoryLocationsSeen: inventoryInfo.inventoryLocationsSeen,
       inventoryCountRowsRead: inventoryInfo.inventoryCountRowsRead,
+      filtradosPorCategoria: filteredOut,
       filasConCambios: changes.length,
       cambiosStock: changes.filter(row => row.stockChanged).length,
       sinCambios: unchanged.length,
@@ -962,6 +987,8 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
         if (!variationId) return false
         const vino = existingByVariation[variationId] || existingByCatalog[item.id] || existingByCatalog[variationId]
         if (!vino) return false
+        const categoria = vino.categoria || detectarCategoria(item.item_data || {}, categoryMap)
+        if (!matchesReconcileCategory(categoryFilter, categoria)) return false
         const targetStock = itemStockMap[item.id] ?? 0
         const allCategoriesTargetActivo = targetStock > 0
         const currentActivo = Boolean(vino.activo)
@@ -1000,6 +1027,7 @@ export async function squareStockReconcileDryRunForTienda(tiendaId, tiendaSlug, 
     reconcileStock: true,
     syncActive: plan.syncActive,
     activePolicy: plan.activePolicy,
+    categoryFilter: plan.categoryFilter,
     writes: false,
     syncPaused: isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug }),
     slug: tiendaSlug || null,
@@ -1037,6 +1065,7 @@ export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, square
       reconcileStock: true,
       syncActive: plan.syncActive,
       activePolicy: plan.activePolicy,
+      categoryFilter: plan.categoryFilter,
       actualizados: 0,
       errores: 0,
       total: plan.changes.length,
@@ -1074,6 +1103,7 @@ export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, square
     reconcileStock: true,
     syncActive: plan.syncActive,
     activePolicy: plan.activePolicy,
+    categoryFilter: plan.categoryFilter,
     actualizados,
     errores,
     total: plan.changes.length,
