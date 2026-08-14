@@ -690,6 +690,234 @@ export async function squareSyncDryRunForTienda(tiendaId, tiendaSlug, squareToke
   }
 }
 
+async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken) {
+  const token = (squareToken || '').trim()
+  if (!token) throw new Error('No hay token de Square configurado para esta tienda')
+
+  const { items: rawItems } = await fetchAllCatalogItems(token)
+  const seenItemIds = new Set()
+  const items = rawItems.filter(item => {
+    if (seenItemIds.has(item.id)) return false
+    seenItemIds.add(item.id)
+    return true
+  })
+
+  const variationIds = [], variationToItem = {}, itemToVariation = {}
+  for (const item of items) {
+    if (item.type !== 'ITEM') continue
+    const variation = (item.item_data?.variations || []).find(v => !v.is_deleted)
+    if (variation?.id) {
+      variationIds.push(variation.id)
+      variationToItem[variation.id] = item.id
+      itemToVariation[item.id] = variation.id
+    }
+  }
+
+  const inventoryMap = await fetchInventoryCounts(variationIds, token)
+  const itemStockMap = {}
+  for (const [varId, qty] of Object.entries(inventoryMap)) {
+    const itemId = variationToItem[varId]
+    if (itemId !== undefined) itemStockMap[itemId] = qty
+  }
+
+  const PAGE = 1000
+  let existentes = [], pageFrom = 0, existingReadQueries = 0
+  while (true) {
+    const { data: page, error: existError } = await supabaseAdmin
+      .from('vinos_tienda')
+      .select('id, nombre, stock, activo, categoria, square_catalog_id, square_variation_id')
+      .eq('tienda_id', tiendaId)
+      .range(pageFrom, pageFrom + PAGE - 1)
+    existingReadQueries++
+    if (existError) throw new Error(`Leyendo existentes para stock: ${existError.message}`)
+    existentes = existentes.concat(page || [])
+    if (!page || page.length < PAGE) break
+    pageFrom += PAGE
+  }
+
+  const existingByCatalog = {}
+  const existingByVariation = {}
+  for (const vino of existentes) {
+    if (vino.square_catalog_id) existingByCatalog[vino.square_catalog_id] = vino
+    if (vino.square_variation_id) existingByVariation[vino.square_variation_id] = vino
+  }
+
+  const changes = []
+  const unchanged = []
+  const missing = []
+  for (const item of items) {
+    if (item.type !== 'ITEM') continue
+    const variationId = itemToVariation[item.id] || null
+    if (!variationId) continue
+
+    const vino = existingByVariation[variationId] || existingByCatalog[item.id] || existingByCatalog[variationId]
+    const targetStock = itemStockMap[item.id] ?? 0
+    const targetActivo = targetStock > 0
+
+    if (!vino) {
+      missing.push({
+        square_catalog_id: item.id,
+        square_variation_id: variationId,
+        nombre: item.item_data?.name || null,
+        squareStock: targetStock,
+      })
+      continue
+    }
+
+    const currentStock = vino.stock || 0
+    const currentActivo = Boolean(vino.activo)
+    const row = {
+      id: vino.id,
+      nombre: vino.nombre,
+      categoria: vino.categoria || 'otro',
+      square_catalog_id: vino.square_catalog_id || item.id,
+      square_variation_id: vino.square_variation_id || variationId,
+      currentStock,
+      squareStock: targetStock,
+      currentActivo,
+      targetActivo,
+      stockDelta: targetStock - currentStock,
+    }
+
+    if (currentStock !== targetStock || currentActivo !== targetActivo) {
+      changes.push(row)
+    } else {
+      unchanged.push(row)
+    }
+  }
+
+  const byCategory = new Map()
+  for (const row of changes) {
+    const key = row.categoria || 'otro'
+    const current = byCategory.get(key) || {
+      categoria: key,
+      cambios: 0,
+      suben: 0,
+      bajan: 0,
+      quedanIgualActivo: 0,
+      ejemplos: [],
+    }
+    current.cambios++
+    if (row.stockDelta > 0) current.suben++
+    if (row.stockDelta < 0) current.bajan++
+    if (row.currentActivo !== row.targetActivo) current.quedanIgualActivo++
+    if (current.ejemplos.length < 10) {
+      current.ejemplos.push({
+        nombre: row.nombre,
+        stockActual: row.currentStock,
+        stockSquare: row.squareStock,
+        activoActual: row.currentActivo,
+        activoNuevo: row.targetActivo,
+      })
+    }
+    byCategory.set(key, current)
+  }
+
+  return {
+    tiendaId,
+    tiendaSlug,
+    changes,
+    unchanged,
+    missing,
+    stats: {
+      rawCatalogItems: rawItems.length,
+      dedupedCatalogItems: items.length,
+      squareVariationIds: variationIds.length,
+      stockCountsRead: Object.keys(itemStockMap).length,
+      existingRowsRead: existentes.length,
+      existingReadQueries,
+      cambiosStock: changes.length,
+      sinCambios: unchanged.length,
+      noVinculados: missing.length,
+      estimatedWriteStatements: changes.length,
+      subenStock: changes.filter(row => row.stockDelta > 0).length,
+      bajanStock: changes.filter(row => row.stockDelta < 0).length,
+      cambianActivo: changes.filter(row => row.currentActivo !== row.targetActivo).length,
+    },
+    categorias: [...byCategory.values()].sort((a, b) => b.cambios - a.cambios || a.categoria.localeCompare(b.categoria)),
+  }
+}
+
+function publicStockRow(row) {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    categoria: row.categoria,
+    square_catalog_id: row.square_catalog_id,
+    square_variation_id: row.square_variation_id,
+    stockActual: row.currentStock,
+    stockSquare: row.squareStock,
+    delta: row.stockDelta,
+    activoActual: row.currentActivo,
+    activoNuevo: row.targetActivo,
+  }
+}
+
+export async function squareStockReconcileDryRunForTienda(tiendaId, tiendaSlug, squareToken) {
+  const plan = await buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken)
+  return {
+    ok: true,
+    dryRun: true,
+    reconcileStock: true,
+    writes: false,
+    syncPaused: isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug }),
+    slug: tiendaSlug || null,
+    tiendaId,
+    resumen: plan.stats,
+    categorias: plan.categorias,
+    muestras: {
+      cambios: plan.changes.slice(0, 50).map(publicStockRow),
+      suben: plan.changes.filter(row => row.stockDelta > 0).slice(0, 25).map(publicStockRow),
+      bajan: plan.changes.filter(row => row.stockDelta < 0).slice(0, 25).map(publicStockRow),
+      noVinculados: plan.missing.slice(0, 25),
+    },
+  }
+}
+
+export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, squareToken) {
+  if (isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug })) {
+    return {
+      ...squareSyncPausedPayload({ id: tiendaId, slug: tiendaSlug }, 'stock_reconcile'),
+      ok: false,
+      reconcileStock: true,
+      actualizados: 0,
+      errores: 0,
+    }
+  }
+
+  const plan = await buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken)
+  const now = new Date().toISOString()
+  let actualizados = 0
+  let errores = 0
+  const lineas = []
+
+  const UPDATE_CONCURRENCY = 25
+  for (let i = 0; i < plan.changes.length; i += UPDATE_CONCURRENCY) {
+    const chunk = plan.changes.slice(i, i + UPDATE_CONCURRENCY)
+    await Promise.all(chunk.map(async row => {
+      const { error } = await supabaseAdmin
+        .from('vinos_tienda')
+        .update({ stock: row.squareStock, activo: row.targetActivo, updated_at: now })
+        .eq('id', row.id)
+
+      if (error) errores++
+      else actualizados++
+      lineas.push({ ...publicStockRow(row), status: error ? 'error' : 'ok' })
+      if (error) console.error('[square-sync] stock reconcile error:', row.id, error.message)
+    }))
+  }
+
+  return {
+    ok: errores === 0,
+    reconcileStock: true,
+    actualizados,
+    errores,
+    total: plan.changes.length,
+    resumenAntes: plan.stats,
+    lineas: lineas.slice(0, 100),
+  }
+}
+
 export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   if (isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug })) {
     console.warn(`[square-sync] ${tiendaSlug || tiendaId}: pausa temporal activa`)

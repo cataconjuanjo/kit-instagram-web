@@ -3,6 +3,8 @@ import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 import {
   isSquareSyncTemporarilyPaused,
+  squareStockReconcileDryRunForTienda,
+  squareStockReconcileForTienda,
   squareSyncDryRunForTienda,
   squareSyncForTienda,
   squareSyncPausedPayload,
@@ -17,9 +19,20 @@ function isDryRunRequest(request) {
   return TRUE_PARAM.test(String(url.searchParams.get('dryRun') || url.searchParams.get('dry_run') || '').trim())
 }
 
+function isStockReconcileRequest(request) {
+  const url = new URL(request.url)
+  return TRUE_PARAM.test(String(
+    url.searchParams.get('reconcileStock') ||
+    url.searchParams.get('reconcile_stock') ||
+    url.searchParams.get('stockReconcile') ||
+    ''
+  ).trim())
+}
+
 export async function POST(request, { params }) {
   const { slug } = await params
   const dryRun = isDryRunRequest(request)
+  const reconcileStock = isStockReconcileRequest(request)
 
   const access = await requireKioskoAccess(request, slug)
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status || 403 })
@@ -53,9 +66,16 @@ export async function POST(request, { params }) {
   }
 
   try {
-    const result = dryRun
-      ? await squareSyncDryRunForTienda(access.tienda.id, slug, squareToken)
-      : await squareSyncForTienda(access.tienda.id, slug, squareToken)
+    let result
+    if (reconcileStock) {
+      result = dryRun
+        ? await squareStockReconcileDryRunForTienda(access.tienda.id, slug, squareToken)
+        : await squareStockReconcileForTienda(access.tienda.id, slug, squareToken)
+    } else {
+      result = dryRun
+        ? await squareSyncDryRunForTienda(access.tienda.id, slug, squareToken)
+        : await squareSyncForTienda(access.tienda.id, slug, squareToken)
+    }
     return NextResponse.json(result)
   } catch (e) {
     console.error('[square-sync]', e.message)
