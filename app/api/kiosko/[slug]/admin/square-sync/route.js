@@ -3,20 +3,29 @@ import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 import {
   isSquareSyncTemporarilyPaused,
+  squareSyncDryRunForTienda,
   squareSyncForTienda,
   squareSyncPausedPayload,
 } from '../../../../../api/_lib/squareSync'
 
-export const maxDuration = 120
+export const maxDuration = 300
+
+const TRUE_PARAM = /^(1|true|yes|on)$/i
+
+function isDryRunRequest(request) {
+  const url = new URL(request.url)
+  return TRUE_PARAM.test(String(url.searchParams.get('dryRun') || url.searchParams.get('dry_run') || '').trim())
+}
 
 export async function POST(request, { params }) {
   const { slug } = await params
+  const dryRun = isDryRunRequest(request)
 
   const access = await requireKioskoAccess(request, slug)
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status || 403 })
 
   const tienda = { ...access.tienda, slug }
-  if (isSquareSyncTemporarilyPaused(tienda)) {
+  if (!dryRun && isSquareSyncTemporarilyPaused(tienda)) {
     return NextResponse.json(
       {
         ...squareSyncPausedPayload(tienda, 'admin_square_sync'),
@@ -44,7 +53,9 @@ export async function POST(request, { params }) {
   }
 
   try {
-    const result = await squareSyncForTienda(access.tienda.id, slug, squareToken)
+    const result = dryRun
+      ? await squareSyncDryRunForTienda(access.tienda.id, slug, squareToken)
+      : await squareSyncForTienda(access.tienda.id, slug, squareToken)
     return NextResponse.json(result)
   } catch (e) {
     console.error('[square-sync]', e.message)

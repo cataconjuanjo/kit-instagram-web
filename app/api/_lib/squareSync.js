@@ -399,6 +399,297 @@ function detectarCategoria(itemData, categoryMap) {
   return 'otro'
 }
 
+function getSquareCategoryEntries(itemData, categoryMap) {
+  const catIds = [itemData.category_id, ...(itemData.categories || []).map(c => c.id)].filter(Boolean)
+  const uniqueIds = uniqueStrings(catIds)
+  return uniqueIds.map(id => ({ id, name: categoryMap[id] || 'Sin nombre' }))
+}
+
+function summarizeByCategory(rows) {
+  const summary = new Map()
+  for (const row of rows) {
+    const categories = row.square_categories?.length
+      ? row.square_categories
+      : [{ id: '__uncategorized__', name: 'Sin categoria' }]
+
+    for (const category of categories) {
+      const key = category.id || '__uncategorized__'
+      const current = summary.get(key) || {
+        id: category.id || null,
+        name: category.name || 'Sin categoria',
+        total: 0,
+        nuevos: 0,
+        actualizaciones: 0,
+        sinCambios: 0,
+        ejemplos: [],
+      }
+      current.total++
+      if (row._planAction === 'insert') current.nuevos++
+      if (row._planAction === 'update') current.actualizaciones++
+      if (row._planAction === 'unchanged') current.sinCambios++
+      if (current.ejemplos.length < 5) current.ejemplos.push(row.nombre)
+      summary.set(key, current)
+    }
+  }
+
+  return [...summary.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
+}
+
+function publicPlanRow(row) {
+  return {
+    id: row.id || null,
+    nombre: row.nombre,
+    categoria: row.categoria || null,
+    precio_pvp: row.precio_pvp ?? null,
+    stock: row.stock ?? null,
+    activo: row.activo ?? null,
+    square_catalog_id: row.square_catalog_id || row._catalogId || null,
+    square_variation_id: row.square_variation_id || row._variationId || null,
+    square_categories: row.square_categories || [],
+    changes: row._changes || [],
+  }
+}
+
+async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken) {
+  const token = (squareToken || '').trim()
+  if (!token) throw new Error('No hay token de Square configurado para esta tienda')
+
+  const { items: rawItems, imageMap, categoryMap } = await fetchAllCatalogItems(token)
+
+  const seenItemIds = new Set()
+  const items = rawItems.filter(item => {
+    if (seenItemIds.has(item.id)) return false
+    seenItemIds.add(item.id)
+    return true
+  })
+
+  const variationIds = [], variationToItem = {}, itemToVariation = {}
+  for (const item of items) {
+    if (item.type !== 'ITEM') continue
+    const variation = (item.item_data?.variations || []).find(v => !v.is_deleted)
+    if (variation?.id) {
+      variationIds.push(variation.id)
+      variationToItem[variation.id] = item.id
+      itemToVariation[item.id]      = variation.id
+    }
+  }
+
+  const inventoryMap = await fetchInventoryCounts(variationIds, token)
+  const itemStockMap = {}
+  for (const [varId, qty] of Object.entries(inventoryMap)) {
+    const itemId = variationToItem[varId]
+    if (itemId !== undefined) itemStockMap[itemId] = qty
+  }
+
+  const PAGE = 1000
+  let existentes = [], pageFrom = 0, existingReadQueries = 0
+  while (true) {
+    const { data: page, error: existError } = await supabaseAdmin
+      .from('vinos_tienda')
+      .select('id, square_catalog_id, square_variation_id, categoria, nombre, precio_pvp')
+      .eq('tienda_id', tiendaId)
+      .range(pageFrom, pageFrom + PAGE - 1)
+    existingReadQueries++
+    if (existError) throw new Error(`Leyendo existentes: ${existError.message}`)
+    existentes = existentes.concat(page || [])
+    if (!page || page.length < PAGE) break
+    pageFrom += PAGE
+  }
+
+  const existingByCatalog   = {}
+  const existingByVariation = {}
+  const nullIdByNombre      = {}
+  for (const v of (existentes || [])) {
+    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
+    if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
+    if (!v.square_catalog_id && !v.square_variation_id && v.nombre) {
+      if (!nullIdByNombre[v.nombre]) nullIdByNombre[v.nombre] = []
+      nullIdByNombre[v.nombre].push({ id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp })
+    }
+  }
+
+  const toUpsertById = []
+  const toInsertNew = []
+  const unchanged = []
+  const skipped = []
+
+  for (const item of items) {
+    if (item.type !== 'ITEM') {
+      skipped.push({ square_catalog_id: item.id, reason: `type:${item.type || 'unknown'}` })
+      continue
+    }
+    const d = item.item_data || {}
+    const rawNombre = d.name?.trim()
+    if (!rawNombre) {
+      skipped.push({ square_catalog_id: item.id, reason: 'missing_name' })
+      continue
+    }
+
+    const { nombre, uva, bodega, region, pais } = parsearNombreSquare(rawNombre)
+    const variationId = itemToVariation[item.id] || null
+    const varData = (d.variations || []).find(v => !v.is_deleted)?.item_variation_data
+    const precioCents = varData?.price_money?.amount
+    const precio_pvp = precioCents ? +(precioCents / 100).toFixed(2) : null
+    const descripcion = d.description_plaintext || d.description || null
+    const foto_url = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
+    const stock = itemStockMap[item.id] ?? 0
+    const catDetectada = detectarCategoria(d, categoryMap)
+    const squareCategories = getSquareCategoryEntries(d, categoryMap)
+
+    const legacyVariationMatch = variationId ? existingByCatalog[variationId] : null
+    const variationMatch = variationId ? existingByVariation[variationId] : null
+    const existing = legacyVariationMatch || variationMatch || existingByCatalog[item.id]
+    const catEfectiva = existing?.categoria || catDetectada
+    const activo = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
+    const now = new Date().toISOString()
+
+    if (existing) {
+      const skipIdNormalization = Boolean(legacyVariationMatch && variationMatch && legacyVariationMatch.id !== variationMatch.id)
+      const updatePrice = pricesDiffer(existing.precio_pvp, precio_pvp)
+      const updateIds = !skipIdNormalization && (
+        existing.square_catalog_id !== item.id ||
+        (variationId && existing.square_variation_id !== variationId)
+      )
+      const changes = []
+      if (updatePrice) changes.push('precio_pvp')
+      if (updateIds) changes.push('square_ids')
+      if (skipIdNormalization) changes.push('square_id_conflict_skipped')
+
+      if (updatePrice || updateIds) {
+        toUpsertById.push({
+          id: existing.id,
+          nombre,
+          precio_pvp,
+          square_last_seen_at: now,
+          _catalogId: item.id,
+          _variationId: variationId,
+          _skipIdNormalization: skipIdNormalization,
+          _updatePrice: updatePrice,
+          _updateIds: updateIds,
+          _planAction: 'update',
+          _changes: changes,
+          updated_at: now,
+          square_categories: squareCategories,
+        })
+      } else {
+        unchanged.push({
+          id: existing.id,
+          nombre,
+          precio_pvp,
+          categoria: catEfectiva,
+          square_catalog_id: existing.square_catalog_id,
+          square_variation_id: existing.square_variation_id,
+          _planAction: 'unchanged',
+          _changes: [],
+          square_categories: squareCategories,
+        })
+      }
+    } else {
+      const nullMatches = nullIdByNombre[nombre]
+      if (nullMatches?.length === 1) {
+        const updatePrice = pricesDiffer(nullMatches[0].precio_pvp, precio_pvp)
+        const changes = ['square_ids']
+        if (updatePrice) changes.unshift('precio_pvp')
+        toUpsertById.push({
+          id:                   nullMatches[0].id,
+          nombre,
+          precio_pvp,
+          square_last_seen_at:  now,
+          _catalogId:           item.id,
+          _variationId:         variationId,
+          _skipIdNormalization: false,
+          _updatePrice:         updatePrice,
+          _updateIds:           true,
+          _planAction:          'update',
+          _changes:             changes,
+          updated_at:           now,
+          square_categories:    squareCategories,
+        })
+        nullIdByNombre[nombre] = []
+      } else {
+        toInsertNew.push({
+          tienda_id:           tiendaId,
+          square_catalog_id:   item.id,
+          square_variation_id: variationId,
+          nombre, precio_pvp, descripcion, stock, activo,
+          categoria:           catEfectiva,
+          square_last_seen_at: now,
+          uva:        uva    || null,
+          bodega:     bodega || null,
+          region:     region || null,
+          pais:       pais   || null,
+          ...(foto_url && { foto_url }),
+          updated_at: now,
+          _planAction: 'insert',
+          _changes: ['new_row'],
+          square_categories: squareCategories,
+        })
+      }
+    }
+  }
+
+  const priceUpdateRows = toUpsertById.filter(r => r._updatePrice)
+  const idUpdateRows = toUpsertById.filter(r => r._updateIds && !r._skipIdNormalization)
+  const newConVariacion = toInsertNew.filter(r => r.square_variation_id)
+  const newSinVariacion = toInsertNew.filter(r => !r.square_variation_id)
+  const planRows = [...toInsertNew, ...toUpsertById, ...unchanged]
+
+  return {
+    tiendaId,
+    tiendaSlug,
+    token,
+    items,
+    itemStockMap,
+    toUpsertById,
+    toInsertNew,
+    newConVariacion,
+    newSinVariacion,
+    unchanged,
+    skipped,
+    stats: {
+      rawCatalogItems: rawItems.length,
+      dedupedCatalogItems: items.length,
+      duplicateCatalogItems: rawItems.length - items.length,
+      existingRowsRead: existentes.length,
+      existingReadQueries,
+      squareVariationIds: variationIds.length,
+      stockSincronizados: Object.keys(itemStockMap).length,
+      insertados: toInsertNew.length,
+      actualizados: toUpsertById.length,
+      sinCambios: unchanged.length,
+      omitidos: skipped.length,
+      priceUpdateRows: priceUpdateRows.length,
+      idUpdateRows: idUpdateRows.length,
+      newConVariacion: newConVariacion.length,
+      newSinVariacion: newSinVariacion.length,
+      estimatedWriteStatements: priceUpdateRows.length + idUpdateRows.length + newConVariacion.length + newSinVariacion.length,
+    },
+    categories: summarizeByCategory(planRows),
+  }
+}
+
+export async function squareSyncDryRunForTienda(tiendaId, tiendaSlug, squareToken) {
+  const plan = await buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken)
+  const syncPaused = isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug })
+
+  return {
+    ok: true,
+    dryRun: true,
+    writes: false,
+    syncPaused,
+    slug: tiendaSlug || null,
+    tiendaId,
+    resumen: plan.stats,
+    categorias: plan.categories,
+    muestras: {
+      nuevos: plan.toInsertNew.slice(0, 25).map(publicPlanRow),
+      actualizaciones: plan.toUpsertById.slice(0, 25).map(publicPlanRow),
+      sinCambios: plan.unchanged.slice(0, 10).map(publicPlanRow),
+      omitidos: plan.skipped.slice(0, 25),
+    },
+  }
+}
+
 export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
   if (isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug })) {
     console.warn(`[square-sync] ${tiendaSlug || tiendaId}: pausa temporal activa`)
