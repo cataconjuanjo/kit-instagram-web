@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 import {
   isSquareSyncTemporarilyPaused,
+  listSquareLocations,
   squareStockReconcileDryRunForTienda,
   squareStockReconcileForTienda,
   squareSyncDryRunForTienda,
@@ -48,10 +49,16 @@ function isStockOnlyRequest(request) {
   return TRUE_PARAM.test(String(url.searchParams.get('stockOnly') || url.searchParams.get('stock_only') || '').trim())
 }
 
+function isLocationsRequest(request) {
+  const url = new URL(request.url)
+  return TRUE_PARAM.test(String(url.searchParams.get('locations') || url.searchParams.get('listLocations') || '').trim())
+}
+
 export async function POST(request, { params }) {
   const { slug } = await params
   const dryRun = isDryRunRequest(request)
   const reconcileStock = isStockReconcileRequest(request)
+  const locations = isLocationsRequest(request)
   const stockReconcileOptions = {
     syncActive: isSyncActiveRequest(request),
     stockOnly: isStockOnlyRequest(request),
@@ -92,7 +99,12 @@ export async function POST(request, { params }) {
 
   try {
     let result
-    if (reconcileStock) {
+    if (locations) {
+      result = await listSquareLocations(squareToken)
+      result.configuredSquareLocationId = squareLocationId
+      result.slug = slug
+      result.tiendaId = access.tienda.id
+    } else if (reconcileStock) {
       const options = { ...stockReconcileOptions, locationId: squareLocationId }
       result = dryRun
         ? await squareStockReconcileDryRunForTienda(access.tienda.id, slug, squareToken, options)

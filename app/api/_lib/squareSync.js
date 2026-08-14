@@ -178,6 +178,39 @@ async function fetchAllCatalogItems(token) {
   return { items, imageMap, categoryMap }
 }
 
+export async function listSquareLocations(squareToken) {
+  const token = (squareToken || '').trim()
+  if (!token) throw new Error('No hay token de Square configurado para esta tienda')
+
+  const data = await fetchSquareJson(`${SQUARE_API_BASE}/v2/locations`, {
+    method: 'GET',
+    headers: {
+      Authorization:    `Bearer ${token}`,
+      'Square-Version': '2024-01-18',
+      'Content-Type':   'application/json',
+    },
+  }, 'Square locations')
+
+  return {
+    ok: true,
+    locations: (data.locations || []).map(location => ({
+      id: location.id,
+      name: location.name || null,
+      businessName: location.business_name || null,
+      status: location.status || null,
+      type: location.type || null,
+      city: location.address?.locality || null,
+      address: [
+        location.address?.address_line_1,
+        location.address?.address_line_2,
+        location.address?.locality,
+        location.address?.postal_code,
+        location.address?.country,
+      ].filter(Boolean).join(', ') || null,
+    })),
+  }
+}
+
 function normalizeInventoryLocationIds(options = {}) {
   const rawLocationIds = [
     ...(Array.isArray(options.locationIds) ? options.locationIds : [options.locationIds]),

@@ -5,7 +5,7 @@ import { requireKioskoAccess, getKioskoUser, isKioskoAdminEmail } from '../../..
 const PERMITIDOS = new Set([
   'nombre', 'ciudad', 'descripcion',
   'logo_url', 'color_primario', 'color_acento', 'font_family', 'kiosko_icon_style', 'kiosko_orders_enabled', 'banner_url',
-  'informe_email', 'cesta_activa',
+  'informe_email', 'cesta_activa', 'square_location_id',
 ])
 
 const ICON_STYLES = new Set(['emoji', 'lineal'])
@@ -15,6 +15,7 @@ const OPTIONAL_MIGRATIONS = {
   kiosko_orders_enabled: 'supabase/kiosko_assisted_orders.sql',
   cesta_activa: 'supabase/cesta_activa.sql',
   square_access_token: 'supabase/square_access_token.sql',
+  square_location_id: 'supabase/square_location_id.sql',
 }
 
 function missingOptionalFields(error, updates) {
