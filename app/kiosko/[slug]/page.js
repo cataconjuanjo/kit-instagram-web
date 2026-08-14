@@ -1145,6 +1145,7 @@ function sugerirGourmetParaVinos(vinosRecomendados = [], gourmetTodos = [], max 
   const tiposVinos = [...new Set(vinosRecomendados.map(v => v.tipo).filter(Boolean))]
 
   const scored = gourmetTodos
+    .filter(g => g.categoria !== 'carta')
     .filter(g => Number(g.stock ?? 1) > 0)
     .map(g => {
       const cat = (g.cat_gourmet && ADMIN_TO_KIOSKO_CAT[g.cat_gourmet]) || detectarCatGourmet(g.nombre, g.descripcion)
@@ -1219,13 +1220,79 @@ function GourmetCrossSell({ vinosRecomendados, gourmet, colorAcento, lang = 'es'
   )
 }
 
-function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, sinGluten = false, semilla = 0 }) {
+function stableNoise(value = '', seed = 0) {
+  let hash = 2166136261
+  const text = `${value}:${seed}`
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return ((hash >>> 0) % 1000) / 1000
+}
+
+const CESTA_SHAPE = {
+  enamorar:    { wineShare: 0.44, itemOffset: 0,  wineBias: 0,  premiumBias: 0.95 },
+  impresionar: { wineShare: 0.56, itemOffset: -1, wineBias: 0,  premiumBias: 1.12 },
+  compartir:   { wineShare: 0.42, itemOffset: 1,  wineBias: 0,  premiumBias: 0.9 },
+  celebrar:    { wineShare: 0.48, itemOffset: 0,  wineBias: 0,  premiumBias: 1 },
+  capricho:    { wineShare: 0.40, itemOffset: 1,  wineBias: 0,  premiumBias: 0.92 },
+}
+
+function cestaTargets(presupuesto, ocasionId, sinAlcohol) {
+  const shape = CESTA_SHAPE[ocasionId] || CESTA_SHAPE.capricho
+  const baseItems =
+    presupuesto <= 30 ? 3 :
+    presupuesto <= 50 ? 4 :
+    presupuesto <= 75 ? 5 :
+    presupuesto <= 100 ? 6 :
+    Math.min(9, 6 + Math.floor((presupuesto - 100) / 35))
+
+  const targetItems = Math.max(2, baseItems + shape.itemOffset)
+  let targetWines = sinAlcohol ? 0 : 1
+  if (!sinAlcohol) {
+    if (ocasionId === 'compartir') targetWines = presupuesto >= 130 ? 3 : presupuesto >= 75 ? 2 : 1
+    else if (ocasionId === 'impresionar') targetWines = presupuesto >= 120 ? 2 : 1
+    else targetWines = presupuesto >= 90 ? 2 : 1
+    targetWines = Math.min(3, targetWines + shape.wineBias)
+  }
+
+  const wineBudgetCap = targetWines > 0
+    ? Math.min(presupuesto * 0.62, Math.max(18, presupuesto * shape.wineShare))
+    : 0
+  const targetWinePrice = targetWines > 0
+    ? Math.max(12, Math.min(wineBudgetCap / targetWines, presupuesto * 0.38) * shape.premiumBias)
+    : 0
+  const maxWineUnitPrice = targetWines > 0
+    ? Math.max(18, Math.min(wineBudgetCap, targetWinePrice * 1.45))
+    : 0
+
+  return {
+    targetItems,
+    maxItems: targetItems + (presupuesto >= 80 ? 1 : 0),
+    targetWines,
+    wineBudgetCap,
+    targetWinePrice,
+    maxWineUnitPrice,
+  }
+}
+
+function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, sinGluten = false, semilla = 0, evitarIds = [] }) {
   const ocasion = CESTA_OCASIONES.find(o => o.id === ocasionId)
   const tiposOk = ocasion?.tipos ?? []
+  const avoidSet = new Set((evitarIds || []).map(id => String(id)))
+  const targets = cestaTargets(presupuesto, ocasionId, sinAlcohol)
   const tolerance = 0.001  // solo para imprecisión de punto flotante, no margen comercial
 
   // Filter wines: must fit within 80% of budget so gourmet always gets room
-  let wines = vinos.filter(v => v.activo && Number(v.stock) > 0 && Number(v.precio_pvp) > 0 && Number(v.precio_pvp) <= presupuesto * 0.80)
+  let wines = vinos.filter(v => (
+    v.activo &&
+    Number(v.stock) > 0 &&
+    Number(v.precio_pvp) > 0 &&
+    Number(v.precio_pvp) <= targets.maxWineUnitPrice
+  ))
+  if (!wines.length) {
+    wines = vinos.filter(v => v.activo && Number(v.stock) > 0 && Number(v.precio_pvp) > 0 && Number(v.precio_pvp) <= presupuesto * 0.75)
+  }
 
   if (sinAlcohol) {
     wines = wines.filter(v => v.tipo === 'sin_alcohol')
@@ -1246,25 +1313,35 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
     if (ocasionId === 'impresionar') {
       const txt = normalizarTexto(`${v.nombre || ''} ${v.notas_cata || ''} ${v.descripcion || ''}`)
       if (/crianza|reserva|gran reserva|barrica|roble/.test(txt)) score += 6
-      score += Math.min(Number(v.precio_pvp), presupuesto * 0.5) * 0.15  // dentro del presupuesto, más caro mejor
+      score += Math.max(0, 8 - Math.abs(Number(v.precio_pvp) - targets.targetWinePrice) * 0.25)
     }
-    if (ocasionId === 'capricho') score += Number(v.precio_pvp)
-    score += ((i * 7 + semilla * 13) % 100) / 14
+    if (ocasionId === 'capricho') {
+      score += Math.max(0, 8 - Math.abs(Number(v.precio_pvp) - targets.targetWinePrice) * 0.3)
+    }
+    if (ocasionId !== 'impresionar' && ocasionId !== 'capricho') {
+      score += Math.max(0, 6 - Math.abs(Number(v.precio_pvp) - targets.targetWinePrice) * 0.25)
+    }
+    if (avoidSet.has(String(v.id))) score -= 12
+    score += stableNoise(v.id || v.nombre || i, semilla) * 7
     return { ...v, _score: score, _kind: 'vino' }
   }).sort((a, b) => b._score - a._score)
-
-  // Cap wine slots and budget: reserve at least 40% for gourmet items
-  const maxWines = presupuesto <= 30 ? 1 : presupuesto <= 60 ? 2 : 3
-  const wineBudgetCap = presupuesto * 0.60
 
   const basket = []
   let total = 0
 
   for (const wine of wines) {
-    if (basket.filter(b => b._kind === 'vino').length >= maxWines) break
-    if (total + Number(wine.precio_pvp) <= wineBudgetCap + tolerance) {
+    if (basket.filter(b => b._kind === 'vino').length >= targets.targetWines) break
+    if (total + Number(wine.precio_pvp) <= targets.wineBudgetCap + tolerance) {
       basket.push(wine)
       total += Number(wine.precio_pvp)
+    }
+  }
+
+  if (!sinAlcohol && !basket.some(b => b._kind === 'vino')) {
+    const fallbackWine = wines.find(w => Number(w.precio_pvp) <= presupuesto * 0.75)
+    if (fallbackWine) {
+      basket.push(fallbackWine)
+      total += Number(fallbackWine.precio_pvp)
     }
   }
 
@@ -1276,6 +1353,7 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
 
   // Score gourmet items: affinity with wine types + occasion boost + aphrodisiac boost + shuffle noise
   const scoredGourmet = [...gourmet]
+    .filter(g => g.categoria !== 'carta')
     .map((g, i) => {
       const cat = (g.cat_gourmet && ADMIN_TO_KIOSKO_CAT[g.cat_gourmet]) || detectarCatGourmet(g.nombre, g.descripcion)
       return { ...g, _cat: cat }
@@ -1297,8 +1375,9 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
       const afinidad = tiposVinos.reduce((sum, tipo) => sum + (AFINIDAD_VINO_GOURMET[tipo]?.[g._cat] || 0), 0)
       const boost = ocasionBoost[g._cat] || 0
       const afroBoost = (ocasionId === 'enamorar' && esAfrodisiaco(g.nombre, g.descripcion)) ? 6 : 0
-      const noise = ((i * 7 + semilla * 11) % 100) / 1000
-      return { ...g, _afinidad: afinidad + boost + afroBoost + noise, _esAfro: afroBoost > 0 }
+      const noise = stableNoise(g.id || g.nombre || i, semilla)
+      const avoidPenalty = avoidSet.has(String(g.id)) ? 7 : 0
+      return { ...g, _afinidad: afinidad + boost + afroBoost + noise * 4 - avoidPenalty, _esAfro: afroBoost > 0 }
     })
     .sort((a, b) => b._afinidad - a._afinidad)
 
@@ -1313,12 +1392,14 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
       basket.push({ ...item, _kind: 'gourmet', _razon: razon })
       total += Number(item.precio_pvp)
       catsUsadas.add(item._cat)
+      if (basket.length >= targets.targetItems) break
     }
   }
 
   // Second pass: if budget still has room, allow a second item per cat (no repeating same product)
   const usadosIds = new Set(basket.map(b => b.id))
   for (const item of scoredGourmet) {
+    if (basket.length >= targets.maxItems) break
     if (usadosIds.has(item.id)) continue
     if (total + Number(item.precio_pvp) <= presupuesto + tolerance) {
       const razon = (item._esAfro && RAZON_AFRODISIACO[item._cat])
@@ -1450,8 +1531,9 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
       .catch(() => {})
   }, [slug])
 
-  const hayVeganos    = useMemo(() => gourmet.some(g => g.es_vegano === true), [gourmet])
-  const hayGlutenFree = useMemo(() => gourmet.some(g => g.sin_gluten === true), [gourmet])
+  const gourmetCesta  = useMemo(() => gourmet.filter(g => g.categoria !== 'carta'), [gourmet])
+  const hayVeganos    = useMemo(() => gourmetCesta.some(g => g.es_vegano === true), [gourmetCesta])
+  const hayGlutenFree = useMemo(() => gourmetCesta.some(g => g.sin_gluten === true), [gourmetCesta])
 
   function elegirOcasion(id) { setOcasionId(id); setStep(1) }
 
@@ -1471,7 +1553,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
 
   function generarCesta(s = semilla) {
     setCargando(true)
-    const resultado = generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, sinGluten, semilla: s })
+    const resultado = generarCestaAlgoritmo(vinos, gourmetCesta, { ocasionId, presupuesto, sinAlcohol, vegano, sinGluten, semilla: s })
     setTimeout(() => { setCesta(resultado); setCargando(false); setStep(3) }, 380)
   }
 
@@ -1480,7 +1562,15 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
     setSemilla(s)
     setCesta(null)
     setCargando(true)
-    const resultado = generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlcohol, vegano, sinGluten, semilla: s })
+    const resultado = generarCestaAlgoritmo(vinos, gourmetCesta, {
+      ocasionId,
+      presupuesto,
+      sinAlcohol,
+      vegano,
+      sinGluten,
+      semilla: s,
+      evitarIds: cesta?.items?.map(item => item.id).filter(Boolean) || [],
+    })
     setTimeout(() => { setCesta(resultado); setCargando(false) }, 380)
   }
 

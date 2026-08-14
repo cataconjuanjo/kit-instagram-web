@@ -288,6 +288,30 @@ function uniqueStrings(values) {
   return [...new Set((values || []).map(v => String(v || '').trim()).filter(Boolean))]
 }
 
+function normalizeTextKey(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function matchesCategoryName(name, target) {
+  const normalized = normalizeTextKey(name)
+  return normalized === target || normalized.includes(target)
+}
+
+function looksLikeSquareWineName(rawName = '') {
+  const parts = String(rawName || '').split(' I ').map(part => part.trim()).filter(Boolean)
+  if (parts.length >= 4) return true
+
+  const text = normalizeTextKey(rawName)
+  const hasWineSignal = /\b(vino|tinto|blanco|rosado|espumoso|cava|champagne|vermut|vermouth|rioja|ribera|rueda|rias baixas|priorat|jerez|manzanilla|albari[nñ]o|godello|verdejo|tempranillo|garnacha)\b/.test(text)
+  const hasFormatSignal = /\b(75\s*cl|750\s*ml|botella|magnum)\b/.test(text)
+  return hasWineSignal && hasFormatSignal
+}
+
 function priceFromVariation(variation) {
   const amount = variation?.item_variation_data?.price_money?.amount
   if (amount === undefined || amount === null) return null
@@ -488,6 +512,7 @@ function detectarCategoria(itemData, categoryMap) {
   for (const id of catIds) {
     if (categoryMap[id] && WINE_KEYWORDS.test(categoryMap[id])) return 'vino'
   }
+  if (looksLikeSquareWineName(itemData.name)) return 'vino'
   return 'otro'
 }
 
@@ -495,6 +520,57 @@ function getSquareCategoryEntries(itemData, categoryMap) {
   const catIds = [itemData.category_id, ...(itemData.categories || []).map(c => c.id)].filter(Boolean)
   const uniqueIds = uniqueStrings(catIds)
   return uniqueIds.map(id => ({ id, name: categoryMap[id] || 'Sin nombre' }))
+}
+
+function getSquareCatalogPolicy(tiendaSlug) {
+  if (normalizeTextKey(tiendaSlug) !== 'sibaris-gourmet') return null
+  return {
+    name: 'sibaris_square_categories',
+    tienda: ['carta tienda'],
+    maridajeOnly: ['carta gastro'],
+    neverKiosko: ['carta iqos', 'iqos', 'xmas', 'navidad', 'naviden', 'christmas'],
+  }
+}
+
+function decideSquareCatalogImport(tiendaSlug, squareCategories = []) {
+  const policy = getSquareCatalogPolicy(tiendaSlug)
+  if (!policy) return { action: 'kiosko', policy: null }
+
+  const categoryNames = (squareCategories || []).map(c => c.name || '').filter(Boolean)
+  if (!categoryNames.length) {
+    return {
+      action: 'skip',
+      reason: 'square_category_missing',
+      policy: policy.name,
+    }
+  }
+
+  if (categoryNames.some(name => policy.neverKiosko.some(target => matchesCategoryName(name, target)))) {
+    return {
+      action: 'skip',
+      reason: 'square_category_never_kiosko',
+      policy: policy.name,
+    }
+  }
+
+  if (categoryNames.some(name => policy.maridajeOnly.some(target => matchesCategoryName(name, target)))) {
+    return {
+      action: 'maridaje_only',
+      categoryOverride: 'carta',
+      activeOverride: false,
+      policy: policy.name,
+    }
+  }
+
+  if (categoryNames.some(name => policy.tienda.some(target => matchesCategoryName(name, target)))) {
+    return { action: 'kiosko', policy: policy.name }
+  }
+
+  return {
+    action: 'skip',
+    reason: 'square_category_not_carta_tienda',
+    policy: policy.name,
+  }
 }
 
 function summarizeByCategory(rows) {
@@ -583,7 +659,7 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
   while (true) {
     const { data: page, error: existError } = await supabaseAdmin
       .from('vinos_tienda')
-      .select('id, square_catalog_id, square_variation_id, categoria, nombre, precio_pvp')
+      .select('id, square_catalog_id, square_variation_id, categoria, nombre, precio_pvp, activo')
       .eq('tienda_id', tiendaId)
       .range(pageFrom, pageFrom + PAGE - 1)
     existingReadQueries++
@@ -597,11 +673,11 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
   const existingByVariation = {}
   const nullIdByNombre      = {}
   for (const v of (existentes || [])) {
-    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
-    if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
+    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
+    if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
     if (!v.square_catalog_id && !v.square_variation_id && v.nombre) {
       if (!nullIdByNombre[v.nombre]) nullIdByNombre[v.nombre] = []
-      nullIdByNombre[v.nombre].push({ id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp })
+      nullIdByNombre[v.nombre].push({ id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo })
     }
   }
 
@@ -630,19 +706,35 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
     const descripcion = d.description_plaintext || d.description || null
     const foto_url = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
     const stock = itemStockMap[item.id] ?? 0
-    const catDetectada = detectarCategoria(d, categoryMap)
     const squareCategories = getSquareCategoryEntries(d, categoryMap)
+    const squareCategoryDecision = decideSquareCatalogImport(tiendaSlug, squareCategories)
+    if (squareCategoryDecision.action === 'skip') {
+      skipped.push({
+        square_catalog_id: item.id,
+        square_variation_id: variationId,
+        nombre: rawNombre,
+        reason: squareCategoryDecision.reason,
+        policy: squareCategoryDecision.policy,
+        square_categories: squareCategories,
+      })
+      continue
+    }
+    const catDetectada = detectarCategoria(d, categoryMap)
 
     const legacyVariationMatch = variationId ? existingByCatalog[variationId] : null
     const variationMatch = variationId ? existingByVariation[variationId] : null
     const existing = legacyVariationMatch || variationMatch || existingByCatalog[item.id]
-    const catEfectiva = existing?.categoria || catDetectada
-    const activo = !item.is_deleted && squareActivoFromStock(catEfectiva, stock)
+    const catEfectiva = squareCategoryDecision.categoryOverride || existing?.categoria || catDetectada
+    const activo = typeof squareCategoryDecision.activeOverride === 'boolean'
+      ? squareCategoryDecision.activeOverride
+      : !item.is_deleted && squareActivoFromStock(catEfectiva, stock)
     const now = new Date().toISOString()
 
     if (existing) {
       const skipIdNormalization = Boolean(legacyVariationMatch && variationMatch && legacyVariationMatch.id !== variationMatch.id)
       const updatePrice = pricesDiffer(existing.precio_pvp, precio_pvp)
+      const updateCategory = Boolean(squareCategoryDecision.categoryOverride && existing.categoria !== squareCategoryDecision.categoryOverride)
+      const updateActive = typeof squareCategoryDecision.activeOverride === 'boolean' && Boolean(existing.activo) !== squareCategoryDecision.activeOverride
       const updateIds = !skipIdNormalization && (
         existing.square_catalog_id !== item.id ||
         (variationId && existing.square_variation_id !== variationId)
@@ -650,19 +742,26 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
       const changes = []
       if (updatePrice) changes.push('precio_pvp')
       if (updateIds) changes.push('square_ids')
+      if (updateCategory) changes.push('categoria')
+      if (updateActive) changes.push('activo')
       if (skipIdNormalization) changes.push('square_id_conflict_skipped')
 
-      if (updatePrice || updateIds) {
+      if (updatePrice || updateIds || updateCategory || updateActive) {
         toUpsertById.push({
           id: existing.id,
           nombre,
+          categoria: catEfectiva,
           precio_pvp,
+          activo,
           square_last_seen_at: now,
           _catalogId: item.id,
           _variationId: variationId,
           _skipIdNormalization: skipIdNormalization,
           _updatePrice: updatePrice,
           _updateIds: updateIds,
+          _updateCategory: updateCategory,
+          _updateActive: updateActive,
+          _updateState: updateCategory || updateActive,
           _planAction: 'update',
           _changes: changes,
           updated_at: now,
@@ -674,6 +773,7 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
           nombre,
           precio_pvp,
           categoria: catEfectiva,
+          activo,
           square_catalog_id: existing.square_catalog_id,
           square_variation_id: existing.square_variation_id,
           _planAction: 'unchanged',
@@ -685,18 +785,27 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
       const nullMatches = nullIdByNombre[nombre]
       if (nullMatches?.length === 1) {
         const updatePrice = pricesDiffer(nullMatches[0].precio_pvp, precio_pvp)
+        const updateCategory = Boolean(squareCategoryDecision.categoryOverride && nullMatches[0].categoria !== squareCategoryDecision.categoryOverride)
+        const updateActive = typeof squareCategoryDecision.activeOverride === 'boolean' && Boolean(nullMatches[0].activo) !== squareCategoryDecision.activeOverride
         const changes = ['square_ids']
         if (updatePrice) changes.unshift('precio_pvp')
+        if (updateCategory) changes.push('categoria')
+        if (updateActive) changes.push('activo')
         toUpsertById.push({
           id:                   nullMatches[0].id,
           nombre,
+          categoria:            catEfectiva,
           precio_pvp,
+          activo,
           square_last_seen_at:  now,
           _catalogId:           item.id,
           _variationId:         variationId,
           _skipIdNormalization: false,
           _updatePrice:         updatePrice,
           _updateIds:           true,
+          _updateCategory:      updateCategory,
+          _updateActive:        updateActive,
+          _updateState:         updateCategory || updateActive,
           _planAction:          'update',
           _changes:             changes,
           updated_at:           now,
@@ -727,9 +836,11 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
 
   const priceUpdateRows = toUpsertById.filter(r => r._updatePrice)
   const idUpdateRows = toUpsertById.filter(r => r._updateIds && !r._skipIdNormalization)
+  const stateUpdateRows = toUpsertById.filter(r => r._updateState)
   const newConVariacion = toInsertNew.filter(r => r.square_variation_id)
   const newSinVariacion = toInsertNew.filter(r => !r.square_variation_id)
   const planRows = [...toInsertNew, ...toUpsertById, ...unchanged]
+  const squareCategorySkipped = skipped.filter(r => String(r.reason || '').startsWith('square_category_'))
 
   return {
     tiendaId,
@@ -760,11 +871,13 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
       actualizados: toUpsertById.length,
       sinCambios: unchanged.length,
       omitidos: skipped.length,
+      filtradosPorSquareCategoria: squareCategorySkipped.length,
       priceUpdateRows: priceUpdateRows.length,
       idUpdateRows: idUpdateRows.length,
+      stateUpdateRows: stateUpdateRows.length,
       newConVariacion: newConVariacion.length,
       newSinVariacion: newSinVariacion.length,
-      estimatedWriteStatements: priceUpdateRows.length + idUpdateRows.length + newConVariacion.length + newSinVariacion.length,
+      estimatedWriteStatements: priceUpdateRows.length + idUpdateRows.length + stateUpdateRows.length + newConVariacion.length + newSinVariacion.length,
     },
     categories: summarizeByCategory(planRows),
   }
@@ -1171,7 +1284,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
   while (true) {
     const { data: page, error: existError } = await supabaseAdmin
       .from('vinos_tienda')
-      .select('id, square_catalog_id, square_variation_id, categoria, nombre, precio_pvp')
+      .select('id, square_catalog_id, square_variation_id, categoria, nombre, precio_pvp, activo')
       .eq('tienda_id', tiendaId)
       .range(pageFrom, pageFrom + PAGE - 1)
     if (existError) throw new Error(`Leyendo existentes: ${existError.message}`)
@@ -1184,16 +1297,17 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
   const existingByVariation = {}
   const nullIdByNombre      = {} // vinos sin IDs Square, para fusionar en lugar de duplicar
   for (const v of (existentes || [])) {
-    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
-    if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
+    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
+    if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
     if (!v.square_catalog_id && !v.square_variation_id && v.nombre) {
       if (!nullIdByNombre[v.nombre]) nullIdByNombre[v.nombre] = []
-      nullIdByNombre[v.nombre].push({ id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp })
+      nullIdByNombre[v.nombre].push({ id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo })
     }
   }
 
   const toUpsertById = []   // filas ya existentes: upsert por id (sin riesgo de conflicto de índices)
   const toInsertNew  = []   // filas genuinamente nuevas
+  let filtradosPorSquareCategoria = 0
 
   for (const item of items) {
     if (item.type !== 'ITEM') continue
@@ -1209,35 +1323,50 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     const descripcion  = d.description_plaintext || d.description || null
     const foto_url     = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
     const stock        = itemStockMap[item.id] ?? 0
+    const squareCategories = getSquareCategoryEntries(d, categoryMap)
+    const squareCategoryDecision = decideSquareCatalogImport(tiendaSlug, squareCategories)
+    if (squareCategoryDecision.action === 'skip') {
+      filtradosPorSquareCategoria++
+      continue
+    }
     const catDetectada = detectarCategoria(d, categoryMap)
 
     const legacyVariationMatch = variationId ? existingByCatalog[variationId] : null
     const variationMatch = variationId ? existingByVariation[variationId] : null
     const existing = legacyVariationMatch || variationMatch || existingByCatalog[item.id]
 
-    const catEfectiva = existing?.categoria || catDetectada
-    const activo      = !item.is_deleted && squareActivoFromStock(catEfectiva, stock)
+    const catEfectiva = squareCategoryDecision.categoryOverride || existing?.categoria || catDetectada
+    const activo = typeof squareCategoryDecision.activeOverride === 'boolean'
+      ? squareCategoryDecision.activeOverride
+      : !item.is_deleted && squareActivoFromStock(catEfectiva, stock)
 
     const now = new Date().toISOString()
 
     if (existing) {
       const skipIdNormalization = Boolean(legacyVariationMatch && variationMatch && legacyVariationMatch.id !== variationMatch.id)
       const updatePrice = pricesDiffer(existing.precio_pvp, precio_pvp)
+      const updateCategory = Boolean(squareCategoryDecision.categoryOverride && existing.categoria !== squareCategoryDecision.categoryOverride)
+      const updateActive = typeof squareCategoryDecision.activeOverride === 'boolean' && Boolean(existing.activo) !== squareCategoryDecision.activeOverride
       const updateIds = !skipIdNormalization && (
         existing.square_catalog_id !== item.id ||
         (variationId && existing.square_variation_id !== variationId)
       )
 
-      if (updatePrice || updateIds) {
+      if (updatePrice || updateIds || updateCategory || updateActive) {
         toUpsertById.push({
           id: existing.id,
+          categoria: catEfectiva,
           precio_pvp,
+          activo,
           square_last_seen_at: now,
           _catalogId: item.id,
           _variationId: variationId,
           _skipIdNormalization: skipIdNormalization,
           _updatePrice: updatePrice,
           _updateIds: updateIds,
+          _updateCategory: updateCategory,
+          _updateActive: updateActive,
+          _updateState: updateCategory || updateActive,
           updated_at: now,
         })
       }
@@ -1247,15 +1376,22 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
       const nullMatches = nullIdByNombre[nombre]
       if (nullMatches?.length === 1) {
         const updatePrice = pricesDiffer(nullMatches[0].precio_pvp, precio_pvp)
+        const updateCategory = Boolean(squareCategoryDecision.categoryOverride && nullMatches[0].categoria !== squareCategoryDecision.categoryOverride)
+        const updateActive = typeof squareCategoryDecision.activeOverride === 'boolean' && Boolean(nullMatches[0].activo) !== squareCategoryDecision.activeOverride
         toUpsertById.push({
           id:                   nullMatches[0].id,
+          categoria:            catEfectiva,
           precio_pvp,
+          activo,
           square_last_seen_at:  now,
           _catalogId:           item.id,
           _variationId:         variationId,
           _skipIdNormalization: false,
           _updatePrice:         updatePrice,
           _updateIds:           true,
+          _updateCategory:      updateCategory,
+          _updateActive:        updateActive,
+          _updateState:         updateCategory || updateActive,
           updated_at:           now,
         })
         nullIdByNombre[nombre] = [] // consumido: evitar que otro item Square reclame el mismo registro
@@ -1299,6 +1435,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     const chunk = toUpsertById.slice(i, i + UPDATE_CONCURRENCY)
     const priceUpdates = chunk.filter(r => r._updatePrice)
     const idUpdates = chunk.filter(r => r._updateIds && !r._skipIdNormalization)
+    const stateUpdates = chunk.filter(r => r._updateState)
 
     // Paso 1: precio + last_seen (siempre, crítico)
     await Promise.all(priceUpdates.map(({ id, precio_pvp, updated_at, square_last_seen_at }) =>
@@ -1319,6 +1456,18 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
         .eq('id', id)
         .then(({ error }) => {
           if (error) console.error('[square-sync] update(ids) error:', id, error.message)
+        })
+    }))
+
+    await Promise.all(stateUpdates.map(({ id, categoria, activo, _updateCategory, _updateActive, updated_at, square_last_seen_at }) => {
+      const patch = { updated_at, square_last_seen_at }
+      if (_updateCategory) patch.categoria = categoria
+      if (_updateActive) patch.activo = activo
+      return supabaseAdmin.from('vinos_tienda')
+        .update(patch)
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) { console.error('[square-sync] update(state) error:', id, error.message); errores++ }
         })
     }))
   }
@@ -1347,7 +1496,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
 
   const stockSincronizados = Object.keys(itemStockMap).length
   const slug = tiendaSlug || tiendaId
-  console.log(`[square-sync] ${slug}: ${countNuevos} nuevos, ${countAct} act., ${errores} errores, ${stockSincronizados} stock, scoped=${inventoryInfo.inventoryLocationScoped}`)
+  console.log(`[square-sync] ${slug}: ${countNuevos} nuevos, ${countAct} act., ${errores} errores, ${stockSincronizados} stock, filtradosSquare=${filtradosPorSquareCategoria}, scoped=${inventoryInfo.inventoryLocationScoped}`)
 
   return {
     ok: errores === 0,
@@ -1356,6 +1505,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     errores,
     total: items.length,
     stockSincronizados,
+    filtradosPorSquareCategoria,
     inventoryLocationScoped: inventoryInfo.inventoryLocationScoped,
     inventoryLocationIdsRequested: inventoryInfo.inventoryLocationIdsRequested,
     inventoryLocationsSeen: inventoryInfo.inventoryLocationsSeen,
