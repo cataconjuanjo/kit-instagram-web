@@ -1230,6 +1230,12 @@ function stableNoise(value = '', seed = 0) {
   return ((hash >>> 0) % 1000) / 1000
 }
 
+function withoutAvoidIfEnough(items = [], avoidSet, minFresh = 1) {
+  if (!avoidSet?.size) return items
+  const fresh = items.filter(item => !avoidSet.has(String(item.id)))
+  return fresh.length >= minFresh ? fresh : items
+}
+
 const CESTA_SHAPE = {
   enamorar:    { wineShare: 0.44, itemOffset: 0,  wineBias: 0,  premiumBias: 0.95 },
   impresionar: { wineShare: 0.56, itemOffset: -1, wineBias: 0,  premiumBias: 1.12 },
@@ -1297,6 +1303,7 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
   if (sinAlcohol) {
     wines = wines.filter(v => v.tipo === 'sin_alcohol')
   }
+  wines = withoutAvoidIfEnough(wines, avoidSet, Math.max(1, targets.targetWines))
   // vegano en vinos: no se puede garantizar sin etiqueta explícita — se omite el filtro de vino
 
   // Score wines using index-based shuffle (id is UUID, not numeric)
@@ -1351,8 +1358,7 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
   const tiposParaMaridaje = tiposVinos.length > 0 ? tiposVinos : sinAlcohol ? ['sin_alcohol'] : []
   const ocasionBoost = OCASION_GOURMET_BOOST[ocasionId] || {}
 
-  // Score gourmet items: affinity with wine types + occasion boost + aphrodisiac boost + shuffle noise
-  const scoredGourmet = [...gourmet]
+  let gourmetCandidates = [...gourmet]
     .filter(g => g.categoria !== 'carta')
     .map((g, i) => {
       const cat = (g.cat_gourmet && ADMIN_TO_KIOSKO_CAT[g.cat_gourmet]) || detectarCatGourmet(g.nombre, g.descripcion)
@@ -1371,6 +1377,15 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
       if (sinGluten && g.sin_gluten !== true) return false
       return true
     })
+
+  gourmetCandidates = withoutAvoidIfEnough(
+    gourmetCandidates,
+    avoidSet,
+    Math.max(1, targets.targetItems - basket.length)
+  )
+
+  // Score gourmet items: affinity with wine types + occasion boost + aphrodisiac boost + shuffle noise
+  const scoredGourmet = gourmetCandidates
     .map((g, i) => {
       const afinidad = tiposVinos.reduce((sum, tipo) => sum + (AFINIDAD_VINO_GOURMET[tipo]?.[g._cat] || 0), 0)
       const boost = ocasionBoost[g._cat] || 0
@@ -1521,6 +1536,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
   const [sinGluten, setSinGluten]     = useState(false)
   const [gourmet, setGourmet]         = useState([])
   const [cesta, setCesta]             = useState(null)
+  const [cestaHistoryIds, setCestaHistoryIds] = useState([])
   const [semilla, setSemilla]         = useState(0)
   const [cargando, setCargando]       = useState(false)
 
@@ -1554,11 +1570,19 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
   function generarCesta(s = semilla) {
     setCargando(true)
     const resultado = generarCestaAlgoritmo(vinos, gourmetCesta, { ocasionId, presupuesto, sinAlcohol, vegano, sinGluten, semilla: s })
-    setTimeout(() => { setCesta(resultado); setCargando(false); setStep(3) }, 380)
+    const idsResultado = resultado.items.map(item => item.id).filter(Boolean)
+    setTimeout(() => {
+      setCesta(resultado)
+      setCestaHistoryIds(idsResultado)
+      setCargando(false)
+      setStep(3)
+    }, 380)
   }
 
   function regenerar() {
-    const s = semilla + 1
+    const s = semilla + 17
+    const currentIds = cesta?.items?.map(item => item.id).filter(Boolean) || []
+    const avoidIds = [...new Set([...cestaHistoryIds, ...currentIds])]
     setSemilla(s)
     setCesta(null)
     setCargando(true)
@@ -1569,14 +1593,19 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
       vegano,
       sinGluten,
       semilla: s,
-      evitarIds: cesta?.items?.map(item => item.id).filter(Boolean) || [],
+      evitarIds: avoidIds,
     })
-    setTimeout(() => { setCesta(resultado); setCargando(false) }, 380)
+    const resultIds = resultado.items.map(item => item.id).filter(Boolean)
+    setTimeout(() => {
+      setCesta(resultado)
+      setCestaHistoryIds([...new Set([...avoidIds, ...resultIds])].slice(-36))
+      setCargando(false)
+    }, 380)
   }
 
   function reiniciar() {
     setStep(0); setOcasionId(''); setPresupuesto(50); setInputPresup(''); setModoInput(false)
-    setSinAlcohol(false); setVegano(false); setSinGluten(false); setCesta(null); setSemilla(0)
+    setSinAlcohol(false); setVegano(false); setSinGluten(false); setCesta(null); setCestaHistoryIds([]); setSemilla(0)
   }
 
   const volvAtras = step === 0 ? onBack : () => {
