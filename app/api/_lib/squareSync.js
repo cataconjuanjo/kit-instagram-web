@@ -24,7 +24,7 @@ const SQUARE_STOCK_RECONCILE_MAX_WRITES = Math.max(
 )
 const SQUARE_STOCK_RECONCILE_MAX_ACTIVE_CHANGES = Math.max(
   0,
-  parseInt(process.env.SQUARE_STOCK_RECONCILE_MAX_ACTIVE_CHANGES || '50', 10) || 50
+  parseInt(process.env.SQUARE_STOCK_RECONCILE_MAX_ACTIVE_CHANGES || '250', 10) || 250
 )
 
 function parseEnvList(value) {
@@ -234,6 +234,15 @@ function priceFromVariation(variation) {
 function pricesDiffer(current, next) {
   if (next === null || next === undefined) return false
   return Number(current) !== Number(next)
+}
+
+export function isSquareWineCategory(categoria) {
+  return String(categoria || '').trim().toLowerCase() === 'vino'
+}
+
+export function squareActivoFromStock(categoriaOrRow, stock) {
+  const categoria = typeof categoriaOrRow === 'string' ? categoriaOrRow : categoriaOrRow?.categoria
+  return isSquareWineCategory(categoria) ? Number(stock || 0) > 0 : true
 }
 
 async function fetchCatalogObjects(objectIds, token) {
@@ -548,7 +557,7 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken) {
     const variationMatch = variationId ? existingByVariation[variationId] : null
     const existing = legacyVariationMatch || variationMatch || existingByCatalog[item.id]
     const catEfectiva = existing?.categoria || catDetectada
-    const activo = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
+    const activo = !item.is_deleted && squareActivoFromStock(catEfectiva, stock)
     const now = new Date().toISOString()
 
     if (existing) {
@@ -701,7 +710,11 @@ export async function squareSyncDryRunForTienda(tiendaId, tiendaSlug, squareToke
 async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, options = {}) {
   const token = (squareToken || '').trim()
   if (!token) throw new Error('No hay token de Square configurado para esta tienda')
-  const syncActive = options.syncActive === true
+  const activePolicy = options.stockOnly === true
+    ? 'stock_only'
+    : options.syncActive === true
+      ? 'all_categories'
+      : 'wine_only'
 
   const { items: rawItems } = await fetchAllCatalogItems(token)
   const seenItemIds = new Set()
@@ -774,7 +787,11 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
 
     const currentStock = vino.stock || 0
     const currentActivo = Boolean(vino.activo)
-    const targetActivo = syncActive ? targetStock > 0 : currentActivo
+    const targetActivo = activePolicy === 'stock_only'
+      ? currentActivo
+      : activePolicy === 'all_categories'
+        ? targetStock > 0
+        : squareActivoFromStock(vino, targetStock)
     const stockChanged = currentStock !== targetStock
     const activeChanged = currentActivo !== targetActivo
     const row = {
@@ -833,12 +850,14 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
   return {
     tiendaId,
     tiendaSlug,
-    syncActive,
+    activePolicy,
+    syncActive: activePolicy !== 'stock_only',
     changes,
     unchanged,
     missing,
     stats: {
-      syncActive,
+      syncActive: activePolicy !== 'stock_only',
+      activePolicy,
       rawCatalogItems: rawItems.length,
       dedupedCatalogItems: items.length,
       squareVariationIds: variationIds.length,
@@ -853,14 +872,19 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
       subenStock: changes.filter(row => row.stockChanged && row.stockDelta > 0).length,
       bajanStock: changes.filter(row => row.stockChanged && row.stockDelta < 0).length,
       cambianActivo: changes.filter(row => row.activeChanged).length,
-      activeChangesSuppressed: syncActive ? 0 : items.filter(item => {
+      activeChangesSuppressed: activePolicy === 'all_categories' ? 0 : items.filter(item => {
         if (item.type !== 'ITEM') return false
         const variationId = itemToVariation[item.id] || null
         if (!variationId) return false
         const vino = existingByVariation[variationId] || existingByCatalog[item.id] || existingByCatalog[variationId]
         if (!vino) return false
         const targetStock = itemStockMap[item.id] ?? 0
-        return Boolean(vino.activo) !== (targetStock > 0)
+        const allCategoriesTargetActivo = targetStock > 0
+        const currentActivo = Boolean(vino.activo)
+        const policyTargetActivo = activePolicy === 'stock_only'
+          ? currentActivo
+          : squareActivoFromStock(vino, targetStock)
+        return currentActivo !== allCategoriesTargetActivo && currentActivo === policyTargetActivo
       }).length,
     },
     categorias: [...byCategory.values()].sort((a, b) => b.cambios - a.cambios || a.categoria.localeCompare(b.categoria)),
@@ -891,6 +915,7 @@ export async function squareStockReconcileDryRunForTienda(tiendaId, tiendaSlug, 
     dryRun: true,
     reconcileStock: true,
     syncActive: plan.syncActive,
+    activePolicy: plan.activePolicy,
     writes: false,
     syncPaused: isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug }),
     slug: tiendaSlug || null,
@@ -927,6 +952,7 @@ export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, square
       skipped: 'stock_reconcile_guard',
       reconcileStock: true,
       syncActive: plan.syncActive,
+      activePolicy: plan.activePolicy,
       actualizados: 0,
       errores: 0,
       total: plan.changes.length,
@@ -945,7 +971,7 @@ export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, square
     const chunk = plan.changes.slice(i, i + UPDATE_CONCURRENCY)
     await Promise.all(chunk.map(async row => {
       const patch = { stock: row.squareStock, updated_at: now }
-      if (plan.syncActive) patch.activo = row.targetActivo
+      if (plan.activePolicy !== 'stock_only') patch.activo = row.targetActivo
 
       const { error } = await supabaseAdmin
         .from('vinos_tienda')
@@ -963,6 +989,7 @@ export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, square
     ok: errores === 0,
     reconcileStock: true,
     syncActive: plan.syncActive,
+    activePolicy: plan.activePolicy,
     actualizados,
     errores,
     total: plan.changes.length,
@@ -1070,7 +1097,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     const existing = legacyVariationMatch || variationMatch || existingByCatalog[item.id]
 
     const catEfectiva = existing?.categoria || catDetectada
-    const activo      = !item.is_deleted && (catEfectiva !== 'vino' || stock > 0)
+    const activo      = !item.is_deleted && squareActivoFromStock(catEfectiva, stock)
 
     const now = new Date().toISOString()
 

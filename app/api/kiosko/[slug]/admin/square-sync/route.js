@@ -43,12 +43,18 @@ function isForceReconcileRequest(request) {
   ).trim())
 }
 
+function isStockOnlyRequest(request) {
+  const url = new URL(request.url)
+  return TRUE_PARAM.test(String(url.searchParams.get('stockOnly') || url.searchParams.get('stock_only') || '').trim())
+}
+
 export async function POST(request, { params }) {
   const { slug } = await params
   const dryRun = isDryRunRequest(request)
   const reconcileStock = isStockReconcileRequest(request)
   const stockReconcileOptions = {
     syncActive: isSyncActiveRequest(request),
+    stockOnly: isStockOnlyRequest(request),
     forceMassiveWrite: isForceReconcileRequest(request),
   }
 

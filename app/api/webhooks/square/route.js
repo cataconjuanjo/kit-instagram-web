@@ -8,6 +8,7 @@ import {
   listSquareSyncTiendas,
   resolveSquareTiendaByLocation,
   selectVinosBySquareIds,
+  squareActivoFromStock,
   squareCatalogUpdateForTiendaObjects,
   squareSyncPausedPayload,
 } from '../../_lib/squareSync'
@@ -323,7 +324,7 @@ async function handleInventoryUpdate(event, eventId) {
           continue
         }
 
-        const activo = nuevoStock > 0
+        const activo = squareActivoFromStock(vino, nuevoStock)
         if ((vino.stock || 0) === nuevoStock && Boolean(vino.activo) === activo) {
           lineas.push({
             catalog_object_id: catalogId,
@@ -488,7 +489,7 @@ async function handlePaymentUpdated(eventId, payment) {
       }
 
       const nuevoStock = Math.max(0, (vino.stock || 0) - qty)
-      const activo = nuevoStock > 0
+      const activo = squareActivoFromStock(vino, nuevoStock)
       if ((vino.stock || 0) === nuevoStock && Boolean(vino.activo) === activo) {
         lineas.push({
           catalog_object_id: catalogId,
