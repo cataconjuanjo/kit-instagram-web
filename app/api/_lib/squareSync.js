@@ -529,7 +529,7 @@ function getSquareCatalogPolicy(tiendaSlug) {
     allowUnlistedCategories: true,
     tienda: ['carta tienda'],
     maridajeOnly: [],
-    neverKiosko: ['carta iqos', 'iqos', 'xmas home', 'navidad', 'naviden', 'christmas', 'evento', 'bolsas', 'carta gastro'],
+    neverKiosko: ['carta iqos', 'iqos', 'xmas home', 'navidad', 'naviden', 'christmas', 'evento', 'bolsas', 'carta gastro', 'dispositivos', 'terea', 'levia', 'veev'],
   }
 }
 
