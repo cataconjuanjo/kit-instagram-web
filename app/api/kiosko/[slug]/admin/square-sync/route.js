@@ -76,11 +76,12 @@ export async function POST(request, { params }) {
   // Obtener el token de Square específico de esta tienda
   const { data: tiendaData } = await supabaseAdmin
     .from('tiendas')
-    .select('square_access_token')
+    .select('square_access_token, square_location_id')
     .eq('id', access.tienda.id)
     .single()
 
   const squareToken = tiendaData?.square_access_token || process.env.SQUARE_ACCESS_TOKEN
+  const squareLocationId = tiendaData?.square_location_id || process.env.SQUARE_LOCATION_ID || null
 
   if (!squareToken) {
     return NextResponse.json(
@@ -92,13 +93,15 @@ export async function POST(request, { params }) {
   try {
     let result
     if (reconcileStock) {
+      const options = { ...stockReconcileOptions, locationId: squareLocationId }
       result = dryRun
-        ? await squareStockReconcileDryRunForTienda(access.tienda.id, slug, squareToken, stockReconcileOptions)
-        : await squareStockReconcileForTienda(access.tienda.id, slug, squareToken, stockReconcileOptions)
+        ? await squareStockReconcileDryRunForTienda(access.tienda.id, slug, squareToken, options)
+        : await squareStockReconcileForTienda(access.tienda.id, slug, squareToken, options)
     } else {
+      const options = { locationId: squareLocationId }
       result = dryRun
-        ? await squareSyncDryRunForTienda(access.tienda.id, slug, squareToken)
-        : await squareSyncForTienda(access.tienda.id, slug, squareToken)
+        ? await squareSyncDryRunForTienda(access.tienda.id, slug, squareToken, options)
+        : await squareSyncForTienda(access.tienda.id, slug, squareToken, options)
     }
     return NextResponse.json(result)
   } catch (e) {

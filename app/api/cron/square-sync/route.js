@@ -37,11 +37,12 @@ export async function GET(request) {
   const tiendaIds = [...new Set((rows || []).map(r => r.tienda_id))]
   if (!tiendaIds.length) return NextResponse.json({ ok: true, message: 'Sin tiendas Square', synced: 0 })
 
-  // Nombre/slug para logs
+  // Nombre/slug/ubicacion para logs e inventario Square
   const { data: tiendas } = await supabaseAdmin
     .from('tiendas')
-    .select('id, slug')
+    .select('id, slug, square_location_id')
     .in('id', tiendaIds)
+  const tiendaMap = Object.fromEntries((tiendas || []).map(t => [t.id, t]))
   const slugMap = Object.fromEntries((tiendas || []).map(t => [t.id, t.slug]))
 
   const results = []
@@ -62,7 +63,9 @@ export async function GET(request) {
     }
 
     try {
-      const result = await squareSyncForTienda(tiendaId, slugMap[tiendaId])
+      const result = await squareSyncForTienda(tiendaId, slugMap[tiendaId], process.env.SQUARE_ACCESS_TOKEN, {
+        locationId: tiendaMap[tiendaId]?.square_location_id || process.env.SQUARE_LOCATION_ID || null,
+      })
       results.push({ tiendaId, slug: slugMap[tiendaId], ...result })
     } catch (e) {
       console.error(`[cron/square-sync] ${slugMap[tiendaId] || tiendaId}:`, e.message)

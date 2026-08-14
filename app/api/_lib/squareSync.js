@@ -178,15 +178,36 @@ async function fetchAllCatalogItems(token) {
   return { items, imageMap, categoryMap }
 }
 
-async function fetchInventoryCounts(variationIds, token) {
-  if (!variationIds.length || !token) return {}
+function normalizeInventoryLocationIds(options = {}) {
+  const rawLocationIds = [
+    ...(Array.isArray(options.locationIds) ? options.locationIds : [options.locationIds]),
+    options.locationId,
+  ]
+  return uniqueStrings(rawLocationIds)
+}
+
+async function fetchInventoryCountsDetailed(variationIds, token, options = {}) {
+  const locationIds = normalizeInventoryLocationIds(options)
+  if (!variationIds.length || !token) {
+    return {
+      inventoryMap: {},
+      inventoryLocationIdsRequested: locationIds,
+      inventoryLocationsSeen: [],
+      inventoryLocationScoped: locationIds.length > 0,
+      inventoryCountRowsRead: 0,
+    }
+  }
+
   const inventoryMap = {}
+  const locationsSeen = new Set()
+  let countRowsRead = 0
 
   for (let i = 0; i < variationIds.length; i += 100) {
     const chunk = variationIds.slice(i, i + 100)
     let cursor = null
     do {
       const body = { catalog_object_ids: chunk }
+      if (locationIds.length) body.location_ids = locationIds
       if (cursor) body.cursor = cursor
       let data
       try {
@@ -204,14 +225,24 @@ async function fetchInventoryCounts(variationIds, token) {
         break
       }
       for (const c of (data.counts || [])) {
+        countRowsRead++
+        if (c.location_id) locationsSeen.add(c.location_id)
         if (c.state === 'IN_STOCK' && c.catalog_object_id) {
-          inventoryMap[c.catalog_object_id] = Math.max(0, parseInt(c.quantity, 10) || 0)
+          inventoryMap[c.catalog_object_id] = (inventoryMap[c.catalog_object_id] || 0) +
+            Math.max(0, parseInt(c.quantity, 10) || 0)
         }
       }
       cursor = data.cursor || null
     } while (cursor)
   }
-  return inventoryMap
+
+  return {
+    inventoryMap,
+    inventoryLocationIdsRequested: locationIds,
+    inventoryLocationsSeen: [...locationsSeen],
+    inventoryLocationScoped: locationIds.length > 0,
+    inventoryCountRowsRead: countRowsRead,
+  }
 }
 
 function chunkArray(items, size) {
@@ -467,9 +498,13 @@ function publicPlanRow(row) {
   }
 }
 
-async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken) {
+async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = {}) {
   const token = (squareToken || '').trim()
   if (!token) throw new Error('No hay token de Square configurado para esta tienda')
+  const inventoryOptions = {
+    locationId: options.locationId || options.squareLocationId || null,
+    locationIds: options.locationIds,
+  }
 
   const { items: rawItems, imageMap, categoryMap } = await fetchAllCatalogItems(token)
 
@@ -491,7 +526,8 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken) {
     }
   }
 
-  const inventoryMap = await fetchInventoryCounts(variationIds, token)
+  const inventoryInfo = await fetchInventoryCountsDetailed(variationIds, token, inventoryOptions)
+  const inventoryMap = inventoryInfo.inventoryMap
   const itemStockMap = {}
   for (const [varId, qty] of Object.entries(inventoryMap)) {
     const itemId = variationToItem[varId]
@@ -657,6 +693,7 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken) {
     token,
     items,
     itemStockMap,
+    inventoryInfo,
     toUpsertById,
     toInsertNew,
     newConVariacion,
@@ -670,6 +707,10 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken) {
       existingRowsRead: existentes.length,
       existingReadQueries,
       squareVariationIds: variationIds.length,
+      inventoryLocationScoped: inventoryInfo.inventoryLocationScoped,
+      inventoryLocationIdsRequested: inventoryInfo.inventoryLocationIdsRequested,
+      inventoryLocationsSeen: inventoryInfo.inventoryLocationsSeen,
+      inventoryCountRowsRead: inventoryInfo.inventoryCountRowsRead,
       stockSincronizados: Object.keys(itemStockMap).length,
       insertados: toInsertNew.length,
       actualizados: toUpsertById.length,
@@ -685,8 +726,8 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken) {
   }
 }
 
-export async function squareSyncDryRunForTienda(tiendaId, tiendaSlug, squareToken) {
-  const plan = await buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken)
+export async function squareSyncDryRunForTienda(tiendaId, tiendaSlug, squareToken, options = {}) {
+  const plan = await buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options)
   const syncPaused = isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug })
 
   return {
@@ -710,6 +751,10 @@ export async function squareSyncDryRunForTienda(tiendaId, tiendaSlug, squareToke
 async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, options = {}) {
   const token = (squareToken || '').trim()
   if (!token) throw new Error('No hay token de Square configurado para esta tienda')
+  const inventoryOptions = {
+    locationId: options.locationId || options.squareLocationId || null,
+    locationIds: options.locationIds,
+  }
   const activePolicy = options.stockOnly === true
     ? 'stock_only'
     : options.syncActive === true
@@ -735,7 +780,8 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
     }
   }
 
-  const inventoryMap = await fetchInventoryCounts(variationIds, token)
+  const inventoryInfo = await fetchInventoryCountsDetailed(variationIds, token, inventoryOptions)
+  const inventoryMap = inventoryInfo.inventoryMap
   const itemStockMap = {}
   for (const [varId, qty] of Object.entries(inventoryMap)) {
     const itemId = variationToItem[varId]
@@ -852,6 +898,7 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
     tiendaSlug,
     activePolicy,
     syncActive: activePolicy !== 'stock_only',
+    inventoryInfo,
     changes,
     unchanged,
     missing,
@@ -864,6 +911,10 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
       stockCountsRead: Object.keys(itemStockMap).length,
       existingRowsRead: existentes.length,
       existingReadQueries,
+      inventoryLocationScoped: inventoryInfo.inventoryLocationScoped,
+      inventoryLocationIdsRequested: inventoryInfo.inventoryLocationIdsRequested,
+      inventoryLocationsSeen: inventoryInfo.inventoryLocationsSeen,
+      inventoryCountRowsRead: inventoryInfo.inventoryCountRowsRead,
       filasConCambios: changes.length,
       cambiosStock: changes.filter(row => row.stockChanged).length,
       sinCambios: unchanged.length,
@@ -998,7 +1049,7 @@ export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, square
   }
 }
 
-export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
+export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, options = {}) {
   if (isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug })) {
     console.warn(`[square-sync] ${tiendaSlug || tiendaId}: pausa temporal activa`)
     return {
@@ -1013,6 +1064,10 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
 
   const token = (squareToken || '').trim()
   if (!token) throw new Error('No hay token de Square configurado para esta tienda')
+  const inventoryOptions = {
+    locationId: options.locationId || options.squareLocationId || null,
+    locationIds: options.locationIds,
+  }
 
   const { items: rawItems, imageMap, categoryMap } = await fetchAllCatalogItems(token)
 
@@ -1038,7 +1093,8 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
     }
   }
 
-  const inventoryMap = await fetchInventoryCounts(variationIds, token)
+  const inventoryInfo = await fetchInventoryCountsDetailed(variationIds, token, inventoryOptions)
+  const inventoryMap = inventoryInfo.inventoryMap
   const itemStockMap = {}
   for (const [varId, qty] of Object.entries(inventoryMap)) {
     const itemId = variationToItem[varId]
@@ -1228,7 +1284,18 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken) {
 
   const stockSincronizados = Object.keys(itemStockMap).length
   const slug = tiendaSlug || tiendaId
-  console.log(`[square-sync] ${slug}: ${countNuevos} nuevos, ${countAct} act., ${errores} errores, ${stockSincronizados} stock`)
+  console.log(`[square-sync] ${slug}: ${countNuevos} nuevos, ${countAct} act., ${errores} errores, ${stockSincronizados} stock, scoped=${inventoryInfo.inventoryLocationScoped}`)
 
-  return { ok: errores === 0, insertados: countNuevos, actualizados: countAct, errores, total: items.length, stockSincronizados }
+  return {
+    ok: errores === 0,
+    insertados: countNuevos,
+    actualizados: countAct,
+    errores,
+    total: items.length,
+    stockSincronizados,
+    inventoryLocationScoped: inventoryInfo.inventoryLocationScoped,
+    inventoryLocationIdsRequested: inventoryInfo.inventoryLocationIdsRequested,
+    inventoryLocationsSeen: inventoryInfo.inventoryLocationsSeen,
+    inventoryCountRowsRead: inventoryInfo.inventoryCountRowsRead,
+  }
 }
