@@ -526,6 +526,7 @@ function getSquareCatalogPolicy(tiendaSlug) {
   if (normalizeTextKey(tiendaSlug) !== 'sibaris-gourmet') return null
   return {
     name: 'sibaris_square_categories',
+    allowUnlistedCategories: true,
     tienda: ['carta tienda'],
     maridajeOnly: ['carta gastro'],
     neverKiosko: ['carta iqos', 'iqos', 'xmas', 'navidad', 'naviden', 'christmas'],
@@ -563,6 +564,10 @@ function decideSquareCatalogImport(tiendaSlug, squareCategories = []) {
   }
 
   if (categoryNames.some(name => policy.tienda.some(target => matchesCategoryName(name, target)))) {
+    return { action: 'kiosko', policy: policy.name }
+  }
+
+  if (policy.allowUnlistedCategories) {
     return { action: 'kiosko', policy: policy.name }
   }
 
