@@ -7,10 +7,8 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { cargarDemoDashboard } from '../../lib/demoDashboardClient'
-import { aplicarAtribucionUrl } from '../../lib/publicAttribution'
 import { esPerfilBodega } from '../../lib/plans'
 import { CONTENIDO_INICIAL, puedePublicarCarta, resumirContenidoCarta } from '../../lib/publicationReadiness'
-import { EXPERIENCIA_ENTREGA_INICIAL, experienciaEntregaDesdePlan, experienciaTemplateExiste } from '../../lib/experienceTemplates'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import OpenCartaPruebaButton from '../OpenCartaPruebaButton'
@@ -20,366 +18,45 @@ async function tokenSesion() {
   return data.session?.access_token || ''
 }
 
-function formatoFechaHistorial(fecha) {
-  if (!fecha) return 'Sin fecha'
-  const d = new Date(fecha)
-  if (Number.isNaN(d.getTime())) return 'Sin fecha'
-  return new Intl.DateTimeFormat('es-ES', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d)
-}
-
-function resumenContenidoHistorial(resumen = {}) {
-  return [
-    `${resumen.vinosActivos || 0} vinos`,
-    `${resumen.vinosConPrecio || 0} con precio`,
-    `${resumen.platosActivos || 0} platos`,
-  ].join(' · ')
-}
-
-function firmantePreview(aprobacion = {}) {
-  return aprobacion.reviewer_name || aprobacion.reviewer_email || 'enlace privado'
-}
-
-function resumenPreviewAprobada(aprobacion = {}) {
-  const resumen = aprobacion.content_summary || {}
-  return [
-    `${resumen.vinos_activos || 0} vinos`,
-    `${resumen.vinos_con_precio || 0} con precio`,
-    `${resumen.platos_activos || 0} platos`,
-    Number(resumen.links_visibles || 0) > 0 ? `${resumen.links_visibles} enlaces` : null,
-  ].filter(Boolean).join(' · ')
-}
-
-function textoSnapshot(snapshot) {
-  if (!snapshot) return null
-  return `v${snapshot.version_number} · ${formatoFechaHistorial(snapshot.created_at)} · ${snapshot.actor_email || 'responsable'} · ${resumenContenidoHistorial(snapshot.contenido_resumen)}`
-}
-
-function esRestauracionSnapshot(evento = {}) {
-  return evento?.contenido_resumen?.restauracion?.tipo === 'snapshot'
-}
-
-function tituloEventoPublicacion(evento = {}) {
-  if (esRestauracionSnapshot(evento)) {
-    const version = evento.contenido_resumen?.restauracion?.version_number
-    return version ? `Restauró versión v${version}` : 'Restauró una versión'
-  }
-  return evento.accion === 'publicar' ? 'Publicó la carta' : 'Pausó la carta'
-}
-
-const DELIVERY_EVENT_LABELS = {
-  preview_generated: 'Preview generada',
-  preview_link_copied: 'Enlace privado copiado',
-  preview_message_copied: 'Mensaje privado copiado',
-  preview_opened_from_dashboard: 'Preview abierta',
-  preview_approved: 'Preview aprobada',
-  preview_approval_refreshed: 'Aprobación actualizada',
-  publication_published: 'Carta publicada',
-  publication_paused: 'Carta pausada',
-  qr_downloaded: 'QR descargado',
-  qr_print_opened: 'Impresión abierta',
-  public_link_copied: 'Enlace público copiado',
-  team_message_copied: 'Mensaje para equipo copiado',
-  public_destination_opened: 'Destino público abierto',
-  quick_view_opened: 'Vista rápida abierta',
-}
-
-const USO_REAL_INICIAL = {
-  actividad_iniciada: false,
-  desde: null,
-  escaneos_total: 0,
-  escaneos_carta: 0,
-  escaneos_hub: 0,
-  escaneos_otro: 0,
-  por_destino: { carta: 0, hub: 0, otro: 0 },
-  ultimos_escaneos: [],
-}
-
-const FORMATOS_ENTREGA = [
-  {
-    id: 'sobremesa',
-    label: 'Sobremesa',
-    detail: 'Metacrilato o mesa',
-    tagline: 'Escanea para ver la carta viva',
-  },
-  {
-    id: 'cartel',
-    label: 'Cartel',
-    detail: 'Entrada o barra',
-    tagline: 'Carta digital y recomendaciones al momento',
-  },
-  {
-    id: 'tarjeta',
-    label: 'Tarjeta',
-    detail: 'Formato pequeno',
-    tagline: 'Tu carta viva',
-  },
-  {
-    id: 'historia',
-    label: 'Historia',
-    detail: 'Instagram / WhatsApp',
-    tagline: 'Nuestra carta viva ya está disponible',
-  },
-]
-
-function clavePlantillaEntrega(restauranteId) {
-  return `carta_viva_plantilla_activa_${restauranteId}`
-}
-
-function clavePlanEntrega(restauranteId, plantillaId) {
-  return `carta_viva_plan_activacion_${restauranteId}_${plantillaId}`
-}
-
-function leerExperienciaEntregaLocal(restauranteId) {
-  if (!restauranteId || typeof window === 'undefined') return null
-  try {
-    const plantillaId = window.localStorage.getItem(clavePlantillaEntrega(restauranteId))
-    if (!experienciaTemplateExiste(plantillaId)) return null
-    const planLocal = JSON.parse(window.localStorage.getItem(clavePlanEntrega(restauranteId, plantillaId)) || 'null') || {}
-    return experienciaEntregaDesdePlan({
-      template_id: plantillaId,
-      completed_steps: planLocal.completados || {},
-      objective_date: planLocal.objetivo || '',
-      responsible: planLocal.responsable || '',
-    })
-  } catch {
-    return null
-  }
-}
-
-function tituloEventoEntrega(evento = {}) {
-  return DELIVERY_EVENT_LABELS[evento.event] || 'Evento de entrega'
-}
-
-function detalleEventoEntrega(evento = {}) {
-  const destinoTexto = evento.destino === 'hub' ? 'hub' : 'carta'
-  const responsable = evento.actor_email || evento.metadata?.reviewer_email || 'sistema'
-  const experiencia = evento.metadata?.experiencia_label || evento.metadata?.experiencia
-  const campania = evento.metadata?.qr_campaign ? `campana ${evento.metadata.qr_campaign}` : null
-  const mesa = evento.metadata?.qr_table ? `zona ${evento.metadata.qr_table}` : null
-  return [
-    formatoFechaHistorial(evento.created_at),
-    destinoTexto,
-    responsable,
-    experiencia,
-    campania,
-    mesa,
-  ].filter(Boolean).join(' - ')
-}
-
-function listaAtribucion(items = []) {
-  return items.length
-    ? items.map(item => `${item.id}: ${item.total}`).join(' - ')
-    : ''
-}
-
 export default function QRPage() {
   const [restaurante, setRestaurante] = useState(null)
   const [contenidoCarta, setContenidoCarta] = useState(CONTENIDO_INICIAL)
-  const [historialPublicacion, setHistorialPublicacion] = useState([])
-  const [historialPublicacionPendiente, setHistorialPublicacionPendiente] = useState(false)
-  const [snapshotPublicacionPendiente, setSnapshotPublicacionPendiente] = useState(false)
-  const [ultimoSnapshot, setUltimoSnapshot] = useState(null)
-  const [historialPublicacionError, setHistorialPublicacionError] = useState('')
   const [loading, setLoading] = useState(true)
   const [copiado, setCopiado] = useState('')
   const [mensajeCopia, setMensajeCopia] = useState('')
   const [guardandoPublicacion, setGuardandoPublicacion] = useState(false)
   const [mensajePublicacion, setMensajePublicacion] = useState('')
-  const [previewDestinoSeleccionado, setPreviewDestinoSeleccionado] = useState('carta')
-  const [previewDuracionHoras, setPreviewDuracionHoras] = useState('24')
-  const [previewLink, setPreviewLink] = useState('')
-  const [previewLinkDestino, setPreviewLinkDestino] = useState('')
-  const [previewCaducaAt, setPreviewCaducaAt] = useState('')
-  const [previewApproval, setPreviewApproval] = useState(null)
-  const [previewApprovalLoading, setPreviewApprovalLoading] = useState(false)
-  const [previewApprovalVigente, setPreviewApprovalVigente] = useState(false)
-  const [previewApprovalObsoleta, setPreviewApprovalObsoleta] = useState(false)
-  const [previewApprovalPendiente, setPreviewApprovalPendiente] = useState(false)
-  const [previewApprovalError, setPreviewApprovalError] = useState('')
-  const [generandoPreview, setGenerandoPreview] = useState(false)
-  const [mensajePreview, setMensajePreview] = useState('')
-  const [formatoEntrega, setFormatoEntrega] = useState('sobremesa')
-  const [qrCampania, setQrCampania] = useState('qr-mesa')
-  const [qrMesa, setQrMesa] = useState('')
   const [qrDataUrl, setQrDataUrl] = useState('')
-  const [exportandoMaterial, setExportandoMaterial] = useState(false)
-  const [mensajeMaterial, setMensajeMaterial] = useState('')
-  const [experienciaEntrega, setExperienciaEntrega] = useState(EXPERIENCIA_ENTREGA_INICIAL)
-  const [deliveryAnalytics, setDeliveryAnalytics] = useState({
-    eventos: [],
-    resumen: { por_destino: { carta: 0, hub: 0 } },
-    usoReal: USO_REAL_INICIAL,
-    loading: false,
-    pendiente: false,
-    error: '',
-  })
   const canvasRef = useRef(null)
-  const materialRef = useRef(null)
-
-  async function cargarHistorialPublicacion(restauranteId) {
-    if (!restauranteId) return
-    setHistorialPublicacionError('')
-    try {
-      const token = await tokenSesion()
-      const query = new URLSearchParams({ restaurante_id: restauranteId })
-      const res = await fetch(`/api/publicacion?${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo cargar el historial de publicación.')
-      setHistorialPublicacion(data.historial || [])
-      setHistorialPublicacionPendiente(Boolean(data.historial_pendiente))
-      setSnapshotPublicacionPendiente(Boolean(data.snapshot_pendiente))
-      setUltimoSnapshot(data.ultimo_snapshot || null)
-    } catch (error) {
-      setHistorialPublicacion([])
-      setHistorialPublicacionError(error.message || 'No se pudo cargar el historial de publicación.')
-    }
-  }
-
-  async function cargarAprobacionPreview(restauranteId, destino = '') {
-    if (!restauranteId) return
-    setPreviewApprovalError('')
-    setPreviewApprovalLoading(true)
-    try {
-      const token = await tokenSesion()
-      const query = new URLSearchParams({ restaurante_id: restauranteId })
-      if (destino) query.set('destino', destino)
-      const res = await fetch(`/api/publicacion/preview-approval?${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la aprobación de preview.')
-      setPreviewApproval(data.ultima_aprobacion_vigente || data.ultima_aprobacion || null)
-      setPreviewApprovalVigente(Boolean(data.aprobacion_vigente))
-      setPreviewApprovalObsoleta(Boolean(data.aprobacion_obsoleta))
-      setPreviewApprovalPendiente(Boolean(data.aprobaciones_pendientes))
-    } catch (error) {
-      setPreviewApproval(null)
-      setPreviewApprovalVigente(false)
-      setPreviewApprovalObsoleta(false)
-      setPreviewApprovalPendiente(false)
-      setPreviewApprovalError(error.message || 'No se pudo cargar la aprobación de preview.')
-    } finally {
-      setPreviewApprovalLoading(false)
-    }
-  }
-
-  async function cargarDeliveryAnalytics(restauranteId) {
-    if (!restauranteId) return
-    setDeliveryAnalytics(prev => ({ ...prev, loading: true, error: '' }))
-    try {
-      const token = await tokenSesion()
-      const query = new URLSearchParams({ restaurante_id: restauranteId, days: '30' })
-      const res = await fetch(`/api/publicacion/analytics?${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la analítica de entrega.')
-      setDeliveryAnalytics({
-        eventos: data.eventos || [],
-        resumen: data.resumen || { por_destino: { carta: 0, hub: 0 } },
-        usoReal: data.uso_real || USO_REAL_INICIAL,
-        loading: false,
-        pendiente: Boolean(data.analytics_pendiente),
-        error: '',
-      })
-    } catch (error) {
-      setDeliveryAnalytics(prev => ({
-        ...prev,
-        eventos: [],
-        loading: false,
-        error: error.message || 'No se pudo cargar la analítica de entrega.',
-      }))
-    }
-  }
-
-  async function cargarExperienciaEntrega(restauranteId) {
-    if (!restauranteId) return
-    setExperienciaEntrega(prev => ({ ...prev, loading: true, error: '' }))
-    try {
-      const token = await tokenSesion()
-      const query = new URLSearchParams({ restaurante_id: restauranteId })
-      const res = await fetch(`/api/experiencias?${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo cargar la experiencia activa.')
-      if (data.experience_pending) {
-        setExperienciaEntrega({ ...EXPERIENCIA_ENTREGA_INICIAL, pendiente: true })
-        return
-      }
-      const experiencia = experienciaEntregaDesdePlan(data.active_plan) || leerExperienciaEntregaLocal(restauranteId)
-      setExperienciaEntrega(experiencia || { ...EXPERIENCIA_ENTREGA_INICIAL })
-    } catch (error) {
-      const experienciaLocal = leerExperienciaEntregaLocal(restauranteId)
-      setExperienciaEntrega(experienciaLocal || {
-        ...EXPERIENCIA_ENTREGA_INICIAL,
-        error: error.message || 'No se pudo cargar la experiencia activa.',
-      })
-    }
-  }
-
-  async function registrarDeliveryEvent(event, metadata = {}) {
-    if (!restaurante?.id || !event) return
-    try {
-      const token = await tokenSesion()
-      const metadataConExperiencia = {
-        ...metadata,
-        experiencia: metadata.experiencia || experienciaEntrega.id || null,
-        experiencia_label: metadata.experiencia_label || experienciaEntrega.label || null,
-      }
-      const res = await fetch('/api/publicacion/analytics', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          restaurante_id: restaurante.id,
-          event,
-          destino: metadataConExperiencia.destino || destinoPreview,
-          metadata: metadataConExperiencia,
-        }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (data.analytics_pendiente) {
-        setDeliveryAnalytics(prev => ({ ...prev, pendiente: true }))
-        return
-      }
-      if (res.ok) cargarDeliveryAnalytics(restaurante.id)
-    } catch {
-      // La analítica nunca debe bloquear una acción operativa del QR.
-    }
-  }
 
   useEffect(() => {
     async function cargar() {
       const { email, isDemo } = await getEffectiveRestaurantEmail(supabase)
-      if (!email) { window.location.href = '/login'; return }
+      if (!email) {
+        window.location.href = '/login'
+        return
+      }
+
       if (isDemo) {
         const demo = await cargarDemoDashboard(email)
         if (demo?.restaurante) {
-          const rest = demo.restaurante
-          setRestaurante(rest)
-          setPreviewDestinoSeleccionado(rest.hub_activo ? 'hub' : 'carta')
+          setRestaurante(demo.restaurante)
           setContenidoCarta(resumirContenidoCarta(demo.vinos || [], demo.platos || []))
-          setExperienciaEntrega(leerExperienciaEntregaLocal(rest.id) || { ...EXPERIENCIA_ENTREGA_INICIAL })
         } else {
           setContenidoCarta({ ...CONTENIDO_INICIAL, loading: false, error: 'No se encontro el restaurante demo.' })
         }
         setLoading(false)
         return
       }
-      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
+
+      const { data: rest } = await supabase
+        .from('restaurantes')
+        .select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
+        .eq('email', email)
+        .single()
+
       if (rest) {
         setRestaurante(rest)
-        setPreviewDestinoSeleccionado(rest.hub_activo ? 'hub' : 'carta')
         setContenidoCarta(prev => ({ ...prev, loading: true, error: '' }))
         const [vinosRes, platosRes] = await Promise.all([
           supabase.from('vinos').select('id, precio_botella, precio_copa').eq('restaurante_id', rest.id).eq('activo', true),
@@ -395,10 +72,6 @@ export default function QRPage() {
         } else {
           setContenidoCarta(resumirContenidoCarta(vinosRes.data || [], platosRes.data || []))
         }
-        cargarHistorialPublicacion(rest.id)
-        cargarAprobacionPreview(rest.id, rest.hub_activo ? 'hub' : 'carta')
-        cargarDeliveryAnalytics(rest.id)
-        cargarExperienciaEntrega(rest.id)
       } else {
         setContenidoCarta({ ...CONTENIDO_INICIAL, loading: false, error: 'No se encontro el restaurante.' })
       }
@@ -409,111 +82,26 @@ export default function QRPage() {
 
   const urlBase = typeof window !== 'undefined' ? window.location.origin : ''
   const destino = restaurante?.hub_activo ? 'r' : 'carta'
+  const destinoLabel = restaurante?.hub_activo ? 'Hub publico' : 'Carta publica'
   const urlDirecta = restaurante?.slug ? `${urlBase}/${destino}/${restaurante.slug}` : ''
   const urlPrint = restaurante?.slug ? `${urlBase}/carta/${restaurante.slug}?print=1` : ''
   const textoEquipo = restaurante ? `Carta digital ${restaurante.nombre}: ${urlDirecta}` : ''
-  const destinoPreview = restaurante?.hub_activo ? 'hub' : 'carta'
-  const destinoPreviewLabel = restaurante?.hub_activo ? 'Hub privado' : 'Carta privada'
-  const previewDestinoActivo = restaurante?.hub_activo ? previewDestinoSeleccionado : 'carta'
-  const previewDestinoActivoLabel = previewDestinoActivo === 'hub' ? 'Hub privado' : 'Carta privada'
-  const previewDestinoGenerado = previewLinkDestino || previewDestinoActivo
-  const previewDestinoGeneradoLabel = previewDestinoGenerado === 'hub' ? 'Hub privado' : 'Carta privada'
-  const previewOpcionesDestino = restaurante?.hub_activo
-    ? [
-        {
-          id: 'hub',
-          label: 'Hub',
-          detail: 'Enlaces, carta y redes',
-        },
-        {
-          id: 'carta',
-          label: 'Carta',
-          detail: 'Solo carta de vinos',
-        },
-      ]
-    : [
-        {
-          id: 'carta',
-          label: 'Carta',
-          detail: 'Carta de vinos',
-        },
-      ]
-  const textoPreviewRevisor = previewLink
-    ? [
-        `Hola, te paso la preview privada de ${previewDestinoGenerado === 'hub' ? 'hub' : 'carta'} de ${restaurante?.nombre || 'la carta'}.`,
-        previewLink,
-        'Revísala con calma y, si está correcta, pulsa "Aprobar preview" dentro del enlace. Esa aprobación permite publicar el QR final.',
-      ].join('\n\n')
-    : ''
   const migracionPublicacionPendiente = restaurante && !Object.prototype.hasOwnProperty.call(restaurante, 'carta_publica_activa')
   const cartaPublicada = restaurante?.carta_publica_activa !== false
   const estadoPublicacion = cartaPublicada ? 'Publicada' : 'Borrador'
-  const previewApprovalLista = Boolean(previewApprovalVigente && previewApproval && previewApproval.destino === destinoPreview)
-  const previewApprovalBloqueada = !previewApprovalLoading && !previewApprovalPendiente && !previewApprovalLista
-  const previewApprovalDetalle = previewApprovalLoading
-    ? 'Comprobando aprobación'
-    : previewApprovalPendiente
-      ? 'Falta tabla de aprobaciones'
-      : previewApprovalLista
-        ? `${formatoFechaHistorial(previewApproval.approved_at)} por ${firmantePreview(previewApproval)}`
-        : previewApprovalObsoleta
-          ? 'La carta cambio despues de aprobar'
-          : `Sin aprobación de ${destinoPreview === 'hub' ? 'hub' : 'carta'}`
-  const criteriosContenido = [
-    {
-      label: 'Vinos visibles',
-      detail: `${contenidoCarta.vinosActivos} referencias activas`,
-      ok: contenidoCarta.vinosActivos > 0,
-      required: true,
-      href: '/dashboard/vinos',
-    },
-    {
-      label: 'Precios de carta',
-      detail: contenidoCarta.vinosSinPrecio
-        ? `${contenidoCarta.vinosConPrecio} con precio, ${contenidoCarta.vinosSinPrecio} incompletas`
-        : `${contenidoCarta.vinosConPrecio} referencias con precio`,
-      ok: contenidoCarta.vinosConPrecio > 0,
-      required: true,
-      href: '/dashboard/vinos',
-    },
-    {
-      label: 'Platos para Armonia',
-      detail: contenidoCarta.platosActivos ? `${contenidoCarta.platosActivos} platos activos` : 'Sin platos activos',
-      ok: contenidoCarta.platosActivos > 0,
-      required: false,
-      href: '/dashboard/platos',
-    },
-    {
-      label: 'Vinos por copa',
-      detail: contenidoCarta.vinosPorCopa ? `${contenidoCarta.vinosPorCopa} copas marcadas` : 'Sin servicio por copa',
-      ok: contenidoCarta.vinosPorCopa > 0,
-      required: false,
-      href: '/dashboard/vinos',
-    },
-    {
-      label: 'Preview aprobada',
-      detail: previewApprovalDetalle,
-      ok: previewApprovalLista,
-      required: true,
-      href: '#preview-privada',
-    },
-  ]
   const contenidoBloqueado = !contenidoCarta.loading && !contenidoCarta.error && !puedePublicarCarta(contenidoCarta)
   const contenidoPreparado = !contenidoCarta.loading && !contenidoCarta.error && !contenidoBloqueado
   const publicacionDeshabilitada = guardandoPublicacion ||
     migracionPublicacionPendiente ||
     contenidoCarta.loading ||
     Boolean(contenidoCarta.error) ||
-    contenidoBloqueado ||
-    previewApprovalLoading ||
-    previewApprovalPendiente ||
-    Boolean(previewApprovalError) ||
-    previewApprovalBloqueada
-  const entregaPasos = [
+    contenidoBloqueado
+
+  const pasos = [
     {
-      label: 'Contenido',
+      label: 'Revisar carta',
       detail: contenidoCarta.loading
-        ? 'Comprobando carta'
+        ? 'Comprobando vinos y precios'
         : contenidoPreparado
           ? `${contenidoCarta.vinosActivos} vinos listos`
           : 'Faltan vinos o precios',
@@ -521,205 +109,70 @@ export default function QRPage() {
       current: !contenidoPreparado,
     },
     {
-      label: 'Preview',
-      detail: previewApprovalLoading
-        ? 'Comprobando aprobación'
-        : previewApprovalLista
-          ? 'Aprobada y vigente'
-          : previewApprovalObsoleta
-            ? 'Necesita nueva firma'
-            : 'Pendiente de firma',
-      ok: previewApprovalLista,
-      current: contenidoPreparado && !previewApprovalLista,
-    },
-    {
-      label: 'Publicacion',
-      detail: cartaPublicada ? 'Destino abierto' : 'En borrador',
+      label: 'Publicar',
+      detail: cartaPublicada ? 'Abierta al cliente' : 'En borrador',
       ok: cartaPublicada,
-      current: contenidoPreparado && previewApprovalLista && !cartaPublicada,
+      current: contenidoPreparado && !cartaPublicada,
     },
     {
-      label: 'Entrega',
-      detail: cartaPublicada ? 'QR y enlace listos' : 'Esperando publicación',
+      label: 'Usar QR',
+      detail: cartaPublicada ? 'Listo para mesa' : 'Disponible al publicar',
       ok: cartaPublicada,
       current: cartaPublicada,
     },
   ]
-  const entregaTitulo = cartaPublicada
-    ? 'Entrega lista para mesa'
-    : contenidoPreparado && previewApprovalLista
-      ? 'Lista para publicar'
-      : 'Preparando entrega'
-  const entregaDetalle = cartaPublicada
-    ? 'El enlace público, el QR y la versión de impresión ya están disponibles.'
+
+  const tituloEstado = cartaPublicada
+    ? 'QR listo para mesa'
+    : contenidoPreparado
+      ? 'Carta lista para publicar'
+      : 'Completa la carta antes de publicar'
+  const detalleEstado = cartaPublicada
+    ? 'El enlace publico ya funciona. Puedes descargar el QR, copiar la URL o abrir la carta como cliente.'
     : contenidoBloqueado
-      ? 'Completa el contenido mínimo para evitar una carta vacía o sin precios.'
-      : previewApprovalObsoleta
-        ? 'La carta cambió después de la aprobación. Hace falta una nueva preview firmada.'
-        : previewApprovalLista
-          ? 'La preview está aprobada. Publica cuando quieras abrir el destino al cliente.'
-          : 'Genera una preview privada y pide aprobación antes de publicar.'
-  const entregaAccion = cartaPublicada
-    ? { label: 'Descargar QR', hint: 'Material final', onClick: descargar, disabled: !qrDataUrl }
-    : migracionPublicacionPendiente || previewApprovalPendiente
-      ? { label: 'SQL pendiente', hint: 'Base de datos', disabled: true }
-      : !contenidoPreparado
-        ? { label: 'Completar carta', hint: 'Siguiente paso', href: '/dashboard/vinos', disabled: false }
-        : !previewApprovalLista
-          ? { label: previewApprovalObsoleta ? 'Reaprobar preview' : 'Generar preview', hint: 'Siguiente paso', onClick: irAPreviewPrivada, disabled: previewApprovalLoading }
-          : { label: guardandoPublicacion ? 'Publicando...' : 'Publicar carta', hint: 'Siguiente paso', onClick: () => cambiarPublicacion(true), disabled: publicacionDeshabilitada }
-  const estadoPublicacionRequiereAtencion = !cartaPublicada ||
-    contenidoBloqueado ||
-    previewApprovalPendiente ||
-    Boolean(previewApprovalError) ||
-    previewApprovalObsoleta ||
-    previewApprovalBloqueada ||
-    migracionPublicacionPendiente ||
-    Boolean(contenidoCarta.error)
-  const deliveryResumen = deliveryAnalytics.resumen || {}
-  const usoReal = deliveryAnalytics.usoReal || USO_REAL_INICIAL
-  const deliveryStats = [
-    {
-      label: 'Previews',
-      value: deliveryResumen.preview_generated || 0,
-      hint: 'Enlaces privados generados',
-    },
-    {
-      label: 'Aprobaciones',
-      value: deliveryResumen.preview_approved || 0,
-      hint: 'Firmas recibidas desde preview',
-    },
-    {
-      label: 'Publicación',
-      value: (deliveryResumen.publication_published || 0) + (deliveryResumen.publication_paused || 0),
-      hint: 'Cambios publicar/pausar',
-    },
-    {
-      label: 'QR e impresión',
-      value: (deliveryResumen.qr_downloaded || 0) + (deliveryResumen.qr_print_opened || 0),
-      hint: 'Material preparado',
-    },
-    {
-      label: 'Enlaces',
-      value: (deliveryResumen.public_link_copied || 0) +
-        (deliveryResumen.team_message_copied || 0) +
-        (deliveryResumen.public_destination_opened || 0),
-      hint: 'Copias y aperturas públicas',
-    },
-    {
-      label: 'Uso real',
-      value: usoReal.escaneos_total || 0,
-      hint: usoReal.actividad_iniciada ? 'Escaneos de clientes' : 'Actividad no iniciada',
-    },
-  ]
-  const deliveryStatsPrincipales = deliveryStats.filter(stat =>
-    ['QR e impresión', 'Enlaces', 'Uso real'].includes(stat.label)
-  )
-  const deliveryEventosRecientes = deliveryAnalytics.eventos?.slice(0, 5) || []
-  const accionesMaterial = (deliveryResumen.qr_downloaded || 0) +
-    (deliveryResumen.qr_print_opened || 0) +
-    (deliveryResumen.public_link_copied || 0) +
-    (deliveryResumen.team_message_copied || 0)
-  const experienciaActiva = experienciaEntrega.id ? experienciaEntrega : null
-  const escaneosExperienciaActiva = experienciaActiva
-    ? Number(usoReal.por_experiencia?.[experienciaActiva.id] || 0)
-    : 0
-  const experienciasUsoReal = Array.isArray(usoReal.experiencias) ? usoReal.experiencias.slice(0, 3) : []
-  const campaniasUsoReal = Array.isArray(usoReal.campanias) ? usoReal.campanias.slice(0, 3) : []
-  const formatosUsoReal = Array.isArray(usoReal.formatos) ? usoReal.formatos.slice(0, 3) : []
-  const mesasUsoReal = Array.isArray(usoReal.mesas) ? usoReal.mesas.slice(0, 3) : []
-  const lecturaUsoReal = !usoReal.actividad_iniciada
-    ? 'La actividad real no está iniciada. Cuando actives el servicio diario, los escaneos de clientes se compararán con la entrega.'
-    : usoReal.escaneos_total > 0
-      ? `${usoReal.escaneos_total} escaneos reales detectados: ${usoReal.escaneos_hub || 0} desde hub y ${usoReal.escaneos_carta || 0} desde carta.`
-      : accionesMaterial > 0
-        ? 'El material ya se preparó, pero aún no hay escaneos reales en el periodo. Revisa si el QR está en mesa o si sala lo está ofreciendo.'
-        : 'Todavía no hay preparación de material ni escaneos reales en el periodo.'
-  const formatoEntregaActivo = FORMATOS_ENTREGA.find(formato => formato.id === formatoEntrega) || FORMATOS_ENTREGA[0]
-  const opcionesMaterialAbiertas = !cartaPublicada ||
-    formatoEntrega !== 'sobremesa' ||
-    qrCampania !== 'qr-mesa' ||
-    Boolean(qrMesa) ||
-    Boolean(mensajeMaterial)
-  const atribucionQr = {
-    source: 'qr',
-    campaign: qrCampania || formatoEntregaActivo.id,
-    format: formatoEntregaActivo.id,
-    table: qrMesa,
-    experience: experienciaActiva?.id || '',
-  }
-  const urlMedible = aplicarAtribucionUrl(urlDirecta, atribucionQr)
-  const lecturaExperienciaReal = !experienciaActiva
-    ? 'Activa una plantilla para atribuir escaneos a una experiencia concreta.'
-    : !usoReal.actividad_iniciada
-      ? 'La medición real aún no está iniciada para comparar esta experiencia.'
-      : escaneosExperienciaActiva > 0
-        ? `${escaneosExperienciaActiva} escaneos reales llegaron con ${experienciaActiva.label}.`
-        : 'Todavía no hay escaneos reales atribuidos a la experiencia activa.'
-  const lecturaAtribucionReal = !usoReal.actividad_iniciada
-    ? 'Activa el servicio real para medir campanas, formatos y mesas.'
-    : campaniasUsoReal.length || formatosUsoReal.length || mesasUsoReal.length
-      ? [
-          listaAtribucion(campaniasUsoReal) ? `Campanas: ${listaAtribucion(campaniasUsoReal)}` : null,
-          listaAtribucion(formatosUsoReal) ? `Formatos: ${listaAtribucion(formatosUsoReal)}` : null,
-          listaAtribucion(mesasUsoReal) ? `Mesas/zonas: ${listaAtribucion(mesasUsoReal)}` : null,
-        ].filter(Boolean).join(' | ')
-      : 'Los escaneos reales todavia no traen parametros de QR. Genera el nuevo material medible y colocalo en sala.'
-  const nombreMaterial = restaurante?.nombre || 'Carta Viva'
-  const destinoMaterial = restaurante?.hub_activo ? 'Hub digital' : 'Carta digital'
-  const detalleMaterial = restaurante?.ciudad || restaurante?.provincia
-    ? [restaurante?.ciudad, restaurante?.provincia].filter(Boolean).join(' - ')
-    : 'Carta Viva'
-  const etiquetaMaterial = experienciaActiva?.badge || destinoMaterial
-  const taglineMaterial = experienciaActiva?.tagline || formatoEntregaActivo.tagline
-  const progresoExperiencia = experienciaActiva?.total
-    ? `${experienciaActiva.completados}/${experienciaActiva.total} pasos listos (${experienciaActiva.progreso}%)`
-    : 'Checklist sin pasos marcados'
-  const estadoExperienciaEntrega = experienciaEntrega.loading
-    ? 'Cargando experiencia activa.'
-    : experienciaEntrega.pendiente
-      ? 'Aplica supabase/add_experience_activation_plans.sql para personalizar el pack por plantilla.'
-      : experienciaEntrega.error
-        ? 'No se pudo cargar la experiencia activa. El pack usa texto genérico.'
-        : experienciaActiva
-          ? `Usando ${experienciaActiva.label}. ${progresoExperiencia}.`
-          : 'El pack usa texto genérico. Activa una plantilla para orientar los copys.'
-  const textoMaterialEquipo = [
-    `Carta Viva de ${nombreMaterial}`,
-    experienciaActiva ? `Experiencia: ${experienciaActiva.label}` : null,
-    experienciaActiva?.responsable ? `Responsable: ${experienciaActiva.responsable}` : null,
-    experienciaActiva?.objetivo ? `Fecha objetivo: ${experienciaActiva.objetivo}` : null,
-    urlMedible,
-    experienciaActiva?.sala || 'Antes de llevar el QR a mesa: escanear desde móvil, comprobar precios y confirmar que abre sin token.',
-  ].filter(Boolean).join('\n')
-  const textoMaterialWhatsApp = [
-    `${experienciaActiva?.whatsapp || 'Hola, te paso la carta digital de'} ${nombreMaterial}.`,
-    urlMedible,
-    experienciaActiva?.cliente || 'Desde ahí puedes ver la carta actualizada y las recomendaciones.',
-  ].join('\n\n')
-  const textosMaterial = [
-    { id: 'material-equipo', label: 'Equipo', texto: textoMaterialEquipo },
-    { id: 'material-whatsapp', label: 'WhatsApp', texto: textoMaterialWhatsApp },
-  ]
+      ? 'Antes de abrir el QR al cliente, la carta necesita al menos un vino visible y precios de carta.'
+      : 'Prueba la carta internamente y publica cuando este revisada.'
 
   useEffect(() => {
-    if (!urlMedible) {
+    if (!urlDirecta) {
       setQrDataUrl('')
       return
     }
     if (canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, urlMedible, {
+      QRCode.toCanvas(canvasRef.current, urlDirecta, {
         width: 300,
         margin: 2,
-        color: { dark: '#171416', light: '#ffffff' }
+        color: { dark: '#171416', light: '#ffffff' },
       }).catch(() => {})
     }
-    QRCode.toDataURL(urlMedible, {
+    QRCode.toDataURL(urlDirecta, {
       width: 880,
       margin: 2,
       color: { dark: '#171416', light: '#ffffff' },
     }).then(setQrDataUrl).catch(() => setQrDataUrl(''))
-  }, [urlMedible])
+  }, [urlDirecta])
+
+  async function registrarUso(event, metadata = {}) {
+    if (!restaurante?.id || !event) return
+    try {
+      const token = await tokenSesion()
+      await fetch('/api/publicacion/analytics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          restaurante_id: restaurante.id,
+          event,
+          destino: restaurante.hub_activo ? 'hub' : 'carta',
+          metadata,
+        }),
+      })
+    } catch {
+      // La medicion no debe bloquear acciones basicas del QR.
+    }
+  }
 
   async function copiarAlPortapapeles(texto) {
     if (!texto || typeof window === 'undefined' || typeof document === 'undefined') return false
@@ -750,169 +203,33 @@ export default function QRPage() {
     }
   }
 
-  function avisarCopiaManual() {
-    setMensajeCopia('No se pudo copiar automáticamente. Selecciona el texto visible y cópialo manualmente.')
-    setTimeout(() => setMensajeCopia(''), 2600)
-  }
-
-  function descargar() {
-    if (!qrDataUrl || !restaurante?.slug) return
-    const link = document.createElement('a')
-    link.download = `qr-${restaurante.slug}.png`
-    link.href = qrDataUrl
-    link.click()
-    registrarDeliveryEvent('qr_downloaded', {
-      destino: destinoPreview,
-      slug: restaurante.slug,
-      source: 'dashboard_qr',
-      qr_campaign: atribucionQr.campaign,
-      qr_format: atribucionQr.format,
-      qr_table: atribucionQr.table,
-      qr_url: urlMedible,
-    })
-  }
-
-  function imprimir() {
-    if (typeof window === 'undefined') return
-    registrarDeliveryEvent('qr_print_opened', {
-      destino: destinoPreview,
-      source: 'dashboard_qr',
-      qr_campaign: atribucionQr.campaign,
-      qr_format: atribucionQr.format,
-      qr_table: atribucionQr.table,
-    })
-    window.print()
-  }
-
-  async function descargarMaterial() {
-    if (!materialRef.current || !restaurante?.slug || exportandoMaterial) return
-    setExportandoMaterial(true)
-    setMensajeMaterial('')
-    try {
-      const html2canvas = (await import('html2canvas')).default
-      const canvas = await html2canvas(materialRef.current, {
-        backgroundColor: null,
-        scale: 2,
-        useCORS: true,
-      })
-      const link = document.createElement('a')
-      link.download = `material-${formatoEntrega}-${restaurante.slug}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-      registrarDeliveryEvent('qr_downloaded', {
-        destino: destinoPreview,
-        source: 'delivery_pack',
-        formato: formatoEntrega,
-        experiencia: experienciaActiva?.id || null,
-        qr_campaign: atribucionQr.campaign,
-        qr_format: atribucionQr.format,
-        qr_table: atribucionQr.table,
-        qr_url: urlMedible,
-      })
-      setMensajeMaterial('Material exportado en PNG.')
-    } catch {
-      setMensajeMaterial('No se pudo exportar el material. Prueba de nuevo o descarga el QR simple.')
-    } finally {
-      setExportandoMaterial(false)
-      setTimeout(() => setMensajeMaterial(''), 2200)
-    }
-  }
-
   async function copiar(texto, tipo) {
     if (!texto) return
     const copiadoOk = await copiarAlPortapapeles(texto)
     if (!copiadoOk) {
-      avisarCopiaManual()
+      setMensajeCopia('No se pudo copiar automaticamente. Selecciona el enlace visible y copialo manualmente.')
+      setTimeout(() => setMensajeCopia(''), 2600)
       return
     }
     setCopiado(tipo)
-    const eventoPorTipo = {
-      url: 'public_link_copied',
-      equipo: 'team_message_copied',
-      quick: 'public_link_copied',
-      preview: 'preview_link_copied',
-      'preview-texto': 'preview_message_copied',
-      'material-equipo': 'team_message_copied',
-      'material-whatsapp': 'team_message_copied',
-      'material-instagram': 'team_message_copied',
-      'material-imprenta': 'team_message_copied',
-    }
-    const evento = eventoPorTipo[tipo]
-    if (evento) {
-      registrarDeliveryEvent(evento, {
-        destino: tipo?.startsWith('preview') ? previewDestinoGenerado : destinoPreview,
-        source: tipo,
-        qr_campaign: tipo?.startsWith('material') ? atribucionQr.campaign : undefined,
-        qr_format: tipo?.startsWith('material') ? atribucionQr.format : undefined,
-        qr_table: tipo?.startsWith('material') ? atribucionQr.table : undefined,
-      })
-    }
+    const evento = tipo === 'equipo' ? 'team_message_copied' : 'public_link_copied'
+    registrarUso(evento, { source: tipo })
     setTimeout(() => setCopiado(''), 1800)
   }
 
-
-  function irAPreviewPrivada() {
-    if (typeof document === 'undefined') return
-    document.getElementById('preview-privada')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  function descargar() {
+    if (!qrDataUrl || !restaurante?.slug || !cartaPublicada) return
+    const link = document.createElement('a')
+    link.download = `qr-${restaurante.slug}.png`
+    link.href = qrDataUrl
+    link.click()
+    registrarUso('qr_downloaded', { source: 'dashboard_qr', slug: restaurante.slug })
   }
 
-  async function actualizarAprobacionPreview() {
-    await cargarAprobacionPreview(restaurante?.id, destinoPreview)
-    registrarDeliveryEvent('preview_approval_refreshed', {
-      destino: destinoPreview,
-      source: 'dashboard_qr',
-    })
-  }
-
-  function cambiarDestinoPreview(destino) {
-    const siguiente = destino === 'hub' && restaurante?.hub_activo ? 'hub' : 'carta'
-    setPreviewDestinoSeleccionado(siguiente)
-    setPreviewLink('')
-    setPreviewLinkDestino('')
-    setPreviewCaducaAt('')
-    setMensajePreview('')
-  }
-
-  async function crearPreviewCompartible() {
-    if (!restaurante?.id || generandoPreview) return
-    setGenerandoPreview(true)
-    setMensajePreview('')
-    try {
-      const token = await tokenSesion()
-      const destinoSolicitud = restaurante.hub_activo ? previewDestinoSeleccionado : 'carta'
-      const res = await fetch('/api/prueba-carta', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          restaurante_id: restaurante.id,
-          destino: destinoSolicitud,
-          duracion_horas: Number(previewDuracionHoras) || 24,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'No se pudo crear la vista previa.')
-      const enlace = data.url_absoluta || data.url
-      setPreviewLink(enlace)
-      setPreviewLinkDestino(data.destino || destinoSolicitud)
-      setPreviewCaducaAt(data.caduca_at || '')
-      const copiadoPreview = await copiarAlPortapapeles(enlace)
-      if (copiadoPreview) setCopiado('preview')
-      registrarDeliveryEvent('preview_generated', {
-        destino: data.destino || destinoSolicitud,
-        duracion_horas: Number(previewDuracionHoras) || 24,
-        caduca_at: data.caduca_at || '',
-        source: 'dashboard_qr',
-      })
-      setMensajePreview(`Preview de ${data.destino === 'hub' ? 'hub' : 'carta'} ${copiadoPreview ? 'copiada' : 'generada'}. Caduca ${data.caduca_en_minutos >= 60 ? `en ${Math.round(data.caduca_en_minutos / 60)} h` : `en ${data.caduca_en_minutos} min`}.${copiadoPreview ? '' : ' Copia el enlace visible manualmente.'}`)
-      if (copiadoPreview) setTimeout(() => setCopiado(''), 1800)
-    } catch (error) {
-      setMensajePreview(error.message || 'No se pudo crear la vista previa privada.')
-    } finally {
-      setGenerandoPreview(false)
-    }
+  function imprimir() {
+    if (typeof window === 'undefined' || !cartaPublicada) return
+    registrarUso('qr_print_opened', { source: 'dashboard_qr' })
+    window.open(urlPrint, '_blank', 'noopener,noreferrer')
   }
 
   async function cambiarPublicacion(activa) {
@@ -921,84 +238,49 @@ export default function QRPage() {
       setMensajePublicacion(contenidoCarta.error || 'Completa vinos visibles y precios antes de publicar la carta.')
       return
     }
-    if (activa && (previewApprovalLoading || previewApprovalPendiente || previewApprovalError || !previewApprovalLista)) {
-      setMensajePublicacion(
-        previewApprovalPendiente
-          ? 'Aplica supabase/add_preview_approvals.sql para registrar aprobaciones antes de publicar.'
-          : previewApprovalError ||
-            (previewApprovalObsoleta
-              ? 'La carta cambió después de la aprobación. Genera una nueva preview y apruébala antes de publicar.'
-              : `Aprueba primero la preview privada de ${destinoPreview === 'hub' ? 'hub' : 'carta'} antes de publicar.`)
-      )
-      return
-    }
+
     setGuardandoPublicacion(true)
     setMensajePublicacion('')
     try {
-    const token = await tokenSesion()
-    const res = await fetch('/api/publicacion', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ restaurante_id: restaurante.id, activa }),
-    })
-    const data = await res.json()
+      const token = await tokenSesion()
+      const res = await fetch('/api/publicacion', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ restaurante_id: restaurante.id, activa }),
+      })
+      const data = await res.json()
 
-    if (!res.ok) {
-      if (data.contenido) setContenidoCarta({ ...data.contenido, loading: false, error: '' })
-      setHistorialPublicacionPendiente(Boolean(data.historial_pendiente))
-      setSnapshotPublicacionPendiente(Boolean(data.snapshot_pendiente))
-      if (data.aprobaciones_pendientes) setPreviewApprovalPendiente(true)
-      if (data.aprobacion_requerida) {
-        setPreviewApproval(null)
-        setPreviewApprovalVigente(false)
-        setPreviewApprovalObsoleta(false)
+      if (!res.ok) {
+        if (data.contenido) setContenidoCarta({ ...data.contenido, loading: false, error: '' })
+        setMensajePublicacion(data.error || 'No se pudo cambiar el estado de la carta.')
+      } else {
+        setRestaurante(data.restaurante)
+        if (data.contenido) setContenidoCarta({ ...data.contenido, loading: false, error: '' })
+        setMensajePublicacion(activa ? 'Carta publicada. El QR ya puede ponerse en mesa.' : 'Carta pausada. El QR publico queda cerrado para clientes.')
       }
-      if (data.aprobacion_obsoleta) {
-        setPreviewApproval(data.ultima_aprobacion || previewApproval)
-        setPreviewApprovalVigente(false)
-        setPreviewApprovalObsoleta(true)
-      }
-      setMensajePublicacion(data.error || 'No se pudo cambiar el estado. Ejecuta supabase/add_publication_status.sql en Supabase.')
-    } else {
-      setRestaurante(data.restaurante)
-      if (data.contenido) setContenidoCarta({ ...data.contenido, loading: false, error: '' })
-      if (data.aprobacion_preview) {
-        setPreviewApproval(data.aprobacion_preview)
-        setPreviewApprovalVigente(true)
-        setPreviewApprovalObsoleta(false)
-      }
-      if (data.evento) {
-        setHistorialPublicacion(prev => [data.evento, ...prev.filter(item => item.id !== data.evento.id)].slice(0, 6))
-      }
-      setHistorialPublicacionPendiente(Boolean(data.historial_pendiente))
-      setSnapshotPublicacionPendiente(Boolean(data.snapshot_pendiente))
-      if (data.snapshot) setUltimoSnapshot(data.snapshot)
-      if (data.analytics_pendiente) setDeliveryAnalytics(prev => ({ ...prev, pendiente: true }))
-      cargarDeliveryAnalytics(restaurante.id)
-      setMensajePublicacion(activa ? 'Carta publicada. El enlace público ya puede compartirse.' : 'Carta pausada. Solo se podrá abrir con prueba interna.')
-    }
     } catch {
-      setMensajePublicacion('No se pudo conectar con el servidor para cambiar la publicación.')
+      setMensajePublicacion('No se pudo conectar con el servidor para cambiar la publicacion.')
     } finally {
       setGuardandoPublicacion(false)
     }
   }
 
   if (loading) return <LoadingState />
+
   if (!restaurante) {
     return (
       <ModuleShell
         restaurante={null}
-        eyebrow="Código QR"
-        title="No se pudo cargar la entrega"
-        subtitle="La pantalla esta lista, pero falta una sesion de restaurante o la demo local no ha devuelto datos."
+        eyebrow="Codigo QR"
+        title="No se pudo cargar el QR"
+        subtitle="Falta una sesion de restaurante o la demo local no ha devuelto datos."
         narrow
       >
         <div className={styles.empty}>
-          Inicia sesion con un restaurante o vuelve a cargar la demo para ver el enlace publico, el QR y el pack de mesa.
+          Inicia sesion con un restaurante o vuelve a cargar la demo para ver el enlace publico y el QR.
         </div>
       </ModuleShell>
     )
@@ -1010,71 +292,64 @@ export default function QRPage() {
         restaurante={restaurante}
         eyebrow="Accesos"
         title="QR no incluido en Sommelier"
-        subtitle="La membresía sommelier trabaja con bodega interna: referencias, stock, inventario, TPV y mapa estrella/joya. No genera carta pública ni QR de mesa."
+        subtitle="La membresia sommelier trabaja con bodega interna: referencias, stock, inventario, TPV y mapa estrella/joya. No genera carta publica ni QR de mesa."
         actions={<Link className={styles.secondary} href="/dashboard/ajustes">Volver a ajustes</Link>}
         narrow
       >
         <section className={styles.empty}>
           <div>
-            <strong>Sin carta pública</strong>
-            <p>Para esta cuenta, los accesos útiles están en Referencias, Bodega, Inventario y Estrellas/Joyas.</p>
+            <strong>Sin carta publica</strong>
+            <p>Para esta cuenta, los accesos utiles estan en Referencias, Bodega, Inventario y Estrellas/Joyas.</p>
           </div>
         </section>
       </ModuleShell>
     )
   }
 
-  const pruebas = [
-    { titulo: 'Abrir enlace público', detalle: cartaPublicada ? (restaurante?.hub_activo ? 'El QR abre el hub público. Si consultas Armonia, contará como cliente real.' : 'El QR abre la carta digital. Si consultas Armonia, contará como cliente real.') : 'Aún está en borrador. Usa la prueba interna y publica cuando esté lista.', href: urlDirecta, publico: true, evento: 'public_destination_opened' },
-    { titulo: 'Carta directa', detalle: 'Comprueba platos, vinos, precios y tiempos de carga. Esta apertura se registra como prueba interna.', pruebaCarta: true },
-    { titulo: 'Versión impresión', detalle: cartaPublicada ? 'Abre la vista preparada para imprimir o guardar PDF.' : 'Disponible cuando publiques la carta.', href: urlPrint, publico: true, evento: 'qr_print_opened' },
-  ]
-
   return (
     <ModuleShell
       restaurante={restaurante}
-      eyebrow="Código QR"
-      title="Entrega de QR y accesos"
-      subtitle="Pantalla de entrega para probar el enlace, descargar el QR y preparar materiales de mesa."
+      eyebrow="Codigo QR"
+      title="Publicar QR"
+      subtitle="Revisa la carta, abre o pausa el enlace publico y descarga el QR para mesa."
       narrow
-      actions={
-        <>
-          <Link className={styles.secondary} href="/dashboard/versiones">Ver versiones</Link>
-        </>
-      }
+      actions={<OpenCartaPruebaButton className={styles.secondary} restauranteId={restaurante?.id}>Probar carta</OpenCartaPruebaButton>}
       help={{
-        title: 'Antes de imprimir',
-        intro: 'El QR es el punto de entrada del cliente. Conviene probarlo antes de llevarlo a mesa.',
+        title: 'Flujo simple',
+        intro: 'Esta pantalla solo sirve para dejar el QR listo para clientes.',
         items: [
-          { title: 'Destino', text: 'Si el hub está activo abre reservas, cartas y redes. Si no, abre la carta de vinos directamente.' },
-          { title: 'Prueba real', text: 'Escanea con el móvil antes de imprimir para revisar velocidad, logo, colores y enlaces.' },
-          { title: 'Uso', text: 'Descarga el PNG y úsalo en sobremesa, metacrilato, cartel o enlace de Instagram.' },
+          { title: 'Revisar', text: 'Abre una prueba interna antes de publicar.' },
+          { title: 'Publicar', text: 'Cuando este correcta, activa el enlace publico.' },
+          { title: 'Descargar', text: 'Usa el QR en mesa, barra, imprenta o redes.' },
         ],
       }}
     >
-      <section className={styles.handoffHero} aria-label="Estado de entrega">
+      <section className={styles.handoffHero} aria-label="Estado del QR">
         <div className={styles.handoffCopy}>
-          <p className={styles.eyebrow}>Centro de entrega</p>
-          <h2>{entregaTitulo}</h2>
-          <p>{entregaDetalle}</p>
+          <h2>{tituloEstado}</h2>
+          <p>{detalleEstado}</p>
           <div className={styles.handoffMeta}>
-            <span>{destino === 'r' ? 'Hub público' : 'Carta pública'}</span>
-            <span>{migracionPublicacionPendiente ? 'Migración pendiente' : estadoPublicacion}</span>
+            <span>{destinoLabel}</span>
+            <span>{migracionPublicacionPendiente ? 'Migracion pendiente' : estadoPublicacion}</span>
             <span>{contenidoCarta.vinosActivos} vinos</span>
           </div>
         </div>
         <div className={styles.handoffAction}>
-          <span>{entregaAccion.hint}</span>
-          {entregaAccion.href && !entregaAccion.disabled ? (
-            <Link className={styles.primary} href={entregaAccion.href}>{entregaAccion.label}</Link>
-          ) : (
-            <button type="button" className={styles.primary} onClick={entregaAccion.onClick} disabled={entregaAccion.disabled}>
-              {entregaAccion.label}
+          <span>{cartaPublicada ? 'QR final' : 'Siguiente paso'}</span>
+          {cartaPublicada ? (
+            <button type="button" className={styles.primary} onClick={descargar} disabled={!qrDataUrl}>
+              Descargar QR
             </button>
+          ) : contenidoPreparado ? (
+            <button type="button" className={styles.primary} onClick={() => cambiarPublicacion(true)} disabled={publicacionDeshabilitada}>
+              {guardandoPublicacion ? 'Publicando...' : 'Publicar carta'}
+            </button>
+          ) : (
+            <Link className={styles.primary} href="/dashboard/vinos">Completar carta</Link>
           )}
         </div>
         <div className={styles.handoffSteps}>
-          {entregaPasos.map((paso, index) => (
+          {pasos.map((paso, index) => (
             <article
               key={paso.label}
               className={`${styles.handoffStep} ${paso.ok ? styles.handoffStepOk : styles.handoffStepPending} ${paso.current ? styles.handoffStepCurrent : ''}`}
@@ -1090,454 +365,101 @@ export default function QRPage() {
 
       {mensajeCopia && <p className={styles.panelSub} style={{ margin: '0 0 16px' }}>{mensajeCopia}</p>}
 
-      <details className={`${styles.panelDetails} ${styles.publicationDetails}`} open={estadoPublicacionRequiereAtencion}>
-        <summary>
-          <div>
-            <span className={styles.eyebrow}>Estado de publicación</span>
-            <strong>{migracionPublicacionPendiente ? 'Migración pendiente' : estadoPublicacion}</strong>
-            <small>
-              {cartaPublicada
-                ? 'La experiencia pública responde sin token. Lista para QR, Instagram o materiales de mesa.'
-                : 'La carta está en borrador. Puedes probarla internamente sin abrirla a clientes.'}
-            </small>
-          </div>
-          <span>{estadoPublicacionRequiereAtencion ? 'Revisar' : 'Ver detalle'}</span>
-        </summary>
-        <div className={styles.panelBody}>
-          {contenidoCarta.loading ? (
-            <p className={styles.panelSub} style={{ marginBottom: 14 }}>Comprobando contenido antes de permitir la publicación...</p>
-          ) : (
-            <div className={styles.publishReadiness} aria-label="Contenido minimo para publicar">
-              {criteriosContenido.map(criterio => (
-                <article
-                  className={`${styles.readinessItem} ${criterio.ok ? styles.readinessOk : criterio.required ? styles.readinessBlocked : styles.readinessPending}`}
-                  key={criterio.label}
-                >
-                  <span>{criterio.required ? 'Obligatorio' : 'Recomendado'}</span>
-                  <strong>{criterio.label}</strong>
-                  <small>{criterio.detail}</small>
-                  <Link href={criterio.href}>{criterio.ok ? 'Revisar' : 'Completar'}</Link>
-                </article>
-              ))}
+      <section className={styles.gridTwo} style={{ marginBottom: 16 }}>
+        <div className={styles.panel}>
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>QR de mesa</h2>
+              <p className={styles.panelSub}>{cartaPublicada ? 'Descarga el codigo o copia el enlace publico.' : 'Publica la carta para activar la descarga final.'}</p>
             </div>
-          )}
-          {contenidoCarta.error && <p className={styles.panelSub} style={{ marginBottom: 14 }}>{contenidoCarta.error}</p>}
-          {contenidoBloqueado && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavía: faltan referencias activas o precios visibles para que el cliente no llegue a una carta vacía.</p>}
-          {!cartaPublicada && !contenidoBloqueado && previewApprovalLoading && <p className={styles.panelSub} style={{ marginBottom: 14 }}>Comprobando si la preview privada ya está aprobada...</p>}
-          {!cartaPublicada && !contenidoBloqueado && previewApprovalPendiente && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavía: falta aplicar supabase/add_preview_approvals.sql para registrar la aprobación de preview.</p>}
-          {!cartaPublicada && !contenidoBloqueado && !previewApprovalPendiente && previewApprovalError && <p className={styles.panelSub} style={{ marginBottom: 14 }}>{previewApprovalError}</p>}
-          {!cartaPublicada && !contenidoBloqueado && previewApprovalObsoleta && !previewApprovalError && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavía: la carta cambió después de la aprobación. Genera una nueva preview y vuelve a aprobarla.</p>}
-          {!cartaPublicada && !contenidoBloqueado && previewApprovalBloqueada && !previewApprovalObsoleta && !previewApprovalError && <p className={styles.panelSub} style={{ marginBottom: 14 }}>No publiques todavía: comparte la preview privada y pide que pulsen Aprobar preview desde el enlace.</p>}
-          <div className={styles.actionRow}>
-            <OpenCartaPruebaButton className={styles.secondary} restauranteId={restaurante?.id}>Probar sin publicar</OpenCartaPruebaButton>
-            {cartaPublicada ? (
-              <button type="button" className={styles.ghost} onClick={() => cambiarPublicacion(false)} disabled={guardandoPublicacion || migracionPublicacionPendiente}>
-                {guardandoPublicacion ? 'Guardando...' : 'Pausar pública'}
-              </button>
-            ) : (
-              <button type="button" className={styles.primary} onClick={() => cambiarPublicacion(true)} disabled={publicacionDeshabilitada}>
-                {guardandoPublicacion ? 'Publicando...' : 'Publicar carta'}
-              </button>
-            )}
+            <span className={styles.badge}>{estadoPublicacion}</span>
           </div>
-          {migracionPublicacionPendiente && <p className={styles.panelSub} style={{ marginTop: 12 }}>Aplica supabase/add_publication_status.sql para activar el control de borrador/publicado. Hasta entonces, las cartas existentes siguen respondiendo como antes.</p>}
-          {mensajePublicacion && <p className={styles.panelSub} style={{ marginTop: 12 }}>{mensajePublicacion}</p>}
-        </div>
-      </details>
-
-      <section className={styles.panel} style={{ marginBottom: 16 }} id="pack-entrega">
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Pack de entrega</h2>
-            <p className={styles.panelSub}>Crea una pieza lista para mesa, barra, tarjeta o redes con el QR final. {estadoExperienciaEntrega}</p>
-          </div>
-          <span className={styles.badge}>{formatoEntregaActivo.label}</span>
-        </div>
-        <div className={styles.panelBody}>
-          <div className={styles.deliveryPackLayout}>
-            <div className={styles.deliveryPackPreview}>
-              <article
-                ref={materialRef}
-                className={`${styles.deliveryMaterial} ${styles[`deliveryMaterial_${formatoEntregaActivo.id}`] || ''}`}
-                style={{
-                  '--pack-primary': restaurante?.color_primario || '#74223d',
-                  '--pack-bg': restaurante?.color_fondo || '#fffaf3',
-                  '--pack-accent': restaurante?.color_acento || '#bfa984',
-                }}
-                aria-label={`Material ${formatoEntregaActivo.label}`}
-              >
-                <div className={styles.deliveryMaterialBrand}>
-                  <span>{nombreMaterial.slice(0, 2)}</span>
-                  <strong>{nombreMaterial}</strong>
-                </div>
-                <div className={styles.deliveryMaterialCopy}>
-                  <small>{etiquetaMaterial}</small>
-                  <h3>{taglineMaterial}</h3>
-                  <p>{detalleMaterial}</p>
-                </div>
-                <div className={styles.deliveryMaterialQr}>
-                  {qrDataUrl ? (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element -- QR generado en cliente como data URL para exportacion PNG. */}
-                      <img src={qrDataUrl} alt={`QR ${nombreMaterial}`} />
-                    </>
-                  ) : (
-                    <span>QR</span>
-                  )}
-                </div>
-                <p className={styles.deliveryMaterialUrl}>{urlMedible}</p>
-                <span className={styles.deliveryMaterialFooter}>Carta Viva - @cataconjuanjo</span>
-              </article>
+          <div className={styles.panelBody}>
+            <div className={styles.qrCard}>
+              <canvas ref={canvasRef} aria-label={`QR ${restaurante.nombre}`} />
             </div>
-            <div className={styles.deliveryPackControls}>
-              <div className={styles.deliveryPrimaryActions}>
-                <div>
-                  <span className={styles.label}>Material listo</span>
-                  <h3>{cartaPublicada ? `Descarga ${formatoEntregaActivo.label.toLowerCase()}` : 'Pendiente de publicación'}</h3>
-                  <p>{cartaPublicada ? 'Usa el PNG completo para sala o descarga solo el QR si ya tienes diseño de imprenta.' : 'Publica primero la carta para generar material final. Mientras esté en borrador, usa la preview privada.'}</p>
-                </div>
-                <div className={styles.actionRow}>
-                  <button type="button" className={styles.primary} onClick={descargarMaterial} disabled={!cartaPublicada || !qrDataUrl || exportandoMaterial}>
-                    {exportandoMaterial ? 'Exportando...' : 'Descargar material PNG'}
-                  </button>
-                  <button type="button" className={styles.secondary} onClick={descargar} disabled={!cartaPublicada || !qrDataUrl}>Descargar solo QR</button>
-                  <button type="button" className={styles.ghost} onClick={imprimir} disabled={!cartaPublicada}>Imprimir página</button>
-                </div>
-              </div>
-              {mensajeMaterial && <p className={styles.panelSub}>{mensajeMaterial}</p>}
+            <div className={styles.urlBox} style={{ marginTop: 14 }}>{urlDirecta}</div>
+            <div className={styles.actionRow} style={{ marginTop: 14 }}>
+              <button type="button" className={styles.primary} onClick={descargar} disabled={!cartaPublicada || !qrDataUrl}>Descargar QR</button>
+              <button type="button" className={styles.secondary} onClick={() => copiar(urlDirecta, 'url')} disabled={!cartaPublicada}>Copiar enlace</button>
+              <button type="button" className={styles.ghost} onClick={imprimir} disabled={!cartaPublicada}>Abrir impresion</button>
+            </div>
+          </div>
+        </div>
 
-              <details className={styles.deliveryOptionsDetails} open={opcionesMaterialAbiertas}>
-                <summary>
+        <div className={styles.panel}>
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>Revisar y publicar</h2>
+              <p className={styles.panelSub}>Lo minimo antes de poner el QR delante del cliente.</p>
+            </div>
+          </div>
+          <div className={styles.panelBody}>
+            <div className={styles.itemStack}>
+              <OpenCartaPruebaButton restauranteId={restaurante?.id} className={styles.itemCard}>
+                <div className={styles.sectionHead} style={{ margin: 0 }}>
                   <div>
-                    <strong>Opciones de material</strong>
-                    <small>Formato, atribución de escaneos y textos para equipo.</small>
+                    <h3 className={styles.sectionTitle}>Probar carta sin publicar</h3>
+                    <p className={styles.sectionText}>Abre la carta como cliente, pero con enlace interno.</p>
                   </div>
-                  <span>{formatoEntregaActivo.label}</span>
-                </summary>
-                <div className={styles.deliveryOptionsBody}>
+                  <span className={styles.badge}>Abrir</span>
+                </div>
+              </OpenCartaPruebaButton>
+
+              <article className={styles.itemCard}>
+                <div className={styles.sectionHead} style={{ margin: 0 }}>
                   <div>
-                    <span className={styles.label}>Atribucion</span>
-                    <div className={styles.formGrid}>
-                      <label>
-                        <span className={styles.label}>Campana</span>
-                        <input
-                          className={styles.input}
-                          value={qrCampania}
-                          onChange={event => setQrCampania(event.target.value)}
-                          maxLength={80}
-                          placeholder="qr-mesa"
-                        />
-                      </label>
-                      <label>
-                        <span className={styles.label}>Mesa o zona</span>
-                        <input
-                          className={styles.input}
-                          value={qrMesa}
-                          onChange={event => setQrMesa(event.target.value)}
-                          maxLength={40}
-                          placeholder="terraza, barra, mesa-12"
-                        />
-                      </label>
-                    </div>
-                    <p className={styles.panelSub} style={{ marginTop: 8 }}>
-                      El QR añade estos parametros al enlace para medir que material fisico genera escaneos.
+                    <h3 className={styles.sectionTitle}>Contenido minimo</h3>
+                    <p className={styles.sectionText}>
+                      {contenidoCarta.loading
+                        ? 'Comprobando vinos y precios...'
+                        : contenidoBloqueado
+                          ? 'Faltan vinos visibles o precios.'
+                          : `${contenidoCarta.vinosActivos} vinos visibles y ${contenidoCarta.vinosConPrecio} con precio.`}
                     </p>
-                    <div className={styles.urlBox} style={{ marginTop: 10 }}>{urlMedible}</div>
                   </div>
-                  <div>
-                    <span className={styles.label}>Formato</span>
-                    <div className={styles.deliveryFormatGrid} role="group" aria-label="Formato del material de entrega">
-                      {FORMATOS_ENTREGA.map(formato => (
-                        <button
-                          type="button"
-                          key={formato.id}
-                          className={formato.id === formatoEntrega ? styles.deliveryFormatActive : styles.deliveryFormatButton}
-                          onClick={() => setFormatoEntrega(formato.id)}
-                          aria-pressed={formato.id === formatoEntrega}
-                        >
-                          <strong>{formato.label}</strong>
-                          <span>{formato.detail}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className={styles.deliveryCopyGrid}>
-                    {textosMaterial.map(item => (
-                      <article className={styles.itemCard} key={item.id}>
-                        <div className={styles.sectionHead} style={{ margin: 0 }}>
-                          <div>
-                            <h3 className={styles.sectionTitle}>{item.label}</h3>
-                            <p className={styles.sectionText}>{item.texto}</p>
-                          </div>
-                          <button type="button" className={styles.ghost} onClick={() => copiar(item.texto, item.id)} disabled={!cartaPublicada}>
-                            {copiado === item.id ? 'Copiado' : 'Copiar'}
-                          </button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
+                  <span className={styles.badge}>{contenidoPreparado ? 'Listo' : 'Revisar'}</span>
                 </div>
-              </details>
+              </article>
+
+              {cartaPublicada ? (
+                <button type="button" className={styles.ghost} onClick={() => cambiarPublicacion(false)} disabled={guardandoPublicacion || migracionPublicacionPendiente}>
+                  {guardandoPublicacion ? 'Guardando...' : 'Pausar carta publica'}
+                </button>
+              ) : (
+                <button type="button" className={styles.primary} onClick={() => cambiarPublicacion(true)} disabled={publicacionDeshabilitada}>
+                  {guardandoPublicacion ? 'Publicando...' : 'Publicar carta'}
+                </button>
+              )}
             </div>
+            {contenidoCarta.error && <p className={styles.panelSub} style={{ marginTop: 12 }}>{contenidoCarta.error}</p>}
+            {contenidoBloqueado && <p className={styles.panelSub} style={{ marginTop: 12 }}>No publiques todavia: faltan referencias activas o precios visibles para que el cliente no llegue a una carta vacia.</p>}
+            {migracionPublicacionPendiente && <p className={styles.panelSub} style={{ marginTop: 12 }}>Aplica supabase/add_publication_status.sql para activar el control de borrador/publicado.</p>}
+            {mensajePublicacion && <p className={styles.panelSub} style={{ marginTop: 12 }}>{mensajePublicacion}</p>}
           </div>
         </div>
       </section>
 
-      <section className={styles.analyticsFocusPanel} aria-label="Lectura de uso del QR">
+      <section className={styles.panel}>
         <div className={styles.panelHead}>
           <div>
-            <h2 className={styles.panelTitle}>Lectura del QR</h2>
-            <p className={styles.panelSub}>{lecturaUsoReal}</p>
+            <h2 className={styles.panelTitle}>Enlace publico</h2>
+            <p className={styles.panelSub}>Para WhatsApp, equipo de sala, imprenta o redes.</p>
           </div>
-          <span className={styles.badge}>{deliveryAnalytics.pendiente ? 'Analítica pendiente' : 'Medición'}</span>
+          <span className={styles.badge}>{destinoLabel}</span>
         </div>
         <div className={styles.panelBody}>
-          <div className={styles.deliveryInsightGrid}>
-            {deliveryStatsPrincipales.map(stat => (
-              <article key={stat.label} className={styles.deliveryInsightCard}>
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-                <small>{stat.hint}</small>
-              </article>
-            ))}
+          <div className={styles.urlBox}>{urlDirecta}</div>
+          <div className={styles.actionRow} style={{ marginTop: 14 }}>
+            {cartaPublicada ? (
+              <a className={styles.secondary} href={urlDirecta} target="_blank" rel="noreferrer" onClick={() => registrarUso('public_destination_opened', { source: 'url_panel' })}>Abrir carta</a>
+            ) : (
+              <button type="button" className={styles.secondary} disabled>Abrir carta</button>
+            )}
+            <button className={styles.ghost} onClick={() => copiar(urlDirecta, 'url')} disabled={!cartaPublicada}>{copiado === 'url' ? 'Copiado' : 'Copiar URL'}</button>
+            <button className={styles.ghost} onClick={() => copiar(textoEquipo, 'equipo')} disabled={!cartaPublicada}>{copiado === 'equipo' ? 'Copiado' : 'Copiar para equipo'}</button>
           </div>
-          <div className={styles.deliverySignalText}>
-            <p>{lecturaExperienciaReal}</p>
-            <p>{lecturaAtribucionReal}</p>
-          </div>
-          <details className={styles.metricDetails}>
-            <summary>
-              <span>Eventos recientes de entrega</span>
-              <strong>{deliveryEventosRecientes.length}</strong>
-            </summary>
-            <div className={styles.deliveryEventsList}>
-              {deliveryEventosRecientes.length ? deliveryEventosRecientes.map(evento => (
-                <article key={evento.id || `${evento.event}-${evento.created_at}`}>
-                  <strong>{tituloEventoEntrega(evento)}</strong>
-                  <span>{detalleEventoEntrega(evento)}</span>
-                </article>
-              )) : (
-                <div className={styles.emptyCompact}>Aún no hay eventos de entrega en este periodo.</div>
-              )}
-            </div>
-          </details>
         </div>
-      </section>
-
-      <section className={styles.itemStack} aria-label="Enlaces y pruebas">
-          <div className={styles.panel} id="preview-privada">
-            <div className={styles.panelHead}>
-              <div>
-                <h2 className={styles.panelTitle}>Vista previa privada</h2>
-                <p className={styles.panelSub}>Genera un enlace temporal para revisar, aprobar y despues publicar con control.</p>
-              </div>
-              <span className={styles.badge}>{destinoPreviewLabel}</span>
-            </div>
-            <div className={styles.panelBody}>
-              {previewApprovalLoading ? (
-                <article className={styles.itemCard} style={{ marginBottom: 14 }}>
-                  <h3 className={styles.sectionTitle}>Comprobando aprobación</h3>
-                  <p className={styles.sectionText}>Estamos verificando si la preview privada ya fue aprobada.</p>
-                </article>
-              ) : previewApprovalPendiente ? (
-                <article className={styles.itemCard} style={{ marginBottom: 14 }}>
-                  <h3 className={styles.sectionTitle}>Aprobacion pendiente de base de datos</h3>
-                  <p className={styles.sectionText}>Aplica supabase/add_preview_approvals.sql para registrar aprobaciones desde enlaces privados.</p>
-                </article>
-              ) : previewApprovalLista ? (
-                <article className={styles.itemCard} style={{ marginBottom: 14 }}>
-                  <div className={styles.sectionHead} style={{ margin: 0 }}>
-                    <div>
-                      <h3 className={styles.sectionTitle}>Preview aprobada</h3>
-                      <p className={styles.sectionText}>
-                        {formatoFechaHistorial(previewApproval.approved_at)} · {firmantePreview(previewApproval)} · {previewApproval.destino === 'hub' ? 'Hub' : 'Carta'}
-                      </p>
-                      {previewApproval.reviewer_email && <p className={styles.sectionText}>{previewApproval.reviewer_email}</p>}
-                      {previewApproval.note && <p className={styles.sectionText}>Nota: {previewApproval.note}</p>}
-                      {previewApproval.content_summary && <p className={styles.sectionText}>Contenido aprobado: {resumenPreviewAprobada(previewApproval)}</p>}
-                    </div>
-                    <span className={styles.badge}>OK</span>
-                  </div>
-                </article>
-              ) : previewApprovalObsoleta && previewApproval ? (
-                <article className={styles.itemCard} style={{ marginBottom: 14 }}>
-                  <div className={styles.sectionHead} style={{ margin: 0 }}>
-                    <div>
-                      <h3 className={styles.sectionTitle}>Aprobacion obsoleta</h3>
-                      <p className={styles.sectionText}>
-                        Última aprobación: {formatoFechaHistorial(previewApproval.approved_at)} · {firmantePreview(previewApproval)}. La carta cambió después; genera otra preview y apruébala de nuevo.
-                      </p>
-                      {previewApproval.note && <p className={styles.sectionText}>Nota anterior: {previewApproval.note}</p>}
-                    </div>
-                    <span className={styles.badge}>Revisar</span>
-                  </div>
-                </article>
-              ) : (
-                <article className={styles.itemCard} style={{ marginBottom: 14 }}>
-                  <h3 className={styles.sectionTitle}>Sin aprobación registrada</h3>
-                  <p className={styles.sectionText}>Comparte el enlace privado para que puedan revisar y pulsar Aprobar preview antes de publicar.</p>
-                </article>
-              )}
-              {previewApprovalError && <p className={styles.panelSub} style={{ marginBottom: 12 }}>{previewApprovalError}</p>}
-              <div className={styles.actionRow} style={{ marginBottom: 14 }}>
-                <button
-                  type="button"
-                  className={styles.ghost}
-                  onClick={actualizarAprobacionPreview}
-                  disabled={!restaurante?.id || previewApprovalLoading}
-                >
-                  {previewApprovalLoading ? 'Actualizando...' : 'Actualizar aprobación'}
-                </button>
-              </div>
-              <div className={styles.previewBuilder}>
-                <div className={styles.previewBuilderHead}>
-                  <div>
-                    <span className={styles.label}>Destino privado</span>
-                    <strong>{previewDestinoActivoLabel}</strong>
-                    <small>
-                      {previewDestinoActivo === destinoPreview
-                        ? 'Este es el destino que desbloquea la publicación actual.'
-                        : 'Útil para revisar la carta directa, aunque el QR final abra el hub.'}
-                    </small>
-                  </div>
-                  <span className={styles.badge}>No público</span>
-                </div>
-                <div
-                  className={`${styles.previewDestinationControl} ${previewOpcionesDestino.length === 1 ? styles.previewDestinationControlSingle : ''}`}
-                  role="group"
-                  aria-label="Destino de la preview"
-                >
-                  {previewOpcionesDestino.map(opcion => (
-                    <button
-                      key={opcion.id}
-                      type="button"
-                      className={opcion.id === previewDestinoActivo ? styles.previewDestinationActive : styles.previewDestinationButton}
-                      onClick={() => cambiarDestinoPreview(opcion.id)}
-                      aria-pressed={opcion.id === previewDestinoActivo}
-                    >
-                      <strong>{opcion.label}</strong>
-                      <span>{opcion.detail}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className={styles.sectionText}>
-                  El revisor verá un botón de aprobación dentro del enlace. Si después cambias la carta, tendrá que aprobar otra preview.
-                </p>
-              </div>
-              <div className={styles.formGrid}>
-                <label>
-                  <span className={styles.label}>Caducidad</span>
-                  <select
-                    className={styles.select}
-                    value={previewDuracionHoras}
-                    onChange={event => setPreviewDuracionHoras(event.target.value)}
-                  >
-                    <option value="1">1 hora</option>
-                    <option value="24">24 horas</option>
-                    <option value="72">72 horas</option>
-                  </select>
-                </label>
-                <div>
-                  <span className={styles.label}>Accion</span>
-                  <button
-                    type="button"
-                    className={styles.primary}
-                    onClick={crearPreviewCompartible}
-                    disabled={!restaurante?.id || generandoPreview}
-                    style={{ width: '100%' }}
-                  >
-                    {generandoPreview ? 'Generando...' : copiado === 'preview' ? 'Copiado' : 'Generar preview'}
-                  </button>
-                </div>
-              </div>
-              {previewLink && (
-                <article className={styles.previewResultCard}>
-                  <div className={styles.sectionHead} style={{ margin: 0 }}>
-                    <div>
-                      <h3 className={styles.sectionTitle}>Enlace privado generado</h3>
-                      <p className={styles.sectionText}>
-                        {previewDestinoGeneradoLabel}{previewCaducaAt ? ` · Caduca ${formatoFechaHistorial(previewCaducaAt)}` : ''}
-                      </p>
-                    </div>
-                    <span className={styles.badge}>{copiado === 'preview' ? 'Copiado' : 'Preview'}</span>
-                  </div>
-                  <div className={styles.urlBox} style={{ marginTop: 14 }}>{previewLink}</div>
-                  <div className={styles.previewInstruction}>
-                    <span>Mensaje para el revisor</span>
-                    <p>{textoPreviewRevisor}</p>
-                  </div>
-                  <div className={styles.actionRow} style={{ marginTop: 14 }}>
-                    <a className={styles.secondary} href={previewLink} target="_blank" rel="noreferrer" onClick={() => registrarDeliveryEvent('preview_opened_from_dashboard', { destino: previewDestinoGenerado, source: 'preview_result' })}>Abrir preview</a>
-                    <button className={styles.ghost} onClick={() => copiar(previewLink, 'preview')}>{copiado === 'preview' ? 'Copiado' : 'Copiar enlace'}</button>
-                    <button className={styles.ghost} onClick={() => copiar(textoPreviewRevisor, 'preview-texto')}>{copiado === 'preview-texto' ? 'Copiado' : 'Copiar mensaje'}</button>
-                  </div>
-                </article>
-              )}
-              {mensajePreview && <p className={styles.panelSub} style={{ marginTop: 12 }}>{mensajePreview}</p>}
-            </div>
-          </div>
-
-          <div className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <h2 className={styles.panelTitle}>{restaurante?.hub_activo ? 'URL del hub' : 'URL directa'}</h2>
-                <p className={styles.panelSub}>Enlace público para compartir, probar o enviar al proveedor de imprenta.</p>
-              </div>
-              <span className={styles.badge}>{destino === 'r' ? 'Hub' : 'Carta'}</span>
-            </div>
-            <div className={styles.panelBody}>
-              <div className={styles.urlBox}>{urlDirecta}</div>
-              <div className={styles.actionRow} style={{ marginTop: 14 }}>
-                {cartaPublicada ? <a className={styles.secondary} href={urlDirecta} target="_blank" rel="noreferrer" onClick={() => registrarDeliveryEvent('public_destination_opened', { destino: destinoPreview, source: 'url_panel' })}>Abrir destino</a> : <button type="button" className={styles.secondary} disabled>Abrir destino</button>}
-                <button className={styles.ghost} onClick={() => copiar(urlDirecta, 'url')} disabled={!cartaPublicada}>{copiado === 'url' ? 'Copiado' : 'Copiar URL'}</button>
-                <button className={styles.ghost} onClick={() => copiar(textoEquipo, 'equipo')} disabled={!cartaPublicada}>{copiado === 'equipo' ? 'Copiado' : 'Copiar para equipo'}</button>
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.panel}>
-            <div className={styles.panelHead}>
-              <div>
-                <h2 className={styles.panelTitle}>Pruebas rápidas</h2>
-                <p className={styles.panelSub}>Tres aperturas para comprobar qué verá el cliente antes de imprimir.</p>
-              </div>
-            </div>
-            <div className={styles.panelBody}>
-              <div className={styles.itemStack}>
-                {pruebas.map(prueba => prueba.pruebaCarta ? (
-                  <OpenCartaPruebaButton key={prueba.titulo} restauranteId={restaurante?.id} className={styles.itemCard}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <h3 className={styles.sectionTitle}>{prueba.titulo}</h3>
-                        <p className={styles.sectionText}>{prueba.detalle}</p>
-                      </div>
-                      <span className={styles.badge}>Abrir</span>
-                    </div>
-                  </OpenCartaPruebaButton>
-                ) : prueba.publico && !cartaPublicada ? (
-                  <button key={prueba.titulo} type="button" disabled className={styles.itemCard}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <h3 className={styles.sectionTitle}>{prueba.titulo}</h3>
-                        <p className={styles.sectionText}>{prueba.detalle}</p>
-                      </div>
-                      <span className={styles.badge}>Borrador</span>
-                    </div>
-                  </button>
-                ) : (
-                  <a key={prueba.titulo} href={prueba.href} target="_blank" rel="noreferrer" className={styles.itemCard} onClick={() => registrarDeliveryEvent(prueba.evento, { destino: destinoPreview, source: 'quick_tests', href: prueba.href })}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <h3 className={styles.sectionTitle}>{prueba.titulo}</h3>
-                        <p className={styles.sectionText}>{prueba.detalle}</p>
-                      </div>
-                      <span className={styles.badge}>Abrir</span>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
       </section>
     </ModuleShell>
   )

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
-import { PUBLIC_VINO_SELECT } from '../../../_lib/kioskoAuth'
+import { PUBLIC_VINO_SELECT, isTiendaAccesible } from '../../../_lib/kioskoAuth'
 import { noStoreHeaders, publicCdnCacheHeaders } from '../../../../lib/publicCacheHeaders'
 
 function normalizarTexto(texto = '') {
@@ -14,12 +14,12 @@ export async function GET(request, { params }) {
 
   const { data: tienda, error: tiendaError } = await supabaseAdmin
     .from('tiendas')
-    .select('id')
+    .select('id, activo, subscription_status, plan, trial_used_seconds')
     .eq('slug', slug)
     .eq('activo', true)
     .single()
 
-  if (tiendaError || !tienda) {
+  if (tiendaError || !tienda || !isTiendaAccesible(tienda)) {
     return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
   }
 

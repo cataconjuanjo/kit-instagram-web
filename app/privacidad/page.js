@@ -51,7 +51,8 @@ export default function Privacidad() {
       <h2>Servicios de terceros</h2>
       <p>
         El sitio puede usar proveedores técnicos como Vercel, Supabase, Resend y servicios de inteligencia artificial
-        para operar formularios, autenticación, base de datos y funcionalidades de Carta Viva.
+        como Anthropic para operar formularios, autenticación, base de datos, importaciones, recomendaciones,
+        análisis de carta y otras funcionalidades de Carta Viva.
       </p>
 
       <h2>Derechos</h2>

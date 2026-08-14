@@ -1912,11 +1912,24 @@
   margin: 0;
 }
 
+.aiNotice {
+  max-width: 680px;
+  margin: 0;
+  color: var(--texto-m);
+  font-size: .86rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
 .pairingInputArea {
   display: flex;
   gap: 1rem;
   align-items: flex-start;
-  margin-bottom: 2rem;
+  margin-bottom: .65rem;
+}
+
+.pairingInputNotice {
+  margin-bottom: 1.6rem;
 }
 
 .pairingTextarea {
@@ -2029,9 +2042,16 @@
   font-style: italic;
   line-height: 1.6;
   background: var(--sup2);
-  border-left: 4px solid var(--color-acento);
+  border: 1px solid var(--borde);
   padding: 1rem 1.25rem;
   margin: 0 0 .5rem;
+}
+
+.aiResultNotice {
+  margin: -.35rem 0 .15rem;
+  color: var(--texto-d);
+  font-size: .82rem;
+  line-height: 1.45;
 }
 
 .pairingWines {

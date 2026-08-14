@@ -63,15 +63,24 @@ export async function requireKioskoAccess(request, slug, { select = 'id, plan, p
   return { tienda }
 }
 
+// Una tienda es accesible públicamente si está activa y tiene suscripción vigente
+// o un trial aún no agotado (límite: 3600 segundos de uso en el admin).
+export function isTiendaAccesible(tienda) {
+  if (!tienda?.activo) return false
+  if (tienda.subscription_status === 'active') return true
+  if (tienda.plan === 'trial' && (tienda.trial_used_seconds ?? 0) < 3600) return true
+  return false
+}
+
 export async function getPublicTienda(slug) {
-  // Solo columnas que existen en todas las versiones del schema (sin columnas de migraciones opcionales)
   const publicSelect =
-    'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, activo'
+    'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, activo, subscription_status, trial_used_seconds'
 
   const { data, error } = await supabaseAdmin
     .from('tiendas')
     .select(publicSelect)
     .eq('slug', slug)
+    .eq('activo', true)
     .single()
 
   if (error) {
@@ -79,5 +88,5 @@ export async function getPublicTienda(slug) {
     return null
   }
 
-  return data || null
+  return isTiendaAccesible(data) ? data : null
 }

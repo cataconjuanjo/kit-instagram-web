@@ -51,9 +51,10 @@ export default function Terminos() {
 
       <h2>Herramientas de inteligencia artificial</h2>
       <p>
-        Algunas funciones pueden apoyarse en sistemas de inteligencia artificial para generar sugerencias, analisis o
-        textos de apoyo. Estos resultados son orientativos y deben revisarse antes de tomar decisiones comerciales,
-        legales, sanitarias o economicas.
+        Algunas funciones pueden apoyarse en sistemas de inteligencia artificial para generar sugerencias, análisis o
+        textos de apoyo, incluyendo modelos externos como Anthropic cuando la funcionalidad lo requiera. Estos
+        resultados son orientativos, se generan a partir de los datos disponibles en Carta Viva y deben revisarse antes
+        de tomar decisiones comerciales, legales, sanitarias o económicas.
       </p>
 
       <h2>Disponibilidad y cambios</h2>

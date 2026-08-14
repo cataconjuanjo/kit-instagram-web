@@ -672,6 +672,7 @@ export default function ControlBodega() {
     <FeatureGate restaurante={restaurante} feature="bodega" title="Bodega no incluida">
     <ModuleShell
       restaurante={restaurante}
+      wide
       eyebrow="Bodega"
       title={perfilBodega ? 'Control de bodega para sumiller' : 'Stock, margen y reposición'}
       subtitle={perfilBodega

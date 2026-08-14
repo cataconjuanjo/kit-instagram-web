@@ -175,25 +175,50 @@ export async function POST(req) {
             stripe_subscription_id: subscriptionId,
           }).eq('id', tiendaId)
 
-          // Generar link de acceso y enviar email de bienvenida
+          // Enviar email de activación — si ya tiene cuenta, email simple; si no, link de recovery
           const { data: tienda } = await adminSupabase.from('tiendas').select('nombre, email, propietario_email, slug').eq('id', tiendaId).single()
           const destinatario = tienda?.propietario_email || tienda?.email
           if (destinatario) {
-            const { data: linkData } = await adminSupabase.auth.admin.generateLink({
-              type:    'recovery',
-              email:   destinatario,
-              options: { redirectTo: `${SITE_URL}/kiosko-admin/${tienda.slug}` },
-            })
-            const accessLink = linkData?.properties?.action_link
-            if (accessLink) {
-              const resend = new Resend(process.env.RESEND_API_KEY)
+            const usuarioExistente = await findUserByEmail(adminSupabase, destinatario)
+            const resend = new Resend(process.env.RESEND_API_KEY)
+            if (usuarioExistente) {
+              // Ya tiene contraseña — email simple sin recovery link
+              const adminUrl = `${SITE_URL}/kiosko-admin/${tienda.slug}`
+              const n = escapeHtml(tienda.nombre)
               await resend.emails.send({
                 from:    FROM,
                 to:      destinatario,
                 bcc:     ADMIN_EMAIL,
-                subject: `¡Tu kiosko está activo! — ${tienda.nombre}`,
-                html:    await emailBienvenidaKiosko({ nombre: tienda.nombre, email: destinatario, slug: tienda.slug, accessLink }),
+                subject: `¡Tu plan está activo! — ${tienda.nombre}`,
+                html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#1a1a2e;line-height:1.6">
+  <h1 style="font-size:22px;font-weight:600;margin:0 0 20px">¡Tu Kiosko Virtual ya está activo!</h1>
+  <p>Hola,</p>
+  <p>El pago se ha completado. Tu kiosko <strong>${n}</strong> está listo. Entra con tu contraseña habitual:</p>
+  <div style="margin:24px 0">
+    <a href="${adminUrl}" style="display:inline-block;background:#1a1a2e;color:#c9a96e;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:14px">
+      Ir al panel →
+    </a>
+  </div>
+  <p style="font-size:13px;color:#999;margin-top:32px">Juanjo · cataconjuanjo.com</p>
+</div>`,
               })
+            } else {
+              // Usuario nuevo — recovery link para crear contraseña
+              const { data: linkData } = await adminSupabase.auth.admin.generateLink({
+                type:    'recovery',
+                email:   destinatario,
+                options: { redirectTo: `${SITE_URL}/kiosko-admin/${tienda.slug}` },
+              })
+              const accessLink = linkData?.properties?.action_link
+              if (accessLink) {
+                await resend.emails.send({
+                  from:    FROM,
+                  to:      destinatario,
+                  bcc:     ADMIN_EMAIL,
+                  subject: `¡Tu kiosko está activo! — ${tienda.nombre}`,
+                  html:    await emailBienvenidaKiosko({ nombre: tienda.nombre, email: destinatario, slug: tienda.slug, accessLink }),
+                })
+              }
             }
           }
           console.log(`✓ checkout.session.completed kiosko — tienda ${tiendaId} activada`)

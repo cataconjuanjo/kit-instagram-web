@@ -14,16 +14,16 @@ const PLANTILLAS = [
     id: 'lanzamiento',
     nombre: 'Lanzamiento QR en sala',
     etiqueta: 'Activacion',
-    descripcion: 'Para pasar de carta en borrador a material listo en mesa, con preview aprobada y equipo alineado.',
+    descripcion: 'Para pasar de carta en borrador a QR listo en mesa, con contenido revisado y equipo alineado.',
     ideal: 'Restaurantes que van a poner Carta Viva delante del cliente por primera vez.',
     emocion: 'Confianza, orden y control antes de publicar.',
-    requisitos: ['Carta con precios visibles', 'Preview privada revisada', 'QR y material de mesa preparado'],
+    requisitos: ['Carta con precios visibles', 'QR publicado', 'Equipo de sala informado'],
     acciones: [
       { texto: 'Revisar contenido minimo', href: '/dashboard/carta' },
-      { texto: 'Generar preview privada', href: '/dashboard/qr#preview-privada' },
-      { texto: 'Exportar material QR', href: '/dashboard/qr#pack-entrega' },
+      { texto: 'Publicar o descargar QR', href: '/dashboard/qr' },
+      { texto: 'Preparar sala', href: '/dashboard/sala' },
     ],
-    piezas: ['Sobremesa QR', 'Mensaje para equipo', 'Checklist de publicacion'],
+    piezas: ['QR de mesa', 'Mensaje para equipo', 'Argumento de servicio'],
   },
   {
     id: 'temporada',
@@ -74,16 +74,16 @@ const PLANTILLAS = [
     id: 'evento',
     nombre: 'Evento privado o grupo',
     etiqueta: 'Privado',
-    descripcion: 'Para preparar una experiencia temporal con enlace revisable, mensaje de bienvenida y carta controlada.',
+    descripcion: 'Para preparar una experiencia temporal con QR, mensaje de bienvenida y carta revisada.',
     ideal: 'Catas privadas, grupos, reservas especiales o clientes que quieren algo cerrado.',
     emocion: 'Cercania, cuidado y sensacion de detalle.',
-    requisitos: ['Preview privada', 'Mensaje de envio', 'Version publicada segura'],
+    requisitos: ['Carta revisada', 'Mensaje de envio', 'QR publicado'],
     acciones: [
-      { texto: 'Crear preview privada', href: '/dashboard/qr#preview-privada' },
+      { texto: 'Publicar o copiar QR', href: '/dashboard/qr' },
       { texto: 'Personalizar marca', href: '/dashboard/personalizar' },
-      { texto: 'Guardar version segura', href: '/dashboard/versiones' },
+      { texto: 'Preparar argumento de sala', href: '/dashboard/sala' },
     ],
-    piezas: ['Enlace privado', 'Copy de invitacion', 'Version recuperable'],
+    piezas: ['QR publicado', 'Copy de invitacion', 'Argumento de sala'],
   },
 ]
 
@@ -594,12 +594,12 @@ export default function PlantillasPage() {
               className={styles.textarea}
               value={planActivacion.notas || ''}
               onChange={event => actualizarPlanActivacion('notas', event.target.value)}
-              placeholder="Ej. imprimir 12 sobremesas, avisar a sala el viernes, enviar preview al propietario..."
+              placeholder="Ej. imprimir 12 sobremesas, avisar a sala el viernes, probar el QR en movil..."
             />
           </label>
 
           <div className={styles.actionRow} style={{ marginTop: 14 }}>
-            <Link className={styles.primary} href="/dashboard/qr#pack-entrega">Abrir pack QR</Link>
+            <Link className={styles.primary} href="/dashboard/qr">Abrir QR</Link>
             <button type="button" className={styles.secondary} onClick={copiarGuion}>{copiado ? 'Guion copiado' : 'Copiar guion actualizado'}</button>
             <button type="button" className={styles.ghost} onClick={reiniciarPlanActivacion}>Reiniciar plan</button>
           </div>

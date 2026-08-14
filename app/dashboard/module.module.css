@@ -89,6 +89,10 @@
   max-width: 820px;
 }
 
+.wide {
+  max-width: 1440px;
+}
+
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

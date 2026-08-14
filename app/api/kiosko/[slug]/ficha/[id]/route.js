@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
-import { PUBLIC_VINO_SELECT } from '../../../../_lib/kioskoAuth'
+import { PUBLIC_VINO_SELECT, isTiendaAccesible } from '../../../../_lib/kioskoAuth'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -36,8 +36,8 @@ export async function GET(request, { params }) {
   const lang = new URL(request.url).searchParams.get('lang') || 'es'
 
   const { data: tienda } = await supabaseAdmin
-    .from('tiendas').select('id, nombre, ciudad').eq('slug', slug).eq('activo', true).single()
-  if (!tienda) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+    .from('tiendas').select('id, nombre, ciudad, activo, subscription_status, plan, trial_used_seconds').eq('slug', slug).eq('activo', true).single()
+  if (!tienda || !isTiendaAccesible(tienda)) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
 
   const { data: vino } = await supabaseAdmin
     .from('vinos_tienda')
@@ -88,7 +88,7 @@ Reply ONLY with valid JSON:
 {
   "notas": "2-3 tasting sentences",
   "temperatura": "serving temperature, e.g.: 16-18°C",
-  "copa": "ideal glass type",
+  "copa": "ideal glass type as a full phrase without starting with 'Copa', e.g.: 'Vaso de vino blanco tipo tulipa'",
   "maridajes": ["food pairing 1", "food pairing 2", "food pairing 3"],
   "curiosidad": "1 curious fact about the winery, region or grape (max 30 words)"
 }`,

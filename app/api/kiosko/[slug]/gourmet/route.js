@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { isTiendaAccesible } from '../../../_lib/kioskoAuth'
 import { publicCdnCacheHeaders } from '../../../../lib/publicCacheHeaders'
 
 function norm(s = '') {
@@ -23,12 +24,12 @@ export async function GET(request, { params }) {
 
   const { data: tienda, error: tiendaError } = await supabaseAdmin
     .from('tiendas')
-    .select('id')
+    .select('id, activo, subscription_status, plan, trial_used_seconds')
     .eq('slug', slug)
     .eq('activo', true)
     .single()
 
-  if (tiendaError || !tienda) {
+  if (tiendaError || !tienda || !isTiendaAccesible(tienda)) {
     return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
   }
 

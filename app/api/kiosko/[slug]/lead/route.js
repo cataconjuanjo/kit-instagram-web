@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import { createHash } from 'crypto'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { checkRateLimit } from '../../../../lib/security'
+import { isTiendaAccesible } from '../../../_lib/kioskoAuth'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const IP_RATE_LIMIT = 12
@@ -197,11 +198,12 @@ export async function POST(request, { params }) {
 
   const { data: tienda } = await supabaseAdmin
     .from('tiendas')
-    .select('id, nombre, logo_url, color_acento')
+    .select('id, nombre, logo_url, color_acento, activo, subscription_status, plan, trial_used_seconds')
     .eq('slug', slug)
+    .eq('activo', true)
     .single()
 
-  if (!tienda) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+  if (!tienda || !isTiendaAccesible(tienda)) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
 
   const emailClean = email.toLowerCase().trim()
   const emailAllowed = await checkRateLimit(`${slug}:acct:${hashIdentifier(emailClean)}`, 'kiosko-lead-email', {

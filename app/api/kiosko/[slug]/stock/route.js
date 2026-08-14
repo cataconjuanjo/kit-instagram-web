@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { isTiendaAccesible } from '../../../_lib/kioskoAuth'
 
 export async function GET(request, { params }) {
   const { slug } = await params
 
   const { data: tienda } = await supabaseAdmin
     .from('tiendas')
-    .select('id')
+    .select('id, activo, subscription_status, plan, trial_used_seconds')
     .eq('slug', slug)
     .eq('activo', true)
     .single()
 
-  if (!tienda) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!tienda || !isTiendaAccesible(tienda)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const { searchParams } = new URL(request.url)
   const since = searchParams.get('since') // ISO timestamp — solo devolver cambios posteriores

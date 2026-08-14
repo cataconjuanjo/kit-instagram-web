@@ -1,6 +1,5 @@
 import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
-import { calcularHuellaPublicacion } from '../../lib/publicationFingerprint'
 import { guardarDeliveryEvent } from '../../lib/publicationDeliveryAnalytics'
 import { problemasPublicacionCarta, puedePublicarCarta, resumirContenidoCarta } from '../../lib/publicationReadiness'
 
@@ -38,14 +37,6 @@ function historialPendiente(error) {
 function snapshotPendiente(error) {
   return errorIncluye(error, 'publication_snapshots') ||
     ['42P01', 'PGRST205'].includes(String(error?.code || ''))
-}
-
-function aprobacionPreviewPendiente(error) {
-  return errorIncluye(error, 'publication_preview_approvals') ||
-    errorIncluye(error, 'content_fingerprint') ||
-    errorIncluye(error, 'content_summary') ||
-    errorIncluye(error, 'schema cache') ||
-    ['42P01', 'PGRST204', 'PGRST205'].includes(String(error?.code || ''))
 }
 
 function estadoPublicacion(valor) {
@@ -99,21 +90,6 @@ async function leerUltimoSnapshot(restauranteId) {
   if (snapshotPendiente(error)) return { snapshot: null, pendiente: true }
   if (error) return { error }
   return { snapshot: data || null, pendiente: false }
-}
-
-async function leerUltimaAprobacionPreview(restauranteId, destino) {
-  const { data, error } = await supabaseAdmin
-    .from('publication_preview_approvals')
-    .select('id, restaurante_id, destino, reviewer_name, reviewer_email, content_fingerprint, content_fingerprint_version, content_summary, token_expires_at, approved_at')
-    .eq('restaurante_id', restauranteId)
-    .eq('destino', destino)
-    .order('approved_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (aprobacionPreviewPendiente(error)) return { aprobacion: null, pendiente: true }
-  if (error) return { error }
-  return { aprobacion: data || null, pendiente: false }
 }
 
 async function guardarEventoPublicacion({ restauranteId, activa, estadoAnterior, contenido, auth }) {
@@ -299,56 +275,6 @@ export async function POST(req) {
       }
     }
 
-    let aprobacionPreview = null
-    if (activa) {
-      const destino = destinoPublicacion(restauranteAntes)
-      const huellaRes = await calcularHuellaPublicacion(supabaseAdmin, restauranteId, destino)
-      if (huellaRes.error) {
-        console.error('[publicacion] fingerprint:', huellaRes.error)
-        return Response.json({ error: 'No se pudo calcular la version actual de la carta.' }, { status: 503 })
-      }
-
-      const aprobacionRes = await leerUltimaAprobacionPreview(restauranteId, destino)
-      if (aprobacionRes.pendiente) {
-        return Response.json({
-          error: 'Aprueba primero la preview privada antes de publicar. Aplica supabase/add_preview_approvals.sql si aun no existe la tabla o si falta la huella de contenido.',
-          aprobaciones_pendientes: true,
-          destino,
-          sql: 'supabase/add_preview_approvals.sql',
-        }, { status: 409 })
-      }
-      if (aprobacionRes.error) {
-        console.error('[publicacion] aprobacion preview:', aprobacionRes.error)
-        return Response.json({ error: 'No se pudo comprobar la aprobacion de preview.' }, { status: 503 })
-      }
-      if (!aprobacionRes.aprobacion) {
-        return Response.json({
-          error: `Aprueba primero la preview privada de ${destino === 'hub' ? 'hub' : 'carta'} antes de publicar.`,
-          aprobacion_requerida: true,
-          destino,
-        }, { status: 409 })
-      }
-      if (!aprobacionRes.aprobacion.content_fingerprint) {
-        return Response.json({
-          error: 'La preview fue aprobada antes del control de versiones. Genera un nuevo enlace privado y apruebalo de nuevo.',
-          aprobacion_obsoleta: true,
-          destino,
-          ultima_aprobacion: aprobacionRes.aprobacion,
-          contenido_actual_resumen: huellaRes.resumen,
-        }, { status: 409 })
-      }
-      if (aprobacionRes.aprobacion.content_fingerprint !== huellaRes.fingerprint) {
-        return Response.json({
-          error: 'La carta cambio despues de aprobar la preview. Genera un nuevo enlace privado y apruebalo antes de publicar.',
-          aprobacion_obsoleta: true,
-          destino,
-          ultima_aprobacion: aprobacionRes.aprobacion,
-          contenido_actual_resumen: huellaRes.resumen,
-        }, { status: 409 })
-      }
-      aprobacionPreview = aprobacionRes.aprobacion
-    }
-
     const { data: restaurante, error } = await supabaseAdmin
       .from('restaurantes')
       .update({ carta_publica_activa: activa })
@@ -388,7 +314,6 @@ export async function POST(req) {
       metadata: {
         publication_event_id: eventoRes.evento?.id || null,
         snapshot_id: snapshotRes.snapshot?.id || null,
-        approval_id: aprobacionPreview?.id || null,
         contenido,
       },
       auth,
@@ -399,7 +324,6 @@ export async function POST(req) {
     return Response.json({
       restaurante,
       contenido,
-      aprobacion_preview: aprobacionPreview,
       evento: eventoRes.evento || null,
       snapshot: snapshotRes.snapshot || null,
       analytics_pendiente: Boolean(deliveryRes.pendiente),

@@ -53,8 +53,6 @@ function labelNavegacion(href = '') {
   if (href.includes('platos?filtro=descripcion')) return 'Completar platos →'
   if (href.includes('platos?importar')) return 'Importar platos →'
   if (href.includes('platos')) return 'Ir a platos →'
-  if (href.includes('qr#preview-privada')) return 'Ir a preview →'
-  if (href.includes('qr#pack-entrega')) return 'Ir a material QR →'
   if (href.includes('qr')) return 'Ir al QR →'
   if (href.includes('plantillas')) return 'Ir a plantillas →'
   if (href.includes('sala')) return 'Ir a sala →'

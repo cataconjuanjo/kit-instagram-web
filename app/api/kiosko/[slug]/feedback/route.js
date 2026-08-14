@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { checkRateLimit } from '../../../../lib/security'
+import { isTiendaAccesible } from '../../../_lib/kioskoAuth'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM   = process.env.CARTA_VIVA_FROM || 'Carta Viva <onboarding@resend.dev>'
@@ -42,7 +43,9 @@ export async function POST(request, { params }) {
   }
 
   const { data: tienda } = await supabaseAdmin
-    .from('tiendas').select('nombre, ciudad').eq('slug', slug).single()
+    .from('tiendas').select('nombre, ciudad, activo, subscription_status, plan, trial_used_seconds').eq('slug', slug).eq('activo', true).single()
+
+  if (!tienda || !isTiendaAccesible(tienda)) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
 
   const nombreTienda = tienda?.nombre || slug
   const ciudadTienda = tienda?.ciudad ? ` (${tienda.ciudad})` : ''
