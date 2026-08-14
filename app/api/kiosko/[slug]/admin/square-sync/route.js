@@ -4,6 +4,7 @@ import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 import {
   isSquareSyncTemporarilyPaused,
   listSquareLocations,
+  squareCategoryCleanupForTienda,
   squareStockReconcileDryRunForTienda,
   squareStockReconcileForTienda,
   squareSyncDryRunForTienda,
@@ -52,6 +53,11 @@ function isStockOnlyRequest(request) {
 function isLocationsRequest(request) {
   const url = new URL(request.url)
   return TRUE_PARAM.test(String(url.searchParams.get('locations') || url.searchParams.get('listLocations') || '').trim())
+}
+
+function isCleanupRequest(request) {
+  const url = new URL(request.url)
+  return TRUE_PARAM.test(String(url.searchParams.get('cleanup') || '').trim())
 }
 
 function getCategoryFilter(request) {
@@ -107,9 +113,13 @@ export async function POST(request, { params }) {
     )
   }
 
+  const cleanup = isCleanupRequest(request)
+
   try {
     let result
-    if (locations) {
+    if (cleanup) {
+      result = await squareCategoryCleanupForTienda(access.tienda.id, slug, squareToken, { dryRun })
+    } else if (locations) {
       result = await listSquareLocations(squareToken)
       result.configuredSquareLocationId = squareLocationId
       result.slug = slug

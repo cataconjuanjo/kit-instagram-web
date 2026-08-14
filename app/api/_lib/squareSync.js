@@ -528,8 +528,8 @@ function getSquareCatalogPolicy(tiendaSlug) {
     name: 'sibaris_square_categories',
     allowUnlistedCategories: true,
     tienda: ['carta tienda'],
-    maridajeOnly: ['carta gastro'],
-    neverKiosko: ['carta iqos', 'iqos', 'xmas', 'navidad', 'naviden', 'christmas'],
+    maridajeOnly: [],
+    neverKiosko: ['carta iqos', 'iqos', 'xmas home', 'navidad', 'naviden', 'christmas', 'evento', 'bolsas', 'carta gastro'],
   }
 }
 
@@ -1516,4 +1516,99 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     inventoryLocationsSeen: inventoryInfo.inventoryLocationsSeen,
     inventoryCountRowsRead: inventoryInfo.inventoryCountRowsRead,
   }
+}
+
+// Identifica y opcionalmente borra los productos de la BD cuyo square_catalog_id
+// corresponde a categorías excluidas según Square (neverKiosko).
+// dryRun=true → solo devuelve la lista; dryRun=false → borra.
+export async function squareCategoryCleanupForTienda(tiendaId, tiendaSlug, squareToken, { dryRun = true } = {}) {
+  const token = (squareToken || '').trim()
+  if (!token) throw new Error('No hay token de Square configurado para esta tienda')
+
+  const { items: rawItems, categoryMap } = await fetchAllCatalogItems(token)
+
+  // Catalog IDs de Square que pertenecen a categorías excluidas
+  const excludedCatalogIds = new Set()
+  const excludedVariationIds = new Set()
+  const excludedSamples = []
+
+  for (const item of rawItems) {
+    if (item.type !== 'ITEM') continue
+    const d = item.item_data || {}
+    const squareCategories = getSquareCategoryEntries(d, categoryMap)
+    const decision = decideSquareCatalogImport(tiendaSlug, squareCategories)
+    if (decision.action !== 'skip' || decision.reason !== 'square_category_never_kiosko') continue
+
+    excludedCatalogIds.add(item.id)
+    const variation = (d.variations || []).find(v => !v.is_deleted)
+    if (variation?.id) excludedVariationIds.add(variation.id)
+
+    if (excludedSamples.length < 50) {
+      excludedSamples.push({
+        squareCatalogId: item.id,
+        nombre: d.name || '(sin nombre)',
+        categorias: squareCategories.map(c => c.name),
+      })
+    }
+  }
+
+  if (excludedCatalogIds.size === 0) {
+    return { ok: true, dryRun, encontrados: 0, borrados: 0, productos: [], message: 'No hay productos con categorías excluidas en Square.' }
+  }
+
+  // Buscar en la BD los productos que coincidan por catalog_id o variation_id
+  const catalogIdList  = [...excludedCatalogIds]
+  const variationIdList = [...excludedVariationIds]
+
+  const { data: byCatalog, error: e1 } = await supabaseAdmin
+    .from('vinos_tienda')
+    .select('id, nombre, square_catalog_id, square_variation_id, categoria')
+    .eq('tienda_id', tiendaId)
+    .in('square_catalog_id', catalogIdList)
+
+  const { data: byVariation, error: e2 } = variationIdList.length > 0
+    ? await supabaseAdmin
+        .from('vinos_tienda')
+        .select('id, nombre, square_catalog_id, square_variation_id, categoria')
+        .eq('tienda_id', tiendaId)
+        .in('square_variation_id', variationIdList)
+    : { data: [], error: null }
+
+  if (e1 || e2) throw new Error(`Error consultando BD: ${(e1 || e2).message}`)
+
+  // Dedup por id de fila
+  const rowsById = new Map()
+  for (const row of [...(byCatalog || []), ...(byVariation || [])]) rowsById.set(row.id, row)
+  const rows = [...rowsById.values()]
+
+  // Enriquecer con las categorías reales de Square para la respuesta
+  const catalogIdToCategories = {}
+  for (const s of excludedSamples) catalogIdToCategories[s.squareCatalogId] = s.categorias
+
+  const productos = rows.map(row => ({
+    id: row.id,
+    nombre: row.nombre,
+    categoria: row.categoria,
+    square_catalog_id: row.square_catalog_id,
+    square_variation_id: row.square_variation_id,
+    square_categorias: catalogIdToCategories[row.square_catalog_id] || [],
+  }))
+
+  if (dryRun) {
+    return { ok: true, dryRun: true, encontrados: productos.length, borrados: 0, productos }
+  }
+
+  // Borrar en lotes de 100
+  const idsToDelete = rows.map(r => r.id)
+  let borrados = 0
+  const BATCH = 100
+  for (let i = 0; i < idsToDelete.length; i += BATCH) {
+    const chunk = idsToDelete.slice(i, i + BATCH)
+    const { error } = await supabaseAdmin.from('vinos_tienda').delete().in('id', chunk)
+    if (error) throw new Error(`Error borrando lote: ${error.message}`)
+    borrados += chunk.length
+  }
+
+  console.log(`[square-cleanup] ${tiendaSlug || tiendaId}: borrados ${borrados} productos con categorías excluidas`)
+  return { ok: true, dryRun: false, encontrados: productos.length, borrados, productos }
 }
