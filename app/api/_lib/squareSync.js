@@ -18,6 +18,14 @@ const SQUARE_SYNC_FORCE_ENABLED_SLUGS = parseEnvList(process.env.SQUARE_SYNC_FOR
 const SQUARE_SYNC_DISABLED_ALL = !SQUARE_SYNC_ENABLED || TRUE_ENV_FLAG.test(String(process.env.SQUARE_SYNC_DISABLED || '').trim())
 const SQUARE_SYNC_DISABLED_SLUGS = parseEnvList(process.env.SQUARE_SYNC_DISABLED_SLUGS || process.env.SQUARE_SYNC_PAUSED_SLUGS)
 const SQUARE_SYNC_DISABLED_TIENDA_IDS = parseEnvList(process.env.SQUARE_SYNC_DISABLED_TIENDA_IDS || process.env.SQUARE_SYNC_PAUSED_TIENDA_IDS)
+const SQUARE_STOCK_RECONCILE_MAX_WRITES = Math.max(
+  1,
+  parseInt(process.env.SQUARE_STOCK_RECONCILE_MAX_WRITES || '500', 10) || 500
+)
+const SQUARE_STOCK_RECONCILE_MAX_ACTIVE_CHANGES = Math.max(
+  0,
+  parseInt(process.env.SQUARE_STOCK_RECONCILE_MAX_ACTIVE_CHANGES || '50', 10) || 50
+)
 
 function parseEnvList(value) {
   return new Set(String(value || '')
@@ -690,9 +698,10 @@ export async function squareSyncDryRunForTienda(tiendaId, tiendaSlug, squareToke
   }
 }
 
-async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken) {
+async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, options = {}) {
   const token = (squareToken || '').trim()
   if (!token) throw new Error('No hay token de Square configurado para esta tienda')
+  const syncActive = options.syncActive === true
 
   const { items: rawItems } = await fetchAllCatalogItems(token)
   const seenItemIds = new Set()
@@ -752,7 +761,6 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken) 
 
     const vino = existingByVariation[variationId] || existingByCatalog[item.id] || existingByCatalog[variationId]
     const targetStock = itemStockMap[item.id] ?? 0
-    const targetActivo = targetStock > 0
 
     if (!vino) {
       missing.push({
@@ -766,6 +774,9 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken) 
 
     const currentStock = vino.stock || 0
     const currentActivo = Boolean(vino.activo)
+    const targetActivo = syncActive ? targetStock > 0 : currentActivo
+    const stockChanged = currentStock !== targetStock
+    const activeChanged = currentActivo !== targetActivo
     const row = {
       id: vino.id,
       nombre: vino.nombre,
@@ -777,9 +788,11 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken) 
       currentActivo,
       targetActivo,
       stockDelta: targetStock - currentStock,
+      stockChanged,
+      activeChanged,
     }
 
-    if (currentStock !== targetStock || currentActivo !== targetActivo) {
+    if (stockChanged || activeChanged) {
       changes.push(row)
     } else {
       unchanged.push(row)
@@ -792,15 +805,17 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken) 
     const current = byCategory.get(key) || {
       categoria: key,
       cambios: 0,
+      cambiosStock: 0,
       suben: 0,
       bajan: 0,
-      quedanIgualActivo: 0,
+      cambianActivo: 0,
       ejemplos: [],
     }
     current.cambios++
-    if (row.stockDelta > 0) current.suben++
-    if (row.stockDelta < 0) current.bajan++
-    if (row.currentActivo !== row.targetActivo) current.quedanIgualActivo++
+    if (row.stockChanged) current.cambiosStock++
+    if (row.stockChanged && row.stockDelta > 0) current.suben++
+    if (row.stockChanged && row.stockDelta < 0) current.bajan++
+    if (row.activeChanged) current.cambianActivo++
     if (current.ejemplos.length < 10) {
       current.ejemplos.push({
         nombre: row.nombre,
@@ -808,6 +823,8 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken) 
         stockSquare: row.squareStock,
         activoActual: row.currentActivo,
         activoNuevo: row.targetActivo,
+        cambiaStock: row.stockChanged,
+        cambiaActivo: row.activeChanged,
       })
     }
     byCategory.set(key, current)
@@ -816,23 +833,35 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken) 
   return {
     tiendaId,
     tiendaSlug,
+    syncActive,
     changes,
     unchanged,
     missing,
     stats: {
+      syncActive,
       rawCatalogItems: rawItems.length,
       dedupedCatalogItems: items.length,
       squareVariationIds: variationIds.length,
       stockCountsRead: Object.keys(itemStockMap).length,
       existingRowsRead: existentes.length,
       existingReadQueries,
-      cambiosStock: changes.length,
+      filasConCambios: changes.length,
+      cambiosStock: changes.filter(row => row.stockChanged).length,
       sinCambios: unchanged.length,
       noVinculados: missing.length,
       estimatedWriteStatements: changes.length,
-      subenStock: changes.filter(row => row.stockDelta > 0).length,
-      bajanStock: changes.filter(row => row.stockDelta < 0).length,
-      cambianActivo: changes.filter(row => row.currentActivo !== row.targetActivo).length,
+      subenStock: changes.filter(row => row.stockChanged && row.stockDelta > 0).length,
+      bajanStock: changes.filter(row => row.stockChanged && row.stockDelta < 0).length,
+      cambianActivo: changes.filter(row => row.activeChanged).length,
+      activeChangesSuppressed: syncActive ? 0 : items.filter(item => {
+        if (item.type !== 'ITEM') return false
+        const variationId = itemToVariation[item.id] || null
+        if (!variationId) return false
+        const vino = existingByVariation[variationId] || existingByCatalog[item.id] || existingByCatalog[variationId]
+        if (!vino) return false
+        const targetStock = itemStockMap[item.id] ?? 0
+        return Boolean(vino.activo) !== (targetStock > 0)
+      }).length,
     },
     categorias: [...byCategory.values()].sort((a, b) => b.cambios - a.cambios || a.categoria.localeCompare(b.categoria)),
   }
@@ -850,15 +879,18 @@ function publicStockRow(row) {
     delta: row.stockDelta,
     activoActual: row.currentActivo,
     activoNuevo: row.targetActivo,
+    cambiaStock: row.stockChanged,
+    cambiaActivo: row.activeChanged,
   }
 }
 
-export async function squareStockReconcileDryRunForTienda(tiendaId, tiendaSlug, squareToken) {
-  const plan = await buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken)
+export async function squareStockReconcileDryRunForTienda(tiendaId, tiendaSlug, squareToken, options = {}) {
+  const plan = await buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, options)
   return {
     ok: true,
     dryRun: true,
     reconcileStock: true,
+    syncActive: plan.syncActive,
     writes: false,
     syncPaused: isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug }),
     slug: tiendaSlug || null,
@@ -874,7 +906,7 @@ export async function squareStockReconcileDryRunForTienda(tiendaId, tiendaSlug, 
   }
 }
 
-export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, squareToken) {
+export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, squareToken, options = {}) {
   if (isSquareSyncTemporarilyPaused({ id: tiendaId, slug: tiendaSlug })) {
     return {
       ...squareSyncPausedPayload({ id: tiendaId, slug: tiendaSlug }, 'stock_reconcile'),
@@ -885,7 +917,24 @@ export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, square
     }
   }
 
-  const plan = await buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken)
+  const plan = await buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, options)
+  if (!options.forceMassiveWrite && (
+    plan.stats.estimatedWriteStatements > SQUARE_STOCK_RECONCILE_MAX_WRITES ||
+    plan.stats.cambianActivo > SQUARE_STOCK_RECONCILE_MAX_ACTIVE_CHANGES
+  )) {
+    return {
+      ok: false,
+      skipped: 'stock_reconcile_guard',
+      reconcileStock: true,
+      syncActive: plan.syncActive,
+      actualizados: 0,
+      errores: 0,
+      total: plan.changes.length,
+      resumenAntes: plan.stats,
+      error: 'Reconciliacion de stock bloqueada por seguridad: demasiadas escrituras o cambios de activo. Revisa el dry-run o usa forceReconcile=true de forma explicita.',
+    }
+  }
+
   const now = new Date().toISOString()
   let actualizados = 0
   let errores = 0
@@ -895,9 +944,12 @@ export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, square
   for (let i = 0; i < plan.changes.length; i += UPDATE_CONCURRENCY) {
     const chunk = plan.changes.slice(i, i + UPDATE_CONCURRENCY)
     await Promise.all(chunk.map(async row => {
+      const patch = { stock: row.squareStock, updated_at: now }
+      if (plan.syncActive) patch.activo = row.targetActivo
+
       const { error } = await supabaseAdmin
         .from('vinos_tienda')
-        .update({ stock: row.squareStock, activo: row.targetActivo, updated_at: now })
+        .update(patch)
         .eq('id', row.id)
 
       if (error) errores++
@@ -910,6 +962,7 @@ export async function squareStockReconcileForTienda(tiendaId, tiendaSlug, square
   return {
     ok: errores === 0,
     reconcileStock: true,
+    syncActive: plan.syncActive,
     actualizados,
     errores,
     total: plan.changes.length,

@@ -29,10 +29,28 @@ function isStockReconcileRequest(request) {
   ).trim())
 }
 
+function isSyncActiveRequest(request) {
+  const url = new URL(request.url)
+  return TRUE_PARAM.test(String(url.searchParams.get('syncActive') || url.searchParams.get('sync_active') || '').trim())
+}
+
+function isForceReconcileRequest(request) {
+  const url = new URL(request.url)
+  return TRUE_PARAM.test(String(
+    url.searchParams.get('forceReconcile') ||
+    url.searchParams.get('force_reconcile') ||
+    ''
+  ).trim())
+}
+
 export async function POST(request, { params }) {
   const { slug } = await params
   const dryRun = isDryRunRequest(request)
   const reconcileStock = isStockReconcileRequest(request)
+  const stockReconcileOptions = {
+    syncActive: isSyncActiveRequest(request),
+    forceMassiveWrite: isForceReconcileRequest(request),
+  }
 
   const access = await requireKioskoAccess(request, slug)
   if (access.error) return NextResponse.json({ error: access.error }, { status: access.status || 403 })
@@ -69,8 +87,8 @@ export async function POST(request, { params }) {
     let result
     if (reconcileStock) {
       result = dryRun
-        ? await squareStockReconcileDryRunForTienda(access.tienda.id, slug, squareToken)
-        : await squareStockReconcileForTienda(access.tienda.id, slug, squareToken)
+        ? await squareStockReconcileDryRunForTienda(access.tienda.id, slug, squareToken, stockReconcileOptions)
+        : await squareStockReconcileForTienda(access.tienda.id, slug, squareToken, stockReconcileOptions)
     } else {
       result = dryRun
         ? await squareSyncDryRunForTienda(access.tienda.id, slug, squareToken)
