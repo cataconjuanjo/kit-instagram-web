@@ -3388,8 +3388,8 @@ export default function AdminKioskoPage() {
                             }
                           }}
                         >
-                          <option value="">{v.cat_gourmet ? '— auto' : v.catAuto}</option>
-                          {CATS_GOURMET.map(c => <option key={c} value={c}>{c}</option>)}
+                          <option value="">{v.cat_gourmet ? '— quitar' : '— sin categoría'}</option>
+                          {categoriasOtros.map(c => <option key={c} value={c}>{c}</option>)}
                           <option value="__vino__">→ Mover a Vinos</option>
                         </select>
                       </td>
