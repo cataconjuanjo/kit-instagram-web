@@ -330,7 +330,9 @@ export function isSquareWineCategory(categoria) {
 
 export function squareActivoFromStock(categoriaOrRow, stock) {
   const categoria = typeof categoriaOrRow === 'string' ? categoriaOrRow : categoriaOrRow?.categoria
-  return isSquareWineCategory(categoria) ? Number(stock || 0) > 0 : true
+  const cat = String(categoria || '').trim().toLowerCase()
+  // carta = platos del restaurante, siempre activos (sin gestión de stock)
+  return cat === 'carta' ? true : Number(stock || 0) > 0
 }
 
 function normalizeReconcileCategoryFilter(value) {

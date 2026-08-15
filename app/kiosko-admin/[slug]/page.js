@@ -1081,7 +1081,8 @@ export default function AdminKioskoPage() {
   }, [tienda?.plan, tienda?.trial_used_seconds, tienda?.trial_expires_at, slug, previewTrial, esAdminUsuario])
 
   const [busqueda, setBusqueda]           = useState('')
-  const [verInactivos, setVerInactivos]   = useState(false)
+  const [verInactivos, setVerInactivos]         = useState(false)
+  const [verInactivosOtros, setVerInactivosOtros] = useState(false)
   const [filtroOtrosCat, setFiltroOtrosCat]   = useState('todas')
   const [paginaOtros, setPaginaOtros]         = useState(1)
   const [porPaginaOtros, setPorPaginaOtros]   = useState(20)
@@ -1142,7 +1143,7 @@ export default function AdminKioskoPage() {
   }, [slug])
 
   useEffect(() => { setPaginaActual(1) }, [busqueda, filtroTipo, filtroEstado, filtroCalidad, filtroDestacado, ordenPor, ordenDir, porPagina, verInactivos])
-  useEffect(() => { setPaginaOtros(1) }, [filtroOtrosCat, busquedaOtros, porPaginaOtros])
+  useEffect(() => { setPaginaOtros(1) }, [filtroOtrosCat, busquedaOtros, porPaginaOtros, verInactivosOtros])
 
   useEffect(() => {
     if (!moreMenuOpen) return
@@ -1587,13 +1588,15 @@ export default function AdminKioskoPage() {
   const vinosOtro  = useMemo(() => vinos.filter(v => v.categoria === 'otro' || v.categoria === 'carta'), [vinos])
   const usaSquare  = useMemo(() => vinos.some(v => v.square_catalog_id), [vinos])
 
-  const otrosConCat    = useMemo(() => vinosOtro.map(v => ({ ...v, catAuto: v.cat_gourmet || detectarCatGourmet(v.nombre, v.descripcion) })), [vinosOtro])
+  const otrosConCat     = useMemo(() => vinosOtro.map(v => ({ ...v, catAuto: v.cat_gourmet || detectarCatGourmet(v.nombre, v.descripcion) })), [vinosOtro])
   const categoriasOtros = useMemo(() => [...new Set(otrosConCat.map(v => v.catAuto))].sort(), [otrosConCat])
+  const nInactivosOtros = useMemo(() => otrosConCat.filter(v => v.activo === false).length, [otrosConCat])
   const otrosFiltrados  = useMemo(() => {
     let r = filtroOtrosCat === 'todas' ? otrosConCat : otrosConCat.filter(v => v.catAuto === filtroOtrosCat)
+    if (!verInactivosOtros) r = r.filter(v => v.activo !== false)
     if (busquedaOtros) { const q = busquedaOtros.toLowerCase(); r = r.filter(v => [v.nombre, v.descripcion].filter(Boolean).join(' ').toLowerCase().includes(q)) }
     return r
-  }, [otrosConCat, filtroOtrosCat, busquedaOtros])
+  }, [otrosConCat, filtroOtrosCat, busquedaOtros, verInactivosOtros])
   const totalPaginasOtros = Math.ceil(otrosFiltrados.length / porPaginaOtros)
   const otrosPaginados    = useMemo(() => { const s = (paginaOtros - 1) * porPaginaOtros; return otrosFiltrados.slice(s, s + porPaginaOtros) }, [otrosFiltrados, paginaOtros, porPaginaOtros])
 
@@ -3378,6 +3381,13 @@ export default function AdminKioskoPage() {
               </div>
             )}
           </div>
+          {nInactivosOtros > 0 && (
+            <button type="button"
+              className={`${styles.filtrosBtn} ${verInactivosOtros ? styles.filtrosBtnActivo : ''}`}
+              onClick={() => setVerInactivosOtros(v => !v)}>
+              {verInactivosOtros ? 'Ocultar inactivos' : `Inactivos (${nInactivosOtros})`}
+            </button>
+          )}
           <span className={styles.total}>{otrosFiltrados.length} / {vinosOtro.length} productos</span>
         </div>
 
