@@ -529,11 +529,15 @@ function getSquareCatalogPolicy(tiendaSlug) {
     allowUnlistedCategories: true,
     tienda: ['carta tienda'],
     maridajeOnly: [],
-    neverKiosko: ['carta iqos', 'iqos', 'xmas home', 'navidad', 'naviden', 'christmas', 'evento', 'bolsas', 'carta gastro', 'dispositivos', 'terea', 'levia', 'veev'],
+    neverKiosko: ['carta iqos', 'iqos', 'xmas home', 'navidad', 'naviden', 'christmas', 'evento', 'bolsas', 'carta gastro', 'dispositivos', 'terea', 'levia', 'veev', 'zyn', 'tabaco'],
+    // Productos que entran al catálogo pero no son aptos para cestas regalo
+    neverCesta: ['xmas'],
+    // Nombres de producto (prefijos) que nunca van al kiosko aunque su categoría sea válida
+    neverKioskoByName: [/^c\. /i],
   }
 }
 
-function decideSquareCatalogImport(tiendaSlug, squareCategories = []) {
+function decideSquareCatalogImport(tiendaSlug, squareCategories = [], rawNombre = '') {
   const policy = getSquareCatalogPolicy(tiendaSlug)
   if (!policy) return { action: 'kiosko', policy: null }
 
@@ -554,11 +558,27 @@ function decideSquareCatalogImport(tiendaSlug, squareCategories = []) {
     }
   }
 
+  if (policy.neverKioskoByName?.some(rx => rx.test(rawNombre))) {
+    return {
+      action: 'skip',
+      reason: 'square_name_never_kiosko',
+      policy: policy.name,
+    }
+  }
+
   if (categoryNames.some(name => policy.maridajeOnly.some(target => matchesCategoryName(name, target)))) {
     return {
       action: 'maridaje_only',
       categoryOverride: 'carta',
       activeOverride: false,
+      policy: policy.name,
+    }
+  }
+
+  if (policy.neverCesta?.length && categoryNames.some(name => policy.neverCesta.some(target => matchesCategoryName(name, target)))) {
+    return {
+      action: 'kiosko',
+      aptoCestaOverride: false,
       policy: policy.name,
     }
   }
@@ -712,7 +732,7 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
     const foto_url = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
     const stock = itemStockMap[item.id] ?? 0
     const squareCategories = getSquareCategoryEntries(d, categoryMap)
-    const squareCategoryDecision = decideSquareCatalogImport(tiendaSlug, squareCategories)
+    const squareCategoryDecision = decideSquareCatalogImport(tiendaSlug, squareCategories, rawNombre)
     if (squareCategoryDecision.action === 'skip') {
       skipped.push({
         square_catalog_id: item.id,
@@ -825,6 +845,7 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
           nombre, precio_pvp, descripcion, stock, activo,
           categoria:           catEfectiva,
           square_last_seen_at: now,
+          ...(squareCategoryDecision.aptoCestaOverride === false && { apto_cesta: false }),
           uva:        uva    || null,
           bodega:     bodega || null,
           region:     region || null,
@@ -1329,7 +1350,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     const foto_url     = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
     const stock        = itemStockMap[item.id] ?? 0
     const squareCategories = getSquareCategoryEntries(d, categoryMap)
-    const squareCategoryDecision = decideSquareCatalogImport(tiendaSlug, squareCategories)
+    const squareCategoryDecision = decideSquareCatalogImport(tiendaSlug, squareCategories, rawNombre)
     if (squareCategoryDecision.action === 'skip') {
       filtradosPorSquareCategoria++
       continue
@@ -1408,6 +1429,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
           nombre, precio_pvp, descripcion, stock, activo,
           categoria:           catEfectiva,
           square_last_seen_at: now,
+          ...(squareCategoryDecision.aptoCestaOverride === false && { apto_cesta: false }),
           uva:        uva    || null,
           bodega:     bodega || null,
           region:     region || null,
