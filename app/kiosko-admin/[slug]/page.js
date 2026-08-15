@@ -1508,6 +1508,32 @@ export default function AdminKioskoPage() {
     }
   }
 
+  // ── Sync completo: catálogo + stock ───────────────────────────────────────
+  async function syncSquareFull() {
+    setSquareSyncing(true); setSquareSyncResult(null)
+    try {
+      // 1. Catálogo
+      const catRes = await fetch(`/api/kiosko/${slug}/admin/square-sync`, { method: 'POST', headers: authHeaders })
+      const catData = await catRes.json()
+      if (!catRes.ok) throw new Error(catData.error || 'Error al importar catálogo')
+      // 2. Stock
+      setSquareSyncing(false); setSquareStockSyncing(true)
+      const stockRes = await fetch(`/api/kiosko/${slug}/admin/square-sync?reconcileStock=1`, { method: 'POST', headers: authHeaders })
+      const stockData = await stockRes.json()
+      if (!stockRes.ok) throw new Error(stockData.error || 'Error al sincronizar stock')
+      setSquareSyncResult({
+        insertados: catData.insertados ?? 0,
+        actualizados: (catData.actualizados ?? 0) + (stockData.actualizados ?? 0),
+        stockSincronizados: stockData.stockSincronizados ?? stockData.actualizados ?? 0,
+      })
+      await cargar()
+    } catch (e) {
+      setSquareSyncResult({ error: e.message })
+    } finally {
+      setSquareSyncing(false); setSquareStockSyncing(false)
+    }
+  }
+
   // ── Sync Stock Square ─────────────────────────────────────────────────────
   async function syncStockSquare() {
     setSquareStockSyncing(true)
@@ -2175,16 +2201,12 @@ export default function AdminKioskoPage() {
                   <button type="button" className={styles.moreMenuItem} onClick={() => { setModalImport(true); setResultImport(null); setMoreMenuOpen(false) }}>
                     Importar CSV
                   </button>
-                  {(tienda?.has_square_token || usaSquare) && (<>
-                    <button type="button" className={styles.moreMenuItem} onClick={() => { syncSquare(); setMoreMenuOpen(false) }}
+                  {(tienda?.has_square_token || usaSquare) && (
+                    <button type="button" className={styles.moreMenuItem} onClick={() => { syncSquareFull(); setMoreMenuOpen(false) }}
                       disabled={squareSyncing || squareStockSyncing}>
-                      {squareSyncing ? 'Sincronizando…' : '⟳ Square'}
+                      {(squareSyncing || squareStockSyncing) ? 'Sincronizando con Square…' : '⟳ Sincronizar con Square'}
                     </button>
-                    <button type="button" className={styles.moreMenuItem} onClick={() => { syncStockSquare(); setMoreMenuOpen(false) }}
-                      disabled={squareSyncing || squareStockSyncing}>
-                      {squareStockSyncing ? 'Actualizando stock…' : '⟳ Stock Square'}
-                    </button>
-                  </>)}
+                  )}
                 </div>
               )}
             </div>
