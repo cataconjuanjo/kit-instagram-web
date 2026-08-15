@@ -17,7 +17,7 @@ import { margenBrutoPct } from '../../lib/wineEconomics'
 import { calcularPreciosSugeridos, margenCopaPct, normalizarAjustesPrecios } from '../../lib/pricingUtils'
 import { esPerfilBodega } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
-import DonutEquilibrio from '../DonutEquilibrio'
+import { Donut } from '../../components/Donut'
 import styles from '../module.module.css'
 import bStyles from './bodega.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
@@ -727,12 +727,12 @@ export default function ControlBodega() {
               </div>
             </div>
             <div className={styles.panelBody}>
-              <DonutEquilibrio
-                data={donutTipos}
-                totalLabel={String(datos.activos.length)}
-                totalCaption="referencias"
-                rentabilidad={datos.margenMedio}
-                rotacion={null}
+              <Donut
+                data={donutTipos.map(d => ({
+                  ...d,
+                  value: Math.round((d.value / datos.activos.length) * 100),
+                }))}
+                total={datos.activos.length}
               />
             </div>
           </section>
