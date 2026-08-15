@@ -151,9 +151,32 @@ function parsearNombreSquare(raw) {
 async function fetchAllCatalogItems(token) {
   if (!token) throw new Error('Token de Square no configurado para esta tienda')
 
-  const items = [], imageMap = {}, categoryMap = {}, parentCategoryMap = {}
+  // Paso 1: traer TODAS las categorías para tener el árbol completo.
+  // Si solo buscamos ITEM, related_objects solo incluye subcategorías directas —
+  // los padres ("Vinos peninsulares") no aparecen y parentCategoryMap queda vacío.
+  const categoryMap = {}, parentCategoryMap = {}
   let cursor = null
+  do {
+    const body = { object_types: ['CATEGORY'] }
+    if (cursor) body.cursor = cursor
+    const catData = await fetchSquareJson(`${SQUARE_API_BASE}/v2/catalog/search`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Square-Version': '2024-01-18', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }, 'Square catalog/search (categories)')
+    for (const obj of (catData.objects || [])) {
+      if (obj.type === 'CATEGORY' && obj.category_data?.name) {
+        categoryMap[obj.id] = obj.category_data.name
+        const parentId = obj.category_data?.parent_category?.id
+        if (parentId) parentCategoryMap[obj.id] = parentId
+      }
+    }
+    cursor = catData.cursor || null
+  } while (cursor)
 
+  // Paso 2: traer todos los items con sus imágenes
+  const items = [], imageMap = {}
+  cursor = null
   do {
     const body = { object_types: ['ITEM'], include_related_objects: true }
     if (cursor) body.cursor = cursor
@@ -170,7 +193,8 @@ async function fetchAllCatalogItems(token) {
     items.push(...(data.objects || []))
     for (const rel of (data.related_objects || [])) {
       if (rel.type === 'IMAGE' && rel.image_data?.url) imageMap[rel.id] = rel.image_data.url
-      if (rel.type === 'CATEGORY' && rel.category_data?.name) {
+      // Categorías ya cargadas arriba; solo añadir si falta alguna
+      if (rel.type === 'CATEGORY' && rel.category_data?.name && !categoryMap[rel.id]) {
         categoryMap[rel.id] = rel.category_data.name
         const parentId = rel.category_data?.parent_category?.id
         if (parentId) parentCategoryMap[rel.id] = parentId
