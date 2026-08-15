@@ -35,7 +35,6 @@ export default function WineMappingPanel({ restaurante, vinos = [] }) {
     ? { valor: ticketManual, fuente: 'ticket editable', esEstimado: false }
     : ticketGuardado
   const wineMapping = calcularWineMapping(vinos, ticketMapping.valor)
-  const gamasConDesajuste = wineMapping.gamas.filter(g => g.delta !== 0)
   const gamasHueco = wineMapping.gamas.filter(g => g.vinos === 0 && g.objetivoNumero > 0)
   const tipoCounts = TIPOS_BODEGA.map(tipo => ({
     ...tipo,
@@ -132,7 +131,13 @@ export default function WineMappingPanel({ restaurante, vinos = [] }) {
               {wineMapping.gamas.map((gama, i) => {
                 const actualPct = Math.min(100, (gama.vinos / maxGamaRefs) * 100)
                 const objetivoPct = Math.min(100, (gama.objetivoNumero / maxGamaRefs) * 100)
-                const estado = gama.delta > 0 ? `+${gama.delta}` : gama.delta < 0 ? String(gama.delta) : 'ok'
+                const absDelta = Math.abs(gama.delta)
+                const deltaColor = gama.delta === 0 ? '#6ee7b7' : absDelta > 3 ? '#fca5a5' : '#fcd34d'
+                const deltaLabel = gama.delta === 0
+                  ? 'En objetivo'
+                  : gama.delta > 0
+                    ? `Sobran ${gama.delta}`
+                    : `Faltan ${absDelta}`
                 return (
                   <button
                     key={gama.id}
@@ -150,11 +155,12 @@ export default function WineMappingPanel({ restaurante, vinos = [] }) {
                   >
                     <p className={styles.eyebrow} style={{ color: '#d8c898' }}>{gama.rangoTexto} EUR</p>
                     <strong style={{ display: 'block', fontSize: 14, marginBottom: 8 }}>{gama.label}</strong>
-                    <div style={{ position: 'relative', height: 7, borderRadius: 999, background: 'rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 6 }}>
+                    <div style={{ position: 'relative', height: 7, borderRadius: 999, background: 'rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 8 }}>
                       <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${actualPct}%`, background: PALETTE[i] }} />
                       <span style={{ position: 'absolute', left: `${objetivoPct}%`, top: 0, bottom: 0, width: 2, background: '#fffaf3' }} />
                     </div>
-                    <small style={{ color: 'rgba(255,250,243,0.66)' }}>{gama.vinos} refs. / objetivo {gama.objetivoNumero} — {estado}</small>
+                    <p style={{ margin: '0 0 3px', fontSize: 11, color: 'rgba(255,250,243,0.6)' }}>{gama.vinos} refs · objetivo {gama.objetivoNumero}</p>
+                    <strong style={{ fontSize: 12, color: deltaColor }}>{deltaLabel}</strong>
                   </button>
                 )
               })}
@@ -235,13 +241,6 @@ export default function WineMappingPanel({ restaurante, vinos = [] }) {
                   </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {gamasConDesajuste.length > 0 && (
-            <div className={styles.actionRow} style={{ marginBottom: 16 }}>
-              <a className={styles.secondary} href="/dashboard/catalogo">Buscar referencias para cubrir huecos</a>
-              <a className={styles.ghost} href="/dashboard/constructor">Reordenar carta</a>
             </div>
           )}
 
