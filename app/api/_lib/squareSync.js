@@ -151,7 +151,7 @@ function parsearNombreSquare(raw) {
 async function fetchAllCatalogItems(token) {
   if (!token) throw new Error('Token de Square no configurado para esta tienda')
 
-  const items = [], imageMap = {}, categoryMap = {}
+  const items = [], imageMap = {}, categoryMap = {}, parentCategoryMap = {}
   let cursor = null
 
   do {
@@ -169,13 +169,17 @@ async function fetchAllCatalogItems(token) {
     }, 'Square catalog/search')
     items.push(...(data.objects || []))
     for (const rel of (data.related_objects || [])) {
-      if (rel.type === 'IMAGE'    && rel.image_data?.url)     imageMap[rel.id]    = rel.image_data.url
-      if (rel.type === 'CATEGORY' && rel.category_data?.name) categoryMap[rel.id] = rel.category_data.name
+      if (rel.type === 'IMAGE' && rel.image_data?.url) imageMap[rel.id] = rel.image_data.url
+      if (rel.type === 'CATEGORY' && rel.category_data?.name) {
+        categoryMap[rel.id] = rel.category_data.name
+        const parentId = rel.category_data?.parent_category?.id
+        if (parentId) parentCategoryMap[rel.id] = parentId
+      }
     }
     cursor = data.cursor || null
   } while (cursor)
 
-  return { items, imageMap, categoryMap }
+  return { items, imageMap, categoryMap, parentCategoryMap }
 }
 
 export async function listSquareLocations(squareToken) {
@@ -509,8 +513,24 @@ export async function squareCatalogUpdateForTiendaObjects(tiendaId, tiendaSlug, 
   }
 }
 
-function detectarCategoria(itemData, categoryMap) {
-  const catIds = [itemData.category_id, ...(itemData.categories || []).map(c => c.id)].filter(Boolean)
+// Devuelve todos los IDs de categoría del item + sus padres (para jerarquías Square)
+function expandCategoryIds(itemData, parentCategoryMap) {
+  const directIds = [itemData.category_id, ...(itemData.categories || []).map(c => c.id)].filter(Boolean)
+  const allIds = new Set(directIds)
+  for (const id of directIds) {
+    let cur = id
+    for (let depth = 0; depth < 5; depth++) {
+      const parent = parentCategoryMap[cur]
+      if (!parent || allIds.has(parent)) break
+      allIds.add(parent)
+      cur = parent
+    }
+  }
+  return [...allIds]
+}
+
+function detectarCategoria(itemData, categoryMap, parentCategoryMap = {}) {
+  const catIds = expandCategoryIds(itemData, parentCategoryMap)
   for (const id of catIds) {
     if (categoryMap[id] && WINE_KEYWORDS.test(categoryMap[id])) return 'vino'
   }
@@ -518,10 +538,9 @@ function detectarCategoria(itemData, categoryMap) {
   return 'otro'
 }
 
-function getSquareCategoryEntries(itemData, categoryMap) {
-  const catIds = [itemData.category_id, ...(itemData.categories || []).map(c => c.id)].filter(Boolean)
-  const uniqueIds = uniqueStrings(catIds)
-  return uniqueIds.map(id => ({ id, name: categoryMap[id] || 'Sin nombre' }))
+function getSquareCategoryEntries(itemData, categoryMap, parentCategoryMap = {}) {
+  const allIds = expandCategoryIds(itemData, parentCategoryMap)
+  return allIds.filter(id => categoryMap[id]).map(id => ({ id, name: categoryMap[id] }))
 }
 
 function getSquareCatalogPolicy(tiendaSlug) {
@@ -674,7 +693,7 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
     locationIds: options.locationIds,
   }
 
-  const { items: rawItems, imageMap, categoryMap } = await fetchAllCatalogItems(token)
+  const { items: rawItems, imageMap, categoryMap, parentCategoryMap } = await fetchAllCatalogItems(token)
 
   const seenItemIds = new Set()
   const items = rawItems.filter(item => {
@@ -754,7 +773,7 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
     const descripcion = d.description_plaintext || d.description || null
     const foto_url = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
     const stock = itemStockMap[item.id] ?? 0
-    const squareCategories = getSquareCategoryEntries(d, categoryMap)
+    const squareCategories = getSquareCategoryEntries(d, categoryMap, parentCategoryMap)
     const squareCategoryDecision = decideSquareCatalogImport(tiendaSlug, squareCategories, rawNombre)
     if (squareCategoryDecision.action === 'skip') {
       skipped.push({
@@ -767,7 +786,7 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
       })
       continue
     }
-    const catDetectada = detectarCategoria(d, categoryMap)
+    const catDetectada = detectarCategoria(d, categoryMap, parentCategoryMap)
 
     const legacyVariationMatch = variationId ? existingByCatalog[variationId] : null
     const variationMatch = variationId ? existingByVariation[variationId] : null
@@ -975,7 +994,7 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
     options.categoryFilter || options.category || options.onlyCategory
   )
 
-  const { items: rawItems, categoryMap } = await fetchAllCatalogItems(token)
+  const { items: rawItems, categoryMap, parentCategoryMap } = await fetchAllCatalogItems(token)
   const seenItemIds = new Set()
   const items = rawItems.filter(item => {
     if (seenItemIds.has(item.id)) return false
@@ -1034,7 +1053,7 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
     if (!variationId) continue
 
     const vino = existingByVariation[variationId] || existingByCatalog[item.id] || existingByCatalog[variationId]
-    const categoria = vino?.categoria || detectarCategoria(item.item_data || {}, categoryMap)
+    const categoria = vino?.categoria || detectarCategoria(item.item_data || {}, categoryMap, parentCategoryMap)
     if (!matchesReconcileCategory(categoryFilter, categoria)) {
       filteredOut++
       continue
@@ -1154,7 +1173,7 @@ async function buildSquareStockReconcilePlan(tiendaId, tiendaSlug, squareToken, 
         if (!variationId) return false
         const vino = existingByVariation[variationId] || existingByCatalog[item.id] || existingByCatalog[variationId]
         if (!vino) return false
-        const categoria = vino.categoria || detectarCategoria(item.item_data || {}, categoryMap)
+        const categoria = vino.categoria || detectarCategoria(item.item_data || {}, categoryMap, parentCategoryMap)
         if (!matchesReconcileCategory(categoryFilter, categoria)) return false
         const targetStock = itemStockMap[item.id] ?? 0
         const allCategoriesTargetActivo = targetStock > 0
@@ -1299,7 +1318,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     locationIds: options.locationIds,
   }
 
-  const { items: rawItems, imageMap, categoryMap } = await fetchAllCatalogItems(token)
+  const { items: rawItems, imageMap, categoryMap, parentCategoryMap } = await fetchAllCatalogItems(token)
 
   // Dedup por id (paginación puede devolver duplicados)
   const seenItemIds = new Set()
@@ -1377,13 +1396,13 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     const descripcion  = d.description_plaintext || d.description || null
     const foto_url     = (d.image_ids || []).map(id => imageMap[id]).find(Boolean) || null
     const stock        = itemStockMap[item.id] ?? 0
-    const squareCategories = getSquareCategoryEntries(d, categoryMap)
+    const squareCategories = getSquareCategoryEntries(d, categoryMap, parentCategoryMap)
     const squareCategoryDecision = decideSquareCatalogImport(tiendaSlug, squareCategories, rawNombre)
     if (squareCategoryDecision.action === 'skip') {
       filtradosPorSquareCategoria++
       continue
     }
-    const catDetectada = detectarCategoria(d, categoryMap)
+    const catDetectada = detectarCategoria(d, categoryMap, parentCategoryMap)
 
     const legacyVariationMatch = variationId ? existingByCatalog[variationId] : null
     const variationMatch = variationId ? existingByVariation[variationId] : null
@@ -1580,7 +1599,7 @@ export async function squareCategoryCleanupForTienda(tiendaId, tiendaSlug, squar
   const token = (squareToken || '').trim()
   if (!token) throw new Error('No hay token de Square configurado para esta tienda')
 
-  const { items: rawItems, categoryMap } = await fetchAllCatalogItems(token)
+  const { items: rawItems, categoryMap, parentCategoryMap } = await fetchAllCatalogItems(token)
 
   // Catalog IDs de Square que pertenecen a categorías excluidas
   const excludedCatalogIds = new Set()
@@ -1590,7 +1609,7 @@ export async function squareCategoryCleanupForTienda(tiendaId, tiendaSlug, squar
   for (const item of rawItems) {
     if (item.type !== 'ITEM') continue
     const d = item.item_data || {}
-    const squareCategories = getSquareCategoryEntries(d, categoryMap)
+    const squareCategories = getSquareCategoryEntries(d, categoryMap, parentCategoryMap)
     const decision = decideSquareCatalogImport(tiendaSlug, squareCategories)
     if (decision.action !== 'skip' || decision.reason !== 'square_category_never_kiosko') continue
 
