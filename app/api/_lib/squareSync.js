@@ -751,7 +751,9 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
     const legacyVariationMatch = variationId ? existingByCatalog[variationId] : null
     const variationMatch = variationId ? existingByVariation[variationId] : null
     const existing = legacyVariationMatch || variationMatch || existingByCatalog[item.id]
-    const catEfectiva = squareCategoryDecision.categoryOverride || existing?.categoria || catDetectada
+    // Si Square detecta 'otro' pero en BD hay 'vino', corregir — el catálogo manda sobre el valor guardado
+    const squareSaysOtroButDbSaysVino = catDetectada === 'otro' && existing?.categoria === 'vino'
+    const catEfectiva = squareCategoryDecision.categoryOverride || (squareSaysOtroButDbSaysVino ? 'otro' : existing?.categoria) || catDetectada
     const activo = typeof squareCategoryDecision.activeOverride === 'boolean'
       ? squareCategoryDecision.activeOverride
       : !item.is_deleted && squareActivoFromStock(catEfectiva, stock)
@@ -760,7 +762,10 @@ async function buildSquareSyncPlan(tiendaId, tiendaSlug, squareToken, options = 
     if (existing) {
       const skipIdNormalization = Boolean(legacyVariationMatch && variationMatch && legacyVariationMatch.id !== variationMatch.id)
       const updatePrice = pricesDiffer(existing.precio_pvp, precio_pvp)
-      const updateCategory = Boolean(squareCategoryDecision.categoryOverride && existing.categoria !== squareCategoryDecision.categoryOverride)
+      const updateCategory = Boolean(
+        (squareCategoryDecision.categoryOverride && existing.categoria !== squareCategoryDecision.categoryOverride) ||
+        squareSaysOtroButDbSaysVino
+      )
       const updateActive = typeof squareCategoryDecision.activeOverride === 'boolean' && Boolean(existing.activo) !== squareCategoryDecision.activeOverride
       const updateIds = !skipIdNormalization && (
         existing.square_catalog_id !== item.id ||
@@ -1363,7 +1368,8 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     const variationMatch = variationId ? existingByVariation[variationId] : null
     const existing = legacyVariationMatch || variationMatch || existingByCatalog[item.id]
 
-    const catEfectiva = squareCategoryDecision.categoryOverride || existing?.categoria || catDetectada
+    const squareSaysOtroButDbSaysVino = catDetectada === 'otro' && existing?.categoria === 'vino'
+    const catEfectiva = squareCategoryDecision.categoryOverride || (squareSaysOtroButDbSaysVino ? 'otro' : existing?.categoria) || catDetectada
     const activo = typeof squareCategoryDecision.activeOverride === 'boolean'
       ? squareCategoryDecision.activeOverride
       : !item.is_deleted && squareActivoFromStock(catEfectiva, stock)
@@ -1373,7 +1379,10 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     if (existing) {
       const skipIdNormalization = Boolean(legacyVariationMatch && variationMatch && legacyVariationMatch.id !== variationMatch.id)
       const updatePrice = pricesDiffer(existing.precio_pvp, precio_pvp)
-      const updateCategory = Boolean(squareCategoryDecision.categoryOverride && existing.categoria !== squareCategoryDecision.categoryOverride)
+      const updateCategory = Boolean(
+        (squareCategoryDecision.categoryOverride && existing.categoria !== squareCategoryDecision.categoryOverride) ||
+        squareSaysOtroButDbSaysVino
+      )
       const updateActive = typeof squareCategoryDecision.activeOverride === 'boolean' && Boolean(existing.activo) !== squareCategoryDecision.activeOverride
       const updateIds = !skipIdNormalization && (
         existing.square_catalog_id !== item.id ||
