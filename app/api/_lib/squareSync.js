@@ -304,11 +304,11 @@ function matchesCategoryName(name, target) {
 
 function looksLikeSquareWineName(rawName = '') {
   const parts = String(rawName || '').split(' I ').map(part => part.trim()).filter(Boolean)
-  if (parts.length >= 4) return true
-
   const text = normalizeTextKey(rawName)
   const hasWineSignal = /\b(vino|tinto|blanco|rosado|espumoso|cava|champagne|vermut|vermouth|rioja|ribera|rueda|rias baixas|priorat|jerez|manzanilla|albari[nñ]o|godello|verdejo|tempranillo|garnacha)\b/.test(text)
   const hasFormatSignal = /\b(75\s*cl|750\s*ml|botella|magnum)\b/.test(text)
+  // 4 segmentos con separador de bodega solo es señal de vino si también hay keyword vinícola
+  if (parts.length >= 4) return hasWineSignal
   return hasWineSignal && hasFormatSignal
 }
 
