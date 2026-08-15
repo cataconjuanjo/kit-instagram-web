@@ -46,6 +46,57 @@ function getIP(request) {
   )
 }
 
+function modoArmoniaDesdeModo(modo = '') {
+  if (modo === 'quiz') return 'recomendame'
+  if (modo === 'vino') return 'ya_tengo_vino'
+  if (modo === 'mesa' || modo === 'plato') return 'por_platos'
+  return modo || 'seguimiento'
+}
+
+function detalleSommelierArmonia({
+  modo = '',
+  modoMesa = '',
+  consulta = '',
+  platoIds = [],
+  platosContexto = [],
+  perfilQuiz = null,
+  vinoId = '',
+  vinoNombre = '',
+}) {
+  const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
+  const detalle = {
+    origen: 'cliente',
+    modo: modo || 'consulta',
+    modo_armonia: modoArmoniaDesdeModo(modo),
+    consulta: consultaTexto.slice(0, 200),
+  }
+
+  if (modoMesa) detalle.modo_mesa = String(modoMesa).slice(0, 140)
+  if (platoIds.length) detalle.plato_ids = platoIds.slice(0, 20)
+  if (platosContexto.length) {
+    detalle.platos = platosContexto
+      .map(plato => ({ id: plato.id, nombre: plato.nombre }))
+      .filter(plato => plato.id || plato.nombre)
+      .slice(0, 20)
+  }
+
+  if (perfilQuiz && typeof perfilQuiz === 'object') {
+    const quiz = {
+      tipo: String(perfilQuiz.tipo || '').slice(0, 40),
+      estilo: String(perfilQuiz.estilo || '').slice(0, 40),
+      comida: String(perfilQuiz.comida || '').slice(0, 40),
+      precio: String(perfilQuiz.precio || '').slice(0, 40),
+    }
+    if (Object.values(quiz).some(Boolean)) detalle.perfil_quiz = quiz
+  }
+
+  if (vinoId) detalle.vino_id = String(vinoId).slice(0, 80)
+  const vino = String(vinoNombre || (modo === 'vino' ? consultaTexto.split(',')[0] : '')).trim()
+  if (vino) detalle.vino = vino.slice(0, 180)
+
+  return JSON.stringify(detalle)
+}
+
 function normalizarTexto(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
@@ -408,6 +459,8 @@ export async function POST(request) {
       prueba_token,
       plato_ids = [],
       perfilQuiz,
+      vino_id,
+      vino_nombre,
     } = await request.json()
 
     if (!restaurante_id) {
@@ -534,31 +587,65 @@ export async function POST(request) {
 
         // Registrar estadísticas
         if (actividadRealDesdeISO(restaurante) && origenConsumo === 'cliente_real') {
-        const eventos = [{ restaurante_id, tipo: 'sommelier', detalle: String(consulta || '').slice(0, 200) }]
-        if (motorAnalisis?.recomendados?.length) {
-          motorAnalisis.recomendados.forEach((item, index) => {
-            if (!item?.vino) return
-            eventos.push({
-              restaurante_id,
-              tipo: 'recomendacion',
-              detalle: JSON.stringify({
-                origen: 'cliente',
-                modo,
-                consulta: String(consulta || '').slice(0, 200),
-                vino_id: item.vino.id,
-                vino: item.vino.nombre,
-                posicion: index + 1,
-                precio: item.vino.precio_botella,
-              }),
+          const eventos = [{
+            restaurante_id,
+            tipo: 'sommelier',
+            detalle: detalleSommelierArmonia({
+              modo,
+              modoMesa,
+              consulta,
+              platoIds,
+              platosContexto,
+              perfilQuiz,
+              vinoId: vino_id,
+              vinoNombre: vino_nombre,
+            }),
+          }]
+          if (motorAnalisis?.recomendados?.length) {
+            motorAnalisis.recomendados.forEach((item, index) => {
+              if (!item?.vino) return
+              eventos.push({
+                restaurante_id,
+                tipo: 'recomendacion',
+                detalle: JSON.stringify({
+                  origen: 'cliente',
+                  modo,
+                  modo_armonia: modoArmoniaDesdeModo(modo),
+                  consulta: String(consulta || '').slice(0, 200),
+                  plato_ids: platoIds,
+                  vino_id: item.vino.id,
+                  vino: item.vino.nombre,
+                  posicion: index + 1,
+                  precio: item.vino.precio_botella,
+                }),
+              })
             })
-          })
+          }
+          const { data: eventosInsertados } = await supabaseAdmin
+            .from('estadisticas')
+            .insert(eventos)
+            .select('id, restaurante_id, tipo, detalle, created_at')
+          await guardarAtribucionDesdeEventos(supabaseAdmin, eventosInsertados || [])
         }
+      } else if (actividadRealDesdeISO(restaurante) && origenConsumo === 'cliente_real') {
         const { data: eventosInsertados } = await supabaseAdmin
           .from('estadisticas')
-          .insert(eventos)
+          .insert([{
+            restaurante_id,
+            tipo: 'sommelier',
+            detalle: detalleSommelierArmonia({
+              modo,
+              modoMesa,
+              consulta,
+              platoIds,
+              platosContexto,
+              perfilQuiz,
+              vinoId: vino_id,
+              vinoNombre: vino_nombre,
+            }),
+          }])
           .select('id, restaurante_id, tipo, detalle, created_at')
         await guardarAtribucionDesdeEventos(supabaseAdmin, eventosInsertados || [])
-        }
       }
 
       // ── Construir prompt del usuario ───────────────────────────

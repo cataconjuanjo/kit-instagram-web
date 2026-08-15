@@ -4,8 +4,8 @@ import { validarTokenPruebaCarta } from '../../lib/cartaPruebaToken'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { guardarAtribucionDesdeEventos } from '../../lib/recommendationAttribution'
 
-const TIPOS_PERMITIDOS = new Set(['escaneo', 'sommelier', 'recomendacion', 'venta', 'incidencia', 'inventario'])
-const TIPOS_PUBLICOS = new Set(['escaneo'])
+const TIPOS_PERMITIDOS = new Set(['escaneo', 'evento_carta', 'sommelier', 'recomendacion', 'venta', 'incidencia', 'inventario'])
+const TIPOS_PUBLICOS = new Set(['escaneo', 'evento_carta'])
 const RATE_LIMIT_PUBLICO = 180
 const RATE_WINDOW_MS = 60 * 60 * 1000
 

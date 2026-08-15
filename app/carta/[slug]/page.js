@@ -1056,6 +1056,8 @@ export default function CartaPublica() {
         consulta: consultaVino,
         modo: 'vino',
         restaurante_id: restaurante.id,
+        vino_id: vinoMandatoCliente.id,
+        vino_nombre: nombreVinoCarta(vinoMandatoCliente),
         idioma,
         historial: [],
         prueba_token: tokenPrueba,
@@ -2421,7 +2423,14 @@ export default function CartaPublica() {
               <button
                 key={m.id}
                 className={modoSommelier === m.id ? styles.sommelierModeActive : ''}
-                onClick={() => { setModoSommelier(m.id); setRespuesta(''); setRespuestaQuiz(''); setHistorialSommelier([]); setInputSeguimiento('') }}
+                onClick={() => {
+                  setModoSommelier(m.id)
+                  setRespuesta('')
+                  setRespuestaQuiz('')
+                  setHistorialSommelier([])
+                  setInputSeguimiento('')
+                  trackArmoniaEvento(restaurante?.id, `armonia_modo_${m.id}`)
+                }}
                 style={modoSommelier === m.id ? { background: colorAcento } : undefined}
               >
                 {m.label}

@@ -38,6 +38,46 @@ function leerJSON(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return null }
 }
 
+function etiquetaModoArmonia(modo = '') {
+  const normalizado = String(modo || '').trim()
+  if (normalizado === 'quiz' || normalizado === 'recomendame') return 'Recomiendame'
+  if (normalizado === 'vino' || normalizado === 'ya_tengo_vino') return 'Ya tengo vino'
+  if (normalizado === 'mesa' || normalizado === 'plato' || normalizado === 'por_platos') return 'Por platos'
+  return 'Armonia'
+}
+
+function leerDetalleSommelier(detalleRaw) {
+  const detalle = leerJSON(detalleRaw)
+  if (detalle && typeof detalle === 'object') {
+    return {
+      ...detalle,
+      modo_armonia: detalle.modo_armonia || (detalle.modo ? {
+        quiz: 'recomendame',
+        vino: 'ya_tengo_vino',
+        mesa: 'por_platos',
+        plato: 'por_platos',
+      }[detalle.modo] : '') || 'por_platos',
+    }
+  }
+  return {
+    modo: 'mesa',
+    modo_armonia: 'por_platos',
+    consulta: String(detalleRaw || '').trim(),
+  }
+}
+
+function textoConsultaSommelier(detalleRaw) {
+  const detalle = leerDetalleSommelier(detalleRaw)
+  if (Array.isArray(detalle.platos) && detalle.platos.length) {
+    return detalle.platos.map(plato => plato?.nombre).filter(Boolean).join(', ')
+  }
+  if (detalle.vino) return detalle.vino
+  if (detalle.perfil_quiz) {
+    return Object.values(detalle.perfil_quiz).filter(Boolean).join(' / ') || 'Perfil sin plato'
+  }
+  return detalle.consulta || 'Consulta sin detalle'
+}
+
 function etiquetaDestinoEscaneo(detalle = {}) {
   const destino = String(detalle.destino || detalle.detalle || '').toLowerCase()
   if (destino === 'hub') return 'Hub'
@@ -88,6 +128,21 @@ function resumenActividad(s = {}) {
       detalle: [detalle.consulta || detalle.plato, detalle.etiqueta || detalle.posicion ? `opcion ${detalle.etiqueta || detalle.posicion}` : null]
         .filter(Boolean)
         .join(' · '),
+    }
+  }
+
+  if (s.tipo === 'evento_carta') {
+    const detalle = leerJSON(s.detalle) || {}
+    return {
+      titulo: 'Armonia: interaccion',
+      detalle: String(detalle.evento || '').replace(/^armonia_/, '').replace(/_/g, ' ') || 'evento de carta',
+    }
+  }
+  if (s.tipo === 'sommelier') {
+    const detalle = leerDetalleSommelier(s.detalle)
+    return {
+      titulo: `Armonia: ${etiquetaModoArmonia(detalle.modo_armonia)}`,
+      detalle: textoConsultaSommelier(s.detalle),
     }
   }
 
@@ -317,11 +372,60 @@ export default function Estadisticas() {
     return true
   })
   const escaneos = statsFiltradas.filter(s => s.tipo === 'escaneo').length
-  const consultas = statsFiltradas.filter(s => s.tipo === 'sommelier').length
+  const consultasSommelier = statsFiltradas.filter(s => s.tipo === 'sommelier')
+  const detalleConsultasSommelier = consultasSommelier.map(s => ({
+    ...s,
+    detalleSommelier: leerDetalleSommelier(s.detalle),
+  }))
+  const consultas = consultasSommelier.length
   const recomendaciones = statsFiltradas.filter(s => s.tipo === 'recomendacion')
   const feedbacksVenta = statsFiltradas.filter(s => s.tipo === 'venta')
   const escaneosHoy = stats.filter(s => s.tipo === 'escaneo' && fechaLocalISO(s.created_at) === hoy).length
   const consultasHoy = stats.filter(s => s.tipo === 'sommelier' && fechaLocalISO(s.created_at) === hoy).length
+  const entradasArmonia = statsFiltradas.filter(s => {
+    if (s.tipo !== 'evento_carta') return false
+    const detalle = leerJSON(s.detalle) || {}
+    return String(detalle.evento || '').startsWith('armonia_')
+  }).length
+  const modosArmonia = [
+    { id: 'por_platos', label: 'Por platos' },
+    { id: 'recomendame', label: 'Recomiendame' },
+    { id: 'ya_tengo_vino', label: 'Ya tengo vino' },
+  ].map(modo => ({
+    ...modo,
+    consultas: detalleConsultasSommelier.filter(s => s.detalleSommelier.modo_armonia === modo.id).length,
+  }))
+  const patasArmoniaUsadas = modosArmonia.filter(modo => modo.consultas > 0).length
+  const conversionArmonia = escaneos ? Math.round((consultas / escaneos) * 100) : 0
+  const estadoImplantacionArmonia = consultas === 0
+    ? { estado: 'Sin uso', clase: 'trafficRed', detalle: 'La carta se escanea, pero Armonia no genera consultas reales.' }
+    : patasArmoniaUsadas >= 3
+      ? { estado: 'Completa', clase: 'trafficGreen', detalle: 'Las tres patas tienen uso real en el periodo.' }
+      : patasArmoniaUsadas >= 2
+        ? { estado: 'Parcial', clase: 'trafficAmber', detalle: 'Armonia se usa, pero aun no en todos los caminos.' }
+        : { estado: 'Estrecha', clase: 'trafficRed', detalle: 'El uso existe, pero se concentra en una sola pata.' }
+  const alertasImplantacionArmonia = [
+    escaneos === 0 && {
+      label: 'QR sin traccion',
+      text: 'No hay escaneos en el periodo: revisar visibilidad del QR, mesa, carta fisica o comunicacion de sala.',
+    },
+    entradasArmonia > 0 && consultas === 0 && {
+      label: 'Entran pero no consultan',
+      text: 'Hay interacciones con Armonia, pero ninguna consulta completada. Revisar copy, carga, pasos o confianza del cliente.',
+    },
+    consultas > 0 && modosArmonia.find(modo => modo.id === 'por_platos')?.consultas === 0 && {
+      label: 'Por platos sin uso',
+      text: 'La pata principal no aparece: revisar platos cargados, categorias y llamada a la accion desde la carta.',
+    },
+    consultas > 0 && modosArmonia.find(modo => modo.id === 'recomendame')?.consultas === 0 && {
+      label: 'Recomiendame sin uso',
+      text: 'El modo rapido no se esta usando: conviene hacerlo mas visible para clientes que no saben que pedir.',
+    },
+    consultas > 0 && modosArmonia.find(modo => modo.id === 'ya_tengo_vino')?.consultas === 0 && {
+      label: 'Ya tengo vino sin uso',
+      text: 'No hay busqueda inversa vino-plato: puede que el cliente no descubra esa opcion o no parta del vino.',
+    },
+  ].filter(Boolean).slice(0, 3)
   const prioridadVentas = priorizarVentas(feedbacksVenta)
   const ventasMarcadas = prioridadVentas.ventasMarcadasEventos
   const ventasKpi = prioridadVentas.unidadesKpi
@@ -1215,9 +1319,16 @@ export default function Estadisticas() {
     .filter(item => item.nivel.estado !== 'Fiable')
     .sort((a, b) => a.pct - b.pct)[0] || null
 
-  const platosFrecuentes = statsFiltradas
-    .filter(s => s.tipo === 'sommelier' && s.detalle)
-    .flatMap(s => s.detalle.split(', ').map(p => p.trim()))
+  const platosFrecuentes = detalleConsultasSommelier
+    .filter(s => s.detalleSommelier.modo_armonia === 'por_platos')
+    .flatMap(s => {
+      const detalle = s.detalleSommelier
+      if (Array.isArray(detalle.platos) && detalle.platos.length) {
+        return detalle.platos.map(plato => String(plato?.nombre || '').trim())
+      }
+      return String(detalle.consulta || '').split(', ').map(p => p.trim())
+    })
+    .filter(Boolean)
     .reduce((acc, p) => { acc[p] = (acc[p] || 0) + 1; return acc }, {})
 
   const topPlatos = Object.entries(platosFrecuentes)
@@ -1433,6 +1544,9 @@ export default function Estadisticas() {
     { label: perfilBodega ? 'Eventos totales' : 'Escaneos totales', valor: escaneos },
     { label: perfilBodega ? 'Eventos hoy' : 'Escaneos hoy', valor: escaneosHoy },
     { label: perfilBodega ? 'Consultas internas' : 'Consultas maridaje', valor: consultas },
+    { label: 'Interacciones Armonia', valor: entradasArmonia || '-' },
+    { label: 'Uso Armonia/QR', valor: escaneos ? `${conversionArmonia}%` : '-' },
+    { label: 'Patas Armonia', valor: `${patasArmoniaUsadas}/3` },
     { label: perfilBodega ? 'Referencias movidas' : 'Vinos recomendados', valor: recomendaciones.length },
     { label: perfilBodega ? 'Senales hoy' : 'Maridaje hoy', valor: consultasHoy },
     { label: 'Eventos venta', valor: ventasMarcadas },
@@ -1507,6 +1621,8 @@ export default function Estadisticas() {
     'Actividad:',
     `- ${escaneos} escaneos de carta`,
     `- ${consultas} consultas de maridaje`,
+    `- Implantacion Armonia: ${estadoImplantacionArmonia.estado} (${patasArmoniaUsadas}/3 patas, ${conversionArmonia}% consultas/escaneo)`,
+    ...modosArmonia.map(modo => `- ${modo.label}: ${modo.consultas} consultas`),
     `- ${recomendaciones.length} recomendaciones generadas`,
     `- ${ventasKpi} ventas KPI con TPV prioritario`,
     `- ${ventasTPV} ventas TPV | ${ventasSalaKpi} sala no duplicada`,
@@ -1709,6 +1825,61 @@ export default function Estadisticas() {
               ))}
             </section>
           </details>
+        </div>
+      </section>
+
+      <section className={styles.panel} style={{ marginBottom: 16 }}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2 className={styles.panelTitle}>Implantacion de Armonia</h2>
+            <p className={styles.panelSub}>Mide si el restaurante esta consiguiendo que el cliente use las tres patas: por platos, recomendacion guiada y vino elegido.</p>
+          </div>
+          <span className={`${styles.trafficBadge} ${styles[estadoImplantacionArmonia.clase]}`}>
+            <span className={styles.trafficDot} />
+            {estadoImplantacionArmonia.estado}
+          </span>
+        </div>
+        <div className={styles.panelBody}>
+          <section className={styles.statsGrid} style={{ marginBottom: 14 }}>
+            <StatCard value={entradasArmonia || '-'} label="Interacciones" info="Clics y cambios de modo dentro de Armonia." showInfo={false} />
+            <StatCard value={consultas || '-'} label="Consultas" info="Consultas reales enviadas al sumiller virtual." showInfo={false} />
+            <StatCard value={escaneos ? `${conversionArmonia}%` : '-'} label="Uso sobre QR" info="Consultas de Armonia respecto a escaneos de carta." showInfo={false} />
+            <StatCard value={`${patasArmoniaUsadas}/3`} label="Patas usadas" info="Cuantos modos de Armonia tienen actividad en el periodo." showInfo={false} />
+          </section>
+
+          <div className={styles.itemStack}>
+            {modosArmonia.map(modo => {
+              const peso = consultas ? Math.round((modo.consultas / consultas) * 100) : 0
+              const estado = modo.consultas > 0 ? 'Con uso' : 'Sin uso'
+              return (
+                <article className={styles.itemCard} key={modo.id}>
+                  <div className={styles.sectionHead} style={{ margin: 0 }}>
+                    <div>
+                      <p className={styles.eyebrow}>{estado}</p>
+                      <h3 className={styles.sectionTitle}>{modo.label}</h3>
+                      <p className={styles.sectionText}>{modo.consultas} consultas{consultas ? ` - ${peso}% del uso de Armonia` : ''}</p>
+                    </div>
+                    <span className={`${styles.trafficBadge} ${modo.consultas > 0 ? styles.trafficGreen : styles.trafficRed}`}>
+                      <span className={styles.trafficDot} />
+                      {modo.consultas > 0 ? 'activo' : 'revisar'}
+                    </span>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+
+          {alertasImplantacionArmonia.length > 0 && (
+            <div className={styles.dataGapGrid} style={{ marginTop: 14 }}>
+              {alertasImplantacionArmonia.map(alerta => (
+                <div className={styles.itemCard} key={alerta.label}>
+                  <span className={styles.eyebrow}>{alerta.label}</span>
+                  <strong className={styles.sectionText}>{alerta.text}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className={styles.sectionText} style={{ marginTop: 12 }}>{estadoImplantacionArmonia.detalle}</p>
         </div>
       </section>
 
