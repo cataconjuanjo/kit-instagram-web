@@ -1129,13 +1129,22 @@ const CESTA_PRESUPUESTOS = [
   { id: 'otro', label: 'Otro…',     max: null },
 ]
 
-const ADMIN_TO_KIOSKO_CAT = {
-  'Embutido': 'embutido', 'Queso': 'queso', 'Conserva mar': 'conserva',
-  'Foie·Paté': 'foie_pate', 'Snack': 'snack', 'Aceite·AOVE': 'aceite_oliva',
-  'Miel·Mermelada': 'miel_mermelada', 'Dulce': 'dulce', 'Frutos secos': 'fruto_seco',
-  'Verdura': 'conserva_vegetal', 'Aceituna·Olivada': 'aceituna',
-  'Vermut·Sidra': 'bebida', 'Vinagre·Balsámico': 'aceite_oliva',
-  'Condimento': 'aceite_oliva', 'Panadería': 'snack',
+function catGourmetToCode(cat) {
+  if (!cat) return null
+  const c = String(cat).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, ' ')
+  if (/embutido|iberic|jamon|chorizo|salchich|fuet|sobrasad|cecina|morcill/.test(c)) return 'embutido'
+  if (/queso/.test(c)) return 'queso'
+  if (/conserva.*(mar|pesc|mariscos?|frutos?\s*del\s*mar)|(mar|pesc|mariscos?)\s*conserv|lata/.test(c)) return 'conserva'
+  if (/aceite|aove|oliva|vinagre|balsam/.test(c)) return 'aceite_oliva'
+  if (/aceituna|olivad|tapenad/.test(c)) return 'aceituna'
+  if (/foie|pate|pâté/.test(c)) return 'foie_pate'
+  if (/chocolate|dulce|turron|bombon|polvoron|mantecado|mazapan/.test(c)) return 'dulce'
+  if (/fruto.?seco|almendra|nuez|pistacho|avellana|anacardo/.test(c)) return 'fruto_seco'
+  if (/miel|mermelada/.test(c)) return 'miel_mermelada'
+  if (/verdura|vegetal|esparra|alcacho|pimiento|tomate|seta|hongo/.test(c)) return 'conserva_vegetal'
+  if (/snack|galleta|cracker|papas?|patata|nachos/.test(c)) return 'snack'
+  if (/vermut|sidra|cerveza|bebida|kombucha/.test(c)) return 'bebida'
+  return null
 }
 
 // ── Cross-sell gourmet para flujos de recomendación ──────────────────────────
@@ -1148,7 +1157,7 @@ function sugerirGourmetParaVinos(vinosRecomendados = [], gourmetTodos = [], max 
     .filter(g => g.categoria !== 'carta')
     .filter(g => Number(g.stock ?? 1) > 0)
     .map(g => {
-      const cat = (g.cat_gourmet && ADMIN_TO_KIOSKO_CAT[g.cat_gourmet]) || detectarCatGourmet(g.nombre, g.descripcion)
+      const cat = catGourmetToCode(g.cat_gourmet) || detectarCatGourmet(g.nombre, g.descripcion)
       const afinity = tiposVinos.reduce((best, tipo) => {
         const s = AFINIDAD_VINO_GOURMET[tipo]?.[cat] ?? 0
         return Math.max(best, s)
@@ -1374,7 +1383,7 @@ function generarCestaAlgoritmo(vinos, gourmet, { ocasionId, presupuesto, sinAlco
   let gourmetCandidates = [...gourmet]
     .filter(g => g.categoria !== 'carta')
     .map((g, i) => {
-      const cat = (g.cat_gourmet && ADMIN_TO_KIOSKO_CAT[g.cat_gourmet]) || detectarCatGourmet(g.nombre, g.descripcion)
+      const cat = catGourmetToCode(g.cat_gourmet) || detectarCatGourmet(g.nombre, g.descripcion)
       return { ...g, _cat: cat }
     })
     .filter(g => {
