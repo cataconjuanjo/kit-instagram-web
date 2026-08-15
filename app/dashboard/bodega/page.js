@@ -17,7 +17,9 @@ import { margenBrutoPct } from '../../lib/wineEconomics'
 import { calcularPreciosSugeridos, margenCopaPct, normalizarAjustesPrecios } from '../../lib/pricingUtils'
 import { esPerfilBodega } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
-import { Donut } from '../../components/Donut'
+import CollapsibleSection from '../../components/CollapsibleSection'
+import WineMappingPanel from '../../components/WineMappingPanel'
+import DonutEquilibrio from '../DonutEquilibrio'
 import styles from '../module.module.css'
 import bStyles from './bodega.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
@@ -293,6 +295,71 @@ export default function ControlBodega() {
       .filter(([, v]) => v > 0)
       .sort((a, b) => b[1] - a[1])
       .map(([label, value]) => ({ label, value, color: PALETA[label] ?? PALETA.Tintos }))
+  }, [datos.activos])
+
+  const donutEstilos = useMemo(() => {
+    const TIPOS = [
+      { id: 'espumoso', label: 'Espumosos', color: '#C9A24B' },
+      { id: 'blanco', label: 'Blancos', color: '#B8A07A' },
+      { id: 'rosado', label: 'Rosados', color: '#D48A8A' },
+      { id: 'tinto', label: 'Tintos', color: '#7B1E3B' },
+      { id: 'generoso', label: 'Generosos', color: '#9B6B2F' },
+      { id: 'dulce', label: 'Dulces', color: '#D4A24B' },
+      { id: 'naranja', label: 'Naranjas', color: '#E8894A' },
+      { id: 'sin_alcohol', label: 'Sin alcohol', color: '#2E7D5B' },
+    ]
+    const grupos = {}
+    datos.activos.forEach(vino => {
+      const tipo = String(vino.tipo || '').toLowerCase().trim()
+      const found = TIPOS.find(t => t.id === tipo)
+      const label = found ? found.label : 'Otros'
+      const color = found?.color || '#9a9186'
+      grupos[label] = { count: (grupos[label]?.count || 0) + 1, color }
+    })
+    return Object.entries(grupos)
+      .filter(([, v]) => v.count > 0)
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([label, v]) => ({ label, value: v.count, color: v.color }))
+  }, [datos.activos])
+
+  const donutGamas = useMemo(() => {
+    const GAMAS = [
+      { label: '<15€',     color: '#B8A07A', test: p => p < 15 },
+      { label: '15–30€',   color: '#C9A24B', test: p => p >= 15 && p < 30 },
+      { label: '30–60€',   color: '#7B1E3B', test: p => p >= 30 && p < 60 },
+      { label: '60–120€',  color: '#2E7D5B', test: p => p >= 60 && p < 120 },
+      { label: '+120€',    color: '#5A3E2B', test: p => p >= 120 },
+    ]
+    const conPrecio = datos.activos.filter(v => decimal(v.precio_botella) > 0)
+    const sinPrecio = datos.activos.length - conPrecio.length
+    const result = GAMAS
+      .map(gama => ({
+        label: gama.label,
+        value: conPrecio.filter(v => gama.test(decimal(v.precio_botella))).length,
+        color: gama.color,
+      }))
+      .filter(g => g.value > 0)
+    if (sinPrecio > 0) result.push({ label: 'Sin PVP', value: sinPrecio, color: '#b0a698' })
+    return result
+  }, [datos.activos])
+
+  const donutSalud = useMemo(() => {
+    let completas = 0, sinCoste = 0, sinPvp = 0, sinProveedor = 0
+    datos.activos.forEach(vino => {
+      const tieneCoste = decimal(vino.coste_compra) > 0
+      const tienePvp = decimal(vino.precio_botella) > 0
+      const tieneProveedor = Boolean(vino.proveedor?.trim())
+      if (tieneCoste && tienePvp && tieneProveedor) completas++
+      else if (!tieneCoste) sinCoste++
+      else if (!tienePvp) sinPvp++
+      else sinProveedor++
+    })
+    return [
+      completas > 0 && { label: 'Completas', value: completas, color: '#2E7D5B' },
+      sinCoste > 0 && { label: 'Sin coste', value: sinCoste, color: '#C98A2B' },
+      sinPvp > 0 && { label: 'Sin PVP', value: sinPvp, color: '#B23A3A' },
+      sinProveedor > 0 && { label: 'Sin proveedor', value: sinProveedor, color: '#B8A07A' },
+    ].filter(Boolean)
   }, [datos.activos])
 
   function iniciarEdicion(vino) {
@@ -717,25 +784,59 @@ export default function ControlBodega() {
         </section>
 
         {/* ── Equilibrio de bodega ─────────────────────────── */}
-        {donutTipos.length > 0 && (
-          <section className={styles.panel} style={{ marginBottom: 16 }}>
-            <div className={styles.panelHead}>
+        {datos.activos.length > 0 && (
+          <CollapsibleSection
+            storageKey="bodega-equilibrio"
+            eyebrow="Bodega"
+            title="Equilibrio de la bodega"
+            badge={`${datos.activos.length} referencias`}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
               <div>
-                <p className={styles.eyebrow}>Equilibrio</p>
-                <h2 className={styles.panelTitle}>Distribución por tipo</h2>
-                <p className={styles.panelSub}>Referencias activas agrupadas por familia de vino.</p>
+                <p className={styles.eyebrow} style={{ marginBottom: 12 }}>Distribución por tipo</p>
+                <DonutEquilibrio
+                  data={donutTipos}
+                  totalLabel={String(datos.activos.length)}
+                  totalCaption="REFERENCIAS"
+                />
+              </div>
+              <div>
+                <p className={styles.eyebrow} style={{ marginBottom: 12 }}>Familias por estilo</p>
+                <DonutEquilibrio
+                  data={donutEstilos}
+                  totalLabel={String(datos.activos.length)}
+                  totalCaption="REFERENCIAS"
+                />
+              </div>
+              <div>
+                <p className={styles.eyebrow} style={{ marginBottom: 12 }}>Reparto por precio</p>
+                <DonutEquilibrio
+                  data={donutGamas}
+                  totalLabel={String(datos.activos.filter(v => decimal(v.precio_botella) > 0).length)}
+                  totalCaption="CON PVP"
+                />
+              </div>
+              <div>
+                <p className={styles.eyebrow} style={{ marginBottom: 12 }}>Salud de datos</p>
+                <DonutEquilibrio
+                  data={donutSalud}
+                  totalLabel={String(donutSalud.find(d => d.label === 'Completas')?.value || 0)}
+                  totalCaption="COMPLETAS"
+                />
               </div>
             </div>
-            <div className={styles.panelBody}>
-              <Donut
-                data={donutTipos.map(d => ({
-                  ...d,
-                  value: Math.round((d.value / datos.activos.length) * 100),
-                }))}
-                total={datos.activos.length}
-              />
-            </div>
-          </section>
+          </CollapsibleSection>
+        )}
+
+        {/* ── Wine mapping ──────────────────────────────────── */}
+        {perfilBodega && (
+          <CollapsibleSection
+            storageKey="bodega-winemapping"
+            eyebrow="Carta"
+            title="Wine mapping"
+          >
+            <WineMappingPanel restaurante={restaurante} vinos={datos.activos} />
+          </CollapsibleSection>
         )}
 
         {/* ── Checklist filtrable ───────────────────────────── */}

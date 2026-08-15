@@ -1,0 +1,97 @@
+.section {
+  background: #fffdf9;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--cv-radius-card, 14px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  gap: 12px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.trigger:hover {
+  background: rgba(42, 33, 28, 0.02);
+}
+
+.triggerOpen {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+.triggerLeft {
+  flex: 1;
+  min-width: 0;
+}
+
+.eyebrow {
+  font: 600 11px Inter, sans-serif;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #9a9186;
+  margin: 0 0 4px;
+}
+
+.title {
+  font-family: var(--font-cormorant-garamond, "Cormorant Garamond"), Georgia, serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--cv-text-dark, #2a211c);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.triggerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.badge {
+  font: 600 11px Inter, sans-serif;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #9a9186;
+  background: rgba(42, 33, 28, 0.06);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.chevron {
+  color: #9a9186;
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.body {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.3s ease, opacity 0.2s ease;
+}
+
+.bodyOpen {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.inner {
+  overflow: hidden;
+  padding: 20px 24px 24px;
+}
