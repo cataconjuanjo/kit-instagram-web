@@ -276,6 +276,25 @@ export default function ControlBodega() {
     ]))
   }, [proveedoresContacto])
 
+  const donutTipos = useMemo(() => {
+    const PALETA = {
+      Espumosos: '#C9A24B',
+      Blancos:   '#B8A07A',
+      Rosados:   '#D48A8A',
+      Tintos:    '#7B1E3B',
+      Especiales:'#2E7D5B',
+    }
+    const grupos = {}
+    datos.activos.forEach(vino => {
+      const t = tipoVino(vino)
+      grupos[t] = (grupos[t] || 0) + 1
+    })
+    return Object.entries(grupos)
+      .filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, value]) => ({ label, value, color: PALETA[label] ?? PALETA.Tintos }))
+  }, [datos.activos])
+
   function iniciarEdicion(vino) {
     setError('')
     setGuardadoBodega('')
@@ -490,24 +509,6 @@ export default function ControlBodega() {
     acc[proveedor].push(vino)
     return acc
   }, {})).sort((a, b) => a[0].localeCompare(b[0]))
-  const donutTipos = useMemo(() => {
-    const PALETA = {
-      Espumosos: '#C9A24B',
-      Blancos:   '#B8A07A',
-      Rosados:   '#D48A8A',
-      Tintos:    '#7B1E3B',
-      Especiales:'#2E7D5B',
-    }
-    const grupos = {}
-    datos.activos.forEach(vino => {
-      const t = tipoVino(vino)
-      grupos[t] = (grupos[t] || 0) + 1
-    })
-    return Object.entries(grupos)
-      .filter(([, v]) => v > 0)
-      .sort((a, b) => b[1] - a[1])
-      .map(([label, value]) => ({ label, value, color: PALETA[label] ?? PALETA.Tintos }))
-  }, [datos.activos])
 
   const referenciasEnStock = datos.activos.filter(vino => decimal(vino.stock) > 0).length
   const disponibilidad = datos.activos.length ? Math.round((referenciasEnStock / datos.activos.length) * 100) : 0
