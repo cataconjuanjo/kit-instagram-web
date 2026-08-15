@@ -789,15 +789,13 @@ export default function ControlBodega() {
         )}
 
         {/* ── Wine mapping ──────────────────────────────────── */}
-        {perfilBodega && (
-          <CollapsibleSection
-            storageKey="bodega-winemapping"
-            eyebrow="Carta"
-            title="Wine mapping"
-          >
-            <WineMappingPanel restaurante={restaurante} vinos={datos.activos} />
-          </CollapsibleSection>
-        )}
+        <CollapsibleSection
+          storageKey="bodega-winemapping"
+          eyebrow="Carta"
+          title="Wine mapping"
+        >
+          <WineMappingPanel restaurante={restaurante} vinos={datos.activos} />
+        </CollapsibleSection>
 
         {/* ── Checklist filtrable ───────────────────────────── */}
         <div className={bStyles.cellarChecklist}>
