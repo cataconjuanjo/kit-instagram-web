@@ -21,6 +21,20 @@ export const ECONOMIC_DEFAULTS = {
   precio_minimo_copa: DEFAULT_WINE_ECONOMICS.precioMinimoCopa,
 }
 
+function ajustesLegacyDesdeLocal(localData) {
+  const margen = Number(localData?.margen)
+  const copas = Number(localData?.copas)
+  return {
+    ...(Number.isFinite(margen) && margen > 0
+      ? {
+          margen_objetivo_botella_pct: margen,
+          margen_objetivo_copa_pct: margen,
+        }
+      : {}),
+    ...(Number.isFinite(copas) && copas > 0 ? { copas_por_botella: copas } : {}),
+  }
+}
+
 /**
  * Fuente única de ajustes económicos del restaurante.
  *
@@ -41,7 +55,6 @@ export function useEconomicSettings(restauranteId) {
 
   useEffect(() => {
     if (!restauranteId) return
-    setLoading(true)
 
     async function cargar() {
       const token = await tokenSesion()
@@ -64,8 +77,7 @@ export function useEconomicSettings(restauranteId) {
           if (localData) {
             setSettings(prev => ({
               ...prev,
-              ...(localData.margen ? { margen_objetivo_botella_pct: Number(localData.margen) } : {}),
-              ...(localData.copas ? { copas_por_botella: Number(localData.copas) } : {}),
+              ...ajustesLegacyDesdeLocal(localData),
             }))
           }
           setLoading(false)
@@ -83,14 +95,14 @@ export function useEconomicSettings(restauranteId) {
         setApiDisponible(true)
 
         const apiTieneAjuste = data.settings?.margen_objetivo_botella_pct != null
+          || data.settings?.margen_objetivo_copa_pct != null
           || data.settings?.copas_por_botella != null
 
         if (localData && !apiTieneAjuste) {
           // Migración: localStorage → API (una sola vez)
           const settingsMigrados = {
             ...apiSettings,
-            ...(localData.margen ? { margen_objetivo_botella_pct: Number(localData.margen) } : {}),
-            ...(localData.copas ? { copas_por_botella: Number(localData.copas) } : {}),
+            ...ajustesLegacyDesdeLocal(localData),
           }
           try {
             const patchRes = await fetch('/api/economic-traceability', {
@@ -113,8 +125,7 @@ export function useEconomicSettings(restauranteId) {
         if (localData) {
           setSettings(prev => ({
             ...prev,
-            ...(localData.margen ? { margen_objetivo_botella_pct: Number(localData.margen) } : {}),
-            ...(localData.copas ? { copas_por_botella: Number(localData.copas) } : {}),
+            ...ajustesLegacyDesdeLocal(localData),
           }))
         }
       }
@@ -133,7 +144,7 @@ export function useEconomicSettings(restauranteId) {
 
     if (!apiDisponible) {
       window.localStorage.setItem(`precios_margenes_${restauranteId}`, JSON.stringify({
-        margen: nuevoSettings.margen_objetivo_botella_pct,
+        margen: nuevoSettings.margen_objetivo_copa_pct,
         copas: nuevoSettings.copas_por_botella,
       }))
       return { ok: true, fallback: true }
