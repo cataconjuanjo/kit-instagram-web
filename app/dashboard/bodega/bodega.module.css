@@ -120,6 +120,8 @@
 /* ── Tabla ────────────────────────────────────────────────────── */
 
 .cellarTableWrap {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   border: 1px solid #e0d4bc;
   border-radius: 8px;
@@ -128,9 +130,10 @@
 
 .cellarTable {
   width: 100%;
-  min-width: 900px;
+  min-width: 0;
+  table-layout: fixed;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 12px;
   color: #171416;
 }
 
@@ -140,15 +143,57 @@
 }
 
 .cellarTable th {
-  padding: 9px 10px;
+  padding: 8px;
   text-align: left;
   font-size: 11px;
   font-weight: 850;
+  line-height: 1.15;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #756d63;
-  white-space: nowrap;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.cellarTable th:nth-child(1),
+.cellarTable td:nth-child(1) { width: 16%; }
+
+.cellarTable th:nth-child(2),
+.cellarTable td:nth-child(2) { width: 6%; }
+
+.cellarTable th:nth-child(3),
+.cellarTable td:nth-child(3) { width: 11%; }
+
+.cellarTable th:nth-child(4),
+.cellarTable td:nth-child(4) { width: 7%; }
+
+.cellarTable th:nth-child(5),
+.cellarTable td:nth-child(5) { width: 8%; }
+
+.cellarTable th:nth-child(6),
+.cellarTable td:nth-child(6) { width: 8%; }
+
+.cellarTable th:nth-child(7),
+.cellarTable td:nth-child(7) { width: 6%; }
+
+.cellarTable th:nth-child(8),
+.cellarTable td:nth-child(8) { width: 6%; }
+
+.cellarTable th:nth-child(9),
+.cellarTable td:nth-child(9) { width: 8%; }
+
+.cellarTable th:nth-child(10),
+.cellarTable td:nth-child(10) { width: 8%; }
+
+.cellarTable th:nth-child(11),
+.cellarTable td:nth-child(11) { width: 5%; }
+
+.cellarTable th:nth-child(12),
+.cellarTable td:nth-child(12) { width: 5%; }
+
+.cellarTable th:nth-child(13),
+.cellarTable td:nth-child(13) { width: 6%; }
 
 .cellarTable tbody tr {
   border-bottom: 1px solid #e8e2d9;
@@ -160,13 +205,15 @@
 .cellarTable tbody tr:hover { background: #faf6ef; }
 
 .cellarTable td {
-  padding: 8px 10px;
+  padding: 8px;
   vertical-align: middle;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tdNombre {
-  min-width: 180px;
+  min-width: 0;
   white-space: normal;
 }
 
@@ -226,6 +273,11 @@
 .tdActions {
   text-align: right;
   white-space: nowrap;
+  overflow: visible;
+}
+
+.tdActions > * + * {
+  margin-left: 6px;
 }
 
 .tdPvpSug {
@@ -234,28 +286,34 @@
 }
 
 .pvpSugValor {
+  display: inline-block;
+  max-width: 100%;
   color: #756d63;
-  margin-right: 6px;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.pvpSugBtn {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  border: 1px solid #d8c898;
-  border-radius: 4px;
-  background: #fffaf3;
-  color: #9b7430;
-  padding: 0 7px;
+.pricingNote {
+  display: grid;
+  gap: 3px;
+  max-width: 920px;
+  padding: 0 2px;
+  color: #8b8278;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.pricingNote strong {
+  color: #756d63;
   font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.1s, border-color 0.1s;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.pvpSugBtn:hover {
-  background: #f3eee5;
-  border-color: #bfa984;
+.pricingNote span {
+  max-width: 100%;
 }
 
 .cellarTableEmpty {
@@ -298,7 +356,7 @@
 }
 
 @media (max-width: 700px) {
-  .cellarTable { min-width: 600px; }
+  .cellarTable { min-width: 980px; }
   .cellarToolbar { flex-direction: column; align-items: stretch; }
   .cellarToolbarSearch { min-width: 0; }
 }

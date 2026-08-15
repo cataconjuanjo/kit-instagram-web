@@ -148,6 +148,10 @@
   padding: 14px;
 }
 
+.priceRowReadOnly {
+  grid-template-columns: minmax(190px, 1.25fr) minmax(145px, 0.8fr) minmax(145px, 0.8fr);
+}
+
 .wineIdentity,
 .comparison {
   min-width: 0;

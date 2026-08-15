@@ -14,7 +14,7 @@ import {
   SELECT_CLIENT_VINO_DASHBOARD,
 } from '../../lib/clientSupabaseSelects'
 import { margenBrutoPct } from '../../lib/wineEconomics'
-import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
+import { calcularPreciosSugeridos, margenCopaPct, normalizarAjustesPrecios } from '../../lib/pricingUtils'
 import { esPerfilBodega } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
@@ -25,6 +25,10 @@ import PreciosPanel from './PreciosPanel'
 
 function eur(valor) {
   return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
+}
+
+function eurDetalle(valor) {
+  return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
 }
 
 function decimal(valor) {
@@ -43,9 +47,9 @@ function telefonoWhatsApp(telefono = '') {
   return limpio.replace(/^\+/, '')
 }
 
-function margenDisplay(pvp, coste) {
+function margenDisplay(pvp, coste, ajustes = {}) {
   if (!decimal(pvp) || !decimal(coste)) return null
-  return margenBrutoPct(pvp, coste)
+  return margenBrutoPct(pvp, coste, ajustes)
 }
 
 function margenColor(valor) {
@@ -123,15 +127,13 @@ export default function ControlBodega() {
   const [guardando, setGuardando] = useState(false)
   const [guardadoBodega, setGuardadoBodega] = useState('')
   const [error, setError] = useState('')
-  const [aplicandoPrecio, setAplicandoPrecio] = useState(null)
-  const [ajustesBodega, setAjustesBodega] = useState({ margen: 65, copas: 5 })
+  const [ajustesBodega, setAjustesBodega] = useState(economicSettings)
 
   useEffect(() => {
-    setAjustesBodega({
-      margen: economicSettings.margen_objetivo_botella_pct,
-      copas: economicSettings.copas_por_botella,
-    })
-  }, [economicSettings.margen_objetivo_botella_pct, economicSettings.copas_por_botella])
+    setAjustesBodega(economicSettings)
+  }, [economicSettings])
+
+  const criterioBodega = useMemo(() => normalizarAjustesPrecios(ajustesBodega), [ajustesBodega])
 
   useEffect(() => {
     async function cargar() {
@@ -224,12 +226,12 @@ export default function ControlBodega() {
     const valorCoste = activos.reduce((sum, vino) => sum + decimal(vino.stock) * decimal(vino.coste_compra), 0)
     const valorVenta = activos.reduce((sum, vino) => sum + decimal(vino.stock) * decimal(vino.precio_botella), 0)
     const margenMedio = conCoste.length
-      ? Math.round(conCoste.reduce((sum, vino) => sum + margenBrutoPct(vino.precio_botella, vino.coste_compra), 0) / conCoste.length)
+      ? Math.round(conCoste.reduce((sum, vino) => sum + margenBrutoPct(vino.precio_botella, vino.coste_compra, criterioBodega), 0) / conCoste.length)
       : null
     const margenPotencial = Math.max(0, valorVenta - valorCoste)
     const bajoMinimo = activos.filter(vino => decimal(vino.stock_minimo) > 0 && decimal(vino.stock) <= decimal(vino.stock_minimo))
     const sinCoste = activos.filter(vino => !decimal(vino.coste_compra))
-    const margenBajo = conCoste.filter(vino => margenBrutoPct(vino.precio_botella, vino.coste_compra) < 55)
+    const margenBajo = conCoste.filter(vino => margenBrutoPct(vino.precio_botella, vino.coste_compra, criterioBodega) < 55)
     const sinPrecio = activos.filter(vino => !decimal(vino.precio_botella))
     const sinProveedor = activos.filter(vino => !vino.proveedor)
     const sinStockActual = activos.filter(vino => vino.stock === null || vino.stock === undefined || decimal(vino.stock) === 0)
@@ -265,7 +267,7 @@ export default function ControlBodega() {
       .slice(0, 5)
 
     return { activos, valorCoste, valorVenta, margenMedio, margenPotencial, bajoMinimo, sinCoste, margenBajo, sinPrecio, sinProveedor, sinStockActual, sinStockMinimo, pedido, pedidoPorProveedor, proveedores, proveedoresExistentes, sinRotacion, topRotacion }
-  }, [vinos, eventosSala])
+  }, [vinos, eventosSala, criterioBodega])
   const contactosPorProveedor = useMemo(() => {
     return Object.fromEntries(proveedoresContacto.map(proveedor => [
       normalizar(proveedor.nombre),
@@ -347,17 +349,9 @@ export default function ControlBodega() {
     if (!err) setVinos(prev => prev.map(v => v.id === id ? { ...v, [campo]: parsed } : v))
   }
 
-  async function aplicarPrecioSugerido(vino, precios) {
-    setAplicandoPrecio(vino.id)
-    const cambios = { precio_botella: precios.botella, precio_copa: precios.copa }
-    const { error: err } = await supabase.from('vinos').update(cambios).eq('id', vino.id)
-    if (!err) setVinos(prev => prev.map(v => v.id === vino.id ? { ...v, ...cambios } : v))
-    setAplicandoPrecio(null)
-  }
-
-  function margenCopaDisplay(pvpCopa, costeCompra, copas = 5) {
+  function margenCopaDisplay(pvpCopa, costeCompra) {
     if (!decimal(pvpCopa) || !decimal(costeCompra)) return null
-    return margenBrutoPct(decimal(pvpCopa) * copas, costeCompra)
+    return margenCopaPct(pvpCopa, costeCompra, criterioBodega)
   }
 
   function moverEdicion(direccion) {
@@ -696,7 +690,7 @@ export default function ControlBodega() {
         {/* ── KPIs ─────────────────────────────────────────── */}
         <section className={styles.statsGrid}>
           <StatCard value={eur(datos.valorCoste)} label="Valor a coste" hint="Dinero inmovilizado en bodega." info="Suma stock × coste de compra de cada referencia activa." />
-          <StatCard value={datos.margenMedio == null ? '—' : `${datos.margenMedio}%`} label="Margen medio" valueStyle={{ color: margenColor(datos.margenMedio) }} hint="Referencias con coste y PVP. PVP neto sin IVA (10%)." info="Media del margen bruto. El margen medio cambia respecto al anterior porque ahora descuenta IVA del PVP: es el cálculo correcto." />
+          <StatCard value={datos.margenMedio == null ? '—' : `${datos.margenMedio}%`} label="Margen medio" valueStyle={{ color: margenColor(datos.margenMedio) }} hint={`Referencias con coste y PVP. IVA venta ${criterioBodega.ivaVentaPct}%.`} info="Media del margen bruto calculada con los ajustes economicos activos del restaurante: IVA, coste con/sin IVA y PVP con/sin IVA." />
           <StatCard value={datos.bajoMinimo.length} label="Bajo mínimo" hint="Riesgo de rotura de stock." info="Vinos cuyo stock actual está en el mínimo definido o por debajo." />
           <StatCard value={pedidoCombinado.length} label="Pedido sugerido" hint="Reposición calculada." info="Referencias a reponer por bajo stock, mínimo, venta reciente o pedido manual." />
         </section>
@@ -855,16 +849,13 @@ export default function ControlBodega() {
             onClose={() => setPanelAbierto(null)}
             eyebrow="Bodega"
             title="Precios y márgenes"
-            description="Ajusta el criterio de cálculo. Los cambios se reflejan en la columna PVP sugerido de la tabla."
+            description="Ajusta el criterio de cálculo. Los cambios se reflejan en las columnas de PVP sugerido de la tabla."
           >
             <PreciosPanel
               settings={economicSettings}
               guardarAjustes={guardarAjustes}
               apiDisponible={apiDisponible}
               vinos={datos.activos}
-              onPreciosActualizados={({ id, precio_botella, precio_copa }) => {
-                setVinos(prev => prev.map(v => v.id === id ? { ...v, precio_botella, precio_copa } : v))
-              }}
               onAjustesChange={setAjustesBodega}
             />
           </ResponsiveOverlay>
@@ -887,7 +878,8 @@ export default function ControlBodega() {
                 <th title="Editable">PVP copa € ✎</th>
                 <th>Mrg. bot.</th>
                 <th>Mrg. copa</th>
-                <th title={`PVP sugerido al ${ajustesBodega.margen}% de margen`}>PVP sug.</th>
+                <th title="PVP sugerido de botella">PVP sugerido</th>
+                <th title="PVP sugerido de copa">PVP sugerido copa</th>
                 <th title="Editable">Stock ✎</th>
                 <th title="Editable">Mín. ✎</th>
                 <th></th>
@@ -896,18 +888,17 @@ export default function ControlBodega() {
             <tbody>
               {referenciasVisibles.length === 0 && (
                 <tr>
-                  <td colSpan={12} className={bStyles.cellarTableEmpty}>
+                  <td colSpan={13} className={bStyles.cellarTableEmpty}>
                     {filtroReferencias !== 'todos' ? 'No hay referencias con ese filtro.' : 'No hay referencias activas.'}
                   </td>
                 </tr>
               )}
               {referenciasVisibles.map(vino => {
-                const mBotella = margenDisplay(vino.precio_botella, vino.coste_compra)
+                const mBotella = margenDisplay(vino.precio_botella, vino.coste_compra, criterioBodega)
                 const mCopa    = margenCopaDisplay(vino.precio_copa, vino.coste_compra)
                 const preciosSug = decimal(vino.coste_compra)
                   ? calcularPreciosSugeridos(vino.coste_compra, ajustesBodega)
                   : null
-                const mostrarSug = preciosSug && (!decimal(vino.precio_botella) || mBotella != null && mBotella < 55)
                 function cell(campo, type, step, listId, fmt) {
                   const editing = inlineEdit?.id === vino.id && inlineEdit?.campo === campo
                   return (
@@ -948,18 +939,13 @@ export default function ControlBodega() {
                     <td className={margenCls(mBotella)}>{mBotella == null ? <span className={bStyles.tdEmpty}>—</span> : `${mBotella}%`}</td>
                     <td className={margenCls(mCopa)}>{mCopa == null ? <span className={bStyles.tdEmpty}>—</span> : `${mCopa}%`}</td>
                     <td className={bStyles.tdPvpSug}>
-                      {mostrarSug ? (
-                        <>
-                          <span className={bStyles.pvpSugValor}>{eur(preciosSug.botella)} / {eur(preciosSug.copa)}</span>
-                          <button
-                            type="button"
-                            className={bStyles.pvpSugBtn}
-                            disabled={aplicandoPrecio === vino.id}
-                            onClick={() => aplicarPrecioSugerido(vino, preciosSug)}
-                          >
-                            {aplicandoPrecio === vino.id ? '…' : 'Aplicar'}
-                          </button>
-                        </>
+                      {preciosSug ? (
+                        <span className={bStyles.pvpSugValor}>{eur(preciosSug.botella)}</span>
+                      ) : <span className={bStyles.tdEmpty}>—</span>}
+                    </td>
+                    <td className={bStyles.tdPvpSug}>
+                      {preciosSug ? (
+                        <span className={bStyles.pvpSugValor}>{eurDetalle(preciosSug.copa)}</span>
                       ) : <span className={bStyles.tdEmpty}>—</span>}
                     </td>
                     {cell('stock',        'number', '1')}
@@ -972,6 +958,11 @@ export default function ControlBodega() {
               })}
             </tbody>
           </table>
+        </div>
+        <div className={bStyles.pricingNote}>
+          <strong>Regla general del PVP sugerido</strong>
+          <span>Botella: coste neto por tramos, hasta 6 € x3,5; de 6 a 11 € x2+9; por encima de 11 € +20. IVA {criterioBodega.ivaVentaPct}% si se muestra con IVA y redondeo al euro.</span>
+          <span>Copa: coste dividido entre {criterioBodega.copasPorBotella} copas, {criterioBodega.mermaCopaPct}% de merma y margen de copa {criterioBodega.margenObjetivoCopaPct}%; IVA al final y redondeo al tramo de 0,50 € más cercano.</span>
         </div>
 
         {/* ── Modal edición completa ───────────────────────── */}
@@ -1077,7 +1068,7 @@ export default function ControlBodega() {
                           <div className={styles.sectionHead} style={{ margin: 0 }}>
                             <div>
                               <h3 className={styles.sectionTitle}>{vino.nombre}</h3>
-                              <p className={styles.sectionText}>{vino.bodega || 'Sin bodega'} · margen {margenDisplay(vino.precio_botella, vino.coste_compra) ?? '—'}%</p>
+                              <p className={styles.sectionText}>{vino.bodega || 'Sin bodega'} · margen {margenDisplay(vino.precio_botella, vino.coste_compra, criterioBodega) ?? '—'}%</p>
                             </div>
                             <span className={styles.badge}>{vino.ventasMarcadas} ventas</span>
                           </div>

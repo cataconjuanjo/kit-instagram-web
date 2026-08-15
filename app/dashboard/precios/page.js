@@ -45,8 +45,6 @@ export default function PreciosMargenes() {
   const [busqueda, setBusqueda] = useState('')
   const [filtro, setFiltro] = useState('todos')
   const [pagina, setPagina] = useState(1)
-  const [guardandoId, setGuardandoId] = useState(null)
-  const [mensaje, setMensaje] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -94,27 +92,6 @@ export default function PreciosMargenes() {
     }
   }
 
-  async function aplicarPrecio(vino) {
-    const recomendado = calcularPreciosSugeridos(vino.coste_compra, ajustes)
-    if (!recomendado.botella || !recomendado.copa) return
-
-    setGuardandoId(vino.id)
-    setMensaje('')
-    const cambios = {
-      precio_botella: recomendado.botella,
-      precio_copa: recomendado.copa,
-    }
-    const { error } = await supabase.from('vinos').update(cambios).eq('id', vino.id)
-
-    if (error) {
-      setMensaje('No se pudieron aplicar los precios.')
-    } else {
-      setVinos(actuales => actuales.map(item => item.id === vino.id ? { ...item, ...cambios } : item))
-      setMensaje(`Precios actualizados en ${vino.nombre}.`)
-    }
-    setGuardandoId(null)
-  }
-
   const resultadoSimulacion = calcularPreciosSugeridos(simulacion.coste, ajustes)
 
   const referencias = useMemo(() => {
@@ -151,14 +128,14 @@ export default function PreciosMargenes() {
         restaurante={restaurante}
         eyebrow="Bodega"
         title="Precios y márgenes"
-        subtitle="Calcula precios recomendados para vinos nuevos y revisa la rentabilidad de las referencias que ya están en carta."
+        subtitle="Calcula precios con la misma formula del catalogo consultor y revisa la rentabilidad de las referencias que ya estan en carta."
         help={{
           title: 'El cálculo orienta; tú decides',
           intro: 'Los parámetros son visibles para que el restaurante entienda el criterio y pueda adaptarlo a su realidad.',
           items: [
-            { title: 'Botella', text: 'Parte del coste y del margen objetivo. Los decimales desde 0,51 suben al euro siguiente; hasta 0,50 bajan.' },
-            { title: 'Copa', text: 'El precio calculado puede quedar en 4 €, 4,50 €, 5 €, 5,50 €… Se redondea al múltiplo de 0,50 € más cercano.' },
-            { title: 'Aplicación manual', text: 'La recomendación nunca modifica la carta hasta pulsar Aplicar precios.' },
+            { title: 'Botella', text: 'Usa la regla del catalogo consultor: coste neto por tramo, despues IVA y redondeo al euro.' },
+            { title: 'Copa', text: 'Divide el coste entre copas vendibles, aplica margen e IVA, y redondea al tramo de 0,50 EUR mas cercano.' },
+            { title: 'Sin aplicacion directa', text: 'La revision muestra diferencias, pero no modifica botella ni copa desde este listado.' },
           ],
         }}
       >
@@ -179,13 +156,13 @@ export default function PreciosMargenes() {
             value={porRevisar.length}
             label="Precios para revisar"
             hint="Difieren del criterio actual."
-            info="Vinos cuyo PVP de botella o copa no coincide con el precio recomendado segun el coste, margen objetivo y copas por botella configurados."
+            info="Vinos cuyo PVP de botella o copa no coincide con el calculo actual: botella por formula de catalogo y copa por margen y copas configuradas."
           />
           <StatCard
             value={`${ajustes.margen}%`}
-            label="Margen objetivo"
-            hint="Criterio editable."
-            info="Porcentaje de margen bruto que se usa para calcular precios sugeridos. No cambia la carta hasta que se pulsa Aplicar precios en una referencia."
+            label="Margen copa"
+            hint="Solo afecta a copa."
+            info="Porcentaje de margen bruto usado para calcular el PVP de copa. La botella no depende de este campo."
           />
         </section>
 
@@ -193,14 +170,14 @@ export default function PreciosMargenes() {
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Criterio de cálculo</h2>
-              <p className={styles.panelSub}>Estos ajustes se conservan para este restaurante.</p>
+              <p className={styles.panelSub}>La botella queda fijada por la formula del catalogo consultor y redondea al euro; estos ajustes gobiernan la copa.</p>
             </div>
             <span className={styles.badge}>Configuración comercial</span>
           </div>
           <div className={styles.panelBody}>
             <div className={styles.formGrid}>
               <div>
-                <label className={styles.label}>Margen bruto objetivo</label>
+                <label className={styles.label}>Margen copa objetivo</label>
                 <div className={priceStyles.inputSuffix}>
                   <input className={styles.input} type="number" min="5" max="90" value={ajustes.margen} onChange={e => cambiarAjuste('margen', e.target.value)} />
                   <span>%</span>
@@ -239,12 +216,12 @@ export default function PreciosMargenes() {
               </div>
               <div className={priceStyles.results}>
                 <article>
-                  <span>Botella recomendada</span>
+                  <span>Botella calculada</span>
                   <strong>{euros(resultadoSimulacion.botella, 0)}</strong>
-                  <small>Base calculada: {euros(resultadoSimulacion.baseBotella)}</small>
+                  <small>{resultadoSimulacion.reglaBotella || 'Sin coste'} + IVA + redondeo al euro</small>
                 </article>
                 <article>
-                  <span>Copa recomendada</span>
+                  <span>Copa calculada</span>
                   <strong>{euros(resultadoSimulacion.copa)}</strong>
                   <small>Margen estimado: {Math.round(resultadoSimulacion.margenCopas)}%</small>
                 </article>
@@ -257,7 +234,7 @@ export default function PreciosMargenes() {
           <div className={styles.panelHead}>
             <div>
               <h2 className={styles.panelTitle}>Revisar la carta actual</h2>
-              <p className={styles.panelSub}>Compara los precios vigentes y aplica la recomendación vino a vino.</p>
+              <p className={styles.panelSub}>Compara los precios vigentes sin aplicar cambios automaticos.</p>
             </div>
             <span className={styles.badge}>{referencias.length} referencias</span>
           </div>
@@ -271,8 +248,6 @@ export default function PreciosMargenes() {
               </select>
             </div>
 
-            {mensaje && <div className={priceStyles.notice} role="status">{mensaje}</div>}
-
             <div className={priceStyles.priceList}>
               {referenciasPagina.map(vino => {
                 const recomendado = calcularPreciosSugeridos(vino.coste_compra, ajustes)
@@ -281,7 +256,7 @@ export default function PreciosMargenes() {
                 const sinCoste = !numero(vino.coste_compra)
 
                 return (
-                  <article className={priceStyles.priceRow} key={vino.id}>
+                  <article className={`${priceStyles.priceRow} ${priceStyles.priceRowReadOnly}`} key={vino.id}>
                     <div className={priceStyles.wineIdentity}>
                       <strong>{vino.nombre}</strong>
                       <span>{vino.bodega || 'Sin bodega'} · coste {sinCoste ? 'pendiente' : euros(vino.coste_compra)}</span>
@@ -296,14 +271,6 @@ export default function PreciosMargenes() {
                       <strong>{euros(vino.precio_copa)} → {sinCoste ? '—' : euros(recomendado.copa)}</strong>
                       {!sinCoste && <small data-tone={copa.tono}>{copa.texto}</small>}
                     </div>
-                    <button
-                      type="button"
-                      className={styles.primary}
-                      disabled={sinCoste || guardandoId === vino.id || (botella.tono === 'ok' && copa.tono === 'ok')}
-                      onClick={() => aplicarPrecio(vino)}
-                    >
-                      {sinCoste ? 'Falta coste' : guardandoId === vino.id ? 'Guardando...' : botella.tono === 'ok' && copa.tono === 'ok' ? 'En precio' : 'Aplicar precios'}
-                    </button>
                   </article>
                 )
               })}
