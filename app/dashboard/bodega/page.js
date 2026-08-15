@@ -17,6 +17,7 @@ import { margenBrutoPct } from '../../lib/wineEconomics'
 import { calcularPreciosSugeridos, margenCopaPct, normalizarAjustesPrecios } from '../../lib/pricingUtils'
 import { esPerfilBodega } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
+import DonutEquilibrio from '../DonutEquilibrio'
 import styles from '../module.module.css'
 import bStyles from './bodega.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
@@ -489,6 +490,25 @@ export default function ControlBodega() {
     acc[proveedor].push(vino)
     return acc
   }, {})).sort((a, b) => a[0].localeCompare(b[0]))
+  const donutTipos = useMemo(() => {
+    const PALETA = {
+      Espumosos: '#C9A24B',
+      Blancos:   '#B8A07A',
+      Rosados:   '#D48A8A',
+      Tintos:    '#7B1E3B',
+      Especiales:'#2E7D5B',
+    }
+    const grupos = {}
+    datos.activos.forEach(vino => {
+      const t = tipoVino(vino)
+      grupos[t] = (grupos[t] || 0) + 1
+    })
+    return Object.entries(grupos)
+      .filter(([, v]) => v > 0)
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, value]) => ({ label, value, color: PALETA[label] ?? PALETA.Tintos }))
+  }, [datos.activos])
+
   const referenciasEnStock = datos.activos.filter(vino => decimal(vino.stock) > 0).length
   const disponibilidad = datos.activos.length ? Math.round((referenciasEnStock / datos.activos.length) * 100) : 0
   const sinStockReal = datos.activos.filter(vino => decimal(vino.stock) <= 0)
@@ -694,6 +714,28 @@ export default function ControlBodega() {
           <StatCard value={datos.bajoMinimo.length} label="Bajo mínimo" hint="Riesgo de rotura de stock." info="Vinos cuyo stock actual está en el mínimo definido o por debajo." />
           <StatCard value={pedidoCombinado.length} label="Pedido sugerido" hint="Reposición calculada." info="Referencias a reponer por bajo stock, mínimo, venta reciente o pedido manual." />
         </section>
+
+        {/* ── Equilibrio de bodega ─────────────────────────── */}
+        {donutTipos.length > 0 && (
+          <section className={styles.panel} style={{ marginBottom: 16 }}>
+            <div className={styles.panelHead}>
+              <div>
+                <p className={styles.eyebrow}>Equilibrio</p>
+                <h2 className={styles.panelTitle}>Distribución por tipo</h2>
+                <p className={styles.panelSub}>Referencias activas agrupadas por familia de vino.</p>
+              </div>
+            </div>
+            <div className={styles.panelBody}>
+              <DonutEquilibrio
+                data={donutTipos}
+                totalLabel={String(datos.activos.length)}
+                totalCaption="referencias"
+                rentabilidad={datos.margenMedio}
+                rotacion={null}
+              />
+            </div>
+          </section>
+        )}
 
         {/* ── Checklist filtrable ───────────────────────────── */}
         <div className={bStyles.cellarChecklist}>

@@ -14,6 +14,26 @@
   --green: #385f4f;
   --charcoal: #11100e;
 
+  /* Carta Viva dashboard tokens */
+  --cv-bg:           #14100E;
+  --cv-card:         #FBF7F0;
+  --cv-surface-dark: #1E1815;
+  --cv-wine:         #7B1E3B;
+  --cv-wine-hover:   #611730;
+  --cv-gold:         #C9A24B;
+  --cv-green:        #2E7D5B;
+  --cv-amber:        #C98A2B;
+  --cv-red:          #B23A3A;
+  --cv-text-light:   #F4EDE2;
+  --cv-text-dark:    #2A211C;
+  --cv-text-muted:   #8A7E72;
+  --cv-green-soft:   #E6F4ED;
+  --cv-amber-soft:   #FAF0E0;
+  --cv-red-soft:     #FAEAEA;
+  --cv-radius-card:  14px;
+  --cv-radius-pill:  999px;
+  --cv-shadow-card:  0 2px 12px rgba(0,0,0,.06);
+
   /* Audit palette */
   --color-primary: #6B2D3E;
   --color-primary-light: #8B4560;

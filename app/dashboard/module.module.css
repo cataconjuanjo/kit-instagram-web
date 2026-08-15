@@ -258,8 +258,9 @@
 .statValue {
   margin: 0;
   color: #171416;
-  font-size: 34px;
-  font-weight: 780;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 36px;
+  font-weight: 600;
   line-height: 1;
   overflow-wrap: anywhere;
 }
@@ -952,11 +953,12 @@
 .profitAxisX {
   position: absolute;
   z-index: 2;
-  color: rgba(255, 250, 243, 0.56);
+  color: var(--cv-gold, #C9A24B);
   font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  opacity: 0.82;
 }
 
 .profitAxisY {
@@ -991,8 +993,9 @@
 .profitQuadrantLabel {
   position: absolute;
   z-index: 2;
-  border: 1px solid rgba(255, 250, 243, 0.12);
+  border: 1px solid rgba(255, 250, 243, 0.18);
   border-radius: 999px;
+  backdrop-filter: blur(6px);
   background: rgba(23, 20, 22, 0.38);
   color: rgba(255, 250, 243, 0.68);
   padding: 5px 8px;
@@ -2212,6 +2215,47 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.badgeGreen {
+  background: var(--cv-green-soft);
+  color: var(--cv-green);
+}
+
+.badgeAmber {
+  background: var(--cv-amber-soft);
+  color: var(--cv-amber);
+}
+
+.badgeRed {
+  background: var(--cv-red-soft);
+  color: var(--cv-red);
+}
+
+.badgeNeutral {
+  background: var(--cv-card);
+  color: var(--cv-text-muted);
+}
+
+.trendBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.trendUp {
+  background: var(--cv-green-soft);
+  color: var(--cv-green);
+}
+
+.trendDown {
+  background: var(--cv-red-soft);
+  color: var(--cv-red);
 }
 
 .dot {

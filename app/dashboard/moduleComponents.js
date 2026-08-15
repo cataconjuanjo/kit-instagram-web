@@ -41,14 +41,23 @@ export function MetricInfo({ title, children }) {
   )
 }
 
-export function StatCard({ value, label, info, hint, valueStyle, showInfo }) {
+export function StatCard({ value, label, info, hint, valueStyle, showInfo, trend }) {
   const shouldShowInfo = showInfo ?? Boolean(info && hint)
+  const trendPositive = trend && String(trend).startsWith('+')
+  const trendNegative = trend && String(trend).startsWith('-')
 
   return (
     <div className={styles.stat}>
       <div className={styles.statTop}>
         <p className={styles.statValue} style={valueStyle}>{value}</p>
-        {shouldShowInfo && <MetricInfo title={label}>{info}</MetricInfo>}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, flexShrink: 0 }}>
+          {trend && (
+            <span className={`${styles.trendBadge} ${trendPositive ? styles.trendUp : trendNegative ? styles.trendDown : ''}`}>
+              {trendPositive ? '↑' : trendNegative ? '↓' : ''}{trend}
+            </span>
+          )}
+          {shouldShowInfo && <MetricInfo title={label}>{info}</MetricInfo>}
+        </div>
       </div>
       <p className={styles.statLabel}>{label}</p>
       {hint && <p className={styles.statHint}>{hint}</p>}

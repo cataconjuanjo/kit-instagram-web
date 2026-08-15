@@ -1,0 +1,106 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chart {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+}
+
+.center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  gap: 2px;
+}
+
+.centerTotal {
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--cv-text-dark);
+}
+
+.centerCaption {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cv-text-muted);
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legendDot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.legendLabel {
+  flex: 1;
+  font-size: 13px;
+  color: var(--cv-text-dark);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendPct {
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--cv-text-muted);
+  flex-shrink: 0;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  border-top: 1px solid rgba(42, 33, 28, 0.08);
+  padding-top: 14px;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.kpiValue {
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--cv-text-dark);
+}
+
+.kpiCaption {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cv-text-muted);
+}
