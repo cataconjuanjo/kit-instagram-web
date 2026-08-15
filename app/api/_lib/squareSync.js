@@ -1428,6 +1428,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
           square_variation_id: variationId,
           nombre, precio_pvp, descripcion, stock, activo,
           categoria:           catEfectiva,
+          cat_gourmet:         squareCategories[0]?.name || null,
           square_last_seen_at: now,
           ...(squareCategoryDecision.aptoCestaOverride === false && { apto_cesta: false }),
           uva:        uva    || null,
