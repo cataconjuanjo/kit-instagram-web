@@ -572,15 +572,19 @@ function decideSquareCatalogImport(tiendaSlug, squareCategories = [], rawNombre 
     }
   }
 
-  // Allowlist explícita: si la policy define vinoCategories, la categoría determina directamente
-  // si el producto va a 'vino' o 'otro' — sin heurísticas de nombre
+  // Allowlist de vinos: solo confirma 'vino' para las categorías conocidas.
+  // Para el resto NO se fuerza 'otro' aquí — catDetectada + squareSaysOtroButDbSaysVino
+  // corrigen los gourmet mal clasificados sin riesgo de mover vinos legítimos.
   if (policy.vinoCategories?.length) {
-    const neverCesta = policy.neverCesta?.length && categoryNames.some(name => policy.neverCesta.some(t => matchesCategoryName(name, t)))
     const isVino = categoryNames.some(name => policy.vinoCategories.some(t => matchesCategoryName(name, t)))
+    if (isVino) {
+      return { action: 'kiosko', categoryOverride: 'vino', policy: policy.name }
+    }
+    const neverCesta = policy.neverCesta?.length && categoryNames.some(name => policy.neverCesta.some(t => matchesCategoryName(name, t)))
+    // Sin categoryOverride: catDetectada decidirá ('otro' para gourmet, 'vino' si hay keywords vinícolas)
     return {
       action: 'kiosko',
-      categoryOverride: isVino ? 'vino' : 'otro',
-      ...(neverCesta && !isVino && { aptoCestaOverride: false }),
+      ...(neverCesta && { aptoCestaOverride: false }),
       policy: policy.name,
     }
   }
