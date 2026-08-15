@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
+import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
 import AdminOverlay from '../components/AdminOverlay'
 
 
@@ -418,29 +419,23 @@ function ProveedoresPageContent() {
   function calcularBotella(coste) {
     const c = numeroCoste(coste)
     if (c <= 0) return null
-    const iva = 1.10
-    const margenDesdePvp = pvpSinIva => Math.round(((pvpSinIva - c) / pvpSinIva) * 100)
-    if (c <= 6) {
-      const pvpSinIva = c * 3.5
-      return { pvp: pvpSinIva * iva, etiqueta: '×3,5', margen: margenDesdePvp(pvpSinIva) }
+    const calculo = calcularPreciosSugeridos(c, {})
+    return {
+      pvp: calculo.botella,
+      etiqueta: calculo.reglaBotella,
+      margen: Math.round(calculo.margenBotella),
     }
-    if (c <= 11) {
-      const pvpSinIva = 2 * c + 9
-      return { pvp: pvpSinIva * iva, etiqueta: '×2+9€', margen: margenDesdePvp(pvpSinIva) }
-    }
-    const pvpSinIva = c + 20
-    return { pvp: pvpSinIva * iva, etiqueta: '+20€', margen: margenDesdePvp(pvpSinIva) }
   }
 
   function calcularCopa(coste, margenPct) {
     const c = numeroCoste(coste)
     if (c <= 0) return null
-    const costeCopa = c / 4.5
-    const pvp = costeCopa / (1 - margenPct / 100)
+    const calculo = calcularPreciosSugeridos(c, { margen_objetivo_copa_pct: margenPct })
+    const pvp = calculo.copa
     const botella = calcularBotella(c)
     const ratioPct = botella ? Math.round((pvp / botella.pvp) * 100) : null
     const copasHastaEmpatar = botella ? Math.ceil(botella.pvp / pvp) : null
-    return { pvp, costeCopa, ratioPct, copasHastaEmpatar }
+    return { pvp, costeCopa: calculo.costePorCopa, ratioPct, copasHastaEmpatar }
   }
 
   function leerFavoritosLocales() {
@@ -1387,7 +1382,7 @@ function ProveedoresPageContent() {
                   {ordenReferencias.dir === 'asc' ? '↑ Asc' : '↓ Desc'}
                 </button>
                 <span className="supplier-price-formula">
-                  Botella: ≤6€ ×3,5 · 6-11€ ×2+9€ · &gt;11€ +20€ · ×1,10 IVA · Copa: coste ÷ 4,5 (merma 10%) ÷ (1−{margenCopaPct}%)
+                  Botella: coste neto por tramo (&lt;=6 EUR x3,5 · 6-11 EUR x2+9 EUR · &gt;11 EUR +20 EUR) + IVA y redondeo al euro · Copa: coste / 4,5 / (1-{margenCopaPct}%) + IVA y redondeo a 0,50 EUR
                 </span>
               </div>
             )}

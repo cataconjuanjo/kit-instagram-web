@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
+import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
 import {
   SELECT_CLIENT_RESTAURANTE_ADMIN,
   SELECT_CLIENT_VINO_ADMIN,
@@ -91,18 +92,8 @@ function labelTipo(tipo) {
 function pvpBotella(coste) {
   const c = numero(coste)
   if (c <= 0) return null
-  const iva = 1.10
-  const margen = pvpSinIva => ((pvpSinIva - c) / pvpSinIva) * 100
-  if (c <= 6) {
-    const pvpSinIva = c * 3.5
-    return { pvp: pvpSinIva * iva, regla: 'x3,5', margen: margen(pvpSinIva) }
-  }
-  if (c <= 11) {
-    const pvpSinIva = 2 * c + 9
-    return { pvp: pvpSinIva * iva, regla: 'x2+9', margen: margen(pvpSinIva) }
-  }
-  const pvpSinIva = c + 20
-  return { pvp: pvpSinIva * iva, regla: '+20', margen: margen(pvpSinIva) }
+  const calculo = calcularPreciosSugeridos(c, {})
+  return { pvp: calculo.botella, regla: calculo.reglaBotella, margen: calculo.margenBotella }
 }
 
 function margenDesdePrecio(coste, precio) {
