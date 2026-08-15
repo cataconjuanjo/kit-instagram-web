@@ -5,17 +5,6 @@ import { supabase } from '../supabase'
 import { calcularWineMapping, ticketReferencia } from '../lib/wineMapping'
 import styles from '../dashboard/module.module.css'
 
-const TIPOS_BODEGA = [
-  { id: 'espumoso', label: 'Espumosos' },
-  { id: 'blanco', label: 'Blancos' },
-  { id: 'rosado', label: 'Rosados' },
-  { id: 'tinto', label: 'Tintos' },
-  { id: 'generoso', label: 'Generosos' },
-  { id: 'dulce', label: 'Dulces' },
-  { id: 'naranja', label: 'Naranjas' },
-  { id: 'sin_alcohol', label: 'Sin alcohol' },
-]
-
 const WINEMAPPING_PAGE_SIZE = 10
 const PALETTE = ['#8b5e34', '#bfa984', '#7f5570', '#4f6f75', '#252025']
 
@@ -36,15 +25,6 @@ export default function WineMappingPanel({ restaurante, vinos = [] }) {
     : ticketGuardado
   const wineMapping = calcularWineMapping(vinos, ticketMapping.valor)
   const gamasHueco = wineMapping.gamas.filter(g => g.vinos === 0 && g.objetivoNumero > 0)
-  const tipoCounts = TIPOS_BODEGA.map(tipo => ({
-    ...tipo,
-    count: vinos.filter(v => String(v.tipo || '').toLowerCase() === tipo.id).length,
-  }))
-  const tipoOtros = vinos.filter(v => {
-    const tipo = String(v.tipo || '').toLowerCase()
-    return tipo && !TIPOS_BODEGA.some(t => t.id === tipo)
-  }).length
-  const totalVinosTipo = tipoCounts.reduce((s, t) => s + t.count, 0) + tipoOtros
   const maxGamaRefs = wineMapping.gamas.length
     ? Math.max(...wineMapping.gamas.map(g => g.vinos), ...wineMapping.gamas.map(g => g.objetivoNumero), 1)
     : 1
@@ -164,32 +144,6 @@ export default function WineMappingPanel({ restaurante, vinos = [] }) {
                   </button>
                 )
               })}
-            </div>
-          </div>
-
-          <div className={styles.panel} style={{ marginBottom: 16 }}>
-            <div className={styles.panelHead}>
-              <div>
-                <h3 className={styles.panelTitle}>Familias de vino</h3>
-                <p className={styles.panelSub}>Foto rápida por tipo para ver si la bodega está equilibrada por estilo.</p>
-              </div>
-              <span className={styles.badge}>{totalVinosTipo} refs.</span>
-            </div>
-            <div className={styles.panelBody}>
-              <div className={styles.statsGrid} style={{ marginBottom: 0 }}>
-                {tipoCounts.filter(t => t.count > 0).map(tipo => (
-                  <div className={styles.stat} key={tipo.id}>
-                    <p className={styles.statValue}>{tipo.count}</p>
-                    <p className={styles.statLabel}>{tipo.label}</p>
-                  </div>
-                ))}
-                {tipoOtros > 0 && (
-                  <div className={styles.stat}>
-                    <p className={styles.statValue}>{tipoOtros}</p>
-                    <p className={styles.statLabel}>Otros</p>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
