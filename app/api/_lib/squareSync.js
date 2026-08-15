@@ -528,14 +528,18 @@ function getSquareCatalogPolicy(tiendaSlug) {
   if (normalizeTextKey(tiendaSlug) !== 'sibaris-gourmet') return null
   return {
     name: 'sibaris_square_categories',
-    allowUnlistedCategories: true,
-    tienda: ['carta tienda'],
-    maridajeOnly: [],
+    // Solo estas categorías van a categoria='vino'; el resto va a 'otro'
+    vinoCategories: ['vinos de canarias', 'vinos peninsulares', 'vinos del mundo', 'magnum'],
+    // Categorías que se excluyen completamente del kiosko
     neverKiosko: ['carta iqos', 'iqos', 'xmas home', 'navidad', 'naviden', 'christmas', 'evento', 'bolsas', 'carta gastro', 'dispositivos', 'terea', 'levia', 'veev', 'zyn', 'tabaco'],
-    // Productos que entran al catálogo pero no son aptos para cestas regalo
+    // Entran al catálogo pero no aptos para cestas regalo
     neverCesta: ['xmas'],
     // Nombres de producto (prefijos) que nunca van al kiosko aunque su categoría sea válida
     neverKioskoByName: [/^c\. /i],
+    // Legacy — no usados con vinoCategories explícito
+    allowUnlistedCategories: true,
+    tienda: [],
+    maridajeOnly: [],
   }
 }
 
@@ -564,6 +568,19 @@ function decideSquareCatalogImport(tiendaSlug, squareCategories = [], rawNombre 
     return {
       action: 'skip',
       reason: 'square_name_never_kiosko',
+      policy: policy.name,
+    }
+  }
+
+  // Allowlist explícita: si la policy define vinoCategories, la categoría determina directamente
+  // si el producto va a 'vino' o 'otro' — sin heurísticas de nombre
+  if (policy.vinoCategories?.length) {
+    const neverCesta = policy.neverCesta?.length && categoryNames.some(name => policy.neverCesta.some(t => matchesCategoryName(name, t)))
+    const isVino = categoryNames.some(name => policy.vinoCategories.some(t => matchesCategoryName(name, t)))
+    return {
+      action: 'kiosko',
+      categoryOverride: isVino ? 'vino' : 'otro',
+      ...(neverCesta && !isVino && { aptoCestaOverride: false }),
       policy: policy.name,
     }
   }
