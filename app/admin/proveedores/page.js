@@ -1365,6 +1365,10 @@ function ProveedoresPageContent() {
                 <label>
                   Margen copa
                   <select value={margenCopaPct} onChange={e => setMargenCopaPct(Number(e.target.value))}>
+                    <option value={50}>50 %</option>
+                    <option value={55}>55 %</option>
+                    <option value={60}>60 %</option>
+                    <option value={65}>65 %</option>
                     <option value={70}>70 %</option>
                     <option value={75}>75 %</option>
                     <option value={80}>80 %</option>
