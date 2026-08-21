@@ -437,21 +437,12 @@ async function handlePaymentUpdated(eventId, payment) {
   }
 
   try {
-    const { data: pagosAnteriores, error: pagoErr } = await supabaseAdmin
-      .from('square_sync_log')
-      .select('id, lineas')
-      .eq('payment_id', paymentId)
-      .eq('tienda_slug', tienda.slug)
-      .eq('ok', true)
+    const { error: claimErr } = await supabaseAdmin
+      .from('processed_payments')
+      .insert({ payment_id: paymentId, tienda_slug: tienda.slug })
 
-    if (pagoErr) throw new Error(`Leyendo pagos previos: ${pagoErr.message}`)
-
-    const yaDescontado = (pagosAnteriores || []).some(log =>
-      Array.isArray(log.lineas) && log.lineas.some(linea => linea.status === 'ok')
-    )
-
-    if (yaDescontado) {
-      console.log(`[square-webhook] Pago ${paymentId} ya procesado, evento ${eventId} ignorado`)
+    if (claimErr) {
+      console.log(`[square-webhook] Pago ${paymentId} ya reclamado, evento ${eventId} ignorado`)
       return finishAndReturn(
         eventId,
         { ok: true, duplicate: 'payment', payment_id: paymentId },
