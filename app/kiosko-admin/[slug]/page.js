@@ -2789,7 +2789,16 @@ export default function AdminKioskoPage() {
             const categoria  = rentabilidad?.clasificados?.find(c => c.id === v.id)?.categoria || null
             const tendencia  = tp[v.id] || null
             const agotado    = !v.activo
-            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, tendencia, agotado }
+            const beneficio  = pvp > 0 && coste > 0 ? Math.round((pvp - coste) * uds) : null
+            const ultimaSemana = (() => {
+              if (!tendencia) return null
+              let lastIdx = -1
+              for (let i = tendencia.length - 1; i >= 0; i--) { if (tendencia[i] > 0) { lastIdx = i; break } }
+              if (lastIdx < 0) return null
+              const s = 7 - lastIdx
+              return s === 0 ? 'esta sem.' : `hace ${s}s`
+            })()
+            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, tendencia, agotado, stock: v.stock ?? null, pvpVal: pvp > 0 ? pvp : null, beneficio, ultimaSemana }
           })
           .sort((a, b) => b.ingresos - a.ingresos)
         if (!filas.length) return (
@@ -2846,7 +2855,11 @@ export default function AdminKioskoPage() {
                       <th className={styles.rendThNombre}>Vino</th>
                       <th className={styles.rendThNum}>Vendidas (uds.)</th>
                       <th className={styles.rendThNum}>Ingresos</th>
+                      <th className={styles.rendThNum}>Beneficio €</th>
                       <th className={styles.rendThNum}>Margen bruto</th>
+                      <th className={styles.rendThNum}>PVP</th>
+                      <th className={styles.rendThNum}>Stock</th>
+                      <th className={styles.rendThNum}>Última venta</th>
                       <th className={styles.rendThNum}>Tendencia</th>
                     </tr>
                   </thead>
@@ -2863,11 +2876,19 @@ export default function AdminKioskoPage() {
                         </td>
                         <td className={styles.rendTdNum}>{f.uds}</td>
                         <td className={styles.rendTdNum}>{f.ingresos > 0 ? `${f.ingresos.toFixed(0)} €` : '—'}</td>
+                        <td className={styles.rendTdNum}>{f.beneficio !== null ? `${f.beneficio} €` : '—'}</td>
                         <td className={styles.rendTdNum}>
                           {f.margen !== null
                             ? <span className={`${styles.margenBadge} ${f.margen >= 40 ? styles.margenHigh : f.margen >= 25 ? styles.margenMid : styles.margenLow}`}>{f.margen}%</span>
                             : <em className={styles.dash}>—</em>}
                         </td>
+                        <td className={styles.rendTdNum}>{f.pvpVal ? `${f.pvpVal.toFixed(2)} €` : '—'}</td>
+                        <td className={styles.rendTdNum}>
+                          <span style={{ color: f.stock === 0 ? '#c03030' : f.stock !== null && f.stock <= 3 ? '#d4a636' : '#2e6b47', fontWeight: 600 }}>
+                            {f.stock ?? '—'}
+                          </span>
+                        </td>
+                        <td className={styles.rendTdNum} style={{ fontSize: '0.78rem', color: '#888' }}>{f.ultimaSemana || '—'}</td>
                         <td className={styles.rendTdSparkline}>
                           {f.tendencia ? <Sparkline data={f.tendencia} /> : <em className={styles.dash}>—</em>}
                         </td>
@@ -2879,7 +2900,7 @@ export default function AdminKioskoPage() {
                       <td className={styles.rendTdNombre}>Total</td>
                       <td className={styles.rendTdNum}>{totalUds} ud.</td>
                       <td className={styles.rendTdNum}>{totalIngresos.toFixed(0)} €</td>
-                      <td /><td />
+                      <td /><td /><td /><td /><td /><td />
                     </tr>
                   </tfoot>
                 </table>
