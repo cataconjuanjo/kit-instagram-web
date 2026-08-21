@@ -4,7 +4,7 @@
 // bodegas, Square/Weebly, PDFs importados, XLSX de proveedor, etc.
 // Usar https: (cualquier HTTPS) es la opción correcta para un SaaS multi-tenant.
 // La protección anti-XSS real está en script-src y connect-src, no en img-src.
-const IMG_SOURCES = ['https:', 'data:', 'blob:'].join(' ')
+const IMG_SOURCES = ["'self'", 'https:', 'data:', 'blob:'].join(' ')
 
 // APIs que el JS del cliente puede llamar con fetch/XHR
 // connect-src es la protección más importante contra exfiltración de datos en caso de XSS

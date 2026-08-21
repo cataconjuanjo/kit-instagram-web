@@ -7348,9 +7348,11 @@ h3 {
 
 @media (max-width: 520px) {
   .topbar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0;
     padding: 14px 18px;
     min-height: auto;
   }
@@ -16783,4 +16785,321 @@ a.supplier-btn-primary {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: rgba(175, 139, 82, 0.8);
+}
+
+/* ── Niveles de cata ─────────────────────────────────────────────────────── */
+
+.niveles-section {
+  border-bottom: 1px solid var(--line);
+}
+
+.nivel-vinos-tag {
+  display: inline-block;
+  width: fit-content;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--wine);
+  background: var(--wine-soft);
+  border: 1px solid rgba(116, 34, 61, 0.18);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.price-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.price-note {
+  font-size: 0.83rem;
+  color: var(--muted);
+  line-height: 1.52;
+  margin: -6px 0 0;
+  font-style: italic;
+}
+
+/* ── Catas a domicilio · fincas · yates ─────────────────────────────────── */
+
+.domicilio-section {
+  background: var(--canvas);
+  border-bottom: 1px solid var(--line);
+}
+
+.section-intro {
+  max-width: 760px;
+  color: var(--muted);
+  line-height: 1.72;
+  margin-top: 16px;
+  font-size: 1.02rem;
+}
+
+.domicilio-incluye {
+  margin-bottom: 48px;
+}
+
+.incluye-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
+.domicilio-pricing {
+  margin-bottom: 32px;
+}
+
+.price small {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.price-compact strong {
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.premium-note {
+  background: var(--wine-soft);
+  border-left: 3px solid var(--wine);
+  padding: 18px 24px;
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 56px;
+}
+
+.premium-note-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--wine);
+  margin: 0 0 10px;
+}
+
+.premium-note p {
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.section-head-sub {
+  max-width: 900px;
+  margin: 0 0 28px;
+}
+
+.section-head-sub h3 {
+  font-size: clamp(1.3rem, 2.2vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 4px 0 0;
+}
+
+/* Ambientes grid */
+
+.ambientes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 48px;
+}
+
+.ambiente-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ambiente-card-img {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3/2;
+  overflow: hidden;
+  border-radius: 7px 7px 0 0;
+  background: var(--canvas);
+  flex-shrink: 0;
+}
+
+.ambiente-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px 28px 28px;
+  flex: 1;
+}
+
+.ambiente-card h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.ambiente-card p {
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.65;
+  margin: 0;
+  flex: 1;
+}
+
+.ambiente-chef {
+  background: rgba(255, 250, 240, 0.9);
+}
+
+.badge-soon {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+  background: var(--gold);
+  color: #fff;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.btn-soon {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Conditions strip */
+
+.conditions-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  padding: 32px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.conditions-strip h4 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+
+.conditions-strip p {
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.conditions-strip ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.conditions-strip li {
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.5;
+  padding-left: 18px;
+  position: relative;
+}
+
+.conditions-strip li::before {
+  content: '—';
+  position: absolute;
+  left: 0;
+  color: var(--gold);
+}
+
+/* ── FAQ ─────────────────────────────────────────────────────────────────── */
+
+.faq-section {
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+
+.faq-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 56px;
+  margin: 0;
+}
+
+.faq-col {
+  margin: 0;
+}
+
+.faq-item {
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.faq-item:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.faq-q {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.06rem;
+  font-weight: normal;
+  color: var(--ink);
+  margin: 0 0 10px;
+  line-height: 1.42;
+}
+
+.faq-a {
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.72;
+  margin: 0;
+}
+
+/* ── Responsive (niveles + domicilio + FAQ) ──────────────────────────────── */
+
+@media (max-width: 900px) {
+  .niveles-section .pricing-grid,
+  .domicilio-section .pricing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .faq-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .ambientes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .conditions-strip {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
 }

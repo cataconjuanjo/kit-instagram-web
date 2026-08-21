@@ -12,7 +12,7 @@ export default function PublicFooter() {
         <Link href="/formacion-sala">Formación de sala</Link>
         <Link href="/aviso-legal">Aviso legal</Link>
         <Link href="/privacidad">Privacidad</Link>
-        <Link href="/terminos">Terminos</Link>
+        <Link href="/terminos">Términos</Link>
       </div>
     </footer>
   )
