@@ -2779,7 +2779,7 @@ export default function AdminKioskoPage() {
         const tp = analitica.tendenciaPorVino || {}
         const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: '#c03030' }
         const filas = vinosVino
-          .filter(v => v.activo && vp[v.id])
+          .filter(v => vp[v.id])
           .map(v => {
             const uds      = vp[v.id] || 0
             const pvp      = Number(v.precio_pvp || 0)
@@ -2788,7 +2788,8 @@ export default function AdminKioskoPage() {
             const margen   = pvp > 0 && coste > 0 ? Math.round(((pvp - coste) / pvp) * 100) : null
             const categoria  = rentabilidad?.clasificados?.find(c => c.id === v.id)?.categoria || null
             const tendencia  = tp[v.id] || null
-            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, tendencia }
+            const agotado    = !v.activo
+            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, tendencia, agotado }
           })
           .sort((a, b) => b.ingresos - a.ingresos)
         if (!filas.length) return (
@@ -2858,6 +2859,7 @@ export default function AdminKioskoPage() {
                           )}
                           <span className={styles.rendVinoNombre}>{f.nombre}</span>
                           {f.bodega && <span className={styles.rendBodega}> · {f.bodega}</span>}
+                          {f.agotado && <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#999', fontWeight: 400, letterSpacing: '0.02em' }}>agotado</span>}
                         </td>
                         <td className={styles.rendTdNum}>{f.uds}</td>
                         <td className={styles.rendTdNum}>{f.ingresos > 0 ? `${f.ingresos.toFixed(0)} €` : '—'}</td>
