@@ -73,5 +73,9 @@ export async function GET(request) {
     }
   }
 
+  // Limpiar registros de processed_payments de más de 30 días
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+  await supabaseAdmin.from('processed_payments').delete().lt('created_at', cutoff)
+
   return NextResponse.json({ ok: true, synced: results.length, results })
 }
