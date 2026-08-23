@@ -20,7 +20,14 @@ const CONNECT_SOURCES = [
 
 // Dominios desde los que se puede cargar JS externo
 // 'unsafe-inline' es necesario para Next.js App Router (scripts de hidratación)
-const SCRIPT_SOURCES = ["'self'", "'unsafe-inline'", 'https://js.stripe.com'].join(' ')
+// 'unsafe-eval' solo en dev — React lo necesita para source maps y call stacks
+const isDev = process.env.NODE_ENV === 'development'
+const SCRIPT_SOURCES = [
+  "'self'",
+  "'unsafe-inline'",
+  'https://js.stripe.com',
+  ...(isDev ? ["'unsafe-eval'"] : []),
+].join(' ')
 
 // Estilos: Next.js inyecta estilos inline en algunos casos
 const STYLE_SOURCES = ["'self'", "'unsafe-inline'"].join(' ')

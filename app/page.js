@@ -4,6 +4,7 @@ import LeadForm from './components/LeadForm'
 import PublicNav from './components/PublicNav'
 import PublicFooter from './components/PublicFooter'
 import AuthHashRedirect from './components/AuthHashRedirect'
+import StepsReveal from './components/StepsReveal'
 export const metadata = {
   alternates: {
     canonical: '/',
@@ -118,18 +119,21 @@ export default function Home() {
       </section>
 
       <section id="servicios" className="section">
-        <div className="section-head">
-          <p className="eyebrow">Qué hago</p>
-          <h2>Servicios para restaurantes que quieren vender vino sin perder identidad.</h2>
-        </div>
-        <div className="service-grid">
-          {servicios.map((servicio) => (
-            <article className="service-card" key={servicio.titulo}>
-              <span className="card-mark" />
-              <h3>{servicio.titulo}</h3>
-              <p>{servicio.texto}</p>
-            </article>
-          ))}
+        <div className="servicios-sticky-wrap">
+          <div className="servicios-sticky-left">
+            <p className="eyebrow">Qué hago</p>
+            <h2>Servicios para restaurantes que quieren vender vino sin perder identidad.</h2>
+            <Link href="#demo" className="btn btn-primary servicios-sticky-cta">Reservar demo</Link>
+          </div>
+          <div className="service-grid">
+            {servicios.map((servicio) => (
+              <article className="service-card" key={servicio.titulo}>
+                <span className="card-mark" />
+                <h3>{servicio.titulo}</h3>
+                <p>{servicio.texto}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -174,15 +178,17 @@ export default function Home() {
           <p className="eyebrow">Método</p>
           <h2>Del diagnóstico a la implantación.</h2>
         </div>
-        <div className="steps">
-          {metodologia.map(([num, titulo, texto]) => (
-            <article className="step" key={num}>
-              <span>{num}</span>
-              <h3>{titulo}</h3>
-              <p>{texto}</p>
-            </article>
-          ))}
-        </div>
+        <StepsReveal>
+          <div className="steps">
+            {metodologia.map(([num, titulo, texto]) => (
+              <article className="step" key={num}>
+                <span>{num}</span>
+                <h3>{titulo}</h3>
+                <p>{texto}</p>
+              </article>
+            ))}
+          </div>
+        </StepsReveal>
       </section>
 
       <section className="section split">

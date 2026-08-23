@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import BrandLogo from './BrandLogo'
 
@@ -13,10 +13,20 @@ const labels = {
 
 export default function PublicNav({ active = 'home', eyebrow = 'Consultoría de vino hospitality' }) {
   const [open, setOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const close = () => setOpen(false)
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   return (
-    <nav className={`topbar${open ? ' nav-open' : ''}`} aria-label="Navegación principal">
+    <nav
+      className={`topbar${open ? ' nav-open' : ''}${scrolled ? ' topbar--scrolled' : ''}`}
+      aria-label="Navegación principal"
+    >
       <Link href="/cartavinos" className="brand brand-logo" onClick={close}>
         <BrandLogo priority />
       </Link>

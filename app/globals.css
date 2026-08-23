@@ -17103,3 +17103,114 @@ a.supplier-btn-primary {
     gap: 24px;
   }
 }
+
+/* ============================================================
+   UI ENHANCEMENTS
+   ============================================================ */
+
+/* 1. Nav — shrink suave al hacer scroll */
+.topbar {
+  transition: min-height 0.28s ease, box-shadow 0.28s ease, border-bottom-color 0.28s ease;
+}
+.topbar--scrolled {
+  min-height: 64px;
+  box-shadow: 0 4px 28px rgba(23, 13, 8, 0.10);
+  border-bottom-color: rgba(175, 139, 82, 0.28);
+}
+
+/* 2. Hero panel — aurora animada (wine + gold) */
+@keyframes panel-aurora {
+  0%   { transform: rotate(0deg)   scale(1)    translate(0,    0); }
+  25%  { transform: rotate(4deg)   scale(1.06) translate(2%,  -2%); }
+  50%  { transform: rotate(-2deg)  scale(1.04) translate(-2%,  3%); }
+  75%  { transform: rotate(3deg)   scale(1.08) translate(3%,  -1%); }
+  100% { transform: rotate(0deg)   scale(1)    translate(0,    0); }
+}
+.site-shell .hero-panel {
+  position: relative;
+  overflow: hidden;
+}
+.site-shell .hero-panel::after {
+  content: '';
+  position: absolute;
+  inset: -60%;
+  background:
+    radial-gradient(ellipse 55% 45% at 25% 30%, rgba(116,34,61,0.30) 0%, transparent 65%),
+    radial-gradient(ellipse 35% 30% at 78% 75%, rgba(175,139,82,0.13) 0%, transparent 60%);
+  animation: panel-aurora 10s ease-in-out infinite;
+  pointer-events: none;
+  will-change: transform;
+}
+.site-shell .hero-panel > * {
+  position: relative;
+  z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-shell .hero-panel::after { animation: none; }
+}
+
+/* 3. Servicios — sticky left panel + 2×2 grid */
+.servicios-sticky-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1.55fr;
+  gap: clamp(32px, 5vw, 80px);
+  align-items: start;
+}
+.servicios-sticky-left {
+  position: sticky;
+  top: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.servicios-sticky-left h2 {
+  font-size: clamp(1.7rem, 3vw, 2.6rem);
+  line-height: 1.1;
+  max-width: 380px;
+  margin-bottom: 32px;
+}
+.servicios-sticky-cta {
+  margin-top: 4px;
+}
+/* Override grid de 4 col a 2×2 en el sticky layout */
+.site-shell #servicios .servicios-sticky-wrap .service-grid {
+  grid-template-columns: 1fr 1fr;
+}
+@media (min-width: 761px) {
+  .site-shell #servicios .servicios-sticky-wrap .service-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 900px) {
+  .servicios-sticky-wrap {
+    grid-template-columns: 1fr;
+  }
+  .servicios-sticky-left {
+    position: static;
+  }
+}
+@media (max-width: 760px) {
+  .site-shell #servicios .servicios-sticky-wrap .service-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 4. Steps — reveal animado con IntersectionObserver */
+.steps-js-ready .step {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.steps-js-ready .step.step--visible {
+  opacity: 1;
+  transform: none;
+}
+.steps-js-ready .step:nth-child(2) { transition-delay: 0.14s; }
+.steps-js-ready .step:nth-child(3) { transition-delay: 0.28s; }
+@media (prefers-reduced-motion: reduce) {
+  .steps-js-ready .step {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
