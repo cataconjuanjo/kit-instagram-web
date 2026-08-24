@@ -1,6 +1,7 @@
 .shell {
   --dashboard-mobile-bar-height: calc(60px + env(safe-area-inset-top, 0px));
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background: #f8f3eb;
   color: #222222;
@@ -15,13 +16,13 @@
 /* ── Sidebar ── */
 
 .sidebar {
+  display: none;
   position: fixed;
   top: 0;
   left: 0;
   bottom: 0;
   width: 248px;
   box-sizing: border-box;
-  display: flex;
   flex-direction: column;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -394,7 +395,7 @@ button.footerLink {
 }
 
 .main {
-  margin-left: 248px;
+  margin-left: 0;
   min-height: 100vh;
   flex: 1;
   display: flex;
@@ -829,6 +830,7 @@ button.footerLink {
 
 @media (max-width: 1100px) {
   .sidebar {
+    display: flex;
     transform: translateX(-100%);
     transition: transform 200ms ease;
   }
@@ -903,5 +905,236 @@ button.footerLink {
   .topStatus a {
     min-height: 40px;
     white-space: nowrap;
+  }
+}
+
+/* ── Desktop horizontal top nav ─────────────────────────────────── */
+
+.topHeader {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: #1c0e13;
+  padding-top: env(safe-area-inset-top, 0px);
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 250, 243, 0.06);
+}
+
+.topHeaderInner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 1.75rem;
+  min-height: 52px;
+}
+
+.topBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.topBrandLogo {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: rgba(255, 250, 243, 0.08);
+  border: 1px solid rgba(255, 250, 243, 0.12);
+  object-fit: contain;
+  padding: 3px;
+}
+
+.topBrandText {
+  min-width: 0;
+}
+
+.topBrandName {
+  margin: 0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 750;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.topBrandStatus {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  color: rgba(255, 250, 243, 0.48);
+  font-size: 11px;
+}
+
+.topBrandPlan {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border: 1px solid rgba(191, 169, 132, 0.35);
+  border-radius: 999px;
+  color: #d9c8a8;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.topRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Dark-header overrides for search/status/profile inside topHeader */
+.topHeader .topSearch > button,
+.topHeader .topStatus button,
+.topHeader .topStatus a,
+.topHeader .clock {
+  border-color: rgba(255, 250, 243, 0.18);
+  background: rgba(255, 250, 243, 0.07);
+  color: rgba(240, 237, 232, 0.85);
+}
+
+.topHeader .topSearch > button {
+  width: auto;
+}
+
+.topHeader .topSearch kbd {
+  border-color: rgba(255, 250, 243, 0.18);
+  background: rgba(255, 250, 243, 0.06);
+  color: rgba(240, 237, 232, 0.5);
+}
+
+.topHeader .profileDropdown,
+.topHeader .searchPopover {
+  background: #2a1a20;
+  border-color: rgba(255, 250, 243, 0.14);
+}
+
+.topHeader .profileDropdown a,
+.topHeader .profileDropdown button {
+  color: #fffaf3;
+}
+
+.topHeader .profileDropdown a:hover,
+.topHeader .profileDropdown button:hover {
+  background: rgba(255, 250, 243, 0.08);
+}
+
+/* Tab nav (first row) */
+.tabNav {
+  display: flex;
+  background: #1c0e13;
+  border-top: 1px solid rgba(255, 250, 243, 0.07);
+  padding: 0 1.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabNav::-webkit-scrollbar {
+  display: none;
+}
+
+.tabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: rgba(240, 237, 232, 0.5);
+  font: inherit;
+  font-size: 0.83rem;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color 120ms, border-color 120ms;
+  flex-shrink: 0;
+}
+
+.tabBtn:hover {
+  color: rgba(240, 237, 232, 0.82);
+}
+
+.tabBtnActive {
+  border-bottom-color: #d9c8a8;
+  color: #d9c8a8;
+}
+
+/* Sub-tab nav (second row, conditional) */
+.subTabNav {
+  display: flex;
+  background: #130b0e;
+  border-bottom: 1px solid rgba(255, 250, 243, 0.06);
+  padding: 0 1.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.subTabNav::-webkit-scrollbar {
+  display: none;
+}
+
+.subTabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.48rem 0.875rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: rgba(240, 237, 232, 0.4);
+  font: inherit;
+  font-size: 0.77rem;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color 120ms, border-color 120ms;
+  flex-shrink: 0;
+}
+
+.subTabBtn:hover {
+  color: rgba(240, 237, 232, 0.72);
+}
+
+.subTabBtnActive {
+  border-bottom-color: #d9c8a8;
+  color: #d9c8a8;
+}
+
+/* On desktop: hide legacy topbar and mobile bar (replaced by topHeader) */
+@media (min-width: 1101px) {
+  /* CSS variable consumed by page-level sticky topbars */
+  .shell {
+    --dashboard-topnav-height: 96px;
+  }
+
+  .hasSubnav {
+    --dashboard-topnav-height: 132px;
+  }
+
+  .operationalTopbar {
+    display: none;
+  }
+
+  .demoManagerBar {
+    position: relative;
+    top: auto;
+  }
+}
+
+/* On mobile: hide desktop topHeader */
+@media (max-width: 1100px) {
+  .topHeader {
+    display: none;
   }
 }

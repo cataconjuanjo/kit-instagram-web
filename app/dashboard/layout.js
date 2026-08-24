@@ -249,7 +249,10 @@ export default function DashboardLayout({ children }) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
         setSearchOpen(true)
-        setTimeout(() => document.getElementById('dashboard-global-search')?.focus(), 20)
+        setTimeout(() => {
+          const el = document.getElementById('dashboard-global-search-desktop') || document.getElementById('dashboard-global-search')
+          el?.focus()
+        }, 20)
         return
       }
       if ((event.ctrlKey || event.metaKey) && ['1', '2', '3', '4', '5'].includes(event.key)) {
@@ -408,6 +411,10 @@ export default function DashboardLayout({ children }) {
       children: item.children?.filter(child => !child.feature || puedeUsar(restaurante, child.feature)),
     }))
 
+  const activeNavItem = navItems.find(item =>
+    isActive(item.href, item.exact) || item.children?.some(c => isActive(c.href))
+  )
+
   const filteredSearch = query.trim()
     ? searchItems.filter(item => `${item.nombre || ''} ${item.meta || ''} ${item.tipo}`.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
     : []
@@ -422,9 +429,148 @@ export default function DashboardLayout({ children }) {
   return (
     <GuideModeProvider restaurantId={restaurante?.id}>
     <PrivateSessionTimeout timeoutMinutes={60} />
-    <div className={`${styles.shell} ${darkMode ? styles.darkShell : ''}`}>
+    <div className={`${styles.shell} ${darkMode ? styles.darkShell : ''} ${activeNavItem?.children?.length ? styles.hasSubnav : ''}`}>
       {restaurante && <UsageTracker restauranteId={restaurante.id} onTrialChange={setTrialInfo} />}
       <a href="#dashboard-main-content" className={styles.skipLink}>Saltar al panel</a>
+
+      {/* ── Desktop: horizontal top nav (hidden on mobile via CSS) ── */}
+      <div className={styles.topHeader}>
+        <div className={styles.topHeaderInner}>
+          <Link href="/dashboard" className={styles.topBrand}>
+            {restaurante?.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img className={styles.topBrandLogo} src={restaurante.logo_url} alt="" loading="lazy" />
+            ) : (
+              <BrandLogo variant="markDark" className={styles.topBrandLogo} />
+            )}
+            <div className={styles.topBrandText}>
+              <p className={styles.topBrandName}>{entidadNombre}</p>
+              <div className={styles.topBrandStatus}>
+                <span className={`${styles.statusDot} ${turnoAbierto ? styles.statusDotOpen : styles.statusDotClosed}`} />
+                {estadoActividad}
+              </div>
+            </div>
+          </Link>
+          {restaurante && <span className={styles.topBrandPlan}>{planVisible}</span>}
+          {perfilSomm && sommRestaurantes.length > 1 && (
+            <select
+              value={restaurante?.id || ''}
+              onChange={e => { setAdminRestaurantId(e.target.value); window.location.reload() }}
+              style={{ fontSize: 12, border: '1px solid rgba(255,250,243,0.2)', borderRadius: 6, background: 'rgba(255,250,243,0.08)', color: '#fffaf3', padding: '4px 8px', cursor: 'pointer' }}
+            >
+              {sommRestaurantes.map(sr => (
+                <option key={sr.restaurante_id} value={sr.restaurante_id}>
+                  {sr.nombre_alias || sr.restaurantes?.nombre || sr.restaurante_id.slice(0, 8)}
+                </option>
+              ))}
+            </select>
+          )}
+          <div className={styles.topRight}>
+            <div className={styles.topSearch}>
+              <button
+                type="button"
+                onClick={() => setSearchOpen(open => !open)}
+                aria-expanded={searchOpen}
+                aria-label={searchOpen ? 'Cerrar busqueda' : (perfilBodega ? 'Buscar vinos' : 'Buscar vinos o platos')}
+              >
+                {searchOpen ? 'Cerrar busqueda' : (perfilBodega ? 'Buscar vinos' : 'Buscar')}
+              </button>
+              <kbd>Ctrl K</kbd>
+              {searchOpen && (
+                <div className={styles.searchPopover}>
+                  <div className={styles.searchHeader}>
+                    <input
+                      id="dashboard-global-search-desktop"
+                      value={query}
+                      onChange={event => setQuery(event.target.value)}
+                      placeholder={perfilBodega ? 'Buscar vino, bodega, proveedor...' : 'Buscar vino, bodega, plato...'}
+                      aria-label="Busqueda global del dashboard"
+                    />
+                    <button type="button" onClick={() => { setSearchOpen(false); setQuery('') }}>Cerrar</button>
+                  </div>
+                  <div className={styles.searchResults}>
+                    {filteredSearch.map(item => (
+                      <Link key={`${item.tipo}-${item.id}`} href={item.href} onClick={() => { setSearchOpen(false); setQuery('') }}>
+                        <span>{item.tipo}</span>
+                        <strong>{item.nombre}</strong>
+                        {item.meta && <small>{item.meta}</small>}
+                      </Link>
+                    ))}
+                    {query && filteredSearch.length === 0 && <p>Sin resultados rapidos.</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className={styles.topStatus}>
+              <GuideToggle compact />
+              <Link href="/dashboard/bodega#propuestas" className={propuestasCount > 0 ? styles.alertPillCritical : styles.alertPillOk}>
+                {propuestasCount > 0 ? `${propuestasCount} propuestas` : 'Sin propuestas'}
+              </Link>
+              <span className={styles.clock}>{clock}</span>
+              <div className={styles.profileMenu}>
+                <button type="button" onClick={() => setProfileOpen(open => !open)} aria-label="Abrir perfil">Perfil</button>
+                {profileOpen && (
+                  <div className={styles.profileDropdown}>
+                    <Link href="/dashboard/ajustes" onClick={() => setProfileOpen(false)}>Ajustes</Link>
+                    <Link href="/admin?vista=accesos" onClick={() => setProfileOpen(false)}>{perfilBodega ? 'Cambiar bodega' : 'Cambiar restaurante'}</Link>
+                    <button type="button" onClick={toggleDarkMode}>{darkMode ? 'Modo claro' : 'Modo oscuro'}</button>
+                    {puedeUsar(restaurante, 'carta_qr') && (
+                      <OpenCartaPruebaButton restauranteId={restaurante?.id} className={styles.footerLink}>
+                        Probar carta
+                      </OpenCartaPruebaButton>
+                    )}
+                    {puedeUsar(restaurante, 'modo_camarero') && (
+                      <a href={restaurante?.slug ? `/camarero/${restaurante.slug}` : '#'} target="_blank" rel="noreferrer">
+                        Modo camarero
+                      </a>
+                    )}
+                    <Link href="/dashboard/sugerencias#nueva">{perfilBodega ? 'Enviar mejora' : 'Enviar sugerencia'}</Link>
+                    <button type="button" onClick={cerrarSesion}>Salir</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Primary tabs */}
+        <nav aria-label="Navegación principal" className={styles.tabNav}>
+          {navItems.map(item => {
+            const active = isActive(item.href, item.exact) || item.children?.some(c => isActive(c.href))
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`${styles.tabBtn} ${active ? styles.tabBtnActive : ''}`}
+                aria-current={active ? 'page' : undefined}
+              >
+                <span style={{ opacity: 0.7, display: 'flex' }}>{item.icon}</span>
+                {item.label}
+                {item.alert != null && <span className={styles.navAlert}>{item.alert}</span>}
+                {item.stat != null && <span className={styles.navStat}>{item.stat}</span>}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Sub-tabs for active section */}
+        {activeNavItem?.children?.length > 0 && (
+          <nav aria-label="Subnavegación" className={styles.subTabNav}>
+            {activeNavItem.children.map(child => (
+              <Link
+                key={child.href}
+                href={child.href}
+                className={`${styles.subTabBtn} ${isActive(child.href) ? styles.subTabBtnActive : ''}`}
+              >
+                {child.label}
+                {child.stat != null && <span style={{ fontSize: '0.78em', opacity: 0.65, marginLeft: 4 }}>{child.stat}</span>}
+              </Link>
+            ))}
+          </nav>
+        )}
+      </div>
+
+      {/* ── Mobile: sidebar overlay (hidden on desktop via CSS) ── */}
       <nav id="dashboard-navigation" aria-label="Navegación principal" className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <div className={styles.brandHeader}>

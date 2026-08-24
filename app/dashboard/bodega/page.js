@@ -736,66 +736,28 @@ export default function ControlBodega() {
       <div className={bStyles.cellarPage}>
 
         {/* ── KPIs ─────────────────────────────────────────── */}
-        <section className={styles.statsGrid}>
-          <StatCard value={eur(datos.valorCoste)} label="Valor a coste" hint="Dinero inmovilizado en bodega." info="Suma stock × coste de compra de cada referencia activa." />
-          <StatCard value={datos.margenMedio == null ? '—' : `${datos.margenMedio}%`} label="Margen medio" valueStyle={{ color: margenColor(datos.margenMedio) }} hint={`Referencias con coste y PVP. IVA venta ${criterioBodega.ivaVentaPct}%.`} info="Media del margen bruto calculada con los ajustes economicos activos del restaurante: IVA, coste con/sin IVA y PVP con/sin IVA." />
-          <StatCard value={datos.bajoMinimo.length} label="Bajo mínimo" hint="Riesgo de rotura de stock." info="Vinos cuyo stock actual está en el mínimo definido o por debajo." />
-          <StatCard value={pedidoCombinado.length} label="Pedido sugerido" hint="Reposición calculada." info="Referencias a reponer por bajo stock, mínimo, venta reciente o pedido manual." />
-        </section>
-
-        {/* ── Equilibrio de bodega ─────────────────────────── */}
-        {datos.activos.length > 0 && (
-          <CollapsibleSection
-            storageKey="bodega-equilibrio"
-            eyebrow="Bodega"
-            title="Equilibrio de la bodega"
-            badge={`${datos.activos.length} referencias`}
-          >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24, alignItems: 'start' }}>
-              <div>
-                <p className={styles.eyebrow} style={{ marginBottom: 12 }}>Composición por estilo</p>
-                <DonutEquilibrio
-                  data={donutEstilos}
-                  totalLabel={String(datos.activos.length)}
-                  totalCaption="REFERENCIAS"
-                />
-              </div>
-              {gamasDashboard ? (
-                <>
-                  <div>
-                    <p className={styles.eyebrow} style={{ marginBottom: 12 }}>Reparto actual por gama</p>
-                    <DonutEquilibrio
-                      data={gamasDashboard.actual}
-                      totalLabel={String(gamasDashboard.refsConPvp)}
-                      totalCaption="CON PVP"
-                    />
-                  </div>
-                  <div>
-                    <p className={styles.eyebrow} style={{ marginBottom: 12 }}>Reparto recomendado</p>
-                    <DonutEquilibrio
-                      data={gamasDashboard.objetivo}
-                      totalLabel={`${Math.round(gamasDashboard.ticket)} €`}
-                      totalCaption="TICKET"
-                    />
-                  </div>
-                </>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', color: '#9a9186', fontSize: 13, fontStyle: 'italic', gridColumn: 'span 2' }}>
-                  Configura tu ticket medio en Wine mapping para ver el reparto por gama.
-                </div>
-              )}
-            </div>
-          </CollapsibleSection>
-        )}
-
-        {/* ── Wine mapping ──────────────────────────────────── */}
-        <CollapsibleSection
-          storageKey="bodega-winemapping"
-          eyebrow="Carta"
-          title="Wine mapping"
-        >
-          <WineMappingPanel restaurante={restaurante} vinos={datos.activos} />
-        </CollapsibleSection>
+        <div className={styles.kpiStrip}>
+          <div className={styles.kpiItem}>
+            <div className={styles.kpiNum}>{eur(datos.valorCoste)}</div>
+            <div className={styles.kpiCaption}>Valor a coste</div>
+            <div className={styles.kpiHintText}>Dinero inmovilizado en bodega</div>
+          </div>
+          <div className={styles.kpiItem}>
+            <div className={styles.kpiNum} style={{ color: margenColor(datos.margenMedio) }}>{datos.margenMedio == null ? '—' : `${datos.margenMedio}%`}</div>
+            <div className={styles.kpiCaption}>Margen medio</div>
+            <div className={styles.kpiHintText}>IVA venta {criterioBodega.ivaVentaPct}%</div>
+          </div>
+          <div className={styles.kpiItem}>
+            <div className={styles.kpiNum}>{datos.bajoMinimo.length}</div>
+            <div className={styles.kpiCaption}>Bajo mínimo</div>
+            <div className={styles.kpiHintText}>Riesgo de rotura de stock</div>
+          </div>
+          <div className={styles.kpiItem}>
+            <div className={styles.kpiNum}>{pedidoCombinado.length}</div>
+            <div className={styles.kpiCaption}>Pedido sugerido</div>
+            <div className={styles.kpiHintText}>Reposición calculada</div>
+          </div>
+        </div>
 
         {/* ── Checklist filtrable ───────────────────────────── */}
         <div className={bStyles.cellarChecklist}>
@@ -1066,6 +1028,60 @@ export default function ControlBodega() {
           <span>Botella: coste neto por tramos, hasta 6 € x3,5; de 6 a 11 € x2+9; por encima de 11 € +20. IVA {criterioBodega.ivaVentaPct}% si se muestra con IVA y redondeo al euro.</span>
           <span>Copa: coste dividido entre {criterioBodega.copasPorBotella} copas, {criterioBodega.mermaCopaPct}% de merma y margen de copa {criterioBodega.margenObjetivoCopaPct}%; IVA al final y redondeo al tramo de 0,50 € más cercano.</span>
         </div>
+
+        {/* ── Equilibrio de bodega ─────────────────────────── */}
+        {datos.activos.length > 0 && (
+          <CollapsibleSection
+            storageKey="bodega-equilibrio"
+            eyebrow="Bodega"
+            title="Equilibrio de la bodega"
+            badge={`${datos.activos.length} referencias`}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24, alignItems: 'start' }}>
+              <div>
+                <p className={styles.eyebrow} style={{ marginBottom: 12 }}>Composición por estilo</p>
+                <DonutEquilibrio
+                  data={donutEstilos}
+                  totalLabel={String(datos.activos.length)}
+                  totalCaption="REFERENCIAS"
+                />
+              </div>
+              {gamasDashboard ? (
+                <>
+                  <div>
+                    <p className={styles.eyebrow} style={{ marginBottom: 12 }}>Reparto actual por gama</p>
+                    <DonutEquilibrio
+                      data={gamasDashboard.actual}
+                      totalLabel={String(gamasDashboard.refsConPvp)}
+                      totalCaption="CON PVP"
+                    />
+                  </div>
+                  <div>
+                    <p className={styles.eyebrow} style={{ marginBottom: 12 }}>Reparto recomendado</p>
+                    <DonutEquilibrio
+                      data={gamasDashboard.objetivo}
+                      totalLabel={`${Math.round(gamasDashboard.ticket)} €`}
+                      totalCaption="TICKET"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', color: '#9a9186', fontSize: 13, fontStyle: 'italic', gridColumn: 'span 2' }}>
+                  Configura tu ticket medio en Wine mapping para ver el reparto por gama.
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {/* ── Wine mapping ──────────────────────────────────── */}
+        <CollapsibleSection
+          storageKey="bodega-winemapping"
+          eyebrow="Carta"
+          title="Wine mapping"
+        >
+          <WineMappingPanel restaurante={restaurante} vinos={datos.activos} />
+        </CollapsibleSection>
 
         {/* ── Modal edición completa ───────────────────────── */}
         {editando && (
