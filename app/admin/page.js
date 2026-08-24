@@ -766,6 +766,7 @@ function AdminPageContent() {
                         <option value="pro">Sala</option>
                         <option value="bodega">Bodega</option>
                         <option value="premium">Acompañado</option>
+                        <option value="sumiller">Carta Viva Somm</option>
                       </select>
                     </label>
                     <label className="alta-field">
@@ -978,7 +979,7 @@ function AdminPageContent() {
                 <label>Acento<input type="color" value={edicion.color_acento} onChange={e => actualizarEdicion('color_acento', e.target.value)} /></label>
               </div>
               <label>Tipografía<select value={edicion.tipografia} onChange={e => actualizarEdicion('tipografia', e.target.value)}><option value="serif">Serif</option><option value="sans">Sans</option></select></label>
-              <label>Plan<select value={edicion.plan} onChange={e => actualizarEdicion('plan', e.target.value)}><option value="basic">Básico</option><option value="pro">Sala</option><option value="bodega">Bodega</option><option value="premium">Acompañado</option></select></label>
+              <label>Plan<select value={edicion.plan} onChange={e => actualizarEdicion('plan', e.target.value)}><option value="basic">Básico</option><option value="pro">Sala</option><option value="bodega">Bodega</option><option value="premium">Acompañado</option><option value="sumiller">Carta Viva Somm</option></select></label>
               <label>Estado<select value={edicion.subscription_status} onChange={e => actualizarEdicion('subscription_status', e.target.value)}><option value="trialing">Prueba</option><option value="active">Activo</option><option value="past_due">Pago pendiente</option><option value="cancelled">Cancelado</option></select></label>
               <label>Horas prueba<input type="number" min="0" step="0.5" value={edicion.trial_hours_limit} onChange={e => actualizarEdicion('trial_hours_limit', e.target.value)} placeholder="5" /></label>
               <label>Caduca prueba<input type="date" value={edicion.trial_expires_at} onChange={e => actualizarEdicion('trial_expires_at', e.target.value)} /></label>
