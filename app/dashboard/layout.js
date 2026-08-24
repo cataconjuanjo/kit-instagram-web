@@ -4,10 +4,10 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../supabase'
-import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail, puedeVerTrazabilidad } from '../demo'
+import { clearAdminRestaurantEmail, clearDemoEmail, getEffectiveRestaurantEmail, puedeVerTrazabilidad, setAdminRestaurantId } from '../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../lib/clientSupabaseSelects'
 import { cargarDemoDashboard } from '../lib/demoDashboardClient'
-import { esPerfilBodega, nombrePlan, puedeUsar } from '../lib/plans'
+import { esPerfilBodega, esPerfilSomm, nombrePlan, puedeUsar } from '../lib/plans'
 import UsageTracker from './UsageTracker'
 import styles from './layout.module.css'
 import OpenCartaPruebaButton from './OpenCartaPruebaButton'
@@ -157,6 +157,7 @@ export default function DashboardLayout({ children }) {
   const [isAdminSession, setIsAdminSession] = useState(false)
   const [isDemoSession, setIsDemoSession] = useState(false)
   const [sessionEmail, setSessionEmail] = useState('')
+  const [sommRestaurantes, setSommRestaurantes] = useState([])
   const subscribeDarkMode = useCallback((callback) => {
     if (typeof window === 'undefined') return () => {}
     window.addEventListener(DARK_MODE_EVENT, callback)
@@ -166,6 +167,7 @@ export default function DashboardLayout({ children }) {
   const demoPresentacion = searchParams.get('demo_presentacion') === '1'
   const demoSumiller = searchParams.get('demo_sumiller') === '1'
   const perfilBodega = esPerfilBodega(restaurante)
+  const perfilSomm = esPerfilSomm(restaurante)
 
   useEffect(() => {
     async function cargar() {
@@ -220,6 +222,17 @@ export default function DashboardLayout({ children }) {
       ]
       setSearchItems(nextSearchItems)
       window.localStorage.setItem(`dashboard_search_cache_${rest.id}`, JSON.stringify(nextSearchItems))
+
+      // Multi-restaurante Somm: cargar establecimientos vinculados
+      if (esPerfilSomm(rest)) {
+        const { data: linked } = await supabase
+          .from('sumiller_restaurantes')
+          .select('restaurante_id, nombre_alias, orden, restaurantes(nombre)')
+          .eq('email_sumiller', email)
+          .order('orden')
+          .limit(3)
+        if (linked?.length) setSommRestaurantes(linked)
+      }
     }
     cargar()
   }, [])
@@ -241,9 +254,11 @@ export default function DashboardLayout({ children }) {
       }
       if ((event.ctrlKey || event.metaKey) && ['1', '2', '3', '4', '5'].includes(event.key)) {
         event.preventDefault()
-        const routes = perfilBodega
-          ? ['/dashboard', '/dashboard/vinos', '/dashboard/bodega', '/dashboard/catalogo', '/dashboard/ajustes']
-          : ['/dashboard', '/dashboard/carta', '/dashboard/sala', '/dashboard/bodega', '/dashboard/ajustes']
+        const routes = perfilSomm
+          ? ['/dashboard', '/dashboard/vinos', '/dashboard/precios-somm', '/dashboard/explotacion', '/dashboard/ajustes']
+          : perfilBodega
+            ? ['/dashboard', '/dashboard/vinos', '/dashboard/bodega', '/dashboard/catalogo', '/dashboard/ajustes']
+            : ['/dashboard', '/dashboard/carta', '/dashboard/sala', '/dashboard/bodega', '/dashboard/ajustes']
         router.push(routes[Number(event.key) - 1])
         return
       }
@@ -362,6 +377,19 @@ export default function DashboardLayout({ children }) {
         ] : []),
       ],
     },
+    ...(perfilSomm ? [{
+      href: '/dashboard/precios-somm',
+      label: 'Somm',
+      hint: 'Motor de precios y explotación',
+      icon: icon.sala,
+      feature: 'somm_simulador_mult',
+      children: [
+        { href: '/dashboard/precios-somm', label: 'Motor de Precios', hint: 'Multiplicador, tramos y what-if', feature: 'somm_simulador_mult' },
+        { href: '/dashboard/explotacion', label: 'Explotación', hint: 'P&L, personal y break-even', feature: 'somm_explotacion' },
+        { href: '/dashboard/analitica-somm', label: 'Histórico y Bonus', hint: 'Multianual, presupuesto YoY, bonus', feature: 'somm_historico' },
+        { href: '/dashboard/compras-somm', label: 'Libro de Compras', hint: 'Proveedores y concentración', feature: 'somm_libro_compras' },
+      ],
+    }] : []),
     {
       href: '/dashboard/ajustes',
       label: 'Ajustes',
@@ -468,6 +496,28 @@ export default function DashboardLayout({ children }) {
             )
           })}
         </ul>
+
+        {perfilSomm && sommRestaurantes.length > 1 && (
+          <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border, #e8e3d8)' }}>
+            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted, #888)', marginBottom: 6 }}>
+              Establecimiento
+            </div>
+            <select
+              value={restaurante?.id || ''}
+              onChange={e => {
+                setAdminRestaurantId(e.target.value)
+                window.location.reload()
+              }}
+              style={{ width: '100%', padding: '6px 8px', fontSize: 12, border: '1px solid var(--border, #e8e3d8)', borderRadius: 6, background: 'var(--surface, #fff)', color: 'var(--text, #1a1a1a)', cursor: 'pointer' }}
+            >
+              {sommRestaurantes.map(sr => (
+                <option key={sr.restaurante_id} value={sr.restaurante_id}>
+                  {sr.nombre_alias || sr.restaurantes?.nombre || sr.restaurante_id.slice(0, 8)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className={styles.sidebarFooter}>
           <div className={styles.footerLinks}>
@@ -603,7 +653,7 @@ export default function DashboardLayout({ children }) {
                 <div><dt>Ctrl+N</dt><dd>Nuevo vino o plato segun contexto</dd></div>
                 <div><dt>Ctrl+E</dt><dd>Enfocar accion de edicion visible</dd></div>
                 <div><dt>Ctrl+S</dt><dd>Guardar formulario visible</dd></div>
-                <div><dt>Ctrl+1-5</dt><dd>{perfilBodega ? 'Inicio, Referencias, Bodega, Inventario, Ajustes' : 'Inicio, Carta, Sala, Bodega, Ajustes'}</dd></div>
+                <div><dt>Ctrl+1-5</dt><dd>{perfilSomm ? 'Inicio, Referencias, Precios, Explotación, Ajustes' : perfilBodega ? 'Inicio, Referencias, Bodega, Inventario, Ajustes' : 'Inicio, Carta, Sala, Bodega, Ajustes'}</dd></div>
                 <div><dt>?</dt><dd>Ver esta ayuda</dd></div>
               </dl>
             </div>

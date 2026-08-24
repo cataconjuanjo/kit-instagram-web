@@ -9,8 +9,10 @@ import {
 } from '../../lib/clientSupabaseSelects'
 import { cargarDemoDashboard } from '../../lib/demoDashboardClient'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
+import { puedeUsar } from '../../lib/plans'
 import styles from '../module.module.css'
 import InventarioPanel from './InventarioPanel'
+import SommStockSection from './SommStockSection'
 
 export default function InventarioSemanal() {
   const [restaurante, setRestaurante] = useState(null)
@@ -96,6 +98,9 @@ export default function InventarioSemanal() {
           onStockActualizado={handleStockActualizado}
           compact={false}
         />
+        {puedeUsar(restaurante, 'somm_pmp') && (
+          <SommStockSection restauranteId={restaurante.id} />
+        )}
       </ModuleShell>
     </FeatureGate>
   )
