@@ -64,6 +64,88 @@ function SelectorPeriodo({ valor, onChange }) {
   )
 }
 
+// ── Sección 4 Canales de Negocio (Gap 11) ────────────────────────────────────
+
+const CANALES_DEF = [
+  { key: 'copa_barra',      label: 'Copa en barra',     emoji: '🍷', color: '#8B4513' },
+  { key: 'botella_mesa',    label: 'Botella en mesa',   emoji: '🍾', color: '#2c5f8a' },
+  { key: 'grupos_eventos',  label: 'Grupos / Eventos',  emoji: '🎉', color: '#7b6a2b' },
+  { key: 'take_away',       label: 'Para llevar',       emoji: '📦', color: '#3a6b3a' },
+]
+
+function SeccionCanales({ canales, onChange, facturacionTotal }) {
+  const total = CANALES_DEF.reduce((s, c) => s + (Number(canales[c.key]) || 0), 0)
+  const facTotal = Number(facturacionTotal) || 0
+  const sinAsignar = facTotal > 0 ? facTotal - total : null
+  const maxCanal = CANALES_DEF.reduce((max, c) =>
+    (Number(canales[c.key]) || 0) > (Number(canales[max?.key]) || 0) ? c : max, CANALES_DEF[0])
+
+  return (
+    <section className={styles.panel}>
+      <div className={styles.panelHead}>
+        <h2 className={styles.panelTitle}>Mix de canales de negocio</h2>
+        {total > 0 && (
+          <span style={{ fontSize: 12, color: '#888' }}>
+            Canal principal: <strong style={{ color: maxCanal.color }}>{maxCanal.emoji} {maxCanal.label}</strong>
+          </span>
+        )}
+      </div>
+      <div className={styles.panelBody}>
+        <div className={styles.formGrid}>
+          {CANALES_DEF.map(c => {
+            const v = Number(canales[c.key]) || 0
+            const pctCanal = facTotal > 0 ? (v / facTotal) * 100 : total > 0 ? (v / total) * 100 : 0
+            return (
+              <label key={c.key} className={styles.label}>
+                {c.emoji} {c.label}
+                <input
+                  className={styles.input}
+                  type="number"
+                  min="0"
+                  step="10"
+                  value={canales[c.key]}
+                  onChange={e => onChange({ ...canales, [c.key]: e.target.value })}
+                  placeholder="0 €"
+                />
+                {v > 0 && (
+                  <div style={{ marginTop: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888', marginBottom: 3 }}>
+                      <span>{pctCanal.toFixed(1)}% del total</span>
+                      <span style={{ color: c.color, fontWeight: 600 }}>{v.toLocaleString('es-ES')} €</span>
+                    </div>
+                    <div style={{ height: 4, background: '#f0ece4', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(pctCanal, 100)}%`, background: c.color, borderRadius: 2, transition: 'width 0.3s ease' }} />
+                    </div>
+                  </div>
+                )}
+              </label>
+            )
+          })}
+        </div>
+
+        {facTotal > 0 && total > 0 && (
+          <div style={{ marginTop: 16, padding: '10px 14px', background: '#faf8f4', borderRadius: 6, border: '1px solid #e8e3d8', fontSize: 13 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#666' }}>Asignado a canales</span>
+              <span style={{ fontWeight: 600 }}>{total.toLocaleString('es-ES')} €</span>
+            </div>
+            {sinAsignar !== null && Math.abs(sinAsignar) > 0.5 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                <span style={{ color: sinAsignar > 0 ? '#888' : '#e74c3c' }}>
+                  {sinAsignar > 0 ? 'Sin asignar' : 'Exceso sobre facturación'}
+                </span>
+                <span style={{ color: sinAsignar > 0 ? '#888' : '#e74c3c', fontWeight: 600 }}>
+                  {sinAsignar > 0 ? '' : '-'}{Math.abs(sinAsignar).toLocaleString('es-ES')} €
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 // ── Sección de Personal ──────────────────────────────────────────────────────
 
 function SeccionPersonal({ params, onChange }) {
@@ -360,6 +442,9 @@ export default function ExplotacionPage() {
   const [bancarios, setBancarios] = useState({
     comisiones_datafono: '', mantenimiento_datafono: '', resto_comisiones: '',
   })
+  const [canales, setCanales] = useState({
+    copa_barra: '', botella_mesa: '', grupos_eventos: '', take_away: '',
+  })
   const [historico, setHistorico] = useState([])
 
   useEffect(() => {
@@ -414,6 +499,13 @@ export default function ExplotacionPage() {
           mantenimiento_datafono: data.mantenimiento_datafono || '',
           resto_comisiones: data.resto_comisiones || '',
         })
+        const cn = data.canales_negocio || {}
+        setCanales({
+          copa_barra: cn.copa_barra || '',
+          botella_mesa: cn.botella_mesa || '',
+          grupos_eventos: cn.grupos_eventos || '',
+          take_away: cn.take_away || '',
+        })
       } else {
         setFacturacion('')
         setConsumoMp('')
@@ -425,6 +517,7 @@ export default function ExplotacionPage() {
           { id: 'alq_otros', concepto: 'Otros', importe: '' },
         ])
         setBancarios({ comisiones_datafono: '', mantenimiento_datafono: '', resto_comisiones: '' })
+        setCanales({ copa_barra: '', botella_mesa: '', grupos_eventos: '', take_away: '' })
       }
     }
     cargarPeriodo()
@@ -477,6 +570,12 @@ export default function ExplotacionPage() {
       comisiones_datafono: num(bancarios.comisiones_datafono),
       mantenimiento_datafono: num(bancarios.mantenimiento_datafono),
       resto_comisiones: num(bancarios.resto_comisiones),
+      canales_negocio: {
+        copa_barra: num(canales.copa_barra),
+        botella_mesa: num(canales.botella_mesa),
+        grupos_eventos: num(canales.grupos_eventos),
+        take_away: num(canales.take_away),
+      },
       updated_at: new Date().toISOString(),
     }
 
@@ -698,6 +797,7 @@ export default function ExplotacionPage() {
           </section>
         )}
 
+        <SeccionCanales canales={canales} onChange={setCanales} facturacionTotal={facturacion} />
         <SeccionPersonal params={personal} onChange={setPersonal} />
         <SeccionGastos partidas={gastosPartidas} onChange={setGastosPartidas} />
         <SeccionAlquileres partidas={alquilerPartidas} onChange={setAlquilerPartidas} />
