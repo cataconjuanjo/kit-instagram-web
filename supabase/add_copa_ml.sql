@@ -1,3 +1,3 @@
--- Cantidad en ml por copa en carta pública
-ALTER TABLE public.restaurantes
+-- Cantidad en ml por copa, configurable por vino
+ALTER TABLE public.vinos
   ADD COLUMN IF NOT EXISTS copa_ml integer;

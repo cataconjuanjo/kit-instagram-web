@@ -7,7 +7,7 @@ const RESTAURANTE_BASE_FIELDS = [
   'id', 'slug', 'nombre', 'ciudad',
   'color_acento', 'color_primario', 'color_fondo', 'tipografia',
   'logo_url', 'banner_url', 'banner_zoom', 'banner_x', 'banner_y',
-  'carta_mostrar_euro', 'carta_copa_decimales', 'carta_pie_texto', 'copa_ml',
+  'carta_mostrar_euro', 'carta_copa_decimales', 'carta_pie_texto',
   'hub_activo',
 ]
 
@@ -20,7 +20,7 @@ const RESTAURANTE_HUB_FIELDS = [
 
 const VINO_FIELDS = [
   'id', 'nombre', 'bodega', 'tipo', 'region', 'uva',
-  'anada', 'precio_copa', 'precio_botella', 'notas_cata', 'activo',
+  'anada', 'precio_copa', 'precio_botella', 'copa_ml', 'notas_cata', 'activo',
   'taninos', 'acidez', 'alcohol', 'dulzor', 'cuerpo', 'intensidad', 'final',
   'stock',
 ]

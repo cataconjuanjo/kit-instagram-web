@@ -1175,9 +1175,6 @@ export default function CartaPublica() {
   const decimalesCopa = restaurante?.carta_copa_decimales !== false ? 2 : 0
   const precioCopaCarta = valor => _formatPrecio(valor, decimalesCopa) + moneda
   const precioUnidadCarta = (precio, unidad) => `${precio} / ${String(unidad || '').toLowerCase()}`
-  const copaMl = restaurante?.copa_ml
-  const etiquetaCopa = copaMl ? `${i.copa} · ${copaMl} ml` : i.copa
-  const etiquetaCopaMin = etiquetaCopa.toLowerCase()
 
   const preciosDisponibles = [...new Set(vinos.map(v => v.precio_botella).filter(Boolean).sort((a, b) => a - b))]
   const precioMaximo = preciosDisponibles[preciosDisponibles.length - 1] || 100
@@ -1493,6 +1490,8 @@ export default function CartaPublica() {
   function renderVinoCard(v, opciones = {}) {
     const enComparador = vinosComparador.find(vc => vc.id === v.id)
     const tieneCopa = precioValido(v.precio_copa)
+    const etiquetaCopa = v.copa_ml ? `${i.copa} · ${v.copa_ml} ml` : i.copa
+    const etiquetaCopaMin = etiquetaCopa.toLowerCase()
     const tieneBotella = precioValido(v.precio_botella)
     const precioCopaPrincipal = tieneCopa && (opciones.precioCopaPrincipal || !tieneBotella)
     const etiquetas = etiquetasVino(v)

@@ -117,7 +117,7 @@ function precioCelda(valor) {
 function vinoInicialDesdeUrl() {
   const base = {
     nombre: '', bodega: '', tipo: 'tinto', region: '',
-    uva: '', anada: '', precio_copa: '', precio_botella: '', stock: '', coste_compra: '', stock_minimo: '', proveedor: '', notas_cata: ''
+    uva: '', anada: '', precio_copa: '', copa_ml: '', precio_botella: '', stock: '', coste_compra: '', stock_minimo: '', proveedor: '', notas_cata: ''
   }
   if (typeof window === 'undefined') return base
   const params = new URLSearchParams(window.location.search)
@@ -320,6 +320,7 @@ const vinosActivos = vinos.filter(vino => vino.activo !== false)
       ...nuevoVino,
       restaurante_id: restaurante.id,
       precio_copa: decimalOpcional(nuevoVino.precio_copa),
+      copa_ml: parseInt(nuevoVino.copa_ml) || null,
       precio_botella: decimalOpcional(nuevoVino.precio_botella),
       stock: parseInt(nuevoVino.stock) || 0,
       coste_compra: parseFloat(nuevoVino.coste_compra) || 0,
@@ -336,7 +337,7 @@ setGenerandoCata(false)
       setVinos([...vinos, data[0]])
       setNuevoVino({
         nombre: '', bodega: '', tipo: 'tinto', region: '',
-        uva: '', anada: '', precio_copa: '', precio_botella: '', stock: '', coste_compra: '', stock_minimo: '', proveedor: '', notas_cata: ''
+        uva: '', anada: '', precio_copa: '', copa_ml: '', precio_botella: '', stock: '', coste_compra: '', stock_minimo: '', proveedor: '', notas_cata: ''
       })
       setMostrarFormulario(false)
     }
@@ -910,6 +911,7 @@ async function guardarEdicion(vino) {
     uva: vino.uva,
     anada: vino.anada,
     precio_copa: decimalOpcional(vino.precio_copa),
+    copa_ml: parseInt(vino.copa_ml) || null,
 precio_botella: decimalOpcional(vino.precio_botella),
     coste_compra: parseFloat(vino.coste_compra) || 0,
     stock_minimo: parseInt(vino.stock_minimo, 10) || 0,
@@ -1428,6 +1430,7 @@ async function aplicarAccionMasiva(confirmado = false) {
                 </select>
               </div>
               {campo('Precio copa (€)', 'precio_copa', '4.00', 'number')}
+              {campo('Cantidad copa (ml)', 'copa_ml', '150', 'number')}
               {campo('Precio botella (€)', 'precio_botella', '22.00', 'number')}
               {campo('Stock', 'stock', '12', 'number')}
               <div style={{ gridColumn: '1 / -1' }}>
@@ -1719,6 +1722,7 @@ async function aplicarAccionMasiva(confirmado = false) {
                       { label: 'Uva', key: 'uva' },
                       { label: 'Añada', key: 'anada' },
                       { label: 'Precio copa (€)', key: 'precio_copa' },
+                      { label: 'Cantidad copa (ml)', key: 'copa_ml' },
                       { label: 'Precio botella (€)', key: 'precio_botella' },
                     ].map(f => (
                       <div key={f.key}>

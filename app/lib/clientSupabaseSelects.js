@@ -39,7 +39,7 @@ export const SELECT_CLIENT_RESTAURANTE_DASHBOARD = [
   'id', 'slug', 'nombre', 'email', 'ciudad',
   'color_acento', 'color_primario', 'color_fondo', 'tipografia',
   'logo_url', 'banner_url', 'banner_zoom', 'banner_x', 'banner_y',
-  'carta_mostrar_euro', 'carta_copa_decimales', 'carta_pie_texto', 'copa_ml',
+  'carta_mostrar_euro', 'carta_copa_decimales', 'carta_pie_texto',
   'hub_activo', 'hub_titulo', 'hub_subtitulo', 'hub_fondo_url',
   'hub_fondo_zoom', 'hub_fondo_x', 'hub_fondo_y', 'hub_overlay',
   'hub_estilo', 'hub_mostrar_logo', 'hub_mostrar_nombre',
@@ -53,7 +53,7 @@ export const SELECT_CLIENT_RESTAURANTE_DASHBOARD = [
 
 export const SELECT_CLIENT_VINO_DASHBOARD = [
   'id', 'restaurante_id', 'nombre', 'bodega', 'tipo', 'region',
-  'uva', 'anada', 'precio_botella', 'precio_copa', 'coste_compra',
+  'uva', 'anada', 'precio_botella', 'precio_copa', 'copa_ml', 'coste_compra',
   'stock', 'stock_minimo', 'proveedor', 'referencia_proveedor',
   'formato_compra', 'notas_cata', 'activo', 'internacional', 'foto_url',
 ].join(', ')
