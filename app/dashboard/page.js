@@ -843,40 +843,6 @@ function DashboardHome() {
 
         {mostrarOperativaDiaria && (
           <>
-            <section className={styles.priorityPanel}>
-              <div>
-                <p className={styles.eyebrow}>Prioridad de hoy</p>
-                <h1>{accionPrincipal.label}</h1>
-                <p>{accionPrincipal.detalle || resumenOperativo}</p>
-              </div>
-              <div className={styles.prioritySide}>
-                <div className={styles.priorityStats}>
-                  <span><strong>{stats.escaneos}</strong>escaneos</span>
-                  <span><strong>{stats.ventasHoy}</strong>ventas</span>
-                  <span><strong>{alertasSala}</strong>señales</span>
-                </div>
-                <Link href={accionPrincipal.href} className={styles.btnNav}>{labelNavegacion(accionPrincipal.href)}</Link>
-              </div>
-            </section>
-
-            <section className={styles.todaySnapshotGrid} aria-label="Resumen operativo de hoy">
-              <Link href="/dashboard/qr">
-                <span>Carta publica</span>
-                <strong>{cartaPublicada && cartaPublicable ? 'Lista para mesa' : 'Revisar antes de publicar'}</strong>
-                <p>{cartaPublicable ? `${contenidoPublicacion.vinos ?? 0} ${(contenidoPublicacion.vinos ?? 0) === 1 ? 'vino' : 'vinos'} y ${contenidoPublicacion.platos ?? 0} ${(contenidoPublicacion.platos ?? 0) === 1 ? 'plato' : 'platos'} con contenido minimo.` : 'Falta contenido minimo para que el QR tenga sentido.'}</p>
-              </Link>
-              <Link href="/dashboard/sala">
-                <span>Servicio</span>
-                <strong>{alertasSala ? `${alertasSala} senales abiertas` : 'Briefing preparado'}</strong>
-                <p>{haySenalesSala ? `${stats.ventasHoy} ventas y ${alertasSala} dudas o incidencias ${etiquetaServicio}.` : 'Argumentos y foco de sala listos para revisar antes del turno.'}</p>
-              </Link>
-              <Link href="/dashboard/bodega">
-                <span>Bodega</span>
-                <strong>{bajoMinimo.length ? `${bajoMinimo.length} bajo minimo` : 'Sin compra urgente'}</strong>
-                <p>{sinCosteCompra.length + sinProveedor.length ? `${sinCosteCompra.length + sinProveedor.length} datos bloquean margen o pedido.` : 'Coste, proveedor y stock no muestran bloqueos graves.'}</p>
-              </Link>
-            </section>
-
             {perfilBodega && (
               <section className={styles.cellarCommandPanel}>
                 <div className={styles.cellarCommandHead}>
@@ -929,22 +895,8 @@ function DashboardHome() {
                 </div>
               </section>
             )}
-
-
-
             {(radarLoading || radarError || radarAcciones.length > 0) && (
               <section className={styles.dailyRadarPanel}>
-                <div className={styles.dailyRadarHead}>
-                  <div>
-                    <p className={styles.eyebrow}>Radar diario</p>
-                    <h2>{accionesRadarAbiertas.length ? 'Acciones operativas de hoy' : 'Día operativo controlado'}</h2>
-                    <p>
-                      {radarPersistidas
-                        ? `${accionesRadarHechas} hechas · ${accionesRadarAbiertas.length} abiertas`
-                        : 'Lectura generada; aplica la migración para guardar estados.'}
-                    </p>
-                  </div>
-                </div>
                 {radarError && <div className={styles.radarNotice}>{radarError}</div>}
                 <div className={styles.dailyRadarList}>
                   {(accionesRadarAbiertas.length ? accionesRadarAbiertas : radarAcciones).slice(0, 3).map(accion => (
@@ -982,25 +934,7 @@ function DashboardHome() {
                 </div>
               </section>
             )}
-
           </>
-        )}
-
-        {mostrarOperativaDiaria && accionesSecundarias.length > 0 && (
-          <section className={styles.todayActions}>
-            <div>
-              <p className={styles.eyebrow}>Siguiente</p>
-              <h2>Después de la prioridad</h2>
-            </div>
-            <div className={styles.todayActionList}>
-              {accionesSecundarias.map(accion => (
-                <Link key={accion.texto || accion.label} href={accion.href}>
-                  <span>{accion.tipo || 'Operativa'}</span>
-                  <strong>{accion.texto || accion.label}</strong>
-                </Link>
-              ))}
-            </div>
-          </section>
         )}
 
       </div>
