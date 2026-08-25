@@ -160,11 +160,13 @@ export default function AdminLayout({ children }) {
               <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><path d="M1 8l4.5 2L10 8" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M1 5.5l4.5 2L10 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M1 3l4.5 2L10 3" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
               Proveedores
             </p>
-            <div
+            <Link
+              href="/admin/proveedores"
               className={`${styles.navLink} ${pathname === '/admin/proveedores' ? styles.navActive : ''}`}
+              onClick={() => setMenuOpen(false)}
             >
               Proveedores
-            </div>
+            </Link>
             <div className={styles.subnavAdmin}>
               <Link
                 href="/admin/proveedores?vista=gestion"

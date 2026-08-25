@@ -75,7 +75,7 @@
   padding: 10px 14px;
   background: #f7f7f2;
   color: #17191d;
-  border-left: 4px solid #1f7a61;
+  border-left: 4px solid var(--color-acento, #1f7a61);
 }
 
 .workspace {
@@ -180,7 +180,7 @@
 }
 
 .serviceJourneyActive b {
-  background: #1f7a61;
+  background: var(--color-acento, #1f7a61);
   color: #ffffff;
 }
 
@@ -198,7 +198,7 @@
 }
 
 .field:focus {
-  border-color: #1f7a61;
+  border-color: var(--color-acento, #1f7a61);
   box-shadow: 0 0 0 3px rgba(31, 122, 97, 0.14);
 }
 
@@ -250,7 +250,7 @@
 .textButton {
   border: none;
   background: transparent;
-  color: #1f7a61;
+  color: var(--color-acento, #1f7a61);
   cursor: pointer;
   font-size: 12px;
   font-weight: 750;
@@ -310,8 +310,8 @@
 }
 
 .chipActive {
-  background: #1f7a61;
-  border-color: #1f7a61;
+  background: var(--color-acento, #1f7a61);
+  border-color: var(--color-acento, #1f7a61);
   color: #ffffff;
 }
 
@@ -331,7 +331,7 @@
   min-height: 40px;
   border: 0;
   border-radius: 8px;
-  background: #1f7a61;
+  background: var(--color-acento, #1f7a61);
   color: #ffffff;
   cursor: pointer;
   padding: 10px 12px;
@@ -394,7 +394,7 @@
   margin-top: 14px;
   border: 0;
   border-radius: 8px;
-  background: #1f7a61;
+  background: var(--color-acento, #1f7a61);
   color: #ffffff;
   cursor: pointer;
   padding: 10px 12px;
@@ -552,8 +552,8 @@
 }
 
 .optionActive {
-  background: #1f7a61;
-  border-color: #1f7a61;
+  background: var(--color-acento, #1f7a61);
+  border-color: var(--color-acento, #1f7a61);
   color: #ffffff;
 }
 
@@ -655,7 +655,7 @@
 }
 
 .dishSelected {
-  border-color: #1f7a61;
+  border-color: var(--color-acento, #1f7a61);
   background: #e7f2ee;
 }
 
@@ -836,8 +836,8 @@
 }
 
 .quickRecommendationActive {
-  border-color: #1f7a61;
-  background: #1f7a61;
+  border-color: var(--color-acento, #1f7a61);
+  background: var(--color-acento, #1f7a61);
   color: #ffffff;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16) inset;
 }
@@ -989,8 +989,8 @@
 }
 
 .quickActionPrimary {
-  border-color: #1f7a61;
-  background: #1f7a61;
+  border-color: var(--color-acento, #1f7a61);
+  background: var(--color-acento, #1f7a61);
   color: #ffffff;
 }
 
@@ -1060,8 +1060,8 @@
 }
 
 .recommendCardActive {
-  border-color: #1f7a61;
-  box-shadow: inset 0 0 0 1px #1f7a61;
+  border-color: var(--color-acento, #1f7a61);
+  box-shadow: inset 0 0 0 1px var(--color-acento, #1f7a61);
 }
 
 .recommendCard:focus-visible {
@@ -1138,8 +1138,8 @@
 }
 
 .pickWineActive {
-  border-color: #1f7a61;
-  background: #1f7a61;
+  border-color: var(--color-acento, #1f7a61);
+  background: var(--color-acento, #1f7a61);
   color: #ffffff;
 }
 
@@ -1465,8 +1465,8 @@
 }
 
 .compareActive {
-  background: #1f7a61;
-  border-color: #1f7a61;
+  background: var(--color-acento, #1f7a61);
+  border-color: var(--color-acento, #1f7a61);
   color: #ffffff;
 }
 
@@ -1594,6 +1594,79 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ── Sub-page nav (comparador, ficha) ── */
+
+.subHeader {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: rgba(15, 17, 21, 0.96);
+  border-bottom: 1px solid #242a30;
+  backdrop-filter: blur(12px);
+}
+
+.subHeaderBack {
+  background: none;
+  border: none;
+  color: #8b929b;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.subHeaderLabel {
+  font-size: 11px;
+  color: #8b929b;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.subBody {
+  padding: 20px 18px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── PIN / acceso screen ── */
+
+.pinInput {
+  width: 100%;
+  max-width: 200px;
+  padding: 14px;
+  text-align: center;
+  font-size: 24px;
+  letter-spacing: 0.3em;
+  border: none;
+  border-bottom: 1px solid #343b44;
+  background: transparent;
+  color: #ffffff;
+  outline: none;
+  margin-bottom: 16px;
+}
+
+.pinError {
+  font-size: 12px;
+  color: #f09090;
+  margin: 0 0 16px;
+}
+
+.stateFooterLink {
+  display: block;
+  margin-top: 34px;
+  color: #676d73;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
 }
 
 @media (max-width: 920px) {

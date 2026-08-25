@@ -12,6 +12,25 @@ import rs from './restaurantes.module.css'
 
 const PLAN_LABEL = { basic: 'Básico', pro: 'Sala', bodega: 'Bodega', premium: 'Acompañado' }
 
+function VerificarCarta({ slug }) {
+  const [estado, setEstado] = useState(null)
+  if (!slug) return null
+  async function verificar(e) {
+    e.stopPropagation()
+    setEstado('checking')
+    try {
+      const resp = await fetch(`/carta/${slug}`, { method: 'HEAD', cache: 'no-store' })
+      setEstado(resp.ok ? 'ok' : 'error')
+    } catch {
+      setEstado('error')
+    }
+  }
+  if (estado === 'checking') return <span style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 4 }}>…</span>
+  if (estado === 'ok') return <span style={{ fontSize: 10, color: 'var(--green)', marginLeft: 4 }}>✓</span>
+  if (estado === 'error') return <span title="La carta no responde" style={{ fontSize: 10, color: 'var(--wine)', marginLeft: 4 }}>✕ No responde</span>
+  return <button type="button" onClick={verificar} title="Verificar accesibilidad de la carta" style={{ marginLeft: 4, fontSize: 10, cursor: 'pointer', background: 'none', border: '1px solid var(--line)', borderRadius: 3, padding: '1px 4px', color: 'var(--muted)', lineHeight: 1 }}>↗</button>
+}
+
 function formatoDuracion(segundos = 0) {
   const minutos = Math.round(segundos / 60)
   if (minutos < 60) return `${minutos} min`
@@ -921,7 +940,12 @@ function AdminPageContent() {
                     <td>{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ') || '—'}</td>
                     <td><span className={`${rs.planBadge} ${planClass}`}>{PLAN_LABEL[restaurante.plan] || restaurante.plan || 'sin plan'}</span></td>
                     <td><span className={`${rs.estadoBadge} ${estadoClass}`}>{suscripcion.label}</span></td>
-                    <td><span className={`${rs.estadoBadge} ${cartaClass}`}>{publicacion.label}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span className={`${rs.estadoBadge} ${cartaClass}`}>{publicacion.label}</span>
+                        {publicacion.done && restaurante.slug && <VerificarCarta slug={restaurante.slug} />}
+                      </div>
+                    </td>
                     <td><span className={`${rs.estadoBadge} ${etiquetasClass}`}>{etiquetas.label}</span></td>
                     <td className={rs.tdFecha}>
                       {resumenUso?.activo_ahora

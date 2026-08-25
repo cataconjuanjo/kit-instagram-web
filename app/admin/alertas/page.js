@@ -285,7 +285,7 @@ export default function AdminAlertasPage() {
               </div>
             )}
             <div className="admin-overlay-actions">
-              <button disabled={accionando === alertaActiva.id} onClick={() => actualizarAlerta(alertaActiva, 'en_progreso', 'Trabajo iniciado.')}>En progreso</button>
+              <button className="is-primary" disabled={accionando === alertaActiva.id} onClick={() => actualizarAlerta(alertaActiva, 'en_progreso', 'Trabajo iniciado.')}>En progreso</button>
               <button disabled={accionando === alertaActiva.id} onClick={() => crearPropuesta(alertaActiva)}>Crear propuesta</button>
               <button disabled={accionando === alertaActiva.id} onClick={() => actualizarAlerta(alertaActiva, 'resuelta', 'Resuelta desde bandeja de alertas.')}>Resolver</button>
               <button disabled={accionando === alertaActiva.id} onClick={() => actualizarAlerta(alertaActiva, 'descartada', 'Descartada desde bandeja de alertas.')}>Descartar</button>

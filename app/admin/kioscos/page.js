@@ -291,7 +291,7 @@ export default function AdminKioscosPage() {
       </div>
 
       {loading ? (
-        <p className={styles.cargando}>Cargando...</p>
+        <p className="admin-loading">Cargando</p>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>

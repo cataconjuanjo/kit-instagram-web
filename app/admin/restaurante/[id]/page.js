@@ -985,12 +985,16 @@ export default function RestauranteWorkspace() {
     <div className="admin-main ws-main">
 
           {/* Workspace header */}
-          <div className="ws-header">
+          <div className="ws-header" style={(restaurante.color_primario || restaurante.color_acento) ? { borderTop: `3px solid ${restaurante.color_primario || restaurante.color_acento}` } : undefined}>
             <div className="ws-header-left">
               <Link href="/admin/consultoria" className="ws-back">← Radar</Link>
               <div>
                 <h2 className="ws-title">{restaurante.nombre}</h2>
-                <span className="ws-sub">{[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ')} · {metricas.vinos} vinos · {metricas.platos} platos</span>
+                <span className="ws-sub">
+                  {restaurante.color_primario && <span aria-hidden="true" title={`Primario ${restaurante.color_primario}`} style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: restaurante.color_primario, border: '1px solid rgba(0,0,0,.12)', verticalAlign: 'middle', marginRight: 4 }} />}
+                  {restaurante.color_acento && restaurante.color_acento !== restaurante.color_primario && <span aria-hidden="true" title={`Acento ${restaurante.color_acento}`} style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: restaurante.color_acento, border: '1px solid rgba(0,0,0,.12)', verticalAlign: 'middle', marginRight: 6 }} />}
+                  {[restaurante.ciudad, restaurante.provincia].filter(Boolean).join(' · ')} · {metricas.vinos} vinos · {metricas.platos} platos
+                </span>
               </div>
             </div>
             <div className="ws-header-actions">

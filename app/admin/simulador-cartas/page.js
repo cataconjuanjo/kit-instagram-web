@@ -852,7 +852,7 @@ export default function SimuladorCartas() {
   if (loading) {
     return (
       <main className="sim-page">
-        <div className="sim-loading">Cargando simulador de cartas...</div>
+        <div className="admin-loading">Cargando simulador de cartas...</div>
       </main>
     )
   }

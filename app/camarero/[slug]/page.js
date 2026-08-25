@@ -217,6 +217,12 @@ export default function Camarero() {
     }
   }, [slug, loadRetryKey])
 
+  useEffect(() => {
+    if (!restaurante?.color_acento) return
+    document.documentElement.style.setProperty('--color-acento', restaurante.color_acento)
+    return () => { document.documentElement.style.removeProperty('--color-acento') }
+  }, [restaurante?.color_acento])
+
   async function comprobarPin() {
     if (!restaurante?.id) return
     await iniciarSesionSala(restaurante, pin)
@@ -1772,56 +1778,64 @@ export default function Camarero() {
   )
 
   if (!autenticado && restaurante?.camarero_pin_bloqueo_activo !== true) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif', padding: 24 }}>
-      <p style={{ fontSize: 11, color: '#666', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 8px' }}>Modo camarero</p>
-      <p style={{ fontSize: 20, fontWeight: 300, color: 'white', fontFamily: 'Georgia, serif', margin: '0 0 16px' }}>{restaurante?.nombre}</p>
-      <p style={{ fontSize: 12, color: '#777', margin: 0 }}>{intentandoAccesoAbierto ? 'Entrando sin PIN...' : 'Preparando acceso de sala...'}</p>
-      {accessError && (
-        <>
-          <p style={{ maxWidth: 340, color: '#c9a84c', fontSize: 13, lineHeight: 1.5, margin: '18px 0 0', textAlign: 'center' }}>{accessError}</p>
-          <button type="button" onClick={() => iniciarSesionSala(restaurante, '', demoActivo, true)} style={{ marginTop: 16, background: 'white', color: '#111', border: 'none', borderRadius: 6, padding: '12px 24px', fontSize: 12, fontWeight: 800, textTransform: 'uppercase', cursor: 'pointer' }}>
-            Reintentar
-          </button>
-        </>
-      )}
+    <div className={styles.stateScreen}>
+      <div className={styles.stateCard}>
+        {!accessError && <div className={styles.stateSpinner} />}
+        <p className={styles.stateEyebrow}>Modo camarero</p>
+        <h1 className={styles.stateTitle}>{restaurante?.nombre}</h1>
+        {accessError ? (
+          <>
+            <p className={styles.stateText} style={{ color: '#c9a84c' }}>{accessError}</p>
+            <div className={styles.stateActions}>
+              <button type="button" onClick={() => iniciarSesionSala(restaurante, '', demoActivo, true)} className={styles.stateButton}>
+                Reintentar
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className={styles.stateText}>
+            {intentandoAccesoAbierto ? 'Entrando sin PIN...' : 'Preparando acceso de sala...'}
+          </p>
+        )}
+      </div>
     </div>
   )
 
   if (!autenticado) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif', padding: 24 }}>
-      <p style={{ fontSize: 11, color: '#666', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '0 0 8px' }}>Modo camarero</p>
-      <p style={{ fontSize: 20, fontWeight: 300, color: 'white', fontFamily: 'Georgia, serif', margin: '0 0 32px' }}>{restaurante?.nombre}</p>
-      <input type="password" aria-label="PIN de sala" placeholder="PIN" value={pin}
-        onChange={e => setPin(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && comprobarPin()}
-        style={{ width: '100%', maxWidth: 200, padding: '14px', textAlign: 'center', fontSize: 24, letterSpacing: '0.3em', border: 'none', borderBottom: '1px solid #333', background: 'transparent', color: 'white', outline: 'none', marginBottom: 16 }}
-      />
-      {errorPin && <p style={{ fontSize: 12, color: '#c07070', margin: '0 0 16px' }}>PIN incorrecto</p>}
-      <button type="button" onClick={comprobarPin} style={{ background: 'white', color: '#111', border: 'none', padding: '12px 32px', fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}>
-        Entrar
-      </button>
-      <a href="/cartavinos" target="_blank" rel="noreferrer" style={{
-        marginTop: 34,
-        color: '#555',
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: '0.12em',
-        textDecoration: 'none',
-        textTransform: 'uppercase'
-      }}>
-        Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
-      </a>
+    <div className={styles.stateScreen}>
+      <div className={styles.stateCard}>
+        <p className={styles.stateEyebrow}>Modo camarero</p>
+        <h1 className={styles.stateTitle}>{restaurante?.nombre}</h1>
+        <input
+          type="password"
+          aria-label="PIN de sala"
+          placeholder="PIN"
+          value={pin}
+          onChange={e => setPin(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && comprobarPin()}
+          className={styles.pinInput}
+        />
+        {errorPin && <p className={styles.pinError}>PIN incorrecto</p>}
+        <div className={styles.stateActions}>
+          <button type="button" onClick={comprobarPin} className={styles.stateButton}>
+            Entrar
+          </button>
+        </div>
+        <a href="/cartavinos" target="_blank" rel="noreferrer" className={styles.stateFooterLink}>
+          Carta Viva <span style={{ fontStyle: 'italic', letterSpacing: '0.08em' }}>×</span> @cataconjuanjo
+        </a>
+      </div>
     </div>
   )
 
   // Vista comparador
   if (mostrarComparador) return (
-    <div style={{ minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #222' }}>
-        <button type="button" aria-label="Volver al modo camarero" onClick={() => setMostrarComparador(false)} style={{ background: 'none', border: 'none', color: '#666', fontSize: 20, cursor: 'pointer', padding: 0 }}>←</button>
-        <span style={{ fontSize: 12, color: '#555', letterSpacing: '0.08em' }}>COMPARAR</span>
+    <div className={styles.shell}>
+      <div className={styles.subHeader}>
+        <button type="button" aria-label="Volver al modo camarero" onClick={() => setMostrarComparador(false)} className={styles.subHeaderBack}>←</button>
+        <span className={styles.subHeaderLabel}>Comparar</span>
       </div>
-      <div style={{ padding: '20px' }}>
+      <div className={styles.subBody}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
           {vinosComparador.map((v, idx) => (
             <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1898,12 +1912,12 @@ export default function Camarero() {
 
   // Vista ficha vino
   if (vinoSeleccionado) return (
-    <div style={{ minHeight: '100vh', background: '#111', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #222' }}>
-        <button type="button" aria-label="Volver al modo camarero" onClick={() => setVinoSeleccionado(null)} style={{ background: 'none', border: 'none', color: '#666', fontSize: 20, cursor: 'pointer', padding: 0 }}>←</button>
-        <span style={{ fontSize: 12, color: '#555', letterSpacing: '0.08em' }}>FICHA DEL VINO</span>
+    <div className={styles.shell}>
+      <div className={styles.subHeader}>
+        <button type="button" aria-label="Volver al modo camarero" onClick={() => setVinoSeleccionado(null)} className={styles.subHeaderBack}>←</button>
+        <span className={styles.subHeaderLabel}>Ficha del vino</span>
       </div>
-      <div style={{ padding: '28px 20px' }}>
+      <div className={styles.subBody}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[vinoSeleccionado.tipo] }} />
           <span style={{ fontSize: 11, color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{tipoLabel[vinoSeleccionado.tipo]}</span>

@@ -107,7 +107,7 @@ export default function AdminSugerenciasPage() {
       </div>
 
       <div className="consult-grid">
-        {loading && <p className="consult-empty">Cargando sugerencias...</p>}
+        {loading && <p className="admin-loading">Cargando sugerencias...</p>}
         {!loading && visibles.length === 0 && <p className="consult-empty">No hay sugerencias en esta vista.</p>}
         {visibles.map(item => (
           <article className="consult-card" key={item.id}>

@@ -1112,7 +1112,7 @@ button.footerLink {
 }
 
 /* On desktop: hide legacy topbar and mobile bar (replaced by topHeader) */
-@media (min-width: 1101px) {
+@media (min-width: 821px) {
   /* CSS variable consumed by page-level sticky topbars */
   .shell {
     --dashboard-topnav-height: 96px;
@@ -1132,8 +1132,8 @@ button.footerLink {
   }
 }
 
-/* On mobile: hide desktop topHeader */
-@media (max-width: 1100px) {
+/* On mobile/tablet: hide desktop topHeader */
+@media (max-width: 820px) {
   .topHeader {
     display: none;
   }

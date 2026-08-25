@@ -61,3 +61,13 @@ Puedes meter fotos adicionales (retratos, logo, portfolio) en la carpeta `assets
 ## Después de generar
 
 Dile a Claude qué quieres cambiar: colores, textos, secciones, fotos. Itera hasta que te guste.
+
+## Diseño de interfaces web
+
+Cuando generes o modifiques cualquier interfaz web (HTML, páginas, componentes de UI, secciones, estilos), aplica siempre la skill `frontend-design` como guía de diseño. Esto significa:
+
+- Antes de escribir código, define un plan de diseño: paleta (4–6 hex), tipografías (display + body), layout y elemento firma.
+- Evita los defaults de IA: fondo crema con serif y terracota, negro con verde ácido, layout periódico con columnas densas — a menos que el brief lo pida explícitamente.
+- El héroe de la página es una tesis: ábrete con lo más característico del tema, no con un patrón genérico.
+- Gasta la audacia en un solo elemento firma; el resto debe ser contenido y disciplina.
+- Móvil, foco de teclado y `prefers-reduced-motion` son requisitos mínimos, no opcionales.

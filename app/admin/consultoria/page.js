@@ -662,7 +662,7 @@ export default function RadarConsultoria() {
                   <small>{check.accion}</small>
                 </article>
               ))}
-              {checksCierre.length === 0 && <p className="product-readiness-empty">Cargando estado de cierre.</p>}
+              {checksCierre.length === 0 && <p className="admin-loading">Cargando estado de cierre</p>}
             </div>
           </section>
 

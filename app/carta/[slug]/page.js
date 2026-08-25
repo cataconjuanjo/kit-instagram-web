@@ -354,6 +354,32 @@ function activarConTeclado(event, accion) {
   accion()
 }
 
+function vinosDeRespuesta(texto, vinosArr) {
+  if (!texto?.trim() || !vinosArr?.length) return []
+  const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const limpiarPrefijo = l => String(l).trim().replace(/^(?:[-*•]\s*|\d+[.)]\s*)/, '')
+  const usados = new Set()
+  const resultado = []
+  const parrafos = texto.split(/\n+/).map(p => p.trim()).filter(Boolean)
+  for (const parrafo of parrafos) {
+    const limpio = limpiarPrefijo(parrafo)
+    const limpioNorm = norm(limpio)
+    const encontrado = vinosArr.find(v => {
+      if (usados.has(v.id)) return false
+      const nombre = norm(v.nombre || '')
+      if (nombre.length < 4 || !limpioNorm.startsWith(nombre)) return false
+      return /^[\s—–\-:]/.test(limpioNorm.slice(nombre.length))
+    })
+    if (encontrado) {
+      const argumento = limpio.slice(encontrado.nombre.length).replace(/^[\s—–\-:]+/, '').trim()
+      resultado.push({ vino: encontrado, argumento })
+      usados.add(encontrado.id)
+      if (resultado.length >= 3) break
+    }
+  }
+  return resultado
+}
+
 function perfilesTextoVino(vino = {}) {
   const perfiles = Array.isArray(vino.perfiles_maridaje) ? vino.perfiles_maridaje : []
   const notas = normalizarTextoBase(`${perfiles.join(' ')} ${limpiarMarcadorPerfiles(vino.notas_cata || '')}`)
@@ -1580,10 +1606,10 @@ export default function CartaPublica() {
           </button>
           {(tieneBotella || tieneCopa) && (
             <div className={styles.labelPriceRow}>
-              {tieneCopa && <strong>{_formatPrecio(v.precio_copa, decimalesCopa)}</strong>}
+              {tieneCopa && <strong>{precioCopaCarta(v.precio_copa)}</strong>}
               {tieneCopa && <span>/ {i.copa.toLowerCase()}</span>}
               {tieneCopa && tieneBotella && <span>·</span>}
-              {tieneBotella && <strong>{_formatPrecio(v.precio_botella, 0)}</strong>}
+              {tieneBotella && <strong>{precioBotellaCarta(v.precio_botella)}</strong>}
               {tieneBotella && <span>/ {i.botella.toLowerCase()}</span>}
             </div>
           )}
@@ -1736,12 +1762,12 @@ export default function CartaPublica() {
               <div key={v.id + '_precio'} style={{ background: '#fff', padding: '10px 16px', textAlign: 'center' }}>
                 {precioValido(v.precio_copa) && (
                   <p style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 500, color: '#111' }}>
-                    {_formatPrecio(v.precio_copa, decimalesCopa)}<span style={{ fontSize: 10, color: '#bbb', fontWeight: 400 }}> /{i.copa.toLowerCase()}</span>
+                    {precioCopaCarta(v.precio_copa)}<span style={{ fontSize: 10, color: '#bbb', fontWeight: 400 }}> /{i.copa.toLowerCase()}</span>
                   </p>
                 )}
                 {precioValido(v.precio_botella) && (
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#111' }}>
-                    {_formatPrecio(v.precio_botella, 0)}<span style={{ fontSize: 10, color: '#bbb', fontWeight: 400 }}> /{i.botella.toLowerCase()}</span>
+                    {precioBotellaCarta(v.precio_botella)}<span style={{ fontSize: 10, color: '#bbb', fontWeight: 400 }}> /{i.botella.toLowerCase()}</span>
                   </p>
                 )}
               </div>
@@ -1795,8 +1821,8 @@ export default function CartaPublica() {
             { label: i.region, valor: vinoSeleccionado.region },
             { label: i.uva, valor: vinoSeleccionado.uva },
             { label: i.anada, valor: vinoSeleccionado.anada },
-            { label: i.copa, valor: precioValido(vinoSeleccionado.precio_copa) ? _formatPrecio(vinoSeleccionado.precio_copa, decimalesCopa) : null },
-            { label: i.botella, valor: precioValido(vinoSeleccionado.precio_botella) ? _formatPrecio(vinoSeleccionado.precio_botella, 0) : null },
+            { label: i.copa, valor: precioValido(vinoSeleccionado.precio_copa) ? precioCopaCarta(vinoSeleccionado.precio_copa) : null },
+            { label: i.botella, valor: precioValido(vinoSeleccionado.precio_botella) ? precioBotellaCarta(vinoSeleccionado.precio_botella) : null },
           ].filter(f => f.valor).map((f, idx, arr) => (
             <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: idx < arr.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
               <span style={{ fontSize: 14, color: '#aaa', whiteSpace: 'nowrap' }}>{f.label}</span>
@@ -2394,7 +2420,7 @@ export default function CartaPublica() {
             <a className={styles.heroCredit} href="/cartavinos" target="_blank" rel="noreferrer">
               Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
             </a>
-            <p className={styles.meta}>{restaurante.ciudad} · {platos.length} platos disponibles</p>
+            <p className={styles.meta}>{restaurante.ciudad} · {platos.length} {platos.length === 1 ? 'plato disponible' : 'platos disponibles'}</p>
             <ExperienceSignal experiencia={restaurante.experiencia_publica} />
           </div>
           <button className={styles.langButton} onClick={() => setIdioma(idioma === 'es' ? 'en' : 'es')}>
@@ -2503,12 +2529,42 @@ export default function CartaPublica() {
                     })}
                   </div>
                   {cargandoIA && !respuestaQuiz && <p className={styles.sommelierText}>{i.consultando}</p>}
-                  {respuestaQuiz && (
-                    <>
-                      <p className={styles.answerText} style={{ whiteSpace: 'pre-wrap', marginBottom: 16 }}>{respuestaQuiz}</p>
-                      <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
-                    </>
-                  )}
+                  {respuestaQuiz && (() => {
+                    const recom = vinosDeRespuesta(respuestaQuiz, vinos)
+                    return recom.length > 0 ? (
+                      <>
+                        <div className={styles.recomendadorGrid}>
+                          {recom.map(({ vino, argumento }) => (
+                            <article
+                              key={vino.id}
+                              className={styles.recomendadorCard}
+                              onClick={() => abrirFichaVino(vino)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(vino))}
+                            >
+                              <p className={styles.recomendadorCardNombre}>{nombreVinoCarta(vino)}</p>
+                              {vino.bodega && <p className={styles.recomendadorCardBodega}>{vino.bodega}</p>}
+                              {argumento && <p className={styles.recomendadorArgumento}>{argumento}</p>}
+                              {(precioValido(vino.precio_copa) || precioValido(vino.precio_botella)) && (
+                                <p className={styles.recomendadorPrecio}>
+                                  {precioValido(vino.precio_copa) ? precioCopaCarta(vino.precio_copa) + ' copa' : ''}
+                                  {precioValido(vino.precio_copa) && precioValido(vino.precio_botella) ? ' · ' : ''}
+                                  {precioValido(vino.precio_botella) ? precioBotellaCarta(vino.precio_botella) + ' botella' : ''}
+                                </p>
+                              )}
+                            </article>
+                          ))}
+                        </div>
+                        <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className={styles.answerText} style={{ whiteSpace: 'pre-wrap', marginBottom: 16 }}>{respuestaQuiz}</p>
+                        <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
+                      </>
+                    )
+                  })()}
                   <button onClick={reiniciarQuiz} className={styles.clearButton} style={{ color: '#fffaf3', borderColor: 'rgba(255,250,243,0.2)', marginTop: 8 }}>
                     {i.quizEmpezar}
                   </button>
@@ -2586,13 +2642,47 @@ export default function CartaPublica() {
               </div>
             )}
 
-            {respuesta && (
-              <div className={styles.answerBox}>
-                <p className={styles.selectedHead}>{i.sommelier}</p>
-                <p className={styles.answerText}>{respuesta}</p>
-                <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
-              </div>
-            )}
+            {respuesta && (() => {
+              const recom = vinosDeRespuesta(respuesta, vinos)
+              return (
+                <div className={styles.answerBox}>
+                  <p className={styles.selectedHead}>{i.sommelier}</p>
+                  {recom.length > 0 ? (
+                    <>
+                      <div className={styles.recomendadorGrid}>
+                        {recom.map(({ vino, argumento }) => (
+                          <article
+                            key={vino.id}
+                            className={styles.recomendadorCard}
+                            onClick={() => abrirFichaVino(vino)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(vino))}
+                          >
+                            <p className={styles.recomendadorCardNombre}>{nombreVinoCarta(vino)}</p>
+                            {vino.bodega && <p className={styles.recomendadorCardBodega}>{vino.bodega}</p>}
+                            {argumento && <p className={styles.recomendadorArgumento}>{argumento}</p>}
+                            {(precioValido(vino.precio_copa) || precioValido(vino.precio_botella)) && (
+                              <p className={styles.recomendadorPrecio}>
+                                {precioValido(vino.precio_copa) ? precioCopaCarta(vino.precio_copa) + ' copa' : ''}
+                                {precioValido(vino.precio_copa) && precioValido(vino.precio_botella) ? ' · ' : ''}
+                                {precioValido(vino.precio_botella) ? precioBotellaCarta(vino.precio_botella) + ' botella' : ''}
+                              </p>
+                            )}
+                          </article>
+                        ))}
+                      </div>
+                      <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className={styles.answerText}>{respuesta}</p>
+                      <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
+                    </>
+                  )}
+                </div>
+              )
+            })()}
           </section>
         )}
 
@@ -2696,7 +2786,7 @@ export default function CartaPublica() {
                 <div>
                   <h2 className={styles.sectionTitle}>{categoria}</h2>
                   <p className={styles.sectionSub}>
-                    {grupo.length} platos{seleccionadosEnCategoria ? ` · ${seleccionadosEnCategoria} seleccionados` : ''}
+                    {grupo.length} {grupo.length === 1 ? 'plato' : 'platos'}{seleccionadosEnCategoria ? ` · ${seleccionadosEnCategoria} seleccionados` : ''}
                   </p>
                 </div>
                 <span className={styles.accordionIcon}>{abierta ? '−' : '+'}</span>

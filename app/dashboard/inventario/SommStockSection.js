@@ -136,7 +136,7 @@ export default function SommStockSection({ restauranteId }) {
     neutral: '#888',
   }[kpi.semaforo]
 
-  if (cargando) return <div style={{ padding: 24, color: '#888', fontSize: 13 }}>Cargando datos Somm...</div>
+  if (cargando) return <div className="admin-loading">Cargando datos Somm</div>
 
   return (
     <div style={{ marginTop: 40 }}>

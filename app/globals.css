@@ -8838,7 +8838,7 @@ h3 {
 
 .executive-radar-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 14px;
   margin: 22px 32px;
 }
@@ -9266,7 +9266,7 @@ h3 {
 
 .consultant-weekly-kpis {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -11037,7 +11037,13 @@ html, body {
 .radar-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
+  max-height: 52px;
+  overflow: hidden;
+}
+
+.radar-tags:hover {
+  max-height: none;
 }
 
 .radar-tag {
@@ -15636,6 +15642,17 @@ a.supplier-btn-primary {
   color: #74223d;
   cursor: pointer;
   font-weight: 850;
+}
+
+.admin-overlay-actions button.is-primary {
+  background: #74223d;
+  border-color: #74223d;
+  color: #fff;
+}
+
+.admin-overlay-actions button.is-primary:hover {
+  background: #5e1a30;
+  border-color: #5e1a30;
 }
 
 .admin-overlay-actions a {

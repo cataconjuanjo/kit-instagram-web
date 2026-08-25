@@ -863,7 +863,7 @@ function DashboardHome() {
               <Link href="/dashboard/qr">
                 <span>Carta publica</span>
                 <strong>{cartaPublicada && cartaPublicable ? 'Lista para mesa' : 'Revisar antes de publicar'}</strong>
-                <p>{cartaPublicable ? `${contenidoPublicacion.vinos} vinos y ${contenidoPublicacion.platos} platos con contenido minimo.` : 'Falta contenido minimo para que el QR tenga sentido.'}</p>
+                <p>{cartaPublicable ? `${contenidoPublicacion.vinos ?? 0} ${(contenidoPublicacion.vinos ?? 0) === 1 ? 'vino' : 'vinos'} y ${contenidoPublicacion.platos ?? 0} ${(contenidoPublicacion.platos ?? 0) === 1 ? 'plato' : 'platos'} con contenido minimo.` : 'Falta contenido minimo para que el QR tenga sentido.'}</p>
               </Link>
               <Link href="/dashboard/sala">
                 <span>Servicio</span>

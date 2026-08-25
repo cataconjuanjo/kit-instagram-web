@@ -2796,7 +2796,7 @@ export default function AdminKioskoPage() {
               for (let i = tendencia.length - 1; i >= 0; i--) { if (tendencia[i] > 0) { lastIdx = i; break } }
               if (lastIdx < 0) return null
               const s = 7 - lastIdx
-              return s === 0 ? 'esta sem.' : `hace ${s}s`
+              return s === 0 ? 'esta sem.' : `hace ${s} sem.`
             })()
             return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, tendencia, agotado, stock: v.stock ?? null, pvpVal: pvp > 0 ? pvp : null, beneficio, ultimaSemana }
           })
