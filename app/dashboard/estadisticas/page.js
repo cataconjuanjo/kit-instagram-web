@@ -1810,20 +1810,34 @@ export default function Estadisticas() {
           )}
           <details className={styles.metricDetails}>
             <summary>
-              <span>Ver todas las metricas tecnicas</span>
+              <span>Ver todas las métricas técnicas</span>
               <strong>{metricas.length}</strong>
             </summary>
-            <section className={styles.statsGrid}>
-              {metricas.map(metrica => (
-                <StatCard
-                  key={metrica.label}
-                  value={metrica.valor}
-                  label={metrica.label}
-                  info={explicarMetrica(metrica.label)}
-                  showInfo={false}
-                />
-              ))}
-            </section>
+            <div style={{ padding: '4px 14px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {[
+                { label: 'Actividad', indices: [0, 1, 2, 6, 7, 14] },
+                { label: 'Armonía', indices: [3, 4, 5] },
+                { label: 'Ventas y TPV', indices: [8, 9, 10, 11, 12, 13] },
+                { label: 'Rentabilidad', indices: [18, 19, 20, 22, 23, 24, 25] },
+                { label: 'Conversión y fiabilidad', indices: [15, 16, 17, 21, 26, 27, 28] },
+              ].map(grupo => {
+                const items = grupo.indices.map(i => metricas[i]).filter(Boolean)
+                if (!items.length) return null
+                return (
+                  <div key={grupo.label}>
+                    <p className={styles.eyebrow} style={{ marginBottom: 8 }}>{grupo.label}</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                      {items.map(m => (
+                        <div key={m.label} style={{ minWidth: 96, flex: '1 1 96px', background: 'var(--cv-card,#fffaf3)', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 8, padding: '10px 12px' }}>
+                          <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--cv-text-dark,#2a211c)', margin: 0, lineHeight: 1 }}>{m.valor}</p>
+                          <p style={{ fontSize: 11, color: 'var(--cv-text-muted,#8A7E72)', margin: '4px 0 0', lineHeight: 1.3 }}>{m.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              }).filter(Boolean)}
+            </div>
           </details>
         </div>
       </section>
@@ -2147,23 +2161,55 @@ export default function Estadisticas() {
             <span className={styles.badge}>{aprendizajeComercial.length} acciones</span>
           </div>
           <div className={styles.panelBody}>
-            <section className={styles.gridTwo}>
-              {aprendizajeComercial.map(item => (
-                <article className={styles.itemCard} key={`aprendizaje-${item.clave}-${item.tipo}`}>
-                  <div className={styles.sectionHead} style={{ margin: 0 }}>
-                    <div>
-                      <p className={styles.eyebrow}>{item.tipo}</p>
-                      <h3 className={styles.sectionTitle}>{item.vino}</h3>
-                      <p className={styles.sectionText}>
-                        {item.recomendaciones} rec. - {item.ventasTpvAtribuidas} TPV atrib. - {item.ventasTpvNoAtribuidas} TPV no atrib. - {item.ventasSala} sala
-                      </p>
-                      <p className={styles.sectionText}>{item.accion}</p>
+            {(() => {
+              const sinVenta = aprendizajeComercial.filter(item => item.tipo === 'Recomendado sin venta')
+              const otros = aprendizajeComercial.filter(item => item.tipo !== 'Recomendado sin venta')
+              return (
+                <>
+                  {sinVenta.length > 0 && (
+                    <div style={{ marginBottom: otros.length ? 20 : 0 }}>
+                      <p className={styles.eyebrow} style={{ marginBottom: 8 }}>Recomendado sin venta</p>
+                      <div className={styles.table}>
+                        <div className={styles.tableHeader} style={{ gridTemplateColumns: '1fr 90px 90px 60px' }}>
+                          <p>Vino</p>
+                          <p style={{ textAlign: 'right' }}>Rec.</p>
+                          <p style={{ textAlign: 'right' }}>TPV atrib.</p>
+                          <p style={{ textAlign: 'right' }}>Margen</p>
+                        </div>
+                        {sinVenta.map(item => (
+                          <div className={styles.tableRow} key={`aprendizaje-${item.clave}-${item.tipo}`} style={{ gridTemplateColumns: '1fr 90px 90px 60px' }}>
+                            <p style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.vino}</p>
+                            <p style={{ fontSize: 13, textAlign: 'right', color: 'var(--cv-text-muted)' }}>{item.recomendaciones}</p>
+                            <p style={{ fontSize: 13, textAlign: 'right', color: 'var(--cv-text-muted)' }}>{item.ventasTpvAtribuidas}</p>
+                            <p style={{ fontSize: 13, textAlign: 'right', color: 'var(--cv-text-muted)' }}>{item.margenPct ? `${item.margenPct}%` : '—'}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <p className={styles.tiny} style={{ marginTop: 8, color: 'var(--cv-text-muted)' }}>Revisar argumento, precio o alternativa; no empujar si el encaje gastronómico es débil.</p>
                     </div>
-                    <span className={styles.badge}>{item.margenPct ? `${item.margenPct}%` : 'medir'}</span>
-                  </div>
-                </article>
-              ))}
-            </section>
+                  )}
+                  {otros.length > 0 && (
+                    <section className={styles.gridTwo}>
+                      {otros.map(item => (
+                        <article className={styles.itemCard} key={`aprendizaje-${item.clave}-${item.tipo}`}>
+                          <div className={styles.sectionHead} style={{ margin: 0 }}>
+                            <div>
+                              <p className={styles.eyebrow}>{item.tipo}</p>
+                              <h3 className={styles.sectionTitle}>{item.vino}</h3>
+                              <p className={styles.sectionText}>
+                                {item.recomendaciones} rec. · {item.ventasTpvAtribuidas} TPV atrib. · {item.ventasSala} sala
+                              </p>
+                              <p className={styles.sectionText}>{item.accion}</p>
+                            </div>
+                            <span className={styles.badge}>{item.margenPct ? `${item.margenPct}%` : 'medir'}</span>
+                          </div>
+                        </article>
+                      ))}
+                    </section>
+                  )}
+                </>
+              )
+            })()}
           </div>
         </section>
       )}
@@ -2464,31 +2510,6 @@ export default function Estadisticas() {
         </section>
       )}
 
-      <section className={styles.panelDark} style={{ marginBottom: 16 }}>
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Lectura ejecutiva</h2>
-            <p className={styles.panelSub}>No solo cuenta eventos: convierte la actividad en la siguiente decisión.</p>
-            {mensajeInforme && <p className={styles.tiny}>{mensajeInforme}</p>}
-          </div>
-          <div className={styles.actionRow}>
-            <button type="button" className={styles.primary} onClick={copiarInforme}>Copiar informe</button>
-            <a className={styles.secondary} href={accionPrincipal.href}>Abrir acción</a>
-          </div>
-        </div>
-        <div className={styles.panelBody}>
-          <div className={styles.itemStack}>
-            {accionesInforme.slice(0, 4).map(item => (
-              <a key={item.titulo} href={item.href} className={styles.itemCard}>
-                <p className={styles.eyebrow}>Decisión</p>
-                <h3 className={styles.sectionTitle}>{item.titulo}</h3>
-                <p className={styles.sectionText}>{item.texto}</p>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {topVinosVendidos.length > 0 && (
         <section className={styles.panel} style={{ marginBottom: 16 }}>
           <div className={styles.panelHead}>
@@ -2536,22 +2557,24 @@ export default function Estadisticas() {
             <span className={styles.badge}>{vinosRecomendados.length}</span>
           </div>
           <div className={styles.panelBody}>
-            {vinosRecomendados.length ? (
-              <div className={styles.itemStack}>
-                {vinosRecomendados.map(([vino, datos], index) => (
-                  <article className={styles.itemCard} key={vino}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <p className={styles.eyebrow} style={{ marginBottom: 5 }}>#{index + 1}</p>
-                        <h3 className={styles.sectionTitle}>{vino}</h3>
-                        <p className={styles.sectionText}>Cliente {datos.cliente} · Camarero {datos.camarero}</p>
+            {vinosRecomendados.length ? (() => {
+              const maxRec = vinosRecomendados[0]?.[1]?.total || 1
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {vinosRecomendados.map(([vino, datos], i) => (
+                    <div key={vino}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4, gap: 8 }}>
+                        <span style={{ fontSize: 13, fontWeight: i === 0 ? 700 : 500, color: 'var(--cv-text-dark,#171416)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{vino}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--cv-text-muted,#766e64)', flexShrink: 0 }}>{datos.total}×</span>
                       </div>
-                      <span className={styles.badge}>{datos.total}x</span>
+                      <div style={{ height: 6, background: '#f0ebe4', borderRadius: 4 }}>
+                        <div style={{ height: '100%', width: `${Math.round((datos.total / maxRec) * 100)}%`, background: i === 0 ? '#7B2D2D' : i < 3 ? '#bfa984' : '#d9cfc6', borderRadius: 4, transition: 'width 0.4s ease' }} />
+                      </div>
                     </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
+                  ))}
+                </div>
+              )
+            })() : (
               <div className={styles.empty}>Aún no hay recomendaciones registradas.</div>
             )}
           </div>
@@ -2595,21 +2618,24 @@ export default function Estadisticas() {
             <span className={styles.badge}>{topPlatos.length}</span>
           </div>
           <div className={styles.panelBody}>
-            {topPlatos.length ? (
-              <div className={styles.itemStack}>
-                {topPlatos.map(([plato, veces], index) => (
-                  <article className={styles.itemCard} key={plato}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div>
-                        <p className={styles.eyebrow} style={{ marginBottom: 5 }}>#{index + 1}</p>
-                        <h3 className={styles.sectionTitle}>{plato}</h3>
+            {topPlatos.length ? (() => {
+              const maxPlato = topPlatos[0]?.[1] || 1
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {topPlatos.map(([plato, veces], i) => (
+                    <div key={plato}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4, gap: 8 }}>
+                        <span style={{ fontSize: 13, fontWeight: i === 0 ? 700 : 500, color: 'var(--cv-text-dark,#171416)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{plato}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--cv-text-muted,#766e64)', flexShrink: 0 }}>{veces}×</span>
                       </div>
-                      <span className={styles.badge}>{veces}x</span>
+                      <div style={{ height: 6, background: '#f0ebe4', borderRadius: 4 }}>
+                        <div style={{ height: '100%', width: `${Math.round((veces / maxPlato) * 100)}%`, background: i === 0 ? '#7B2D2D' : i < 3 ? '#bfa984' : '#d9cfc6', borderRadius: 4, transition: 'width 0.4s ease' }} />
+                      </div>
                     </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
+                  ))}
+                </div>
+              )
+            })() : (
               <div className={styles.empty}>Aún no hay consultas suficientes.</div>
             )}
           </div>
