@@ -502,34 +502,6 @@ export default function CierreServicio() {
         </div>
       </section>
 
-      <section className={`${styles.statsGrid} ${styles.closeStats}`}>
-        <div className={styles.stat}><p className={styles.statValue}>{datos.vendidas.length}</p><p className={styles.statLabel}>Ventas marcadas</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{datos.recomendacionesPendientes.length}</p><p className={styles.statLabel}>Reco. sin validar</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{datos.incidencias.length}</p><p className={styles.statLabel}>Incidencias stock</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{datos.dudas.length}</p><p className={styles.statLabel}>Dudas o cambios</p></div>
-        <div className={styles.stat}><p className={styles.statValue}>{datos.visibles.length}</p><p className={styles.statLabel}>Señales pendientes</p></div>
-      </section>
-
-      <section className={`${turnoCerrado || pendientesCierre === 0 ? styles.panel : styles.panelDark} ${styles.closeProgressPanel}`} style={{ marginBottom: 16 }}>
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>{turnoCerrado || pendientesCierre === 0 ? 'Turno revisado' : 'Turno pendiente de cierre'}</h2>
-            <p className={styles.panelSub}>
-              {turnoCerrado || pendientesCierre === 0
-                ? 'Las señales de hoy quedan limpias en esta pantalla. Puedes reabrir si necesitas revisar de nuevo.'
-                : 'Resuelve stock, descuenta ventas útiles o cierra el turno si solo quieres guardar las señales como revisadas.'}
-            </p>
-          </div>
-          <span className={styles.badge}>{pendientesCierre} pendientes</span>
-        </div>
-        <div className={styles.panelBody}>
-          <div className={styles.closeProgressTrack}>
-            <div className={styles.closeProgressFill} style={{ width: `${progresoCierre}%` }} />
-          </div>
-          <p className={styles.sectionText} style={{ color: turnoCerrado || pendientesCierre === 0 ? undefined : 'rgba(255,250,243,0.66)' }}>{pasosHechos} de {pasosCierre.length} pasos completados</p>
-        </div>
-      </section>
-
       <section className={styles.panel} style={{ marginBottom: 16 }}>
         <div className={styles.panelHead}>
           <div>
@@ -556,24 +528,6 @@ export default function CierreServicio() {
                     <button type="button" className={styles.primary} onClick={() => setConfirmarCierre(true)}>Cerrar</button>
                   )}
                 </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className={styles.panelDark} style={{ marginBottom: 16 }}>
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Acción recomendada</h2>
-            <p className={styles.panelSub}>No es contabilidad de TPV. Es una limpieza rápida para que la bodega no se desordene.</p>
-          </div>
-        </div>
-        <div className={styles.panelBody}>
-          <div className={styles.itemStack}>
-            {acciones.map(accion => (
-              <article key={accion} className={styles.itemCard} style={{ background: '#231e20', borderColor: '#3a3033' }}>
-                <p className={styles.sectionTitle} style={{ color: '#fffaf3' }}>{accion}</p>
               </article>
             ))}
           </div>

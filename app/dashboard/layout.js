@@ -261,7 +261,7 @@ export default function DashboardLayout({ children }) {
           ? ['/dashboard', '/dashboard/vinos', '/dashboard/precios-somm', '/dashboard/explotacion', '/dashboard/ajustes']
           : perfilBodega
             ? ['/dashboard', '/dashboard/vinos', '/dashboard/bodega', '/dashboard/catalogo', '/dashboard/ajustes']
-            : ['/dashboard', '/dashboard/carta', '/dashboard/sala', '/dashboard/bodega', '/dashboard/ajustes']
+            : ['/dashboard', '/dashboard/vinos', '/dashboard/sala', '/dashboard/bodega', '/dashboard/ajustes']
         router.push(routes[Number(event.key) - 1])
         return
       }
@@ -335,7 +335,7 @@ export default function DashboardLayout({ children }) {
   const navItems = [
     { href: '/dashboard', label: 'Inicio', hint: 'Prioridad y puesta en marcha', exact: true, icon: icon.home },
     {
-      href: perfilBodega ? '/dashboard/vinos' : '/dashboard/carta',
+      href: '/dashboard/vinos',
       label: perfilBodega ? 'Referencias' : 'Carta pública',
       hint: perfilBodega ? 'Vinos, costes y fichas' : 'Vinos, platos y QR',
       icon: icon.wine,
@@ -348,6 +348,7 @@ export default function DashboardLayout({ children }) {
         : [
             { href: '/dashboard/vinos', label: 'Vinos', hint: 'Precios y perfiles', stat: vinoCount || null },
             { href: '/dashboard/platos', label: 'Platos', hint: 'Pistas para maridar', stat: platoCount || null },
+            { href: '/dashboard/carta', label: 'Destacados', hint: 'Sugerencias de la casa' },
           ],
     },
     {
@@ -359,8 +360,6 @@ export default function DashboardLayout({ children }) {
       children: [
         { href: '/dashboard/cierre', label: 'Cierre del turno', hint: 'Ventas e incidencias', feature: 'cierre_servicio' },
         { href: '/dashboard/estadisticas', label: 'Actividad de sala', hint: 'Escaneos y consultas', feature: 'estadisticas' },
-        { href: '/dashboard/tpv', label: 'Importar TPV', hint: 'Ventas reales CSV', feature: 'tpv_import' },
-        { href: '/dashboard/menu-engineering', label: 'Rentabilidad', hint: 'Qué empujar o revisar', feature: 'estadisticas' },
       ],
     },
     {
@@ -374,10 +373,12 @@ export default function DashboardLayout({ children }) {
         { href: '/dashboard/bodega', label: 'Stock y pedido', hint: 'Compra sugerida', feature: 'bodega' },
         ...(perfilBodega ? [
           { href: '/dashboard/menu-engineering', label: 'Estrellas y joyas', hint: 'Salida, margen y capital', feature: 'estadisticas' },
-          { href: '/dashboard/menu-engineering#winemapping', label: 'Wine mapping', hint: 'Gamas por ticket medio', feature: 'estadisticas' },
+          { href: '/dashboard/menu-engineering#winemapping', label: 'Distribución de vinos', hint: 'Gamas por ticket medio', feature: 'estadisticas' },
           { href: '/dashboard/catalogo', label: 'Catalogo distribuidores', hint: 'Tarifas y altas', feature: 'bodega' },
           { href: '/dashboard/constructor', label: 'Constructor de carta', hint: 'Ordenar y exportar', feature: 'bodega' },
-        ] : []),
+        ] : [
+          { href: '/dashboard/menu-engineering', label: 'Rentabilidad', hint: 'Qué empujar o revisar', feature: 'estadisticas' },
+        ]),
       ],
     },
     ...(perfilSomm ? [{
@@ -403,6 +404,7 @@ export default function DashboardLayout({ children }) {
         : [
             { href: '/dashboard/qr', label: 'QR y accesos', hint: 'Mesa y camarero' },
             { href: '/dashboard/personalizar', label: 'Diseño de carta', hint: 'Logo y colores' },
+            { href: '/dashboard/tpv', label: 'Importar TPV', hint: 'Ventas reales CSV', feature: 'tpv_import' },
           ],
     },
   ].filter(item => !item.feature || puedeUsar(restaurante, item.feature))
@@ -466,47 +468,12 @@ export default function DashboardLayout({ children }) {
             </select>
           )}
           <div className={styles.topRight}>
-            <div className={styles.topSearch}>
-              <button
-                type="button"
-                onClick={() => setSearchOpen(open => !open)}
-                aria-expanded={searchOpen}
-                aria-label={searchOpen ? 'Cerrar busqueda' : (perfilBodega ? 'Buscar vinos' : 'Buscar vinos o platos')}
-              >
-                {searchOpen ? 'Cerrar busqueda' : (perfilBodega ? 'Buscar vinos' : 'Buscar')}
-              </button>
-              <kbd>Ctrl K</kbd>
-              {searchOpen && (
-                <div className={styles.searchPopover}>
-                  <div className={styles.searchHeader}>
-                    <input
-                      id="dashboard-global-search-desktop"
-                      value={query}
-                      onChange={event => setQuery(event.target.value)}
-                      placeholder={perfilBodega ? 'Buscar vino, bodega, proveedor...' : 'Buscar vino, bodega, plato...'}
-                      aria-label="Busqueda global del dashboard"
-                    />
-                    <button type="button" onClick={() => { setSearchOpen(false); setQuery('') }}>Cerrar</button>
-                  </div>
-                  <div className={styles.searchResults}>
-                    {filteredSearch.map(item => (
-                      <Link key={`${item.tipo}-${item.id}`} href={item.href} onClick={() => { setSearchOpen(false); setQuery('') }}>
-                        <span>{item.tipo}</span>
-                        <strong>{item.nombre}</strong>
-                        {item.meta && <small>{item.meta}</small>}
-                      </Link>
-                    ))}
-                    {query && filteredSearch.length === 0 && <p>Sin resultados rapidos.</p>}
-                  </div>
-                </div>
-              )}
-            </div>
             <div className={styles.topStatus}>
-              <GuideToggle compact />
-              <Link href="/dashboard/bodega#propuestas" className={propuestasCount > 0 ? styles.alertPillCritical : styles.alertPillOk}>
-                {propuestasCount > 0 ? `${propuestasCount} propuestas` : 'Sin propuestas'}
-              </Link>
-              <span className={styles.clock}>{clock}</span>
+              {propuestasCount > 0 && (
+                <Link href="/dashboard/bodega#propuestas" className={styles.alertPillCritical}>
+                  {propuestasCount} propuestas
+                </Link>
+              )}
               <div className={styles.profileMenu}>
                 <button type="button" onClick={() => setProfileOpen(open => !open)} aria-label="Abrir perfil">Perfil</button>
                 {profileOpen && (
@@ -729,48 +696,12 @@ export default function DashboardLayout({ children }) {
             </span>
           </div>
 
-          <div className={styles.topSearch}>
-            <button
-              type="button"
-              onClick={() => setSearchOpen(open => !open)}
-              aria-expanded={searchOpen}
-              aria-label={searchOpen ? 'Cerrar busqueda' : (perfilBodega ? 'Buscar vinos' : 'Buscar vinos o platos')}
-            >
-              {searchOpen ? 'Cerrar busqueda' : (perfilBodega ? 'Buscar vinos' : 'Buscar vinos/platos')}
-            </button>
-            <kbd>Ctrl K</kbd>
-            {searchOpen && (
-              <div className={styles.searchPopover}>
-                <div className={styles.searchHeader}>
-                  <input
-                    id="dashboard-global-search"
-                    value={query}
-                    onChange={event => setQuery(event.target.value)}
-                    placeholder={perfilBodega ? 'Buscar vino, bodega, proveedor...' : 'Buscar vino, bodega, plato...'}
-                    aria-label="Busqueda global del dashboard"
-                  />
-                  <button type="button" onClick={() => { setSearchOpen(false); setQuery('') }} aria-label="Cerrar busqueda">Cerrar</button>
-                </div>
-                <div className={styles.searchResults}>
-                  {filteredSearch.map(item => (
-                    <Link key={`${item.tipo}-${item.id}`} href={item.href} onClick={() => { setSearchOpen(false); setQuery('') }}>
-                      <span>{item.tipo}</span>
-                      <strong>{item.nombre}</strong>
-                      {item.meta && <small>{item.meta}</small>}
-                    </Link>
-                  ))}
-                  {query && filteredSearch.length === 0 && <p>Sin resultados rápidos.</p>}
-                </div>
-              </div>
-            )}
-          </div>
-
           <div className={styles.topStatus}>
-            <GuideToggle compact />
-            <Link href="/dashboard/bodega#propuestas" className={propuestasCount > 0 ? styles.alertPillCritical : styles.alertPillOk}>
-              {propuestasCount > 0 ? `${propuestasCount} propuestas` : 'Sin propuestas'}
-            </Link>
-            <span className={styles.clock}>{clock}</span>
+            {propuestasCount > 0 && (
+              <Link href="/dashboard/bodega#propuestas" className={styles.alertPillCritical}>
+                {propuestasCount} propuestas
+              </Link>
+            )}
             <div className={styles.profileMenu}>
               <button type="button" onClick={() => setProfileOpen(open => !open)} aria-label="Abrir perfil">Perfil</button>
               {profileOpen && (

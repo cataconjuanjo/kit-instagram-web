@@ -1036,6 +1036,7 @@ export default function ControlBodega() {
             eyebrow="Bodega"
             title="Equilibrio de la bodega"
             badge={`${datos.activos.length} referencias`}
+            cta="Ver detalle"
           >
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24, alignItems: 'start' }}>
               <div>
@@ -1067,18 +1068,19 @@ export default function ControlBodega() {
                 </>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', color: '#9a9186', fontSize: 13, fontStyle: 'italic', gridColumn: 'span 2' }}>
-                  Configura tu ticket medio en Wine mapping para ver el reparto por gama.
+                  Configura tu ticket medio en Distribución de vinos para ver el reparto por gama.
                 </div>
               )}
             </div>
           </CollapsibleSection>
         )}
 
-        {/* ── Wine mapping ──────────────────────────────────── */}
+        {/* ── Distribución de vinos ─────────────────────────── */}
         <CollapsibleSection
           storageKey="bodega-winemapping"
           eyebrow="Carta"
-          title="Wine mapping"
+          title="Distribución de vinos"
+          cta="Ver detalle"
         >
           <WineMappingPanel restaurante={restaurante} vinos={datos.activos} />
         </CollapsibleSection>

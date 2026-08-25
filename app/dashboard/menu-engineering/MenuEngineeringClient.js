@@ -522,7 +522,7 @@ export default function MenuEngineering() {
               <section id="winemapping" className={styles.panel} style={{ marginBottom: 16, borderLeft: '3px solid #74223d' }}>
                 <div className={styles.panelHead}>
                   <div>
-                    <p className={styles.eyebrow}>Wine mapping</p>
+                    <p className={styles.eyebrow}>Distribución de vinos</p>
                     <h2 className={styles.panelTitle}>Arquitectura por ticket medio</h2>
                     <p className={styles.panelSub}>
                       Primero mira el grafico: cuantas referencias tienes en cada gama y que huecos aparecen para el ticket medio. Pulsa una gama para ver los vinos.

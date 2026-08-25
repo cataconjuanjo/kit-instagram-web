@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import styles from './CollapsibleSection.module.css'
 
-export default function CollapsibleSection({ storageKey, eyebrow, title, badge, defaultOpen = false, children }) {
+export default function CollapsibleSection({ storageKey, eyebrow, title, badge, cta, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen)
   const bodyId = `${storageKey}-body`
 
@@ -33,6 +33,7 @@ export default function CollapsibleSection({ storageKey, eyebrow, title, badge, 
         </div>
         <div className={styles.triggerRight}>
           {badge && <span className={styles.badge}>{badge}</span>}
+          {cta && <span className={styles.cta}>{open ? 'Cerrar' : cta}</span>}
           <svg
             className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
             width="18"

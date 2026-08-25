@@ -2626,27 +2626,31 @@ export default function Estadisticas() {
         </div>
         <div className={styles.panelBody}>
           {statsFiltradas.length ? (
-            <div className={styles.itemStack}>
+            <div className={styles.table}>
+              <div className={styles.tableHeader} style={{ gridTemplateColumns: '80px 1fr 110px' }}>
+                <p>Tipo</p>
+                <p>Actividad</p>
+                <p style={{ textAlign: 'right' }}>Hora</p>
+              </div>
               {statsFiltradas.slice(0, 10).map(s => {
                 const actividad = resumenActividad(s)
                 return (
-                  <article className={styles.itemCard} key={s.id}>
-                    <div className={styles.sectionHead} style={{ margin: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span
-                          className={styles.dot}
-                          style={{ background: s.tipo === 'escaneo' ? '#4A8C6F' : s.tipo === 'venta' ? '#bfa984' : s.tipo === 'recomendacion' ? '#3266a8' : '#74223d' }}
-                        />
-                        <div>
-                          <p className={styles.sectionTitle}>{actividad.titulo}</p>
-                          {actividad.detalle && <p className={styles.sectionText}>{actividad.detalle}</p>}
-                        </div>
-                      </div>
-                      <p className={styles.tiny}>
-                        {new Date(s.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                  <div className={styles.tableRow} key={s.id} style={{ gridTemplateColumns: '80px 1fr 110px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span
+                        className={styles.dot}
+                        style={{ background: s.tipo === 'escaneo' ? '#4A8C6F' : s.tipo === 'venta' ? '#bfa984' : s.tipo === 'recomendacion' ? '#3266a8' : '#74223d', flexShrink: 0 }}
+                      />
+                      <p style={{ fontSize: 11, textTransform: 'capitalize', color: 'var(--cv-text-muted)' }}>{s.tipo}</p>
                     </div>
-                  </article>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{actividad.titulo}</p>
+                      {actividad.detalle && <p style={{ fontSize: 12, color: 'var(--cv-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{actividad.detalle}</p>}
+                    </div>
+                    <p className={styles.tiny} style={{ textAlign: 'right' }}>
+                      {new Date(s.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
                 )
               })}
             </div>

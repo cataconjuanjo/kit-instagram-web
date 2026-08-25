@@ -23,7 +23,14 @@
 }
 
 .trigger:hover {
-  background: rgba(42, 33, 28, 0.02);
+  background: rgba(42, 33, 28, 0.045);
+}
+
+.cta {
+  font: 500 12px Inter, sans-serif;
+  letter-spacing: 0.02em;
+  color: var(--cv-text-muted, #9a9186);
+  white-space: nowrap;
 }
 
 .triggerOpen {
