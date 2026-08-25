@@ -39,7 +39,7 @@ export const SELECT_CLIENT_RESTAURANTE_DASHBOARD = [
   'id', 'slug', 'nombre', 'email', 'ciudad',
   'color_acento', 'color_primario', 'color_fondo', 'tipografia',
   'logo_url', 'banner_url', 'banner_zoom', 'banner_x', 'banner_y',
-  'carta_mostrar_euro', 'carta_copa_decimales', 'carta_pie_texto',
+  'carta_mostrar_euro', 'carta_copa_decimales', 'carta_pie_texto', 'copa_ml',
   'hub_activo', 'hub_titulo', 'hub_subtitulo', 'hub_fondo_url',
   'hub_fondo_zoom', 'hub_fondo_x', 'hub_fondo_y', 'hub_overlay',
   'hub_estilo', 'hub_mostrar_logo', 'hub_mostrar_nombre',

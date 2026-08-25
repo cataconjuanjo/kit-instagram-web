@@ -1175,6 +1175,9 @@ export default function CartaPublica() {
   const decimalesCopa = restaurante?.carta_copa_decimales !== false ? 2 : 0
   const precioCopaCarta = valor => _formatPrecio(valor, decimalesCopa) + moneda
   const precioUnidadCarta = (precio, unidad) => `${precio} / ${String(unidad || '').toLowerCase()}`
+  const copaMl = restaurante?.copa_ml
+  const etiquetaCopa = copaMl ? `${i.copa} · ${copaMl} ml` : i.copa
+  const etiquetaCopaMin = etiquetaCopa.toLowerCase()
 
   const preciosDisponibles = [...new Set(vinos.map(v => v.precio_botella).filter(Boolean).sort((a, b) => a - b))]
   const precioMaximo = preciosDisponibles[preciosDisponibles.length - 1] || 100
@@ -1539,7 +1542,7 @@ export default function CartaPublica() {
             <>
               <div className={styles.mainPrice}>
                 <span className={styles.formattedPrice}>{precioCopaCarta(v.precio_copa)}</span>
-                <small>{i.copa}</small>
+                <small>{etiquetaCopa}</small>
               </div>
               {tieneBotella && <p className={styles.priceMeta}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
             </>
@@ -1549,7 +1552,7 @@ export default function CartaPublica() {
                 <span className={styles.formattedPrice}>{precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</span>
                 <small>{i.botella}</small>
               </div>
-              {tieneCopa && <p className={styles.priceMeta}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), i.copa)}</p>}
+              {tieneCopa && <p className={styles.priceMeta}>{precioUnidadCarta(precioCopaCarta(v.precio_copa), etiquetaCopa)}</p>}
             </>
           )}
           <button
@@ -1607,7 +1610,7 @@ export default function CartaPublica() {
           {(tieneBotella || tieneCopa) && (
             <div className={styles.labelPriceRow}>
               {tieneCopa && <strong>{precioCopaCarta(v.precio_copa)}</strong>}
-              {tieneCopa && <span>/ {i.copa.toLowerCase()}</span>}
+              {tieneCopa && <span>/ {etiquetaCopaMin}</span>}
               {tieneCopa && tieneBotella && <span>·</span>}
               {tieneBotella && <strong>{precioBotellaCarta(v.precio_botella)}</strong>}
               {tieneBotella && <span>/ {i.botella.toLowerCase()}</span>}
@@ -1762,7 +1765,7 @@ export default function CartaPublica() {
               <div key={v.id + '_precio'} style={{ background: '#fff', padding: '10px 16px', textAlign: 'center' }}>
                 {precioValido(v.precio_copa) && (
                   <p style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 500, color: '#111' }}>
-                    {precioCopaCarta(v.precio_copa)}<span style={{ fontSize: 10, color: '#bbb', fontWeight: 400 }}> /{i.copa.toLowerCase()}</span>
+                    {precioCopaCarta(v.precio_copa)}<span style={{ fontSize: 10, color: '#bbb', fontWeight: 400 }}> /{etiquetaCopaMin}</span>
                   </p>
                 )}
                 {precioValido(v.precio_botella) && (

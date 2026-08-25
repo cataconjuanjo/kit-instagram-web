@@ -182,6 +182,7 @@ export default function Personalizar() {
   const [cartaMostrarEuro, setCartaMostrarEuro] = useState(true)
   const [cartaCopaDecimales, setCartaCopaDecimales] = useState(true)
   const [cartaPieTexto, setCartaPieTexto] = useState('')
+  const [copaMl, setCopaMl] = useState(null)
   const [subiendoLogo, setSubiendoLogo] = useState(false)
   const [subiendoBanner, setSubiendoBanner] = useState(false)
   const [subiendoHub, setSubiendoHub] = useState(false)
@@ -223,6 +224,7 @@ export default function Personalizar() {
         setCartaMostrarEuro(rest.carta_mostrar_euro !== false)
         setCartaCopaDecimales(rest.carta_copa_decimales !== false)
         setCartaPieTexto(rest.carta_pie_texto || '')
+        setCopaMl(rest.copa_ml ?? null)
       }
       setLoading(false)
     }
@@ -447,7 +449,7 @@ export default function Personalizar() {
       { nombre: 'texto del hub', cambios: { hub_titulo: hubTitulo.trim() || null, hub_subtitulo: hubSubtitulo.trim() || null }, sql: 'supabase/add_hub_links.sql' },
       { nombre: 'fondo del hub', cambios: { hub_fondo_url: hubFondoUrl, hub_fondo_zoom: hubFondoZoom, hub_fondo_x: hubFondoX, hub_fondo_y: hubFondoY, hub_overlay: hubOverlay, hub_estilo: hubEstilo }, sql: 'supabase/add_hub_links.sql' },
       { nombre: 'visibilidad del hub', cambios: { hub_mostrar_logo: hubMostrarLogo, hub_mostrar_nombre: hubMostrarNombre, hub_mostrar_direccion: hubMostrarDireccion }, sql: 'supabase/add_hub_links.sql' },
-      { nombre: 'formato de precios', cambios: { carta_mostrar_euro: cartaMostrarEuro, carta_copa_decimales: cartaCopaDecimales, carta_pie_texto: cartaPieTexto.trim() || null }, sql: 'supabase/add_precio_formato.sql' },
+      { nombre: 'formato de precios', cambios: { carta_mostrar_euro: cartaMostrarEuro, carta_copa_decimales: cartaCopaDecimales, carta_pie_texto: cartaPieTexto.trim() || null, copa_ml: copaMl ? Number(copaMl) : null }, sql: 'supabase/add_precio_formato.sql' },
     ]
 
     const errores = []
@@ -1048,6 +1050,23 @@ export default function Personalizar() {
               <input type="checkbox" checked={cartaCopaDecimales} onChange={e => setCartaCopaDecimales(e.target.checked)} />
               <span>Mostrar decimales en precio por copa (ej. 3,50 vs 4)</span>
             </label>
+            <div>
+              <label className={styles.label}>Cantidad por copa</label>
+              <p className={styles.tiny} style={{ marginTop: 0, marginBottom: 6 }}>Se muestra junto al precio de copa en la carta (ej. «Copa · 150 ml»).</p>
+              <select
+                className={styles.input}
+                value={copaMl ?? ''}
+                onChange={e => setCopaMl(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value=''>No mostrar</option>
+                <option value='75'>75 ml</option>
+                <option value='100'>100 ml</option>
+                <option value='125'>125 ml</option>
+                <option value='150'>150 ml</option>
+                <option value='175'>175 ml</option>
+                <option value='200'>200 ml</option>
+              </select>
+            </div>
             <div>
               <label className={styles.label}>Texto legal al pie de carta</label>
               <p className={styles.tiny} style={{ marginTop: 0, marginBottom: 6 }}>Déjalo vacío para usar el texto por defecto sobre IVA incluido.</p>
