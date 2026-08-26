@@ -113,6 +113,15 @@
         "value": "#9b7430",
         "createdAt": "2026-08-13T07:14:01.065Z",
         "reason": "Color dorado del sistema de diseno del proyecto, usado en toda la UI del dashboard"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "*",
+        "files": [
+          "app/carta/[slug]/carta.module.css"
+        ],
+        "createdAt": "2026-08-26T07:37:14.969Z",
+        "reason": "carta.module.css has its own intentional warm-neutral palette (Carta Viva brand) not registered in DESIGN.md"
       }
     ]
   }

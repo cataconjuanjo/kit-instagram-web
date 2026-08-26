@@ -87,11 +87,6 @@ function normalizarLinkHub(link) {
   return publico
 }
 
-function esPerfilGoiko(restaurante = {}) {
-  const texto = `${restaurante?.slug || ''} ${restaurante?.nombre || ''}`.toLowerCase()
-  return texto.includes('goiko') || texto.includes('janardoa')
-}
-
 function errorIncluye(error, textoBuscado) {
   return [
     error?.message,
@@ -184,14 +179,11 @@ export async function GET(req, { params }) {
     }
 
     if (incluirCarta && respuesta.restaurante.carta_disponible) {
-      let vinosQuery = supabaseAdmin
+      const vinosQuery = supabaseAdmin
         .from('vinos')
         .select(SELECT_VINO_PUBLICO)
         .eq('restaurante_id', restaurante.id)
         .eq('activo', true)
-      if (esPerfilGoiko(restaurante)) {
-        vinosQuery = vinosQuery.order('created_at', { ascending: true })
-      }
       const [vinosRes, platosRes, seleccionRes] = await Promise.all([
         vinosQuery,
         supabaseAdmin.from('platos').select(SELECT_PLATO_PUBLICO).eq('restaurante_id', restaurante.id).eq('activo', true),

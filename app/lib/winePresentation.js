@@ -34,38 +34,10 @@ const BASE_PLURALS = {
   sidra: 'Sidras',
 }
 
-export function esPerfilGoiko(restaurante = {}) {
-  const texto = `${restaurante?.slug || ''} ${restaurante?.nombre || ''}`.toLowerCase()
-  return texto.includes('goiko') || texto.includes('janardoa')
+export function etiquetasTipoVino() {
+  return { label: BASE_LABELS, plural: BASE_PLURALS }
 }
 
-export function etiquetasTipoVino(restaurante = {}) {
-  if (!esPerfilGoiko(restaurante)) return { label: BASE_LABELS, plural: BASE_PLURALS }
-  return {
-    label: {
-      ...BASE_LABELS,
-      tinto: 'Tinto / ardo beltza',
-      blanco: 'Blanco / ardo txuria',
-      rosado: 'Rosado / ardo gorria',
-      espumoso: 'Espumoso / aparduna',
-      generoso: 'Generoso / ardo oparoa',
-      dulce: 'Dulce / ardo gozoa',
-      sidra: 'Sidra / sagardoa',
-    },
-    plural: {
-      ...BASE_PLURALS,
-      tinto: 'Tintos / ardo beltzak',
-      blanco: 'Blancos / ardo txuriak',
-      rosado: 'Rosados / ardo gorriak',
-      espumoso: 'Espumosos / apardunak',
-      generoso: 'Generosos / ardo oparoak',
-      dulce: 'Dulces / ardo gozoak',
-      sidra: 'Sidras / sagardoak',
-    },
-  }
-}
-
-export function ordenTiposVino(restaurante = {}) {
-  const base = ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol']
-  return esPerfilGoiko(restaurante) ? ['sidra', ...base] : base
+export function ordenTiposVino() {
+  return ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol']
 }

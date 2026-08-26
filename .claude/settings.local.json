@@ -6,7 +6,10 @@
       "Bash(git commit -m ' *)",
       "Bash(git add *)",
       "Bash(node -e \"const fs = require\\('fs'\\); const content = fs.readFileSync\\('app/page.js', 'utf8'\\); console.log\\('page.js OK, lines:', content.split\\('\\\\n'\\).length\\)\")",
-      "PowerShell(Start-Process \"http://localhost:3000\")"
+      "PowerShell(Start-Process \"http://localhost:3000\")",
+      "Bash(playwright-cli goto *)",
+      "Bash(playwright-cli screenshot *)",
+      "Bash(playwright-cli eval *)"
     ]
   },
   "hooks": {
