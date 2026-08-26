@@ -1381,22 +1381,24 @@ export default function CartaPublica() {
           )}
           {notaSeleccion && <p className={styles.wineNotes}>{notaSeleccion}</p>}
         </div>
-        <div className={styles.priceBlock}>
-          {tieneCopa ? (
-            <>
+        <div className={styles.priceCol}>
+          <div className={styles.priceBlock}>
+            {tieneCopa ? (
+              <>
+                <div className={styles.mainPrice}>
+                  <span className={styles.formattedPrice}>{precioCopaCarta(v.precio_copa)}</span>
+                  <small>{i.copa}</small>
+                </div>
+                {v.copa_ml && <p className={styles.copaVolume}>{v.copa_ml} ml</p>}
+                {tieneBotella && <p className={styles.priceMeta}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
+              </>
+            ) : tieneBotella ? (
               <div className={styles.mainPrice}>
-                <span className={styles.formattedPrice}>{precioCopaCarta(v.precio_copa)}</span>
-                <small>{i.copa}</small>
+                <span className={styles.formattedPrice}>{precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</span>
+                <small>{i.botella}</small>
               </div>
-              {v.copa_ml && <p className={styles.copaVolume}>{v.copa_ml} ml</p>}
-              {tieneBotella && <p className={styles.priceMeta}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
-            </>
-          ) : tieneBotella ? (
-            <div className={styles.mainPrice}>
-              <span className={styles.formattedPrice}>{precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</span>
-              <small>{i.botella}</small>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
           <button
             className={`${styles.compareButton} ${enComparador ? styles.compareActive : ''}`}
             onClick={() => toggleComparador(v)}

@@ -680,12 +680,20 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(96px, auto);
   gap: 14px;
-  align-items: center;
+  align-items: start;
   background: #fffaf3;
   border: 1px solid #dfd6c8;
   border-radius: 8px;
   padding: 10px 12px;
   margin-bottom: 8px;
+}
+
+.priceCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  align-self: stretch;
+  flex-shrink: 0;
 }
 
 .wineCardConsultant {
@@ -856,7 +864,6 @@
   justify-items: end;
   gap: 2px;
   text-align: right;
-  flex-shrink: 0;
 }
 
 .priceBlock > .glassPrice,
@@ -937,6 +944,7 @@
 
 .compareButton {
   border: none;
+  border-top: 1px solid #dfd6c8;
   background: transparent;
   color: #8a8079;
   cursor: pointer;
@@ -944,6 +952,7 @@
   align-items: center;
   justify-content: center;
   min-height: 36px;
+  margin-top: auto;
   padding: 0 4px;
   font-size: 11px;
   font-weight: 450;
@@ -2175,7 +2184,6 @@
   .priceBlock {
     display: grid;
     justify-items: end;
-    align-content: center;
     text-align: right;
   }
 
