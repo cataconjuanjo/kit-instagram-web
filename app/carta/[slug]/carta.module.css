@@ -936,27 +936,36 @@
 }
 
 .compareButton {
-  min-width: 54px;
-  height: 36px;
-  border: 1px solid #dfd6c8;
-  border-radius: 8px;
-  background: #f7f2ea;
-  color: #9d8e7f;
+  border: none;
+  background: transparent;
+  color: #8a8079;
   cursor: pointer;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 0 8px;
-  font-size: 9px;
-  font-weight: 760;
-  letter-spacing: 0.04em;
+  padding: 6px 2px;
+  font-size: 11px;
+  font-weight: 450;
+  letter-spacing: 0;
   line-height: 1;
-  text-transform: uppercase;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.compareButton:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .compareActive {
+  min-width: 54px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0 8px;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 9px;
   color: #fffaf3;
 }
 
@@ -1948,11 +1957,10 @@
     font-size: 11px;
   }
 
-  .compareButton {
+  .compareActive {
     min-height: 40px;
     height: 40px;
     min-width: 54px;
-    font-size: 10px;
   }
 
   .labelGrid {

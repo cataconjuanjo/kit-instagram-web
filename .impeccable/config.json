@@ -122,6 +122,15 @@
         ],
         "createdAt": "2026-08-26T07:37:14.969Z",
         "reason": "carta.module.css has its own intentional warm-neutral palette (Carta Viva brand) not registered in DESIGN.md"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "*",
+        "files": [
+          "app/carta/[slug]/carta.module.css"
+        ],
+        "createdAt": "2026-08-26T08:10:34.008Z",
+        "reason": "carta.module.css tiene su propia escala de radii intencional, independiente de DESIGN.md"
       }
     ]
   }
