@@ -4,18 +4,40 @@ export function esDemoTaberna(restaurante) {
   return restaurante?.slug === 'taberna-del-puerto' || restaurante?.email === 'demo@taberna-del-puerto.com'
 }
 
-function inicioDiaISO(fecha) {
-  const d = new Date(fecha)
+const TZ = 'Europe/Madrid'
+
+function midnightMadridUTC(fecha) {
+  const d = fecha instanceof Date ? fecha : new Date(fecha)
   if (Number.isNaN(d.getTime())) return null
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString()
+  // Date in Madrid timezone — sv locale gives YYYY-MM-DD reliably
+  const dateStr = new Intl.DateTimeFormat('sv', { timeZone: TZ }).format(d)
+  // Compute offset at noon (DST-safe: Spain transitions at 2am local, not noon)
+  const noonUTC = new Date(`${dateStr}T12:00:00Z`)
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  }).formatToParts(noonUTC)
+  const get = type => parts.find(p => p.type === type)?.value ?? '00'
+  const noonMadridISO = `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}Z`
+  const offsetMs = noonUTC.getTime() - new Date(noonMadridISO).getTime()
+  return new Date(new Date(`${dateStr}T00:00:00Z`).getTime() + offsetMs)
+}
+
+function inicioDiaISO(fecha) {
+  const d = midnightMadridUTC(fecha || new Date())
+  return d ? d.toISOString() : null
 }
 
 function finDiaISO(fecha) {
-  const d = new Date(fecha)
+  const d = fecha instanceof Date ? fecha : new Date(fecha)
   if (Number.isNaN(d.getTime())) return null
-  d.setHours(24, 0, 0, 0)
-  return d.toISOString()
+  const dateStr = new Intl.DateTimeFormat('sv', { timeZone: TZ }).format(d)
+  const [y, m, day] = dateStr.split('-').map(Number)
+  // Use noon of the next calendar day in Madrid as anchor to compute its midnight
+  const nextMidnight = midnightMadridUTC(new Date(Date.UTC(y, m - 1, day + 1, 12, 0, 0)))
+  return nextMidnight ? nextMidnight.toISOString() : null
 }
 
 function filtrarTipo(query, tipo) {

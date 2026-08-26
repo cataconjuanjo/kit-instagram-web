@@ -42,8 +42,9 @@ function claveTexto(valor = '') {
 
 function fechaOperativaDesdeVentana(ventana) {
   const fecha = new Date(ventana?.desde || Date.now())
-  if (Number.isNaN(fecha.getTime())) return new Date().toISOString().slice(0, 10)
-  return fecha.toISOString().slice(0, 10)
+  const tz = 'Europe/Madrid'
+  if (Number.isNaN(fecha.getTime())) return new Intl.DateTimeFormat('sv', { timeZone: tz }).format(new Date())
+  return new Intl.DateTimeFormat('sv', { timeZone: tz }).format(fecha)
 }
 
 function accionBase(restauranteId, fechaOperativa, data) {

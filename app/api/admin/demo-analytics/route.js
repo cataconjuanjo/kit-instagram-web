@@ -16,7 +16,7 @@ function isMissingTable(error) {
 }
 
 function dayKey(value) {
-  return new Date(value || Date.now()).toISOString().slice(0, 10)
+  return new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Madrid' }).format(new Date(value || Date.now()))
 }
 
 function countBy(items, key) {
