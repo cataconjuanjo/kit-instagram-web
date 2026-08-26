@@ -1226,6 +1226,10 @@ export default function CartaPublica() {
     return limpia.length > 120 ? `${limpia.slice(0, 117)}...` : limpia
   }
   const esCoravin = vino => normalizarTexto(vino.notas_cata || '').includes('coravin')
+  const ambitoComercial = useCallback((vino) => {
+    return commercialScopeForWine(vino, restaurante)
+  }, [restaurante])
+
   const mostrarSeleccion = seleccion.length > 0 && !busqueda && filtro === 'todos' && !precioMax && !precioMin && !soloInternacional && !soloCopa && !soloLocal
   const filtroActivo = precioMax || precioMin || filtro !== 'todos' || soloInternacional || soloCopa || soloLocal
   const busquedaOFiltrado = Boolean(busqueda || filtroActivo)
@@ -1236,10 +1240,6 @@ export default function CartaPublica() {
   const vinosPorCopaFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && !esCoravin(v))
   // Vinos que solo tienen botella — excluidos de las secciones por copa para evitar duplicados
   const vinosSoloBotella = vinosFiltrados.filter(v => !Number(v.precio_copa))
-
-  const ambitoComercial = useCallback((vino) => {
-    return commercialScopeForWine(vino, restaurante)
-  }, [restaurante])
 
   const gruposAmbito = useMemo(() => [
     { id: 'local', label: i.gruposAmbito?.local || localWineLabel(restaurante) },
