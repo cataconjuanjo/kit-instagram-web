@@ -1989,7 +1989,28 @@ export default function CartaPublica() {
               </div>
             </div>
             <div className={styles.labelGrid}>
-              {vinosFiltrados.map(vino => renderEtiquetaCard(vino))}
+              {(() => {
+                const precioEfectivo = v => Number(v.precio_botella) || Number(v.precio_copa) || Infinity
+                const tiposConVinos = tiposOrdenados.filter(t => vinosFiltrados.some(v => v.tipo === t))
+                const tiposAMostrar = filtro !== 'todos' ? tiposConVinos.filter(t => t === filtro) : tiposConVinos
+                const mostrarRotulos = filtro === 'todos' && tiposAMostrar.length > 1
+                return tiposAMostrar.flatMap((tipo, idx) => {
+                  const grupo = vinosFiltrados
+                    .filter(v => v.tipo === tipo)
+                    .sort((a, b) => precioEfectivo(a) - precioEfectivo(b))
+                  if (!grupo.length) return []
+                  return [
+                    mostrarRotulos && (
+                      <div key={`head-${tipo}`} className={styles.labelTypeHead} style={idx > 0 ? { marginTop: 8 } : undefined}>
+                        <i style={{ background: tipoDot[tipo] || colorPrimario }} />
+                        <span>{i.tipoPlural[tipo]}</span>
+                        <div />
+                      </div>
+                    ),
+                    ...grupo.map(vino => renderEtiquetaCard(vino)),
+                  ].filter(Boolean)
+                })
+              })()}
             </div>
           </section>
         )}
