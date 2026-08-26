@@ -684,7 +684,7 @@
   background: #fffaf3;
   border: 1px solid #dfd6c8;
   border-radius: 8px;
-  padding: 13px 12px;
+  padding: 10px 12px;
   margin-bottom: 8px;
 }
 
@@ -854,7 +854,7 @@
 .priceBlock {
   display: grid;
   justify-items: end;
-  gap: 6px;
+  gap: 2px;
   text-align: right;
   flex-shrink: 0;
 }
@@ -943,7 +943,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 2px;
+  min-height: 36px;
+  padding: 0 4px;
   font-size: 11px;
   font-weight: 450;
   letter-spacing: 0;
@@ -1920,7 +1921,7 @@
   .wineCard {
     grid-template-columns: minmax(0, 1fr) minmax(88px, auto);
     gap: 12px;
-    padding: 18px 16px;
+    padding: 15px 16px;
     margin-bottom: 10px;
   }
 
@@ -2143,7 +2144,7 @@
   .wineCard {
     grid-template-columns: minmax(0, 1fr) 88px;
     gap: 10px;
-    padding: 12px 10px;
+    padding: 10px 10px;
   }
 
   .labelGrid {
