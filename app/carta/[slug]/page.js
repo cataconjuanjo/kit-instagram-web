@@ -700,6 +700,8 @@ export default function CartaPublica() {
   const [mostrarFiltros, setMostrarFiltros] = useState(false)
   const [soloInternacional, setSoloInternacional] = useState(false)
   const [soloCopa, setSoloCopa] = useState(false)
+  const [soloLocal, setSoloLocal] = useState(false)
+  const [precioMin, setPrecioMin] = useState(null)
   const [seccionAbierta, setSeccionAbierta] = useState('')
   const [seccionInicialAplicada, setSeccionInicialAplicada] = useState(false)
   const [busquedaPlatos, setBusquedaPlatos] = useState('')
@@ -1160,10 +1162,12 @@ export default function CartaPublica() {
     ].filter(Boolean).join(' '))
     const matchBusqueda = !busquedaLimpia || textoBusquedaVino.includes(busquedaLimpia)
     const matchPrecio = !precioMax || v.precio_botella <= precioMax
+    const matchPrecioMin = !precioMin || Number(v.precio_botella) >= precioMin
     const matchInternacional = !soloInternacional || v.internacional === true
     const matchCopa = !soloCopa || Number(v.precio_copa) > 0
-    return matchTipo && matchBusqueda && matchPrecio && matchInternacional && matchCopa
-  }), [vinos, filtro, busqueda, precioMax, soloInternacional, soloCopa])
+    const matchLocal = !soloLocal || commercialScopeForWine(v, restaurante) === 'local'
+    return matchTipo && matchBusqueda && matchPrecio && matchPrecioMin && matchInternacional && matchCopa && matchLocal
+  }), [vinos, filtro, busqueda, precioMax, precioMin, soloInternacional, soloCopa, soloLocal, restaurante])
 
   const tiposDisponibles = [...new Set(vinos.map(v => v.tipo).filter(Boolean))]
   const tiposBaseOrdenados = i.tiposOrdenados || ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol', 'sidra']
@@ -1222,12 +1226,12 @@ export default function CartaPublica() {
     return limpia.length > 120 ? `${limpia.slice(0, 117)}...` : limpia
   }
   const esCoravin = vino => normalizarTexto(vino.notas_cata || '').includes('coravin')
-  const mostrarSeleccion = seleccion.length > 0 && !busqueda && filtro === 'todos' && !precioMax && !soloInternacional && !soloCopa
-  const filtroActivo = precioMax || filtro !== 'todos' || soloInternacional || soloCopa
+  const mostrarSeleccion = seleccion.length > 0 && !busqueda && filtro === 'todos' && !precioMax && !precioMin && !soloInternacional && !soloCopa && !soloLocal
+  const filtroActivo = precioMax || precioMin || filtro !== 'todos' || soloInternacional || soloCopa || soloLocal
   const busquedaOFiltrado = Boolean(busqueda || filtroActivo)
-  const vinosPorCopa = vinos.filter(v => Number(v.precio_copa) > 0).length
   const vinosMenos30 = vinos.filter(v => Number(v.precio_botella) > 0 && Number(v.precio_botella) <= 30).length
-  const vinosFrescos = vinos.filter(v => ['blanco', 'rosado', 'espumoso', 'generoso'].includes(v.tipo)).length
+  const vinosLocal = vinos.filter(v => ambitoComercial(v) === 'local').length
+  const vinosCelebracion = vinos.filter(v => Number(v.precio_botella) >= 50).length
   const vinosCoravinFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && esCoravin(v))
   const vinosPorCopaFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && !esCoravin(v))
   // Vinos que solo tienen botella — excluidos de las secciones por copa para evitar duplicados
@@ -1478,18 +1482,19 @@ export default function CartaPublica() {
 
   function limpiarFiltrosCarta() {
     setPrecioMax(null)
+    setPrecioMin(null)
     setFiltro('todos')
     setSoloInternacional(false)
     setSoloCopa(false)
+    setSoloLocal(false)
     setBusqueda('')
   }
 
   function aplicarAtajo(id) {
     setMostrarFiltros(false)
-    if (id === 'copa') setSoloCopa(prev => !prev)
-    else if (id === 'menos30') setPrecioMax(prev => prev === 30 ? null : 30)
-    else if (id === 'frescos') setFiltro(prev => prev === 'blanco' ? 'todos' : 'blanco')
-    else if (id === 'espumosos') setFiltro(prev => prev === 'espumoso' ? 'todos' : 'espumoso')
+    if (id === 'menos30') setPrecioMax(prev => prev === 30 ? null : 30)
+    else if (id === 'local') setSoloLocal(prev => !prev)
+    else if (id === 'celebracion') setPrecioMin(prev => prev === 50 ? null : 50)
   }
 
   const estadoCargaCarta = estadoCartaPublica({ loading, loadError, restaurante, idioma, textos: i })
@@ -1874,6 +1879,34 @@ export default function CartaPublica() {
                 </button>
               </div>
 
+              <div className={styles.toggleRow}>
+                <span>Vinos de Málaga</span>
+                <button
+                  type="button"
+                  className={`${styles.switch} ${soloLocal ? styles.switchOn : ''}`}
+                  aria-label="Solo vinos de Málaga"
+                  aria-pressed={soloLocal}
+                  onClick={() => setSoloLocal(!soloLocal)}
+                  style={{ background: soloLocal ? colorPrimario : '#d8d1c4' }}
+                >
+                  <span className={styles.switchKnob} />
+                </button>
+              </div>
+
+              <div className={styles.toggleRow}>
+                <span>Para celebrar (≥50€)</span>
+                <button
+                  type="button"
+                  className={`${styles.switch} ${precioMin === 50 ? styles.switchOn : ''}`}
+                  aria-label="Para celebrar, vinos desde 50€"
+                  aria-pressed={precioMin === 50}
+                  onClick={() => setPrecioMin(prev => prev === 50 ? null : 50)}
+                  style={{ background: precioMin === 50 ? colorPrimario : '#d8d1c4' }}
+                >
+                  <span className={styles.switchKnob} />
+                </button>
+              </div>
+
               {filtroActivo && (
                 <button className={styles.clearButton} onClick={limpiarFiltrosCarta}>
                   {i.limpiarFiltros}
@@ -1905,11 +1938,9 @@ export default function CartaPublica() {
 
         {!busqueda && (
           <section className={styles.shortcutPanel}>
-            <button
-              className={`${styles.shortcut} ${soloCopa ? styles.shortcutActive : ''}`}
-              onClick={() => aplicarAtajo('copa')} disabled={!vinosPorCopa}>
-              <span>Por copa</span>
-              <small>{soloCopa ? 'Toca para quitar' : `${vinosPorCopa} vinos`}</small>
+            <button className={styles.shortcut} onClick={() => irAArmonía('shortcut')}>
+              <span>Vino para tu plato</span>
+              <small>{i.sommelierHint}</small>
             </button>
             <button
               className={`${styles.shortcut} ${precioMax === 30 ? styles.shortcutActive : ''}`}
@@ -1918,14 +1949,16 @@ export default function CartaPublica() {
               <small>{precioMax === 30 ? 'Toca para quitar' : `${vinosMenos30} vinos`}</small>
             </button>
             <button
-              className={`${styles.shortcut} ${filtro === 'blanco' ? styles.shortcutActive : ''}`}
-              onClick={() => aplicarAtajo('frescos')} disabled={!vinosFrescos}>
-              <span>Frescos</span>
-              <small>{filtro === 'blanco' ? 'Toca para quitar' : 'Blancos y afines'}</small>
+              className={`${styles.shortcut} ${soloLocal ? styles.shortcutActive : ''}`}
+              onClick={() => aplicarAtajo('local')} disabled={!vinosLocal}>
+              <span>Vinos de Málaga</span>
+              <small>{soloLocal ? 'Toca para quitar' : `${vinosLocal} vinos`}</small>
             </button>
-            <button className={styles.shortcut} onClick={() => irAArmonía('shortcut')}>
-              <span>Vino para tu plato</span>
-              <small>{i.sommelierHint}</small>
+            <button
+              className={`${styles.shortcut} ${precioMin === 50 ? styles.shortcutActive : ''}`}
+              onClick={() => aplicarAtajo('celebracion')} disabled={!vinosCelebracion}>
+              <span>Para celebrar</span>
+              <small>{precioMin === 50 ? 'Toca para quitar' : `${vinosCelebracion} vinos`}</small>
             </button>
           </section>
         )}
