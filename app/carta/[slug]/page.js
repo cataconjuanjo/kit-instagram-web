@@ -19,7 +19,6 @@ import { WINE_TYPE_COLORS } from '../../lib/winePresentation'
 import { cargarPerfilesVino } from '../../lib/wineProfileClient'
 import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS } from '../../lib/wineProfileRadar'
 import { limpiarMarcadorPerfiles } from '../../lib/wineProfileTags'
-import BrandLogo from '../../components/BrandLogo'
 import PublicStateScreen from '../../components/PublicStateScreen'
 import WineProfileRadarChart from '../../components/WineProfileRadarChart'
 import styles from './carta.module.css'
@@ -1193,27 +1192,6 @@ export default function CartaPublica() {
     }
   }
 
-  function renderHeroLogo() {
-    if (!restaurante?.logo_url) {
-      return (
-        <span className={styles.logoFrame}>
-          <BrandLogo variant="horizontalDark" className={`${styles.logo} ${styles.logoFallback}`} />
-        </span>
-      )
-    }
-
-    return (
-      <span className={styles.logoFrame}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- Logo configurable del restaurante: puede venir de Supabase u otra URL externa no controlada por next/image. */}
-        <img
-          src={restaurante.logo_url}
-          alt={restaurante.nombre}
-          className={styles.logo}
-          loading="lazy"
-        />
-      </span>
-    )
-  }
   const categoriasBase = ['Entrantes fríos', 'Entrantes calientes', 'Cuchara', 'De la tierra', 'Del mar', 'Tablas']
   const categoriasPlatos = [
     ...categoriasBase.filter(categoria => platos.some(plato => plato.categoria === categoria)),
@@ -2211,9 +2189,16 @@ export default function CartaPublica() {
       <header className={styles.hero} style={heroStyle()}>
         <div className={styles.heroTop}>
           <div>
-            {renderHeroLogo()}
             <p className={styles.kicker}>{i.sommelier}</p>
-            <h1 className={styles.title}>{restaurante.nombre}</h1>
+            <div className={restaurante?.logo_url ? styles.heroLockup : undefined}>
+              {restaurante?.logo_url && (
+                <span className={styles.logoFrame}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Logo del restaurante: URL externa no controlada por next/image. */}
+                  <img src={restaurante.logo_url} alt="" aria-hidden className={styles.logo} loading="lazy" />
+                </span>
+              )}
+              <h1 className={styles.title}>{restaurante.nombre}</h1>
+            </div>
             <a className={styles.heroCredit} href="/cartavinos" target="_blank" rel="noreferrer">
               Carta Viva <span style={{fontStyle:'italic',letterSpacing:'0.08em'}}>×</span> @cataconjuanjo
             </a>
