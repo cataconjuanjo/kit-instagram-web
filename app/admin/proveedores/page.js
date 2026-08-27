@@ -242,7 +242,12 @@ function ProveedoresPageContent() {
     if (!res.ok) throw new Error(data.error || 'No se pudieron cargar proveedores.')
     setProveedores(data.proveedores || [])
     const favoritosLocales = leerFavoritosLocales()
-    const vinosCargados = (data.vinos || []).map(v => ({
+    const idsSeen = new Set()
+    const vinosCargados = (data.vinos || []).filter(v => {
+      if (idsSeen.has(v.id)) return false
+      idsSeen.add(v.id)
+      return true
+    }).map(v => ({
       ...v,
       favorito: v.favorito || favoritosLocales.has(v.id)
     }))
@@ -1464,10 +1469,13 @@ function ProveedoresPageContent() {
                     </div>
                     {referenciasVisibles.map(vino => {
                       const rb = calcularBotella(numeroCoste(vino.coste_estimado))
+                      const debugTitle = busquedaReferencias.trim()
+                        ? `ID:${vino.id} | bodega:${vino.bodega||''} | tipo:${vino.tipo||''} | region:${vino.region||''} | uva:${vino.uva||''} | ref:${vino.referencia||''}`
+                        : undefined
                       return (
                       <div className="supplier-table-row" key={vino.id}>
                         <div>
-                          <strong>{vino.nombre}</strong>
+                          <strong title={debugTitle}>{vino.nombre}</strong>
                           <small>Proveedor: {proveedorPorId[vino.proveedor_id]?.nombre || vino.proveedores_vino?.nombre || 'Proveedor'}</small>
                         </div>
                         <span>{vino.bodega || '-'}</span>
