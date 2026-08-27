@@ -1519,8 +1519,8 @@ function ProveedoresPageContent() {
 
           <div className="supplier-table-panel">
             <div className="supplier-section-head">
-              <h2>Referencias de catalogo</h2>
-              <span>Pagina {Math.min(paginaReferencias, totalPaginasReferencias)} de {totalPaginasReferencias}</span>
+              <h2>{proveedorSeleccionado ? (proveedorPorId[proveedorSeleccionado]?.nombre || 'Catálogo') : 'Fondo común'}</h2>
+              <span>Página {Math.min(paginaReferencias, totalPaginasReferencias)} de {totalPaginasReferencias} · {vinosFiltrados.length} refs</span>
             </div>
             {vinosFiltrados.length === 0 && <p className="consult-empty">No hay vinos para este filtro.</p>}
             {soloFavoritos && vinosFiltrados.length > 0 && (
@@ -1619,36 +1619,61 @@ function ProveedoresPageContent() {
                   </div>
                 ) : (
                   <>
-                    {/* Tarjetas apiladas en móvil */}
+                    {/* Tarjetas apiladas en móvil — layout con inline styles para evitar conflictos CSS */}
                     <div className="supplier-mobile-cards">
                       {referenciasVisibles.map(vino => {
+                        const rb = calcularBotella(numeroCoste(vino.coste_estimado))
+                        const pvpStr = rb ? `${rb.pvp.toFixed(2)} €` : '—'
                         const abierto = menuAccionAbierto === vino.id
                         return (
                           <div className="supplier-mobile-card" key={vino.id}>
-                            <div className="supplier-mobile-card-row">
-                              <div className="supplier-mobile-card-info">
-                                <strong>{vino.nombre}</strong>
-                                <span>{[vino.bodega, vino.region].filter(Boolean).join(' · ') || proveedorPorId[vino.proveedor_id]?.nombre || ''}</span>
+                            {/* Fila principal con inline styles para que nada del contexto la anule */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 14px' }}>
+                              {/* Info: nombre + bodega/zona */}
+                              <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {vino.nombre}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
+                                  {proveedorSeleccionado
+                                    ? [vino.bodega, vino.region].filter(Boolean).join(' · ') || ''
+                                    : [vino.bodega || vino.region, proveedorPorId[vino.proveedor_id]?.nombre].filter(Boolean).join(' · ')}
+                                </div>
                               </div>
-                              <strong className="supplier-mobile-card-price">{dinero(vino.coste_estimado) || '—'}</strong>
+                              {/* PVP destacado */}
+                              <div style={{ flexShrink: 0, fontSize: '0.9rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--ink)', whiteSpace: 'nowrap' }}>
+                                {pvpStr}
+                              </div>
+                              {/* Favorito */}
                               <button
                                 type="button"
-                                className="supplier-mobile-card-more"
+                                style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--line)', borderRadius: 7, background: 'transparent', cursor: 'pointer', fontSize: '1rem', color: vino.favorito ? 'var(--wine)' : 'var(--muted)' }}
+                                onClick={() => toggleFavorito(vino)}
+                                disabled={togglingFavorito.has(vino.id)}
+                                aria-label={vino.favorito ? 'Quitar favorito' : 'Marcar favorito'}
+                              >{vino.favorito ? '★' : '☆'}</button>
+                              {/* Botón ⋯ */}
+                              <button
+                                type="button"
+                                style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--line)', borderRadius: 7, background: abierto ? 'rgba(116,34,61,0.06)' : 'transparent', cursor: 'pointer', fontSize: '1.1rem', color: 'var(--muted)', letterSpacing: '0.05em' }}
                                 onClick={() => setMenuAccionAbierto(abierto ? null : vino.id)}
                                 aria-expanded={abierto}
                                 aria-label="Acciones"
                               >⋯</button>
                             </div>
+                            {/* Menú de acciones expandido */}
                             {abierto && (
-                              <div className="supplier-mobile-card-actions">
+                              <div style={{ display: 'flex', gap: 8, padding: '10px 14px', background: 'rgba(116,34,61,0.03)', borderTop: '1px solid var(--line)', flexWrap: 'wrap' }}>
                                 <button
                                   type="button"
-                                  className={`supplier-fav-btn${vino.favorito ? ' is-fav' : ''}`}
-                                  onClick={() => { toggleFavorito(vino); setMenuAccionAbierto(null) }}
-                                  disabled={togglingFavorito.has(vino.id)}
-                                >{vino.favorito ? '★ Quitar favorito' : '☆ Favorito'}</button>
-                                <button type="button" onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion'); setMenuAccionAbierto(null) }}>Editar</button>
-                                <button type="button" className="admin-plain-button" onClick={() => { setBorradoPendiente({ id: vino.id, kind: 'vino', nombre: vino.nombre }); setMenuAccionAbierto(null) }}>Borrar</button>
+                                  style={{ padding: '7px 12px', border: '1px solid var(--line)', borderRadius: 8, background: '#fff', color: 'var(--ink)', font: 'inherit', fontSize: '0.8rem', fontWeight: 650, cursor: 'pointer' }}
+                                  onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion'); setMenuAccionAbierto(null) }}
+                                >Editar</button>
+                                <button
+                                  type="button"
+                                  style={{ padding: '7px 12px', border: '1px solid #fca5a5', borderRadius: 8, background: '#fff', color: '#b91c1c', font: 'inherit', fontSize: '0.8rem', fontWeight: 650, cursor: 'pointer' }}
+                                  onClick={() => { setBorradoPendiente({ id: vino.id, kind: 'vino', nombre: vino.nombre }); setMenuAccionAbierto(null) }}
+                                >Borrar</button>
                               </div>
                             )}
                           </div>
@@ -1675,7 +1700,11 @@ function ProveedoresPageContent() {
                           <div className="supplier-table-row" key={vino.id}>
                             <div className="supplier-cell-name">
                               <strong title={debugTitle}>{vino.nombre}</strong>
-                              <span className="supplier-cell-sub">{vino.bodega || (proveedorPorId[vino.proveedor_id]?.nombre || '')}</span>
+                              <span className="supplier-cell-sub">
+                                {proveedorSeleccionado
+                                  ? (vino.bodega || '')
+                                  : [vino.bodega, proveedorPorId[vino.proveedor_id]?.nombre].filter(Boolean).join(' · ')}
+                              </span>
                             </div>
                             <span className="supplier-cell-zona">{[vino.region, vino.tipo].filter(Boolean).join(' · ') || '-'}</span>
                             <span className="supplier-cell-formato">{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
