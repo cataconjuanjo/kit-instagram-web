@@ -165,24 +165,8 @@ export default function AdminLayout({ children }) {
               className={`${styles.navLink} ${pathname === '/admin/proveedores' ? styles.navActive : ''}`}
               onClick={() => setMenuOpen(false)}
             >
-              Proveedores
+              Catálogo privado
             </Link>
-            <div className={styles.subnavAdmin}>
-              <Link
-                href="/admin/proveedores?vista=gestion"
-                className={styles.subnavAdminLink}
-                onClick={() => setMenuOpen(false)}
-              >
-                Fichas e importación
-              </Link>
-              <Link
-                href="/admin/proveedores?vista=catalogo"
-                className={styles.subnavAdminLink}
-                onClick={() => setMenuOpen(false)}
-              >
-                Catálogo común
-              </Link>
-            </div>
           </li>
         </ul>
 

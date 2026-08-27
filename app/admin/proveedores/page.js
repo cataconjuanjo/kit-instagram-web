@@ -176,6 +176,54 @@ function costeEnRango(coste, rango) {
   return true
 }
 
+function PaginacionNumerada({ pagina, totalPaginas, setPagina, porPagina, setPorPagina }) {
+  const [irA, setIrA] = useState('')
+
+  function calcPaginas() {
+    if (totalPaginas <= 7) return Array.from({ length: totalPaginas }, (_, i) => i + 1)
+    const arr = [1]
+    if (pagina > 3) arr.push('…')
+    const desde = Math.max(2, pagina - 1)
+    const hasta = Math.min(totalPaginas - 1, pagina + 1)
+    for (let i = desde; i <= hasta; i++) arr.push(i)
+    if (pagina < totalPaginas - 2) arr.push('…')
+    arr.push(totalPaginas)
+    return arr
+  }
+
+  function confirmarIrA(e) {
+    if (e.key && e.key !== 'Enter') return
+    const n = Number(irA)
+    if (n >= 1 && n <= totalPaginas) { setPagina(n); setIrA('') }
+  }
+
+  return (
+    <div className="sup-pag">
+      <div className="sup-pag-nums">
+        <button type="button" className="sup-pag-btn" disabled={pagina <= 1} onClick={() => setPagina(p => p - 1)} aria-label="Página anterior">‹</button>
+        {calcPaginas().map((p, i) =>
+          p === '…'
+            ? <span key={`e${i}`} className="sup-pag-dots">…</span>
+            : <button type="button" key={p} className={`sup-pag-btn${pagina === p ? ' is-current' : ''}`} onClick={() => setPagina(p)} aria-current={pagina === p ? 'page' : undefined}>{p}</button>
+        )}
+        <button type="button" className="sup-pag-btn" disabled={pagina >= totalPaginas} onClick={() => setPagina(p => p + 1)} aria-label="Página siguiente">›</button>
+      </div>
+      <div className="sup-pag-controls">
+        <select value={porPagina} onChange={e => { setPorPagina(Number(e.target.value)); setPagina(1) }} aria-label="Resultados por página">
+          <option value={25}>25 / pág.</option>
+          <option value={60}>60 / pág.</option>
+          <option value={100}>100 / pág.</option>
+        </select>
+        <span className="sup-pag-goto">
+          <span>Ir a</span>
+          <input type="number" min={1} max={totalPaginas} value={irA} onChange={e => setIrA(e.target.value)} onKeyDown={confirmarIrA} aria-label="Ir a página" />
+          <button type="button" className="sup-pag-btn" onClick={confirmarIrA} aria-label="Ir">→</button>
+        </span>
+      </div>
+    </div>
+  )
+}
+
 function ProveedoresPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -207,6 +255,12 @@ function ProveedoresPageContent() {
   const [soloFavoritos, setSoloFavoritos] = useState(false)
   const [margenCopaPct, setMargenCopaPct] = useState(70)
   const [togglingFavorito, setTogglingFavorito] = useState(new Set())
+  const [referenciasPorPagina, setReferenciasPorPagina] = useState(60)
+  const [menuAccionAbierto, setMenuAccionAbierto] = useState(null)
+  const [comboProveedorAbierto, setComboProveedorAbierto] = useState(false)
+  const [busquedaComboProveedor, setBusquedaComboProveedor] = useState('')
+  const [calculadoraAbierta, setCalculadoraAbierta] = useState(false)
+  const [toastMsg, setToastMsg] = useState(null)
   const [filtroImportacion, setFiltroImportacion] = useState('')
   const [reemplazarCatalogo, setReemplazarCatalogo] = useState(false)
   const [progresoGuardado, setProgresoGuardado] = useState('')
@@ -219,6 +273,11 @@ function ProveedoresPageContent() {
   const [vistaProveedores, setVistaProveedores] = useState(searchParams.get('vista') === 'catalogo' ? 'catalogo' : 'gestion')
   const [acordeonAbierto, setAcordeonAbierto] = useState(null)
   const catalogoRef = useRef(null)
+
+  function mostrarToast(msg, tipo = 'ok') {
+    setToastMsg({ msg, tipo })
+    setTimeout(() => setToastMsg(null), 3500)
+  }
 
   function toggleAcordeon(seccion) {
     setAcordeonAbierto(prev => prev === seccion ? null : seccion)
@@ -282,7 +341,7 @@ function ProveedoresPageContent() {
 
   useEffect(() => {
     setPaginaReferencias(1)
-  }, [proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos, ordenReferencias])
+  }, [proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, soloSinPrecio, ocultarSinPrecio, soloFavoritos, ordenReferencias, referenciasPorPagina])
 
   const vinosFiltradosBase = useMemo(() => {
     const rango = RANGOS_PRECIO.find(item => item.id === filtroPrecio)
@@ -482,11 +541,11 @@ function ProveedoresPageContent() {
     }
   }
 
-  const totalPaginasReferencias = Math.max(1, Math.ceil(vinosFiltrados.length / REFERENCIAS_POR_PAGINA))
+  const totalPaginasReferencias = Math.max(1, Math.ceil(vinosFiltrados.length / referenciasPorPagina))
   const referenciasVisibles = useMemo(() => {
-    const inicio = (paginaReferencias - 1) * REFERENCIAS_POR_PAGINA
-    return vinosFiltrados.slice(inicio, inicio + REFERENCIAS_POR_PAGINA)
-  }, [vinosFiltrados, paginaReferencias])
+    const inicio = (paginaReferencias - 1) * referenciasPorPagina
+    return vinosFiltrados.slice(inicio, inicio + referenciasPorPagina)
+  }, [vinosFiltrados, paginaReferencias, referenciasPorPagina])
 
   const totalFavoritos = useMemo(() => vinos.filter(v => v.favorito).length, [vinos])
 
@@ -645,8 +704,10 @@ function ProveedoresPageContent() {
       setEditandoProveedor(null)
       setAcordeonAbierto(null)
       if (data.proveedor?.id) setProveedorSeleccionado(data.proveedor.id)
+      mostrarToast(editandoProveedor ? 'Proveedor actualizado' : 'Proveedor creado')
     } catch (error) {
       setError(error.message)
+      mostrarToast(error.message, 'error')
     } finally {
       setGuardando(false)
     }
@@ -674,8 +735,10 @@ function ProveedoresPageContent() {
       setEditandoVino(null)
       setAcordeonAbierto(null)
       if (data.vino?.proveedor_id) setProveedorSeleccionado(data.vino.proveedor_id)
+      mostrarToast(editandoVino ? 'Referencia actualizada' : 'Referencia añadida al catálogo')
     } catch (error) {
       setError(error.message)
+      mostrarToast(error.message, 'error')
     } finally {
       setGuardando(false)
     }
@@ -878,8 +941,10 @@ function ProveedoresPageContent() {
         if (proveedorSeleccionado === id) setProveedorSeleccionado('')
       }
       setBorradoPendiente(null)
+      mostrarToast(kind === 'vino' ? 'Referencia eliminada' : 'Proveedor eliminado')
     } catch (error) {
       setError(error.message)
+      mostrarToast(error.message, 'error')
     } finally {
       setBorrando(false)
     }
@@ -891,6 +956,28 @@ function ProveedoresPageContent() {
 
   return (
     <div className="admin-main supplier-main">
+          {/* ── Pestañas de sección ── */}
+          <div className="supplier-page-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={vistaProveedores === 'gestion'}
+              className={`supplier-page-tab${vistaProveedores === 'gestion' ? ' is-active' : ''}`}
+              onClick={() => cambiarVistaProveedores('gestion')}
+            >
+              Gestión
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={vistaProveedores === 'catalogo'}
+              className={`supplier-page-tab${vistaProveedores === 'catalogo' ? ' is-active' : ''}`}
+              onClick={() => cambiarVistaProveedores('catalogo')}
+            >
+              Catálogo común
+            </button>
+          </div>
+
           <div className="consult-hero supplier-hero">
             <div>
               <h2>Catálogo de distribuidores para preparar propuestas sin exponer precios.</h2>
@@ -1259,13 +1346,75 @@ function ProveedoresPageContent() {
 
           {vistaProveedores === 'catalogo' && (
           <section className="supplier-catalog-workbench">
-          <div className="consult-filterbar">
-            <button className={!proveedorSeleccionado ? 'active' : ''} onClick={() => setProveedorSeleccionado('')}>Todos</button>
-            {proveedores.map(proveedor => (
-              <button key={proveedor.id} className={proveedorSeleccionado === proveedor.id ? 'active' : ''} onClick={() => setProveedorSeleccionado(proveedor.id)}>
-                {proveedor.nombre} {conteoPorProveedor[proveedor.id] ? `(${conteoPorProveedor[proveedor.id]})` : ''}
-              </button>
-            ))}
+          {/* ── Combobox de proveedor ── */}
+          <div className="supplier-proveedor-combo">
+            <button
+              type="button"
+              className={`supplier-combo-trigger${proveedorSeleccionado ? ' is-selected' : ''}`}
+              onClick={() => { setComboProveedorAbierto(o => !o); setBusquedaComboProveedor('') }}
+              aria-haspopup="listbox"
+              aria-expanded={comboProveedorAbierto}
+            >
+              <span>
+                {proveedorSeleccionado
+                  ? proveedores.find(p => p.id === proveedorSeleccionado)?.nombre || 'Proveedor'
+                  : 'Todos los proveedores'}
+                {proveedorSeleccionado && conteoPorProveedor[proveedorSeleccionado]
+                  ? ` (${conteoPorProveedor[proveedorSeleccionado]})`
+                  : !proveedorSeleccionado ? ` · ${vinos.length} refs` : ''}
+              </span>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" style={{ flexShrink: 0, transform: comboProveedorAbierto ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}>
+                <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            {proveedorSeleccionado && (
+              <button
+                type="button"
+                className="supplier-combo-clear"
+                onClick={() => { setProveedorSeleccionado(''); setComboProveedorAbierto(false) }}
+                aria-label="Quitar filtro de proveedor"
+              >×</button>
+            )}
+            {comboProveedorAbierto && (
+              <div className="supplier-combo-dropdown" role="listbox">
+                <div className="supplier-combo-search">
+                  <input
+                    type="text"
+                    value={busquedaComboProveedor}
+                    onChange={e => setBusquedaComboProveedor(e.target.value)}
+                    placeholder="Buscar proveedor..."
+                    autoFocus
+                    aria-label="Buscar proveedor"
+                  />
+                </div>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={!proveedorSeleccionado}
+                  className={`supplier-combo-option${!proveedorSeleccionado ? ' is-selected' : ''}`}
+                  onClick={() => { setProveedorSeleccionado(''); setComboProveedorAbierto(false) }}
+                >
+                  <span>Todos los proveedores</span>
+                  <span className="supplier-combo-count">{vinos.length}</span>
+                </button>
+                {proveedores
+                  .filter(p => !busquedaComboProveedor || p.nombre.toLowerCase().includes(busquedaComboProveedor.toLowerCase()))
+                  .map(proveedor => (
+                    <button
+                      type="button"
+                      role="option"
+                      key={proveedor.id}
+                      aria-selected={proveedorSeleccionado === proveedor.id}
+                      className={`supplier-combo-option${proveedorSeleccionado === proveedor.id ? ' is-selected' : ''}`}
+                      onClick={() => { setProveedorSeleccionado(proveedor.id); setComboProveedorAbierto(false); setBusquedaComboProveedor('') }}
+                    >
+                      <span>{proveedor.nombre}</span>
+                      <span className="supplier-combo-count">{conteoPorProveedor[proveedor.id] || 0}</span>
+                    </button>
+                  ))
+                }
+              </div>
+            )}
           </div>
 
           <div className="supplier-reference-tools">
@@ -1375,34 +1524,46 @@ function ProveedoresPageContent() {
             </div>
             {vinosFiltrados.length === 0 && <p className="consult-empty">No hay vinos para este filtro.</p>}
             {soloFavoritos && vinosFiltrados.length > 0 && (
-              <div className="supplier-price-calc">
-                <span>Calculadora de carta</span>
-                <label>
-                  Margen copa
-                  <select value={margenCopaPct} onChange={e => setMargenCopaPct(Number(e.target.value))}>
-                    <option value={50}>50 %</option>
-                    <option value={55}>55 %</option>
-                    <option value={60}>60 %</option>
-                    <option value={65}>65 %</option>
-                    <option value={70}>70 %</option>
-                    <option value={75}>75 %</option>
-                    <option value={80}>80 %</option>
-                  </select>
-                </label>
-                <label>
-                  Ordenar por
-                  <select value={ordenReferencias.campo} onChange={e => setOrdenReferencias(prev => ({ campo: e.target.value, dir: prev.campo === e.target.value ? prev.dir : 'asc' }))}>
-                    <option value="nombre">Nombre</option>
-                    <option value="coste">Coste botella</option>
-                    <option value="pvp">PVP botella</option>
-                  </select>
-                </label>
-                <button type="button" className="admin-plain-button" onClick={() => setOrdenReferencias(prev => ({ ...prev, dir: prev.dir === 'asc' ? 'desc' : 'asc' }))}>
-                  {ordenReferencias.dir === 'asc' ? '↑ Asc' : '↓ Desc'}
+              <div className="supplier-price-calc supplier-price-calc--collapsible">
+                <button
+                  type="button"
+                  className="supplier-calc-toggle"
+                  onClick={() => setCalculadoraAbierta(o => !o)}
+                  aria-expanded={calculadoraAbierta}
+                >
+                  <span>Calculadora de carta</span>
+                  <span className="supplier-calc-toggle-icon">{calculadoraAbierta ? '−' : '+'}</span>
                 </button>
-                <span className="supplier-price-formula">
-                  Botella: coste neto por tramo (&lt;=6 EUR x3,5 · 6-11 EUR x2+9 EUR · &gt;11 EUR +20 EUR) + IVA y redondeo al euro · Copa: coste / 4,5 / (1-{margenCopaPct}%) + IVA y redondeo a 0,50 EUR
-                </span>
+                {calculadoraAbierta && (
+                  <div className="supplier-calc-body">
+                    <label>
+                      Margen copa
+                      <select value={margenCopaPct} onChange={e => setMargenCopaPct(Number(e.target.value))}>
+                        <option value={50}>50 %</option>
+                        <option value={55}>55 %</option>
+                        <option value={60}>60 %</option>
+                        <option value={65}>65 %</option>
+                        <option value={70}>70 %</option>
+                        <option value={75}>75 %</option>
+                        <option value={80}>80 %</option>
+                      </select>
+                    </label>
+                    <label>
+                      Ordenar por
+                      <select value={ordenReferencias.campo} onChange={e => setOrdenReferencias(prev => ({ campo: e.target.value, dir: prev.campo === e.target.value ? prev.dir : 'asc' }))}>
+                        <option value="nombre">Nombre</option>
+                        <option value="coste">Coste botella</option>
+                        <option value="pvp">PVP botella</option>
+                      </select>
+                    </label>
+                    <button type="button" className="admin-plain-button" onClick={() => setOrdenReferencias(prev => ({ ...prev, dir: prev.dir === 'asc' ? 'desc' : 'asc' }))}>
+                      {ordenReferencias.dir === 'asc' ? '↑ Asc' : '↓ Desc'}
+                    </button>
+                    <span className="supplier-price-formula">
+                      Botella: coste neto por tramo (&lt;=6 EUR x3,5 · 6-11 EUR x2+9 EUR · &gt;11 EUR +20 EUR) + IVA y redondeo al euro · Copa: coste / 4,5 / (1-{margenCopaPct}%) + IVA y redondeo a 0,50 EUR
+                    </span>
+                  </div>
+                )}
               </div>
             )}
             {vinosFiltrados.length > 0 && (
@@ -1457,55 +1618,106 @@ function ProveedoresPageContent() {
                     })}
                   </div>
                 ) : (
-                  <div className="supplier-table supplier-table--pvp">
-                    <div className="supplier-table-head">
-                      <button type="button" onClick={() => cambiarOrdenReferencias('nombre')} className={ordenReferencias.campo === 'nombre' ? 'is-active' : ''}>Vino <span>{etiquetaOrden('nombre')}</span></button>
-                      <button type="button" onClick={() => cambiarOrdenReferencias('bodega')} className={ordenReferencias.campo === 'bodega' ? 'is-active' : ''}>Bodega <span>{etiquetaOrden('bodega')}</span></button>
-                      <button type="button" onClick={() => cambiarOrdenReferencias('zona')} className={ordenReferencias.campo === 'zona' ? 'is-active' : ''}>Zona / Tipo <span>{etiquetaOrden('zona')}</span></button>
-                      <button type="button" onClick={() => cambiarOrdenReferencias('formato')} className={ordenReferencias.campo === 'formato' ? 'is-active' : ''}>Formato <span>{etiquetaOrden('formato')}</span></button>
-                      <button type="button" onClick={() => cambiarOrdenReferencias('coste')} className={ordenReferencias.campo === 'coste' ? 'is-active' : ''}>Coste botella <span>{etiquetaOrden('coste')}</span></button>
-                      <button type="button" onClick={() => cambiarOrdenReferencias('pvp')} className={ordenReferencias.campo === 'pvp' ? 'is-active' : ''}>PVP botella <span>{etiquetaOrden('pvp')}</span></button>
-                      <span></span>
+                  <>
+                    {/* Tarjetas apiladas en móvil */}
+                    <div className="supplier-mobile-cards">
+                      {referenciasVisibles.map(vino => {
+                        const abierto = menuAccionAbierto === vino.id
+                        return (
+                          <div className="supplier-mobile-card" key={vino.id}>
+                            <div className="supplier-mobile-card-row">
+                              <div className="supplier-mobile-card-info">
+                                <strong>{vino.nombre}</strong>
+                                <span>{[vino.bodega, vino.region].filter(Boolean).join(' · ') || proveedorPorId[vino.proveedor_id]?.nombre || ''}</span>
+                              </div>
+                              <strong className="supplier-mobile-card-price">{dinero(vino.coste_estimado) || '—'}</strong>
+                              <button
+                                type="button"
+                                className="supplier-mobile-card-more"
+                                onClick={() => setMenuAccionAbierto(abierto ? null : vino.id)}
+                                aria-expanded={abierto}
+                                aria-label="Acciones"
+                              >⋯</button>
+                            </div>
+                            {abierto && (
+                              <div className="supplier-mobile-card-actions">
+                                <button
+                                  type="button"
+                                  className={`supplier-fav-btn${vino.favorito ? ' is-fav' : ''}`}
+                                  onClick={() => { toggleFavorito(vino); setMenuAccionAbierto(null) }}
+                                  disabled={togglingFavorito.has(vino.id)}
+                                >{vino.favorito ? '★ Quitar favorito' : '☆ Favorito'}</button>
+                                <button type="button" onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion'); setMenuAccionAbierto(null) }}>Editar</button>
+                                <button type="button" className="admin-plain-button" onClick={() => { setBorradoPendiente({ id: vino.id, kind: 'vino', nombre: vino.nombre }); setMenuAccionAbierto(null) }}>Borrar</button>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
-                    {referenciasVisibles.map(vino => {
-                      const rb = calcularBotella(numeroCoste(vino.coste_estimado))
-                      const debugTitle = busquedaReferencias.trim()
-                        ? `ID:${vino.id} | bodega:${vino.bodega||''} | tipo:${vino.tipo||''} | region:${vino.region||''} | uva:${vino.uva||''} | ref:${vino.referencia||''}`
-                        : undefined
-                      return (
-                      <div className="supplier-table-row" key={vino.id}>
-                        <div>
-                          <strong title={debugTitle}>{vino.nombre}</strong>
-                          <small>Proveedor: {proveedorPorId[vino.proveedor_id]?.nombre || vino.proveedores_vino?.nombre || 'Proveedor'}</small>
-                        </div>
-                        <span>{vino.bodega || '-'}</span>
-                        <span>{[vino.region, vino.tipo, vino.uva].filter(Boolean).join(' · ') || '-'}</span>
-                        <span>{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
-                        <strong>{dinero(vino.coste_estimado) || '-'}</strong>
-                        {rb ? <strong>{rb.pvp.toFixed(2)} €</strong> : <span>—</span>}
-                        <div className="supplier-row-actions">
-                          <button
-                            type="button"
-                            className={`supplier-fav-btn${vino.favorito ? ' is-fav' : ''}`}
-                            onClick={() => toggleFavorito(vino)}
-                            title={vino.favorito ? 'Quitar de favoritos' : 'Añadir a favoritos'}
-                            disabled={togglingFavorito.has(vino.id)}
-                          >
-                            {vino.favorito ? '★' : '☆'}
-                          </button>
-                          <button onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion') }}>Editar</button>
-                          <button className="admin-plain-button" onClick={() => setBorradoPendiente({ id: vino.id, kind: 'vino', nombre: vino.nombre })}>Borrar</button>
-                        </div>
+                    {/* Tabla en escritorio */}
+                    <div className="supplier-table supplier-table--pvp">
+                      <div className="supplier-table-head">
+                        <button type="button" onClick={() => cambiarOrdenReferencias('nombre')} className={ordenReferencias.campo === 'nombre' ? 'is-active' : ''}>Vino / bodega <span>{etiquetaOrden('nombre')}</span></button>
+                        <button type="button" onClick={() => cambiarOrdenReferencias('zona')} className={ordenReferencias.campo === 'zona' ? 'is-active' : ''}>Zona / Tipo <span>{etiquetaOrden('zona')}</span></button>
+                        <button type="button" onClick={() => cambiarOrdenReferencias('formato')} className={ordenReferencias.campo === 'formato' ? 'is-active' : ''}>Formato <span>{etiquetaOrden('formato')}</span></button>
+                        <button type="button" onClick={() => cambiarOrdenReferencias('coste')} className={ordenReferencias.campo === 'coste' ? 'is-active' : ''}>Coste <span>{etiquetaOrden('coste')}</span></button>
+                        <button type="button" onClick={() => cambiarOrdenReferencias('pvp')} className={ordenReferencias.campo === 'pvp' ? 'is-active' : ''}>PVP <span>{etiquetaOrden('pvp')}</span></button>
+                        <span></span>
                       </div>
-                    )
-                    })}
-                  </div>
+                      {referenciasVisibles.map(vino => {
+                        const rb = calcularBotella(numeroCoste(vino.coste_estimado))
+                        const debugTitle = busquedaReferencias.trim()
+                          ? `ID:${vino.id} | bodega:${vino.bodega||''} | tipo:${vino.tipo||''} | region:${vino.region||''} | uva:${vino.uva||''} | ref:${vino.referencia||''}`
+                          : undefined
+                        const menuAbierto = menuAccionAbierto === vino.id
+                        return (
+                          <div className="supplier-table-row" key={vino.id}>
+                            <div className="supplier-cell-name">
+                              <strong title={debugTitle}>{vino.nombre}</strong>
+                              <span className="supplier-cell-sub">{vino.bodega || (proveedorPorId[vino.proveedor_id]?.nombre || '')}</span>
+                            </div>
+                            <span className="supplier-cell-zona">{[vino.region, vino.tipo].filter(Boolean).join(' · ') || '-'}</span>
+                            <span className="supplier-cell-formato">{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
+                            <strong className="supplier-cell-num">{dinero(vino.coste_estimado) || '-'}</strong>
+                            <strong className="supplier-cell-num">{rb ? `${rb.pvp.toFixed(2)} €` : '—'}</strong>
+                            <div className="supplier-row-menu">
+                              <button
+                                type="button"
+                                className={`supplier-fav-btn${vino.favorito ? ' is-fav' : ''}`}
+                                onClick={() => toggleFavorito(vino)}
+                                title={vino.favorito ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+                                disabled={togglingFavorito.has(vino.id)}
+                              >{vino.favorito ? '★' : '☆'}</button>
+                              <div className="supplier-row-menu-wrap">
+                                <button
+                                  type="button"
+                                  className="supplier-row-dots"
+                                  onClick={() => setMenuAccionAbierto(menuAbierto ? null : vino.id)}
+                                  aria-expanded={menuAbierto}
+                                  aria-label="Acciones de fila"
+                                >⋯</button>
+                                {menuAbierto && (
+                                  <div className="supplier-row-dots-menu">
+                                    <button type="button" onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion'); setMenuAccionAbierto(null) }}>Editar</button>
+                                    <button type="button" className="is-danger" onClick={() => { setBorradoPendiente({ id: vino.id, kind: 'vino', nombre: vino.nombre }); setMenuAccionAbierto(null) }}>Borrar</button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
                 )}
-                <div className="supplier-pagination">
-                  <button disabled={paginaReferencias <= 1} onClick={() => setPaginaReferencias(pagina => Math.max(1, pagina - 1))}>Anterior</button>
-                  <span>Mostrando {referenciasVisibles.length} de {vinosFiltrados.length}</span>
-                  <button disabled={paginaReferencias >= totalPaginasReferencias} onClick={() => setPaginaReferencias(pagina => Math.min(totalPaginasReferencias, pagina + 1))}>Siguiente</button>
-                </div>
+                <PaginacionNumerada
+                  pagina={paginaReferencias}
+                  totalPaginas={totalPaginasReferencias}
+                  setPagina={setPaginaReferencias}
+                  porPagina={referenciasPorPagina}
+                  setPorPagina={setReferenciasPorPagina}
+                />
               </>
             )}
           </div>
@@ -1576,6 +1788,13 @@ function ProveedoresPageContent() {
             </section>
           </div>
           )}
+          {/* ── Toast ── */}
+          {toastMsg && (
+            <div className={`sup-toast sup-toast--${toastMsg.tipo}`} role="status" aria-live="polite">
+              {toastMsg.tipo === 'ok' ? '✓' : '⚠'} {toastMsg.msg}
+            </div>
+          )}
+
           <AdminOverlay
             open={Boolean(borradoPendiente)}
             onClose={() => !borrando && setBorradoPendiente(null)}
