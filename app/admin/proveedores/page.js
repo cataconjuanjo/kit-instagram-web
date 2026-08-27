@@ -253,7 +253,6 @@ function ProveedoresPageContent() {
   const [soloSinPrecio, setSoloSinPrecio] = useState(false)
   const [ocultarSinPrecio, setOcultarSinPrecio] = useState(false)
   const [soloFavoritos, setSoloFavoritos] = useState(false)
-  const [margenCopaPct, setMargenCopaPct] = useState(70)
   const [togglingFavorito, setTogglingFavorito] = useState(new Set())
   const [referenciasPorPagina, setReferenciasPorPagina] = useState(60)
   const [menuAccionAbierto, setMenuAccionAbierto] = useState(null)
@@ -498,15 +497,22 @@ function ProveedoresPageContent() {
     }
   }
 
-  function calcularCopa(coste, margenPct) {
-    const c = numeroCoste(coste)
-    if (c <= 0) return null
-    const calculo = calcularPreciosSugeridos(c, { margen_objetivo_copa_pct: margenPct })
-    const pvp = calculo.copa
-    const botella = calcularBotella(c)
-    const ratioPct = botella ? Math.round((pvp / botella.pvp) * 100) : null
-    const copasHastaEmpatar = botella ? Math.ceil(botella.pvp / pvp) : null
-    return { pvp, costeCopa: calculo.costePorCopa, ratioPct, copasHastaEmpatar }
+  function copasVendiblesEscalonado(pvpBotella) {
+    if (pvpBotella <= 25) return 5.4
+    if (pvpBotella <= 40) return 5.2
+    if (pvpBotella <= 60) return 5.0
+    if (pvpBotella <= 90) return 4.8
+    if (pvpBotella <= 130) return 4.6
+    return 4.4
+  }
+
+  function calcularCopa(pvpBotella) {
+    if (!pvpBotella || pvpBotella <= 0) return null
+    const divisor = copasVendiblesEscalonado(pvpBotella)
+    const pvp = Math.round((pvpBotella / divisor) * 2) / 2
+    const ratioPct = Math.round((pvp / pvpBotella) * 100)
+    const copasHastaEmpatar = Math.ceil(pvpBotella / pvp)
+    return { pvp, ratioPct, copasHastaEmpatar }
   }
 
   function leerFavoritosLocales() {
@@ -1537,18 +1543,6 @@ function ProveedoresPageContent() {
                 {calculadoraAbierta && (
                   <div className="supplier-calc-body">
                     <label>
-                      Margen copa
-                      <select value={margenCopaPct} onChange={e => setMargenCopaPct(Number(e.target.value))}>
-                        <option value={50}>50 %</option>
-                        <option value={55}>55 %</option>
-                        <option value={60}>60 %</option>
-                        <option value={65}>65 %</option>
-                        <option value={70}>70 %</option>
-                        <option value={75}>75 %</option>
-                        <option value={80}>80 %</option>
-                      </select>
-                    </label>
-                    <label>
                       Ordenar por
                       <select value={ordenReferencias.campo} onChange={e => setOrdenReferencias(prev => ({ campo: e.target.value, dir: prev.campo === e.target.value ? prev.dir : 'asc' }))}>
                         <option value="nombre">Nombre</option>
@@ -1560,7 +1554,7 @@ function ProveedoresPageContent() {
                       {ordenReferencias.dir === 'asc' ? '↑ Asc' : '↓ Desc'}
                     </button>
                     <span className="supplier-price-formula">
-                      Botella: coste neto por tramo (&lt;=6 EUR x3,5 · 6-11 EUR x2+9 EUR · &gt;11 EUR +20 EUR) + IVA y redondeo al euro · Copa: coste / 4,5 / (1-{margenCopaPct}%) + IVA y redondeo a 0,50 EUR
+                      Botella: coste neto por tramo (&lt;=6 EUR x3,5 · 6-11 EUR x2+9 EUR · &gt;11 EUR +20 EUR) + IVA y redondeo al euro · Copa: PVP botella ÷ copas escalonadas (≤25€ ÷5,4 · ≤40€ ÷5,2 · ≤60€ ÷5,0 · ≤90€ ÷4,8 · ≤130€ ÷4,6 · &gt;130€ ÷4,4) y redondeo a 0,50 EUR
                     </span>
                   </div>
                 )}
@@ -1586,7 +1580,7 @@ function ProveedoresPageContent() {
                             const esMasBarato = tieneMultiples && index === 0
                             const coste = numeroCoste(vino.coste_estimado)
                             const rb = coste ? calcularBotella(coste) : null
-                            const rc = coste ? calcularCopa(coste, margenCopaPct) : null
+                            const rc = rb ? calcularCopa(rb.pvp) : null
                             const alerta = rc?.ratioPct > 25
                             return (
                               <div key={vino.id} className={`supplier-fav-row${esMasBarato ? ' is-cheapest' : ''}`}>
