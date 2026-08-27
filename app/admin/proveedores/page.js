@@ -86,6 +86,16 @@ function coincideReferencia(vino, busqueda) {
   return terminos.every(termino => texto.includes(termino))
 }
 
+// Locale-independent string comparator: space < digits < letters (ASCII order).
+// Avoids ICU locale differences between Windows and Vercel Linux ('es' locale
+// places letters before digits on some Node versions, causing BEAUNE to sort
+// before "1 litro" on production while local dev showed the opposite order).
+function compararTexto(a, b) {
+  const sa = String(a || '')
+  const sb = String(b || '')
+  return sa < sb ? -1 : sa > sb ? 1 : 0
+}
+
 function relevanciaBusqueda(vino, busqueda) {
   const consulta = normalizar(busqueda)
   if (!consulta) return 0
@@ -311,11 +321,11 @@ function ProveedoresPageContent() {
       } else if (typeof av === 'number' || typeof bv === 'number') {
         resultado = (av || 0) - (bv || 0)
       } else {
-        resultado = String(av).localeCompare(String(bv), 'es', { numeric: true })
+        resultado = compararTexto(av, bv)
       }
-      if (!resultado) resultado = normalizar(a.nombre).localeCompare(normalizar(b.nombre), 'es', { numeric: true })
-      if (!resultado) resultado = String(a.referencia || '').localeCompare(String(b.referencia || ''), 'es', { numeric: true })
-      if (!resultado) resultado = String(a.id || '').localeCompare(String(b.id || ''), 'es', { numeric: true })
+      if (!resultado) resultado = compararTexto(normalizar(a.nombre), normalizar(b.nombre))
+      if (!resultado) resultado = compararTexto(normalizar(a.referencia), normalizar(b.referencia))
+      if (!resultado) resultado = (a.id || 0) - (b.id || 0)
       return ordenReferencias.dir === 'desc' ? -resultado : resultado
     })
   }, [vinosFiltradosBase, ordenReferencias, busquedaReferencias])
