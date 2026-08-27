@@ -12,7 +12,8 @@
     "security:anon": "node scripts/audit-anon-access.mjs",
     "security:routes": "node scripts/audit-api-security.mjs",
     "qa": "npm run lint && npm run build && npm run smoke",
-    "load:public": "node scripts/load-test-public.mjs"
+    "load:public": "node scripts/load-test-public.mjs",
+    "test:search": "node scripts/test-proveedores-search.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

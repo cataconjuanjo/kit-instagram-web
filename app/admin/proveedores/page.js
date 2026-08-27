@@ -73,20 +73,17 @@ function coincideBusqueda(valores, busqueda) {
 function coincideReferencia(vino, busqueda) {
   const consulta = normalizar(busqueda)
   if (!consulta) return true
-
-  const camposPrincipales = [vino.nombre, vino.bodega]
-  if (coincideBusqueda(camposPrincipales, consulta)) return true
-
   const terminos = consulta.split(' ').filter(Boolean)
-  const camposExactos = [
+  if (!terminos.length) return true
+  const texto = normalizar([
+    vino.nombre,
+    vino.bodega,
+    vino.tipo,
+    vino.region,
+    vino.uva,
     vino.referencia,
-    vino.anada,
-    vino.formato,
-  ].map(normalizar).filter(Boolean)
-
-  return terminos.every(termino => camposExactos.some(campo =>
-    campo === termino || campo.split(' ').includes(termino)
-  ))
+  ].filter(Boolean).join(' '))
+  return terminos.every(termino => texto.includes(termino))
 }
 
 function relevanciaBusqueda(vino, busqueda) {
@@ -831,7 +828,10 @@ function ProveedoresPageContent() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'No se pudo guardar el catálogo.')
       if (reemplazarCatalogo) setVinos(actual => [...(data.vinos || []), ...actual.filter(vino => String(vino.proveedor_id) !== String(proveedorId))])
-      else setVinos(actual => [...(data.vinos || []), ...actual])
+      else setVinos(actual => {
+        const idsNuevos = new Set((data.vinos || []).map(v => v.id))
+        return [...(data.vinos || []), ...actual.filter(v => !idsNuevos.has(v.id))]
+      })
       setCatalogoImportar([])
       setCatalogoNombre('')
       setFiltroImportacion('')
