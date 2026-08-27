@@ -6,6 +6,14 @@
  * - coste neto <= 11 EUR: coste x 2 + 9 EUR
  * - coste neto > 11 EUR: coste + 20 EUR
  *
+ * La copa se deriva del PVP botella con divisor escalonado por precio:
+ * - PVP botella <= 25 EUR: / 5,4  (125 ml)
+ * - PVP botella <= 40 EUR: / 5,2
+ * - PVP botella <= 60 EUR: / 5,0
+ * - PVP botella <= 90 EUR: / 4,8
+ * - PVP botella <= 130 EUR: / 4,6
+ * - PVP botella > 130 EUR: / 4,4  (150 ml)
+ *
  * El IVA se aplica al final, despues de calcular el PVP neto.
  * Despues se redondea el PVP comercial:
  * - botella al euro mas cercano
@@ -102,6 +110,15 @@ function redondearCopaComercial(valor) {
   return redondear(Math.round(numeroPrecio(valor) * 2) / 2, 2)
 }
 
+export function copasVendiblesEscalonado(pvpBotella) {
+  if (pvpBotella <= 25) return 5.4
+  if (pvpBotella <= 40) return 5.2
+  if (pvpBotella <= 60) return 5.0
+  if (pvpBotella <= 90) return 4.8
+  if (pvpBotella <= 130) return 4.6
+  return 4.4
+}
+
 export function calcularPvpNetoBotellaCatalogo(costeNeto) {
   const coste = numeroPrecio(costeNeto)
   if (!coste) return { pvpNeto: 0, regla: '' }
@@ -140,10 +157,10 @@ export function calcularPreciosSugeridos(coste, ajustes) {
   const copas = copasVendibles(config)
   const costePorCopa = costeNeto / copas
   const margenObjetivoCopaPct = config.margenObjetivoCopaPct
-  const margenCopa = margenObjetivoCopaPct / 100
-  const pvpNetoCopa = costePorCopa / (1 - margenCopa)
-  const baseCopa = precioConIvaSiAplica(pvpNetoCopa, config)
+  const divisorCopa = copasVendiblesEscalonado(botella)
+  const baseCopa = botella / divisorCopa
   const copa = redondearCopaComercial(baseCopa)
+  const pvpNetoCopa = config.pvpIncluyeIva ? baseCopa / (1 + config.ivaVentaPct / 100) : baseCopa
 
   return {
     baseBotella,
@@ -152,7 +169,7 @@ export function calcularPreciosSugeridos(coste, ajustes) {
     copa,
     margenBotella: margenBrutoPct(botella, costeNormalizado, config),
     margenCopas: margenCopaPct(copa, costeNormalizado, config),
-    ingresoCopas: redondear(copa * copas, 2),
+    ingresoCopas: redondear(copa * divisorCopa, 2),
     margenObjetivoBotellaPct: redondear(margenBrutoPct(botella, costeNormalizado, config), 2),
     margenObjetivoCopaPct,
     reglaBotella: botellaCatalogo.regla,
