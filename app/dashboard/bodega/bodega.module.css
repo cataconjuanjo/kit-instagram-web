@@ -355,8 +355,85 @@
   gap: 16px;
 }
 
+/* ── Catálogo del consultor ──────────────────────────────────── */
+
+.catalogoToolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 12px 0 4px;
+}
+
+.catalogoSelect {
+  min-height: 36px;
+  border: 1px solid #d8c898;
+  border-radius: 8px;
+  background: #fffaf3;
+  color: #3d2b1a;
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 160px;
+  outline: none;
+}
+
+.catalogoSelect:focus {
+  border-color: #9b7430;
+  box-shadow: 0 0 0 2px rgba(155, 116, 48, 0.12);
+}
+
+.catalogoTable {
+  min-width: 900px;
+}
+
+.catalogoNum {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.catalogoNombreWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.catalogoAnada {
+  font-size: 11px;
+  color: var(--wine, #9b7430);
+  font-weight: 600;
+}
+
+.catalogoProveedor {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 160px;
+}
+
+.catalogoProveedorNombre {
+  font-weight: 600;
+  color: #171416;
+}
+
+.catalogoContacto {
+  font-size: 12px;
+  color: #9b7430;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.catalogoContacto:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 700px) {
   .cellarTable { min-width: 980px; }
   .cellarToolbar { flex-direction: column; align-items: stretch; }
   .cellarToolbarSearch { min-width: 0; }
+  .catalogoTable { min-width: 860px; }
+  .catalogoToolbar { flex-direction: column; align-items: stretch; }
+  .catalogoSelect { min-width: 0; }
 }

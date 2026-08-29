@@ -75,7 +75,7 @@ export const PLANES = {
     nombre: 'Acompanado',
     precioOrientativo: 'Presupuesto personalizado',
     limiteVinos: 9999,
-    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'informes', 'proveedores', 'consultoria', 'vista_etiquetas_publica'],
+    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'informes', 'proveedores', 'consultoria', 'vista_etiquetas_publica', 'catalogo_consultor'],
   },
 }
 

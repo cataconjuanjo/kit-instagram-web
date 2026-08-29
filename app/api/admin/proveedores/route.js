@@ -10,7 +10,7 @@ const SELECT_PROVEEDOR = [
 ].join(', ')
 const SELECT_CATALOGO_VINO = [
   'id', 'proveedor_id', 'nombre', 'bodega', 'tipo', 'region', 'uva',
-  'anada', 'referencia', 'formato', 'coste_estimado', 'pvp_recomendado',
+  'anada', 'referencia', 'formato', 'coste_estimado', 'pvp_recomendado', 'pvp_copa',
   'disponibilidad', 'notas', 'activo', 'favorito', 'created_at',
   'updated_at', 'proveedores_vino(nombre)',
 ].join(', ')

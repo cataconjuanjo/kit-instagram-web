@@ -16,7 +16,7 @@ import {
 import { margenBrutoPct } from '../../lib/wineEconomics'
 import { calcularWineMapping, ticketReferencia } from '../../lib/wineMapping'
 import { calcularPreciosSugeridos, margenCopaPct, normalizarAjustesPrecios } from '../../lib/pricingUtils'
-import { esPerfilBodega } from '../../lib/plans'
+import { esPerfilBodega, puedeUsar } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import CollapsibleSection from '../../components/CollapsibleSection'
 import WineMappingPanel from '../../components/WineMappingPanel'
@@ -132,6 +132,12 @@ export default function ControlBodega() {
   const [guardadoBodega, setGuardadoBodega] = useState('')
   const [error, setError] = useState('')
   const [ajustesBodega, setAjustesBodega] = useState(economicSettings)
+  const [catalogoVinos, setCatalogoVinos] = useState([])
+  const [catalogoCargado, setCatalogoCargado] = useState(false)
+  const [loadingCatalogo, setLoadingCatalogo] = useState(false)
+  const [busquedaCatalogo, setBusquedaCatalogo] = useState('')
+  const [filtroZonaCatalogo, setFiltroZonaCatalogo] = useState('')
+  const [filtroTipoCatalogo, setFiltroTipoCatalogo] = useState('')
 
   useEffect(() => {
     setAjustesBodega(economicSettings)
@@ -212,6 +218,22 @@ export default function ControlBodega() {
     })
   }, [loading, propuestas.length])
 
+  useEffect(() => {
+    if (panelAbierto !== 'catalogo' || !restaurante?.id || catalogoCargado) return
+    setCatalogoCargado(true)
+    setLoadingCatalogo(true)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.access_token) { setLoadingCatalogo(false); return null }
+      return fetch(
+        `/api/catalogo-consultor?${new URLSearchParams({ restaurante_id: restaurante.id })}`,
+        { headers: { Authorization: `Bearer ${session.access_token}` } }
+      )
+    }).then(res => res?.ok ? res.json() : null)
+      .then(json => { if (json) setCatalogoVinos(json.vinos || []) })
+      .catch(err => console.error('[catalogo-consultor]', err))
+      .finally(() => setLoadingCatalogo(false))
+  }, [panelAbierto, restaurante?.id, catalogoCargado])
+
   const datos = useMemo(() => {
     const ventasPorVino = eventosSala.reduce((acc, evento) => {
       if (evento.parsed?.resultado !== 'vendida') return acc
@@ -278,6 +300,32 @@ export default function ControlBodega() {
       proveedor,
     ]))
   }, [proveedoresContacto])
+
+  const catalogoFiltrado = useMemo(() => {
+    let lista = catalogoVinos
+    const q = normalizar(busquedaCatalogo.trim())
+    if (q) {
+      lista = lista.filter(v =>
+        normalizar(v.nombre || '').includes(q) ||
+        normalizar(v.bodega || '').includes(q) ||
+        normalizar(v.region || '').includes(q) ||
+        normalizar(v.proveedor?.nombre || '').includes(q)
+      )
+    }
+    if (filtroZonaCatalogo) lista = lista.filter(v => v.region === filtroZonaCatalogo)
+    if (filtroTipoCatalogo) lista = lista.filter(v => v.tipo === filtroTipoCatalogo)
+    return lista
+  }, [catalogoVinos, busquedaCatalogo, filtroZonaCatalogo, filtroTipoCatalogo])
+
+  const zonasUnicasCatalogo = useMemo(
+    () => [...new Set(catalogoVinos.map(v => v.region).filter(Boolean))].sort(),
+    [catalogoVinos]
+  )
+
+  const tiposUnicosCatalogo = useMemo(
+    () => [...new Set(catalogoVinos.map(v => v.tipo).filter(Boolean))].sort(),
+    [catalogoVinos]
+  )
 
   const donutEstilos = useMemo(() => {
     const TIPOS = [
@@ -470,6 +518,7 @@ export default function ControlBodega() {
   )
 
   const perfilBodega = esPerfilBodega(restaurante)
+  const esPlanPremium = puedeUsar(restaurante, 'catalogo_consultor')
   const datosPendientesTotal = datos.sinCoste.length + datos.sinProveedor.length + datos.sinStockActual.length + datos.sinStockMinimo.length + datos.sinPrecio.length
   const acciones = [
     datos.pedido.length > 0 && { tipo: 'Compra', texto: `Preparar pedido de ${datos.pedido.length} vinos en minimo o punto de pedido`, href: '#pedido' },
@@ -821,6 +870,15 @@ export default function ControlBodega() {
             >
               Precios
             </button>
+            {esPlanPremium && (
+              <button
+                type="button"
+                className={panelAbierto === 'catalogo' ? styles.secondary : styles.ghost}
+                onClick={() => setPanelAbierto(panelAbierto === 'catalogo' ? null : 'catalogo')}
+              >
+                Catálogo
+              </button>
+            )}
           </div>
         </div>
 
@@ -923,6 +981,109 @@ export default function ControlBodega() {
               onAjustesChange={setAjustesBodega}
             />
           </ResponsiveOverlay>
+        )}
+
+        {/* ── Panel: Catálogo del consultor ───────────────── */}
+        {panelAbierto === 'catalogo' && esPlanPremium && (
+          <section className={styles.panel} id="catalogo">
+            <div className={styles.panelHead}>
+              <div>
+                <h2 className={styles.panelTitle}>Catálogo del consultor</h2>
+                <p className={styles.panelSub}>Referencias seleccionadas para ti. Contacta al proveedor directamente para pedir.</p>
+              </div>
+              <button className={styles.ghost} onClick={() => setPanelAbierto(null)}>Cerrar ×</button>
+            </div>
+            <div className={bStyles.catalogoToolbar}>
+              <input
+                className={bStyles.cellarToolbarSearch}
+                value={busquedaCatalogo}
+                onChange={e => setBusquedaCatalogo(e.target.value)}
+                placeholder="Buscar vino, bodega, zona, proveedor..."
+              />
+              {zonasUnicasCatalogo.length > 0 && (
+                <select
+                  className={bStyles.catalogoSelect}
+                  value={filtroZonaCatalogo}
+                  onChange={e => setFiltroZonaCatalogo(e.target.value)}
+                >
+                  <option value="">Todas las zonas</option>
+                  {zonasUnicasCatalogo.map(z => <option key={z} value={z}>{z}</option>)}
+                </select>
+              )}
+              {tiposUnicosCatalogo.length > 0 && (
+                <select
+                  className={bStyles.catalogoSelect}
+                  value={filtroTipoCatalogo}
+                  onChange={e => setFiltroTipoCatalogo(e.target.value)}
+                >
+                  <option value="">Todos los tipos</option>
+                  {tiposUnicosCatalogo.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              )}
+            </div>
+            <div className={styles.panelBody}>
+              {loadingCatalogo && (
+                <div className={styles.empty}>Cargando catálogo...</div>
+              )}
+              {!loadingCatalogo && catalogoVinos.length === 0 && (
+                <div className={styles.empty}>
+                  Aún no hay referencias marcadas por el consultor. Vuelve pronto — cuando haya selecciones aparecerán aquí con el contacto de cada proveedor.
+                </div>
+              )}
+              {!loadingCatalogo && catalogoVinos.length > 0 && catalogoFiltrado.length === 0 && (
+                <div className={styles.empty}>No hay referencias con esos filtros.</div>
+              )}
+              {!loadingCatalogo && catalogoFiltrado.length > 0 && (
+                <div className={bStyles.cellarTableWrap}>
+                  <table className={`${bStyles.cellarTable} ${bStyles.catalogoTable}`}>
+                    <thead>
+                      <tr>
+                        <th>Vino</th>
+                        <th>Bodega</th>
+                        <th>D.O. / Zona</th>
+                        <th>Tipo</th>
+                        <th>Formato</th>
+                        <th>PVP bot. €</th>
+                        <th>PVP copa €</th>
+                        <th>Coste €</th>
+                        <th>Proveedor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {catalogoFiltrado.map(vino => (
+                        <tr key={vino.id}>
+                          <td>
+                            <div className={bStyles.catalogoNombreWrap}>
+                              <span>{vino.nombre}</span>
+                              {vino.anada && <span className={bStyles.catalogoAnada}>{vino.anada}</span>}
+                            </div>
+                          </td>
+                          <td>{vino.bodega || '—'}</td>
+                          <td>{vino.region || '—'}</td>
+                          <td>{vino.tipo || '—'}</td>
+                          <td>{vino.formato || '—'}</td>
+                          <td className={bStyles.catalogoNum}>{Number(vino.pvp_recomendado) > 0 ? eurDetalle(vino.pvp_recomendado) : '—'}</td>
+                          <td className={bStyles.catalogoNum}>{Number(vino.pvp_copa) > 0 ? eurDetalle(vino.pvp_copa) : '—'}</td>
+                          <td className={bStyles.catalogoNum}>{Number(vino.coste_estimado) > 0 ? eurDetalle(vino.coste_estimado) : '—'}</td>
+                          <td>
+                            <div className={bStyles.catalogoProveedor}>
+                              <span className={bStyles.catalogoProveedorNombre}>{vino.proveedor?.nombre || '—'}</span>
+                              {vino.proveedor?.email && (
+                                <a href={`mailto:${vino.proveedor.email}`} className={bStyles.catalogoContacto}>{vino.proveedor.email}</a>
+                              )}
+                              {vino.proveedor?.telefono && (
+                                <a href={`tel:${vino.proveedor.telefono}`} className={bStyles.catalogoContacto}>{vino.proveedor.telefono}</a>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
         )}
 
         {/* ── La tabla ─────────────────────────────────────── */}
