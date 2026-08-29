@@ -288,6 +288,8 @@ function ProveedoresPageContent() {
   const [error, setError] = useState('')
   const [borradoPendiente, setBorradoPendiente] = useState(null)
   const [borrando, setBorrando] = useState(false)
+  const [confirmVisibleTodos, setConfirmVisibleTodos] = useState(false)
+  const [marcandoVisible, setMarcandoVisible] = useState(false)
   const [vistaProveedores, setVistaProveedores] = useState(searchParams.get('vista') === 'catalogo' ? 'catalogo' : 'gestion')
   const [acordeonAbierto, setAcordeonAbierto] = useState(null)
   const catalogoRef = useRef(null)
@@ -953,6 +955,29 @@ function ProveedoresPageContent() {
       setErrorCatalogo(error.message)
     } finally {
       setGuardandoCatalogo(false)
+    }
+  }
+
+  async function marcarTodosVisibles() {
+    setMarcandoVisible(true)
+    setError('')
+    try {
+      const token = await tokenAdmin()
+      const res = await fetch('/api/admin/proveedores', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ kind: 'marcar_todos_visibles' })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'No se pudo actualizar.')
+      setProveedores(prev => prev.map(p => ({ ...p, visible_restaurantes: true })))
+      setConfirmVisibleTodos(false)
+      mostrarToast(`${data.actualizados} proveedores marcados como visibles`)
+    } catch (error) {
+      setError(error.message)
+      mostrarToast(error.message, 'error')
+    } finally {
+      setMarcandoVisible(false)
     }
   }
 
@@ -1787,6 +1812,15 @@ function ProveedoresPageContent() {
               <div className="supplier-section-head">
                 <h2>Proveedores</h2>
                 {proveedores.length > 0 && <span>{proveedores.length} registrados</span>}
+                {proveedores.some(p => !p.visible_restaurantes) && (
+                  <button
+                    type="button"
+                    className="supplier-btn-edit"
+                    onClick={() => setConfirmVisibleTodos(true)}
+                  >
+                    Marcar todos como visible
+                  </button>
+                )}
               </div>
               {proveedores.length === 0 && <p className="consult-empty">Aún no hay proveedores privados. Crea uno con el formulario de arriba.</p>}
               <div className="supplier-rows">
@@ -1851,6 +1885,28 @@ function ProveedoresPageContent() {
               {toastMsg.tipo === 'ok' ? '✓' : '⚠'} {toastMsg.msg}
             </div>
           )}
+
+          <AdminOverlay
+            open={confirmVisibleTodos}
+            onClose={() => !marcandoVisible && setConfirmVisibleTodos(false)}
+            size="modal"
+            eyebrow="Acción masiva"
+            title="Marcar todos como visible"
+            description={`${proveedores.filter(p => !p.visible_restaurantes).length} proveedores actualmente privados`}
+            footer={
+              <>
+                <button type="button" onClick={() => setConfirmVisibleTodos(false)} disabled={marcandoVisible}>Cancelar</button>
+                <button type="button" disabled={marcandoVisible} onClick={marcarTodosVisibles}>
+                  {marcandoVisible ? 'Aplicando…' : 'Continuar'}
+                </button>
+              </>
+            }
+          >
+            <div className="admin-detail-box">
+              <h3>Esto hará visibles a los restaurantes {proveedores.filter(p => !p.visible_restaurantes).length} proveedores actualmente privados.</h3>
+              <p>Podrás volver a marcar cualquier proveedor como privado editándolo individualmente.</p>
+            </div>
+          </AdminOverlay>
 
           <AdminOverlay
             open={Boolean(borradoPendiente)}

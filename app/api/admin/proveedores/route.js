@@ -236,6 +236,18 @@ export async function PATCH(req) {
     if (admin.error) return Response.json({ error: admin.error }, { status: admin.status })
 
     const body = await req.json()
+
+    if (body.kind === 'marcar_todos_visibles') {
+      const supabase = adminClient()
+      const { data, error } = await supabase
+        .from('proveedores_vino')
+        .update({ visible_restaurantes: true, updated_at: new Date().toISOString() })
+        .eq('visible_restaurantes', false)
+        .select('id')
+      if (error) throw error
+      return Response.json({ actualizados: (data || []).length })
+    }
+
     if (!body.id) return Response.json({ error: 'ID obligatorio.' }, { status: 400 })
     const supabase = adminClient()
 
