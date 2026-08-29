@@ -17,7 +17,6 @@ const PUBLIC_ROUTES = new Map([
   ['app/api/estadisticas/route.js', { rateLimit: true, reason: 'public scan analytics' }],
   ['app/api/camarero/sesion/route.js', { rateLimit: true, reason: 'waiter PIN session' }],
   ['app/api/camarero/datos/route.js', { rateLimit: false, reason: 'waiter session token required' }],
-  ['app/api/kiosko/contratar/route.js', { rateLimit: true, reason: 'public Stripe checkout start' }],
   ['app/api/kiosko/lead/unsubscribe/route.js', { rateLimit: false, reason: 'unsubscribe link' }],
   ['app/api/public/restaurante/[slug]/route.js', { rateLimit: false, reason: 'public restaurant read endpoint' }],
   ['app/api/kiosko/[slug]/vinos/route.js', { rateLimit: false, reason: 'public kiosk catalog read' }],

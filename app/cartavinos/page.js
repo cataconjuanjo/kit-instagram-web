@@ -65,7 +65,7 @@ const lineasProducto = [
     puntos: ['Puesto digital en tienda', 'Simulación de pedido', 'Catálogo de vinos', 'Dashboard de stock e informes'],
     precio: 'Planes Kiosko',
     cta: 'Ver Kiosko',
-    href: '/kiosko/contratar',
+    href: '#contacto',
   },
 ]
 

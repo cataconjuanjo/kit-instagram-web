@@ -225,61 +225,6 @@ export async function POST(req) {
           break
         }
 
-        // ── Kiosko self-service: crear tienda + usuario ──────────
-        if (tipo === 'kiosko_nuevo') {
-          const { nombre, email, ciudad, slug } = session.metadata || {}
-          if (!nombre || !email || !slug) break
-
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-
-          // Comprobar que el slug sigue libre (por si hubo una carrera)
-          const { data: existente } = await adminSupabase.from('tiendas').select('id').eq('slug', slug).single()
-          const tiendaSlug = existente ? `${slug}-${Date.now().toString(36)}` : slug
-
-          const { data: tienda, error: tiendaErr } = await adminSupabase.from('tiendas').insert({
-            nombre:              nombre.trim(),
-            email:               email.trim().toLowerCase(),
-            slug:                tiendaSlug,
-            ciudad:              ciudad || null,
-            color_primario:      '#1a1a2e',
-            color_acento:        '#c9a96e',
-            activo:              true,
-            subscription_status: estadoDesdeStripe(subscription.status),
-            stripe_customer_id:  customerId,
-            stripe_subscription_id: subscriptionId,
-          }).select().single()
-
-          if (tiendaErr) {
-            console.error('[webhook kiosko_nuevo] tienda:', tiendaErr)
-            break
-          }
-
-          // Crear usuario
-          await ensureUser(adminSupabase, email.trim(), nombre.trim())
-
-          // Link para crear contraseña
-          const { data: linkData } = await adminSupabase.auth.admin.generateLink({
-            type:    'recovery',
-            email:   email.trim(),
-            options: { redirectTo: `${SITE_URL}/kiosko-admin/${tiendaSlug}` },
-          })
-          const accessLink = linkData?.properties?.action_link
-
-          if (accessLink) {
-            const resend = new Resend(process.env.RESEND_API_KEY)
-            await resend.emails.send({
-              from:    FROM,
-              to:      email.trim(),
-              bcc:     ADMIN_EMAIL,
-              subject: `¡Tu kiosko está activo! — ${nombre.trim()}`,
-              html:    await emailBienvenidaKiosko({ nombre, email, slug: tiendaSlug, accessLink }),
-            })
-          }
-
-          console.log(`✓ checkout.session.completed kiosko_nuevo — tienda ${tienda.id} (${tiendaSlug}) creada`)
-          break
-        }
-
         // ── Restaurante (flujo existente) ────────────────────────
         const restaurante_id = session.metadata?.restaurante_id
         if (!restaurante_id) break

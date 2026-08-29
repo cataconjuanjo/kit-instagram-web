@@ -150,9 +150,6 @@ export default function AdminLayout({ children }) {
             >
               Gestionar kioscos
             </Link>
-            <a href="/kiosko/contratar" target="_blank" rel="noreferrer" className={styles.navLink}>
-              Página de contratación ↗
-            </a>
           </li>
 
           <li className={styles.navGroup}>
