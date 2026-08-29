@@ -1,6 +1,13 @@
 import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { puedeUsar } from '../../lib/plans'
+import { calcularPreciosSugeridos, copasVendiblesEscalonado } from '../../lib/pricingUtils'
+
+function pvpCopaDesdeBottella(pvpBotella) {
+  if (!pvpBotella || pvpBotella <= 0) return 0
+  const divisor = copasVendiblesEscalonado(pvpBotella)
+  return Math.round((pvpBotella / divisor) * 2) / 2
+}
 
 export async function GET(req) {
   try {
@@ -45,10 +52,17 @@ export async function GET(req) {
 
     if (vinosError) throw vinosError
 
-    const result = (vinos || []).map(v => ({
-      ...v,
-      proveedor: providerMap[v.proveedor_id] || null,
-    }))
+    const result = (vinos || []).map(v => {
+      const coste = Number(v.coste_estimado) || 0
+      const calc = coste > 0 ? calcularPreciosSugeridos(coste, {}) : null
+      const pvpBotella = calc?.botella || 0
+      return {
+        ...v,
+        pvp_recomendado: pvpBotella,
+        pvp_copa: pvpCopaDesdeBottella(pvpBotella),
+        proveedor: providerMap[v.proveedor_id] || null,
+      }
+    })
 
     return Response.json({ vinos: result })
   } catch (err) {
