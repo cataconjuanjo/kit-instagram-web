@@ -138,6 +138,9 @@ export default function ControlBodega() {
   const [busquedaCatalogo, setBusquedaCatalogo] = useState('')
   const [filtroZonaCatalogo, setFiltroZonaCatalogo] = useState('')
   const [filtroTipoCatalogo, setFiltroTipoCatalogo] = useState('')
+  const [simAnadiendo, setSimAnadiendo] = useState('')
+  const [simDuplicado, setSimDuplicado] = useState(null)
+  const [simMensaje, setSimMensaje] = useState({ texto: '', tipo: 'ok' })
 
   useEffect(() => {
     setAjustesBodega(economicSettings)
@@ -684,6 +687,39 @@ export default function ControlBodega() {
     setTimeout(() => setProveedorCopiado(''), 1800)
   }
 
+  async function anadirAlSimulador(vino, force = false) {
+    if (!restaurante?.id) return
+    setSimAnadiendo(vino.id)
+    if (!force) setSimMensaje({ texto: '', tipo: 'ok' })
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/simulador/anadir-catalogo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ restaurante_id: restaurante.id, catalogo_vino_id: vino.id, force }),
+      })
+      const json = await res.json()
+      if (json.warning === 'duplicate') {
+        setSimDuplicado({ vino, mensaje: json.mensaje })
+        return
+      }
+      if (!res.ok) {
+        setSimMensaje({ texto: json.error || 'No se pudo añadir al simulador', tipo: 'error' })
+        return
+      }
+      setSimDuplicado(null)
+      setSimMensaje({ texto: `"${vino.nombre}" añadido al simulador`, tipo: 'ok' })
+      setTimeout(() => setSimMensaje({ texto: '', tipo: 'ok' }), 3000)
+    } catch {
+      setSimMensaje({ texto: 'Error al conectar con el servidor', tipo: 'error' })
+    } finally {
+      setSimAnadiendo('')
+    }
+  }
+
   function abrirWhatsAppProveedor(proveedor, vinosProveedor) {
     const texto = encodeURIComponent(textoPedidoProveedor(proveedor, vinosProveedor))
     const telefono = telefonoWhatsApp(contactoProveedor(proveedor)?.telefono)
@@ -1022,6 +1058,26 @@ export default function ControlBodega() {
               )}
             </div>
             <div className={styles.panelBody}>
+              {simDuplicado && (
+                <div className={bStyles.simDuplicadoAlerta}>
+                  <span className={bStyles.simDuplicadoTexto}>{simDuplicado.mensaje}</span>
+                  <div className={bStyles.simDuplicadoAcciones}>
+                    <button
+                      type="button"
+                      className={styles.secondary}
+                      onClick={() => { anadirAlSimulador(simDuplicado.vino, true); setSimDuplicado(null) }}
+                    >
+                      Añadir igualmente
+                    </button>
+                    <button type="button" className={styles.ghost} onClick={() => setSimDuplicado(null)}>Cancelar</button>
+                  </div>
+                </div>
+              )}
+              {simMensaje.texto && (
+                <p className={simMensaje.tipo === 'error' ? bStyles.simMensajeError : bStyles.simMensajeOk}>
+                  {simMensaje.texto}
+                </p>
+              )}
               {loadingCatalogo && (
                 <div className={styles.empty}>Cargando catálogo...</div>
               )}
@@ -1047,6 +1103,7 @@ export default function ControlBodega() {
                         <th>PVP copa €</th>
                         <th>Coste €</th>
                         <th>Proveedor</th>
+                        <th className={bStyles.catalogoAccionTh}>Simul.</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1075,6 +1132,17 @@ export default function ControlBodega() {
                                 <a href={`tel:${vino.proveedor.telefono}`} className={bStyles.catalogoContacto}>{vino.proveedor.telefono}</a>
                               )}
                             </div>
+                          </td>
+                          <td className={bStyles.catalogoAccionTd}>
+                            <button
+                              type="button"
+                              className={bStyles.catalogoAddBtn}
+                              onClick={() => anadirAlSimulador(vino)}
+                              disabled={simAnadiendo === vino.id}
+                              title="Añadir a la simulación de carta"
+                            >
+                              {simAnadiendo === vino.id ? '…' : '+ Simular'}
+                            </button>
                           </td>
                         </tr>
                       ))}

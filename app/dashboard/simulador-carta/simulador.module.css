@@ -1,0 +1,202 @@
+/* ── Resumen en vivo ─────────────────────────────────────────── */
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 900px) {
+  .summary { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .summary { grid-template-columns: 1fr; }
+}
+
+/* ── Tabla ───────────────────────────────────────────────────── */
+
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  background: #fffaf3;
+}
+
+.table {
+  width: 100%;
+  min-width: 900px;
+  table-layout: auto;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: #171416;
+}
+
+.table thead tr {
+  background: #f3eee5;
+  border-bottom: 1px solid #e0d4bc;
+}
+
+.table th {
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #756d63;
+  white-space: nowrap;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid #e8e2d9;
+  transition: background 0.1s;
+}
+
+.table tbody tr:last-child { border-bottom: none; }
+.table tbody tr:hover { background: #faf6ef; }
+
+.table td {
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+
+/* ── Columnas específicas ────────────────────────────────────── */
+
+.thVino { min-width: 160px; }
+
+.thNum,
+.tdNum {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 72px;
+}
+
+.thEstado { text-align: center; width: 76px; }
+.thAccion { text-align: center; width: 86px; }
+
+/* ── Edición inline ──────────────────────────────────────────── */
+
+.tdEditable { cursor: pointer; }
+
+.tdEditable:hover {
+  background: rgba(201, 162, 75, 0.08);
+  border-radius: 4px;
+}
+
+.inlineInput {
+  width: 72px;
+  font-size: 12px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 6px;
+  border: 1px solid var(--cv-gold);
+  border-radius: 4px;
+  background: #fffaf3;
+  color: #171416;
+  outline: none;
+  text-align: right;
+}
+
+/* ── Nombre + bodega ─────────────────────────────────────────── */
+
+.nombreWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* var(--cv-text-muted) = #8A7E72, definido en globals.css */
+.bodega { font-size: 11px; color: var(--cv-text-muted); }
+
+.tachado {
+  text-decoration: line-through;
+  color: var(--cv-text-muted);
+}
+
+/* ── Estado: filas con apariencia diferenciada ───────────────── */
+
+.rowFuera { opacity: 0.55; }
+
+.rowNuevo { background: rgba(201, 162, 75, 0.06); }
+.rowNuevo:hover { background: rgba(201, 162, 75, 0.12) !important; }
+
+/* ── Badges de estado ────────────────────────────────────────── */
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* #e0d4bc: mismo border-token que cellarTableWrap en bodega.module.css */
+.badge_actual {
+  background: var(--canvas);
+  border: 1px solid #e0d4bc;
+  color: var(--muted);
+}
+
+/* var(--cv-gold) = #C9A24B · var(--ink) = #17120f → contraste AA garantizado */
+.badge_nuevo {
+  background: rgba(201, 162, 75, 0.18);
+  border: 1px solid var(--cv-gold);
+  color: var(--ink);
+}
+
+.badge_fuera {
+  background: transparent;
+  border: 1px solid #e0d4bc;
+  color: var(--cv-text-muted);
+}
+
+/* ── Botones de acción por fila ──────────────────────────────── */
+
+.accionBtn {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  min-height: 28px;
+  border-radius: 6px;
+  border: 1px solid #d8c898;
+  background: #fffaf3;
+  color: var(--cv-wine);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+
+.accionBtn:hover:not(:disabled) {
+  background: var(--cv-wine);
+  color: #fffaf3;
+  border-color: var(--cv-wine);
+}
+
+.accionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --cv-red tintado al 36% sobre blanco; equivalente visual a #ddb8b8 (.danger en module.module.css) */
+.accionBtnDanger {
+  color: var(--cv-red);
+  border-color: color-mix(in srgb, var(--cv-red) 36%, white);
+}
+
+.accionBtnDanger:hover:not(:disabled) {
+  background: var(--cv-red);
+  color: #fffaf3;
+  border-color: var(--cv-red);
+}
+
+@media (max-width: 700px) {
+  .table { min-width: 780px; }
+}
