@@ -354,42 +354,59 @@ export default function ControlBodega() {
   const gapAnalisis = useMemo(() => {
     if (!catalogoVinos.length) return []
 
+    // Regiones genéricas (país, no D.O.) — excluidas porque el gap no es accionable
+    const REGIONES_GENERICAS = new Set([
+      'espana', 'spain', 'portugal', 'france', 'francia',
+      'italia', 'italy', 'alemania', 'germany',
+      'argentina', 'chile', 'australia', 'usa',
+    ])
+
     const vinosActivos = vinos.filter(v => v.activo !== false)
     const totalCarta = vinosActivos.length
     if (!totalCarta) return []
 
-    // Carta: contar por (tipo norm, region norm) y por tipo en total
+    // Carta: contar por (tipo norm, region norm) y por tipo en total.
+    // También guardamos el primer valor raw de región para usarlo como display name.
     const cartaMap = {}
     const tipoCounts = {}
+    const cartaDisplayRegion = {} // normedRegion → primer valor raw de la carta
     for (const v of vinosActivos) {
       const tipo = normWine(v.tipo)
       const region = normWine(v.region)
       if (!tipo) continue
       tipoCounts[tipo] = (tipoCounts[tipo] || 0) + 1
-      if (!region) continue
+      if (!region || REGIONES_GENERICAS.has(region)) continue
+      if (!cartaDisplayRegion[region]) cartaDisplayRegion[region] = v.region
       const key = `${tipo}||${region}`
       cartaMap[key] = (cartaMap[key] || 0) + 1
     }
 
-    // Catálogo: contar por combo y guardar etiquetas originales para mostrar
+    // Catálogo: contar por combo.
+    // displayTipo/displayRegion: capitalize del valor normalizado,
+    // prefiriendo el nombre raw de la carta para la región (mejor formateado).
     const catMap = {}
     for (const c of catalogoVinos) {
       const tipo = normWine(c.tipo)
       const region = normWine(c.region)
-      if (!tipo || !region) continue
+      if (!tipo || !region || REGIONES_GENERICAS.has(region)) continue
       const key = `${tipo}||${region}`
-      if (!catMap[key]) catMap[key] = { count: 0, displayTipo: c.tipo || tipo, displayRegion: c.region || region }
+      if (!catMap[key]) {
+        const displayTipo = tipo.charAt(0).toUpperCase() + tipo.slice(1)
+        const displayRegion = cartaDisplayRegion[region]
+          || (region.charAt(0).toUpperCase() + region.slice(1))
+        catMap[key] = { count: 0, displayTipo, displayRegion }
+      }
       catMap[key].count++
     }
 
     // Puntuar cada combo del catálogo
     const gaps = []
     for (const [key, { count: nCat, displayTipo, displayRegion }] of Object.entries(catMap)) {
-      if (nCat < 2) continue                            // mínimo 2 candidatos para ser accionable
+      if (nCat < 2) continue                        // mínimo 2 candidatos para ser accionable
       const [normedTipo] = key.split('||')
-      if (!tipoCounts[normedTipo]) continue             // tipo sin representación en carta
+      if (!tipoCounts[normedTipo]) continue         // tipo sin representación en carta
       const nCarta = cartaMap[key] || 0
-      if (nCarta >= nCat) continue                      // no hay gap real
+      if (nCarta >= nCat) continue                  // no hay gap real
       const tipoFraccion = tipoCounts[normedTipo] / totalCarta
       const score = (nCat - nCarta) * (1 + tipoFraccion)
       gaps.push({ displayTipo, displayRegion, nCat, nCarta, score })

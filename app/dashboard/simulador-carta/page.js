@@ -114,6 +114,9 @@ export default function SimuladorCarta() {
     const regionesBorrador = new Set(borrador.map(l => normWine(l.region)).filter(Boolean))
     const deltaRegiones = regionesBorrador.size - regionesOficial.size
 
+    // Nada útil que mostrar: ni datos de margen ni cambio de regiones
+    if (deltaMargen === null && deltaRegiones === 0) return null
+
     return { deltaMargen, deltaRegiones }
   }, [lineas])
 
@@ -311,7 +314,7 @@ export default function SimuladorCarta() {
                 </span>
               </span>
             ) : null}
-            {comparacion.deltaMargen === 0 && comparacion.deltaRegiones === 0 && (
+            {(comparacion.deltaMargen === 0 || comparacion.deltaMargen === null) && comparacion.deltaRegiones === 0 && (
               <span className={simStyles.comparacionNeutral}>Sin cambios en margen ni diversidad de regiones</span>
             )}
           </div>
