@@ -5,6 +5,7 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { puedeUsar } from '../../lib/plans'
+import { normWine } from '../../lib/textNormalize'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import ConfirmationDialog from '../ConfirmationDialog'
 import styles from '../module.module.css'
@@ -82,6 +83,48 @@ export default function SimuladorCarta() {
       retirados: lineas.filter(l => l.estado === 'fuera').length,
       margenMedio,
     }
+  }, [lineas])
+
+  // ── Comparación borrador vs carta oficial ─────────────────────────
+  const comparacion = useMemo(() => {
+    const tieneNuevos = lineas.some(l => l.estado === 'nuevo')
+    const tieneFuera  = lineas.some(l => l.estado === 'fuera')
+    if (!tieneNuevos && !tieneFuera) return null
+
+    function margenMedioOf(lista) {
+      const v = lista.filter(l => Number(l.precio_botella) > 0 && Number(l.coste_compra) > 0)
+      if (!v.length) return null
+      return Math.round(
+        v.reduce((sum, l) =>
+          sum + ((Number(l.precio_botella) - Number(l.coste_compra)) / Number(l.precio_botella)) * 100, 0
+        ) / v.length
+      )
+    }
+
+    const oficial  = lineas.filter(l => l.estado === 'actual' || l.estado === 'fuera')
+    const borrador = lineas.filter(l => l.estado === 'actual' || l.estado === 'nuevo')
+
+    const margenOficial  = margenMedioOf(oficial)
+    const margenBorrador = margenMedioOf(borrador)
+    const deltaMargen = (margenOficial !== null && margenBorrador !== null)
+      ? margenBorrador - margenOficial
+      : null
+
+    const regionesOficial  = new Set(oficial.map(l => normWine(l.region)).filter(Boolean))
+    const regionesBorrador = new Set(borrador.map(l => normWine(l.region)).filter(Boolean))
+    const deltaRegiones = regionesBorrador.size - regionesOficial.size
+
+    return { deltaMargen, deltaRegiones }
+  }, [lineas])
+
+  // ── Proyección de inversión inicial (solo vinos nuevos, 6 uds/ref.) ─
+  const proyeccion = useMemo(() => {
+    const nuevas = lineas.filter(l => l.estado === 'nuevo')
+    if (!nuevas.length) return null
+    const conCoste = nuevas.filter(l => Number(l.coste_compra) > 0)
+    const sinCoste = nuevas.length - conCoste.length
+    const total    = conCoste.reduce((sum, l) => sum + Number(l.coste_compra) * 6, 0)
+    return { total, sinCoste, refs: nuevas.length }
   }, [lineas])
 
   // Ordenar: actual → nuevo → fuera; dentro de cada grupo, por nombre
@@ -244,6 +287,36 @@ export default function SimuladorCarta() {
           />
         </div>
 
+        {/* ── Comparación borrador vs carta actual ──────────── */}
+        {comparacion && (
+          <div className={simStyles.comparacion}>
+            <span className={simStyles.comparacionLabel}>Si publicas:</span>
+            {comparacion.deltaMargen !== null ? (
+              <span>
+                Margen{' '}
+                <span className={
+                  comparacion.deltaMargen > 0 ? simStyles.comparacionPos
+                  : comparacion.deltaMargen < 0 ? simStyles.comparacionNeg
+                  : simStyles.comparacionNeutral
+                }>
+                  {comparacion.deltaMargen > 0 ? '+' : ''}{comparacion.deltaMargen} pp
+                </span>
+              </span>
+            ) : null}
+            {comparacion.deltaRegiones !== 0 ? (
+              <span>
+                Regiones D.O.{' '}
+                <span className={comparacion.deltaRegiones > 0 ? simStyles.comparacionPos : simStyles.comparacionNeg}>
+                  {comparacion.deltaRegiones > 0 ? '+' : ''}{comparacion.deltaRegiones}
+                </span>
+              </span>
+            ) : null}
+            {comparacion.deltaMargen === 0 && comparacion.deltaRegiones === 0 && (
+              <span className={simStyles.comparacionNeutral}>Sin cambios en margen ni diversidad de regiones</span>
+            )}
+          </div>
+        )}
+
         {/* ── Tabla ─────────────────────────────────────────── */}
         {lineas.length === 0 ? (
           <section className={styles.empty}>
@@ -378,6 +451,18 @@ export default function SimuladorCarta() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* ── Proyección de inversión inicial ──────────────── */}
+        {proyeccion && (
+          <div className={simStyles.proyeccion}>
+            <span>Inversión estimada</span>
+            <span className={simStyles.proyeccionTotal}>{eur(proyeccion.total)}</span>
+            <span className={simStyles.proyeccionNota}>
+              · estimado a 6 uds/referencia
+              {proyeccion.sinCoste > 0 && ` · ${proyeccion.sinCoste} ref. sin coste no incluidas`}
+            </span>
           </div>
         )}
 

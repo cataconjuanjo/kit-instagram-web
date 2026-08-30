@@ -17,6 +17,7 @@ import { margenBrutoPct } from '../../lib/wineEconomics'
 import { calcularWineMapping, ticketReferencia } from '../../lib/wineMapping'
 import { calcularPreciosSugeridos, margenCopaPct, normalizarAjustesPrecios } from '../../lib/pricingUtils'
 import { esPerfilBodega, puedeUsar } from '../../lib/plans'
+import { normWine } from '../../lib/textNormalize'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import CollapsibleSection from '../../components/CollapsibleSection'
 import WineMappingPanel from '../../components/WineMappingPanel'
@@ -348,6 +349,54 @@ export default function ControlBodega() {
     () => [...new Set(catalogoVinos.map(v => v.tipo).filter(Boolean))].sort(),
     [catalogoVinos]
   )
+
+  // ── Análisis de huecos: top 3 combos (tipo, región) con gap notable ──
+  const gapAnalisis = useMemo(() => {
+    if (!catalogoVinos.length) return []
+
+    const vinosActivos = vinos.filter(v => v.activo !== false)
+    const totalCarta = vinosActivos.length
+    if (!totalCarta) return []
+
+    // Carta: contar por (tipo norm, region norm) y por tipo en total
+    const cartaMap = {}
+    const tipoCounts = {}
+    for (const v of vinosActivos) {
+      const tipo = normWine(v.tipo)
+      const region = normWine(v.region)
+      if (!tipo) continue
+      tipoCounts[tipo] = (tipoCounts[tipo] || 0) + 1
+      if (!region) continue
+      const key = `${tipo}||${region}`
+      cartaMap[key] = (cartaMap[key] || 0) + 1
+    }
+
+    // Catálogo: contar por combo y guardar etiquetas originales para mostrar
+    const catMap = {}
+    for (const c of catalogoVinos) {
+      const tipo = normWine(c.tipo)
+      const region = normWine(c.region)
+      if (!tipo || !region) continue
+      const key = `${tipo}||${region}`
+      if (!catMap[key]) catMap[key] = { count: 0, displayTipo: c.tipo || tipo, displayRegion: c.region || region }
+      catMap[key].count++
+    }
+
+    // Puntuar cada combo del catálogo
+    const gaps = []
+    for (const [key, { count: nCat, displayTipo, displayRegion }] of Object.entries(catMap)) {
+      if (nCat < 2) continue                            // mínimo 2 candidatos para ser accionable
+      const [normedTipo] = key.split('||')
+      if (!tipoCounts[normedTipo]) continue             // tipo sin representación en carta
+      const nCarta = cartaMap[key] || 0
+      if (nCarta >= nCat) continue                      // no hay gap real
+      const tipoFraccion = tipoCounts[normedTipo] / totalCarta
+      const score = (nCat - nCarta) * (1 + tipoFraccion)
+      gaps.push({ displayTipo, displayRegion, nCat, nCarta, score })
+    }
+
+    return gaps.sort((a, b) => b.score - a.score).slice(0, 3)
+  }, [vinos, catalogoVinos])
 
   const donutEstilos = useMemo(() => {
     const TIPOS = [
@@ -1102,6 +1151,23 @@ export default function ControlBodega() {
                 <p className={simMensaje.tipo === 'error' ? bStyles.simMensajeError : bStyles.simMensajeOk}>
                   {simMensaje.texto}
                 </p>
+              )}
+              {!loadingCatalogo && gapAnalisis.length > 0 && (
+                <div className={bStyles.gapBanner}>
+                  <p className={bStyles.gapBannerTitle}>Huecos en carta</p>
+                  {gapAnalisis.map(({ displayTipo, displayRegion, nCat, nCarta }) => (
+                    <p key={`${displayTipo}-${displayRegion}`} className={bStyles.gapItem}>
+                      {nCarta === 0
+                        ? <>Sin <strong>{displayTipo.toLowerCase()}</strong> de {displayRegion}</>
+                        : <>Solo <strong>{nCarta}</strong> {displayTipo.toLowerCase()}{nCarta !== 1 ? 's' : ''} de {displayRegion}</>
+                      }
+                      {' '}
+                      <span className={bStyles.gapItemCatalogo}>
+                        — el catálogo tiene {nCat} candidato{nCat !== 1 ? 's' : ''}
+                      </span>
+                    </p>
+                  ))}
+                </div>
               )}
               {loadingCatalogo && (
                 <div className={styles.empty}>Cargando catálogo...</div>
