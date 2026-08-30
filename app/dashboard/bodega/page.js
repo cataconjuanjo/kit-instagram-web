@@ -141,6 +141,7 @@ export default function ControlBodega() {
   const [simAnadiendo, setSimAnadiendo] = useState('')
   const [simDuplicado, setSimDuplicado] = useState(null)
   const [simMensaje, setSimMensaje] = useState({ texto: '', tipo: 'ok' })
+  const [simEnBorrador, setSimEnBorrador] = useState(new Set())
 
   useEffect(() => {
     setAjustesBodega(economicSettings)
@@ -225,14 +226,32 @@ export default function ControlBodega() {
     if (panelAbierto !== 'catalogo' || !restaurante?.id || catalogoCargado) return
     setCatalogoCargado(true)
     setLoadingCatalogo(true)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.access_token) { setLoadingCatalogo(false); return null }
-      return fetch(
-        `/api/catalogo-consultor?${new URLSearchParams({ restaurante_id: restaurante.id })}`,
-        { headers: { Authorization: `Bearer ${session.access_token}` } }
-      )
-    }).then(res => res?.ok ? res.json() : null)
-      .then(json => { if (json) setCatalogoVinos(json.vinos || []) })
+
+    async function fetchCatalogo() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+      const token = session.access_token
+      const params = new URLSearchParams({ restaurante_id: restaurante.id })
+      const fetches = [
+        fetch(`/api/catalogo-consultor?${params}`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]
+      if (puedeUsar(restaurante, 'catalogo_consultor')) {
+        fetches.push(fetch(`/api/simulador?${params}`, { headers: { Authorization: `Bearer ${token}` } }))
+      }
+      const [catRes, simRes] = await Promise.all(fetches)
+      if (catRes?.ok) {
+        const json = await catRes.json()
+        setCatalogoVinos(json.vinos || [])
+      }
+      if (simRes?.ok) {
+        const json = await simRes.json()
+        setSimEnBorrador(new Set(
+          (json.lineas || []).filter(l => l.catalogo_vino_id).map(l => l.catalogo_vino_id)
+        ))
+      }
+    }
+
+    fetchCatalogo()
       .catch(err => console.error('[catalogo-consultor]', err))
       .finally(() => setLoadingCatalogo(false))
   }, [panelAbierto, restaurante?.id, catalogoCargado])
@@ -706,11 +725,17 @@ export default function ControlBodega() {
         setSimDuplicado({ vino, mensaje: json.mensaje })
         return
       }
+      if (res.status === 409) {
+        // Ya estaba — corregir estado local sin molestar al usuario
+        setSimEnBorrador(prev => new Set([...prev, vino.id]))
+        return
+      }
       if (!res.ok) {
         setSimMensaje({ texto: json.error || 'No se pudo añadir al simulador', tipo: 'error' })
         return
       }
       setSimDuplicado(null)
+      setSimEnBorrador(prev => new Set([...prev, vino.id]))
       setSimMensaje({ texto: `"${vino.nombre}" añadido al simulador`, tipo: 'ok' })
       setTimeout(() => setSimMensaje({ texto: '', tipo: 'ok' }), 3000)
     } catch {
@@ -1134,15 +1159,19 @@ export default function ControlBodega() {
                             </div>
                           </td>
                           <td className={bStyles.catalogoAccionTd}>
-                            <button
-                              type="button"
-                              className={bStyles.catalogoAddBtn}
-                              onClick={() => anadirAlSimulador(vino)}
-                              disabled={simAnadiendo === vino.id}
-                              title="Añadir a la simulación de carta"
-                            >
-                              {simAnadiendo === vino.id ? '…' : '+ Simular'}
-                            </button>
+                            {simEnBorrador.has(vino.id) ? (
+                              <span className={bStyles.simYaEnBorrador}>✓ Añadida</span>
+                            ) : (
+                              <button
+                                type="button"
+                                className={bStyles.catalogoAddBtn}
+                                onClick={() => anadirAlSimulador(vino)}
+                                disabled={simAnadiendo === vino.id}
+                                title="Añadir a la simulación de carta"
+                              >
+                                {simAnadiendo === vino.id ? '…' : '+ Simular'}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
