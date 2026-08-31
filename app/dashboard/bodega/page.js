@@ -17,7 +17,7 @@ import { margenBrutoPct } from '../../lib/wineEconomics'
 import { calcularWineMapping, ticketReferencia } from '../../lib/wineMapping'
 import { calcularPreciosSugeridos, margenCopaPct, normalizarAjustesPrecios } from '../../lib/pricingUtils'
 import { esPerfilBodega, puedeUsar } from '../../lib/plans'
-import { normWine } from '../../lib/textNormalize'
+import { normWine, normWineRegion, normWineTipo } from '../../lib/textNormalize'
 import { priorizarVentas } from '../../lib/salesPriority'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import CollapsibleSection from '../../components/CollapsibleSection'
@@ -372,8 +372,8 @@ export default function ControlBodega() {
     const tipoCounts = {}
     const cartaDisplayRegion = {} // normedRegion → primer valor raw de la carta
     for (const v of vinosActivos) {
-      const tipo = normWine(v.tipo)
-      const region = normWine(v.region)
+      const tipo = normWineTipo(v.tipo)
+      const region = normWineRegion(v.region)
       if (!tipo) continue
       tipoCounts[tipo] = (tipoCounts[tipo] || 0) + 1
       if (!region || REGIONES_GENERICAS.has(region)) continue
@@ -387,8 +387,8 @@ export default function ControlBodega() {
     // prefiriendo el nombre raw de la carta para la región (mejor formateado).
     const catMap = {}
     for (const c of catalogoVinos) {
-      const tipo = normWine(c.tipo)
-      const region = normWine(c.region)
+      const tipo = normWineTipo(c.tipo)
+      const region = normWineRegion(c.region)
       if (!tipo || !region || REGIONES_GENERICAS.has(region)) continue
       const key = `${tipo}||${region}`
       if (!catMap[key]) {
@@ -450,13 +450,13 @@ export default function ControlBodega() {
 
     const recomendaciones = []
     for (const vino of candidatos) {
-      const tipoNorm = normWine(vino.tipo)
-      const regionNorm = normWine(vino.region)
+      const tipoNorm = normWineTipo(vino.tipo)
+      const regionNorm = normWineRegion(vino.region)
       if (!tipoNorm || !regionNorm) continue
       const alternativas = catalogoVinos.filter(c => {
         const margenCat = decimal(c.pvp_recomendado) - decimal(c.coste_estimado)
-        return normWine(c.tipo) === tipoNorm
-          && normWine(c.region) === regionNorm
+        return normWineTipo(c.tipo) === tipoNorm
+          && normWineRegion(c.region) === regionNorm
           && decimal(c.pvp_recomendado) > 0
           && decimal(c.coste_estimado) > 0
           && margenCat > barreraRentabilidad

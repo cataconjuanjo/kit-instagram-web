@@ -5,7 +5,7 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { puedeUsar } from '../../lib/plans'
-import { normWine } from '../../lib/textNormalize'
+import { normWine, normWineRegion } from '../../lib/textNormalize'
 import { analizarMaridaje } from '../../lib/maridajeEngine'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import ConfirmationDialog from '../ConfirmationDialog'
@@ -35,9 +35,7 @@ function textoPlatoMaridaje(p) {
 // ── Sugerencias automáticas: helpers fuera del componente ─────────
 
 function normRegionAlgo(r) {
-  return String(r || '').toLowerCase()
-    .replace(/d\.o\.ca\./gi, '').replace(/d\.o\.p\./gi, '').replace(/d\.o\./gi, '')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+  return normWineRegion(r)
 }
 
 // Devuelve { anadir: [...], sustituir: [] }
@@ -128,9 +126,12 @@ export default function SimuladorCarta() {
   const [successMsg, setSuccessMsg] = useState('')
   const [celebracion, setCelebracion] = useState(null)   // { nuevos, retirados, deltaMargen }
   const [sustituyendoId, setSustituyendoId] = useState(null)
+  const [modalAnadirCatalogo, setModalAnadirCatalogo] = useState(false)
   const [catalogoSustituir, setCatalogoSustituir] = useState(null) // null=no cargado
   const [loadingCatalogoSustituir, setLoadingCatalogoSustituir] = useState(false)
   const [busquedaSustituir, setBusquedaSustituir] = useState('')
+  const [busquedaAnadir, setBusquedaAnadir] = useState('')
+  const [anadiendo, setAnadiendo] = useState('')
   const [revision, setRevision] = useState(undefined)
   const [revisionDismissed, setRevisionDismissed] = useState(false)
   const [vistaPrevia, setVistaPrevia] = useState(false)
@@ -297,6 +298,18 @@ export default function SimuladorCarta() {
     )
   }, [catalogoSustituir, busquedaSustituir])
 
+  // Catálogo filtrado por búsqueda en el modal "Añadir del catálogo"
+  const catalogoFiltradoAnadir = useMemo(() => {
+    if (!catalogoSustituir) return []
+    const q = busquedaAnadir.trim().toLowerCase()
+    const base = q
+      ? catalogoSustituir.filter(v =>
+          [v.nombre, v.bodega, v.tipo, v.region].some(f => f?.toLowerCase().includes(q))
+        )
+      : catalogoSustituir
+    return base
+  }, [catalogoSustituir, busquedaAnadir])
+
   // ── Helpers de llamadas a la API ───────────────────────────────────
   async function getToken() {
     const { data: { session } } = await supabase.auth.getSession()
@@ -416,18 +429,70 @@ export default function SimuladorCarta() {
     setGuardando('')
   }
 
+  // ── Abrir modal "Añadir del catálogo" ─────────────────────────────
+  async function abrirAnadirCatalogo() {
+    setModalAnadirCatalogo(true)
+    setBusquedaAnadir('')
+    if (catalogoSustituir !== null) return   // ya cargado, reusar
+    setLoadingCatalogoSustituir(true)
+    const t = await getToken()
+    const res = await fetch(
+      `/api/catalogo-consultor?${new URLSearchParams({ restaurante_id: restaurante.id })}`,
+      { headers: { Authorization: `Bearer ${t}` } }
+    ).catch(() => null)
+    setCatalogoSustituir(res?.ok ? (await res.json()).vinos || [] : [])
+    setLoadingCatalogoSustituir(false)
+  }
+
+  async function handleAnadirDesdeCatalogo(catalogoVino) {
+    if (anadiendo) return
+    setAnadiendo(catalogoVino.id)
+    const t = await getToken()
+    const res = await fetch('/api/simulador/anadir-catalogo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+      body: JSON.stringify({ restaurante_id: restaurante.id, catalogo_vino_id: catalogoVino.id }),
+    }).catch(() => null)
+    setAnadiendo('')
+    if (!res?.ok) {
+      const json = res ? await res.json().catch(() => null) : null
+      if (res?.status === 409) {
+        setErrorMsg(json?.error || 'Este vino ya está en tu simulación.')
+      } else if (json?.warning === 'duplicate') {
+        // Añadir igualmente con force=true
+        const t2 = await getToken()
+        const res2 = await fetch('/api/simulador/anadir-catalogo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t2}` },
+          body: JSON.stringify({ restaurante_id: restaurante.id, catalogo_vino_id: catalogoVino.id, force: true }),
+        }).catch(() => null)
+        if (res2?.ok) {
+          const j2 = await res2.json()
+          setLineas(prev => [...prev, j2.linea])
+        } else {
+          setErrorMsg('No se pudo añadir el vino al simulador.')
+        }
+      } else {
+        setErrorMsg(json?.error || 'No se pudo añadir el vino al simulador.')
+      }
+      return
+    }
+    const json = await res.json()
+    setLineas(prev => [...prev, json.linea])
+  }
+
   // ── Abrir selector "Sustituir por..." ─────────────────────────────
   async function abrirSustituir(linea) {
     setSustituyendoId(linea.id)
     setBusquedaSustituir('')
     if (catalogoSustituir !== null) return   // ya cargado, reusar
     setLoadingCatalogoSustituir(true)
-    const { data } = await supabase
-      .from('proveedor_catalogo_vinos')
-      .select('id, nombre, bodega, tipo, region, anada, pvp_recomendado, coste_estimado')
-      .eq('activo', true)
-      .order('nombre')
-    setCatalogoSustituir(data || [])
+    const t = await getToken()
+    const res = await fetch(
+      `/api/catalogo-consultor?${new URLSearchParams({ restaurante_id: restaurante.id })}`,
+      { headers: { Authorization: `Bearer ${t}` } }
+    ).catch(() => null)
+    setCatalogoSustituir(res?.ok ? (await res.json()).vinos || [] : [])
     setLoadingCatalogoSustituir(false)
   }
 
@@ -615,6 +680,13 @@ export default function SimuladorCarta() {
                 {descartandoSugerencias ? 'Descartando…' : 'Descartar sugerencias'}
               </button>
             )}
+            <button
+              type="button"
+              className={simStyles.accionBtn}
+              onClick={abrirAnadirCatalogo}
+            >
+              Añadir del catálogo
+            </button>
             <button
               type="button"
               className={simStyles.accionBtn}
@@ -1063,6 +1135,60 @@ export default function SimuladorCarta() {
                         onClick={() => handleSustituir(v)}
                       >
                         Elegir
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </ResponsiveOverlay>
+
+        {/* ── Modal: añadir del catálogo ───────────────────────── */}
+        <ResponsiveOverlay
+          open={modalAnadirCatalogo}
+          onClose={() => setModalAnadirCatalogo(false)}
+          size="modal"
+          eyebrow="Simulador"
+          title="Añadir del catálogo"
+          description="Elige un vino del catálogo del consultor para incorporarlo al borrador."
+        >
+          <input
+            className={simStyles.sustituirSearch}
+            placeholder="Buscar por nombre, bodega, tipo, zona…"
+            value={busquedaAnadir}
+            onChange={e => setBusquedaAnadir(e.target.value)}
+            autoFocus
+          />
+          {loadingCatalogoSustituir ? (
+            <div className={simStyles.sustituirVacio}>Cargando catálogo…</div>
+          ) : catalogoFiltradoAnadir.length === 0 ? (
+            <div className={simStyles.sustituirVacio}>
+              {busquedaAnadir ? 'Sin resultados para esa búsqueda.' : 'El catálogo del consultor está vacío.'}
+            </div>
+          ) : (
+            <div className={simStyles.sustituirLista}>
+              {catalogoFiltradoAnadir.map(v => {
+                const yaEnBorrador = simEnBorradorSet.has(v.id)
+                return (
+                  <div key={v.id} className={simStyles.sustituirItem}>
+                    <div className={simStyles.sustituirItemInfo}>
+                      <div className={simStyles.sustituirItemNombre}>{v.nombre}</div>
+                      <div className={simStyles.sustituirItemMeta}>
+                        {[v.bodega, v.tipo, v.region].filter(Boolean).join(' · ')}
+                        {Number(v.pvp_recomendado) > 0 && ` · ${eur(v.pvp_recomendado)}`}
+                      </div>
+                    </div>
+                    {yaEnBorrador ? (
+                      <span className={simStyles.sustituirYaEnBorrador}>Ya en borrador</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={simStyles.accionBtn}
+                        disabled={anadiendo === v.id}
+                        onClick={() => handleAnadirDesdeCatalogo(v)}
+                      >
+                        {anadiendo === v.id ? 'Añadiendo…' : 'Añadir'}
                       </button>
                     )}
                   </div>

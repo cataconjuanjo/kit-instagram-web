@@ -1,14 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { ADMIN_EMAIL, getEffectiveRestaurantEmail } from '../../demo'
 import {
   SELECT_CLIENT_PLATO_DASHBOARD,
   SELECT_CLIENT_RESTAURANTE_DASHBOARD,
 } from '../../lib/clientSupabaseSelects'
-import { esPerfilBodega } from '../../lib/plans'
+import { esPerfilBodega, puedeUsar } from '../../lib/plans'
+import { analizarMaridaje } from '../../lib/maridajeEngine'
 import { LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
@@ -220,6 +221,8 @@ export default function Platos() {
   const [platoBorrar, setPlatoBorrar] = useState(null)
   const [borrandoId, setBorrandoId] = useState('')
   const [errorPlatos, setErrorPlatos] = useState('')
+  const [huecos, setHuecos] = useState(null)         // null=no calculado, []|[...]=calculado
+  const [analizandoHuecos, setAnalizandoHuecos] = useState(false)
 
   const categorias = ['Entrantes fríos', 'Entrantes calientes', 'Cuchara', 'De la tierra', 'Del mar', 'Tablas', 'Postres']
 
@@ -250,6 +253,82 @@ export default function Platos() {
     document.addEventListener('mousedown', cerrarMenu, true)
     return () => document.removeEventListener('mousedown', cerrarMenu, true)
   }, [menuPlato])
+
+  // ── Huecos de maridaje: platos sin vino asignado ─────────────────────────
+  async function analizarHuecosMaridaje() {
+    if (!restaurante?.id || analizandoHuecos) return
+    setAnalizandoHuecos(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      const [vinosRes, catRes] = await Promise.all([
+        supabase
+          .from('vinos')
+          .select('id, nombre, tipo, uva, bodega, notas_cata, precio_botella, activo')
+          .eq('restaurante_id', restaurante.id)
+          .eq('activo', true),
+        token && puedeUsar(restaurante, 'catalogo_consultor')
+          ? fetch(
+              `/api/catalogo-consultor?${new URLSearchParams({ restaurante_id: restaurante.id })}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            ).catch(() => null)
+          : Promise.resolve(null),
+      ])
+
+      const vinosCarta = (vinosRes.data || []).map(v => ({
+        ...v,
+        activo: true,
+        stock: null,
+        precio_botella: Number(v.precio_botella) > 0 ? v.precio_botella : 20,
+      }))
+
+      const catJson = catRes?.ok ? await catRes.json().catch(() => ({})) : {}
+      const catalogoVinos = (catJson.vinos || []).map(v => ({
+        ...v,
+        activo: true,
+        stock: null,
+        precio_botella: Number(v.pvp_recomendado) > 0 ? v.pvp_recomendado : 20,
+      }))
+
+      const platosActivos = platos.filter(p => p.activo !== false)
+
+      const resultados = platosActivos
+        .map(plato => {
+          const texto = [plato.nombre, plato.categoria, plato.descripcion].filter(Boolean).join(' ')
+          let tieneVino = false
+          if (vinosCarta.length) {
+            try {
+              const a = analizarMaridaje(texto, vinosCarta)
+              tieneVino = !!(a?.candidatos?.[0]?.compatible || a?.recomendados?.[0]?.compatible)
+            } catch {}
+          }
+          if (tieneVino) return null
+
+          const candidatos = []
+          if (catalogoVinos.length) {
+            for (const v of catalogoVinos) {
+              if (candidatos.length >= 3) break
+              try {
+                const a = analizarMaridaje(texto, [v])
+                const r = a?.candidatos?.[0] || a?.recomendados?.[0]
+                if (r?.compatible) candidatos.push({ vino: v, motivo: r.motivo, score: Number(r.score) || 0 })
+              } catch {}
+            }
+            candidatos.sort((a, b) => b.score - a.score)
+          }
+
+          return { plato, candidatos }
+        })
+        .filter(Boolean)
+
+      setHuecos(resultados)
+    } catch (err) {
+      console.error('[huecos-maridaje]', err)
+      setHuecos([])
+    }
+    setAnalizandoHuecos(false)
+  }
 
   // ── Enriquecimiento Chartier batch ────────────────────────────────────────
   async function enriquecerTodosLosPlatos() {
@@ -623,6 +702,83 @@ export default function Platos() {
             ))}
           </div>
         </section>
+
+        {/* ── Platos sin vino asignado ──────────────────────────────── */}
+        {puedeUsar(restaurante, 'catalogo_consultor') && platosActivos.length > 0 && (
+          <section style={{ background: '#fafaf8', border: '1px solid #ede8df', padding: '20px 24px', marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: huecos ? 16 : 0 }}>
+              <div>
+                <p style={{ fontSize: 10, color: '#b8a07a', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 4px' }}>Motor Chartier KB · WSET</p>
+                <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111' }}>
+                  {huecos === null
+                    ? 'Platos sin vino asignado'
+                    : `Platos sin vino asignado (${huecos.length})`}
+                </h3>
+                {huecos === null && (
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#999', lineHeight: 1.5 }}>
+                    Platos para los que ningún vino de la carta supera el umbral de compatibilidad del motor de maridaje. Cada uno incluye hasta 3 candidatos del catálogo del consultor.
+                  </p>
+                )}
+              </div>
+              {huecos === null && (
+                <button
+                  type="button"
+                  className={styles.secondary}
+                  disabled={analizandoHuecos}
+                  onClick={analizarHuecosMaridaje}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {analizandoHuecos ? 'Analizando…' : 'Analizar huecos'}
+                </button>
+              )}
+            </div>
+
+            {huecos !== null && huecos.length === 0 && (
+              <p style={{ margin: 0, fontSize: 13, color: '#888' }}>
+                Todos los platos activos tienen al menos un vino compatible en la carta.
+              </p>
+            )}
+
+            {huecos !== null && huecos.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {huecos.map(({ plato, candidatos }) => (
+                  <div key={plato.id} style={{ background: '#fff', border: '1px solid #ede8df', padding: '14px 18px' }}>
+                    <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 600, color: '#111' }}>
+                      {plato.nombre}
+                      {plato.categoria && (
+                        <span style={{ fontWeight: 400, color: '#aaa', marginLeft: 8, fontSize: 12 }}>{plato.categoria}</span>
+                      )}
+                    </p>
+                    {candidatos.length === 0 ? (
+                      <p style={{ margin: 0, fontSize: 12, color: '#bbb' }}>Sin candidatos en el catálogo del consultor para este plato.</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {candidatos.map(({ vino, motivo }) => (
+                          <div key={vino.id} style={{ background: '#fafaf8', border: '1px solid #e8e2d8', borderRadius: 4, padding: '8px 12px', minWidth: 180, flex: '1 1 180px', maxWidth: 320 }}>
+                            <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 600, color: '#222' }}>{vino.nombre}</p>
+                            <p style={{ margin: '0 0 4px', fontSize: 11, color: '#999' }}>
+                              {[vino.bodega, vino.tipo, vino.region].filter(Boolean).join(' · ')}
+                            </p>
+                            {motivo && <p style={{ margin: 0, fontSize: 11, color: '#b8a07a', fontStyle: 'italic' }}>{motivo}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className={styles.secondary}
+                  disabled={analizandoHuecos}
+                  onClick={analizarHuecosMaridaje}
+                  style={{ alignSelf: 'flex-start' }}
+                >
+                  {analizandoHuecos ? 'Recalculando…' : 'Recalcular'}
+                </button>
+              </div>
+            )}
+          </section>
+        )}
 
         {mostrarImportador && (
           <div style={{ background: '#fff', border: '1px solid #f0f0f0', padding: '28px', marginBottom: 24 }}>
