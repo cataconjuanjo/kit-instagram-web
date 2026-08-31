@@ -33,26 +33,52 @@ function hashIdentifier(value) {
     .digest('hex')
 }
 
-async function checkRateLimit(key, endpoint, max) {
-  const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
-  const { count } = await supabaseAdmin
-    .from('rate_limits')
-    .select('id', { count: 'exact', head: true })
-    .eq('ip', key)
-    .eq('endpoint', endpoint)
-    .gte('created_at', since)
+const RATE_LIMIT_TIMEOUT_MS = 4000
 
-  if ((count || 0) >= max) {
-    logSecurityEvent('rate_limit_exceeded', {
-      endpoint,
-      key,
-      reason: `max_${max}_window_${RATE_WINDOW_MS}`,
-      status: 429,
-    })
-    return false
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('rate_limit_timeout')), ms)
+    ),
+  ])
+}
+
+async function checkRateLimit(key, endpoint, max) {
+  try {
+    const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
+    const { count } = await withTimeout(
+      supabaseAdmin
+        .from('rate_limits')
+        .select('id', { count: 'exact', head: true })
+        .eq('ip', key)
+        .eq('endpoint', endpoint)
+        .gte('created_at', since),
+      RATE_LIMIT_TIMEOUT_MS
+    )
+
+    if ((count || 0) >= max) {
+      logSecurityEvent('rate_limit_exceeded', {
+        endpoint,
+        key,
+        reason: `max_${max}_window_${RATE_WINDOW_MS}`,
+        status: 429,
+      })
+      return false
+    }
+
+    // Fire-and-forget: no bloqueamos el login si el insert falla
+    withTimeout(
+      supabaseAdmin.from('rate_limits').insert({ ip: key, endpoint }),
+      RATE_LIMIT_TIMEOUT_MS
+    ).catch(err => console.error('[rate_limit] insert error:', err.message))
+
+    return true
+  } catch (err) {
+    // Si rate_limits está caído o lento, fail-open para no bloquear el login
+    console.error('[rate_limit] check failed, failing open:', err.message)
+    return true
   }
-  await supabaseAdmin.from('rate_limits').insert({ ip: key, endpoint })
-  return true
 }
 
 function genericFailure(status = 401) {
