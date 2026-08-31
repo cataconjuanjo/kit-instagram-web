@@ -477,6 +477,25 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
     }
   }
 
+  // Postre claro + vino seco: la dulzura del postre endurece y acorta cualquier vino seco.
+  // Excepción Chartier: chocolate negro intenso con tinto tánico (cocina_aromatica_chocolate_negro).
+  const esClaroPostre = [
+    'postre', 'tarta', 'helado', 'brownie', 'torrija', 'crepe', 'flan',
+    'mousse', 'bizcocho', 'pastel', 'natillas', 'toffee', 'turron', 'coulant',
+  ].some(t => incluyeTerminoCompleto(consultaNormalizada, t))
+  if (esClaroPostre && !esDulceOxidativo) {
+    const esChocolateNegro = ['chocolate negro', 'chocolate amargo', 'cacao'].some(t => consultaNormalizada.includes(t))
+    if (!(esChocolateNegro && vino.tipo === 'tinto')) {
+      if (['tinto', 'blanco', 'rosado', 'espumoso', 'naranja'].includes(vino.tipo)) {
+        return {
+          compatible: false,
+          penalizacion: 80,
+          razon: 'Para postres conviene dulzor o estructura oxidativa; un vino seco resulta duro y acido frente a la dulzura del plato. Excepcion: chocolate negro intenso con tinto tanico.',
+        }
+      }
+    }
+  }
+
   if (contexto === 'queso' && vino.tipo === 'tinto' && !quesoTrucadoParaTinto) {
     return { compatible: false, penalizacion: 80, razon: 'En quesos se priorizan blancos, finos/manzanillas, rosados, dulces u oxidativos; el tinto queda como excepción si el acompañamiento lo justifica.' }
   }
@@ -540,6 +559,7 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
   let score = 0
   let motivo = 'busca afinidad aromática y estructural con el plato'
   let fuente = 'Chartier + estructura WSET'
+  let bestChapterScore = -Infinity
 
   matchesKb.forEach(match => {
     let matchScore = match.score
@@ -549,7 +569,8 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
     if (coincideTipo) matchScore += 8
     if (tipoEvitado) matchScore -= 20
     matchScore += Math.min(terminosCoincidentes.length, 6) * 5
-    if (matchScore > score) {
+    if (matchScore > bestChapterScore) {
+      bestChapterScore = matchScore
       motivo = terminosCoincidentes.length
         ? `comparte referencias de estilo con ${terminosCoincidentes.slice(0, 3).join(', ')}`
         : `encaja con la familia ${match.capitulo.title}`

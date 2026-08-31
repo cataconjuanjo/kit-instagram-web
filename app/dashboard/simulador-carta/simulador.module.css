@@ -261,3 +261,566 @@
 @media (max-width: 700px) {
   .table { min-width: 780px; }
 }
+
+/* ── Acciones apiladas en columna (Quitar + Sustituir) ────────────── */
+
+.accionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.thAccionWide { text-align: center; width: 100px; }
+
+/* ── Par de sustitución: indicador en la fila "nuevo" ────────────── */
+
+.sustitutoIndicador {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cv-gold);
+  margin-bottom: 1px;
+}
+
+.rowSustituto {
+  background: rgba(201, 162, 75, 0.06);
+  border-left: 3px solid var(--cv-gold) !important;
+}
+.rowSustituto:hover { background: rgba(201, 162, 75, 0.12) !important; }
+
+/* ── Selector "Sustituir por..." ─────────────────────────────────── */
+
+.sustituirSearch {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  background: #fffaf3;
+  color: #171416;
+  outline: none;
+  margin-bottom: 12px;
+}
+.sustituirSearch:focus { border-color: var(--cv-gold); }
+
+.sustituirLista {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.sustituirItem {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+.sustituirItem:hover { background: rgba(201, 162, 75, 0.07); }
+
+.sustituirItemInfo { min-width: 0; }
+.sustituirItemNombre {
+  font-size: 13px;
+  font-weight: 600;
+  color: #171416;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sustituirItemMeta {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sustituirYaEnBorrador {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--cv-gold);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.sustituirVacio {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--cv-text-muted);
+}
+
+/* ── Micro-celebración al publicar ───────────────────────────────── */
+
+@keyframes celebEntra {
+  from { opacity: 0; transform: scale(0.92) translateY(14px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+@keyframes celebCheck {
+  0%   { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+  60%  { transform: scale(1.22) rotate(3deg); opacity: 1; }
+  80%  { transform: scale(0.93); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes celebTexto {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.celebBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 20, 18, 0.52);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  animation: celebEntra 0.28s ease-out both;
+  cursor: pointer;
+}
+
+.celebCard {
+  background: #fffaf3;
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  padding: 40px 52px;
+  text-align: center;
+  max-width: 380px;
+  width: 90%;
+  box-shadow: 0 24px 64px rgba(23, 18, 10, 0.28);
+  cursor: default;
+}
+
+.celebCheckmark {
+  display: block;
+  width: 60px;
+  height: 60px;
+  line-height: 60px;
+  margin: 0 auto 16px;
+  background: var(--cv-wine);
+  color: #fffaf3;
+  border-radius: 50%;
+  font-size: 28px;
+  font-weight: 900;
+  animation: celebCheck 0.48s cubic-bezier(.34, 1.56, .64, 1) 0.08s both;
+}
+
+.celebTitulo {
+  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: #171416;
+  margin: 0 0 6px;
+  animation: celebTexto 0.32s ease 0.32s both;
+}
+
+.celebSub {
+  font-size: 13px;
+  color: var(--cv-text-muted);
+  margin: 0 0 20px;
+  animation: celebTexto 0.32s ease 0.4s both;
+}
+
+.celebStats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e8e2d9;
+  animation: celebTexto 0.32s ease 0.48s both;
+}
+
+.celebStat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.celebStatVal {
+  font-size: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: #171416;
+}
+.celebStatValGold  { color: var(--cv-gold); }
+.celebStatValGreen { color: var(--cv-green); }
+.celebStatValRed   { color: var(--cv-red); }
+
+.celebStatLabel {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cv-text-muted);
+}
+
+.celebDismiss {
+  margin-top: 20px;
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  animation: celebTexto 0.28s ease 0.62s both;
+}
+
+/* ── Revisión del consultor ─────────────────────────────────────── */
+
+.revisionBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.revisionBannerPendiente {
+  background: rgba(201, 162, 75, 0.07);
+  border: 1px solid rgba(201, 162, 75, 0.32);
+}
+
+.revisionBannerRevisado {
+  background: rgba(76, 140, 90, 0.06);
+  border: 1px solid rgba(76, 140, 90, 0.24);
+}
+
+.revisionEyebrow {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cv-gold);
+}
+
+.revisionEyebrowRevisado {
+  color: var(--cv-green);
+}
+
+.revisionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #171416;
+  margin: 0;
+}
+
+.revisionSub {
+  font-size: 12px;
+  color: var(--cv-text-muted);
+  margin: 0;
+}
+
+.revisionRespuesta {
+  padding: 10px 12px;
+  background: rgba(76, 140, 90, 0.05);
+  border-left: 3px solid var(--cv-green);
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: #384a3a;
+  line-height: 1.5;
+}
+
+.revisionActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+/* ── Modal de enviar revisión ────────────────────────────────────── */
+
+.revisionModalTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  background: #fffaf3;
+  color: #171416;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  margin-bottom: 4px;
+}
+.revisionModalTextarea:focus { border-color: var(--cv-gold); }
+
+.revisionModalHint {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  margin: 0 0 16px;
+}
+
+.revisionModalActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* ── Maridajes algorítmicos ─────────────────────────────────────── */
+
+.maridajeBtn {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  min-height: 22px;
+  border-radius: 5px;
+  border: 1px solid #e0d4bc;
+  background: transparent;
+  color: var(--cv-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.maridajeBtn:hover {
+  background: rgba(201, 162, 75, 0.08);
+  color: var(--cv-gold);
+  border-color: rgba(201, 162, 75, 0.5);
+}
+
+.maridajeLista {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.maridajeItem {
+  padding: 10px 12px;
+  background: rgba(201, 162, 75, 0.04);
+  border: 1px solid rgba(201, 162, 75, 0.18);
+  border-radius: 6px;
+}
+
+.maridajeItemNombre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #171416;
+  margin: 0 0 2px;
+}
+
+.maridajeItemMeta {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  margin: 0 0 5px;
+}
+
+.maridajeMotivo {
+  font-size: 12px;
+  color: #5a4a38;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.maridajeVacio {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--cv-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.maridajeFuente {
+  margin-top: 14px;
+  font-size: 10px;
+  color: var(--cv-text-muted);
+  text-align: right;
+  letter-spacing: 0.04em;
+}
+
+/* ── Briefing de sala ─────────────────────────────────────────────── */
+
+.briefingSection {
+  margin-bottom: 22px;
+}
+
+.briefingEyebrow {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cv-gold);
+  margin: 0 0 10px;
+}
+
+.briefingEyebrowRed {
+  color: var(--cv-red);
+}
+
+.briefingVinoCard {
+  padding: 11px 13px;
+  background: #fffaf3;
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  margin-bottom: 7px;
+}
+
+.briefingVinoNuevo {
+  border-left: 3px solid var(--cv-gold);
+}
+
+.briefingVinoNombre {
+  font-size: 14px;
+  font-weight: 700;
+  color: #171416;
+  margin: 0 0 3px;
+}
+
+.briefingVinoMeta {
+  font-size: 12px;
+  color: var(--cv-text-muted);
+  margin: 0 0 5px;
+  line-height: 1.4;
+}
+
+.briefingVinoPrecio {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #171416;
+  margin: 0 0 5px;
+}
+
+.briefingPlatos {
+  font-size: 12px;
+  color: #4a7058;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.briefingPrintBtn {
+  margin-top: 20px;
+  width: 100%;
+  padding: 10px 16px;
+  background: #171416;
+  color: #fffaf3;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+.briefingPrintBtn:hover { background: #2e2528; }
+
+.briefingVacio {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--cv-text-muted);
+  font-size: 13px;
+}
+
+@media print {
+  .briefingPrintBtn { display: none; }
+}
+
+/* ── Sugerencias automáticas ─────────────────────────────────────── */
+
+/* Badge "✦ Auto" en la columna de nombre */
+.origenAuto {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cv-gold);
+  background: rgba(201, 162, 75, 0.14);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* Sección dentro del modal */
+.sugerenciasSeccion {
+  margin-bottom: 22px;
+}
+
+.sugerenciasEyebrow {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cv-gold);
+  margin: 0 0 10px;
+}
+
+.sugerenciasEyebrowOrange {
+  color: var(--cv-wine);
+}
+
+/* Fila de sugerencia (label = clickable) */
+.sugerenciaItem {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e8e2d9;
+  border-radius: 6px;
+  background: #fffaf3;
+  cursor: pointer;
+  margin-bottom: 5px;
+  transition: background 0.1s;
+}
+.sugerenciaItem:hover { background: rgba(201, 162, 75, 0.06); }
+
+.sugerenciaInfo { min-width: 0; }
+
+.sugerenciaNombre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #171416;
+  margin-bottom: 2px;
+}
+
+.sugerenciaMeta {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  margin-bottom: 3px;
+}
+
+.sugerenciaRazon {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cv-gold);
+}
+
+/* Línea "Reemplaza: <nombre>" en sugerencias de sustitución */
+.sugerenciaReemplaza {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  margin-bottom: 5px;
+}
+
+.sugerenciaReemplazaMeta {
+  color: var(--cv-wine);
+}
+
+/* Footer del modal: botones Cancelar + Aplicar */
+.sugerenciasFooter {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 14px;
+  margin-top: 4px;
+  border-top: 1px solid #e8e2d9;
+  flex-wrap: wrap;
+}
+
+/* Estado vacío del modal de sugerencias */
+.sugerenciasVacio {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--cv-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}

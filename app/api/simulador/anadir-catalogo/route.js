@@ -25,9 +25,11 @@ function pvpCopaDesdeBottella(pvpBotella) {
 export async function POST(req) {
   try {
     const body = await req.json()
-    const restauranteId = String(body.restaurante_id || '').trim().slice(0, 80)
+    const restauranteId  = String(body.restaurante_id  || '').trim().slice(0, 80)
     const catalogoVinoId = String(body.catalogo_vino_id || '').trim()
-    const force = Boolean(body.force)
+    const force          = Boolean(body.force)
+    const sustituye_a    = body.sustituye_a ? String(body.sustituye_a).trim() : null
+    const origen         = typeof body.origen === 'string' ? body.origen.slice(0, 40) : null
 
     if (!catalogoVinoId) {
       return Response.json({ error: 'catalogo_vino_id obligatorio' }, { status: 400 })
@@ -117,6 +119,8 @@ export async function POST(req) {
         precio_copa: pvpCopa || null,
         coste_compra: coste || null,
         estado: 'nuevo',
+        sustituye_a: sustituye_a || null,
+        origen: origen || null,
       })
       .select()
       .single()

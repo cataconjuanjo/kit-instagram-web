@@ -548,6 +548,94 @@
   font-weight: 600;
 }
 
+/* ── Candidatos a sustituir ──────────────────────────────────────── */
+
+.sustBanner {
+  margin-bottom: 10px;
+  padding: 12px 16px;
+  background: var(--cv-red-soft);
+  border: 1px solid var(--cv-red);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  opacity: 0.92;
+}
+
+.sustBannerTitle {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cv-red);
+  margin: 0 0 2px;
+}
+
+.sustItem {
+  display: grid;
+  gap: 2px;
+}
+
+.sustItemVino {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--cv-text-dark, #171416);
+}
+
+.sustBadgeRevisar {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--cv-red-soft);
+  color: var(--cv-red);
+  border: 1px solid var(--cv-red);
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.sustBadgeCaballo {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--cv-amber-soft);
+  color: var(--cv-amber);
+  border: 1px solid var(--cv-amber);
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.sustItemMotivo {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  margin: 0;
+}
+
+.sustItemAlts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+  padding-left: 10px;
+  border-left: 2px solid var(--cv-gold);
+}
+
+.sustItemAlt {
+  font-size: 11px;
+  color: var(--cv-text-dark, #171416);
+}
+
+.sustItemAltMeta {
+  color: var(--cv-gold);
+  font-weight: 600;
+}
+
 @media (max-width: 700px) {
   .cellarTable { min-width: 980px; }
   .cellarToolbar { flex-direction: column; align-items: stretch; }

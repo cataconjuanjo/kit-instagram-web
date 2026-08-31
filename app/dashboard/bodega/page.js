@@ -18,6 +18,7 @@ import { calcularWineMapping, ticketReferencia } from '../../lib/wineMapping'
 import { calcularPreciosSugeridos, margenCopaPct, normalizarAjustesPrecios } from '../../lib/pricingUtils'
 import { esPerfilBodega, puedeUsar } from '../../lib/plans'
 import { normWine } from '../../lib/textNormalize'
+import { priorizarVentas } from '../../lib/salesPriority'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import CollapsibleSection from '../../components/CollapsibleSection'
 import WineMappingPanel from '../../components/WineMappingPanel'
@@ -414,6 +415,65 @@ export default function ControlBodega() {
 
     return gaps.sort((a, b) => b.score - a.score).slice(0, 3)
   }, [vinos, catalogoVinos])
+
+  const recomendacionesSustitucion = useMemo(() => {
+    if (!catalogoVinos.length || !vinos.length) return []
+    const vinosActivos = vinos.filter(v => v.activo !== false)
+    const vinosConCoste = vinosActivos.filter(v => decimal(v.coste_compra) > 0 && decimal(v.precio_botella) > 0)
+    if (vinosConCoste.length < 3) return []
+
+    const lectura = priorizarVentas(eventosSala)
+    const ventasPorId = lectura.ventasPorVinoId
+    const totalVentas = lectura.unidadesKpi
+    if (totalVentas < 5) return []
+
+    const vinosCalculados = vinosConCoste.map(v => ({
+      ...v,
+      margen: decimal(v.precio_botella) - decimal(v.coste_compra),
+      ventas: ventasPorId[v.id] || 0,
+      pctVentas: ((ventasPorId[v.id] || 0) / totalVentas) * 100,
+    }))
+    const barreraRentabilidad = vinosCalculados.reduce((s, v) => s + v.margen, 0) / vinosCalculados.length
+    const vinosConVentas = vinosCalculados.filter(v => v.ventas > 0).length
+    const barreraPopularidad = vinosConVentas > 0 ? (100 / vinosConVentas) * 0.7 : 0
+
+    const clasificados = vinosCalculados.map(v => ({
+      ...v,
+      categoria: (v.margen >= barreraRentabilidad && v.pctVentas >= barreraPopularidad) ? 'estrella'
+        : (v.margen < barreraRentabilidad && v.pctVentas >= barreraPopularidad) ? 'caballo'
+        : (v.margen >= barreraRentabilidad && v.pctVentas < barreraPopularidad) ? 'joya'
+        : 'revisar',
+    }))
+
+    const candidatos = clasificados.filter(v => ['revisar', 'caballo'].includes(v.categoria))
+    if (!candidatos.length) return []
+
+    const recomendaciones = []
+    for (const vino of candidatos) {
+      const tipoNorm = normWine(vino.tipo)
+      const regionNorm = normWine(vino.region)
+      if (!tipoNorm || !regionNorm) continue
+      const alternativas = catalogoVinos.filter(c => {
+        const margenCat = decimal(c.pvp_recomendado) - decimal(c.coste_estimado)
+        return normWine(c.tipo) === tipoNorm
+          && normWine(c.region) === regionNorm
+          && decimal(c.pvp_recomendado) > 0
+          && decimal(c.coste_estimado) > 0
+          && margenCat > barreraRentabilidad
+      })
+      if (!alternativas.length) continue
+      recomendaciones.push({
+        vino,
+        alternativas: alternativas.slice(0, 2),
+        prioridad: vino.categoria === 'revisar' ? 0 : 1,
+        barreraRentabilidad,
+      })
+    }
+
+    return recomendaciones
+      .sort((a, b) => a.prioridad - b.prioridad || a.vino.margen - b.vino.margen)
+      .slice(0, 3)
+  }, [vinos, catalogoVinos, eventosSala])
 
   const donutEstilos = useMemo(() => {
     const TIPOS = [
@@ -1168,6 +1228,42 @@ export default function ControlBodega() {
                 <p className={simMensaje.tipo === 'error' ? bStyles.simMensajeError : bStyles.simMensajeOk}>
                   {simMensaje.texto}
                 </p>
+              )}
+              {!loadingCatalogo && recomendacionesSustitucion.length > 0 && (
+                <div className={bStyles.sustBanner}>
+                  <p className={bStyles.sustBannerTitle}>Candidatos a sustituir</p>
+                  {recomendacionesSustitucion.map(({ vino, alternativas, prioridad, barreraRentabilidad: barrera }) => (
+                    <div key={vino.id} className={bStyles.sustItem}>
+                      <div className={bStyles.sustItemVino}>
+                        <span className={prioridad === 0 ? bStyles.sustBadgeRevisar : bStyles.sustBadgeCaballo}>
+                          {prioridad === 0 ? 'Revisar' : 'Caballo'}
+                        </span>
+                        <strong>{vino.nombre}</strong>
+                        {vino.bodega && <span>{vino.bodega}</span>}
+                      </div>
+                      <p className={bStyles.sustItemMotivo}>
+                        {prioridad === 0
+                          ? `Margen bajo (${eur(vino.margen)}/bt) y poca salida — doble freno de rentabilidad`
+                          : `Margen bajo (${eur(vino.margen)}/bt) pero con salida — mejorarlo mantiene el volumen`
+                        }
+                      </p>
+                      <div className={bStyles.sustItemAlts}>
+                        {alternativas.map(alt => {
+                          const margenAlt = decimal(alt.pvp_recomendado) - decimal(alt.coste_estimado)
+                          return (
+                            <div key={alt.id} className={bStyles.sustItemAlt}>
+                              <span>{alt.nombre}</span>
+                              {alt.bodega && <span className={bStyles.sustItemAltMeta}>{alt.bodega}</span>}
+                              <span className={bStyles.sustItemAltMeta}>
+                                {eur(margenAlt)}/bt · coste {eurDetalle(alt.coste_estimado)} · PVP {eurDetalle(alt.pvp_recomendado)}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
               {!loadingCatalogo && gapAnalisis.length > 0 && (
                 <div className={bStyles.gapBanner}>
