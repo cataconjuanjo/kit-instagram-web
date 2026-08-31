@@ -506,12 +506,12 @@ export default function SimuladorCarta() {
     let catalogo = catalogoSustituir
     if (catalogo === null) {
       setLoadingCatalogoSustituir(true)
-      const { data } = await supabase
-        .from('proveedor_catalogo_vinos')
-        .select('id, nombre, bodega, tipo, region, anada, pvp_recomendado, coste_estimado')
-        .eq('activo', true)
-        .order('nombre')
-      catalogo = data || []
+      const t = await getToken()
+      const res = await fetch(
+        `/api/catalogo-consultor?${new URLSearchParams({ restaurante_id: restaurante.id })}`,
+        { headers: { Authorization: `Bearer ${t}` } }
+      ).catch(() => null)
+      catalogo = res?.ok ? (await res.json()).vinos || [] : []
       setCatalogoSustituir(catalogo)
       setLoadingCatalogoSustituir(false)
     }
