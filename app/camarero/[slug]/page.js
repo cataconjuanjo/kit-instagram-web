@@ -461,7 +461,7 @@ export default function Camarero() {
   }
 
   function esVinoDulceOSemidulce(vino, textoVino = '') {
-    return vino.tipo === 'dulce' || ['semidulce', 'semi dulce', 'dulce', 'vendimia tardia', 'late harvest'].some(t => textoVino.includes(t))
+    return vino.tipo === 'dulce' || ['semidulce', 'semi dulce', 'vendimia tardia', 'late harvest'].some(t => textoVino.includes(t))
   }
 
   function esBlancoLigeroDeUsoEstrecho(vino, textoVino = '') {
