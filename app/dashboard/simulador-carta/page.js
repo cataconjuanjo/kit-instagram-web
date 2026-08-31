@@ -5,8 +5,9 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { puedeUsar } from '../../lib/plans'
-import { normWine, normWineRegion } from '../../lib/textNormalize'
+import { normWine } from '../../lib/textNormalize'
 import { analizarMaridaje } from '../../lib/maridajeEngine'
+import { generarSugerencias } from '../../lib/sugerirCarta'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import ConfirmationDialog from '../ConfirmationDialog'
 import ResponsiveOverlay from '../ResponsiveOverlay'
@@ -32,64 +33,6 @@ function textoPlatoMaridaje(p) {
   return [p.nombre, p.categoria, p.descripcion].filter(Boolean).join(' ')
 }
 
-// ── Sugerencias automáticas: helpers fuera del componente ─────────
-
-function normRegionAlgo(r) {
-  return normWineRegion(r)
-}
-
-// Devuelve { anadir: [...], sustituir: [] }
-// anadir    → vinos del catálogo que cubren huecos de tipo o región (Señal A)
-// sustituir → vacío hasta que el simulador tenga datos de rotación (Señal B requiere
-//             margen × popularidad; solo margen filtra incorrectamente los "caballos de batalla")
-function generarSugerencias(lineas, catalogo) {
-  const activas    = lineas.filter(l => l.estado !== 'fuera')
-  const enBorrador = new Set(activas.filter(l => l.catalogo_vino_id).map(l => l.catalogo_vino_id))
-
-  // Cobertura actual: tipo → Set<regionNorm>
-  const coberturaRegion = {}
-  for (const l of activas) {
-    const tipo = (l.tipo || '').toLowerCase()
-    if (!coberturaRegion[tipo]) coberturaRegion[tipo] = new Set()
-    coberturaRegion[tipo].add(normRegionAlgo(l.region))
-  }
-  const tiposCubiertos = new Set(Object.keys(coberturaRegion))
-
-  const sugsAnadir    = []
-  const usedCatalogIds = new Set()
-  const huecosSugeridos = new Set()
-
-  // ── Señal A: huecos de tipo o región ─────────────────────────────
-  for (const v of catalogo) {
-    if (sugsAnadir.length >= 8) break
-    if (enBorrador.has(v.id)) continue
-    const tipo = (v.tipo || '').toLowerCase()
-    const regionNorm = normRegionAlgo(v.region)
-    if (!tipo) continue
-
-    const claveHueco = !tiposCubiertos.has(tipo)
-      ? `tipo_${tipo}`
-      : (regionNorm && !coberturaRegion[tipo]?.has(regionNorm)) ? `region_${tipo}_${regionNorm}` : null
-
-    if (claveHueco && !huecosSugeridos.has(claveHueco)) {
-      sugsAnadir.push({
-        key: v.id,
-        vino: v,
-        razon: !tiposCubiertos.has(tipo)
-          ? `Sin ${v.tipo || tipo} en la carta`
-          : `Sin ${v.tipo || tipo} de ${v.region || 'esta zona'}`,
-        prioridad: !tiposCubiertos.has(tipo) ? 3 : 2,
-      })
-      usedCatalogIds.add(v.id)
-      huecosSugeridos.add(claveHueco)
-    }
-  }
-
-  return {
-    anadir:    sugsAnadir.sort((a, b) => b.prioridad - a.prioridad),
-    sustituir: [],   // Señal B activable cuando el simulador integre datos de rotación
-  }
-}
 
 function computarPlatosVino(vino, platos, limite = 4) {
   const obj = { ...vino, activo: true, stock: null, precio_botella: Number(vino.precio_botella) > 0 ? vino.precio_botella : 20 }
@@ -549,7 +492,7 @@ export default function SimuladorCarta() {
   }
 
   async function cargarPlatosMaridaje() {
-    if (platosMaridaje !== null) return
+    if (platosMaridaje !== null) return platosMaridaje
     setCargandoPlatos(true)
     const { data } = await supabase
       .from('platos')
@@ -558,8 +501,10 @@ export default function SimuladorCarta() {
       .eq('activo', true)
       .order('categoria')
       .limit(100)
-    setPlatosMaridaje(data || [])
+    const result = data || []
+    setPlatosMaridaje(result)
     setCargandoPlatos(false)
+    return result
   }
 
   // ── Sugerencias automáticas ────────────────────────────────────────
@@ -581,7 +526,8 @@ export default function SimuladorCarta() {
       setLoadingCatalogoSustituir(false)
     }
 
-    const resultado = generarSugerencias(lineas, catalogo)
+    const platos = await cargarPlatosMaridaje()
+    const resultado = generarSugerencias(lineas, catalogo, platos)
     setSugerencias(resultado)
     setSelSugerencias(new Set([
       ...resultado.anadir.map(s => s.key),
