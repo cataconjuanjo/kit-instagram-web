@@ -73,12 +73,16 @@ function procesarNombre(id, nombre) {
 
 function procesarRegion(id, region, tipoActual) {
   if (!region) return []
-  const { zona, tipo: tipoExtraido } = splitZonaTipo(region)
+  const { zona, tipo: tipoExtraido, revisarAnada } = splitZonaTipo(region)
   const sospecha = sospechaZona(zona)
-  const estado = sospecha ? 'REVISAR_ZONA' : 'OK'
+  const estado = sospecha
+    ? 'REVISAR_ZONA'
+    : revisarAnada
+      ? 'REVISAR_ZONA — posible añada en vez de tipo'
+      : 'OK'
   const cambios = []
 
-  if (zona !== region.trim() || tipoExtraido) {
+  if (zona !== region.trim() || tipoExtraido || revisarAnada) {
     cambios.push({
       id,
       campo: 'region→zona',

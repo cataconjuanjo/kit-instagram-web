@@ -112,6 +112,10 @@ export function titleCaseNombre(nombre, opts = {}) {
     // Año: sin cambio (no consume primeraPalabraReal)
     if (esAnyo(tok)) return tok
 
+    // Ordinal numeral (2nd, 1er, 3rd, 4th, 1º, 2ª, 1o, 2a): sufijo siempre minúscula
+    const ordinalM = tok.match(/^(\d+)(er|nd|rd|th|[ºª]|[oa])$/i)
+    if (ordinalM) return ordinalM[1] + ordinalM[2].toLowerCase()
+
     // Sigla puntuada: siempre mayúsculas
     if (esSiglaPuntuada(tok)) {
       primeraPalabraReal = false

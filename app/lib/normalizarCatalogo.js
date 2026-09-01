@@ -14,10 +14,10 @@ const SEPS_ZONA_TIPO = [' · ', ' / ', ' - ']
  * y el número se descarta (es un código de catálogo del proveedor).
  */
 export function splitZonaTipo(region) {
-  if (!region) return { zona: '', tipo: '' }
+  if (!region) return { zona: '', tipo: '', revisarAnada: false }
 
   const sep = SEPS_ZONA_TIPO.find(s => region.includes(s))
-  if (!sep) return { zona: region.trim(), tipo: '' }
+  if (!sep) return { zona: region.trim(), tipo: '', revisarAnada: false }
 
   const idx = region.indexOf(sep)
   const izquierda = region.slice(0, idx).trim()
@@ -26,14 +26,19 @@ export function splitZonaTipo(region) {
   // "N - NOMBRE_REGIÓN": el número es un índice de catálogo del proveedor,
   // no una zona real. La zona real es la parte derecha; tipo queda vacío.
   if (sep === ' - ' && /^\d+$/.test(izquierda)) {
-    return { zona: derecha, tipo: '' }
+    return { zona: derecha, tipo: '', revisarAnada: false }
+  }
+
+  // Derecha es un año de 4 dígitos (1900-2099): posible añada, no tipo de vino
+  if (/^(19|20)\d{2}$/.test(derecha)) {
+    return { zona: izquierda, tipo: '', revisarAnada: true }
   }
 
   const tipo = derecha
     ? derecha.charAt(0).toUpperCase() + derecha.slice(1)
     : ''
 
-  return { zona: izquierda, tipo }
+  return { zona: izquierda, tipo, revisarAnada: false }
 }
 
 /** Predicados de sospecha: si alguno es true → marcar REVISAR_ZONA */
