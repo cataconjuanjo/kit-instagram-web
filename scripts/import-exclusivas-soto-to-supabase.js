@@ -15,6 +15,8 @@ function loadEnv() {
 }
 
 async function main() {
+  const { normalizarCamposVino } = await import('../app/lib/normalizarVino.js')
+
   const env = { ...loadEnv(), ...process.env }
   const url = env.NEXT_PUBLIC_SUPABASE_URL
   const key = env.SUPABASE_SERVICE_ROLE_KEY
@@ -36,13 +38,17 @@ async function main() {
   const rowsFiables = rows.filter(row => row.bodega && Number(row.coste_estimado) > 0)
   const descartadas = rows.length - rowsFiables.length
   const now = new Date().toISOString()
-  const payload = rowsFiables.map(row => ({
-    ...row,
-    proveedor_id: provider.id,
-    pvp_recomendado: 0,
-    notas: row.disponibilidad,
-    updated_at: now,
-  }))
+  const payload = rowsFiables.map(row => {
+    const norm = normalizarCamposVino(row)
+    return {
+      ...row,
+      ...norm,
+      proveedor_id: provider.id,
+      pvp_recomendado: 0,
+      notas: row.disponibilidad,
+      updated_at: now,
+    }
+  })
 
   const { count: deleted, error: deleteError } = await supabase
     .from('proveedor_catalogo_vinos')

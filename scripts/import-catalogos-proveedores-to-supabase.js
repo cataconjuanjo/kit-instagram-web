@@ -90,7 +90,7 @@ function readRows(filePath) {
   return XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false })
 }
 
-function payloadRows(rows, providerId, catalogName) {
+function payloadRows(rows, providerId, catalogName, normalizarCamposVino) {
   const now = new Date().toISOString()
   return rows
     .map(row => {
@@ -99,17 +99,15 @@ function payloadRows(rows, providerId, catalogName) {
         texto(normalized.notas),
         `catalogo cargado: ${catalogName}`,
       ].filter(Boolean).join(' | ')
+      const norm = normalizarCamposVino(normalized)
 
       return {
         proveedor_id: providerId,
-        nombre: texto(normalized.nombre),
+        ...norm,
         bodega: texto(normalized.bodega) || null,
-        tipo: texto(normalized.tipo) || null,
-        region: texto(normalized.region) || null,
         uva: texto(normalized.uva) || null,
         anada: texto(normalized.anada) || null,
         referencia: texto(normalized.referencia) || null,
-        formato: texto(normalized.formato) || null,
         coste_estimado: dinero(normalized.coste_estimado),
         pvp_recomendado: dinero(normalized.pvp_recomendado),
         disponibilidad: texto(normalized.disponibilidad) || null,
@@ -182,6 +180,8 @@ async function insertChunks(supabase, payload) {
 }
 
 async function main() {
+  const { normalizarCamposVino } = await import('../app/lib/normalizarVino.js')
+
   const env = loadEnv()
   const url = env.NEXT_PUBLIC_SUPABASE_URL
   const key = env.SUPABASE_SERVICE_ROLE_KEY
@@ -208,7 +208,7 @@ async function main() {
     const sourceRows = readRows(filePath)
     const { provider, created, duplicateProviders } = await ensureProvider(supabase, catalog)
     const before = await existingCount(supabase, provider.id)
-    const payload = payloadRows(sourceRows, provider.id, catalog.catalogName)
+    const payload = payloadRows(sourceRows, provider.id, catalog.catalogName, normalizarCamposVino)
     const withoutPrice = payload.filter(row => !row.coste_estimado).length
 
     let deleted = 0

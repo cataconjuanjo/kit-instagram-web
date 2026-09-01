@@ -46,6 +46,8 @@ function readCsv(file) {
 }
 
 async function main() {
+  const { normalizarCamposVino } = await import('../app/lib/normalizarVino.js')
+
   const env = { ...loadEnv(), ...process.env }
   const url = env.NEXT_PUBLIC_SUPABASE_URL
   const key = env.SUPABASE_SERVICE_ROLE_KEY
@@ -75,12 +77,16 @@ async function main() {
     .single()
   if (providerError) throw providerError
 
-  const payload = rows.map(({ _source, ...row }) => ({
-    ...row,
-    proveedor_id: provider.id,
-    notas: row.notas || `${row.disponibilidad} · ${_source}`,
-    updated_at: now,
-  }))
+  const payload = rows.map(({ _source, ...row }) => {
+    const norm = normalizarCamposVino(row)
+    return {
+      ...row,
+      ...norm,
+      proveedor_id: provider.id,
+      notas: row.notas || `${row.disponibilidad} · ${_source}`,
+      updated_at: now,
+    }
+  })
 
   const { count: deleted, error: deleteError } = await supabase
     .from('proveedor_catalogo_vinos')

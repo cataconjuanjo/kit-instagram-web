@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { titleCaseNombre } from '../../../lib/normalizarNombre.js'
-import { splitZonaTipo, sospechaZona, splitFormato } from '../../../lib/normalizarCatalogo.js'
+import { normalizarCamposVino } from '../../../lib/normalizarVino.js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -112,72 +111,19 @@ function payloadProveedor(body) {
 }
 
 function payloadVino(body) {
-  const nombreRaw  = texto(body, 'nombre')
-  const regionRaw  = texto(body, 'region')  || null
-  const formatoRaw = texto(body, 'formato') || null
-
-  // nombre → titleCase
-  const nombreNorm = nombreRaw ? titleCaseNombre(nombreRaw) : nombreRaw
-
-  // region → zona + tipo
-  let zona = null
-  let tipoNorm = texto(body, 'tipo') || null
-  let regionRawGuardado = null
-  if (regionRaw) {
-    const { zona: z, tipo: tipoExtraido } = splitZonaTipo(regionRaw)
-    if (!sospechaZona(z) && z !== regionRaw.trim()) {
-      zona = z
-      regionRawGuardado = regionRaw
-      if (tipoExtraido && !tipoNorm) tipoNorm = tipoExtraido
-    }
-  }
-
-  // formato → tamanyo, uds, etc.
-  let tamanyo = null, unidades_por_caja = null, referencia_proveedor = null
-  let almacen_proveedor = null, graduacion = null, formatoRawGuardado = null
-  if (formatoRaw) {
-    const r = splitFormato(formatoRaw)
-    const hayExtraccion =
-      r.tamanyo !== formatoRaw || r.unidades_por_caja !== null ||
-      r.referencia_proveedor || r.almacen_proveedor || r.graduacion
-    if (hayExtraccion) {
-      formatoRawGuardado = formatoRaw
-      if (!r.revisar) {
-        tamanyo = r.tamanyo || null
-        unidades_por_caja = r.unidades_por_caja
-        referencia_proveedor = r.referencia_proveedor || null
-        graduacion = r.graduacion || null
-        almacen_proveedor = r.almacen_proveedor || null
-      } else if (r.revisarMsg === 'código almacén ambiguo') {
-        tamanyo = r.tamanyo || null
-        unidades_por_caja = r.unidades_por_caja
-        referencia_proveedor = r.referencia_proveedor || null
-        graduacion = r.graduacion || null
-        // almacen_proveedor queda null intencionadamente
-      }
-      // posible unidades / sin clasificar → no tocar campos de formato
-    }
-  }
-
+  const norm = normalizarCamposVino({
+    nombre: texto(body, 'nombre'),
+    tipo:   texto(body, 'tipo'),
+    region: texto(body, 'region'),
+    formato: texto(body, 'formato'),
+  })
   return {
     proveedor_id: body.proveedor_id,
-    nombre: nombreNorm,
-    nombre_raw: nombreRaw !== nombreNorm ? nombreRaw : null,
+    ...norm,
     bodega: texto(body, 'bodega') || null,
-    tipo: tipoNorm,
-    region: regionRaw,
-    region_raw: regionRawGuardado,
-    zona,
     uva: texto(body, 'uva') || null,
     anada: texto(body, 'anada') || null,
     referencia: texto(body, 'referencia') || null,
-    formato: formatoRaw,
-    formato_raw: formatoRawGuardado,
-    tamanyo,
-    unidades_por_caja,
-    referencia_proveedor,
-    graduacion,
-    almacen_proveedor,
     coste_estimado: dinero(body.coste_estimado),
     pvp_recomendado: dinero(body.pvp_recomendado),
     disponibilidad: texto(body, 'disponibilidad') || null,
