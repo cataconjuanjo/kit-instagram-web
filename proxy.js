@@ -43,7 +43,7 @@ const CORS_HEADERS = {
   Vary: 'Origin',
 }
 
-export function middleware(request) {
+export function proxy(request) {
   const { pathname } = request.nextUrl
   const origin = request.headers.get('origin')
 
