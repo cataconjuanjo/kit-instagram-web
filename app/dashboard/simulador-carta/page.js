@@ -7,7 +7,6 @@ import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSel
 import { puedeUsar } from '../../lib/plans'
 import { normWine } from '../../lib/textNormalize'
 import { analizarMaridaje } from '../../lib/maridajeEngine'
-import { generarSugerencias } from '../../lib/sugerirCarta'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import ConfirmationDialog from '../ConfirmationDialog'
 import ResponsiveOverlay from '../ResponsiveOverlay'
@@ -513,26 +512,22 @@ export default function SimuladorCarta() {
     setMostrarSugeridor(true)
     setSugerencias(null)
 
-    let catalogo = catalogoSustituir
-    if (catalogo === null) {
-      setLoadingCatalogoSustituir(true)
+    try {
       const t = await getToken()
-      const res = await fetch(
-        `/api/catalogo-consultor?${new URLSearchParams({ restaurante_id: restaurante.id })}`,
-        { headers: { Authorization: `Bearer ${t}` } }
-      ).catch(() => null)
-      catalogo = res?.ok ? (await res.json()).vinos || [] : []
-      setCatalogoSustituir(catalogo)
-      setLoadingCatalogoSustituir(false)
+      const res = await fetch('/api/simulador/sugerir-carta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+        body: JSON.stringify({ restaurante_id: restaurante.id, lineas }),
+      }).catch(() => null)
+      const resultado = res?.ok ? await res.json() : { anadir: [], sustituir: [] }
+      setSugerencias(resultado)
+      setSelSugerencias(new Set([
+        ...resultado.anadir.map(s => s.key),
+        ...resultado.sustituir.map(s => s.key),
+      ]))
+    } catch {
+      setSugerencias({ anadir: [], sustituir: [] })
     }
-
-    const platos = await cargarPlatosMaridaje()
-    const resultado = generarSugerencias(lineas, catalogo, platos)
-    setSugerencias(resultado)
-    setSelSugerencias(new Set([
-      ...resultado.anadir.map(s => s.key),
-      ...resultado.sustituir.map(s => s.key),
-    ]))
   }
 
   async function aplicarSugerencias() {
@@ -637,8 +632,9 @@ export default function SimuladorCarta() {
               type="button"
               className={simStyles.accionBtn}
               onClick={abrirSugerencias}
+              disabled={mostrarSugeridor && sugerencias === null}
             >
-              Sugerir carta
+              {mostrarSugeridor && sugerencias === null ? 'Analizando…' : 'Sugerir carta'}
             </button>
             <button
               type="button"
