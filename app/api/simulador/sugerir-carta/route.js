@@ -4,6 +4,8 @@ import { puedeUsar } from '../../../lib/plans'
 import { calcularPreciosSugeridos, copasVendiblesEscalonado } from '../../../lib/pricingUtils'
 import { generarSugerencias } from '../../../lib/sugerirCarta'
 
+export const maxDuration = 30
+
 function pvpCopaDesdeBottella(pvpBotella) {
   if (!pvpBotella || pvpBotella <= 0) return 0
   const divisor = copasVendiblesEscalonado(pvpBotella)
@@ -70,7 +72,9 @@ export async function POST(req) {
       .order('categoria')
       .limit(100)
 
-    const resultado = generarSugerencias(lineas, catalogo, platos || [])
+    // Limit plates to keep the O(platos × catalogo) computation under ~10 s
+    const platosParaSugerir = (platos || []).slice(0, 40)
+    const resultado = generarSugerencias(lineas, catalogo, platosParaSugerir)
     return Response.json(resultado)
   } catch (err) {
     console.error('[sugerir-carta]', err)

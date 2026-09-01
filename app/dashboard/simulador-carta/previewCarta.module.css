@@ -1,195 +1,201 @@
-/* Carta-style preview for the simulador borrador.
-   Replicates the visual language of app/carta/[slug]/carta.module.css
-   using only the subset needed for a static read-only preview. */
+/* PreviewCarta — editorial wine-card preview for the simulador borrador */
 
 .shell {
   background: #f4f1eb;
   min-height: 100%;
 }
 
-/* ── Header ─── */
+/* ── Header ─────────────────────────────────────────────────────── */
 .header {
   background: #171416;
   color: #fffaf3;
-  padding: 22px 18px 18px;
+  padding: 28px 20px 22px;
+  text-align: center;
 }
 
 .headerEyebrow {
-  margin: 0 0 6px;
-  color: #cbb98c;
-  font-size: 10px;
+  margin: 0 0 8px;
+  color: var(--cv-gold);
+  font-size: 9px;
   font-weight: 900;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 .headerTitle {
   margin: 0;
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: 26px;
+  font-family: var(--font-display, 'Cormorant Garamond', Georgia, serif);
+  font-size: 30px;
   font-weight: 400;
   line-height: 1.1;
-}
-
-.headerSub {
-  margin: 6px 0 0;
-  color: rgba(255, 250, 243, 0.52);
-  font-size: 12px;
-}
-
-/* ── Layout ─── */
-.content {
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 8px 14px 32px;
-}
-
-/* ── Tipo (section) ─── */
-.tipoGroup {
-  margin-top: 24px;
-}
-
-.tipoTitle {
-  margin: 0 0 2px;
-  color: #9b7430;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-}
-
-/* ── Región ─── */
-.regionGroup {
-  margin-top: 10px;
-}
-
-.regionDo {
-  margin: 2px 0 6px;
-  color: #817970;
-  font-size: 11px;
-  font-weight: 800;
   letter-spacing: 0.02em;
 }
 
-/* ── Wine card ─── */
-.wineCard {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(90px, auto);
-  gap: 12px;
-  align-items: start;
-  background: #fffaf3;
-  border: 1px solid #dfd6c8;
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 7px;
+.headerSub {
+  margin: 8px 0 0;
+  color: rgba(255, 250, 243, 0.45);
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 
-.wineCardNuevo {
-  border-color: rgba(191, 169, 132, 0.72);
-  background:
-    linear-gradient(90deg, rgba(191, 169, 132, 0.13), rgba(255, 250, 243, 0) 42%),
-    #fffaf3;
+/* ── Content area ─────────────────────────────────────────────── */
+.content {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 4px 16px 40px;
 }
 
-.wineInfo {
-  min-width: 0;
+/* ── Tipo section ─────────────────────────────────────────────── */
+.tipoSection {
+  margin-top: 28px;
 }
 
-.wineTop {
+.tipoHeading {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
-  min-width: 0;
+  margin: 0 0 6px;
+  color: #9b7430;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
+.tipoDot {
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
-  margin-top: 6px;
   flex-shrink: 0;
 }
 
-.wineTitleBlock {
+.tipoRule {
+  height: 1px;
+  background: linear-gradient(90deg, #e0d4bc 0%, rgba(224, 212, 188, 0) 100%);
+  margin-bottom: 2px;
+}
+
+/* ── Región ───────────────────────────────────────────────────── */
+.regionGroup {
+  margin-top: 14px;
+}
+
+.regionLabel {
+  margin: 0 0 6px;
+  color: var(--cv-text-muted);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Wine entry row ───────────────────────────────────────────── */
+.wineEntry {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #e8e2d9;
+}
+
+.wineEntry:last-child {
+  border-bottom: none;
+}
+
+/* ── Entry info (left) ───────────────────────────────────────── */
+.entryInfo {
   min-width: 0;
+  flex: 1;
+}
+
+.entryNameRow {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
+  min-width: 0;
 }
 
-.wineName {
-  margin: 0;
+.entryName {
+  font-size: 14px;
+  font-weight: 660;
   color: #171416;
-  font-size: 15px;
-  font-weight: 680;
-  line-height: 1.22;
+  line-height: 1.25;
 }
 
-.vintagePill {
+.wineEntryNuevo .entryName {
+  color: #171416;
+}
+
+.entryAnada {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.entryNuevoTag {
   display: inline-flex;
   align-items: center;
-  min-height: 20px;
-  border: 1px solid #ded4c4;
+  padding: 1px 6px;
   border-radius: 999px;
-  padding: 0 7px;
-  color: #6f675e;
-  background: rgba(255, 255, 255, 0.52);
-  font-size: 11px;
-  font-weight: 760;
-  line-height: 1;
+  background: rgba(201, 162, 75, 0.15);
+  border: 1px solid rgba(201, 162, 75, 0.5);
+  color: var(--ink);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  flex-shrink: 0;
 }
 
-.wineSecondary {
-  margin: 4px 0 0 16px;
-  color: #766e64;
-  font-size: 13px;
+.entryBodega {
+  margin: 2px 0 0;
+  color: var(--cv-text-muted);
+  font-size: 11px;
   line-height: 1.3;
 }
 
-/* ── Price column ─── */
-.priceCol {
+/* ── Entry prices (right) ────────────────────────────────────── */
+.entryPrices {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   flex-shrink: 0;
+  gap: 2px;
+  min-width: 76px;
 }
 
-.mainPrice {
-  display: flex;
-  align-items: baseline;
-  gap: 3px;
-}
-
-.formattedPrice {
-  color: #171416;
-  font-size: 17px;
-  font-weight: 780;
+.entryMainPrice {
+  font-size: 15px;
+  font-weight: 750;
   font-variant-numeric: tabular-nums;
+  color: #171416;
   white-space: nowrap;
 }
 
-.mainPrice small {
-  color: #8b8176;
+.entryMainPrice small {
   font-size: 10px;
-  font-weight: 760;
+  font-weight: 700;
+  color: var(--cv-text-muted);
   text-transform: lowercase;
+  margin-left: 2px;
 }
 
-.priceMeta {
-  margin: 1px 0 0;
-  color: #8b8176;
+.entrySecPrice {
   font-size: 10px;
-  font-weight: 760;
-  text-align: right;
+  color: var(--cv-text-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
   white-space: nowrap;
 }
 
-/* ── Empty state ─── */
+/* ── Empty state ─────────────────────────────────────────────── */
 .vacio {
   padding: 40px 24px;
   text-align: center;
-  color: #817970;
+  color: var(--cv-text-muted);
   font-size: 14px;
   line-height: 1.5;
 }

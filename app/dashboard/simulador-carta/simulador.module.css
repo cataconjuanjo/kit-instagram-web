@@ -75,8 +75,10 @@
   min-width: 72px;
 }
 
-.thEstado { text-align: center; width: 76px; }
-.thAccion { text-align: center; width: 86px; }
+.thEstado,
+.tdEstado { text-align: center; width: 76px; }
+.thAccion,
+.tdAccion { text-align: center; width: 86px; }
 
 /* ── Edición inline ──────────────────────────────────────────── */
 
@@ -823,4 +825,327 @@
   color: var(--cv-text-muted);
   font-size: 13px;
   line-height: 1.6;
+}
+
+/* ── Selección múltiple ──────────────────────────────────────────── */
+
+.thCheck,
+.tdCheck {
+  width: 36px;
+  text-align: center;
+  padding: 4px 6px;
+}
+
+.rowSelected {
+  background: rgba(201, 162, 75, 0.10) !important;
+}
+
+.loteBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: rgba(201, 162, 75, 0.07);
+  border: 1px solid rgba(201, 162, 75, 0.3);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.loteBarCount {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cv-gold);
+  margin-right: 4px;
+}
+
+/* Multi-select en modal Añadir */
+.sustituirItemSel {
+  background: rgba(201, 162, 75, 0.08) !important;
+  border-left: 3px solid var(--cv-gold);
+}
+
+.anadirCheck {
+  pointer-events: none;
+  accent-color: var(--cv-gold);
+}
+
+.anadirLoteFooter {
+  padding-top: 12px;
+  margin-top: 8px;
+  border-top: 1px solid #e8e2d9;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Vista antes/después en diálogo de publicación ──────────────── */
+
+.publicarLista {
+  margin-bottom: 14px;
+}
+
+.publicarListaLabel {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cv-text-muted);
+  margin: 0 0 6px;
+}
+
+.publicarListaItems {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.publicarItem {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+  color: #171416;
+  padding: 4px 8px;
+  background: #faf6ef;
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.publicarItemSigil {
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.publicarItemBodega {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.publicarMas {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  padding: 2px 8px;
+}
+
+/* ── Onboarding CTA en StatCard de margen ────────────────────────── */
+
+.margenCta {
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--cv-wine);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.margenCta:hover { color: var(--cv-gold); }
+
+/* ── Toolbar de búsqueda sobre la tabla ──────────────────────────── */
+
+.tablaToolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.tablaSearch {
+  flex: 1;
+  min-width: 200px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  background: #fffaf3;
+  color: #171416;
+  outline: none;
+}
+.tablaSearch:focus { border-color: var(--cv-gold); }
+
+.tablaSearchCount {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  white-space: nowrap;
+}
+
+/* ── Cabeceras ordenables ────────────────────────────────────────── */
+
+.thSortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.thSortable:hover { color: var(--cv-wine); }
+
+/* ── Paginación ──────────────────────────────────────────────────── */
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.paginacionBtn {
+  padding: 4px 10px;
+  min-height: 28px;
+  font-size: 13px;
+  font-family: inherit;
+  border: 1px solid #e0d4bc;
+  border-radius: 6px;
+  background: #fffaf3;
+  color: var(--cv-wine);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.paginacionBtn:hover:not(:disabled) { background: #f3eee5; }
+.paginacionBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.paginacionInfo {
+  font-size: 12px;
+  color: var(--cv-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.paginacionSelect {
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  border: 1px solid #e0d4bc;
+  border-radius: 6px;
+  background: #fffaf3;
+  color: #171416;
+  cursor: pointer;
+  outline: none;
+  margin-left: auto;
+}
+
+/* ── Vista móvil — tarjetas (breakpoint compartido con topHeader) ─ */
+@media (max-width: 820px) {
+  /* Override the ≤700px rule that bumps min-width */
+  .table { min-width: 0; }
+
+  .tableWrap {
+    border: none;
+    background: transparent;
+    overflow: visible;
+    border-radius: 0;
+  }
+
+  /* Reset table elements to block flow */
+  .table,
+  .table tbody,
+  .table tbody tr,
+  .table tbody td {
+    display: block;
+  }
+
+  .table thead { display: none; }
+
+  /* ── Tarjeta ── */
+  .table tbody tr {
+    position: relative;
+    border: 1px solid #e0d4bc;
+    border-bottom: 1px solid #e0d4bc !important;
+    border-radius: 8px;
+    background: #fffaf3;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    transition: background 0.1s;
+  }
+
+  .table tbody tr:last-child { margin-bottom: 0; }
+  .table tbody tr:hover { background: #faf6ef; }
+
+  /* Checkbox → abs top-right corner */
+  .tdCheck {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: auto;
+    padding: 0;
+    text-align: right;
+  }
+
+  /* Estado badge → abs next to checkbox */
+  .tdEstado {
+    position: absolute;
+    top: 9px;
+    right: 38px;
+    width: auto;
+    text-align: right;
+  }
+
+  /* Nombre + bodega: full width, room for badge + checkbox */
+  .tdNombre {
+    padding: 0 90px 3px 0;
+    font-size: 13px;
+  }
+
+  /* Tipo + zona: stacked secondary lines */
+  .tdTipo,
+  .tdZona {
+    font-size: 11px;
+    color: #756d63;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Añada, coste, margen: hidden on mobile */
+  .tdAnada,
+  .tdCoste,
+  .tdMrg {
+    display: none;
+  }
+
+  /* Prices: inline pair on their own line */
+  .tdPrecioBot,
+  .tdPrecioCopa {
+    display: inline-block;
+    font-size: 12px;
+    color: #5a544e;
+    padding: 4px 0 0;
+    text-align: left;
+  }
+
+  .tdPrecioBot::before {
+    content: 'Bot. ';
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cv-text-muted);
+  }
+
+  .tdPrecioCopa::before {
+    content: ' · Copa ';
+    font-size: 10px;
+    color: var(--cv-text-muted);
+  }
+
+  /* Reset right-alignment from .tdNum */
+  .tdNum { text-align: left; }
+
+  /* Action strip: left-aligned below prices */
+  .tdAccion {
+    width: auto;
+    text-align: left;
+    padding: 8px 0 0;
+  }
+
+  /* Action buttons: row instead of column */
+  .accionGroup {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+  }
 }

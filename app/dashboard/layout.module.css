@@ -853,6 +853,10 @@ button.footerLink {
     margin-left: 0;
   }
 
+}
+
+/* Mobile bar and related positioning: only below 820px (shared with topHeader hide) */
+@media (max-width: 820px) {
   .mobileBar {
     display: flex;
   }

@@ -32,7 +32,6 @@ export default function PreviewCarta({ lineas = [], restaurante }) {
     )
   }
 
-  // Group: tipo (normalizado) → region → [lineas]
   const grupos = {}
   for (const l of activas) {
     const tipo = String(l.tipo || '').toLowerCase().trim() || '__sin_tipo'
@@ -53,24 +52,29 @@ export default function PreviewCarta({ lineas = [], restaurante }) {
       <header className={pStyles.header}>
         <p className={pStyles.headerEyebrow}>Borrador · Vista previa</p>
         <h1 className={pStyles.headerTitle}>{restaurante?.nombre || 'Carta de vinos'}</h1>
-        <p className={pStyles.headerSub}>{activas.length} referencias activas en el borrador</p>
+        <p className={pStyles.headerSub}>{activas.length} referencias activas</p>
       </header>
 
       <div className={pStyles.content}>
         {tiposOrdenados.map(tipo => {
           const regionMap = grupos[tipo]
           const label = TIPO_LABELS[tipo] || (tipo === '__sin_tipo' ? 'Sin tipo' : tipo.charAt(0).toUpperCase() + tipo.slice(1))
-          const dot = TIPO_DOT[tipo] || '#9a9186'
+          const dot = TIPO_DOT[tipo] || '#9b8c78'
 
           const regionesOrdenadas = Object.entries(regionMap)
             .sort(([a], [b]) => normalizar(a).localeCompare(normalizar(b), 'es'))
 
           return (
-            <div key={tipo} className={pStyles.tipoGroup}>
-              <h2 className={pStyles.tipoTitle}>{label}</h2>
+            <section key={tipo} className={pStyles.tipoSection}>
+              <h2 className={pStyles.tipoHeading}>
+                <span className={pStyles.tipoDot} style={{ background: dot }} />
+                {label}
+              </h2>
+              <div className={pStyles.tipoRule} />
+
               {regionesOrdenadas.map(([region, vinos]) => (
                 <div key={region} className={pStyles.regionGroup}>
-                  <p className={pStyles.regionDo}>{region}</p>
+                  <p className={pStyles.regionLabel}>{region}</p>
                   {vinos
                     .slice()
                     .sort((a, b) => (Number(a.precio_botella) || 999) - (Number(b.precio_botella) || 999))
@@ -78,44 +82,42 @@ export default function PreviewCarta({ lineas = [], restaurante }) {
                       const precioCopa = fmt(v.precio_copa)
                       const precioBotella = fmt(v.precio_botella)
                       return (
-                        <article
+                        <div
                           key={v.id}
-                          className={`${pStyles.wineCard} ${v.estado === 'nuevo' ? pStyles.wineCardNuevo : ''}`}
+                          className={`${pStyles.wineEntry} ${v.estado === 'nuevo' ? pStyles.wineEntryNuevo : ''}`}
                         >
-                          <div className={pStyles.wineInfo}>
-                            <div className={pStyles.wineTop}>
-                              <span className={pStyles.dot} style={{ background: dot }} />
-                              <div className={pStyles.wineTitleBlock}>
-                                <h3 className={pStyles.wineName}>{v.nombre}</h3>
-                                {v.anada && <span className={pStyles.vintagePill}>{v.anada}</span>}
-                              </div>
+                          <div className={pStyles.entryInfo}>
+                            <div className={pStyles.entryNameRow}>
+                              <span className={pStyles.entryName}>{v.nombre}</span>
+                              {v.anada && <span className={pStyles.entryAnada}>{v.anada}</span>}
+                              {v.estado === 'nuevo' && (
+                                <span className={pStyles.entryNuevoTag}>Nuevo</span>
+                              )}
                             </div>
-                            {v.bodega && <p className={pStyles.wineSecondary}>{v.bodega}</p>}
+                            {v.bodega && <p className={pStyles.entryBodega}>{v.bodega}</p>}
                           </div>
-                          <div className={pStyles.priceCol}>
+                          <div className={pStyles.entryPrices}>
                             {precioCopa ? (
                               <>
-                                <div className={pStyles.mainPrice}>
-                                  <span className={pStyles.formattedPrice}>{precioCopa}</span>
-                                  <small>copa</small>
-                                </div>
+                                <span className={pStyles.entryMainPrice}>
+                                  {precioCopa} <small>copa</small>
+                                </span>
                                 {precioBotella && (
-                                  <p className={pStyles.priceMeta}>{precioBotella} bot.</p>
+                                  <span className={pStyles.entrySecPrice}>{precioBotella} bot.</span>
                                 )}
                               </>
                             ) : precioBotella ? (
-                              <div className={pStyles.mainPrice}>
-                                <span className={pStyles.formattedPrice}>{precioBotella}</span>
-                                <small>bot.</small>
-                              </div>
+                              <span className={pStyles.entryMainPrice}>
+                                {precioBotella} <small>bot.</small>
+                              </span>
                             ) : null}
                           </div>
-                        </article>
+                        </div>
                       )
                     })}
                 </div>
               ))}
-            </div>
+            </section>
           )
         })}
       </div>

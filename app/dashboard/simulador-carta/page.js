@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
@@ -86,9 +87,19 @@ export default function SimuladorCarta() {
   const [mostrarBriefing, setMostrarBriefing] = useState(false)
   const [mostrarSugeridor, setMostrarSugeridor] = useState(false)
   const [sugerencias, setSugerencias] = useState(null)       // null=sin calcular, {}=calculado
+  const [sugerenciasError, setSugerenciasError] = useState(false)
   const [selSugerencias, setSelSugerencias] = useState(new Set())
   const [aplicandoSugerencias, setAplicandoSugerencias] = useState(false)
   const [descartandoSugerencias, setDescartandoSugerencias] = useState(false)
+  const [busquedaTabla, setBusquedaTabla] = useState('')
+  const [ordenTabla, setOrdenTabla] = useState({ key: null, dir: 'asc' })
+  const [paginaTabla, setPaginaTabla] = useState(1)
+  const [porPaginaTabla, setPorPaginaTabla] = useState(25)
+  const [selFilas, setSelFilas] = useState(new Set())
+  const [quitandoLote, setQuitandoLote] = useState(false)
+  const [confirmarQuitarLote, setConfirmarQuitarLote] = useState(false)
+  const [selAnadir, setSelAnadir] = useState(new Set())
+  const [anadiendoLote, setAnadiendoLote] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -223,6 +234,47 @@ export default function SimuladorCarta() {
     result.push(...fueraSolos, ...nuevosSolos)
     return result
   }, [lineas, sustitutoPorFueraId])
+
+  // Líneas filtradas por búsqueda + ordenadas por columna (aplicado sobre lineasOrdenadas)
+  const lineasFiltradas = useMemo(() => {
+    const q = busquedaTabla.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    let base = q
+      ? lineasOrdenadas.filter(l =>
+          [l.nombre, l.bodega, l.tipo, l.region].some(f =>
+            f?.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q)
+          )
+        )
+      : lineasOrdenadas
+
+    if (ordenTabla.key) {
+      base = [...base].sort((a, b) => {
+        const dir = ordenTabla.dir === 'asc' ? 1 : -1
+        const k = ordenTabla.key
+        if (k === 'precio_botella' || k === 'margen') {
+          const va = k === 'margen' ? margenBotella(a.precio_botella, a.coste_compra) ?? -1 : Number(a.precio_botella) || 0
+          const vb = k === 'margen' ? margenBotella(b.precio_botella, b.coste_compra) ?? -1 : Number(b.precio_botella) || 0
+          return (va - vb) * dir
+        }
+        return String(a[k] || '').localeCompare(String(b[k] || ''), 'es', { sensitivity: 'base' }) * dir
+      })
+    }
+    return base
+  }, [lineasOrdenadas, busquedaTabla, ordenTabla])
+
+  // Paginación aplicada sobre lineasFiltradas
+  const totalPaginas = Math.max(1, Math.ceil(lineasFiltradas.length / porPaginaTabla))
+  const paginaActual = Math.min(paginaTabla, totalPaginas)
+  const lineasPagina = lineasFiltradas.slice((paginaActual - 1) * porPaginaTabla, paginaActual * porPaginaTabla)
+
+  function toggleOrden(key) {
+    setOrdenTabla(prev => prev.key === key && prev.dir === 'asc' ? { key, dir: 'desc' } : { key, dir: 'asc' })
+    setPaginaTabla(1)
+  }
+
+  function icono(key) {
+    if (ordenTabla.key !== key) return ' ↕'
+    return ordenTabla.dir === 'asc' ? ' ↑' : ' ↓'
+  }
 
   // Set de catalogo_vino_id ya presentes en el borrador (para el selector)
   const simEnBorradorSet = useMemo(
@@ -511,22 +563,33 @@ export default function SimuladorCarta() {
   async function abrirSugerencias() {
     setMostrarSugeridor(true)
     setSugerencias(null)
+    setSugerenciasError(false)
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 12000)
 
     try {
-      const t = await getToken()
+      const t = await Promise.race([
+        getToken(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('token_timeout')), 8000)),
+      ])
       const res = await fetch('/api/simulador/sugerir-carta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
         body: JSON.stringify({ restaurante_id: restaurante.id, lineas }),
-      }).catch(() => null)
-      const resultado = res?.ok ? await res.json() : { anadir: [], sustituir: [] }
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      if (!res.ok) { setSugerenciasError(true); return }
+      const resultado = await res.json()
       setSugerencias(resultado)
       setSelSugerencias(new Set([
         ...resultado.anadir.map(s => s.key),
         ...resultado.sustituir.map(s => s.key),
       ]))
     } catch {
-      setSugerencias({ anadir: [], sustituir: [] })
+      clearTimeout(timeout)
+      setSugerenciasError(true)
     }
   }
 
@@ -586,6 +649,44 @@ export default function SimuladorCarta() {
     } else {
       setErrorMsg('No se pudieron descartar las sugerencias. Inténtalo de nuevo.')
     }
+  }
+
+  // ── Acciones en lote ──────────────────────────────────────────────
+  async function quitarSeleccionados() {
+    const ids = [...selFilas]
+    setQuitandoLote(true)
+    setSelFilas(new Set())
+    setConfirmarQuitarLote(false)
+    const t = await getToken()
+    const lineasAfectadas = lineas.filter(l => ids.includes(l.id))
+    await Promise.all(lineasAfectadas.map(l =>
+      l.estado === 'nuevo'
+        ? fetch(`/api/simulador/${l.id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ restaurante_id: restaurante.id }) }).catch(() => null)
+        : fetch(`/api/simulador/${l.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ restaurante_id: restaurante.id, estado: 'fuera' }) }).catch(() => null)
+    ))
+    setLineas(prev => prev.map(l => {
+      if (!ids.includes(l.id)) return l
+      return l.estado === 'nuevo' ? null : { ...l, estado: 'fuera' }
+    }).filter(Boolean))
+    setQuitandoLote(false)
+  }
+
+  async function handleAnadirLoteDesdeCatalogo() {
+    if (!selAnadir.size) return
+    setAnadiendoLote(true)
+    const t = await getToken()
+    const resultados = await Promise.all([...selAnadir].map(id =>
+      fetch('/api/simulador/anadir-catalogo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+        body: JSON.stringify({ restaurante_id: restaurante.id, catalogo_vino_id: id, force: true }),
+      }).then(r => r.ok ? r.json() : null).catch(() => null)
+    ))
+    const nuevas = resultados.filter(r => r?.linea).map(r => r.linea)
+    if (nuevas.length) setLineas(prev => [...prev, ...nuevas])
+    setSelAnadir(new Set())
+    setAnadiendoLote(false)
+    setModalAnadirCatalogo(false)
   }
 
   // ── Render ─────────────────────────────────────────────────────────
@@ -685,9 +786,13 @@ export default function SimuladorCarta() {
             valueStyle={resumen.retirados > 0 ? { color: 'var(--cv-red)' } : undefined}
           />
           <StatCard
-            value={resumen.margenMedio !== null ? `${resumen.margenMedio} %` : '—'}
+            value={
+              resumen.margenMedio !== null
+                ? `${resumen.margenMedio} %`
+                : <Link href="/dashboard/vinos" className={simStyles.margenCta}>Añadir costes →</Link>
+            }
             label="Margen medio est."
-            hint="Solo activas con coste registrado"
+            hint={resumen.margenMedio !== null ? 'Solo activas con coste registrado' : 'Registra el coste de tus vinos para ver el margen'}
             valueStyle={
               resumen.margenMedio !== null
                 ? { color: resumen.margenMedio >= 65 ? 'var(--cv-green)' : resumen.margenMedio < 55 ? 'var(--cv-red)' : undefined }
@@ -784,24 +889,75 @@ export default function SimuladorCarta() {
             </p>
           </section>
         ) : (
+          <>
+            {/* ── Barra búsqueda ──────────────────────────────── */}
+            <div className={simStyles.tablaToolbar}>
+              <input
+                className={simStyles.tablaSearch}
+                placeholder="Buscar vino, bodega, tipo, zona…"
+                value={busquedaTabla}
+                onChange={e => { setBusquedaTabla(e.target.value); setPaginaTabla(1) }}
+              />
+              {busquedaTabla && (
+                <span className={simStyles.tablaSearchCount}>
+                  {lineasFiltradas.length} resultado{lineasFiltradas.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+
+          {/* ── Barra de acciones en lote ───────────────────── */}
+            {selFilas.size > 0 && (
+              <div className={simStyles.loteBar}>
+                <span className={simStyles.loteBarCount}>{selFilas.size} seleccionado{selFilas.size !== 1 ? 's' : ''}</span>
+                <button
+                  type="button"
+                  className={`${simStyles.accionBtn} ${simStyles.accionBtnDanger}`}
+                  disabled={quitandoLote || isBlocked}
+                  onClick={() => selFilas.size > 5 ? setConfirmarQuitarLote(true) : quitarSeleccionados()}
+                >
+                  {quitandoLote ? 'Quitando…' : 'Quitar seleccionados'}
+                </button>
+                <button
+                  type="button"
+                  className={simStyles.accionBtn}
+                  style={{ color: 'var(--cv-text-muted)' }}
+                  onClick={() => setSelFilas(new Set())}
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+
           <div className={simStyles.tableWrap}>
             <table className={simStyles.table}>
               <thead>
                 <tr>
-                  <th className={simStyles.thVino}>Vino</th>
-                  <th>Tipo</th>
-                  <th>D.O. / Zona</th>
+                  <th className={simStyles.thCheck}>
+                    <input
+                      type="checkbox"
+                      title="Seleccionar todo en página"
+                      checked={lineasPagina.length > 0 && lineasPagina.every(l => selFilas.has(l.id))}
+                      onChange={e => setSelFilas(prev => {
+                        const next = new Set(prev)
+                        lineasPagina.forEach(l => e.target.checked ? next.add(l.id) : next.delete(l.id))
+                        return next
+                      })}
+                    />
+                  </th>
+                  <th className={`${simStyles.thVino} ${simStyles.thSortable}`} onClick={() => toggleOrden('nombre')}>Vino{icono('nombre')}</th>
+                  <th className={simStyles.thSortable} onClick={() => toggleOrden('tipo')}>Tipo{icono('tipo')}</th>
+                  <th className={simStyles.thSortable} onClick={() => toggleOrden('region')}>D.O. / Zona{icono('region')}</th>
                   <th>Añada</th>
-                  <th className={simStyles.thNum}>PVP bot. €</th>
+                  <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_botella')}>PVP bot. €{icono('precio_botella')}</th>
                   <th className={simStyles.thNum}>PVP copa €</th>
                   <th className={simStyles.thNum}>Coste €</th>
-                  <th className={simStyles.thNum}>Mrg. %</th>
+                  <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen')}>Mrg. %{icono('margen')}</th>
                   <th className={simStyles.thEstado}>Estado</th>
                   <th className={simStyles.thAccionWide}>Acción</th>
                 </tr>
               </thead>
               <tbody>
-                {lineasOrdenadas.map(linea => {
+                {lineasPagina.map(linea => {
                   const mrg = margenBotella(linea.precio_botella, linea.coste_compra)
                   const isFuera    = linea.estado === 'fuera'
                   const isNuevo    = linea.estado === 'nuevo'
@@ -813,10 +969,23 @@ export default function SimuladorCarta() {
                       className={[
                         isFuera      ? simStyles.rowFuera    : '',
                         esSustituto  ? simStyles.rowSustituto : isNuevo ? simStyles.rowNuevo : '',
+                        selFilas.has(linea.id) ? simStyles.rowSelected : '',
                       ].filter(Boolean).join(' ')}
                     >
+                      {/* Checkbox de selección */}
+                      <td className={simStyles.tdCheck}>
+                        <input
+                          type="checkbox"
+                          checked={selFilas.has(linea.id)}
+                          onChange={e => setSelFilas(prev => {
+                            const next = new Set(prev)
+                            e.target.checked ? next.add(linea.id) : next.delete(linea.id)
+                            return next
+                          })}
+                        />
+                      </td>
                       {/* Nombre + bodega */}
-                      <td>
+                      <td className={simStyles.tdNombre}>
                         <div className={simStyles.nombreWrap}>
                           {esSustituto && (
                             <span className={simStyles.sustitutoIndicador}>↳ Sustituye a</span>
@@ -829,9 +998,9 @@ export default function SimuladorCarta() {
                         </div>
                       </td>
 
-                      <td>{linea.tipo || '—'}</td>
-                      <td>{linea.region || '—'}</td>
-                      <td>{linea.anada || '—'}</td>
+                      <td className={simStyles.tdTipo}>{linea.tipo || '—'}</td>
+                      <td className={simStyles.tdZona}>{linea.region || '—'}</td>
+                      <td className={simStyles.tdAnada}>{linea.anada || '—'}</td>
 
                       {/* Precios editables inline */}
                       {['precio_botella', 'precio_copa', 'coste_compra'].map(campo => {
@@ -839,7 +1008,7 @@ export default function SimuladorCarta() {
                         return (
                           <td
                             key={campo}
-                            className={`${simStyles.tdNum} ${simStyles.tdEditable}`}
+                            className={`${simStyles.tdNum} ${simStyles.tdEditable} ${campo === 'precio_botella' ? simStyles.tdPrecioBot : campo === 'precio_copa' ? simStyles.tdPrecioCopa : simStyles.tdCoste}`}
                             title="Pulsa para editar"
                             onClick={() => !editando && !isBlocked && startInline(linea, campo)}
                           >
@@ -864,7 +1033,7 @@ export default function SimuladorCarta() {
                       })}
 
                       {/* Margen calculado */}
-                      <td className={simStyles.tdNum}>
+                      <td className={`${simStyles.tdNum} ${simStyles.tdMrg}`}>
                         {mrg !== null ? (
                           <span style={mrg >= 65 ? { color: 'var(--cv-green)' } : mrg < 55 ? { color: 'var(--cv-red)' } : {}}>
                             {mrg} %
@@ -873,14 +1042,14 @@ export default function SimuladorCarta() {
                       </td>
 
                       {/* Badge de estado */}
-                      <td style={{ textAlign: 'center' }}>
+                      <td className={simStyles.tdEstado}>
                         <span className={`${simStyles.badge} ${simStyles[`badge_${linea.estado}`]}`}>
                           {ESTADO_LABEL[linea.estado]}
                         </span>
                       </td>
 
                       {/* Acción: Quitar / Restaurar / Sustituir + Platos */}
-                      <td style={{ textAlign: 'center' }}>
+                      <td className={simStyles.tdAccion}>
                         {isFuera ? (
                           <div className={simStyles.accionGroup}>
                             <button
@@ -894,7 +1063,7 @@ export default function SimuladorCarta() {
                             <button
                               type="button"
                               className={simStyles.maridajeBtn}
-                              onClick={async () => { await cargarPlatosMaridaje(); setMaridajeVinoId(linea.id) }}
+                              onClick={() => { setMaridajeVinoId(linea.id); cargarPlatosMaridaje().catch(() => setPlatosMaridaje([])) }}
                             >
                               Platos
                             </button>
@@ -912,7 +1081,7 @@ export default function SimuladorCarta() {
                             <button
                               type="button"
                               className={simStyles.maridajeBtn}
-                              onClick={async () => { await cargarPlatosMaridaje(); setMaridajeVinoId(linea.id) }}
+                              onClick={() => { setMaridajeVinoId(linea.id); cargarPlatosMaridaje().catch(() => setPlatosMaridaje([])) }}
                             >
                               Platos
                             </button>
@@ -938,7 +1107,7 @@ export default function SimuladorCarta() {
                             <button
                               type="button"
                               className={simStyles.maridajeBtn}
-                              onClick={async () => { await cargarPlatosMaridaje(); setMaridajeVinoId(linea.id) }}
+                              onClick={() => { setMaridajeVinoId(linea.id); cargarPlatosMaridaje().catch(() => setPlatosMaridaje([])) }}
                             >
                               Platos
                             </button>
@@ -951,9 +1120,42 @@ export default function SimuladorCarta() {
               </tbody>
             </table>
           </div>
+
+            {/* ── Paginación ──────────────────────────────────── */}
+            {totalPaginas > 1 && (
+              <div className={simStyles.paginacion}>
+                <button
+                  type="button"
+                  className={simStyles.paginacionBtn}
+                  disabled={paginaActual === 1}
+                  onClick={() => setPaginaTabla(p => Math.max(1, p - 1))}
+                >
+                  ←
+                </button>
+                <span className={simStyles.paginacionInfo}>
+                  {paginaActual} / {totalPaginas} · {lineasFiltradas.length} ref.
+                </span>
+                <button
+                  type="button"
+                  className={simStyles.paginacionBtn}
+                  disabled={paginaActual === totalPaginas}
+                  onClick={() => setPaginaTabla(p => Math.min(totalPaginas, p + 1))}
+                >
+                  →
+                </button>
+                <select
+                  className={simStyles.paginacionSelect}
+                  value={porPaginaTabla}
+                  onChange={e => { setPorPaginaTabla(Number(e.target.value)); setPaginaTabla(1) }}
+                >
+                  {[10, 25, 50].map(n => <option key={n} value={n}>{n} por página</option>)}
+                </select>
+              </div>
+            )}
+          </>
         )}
 
-        {/* ── Proyección de inversión inicial ──────────────── */}
+        {/* ── Proyección de inversión inicial ───���──────────── */}
         {proyeccion && (
           <div className={simStyles.proyeccion}>
             <span>Inversión estimada</span>
@@ -1089,11 +1291,11 @@ export default function SimuladorCarta() {
         {/* ── Modal: añadir del catálogo ───────────────────────── */}
         <ResponsiveOverlay
           open={modalAnadirCatalogo}
-          onClose={() => setModalAnadirCatalogo(false)}
+          onClose={() => { setModalAnadirCatalogo(false); setSelAnadir(new Set()) }}
           size="modal"
           eyebrow="Simulador"
           title="Añadir del catálogo"
-          description="Elige un vino del catálogo del consultor para incorporarlo al borrador."
+          description="Selecciona uno o varios vinos del catálogo del consultor."
         >
           <input
             className={simStyles.sustituirSearch}
@@ -1112,8 +1314,16 @@ export default function SimuladorCarta() {
             <div className={simStyles.sustituirLista}>
               {catalogoFiltradoAnadir.map(v => {
                 const yaEnBorrador = simEnBorradorSet.has(v.id)
+                const seleccionado = selAnadir.has(v.id)
                 return (
-                  <div key={v.id} className={simStyles.sustituirItem}>
+                  <div
+                    key={v.id}
+                    className={`${simStyles.sustituirItem} ${seleccionado ? simStyles.sustituirItemSel : ''}`}
+                    onClick={() => {
+                      if (yaEnBorrador) return
+                      setSelAnadir(prev => { const n = new Set(prev); seleccionado ? n.delete(v.id) : n.add(v.id); return n })
+                    }}
+                  >
                     <div className={simStyles.sustituirItemInfo}>
                       <div className={simStyles.sustituirItemNombre}>{v.nombre}</div>
                       <div className={simStyles.sustituirItemMeta}>
@@ -1124,18 +1334,23 @@ export default function SimuladorCarta() {
                     {yaEnBorrador ? (
                       <span className={simStyles.sustituirYaEnBorrador}>Ya en borrador</span>
                     ) : (
-                      <button
-                        type="button"
-                        className={simStyles.accionBtn}
-                        disabled={anadiendo === v.id}
-                        onClick={() => handleAnadirDesdeCatalogo(v)}
-                      >
-                        {anadiendo === v.id ? 'Añadiendo…' : 'Añadir'}
-                      </button>
+                      <input type="checkbox" readOnly checked={seleccionado} className={simStyles.anadirCheck} />
                     )}
                   </div>
                 )
               })}
+            </div>
+          )}
+          {selAnadir.size > 0 && (
+            <div className={simStyles.anadirLoteFooter}>
+              <button
+                type="button"
+                className={styles.primary}
+                disabled={anadiendoLote}
+                onClick={handleAnadirLoteDesdeCatalogo}
+              >
+                {anadiendoLote ? 'Añadiendo…' : `Añadir ${selAnadir.size} vino${selAnadir.size !== 1 ? 's' : ''}`}
+              </button>
             </div>
           )}
         </ResponsiveOverlay>
@@ -1188,7 +1403,19 @@ export default function SimuladorCarta() {
           title="Propuesta automática"
           description="Selecciona las sugerencias que quieres incorporar al borrador."
         >
-          {sugerencias === null ? (
+          {sugerenciasError ? (
+            <div className={simStyles.sugerenciasVacio}>
+              <p>No se pudo calcular las sugerencias (tiempo de espera agotado o error de red).</p>
+              <button
+                type="button"
+                className={simStyles.accionBtn}
+                style={{ marginTop: 12 }}
+                onClick={abrirSugerencias}
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : sugerencias === null ? (
             <p className={simStyles.maridajeVacio}>Analizando carta y catálogo…</p>
           ) : sugerencias.anadir.length === 0 && sugerencias.sustituir.length === 0 ? (
             <div className={simStyles.sugerenciasVacio}>
@@ -1348,24 +1575,62 @@ export default function SimuladorCarta() {
           </button>
         </ResponsiveOverlay>
 
+        {/* ── Diálogo de confirmación: quitar en lote ──────── */}
+        <ConfirmationDialog
+          open={confirmarQuitarLote}
+          onClose={() => setConfirmarQuitarLote(false)}
+          onConfirm={quitarSeleccionados}
+          title={`Quitar ${selFilas.size} referencias`}
+          description={`Vas a quitar ${selFilas.size} vinos del borrador de una vez. Los vinos "Actual" pasarán a "Para retirar"; los "Nuevo" se eliminarán del borrador. ¿Continuar?`}
+          confirmLabel="Quitar seleccionados"
+          busy={quitandoLote}
+        />
+
         {/* ── Diálogo de confirmación de publicación ────────── */}
         <ConfirmationDialog
           open={confirmPublicar}
           onClose={() => setConfirmPublicar(false)}
           onConfirm={publicar}
           title="Publicar como carta oficial"
-          description={[
-            resumen.nuevos > 0
-              ? `${resumen.nuevos} ${resumen.nuevos === 1 ? 'vino nuevo se añadirá' : 'vinos nuevos se añadirán'} a tu bodega.`
-              : null,
-            resumen.retirados > 0
-              ? `${resumen.retirados} ${resumen.retirados === 1 ? 'referencia se ocultará' : 'referencias se ocultarán'} de tu carta.`
-              : null,
-            'Esta acción no se puede deshacer.',
-          ].filter(Boolean).join(' ')}
+          description="Esta acción actualizará tu carta oficial. No se puede deshacer."
           confirmLabel="Publicar carta"
           busy={publicando}
-        />
+        >
+          {resumen.nuevos > 0 && (
+            <div className={simStyles.publicarLista}>
+              <p className={simStyles.publicarListaLabel}>Se añaden ({resumen.nuevos})</p>
+              <ul className={simStyles.publicarListaItems}>
+                {lineas.filter(l => l.estado === 'nuevo').slice(0, 8).map(l => (
+                  <li key={l.id} className={simStyles.publicarItem}>
+                    <span className={simStyles.publicarItemSigil} style={{ color: 'var(--cv-green)' }}>+</span>
+                    <span>{l.nombre}</span>
+                    {l.bodega && <span className={simStyles.publicarItemBodega}>{l.bodega}</span>}
+                  </li>
+                ))}
+                {resumen.nuevos > 8 && (
+                  <li className={simStyles.publicarMas}>…y {resumen.nuevos - 8} más</li>
+                )}
+              </ul>
+            </div>
+          )}
+          {resumen.retirados > 0 && (
+            <div className={simStyles.publicarLista}>
+              <p className={simStyles.publicarListaLabel}>Se retiran ({resumen.retirados})</p>
+              <ul className={simStyles.publicarListaItems}>
+                {lineas.filter(l => l.estado === 'fuera').slice(0, 8).map(l => (
+                  <li key={l.id} className={simStyles.publicarItem}>
+                    <span className={simStyles.publicarItemSigil} style={{ color: 'var(--cv-red)' }}>−</span>
+                    <span>{l.nombre}</span>
+                    {l.bodega && <span className={simStyles.publicarItemBodega}>{l.bodega}</span>}
+                  </li>
+                ))}
+                {resumen.retirados > 8 && (
+                  <li className={simStyles.publicarMas}>…y {resumen.retirados - 8} más</li>
+                )}
+              </ul>
+            </div>
+          )}
+        </ConfirmationDialog>
       </ModuleShell>
 
       {/* ── Micro-celebración al publicar ─────────────────── */}
