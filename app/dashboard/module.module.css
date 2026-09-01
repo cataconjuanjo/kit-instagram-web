@@ -5308,6 +5308,17 @@ button.itemCard {
   }
 }
 
+/* Stack hero at 981–1100px: sidebar is hamburger but hero is still 2-column without this */
+@media (min-width: 981px) and (max-width: 1100px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .heroActions {
+    justify-content: flex-start;
+  }
+}
+
 @media (max-width: 640px) {
   .statsGrid {
     flex-wrap: wrap;

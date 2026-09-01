@@ -35,10 +35,17 @@ export async function POST(req) {
       return Response.json({ error: 'Plan no incluye el catálogo de consultor' }, { status: 403 })
     }
 
-    const { data: providers } = await supabaseAdmin
-      .from('proveedores_vino')
-      .select('id')
-      .eq('visible_restaurantes', true)
+    // Parallelise provider + plato queries; vinos depends on providerIds so runs after.
+    const [{ data: providers }, { data: platos }] = await Promise.all([
+      supabaseAdmin.from('proveedores_vino').select('id').eq('visible_restaurantes', true),
+      supabaseAdmin
+        .from('platos')
+        .select('id, nombre, categoria, descripcion, precio, activo')
+        .eq('restaurante_id', restauranteId)
+        .eq('activo', true)
+        .order('categoria')
+        .limit(40),
+    ])
 
     const providerIds = (providers || []).map(p => p.id)
     const catalogo = []
@@ -51,6 +58,7 @@ export async function POST(req) {
         .eq('activo', true)
         .in('proveedor_id', providerIds)
         .order('nombre')
+        .limit(300)
 
       for (const v of (vinos || [])) {
         const coste = Number(v.coste_estimado) || 0
@@ -64,17 +72,7 @@ export async function POST(req) {
       }
     }
 
-    const { data: platos } = await supabaseAdmin
-      .from('platos')
-      .select('id, nombre, categoria, descripcion, precio, activo')
-      .eq('restaurante_id', restauranteId)
-      .eq('activo', true)
-      .order('categoria')
-      .limit(100)
-
-    // Limit plates to keep the O(platos × catalogo) computation under ~10 s
-    const platosParaSugerir = (platos || []).slice(0, 40)
-    const resultado = generarSugerencias(lineas, catalogo, platosParaSugerir)
+    const resultado = generarSugerencias(lineas, catalogo, platos || [])
     return Response.json(resultado)
   } catch (err) {
     console.error('[sugerir-carta]', err)

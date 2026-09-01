@@ -59,7 +59,7 @@ export function estimarPerfil(vino) {
 }
 
 // Calcula las necesidades estructurales de un plato/mesa para el matching.
-function necesidadesEstructurales(consulta) {
+export function necesidadesEstructurales(consulta) {
   const texto = normalizar(consulta)
   const contexto = contextoVenta(texto)
   const metodo = metodosPlato(texto)
