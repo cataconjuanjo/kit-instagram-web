@@ -4986,6 +4986,18 @@ button.itemCard {
     grid-template-columns: 1fr;
   }
 
+  .kanbanTabBar {
+    display: flex;
+  }
+
+  .execActionGrid {
+    display: block;
+  }
+
+  .execActionColumn[data-kanban-active="false"] {
+    display: none;
+  }
+
   .heroActions {
     justify-content: flex-start;
   }
@@ -6184,4 +6196,147 @@ button.itemCard {
   font-size: 0.75rem;
   color: #b0a89e;
   margin-top: 2px;
+}
+
+/* --- Acordeón de bloques de actividad --- */
+.activityAccordion {
+  margin-bottom: 8px;
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.activityAccordion > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: #faf6ef;
+  font-size: 14px;
+  font-weight: 900;
+  color: #171416;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  gap: 10px;
+}
+
+.activityAccordion > summary::-webkit-details-marker {
+  display: none;
+}
+
+.activityAccordion > summary:hover {
+  background: #f2ebe0;
+}
+
+.activityAccordion[open] > summary {
+  border-bottom: 1px solid #e0d4bc;
+  background: #f2ebe0;
+}
+
+.activityAccordion > summary .accordionMeta {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8b8278;
+  margin-left: auto;
+}
+
+.activityAccordion > summary::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #74223d;
+  border-bottom: 2px solid #74223d;
+  transform: rotate(45deg);
+  transition: transform 0.18s;
+  flex-shrink: 0;
+}
+
+.activityAccordion[open] > summary::after {
+  transform: rotate(-135deg);
+}
+
+.activityAccordionBody {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Kanban tabs (móvil) --- */
+.kanbanTabBar {
+  display: none;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
+  .kanbanTabBar {
+    display: flex;
+  }
+
+  .execActionGrid {
+    display: contents;
+  }
+
+  .execActionColumn[aria-hidden="true"] {
+    display: none;
+  }
+
+  .execActionColumn {
+    display: grid;
+    gap: 10px;
+  }
+}
+
+.kanbanTabBtn {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.75);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.kanbanTabBtn[aria-selected="true"] {
+  background: rgba(255,255,255,0.25);
+  color: #fff;
+  border-color: rgba(255,255,255,0.4);
+}
+
+/* --- Vino detail button --- */
+.vinoBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: #74223d;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  display: block;
+}
+
+.vinoBtn:hover {
+  color: #5a1a2e;
+  text-decoration-style: solid;
+}
+
+.vinoBtn:focus-visible {
+  outline: 2px solid #74223d;
+  outline-offset: 2px;
+  border-radius: 2px;
 }

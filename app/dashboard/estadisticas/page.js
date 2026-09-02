@@ -14,6 +14,7 @@ import { esVentaTPV, priorizarVentas } from '../../lib/salesPriority'
 import { esPerfilBodega } from '../../lib/plans'
 import { beneficioBruto, costeNetoCompra, copasVendibles, margenBrutoPct, numero, precioNetoVenta, redondear } from '../../lib/wineEconomics'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
+import ResponsiveOverlay from '../ResponsiveOverlay'
 import styles from '../module.module.css'
 
 function resumenVenta(detalle) {
@@ -306,6 +307,8 @@ export default function Estadisticas() {
   const [esAdmin, setEsAdmin] = useState(false)
   const [paginaActividad, setPaginaActividad] = useState(1)
   const [mostrarSinBase, setMostrarSinBase] = useState(false)
+  const [kanbanTabActiva, setKanbanTabActiva] = useState('moverAhora')
+  const [vinoDetalleNombre, setVinoDetalleNombre] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -1535,6 +1538,21 @@ export default function Estadisticas() {
     { id: 'vigilar', titulo: 'Vigilar', items: accionesFase6.vigilar, vacio: 'Sin riesgos suaves que seguir.' },
   ]
 
+  function infoVinoDetalle(nombre) {
+    if (!nombre) return null
+    const clave = claveNombreVino(nombre)
+    const vino = vinosPorNombre.get(clave) || null
+    if (!vino) return { nombre, bodega: '', notas: '', precio: '', coste: '', stock: '' }
+    return {
+      nombre: vino.nombre || nombre,
+      bodega: vino.bodega || '',
+      notas: vino.notas_cata || '',
+      precio: vino.precio_botella ? eur(vino.precio_botella) : '',
+      coste: vino.coste_compra ? eur(vino.coste_compra) : '',
+      stock: vino.stock !== null && vino.stock !== undefined ? String(vino.stock) : '',
+    }
+  }
+
   function explicarMetrica(label) {
     if (label.includes('Ventas KPI')) return 'Ventas usadas para indicadores economicos. TPV tiene prioridad y sala solo entra cuando no duplica una venta real del mismo vino y dia.'
     if (label.includes('Ventas TPV')) return 'Unidades detectadas en la importacion TPV. Es la fuente mas fuerte para ventas reales cuando esta vinculada a vinos.'
@@ -1906,18 +1924,29 @@ export default function Estadisticas() {
         </div>
       </section>
 
-      <section className={styles.panelDark} style={{ marginBottom: 16 }}>
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Plan ejecutivo</h2>
-            <p className={styles.panelSub}>Ordena las senales por urgencia para decidir que toca hacer ahora, esta semana o solo vigilar.</p>
+      <details className={styles.activityAccordion} open>
+        <summary>
+          Plan ejecutivo
+          <span className={styles.accordionMeta}>{accionesInformeBase.length || 0} señales</span>
+        </summary>
+        <div className={styles.activityAccordionBody} style={{ background: '#171416', color: '#fffaf3' }}>
+          <div className={styles.kanbanTabBar} role="tablist" aria-label="Columnas del plan ejecutivo">
+            {columnasFase6.map(columna => (
+              <button
+                key={columna.id}
+                type="button"
+                role="tab"
+                aria-selected={kanbanTabActiva === columna.id}
+                className={styles.kanbanTabBtn}
+                onClick={() => setKanbanTabActiva(columna.id)}
+              >
+                {columna.titulo}
+              </button>
+            ))}
           </div>
-          <span className={styles.badge}>{accionesInformeBase.length || 0} senales</span>
-        </div>
-        <div className={styles.panelBody}>
           <div className={styles.execActionGrid}>
             {columnasFase6.map(columna => (
-              <section className={styles.execActionColumn} key={columna.id}>
+              <section className={styles.execActionColumn} key={columna.id} aria-hidden={kanbanTabActiva !== columna.id || undefined}>
                 <h3 className={styles.execActionColumnTitle}>{columna.titulo}</h3>
                 {columna.items.length ? (
                   columna.items.map(item => (
@@ -1934,20 +1963,14 @@ export default function Estadisticas() {
             ))}
           </div>
         </div>
-      </section>
+      </details>
 
-      <section className={styles.panel} style={{ marginBottom: 16 }}>
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Semaforo de fiabilidad</h2>
-            <p className={styles.panelSub}>Indica si el dato ya sirve para decidir precio, sala, compras o carta sin maquillar la rentabilidad.</p>
-          </div>
-          <span className={`${styles.trafficBadge} ${styles[fiabilidadGlobal.clase]}`}>
-            <span className={styles.trafficDot} />
-            {fiabilidadGlobal.estado} {fiabilidadConBase.length ? `${fiabilidadGlobalPct}%` : ''}
-          </span>
-        </div>
-        <div className={styles.panelBody}>
+      <details className={styles.activityAccordion}>
+        <summary>
+          Semáforo de fiabilidad
+          <span className={styles.accordionMeta}>{fiabilidadGlobal.estado}{fiabilidadConBase.length ? ` · ${fiabilidadGlobalPct}%` : ''}</span>
+        </summary>
+        <div className={styles.activityAccordionBody}>
           <section className={styles.statsGrid} style={{ marginBottom: 14 }}>
             {fiabilidadDecisiones.map(item => (
               <div className={styles.stat} key={`fiabilidad-stat-${item.area}`}>
@@ -2039,18 +2062,15 @@ export default function Estadisticas() {
             </div>
           </section>
         </div>
-      </section>
+      </details>
 
       {ganadoEsteMes.length > 0 && (
-        <section className={styles.panel} style={{ marginBottom: 16 }}>
-          <div className={styles.panelHead}>
-            <div>
-              <h2 className={styles.panelTitle}>Ganado este mes</h2>
-              <p className={styles.panelSub}>Valor ya capturado por ventas KPI, TPV atribuido y maridajes que funcionan en el periodo seleccionado.</p>
-            </div>
-            <span className={styles.badge}>{ganadoEsteMes.length} avances</span>
-          </div>
-          <div className={styles.panelBody}>
+        <details className={styles.activityAccordion}>
+          <summary>
+            Ganado este mes
+            <span className={styles.accordionMeta}>{ganadoEsteMes.length} avances</span>
+          </summary>
+          <div className={styles.activityAccordionBody}>
             <section className={styles.statsGrid} style={{ marginBottom: 14 }}>
               <StatCard
                 value={beneficioBrutoAtribuido ? eur(beneficioBrutoAtribuido) : '-'}
@@ -2093,19 +2113,16 @@ export default function Estadisticas() {
               ))}
             </div>
           </div>
-        </section>
+        </details>
       )}
 
       {(perdidoPendiente.length > 0 || valorRecuperablePendiente > 0 || importeTpvNoAtribuido > 0) && (
-        <section className={styles.panel} style={{ marginBottom: 16 }}>
-          <div className={styles.panelHead}>
-            <div>
-              <h2 className={styles.panelTitle}>Perdido o pendiente</h2>
-              <p className={styles.panelSub}>Dinero recuperable, valor sin atribuir y datos que bloquean decisiones economicas.</p>
-            </div>
-            <span className={styles.badge}>{perdidoPendiente.length} focos</span>
-          </div>
-          <div className={styles.panelBody}>
+        <details className={styles.activityAccordion}>
+          <summary>
+            Perdido o pendiente
+            <span className={styles.accordionMeta}>{perdidoPendiente.length} focos</span>
+          </summary>
+          <div className={styles.activityAccordionBody}>
             <section className={styles.statsGrid} style={{ marginBottom: 14 }}>
               <StatCard
                 value={valorRecuperablePendiente ? eur(valorRecuperablePendiente) : '-'}
@@ -2148,7 +2165,7 @@ export default function Estadisticas() {
               ))}
             </div>
           </div>
-        </section>
+        </details>
       )}
 
       {(ventasTPV > 0 || ventasSalaOmitidas > 0) && (
@@ -2230,7 +2247,9 @@ export default function Estadisticas() {
                           <div className={styles.sectionHead} style={{ margin: 0 }}>
                             <div>
                               <p className={styles.eyebrow}>{item.tipo}</p>
-                              <h3 className={styles.sectionTitle}>{item.vino}</h3>
+                              <h3 className={styles.sectionTitle}>
+                                <button type="button" className={styles.vinoBtn} onClick={() => setVinoDetalleNombre(item.vino)}>{item.vino}</button>
+                              </h3>
                               <p className={styles.sectionText}>
                                 {item.recomendaciones} rec. · {item.ventasTpvAtribuidas} TPV atrib. · {item.ventasSala} sala
                               </p>
@@ -2405,7 +2424,9 @@ export default function Estadisticas() {
                         <div className={styles.sectionHead} style={{ margin: 0 }}>
                           <div>
                             <p className={styles.eyebrow}>{item.bodega || 'Rentabilidad'}</p>
-                            <h3 className={styles.sectionTitle}>{item.vino}</h3>
+                            <h3 className={styles.sectionTitle}>
+                              <button type="button" className={styles.vinoBtn} onClick={() => setVinoDetalleNombre(item.vino)}>{item.vino}</button>
+                            </h3>
                             <p className={styles.sectionText}>
                               {item.ventas} uds. - {eur(item.ingresos)} venta - {eur(item.beneficio)} beneficio bruto
                             </p>
@@ -2439,7 +2460,9 @@ export default function Estadisticas() {
                             <p className={styles.eyebrow}>
                               {item.stockFallos ? 'Stock' : item.margenAlto ? 'Margen' : 'Medicion'}
                             </p>
-                            <h3 className={styles.sectionTitle}>{item.vino}</h3>
+                            <h3 className={styles.sectionTitle}>
+                              <button type="button" className={styles.vinoBtn} onClick={() => setVinoDetalleNombre(item.vino)}>{item.vino}</button>
+                            </h3>
                             <p className={styles.sectionText}>
                               {item.recomendaciones} rec. - {item.ventasEventos} ventas - {item.pendientes} sin validar
                             </p>
@@ -2498,7 +2521,9 @@ export default function Estadisticas() {
                       <div className={styles.sectionHead} style={{ margin: 0 }}>
                         <div>
                           <p className={styles.eyebrow}>{item.plato}</p>
-                          <h3 className={styles.sectionTitle}>{item.vino}</h3>
+                          <h3 className={styles.sectionTitle}>
+                            <button type="button" className={styles.vinoBtn} onClick={() => setVinoDetalleNombre(item.vino)}>{item.vino}</button>
+                          </h3>
                           <p className={styles.sectionText}>
                             {item.recomendaciones} rec. - {item.ventas} uds. - {item.dudas} dudas - {item.incidencias} stock
                           </p>
@@ -2525,7 +2550,9 @@ export default function Estadisticas() {
                         <div className={styles.sectionHead} style={{ margin: 0 }}>
                           <div>
                             <p className={styles.eyebrow}>{item.tipo} - {item.plato}</p>
-                            <h3 className={styles.sectionTitle}>{item.vino}</h3>
+                            <h3 className={styles.sectionTitle}>
+                              <button type="button" className={styles.vinoBtn} onClick={() => setVinoDetalleNombre(item.vino)}>{item.vino}</button>
+                            </h3>
                             <p className={styles.sectionText}>
                               {item.recomendaciones} rec. - {item.ventas} uds. - {item.dudas} dudas - {item.incidencias} stock
                             </p>
@@ -2751,6 +2778,59 @@ export default function Estadisticas() {
           </section>
         )
       })()}
+      <ResponsiveOverlay
+        open={vinoDetalleNombre !== null}
+        onClose={() => setVinoDetalleNombre(null)}
+        title={vinoDetalleNombre || ''}
+        eyebrow="Detalle de vino"
+        size="drawer"
+      >
+        {vinoDetalleNombre && (() => {
+          const detalle = infoVinoDetalle(vinoDetalleNombre)
+          if (!detalle) return <p className={styles.sectionText}>Sin datos de catálogo para este vino.</p>
+          return (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {detalle.bodega && (
+                <div>
+                  <p className={styles.eyebrow}>Bodega</p>
+                  <p className={styles.sectionTitle}>{detalle.bodega}</p>
+                </div>
+              )}
+              {(detalle.precio || detalle.coste) && (
+                <div style={{ display: 'flex', gap: 24 }}>
+                  {detalle.precio && (
+                    <div>
+                      <p className={styles.eyebrow}>PVP botella</p>
+                      <p className={styles.sectionTitle}>{detalle.precio}</p>
+                    </div>
+                  )}
+                  {detalle.coste && (
+                    <div>
+                      <p className={styles.eyebrow}>Coste compra</p>
+                      <p className={styles.sectionTitle}>{detalle.coste}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              {detalle.stock && (
+                <div>
+                  <p className={styles.eyebrow}>Stock actual</p>
+                  <p className={styles.sectionTitle}>{detalle.stock} uds.</p>
+                </div>
+              )}
+              {detalle.notas && (
+                <div>
+                  <p className={styles.eyebrow}>Notas de cata</p>
+                  <p className={styles.sectionText} style={{ marginTop: 4 }}>{detalle.notas}</p>
+                </div>
+              )}
+              {!detalle.bodega && !detalle.precio && !detalle.coste && !detalle.stock && !detalle.notas && (
+                <p className={styles.sectionText}>Sin datos de catálogo para este vino. Completa su ficha en la sección Vinos.</p>
+              )}
+            </div>
+          )
+        })()}
+      </ResponsiveOverlay>
     </ModuleShell>
     </FeatureGate>
   )
