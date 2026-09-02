@@ -739,6 +739,10 @@
   flex-shrink: 0;
 }
 
+.priceColCompact {
+  align-self: start;
+}
+
 .wineCardConsultant {
   border-color: rgba(191, 169, 132, 0.72);
   background:

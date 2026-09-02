@@ -1420,7 +1420,7 @@ export default function CartaPublica() {
           )}
           {notaSeleccion && <p className={styles.wineNotes}>{notaSeleccion}</p>}
         </div>
-        <div className={styles.priceCol}>
+        <div className={`${styles.priceCol} ${opciones.ocultarMl ? styles.priceColCompact : ''}`}>
           <div className={styles.priceBlock}>
             {tieneCopa ? (
               <>
