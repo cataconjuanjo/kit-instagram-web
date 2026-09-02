@@ -1347,6 +1347,23 @@ export default function CartaPublica() {
     )
   }
 
+  function renderBloqueCopas(lista) {
+    return tiposPorCopaOrdenados.map(tipo => {
+      const vinosTipo = lista.filter(v => v.tipo === tipo)
+      if (!vinosTipo.length) return null
+      const sorted = [...vinosTipo].sort((a, b) =>
+        Number(a.precio_copa || 0) - Number(b.precio_copa || 0) ||
+        String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es')
+      )
+      return (
+        <div key={`copa-${tipo}`} className={styles.regionSubgroup}>
+          <p className={styles.regionName}>{i.tipoPlural[tipo]}</p>
+          {sorted.map(v => renderVinoCard(v, { precioCopaPrincipal: true, mostrarDo: true }))}
+        </div>
+      )
+    })
+  }
+
   function renderVinoCard(v, opciones = {}) {
     const enComparador = vinosComparador.find(vc => vc.id === v.id)
     const tieneCopa = precioValido(v.precio_copa)
@@ -1377,9 +1394,9 @@ export default function CartaPublica() {
               {v.anada && <span className={styles.vintagePill}>{v.anada}</span>}
             </div>
           </div>
-          {(v.bodega || v.uva) && (
+          {(v.bodega || v.uva || (opciones.mostrarDo && v.region)) && (
             <p className={styles.wineSecondary}>
-              {[v.bodega, v.uva].filter(Boolean).join(' · ')}
+              {[v.bodega, v.uva, opciones.mostrarDo && v.region ? canonicalWineRegion(v) : null].filter(Boolean).join(' · ')}
             </p>
           )}
           {etiquetas.length > 0 && (
@@ -2072,9 +2089,7 @@ export default function CartaPublica() {
               </div>
               <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'copas' ? '−' : '+'}</span>
             </button>
-            {(soloCopa || busquedaOFiltrado || seccionAbierta === 'copas') && gruposAmbito.map(ambito =>
-              renderBloqueAmbito(ambito, vinosPorCopaFiltrados, { precioCopaPrincipal: true, prefix: 'copas' })
-            )}
+            {(soloCopa || busquedaOFiltrado || seccionAbierta === 'copas') && renderBloqueCopas(vinosPorCopaFiltrados)}
           </section>
         )}
 
