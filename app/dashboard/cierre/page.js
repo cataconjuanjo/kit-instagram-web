@@ -154,6 +154,7 @@ export default function CierreServicio() {
   const [mensajeCierre, setMensajeCierre] = useState('')
   const [loading, setLoading] = useState(true)
   const [confirmarCierre, setConfirmarCierre] = useState(false)
+  const [briefingAbierto, setBriefingAbierto] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -508,7 +509,7 @@ export default function CierreServicio() {
             <h2 className={styles.panelTitle}>Rutina de cierre</h2>
             <p className={styles.panelSub}>Una secuencia simple para no dejar decisiones sueltas al final del servicio.</p>
           </div>
-          <Link className={styles.secondary} href="/dashboard/sala">Ver briefing</Link>
+          <button type="button" className={styles.secondary} onClick={() => setBriefingAbierto(true)}>Ver briefing</button>
         </div>
         <div className={styles.panelBody}>
           <div className={styles.itemStack}>
@@ -715,7 +716,12 @@ export default function CierreServicio() {
                   </article>
                 ))}
               </div>
-            ) : <div className={styles.empty}>Sin ventas marcadas hoy.</div>}
+            ) : (
+              <div className={styles.empty}>
+                Sin ventas marcadas hoy.{' '}
+                <Link className={styles.secondary} href="/dashboard/sala">Marcar venta en Sala</Link>
+              </div>
+            )}
           </div>
         </div>
 
@@ -749,7 +755,12 @@ export default function CierreServicio() {
                   )
                 })}
               </div>
-            ) : <div className={styles.empty}>Sin dudas marcadas hoy.</div>}
+            ) : (
+              <div className={styles.empty}>
+                Sin dudas marcadas hoy.{' '}
+                <Link className={styles.secondary} href="/dashboard/sala">Marcar duda en Sala</Link>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -762,6 +773,22 @@ export default function CierreServicio() {
           <button type="button" className={styles.primary} onClick={() => setConfirmarCierre(true)}>Cerrar turno</button>
         </div>
       )}
+      <ResponsiveOverlay
+        open={briefingAbierto}
+        onClose={() => setBriefingAbierto(false)}
+        size="modal"
+        eyebrow="Resumen del servicio"
+        title="Briefing de cierre"
+      >
+        <ul style={{ margin: 0, padding: '0 0 0 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {acciones.map((accion, i) => (
+            <li key={i} style={{ fontSize: 14, lineHeight: 1.5 }}>{accion}</li>
+          ))}
+        </ul>
+        <p style={{ marginTop: 16, fontSize: 12, color: '#8b8278' }}>
+          Completa los pasos del checklist antes de cerrar el turno.
+        </p>
+      </ResponsiveOverlay>
       <ResponsiveOverlay
         open={confirmarCierre}
         onClose={() => setConfirmarCierre(false)}
