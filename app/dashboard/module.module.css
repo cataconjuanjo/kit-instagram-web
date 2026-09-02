@@ -823,6 +823,20 @@
   background: #5fa882;
 }
 
+.closePasoMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.closePasoAutor {
+  font-size: 11px;
+  color: #8b8278;
+  margin: 0;
+  white-space: nowrap;
+}
+
 .closeStickyAction {
   position: sticky;
   bottom: 14px;

@@ -15,7 +15,9 @@ function idsEventos(value) {
   return [...new Set(value.map(id => texto(id, 80)).filter(Boolean))].slice(0, 1000)
 }
 
-const CAMPOS = 'id, restaurante_id, fecha_servicio, eventos_revisados, cerrado, cerrado_por_email, notas, created_at, updated_at'
+const CAMPOS = 'id, restaurante_id, fecha_servicio, eventos_revisados, cerrado, cerrado_por_email, notas, pasos, created_at, updated_at'
+
+const PASOS_VALIDOS = new Set(['validar_recomendaciones', 'resolver_incidencias', 'decidir_ventas', 'revisar_dudas', 'cerrar_turno'])
 
 export async function GET(req) {
   try {
@@ -57,6 +59,35 @@ export async function POST(req) {
       notas: texto(body.notas, 1000) || null,
       updated_at: new Date().toISOString(),
     }
+
+    const pasosCambio = body.pasos_cambio && typeof body.pasos_cambio === 'object' && !Array.isArray(body.pasos_cambio)
+      ? body.pasos_cambio
+      : null
+    if (pasosCambio && Object.keys(pasosCambio).length) {
+      const { data: actual } = await supabaseAdmin
+        .from('cierres_servicio')
+        .select('pasos')
+        .eq('restaurante_id', restauranteId)
+        .eq('fecha_servicio', payload.fecha_servicio)
+        .maybeSingle()
+      const pasosActuales = (actual?.pasos && typeof actual.pasos === 'object' && !Array.isArray(actual.pasos))
+        ? actual.pasos : {}
+      const nombre = String(
+        auth.user.user_metadata?.full_name ||
+        auth.user.user_metadata?.name ||
+        (auth.user.email || '').split('@')[0]
+      ).slice(0, 80)
+      const ahora = new Date().toISOString()
+      const pasosNuevos = { ...pasosActuales }
+      for (const [id, hecho] of Object.entries(pasosCambio)) {
+        if (!PASOS_VALIDOS.has(String(id))) continue
+        pasosNuevos[id] = hecho
+          ? { completado_por_email: (auth.user.email || '').toLowerCase(), completado_por_nombre: nombre, completado_en: ahora }
+          : null
+      }
+      payload.pasos = pasosNuevos
+    }
+
     const { data, error } = await supabaseAdmin
       .from('cierres_servicio')
       .upsert(payload, { onConflict: 'restaurante_id,fecha_servicio' })

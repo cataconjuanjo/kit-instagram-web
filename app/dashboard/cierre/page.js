@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import {
@@ -18,6 +18,8 @@ import ResponsiveOverlay from '../ResponsiveOverlay'
 function leerDetalle(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return {} }
 }
+
+const PASO_IDS = ['validar_recomendaciones', 'resolver_incidencias', 'decidir_ventas', 'revisar_dudas', 'cerrar_turno']
 
 function fechaLocalClave() {
   const d = new Date()
@@ -155,6 +157,8 @@ export default function CierreServicio() {
   const [loading, setLoading] = useState(true)
   const [confirmarCierre, setConfirmarCierre] = useState(false)
   const [briefingAbierto, setBriefingAbierto] = useState(false)
+  const [pasosCompletados, setPasosCompletados] = useState({})
+  const prevPasosRef = useRef(null)
 
   useEffect(() => {
     async function cargar() {
@@ -199,6 +203,7 @@ export default function CierreServicio() {
             const guardados = cierreRemoto?.eventos_revisados || locales
             setOcultos(Array.isArray(guardados) ? guardados : [])
             setTurnoCerrado(Boolean(cierreRemoto?.cerrado))
+            setPasosCompletados(cierreRemoto?.pasos || {})
           } catch {
             setOcultos([])
           }
@@ -277,6 +282,76 @@ export default function CierreServicio() {
 
     return { visibles, recomendacionesPendientes, incidencias, dudas, vendidas, porVino }
   }, [eventos, recomendaciones, ocultos])
+
+  const pendientesCierre = useMemo(
+    () => datos.visibles.length + datos.recomendacionesPendientes.length,
+    [datos]
+  )
+
+  const pasosCierre = useMemo(() => [
+    {
+      titulo: 'Validar recomendaciones',
+      detalle: datos.recomendacionesPendientes.length ? `${datos.recomendacionesPendientes.length} recomendaciones sin resultado` : 'Sin recomendaciones pendientes',
+      hecho: datos.recomendacionesPendientes.length === 0,
+      href: '#recomendaciones',
+    },
+    {
+      titulo: 'Resolver incidencias de stock',
+      detalle: datos.incidencias.length ? `${datos.incidencias.length} avisos pendientes` : 'Sin incidencias pendientes',
+      hecho: datos.incidencias.length === 0,
+      href: '#incidencias',
+    },
+    {
+      titulo: 'Decidir ventas marcadas',
+      detalle: datos.vendidas.length ? `${datos.vendidas.length} ventas para descontar o dejar como señal` : 'Sin ventas pendientes de decisión',
+      hecho: datos.vendidas.length === 0,
+      href: '#ventas',
+    },
+    {
+      titulo: 'Revisar dudas de sala',
+      detalle: datos.dudas.length ? `${datos.dudas.length} dudas para mejorar argumento o alternativa` : 'Sin dudas pendientes',
+      hecho: datos.dudas.length === 0,
+      href: '#dudas',
+    },
+    {
+      titulo: 'Cerrar turno',
+      detalle: turnoCerrado || pendientesCierre === 0 ? 'Turno revisado' : 'Guarda el cierre cuando no quieras ver más señales hoy',
+      hecho: turnoCerrado || pendientesCierre === 0,
+    },
+  ], [datos, turnoCerrado, pendientesCierre])
+
+  useEffect(() => {
+    if (loading || !restaurante) return
+    const hechos = pasosCierre.map(p => p.hecho)
+    if (prevPasosRef.current === null) {
+      prevPasosRef.current = hechos
+      return
+    }
+    const cambios = {}
+    hechos.forEach((hecho, i) => {
+      if (hecho !== prevPasosRef.current[i]) cambios[PASO_IDS[i]] = hecho
+    })
+    prevPasosRef.current = hechos
+    if (!Object.keys(cambios).length) return
+    ;(async () => {
+      const token = await tokenSesion()
+      if (!token || !restaurante?.id) return
+      const res = await fetch('/api/cierres-servicio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          restaurante_id: restaurante.id,
+          fecha: fechaLocalClave(),
+          eventos_revisados: ocultos,
+          cerrado: turnoCerrado,
+          pasos_cambio: cambios,
+        }),
+      })
+      if (!res.ok) return
+      const json = await res.json()
+      if (json.cierre?.pasos) setPasosCompletados(json.cierre.pasos)
+    })()
+  }, [pasosCierre, loading, restaurante])
 
   async function marcarStockCero(evento) {
     const vinoId = evento.parsed?.vino_id
@@ -413,8 +488,6 @@ export default function CierreServicio() {
   if (loading) return <LoadingState />
   if (!restaurante) return null
 
-  const pendientesCierre = datos.visibles.length + datos.recomendacionesPendientes.length
-
   const acciones = [
     datos.recomendacionesPendientes.length > 0 && `Validar ${datos.recomendacionesPendientes.length} recomendaciones sin resultado.`,
     datos.incidencias.length > 0 && `Aplicar o ignorar ${datos.incidencias.length} incidencias de stock.`,
@@ -423,37 +496,6 @@ export default function CierreServicio() {
     pendientesCierre === 0 && 'Sin señales de sala hoy. El cierre queda limpio.',
   ].filter(Boolean)
 
-  const pasosCierre = [
-    {
-      titulo: 'Validar recomendaciones',
-      detalle: datos.recomendacionesPendientes.length ? `${datos.recomendacionesPendientes.length} recomendaciones sin resultado` : 'Sin recomendaciones pendientes',
-      hecho: datos.recomendacionesPendientes.length === 0,
-      href: '#recomendaciones',
-    },
-    {
-      titulo: 'Resolver incidencias de stock',
-      detalle: datos.incidencias.length ? `${datos.incidencias.length} avisos pendientes` : 'Sin incidencias pendientes',
-      hecho: datos.incidencias.length === 0,
-      href: '#incidencias',
-    },
-    {
-      titulo: 'Decidir ventas marcadas',
-      detalle: datos.vendidas.length ? `${datos.vendidas.length} ventas para descontar o dejar como señal` : 'Sin ventas pendientes de decisión',
-      hecho: datos.vendidas.length === 0,
-      href: '#ventas',
-    },
-    {
-      titulo: 'Revisar dudas de sala',
-      detalle: datos.dudas.length ? `${datos.dudas.length} dudas para mejorar argumento o alternativa` : 'Sin dudas pendientes',
-      hecho: datos.dudas.length === 0,
-      href: '#dudas',
-    },
-    {
-      titulo: 'Cerrar turno',
-      detalle: turnoCerrado || pendientesCierre === 0 ? 'Turno revisado' : 'Guarda el cierre cuando no quieras ver más señales hoy',
-      hecho: turnoCerrado || pendientesCierre === 0,
-    },
-  ]
   const pasosHechos = pasosCierre.filter(paso => paso.hecho).length
   const progresoCierre = Math.round((pasosHechos / pasosCierre.length) * 100)
 
@@ -522,7 +564,14 @@ export default function CierreServicio() {
                     <p className={styles.sectionText}>{paso.detalle}</p>
                   </div>
                   {paso.hecho ? (
-                    <span className={styles.badge}>Hecho</span>
+                    <div className={styles.closePasoMeta}>
+                      <span className={styles.badge}>Hecho</span>
+                      {pasosCompletados[PASO_IDS[index]]?.completado_en && (
+                        <p className={styles.closePasoAutor}>
+                          {pasosCompletados[PASO_IDS[index]].completado_por_nombre} · {new Date(pasosCompletados[PASO_IDS[index]].completado_en).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
                   ) : paso.href ? (
                     <a className={styles.ghost} href={paso.href}>Revisar</a>
                   ) : (
