@@ -15,7 +15,7 @@ import styles from '../module.module.css'
 import simStyles from './simulador.module.css'
 import PreviewCarta from './PreviewCarta'
 
-const ESTADO_LABEL = { actual: 'Actual', nuevo: 'Nuevo', fuera: 'Fuera' }
+const ESTADO_LABEL = { actual: 'Actual', nuevo: 'Nuevo', fuera: 'Retirado' }
 const ESTADO_ORDER = { actual: 0, nuevo: 1, fuera: 2 }
 
 function eur(valor) {
@@ -100,6 +100,10 @@ export default function SimuladorCarta() {
   const [confirmarQuitarLote, setConfirmarQuitarLote] = useState(false)
   const [selAnadir, setSelAnadir] = useState(new Set())
   const [anadiendoLote, setAnadiendoLote] = useState(false)
+  const [mostrarRetirados, setMostrarRetirados] = useState(false)
+  const [mostrarHistorial, setMostrarHistorial] = useState(false)
+  const [historial, setHistorial] = useState(null)  // null=no cargado, []=vacío
+  const [restaurandoHistorial, setRestaurandoHistorial] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -238,13 +242,17 @@ export default function SimuladorCarta() {
   // Líneas filtradas por búsqueda + ordenadas por columna (aplicado sobre lineasOrdenadas)
   const lineasFiltradas = useMemo(() => {
     const q = busquedaTabla.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-    let base = q
-      ? lineasOrdenadas.filter(l =>
-          [l.nombre, l.bodega, l.tipo, l.region].some(f =>
-            f?.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q)
-          )
+    let base = lineasOrdenadas
+    // Por defecto, ocultar vinos retirados (fuera) para que el sommelier trabaje limpio.
+    // El toggle "Mostrar retirados" los hace visibles.
+    if (!mostrarRetirados) base = base.filter(l => l.estado !== 'fuera')
+    if (q) {
+      base = base.filter(l =>
+        [l.nombre, l.bodega, l.tipo, l.region].some(f =>
+          f?.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q)
         )
-      : lineasOrdenadas
+      )
+    }
 
     if (ordenTabla.key) {
       base = [...base].sort((a, b) => {
@@ -259,7 +267,7 @@ export default function SimuladorCarta() {
       })
     }
     return base
-  }, [lineasOrdenadas, busquedaTabla, ordenTabla])
+  }, [lineasOrdenadas, busquedaTabla, ordenTabla, mostrarRetirados])
 
   // Paginación aplicada sobre lineasFiltradas
   const totalPaginas = Math.max(1, Math.ceil(lineasFiltradas.length / porPaginaTabla))
@@ -651,6 +659,39 @@ export default function SimuladorCarta() {
     }
   }
 
+  // ── Historial de cartas publicadas ────────────────────────────────
+  async function cargarHistorial() {
+    if (historial !== null) { setMostrarHistorial(true); return }
+    const t = await getToken()
+    const res = await fetch(
+      `/api/simulador/historial?${new URLSearchParams({ restaurante_id: restaurante.id })}`,
+      { headers: { Authorization: `Bearer ${t}` } }
+    ).catch(() => null)
+    setHistorial(res?.ok ? (await res.json()).snapshots || [] : [])
+    setMostrarHistorial(true)
+  }
+
+  async function restaurarSnapshot(snapshotId) {
+    setRestaurandoHistorial(snapshotId)
+    const t = await getToken()
+    const res = await fetch('/api/simulador/historial/restaurar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+      body: JSON.stringify({ restaurante_id: restaurante.id, snapshot_id: snapshotId }),
+    }).catch(() => null)
+    setRestaurandoHistorial(null)
+    if (!res?.ok) {
+      const json = res ? await res.json().catch(() => null) : null
+      setErrorMsg(json?.error || 'No se pudo restaurar la versión anterior.')
+      return
+    }
+    setMostrarHistorial(false)
+    setHistorial(null)
+    await recargarLineas()
+    setSuccessMsg('Versión anterior cargada como borrador. Revísala antes de publicar.')
+    setTimeout(() => setSuccessMsg(''), 6000)
+  }
+
   // ── Acciones en lote ──────────────────────────────────────────────
   async function quitarSeleccionados() {
     const ids = [...selFilas]
@@ -779,12 +820,18 @@ export default function SimuladorCarta() {
             hint="Vienen del catálogo del consultor"
             valueStyle={resumen.nuevos > 0 ? { color: 'var(--cv-gold)' } : undefined}
           />
-          <StatCard
-            value={resumen.retirados}
-            label="Para retirar"
-            hint="Se ocultarán al publicar"
-            valueStyle={resumen.retirados > 0 ? { color: 'var(--cv-red)' } : undefined}
-          />
+          <div
+            className={resumen.retirados > 0 ? simStyles.statCardClickable : undefined}
+            onClick={resumen.retirados > 0 ? () => setMostrarRetirados(v => !v) : undefined}
+            title={resumen.retirados > 0 ? (mostrarRetirados ? 'Ocultar retirados' : 'Mostrar retirados en tabla') : undefined}
+          >
+            <StatCard
+              value={resumen.retirados}
+              label="Para retirar"
+              hint={resumen.retirados > 0 ? (mostrarRetirados ? 'Visibles en tabla · haz clic para ocultar' : 'Haz clic para mostrar en tabla') : 'Se ocultarán al publicar'}
+              valueStyle={resumen.retirados > 0 ? { color: 'var(--cv-red)' } : undefined}
+            />
+          </div>
           <StatCard
             value={
               resumen.margenMedio !== null
@@ -890,7 +937,7 @@ export default function SimuladorCarta() {
           </section>
         ) : (
           <>
-            {/* ── Barra búsqueda ──────────────────────────────── */}
+            {/* ── Barra búsqueda + toggle retirados ───────────── */}
             <div className={simStyles.tablaToolbar}>
               <input
                 className={simStyles.tablaSearch}
@@ -903,6 +950,23 @@ export default function SimuladorCarta() {
                   {lineasFiltradas.length} resultado{lineasFiltradas.length !== 1 ? 's' : ''}
                 </span>
               )}
+              {resumen.retirados > 0 && (
+                <button
+                  type="button"
+                  className={`${simStyles.toggleRetirados} ${mostrarRetirados ? simStyles.toggleRetiradosActivo : ''}`}
+                  onClick={() => { setMostrarRetirados(v => !v); setPaginaTabla(1) }}
+                >
+                  {mostrarRetirados ? 'Ocultar retirados' : `Mostrar retirados (${resumen.retirados})`}
+                </button>
+              )}
+              <button
+                type="button"
+                className={simStyles.historialBtn}
+                onClick={cargarHistorial}
+                title="Ver historial de cartas publicadas"
+              >
+                Historial
+              </button>
             </div>
 
           {/* ── Barra de acciones en lote ───────────────────── */}
@@ -1182,6 +1246,51 @@ export default function SimuladorCarta() {
             <button type="button" onClick={() => setErrorMsg('')} aria-label="Cerrar aviso">Cerrar</button>
           </div>
         )}
+
+        {/* ── Modal historial de cartas publicadas ─────────── */}
+        <ResponsiveOverlay
+          open={mostrarHistorial}
+          onClose={() => setMostrarHistorial(false)}
+          size="modal"
+          eyebrow="Simulador"
+          title="Historial de cartas publicadas"
+          description="Cada vez que publicas se guarda una instantánea. Puedes restaurar cualquier versión como borrador para revisarla antes de volver a publicar."
+        >
+          {historial === null ? (
+            <div className={simStyles.sustituirVacio}>Cargando historial…</div>
+          ) : historial.length === 0 ? (
+            <div className={simStyles.sustituirVacio}>
+              Aún no hay cartas publicadas. El historial se guardará a partir de la próxima publicación.
+            </div>
+          ) : (
+            <div className={simStyles.historialLista}>
+              {historial.map(snap => (
+                <div key={snap.id} className={simStyles.historialItem}>
+                  <div className={simStyles.historialItemInfo}>
+                    <div className={simStyles.historialItemFecha}>
+                      {new Date(snap.published_at).toLocaleString('es-ES', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </div>
+                    <div className={simStyles.historialItemMeta}>
+                      {snap.total_vinos} referencia{snap.total_vinos !== 1 ? 's' : ''}
+                      {snap.published_by ? ` · ${snap.published_by}` : ''}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className={simStyles.accionBtn}
+                    disabled={restaurandoHistorial === snap.id}
+                    onClick={() => restaurarSnapshot(snap.id)}
+                  >
+                    {restaurandoHistorial === snap.id ? 'Restaurando…' : 'Restaurar como borrador'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </ResponsiveOverlay>
 
         {/* ── Vista previa tipo carta real ──────────────────── */}
         <ResponsiveOverlay

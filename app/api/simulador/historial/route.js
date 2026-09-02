@@ -2,16 +2,13 @@ import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { puedeUsar } from '../../../lib/plans'
 
-// POST /api/simulador/publicar
-// Body: { restaurante_id }
-// Invoca la función Postgres publicar_simulacion() en una sola transacción:
-//   1. Desactiva vinos marcados 'fuera'
-//   2. Inserta en vinos los referenciados como 'nuevo' (desde catálogo consultor)
-//   3. Elimina las líneas 'fuera' y 'nuevo' del borrador
-export async function POST(req) {
+// GET /api/simulador/historial?restaurante_id=...
+// Devuelve las últimas 20 instantáneas de cartas publicadas, sin el vinos_snapshot
+// (solo metadatos) para no saturar el payload de la lista.
+export async function GET(req) {
   try {
-    const body = await req.json()
-    const restauranteId = String(body.restaurante_id || '').trim().slice(0, 80)
+    const { searchParams } = new URL(req.url)
+    const restauranteId = String(searchParams.get('restaurante_id') || '').trim().slice(0, 80)
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
@@ -30,18 +27,18 @@ export async function POST(req) {
       return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
     }
 
-    const publishedBy = auth.user?.email || null
-
-    const { data, error } = await supabaseAdmin.rpc('publicar_simulacion', {
-      p_restaurante_id: restauranteId,
-      p_published_by:   publishedBy,
-    })
+    const { data: snapshots, error } = await supabaseAdmin
+      .from('carta_historial')
+      .select('id, published_at, published_by, total_vinos')
+      .eq('restaurante_id', restauranteId)
+      .order('published_at', { ascending: false })
+      .limit(20)
 
     if (error) throw error
 
-    return Response.json({ ok: true, ...(data || {}) })
+    return Response.json({ snapshots: snapshots || [] })
   } catch (err) {
-    console.error('[simulador/publicar POST]', err)
-    return Response.json({ error: 'No se pudo publicar la carta.' }, { status: 500 })
+    console.error('[simulador/historial GET]', err)
+    return Response.json({ error: 'No se pudo cargar el historial.' }, { status: 500 })
   }
 }

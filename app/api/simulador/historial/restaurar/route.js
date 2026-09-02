@@ -1,17 +1,20 @@
-import { requireRestaurantAccess } from '../../_lib/auth'
-import { supabaseAdmin } from '../../../lib/supabaseAdmin'
-import { puedeUsar } from '../../../lib/plans'
+import { requireRestaurantAccess } from '../../../_lib/auth'
+import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { puedeUsar } from '../../../../lib/plans'
 
-// POST /api/simulador/publicar
-// Body: { restaurante_id }
-// Invoca la función Postgres publicar_simulacion() en una sola transacción:
-//   1. Desactiva vinos marcados 'fuera'
-//   2. Inserta en vinos los referenciados como 'nuevo' (desde catálogo consultor)
-//   3. Elimina las líneas 'fuera' y 'nuevo' del borrador
+// POST /api/simulador/historial/restaurar
+// Body: { restaurante_id, snapshot_id }
+// Carga una instantánea del historial como borrador del simulador para revisión.
+// No publica automáticamente: el sommelier debe revisar y pulsar "Publicar" de nuevo.
 export async function POST(req) {
   try {
     const body = await req.json()
     const restauranteId = String(body.restaurante_id || '').trim().slice(0, 80)
+    const snapshotId    = String(body.snapshot_id    || '').trim().slice(0, 80)
+
+    if (!snapshotId) {
+      return Response.json({ error: 'Falta snapshot_id' }, { status: 400 })
+    }
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
@@ -30,18 +33,16 @@ export async function POST(req) {
       return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
     }
 
-    const publishedBy = auth.user?.email || null
-
-    const { data, error } = await supabaseAdmin.rpc('publicar_simulacion', {
+    const { data, error } = await supabaseAdmin.rpc('restaurar_snapshot', {
       p_restaurante_id: restauranteId,
-      p_published_by:   publishedBy,
+      p_snapshot_id:    snapshotId,
     })
 
     if (error) throw error
 
     return Response.json({ ok: true, ...(data || {}) })
   } catch (err) {
-    console.error('[simulador/publicar POST]', err)
-    return Response.json({ error: 'No se pudo publicar la carta.' }, { status: 500 })
+    console.error('[simulador/historial/restaurar POST]', err)
+    return Response.json({ error: 'No se pudo restaurar la versión anterior.' }, { status: 500 })
   }
 }
