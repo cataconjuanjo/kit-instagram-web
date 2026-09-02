@@ -17,6 +17,9 @@ import { estadoCartaPublica } from '../../lib/publicRouteState'
 import { enviarEstadisticas } from '../../lib/statsClient'
 import { alternarVinoComparador } from '../../lib/wineComparator'
 import { WINE_TYPE_COLORS } from '../../lib/winePresentation'
+import RacimoIcon from '../../components/icons/RacimoIcon'
+import CopaIcon from '../../components/icons/CopaIcon'
+import BotellaIcon from '../../components/icons/BotellaIcon'
 import { cargarPerfilesVino } from '../../lib/wineProfileClient'
 import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS } from '../../lib/wineProfileRadar'
 import { limpiarMarcadorPerfiles } from '../../lib/wineProfileTags'
@@ -1368,7 +1371,7 @@ export default function CartaPublica() {
           onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(v))}
         >
           <div className={styles.wineTop}>
-            <span className={styles.dot} style={{ background: tipoDot[v.tipo] || colorPrimario }} />
+            <RacimoIcon color={tipoDot[v.tipo] || colorPrimario} className={styles.dotIcon} />
             <div className={styles.wineTitleBlock}>
               <h3 className={styles.wineName}>{nombreVinoCarta(v)}</h3>
               {v.anada && <span className={styles.vintagePill}>{v.anada}</span>}
@@ -1402,15 +1405,19 @@ export default function CartaPublica() {
               <>
                 <div className={styles.mainPrice}>
                   <span className={styles.formattedPrice}>{precioCopaCarta(v.precio_copa)}</span>
-                  <small>{i.copa}</small>
+                  <small aria-label={i.copa}><CopaIcon /></small>
                 </div>
                 {v.copa_ml && <p className={styles.copaVolume}>{v.copa_ml} ml</p>}
-                {tieneBotella && <p className={styles.priceMeta}>{precioUnidadCarta(precioBotellaCarta(v.precio_botella), i.botella)}</p>}
+                {tieneBotella && (
+                  <p className={styles.priceMeta} aria-label={`${precioBotellaCarta(v.precio_botella)} ${i.botella.toLowerCase()}`}>
+                    {precioBotellaCarta(v.precio_botella)}{' / '}<BotellaIcon size={9} />
+                  </p>
+                )}
               </>
             ) : tieneBotella ? (
               <div className={styles.mainPrice}>
                 <span className={styles.formattedPrice}>{precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</span>
-                <small>{i.botella}</small>
+                <small aria-label={i.botella}><BotellaIcon /></small>
               </div>
             ) : null}
           </div>

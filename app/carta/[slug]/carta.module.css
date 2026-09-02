@@ -802,6 +802,11 @@
   flex-shrink: 0;
 }
 
+.dotIcon {
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
 .wineTitleBlock {
   min-width: 0;
   display: flex;
