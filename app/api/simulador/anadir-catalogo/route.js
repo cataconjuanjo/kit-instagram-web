@@ -118,7 +118,7 @@ export async function POST(req) {
         region: catalogVino.region || null,
         anada: catalogVino.anada || null,
         formato: catalogVino.formato || null,
-        precio_botella: pvpBotella || null,
+        precio_botella: null,
         precio_copa: null,
         coste_compra: coste || null,
         pvp_recomendado_catalogo: pvpBotella || null,

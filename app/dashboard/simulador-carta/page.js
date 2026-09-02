@@ -433,26 +433,36 @@ export default function SimuladorCarta() {
   }
 
   // ── Decisión de venta por copa ────────────────────────────────────
+  // decision: true | false (solo copa); precio: número o null
   async function handleCopaDecision(decision, precio) {
     if (!copaDecision) return
-    const { linea } = copaDecision
+    const { linea, tipo } = copaDecision
     setGuardandoCopa(true)
-    const cambios = { ofrecido_por_copa: decision }
-    if (decision === true) {
+
+    let cambios
+    if (tipo === 'botella') {
       const val = parseFloat(String(precio).replace(',', '.'))
-      cambios.precio_copa = (!isNaN(val) && val > 0) ? val : null
+      cambios = { precio_botella: (!isNaN(val) && val > 0) ? val : null }
     } else {
-      cambios.precio_copa = null
+      cambios = { ofrecido_por_copa: decision }
+      if (decision === true) {
+        const val = parseFloat(String(precio).replace(',', '.'))
+        cambios.precio_copa = (!isNaN(val) && val > 0) ? val : null
+      } else {
+        cambios.precio_copa = null
+      }
     }
+
     setLineas(prev => prev.map(l => l.id === linea.id ? { ...l, ...cambios } : l))
     setCopaDecision(null)
     setCopaPrecioManual('')
     const res = await patchLinea(linea.id, cambios)
     if (!res.ok) {
-      setLineas(prev => prev.map(l => l.id === linea.id
-        ? { ...l, ofrecido_por_copa: linea.ofrecido_por_copa, precio_copa: linea.precio_copa }
-        : l))
-      setErrorMsg('No se pudo guardar la decisión de copa')
+      const revert = tipo === 'botella'
+        ? { precio_botella: linea.precio_botella }
+        : { ofrecido_por_copa: linea.ofrecido_por_copa, precio_copa: linea.precio_copa }
+      setLineas(prev => prev.map(l => l.id === linea.id ? { ...l, ...revert } : l))
+      setErrorMsg(tipo === 'botella' ? 'No se pudo guardar el precio de botella' : 'No se pudo guardar la decisión de copa')
     }
     setGuardandoCopa(false)
   }
@@ -1095,8 +1105,20 @@ export default function SimuladorCarta() {
                       <td className={simStyles.tdZona}>{linea.region || '—'}</td>
                       <td className={simStyles.tdAnada}>{linea.anada || '—'}</td>
 
-                      {/* PVP bot. € — editable */}
+                      {/* PVP bot. € — pill si pendiente, editable si ya tiene precio */}
                       {(() => {
+                        const pendienteBot = !linea.precio_botella && !!linea.catalogo_vino_id
+                        if (pendienteBot) {
+                          return (
+                            <td className={simStyles.tdNum}>
+                              <button type="button" className={simStyles.tdPorCopaPill}
+                                      disabled={isBlocked}
+                                      onClick={() => setCopaDecision({ linea, tipo: 'botella' })}>
+                                Fijar precio
+                              </button>
+                            </td>
+                          )
+                        }
                         const campo = 'precio_botella'
                         const editando = inlineEdit?.id === linea.id && inlineEdit?.campo === campo
                         return (
@@ -1129,7 +1151,7 @@ export default function SimuladorCarta() {
                             <td className={simStyles.tdNum}>
                               <button type="button" className={simStyles.tdPorCopaPill}
                                       disabled={isBlocked}
-                                      onClick={() => setCopaDecision({ linea, step: 1 })}>
+                                      onClick={() => setCopaDecision({ linea, step: 1, tipo: 'copa' })}>
                                 ¿Por copa?
                               </button>
                             </td>
@@ -1139,7 +1161,7 @@ export default function SimuladorCarta() {
                           return (
                             <td className={`${simStyles.tdNum} ${simStyles.tdNoSirve}`}
                                 title="Pulsa para cambiar la decisión"
-                                onClick={() => !isBlocked && setCopaDecision({ linea, step: 1 })}>
+                                onClick={() => !isBlocked && setCopaDecision({ linea, step: 1, tipo: 'copa' })}>
                               No por copa
                             </td>
                           )
@@ -1773,16 +1795,23 @@ export default function SimuladorCarta() {
           </button>
         </ResponsiveOverlay>
 
-        {/* ── Modal: decisión de venta por copa ───────────────── */}
+        {/* ── Modal: fijar precio botella / decisión copa ─────── */}
+        {/* tipo='botella' → pantalla directa de precio (1 paso)  */}
+        {/* tipo='copa'    → paso 1 Sí/No → paso 2 precio         */}
         <ResponsiveOverlay
           open={!!copaDecision}
           onClose={() => { setCopaDecision(null); setCopaPrecioManual('') }}
           size="modal"
           eyebrow="Simulador"
-          title={copaDecision?.step === 1 ? '¿Vender por copa?' : 'Precio por copa'}
+          title={
+            copaDecision?.tipo === 'botella' ? 'Precio de botella'
+            : copaDecision?.step === 1 ? '¿Vender por copa?'
+            : 'Precio por copa'
+          }
           description={copaDecision?.linea?.nombre}
         >
-          {copaDecision?.step === 1 && (
+          {/* Copa paso 1: ¿Sí o no? */}
+          {copaDecision?.tipo === 'copa' && copaDecision?.step === 1 && (
             <div className={simStyles.copaDecisionBtns}>
               <button
                 type="button"
@@ -1803,67 +1832,77 @@ export default function SimuladorCarta() {
             </div>
           )}
 
-          {copaDecision?.step === 2 && (
-            <>
-              {Number(copaDecision.linea.pvp_copa_catalogo) > 0 && (
-                <>
-                  <div className={simStyles.copaDecisionSugerido}>
-                    <span className={simStyles.copaDecisionSugeridoLabel}>Precio sugerido del catálogo</span>
-                    <span className={simStyles.copaDecisionSugeridoPrecio}>{eur(copaDecision.linea.pvp_copa_catalogo)}</span>
-                  </div>
+          {/* Pantalla de precio — compartida para botella (tipo=botella) y copa paso 2 */}
+          {(copaDecision?.tipo === 'botella' || copaDecision?.step === 2) && (() => {
+            const esBotella = copaDecision.tipo === 'botella'
+            const precioSug = esBotella
+              ? copaDecision.linea.pvp_recomendado_catalogo
+              : copaDecision.linea.pvp_copa_catalogo
+            const unidad = esBotella ? '€ / bot.' : '€ / copa'
+            return (
+              <>
+                {Number(precioSug) > 0 && (
+                  <>
+                    <div className={simStyles.copaDecisionSugerido}>
+                      <span className={simStyles.copaDecisionSugeridoLabel}>Precio sugerido del catálogo</span>
+                      <span className={simStyles.copaDecisionSugeridoPrecio}>{eur(precioSug)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.primary}
+                      style={{ width: '100%', marginBottom: 10 }}
+                      disabled={guardandoCopa}
+                      onClick={() => handleCopaDecision(true, precioSug)}
+                    >
+                      Usar sugerido ({eur(precioSug)})
+                    </button>
+                    <p className={simStyles.copaDecisionOr}>— o introduce un precio manual —</p>
+                  </>
+                )}
+                <div className={simStyles.copaDecisionManualRow}>
+                  <input
+                    autoFocus
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    className={simStyles.copaDecisionInput}
+                    placeholder="0.00"
+                    value={copaPrecioManual}
+                    onChange={e => setCopaPrecioManual(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        const v = parseFloat(String(copaPrecioManual).replace(',', '.'))
+                        if (!isNaN(v) && v > 0) handleCopaDecision(true, v)
+                      }
+                    }}
+                  />
+                  <span className={simStyles.copaDecisionInputUnit}>{unidad}</span>
                   <button
                     type="button"
                     className={styles.primary}
-                    style={{ width: '100%', marginBottom: 10 }}
-                    disabled={guardandoCopa}
-                    onClick={() => handleCopaDecision(true, copaDecision.linea.pvp_copa_catalogo)}
-                  >
-                    Usar sugerido ({eur(copaDecision.linea.pvp_copa_catalogo)})
-                  </button>
-                  <p className={simStyles.copaDecisionOr}>— o introduce un precio manual —</p>
-                </>
-              )}
-              <div className={simStyles.copaDecisionManualRow}>
-                <input
-                  autoFocus
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  className={simStyles.copaDecisionInput}
-                  placeholder="0.00"
-                  value={copaPrecioManual}
-                  onChange={e => setCopaPrecioManual(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
+                    disabled={guardandoCopa || !copaPrecioManual || parseFloat(copaPrecioManual) <= 0}
+                    onClick={() => {
                       const v = parseFloat(String(copaPrecioManual).replace(',', '.'))
                       if (!isNaN(v) && v > 0) handleCopaDecision(true, v)
-                    }
-                  }}
-                />
-                <span className={simStyles.copaDecisionInputUnit}>€ / copa</span>
-                <button
-                  type="button"
-                  className={styles.primary}
-                  disabled={guardandoCopa || !copaPrecioManual || parseFloat(copaPrecioManual) <= 0}
-                  onClick={() => {
-                    const v = parseFloat(String(copaPrecioManual).replace(',', '.'))
-                    if (!isNaN(v) && v > 0) handleCopaDecision(true, v)
-                  }}
-                >
-                  {guardandoCopa ? 'Guardando…' : 'Confirmar'}
-                </button>
-              </div>
-              <div className={simStyles.copaDecisionVolver}>
-                <button
-                  type="button"
-                  className={simStyles.accionBtn}
-                  onClick={() => setCopaDecision(prev => ({ ...prev, step: 1 }))}
-                >
-                  ← Volver
-                </button>
-              </div>
-            </>
-          )}
+                    }}
+                  >
+                    {guardandoCopa ? 'Guardando…' : 'Confirmar'}
+                  </button>
+                </div>
+                {!esBotella && (
+                  <div className={simStyles.copaDecisionVolver}>
+                    <button
+                      type="button"
+                      className={simStyles.accionBtn}
+                      onClick={() => setCopaDecision(prev => ({ ...prev, step: 1 }))}
+                    >
+                      ← Volver
+                    </button>
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </ResponsiveOverlay>
 
         {/* ── Diálogo de confirmación: quitar en lote ──────── */}

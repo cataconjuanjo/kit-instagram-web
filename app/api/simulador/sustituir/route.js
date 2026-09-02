@@ -78,7 +78,7 @@ export async function POST(req) {
         p_region:                   catalogVino.region   || null,
         p_anada:                    catalogVino.anada    || null,
         p_formato:                  catalogVino.formato  || null,
-        p_precio_botella:           pvpBotella           || null,
+        p_precio_botella:           null,
         p_precio_copa:              null,
         p_coste_compra:             coste                || null,
         p_pvp_recomendado_catalogo: pvpBotella           || null,
@@ -106,6 +106,7 @@ export async function POST(req) {
     // Fusionar campos calculados en la respuesta (el RPC devuelve la fila tal cual fue insertada)
     const lineaFinal = {
       ...nuevaLinea,
+      precio_botella: null,
       pvp_recomendado_catalogo: pvpBotella || null,
       pvp_copa_catalogo: pvpCopa || null,
       ...(origen ? { origen } : {}),
