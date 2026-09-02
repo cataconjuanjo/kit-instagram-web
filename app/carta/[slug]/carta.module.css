@@ -753,6 +753,7 @@
 
 .accordionSection {
   margin-top: 6px;
+  scroll-margin-top: 80px;
 }
 
 .accordionHead {

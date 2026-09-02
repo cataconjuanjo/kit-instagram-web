@@ -1250,6 +1250,7 @@ export default function CartaPublica() {
   const vinosMenos30 = vinos.filter(v => Number(v.precio_botella) > 0 && Number(v.precio_botella) <= 30).length
   const vinosLocal = vinos.filter(v => ambitoComercial(v) === 'local').length
   const vinosCelebracion = vinos.filter(v => Number(v.precio_botella) >= 50).length
+  const vinosPorCopaTotal = vinos.filter(v => Number(v.precio_copa) > 0 && !esCoravin(v)).length
   const vinosCoravinFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && esCoravin(v))
   const vinosPorCopaFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && !esCoravin(v))
   // Vinos que solo tienen botella — excluidos de las secciones por copa para evitar duplicados
@@ -1532,8 +1533,15 @@ export default function CartaPublica() {
   function aplicarAtajo(id) {
     setMostrarFiltros(false)
     if (id === 'menos30') setPrecioMax(prev => prev === 30 ? null : 30)
-    else if (id === 'local') setSoloLocal(prev => !prev)
     else if (id === 'celebracion') setPrecioMin(prev => prev === 50 ? null : 50)
+  }
+
+  function irASeccion(id) {
+    setMostrarFiltros(false)
+    setSeccionAbierta(id)
+    requestAnimationFrame(() => {
+      document.getElementById(`seccion-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 
   const estadoCargaCarta = estadoCartaPublica({ loading, loadError, restaurante, idioma, textos: i })
@@ -1909,47 +1917,6 @@ export default function CartaPublica() {
                 </button>
               </div>
 
-              <div className={styles.toggleRow}>
-                <span>Solo por copa</span>
-                <button
-                  type="button"
-                  className={`${styles.switch} ${soloCopa ? styles.switchOn : ''}`}
-                  aria-label="Solo por copa"
-                  aria-pressed={soloCopa}
-                  onClick={() => setSoloCopa(!soloCopa)}
-                  style={{ background: soloCopa ? colorPrimario : '#d8d1c4' }}
-                >
-                  <span className={styles.switchKnob} />
-                </button>
-              </div>
-
-              <div className={styles.toggleRow}>
-                <span>Vinos de Málaga</span>
-                <button
-                  type="button"
-                  className={`${styles.switch} ${soloLocal ? styles.switchOn : ''}`}
-                  aria-label="Solo vinos de Málaga"
-                  aria-pressed={soloLocal}
-                  onClick={() => setSoloLocal(!soloLocal)}
-                  style={{ background: soloLocal ? colorPrimario : '#d8d1c4' }}
-                >
-                  <span className={styles.switchKnob} />
-                </button>
-              </div>
-
-              <div className={styles.toggleRow}>
-                <span>Para celebrar (≥50€)</span>
-                <button
-                  type="button"
-                  className={`${styles.switch} ${precioMin === 50 ? styles.switchOn : ''}`}
-                  aria-label="Para celebrar, vinos desde 50€"
-                  aria-pressed={precioMin === 50}
-                  onClick={() => setPrecioMin(prev => prev === 50 ? null : 50)}
-                  style={{ background: precioMin === 50 ? colorPrimario : '#d8d1c4' }}
-                >
-                  <span className={styles.switchKnob} />
-                </button>
-              </div>
 
               {filtroActivo && (
                 <button className={styles.clearButton} onClick={limpiarFiltrosCarta}>
@@ -1982,10 +1949,6 @@ export default function CartaPublica() {
 
         {!busqueda && (
           <section className={styles.shortcutPanel}>
-            <button className={styles.shortcut} onClick={() => irAArmonía('shortcut')}>
-              <span>Vino para tu plato</span>
-              <small>{i.sommelierHint}</small>
-            </button>
             <button
               className={`${styles.shortcut} ${precioMax === 30 ? styles.shortcutActive : ''}`}
               onClick={() => aplicarAtajo('menos30')} disabled={!vinosMenos30}>
@@ -1993,16 +1956,22 @@ export default function CartaPublica() {
               <small>{precioMax === 30 ? 'Toca para quitar' : `${vinosMenos30} vinos`}</small>
             </button>
             <button
-              className={`${styles.shortcut} ${soloLocal ? styles.shortcutActive : ''}`}
-              onClick={() => aplicarAtajo('local')} disabled={!vinosLocal}>
+              className={styles.shortcut}
+              onClick={() => irASeccion('local')} disabled={!vinosLocal}>
               <span>Vinos de Málaga</span>
-              <small>{soloLocal ? 'Toca para quitar' : `${vinosLocal} vinos`}</small>
+              <small>{`${vinosLocal} vinos`}</small>
             </button>
             <button
               className={`${styles.shortcut} ${precioMin === 50 ? styles.shortcutActive : ''}`}
               onClick={() => aplicarAtajo('celebracion')} disabled={!vinosCelebracion}>
               <span>Para celebrar</span>
               <small>{precioMin === 50 ? 'Toca para quitar' : `${vinosCelebracion} vinos`}</small>
+            </button>
+            <button
+              className={styles.shortcut}
+              onClick={() => irASeccion('copas')} disabled={!vinosPorCopaTotal}>
+              <span>Vinos por copa</span>
+              <small>{`${vinosPorCopaTotal} vinos`}</small>
             </button>
           </section>
         )}
@@ -2080,7 +2049,7 @@ export default function CartaPublica() {
         )}
 
         {modoCarta === 'referencias' && vinosPorCopaFiltrados.length > 0 && filtro === 'todos' && (
-          <section className={styles.accordionSection}>
+          <section id="seccion-copas" className={styles.accordionSection}>
             <button
               type="button"
               className={styles.accordionHead}
@@ -2212,7 +2181,7 @@ export default function CartaPublica() {
           if (!grupo.length) return null
           const abierta = busquedaOFiltrado || seccionAbierta === ambito.id
           return (
-            <section key={ambito.id} className={styles.accordionSection}>
+            <section key={ambito.id} id={`seccion-${ambito.id}`} className={styles.accordionSection}>
               <button
                 type="button"
                 className={styles.accordionHead}
