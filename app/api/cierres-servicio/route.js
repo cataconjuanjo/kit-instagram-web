@@ -60,34 +60,30 @@ export async function POST(req) {
       updated_at: new Date().toISOString(),
     }
 
+    // Precomputa las entradas nuevas para pasos si vienen en el body.
+    // No lee la fila actual — la fusión con el valor existente la hace el SQL.
     const pasosCambio = body.pasos_cambio && typeof body.pasos_cambio === 'object' && !Array.isArray(body.pasos_cambio)
       ? body.pasos_cambio
       : null
-    if (pasosCambio && Object.keys(pasosCambio).length) {
-      const { data: actual } = await supabaseAdmin
-        .from('cierres_servicio')
-        .select('pasos')
-        .eq('restaurante_id', restauranteId)
-        .eq('fecha_servicio', payload.fecha_servicio)
-        .maybeSingle()
-      const pasosActuales = (actual?.pasos && typeof actual.pasos === 'object' && !Array.isArray(actual.pasos))
-        ? actual.pasos : {}
+    let nuevasEntradas = null
+    if (pasosCambio) {
       const nombre = String(
         auth.user.user_metadata?.full_name ||
         auth.user.user_metadata?.name ||
         (auth.user.email || '').split('@')[0]
       ).slice(0, 80)
       const ahora = new Date().toISOString()
-      const pasosNuevos = { ...pasosActuales }
+      const entradas = {}
       for (const [id, hecho] of Object.entries(pasosCambio)) {
         if (!PASOS_VALIDOS.has(String(id))) continue
-        pasosNuevos[id] = hecho
+        entradas[id] = hecho
           ? { completado_por_email: (auth.user.email || '').toLowerCase(), completado_por_nombre: nombre, completado_en: ahora }
           : null
       }
-      payload.pasos = pasosNuevos
+      if (Object.keys(entradas).length) nuevasEntradas = entradas
     }
 
+    // Upsert principal — pasos nunca va aquí; se funde atomicamente después vía RPC.
     const { data, error } = await supabaseAdmin
       .from('cierres_servicio')
       .upsert(payload, { onConflict: 'restaurante_id,fecha_servicio' })
@@ -95,6 +91,17 @@ export async function POST(req) {
       .single()
 
     if (error) throw error
+
+    // Fusión atómica de pasos: UPDATE SET pasos = pasos || $1 en una sola sentencia SQL.
+    if (nuevasEntradas) {
+      const { data: pasosMerged, error: pasosErr } = await supabaseAdmin.rpc('merge_cierre_pasos', {
+        p_restaurante_id: restauranteId,
+        p_fecha_servicio: payload.fecha_servicio,
+        p_pasos: nuevasEntradas,
+      })
+      if (!pasosErr && pasosMerged !== null) data.pasos = pasosMerged
+    }
+
     return Response.json({ cierre: data })
   } catch (error) {
     console.error('[cierres-servicio] guardar:', error)
