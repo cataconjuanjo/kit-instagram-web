@@ -1614,6 +1614,14 @@
   text-transform: uppercase;
 }
 
+.regionNameMl {
+  font-weight: 500;
+  font-size: 9px;
+  color: #8b8176;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .regionDo {
   margin: 4px 0 2px;
   color: #817970;

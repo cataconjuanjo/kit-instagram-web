@@ -1355,10 +1355,14 @@ export default function CartaPublica() {
         Number(a.precio_copa || 0) - Number(b.precio_copa || 0) ||
         String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es')
       )
+      const mlGrupo = sorted[0]?.copa_ml
       return (
         <div key={`copa-${tipo}`} className={styles.regionSubgroup}>
-          <p className={styles.regionName}>{i.tipoPlural[tipo]}</p>
-          {sorted.map(v => renderVinoCard(v, { precioCopaPrincipal: true, mostrarDo: true }))}
+          <p className={styles.regionName}>
+            {i.tipoPlural[tipo]}
+            {mlGrupo && <span className={styles.regionNameMl}> · {mlGrupo} ml</span>}
+          </p>
+          {sorted.map(v => renderVinoCard(v, { precioCopaPrincipal: true, mostrarDo: true, ocultarMl: true }))}
         </div>
       )
     })
@@ -1424,7 +1428,7 @@ export default function CartaPublica() {
                   <span className={styles.formattedPrice}>{precioCopaCarta(v.precio_copa)}</span>
                   <small aria-label={i.copa}><CopaIcon size={18} /></small>
                 </div>
-                {v.copa_ml && <p className={styles.copaVolume}>{v.copa_ml} ml</p>}
+                {v.copa_ml && !opciones.ocultarMl && <p className={styles.copaVolume}>{v.copa_ml} ml</p>}
                 {tieneBotella && (
                   <p className={styles.priceMeta} aria-label={`${precioBotellaCarta(v.precio_botella)} ${i.botella.toLowerCase()}`}>
                     {precioBotellaCarta(v.precio_botella)}{' / '}<BotellaIcon size={14} />
