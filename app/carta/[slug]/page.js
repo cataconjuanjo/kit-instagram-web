@@ -2241,6 +2241,18 @@ export default function CartaPublica() {
 
   const mostrarDockSeleccionPlatos = modoSommelier === 'platos' && platosSeleccionados.length > 0 && !respuesta
 
+  if (vista === 'sommelier' && restaurante?.modo_borrador) return (
+    <div className={`${styles.shell} ${claseTipografia}`}>
+      <div className={styles.borradorBar}>
+        <span>BORRADOR — VISTA PREVIA · Los cambios aún no están publicados</span>
+      </div>
+      <div className={styles.sommelierBorradorMsg}>
+        <p>El sumiller virtual no está disponible en la vista previa del borrador.</p>
+        <button type="button" onClick={() => setVista('carta')}>Ver carta</button>
+      </div>
+    </div>
+  )
+
   if (vista === 'sommelier') return (
     <div className={`${styles.shell} ${mostrarDockSeleccionPlatos ? styles.shellWithSelectionDock : ''} ${claseTipografia}`}>
       {restaurante?.modo_prueba && (
@@ -2251,17 +2263,6 @@ export default function CartaPublica() {
           error={previewAprobacion.error}
           onApprove={data => aprobarPreviewPublica('carta', data)}
         />
-      )}
-      {restaurante?.modo_borrador && (
-        <div className={styles.borradorBar}>
-          <span>BORRADOR — VISTA PREVIA · Los cambios aún no están publicados</span>
-        </div>
-      )}
-      {restaurante?.modo_borrador && (
-        <div className={styles.sommelierBorradorMsg}>
-          <p>El sumiller virtual no está disponible en la vista previa del borrador.</p>
-          <button type="button" onClick={() => setVista('carta')}>Ver carta</button>
-        </div>
       )}
       {demoPresentacion && (
         <div className={styles.demoPresentationBar}>
