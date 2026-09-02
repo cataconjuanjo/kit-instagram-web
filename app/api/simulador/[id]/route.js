@@ -2,6 +2,7 @@ import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 
 const CAMPOS_PRECIO = new Set(['precio_botella', 'precio_copa', 'coste_compra'])
+const CAMPOS_BOOL   = new Set(['ofrecido_por_copa'])
 const ESTADOS_VALIDOS = new Set(['actual', 'fuera'])
 
 // PATCH /api/simulador/:id
@@ -44,6 +45,12 @@ export async function PATCH(req, { params }) {
       if (body[campo] !== undefined) {
         const val = body[campo] === null ? null : parseFloat(body[campo])
         cambios[campo] = (val === null || isNaN(val) || val < 0) ? null : val
+      }
+    }
+
+    for (const campo of CAMPOS_BOOL) {
+      if (body[campo] !== undefined) {
+        cambios[campo] = body[campo] === null ? null : Boolean(body[campo])
       }
     }
 

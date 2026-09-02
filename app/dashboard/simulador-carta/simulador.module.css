@@ -995,6 +995,129 @@
   white-space: nowrap;
 }
 
+/* ── Columnas de precio sugerido del catálogo (solo lectura) ─────── */
+
+.thSugerido {
+  font-style: italic;
+  opacity: 0.65;
+}
+
+.tdSugerido {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--cv-text-muted);
+  font-size: 11px;
+  font-style: italic;
+}
+
+@media (max-width: 820px) {
+  .tdSugerido { display: none; }
+}
+
+/* ── Pill "¿Por copa?" — decisión pendiente ──────────────────────── */
+
+.tdPorCopaPill {
+  display: inline-block;
+  padding: 2px 9px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--cv-gold);
+  border: 1px solid var(--cv-gold);
+  border-radius: 999px;
+  background: rgba(201, 162, 75, 0.08);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+.tdPorCopaPill:hover:not(:disabled) { background: rgba(201, 162, 75, 0.2); }
+.tdPorCopaPill:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── "No por copa" — celda con decisión tomada (false) ───────────── */
+
+.tdNoSirve {
+  text-align: right;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--cv-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tdNoSirve:hover { color: var(--cv-wine); }
+
+/* ── Modal de decisión de copa ───────────────────────────────────── */
+
+.copaDecisionBtns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.copaDecisionSugerido {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid #e0d4bc;
+  border-radius: 6px;
+  background: rgba(201, 162, 75, 0.07);
+  margin-bottom: 12px;
+}
+
+.copaDecisionSugeridoLabel {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+}
+
+.copaDecisionSugeridoPrecio {
+  font-size: 15px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: #171416;
+}
+
+.copaDecisionOr {
+  text-align: center;
+  font-size: 10px;
+  color: var(--cv-text-muted);
+  margin: 10px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.copaDecisionManualRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.copaDecisionInput {
+  width: 90px;
+  font-size: 13px;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  padding: 6px 10px;
+  border: 1px solid #e0d4bc;
+  border-radius: 6px;
+  background: #fffaf3;
+  color: #171416;
+  outline: none;
+  text-align: right;
+}
+.copaDecisionInput:focus { border-color: var(--cv-gold); box-shadow: none; outline: none; }
+
+.copaDecisionInputUnit {
+  font-size: 12px;
+  color: var(--cv-text-muted);
+}
+
+.copaDecisionVolver {
+  margin-top: 14px;
+}
+
 /* ── Cabeceras ordenables ────────────────────────────────────────── */
 
 .thSortable {

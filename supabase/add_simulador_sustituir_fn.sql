@@ -20,18 +20,20 @@
 -- actualice su estado local sin necesidad de un GET de recarga.
 
 CREATE OR REPLACE FUNCTION sustituir_vino_simulacion(
-  p_restaurante_id   uuid,
-  p_linea_fuera_id   uuid,
-  p_catalogo_vino_id uuid,
-  p_nombre           text,
-  p_bodega           text    DEFAULT NULL,
-  p_tipo             text    DEFAULT NULL,
-  p_region           text    DEFAULT NULL,
-  p_anada            text    DEFAULT NULL,
-  p_formato          text    DEFAULT NULL,
-  p_precio_botella   numeric DEFAULT NULL,
-  p_precio_copa      numeric DEFAULT NULL,
-  p_coste_compra     numeric DEFAULT NULL
+  p_restaurante_id              uuid,
+  p_linea_fuera_id              uuid,
+  p_catalogo_vino_id            uuid,
+  p_nombre                      text,
+  p_bodega                      text    DEFAULT NULL,
+  p_tipo                        text    DEFAULT NULL,
+  p_region                      text    DEFAULT NULL,
+  p_anada                       text    DEFAULT NULL,
+  p_formato                     text    DEFAULT NULL,
+  p_precio_botella              numeric DEFAULT NULL,
+  p_precio_copa                 numeric DEFAULT NULL,
+  p_coste_compra                numeric DEFAULT NULL,
+  p_pvp_recomendado_catalogo    numeric DEFAULT NULL,
+  p_pvp_copa_catalogo           numeric DEFAULT NULL
 )
 RETURNS carta_simulacion
 LANGUAGE plpgsql
@@ -52,16 +54,19 @@ BEGIN
     RAISE EXCEPTION 'Línea no encontrada o ya no está en estado actual (id: %)', p_linea_fuera_id;
   END IF;
 
-  -- 2. Insertar el vino sustituto con estado 'nuevo' y sustituye_a vinculado
+  -- 2. Insertar el vino sustituto con estado 'nuevo' y sustituye_a vinculado.
+  --    precio_copa queda NULL (ofrecido_por_copa = NULL = pendiente de decidir).
   INSERT INTO carta_simulacion (
     restaurante_id, catalogo_vino_id, sustituye_a,
     nombre, bodega, tipo, region, anada, formato,
     precio_botella, precio_copa, coste_compra,
+    pvp_recomendado_catalogo, pvp_copa_catalogo,
     estado
   ) VALUES (
     p_restaurante_id, p_catalogo_vino_id, p_linea_fuera_id,
     p_nombre, p_bodega, p_tipo, p_region, p_anada, p_formato,
     p_precio_botella, p_precio_copa, p_coste_compra,
+    p_pvp_recomendado_catalogo, p_pvp_copa_catalogo,
     'nuevo'
   )
   RETURNING * INTO v_nueva;

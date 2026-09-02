@@ -102,6 +102,9 @@ export default function SimuladorCarta() {
   const [mostrarHistorial, setMostrarHistorial] = useState(false)
   const [historial, setHistorial] = useState(null)  // null=no cargado, []=vacío
   const [restaurandoHistorial, setRestaurandoHistorial] = useState(null)
+  const [copaDecision, setCopaDecision] = useState(null)  // null | { linea, step: 1|2 }
+  const [copaPrecioManual, setCopaPrecioManual] = useState('')
+  const [guardandoCopa, setGuardandoCopa] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -427,6 +430,31 @@ export default function SimuladorCarta() {
       setErrorMsg('No se pudo eliminar la referencia')
     }
     setGuardando('')
+  }
+
+  // ── Decisión de venta por copa ────────────────────────────────────
+  async function handleCopaDecision(decision, precio) {
+    if (!copaDecision) return
+    const { linea } = copaDecision
+    setGuardandoCopa(true)
+    const cambios = { ofrecido_por_copa: decision }
+    if (decision === true) {
+      const val = parseFloat(String(precio).replace(',', '.'))
+      cambios.precio_copa = (!isNaN(val) && val > 0) ? val : null
+    } else {
+      cambios.precio_copa = null
+    }
+    setLineas(prev => prev.map(l => l.id === linea.id ? { ...l, ...cambios } : l))
+    setCopaDecision(null)
+    setCopaPrecioManual('')
+    const res = await patchLinea(linea.id, cambios)
+    if (!res.ok) {
+      setLineas(prev => prev.map(l => l.id === linea.id
+        ? { ...l, ofrecido_por_copa: linea.ofrecido_por_copa, precio_copa: linea.precio_copa }
+        : l))
+      setErrorMsg('No se pudo guardar la decisión de copa')
+    }
+    setGuardandoCopa(false)
   }
 
   // ── Abrir modal "Añadir del catálogo" ─────────────────────────────
@@ -1012,7 +1040,9 @@ export default function SimuladorCarta() {
                   <th className={simStyles.thSortable} onClick={() => toggleOrden('region')}>D.O. / Zona{icono('region')}</th>
                   <th>Añada</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_botella')}>PVP bot. €{icono('precio_botella')}</th>
+                  <th className={`${simStyles.thNum} ${simStyles.thSugerido}`} title="Precio botella sugerido por el catálogo">Bot. sug.</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_copa')}>PVP copa €{icono('precio_copa')}</th>
+                  <th className={`${simStyles.thNum} ${simStyles.thSugerido}`} title="Precio copa sugerido por el catálogo">Copa sug.</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('coste_compra')}>Coste €{icono('coste_compra')}</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen')}>Mrg. %{icono('margen')}</th>
                   <th className={simStyles.thEstado}>Estado</th>
@@ -1065,35 +1095,97 @@ export default function SimuladorCarta() {
                       <td className={simStyles.tdZona}>{linea.region || '—'}</td>
                       <td className={simStyles.tdAnada}>{linea.anada || '—'}</td>
 
-                      {/* Precios editables inline */}
-                      {['precio_botella', 'precio_copa', 'coste_compra'].map(campo => {
+                      {/* PVP bot. € — editable */}
+                      {(() => {
+                        const campo = 'precio_botella'
                         const editando = inlineEdit?.id === linea.id && inlineEdit?.campo === campo
                         return (
-                          <td
-                            key={campo}
-                            className={`${simStyles.tdNum} ${simStyles.tdEditable} ${campo === 'precio_botella' ? simStyles.tdPrecioBot : campo === 'precio_copa' ? simStyles.tdPrecioCopa : simStyles.tdCoste}`}
-                            title="Pulsa para editar"
-                            onClick={() => !editando && !isBlocked && startInline(linea, campo)}
-                          >
+                          <td className={`${simStyles.tdNum} ${simStyles.tdEditable} ${simStyles.tdPrecioBot}`}
+                              title="Pulsa para editar"
+                              onClick={() => !editando && !isBlocked && startInline(linea, campo)}>
                             {editando ? (
-                              <input
-                                autoFocus
-                                className={simStyles.inlineInput}
-                                type="number"
-                                min="0"
-                                step="0.5"
+                              <input autoFocus className={simStyles.inlineInput} type="number" min="0" step="0.5"
                                 value={inlineEdit.valor}
                                 onChange={e => setInlineEdit({ ...inlineEdit, valor: e.target.value })}
                                 onBlur={saveInline}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') { e.preventDefault(); saveInline() }
-                                  if (e.key === 'Escape') setInlineEdit(null)
-                                }}
+                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveInline() } if (e.key === 'Escape') setInlineEdit(null) }}
                               />
                             ) : eur(linea[campo])}
                           </td>
                         )
-                      })}
+                      })()}
+
+                      {/* Bot. sug. — referencia del catálogo, solo lectura */}
+                      <td className={simStyles.tdSugerido}>
+                        {linea.pvp_recomendado_catalogo ? eur(linea.pvp_recomendado_catalogo) : '—'}
+                      </td>
+
+                      {/* PVP copa € — comportamiento condicional según ofrecido_por_copa */}
+                      {(() => {
+                        const pendiente = linea.ofrecido_por_copa === null && !!linea.catalogo_vino_id && !linea.precio_copa
+                        const noSirve   = linea.ofrecido_por_copa === false
+                        if (pendiente) {
+                          return (
+                            <td className={simStyles.tdNum}>
+                              <button type="button" className={simStyles.tdPorCopaPill}
+                                      disabled={isBlocked}
+                                      onClick={() => setCopaDecision({ linea, step: 1 })}>
+                                ¿Por copa?
+                              </button>
+                            </td>
+                          )
+                        }
+                        if (noSirve) {
+                          return (
+                            <td className={`${simStyles.tdNum} ${simStyles.tdNoSirve}`}
+                                title="Pulsa para cambiar la decisión"
+                                onClick={() => !isBlocked && setCopaDecision({ linea, step: 1 })}>
+                              No por copa
+                            </td>
+                          )
+                        }
+                        const campo = 'precio_copa'
+                        const editando = inlineEdit?.id === linea.id && inlineEdit?.campo === campo
+                        return (
+                          <td className={`${simStyles.tdNum} ${simStyles.tdEditable} ${simStyles.tdPrecioCopa}`}
+                              title="Pulsa para editar"
+                              onClick={() => !editando && !isBlocked && startInline(linea, campo)}>
+                            {editando ? (
+                              <input autoFocus className={simStyles.inlineInput} type="number" min="0" step="0.5"
+                                value={inlineEdit.valor}
+                                onChange={e => setInlineEdit({ ...inlineEdit, valor: e.target.value })}
+                                onBlur={saveInline}
+                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveInline() } if (e.key === 'Escape') setInlineEdit(null) }}
+                              />
+                            ) : eur(linea[campo])}
+                          </td>
+                        )
+                      })()}
+
+                      {/* Copa sug. — referencia del catálogo, solo lectura */}
+                      <td className={simStyles.tdSugerido}>
+                        {linea.pvp_copa_catalogo ? eur(linea.pvp_copa_catalogo) : '—'}
+                      </td>
+
+                      {/* Coste € — editable */}
+                      {(() => {
+                        const campo = 'coste_compra'
+                        const editando = inlineEdit?.id === linea.id && inlineEdit?.campo === campo
+                        return (
+                          <td className={`${simStyles.tdNum} ${simStyles.tdEditable} ${simStyles.tdCoste}`}
+                              title="Pulsa para editar"
+                              onClick={() => !editando && !isBlocked && startInline(linea, campo)}>
+                            {editando ? (
+                              <input autoFocus className={simStyles.inlineInput} type="number" min="0" step="0.5"
+                                value={inlineEdit.valor}
+                                onChange={e => setInlineEdit({ ...inlineEdit, valor: e.target.value })}
+                                onBlur={saveInline}
+                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveInline() } if (e.key === 'Escape') setInlineEdit(null) }}
+                              />
+                            ) : eur(linea[campo])}
+                          </td>
+                        )
+                      })()}
 
                       {/* Margen calculado */}
                       <td className={`${simStyles.tdNum} ${simStyles.tdMrg}`}>
@@ -1679,6 +1771,99 @@ export default function SimuladorCarta() {
           >
             Imprimir / guardar PDF
           </button>
+        </ResponsiveOverlay>
+
+        {/* ── Modal: decisión de venta por copa ───────────────── */}
+        <ResponsiveOverlay
+          open={!!copaDecision}
+          onClose={() => { setCopaDecision(null); setCopaPrecioManual('') }}
+          size="modal"
+          eyebrow="Simulador"
+          title={copaDecision?.step === 1 ? '¿Vender por copa?' : 'Precio por copa'}
+          description={copaDecision?.linea?.nombre}
+        >
+          {copaDecision?.step === 1 && (
+            <div className={simStyles.copaDecisionBtns}>
+              <button
+                type="button"
+                className={`${simStyles.accionBtn} ${simStyles.accionBtnDanger}`}
+                disabled={guardandoCopa}
+                onClick={() => handleCopaDecision(false, null)}
+              >
+                No, no se sirve por copa
+              </button>
+              <button
+                type="button"
+                className={styles.primary}
+                disabled={guardandoCopa}
+                onClick={() => setCopaDecision(prev => ({ ...prev, step: 2 }))}
+              >
+                Sí, vendo por copa →
+              </button>
+            </div>
+          )}
+
+          {copaDecision?.step === 2 && (
+            <>
+              {Number(copaDecision.linea.pvp_copa_catalogo) > 0 && (
+                <>
+                  <div className={simStyles.copaDecisionSugerido}>
+                    <span className={simStyles.copaDecisionSugeridoLabel}>Precio sugerido del catálogo</span>
+                    <span className={simStyles.copaDecisionSugeridoPrecio}>{eur(copaDecision.linea.pvp_copa_catalogo)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.primary}
+                    style={{ width: '100%', marginBottom: 10 }}
+                    disabled={guardandoCopa}
+                    onClick={() => handleCopaDecision(true, copaDecision.linea.pvp_copa_catalogo)}
+                  >
+                    Usar sugerido ({eur(copaDecision.linea.pvp_copa_catalogo)})
+                  </button>
+                  <p className={simStyles.copaDecisionOr}>— o introduce un precio manual —</p>
+                </>
+              )}
+              <div className={simStyles.copaDecisionManualRow}>
+                <input
+                  autoFocus
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  className={simStyles.copaDecisionInput}
+                  placeholder="0.00"
+                  value={copaPrecioManual}
+                  onChange={e => setCopaPrecioManual(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const v = parseFloat(String(copaPrecioManual).replace(',', '.'))
+                      if (!isNaN(v) && v > 0) handleCopaDecision(true, v)
+                    }
+                  }}
+                />
+                <span className={simStyles.copaDecisionInputUnit}>€ / copa</span>
+                <button
+                  type="button"
+                  className={styles.primary}
+                  disabled={guardandoCopa || !copaPrecioManual || parseFloat(copaPrecioManual) <= 0}
+                  onClick={() => {
+                    const v = parseFloat(String(copaPrecioManual).replace(',', '.'))
+                    if (!isNaN(v) && v > 0) handleCopaDecision(true, v)
+                  }}
+                >
+                  {guardandoCopa ? 'Guardando…' : 'Confirmar'}
+                </button>
+              </div>
+              <div className={simStyles.copaDecisionVolver}>
+                <button
+                  type="button"
+                  className={simStyles.accionBtn}
+                  onClick={() => setCopaDecision(prev => ({ ...prev, step: 1 }))}
+                >
+                  ← Volver
+                </button>
+              </div>
+            </>
+          )}
         </ResponsiveOverlay>
 
         {/* ── Diálogo de confirmación: quitar en lote ──────── */}

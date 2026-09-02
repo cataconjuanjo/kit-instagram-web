@@ -104,6 +104,9 @@ export async function POST(req) {
     const pvpCopa = pvpCopaDesdeBottella(pvpBotella)
 
     // ── Insertar línea nueva con estado 'nuevo' ───────────────────────────
+    // precio_copa queda NULL — el restaurante decide por copa mediante el flujo
+    // de decisión (ofrecido_por_copa). Los snapshots del catálogo se guardan
+    // en pvp_recomendado_catalogo y pvp_copa_catalogo como referencia inmutable.
     const { data: nuevaLinea, error: insertError } = await supabaseAdmin
       .from('carta_simulacion')
       .insert({
@@ -116,8 +119,10 @@ export async function POST(req) {
         anada: catalogVino.anada || null,
         formato: catalogVino.formato || null,
         precio_botella: pvpBotella || null,
-        precio_copa: pvpCopa || null,
+        precio_copa: null,
         coste_compra: coste || null,
+        pvp_recomendado_catalogo: pvpBotella || null,
+        pvp_copa_catalogo: pvpCopa || null,
         estado: 'nuevo',
         sustituye_a: sustituye_a || null,
         origen: origen || null,

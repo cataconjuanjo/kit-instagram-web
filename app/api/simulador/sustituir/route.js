@@ -63,22 +63,26 @@ export async function POST(req) {
     const pvpBotella  = calc?.botella || 0
     const pvpCopa     = pvpCopaDesdeBottella(pvpBotella)
 
-    // Llamada atómica: UPDATE 'fuera' + INSERT 'nuevo' en una sola transacción
+    // Llamada atómica: UPDATE 'fuera' + INSERT 'nuevo' en una sola transacción.
+    // precio_copa = NULL: el restaurante decide por copa mediante el flujo de decisión.
+    // Los snapshots se guardan en pvp_recomendado_catalogo / pvp_copa_catalogo.
     const { data: nuevaLinea, error: rpcError } = await supabaseAdmin.rpc(
       'sustituir_vino_simulacion',
       {
-        p_restaurante_id:   restauranteId,
-        p_linea_fuera_id:   lineaFueraId,
-        p_catalogo_vino_id: catalogoVinoId,
-        p_nombre:           catalogVino.nombre,
-        p_bodega:           catalogVino.bodega           || null,
-        p_tipo:             catalogVino.tipo             || null,
-        p_region:           catalogVino.region           || null,
-        p_anada:            catalogVino.anada            || null,
-        p_formato:          catalogVino.formato          || null,
-        p_precio_botella:   pvpBotella                   || null,
-        p_precio_copa:      pvpCopa                      || null,
-        p_coste_compra:     coste                        || null,
+        p_restaurante_id:           restauranteId,
+        p_linea_fuera_id:           lineaFueraId,
+        p_catalogo_vino_id:         catalogoVinoId,
+        p_nombre:                   catalogVino.nombre,
+        p_bodega:                   catalogVino.bodega   || null,
+        p_tipo:                     catalogVino.tipo     || null,
+        p_region:                   catalogVino.region   || null,
+        p_anada:                    catalogVino.anada    || null,
+        p_formato:                  catalogVino.formato  || null,
+        p_precio_botella:           pvpBotella           || null,
+        p_precio_copa:              null,
+        p_coste_compra:             coste                || null,
+        p_pvp_recomendado_catalogo: pvpBotella           || null,
+        p_pvp_copa_catalogo:        pvpCopa              || null,
       }
     )
 
@@ -99,7 +103,14 @@ export async function POST(req) {
       throw rpcError
     }
 
-    return Response.json({ linea: origen ? { ...nuevaLinea, origen } : nuevaLinea })
+    // Fusionar campos calculados en la respuesta (el RPC devuelve la fila tal cual fue insertada)
+    const lineaFinal = {
+      ...nuevaLinea,
+      pvp_recomendado_catalogo: pvpBotella || null,
+      pvp_copa_catalogo: pvpCopa || null,
+      ...(origen ? { origen } : {}),
+    }
+    return Response.json({ linea: lineaFinal })
   } catch (err) {
     console.error('[simulador/sustituir POST]', err)
     return Response.json({ error: 'No se pudo realizar la sustitución.' }, { status: 500 })
