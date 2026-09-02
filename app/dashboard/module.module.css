@@ -6284,25 +6284,6 @@ button.itemCard {
   margin-bottom: 12px;
 }
 
-@media (max-width: 640px) {
-  .kanbanTabBar {
-    display: flex;
-  }
-
-  .execActionGrid {
-    display: contents;
-  }
-
-  .execActionColumn[aria-hidden="true"] {
-    display: none;
-  }
-
-  .execActionColumn {
-    display: grid;
-    gap: 10px;
-  }
-}
-
 .kanbanTabBtn {
   flex: 1;
   padding: 8px 10px;
