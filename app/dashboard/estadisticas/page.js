@@ -1797,6 +1797,13 @@ export default function Estadisticas() {
         </div>
       </section>
 
+      <details className={styles.activityAccordion}>
+        <summary>
+          Resumen
+          <span className={styles.accordionMeta}>Lectura ejecutiva · Armonía</span>
+        </summary>
+        <div className={styles.activityAccordionBody}>
+
       <section className={styles.analyticsFocusPanel}>
         <div className={styles.panelHead}>
           <div>
@@ -1924,6 +1931,9 @@ export default function Estadisticas() {
         </div>
       </section>
 
+        </div>
+      </details>
+
       <details className={styles.activityAccordion} open>
         <summary>
           Plan ejecutivo
@@ -1946,7 +1956,7 @@ export default function Estadisticas() {
           </div>
           <div className={styles.execActionGrid}>
             {columnasFase6.map(columna => (
-              <section className={styles.execActionColumn} key={columna.id} aria-hidden={kanbanTabActiva !== columna.id || undefined}>
+              <section className={styles.execActionColumn} key={columna.id} data-kanban-active={kanbanTabActiva === columna.id ? 'true' : 'false'}>
                 <h3 className={styles.execActionColumnTitle}>{columna.titulo}</h3>
                 {columna.items.length ? (
                   columna.items.map(item => (
@@ -1967,10 +1977,23 @@ export default function Estadisticas() {
 
       <details className={styles.activityAccordion}>
         <summary>
-          Semáforo de fiabilidad
+          Fiabilidad del dato
           <span className={styles.accordionMeta}>{fiabilidadGlobal.estado}{fiabilidadConBase.length ? ` · ${fiabilidadGlobalPct}%` : ''}</span>
         </summary>
         <div className={styles.activityAccordionBody}>
+
+      <section className={styles.panel} style={{ marginBottom: 16 }}>
+        <div className={styles.panelHead}>
+          <div>
+            <h2 className={styles.panelTitle}>Semáforo de fiabilidad</h2>
+            <p className={styles.panelSub}>Indica si el dato ya sirve para decidir precio, sala, compras o carta sin maquillar la rentabilidad.</p>
+          </div>
+          <span className={`${styles.trafficBadge} ${styles[fiabilidadGlobal.clase]}`}>
+            <span className={styles.trafficDot} />
+            {fiabilidadGlobal.estado} {fiabilidadConBase.length ? `${fiabilidadGlobalPct}%` : ''}
+          </span>
+        </div>
+        <div className={styles.panelBody}>
           <section className={styles.statsGrid} style={{ marginBottom: 14 }}>
             {fiabilidadDecisiones.map(item => (
               <div className={styles.stat} key={`fiabilidad-stat-${item.area}`}>
@@ -2062,15 +2085,18 @@ export default function Estadisticas() {
             </div>
           </section>
         </div>
-      </details>
+      </section>
 
       {ganadoEsteMes.length > 0 && (
-        <details className={styles.activityAccordion}>
-          <summary>
-            Ganado este mes
-            <span className={styles.accordionMeta}>{ganadoEsteMes.length} avances</span>
-          </summary>
-          <div className={styles.activityAccordionBody}>
+        <section className={styles.panel} style={{ marginBottom: 16 }}>
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>Ganado este mes</h2>
+              <p className={styles.panelSub}>Valor ya capturado por ventas KPI, TPV atribuido y maridajes que funcionan en el periodo seleccionado.</p>
+            </div>
+            <span className={styles.badge}>{ganadoEsteMes.length} avances</span>
+          </div>
+          <div className={styles.panelBody}>
             <section className={styles.statsGrid} style={{ marginBottom: 14 }}>
               <StatCard
                 value={beneficioBrutoAtribuido ? eur(beneficioBrutoAtribuido) : '-'}
@@ -2113,16 +2139,19 @@ export default function Estadisticas() {
               ))}
             </div>
           </div>
-        </details>
+        </section>
       )}
 
       {(perdidoPendiente.length > 0 || valorRecuperablePendiente > 0 || importeTpvNoAtribuido > 0) && (
-        <details className={styles.activityAccordion}>
-          <summary>
-            Perdido o pendiente
-            <span className={styles.accordionMeta}>{perdidoPendiente.length} focos</span>
-          </summary>
-          <div className={styles.activityAccordionBody}>
+        <section className={styles.panel} style={{ marginBottom: 16 }}>
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>Perdido o pendiente</h2>
+              <p className={styles.panelSub}>Dinero recuperable, valor sin atribuir y datos que bloquean decisiones economicas.</p>
+            </div>
+            <span className={styles.badge}>{perdidoPendiente.length} focos</span>
+          </div>
+          <div className={styles.panelBody}>
             <section className={styles.statsGrid} style={{ marginBottom: 14 }}>
               <StatCard
                 value={valorRecuperablePendiente ? eur(valorRecuperablePendiente) : '-'}
@@ -2165,8 +2194,18 @@ export default function Estadisticas() {
               ))}
             </div>
           </div>
-        </details>
+        </section>
       )}
+
+        </div>
+      </details>
+
+      <details className={styles.activityAccordion}>
+        <summary>
+          Actividad detallada
+          <span className={styles.accordionMeta}>{statsFiltradas.length} registros</span>
+        </summary>
+        <div className={styles.activityAccordionBody}>
 
       {(ventasTPV > 0 || ventasSalaOmitidas > 0) && (
         <section className={styles.panel} style={{ marginBottom: 16 }}>
@@ -2778,6 +2817,9 @@ export default function Estadisticas() {
           </section>
         )
       })()}
+        </div>
+      </details>
+
       <ResponsiveOverlay
         open={vinoDetalleNombre !== null}
         onClose={() => setVinoDetalleNombre(null)}
