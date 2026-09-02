@@ -1405,19 +1405,19 @@ export default function CartaPublica() {
               <>
                 <div className={styles.mainPrice}>
                   <span className={styles.formattedPrice}>{precioCopaCarta(v.precio_copa)}</span>
-                  <small aria-label={i.copa}><CopaIcon /></small>
+                  <small aria-label={i.copa}><CopaIcon size={18} /></small>
                 </div>
                 {v.copa_ml && <p className={styles.copaVolume}>{v.copa_ml} ml</p>}
                 {tieneBotella && (
                   <p className={styles.priceMeta} aria-label={`${precioBotellaCarta(v.precio_botella)} ${i.botella.toLowerCase()}`}>
-                    {precioBotellaCarta(v.precio_botella)}{' / '}<BotellaIcon size={9} />
+                    {precioBotellaCarta(v.precio_botella)}{' / '}<BotellaIcon size={14} />
                   </p>
                 )}
               </>
             ) : tieneBotella ? (
               <div className={styles.mainPrice}>
                 <span className={styles.formattedPrice}>{precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</span>
-                <small aria-label={i.botella}><BotellaIcon /></small>
+                <small aria-label={i.botella}><BotellaIcon size={18} /></small>
               </div>
             ) : null}
           </div>
@@ -1477,10 +1477,10 @@ export default function CartaPublica() {
           {(tieneBotella || tieneCopa) && (
             <div className={styles.labelPriceRow}>
               {tieneCopa && <strong>{precioCopaCarta(v.precio_copa)}</strong>}
-              {tieneCopa && <span>/ {etiquetaCopaMin}</span>}
+              {tieneCopa && <span>/ <CopaIcon size={14} />{v.copa_ml ? ` · ${v.copa_ml} ml` : ''}</span>}
               {tieneCopa && tieneBotella && <span>·</span>}
               {tieneBotella && <strong>{precioBotellaCarta(v.precio_botella)}</strong>}
-              {tieneBotella && <span>/ {i.botella.toLowerCase()}</span>}
+              {tieneBotella && <span>/ <BotellaIcon size={14} /></span>}
             </div>
           )}
           <button
@@ -2025,7 +2025,7 @@ export default function CartaPublica() {
                   return [
                     mostrarRotulos && (
                       <div key={`head-${tipo}`} className={styles.labelTypeHead} style={idx > 0 ? { marginTop: 8 } : undefined}>
-                        <i style={{ background: tipoDot[tipo] || colorPrimario }} />
+                        <RacimoIcon color={tipoDot[tipo] || colorPrimario} size={14} />
                         <span>{i.tipoPlural[tipo]}</span>
                         <div />
                       </div>

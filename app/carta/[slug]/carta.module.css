@@ -719,6 +719,7 @@
 }
 
 .wineCard {
+  --racimo-w: 14px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(96px, auto);
   gap: 14px;
@@ -854,7 +855,7 @@
 }
 
 .wineSecondary {
-  margin: 4px 0 0 16px;
+  margin: 4px 0 0 calc(var(--racimo-w) + 8px);
   color: #766e64;
   font-size: 13px;
   font-weight: 400;
@@ -1078,11 +1079,7 @@
   gap: 8px;
 }
 
-.labelTypeHead i {
-  display: block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+.labelTypeHead svg {
   flex-shrink: 0;
 }
 
@@ -1194,7 +1191,7 @@
 
 .labelPriceRow {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
   gap: 5px;
 }
