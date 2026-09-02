@@ -149,5 +149,5 @@ export function generarSugerencias(lineas, catalogo, platos) {
     coverageMap.delete(bestId)
   }
 
-  return { anadir: sugsAnadir, sustituir: [] }
+  return { anadir: sugsAnadir, sustituir: [], platosObjetivo: targetPlatos.length, nivelDos: isSecondLevel }
 }

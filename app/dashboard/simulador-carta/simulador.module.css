@@ -75,6 +75,9 @@
   min-width: 72px;
 }
 
+/* .table th { text-align: left } has specificity 0,1,1 which beats .thNum 0,1,0 — override explicitly */
+.table th.thNum { text-align: right; }
+
 .thEstado,
 .tdEstado { text-align: center; width: 76px; }
 .thAccion,
@@ -764,6 +767,17 @@
   color: var(--cv-wine);
 }
 
+.sugerenciasNota {
+  font-size: 11px;
+  color: var(--cv-text-muted);
+  line-height: 1.5;
+  margin: -4px 0 10px;
+  padding: 7px 10px;
+  background: rgba(201, 162, 75, 0.06);
+  border-left: 2px solid var(--cv-gold);
+  border-radius: 0 4px 4px 0;
+}
+
 /* Fila de sugerencia (label = clickable) */
 .sugerenciaItem {
   display: grid;
@@ -1189,7 +1203,7 @@
 
 .statCardClickable {
   cursor: pointer;
-  border-radius: 10px;
+  border-radius: 8px;
   transition: box-shadow 0.12s, transform 0.1s;
 }
 

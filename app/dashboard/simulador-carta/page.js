@@ -256,9 +256,9 @@ export default function SimuladorCarta() {
       base = [...base].sort((a, b) => {
         const dir = ordenTabla.dir === 'asc' ? 1 : -1
         const k = ordenTabla.key
-        if (k === 'precio_botella' || k === 'margen') {
-          const va = k === 'margen' ? margenBotella(a.precio_botella, a.coste_compra) ?? -1 : Number(a.precio_botella) || 0
-          const vb = k === 'margen' ? margenBotella(b.precio_botella, b.coste_compra) ?? -1 : Number(b.precio_botella) || 0
+        if (k === 'precio_botella' || k === 'precio_copa' || k === 'coste_compra' || k === 'margen') {
+          const va = k === 'margen' ? margenBotella(a.precio_botella, a.coste_compra) ?? -1 : Number(a[k]) || 0
+          const vb = k === 'margen' ? margenBotella(b.precio_botella, b.coste_compra) ?? -1 : Number(b[k]) || 0
           return (va - vb) * dir
         }
         return String(a[k] || '').localeCompare(String(b[k] || ''), 'es', { sensitivity: 'base' }) * dir
@@ -747,7 +747,7 @@ export default function SimuladorCarta() {
                 className={simStyles.accionBtn}
                 onClick={() => setMostrarBriefing(true)}
               >
-                Briefing de sala
+                Vista previa para sala
               </button>
             )}
             {lineas.some(l => l.origen?.startsWith('sugerido')) && (
@@ -1012,8 +1012,8 @@ export default function SimuladorCarta() {
                   <th className={simStyles.thSortable} onClick={() => toggleOrden('region')}>D.O. / Zona{icono('region')}</th>
                   <th>Añada</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_botella')}>PVP bot. €{icono('precio_botella')}</th>
-                  <th className={simStyles.thNum}>PVP copa €</th>
-                  <th className={simStyles.thNum}>Coste €</th>
+                  <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_copa')}>PVP copa €{icono('precio_copa')}</th>
+                  <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('coste_compra')}>Coste €{icono('coste_compra')}</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen')}>Mrg. %{icono('margen')}</th>
                   <th className={simStyles.thEstado}>Estado</th>
                   <th className={simStyles.thAccionWide}>Acción</th>
@@ -1527,6 +1527,15 @@ export default function SimuladorCarta() {
                   <p className={simStyles.sugerenciasEyebrow}>
                     Añadir al borrador ({sugerencias.anadir.length})
                   </p>
+                  {sugerencias.anadir.length <= 2 && sugerencias.platosObjetivo !== undefined && (
+                    <p className={simStyles.sugerenciasNota}>
+                      {sugerencias.nivelDos
+                        ? `Todos tus platos tienen algún vino. ${sugerencias.anadir.length === 1 ? 'Esta sugerencia amplía' : 'Estas sugerencias amplían'} la cobertura de ${sugerencias.platosObjetivo} plato${sugerencias.platosObjetivo !== 1 ? 's' : ''} con poca oferta.`
+                        : sugerencias.platosObjetivo === 1
+                          ? 'Solo hay 1 plato sin vino asignado en tu menú — de ahí la sugerencia mínima. Añade más platos para obtener más candidatos.'
+                          : `${sugerencias.platosObjetivo} platos sin vino asignado cubiertos con ${sugerencias.anadir.length === 1 ? '1 referencia' : `${sugerencias.anadir.length} referencias`}. Añade más platos para obtener más candidatos.`}
+                    </p>
+                  )}
                   {sugerencias.anadir.map(s => (
                     <label key={s.key} className={simStyles.sugerenciaItem}>
                       <input
@@ -1612,7 +1621,7 @@ export default function SimuladorCarta() {
           open={mostrarBriefing}
           onClose={() => setMostrarBriefing(false)}
           size="modal"
-          eyebrow="Sala"
+          eyebrow="Borrador"
           title="Briefing para sala"
           description="Cambios pendientes de publicar — para briefing antes de servicio."
         >
