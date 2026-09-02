@@ -304,6 +304,8 @@ export default function Estadisticas() {
   const [servicio, setServicio] = useState('todos')
   const [mensajeInforme, setMensajeInforme] = useState('')
   const [esAdmin, setEsAdmin] = useState(false)
+  const [paginaActividad, setPaginaActividad] = useState(1)
+  const [mostrarSinBase, setMostrarSinBase] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -346,6 +348,10 @@ export default function Estadisticas() {
     }
     cargar()
   }, [])
+
+  useEffect(() => {
+    setPaginaActividad(1)
+  }, [fechaInicio, fechaFin, servicio])
 
   if (loading) return <LoadingState />
   if (!restaurante) return (
@@ -1252,6 +1258,7 @@ export default function Estadisticas() {
     nivel: nivelFiabilidad(item.pct, item.base),
   }))
   const fiabilidadConBase = fiabilidadIndicadores.filter(item => item.base > 0)
+  const fiabilidadSinBase = fiabilidadIndicadores.filter(item => item.base === 0)
   const fiabilidadGlobalPct = fiabilidadConBase.length
     ? Math.round(fiabilidadConBase.reduce((sum, item) => sum + item.pct, 0) / fiabilidadConBase.length)
     : 0
@@ -1413,8 +1420,10 @@ export default function Estadisticas() {
     ...aprendizajeComercial.slice(0, 3).map(item => ({
       grupo: item.tipo === 'Recomendacion que convierte' ? 'moverAhora' : 'estaSemana',
       area: 'TPV',
-      titulo: item.tipo,
-      texto: `${item.vino}: ${item.accion}`,
+      titulo: item.recomendaciones >= 1
+        ? `${item.tipo} — ${item.vino} (${item.recomendaciones} rec.)`
+        : `${item.tipo} — ${item.vino}`,
+      texto: item.accion,
       href: '/dashboard/estadisticas',
       prioridad: 70 + (item.prioridad || 0),
     })),
@@ -1982,9 +1991,20 @@ export default function Estadisticas() {
                   <h3 className={styles.sectionTitle}>Cobertura del dato</h3>
                   <p className={styles.sectionText}>Los huecos que mas cambian margen, atribucion, sala y compras.</p>
                 </div>
+                {fiabilidadSinBase.length > 0 && (
+                  <button
+                    type="button"
+                    className={styles.ghost}
+                    onClick={() => setMostrarSinBase(v => !v)}
+                    aria-pressed={mostrarSinBase}
+                    style={{ fontSize: 12, flexShrink: 0 }}
+                  >
+                    {mostrarSinBase ? 'Ocultar sin datos' : `Sin datos (${fiabilidadSinBase.length})`}
+                  </button>
+                )}
               </div>
               <div className={styles.itemStack}>
-                {fiabilidadIndicadores.map(item => (
+                {fiabilidadConBase.map(item => (
                   <a className={styles.itemCard} href={item.href} key={`indicador-fiabilidad-${item.id}`}>
                     <div className={styles.sectionHead} style={{ margin: 0 }}>
                       <div>
@@ -1995,7 +2015,22 @@ export default function Estadisticas() {
                       </div>
                       <span className={`${styles.trafficBadge} ${styles[item.nivel.clase]}`}>
                         <span className={styles.trafficDot} />
-                        {item.base ? `${item.pct}%` : 'sin base'}
+                        {`${item.pct}%`}
+                      </span>
+                    </div>
+                  </a>
+                ))}
+                {mostrarSinBase && fiabilidadSinBase.map(item => (
+                  <a className={styles.itemCard} href={item.href} key={`indicador-fiabilidad-${item.id}`} style={{ opacity: 0.6 }}>
+                    <div className={styles.sectionHead} style={{ margin: 0 }}>
+                      <div>
+                        <p className={styles.eyebrow}>{item.label}</p>
+                        <h3 className={styles.sectionTitle}>Sin datos aún</h3>
+                        <p className={styles.sectionText}>{item.accion}</p>
+                      </div>
+                      <span className={`${styles.trafficBadge} ${styles.trafficNeutral}`}>
+                        <span className={styles.trafficDot} />
+                        sin base
                       </span>
                     </div>
                   </a>
@@ -2642,49 +2677,80 @@ export default function Estadisticas() {
         </div>
       </section>
 
-      <section className={styles.panel} style={{ marginTop: 16 }}>
-        <div className={styles.panelHead}>
-          <div>
-            <h2 className={styles.panelTitle}>Actividad reciente</h2>
-            <p className={styles.panelSub}>Últimos movimientos registrados en carta, maridaje y venta.</p>
-          </div>
-          <span className={styles.badge}>{statsFiltradas.length}</span>
-        </div>
-        <div className={styles.panelBody}>
-          {statsFiltradas.length ? (
-            <div className={styles.table}>
-              <div className={styles.tableHeader} style={{ gridTemplateColumns: '80px 1fr 110px' }}>
-                <p>Tipo</p>
-                <p>Actividad</p>
-                <p style={{ textAlign: 'right' }}>Hora</p>
+      {(() => {
+        const FILAS_POR_PAGINA = 15
+        const totalPaginasActividad = Math.ceil(statsFiltradas.length / FILAS_POR_PAGINA)
+        const filasPagina = statsFiltradas.slice(
+          (paginaActividad - 1) * FILAS_POR_PAGINA,
+          paginaActividad * FILAS_POR_PAGINA
+        )
+        const desde = statsFiltradas.length ? (paginaActividad - 1) * FILAS_POR_PAGINA + 1 : 0
+        const hasta = Math.min(paginaActividad * FILAS_POR_PAGINA, statsFiltradas.length)
+        return (
+          <section className={styles.panel} style={{ marginTop: 16 }}>
+            <div className={styles.panelHead}>
+              <div>
+                <h2 className={styles.panelTitle}>Actividad reciente</h2>
+                <p className={styles.panelSub}>Últimos movimientos registrados en carta, maridaje y venta.</p>
               </div>
-              {statsFiltradas.slice(0, 10).map(s => {
-                const actividad = resumenActividad(s)
-                return (
-                  <div className={styles.tableRow} key={s.id} style={{ gridTemplateColumns: '80px 1fr 110px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span
-                        className={styles.dot}
-                        style={{ background: s.tipo === 'escaneo' ? '#4A8C6F' : s.tipo === 'venta' ? '#bfa984' : s.tipo === 'recomendacion' ? '#3266a8' : '#74223d', flexShrink: 0 }}
-                      />
-                      <p style={{ fontSize: 11, textTransform: 'capitalize', color: 'var(--cv-text-muted)' }}>{s.tipo}</p>
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{actividad.titulo}</p>
-                      {actividad.detalle && <p style={{ fontSize: 12, color: 'var(--cv-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{actividad.detalle}</p>}
-                    </div>
-                    <p className={styles.tiny} style={{ textAlign: 'right' }}>
-                      {new Date(s.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                )
-              })}
+              <span className={styles.badge}>{statsFiltradas.length}</span>
             </div>
-          ) : (
-            <div className={styles.empty}>Sin actividad aún.</div>
-          )}
-        </div>
-      </section>
+            <div className={styles.panelBody}>
+              {statsFiltradas.length ? (
+                <div className={styles.table}>
+                  <div className={styles.tableHeader} style={{ gridTemplateColumns: '80px 1fr 110px' }}>
+                    <p>Tipo</p>
+                    <p>Actividad</p>
+                    <p style={{ textAlign: 'right' }}>Hora</p>
+                  </div>
+                  {filasPagina.map(s => {
+                    const actividad = resumenActividad(s)
+                    return (
+                      <div className={styles.tableRow} key={s.id} style={{ gridTemplateColumns: '80px 1fr 110px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span
+                            className={styles.dot}
+                            style={{ background: s.tipo === 'escaneo' ? '#4A8C6F' : s.tipo === 'venta' ? '#bfa984' : s.tipo === 'recomendacion' ? '#3266a8' : '#74223d', flexShrink: 0 }}
+                          />
+                          <p style={{ fontSize: 11, textTransform: 'capitalize', color: 'var(--cv-text-muted)' }}>{s.tipo}</p>
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{actividad.titulo}</p>
+                          {actividad.detalle && <p style={{ fontSize: 12, color: 'var(--cv-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{actividad.detalle}</p>}
+                        </div>
+                        <p className={styles.tiny} style={{ textAlign: 'right' }}>
+                          {new Date(s.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className={styles.empty}>Sin actividad aún.</div>
+              )}
+            </div>
+            {totalPaginasActividad > 1 && (
+              <nav className={styles.paginationBar} aria-label="Paginación de actividad reciente">
+                <span style={{ marginRight: 'auto' }}>Mostrando {desde}–{hasta} de {statsFiltradas.length}</span>
+                <button
+                  type="button"
+                  onClick={() => setPaginaActividad(p => Math.max(1, p - 1))}
+                  disabled={paginaActividad === 1}
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaginaActividad(p => Math.min(totalPaginasActividad, p + 1))}
+                  disabled={paginaActividad === totalPaginasActividad}
+                >
+                  Siguiente
+                </button>
+              </nav>
+            )}
+          </section>
+        )
+      })()}
     </ModuleShell>
     </FeatureGate>
   )
