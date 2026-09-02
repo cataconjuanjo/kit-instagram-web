@@ -3,12 +3,14 @@ export function urlRestaurantePublico(slug, {
   hub = false,
   demoPresentacion = false,
   pruebaToken = '',
+  previewBorrador = false,
 } = {}) {
   const query = new URLSearchParams()
   if (carta) query.set('carta', '1')
   if (hub) query.set('hub', '1')
   if (demoPresentacion) query.set('demo_presentacion', '1')
   if (pruebaToken) query.set('prueba', pruebaToken)
+  if (previewBorrador) query.set('preview', '1')
 
   const queryString = query.toString()
   const path = `/api/public/restaurante/${encodeURIComponent(slug)}`
@@ -17,9 +19,14 @@ export function urlRestaurantePublico(slug, {
 
 export async function cargarRestaurantePublico(slug, {
   jsonSoloSiOk = false,
+  authToken = '',
   ...urlOptions
 } = {}) {
-  const res = await fetch(urlRestaurantePublico(slug, urlOptions))
+  const headers = {}
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+  const res = await fetch(urlRestaurantePublico(slug, urlOptions), {
+    headers: Object.keys(headers).length ? headers : undefined,
+  })
   const data = jsonSoloSiOk && !res.ok ? {} : await res.json().catch(() => ({}))
   return { res, data, restaurante: data.restaurante }
 }

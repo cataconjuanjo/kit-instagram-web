@@ -13,7 +13,6 @@ import ConfirmationDialog from '../ConfirmationDialog'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 import styles from '../module.module.css'
 import simStyles from './simulador.module.css'
-import PreviewCarta from './PreviewCarta'
 
 const ESTADO_LABEL = { actual: 'Actual', nuevo: 'Nuevo', fuera: 'Retirado' }
 const ESTADO_ORDER = { actual: 0, nuevo: 1, fuera: 2 }
@@ -77,7 +76,6 @@ export default function SimuladorCarta() {
   const [anadiendo, setAnadiendo] = useState('')
   const [revision, setRevision] = useState(undefined)
   const [revisionDismissed, setRevisionDismissed] = useState(false)
-  const [vistaPrevia, setVistaPrevia] = useState(false)
   const [mensajeRevision, setMensajeRevision] = useState('')
   const [modalEnviarRevision, setModalEnviarRevision] = useState(false)
   const [enviandoRevision, setEnviandoRevision] = useState(false)
@@ -781,7 +779,8 @@ export default function SimuladorCarta() {
             <button
               type="button"
               className={simStyles.accionBtn}
-              onClick={() => setVistaPrevia(true)}
+              disabled={!restaurante?.slug}
+              onClick={() => window.open(`/carta/${restaurante.slug}?preview=1`, '_blank')}
             >
               Vista previa
             </button>
@@ -1290,17 +1289,6 @@ export default function SimuladorCarta() {
               ))}
             </div>
           )}
-        </ResponsiveOverlay>
-
-        {/* ── Vista previa tipo carta real ──────────────────── */}
-        <ResponsiveOverlay
-          open={vistaPrevia}
-          onClose={() => setVistaPrevia(false)}
-          size="modal"
-          eyebrow="Simulador"
-          title="Vista previa del borrador"
-        >
-          <PreviewCarta lineas={lineas} restaurante={restaurante} />
         </ResponsiveOverlay>
 
         {/* ── Modal: enviar borrador al consultor ───────────── */}

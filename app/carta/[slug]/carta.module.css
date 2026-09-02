@@ -112,6 +112,48 @@
   cursor: default;
 }
 
+.borradorBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(30, 90, 170, 0.18);
+  background: #e8f0fe;
+  color: #1a3a7a;
+  padding: 8px 14px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sommelierBorradorMsg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 40vh;
+  padding: 40px 24px;
+  color: #444;
+  text-align: center;
+}
+
+.sommelierBorradorMsg p {
+  font-size: 15px;
+  margin: 0;
+}
+
+.sommelierBorradorMsg button {
+  padding: 10px 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 .previewApprovalForm {
   width: min(100%, 560px);
   display: grid;

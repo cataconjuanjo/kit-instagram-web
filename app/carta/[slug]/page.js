@@ -10,6 +10,7 @@ import { isLargeFormatWine } from '../../lib/wineFormat'
 import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
 import { enviarAprobacionPreview } from '../../lib/previewApprovalClient'
 import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
+import { supabase } from '../../supabase'
 import { leerAtribucionPublica } from '../../lib/publicAttribution'
 import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpers'
 import { estadoCartaPublica } from '../../lib/publicRouteState'
@@ -726,6 +727,9 @@ export default function CartaPublica() {
   const [demoPresentacion] = useState(() => (
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo_presentacion') === '1'
   ))
+  const [previewBorrador] = useState(() => (
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === '1'
+  ))
   const scrollAntesFicha = useRef(0)
   const tokenPrueba = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('prueba') || ''
@@ -834,10 +838,17 @@ export default function CartaPublica() {
       setLoading(true)
       setLoadError(null)
       try {
+        let authToken = ''
+        if (previewBorrador) {
+          const { data: sessionData } = await supabase.auth.getSession()
+          authToken = sessionData?.session?.access_token || ''
+        }
         const { res, data, restaurante: rest } = await cargarRestaurantePublico(slug, {
           carta: true,
           demoPresentacion,
           pruebaToken: tokenPrueba,
+          previewBorrador,
+          authToken,
         })
         const errorCarga = evaluarRespuestaRestaurantePublico(res, data, {
           aceptarNoLista: true,
@@ -888,7 +899,7 @@ export default function CartaPublica() {
     return () => {
       cancelado = true
     }
-  }, [slug, demoPresentacion, tokenPrueba, loadRetryKey, atribucionPublica])
+  }, [slug, demoPresentacion, tokenPrueba, previewBorrador, loadRetryKey, atribucionPublica])
 
   useEffect(() => {
     if (!loading && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('print') === '1') {
@@ -1753,6 +1764,11 @@ export default function CartaPublica() {
           onApprove={data => aprobarPreviewPublica('carta', data)}
         />
       )}
+      {restaurante?.modo_borrador && (
+        <div className={styles.borradorBar}>
+          <span>BORRADOR — VISTA PREVIA · Los cambios aún no están publicados</span>
+        </div>
+      )}
       {demoPresentacion && (
         <div className={styles.demoPresentationBar}>
           <span>Vista cliente · Carta</span>
@@ -2236,6 +2252,17 @@ export default function CartaPublica() {
           onApprove={data => aprobarPreviewPublica('carta', data)}
         />
       )}
+      {restaurante?.modo_borrador && (
+        <div className={styles.borradorBar}>
+          <span>BORRADOR — VISTA PREVIA · Los cambios aún no están publicados</span>
+        </div>
+      )}
+      {restaurante?.modo_borrador && (
+        <div className={styles.sommelierBorradorMsg}>
+          <p>El sumiller virtual no está disponible en la vista previa del borrador.</p>
+          <button type="button" onClick={() => setVista('carta')}>Ver carta</button>
+        </div>
+      )}
       {demoPresentacion && (
         <div className={styles.demoPresentationBar}>
           <span>Vista cliente · Armonia</span>
@@ -2692,6 +2719,11 @@ export default function CartaPublica() {
           error={previewAprobacion.error}
           onApprove={data => aprobarPreviewPublica('carta', data)}
         />
+      )}
+      {restaurante?.modo_borrador && (
+        <div className={styles.borradorBar}>
+          <span>BORRADOR — VISTA PREVIA · Los cambios aún no están publicados</span>
+        </div>
       )}
 
       {/* Header */}

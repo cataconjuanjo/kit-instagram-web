@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { puedeUsar } from '../../../../lib/plans'
 import { validarTokenPruebaCarta } from '../../../../lib/cartaPruebaToken'
@@ -6,6 +7,33 @@ import { experienciaPublicaDesdePlan } from '../../../../lib/experienceTemplates
 import { isInternationalWine } from '../../../../lib/wineRegion'
 import { limpiarMarcadorPerfiles, resolverPerfilesVino } from '../../../../lib/wineProfileTags'
 import { noStoreHeaders, publicCdnCacheHeaders } from '../../../../lib/publicCacheHeaders'
+
+// Valida que el bearer token corresponde al dueño del restaurante indicado.
+// Devuelve true si es dueño, false en cualquier otro caso (sin errores visibles).
+async function esOwnerDelRestaurante(req, restauranteId) {
+  try {
+    const auth = String(req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim()
+    if (!auth) return false
+    const supabaseAuth = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    )
+    const { data, error } = await supabaseAuth.auth.getUser(auth)
+    if (error || !data?.user?.email) return false
+    const email = data.user.email.toLowerCase()
+    // El admin también puede ver el borrador de cualquier restaurante
+    if (email === (process.env.ADMIN_EMAIL || 'cataconjuanjo@gmail.com').toLowerCase()) return true
+    const { data: rest } = await supabaseAdmin
+      .from('restaurantes')
+      .select('id')
+      .eq('id', restauranteId)
+      .eq('email', email)
+      .maybeSingle()
+    return !!rest
+  } catch {
+    return false
+  }
+}
 
 const CAMPOS_RESTAURANTE = [
   'id', 'slug', 'nombre', 'ciudad',
@@ -135,6 +163,7 @@ export async function GET(req, { params }) {
     const incluirHub = searchParams.get('hub') === '1'
     const tokenPrueba = String(searchParams.get('prueba') || '').trim().slice(0, 3000)
     const modoDemoPresentacion = demoPresentacionAutorizada(slug, searchParams)
+    const solicitaPreviewBorrador = searchParams.get('preview') === '1'
 
     const { data: restaurante, error } = await supabaseAdmin
       .from('restaurantes')
@@ -176,6 +205,71 @@ export async function GET(req, { params }) {
 
     if (incluirCarta || incluirHub) {
       respuesta.restaurante.experiencia_publica = await cargarExperienciaPublica(restaurante.id)
+    }
+
+    // ── Vista previa del borrador del simulador ───────────────────────────────
+    // Activada cuando ?preview=1 llega con un token de sesión válido del dueño.
+    // Si el token no es válido o no es el dueño, se ignora el flag silenciosamente
+    // y se sirve la carta pública normal (sin error ni pista de que existe este modo).
+    const modoBorrador = solicitaPreviewBorrador && incluirCarta
+      ? await esOwnerDelRestaurante(req, restaurante.id)
+      : false
+
+    if (modoBorrador) {
+      respuesta.restaurante.modo_borrador = true
+      // Cargar vinos del borrador: los propios (vino_id JOIN vinos) + los del catálogo
+      // usando los precios editados en el simulador si difieren de la carta real.
+      const [borradorRes, platosRes] = await Promise.all([
+        supabaseAdmin
+          .from('carta_simulacion')
+          .select(`
+            id, estado, nombre, bodega, tipo, region, anada, formato,
+            precio_botella, precio_copa, coste_compra,
+            vino_id, catalogo_vino_id,
+            vinos(id, uva, copa_ml, notas_cata, activo, internacional, foto_url, stock)
+          `)
+          .eq('restaurante_id', restaurante.id)
+          .in('estado', ['actual', 'nuevo']),
+        supabaseAdmin
+          .from('platos')
+          .select(SELECT_PLATO_PUBLICO)
+          .eq('restaurante_id', restaurante.id)
+          .eq('activo', true),
+      ])
+      if (borradorRes.error || platosRes.error) {
+        const err = borradorRes.error || platosRes.error
+        console.error('[public-restaurante:borrador]', { slug, code: err.code || '', message: err.message })
+        return Response.json({ error: 'No se pudo cargar el borrador.' }, { status: 503 })
+      }
+      const lineas = borradorRes.data || []
+      respuesta.vinos = lineas.map(linea => {
+        const vinoReal = linea.vinos || {}
+        return {
+          // Los ids de líneas del catálogo no son UUIDs de vinos reales; usamos el id de la línea.
+          id:              linea.vino_id || linea.id,
+          nombre:          linea.nombre,
+          bodega:          linea.bodega || null,
+          tipo:            linea.tipo || null,
+          region:          linea.region || null,
+          uva:             vinoReal.uva || null,
+          anada:           linea.anada || null,
+          // Los precios del simulador pueden haber sido editados y tienen prioridad.
+          precio_copa:     linea.precio_copa    ?? vinoReal.precio_copa    ?? null,
+          precio_botella:  linea.precio_botella ?? vinoReal.precio_botella ?? null,
+          copa_ml:         vinoReal.copa_ml || null,
+          notas_cata:      limpiarMarcadorPerfiles(vinoReal.notas_cata || null),
+          activo:          true,
+          internacional:   vinoReal.internacional === true || isInternationalWine(linea),
+          foto_url:        normalizarUrlPublica(vinoReal.foto_url || '', { imageOnly: true }),
+          perfiles_maridaje: resolverPerfilesVino(vinoReal),
+          disponible:      true,
+          _es_nuevo:       linea.estado === 'nuevo', // para que la carta pueda marcarlo si se desea
+        }
+      })
+      respuesta.platos = (platosRes.data || []).map(plato => seleccionarCampos(plato, CAMPOS_PLATO))
+      // En modo borrador no hay selección especial ni control de stock
+      respuesta.seleccion = []
+      return Response.json(respuesta, { headers: noStoreHeaders() })
     }
 
     if (incluirCarta && respuesta.restaurante.carta_disponible) {
