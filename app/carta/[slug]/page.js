@@ -1592,13 +1592,40 @@ export default function CartaPublica() {
 
         {/* Radar */}
         {cargandoPerfiles || vinosComparador.some(v => !perfiles[v.id]) ? (
-          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0f0', padding: '32px 24px', marginBottom: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
-            <div style={{ position: 'relative', width: 120, height: 120 }}>
-              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px dashed #e8e0d8', animation: 'comparadorPulse 1.4s ease-in-out infinite' }} />
-              <div style={{ position: 'absolute', inset: 16, borderRadius: '50%', border: '1.5px dashed #ede5d8', animation: 'comparadorPulse 1.4s ease-in-out 0.3s infinite' }} />
-              <div style={{ position: 'absolute', inset: 32, borderRadius: '50%', border: '1px dashed #f0eae0', animation: 'comparadorPulse 1.4s ease-in-out 0.6s infinite' }} />
+          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0f0', padding: '28px 24px', marginBottom: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+            {(() => {
+              const cx = 90, cy = 90, r = 68
+              const nEjes = ejes.length
+              const pts = (frac) => ejes.map((_, i) => {
+                const a = (i * 2 * Math.PI / nEjes) - Math.PI / 2
+                return `${cx + r * frac * Math.cos(a)},${cy + r * frac * Math.sin(a)}`
+              }).join(' ')
+              return (
+                <svg width={180} height={180} aria-hidden style={{ overflow: 'visible' }}>
+                  {[0.25, 0.5, 0.75, 1].map(f => (
+                    <polygon key={f} points={pts(f)} fill="none" stroke="#ede5d8" strokeWidth={1.5} />
+                  ))}
+                  {ejes.map((_, i) => {
+                    const a = (i * 2 * Math.PI / nEjes) - Math.PI / 2
+                    return <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(a)} y2={cy + r * Math.sin(a)} stroke="#ede5d8" strokeWidth={1} />
+                  })}
+                  <polygon points={pts(0.45)} fill={colorPrimario + '18'} stroke={colorPrimario + '50'} strokeWidth={1.5} style={{ animation: 'comparadorPulse 1.6s ease-in-out infinite' }} />
+                </svg>
+              )
+            })()}
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ margin: '0 0 4px', fontSize: 12, color: '#666', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                {idioma === 'en' ? 'Analysing sensory profile' : 'Analizando perfil sensorial'}
+              </p>
+              <p style={{ margin: 0, fontSize: 11, color: '#bbb', lineHeight: 1.5 }}>
+                {idioma === 'en'
+                  ? `Comparing ${vinosComparador.length} selected wines`
+                  : `Comparando ${vinosComparador.length} ${vinosComparador.length === 1 ? i.vinoSingular : i.vinosPlural}`}
+              </p>
             </div>
-            <p style={{ margin: 0, fontSize: 11, color: '#bbb', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Calculando perfil sensorial…</p>
+            <div style={{ width: 160, height: 3, background: '#f0f0f0', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: '60%', background: colorPrimario + '60', borderRadius: 2, animation: 'comparadorProgress 2s ease-in-out infinite alternate' }} />
+            </div>
           </div>
         ) : (
           <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0f0', padding: '24px', marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
@@ -1662,6 +1689,28 @@ export default function CartaPublica() {
                 </div>
               )
             })}
+            {platos.length > 0 && (
+              <>
+                <div style={{ background: '#fafafa', padding: '10px 16px', display: 'flex', alignItems: 'center' }}>
+                  <p style={{ margin: 0, fontSize: 12, color: '#888' }}>{idioma === 'en' ? 'Best pairing' : 'Mejor maridaje'}</p>
+                </div>
+                {vinosComparador.map(v => {
+                  const top = recomendarPlatosCartaParaVino(v, platos, 1)[0]
+                  return (
+                    <div key={v.id + '_maridaje'} style={{ background: '#fff', padding: '10px 16px', textAlign: 'center' }}>
+                      {top ? (
+                        <>
+                          <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: '#111', lineHeight: 1.3 }}>{top.plato.nombre}</p>
+                          {top.plato.categoria && <p style={{ margin: '2px 0 0', fontSize: 10, color: '#bbb' }}>{top.plato.categoria}</p>}
+                        </>
+                      ) : (
+                        <p style={{ margin: 0, fontSize: 13, color: '#ddd' }}>—</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </>
+            )}
           </div>
         </div>
 
@@ -1790,7 +1839,7 @@ export default function CartaPublica() {
   }
 
   if (vista === 'carta') return (
-    <div className={`${styles.shell} ${claseTipografia} ${!bannerArmoniaCerrado ? styles.shellWithBubble : ''}`}>
+    <div className={`${styles.shell} ${claseTipografia} ${!bannerArmoniaCerrado ? styles.shellWithBubble : ''} ${vinosComparador.length > 0 && bannerArmoniaCerrado ? styles.shellWithComparador : ''}`}>
       {restaurante?.modo_prueba && (
         <PreviewModeBanner
           styles={styles}
@@ -1815,6 +1864,7 @@ export default function CartaPublica() {
         <button
           type="button"
           className={styles.armoniaBubble}
+          style={vinosComparador.length > 0 ? { bottom: 'calc(82px + env(safe-area-inset-bottom))' } : undefined}
           aria-label="Sumiller virtual: ¿qué pido con mi plato?"
           onClick={() => irAArmonía('bubble')}
         >
@@ -2211,16 +2261,23 @@ export default function CartaPublica() {
           <p className={styles.compareText}>
             {vinosComparador.length} {vinosComparador.length === 1 ? i.vinoSingular : i.vinosPlural}
           </p>
-          <button
-            className={styles.compareAction}
-            onClick={() => { setMostrarComparador(true); cargarPerfiles(vinosComparador) }}
-            style={{ color: colorPrimario }}
-            disabled={vinosComparador.length < 2}
-            title={vinosComparador.length < 2 ? i.añadirOtroVino : undefined}
-            aria-label={vinosComparador.length < 2 ? i.añadirOtroVino : i.comparar}
-          >
-            {vinosComparador.length < 2 ? i.añadirOtroVino : `${i.comparar} →`}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              className={styles.compareAction}
+              onClick={() => { setMostrarComparador(true); cargarPerfiles(vinosComparador) }}
+              style={{ color: colorPrimario }}
+              disabled={vinosComparador.length < 2}
+              title={vinosComparador.length < 2 ? i.añadirOtroVino : undefined}
+              aria-label={vinosComparador.length < 2 ? i.añadirOtroVino : i.comparar}
+            >
+              {vinosComparador.length < 2 ? i.añadirOtroVino : `${i.comparar} →`}
+            </button>
+            <button
+              onClick={() => setVinosComparador([])}
+              aria-label={i.cerrarComparador}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,250,243,0.65)', cursor: 'pointer', fontSize: 22, padding: '2px 4px', lineHeight: 1, display: 'flex', alignItems: 'center' }}
+            >×</button>
+          </div>
         </div>
       ) : (
         <BottomNav

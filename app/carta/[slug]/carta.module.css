@@ -14,6 +14,14 @@
   padding-bottom: calc(128px + env(safe-area-inset-bottom));
 }
 
+.shellWithComparador {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+.shellWithBubble.shellWithComparador {
+  padding-bottom: calc(150px + env(safe-area-inset-bottom));
+}
+
 .demoPresentationBar {
   position: fixed;
   top: 12px;
@@ -2487,6 +2495,11 @@
 @keyframes comparadorPulse {
   0%, 100% { opacity: 0.35; }
   50%       { opacity: 1; }
+}
+
+@keyframes comparadorProgress {
+  from { transform: translateX(-30%); }
+  to   { transform: translateX(80%); }
 }
 
 @keyframes stateSpin {
