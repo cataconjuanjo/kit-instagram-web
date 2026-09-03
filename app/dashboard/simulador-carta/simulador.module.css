@@ -1034,6 +1034,47 @@
 .tdPorCopaPill:hover:not(:disabled) { background: rgba(201, 162, 75, 0.2); }
 .tdPorCopaPill:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ── Popover "Editar precio / Quitar de copa" ────────────────────── */
+
+.tdPrecioCopa { position: relative; }
+
+.copaPopover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  min-width: 160px;
+  overflow: hidden;
+}
+
+.copaPopoverItem {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 13px;
+  font-family: inherit;
+  color: #3d3730;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.copaPopoverItem:hover { background: rgba(201, 162, 75, 0.1); }
+
+.copaPopoverItemDanger { color: var(--cv-red); }
+.copaPopoverItemDanger:hover { background: rgba(180, 50, 50, 0.06); }
+
+.copaPopoverDivider {
+  height: 1px;
+  background: #e0d4bc;
+  margin: 0;
+}
+
 /* ── "No por copa" — celda con decisión tomada (false) ───────────── */
 
 .tdNoSirve {
@@ -1245,7 +1286,8 @@
   /* Añada, coste, margen: hidden on mobile */
   .tdAnada,
   .tdCoste,
-  .tdMrg {
+  .tdMrg,
+  .tdMrgCopa {
     display: none;
   }
 
