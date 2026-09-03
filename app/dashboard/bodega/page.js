@@ -1166,6 +1166,7 @@ export default function ControlBodega() {
               apiDisponible={apiDisponible}
               vinos={datos.activos}
               onAjustesChange={setAjustesBodega}
+              restauranteId={restaurante?.id || null}
             />
           </ResponsiveOverlay>
         )}

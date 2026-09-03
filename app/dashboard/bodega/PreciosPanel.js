@@ -23,11 +23,13 @@ function diff(actual, recomendado) {
   return { texto: `${delta > 0 ? '+' : ''}${eur(delta, delta % 1 === 0 ? 0 : 2)}`, tono: delta > 0 ? 'up' : 'down' }
 }
 
-export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, vinos = [], onAjustesChange }) {
+export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, vinos = [], onAjustesChange, restauranteId = null }) {
   const [tab, setTab] = useState('precios')
   const [trabajando, setTrabajando] = useState(settings)
   const [guardandoConfig, setGuardandoConfig] = useState(false)
   const [mensajeConfig, setMensajeConfig] = useState('')
+  const [recalculando, setRecalculando] = useState(false)
+  const [mensajeRecalculo, setMensajeRecalculo] = useState(null) // { tipo: 'ok'|'error', texto }
   const [sim, setSim] = useState({ coste: '' })
   const [busqueda, setBusqueda] = useState('')
   const [filtro, setFiltro] = useState('todos')
@@ -74,6 +76,29 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
     } else {
       setMensajeConfig(`Error: ${result.error}`)
     }
+  }
+
+  async function recalcularCopaCatalogo() {
+    if (!restauranteId) return
+    setRecalculando(true)
+    setMensajeRecalculo(null)
+    try {
+      const res = await fetch('/api/simulador/recalcular-copa-catalogo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurante_id: restauranteId }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMensajeRecalculo({ tipo: 'ok', texto: `✓ ${data.actualizados} precio${data.actualizados !== 1 ? 's' : ''} actualizado${data.actualizados !== 1 ? 's' : ''}` })
+      } else {
+        setMensajeRecalculo({ tipo: 'error', texto: data.error || 'Error al recalcular' })
+      }
+    } catch {
+      setMensajeRecalculo({ tipo: 'error', texto: 'Error de conexión — inténtalo de nuevo' })
+    }
+    setRecalculando(false)
+    setTimeout(() => setMensajeRecalculo(null), 4000)
   }
 
   const resultadoSim = calcularPreciosSugeridos(sim.coste, ajustes)
@@ -365,6 +390,32 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
               </button>
               {!apiDisponible && <span className={styles.tiny}>Sin API — se guarda localmente.</span>}
             </div>
+
+            {restauranteId && (
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px dashed var(--cv-border, #e0d4bc)' }}>
+                <p className={styles.panelSub} style={{ marginBottom: 10 }}>
+                  "Copa sug." en la carta se calcula al añadir cada vino. Si cambiaste el tamaño de copa, actualiza los precios:
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    className={styles.ghost}
+                    onClick={recalcularCopaCatalogo}
+                    disabled={recalculando}
+                  >
+                    {recalculando ? 'Recalculando...' : '↻ Recalcular Copa sug. en la carta'}
+                  </button>
+                  {mensajeRecalculo && (
+                    <span style={{
+                      fontSize: '0.82em',
+                      color: mensajeRecalculo.tipo === 'ok' ? 'var(--cv-green, #3a7d44)' : 'var(--cv-red, #c0392b)',
+                    }}>
+                      {mensajeRecalculo.texto}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}
