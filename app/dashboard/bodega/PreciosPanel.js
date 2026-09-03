@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { supabase } from '../../supabase'
 import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
 import styles from '../module.module.css'
 import priceStyles from '../precios/precios.module.css'
@@ -73,6 +74,7 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
     if (result.ok) {
       setMensajeConfig(result.fallback ? 'Guardado localmente.' : 'Configuración guardada.')
       onAjustesChange?.(trabajando)
+      recalcularCopaCatalogo()
     } else {
       setMensajeConfig(`Error: ${result.error}`)
     }
@@ -83,9 +85,11 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
     setRecalculando(true)
     setMensajeRecalculo(null)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
       const res = await fetch('/api/simulador/recalcular-copa-catalogo', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ restaurante_id: restauranteId }),
       })
       const data = await res.json()
