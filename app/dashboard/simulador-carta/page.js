@@ -9,6 +9,7 @@ import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSel
 import { puedeUsar } from '../../lib/plans'
 import { normWine } from '../../lib/textNormalize'
 import { margenCopaPct } from '../../lib/pricingUtils'
+import { useEconomicSettings } from '../../lib/economicSettings'
 import { analizarMaridaje } from '../../lib/maridajeEngine'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import ConfirmationDialog from '../ConfirmationDialog'
@@ -60,6 +61,7 @@ function computarPlatosVino(vino, platos, limite = 4) {
 
 export default function SimuladorCarta() {
   const [restaurante, setRestaurante] = useState(null)
+  const { settings: economicSettings } = useEconomicSettings(restaurante?.id || null)
   const [lineas, setLineas] = useState([])
   const [loading, setLoading] = useState(true)
   const [errorMsg, setErrorMsg] = useState('')
@@ -280,8 +282,8 @@ export default function SimuladorCarta() {
             va = margenBotella(a.precio_botella, a.coste_compra) ?? -1
             vb = margenBotella(b.precio_botella, b.coste_compra) ?? -1
           } else if (k === 'margen_copa') {
-            va = (a.ofrecido_por_copa === true && a.precio_copa && a.coste_compra) ? margenCopaPct(a.precio_copa, a.coste_compra, {}) : -1
-            vb = (b.ofrecido_por_copa === true && b.precio_copa && b.coste_compra) ? margenCopaPct(b.precio_copa, b.coste_compra, {}) : -1
+            va = (a.ofrecido_por_copa === true && a.precio_copa && a.coste_compra) ? margenCopaPct(a.precio_copa, a.coste_compra, economicSettings) : -1
+            vb = (b.ofrecido_por_copa === true && b.precio_copa && b.coste_compra) ? margenCopaPct(b.precio_copa, b.coste_compra, economicSettings) : -1
           } else {
             va = Number(a[k]) || 0
             vb = Number(b[k]) || 0
@@ -1267,7 +1269,7 @@ export default function SimuladorCarta() {
                       {/* Margen copa */}
                       {(() => {
                         const mrgCopa = (linea.ofrecido_por_copa === true && linea.precio_copa && linea.coste_compra)
-                          ? Math.round(margenCopaPct(linea.precio_copa, linea.coste_compra, {}))
+                          ? Math.round(margenCopaPct(linea.precio_copa, linea.coste_compra, economicSettings))
                           : null
                         return (
                           <td className={`${simStyles.tdNum} ${simStyles.tdMrgCopa}`}>
