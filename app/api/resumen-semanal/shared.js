@@ -271,6 +271,7 @@ export async function calcularResumenSemanal({ restaurante, periodo, user = null
     radarRes,
     escenariosRes,
     posLinesRes,
+    econSettingsRes,
   ] = await Promise.all([
     supabaseAdmin
       .from('vinos')
@@ -304,6 +305,11 @@ export async function calcularResumenSemanal({ restaurante, periodo, user = null
         .limit(20)
     ),
     leerPosLinesResumen(restaurante.id, periodo),
+    supabaseAdmin
+      .from('restaurant_economic_settings')
+      .select('copas_por_botella, merma_copa_pct, iva_venta_pct, pvp_incluye_iva, coste_incluye_iva')
+      .eq('restaurante_id', restaurante.id)
+      .maybeSingle(),
   ])
 
   if (vinosRes.error) throw vinosRes.error
@@ -315,6 +321,8 @@ export async function calcularResumenSemanal({ restaurante, periodo, user = null
     posLinesRes.pending,
   ].filter(Boolean)
 
+  const econConfig = econSettingsRes?.data || {}
+
   const resumenBase = generarResumenSemanalEjecutivo({
     restaurante,
     periodoInicio: periodo.periodoInicio,
@@ -324,6 +332,7 @@ export async function calcularResumenSemanal({ restaurante, periodo, user = null
     radarActions: radarRes.data || [],
     escenarios: escenariosRes.data || [],
     posLines: posLinesRes.data || [],
+    config: econConfig,
   })
 
   const historial = await leerHistorialSemanal(restaurante.id, periodo.key)

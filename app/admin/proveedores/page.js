@@ -527,19 +527,9 @@ function ProveedoresPageContent() {
     }
   }
 
-  function copasVendiblesEscalonado(pvpBotella) {
-    if (pvpBotella <= 25) return 5.4
-    if (pvpBotella <= 40) return 5.2
-    if (pvpBotella <= 60) return 5.0
-    if (pvpBotella <= 90) return 4.8
-    if (pvpBotella <= 130) return 4.6
-    return 4.4
-  }
-
   function calcularCopa(pvpBotella) {
     if (!pvpBotella || pvpBotella <= 0) return null
-    const divisor = copasVendiblesEscalonado(pvpBotella)
-    const pvp = Math.round((pvpBotella / divisor) * 2) / 2
+    const pvp = Math.round((pvpBotella / 5) * 2) / 2
     const ratioPct = Math.round((pvp / pvpBotella) * 100)
     const copasHastaEmpatar = Math.ceil(pvpBotella / pvp)
     return { pvp, ratioPct, copasHastaEmpatar }

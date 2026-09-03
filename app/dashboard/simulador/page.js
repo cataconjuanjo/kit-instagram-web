@@ -9,6 +9,7 @@ import {
   SELECT_CLIENT_VINO_DASHBOARD,
 } from '../../lib/clientSupabaseSelects'
 import { BY_THE_GLASS_REFERENCE, POSITIONING_MARKUP_REFERENCE, beneficioBruto, costeNetoCompra, margenBrutoPct, margenObjetivoContextual, numero, precioCopaObjetivo, precioNetoVenta, redondear, anadirIva, copasVendibles } from '../../lib/wineEconomics'
+import { useEconomicSettings } from '../../lib/economicSettings'
 import { esPerfilBodega } from '../../lib/plans'
 import { priorizarVentas, esVentaTPV } from '../../lib/salesPriority'
 import { supabase } from '../../supabase'
@@ -169,7 +170,7 @@ function itemBase(vino, data) {
   }
 }
 
-function generarSimulacion({ vinos, stats, escenario, restaurante }) {
+function generarSimulacion({ vinos, stats, escenario, restaurante, economicSettings }) {
   const cfg = ESCENARIOS[escenario] || ESCENARIOS.equilibrado
   const activos = (vinos || []).filter(vino => vino.activo !== false)
   const ventasStats = (stats || []).filter(item => item.tipo === 'venta')
@@ -277,7 +278,7 @@ function generarSimulacion({ vinos, stats, escenario, restaurante }) {
     if (candidatoCopa) {
       const { copaObjetivo } = candidatoCopa
       const beneficioBotella = beneficioBruto(precio, coste)
-      const beneficioPorCopas = redondear((precioNetoVenta(copaObjetivo) * copasVendibles()) - costeNetoCompra(coste), 2)
+      const beneficioPorCopas = redondear((precioNetoVenta(copaObjetivo) * copasVendibles(economicSettings)) - costeNetoCompra(coste), 2)
       const mejora = beneficioPorCopas - beneficioBotella
       if (mejora > 1) {
         const botellasMes = Math.max(0.5, Math.min(1.25, unidadesMes || recomendacionesVino * 0.2))
@@ -292,7 +293,7 @@ function generarSimulacion({ vinos, stats, escenario, restaurante }) {
           impactoAnual: impactoMensual * 12,
           impactoCapital: 0,
           impactoStock: botellasMes,
-          impactoTicket: copaObjetivo * copasVendibles() * botellasMes,
+          impactoTicket: copaObjetivo * copasVendibles(economicSettings) * botellasMes,
           riesgo: 'medio',
           confianza,
           input: {
@@ -404,6 +405,7 @@ function generarSimulacion({ vinos, stats, escenario, restaurante }) {
 
 export default function SimuladorRentabilidad() {
   const [restaurante, setRestaurante] = useState(null)
+  const { settings: economicSettings } = useEconomicSettings(restaurante?.id || null)
   const [vinos, setVinos] = useState([])
   const [stats, setStats] = useState([])
   const [escenario, setEscenario] = useState('equilibrado')
@@ -475,7 +477,7 @@ export default function SimuladorRentabilidad() {
     }
   }
 
-  const simulacion = useMemo(() => generarSimulacion({ vinos, stats, escenario, restaurante }), [vinos, stats, escenario, restaurante])
+  const simulacion = useMemo(() => generarSimulacion({ vinos, stats, escenario, restaurante, economicSettings }), [vinos, stats, escenario, restaurante, economicSettings])
   const itemsTop = simulacion.items.slice(0, 5)
   const impactoAnual = redondear(itemsTop.reduce((sum, item) => sum + numero(item.impacto_margen), 0), 2)
   const impactoMensual = redondear(itemsTop.reduce((sum, item) => sum + numero(item.impactoMensual), 0), 2)

@@ -33,8 +33,21 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
   const [filtro, setFiltro] = useState('todos')
   const [pagina, setPagina] = useState(1)
 
+  const mlInicial = settings?.formato_botella_ml && settings?.copas_por_botella
+    ? Math.round(settings.formato_botella_ml / settings.copas_por_botella)
+    : 150
+  const [mlCopaActual, setMlCopaActual] = useState(mlInicial)
+  const [esPersonalizado, setEsPersonalizado] = useState(![125, 150].includes(mlInicial))
+  const [mlPersonalizado, setMlPersonalizado] = useState(![125, 150].includes(mlInicial) ? mlInicial : 150)
+
   useEffect(() => {
     setTrabajando(settings)
+    if (settings?.formato_botella_ml && settings?.copas_por_botella) {
+      const ml = Math.round(settings.formato_botella_ml / settings.copas_por_botella)
+      setMlCopaActual(ml)
+      setEsPersonalizado(![125, 150].includes(ml))
+      if (![125, 150].includes(ml)) setMlPersonalizado(ml)
+    }
   }, [settings])
 
   const ajustes = useMemo(() => trabajando || {}, [trabajando])
@@ -239,8 +252,78 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
           <div className={styles.panelBody}>
             <div className={styles.formGrid}>
               <div>
-                <label className={styles.label}>Copas por botella</label>
-                <input className={styles.input} type="number" min="1" max="10" step="1" value={trabajando.copas_por_botella} onChange={e => setTrabajando(prev => ({ ...prev, copas_por_botella: num(e.target.value) }))} />
+                <label className={styles.label}>Tamaño de copa</label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {[
+                    { ml: 125, label: '125 ml', copas: Number(((trabajando.formato_botella_ml || 750) / 125).toFixed(2)) },
+                    { ml: 150, label: '150 ml', copas: Number(((trabajando.formato_botella_ml || 750) / 150).toFixed(2)) },
+                  ].map(opcion => {
+                    const seleccionado = mlCopaActual === opcion.ml && !esPersonalizado
+                    return (
+                      <button
+                        key={opcion.ml}
+                        type="button"
+                        style={{
+                          padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1px solid',
+                          borderColor: seleccionado ? '#9b7430' : '#e0d4bc',
+                          background: seleccionado ? '#9b7430' : 'transparent',
+                          color: seleccionado ? '#fffaf3' : '#756d63',
+                        }}
+                        onClick={() => {
+                          setMlCopaActual(opcion.ml)
+                          setEsPersonalizado(false)
+                          setTrabajando(prev => ({ ...prev, copas_por_botella: opcion.copas }))
+                        }}
+                      >
+                        {opcion.label}
+                        <span style={{ fontSize: '0.7em', opacity: 0.7, marginLeft: '0.25rem' }}>({opcion.copas} cop)</span>
+                      </button>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    style={{
+                      padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1px solid',
+                      borderColor: esPersonalizado ? '#9b7430' : '#e0d4bc',
+                      background: esPersonalizado ? '#9b7430' : 'transparent',
+                      color: esPersonalizado ? '#fffaf3' : '#756d63',
+                    }}
+                    onClick={() => setEsPersonalizado(true)}
+                  >
+                    Personalizado
+                  </button>
+                </div>
+                {esPersonalizado && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <input
+                      className={styles.input}
+                      type="number"
+                      min="50"
+                      max="300"
+                      step="5"
+                      style={{ width: '80px' }}
+                      value={mlPersonalizado}
+                      onChange={e => {
+                        const ml = Number(e.target.value)
+                        setMlPersonalizado(ml)
+                        setMlCopaActual(ml)
+                        if (ml > 0) {
+                          const copas = Number(((trabajando.formato_botella_ml || 750) / ml).toFixed(2))
+                          setTrabajando(prev => ({ ...prev, copas_por_botella: copas }))
+                        }
+                      }}
+                    />
+                    <span style={{ fontSize: '0.85em', color: 'var(--cv-text-muted)' }}>ml</span>
+                    {mlPersonalizado > 0 && (
+                      <span style={{ fontSize: '0.8em', opacity: 0.7 }}>
+                        → {Number(((trabajando.formato_botella_ml || 750) / mlPersonalizado).toFixed(2))} copas
+                      </span>
+                    )}
+                  </div>
+                )}
+                <p style={{ fontSize: '0.75em', color: 'var(--cv-text-muted)', marginTop: '0.25rem' }}>
+                  {trabajando.copas_por_botella} cop × {100 - (trabajando.merma_copa_pct ?? 10)}% → {Number((trabajando.copas_por_botella * (1 - (trabajando.merma_copa_pct ?? 10) / 100)).toFixed(2))} vendibles
+                </p>
               </div>
               <div>
                 <label className={styles.label}>Merma copa (%)</label>

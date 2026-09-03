@@ -13,6 +13,7 @@ import {
 import { esVentaTPV, priorizarVentas } from '../../lib/salesPriority'
 import { esPerfilBodega } from '../../lib/plans'
 import { beneficioBruto, costeNetoCompra, copasVendibles, margenBrutoPct, numero, precioNetoVenta, redondear } from '../../lib/wineEconomics'
+import { useEconomicSettings } from '../../lib/economicSettings'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 import styles from '../module.module.css'
@@ -210,23 +211,23 @@ function precioUnidadEvento(item = {}, vino = null) {
     numero(vino?.precio_botella)
 }
 
-function beneficioUnidadEvento(item = {}, vino = null) {
+function beneficioUnidadEvento(item = {}, vino = null, config = {}) {
   const precio = precioUnidadEvento(item, vino)
   const coste = numero(vino?.coste_compra)
   if (!precio || !coste) return 0
   if (formatoVenta(item) === 'copa') {
-    const costeCopa = costeNetoCompra(coste) / copasVendibles()
+    const costeCopa = costeNetoCompra(coste) / copasVendibles(config)
     return redondear(precioNetoVenta(precio) - costeCopa, 2)
   }
   return beneficioBruto(precio, coste)
 }
 
-function margenUnidadEvento(item = {}, vino = null) {
+function margenUnidadEvento(item = {}, vino = null, config = {}) {
   const precio = precioUnidadEvento(item, vino)
   const coste = numero(vino?.coste_compra)
   if (!precio || !coste) return 0
   if (formatoVenta(item) === 'copa') {
-    const costeCopa = costeNetoCompra(coste) / copasVendibles()
+    const costeCopa = costeNetoCompra(coste) / copasVendibles(config)
     const precioNeto = precioNetoVenta(precio)
     return precioNeto ? redondear(((precioNeto - costeCopa) / precioNeto) * 100, 1) : 0
   }
@@ -297,6 +298,7 @@ function nivelFiabilidad(pct, base = 1) {
 
 export default function Estadisticas() {
   const [restaurante, setRestaurante] = useState(null)
+  const { settings: economicSettings } = useEconomicSettings(restaurante?.id || null)
   const [stats, setStats] = useState([])
   const [vinos, setVinos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -613,9 +615,9 @@ export default function Estadisticas() {
     const precioUnitario = precioUnidadEvento(item, vino)
     const ingreso = numero(item.importe_vino_estimado) || redondear(precioUnitario * cantidad, 2)
     const ingresoNeto = redondear(precioNetoVenta(precioUnitario) * cantidad, 2)
-    const beneficioUnitario = beneficioUnidadEvento(item, vino)
+    const beneficioUnitario = beneficioUnidadEvento(item, vino, economicSettings)
     const beneficio = redondear(beneficioUnitario * cantidad, 2)
-    const margenPct = margenUnidadEvento(item, vino)
+    const margenPct = margenUnidadEvento(item, vino, economicSettings)
     const tieneCoste = numero(vino?.coste_compra) > 0 && precioUnitario > 0
     return {
       item,
@@ -696,7 +698,7 @@ export default function Estadisticas() {
       bodega: fila.vino?.bodega || '',
       stock: numero(fila.vino?.stock),
       stockMinimo: numero(fila.vino?.stock_minimo),
-      margenPct: margenUnidadEvento({ formato_venta: 'botella' }, fila.vino),
+      margenPct: margenUnidadEvento({ formato_venta: 'botella' }, fila.vino, economicSettings),
       beneficioBotella: fila.vino ? beneficioBruto(fila.vino.precio_botella, fila.vino.coste_compra) : 0,
       recomendaciones: 0,
       pendientes: 0,
@@ -787,7 +789,7 @@ export default function Estadisticas() {
       clave,
       vino: nombre,
       bodega: vino?.bodega || '',
-      margenPct: margenUnidadEvento({ formato_venta: 'botella' }, vino),
+      margenPct: margenUnidadEvento({ formato_venta: 'botella' }, vino, economicSettings),
       recomendaciones: 0,
       ventasKpi: 0,
       ventasTpv: 0,

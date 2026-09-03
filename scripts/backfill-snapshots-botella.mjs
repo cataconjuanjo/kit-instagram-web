@@ -1,26 +1,26 @@
 /**
- * Backfill de pvp_recomendado_catalogo y pvp_copa_catalogo para filas de carta_simulacion
- * que tienen catalogo_vino_id pero no tienen esos snapshots (columnas añadidas por migración
- * sin poblar las filas existentes).
+ * Recálculo de pvp_copa_catalogo para filas de carta_simulacion con catalogo_vino_id,
+ * usando el divisor correcto por restaurante (copasVendibles(config)) en lugar del
+ * divisor escalonado antiguo (copasVendiblesEscalonado 5,4→4,4) que ya no existe.
  *
  * Garantías:
- *   - Importa calcularPreciosSugeridos y copasVendiblesEscalonado desde pricingUtils.js
- *     (misma fuente que anadir-catalogo/route.js) — sin fórmula duplicada.
- *   - UPDATE acotado a WHERE catalogo_vino_id IS NOT NULL AND pvp_recomendado_catalogo IS NULL,
- *     idempotente: reruns no pisan snapshots ya rellenos.
- *   - Solo escribe pvp_recomendado_catalogo y pvp_copa_catalogo. Nunca toca precio_botella,
- *     precio_copa, ofrecido_por_copa ni estado.
+ *   - Selecciona TODAS las filas con catalogo_vino_id (tanto las que ya tienen snapshot
+ *     como las que no), porque el bug afectaba a todas las calculadas con el escalonado.
+ *   - UPDATE escribe SOLO pvp_copa_catalogo. Nunca toca pvp_recomendado_catalogo,
+ *     precio_botella, precio_copa, ofrecido_por_copa ni estado.
+ *   - UPDATE acotado por id de fila (no en bloque), con filtro adicional
+ *     catalogo_vino_id IS NOT NULL como doble guardia.
  *   - Sin flag --apply: modo preview (muestra qué cambiaría). Con --apply: ejecuta el UPDATE.
  *
  * Uso:
- *   npx tsx scripts/backfill-snapshots-botella.mjs           ← preview
- *   npx tsx scripts/backfill-snapshots-botella.mjs --apply   ← ejecutar
+ *   node scripts/backfill-snapshots-botella.mjs           ← preview
+ *   node scripts/backfill-snapshots-botella.mjs --apply   ← ejecutar
  */
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { calcularPreciosSugeridos, copasVendiblesEscalonado } from '../app/lib/pricingUtils.js'
+import { calcularPreciosSugeridos } from '../app/lib/pricingUtils.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const env = Object.fromEntries(
@@ -33,12 +33,13 @@ const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE
 
 const APPLY = process.argv.includes('--apply')
 
-// ── 1. Carga filas candidatas (todas, todos los restaurantes) ────────────
+// ── 1. Carga filas candidatas (todas las que tienen catalogo_vino_id) ────
+// Incluye las que ya tienen snapshot: el bug afectaba a todas las calculadas
+// con el divisor escalonado antiguo, independientemente de si el campo es null.
 const { data: lineas, error } = await supabase
   .from('carta_simulacion')
-  .select('id, nombre, bodega, restaurante_id, catalogo_vino_id, pvp_recomendado_catalogo')
+  .select('id, nombre, bodega, restaurante_id, catalogo_vino_id, pvp_copa_catalogo')
   .not('catalogo_vino_id', 'is', null)
-  .is('pvp_recomendado_catalogo', null)
 
 if (error) { console.error('Error leyendo carta_simulacion:', error.message); process.exit(1) }
 
@@ -57,26 +58,29 @@ const { data: catalogoRows, error: catError } = await supabase
 if (catError) { console.error('Error leyendo catálogo:', catError.message); process.exit(1) }
 const costes = Object.fromEntries((catalogoRows || []).map(r => [r.id, r.coste_estimado]))
 
-// ── 3. Calcular snapshots usando la función compartida ───────────────────
-function pvpCopaDesdeBottella(pvpBotella) {
-  if (!pvpBotella || pvpBotella <= 0) return null
-  const divisor = copasVendiblesEscalonado(pvpBotella)
-  return Math.round((pvpBotella / divisor) * 2) / 2
-}
+// ── 2b. Carga restaurant_economic_settings por restaurante ───────────────
+const restauranteIds = [...new Set(lineas.map(l => l.restaurante_id))]
+const { data: econRows } = await supabase
+  .from('restaurant_economic_settings')
+  .select('restaurante_id, copas_por_botella, merma_copa_pct, iva_venta_pct, pvp_incluye_iva, coste_incluye_iva')
+  .in('restaurante_id', restauranteIds)
+const econByRest = Object.fromEntries((econRows || []).map(r => [r.restaurante_id, r]))
 
+// ── 3. Calcular snapshots usando calcularPreciosSugeridos con config por restaurante ──
 const actualizaciones = []
 const sinCoste = []
 
 for (const l of lineas) {
   const coste = Number(costes[l.catalogo_vino_id]) || 0
   if (!coste) { sinCoste.push(l); continue }
-  const calc = calcularPreciosSugeridos(coste, {})
+  const econConfig = econByRest[l.restaurante_id] || {}
+  const calc = calcularPreciosSugeridos(coste, econConfig)
   actualizaciones.push({
     id: l.id,
     nombre: l.nombre,
     restaurante_id: l.restaurante_id,
-    pvp_recomendado_catalogo: calc.botella || null,
-    pvp_copa_catalogo: pvpCopaDesdeBottella(calc.botella),
+    pvp_copa_catalogo_anterior: l.pvp_copa_catalogo,
+    pvp_copa_catalogo: calc.copa || null,
     coste,
   })
 }
@@ -87,7 +91,7 @@ for (const a of actualizaciones) {
   porRest[a.restaurante_id] = (porRest[a.restaurante_id] || 0) + 1
 }
 
-console.log(`\nFilas candidatas (catalogo_vino_id set, pvp_recomendado_catalogo null): ${lineas.length}`)
+console.log(`\nFilas candidatas (catalogo_vino_id set): ${lineas.length}`)
 console.log(`  Con coste → se backfillean: ${actualizaciones.length}`)
 console.log(`  Sin coste en catálogo (no se tocan): ${sinCoste.length}`)
 console.log(`\nPor restaurante:`)
@@ -97,9 +101,10 @@ for (const [id, count] of Object.entries(porRest)) {
 
 // ── 5. Preview: muestra primeras 10 ─────────────────────────────────────
 console.log(`\n── Preview (primeras 10) ────────────────────────────────────────────────`)
-console.log(`${'Nombre'.padEnd(45)} ${'Coste'.padStart(7)} ${'Bot.sug'.padStart(8)} ${'Copa.sug'.padStart(9)}`)
+console.log(`${'Nombre'.padEnd(45)} ${'Coste'.padStart(7)} ${'Copa ant.'.padStart(10)} ${'Copa nueva'.padStart(11)}`)
 for (const a of actualizaciones.slice(0, 10)) {
-  console.log(`${String(a.nombre).padEnd(45)} ${String(a.coste).padStart(7)} ${String(a.pvp_recomendado_catalogo).padStart(8)} ${String(a.pvp_copa_catalogo).padStart(9)}`)
+  const ant = a.pvp_copa_catalogo_anterior != null ? String(a.pvp_copa_catalogo_anterior) : '—'
+  console.log(`${String(a.nombre).padEnd(45)} ${String(a.coste).padStart(7)} ${ant.padStart(10)} ${String(a.pvp_copa_catalogo).padStart(11)}`)
 }
 if (actualizaciones.length > 10) console.log(`... y ${actualizaciones.length - 10} más`)
 
@@ -108,7 +113,9 @@ if (!APPLY) {
   process.exit(0)
 }
 
-// ── 6. UPDATE: solo pvp_recomendado_catalogo y pvp_copa_catalogo ─────────
+// ── 6. UPDATE: SOLO pvp_copa_catalogo ────────────────────────────────────
+// pvp_recomendado_catalogo NO se toca: el precio de botella no cambió.
+// precio_copa, ofrecido_por_copa y estado tampoco se modifican nunca.
 console.log(`\nEjecutando backfill...`)
 let ok = 0
 let ko = 0
@@ -117,11 +124,10 @@ for (const a of actualizaciones) {
   const { error: updErr } = await supabase
     .from('carta_simulacion')
     .update({
-      pvp_recomendado_catalogo: a.pvp_recomendado_catalogo,
       pvp_copa_catalogo: a.pvp_copa_catalogo,
     })
     .eq('id', a.id)
-    .is('pvp_recomendado_catalogo', null)  // doble guardia idempotente
+    .not('catalogo_vino_id', 'is', null)  // doble guardia: solo filas con vínculo de catálogo
 
   if (updErr) { console.error(`  ✗ ${a.nombre}: ${updErr.message}`); ko++ }
   else ok++

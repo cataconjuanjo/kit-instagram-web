@@ -1,18 +1,12 @@
 import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { puedeUsar } from '../../../lib/plans'
-import { calcularPreciosSugeridos, copasVendiblesEscalonado } from '../../../lib/pricingUtils'
+import { calcularPreciosSugeridos } from '../../../lib/pricingUtils'
 
 function normalizar(texto = '') {
   return String(texto || '').toLowerCase().trim()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
-}
-
-function pvpCopaDesdeBottella(pvpBotella) {
-  if (!pvpBotella || pvpBotella <= 0) return 0
-  const divisor = copasVendiblesEscalonado(pvpBotella)
-  return Math.round((pvpBotella / divisor) * 2) / 2
 }
 
 // POST /api/simulador/anadir-catalogo
@@ -98,10 +92,16 @@ export async function POST(req) {
     }
 
     // ── Calcular precios sugeridos igual que catalogo-consultor/route.js ──
+    const { data: econSettings } = await supabaseAdmin
+      .from('restaurant_economic_settings')
+      .select('copas_por_botella, merma_copa_pct, iva_venta_pct, pvp_incluye_iva, coste_incluye_iva')
+      .eq('restaurante_id', restauranteId)
+      .maybeSingle()
+    const econConfig = econSettings || {}
     const coste = Number(catalogVino.coste_estimado) || 0
-    const calc = coste > 0 ? calcularPreciosSugeridos(coste, {}) : null
+    const calc = coste > 0 ? calcularPreciosSugeridos(coste, econConfig) : null
     const pvpBotella = calc?.botella || 0
-    const pvpCopa = pvpCopaDesdeBottella(pvpBotella)
+    const pvpCopa = calc?.copa || 0
 
     // ── Insertar línea nueva con estado 'nuevo' ───────────────────────────
     // precio_copa queda NULL — el restaurante decide por copa mediante el flujo

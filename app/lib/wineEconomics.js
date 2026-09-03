@@ -177,3 +177,17 @@ export function snapshotEconomicoVino(vino = {}, config = {}) {
     beverage_cost_snapshot_pct: beverageCostPct(precioBotella, coste, config),
   }
 }
+
+export function copasPorBotellaDesdeML(mlCopa, formatoMl = 750) {
+  const ml = Number(mlCopa) || 0
+  const botella = Number(formatoMl) || 750
+  if (!ml) return 0
+  return Number((botella / ml).toFixed(2))
+}
+
+export function mlCopaDesde(copasPorBotella, formatoMl = 750) {
+  const copas = Number(copasPorBotella)
+  const botella = Number(formatoMl) || 750
+  if (!copas) return 0
+  return Math.round(botella / copas)
+}

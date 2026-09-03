@@ -83,6 +83,7 @@ export default function TrazabilidadEconomica() {
   const [loading, setLoading] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const [mlCopaInput, setMlCopaInput] = useState('')
 
   useEffect(() => {
     async function cargar() {
@@ -105,6 +106,12 @@ export default function TrazabilidadEconomica() {
     }
     cargar()
   }, [])
+
+  useEffect(() => {
+    if (ajustes?.formato_botella_ml && ajustes?.copas_por_botella) {
+      setMlCopaInput(String(Math.round(ajustes.formato_botella_ml / ajustes.copas_por_botella)))
+    }
+  }, [ajustes?.formato_botella_ml, ajustes?.copas_por_botella])
 
   async function cargarTrazabilidad(restauranteId) {
     const token = await tokenSesion()
@@ -373,8 +380,29 @@ export default function TrazabilidadEconomica() {
                   </select>
                 </label>
                 <label>
-                  <span className={styles.label}>Copas botella</span>
-                  <input className={styles.input} value={inputNumber(ajustes?.copas_por_botella)} onChange={e => cambiarAjuste('copas_por_botella', e.target.value)} inputMode="decimal" />
+                  <span className={styles.label}>Copa (ml)</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                      className={styles.input}
+                      style={{ width: '70px' }}
+                      value={mlCopaInput}
+                      onChange={e => {
+                        const ml = e.target.value
+                        setMlCopaInput(ml)
+                        const mlNum = Number(String(ml).replace(',', '.'))
+                        if (mlNum > 0 && ajustes?.formato_botella_ml) {
+                          cambiarAjuste('copas_por_botella', Number((ajustes.formato_botella_ml / mlNum).toFixed(2)))
+                        }
+                      }}
+                      inputMode="numeric"
+                      placeholder="ml"
+                    />
+                    <span style={{ fontSize: '0.82em', color: 'var(--cv-text-muted)', whiteSpace: 'nowrap' }}>
+                      {ajustes?.copas_por_botella
+                        ? `→ ${ajustes.copas_por_botella} copas`
+                        : ''}
+                    </span>
+                  </div>
                 </label>
                 <label>
                   <span className={styles.label}>Merma copa %</span>

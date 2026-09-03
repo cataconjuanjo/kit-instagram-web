@@ -87,38 +87,38 @@ function precioUnidadEvento(item = {}, vino = null) {
     numero(vino?.precio_botella)
 }
 
-function beneficioUnidadEvento(item = {}, vino = null) {
+function beneficioUnidadEvento(item = {}, vino = null, config = {}) {
   const precio = precioUnidadEvento(item, vino)
   const coste = numero(vino?.coste_compra)
   if (!precio || !coste) return 0
   if (formatoVenta(item) === 'copa') {
-    const costeCopa = costeNetoCompra(coste) / copasVendibles()
+    const costeCopa = costeNetoCompra(coste) / copasVendibles(config)
     return redondear(precioNetoVenta(precio) - costeCopa, 2)
   }
   return beneficioBruto(precio, coste)
 }
 
-function margenUnidadEvento(item = {}, vino = null) {
+function margenUnidadEvento(item = {}, vino = null, config = {}) {
   const precio = precioUnidadEvento(item, vino)
   const coste = numero(vino?.coste_compra)
   if (!precio || !coste) return 0
   if (formatoVenta(item) === 'copa') {
-    const costeCopa = costeNetoCompra(coste) / copasVendibles()
+    const costeCopa = costeNetoCompra(coste) / copasVendibles(config)
     const precioNeto = precioNetoVenta(precio)
     return precioNeto ? redondear(((precioNeto - costeCopa) / precioNeto) * 100, 1) : 0
   }
   return margenBrutoPct(precio, coste)
 }
 
-function ventaEconomica(item = {}, recomendacion = null, mapas) {
+function ventaEconomica(item = {}, recomendacion = null, mapas, config = {}) {
   const vino = buscarVino(item, recomendacion, mapas)
   const cantidad = Math.max(1, numero(item.cantidad) || 1)
   const precioUnitario = precioUnidadEvento(item, vino)
   const ingreso = numero(item.importe_vino_estimado) || redondear(precioUnitario * cantidad, 2)
   const ingresoNeto = redondear(precioNetoVenta(precioUnitario) * cantidad, 2)
-  const beneficioUnitario = beneficioUnidadEvento(item, vino)
+  const beneficioUnitario = beneficioUnidadEvento(item, vino, config)
   const beneficio = redondear(beneficioUnitario * cantidad, 2)
-  const margenPct = margenUnidadEvento(item, vino)
+  const margenPct = margenUnidadEvento(item, vino, config)
   const tieneCoste = numero(vino?.coste_compra) > 0 && precioUnitario > 0
 
   return {
@@ -214,6 +214,7 @@ export function generarResumenSemanalEjecutivo({
   radarActions = [],
   escenarios = [],
   posLines = [],
+  config = {},
 } = {}) {
   const mapas = crearMapaVinos(vinos)
   const activos = (vinos || []).filter(vino => vino.activo !== false)
@@ -231,7 +232,7 @@ export function generarResumenSemanalEjecutivo({
   )
 
   const ventasEconomicas = ventas
-    .map(item => ventaEconomica(item, item.recommendation_id ? recomendacionesPorId.get(item.recommendation_id) : null, mapas))
+    .map(item => ventaEconomica(item, item.recommendation_id ? recomendacionesPorId.get(item.recommendation_id) : null, mapas, config))
     .filter(item => item.precioUnitario > 0 || item.ingreso > 0)
   const ventasConCoste = ventasEconomicas.filter(item => item.tieneCoste)
   const ventasAtribuidas = ventasEconomicas.filter(item => item.item?.recommendation_id)
@@ -247,7 +248,7 @@ export function generarResumenSemanalEjecutivo({
   const beneficioTpvAtribuido = redondear(ventasTpvAtribuidasConCoste.reduce((sum, item) => sum + item.beneficio, 0), 2)
   const beneficioTpvNoAtribuido = redondear(
     tpvNoAtribuido
-      .map(item => ventaEconomica(item, null, mapas))
+      .map(item => ventaEconomica(item, null, mapas, config))
       .filter(item => item.tieneCoste)
       .reduce((sum, item) => sum + Math.max(0, item.beneficio), 0),
     2
@@ -255,7 +256,7 @@ export function generarResumenSemanalEjecutivo({
 
   const noConvertidasEconomicas = feedback
     .filter(item => item.resultado && item.resultado !== 'vendida')
-    .map(item => ventaEconomica(item, item.recommendation_id ? recomendacionesPorId.get(item.recommendation_id) : null, mapas))
+    .map(item => ventaEconomica(item, item.recommendation_id ? recomendacionesPorId.get(item.recommendation_id) : null, mapas, config))
     .filter(item => item.precioUnitario > 0)
   const beneficioNoConvertido = redondear(
     noConvertidasEconomicas
@@ -271,7 +272,7 @@ export function generarResumenSemanalEjecutivo({
   )
   const recomendacionesSinResultadoEconomico = recomendaciones
     .filter(item => item.recommendation_id && !feedbackPorRecomendacion.has(item.recommendation_id))
-    .map(item => ventaEconomica(item, item, mapas))
+    .map(item => ventaEconomica(item, item, mapas, config))
     .filter(item => item.precioUnitario > 0)
   const beneficioPendienteRecomendacion = redondear(
     recomendacionesSinResultadoEconomico
