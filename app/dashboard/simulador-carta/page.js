@@ -259,7 +259,7 @@ export default function SimuladorCarta() {
       base = [...base].sort((a, b) => {
         const dir = ordenTabla.dir === 'asc' ? 1 : -1
         const k = ordenTabla.key
-        if (k === 'precio_botella' || k === 'precio_copa' || k === 'coste_compra' || k === 'margen') {
+        if (k === 'precio_botella' || k === 'precio_copa' || k === 'coste_compra' || k === 'margen' || k === 'anada' || k === 'pvp_recomendado_catalogo' || k === 'pvp_copa_catalogo') {
           const va = k === 'margen' ? margenBotella(a.precio_botella, a.coste_compra) ?? -1 : Number(a[k]) || 0
           const vb = k === 'margen' ? margenBotella(b.precio_botella, b.coste_compra) ?? -1 : Number(b[k]) || 0
           return (va - vb) * dir
@@ -1048,11 +1048,11 @@ export default function SimuladorCarta() {
                   <th className={`${simStyles.thVino} ${simStyles.thSortable}`} onClick={() => toggleOrden('nombre')}>Vino{icono('nombre')}</th>
                   <th className={simStyles.thSortable} onClick={() => toggleOrden('tipo')}>Tipo{icono('tipo')}</th>
                   <th className={simStyles.thSortable} onClick={() => toggleOrden('region')}>D.O. / Zona{icono('region')}</th>
-                  <th>Añada</th>
+                  <th className={simStyles.thSortable} onClick={() => toggleOrden('anada')}>Añada{icono('anada')}</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_botella')}>PVP bot. €{icono('precio_botella')}</th>
-                  <th className={`${simStyles.thNum} ${simStyles.thSugerido}`} title="Precio botella sugerido por el catálogo">Bot. sug.</th>
+                  <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_recomendado_catalogo')} title="Precio botella sugerido por el catálogo">Bot. sug.{icono('pvp_recomendado_catalogo')}</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_copa')}>PVP copa €{icono('precio_copa')}</th>
-                  <th className={`${simStyles.thNum} ${simStyles.thSugerido}`} title="Precio copa sugerido por el catálogo">Copa sug.</th>
+                  <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_copa_catalogo')} title="Precio copa sugerido por el catálogo">Copa sug.{icono('pvp_copa_catalogo')}</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('coste_compra')}>Coste €{icono('coste_compra')}</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen')}>Mrg. %{icono('margen')}</th>
                   <th className={simStyles.thEstado}>Estado</th>
