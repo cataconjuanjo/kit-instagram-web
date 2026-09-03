@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
@@ -104,9 +105,21 @@ export default function SimuladorCarta() {
   const [historial, setHistorial] = useState(null)  // null=no cargado, []=vacío
   const [restaurandoHistorial, setRestaurandoHistorial] = useState(null)
   const [copaDecision, setCopaDecision] = useState(null)  // null | { linea, step: 1|2 }
-  const [copaPopover, setCopaPopover] = useState(null)    // null | lineaId
+  const [copaPopover, setCopaPopover] = useState(null)    // null | { id, linea, top, right }
   const [copaPrecioManual, setCopaPrecioManual] = useState('')
   const [guardandoCopa, setGuardandoCopa] = useState(false)
+
+  // Cierra el popover si el usuario hace scroll o redimensiona la ventana
+  useEffect(() => {
+    if (!copaPopover) return
+    const close = () => setCopaPopover(null)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+    }
+  }, [copaPopover])
 
   useEffect(() => {
     async function cargar() {
@@ -794,9 +807,6 @@ export default function SimuladorCarta() {
 
   return (
     <FeatureGate restaurante={restaurante} feature="catalogo_consultor" title="Simulador de carta">
-      {copaPopover && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setCopaPopover(null)} />
-      )}
       <ModuleShell
         restaurante={restaurante}
         eyebrow="Carta pública"
@@ -1194,7 +1204,6 @@ export default function SimuladorCarta() {
                         }
                         const campo = 'precio_copa'
                         const editando = inlineEdit?.id === linea.id && inlineEdit?.campo === campo
-                        const popoverAbierto = copaPopover === linea.id
                         return (
                           <td className={`${simStyles.tdNum} ${simStyles.tdPrecioCopa}`}>
                             {editando ? (
@@ -1209,22 +1218,13 @@ export default function SimuladorCarta() {
                                       className={simStyles.tdEditable}
                                       style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}
                                       disabled={isBlocked}
-                                      onClick={e => { e.stopPropagation(); setCopaPopover(popoverAbierto ? null : linea.id) }}>
+                                      onClick={e => {
+                                        if (copaPopover?.id === linea.id) { setCopaPopover(null); return }
+                                        const rect = e.currentTarget.getBoundingClientRect()
+                                        setCopaPopover({ id: linea.id, linea, top: rect.bottom + 4, right: window.innerWidth - rect.right })
+                                      }}>
                                 {eur(linea[campo])}
                               </button>
-                            )}
-                            {popoverAbierto && !editando && (
-                              <div className={simStyles.copaPopover} onClick={e => e.stopPropagation()}>
-                                <button type="button" className={simStyles.copaPopoverItem}
-                                        onClick={() => { setCopaPopover(null); startInline(linea, campo) }}>
-                                  Editar precio
-                                </button>
-                                <div className={simStyles.copaPopoverDivider} />
-                                <button type="button" className={`${simStyles.copaPopoverItem} ${simStyles.copaPopoverItemDanger}`}
-                                        onClick={() => { setCopaPopover(null); quitarDeCopa(linea) }}>
-                                  Quitar de copa
-                                </button>
-                              </div>
                             )}
                           </td>
                         )
@@ -2072,6 +2072,27 @@ export default function SimuladorCarta() {
             <p className={simStyles.celebDismiss}>Pulsa en cualquier lugar para cerrar</p>
           </div>
         </div>
+      )}
+
+      {/* Portal para popovers de celda — evita recorte por overflow del tableWrap */}
+      {copaPopover && typeof document !== 'undefined' && createPortal(
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+               onClick={() => setCopaPopover(null)} />
+          <div className={simStyles.copaPopover}
+               style={{ position: 'fixed', top: copaPopover.top, right: copaPopover.right, zIndex: 9999 }}>
+            <button type="button" className={simStyles.copaPopoverItem}
+                    onClick={() => { setCopaPopover(null); startInline(copaPopover.linea, 'precio_copa') }}>
+              Editar precio
+            </button>
+            <div className={simStyles.copaPopoverDivider} />
+            <button type="button" className={`${simStyles.copaPopoverItem} ${simStyles.copaPopoverItemDanger}`}
+                    onClick={() => { setCopaPopover(null); quitarDeCopa(copaPopover.linea) }}>
+              Quitar de copa
+            </button>
+          </div>
+        </>,
+        document.body
       )}
     </FeatureGate>
   )

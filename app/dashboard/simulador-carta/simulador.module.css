@@ -1036,13 +1036,7 @@
 
 /* ── Popover "Editar precio / Quitar de copa" ────────────────────── */
 
-.tdPrecioCopa { position: relative; }
-
 .copaPopover {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 50;
   background: #fff;
   border: 1px solid #e0d4bc;
   border-radius: 8px;
