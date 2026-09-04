@@ -129,8 +129,11 @@ export default function ImpactoPlatosPanel({ lineas, restauranteId, token }) {
     )
   }
 
-  const { resumen, categorias, huecos, aporteVinos } = datos
+  const { resumen, categorias, huecos, aporteVinos, totalPlatosRestaurante } = datos
   const tieneNuevos = lineas.some(l => l.estado === 'nuevo')
+  const platosExcluidos = totalPlatosRestaurante > resumen.totalPlatos
+    ? totalPlatosRestaurante - resumen.totalPlatos
+    : 0
 
   return (
     <div className={simStyles.panelRoot}>
@@ -169,6 +172,12 @@ export default function ImpactoPlatosPanel({ lineas, restauranteId, token }) {
           )}
         </div>
       </div>
+
+      {platosExcluidos > 0 && (
+        <div className={simStyles.panelHint}>
+          Evaluado sobre {resumen.totalPlatos} de {totalPlatosRestaurante} platos registrados — los {platosExcluidos} restantes están marcados como inactivos y no se incluyen en este análisis.
+        </div>
+      )}
 
       {!tieneNuevos && (
         <div className={simStyles.panelHint}>

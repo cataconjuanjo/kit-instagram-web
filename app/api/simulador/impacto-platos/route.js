@@ -27,13 +27,20 @@ export async function POST(req) {
       return Response.json({ error: 'Plan no incluye el simulador de carta' }, { status: 403 })
     }
 
-    const { data: platos } = await supabaseAdmin
-      .from('platos')
-      .select('id, nombre, categoria, descripcion, precio, activo')
-      .eq('restaurante_id', restauranteId)
-      .eq('activo', true)
-      .order('categoria')
-      .limit(200)
+    // Fetch without strict activo=true filter — computarCobertura already filters
+    // p.activo !== false, which correctly includes platos where activo is NULL.
+    const [{ data: platos }, { count: totalPlatosRestaurante }] = await Promise.all([
+      supabaseAdmin
+        .from('platos')
+        .select('id, nombre, categoria, descripcion, precio, activo')
+        .eq('restaurante_id', restauranteId)
+        .order('categoria')
+        .limit(500),
+      supabaseAdmin
+        .from('platos')
+        .select('*', { count: 'exact', head: true })
+        .eq('restaurante_id', restauranteId),
+    ])
 
     const cobertura = computarCobertura(lineas, platos || [])
 
@@ -125,7 +132,7 @@ export async function POST(req) {
       }
     }
 
-    return Response.json({ resumen, categorias, huecos, aporteVinos })
+    return Response.json({ resumen, categorias, huecos, aporteVinos, totalPlatosRestaurante: totalPlatosRestaurante ?? resumen.totalPlatos })
   } catch (err) {
     console.error('[impacto-platos]', err)
     return Response.json({ error: 'No se pudo calcular el impacto.' }, { status: 500 })

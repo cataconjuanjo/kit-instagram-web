@@ -30,7 +30,15 @@ function ConcentracionSection({ lineasEnriquecidas }) {
 
   const grupos = getProveedorBreakdown(lineasFiltradas)
   const totalRefs = grupos.reduce((s, g) => s + g.totalRefs, 0)
-  const conc = calcularConcentracion(grupos, totalRefs)
+
+  // Excluir "Sin proveedor asignado" del índice de concentración — es un hueco de datos,
+  // no una dependencia real de un distribuidor.
+  const gruposConocidos = grupos.filter(g =>
+    g.proveedor.id !== null || g.proveedor.nombre !== 'Sin proveedor asignado'
+  )
+  const refsConocidas = gruposConocidos.reduce((s, g) => s + g.totalRefs, 0)
+  const conc = calcularConcentracion(gruposConocidos, refsConocidas)
+  const pctConProveedor = totalRefs > 0 ? Math.round((refsConocidas / totalRefs) * 100) : 100
 
   const MAXIMO_BARRAS = 8
   const visibles = grupos.slice(0, MAXIMO_BARRAS)
@@ -60,9 +68,14 @@ function ConcentracionSection({ lineasEnriquecidas }) {
         />
         <span className={simStyles.concentracionEtiqueta}>{conc.etiqueta}</span>
         <span className={simStyles.concentracionDetalle}>
-          Top proveedor: {conc.topPct}% · {totalRefs} referencias
+          Top proveedor: {conc.topPct}% · {refsConocidas} de {totalRefs} ref. con proveedor
         </span>
       </div>
+      {pctConProveedor < 50 && (
+        <p className={simStyles.panelHint} style={{ marginTop: 8, marginBottom: 0 }}>
+          Solo el {pctConProveedor}% de tu carta tiene proveedor asignado en el catálogo — el índice de concentración no es representativo todavía.
+        </p>
+      )}
 
       {/* Toggle actual / simulada */}
       <div className={simStyles.toggleGroup}>
