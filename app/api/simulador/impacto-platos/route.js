@@ -42,6 +42,10 @@ export async function POST(req) {
         .eq('restaurante_id', restauranteId),
     ])
 
+    const nAntes   = lineas.filter(l => l.estado === 'actual' || l.estado === 'fuera').length
+    const nDespues = lineas.filter(l => l.estado === 'actual' || l.estado === 'nuevo').length
+    console.log(`[impacto-platos] restaurante=${restauranteId} platos=${platos?.length ?? 0} vinosAntes=${nAntes} vinosDespues=${nDespues}`)
+
     const cobertura = computarCobertura(lineas, platos || [])
 
     // ── Resumen global ────────────────────────────────────────────────────
@@ -132,7 +136,7 @@ export async function POST(req) {
       }
     }
 
-    return Response.json({ resumen, categorias, huecos, aporteVinos, totalPlatosRestaurante: totalPlatosRestaurante ?? resumen.totalPlatos })
+    return Response.json({ resumen, categorias, huecos, aporteVinos, totalPlatosRestaurante: totalPlatosRestaurante ?? resumen.totalPlatos, _debug: { vinosAntes: nAntes, vinosDespues: nDespues } })
   } catch (err) {
     console.error('[impacto-platos]', err)
     return Response.json({ error: 'No se pudo calcular el impacto.' }, { status: 500 })

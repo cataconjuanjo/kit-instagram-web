@@ -129,11 +129,14 @@ export default function ImpactoPlatosPanel({ lineas, restauranteId, token }) {
     )
   }
 
-  const { resumen, categorias, huecos, aporteVinos, totalPlatosRestaurante } = datos
+  const { resumen, categorias, huecos, aporteVinos, totalPlatosRestaurante, _debug } = datos
   const tieneNuevos = lineas.some(l => l.estado === 'nuevo')
   const platosExcluidos = totalPlatosRestaurante > resumen.totalPlatos
     ? totalPlatosRestaurante - resumen.totalPlatos
     : 0
+  const cartaYaCubre100 = tieneNuevos
+    && resumen.cubiertosAntes === resumen.totalPlatos
+    && resumen.deltaPlatos === 0
 
   return (
     <div className={simStyles.panelRoot}>
@@ -176,6 +179,17 @@ export default function ImpactoPlatosPanel({ lineas, restauranteId, token }) {
       {platosExcluidos > 0 && (
         <div className={simStyles.panelHint}>
           Evaluado sobre {resumen.totalPlatos} de {totalPlatosRestaurante} platos registrados — los {platosExcluidos} restantes están marcados como inactivos y no se incluyen en este análisis.
+        </div>
+      )}
+
+      {cartaYaCubre100 && (
+        <div className={simStyles.panelHint}>
+          Tu carta actual ya cubre el 100% de los platos — los cambios simulados no abren ni cierran ningún hueco de maridaje.
+          {_debug && (
+            <span style={{ display: 'block', fontSize: 11, marginTop: 4, opacity: 0.7 }}>
+              ({_debug.vinosAntes} vinos carta actual · {_debug.vinosDespues} vinos carta simulada)
+            </span>
+          )}
         </div>
       )}
 
