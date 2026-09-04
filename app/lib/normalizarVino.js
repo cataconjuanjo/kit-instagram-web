@@ -1,14 +1,18 @@
 import { titleCaseNombre } from './normalizarNombre.js'
 import { splitZonaTipo, sospechaZona, splitFormato } from './normalizarCatalogo.js'
+import { resolverZona } from './normalizarDenominacion.js'
 
 /**
  * Aplica las normalizaciones de nombre/zona/formato a una fila del catálogo.
  * Fuente de verdad compartida entre el API admin y los scripts de importación.
  *
  * @param {{ nombre?: string, tipo?: string, region?: string, formato?: string }} row
+ * @param {Map|null} mapaRefDenom - resultado de construirMapaDenominaciones().
+ *   Si se pasa, añade pais/comunidad_autonoma/do_igp/zona_revisar/zona_original.
+ *   Si es null, esos campos no se incluyen en el retorno.
  * @returns objeto con campos normalizados + columnas derivadas (_raw, zona, tamanyo, …)
  */
-export function normalizarCamposVino(row) {
+export function normalizarCamposVino(row, mapaRefDenom = null) {
   const nombreRaw  = (row.nombre  || '').trim()
   const regionRaw  = (row.region  || '').trim() || null
   const formatoRaw = (row.formato || '').trim() || null
@@ -20,9 +24,9 @@ export function normalizarCamposVino(row) {
   let regionRawGuardado = null
   if (regionRaw) {
     const { zona: z, tipo: tipoExtraido } = splitZonaTipo(regionRaw)
-    if (!sospechaZona(z) && z !== regionRaw) {
+    if (!sospechaZona(z)) {
       zona = z
-      regionRawGuardado = regionRaw
+      if (z !== regionRaw) regionRawGuardado = regionRaw  // solo cuando hubo split real
       if (tipoExtraido && !tipoNorm) tipoNorm = tipoExtraido
     }
   }
@@ -53,7 +57,28 @@ export function normalizarCamposVino(row) {
     }
   }
 
-  return {
+  // ── Normalización DOP/IGP (solo si se pasa el mapa de referencia) ──────────
+  let pais = undefined
+  let comunidad_autonoma = undefined
+  let do_igp = undefined
+  let zona_revisar = undefined
+  let zona_original = undefined
+
+  if (mapaRefDenom !== null) {
+    // zona_original: el texto de zona extraído antes de cualquier mapeo DOP
+    zona_original = zona ?? null
+    if (zona) {
+      const res = resolverZona(zona, mapaRefDenom)
+      pais               = res.pais ?? null
+      comunidad_autonoma = res.comunidad_autonoma ?? null
+      do_igp             = res.do_igp ?? null
+      zona_revisar       = res.zona_revisar
+    } else {
+      pais = null; comunidad_autonoma = null; do_igp = null; zona_revisar = false
+    }
+  }
+
+  const base = {
     nombre: nombreNorm,
     nombre_raw: nombreRaw !== nombreNorm ? nombreRaw : null,
     tipo: tipoNorm,
@@ -68,4 +93,14 @@ export function normalizarCamposVino(row) {
     graduacion,
     almacen_proveedor,
   }
+
+  if (mapaRefDenom !== null) {
+    base.zona_original       = zona_original
+    base.pais                = pais
+    base.comunidad_autonoma  = comunidad_autonoma
+    base.do_igp              = do_igp
+    base.zona_revisar        = zona_revisar
+  }
+
+  return base
 }

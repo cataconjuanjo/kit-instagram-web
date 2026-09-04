@@ -179,6 +179,23 @@ async function insertChunks(supabase, payload) {
   return inserted
 }
 
+async function cargarMapaRefDenom(supabase) {
+  try {
+    const { construirMapaDenominaciones } = await import('../app/lib/normalizarDenominacion.js')
+    const { data, error } = await supabase
+      .from('ref_denominaciones_es')
+      .select('pais, comunidad_autonoma, tipo, nombre_oficial, nombre_norm')
+    if (error || !data?.length) {
+      console.error('[zona] ref_denominaciones_es no disponible — se insertan zonas sin normalizar DOP.')
+      return null
+    }
+    return construirMapaDenominaciones(data)
+  } catch {
+    console.error('[zona] Error cargando normalizarDenominacion.js — se insertan zonas sin normalizar DOP.')
+    return null
+  }
+}
+
 async function main() {
   const { normalizarCamposVino } = await import('../app/lib/normalizarVino.js')
 
@@ -191,7 +208,15 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
+  // Cargar mapa de denominaciones para normalizar zona al insertar
+  const mapaRefDenom = await cargarMapaRefDenom(supabase)
+  if (mapaRefDenom) {
+    console.error(`[zona] Mapa DOP/IGP cargado (${mapaRefDenom.size} entradas). Las zonas españolas se normalizarán al insertar.`)
+  }
+
   const results = []
+  const zonaRevisarGlobal = []  // acumula zona_original de filas con zona_revisar=true
+
   const selectedCatalogs = only
     ? CATALOGS.filter(catalog => [catalog.providerName, catalog.catalogName, catalog.file]
       .some(value => texto(value).toLowerCase().includes(only)))
@@ -208,8 +233,12 @@ async function main() {
     const sourceRows = readRows(filePath)
     const { provider, created, duplicateProviders } = await ensureProvider(supabase, catalog)
     const before = await existingCount(supabase, provider.id)
-    const payload = payloadRows(sourceRows, provider.id, catalog.catalogName, normalizarCamposVino)
+
+    const payload = payloadRows(sourceRows, provider.id, catalog.catalogName,
+      (row) => normalizarCamposVino(row, mapaRefDenom))
+
     const withoutPrice = payload.filter(row => !row.coste_estimado).length
+    const conZonaRevisar = payload.filter(row => row.zona_revisar === true)
 
     let deleted = 0
     let inserted = 0
@@ -229,6 +258,11 @@ async function main() {
 
     const after = dryRun ? before : await existingCount(supabase, provider.id)
 
+    // Acumular zonas a revisar de este catálogo
+    for (const fila of conZonaRevisar) {
+      if (fila.zona_original) zonaRevisarGlobal.push(fila.zona_original)
+    }
+
     results.push({
       proveedor: catalog.providerName,
       proveedor_creado: created,
@@ -237,6 +271,7 @@ async function main() {
       filas_excel: sourceRows.length,
       filas_validas: payload.length,
       filas_sin_precio: withoutPrice,
+      filas_zona_revisar: conZonaRevisar.length,
       catalogo_anterior: before,
       reemplazadas: deleted,
       insertadas: inserted,
@@ -244,12 +279,17 @@ async function main() {
     })
   }
 
+  // Resumen de zonas a revisar (valores únicos, para que el usuario decida si añadir alias)
+  const zonasUnicasRevisar = [...new Set(zonaRevisarGlobal)].sort()
+
   console.log(JSON.stringify({
     dryRun,
     replace,
     only: only || null,
     total_insertadas: results.reduce((sum, row) => sum + row.insertadas, 0),
     total_validas: results.reduce((sum, row) => sum + row.filas_validas, 0),
+    total_zona_revisar: zonaRevisarGlobal.length,
+    zonas_a_revisar: zonasUnicasRevisar,
     results,
   }, null, 2))
 }
