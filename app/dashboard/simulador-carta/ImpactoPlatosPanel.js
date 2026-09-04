@@ -129,7 +129,7 @@ export default function ImpactoPlatosPanel({ lineas, restauranteId, token }) {
     )
   }
 
-  const { resumen, categorias, huecos, aporteVinos, totalPlatosRestaurante, _debug } = datos
+  const { resumen, categorias, huecos, aporteVinos, totalPlatosRestaurante } = datos
   const tieneNuevos = lineas.some(l => l.estado === 'nuevo')
   const platosExcluidos = totalPlatosRestaurante > resumen.totalPlatos
     ? totalPlatosRestaurante - resumen.totalPlatos
@@ -286,30 +286,7 @@ export default function ImpactoPlatosPanel({ lineas, restauranteId, token }) {
         </section>
       )}
 
-      {/* ── DEBUG temporal ───────────────────────────────────────────────── */}
-      {_debug && (
-        <section className={simStyles.panelSeccion} style={{ background: '#f5f0e8', borderRadius: 6, padding: 12, fontSize: 12, fontFamily: 'ui-monospace, monospace' }}>
-          <strong>DEBUG (temporal)</strong>
-          <div style={{ marginTop: 6 }}>
-            Conjuntos — vinosAntes: <strong>{_debug.conjuntos.vinosAntes}</strong> · vinosDespues: <strong>{_debug.conjuntos.vinosDespues}</strong> · intersección: <strong>{_debug.conjuntos.interseccion}</strong>
-          </div>
-          <div style={{ marginTop: 4 }}>
-            Cobertura — solo actual (54): <strong>{_debug.cobertura.soloActual}</strong> · antes (80): <strong>{_debug.cobertura.antes}</strong> · después (89): <strong>{_debug.cobertura.despues}</strong>
-          </div>
-          {Object.keys(_debug.categoriasSoloActual).length > 0 && (
-            <div style={{ marginTop: 4 }}>
-              Categorías solo-actual: {Object.entries(_debug.categoriasSoloActual).map(([cat, val]) => `${cat}: ${val}`).join(' · ')}
-            </div>
-          )}
-          {_debug.platosFragiles.length > 0 ? (
-            <div style={{ marginTop: 4, color: '#b85c00' }}>
-              Platos frágiles (1 solo vino actual compatible): {_debug.platosFragiles.map(f => `"${f.plato}" → ${f.vino}`).join(' / ')}
-            </div>
-          ) : (
-            <div style={{ marginTop: 4, color: '#5a7a3a' }}>Sin platos frágiles (todos cubiertos por ≥2 vinos actuales)</div>
-          )}
-        </section>
-      )}
+
     </div>
   )
 }
