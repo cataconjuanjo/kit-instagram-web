@@ -12,8 +12,8 @@ function eur(v) {
 function DumbbellChart({ categorias }) {
   if (!categorias || categorias.length === 0) return null
 
-  const rowH  = 36
-  const padT  = 12
+  const rowH  = 26
+  const padT  = 6
   const padL  = 160
   const padR  = 64
   const dotR  = 5
@@ -30,7 +30,7 @@ function DumbbellChart({ categorias }) {
         <span className={simStyles.dumbbellLeyendaAntes}>● Antes</span>
         <span className={simStyles.dumbbellLeyendaDespues}>● Después</span>
       </div>
-      <svg viewBox={`0 0 ${totalW} ${svgH}`} width="100%" style={{ display: 'block', overflow: 'visible' }}>
+      <svg viewBox={`0 0 ${totalW} ${svgH}`} width="100%" style={{ display: 'block', overflow: 'visible', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
         {categorias.map((cat, i) => {
           const cy      = padT + i * rowH + rowH / 2
           const xAntes  = x(cat.antes)
