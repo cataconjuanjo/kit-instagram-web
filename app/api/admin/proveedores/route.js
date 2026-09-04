@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { normalizarCamposVino } from '../../../lib/normalizarVino.js'
+import { construirMapaDenominaciones } from '../../../lib/normalizarDenominacion.js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -15,6 +16,7 @@ const SELECT_CATALOGO_VINO = [
   'disponibilidad', 'notas', 'activo', 'favorito', 'created_at',
   'updated_at', 'proveedores_vino(nombre)',
   'zona', 'tamanyo', 'unidades_por_caja', 'referencia_proveedor', 'almacen_proveedor', 'graduacion',
+  'do_igp', 'pais', 'comunidad_autonoma', 'zona_revisar',
 ].join(', ')
 
 async function validarAdmin(req) {
@@ -151,13 +153,26 @@ function payloadProveedor(body) {
   }
 }
 
-function payloadVino(body) {
+// Lazy singleton: carga ref_denominaciones_es una vez por proceso para normalizar do_igp en saves del admin
+let _mapaRefDenom = null
+async function getMapaRefDenom() {
+  if (_mapaRefDenom) return _mapaRefDenom
+  const supabase = adminClient()
+  const { data: refs } = await supabase
+    .from('ref_denominaciones_es')
+    .select('pais, comunidad_autonoma, tipo, nombre_oficial, nombre_norm')
+  _mapaRefDenom = construirMapaDenominaciones(refs || [])
+  return _mapaRefDenom
+}
+
+async function payloadVino(body) {
+  const mapa = await getMapaRefDenom()
   const norm = normalizarCamposVino({
     nombre: texto(body, 'nombre'),
     tipo:   texto(body, 'tipo'),
     region: texto(body, 'region'),
     formato: texto(body, 'formato'),
-  })
+  }, mapa)
   return {
     proveedor_id: body.proveedor_id,
     ...norm,
@@ -217,9 +232,9 @@ export async function POST(req) {
         return Response.json({ error: 'Proveedor y vinos son obligatorios.' }, { status: 400 })
       }
 
-      const payload = vinos
-        .map(vino => payloadVino({ ...vino, proveedor_id: proveedorId }))
-        .filter(vino => vino.nombre)
+      const payload = (await Promise.all(
+        vinos.map(vino => payloadVino({ ...vino, proveedor_id: proveedorId }))
+      )).filter(vino => vino.nombre)
 
       if (!payload.length) {
         return Response.json({ error: 'No hay vinos válidos para importar.' }, { status: 400 })
@@ -244,7 +259,7 @@ export async function POST(req) {
     }
 
     if (body.kind === 'vino') {
-      const dataPayload = payloadVino(body)
+      const dataPayload = await payloadVino(body)
       if (!dataPayload.proveedor_id || !dataPayload.nombre) {
         return Response.json({ error: 'Proveedor y nombre del vino son obligatorios.' }, { status: 400 })
       }
@@ -309,7 +324,7 @@ export async function PATCH(req) {
     }
 
     if (body.kind === 'vino') {
-      const dataPayload = payloadVino(body)
+      const dataPayload = await payloadVino(body)
       if (!dataPayload.proveedor_id || !dataPayload.nombre) {
         return Response.json({ error: 'Proveedor y nombre del vino son obligatorios.' }, { status: 400 })
       }

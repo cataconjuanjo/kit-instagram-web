@@ -24,6 +24,7 @@ const vinoInicial = {
   bodega: '',
   tipo: '',
   region: '',
+  do_igp: '',
   uva: '',
   anada: '',
   referencia: '',
@@ -371,7 +372,7 @@ function ProveedoresPageContent() {
       if (soloSinPrecio && costeVino > 0) return false
       if (ocultarSinPrecio && costeVino <= 0) return false
       if (soloFavoritos && !vino.favorito) return false
-      if (filtroZona && normalizar(vino.region) !== filtroZona) return false
+      if (filtroZona && normalizar(vino.do_igp || '') !== filtroZona) return false
       if (filtroBodega && normalizar(vino.bodega) !== filtroBodega) return false
       if (filtroTipo && normalizar(vino.tipo) !== filtroTipo) return false
       if (!costeEnRango(costeVino, rango)) return false
@@ -393,7 +394,7 @@ function ProveedoresPageContent() {
         return rb ? calcularCopa(rb.pvp)?.pvp ?? 0 : 0
       }
       if (ordenReferencias.campo === 'bodega') return normalizar(vino.bodega)
-      if (ordenReferencias.campo === 'zona') return normalizar(`${vino.region || ''} ${vino.tipo || ''} ${vino.uva || ''}`)
+      if (ordenReferencias.campo === 'zona') return normalizar(`${vino.do_igp || vino.region || ''} ${vino.tipo || ''} ${vino.uva || ''}`)
       if (ordenReferencias.campo === 'formato') return normalizar(`${vino.formato || ''} ${vino.referencia || ''}`)
       return normalizar(vino.nombre)
     }
@@ -462,7 +463,7 @@ function ProveedoresPageContent() {
       : vinos
     const rango = RANGOS_PRECIO.find(item => item.id === filtroPrecio)
     const pasaBase = (vino, excluir = '') => {
-      if (excluir !== 'zona' && filtroZona && normalizar(vino.region) !== filtroZona) return false
+      if (excluir !== 'zona' && filtroZona && normalizar(vino.do_igp || '') !== filtroZona) return false
       if (excluir !== 'bodega' && filtroBodega && normalizar(vino.bodega) !== filtroBodega) return false
       if (excluir !== 'tipo' && filtroTipo && normalizar(vino.tipo) !== filtroTipo) return false
       const costeVino = numeroCoste(vino.coste_estimado)
@@ -474,10 +475,10 @@ function ProveedoresPageContent() {
       return true
     }
     return {
-      zonas: opcionesCampo('region', baseProveedor.filter(vino => pasaBase(vino, 'zona'))),
+      zonas: opcionesCampo('do_igp', baseProveedor.filter(vino => pasaBase(vino, 'zona'))),
       bodegas: opcionesCampo('bodega', baseProveedor.filter(vino => pasaBase(vino, 'bodega'))),
       tipos: opcionesCampo('tipo', baseProveedor.filter(vino => pasaBase(vino, 'tipo'))),
-      sinZona: baseProveedor.filter(vino => pasaBase(vino, 'zona') && !normalizar(vino.region)).length,
+      sinZona: baseProveedor.filter(vino => pasaBase(vino, 'zona') && !vino.do_igp).length,
       sinBodega: baseProveedor.filter(vino => pasaBase(vino, 'bodega') && !normalizar(vino.bodega)).length,
       sinTipo: baseProveedor.filter(vino => pasaBase(vino, 'tipo') && !normalizar(vino.tipo)).length,
     }
@@ -696,6 +697,7 @@ function ProveedoresPageContent() {
       bodega: vino.bodega || '',
       tipo: vino.tipo || '',
       region: vino.region || '',
+      do_igp: vino.do_igp || '',
       uva: vino.uva || '',
       anada: vino.anada || '',
       referencia: vino.referencia || '',
@@ -1336,6 +1338,11 @@ function ProveedoresPageContent() {
                       <div className="alta-field">
                         <label>Zona / D.O.</label>
                         <input value={vinoForm.region} onChange={e => cambiarVino('region', e.target.value)} placeholder="Rioja, Jerez, Málaga..." />
+                        {vinoForm.do_igp && (
+                          <small style={{ color: 'var(--muted)', marginTop: 3, display: 'block' }}>
+                            D.O. resuelta: <strong>{vinoForm.do_igp}</strong>
+                          </small>
+                        )}
                       </div>
                       <div className="alta-field">
                         <label>Uva / blend</label>
@@ -1500,7 +1507,7 @@ function ProveedoresPageContent() {
             <div className="supplier-filter-controls">
               <div className="supplier-filter-menu">
                 <button type="button" className={filtroZona ? 'is-selected' : ''} onClick={() => setFiltroAbierto(filtroAbierto === 'zona' ? '' : 'zona')}>
-                  <span>Zona / D.O.</span>
+                  <span>D.O.</span>
                   <strong>{etiquetaFiltro(opcionesFiltros.zonas, filtroZona, 'Todas')}</strong>
                 </button>
                 {filtroAbierto === 'zona' && (
@@ -1552,7 +1559,7 @@ function ProveedoresPageContent() {
 
             {(filtroZona || filtroBodega || filtroTipo || filtroPrecio || busquedaReferencias || soloSinPrecio || ocultarSinPrecio || soloFavoritos) && (
               <div className="supplier-active-filters">
-                {filtroZona && <span>Zona: {etiquetaFiltro(opcionesFiltros.zonas, filtroZona)}</span>}
+                {filtroZona && <span>D.O.: {etiquetaFiltro(opcionesFiltros.zonas, filtroZona)}</span>}
                 {filtroBodega && <span>Bodega: {etiquetaFiltro(opcionesFiltros.bodegas, filtroBodega)}</span>}
                 {filtroTipo && <span>Tipo: {etiquetaFiltro(opcionesFiltros.tipos, filtroTipo)}</span>}
                 {filtroPrecio && <span>{RANGOS_PRECIO.find(rango => rango.id === filtroPrecio)?.label}</span>}
@@ -1676,8 +1683,8 @@ function ProveedoresPageContent() {
                                 </div>
                                 <div style={{ fontSize: '0.72rem', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
                                   {proveedorSeleccionado
-                                    ? [vino.bodega, vino.region].filter(Boolean).join(' · ') || ''
-                                    : [vino.bodega || vino.region, proveedorPorId[vino.proveedor_id]?.nombre].filter(Boolean).join(' · ')}
+                                    ? [vino.bodega, vino.do_igp || vino.region].filter(Boolean).join(' · ') || ''
+                                    : [vino.bodega || vino.do_igp || vino.region, proveedorPorId[vino.proveedor_id]?.nombre].filter(Boolean).join(' · ')}
                                 </div>
                               </div>
                               {/* PVP destacado */}
@@ -1748,7 +1755,7 @@ function ProveedoresPageContent() {
                                   : [vino.bodega, proveedorPorId[vino.proveedor_id]?.nombre].filter(Boolean).join(' · ')}
                               </span>
                             </div>
-                            <span className="supplier-cell-zona">{[vino.region, vino.tipo].filter(Boolean).join(' · ') || '-'}</span>
+                            <span className="supplier-cell-zona">{[vino.do_igp || vino.region, vino.tipo].filter(Boolean).join(' · ') || '-'}</span>
                             <span className="supplier-cell-formato">{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
                             <strong className="supplier-cell-num">{dinero(vino.coste_estimado) || '-'}</strong>
                             <strong className="supplier-cell-num">{rb ? `${rb.pvp.toFixed(2)} €` : '—'}</strong>
