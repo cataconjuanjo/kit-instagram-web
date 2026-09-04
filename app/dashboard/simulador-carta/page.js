@@ -16,6 +16,8 @@ import ConfirmationDialog from '../ConfirmationDialog'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 import styles from '../module.module.css'
 import simStyles from './simulador.module.css'
+import ImpactoPlatosPanel from './ImpactoPlatosPanel'
+import ProveedoresTab from './ProveedoresTab'
 
 const ESTADO_LABEL = { actual: 'Actual', nuevo: 'Nuevo', fuera: 'Retirado' }
 const ESTADO_ORDER = { actual: 0, nuevo: 1, fuera: 2 }
@@ -110,6 +112,8 @@ export default function SimuladorCarta() {
   const [copaPopover, setCopaPopover] = useState(null)    // null | { id, linea, top, right }
   const [copaPrecioManual, setCopaPrecioManual] = useState('')
   const [guardandoCopa, setGuardandoCopa] = useState(false)
+  const [activeTab, setActiveTab] = useState('tabla')     // 'tabla' | 'impacto' | 'proveedores'
+  const [token, setToken] = useState(null)
 
   // Cierra el popover si el usuario hace scroll o redimensiona la ventana
   useEffect(() => {
@@ -140,6 +144,7 @@ export default function SimuladorCarta() {
       if (puedeUsar(rest, 'catalogo_consultor')) {
         const { data: { session } } = await supabase.auth.getSession()
         const t = session?.access_token
+        setToken(t)
         const [resLineas, resRevision] = await Promise.all([
           fetch(
             `/api/simulador?${new URLSearchParams({ restaurante_id: rest.id })}`,
@@ -859,6 +864,15 @@ export default function SimuladorCarta() {
             >
               Vista previa
             </button>
+            {lineas.some(l => l.estado === 'nuevo') && (
+              <button
+                type="button"
+                className={simStyles.accionBtn}
+                onClick={() => setActiveTab('proveedores')}
+              >
+                Pedido a proveedores
+              </button>
+            )}
             {revision === null && (
               <button
                 type="button"
@@ -1000,8 +1014,33 @@ export default function SimuladorCarta() {
           </div>
         )}
 
-        {/* ── Tabla ─────────────────────────────────────────── */}
-        {lineas.length === 0 ? (
+        {/* ── Sub-navegación de vistas ─────────────────────── */}
+        <div className={simStyles.subNav}>
+          <button
+            type="button"
+            className={`${simStyles.subNavBtn} ${activeTab === 'tabla' ? simStyles.subNavBtnActive : ''}`}
+            onClick={() => setActiveTab('tabla')}
+          >
+            Tabla
+          </button>
+          <button
+            type="button"
+            className={`${simStyles.subNavBtn} ${activeTab === 'impacto' ? simStyles.subNavBtnActive : ''}`}
+            onClick={() => setActiveTab('impacto')}
+          >
+            Impacto en platos
+          </button>
+          <button
+            type="button"
+            className={`${simStyles.subNavBtn} ${activeTab === 'proveedores' ? simStyles.subNavBtnActive : ''}`}
+            onClick={() => setActiveTab('proveedores')}
+          >
+            Proveedores
+          </button>
+        </div>
+
+        {/* ── Tab: Tabla ────────────────────────────────────── */}
+        {activeTab === 'tabla' && (lineas.length === 0 ? (
           <section className={styles.empty}>
             <p>No hay ninguna referencia en el simulador todavía.</p>
             <p>
@@ -1394,10 +1433,10 @@ export default function SimuladorCarta() {
               </div>
             )}
           </>
-        )}
+        ))}
 
-        {/* ── Proyección de inversión inicial ───���──────────── */}
-        {proyeccion && (
+        {/* ── Proyección (solo en vista Tabla) ──────────────── */}
+        {activeTab === 'tabla' && proyeccion && (
           <div className={simStyles.proyeccion}>
             <span>Inversión estimada</span>
             <span className={simStyles.proyeccionTotal}>{eur(proyeccion.total)}</span>
@@ -1406,6 +1445,24 @@ export default function SimuladorCarta() {
               {proyeccion.sinCoste > 0 && ` · ${proyeccion.sinCoste} ref. sin coste no incluidas`}
             </span>
           </div>
+        )}
+
+        {/* ── Tab: Impacto en platos ────────────────────────── */}
+        {activeTab === 'impacto' && token && (
+          <ImpactoPlatosPanel
+            lineas={lineas}
+            restauranteId={restaurante?.id}
+            token={token}
+          />
+        )}
+
+        {/* ── Tab: Proveedores (Concentración + Pedidos) ───── */}
+        {activeTab === 'proveedores' && token && (
+          <ProveedoresTab
+            lineas={lineas}
+            restauranteId={restaurante?.id}
+            token={token}
+          />
         )}
 
         {/* ── Toast de éxito ────────────────────────────────── */}
