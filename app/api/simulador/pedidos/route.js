@@ -64,11 +64,28 @@ export async function POST(req) {
     // La unicidad depende de si hay proveedor_id (FK) o solo nombre (texto libre).
     let result
     if (body.proveedor_id) {
-      result = await supabaseAdmin
+      // Partial unique index (WHERE proveedor_id IS NOT NULL) — upsert onConflict not supported.
+      const { data: existing } = await supabaseAdmin
         .from('simulador_pedidos')
-        .upsert(fila, { onConflict: 'restaurante_id,proveedor_id', ignoreDuplicates: false })
-        .select()
-        .single()
+        .select('id')
+        .eq('restaurante_id', restauranteId)
+        .eq('proveedor_id', body.proveedor_id)
+        .maybeSingle()
+
+      if (existing) {
+        result = await supabaseAdmin
+          .from('simulador_pedidos')
+          .update(fila)
+          .eq('id', existing.id)
+          .select()
+          .single()
+      } else {
+        result = await supabaseAdmin
+          .from('simulador_pedidos')
+          .insert(fila)
+          .select()
+          .single()
+      }
     } else {
       // Para proveedores sin FK buscamos por nombre y actualizamos o insertamos
       const { data: existing } = await supabaseAdmin

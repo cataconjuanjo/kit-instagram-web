@@ -173,6 +173,7 @@ function PedidosSection({ lineasEnriquecidas, restauranteId, restauranteNombre, 
   const [loadingPedidos, setLoadingPedidos] = useState(true)
   const [guardando, setGuardando] = useState(null)
   const [copiado, setCopiado] = useState(null)
+  const [errorGuardando, setErrorGuardando] = useState(null) // { key, msg }
 
   // Carga pedidos guardados
   useEffect(() => {
@@ -218,6 +219,7 @@ function PedidosSection({ lineasEnriquecidas, restauranteId, restauranteNombre, 
   async function guardarYMarcar(grupo, nuevoEstado) {
     const key = proveedorKey(grupo)
     setGuardando(key)
+    setErrorGuardando(null)
 
     const vinos_snapshot = grupo.lineas.map(l => ({
       id: l.id,
@@ -264,7 +266,9 @@ function PedidosSection({ lineasEnriquecidas, restauranteId, restauranteNombre, 
       } else {
         setPedidosDB(prev => ({ ...prev, [key]: savedJson.pedido }))
       }
-    } catch { /* silencioso — el usuario ya tiene el mensaje en el portapapeles */ }
+    } catch (err) {
+      setErrorGuardando({ key, msg: err?.message || 'Error al guardar el pedido' })
+    }
 
     setGuardando(null)
   }
@@ -418,6 +422,11 @@ function PedidosSection({ lineasEnriquecidas, restauranteId, restauranteNombre, 
                 </button>
               )}
             </div>
+            {errorGuardando?.key === key && (
+              <p style={{ color: 'var(--cv-red)', fontSize: 12, marginTop: 6 }}>
+                {errorGuardando.msg} — reintentar
+              </p>
+            )}
           </div>
         )
       })}
