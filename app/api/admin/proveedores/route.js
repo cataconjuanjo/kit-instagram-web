@@ -39,6 +39,47 @@ function adminClient() {
   })
 }
 
+// Propaga los campos maestros de una referencia del catálogo editada hacia:
+//   - carta_simulacion: actualización directa (el PATCH del simulador no expone
+//     campos maestros, por tanto nunca hay override local allí).
+//   - vinos:            via RPC que respeta campos_sobreescritos por registro.
+async function propagarCambiosCatalogo(supabase, catalogoVinoId, payload) {
+  const [simResult, rpcResult] = await Promise.all([
+    supabase
+      .from('carta_simulacion')
+      .update({
+        nombre:     payload.nombre    ?? null,
+        bodega:     payload.bodega    ?? null,
+        tipo:       payload.tipo      ?? null,
+        region:     payload.region    ?? null,
+        anada:      payload.anada     ?? null,
+        formato:    payload.formato   ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('catalogo_vino_id', catalogoVinoId),
+
+    supabase.rpc('propagar_cambios_catalogo_a_vinos', {
+      p_catalogo_vino_id: catalogoVinoId,
+      p_cambios: {
+        nombre:         payload.nombre   ?? null,
+        bodega:         payload.bodega   ?? null,
+        tipo:           payload.tipo     ?? null,
+        region:         payload.region   ?? null,
+        anada:          payload.anada    ?? null,
+        formato_compra: payload.formato  ?? null,
+        uva:            payload.uva      ?? null,
+      },
+    }),
+  ])
+
+  if (simResult.error) {
+    console.error('[propagarCambiosCatalogo] carta_simulacion:', simResult.error.message)
+  }
+  if (rpcResult.error) {
+    console.error('[propagarCambiosCatalogo] vinos RPC:', rpcResult.error.message)
+  }
+}
+
 async function seleccionarTodo(query, chunkSize = 1000) {
   let from = 0
   let rows = []
@@ -281,6 +322,13 @@ export async function PATCH(req) {
         .single()
 
       if (error) throw error
+
+      // Propagar campos maestros a carta_simulacion y vinos sin await bloqueante;
+      // un fallo de propagación no debe impedir que el consultor vea su cambio guardado.
+      propagarCambiosCatalogo(supabase, body.id, dataPayload).catch(err =>
+        console.error('[PATCH vino] propagación fallida:', err.message)
+      )
+
       return Response.json({ vino: data })
     }
 

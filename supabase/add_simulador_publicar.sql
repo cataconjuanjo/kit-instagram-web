@@ -28,15 +28,15 @@ BEGIN
   GET DIAGNOSTICS v_desactivados = ROW_COUNT;
 
   -- 2. Crear nuevos vinos con datos del catálogo del consultor.
-  --    proveedor (nombre del proveedor) viene del JOIN a proveedores_vino.
-  --    uva no se incluye: no está en carta_simulacion y no podemos confirmar
-  --    que exista en proveedor_catalogo_vinos en la BD real.
+  --    catalogo_vino_id se preserva para habilitar sync futuro de cambios.
+  --    uva no se incluye: no está en carta_simulacion.
   INSERT INTO public.vinos (
     restaurante_id,
     nombre, bodega, tipo, region,
     anada, formato_compra,
     coste_compra, precio_botella, precio_copa,
     proveedor,
+    catalogo_vino_id,
     stock, stock_minimo,
     activo
   )
@@ -52,6 +52,7 @@ BEGIN
     cs.precio_botella,
     cs.precio_copa,
     pv.nombre,
+    cs.catalogo_vino_id,
     0, 0,
     true
   FROM   public.carta_simulacion         cs
