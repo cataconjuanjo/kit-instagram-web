@@ -2383,7 +2383,9 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
       {/* Cabecera */}
       <div className={styles.showcaseTop}>
         {tienda?.logo_url
-          ? <img src={tienda.logo_url} alt={tienda?.nombre} className={styles.showcaseLogo} />
+          ? <div className={styles.showcaseLogoWrap}>
+              <img src={tienda.logo_url} alt={tienda?.nombre} className={styles.showcaseLogo} />
+            </div>
           : <p className={styles.showcaseTienda}>{tienda?.nombre}</p>
         }
         {hora && <p className={styles.showcaseHora}>{hora}</p>}
