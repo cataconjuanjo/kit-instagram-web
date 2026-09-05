@@ -1623,14 +1623,14 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
   const hayVeganos    = useMemo(() => gourmetCesta.some(g => g.es_vegano === true), [gourmetCesta])
   const hayGlutenFree = useMemo(() => gourmetCesta.some(g => g.sin_gluten === true), [gourmetCesta])
 
-  function elegirOcasion(id) { setOcasionId(id); setStep(1); onFunnelStep?.('ocasion') }
+  function elegirOcasion(id) { setOcasionId(id); setStep(1); onFunnelStep?.('presupuesto') }
 
   function elegirPresupuesto(preset) {
     if (preset.max === null) { setModoInput(true); return }
     setModoInput(false)
     setPresupuesto(preset.max)
     setStep(2)
-    onFunnelStep?.('presupuesto')
+    onFunnelStep?.('prefs')
   }
 
   function confirmarPresupuestoLibre() {
@@ -1638,7 +1638,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
     if (!v || v < 10) return
     setPresupuesto(v)
     setStep(2)
-    onFunnelStep?.('presupuesto')
+    onFunnelStep?.('prefs')
   }
 
   function generarCesta(s = semilla) {
@@ -2079,7 +2079,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
   const [wPrecioMin, setWPrecioMin] = useState(wizardPrecios.min)
   const [wPrecioMax, setWPrecioMax] = useState(wizardPrecios.max)
 
-  function selOcasion(id) { setWizard(w => ({ ...w, ocasion: id })); setStep(1); onFunnelStep?.('ocasion') }
+  function selOcasion(id) { setWizard(w => ({ ...w, ocasion: id })); setStep(1); onFunnelStep?.('estilo') }
   function selPresupuesto(id) {
     const next = { ...wizard, presupuesto: id }
     if (id === 'custom') {
@@ -2093,7 +2093,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
     const next = { ...wizard, estilo: id }
     setWizard(next)
     setStep(2)
-    onFunnelStep?.('estilo')
+    onFunnelStep?.('presupuesto')
   }
 
   async function consultar(w = wizard) {
@@ -2103,7 +2103,6 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
     setError('')
     setResultado(null)
     setStep(99)
-    onFunnelStep?.('presupuesto')
     try {
       const res = await fetch(`/api/kiosko/${slug}/maridaje`, {
         method: 'POST',

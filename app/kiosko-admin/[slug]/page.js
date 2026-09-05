@@ -2734,8 +2734,8 @@ export default function AdminKioskoPage() {
           prefs: 'Preferencias', resultado: 'Resultado', consulta: 'Consulta', carrito: 'Carrito ✓',
         }
         const FLOW_STEPS = {
-          wizard:  ['start', 'ocasion', 'estilo', 'presupuesto', 'resultado', 'carrito'],
-          cesta:   ['start', 'ocasion', 'presupuesto', 'resultado', 'carrito'],
+          wizard:  ['start', 'estilo', 'presupuesto', 'resultado', 'carrito'],
+          cesta:   ['start', 'presupuesto', 'prefs', 'resultado', 'carrito'],
           pairing: ['start', 'consulta', 'resultado', 'carrito'],
         }
         return (

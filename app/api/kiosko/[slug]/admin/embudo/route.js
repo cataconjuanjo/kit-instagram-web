@@ -3,8 +3,8 @@ import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
 const STEP_ORDER = {
-  wizard:  ['start', 'ocasion', 'estilo', 'presupuesto', 'resultado', 'carrito'],
-  cesta:   ['start', 'ocasion', 'presupuesto', 'resultado', 'carrito'],
+  wizard:  ['start', 'estilo', 'presupuesto', 'resultado', 'carrito'],
+  cesta:   ['start', 'presupuesto', 'prefs', 'resultado', 'carrito'],
   pairing: ['start', 'consulta', 'resultado', 'carrito'],
 }
 
