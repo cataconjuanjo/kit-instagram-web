@@ -45,7 +45,7 @@ const CAMPOS_RESTAURANTE = [
   'hub_estilo', 'hub_mostrar_logo', 'hub_mostrar_nombre',
   'hub_mostrar_direccion', 'instagram_url', 'facebook_url',
   'camarero_pin_requerido', 'camarero_pin_bloqueo_activo',
-  'carta_publica_activa', 'duelo_activo',
+  'carta_publica_activa',
 ]
 
 const CAMPOS_RESTAURANTE_CONTROL = ['plan', 'subscription_status']
