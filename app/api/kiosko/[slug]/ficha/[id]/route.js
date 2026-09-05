@@ -83,9 +83,14 @@ export async function GET(request, { params }) {
     vino.precio_pvp ? `${vino.precio_pvp}€` : '',
   ].filter(Boolean).join(' | ')
 
-  const notasInstruction = notasExistentes
-    ? `For the "notas" field, start from this existing description and improve it: "${notasExistentes}". Keep the essence but make it more evocative and accessible, without technical jargon.`
-    : `For the "notas" field, write 2-3 tasting sentences in simple, evocative language without technical jargon.`
+  let notasInstruction
+  if (!notasExistentes) {
+    notasInstruction = `For the "notas" field, write 2-3 tasting sentences in simple, evocative language without technical jargon.`
+  } else if (lang === 'es') {
+    notasInstruction = `For the "notas" field, start from the existing shop description above and improve it. Keep the essence but make it more evocative and accessible, without technical jargon.`
+  } else {
+    notasInstruction = `For the "notas" field, translate the existing shop description above into ${langName} and improve it. Make it evocative and accessible without technical jargon.`
+  }
 
   try {
     const response = await anthropic.messages.create({
@@ -93,18 +98,18 @@ export async function GET(request, { params }) {
       max_tokens: 600,
       messages: [{
         role: 'user',
-        content: `You are a wine expert generating a wine card for a wine shop kiosk. Respond entirely in ${langName}.
+        content: `You are a wine expert generating a wine card for a wine shop kiosk. ALL text in your response must be in ${langName} — no Spanish words anywhere.
 
 Wine data: ${info}
-${notasExistentes ? `\nExisting shop description: "${notasExistentes}"` : ''}
+${notasExistentes ? `\nExisting shop description (source text): "${notasExistentes}"` : ''}
 
 ${notasInstruction}
 
-Reply ONLY with valid JSON:
+Reply ONLY with valid JSON. Every value must be written entirely in ${langName}:
 {
   "notas": "2-3 tasting sentences",
   "temperatura": "serving temperature, e.g.: 16-18°C",
-  "copa": "ideal glass type as a full phrase without starting with 'Copa', e.g.: 'Vaso de vino blanco tipo tulipa'",
+  "copa": "ideal glass type as a full phrase in ${langName}",
   "maridajes": ["food pairing 1", "food pairing 2", "food pairing 3"],
   "curiosidad": "1 curious fact about the winery, region or grape (max 30 words)"
 }`,

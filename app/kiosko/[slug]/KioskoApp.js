@@ -177,6 +177,7 @@ const T = {
       celebrar:    ['Para brindar por lo que llega', 'Que suenen los corchos', 'La cesta de las grandes ocasiones'],
       capricho:    ['Porque tú también te lo mereces', 'Para el placer sin excusas', 'Tu momento, tu selección'],
     },
+    addToCart: 'Añadir al carrito',
   },
   en: {
     explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?', cesta: 'Gift\nbasket',
@@ -226,6 +227,7 @@ const T = {
       celebrar:    ["Toast to what's coming", 'Let the corks fly', 'The basket for big occasions'],
       capricho:    ['Because you deserve it too', 'Pleasure, no excuses', 'Your moment, your selection'],
     },
+    addToCart: 'Add to cart',
   },
   fr: {
     explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?', cesta: 'Panier\ncadeau',
@@ -275,6 +277,7 @@ const T = {
       celebrar:    ['Trinquer à ce qui arrive', 'Que les bouchons sautent', 'Le panier des grandes occasions'],
       capricho:    ['Parce que vous le méritez aussi', 'Le plaisir sans excuses', 'Votre moment, votre sélection'],
     },
+    addToCart: 'Ajouter au panier',
   },
   de: {
     explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?', cesta: 'Geschenk-\nkorb',
@@ -324,6 +327,7 @@ const T = {
       celebrar:    ['Anstoßen auf das, was kommt', 'Die Korken knallen lassen', 'Der Korb für besondere Anlässe'],
       capricho:    ['Denn Sie haben es sich verdient', 'Genuss ohne Ausreden', 'Ihr Moment, Ihre Auswahl'],
     },
+    addToCart: 'In den Warenkorb',
   },
 }
 
@@ -964,7 +968,7 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es' })
 
             <button className={styles.mobileCarryBtn} type="button" onClick={() => onMobile?.(vino, 'detail')}>
               <span aria-hidden="true">+</span>
-              Añadir al carrito
+              {T[lang]?.addToCart ?? T.es.addToCart}
             </button>
 
             {/* Notas de cata — skeleton mientras carga */}
