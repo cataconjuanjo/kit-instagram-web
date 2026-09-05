@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import QRCode from 'qrcode'
 import styles from './kiosko.module.css'
+import DuelView from './DuelView'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -103,7 +104,7 @@ const ESTILOS_IDS = [
   { id: 'dulce'    },
 ]
 
-const VIEWS = { WELCOME: 'welcome', BROWSE: 'browse', PAIRING: 'pairing', DETAIL: 'detail', WIZARD: 'wizard', SHOWCASE: 'showcase', CESTA: 'cesta' }
+const VIEWS = { WELCOME: 'welcome', BROWSE: 'browse', PAIRING: 'pairing', DETAIL: 'detail', WIZARD: 'wizard', SHOWCASE: 'showcase', CESTA: 'cesta', DUELO: 'duelo' }
 
 const IDIOMAS = [
   { id: 'es', label: 'Español', flagClass: 'langFlagEs' },
@@ -117,6 +118,7 @@ const WELCOME_ACTION_EMOJIS = {
   choose: '🤔',
   pairing: '🍽️',
   cesta: '🎁',
+  duelo: '⚔️',
 }
 
 const MARIDAJE_ICONOS = [
@@ -130,7 +132,7 @@ const MARIDAJE_ICONOS = [
 
 const T = {
   es: {
-    explorar: 'Explorar vinos', elegir: 'Ayúdame\na elegir', maridaje: '¿Con qué\nlo tomo?', cesta: 'Cesta\nregalo',
+    explorar: 'Explorar vinos', elegir: 'Ayúdame\na elegir', maridaje: '¿Con qué\nlo tomo?', cesta: 'Cesta\nregalo', duelo: 'Duelo\na ciegas',
     volver: '← Volver', inicio: 'Inicio', atras: 'Atrás', nuevaBusqueda: 'Empezar de nuevo',
     referencias: n => `${n} referencias`, disponibles: n => `${n} disponibles`, destacados: '★ Destacados',
     pairingTitle: '¿Para qué buscas el vino?',
@@ -181,7 +183,7 @@ const T = {
     tapToExplore: 'Toca para explorar',
   },
   en: {
-    explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?', cesta: 'Gift\nbasket',
+    explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?', cesta: 'Gift\nbasket', duelo: 'Blind\nduel',
     volver: '← Back', inicio: 'Home', atras: 'Back', nuevaBusqueda: 'Start over',
     referencias: n => `${n} wines`, disponibles: n => `${n} available`, destacados: '★ Featured',
     pairingTitle: 'What are you looking for?',
@@ -232,7 +234,7 @@ const T = {
     tapToExplore: 'Tap to explore',
   },
   fr: {
-    explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?', cesta: 'Panier\ncadeau',
+    explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?', cesta: 'Panier\ncadeau', duelo: 'Duel à\nl\'aveugle',
     volver: '← Retour', inicio: 'Accueil', atras: 'Retour', nuevaBusqueda: 'Recommencer',
     referencias: n => `${n} vins`, disponibles: n => `${n} disponibles`, destacados: '★ En vedette',
     pairingTitle: 'Pour quel plat cherchez-vous ?',
@@ -283,7 +285,7 @@ const T = {
     tapToExplore: 'Touchez pour explorer',
   },
   de: {
-    explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?', cesta: 'Geschenk-\nkorb',
+    explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?', cesta: 'Geschenk-\nkorb', duelo: 'Blind-\nduell',
     volver: '← Zurück', inicio: 'Start', atras: 'Zurück', nuevaBusqueda: 'Neu starten',
     referencias: n => `${n} Weine`, disponibles: n => `${n} verfügbar`, destacados: '★ Empfohlen',
     pairingTitle: 'Für welches Gericht suchen Sie?',
@@ -534,6 +536,15 @@ function KioskIcon({ name }) {
       <path d="M24 16 C18 5 8 10 14 16 C18 19 24 16"/>
       {/* lazo derecho */}
       <path d="M24 16 C30 5 40 10 34 16 C30 19 24 16"/>
+    </svg>
+  )
+
+  if (name === 'duelo') return (
+    <svg className={styles.welcomeActionSvg} viewBox="0 0 48 48" aria-hidden="true">
+      {/* botella izquierda */}
+      <path d="M16 9v5l-4 7v15c0 1.5.9 3 2 3h4c1.1 0 2-1.5 2-3V21l-4-7V9" />
+      {/* botella derecha (espejada) */}
+      <path d="M32 9v5l4 7v15c0 1.5-.9 3-2 3h-4c-1.1 0-2-1.5-2-3V21l4-7V9" />
     </svg>
   )
 
@@ -3016,6 +3027,7 @@ export default function KioskoPage() {
   const fontCss       = FONT_CSS[tienda?.font_family]?.css || FONT_CSS.clasica.css
   const iconStyle      = tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji'
   const cestaActiva    = tienda?.cesta_activa === true
+  const dueloActivo    = tienda?.duelo_activo === true
   const pedidosMostradorActivos = tienda?.kiosko_orders_enabled === true && !COUNTER_ORDERS_IN_DEVELOPMENT
   const themeVars = {
     '--color-primario': colorPrimario, '--color-acento': colorAcento, '--font-family': fontCss,
@@ -3141,6 +3153,15 @@ export default function KioskoPage() {
                 <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].cesta}</span>
               </button>
             )}
+            {dueloActivo && (
+              <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.DUELO)} type="button"
+                style={{ '--acento': colorAcento }}>
+                <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
+                  <WelcomeActionIcon name="duelo" variant={iconStyle} />
+                </span>
+                <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].duelo}</span>
+              </button>
+            )}
           </div>
 
           <div className={styles.langSelector}>
@@ -3227,6 +3248,19 @@ export default function KioskoPage() {
           onBack={() => { abandonFunnel('user_exit'); setView(VIEWS.WELCOME) }}
           onFunnelStep={step => trackFunnelStep('pairing', step)}
           lang={lang} iconStyle={iconStyle} />
+      )}
+
+      {/* DUELO A CIEGAS — solo si la tienda lo tiene activado en ajustes */}
+      {dueloActivo && view === VIEWS.DUELO && (
+        <DuelView
+          vinos={vinos}
+          slug={slug}
+          colorAcento={colorAcento}
+          onBack={() => setView(VIEWS.WELCOME)}
+          onFunnelStep={step => trackFunnelStep('duelo', step)}
+          onWineSelect={abrirDetalle}
+          lang={lang}
+        />
       )}
 
       {/* CESTA REGALO — solo si la tienda la tiene activada en ajustes */}

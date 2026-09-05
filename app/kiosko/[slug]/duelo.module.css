@@ -1,0 +1,341 @@
+/* ── Duelo a ciegas ──────────────────────────────────────────────────────── */
+/* Todos los valores de color y tipo usan variables CSS heredadas del wrapper
+   .kiosko en KioskoApp.js: --color-primario, --color-acento, --texto, --sup*,
+   --borde*, --panel, --btn-back* — no hay valores hardcodeados. */
+
+.duelView {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--color-primario);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Botón volver ──────────────────────────────────────────────────────── */
+
+.backBtn {
+  flex-shrink: 0;
+  margin: 0;
+  padding: .6rem 1.1rem;
+  border: 2px solid var(--btn-back-b, var(--borde));
+  border-radius: 0;
+  background: var(--btn-back);
+  color: var(--texto);
+  font-size: .9rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s;
+}
+
+.backBtn:hover { background: var(--sup3); }
+
+/* ── Pantalla de prefiltro ─────────────────────────────────────────────── */
+
+.prefiltroContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.prefiltroTitle {
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -.01em;
+}
+
+.prefiltroSub {
+  font-size: 1rem;
+  color: var(--texto-m);
+  margin: -.5rem 0 0;
+}
+
+.tipoChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .625rem;
+  justify-content: center;
+}
+
+.tipoChip {
+  padding: .5rem 1.1rem;
+  border-radius: 100px;
+  border: 1px solid var(--borde);
+  background: var(--sup2);
+  color: var(--texto-m);
+  font-size: .875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+
+.tipoChipActive {
+  color: #fff;
+  border-color: transparent;
+}
+
+.pocosAviso {
+  font-size: .875rem;
+  color: var(--texto-d);
+  margin: -.5rem 0 0;
+}
+
+.startBtn {
+  padding: .9rem 2rem;
+  border-radius: 10px;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  cursor: pointer;
+  transition: filter .12s, transform .1s;
+  min-width: 200px;
+}
+
+.startBtn:hover { filter: brightness(1.08); }
+.startBtn:active { transform: scale(.97); }
+.startBtn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Pantalla de duelo ─────────────────────────────────────────────────── */
+
+.duelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem .5rem;
+}
+
+.duelTitulo {
+  font-size: .875rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.duelRonda {
+  font-size: .8125rem;
+  color: var(--texto-m);
+  font-weight: 500;
+}
+
+.progressBar {
+  height: 3px;
+  background: var(--borde);
+  margin: 0 1.25rem .5rem;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .3s ease;
+}
+
+.duelStage {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+  padding: .75rem 1rem;
+  align-items: stretch;
+  position: relative;
+  min-height: 280px;
+}
+
+.labelCard {
+  border: 1.5px solid var(--borde);
+  background: var(--sup2);
+  border-radius: 16px;
+  padding: .75rem .5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .12s, border-color .15s, box-shadow .15s;
+  overflow: hidden;
+}
+
+.labelCard:hover {
+  border-color: var(--borde-f);
+  box-shadow: 0 6px 24px rgba(0,0,0,.12);
+}
+
+.labelCard:active { transform: scale(.96); }
+
+.labelPhoto {
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+  object-fit: contain;
+  display: block;
+  border-radius: 6px;
+}
+
+.vsBadge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  box-shadow: 0 0 0 4px var(--panel, #fff);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.duelHint {
+  text-align: center;
+  font-size: .875rem;
+  color: var(--texto-m);
+  margin: .5rem 0 .25rem;
+}
+
+.yaTengoBtn {
+  display: block;
+  background: none;
+  border: none;
+  color: var(--texto-m);
+  font-size: .875rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: .75rem;
+  text-align: center;
+  margin-bottom: .5rem;
+  width: 100%;
+}
+
+/* ── Pantalla de resultado ─────────────────────────────────────────────── */
+
+.resultadoView {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.resultadoHero {
+  background: var(--sup2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 1.5rem 1.5rem;
+}
+
+.resultadoFoto {
+  width: 140px;
+  height: auto;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.winChip {
+  color: #fff;
+  font-size: .8125rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: .375rem .875rem;
+  border-radius: 100px;
+}
+
+.resultadoInfo {
+  padding: 1.25rem 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+.resultadoNombre {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -.01em;
+  color: var(--texto);
+}
+
+.resultadoMeta {
+  font-size: .875rem;
+  color: var(--texto-m);
+  margin: -.25rem 0 0;
+}
+
+.resultadoPrecio {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.fichaBtn {
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: .9375rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  padding: .9rem;
+  cursor: pointer;
+  transition: filter .12s, transform .1s;
+}
+
+.fichaBtn:hover { filter: brightness(1.08); }
+.fichaBtn:active { transform: scale(.97); }
+
+.volverBtn {
+  background: none;
+  border: none;
+  color: var(--texto-m);
+  font-size: .875rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: .25rem 0;
+  text-align: left;
+}
+
+/* ── Estado vacío ──────────────────────────────────────────────────────── */
+
+.emptyMsg {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  color: var(--texto-m);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+
+@media (min-width: 640px) {
+  .duelStage {
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .labelPhoto { max-height: 320px; }
+
+  .resultadoFoto { width: 180px; }
+}

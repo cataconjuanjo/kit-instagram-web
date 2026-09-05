@@ -132,6 +132,24 @@
         ],
         "createdAt": "2026-08-26T08:10:34.008Z",
         "reason": "carta.module.css tiene su propia escala de radii intencional, independiente de DESIGN.md"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(0,0,0,.12)",
+        "createdAt": "2026-09-05T16:32:43.859Z",
+        "reason": "kiosko hover shadow convention: identical to wineCard:hover in kiosko.module.css:796 — the kiosko systematically uses neutral black hover shadows"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "10px",
+        "createdAt": "2026-09-05T16:32:48.862Z",
+        "reason": "kiosko CTA button radius: identical to mobileCarryBtn in kiosko.module.css:1207 — the kiosko uses 10px for action buttons, not the DESIGN.md pill (999px)"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "16px",
+        "createdAt": "2026-09-05T16:32:52.444Z",
+        "reason": "kiosko interactive card radius: identical to FeedbackWidget card in kiosko.module.css:316 — established kiosko card convention for tappable containers"
       }
     ]
   }
