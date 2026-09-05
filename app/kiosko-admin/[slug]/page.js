@@ -1011,6 +1011,8 @@ export default function AdminKioskoPage() {
   const [upgradeModal, setUpgradeModal] = useState(null)
   const [analitica, setAnalitica]   = useState(null)
   const [analiticaLoad, setAnaliticaLoad] = useState(false)
+  const [embudo, setEmbudo]         = useState(null)
+  const [embudoLoad, setEmbudoLoad] = useState(false)
   const [leads, setLeads]           = useState(null)
   const [leadsLoad, setLeadsLoad]   = useState(false)
   const [pedidos, setPedidos]       = useState(null)
@@ -1757,6 +1759,16 @@ export default function AdminKioskoPage() {
     finally { setAnaliticaLoad(false) }
   }
 
+  async function cargarEmbudo() {
+    setEmbudoLoad(true)
+    try {
+      const res  = await fetch(`/api/kiosko/${slug}/admin/embudo`, { headers: authHeaders })
+      const data = await res.json()
+      setEmbudo(res.ok ? data : null)
+    } catch { setEmbudo(null) }
+    finally { setEmbudoLoad(false) }
+  }
+
   async function cargarLeads() {
     setLeadsLoad(true)
     try {
@@ -2273,7 +2285,7 @@ export default function AdminKioskoPage() {
           </button>
         )}
         <button type="button" className={`${styles.tabBtn} ${tab === 'analitica' ? styles.tabBtnActive : ''}`}
-          onClick={() => { if (!esPremium && !esAdminUsuario) { setUpgradeModal('analitica'); return } setTab('analitica'); if (!analitica && !analiticaLoad) cargarAnalitica() }}>
+          onClick={() => { if (!esPremium && !esAdminUsuario) { setUpgradeModal('analitica'); return } setTab('analitica'); if (!analitica && !analiticaLoad) cargarAnalitica(); if (!embudo && !embudoLoad) cargarEmbudo() }}>
           Analítica{!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'leads' ? styles.tabBtnActive : ''}`}
@@ -2421,6 +2433,7 @@ export default function AdminKioskoPage() {
             {[
               { id: 'resumen',       label: 'Resumen' },
               { id: 'busquedas',     label: 'Búsquedas' },
+              { id: 'embudo',        label: 'Embudo' },
               { id: 'conversion',    label: 'Conversión' },
               { id: 'precios',       label: 'Precios' },
               { id: 'ventas',        label: 'Ventas TPV' },
@@ -2712,6 +2725,88 @@ export default function AdminKioskoPage() {
           })()}
         </div>
       )}
+
+      {/* Embudo de conversión */}
+      {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'embudo' && (() => {
+        const FLOW_LABELS = { wizard: 'Asistente', cesta: 'Cesta Regalo', pairing: 'Maridaje' }
+        const STEP_LABELS = {
+          start: 'Inicio', ocasion: 'Ocasión', estilo: 'Estilo', presupuesto: 'Presupuesto',
+          prefs: 'Preferencias', resultado: 'Resultado', consulta: 'Consulta', carrito: 'Carrito ✓',
+        }
+        const FLOW_STEPS = {
+          wizard:  ['start', 'ocasion', 'estilo', 'presupuesto', 'resultado', 'carrito'],
+          cesta:   ['start', 'ocasion', 'presupuesto', 'resultado', 'carrito'],
+          pairing: ['start', 'consulta', 'resultado', 'carrito'],
+        }
+        return (
+          <div style={{ padding: '0 1.5rem 1.5rem' }}>
+            {embudoLoad && <p className={styles.analiticaLoading}>Cargando embudo…</p>}
+            {!embudoLoad && embudo?.pendiente && (
+              <div className={styles.analiticaBanner}>
+                <span className={styles.analiticaBannerIcon}>📊</span>
+                <span>Aplica la migración <code>supabase/kiosko_funnel_events.sql</code> para activar el embudo de conversión.</span>
+              </div>
+            )}
+            {!embudoLoad && embudo && !embudo.pendiente && (
+              <>
+                <p className={styles.analiticaBloqueDesc} style={{ marginBottom: '1.25rem' }}>
+                  Embudo de conversión · últimos {embudo.dias} días · intentos únicos por paso
+                </p>
+                {Object.entries(FLOW_STEPS).map(([flow, steps]) => {
+                  const fd = embudo.funnel?.[flow]
+                  if (!fd) return null
+                  const total = fd.steps.start || 0
+                  const carrito = fd.steps.carrito || 0
+                  const convRate = total > 0 ? Math.round((carrito / total) * 100) : 0
+                  return (
+                    <div key={flow} className={styles.analiticaBloque} style={{ marginBottom: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                        <h3 className={styles.analiticaBloqueTitle} style={{ margin: 0 }}>{FLOW_LABELS[flow]}</h3>
+                        <span style={{ fontSize: '0.78rem', color: '#888' }}>{total} iniciados · {convRate}% al carrito</span>
+                      </div>
+                      {total === 0 ? (
+                        <p style={{ fontSize: '0.82rem', color: '#aaa', margin: 0 }}>Sin datos aún — los intentos aparecen aquí cuando los clientes usen este flujo.</p>
+                      ) : (
+                        <>
+                          {steps.map(step => {
+                            const n = fd.steps[step] || 0
+                            const pct = total > 0 ? Math.round((n / total) * 100) : 0
+                            const isCarrito = step === 'carrito'
+                            return (
+                              <div key={step} style={{ marginBottom: '0.45rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '0.2rem' }}>
+                                  <span style={{ color: isCarrito ? '#22c55e' : '#ccc' }}>{STEP_LABELS[step] ?? step}</span>
+                                  <span style={{ color: '#aaa' }}>{n} ({pct}%)</span>
+                                </div>
+                                <div style={{ height: 8, borderRadius: 4, background: '#1a1a1a', overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${pct}%`, borderRadius: 4, background: isCarrito ? '#22c55e' : '#555', transition: 'width 0.4s' }} />
+                                </div>
+                              </div>
+                            )
+                          })}
+                          {fd.abandon.total > 0 && (
+                            <div style={{ marginTop: '0.65rem', fontSize: '0.78rem', color: '#888', display: 'flex', gap: '1.5rem' }}>
+                              <span>Abandono: {fd.abandon.total}</span>
+                              {fd.abandon.idle_timeout > 0 && <span>⏱ por inactividad: {fd.abandon.idle_timeout}</span>}
+                              {fd.abandon.user_exit > 0 && <span>← por back: {fd.abandon.user_exit}</span>}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
+              </>
+            )}
+            {!embudoLoad && !embudo && (
+              <div className={styles.analiticaBanner}>
+                <span className={styles.analiticaBannerIcon}>⚠️</span>
+                <span>No se pudieron cargar los datos del embudo.</span>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Vinos sin movimiento */}
       {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'ventas' && analitica && (() => {

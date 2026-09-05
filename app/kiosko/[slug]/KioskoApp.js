@@ -1597,7 +1597,7 @@ function CestaIcon({ name, className }) {
   return null
 }
 
-function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAddToCart, iconStyle = 'emoji', lang = 'es' }) {
+function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAddToCart, onFunnelStep, iconStyle = 'emoji', lang = 'es' }) {
   const [step, setStep]               = useState(0)  // 0=ocasion 1=presupuesto 2=prefs 3=resultado
   const [ocasionId, setOcasionId]     = useState('')
   const [presupuesto, setPresupuesto] = useState(50)
@@ -1623,13 +1623,14 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
   const hayVeganos    = useMemo(() => gourmetCesta.some(g => g.es_vegano === true), [gourmetCesta])
   const hayGlutenFree = useMemo(() => gourmetCesta.some(g => g.sin_gluten === true), [gourmetCesta])
 
-  function elegirOcasion(id) { setOcasionId(id); setStep(1) }
+  function elegirOcasion(id) { setOcasionId(id); setStep(1); onFunnelStep?.('ocasion') }
 
   function elegirPresupuesto(preset) {
     if (preset.max === null) { setModoInput(true); return }
     setModoInput(false)
     setPresupuesto(preset.max)
     setStep(2)
+    onFunnelStep?.('presupuesto')
   }
 
   function confirmarPresupuestoLibre() {
@@ -1637,6 +1638,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
     if (!v || v < 10) return
     setPresupuesto(v)
     setStep(2)
+    onFunnelStep?.('presupuesto')
   }
 
   function generarCesta(s = semilla) {
@@ -1648,6 +1650,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
       setCestaHistoryIds(idsResultado)
       setCargando(false)
       setStep(3)
+      onFunnelStep?.('resultado')
       const cestaParts = [ocasionId, `${presupuesto}€`]
       if (sinAlcohol) cestaParts.push('sin alcohol')
       const cestaVinos = resultado.items.filter(i => i._kind !== 'caja' && i.nombre)
@@ -2056,7 +2059,7 @@ function LeadCapture({ slug, source, preferencias, vinosRecomendados, gourmet = 
 
 // ── Wizard "Ayúdame a elegir" ─────────────────────────────────────────────────
 
-function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, vinos = [], gourmet = [], lang = 'es', iconStyle = 'emoji' }) {
+function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, onFunnelStep, vinos = [], gourmet = [], lang = 'es', iconStyle = 'emoji' }) {
   const [step, setStep]       = useState(0)
   const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '', soloRegion: true })
   const [cargando, setCargando] = useState(false)
@@ -2076,7 +2079,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
   const [wPrecioMin, setWPrecioMin] = useState(wizardPrecios.min)
   const [wPrecioMax, setWPrecioMax] = useState(wizardPrecios.max)
 
-  function selOcasion(id) { setWizard(w => ({ ...w, ocasion: id })); setStep(1) }
+  function selOcasion(id) { setWizard(w => ({ ...w, ocasion: id })); setStep(1); onFunnelStep?.('ocasion') }
   function selPresupuesto(id) {
     const next = { ...wizard, presupuesto: id }
     if (id === 'custom') {
@@ -2090,6 +2093,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
     const next = { ...wizard, estilo: id }
     setWizard(next)
     setStep(2)
+    onFunnelStep?.('estilo')
   }
 
   async function consultar(w = wizard) {
@@ -2099,6 +2103,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
     setError('')
     setResultado(null)
     setStep(99)
+    onFunnelStep?.('presupuesto')
     try {
       const res = await fetch(`/api/kiosko/${slug}/maridaje`, {
         method: 'POST',
@@ -2108,6 +2113,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error en la consulta')
       setResultado(data)
+      onFunnelStep?.('resultado')
     } catch (err) {
       setError(err.message)
       setStep(2)
@@ -2415,7 +2421,7 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
 
 // ── Vista Pairing ─────────────────────────────────────────────────────────────
 
-function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWineSelect, onMobile, onBack, lang = 'es', iconStyle = 'emoji' }) {
+function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWineSelect, onMobile, onBack, onFunnelStep, lang = 'es', iconStyle = 'emoji' }) {
   const [consulta, setConsulta] = useState('')
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
@@ -2437,6 +2443,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
     const q = texto || consulta
     if (!q.trim()) return
     setCargando(true); setError(''); setResultado(null)
+    onFunnelStep?.('consulta')
     try {
       const res = await fetch(`/api/kiosko/${slug}/maridaje`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2445,6 +2452,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error en la consulta')
       setResultado(data)
+      onFunnelStep?.('resultado')
     } catch (err) { setError(err.message) }
     finally { setCargando(false) }
   }
@@ -2719,6 +2727,9 @@ export default function KioskoPage() {
   const showcaseManualRef = useRef(modoMostrador)
   // timeout en ms leído de tienda.escaparate_timeout_segundos para evitar closure stale
   const idleTimeoutMsRef = useRef(IDLE_DEFAULT_MS)
+  // F2: embudo de conversión — attempt UUID + flow activo
+  const funnelAttemptRef = useRef(null)
+  const funnelFlowRef    = useRef(null)
 
   useEffect(() => {
     if (!slug) return
@@ -2795,8 +2806,7 @@ export default function KioskoPage() {
     if (view === VIEWS.SHOWCASE) return
 
     idleTimer.current = setTimeout(() => {
-      // TODO F2: si view === VIEWS.WIZARD || view === VIEWS.CESTA, registrar
-      // evento de embudo con reason='idle_timeout' antes de entrar en SHOWCASE
+      abandonFunnel('idle_timeout')
       setVinoDetalle(null)
       setMobileVinos([])
       setMobileSelection(null)
@@ -2883,9 +2893,40 @@ export default function KioskoPage() {
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen()
   }
 
-  function abrirDetalle(vino) { setVinoDetalle(vino); setView(VIEWS.DETAIL) }
-  function volverDeDetalle() { setView(VIEWS.BROWSE); setVinoDetalle(null) }
+  function abrirDetalle(vino) { setVinoDetalle(vino) }
+  function cerrarDetalle() { setVinoDetalle(null) }
   function abrirPairingDesdeDetalle() { setVinoDetalle(null); setView(VIEWS.PAIRING) }
+
+  // ── Embudo de conversión ────────────────────────────────────────────────────
+  function trackFunnelStep(flow, step, reason) {
+    const aid = funnelAttemptRef.current
+    if (!aid) return
+    fetch(`/api/kiosko/${slug}/funnel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attempt_id: aid, flow, step, ...(reason ? { abandon_reason: reason } : {}) }),
+    }).catch(() => {})
+  }
+  function startFunnel(flow) {
+    const aid = crypto.randomUUID()
+    funnelAttemptRef.current = aid
+    funnelFlowRef.current = flow
+    trackFunnelStep(flow, 'start')
+  }
+  function completeFunnel(flow) {
+    if (funnelFlowRef.current !== flow) return
+    trackFunnelStep(flow, 'carrito')
+    funnelAttemptRef.current = null
+    funnelFlowRef.current = null
+  }
+  function abandonFunnel(reason) {
+    const flow = funnelFlowRef.current
+    if (!flow) return
+    trackFunnelStep(flow, 'abandon', reason)
+    funnelAttemptRef.current = null
+    funnelFlowRef.current = null
+  }
+
   function normalizarMobileVinos(lista) {
     const vistos = new Set()
     return lista
@@ -2904,13 +2945,15 @@ export default function KioskoPage() {
     return `${origin}/kiosko/${slug}/movil?${params.toString()}`
   }
   function abrirMobileQrLista(lista = mobileVinos, source = 'selection', reason = '') {
+    if (source === 'cesta') completeFunnel('cesta')
     const seleccion = normalizarMobileVinos(lista)
     if (!seleccion.length) return
     setMobileVinos(seleccion)
     setKioskOrder(null)
     setMobileSelection({ vinos: seleccion, source, reason, url: mobileUrl(seleccion, source, reason) })
   }
-  function abrirMobileQr(vino) {
+  function abrirMobileQr(vino, source) {
+    if (source === 'wizard' || source === 'pairing') completeFunnel(source)
     const estaba = mobileVinos.some(v => v.id === vino.id)
     const seleccion = normalizarMobileVinos([...mobileVinos, vino])
     setMobileVinos(seleccion)
@@ -3057,14 +3100,14 @@ export default function KioskoPage() {
               </span>
               <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].explorar}</span>
             </button>
-            <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.WIZARD)} type="button"
+            <button className={styles.welcomeActionCard} onClick={() => { startFunnel('wizard'); setView(VIEWS.WIZARD) }} type="button"
               style={{ '--acento': colorAcento }}>
               <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
                 <WelcomeActionIcon name="choose" variant={iconStyle} />
               </span>
               <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].elegir}</span>
             </button>
-            <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.PAIRING)} type="button"
+            <button className={styles.welcomeActionCard} onClick={() => { startFunnel('pairing'); setView(VIEWS.PAIRING) }} type="button"
               style={{ '--acento': colorAcento }}>
               <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
                 <WelcomeActionIcon name="pairing" variant={iconStyle} />
@@ -3072,7 +3115,7 @@ export default function KioskoPage() {
               <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].maridaje}</span>
             </button>
             {cestaActiva && (
-              <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.CESTA)} type="button"
+              <button className={styles.welcomeActionCard} onClick={() => { startFunnel('cesta'); setView(VIEWS.CESTA) }} type="button"
                 style={{ '--acento': colorAcento }}>
                 <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
                   <WelcomeActionIcon name="cesta" variant={iconStyle} />
@@ -3147,7 +3190,10 @@ export default function KioskoPage() {
       {/* WIZARD */}
       {view === VIEWS.WIZARD && (
         <WizardView slug={slug} tienda={tienda} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} vinos={vinos} gourmet={gourmet} lang={lang} iconStyle={iconStyle} />
+          onWineSelect={abrirDetalle} onMobile={abrirMobileQr}
+          onBack={() => { abandonFunnel('user_exit'); setView(VIEWS.WELCOME) }}
+          onFunnelStep={step => trackFunnelStep('wizard', step)}
+          vinos={vinos} gourmet={gourmet} lang={lang} iconStyle={iconStyle} />
       )}
 
       {/* EXPLORAR */}
@@ -3159,20 +3205,25 @@ export default function KioskoPage() {
       {/* MARIDAJE */}
       {view === VIEWS.PAIRING && (
         <PairingView tienda={tienda} slug={slug} colorAcento={colorAcento} vinos={vinos} gourmet={gourmet}
-          onWineSelect={abrirDetalle} onMobile={abrirMobileQr} onBack={() => setView(VIEWS.WELCOME)} lang={lang} iconStyle={iconStyle} />
+          onWineSelect={abrirDetalle} onMobile={abrirMobileQr}
+          onBack={() => { abandonFunnel('user_exit'); setView(VIEWS.WELCOME) }}
+          onFunnelStep={step => trackFunnelStep('pairing', step)}
+          lang={lang} iconStyle={iconStyle} />
       )}
 
       {/* CESTA REGALO — solo si la tienda la tiene activada en ajustes */}
       {cestaActiva && view === VIEWS.CESTA && (
         <CestaView slug={slug} vinos={vinos} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onBack={() => setView(VIEWS.WELCOME)} iconStyle={iconStyle} lang={lang}
+          onBack={() => { abandonFunnel('user_exit'); setView(VIEWS.WELCOME) }}
+          onFunnelStep={step => trackFunnelStep('cesta', step)}
+          iconStyle={iconStyle} lang={lang}
           onAddToCart={abrirMobileQrLista} />
       )}
 
-      {/* DETALLE */}
-      {view === VIEWS.DETAIL && vinoDetalle && (
+      {/* DETALLE — overlay sobre cualquier vista */}
+      {vinoDetalle && (
         <WineDetail vino={vinoDetalle} slug={slug} colorAcento={colorAcento}
-          onClose={volverDeDetalle} onMobile={abrirMobileQr} lang={lang} />
+          onClose={cerrarDetalle} onMobile={abrirMobileQr} lang={lang} />
       )}
     </div>
   )
