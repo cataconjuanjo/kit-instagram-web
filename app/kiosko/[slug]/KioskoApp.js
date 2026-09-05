@@ -1648,6 +1648,19 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
       setCestaHistoryIds(idsResultado)
       setCargando(false)
       setStep(3)
+      const cestaParts = [ocasionId, `${presupuesto}€`]
+      if (sinAlcohol) cestaParts.push('sin alcohol')
+      const cestaVinos = resultado.items.filter(i => i._kind !== 'caja' && i.nombre)
+      fetch(`/api/kiosko/${slug}/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'regalo',
+          consulta: cestaParts.filter(Boolean).join(' · '),
+          vinos_ids: cestaVinos.map(i => String(i.id)).filter(id => id && id !== 'undefined'),
+          vinos_nombres: cestaVinos.map(i => i.nombre),
+        }),
+      }).catch(() => {})
     }, 380)
   }
 
@@ -2521,11 +2534,39 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
 
 // ── Vista Browse ──────────────────────────────────────────────────────────────
 
-function BrowseView({ vinos, colorAcento, onWineSelect, onBack, lang = 'es' }) {
+function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es' }) {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroPais, setFiltroPais] = useState('')
   const [filtroRegion, setFiltroRegion] = useState('')
+  const _trackTimer  = useRef(null)
+  const _lastTracked = useRef('')
+
+  useEffect(() => {
+    const hasText = busqueda.length >= 3
+    const hasChip = filtroTipo !== 'todos' || !!filtroPais || !!filtroRegion
+    if (!hasText && !hasChip) {
+      clearTimeout(_trackTimer.current)
+      return
+    }
+    const parts = []
+    if (busqueda) parts.push(busqueda)
+    if (filtroTipo !== 'todos') parts.push(filtroTipo)
+    if (filtroPais)   parts.push(filtroPais)
+    if (filtroRegion) parts.push(filtroRegion)
+    const consulta = parts.join(' · ')
+    if (consulta === _lastTracked.current) return
+    clearTimeout(_trackTimer.current)
+    _trackTimer.current = setTimeout(() => {
+      _lastTracked.current = consulta
+      fetch(`/api/kiosko/${slug}/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'explorar', consulta }),
+      }).catch(() => {})
+    }, 800)
+    return () => clearTimeout(_trackTimer.current)
+  }, [busqueda, filtroTipo, filtroPais, filtroRegion, slug])
 
   const tipos    = useMemo(() => TIPO_ORDER.filter(t => vinos.some(v => v.tipo === t)), [vinos])
   const paises   = useMemo(() => extraerValoresUnicos(vinos, 'pais'), [vinos])
@@ -3065,7 +3106,7 @@ export default function KioskoPage() {
 
       {/* EXPLORAR */}
       {view === VIEWS.BROWSE && (
-        <BrowseView vinos={vinos} colorAcento={colorAcento}
+        <BrowseView slug={slug} vinos={vinos} colorAcento={colorAcento}
           onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} />
       )}
 

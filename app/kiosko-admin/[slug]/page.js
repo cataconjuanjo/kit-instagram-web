@@ -2544,6 +2544,14 @@ export default function AdminKioskoPage() {
                     <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.modos?.wizard ?? 0}</span>
                     <span className={styles.analiticaKpiLabel}>Ayúdame a elegir (ocasión)</span>
                   </div>
+                  <div className={styles.analiticaKpi}>
+                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.modos?.regalo ?? 0}</span>
+                    <span className={styles.analiticaKpiLabel}>Cesta regalo</span>
+                  </div>
+                  <div className={styles.analiticaKpi}>
+                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.modos?.explorar ?? 0}</span>
+                    <span className={styles.analiticaKpiLabel}>Explorar vinos</span>
+                  </div>
                 </div>
 
                 <div className={styles.analiticaGrid}>
@@ -2610,14 +2618,16 @@ export default function AdminKioskoPage() {
                   return (
                     <div className={styles.analiticaBloque} style={{ marginTop: '1.5rem' }}>
                       <h3 className={styles.analiticaBloqueTitle}>Actividad semanal</h3>
-                      <p className={styles.analiticaBloqueDesc}>Consultas al asistente por semana — azul: por ocasión · ámbar: por maridaje</p>
+                      <p className={styles.analiticaBloqueDesc}>Actividad por semana — azul: ocasión · ámbar: maridaje · verde: cesta regalo · morado: explorar</p>
                       <div className={styles.tendenciasChart}>
                         {analitica.tendencias.map((t, i) => (
                           <div key={i} className={styles.tendenciaCol}>
                             <div className={styles.tendenciaBarWrap} style={{ height: 80 }}>
                               <div className={styles.tendenciaBarFill} style={{ height: `${(t.total / maxT) * 100}%` }}>
-                                <div className={styles.tendenciaSegWizard} style={{ flex: t.wizard || 0 }} />
+                                <div className={styles.tendenciaSegWizard}   style={{ flex: t.wizard   || 0 }} />
                                 <div className={styles.tendenciaSegMaridaje} style={{ flex: t.maridaje || 0 }} />
+                                <div className={styles.tendenciaSegRegalo}   style={{ flex: t.regalo   || 0 }} />
+                                <div className={styles.tendenciaSegExplorar} style={{ flex: t.explorar || 0 }} />
                               </div>
                             </div>
                             <span className={styles.tendenciaLabel}>{t.label}</span>
@@ -2651,8 +2661,16 @@ export default function AdminKioskoPage() {
                         ))
                       : analitica.recientes.map((r, i) => (
                           <div key={i} className={styles.analiticaRecienteRow}>
-                            <span className={`${styles.analiticaMode} ${r.mode === 'wizard' ? styles.analiticaModeWizard : styles.analiticaModeMaridaje}`}>
-                              {r.mode === 'wizard' ? 'Ocasión' : 'Plato'}
+                            <span className={`${styles.analiticaMode} ${
+                              r.mode === 'wizard'   ? styles.analiticaModeWizard   :
+                              r.mode === 'regalo'   ? styles.analiticaModeRegalo   :
+                              r.mode === 'explorar' ? styles.analiticaModeExplorar :
+                              styles.analiticaModeMaridaje
+                            }`}>
+                              {r.mode === 'wizard'   ? 'Ocasión' :
+                               r.mode === 'regalo'   ? 'Regalo'  :
+                               r.mode === 'explorar' ? 'Explorar':
+                               'Plato'}
                             </span>
                             <span className={styles.analiticaRecienteConsulta}>{r.consulta}</span>
                             <span className={styles.analiticaRecienteVinos}>{r.vinos.join(', ')}</span>

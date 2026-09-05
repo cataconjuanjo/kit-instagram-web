@@ -103,9 +103,11 @@ export async function GET(request, { params }) {
     return { id, nombre, veces, stock, diasRestantes }
   })
 
-  // ── Distribución wizard vs maridaje ────────────────────────────────────────
+  // ── Distribución por modo ──────────────────────────────────────────────────
   const totalWizard   = searches.filter(s => s.mode === 'wizard').length
   const totalMaridaje = searches.filter(s => s.mode === 'maridaje').length
+  const totalRegalo   = searches.filter(s => s.mode === 'regalo').length
+  const totalExplorar = searches.filter(s => s.mode === 'explorar').length
 
   // ── Búsquedas por día (últimos 14 días) ─────────────────────────────────────
   const porDia = {}
@@ -153,6 +155,8 @@ export async function GET(request, { params }) {
       total:    semana.length,
       wizard:   semana.filter(s => s.mode === 'wizard').length,
       maridaje: semana.filter(s => s.mode === 'maridaje').length,
+      regalo:   semana.filter(s => s.mode === 'regalo').length,
+      explorar: semana.filter(s => s.mode === 'explorar').length,
     }
   })
 
@@ -226,7 +230,7 @@ export async function GET(request, { params }) {
     semanaAnterior,
     topConsultas,
     topVinos,
-    modos: { wizard: totalWizard, maridaje: totalMaridaje },
+    modos: { wizard: totalWizard, maridaje: totalMaridaje, regalo: totalRegalo, explorar: totalExplorar },
     movil: {
       total: mobileIntents.length,
       semanaActual: mobileSemanaActual,

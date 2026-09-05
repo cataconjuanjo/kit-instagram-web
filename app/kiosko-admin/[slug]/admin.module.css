@@ -2770,8 +2770,10 @@
   text-align: center;
 }
 
-.analiticaModeWizard { background: #e8f0ff; color: #2a4aaa; }
+.analiticaModeWizard   { background: #e8f0ff; color: #2a4aaa; }
 .analiticaModeMaridaje { background: #fef0e0; color: #8a4a00; }
+.analiticaModeRegalo   { background: #e8f5e0; color: #2a6e00; }
+.analiticaModeExplorar { background: #f3e8ff; color: #5a2aaa; }
 
 .analiticaRecienteConsulta {
   font-size: .84rem;
@@ -2887,6 +2889,8 @@
 
 .tendenciaSegWizard   { background: #6b8cda; flex-shrink: 0; min-height: 2px; }
 .tendenciaSegMaridaje { background: #c9a96e; flex-shrink: 0; min-height: 2px; }
+.tendenciaSegRegalo   { background: #5cb85c; flex-shrink: 0; min-height: 2px; }
+.tendenciaSegExplorar { background: #9b59b6; flex-shrink: 0; min-height: 2px; }
 
 .tendenciaLabel {
   font-size: .63rem;
