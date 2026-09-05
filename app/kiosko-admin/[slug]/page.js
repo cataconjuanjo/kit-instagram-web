@@ -312,6 +312,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
     kiosko_icon_style: tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji',
     kiosko_orders_enabled: tienda?.kiosko_orders_enabled === true,
     cesta_activa: tienda?.cesta_activa === true,
+    escaparate_timeout_segundos: tienda?.escaparate_timeout_segundos ?? 60,
     informe_email:  tienda?.informe_email  || tienda?.propietario_email || tienda?.email || '',
   })
   const [logoFile,     setLogoFile]     = useState(null)
@@ -570,6 +571,31 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
               <span />
             </span>
           </button>
+        </div>
+
+        {/* Modo Escaparate */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>Modo Escaparate (digital signage)</p>
+          <div className={styles.ajustesFormGrid}>
+            <div className={styles.ajustesFormField}>
+              <label>Activar carrusel tras inactividad</label>
+              <select
+                value={ajustes.escaparate_timeout_segundos}
+                onChange={e => cambiar('escaparate_timeout_segundos', Number(e.target.value))}
+              >
+                <option value={0}>Desactivado (nunca)</option>
+                <option value={30}>30 segundos</option>
+                <option value={60}>1 minuto (recomendado)</option>
+                <option value={90}>1 min 30 s</option>
+                <option value={120}>2 minutos</option>
+                <option value={180}>3 minutos</option>
+                <option value={300}>5 minutos</option>
+              </select>
+            </div>
+          </div>
+          <p style={{ fontSize: '.75rem', color: '#aaa', margin: '.5rem 0 0' }}>
+            Si el kiosko lleva este tiempo sin interacción, entra en carrusel de vinos destacados a pantalla completa. Cualquier toque lo cierra. El modo manual (pulsación larga del logo) no se ve afectado por este ajuste.
+          </p>
         </div>
 
         <div className={styles.ajustesSec}>

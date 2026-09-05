@@ -7,8 +7,8 @@ import styles from './kiosko.module.css'
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const IDLE_TIMEOUT_MS = 60_000
 const SHOWCASE_INTERVAL_MS = 7_000
+const IDLE_DEFAULT_MS = 60_000
 const MOBILE_SELECTION_MAX = 20
 const COUNTER_ORDERS_IN_DEVELOPMENT = true
 
@@ -2321,14 +2321,30 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
 
   useEffect(() => {
     if (!lista.length) return
-    const t = setInterval(() => {
+    let t = null
+
+    function avanzar() {
+      if (document.hidden) return
       setFade(false)
       setTimeout(() => {
         setIdx(i => (i + 1) % lista.length)
         setFade(true)
       }, 400)
-    }, SHOWCASE_INTERVAL_MS)
-    return () => clearInterval(t)
+    }
+
+    function iniciar() { t = setInterval(avanzar, SHOWCASE_INTERVAL_MS) }
+
+    function onVisibilidad() {
+      if (document.hidden) { clearInterval(t); t = null }
+      else if (!t) iniciar()
+    }
+
+    document.addEventListener('visibilitychange', onVisibilidad)
+    iniciar()
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', onVisibilidad)
+    }
   }, [lista.length])
 
   const vino = lista[idx]
@@ -2698,6 +2714,11 @@ export default function KioskoPage() {
   const idleTimer = useRef(null)
   const cartNoticeTimer = useRef(null)
   const stripRef = useRef(null)
+  // true cuando SHOWCASE fue abierto a mano (long-press o ?mostrador=1);
+  // en ese caso el idle timer no puede expulsarlo — solo el toque de pantalla cierra.
+  const showcaseManualRef = useRef(modoMostrador)
+  // timeout en ms leído de tienda.escaparate_timeout_segundos para evitar closure stale
+  const idleTimeoutMsRef = useRef(IDLE_DEFAULT_MS)
 
   useEffect(() => {
     if (!slug) return
@@ -2752,17 +2773,37 @@ export default function KioskoPage() {
       .catch(() => {})
   }, [slug])
 
+  // Mantiene idleTimeoutMsRef sincronizado con la configuración de la tienda
+  useEffect(() => {
+    const seg = tienda?.escaparate_timeout_segundos
+    if (typeof seg === 'number') {
+      idleTimeoutMsRef.current = seg === 0 ? 0 : seg * 1000
+    } else {
+      idleTimeoutMsRef.current = IDLE_DEFAULT_MS
+    }
+  }, [tienda?.escaparate_timeout_segundos])
+
   const resetIdle = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current)
-    if (view !== VIEWS.WELCOME && view !== VIEWS.SHOWCASE) {
-      idleTimer.current = setTimeout(() => {
-        setView(VIEWS.WELCOME)
-        setVinoDetalle(null)
-        setMobileVinos([])
-        setMobileSelection(null)
-        setCartNotice('')
-      }, IDLE_TIMEOUT_MS)
-    }
+
+    const ms = idleTimeoutMsRef.current
+    // 0 = escaparate desactivado
+    if (ms === 0) return
+    // En SHOWCASE manual el timer no interfiere — solo el toque de pantalla cierra
+    if (view === VIEWS.SHOWCASE && showcaseManualRef.current) return
+    // Ya en SHOWCASE automático: no relanzar el timer
+    if (view === VIEWS.SHOWCASE) return
+
+    idleTimer.current = setTimeout(() => {
+      // TODO F2: si view === VIEWS.WIZARD || view === VIEWS.CESTA, registrar
+      // evento de embudo con reason='idle_timeout' antes de entrar en SHOWCASE
+      setVinoDetalle(null)
+      setMobileVinos([])
+      setMobileSelection(null)
+      setCartNotice('')
+      showcaseManualRef.current = false
+      setView(VIEWS.SHOWCASE)
+    }, ms)
   }, [view])
 
   useEffect(() => { resetIdle(); return () => { if (idleTimer.current) clearTimeout(idleTimer.current) } }, [resetIdle])
@@ -2899,8 +2940,13 @@ export default function KioskoPage() {
     setKioskOrder(null)
   }
 
-  // Long press en el logo → modo mostrador
-  function onLogoPress()   { setLongPressTimer(setTimeout(() => setView(VIEWS.SHOWCASE), 2000)) }
+  // Long press en el logo → modo mostrador MANUAL (el idle timer no lo cierra)
+  function onLogoPress() {
+    setLongPressTimer(setTimeout(() => {
+      showcaseManualRef.current = true
+      setView(VIEWS.SHOWCASE)
+    }, 2000))
+  }
   function onLogoRelease() { if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null) } }
 
   const colorPrimario = tienda?.color_primario || '#0d0d1a'
@@ -2968,7 +3014,7 @@ export default function KioskoPage() {
       {/* MODO MOSTRADOR */}
       {view === VIEWS.SHOWCASE && (
         <ShowcaseView vinos={vinos} tienda={tienda} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onExit={() => setView(VIEWS.WELCOME)} />
+          onExit={() => { showcaseManualRef.current = false; setView(VIEWS.WELCOME) }} />
       )}
 
       {/* BIENVENIDA */}

@@ -1693,13 +1693,16 @@
 .ajustesFormGrid { display: flex; flex-direction: column; gap: .75rem; }
 .ajustesFormField label { display: block; font-size: .75rem; font-weight: 600; color: #666; margin-bottom: .3rem; }
 .ajustesFormField input,
+.ajustesFormField select,
 .ajustesFormField textarea {
   width: 100%; border: 1px solid #e0ddd8; border-radius: 7px;
   font-size: .9rem; padding: .5rem .7rem; font-family: inherit;
   background: #fafaf8; box-sizing: border-box; transition: border-color .15s;
 }
 .ajustesFormField input:focus,
+.ajustesFormField select:focus,
 .ajustesFormField textarea:focus { outline: none; border-color: #c9a96e; }
+.ajustesFormField select { cursor: pointer; appearance: auto; }
 .ajustesFormField textarea { resize: vertical; min-height: 72px; }
 
 /* ── Acciones guardado ────────────────────────────────────────────────────── */

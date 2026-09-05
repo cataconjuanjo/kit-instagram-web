@@ -5,7 +5,7 @@ import { requireKioskoAccess, getKioskoUser, isKioskoAdminEmail } from '../../..
 const PERMITIDOS = new Set([
   'nombre', 'ciudad', 'descripcion',
   'logo_url', 'color_primario', 'color_acento', 'font_family', 'kiosko_icon_style', 'kiosko_orders_enabled', 'banner_url',
-  'informe_email', 'cesta_activa', 'square_location_id',
+  'informe_email', 'cesta_activa', 'square_location_id', 'escaparate_timeout_segundos',
 ])
 
 const ICON_STYLES = new Set(['emoji', 'lineal'])
@@ -16,6 +16,7 @@ const OPTIONAL_MIGRATIONS = {
   cesta_activa: 'supabase/cesta_activa.sql',
   square_access_token: 'supabase/square_access_token.sql',
   square_location_id: 'supabase/square_location_id.sql',
+  escaparate_timeout_segundos: 'supabase/escaparate_timeout.sql',
 }
 
 function missingOptionalFields(error, updates) {
@@ -68,6 +69,11 @@ export async function PATCH(request, { params }) {
     }
     if (k === 'cesta_activa') {
       updates[k] = v === true
+      continue
+    }
+    if (k === 'escaparate_timeout_segundos') {
+      const n = parseInt(v, 10)
+      updates[k] = (!isNaN(n) && n >= 0 && n <= 600) ? n : 60
       continue
     }
     updates[k] = v === '' ? null : v

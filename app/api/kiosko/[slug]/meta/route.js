@@ -8,6 +8,9 @@ import {
 import { noStoreHeaders, publicCdnCacheHeaders } from '../../../../lib/publicCacheHeaders'
 
 const OPTIONAL_COLS = 'kiosko_icon_style, kiosko_orders_enabled, cesta_activa, square_access_token'
+// Columnas con migrations independientes — se consultan por separado para no romper
+// las anteriores si alguna migración aún no se ha ejecutado en producción.
+const OPTIONAL_COLS_V2 = 'escaparate_timeout_segundos'
 
 async function getOptionalCols(slug) {
   const { data } = await supabaseAdmin
@@ -15,10 +18,20 @@ async function getOptionalCols(slug) {
     .select(OPTIONAL_COLS)
     .eq('slug', slug)
     .single()
-  if (!data) return {}
-  // Nunca exponer el token real al frontend; solo indicar si está configurado
-  const { square_access_token, ...rest } = data
-  return { ...rest, has_square_token: !!square_access_token }
+  const base = data ? (() => {
+    const { square_access_token, ...rest } = data
+    return { ...rest, has_square_token: !!square_access_token }
+  })() : {}
+
+  // Si la migración escaparate_timeout.sql no está aplicada aún, este SELECT
+  // falla en silencio y el kiosko usa el default de 60 s.
+  const { data: v2 } = await supabaseAdmin
+    .from('tiendas')
+    .select(OPTIONAL_COLS_V2)
+    .eq('slug', slug)
+    .single()
+
+  return { ...base, ...(v2 || {}) }
 }
 
 export async function GET(request, { params }) {
