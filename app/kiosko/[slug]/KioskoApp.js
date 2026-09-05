@@ -178,6 +178,7 @@ const T = {
       capricho:    ['Porque tú también te lo mereces', 'Para el placer sin excusas', 'Tu momento, tu selección'],
     },
     addToCart: 'Añadir al carrito',
+    tapToExplore: 'Toca para explorar',
   },
   en: {
     explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?', cesta: 'Gift\nbasket',
@@ -228,6 +229,7 @@ const T = {
       capricho:    ['Because you deserve it too', 'Pleasure, no excuses', 'Your moment, your selection'],
     },
     addToCart: 'Add to cart',
+    tapToExplore: 'Tap to explore',
   },
   fr: {
     explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?', cesta: 'Panier\ncadeau',
@@ -278,6 +280,7 @@ const T = {
       capricho:    ['Parce que vous le méritez aussi', 'Le plaisir sans excuses', 'Votre moment, votre sélection'],
     },
     addToCart: 'Ajouter au panier',
+    tapToExplore: 'Touchez pour explorer',
   },
   de: {
     explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?', cesta: 'Geschenk-\nkorb',
@@ -328,6 +331,7 @@ const T = {
       capricho:    ['Denn Sie haben es sich verdient', 'Genuss ohne Ausreden', 'Ihr Moment, Ihre Auswahl'],
     },
     addToCart: 'In den Warenkorb',
+    tapToExplore: 'Tippen zum Erkunden',
   },
 }
 
@@ -2311,7 +2315,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
 
 // ── Modo Mostrador ─────────────────────────────────────────────────────────────
 
-function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
+function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang = 'es' }) {
   const [idx, setIdx] = useState(0)
   const [fade, setFade] = useState(true)
   const [hora, setHora] = useState('')
@@ -2378,7 +2382,10 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
 
       {/* Cabecera */}
       <div className={styles.showcaseTop}>
-        <p className={styles.showcaseTienda}>{tienda?.nombre}</p>
+        {tienda?.logo_url
+          ? <img src={tienda.logo_url} alt={tienda?.nombre} className={styles.showcaseLogo} />
+          : <p className={styles.showcaseTienda}>{tienda?.nombre}</p>
+        }
         {hora && <p className={styles.showcaseHora}>{hora}</p>}
       </div>
 
@@ -2416,7 +2423,13 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit }) {
               style={i === idx ? { background: colorAcento } : {}} />
           ))}
         </div>
-        <p className={styles.showcaseTap}>Toca la pantalla para explorar</p>
+        <div className={styles.showcaseTapPill} aria-hidden="true">
+          <svg className={styles.showcaseTapIcon} viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <circle cx="12" cy="12" r="9" strokeOpacity="0.4" />
+          </svg>
+          {T[lang]?.tapToExplore ?? T.es.tapToExplore}
+        </div>
       </div>
     </div>
   )
@@ -3060,7 +3073,7 @@ export default function KioskoPage() {
       {/* MODO MOSTRADOR */}
       {view === VIEWS.SHOWCASE && (
         <ShowcaseView vinos={vinos} tienda={tienda} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          onExit={() => { showcaseManualRef.current = false; setView(VIEWS.WELCOME) }} />
+          lang={lang} onExit={() => { showcaseManualRef.current = false; setView(VIEWS.WELCOME) }} />
       )}
 
       {/* BIENVENIDA */}
