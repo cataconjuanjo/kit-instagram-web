@@ -6,6 +6,7 @@ import { PUBLIC_VINO_SELECT, isTiendaAccesible } from '../../../../_lib/kioskoAu
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const LANG_NAMES = { es: 'Spanish', en: 'English', fr: 'French', de: 'German' }
+const LANG_COL   = { en: 'ficha_ia_en', fr: 'ficha_ia_fr', de: 'ficha_ia_de' }
 const RATE_LIMIT = 80
 const RATE_WINDOW_MS = 60 * 60 * 1000
 
@@ -48,9 +49,24 @@ export async function GET(request, { params }) {
     .single()
   if (!vino) return NextResponse.json({ error: 'Vino no encontrado' }, { status: 404 })
 
-  // La caché (ficha_ia) solo es válida para español
+  // Caché ES (columna original, siempre disponible)
   if (lang === 'es' && vino.ficha_ia) {
     try { return NextResponse.json({ ficha: JSON.parse(vino.ficha_ia) }) } catch {}
+  }
+
+  // Caché EN/FR/DE (columnas opcionales — la query falla silenciosamente si la migración no está aplicada)
+  const cacheCol = LANG_COL[lang]
+  if (cacheCol) {
+    const { data: cached } = await supabaseAdmin
+      .from('vinos_tienda')
+      .select(cacheCol)
+      .eq('id', id)
+      .eq('tienda_id', tienda.id)
+      .single()
+
+    if (cached?.[cacheCol]) {
+      try { return NextResponse.json({ ficha: JSON.parse(cached[cacheCol]) }) } catch {}
+    }
   }
 
   const allowed = await checkRateLimit(getIP(request))
@@ -100,12 +116,17 @@ Reply ONLY with valid JSON:
     if (!match) throw new Error('Sin JSON')
     const ficha = JSON.parse(match[0])
 
-    // Solo guardamos en caché si es español
+    // Guardar en caché según idioma (fire-and-forget — no bloquea la respuesta)
     if (lang === 'es') {
-      await supabaseAdmin.from('vinos_tienda')
+      supabaseAdmin.from('vinos_tienda')
         .update({ ficha_ia: JSON.stringify(ficha) })
-        .eq('id', id)
-        .eq('tienda_id', tienda.id)
+        .eq('id', id).eq('tienda_id', tienda.id)
+        .then(() => {}).catch(() => {})
+    } else if (cacheCol) {
+      supabaseAdmin.from('vinos_tienda')
+        .update({ [cacheCol]: JSON.stringify(ficha) })
+        .eq('id', id).eq('tienda_id', tienda.id)
+        .then(() => {}).catch(() => {})
     }
 
     return NextResponse.json({ ficha })

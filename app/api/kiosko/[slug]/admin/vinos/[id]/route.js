@@ -19,7 +19,7 @@ export async function PATCH(request, { params }) {
 
   const { data, error } = await supabaseAdmin
     .from('vinos_tienda')
-    .update({ ...campos, updated_at: new Date().toISOString() })
+    .update({ ...campos, updated_at: new Date().toISOString(), ficha_ia: null })
     .eq('id', id)
     .eq('tienda_id', access.tienda.id)
     .select(ADMIN_VINO_SELECT)
@@ -29,6 +29,12 @@ export async function PATCH(request, { params }) {
     console.error('admin/vinos PATCH:', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  // Invalidar cachés de idiomas adicionales (fire-and-forget, columnas opcionales)
+  supabaseAdmin.from('vinos_tienda')
+    .update({ ficha_ia_en: null, ficha_ia_fr: null, ficha_ia_de: null })
+    .eq('id', id).eq('tienda_id', access.tienda.id)
+    .then(() => {}).catch(() => {})
 
   const { ficha_ia, ...vino } = data
   return NextResponse.json({ vino: { ...vino, has_ficha_ia: ficha_ia != null } })
