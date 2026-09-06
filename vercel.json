@@ -7,10 +7,6 @@
     {
       "path": "/api/cron/kiosko-informe-semanal",
       "schedule": "0 8 * * 2"
-    },
-    {
-      "path": "/api/cron/square-sync",
-      "schedule": "0 6 * * *"
     }
   ]
 }

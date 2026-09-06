@@ -1393,22 +1393,14 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     pageFrom += PAGE
   }
 
-  const existingByCatalog   = {}
   const existingByVariation = {}
-  const nullIdByNombre      = {} // filas sin IDs Square o con IDs huérfanos (ya no en catálogo actual)
   for (const v of (existentes || [])) {
-    if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
     if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
-    const catalogOrphaned  = !v.square_catalog_id   || !currentCatalogIdSet.has(v.square_catalog_id)
-    const variationOrphaned = !v.square_variation_id || !currentVariationIdSet.has(v.square_variation_id)
-    if (catalogOrphaned && variationOrphaned && v.nombre) {
-      if (!nullIdByNombre[v.nombre]) nullIdByNombre[v.nombre] = []
-      nullIdByNombre[v.nombre].push({ id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo })
-    }
   }
 
-  const toUpsertById = []   // filas ya existentes: upsert por id (sin riesgo de conflicto de índices)
-  const toInsertNew  = []   // filas genuinamente nuevas
+  const toUpsertById     = [] // filas ya existentes: upsert por id
+  const toInsertNew      = [] // filas genuinamente nuevas (sin match por variation_id)
+  const toUpdateLastSeen = [] // filas en Square sin otros cambios: solo square_last_seen_at
   let filtradosPorSquareCategoria = 0
 
   for (const item of items) {
@@ -1433,9 +1425,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     }
     const catDetectada = detectarCategoria(d, categoryMap, parentCategoryMap)
 
-    const legacyVariationMatch = variationId ? existingByCatalog[variationId] : null
-    const variationMatch = variationId ? existingByVariation[variationId] : null
-    const existing = legacyVariationMatch || variationMatch || existingByCatalog[item.id]
+    const existing = variationId ? existingByVariation[variationId] : null
 
     const squareSaysOtroButDbSaysVino = catDetectada === 'otro' && existing?.categoria === 'vino'
     const catEfectiva = squareCategoryDecision.categoryOverride || (squareSaysOtroButDbSaysVino ? 'otro' : existing?.categoria) || catDetectada
@@ -1446,17 +1436,14 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     const now = new Date().toISOString()
 
     if (existing) {
-      const skipIdNormalization = Boolean(legacyVariationMatch && variationMatch && legacyVariationMatch.id !== variationMatch.id)
       const updatePrice = pricesDiffer(existing.precio_pvp, precio_pvp)
       const updateCategory = Boolean(
         (squareCategoryDecision.categoryOverride && existing.categoria !== squareCategoryDecision.categoryOverride) ||
         squareSaysOtroButDbSaysVino
       )
       const updateActive = typeof squareCategoryDecision.activeOverride === 'boolean' && Boolean(existing.activo) !== squareCategoryDecision.activeOverride
-      const updateIds = !skipIdNormalization && (
-        existing.square_catalog_id !== item.id ||
+      const updateIds = existing.square_catalog_id !== item.id ||
         (variationId && existing.square_variation_id !== variationId)
-      )
 
       if (updatePrice || updateIds || updateCategory || updateActive) {
         toUpsertById.push({
@@ -1467,7 +1454,7 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
           square_last_seen_at: now,
           _catalogId: item.id,
           _variationId: variationId,
-          _skipIdNormalization: skipIdNormalization,
+          _skipIdNormalization: false,
           _updatePrice: updatePrice,
           _updateIds: updateIds,
           _updateCategory: updateCategory,
@@ -1475,54 +1462,26 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
           _updateState: updateCategory || updateActive,
           updated_at: now,
         })
+      } else {
+        toUpdateLastSeen.push(existing.id)
       }
     } else {
-      // Fusionar con fila sin IDs o con IDs huérfanos si coincide nombre+precio de forma unívoca.
-      // Primero filtramos por precio exacto; si no hay, intentamos por nombre solo (1:1).
-      const allCandidates  = nullIdByNombre[nombre] || []
-      const priceMatches   = allCandidates.filter(m => !pricesDiffer(m.precio_pvp, precio_pvp))
-      const nullMatches    = priceMatches.length > 0 ? priceMatches : allCandidates
-      if (nullMatches?.length === 1) {
-        const matched     = nullMatches[0]
-        const updatePrice = pricesDiffer(matched.precio_pvp, precio_pvp)
-        const updateCategory = Boolean(squareCategoryDecision.categoryOverride && matched.categoria !== squareCategoryDecision.categoryOverride)
-        const updateActive = typeof squareCategoryDecision.activeOverride === 'boolean' && Boolean(matched.activo) !== squareCategoryDecision.activeOverride
-        toUpsertById.push({
-          id:                   matched.id,
-          categoria:            catEfectiva,
-          precio_pvp,
-          activo,
-          square_last_seen_at:  now,
-          _catalogId:           item.id,
-          _variationId:         variationId,
-          _skipIdNormalization: false,
-          _updatePrice:         updatePrice,
-          _updateIds:           true,
-          _updateCategory:      updateCategory,
-          _updateActive:        updateActive,
-          _updateState:         updateCategory || updateActive,
-          updated_at:           now,
-        })
-        // Consumir solo el candidato usado; los de otro precio siguen disponibles
-        nullIdByNombre[nombre] = allCandidates.filter(m => m.id !== matched.id)
-      } else {
-        toInsertNew.push({
-          tienda_id:           tiendaId,
-          square_catalog_id:   item.id,
-          square_variation_id: variationId,
-          nombre, precio_pvp, descripcion, stock, activo,
-          categoria:           catEfectiva,
-          cat_gourmet:         squareCategories[0]?.name || null,
-          square_last_seen_at: now,
-          ...(squareCategoryDecision.aptoCestaOverride === false && { apto_cesta: false }),
-          uva:        uva    || null,
-          bodega:     bodega || null,
-          region:     region || null,
-          pais:       pais   || null,
-          ...(foto_url && { foto_url }),
-          updated_at: now,
-        })
-      }
+      toInsertNew.push({
+        tienda_id:           tiendaId,
+        square_catalog_id:   item.id,
+        square_variation_id: variationId,
+        nombre, precio_pvp, descripcion, stock, activo,
+        categoria:           catEfectiva,
+        cat_gourmet:         squareCategories[0]?.name || null,
+        square_last_seen_at: now,
+        ...(squareCategoryDecision.aptoCestaOverride === false && { apto_cesta: false }),
+        uva:        uva    || null,
+        bodega:     bodega || null,
+        region:     region || null,
+        pais:       pais   || null,
+        ...(foto_url && { foto_url }),
+        updated_at: now,
+      })
     }
   }
 
@@ -1606,36 +1565,72 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     }
   }
 
-  // Post-sync: eliminar filas cuyo square_catalog_id Y square_variation_id
-  // ya no existen en el catálogo Square actual (IDs huérfanos por re-catalogación).
-  // Las filas sin ningún ID (editoriales) y las actualizadas en este sync se preservan.
-  let huerfanasEliminadas = 0
-  const updatedIdSet = new Set(toUpsertById.map(r => r.id))
+  // Actualizar square_last_seen_at para filas en Square sin otros cambios
+  if (toUpdateLastSeen.length > 0) {
+    const nowLastSeen = new Date().toISOString()
+    for (let i = 0; i < toUpdateLastSeen.length; i += BATCH) {
+      const { error } = await supabaseAdmin.from('vinos_tienda')
+        .update({ square_last_seen_at: nowLastSeen })
+        .in('id', toUpdateLastSeen.slice(i, i + BATCH))
+      if (error) console.error('[square-sync] update(last_seen) error:', error.message)
+    }
+  }
+
+  // Post-sync: desactivar filas cuyo square_variation_id ya no existe en Square.
+  // Nunca se borran: activo = false conserva toda la curación editorial.
+  let huerfanasDesactivadas = 0
+  const matchedIdSet = new Set([...toUpsertById.map(r => r.id), ...toUpdateLastSeen])
   const orphanedRows = existentes.filter(v => {
-    if (!v.square_catalog_id && !v.square_variation_id) return false
-    if (updatedIdSet.has(v.id)) return false
-    return !(v.square_catalog_id   && currentCatalogIdSet.has(v.square_catalog_id))
-        && !(v.square_variation_id && currentVariationIdSet.has(v.square_variation_id))
+    if (!v.square_variation_id) return false
+    if (matchedIdSet.has(v.id)) return false
+    return !currentVariationIdSet.has(v.square_variation_id)
   })
   if (orphanedRows.length > 0) {
+    const nowOrphan = new Date().toISOString()
     const orphanedIds = orphanedRows.map(v => v.id)
     for (let i = 0; i < orphanedIds.length; i += BATCH) {
-      const { error } = await supabaseAdmin.from('vinos_tienda').delete().in('id', orphanedIds.slice(i, i + BATCH))
-      if (error) console.error('[square-sync] delete(huérfanos) error:', error.message)
-      else huerfanasEliminadas += orphanedIds.slice(i, i + BATCH).length
+      const chunk = orphanedIds.slice(i, i + BATCH)
+      const { error } = await supabaseAdmin.from('vinos_tienda')
+        .update({ activo: false, updated_at: nowOrphan })
+        .in('id', chunk)
+      if (error) console.error('[square-sync] deactivate(huérfanos) error:', error.message)
+      else huerfanasDesactivadas += chunk.length
     }
+    const orphanLog = orphanedRows.slice(0, 200).map(v => ({
+      tienda_id: tiendaId,
+      square_catalog_id: v.square_catalog_id,
+      square_variation_id: v.square_variation_id,
+      nombre: v.nombre,
+      accion: 'deactivated',
+    }))
+    await supabaseAdmin.from('square_sync_orphans').insert(orphanLog)
+      .then(({ error }) => { if (error) console.warn('[square-sync] orphans log error:', error.message) })
+  }
+
+  // Registrar nuevos sin match en square_sync_orphans para revisión manual
+  if (toInsertNew.length > 0) {
+    const insertLog = toInsertNew.slice(0, 200).map(r => ({
+      tienda_id: tiendaId,
+      square_catalog_id: r.square_catalog_id,
+      square_variation_id: r.square_variation_id,
+      nombre: r.nombre,
+      precio: r.precio_pvp,
+      accion: 'inserted',
+    }))
+    await supabaseAdmin.from('square_sync_orphans').insert(insertLog)
+      .then(({ error }) => { if (error) console.warn('[square-sync] orphans insert log error:', error.message) })
   }
 
   const stockSincronizados = Object.keys(itemStockMap).length
   const slug = tiendaSlug || tiendaId
-  console.log(`[square-sync] ${slug}: ${countNuevos} nuevos, ${countAct} act., ${errores} errores, ${stockSincronizados} stock, ${huerfanasEliminadas} huérfanas, filtradosSquare=${filtradosPorSquareCategoria}, scoped=${inventoryInfo.inventoryLocationScoped}`)
+  console.log(`[square-sync] ${slug}: ${countNuevos} nuevos, ${countAct} act., ${errores} errores, ${stockSincronizados} stock, ${huerfanasDesactivadas} desactivadas, filtradosSquare=${filtradosPorSquareCategoria}, scoped=${inventoryInfo.inventoryLocationScoped}`)
 
   return {
     ok: errores === 0,
     insertados: countNuevos,
     actualizados: countAct,
     errores,
-    huerfanasEliminadas,
+    huerfanasDesactivadas,
     total: items.length,
     stockSincronizados,
     filtradosPorSquareCategoria,
