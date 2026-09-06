@@ -2586,47 +2586,15 @@ export default function CartaPublica() {
               </div>
             )}
 
-            {respuesta && (() => {
-              const recom = vinosDeRespuesta(respuesta, vinos)
-              return (
-                <div className={styles.answerBox}>
-                  <p className={styles.selectedHead}>{i.sommelier}</p>
-                  {recom.length > 0 ? (
-                    <>
-                      <div className={styles.recomendadorGrid}>
-                        {recom.map(({ vino, argumento }) => (
-                          <article
-                            key={vino.id}
-                            className={styles.recomendadorCard}
-                            onClick={() => abrirFichaVino(vino)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(vino))}
-                          >
-                            <p className={styles.recomendadorCardNombre}>{nombreVinoCarta(vino)}</p>
-                            {vino.bodega && <p className={styles.recomendadorCardBodega}>{vino.bodega}</p>}
-                            {argumento && <p className={styles.recomendadorArgumento}>{argumento}</p>}
-                            {(precioValido(vino.precio_copa) || precioValido(vino.precio_botella)) && (
-                              <p className={styles.recomendadorPrecio}>
-                                {precioValido(vino.precio_copa) ? precioCopaCarta(vino.precio_copa) + ' copa' : ''}
-                                {precioValido(vino.precio_copa) && precioValido(vino.precio_botella) ? ' · ' : ''}
-                                {precioValido(vino.precio_botella) ? precioBotellaCarta(vino.precio_botella) + ' botella' : ''}
-                              </p>
-                            )}
-                          </article>
-                        ))}
-                      </div>
-                      <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className={styles.answerText}>{respuesta}</p>
-                      <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
-                    </>
-                  )}
-                </div>
-              )
-            })()}
+            {respuesta && (
+              <div className={styles.answerBox}>
+                <p className={styles.selectedHead}>{i.sommelier}</p>
+                {respuesta.split(/\n\n+/).map((bloque, idx) => (
+                  <p key={idx} className={styles.answerText} style={idx > 0 ? { marginTop: 10 } : undefined}>{bloque.trim()}</p>
+                ))}
+                <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
+              </div>
+            )}
           </section>
         )}
 
