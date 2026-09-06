@@ -1606,15 +1606,36 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     }
   }
 
+  // Post-sync: eliminar filas cuyo square_catalog_id Y square_variation_id
+  // ya no existen en el catálogo Square actual (IDs huérfanos por re-catalogación).
+  // Las filas sin ningún ID (editoriales) y las actualizadas en este sync se preservan.
+  let huerfanasEliminadas = 0
+  const updatedIdSet = new Set(toUpsertById.map(r => r.id))
+  const orphanedRows = existentes.filter(v => {
+    if (!v.square_catalog_id && !v.square_variation_id) return false
+    if (updatedIdSet.has(v.id)) return false
+    return !(v.square_catalog_id   && currentCatalogIdSet.has(v.square_catalog_id))
+        && !(v.square_variation_id && currentVariationIdSet.has(v.square_variation_id))
+  })
+  if (orphanedRows.length > 0) {
+    const orphanedIds = orphanedRows.map(v => v.id)
+    for (let i = 0; i < orphanedIds.length; i += BATCH) {
+      const { error } = await supabaseAdmin.from('vinos_tienda').delete().in('id', orphanedIds.slice(i, i + BATCH))
+      if (error) console.error('[square-sync] delete(huérfanos) error:', error.message)
+      else huerfanasEliminadas += orphanedIds.slice(i, i + BATCH).length
+    }
+  }
+
   const stockSincronizados = Object.keys(itemStockMap).length
   const slug = tiendaSlug || tiendaId
-  console.log(`[square-sync] ${slug}: ${countNuevos} nuevos, ${countAct} act., ${errores} errores, ${stockSincronizados} stock, filtradosSquare=${filtradosPorSquareCategoria}, scoped=${inventoryInfo.inventoryLocationScoped}`)
+  console.log(`[square-sync] ${slug}: ${countNuevos} nuevos, ${countAct} act., ${errores} errores, ${stockSincronizados} stock, ${huerfanasEliminadas} huérfanas, filtradosSquare=${filtradosPorSquareCategoria}, scoped=${inventoryInfo.inventoryLocationScoped}`)
 
   return {
     ok: errores === 0,
     insertados: countNuevos,
     actualizados: countAct,
     errores,
+    huerfanasEliminadas,
     total: items.length,
     stockSincronizados,
     filtradosPorSquareCategoria,
