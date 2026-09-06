@@ -10,6 +10,12 @@ import DuelView from './DuelView'
 
 const SHOWCASE_INTERVAL_MS = 7_000
 const IDLE_DEFAULT_MS = 60_000
+const SHOWCASE_CTA_COPIES = {
+  es: ['Toca para explorar', 'Descubre toda la carta', 'Toca la pantalla'],
+  en: ['Tap to explore', 'Browse the full menu', 'Touch the screen'],
+  fr: ['Touchez pour explorer', 'Découvrez toute la carte', "Appuyez sur l'écran"],
+  de: ['Tippen zum Erkunden', 'Die ganze Karte entdecken', 'Bildschirm berühren'],
+}
 const MOBILE_SELECTION_MAX = 20
 const COUNTER_ORDERS_IN_DEVELOPMENT = true
 
@@ -2372,6 +2378,8 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
   }, [lista.length])
 
   const vino = lista[idx]
+  const ctaCopies = SHOWCASE_CTA_COPIES[lang] ?? SHOWCASE_CTA_COPIES.es
+  const ctaCopy = ctaCopies[Math.floor(idx / 2) % ctaCopies.length]
   if (!vino) return null
 
   return (
@@ -2432,17 +2440,20 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
       <div className={styles.showcaseBottom}>
         <div className={styles.showcaseDots}>
           {lista.map((_, i) => (
-            <span key={i} className={`${styles.showcaseDot} ${i === idx ? styles.showcaseDotActive : ''}`}
-              style={i === idx ? { background: colorAcento } : {}} />
+            <span key={i} className={`${styles.showcaseDot} ${i === idx ? styles.showcaseDotActive : ''}`} />
           ))}
         </div>
         <div className={styles.showcaseTapPill} aria-hidden="true">
-          <svg className={styles.showcaseTapIcon} viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <circle cx="12" cy="12" r="4" />
-            <circle cx="12" cy="12" r="9" strokeOpacity="0.4" />
-          </svg>
-          {T[lang]?.tapToExplore ?? T.es.tapToExplore}
+          <span className={styles.showcaseTapWrap}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+            </svg>
+          </span>
+          {ctaCopy}
         </div>
+        {vinos.length > 1 && (
+          <p className={styles.showcaseCount}>{vinos.length} referencias</p>
+        )}
       </div>
     </div>
   )

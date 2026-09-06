@@ -2647,16 +2647,36 @@
   gap: .5rem;
 }
 .showcaseDot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: rgba(255,255,255,.3);
-  transition: background .3s, transform .3s;
+  background: rgba(255,255,255,.45);
+  transition: width .35s ease, border-radius .35s ease, background .35s;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
 }
-.showcaseDotActive { transform: scale(1.4); }
+.showcaseDotActive {
+  width: 28px;
+  border-radius: 4px;
+  background: rgba(255,255,255,.35);
+}
+.showcaseDotActive::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--acento, #c8a96e);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: showcaseDotFill 7s linear forwards;
+}
+@keyframes showcaseDotFill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
 @keyframes showcasePulse {
-  0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.05); }
+  0%, 100% { transform: scale(1);     box-shadow: 0 0 0  0   rgba(255,255,255,.00); }
+  50%       { transform: scale(1.04); box-shadow: 0 0 0 10px rgba(255,255,255,.07); }
 }
 .showcaseTapPill {
   display: inline-flex;
@@ -2675,11 +2695,45 @@
   letter-spacing: 0.06em;
   pointer-events: none;
   user-select: none;
-  animation: showcasePulse 2.8s ease-in-out infinite;
+  animation: showcasePulse 2s ease-in-out infinite;
 }
-.showcaseTapIcon {
+.showcaseTapWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  opacity: 0.85;
+  color: inherit;
+}
+.showcaseTapWrap::before,
+.showcaseTapWrap::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  opacity: 0;
+  animation: showcaseRipple 1.8s ease-out infinite;
+}
+.showcaseTapWrap::after {
+  animation-delay: 0.9s;
+}
+@keyframes showcaseRipple {
+  0%   { transform: scale(1);   opacity: 0.65; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+.showcaseCount {
+  font-size: clamp(.72rem, 1.8vw, .82rem);
+  color: rgba(255,255,255,.45);
+  margin: 0;
+  letter-spacing: .05em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .showcaseTapPill { animation: none; }
+  .showcaseTapWrap::before,
+  .showcaseTapWrap::after { animation: none; opacity: 0; }
+  .showcaseDotActive::after { animation: none; transform: scaleX(1); }
 }
 
 @media (max-width: 600px) {
