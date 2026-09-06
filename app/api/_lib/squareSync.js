@@ -1366,6 +1366,9 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     }
   }
 
+  const currentCatalogIdSet   = new Set(items.filter(i => i.type === 'ITEM').map(i => i.id))
+  const currentVariationIdSet = new Set(variationIds)
+
   const inventoryInfo = await fetchInventoryCountsDetailed(variationIds, token, inventoryOptions)
   const inventoryMap = inventoryInfo.inventoryMap
   const itemStockMap = {}
@@ -1392,11 +1395,13 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
 
   const existingByCatalog   = {}
   const existingByVariation = {}
-  const nullIdByNombre      = {} // vinos sin IDs Square, para fusionar en lugar de duplicar
+  const nullIdByNombre      = {} // filas sin IDs Square o con IDs huérfanos (ya no en catálogo actual)
   for (const v of (existentes || [])) {
     if (v.square_catalog_id)   existingByCatalog[v.square_catalog_id]   = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
     if (v.square_variation_id) existingByVariation[v.square_variation_id] = { id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo, square_catalog_id: v.square_catalog_id, square_variation_id: v.square_variation_id }
-    if (!v.square_catalog_id && !v.square_variation_id && v.nombre) {
+    const catalogOrphaned  = !v.square_catalog_id   || !currentCatalogIdSet.has(v.square_catalog_id)
+    const variationOrphaned = !v.square_variation_id || !currentVariationIdSet.has(v.square_variation_id)
+    if (catalogOrphaned && variationOrphaned && v.nombre) {
       if (!nullIdByNombre[v.nombre]) nullIdByNombre[v.nombre] = []
       nullIdByNombre[v.nombre].push({ id: v.id, categoria: v.categoria, precio_pvp: v.precio_pvp, activo: v.activo })
     }
