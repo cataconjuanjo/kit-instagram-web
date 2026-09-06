@@ -1477,15 +1477,18 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
         })
       }
     } else {
-      // Fusionar con vino sin IDs Square si el nombre coincide de forma unívoca (1:1).
-      // Si hay múltiples sin IDs con el mismo nombre, no fusionar (demasiado ambiguo).
-      const nullMatches = nullIdByNombre[nombre]
+      // Fusionar con fila sin IDs o con IDs huérfanos si coincide nombre+precio de forma unívoca.
+      // Primero filtramos por precio exacto; si no hay, intentamos por nombre solo (1:1).
+      const allCandidates  = nullIdByNombre[nombre] || []
+      const priceMatches   = allCandidates.filter(m => !pricesDiffer(m.precio_pvp, precio_pvp))
+      const nullMatches    = priceMatches.length > 0 ? priceMatches : allCandidates
       if (nullMatches?.length === 1) {
-        const updatePrice = pricesDiffer(nullMatches[0].precio_pvp, precio_pvp)
-        const updateCategory = Boolean(squareCategoryDecision.categoryOverride && nullMatches[0].categoria !== squareCategoryDecision.categoryOverride)
-        const updateActive = typeof squareCategoryDecision.activeOverride === 'boolean' && Boolean(nullMatches[0].activo) !== squareCategoryDecision.activeOverride
+        const matched     = nullMatches[0]
+        const updatePrice = pricesDiffer(matched.precio_pvp, precio_pvp)
+        const updateCategory = Boolean(squareCategoryDecision.categoryOverride && matched.categoria !== squareCategoryDecision.categoryOverride)
+        const updateActive = typeof squareCategoryDecision.activeOverride === 'boolean' && Boolean(matched.activo) !== squareCategoryDecision.activeOverride
         toUpsertById.push({
-          id:                   nullMatches[0].id,
+          id:                   matched.id,
           categoria:            catEfectiva,
           precio_pvp,
           activo,
@@ -1500,7 +1503,8 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
           _updateState:         updateCategory || updateActive,
           updated_at:           now,
         })
-        nullIdByNombre[nombre] = [] // consumido: evitar que otro item Square reclame el mismo registro
+        // Consumir solo el candidato usado; los de otro precio siguen disponibles
+        nullIdByNombre[nombre] = allCandidates.filter(m => m.id !== matched.id)
       } else {
         toInsertNew.push({
           tienda_id:           tiendaId,
