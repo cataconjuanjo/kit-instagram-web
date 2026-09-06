@@ -1,0 +1,200 @@
+/* ── Duelo de etiquetas — carta pública ────────────────────────────────────
+   CSS vars: --color-primario, --color-fondo, --color-acento (set on :root
+   by page.js when the restaurante loads). No hardcoded colours. */
+
+.duelWrap {
+  background: #fffaf3;
+  border: 1px solid #dfd6c8;
+  border-radius: 8px;
+  padding: 18px 18px 14px;
+  margin-bottom: 14px;
+}
+
+/* ── Prefiltro ─────────────────────────────────────────────────────────── */
+
+.prefiltroContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.prefiltroSub {
+  font-size: .9rem;
+  color: #766e64;
+  margin: 0;
+}
+
+.tipoChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  justify-content: center;
+}
+
+.tipoChip {
+  padding: .4rem .9rem;
+  border-radius: 100px;
+  border: 1px solid #dfd6c8;
+  background: #f5f0e8;
+  color: #766e64;
+  font-size: .8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+
+.tipoChipActive {
+  color: #fff;
+  border-color: transparent;
+}
+
+.pocosAviso {
+  font-size: .8125rem;
+  color: #a09288;
+  margin: 0;
+}
+
+.startBtn {
+  padding: .8rem 1.75rem;
+  border-radius: 8px;
+  border: none;
+  color: #fff;
+  font-size: .875rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: filter .12s, transform .1s;
+  min-width: 190px;
+}
+
+.startBtn:hover  { filter: brightness(1.08); }
+.startBtn:active { transform: scale(.97); }
+.startBtn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Duelo en curso ────────────────────────────────────────────────────── */
+
+.duelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: .625rem;
+}
+
+.duelTitulo {
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.duelRonda {
+  font-size: .75rem;
+  color: #a09288;
+  font-weight: 500;
+}
+
+.progressBar {
+  height: 2px;
+  background: #dfd6c8;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: .75rem;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .3s ease;
+}
+
+.duelStage {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .625rem;
+  position: relative;
+  min-height: 220px;
+  align-items: stretch;
+}
+
+.labelCard {
+  border: 1px solid #dfd6c8;
+  background: #fff;
+  border-radius: 10px;
+  padding: .625rem .5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .12s, border-color .15s, box-shadow .15s;
+  overflow: hidden;
+}
+
+.labelCard:hover {
+  border-color: var(--color-acento, #171416);
+  box-shadow: 0 4px 16px rgba(0,0,0,.08);
+}
+
+.labelCard:active { transform: scale(.96); }
+
+.labelPhoto {
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  object-fit: contain;
+  display: block;
+  border-radius: 4px;
+}
+
+.vsBadge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: .6875rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  box-shadow: 0 0 0 3px #fffaf3;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.duelHint {
+  text-align: center;
+  font-size: .8125rem;
+  color: #a09288;
+  margin: .625rem 0 .25rem;
+}
+
+.yaTengoBtn {
+  display: block;
+  background: none;
+  border: none;
+  color: #a09288;
+  font-size: .8125rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: .5rem;
+  text-align: center;
+  width: 100%;
+}
+
+/* ── Estado vacío ──────────────────────────────────────────────────────── */
+
+.emptyMsg {
+  font-size: .875rem;
+  color: #a09288;
+  text-align: center;
+  margin: 0;
+  padding: .5rem 0;
+}

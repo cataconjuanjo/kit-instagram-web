@@ -25,6 +25,7 @@ import { WINE_PROFILE_AXES, WINE_PROFILE_LABELS } from '../../lib/wineProfileRad
 import { limpiarMarcadorPerfiles } from '../../lib/wineProfileTags'
 import PublicStateScreen from '../../components/PublicStateScreen'
 import WineProfileRadarChart from '../../components/WineProfileRadarChart'
+import DuelCartaView from './DuelCartaView'
 import styles from './carta.module.css'
 
 const FONT_MAP = {
@@ -192,6 +193,13 @@ const t = {
     arcoPlato: 'Copa a copa, en arco',
     recomendame: 'Recomiéndame',
     porPlatos: 'Por platos',
+    duelo: 'Duelo de etiquetas',
+    dueloSub: 'Solo etiquetas. Sin nombres ni precios.',
+    dueloEmpezar: 'Empezar duelo →',
+    dueloHint: 'Toca la que más te llame',
+    dueloRonda: (r, t) => `Ronda ${r} de ${t}`,
+    dueloGano: (v, t) => `Ganó ${v} de ${t} duelos`,
+    yaTengo: 'Ya tengo mi vino',
     quizSubtitulo: '4 preguntas · 3 vinos',
     quizQ1: '¿Qué tipo de vino?',
     quizQ2: '¿Cómo lo quieres?',
@@ -276,6 +284,13 @@ const t = {
     arcoPlato: 'Glass by glass, in arc',
     recomendame: 'Recommend me',
     porPlatos: 'By dish',
+    duelo: 'Blind duel',
+    dueloSub: 'Labels only. No names or prices.',
+    dueloEmpezar: 'Start duel →',
+    dueloHint: 'Tap the one you prefer',
+    dueloRonda: (r, t) => `Round ${r} of ${t}`,
+    dueloGano: (v, t) => `Won ${v} of ${t}`,
+    yaTengo: 'I already have my wine',
     quizSubtitulo: '4 questions · 3 wines',
     quizQ1: 'What type of wine?',
     quizQ2: 'How do you like it?',
@@ -693,6 +708,7 @@ export default function CartaPublica() {
   const [busqueda, setBusqueda] = useState('')
   const [precioMax, setPrecioMax] = useState(null)
   const [vinoSeleccionado, setVinoSeleccionado] = useState(null)
+  const [duelStats, setDuelStats] = useState(null)
   const [vista, setVista] = useState('carta')
   const [modoCarta, setModoCarta] = useState('referencias')
   const [respuesta, setRespuesta] = useState('')
@@ -813,14 +829,16 @@ export default function CartaPublica() {
     }, evento)
   }
 
-  const abrirFichaVino = vino => {
+  const abrirFichaVino = (vino, stats = null) => {
     if (typeof window !== 'undefined') scrollAntesFicha.current = window.scrollY
     setVinoSeleccionado(vino)
+    setDuelStats(stats)
   }
 
   const cerrarFichaVino = () => {
     const scrollDestino = scrollAntesFicha.current || 0
     setVinoSeleccionado(null)
+    setDuelStats(null)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         window.scrollTo({ top: scrollDestino, left: 0, behavior: 'auto' })
@@ -1193,6 +1211,7 @@ export default function CartaPublica() {
   const tipos = ['todos', ...tiposOrdenados]
   const colorPrimario = restaurante?.color_primario || '#111111'
   const colorAcento = restaurante?.color_acento || colorPrimario
+  const dueloActivo = restaurante?.duelo_activo === true || restaurante?.modo_prueba === true
   const etiquetasPublicasActivas = restaurante?.etiquetas_publicas_activas === true
   const fontTitulo = (FONT_MAP[restaurante?.tipografia] || FONT_MAP.serif).family
   const claseTipografia = restaurante?.tipografia === 'garamond' ? styles.fontGaramond : ''
@@ -1743,9 +1762,14 @@ export default function CartaPublica() {
         </button>
       </div>
       <div style={{ padding: '32px 24px', maxWidth: 480, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: tipoDot[vinoSeleccionado.tipo] }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: tipoDot[vinoSeleccionado.tipo], flexShrink: 0 }} />
           <span style={{ fontSize: 12, color: '#999', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{i.tipoLabel[vinoSeleccionado.tipo]}</span>
+          {duelStats && (
+            <span style={{ background: colorAcento, color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, letterSpacing: '0.04em' }}>
+              {i.dueloGano(duelStats.victorias, duelStats.total)}
+            </span>
+          )}
         </div>
         <h1 style={{ fontSize: 30, fontWeight: 300, color: '#111', margin: '0 0 8px', fontFamily: fontTitulo, lineHeight: 1.3 }}>{nombreVinoCarta(vinoSeleccionado)}</h1>
         <p style={{ fontSize: 16, color: '#888', margin: '0 0 32px', fontWeight: 300 }}>{vinoSeleccionado.bodega}</p>
@@ -2350,19 +2374,20 @@ export default function CartaPublica() {
 
       <main className={styles.content}>
         <section className={styles.sommelierIntro}>
-          <h2 className={styles.sommelierTitle}>{modoSommelier === 'quiz' ? i.recomendame : modoSommelier === 'vino' ? i.vinoManda : i.quePedir}</h2>
-          <p className={styles.sommelierText}>{modoSommelier === 'quiz' ? i.quizSubtitulo : modoSommelier === 'vino' ? i.vinoMandaSub : i.seleccionaPlatos}</p>
-          <p className={styles.aiNotice}>{i.avisoIa}</p>
-          <div className={styles.journeyStrip} aria-label={idioma === 'en' ? 'Recommendation steps' : 'Pasos de la recomendación'}>
+          <h2 className={styles.sommelierTitle}>{modoSommelier === 'quiz' ? i.recomendame : modoSommelier === 'vino' ? i.vinoManda : modoSommelier === 'duelo' ? i.duelo : i.quePedir}</h2>
+          <p className={styles.sommelierText}>{modoSommelier === 'quiz' ? i.quizSubtitulo : modoSommelier === 'vino' ? i.vinoMandaSub : modoSommelier === 'duelo' ? i.dueloSub : i.seleccionaPlatos}</p>
+          {modoSommelier !== 'duelo' && <p className={styles.aiNotice}>{i.avisoIa}</p>}
+          {modoSommelier !== 'duelo' && <div className={styles.journeyStrip} aria-label={idioma === 'en' ? 'Recommendation steps' : 'Pasos de la recomendación'}>
             <span className={modoSommelier === 'platos' && !platosSeleccionados.length ? styles.journeyActive : ''}><b>1</b>{idioma === 'en' ? 'Choose' : 'Elige'}</span>
             <span className={modoSommelier === 'platos' && platosSeleccionados.length > 0 && !respuesta ? styles.journeyActive : ''}><b>2</b>{idioma === 'en' ? 'Adjust' : 'Ajusta'}</span>
             <span className={respuesta || respuestaQuiz ? styles.journeyActive : ''}><b>3</b>{idioma === 'en' ? 'Enjoy' : 'Decide'}</span>
-          </div>
+          </div>}
           <div className={styles.sommelierModeTabs}>
             {[
               { id: 'platos', label: i.porPlatos },
               { id: 'quiz', label: i.recomendame },
               { id: 'vino', label: i.vinoManda },
+              ...(dueloActivo ? [{ id: 'duelo', label: i.duelo }] : []),
             ].map(m => (
               <button
                 key={m.id}
@@ -2602,6 +2627,21 @@ export default function CartaPublica() {
               )
             })()}
           </section>
+        )}
+
+        {modoSommelier === 'duelo' && dueloActivo && (
+          <DuelCartaView
+            vinos={vinos}
+            slug={slug}
+            restauranteId={restaurante?.id}
+            colorAcento={colorAcento}
+            colorPrimario={colorPrimario}
+            colorFondo={restaurante?.color_fondo || '#f4f1eb'}
+            onBack={() => setModoSommelier('platos')}
+            onWineSelect={(vino, stats) => abrirFichaVino(vino, stats)}
+            idioma={idioma}
+            i={i}
+          />
         )}
 
         {modoSommelier === 'platos' && <section className={styles.dishSearchPanel}>
