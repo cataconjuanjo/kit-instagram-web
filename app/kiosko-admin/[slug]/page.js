@@ -2914,8 +2914,9 @@ export default function AdminKioskoPage() {
 
       {/* Rendimiento por vino — Square TPV */}
       {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'ventas' && analitica && (() => {
-        const vp = analitica.ventasPorVino
-        const tp = analitica.tendenciaPorVino || {}
+        const vp  = analitica.ventasPorVino
+        const tp  = analitica.tendenciaPorVino || {}
+        const uva = analitica.ultimaVentaAt || {}
         const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: '#c03030' }
         const filas = vinosVino
           .filter(v => vp[v.id])
@@ -2929,15 +2930,18 @@ export default function AdminKioskoPage() {
             const tendencia  = tp[v.id] || null
             const agotado    = !v.activo
             const beneficio  = pvp > 0 && coste > 0 ? Math.round((pvp - coste) * uds) : null
-            const ultimaSemana = (() => {
-              if (!tendencia) return null
-              let lastIdx = -1
-              for (let i = tendencia.length - 1; i >= 0; i--) { if (tendencia[i] > 0) { lastIdx = i; break } }
-              if (lastIdx < 0) return null
-              const s = 7 - lastIdx
-              return s === 0 ? 'esta sem.' : `hace ${s} sem.`
+            const ultimaVentaFecha = (() => {
+              const iso = uva[v.id]
+              if (!iso) return null
+              const d = new Date(iso)
+              const hoy = new Date()
+              const ayer = new Date(hoy); ayer.setDate(hoy.getDate() - 1)
+              const fmt = (d) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+              if (d.toDateString() === hoy.toDateString()) return `hoy ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+              if (d.toDateString() === ayer.toDateString()) return `ayer ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+              return fmt(d)
             })()
-            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, tendencia, agotado, stock: v.stock ?? null, pvpVal: pvp > 0 ? pvp : null, beneficio, ultimaSemana }
+            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, tendencia, agotado, stock: v.stock ?? null, pvpVal: pvp > 0 ? pvp : null, beneficio, ultimaVentaFecha }
           })
           .sort((a, b) => b.ingresos - a.ingresos)
         if (!filas.length) return (
@@ -3027,7 +3031,7 @@ export default function AdminKioskoPage() {
                             {f.stock ?? '—'}
                           </span>
                         </td>
-                        <td className={styles.rendTdNum} style={{ fontSize: '0.78rem', color: '#888' }}>{f.ultimaSemana || '—'}</td>
+                        <td className={styles.rendTdNum} style={{ fontSize: '0.78rem', color: '#888' }}>{f.ultimaVentaFecha || '—'}</td>
                         <td className={styles.rendTdSparkline}>
                           {f.tendencia ? <Sparkline data={f.tendencia} /> : <em className={styles.dash}>—</em>}
                         </td>

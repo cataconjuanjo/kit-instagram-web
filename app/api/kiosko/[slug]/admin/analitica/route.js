@@ -169,6 +169,7 @@ export async function GET(request, { params }) {
 
   const ventasPorVino = {}
   const tendenciaPorVino = {}
+  const ultimaVentaAt = {}
   let ultimoSyncAt = null
   const NUM_SEMANAS = 8
   const ahoraMs = Date.now()
@@ -181,6 +182,7 @@ export async function GET(request, { params }) {
       if (linea.status === 'ok' && linea.vino_id) {
         const id = linea.vino_id
         ventasPorVino[id] = (ventasPorVino[id] || 0) + (linea.quantity || 1)
+        if (!ultimaVentaAt[id] || log.created_at > ultimaVentaAt[id]) ultimaVentaAt[id] = log.created_at
         if (weekIdx >= 0 && weekIdx < NUM_SEMANAS) {
           if (!tendenciaPorVino[id]) tendenciaPorVino[id] = Array(NUM_SEMANAS).fill(0)
           tendenciaPorVino[id][weekIdx] += (linea.quantity || 1)
@@ -247,6 +249,7 @@ export async function GET(request, { params }) {
     },
     ventasPorVino,
     tendenciaPorVino,
+    ultimaVentaAt,
     ultimoSyncAt,
     conversion,
     timeline,
