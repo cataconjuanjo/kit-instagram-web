@@ -2382,7 +2382,7 @@ export default function CartaPublica() {
             <span className={modoSommelier === 'platos' && platosSeleccionados.length > 0 && !respuesta ? styles.journeyActive : ''}><b>2</b>{idioma === 'en' ? 'Adjust' : 'Ajusta'}</span>
             <span className={respuesta || respuestaQuiz ? styles.journeyActive : ''}><b>3</b>{idioma === 'en' ? 'Enjoy' : 'Decide'}</span>
           </div>}
-          <div className={styles.sommelierModeTabs}>
+          <div className={`${styles.sommelierModeTabs}${dueloActivo ? ` ${styles.sommelierModeTabsWith4}` : ''}`}>
             {[
               { id: 'platos', label: i.porPlatos },
               { id: 'quiz', label: i.recomendame },
@@ -2401,6 +2401,7 @@ export default function CartaPublica() {
                   trackArmoniaEvento(restaurante?.id, `armonia_modo_${m.id}`)
                 }}
                 style={modoSommelier === m.id ? { background: colorAcento } : undefined}
+                {...(m.id === 'duelo' ? { 'data-duelo': 'true' } : {})}
               >
                 {m.label}
               </button>

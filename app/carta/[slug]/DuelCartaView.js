@@ -13,10 +13,33 @@ function shuffle(arr) {
   return a
 }
 
-// Strings are minimal — the rest come from the carta i18n object passed as prop
 const DC = {
-  es: { pocosVinos: 'No hay suficientes vinos con etiqueta para este tipo.', todos: 'Todos' },
-  en: { pocosVinos: 'Not enough labelled wines for this type.', todos: 'All' },
+  es: {
+    pocosVinos: 'No hay suficientes vinos con etiqueta para empezar.',
+    todos: 'Todos',
+    queTipo: '¿Qué tipo de vino?',
+    hint: 'Toca la que más te llame',
+    yaTengo: 'Ya tengo mi vino',
+    sigueEnPie: 'Sigue en pie',
+    empezar: 'Empezar duelo →',
+  },
+  en: {
+    pocosVinos: 'Not enough labelled wines to start.',
+    todos: 'All',
+    queTipo: 'What type of wine?',
+    hint: 'Tap the one you prefer',
+    yaTengo: 'I have my wine',
+    sigueEnPie: 'Still standing',
+    empezar: 'Start duel →',
+  },
+}
+
+function ChampIcon() {
+  return (
+    <svg width="9" height="9" viewBox="0 0 9 9" fill="none" aria-hidden="true" style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }}>
+      <path d="M1.5 4.5L3.5 6.5L7.5 2.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
 }
 
 export default function DuelCartaView({
@@ -39,16 +62,17 @@ export default function DuelCartaView({
 
   const dc = DC[idioma] || DC.es
 
-  const [prefiltro, setPrefiltro]         = useState('todos')
-  const [fase, setFase]                   = useState('prefiltro')
-  const [pool, setPool]                   = useState([])
-  const poolIdxRef                        = useRef(2)
-  const [vinoA, setVinoA]                 = useState(null)
-  const [vinoB, setVinoB]                 = useState(null)
-  const [campeon, setCampeon]             = useState(null)
-  const [rondaActual, setRondaActual]     = useState(1)
+  const [prefiltro, setPrefiltro]               = useState('todos')
+  const [fase, setFase]                         = useState('prefiltro')
+  const [pool, setPool]                         = useState([])
+  const poolIdxRef                              = useRef(2)
+  const [vinoA, setVinoA]                       = useState(null)
+  const [vinoB, setVinoB]                       = useState(null)
+  const [campeon, setCampeon]                   = useState(null)
+  const [rondaActual, setRondaActual]           = useState(1)
   const [campeonVictorias, setCampeonVictorias] = useState(0)
-  const [totalRondas, setTotalRondas]     = useState(0)
+  const [totalRondas, setTotalRondas]           = useState(0)
+  const [roundKey, setRoundKey]                 = useState(0)
 
   const vinosConFoto = useMemo(() => vinos.filter(v => v.foto_url), [vinos])
 
@@ -67,12 +91,12 @@ export default function DuelCartaView({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        session_id:     sessionId.current,
-        ronda:          rondaActual,
-        vino_a_id:      aId,
-        vino_b_id:      bId,
-        elegido_id:     elegidoId ?? null,
-        filtros:        prefiltro !== 'todos' ? { tipo: prefiltro } : null,
+        session_id: sessionId.current,
+        ronda: rondaActual,
+        vino_a_id: aId,
+        vino_b_id: bId,
+        elegido_id: elegidoId ?? null,
+        filtros: prefiltro !== 'todos' ? { tipo: prefiltro } : null,
       }),
     }).catch(() => {})
   }
@@ -89,6 +113,7 @@ export default function DuelCartaView({
     setCampeonVictorias(0)
     setTotalRondas(0)
     setRondaActual(1)
+    setRoundKey(0)
     setFase('duelo')
   }
 
@@ -114,6 +139,7 @@ export default function DuelCartaView({
     setVinoA(vino)
     setVinoB(pool[siguienteIdx])
     setRondaActual(r => r + 1)
+    setRoundKey(k => k + 1)
   }
 
   function salirYaTengo() {
@@ -121,6 +147,7 @@ export default function DuelCartaView({
     onBack()
   }
 
+  // ── Empty ─────────────────────────────────────────────────────────────────
   if (vinosConFoto.length < MIN_POOL) {
     return (
       <section className={styles.duelWrap}>
@@ -136,13 +163,11 @@ export default function DuelCartaView({
     return (
       <section className={styles.duelWrap}>
         <div className={styles.prefiltroContent}>
-          <p className={styles.prefiltroSub}>
-            {idioma === 'en' ? 'What type of wine?' : '¿Qué tipo de vino?'}
-          </p>
+          <p className={styles.prefiltroSub}>{dc.queTipo}</p>
           <div className={styles.tipoChips}>
             <button
               className={`${styles.tipoChip} ${prefiltro === 'todos' ? styles.tipoChipActive : ''}`}
-              style={prefiltro === 'todos' ? { background: colorAcento } : {}}
+              style={prefiltro === 'todos' ? { background: colorAcento, borderColor: colorAcento } : {}}
               onClick={() => setPrefiltro('todos')}
               type="button"
             >
@@ -152,7 +177,7 @@ export default function DuelCartaView({
               <button
                 key={tipo}
                 className={`${styles.tipoChip} ${prefiltro === tipo ? styles.tipoChipActive : ''}`}
-                style={prefiltro === tipo ? { background: colorAcento } : {}}
+                style={prefiltro === tipo ? { background: colorAcento, borderColor: colorAcento } : {}}
                 onClick={() => setPrefiltro(tipo)}
                 type="button"
               >
@@ -168,7 +193,7 @@ export default function DuelCartaView({
             disabled={insuficiente}
             type="button"
           >
-            {i.dueloEmpezar || (idioma === 'en' ? 'Start duel →' : 'Empezar duelo →')}
+            {i.dueloEmpezar || dc.empezar}
           </button>
         </div>
       </section>
@@ -176,53 +201,81 @@ export default function DuelCartaView({
   }
 
   // ── Duelo en curso ────────────────────────────────────────────────────────
+  const isChampionA = campeon?.id === vinoA?.id && rondaActual > 1
+
   return (
     <section className={styles.duelWrap}>
-      <div className={styles.duelHeader}>
-        <span className={styles.duelTitulo} style={{ color: colorAcento }}>
-          {i.duelo || (idioma === 'en' ? 'Blind duel' : 'Duelo de etiquetas')}
-        </span>
-        <span className={styles.duelRonda}>
-          {i.dueloRonda
-            ? i.dueloRonda(rondaActual, MAX_RONDAS)
-            : (idioma === 'en' ? `Round ${rondaActual} of ${MAX_RONDAS}` : `Ronda ${rondaActual} de ${MAX_RONDAS}`)}
-        </span>
+
+      {/* Top bar: story segments + skip action */}
+      <div className={styles.duelTopBar}>
+        <div className={styles.segmentTrack} role="progressbar" aria-valuenow={rondaActual} aria-valuemin={1} aria-valuemax={MAX_RONDAS} aria-label={idioma === 'en' ? `Round ${rondaActual} of ${MAX_RONDAS}` : `Ronda ${rondaActual} de ${MAX_RONDAS}`}>
+          {Array.from({ length: MAX_RONDAS }, (_, idx) => (
+            <div
+              key={idx}
+              className={styles.segment}
+              style={
+                idx < rondaActual - 1
+                  ? { background: colorAcento }
+                  : idx === rondaActual - 1
+                  ? { background: colorAcento, opacity: 0.38 }
+                  : {}
+              }
+            />
+          ))}
+        </div>
+        <button className={styles.skipBtn} onClick={salirYaTengo} type="button">
+          {i.yaTengo || dc.yaTengo}
+        </button>
       </div>
 
-      <div className={styles.progressBar}>
-        <div
-          className={styles.progressFill}
-          style={{ width: `${((rondaActual - 1) / MAX_RONDAS) * 100}%`, background: colorAcento }}
-        />
-      </div>
-
+      {/* Stage: champion | VS | challenger */}
       <div className={styles.duelStage}>
-        <button
-          className={styles.labelCard}
-          onClick={() => elegir(vinoA)}
-          type="button"
-          aria-label={idioma === 'en' ? 'Choose wine A' : 'Elegir vino A'}
-        >
-          <img src={vinoA.foto_url} alt="" className={styles.labelPhoto} />
-        </button>
-        <div className={styles.vsBadge} style={{ background: colorAcento }}>VS</div>
-        <button
-          className={styles.labelCard}
-          onClick={() => elegir(vinoB)}
-          type="button"
-          aria-label={idioma === 'en' ? 'Choose wine B' : 'Elegir vino B'}
-        >
-          <img src={vinoB.foto_url} alt="" className={styles.labelPhoto} />
-        </button>
+
+        {/* Card A — champion from round 2 onwards */}
+        <div className={styles.cardWrap}>
+          {/* Badge placeholder always rendered to preserve layout height */}
+          <p
+            className={styles.champBadge}
+            style={{ visibility: isChampionA ? 'visible' : 'hidden', color: colorAcento }}
+            aria-hidden={!isChampionA}
+          >
+            <ChampIcon />{dc.sigueEnPie}
+          </p>
+          <button
+            className={`${styles.labelCard} ${isChampionA ? styles.labelCardChamp : ''}`}
+            style={isChampionA ? { borderColor: colorAcento } : {}}
+            onClick={() => elegir(vinoA)}
+            type="button"
+            aria-label={idioma === 'en' ? 'Choose wine A' : 'Elegir vino A'}
+          >
+            <img src={vinoA.foto_url} alt="" className={styles.labelPhoto} />
+          </button>
+        </div>
+
+        {/* VS badge — key remounts it each round so the animation replays */}
+        <div className={styles.vsColumn}>
+          <div key={`vs-${roundKey}`} className={styles.vsBadge} style={{ background: colorAcento }}>
+            VS
+          </div>
+        </div>
+
+        {/* Card B — challenger, key remounts it so slide-in replays */}
+        <div className={styles.cardWrap}>
+          {/* Invisible placeholder matches champBadge height */}
+          <p className={styles.champBadge} style={{ visibility: 'hidden' }} aria-hidden="true">‌</p>
+          <button
+            key={`b-${roundKey}`}
+            className={`${styles.labelCard} ${styles.labelCardChallenger}`}
+            onClick={() => elegir(vinoB)}
+            type="button"
+            aria-label={idioma === 'en' ? 'Choose wine B' : 'Elegir vino B'}
+          >
+            <img src={vinoB.foto_url} alt="" className={styles.labelPhoto} />
+          </button>
+        </div>
       </div>
 
-      <p className={styles.duelHint}>
-        {i.dueloHint || (idioma === 'en' ? 'Tap the one you prefer' : 'Toca la que más te llame')}
-      </p>
-
-      <button className={styles.yaTengoBtn} onClick={salirYaTengo} type="button">
-        {i.yaTengo || (idioma === 'en' ? 'I already have my wine' : 'Ya tengo mi vino')}
-      </button>
+      <p className={styles.duelHint}>{i.dueloHint || dc.hint}</p>
     </section>
   )
 }

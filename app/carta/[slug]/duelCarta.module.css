@@ -1,16 +1,26 @@
-/* ── Duelo de etiquetas — carta pública ────────────────────────────────────
-   CSS vars: --color-primario, --color-fondo, --color-acento (set on :root
-   by page.js when the restaurante loads). No hardcoded colours. */
+/* ── Duelo de etiquetas — carta pública ─────────────────────────────────── */
+
+/* ── Contenedor ──────────────────────────────────────────────────────────── */
 
 .duelWrap {
-  background: #fffaf3;
-  border: 1px solid #dfd6c8;
+  background: #160c11;
   border-radius: 8px;
-  padding: 18px 18px 14px;
+  padding: 14px 14px 18px;
   margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
 }
 
-/* ── Prefiltro ─────────────────────────────────────────────────────────── */
+/* warm glow from above */
+.duelWrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 50% at 50% -10%, rgba(116,34,61,.3) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Prefiltro ────────────────────────────────────────────────────────────── */
 
 .prefiltroContent {
   display: flex;
@@ -18,11 +28,12 @@
   align-items: center;
   gap: 14px;
   text-align: center;
+  position: relative;
 }
 
 .prefiltroSub {
   font-size: .9rem;
-  color: #766e64;
+  color: rgba(255,255,255,.55);
   margin: 0;
 }
 
@@ -36,9 +47,9 @@
 .tipoChip {
   padding: .4rem .9rem;
   border-radius: 100px;
-  border: 1px solid #dfd6c8;
-  background: #f5f0e8;
-  color: #766e64;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.65);
   font-size: .8125rem;
   font-weight: 600;
   cursor: pointer;
@@ -52,108 +63,172 @@
 
 .pocosAviso {
   font-size: .8125rem;
-  color: #a09288;
+  color: rgba(255,255,255,.38);
   margin: 0;
 }
 
 .startBtn {
   padding: .8rem 1.75rem;
-  border-radius: 8px;
+  border-radius: 999px;
   border: none;
   color: #fff;
   font-size: .875rem;
   font-weight: 700;
   letter-spacing: .04em;
   cursor: pointer;
-  transition: filter .12s, transform .1s;
   min-width: 190px;
+  box-shadow: 0 4px 16px rgba(116,34,61,.38);
+  transition: filter .12s, transform .1s;
 }
 
-.startBtn:hover  { filter: brightness(1.08); }
+.startBtn:hover  { filter: brightness(1.1); }
 .startBtn:active { transform: scale(.97); }
-.startBtn:disabled { opacity: .4; cursor: not-allowed; }
+.startBtn:disabled { opacity: .32; cursor: not-allowed; box-shadow: none; }
 
-/* ── Duelo en curso ────────────────────────────────────────────────────── */
+/* ── Barra superior: story segments + skip ───────────────────────────────── */
 
-.duelHeader {
+.duelTopBar {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: .625rem;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  position: relative;
 }
 
-.duelTitulo {
+.segmentTrack {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.segment {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.16);
+  transition: background .25s, opacity .25s;
+}
+
+.skipBtn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 999px;
+  color: rgba(255,255,255,.65);
   font-size: .75rem;
-  font-weight: 700;
-  letter-spacing: .09em;
-  text-transform: uppercase;
+  font-weight: 600;
+  padding: .3rem .8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: border-color .12s, color .12s;
 }
 
-.duelRonda {
-  font-size: .75rem;
-  color: #a09288;
-  font-weight: 500;
+.skipBtn:hover {
+  border-color: rgba(255,255,255,.45);
+  color: #fff;
 }
 
-.progressBar {
-  height: 2px;
-  background: #dfd6c8;
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: .75rem;
-}
-
-.progressFill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width .3s ease;
-}
+/* ── Escenario del duelo ──────────────────────────────────────────────────── */
 
 .duelStage {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: .625rem;
+  grid-template-columns: 1fr 44px 1fr;
+  align-items: stretch;
+  min-height: 200px;
   position: relative;
-  min-height: 220px;
+}
+
+.cardWrap {
+  display: flex;
+  flex-direction: column;
   align-items: stretch;
 }
 
+/* "Sigue en pie" badge — always rendered, toggled via visibility */
+.champBadge {
+  font-size: .6875rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  text-align: center;
+  margin: 0 0 5px;
+  line-height: 1.2;
+  padding: 2px 0;
+}
+
+/* ── Tarjetas ─────────────────────────────────────────────────────────────── */
+
 .labelCard {
-  border: 1px solid #dfd6c8;
-  background: #fff;
+  border: 1.5px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04);
   border-radius: 10px;
   padding: .625rem .5rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform .12s, border-color .15s, box-shadow .15s;
+  transition: border-color .15s, box-shadow .15s, transform .1s;
   overflow: hidden;
+  flex: 1;
 }
 
 .labelCard:hover {
-  border-color: var(--color-acento, #171416);
-  box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  border-color: rgba(255,255,255,.28);
+  box-shadow: 0 4px 18px rgba(116,34,61,.28);
 }
 
-.labelCard:active { transform: scale(.96); }
+.labelCard:active {
+  transform: scale(.93);
+}
+
+/* champion — accent border set inline, subtle glow */
+.labelCardChamp {
+  box-shadow: 0 0 0 2px rgba(255,255,255,.06) inset;
+}
+
+@keyframes challengerIn {
+  from {
+    opacity: 0;
+    transform: translateX(16px) scale(.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.labelCardChallenger {
+  animation: challengerIn .26s cubic-bezier(.22,.68,0,1.15) both;
+}
 
 .labelPhoto {
   width: 100%;
   height: auto;
-  max-height: 220px;
+  max-height: 210px;
   object-fit: contain;
   display: block;
   border-radius: 4px;
 }
 
+/* ── VS column ────────────────────────────────────────────────────────────── */
+
+.vsColumn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* offset for champBadge height so badge aligns with card midpoint */
+  padding-top: 22px;
+}
+
+@keyframes vsIn {
+  0%   { opacity: 0; transform: scale(.5); }
+  65%  { transform: scale(1.14); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
 .vsBadge {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -161,40 +236,30 @@
   color: #fff;
   font-size: .6875rem;
   font-weight: 800;
-  letter-spacing: .04em;
-  box-shadow: 0 0 0 3px #fffaf3;
-  z-index: 1;
+  letter-spacing: .06em;
+  box-shadow: 0 0 0 3px #160c11, 0 4px 16px rgba(116,34,61,.45);
+  animation: vsIn .32s cubic-bezier(.34,1.56,.64,1) both;
   pointer-events: none;
+  flex-shrink: 0;
 }
+
+/* ── Hint ─────────────────────────────────────────────────────────────────── */
 
 .duelHint {
   text-align: center;
   font-size: .8125rem;
-  color: #a09288;
-  margin: .625rem 0 .25rem;
+  color: rgba(255,255,255,.38);
+  margin: .75rem 0 .25rem;
+  position: relative;
 }
 
-.yaTengoBtn {
-  display: block;
-  background: none;
-  border: none;
-  color: #a09288;
-  font-size: .8125rem;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-  padding: .5rem;
-  text-align: center;
-  width: 100%;
-}
-
-/* ── Estado vacío ──────────────────────────────────────────────────────── */
+/* ── Estado vacío ─────────────────────────────────────────────────────────── */
 
 .emptyMsg {
   font-size: .875rem;
-  color: #a09288;
+  color: rgba(255,255,255,.45);
   text-align: center;
   margin: 0;
   padding: .5rem 0;
+  position: relative;
 }
