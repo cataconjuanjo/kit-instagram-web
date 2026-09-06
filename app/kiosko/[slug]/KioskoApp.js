@@ -16,6 +16,40 @@ const SHOWCASE_CTA_COPIES = {
   fr: ['Touchez pour explorer', 'Découvrez toute la carte', "Appuyez sur l'écran"],
   de: ['Tippen zum Erkunden', 'Die ganze Karte entdecken', 'Bildschirm berühren'],
 }
+const SHOWCASE_VALUE_PROPS = {
+  es: n => [
+    `Descubre nuestras ${n} referencias`,
+    'Busca el vino perfecto para tu comida',
+    'Filtra por tipo, precio o maridaje',
+    'Encuentra un regalo para cada ocasión',
+    'Prepara tu cesta de regalo',
+    'Recomendaciones para cada paladar',
+  ],
+  en: n => [
+    `Discover our ${n} wines`,
+    'Find the perfect wine for your meal',
+    'Filter by type, price or pairing',
+    'A gift idea for every occasion',
+    'Build your gift basket',
+    'Recommendations for every taste',
+  ],
+  fr: n => [
+    `Découvrez nos ${n} références`,
+    'Trouvez le vin idéal pour votre repas',
+    'Filtrez par type, prix ou accord',
+    'Un cadeau pour chaque occasion',
+    'Préparez votre panier cadeau',
+    'Des conseils pour tous les palais',
+  ],
+  de: n => [
+    `Entdecken Sie unsere ${n} Weine`,
+    'Den perfekten Wein zum Essen finden',
+    'Nach Typ, Preis oder Speise filtern',
+    'Ein Geschenk für jeden Anlass',
+    'Ihren Geschenkkorb zusammenstellen',
+    'Empfehlungen für jeden Geschmack',
+  ],
+}
 const MOBILE_SELECTION_MAX = 20
 const COUNTER_ORDERS_IN_DEVELOPMENT = true
 
@@ -2336,11 +2370,18 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
   const [idx, setIdx] = useState(0)
   const [fade, setFade] = useState(true)
   const [hora, setHora] = useState('')
+  const [vpIdx, setVpIdx] = useState(0)
+  const [vpFade, setVpFade] = useState(true)
 
   const lista = useMemo(() => {
     const dest = vinos.filter(v => v.destacado && v.foto_url)
     return dest.length >= 3 ? dest : vinos.filter(v => v.foto_url).slice(0, 12)
   }, [vinos])
+
+  const valuePropsList = useMemo(
+    () => (SHOWCASE_VALUE_PROPS[lang] ?? SHOWCASE_VALUE_PROPS.es)(vinos.length),
+    [lang, vinos.length]
+  )
 
   useEffect(() => {
     function tick() { setHora(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })) }
@@ -2348,6 +2389,19 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
     const t = setInterval(tick, 30_000)
     return () => clearInterval(t)
   }, [])
+
+  useEffect(() => {
+    if (valuePropsList.length <= 1) return
+    const avanzar = () => {
+      setVpFade(false)
+      setTimeout(() => {
+        setVpIdx(i => (i + 1) % valuePropsList.length)
+        setVpFade(true)
+      }, 500)
+    }
+    const t = setInterval(avanzar, 3_800)
+    return () => clearInterval(t)
+  }, [valuePropsList.length])
 
   useEffect(() => {
     if (!lista.length) return
@@ -2443,6 +2497,9 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
             <span key={i} className={`${styles.showcaseDot} ${i === idx ? styles.showcaseDotActive : ''}`} />
           ))}
         </div>
+        <p className={`${styles.showcaseValueProp} ${vpFade ? styles.showcaseFadeIn : styles.showcaseFadeOut}`}>
+          {valuePropsList[vpIdx]}
+        </p>
         <div className={styles.showcaseTapPill} aria-hidden="true">
           <span className={styles.showcaseTapWrap}>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
@@ -2451,9 +2508,6 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
           </span>
           {ctaCopy}
         </div>
-        {vinos.length > 1 && (
-          <p className={styles.showcaseCount}>{vinos.length} referencias</p>
-        )}
       </div>
     </div>
   )

@@ -2723,17 +2723,29 @@
   0%   { transform: scale(1);   opacity: 0.65; }
   100% { transform: scale(2.8); opacity: 0; }
 }
-.showcaseCount {
-  font-size: clamp(.72rem, 1.8vw, .82rem);
-  color: rgba(255,255,255,.45);
+.showcaseValueProp {
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: clamp(0.95rem, 2.4vw, 1.15rem);
+  font-weight: 500;
+  color: rgba(255,255,255,.82);
+  letter-spacing: 0.025em;
   margin: 0;
-  letter-spacing: .05em;
+  padding: 0 1.5rem;
+  text-shadow: 0 1px 8px rgba(0,0,0,.5);
+  pointer-events: none;
+  user-select: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .showcaseTapPill { animation: none; }
   .showcaseTapWrap::before,
   .showcaseTapWrap::after { animation: none; opacity: 0; }
   .showcaseDotActive::after { animation: none; transform: scaleX(1); }
+  .showcaseValueProp.showcaseFadeIn,
+  .showcaseValueProp.showcaseFadeOut { transition: none; }
 }
 
 @media (max-width: 600px) {
