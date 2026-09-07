@@ -9,7 +9,7 @@ import DuelView from './DuelView'
 // ── Constantes ────────────────────────────────────────────────────────────────
 
 const SHOWCASE_INTERVAL_MS = 7_000
-const IDLE_DEFAULT_MS = 60_000
+const IDLE_DEFAULT_MS = 300_000
 const SHOWCASE_CTA_COPIES = {
   es: ['Toca para explorar', 'Descubre toda la carta', 'Toca la pantalla'],
   en: ['Tap to explore', 'Browse the full menu', 'Touch the screen'],

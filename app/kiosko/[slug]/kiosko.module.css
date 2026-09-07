@@ -1940,7 +1940,7 @@
 .pairingInputArea {
   display: flex;
   gap: 1rem;
-  align-items: flex-start;
+  align-items: stretch;
   margin-bottom: .65rem;
 }
 
@@ -1965,7 +1965,6 @@
 .pairingTextarea::placeholder { color: var(--texto-d); }
 
 .pairingSubmitBtn {
-  min-height: 96px;
   padding: 1rem 1.5rem;
   border: none;
   font-family: var(--font-family);
@@ -2003,9 +2002,9 @@
 }
 
 .sugerenciaBtn {
-  background: transparent;
-  border: 2px solid var(--borde);
-  color: var(--texto-m);
+  background: color-mix(in srgb, var(--color-acento) 8%, var(--panel, #fff));
+  border: 2px solid color-mix(in srgb, var(--color-acento) 35%, transparent);
+  color: var(--texto);
   font-family: var(--font-family);
   font-size: .95rem;
   font-weight: 600;
@@ -2018,7 +2017,7 @@
 
 .sugerenciaBtn:hover,
 .sugerenciaBtn:active {
-  background: var(--sup2);
+  background: color-mix(in srgb, var(--color-acento) 18%, var(--panel, #fff));
   color: var(--texto);
   border-color: var(--color-acento);
 }
