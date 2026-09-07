@@ -1848,7 +1848,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
             <label className={styles.cestaPrefToggle}>
               <input type="checkbox" checked={sinAlcohol} onChange={e => setSinAlcohol(e.target.checked)} />
               <span className={styles.cestaPrefLabel}>
-                {iconStyle === 'lineal' ? <CestaIcon name="sin-alcohol" className={styles.cestaLinealIconPref} /> : '🫗 '}
+                <CestaIcon name="sin-alcohol" className={styles.cestaLinealIconPref} />
                 {T[lang].cestaSinAlcohol}
               </span>
             </label>
@@ -2100,7 +2100,8 @@ function LeadCapture({ slug, source, preferencias, vinosRecomendados, gourmet = 
             type="checkbox"
             checked={consent}
             onChange={e => setConsent(e.target.checked)}
-            style={{ marginTop: 2, flexShrink: 0, accentColor: '#c9a96e' }}
+            className={styles.styledCheckbox}
+            style={{ marginTop: 2 }}
           />
           {tx.consent}
         </label>
@@ -2554,10 +2555,10 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
   return (
     <div className={styles.pairingView}>
       <div className={styles.pairingHeader}>
-        <button className={styles.backBtn} onClick={onBack} type="button">{T[lang].volver}</button>
+        <button className={styles.backBtn} onClick={onBack} type="button">← {T[lang].inicio}</button>
         <h2 className={styles.pairingTitle}>{T[lang].pairingTitle}</h2>
-        <p className={styles.pairingSubtitle}>{T[lang].pairingSub}</p>
       </div>
+      <p className={styles.pairingSubtitle}>{T[lang].pairingSub}</p>
       <div className={styles.pairingInputArea}>
         <textarea ref={textareaRef} className={styles.pairingTextarea} value={consulta}
           onChange={e => setConsulta(e.target.value)}
@@ -2573,6 +2574,12 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
         </button>
       </div>
       <p className={`${styles.aiNotice} ${styles.pairingInputNotice}`}>{T[lang].aiNotice}</p>
+      {cargando && (
+        <div className={styles.wizardLoading}>
+          <div className={styles.wizardSpinner} style={{ borderTopColor: colorAcento }} />
+          <p style={{ color: colorAcento }}>{iconStyle === 'lineal' ? stripEmoji(T[lang].buscandoVino) : T[lang].buscandoVino}</p>
+        </div>
+      )}
       {!resultado && !cargando && !error && (
         <div className={styles.sugerencias}>
           <p className={styles.sugerenciasLabel}>{T[lang].ideasRapidas}</p>
@@ -2744,29 +2751,31 @@ function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es
           <span className={styles.resultCount}>{T[lang].vinos(vinosFiltrados.length)}</span>
           {filtroActivo && <button className={styles.clearBtn} onClick={limpiar} type="button">{T[lang].limpiar}</button>}
         </div>
-        <div className={styles.tipoBar}>
-          <button className={`${styles.tipoChipBtn} ${filtroTipo === 'todos' ? styles.tipoChipBtnActive : ''}`}
-            onClick={() => setFiltroTipo('todos')}
-            style={filtroTipo === 'todos' ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}
-            type="button">{T[lang].todos}</button>
-          {tipos.map(tipo => (
-            <button key={tipo} className={`${styles.tipoChipBtn} ${filtroTipo === tipo ? styles.tipoChipBtnActive : ''}`}
-              onClick={() => setFiltroTipo(tipo === filtroTipo ? 'todos' : tipo)}
-              style={filtroTipo === tipo ? { background: TIPO_COLORS[tipo], borderColor: TIPO_COLORS[tipo], color: '#fff' } : {}}
-              type="button">{T[lang].tipoLabels[tipo] || tipo}</button>
-          ))}
-          {paises.length > 1 && (
-            <select className={styles.paisSelect} value={filtroPais} onChange={e => setFiltroPais(e.target.value)}>
-              <option value="">{T[lang].pais}</option>
-              {paises.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-          )}
-          {regiones.length > 1 && (
-            <select className={styles.doSelect} value={filtroRegion} onChange={e => setFiltroRegion(e.target.value)}>
-              <option value="">{T[lang].region}</option>
-              {regiones.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          )}
+        <div className={styles.tipoBarWrap}>
+          <div className={styles.tipoBar}>
+            <button className={`${styles.tipoChipBtn} ${filtroTipo === 'todos' ? styles.tipoChipBtnActive : ''}`}
+              onClick={() => setFiltroTipo('todos')}
+              style={filtroTipo === 'todos' ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}
+              type="button">{T[lang].todos}</button>
+            {tipos.map(tipo => (
+              <button key={tipo} className={`${styles.tipoChipBtn} ${filtroTipo === tipo ? styles.tipoChipBtnActive : ''}`}
+                onClick={() => setFiltroTipo(tipo === filtroTipo ? 'todos' : tipo)}
+                style={filtroTipo === tipo ? { background: TIPO_COLORS[tipo], borderColor: TIPO_COLORS[tipo], color: '#fff' } : {}}
+                type="button">{T[lang].tipoLabels[tipo] || tipo}</button>
+            ))}
+            {paises.length > 1 && (
+              <select className={styles.paisSelect} value={filtroPais} onChange={e => setFiltroPais(e.target.value)}>
+                <option value="">{T[lang].pais}</option>
+                {paises.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            )}
+            {regiones.length > 1 && (
+              <select className={styles.doSelect} value={filtroRegion} onChange={e => setFiltroRegion(e.target.value)}>
+                <option value="">{T[lang].region}</option>
+                {regiones.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            )}
+          </div>
         </div>
 
         {preciosAll && preciosAll.min < preciosAll.max && (

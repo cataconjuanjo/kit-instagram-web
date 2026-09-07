@@ -690,6 +690,22 @@
 
 .clearBtn:hover { border-color: var(--color-acento); }
 
+/* Wrapper que muestra degradado en el borde derecho cuando hay chips fuera de vista */
+.tipoBarWrap {
+  position: relative;
+}
+.tipoBarWrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 40px;
+  background: linear-gradient(to right, transparent, var(--panel, #fff));
+  pointer-events: none;
+  z-index: 1;
+}
+
 /* Tipo chips bar */
 .tipoBar {
   display: flex;
@@ -905,7 +921,6 @@
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  overflow-wrap: anywhere;
 }
 
 .cardFooter {
@@ -930,7 +945,7 @@
   display: inline-flex;
   align-items: center;
   gap: .25rem;
-  max-width: 100%;
+  flex: 1 1 auto;
   min-width: 0;
   font-size: .78rem;
   font-weight: 600;
@@ -1889,17 +1904,18 @@
 
 .pairingHeader {
   display: flex;
-  flex-direction: column;
-  gap: .75rem;
-  margin-bottom: 2rem;
+  align-items: center;
+  gap: 1.5rem;
+  margin: -2rem -2rem 1.5rem;
+  padding: 1.5rem 2rem 1rem;
+  border-bottom: 1px solid var(--borde);
+  flex-shrink: 0;
 }
 
 .pairingTitle {
   font-family: var(--font-family);
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
   font-weight: 800;
-  letter-spacing: .03em;
-  text-transform: uppercase;
   margin: 0;
   color: var(--texto);
 }
@@ -1909,7 +1925,7 @@
   color: var(--texto-m);
   max-width: 600px;
   line-height: 1.55;
-  margin: 0;
+  margin: 0 0 1.25rem;
 }
 
 .aiNotice {
@@ -2316,6 +2332,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   padding: 3rem 2rem;
   gap: 2rem;
 }
@@ -3469,6 +3486,9 @@
   transform: scale(1.03);
 }
 
+/* 5th item alone in its row → center it in the middle column */
+.cestaOcasionBtn:last-child:nth-child(3n - 1) { grid-column: 2 / 3; }
+
 .cestaOcasionEmoji { font-size: 2.5rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
 .cestaOcasionLabel { font-size: clamp(.85rem, 2.2vw, 1rem); font-weight: 700; line-height: 1.3; }
 .cestaOcasionSub { font-size: .72rem; color: var(--texto-m); font-weight: 400; line-height: 1.2; }
@@ -3631,7 +3651,36 @@
 
 .cestaPrefToggle:has(input:checked) { border-color: var(--acento); background: var(--sup2); }
 
-.cestaPrefToggle input { width: 22px; height: 22px; cursor: pointer; accent-color: var(--acento); }
+.cestaPrefToggle input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--borde);
+  border-radius: 7px;
+  background: var(--panel);
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color .15s, background .15s;
+}
+.cestaPrefToggle input:checked {
+  border-color: var(--color-acento);
+  background: var(--color-acento);
+}
+.cestaPrefToggle input:checked::after {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 7px;
+  top: 3px;
+  width: 7px;
+  height: 13px;
+  border: 2.5px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
 
 .cestaPrefLabel { font-size: 1.05rem; font-weight: 700; color: var(--texto); }
 
@@ -3644,8 +3693,69 @@
   font-size: .9rem;
   color: var(--texto-suave, #888);
 }
-.wizardCanariasToggle input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--acento); }
-.wizardCanariasToggle:has(input:checked) { color: var(--acento); font-weight: 700; }
+.wizardCanariasToggle input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--borde);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color .15s, background .15s;
+}
+.wizardCanariasToggle input:checked {
+  border-color: var(--color-acento);
+  background: var(--color-acento);
+}
+.wizardCanariasToggle input:checked::after {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 6px;
+  height: 11px;
+  border: 2.5px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+.wizardCanariasToggle:has(input:checked) { color: var(--color-acento); font-weight: 700; }
+
+/* Checkbox estilizado genérico (usado en LeadCapture y similares) */
+.styledCheckbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--borde);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color .15s, background .15s;
+}
+.styledCheckbox:checked {
+  border-color: var(--color-acento);
+  background: var(--color-acento);
+}
+.styledCheckbox:checked::after {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 6px;
+  height: 12px;
+  border: 2.5px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
 
 .cestaLoading {
   flex: 1;
