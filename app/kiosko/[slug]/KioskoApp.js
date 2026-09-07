@@ -182,6 +182,7 @@ const T = {
     pairingPlaceholder: 'Ej: cigalas a la plancha, cordero asado, queso curado, celebración especial…',
     buscando: '⏳ Consultando…', buscar: '🔍 Buscar vinos', ideasRapidas: 'Ideas rápidas:',
     intentarDeNuevo: 'Intentar de nuevo',
+    bebidaAviso: 'Esta sección busca vino para acompañar comida. Cuéntanos el plato o la ocasión y encontramos el vino perfecto.',
     wizardTitle: 'Ayúdame a elegir',
     q0: '¿Para qué ocasión buscas el vino?', q1: '¿Qué estilo suele gustar?', q2: '¿Cuál es el presupuesto?',
     browseInicio: '← Inicio', buscarPlaceholder: 'Buscar vino, bodega, uva…',
@@ -233,6 +234,7 @@ const T = {
     pairingPlaceholder: 'E.g: grilled prawns, roast lamb, aged cheese, special celebration…',
     buscando: '⏳ Searching…', buscar: '🔍 Find wines', ideasRapidas: 'Quick ideas:',
     intentarDeNuevo: 'Try again',
+    bebidaAviso: 'This section pairs food with wine. Tell us the dish or occasion and we\'ll find the perfect wine.',
     wizardTitle: 'Help me choose',
     q0: 'What occasion are you shopping for?', q1: 'What style do you prefer?', q2: 'What\'s your budget?',
     browseInicio: '← Home', buscarPlaceholder: 'Search wine, winery, grape…',
@@ -284,6 +286,7 @@ const T = {
     pairingPlaceholder: 'Ex : homard grillé, agneau rôti, fromage affiné, occasion spéciale…',
     buscando: '⏳ Recherche…', buscar: '🔍 Trouver des vins', ideasRapidas: 'Idées rapides :',
     intentarDeNuevo: 'Réessayer',
+    bebidaAviso: 'Cette section cherche un vin pour accompagner un plat. Décrivez le plat ou l\'occasion et nous trouvons le vin parfait.',
     wizardTitle: 'Aidez-moi à choisir',
     q0: 'Pour quelle occasion cherchez-vous ?', q1: 'Quel style préférez-vous ?', q2: 'Quel est votre budget ?',
     browseInicio: '← Accueil', buscarPlaceholder: 'Chercher vin, domaine, cépage…',
@@ -335,6 +338,7 @@ const T = {
     pairingPlaceholder: 'Z.B.: Gegrillte Garnelen, Lammbraten, gereifter Käse, besonderer Anlass…',
     buscando: '⏳ Suche…', buscar: '🔍 Weine suchen', ideasRapidas: 'Schnelle Ideen:',
     intentarDeNuevo: 'Erneut versuchen',
+    bebidaAviso: 'Dieser Bereich findet Wein zur Speise. Beschreiben Sie das Gericht oder den Anlass und wir empfehlen den perfekten Wein.',
     wizardTitle: 'Hilf mir wählen',
     q0: 'Für welchen Anlass suchen Sie?', q1: 'Welchen Stil bevorzugen Sie?', q2: 'Was ist Ihr Budget?',
     browseInicio: '← Start', buscarPlaceholder: 'Wein, Weingut, Traube suchen…',
@@ -382,6 +386,10 @@ const T = {
 function normalizarTexto(t = '') {
   return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
+
+// Matches alcoholic beverages that are not wine \u2014 applied to normalizarTexto(q) so no diacritics
+const BEBIDA_RE = /\b(vermut|vermouth|sidra|cerveza|cervezas|beer|whisky|whiskey|vodka|ginebra|gin|brandy|cognac|licor|destilado|kalimotxo|sake|aperol|campari|negroni|mojito|caipirina)\b/
+
 function stripEmoji(s) {
   return String(s).replace(/\p{Extended_Pictographic}\ufe0f?/gu, '').trim()
 }
@@ -1846,7 +1854,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
           <p className={styles.wizardQuestion}>{T[lang].cestaQ2}</p>
           <div className={styles.cestaPrefs}>
             <label className={styles.cestaPrefToggle}>
-              <input type="checkbox" checked={sinAlcohol} onChange={e => setSinAlcohol(e.target.checked)} />
+              <input type="checkbox" checked={sinAlcohol} onChange={e => setSinAlcohol(e.target.checked)} className={styles.styledCheckbox} />
               <span className={styles.cestaPrefLabel}>
                 <CestaIcon name="sin-alcohol" className={styles.cestaLinealIconPref} />
                 {T[lang].cestaSinAlcohol}
@@ -1854,7 +1862,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
             </label>
             {hayVeganos && (
               <label className={styles.cestaPrefToggle}>
-                <input type="checkbox" checked={vegano} onChange={e => setVegano(e.target.checked)} />
+                <input type="checkbox" checked={vegano} onChange={e => setVegano(e.target.checked)} className={styles.styledCheckbox} />
                 <span className={styles.cestaPrefLabel}>
                   {iconStyle === 'lineal' ? <CestaIcon name="vegano" className={styles.cestaLinealIconPref} /> : '🌱 '}
                   {T[lang].cestaVegano}
@@ -1863,7 +1871,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
             )}
             {hayGlutenFree && (
               <label className={styles.cestaPrefToggle}>
-                <input type="checkbox" checked={sinGluten} onChange={e => setSinGluten(e.target.checked)} />
+                <input type="checkbox" checked={sinGluten} onChange={e => setSinGluten(e.target.checked)} className={styles.styledCheckbox} />
                 <span className={styles.cestaPrefLabel}>
                   {iconStyle !== 'lineal' && '🌾 '}
                   {T[lang].cestaSinGluten}
@@ -2525,10 +2533,11 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
 
   const sugerencias = useMemo(() => {
     if (!gourmet.length) return SUGERENCIAS_MARIDAJE_FALLBACK
-    // Carta primero, luego destacados, luego el resto — cada render mezcla dentro de cada grupo
+    // Carta primero, luego destacados, luego el resto — sin bebidas alcohólicas
+    const noBebi = g => g.categoria !== 'bebida'
     const carta    = gourmet.filter(g => g.categoria === 'carta').sort(() => Math.random() - 0.5)
-    const destacados = gourmet.filter(g => g.categoria !== 'carta' && g.destacado).sort(() => Math.random() - 0.5)
-    const resto    = gourmet.filter(g => g.categoria !== 'carta' && !g.destacado).sort(() => Math.random() - 0.5)
+    const destacados = gourmet.filter(g => g.categoria !== 'carta' && noBebi(g) && g.destacado).sort(() => Math.random() - 0.5)
+    const resto    = gourmet.filter(g => g.categoria !== 'carta' && noBebi(g) && !g.destacado).sort(() => Math.random() - 0.5)
     return [...carta, ...destacados, ...resto].slice(0, 9).map(g => g.nombre)
   }, [gourmet])
 
@@ -2537,6 +2546,10 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
   async function consultar(texto) {
     const q = texto || consulta
     if (!q.trim()) return
+    if (BEBIDA_RE.test(normalizarTexto(q))) {
+      setError(T[lang].bebidaAviso)
+      return
+    }
     setCargando(true); setError(''); setResultado(null)
     onFunnelStep?.('consulta')
     try {
