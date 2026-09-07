@@ -1646,7 +1646,7 @@ function CestaIcon({ name, className }) {
 
   // Copa tachada — sin alcohol
   if (name === 'sin-alcohol') return (
-    <svg viewBox="0 0 48 48" className={cls} aria-hidden="true">
+    <svg viewBox="0 0 48 48" className={cls} fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M15 8h18l-5 20h-8l-5-20Z" />
       <path d="M24 28v10M16 38h16" />
       <path d="M9 9L39 39" />

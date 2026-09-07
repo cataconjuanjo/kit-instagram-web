@@ -3526,10 +3526,6 @@
   margin-right: .4em;
   flex-shrink: 0;
 }
-.cestaLinealIconPref path {
-  vector-effect: non-scaling-stroke;
-  stroke-width: 2px;
-}
 
 .cestaPlaceholderIcon {
   width: 52%;
@@ -3670,7 +3666,7 @@
   width: 26px;
   height: 26px;
   min-width: 26px;
-  border: 2px solid var(--borde);
+  border: 2px solid color-mix(in srgb, var(--color-acento) 40%, transparent);
   border-radius: 7px;
   background: var(--panel);
   display: inline-flex;
@@ -3697,7 +3693,7 @@
   -webkit-appearance: none;
   width: 22px;
   height: 22px;
-  border: 2px solid var(--borde);
+  border: 2px solid color-mix(in srgb, var(--color-acento) 40%, transparent);
   border-radius: 6px;
   background: var(--panel);
   cursor: pointer;
