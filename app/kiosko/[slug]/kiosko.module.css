@@ -3519,12 +3519,16 @@
   height: 24px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 3;
+  stroke-width: 4;
   stroke-linecap: round;
   stroke-linejoin: round;
   vertical-align: middle;
   margin-right: .4em;
   flex-shrink: 0;
+}
+.cestaLinealIconPref path {
+  vector-effect: non-scaling-stroke;
+  stroke-width: 2px;
 }
 
 .cestaPlaceholderIcon {
@@ -3651,26 +3655,30 @@
 
 .cestaPrefToggle:has(input:checked) { border-color: var(--acento); background: var(--sup2); }
 
-.cestaPrefToggle input {
-  appearance: none;
-  -webkit-appearance: none;
+/* Oculta el <input> real — el visual lo hace .checkViz controlado por React */
+.cestaPrefToggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+/* Caja visual del checkbox — coloreada con inline style desde React */
+.checkViz {
   width: 26px;
   height: 26px;
+  min-width: 26px;
   border: 2px solid var(--borde);
   border-radius: 7px;
   background: var(--panel);
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  position: relative;
   transition: border-color .15s, background .15s;
-}
-.cestaPrefToggle input:checked {
-  border-color: var(--color-acento);
-  background-color: var(--color-acento);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 8.5l3.5 3.5 7-8' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
-  background-size: 14px 14px;
-  background-repeat: no-repeat;
-  background-position: center;
+  pointer-events: none;
 }
 
 .cestaPrefLabel { font-size: 1.05rem; font-weight: 700; color: var(--texto); }

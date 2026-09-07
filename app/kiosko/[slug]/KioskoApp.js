@@ -1647,8 +1647,9 @@ function CestaIcon({ name, className }) {
   // Copa tachada — sin alcohol
   if (name === 'sin-alcohol') return (
     <svg viewBox="0 0 48 48" className={cls} aria-hidden="true">
-      <path d="M17 9h14l-5 19v10M16 38h16" />
-      <path d="M10 10L38 38" />
+      <path d="M15 8h18l-5 20h-8l-5-20Z" />
+      <path d="M24 28v10M16 38h16" />
+      <path d="M9 9L39 39" />
     </svg>
   )
 
@@ -1854,7 +1855,12 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
           <p className={styles.wizardQuestion}>{T[lang].cestaQ2}</p>
           <div className={styles.cestaPrefs}>
             <label className={styles.cestaPrefToggle}>
-              <input type="checkbox" checked={sinAlcohol} onChange={e => setSinAlcohol(e.target.checked)} className={styles.styledCheckbox} />
+              <input type="checkbox" checked={sinAlcohol} onChange={e => setSinAlcohol(e.target.checked)} />
+              <span className={styles.checkViz}
+                style={sinAlcohol ? { background: colorAcento, borderColor: colorAcento } : {}}
+                aria-hidden="true">
+                {sinAlcohol && <svg viewBox="0 0 16 16" width="14" height="14"><path d="M2.5 8.5l3.5 3.5 7-8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>}
+              </span>
               <span className={styles.cestaPrefLabel}>
                 <CestaIcon name="sin-alcohol" className={styles.cestaLinealIconPref} />
                 {T[lang].cestaSinAlcohol}
@@ -1862,7 +1868,12 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
             </label>
             {hayVeganos && (
               <label className={styles.cestaPrefToggle}>
-                <input type="checkbox" checked={vegano} onChange={e => setVegano(e.target.checked)} className={styles.styledCheckbox} />
+                <input type="checkbox" checked={vegano} onChange={e => setVegano(e.target.checked)} />
+                <span className={styles.checkViz}
+                  style={vegano ? { background: colorAcento, borderColor: colorAcento } : {}}
+                  aria-hidden="true">
+                  {vegano && <svg viewBox="0 0 16 16" width="14" height="14"><path d="M2.5 8.5l3.5 3.5 7-8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>}
+                </span>
                 <span className={styles.cestaPrefLabel}>
                   {iconStyle === 'lineal' ? <CestaIcon name="vegano" className={styles.cestaLinealIconPref} /> : '🌱 '}
                   {T[lang].cestaVegano}
@@ -1871,7 +1882,12 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
             )}
             {hayGlutenFree && (
               <label className={styles.cestaPrefToggle}>
-                <input type="checkbox" checked={sinGluten} onChange={e => setSinGluten(e.target.checked)} className={styles.styledCheckbox} />
+                <input type="checkbox" checked={sinGluten} onChange={e => setSinGluten(e.target.checked)} />
+                <span className={styles.checkViz}
+                  style={sinGluten ? { background: colorAcento, borderColor: colorAcento } : {}}
+                  aria-hidden="true">
+                  {sinGluten && <svg viewBox="0 0 16 16" width="14" height="14"><path d="M2.5 8.5l3.5 3.5 7-8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>}
+                </span>
                 <span className={styles.cestaPrefLabel}>
                   {iconStyle !== 'lineal' && '🌾 '}
                   {T[lang].cestaSinGluten}
