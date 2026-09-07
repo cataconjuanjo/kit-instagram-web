@@ -2533,11 +2533,11 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
 
   const sugerencias = useMemo(() => {
     if (!gourmet.length) return SUGERENCIAS_MARIDAJE_FALLBACK
-    // Carta primero, luego destacados, luego el resto — sin bebidas alcohólicas
-    const noBebi = g => g.categoria !== 'bebida'
-    const carta    = gourmet.filter(g => g.categoria === 'carta').sort(() => Math.random() - 0.5)
-    const destacados = gourmet.filter(g => g.categoria !== 'carta' && noBebi(g) && g.destacado).sort(() => Math.random() - 0.5)
-    const resto    = gourmet.filter(g => g.categoria !== 'carta' && noBebi(g) && !g.destacado).sort(() => Math.random() - 0.5)
+    // Excluye bebidas por categoría Y por nombre (para items de carta mal clasificados)
+    const esBebida = g => g.categoria === 'bebida' || BEBIDA_RE.test(normalizarTexto(g.nombre || ''))
+    const carta      = gourmet.filter(g => g.categoria === 'carta' && !esBebida(g)).sort(() => Math.random() - 0.5)
+    const destacados = gourmet.filter(g => g.categoria !== 'carta' && !esBebida(g) && g.destacado).sort(() => Math.random() - 0.5)
+    const resto      = gourmet.filter(g => g.categoria !== 'carta' && !esBebida(g) && !g.destacado).sort(() => Math.random() - 0.5)
     return [...carta, ...destacados, ...resto].slice(0, 9).map(g => g.nombre)
   }, [gourmet])
 
@@ -2900,11 +2900,12 @@ export default function KioskoPage() {
       .catch(() => {})
   }, [slug])
 
-  // Mantiene idleTimeoutMsRef sincronizado con la configuración de la tienda
+  // Mantiene idleTimeoutMsRef sincronizado con la configuración de la tienda.
+  // IDLE_DEFAULT_MS actúa como suelo: la BD puede subir el timeout, nunca bajarlo.
   useEffect(() => {
     const seg = tienda?.escaparate_timeout_segundos
     if (typeof seg === 'number') {
-      idleTimeoutMsRef.current = seg === 0 ? 0 : seg * 1000
+      idleTimeoutMsRef.current = seg === 0 ? 0 : Math.max(seg * 1000, IDLE_DEFAULT_MS)
     } else {
       idleTimeoutMsRef.current = IDLE_DEFAULT_MS
     }
