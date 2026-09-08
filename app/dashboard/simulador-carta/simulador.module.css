@@ -415,6 +415,7 @@
 /* ── Agrupación lógica de ofertas del catálogo ───────────────────────────── */
 
 .catalogoGrupo {
+  flex: 0 0 auto;
   border: 1px solid #e0d4bc;
   border-radius: 8px;
   background: #fffaf3;
