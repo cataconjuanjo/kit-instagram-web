@@ -1283,7 +1283,21 @@ export default function CartaPublica() {
   }
 
   function regionOrden(vino) {
-    return canonicalWineRegion(vino)
+    return regionCartaVisible(vino)
+  }
+
+  function regionCartaVisible(vino) {
+    const raw = String(vino?.region || '').trim()
+    if (!esVinoInternacional(vino)) return canonicalWineRegion(vino)
+    if (!raw) return canonicalWineRegion(vino)
+
+    const partes = raw.split(',').map(parte => parte.trim()).filter(Boolean)
+    if (partes.length >= 2) {
+      const pais = partes.pop()
+      return `${pais}, ${partes.join(', ')}`
+    }
+
+    return raw
   }
 
   function agruparPorRegion(lista, opciones = {}) {
@@ -1367,7 +1381,7 @@ export default function CartaPublica() {
           </div>
           {(v.bodega || v.uva || (opciones.mostrarDo && v.region)) && (
             <p className={styles.wineSecondary}>
-              {[v.bodega, v.uva, opciones.mostrarDo && v.region ? canonicalWineRegion(v) : null].filter(Boolean).join(' · ')}
+              {[v.bodega, v.uva, opciones.mostrarDo && v.region ? regionCartaVisible(v) : null].filter(Boolean).join(' · ')}
             </p>
           )}
           {etiquetas.length > 0 && (
