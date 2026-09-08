@@ -47,6 +47,7 @@ export function volumenFormatoMl(formato = '') {
 }
 
 export function unidadesFormato(oferta = {}) {
+  if (!oferta) return 1
   const explicit = numero(primerValor(oferta, ['unidades_por_caja', 'unidades', 'units_per_case']))
   if (explicit > 1) return Math.round(explicit)
 
@@ -58,12 +59,14 @@ export function unidadesFormato(oferta = {}) {
 }
 
 export function costePorBotella(oferta = {}) {
+  if (!oferta) return null
   const coste = numero(oferta.coste_estimado ?? oferta.coste_compra)
   if (coste <= 0) return null
   return coste / unidadesFormato(oferta)
 }
 
 export function ofertaDisponible(oferta = {}) {
+  if (!oferta) return false
   return !UNAVAILABLE_RE.test(String(oferta.disponibilidad || ''))
 }
 

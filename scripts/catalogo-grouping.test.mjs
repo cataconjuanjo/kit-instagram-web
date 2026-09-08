@@ -62,6 +62,11 @@ test('no marca sin precio como mejor precio', () => {
   assert.equal(ofertaMasBarata(grupo).id, 'priced')
 })
 
+test('tolera una oferta o grupo inexistente sin romper el simulador', () => {
+  assert.equal(costePorBotella(null), null)
+  assert.equal(ofertaMasBarata(null), null)
+})
+
 test('el cambio manual conserva la identidad de la línea y solo cambia oferta y coste', () => {
   const grupos = agruparOfertasCatalogo([
     oferta('a', { coste_estimado: 15 }),
