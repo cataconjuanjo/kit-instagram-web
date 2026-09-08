@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '../../lib/supabaseAdmin'
+import { supabaseAdmin } from '../../lib/supabaseAdmin.js'
 
 const SQUARE_API_BASE = 'https://connect.squareup.com'
 
@@ -1639,6 +1639,86 @@ export async function squareSyncForTienda(tiendaId, tiendaSlug, squareToken, opt
     inventoryLocationsSeen: inventoryInfo.inventoryLocationsSeen,
     inventoryCountRowsRead: inventoryInfo.inventoryCountRowsRead,
   }
+}
+
+// --- Payment-to-stock helpers (compartido entre webhook y script de backfill) ---
+
+function parsePaymentQuantity(value) {
+  const qty = parseInt(value, 10)
+  return Number.isFinite(qty) && qty > 0 ? qty : 1
+}
+
+export async function fetchSquareOrder(orderId, squareToken) {
+  if (!squareToken) throw new Error('Token de Square no configurado para obtener la orden')
+  const data = await fetchSquareJson(`${SQUARE_API_BASE}/v2/orders/${orderId}`, {
+    headers: {
+      Authorization: `Bearer ${squareToken}`,
+      'Square-Version': '2024-01-18',
+      'Content-Type': 'application/json',
+    },
+  }, 'Square Orders API')
+  return data.order
+}
+
+export function buildPaymentQuantities(order) {
+  const quantities = new Map()
+  for (const lineItem of order.line_items || []) {
+    if (lineItem.item_type !== 'ITEM' || !lineItem.catalog_object_id) continue
+    quantities.set(
+      lineItem.catalog_object_id,
+      (quantities.get(lineItem.catalog_object_id) || 0) + parsePaymentQuantity(lineItem.quantity)
+    )
+  }
+  return quantities
+}
+
+// Aplica el descuento de stock para un pago completado.
+// No gestiona processed_payments — el caller es responsable de la idempotencia.
+export async function applyPaymentToStock(payment, tienda) {
+  const order = await fetchSquareOrder(payment.order_id, tienda.squareToken)
+  const quantities = buildPaymentQuantities(order)
+  const lineas = []
+
+  if (!quantities.size) return { lineas, hasError: false, actualizados: 0 }
+
+  const catalogIds = [...quantities.keys()]
+  const vinosBySquareId = await selectVinosBySquareIds(tienda.id, catalogIds, catalogIds)
+  const now = new Date().toISOString()
+
+  for (const [catalogId, qty] of quantities) {
+    const vino = vinosBySquareId.get(catalogId)
+    if (!vino) {
+      lineas.push({ catalog_object_id: catalogId, quantity: qty, tienda_slug: tienda.slug, status: 'not_found' })
+      continue
+    }
+
+    const nuevoStock = Math.max(0, (vino.stock || 0) - qty)
+    const activo = squareActivoFromStock(vino, nuevoStock)
+
+    if ((vino.stock || 0) === nuevoStock && Boolean(vino.activo) === activo) {
+      lineas.push({
+        catalog_object_id: catalogId, quantity: qty, tienda_slug: tienda.slug,
+        vino_id: vino.id, vino_nombre: vino.nombre, categoria: vino.categoria || 'otro',
+        stock_antes: vino.stock, stock_despues: nuevoStock, status: 'unchanged',
+      })
+      continue
+    }
+
+    const { error: updateErr } = await supabaseAdmin
+      .from('vinos_tienda')
+      .update({ stock: nuevoStock, activo, updated_at: now })
+      .eq('id', vino.id)
+
+    lineas.push({
+      catalog_object_id: catalogId, quantity: qty, tienda_slug: tienda.slug,
+      vino_id: vino.id, vino_nombre: vino.nombre, categoria: vino.categoria || 'otro',
+      stock_antes: vino.stock, stock_despues: nuevoStock,
+      status: updateErr ? 'error' : 'ok',
+    })
+  }
+
+  const hasError = lineas.some(l => l.status === 'error')
+  return { lineas, hasError, actualizados: lineas.filter(l => l.status === 'ok').length }
 }
 
 // Identifica y opcionalmente borra los productos de la BD cuyo square_catalog_id

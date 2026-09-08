@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import {
+  applyPaymentToStock,
   fetchSquareJson,
   isSquareSyncGloballyPaused,
   isSquareSyncTemporarilyPaused,
@@ -17,7 +18,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 20
 
 const SQUARE_SIGNATURE_KEY = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY
-const SQUARE_API_BASE = 'https://connect.squareup.com'
 const LOG_SELECT = 'id, event_id, payment_id, order_id, tienda_slug, lineas, ok, error_msg'
 const PROCESSING_PREFIX = 'processing:'
 const PROCESSING_STALE_MS = 2 * 60 * 1000
@@ -179,18 +179,6 @@ async function finishAndReturn(eventId, responsePayload, logPatch = {}, status =
   return json(responsePayload, status)
 }
 
-async function fetchOrder(orderId, squareToken) {
-  if (!squareToken) throw new Error('Token de Square no configurado para obtener la orden')
-  const data = await fetchSquareJson(`${SQUARE_API_BASE}/v2/orders/${orderId}`, {
-    headers: {
-      Authorization: `Bearer ${squareToken}`,
-      'Square-Version': '2024-01-18',
-      'Content-Type': 'application/json',
-    },
-  }, 'Square Orders API')
-  return data.order
-}
-
 function extractCatalogObjectIds(event) {
   const ids = []
   const add = value => {
@@ -210,11 +198,6 @@ function extractCatalogObjectIds(event) {
 
   for (const item of object.catalog_objects || object.objects || []) add(item?.id)
   return [...new Set(ids)]
-}
-
-function parseQuantity(value) {
-  const qty = parseInt(value, 10)
-  return Number.isFinite(qty) && qty > 0 ? qty : 1
 }
 
 function groupInventoryCounts(event) {
@@ -457,67 +440,9 @@ async function handlePaymentUpdated(eventId, payment) {
       )
     }
 
-    const order = await fetchOrder(orderId, tienda.squareToken)
-    const quantities = new Map()
-    for (const lineItem of order.line_items || []) {
-      if (lineItem.item_type !== 'ITEM' || !lineItem.catalog_object_id) continue
-      quantities.set(
-        lineItem.catalog_object_id,
-        (quantities.get(lineItem.catalog_object_id) || 0) + parseQuantity(lineItem.quantity)
-      )
-    }
-
-    const lineas = []
-    const catalogIds = [...quantities.keys()]
-    const vinosBySquareId = await selectVinosBySquareIds(tienda.id, catalogIds, catalogIds)
-    const now = new Date().toISOString()
-
-    for (const [catalogId, qty] of quantities) {
-      const vino = vinosBySquareId.get(catalogId)
-      if (!vino) {
-        lineas.push({ catalog_object_id: catalogId, quantity: qty, tienda_slug: tienda.slug, status: 'not_found' })
-        continue
-      }
-
-      const nuevoStock = Math.max(0, (vino.stock || 0) - qty)
-      const activo = squareActivoFromStock(vino, nuevoStock)
-      if ((vino.stock || 0) === nuevoStock && Boolean(vino.activo) === activo) {
-        lineas.push({
-          catalog_object_id: catalogId,
-          quantity: qty,
-          tienda_slug: tienda.slug,
-          vino_id: vino.id,
-          vino_nombre: vino.nombre,
-          categoria: vino.categoria || 'otro',
-          stock_antes: vino.stock,
-          stock_despues: nuevoStock,
-          status: 'unchanged',
-        })
-        continue
-      }
-
-      const { error: updateErr } = await supabaseAdmin
-        .from('vinos_tienda')
-        .update({ stock: nuevoStock, activo, updated_at: now })
-        .eq('id', vino.id)
-
-      lineas.push({
-        catalog_object_id: catalogId,
-        quantity: qty,
-        tienda_slug: tienda.slug,
-        vino_id: vino.id,
-        vino_nombre: vino.nombre,
-        categoria: vino.categoria || 'otro',
-        stock_antes: vino.stock,
-        stock_despues: nuevoStock,
-        status: updateErr ? 'error' : 'ok',
-      })
-    }
-
-    const hasError = lineas.some(linea => linea.status === 'error')
-    const actualizados = lineas.filter(linea => linea.status === 'ok').length
-    const nVinos = lineas.filter(linea => linea.status === 'ok' && linea.categoria === 'vino').length
-    const nOtros = lineas.filter(linea => linea.status === 'ok' && linea.categoria !== 'vino').length
+    const { lineas, hasError, actualizados } = await applyPaymentToStock(payment, tienda)
+    const nVinos = lineas.filter(l => l.status === 'ok' && l.categoria === 'vino').length
+    const nOtros = lineas.filter(l => l.status === 'ok' && l.categoria !== 'vino').length
     console.log(`[square-webhook] Pago ${paymentId}: ${actualizados}/${lineas.length} productos actualizados (${nVinos} vino, ${nOtros} otro)`)
 
     return finishAndReturn(
