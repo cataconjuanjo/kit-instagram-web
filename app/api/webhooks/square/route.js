@@ -484,7 +484,18 @@ export async function POST(request) {
   const url = `${request.nextUrl.protocol}//${request.nextUrl.host}/api/webhooks/square`
 
   if (!verifySignature(rawBody, sig, url)) {
-    console.error('[square-webhook] Firma invalida')
+    let diag = {}
+    try {
+      const parsed = JSON.parse(rawBody)
+      diag = {
+        type: parsed?.type,
+        event_id: parsed?.event_id,
+        merchant_id: parsed?.merchant_id,
+        environment: parsed?.environment,
+        topLevelKeys: Object.keys(parsed || {}),
+      }
+    } catch {}
+    console.error('[square-webhook] Firma invalida', diag)
     return json({ error: 'Invalid signature' }, 401)
   }
 
