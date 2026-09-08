@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
 import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
+import { TIPOS_VINO, etiquetasTipoVino, normalizarTipo as normalizarTipoVino } from '../../lib/winePresentation'
 import AdminOverlay from '../components/AdminOverlay'
 
 
@@ -23,6 +24,7 @@ const vinoInicial = {
   nombre: '',
   bodega: '',
   tipo: '',
+  tipo_raw: '',
   region: '',
   do_igp: '',
   uva: '',
@@ -691,11 +693,16 @@ function ProveedoresPageContent() {
   function editarVino(vino) {
     setAcordeonAbierto('vino')
     setEditandoVino(vino.id)
+    // Normalizar tipo al cargar: si el DB tiene "Tinto" → select muestra "Tinto" (valor "tinto").
+    // Si el tipo no es canónico (ej. "Garnacha"), tipo queda vacío y se muestra tipo_raw como pista.
+    const tipoNorm = normalizarTipoVino(vino.tipo) || ''
+    const tipoRawHint = (!tipoNorm && vino.tipo) ? vino.tipo : (vino.tipo_raw || '')
     setVinoForm({
       proveedor_id: vino.proveedor_id || proveedorSeleccionado || '',
       nombre: vino.nombre || '',
       bodega: vino.bodega || '',
-      tipo: vino.tipo || '',
+      tipo: tipoNorm || vino.tipo || '',
+      tipo_raw: tipoRawHint,
       region: vino.region || '',
       do_igp: vino.do_igp || '',
       uva: vino.uva || '',
@@ -1333,11 +1340,37 @@ function ProveedoresPageContent() {
                       </div>
                       <div className="alta-field">
                         <label>Tipo</label>
-                        <input value={vinoForm.tipo} onChange={e => cambiarVino('tipo', e.target.value)} placeholder="Tinto, blanco, generoso..." />
+                        <select
+                          value={vinoForm.tipo}
+                          onChange={e => cambiarVino('tipo', e.target.value)}
+                          style={!vinoForm.tipo ? { color: 'var(--muted)' } : undefined}
+                        >
+                          <option value="">Sin clasificar</option>
+                          {TIPOS_VINO.map(slug => (
+                            <option key={slug} value={slug}>
+                              {etiquetasTipoVino().label[slug]}
+                            </option>
+                          ))}
+                        </select>
+                        {vinoForm.tipo_raw && vinoForm.tipo_raw !== vinoForm.tipo && (
+                          <small style={{ color: 'var(--muted)', marginTop: 3, display: 'block' }}>
+                            Importado como: <em>{vinoForm.tipo_raw}</em>
+                          </small>
+                        )}
                       </div>
                       <div className="alta-field">
                         <label>Zona / D.O.</label>
-                        <input value={vinoForm.region} onChange={e => cambiarVino('region', e.target.value)} placeholder="Rioja, Jerez, Málaga..." />
+                        <input
+                          value={vinoForm.region}
+                          onChange={e => cambiarVino('region', e.target.value)}
+                          placeholder="Rioja, Jerez, Málaga..."
+                          list="zonas-existentes"
+                        />
+                        <datalist id="zonas-existentes">
+                          {[...new Set(vinos.map(v => v.zona || v.region).filter(Boolean))].sort().map(z => (
+                            <option key={z} value={z} />
+                          ))}
+                        </datalist>
                         {vinoForm.do_igp && (
                           <small style={{ color: 'var(--muted)', marginTop: 3, display: 'block' }}>
                             D.O. resuelta: <strong>{vinoForm.do_igp}</strong>
@@ -1443,32 +1476,34 @@ function ProveedoresPageContent() {
                     aria-label="Buscar proveedor"
                   />
                 </div>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={!proveedorSeleccionado}
-                  className={`supplier-combo-option${!proveedorSeleccionado ? ' is-selected' : ''}`}
-                  onClick={() => { setProveedorSeleccionado(''); setComboProveedorAbierto(false) }}
-                >
-                  <span>Todos los proveedores</span>
-                  <span className="supplier-combo-count">{vinos.length}</span>
-                </button>
-                {proveedores
-                  .filter(p => !busquedaComboProveedor || p.nombre.toLowerCase().includes(busquedaComboProveedor.toLowerCase()))
-                  .map(proveedor => (
-                    <button
-                      type="button"
-                      role="option"
-                      key={proveedor.id}
-                      aria-selected={proveedorSeleccionado === proveedor.id}
-                      className={`supplier-combo-option${proveedorSeleccionado === proveedor.id ? ' is-selected' : ''}`}
-                      onClick={() => { setProveedorSeleccionado(proveedor.id); setComboProveedorAbierto(false); setBusquedaComboProveedor('') }}
-                    >
-                      <span>{proveedor.nombre}</span>
-                      <span className="supplier-combo-count">{conteoPorProveedor[proveedor.id] || 0}</span>
-                    </button>
-                  ))
-                }
+                <div className="supplier-combo-options">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={!proveedorSeleccionado}
+                    className={`supplier-combo-option${!proveedorSeleccionado ? ' is-selected' : ''}`}
+                    onClick={() => { setProveedorSeleccionado(''); setComboProveedorAbierto(false) }}
+                  >
+                    <span>Todos los proveedores</span>
+                    <span className="supplier-combo-count">{vinos.length}</span>
+                  </button>
+                  {proveedores
+                    .filter(p => !busquedaComboProveedor || p.nombre.toLowerCase().includes(busquedaComboProveedor.toLowerCase()))
+                    .map(proveedor => (
+                      <button
+                        type="button"
+                        role="option"
+                        key={proveedor.id}
+                        aria-selected={proveedorSeleccionado === proveedor.id}
+                        className={`supplier-combo-option${proveedorSeleccionado === proveedor.id ? ' is-selected' : ''}`}
+                        onClick={() => { setProveedorSeleccionado(proveedor.id); setComboProveedorAbierto(false); setBusquedaComboProveedor('') }}
+                      >
+                        <span>{proveedor.nombre}</span>
+                        <span className="supplier-combo-count">{conteoPorProveedor[proveedor.id] || 0}</span>
+                      </button>
+                    ))
+                  }
+                </div>
               </div>
             )}
           </div>
@@ -1713,12 +1748,12 @@ function ProveedoresPageContent() {
                               <div style={{ display: 'flex', gap: 8, padding: '10px 14px', background: 'rgba(116,34,61,0.03)', borderTop: '1px solid var(--line)', flexWrap: 'wrap' }}>
                                 <button
                                   type="button"
-                                  style={{ padding: '7px 12px', border: '1px solid var(--line)', borderRadius: 8, background: '#fff', color: 'var(--ink)', font: 'inherit', fontSize: '0.8rem', fontWeight: 650, cursor: 'pointer' }}
+                                  className="supplier-action-btn"
                                   onClick={() => { editarVino(vino); cambiarVistaProveedores('gestion'); setMenuAccionAbierto(null) }}
                                 >Editar</button>
                                 <button
                                   type="button"
-                                  style={{ padding: '7px 12px', border: '1px solid #fca5a5', borderRadius: 8, background: '#fff', color: '#b91c1c', font: 'inherit', fontSize: '0.8rem', fontWeight: 650, cursor: 'pointer' }}
+                                  className="supplier-action-btn is-danger"
                                   onClick={() => { setBorradoPendiente({ id: vino.id, kind: 'vino', nombre: vino.nombre }); setMenuAccionAbierto(null) }}
                                 >Borrar</button>
                               </div>

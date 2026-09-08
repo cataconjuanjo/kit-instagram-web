@@ -17476,7 +17476,7 @@ a.supplier-btn-primary {
   z-index: 200;
   min-width: 280px;
   max-width: 380px;
-  max-height: 320px;
+  max-height: 360px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -17484,6 +17484,12 @@ a.supplier-btn-primary {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.supplier-combo-options {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
 }
 
 .supplier-combo-search {
@@ -17527,7 +17533,6 @@ a.supplier-btn-primary {
   text-align: left;
   cursor: pointer;
   transition: background 100ms;
-  overflow-y: auto;
 }
 
 .supplier-combo-option:hover {
@@ -17676,6 +17681,23 @@ a.supplier-btn-primary {
 
 .supplier-row-dots-menu button.is-danger:hover {
   background: #fee2e2;
+}
+
+.supplier-action-btn {
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.supplier-action-btn.is-danger {
+  border-color: #fca5a5;
+  color: #b91c1c;
 }
 
 /* ══════════════════════════════════════════════════════

@@ -16,7 +16,7 @@ import { reportarErrorCliente, slugDesdeRuta } from '../../lib/publicClientHelpe
 import { estadoCartaPublica } from '../../lib/publicRouteState'
 import { enviarEstadisticas } from '../../lib/statsClient'
 import { alternarVinoComparador } from '../../lib/wineComparator'
-import { WINE_TYPE_COLORS } from '../../lib/winePresentation'
+import { WINE_TYPE_COLORS, TIPOS_VINO, normalizarTipo as normTipo } from '../../lib/winePresentation'
 import RacimoIcon from '../../components/icons/RacimoIcon'
 import CopaIcon from '../../components/icons/CopaIcon'
 import BotellaIcon from '../../components/icons/BotellaIcon'
@@ -1182,7 +1182,7 @@ export default function CartaPublica() {
   const precioMaximo = preciosDisponibles[preciosDisponibles.length - 1] || 100
 
   const vinosFiltrados = useMemo(() => vinos.filter(v => {
-    const matchTipo = filtro === 'todos' || v.tipo === filtro
+    const matchTipo = filtro === 'todos' || (normTipo(v.tipo) || v.tipo) === filtro
     const busquedaLimpia = normalizarTextoBase(busqueda)
     const textoBusquedaVino = normalizarTextoBase([
       v.nombre,
@@ -1201,13 +1201,18 @@ export default function CartaPublica() {
     return matchTipo && matchBusqueda && matchPrecio && matchPrecioMin && matchInternacional && matchCopa && matchLocal
   }), [vinos, filtro, busqueda, precioMax, precioMin, soloInternacional, soloCopa, soloLocal, restaurante])
 
-  const tiposDisponibles = [...new Set(vinos.map(v => v.tipo).filter(Boolean))]
-  const tiposBaseOrdenados = i.tiposOrdenados || ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol', 'sidra']
+  // Normalizar cada tipo al vuelo: "Tinto" → "tinto", tipos sin mapeo quedan como están
+  const _tipoNorm = v => normTipo(v.tipo) || v.tipo || null
+  const tiposDisponibles = [...new Set(vinos.map(_tipoNorm).filter(Boolean))]
+  const tiposBaseOrdenados = i.tiposOrdenados || TIPOS_VINO
   const tiposCopaBaseOrdenados = i.tiposPorCopaOrdenados || ['blanco', 'tinto', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol']
   const ordenarTiposDisponibles = orden => [...orden, ...tiposDisponibles]
     .filter((tipo, index, lista) => tipo && tiposDisponibles.includes(tipo) && lista.indexOf(tipo) === index)
   const tiposOrdenados = ordenarTiposDisponibles(tiposBaseOrdenados)
   const tiposPorCopaOrdenados = ordenarTiposDisponibles(tiposCopaBaseOrdenados)
+  // Tipos que no mapean a ningún slug canónico → sección "Otros"
+  const tiposCanonicos = new Set(TIPOS_VINO)
+  const tiposOtros = tiposDisponibles.filter(t => !tiposCanonicos.has(t))
   const tipos = ['todos', ...tiposOrdenados]
   const colorPrimario = restaurante?.color_primario || '#111111'
   const colorAcento = restaurante?.color_acento || colorPrimario
@@ -1349,11 +1354,11 @@ export default function CartaPublica() {
       <div key={`${opciones.prefix || 'ambito'}-${ambito.id}`} className={styles.regionGroup}>
         <h3 className={styles.regionTitle}>{ambito.label}</h3>
         {(opciones.precioCopaPrincipal ? tiposPorCopaOrdenados : tiposOrdenados).map(tipo => {
-          const vinosTipo = vinosAmbito.filter(v => v.tipo === tipo)
+          const vinosTipo = vinosAmbito.filter(v => _tipoNorm(v) === tipo)
           if (!vinosTipo.length) return null
           return (
             <div key={`${opciones.prefix || 'ambito'}-${ambito.id}-${tipo}`} className={styles.regionSubgroup}>
-              <p className={styles.regionName}>{i.tipoPlural[tipo]}</p>
+              <p className={styles.regionName}>{i.tipoPlural[tipo] || tipo}</p>
               {agruparPorRegion(vinosTipo).map(grupoRegion => (
                 <div key={`${opciones.prefix || 'ambito'}-${ambito.id}-${tipo}-${grupoRegion.region}`} className={styles.regionSubgroup}>
                   <p className={styles.regionDo}>{grupoRegion.region}</p>
@@ -1369,7 +1374,7 @@ export default function CartaPublica() {
 
   function renderBloqueCopas(lista) {
     return tiposPorCopaOrdenados.map(tipo => {
-      const vinosTipo = lista.filter(v => v.tipo === tipo)
+      const vinosTipo = lista.filter(v => _tipoNorm(v) === tipo)
       if (!vinosTipo.length) return null
       const sorted = [...vinosTipo].sort((a, b) =>
         Number(a.precio_copa || 0) - Number(b.precio_copa || 0) ||
@@ -1412,7 +1417,7 @@ export default function CartaPublica() {
           onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(v))}
         >
           <div className={styles.wineTop}>
-            <RacimoIcon color={tipoDot[v.tipo] || colorPrimario} className={styles.dotIcon} />
+            <RacimoIcon color={tipoDot[_tipoNorm(v)] || colorPrimario} className={styles.dotIcon} />
             <div className={styles.wineTitleBlock}>
               <h3 className={styles.wineName}>{nombreVinoCarta(v)}</h3>
               {v.anada && <span className={styles.vintagePill}>{v.anada}</span>}
@@ -1505,7 +1510,7 @@ export default function CartaPublica() {
             </>
           ) : (
             <span>
-              <i style={{ background: tipoDot[v.tipo] || colorPrimario }} />
+              <i style={{ background: tipoDot[_tipoNorm(v)] || colorPrimario }} />
               {i.vistaEtiquetas}
             </span>
           )}
@@ -1763,8 +1768,8 @@ export default function CartaPublica() {
       </div>
       <div style={{ padding: '32px 24px', maxWidth: 480, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: tipoDot[vinoSeleccionado.tipo], flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: '#999', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{i.tipoLabel[vinoSeleccionado.tipo]}</span>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: tipoDot[normTipo(vinoSeleccionado.tipo) || vinoSeleccionado.tipo] || colorPrimario, flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: '#999', letterSpacing: '0.1em', textTransform: 'uppercase' }}>{i.tipoLabel[normTipo(vinoSeleccionado.tipo) || vinoSeleccionado.tipo] || vinoSeleccionado.tipo}</span>
           {duelStats && (
             <span style={{ background: colorAcento, color: '#fff', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, letterSpacing: '0.04em' }}>
               {i.dueloGano(duelStats.victorias, duelStats.total)}
@@ -2950,12 +2955,12 @@ export default function CartaPublica() {
               <p style={{ textAlign: 'center', color: '#bbb', fontSize: 15, padding: '40px 0' }}>{i.sinResultados}</p>
             )}
             {tiposOrdenados.map(tipo => {
-              const grupo = vinosFiltrados.filter(v => v.tipo === tipo)
+              const grupo = vinosFiltrados.filter(v => _tipoNorm(v) === tipo)
               if (!grupo.length) return null
               return (
                 <div key={tipo} style={{ marginTop: 28 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: colorPrimario, letterSpacing: '0.14em', textTransform: 'uppercase', margin: 0, fontFamily: fontTitulo }}>{i.tipoPlural[tipo]}</p>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: colorPrimario, letterSpacing: '0.14em', textTransform: 'uppercase', margin: 0, fontFamily: fontTitulo }}>{i.tipoPlural[tipo] || tipo}</p>
                     <div style={{ flex: 1, height: 1, background: `${colorPrimario}22` }} />
                   </div>
                   {grupo.map(v => {
@@ -2972,7 +2977,7 @@ export default function CartaPublica() {
                           onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(v))}
                           style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, cursor: 'pointer' }}
                         >
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[v.tipo], flexShrink: 0 }} />
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[_tipoNorm(v)] || colorPrimario, flexShrink: 0 }} />
                           <div style={{ flex: 1 }}>
                             <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111' }}>{nombreVinoCarta(v)}</p>
                             <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>
@@ -3007,6 +3012,50 @@ export default function CartaPublica() {
                               </>
                           }
                         </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+            {/* Sección "Otros" — tipos sin mapeo canónico, siempre con cabecera visible */}
+            {tiposOtros.map(tipo => {
+              const grupo = vinosFiltrados.filter(v => _tipoNorm(v) === tipo)
+              if (!grupo.length) return null
+              return (
+                <div key={`otros-${tipo}`} style={{ marginTop: 28 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: colorPrimario, letterSpacing: '0.14em', textTransform: 'uppercase', margin: 0, fontFamily: fontTitulo }}>Otros · {tipo}</p>
+                    <div style={{ flex: 1, height: 1, background: `${colorPrimario}22` }} />
+                  </div>
+                  {grupo.map(v => {
+                    const enComparador = vinosComparador.find(vc => vc.id === v.id)
+                    return (
+                      <div key={v.id} style={{
+                        background: '#fff', borderRadius: 10, border: `1px solid ${enComparador ? colorPrimario : '#f0f0f0'}`,
+                        padding: '14px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12
+                      }}>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => abrirFichaVino(v)}
+                          onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(v))}
+                          style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, cursor: 'pointer' }}
+                        >
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: tipoDot[_tipoNorm(v)] || colorPrimario, flexShrink: 0 }} />
+                          <div style={{ flex: 1 }}>
+                            <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111' }}>{nombreVinoCarta(v)}</p>
+                            <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>
+                              {[v.bodega, v.anada].filter(Boolean).join(' · ')}
+                            </p>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            {precioValido(v.precio_copa) && (
+                              <p style={{ margin: '0 0 2px', fontSize: 12, color: '#999' }}>{precioCopaCarta(v.precio_copa)} <span style={{ fontSize: 10, color: '#ccc' }}>{i.copa.toLowerCase()}</span></p>
+                            )}
+                            {precioValido(v.precio_botella) && <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111' }}>{precioBotellaCarta(v.precio_botella)} <span style={{ fontSize: 10, color: '#ccc', fontWeight: 400 }}>{i.btl}</span></p>}
+                          </div>
+                        </div>
                       </div>
                     )
                   })}

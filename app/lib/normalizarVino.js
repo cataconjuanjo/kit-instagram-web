@@ -1,6 +1,7 @@
 import { titleCaseNombre } from './normalizarNombre.js'
 import { splitZonaTipo, sospechaZona, splitFormato } from './normalizarCatalogo.js'
 import { resolverZona } from './normalizarDenominacion.js'
+import { normalizarTipo, normalizarZona } from './normalizarTipo.js'
 
 /**
  * Aplica las normalizaciones de nombre/zona/formato a una fila del catálogo.
@@ -19,15 +20,28 @@ export function normalizarCamposVino(row, mapaRefDenom = null) {
 
   const nombreNorm = nombreRaw ? titleCaseNombre(nombreRaw) : nombreRaw
 
+  // Normalizar tipo: sinonimos → slug canónico; conservar original en tipo_raw
+  const tipoRaw = (row.tipo || '').trim() || null
+  const tipoCanonico = tipoRaw ? normalizarTipo(tipoRaw) : null
+  const tipoNormInicial = tipoCanonico || tipoRaw    // mantiene original si no hay mapeo
+  let tipoNorm = tipoNormInicial
+  const tipoRawGuardado = (tipoCanonico && tipoCanonico !== tipoRaw) ? tipoRaw : null
+
   let zona = null
-  let tipoNorm = (row.tipo || '').trim() || null
   let regionRawGuardado = null
   if (regionRaw) {
     const { zona: z, tipo: tipoExtraido } = splitZonaTipo(regionRaw)
     if (!sospechaZona(z)) {
-      zona = z
-      if (z !== regionRaw) regionRawGuardado = regionRaw  // solo cuando hubo split real
-      if (tipoExtraido && !tipoNorm) tipoNorm = tipoExtraido
+      // Normalizar el prefijo D.O./I.G.P. del display de la zona
+      const zonaDisplay = normalizarZona(z).display || z
+      zona = zonaDisplay
+      // Guardar region_raw si la normalización cambió el valor
+      if (zonaDisplay !== regionRaw) regionRawGuardado = regionRaw
+      // Tipo inferido del campo region solo si no teníamos tipo
+      if (tipoExtraido && !tipoNorm) {
+        const tipoCanonico2 = normalizarTipo(tipoExtraido)
+        tipoNorm = tipoCanonico2 || tipoExtraido
+      }
     }
   }
 
@@ -82,6 +96,7 @@ export function normalizarCamposVino(row, mapaRefDenom = null) {
     nombre: nombreNorm,
     nombre_raw: nombreRaw !== nombreNorm ? nombreRaw : null,
     tipo: tipoNorm,
+    tipo_raw: tipoRawGuardado,
     region: regionRaw,
     region_raw: regionRawGuardado,
     zona,

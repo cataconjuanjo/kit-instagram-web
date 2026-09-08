@@ -11,7 +11,7 @@ const SELECT_PROVEEDOR = [
   'visible_restaurantes', 'created_at', 'updated_at',
 ].join(', ')
 const SELECT_CATALOGO_VINO = [
-  'id', 'proveedor_id', 'nombre', 'bodega', 'tipo', 'region', 'uva',
+  'id', 'proveedor_id', 'nombre', 'bodega', 'tipo', 'tipo_raw', 'region', 'uva',
   'anada', 'referencia', 'formato', 'coste_estimado', 'pvp_recomendado', 'pvp_copa',
   'disponibilidad', 'notas', 'activo', 'favorito', 'created_at',
   'updated_at', 'proveedores_vino(nombre)',

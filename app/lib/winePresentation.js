@@ -1,3 +1,5 @@
+export { TIPOS_VINO, normalizarTipo } from './normalizarTipo.js'
+
 export const WINE_TYPE_COLORS = {
   tinto: '#7B2D2D',
   blanco: '#C4A55A',
@@ -39,5 +41,5 @@ export function etiquetasTipoVino() {
 }
 
 export function ordenTiposVino() {
-  return ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol']
+  return ['tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol', 'sidra']
 }
