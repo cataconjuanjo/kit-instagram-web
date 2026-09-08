@@ -423,11 +423,17 @@
 
 .catalogoGrupo + .catalogoGrupo { margin-top: 8px; }
 
+.catalogoGrupoSelected {
+  border-color: color-mix(in srgb, var(--cv-gold) 68%, #e0d4bc);
+  background: color-mix(in srgb, var(--cv-gold) 7%, #fffaf3);
+}
+
 .catalogoGrupoHeader {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
+  min-height: 68px;
   padding: 12px;
 }
 
@@ -440,12 +446,28 @@
   align-items: flex-start;
   gap: 8px;
   min-width: 0;
+  width: 100%;
+  min-height: 44px;
   padding: 0;
   border: 0;
   background: none;
   color: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.catalogoGrupoHeaderConCheck .catalogoGrupoToggle {
+  grid-column: 2;
+}
+
+.catalogoGrupoHeaderSinCheck .catalogoGrupoToggle {
+  grid-column: 1 / 3;
+}
+
+.catalogoGrupoHeader > .catalogoGrupoPickHint,
+.catalogoGrupoHeader > .accionBtn,
+.catalogoGrupoHeader > .sustituirYaEnBorrador {
+  grid-column: 3;
 }
 
 .catalogoGrupoChevron {
@@ -463,11 +485,13 @@
 }
 
 .catalogoGrupoCopy strong {
+  display: block;
   overflow: hidden;
   color: #171416;
   font-size: 13px;
+  line-height: 1.25;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .catalogoGrupoCopy span,

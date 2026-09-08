@@ -83,8 +83,8 @@ function CatalogoGrupoItem({ grupo, mode, expanded, selected, selectedOfferId, a
   const meta = [grupo.bodega, grupo.tipo, grupo.region, grupo.anada, grupo.formato].filter(Boolean).join(' · ')
 
   return (
-    <section className={simStyles.catalogoGrupo}>
-      <div className={simStyles.catalogoGrupoHeader}>
+    <section className={`${simStyles.catalogoGrupo} ${selected ? simStyles.catalogoGrupoSelected : ''}`}>
+      <div className={`${simStyles.catalogoGrupoHeader} ${mode === 'add' ? simStyles.catalogoGrupoHeaderConCheck : simStyles.catalogoGrupoHeaderSinCheck}`}>
         {mode === 'add' && (
           <input
             type="checkbox"
