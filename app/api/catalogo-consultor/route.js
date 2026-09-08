@@ -2,6 +2,7 @@ import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { puedeUsar } from '../../lib/plans'
 import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
+import { costePorBotella } from '../../lib/catalogoGrouping.mjs'
 
 export async function GET(req) {
   try {
@@ -38,7 +39,7 @@ export async function GET(req) {
 
     const { data: vinos, error: vinosError } = await supabaseAdmin
       .from('proveedor_catalogo_vinos')
-      .select('id, nombre, bodega, tipo, region, uva, anada, referencia, formato, coste_estimado, pvp_recomendado, pvp_copa, proveedor_id')
+      .select('id, nombre, bodega, tipo, region, uva, anada, referencia, formato, coste_estimado, pvp_recomendado, pvp_copa, disponibilidad, proveedor_id, created_at, updated_at')
       .eq('favorito', true)
       .eq('activo', true)
       .in('proveedor_id', providerIds)
@@ -56,7 +57,7 @@ export async function GET(req) {
     const econConfig = econSettings || {}
 
     const result = (vinos || []).map(v => {
-      const coste = Number(v.coste_estimado) || 0
+      const coste = costePorBotella(v)
       const calc = coste > 0 ? calcularPreciosSugeridos(coste, econConfig) : null
       const pvpBotella = calc?.botella || 0
       return {

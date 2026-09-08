@@ -78,6 +78,51 @@
 /* .table th { text-align: left } has specificity 0,1,1 which beats .thNum 0,1,0 — override explicitly */
 .table th.thNum { text-align: right; }
 
+.tdProveedor {
+  min-width: 210px;
+  max-width: 280px;
+  vertical-align: top !important;
+}
+
+.proveedorSeleccionado {
+  display: block;
+  font-weight: 700;
+  color: #4a3f36;
+}
+
+.compararBtn,
+.mejorPrecioBtn {
+  display: block;
+  border: 0;
+  padding: 0;
+  margin-top: 3px;
+  background: none;
+  color: var(--cv-wine);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+
+.compararBtn:hover,
+.mejorPrecioBtn:hover { color: var(--cv-gold); text-decoration: underline; }
+
+.precioMejorHint {
+  display: block;
+  margin-top: 5px;
+  color: var(--cv-green);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.mejorPrecioBtn {
+  color: var(--cv-green);
+}
+
+.compararBtn:disabled,
+.mejorPrecioBtn:disabled { opacity: 0.55; cursor: not-allowed; text-decoration: none; }
+
 .thEstado,
 .tdEstado { text-align: center; width: 76px; }
 .thAccion,
@@ -365,6 +410,138 @@
   text-align: center;
   font-size: 13px;
   color: var(--cv-text-muted);
+}
+
+/* ── Agrupación lógica de ofertas del catálogo ───────────────────────────── */
+
+.catalogoGrupo {
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  background: #fffaf3;
+  overflow: hidden;
+}
+
+.catalogoGrupo + .catalogoGrupo { margin-top: 8px; }
+
+.catalogoGrupoHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+}
+
+.catalogoGrupoHeader > input {
+  accent-color: var(--cv-wine);
+}
+
+.catalogoGrupoToggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.catalogoGrupoChevron {
+  width: 18px;
+  color: var(--cv-wine);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.catalogoGrupoCopy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.catalogoGrupoCopy strong {
+  overflow: hidden;
+  color: #171416;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalogoGrupoCopy span,
+.catalogoGrupoCopy small {
+  overflow: hidden;
+  color: var(--cv-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalogoGrupoCopy small {
+  color: var(--cv-wine);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.catalogoGrupoPickHint {
+  max-width: 145px;
+  color: var(--cv-text-muted);
+  font-size: 10px;
+  line-height: 1.3;
+  text-align: right;
+}
+
+.catalogoOfertas {
+  overflow-x: auto;
+  border-top: 1px solid #e8e2d9;
+  background: #f9f5ed;
+}
+
+.catalogoOfertasHead,
+.catalogoOferta {
+  display: grid;
+  grid-template-columns: minmax(145px, 1.2fr) minmax(95px, 0.75fr) minmax(110px, 0.9fr) minmax(110px, 0.9fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 660px;
+  padding: 8px 12px;
+}
+
+.catalogoOfertasHead {
+  color: var(--cv-text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.catalogoOferta {
+  border-top: 1px solid #ece6db;
+  color: #4a3f36;
+  font-size: 11px;
+}
+
+.catalogoOferta > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.catalogoOfertaMejor { background: rgba(56, 95, 79, 0.06); }
+
+.catalogoOfertaBadge {
+  display: inline-flex;
+  padding: 2px 6px;
+  border: 1px solid rgba(56, 95, 79, 0.26);
+  border-radius: 999px;
+  color: var(--cv-green);
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 /* ── Micro-celebración al publicar ───────────────────────────────── */
@@ -1285,6 +1462,25 @@
     display: none;
   }
 
+  .tdProveedor {
+    display: block;
+    max-width: none;
+    min-width: 0;
+    padding: 8px 0 0;
+    border-top: 1px solid #ece6db;
+  }
+
+  .tdProveedor::before {
+    content: 'Proveedor seleccionado';
+    display: block;
+    margin-bottom: 3px;
+    color: var(--cv-text-muted);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
   /* Prices: inline pair on their own line */
   .tdPrecioBot,
   .tdPrecioCopa {
@@ -1737,6 +1933,83 @@
   font-size: 10px;
   color: var(--cv-text-muted);
 }
+
+.comparacionProveedores {
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  background: #fffaf3;
+  overflow: hidden;
+}
+
+.comparacionCabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  background: #f3eee5;
+  border-bottom: 1px solid #e8e2d9;
+}
+
+.comparacionCabecera h4 {
+  margin: 0;
+  color: #171416;
+  font-size: 13px;
+}
+
+.comparacionCabecera p {
+  max-width: 620px;
+  margin: 4px 0 0;
+  color: var(--cv-text-muted);
+  font-size: 11px;
+}
+
+.comparacionCabecera > strong {
+  color: var(--cv-wine);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.comparacionTabla {
+  overflow-x: auto;
+}
+
+.comparacionFilaHead,
+.comparacionFila {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.2fr) minmax(160px, 1fr) 100px 90px minmax(150px, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 700px;
+  padding: 9px 16px;
+}
+
+.comparacionFilaHead {
+  color: var(--cv-text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.comparacionFila {
+  border-top: 1px solid #ece6db;
+  color: #4a3f36;
+  font-size: 11px;
+}
+
+.comparacionFila strong { color: #171416; }
+.comparacionAhorro { color: var(--cv-green); font-weight: 800; }
+
+.comparacionAhorroTotal {
+  margin: 0;
+  padding: 10px 16px 12px;
+  border-top: 1px solid #e8e2d9;
+  color: var(--cv-text-muted);
+  font-size: 11px;
+}
+
+.comparacionAhorroTotal strong { color: var(--cv-green); }
 
 /* ── Sub-sub-nav (dentro del tab Proveedores) ────────────────────────────── */
 

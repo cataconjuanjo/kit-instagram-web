@@ -2,6 +2,7 @@ import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { puedeUsar } from '../../../lib/plans'
 import { calcularPreciosSugeridos } from '../../../lib/pricingUtils'
+import { agruparOfertasCatalogo, costePorBotella } from '../../../lib/catalogoGrouping.mjs'
 
 // POST /api/simulador/sustituir
 // Body: { restaurante_id, linea_fuera_id, catalogo_vino_id }
@@ -41,14 +42,43 @@ export async function POST(req) {
     // Cargar datos del vino del catálogo para el snapshot
     const { data: catalogVino, error: catError } = await supabaseAdmin
       .from('proveedor_catalogo_vinos')
-      .select('id, nombre, bodega, tipo, region, anada, formato, coste_estimado, pvp_recomendado')
+      .select('id, nombre, bodega, tipo, region, anada, formato, coste_estimado, pvp_recomendado, pvp_copa, disponibilidad, proveedor_id')
       .eq('id', catalogoVinoId)
+      .eq('favorito', true)
       .eq('activo', true)
       .maybeSingle()
 
     if (catError) throw catError
     if (!catalogVino) {
       return Response.json({ error: 'Referencia de catálogo no encontrada' }, { status: 404 })
+    }
+
+    // No permitimos crear otra línea para el mismo vino cuando la oferta
+    // entrante procede de otro proveedor del grupo lógico.
+    const { data: lineasBorrador, error: borradorError } = await supabaseAdmin
+      .from('carta_simulacion')
+      .select('id, catalogo_vino_id, nombre, bodega, tipo, region, anada, formato, coste_compra')
+      .eq('restaurante_id', restauranteId)
+      .eq('estado', 'nuevo')
+
+    if (borradorError) throw borradorError
+    for (const linea of (lineasBorrador || []).filter(item => item.catalogo_vino_id)) {
+      const grupo = agruparOfertasCatalogo([
+        {
+          id: linea.catalogo_vino_id,
+          nombre: linea.nombre,
+          bodega: linea.bodega,
+          tipo: linea.tipo,
+          region: linea.region,
+          anada: linea.anada,
+          formato: linea.formato,
+          coste_estimado: linea.coste_compra,
+        },
+        catalogVino,
+      ])
+      if (grupo.length === 1 && grupo[0].confianza !== 'ambiguous') {
+        return Response.json({ error: 'Este vino ya está en tu simulación con otra oferta de proveedor', duplicate_group: true }, { status: 409 })
+      }
     }
 
     // Calcular precios sugeridos con la misma lógica que anadir-catalogo
@@ -58,7 +88,7 @@ export async function POST(req) {
       .eq('restaurante_id', restauranteId)
       .maybeSingle()
     const econConfig = econSettings || {}
-    const coste       = Number(catalogVino.coste_estimado) || 0
+    const coste       = costePorBotella(catalogVino)
     const calc        = coste > 0 ? calcularPreciosSugeridos(coste, econConfig) : null
     const pvpBotella  = calc?.botella || 0
     const pvpCopa     = calc?.copa || 0

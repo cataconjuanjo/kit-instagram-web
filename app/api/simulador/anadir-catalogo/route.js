@@ -2,6 +2,7 @@ import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { puedeUsar } from '../../../lib/plans'
 import { calcularPreciosSugeridos } from '../../../lib/pricingUtils'
+import { agruparOfertasCatalogo, costePorBotella } from '../../../lib/catalogoGrouping.mjs'
 
 function normalizar(texto = '') {
   return String(texto || '').toLowerCase().trim()
@@ -50,13 +51,14 @@ export async function POST(req) {
     const [catalogoResult, borradorResult] = await Promise.all([
       supabaseAdmin
         .from('proveedor_catalogo_vinos')
-        .select('id, nombre, bodega, tipo, region, anada, formato, coste_estimado, pvp_recomendado, pvp_copa, proveedor_id')
+        .select('id, nombre, bodega, tipo, region, anada, formato, coste_estimado, pvp_recomendado, pvp_copa, disponibilidad, proveedor_id')
         .eq('id', catalogoVinoId)
+        .eq('favorito', true)
         .eq('activo', true)
         .maybeSingle(),
       supabaseAdmin
         .from('carta_simulacion')
-        .select('id, catalogo_vino_id, nombre, bodega')
+        .select('id, catalogo_vino_id, nombre, bodega, tipo, region, anada, formato, coste_compra')
         .eq('restaurante_id', restauranteId),
     ])
 
@@ -76,6 +78,27 @@ export async function POST(req) {
     }
 
     // ── Aviso no bloqueante: mismo nombre+bodega, referencia diferente ────
+    // Segunda barrera: aunque cambie el proveedor, no se crean dos líneas
+    // para el mismo producto. force=true solo permite pasar referencias
+    // ambiguas; nunca permite duplicar una coincidencia fiable.
+    const ofertasExistentes = lineasBorrador
+      .filter(linea => linea.catalogo_vino_id)
+      .map(linea => ({
+        id: linea.catalogo_vino_id,
+        nombre: linea.nombre,
+        bodega: linea.bodega,
+        tipo: linea.tipo,
+        region: linea.region,
+        anada: linea.anada,
+        formato: linea.formato,
+        coste_estimado: linea.coste_compra,
+      }))
+    const grupoEntrante = agruparOfertasCatalogo([...ofertasExistentes, catalogVino])
+      .find(grupo => grupo.ofertas.some(oferta => oferta.id === catalogoVinoId))
+    if (grupoEntrante && grupoEntrante.ofertas.length > 1 && grupoEntrante.confianza !== 'ambiguous') {
+      return Response.json({ error: 'Este vino ya está en tu simulación con otra oferta de proveedor', duplicate_group: true }, { status: 409 })
+    }
+
     if (!force) {
       const nombreNorm = normalizar(catalogVino.nombre)
       const bodegaNorm = normalizar(catalogVino.bodega)
@@ -98,7 +121,7 @@ export async function POST(req) {
       .eq('restaurante_id', restauranteId)
       .maybeSingle()
     const econConfig = econSettings || {}
-    const coste = Number(catalogVino.coste_estimado) || 0
+    const coste = costePorBotella(catalogVino)
     const calc = coste > 0 ? calcularPreciosSugeridos(coste, econConfig) : null
     const pvpBotella = calc?.botella || 0
     const pvpCopa = calc?.copa || 0

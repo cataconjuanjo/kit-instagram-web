@@ -1,6 +1,7 @@
 import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { calcularPreciosSugeridos } from '../../../lib/pricingUtils'
+import { costePorBotella } from '../../../lib/catalogoGrouping.mjs'
 
 // POST /api/simulador/recalcular-copa-catalogo
 // Body: { restaurante_id }
@@ -45,11 +46,11 @@ export async function POST(req) {
     const catalogoIds = [...new Set(lineas.map(l => l.catalogo_vino_id))]
     const { data: catalogoRows, error: catError } = await supabaseAdmin
       .from('proveedor_catalogo_vinos')
-      .select('id, coste_estimado')
+      .select('id, coste_estimado, formato')
       .in('id', catalogoIds)
 
     if (catError) throw catError
-    const costes = Object.fromEntries((catalogoRows || []).map(r => [r.id, Number(r.coste_estimado) || 0]))
+    const costes = Object.fromEntries((catalogoRows || []).map(r => [r.id, costePorBotella(r)]))
 
     // Calcular y actualizar fila a fila
     let actualizados = 0

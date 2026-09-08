@@ -1,6 +1,7 @@
 import { requireRestaurantAccess } from '../../_lib/auth'
 import { supabaseAdmin } from '../../../lib/supabaseAdmin'
 import { puedeUsar } from '../../../lib/plans'
+import { agruparOfertasCatalogo, costePorBotella } from '../../../lib/catalogoGrouping.mjs'
 
 // GET /api/simulador/proveedores-breakdown?restaurante_id=...
 // Devuelve las líneas del borrador enriquecidas con datos de proveedor.
@@ -35,19 +36,30 @@ export async function GET(req) {
     // 2. Enriquecer vinos del catálogo (estado='nuevo') con proveedor estructurado
     const catalogoIds = [...new Set(lineas.filter(l => l.catalogo_vino_id).map(l => l.catalogo_vino_id))]
     let catalogoMap = {}
+    let catalogoComparacion = []
 
     if (catalogoIds.length > 0) {
       const { data: catVinos } = await supabaseAdmin
         .from('proveedor_catalogo_vinos')
-        .select('id, proveedor_id')
+        .select('id, nombre, bodega, tipo, region, uva, anada, formato, coste_estimado, disponibilidad, updated_at, proveedor_id, activo, favorito')
         .in('id', catalogoIds)
 
-      const provIds = [...new Set((catVinos || []).map(v => v.proveedor_id).filter(Boolean))]
+      const { data: favoritos } = await supabaseAdmin
+        .from('proveedor_catalogo_vinos')
+        .select('id, nombre, bodega, tipo, region, uva, anada, formato, coste_estimado, disponibilidad, updated_at, proveedor_id')
+        .eq('favorito', true)
+        .eq('activo', true)
+
+      const ofertasFuente = [
+        ...(favoritos || []),
+        ...(catVinos || []).filter(oferta => !(favoritos || []).some(favorito => favorito.id === oferta.id)),
+      ]
+      const provIds = [...new Set(ofertasFuente.map(v => v.proveedor_id).filter(Boolean))]
       let proveedoresMap = {}
       if (provIds.length > 0) {
         const { data: provs } = await supabaseAdmin
           .from('proveedores_vino')
-          .select('id, nombre, email, contacto, telefono')
+          .select('id, nombre, email, contacto, telefono, visible_restaurantes')
           .in('id', provIds)
         proveedoresMap = Object.fromEntries((provs || []).map(p => [p.id, p]))
       }
@@ -63,6 +75,13 @@ export async function GET(req) {
           proveedor_tipo:    'catalogo',
         }
       }
+
+      catalogoComparacion = ofertasFuente
+        .filter(oferta => !oferta.proveedor_id || proveedoresMap[oferta.proveedor_id]?.visible_restaurantes !== false)
+        .map(oferta => ({
+          ...oferta,
+          proveedor: proveedoresMap[oferta.proveedor_id] || null,
+        }))
     }
 
     // 3. Enriquecer vinos de carta propia (estado='actual'/'fuera') con proveedor texto
@@ -77,9 +96,39 @@ export async function GET(req) {
     }
 
     // 4. Fusionar
+    const gruposComparacion = agruparOfertasCatalogo(catalogoComparacion)
+    const grupoPorOfertaId = new Map()
+    for (const grupo of gruposComparacion) {
+      for (const oferta of grupo.ofertas) grupoPorOfertaId.set(String(oferta.id), grupo)
+    }
+
     const enriquecidas = lineas.map(linea => {
       if (linea.catalogo_vino_id && catalogoMap[linea.catalogo_vino_id]) {
-        return { ...linea, ...catalogoMap[linea.catalogo_vino_id] }
+        const grupo = grupoPorOfertaId.get(String(linea.catalogo_vino_id))
+        const ofertaSeleccionada = grupo?.ofertas.find(oferta => String(oferta.id) === String(linea.catalogo_vino_id))
+        const ofertasComparacion = (grupo?.ofertas || []).map(oferta => ({
+          id: oferta.id,
+          proveedor_id: oferta.proveedor?.id || oferta.proveedor_id || null,
+          proveedor_nombre: oferta.proveedor?.nombre || 'Sin proveedor',
+          coste_por_botella: costePorBotella(oferta),
+          disponibilidad: oferta.disponibilidad || null,
+          updated_at: oferta.updated_at || null,
+        }))
+        const conPrecio = ofertasComparacion.filter(oferta => oferta.coste_por_botella !== null)
+        const mejor = conPrecio.sort((a, b) => a.coste_por_botella - b.coste_por_botella)[0] || null
+        const costeSeleccionado = costePorBotella(ofertaSeleccionada) ?? (Number(linea.coste_compra) > 0 ? Number(linea.coste_compra) : null)
+        const diferencia = costeSeleccionado !== null && mejor
+          ? Math.max(0, costeSeleccionado - mejor.coste_por_botella)
+          : 0
+        return {
+          ...linea,
+          ...catalogoMap[linea.catalogo_vino_id],
+          ofertas_comparacion: ofertasComparacion,
+          mejor_precio_disponible: mejor?.coste_por_botella || null,
+          diferencia_mejor_precio: diferencia,
+          proveedor_mas_barato: mejor?.proveedor_nombre || null,
+          ahorro_potencial: diferencia > 0 ? diferencia * 6 : 0,
+        }
       }
       if (linea.vino_id && vinosMap[linea.vino_id]) {
         const v = vinosMap[linea.vino_id]

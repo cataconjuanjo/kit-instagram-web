@@ -46,6 +46,11 @@ function ConcentracionSection({ lineasEnriquecidas }) {
   const refsResto = resto.reduce((s, g) => s + g.totalRefs, 0)
   const [mostrarTodos, setMostrarTodos] = useState(false)
 
+  const comparables = lineasFiltradas.filter(linea => {
+    const proveedores = new Set((linea.ofertas_comparacion || []).map(oferta => oferta.proveedor_id || oferta.proveedor_nombre))
+    return proveedores.size > 1
+  })
+
   const coloresSemaforo = { verde: 'var(--cv-green)', ambar: '#d4a017', rojo: 'var(--cv-red)', neutral: '#8a7e72' }
 
   if (grupos.length === 0) {
@@ -94,6 +99,37 @@ function ConcentracionSection({ lineasEnriquecidas }) {
           Carta simulada
         </button>
       </div>
+
+      {comparables.length > 0 && (
+        <div className={simStyles.comparacionProveedores}>
+          <div className={simStyles.comparacionCabecera}>
+            <div>
+              <h4>Vinos con varios proveedores</h4>
+              <p>Las alternativas no cuentan como referencias adicionales: aquí solo se compara la oferta elegida.</p>
+            </div>
+            <strong>{comparables.length}</strong>
+          </div>
+          <div className={simStyles.comparacionTabla}>
+            <div className={simStyles.comparacionFilaHead}>
+              <span>Vino</span><span>Seleccionado</span><span>Mejor precio</span><span>Diferencia</span><span>Proveedor más barato</span>
+            </div>
+            {comparables.map(linea => (
+              <div key={linea.id} className={simStyles.comparacionFila}>
+                <strong>{linea.nombre}</strong>
+                <span>{linea.proveedor_nombre || 'Sin proveedor'} · {Number(linea.coste_compra) > 0 ? eur(linea.coste_compra) : 'Sin precio'}</span>
+                <span>{linea.mejor_precio_disponible ? eur(linea.mejor_precio_disponible) : 'Sin precio'}</span>
+                <span className={linea.diferencia_mejor_precio > 0 ? simStyles.comparacionAhorro : ''}>
+                  {linea.diferencia_mejor_precio > 0 ? eur(linea.diferencia_mejor_precio) : '—'}
+                </span>
+                <span>{linea.proveedor_mas_barato || 'Sin proveedor'}</span>
+              </div>
+            ))}
+          </div>
+          <p className={simStyles.comparacionAhorroTotal}>
+            Ahorro potencial estimado si se usa el mejor precio: <strong>{eur(comparables.reduce((sum, linea) => sum + Number(linea.ahorro_potencial || 0), 0))}</strong> sobre 6 unidades por referencia.
+          </p>
+        </div>
+      )}
 
       {/* Barras horizontales */}
       <div className={simStyles.barraWrap}>

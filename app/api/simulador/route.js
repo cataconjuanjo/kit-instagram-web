@@ -89,10 +89,40 @@ export async function GET(req) {
 
     // Construye resultado final sin re-fetch
     const idsHuerfanosSet = new Set(idsHuerfanos)
-    const lineasFinales = [
+    const lineasFinalesBase = [
       ...borrador.filter(l => !idsHuerfanosSet.has(l.id)),
       ...lineasInsertadas,
     ].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }))
+
+    // La oferta seleccionada se conserva en catalogo_vino_id. Enriquecemos la
+    // vista con el distribuidor real sin alterar el snapshot de la línea.
+    const catalogoIds = [...new Set(lineasFinalesBase.map(linea => linea.catalogo_vino_id).filter(Boolean))]
+    let proveedorPorOferta = {}
+    if (catalogoIds.length) {
+      const { data: ofertas } = await supabaseAdmin
+        .from('proveedor_catalogo_vinos')
+        .select('id, proveedor_id, disponibilidad, updated_at')
+        .in('id', catalogoIds)
+      const proveedorIds = [...new Set((ofertas || []).map(oferta => oferta.proveedor_id).filter(Boolean))]
+      const { data: proveedores } = proveedorIds.length
+        ? await supabaseAdmin.from('proveedores_vino').select('id, nombre').in('id', proveedorIds)
+        : { data: [] }
+      const proveedorMap = Object.fromEntries((proveedores || []).map(proveedor => [proveedor.id, proveedor]))
+      proveedorPorOferta = Object.fromEntries((ofertas || []).map(oferta => [oferta.id, {
+        proveedor_id: oferta.proveedor_id || null,
+        proveedor_nombre: proveedorMap[oferta.proveedor_id]?.nombre || 'Sin proveedor',
+        disponibilidad: oferta.disponibilidad || null,
+        oferta_actualizada_at: oferta.updated_at || null,
+      }]))
+    }
+
+    const lineasFinales = lineasFinalesBase.map(linea => ({
+      ...linea,
+      ...(linea.catalogo_vino_id && proveedorPorOferta[linea.catalogo_vino_id]
+        ? proveedorPorOferta[linea.catalogo_vino_id]
+        : {}),
+      oferta_seleccionada_id: linea.catalogo_vino_id || null,
+    }))
 
     return Response.json({ lineas: lineasFinales })
   } catch (err) {

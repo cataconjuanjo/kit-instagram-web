@@ -9,6 +9,12 @@ import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSel
 import { puedeUsar } from '../../lib/plans'
 import { normWine } from '../../lib/textNormalize'
 import { margenCopaPct } from '../../lib/pricingUtils'
+import {
+  agruparOfertasCatalogo,
+  costePorBotella,
+  ofertaGrupo,
+  ofertaMasBarata,
+} from '../../lib/catalogoGrouping.mjs'
 import { useEconomicSettings } from '../../lib/economicSettings'
 import { analizarMaridaje } from '../../lib/maridajeEngine'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
@@ -61,6 +67,90 @@ function computarPlatosVino(vino, platos, limite = 4) {
     .slice(0, limite)
 }
 
+function proveedorDeOferta(oferta) {
+  return oferta?.proveedor?.nombre || oferta?.proveedor_nombre || oferta?.proveedor || 'Sin proveedor'
+}
+
+function fechaOferta(oferta) {
+  if (!oferta?.updated_at) return 'Sin dato'
+  const fecha = new Date(oferta.updated_at)
+  return Number.isNaN(fecha.getTime()) ? 'Sin dato' : fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function CatalogoGrupoItem({ grupo, mode, expanded, selected, selectedOfferId, alreadyInDraft, onToggle, onToggleSelected, onChoose }) {
+  const mejor = grupo.ofertaPorDefecto
+  const coste = grupo.costeMinimo
+  const meta = [grupo.bodega, grupo.tipo, grupo.region, grupo.anada, grupo.formato].filter(Boolean).join(' · ')
+
+  return (
+    <section className={simStyles.catalogoGrupo}>
+      <div className={simStyles.catalogoGrupoHeader}>
+        {mode === 'add' && (
+          <input
+            type="checkbox"
+            checked={selected}
+            disabled={alreadyInDraft}
+            onChange={() => onToggleSelected(grupo)}
+            aria-label={`Seleccionar ${grupo.nombre}`}
+          />
+        )}
+        <button type="button" className={simStyles.catalogoGrupoToggle} onClick={() => onToggle(grupo.key)} aria-expanded={expanded}>
+          <span className={simStyles.catalogoGrupoChevron}>{expanded ? '−' : '+'}</span>
+          <span className={simStyles.catalogoGrupoCopy}>
+            <strong>{grupo.nombre}</strong>
+            <span>{meta || 'Sin ficha técnica completa'}</span>
+            <small>
+              {grupo.numeroProveedores} proveedor{grupo.numeroProveedores !== 1 ? 'es' : ''}
+              {coste !== null ? ` · desde ${eur(coste)}/botella` : ' · sin precio registrado'}
+            </small>
+          </span>
+        </button>
+        {alreadyInDraft ? (
+          <span className={simStyles.sustituirYaEnBorrador}>Ya en borrador</span>
+        ) : mode === 'substitute' ? (
+          <button type="button" className={simStyles.accionBtn} onClick={() => onChoose(mejor)} disabled={!mejor}>
+            Elegir
+          </button>
+        ) : (
+          <span className={simStyles.catalogoGrupoPickHint}>Por defecto: {mejor ? proveedorDeOferta(mejor) : 'sin precio'}</span>
+        )}
+      </div>
+
+      {expanded && (
+        <div className={simStyles.catalogoOfertas}>
+          <div className={simStyles.catalogoOfertasHead}>
+            <span>Proveedor</span><span>Coste</span><span>Disponibilidad</span><span>Última actualización</span><span />
+          </div>
+          {grupo.ofertas.map(oferta => {
+            const esMejor = mejor?.id === oferta.id && costePorBotella(oferta) !== null
+            const esSeleccionada = String(selectedOfferId || '') === String(oferta.id)
+            return (
+              <div key={oferta.id} className={`${simStyles.catalogoOferta} ${esMejor ? simStyles.catalogoOfertaMejor : ''}`}>
+                <div>
+                  <strong>{proveedorDeOferta(oferta)}</strong>
+                  {esMejor && <span className={simStyles.catalogoOfertaBadge}>Mejor precio</span>}
+                  {esSeleccionada && <span className={simStyles.catalogoOfertaBadge}>Seleccionado</span>}
+                </div>
+                <span>{costePorBotella(oferta) !== null ? `${eur(costePorBotella(oferta))}/botella` : 'Sin precio'}</span>
+                <span>{oferta.disponibilidad || 'Sin dato'}</span>
+                <span>{fechaOferta(oferta)}</span>
+                <button
+                  type="button"
+                  className={simStyles.accionBtn}
+                  disabled={!oferta || esSeleccionada || alreadyInDraft}
+                  onClick={() => onChoose(oferta)}
+                >
+                  {esSeleccionada ? 'Seleccionado' : 'Elegir'}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}
+
 export default function SimuladorCarta() {
   const [restaurante, setRestaurante] = useState(null)
   const { settings: economicSettings } = useEconomicSettings(restaurante?.id || null)
@@ -75,6 +165,8 @@ export default function SimuladorCarta() {
   const [celebracion, setCelebracion] = useState(null)   // { nuevos, retirados, deltaMargen }
   const [sustituyendoId, setSustituyendoId] = useState(null)
   const [modalAnadirCatalogo, setModalAnadirCatalogo] = useState(false)
+  const [compararLineaId, setCompararLineaId] = useState(null)
+  const [gruposAbiertos, setGruposAbiertos] = useState(new Set())
   const [catalogoSustituir, setCatalogoSustituir] = useState(null) // null=no cargado
   const [loadingCatalogoSustituir, setLoadingCatalogoSustituir] = useState(false)
   const [busquedaSustituir, setBusquedaSustituir] = useState('')
@@ -145,13 +237,17 @@ export default function SimuladorCarta() {
         const { data: { session } } = await supabase.auth.getSession()
         const t = session?.access_token
         setToken(t)
-        const [resLineas, resRevision] = await Promise.all([
+        const [resLineas, resRevision, resCatalogo] = await Promise.all([
           fetch(
             `/api/simulador?${new URLSearchParams({ restaurante_id: rest.id })}`,
             { headers: { Authorization: `Bearer ${t}` } }
           ).catch(() => null),
           fetch(
             `/api/simulador/revision?${new URLSearchParams({ restaurante_id: rest.id })}`,
+            { headers: { Authorization: `Bearer ${t}` } }
+          ).catch(() => null),
+          fetch(
+            `/api/catalogo-consultor?${new URLSearchParams({ restaurante_id: rest.id })}`,
             { headers: { Authorization: `Bearer ${t}` } }
           ).catch(() => null),
         ])
@@ -164,6 +260,12 @@ export default function SimuladorCarta() {
           setRevision(jr.revision || null)
         } else {
           setRevision(null)
+        }
+        if (resCatalogo?.ok) {
+          const catalogoJson = await resCatalogo.json()
+          setCatalogoSustituir(catalogoJson.vinos || [])
+        } else {
+          setCatalogoSustituir([])
         }
       } else {
         setRevision(null)
@@ -299,7 +401,7 @@ export default function SimuladorCarta() {
       })
     }
     return base
-  }, [lineasOrdenadas, busquedaTabla, ordenTabla, mostrarRetirados])
+  }, [lineasOrdenadas, busquedaTabla, ordenTabla, mostrarRetirados, economicSettings])
 
   // Paginación aplicada sobre lineasFiltradas
   const totalPaginas = Math.max(1, Math.ceil(lineasFiltradas.length / porPaginaTabla))
@@ -322,27 +424,53 @@ export default function SimuladorCarta() {
     [lineas]
   )
 
+  const catalogoGrupos = useMemo(
+    () => agruparOfertasCatalogo(catalogoSustituir || []),
+    [catalogoSustituir]
+  )
+
+  const grupoPorOfertaId = useMemo(() => {
+    const map = new Map()
+    for (const grupo of catalogoGrupos) {
+      for (const oferta of grupo.ofertas) map.set(String(oferta.id), grupo)
+    }
+    return map
+  }, [catalogoGrupos])
+
+  const grupoDeLinea = linea => linea?.catalogo_vino_id
+    ? grupoPorOfertaId.get(String(linea.catalogo_vino_id)) || null
+    : null
+
+  const grupoYaEnBorrador = grupo => Boolean(
+    grupo?.ofertas?.some(oferta => simEnBorradorSet.has(oferta.id))
+  )
+
   // Catálogo filtrado por búsqueda en el selector de sustitución
   const catalogoFiltradoSustituir = useMemo(() => {
     if (!catalogoSustituir) return []
-    const q = busquedaSustituir.trim().toLowerCase()
-    if (!q) return catalogoSustituir
-    return catalogoSustituir.filter(v =>
-      [v.nombre, v.bodega, v.tipo, v.region].some(f => f?.toLowerCase().includes(q))
+    const q = busquedaSustituir.trim().toLocaleLowerCase('es-ES')
+    if (!q) return catalogoGrupos
+    return catalogoGrupos.filter(grupo =>
+      grupo.ofertas.some(v =>
+        [v.nombre, v.bodega, v.tipo, v.region, v.anada, v.formato, v.proveedor?.nombre]
+          .some(f => f?.toLocaleLowerCase('es-ES').includes(q))
+      )
     )
-  }, [catalogoSustituir, busquedaSustituir])
+  }, [catalogoSustituir, catalogoGrupos, busquedaSustituir])
 
   // Catálogo filtrado por búsqueda en el modal "Añadir del catálogo"
   const catalogoFiltradoAnadir = useMemo(() => {
     if (!catalogoSustituir) return []
-    const q = busquedaAnadir.trim().toLowerCase()
+    const q = busquedaAnadir.trim().toLocaleLowerCase('es-ES')
     const base = q
-      ? catalogoSustituir.filter(v =>
-          [v.nombre, v.bodega, v.tipo, v.region].some(f => f?.toLowerCase().includes(q))
+      ? catalogoGrupos.filter(grupo => grupo.ofertas.some(v =>
+          [v.nombre, v.bodega, v.tipo, v.region, v.anada, v.formato, v.proveedor?.nombre]
+            .some(f => f?.toLocaleLowerCase('es-ES').includes(q))
         )
-      : catalogoSustituir
+      )
+      : catalogoGrupos
     return base
-  }, [catalogoSustituir, busquedaAnadir])
+  }, [catalogoSustituir, catalogoGrupos, busquedaAnadir])
 
   // ── Helpers de llamadas a la API ───────────────────────────────────
   async function getToken() {
@@ -559,6 +687,47 @@ export default function SimuladorCarta() {
     }
     const json = await res.json()
     setLineas(prev => [...prev, json.linea])
+  }
+
+  async function handleCambiarOferta(linea, oferta) {
+    if (!linea?.id || !oferta?.id || guardando === linea.id) return
+    const coste = costePorBotella(oferta)
+    const anterior = linea
+    setGuardando(linea.id)
+    setLineas(prev => prev.map(item => item.id === linea.id
+      ? {
+          ...item,
+          catalogo_vino_id: oferta.id,
+          oferta_seleccionada_id: oferta.id,
+          coste_compra: coste,
+          proveedor_id: oferta.proveedor?.id || null,
+          proveedor_nombre: oferta.proveedor?.nombre || 'Sin proveedor',
+          pvp_recomendado_catalogo: coste === null ? null : item.pvp_recomendado_catalogo,
+        }
+      : item
+    ))
+
+    const t = await getToken()
+    const res = await fetch('/api/simulador/seleccionar-oferta', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+      body: JSON.stringify({
+        restaurante_id: restaurante.id,
+        linea_id: linea.id,
+        catalogo_vino_id: oferta.id,
+      }),
+    }).catch(() => null)
+
+    if (!res?.ok) {
+      const json = res ? await res.json().catch(() => null) : null
+      setLineas(prev => prev.map(item => item.id === linea.id ? anterior : item))
+      setErrorMsg(json?.error || 'No se pudo cambiar el proveedor seleccionado.')
+    } else {
+      const json = await res.json()
+      setLineas(prev => prev.map(item => item.id === linea.id ? json.linea : item))
+      setCompararLineaId(null)
+    }
+    setGuardando('')
   }
 
   // ── Abrir selector "Sustituir por..." ─────────────────────────────
@@ -794,11 +963,12 @@ export default function SimuladorCarta() {
     if (!selAnadir.size) return
     setAnadiendoLote(true)
     const t = await getToken()
-    const resultados = await Promise.all([...selAnadir].map(id =>
+    const gruposSeleccionados = catalogoGrupos.filter(grupo => selAnadir.has(grupo.key))
+    const resultados = await Promise.all(gruposSeleccionados.map(grupo =>
       fetch('/api/simulador/anadir-catalogo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
-        body: JSON.stringify({ restaurante_id: restaurante.id, catalogo_vino_id: id, force: true }),
+        body: JSON.stringify({ restaurante_id: restaurante.id, catalogo_vino_id: grupo.ofertaPorDefecto?.id }),
       }).then(r => r.ok ? r.json() : null).catch(() => null)
     ))
     const nuevas = resultados.filter(r => r?.linea).map(r => r.linea)
@@ -1132,6 +1302,7 @@ export default function SimuladorCarta() {
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('coste_compra')}>Coste €{icono('coste_compra')}</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen')}>Mrg. bot. %{icono('margen')}</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen_copa')}>Mrg. copa %{icono('margen_copa')}</th>
+                  <th>Proveedor seleccionado</th>
                   <th className={simStyles.thEstado}>Estado</th>
                   <th className={simStyles.thAccionWide}>Acción</th>
                 </tr>
@@ -1139,6 +1310,15 @@ export default function SimuladorCarta() {
               <tbody>
                 {lineasPagina.map(linea => {
                   const mrg = margenBotella(linea.precio_botella, linea.coste_compra)
+                  const grupo = grupoDeLinea(linea)
+                  const ofertaSeleccionada = ofertaGrupo(grupo, linea.catalogo_vino_id)
+                  const ofertaBarata = ofertaMasBarata(grupo)
+                  const costeSeleccionado = costePorBotella(ofertaSeleccionada) ?? (Number(linea.coste_compra) > 0 ? Number(linea.coste_compra) : null)
+                  const costeMejor = costePorBotella(ofertaBarata)
+                  const diferenciaMejor = costeSeleccionado !== null && costeMejor !== null
+                    ? Math.max(0, costeSeleccionado - costeMejor)
+                    : 0
+                  const proveedorSeleccionado = ofertaSeleccionada?.proveedor?.nombre || linea.proveedor_nombre || 'Sin proveedor'
                   const isFuera    = linea.estado === 'fuera'
                   const isNuevo    = linea.estado === 'nuevo'
                   const esSustituto = isNuevo && !!linea.sustituye_a
@@ -1320,6 +1500,35 @@ export default function SimuladorCarta() {
                           </td>
                         )
                       })()}
+
+                      {/* Proveedor seleccionado + comparación de ofertas */}
+                      <td className={simStyles.tdProveedor}>
+                        <span className={simStyles.proveedorSeleccionado}>{proveedorSeleccionado}</span>
+                        {grupo && grupo.numeroProveedores > 1 && (
+                          <button
+                            type="button"
+                            className={simStyles.compararBtn}
+                            onClick={() => setCompararLineaId(linea.id)}
+                          >
+                            {grupo.numeroProveedores} proveedores · ver comparación
+                          </button>
+                        )}
+                        {diferenciaMejor > 0.009 && (
+                          <>
+                            <span className={simStyles.precioMejorHint}>
+                              Hay una opción {eur(diferenciaMejor)} más barata
+                            </span>
+                            <button
+                              type="button"
+                              className={simStyles.mejorPrecioBtn}
+                              disabled={busy || isBlocked || !ofertaBarata}
+                              onClick={() => handleCambiarOferta(linea, ofertaBarata)}
+                            >
+                              {busy ? 'Guardando…' : 'Usar mejor precio'}
+                            </button>
+                          </>
+                        )}
+                      </td>
 
                       {/* Badge de estado */}
                       <td className={simStyles.tdEstado}>
@@ -1591,31 +1800,23 @@ export default function SimuladorCarta() {
             </div>
           ) : (
             <div className={simStyles.sustituirLista}>
-              {catalogoFiltradoSustituir.map(v => {
-                const yaEnBorrador = simEnBorradorSet.has(v.id)
-                return (
-                  <div key={v.id} className={simStyles.sustituirItem}>
-                    <div className={simStyles.sustituirItemInfo}>
-                      <div className={simStyles.sustituirItemNombre}>{v.nombre}</div>
-                      <div className={simStyles.sustituirItemMeta}>
-                        {[v.bodega, v.tipo, v.region].filter(Boolean).join(' · ')}
-                        {Number(v.pvp_recomendado) > 0 && ` · ${eur(v.pvp_recomendado)}`}
-                      </div>
-                    </div>
-                    {yaEnBorrador ? (
-                      <span className={simStyles.sustituirYaEnBorrador}>Ya en borrador</span>
-                    ) : (
-                      <button
-                        type="button"
-                        className={simStyles.accionBtn}
-                        onClick={() => handleSustituir(v)}
-                      >
-                        Elegir
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
+              {catalogoFiltradoSustituir.map(grupo => (
+                <CatalogoGrupoItem
+                  key={grupo.key}
+                  grupo={grupo}
+                  mode="substitute"
+                  expanded={gruposAbiertos.has(`sustituir:${grupo.key}`)}
+                  alreadyInDraft={grupoYaEnBorrador(grupo)}
+                  onToggle={key => setGruposAbiertos(prev => {
+                    const next = new Set(prev)
+                    const groupKey = `sustituir:${key}`
+                    next.has(groupKey) ? next.delete(groupKey) : next.add(groupKey)
+                    return next
+                  })}
+                  onToggleSelected={() => {}}
+                  onChoose={handleSustituir}
+                />
+              ))}
             </div>
           )}
         </ResponsiveOverlay>
@@ -1644,33 +1845,28 @@ export default function SimuladorCarta() {
             </div>
           ) : (
             <div className={simStyles.sustituirLista}>
-              {catalogoFiltradoAnadir.map(v => {
-                const yaEnBorrador = simEnBorradorSet.has(v.id)
-                const seleccionado = selAnadir.has(v.id)
-                return (
-                  <div
-                    key={v.id}
-                    className={`${simStyles.sustituirItem} ${seleccionado ? simStyles.sustituirItemSel : ''}`}
-                    onClick={() => {
-                      if (yaEnBorrador) return
-                      setSelAnadir(prev => { const n = new Set(prev); seleccionado ? n.delete(v.id) : n.add(v.id); return n })
-                    }}
-                  >
-                    <div className={simStyles.sustituirItemInfo}>
-                      <div className={simStyles.sustituirItemNombre}>{v.nombre}</div>
-                      <div className={simStyles.sustituirItemMeta}>
-                        {[v.bodega, v.tipo, v.region].filter(Boolean).join(' · ')}
-                        {Number(v.pvp_recomendado) > 0 && ` · ${eur(v.pvp_recomendado)}`}
-                      </div>
-                    </div>
-                    {yaEnBorrador ? (
-                      <span className={simStyles.sustituirYaEnBorrador}>Ya en borrador</span>
-                    ) : (
-                      <input type="checkbox" readOnly checked={seleccionado} className={simStyles.anadirCheck} />
-                    )}
-                  </div>
-                )
-              })}
+              {catalogoFiltradoAnadir.map(grupo => (
+                <CatalogoGrupoItem
+                  key={grupo.key}
+                  grupo={grupo}
+                  mode="add"
+                  expanded={gruposAbiertos.has(`anadir:${grupo.key}`)}
+                  selected={selAnadir.has(grupo.key)}
+                  alreadyInDraft={grupoYaEnBorrador(grupo)}
+                  onToggle={key => setGruposAbiertos(prev => {
+                    const next = new Set(prev)
+                    const groupKey = `anadir:${key}`
+                    next.has(groupKey) ? next.delete(groupKey) : next.add(groupKey)
+                    return next
+                  })}
+                  onToggleSelected={item => setSelAnadir(prev => {
+                    const next = new Set(prev)
+                    next.has(item.key) ? next.delete(item.key) : next.add(item.key)
+                    return next
+                  })}
+                  onChoose={handleAnadirDesdeCatalogo}
+                />
+              ))}
             </div>
           )}
           {selAnadir.size > 0 && (
@@ -1685,6 +1881,34 @@ export default function SimuladorCarta() {
               </button>
             </div>
           )}
+        </ResponsiveOverlay>
+
+        {/* ── Modal: comparación de ofertas ─────────────────────── */}
+        <ResponsiveOverlay
+          open={Boolean(compararLineaId)}
+          onClose={() => setCompararLineaId(null)}
+          size="modal"
+          eyebrow="Proveedores"
+          title="Comparar ofertas"
+          description="La carta conserva una sola referencia. Elige otra oferta para actualizar el coste y el margen de esta misma línea."
+        >
+          {(() => {
+            const linea = lineas.find(item => item.id === compararLineaId)
+            const grupo = grupoDeLinea(linea)
+            if (!linea || !grupo) return <div className={simStyles.sustituirVacio}>No hay ofertas alternativas disponibles.</div>
+            return (
+              <CatalogoGrupoItem
+                grupo={grupo}
+                mode="compare"
+                expanded
+                selectedOfferId={linea.catalogo_vino_id}
+                alreadyInDraft={false}
+                onToggle={() => {}}
+                onToggleSelected={() => {}}
+                onChoose={oferta => handleCambiarOferta(linea, oferta)}
+              />
+            )
+          })()}
         </ResponsiveOverlay>
 
         {/* ── Modal: maridajes para un vino ─────────────────── */}
