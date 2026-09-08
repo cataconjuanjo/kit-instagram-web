@@ -1,13 +1,12 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
 import { useParams } from 'next/navigation'
 import { normalizarTexto as normalizarTextoBase } from '../../lib/textNormalize'
 import { consultarMaridaje } from '../../lib/maridajeClient'
 import { analizarMaridaje } from '../../lib/maridajeEngine'
 import { isLargeFormatWine } from '../../lib/wineFormat'
-import { canonicalWineRegion, commercialScopeForWine, localWineLabel } from '../../lib/wineRegion'
+import { canonicalWineRegion, commercialScopeForWine } from '../../lib/wineRegion'
 import { enviarAprobacionPreview } from '../../lib/previewApprovalClient'
 import { cargarRestaurantePublico, evaluarRespuestaRestaurantePublico } from '../../lib/publicRestaurantClient'
 import { supabase } from '../../supabase'
@@ -722,8 +721,6 @@ export default function CartaPublica() {
   const [soloCopa, setSoloCopa] = useState(false)
   const [soloLocal, setSoloLocal] = useState(false)
   const [precioMin, setPrecioMin] = useState(null)
-  const [seccionAbierta, setSeccionAbierta] = useState('')
-  const [seccionInicialAplicada, setSeccionInicialAplicada] = useState(false)
   const [busquedaPlatos, setBusquedaPlatos] = useState('')
   const [categoriaPlatoAbierta, setCategoriaPlatoAbierta] = useState('')
   const [idioma, setIdioma] = useState('es')
@@ -805,29 +802,6 @@ export default function CartaPublica() {
     vinoEnSeleccion(vino, seleccionJuanjo) && { texto: 'Selección del consultor', detalle: 'por @cataconjuanjo · WSET Level 3', tipo: 'consultor' },
     vinoEnSeleccion(vino, seleccionRestaurante) && { texto: 'Recomienda la casa', tipo: 'casa' },
   ].filter(Boolean)
-
-  const mantenerPosicion = (accion, evento) => {
-    if (typeof window === 'undefined') {
-      accion()
-      return
-    }
-    const elemento = evento?.currentTarget
-    const topAntes = elemento?.getBoundingClientRect().top
-    const scrollAntes = window.scrollY
-    flushSync(() => { accion() })
-    if (elemento && document.body.contains(elemento) && topAntes !== undefined) {
-      const topDespues = elemento.getBoundingClientRect().top
-      window.scrollBy({ top: topDespues - topAntes, left: 0, behavior: 'instant' })
-    } else {
-      window.scrollTo({ top: scrollAntes, left: 0, behavior: 'instant' })
-    }
-  }
-
-  const toggleSeccion = (id, evento) => {
-    mantenerPosicion(() => {
-      setSeccionAbierta(actual => actual === id ? '' : id)
-    }, evento)
-  }
 
   const abrirFichaVino = (vino, stats = null) => {
     if (typeof window !== 'undefined') scrollAntesFicha.current = window.scrollY
@@ -1205,11 +1179,13 @@ export default function CartaPublica() {
   const _tipoNorm = v => normTipo(v.tipo) || v.tipo || null
   const tiposDisponibles = [...new Set(vinos.map(_tipoNorm).filter(Boolean))]
   const tiposBaseOrdenados = i.tiposOrdenados || TIPOS_VINO
-  const tiposCopaBaseOrdenados = i.tiposPorCopaOrdenados || ['blanco', 'tinto', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol']
   const ordenarTiposDisponibles = orden => [...orden, ...tiposDisponibles]
     .filter((tipo, index, lista) => tipo && tiposDisponibles.includes(tipo) && lista.indexOf(tipo) === index)
   const tiposOrdenados = ordenarTiposDisponibles(tiposBaseOrdenados)
-  const tiposPorCopaOrdenados = ordenarTiposDisponibles(tiposCopaBaseOrdenados)
+  const tiposCartaOrdenados = ordenarTiposDisponibles([
+    'generoso', 'espumoso', 'blanco', 'rosado', 'naranja', 'tinto', 'dulce',
+    'sin_alcohol', 'sidra',
+  ])
   // Tipos que no mapean a ningún slug canónico → sección "Otros"
   const tiposCanonicos = new Set(TIPOS_VINO)
   const tiposOtros = tiposDisponibles.filter(t => !tiposCanonicos.has(t))
@@ -1263,43 +1239,22 @@ export default function CartaPublica() {
     const limpia = texto.replace(/\s+/g, ' ').trim()
     return limpia.length > 120 ? `${limpia.slice(0, 117)}...` : limpia
   }
-  const esCoravin = vino => normalizarTexto(vino.notas_cata || '').includes('coravin')
   const ambitoComercial = useCallback((vino) => {
     return commercialScopeForWine(vino, restaurante)
   }, [restaurante])
 
-  const mostrarSeleccion = seleccion.length > 0 && !busqueda && filtro === 'todos' && !precioMax && !precioMin && !soloInternacional && !soloCopa && !soloLocal
+  function esVinoInternacional(vino) {
+    const marcaInternacional = vino?.internacional
+    if (marcaInternacional === true || marcaInternacional === 'true') return true
+    if (marcaInternacional === false || marcaInternacional === 'false') return false
+    return ambitoComercial(vino) === 'internacional'
+  }
+
   const filtroActivo = precioMax || precioMin || filtro !== 'todos' || soloInternacional || soloCopa || soloLocal
-  const busquedaOFiltrado = Boolean(busqueda || filtroActivo)
   const vinosMenos30 = vinos.filter(v => Number(v.precio_botella) > 0 && Number(v.precio_botella) <= 30).length
   const vinosLocal = vinos.filter(v => ambitoComercial(v) === 'local').length
   const vinosCelebracion = vinos.filter(v => Number(v.precio_botella) >= 50).length
-  const vinosPorCopaTotal = vinos.filter(v => Number(v.precio_copa) > 0 && !esCoravin(v)).length
-  const vinosCoravinFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && esCoravin(v))
-  const vinosPorCopaFiltrados = vinosFiltrados.filter(v => Number(v.precio_copa) > 0 && !esCoravin(v))
-  // Vinos que solo tienen botella — excluidos de las secciones por copa para evitar duplicados
-  const vinosSoloBotella = vinosFiltrados.filter(v => !Number(v.precio_copa))
-
-  const gruposAmbito = useMemo(() => [
-    { id: 'local', label: i.gruposAmbito?.local || localWineLabel(restaurante) },
-    { id: 'espana', label: i.gruposAmbito?.espana || 'España' },
-    { id: 'internacional', label: i.gruposAmbito?.internacional || 'Internacionales' },
-    { id: 'sin_origen', label: i.gruposAmbito?.sin_origen || 'Sin D.O. / otros' },
-  ], [i.gruposAmbito, restaurante])
-  useEffect(() => {
-    if (loading || seccionInicialAplicada || seccionAbierta || busquedaOFiltrado) return
-    const timer = setTimeout(() => {
-      if (vinosPorCopaFiltrados.length > 0) {
-        setSeccionAbierta('copas')
-        setSeccionInicialAplicada(true)
-        return
-      }
-      const primerAmbito = gruposAmbito.find(ambito => vinosFiltrados.some(v => ambitoComercial(v) === ambito.id))
-      if (primerAmbito) setSeccionAbierta(primerAmbito.id)
-      if (primerAmbito || vinosFiltrados.length > 0) setSeccionInicialAplicada(true)
-    }, 0)
-    return () => clearTimeout(timer)
-  }, [loading, seccionInicialAplicada, seccionAbierta, busquedaOFiltrado, vinosPorCopaFiltrados.length, vinosFiltrados, gruposAmbito, ambitoComercial])
+  const vinosPorCopaTotal = vinos.filter(v => Number(v.precio_copa) > 0).length
 
   function prioridadRegion(region, ordenPersonalizado = null) {
     const r = normalizarTexto(region)
@@ -1347,59 +1302,46 @@ export default function CartaPublica() {
       }))
   }
 
-  function renderBloqueAmbito(ambito, lista, opciones = {}) {
-    const vinosAmbito = lista.filter(v => ambitoComercial(v) === ambito.id)
-    if (!vinosAmbito.length) return null
+  function renderBloqueTipo(tipo, lista) {
+    const vinosTipo = lista.filter(v => _tipoNorm(v) === tipo)
+    if (!vinosTipo.length) return null
+    const gruposAmbito = [
+      {
+        id: 'nacional',
+        label: idioma === 'en' ? 'National' : 'Nacionales',
+        vinos: vinosTipo.filter(v => !esVinoInternacional(v)),
+      },
+      {
+        id: 'internacional',
+        label: idioma === 'en' ? 'International' : 'Internacionales',
+        vinos: vinosTipo.filter(esVinoInternacional),
+      },
+    ].filter(grupo => grupo.vinos.length)
+    const mostrarSubtitulosAmbito = gruposAmbito.length > 1
     return (
-      <div key={`${opciones.prefix || 'ambito'}-${ambito.id}`} className={styles.regionGroup}>
-        <h3 className={styles.regionTitle}>{ambito.label}</h3>
-        {(opciones.precioCopaPrincipal ? tiposPorCopaOrdenados : tiposOrdenados).map(tipo => {
-          const vinosTipo = vinosAmbito.filter(v => _tipoNorm(v) === tipo)
-          if (!vinosTipo.length) return null
-          return (
-            <div key={`${opciones.prefix || 'ambito'}-${ambito.id}-${tipo}`} className={styles.regionSubgroup}>
-              <p className={styles.regionName}>{i.tipoPlural[tipo] || tipo}</p>
-              {agruparPorRegion(vinosTipo).map(grupoRegion => (
-                <div key={`${opciones.prefix || 'ambito'}-${ambito.id}-${tipo}-${grupoRegion.region}`} className={styles.regionSubgroup}>
-                  <p className={styles.regionDo}>{grupoRegion.region}</p>
-                  {grupoRegion.vinos.map(v => renderVinoCard(v, opciones))}
-                </div>
-              ))}
-            </div>
-          )
-        })}
-      </div>
+      <section key={`tipo-${tipo}`} className={styles.regionGroup}>
+        <h2 className={styles.regionTitle}>{i.tipoPlural[tipo] || tipo}</h2>
+        {gruposAmbito.map(grupoAmbito => (
+          <div key={`tipo-${tipo}-${grupoAmbito.id}`} className={mostrarSubtitulosAmbito ? styles.regionScope : undefined}>
+            {mostrarSubtitulosAmbito && <p className={styles.regionName}>{grupoAmbito.label}</p>}
+            {agruparPorRegion(grupoAmbito.vinos).map(grupoRegion => (
+              <div key={`tipo-${tipo}-${grupoAmbito.id}-${grupoRegion.region}`} className={styles.regionSubgroup}>
+                <p className={styles.regionDo}>{grupoRegion.region}</p>
+                {grupoRegion.vinos.map(v => renderVinoCard(v))}
+              </div>
+            ))}
+          </div>
+        ))}
+      </section>
     )
-  }
-
-  function renderBloqueCopas(lista) {
-    return tiposPorCopaOrdenados.map(tipo => {
-      const vinosTipo = lista.filter(v => _tipoNorm(v) === tipo)
-      if (!vinosTipo.length) return null
-      const sorted = [...vinosTipo].sort((a, b) =>
-        Number(a.precio_copa || 0) - Number(b.precio_copa || 0) ||
-        String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es')
-      )
-      const mlGrupo = sorted[0]?.copa_ml
-      return (
-        <div key={`copa-${tipo}`} className={styles.regionSubgroup}>
-          <p className={styles.regionName}>
-            {i.tipoPlural[tipo]}
-            {mlGrupo && <span className={styles.regionNameMl}> · {mlGrupo} ml</span>}
-          </p>
-          {sorted.map(v => renderVinoCard(v, { precioCopaPrincipal: true, mostrarDo: true, ocultarMl: true }))}
-        </div>
-      )
-    })
   }
 
   function renderVinoCard(v, opciones = {}) {
     const enComparador = vinosComparador.find(vc => vc.id === v.id)
     const tieneCopa = precioValido(v.precio_copa)
-    const etiquetaCopa = v.copa_ml ? `${i.copa} · ${v.copa_ml} ml` : i.copa
-    const etiquetaCopaMin = etiquetaCopa.toLowerCase()
     const tieneBotella = precioValido(v.precio_botella)
-    const precioCopaPrincipal = tieneCopa && (opciones.precioCopaPrincipal || !tieneBotella)
+    const mostrarPrecioCopa = tieneCopa && (soloCopa || !tieneBotella)
+    const mostrarPrecioBotella = !soloCopa && tieneBotella
     const etiquetas = etiquetasVino(v)
     const recomendadoConsultor = etiquetas.some(etiqueta => etiqueta.tipo === 'consultor')
     const notaSeleccion = notaCorta(limpiarNotaSeleccion(seleccionDeVino(v)?.nota_personal))
@@ -1445,22 +1387,17 @@ export default function CartaPublica() {
           )}
           {notaSeleccion && <p className={styles.wineNotes}>{notaSeleccion}</p>}
         </div>
-        <div className={`${styles.priceCol} ${opciones.ocultarMl ? styles.priceColCompact : ''}`}>
+        <div className={styles.priceCol}>
           <div className={styles.priceBlock}>
-            {tieneCopa ? (
+            {mostrarPrecioCopa ? (
               <>
                 <div className={styles.mainPrice}>
                   <span className={styles.formattedPrice}>{precioCopaCarta(v.precio_copa)}</span>
                   <small aria-label={i.copa}><CopaIcon size={18} /></small>
                 </div>
-                {v.copa_ml && !opciones.ocultarMl && <p className={styles.copaVolume}>{v.copa_ml} ml</p>}
-                {tieneBotella && (
-                  <p className={styles.priceMeta} aria-label={`${precioBotellaCarta(v.precio_botella)} ${i.botella.toLowerCase()}`}>
-                    {precioBotellaCarta(v.precio_botella)}{' / '}<BotellaIcon size={14} />
-                  </p>
-                )}
+                {v.copa_ml && <p className={styles.copaVolume}>{v.copa_ml} ml</p>}
               </>
-            ) : tieneBotella ? (
+            ) : mostrarPrecioBotella ? (
               <div className={styles.mainPrice}>
                 <span className={styles.formattedPrice}>{precioCartaSeguro(v.precio_botella, precioBotellaCarta)}</span>
                 <small aria-label={i.botella}><BotellaIcon size={18} /></small>
@@ -1488,7 +1425,8 @@ export default function CartaPublica() {
     const enComparador = vinosComparador.find(vc => vc.id === v.id)
     const tieneCopa = precioValido(v.precio_copa)
     const tieneBotella = precioValido(v.precio_botella)
-    const etiquetaCopaMin = (v.copa_ml ? `${i.copa} · ${v.copa_ml} ml` : i.copa).toLowerCase()
+    const mostrarPrecioCopa = tieneCopa && (soloCopa || !tieneBotella)
+    const mostrarPrecioBotella = !soloCopa && tieneBotella
     const etiquetaUrl = String(v.foto_url || '').trim()
     const meta = resumenVinoListado(v)
     return (
@@ -1520,13 +1458,12 @@ export default function CartaPublica() {
             <h3>{nombreVinoCarta(v)}</h3>
             {meta && <p>{meta}</p>}
           </button>
-          {(tieneBotella || tieneCopa) && (
+          {(mostrarPrecioBotella || mostrarPrecioCopa) && (
             <div className={styles.labelPriceRow}>
-              {tieneCopa && <strong>{precioCopaCarta(v.precio_copa)}</strong>}
-              {tieneCopa && <span>/ <CopaIcon size={14} />{v.copa_ml ? ` · ${v.copa_ml} ml` : ''}</span>}
-              {tieneCopa && tieneBotella && <span>·</span>}
-              {tieneBotella && <strong>{precioBotellaCarta(v.precio_botella)}</strong>}
-              {tieneBotella && <span>/ <BotellaIcon size={14} /></span>}
+              {mostrarPrecioCopa && <strong>{precioCopaCarta(v.precio_copa)}</strong>}
+              {mostrarPrecioCopa && <span>/ <CopaIcon size={14} />{v.copa_ml ? ` · ${v.copa_ml} ml` : ''}</span>}
+              {mostrarPrecioBotella && <strong>{precioBotellaCarta(v.precio_botella)}</strong>}
+              {mostrarPrecioBotella && <span>/ <BotellaIcon size={14} /></span>}
             </div>
           )}
           <button
@@ -1558,14 +1495,8 @@ export default function CartaPublica() {
     setMostrarFiltros(false)
     if (id === 'menos30') setPrecioMax(prev => prev === 30 ? null : 30)
     else if (id === 'celebracion') setPrecioMin(prev => prev === 50 ? null : 50)
-  }
-
-  function irASeccion(id) {
-    setMostrarFiltros(false)
-    setSeccionAbierta(id)
-    requestAnimationFrame(() => {
-      document.getElementById(`seccion-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
+    else if (id === 'copa') setSoloCopa(prev => !prev)
+    else if (id === 'local') setSoloLocal(prev => !prev)
   }
 
   const estadoCargaCarta = estadoCartaPublica({ loading, loadError, restaurante, idioma, textos: i })
@@ -2026,34 +1957,62 @@ export default function CartaPublica() {
           </section>
         )}
 
-        {!busqueda && (
+        <>
           <section className={styles.shortcutPanel}>
             <button
+              type="button"
               className={`${styles.shortcut} ${precioMax === 30 ? styles.shortcutActive : ''}`}
+              aria-pressed={precioMax === 30}
+              aria-label="Menos de 30 euros"
+              title="Menos de 30 euros"
               onClick={() => aplicarAtajo('menos30')} disabled={!vinosMenos30}>
-              <span>Menos de 30 €</span>
+              <span>
+                <span className={styles.shortcutLabelFull}>Menos de 30 €</span>
+                <span className={styles.shortcutLabelCompact} aria-hidden="true">&lt;30 €</span>
+              </span>
               <small>{precioMax === 30 ? 'Toca para quitar' : `${vinosMenos30} vinos`}</small>
             </button>
             <button
-              className={styles.shortcut}
-              onClick={() => irASeccion('local')} disabled={!vinosLocal}>
-              <span>Vinos de Málaga</span>
-              <small>{`${vinosLocal} vinos`}</small>
+              type="button"
+              className={`${styles.shortcut} ${soloLocal ? styles.shortcutActive : ''}`}
+              aria-pressed={soloLocal}
+              aria-label="Vinos de Málaga"
+              title="Vinos de Málaga"
+              onClick={() => aplicarAtajo('local')} disabled={!vinosLocal}>
+              <span>
+                <span className={styles.shortcutLabelFull}>Vinos de Málaga</span>
+                <span className={styles.shortcutLabelCompact} aria-hidden="true">Málaga</span>
+              </span>
+              <small>{soloLocal ? 'Toca para quitar' : `${vinosLocal} vinos`}</small>
             </button>
             <button
+              type="button"
               className={`${styles.shortcut} ${precioMin === 50 ? styles.shortcutActive : ''}`}
+              aria-pressed={precioMin === 50}
+              aria-label="Para celebrar"
+              title="Para celebrar"
               onClick={() => aplicarAtajo('celebracion')} disabled={!vinosCelebracion}>
-              <span>Para celebrar</span>
+              <span>
+                <span className={styles.shortcutLabelFull}>Para celebrar</span>
+                <span className={styles.shortcutLabelCompact} aria-hidden="true">Celebrar</span>
+              </span>
               <small>{precioMin === 50 ? 'Toca para quitar' : `${vinosCelebracion} vinos`}</small>
             </button>
             <button
-              className={styles.shortcut}
-              onClick={() => irASeccion('copas')} disabled={!vinosPorCopaTotal}>
-              <span>Vinos por copa</span>
-              <small>{`${vinosPorCopaTotal} vinos`}</small>
+              type="button"
+              className={`${styles.shortcut} ${styles.shortcutCopa} ${soloCopa ? styles.shortcutActive : ''}`}
+              aria-pressed={soloCopa}
+              aria-label="Vinos por copa"
+              title="Vinos por copa"
+              onClick={() => aplicarAtajo('copa')} disabled={!vinosPorCopaTotal}>
+              <span className={styles.shortcutCopaLabel}>
+                <CopaIcon size={24} />
+                <span>Vinos por copa</span>
+              </span>
+              <small>{vinosPorCopaTotal} vinos</small>
             </button>
           </section>
-        )}
+        </>
 
         {!busqueda && filtro === 'todos' && (
           <div className={styles.armoniaCard} style={{ borderLeftColor: colorAcento }}>
@@ -2107,176 +2066,11 @@ export default function CartaPublica() {
           </section>
         )}
 
-        {modoCarta === 'referencias' && vinosCoravinFiltrados.length > 0 && filtro === 'todos' && (
-          <section className={styles.accordionSection}>
-            <button
-              type="button"
-              className={styles.accordionHead}
-              onClick={evento => toggleSeccion('coravin', evento)}
-              aria-expanded={soloCopa || busquedaOFiltrado || seccionAbierta === 'coravin'}
-            >
-              <div>
-                <h2 className={styles.sectionTitle}>{i.seleccionCoravin}</h2>
-                <p className={styles.sectionSub}>{i.seleccionCoravinSub} - {vinosCoravinFiltrados.length} {i.referencias}</p>
-              </div>
-              <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'coravin' ? '-' : '+'}</span>
-            </button>
-            {(soloCopa || busquedaOFiltrado || seccionAbierta === 'coravin') && gruposAmbito.map(ambito =>
-              renderBloqueAmbito(ambito, vinosCoravinFiltrados, { precioCopaPrincipal: true, prefix: 'coravin' })
-            )}
-          </section>
-        )}
-
-        {modoCarta === 'referencias' && vinosPorCopaFiltrados.length > 0 && filtro === 'todos' && (
-          <section id="seccion-copas" className={styles.accordionSection}>
-            <button
-              type="button"
-              className={styles.accordionHead}
-              onClick={evento => toggleSeccion('copas', evento)}
-              aria-expanded={soloCopa || busquedaOFiltrado || seccionAbierta === 'copas'}
-            >
-              <div>
-                <h2 className={styles.sectionTitle}>{i.vinosPorCopa || 'Vinos por copa'}</h2>
-                <p className={styles.sectionSub}>{vinosPorCopaFiltrados.length} {i.referencias}</p>
-              </div>
-              <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'copas' ? '−' : '+'}</span>
-            </button>
-            {(soloCopa || busquedaOFiltrado || seccionAbierta === 'copas') && renderBloqueCopas(vinosPorCopaFiltrados)}
-          </section>
-        )}
-
-        {false && mostrarSeleccion && (
-          <section className={styles.selection}>
-            {seleccionJuanjo.length > 0 && (
-              <div className={styles.selectionGroup}>
-              <div className={styles.selectionSource}>
-                <span className={styles.selectionSourceMark} style={{ background: colorPrimario }} />
-                <div>
-                <p className={styles.kicker} style={{ color: '#9b7430', marginBottom: 5 }}>{i.seleccionEspecial}</p>
-                <h2 className={styles.sectionTitle}>@cataconjuanjo</h2>
-                <p className={styles.sectionSub}>WSET Level 3 · Selección del consultor</p>
-              </div>
-                </div>
-            {seleccionJuanjo.map(s => (
-              <article
-                key={s.id}
-                className={styles.featuredCard}
-                role="button"
-                tabIndex={0}
-                onClick={() => abrirFichaVino(s.vinos)}
-                onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(s.vinos))}
-              >
-                <div className={styles.wineTop}>
-                  <span className={styles.dot} style={{ background: tipoDot[s.vinos?.tipo] || colorPrimario }} />
-                  <h3 className={styles.wineName}>{nombreVinoCarta(s.vinos)}</h3>
-                </div>
-                <p className={styles.wineNotes}>{limpiarNotaSeleccion(s.nota_personal)}</p>
-                <div className={styles.priceBlock} style={{ marginTop: 12 }}>
-                  <p className={styles.wineMeta} style={{ margin: 0 }}>{resumenVino(s.vinos || {})}</p>
-                  {precioValido(s.vinos?.precio_botella) && <p className={styles.bottlePrice}>{precioBotellaCarta(s.vinos.precio_botella)}</p>}
-                </div>
-              </article>
-            ))}
-            </div>
-            )}
-
-            {seleccionRestaurante.length > 0 && (
-              <div className={styles.selectionGroup}>
-                <div className={styles.selectionSource}>
-                  <span className={styles.selectionSourceMark} style={{ background: colorPrimario }} />
-                  <div>
-                  <p className={styles.kicker} style={{ color: '#9b7430', marginBottom: 5 }}>Recomendación de la casa</p>
-                  <h2 className={styles.sectionTitle}>{restaurante?.nombre}</h2>
-                  <p className={styles.sectionSub}>Selección directa del restaurante</p>
-                </div>
-              </div>
-
-            {seleccionRestaurante.map(s => (
-              <article
-                key={s.id}
-                className={styles.featuredCard}
-                role="button"
-                tabIndex={0}
-                onClick={() => abrirFichaVino(s.vinos)}
-                onKeyDown={event => activarConTeclado(event, () => abrirFichaVino(s.vinos))}
-              >
-                <div className={styles.wineTop}>
-                  <span className={styles.dot} style={{ background: tipoDot[s.vinos?.tipo] || colorPrimario }} />
-                  <h3 className={styles.wineName}>{nombreVinoCarta(s.vinos)}</h3>
-                </div>
-                <p className={styles.wineNotes}>{limpiarNotaSeleccion(s.nota_personal)}</p>
-                <div className={styles.priceBlock} style={{ marginTop: 12 }}>
-                  <p className={styles.wineMeta} style={{ margin: 0 }}>{resumenVino(s.vinos || {})}</p>
-                  {precioValido(s.vinos?.precio_botella) && <p className={styles.bottlePrice}>{precioBotellaCarta(s.vinos.precio_botella)}</p>}
-                </div>
-              </article>
-            ))}
-              </div>
-            )}
-          </section>
-        )}
-
         {vinosFiltrados.length === 0 && (
           <div className={styles.empty}>{i.sinResultados}</div>
         )}
 
-        {false && vinosFiltrados.some(v => Number(v.precio_copa) > 0) && filtro === 'todos' && (
-          <section className={styles.accordionSection}>
-            <button
-              type="button"
-              className={styles.accordionHead}
-              onClick={evento => toggleSeccion('copas', evento)}
-              aria-expanded={soloCopa || busquedaOFiltrado || seccionAbierta === 'copas'}
-            >
-              <div>
-                <h2 className={styles.sectionTitle}>{i.vinosPorCopa || 'Vinos por copa'}</h2>
-                <p className={styles.sectionSub}>{vinosFiltrados.filter(v => Number(v.precio_copa) > 0).length} {i.referencias}</p>
-              </div>
-              <span className={styles.accordionIcon}>{soloCopa || busquedaOFiltrado || seccionAbierta === 'copas' ? '−' : '+'}</span>
-            </button>
-            {false && (soloCopa || busquedaOFiltrado || seccionAbierta === 'copas') && tiposPorCopaOrdenados.map(tipo => {
-              const grupoTipo = vinosFiltrados.filter(v => v.tipo === tipo && Number(v.precio_copa) > 0)
-              if (!grupoTipo.length) return null
-              return (
-                <div key={`copas-${tipo}`} className={styles.regionGroup}>
-                  <h3 className={styles.regionTitle}>{i.tipoPlural[tipo]}</h3>
-                  {agruparPorRegion(grupoTipo).map(grupoRegion => (
-                    <div key={`copas-${tipo}-${grupoRegion.region}`} className={styles.regionSubgroup}>
-                      <p className={styles.regionName}>{grupoRegion.region}</p>
-                      {grupoRegion.vinos.map(v => renderVinoCard(v, { precioCopaPrincipal: true }))}
-                    </div>
-                  ))}
-                </div>
-              )
-            })}
-            {(soloCopa || busquedaOFiltrado || seccionAbierta === 'copas') && gruposAmbito.map(ambito =>
-              renderBloqueAmbito(ambito, vinosFiltrados.filter(v => Number(v.precio_copa) > 0), { precioCopaPrincipal: true, prefix: 'copas' })
-            )}
-          </section>
-        )}
-
-        {modoCarta === 'referencias' && gruposAmbito.map(ambito => {
-          const grupo = vinosSoloBotella.filter(v => ambitoComercial(v) === ambito.id)
-          if (!grupo.length) return null
-          const abierta = busquedaOFiltrado || seccionAbierta === ambito.id
-          return (
-            <section key={ambito.id} id={`seccion-${ambito.id}`} className={styles.accordionSection}>
-              <button
-                type="button"
-                className={styles.accordionHead}
-                onClick={evento => toggleSeccion(ambito.id, evento)}
-                aria-expanded={abierta}
-              >
-                <div>
-                  <h2 className={styles.sectionTitle}>{ambito.label}</h2>
-                  <p className={styles.sectionSub}>{grupo.length} {i.referencias}</p>
-                </div>
-                <span className={styles.accordionIcon}>{abierta ? '−' : '+'}</span>
-              </button>
-              {abierta && renderBloqueAmbito(ambito, vinosSoloBotella, { prefix: 'carta' })}
-            </section>
-          )
-        })}
+        {modoCarta === 'referencias' && tiposCartaOrdenados.map(tipo => renderBloqueTipo(tipo, vinosFiltrados))}
 
       </main>
 
