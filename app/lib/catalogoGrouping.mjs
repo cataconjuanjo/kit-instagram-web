@@ -1,4 +1,7 @@
 const STABLE_ID_FIELDS = [
+  'vino_maestro_id',
+  'producto_maestro_id',
+  'master_product_id',
   'producto_id',
   'product_id',
   'wine_id',
@@ -10,6 +13,13 @@ const STABLE_ID_FIELDS = [
 ]
 
 const UNAVAILABLE_RE = /\b(no disponible|agotad[oa]|sin stock|descatalogad[oa]|fuera de stock)\b/i
+const PRODUCER_NOISE = new Set([
+  'bodega', 'bodegas', 'viticultor', 'viticultores', 'vinos', 'vino',
+  'winery', 'wines', 'cellers', 'cellar', 's.l', 'sl', 's.a', 'sa',
+])
+const PRODUCT_NAME_NOISE = new Set(['majuelo'])
+const PRODUCT_STOP_WORDS = new Set(['el', 'la', 'los', 'las', 'de', 'del', 'y', 'en'])
+const FORMAT_WORDS = new Set(['botella', 'botellas', 'bottle', 'bottles', 'caja', 'cajas', 'case', 'pack', 'estuche'])
 
 export function normalizarCatalogoTexto(value = '') {
   return String(value || '')
@@ -33,6 +43,55 @@ function numero(value) {
   if (typeof value === 'string') value = value.replace(',', '.')
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+function tokens(value) {
+  return normalizarCatalogoTexto(value).split(' ').filter(Boolean)
+}
+
+function anadaKey(oferta = {}) {
+  const fuente = [oferta.anada, oferta.ano, oferta.vintage, oferta.nombre].filter(Boolean).join(' ')
+  const anadas = fuente.match(/(?:19|20)\d{2}/g)
+  return anadas?.length ? [...new Set(anadas)].join('/') : ''
+}
+
+function productorKey(oferta = {}) {
+  const productor = primerValor(oferta, ['productor', 'elaborador', 'producer_name', 'winery', 'bodega'])
+  return tokens(productor).filter(token => !PRODUCER_NOISE.has(token)).join(' ')
+}
+
+function formatoKey(oferta = {}) {
+  const ml = volumenFormatoMl(oferta.formato)
+  const unidades = unidadesFormato(oferta)
+  if (ml) return `${ml}:${unidades}`
+  const formato = normalizarCatalogoTexto(oferta.formato)
+  return formato ? `${formato}:${unidades}` : ''
+}
+
+function productoTokens(oferta = {}) {
+  const nombre = primerValor(oferta, ['producto_nombre', 'nombre_producto', 'producto', 'nombre'])
+  const producerTokens = new Set(productorKey(oferta).split(' ').filter(Boolean))
+  const vintageTokens = new Set(anadaKey(oferta).split('/').filter(Boolean))
+  const resultado = tokens(nombre)
+    .filter(token => !producerTokens.has(token))
+    .filter(token => !vintageTokens.has(token))
+    .filter(token => !FORMAT_WORDS.has(token))
+    .filter(token => !PRODUCT_STOP_WORDS.has(token))
+    // "Majuelo" es un descriptor del viñedo que aparece antepuesto al nombre
+    // comercial en algunos catálogos; no debe impedir reconocer el producto.
+    .filter(token => !PRODUCT_NAME_NOISE.has(token))
+
+  if (resultado.length) return resultado
+
+  // Si el nombre era solo el productor (por ejemplo, "Aalto"), conservamos
+  // el nombre completo como identidad de producto en vez de dejarla vacía.
+  return tokens(nombre)
+    .filter(token => !vintageTokens.has(token))
+    .filter(token => !PRODUCT_STOP_WORDS.has(token))
+}
+
+function productoKey(oferta = {}) {
+  return productoTokens(oferta).join(' ')
 }
 
 export function volumenFormatoMl(formato = '') {
@@ -73,33 +132,27 @@ export function ofertaDisponible(oferta = {}) {
 function identidadOferta(oferta = {}, disambiguador = '') {
   const stable = primerValor(oferta, STABLE_ID_FIELDS)
   if (stable) {
-    return { key: `stable:${normalizarCatalogoTexto(stable)}`, confidence: 'high' }
+    return { key: `master:${normalizarCatalogoTexto(stable)}`, confidence: 'high' }
   }
 
   const name = normalizarCatalogoTexto(oferta.nombre)
   const secondary = {
-    bodega: normalizarCatalogoTexto(oferta.bodega),
-    anada: normalizarCatalogoTexto(oferta.anada),
+    productor: productorKey(oferta),
+    producto: productoKey(oferta),
+    anada: anadaKey(oferta),
+    formato: formatoKey(oferta),
     tipo: normalizarCatalogoTexto(oferta.tipo),
-    formato: `${volumenFormatoMl(oferta.formato) || ''}:${unidadesFormato(oferta)}`,
-    region: normalizarCatalogoTexto(oferta.region || oferta.zona),
-    uva: normalizarCatalogoTexto(oferta.uva),
   }
-  const populated = Object.values(secondary).filter(Boolean)
 
-  // Un nombre aislado no es una identidad suficientemente fiable para fusionar ofertas.
-  const hasReliableSecondary = Boolean(
-    secondary.bodega || secondary.formato !== ':1' || secondary.anada || secondary.region || secondary.uva
-  )
-  if (!name || !hasReliableSecondary) {
+  // Un nombre aislado o un registro sin productor/producto/formato no es una
+  // identidad suficientemente fiable para fusionar ofertas automáticamente.
+  if (!name || !secondary.productor || !secondary.producto || !secondary.formato) {
     return { key: `offer:${String(oferta.id || disambiguador || 'ambiguous')}`, confidence: 'ambiguous' }
   }
 
   return {
-    key: [name, ...Object.values(secondary)].join('|'),
-    confidence: populated.length >= 2 || Boolean(secondary.bodega || secondary.formato !== ':1' || secondary.anada || secondary.region)
-      ? 'medium'
-      : 'ambiguous',
+    key: [secondary.productor, secondary.producto, secondary.anada, secondary.formato, secondary.tipo].join('|'),
+    confidence: 'medium',
   }
 }
 
@@ -109,6 +162,18 @@ export function claveIdentidadOferta(oferta = {}) {
 
 function nombreProveedor(oferta) {
   return oferta.proveedor?.nombre || oferta.proveedor_nombre || oferta.proveedor || 'Sin proveedor'
+}
+
+function claveProveedor(oferta) {
+  const id = oferta.proveedor?.id || oferta.proveedor_id
+  return id ? `id:${String(id)}` : `nombre:${normalizarCatalogoTexto(nombreProveedor(oferta))}`
+}
+
+function nombreGrupo(ofertas = []) {
+  return [...ofertas]
+    .filter(oferta => oferta?.nombre)
+    .sort((a, b) => productoTokens(a).length - productoTokens(b).length || String(a.nombre).length - String(b.nombre).length)[0]
+    ?.nombre || 'Vino sin nombre'
 }
 
 export function agruparOfertasCatalogo(ofertas = []) {
@@ -146,17 +211,37 @@ export function agruparOfertasCatalogo(ofertas = []) {
       const disponibles = ofertas.filter(ofertaDisponible)
       const conPrecio = disponibles.filter(oferta => costePorBotella(oferta) !== null)
       const defaultOferta = conPrecio[0] || disponibles[0] || ofertas[0] || null
-      const proveedores = new Set(ofertas.map(nombreProveedor).filter(Boolean))
+      const proveedoresPorClave = new Map()
+      for (const oferta of ofertas) {
+        const key = claveProveedor(oferta)
+        if (!proveedoresPorClave.has(key)) proveedoresPorClave.set(key, nombreProveedor(oferta))
+      }
       return {
         ...grupo,
+        nombre: nombreGrupo(ofertas),
         ofertas,
         ofertaPorDefecto: defaultOferta,
         costeMinimo: conPrecio.length ? costePorBotella(conPrecio[0]) : null,
-        numeroProveedores: proveedores.size,
-        proveedores: [...proveedores],
+        numeroProveedores: proveedoresPorClave.size,
+        proveedores: [...proveedoresPorClave.values()],
       }
     })
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }))
+}
+
+export function resumenAgrupacionCatalogo(ofertas = [], grupos = agruparOfertasCatalogo(ofertas)) {
+  return {
+    generadoEn: new Date().toISOString(),
+    lineasOriginales: ofertas.length,
+    gruposCreados: grupos.length,
+    grupos: grupos.map(grupo => ({
+      key: grupo.key,
+      nombre: grupo.nombre,
+      ofertas: grupo.ofertas.length,
+      proveedoresDistintos: grupo.numeroProveedores,
+      ofertaIds: grupo.ofertas.map(oferta => oferta.id),
+    })),
+  }
 }
 
 export function ofertaGrupo(grupo, ofertaId) {

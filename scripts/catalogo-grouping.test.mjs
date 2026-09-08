@@ -4,6 +4,7 @@ import {
   agruparOfertasCatalogo,
   costePorBotella,
   ofertaMasBarata,
+  resumenAgrupacionCatalogo,
 } from '../app/lib/catalogoGrouping.mjs'
 
 function oferta(id, overrides = {}) {
@@ -110,4 +111,94 @@ test('conserva ofertas ambiguas separadas', () => {
     oferta('b', { nombre: 'Vino X', bodega: null, tipo: null, region: null, anada: null, formato: null }),
   ])
   assert.equal(grupos.length, 2)
+})
+
+test('caso real El Espejo: dos nombres de proveedor forman un grupo con dos ofertas', () => {
+  const grupos = agruparOfertasCatalogo([
+    {
+      id: 'espejo-vdd',
+      nombre: 'Cantalapiedra El Espejo 2023',
+      bodega: 'Cantalapiedra Viticultores',
+      tipo: 'blanco',
+      region: 'España',
+      anada: '2023',
+      referencia: 'VDD-0820',
+      formato: 'botella 75 cl',
+      coste_estimado: 27.5,
+      disponibilidad: 'Vins Des Dieux julio 2026',
+      proveedor_id: 'vins-des-dieux',
+      proveedor: { id: 'vins-des-dieux', nombre: 'Vins Des Dieux' },
+    },
+    {
+      id: 'espejo-somm',
+      nombre: 'Majuelo El Espejo 2023',
+      bodega: 'CANTALAPIEDRA',
+      tipo: 'blanco',
+      region: 'CASTILLA Y LEÓN',
+      anada: '2023',
+      referencia: null,
+      formato: 'botella 75 cl',
+      coste_estimado: 23.75,
+      disponibilidad: null,
+      proveedor_id: 'sommeliervinos',
+      proveedor: { id: 'sommeliervinos', nombre: 'Sommeliervinos' },
+    },
+  ])
+
+  assert.equal(grupos.length, 1)
+  assert.equal(grupos[0].ofertas.length, 2)
+  assert.equal(grupos[0].numeroProveedores, 2)
+  assert.equal(grupos[0].costeMinimo, 23.75)
+  assert.deepEqual(grupos[0].ofertas.map(item => item.id).sort(), ['espejo-somm', 'espejo-vdd'])
+  assert.equal(grupos[0].ofertas.find(item => item.id === 'espejo-vdd').referencia, 'VDD-0820')
+})
+
+test('la trazabilidad informa lineas originales, grupos, ofertas y proveedores', () => {
+  const ofertas = [
+    oferta('a', { proveedor_id: 'proveedor-a', proveedor: { id: 'proveedor-a', nombre: 'A' } }),
+    oferta('b', { proveedor_id: 'proveedor-b', proveedor: { id: 'proveedor-b', nombre: 'B' }, coste_estimado: 20 }),
+  ]
+  const grupos = agruparOfertasCatalogo(ofertas)
+  const resumen = resumenAgrupacionCatalogo(ofertas, grupos)
+
+  assert.equal(resumen.lineasOriginales, 2)
+  assert.equal(resumen.gruposCreados, 1)
+  assert.deepEqual(resumen.grupos[0].ofertas, 2)
+  assert.equal(resumen.grupos[0].proveedoresDistintos, 2)
+})
+
+test('no fusiona dos productos distintos del mismo productor', () => {
+  const grupos = agruparOfertasCatalogo([
+    {
+      id: 'espejo',
+      nombre: 'Majuelo El Espejo 2023',
+      bodega: 'Cantalapiedra Viticultores',
+      tipo: 'blanco',
+      anada: '2023',
+      formato: 'botella 75 cl',
+      coste_estimado: 23.75,
+      proveedor_id: 'a',
+    },
+    {
+      id: 'chiviritero',
+      nombre: 'Majuelo del Chiviritero 2023',
+      bodega: 'Cantalapiedra',
+      tipo: 'blanco',
+      anada: '2023',
+      formato: 'botella 75 cl',
+      coste_estimado: 19.5,
+      proveedor_id: 'b',
+    },
+  ])
+
+  assert.equal(grupos.length, 2)
+})
+
+test('cuenta proveedores por identificador aunque compartan nombre visible', () => {
+  const grupos = agruparOfertasCatalogo([
+    oferta('a', { proveedor_id: 'a', proveedor: { id: 'a', nombre: 'Distribuidor' } }),
+    oferta('b', { proveedor_id: 'b', proveedor: { id: 'b', nombre: 'Distribuidor' } }),
+  ])
+  assert.equal(grupos.length, 1)
+  assert.equal(grupos[0].numeroProveedores, 2)
 })
