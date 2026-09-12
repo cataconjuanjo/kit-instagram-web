@@ -29,7 +29,7 @@ export async function POST(request, { params }) {
 
   const { data: tienda } = await supabaseAdmin
     .from('tiendas')
-    .select('id, activo, subscription_status, plan, trial_used_seconds')
+    .select('id, activo, subscription_status, billing_grace_until, plan, trial_used_seconds')
     .eq('slug', slug)
     .eq('activo', true)
     .single()

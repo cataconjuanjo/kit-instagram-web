@@ -102,6 +102,81 @@ function fechaStripe(timestamp) {
   return timestamp ? new Date(timestamp * 1000).toISOString() : null
 }
 
+const BILLING_GRACE_MS = 48 * 60 * 60 * 1000
+
+function esFacturaDeRenovacion(invoice) {
+  return invoice?.billing_reason === 'subscription_cycle'
+}
+
+function fechaDelEvento(event) {
+  return fechaStripe(event.created) || new Date().toISOString()
+}
+
+async function obtenerTiendasDelCliente(adminSupabase, customerId) {
+  const { data, error } = await adminSupabase
+    .from('tiendas')
+    .select('id, billing_failed_at, billing_grace_invoice_id')
+    .eq('stripe_customer_id', customerId)
+
+  if (error) throw error
+  return data || []
+}
+
+async function marcarFalloDeRenovacion(adminSupabase, customerId, invoice, event) {
+  const tiendas = await obtenerTiendasDelCliente(adminSupabase, customerId)
+  const failedAt = fechaDelEvento(event)
+  const graceUntil = new Date(Date.parse(failedAt) + BILLING_GRACE_MS).toISOString()
+  const failedAtMs = Date.parse(failedAt)
+
+  for (const tienda of tiendas) {
+    const mismoInvoice = tienda.billing_grace_invoice_id === invoice.id
+    const ultimoFalloMs = Date.parse(tienda.billing_failed_at || '')
+    const hayFalloPosterior = Number.isFinite(ultimoFalloMs) && ultimoFalloMs >= failedAtMs
+    const update = { subscription_status: 'past_due' }
+
+    // Un reintento de la misma factura no reinicia ni amplÃ­a las 48 horas.
+    // Tampoco permitimos que un evento antiguo reabra una cortesÃ­a ya superada.
+    if (!mismoInvoice && !hayFalloPosterior) {
+      update.billing_failed_at = failedAt
+      update.billing_grace_until = graceUntil
+      update.billing_grace_invoice_id = invoice.id
+    }
+
+    const { error } = await adminSupabase
+      .from('tiendas')
+      .update(update)
+      .eq('id', tienda.id)
+    if (error) throw error
+  }
+
+  return { count: tiendas.length, graceUntil }
+}
+
+async function restaurarTiendasTrasPago(adminSupabase, customerId, invoice) {
+  const tiendas = await obtenerTiendasDelCliente(adminSupabase, customerId)
+  let restored = 0
+
+  for (const tienda of tiendas) {
+    // No limpiar una cortesÃ­a asociada a una factura mÃ¡s reciente.
+    if (tienda.billing_grace_invoice_id && tienda.billing_grace_invoice_id !== invoice.id) continue
+
+    const { error } = await adminSupabase
+      .from('tiendas')
+      .update({
+        activo: true,
+        subscription_status: 'active',
+        billing_failed_at: null,
+        billing_grace_until: null,
+        billing_grace_invoice_id: null,
+      })
+      .eq('id', tienda.id)
+    if (error) throw error
+    restored++
+  }
+
+  return restored
+}
+
 async function actualizarRestauranteStripe(adminSupabase, filtro, update) {
   const { error } = await adminSupabase
     .from('restaurantes')
@@ -301,7 +376,14 @@ export async function POST(req) {
           .eq('stripe_customer_id', customerId)
 
         await adminSupabase.from('tiendas')
-          .update({ activo: false, subscription_status: 'cancelled', stripe_subscription_id: null })
+          .update({
+            activo: false,
+            subscription_status: 'cancelled',
+            stripe_subscription_id: null,
+            billing_failed_at: null,
+            billing_grace_until: null,
+            billing_grace_invoice_id: null,
+          })
           .eq('stripe_customer_id', customerId)
 
         console.log(`✓ subscription.deleted — customer ${customerId} → cancelled`)
@@ -318,27 +400,33 @@ export async function POST(req) {
           .update({ subscription_status: 'past_due' })
           .eq('stripe_customer_id', customerId)
 
-        await adminSupabase.from('tiendas')
-          .update({ subscription_status: 'past_due' })
-          .eq('stripe_customer_id', customerId)
+        if (esFacturaDeRenovacion(invoice)) {
+          const result = await marcarFalloDeRenovacion(adminSupabase, customerId, invoice, event)
+          console.log(`invoice.payment_failed â€” customer ${customerId} â†’ past_due + 48h hasta ${result.graceUntil} (${result.count} kiosko(s))`)
+        } else {
+          await adminSupabase.from('tiendas')
+            .update({ subscription_status: 'past_due' })
+            .eq('stripe_customer_id', customerId)
+          console.log(`invoice.payment_failed â€” customer ${customerId} â†’ past_due (sin cortesÃ­a: no es renovaciÃ³n)`)
+        }
 
         console.log(`✓ invoice.payment_failed — customer ${customerId} → past_due`)
         break
       }
 
       // ── Pago de factura OK (restaurar si estaba past_due) ─────
-      case 'invoice.payment_succeeded': {
+      case 'invoice.payment_succeeded':
+      case 'invoice.paid': {
         const invoice    = event.data.object
         const customerId = invoice.customer
-        if (invoice.billing_reason === 'subscription_cycle') {
+        if (esFacturaDeRenovacion(invoice)) {
           await adminSupabase
             .from('restaurantes')
             .update({ subscription_status: 'active' })
             .eq('stripe_customer_id', customerId)
 
-          await adminSupabase.from('tiendas')
-            .update({ activo: true, subscription_status: 'active' })
-            .eq('stripe_customer_id', customerId)
+          const restored = await restaurarTiendasTrasPago(adminSupabase, customerId, invoice)
+          console.log(`billing grace cleared for ${restored} kiosko(s)`)
 
           console.log(`✓ invoice.payment_succeeded — customer ${customerId} → active`)
         }

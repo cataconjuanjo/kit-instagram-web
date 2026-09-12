@@ -37,7 +37,7 @@ export async function GET(request, { params }) {
   const lang = new URL(request.url).searchParams.get('lang') || 'es'
 
   const { data: tienda } = await supabaseAdmin
-    .from('tiendas').select('id, nombre, ciudad, activo, subscription_status, plan, trial_used_seconds').eq('slug', slug).eq('activo', true).single()
+    .from('tiendas').select('id, nombre, ciudad, activo, subscription_status, billing_grace_until, plan, trial_used_seconds').eq('slug', slug).eq('activo', true).single()
   if (!tienda || !isTiendaAccesible(tienda)) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
 
   const { data: vino } = await supabaseAdmin

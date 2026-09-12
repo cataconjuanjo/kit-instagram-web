@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../../lib/supabaseAdmin'
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'cataconjuanjo@gmail.com').toLowerCase()
 
 export const ADMIN_TIENDA_SELECT =
-  'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, informe_email, trial_expires_at, trial_used_seconds, precio_especial, setup_fee_incluido, activo, subscription_status, propietario_email, email'
+  'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, informe_email, trial_expires_at, trial_used_seconds, precio_especial, setup_fee_incluido, activo, subscription_status, billing_failed_at, billing_grace_until, propietario_email, email'
 
 export const ADMIN_VINO_SELECT =
   'id, nombre, bodega, tipo, uva, region, pais, anada, precio_pvp, precio_coste, precio_oferta, stock, stock_minimo, ubicacion_estanteria, foto_url, notas_cata, descripcion, puntuacion, destacado, activo, ficha_ia, square_catalog_id, categoria, apto_cesta, es_vegano, con_alcohol, cat_gourmet, sin_gluten'
@@ -65,16 +65,22 @@ export async function requireKioskoAccess(request, slug, { select = 'id, plan, p
 
 // Una tienda es accesible públicamente si está activa y tiene suscripción vigente
 // o un trial aún no agotado (límite: 3600 segundos de uso en el admin).
-export function isTiendaAccesible(tienda) {
+const BILLING_GRACE_MS = 48 * 60 * 60 * 1000
+
+export function isTiendaAccesible(tienda, now = Date.now()) {
   if (!tienda?.activo) return false
   if (tienda.subscription_status === 'active') return true
   if (tienda.plan === 'trial' && (tienda.trial_used_seconds ?? 0) < 3600) return true
+  if (tienda.subscription_status === 'past_due') {
+    const graceUntil = Date.parse(tienda.billing_grace_until || '')
+    if (Number.isFinite(graceUntil) && graceUntil > now) return true
+  }
   return false
 }
 
 export async function getPublicTienda(slug) {
   const publicSelect =
-    'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, activo, subscription_status, trial_used_seconds'
+    'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, activo, subscription_status, billing_grace_until, trial_used_seconds'
 
   const { data, error } = await supabaseAdmin
     .from('tiendas')
@@ -88,5 +94,8 @@ export async function getPublicTienda(slug) {
     return null
   }
 
-  return isTiendaAccesible(data) ? data : null
+  if (!isTiendaAccesible(data)) return null
+
+  const { billing_grace_until: _billingGraceUntil, ...publicData } = data
+  return publicData
 }
