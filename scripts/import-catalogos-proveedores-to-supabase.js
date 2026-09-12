@@ -12,6 +12,7 @@ const apply   = args.includes('--apply')
 const dryRun  = !apply
 const replace = args.includes('--replace')
 const yes     = args.includes('--yes')
+const confirmeFavoritosObsoletos = args.includes('--confirmo-favoritos-obsoletos')
 
 const flagIdx  = k => args.indexOf(k)
 const flagVal  = k => { const i = flagIdx(k); return i >= 0 ? args[i + 1] : null }
@@ -45,6 +46,10 @@ if (apply && dryRun) {
   console.error('ERROR interno: apply y dryRun son mutuamente excluyentes.')
   process.exit(1)
 }
+
+// Estos proveedores tienen muchos favoritos sin clave estable de reimportación.
+// Al hacer --replace --apply exigen el flag --confirmo-favoritos-obsoletos además.
+const PROVEEDORES_REQUIEREN_CONFIRMACION = ['Sommeliervinos', 'Bodegas Mar Malaga']
 
 // ── Catálogos configurados ────────────────────────────────────────────────────
 const CATALOGS = [
@@ -218,6 +223,18 @@ async function favoritosCount(supabase, providerId) {
   return count || 0
 }
 
+async function favoritosLista(supabase, providerId) {
+  if (String(providerId).startsWith('dry-run:')) return []
+  const { data, error } = await supabase
+    .from('proveedor_catalogo_vinos')
+    .select('nombre, bodega, formato, coste_estimado')
+    .eq('proveedor_id', providerId)
+    .eq('favorito', true)
+    .order('nombre')
+  if (error) throw error
+  return data || []
+}
+
 async function insertChunks(supabase, payload) {
   let inserted = 0
   for (let i = 0; i < payload.length; i += 500) {
@@ -306,7 +323,8 @@ async function main() {
     const sourceRows = readRows(filePath)
     const { provider, created, duplicateProviders } = await ensureProvider(supabase, catalog)
     const before = await existingCount(supabase, provider.id)
-    const favs   = await favoritosCount(supabase, provider.id)
+    const listaFavoritos = replace ? await favoritosLista(supabase, provider.id) : []
+    const favs = replace ? listaFavoritos.length : await favoritosCount(supabase, provider.id)
 
     const payload = payloadRows(sourceRows, provider.id, catalog.catalogName,
       (row) => normalizarCamposVino(row, mapaRefDenom))
@@ -317,6 +335,7 @@ async function main() {
 
     // ── Pre-vuelo ─────────────────────────────────────────────────────────
     if (replace) {
+      const requiereConfirmacion = PROVEEDORES_REQUIEREN_CONFIRMACION.includes(catalog.providerName)
       console.error('')
       console.error('─────────────────────────────────────────────')
       console.error(' PRE-VUELO — REPLACE')
@@ -327,6 +346,37 @@ async function main() {
       console.error(` Favoritos (seguros): ${favs}  ← NO se tocarán`)
       console.error(` Filas a eliminar:    ${noFavCount}  (excluidos los ${favs} favoritos)`)
       console.error(` Filas a insertar:    ${payload.length}`)
+
+      if (listaFavoritos.length > 0) {
+        console.error('')
+        console.error(' ⚠  FAVORITOS QUE QUEDARÁN CON PRECIO POTENCIALMENTE DESACTUALIZADO:')
+        console.error('     nº  nombre                                 bodega                formato    coste €')
+        console.error('     ──  ─────────────────────────────────────  ────────────────────  ─────────  ───────')
+        listaFavoritos.forEach((f, i) => {
+          const n  = String(i + 1).padStart(4)
+          const nm = (f.nombre || '').slice(0, 36).padEnd(37)
+          const bo = (f.bodega  || '').slice(0, 20).padEnd(20)
+          const fm = (f.formato || '').slice(0, 9).padEnd(10)
+          const co = String(f.coste_estimado ?? '').padStart(7)
+          console.error(`    ${n}  ${nm}  ${bo}  ${fm}  ${co}`)
+        })
+        console.error('')
+        console.error(`    ℹ  Estos ${favs} favoritos conservarán sus datos actuales tras el replace.`)
+        console.error('       Si el nuevo catálogo tiene precios distintos, la API los marcará')
+        console.error('       con precio_potencialmente_desactualizado=true.')
+      }
+
+      if (requiereConfirmacion && apply && !confirmeFavoritosObsoletos) {
+        console.error('')
+        console.error(`ERROR: "${catalog.providerName}" requiere confirmación explícita de favoritos obsoletos.`)
+        console.error('Añade --confirmo-favoritos-obsoletos al comando para proceder:')
+        console.error(`  node ... --replace --proveedor="${catalog.providerName}" --apply --confirmo-favoritos-obsoletos`)
+        console.error('')
+        console.error('  Esto confirma que entiendes que los favoritos listados arriba mantendrán')
+        console.error('  sus precios del catálogo anterior hasta reconciliación manual.')
+        process.exit(1)
+      }
+
       console.error('─────────────────────────────────────────────')
 
       if (!dryRun && !yes) {

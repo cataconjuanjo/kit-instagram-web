@@ -61,3 +61,33 @@
 | **Enlace carta ↔ catálogo (para vinos propios)** | `vinos.proveedor` es texto libre sin FK a `proveedores_vino.id`. No hay `proveedor_id` en `vinos`. | F7 ALTO: imposible saber si un vino de carta tiene oferta activa en catálogo, ni a qué precio. |
 | **Formato normalizado (enumerado)** | No existe enumerado; `formato` y `tamanyo` son text libre. | F8: formato libre genera ~N grafías para los mismos formatos reales. |
 | **Añada normalizada (año integer)** | `anada` es text. No hay columna `anada_year integer`. | F8: imposible filtrar o agrupar por cosecha de forma fiable. |
+
+---
+
+## Deuda conocida — favoritos sin clave estable
+
+> Detectado en bloque 2 (2026-09-12). Pendiente de resolver en bloque 4/5.
+
+**Magnitud:**
+
+| Proveedor | Favoritos | `referencia_proveedor` informada | Duplicados conocidos |
+|---|---|---|---|
+| Sommeliervinos | 154 | 0/154 (0 %) | 2 |
+| Bodegas Mar Malaga | 39 | sin auditar | 0 |
+| Otros proveedores | 194 | sin auditar | — |
+| **Total** | **387** | — | — |
+
+**Por qué es un problema:**
+Al ejecutar `--replace`, el DELETE borra todos los no-favoritos y el INSERT crea filas nuevas con los precios actualizados. Los favoritos sobreviven (el Parche A excluye filas con `favorito=true` del DELETE), pero sus columnas — incluido `coste_estimado` — no se actualizan nunca. Si el nuevo catálogo del proveedor trae un precio distinto, el favorito queda congelado en el precio anterior indefinidamente.
+
+No existe ninguna clave estable que permita hacer UPSERT: `referencia_proveedor` está al 0 % en los favoritos auditados de Sommeliervinos. La única clave razonablemente estable es el triplete textual `(nombre, bodega, formato)` normalizado — sin restricción de unicidad en BD.
+
+**Guardarraíles activos (bloque 2):**
+- La API `catalogo-consultor` añade `precio_potencialmente_desactualizado: true` a los favoritos que tienen un hermano (mismo proveedor + triplete normalizado) con `coste_estimado` distinto.
+- El importador imprime la lista completa de favoritos antes de cualquier `--replace --apply`.
+- Para Sommeliervinos y Bodegas Mar Malaga, `--replace --apply` exige además `--confirmo-favoritos-obsoletos`.
+
+**Solución prevista (bloque 4/5):**
+Implementar upsert por triplete normalizado en el importador (UPDATE coste y pvp en favoritos existentes en lugar de INSERT duplicado), junto con migración additive que añada `clave_upsert text GENERATED ALWAYS AS (...)` o índice parcial sobre `(proveedor_id, nombre_norm, bodega_norm, formato_norm)`.
+
+**Nota:** Los 2 duplicados existentes en Sommeliervinos no se han corregido — sirven como casos de prueba para la consulta 5.5 del bloque 3.
