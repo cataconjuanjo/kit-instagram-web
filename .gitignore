@@ -18,4 +18,5 @@ web-*.html
 debug.log
 tmp/
 output/
+backups/
 .vscode/

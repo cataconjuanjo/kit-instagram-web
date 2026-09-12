@@ -1,3 +1,19 @@
+# Reglas de seguridad — LEER PRIMERO
+
+## Archivos de credenciales — prohibición absoluta
+
+**Nunca leer ni imprimir el contenido de `.env*` ni de ningún archivo de credenciales** (`.env`, `.env.local`, `.env.production`, `*.pem`, `*secret*`, etc.).
+
+Esta regla existe porque ya ocurrió una vez: en septiembre de 2026, al leer `.env.local` para depurar un webhook, el contenido completo — incluyendo tokens de Supabase, Stripe, Square, Anthropic y la clave de cifrado de TPV — quedó impreso en el chat.
+
+**Si necesitas saber si una variable existe**, usa una comprobación de existencia que devuelva sí/no sin mostrar el valor:
+- PowerShell: `Select-String -Quiet "NOMBRE_VAR" .env.local`
+- Bash/Git Bash: `grep -c NOMBRE_VAR .env.local`
+
+**Si una tarea requiere conocer el valor real de una credencial**, pídele al usuario que lo introduzca directamente donde haga falta (por ejemplo en un comando entre comillas), nunca a través del chat ni del historial de conversación.
+
+---
+
 # Tu Instagram → Web Profesional
 
 Este proyecto convierte tu perfil de Instagram en una web de marca personal profesional.
@@ -71,3 +87,38 @@ Cuando generes o modifiques cualquier interfaz web (HTML, páginas, componentes 
 - El héroe de la página es una tesis: ábrete con lo más característico del tema, no con un patrón genérico.
 - Gasta la audacia en un solo elemento firma; el resto debe ser contenido y disciplina.
 - Móvil, foco de teclado y `prefers-reduced-motion` son requisitos mínimos, no opcionales.
+
+---
+
+# Reglas de refactorización del catálogo (R1–R9)
+
+Vigentes a partir de 2026-09-12 para la rama `refactor/catalogo-canonico` y cualquier
+tarea relacionada con proveedores, catálogo, favoritos, simulador o carta de vinos.
+
+**R1.** Trabaja en la rama `refactor/catalogo-canonico`. Créala si no existe. Un commit
+por bloque, con mensaje `"bloque N: <descripción>"`.
+
+**R2.** NUNCA ejecutes `DELETE`, `TRUNCATE`, `DROP TABLE`, `DROP COLUMN` ni `UPDATE`
+masivo sin `WHERE` contra la base. Las migraciones son expand-only: `CREATE TABLE`,
+`ADD COLUMN`, `CREATE INDEX` y backfills acotados. Nada de contract en esta fase.
+
+**R3.** Cada migración `NNNN_nombre.sql` lleva su pareja `NNNN_nombre_rollback.sql`.
+
+**R4.** No ejecutes migraciones contra producción. Déjalas escritas y comunica el
+comando exacto que debe lanzar el usuario.
+
+**R5.** No toques ficheros que el bloque no mencione. No reformatees código existente.
+No cambies dependencias, configuración de lint ni estilos.
+
+**R6.** No inventes nombres de tabla ni de columna. El diccionario canónico está en
+`ADAPTACION.md`. Si necesitas crear algo nuevo, sigue la convención existente del repo
+(snake_case, prefijo de dominio) y consulta antes de hacerlo.
+
+**R7.** Si algo de un bloque contradice lo que ves en el código, o es ambiguo, PARA y
+pregunta. No improvises ni "arregles de paso" nada que no te hayan pedido.
+
+**R8.** Al cerrar cada bloque, informa: ficheros tocados, qué se ha creado, qué ha
+quedado pendiente, y qué debe verificar el usuario manualmente.
+
+**R9.** Todo script nuevo nace con `--dry-run` por defecto: no escribe en la base
+salvo que se le pase `--apply` de forma explícita.
