@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { puedeUsar } from '../../lib/plans'
 import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
 import { agruparOfertasCatalogo, costePorBotella, resumenAgrupacionCatalogo } from '../../lib/catalogoGrouping.mjs'
+import { construirHermanosMap, esPrecioDesactualizado } from '../../lib/precioDesactualizado'
 
 const CATALOGO_PAGE_SIZE = 1000
 
@@ -71,13 +72,6 @@ export async function GET(req) {
       : { data: null }
     const econConfig = econSettings || {}
 
-    // Detectar favoritos con precio potencialmente desactualizado:
-    // buscar hermanos no-favoritos del mismo proveedor con distinto coste_estimado.
-    function normTexto(v) {
-      return String(v || '').toLocaleLowerCase('es-ES').normalize('NFD')
-        .replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ')
-    }
-
     const hermanos = []
     for (let desde = 0; ; desde += CATALOGO_PAGE_SIZE) {
       const { data: pagina, error: hErr } = await supabaseAdmin
@@ -94,23 +88,12 @@ export async function GET(req) {
       if (!pagina || pagina.length < CATALOGO_PAGE_SIZE) break
     }
 
-    const hermanosMap = new Map()
-    for (const h of hermanos) {
-      const key = [h.proveedor_id, normTexto(h.nombre), normTexto(h.bodega), normTexto(h.formato)].join('||')
-      if (!hermanosMap.has(key)) hermanosMap.set(key, new Set())
-      hermanosMap.get(key).add(Number(h.coste_estimado) || 0)
-    }
+    const hermanosMap = construirHermanosMap(hermanos)
 
     const result = (vinos || []).map(v => {
       const coste = costePorBotella(v)
       const calc = coste > 0 ? calcularPreciosSugeridos(coste, econConfig) : null
       const pvpBotella = calc?.botella || 0
-      const fKey = [v.proveedor_id, normTexto(v.nombre), normTexto(v.bodega), normTexto(v.formato)].join('||')
-      const siblingsCoste = hermanosMap.get(fKey)
-      const costeActual = Number(v.coste_estimado) || 0
-      const precio_potencialmente_desactualizado = siblingsCoste
-        ? [...siblingsCoste].some(c => c !== costeActual)
-        : false
       return {
         ...v,
         pvp_recomendado_origen: v.pvp_recomendado,
@@ -118,7 +101,7 @@ export async function GET(req) {
         pvp_recomendado: pvpBotella,
         pvp_copa: calc?.copa || 0,
         proveedor: providerMap[v.proveedor_id] || null,
-        precio_potencialmente_desactualizado,
+        precio_potencialmente_desactualizado: esPrecioDesactualizado(v, hermanosMap),
       }
     })
 
