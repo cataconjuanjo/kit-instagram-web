@@ -1,0 +1,279 @@
+valor_original,apariciones,propuesta_canonica,nivel,padre,confianza,DUDOSO
+Alemania,1168,Alemania,pais,,ALTA,
+Francia,763,Francia,pais,,ALTA,
+Vinos Y Destilados De Selección,548,,,,,TRUE
+Borgoña,529,Borgoña,do,Francia,ALTA,
+España,303,España,pais,,ALTA,
+D.O. Ca. Rioja,300,Rioja,do,,ALTA,
+Bourgogne,277,Borgoña,do,Francia,ALTA,
+Italia,269,Italia,pais,,ALTA,
+Champagne,233,Champagne,do,Francia,ALTA,
+D.O. Ca. Priorat,200,Priorat,do,Cataluña,ALTA,
+D.O. Ribera Del Duero,194,Ribera del Duero,do,Castilla y León,ALTA,
+Bordeaux,172,Bordeaux,do,Francia,ALTA,
+Toscana,147,Toscana,region,,ALTA,
+Andalucía,145,Andalucía,region,,ALTA,
+Rioja,132,Rioja,do,,ALTA,
+Argentina,130,Argentina,pais,,ALTA,
+Castilla Y León,115,Castilla y León,region,,ALTA,
+Piemonte,115,Piemonte,region,,ALTA,
+Sicilia,100,Sicilia,region,,ALTA,
+Ribera Del Duero,96,Ribera del Duero,do,Castilla y León,ALTA,
+California,92,California,region,,ALTA,
+Sanlucar,90,Manzanilla-Sanlúcar,do,Andalucía,ALTA,
+Rhône,81,Rhône,region,Francia,ALTA,
+Rias Baixas,73,Rías Baixas,do,Galicia,ALTA,
+Douro,72,Douro,do,,ALTA,
+La Rioja,68,Rioja,do,,ALTA,
+D.O. Montsant,64,Montsant,do,Cataluña,ALTA,
+Austria,60,Austria,pais,,ALTA,
+D.O. Terra Alta,59,Terra Alta,do,Cataluña,ALTA,
+Xerez,52,Jerez-Xérès-Sherry,do,Andalucía,ALTA,
+Galicia,51,Galicia,region,,ALTA,
+Sierras De Málaga,51,Sierras de Málaga,do,Andalucía,ALTA,
+Port,46,Porto,do,,MEDIA,
+Toro,44,Toro,do,Castilla y León,MEDIA,
+Abruzzo,41,Abruzzo,region,,MEDIA,
+Paradis,41,,,,,TRUE
+Bierzo,41,Bierzo,do,Castilla y León,MEDIA,
+Mosel,40,Mosel,do,,MEDIA,
+Burdeos,39,Bordeaux,do,Francia,MEDIA,
+Veneto,37,Veneto,region,,MEDIA,
+Australia,37,Australia,pais,,MEDIA,
+Rheingau,36,Rheingau,do,,MEDIA,
+Tokaji,36,Tokaj,do,,MEDIA,
+D.O. Rias Baixas,35,Rías Baixas,do,Galicia,MEDIA,
+Puglia,34,Puglia,region,,MEDIA,
+Friuli Venezia Giulia,34,Friuli-Venezia Giulia,region,,MEDIA,
+D.O. Somontano,33,Somontano,do,Aragón,MEDIA,
+D.O. Cava,33,Cava,do,,MEDIA,
+Cataluña,31,Cataluña,region,,MEDIA,
+Hungría,31,Hungría,pais,,MEDIA,
+Navarra,31,Navarra,do,,MEDIA,
+Lombardia,31,Lombardía,region,,MEDIA,
+D.O. Rueda,30,Rueda,do,Castilla y León,MEDIA,
+D.O. Toro,29,Toro,do,Castilla y León,MEDIA,
+D.O. Bierzo,29,Bierzo,do,Castilla y León,MEDIA,
+Alsace,27,Alsacia,do,Francia,MEDIA,
+Ribeiro,27,Ribeiro,do,Galicia,MEDIA,
+Cava,27,Cava,do,,MEDIA,
+Chile,26,Chile,pais,,MEDIA,
+Portugal,26,Portugal,pais,,MEDIA,
+Loira,26,Valle del Loira,region,Francia,MEDIA,
+D.O. Alella,25,Alella,do,Cataluña,MEDIA,
+D.O. Vinos De Madrid,25,Vinos de Madrid,do,,MEDIA,
+Jura,25,Jura,region,Francia,MEDIA,
+D.O. Valencia,24,Valencia,do,,MEDIA,
+D.O. Navarra,24,Navarra,do,,MEDIA,
+Loire,23,Valle del Loira,region,Francia,MEDIA,
+Chablis,22,Chablis,do,Borgoña,MEDIA,
+D.O. Empordà,22,Empordà,do,Cataluña,MEDIA,
+D.O. Jerez,22,Jerez-Xérès-Sherry,do,Andalucía,MEDIA,
+Emilia Romagna,21,Emilia-Romaña,region,,MEDIA,
+I.G.P. Castilla Y León,21,Castilla y León,region,,MEDIA,
+D.O. Valdeorras,20,Valdeorras,do,Galicia,MEDIA,
+D.O.P. Cebreros,20,Cebreros,do,,MEDIA,
+Penedes,19,Penedès,do,Cataluña,MEDIA,
+D.O. Montilla Moriles,19,Montilla-Moriles,do,Andalucía,MEDIA,
+Canarias,18,Canarias,region,,MEDIA,
+D.o.bierzo,18,Bierzo,do,Castilla y León,MEDIA,
+Valle Del Iregua,18,,,,,TRUE
+Brunelo Di Montalcino,17,Brunello di Montalcino,do,Toscana,MEDIA,
+Côte De Nuits,17,Côte de Nuits,region,Borgoña,MEDIA,
+Málaga,17,Málaga,do,Andalucía,MEDIA,
+Vinos De Jerez,17,Jerez-Xérès-Sherry,do,Andalucía,MEDIA,
+Ródano,17,Rhône,region,Francia,MEDIA,
+D.O. Sierra De Málaga,16,Sierras de Málaga,do,Andalucía,MEDIA,
+Chiclana,16,,,,,TRUE
+D.O. Ribeira Sacra,16,Ribeira Sacra,do,Galicia,MEDIA,
+Languedoc-rosellón,16,Languedoc-Roussillon,region,Francia,MEDIA,
+L.g.p. Vino De La Tierra De Barbanza E Iria,16,,,,,TRUE
+Alentejo,16,Alentejo,do,,MEDIA,
+Nueva Zelanda,15,Nueva Zelanda,pais,,MEDIA,
+Corpinnat,15,Corpinnat,do,Cataluña,MEDIA,
+D.O. Jerez-xeres-sherry,15,Jerez-Xérès-Sherry,do,Andalucía,MEDIA,
+Trentino Alto Adige,15,Trentino-Alto Adige,region,,MEDIA,
+Barbaresco,15,Barbaresco,do,Piemonte,MEDIA,
+Hungria,15,Hungría,pais,,MEDIA,
+D.O. La Mancha,15,La Mancha,do,,MEDIA,
+Langhe,15,Langhe,do,Piemonte,MEDIA,
+Valle De La Orotava,14,Valle de la Orotava,do,Canarias,MEDIA,
+Ribera Sacra,14,Ribeira Sacra,do,Galicia,MEDIA,
+D.O. Empordá,14,Empordà,do,Cataluña,MEDIA,
+Estados Unidos,14,Estados Unidos,pais,,MEDIA,
+Murcia,14,Murcia,region,,MEDIA,
+Campania,13,Campania,region,,MEDIA,
+Produced From Pre-phylloxera Grapes,12,,,,,TRUE
+Grecia,12,Grecia,pais,,MEDIA,
+Vino de la Tierra Mallorca,12,,,,,TRUE
+D.O. Penedés,12,Penedès,do,Cataluña,MEDIA,
+Pais Vasco,12,País Vasco,region,,MEDIA,
+D.O. Cebreros,12,Cebreros,do,,MEDIA,
+Côtes De Provence,11,Côtes de Provence,do,Provenza,MEDIA,
+Cebreros,11,Cebreros,do,,MEDIA,
+D.O.P. Valencia,11,Valencia,do,,MEDIA,
+Sardegna,11,Cerdeña,region,,MEDIA,
+Ribeira Sacra,11,Ribeira Sacra,do,Galicia,MEDIA,
+Manchuela,11,Manchuela,do,,MEDIA,
+Friuli,11,Friuli-Venezia Giulia,region,,MEDIA,
+Vinos Tierra De Mallorca,11,,,,,TRUE
+D.O. Granada,11,,,,,TRUE
+ESTADOS UNIDOS,11,Estados Unidos,pais,,MEDIA,
+Sudáfrica,11,Sudáfrica,pais,,MEDIA,
+Esperit Roca,11,,,,,TRUE
+Usa,10,Estados Unidos,pais,,MEDIA,
+Pla I Levant,10,,,,,TRUE
+D.O. Ribeiro,10,Ribeiro,do,Galicia,MEDIA,
+Otros Vinos,10,,,,,TRUE
+Saint Estèphe,9,Saint-Estèphe,do,Bordeaux,BAJA,
+Barolo,9,Barolo,do,Piemonte,BAJA,
+Madrid,9,Vinos de Madrid,do,,BAJA,
+D.O. Alicante,9,Alicante,do,,BAJA,
+Rueda,9,Rueda,do,Castilla y León,BAJA,
+Jumilla,9,Jumilla,do,,BAJA,
+Valencia,9,Valencia,do,,BAJA,
+Grappa Gaja,9,,,,,TRUE
+Vino de la Tierra Menorca,9,,,,,TRUE
+Umbria,9,Umbría,region,,BAJA,
+Castilla La Mancha,8,,,,,TRUE
+País Vasco,8,País Vasco,region,,BAJA,
+D.O. Almansa,8,,,,,TRUE
+Bandol,8,Bandol,do,Provenza,BAJA,
+San Fernando,8,,,,,TRUE
+Moriles,8,,,,,TRUE
+Provence,8,Provenza,region,Francia,BAJA,
+Cornas,8,Cornas,do,Rhône,BAJA,
+Vdf,8,,,,,TRUE
+Vinos Tierra De Castilla,8,,,,,TRUE
+Lazio,8,Lacio,region,,BAJA,
+Valle D'aosta,8,,,,,TRUE
+Fronsac,8,Fronsac,do,Bordeaux,BAJA,
+D.O.P. Valle Del Güimar,7,,,,,TRUE
+Vin De France,7,,,,,TRUE
+FRENCH WHISKY,7,,,,,TRUE
+Leon,7,,,,,TRUE
+Conca Del Riu Anoia,7,,,,,TRUE
+"D.O. Tierra De Leon, Apostando Por El Desarrollo De Las Variedades Autóctonas,",7,,,,,TRUE
+Rioja De Parcela,7,,,,,TRUE
+D.O.P. Jerez,7,Jerez-Xérès-Sherry,do,Andalucía,BAJA,
+Vinos Son Fruto De Un Gran Esfuerzo,7,,,,,TRUE
+Pouilly Fumé,7,Pouilly-Fumé,do,Valle del Loira,BAJA,
+D.O. Jumilla,7,Jumilla,do,,BAJA,
+D.O. Bizkaiko Txakolina,6,,,,,TRUE
+Tierra De Castilla,6,,,,,TRUE
+Vinos De Castilla Y Leon,6,,,,,TRUE
+ANDALUCÍA,6,Andalucía,region,,BAJA,
+D.O. Italia,6,Italia,pais,,BAJA,
+Cigales,6,Cigales,do,Castilla y León,BAJA,
+D.O. Ribera Del Guadiana,6,Ribera del Guadiana,do,,BAJA,
+Corton Grancey,6,,,,,TRUE
+Eeuu,5,,,,,TRUE
+Château Doisy Vedrines,5,,,,,TRUE
+- Argentina -,5,Argentina,pais,,BAJA,
+D.o.c Rioja,5,Rioja,do,,BAJA,
+Jerez,5,Jerez-Xérès-Sherry,do,Andalucía,BAJA,
+A.o.c Champagne Maison,5,,,,,TRUE
+A.o.c Champagne Vignerons,5,,,,,TRUE
+D.O.P. Arabako Txacolina,5,,,,,TRUE
+Priorato,5,,,,,TRUE
+- ARGENTINA -,5,Argentina,pais,,BAJA,
+Marche,5,Marcas,region,,BAJA,
+Bio,5,,,,,TRUE
+Auvergne,5,Auvergne,region,Francia,BAJA,
+Domaines Ott,5,,,,,TRUE
+Liguria,5,Liguria,region,,BAJA,
+Inglaterra,4,,,,,TRUE
+D.O. Monterrei,4,Monterrei,do,Galicia,BAJA,
+D.o.sierras De Málaga,4,Sierras de Málaga,do,Andalucía,BAJA,
+D.O. Yecla,4,Yecla,do,,BAJA,
+GALICIA,4,Galicia,region,,BAJA,
+Monsant,4,,,,,TRUE
+Trebujena,4,,,,,TRUE
+BAS ARMAGNAC,4,,,,,TRUE
+GRAPPA CRU MONOVITIGNO,4,,,,,TRUE
+D.O. Nueva Zelanda,4,Nueva Zelanda,pais,,BAJA,
+Molise,4,Molise,region,,BAJA,
+L.g.p Vinos De La Tierra De Cadiz,4,,,,,TRUE
+Real Divisa,4,,,,,TRUE
+Ardèche,4,,,,,TRUE
+Uruguay,3,Uruguay,pais,,BAJA,
+Rioja De Pueblo,3,,,,,TRUE
+Jumilla De Pueblo,3,,,,,TRUE
+Priorat,3,Priorat,do,Cataluña,BAJA,
+Vinos De Alicante,3,,,,,TRUE
+D.O. Manchuela,3,Manchuela,do,,BAJA,
+Granada,3,,,,,TRUE
+Valdeorras,3,Valdeorras,do,Galicia,BAJA,
+Gomariz (sin D.o.),3,,,,,TRUE
+RIAS BAIXAS,3,Rías Baixas,do,Galicia,BAJA,
+ORUJOS,3,,,,,TRUE
+Coteaux Champenois,3,,,,,TRUE
+D.O. Cigales,3,Cigales,do,Castilla y León,BAJA,
+D.O.P. Cariñena,3,Cariñena,do,Aragón,BAJA,
+Famille Lahiteau,3,,,,,TRUE
+CALVADOS DU PAYS D'AUGE,2,,,,,TRUE
+D.O. Penedes,2,Penedès,do,Cataluña,BAJA,
+- Alsacia -,2,Alsacia,do,Francia,BAJA,
+"Patagonia, Argentina",2,,,,,TRUE
+BRANDY,2,,,,,TRUE
+Cadiz,2,,,,,TRUE
+Sierra Salamanca,2,,,,,TRUE
+Rioja S/do,2,,,,,TRUE
+Bizkaiko Txacolina,2,,,,,TRUE
+Mendoza,2,Mendoza,region,,BAJA,
+Saint Emilion,2,Saint-Émilion,do,Bordeaux,BAJA,
+Dao,2,Dão,do,,BAJA,
+Vino de la Tierra Castilla Y Leon,2,,,,,TRUE
+Rías Baixas,2,Rías Baixas,do,Galicia,BAJA,
+I.G.P. Valdejalón,2,,,,,TRUE
+- Borgoña -,2,Borgoña,do,Francia,BAJA,
+D.O. Sudáfrica,2,Sudáfrica,pais,,BAJA,
+Gipuzkoa,2,,,,,TRUE
+Vino Blanco Seco,2,,,,,TRUE
+Suiza,2,,,,,TRUE
+Bebidas->4,1,,,,,TRUE
+Ùe Monovitigno,1,,,,,TRUE
+Chardonnay Rubicone Igp,1,,,,,TRUE
+Vino de la Tierra Andalucia,1,,,,,TRUE
+Vino de la Tierra Castilla León,1,,,,,TRUE
+D.O. Calatayud,1,,,,,TRUE
+Islas Baleares,1,,,,,TRUE
+- Francia -,1,Francia,pais,,BAJA,
+DOP ARABAKO TXACOLINA,1,,,,,TRUE
+"Mendoza, Argentina",1,,,,,TRUE
+R Ioja,1,,,,,TRUE
+- Rodano -,1,Rhône,region,Francia,BAJA,
+PRIORATO,1,,,,,TRUE
+Castilla Y Leon,1,Castilla y León,region,,BAJA,
+Sanlucar De Barrameda,1,,,,,TRUE
+Caiño Tinto S/do,1,,,,,TRUE
+Albariño S/do,1,,,,,TRUE
+O Bolo (sin D.o.),1,,,,,TRUE
+Sanxenxo (sin D.o.),1,,,,,TRUE
+Ribeiro S/do,1,,,,,TRUE
+Val Do Bibei,1,,,,,TRUE
+Peñafiel Valldolid,1,,,,,TRUE
+Rimini Sangiovese Superiore Dop,1,,,,,TRUE
+Rubicone Sangiovese Igp,1,,,,,TRUE
+Rimini Rebola Secco Dop,1,,,,,TRUE
+Romagna Sangiovese Superiore Riserva Dop,1,,,,,TRUE
+Costa D ́amalfi,1,,,,,TRUE
+ALSACE,1,Alsacia,do,Francia,BAJA,
+Sierra De Gredos,1,,,,,TRUE
+Sancerre (pinot Noir),1,,,,,TRUE
+Garnacha,1,,,,,TRUE
+Marlborough,1,Marlborough,do,,BAJA,
+D.O.Ca. Rioja,1,Rioja,do,,BAJA,
+D.O. Rías Baixas,1,Rías Baixas,do,Galicia,BAJA,
+Vinho Verde,1,Vinho Verde,do,,BAJA,
+D.O.P. El Terrerazo,1,,,,,TRUE
+Dao. Portugal,1,,,,,TRUE
+Riesling Rubicone Igp,1,,,,,TRUE
+Asturias,1,,,,,TRUE
+D.O.P. Valle De La Orotava,1,Valle de la Orotava,do,Canarias,BAJA,
+Catalunya,1,,,,,TRUE
+VERMUT,1,,,,,TRUE
+Vermut,1,,,,,TRUE
+Laberdolive,1,,,,,TRUE
+Sidra,1,,,,,TRUE
+GRAPPA,1,,,,,TRUE
