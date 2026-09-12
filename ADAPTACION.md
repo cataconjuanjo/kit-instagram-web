@@ -45,6 +45,7 @@
 | **Comunidad autónoma** | `proveedor_catalogo_vinos` | `comunidad_autonoma` | Añadido por normalizar_denominaciones_v1 |
 | **Unidades por caja** | `proveedor_catalogo_vinos` | `unidades_por_caja` | Para calcular coste por botella cuando el catálogo da precio de caja |
 | **Referencia del proveedor** | `proveedor_catalogo_vinos` | `referencia_proveedor` | Código interno del proveedor; distinto de `referencia` (código de bodega) |
+| **Precio potencialmente desactualizado (señal)** | `app/lib/precioDesactualizado.js` | `esPrecioDesactualizado(fav, hermanosMap)` | Devuelve `true` si el favorito tiene un hermano no-favorito con mismo proveedor + nombre + bodega + formato normalizados y distinto `coste_estimado`. La normalización usa `normTexto()` del mismo módulo (strip diacríticos, no-alfanuméricos → espacio). Añadido en bloque 2. |
 
 ---
 
