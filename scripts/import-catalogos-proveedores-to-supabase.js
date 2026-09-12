@@ -1,16 +1,52 @@
 const fs = require('fs')
 const path = require('path')
+const readline = require('readline')
 const XLSX = require('xlsx')
 const { createClient } = require('@supabase/supabase-js')
 
 const args = process.argv.slice(2)
-const onlyIndex = args.indexOf('--only')
-const flagValueIndexes = new Set(onlyIndex >= 0 ? [onlyIndex + 1] : [])
-const outputDir = args.find((arg, index) => !arg.startsWith('--') && !flagValueIndexes.has(index)) || path.join('output', 'catalogos')
-const replace = args.includes('--replace')
-const dryRun = args.includes('--dry-run')
-const only = onlyIndex >= 0 ? texto(args[onlyIndex + 1]).toLowerCase() : ''
 
+// ── Flags ─────────────────────────────────────────────────────────────────────
+// Por defecto: modo simulacro (dry-run). Solo escribe con --apply.
+const apply   = args.includes('--apply')
+const dryRun  = !apply
+const replace = args.includes('--replace')
+const yes     = args.includes('--yes')
+
+const flagIdx  = k => args.indexOf(k)
+const flagVal  = k => { const i = flagIdx(k); return i >= 0 ? args[i + 1] : null }
+
+// --proveedor=<nombre|id>   obligatorio con --replace
+const proveedorArg = flagVal('--proveedor')
+// --only   (uso libre, mismo efecto que --proveedor para filtrar sin replace)
+const onlyArg  = flagVal('--only')
+const filtro   = proveedorArg || onlyArg || ''
+
+// Primer arg no-flag es el directorio de entrada
+const flagValueIndexes = new Set([
+  onlyArg    ? flagIdx('--only')      + 1 : -1,
+  proveedorArg ? flagIdx('--proveedor') + 1 : -1,
+].filter(i => i >= 0))
+const outputDir = args.find((arg, i) => !arg.startsWith('--') && !flagValueIndexes.has(i))
+  || path.join('output', 'catalogos')
+
+// ── Validaciones de combinaciones de flags ────────────────────────────────────
+if (replace && !proveedorArg) {
+  console.error(
+    'ERROR: --replace requiere --proveedor=<nombre>.\n' +
+    'Especifica el proveedor para evitar reemplazar todos los catálogos a la vez.\n' +
+    'Ejemplo: node ... --replace --proveedor="Sommeliervinos" --apply'
+  )
+  process.exit(1)
+}
+
+if (apply && dryRun) {
+  // Nunca debería ocurrir, pero por si acaso
+  console.error('ERROR interno: apply y dryRun son mutuamente excluyentes.')
+  process.exit(1)
+}
+
+// ── Catálogos configurados ────────────────────────────────────────────────────
 const CATALOGS = [
   {
     providerName: 'Sommeliervinos',
@@ -53,6 +89,7 @@ const APP_COLUMNS = [
   'notas',
 ]
 
+// ── Utilidades ────────────────────────────────────────────────────────────────
 function loadEnv() {
   const env = {}
   for (const envPath of ['.env.local', '.env.vercel']) {
@@ -114,6 +151,8 @@ function payloadRows(rows, providerId, catalogName, normalizarCamposVino) {
         notas: notas || null,
         activo: true,
         updated_at: now,
+        // IMPORTANTE: `favorito` NO se incluye nunca en el payload.
+        // Los favoritos son gestionados exclusivamente por el usuario desde el panel.
       }
     })
     .filter(row => row.nombre)
@@ -168,6 +207,17 @@ async function existingCount(supabase, providerId) {
   return count || 0
 }
 
+async function favoritosCount(supabase, providerId) {
+  if (String(providerId).startsWith('dry-run:')) return 0
+  const { count, error } = await supabase
+    .from('proveedor_catalogo_vinos')
+    .select('id', { count: 'exact', head: true })
+    .eq('proveedor_id', providerId)
+    .eq('favorito', true)
+  if (error) throw error
+  return count || 0
+}
+
 async function insertChunks(supabase, payload) {
   let inserted = 0
   for (let i = 0; i < payload.length; i += 500) {
@@ -196,6 +246,22 @@ async function cargarMapaRefDenom(supabase) {
   }
 }
 
+async function pedirConfirmacion(pregunta) {
+  if (!process.stdin.isTTY) {
+    console.error(
+      'ERROR: stdin no es un terminal interactivo.\n' +
+      'Usa --yes para confirmar la operación sin interacción:\n' +
+      '  node ... --replace --proveedor="..." --apply --yes'
+    )
+    process.exit(1)
+  }
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise(resolve => {
+    rl.question(pregunta, ans => { rl.close(); resolve(ans.trim()) })
+  })
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
   const { normalizarCamposVino } = await import('../app/lib/normalizarVino.js')
 
@@ -208,23 +274,30 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  // Cargar mapa de denominaciones para normalizar zona al insertar
   const mapaRefDenom = await cargarMapaRefDenom(supabase)
   if (mapaRefDenom) {
-    console.error(`[zona] Mapa DOP/IGP cargado (${mapaRefDenom.size} entradas). Las zonas españolas se normalizarán al insertar.`)
+    console.error(`[zona] Mapa DOP/IGP cargado (${mapaRefDenom.size} entradas).`)
+  }
+
+  // Filtrar catálogos por --proveedor o --only
+  const selectedCatalogs = filtro
+    ? CATALOGS.filter(c => [c.providerName, c.catalogName, c.file]
+      .some(v => texto(v).toLowerCase().includes(texto(filtro).toLowerCase())))
+    : CATALOGS
+
+  if (filtro && !selectedCatalogs.length) {
+    throw new Error(`No hay catálogos que coincidan con "${filtro}".`)
+  }
+
+  // ── Aviso modo ─────────────────────────────────────────────────────────────
+  if (dryRun) {
+    console.error('── MODO SIMULACRO (dry-run) — no se escribe nada. Pasa --apply para escribir. ──')
+  } else {
+    console.error('── MODO ESCRITURA (--apply) ──')
   }
 
   const results = []
-  const zonaRevisarGlobal = []  // acumula zona_original de filas con zona_revisar=true
-
-  const selectedCatalogs = only
-    ? CATALOGS.filter(catalog => [catalog.providerName, catalog.catalogName, catalog.file]
-      .some(value => texto(value).toLowerCase().includes(only)))
-    : CATALOGS
-
-  if (only && !selectedCatalogs.length) {
-    throw new Error(`No hay catalogos que coincidan con --only "${only}".`)
-  }
+  const zonaRevisarGlobal = []
 
   for (const catalog of selectedCatalogs) {
     const filePath = path.resolve(outputDir, catalog.file)
@@ -233,22 +306,51 @@ async function main() {
     const sourceRows = readRows(filePath)
     const { provider, created, duplicateProviders } = await ensureProvider(supabase, catalog)
     const before = await existingCount(supabase, provider.id)
+    const favs   = await favoritosCount(supabase, provider.id)
 
     const payload = payloadRows(sourceRows, provider.id, catalog.catalogName,
       (row) => normalizarCamposVino(row, mapaRefDenom))
 
     const withoutPrice = payload.filter(row => !row.coste_estimado).length
     const conZonaRevisar = payload.filter(row => row.zona_revisar === true)
+    const noFavCount = before - favs  // filas que se borrarán (excluidos favoritos)
 
-    let deleted = 0
+    // ── Pre-vuelo ─────────────────────────────────────────────────────────
+    if (replace) {
+      console.error('')
+      console.error('─────────────────────────────────────────────')
+      console.error(' PRE-VUELO — REPLACE')
+      console.error('─────────────────────────────────────────────')
+      console.error(` Proveedor:           ${catalog.providerName}`)
+      console.error(` ID:                  ${provider.id}`)
+      console.error(` Filas actuales:      ${before}`)
+      console.error(` Favoritos (seguros): ${favs}  ← NO se tocarán`)
+      console.error(` Filas a eliminar:    ${noFavCount}  (excluidos los ${favs} favoritos)`)
+      console.error(` Filas a insertar:    ${payload.length}`)
+      console.error('─────────────────────────────────────────────')
+
+      if (!dryRun && !yes) {
+        const resp = await pedirConfirmacion('¿Confirmar operación? [s/N] ')
+        if (!resp.match(/^s/i)) {
+          console.error('Abortado.')
+          process.exit(0)
+        }
+      }
+    }
+
+    // ── Escritura ─────────────────────────────────────────────────────────
+    let deleted  = 0
     let inserted = 0
 
     if (!dryRun) {
       if (replace) {
+        // DELETE acotado al proveedor, EXCLUYENDO filas con favorito = true.
+        // El importador nunca escribe ni borra la columna favorito.
         const { count, error } = await supabase
           .from('proveedor_catalogo_vinos')
           .delete({ count: 'exact' })
           .eq('proveedor_id', provider.id)
+          .or('favorito.is.null,favorito.eq.false')
         if (error) throw error
         deleted = count || 0
       }
@@ -258,7 +360,6 @@ async function main() {
 
     const after = dryRun ? before : await existingCount(supabase, provider.id)
 
-    // Acumular zonas a revisar de este catálogo
     for (const fila of conZonaRevisar) {
       if (fila.zona_original) zonaRevisarGlobal.push(fila.zona_original)
     }
@@ -273,19 +374,21 @@ async function main() {
       filas_sin_precio: withoutPrice,
       filas_zona_revisar: conZonaRevisar.length,
       catalogo_anterior: before,
+      favoritos_protegidos: favs,
       reemplazadas: deleted,
       insertadas: inserted,
       catalogo_final: after,
     })
   }
 
-  // Resumen de zonas a revisar (valores únicos, para que el usuario decida si añadir alias)
   const zonasUnicasRevisar = [...new Set(zonaRevisarGlobal)].sort()
 
   console.log(JSON.stringify({
     dryRun,
+    apply,
     replace,
-    only: only || null,
+    proveedor: proveedorArg || null,
+    only: onlyArg || null,
     total_insertadas: results.reduce((sum, row) => sum + row.insertadas, 0),
     total_validas: results.reduce((sum, row) => sum + row.filas_validas, 0),
     total_zona_revisar: zonaRevisarGlobal.length,
