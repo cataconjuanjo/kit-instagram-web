@@ -630,18 +630,16 @@ async function pasada2 (sb) {
   }
 
   // Backfill zona_id en proveedor_catalogo_vinos
-  let filasZona = 0
+  let errZona = 0
   for (const [nombre, info] of byCanonZona) {
     const id = zonaIdMap.get(nombre)
     if (!id) continue
-    const { error, count } = await sb.from('proveedor_catalogo_vinos')
+    const { error } = await sb.from('proveedor_catalogo_vinos')
       .update({ zona_id: id })
       .in('zona', info.origValues)
-      .select('id', { count: 'exact', head: true })
-    if (error) console.error(`  ERROR backfill zona "${nombre}": ${error.message}`)
-    else filasZona += count || 0
+    if (error) { console.error(`  ERROR backfill zona "${nombre}": ${error.message}`); errZona++ }
   }
-  console.log(`  Filas actualizadas con zona_id: ${filasZona}\n`)
+  console.log(`  Zonas procesadas: ${byCanonZona.size}  errores: ${errZona}\n`)
 
   // ── Backfill bodegas ──────────────────────────────────────────────────────
   console.log(`Procesando ${bodegasCsv.length} filas de bodega (no DUDOSO)…`)
@@ -673,26 +671,23 @@ async function pasada2 (sb) {
     }
   }
 
-  let filasBodyega = 0
+  let errBodega = 0
   for (const [nombre, origValues] of byCanonBod) {
     const id = bodegaIdMap.get(nombre)
     if (!id) continue
-    const { error, count } = await sb.from('proveedor_catalogo_vinos')
+    const { error } = await sb.from('proveedor_catalogo_vinos')
       .update({ bodega_id: id })
       .in('bodega', origValues)
-      .select('id', { count: 'exact', head: true })
-    if (error) console.error(`  ERROR backfill bodega "${nombre}": ${error.message}`)
-    else filasBodyega += count || 0
+    if (error) { console.error(`  ERROR backfill bodega "${nombre}": ${error.message}`); errBodega++ }
   }
-  console.log(`  Filas actualizadas con bodega_id: ${filasBodyega}`)
+  console.log(`  Bodegas procesadas: ${byCanonBod.size}  errores: ${errBodega}`)
 
   // ── Marcar bodega_pendiente para BORDEAUX / BORDEAUX SÉLECTION ────────────
-  const { error: errPend, count: cPend } = await sb.from('proveedor_catalogo_vinos')
+  const { error: errPend } = await sb.from('proveedor_catalogo_vinos')
     .update({ bodega_pendiente: true })
     .in('bodega', [...BODEGAS_PLACEHOLDER])
-    .select('id', { count: 'exact', head: true })
   if (errPend) console.error(`  ERROR marcando bodega_pendiente: ${errPend.message}`)
-  else console.log(`  Filas con bodega_pendiente = true: ${cPend}`)
+  else console.log(`  bodega_pendiente marcado (BORDEAUX/BORDEAUX SÉLECTION)`)
 
   console.log('\nPasada 2 completada.')
 }

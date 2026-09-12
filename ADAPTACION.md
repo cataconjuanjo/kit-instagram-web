@@ -95,6 +95,16 @@ Implementar upsert por triplete normalizado en el importador (UPDATE coste y pvp
 
 ---
 
+### Bug conocido — PATCH degradado a HEAD por `.select({ head: true })` tras `.update()` (Supabase JS v2)
+
+Detectado en bloque 4 (2026-09-12). **Corregido en el mismo bloque.**
+
+En el cliente Supabase JS v2, encadenar `.select('id', { count: 'exact', head: true })` después de un `.update()` convierte la petición HTTP de PATCH a HEAD. HEAD no ejecuta escrituras en el servidor y devuelve `error: null, count: 0` sin ningún aviso. El backfill de `bodega_id` (8.697 filas) y el marcado de `bodega_pendiente` (524 filas) corrieron silenciosamente con 0 filas escritas hasta que se detectó y eliminó el `.select(...)` en las tres llamadas afectadas de `scripts/normalizar-zonas-bodegas.js`.
+
+**Regla:** nunca encadenar `.select()` con `head: true` tras un `.update()`. Para contar filas afectadas, ejecutar una consulta `SELECT count(*)` separada después del UPDATE.
+
+---
+
 ### Artefacto conocido — asteriscos en nombres de Exclusivas Soto
 
 El catálogo de Exclusivas Soto (proveedor_id `07f5e7d9-5483-468f-9a8f-a66b928dd4ef`) contiene 84 filas (sobre 3.364) con `*` en el nombre, procedentes de tres fuentes PDF distintas (Tarifa Soto, Wine Merchant, PRIMERAS MARCAS). El asterisco es marca de párrafo o nota al pie del PDF original, no información semántica del vino (aparece como `**` al inicio, `**` al final, `***` incrustado o `*` tras el tipo de vino, sin patrón coherente). `normTexto()` lo elimina correctamente al tratar `*` como carácter no alfanumérico. Normalizar y emparejar "Reserva* 2013" con "Reserva 2013" es comportamiento correcto para el matching de catálogo. Relevante para el diseño del upsert en bloque 5: la clave normalizada debe incluir este stripping.
