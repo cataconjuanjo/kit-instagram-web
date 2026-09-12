@@ -105,6 +105,18 @@ En el cliente Supabase JS v2, encadenar `.select('id', { count: 'exact', head: t
 
 ---
 
+### Deuda bloque 9 — extraer palabras de formato del nombre antes de calcular `nombre_norm`
+
+Detectada en bloque 5 (2026-09-12). **Pendiente de corrección en bloque 9.**
+
+El script de ingesta (`construir-canonico.js`) ya extrae la añada del nombre antes de crear la entidad `vino`, pero **no extrae las palabras de formato** (magnum, jeroboam, matusalem, imperial, doble magnum, media botella…). Resultado: "Aalto PS Magnum" y "Aalto PS" se crean como dos vinos distintos con `nombre_norm` diferentes ("aalto ps magnum" vs "aalto ps"), y la similitud de nombre completo entre ambos (≈ 0.53) queda por debajo del umbral de dedup (0.65), por lo que no se genera `dedup_candidato` automáticamente.
+
+El script `scripts/insertar-candidatos-formato.js` (bloque 5, aplicado el 2026-09-12) cubrió los 96 pares faltantes calculando la similitud sobre el nombre **sin** la palabra de formato. Sin ese parche, cada carga mensual nueva con nombres tipo "X Magnum" generaría el mismo hueco.
+
+**Corrección en bloque 9:** al construir `nombre_norm`, aplicar la misma lógica que `extractAnada` para las palabras de formato: eliminarlas del nombre limpio y guardarlas en un campo separado (`formato_embebido text`). Así "Aalto PS Magnum" y "Aalto PS" compartirán `nombre_norm = 'aalto ps'` y la deduplicación dura los fusionará automáticamente en el mismo `vino`.
+
+---
+
 ### Artefacto conocido — asteriscos en nombres de Exclusivas Soto
 
 El catálogo de Exclusivas Soto (proveedor_id `07f5e7d9-5483-468f-9a8f-a66b928dd4ef`) contiene 84 filas (sobre 3.364) con `*` en el nombre, procedentes de tres fuentes PDF distintas (Tarifa Soto, Wine Merchant, PRIMERAS MARCAS). El asterisco es marca de párrafo o nota al pie del PDF original, no información semántica del vino (aparece como `**` al inicio, `**` al final, `***` incrustado o `*` tras el tipo de vino, sin patrón coherente). `normTexto()` lo elimina correctamente al tratar `*` como carácter no alfanumérico. Normalizar y emparejar "Reserva* 2013" con "Reserva 2013" es comportamiento correcto para el matching de catálogo. Relevante para el diseño del upsert en bloque 5: la clave normalizada debe incluir este stripping.
