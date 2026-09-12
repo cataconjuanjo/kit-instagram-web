@@ -1681,6 +1681,9 @@ function ProveedoresPageContent() {
                                   </div>
                                 ) : <span className="supplier-pvp-empty">—</span>}
                                 <div className="supplier-row-actions">
+                                  {vino.favorito && !vino.activo && (
+                                    <span title="Favorito sin proveedor activo" style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fbbf24', borderRadius: 4, padding: '1px 5px', fontWeight: 600 }}>Sin proveedor</span>
+                                  )}
                                   <button type="button" className={`supplier-fav-btn${vino.favorito ? ' is-fav' : ''}`} onClick={() => toggleFavorito(vino)} title={vino.favorito ? 'Quitar de favoritos' : 'Añadir a favoritos'} disabled={togglingFavorito.has(vino.id)}>
                                     {vino.favorito ? '★' : '☆'}
                                   </button>
@@ -1722,6 +1725,9 @@ function ProveedoresPageContent() {
                                 {pvpStr}
                               </div>
                               {/* Favorito */}
+                              {vino.favorito && !vino.activo && (
+                                <span style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fbbf24', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap', fontWeight: 600 }}>Sin proveedor activo</span>
+                              )}
                               <button
                                 type="button"
                                 style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--line)', borderRadius: 7, background: 'transparent', cursor: 'pointer', fontSize: '1rem', color: vino.favorito ? 'var(--wine)' : 'var(--muted)' }}
@@ -1790,6 +1796,9 @@ function ProveedoresPageContent() {
                             <strong className="supplier-cell-num">{rb ? `${rb.pvp.toFixed(2)} €` : '—'}</strong>
                             <strong className="supplier-cell-num">{rb ? `${rb.copa.toFixed(2)} €` : '—'}</strong>
                             <div className="supplier-row-menu">
+                              {vino.favorito && !vino.activo && (
+                                <span title="Favorito sin proveedor activo" style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', border: '1px solid #fbbf24', borderRadius: 4, padding: '1px 5px', fontWeight: 600, alignSelf: 'center' }}>Sin proveedor</span>
+                              )}
                               <button
                                 type="button"
                                 className={`supplier-fav-btn${vino.favorito ? ' is-fav' : ''}`}

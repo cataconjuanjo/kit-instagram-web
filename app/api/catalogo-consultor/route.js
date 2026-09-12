@@ -46,13 +46,14 @@ export async function GET(req) {
 
     // Supabase limita las respuestas grandes aunque no se indique un range.
     // Paginar explícitamente evita perder favoritos a partir de la fila 1.000.
+    // Incluye favoritos con activo=false: se marcarán como sin_proveedor_activo
+    // en vez de desaparecer en silencio (bloque 6).
     const vinos = []
     for (let desde = 0; ; desde += CATALOGO_PAGE_SIZE) {
       const { data: pagina, error: vinosError } = await supabaseAdmin
         .from('proveedor_catalogo_vinos')
-        .select('id, nombre, bodega, tipo, region, uva, anada, referencia, formato, coste_estimado, pvp_recomendado, pvp_copa, disponibilidad, proveedor_id, created_at, updated_at')
+        .select('id, nombre, bodega, tipo, region, uva, anada, referencia, formato, coste_estimado, pvp_recomendado, pvp_copa, disponibilidad, activo, vino_id, ambito, proveedor_id, created_at, updated_at')
         .eq('favorito', true)
-        .eq('activo', true)
         .in('proveedor_id', providerIds)
         .order('nombre')
         .order('id')
@@ -61,6 +62,23 @@ export async function GET(req) {
       if (vinosError) throw vinosError
       vinos.push(...(pagina || []))
       if (!pagina || pagina.length < CATALOGO_PAGE_SIZE) break
+    }
+
+    // Para favoritos con vino_id, verificar si hay alguna oferta activa entre
+    // proveedores visibles (puede venir de otra fila con el mismo vino_id).
+    const vinoIdsConFav = [...new Set(vinos.filter(v => v.vino_id).map(v => v.vino_id))]
+    const vinoIdsSinProveedor = new Set()
+    if (vinoIdsConFav.length) {
+      const { data: activos } = await supabaseAdmin
+        .from('proveedor_catalogo_vinos')
+        .select('vino_id')
+        .in('vino_id', vinoIdsConFav)
+        .eq('activo', true)
+        .in('proveedor_id', providerIds)
+      const vinoIdsConActivo = new Set((activos || []).map(r => r.vino_id))
+      for (const vid of vinoIdsConFav) {
+        if (!vinoIdsConActivo.has(vid)) vinoIdsSinProveedor.add(vid)
+      }
     }
 
     const { data: econSettings } = restauranteId
@@ -94,6 +112,10 @@ export async function GET(req) {
       const coste = costePorBotella(v)
       const calc = coste > 0 ? calcularPreciosSugeridos(coste, econConfig) : null
       const pvpBotella = calc?.botella || 0
+      // Fallback: si vino_id no está backfillado, usar la propia fila como indicador
+      const sinProveedor = v.vino_id
+        ? vinoIdsSinProveedor.has(v.vino_id)
+        : !v.activo
       return {
         ...v,
         pvp_recomendado_origen: v.pvp_recomendado,
@@ -102,6 +124,7 @@ export async function GET(req) {
         pvp_copa: calc?.copa || 0,
         proveedor: providerMap[v.proveedor_id] || null,
         precio_potencialmente_desactualizado: esPrecioDesactualizado(v, hermanosMap),
+        sin_proveedor_activo: sinProveedor,
       }
     })
 

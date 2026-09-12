@@ -13,7 +13,7 @@ const SELECT_PROVEEDOR = [
 const SELECT_CATALOGO_VINO = [
   'id', 'proveedor_id', 'nombre', 'bodega', 'tipo', 'tipo_raw', 'region', 'uva',
   'anada', 'referencia', 'formato', 'coste_estimado', 'pvp_recomendado', 'pvp_copa',
-  'disponibilidad', 'notas', 'activo', 'favorito', 'created_at',
+  'disponibilidad', 'notas', 'activo', 'favorito', 'vino_id', 'ambito', 'created_at',
   'updated_at', 'proveedores_vino(nombre)',
   'zona', 'tamanyo', 'unidades_por_caja', 'referencia_proveedor', 'almacen_proveedor', 'graduacion',
   'do_igp', 'pais', 'comunidad_autonoma', 'zona_revisar',
@@ -313,11 +313,27 @@ export async function PATCH(req) {
     const supabase = adminClient()
 
     if (body.kind === 'favorito') {
+      const esFavorito = Boolean(body.favorito)
+      const updatePayload = {
+        favorito:   esFavorito,
+        ambito:     esFavorito ? 'global' : null,
+        updated_at: new Date().toISOString(),
+      }
+      // Al marcar favorito, resolver vino_id vía oferta.referencia_origen_id
+      if (esFavorito) {
+        const { data: ofertaData } = await supabase
+          .from('oferta')
+          .select('vino_anada:vino_anada_id(vino_id)')
+          .eq('referencia_origen_id', body.id)
+          .maybeSingle()
+        const vinoId = ofertaData?.vino_anada?.vino_id || null
+        if (vinoId) updatePayload.vino_id = vinoId
+      }
       const { data, error } = await supabase
         .from('proveedor_catalogo_vinos')
-        .update({ favorito: Boolean(body.favorito), updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq('id', body.id)
-        .select('id, favorito')
+        .select('id, favorito, vino_id, ambito')
         .single()
       if (error) throw error
       return Response.json({ vino: data })

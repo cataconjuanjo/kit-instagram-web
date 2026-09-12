@@ -51,10 +51,9 @@ export async function POST(req) {
     const [catalogoResult, borradorResult] = await Promise.all([
       supabaseAdmin
         .from('proveedor_catalogo_vinos')
-        .select('id, nombre, bodega, tipo, region, anada, formato, coste_estimado, pvp_recomendado, pvp_copa, disponibilidad, proveedor_id')
+        .select('id, nombre, bodega, tipo, region, anada, formato, coste_estimado, pvp_recomendado, pvp_copa, disponibilidad, activo, vino_id, ambito, proveedor_id')
         .eq('id', catalogoVinoId)
         .eq('favorito', true)
-        .eq('activo', true)
         .maybeSingle(),
       supabaseAdmin
         .from('carta_simulacion')
@@ -65,6 +64,9 @@ export async function POST(req) {
     if (catalogoResult.error) throw catalogoResult.error
     if (!catalogoResult.data) {
       return Response.json({ error: 'Referencia de catálogo no encontrada' }, { status: 404 })
+    }
+    if (!catalogoResult.data.activo) {
+      return Response.json({ error: 'Este vino ya no está disponible en el catálogo activo', sin_proveedor_activo: true }, { status: 409 })
     }
     if (borradorResult.error) throw borradorResult.error
 
