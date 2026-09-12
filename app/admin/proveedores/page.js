@@ -380,7 +380,7 @@ function ProveedoresPageContent() {
       if (!costeEnRango(costeVino, rango)) return false
       if (filtroCopa) {
         const rb = costeVino > 0 ? calcularBotella(costeVino) : null
-        const pvpCopa = rb ? calcularCopa(rb.pvp)?.pvp ?? 0 : 0
+        const pvpCopa = rb?.copa ?? 0
         if (!copaEnRango(pvpCopa, filtroCopa)) return false
       }
       return coincideReferencia(vino, busquedaReferencias)
@@ -393,7 +393,7 @@ function ProveedoresPageContent() {
       if (ordenReferencias.campo === 'pvp') return calcularBotella(numeroCoste(vino.coste_estimado))?.pvp ?? 0
       if (ordenReferencias.campo === 'pvpCopa') {
         const rb = calcularBotella(numeroCoste(vino.coste_estimado))
-        return rb ? calcularCopa(rb.pvp)?.pvp ?? 0 : 0
+        return rb?.copa ?? 0
       }
       if (ordenReferencias.campo === 'bodega') return normalizar(vino.bodega)
       if (ordenReferencias.campo === 'zona') return normalizar(`${vino.do_igp || vino.region || ''} ${vino.tipo || ''} ${vino.uva || ''}`)
@@ -523,19 +523,15 @@ function ProveedoresPageContent() {
     const c = numeroCoste(coste)
     if (c <= 0) return null
     const calculo = calcularPreciosSugeridos(c, {})
+    const copa = calculo.copa
     return {
       pvp: calculo.botella,
+      copa,
       etiqueta: calculo.reglaBotella,
       margen: Math.round(calculo.margenBotella),
+      ratioPct: copa && calculo.botella ? Math.round((copa / calculo.botella) * 100) : null,
+      copasHastaEmpatar: copa ? Math.ceil(calculo.botella / copa) : null,
     }
-  }
-
-  function calcularCopa(pvpBotella) {
-    if (!pvpBotella || pvpBotella <= 0) return null
-    const pvp = Math.round((pvpBotella / 5) * 2) / 2
-    const ratioPct = Math.round((pvp / pvpBotella) * 100)
-    const copasHastaEmpatar = Math.ceil(pvpBotella / pvp)
-    return { pvp, ratioPct, copasHastaEmpatar }
   }
 
   function leerFavoritosLocales() {
@@ -1668,8 +1664,7 @@ function ProveedoresPageContent() {
                             const esMasBarato = tieneMultiples && index === 0
                             const coste = numeroCoste(vino.coste_estimado)
                             const rb = coste ? calcularBotella(coste) : null
-                            const rc = rb ? calcularCopa(rb.pvp) : null
-                            const alerta = rc?.ratioPct > 25
+                            const alerta = rb?.ratioPct > 25
                             return (
                               <div key={vino.id} className={`supplier-fav-row${esMasBarato ? ' is-cheapest' : ''}`}>
                                 <span className="supplier-fav-dist"><em>Proveedor</em><strong>{proveedorPorId[vino.proveedor_id]?.nombre || 'Proveedor'}</strong></span>
@@ -1678,9 +1673,9 @@ function ProveedoresPageContent() {
                                 {rb ? (
                                   <div className="supplier-pvp-calc">
                                     <span className="pvp-line"><em>PVP botella</em><strong>{rb.pvp.toFixed(2)} €</strong><small>{rb.etiqueta}</small></span>
-                                    <span className="pvp-line"><em>PVP copa</em><strong>{rc.pvp.toFixed(2)} €</strong>
-                                      <small className={alerta ? 'pvp-ratio-warn' : 'pvp-ratio-ok'} title={`${rc.ratioPct}% del precio botella · ${rc.copasHastaEmpatar} copas igualan la botella`}>
-                                        {rc.ratioPct !== null ? `${rc.ratioPct}% bot.` : ''}
+                                    <span className="pvp-line"><em>PVP copa</em><strong>{rb.copa.toFixed(2)} €</strong>
+                                      <small className={alerta ? 'pvp-ratio-warn' : 'pvp-ratio-ok'} title={`${rb.ratioPct}% del precio botella · ${rb.copasHastaEmpatar} copas igualan la botella`}>
+                                        {rb.ratioPct !== null ? `${rb.ratioPct}% bot.` : ''}
                                       </small>
                                     </span>
                                   </div>
@@ -1775,7 +1770,6 @@ function ProveedoresPageContent() {
                       </div>
                       {referenciasVisibles.map(vino => {
                         const rb = calcularBotella(numeroCoste(vino.coste_estimado))
-                        const rc = rb ? calcularCopa(rb.pvp) : null
                         const debugTitle = busquedaReferencias.trim()
                           ? `ID:${vino.id} | bodega:${vino.bodega||''} | tipo:${vino.tipo||''} | region:${vino.region||''} | uva:${vino.uva||''} | ref:${vino.referencia||''}`
                           : undefined
@@ -1794,7 +1788,7 @@ function ProveedoresPageContent() {
                             <span className="supplier-cell-formato">{[vino.formato, vino.referencia].filter(Boolean).join(' · ') || '-'}</span>
                             <strong className="supplier-cell-num">{dinero(vino.coste_estimado) || '-'}</strong>
                             <strong className="supplier-cell-num">{rb ? `${rb.pvp.toFixed(2)} €` : '—'}</strong>
-                            <strong className="supplier-cell-num">{rc ? `${rc.pvp.toFixed(2)} €` : '—'}</strong>
+                            <strong className="supplier-cell-num">{rb ? `${rb.copa.toFixed(2)} €` : '—'}</strong>
                             <div className="supplier-row-menu">
                               <button
                                 type="button"
