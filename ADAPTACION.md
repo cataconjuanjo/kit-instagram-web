@@ -91,3 +91,9 @@ No existe ninguna clave estable que permita hacer UPSERT: `referencia_proveedor`
 Implementar upsert por triplete normalizado en el importador (UPDATE coste y pvp en favoritos existentes en lugar de INSERT duplicado), junto con migración additive que añada `clave_upsert text GENERATED ALWAYS AS (...)` o índice parcial sobre `(proveedor_id, nombre_norm, bodega_norm, formato_norm)`.
 
 **Nota:** Los 2 duplicados existentes en Sommeliervinos no se han corregido — sirven como casos de prueba para la consulta 5.5 del bloque 3.
+
+---
+
+### Artefacto conocido — asteriscos en nombres de Exclusivas Soto
+
+El catálogo de Exclusivas Soto (proveedor_id `07f5e7d9-5483-468f-9a8f-a66b928dd4ef`) contiene 84 filas (sobre 3.364) con `*` en el nombre, procedentes de tres fuentes PDF distintas (Tarifa Soto, Wine Merchant, PRIMERAS MARCAS). El asterisco es marca de párrafo o nota al pie del PDF original, no información semántica del vino (aparece como `**` al inicio, `**` al final, `***` incrustado o `*` tras el tipo de vino, sin patrón coherente). `normTexto()` lo elimina correctamente al tratar `*` como carácter no alfanumérico. Normalizar y emparejar "Reserva* 2013" con "Reserva 2013" es comportamiento correcto para el matching de catálogo. Relevante para el diseño del upsert en bloque 5: la clave normalizada debe incluir este stripping.
