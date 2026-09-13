@@ -84,10 +84,12 @@ function imprimirInforme({ restauranteId, modo, enlazadas, blandas, sinMatch, pv
   console.log(`Restaurante: ${restauranteId}`)
   console.log(LINE)
 
-  // ENLAZADAS (clave dura)
+  // ENLAZADAS
   const conOferta   = enlazadas.filter(e => e.ofertaId)
   const sinOferta   = enlazadas.filter(e => !e.ofertaId)
-  console.log(`\nENLAZADAS POR CLAVE DURA — ${enlazadas.length} (${conOferta.length} con oferta · ${sinOferta.length} sin proveedor activo)`)
+  const porCatalogo = enlazadas.filter(e => e.origen === 'catalogo_vino_id')
+  const porDura     = enlazadas.filter(e => e.origen === 'clave_dura')
+  console.log(`\nENLAZADAS — ${enlazadas.length} (${porCatalogo.length} via catalogo_vino_id · ${porDura.length} clave dura · ${conOferta.length} con oferta · ${sinOferta.length} sin proveedor activo)`)
   console.log(sep())
   if (enlazadas.length === 0) {
     console.log('  (ninguna)')
@@ -95,8 +97,10 @@ function imprimirInforme({ restauranteId, modo, enlazadas, blandas, sinMatch, pv
     for (const e of enlazadas) {
       const costeStr = e.coste ? `  coste ${eur(e.coste)}` : '  sin oferta'
       const pvpStr   = e.pvpActual ? `  PVP actual ${eur(e.pvpActual)}` : ''
-      console.log(`  ✓ ${e.linea.nombre} (${e.linea.bodega || '?'} ${e.linea.anada || 'S/A'})${costeStr}${pvpStr}`)
+      const tag      = e.origen === 'catalogo_vino_id' ? '[C]' : '[D]'
+      console.log(`  ${tag} ${e.linea.nombre} (${e.linea.bodega || '?'} ${e.linea.anada || 'S/A'})${costeStr}${pvpStr}`)
     }
+    console.log('  [C]=catalogo_vino_id  [D]=clave dura')
   }
 
   // PVP POR DEBAJO DEL SUELO
@@ -171,7 +175,7 @@ async function main() {
   // 1. Líneas de carta del restaurante
   const { data: cartaLineas, error: cartaErr } = await supabase
     .from('vinos')
-    .select('id, nombre, bodega, tipo, anada, formato_compra, precio_botella, precio_copa, coste_compra, activo')
+    .select('id, nombre, bodega, tipo, anada, formato_compra, precio_botella, precio_copa, coste_compra, activo, campos_sobreescritos, catalogo_vino_id')
     .eq('restaurante_id', restauranteId)
   if (cartaErr) throw cartaErr
   console.log(`\n${cartaLineas.length} líneas de carta`)
@@ -203,6 +207,27 @@ async function main() {
     if (!vaPorBodega[bid]) vaPorBodega[bid] = []
     vaPorBodega[bid].push(va)
   }
+
+  // Índice por vino_id canónico para resolver catalogo_vino_id → vino_anada
+  const vaPorVinoId = {}
+  for (const va of canonico || []) {
+    const vid = va.vino?.id
+    if (!vid) continue
+    if (!vaPorVinoId[vid]) vaPorVinoId[vid] = []
+    vaPorVinoId[vid].push(va)
+  }
+
+  // 2b. Cargar proveedor_catalogo_vinos para las líneas que tienen catalogo_vino_id
+  const catalogoVinIds = [...new Set(cartaLineas.filter(v => v.catalogo_vino_id).map(v => v.catalogo_vino_id))]
+  let catalogoVinoMap = {}  // catalogo_vino_id → { vino_id }
+  if (catalogoVinIds.length) {
+    const { data: pcvs } = await supabase
+      .from('proveedor_catalogo_vinos')
+      .select('id, vino_id')
+      .in('id', catalogoVinIds)
+    for (const pcv of pcvs || []) catalogoVinoMap[pcv.id] = pcv
+  }
+  console.log(`${catalogoVinIds.length} líneas con catalogo_vino_id ya establecido`)
 
   // 3. Mejor oferta por vino_anada_id (menor coste, no descatalogado)
   const { data: todasOfertas } = await supabase
@@ -255,10 +280,27 @@ async function main() {
       continue
     }
 
-    // Clave dura: nombre_norm + bodega_id + anada + ml
     const mlEfectivo = ml ?? 750
-    const keyDura = bodegaId ? `${bodegaId}|${nombreNorm}|${anada ?? -1}|${mlEfectivo}` : null
-    const vaId    = keyDura && claveDuraMap.has(keyDura) ? claveDuraMap.get(keyDura) : null
+
+    // Paso 0: catalogo_vino_id → proveedor_catalogo_vinos.vino_id → vino_anada
+    // Es el match de mayor confianza: lo estableció un humano al añadir el vino del catálogo.
+    let vaId   = null
+    let origen = null
+    if (v.catalogo_vino_id && catalogoVinoMap[v.catalogo_vino_id]?.vino_id) {
+      const canonVinoId = catalogoVinoMap[v.catalogo_vino_id].vino_id
+      const candidates  = vaPorVinoId[canonVinoId] || []
+      // Preferir coincidencia exacta por anada + ml; si solo hay uno, usarlo directamente
+      const exacto = candidates.find(va => (va.anada ?? -1) === (anada ?? -1) && va.formato_ml === mlEfectivo)
+      const porAnada = candidates.find(va => (va.anada ?? -1) === (anada ?? -1))
+      const elegido  = exacto || (candidates.length === 1 ? candidates[0] : porAnada) || null
+      if (elegido) { vaId = elegido.id; origen = 'catalogo_vino_id' }
+    }
+
+    // Paso 1: clave dura — nombre_norm + bodega_id + anada + ml
+    if (!vaId) {
+      const keyDura = bodegaId ? `${bodegaId}|${nombreNorm}|${anada ?? -1}|${mlEfectivo}` : null
+      if (keyDura && claveDuraMap.has(keyDura)) { vaId = claveDuraMap.get(keyDura); origen = 'clave_dura' }
+    }
 
     if (vaId) {
       const oferta   = mejorOfertaMap[vaId] || null
@@ -268,7 +310,7 @@ async function main() {
 
       enlazadas.push({
         linea: v, vaId, ofertaId: oferta?.id || null, coste, pvpActual, pvpSuelo: suelo,
-        sinOferta: !oferta,
+        sinOferta: !oferta, origen,
       })
 
       // Alerta PVP
@@ -312,23 +354,18 @@ async function main() {
     return
   }
 
-  // 7. Aplicar: escribir vino_anada_id, oferta_id y coste_compra (si estaba a 0)
+  // 7. Aplicar: escribir vino_anada_id, oferta_id y coste_compra
+  //    coste_compra solo se rellena si: estaba a 0/null Y no está en campos_sobreescritos
   let escritas = 0
   let errores  = 0
   for (const e of enlazadas) {
-    if (e.sinOferta) continue  // sin oferta: no tenemos coste, solo linkamos vino_anada_id
+    const sobreescritos = new Set(e.linea.campos_sobreescritos || [])
     const update = { vino_anada_id: e.vaId }
-    if (e.ofertaId)  update.oferta_id = e.ofertaId
-    if (e.coste && !(parseFloat(e.linea.coste_compra) > 0)) {
-      update.coste_compra = e.coste  // solo rellena si estaba a 0 o null
+    if (e.ofertaId) update.oferta_id = e.ofertaId
+    if (e.coste && !(parseFloat(e.linea.coste_compra) > 0) && !sobreescritos.has('coste_compra')) {
+      update.coste_compra = e.coste
     }
     const { error } = await supabase.from('vinos').update(update).eq('id', e.linea.id)
-    if (error) { console.error(`  ✗ ${e.linea.nombre}: ${error.message}`); errores++ }
-    else escritas++
-  }
-  // Líneas enlazadas sin oferta: solo escribir vino_anada_id
-  for (const e of enlazadas.filter(x => x.sinOferta)) {
-    const { error } = await supabase.from('vinos').update({ vino_anada_id: e.vaId }).eq('id', e.linea.id)
     if (error) { console.error(`  ✗ ${e.linea.nombre}: ${error.message}`); errores++ }
     else escritas++
   }
