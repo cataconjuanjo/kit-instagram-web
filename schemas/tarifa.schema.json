@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Línea de tarifa de proveedor",
+  "description": "Un único contrato para los catorce proveedores. Campos desconocidos van a 'notas' — nunca a un campo estructurado.",
+  "type": "object",
+  "required": [
+    "proveedor",
+    "codigo_articulo",
+    "nombre_crudo",
+    "bodega_cruda",
+    "zona_cruda",
+    "tipo",
+    "formato_crudo",
+    "anada",
+    "coste",
+    "disponibilidad"
+  ],
+  "properties": {
+    "proveedor": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID del proveedor en proveedores_vino"
+    },
+    "codigo_articulo": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Código interno del proveedor. Clave más estable entre tarifas sucesivas."
+    },
+    "nombre_crudo": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Nombre del vino tal cual aparece en el fichero fuente. Sin normalizar."
+    },
+    "bodega_cruda": {
+      "type": "string",
+      "description": "Nombre de la bodega tal cual aparece en el fichero fuente."
+    },
+    "zona_cruda": {
+      "type": "string",
+      "description": "Denominación, región o zona tal cual aparece en el fichero. Se validará contra el maestro canónico. Si no se reconoce, la línea queda en pendiente_mapeo."
+    },
+    "tipo": {
+      "type": "string",
+      "enum": ["tinto", "blanco", "rosado", "espumoso", "dulce", "generoso", "otros"],
+      "description": "Tipo de vino en valor canónico."
+    },
+    "formato_crudo": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Formato/tamaño tal cual aparece en el fichero. El script lo convierte a ml. Ejemplos: '75cl', '0,75L', '750ml', 'Magnum', 'botella'."
+    },
+    "anada": {
+      "type": ["string", "integer", "null"],
+      "description": "Añada en cuatro dígitos (ej. '2021') o null / cadena vacía si no hay añada conocida."
+    },
+    "coste": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 2000,
+      "description": "Precio de compra en euros, sin IVA. Obligatorio. Rango esperado: (0, 2000]."
+    },
+    "disponibilidad": {
+      "type": "string",
+      "description": "Estado de stock tal cual lo indica el proveedor. Ej: 'disponible', 'agotado', 'bajo pedido'."
+    },
+    "notas": {
+      "type": "string",
+      "description": "Cualquier campo adicional que no encaje en los anteriores se serializa aquí en texto libre. NUNCA crear columnas nuevas para datos no estructurados."
+    }
+  },
+  "additionalProperties": false
+}
