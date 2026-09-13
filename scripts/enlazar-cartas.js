@@ -14,6 +14,7 @@
 
 const { createClient } = require('@supabase/supabase-js')
 const path = require('path')
+const fs   = require('fs')
 
 try { process.loadEnvFile(path.join(__dirname, '..', '.env.local')) } catch {}
 
@@ -166,16 +167,16 @@ async function main() {
   const restauranteId = restIdx !== -1 ? args[restIdx + 1] : RESTAURANTE_CARMEN
   const modo          = apply ? 'PUBLICAR' : 'DRY-RUN'
 
-  const url    = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const url    = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
   const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !svcKey) throw new Error('Faltan credenciales')
+  if (!url || !svcKey) throw new Error('Faltan NEXT_PUBLIC_SUPABASE_URL (o SUPABASE_URL) y SUPABASE_SERVICE_ROLE_KEY en .env.local')
 
   const supabase = createClient(url, svcKey, { auth: { autoRefreshToken: false, persistSession: false } })
 
   // 1. Líneas de carta del restaurante
   const { data: cartaLineas, error: cartaErr } = await supabase
     .from('vinos')
-    .select('id, nombre, bodega, tipo, anada, formato_compra, precio_botella, precio_copa, coste_compra, activo, campos_sobreescritos, catalogo_vino_id')
+    .select('id, nombre, bodega, tipo, anada, formato_compra, precio_botella, precio_copa, coste_compra, activo, campos_sobreescritos, catalogo_vino_id, vino_anada_id, oferta_id')
     .eq('restaurante_id', restauranteId)
   if (cartaErr) throw cartaErr
   console.log(`\n${cartaLineas.length} líneas de carta`)
@@ -356,21 +357,49 @@ async function main() {
 
   // 7. Aplicar: escribir vino_anada_id, oferta_id y coste_compra
   //    coste_compra solo se rellena si: estaba a 0/null Y no está en campos_sobreescritos
+
+  // Backup CSV antes de tocar nada
+  const backupDir = path.join(__dirname, '..', 'backups')
+  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true })
+  const ts = new Date().toISOString().replace(/[:.]/g, '-')
+  const backupPath = path.join(backupDir, `enlazar-cartas-${ts}.csv`)
+  const csvRows = ['id,nombre,bodega,vino_anada_id_antes,oferta_id_antes,coste_compra_antes,vino_anada_id_despues,oferta_id_despues,coste_compra_despues,paso']
+  for (const e of enlazadas) {
+    const sobreescritos = new Set(e.linea.campos_sobreescritos || [])
+    const costeDespues  = (e.coste && !(parseFloat(e.linea.coste_compra) > 0) && !sobreescritos.has('coste_compra'))
+      ? e.coste : (e.linea.coste_compra ?? '')
+    const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`
+    csvRows.push([
+      esc(e.linea.id), esc(e.linea.nombre), esc(e.linea.bodega),
+      esc(e.linea.vino_anada_id ?? ''), esc(e.linea.oferta_id ?? ''), esc(e.linea.coste_compra ?? ''),
+      esc(e.vaId), esc(e.ofertaId ?? ''), esc(costeDespues),
+      esc(e.paso ?? ''),
+    ].join(','))
+  }
+  fs.writeFileSync(backupPath, csvRows.join('\n'), 'utf8')
+  console.log(`\n📄 Backup guardado en: ${backupPath}`)
+
   let escritas = 0
   let errores  = 0
   for (const e of enlazadas) {
     const sobreescritos = new Set(e.linea.campos_sobreescritos || [])
     const update = { vino_anada_id: e.vaId }
     if (e.ofertaId) update.oferta_id = e.ofertaId
-    if (e.coste && !(parseFloat(e.linea.coste_compra) > 0) && !sobreescritos.has('coste_compra')) {
-      update.coste_compra = e.coste
-    }
+    const actualizaCoste = e.coste && !(parseFloat(e.linea.coste_compra) > 0) && !sobreescritos.has('coste_compra')
+    if (actualizaCoste) update.coste_compra = e.coste
+
+    console.log(
+      `  ${e.linea.nombre} (${e.linea.bodega})\n` +
+      `    antes → vino_anada_id: ${e.linea.vino_anada_id ?? 'null'} | oferta_id: ${e.linea.oferta_id ?? 'null'} | coste: ${e.linea.coste_compra ?? 'null'}\n` +
+      `    ahora → vino_anada_id: ${e.vaId} | oferta_id: ${e.ofertaId ?? 'null'} | coste: ${actualizaCoste ? e.coste : '(sin cambio)'}`
+    )
+
     const { error } = await supabase.from('vinos').update(update).eq('id', e.linea.id)
-    if (error) { console.error(`  ✗ ${e.linea.nombre}: ${error.message}`); errores++ }
+    if (error) { console.error(`    ✗ Error: ${error.message}`); errores++ }
     else escritas++
   }
 
-  console.log(`✓  ${escritas} líneas actualizadas en DB${errores ? ` · ${errores} errores` : ''}`)
+  console.log(`\n✓  ${escritas} líneas actualizadas en DB${errores ? ` · ${errores} errores` : ''}`)
 }
 
 main().catch(err => { console.error(`\nError: ${err.message}`); process.exit(1) })
