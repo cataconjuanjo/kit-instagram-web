@@ -71,6 +71,14 @@ function claveDura(nombre, bodega, formatoMl, anada) {
   return `${normalizar(nombre)}|${normalizar(bodega)}|${formatoMl}|${anada ?? 'sv'}`
 }
 
+function simJaccard(a, b) {
+  const wa = new Set(normalizar(a).split(' ').filter(w => w.length > 2))
+  const wb = new Set(normalizar(b).split(' ').filter(w => w.length > 2))
+  if (!wa.size || !wb.size) return 0
+  let inter = 0; for (const w of wa) if (wb.has(w)) inter++
+  return inter / (wa.size + wb.size - inter)
+}
+
 function pct(nuevo, anterior) {
   if (!anterior) return null
   return Math.round(((nuevo - anterior) / anterior) * 100)
@@ -172,7 +180,7 @@ async function resolverOCrearVinoAnada(supabase, nombreCrudo, bodegaCruda, anada
 
 // ── Informe de impacto ─────────────────────────────────────────────────────────
 
-function imprimirInforme({ proveedor, periodo, modo, altas, bajas, cambios, pendientes, cartaImpacto }) {
+function imprimirInforme({ proveedor, periodo, modo, altas, dedupPendientes, bajas, cambios, pendientes, cartaImpacto }) {
   const LINE = sep('═')
   const fav = item => item.esFavorito ? '  ★ FAVORITO ' : '  • '
 
@@ -190,6 +198,17 @@ function imprimirInforme({ proveedor, periodo, modo, altas, bajas, cambios, pend
     for (const a of altas) {
       const anada = a.anada ? ` ${a.anada}` : ''
       console.log(`${fav(a)}${a.nombre_crudo} (${a.bodega_cruda || 'sin bodega'}${anada}) — ${a.formato_crudo}  ${eur(a.coste)}`)
+    }
+  }
+
+  // ALTAS PENDIENTES DEDUP
+  console.log(`\nALTAS PENDIENTES DEDUP — ${dedupPendientes.length} (similitud ≥0,65 con vino existente — revisar antes de publicar)`)
+  console.log(sep())
+  if (dedupPendientes.length === 0) {
+    console.log('  (ninguna)')
+  } else {
+    for (const a of dedupPendientes) {
+      console.log(`  • ${a.nombre_crudo} (${a.bodega_cruda || 'sin bodega'}) — similar a: ${a.similares.join(', ')}`)
     }
   }
 
@@ -269,7 +288,7 @@ function imprimirInforme({ proveedor, periodo, modo, altas, bajas, cambios, pend
   const nbSubidas  = cambios.filter(c => c.tipo === 'precio' && c.delta > 0).length
   const nbBajadas  = cambios.filter(c => c.tipo === 'precio' && c.delta < 0).length
   console.log(`\n${LINE}`)
-  console.log(`RESUMEN: ${altas.length} altas · ${bajas.length} bajas (${nbFavBajas} favoritos) · ${nbSubidas} subidas · ${nbBajadas} bajadas · ${anadaCambios.length} cambios de añada · ${pendientes.length} pendientes`)
+  console.log(`RESUMEN: ${altas.length} altas · ${dedupPendientes.length} dedup pendiente · ${bajas.length} bajas (${nbFavBajas} favoritos) · ${nbSubidas} subidas · ${nbBajadas} bajadas · ${anadaCambios.length} cambios de añada · ${pendientes.length} pendientes mapeo`)
   console.log(`${LINE}\n`)
 }
 
@@ -454,6 +473,25 @@ async function main() {
     })
   }
 
+  // 7b. Dedup check para altas: similitud ≥ 0,65 con vinos de la misma bodega → pendiente_revision
+  const dedupPendientes = []
+  if (altas.length) {
+    const { data: bodegas } = await supabase.from('bodega').select('id, nombre')
+    const bodegaIdPorNorm = Object.fromEntries((bodegas || []).map(b => [normalizar(b.nombre), b.id]))
+    for (let i = altas.length - 1; i >= 0; i--) {
+      const a = altas[i]
+      const bodegaId = bodegaIdPorNorm[normalizar(a.bodega_cruda || '')]
+      if (!bodegaId) continue
+      const { data: vinosBodega } = await supabase
+        .from('vino').select('id, nombre').eq('bodega_id', bodegaId)
+      const similares = (vinosBodega || []).filter(v => simJaccard(v.nombre, a.nombre_crudo) >= 0.65)
+      if (similares.length) {
+        dedupPendientes.push({ ...a, similares: similares.map(s => s.nombre) })
+        altas.splice(i, 1)
+      }
+    }
+  }
+
   // 8. Impacto en cartas
   const vinoIdsAfectados = [
     ...cambios.map(c => c.vinoAnadaId),
@@ -487,7 +525,7 @@ async function main() {
 
   // 9. Imprimir informe
   const pendientes = pendientesMapeo.map(({ obj, v }) => ({ linea: v.linea, nombre_crudo: obj.nombre_crudo, zona_cruda: obj.zona_cruda }))
-  imprimirInforme({ proveedor: prov, periodo: periodoArg, modo, altas, bajas, cambios, pendientes, cartaImpacto })
+  imprimirInforme({ proveedor: prov, periodo: periodoArg, modo, altas, dedupPendientes, bajas, cambios, pendientes, cartaImpacto })
 
   if (!apply) {
     console.log('→ Dry-run. Ejecuta con --apply para publicar.\n')
@@ -506,12 +544,15 @@ async function main() {
 
   // 10b. Insertar linea_cruda para todas las líneas (incluye pendientes mapeo)
   const todasLineas = validadas.filter(x => x.v.ok || x.v.pendienteMapeo)
-  const lineaRows = todasLineas.map(({ obj, v }, i) => ({
+  const codigosDedupPendiente = new Set(dedupPendientes.map(d => d.codigo_articulo).filter(Boolean))
+  const lineaRows = todasLineas.map(({ obj, v }) => ({
     tarifa_id: nuevaTarifa.id,
     numero_linea: v.linea,
     texto_literal: JSON.stringify(obj),
     datos_json: obj,
-    estado_revision: v.pendienteMapeo ? 'pendiente_mapeo' : 'ok',
+    estado_revision: v.pendienteMapeo ? 'pendiente_mapeo'
+      : (obj.codigo_articulo && codigosDedupPendiente.has(obj.codigo_articulo)) ? 'pendiente_revision'
+      : 'ok',
     confianza: null,
   }))
   await supabase.from('linea_cruda').insert(lineaRows)
@@ -550,7 +591,14 @@ async function main() {
   }
   if (ofertaRows.length) await supabase.from('oferta').insert(ofertaRows)
 
-  // 10d. Marcar bajas como inactivas en proveedor_catalogo_vinos (si tienen referencia_origen_id)
+  // 10d. Bajas: actualizar modelo canónico (oferta.disponibilidad) y modelo display (proveedor_catalogo_vinos.activo)
+  // oferta.disponibilidad — el modelo canónico que leen bloque 6 y el filtro geográfico del bloque 8
+  const bajasOfertaIds = bajas.map(b => b.ofertaId).filter(Boolean)
+  if (bajasOfertaIds.length) {
+    await supabase.from('oferta').update({ disponibilidad: 'descatalogado' }).in('id', bajasOfertaIds)
+  }
+
+  // proveedor_catalogo_vinos.activo=false — el flag que usa catalogo-consultor para sin_proveedor_activo
   const bajasConOrigen = bajas.filter(b => b.ofertaId)
   if (bajasConOrigen.length) {
     const { data: origenes } = await supabase
