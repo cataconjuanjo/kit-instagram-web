@@ -202,12 +202,14 @@ function imprimirInforme({ proveedor, periodo, modo, altas, dedupPendientes, baj
   }
 
   // ALTAS PENDIENTES DEDUP
-  console.log(`\nALTAS PENDIENTES DEDUP — ${dedupPendientes.length} (similitud ≥0,65 con vino existente — revisar antes de publicar)`)
+  const dedupSimilitud = dedupPendientes.filter(d => d.razon === 'similitud')
+  const dedupBodega    = dedupPendientes.filter(d => d.razon === 'bodega_no_reconocida')
+  console.log(`\nALTAS PENDIENTES DEDUP — ${dedupSimilitud.length} (similitud ≥0,65 con vino existente — revisar antes de publicar)`)
   console.log(sep())
-  if (dedupPendientes.length === 0) {
+  if (dedupSimilitud.length === 0) {
     console.log('  (ninguna)')
   } else {
-    for (const a of dedupPendientes) {
+    for (const a of dedupSimilitud) {
       console.log(`  • ${a.nombre_crudo} (${a.bodega_cruda || 'sin bodega'}) — similar a: ${a.similares.join(', ')}`)
     }
   }
@@ -272,14 +274,18 @@ function imprimirInforme({ proveedor, periodo, modo, altas, dedupPendientes, baj
     }
   }
 
-  // PENDIENTES DE MAPEO
-  console.log(`\nLÍNEAS PENDIENTES DE MAPEO — ${pendientes.length}`)
+  // PENDIENTES DE MAPEO (zona no reconocida + bodega no reconocida)
+  const totalPendientesMapeo = pendientes.length + dedupBodega.length
+  console.log(`\nLÍNEAS PENDIENTES DE MAPEO — ${totalPendientesMapeo}`)
   console.log(sep())
-  if (pendientes.length === 0) {
+  if (totalPendientesMapeo === 0) {
     console.log('  (ninguna)')
   } else {
     for (const p of pendientes) {
       console.log(`  • L${p.linea}  ${p.nombre_crudo} — zona "${p.zona_cruda}" no reconocida`)
+    }
+    for (const a of dedupBodega) {
+      console.log(`  • ${a.nombre_crudo} — bodega "${a.bodega_cruda || ''}" no reconocida`)
     }
   }
 
@@ -288,7 +294,7 @@ function imprimirInforme({ proveedor, periodo, modo, altas, dedupPendientes, baj
   const nbSubidas  = cambios.filter(c => c.tipo === 'precio' && c.delta > 0).length
   const nbBajadas  = cambios.filter(c => c.tipo === 'precio' && c.delta < 0).length
   console.log(`\n${LINE}`)
-  console.log(`RESUMEN: ${altas.length} altas · ${dedupPendientes.length} dedup pendiente · ${bajas.length} bajas (${nbFavBajas} favoritos) · ${nbSubidas} subidas · ${nbBajadas} bajadas · ${anadaCambios.length} cambios de añada · ${pendientes.length} pendientes mapeo`)
+  console.log(`RESUMEN: ${altas.length} altas · ${dedupSimilitud.length} dedup pendiente · ${bajas.length} bajas (${nbFavBajas} favoritos) · ${nbSubidas} subidas · ${nbBajadas} bajadas · ${anadaCambios.length} cambios de añada · ${totalPendientesMapeo} pendientes mapeo`)
   console.log(`${LINE}\n`)
 }
 
@@ -473,21 +479,35 @@ async function main() {
     })
   }
 
-  // 7b. Dedup check para altas: similitud ≥ 0,65 con vinos de la misma bodega → pendiente_revision
+  // 7b. Dedup check para altas:
+  //   - Si la bodega no se resuelve: pendiente_mapeo (igual que zona no reconocida,
+  //     no se crea ni vino ni oferta hasta resolución manual)
+  //   - Si la bodega se resuelve pero hay similitud ≥ umbral: pendiente_revision
+  const UMBRAL_DEDUP = 0.45  // pendiente calibración con tabla real — ver scripts/_calibrar-dedup-umbral.js
   const dedupPendientes = []
   if (altas.length) {
     const { data: bodegas } = await supabase.from('bodega').select('id, nombre')
     const bodegaIdPorNorm = Object.fromEntries((bodegas || []).map(b => [normalizar(b.nombre), b.id]))
     for (let i = altas.length - 1; i >= 0; i--) {
       const a = altas[i]
-      const bodegaId = bodegaIdPorNorm[normalizar(a.bodega_cruda || '')]
-      if (!bodegaId) continue
-      const { data: vinosBodega } = await supabase
-        .from('vino').select('id, nombre').eq('bodega_id', bodegaId)
-      const similares = (vinosBodega || []).filter(v => simJaccard(v.nombre, a.nombre_crudo) >= 0.65)
-      if (similares.length) {
-        dedupPendientes.push({ ...a, similares: similares.map(s => s.nombre) })
+      const bodegaNorm = normalizar(a.bodega_cruda || '')
+      const bodegaId = bodegaNorm ? bodegaIdPorNorm[bodegaNorm] : null
+
+      if (bodegaNorm && !bodegaId) {
+        // Bodega no reconocida → pendiente_mapeo, no crea nada
+        dedupPendientes.push({ ...a, razon: 'bodega_no_reconocida', similares: [] })
         altas.splice(i, 1)
+        continue
+      }
+
+      if (bodegaId) {
+        const { data: vinosBodega } = await supabase
+          .from('vino').select('id, nombre').eq('bodega_id', bodegaId)
+        const similares = (vinosBodega || []).filter(v => simJaccard(v.nombre, a.nombre_crudo) >= UMBRAL_DEDUP)
+        if (similares.length) {
+          dedupPendientes.push({ ...a, razon: 'similitud', similares: similares.map(s => s.nombre) })
+          altas.splice(i, 1)
+        }
       }
     }
   }
@@ -544,14 +564,16 @@ async function main() {
 
   // 10b. Insertar linea_cruda para todas las líneas (incluye pendientes mapeo)
   const todasLineas = validadas.filter(x => x.v.ok || x.v.pendienteMapeo)
-  const codigosDedupPendiente = new Set(dedupPendientes.map(d => d.codigo_articulo).filter(Boolean))
+  const codigosDedupPendiente  = new Set(dedupPendientes.map(d => d.codigo_articulo).filter(Boolean))
+  const codigosBodegaPendiente = new Set(dedupPendientes.filter(d => d.razon === 'bodega_no_reconocida').map(d => d.codigo_articulo).filter(Boolean))
   const lineaRows = todasLineas.map(({ obj, v }) => ({
     tarifa_id: nuevaTarifa.id,
     numero_linea: v.linea,
     texto_literal: JSON.stringify(obj),
     datos_json: obj,
     estado_revision: v.pendienteMapeo ? 'pendiente_mapeo'
-      : (obj.codigo_articulo && codigosDedupPendiente.has(obj.codigo_articulo)) ? 'pendiente_revision'
+      : codigosBodegaPendiente.has(obj.codigo_articulo) ? 'pendiente_mapeo'
+      : codigosDedupPendiente.has(obj.codigo_articulo) ? 'pendiente_revision'
       : 'ok',
     confianza: null,
   }))
@@ -560,7 +582,7 @@ async function main() {
   // 10c. Crear nuevas ofertas para líneas procesables
   const ofertaRows = []
   for (const { obj, v, match, esFavorito, confianza } of [
-    ...procesables.map(({ obj, v }) => {
+    ...procesables.filter(({ obj }) => !codigosDedupPendiente.has(obj.codigo_articulo)).map(({ obj, v }) => {
       let match2 = null
       if (obj.codigo_articulo && mapCodigo.has(obj.codigo_articulo)) match2 = mapCodigo.get(obj.codigo_articulo)
       else {
