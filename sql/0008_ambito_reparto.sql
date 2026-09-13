@@ -1,6 +1,13 @@
 -- 0008_ambito_reparto.sql
 -- Bloque 8: ámbito de reparto del proveedor y provincia del restaurante.
 -- Expand-only: ADD COLUMN, CREATE TABLE, backfill acotado. Sin DROP ni DELETE.
+--
+-- INSTRUCCIÓN DE EJECUCIÓN EN SUPABASE SQL EDITOR:
+--   El editor valida referencias de columna antes de ejecutar. Ejecutar en DOS PASADAS:
+--   PASADA 1 → todo lo marcado "PASADA 1" (DDL)
+--   PASADA 2 → todo lo marcado "PASADA 2" (DML + NOT NULL)
+
+-- ── PASADA 1: DDL ─────────────────────────────────────────────────────────────
 
 -- 1. Ámbito de reparto del proveedor (nacional por defecto → zero-movement)
 ALTER TABLE proveedores_vino
@@ -21,12 +28,12 @@ CREATE INDEX IF NOT EXISTS proveedor_provincia_codigo_idx
 ALTER TABLE restaurantes
   ADD COLUMN IF NOT EXISTS provincia_codigo text;
 
--- 4. Backfill: los tres restaurantes activos son todos Málaga (INE 29)
-UPDATE restaurantes
-  SET provincia_codigo = '29'
-WHERE nombre ILIKE '%carmen%'
-   OR nombre ILIKE '%sumiller%'
-   OR (nombre ILIKE '%taberna%' AND nombre ILIKE '%puerto%');
+-- ── PASADA 2: DML + NOT NULL ──────────────────────────────────────────────────
+
+-- 4. Backfill: provincia confirmada por id estable (no por nombre)
+UPDATE restaurantes SET provincia_codigo = '29' WHERE id = 'db3af496-00f1-4295-82b6-35427b9b6286'; -- Lo de Carmen
+UPDATE restaurantes SET provincia_codigo = '29' WHERE id = 'a4346301-4dc5-4cb5-a2f5-3ca6469acd66'; -- La Taberna del Puerto
+UPDATE restaurantes SET provincia_codigo = '28' WHERE id = '6b528438-3d24-432d-9728-dc2ff868baf6'; -- Modo Sumiller
 
 -- 5. Sentinel '00' para restaurantes cuya provincia se desconoce
 UPDATE restaurantes
