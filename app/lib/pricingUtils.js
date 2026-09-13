@@ -90,6 +90,14 @@ export function normalizarAjustesPrecios(ajustes = {}) {
     ),
     margenObjetivoBotellaPct: clamp(margenBotella, 1, 95),
     margenObjetivoCopaPct: clamp(margenCopa, 1, 95),
+    redondeoBotellaEur: primerNumeroPositivo(
+      [ajustes?.redondeo_botella, ajustes?.redondeoBotellaEur],
+      DEFAULT_WINE_ECONOMICS.redondeoBotellaEur
+    ),
+    redondeoCopaEur: primerNumeroPositivo(
+      [ajustes?.redondeo_copa, ajustes?.redondeoCopaEur],
+      DEFAULT_WINE_ECONOMICS.redondeoCopaEur
+    ),
   }
 }
 
@@ -97,12 +105,14 @@ function precioConIvaSiAplica(precioNeto, ajustes) {
   return ajustes.pvpIncluyeIva ? anadirIva(precioNeto, ajustes.ivaVentaPct) : redondear(precioNeto, 4)
 }
 
-function redondearBotellaComercial(valor) {
-  return Math.round(numeroPrecio(valor))
+function redondearBotellaComercial(valor, paso = 1.00) {
+  const p = numeroPrecio(paso) || 1.00
+  return Math.round(numeroPrecio(valor) / p) * p
 }
 
-function redondearCopaComercial(valor) {
-  return redondear(Math.round(numeroPrecio(valor) * 2) / 2, 2)
+function redondearCopaComercial(valor, paso = 0.50) {
+  const p = numeroPrecio(paso) || 0.50
+  return redondear(Math.round(numeroPrecio(valor) / p) * p, 2)
 }
 
 export function calcularPvpNetoBotellaCatalogo(costeNeto) {
@@ -138,13 +148,13 @@ export function calcularPreciosSugeridos(coste, ajustes) {
   const botellaCatalogo = calcularPvpNetoBotellaCatalogo(costeNeto)
   const pvpNetoBotella = botellaCatalogo.pvpNeto
   const baseBotella = precioConIvaSiAplica(pvpNetoBotella, config)
-  const botella = redondearBotellaComercial(baseBotella)
+  const botella = redondearBotellaComercial(baseBotella, config.redondeoBotellaEur)
 
   const copas = copasVendibles(config)
   const costePorCopa = costeNeto / copas
   const margenObjetivoCopaPct = config.margenObjetivoCopaPct
   const baseCopa = botella / copas
-  const copa = redondearCopaComercial(baseCopa)
+  const copa = redondearCopaComercial(baseCopa, config.redondeoCopaEur)
   const pvpNetoCopa = config.pvpIncluyeIva ? baseCopa / (1 + config.ivaVentaPct / 100) : baseCopa
 
   return {

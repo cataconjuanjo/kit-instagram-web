@@ -502,6 +502,9 @@ export default function RestauranteWorkspace() {
   const [accionesMobileOpen, setAccionesMobileOpen] = useState(false)
   const [sigMovOpen, setSigMovOpen] = useState(false)
   const [planConsultorOpen, setPlanConsultorOpen] = useState(false)
+  const [politica, setPolitica] = useState(null)
+  const [politicaDraft, setPoliticaDraft] = useState('')
+  const [guardandoPolitica, setGuardandoPolitica] = useState(false)
 
   const RESTAURANTE_PREFIX = '[RESTAURANTE] '
   const esSeleccionJuanjo = item => !String(item.nota_personal || '').startsWith(RESTAURANTE_PREFIX)
@@ -557,6 +560,14 @@ export default function RestauranteWorkspace() {
       setSeleccion((selData || []).filter(item => !String(item.nota_personal || '').startsWith('[RESTAURANTE] ')))
       setLoading(false)
       cargarConsultoriaFase1(token)
+      const politicaRes = await fetch(`/api/politica-precio?restaurante_id=${id}`)
+      if (politicaRes.ok) {
+        const politicaData = await politicaRes.json().catch(() => ({}))
+        if (politicaData.politica) {
+          setPolitica(politicaData.politica)
+          setPoliticaDraft(String(Math.round(100 - Number(politicaData.politica.margen_objetivo || 65))))
+        }
+      }
     }
     if (id) cargar()
   }, [id, cargarConsultoriaFase1])
@@ -818,6 +829,26 @@ export default function RestauranteWorkspace() {
       setMensajeMatch(`Datos aplicados a ${vinoRestaurante.nombre}.`)
     }
     setAplicandoMatchId('')
+  }
+
+  async function guardarPolitica() {
+    setGuardandoPolitica(true)
+    try {
+      const token = await tokenAdmin()
+      const margenObjetivo = 100 - Number(politicaDraft)
+      const res = await fetch('/api/politica-precio', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ restaurante_id: id, margen_objetivo: margenObjetivo }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setPolitica(data.politica)
+    } catch (err) {
+      alert(err.message || 'Error al guardar la política de precios')
+    } finally {
+      setGuardandoPolitica(false)
+    }
   }
 
   async function guardarPropuesta(e) {
@@ -2124,6 +2155,49 @@ export default function RestauranteWorkspace() {
                   </div>
                 ))}
               </div>
+            </div>
+          </section>
+
+          <section id="ws-politica-precio" className="ws-section">
+            <div className="ws-section-head">
+              <h3 className="ws-section-title">Política de precios</h3>
+            </div>
+            <div style={{ padding: '16px 0' }}>
+              {!politica ? (
+                <p style={{ color: '#756d63', fontSize: 14 }}>Cargando…</p>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap' }}>
+                  <div>
+                    <label style={{ fontSize: 13, color: '#17120f', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                      Coste objetivo (food cost)
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="number"
+                        min="15" max="55" step="1"
+                        value={politicaDraft}
+                        onChange={e => setPoliticaDraft(e.target.value)}
+                        style={{ width: 68, padding: '4px 8px', border: '1px solid #e0d4bc', borderRadius: 6, fontSize: 14 }}
+                      />
+                      <span style={{ fontSize: 13, color: '#756d63' }}>
+                        % → margen {100 - Number(politicaDraft)}%
+                      </span>
+                      <button
+                        disabled={guardandoPolitica || politicaDraft === String(Math.round(100 - Number(politica.margen_objetivo || 65)))}
+                        onClick={guardarPolitica}
+                        style={{ padding: '4px 12px', background: '#74223d', color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}
+                      >
+                        {guardandoPolitica ? 'Guardando…' : 'Guardar'}
+                      </button>
+                    </div>
+                    <p style={{ fontSize: 12, color: '#756d63', marginTop: 6 }}>
+                      {politica.restaurante_id
+                        ? 'Política específica para este restaurante.'
+                        : 'Heredando política global. Guarda para crear una específica.'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 

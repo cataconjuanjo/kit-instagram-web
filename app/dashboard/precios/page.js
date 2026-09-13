@@ -5,13 +5,14 @@ import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
+import { DEFAULT_WINE_ECONOMICS } from '../../lib/wineEconomics'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 import priceStyles from './precios.module.css'
 
 const AJUSTES_INICIALES = {
-  margen: 65,
-  copas: 5,
+  margen: DEFAULT_WINE_ECONOMICS.margenObjetivoBotellaPct,
+  copas: DEFAULT_WINE_ECONOMICS.copasPorBotella,
 }
 
 function numero(valor) {

@@ -7,6 +7,8 @@ export const DEFAULT_WINE_ECONOMICS = {
   copasPorBotella: 5,
   mermaCopaPct: 10,
   precioMinimoCopa: 4.5,
+  redondeoBotellaEur: 1.00,
+  redondeoCopaEur: 0.50,
 }
 
 export const BY_THE_GLASS_REFERENCE = {

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { isAdminEmail } from '../../demo'
 import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
+import { DEFAULT_WINE_ECONOMICS } from '../../lib/wineEconomics'
 import {
   SELECT_CLIENT_RESTAURANTE_ADMIN,
   SELECT_CLIENT_VINO_ADMIN,
@@ -14,21 +15,21 @@ const ESCENARIOS = {
     label: 'Conservador',
     bajas: 4,
     altas: 6,
-    objetivoMargen: 62,
+    deltaMargen: -3,
     descripcion: 'Ajuste fino con pocas bajas y referencias muy defendibles.'
   },
   optimizado: {
     label: 'Optimizado',
     bajas: 8,
     altas: 12,
-    objetivoMargen: 65,
+    deltaMargen: 0,
     descripcion: 'Reequilibra la carta, mejora margen y cubre huecos claros.'
   },
   ambicioso: {
     label: 'Ambicioso',
     bajas: 14,
     altas: 18,
-    objetivoMargen: 68,
+    deltaMargen: 3,
     descripcion: 'Replanteamiento amplio para una propuesta comercial potente.'
   }
 }
@@ -899,7 +900,7 @@ export default function SimuladorCartas() {
                   onClick={() => { setEscenario(key); limpiarManual() }}
                 >
                   <strong>{cfg.label}</strong>
-                  <span>{cfg.bajas} bajas · {cfg.altas} altas · obj. {cfg.objetivoMargen}%</span>
+                  <span>{cfg.bajas} bajas · {cfg.altas} altas · obj. {DEFAULT_WINE_ECONOMICS.margenObjetivoBotellaPct + cfg.deltaMargen}%</span>
                 </button>
               ))}
             </div>
