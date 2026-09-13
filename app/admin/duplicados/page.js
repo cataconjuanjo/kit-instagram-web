@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -77,7 +77,7 @@ export default function DuplicadosPage () {
   const [loading, setLoading]         = useState(true)
   const [procesando, setProcesando]   = useState(null)
   const [error, setError]             = useState(null)
-  const supabase = createClientComponentClient()
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
   const cargar = useCallback(async () => {
     setLoading(true)
