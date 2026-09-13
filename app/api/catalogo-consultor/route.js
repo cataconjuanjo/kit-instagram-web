@@ -17,7 +17,7 @@ export async function GET(req) {
 
     const { data: restaurante, error: restError } = await supabaseAdmin
       .from('restaurantes')
-      .select('plan, subscription_status')
+      .select('plan, subscription_status, provincia_codigo')
       .eq('id', restauranteId)
       .single()
 
@@ -29,17 +29,43 @@ export async function GET(req) {
       return Response.json({ error: 'Plan no incluye el catálogo de consultor' }, { status: 403 })
     }
 
-    const { data: providers, error: provError } = await supabaseAdmin
+    const { data: allProviders, error: provError } = await supabaseAdmin
       .from('proveedores_vino')
-      .select('id, nombre, contacto, email, telefono, zona')
+      .select('id, nombre, contacto, email, telefono, zona, ambito_reparto')
       .eq('visible_restaurantes', true)
 
     if (provError) throw provError
-    if (!providers?.length) {
+    if (!allProviders?.length) {
       const trazabilidad = resumenAgrupacionCatalogo([])
       console.info('[catalogo-consultor] sin proveedores visibles', JSON.stringify(trazabilidad))
-      return Response.json({ vinos: [], trazabilidad })
+      return Response.json({ vinos: [], trazabilidad, fuera_zona: 0 })
     }
+
+    // Filtrado geográfico: proveedores nacionales siempre sirven; los de ámbito
+    // 'provincias' solo si incluyen la provincia del restaurante.
+    const provinciaRestaurante = restaurante.provincia_codigo || '00'
+    const provsPorProvincias = allProviders.filter(p => p.ambito_reparto === 'provincias')
+    let provinciasMap = {}
+    if (provsPorProvincias.length > 0) {
+      const { data: provRows } = await supabaseAdmin
+        .from('proveedor_provincia')
+        .select('proveedor_id, provincia_codigo')
+        .in('proveedor_id', provsPorProvincias.map(p => p.id))
+      for (const row of (provRows || [])) {
+        if (!provinciasMap[row.proveedor_id]) provinciasMap[row.proveedor_id] = []
+        provinciasMap[row.proveedor_id].push(row.provincia_codigo)
+      }
+    }
+
+    const providers = allProviders.filter(p => {
+      if (p.ambito_reparto !== 'provincias') return true
+      const sirve = (provinciasMap[p.id] || [])
+      return sirve.includes(provinciaRestaurante)
+    })
+
+    const nonServingIds = allProviders
+      .filter(p => !providers.find(s => s.id === p.id))
+      .map(p => p.id)
 
     const providerIds = providers.map(p => p.id)
     const providerMap = Object.fromEntries(providers.map(p => [p.id, p]))
@@ -128,18 +154,31 @@ export async function GET(req) {
       }
     })
 
+    // Contar favoritos de proveedores fuera de zona (no se muestran)
+    let fuera_zona = 0
+    if (nonServingIds.length > 0) {
+      const { count } = await supabaseAdmin
+        .from('proveedor_catalogo_vinos')
+        .select('id', { count: 'exact', head: true })
+        .eq('favorito', true)
+        .in('proveedor_id', nonServingIds)
+      fuera_zona = count || 0
+    }
+
     const grupos = agruparOfertasCatalogo(result)
     const trazabilidad = resumenAgrupacionCatalogo(result, grupos)
     console.info('[catalogo-consultor] carga completa', JSON.stringify({
       restauranteId,
+      provinciaRestaurante,
       proveedoresConsultados: providers.length,
+      fueraZona: fuera_zona,
       lineasOriginales: result.length,
       gruposCreados: grupos.length,
       grupos: trazabilidad.grupos,
       generadoEn: trazabilidad.generadoEn,
     }))
 
-    return Response.json({ vinos: result, trazabilidad })
+    return Response.json({ vinos: result, trazabilidad, fuera_zona })
   } catch (err) {
     console.error('[catalogo-consultor]', err)
     return Response.json({ error: 'No se pudo cargar el catálogo.' }, { status: 500 })

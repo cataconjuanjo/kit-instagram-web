@@ -8,7 +8,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'cataconjuanjo@gmail.com'
 const SELECT_PROVEEDOR = [
   'id', 'nombre', 'contacto', 'email', 'telefono', 'zona', 'notas',
-  'visible_restaurantes', 'created_at', 'updated_at',
+  'visible_restaurantes', 'ambito_reparto', 'created_at', 'updated_at',
 ].join(', ')
 const SELECT_CATALOGO_VINO = [
   'id', 'proveedor_id', 'nombre', 'bodega', 'tipo', 'tipo_raw', 'region', 'uva',
@@ -141,6 +141,7 @@ function repararFila(fila) {
 }
 
 function payloadProveedor(body) {
+  const ambito = body.ambito_reparto === 'provincias' ? 'provincias' : 'nacional'
   return {
     nombre: texto(body, 'nombre'),
     contacto: texto(body, 'contacto') || null,
@@ -149,7 +150,18 @@ function payloadProveedor(body) {
     zona: texto(body, 'zona') || null,
     notas: texto(body, 'notas') || null,
     visible_restaurantes: Boolean(body.visible_restaurantes),
+    ambito_reparto: ambito,
     updated_at: new Date().toISOString()
+  }
+}
+
+async function gestionarProveedorProvincia(supabase, proveedorId, ambito, provincias) {
+  await supabase.from('proveedor_provincia').delete().eq('proveedor_id', proveedorId)
+  if (ambito === 'provincias' && Array.isArray(provincias) && provincias.length > 0) {
+    const filas = provincias
+      .filter(c => typeof c === 'string' && c.length === 2)
+      .map(c => ({ proveedor_id: proveedorId, provincia_codigo: c }))
+    if (filas.length) await supabase.from('proveedor_provincia').insert(filas)
   }
 }
 
@@ -195,20 +207,30 @@ export async function GET(req) {
     if (admin.error) return Response.json({ error: admin.error }, { status: admin.status })
 
     const supabase = adminClient()
-    const [{ data: proveedores, error: proveedoresError }, vinos] = await Promise.all([
+    const [{ data: proveedores, error: proveedoresError }, vinos, { data: provsProv }] = await Promise.all([
       supabase.from('proveedores_vino').select(SELECT_PROVEEDOR).order('nombre'),
       seleccionarTodo(
         supabase
           .from('proveedor_catalogo_vinos')
           .select(SELECT_CATALOGO_VINO)
           .order('created_at', { ascending: false })
-      )
+      ),
+      supabase.from('proveedor_provincia').select('proveedor_id, provincia_codigo')
     ])
 
     if (proveedoresError) throw proveedoresError
 
+    const provinciasPorProveedor = {}
+    for (const row of (provsProv || [])) {
+      if (!provinciasPorProveedor[row.proveedor_id]) provinciasPorProveedor[row.proveedor_id] = []
+      provinciasPorProveedor[row.proveedor_id].push(row.provincia_codigo)
+    }
+
     return Response.json({
-      proveedores: (proveedores || []).map(repararFila),
+      proveedores: (proveedores || []).map(p => ({
+        ...repararFila(p),
+        provincias: provinciasPorProveedor[p.id] || [],
+      })),
       vinos: (vinos || []).map(repararFila),
     })
   } catch (error) {
@@ -284,7 +306,8 @@ export async function POST(req) {
       .single()
 
     if (error) throw error
-    return Response.json({ proveedor: data })
+    await gestionarProveedorProvincia(supabase, data.id, dataPayload.ambito_reparto, body.provincias)
+    return Response.json({ proveedor: { ...data, provincias: dataPayload.ambito_reparto === 'provincias' ? (body.provincias || []) : [] } })
   } catch (error) {
     console.error('Error creando proveedor/catálogo:', error)
     return Response.json({ error: 'No se pudo guardar.' }, { status: 500 })
@@ -374,7 +397,9 @@ export async function PATCH(req) {
       .single()
 
     if (error) throw error
-    return Response.json({ proveedor: data })
+    await gestionarProveedorProvincia(supabase, body.id, dataPayload.ambito_reparto, body.provincias)
+    const provinciasGuardadas = dataPayload.ambito_reparto === 'provincias' ? (body.provincias || []) : []
+    return Response.json({ proveedor: { ...data, provincias: provinciasGuardadas } })
   } catch (error) {
     console.error('Error editando proveedor/catálogo:', error)
     return Response.json({ error: 'No se pudo editar.' }, { status: 500 })

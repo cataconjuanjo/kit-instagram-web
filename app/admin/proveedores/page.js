@@ -7,6 +7,7 @@ import { isAdminEmail } from '../../demo'
 import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
 import { TIPOS_VINO, etiquetasTipoVino, normalizarTipo as normalizarTipoVino } from '../../lib/winePresentation'
 import AdminOverlay from '../components/AdminOverlay'
+import { PROVINCIAS_ES } from '../../lib/provincias'
 
 
 const proveedorInicial = {
@@ -16,7 +17,9 @@ const proveedorInicial = {
   telefono: '',
   zona: '',
   notas: '',
-  visible_restaurantes: false
+  visible_restaurantes: false,
+  ambito_reparto: 'nacional',
+  provincias: []
 }
 
 const vinoInicial = {
@@ -295,6 +298,7 @@ function ProveedoresPageContent() {
   const [marcandoVisible, setMarcandoVisible] = useState(false)
   const [vistaProveedores, setVistaProveedores] = useState(searchParams.get('vista') === 'catalogo' ? 'catalogo' : 'gestion')
   const [acordeonAbierto, setAcordeonAbierto] = useState(null)
+  const [ambitoVista, setAmbitoVista] = useState('todos')
   const catalogoRef = useRef(null)
 
   function mostrarToast(msg, tipo = 'ok') {
@@ -365,6 +369,14 @@ function ProveedoresPageContent() {
   useEffect(() => {
     setPaginaReferencias(1)
   }, [proveedorSeleccionado, busquedaReferencias, filtroZona, filtroBodega, filtroTipo, filtroPrecio, filtroCopa, soloSinPrecio, ocultarSinPrecio, soloFavoritos, ordenReferencias, referenciasPorPagina])
+
+  const proveedoresFiltrados = useMemo(() => {
+    if (ambitoVista === 'todos') return proveedores
+    return proveedores.filter(p =>
+      p.ambito_reparto !== 'provincias' ||
+      (p.provincias || []).includes(ambitoVista)
+    )
+  }, [proveedores, ambitoVista])
 
   const vinosFiltradosBase = useMemo(() => {
     const rango = RANGOS_PRECIO.find(item => item.id === filtroPrecio)
@@ -682,7 +694,9 @@ function ProveedoresPageContent() {
       telefono: proveedor.telefono || '',
       zona: proveedor.zona || '',
       notas: proveedor.notas || '',
-      visible_restaurantes: Boolean(proveedor.visible_restaurantes)
+      visible_restaurantes: Boolean(proveedor.visible_restaurantes),
+      ambito_reparto: proveedor.ambito_reparto || 'nacional',
+      provincias: proveedor.provincias || []
     })
   }
 
@@ -1098,6 +1112,41 @@ function ProveedoresPageContent() {
                           <span>{proveedorForm.visible_restaurantes ? 'El restaurante puede ver este proveedor y su catálogo de referencias.' : 'Los precios de compra permanecen ocultos para el restaurante.'}</span>
                         </div>
                       </label>
+                    </div>
+                    <div className="supplier-visibility-block" style={{ marginTop: 12 }}>
+                      <div style={{ marginBottom: 8 }}>
+                        <strong>Ámbito de reparto</strong>
+                        <span style={{ display: 'block', fontSize: 13, marginTop: 2 }}>Define si este proveedor sirve toda España o solo provincias específicas.</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 20 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 14 }}>
+                          <input type="radio" name="ambito_reparto" value="nacional" checked={proveedorForm.ambito_reparto === 'nacional'} onChange={() => cambiarProveedor('ambito_reparto', 'nacional')} />
+                          Nacional — toda España
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 14 }}>
+                          <input type="radio" name="ambito_reparto" value="provincias" checked={proveedorForm.ambito_reparto === 'provincias'} onChange={() => cambiarProveedor('ambito_reparto', 'provincias')} />
+                          Por provincias
+                        </label>
+                      </div>
+                      {proveedorForm.ambito_reparto === 'provincias' && (
+                        <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(155px, 1fr))', gap: 4, maxHeight: 220, overflowY: 'auto', border: '1px solid #e0d4bc', borderRadius: 6, padding: '8px 12px' }}>
+                          {PROVINCIAS_ES.map(prov => (
+                            <label key={prov.codigo} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 13 }}>
+                              <input
+                                type="checkbox"
+                                checked={(proveedorForm.provincias || []).includes(prov.codigo)}
+                                onChange={e => {
+                                  const actual = proveedorForm.provincias || []
+                                  cambiarProveedor('provincias', e.target.checked
+                                    ? [...actual, prov.codigo]
+                                    : actual.filter(c => c !== prov.codigo))
+                                }}
+                              />
+                              {prov.nombre}
+                            </label>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="alta-field" style={{ marginTop: 12 }}>
                       <label>Notas privadas</label>
@@ -1846,7 +1895,11 @@ function ProveedoresPageContent() {
             <section className="supplier-section">
               <div className="supplier-section-head">
                 <h2>Proveedores</h2>
-                {proveedores.length > 0 && <span>{proveedores.length} registrados</span>}
+                {proveedores.length > 0 && <span>{proveedoresFiltrados.length === proveedores.length ? `${proveedores.length} registrados` : `${proveedoresFiltrados.length} de ${proveedores.length}`}</span>}
+                <select value={ambitoVista} onChange={e => setAmbitoVista(e.target.value)} className="supplier-btn-edit" style={{ cursor: 'pointer', fontSize: 13 }}>
+                  <option value="todos">Toda España</option>
+                  {PROVINCIAS_ES.map(prov => <option key={prov.codigo} value={prov.codigo}>{prov.nombre}</option>)}
+                </select>
                 {proveedores.some(p => !p.visible_restaurantes) && (
                   <button
                     type="button"
@@ -1859,7 +1912,7 @@ function ProveedoresPageContent() {
               </div>
               {proveedores.length === 0 && <p className="consult-empty">Aún no hay proveedores privados. Crea uno con el formulario de arriba.</p>}
               <div className="supplier-rows">
-                {proveedores.map(proveedor => (
+                {proveedoresFiltrados.map(proveedor => (
                   <div className="supplier-row" key={proveedor.id}>
                     <div className="supplier-row-info">
                       <strong>{proveedor.nombre}</strong>
@@ -1867,6 +1920,9 @@ function ProveedoresPageContent() {
                     </div>
                     <div className="supplier-row-stats">
                       <span className="supplier-row-badge">{conteoPorProveedor[proveedor.id] || 0} refs</span>
+                      {proveedor.ambito_reparto === 'provincias' && (!proveedor.provincias || proveedor.provincias.length === 0) && (
+                        <span className="supplier-row-badge" style={{ background: '#f3ead8', color: '#74223d', border: '1px solid #e0c9a0' }}>Reparto pendiente</span>
+                      )}
                       <span className={`supplier-row-status${proveedor.visible_restaurantes ? ' is-public' : ''}`}>
                         {proveedor.visible_restaurantes ? 'Visible' : 'Privado'}
                       </span>
