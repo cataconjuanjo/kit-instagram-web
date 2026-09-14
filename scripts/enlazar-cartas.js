@@ -29,6 +29,13 @@ function normalizar(str) {
     .replace(/[^a-z0-9]+/g, ' ').trim()
 }
 
+const RUIDO_BODEGA = new Set(['bodega', 'bodegas', 'vinedos', 'cellers', 'domaine'])
+function normalizarBodega(str) {
+  return normalizar(str).split(' ')
+    .filter(w => w.length > 1 && !RUIDO_BODEGA.has(w))
+    .join(' ')
+}
+
 function simJaccard(a, b) {
   const wa = new Set(normalizar(a).split(' ').filter(w => w.length > 2))
   const wb = new Set(normalizar(b).split(' ').filter(w => w.length > 2))
@@ -167,9 +174,9 @@ async function main() {
   const restauranteId = restIdx !== -1 ? args[restIdx + 1] : RESTAURANTE_CARMEN
   const modo          = apply ? 'PUBLICAR' : 'DRY-RUN'
 
-  const url    = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  const url    = process.env.NEXT_PUBLIC_SUPABASE_URL
   const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !svcKey) throw new Error('Faltan NEXT_PUBLIC_SUPABASE_URL (o SUPABASE_URL) y SUPABASE_SERVICE_ROLE_KEY en .env.local')
+  if (!url || !svcKey) throw new Error('Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY')
 
   const supabase = createClient(url, svcKey, { auth: { autoRefreshToken: false, persistSession: false } })
 
@@ -184,13 +191,24 @@ async function main() {
   // 2. Maestro canónico en memoria
   const { data: bodegas, error: bodErr } = await supabase.from('bodega').select('id, nombre')
   if (bodErr) throw bodErr
-  const bodegaMapNorm = Object.fromEntries((bodegas || []).map(b => [normalizar(b.nombre), b.id]))
+  const bodegaMapNorm = Object.fromEntries((bodegas || []).map(b => [normalizarBodega(b.nombre), b.id]))
 
-  const { data: canonico, error: canErr } = await supabase
-    .from('vino_anada')
-    .select('id, anada, formato_ml, vino:vino_id(id, nombre, nombre_norm, bodega_id)')
-  if (canErr) throw canErr
-  console.log(`${(canonico || []).length} registros vino_anada en catálogo canónico`)
+  const canonico = []
+  {
+    const PAGE = 1000
+    let offset = 0
+    for (;;) {
+      const { data: page, error: canErr } = await supabase
+        .from('vino_anada')
+        .select('id, anada, formato_ml, vino:vino_id(id, nombre, nombre_norm, bodega_id)')
+        .range(offset, offset + PAGE - 1)
+      if (canErr) throw canErr
+      canonico.push(...(page || []))
+      if ((page || []).length < PAGE) break
+      offset += PAGE
+    }
+  }
+  console.log(`${canonico.length} registros vino_anada en catálogo canónico`)
 
   // Índice clave dura: "bodega_id|nombre_norm|anada|ml" → vino_anada_id
   const claveDuraMap = new Map()
@@ -264,7 +282,7 @@ async function main() {
 
   for (const v of cartaLineas) {
     const nombreNorm = normalizar(v.nombre)
-    const bodegaNorm = normalizar(v.bodega || '')
+    const bodegaNorm = normalizarBodega(v.bodega || '')
     const bodegaId   = bodegaNorm ? bodegaMapNorm[bodegaNorm] : null
     const ml         = formatoAMl(v.formato_compra)
     const anada      = parsearAnada(v.anada)
