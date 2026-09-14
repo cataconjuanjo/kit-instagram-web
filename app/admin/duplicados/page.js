@@ -2,6 +2,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtFormato (ml) {
@@ -77,7 +82,6 @@ export default function DuplicadosPage () {
   const [loading, setLoading]         = useState(true)
   const [procesando, setProcesando]   = useState(null)
   const [error, setError]             = useState(null)
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
   const cargar = useCallback(async () => {
     setLoading(true)
@@ -97,7 +101,7 @@ export default function DuplicadosPage () {
     } finally {
       setLoading(false)
     }
-  }, [supabase])
+  }, [])
 
   useEffect(() => { cargar() }, [cargar])
 
