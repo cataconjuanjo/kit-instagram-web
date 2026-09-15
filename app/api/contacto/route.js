@@ -1,7 +1,6 @@
 import { Resend } from 'resend'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const RATE_LIMIT = 5
 const RATE_WINDOW_MS = 60 * 60 * 1000
 
@@ -60,6 +59,7 @@ export async function POST(req) {
       return Response.json({ ok: false, error: 'Demasiados mensajes. Prueba de nuevo en un rato.' }, { status: 429 })
     }
 
+    const resend = new Resend(process.env.RESEND_API_KEY)
     await resend.emails.send({
       from: 'Cata con Juanjo <onboarding@resend.dev>',
       to: 'cataconjuanjo@gmail.com',

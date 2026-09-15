@@ -16,7 +16,8 @@
       "app/api/kiosko/lead/unsubscribe/route.js",
       "app/planes/page.js",
       "app/api/kiosko/[slug]/feedback/route.js",
-      "informe-agosto-2026-lo-de-carmen.html"
+      "informe-agosto-2026-lo-de-carmen.html",
+      "app/api/kiosko/[slug]/admin/alerta-stock/route.js"
     ],
     "ignoreValues": [
       {

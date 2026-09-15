@@ -3,7 +3,7 @@ import { Resend } from 'resend'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const FROM   = 'Kiosko Vinos <kiosko@cataconjuanjo.com>'
 
 export async function POST(request, { params }) {

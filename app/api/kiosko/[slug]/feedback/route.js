@@ -4,7 +4,7 @@ import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { checkRateLimit } from '../../../../lib/security'
 import { isTiendaAccesible } from '../../../_lib/kioskoAuth'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const FROM   = process.env.CARTA_VIVA_FROM || 'Carta Viva <onboarding@resend.dev>'
 const ADMIN  = 'cataconjuanjo@gmail.com'
 const RATE_LIMIT = 10

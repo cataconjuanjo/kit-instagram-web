@@ -5,7 +5,7 @@ import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { checkRateLimit } from '../../../../lib/security'
 import { isTiendaAccesible } from '../../../_lib/kioskoAuth'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const IP_RATE_LIMIT = 12
 const EMAIL_RATE_LIMIT = 3
 const RATE_WINDOW_MS = 60 * 60 * 1000

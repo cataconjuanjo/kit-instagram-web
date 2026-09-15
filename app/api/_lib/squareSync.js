@@ -60,9 +60,10 @@ export function squareSyncPausedPayload(tienda = {}, trigger = 'square_sync') {
   }
 }
 
-export async function fetchSquareJson(url, options = {}, context = 'Square API') {
+export async function fetchSquareJson(url, options = {}, context = 'Square API', timeoutMs = null) {
+  const ms = timeoutMs != null ? timeoutMs : SQUARE_REQUEST_TIMEOUT_MS
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), SQUARE_REQUEST_TIMEOUT_MS)
+  const timeout = setTimeout(() => controller.abort(), ms)
 
   try {
     const res = await fetch(url, { ...options, signal: controller.signal })
@@ -73,7 +74,7 @@ export async function fetchSquareJson(url, options = {}, context = 'Square API')
     return body ? JSON.parse(body) : {}
   } catch (error) {
     if (error?.name === 'AbortError') {
-      throw new Error(`${context} timeout after ${SQUARE_REQUEST_TIMEOUT_MS}ms`)
+      throw new Error(`${context} timeout after ${ms}ms`)
     }
     throw error
   } finally {
@@ -98,7 +99,7 @@ function getTokenForTienda(tienda) {
 export async function listSquareSyncTiendas({ includePaused = false } = {}) {
   const { data: tiendas, error } = await supabaseAdmin
     .from('tiendas')
-    .select('id, slug, square_access_token, square_location_id')
+    .select('id, slug, square_access_token, square_location_id, square_tracks_inventory')
     .eq('activo', true)
     .order('slug')
 
@@ -109,12 +110,24 @@ export async function listSquareSyncTiendas({ includePaused = false } = {}) {
       const { square_access_token, ...safeTienda } = tienda
       if (isSquareSyncTemporarilyPaused(safeTienda)) {
         return includePaused
-          ? { ...safeTienda, squareToken: null, squareTokenSource: 'paused', squareSyncPaused: true }
+          ? {
+              ...safeTienda,
+              squareToken: null,
+              squareTokenSource: 'paused',
+              squareSyncPaused: true,
+              squareTracksInventory: Boolean(tienda.square_tracks_inventory),
+            }
           : null
       }
 
       const { token, source } = getTokenForTienda(tienda)
-      return token ? { ...safeTienda, squareToken: token, squareTokenSource: source, squareSyncPaused: false } : null
+      return token ? {
+        ...safeTienda,
+        squareToken: token,
+        squareTokenSource: source,
+        squareSyncPaused: false,
+        squareTracksInventory: Boolean(tienda.square_tracks_inventory),
+      } : null
     })
     .filter(Boolean)
 }
@@ -374,7 +387,7 @@ function matchesReconcileCategory(categoryFilter, categoria) {
   return !categoryFilter.length || categoryFilter.includes(String(categoria || 'otro').trim().toLowerCase())
 }
 
-async function fetchCatalogObjects(objectIds, token) {
+async function fetchCatalogObjects(objectIds, token, timeoutMs = null) {
   const ids = uniqueStrings(objectIds)
   if (!ids.length || !token) return { objects: [], related_objects: [] }
 
@@ -392,7 +405,7 @@ async function fetchCatalogObjects(objectIds, token) {
         object_ids: chunk,
         include_related_objects: true,
       }),
-    }, 'Square catalog/batch-retrieve')
+    }, 'Square catalog/batch-retrieve', timeoutMs)
     objects.push(...(data.objects || []))
     relatedObjects.push(...(data.related_objects || []))
   }
@@ -535,6 +548,198 @@ export async function squareCatalogUpdateForTiendaObjects(tiendaId, tiendaSlug, 
     total: variations.length,
     catalogObjectIds: ids,
   }
+}
+
+// ── Caché negativa de catalog_object_ids descartados ─────────────────────────
+// Ámbito: instancia de Vercel (process-level). Cubre ráfagas de ventas del mismo
+// artículo no gestionado dentro de la misma instancia caliente.
+const SKIP_CACHE_TTL_MS   = 24 * 60 * 60 * 1000
+const SKIP_CACHE_MAX_SIZE = 2000
+const _skipCache = new Map() // key: `${tiendaId}:${id}` → expiresAt (ms)
+
+function _isSkipCached(tiendaId, id) {
+  const key = `${tiendaId}:${id}`
+  const exp = _skipCache.get(key)
+  if (!exp) return false
+  if (Date.now() > exp) { _skipCache.delete(key); return false }
+  return true
+}
+
+function _evictExpiredSkips() {
+  if (_skipCache.size < SKIP_CACHE_MAX_SIZE) return
+  const now = Date.now()
+  for (const [key, exp] of _skipCache) {
+    if (now > exp) _skipCache.delete(key)
+  }
+}
+
+// Marca catalog_object_ids confirmados como no gestionados (still not_found tras retry).
+export function markCatalogIdsSkipped(tiendaId, ids) {
+  _evictExpiredSkips()
+  const exp = Date.now() + SKIP_CACHE_TTL_MS
+  for (const id of uniqueStrings((ids || []).filter(Boolean))) {
+    _skipCache.set(`${tiendaId}:${id}`, exp)
+  }
+}
+
+// Micro-sync inline: recupera catalog_object_ids de Square, resuelve la jerarquía
+// de categorías (máx. 3 niveles de ancestros, timeout 4 s por llamada), inserta en
+// vinos_tienda los artículos de categoría vino/gourmet (stock=0, activo=false) y
+// actualiza IDs/precio en filas ya existentes.
+//
+// Lanza en errores de API o BD para que route.js los clasifique como transitorios
+// (→503) o permanentes (→200).
+//
+// Política de caché negativa:
+//   - IDs que Square no devuelve como variación (eliminados, MODIFIER…) → caché.
+//   - IDs descartados por política explícita (neverKiosko, nombre excluido…) → caché.
+//   - IDs descartados solo por 'square_category_missing' → NO caché (la categoría
+//     puede resolverse en una llamada futura con ancestros ya disponibles).
+export async function syncCatalogObjectsForTienda(tiendaId, tiendaSlug, squareToken, catalogObjectIds) {
+  const token = (squareToken || '').trim()
+  if (!token) throw new Error('No hay token de Square configurado para esta tienda')
+
+  const ids = uniqueStrings((catalogObjectIds || []).filter(Boolean))
+  if (!ids.length) return { inserted: 0, updated: 0, skipped: 0 }
+
+  const idsToFetch = ids.filter(id => !_isSkipCached(tiendaId, id))
+  if (!idsToFetch.length) return { inserted: 0, updated: 0, skipped: ids.length }
+
+  const { objects, related_objects: relatedObjects } = await fetchCatalogObjects(idsToFetch, token, 4000)
+  const allObjects = [...(objects || []), ...(relatedObjects || [])]
+
+  // Construir categoryMap y parentCategoryMap desde los objetos devueltos
+  const categoryMap = {}
+  const parentCategoryMap = {}
+  for (const obj of allObjects) {
+    if (obj?.type === 'CATEGORY' && obj.category_data?.name) {
+      categoryMap[obj.id] = obj.category_data.name
+      const parentId = obj.category_data?.parent_category?.id
+      if (parentId) parentCategoryMap[obj.id] = parentId
+    }
+  }
+
+  // Resolver ancestros ausentes (batch-retrieve solo incluye categorías directas).
+  // Itera hasta 3 niveles; cada llamada usa el mismo timeout de 4 s.
+  let unresolvedParents = new Set(
+    Object.values(parentCategoryMap).filter(pid => !categoryMap[pid])
+  )
+  for (let depth = 0; depth < 3 && unresolvedParents.size > 0; depth++) {
+    const { objects: anc, related_objects: ancRel } =
+      await fetchCatalogObjects([...unresolvedParents], token, 4000)
+    const newlyFound = new Set()
+    for (const obj of [...(anc || []), ...(ancRel || [])]) {
+      if (obj?.type === 'CATEGORY' && obj.category_data?.name) {
+        categoryMap[obj.id] = obj.category_data.name
+        newlyFound.add(obj.id)
+        const parentId = obj.category_data?.parent_category?.id
+        if (parentId) parentCategoryMap[obj.id] = parentId
+      }
+    }
+    unresolvedParents = new Set(
+      [...newlyFound].map(id => parentCategoryMap[id]).filter(id => id && !categoryMap[id])
+    )
+  }
+
+  const itemById = new Map()
+  for (const obj of allObjects) {
+    if (obj?.type === 'ITEM' && obj.id) itemById.set(obj.id, obj)
+  }
+
+  const variations = collectCatalogVariations(objects || [], relatedObjects || [])
+
+  // IDs que Square no devolvió como variación (eliminados, tipo MODIFIER, etc.) → caché
+  const producedVariationIds = new Set(variations.map(v => v.variationId))
+  const orphanIds = idsToFetch.filter(id => !producedVariationIds.has(id))
+  if (orphanIds.length) markCatalogIdsSkipped(tiendaId, orphanIds)
+
+  if (!variations.length) return { inserted: 0, updated: 0, skipped: ids.length }
+
+  const variationIds    = variations.map(v => v.variationId)
+  const catalogIds      = variations.flatMap(v => [v.itemId, v.variationId]).filter(Boolean)
+  const vinosBySquareId = await selectVinosBySquareIds(tiendaId, variationIds, catalogIds)
+
+  const now = new Date().toISOString()
+  let inserted = 0, updated = 0, skipped = 0
+  const toInsert = []
+  const policySkippedIds = []
+
+  for (const variation of variations) {
+    const parentItem = variation.itemId ? itemById.get(variation.itemId) : null
+    const d = parentItem?.item_data || {}
+    const rawNombre = d.name?.trim()
+    if (!rawNombre) {
+      policySkippedIds.push(variation.variationId)
+      skipped++
+      continue
+    }
+
+    const squareCategories = getSquareCategoryEntries(d, categoryMap, parentCategoryMap)
+    const decision = decideSquareCatalogImport(tiendaSlug, squareCategories, rawNombre)
+    if (decision.action === 'skip') {
+      // No cachear si la causa es categoría no resuelta: puede resolverse en un retry
+      if (decision.reason !== 'square_category_missing') {
+        policySkippedIds.push(variation.variationId)
+      }
+      skipped++
+      continue
+    }
+
+    const existing = vinosBySquareId.get(variation.variationId) || vinosBySquareId.get(variation.itemId)
+
+    if (existing) {
+      const patch = {}
+      if (pricesDiffer(existing.precio_pvp, variation.precio_pvp)) patch.precio_pvp = variation.precio_pvp
+      if (variation.itemId && existing.square_catalog_id !== variation.itemId) patch.square_catalog_id = variation.itemId
+      if (variation.variationId && existing.square_variation_id !== variation.variationId) patch.square_variation_id = variation.variationId
+      if (Object.keys(patch).length) {
+        patch.updated_at = now
+        patch.square_last_seen_at = now
+        const { error } = await supabaseAdmin.from('vinos_tienda').update(patch).eq('id', existing.id)
+        if (error) throw new Error(`Error actualizando vinos_tienda id=${existing.id}: ${error.message}`)
+        updated++
+      }
+      continue
+    }
+
+    const { nombre, uva, bodega, region, pais } = parsearNombreSquare(rawNombre)
+    const catDetectada = detectarCategoria(d, categoryMap, parentCategoryMap)
+    const categoria = decision.categoryOverride || catDetectada
+
+    // Solo insertar vino/gourmet; el resto no pertenece al kiosko
+    if (!['vino', 'gourmet'].includes(categoria)) {
+      policySkippedIds.push(variation.variationId)
+      skipped++
+      continue
+    }
+
+    toInsert.push({
+      tienda_id:           tiendaId,
+      square_catalog_id:   variation.itemId || null,
+      square_variation_id: variation.variationId,
+      nombre,
+      precio_pvp:          variation.precio_pvp ?? null,
+      stock:               0,
+      activo:              false,
+      categoria,
+      square_last_seen_at: now,
+      updated_at:          now,
+      uva:    uva    || null,
+      bodega: bodega || null,
+      region: region || null,
+      pais:   pais   || null,
+    })
+  }
+
+  if (policySkippedIds.length) markCatalogIdsSkipped(tiendaId, policySkippedIds)
+
+  if (toInsert.length) {
+    const { error } = await supabaseAdmin.from('vinos_tienda').insert(toInsert)
+    if (error) throw new Error(`Error insertando en vinos_tienda: ${error.message}`)
+    inserted = toInsert.length
+  }
+
+  return { inserted, updated, skipped }
 }
 
 // Devuelve todos los IDs de categoría del item + sus padres (para jerarquías Square)
@@ -1709,6 +1914,10 @@ export async function applyPaymentToStock(payment, tienda) {
       .update({ stock: nuevoStock, activo, updated_at: now })
       .eq('id', vino.id)
 
+    if (updateErr) {
+      console.warn(`[square-sync] payment_id=${payment?.id} tienda=${tienda?.slug} catalog_id=${catalogId} vino_id=${vino.id}: fallo update stock (${vino.stock}→${nuevoStock}): ${updateErr.message}`)
+    }
+
     lineas.push({
       catalog_object_id: catalogId, quantity: qty, tienda_slug: tienda.slug,
       vino_id: vino.id, vino_nombre: vino.nombre, categoria: vino.categoria || 'otro',
@@ -1719,6 +1928,63 @@ export async function applyPaymentToStock(payment, tienda) {
 
   const hasError = lineas.some(l => l.status === 'error')
   return { lineas, hasError, actualizados: lineas.filter(l => l.status === 'ok').length }
+}
+
+// Versión atómica e idempotente de applyPaymentToStock usando la RPC apply_payment_lines.
+// Sustituye el bucle de UPDATEs individuales por una sola llamada que ejecuta todo
+// en una transacción con SELECT FOR UPDATE ordenado por id (previene deadlocks).
+export async function applyPaymentLinesRpc(payment, tienda) {
+  const order = await fetchSquareOrder(payment.order_id, tienda.squareToken)
+  const quantities = buildPaymentQuantities(order)
+
+  // Nombre de cada línea para logs (ya en la orden, sin llamada extra).
+  // Las líneas sin catalog_object_id son descartadas antes de la RPC: logearlas aquí.
+  const catalogIdToName = new Map()
+  for (const lineItem of order.line_items || []) {
+    if (lineItem.catalog_object_id) {
+      if (lineItem.name) catalogIdToName.set(lineItem.catalog_object_id, lineItem.name)
+    } else {
+      console.log(
+        `[square-webhook] Sin match en pago ${payment.id}: "${lineItem.name || ''}" ` +
+        `(variation: sin id, qty: ${parsePaymentQuantity(lineItem.quantity)})`
+      )
+    }
+  }
+
+  if (!quantities.size) return { lineas: [], hasError: false, actualizados: 0 }
+
+  const pLines = [...quantities.entries()].map(([catalogId, qty]) => ({
+    catalog_object_id: catalogId,
+    quantity: qty,
+  }))
+
+  const { data, error } = await supabaseAdmin.rpc('apply_payment_lines', {
+    p_tienda_id:  tienda.id,
+    p_payment_id: payment.id,
+    p_lines:      pLines,
+  })
+
+  if (error) throw new Error(`RPC apply_payment_lines: ${error.message}`)
+
+  const result = Array.isArray(data) ? data : []
+  const lineas = result.map(line => ({
+    ...line,
+    quantity:    quantities.get(line.catalog_object_id) || 0,
+    tienda_slug: tienda.slug,
+    item_name:   line.vino_nombre || catalogIdToName.get(line.catalog_object_id) || null,
+  }))
+
+  for (const l of lineas) {
+    if (l.anomalia) {
+      console.warn(`[square-sync] ANOMALIA stock insuficiente: payment_id=${payment.id} tienda=${tienda.slug} catalog_id=${l.catalog_object_id} stock=${l.stock_antes} qty=${l.quantity} → descuento parcial a 0`)
+    }
+  }
+
+  return {
+    lineas,
+    hasError:    lineas.some(l => l.status === 'error'),
+    actualizados: lineas.filter(l => l.status === 'ok').length,
+  }
 }
 
 // Identifica y opcionalmente borra los productos de la BD cuyo square_catalog_id
