@@ -1124,6 +1124,8 @@ export default function AdminKioskoPage() {
   const [precioMax, setPrecioMax]         = useState('')
   const [ordenPor, setOrdenPor]           = useState('nombre')
   const [ordenDir, setOrdenDir]           = useState('asc')
+  const [rendSortField, setRendSortField] = useState('ingresos')
+  const [rendSortDir, setRendSortDir]     = useState('desc')
   const [paginaActual, setPaginaActual]   = useState(1)
   const [porPagina, setPorPagina]         = useState(20)
 
@@ -2927,11 +2929,12 @@ export default function AdminKioskoPage() {
             const ingresos = uds * pvp
             const margen   = pvp > 0 && coste > 0 ? Math.round(((pvp - coste) / pvp) * 100) : null
             const categoria  = rentabilidad?.clasificados?.find(c => c.id === v.id)?.categoria || null
-            const tendencia  = tp[v.id] || null
             const agotado    = !v.activo
             const beneficio  = pvp > 0 && coste > 0 ? Math.round((pvp - coste) * uds) : null
+            const ultimaVentaIso = uva[v.id] || null
+            const diasSinVender  = ultimaVentaIso ? Math.floor((Date.now() - new Date(ultimaVentaIso).getTime()) / 86400000) : null
             const ultimaVentaFecha = (() => {
-              const iso = uva[v.id]
+              const iso = ultimaVentaIso
               if (!iso) return null
               const d = new Date(iso)
               const hoy = new Date()
@@ -2941,9 +2944,16 @@ export default function AdminKioskoPage() {
               if (d.toDateString() === ayer.toDateString()) return `ayer ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
               return fmt(d)
             })()
-            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, tendencia, agotado, stock: v.stock ?? null, pvpVal: pvp > 0 ? pvp : null, beneficio, ultimaVentaFecha }
+            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, agotado, stock: v.stock ?? null, pvpVal: pvp > 0 ? pvp : null, beneficio, ultimaVentaFecha, ultimaVentaIso, diasSinVender }
           })
-          .sort((a, b) => b.ingresos - a.ingresos)
+          .sort((a, b) => {
+            if (rendSortField === 'ultimaVenta') {
+              const va = a.ultimaVentaIso || ''
+              const vb = b.ultimaVentaIso || ''
+              return rendSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+            }
+            return b.ingresos - a.ingresos
+          })
         if (!filas.length) return (
           <div style={{ padding: '0 1.75rem 1.75rem' }}>
             <div className={styles.analiticaBloque}>
@@ -2967,6 +2977,13 @@ export default function AdminKioskoPage() {
           const d = new Date(hoy.getTime() - (7 - i) * 7 * 24 * 60 * 60 * 1000)
           return `${d.getDate()}/${d.getMonth() + 1}`
         })
+        const totalBeneficio      = filas.filter(f => f.beneficio !== null).reduce((s, f) => s + f.beneficio, 0)
+        const hayBeneficio        = filas.some(f => f.beneficio !== null)
+        const filasConMargen      = filas.filter(f => f.margen !== null && f.ingresos > 0)
+        const totalIngresosConMgn = filasConMargen.reduce((s, f) => s + f.ingresos, 0)
+        const margenPonderado     = totalIngresosConMgn > 0
+          ? Math.round(filasConMargen.reduce((s, f) => s + f.margen * f.ingresos, 0) / totalIngresosConMgn)
+          : null
         return (
           <div style={{ padding: '0 1.75rem 1.75rem' }}>
             {weeklyTotals.some(v => v > 0) && (
@@ -3005,8 +3022,17 @@ export default function AdminKioskoPage() {
                       <th className={styles.rendThNum}>Margen bruto</th>
                       <th className={styles.rendThNum}>PVP</th>
                       <th className={styles.rendThNum}>Stock</th>
-                      <th className={styles.rendThNum}>Última venta</th>
-                      <th className={styles.rendThNum}>Tendencia</th>
+                      <th
+                        className={styles.rendThNum}
+                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                        onClick={() => {
+                          if (rendSortField === 'ultimaVenta') setRendSortDir(d => d === 'asc' ? 'desc' : 'asc')
+                          else { setRendSortField('ultimaVenta'); setRendSortDir('desc') }
+                        }}
+                      >
+                        Última venta{rendSortField === 'ultimaVenta' ? (rendSortDir === 'asc' ? ' ↑' : ' ↓') : ' ↕'}
+                      </th>
+                      <th className={styles.rendThNum}>Días sin vender</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3035,8 +3061,8 @@ export default function AdminKioskoPage() {
                           </span>
                         </td>
                         <td className={styles.rendTdNum} style={{ fontSize: '0.78rem', color: '#888' }}>{f.ultimaVentaFecha || '—'}</td>
-                        <td className={styles.rendTdSparkline}>
-                          {f.tendencia ? <Sparkline data={f.tendencia} /> : <em className={styles.dash}>—</em>}
+                        <td className={styles.rendTdNum} style={{ color: '#888' }}>
+                          {f.diasSinVender !== null ? `${f.diasSinVender}d` : '—'}
                         </td>
                       </tr>
                     ))}
@@ -3046,7 +3072,13 @@ export default function AdminKioskoPage() {
                       <td className={styles.rendTdNombre}>Total</td>
                       <td className={styles.rendTdNum}>{totalUds} ud.</td>
                       <td className={styles.rendTdNum}>{totalIngresos.toFixed(0)} €</td>
-                      <td /><td /><td /><td /><td /><td />
+                      <td className={styles.rendTdNum}>{hayBeneficio ? `${totalBeneficio} €` : '—'}</td>
+                      <td className={styles.rendTdNum}>
+                        {margenPonderado !== null
+                          ? <span className={`${styles.margenBadge} ${margenPonderado >= 40 ? styles.margenHigh : margenPonderado >= 25 ? styles.margenMid : styles.margenLow}`}>{margenPonderado}%</span>
+                          : '—'}
+                      </td>
+                      <td /><td /><td /><td />
                     </tr>
                   </tfoot>
                 </table>
