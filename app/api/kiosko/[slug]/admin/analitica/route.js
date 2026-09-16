@@ -161,11 +161,26 @@ export async function GET(request, { params }) {
   })
 
   // ── Ventas reales desde Square ──────────────────────────────────────────────
-  const { data: syncLogs } = await supabaseAdmin
-    .from('square_sync_log')
-    .select('lineas, created_at')
-    .eq('tienda_slug', slug)
-    .eq('ok', true)
+  // Paginar para superar el tope de 1.000 filas de Supabase/PostgREST.
+  // Deuda: acotar por rango de fechas (ej. últimos 90 días) cuando el log crezca.
+  let syncLogs = []
+  {
+    const PAGE = 1000
+    let from = 0
+    while (true) {
+      const { data: page, error: pageError } = await supabaseAdmin
+        .from('square_sync_log')
+        .select('lineas, created_at')
+        .eq('tienda_slug', slug)
+        .eq('ok', true)
+        .order('created_at', { ascending: true })
+        .range(from, from + PAGE - 1)
+      if (pageError) { console.error('[analitica] square_sync_log page error:', pageError.message); break }
+      syncLogs = syncLogs.concat(page || [])
+      if (!page || page.length < PAGE) break
+      from += PAGE
+    }
+  }
 
   const ventasPorVino = {}
   const tendenciaPorVino = {}
