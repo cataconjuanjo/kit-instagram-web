@@ -1845,6 +1845,14 @@ export default function AdminKioskoPage() {
     }))
     const margenMedio = calculados.reduce((s, v) => s + v.margenPct, 0) / calculados.length
     const totalVentas = calculados.reduce((s, v) => s + v.ventas, 0)
+    // DEBUG TEMPORAL — eliminar tras diagnóstico
+    console.log('[RENTABILIDAD DEBUG]', {
+      totalVentas,
+      conCoste_count: conCoste.length,
+      hayVentasSquare,
+      ventasSquare_keys: Object.keys(ventasSquare).length,
+      calculados_primeros5: calculados.slice(0, 5).map(v => ({ id: v.id, nombre: v.nombre, ventas: v.ventas, margenPct: v.margenPct })),
+    })
     if (totalVentas < 20) return { clasificados: [], margenMedio: Math.round(margenMedio), recomMedio: 0, sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length, coldStart: true, usandoVentas: hayVentasSquare }
     const ventasMedio = totalVentas / calculados.length
     const clasificados = calculados.map(v => ({
