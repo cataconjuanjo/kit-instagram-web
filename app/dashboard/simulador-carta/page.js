@@ -2063,7 +2063,9 @@ export default function SimuladorCarta() {
                     Diversidad de zonas — opcional ({sugerencias.secundario.length})
                   </p>
                   <p className={simStyles.sugerenciasNota}>
-                    Todos los platos tienen cobertura de maridaje. Estas referencias amplían la diversidad de D.O. en el borrador.
+                    {sugerencias.todosCubiertos
+                      ? 'Todos los platos tienen cobertura de maridaje. Estas referencias amplían la diversidad de D.O. en el borrador.'
+                      : 'Vinos de zonas/D.O. no representadas en el borrador.'}
                   </p>
                   {sugerencias.secundario.map(s => (
                     <label key={s.key} className={simStyles.sugerenciaItem}>

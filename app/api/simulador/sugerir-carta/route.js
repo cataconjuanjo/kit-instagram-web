@@ -30,7 +30,7 @@ export async function POST(req) {
     }
 
     // Parallelise provider + plato queries; vinos depends on providerIds so runs after.
-    const [{ data: providers }, { data: platos }] = await Promise.all([
+    const [{ data: providers }, { data: platos, error: platosError }] = await Promise.all([
       supabaseAdmin.from('proveedores_vino').select('id').eq('visible_restaurantes', true),
       // Sin filtro activo=true: los platos pueden tener activo=null (no se rellenó el campo)
       // y eq('activo', true) los excluiría silenciosamente, dejando platosActivos vacío.
@@ -42,6 +42,7 @@ export async function POST(req) {
         .order('categoria')
         .limit(200),
     ])
+    if (platosError) console.error('[sugerir-carta] platos query error:', platosError)
 
     const providerIds = (providers || []).map(p => p.id)
     const catalogo = []
