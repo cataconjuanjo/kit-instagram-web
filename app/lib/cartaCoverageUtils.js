@@ -1,4 +1,4 @@
-import { estimarPerfil, necesidadesEstructurales } from './maridajeEngine'
+import { estimarPerfil, necesidadesEstructurales } from './maridajeEngine.js'
 
 function platoTexto(p) {
   return [p.nombre, p.categoria, p.descripcion].filter(Boolean).join(' ')

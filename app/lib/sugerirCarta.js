@@ -1,5 +1,5 @@
-import { estimarPerfil, necesidadesEstructurales } from './maridajeEngine'
-import { vinosCompatiblesConPlato } from './cartaCoverageUtils'
+import { estimarPerfil, necesidadesEstructurales } from './maridajeEngine.js'
+import { vinosCompatiblesConPlato } from './cartaCoverageUtils.js'
 
 export { vinosCompatiblesConPlato }
 
@@ -72,6 +72,8 @@ export function generarSugerencias(lineas, catalogo, platos) {
   const platosActivos = (platos || []).filter(p => p.activo !== false)
 
   if (!catalogo.length) return { anadir: [], sustituir: [] }
+
+  console.log('[sugerirCarta] init: activas=', activas.length, 'platosInput=', (platos||[]).length, 'platosActivos=', platosActivos.length, 'catalogo=', catalogo.length, 'candidatos=', candidatos.length)
 
   let anadir = []
   let platosObjetivo, nivelDos
