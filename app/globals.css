@@ -5265,7 +5265,9 @@ h3 {
 
 .supplier-list {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  grid-column: 1 / -1;
 }
 
 .supplier-list h2 {
@@ -5279,6 +5281,11 @@ h3 {
   min-height: 0;
   gap: 14px;
   padding: 16px;
+}
+
+.supplier-offer {
+  min-height: 0;
+  gap: 8px;
 }
 
 .supplier-tabs {

@@ -1202,7 +1202,7 @@ function ProveedoresPageContent() {
                     </div>
                     <div style={{ display: 'grid', gap: 8, minWidth: 280 }}>
                       {grupo.refs.map((vino, index) => (
-                        <div key={vino.id} className="admin-card" style={{ padding: 12, background: index === 0 && vino.costeNumero > 0 ? '#f3ead8' : '#fff' }}>
+                        <div key={vino.id} className="admin-card supplier-offer" style={{ padding: 12, background: index === 0 && vino.costeNumero > 0 ? '#f3ead8' : '#fff' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
                             <div>
                               <strong>{vino.proveedorNombre}</strong>
