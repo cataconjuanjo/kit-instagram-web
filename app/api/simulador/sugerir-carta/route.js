@@ -32,13 +32,15 @@ export async function POST(req) {
     // Parallelise provider + plato queries; vinos depends on providerIds so runs after.
     const [{ data: providers }, { data: platos }] = await Promise.all([
       supabaseAdmin.from('proveedores_vino').select('id').eq('visible_restaurantes', true),
+      // Sin filtro activo=true: los platos pueden tener activo=null (no se rellenó el campo)
+      // y eq('activo', true) los excluiría silenciosamente, dejando platosActivos vacío.
+      // generarSugerencias filtra internamente con p.activo !== false (igual que computarCobertura).
       supabaseAdmin
         .from('platos')
         .select('id, nombre, categoria, descripcion, precio, activo')
         .eq('restaurante_id', restauranteId)
-        .eq('activo', true)
         .order('categoria')
-        .limit(40),
+        .limit(200),
     ])
 
     const providerIds = (providers || []).map(p => p.id)

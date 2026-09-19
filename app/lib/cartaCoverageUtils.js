@@ -67,6 +67,22 @@ export function computarCobertura(lineas, platos) {
 }
 
 /**
+ * Devuelve los vinos de la lista que son estructuralmente compatibles con el plato dado.
+ * Acepta tanto lineas de carta como entradas de catálogo (solo necesitan tipo, nombre, uva, region).
+ * Útil para tests y para cualquier consumidor que no necesite la eficiencia de precomputación.
+ *
+ * @param {Object} plato - plato con { nombre, categoria, descripcion }
+ * @param {Array}  vinos - lista de vinos
+ * @returns {Array} subconjunto compatible
+ */
+export function vinosCompatiblesConPlato(plato, vinos) {
+  let necesidades = {}
+  try { necesidades = necesidadesEstructurales(platoTexto(plato)) } catch { /* fallback vacío */ }
+  const perfiles = precomputarPerfiles(vinos)
+  return vinos.filter(v => esCompatible(necesidades, perfiles.get(v.id) || {}))
+}
+
+/**
  * Agrega lineas enriquecidas por proveedor.
  * Las lineas deben tener proveedor_id, proveedor_nombre, proveedor_email,
  * proveedor_contacto (añadidos por el endpoint /api/simulador/proveedores-breakdown).
