@@ -77,7 +77,7 @@ export async function POST(req) {
     }
 
     const resultado = generarSugerencias(lineas, catalogo, platos || [])
-    return Response.json(resultado)
+    return Response.json({ ...resultado, _debug: { platosCount: (platos || []).length, catalogoCount: catalogo.length } })
   } catch (err) {
     console.error('[sugerir-carta]', err)
     return Response.json({ error: 'No se pudo calcular las sugerencias.' }, { status: 500 })
