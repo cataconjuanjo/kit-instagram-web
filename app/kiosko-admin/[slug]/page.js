@@ -1846,17 +1846,24 @@ export default function AdminKioskoPage() {
     const margenMedio = calculados.reduce((s, v) => s + v.margenPct, 0) / calculados.length
     const totalVentas = calculados.reduce((s, v) => s + v.ventas, 0)
     // DEBUG TEMPORAL — eliminar tras diagnóstico
+    const conVentas = calculados.filter(v => v.ventas > 0)
+    // IDs de conCoste que no tienen entrada en ventasPorVino
+    const sinMatch = conCoste.filter(v => !ventasSquare[String(v.id)] && !ventasSquare[v.id])
+      .filter(v => {
+        // solo los que SÍ aparecen en ventasPorVino con alguna clave parecida (diagnóstico de mismatch)
+        const idStr = String(v.id)
+        return Object.keys(ventasSquare).some(k => k.includes(idStr.slice(0, 8)))
+      })
     console.log('[RENTABILIDAD DEBUG]', {
       ts: new Date().toISOString(),
-      analitica_es_null: analitica === null,
-      analitica_keys: analitica ? Object.keys(analitica).join(',') : 'NULL',
       analitica_vacio: analitica?.vacio,
-      ventasPorVino_type: typeof analitica?.ventasPorVino,
       totalVentas,
       conCoste_count: conCoste.length,
-      hayVentasSquare,
       ventasSquare_keys: Object.keys(ventasSquare).length,
-      calculados_primeros5: calculados.slice(0, 5).map(v => ({ id: v.id, nombre: v.nombre, ventas: v.ventas, margenPct: v.margenPct })),
+      conVentas_count: conVentas.length,
+      conVentas_total: conVentas.reduce((s, v) => s + v.ventas, 0),
+      conVentas: conVentas.map(v => ({ id: v.id, nombre: v.nombre, ventas: v.ventas })),
+      posibles_mismatch: sinMatch.map(v => ({ id: v.id, nombre: v.nombre })),
     })
     if (totalVentas < 20) return { clasificados: [], margenMedio: Math.round(margenMedio), recomMedio: 0, sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length, coldStart: true, usandoVentas: hayVentasSquare }
     const ventasMedio = totalVentas / calculados.length
