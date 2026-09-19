@@ -28,10 +28,7 @@ function normZona(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 }
 
-// Sugiere vinos del catálogo de zonas/D.O. no representadas en el borrador.
-// Se usa cuando el motor de maridaje no encuentra candidatos (sin platos,
-// o catálogo con perfil idéntico al borrador).
-function _sugerenciasGapZona(activas, candidatos) {
+function _sugerenciasGapZona(activas, candidatos, limite = 8) {
   const zonasEnBorrador = new Set(activas.map(l => normZona(l.region)).filter(Boolean))
   const porZona = new Map()
   for (const v of candidatos) {
@@ -39,30 +36,31 @@ function _sugerenciasGapZona(activas, candidatos) {
     if (!zona || zonasEnBorrador.has(zona)) continue
     if (!porZona.has(zona)) porZona.set(zona, v)
   }
-  return [...porZona.values()].slice(0, 8).map(vino => ({
+  return [...porZona.values()].slice(0, limite).map(vino => ({
     key: vino.id,
     vino,
     razon: `Zona/D.O. sin representación en el borrador: ${vino.region}`,
     prioridad: 1,
+    tipo: 'zona',
   }))
 }
 
 /**
  * Genera sugerencias de vinos del catálogo del consultor.
  *
- * Nivel 1 (huecos reales): platos con 0 vinos compatibles en la carta simulada.
- *   → Busca en el catálogo vinos que cubran esos platos y los propone vía greedy set-cover.
+ * PRIORIDAD 1 (anadir): huecos de maridaje por plato.
+ *   Level 1 — platos con 0 vinos compatibles en el borrador (urgente).
+ *   Level 2 — platos con cobertura por debajo de la mediana.
+ *   Greedy set-cover: cubre el máximo de platos con el mínimo de vinos.
  *
- * Nivel 2 (cobertura baja): platos con cobertura por debajo de la mediana.
- *   → Usa mediana (no media) para evitar que cobertura uniforme devuelva targetPlatos vacío.
- *   → Si todos los platos tienen igual cobertura, usa la mitad inferior como objetivo.
+ * PRIORIDAD 2 (secundario): diversidad de zona/D.O.
+ *   Solo cuando quedan slots disponibles (<8) tras el análisis de maridaje.
+ *   Complementa el maridaje, nunca lo sustituye.
  *
- * Fallback zona/D.O.: cuando no hay platos configurados o el análisis de maridaje
- *   no encuentra ningún candidato, propone vinos de zonas ausentes en el borrador.
- *
- * @param {Array} lineas   - Líneas del borrador del simulador (carta activa + nueva)
+ * @param {Array} lineas   - Líneas del borrador (carta activa + nueva)
  * @param {Array} catalogo - Vinos del catálogo del consultor
- * @param {Array} platos   - Platos activos del restaurante
+ * @param {Array} platos   - Platos del restaurante
+ * @returns {{ anadir, sustituir, secundario, todosCubiertos, platosObjetivo, nivelDos }}
  */
 export function generarSugerencias(lineas, catalogo, platos) {
   const activas = lineas.filter(l => l.estado !== 'fuera')
@@ -71,136 +69,112 @@ export function generarSugerencias(lineas, catalogo, platos) {
   const candidatos = catalogo.filter(v => !enBorrador.has(v.id))
   const platosActivos = (platos || []).filter(p => p.activo !== false)
 
-  if (!catalogo.length) return { anadir: [], sustituir: [] }
-
-  console.log('[sugerirCarta] init: activas=', activas.length, 'platosInput=', (platos||[]).length, 'platosActivos=', platosActivos.length, 'catalogo=', catalogo.length, 'candidatos=', candidatos.length)
+  if (!catalogo.length) return { anadir: [], sustituir: [], secundario: [], todosCubiertos: false }
 
   let anadir = []
+  let todosCubiertos = false
   let platosObjetivo, nivelDos
 
-  // ── Paso A: análisis por huecos de maridaje (requiere platos) ────────────
-  if (platosActivos.length > 0 && candidatos.length > 0) {
-    console.log('[sugerirCarta] A: platosActivos=', platosActivos.length, 'candidatos=', candidatos.length)
-
-    // Cobertura actual: cuántos vinos de la carta son compatibles con cada plato.
-    // vinosCompatiblesConPlato (de cartaCoverageUtils) es la función canónica compartida.
+  // ── PRIORIDAD 1: análisis de maridaje por plato ──────────────────────────
+  if (platosActivos.length > 0) {
     const coberturaCarta = platosActivos.map(p => ({
       plato: p,
       count: vinosCompatiblesConPlato(p, vinosCarta).length,
     }))
 
-    // ── Selección de platos objetivo ──────────────────────────────────────
     const orphans = coberturaCarta.filter(x => x.count === 0).map(x => x.plato)
-    console.log('[sugerirCarta] A: orphans=', orphans.length, orphans.map(p => p.nombre))
-    let targetPlatos
+    todosCubiertos = orphans.length === 0
 
-    if (orphans.length > 0) {
-      // Nivel 1: platos sin ningún vino compatible
-      targetPlatos = orphans
-      nivelDos = false
-    } else {
-      // Nivel 2: platos con cobertura por debajo de la mediana.
-      // La mediana evita el bug de la media: si todos los platos tienen el mismo
-      // count, mean == count para todos → filter(x.count < mean) = [] → vacío silencioso.
-      const sorted = [...coberturaCarta].sort((a, b) => a.count - b.count)
-      const median = sorted[Math.floor(sorted.length / 2)].count
-      let below = coberturaCarta.filter(x => x.count < median)
-      if (!below.length) {
-        // Cobertura completamente uniforme: usar la mitad inferior para buscar diversidad
-        below = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2)))
+    if (candidatos.length > 0) {
+      let targetPlatos, nivelDosLocal
+
+      if (orphans.length > 0) {
+        targetPlatos = orphans
+        nivelDosLocal = false
+      } else {
+        // Nivel 2: platos con cobertura por debajo de la mediana.
+        // Mediana en lugar de media: evita vacío cuando todos los platos tienen igual count.
+        const sorted = [...coberturaCarta].sort((a, b) => a.count - b.count)
+        const median = sorted[Math.floor(sorted.length / 2)].count
+        let below = coberturaCarta.filter(x => x.count < median)
+        if (!below.length) {
+          below = sorted.slice(0, Math.max(1, Math.floor(sorted.length / 2)))
+        }
+        targetPlatos = below.sort((a, b) => a.count - b.count).map(x => x.plato)
+        nivelDosLocal = true
       }
-      targetPlatos = below.sort((a, b) => a.count - b.count).map(x => x.plato)
-      nivelDos = true
-    }
 
-    platosObjetivo = targetPlatos.length
-    console.log('[sugerirCarta] A: targetPlatos=', targetPlatos.length, 'nivelDos=', nivelDos)
+      platosObjetivo = targetPlatos.length
+      nivelDos = nivelDosLocal
 
-    // ── Precomputar perfiles del catálogo para el mapa de cobertura ───────
-    const catalogoPerfil = new Map()
-    let sinId = 0
-    for (const v of candidatos) {
-      if (!v.id) { sinId++; continue }
-      const obj = vinoParaEngine(v, 'pvp_recomendado')
-      try { catalogoPerfil.set(v.id, estimarPerfil(obj)) }
-      catch { catalogoPerfil.set(v.id, { taninos: 3, acidez: 3, alcohol: 3, dulzor: 2, cuerpo: 3 }) }
-    }
-    console.log('[sugerirCarta] A: catalogoPerfil.size=', catalogoPerfil.size, 'sinId=', sinId)
+      // Precomputar perfiles del catálogo
+      const catalogoPerfil = new Map()
+      for (const v of candidatos) {
+        if (!v.id) continue
+        const obj = vinoParaEngine(v, 'pvp_recomendado')
+        try { catalogoPerfil.set(v.id, estimarPerfil(obj)) }
+        catch { catalogoPerfil.set(v.id, { taninos: 3, acidez: 3, alcohol: 3, dulzor: 2, cuerpo: 3 }) }
+      }
 
-    const platoNecesidades = new Map()
-    for (const p of targetPlatos) {
-      try { platoNecesidades.set(p.id, necesidadesEstructurales(platoTexto(p))) }
-      catch { platoNecesidades.set(p.id, {}) }
-    }
-    if (targetPlatos.length > 0) {
-      const p0 = targetPlatos[0]
-      console.log('[sugerirCarta] A: necesidades plato[0]', p0.nombre, '→', JSON.stringify(platoNecesidades.get(p0.id)))
-    }
-
-    // Para cada candidato: qué platos objetivo cubre
-    const coverageMap = new Map()
-    for (const v of candidatos) {
-      if (!v.id) continue
-      const perfil = catalogoPerfil.get(v.id)
-      if (!perfil) continue
-      const cubiertos = new Set()
+      const platoNecesidades = new Map()
       for (const p of targetPlatos) {
-        const n = platoNecesidades.get(p.id)
-        if (n && esCompatible(n, perfil)) cubiertos.add(p.id)
+        try { platoNecesidades.set(p.id, necesidadesEstructurales(platoTexto(p))) }
+        catch { platoNecesidades.set(p.id, {}) }
       }
-      if (cubiertos.size > 0) coverageMap.set(v.id, { vino: v, cubiertos })
-    }
-    console.log('[sugerirCarta] A: coverageMap.size=', coverageMap.size)
-    // Diagnóstico: mostrar perfil del primer candidato tinto y si pasa el primer plato objetivo
-    const primerTinto = candidatos.find(v => v.tipo === 'tinto' && v.id)
-    if (primerTinto && targetPlatos.length > 0) {
-      const obj = vinoParaEngine(primerTinto, 'pvp_recomendado')
-      let perfil
-      try { perfil = estimarPerfil(obj) } catch { perfil = null }
-      const p0 = targetPlatos[0]
-      const n0 = platoNecesidades.get(p0.id)
-      console.log('[sugerirCarta] A: primerTinto=', primerTinto.nombre, 'perfil=', JSON.stringify(perfil), 'necesidades=', JSON.stringify(n0), 'esCompatible=', perfil && n0 ? esCompatible(n0, perfil) : 'N/A')
-    }
 
-    // ── Greedy set-cover ─────────────────────────────────────────────────
-    const resueltos = new Set()
-    while (anadir.length < 8) {
-      let bestId = null, bestNuevos = null
-      for (const [id, { cubiertos }] of coverageMap) {
-        const nuevos = [...cubiertos].filter(pid => !resueltos.has(pid))
-        if (!bestNuevos || nuevos.length > bestNuevos.length) { bestId = id; bestNuevos = nuevos }
+      // Para cada candidato: qué platos objetivo cubre
+      const coverageMap = new Map()
+      for (const v of candidatos) {
+        if (!v.id) continue
+        const perfil = catalogoPerfil.get(v.id)
+        if (!perfil) continue
+        const cubiertos = new Set()
+        for (const p of targetPlatos) {
+          const n = platoNecesidades.get(p.id)
+          if (n && esCompatible(n, perfil)) cubiertos.add(p.id)
+        }
+        if (cubiertos.size > 0) coverageMap.set(v.id, { vino: v, cubiertos })
       }
-      if (!bestId || bestNuevos.length === 0) break
 
-      const { vino } = coverageMap.get(bestId)
-      const nombresPlatos = bestNuevos.slice(0, 3)
-        .map(pid => targetPlatos.find(p => p.id === pid)?.nombre)
-        .filter(Boolean).join(', ')
-      const masPlatos = bestNuevos.length > 3 ? ` y ${bestNuevos.length - 3} más` : ''
+      // Greedy set-cover: máximo cubrimiento con mínimo número de vinos
+      const resueltos = new Set()
+      while (anadir.length < 8) {
+        let bestId = null, bestNuevos = null
+        for (const [id, { cubiertos }] of coverageMap) {
+          const nuevos = [...cubiertos].filter(pid => !resueltos.has(pid))
+          if (!bestNuevos || nuevos.length > bestNuevos.length) { bestId = id; bestNuevos = nuevos }
+        }
+        if (!bestId || bestNuevos.length === 0) break
 
-      anadir.push({
-        key: vino.id,
-        vino,
-        razon: nivelDos
-          ? `Amplía cobertura de ${bestNuevos.length} plato${bestNuevos.length !== 1 ? 's' : ''} con poca oferta: ${nombresPlatos}${masPlatos}`
-          : `Cubre ${bestNuevos.length} plato${bestNuevos.length !== 1 ? 's' : ''} sin vino compatible: ${nombresPlatos}${masPlatos}`,
-        prioridad: bestNuevos.length,
-      })
+        const { vino } = coverageMap.get(bestId)
+        const nombresPlatos = bestNuevos.slice(0, 3)
+          .map(pid => targetPlatos.find(p => p.id === pid)?.nombre)
+          .filter(Boolean).join(', ')
+        const masPlatos = bestNuevos.length > 3 ? ` y ${bestNuevos.length - 3} más` : ''
 
-      bestNuevos.forEach(pid => resueltos.add(pid))
-      coverageMap.delete(bestId)
+        anadir.push({
+          key: vino.id,
+          vino,
+          razon: nivelDosLocal
+            ? `Amplía cobertura de ${bestNuevos.length} plato${bestNuevos.length !== 1 ? 's' : ''} con poca oferta: ${nombresPlatos}${masPlatos}`
+            : `Cubre ${bestNuevos.length} plato${bestNuevos.length !== 1 ? 's' : ''} sin vino compatible: ${nombresPlatos}${masPlatos}`,
+          prioridad: bestNuevos.length,
+          tipo: 'maridaje',
+        })
+
+        bestNuevos.forEach(pid => resueltos.add(pid))
+        coverageMap.delete(bestId)
+      }
     }
   }
 
-  // ── Paso B: fallback zona/D.O. ───────────────────────────────────────────
-  // Activa cuando: no hay platos configurados, o el motor de maridaje no encontró
-  // candidatos del catálogo que cubran ningún plato objetivo.
-  console.log('[sugerirCarta] pasoA.anadir=', anadir.length, '→ fallback?', anadir.length === 0 && candidatos.length > 0)
-  if (anadir.length === 0 && candidatos.length > 0) {
-    anadir = _sugerenciasGapZona(activas, candidatos)
-    platosObjetivo = undefined
-    nivelDos = undefined
-  }
+  // ── PRIORIDAD 2: diversidad de zona/D.O. (secundario) ────────────────────
+  // Complementa el maridaje cuando quedan slots libres, o cuando no hay platos.
+  // Nunca reemplaza los gaps de maridaje — siempre va en array separado.
+  const slotsLibres = Math.max(0, 8 - anadir.length)
+  const secundario = candidatos.length > 0 && slotsLibres > 0
+    ? _sugerenciasGapZona(activas, candidatos, slotsLibres)
+    : []
 
-  return { anadir, sustituir: [], platosObjetivo, nivelDos }
+  return { anadir, sustituir: [], secundario, todosCubiertos, platosObjetivo, nivelDos }
 }

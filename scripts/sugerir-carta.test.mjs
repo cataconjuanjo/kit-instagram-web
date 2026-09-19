@@ -1,9 +1,9 @@
 /**
  * Tests para generarSugerencias (app/lib/sugerirCarta.js).
- * Ejecutar: node --test scripts/sugerir-carta.test.mjs
+ * Ejecutar: npm run test:sugerir-carta
  *
- * Usa el motor de maridaje real (estimarPerfil / necesidadesEstructurales)
- * para verificar comportamiento end-to-end sin mocks de base de datos.
+ * Verifica el criterio de producto: maridaje por plato primero (anadir),
+ * diversidad de zona después (secundario), nunca al revés.
  */
 
 import { strict as assert } from 'node:assert'
@@ -19,6 +19,13 @@ const SOLOMILLO = {
   activo: true,
 }
 
+const LUBINA = {
+  id: 'p-lubina',
+  nombre: 'Lubina a la sal con verduras',
+  categoria: 'Pescados',
+  activo: true,
+}
+
 const OSTRAS = {
   id: 'p-ostras',
   nombre: 'Ostras frescas al natural',
@@ -26,13 +33,13 @@ const OSTRAS = {
   activo: true,
 }
 
-// Vinos que NO cubren carne (espumosos/blancos — taninos bajos)
+// Borrador sin tinto — no cubre carnes
 const LINEAS_SIN_TINTO = [
   { id: 'l1', estado: 'actual', catalogo_vino_id: 'c1', nombre: 'Cava Brut Nature', tipo: 'espumoso', region: 'Cava',       uva: 'Macabeo',   precio_botella: 12 },
   { id: 'l2', estado: 'actual', catalogo_vino_id: 'c2', nombre: 'Albariño',         tipo: 'blanco',   region: 'Rías Baixas', uva: 'Albariño',  precio_botella: 15 },
 ]
 
-// Tinto Ribera del Duero — debe satisfacer taninosMin≥3, cuerpoMin≥3, acidezMin≥2
+// Tinto Ribera del Duero — satisface {taninosMin:3, cuerpoMin:3, acidezMin:2}
 const TINTO_RIBERA = {
   id: 'cat-tinto',
   nombre: 'Ribera del Duero Crianza',
@@ -44,6 +51,7 @@ const TINTO_RIBERA = {
   pvp_recomendado: 24,
 }
 
+// Blanco Txakoli — no satisface carnes pero sí pescados
 const TXAKOLI = {
   id: 'cat-txakoli',
   nombre: 'Txakolina Blanco',
@@ -55,58 +63,98 @@ const TXAKOLI = {
   pvp_recomendado: 22,
 }
 
-// ── Test 1: bug raíz — plato sin cobertura genera sugerencia ────────────────
-test('plato con 0 vinos compatibles → debe sugerir vino del catálogo que lo cubra', () => {
+// ── Test 1: plato sin cobertura → sugerencia con motivo de plato ─────────────
+test('plato con 0 vinos compatibles → sugerencia principal con razón de plato', () => {
   const result = generarSugerencias(
     LINEAS_SIN_TINTO,
     [TINTO_RIBERA, TXAKOLI],
     [SOLOMILLO, OSTRAS],
   )
 
-  assert.ok(result.anadir.length > 0, 'debe generar al menos una sugerencia')
+  assert.ok(result.anadir.length > 0, 'debe generar sugerencias de maridaje')
 
   const sugiereTinto = result.anadir.some(s => s.vino.id === TINTO_RIBERA.id)
   assert.ok(sugiereTinto, 'debe sugerir el tinto Ribera para el solomillo sin cobertura')
 
-  const razon = result.anadir.find(s => s.vino.id === TINTO_RIBERA.id)?.razon || ''
+  const entrada = result.anadir.find(s => s.vino.id === TINTO_RIBERA.id)
   assert.ok(
-    razon.toLowerCase().includes('solomillo') || razon.includes('1 plato'),
-    `razón debe referenciar el plato huérfano, fue: "${razon}"`,
+    entrada.razon.toLowerCase().includes('solomillo') || entrada.razon.includes('1 plato'),
+    `razón debe referenciar el plato, fue: "${entrada.razon}"`,
   )
+  assert.equal(entrada.tipo, 'maridaje', 'tipo debe ser "maridaje"')
 })
 
-// ── Test 2: bug de la media — todos los platos con igual cobertura ──────────
+// ── Test 2: varios platos sin cobertura → sugerencias para cada uno ──────────
+test('varios platos sin cobertura → se intenta cubrir todos, no solo el primero', () => {
+  // Borrador vacío: ni carnes ni pescados cubiertos
+  const borradorVacio = []
+  const catalogoConAmbos = [TINTO_RIBERA, TXAKOLI]
+  const platos = [SOLOMILLO, LUBINA]
+
+  const result = generarSugerencias(borradorVacio, catalogoConAmbos, platos)
+
+  // El tinto debe cubrir solomillo, el txakoli debe cubrir lubina
+  const tieneCoberturaCarne  = result.anadir.some(s => s.vino.id === TINTO_RIBERA.id)
+  const tieneCoberturaPescado = result.anadir.some(s => s.vino.id === TXAKOLI.id)
+
+  assert.ok(tieneCoberturaCarne,   'debe sugerir tinto para el plato de carne sin cobertura')
+  assert.ok(tieneCoberturaPescado, 'debe sugerir blanco para el plato de pescado sin cobertura')
+  assert.equal(result.anadir.length, 2, 'debe sugerir un vino por cada plato sin cobertura')
+})
+
+// ── Test 3: bug de la media — todos los platos con igual cobertura ────────────
 test('cobertura uniforme (todos los platos igual de cubiertos) → no debe devolver vacío', () => {
-  // Borrador con un tinto genérico que cubre todos los platos de carne uniformemente
   const lineas = [
     { id: 'l1', estado: 'actual', catalogo_vino_id: 'c1', nombre: 'Rioja Crianza', tipo: 'tinto', region: 'Rioja', uva: 'Tempranillo', precio_botella: 14 },
   ]
-  // Dos platos de carne con el mismo nivel de cobertura (count=1 cada uno)
   const platos = [
     { id: 'p1', nombre: 'Entrecot a la brasa',    categoria: 'Carnes', activo: true },
     { id: 'p2', nombre: 'Solomillo a la pimienta', categoria: 'Carnes', activo: true },
   ]
-  // Catálogo: otro tinto de zona diferente
   const catalogo = [
     { id: 'cat1', nombre: 'Toro Reserva', tipo: 'tinto', region: 'Toro', uva: 'Tinta de Toro', bodega: 'X', pvp_recomendado: 20 },
   ]
 
   const result = generarSugerencias(lineas, catalogo, platos)
 
-  // Con la media, count=1=mean → filter(x.count < mean) = [] → retorno vacío (bug).
-  // Con la mediana + bottom-half, debe encontrar candidatos de nivel 2.
-  assert.ok(result.anadir.length > 0, 'cobertura uniforme no debe devolver vacío — bug de la media')
+  assert.ok(result.anadir.length > 0, 'cobertura uniforme no debe devolver anadir vacío — bug de la media')
+  assert.ok(result.todosCubiertos, 'todosCubiertos debe ser true cuando todos los platos tienen ≥1 vino')
 })
 
-// ── Test 3: sin platos → fallback zona/D.O. ─────────────────────────────────
-test('sin platos configurados → fallback a sugerencias por zona ausente', () => {
+// ── Test 4: todos cubiertos → todosCubiertos true, mensaje sobre platos ──────
+test('todos los platos cubiertos → todosCubiertos:true, sugerencias nivel 2 en anadir', () => {
   const lineas = [
-    { id: 'l1', estado: 'actual', catalogo_vino_id: 'c1', tipo: 'tinto', region: 'Rioja',     nombre: 'Rioja',   precio_botella: 12 },
-    { id: 'l2', estado: 'actual', catalogo_vino_id: 'c2', tipo: 'blanco', region: 'Rueda',    nombre: 'Verdejo', precio_botella: 10 },
-    { id: 'l3', estado: 'actual', catalogo_vino_id: 'c3', tipo: 'rosado', region: 'Navarra',  nombre: 'Rosado',  precio_botella: 9  },
-    { id: 'l4', estado: 'actual', catalogo_vino_id: 'c4', tipo: 'espumoso', region: 'Cava',   nombre: 'Cava',    precio_botella: 11 },
-    { id: 'l5', estado: 'actual', catalogo_vino_id: 'c5', tipo: 'generoso', region: 'Jerez',  nombre: 'Fino',    precio_botella: 8  },
-    { id: 'l6', estado: 'actual', catalogo_vino_id: 'c6', tipo: 'dulce',   region: 'Montilla-Moriles', nombre: 'PX', precio_botella: 14 },
+    { id: 'l1', estado: 'actual', catalogo_vino_id: 'c1', tipo: 'tinto', region: 'Rioja', nombre: 'Rioja', precio_botella: 12 },
+  ]
+  const platos = [
+    { id: 'p1', nombre: 'Chuletón de vaca', categoria: 'Carnes', activo: true },
+  ]
+  const catalogo = [
+    { id: 'cat-ribera', nombre: 'Ribera Reserva', tipo: 'tinto', region: 'Ribera del Duero', uva: 'Tempranillo', bodega: 'X', pvp_recomendado: 30 },
+  ]
+
+  const result = generarSugerencias(lineas, catalogo, platos)
+
+  assert.ok(result.todosCubiertos, 'todosCubiertos debe ser true')
+  // anadir puede tener sugerencias nivel 2 (ampliar cobertura del plato ya cubierto)
+  // secundario puede tener zonas sin representar
+  // Lo importante: NO hay sugerencias sin relación con platos en `anadir`
+  if (result.anadir.length > 0) {
+    assert.ok(
+      result.anadir.every(s => s.tipo === 'maridaje'),
+      'todas las entradas de anadir deben ser de tipo maridaje',
+    )
+  }
+})
+
+// ── Test 5: sin platos configurados → zona en secundario, no en anadir ───────
+test('sin platos configurados → sugerencias de zona van a secundario, anadir vacío', () => {
+  const lineas = [
+    { id: 'l1', estado: 'actual', catalogo_vino_id: 'c1', tipo: 'tinto',   region: 'Rioja',    nombre: 'Rioja',   precio_botella: 12 },
+    { id: 'l2', estado: 'actual', catalogo_vino_id: 'c2', tipo: 'blanco',  region: 'Rueda',    nombre: 'Verdejo', precio_botella: 10 },
+    { id: 'l3', estado: 'actual', catalogo_vino_id: 'c3', tipo: 'rosado',  region: 'Navarra',  nombre: 'Rosado',  precio_botella: 9  },
+    { id: 'l4', estado: 'actual', catalogo_vino_id: 'c4', tipo: 'espumoso',region: 'Cava',     nombre: 'Cava',    precio_botella: 11 },
+    { id: 'l5', estado: 'actual', catalogo_vino_id: 'c5', tipo: 'generoso',region: 'Jerez',    nombre: 'Fino',    precio_botella: 8  },
   ]
   const catalogo = [
     { id: 'cat1', nombre: 'Mencía Ribeira Sacra', tipo: 'tinto',  region: 'Ribeira Sacra', bodega: 'X', pvp_recomendado: 22 },
@@ -115,35 +163,37 @@ test('sin platos configurados → fallback a sugerencias por zona ausente', () =
 
   const result = generarSugerencias(lineas, catalogo, [])
 
+  assert.equal(result.anadir.length, 0, 'sin platos, anadir debe estar vacío')
+  assert.ok(result.secundario.length > 0, 'sin platos debe proponer zonas en secundario')
   assert.ok(
-    result.anadir.length > 0,
-    'sin platos debe proponer zonas no representadas aunque todos los tipos estén cubiertos',
+    result.secundario.every(s => ['Ribeira Sacra', 'Txakolina'].includes(s.vino.region)),
+    'secundario debe sugerir exactamente los vinos de las zonas ausentes',
   )
   assert.ok(
-    result.anadir.every(s => ['Ribeira Sacra', 'Txakolina'].includes(s.vino.region)),
-    'debe sugerir exactamente los vinos de las zonas ausentes',
+    result.secundario.every(s => s.tipo === 'zona'),
+    'todas las entradas de secundario deben ser de tipo zona',
   )
   assert.ok(
-    result.anadir[0].razon.toLowerCase().includes('zona'),
+    result.secundario[0].razon.toLowerCase().includes('zona'),
     'la razón debe mencionar "zona"',
   )
 })
 
-// ── Test 4: catálogo vacío → respuesta vacía sin error ──────────────────────
+// ── Test 6: catálogo vacío → respuesta vacía sin error ───────────────────────
 test('catálogo vacío → retorna vacío sin lanzar excepción', () => {
   const result = generarSugerencias(LINEAS_SIN_TINTO, [], [SOLOMILLO])
-  assert.deepStrictEqual(result, { anadir: [], sustituir: [] })
+  assert.deepStrictEqual(result, { anadir: [], sustituir: [], secundario: [], todosCubiertos: false })
 })
 
-// ── Test 5: vinosCompatiblesConPlato como función pública ───────────────────
+// ── Test 7: vinosCompatiblesConPlato como función pública ────────────────────
 test('vinosCompatiblesConPlato — tinto cubre solomillo, blanco no', () => {
   const vinos = [
-    { id: 'tinto', nombre: 'Ribera Crianza', tipo: 'tinto',  region: 'Ribera del Duero', uva: 'Tempranillo' },
-    { id: 'blanco', nombre: 'Albariño',      tipo: 'blanco', region: 'Rías Baixas',      uva: 'Albariño' },
+    { id: 'tinto',  nombre: 'Ribera Crianza', tipo: 'tinto',  region: 'Ribera del Duero', uva: 'Tempranillo' },
+    { id: 'blanco', nombre: 'Albariño',       tipo: 'blanco', region: 'Rías Baixas',      uva: 'Albariño' },
   ]
 
   const compatibles = vinosCompatiblesConPlato(SOLOMILLO, vinos)
 
-  assert.ok(compatibles.some(v => v.id === 'tinto'), 'tinto debe ser compatible con solomillo (carne)')
+  assert.ok(compatibles.some(v => v.id === 'tinto'),   'tinto debe ser compatible con solomillo (carne)')
   assert.ok(!compatibles.some(v => v.id === 'blanco'), 'blanco no debe ser compatible con solomillo (taninos < 3)')
 })

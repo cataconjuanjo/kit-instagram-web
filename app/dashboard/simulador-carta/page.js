@@ -841,6 +841,7 @@ export default function SimuladorCarta() {
       setSelSugerencias(new Set([
         ...resultado.anadir.map(s => s.key),
         ...resultado.sustituir.map(s => s.key),
+        ...(resultado.secundario || []).map(s => s.key),
       ]))
     } catch {
       clearTimeout(timeout)
@@ -853,7 +854,10 @@ export default function SimuladorCarta() {
     setAplicandoSugerencias(true)
     const t = await getToken()
 
-    const selectedAnadir    = sugerencias.anadir.filter(s => selSugerencias.has(s.key))
+    const selectedAnadir = [
+      ...sugerencias.anadir.filter(s => selSugerencias.has(s.key)),
+      ...(sugerencias.secundario || []).filter(s => selSugerencias.has(s.key)),
+    ]
     const selectedSustituir = sugerencias.sustituir.filter(s => selSugerencias.has(s.key))
 
     await Promise.all([
@@ -1973,11 +1977,13 @@ export default function SimuladorCarta() {
             </div>
           ) : sugerencias === null ? (
             <p className={simStyles.maridajeVacio}>Analizando carta y catálogo…</p>
-          ) : sugerencias.anadir.length === 0 && sugerencias.sustituir.length === 0 ? (
+          ) : sugerencias.anadir.length === 0 && sugerencias.sustituir.length === 0 && !sugerencias.secundario?.length ? (
             <div className={simStyles.sugerenciasVacio}>
               {catalogoSustituir?.length === 0
                 ? 'El catálogo del consultor está vacío. Añade vinos al catálogo para poder generar sugerencias automáticas.'
-                : 'El borrador ya cubre todos los tipos y zonas disponibles en el catálogo del consultor.'}
+                : sugerencias.todosCubiertos
+                  ? 'Todos los platos tienen al menos un vino compatible en el borrador. No se detectan huecos de maridaje.'
+                  : 'No se han encontrado vinos en el catálogo que cubran los platos sin cobertura de maridaje.'}
             </div>
           ) : (
             <>
@@ -2045,6 +2051,38 @@ export default function SimuladorCarta() {
                           {[s.vino.bodega, s.vino.tipo, s.vino.region].filter(Boolean).join(' · ')}
                           {Number(s.vino.pvp_recomendado) > 0 ? ` · ${eur(s.vino.pvp_recomendado)}` : ''}
                         </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {sugerencias.secundario?.length > 0 && (
+                <div className={simStyles.sugerenciasSeccion}>
+                  <p className={simStyles.sugerenciasEyebrow} style={{ opacity: 0.65 }}>
+                    Diversidad de zonas — opcional ({sugerencias.secundario.length})
+                  </p>
+                  <p className={simStyles.sugerenciasNota}>
+                    Todos los platos tienen cobertura de maridaje. Estas referencias amplían la diversidad de D.O. en el borrador.
+                  </p>
+                  {sugerencias.secundario.map(s => (
+                    <label key={s.key} className={simStyles.sugerenciaItem}>
+                      <input
+                        type="checkbox"
+                        checked={selSugerencias.has(s.key)}
+                        onChange={e => setSelSugerencias(prev => {
+                          const next = new Set(prev)
+                          e.target.checked ? next.add(s.key) : next.delete(s.key)
+                          return next
+                        })}
+                      />
+                      <div className={simStyles.sugerenciaInfo}>
+                        <div className={simStyles.sugerenciaNombre}>{s.vino.nombre}</div>
+                        <div className={simStyles.sugerenciaMeta}>
+                          {[s.vino.bodega, s.vino.tipo, s.vino.region].filter(Boolean).join(' · ')}
+                          {Number(s.vino.pvp_recomendado) > 0 ? ` · ${eur(s.vino.pvp_recomendado)}` : ''}
+                        </div>
+                        <div className={simStyles.sugerenciaRazon}>{s.razon}</div>
                       </div>
                     </label>
                   ))}
