@@ -1,7 +1,7 @@
-import { chartierKb, fuenteChartier } from './chartierKb'
-import { buscarPlatoKb } from '../data/platos_kb'
-import { beneficioBruto, margenBrutoPct, numero, redondear } from './wineEconomics'
-import { textoVinoParaMaridaje } from './wineProfileTags'
+import { chartierKb, fuenteChartier } from './chartierKb.js'
+import { buscarPlatoKb } from '../data/platos_kb.js'
+import { beneficioBruto, margenBrutoPct, numero, redondear } from './wineEconomics.js'
+import { textoVinoParaMaridaje } from './wineProfileTags.js'
 
 // Estima el perfil estructural de un vino (1-5) a partir de sus datos.
 // Permite matching estructural directo: taninos, acidez, cuerpo, etc.

@@ -1,5 +1,5 @@
-import papilasKb from '../data/papilas_maridajes_final_1.json'
-import cocinaAromaticaKb from '../data/cocina_aromatica_kb_compact.json'
+import papilasKb from '../data/papilas_maridajes_final_1.json' with { type: 'json' }
+import cocinaAromaticaKb from '../data/cocina_aromatica_kb_compact.json' with { type: 'json' }
 
 function slugify(texto = '') {
   return String(texto || '')
