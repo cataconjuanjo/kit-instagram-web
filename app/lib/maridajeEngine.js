@@ -102,6 +102,14 @@ export function necesidadesEstructurales(consulta) {
     n.cuerpoMax = 3
   }
 
+  // Resolver contradicción taninosMin > taninosMax: ocurre cuando el ingrediente
+  // principal (ej. solomillo/carne) exige tanino, pero la descripción del plato
+  // contiene un método secundario (picante, vegetal, etc.) que fija taninosMax
+  // por debajo de taninosMin. La proteína principal prevalece.
+  if (n.taninosMin !== undefined && n.taninosMax !== undefined && n.taninosMin > n.taninosMax) {
+    delete n.taninosMax
+  }
+
   return n
 }
 

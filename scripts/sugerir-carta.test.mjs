@@ -189,11 +189,56 @@ test('catálogo vacío → retorna vacío sin lanzar excepción', () => {
 test('vinosCompatiblesConPlato — tinto cubre solomillo, blanco no', () => {
   const vinos = [
     { id: 'tinto',  nombre: 'Ribera Crianza', tipo: 'tinto',  region: 'Ribera del Duero', uva: 'Tempranillo' },
-    { id: 'blanco', nombre: 'Albariño',       tipo: 'blanco', region: 'Rías Baixas',      uva: 'Albariño' },
+    { id: 'blanco', nombre: 'Albariño',       tipo: 'blanco', region: 'RíasAixas',        uva: 'Albariño' },
   ]
 
   const compatibles = vinosCompatiblesConPlato(SOLOMILLO, vinos)
 
   assert.ok(compatibles.some(v => v.id === 'tinto'),   'tinto debe ser compatible con solomillo (carne)')
   assert.ok(!compatibles.some(v => v.id === 'blanco'), 'blanco no debe ser compatible con solomillo (taninos < 3)')
+})
+
+// ── Test 8: descripción con método secundario no rompe cobertura de carne ────
+test('solomillo con "espárragos" en descripción: taninosMin:3 no queda anulado por taninosMax:2', () => {
+  const solomilloConDesc = {
+    id: 'p-sol-desc',
+    nombre: 'Solomillo al Pedro Ximénez con Manzanilla',
+    categoria: 'Carnes',
+    descripcion: 'Con espárragos trigueros y reducción de Pedro Ximénez',
+    activo: true,
+  }
+  const tintoRibera = { id: 'tinto', nombre: 'Ribera Crianza', tipo: 'tinto', region: 'Ribera del Duero', uva: 'Tempranillo' }
+
+  const compatibles = vinosCompatiblesConPlato(solomilloConDesc, [tintoRibera])
+  assert.ok(compatibles.length > 0, '"espárragos" en descripción no debe crear rango taninosMin>taninosMax imposible')
+})
+
+// ── Test 9: descripción con 'picante' secundario no crea rango imposible ─────
+test('solomillo con "picante" en descripción: tinto sigue siendo compatible', () => {
+  const solomilloPicante = {
+    id: 'p-sol-picante',
+    nombre: 'Solomillo al Pedro Ximénez con Manzanilla',
+    categoria: 'Carnes',
+    descripcion: 'Con toque picante y reducción intensa',
+    activo: true,
+  }
+  const tintoRibera = { id: 'tinto', nombre: 'Ribera Crianza', tipo: 'tinto', region: 'Ribera del Duero', uva: 'Tempranillo' }
+
+  const compatibles = vinosCompatiblesConPlato(solomilloPicante, [tintoRibera])
+  assert.ok(compatibles.length > 0, '"picante" en descripción de solomillo no debe bloquear el tinto')
+})
+
+// ── Test 10: generarSugerencias con solomillo con descripción → anadir no vacío
+test('generarSugerencias: solomillo con descripción de guarnición vegetal genera sugerencia de tinto', () => {
+  const solomilloConDesc = {
+    id: 'p-sol-desc2',
+    nombre: 'Solomillo al Pedro Ximénez con Manzanilla',
+    categoria: 'Carnes',
+    descripcion: 'Con espárragos trigueros a la parrilla',
+    activo: true,
+  }
+  const result = generarSugerencias([], [TINTO_RIBERA, TXAKOLI], [solomilloConDesc])
+
+  assert.ok(result.anadir.length > 0, 'debe sugerir tintos aunque la descripción mencione espárragos')
+  assert.ok(result.anadir.some(s => s.vino.id === TINTO_RIBERA.id), 'debe sugerir el tinto Ribera para la carne')
 })

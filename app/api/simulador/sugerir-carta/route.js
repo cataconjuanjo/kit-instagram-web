@@ -76,32 +76,8 @@ export async function POST(req) {
       }
     }
 
-    // ── Pipeline debug (temporal) ───────────────────────────────────────────
-    const { estimarPerfil: _ep } = await import('../../../lib/maridajeEngine')
-    const _activas   = lineas.filter(l => l.estado !== 'fuera')
-    const _borrador  = new Set(_activas.filter(l => l.catalogo_vino_id).map(l => l.catalogo_vino_id))
-    const _cands     = catalogo.filter(v => !_borrador.has(v.id))
-    const _tipos     = {}
-    for (const v of _cands) { const t = v.tipo || 'null'; _tipos[t] = (_tipos[t] || 0) + 1 }
-    const _tintoSample = _cands.filter(v => v.tipo === 'tinto').slice(0, 5).map(v => {
-      const obj = { ...v, activo: true, stock: null, precio_botella: Number(v.pvp_recomendado) || 20 }
-      let p; try { p = _ep(obj) } catch { p = null }
-      return { nombre: v.nombre, region: v.region, uva: v.uva, pvp: v.pvp_recomendado, t: p?.taninos, c: p?.cuerpo, a: p?.acidez }
-    })
-    // ────────────────────────────────────────────────────────────────────────
-
     const resultado = generarSugerencias(lineas, catalogo, platos || [])
-    return Response.json({
-      ...resultado,
-      _debug: {
-        platosCount:     (platos || []).length,
-        catalogoCount:   catalogo.length,
-        candidatosCount: _cands.length,
-        borradarCount:   _borrador.size,
-        tiposDist:       _tipos,
-        tintoSample:     _tintoSample,
-      },
-    })
+    return Response.json(resultado)
   } catch (err) {
     console.error('[sugerir-carta]', err)
     return Response.json({ error: 'No se pudo calcular las sugerencias.' }, { status: 500 })
