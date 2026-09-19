@@ -1847,6 +1847,11 @@ export default function AdminKioskoPage() {
     const totalVentas = calculados.reduce((s, v) => s + v.ventas, 0)
     // DEBUG TEMPORAL — eliminar tras diagnóstico
     console.log('[RENTABILIDAD DEBUG]', {
+      ts: new Date().toISOString(),
+      analitica_es_null: analitica === null,
+      analitica_keys: analitica ? Object.keys(analitica).join(',') : 'NULL',
+      analitica_vacio: analitica?.vacio,
+      ventasPorVino_type: typeof analitica?.ventasPorVino,
       totalVentas,
       conCoste_count: conCoste.length,
       hayVentasSquare,
