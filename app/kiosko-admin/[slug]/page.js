@@ -1827,7 +1827,7 @@ export default function AdminKioskoPage() {
   }
 
   const rentabilidad = useMemo(() => {
-    const conCoste = vinos.filter(v => v.activo && Number(v.precio_pvp) > 0 && Number(v.precio_coste) > 0)
+    const conCoste = vinos.filter(v => Number(v.precio_pvp) > 0 && Number(v.precio_coste) > 0)
     if (conCoste.length < 2) return null
     // Ventas Square como eje de popularidad; si no hay aún, fallback a recomendaciones IA
     const ventasSquare = analitica?.ventasPorVino || {}
@@ -1845,26 +1845,6 @@ export default function AdminKioskoPage() {
     }))
     const margenMedio = calculados.reduce((s, v) => s + v.margenPct, 0) / calculados.length
     const totalVentas = calculados.reduce((s, v) => s + v.ventas, 0)
-    // DEBUG TEMPORAL — eliminar tras diagnóstico
-    const conVentas = calculados.filter(v => v.ventas > 0)
-    // IDs de conCoste que no tienen entrada en ventasPorVino
-    const sinMatch = conCoste.filter(v => !ventasSquare[String(v.id)] && !ventasSquare[v.id])
-      .filter(v => {
-        // solo los que SÍ aparecen en ventasPorVino con alguna clave parecida (diagnóstico de mismatch)
-        const idStr = String(v.id)
-        return Object.keys(ventasSquare).some(k => k.includes(idStr.slice(0, 8)))
-      })
-    console.log('[RENTABILIDAD DEBUG]', {
-      ts: new Date().toISOString(),
-      analitica_vacio: analitica?.vacio,
-      totalVentas,
-      conCoste_count: conCoste.length,
-      ventasSquare_keys: Object.keys(ventasSquare).length,
-      conVentas_count: conVentas.length,
-      conVentas_total: conVentas.reduce((s, v) => s + v.ventas, 0),
-      conVentas: conVentas.map(v => ({ id: v.id, nombre: v.nombre, ventas: v.ventas })),
-      posibles_mismatch: sinMatch.map(v => ({ id: v.id, nombre: v.nombre })),
-    })
     if (totalVentas < 20) return { clasificados: [], margenMedio: Math.round(margenMedio), recomMedio: 0, sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length, coldStart: true, usandoVentas: hayVentasSquare }
     const ventasMedio = totalVentas / calculados.length
     const clasificados = calculados.map(v => ({
