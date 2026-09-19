@@ -78,6 +78,8 @@ export function generarSugerencias(lineas, catalogo, platos) {
 
   // ── Paso A: análisis por huecos de maridaje (requiere platos) ────────────
   if (platosActivos.length > 0 && candidatos.length > 0) {
+    console.log('[sugerirCarta] A: platosActivos=', platosActivos.length, 'candidatos=', candidatos.length)
+
     // Cobertura actual: cuántos vinos de la carta son compatibles con cada plato.
     // vinosCompatiblesConPlato (de cartaCoverageUtils) es la función canónica compartida.
     const coberturaCarta = platosActivos.map(p => ({
@@ -87,6 +89,7 @@ export function generarSugerencias(lineas, catalogo, platos) {
 
     // ── Selección de platos objetivo ──────────────────────────────────────
     const orphans = coberturaCarta.filter(x => x.count === 0).map(x => x.plato)
+    console.log('[sugerirCarta] A: orphans=', orphans.length, orphans.map(p => p.nombre))
     let targetPlatos
 
     if (orphans.length > 0) {
@@ -109,24 +112,33 @@ export function generarSugerencias(lineas, catalogo, platos) {
     }
 
     platosObjetivo = targetPlatos.length
+    console.log('[sugerirCarta] A: targetPlatos=', targetPlatos.length, 'nivelDos=', nivelDos)
 
     // ── Precomputar perfiles del catálogo para el mapa de cobertura ───────
     const catalogoPerfil = new Map()
+    let sinId = 0
     for (const v of candidatos) {
+      if (!v.id) { sinId++; continue }
       const obj = vinoParaEngine(v, 'pvp_recomendado')
       try { catalogoPerfil.set(v.id, estimarPerfil(obj)) }
       catch { catalogoPerfil.set(v.id, { taninos: 3, acidez: 3, alcohol: 3, dulzor: 2, cuerpo: 3 }) }
     }
+    console.log('[sugerirCarta] A: catalogoPerfil.size=', catalogoPerfil.size, 'sinId=', sinId)
 
     const platoNecesidades = new Map()
     for (const p of targetPlatos) {
       try { platoNecesidades.set(p.id, necesidadesEstructurales(platoTexto(p))) }
       catch { platoNecesidades.set(p.id, {}) }
     }
+    if (targetPlatos.length > 0) {
+      const p0 = targetPlatos[0]
+      console.log('[sugerirCarta] A: necesidades plato[0]', p0.nombre, '→', JSON.stringify(platoNecesidades.get(p0.id)))
+    }
 
     // Para cada candidato: qué platos objetivo cubre
     const coverageMap = new Map()
     for (const v of candidatos) {
+      if (!v.id) continue
       const perfil = catalogoPerfil.get(v.id)
       if (!perfil) continue
       const cubiertos = new Set()
@@ -135,6 +147,17 @@ export function generarSugerencias(lineas, catalogo, platos) {
         if (n && esCompatible(n, perfil)) cubiertos.add(p.id)
       }
       if (cubiertos.size > 0) coverageMap.set(v.id, { vino: v, cubiertos })
+    }
+    console.log('[sugerirCarta] A: coverageMap.size=', coverageMap.size)
+    // Diagnóstico: mostrar perfil del primer candidato tinto y si pasa el primer plato objetivo
+    const primerTinto = candidatos.find(v => v.tipo === 'tinto' && v.id)
+    if (primerTinto && targetPlatos.length > 0) {
+      const obj = vinoParaEngine(primerTinto, 'pvp_recomendado')
+      let perfil
+      try { perfil = estimarPerfil(obj) } catch { perfil = null }
+      const p0 = targetPlatos[0]
+      const n0 = platoNecesidades.get(p0.id)
+      console.log('[sugerirCarta] A: primerTinto=', primerTinto.nombre, 'perfil=', JSON.stringify(perfil), 'necesidades=', JSON.stringify(n0), 'esCompatible=', perfil && n0 ? esCompatible(n0, perfil) : 'N/A')
     }
 
     // ── Greedy set-cover ─────────────────────────────────────────────────
@@ -170,6 +193,7 @@ export function generarSugerencias(lineas, catalogo, platos) {
   // ── Paso B: fallback zona/D.O. ───────────────────────────────────────────
   // Activa cuando: no hay platos configurados, o el motor de maridaje no encontró
   // candidatos del catálogo que cubran ningún plato objetivo.
+  console.log('[sugerirCarta] pasoA.anadir=', anadir.length, '→ fallback?', anadir.length === 0 && candidatos.length > 0)
   if (anadir.length === 0 && candidatos.length > 0) {
     anadir = _sugerenciasGapZona(activas, candidatos)
     platosObjetivo = undefined
