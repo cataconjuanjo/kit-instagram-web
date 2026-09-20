@@ -414,13 +414,68 @@ export async function DELETE(req) {
     const { id, kind } = await req.json()
     if (!id) return Response.json({ error: 'ID obligatorio.' }, { status: 400 })
 
-    const tabla = kind === 'vino' ? 'proveedor_catalogo_vinos' : 'proveedores_vino'
-    const { error } = await adminClient().from(tabla).delete().eq('id', id)
-    if (error) throw error
+    const supabase = adminClient()
+
+    if (kind === 'vino') {
+      const { error } = await supabase.from('proveedor_catalogo_vinos').delete().eq('id', id)
+      if (error) throw error
+    } else {
+      // Guardia: bloquear si hay vinos de este proveedor en la carta activa de algún restaurante.
+      // (vinos.catalogo_vino_id → proveedor_catalogo_vinos → proveedor)
+      const { data: catalogoIds } = await supabase
+        .from('proveedor_catalogo_vinos')
+        .select('id')
+        .eq('proveedor_id', id)
+
+      if (catalogoIds && catalogoIds.length > 0) {
+        const catIds = catalogoIds.map(c => c.id)
+        const { count: vinosActivos } = await supabase
+          .from('vinos')
+          .select('id', { count: 'exact', head: true })
+          .in('catalogo_vino_id', catIds)
+
+        if (vinosActivos > 0) {
+          return Response.json({
+            error: `No se puede eliminar: ${vinosActivos} ${vinosActivos === 1 ? 'vino de este proveedor está' : 'vinos de este proveedor están'} en la carta activa de restaurantes. Elimina o desvincula esos vinos primero.`,
+          }, { status: 409 })
+        }
+      }
+
+      // Borrar en orden para respetar las FK sin CASCADE:
+      // 1. Desvincular oferta.tarifa_id — sin esto Postgres bloquea el DELETE de tarifa
+      const { error: errDesvincular } = await supabase
+        .from('oferta')
+        .update({ tarifa_id: null })
+        .eq('proveedor_id', id)
+      if (errDesvincular) throw errDesvincular
+
+      // 2. Borrar tarifas (CASCADE a linea_cruda vía tarifa_id)
+      const { error: errTarifas } = await supabase
+        .from('tarifa')
+        .delete()
+        .eq('proveedor_id', id)
+      if (errTarifas) throw errTarifas
+
+      // 3. Borrar ofertas (linea_cruda ya eliminada en el paso anterior)
+      const { error: errOfertas } = await supabase
+        .from('oferta')
+        .delete()
+        .eq('proveedor_id', id)
+      if (errOfertas) throw errOfertas
+
+      // 4. Borrar proveedor (CASCADE a proveedor_catalogo_vinos y proveedor_provincia)
+      const { error } = await supabase.from('proveedores_vino').delete().eq('id', id)
+      if (error) throw error
+    }
 
     return Response.json({ ok: true })
   } catch (error) {
-    console.error('Error borrando proveedor/catálogo:', error)
+    console.error('Error borrando proveedor/catálogo:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    })
     return Response.json({ error: 'No se pudo borrar.' }, { status: 500 })
   }
 }
