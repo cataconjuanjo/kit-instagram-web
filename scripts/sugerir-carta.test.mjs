@@ -179,6 +179,71 @@ test('sin platos configurados → sugerencias de zona van a secundario, anadir v
   )
 })
 
+// ── Tests 11–14: normZona — falsos positivos de zona ─────────────────────────
+
+// Test 11: "Galicia - Rías Baixas" no debe sugerirse cuando el borrador ya tiene "Rías Baixas"
+test('normZona: "Galicia - Rías Baixas" coincide con "Rías Baixas" en el borrador', () => {
+  const lineas = [
+    { id: 'l1', estado: 'actual', catalogo_vino_id: 'c1', tipo: 'blanco', region: 'Rías Baixas', nombre: 'Albariño', precio_botella: 15 },
+  ]
+  const catalogo = [
+    { id: 'cat-galicia', nombre: 'Albariño Galicia', tipo: 'blanco', region: 'Galicia - Rías Baixas', bodega: 'X', pvp_recomendado: 18 },
+  ]
+  const result = generarSugerencias(lineas, catalogo, [])
+  assert.ok(
+    !result.secundario.some(s => s.vino.id === 'cat-galicia'),
+    '"Galicia - Rías Baixas" no debe aparecer si "Rías Baixas" ya está en el borrador',
+  )
+})
+
+// Test 12: "D.O. Ribera del Duero" no debe sugerirse cuando el borrador ya tiene "Ribera del Duero"
+test('normZona: "D.O. Ribera del Duero" coincide con "Ribera del Duero" en el borrador', () => {
+  const lineas = [
+    { id: 'l1', estado: 'actual', catalogo_vino_id: 'c1', tipo: 'tinto', region: 'Ribera del Duero', nombre: 'Crianza', precio_botella: 14 },
+  ]
+  const catalogo = [
+    { id: 'cat-do-ribera', nombre: 'Ribera Reserva DO', tipo: 'tinto', region: 'D.O. Ribera del Duero', bodega: 'X', pvp_recomendado: 28 },
+  ]
+  const result = generarSugerencias(lineas, catalogo, [])
+  assert.ok(
+    !result.secundario.some(s => s.vino.id === 'cat-do-ribera'),
+    '"D.O. Ribera del Duero" no debe aparecer si "Ribera del Duero" ya está en el borrador',
+  )
+})
+
+// Test 13: "Andalucía - Málaga" no debe sugerirse cuando el borrador ya tiene "Málaga"
+test('normZona: "Andalucía - Málaga" coincide con "Málaga" en el borrador', () => {
+  const lineas = [
+    { id: 'l1', estado: 'actual', catalogo_vino_id: 'c1', tipo: 'generoso', region: 'Málaga', nombre: 'Moscatel', precio_botella: 10 },
+  ]
+  const catalogo = [
+    { id: 'cat-and-malaga', nombre: 'Málaga Dulce', tipo: 'generoso', region: 'Andalucía - Málaga', bodega: 'X', pvp_recomendado: 14 },
+  ]
+  const result = generarSugerencias(lineas, catalogo, [])
+  assert.ok(
+    !result.secundario.some(s => s.vino.id === 'cat-and-malaga'),
+    '"Andalucía - Málaga" no debe aparecer si "Málaga" ya está en el borrador',
+  )
+})
+
+// Test 14: "España" como región genérica nunca debe aparecer en secundario
+test('normZona: zona genérica "España" nunca se sugiere en secundario', () => {
+  const lineas = []
+  const catalogo = [
+    { id: 'cat-espana', nombre: 'Vino España', tipo: 'tinto', region: 'España', bodega: 'X', pvp_recomendado: 8 },
+    { id: 'cat-rioja',  nombre: 'Rioja Joven',  tipo: 'tinto', region: 'Rioja',  bodega: 'Y', pvp_recomendado: 12 },
+  ]
+  const result = generarSugerencias(lineas, catalogo, [])
+  assert.ok(
+    !result.secundario.some(s => s.vino.id === 'cat-espana'),
+    '"España" como zona genérica no debe aparecer en secundario',
+  )
+  assert.ok(
+    result.secundario.some(s => s.vino.id === 'cat-rioja'),
+    '"Rioja" sí debe aparecer como zona nueva en secundario',
+  )
+})
+
 // ── Test 6: catálogo vacío → respuesta vacía sin error ───────────────────────
 test('catálogo vacío → retorna vacío sin lanzar excepción', () => {
   const result = generarSugerencias(LINEAS_SIN_TINTO, [], [SOLOMILLO])

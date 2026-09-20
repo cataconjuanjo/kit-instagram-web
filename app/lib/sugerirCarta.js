@@ -24,8 +24,24 @@ function esCompatible(n, p) {
   return true
 }
 
+// Zonas demasiado genéricas para sugerir como "D.O. sin representación"
+const ZONAS_GENERICAS = new Set([
+  'espana', 'espagne', 'spain',
+  'francia', 'france',
+  'italia', 'italy',
+  'portugal',
+  'alemania', 'germany',
+  'austria',
+])
+
 function normZona(s) {
-  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+  let str = String(s || '').trim()
+  // Toma el segmento final si hay prefijo de comunidad autónoma ("Galicia - Rías Baixas" → "Rías Baixas")
+  const guion = str.lastIndexOf(' - ')
+  if (guion !== -1) str = str.slice(guion + 3)
+  // Quita prefijos D.O./DO/D.O.Ca/DOCa/D.O.P./DOP al inicio
+  str = str.replace(/^d\.?o\.?(?:ca?|p)?\.?\s+/i, '')
+  return str.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 }
 
 function _sugerenciasGapZona(activas, candidatos, limite = 8) {
@@ -33,7 +49,7 @@ function _sugerenciasGapZona(activas, candidatos, limite = 8) {
   const porZona = new Map()
   for (const v of candidatos) {
     const zona = normZona(v.region)
-    if (!zona || zonasEnBorrador.has(zona)) continue
+    if (!zona || ZONAS_GENERICAS.has(zona) || zonasEnBorrador.has(zona)) continue
     if (!porZona.has(zona)) porZona.set(zona, v)
   }
   return [...porZona.values()].slice(0, limite).map(vino => ({
