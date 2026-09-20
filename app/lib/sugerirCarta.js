@@ -41,6 +41,8 @@ function normZona(s) {
   if (guion !== -1) str = str.slice(guion + 3)
   // Quita prefijos D.O./DO/D.O.Ca/DOCa/D.O.P./DOP al inicio
   str = str.replace(/^d\.?o\.?(?:ca?|p)?\.?\s+/i, '')
+  // Quita artículo inicial ("La Rioja" → "Rioja", "El Bierzo" → "Bierzo")
+  str = str.replace(/^(la|el|los|las)\s+/i, '')
   return str.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 }
 

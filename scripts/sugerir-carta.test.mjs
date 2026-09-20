@@ -244,6 +244,22 @@ test('normZona: zona genérica "España" nunca se sugiere en secundario', () => 
   )
 })
 
+// Test 15: "La Rioja" no debe sugerirse cuando el borrador ya tiene "Rioja"
+test('normZona: "La Rioja" coincide con "Rioja" en el borrador (artículo inicial)', () => {
+  const lineas = [
+    { id: 'l1', estado: 'actual', catalogo_vino_id: 'c1', tipo: 'tinto', region: 'Rioja', nombre: 'Contador', precio_botella: 80 },
+    { id: 'l2', estado: 'actual', catalogo_vino_id: 'c2', tipo: 'tinto', region: 'Rioja', nombre: 'Muga Reserva', precio_botella: 18 },
+  ]
+  const catalogo = [
+    { id: 'cat-la-rioja', nombre: 'Abel Mendoza 5V', tipo: 'tinto', region: 'La Rioja', bodega: 'Abel Mendoza', pvp_recomendado: 35 },
+  ]
+  const result = generarSugerencias(lineas, catalogo, [])
+  assert.ok(
+    !result.secundario.some(s => s.vino.id === 'cat-la-rioja'),
+    '"La Rioja" no debe aparecer en secundario si "Rioja" ya está en el borrador',
+  )
+})
+
 // ── Test 6: catálogo vacío → respuesta vacía sin error ───────────────────────
 test('catálogo vacío → retorna vacío sin lanzar excepción', () => {
   const result = generarSugerencias(LINEAS_SIN_TINTO, [], [SOLOMILLO])
