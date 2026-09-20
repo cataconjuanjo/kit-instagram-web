@@ -12,16 +12,38 @@ function vinoParaEngine(v, precioCampo) {
   return { ...v, activo: true, stock: null, precio_botella: precio }
 }
 
-function esCompatible(n, p) {
-  if (n.taninosMax !== undefined && p.taninos > n.taninosMax) return false
-  if (n.taninosMin !== undefined && p.taninos < n.taninosMin) return false
-  if (n.acidezMin  !== undefined && p.acidez  < n.acidezMin)  return false
-  if (n.acidezMax  !== undefined && p.acidez  > n.acidezMax)  return false
-  if (n.alcoholMax !== undefined && p.alcohol > n.alcoholMax) return false
-  if (n.alcoholMin !== undefined && p.alcohol < n.alcoholMin) return false
-  if (n.cuerpoMax  !== undefined && p.cuerpo  > n.cuerpoMax)  return false
-  if (n.cuerpoMin  !== undefined && p.cuerpo  < n.cuerpoMin)  return false
-  return true
+// Score continuo de ajuste de un vino a las necesidades estructurales de un plato.
+// Retorna -Infinity si viola algún umbral (excluido), 0.5 si sin restricciones activas,
+// o un valor en [0, 1]: 0 = justo en el umbral, 1 = en el extremo ideal del rango.
+// Para restricciones min-only el ideal es 5; para max-only el ideal es 1;
+// para min+max el ideal está en el punto medio (triángulo).
+function scoreCompatibilidad(perfil, necesidades) {
+  const ejes = [
+    ['taninos', necesidades.taninosMin, necesidades.taninosMax],
+    ['acidez',  necesidades.acidezMin,  necesidades.acidezMax],
+    ['alcohol', necesidades.alcoholMin, necesidades.alcoholMax],
+    ['cuerpo',  necesidades.cuerpoMin,  necesidades.cuerpoMax],
+  ]
+  let suma = 0, activos = 0
+  for (const [eje, min, max] of ejes) {
+    const hasMin = min !== undefined, hasMax = max !== undefined
+    if (!hasMin && !hasMax) continue
+    const v = perfil[eje]
+    const lo = hasMin ? min : 1, hi = hasMax ? max : 5
+    if (v < lo || v > hi) return -Infinity
+    activos++
+    if (hasMin && !hasMax) {
+      suma += (v - lo) / Math.max(1, 5 - lo)
+    } else if (!hasMin && hasMax) {
+      suma += (hi - v) / Math.max(1, hi - 1)
+    } else {
+      const mid = (lo + hi) / 2
+      suma += v <= mid
+        ? (v - lo) / Math.max(1e-9, mid - lo)
+        : (hi - v) / Math.max(1e-9, hi - mid)
+    }
+  }
+  return activos === 0 ? 0.5 : suma / activos
 }
 
 // Zonas demasiado genéricas para sugerir como "D.O. sin representación"
@@ -140,41 +162,45 @@ export function generarSugerencias(lineas, catalogo, platos) {
         catch { platoNecesidades.set(p.id, {}) }
       }
 
-      // Barajar candidatos antes de construir el mapa: rompe el sesgo alfabético
-      // de la query (ORDER BY nombre) en los desempates por orden de inserción.
-      const candidatosBarajados = [...candidatos].sort(() => Math.random() - 0.5)
-
-      // Para cada candidato: qué platos objetivo cubre
+      // Para cada candidato: score de compatibilidad continuo por plato objetivo.
+      // platoScores.keys() reemplaza al antiguo Set<cubiertos> (solo entran scores > -Infinity).
       const coverageMap = new Map()
-      for (const v of candidatosBarajados) {
+      for (const v of candidatos) {
         if (!v.id) continue
         const perfil = catalogoPerfil.get(v.id)
         if (!perfil) continue
-        const cubiertos = new Set()
+        const platoScores = new Map()
         for (const p of targetPlatos) {
           const n = platoNecesidades.get(p.id)
-          if (n && esCompatible(n, perfil)) cubiertos.add(p.id)
+          const s = n ? scoreCompatibilidad(perfil, n) : 0.5
+          if (s > -Infinity) platoScores.set(p.id, s)
         }
-        if (cubiertos.size > 0) coverageMap.set(v.id, { vino: v, cubiertos })
+        if (platoScores.size > 0) coverageMap.set(v.id, { vino: v, platoScores })
       }
 
       // Greedy set-cover con dos fases:
-      //   Fase 1 (cobertura): cada vino resuelve como máximo cap = ⌈N/3⌉ platos.
-      //     Evita que un solo vino absorba el 80 % de la cobertura y desplace al resto.
-      //   Fase 2 (relleno): al llegar al 100 % de cobertura, sigue añadiendo vinos
-      //     hasta minSugerencias, priorizando tipos no representados.
+      //   Fase 1 (cobertura): criterio lexicográfico — nuevos.length DESC,
+      //     scoreNuevos (media de scoreCompatibilidad sobre platos nuevos) DESC,
+      //     pvp_recomendado ASC como desempate estable y determinista.
+      //     Cada vino resuelve como máximo cap = ⌈N/3⌉ platos (tope de cobertura).
+      //   Fase 2 (relleno): al llegar al 100 % de cobertura, continúa hasta
+      //     minSugerencias — prioriza tipo nuevo, luego score medio, luego pvp.
       const cap = Math.ceil(targetPlatos.length / 3)
       const minSugerencias = Math.min(8, Math.max(4, cap))
       const resueltos = new Set()
 
       while (anadir.length < 8) {
-        let bestId = null, bestNuevos = null, bestCubiertos = 0
-        for (const [id, { cubiertos }] of coverageMap) {
-          const nuevos = [...cubiertos].filter(pid => !resueltos.has(pid))
+        let bestId = null, bestNuevos = null, bestScoreNuevos = -1, bestPvp = Infinity
+        for (const [id, { vino, platoScores }] of coverageMap) {
+          const nuevos = [...platoScores.keys()].filter(pid => !resueltos.has(pid))
+          if (!nuevos.length) continue
+          const scoreNuevos = nuevos.reduce((s, pid) => s + platoScores.get(pid), 0) / nuevos.length
+          const pvp = Number(vino.pvp_recomendado) || 0
           if (!bestNuevos
             || nuevos.length > bestNuevos.length
-            || (nuevos.length === bestNuevos.length && cubiertos.size > bestCubiertos)
-          ) { bestId = id; bestNuevos = nuevos; bestCubiertos = cubiertos.size }
+            || (nuevos.length === bestNuevos.length && scoreNuevos > bestScoreNuevos)
+            || (nuevos.length === bestNuevos.length && scoreNuevos === bestScoreNuevos && pvp < bestPvp)
+          ) { bestId = id; bestNuevos = nuevos; bestScoreNuevos = scoreNuevos; bestPvp = pvp }
         }
 
         if (bestId && bestNuevos.length > 0) {
@@ -200,21 +226,25 @@ export function generarSugerencias(lineas, catalogo, platos) {
           coverageMap.delete(bestId)
         } else if (anadir.length < minSugerencias && coverageMap.size > 0) {
           // Fase 2: cobertura al 100 % pero por debajo del mínimo de carta.
-          // Prioriza tipos no representados; desempata por cobertura total de platos.
+          // Prioriza: tipo no representado (+10) → score medio de platos → pvp más bajo.
           const tiposYa = new Set(anadir.map(s => s.vino.tipo).filter(Boolean))
-          let fillId = null, fillScore = -1
-          for (const [id, { vino, cubiertos }] of coverageMap) {
-            const score = (tiposYa.has(vino.tipo) ? 0 : 1000) + cubiertos.size
-            if (score > fillScore) { fillId = id; fillScore = score }
+          let fillId = null, fillScore = -Infinity, fillPvp = Infinity
+          for (const [id, { vino, platoScores }] of coverageMap) {
+            const avgScore = [...platoScores.values()].reduce((s, v) => s + v, 0) / platoScores.size
+            const score = (tiposYa.has(vino.tipo) ? 0 : 10) + avgScore
+            const pvp = Number(vino.pvp_recomendado) || 0
+            if (score > fillScore || (score === fillScore && pvp < fillPvp)) {
+              fillId = id; fillScore = score; fillPvp = pvp
+            }
           }
           if (!fillId) break
 
-          const { vino, cubiertos } = coverageMap.get(fillId)
+          const { vino, platoScores } = coverageMap.get(fillId)
           const tipoLabel = vino.tipo && !tiposYa.has(vino.tipo) ? ` — nuevo tipo (${vino.tipo})` : ''
           anadir.push({
             key: vino.id,
             vino,
-            razon: `Añade variedad de carta${tipoLabel}: compatible con ${cubiertos.size} plato${cubiertos.size !== 1 ? 's' : ''}`,
+            razon: `Añade variedad de carta${tipoLabel}: compatible con ${platoScores.size} plato${platoScores.size !== 1 ? 's' : ''}`,
             prioridad: 1,
             tipo: 'maridaje',
           })
