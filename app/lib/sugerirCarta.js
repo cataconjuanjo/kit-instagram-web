@@ -69,7 +69,7 @@ function _sugerenciasGapZona(activas, candidatos, limite = 8) {
  * PRIORIDAD 1 (anadir): huecos de maridaje por plato.
  *   Level 1 — platos con 0 vinos compatibles en el borrador (urgente).
  *   Level 2 — platos con cobertura por debajo de la mediana.
- *   Greedy set-cover: cubre el máximo de platos con el mínimo de vinos.
+ *   Greedy set-cover con tope por vino (⌈N/3⌉) y objetivo de carta mínima.
  *
  * PRIORIDAD 2 (secundario): diversidad de zona/D.O.
  *   Solo cuando quedan slots disponibles (<8) tras el análisis de maridaje.
@@ -154,34 +154,67 @@ export function generarSugerencias(lineas, catalogo, platos) {
         if (cubiertos.size > 0) coverageMap.set(v.id, { vino: v, cubiertos })
       }
 
-      // Greedy set-cover: máximo cubrimiento con mínimo número de vinos
+      // Greedy set-cover con dos fases:
+      //   Fase 1 (cobertura): cada vino resuelve como máximo cap = ⌈N/3⌉ platos.
+      //     Evita que un solo vino absorba el 80 % de la cobertura y desplace al resto.
+      //   Fase 2 (relleno): al llegar al 100 % de cobertura, sigue añadiendo vinos
+      //     hasta minSugerencias, priorizando tipos no representados.
+      const cap = Math.ceil(targetPlatos.length / 3)
+      const minSugerencias = Math.min(8, Math.max(4, cap))
       const resueltos = new Set()
+
       while (anadir.length < 8) {
         let bestId = null, bestNuevos = null
         for (const [id, { cubiertos }] of coverageMap) {
           const nuevos = [...cubiertos].filter(pid => !resueltos.has(pid))
           if (!bestNuevos || nuevos.length > bestNuevos.length) { bestId = id; bestNuevos = nuevos }
         }
-        if (!bestId || bestNuevos.length === 0) break
 
-        const { vino } = coverageMap.get(bestId)
-        const nombresPlatos = bestNuevos.slice(0, 3)
-          .map(pid => targetPlatos.find(p => p.id === pid)?.nombre)
-          .filter(Boolean).join(', ')
-        const masPlatos = bestNuevos.length > 3 ? ` y ${bestNuevos.length - 3} más` : ''
+        if (bestId && bestNuevos.length > 0) {
+          // Fase 1: quedan platos sin cubrir — aplica el tope
+          const aCubrir = bestNuevos.slice(0, cap)
+          const { vino } = coverageMap.get(bestId)
+          const nombresPlatos = aCubrir.slice(0, 3)
+            .map(pid => targetPlatos.find(p => p.id === pid)?.nombre)
+            .filter(Boolean).join(', ')
+          const masPlatos = aCubrir.length > 3 ? ` y ${aCubrir.length - 3} más` : ''
 
-        anadir.push({
-          key: vino.id,
-          vino,
-          razon: nivelDosLocal
-            ? `Amplía cobertura de ${bestNuevos.length} plato${bestNuevos.length !== 1 ? 's' : ''} con poca oferta: ${nombresPlatos}${masPlatos}`
-            : `Cubre ${bestNuevos.length} plato${bestNuevos.length !== 1 ? 's' : ''} sin vino compatible: ${nombresPlatos}${masPlatos}`,
-          prioridad: bestNuevos.length,
-          tipo: 'maridaje',
-        })
+          anadir.push({
+            key: vino.id,
+            vino,
+            razon: nivelDosLocal
+              ? `Amplía cobertura de ${aCubrir.length} plato${aCubrir.length !== 1 ? 's' : ''} con poca oferta: ${nombresPlatos}${masPlatos}`
+              : `Cubre ${aCubrir.length} plato${aCubrir.length !== 1 ? 's' : ''} sin vino compatible: ${nombresPlatos}${masPlatos}`,
+            prioridad: aCubrir.length,
+            tipo: 'maridaje',
+          })
 
-        bestNuevos.forEach(pid => resueltos.add(pid))
-        coverageMap.delete(bestId)
+          aCubrir.forEach(pid => resueltos.add(pid))
+          coverageMap.delete(bestId)
+        } else if (anadir.length < minSugerencias && coverageMap.size > 0) {
+          // Fase 2: cobertura al 100 % pero por debajo del mínimo de carta.
+          // Prioriza tipos no representados; desempata por cobertura total de platos.
+          const tiposYa = new Set(anadir.map(s => s.vino.tipo).filter(Boolean))
+          let fillId = null, fillScore = -1
+          for (const [id, { vino, cubiertos }] of coverageMap) {
+            const score = (tiposYa.has(vino.tipo) ? 0 : 1000) + cubiertos.size
+            if (score > fillScore) { fillId = id; fillScore = score }
+          }
+          if (!fillId) break
+
+          const { vino, cubiertos } = coverageMap.get(fillId)
+          const tipoLabel = vino.tipo && !tiposYa.has(vino.tipo) ? ` — nuevo tipo (${vino.tipo})` : ''
+          anadir.push({
+            key: vino.id,
+            vino,
+            razon: `Añade variedad de carta${tipoLabel}: compatible con ${cubiertos.size} plato${cubiertos.size !== 1 ? 's' : ''}`,
+            prioridad: 1,
+            tipo: 'maridaje',
+          })
+          coverageMap.delete(fillId)
+        } else {
+          break
+        }
       }
     }
   }
