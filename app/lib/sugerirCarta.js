@@ -140,9 +140,13 @@ export function generarSugerencias(lineas, catalogo, platos) {
         catch { platoNecesidades.set(p.id, {}) }
       }
 
+      // Barajar candidatos antes de construir el mapa: rompe el sesgo alfabético
+      // de la query (ORDER BY nombre) en los desempates por orden de inserción.
+      const candidatosBarajados = [...candidatos].sort(() => Math.random() - 0.5)
+
       // Para cada candidato: qué platos objetivo cubre
       const coverageMap = new Map()
-      for (const v of candidatos) {
+      for (const v of candidatosBarajados) {
         if (!v.id) continue
         const perfil = catalogoPerfil.get(v.id)
         if (!perfil) continue
@@ -164,10 +168,13 @@ export function generarSugerencias(lineas, catalogo, platos) {
       const resueltos = new Set()
 
       while (anadir.length < 8) {
-        let bestId = null, bestNuevos = null
+        let bestId = null, bestNuevos = null, bestCubiertos = 0
         for (const [id, { cubiertos }] of coverageMap) {
           const nuevos = [...cubiertos].filter(pid => !resueltos.has(pid))
-          if (!bestNuevos || nuevos.length > bestNuevos.length) { bestId = id; bestNuevos = nuevos }
+          if (!bestNuevos
+            || nuevos.length > bestNuevos.length
+            || (nuevos.length === bestNuevos.length && cubiertos.size > bestCubiertos)
+          ) { bestId = id; bestNuevos = nuevos; bestCubiertos = cubiertos.size }
         }
 
         if (bestId && bestNuevos.length > 0) {
