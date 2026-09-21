@@ -48,8 +48,9 @@ export default async function RecursoPage({ params }) {
     mainEntityOfPage: `https://cataconjuanjo.com/recursos/${recurso.slug}`,
     author: {
       '@type': 'Person',
-      name: 'Juanjo Garcia',
+      name: 'Juanjo García',
       jobTitle: 'Consultor de vino WSET Level 3',
+      description: 'Consultor de vino WSET Level 3 especializado en carta de vinos, bodega y formación de sala para restaurantes y hoteles boutique en Málaga.',
     },
     publisher: {
       '@type': 'Organization',

@@ -127,7 +127,7 @@ const faq = [
   },
   {
     q: '¿Qué incluye una cata privada a domicilio?',
-    a: 'Cinco vinos, guía de cata de 90–120 min, técnica de cata, variedades y maridajes, montaje y recogida — todo conducido por Juanjo García, sumiller WSET Level 3.',
+    a: 'Cinco vinos, guía de cata de 90–120 min, técnica de cata, variedades y maridajes, montaje y recogida — todo conducido por Juanjo García, consultor de vino WSET Level 3.',
   },
   {
     q: '¿Se puede organizar una cata de vino en un yate?',
@@ -159,7 +159,8 @@ export default function CatasPage() {
         '@type': 'Person',
         name: 'Juanjo García',
         url: 'https://cataconjuanjo.com',
-        jobTitle: 'Sumiller y consultor de vino WSET Level 3',
+        jobTitle: 'Consultor de vino WSET Level 3',
+        description: 'Consultor de vino WSET Level 3 especializado en carta de vinos, bodega y formación de sala para restaurantes y hoteles boutique en Málaga.',
         sameAs: ['https://instagram.com/cataconjuanjo'],
       },
       {

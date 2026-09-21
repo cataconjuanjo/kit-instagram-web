@@ -79,6 +79,7 @@ const jsonLd = {
     '@type': 'Person',
     name: 'Juanjo García',
     jobTitle: 'Consultor de vino WSET Level 3',
+    description: 'Consultor de vino WSET Level 3 especializado en carta de vinos, bodega y formación de sala para restaurantes y hoteles boutique en Málaga.',
     sameAs: 'https://instagram.com/cataconjuanjo',
   },
   sameAs: ['https://instagram.com/cataconjuanjo'],

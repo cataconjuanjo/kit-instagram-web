@@ -210,6 +210,7 @@ export default function Home() {
             <div className="credential-item">
               <span>Certificación</span>
               <strong>WSET Level 3 Award in Wines</strong>
+              <small>84 horas de formación, examen teórico y cata a ciegas, regulado por Ofqual.</small>
             </div>
             <div className="credential-item">
               <span>Especialidad</span>
