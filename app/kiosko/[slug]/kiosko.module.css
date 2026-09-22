@@ -12,6 +12,19 @@
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
+  /* ── Typography tokens ───────────────────────────────────────────────── */
+  --type-screen-title: clamp(1.2rem, 3vw, 1.6rem);
+  --type-wine-name:    1.1rem;
+  --type-body:         1rem;
+  --type-meta:         .88rem;
+  --type-label:        .78rem;
+  --type-price:        .95rem;
+  --fw-display:        800;   /* títulos de pantalla únicamente */
+  --fw-strong:         700;   /* nombres de vino, labels, botones secundarios */
+  --fw-action:         600;   /* "Ver ficha" y acciones de menor jerarquía */
+  --fw-normal:         400;   /* cuerpo y texto secundario */
+  --ls-label:          .1em;  /* labels de acción y navegación en mayúsculas */
+  --ls-badge:          .07em; /* badges de clasificación (TipoChip) */
 }
 
 /* ── Loading / Error ─────────────────────────────────────────────────────── */
@@ -972,8 +985,8 @@
   padding: .18rem .55rem;
   font-family: var(--font-family);
   font-size: .7rem;
-  font-weight: 700;
-  letter-spacing: .07em;
+  font-weight: var(--fw-strong);
+  letter-spacing: var(--ls-badge);
   text-transform: uppercase;
   color: #fff;
 }
@@ -991,9 +1004,9 @@
   border-radius: 0;
   color: var(--texto);
   font-family: var(--font-family);
-  font-size: .9rem;
-  font-weight: 800;
-  letter-spacing: .06em;
+  font-size: var(--type-label);
+  font-weight: var(--fw-strong);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   padding: .6rem 1.1rem;
   min-height: 64px;
@@ -1932,8 +1945,8 @@
   max-width: 680px;
   margin: 0;
   color: var(--texto-m);
-  font-size: .86rem;
-  font-weight: 650;
+  font-size: var(--type-meta);
+  font-weight: var(--fw-normal);
   line-height: 1.45;
 }
 
@@ -1987,9 +2000,9 @@
 
 .sugerenciasLabel {
   font-family: var(--font-family);
-  font-size: .78rem;
-  font-weight: 700;
-  letter-spacing: .12em;
+  font-size: var(--type-label);
+  font-weight: var(--fw-strong);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   color: var(--texto-d);
   margin: 0 0 .9rem;
@@ -2052,9 +2065,8 @@
 }
 
 .pairingIntro {
-  font-size: 1.05rem;
+  font-size: var(--type-body);
   color: var(--texto-m);
-  font-style: italic;
   line-height: 1.6;
   background: var(--sup2);
   border: 1px solid var(--borde);
@@ -2065,7 +2077,7 @@
 .aiResultNotice {
   margin: -.35rem 0 .15rem;
   color: var(--texto-d);
-  font-size: .82rem;
+  font-size: var(--type-meta);
   line-height: 1.45;
 }
 
@@ -2139,28 +2151,28 @@
 
 .pairingWinePrecio {
   font-family: var(--font-family);
-  font-size: 1.05rem;
-  font-weight: 800;
+  font-size: var(--type-price);
+  font-weight: var(--fw-strong);
   color: var(--color-acento);
   margin-left: auto;
 }
 
 .pairingWineNombre {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: var(--type-wine-name);
+  font-weight: var(--fw-strong);
   margin: 0;
   color: var(--texto);
 }
 
 .pairingWineBodega {
-  font-size: .95rem;
+  font-size: var(--type-meta);
   color: var(--texto-m);
   margin: 0;
 }
 
 .pairingWineRazon {
-  font-size: .95rem;
-  color: var(--texto-m);
+  font-size: var(--type-body);
+  color: var(--texto);
   line-height: 1.5;
   margin: .25rem 0 0;
 }
@@ -2188,9 +2200,9 @@
   border-radius: 9px;
   padding: .65rem .9rem;
   font-family: var(--font-family);
-  font-size: .78rem;
-  font-weight: 900;
-  letter-spacing: .06em;
+  font-size: var(--type-label);
+  font-weight: var(--fw-strong);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   cursor: pointer;
   transition: transform .12s, background .12s, border-color .12s;
@@ -2202,6 +2214,7 @@
   background: var(--sup2);
   border: 1px solid var(--borde);
   color: var(--texto);
+  font-weight: var(--fw-action);
 }
 
 .pairingWineOpenBtn:hover { border-color: var(--color-acento); }
@@ -2228,9 +2241,9 @@
   border: 2px solid var(--borde);
   color: var(--texto-m);
   font-family: var(--font-family);
-  font-size: .9rem;
-  font-weight: 700;
-  letter-spacing: .08em;
+  font-size: var(--type-label);
+  font-weight: var(--fw-strong);
+  letter-spacing: var(--ls-label);
   text-transform: uppercase;
   padding: .9rem 1.75rem;
   min-height: 60px;
