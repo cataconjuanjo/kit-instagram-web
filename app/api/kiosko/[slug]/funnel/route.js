@@ -3,7 +3,7 @@ import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { isTiendaAccesible } from '../../../_lib/kioskoAuth'
 
 const VALID_FLOWS  = new Set(['wizard', 'cesta', 'pairing', 'duelo'])
-const VALID_STEPS  = new Set(['start', 'ocasion', 'estilo', 'presupuesto', 'prefs', 'resultado', 'consulta', 'carrito', 'abandon'])
+const VALID_STEPS  = new Set(['start', 'ocasion', 'estilo', 'presupuesto', 'prefs', 'resultado', 'consulta', 'carrito', 'abandon', 'regenerar', 'reiniciar'])
 const VALID_REASONS = new Set(['idle_timeout', 'user_exit'])
 
 function isMigrationMissing(error) {

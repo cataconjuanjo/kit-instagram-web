@@ -1736,6 +1736,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
   }
 
   function regenerar() {
+    onFunnelStep?.('regenerar')
     const s = semilla + 17
     const currentIds = cesta?.items?.map(item => item.id).filter(Boolean) || []
     const avoidIds = [...new Set([...cestaHistoryIds, ...currentIds])]
@@ -1760,6 +1761,7 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
   }
 
   function reiniciar() {
+    onFunnelStep?.('reiniciar')
     setStep(0); setOcasionId(''); setPresupuesto(50); setInputPresup(''); setModoInput(false)
     setSinAlcohol(false); setVegano(false); setSinGluten(false); setCesta(null); setCestaHistoryIds([]); setSemilla(0)
   }
@@ -1937,6 +1939,14 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
             </div>
           ) : (
             <>
+              {onAddToCart && (
+                <button type="button" className={styles.cestaComprarBtn}
+                  style={{ background: colorAcento }}
+                  onClick={() => onAddToCart(cesta.items, 'cesta', cesta.frase)}>
+                  {iconStyle !== 'lineal' && '🛒 '}
+                  {lang === 'en' ? 'Add to cart' : lang === 'fr' ? 'Ajouter au panier' : 'Añadir al carrito'}
+                </button>
+              )}
               <div className={styles.cestaItems}>
                 {cesta.items.map((item, i) => (
                   <div key={item.id ?? i} className={styles.cestaItem}>
@@ -1983,14 +1993,6 @@ function CestaView({ slug, vinos = [], colorAcento, colorPrimario, onBack, onAdd
                   {iconStyle !== 'lineal' && '🎁 '}{T[lang].cestaNueva}
                 </button>
               </div>
-              {onAddToCart && (
-                <button type="button" className={styles.cestaComprarBtn}
-                  style={{ background: colorAcento }}
-                  onClick={() => onAddToCart(cesta.items, 'cesta', cesta.frase)}>
-                  {iconStyle !== 'lineal' && '🛒 '}
-                  {lang === 'en' ? 'Add to cart' : lang === 'fr' ? 'Ajouter au panier' : 'Añadir al carrito'}
-                </button>
-              )}
               <LeadCapture
                 slug={slug}
                 source="cesta"

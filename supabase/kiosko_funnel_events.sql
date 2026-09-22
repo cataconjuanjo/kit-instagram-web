@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS kiosko_funnel_events (
   attempt_id     UUID         NOT NULL,
   flow           TEXT         NOT NULL,   -- 'wizard' | 'cesta' | 'pairing'
   step           TEXT         NOT NULL,   -- 'start' | 'ocasion' | 'estilo' | 'presupuesto' |
-                                          -- 'prefs' | 'resultado' | 'consulta' | 'carrito' | 'abandon'
+                                          -- 'prefs' | 'resultado' | 'consulta' | 'carrito' | 'abandon' |
+                                          -- 'regenerar' | 'reiniciar'
   abandon_reason TEXT,                    -- 'idle_timeout' | 'user_exit' | NULL
   created_at     TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
