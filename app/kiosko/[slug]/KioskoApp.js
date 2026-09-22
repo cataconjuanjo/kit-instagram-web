@@ -182,6 +182,7 @@ const T = {
     pairingPlaceholder: 'Ej: cigalas a la plancha, cordero asado, queso curado, celebración especial…',
     buscando: '⏳ Consultando…', buscar: '🔍 Buscar vinos', ideasRapidas: 'Ideas rápidas:', pairingOEscribe: 'o escribe tu consulta',
     intentarDeNuevo: 'Intentar de nuevo',
+    sinResultadosRango: 'No tenemos vinos con esos criterios ahora mismo. Prueba ampliando el presupuesto o quitando el filtro de región.',
     bebidaAviso: 'Esta sección busca vino para acompañar comida. Cuéntanos el plato o la ocasión y encontramos el vino perfecto.',
     wizardTitle: 'Ayúdame a elegir',
     q0: '¿Para qué ocasión buscas el vino?', q1: '¿Qué estilo suele gustar?', q2: '¿Cuál es el presupuesto?',
@@ -234,6 +235,7 @@ const T = {
     pairingPlaceholder: 'E.g: grilled prawns, roast lamb, aged cheese, special celebration…',
     buscando: '⏳ Searching…', buscar: '🔍 Find wines', ideasRapidas: 'Quick ideas:', pairingOEscribe: 'or type your own',
     intentarDeNuevo: 'Try again',
+    sinResultadosRango: 'No wines match those criteria right now. Try a wider budget or remove the region filter.',
     bebidaAviso: 'This section pairs food with wine. Tell us the dish or occasion and we\'ll find the perfect wine.',
     wizardTitle: 'Help me choose',
     q0: 'What occasion are you shopping for?', q1: 'What style do you prefer?', q2: 'What\'s your budget?',
@@ -286,6 +288,7 @@ const T = {
     pairingPlaceholder: 'Ex : homard grillé, agneau rôti, fromage affiné, occasion spéciale…',
     buscando: '⏳ Recherche…', buscar: '🔍 Trouver des vins', ideasRapidas: 'Idées rapides :', pairingOEscribe: 'ou écrivez votre question',
     intentarDeNuevo: 'Réessayer',
+    sinResultadosRango: 'Aucun vin ne correspond à ces critères pour l\'instant. Essayez d\'élargir le budget ou retirez le filtre de région.',
     bebidaAviso: 'Cette section cherche un vin pour accompagner un plat. Décrivez le plat ou l\'occasion et nous trouvons le vin parfait.',
     wizardTitle: 'Aidez-moi à choisir',
     q0: 'Pour quelle occasion cherchez-vous ?', q1: 'Quel style préférez-vous ?', q2: 'Quel est votre budget ?',
@@ -338,6 +341,7 @@ const T = {
     pairingPlaceholder: 'Z.B.: Gegrillte Garnelen, Lammbraten, gereifter Käse, besonderer Anlass…',
     buscando: '⏳ Suche…', buscar: '🔍 Weine suchen', ideasRapidas: 'Schnelle Ideen:', pairingOEscribe: 'oder eigene Eingabe',
     intentarDeNuevo: 'Erneut versuchen',
+    sinResultadosRango: 'Derzeit kein Wein mit diesen Kriterien verfügbar. Budget erweitern oder Regionsfilter entfernen.',
     bebidaAviso: 'Dieser Bereich findet Wein zur Speise. Beschreiben Sie das Gericht oder den Anlass und wir empfehlen den perfekten Wein.',
     wizardTitle: 'Hilf mir wählen',
     q0: 'Für welchen Anlass suchen Sie?', q1: 'Welchen Stil bevorzugen Sie?', q2: 'Was ist Ihr Budget?',
@@ -2151,6 +2155,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
   const [error, setError]     = useState('')
+  const [noResultados, setNoResultados] = useState(false)
   const [mostrarRango, setMostrarRango] = useState(false)
 
   const regionLabel = useMemo(() => {
@@ -2197,8 +2202,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error en la consulta')
-      setResultado(data)
-      onFunnelStep?.('resultado')
+      if (data.noResults) { setNoResultados(true) } else { setResultado(data); onFunnelStep?.('resultado') }
     } catch (err) {
       setError(err.message)
       setStep(2)
@@ -2207,7 +2211,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
     }
   }
 
-  function reset() { setStep(0); setWizard({ ocasion: '', estilo: '', presupuesto: '', soloRegion: true }); setResultado(null); setError('') }
+  function reset() { setStep(0); setWizard({ ocasion: '', estilo: '', presupuesto: '', soloRegion: true }); setResultado(null); setError(''); setNoResultados(false) }
 
   return (
     <div className={styles.wizardView}>
@@ -2320,6 +2324,14 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
       {error && (
         <div className={styles.pairingError}>
           <p>{error}</p>
+          <button onClick={reset} type="button">{T[lang].intentarDeNuevo}</button>
+        </div>
+      )}
+
+      {/* Sin resultados para los criterios */}
+      {noResultados && (
+        <div className={styles.wizardNoResults}>
+          <p>{T[lang].sinResultadosRango}</p>
           <button onClick={reset} type="button">{T[lang].intentarDeNuevo}</button>
         </div>
       )}
@@ -2577,8 +2589,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error en la consulta')
-      setResultado(data)
-      onFunnelStep?.('resultado')
+      if (data.noResults) { setError(T[lang].sinResultadosRango) } else { setResultado(data); onFunnelStep?.('resultado') }
     } catch (err) { setError(err.message) }
     finally { setCargando(false) }
   }

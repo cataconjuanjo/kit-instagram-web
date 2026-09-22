@@ -1944,8 +1944,8 @@
 .aiNotice {
   max-width: 680px;
   margin: 0;
-  color: var(--texto-m);
-  font-size: var(--type-meta);
+  color: var(--texto-d);
+  font-size: 11px;
   font-weight: var(--fw-normal);
   line-height: 1.45;
 }
@@ -1996,7 +1996,7 @@
 .pairingSubmitBtn:not(:disabled):active { transform: scale(.97); }
 
 /* ── Sugerencias ─────────────────────────────────────────────────────────── */
-.sugerencias { margin-top: .75rem; }
+.sugerencias { margin-top: .75rem; margin-bottom: 2.5rem; }
 
 .sugerenciasLabel {
   font-family: var(--font-family);
@@ -2077,7 +2077,7 @@
 .aiResultNotice {
   margin: -.35rem 0 .15rem;
   color: var(--texto-d);
-  font-size: var(--type-meta);
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -2323,6 +2323,11 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.wizardView .pairingResultados {
+  padding: 0 2rem 2rem;
 }
 .wizardHeader {
   display: flex;
@@ -3010,6 +3015,33 @@
   font-size: .85rem;
   text-align: center;
   padding: .25rem;
+}
+
+/* ── Wizard: sin resultados ──────────────────────────────────────────────── */
+.wizardNoResults {
+  padding: 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: center;
+}
+.wizardNoResults p {
+  font-size: 1.1rem;
+  color: var(--texto-m);
+  line-height: 1.6;
+  max-width: 420px;
+  margin: 0;
+}
+.wizardNoResults button {
+  font-family: var(--font-family);
+  font-size: 1rem;
+  color: var(--color-acento);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
 }
 
 /* ── Overlay: maridaje específico del vino ────────────────────────────────── */

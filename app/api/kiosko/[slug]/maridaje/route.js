@@ -359,7 +359,7 @@ export async function POST(request, { params }) {
     } catch {}
 
     if (!parsed?.recomendaciones?.length) {
-      return NextResponse.json({ error: 'No se pudo generar una recomendación' }, { status: 500 })
+      return NextResponse.json({ noResults: true, reason: 'sin_stock_en_rango' })
     }
 
     const vinosMap = Object.fromEntries(vinosBrutos.map(v => [v.id, v]))
@@ -369,7 +369,7 @@ export async function POST(request, { params }) {
       .slice(0, 5)
 
     if (!recomendaciones.length) {
-      return NextResponse.json({ error: 'No se encontraron vinos coincidentes' }, { status: 500 })
+      return NextResponse.json({ noResults: true, reason: 'sin_stock_en_rango' })
     }
 
     // Log de búsqueda (fire-and-forget, nunca bloquea la respuesta)
