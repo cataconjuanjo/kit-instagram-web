@@ -2,13 +2,9 @@ import { Cormorant_Garamond } from 'next/font/google'
 import './globals.css'
 import CookieConsent from './components/CookieConsent'
 
-const cormorantGaramond = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  style: ['normal', 'italic'],
-  display: 'swap',
-  variable: '--font-cormorant-garamond',
-})
+const cormorant400 = Cormorant_Garamond({ subsets: ['latin'], weight: '400', style: ['normal', 'italic'], display: 'swap', variable: '--font-cormorant-garamond' })
+const cormorant500 = Cormorant_Garamond({ subsets: ['latin'], weight: '500', style: ['normal', 'italic'], display: 'swap' })
+const cormorant600 = Cormorant_Garamond({ subsets: ['latin'], weight: '600', style: ['normal', 'italic'], display: 'swap' })
 
 export const viewport = {
   width: 'device-width',
@@ -88,7 +84,7 @@ const jsonLd = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="es" className={cormorantGaramond.variable}>
+    <html lang="es" className={`${cormorant400.variable} ${cormorant500.className} ${cormorant600.className}`}>
       <body>
         <a href="#page-content" className="skip-link">Saltar al contenido</a>
         <script
