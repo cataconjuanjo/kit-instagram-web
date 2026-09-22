@@ -180,7 +180,7 @@ const T = {
     aiNotice: 'Recomendación asistida por IA sobre el catálogo disponible. La tienda confirma precio, stock y condiciones de venta.',
     aiResultNotice: 'Resultado generado con ayuda de IA y criterios de Carta Viva. Úsalo como apoyo para elegir.',
     pairingPlaceholder: 'Ej: cigalas a la plancha, cordero asado, queso curado, celebración especial…',
-    buscando: '⏳ Consultando…', buscar: '🔍 Buscar vinos', ideasRapidas: 'Ideas rápidas:',
+    buscando: '⏳ Consultando…', buscar: '🔍 Buscar vinos', ideasRapidas: 'Ideas rápidas:', pairingOEscribe: 'o escribe tu consulta',
     intentarDeNuevo: 'Intentar de nuevo',
     bebidaAviso: 'Esta sección busca vino para acompañar comida. Cuéntanos el plato o la ocasión y encontramos el vino perfecto.',
     wizardTitle: 'Ayúdame a elegir',
@@ -232,7 +232,7 @@ const T = {
     aiNotice: 'AI-assisted recommendation based on the available catalogue. The shop confirms price, stock and sale conditions.',
     aiResultNotice: 'Generated with AI support and Carta Viva criteria. Use it as decision support.',
     pairingPlaceholder: 'E.g: grilled prawns, roast lamb, aged cheese, special celebration…',
-    buscando: '⏳ Searching…', buscar: '🔍 Find wines', ideasRapidas: 'Quick ideas:',
+    buscando: '⏳ Searching…', buscar: '🔍 Find wines', ideasRapidas: 'Quick ideas:', pairingOEscribe: 'or type your own',
     intentarDeNuevo: 'Try again',
     bebidaAviso: 'This section pairs food with wine. Tell us the dish or occasion and we\'ll find the perfect wine.',
     wizardTitle: 'Help me choose',
@@ -284,7 +284,7 @@ const T = {
     aiNotice: 'Recommandation assistée par IA à partir du catalogue disponible. La boutique confirme le prix, le stock et les conditions de vente.',
     aiResultNotice: 'Résultat généré avec une aide IA et les critères Carta Viva. À utiliser comme aide au choix.',
     pairingPlaceholder: 'Ex : homard grillé, agneau rôti, fromage affiné, occasion spéciale…',
-    buscando: '⏳ Recherche…', buscar: '🔍 Trouver des vins', ideasRapidas: 'Idées rapides :',
+    buscando: '⏳ Recherche…', buscar: '🔍 Trouver des vins', ideasRapidas: 'Idées rapides :', pairingOEscribe: 'ou écrivez votre question',
     intentarDeNuevo: 'Réessayer',
     bebidaAviso: 'Cette section cherche un vin pour accompagner un plat. Décrivez le plat ou l\'occasion et nous trouvons le vin parfait.',
     wizardTitle: 'Aidez-moi à choisir',
@@ -336,7 +336,7 @@ const T = {
     aiNotice: 'KI-gestützte Empfehlung auf Basis des verfügbaren Katalogs. Der Laden bestätigt Preis, Bestand und Verkaufsbedingungen.',
     aiResultNotice: 'Mit KI-Unterstützung und Carta-Viva-Kriterien erstellt. Als Entscheidungshilfe nutzen.',
     pairingPlaceholder: 'Z.B.: Gegrillte Garnelen, Lammbraten, gereifter Käse, besonderer Anlass…',
-    buscando: '⏳ Suche…', buscar: '🔍 Weine suchen', ideasRapidas: 'Schnelle Ideen:',
+    buscando: '⏳ Suche…', buscar: '🔍 Weine suchen', ideasRapidas: 'Schnelle Ideen:', pairingOEscribe: 'oder eigene Eingabe',
     intentarDeNuevo: 'Erneut versuchen',
     bebidaAviso: 'Dieser Bereich findet Wein zur Speise. Beschreiben Sie das Gericht oder den Anlass und wir empfehlen den perfekten Wein.',
     wizardTitle: 'Hilf mir wählen',
@@ -2590,7 +2590,18 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
         <h2 className={styles.pairingTitle}>{T[lang].pairingTitle}</h2>
       </div>
       <p className={styles.pairingSubtitle}>{T[lang].pairingSub}</p>
+      {!resultado && !cargando && !error && (
+        <div className={styles.sugerencias}>
+          <p className={styles.sugerenciasLabel}>{T[lang].ideasRapidas}</p>
+          <div className={styles.sugerenciasGrid}>
+            {sugerencias.map(s => (
+              <button key={s} className={styles.sugerenciaBtn} onClick={() => { setConsulta(s); consultar(s) }} type="button">{s}</button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className={styles.pairingInputArea}>
+        <p className={styles.sugerenciasLabel}>{T[lang].pairingOEscribe}</p>
         <textarea ref={textareaRef} className={styles.pairingTextarea} value={consulta}
           onChange={e => setConsulta(e.target.value)}
           placeholder={T[lang].pairingPlaceholder}
@@ -2609,16 +2620,6 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
         <div className={styles.wizardLoading}>
           <div className={styles.wizardSpinner} style={{ borderTopColor: colorAcento }} />
           <p style={{ color: colorAcento }}>{iconStyle === 'lineal' ? stripEmoji(T[lang].buscandoVino) : T[lang].buscandoVino}</p>
-        </div>
-      )}
-      {!resultado && !cargando && !error && (
-        <div className={styles.sugerencias}>
-          <p className={styles.sugerenciasLabel}>{T[lang].ideasRapidas}</p>
-          <div className={styles.sugerenciasGrid}>
-            {sugerencias.map(s => (
-              <button key={s} className={styles.sugerenciaBtn} onClick={() => { setConsulta(s); consultar(s) }} type="button">{s}</button>
-            ))}
-          </div>
         </div>
       )}
       {error && <div className={styles.pairingError}><p>{error}</p><button onClick={() => setError('')} type="button">{T[lang].intentarDeNuevo}</button></div>}
