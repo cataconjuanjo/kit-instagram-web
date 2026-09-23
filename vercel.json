@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/cron/square-webhook-health",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
