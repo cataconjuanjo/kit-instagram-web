@@ -2537,13 +2537,17 @@ export default function CartaPublica() {
                   return (
                     <article
                       key={p.id}
-                      className={`${styles.dishCard} ${seleccionado ? styles.dishSelected : ''}`}
+                      className={`${styles.dishCard} ${p.foto_url ? styles.dishCardWithPhoto : ''} ${seleccionado ? styles.dishSelected : ''}`}
                       onClick={() => {
                         if (seleccionado) setPlatosSeleccionados(platosSeleccionados.filter(s => s.id !== p.id))
                         else setPlatosSeleccionados([...platosSeleccionados, p])
                         setRespuesta('')
                       }}
                     >
+                      {p.foto_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.foto_url} alt="" className={styles.dishPhoto} loading="lazy" />
+                      )}
                       <div>
                         <h3 className={styles.dishName}>{p.nombre}</h3>
                       </div>

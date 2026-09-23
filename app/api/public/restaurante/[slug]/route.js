@@ -58,7 +58,7 @@ const CAMPOS_VINO = [
 
 const CAMPOS_PLATO = [
   'id', 'restaurante_id', 'nombre', 'categoria', 'precio',
-  'activo', 'familias_aromaticas',
+  'activo', 'familias_aromaticas', 'foto_url',
 ]
 
 const CAMPOS_LINK_HUB = ['id', 'restaurante_id', 'titulo', 'url', 'tipo', 'orden', 'visible']

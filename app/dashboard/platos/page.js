@@ -205,7 +205,7 @@ export default function Platos() {
   const [pageSizePlatos, setPageSizePlatos] = useState(10)
   const [mensajePlatos, setMensajePlatos] = useState('')
   const [editandoPlato, setEditandoPlato] = useState(null)
-  const [nuevoPlato, setNuevoPlato] = useState({ nombre: '', descripcion: '', categoria: 'Entrantes fríos', precio: '' })
+  const [nuevoPlato, setNuevoPlato] = useState({ nombre: '', descripcion: '', categoria: 'Entrantes fríos', precio: '', foto_url: '' })
   const [textoImportar, setTextoImportar] = useState('')
   const [platosImportar, setPlatosImportar] = useState([])
   const [importando, setImportando] = useState(false)
@@ -376,12 +376,13 @@ export default function Platos() {
     const { data, error } = await supabase.from('platos').insert([{
       ...nuevoPlato,
       precio: parseFloat(nuevoPlato.precio) || 0,
+      foto_url: nuevoPlato.foto_url?.trim() || null,
       restaurante_id: restaurante.id,
       activo: true
     }]).select(SELECT_CLIENT_PLATO_DASHBOARD)
     if (!error) {
       setPlatos([...platos, data[0]])
-      setNuevoPlato({ nombre: '', descripcion: '', categoria: 'Entrantes fríos', precio: '' })
+      setNuevoPlato({ nombre: '', descripcion: '', categoria: 'Entrantes fríos', precio: '', foto_url: '' })
       setMostrarFormulario(false)
       enriquecerPlato(data[0]).catch(() => {})
     }
@@ -495,7 +496,8 @@ export default function Platos() {
       nombre: plato.nombre,
       descripcion: plato.descripcion,
       categoria: plato.categoria,
-      precio: parseFloat(plato.precio) || 0
+      precio: parseFloat(plato.precio) || 0,
+      foto_url: plato.foto_url?.trim() || null,
     }).eq('id', plato.id)
     if (!error) {
       setPlatos(platos.map(p => p.id === plato.id ? { ...p, ...plato } : p))
@@ -874,6 +876,13 @@ export default function Platos() {
                   style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
                 <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para recomendar vino y ayudar a sala. No se muestra como receta en la carta publica.</p>
               </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>URL foto (opcional)</label>
+                <input type="url" value={nuevoPlato.foto_url || ''} onChange={e => setNuevoPlato({ ...nuevoPlato, foto_url: e.target.value })}
+                  placeholder="https://..."
+                  style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
+                <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Imagen que se muestra en la carta pública. Deja en blanco para no mostrar foto.</p>
+              </div>
               <RasgosMaridaje plato={nuevoPlato} onChange={setNuevoPlato} />
             </div>
         </ResponsiveOverlay>
@@ -1029,6 +1038,13 @@ export default function Platos() {
                         <input type="text" value={editandoPlato.descripcion || ''} onChange={e => setEditandoPlato({ ...editandoPlato, descripcion: e.target.value })}
                           style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
                         <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Uso interno para recomendar vino y ayudar a sala. No se muestra como receta en la carta publica.</p>
+                      </div>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>URL foto (opcional)</label>
+                        <input type="url" value={editandoPlato.foto_url || ''} onChange={e => setEditandoPlato({ ...editandoPlato, foto_url: e.target.value })}
+                          placeholder="https://..."
+                          style={{ width: '100%', padding: '10px 0', border: 'none', borderBottom: '1px solid #e8e8e8', fontSize: 14, outline: 'none', background: 'transparent', color: '#111', boxSizing: 'border-box' }} />
+                        <p style={{ fontSize: 11, color: '#bbb', margin: '8px 0 0', lineHeight: 1.5 }}>Imagen que se muestra en la carta pública. Deja en blanco para no mostrar foto.</p>
                       </div>
                       <RasgosMaridaje plato={editandoPlato} onChange={setEditandoPlato} />
                     </div>

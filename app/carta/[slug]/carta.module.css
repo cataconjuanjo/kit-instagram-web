@@ -1910,6 +1910,18 @@
   cursor: pointer;
 }
 
+.dishCardWithPhoto {
+  grid-template-columns: 68px minmax(0, 1fr) auto;
+}
+
+.dishPhoto {
+  width: 68px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: 6px;
+  display: block;
+}
+
 .dishCard:last-child {
   border-bottom: 0;
 }

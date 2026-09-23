@@ -20,3 +20,5 @@ tmp/
 output/
 backups/
 .vscode/
+
+.env*

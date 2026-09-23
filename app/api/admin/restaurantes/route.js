@@ -244,10 +244,8 @@ export async function POST(req) {
       trial_expires_at: fechaPrueba(body.trial_expires_at),
       trial_started_at: body.subscription_status === 'trialing' ? new Date().toISOString() : null,
       ticket_medio_comida: body.ticket_medio_comida === '' || body.ticket_medio_comida === undefined ? null : Number(body.ticket_medio_comida) || null,
+      provincia_codigo: body.provincia_codigo || '00',
       carta_publica_activa: false,
-      banner_zoom: 100,
-      banner_x: 50,
-      banner_y: 50
     }
 
     let publicationMigrationPending = false

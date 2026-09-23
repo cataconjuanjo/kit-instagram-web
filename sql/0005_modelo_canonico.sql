@@ -19,10 +19,6 @@ CREATE TABLE IF NOT EXISTS vino (
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
 
--- Clave natural: una bodega no puede tener dos vinos con el mismo nombre normalizado
-CREATE UNIQUE INDEX IF NOT EXISTS vino_bodega_nombre_norm_uidx
-  ON vino (bodega_id, nombre_norm);
-
 CREATE INDEX IF NOT EXISTS vino_zona_id_idx    ON vino (zona_id);
 CREATE INDEX IF NOT EXISTS vino_bodega_id_idx  ON vino (bodega_id);
 CREATE INDEX IF NOT EXISTS vino_nombre_norm_trgm_idx

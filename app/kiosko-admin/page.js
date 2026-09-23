@@ -32,6 +32,7 @@ export default function KioskoAdminHome() {
   const [token, setToken]           = useState('')
   const [esAdmin, setEsAdmin]       = useState(false)
   const [accesoDenegado, setAccesoDenegado] = useState(false)
+  const [squareFailed, setSquareFailed] = useState(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -43,8 +44,21 @@ export default function KioskoAdminHome() {
       setToken(session.access_token)
       setEsAdmin(isAdminEmail(session.user?.email))
       cargar(session.access_token)
+      cargarSquareStatus(session.access_token)
     })
   }, [])
+
+  async function cargarSquareStatus(tok = token) {
+    try {
+      const res = await fetch('/api/kiosko-admin/square-status', {
+        headers: { Authorization: `Bearer ${tok}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setSquareFailed(data.failed || 0)
+      }
+    } catch {}
+  }
 
   async function cargar(tok = token) {
     setCargando(true)
@@ -104,7 +118,17 @@ export default function KioskoAdminHome() {
     <div className={styles.home}>
       <header className={styles.header}>
         <div>
-          <h1 className={styles.titulo}>Kiosko Admin</h1>
+          <h1 className={styles.titulo}>
+            Kiosko Admin
+            {squareFailed > 0 && (
+              <span
+                title={`${squareFailed} evento(s) Square fallido(s) en las últimas 24 h`}
+                style={{ marginLeft: 10, background: '#F44336', color: '#fff', borderRadius: 12, padding: '2px 9px', fontSize: 13, fontWeight: 700, verticalAlign: 'middle', cursor: 'default' }}
+              >
+                Square {squareFailed}
+              </span>
+            )}
+          </h1>
           <p className={styles.subtitulo}>Gestión de tiendas y kioscos virtuales de vino</p>
         </div>
         {esAdmin && (

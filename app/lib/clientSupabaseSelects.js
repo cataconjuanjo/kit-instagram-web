@@ -16,7 +16,7 @@ export const SELECT_CLIENT_VINO_ADMIN = [
 
 export const SELECT_CLIENT_PLATO_ADMIN = [
   'id', 'restaurante_id', 'nombre', 'descripcion', 'categoria',
-  'precio', 'activo', 'familias_aromaticas',
+  'precio', 'activo', 'familias_aromaticas', 'foto_url',
 ].join(', ')
 
 export const SELECT_CLIENT_ESTADISTICA_ADMIN = [
@@ -60,7 +60,7 @@ export const SELECT_CLIENT_VINO_DASHBOARD = [
 
 export const SELECT_CLIENT_PLATO_DASHBOARD = [
   'id', 'restaurante_id', 'nombre', 'descripcion', 'categoria',
-  'precio', 'activo', 'familias_aromaticas',
+  'precio', 'activo', 'familias_aromaticas', 'foto_url',
 ].join(', ')
 
 export const SELECT_CLIENT_ESTADISTICA_DASHBOARD = [

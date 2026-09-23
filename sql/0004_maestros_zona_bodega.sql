@@ -19,6 +19,10 @@ RETURNS text
 LANGUAGE sql
 IMMUTABLE
 RETURNS NULL ON NULL INPUT
+-- En Supabase, unaccent vive en el schema "extensions" (no en "public").
+-- SET search_path fija el path DENTRO de la función para que el inliner
+-- del planner la encuentre incluso en contexto de columnas generadas.
+SET search_path = public, extensions, pg_catalog
 AS $$
   SELECT trim(regexp_replace(
     regexp_replace(
