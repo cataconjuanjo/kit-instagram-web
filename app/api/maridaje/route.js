@@ -159,11 +159,18 @@ function limpiarTagsInternos(texto = '') {
 
 function limpiarNotasDe(texto = '') {
   return String(texto || '')
-    .replace(/\bnotas de\b/gi, '')
-    .replace(/\bnotes of\b/gi, '')
+    .replace(/\bnotas de\s+/gi, 'toque de ')
+    .replace(/\bnotes of\s+/gi, 'hint of ')
     .replace(/\s{2,}/g, ' ')
     .replace(/,\s*,/g, ',')
     .replace(/\s+([,.])/g, '$1')
+    .trim()
+}
+
+function filtrarPalabrasProhibidasPost(texto = '') {
+  return String(texto || '')
+    .replace(/\bfondo oscuro\b/gi, 'fondo')
+    .replace(/\s{2,}/g, ' ')
     .trim()
 }
 
@@ -176,7 +183,7 @@ function asegurarMayusculas(texto = '') {
 }
 
 function aplicarFiltrosVoz(texto = '') {
-  return asegurarMayusculas(limpiarNotasDe(texto))
+  return asegurarMayusculas(limpiarNotasDe(filtrarPalabrasProhibidasPost(texto)))
 }
 
 function formatearPrecioFinal(vino, soloCopa, idioma = 'es') {
@@ -192,10 +199,16 @@ function formatearPrecioFinal(vino, soloCopa, idioma = 'es') {
 
 function detectarSeñalPresupuesto(notaCliente = '') {
   const texto = normalizarTexto(notaCliente)
-  return ['sin gastar mucho', 'sin gastar demasiado', 'barato', 'economico', 'economica',
+  const terminos = [
+    'sin gastar mucho', 'sin gastar demasiado', 'barato', 'economico', 'economica',
     'asequible', 'no muy caro', 'no muy cara', 'sin pasarse', 'ajustado de precio',
-    'relacion calidad', 'budget', 'affordable', 'cheap', 'inexpensive', 'not too expensive',
-    'value for money', 'dont spend', "don't spend"].some(t => texto.includes(t))
+    'relacion calidad', 'precio razonable', 'precio ajustado', 'buena relacion', 'gastando poco',
+    'budget', 'affordable', 'cheap', 'inexpensive', 'not too expensive',
+    'value for money', 'dont spend', "don't spend", 'on a budget', 'value wine', 'spend less',
+  ]
+  return terminos.some(t => texto.includes(t)) ||
+    /(?:hasta|menos de)\s+\d+\s*(?:euros?|€)/.test(texto) ||
+    /less\s+than\s+\d+/.test(texto)
 }
 
 function limpiarPrefijoRecomendacion(linea = '') {
@@ -460,9 +473,11 @@ function respuestaSoloConCarta(texto, vinos, fallbackCandidatos, idioma, soloCop
     const clave = vino?.id || vino?.nombre
     if (!vino || usadas.has(clave)) continue
     usadas.add(clave)
-    // Strip ALL price formats from Claude's text (€, €/copa, €/botella, €/glass, €/bottle, any suffix)
+    // Strip ALL price occurrences from Claude's text before appending the real price
     let lineaLimpia = limpiarPrefijoRecomendacion(linea)
-      .replace(/\s*\d+(?:[.,]\d+)?\s*€(?:\/\w+)?\s*\.?\s*$/i, '').trim()
+      .replace(/\s*\d+(?:[.,]\d+)?\s*€(?:\/\w+)?/gi, '')
+      .replace(/\s*·\s*$/, '')
+      .trim()
     const precioReal = formatearPrecioFinal(vino, soloCopa, idioma)
     validasOrdenadas.push(precioReal ? `${lineaLimpia} ${precioReal}` : lineaLimpia)
   }
@@ -510,11 +525,12 @@ Voice — this is critical:
 FORMAT — exactly this, nothing more:
 [Wine name] — My pick: [1 sentence mentioning the dish or its key trait, max 22 words]. ${precioLabel}
 
-[Wine name] — [Differentiating trait, e.g. More fruity / Lighter / More body]: [1 different sentence, max 22 words]. ${precioLabel}
+[Wine name] — [Differentiating trait: copy EXACTLY as assigned — never rename or rephrase]: [1 different sentence, max 22 words]. ${precioLabel}
 
 [Wine name] — Best value: [1 different sentence, max 22 words]. ${precioLabel}
 
 The first option is the safest recommendation. Each sentence MUST mention the dish or one of its traits. Plain text only. No asterisks, bold, lists or symbols.
+When wines arrive with pre-assigned roles, copy each role label VERBATIM — 'Best value' stays 'Best value', not 'More daring' or any variant.
 
 Current wine list:
 ${cartaVinos}`
@@ -558,11 +574,12 @@ Voz — esto es crítico:
 FORMATO — exactamente esto, nada más:
 [Nombre del vino] — Mi elección: [1 frase mencionando el plato o rasgo concreto, máx 22 palabras]. ${precioLabelEs}
 
-[Nombre del vino] — [Rasgo distintivo, ej. Más frutal / Más fresco / Con más cuerpo / Más ligero]: [1 frase distinta, máx 22 palabras]. ${precioLabelEs}
+[Nombre del vino] — [Rasgo distintivo: úsalo EXACTAMENTE como se te indica — no lo cambies ni parafrasees]: [1 frase distinta, máx 22 palabras]. ${precioLabelEs}
 
 [Nombre del vino] — Más ajustado: [1 frase distinta, máx 22 palabras]. ${precioLabelEs}
 
 La primera opción es la más segura. Cada frase SIEMPRE menciona el plato o algún rasgo del plato. Solo texto plano. Sin asteriscos, negritas, listas ni símbolos.
+Cuando se te entregan vinos con roles ya asignados, COPIA ese rol exactamente — 'Más ajustado' es 'Más ajustado', no 'Más atrevido' ni ninguna variante.
 
 Carta de vinos del restaurante:
 ${cartaVinos}`
@@ -977,8 +994,8 @@ export async function POST(request) {
           }
           const listadoMesa = rolesListaMesa.map(formatRol).join('\n')
           prompt = idioma === 'en'
-            ? `Dishes: ${consultaInterna}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nWines pre-selected with assigned roles — write one pairing sentence per line:\n${listadoMesa}\n\nUse the exact format from the system prompt. Do not change wine names or assigned roles.${notaClienteBloque}`
-            : `Platos: ${consultaInterna}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nVinos asignados con sus roles — escribe una frase de maridaje por línea:\n${listadoMesa}\n\nUsa el formato exacto del system prompt. No cambies el nombre del vino ni el rol asignado.${notaClienteBloque}`
+            ? `Dishes: ${consultaInterna}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nWines pre-selected with assigned roles — write one pairing sentence per line:\n${listadoMesa}\n\nUse the exact format from the system prompt. IMPORTANT: copy each role label EXACTLY as given — never rename, rephrase or replace it (e.g. 'Best value' not 'More daring').${notaClienteBloque}`
+            : `Platos: ${consultaInterna}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nVinos asignados con sus roles — escribe una frase de maridaje por línea:\n${listadoMesa}\n\nUsa el formato exacto del system prompt. IMPORTANTE: copia el rol EXACTAMENTE como aparece — nunca lo renombres ni parafrasees (ej: 'Más ajustado' no es 'Más atrevido').${notaClienteBloque}`
         } else {
           prompt = idioma === 'en'
             ? `Dishes: ${consultaInterna}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nRecommend up to 3 wines. Use the exact format from the system prompt.${notaClienteBloque}`
@@ -1002,8 +1019,8 @@ export async function POST(request) {
           }
           const listadoPlato = rolesListaPlato.map(formatRol).join('\n')
           prompt = idioma === 'en'
-            ? `Dish: "${consultaInterna}".\n\n${contextoCriterios}\n\nWines pre-selected with assigned roles — write one pairing sentence per line:\n${listadoPlato}\n\nUse the exact format from the system prompt. Do not change wine names or assigned roles.${notaClienteBloque}`
-            : `Plato: "${consultaInterna}".\n\n${contextoCriterios}\n\nVinos asignados con sus roles — escribe una frase de maridaje por línea:\n${listadoPlato}\n\nUsa el formato exacto del system prompt. No cambies el nombre del vino ni el rol asignado.${notaClienteBloque}`
+            ? `Dish: "${consultaInterna}".\n\n${contextoCriterios}\n\nWines pre-selected with assigned roles — write one pairing sentence per line:\n${listadoPlato}\n\nUse the exact format from the system prompt. IMPORTANT: copy each role label EXACTLY as given — never rename, rephrase or replace it (e.g. 'Best value' not 'More daring').${notaClienteBloque}`
+            : `Plato: "${consultaInterna}".\n\n${contextoCriterios}\n\nVinos asignados con sus roles — escribe una frase de maridaje por línea:\n${listadoPlato}\n\nUsa el formato exacto del system prompt. IMPORTANTE: copia el rol EXACTAMENTE como aparece — nunca lo renombres ni parafrasees (ej: 'Más ajustado' no es 'Más atrevido').${notaClienteBloque}`
         } else {
           prompt = idioma === 'en'
             ? `Dish: "${consultaInterna}".\n\n${contextoCriterios}\n\nRecommend up to 3 wines. Use the exact format from the system prompt.${notaClienteBloque}`

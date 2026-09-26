@@ -289,4 +289,54 @@ describe('Sumiller output — reglas de calidad', () => {
     })
   })
 
+  it('Paridad ES/EN: Braised oxtail pasa las mismas reglas estructurales que Rabo de toro', () => {
+    const respuestaMock = [
+      'Condado Oriza Reserva — My pick: Its smoky depth pairs naturally with the rich braised oxtail sauce. 27€',
+      'Emilio Moro — More body: Ripe dark fruit and fresh acidity cut through the fat of the braised meat. 33€',
+      'Carramimbre Roble — Best value: Toasted vanilla and juicy fruit hold up to the slow-cooked oxtail richness. 20€',
+    ].join('\n\n')
+
+    validarOutputSommelier(respuestaMock, {
+      platos: [{ nombre: 'Braised oxtail', descripcion: 'slow-cooked braised beef in thick sauce' }],
+      idioma: 'en',
+    })
+  })
+
+  it('Detecta precio a mitad de línea como duplicado y falla', () => {
+    const respuestaConPrecioMitad = [
+      'Alvear PX 1927 — Mi elección: Dulce 4.5€/copa en copa, perfecto para la tarta de queso. 25€',
+    ].join('\n\n')
+
+    assert.throws(
+      () => validarOutputSommelier(respuestaConPrecioMitad, {
+        platos: [{ nombre: 'Tarta de queso artesana' }],
+        verificarPrecio: true,
+      }),
+      /precio/
+    )
+  })
+
+  it('Salida de 2 vinos (sin Más ajustado) es válida', () => {
+    const respuesta2Vinos = [
+      'Condado Oriza Reserva — Mi elección: Su punto ahumado aguanta bien el guiso del rabo sin aplastarlo. 27€',
+      'Carramimbre Roble — Más ajustado: La vainilla del roble encaja con el fondo del guiso. 20€',
+    ].join('\n\n')
+
+    validarOutputSommelier(respuesta2Vinos, {
+      platos: [{ nombre: 'Rabo de toro', descripcion: 'guiso de rabo estofado en salsa' }],
+    })
+  })
+
+  it('Postres: Mi elección dulce pasa las reglas; sin palabras vetadas', () => {
+    const respuestaPostre3 = [
+      'Alvear PX 1927 — Mi elección: Su dulzor concentrado abraza la tarta de queso sin aplastarla. 25€',
+      'Gran Barquero Tawny — Más frutal: La fruta madura del tawny equilibra la cremosidad del cheesecake. 22€',
+      'Moscatel Ochoa — Más ajustado: Aromático y ligero, acompaña bien la tarta sin cansar. 15€',
+    ].join('\n\n')
+
+    validarOutputSommelier(respuestaPostre3, {
+      platos: [{ nombre: 'Tarta de queso artesana', descripcion: 'cheesecake artesano dulce y cremoso' }],
+    })
+  })
+
 })

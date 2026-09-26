@@ -231,7 +231,8 @@ function contextoVenta(consultaNormalizada) {
        'mousse', 'bizcocho', 'pastel', 'coulant', 'cheesecake'].some(t => consultaNormalizada.includes(t))) return 'postre'
   // Queso va después de carne: si hay solomillo + queso en un acompañamiento, la carne manda
   if (consultaNormalizada.includes('queso')) return 'queso'
-  if (consultaNormalizada.includes('pescado') || consultaNormalizada.includes('marisco') || consultaNormalizada.includes('gamba') || consultaNormalizada.includes('lubina') || consultaNormalizada.includes('salmon') || consultaNormalizada.includes('bacalao') || consultaNormalizada.includes('chipiron')) return 'pescado'
+  if (['pescado', 'marisco', 'gamba', 'lubina', 'salmon', 'bacalao', 'chipiron',
+       'calamar', 'pulpo', 'mejillones', 'almejas', 'merluza', 'dorada', 'lenguado', 'rape', 'atun', 'rodaballo'].some(t => consultaNormalizada.includes(t))) return 'pescado'
   if (consultaNormalizada.includes('picante') || consultaNormalizada.includes('curry') || consultaNormalizada.includes('pil pil')) return 'picante'
   return 'general'
 }
@@ -503,7 +504,7 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
     'postre', 'tarta', 'helado', 'brownie', 'torrija', 'crepe', 'flan',
     'mousse', 'bizcocho', 'pastel', 'natillas', 'toffee', 'turron', 'coulant',
   ].some(t => incluyeTerminoCompleto(consultaNormalizada, t))
-  if (esClaroPostre && !esDulceOxidativo) {
+  if ((esClaroPostre || contexto === 'postre') && !esDulceOxidativo) {
     const esChocolateNegro = ['chocolate negro', 'chocolate amargo', 'cacao'].some(t => consultaNormalizada.includes(t))
     if (!(esChocolateNegro && vino.tipo === 'tinto')) {
       // Generoso seco (fino, manzanilla, amontillado) tampoco sirve para postre dulce
