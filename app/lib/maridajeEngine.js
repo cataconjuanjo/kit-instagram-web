@@ -1,7 +1,7 @@
 import { chartierKb, fuenteChartier } from './chartierKb.js'
 import { buscarPlatoKb } from '../data/platos_kb.js'
 import { beneficioBruto, margenBrutoPct, numero, redondear } from './wineEconomics.js'
-import { textoVinoParaMaridaje } from './wineProfileTags.js'
+import { textoVinoParaMaridaje, resolverPerfilesVino, limpiarMarcadorPerfiles } from './wineProfileTags.js'
 
 // Estima el perfil estructural de un vino (1-5) a partir de sus datos.
 // Permite matching estructural directo: taninos, acidez, cuerpo, etc.
@@ -775,13 +775,55 @@ function lecturaConsulta(consulta) {
   }
 }
 
+const PERFIL_LABEL = {
+  seco: 'seco', dulce: 'dulce', alta_acidez: 'acidez alta', baja_acidez: 'acidez baja',
+  tanino_bajo: 'tanino suave', tanino_medio_alto: 'tanino firme',
+  cuerpo_ligero: 'cuerpo ligero', con_cuerpo: 'cuerpo amplio',
+  alcohol_bajo: 'alcohol bajo', alcohol_alto: 'alcohol alto',
+  floral: 'floral', fruta_verde: 'fruta verde', fruta_citrica: 'fruta cítrica',
+  fruta_hueso: 'fruta de hueso', fruta_tropical: 'fruta tropical',
+  fruta_roja: 'fruta roja', fruta_negra: 'fruta negra',
+  fruta_seca_cocida: 'fruta madura/seca', herbaceo: 'herbáceo', especiado: 'especiado',
+  mineral_salino: 'mineral/salino', lias_autolisis: 'crianza en lías',
+  malolactica: 'mantequilla/nata', roble: 'toque de roble',
+  oxidativo: 'frutos secos/oxidativo', evolucion_botella: 'evolución/cuero',
+}
+
+const TECNICOS = new Set(['seco','dulce','alta_acidez','baja_acidez','tanino_bajo','tanino_medio_alto','cuerpo_ligero','con_cuerpo','alcohol_bajo','alcohol_alto'])
+
+const COLOR_RE = /\b(color|rojo|blanco|rosado|amarillo|dorado|pajizo|rub[íi]|granate|violac[eé]o|brillante|turbio|transparente|aspecto|limpidez|limpios?|copa|ribete|borde)\b/i
+
 export function resumenAnalisisParaPrompt(analisis) {
   const candidatos = analisis.candidatos.slice(0, 8).map((item, idx) => {
     const vino = item.vino
     const comercial = item.comercial?.motivos?.length
       ? ` Senal comercial secundaria: ${item.comercial.motivos.join(', ')}${item.comercial.margenPct ? `, margen ${item.comercial.margenPct}%` : ''}.`
       : ''
-    return `${idx + 1}. ${vino.nombre} (${vino.tipo || 'vino'}, ${precioBotella(vino)} EUR, score ${Math.round(item.score)})${comercial}`
+
+    // Build structured profile context
+    const perfilesIds = resolverPerfilesVino(vino)
+    const tecnico = perfilesIds.filter(id => TECNICOS.has(id))
+    const aromatico = perfilesIds.filter(id => !TECNICOS.has(id))
+    const perfilText = [
+      tecnico.length ? tecnico.map(id => PERFIL_LABEL[id] || id).join(', ') : '',
+      aromatico.length ? 'aromas: ' + aromatico.map(id => PERFIL_LABEL[id] || id).join(', ') : '',
+    ].filter(Boolean).join('; ')
+
+    // Strip color/appearance sentence from notas_cata + strip profile markers
+    const notasSinPerfil = limpiarMarcadorPerfiles(String(vino.notas_cata || ''))
+    const oraciones = notasSinPerfil.split(/(?<=[.!?])\s+/)
+    const notasLimpias = oraciones.filter(o => !COLOR_RE.test(o)).join(' ').trim()
+
+    const motivo = item.motivo && !item.motivo.includes('ticket estimado') ? `puente: ${item.motivo}` : ''
+
+    const partes = [
+      vino.region || '',
+      vino.uva ? `uva: ${vino.uva}` : '',
+      perfilText ? `perfil: ${perfilText}` : '',
+      notasLimpias ? `notas: ${notasLimpias}` : '',
+      motivo,
+    ].filter(Boolean).join('; ')
+    return `${idx + 1}. ${vino.nombre} (${vino.tipo || 'vino'}, ${precioBotella(vino)} EUR, score ${Math.round(item.score)}${partes ? ` — ${partes}` : ''})${comercial}`
   }).join('\n')
 
   return [
