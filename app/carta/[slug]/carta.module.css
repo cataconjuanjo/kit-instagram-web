@@ -281,7 +281,7 @@
   min-width: 60px;
   max-width: 140px;
   min-height: 40px;
-  background: #fffaf3;
+  background: var(--color-primario, #fffaf3);
   border: 1px solid rgba(255, 250, 243, 0.22);
   border-radius: 6px;
   padding: 6px 8px;
@@ -2929,7 +2929,7 @@
     width: 58px;
     height: 58px;
     border: 0;
-    background: #fff;
+    background: var(--color-primario, #fff);
     padding: 0;
     margin-bottom: 8px;
   }
