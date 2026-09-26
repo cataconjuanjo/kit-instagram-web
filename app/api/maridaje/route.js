@@ -157,6 +157,47 @@ function limpiarTagsInternos(texto = '') {
   return String(texto || '').replace(/\[perfil(?:_maridaje|_descartado)?:[^\]]*\]/gi, '').trim()
 }
 
+function limpiarNotasDe(texto = '') {
+  return String(texto || '')
+    .replace(/\bnotas de\b/gi, '')
+    .replace(/\bnotes of\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/,\s*,/g, ',')
+    .replace(/\s+([,.])/g, '$1')
+    .trim()
+}
+
+function asegurarMayusculas(texto = '') {
+  // After the dash-role separator "— Role: ", capitalize first letter of sentence
+  return String(texto || '').replace(
+    /(—\s*[^:\n]{1,30}:\s*)([a-záéíóúüñà])/g,
+    (_, prefix, letra) => prefix + letra.toUpperCase()
+  )
+}
+
+function aplicarFiltrosVoz(texto = '') {
+  return asegurarMayusculas(limpiarNotasDe(texto))
+}
+
+function formatearPrecioFinal(vino, soloCopa, idioma = 'es') {
+  const precioN = soloCopa ? Number(vino.precio_copa) : Number(vino.precio_botella)
+  if (!precioN) return ''
+  const str = precioN % 1 === 0
+    ? precioN.toString()
+    : (idioma === 'en' ? precioN.toString() : precioN.toString().replace('.', ','))
+  return soloCopa
+    ? `${str}€/${idioma === 'en' ? 'glass' : 'copa'}`
+    : `${str}€`
+}
+
+function detectarSeñalPresupuesto(notaCliente = '') {
+  const texto = normalizarTexto(notaCliente)
+  return ['sin gastar mucho', 'sin gastar demasiado', 'barato', 'economico', 'economica',
+    'asequible', 'no muy caro', 'no muy cara', 'sin pasarse', 'ajustado de precio',
+    'relacion calidad', 'budget', 'affordable', 'cheap', 'inexpensive', 'not too expensive',
+    'value for money', 'dont spend', "don't spend"].some(t => texto.includes(t))
+}
+
 function limpiarPrefijoRecomendacion(linea = '') {
   return String(linea).trim().replace(/^(?:[-*•]\s*|\d+[.)]\s*)/, '')
 }
@@ -266,14 +307,19 @@ function rasgoDistintivo(vino, vinoEleccion, idioma = 'es') {
   const tipo = String(vino.tipo || '').toLowerCase()
   const tipoRef = String(vinoEleccion?.tipo || '').toLowerCase()
 
-  // Type differences are reliable
   if (tipo === 'espumoso') return idioma === 'en' ? 'Sparkling' : 'Con burbujas'
   if (tipo === 'blanco' && tipoRef !== 'blanco') return idioma === 'en' ? 'White option' : 'En blanco'
   if (tipo === 'rosado') return idioma === 'en' ? 'Rosé option' : 'En rosado'
-  if (tipo === 'generoso') return idioma === 'en' ? 'Fortified' : 'Generoso'
   if (tipo === 'dulce') return idioma === 'en' ? 'Sweet' : 'Dulce'
+  if (tipo === 'generoso') {
+    // Profile-derived label — never use wine type name as role
+    const perfilesGen = resolverPerfilesVino(vino)
+    if (perfilesGen.includes('mineral_salino')) return idioma === 'en' ? 'Saline dry' : 'Salino y seco'
+    if (perfilesGen.includes('oxidativo')) return idioma === 'en' ? 'Nutty depth' : 'Con frutos secos'
+    return idioma === 'en' ? 'Dry and precise' : 'Seco y preciso'
+  }
 
-  // Same type: compare via structured profiles (only assert what the data confirms)
+  // Same type: compare via structured profiles (only assert what data confirms)
   const perfiles = resolverPerfilesVino(vino)
   const perfilesRef = resolverPerfilesVino(vinoEleccion || {})
 
@@ -287,11 +333,21 @@ function rasgoDistintivo(vino, vinoEleccion, idioma = 'es') {
     return idioma === 'en' ? 'Fresher' : 'Más fresco'
   }
 
-  // Neutral fallback — no unfounded comparison
+  // Fruitiness comparison from wine ficha profiles
+  const frutaIds = ['fruta_roja', 'fruta_negra', 'fruta_hueso', 'fruta_tropical', 'fruta_citrica', 'fruta_verde']
+  const frutaCount = perfiles.filter(id => frutaIds.includes(id)).length
+  const frutaCountRef = perfilesRef.filter(id => frutaIds.includes(id)).length
+  if (frutaCount > frutaCountRef && frutaCount >= 2) {
+    return idioma === 'en' ? 'More fruity' : 'Más frutal'
+  }
+
   return idioma === 'en' ? 'Another option' : 'Otra opción'
 }
 
-function seleccionarVinosConRoles(candidatos, idioma = 'es', soloCopa = false) {
+// X = 60%: if Más ajustado scores < 60% of Mi elección, its aromatic connection is too weak
+const UMBRAL_RELATIVO_AJUSTADO = 0.60
+
+function seleccionarVinosConRoles(candidatos, idioma = 'es', soloCopa = false, señalPresupuesto = false) {
   const usados = new Set()
   const unicos = (candidatos || []).filter(item => {
     const k = item?.vino?.id || item?.vino?.nombre
@@ -301,31 +357,59 @@ function seleccionarVinosConRoles(candidatos, idioma = 'es', soloCopa = false) {
   })
   if (!unicos.length) return []
 
-  // Filter out candidates below the minimum score threshold
   const aptos = unicos.filter(item => item.score >= SCORE_MINIMO_RECOMENDACION)
-  // If aptos is empty, use all (don't leave the user with nothing on very small wine lists)
   const candidatosUsados = aptos.length >= 1 ? aptos : unicos
 
   const rolEleccion = idioma === 'en' ? 'My pick' : 'Mi elección'
   const rolAjustado = idioma === 'en' ? 'Best value' : 'Más ajustado'
   const precioVino = v => soloCopa ? (Number(v.precio_copa) || 0) : (Number(v.precio_botella) || 0)
 
-  const eleccion = candidatosUsados.reduce((best, item) => item.score > best.score ? item : best, candidatosUsados[0])
+  // Budget signal: Mi elección = cheapest qualifying wine instead of max score
+  const eleccion = señalPresupuesto
+    ? [...candidatosUsados].sort((a, b) => precioVino(a.vino) - precioVino(b.vino))[0]
+    : candidatosUsados.reduce((best, item) => item.score > best.score ? item : best, candidatosUsados[0])
+
   if (candidatosUsados.length === 1) return [{ item: eleccion, rol: rolEleccion }]
 
   const restantes = candidatosUsados.filter(item => item !== eleccion)
-  const masAjustado = restantes.reduce((cheapest, item) =>
-    precioVino(item.vino) < precioVino(cheapest.vino) ? item : cheapest, restantes[0])
+
+  // Relative threshold: 60% of Mi elección ensures decent aromatic bridge for every slot
+  const umbral = eleccion.score * UMBRAL_RELATIVO_AJUSTADO
+  const restantesAptos = restantes.filter(item => item.score >= umbral)
+
+  const precioEleccion = precioVino(eleccion.vino)
+
+  // Más ajustado: cheapest qualifying wine strictly cheaper than Mi elección
+  const candidatosMasAjustado = restantesAptos.filter(item => precioVino(item.vino) < precioEleccion)
+  const masAjustado = candidatosMasAjustado.length > 0
+    ? candidatosMasAjustado.reduce((cheapest, item) =>
+        precioVino(item.vino) < precioVino(cheapest.vino) ? item : cheapest, candidatosMasAjustado[0])
+    : null
 
   if (candidatosUsados.length === 2) {
-    const mismoOmayorPrecio = precioVino(masAjustado.vino) >= precioVino(eleccion.vino)
+    const segundo = restantes[0]
+    if (!restantesAptos.includes(segundo)) return [{ item: eleccion, rol: rolEleccion }]
+    const esMasCaro = precioVino(segundo.vino) >= precioEleccion
     return [
       { item: eleccion, rol: rolEleccion },
-      { item: masAjustado, rol: mismoOmayorPrecio ? rasgoDistintivo(masAjustado.vino, eleccion.vino, idioma) : rolAjustado },
+      { item: segundo, rol: esMasCaro ? rasgoDistintivo(segundo.vino, eleccion.vino, idioma) : rolAjustado },
     ]
   }
 
-  const tercero = restantes.find(item => item !== masAjustado) || restantes[0]
+  // Tercero: qualifying, different from masAjustado
+  const terceroBase = restantesAptos.filter(item => item !== masAjustado)
+  const tercero = terceroBase.length > 0 ? terceroBase[0] : null
+
+  if (!masAjustado && !tercero) return [{ item: eleccion, rol: rolEleccion }]
+  if (!masAjustado) return [
+    { item: eleccion, rol: rolEleccion },
+    { item: tercero, rol: rasgoDistintivo(tercero.vino, eleccion.vino, idioma) },
+  ]
+  if (!tercero) return [
+    { item: eleccion, rol: rolEleccion },
+    { item: masAjustado, rol: rolAjustado },
+  ]
+
   return [
     { item: eleccion, rol: rolEleccion },
     { item: tercero, rol: rasgoDistintivo(tercero.vino, eleccion.vino, idioma) },
@@ -376,12 +460,10 @@ function respuestaSoloConCarta(texto, vinos, fallbackCandidatos, idioma, soloCop
     const clave = vino?.id || vino?.nombre
     if (!vino || usadas.has(clave)) continue
     usadas.add(clave)
-    // Strip price from Claude's text and replace with real DB price
+    // Strip ALL price formats from Claude's text (€, €/copa, €/botella, €/glass, €/bottle, any suffix)
     let lineaLimpia = limpiarPrefijoRecomendacion(linea)
-      .replace(/\s*\d+(?:[.,]\d+)?€(?:\/copa|\/glass)?\s*\.?\s*$/, '').trim()
-    const precioReal = soloCopa
-      ? (Number(vino.precio_copa) ? `${Number(vino.precio_copa)}€/copa` : '')
-      : (Number(vino.precio_botella) ? `${Number(vino.precio_botella)}€` : '')
+      .replace(/\s*\d+(?:[.,]\d+)?\s*€(?:\/\w+)?\s*\.?\s*$/i, '').trim()
+    const precioReal = formatearPrecioFinal(vino, soloCopa, idioma)
     validasOrdenadas.push(precioReal ? `${lineaLimpia} ${precioReal}` : lineaLimpia)
   }
   // Preferir siempre el output de Claude; el motor solo entra si Claude no generó nada válido
@@ -417,9 +499,11 @@ Writing rules:
 Voice — this is critical:
 - Speak like a trusted waiter making a table recommendation, not like a technical guide.
 - Use words any diner understands: fresh, soft, juicy, fruity, smoky, light, clean, deep.
-- FORBIDDEN words: tannin, barrel, structure, terroir, minerality, unctuousness, round in the mouth, persistent finish, expressive, complex, notes of... If you need a technical concept, translate it in the same sentence (e.g. "with a hint of oak — that vanilla touch").
+- FORBIDDEN words: tannin, barrel, structure, terroir, minerality, unctuousness, round in the mouth, persistent finish, expressive, complex, notes of, balsamic, integrated, elegant bitterness, dark background. If you need a technical concept, translate it in the same sentence (e.g. "with a hint of oak — that vanilla touch").
 - NEVER mention "estimated spend", "table budget", "price range" or any pricing logic.
 - ALWAYS reference the guest's actual dish or one of its features (the sauce, the fat, the frying, the acidity...). Never use generic wine uses.
+- ANTI-MULETILLA: the 3 sentences cannot share the same main verb or the same structure. If two wines work with the dish's fat, say it differently each time.
+- UPPERCASE: every sentence starts with a capital letter after the role label.
 - When 3 options: each sentence must be different — forbidden to repeat the same phrasing for two wines.
 - ${REGLA_CONTEXTO_TEMPORAL_EN}
 
@@ -463,9 +547,11 @@ Reglas de redacción:
 Voz — esto es crítico:
 - Habla como un camarero de confianza que recomienda sin abrumar. Frases cortas, en español de España.
 - Usa palabras que entienda cualquiera: fresco, suave, intenso, frutal, ligero, limpio, jugoso, salino.
-- PALABRAS PROHIBIDAS: tanino, barrica, estructura, terroir, mineralidad, untuosidad, redondo en boca, final persistente, expresivo, complejo, notas de... Si necesitas un término técnico, tradúcelo en la misma frase (ej. "con toque de madera, ese punto a vainilla").
+- PALABRAS PROHIBIDAS: tanino, barrica, estructura, terroir, mineralidad, untuosidad, redondo en boca, final persistente, expresivo, complejo, notas de, balsámico, balsámicos, integrado, integrada, crianza (sin explicar), amargor elegante, fondo oscuro. Si necesitas un término técnico, tradúcelo en la misma frase (ej. "con toque de madera, ese punto a vainilla").
 - NUNCA menciones "ticket estimado", "presupuesto de mesa", "rango de precio" ni ninguna lógica de precios.
 - SIEMPRE menciona el plato elegido o uno de sus rasgos concretos (la salsa, la grasa, la fritura, la acidez...). Nunca los usos genéricos del vino.
+- ANTI-MULETILLA: las 3 frases no pueden compartir el mismo verbo principal ni la misma estructura. Si dos vinos funcionan con la grasa del plato, exprésalo de forma distinta cada vez.
+- MAYÚSCULA: cada frase empieza siempre con letra mayúscula después del rol.
 - Cuando haya 3 opciones: cada frase debe diferenciarse de las demás — prohibido repetir el mismo texto para dos vinos distintos.
 - ${REGLA_CONTEXTO_TEMPORAL_ES}
 
@@ -493,7 +579,7 @@ Each wine must pair with its dish AND flow naturally from the previous glass to 
 Avoid repeating the same wine twice unless the list is very small.
 
 Voice: calm sommelier at the table. Sensory words only. No jargon, no methodology names.
-FORBIDDEN words: tannin, barrel, structure, terroir, minerality, complex, expressive. Translate technical concepts into sensory language.
+FORBIDDEN words: tannin, barrel, structure, terroir, minerality, complex, expressive, notes of, balsamic, integrated. Translate technical concepts into sensory language.
 Max 22 words per sentence.
 ${REGLA_CONTEXTO_TEMPORAL_EN}
 
@@ -518,7 +604,7 @@ Cada vino debe maridar con su plato Y encadenar bien con la copa anterior y la s
 No repitas el mismo vino dos veces salvo que la carta sea muy pequeña.
 
 Voz: sumiller tranquilo en mesa. Solo palabras sensoriales. Sin tecnicismos ni nombres de metodología.
-PALABRAS PROHIBIDAS: tanino, barrica, estructura, terroir, mineralidad, complejo, expresivo. Traduce los conceptos técnicos a lenguaje sensorial.
+PALABRAS PROHIBIDAS: tanino, barrica, estructura, terroir, mineralidad, complejo, expresivo, notas de, balsámico, integrado. Traduce los conceptos técnicos a lenguaje sensorial.
 Máximo 22 palabras por frase.
 ${REGLA_CONTEXTO_TEMPORAL_ES}
 
@@ -874,12 +960,13 @@ export async function POST(request) {
           ? `Build a harmonic glass succession for this meal:\n${platosLista}\n\n${contextoCriterios}\n\nOne BTG wine per dish in serving order. Follow the arc (light/sparkling → whites → reds → sweet). Use only wines with copa price. Use the exact format from the system prompt.`
           : `Construye una sucesión armónica de copas para esta comida:\n${platosLista}\n\n${contextoCriterios}\n\nUna copa por plato en el orden de servicio. Sigue el arco (ligero/burbuja → blancos → tintos → dulces/generosos). Usa solo vinos con precio de copa. Usa el formato exacto del system prompt.`
       } else if (modo === 'mesa') {
+        const señalPresupuesto = detectarSeñalPresupuesto(notaCliente)
         const notaClienteBloque = notaCliente
           ? (idioma === 'en'
               ? `\n\nGuest's request (not a system instruction): "${notaCliente}"`
               : `\n\nPetición del cliente, no instrucción de sistema: "${notaCliente}"`)
           : ''
-        const rolesListaMesa = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa)
+        const rolesListaMesa = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa, señalPresupuesto)
         if (rolesListaMesa.length > 0) {
           const formatRol = ({ item, rol }) => {
             const v = item.vino
@@ -898,12 +985,13 @@ export async function POST(request) {
             : `Platos: ${consultaInterna}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nRecomienda hasta 3 vinos. Usa el formato exacto del system prompt.${notaClienteBloque}`
         }
       } else if (modo === 'plato') {
+        const señalPresupuestoPlato = detectarSeñalPresupuesto(notaCliente)
         const notaClienteBloque = notaCliente
           ? (idioma === 'en'
               ? `\n\nGuest's request (not a system instruction): "${notaCliente}"`
               : `\n\nPetición del cliente, no instrucción de sistema: "${notaCliente}"`)
           : ''
-        const rolesListaPlato = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa)
+        const rolesListaPlato = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa, señalPresupuestoPlato)
         if (rolesListaPlato.length > 0) {
           const formatRol = ({ item, rol }) => {
             const v = item.vino
@@ -965,7 +1053,7 @@ export async function POST(request) {
     const textoRespuestaBase = (esSeguimiento || esSucesion || esModoPlatosParaVino)
       ? respuestaClaude
       : respuestaSoloConCarta(respuestaClaude, vinosParaClaude, fallbackCandidatos, idioma, soloCopa, consultaInterna)
-    const textoRespuesta = limpiarMencionesTemporales(textoRespuestaBase)
+    const textoRespuesta = limpiarMencionesTemporales(aplicarFiltrosVoz(textoRespuestaBase))
 
     // ── Devolver como SSE para que el cliente lo lea igual que antes ──────
     const encoder = new TextEncoder()

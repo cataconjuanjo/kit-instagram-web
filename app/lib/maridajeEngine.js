@@ -199,7 +199,9 @@ function compararPorMaridajeYNegocio(a, b, consultas) {
   const diffScore = b.score - a.score
   if (Math.abs(diffScore) > 8) return diffScore
 
-  const diffComercial = (b.comercial?.score || 0) - (a.comercial?.score || 0)
+  // Cap commercial contribution: max ±3 pts so a margin win can't flip a clearly better pairing
+  const capC = s => Math.min(Math.max(s, -3), 3)
+  const diffComercial = capC(b.comercial?.score || 0) - capC(a.comercial?.score || 0)
   if (Math.abs(diffComercial) > 0.1) return diffComercial
 
   return diffScore
@@ -216,7 +218,17 @@ function contextoVenta(consultaNormalizada) {
        'solomillo', 'costillar', 'costilla de', 'carrillera', 'carrillada',
        'secreto', 'presa', 'pluma iberica',
        'magret', 'pichon', 'caza', 'liebre', 'venado', 'jabali',
-       'lomo de cerdo', 'lomo iberico'].some(t => consultaNormalizada.includes(t))) return 'carne'
+       'lomo de cerdo', 'lomo iberico',
+       // EN equivalents for free-text language independence
+       'oxtail', 'lamb', 'beef stew', 'braised', 'sirloin', 'veal', 'venison',
+       'duck breast', 'meatball', 'pork chop'].some(t => consultaNormalizada.includes(t))) return 'carne'
+  // EN equivalents for other contexts
+  if (['fish', 'seafood', 'prawn', 'shrimp', 'sea bass', 'salmon fillet', 'squid', 'lobster'].some(t => consultaNormalizada.includes(t))) return 'pescado'
+  if (['dessert', 'cake', 'ice cream', 'cheesecake'].some(t => consultaNormalizada.includes(t))) return 'postre'
+  if (consultaNormalizada.includes('cheese') && !consultaNormalizada.includes('cheesecake')) return 'queso'
+  // Postres antes que queso: "tarta de queso" es un postre, no un plato de queso
+  if (['postre', 'tarta', 'helado', 'brownie', 'torrija', 'crepe', 'flan',
+       'mousse', 'bizcocho', 'pastel', 'coulant', 'cheesecake'].some(t => consultaNormalizada.includes(t))) return 'postre'
   // Queso va después de carne: si hay solomillo + queso en un acompañamiento, la carne manda
   if (consultaNormalizada.includes('queso')) return 'queso'
   if (consultaNormalizada.includes('pescado') || consultaNormalizada.includes('marisco') || consultaNormalizada.includes('gamba') || consultaNormalizada.includes('lubina') || consultaNormalizada.includes('salmon') || consultaNormalizada.includes('bacalao') || consultaNormalizada.includes('chipiron')) return 'pescado'
@@ -494,7 +506,8 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
   if (esClaroPostre && !esDulceOxidativo) {
     const esChocolateNegro = ['chocolate negro', 'chocolate amargo', 'cacao'].some(t => consultaNormalizada.includes(t))
     if (!(esChocolateNegro && vino.tipo === 'tinto')) {
-      if (['tinto', 'blanco', 'rosado', 'espumoso', 'naranja'].includes(vino.tipo)) {
+      // Generoso seco (fino, manzanilla, amontillado) tampoco sirve para postre dulce
+      if (['tinto', 'blanco', 'rosado', 'espumoso', 'naranja'].includes(vino.tipo) || generosoSeco) {
         return {
           compatible: false,
           penalizacion: 80,
@@ -624,6 +637,15 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
     'caramelo', 'toffee', 'datil', 'higo', 'torrija'
   ].some(t => incluyeTerminoCompleto(consultaNormalizada, t))
   if (metodo.dulce && contextoDulcePermitido && ['dulce', 'generoso'].includes(vino.tipo)) score += 4
+  // Postre boost: dulce/tawny/porto get explicit aromatic affinity bonus for desserts
+  if (contexto === 'postre') {
+    const esTawnyOPortoLocal = textoVino.includes('tawny') || textoVino.includes('porto') || textoVino.includes('oporto')
+    if (vino.tipo === 'dulce' || esTawnyOPortoLocal) {
+      score += 25
+      motivo = 'vino dulce — para postre el dulzor del vino equilibra el del plato'
+      fuente = fuente || 'Regla de sala: postre'
+    }
+  }
   if (metodo.picante && ['perfil fresco', 'floral', 'dulce', 'baja graduacion'].some(t => textoVino.includes(t))) score += 5
   if (contexto === 'queso' && ['oxidativo', 'dulce', 'salino', 'floral', 'alta acidez'].some(t => textoVino.includes(t))) score += 6
   if ((contexto === 'aperitivo' || metodo.frio) && ['perfil fresco', 'alta acidez', 'salino', 'mineral', 'floral'].some(t => textoVino.includes(t))) score += 5
