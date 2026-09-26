@@ -170,6 +170,8 @@ function limpiarNotasDe(texto = '') {
 function filtrarPalabrasProhibidasPost(texto = '') {
   return String(texto || '')
     .replace(/\bfondo oscuro\b/gi, 'fondo')
+    .replace(/\buntuosidad\b/gi, 'textura grasa')
+    .replace(/\bunctuousness\b/gi, 'rich texture')
     .replace(/\s{2,}/g, ' ')
     .trim()
 }
