@@ -172,7 +172,7 @@ const t = {
     quePedir: '¿Qué vas a pedir?',
     seleccionaPlatos: 'Selecciona tus platos y afinamos una recomendación de vino.',
     avisoIa: 'Recomendación asistida por IA con la carta real del restaurante. El equipo puede confirmar disponibilidad, precio y alérgenos.',
-    avisoIaResultado: 'Resultado generado con ayuda de IA y criterios de Carta Viva. Úsalo como apoyo para decidir, no como indicación sanitaria o legal.',
+    avisoIaResultado: 'Recomendación generada con IA y la carta real del restaurante. Consulta disponibilidad y alérgenos con el equipo.',
     vinoManda: 'Ya tengo vino',
     vinoMandaSub: 'Elige el vino que quieres beber y te decimos qué platos pedir.',
     buscarVino: 'Buscar vino...',
@@ -188,11 +188,11 @@ const t = {
     porCopas: 'Por copas',
     porPlato: 'Una por plato',
     variosOrden: 'Varios en orden',
-    sucesionCopas: 'Sucesión copas',
-    arcoPlato: 'Copa a copa, en arco',
+    sucesionCopas: 'Copa a copa',
+    arcoPlato: 'Una copa distinta por plato',
     recomendame: 'Recomiéndame',
     porPlatos: 'Por platos',
-    duelo: 'Duelo de etiquetas',
+    duelo: 'Comparar estilos',
     dueloSub: 'Solo etiquetas. Sin nombres ni precios.',
     dueloEmpezar: 'Empezar duelo →',
     dueloHint: 'Toca la que más te llame',
@@ -263,7 +263,7 @@ const t = {
     quePedir: 'What are you having?',
     seleccionaPlatos: 'Select your dishes and we will refine one wine recommendation.',
     avisoIa: 'AI-assisted recommendation using the restaurant wine list. The team can confirm availability, price and allergens.',
-    avisoIaResultado: 'Generated with AI support and Carta Viva criteria. Use it as decision support, not as health or legal advice.',
+    avisoIaResultado: 'Recommendation generated with AI and the restaurant wine list. Check availability and allergens with the team.',
     vinoManda: 'I have a wine',
     vinoMandaSub: 'Choose the wine you want to drink and we will suggest what to order.',
     buscarVino: 'Search wine...',
@@ -279,11 +279,11 @@ const t = {
     porCopas: 'By the glass',
     porPlato: 'One per dish',
     variosOrden: 'Several in order',
-    sucesionCopas: 'Glass arc',
-    arcoPlato: 'Glass by glass, in arc',
+    sucesionCopas: 'Glass by glass',
+    arcoPlato: 'A different glass per dish',
     recomendame: 'Recommend me',
     porPlatos: 'By dish',
-    duelo: 'Blind duel',
+    duelo: 'Compare styles',
     dueloSub: 'Labels only. No names or prices.',
     dueloEmpezar: 'Start duel →',
     dueloHint: 'Tap the one you prefer',
@@ -2492,7 +2492,9 @@ export default function CartaPublica() {
             {respuesta && (
               <div className={styles.answerBox} aria-live="polite">
                 <p className={styles.selectedHead}>{i.sommelier}</p>
-                <p className={styles.answerText}>{respuesta}</p>
+                {respuesta.split(/\n\n+/).map((bloque, idx) => (
+                  <p key={idx} className={styles.answerText} style={idx > 0 ? { marginTop: 10 } : undefined}>{bloque.trim()}</p>
+                ))}
                 <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
 
                 <div className={styles.answerActions}>

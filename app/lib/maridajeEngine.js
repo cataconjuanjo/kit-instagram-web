@@ -781,7 +781,7 @@ export function resumenAnalisisParaPrompt(analisis) {
     const comercial = item.comercial?.motivos?.length
       ? ` Senal comercial secundaria: ${item.comercial.motivos.join(', ')}${item.comercial.margenPct ? `, margen ${item.comercial.margenPct}%` : ''}.`
       : ''
-    return `${idx + 1}. ${vino.nombre} (${vino.tipo || 'vino'}, ${precioBotella(vino)} EUR): ${item.motivo}. Fuente: ${item.fuente}. Score interno: ${Math.round(item.score)}.${comercial}`
+    return `${idx + 1}. ${vino.nombre} (${vino.tipo || 'vino'}, ${precioBotella(vino)} EUR, score ${Math.round(item.score)})${comercial}`
   }).join('\n')
 
   return [
