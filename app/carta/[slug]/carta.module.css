@@ -1518,32 +1518,42 @@
 }
 
 .sommelierModeTabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 7px;
-  margin-top: 12px;
+  display: flex;
+  gap: 0;
+  margin-top: 14px;
+  border-bottom: 1px solid #e8e1d5;
 }
 
 .sommelierModeTabs button {
-  min-height: 42px;
-  border: 1px solid #e0d8cb;
-  border-radius: 8px;
-  background: #f0ebe3;
-  color: #766e64;
+  flex: 1;
+  min-height: 38px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: #b0a89e;
   cursor: pointer;
-  padding: 8px 10px;
+  padding: 6px 4px 9px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sommelierModeTabs button.sommelierModeActive {
-  background: #2e2924;
-  border-color: #2e2924;
-  color: #fffaf3;
+  color: #171416;
+  font-weight: 900;
+  background: none;
 }
 
 .sommelierModeTabsWith4 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex-wrap: wrap;
+}
+
+.sommelierModeTabsWith4 button {
+  flex-basis: calc(50% - 1px);
 }
 
 .sommelierModeTabs button[data-duelo]::after {

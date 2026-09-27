@@ -2193,12 +2193,6 @@ export default function CartaPublica() {
         <section className={styles.sommelierIntro}>
           <h2 className={styles.sommelierTitle}>{modoSommelier === 'quiz' ? i.recomendame : modoSommelier === 'vino' ? i.vinoManda : modoSommelier === 'duelo' ? i.duelo : i.quePedir}</h2>
           <p className={styles.sommelierText}>{modoSommelier === 'quiz' ? i.quizSubtitulo : modoSommelier === 'vino' ? i.vinoMandaSub : modoSommelier === 'duelo' ? i.dueloSub : i.seleccionaPlatos}</p>
-          {modoSommelier !== 'duelo' && <p className={styles.aiNotice}>{i.avisoIa}</p>}
-          {modoSommelier !== 'duelo' && <div className={styles.journeyStrip} aria-label={idioma === 'en' ? 'Recommendation steps' : 'Pasos de la recomendación'}>
-            <span className={modoSommelier === 'platos' && !platosSeleccionados.length ? styles.journeyActive : ''}><b>1</b>{idioma === 'en' ? 'Choose' : 'Elige'}</span>
-            <span className={modoSommelier === 'platos' && platosSeleccionados.length > 0 && !respuesta ? styles.journeyActive : ''}><b>2</b>{idioma === 'en' ? 'Adjust' : 'Ajusta'}</span>
-            <span className={respuesta || respuestaQuiz ? styles.journeyActive : ''}><b>3</b>{idioma === 'en' ? 'Enjoy' : 'Decide'}</span>
-          </div>}
           <div className={`${styles.sommelierModeTabs}${dueloActivo ? ` ${styles.sommelierModeTabsWith4}` : ''}`}>
             {[
               { id: 'platos', label: i.porPlatos },
@@ -2217,6 +2211,7 @@ export default function CartaPublica() {
                   setInputSeguimiento('')
                   trackArmoniaEvento(restaurante?.id, `armonia_modo_${m.id}`)
                 }}
+                style={modoSommelier === m.id ? { borderBottomColor: colorAcento } : undefined}
                 {...(m.id === 'duelo' ? { 'data-duelo': 'true' } : {})}
               >
                 {m.label}
@@ -2405,9 +2400,7 @@ export default function CartaPublica() {
             {respuesta && (
               <div className={styles.answerBox}>
                 <p className={styles.selectedHead}>{i.sommelier}</p>
-                {respuesta.split(/\n\n+/).map((bloque, idx) => (
-                  <p key={idx} className={styles.answerText} style={idx > 0 ? { marginTop: 10 } : undefined}>{bloque.trim()}</p>
-                ))}
+                <p className={styles.answerText}>{respuesta.trim()}</p>
                 <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
               </div>
             )}
@@ -2509,9 +2502,7 @@ export default function CartaPublica() {
             {respuesta && (
               <div className={styles.answerBox} aria-live="polite">
                 <p className={styles.selectedHead}>{i.sommelier}</p>
-                {respuesta.split(/\n\n+/).map((bloque, idx) => (
-                  <p key={idx} className={styles.answerText} style={idx > 0 ? { marginTop: 10 } : undefined}>{bloque.trim()}</p>
-                ))}
+                <p className={styles.answerText}>{respuesta.trim()}</p>
                 <p className={styles.aiResultNotice}>{i.avisoIaResultado}</p>
 
                 <div className={styles.answerActions}>
