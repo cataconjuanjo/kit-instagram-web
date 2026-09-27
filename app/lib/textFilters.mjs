@@ -115,6 +115,78 @@ export function extraerTechoPrecio(notaCliente = '') {
 }
 
 /**
+ * Detects HARD type exclusions from a guest note.
+ * Returns an array of wine tipo strings to filter out before the engine runs.
+ *
+ * Hard exclusion: explicit "no sea X", "sin X", "nada de X", "no white", etc.
+ * NOT matched as hard: soft modifiers like "muy/tan/too" turn it into a preference.
+ *
+ * Soft preferences ("algo con más cuerpo", "no tan dulce") return [].
+ */
+export function detectarExclusionTipoVino(notaCliente = '') {
+  const t = String(notaCliente || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+
+  const TIPOS = [
+    { tipo: 'blanco',   kws: ['blanco', 'blanca', 'white'] },
+    { tipo: 'tinto',    kws: ['tinto', 'tinta', 'red wine', 'red'] },
+    { tipo: 'rosado',   kws: ['rosado', 'rosada', 'rose'] },
+    { tipo: 'espumoso', kws: ['espumoso', 'espumosa', 'cava', 'burbuja', 'burbujas', 'sparkling'] },
+    { tipo: 'generoso', kws: ['generoso', 'generosa', 'fino', 'manzanilla', 'jerez', 'sherry'] },
+    { tipo: 'dulce',    kws: ['dulce', 'sweet'] },
+  ]
+
+  // Specific negation phrases — sorted by length desc (longer phrases matched first)
+  const NEG = [
+    'no me pongas', 'no me gustan', 'no me gusta', 'no quiero', 'no quiera',
+    'que no sea', 'que no seas', 'que no', 'prefiero no',
+    'nada de', 'evitar', 'evita',
+    'sin',
+    "don't want", 'dont want', 'not any', 'not a',
+    'without', 'no more', 'avoid',
+  ].sort((a, b) => b.length - a.length)
+
+  // Soft modifiers between negation and type → demote to preference, not hard exclusion
+  const SOFT = ['muy ', 'tan ', 'demasiado ', 'too ', 'too much ']
+
+  function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
+
+  const negPat = NEG.map(escRe).join('|')
+
+  const excluidos = []
+  for (const { tipo, kws } of TIPOS) {
+    let excluded = false
+    // Sort keywords longest-first so "red wine" matches before "red"
+    const sorted = [...kws].sort((a, b) => b.length - a.length)
+
+    for (const kw of sorted) {
+      const kwPat = escRe(kw)
+
+      // Pattern A: specific negation phrase + up to 3 intermediate words + type keyword
+      const reA = new RegExp(
+        `(?:${negPat})(?:\\s+\\w+){0,3}\\s+${kwPat}(?:[^a-z0-9]|$)`,
+        'i'
+      )
+      if (reA.test(t)) {
+        // Check for soft modifier between negation end and keyword — if present, skip
+        const m = t.match(new RegExp(`(?:${negPat})((?:\\s+\\w+){0,3}\\s+)${kwPat}`, 'i'))
+        if (m && SOFT.some(s => m[1].includes(s))) break  // soft preference, not hard
+        excluded = true
+        break
+      }
+
+      // Pattern B (EN): "no white", "not white", "not a white" — also catches "no red", etc.
+      const reB = new RegExp(`\\b(?:no|not)\\s+(?:a\\s+|any\\s+)?${kwPat}(?:[^a-z0-9]|$)`, 'i')
+      if (reB.test(t)) { excluded = true; break }
+    }
+    if (excluded) excluidos.push(tipo)
+  }
+  return excluidos
+}
+
+/**
  * Wraps nota_cliente in an injection-safe framing block for Claude's prompt.
  * Always labeled as guest data, never as a system instruction.
  * Returns '' if notaCliente is empty.

@@ -11,6 +11,7 @@ import {
   filtrarPalabrasProhibidasPost,
   asegurarMayusculas,
   formatearNotaClienteBloque,
+  detectarExclusionTipoVino,
 } from '../app/lib/textFilters.mjs'
 
 // ── limpiarNotasDe ───────────────────────────────────────────────────────────
@@ -163,6 +164,79 @@ describe('formatearNotaClienteBloque — injection framing', () => {
     assert.ok(result.includes(`"${inyeccion}"`), `Injection must be quoted: "${result}"`)
     assert.ok(result.includes('not a system instruction'), `Must carry the framing label: "${result}"`)
   })
+})
+
+// ── detectarExclusionTipoVino ────────────────────────────────────────────────
+
+describe('detectarExclusionTipoVino — exclusiones duras ES', () => {
+  it('"que no sea blanco" → excluye blanco', () =>
+    assert.ok(detectarExclusionTipoVino('que no sea blanco').includes('blanco')))
+
+  it('"sin blanco" → excluye blanco', () =>
+    assert.ok(detectarExclusionTipoVino('sin blanco').includes('blanco')))
+
+  it('"nada de tinto" → excluye tinto', () =>
+    assert.ok(detectarExclusionTipoVino('nada de tinto').includes('tinto')))
+
+  it('"no quiero un tinto" → excluye tinto', () =>
+    assert.ok(detectarExclusionTipoVino('no quiero un tinto').includes('tinto')))
+
+  it('"nada de espumoso" → excluye espumoso', () =>
+    assert.ok(detectarExclusionTipoVino('nada de espumoso').includes('espumoso')))
+
+  it('"sin cava" → excluye espumoso (keyword cava)', () =>
+    assert.ok(detectarExclusionTipoVino('sin cava').includes('espumoso')))
+
+  it('"no me pongas blanco" → excluye blanco', () =>
+    assert.ok(detectarExclusionTipoVino('no me pongas blanco').includes('blanco')))
+
+  it('"prefiero no tinto" → excluye tinto', () =>
+    assert.ok(detectarExclusionTipoVino('prefiero no tinto').includes('tinto')))
+
+  it('sin nota → array vacío', () => assert.deepEqual(detectarExclusionTipoVino(''), []))
+  it('nota vacía/null → array vacío', () => {
+    assert.deepEqual(detectarExclusionTipoVino(null), [])
+    assert.deepEqual(detectarExclusionTipoVino(undefined), [])
+  })
+})
+
+describe('detectarExclusionTipoVino — exclusiones duras EN', () => {
+  it('"no white" → excluye blanco', () =>
+    assert.ok(detectarExclusionTipoVino('no white').includes('blanco')))
+
+  it('"not a red" → excluye tinto', () =>
+    assert.ok(detectarExclusionTipoVino('not a red').includes('tinto')))
+
+  it('"without sparkling" → excluye espumoso', () =>
+    assert.ok(detectarExclusionTipoVino('without sparkling').includes('espumoso')))
+
+  it('"avoid white wine" → excluye blanco', () =>
+    assert.ok(detectarExclusionTipoVino('avoid white wine').includes('blanco')))
+
+  it('"no more red" → excluye tinto', () =>
+    assert.ok(detectarExclusionTipoVino('no more red').includes('tinto')))
+})
+
+describe('detectarExclusionTipoVino — preferencias suaves (NO deben excluir)', () => {
+  it('"algo fresquito" → no excluye nada', () =>
+    assert.deepEqual(detectarExclusionTipoVino('algo fresquito'), []))
+
+  it('"algo con más cuerpo" → no excluye nada', () =>
+    assert.deepEqual(detectarExclusionTipoVino('algo con más cuerpo'), []))
+
+  it('"que no sea muy dulce" → soft modifier → no excluye dulce', () =>
+    assert.ok(!detectarExclusionTipoVino('que no sea muy dulce').includes('dulce'),
+      'El modificador "muy" debe impedir la exclusión dura'))
+
+  it('"no tan blanco" → soft modifier → no excluye blanco', () =>
+    assert.ok(!detectarExclusionTipoVino('no tan blanco').includes('blanco'),
+      'El modificador "tan" debe impedir la exclusión dura'))
+
+  it('"algo que no sea demasiado tinto" → no excluye tinto', () =>
+    assert.ok(!detectarExclusionTipoVino('algo que no sea demasiado tinto').includes('tinto')))
+
+  it('"prefiero tintos" (preferencia positiva) → no excluye tinto', () =>
+    assert.deepEqual(detectarExclusionTipoVino('prefiero tintos'), []))
 })
 
 // ── aplicarFiltrosVoz (pipeline completo) ────────────────────────────────────

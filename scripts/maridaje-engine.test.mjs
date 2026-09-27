@@ -9,11 +9,14 @@
  *  (d) Más ajustado siempre ≥ 60% del score de Mi elección
  *  (e) señal de presupuesto → Mi elección = vino más barato
  *  (f) 2 candidatos → máximo 2 vinos en la selección final
+ *  (g) contextoDesdeCategoria — mapeo de categoria DB
+ *  (h) exclusión dura por tipo (nota_cliente) — filtro ANTES del motor
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { analizarMaridaje, contextoMaridaje, contextoDesdeCategoria } from '../app/lib/maridajeEngine.js'
 import { seleccionarVinosConRoles, SCORE_MINIMO_RECOMENDACION } from '../app/lib/wineSelection.mjs'
+import { detectarExclusionTipoVino } from '../app/lib/textFilters.mjs'
 
 // ── Mock wines ────────────────────────────────────────────────────────────────
 // minimal fields: id, nombre, tipo, precio_botella, uva, notas_cata
@@ -198,5 +201,44 @@ describe('(f) 2 candidatos → resultado de máximo 2 vinos', () => {
   it('con 0 candidatos el resultado es array vacío', () => {
     assert.deepEqual(seleccionarVinosConRoles([]), [])
     assert.deepEqual(seleccionarVinosConRoles(null), [])
+  })
+})
+
+// ── (h) Exclusión dura por tipo — filtro ANTES del motor ─────────────────────
+describe('(h) exclusión dura por tipo — filtro antes del motor', () => {
+  it('"que no sea blanco" + ensaladilla → ningún blanco en candidatos', () => {
+    const exclusion = detectarExclusionTipoVino('que no sea blanco')
+    assert.ok(exclusion.includes('blanco'), `detectarExclusionTipoVino debe devolver 'blanco'. Obtenido: ${exclusion}`)
+    const vinosFiltrados = MOCK_WINES.filter(v => !exclusion.includes(v.tipo))
+    const { candidatos } = analizarMaridaje('Ensaladilla rusa', vinosFiltrados)
+    const blancos = candidatos.filter(c => c.vino.tipo === 'blanco')
+    assert.equal(
+      blancos.length,
+      0,
+      `No debe haber blancos tras filtro. Candidatos: ${candidatos.map(c => `${c.vino.nombre}(${c.vino.tipo})`).join(', ')}`
+    )
+  })
+
+  it('"que no sea tinto" + rabo de toro → ningún tinto en candidatos', () => {
+    const exclusion = detectarExclusionTipoVino('que no sea tinto')
+    assert.ok(exclusion.includes('tinto'), `detectarExclusionTipoVino debe devolver 'tinto'. Obtenido: ${exclusion}`)
+    const vinosFiltrados = MOCK_WINES.filter(v => !exclusion.includes(v.tipo))
+    const { candidatos } = analizarMaridaje('Rabo de toro', vinosFiltrados)
+    const tintos = candidatos.filter(c => c.vino.tipo === 'tinto')
+    assert.equal(
+      tintos.length,
+      0,
+      `No debe haber tintos tras filtro. Candidatos: ${candidatos.map(c => `${c.vino.nombre}(${c.vino.tipo})`).join(', ')}`
+    )
+  })
+
+  it('"sin espumoso" → espumoso excluido (detectarExclusionTipoVino)', () => {
+    const exclusion = detectarExclusionTipoVino('sin espumoso')
+    assert.ok(exclusion.includes('espumoso'), `debe excluir espumoso. Obtenido: ${exclusion}`)
+  })
+
+  it('"algo fresquito" → no excluye ningún tipo (preferencia suave)', () => {
+    const exclusion = detectarExclusionTipoVino('algo fresquito')
+    assert.deepEqual(exclusion, [], `preferencia suave no debe excluir nada. Obtenido: ${exclusion}`)
   })
 })

@@ -12,7 +12,7 @@ import { limpiarMarcadorPerfiles } from '../../lib/wineProfileTags'
 import {
   limpiarMencionesTemporales, limpiarTagsInternos, limpiarNotasDe,
   filtrarPalabrasProhibidasPost, asegurarMayusculas, aplicarFiltrosVoz,
-  extraerTechoPrecio, formatearNotaClienteBloque,
+  extraerTechoPrecio, formatearNotaClienteBloque, detectarExclusionTipoVino,
 } from '../../lib/textFilters.mjs'
 import { candidatosUnicos, seleccionarVinosConRoles, SCORE_MINIMO_RECOMENDACION } from '../../lib/wineSelection.mjs'
 
@@ -568,6 +568,10 @@ export async function POST(request) {
     }
     const notaCliente = String(nota_cliente || '').trim().slice(0, 200)
 
+    // Hard constraints extracted from nota_cliente — applied before the motor runs
+    const exclusionTipo = detectarExclusionTipoVino(notaCliente)
+    const techoPrecioGlobal = extraerTechoPrecio(notaCliente)
+
     const [{ data: restaurante }, { data: vinosData }, { data: platos }] = await Promise.all([
       supabaseAdmin.from('restaurantes').select(SELECT_RESTAURANTE_MARIDAJE).eq('id', restaurante_id).single(),
       supabaseAdmin.from('vinos').select(SELECT_VINO_MARIDAJE).eq('restaurante_id', restaurante_id).eq('activo', true),
@@ -621,6 +625,30 @@ export async function POST(request) {
     let vinosParaClaude = vinosRespuesta
     const esSeguimiento = Boolean(mensajeSeguimiento && historial.length > 0)
     const esModoPlatosParaVino = !esSeguimiento && !['mesa', 'plato', 'quiz'].includes(modo)
+
+    // ── Filtros duros antes del motor (nota_cliente) ─────────────────────────
+    // Exclusión de tipo: "que no sea blanco", "sin tinto", "no white", etc.
+    // Se filtra aquí para que el motor, Goldstein, el grafo y Claude solo vean
+    // los tipos permitidos — no es un matiz de redacción, es un filtro de candidatos.
+    let exclusionSinSalida = false
+    if (exclusionTipo.length > 0) {
+      const filtrado = vinosRespuesta.filter(v => !exclusionTipo.includes(normalizarTexto(v.tipo || '')))
+      if (filtrado.length >= 1) {
+        vinosRespuesta = filtrado
+      } else {
+        // No hay vinos de tipos alternativos: se mantiene la lista completa y se
+        // avisa a Claude para que explique la situación con honestidad.
+        exclusionSinSalida = true
+      }
+    }
+    // Techo de precio: filtra vinosRespuesta cuando ≥2 vinos caben en presupuesto.
+    // Esto cierra el gap del fallback (cuando no hay roles asignados Claude ve solo
+    // vinos dentro de presupuesto en el system prompt).
+    if (techoPrecioGlobal !== null && !exclusionSinSalida) {
+      const pFn = v => soloCopa ? (Number(v.precio_copa) || 0) : (Number(v.precio_botella) || 0)
+      const dentroTecho = vinosRespuesta.filter(v => { const p = pFn(v); return p > 0 && p <= techoPrecioGlobal })
+      if (dentroTecho.length >= 2) vinosRespuesta = dentroTecho
+    }
 
     if (esSeguimiento) {
       // Turno de seguimiento — mantiene el historial existente
@@ -756,6 +784,15 @@ export async function POST(request) {
         copa: idioma === 'en' ? 'a glass for each dish' : 'una copa por plato',
       }
 
+      // Bloque de aviso cuando la exclusión deja sin alternativas (p.ej. todos los vinos
+      // son blancos y el cliente pide "que no sea blanco").
+      const tiposExcluidosLabel = exclusionTipo.join('/')
+      const bloqueExclusionSinSalida = exclusionSinSalida && tiposExcluidosLabel
+        ? (idioma === 'en'
+            ? `\n\nIMPORTANT — type constraint with no alternative: The guest asked to avoid ${tiposExcluidosLabel} wines, but this wine list has no other type that pairs with the dish. Be honest: explain clearly that there is no ${tiposExcluidosLabel}-free option on this list for this dish. If any wine is available, present it as "best available option — even though it is ${tiposExcluidosLabel}" and let the guest decide.`
+            : `\n\nIMPORTANTE — restricción sin alternativa: El cliente ha pedido evitar vinos de tipo ${tiposExcluidosLabel}, pero la carta no tiene otro tipo que encaje con este plato. Sé honesto: explica con claridad que no dispones de opción sin ${tiposExcluidosLabel} para este plato en la carta actual. Si hay algún vino disponible, preséntalo como "mejor opción disponible — aunque sea ${tiposExcluidosLabel}" y deja al cliente decidir.`)
+        : ''
+
       let prompt
       if (modo === 'quiz') {
         const { tipo, estilo, comida, precio } = perfilQuiz || {}
@@ -842,12 +879,12 @@ export async function POST(request) {
           }
           const listadoMesa = rolesListaMesa.map(formatRol).join('\n')
           prompt = idioma === 'en'
-            ? `Dishes: ${consultaInterna}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nWines pre-selected with assigned roles — write one pairing sentence per line:\n${listadoMesa}\n\nUse the exact format from the system prompt. IMPORTANT: copy each role label EXACTLY as given — never rename, rephrase or replace it (e.g. 'Best value' not 'More daring').${notaClienteBloque}`
-            : `Platos: ${consultaInterna}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nVinos asignados con sus roles — escribe una frase de maridaje por línea:\n${listadoMesa}\n\nUsa el formato exacto del system prompt. IMPORTANTE: copia el rol EXACTAMENTE como aparece — nunca lo renombres ni parafrasees (ej: 'Más ajustado' no es 'Más atrevido').${notaClienteBloque}`
+            ? `Dishes: ${consultaInterna}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nWines pre-selected with assigned roles — write one pairing sentence per line:\n${listadoMesa}\n\nUse the exact format from the system prompt. IMPORTANT: copy each role label EXACTLY as given — never rename, rephrase or replace it (e.g. 'Best value' not 'More daring').${notaClienteBloque}${bloqueExclusionSinSalida}`
+            : `Platos: ${consultaInterna}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nVinos asignados con sus roles — escribe una frase de maridaje por línea:\n${listadoMesa}\n\nUsa el formato exacto del system prompt. IMPORTANTE: copia el rol EXACTAMENTE como aparece — nunca lo renombres ni parafrasees (ej: 'Más ajustado' no es 'Más atrevido').${notaClienteBloque}${bloqueExclusionSinSalida}`
         } else {
           prompt = idioma === 'en'
-            ? `Dishes: ${consultaInterna}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nRecommend up to 3 wines. Use the exact format from the system prompt.${notaClienteBloque}`
-            : `Platos: ${consultaInterna}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nRecomienda hasta 3 vinos. Usa el formato exacto del system prompt.${notaClienteBloque}`
+            ? `Dishes: ${consultaInterna}. Format: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nRecommend up to 3 wines. Use the exact format from the system prompt.${notaClienteBloque}${bloqueExclusionSinSalida}`
+            : `Platos: ${consultaInterna}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nRecomienda hasta 3 vinos. Usa el formato exacto del system prompt.${notaClienteBloque}${bloqueExclusionSinSalida}`
         }
       } else if (modo === 'plato') {
         const techoPrecioPlato = extraerTechoPrecio(notaCliente)
@@ -864,12 +901,12 @@ export async function POST(request) {
           }
           const listadoPlato = rolesListaPlato.map(formatRol).join('\n')
           prompt = idioma === 'en'
-            ? `Dish: "${consultaInterna}".\n\n${contextoCriterios}\n\nWines pre-selected with assigned roles — write one pairing sentence per line:\n${listadoPlato}\n\nUse the exact format from the system prompt. IMPORTANT: copy each role label EXACTLY as given — never rename, rephrase or replace it (e.g. 'Best value' not 'More daring').${notaClienteBloque}`
-            : `Plato: "${consultaInterna}".\n\n${contextoCriterios}\n\nVinos asignados con sus roles — escribe una frase de maridaje por línea:\n${listadoPlato}\n\nUsa el formato exacto del system prompt. IMPORTANTE: copia el rol EXACTAMENTE como aparece — nunca lo renombres ni parafrasees (ej: 'Más ajustado' no es 'Más atrevido').${notaClienteBloque}`
+            ? `Dish: "${consultaInterna}".\n\n${contextoCriterios}\n\nWines pre-selected with assigned roles — write one pairing sentence per line:\n${listadoPlato}\n\nUse the exact format from the system prompt. IMPORTANT: copy each role label EXACTLY as given — never rename, rephrase or replace it (e.g. 'Best value' not 'More daring').${notaClienteBloque}${bloqueExclusionSinSalida}`
+            : `Plato: "${consultaInterna}".\n\n${contextoCriterios}\n\nVinos asignados con sus roles — escribe una frase de maridaje por línea:\n${listadoPlato}\n\nUsa el formato exacto del system prompt. IMPORTANTE: copia el rol EXACTAMENTE como aparece — nunca lo renombres ni parafrasees (ej: 'Más ajustado' no es 'Más atrevido').${notaClienteBloque}${bloqueExclusionSinSalida}`
         } else {
           prompt = idioma === 'en'
-            ? `Dish: "${consultaInterna}".\n\n${contextoCriterios}\n\nRecommend up to 3 wines. Use the exact format from the system prompt.${notaClienteBloque}`
-            : `Plato: "${consultaInterna}".\n\n${contextoCriterios}\n\nRecomienda hasta 3 vinos. Usa el formato exacto del system prompt.${notaClienteBloque}`
+            ? `Dish: "${consultaInterna}".\n\n${contextoCriterios}\n\nRecommend up to 3 wines. Use the exact format from the system prompt.${notaClienteBloque}${bloqueExclusionSinSalida}`
+            : `Plato: "${consultaInterna}".\n\n${contextoCriterios}\n\nRecomienda hasta 3 vinos. Usa el formato exacto del system prompt.${notaClienteBloque}${bloqueExclusionSinSalida}`
         }
       } else {
         // Modo inverso: dado un vino, recomendar platos
