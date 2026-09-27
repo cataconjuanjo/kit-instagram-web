@@ -13,6 +13,8 @@ import {
   formatearNotaClienteBloque,
   detectarExclusionTipoVino,
   detectarRequisitoTipoVino,
+  detectarNotaSensible,
+  sanitizarLogInterno,
 } from '../app/lib/textFilters.mjs'
 
 // ── limpiarNotasDe ───────────────────────────────────────────────────────────
@@ -291,6 +293,81 @@ describe('detectarRequisitoTipoVino — no confunde preferencias suaves', () => 
 
   it('"algo con más cuerpo" → no requiere nada', () =>
     assert.deepEqual(detectarRequisitoTipoVino('algo con más cuerpo'), []))
+})
+
+// ── detectarNotaSensible ──────────────────────────────────────────────────────
+
+describe('detectarNotaSensible — notas sensibles ES/EN', () => {
+  it('"estoy embarazada" → sensible', () =>
+    assert.ok(detectarNotaSensible('estoy embarazada')))
+
+  it('"embarazo" → sensible', () =>
+    assert.ok(detectarNotaSensible('tengo embarazo')))
+
+  it('"pregnant" → sensible', () =>
+    assert.ok(detectarNotaSensible("I'm pregnant")))
+
+  it('"breastfeeding" → sensible', () =>
+    assert.ok(detectarNotaSensible('I am breastfeeding')))
+
+  it('"lactancia" → sensible', () =>
+    assert.ok(detectarNotaSensible('estoy en periodo de lactancia')))
+
+  it('"que no sea blanco" → NO sensible', () =>
+    assert.ok(!detectarNotaSensible('que no sea blanco')))
+
+  it('vacío → NO sensible', () =>
+    assert.ok(!detectarNotaSensible('')))
+})
+
+// ── sanitizarLogInterno ───────────────────────────────────────────────────────
+
+describe('sanitizarLogInterno — elimina trazas de filtrado', () => {
+  it('elimina línea con "→ queda fuera"', () => {
+    const entrada = 'Assailly Blanc de Blancs: espumoso blanco → queda fuera. 64€\nYllera Rosado: rosado → se mantiene. 17€'
+    const salida = sanitizarLogInterno(entrada)
+    assert.ok(!salida.includes('→ queda fuera'), `debe eliminar traza: "${salida}"`)
+    assert.ok(!salida.includes('→ se mantiene'), `debe eliminar traza: "${salida}"`)
+  })
+
+  it('no elimina recomendaciones válidas con "—"', () => {
+    const entrada = 'Vino A — Mi elección: Va bien con el plato. 25€\nVino B — Más ajustado: Otra opción. 18€'
+    const salida = sanitizarLogInterno(entrada)
+    assert.ok(salida.includes('Vino A'), `no debe eliminar recomendaciones válidas: "${salida}"`)
+    assert.ok(salida.includes('Vino B'), `no debe eliminar recomendaciones válidas: "${salida}"`)
+  })
+
+  it('la salida al cliente no puede contener "→", "queda fuera" ni "se mantiene"', () => {
+    const traza = 'Gran Barquero Fino: generoso → queda fuera. 22€\nYllera Rosado — Mi elección: fresco con ensaladilla. 17€'
+    const salida = sanitizarLogInterno(traza)
+    assert.ok(!salida.includes('→'), `no debe haber "→": "${salida}"`)
+    assert.ok(!salida.includes('queda fuera'), `no debe haber "queda fuera": "${salida}"`)
+    assert.ok(!salida.includes('se mantiene'), `no debe haber "se mantiene": "${salida}"`)
+  })
+
+  it('cuando TODAS las líneas son trazas → devuelve string vacío (señal para usar fallback)', () => {
+    const todasTrazas = [
+      'Assailly Blanc de Blancs Grand Cru: espumoso blanco → queda fuera. 64€',
+      'Gran Barquero Fino: generoso (blanco/oxidativo) → queda fuera. 22€',
+      'Yllera Rosado: rosado → se mantiene. 17€',
+    ].join('\n')
+    const resultado = sanitizarLogInterno(todasTrazas)
+    // Empty → caller (respuestaSoloConCarta or safety net) activates lineaFallback
+    assert.equal(resultado.trim(), '',
+      `Con todas trazas el resultado debe ser vacío para activar el fallback. Obtenido: "${resultado}"`)
+  })
+
+  it('mezcla válida+traza → conserva las líneas válidas', () => {
+    const mezcla = [
+      'Vino A — Mi elección: Va bien con el plato. 25€',
+      'Vino B: tinto → queda fuera. 30€',
+      'Vino C — Más ajustado: Opción ligera. 18€',
+    ].join('\n')
+    const salida = sanitizarLogInterno(mezcla)
+    assert.ok(salida.includes('Vino A'), `debe conservar línea válida A`)
+    assert.ok(salida.includes('Vino C'), `debe conservar línea válida C`)
+    assert.ok(!salida.includes('Vino B'), `debe eliminar la traza B`)
+  })
 })
 
 // ── aplicarFiltrosVoz (pipeline completo) ────────────────────────────────────
