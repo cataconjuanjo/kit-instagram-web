@@ -2195,10 +2195,10 @@ export default function CartaPublica() {
           <p className={styles.sommelierText}>{modoSommelier === 'quiz' ? i.quizSubtitulo : modoSommelier === 'vino' ? i.vinoMandaSub : modoSommelier === 'duelo' ? i.dueloSub : i.seleccionaPlatos}</p>
           <div className={`${styles.sommelierModeTabs}${dueloActivo ? ` ${styles.sommelierModeTabsWith4}` : ''}`}>
             {[
-              { id: 'platos', label: i.porPlatos, icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><ellipse cx="7" cy="7.5" rx="5" ry="3.5"/><path d="M2 9.5 Q2 12 7 12 Q12 12 12 9.5"/><line x1="7" y1="1.5" x2="7" y2="4"/></svg> },
-              { id: 'quiz', label: i.recomendame, icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 1.5 L8.3 5.2 L12.2 5.2 L9.1 7.4 L10.2 11.2 L7 9 L3.8 11.2 L4.9 7.4 L1.8 5.2 L5.7 5.2 Z"/></svg> },
-              { id: 'vino', label: i.vinoManda, icon: <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="M3.5 1.5 L10.5 1.5 L9 6 Q9 9 7 9 Q5 9 5 6 Z"/><line x1="7" y1="9" x2="7" y2="11.5"/><line x1="4.5" y1="11.5" x2="9.5" y2="11.5"/></svg> },
-              ...(dueloActivo ? [{ id: 'duelo', label: i.duelo, icon: <svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><path d="M1.5 1.5 L5.5 1.5 L4.5 5.5 Q4.5 7.5 3 7.5 Q1.5 7.5 1.5 5.5 Z"/><line x1="3" y1="7.5" x2="3" y2="10"/><line x1="1.5" y1="10" x2="4.5" y2="10"/><path d="M10.5 1.5 L14.5 1.5 L13.5 5.5 Q13.5 7.5 12 7.5 Q10.5 7.5 10.5 5.5 Z"/><line x1="12" y1="7.5" x2="12" y2="10"/><line x1="10.5" y1="10" x2="13.5" y2="10"/></svg> }] : []),
+              { id: 'platos', label: i.porPlatos },
+              { id: 'quiz', label: i.recomendame },
+              { id: 'vino', label: i.vinoManda },
+              ...(dueloActivo ? [{ id: 'duelo', label: i.duelo }] : []),
             ].map(m => {
               const isActive = modoSommelier === m.id
               return (
@@ -2215,7 +2215,6 @@ export default function CartaPublica() {
                   }}
                   {...(m.id === 'duelo' ? { 'data-duelo': 'true' } : {})}
                 >
-                  <span className={styles.modeTabIcon} style={isActive ? { color: colorAcento } : undefined}>{m.icon}</span>
                   {m.label}
                 </button>
               )
