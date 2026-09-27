@@ -57,7 +57,7 @@ export function limpiarNotasDe(texto = '') {
     .replace(/\b(?:its|the)\s+notes\s+of\s+/gi, '')
     // EN: bare "notes of X" → ""
     .replace(/\bnotes\s+of\s+/gi, '')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/[ \t]{2,}/g, ' ')
     .replace(/,\s*,/g, ',')
     .replace(/\s+([,.])/g, '$1')
     .trim()
@@ -79,7 +79,7 @@ export function filtrarPalabrasProhibidasPost(texto = '') {
     // el ejemplo del anti-trace con restricciones de tipo; limpiar antes de devolver al cliente
     .replace(/\bvino\s+sin\s+alcohol\s+(blanco|tinto|rosado|espumoso|generoso|dulce)\b/gi, 'vino $1')
     .replace(/\bnon[-\s]alcoholic\s+(white|red|ros[eé]|sparkling|fortified|sweet)\b/gi, '$1 wine')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/[ \t]{2,}/g, ' ')
     .trim()
 }
 
