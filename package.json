@@ -16,6 +16,7 @@
     "test:sommelier": "node --test scripts/sommelier-output.test.mjs",
     "test:text-filters": "node --test scripts/text-filters.test.mjs",
     "test:engine": "node --experimental-detect-module --test scripts/maridaje-engine.test.mjs",
+    "debug:scores": "node --experimental-detect-module scripts/debug-scores.mjs",
     "test:sugerir-carta": "node --experimental-detect-module --test scripts/sugerir-carta.test.mjs",
     "load:public": "node scripts/load-test-public.mjs",
     "test:search": "node scripts/test-proveedores-search.mjs"

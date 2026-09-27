@@ -861,3 +861,21 @@ export function resumenAnalisisParaPrompt(analisis) {
     'Usa estos candidatos como preferencia fuerte. Solo cambia si tu razonamiento estructural lo justifica, y nunca recomiendes vinos que no estén en la carta real.',
   ].filter(Boolean).join('\n')
 }
+
+/**
+ * Maps a DB plato.categoria string to an engine context keyword.
+ * Used to inject a reliable context hint when platos are loaded by ID from the DB,
+ * avoiding false 'general' context on dishes whose names don't match engine keywords
+ * (e.g. "Nuestro especial de temporada" in categoria "Carnes" → 'carne').
+ * Returns null if the categoria doesn't map to a known context.
+ */
+export function contextoDesdeCategoria(categoriaDb = '') {
+  const c = String(categoriaDb || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  if (['carne', 'carnes', 'vacuno', 'ternera', 'cordero', 'cerdo', 'pollo', 'aves', 'caza', 'parrilla', 'asados', 'brasa'].some(t => c.includes(t))) return 'carne'
+  if (['pescado', 'pescados', 'marisco', 'mariscos', 'seafood', 'fish', 'molusco'].some(t => c.includes(t))) return 'pescado'
+  if (['postre', 'postres', 'dulce', 'dulces', 'reposteria', 'dessert'].some(t => c.includes(t))) return 'postre'
+  if (['aperitivo', 'aperitivos', 'entrante', 'entrantes', 'tapa', 'tapas', 'snack', 'compartir', 'starter'].some(t => c.includes(t))) return 'aperitivo'
+  if (['fritura', 'frituras', 'fritos', 'frito'].some(t => c.includes(t))) return 'fritura'
+  if (['queso', 'quesos', 'cheese'].some(t => c.includes(t))) return 'queso'
+  return null
+}

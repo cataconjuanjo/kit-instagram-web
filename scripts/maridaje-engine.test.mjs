@@ -12,7 +12,7 @@
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { analizarMaridaje, contextoMaridaje } from '../app/lib/maridajeEngine.js'
+import { analizarMaridaje, contextoMaridaje, contextoDesdeCategoria } from '../app/lib/maridajeEngine.js'
 import { seleccionarVinosConRoles, SCORE_MINIMO_RECOMENDACION } from '../app/lib/wineSelection.mjs'
 
 // ── Mock wines ────────────────────────────────────────────────────────────────
@@ -158,6 +158,21 @@ describe('(e) señal de presupuesto → Mi elección = vino más económico', ()
     const idsSeleccionados = roles.map(r => r.item?.vino?.id ?? r.vino?.id)
     assert.ok(!idsSeleccionados.includes('q1'), `Vino de 45€ no debe aparecer con techo de 30€`)
   })
+})
+
+// ── (g) contextoDesdeCategoria — mapeo directo de categoria BD ───────────────
+describe('(g) contextoDesdeCategoria — mapeo de categoria DB a contexto', () => {
+  it('"Carnes" → "carne"', () => assert.equal(contextoDesdeCategoria('Carnes'), 'carne'))
+  it('"Pescados y Mariscos" → "pescado"', () => assert.equal(contextoDesdeCategoria('Pescados y Mariscos'), 'pescado'))
+  it('"Postres" → "postre"', () => assert.equal(contextoDesdeCategoria('Postres'), 'postre'))
+  it('"Entrantes" → "aperitivo"', () => assert.equal(contextoDesdeCategoria('Entrantes'), 'aperitivo'))
+  it('"Tapas para compartir" → "aperitivo"', () => assert.equal(contextoDesdeCategoria('Tapas para compartir'), 'aperitivo'))
+  it('"Frituras" → "fritura"', () => assert.equal(contextoDesdeCategoria('Frituras'), 'fritura'))
+  it('"Quesos" → "queso"', () => assert.equal(contextoDesdeCategoria('Quesos'), 'queso'))
+  it('"Arroces" → null (sin contexto específico)', () => assert.equal(contextoDesdeCategoria('Arroces'), null))
+  it('"Verduras" → null', () => assert.equal(contextoDesdeCategoria('Verduras'), null))
+  it('vacío → null', () => assert.equal(contextoDesdeCategoria(''), null))
+  it('"CARNES ROJAS" → "carne" (case insensitive)', () => assert.equal(contextoDesdeCategoria('CARNES ROJAS'), 'carne'))
 })
 
 // ── (f) 2 candidatos → máximo 2 vinos en resultado ───────────────────────────
