@@ -132,8 +132,9 @@ function lineaVino(vino, soloCopa = false) {
     vino.region,
     vino.uva ? `uva: ${vino.uva}` : '',
     vino.anada ? `añada: ${vino.anada}` : '',
-    vino.precio_copa ? `copa: ${vino.precio_copa}€` : '',
-    soloCopa ? '' : `botella: ${vino.precio_botella}€`,
+    soloCopa
+      ? (Number(vino.precio_copa) ? `copa: ${vino.precio_copa}€` : '')
+      : (Number(vino.precio_botella) ? `botella: ${vino.precio_botella}€` : ''),
     limpiarMarcadorPerfiles(vino.notas_cata) ? `notas: ${limpiarMarcadorPerfiles(vino.notas_cata)}` : '',
   ].filter(Boolean).join(', ')})`
 }
