@@ -68,6 +68,17 @@ export function filtrarPalabrasProhibidasPost(texto = '') {
     .replace(/\bfondo oscuro\b/gi, 'fondo')
     .replace(/\buntuosidad\b/gi, 'textura grasa')
     .replace(/\bunctuousness\b/gi, 'rich texture')
+    // taninos/tannins — palabra técnica prohibida, traducir al sensorial
+    .replace(/\btaninos?\s+suaves?\b/gi, 'suavidad en boca')
+    .replace(/\btaninos?\s+(?:muy\s+)?(?:firmes?|marcados?|duros?|astringentes?)\b/gi, 'agarre en boca')
+    .replace(/\btaninos?\s+(?:maduros?|redondos?|pulidos?|sedosos?|elegantes?|integrados?)\b/gi, 'cuerpo redondo')
+    .replace(/\btaninos?\b/gi, 'cuerpo')
+    .replace(/\btannins?\s+(?:soft|silky|smooth|fine|gentle|polished)\b/gi, 'softness on the palate')
+    .replace(/\btannins?\b/gi, 'body')
+    // "vino sin alcohol blanco/tinto/..." — frase incoherente que Claude genera al mezclar
+    // el ejemplo del anti-trace con restricciones de tipo; limpiar antes de devolver al cliente
+    .replace(/\bvino\s+sin\s+alcohol\s+(blanco|tinto|rosado|espumoso|generoso|dulce)\b/gi, 'vino $1')
+    .replace(/\bnon[-\s]alcoholic\s+(white|red|ros[eé]|sparkling|fortified|sweet)\b/gi, '$1 wine')
     .replace(/\s{2,}/g, ' ')
     .trim()
 }
