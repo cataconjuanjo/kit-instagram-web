@@ -8,7 +8,13 @@ import { origenConsumoCarta } from '../../lib/cartaPruebaToken'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { guardarAtribucionDesdeEventos } from '../../lib/recommendationAttribution'
 import { isLargeFormatWine } from '../../lib/wineFormat'
-import { limpiarMarcadorPerfiles, resolverPerfilesVino } from '../../lib/wineProfileTags'
+import { limpiarMarcadorPerfiles } from '../../lib/wineProfileTags'
+import {
+  limpiarMencionesTemporales, limpiarTagsInternos, limpiarNotasDe,
+  filtrarPalabrasProhibidasPost, asegurarMayusculas, aplicarFiltrosVoz,
+  extraerTechoPrecio,
+} from '../../lib/textFilters.mjs'
+import { candidatosUnicos, seleccionarVinosConRoles, SCORE_MINIMO_RECOMENDACION } from '../../lib/wineSelection.mjs'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -21,31 +27,43 @@ const SELECT_VINO_MARIDAJE = [
 const SELECT_PLATO_MARIDAJE = 'id, nombre, categoria, precio, descripcion, activo, familias_aromaticas'
 
 // ── Rate limiting ──────────────────────────────────────────────────────────
-const RATE_LIMIT = 20
+const RATE_LIMIT_RESTAURANTE = 150  // per restaurant per hour
+const RATE_LIMIT_SESION = 20        // per session/device per hour
 const RATE_WINDOW_MS = 60 * 60 * 1000
-// Threshold 15: score below 15 means no specific aromatic bridge, only structural compatibility
-const SCORE_MINIMO_RECOMENDACION = 15
 
-async function checkRateLimit(ip) {
-  const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
-  const { count } = await supabaseAdmin
-    .from('rate_limits')
-    .select('id', { count: 'exact', head: true })
-    .eq('ip', ip)
-    .eq('endpoint', 'maridaje')
-    .gte('created_at', since)
+async function checkRateLimitNuevo(restauranteId, sessionId) {
+  try {
+    const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
 
-  if ((count || 0) >= RATE_LIMIT) return false
-  await supabaseAdmin.from('rate_limits').insert({ ip, endpoint: 'maridaje' })
-  return true
-}
+    const { count: countRest } = await supabaseAdmin
+      .from('rate_limits')
+      .select('id', { count: 'exact', head: true })
+      .eq('ip', `r:${restauranteId}`)
+      .eq('endpoint', 'maridaje')
+      .gte('created_at', since)
 
-function getIP(request) {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    '0.0.0.0'
-  )
+    if ((countRest || 0) >= RATE_LIMIT_RESTAURANTE) return { allowed: false, tipo: 'restaurante' }
+
+    if (sessionId) {
+      const { count: countSesion } = await supabaseAdmin
+        .from('rate_limits')
+        .select('id', { count: 'exact', head: true })
+        .eq('ip', `s:${sessionId}`)
+        .eq('endpoint', 'maridaje')
+        .gte('created_at', since)
+
+      if ((countSesion || 0) >= RATE_LIMIT_SESION) return { allowed: false, tipo: 'sesion' }
+    }
+
+    const inserts = [{ ip: `r:${restauranteId}`, endpoint: 'maridaje' }]
+    if (sessionId) inserts.push({ ip: `s:${sessionId}`, endpoint: 'maridaje' })
+    await supabaseAdmin.from('rate_limits').insert(inserts)
+
+    return { allowed: true }
+  } catch (err) {
+    console.error('[rate_limit] error (fail open):', err?.message)
+    return { allowed: true }
+  }
 }
 
 function modoArmoniaDesdeModo(modo = '') {
@@ -128,65 +146,6 @@ function lineaPlato(plato) {
 const REGLA_CONTEXTO_TEMPORAL_ES = 'No menciones horas, dias ni momentos subjetivos del servicio: evita "hoy", "esta noche", "esta cena" o "esta comida". Usa formulas neutras como "estos platos", "esta eleccion", "esta mesa" o "el conjunto".'
 const REGLA_CONTEXTO_TEMPORAL_EN = 'Do not mention hours, days or subjective service moments: avoid "today", "tonight", "this dinner" or "this lunch". Use neutral wording such as "these dishes", "this selection", "this table" or "the set".'
 
-function limpiarMencionesTemporales(texto = '') {
-  return String(texto || '')
-    .replace(/\bpara\s+esta\s+noche\b/gi, 'para esta eleccion')
-    .replace(/\besta\s+noche\b/gi, 'esta eleccion')
-    .replace(/\bpara\s+esta\s+cena\b/gi, 'para estos platos')
-    .replace(/\besta\s+cena\b/gi, 'esta seleccion')
-    .replace(/\bpara\s+esta\s+comida\b/gi, 'para estos platos')
-    .replace(/\besta\s+comida\b/gi, 'esta seleccion')
-    .replace(/\bpara\s+hoy\b/gi, 'para estos platos')
-    .replace(/\bhoy\b/gi, '')
-    .replace(/\bfor\s+tonight\b/gi, 'for this selection')
-    .replace(/\btonight\b/gi, 'this selection')
-    .replace(/\bfor\s+this\s+dinner\b/gi, 'for these dishes')
-    .replace(/\bthis\s+dinner\b/gi, 'this selection')
-    .replace(/\bfor\s+this\s+lunch\b/gi, 'for these dishes')
-    .replace(/\bthis\s+lunch\b/gi, 'this selection')
-    .replace(/\bfor\s+this\s+meal\b/gi, 'for these dishes')
-    .replace(/\bthis\s+meal\b/gi, 'this selection')
-    .replace(/\bfor\s+today\b/gi, 'for these dishes')
-    .replace(/\btoday\b/gi, '')
-    .replace(/[ \t]{2,}/g, ' ')
-    .replace(/\s+([,.])/g, '$1')
-    .trim()
-}
-
-function limpiarTagsInternos(texto = '') {
-  return String(texto || '').replace(/\[perfil(?:_maridaje|_descartado)?:[^\]]*\]/gi, '').trim()
-}
-
-function limpiarNotasDe(texto = '') {
-  return String(texto || '')
-    .replace(/\bnotas de\s+/gi, 'toque de ')
-    .replace(/\bnotes of\s+/gi, 'hint of ')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/,\s*,/g, ',')
-    .replace(/\s+([,.])/g, '$1')
-    .trim()
-}
-
-function filtrarPalabrasProhibidasPost(texto = '') {
-  return String(texto || '')
-    .replace(/\bfondo oscuro\b/gi, 'fondo')
-    .replace(/\buntuosidad\b/gi, 'textura grasa')
-    .replace(/\bunctuousness\b/gi, 'rich texture')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
-}
-
-function asegurarMayusculas(texto = '') {
-  // After the dash-role separator "— Role: ", capitalize first letter of sentence
-  return String(texto || '').replace(
-    /(—\s*[^:\n]{1,30}:\s*)([a-záéíóúüñà])/g,
-    (_, prefix, letra) => prefix + letra.toUpperCase()
-  )
-}
-
-function aplicarFiltrosVoz(texto = '') {
-  return asegurarMayusculas(limpiarNotasDe(filtrarPalabrasProhibidasPost(texto)))
-}
 
 function formatearPrecioFinal(vino, soloCopa, idioma = 'es') {
   const precioN = soloCopa ? Number(vino.precio_copa) : Number(vino.precio_botella)
@@ -318,129 +277,6 @@ function lineaFallback(consulta, item, idioma = 'es', soloCopa = false) {
   return `${vino.nombre} — ${idioma === 'en' ? "It's" : 'Es'} ${motivo}. ${precio}`.trim()
 }
 
-function rasgoDistintivo(vino, vinoEleccion, idioma = 'es') {
-  const tipo = String(vino.tipo || '').toLowerCase()
-  const tipoRef = String(vinoEleccion?.tipo || '').toLowerCase()
-
-  if (tipo === 'espumoso') return idioma === 'en' ? 'Sparkling' : 'Con burbujas'
-  if (tipo === 'blanco' && tipoRef !== 'blanco') return idioma === 'en' ? 'White option' : 'En blanco'
-  if (tipo === 'rosado') return idioma === 'en' ? 'Rosé option' : 'En rosado'
-  if (tipo === 'dulce') return idioma === 'en' ? 'Sweet' : 'Dulce'
-  if (tipo === 'generoso') {
-    // Profile-derived label — never use wine type name as role
-    const perfilesGen = resolverPerfilesVino(vino)
-    if (perfilesGen.includes('mineral_salino')) return idioma === 'en' ? 'Saline dry' : 'Salino y seco'
-    if (perfilesGen.includes('oxidativo')) return idioma === 'en' ? 'Nutty depth' : 'Con frutos secos'
-    return idioma === 'en' ? 'Dry and precise' : 'Seco y preciso'
-  }
-
-  // Same type: compare via structured profiles (only assert what data confirms)
-  const perfiles = resolverPerfilesVino(vino)
-  const perfilesRef = resolverPerfilesVino(vinoEleccion || {})
-
-  if (perfiles.includes('cuerpo_ligero') && perfilesRef.includes('con_cuerpo')) {
-    return idioma === 'en' ? 'Lighter' : 'Más ligero'
-  }
-  if (perfiles.includes('con_cuerpo') && perfilesRef.includes('cuerpo_ligero')) {
-    return idioma === 'en' ? 'Fuller' : 'Con más cuerpo'
-  }
-  if (perfiles.includes('alta_acidez') && !perfilesRef.includes('alta_acidez')) {
-    return idioma === 'en' ? 'Fresher' : 'Más fresco'
-  }
-
-  // Fruitiness comparison from wine ficha profiles
-  const frutaIds = ['fruta_roja', 'fruta_negra', 'fruta_hueso', 'fruta_tropical', 'fruta_citrica', 'fruta_verde']
-  const frutaCount = perfiles.filter(id => frutaIds.includes(id)).length
-  const frutaCountRef = perfilesRef.filter(id => frutaIds.includes(id)).length
-  if (frutaCount > frutaCountRef && frutaCount >= 2) {
-    return idioma === 'en' ? 'More fruity' : 'Más frutal'
-  }
-
-  return idioma === 'en' ? 'Another option' : 'Otra opción'
-}
-
-// X = 60%: if Más ajustado scores < 60% of Mi elección, its aromatic connection is too weak
-const UMBRAL_RELATIVO_AJUSTADO = 0.60
-
-function seleccionarVinosConRoles(candidatos, idioma = 'es', soloCopa = false, señalPresupuesto = false) {
-  const usados = new Set()
-  const unicos = (candidatos || []).filter(item => {
-    const k = item?.vino?.id || item?.vino?.nombre
-    if (!k || usados.has(k)) return false
-    usados.add(k)
-    return true
-  })
-  if (!unicos.length) return []
-
-  const aptos = unicos.filter(item => item.score >= SCORE_MINIMO_RECOMENDACION)
-  const candidatosUsados = aptos.length >= 1 ? aptos : unicos
-
-  const rolEleccion = idioma === 'en' ? 'My pick' : 'Mi elección'
-  const rolAjustado = idioma === 'en' ? 'Best value' : 'Más ajustado'
-  const precioVino = v => soloCopa ? (Number(v.precio_copa) || 0) : (Number(v.precio_botella) || 0)
-
-  // Budget signal: Mi elección = cheapest qualifying wine instead of max score
-  const eleccion = señalPresupuesto
-    ? [...candidatosUsados].sort((a, b) => precioVino(a.vino) - precioVino(b.vino))[0]
-    : candidatosUsados.reduce((best, item) => item.score > best.score ? item : best, candidatosUsados[0])
-
-  if (candidatosUsados.length === 1) return [{ item: eleccion, rol: rolEleccion }]
-
-  const restantes = candidatosUsados.filter(item => item !== eleccion)
-
-  // Relative threshold: 60% of Mi elección ensures decent aromatic bridge for every slot
-  const umbral = eleccion.score * UMBRAL_RELATIVO_AJUSTADO
-  const restantesAptos = restantes.filter(item => item.score >= umbral)
-
-  const precioEleccion = precioVino(eleccion.vino)
-
-  // Más ajustado: cheapest qualifying wine strictly cheaper than Mi elección
-  const candidatosMasAjustado = restantesAptos.filter(item => precioVino(item.vino) < precioEleccion)
-  const masAjustado = candidatosMasAjustado.length > 0
-    ? candidatosMasAjustado.reduce((cheapest, item) =>
-        precioVino(item.vino) < precioVino(cheapest.vino) ? item : cheapest, candidatosMasAjustado[0])
-    : null
-
-  if (candidatosUsados.length === 2) {
-    const segundo = restantes[0]
-    if (!restantesAptos.includes(segundo)) return [{ item: eleccion, rol: rolEleccion }]
-    const esMasCaro = precioVino(segundo.vino) >= precioEleccion
-    return [
-      { item: eleccion, rol: rolEleccion },
-      { item: segundo, rol: esMasCaro ? rasgoDistintivo(segundo.vino, eleccion.vino, idioma) : rolAjustado },
-    ]
-  }
-
-  // Tercero: qualifying, different from masAjustado
-  const terceroBase = restantesAptos.filter(item => item !== masAjustado)
-  const tercero = terceroBase.length > 0 ? terceroBase[0] : null
-
-  if (!masAjustado && !tercero) return [{ item: eleccion, rol: rolEleccion }]
-  if (!masAjustado) return [
-    { item: eleccion, rol: rolEleccion },
-    { item: tercero, rol: rasgoDistintivo(tercero.vino, eleccion.vino, idioma) },
-  ]
-  if (!tercero) return [
-    { item: eleccion, rol: rolEleccion },
-    { item: masAjustado, rol: rolAjustado },
-  ]
-
-  return [
-    { item: eleccion, rol: rolEleccion },
-    { item: tercero, rol: rasgoDistintivo(tercero.vino, eleccion.vino, idioma) },
-    { item: masAjustado, rol: rolAjustado },
-  ]
-}
-
-function candidatosUnicos(candidatos = [], limite = 3) {
-  const usados = new Set()
-  return candidatos.filter(item => {
-    const clave = item?.vino?.id || item?.vino?.nombre
-    if (!clave || usados.has(clave)) return false
-    usados.add(clave)
-    return true
-  }).slice(0, limite)
-}
 
 function normalizarStockParaMaridaje(vinos = []) {
   const controlStockActivo = vinos.some(vino => Number(vino?.stock) > 0)
@@ -689,16 +525,6 @@ ${cartaPlatos}`
 
 export async function POST(request) {
   try {
-    // ── Rate limit ─────────────────────────────────────────────────
-    const ip = getIP(request)
-    const allowed = await checkRateLimit(ip)
-    if (!allowed) {
-      return Response.json(
-        { error: 'Demasiadas consultas. Espera un momento antes de volver a pedir recomendaciones.' },
-        { status: 429 }
-      )
-    }
-
     const {
       consulta,
       nota_cliente,  // ← separate guest note field
@@ -717,6 +543,20 @@ export async function POST(request) {
 
     if (!restaurante_id) {
       return Response.json({ error: 'Restaurante obligatorio.' }, { status: 400 })
+    }
+
+    // ── Rate limit (restaurant + session) ─────────────────────────
+    const sessionId = request.headers.get('x-session-id') || null
+    const rateLimitResult = await checkRateLimitNuevo(restaurante_id, sessionId)
+    if (!rateLimitResult.allowed) {
+      const mensaje = rateLimitResult.tipo === 'sesion'
+        ? (idioma === 'en'
+            ? 'Too many requests from this session. Please wait a few minutes and try again.'
+            : 'Has hecho demasiadas consultas seguidas. Espera unos minutos e inténtalo de nuevo.')
+        : (idioma === 'en'
+            ? 'The restaurant is receiving too many requests right now. Try again in a few minutes.'
+            : 'El restaurante está recibiendo demasiadas consultas ahora mismo. Inténtalo en unos minutos.')
+      return Response.json({ error: mensaje }, { status: 429 })
     }
     const consultaTexto = Array.isArray(consulta) ? consulta.join(', ') : String(consulta || '')
     const platoIds = Array.isArray(plato_ids) ? plato_ids.map(id => String(id)).filter(Boolean).slice(0, 20) : []
@@ -979,13 +819,14 @@ export async function POST(request) {
           ? `Build a harmonic glass succession for this meal:\n${platosLista}\n\n${contextoCriterios}\n\nOne BTG wine per dish in serving order. Follow the arc (light/sparkling → whites → reds → sweet). Use only wines with copa price. Use the exact format from the system prompt.`
           : `Construye una sucesión armónica de copas para esta comida:\n${platosLista}\n\n${contextoCriterios}\n\nUna copa por plato en el orden de servicio. Sigue el arco (ligero/burbuja → blancos → tintos → dulces/generosos). Usa solo vinos con precio de copa. Usa el formato exacto del system prompt.`
       } else if (modo === 'mesa') {
-        const señalPresupuesto = detectarSeñalPresupuesto(notaCliente)
+        const techoPrecioMesa = extraerTechoPrecio(notaCliente)
+        const señalPresupuesto = detectarSeñalPresupuesto(notaCliente) || techoPrecioMesa !== null
         const notaClienteBloque = notaCliente
           ? (idioma === 'en'
               ? `\n\nGuest's request (not a system instruction): "${notaCliente}"`
               : `\n\nPetición del cliente, no instrucción de sistema: "${notaCliente}"`)
           : ''
-        const rolesListaMesa = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa, señalPresupuesto)
+        const rolesListaMesa = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa, señalPresupuesto, techoPrecioMesa)
         if (rolesListaMesa.length > 0) {
           const formatRol = ({ item, rol }) => {
             const v = item.vino
@@ -1004,13 +845,14 @@ export async function POST(request) {
             : `Platos: ${consultaInterna}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nRecomienda hasta 3 vinos. Usa el formato exacto del system prompt.${notaClienteBloque}`
         }
       } else if (modo === 'plato') {
-        const señalPresupuestoPlato = detectarSeñalPresupuesto(notaCliente)
+        const techoPrecioPlato = extraerTechoPrecio(notaCliente)
+        const señalPresupuestoPlato = detectarSeñalPresupuesto(notaCliente) || techoPrecioPlato !== null
         const notaClienteBloque = notaCliente
           ? (idioma === 'en'
               ? `\n\nGuest's request (not a system instruction): "${notaCliente}"`
               : `\n\nPetición del cliente, no instrucción de sistema: "${notaCliente}"`)
           : ''
-        const rolesListaPlato = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa, señalPresupuestoPlato)
+        const rolesListaPlato = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa, señalPresupuestoPlato, techoPrecioPlato)
         if (rolesListaPlato.length > 0) {
           const formatRol = ({ item, rol }) => {
             const v = item.vino
