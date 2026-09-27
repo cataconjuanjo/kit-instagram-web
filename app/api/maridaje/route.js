@@ -175,6 +175,80 @@ function detectarSeñalPresupuesto(notaCliente = '') {
     /less\s+than\s+\d+/.test(texto)
 }
 
+/**
+ * Classifies nota_cliente using Claude Haiku — returns structured constraints.
+ * Falls back to regex functions if the API call fails.
+ */
+async function clasificarNotaCliente(notaCliente) {
+  if (!notaCliente?.trim()) {
+    return { tipo_incluido: null, tipo_excluido: null, presupuesto_max: null, señal_presupuesto: false, otras_restricciones: null }
+  }
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 150,
+      messages: [{
+        role: 'user',
+        content: `Classify this guest wine note. Return ONLY valid JSON, nothing else.
+
+Schema (all keys required):
+{
+  "tipo_incluido": null or array — wine types the guest explicitly REQUIRES,
+  "tipo_excluido": null or array — wine types the guest explicitly REFUSES,
+  "presupuesto_max": null or number — euro ceiling, only if a number is stated,
+  "señal_presupuesto": boolean — true if ANY budget concern (even without a number),
+  "otras_restricciones": null or string
+}
+
+Valid types: "tinto", "blanco", "rosado", "espumoso", "generoso", "dulce"
+Mappings: red/rojo/uva tinta/grape red → tinto | white/uva blanca → blanco | rosé/rosa → rosado | sparkling/cava/burbuja/champagne → espumoso | sherry/jerez/fino/manzanilla → generoso | sweet/dulce → dulce
+
+tipo_incluido — explicit requirement phrases:
+  "solo tintos", "que sea tinto", "prefiero rojo", "dame un blanco", "busco uva tinta",
+  "i want a red", "give me a white", "bring me a sparkling", "id like a rosé" → set type array
+
+tipo_excluido — explicit refusal phrases:
+  "que no sea blanco", "sin tinto", "nada de blanco", "no white wine", "avoid red" → set type array
+
+presupuesto_max — only explicit numbers:
+  "hasta 25€"→25, "unos 15 euros"→15, "menos de 30"→30, "less than 20"→20, "max 40"→40
+
+señal_presupuesto true for ALL budget signals including soft:
+  "barato", "económico", "sin gastar mucho", "poco presupuesto", "que no sea muy caro",
+  "affordable", "cheap", "not too expensive", "on a budget", "sin pasarse"
+  AND any presupuesto_max above
+
+Soft preferences without type/budget: "algo fresco", "con cuerpo", "ligero" → all null/false.
+
+Guest note: "${notaCliente.replace(/"/g, '\\"')}"`
+      }],
+    })
+    const text = msg.content?.[0]?.text?.trim() || ''
+    const m = text.match(/\{[\s\S]*\}/)
+    if (!m) throw new Error('no JSON')
+    const r = JSON.parse(m[0])
+    return {
+      tipo_incluido: Array.isArray(r.tipo_incluido) && r.tipo_incluido.length ? r.tipo_incluido.map(t => String(t).toLowerCase()) : null,
+      tipo_excluido: Array.isArray(r.tipo_excluido) && r.tipo_excluido.length ? r.tipo_excluido.map(t => String(t).toLowerCase()) : null,
+      presupuesto_max: typeof r.presupuesto_max === 'number' && r.presupuesto_max > 0 ? r.presupuesto_max : null,
+      señal_presupuesto: Boolean(r.señal_presupuesto),
+      otras_restricciones: typeof r.otras_restricciones === 'string' && r.otras_restricciones ? r.otras_restricciones : null,
+    }
+  } catch (err) {
+    console.error('[clasificarNota] error, fallback a regex:', err?.message)
+    const excl = detectarExclusionTipoVino(notaCliente)
+    const req  = detectarRequisitoTipoVino(notaCliente)
+    const techo = extraerTechoPrecio(notaCliente)
+    return {
+      tipo_incluido: req.length ? req : null,
+      tipo_excluido: excl.length ? excl : null,
+      presupuesto_max: techo,
+      señal_presupuesto: detectarSeñalPresupuesto(notaCliente) || techo !== null,
+      otras_restricciones: null,
+    }
+  }
+}
+
 function limpiarPrefijoRecomendacion(linea = '') {
   return String(linea).trim().replace(/^(?:[-*•]\s*|\d+[.)]\s*)/, '')
 }
@@ -603,16 +677,18 @@ export async function POST(request) {
       })
     }
 
-    // Hard constraints extracted from nota_cliente — applied before the motor runs
-    const exclusionTipo = detectarExclusionTipoVino(notaCliente)
-    const requisitoTipo = detectarRequisitoTipoVino(notaCliente)
-    const techoPrecioGlobal = extraerTechoPrecio(notaCliente)
-
-    const [{ data: restaurante }, { data: vinosData }, { data: platos }] = await Promise.all([
+    // Hard constraints from nota_cliente — Claude Haiku classification runs in parallel
+    // with DB queries (no quota impact on restaurant; fallback to regex if call fails).
+    const [clasificacion, { data: restaurante }, { data: vinosData }, { data: platos }] = await Promise.all([
+      clasificarNotaCliente(notaCliente),
       supabaseAdmin.from('restaurantes').select(SELECT_RESTAURANTE_MARIDAJE).eq('id', restaurante_id).single(),
       supabaseAdmin.from('vinos').select(SELECT_VINO_MARIDAJE).eq('restaurante_id', restaurante_id).eq('activo', true),
       supabaseAdmin.from('platos').select(SELECT_PLATO_MARIDAJE).eq('restaurante_id', restaurante_id).eq('activo', true),
     ])
+
+    const exclusionTipo = clasificacion.tipo_excluido || []
+    const requisitoTipo = clasificacion.tipo_incluido || []
+    const techoPrecioGlobal = clasificacion.presupuesto_max
 
     if (!restaurante || !puedeUsar(restaurante, 'maridaje_cliente')) {
       return Response.json({ error: 'Funcion no incluida en el plan activo.' }, { status: 403 })
@@ -919,10 +995,9 @@ export async function POST(request) {
           ? `Build a harmonic glass succession for this meal:\n${platosLista}\n\n${contextoCriterios}\n\nOne BTG wine per dish in serving order. Follow the arc (light/sparkling → whites → reds → sweet). Use only wines with copa price. Use the exact format from the system prompt.`
           : `Construye una sucesión armónica de copas para esta comida:\n${platosLista}\n\n${contextoCriterios}\n\nUna copa por plato en el orden de servicio. Sigue el arco (ligero/burbuja → blancos → tintos → dulces/generosos). Usa solo vinos con precio de copa. Usa el formato exacto del system prompt.`
       } else if (modo === 'mesa') {
-        const techoPrecioMesa = extraerTechoPrecio(notaCliente)
-        const señalPresupuesto = detectarSeñalPresupuesto(notaCliente) || techoPrecioMesa !== null
+        const señalPresupuesto = clasificacion.señal_presupuesto || techoPrecioGlobal !== null
         const notaClienteBloque = formatearNotaClienteBloque(notaCliente, idioma)
-        const rolesListaMesa = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa, señalPresupuesto, techoPrecioMesa)
+        const rolesListaMesa = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa, señalPresupuesto, techoPrecioGlobal)
         if (rolesListaMesa.length > 0) {
           const formatRol = ({ item, rol }) => {
             const v = item.vino
@@ -941,10 +1016,9 @@ export async function POST(request) {
             : `Platos: ${consultaInterna}. Formato: ${modosTexto[modoMesa] || modoMesa}.\n\n${contextoCriterios}\n\nRecomienda hasta 3 vinos. Usa el formato exacto del system prompt.${notaClienteBloque}${bloqueExclusionSinSalida}`
         }
       } else if (modo === 'plato') {
-        const techoPrecioPlato = extraerTechoPrecio(notaCliente)
-        const señalPresupuestoPlato = detectarSeñalPresupuesto(notaCliente) || techoPrecioPlato !== null
+        const señalPresupuestoPlato = clasificacion.señal_presupuesto || techoPrecioGlobal !== null
         const notaClienteBloque = formatearNotaClienteBloque(notaCliente, idioma)
-        const rolesListaPlato = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa, señalPresupuestoPlato, techoPrecioPlato)
+        const rolesListaPlato = seleccionarVinosConRoles(fallbackCandidatos, idioma, soloCopa, señalPresupuestoPlato, techoPrecioGlobal)
         if (rolesListaPlato.length > 0) {
           const formatRol = ({ item, rol }) => {
             const v = item.vino
