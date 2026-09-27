@@ -187,6 +187,61 @@ export function detectarExclusionTipoVino(notaCliente = '') {
 }
 
 /**
+ * Detects HARD type REQUIREMENTS from a guest note.
+ * Returns an array of wine tipo strings that MUST be in the pool.
+ * "que sea tinto", "quiero un blanco", "I want a red", "ponme un rosado", etc.
+ *
+ * Only hard affirmatives — positive soft preferences ("algo con más cuerpo") return [].
+ * If both detectarExclusionTipoVino AND this return values, exclusion wins.
+ */
+export function detectarRequisitoTipoVino(notaCliente = '') {
+  const t = String(notaCliente || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+
+  const TIPOS = [
+    { tipo: 'blanco',   kws: ['blanco', 'blanca', 'white'] },
+    { tipo: 'tinto',    kws: ['tinto', 'tinta', 'red wine', 'red'] },
+    { tipo: 'rosado',   kws: ['rosado', 'rosada', 'rose', 'rosé'] },
+    { tipo: 'espumoso', kws: ['espumoso', 'espumosa', 'cava', 'burbuja', 'burbujas', 'sparkling', 'champan', 'champagne'] },
+    { tipo: 'generoso', kws: ['generoso', 'generosa', 'fino', 'manzanilla', 'jerez', 'sherry'] },
+    { tipo: 'dulce',    kws: ['dulce', 'sweet'] },
+  ]
+
+  // Positive demand phrases — sorted longest-first
+  const POS = [
+    'que sea', 'que fuera', 'me gustan los', 'me gusta el', 'me gusta la',
+    'quiero un', 'quiero una', 'quiero', 'ponme un', 'ponme una', 'ponme',
+    'traeme un', 'traeme una', 'traeme', 'dame un', 'dame una', 'dame',
+    'prefiero un', 'prefiero una', 'prefiero',
+    'mejor un', 'mejor una',
+    'i want a', 'i want', 'give me a', 'give me', 'i prefer a', 'i prefer',
+    'bring me a', 'bring me', 'id like a', "i'd like a", 'id like', "i'd like",
+  ].sort((a, b) => b.length - a.length)
+
+  function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
+  const posPat = POS.map(escRe).join('|')
+
+  const requeridos = []
+  for (const { tipo, kws } of TIPOS) {
+    let required = false
+    const sorted = [...kws].sort((a, b) => b.length - a.length)
+    for (const kw of sorted) {
+      const kwPat = escRe(kw)
+      // Pattern: positive phrase + optional up to 2 words + type keyword (+ optional plural 's')
+      const re = new RegExp(
+        `(?:${posPat})(?:\\s+\\w+){0,2}\\s+${kwPat}s?(?:[^a-z0-9]|$)`,
+        'i'
+      )
+      if (re.test(t)) { required = true; break }
+    }
+    if (required) requeridos.push(tipo)
+  }
+  return requeridos
+}
+
+/**
  * Wraps nota_cliente in an injection-safe framing block for Claude's prompt.
  * Always labeled as guest data, never as a system instruction.
  * Returns '' if notaCliente is empty.

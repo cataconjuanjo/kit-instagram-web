@@ -12,6 +12,7 @@ import {
   asegurarMayusculas,
   formatearNotaClienteBloque,
   detectarExclusionTipoVino,
+  detectarRequisitoTipoVino,
 } from '../app/lib/textFilters.mjs'
 
 // ── limpiarNotasDe ───────────────────────────────────────────────────────────
@@ -237,6 +238,59 @@ describe('detectarExclusionTipoVino — preferencias suaves (NO deben excluir)',
 
   it('"prefiero tintos" (preferencia positiva) → no excluye tinto', () =>
     assert.deepEqual(detectarExclusionTipoVino('prefiero tintos'), []))
+})
+
+// ── detectarRequisitoTipoVino ────────────────────────────────────────────────
+
+describe('detectarRequisitoTipoVino — requisitos positivos ES', () => {
+  it('"que sea tinto" → requiere tinto', () =>
+    assert.ok(detectarRequisitoTipoVino('que sea tinto').includes('tinto')))
+
+  it('"quiero un blanco" → requiere blanco', () =>
+    assert.ok(detectarRequisitoTipoVino('quiero un blanco').includes('blanco')))
+
+  it('"ponme un rosado" → requiere rosado', () =>
+    assert.ok(detectarRequisitoTipoVino('ponme un rosado').includes('rosado')))
+
+  it('"dame un espumoso" → requiere espumoso', () =>
+    assert.ok(detectarRequisitoTipoVino('dame un espumoso').includes('espumoso')))
+
+  it('"prefiero un tinto" → requiere tinto', () =>
+    assert.ok(detectarRequisitoTipoVino('prefiero un tinto').includes('tinto')))
+
+  it('"me gustan los blancos" → requiere blanco', () =>
+    assert.ok(detectarRequisitoTipoVino('me gustan los blancos').includes('blanco')))
+
+  it('vacío / null → array vacío', () => {
+    assert.deepEqual(detectarRequisitoTipoVino(''), [])
+    assert.deepEqual(detectarRequisitoTipoVino(null), [])
+    assert.deepEqual(detectarRequisitoTipoVino(undefined), [])
+  })
+})
+
+describe('detectarRequisitoTipoVino — requisitos positivos EN', () => {
+  it('"I want a red" → requiere tinto', () =>
+    assert.ok(detectarRequisitoTipoVino('I want a red').includes('tinto')))
+
+  it('"give me a white" → requiere blanco', () =>
+    assert.ok(detectarRequisitoTipoVino('give me a white').includes('blanco')))
+
+  it('"i prefer a sparkling" → requiere espumoso', () =>
+    assert.ok(detectarRequisitoTipoVino('i prefer a sparkling').includes('espumoso')))
+
+  it('"bring me a rosé" → requiere rosado', () =>
+    assert.ok(detectarRequisitoTipoVino("bring me a rosé").includes('rosado')))
+})
+
+describe('detectarRequisitoTipoVino — no confunde preferencias suaves', () => {
+  it('"algo fresquito" → no requiere nada', () =>
+    assert.deepEqual(detectarRequisitoTipoVino('algo fresquito'), []))
+
+  it('"prefiero tintos" (sin artículo, vago) → requiere tinto', () =>
+    assert.ok(detectarRequisitoTipoVino('prefiero tintos').includes('tinto')))
+
+  it('"algo con más cuerpo" → no requiere nada', () =>
+    assert.deepEqual(detectarRequisitoTipoVino('algo con más cuerpo'), []))
 })
 
 // ── aplicarFiltrosVoz (pipeline completo) ────────────────────────────────────

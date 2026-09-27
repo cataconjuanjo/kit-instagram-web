@@ -12,7 +12,8 @@ import { limpiarMarcadorPerfiles } from '../../lib/wineProfileTags'
 import {
   limpiarMencionesTemporales, limpiarTagsInternos, limpiarNotasDe,
   filtrarPalabrasProhibidasPost, asegurarMayusculas, aplicarFiltrosVoz,
-  extraerTechoPrecio, formatearNotaClienteBloque, detectarExclusionTipoVino,
+  extraerTechoPrecio, formatearNotaClienteBloque,
+  detectarExclusionTipoVino, detectarRequisitoTipoVino,
 } from '../../lib/textFilters.mjs'
 import { candidatosUnicos, seleccionarVinosConRoles, SCORE_MINIMO_RECOMENDACION } from '../../lib/wineSelection.mjs'
 
@@ -570,6 +571,7 @@ export async function POST(request) {
 
     // Hard constraints extracted from nota_cliente — applied before the motor runs
     const exclusionTipo = detectarExclusionTipoVino(notaCliente)
+    const requisitoTipo = detectarRequisitoTipoVino(notaCliente)
     const techoPrecioGlobal = extraerTechoPrecio(notaCliente)
 
     const [{ data: restaurante }, { data: vinosData }, { data: platos }] = await Promise.all([
@@ -627,21 +629,39 @@ export async function POST(request) {
     const esModoPlatosParaVino = !esSeguimiento && !['mesa', 'plato', 'quiz'].includes(modo)
 
     // ── Filtros duros antes del motor (nota_cliente) ─────────────────────────
-    // Exclusión de tipo: "que no sea blanco", "sin tinto", "no white", etc.
-    // Se filtra aquí para que el motor, Goldstein, el grafo y Claude solo vean
-    // los tipos permitidos — no es un matiz de redacción, es un filtro de candidatos.
+    // Los dos filtros (exclusión + requisito) corren ANTES de Goldstein, el motor
+    // estructural y el grafo de Chartier — no son matices de redacción, son
+    // restricciones de candidatos que afectan a la lista que ve Claude.
     let exclusionSinSalida = false
+
+    // A) Exclusión negativa: "que no sea blanco", "sin tinto", "no white", etc.
     if (exclusionTipo.length > 0) {
       const filtrado = vinosRespuesta.filter(v => !exclusionTipo.includes(normalizarTexto(v.tipo || '')))
       if (filtrado.length >= 1) {
         vinosRespuesta = filtrado
       } else {
-        // No hay vinos de tipos alternativos: se mantiene la lista completa y se
+        // Toda la carta es del tipo excluido — se mantiene la lista completa y se
         // avisa a Claude para que explique la situación con honestidad.
         exclusionSinSalida = true
       }
     }
-    // Techo de precio: filtra vinosRespuesta cuando ≥2 vinos caben en presupuesto.
+
+    // B) Requisito positivo: "que sea tinto", "quiero un blanco", "I want a red", etc.
+    // Solo aplica si no hay ya una exclusión sin salida y el requisito no contradice
+    // la exclusión activa (p.ej. "que sea tinto" + "exclusionTipo=['tinto']" = imposible).
+    if (requisitoTipo.length > 0 && !exclusionSinSalida) {
+      const tiposPermitidos = requisitoTipo.filter(t => !exclusionTipo.includes(t))
+      if (tiposPermitidos.length > 0) {
+        const filtradoReq = vinosRespuesta.filter(v => tiposPermitidos.includes(normalizarTexto(v.tipo || '')))
+        if (filtradoReq.length >= 1) {
+          vinosRespuesta = filtradoReq
+        }
+        // Si no hay vinos del tipo pedido, no filtramos — Claude explicará con honestidad
+        // (bloqueExclusionSinSalida no aplica aquí; el prompt notaClienteBloque lo gestiona)
+      }
+    }
+
+    // C) Techo de precio: filtra vinosRespuesta cuando ≥2 vinos caben en presupuesto.
     // Esto cierra el gap del fallback (cuando no hay roles asignados Claude ve solo
     // vinos dentro de presupuesto en el system prompt).
     if (techoPrecioGlobal !== null && !exclusionSinSalida) {

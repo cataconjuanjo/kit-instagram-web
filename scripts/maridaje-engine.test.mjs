@@ -11,12 +11,14 @@
  *  (f) 2 candidatos → máximo 2 vinos en la selección final
  *  (g) contextoDesdeCategoria — mapeo de categoria DB
  *  (h) exclusión dura por tipo (nota_cliente) — filtro ANTES del motor
+ *  (i) requisito positivo de tipo — "que sea tinto" solo muestra tintos
+ *  (j) test contrastivo — "que sea tinto" vs "sin nota" → IDs distintos
  */
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { analizarMaridaje, contextoMaridaje, contextoDesdeCategoria } from '../app/lib/maridajeEngine.js'
 import { seleccionarVinosConRoles, SCORE_MINIMO_RECOMENDACION } from '../app/lib/wineSelection.mjs'
-import { detectarExclusionTipoVino } from '../app/lib/textFilters.mjs'
+import { detectarExclusionTipoVino, detectarRequisitoTipoVino } from '../app/lib/textFilters.mjs'
 
 // ── Mock wines ────────────────────────────────────────────────────────────────
 // minimal fields: id, nombre, tipo, precio_botella, uva, notas_cata
@@ -240,5 +242,90 @@ describe('(h) exclusión dura por tipo — filtro antes del motor', () => {
   it('"algo fresquito" → no excluye ningún tipo (preferencia suave)', () => {
     const exclusion = detectarExclusionTipoVino('algo fresquito')
     assert.deepEqual(exclusion, [], `preferencia suave no debe excluir nada. Obtenido: ${exclusion}`)
+  })
+})
+
+// ── (i) Requisito positivo de tipo ───────────────────────────────────────────
+describe('(i) requisito positivo — "que sea tinto" solo muestra tintos', () => {
+  it('"que sea tinto" + ensaladilla → solo tintos en candidatos', () => {
+    const requisito = detectarRequisitoTipoVino('que sea tinto')
+    assert.ok(requisito.includes('tinto'), `debe requerir tinto. Obtenido: ${requisito}`)
+    // Simular el filtro positivo de route.js
+    const vinosFiltrados = MOCK_WINES.filter(v => requisito.includes(v.tipo))
+    const { candidatos } = analizarMaridaje('Ensaladilla rusa', vinosFiltrados)
+    const noBlancos = candidatos.filter(c => c.vino.tipo !== 'tinto')
+    assert.equal(
+      noBlancos.length,
+      0,
+      `Solo deben aparecer tintos. Candidatos: ${candidatos.map(c => `${c.vino.nombre}(${c.vino.tipo})`).join(', ')}`
+    )
+  })
+
+  it('"quiero un blanco" → solo blancos', () => {
+    const requisito = detectarRequisitoTipoVino('quiero un blanco')
+    assert.ok(requisito.includes('blanco'), `debe requerir blanco. Obtenido: ${requisito}`)
+    const vinosFiltrados = MOCK_WINES.filter(v => requisito.includes(v.tipo))
+    assert.ok(vinosFiltrados.length >= 1, 'debe haber al menos un blanco en MOCK_WINES')
+    const { candidatos } = analizarMaridaje('Rabo de toro', vinosFiltrados)
+    const nosBlancos = candidatos.filter(c => c.vino.tipo !== 'blanco')
+    assert.equal(
+      nosBlancos.length,
+      0,
+      `Solo deben aparecer blancos. Candidatos: ${candidatos.map(c => `${c.vino.nombre}(${c.vino.tipo})`).join(', ')}`
+    )
+  })
+})
+
+// ── (j) Test contrastivo: mismo plato, restricciones contrarias → IDs distintos
+describe('(j) test contrastivo — restricciones contrarias dan vinos distintos', () => {
+  it('"Ensaladilla rusa": "que no sea blanco" vs sin nota → candidatos diferentes', () => {
+    // Sin nota: el motor elige libremente (probablemente blancos para ensaladilla)
+    const { candidatos: sinNota } = analizarMaridaje('Ensaladilla rusa', MOCK_WINES)
+    const idsSinNota = new Set(sinNota.map(c => c.vino.id))
+
+    // Con "que no sea blanco": filtrar blancos primero
+    const exclusion = detectarExclusionTipoVino('que no sea blanco')
+    const vinosSinBlancos = MOCK_WINES.filter(v => !exclusion.includes(v.tipo))
+    const { candidatos: sinBlancos } = analizarMaridaje('Ensaladilla rusa', vinosSinBlancos)
+    const idsSinBlancos = new Set(sinBlancos.map(c => c.vino.id))
+
+    // Deben diferir: si fueran iguales, el filtro no sirve
+    const sonIdenticos = idsSinNota.size === idsSinBlancos.size &&
+      [...idsSinNota].every(id => idsSinBlancos.has(id))
+    assert.ok(
+      !sonIdenticos,
+      `"que no sea blanco" debe cambiar la selección. Sin nota: [${[...idsSinNota].join(',')}], sin blancos: [${[...idsSinBlancos].join(',')}]`
+    )
+  })
+
+  it('"que sea tinto" vs "que no sea blanco" → candidatos distintos o iguales por lógica, NO idénticos a sin nota', () => {
+    // "que sea tinto": solo tintos
+    const requisito = detectarRequisitoTipoVino('que sea tinto')
+    const vinosSoloTintos = MOCK_WINES.filter(v => requisito.includes(v.tipo))
+    const { candidatos: soloTintos } = analizarMaridaje('Ensaladilla rusa', vinosSoloTintos)
+    const idsSoloTintos = new Set(soloTintos.map(c => c.vino.id))
+
+    // Todos los candidatos de "que sea tinto" deben ser tintos
+    for (const c of soloTintos) {
+      assert.equal(
+        c.vino.tipo,
+        'tinto',
+        `Todos los candidatos deben ser tinto. Encontrado: ${c.vino.nombre}(${c.vino.tipo})`
+      )
+    }
+
+    // La selección sin nota (libre) para ensaladilla probablemente incluye blancos
+    const { candidatos: sinNota2 } = analizarMaridaje('Ensaladilla rusa', MOCK_WINES)
+    const tieneBlancoSinNota = sinNota2.some(c => c.vino.tipo === 'blanco')
+    // Si el motor libre da blancos, "que sea tinto" debe dar set diferente
+    if (tieneBlancoSinNota) {
+      const idsSinNota2 = new Set(sinNota2.map(c => c.vino.id))
+      const identicos = idsSoloTintos.size === idsSinNota2.size &&
+        [...idsSoloTintos].every(id => idsSinNota2.has(id))
+      assert.ok(
+        !identicos,
+        `"que sea tinto" debe dar candidatos distintos cuando el motor libre elige blancos`
+      )
+    }
   })
 })
