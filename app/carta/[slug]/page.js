@@ -192,7 +192,7 @@ const t = {
     arcoPlato: 'Una copa distinta por plato',
     recomendame: 'Recomiéndame',
     porPlatos: 'Por platos',
-    duelo: 'Comparar estilos',
+    duelo: 'Comparar dos vinos',
     dueloSub: 'Solo etiquetas. Sin nombres ni precios.',
     dueloEmpezar: 'Empezar duelo →',
     dueloHint: 'Toca la que más te llame',
@@ -209,6 +209,7 @@ const t = {
     pedirRecomendacion: 'Pedir recomendación',
     consultando: 'Consultando...',
     nuevaConsulta: 'Nueva consulta',
+    consultaLibrePlaceholder: 'Opcional: ¿alguna preferencia? Ej: sin vinos con mucha madera, algo diferente...',
     comparar: 'Comparar',
     vinoSingular: 'vino',
     vinosPlural: 'vinos',
@@ -283,7 +284,7 @@ const t = {
     arcoPlato: 'A different glass per dish',
     recomendame: 'Recommend me',
     porPlatos: 'By dish',
-    duelo: 'Compare styles',
+    duelo: 'Compare two wines',
     dueloSub: 'Labels only. No names or prices.',
     dueloEmpezar: 'Start duel →',
     dueloHint: 'Tap the one you prefer',
@@ -300,6 +301,7 @@ const t = {
     pedirRecomendacion: 'Get recommendation',
     consultando: 'Consulting...',
     nuevaConsulta: 'New query',
+    consultaLibrePlaceholder: 'Optional: any preference? E.g. no heavy oak, something unusual...',
     comparar: 'Compare',
     vinoSingular: 'wine',
     vinosPlural: 'wines',
@@ -733,6 +735,7 @@ export default function CartaPublica() {
   const [modoSommelier, setModoSommelier] = useState('platos')
   const [vinoMandatoCliente, setVinoMandatoCliente] = useState(null)
   const [busquedaVinoSommelier, setBusquedaVinoSommelier] = useState('')
+  const [consultaLibre, setConsultaLibre] = useState('')
   const [pasoQuiz, setPasoQuiz] = useState(1)
   const [respuestasQuiz, setRespuestasQuiz] = useState({})
   const [respuestaQuiz, setRespuestaQuiz] = useState('')
@@ -1006,6 +1009,7 @@ export default function CartaPublica() {
     try {
       const res = await consultarMaridaje({
         consulta: consultaPlatos,
+        nota_cliente: consultaLibre.trim().slice(0, 200),
         modo: 'mesa',
         modoMesa: modosTexto[modoMesa],
         restaurante_id: restaurante.id,
@@ -2480,6 +2484,20 @@ export default function CartaPublica() {
               ))}
             </div>
 
+            <textarea
+              value={consultaLibre}
+              onChange={e => setConsultaLibre(e.target.value)}
+              placeholder={i.consultaLibrePlaceholder}
+              maxLength={200}
+              rows={2}
+              style={{
+                width: '100%', boxSizing: 'border-box', marginTop: 12,
+                padding: '10px 12px', border: '1px solid #e8e1d5', borderRadius: 8,
+                fontSize: 14, fontFamily: 'inherit', color: '#333', background: '#fafaf8',
+                resize: 'none', outline: 'none',
+              }}
+            />
+
             <button
               className={styles.recommendButton}
               onClick={preguntarSommelier}
@@ -2499,7 +2517,7 @@ export default function CartaPublica() {
 
                 <div className={styles.answerActions}>
                   <button type="button" onClick={() => setVista('carta')}>{i.carta}</button>
-                  <button type="button" onClick={() => { setRespuesta(''); setPlatosSeleccionados([]); setHistorialSommelier([]) }}>
+                  <button type="button" onClick={() => { setRespuesta(''); setPlatosSeleccionados([]); setHistorialSommelier([]); setConsultaLibre('') }}>
                     {i.nuevaConsulta}
                   </button>
                 </div>

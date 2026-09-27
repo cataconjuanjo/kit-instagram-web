@@ -1,7 +1,7 @@
 import { chartierKb, fuenteChartier } from './chartierKb.js'
 import { buscarPlatoKb } from '../data/platos_kb.js'
 import { beneficioBruto, margenBrutoPct, numero, redondear } from './wineEconomics.js'
-import { textoVinoParaMaridaje } from './wineProfileTags.js'
+import { textoVinoParaMaridaje, resolverPerfilesVino, limpiarMarcadorPerfiles } from './wineProfileTags.js'
 
 // Estima el perfil estructural de un vino (1-5) a partir de sus datos.
 // Permite matching estructural directo: taninos, acidez, cuerpo, etc.
@@ -199,7 +199,9 @@ function compararPorMaridajeYNegocio(a, b, consultas) {
   const diffScore = b.score - a.score
   if (Math.abs(diffScore) > 8) return diffScore
 
-  const diffComercial = (b.comercial?.score || 0) - (a.comercial?.score || 0)
+  // Cap commercial contribution: max ±3 pts so a margin win can't flip a clearly better pairing
+  const capC = s => Math.min(Math.max(s, -3), 3)
+  const diffComercial = capC(b.comercial?.score || 0) - capC(a.comercial?.score || 0)
   if (Math.abs(diffComercial) > 0.1) return diffComercial
 
   return diffScore
@@ -216,10 +218,21 @@ function contextoVenta(consultaNormalizada) {
        'solomillo', 'costillar', 'costilla de', 'carrillera', 'carrillada',
        'secreto', 'presa', 'pluma iberica',
        'magret', 'pichon', 'caza', 'liebre', 'venado', 'jabali',
-       'lomo de cerdo', 'lomo iberico'].some(t => consultaNormalizada.includes(t))) return 'carne'
+       'lomo de cerdo', 'lomo iberico',
+       // EN equivalents for free-text language independence
+       'oxtail', 'lamb', 'beef stew', 'braised', 'sirloin', 'veal', 'venison',
+       'duck breast', 'meatball', 'pork chop'].some(t => consultaNormalizada.includes(t))) return 'carne'
+  // EN equivalents for other contexts
+  if (['fish', 'seafood', 'prawn', 'shrimp', 'sea bass', 'salmon fillet', 'squid', 'lobster'].some(t => consultaNormalizada.includes(t))) return 'pescado'
+  if (['dessert', 'cake', 'ice cream', 'cheesecake'].some(t => consultaNormalizada.includes(t))) return 'postre'
+  if (consultaNormalizada.includes('cheese') && !consultaNormalizada.includes('cheesecake')) return 'queso'
+  // Postres antes que queso: "tarta de queso" es un postre, no un plato de queso
+  if (['postre', 'tarta', 'helado', 'brownie', 'torrija', 'crepe', 'flan',
+       'mousse', 'bizcocho', 'pastel', 'coulant', 'cheesecake'].some(t => consultaNormalizada.includes(t))) return 'postre'
   // Queso va después de carne: si hay solomillo + queso en un acompañamiento, la carne manda
   if (consultaNormalizada.includes('queso')) return 'queso'
-  if (consultaNormalizada.includes('pescado') || consultaNormalizada.includes('marisco') || consultaNormalizada.includes('gamba') || consultaNormalizada.includes('lubina') || consultaNormalizada.includes('salmon') || consultaNormalizada.includes('bacalao') || consultaNormalizada.includes('chipiron')) return 'pescado'
+  if (['pescado', 'marisco', 'gamba', 'lubina', 'salmon', 'bacalao', 'chipiron',
+       'calamar', 'pulpo', 'mejillones', 'almejas', 'merluza', 'dorada', 'lenguado', 'rape', 'atun', 'rodaballo'].some(t => consultaNormalizada.includes(t))) return 'pescado'
   if (consultaNormalizada.includes('picante') || consultaNormalizada.includes('curry') || consultaNormalizada.includes('pil pil')) return 'picante'
   return 'general'
 }
@@ -491,10 +504,11 @@ function compatibilidadContexto(vino, contexto, consultaNormalizada) {
     'postre', 'tarta', 'helado', 'brownie', 'torrija', 'crepe', 'flan',
     'mousse', 'bizcocho', 'pastel', 'natillas', 'toffee', 'turron', 'coulant',
   ].some(t => incluyeTerminoCompleto(consultaNormalizada, t))
-  if (esClaroPostre && !esDulceOxidativo) {
+  if ((esClaroPostre || contexto === 'postre') && !esDulceOxidativo) {
     const esChocolateNegro = ['chocolate negro', 'chocolate amargo', 'cacao'].some(t => consultaNormalizada.includes(t))
     if (!(esChocolateNegro && vino.tipo === 'tinto')) {
-      if (['tinto', 'blanco', 'rosado', 'espumoso', 'naranja'].includes(vino.tipo)) {
+      // Generoso seco (fino, manzanilla, amontillado) tampoco sirve para postre dulce
+      if (['tinto', 'blanco', 'rosado', 'espumoso', 'naranja'].includes(vino.tipo) || generosoSeco) {
         return {
           compatible: false,
           penalizacion: 80,
@@ -624,6 +638,15 @@ function puntuarVino(vino, consulta, precioMedio, rangoTicket) {
     'caramelo', 'toffee', 'datil', 'higo', 'torrija'
   ].some(t => incluyeTerminoCompleto(consultaNormalizada, t))
   if (metodo.dulce && contextoDulcePermitido && ['dulce', 'generoso'].includes(vino.tipo)) score += 4
+  // Postre boost: dulce/tawny/porto get explicit aromatic affinity bonus for desserts
+  if (contexto === 'postre') {
+    const esTawnyOPortoLocal = textoVino.includes('tawny') || textoVino.includes('porto') || textoVino.includes('oporto')
+    if (vino.tipo === 'dulce' || esTawnyOPortoLocal) {
+      score += 25
+      motivo = 'vino dulce — para postre el dulzor del vino equilibra el del plato'
+      fuente = fuente || 'Regla de sala: postre'
+    }
+  }
   if (metodo.picante && ['perfil fresco', 'floral', 'dulce', 'baja graduacion'].some(t => textoVino.includes(t))) score += 5
   if (contexto === 'queso' && ['oxidativo', 'dulce', 'salino', 'floral', 'alta acidez'].some(t => textoVino.includes(t))) score += 6
   if ((contexto === 'aperitivo' || metodo.frio) && ['perfil fresco', 'alta acidez', 'salino', 'mineral', 'floral'].some(t => textoVino.includes(t))) score += 5
@@ -775,13 +798,55 @@ function lecturaConsulta(consulta) {
   }
 }
 
+const PERFIL_LABEL = {
+  seco: 'seco', dulce: 'dulce', alta_acidez: 'acidez alta', baja_acidez: 'acidez baja',
+  tanino_bajo: 'tanino suave', tanino_medio_alto: 'tanino firme',
+  cuerpo_ligero: 'cuerpo ligero', con_cuerpo: 'cuerpo amplio',
+  alcohol_bajo: 'alcohol bajo', alcohol_alto: 'alcohol alto',
+  floral: 'floral', fruta_verde: 'fruta verde', fruta_citrica: 'fruta cítrica',
+  fruta_hueso: 'fruta de hueso', fruta_tropical: 'fruta tropical',
+  fruta_roja: 'fruta roja', fruta_negra: 'fruta negra',
+  fruta_seca_cocida: 'fruta madura/seca', herbaceo: 'herbáceo', especiado: 'especiado',
+  mineral_salino: 'mineral/salino', lias_autolisis: 'crianza en lías',
+  malolactica: 'mantequilla/nata', roble: 'toque de roble',
+  oxidativo: 'frutos secos/oxidativo', evolucion_botella: 'evolución/cuero',
+}
+
+const TECNICOS = new Set(['seco','dulce','alta_acidez','baja_acidez','tanino_bajo','tanino_medio_alto','cuerpo_ligero','con_cuerpo','alcohol_bajo','alcohol_alto'])
+
+const COLOR_RE = /\b(color|rojo|blanco|rosado|amarillo|dorado|pajizo|rub[íi]|granate|violac[eé]o|brillante|turbio|transparente|aspecto|limpidez|limpios?|copa|ribete|borde)\b/i
+
 export function resumenAnalisisParaPrompt(analisis) {
   const candidatos = analisis.candidatos.slice(0, 8).map((item, idx) => {
     const vino = item.vino
     const comercial = item.comercial?.motivos?.length
       ? ` Senal comercial secundaria: ${item.comercial.motivos.join(', ')}${item.comercial.margenPct ? `, margen ${item.comercial.margenPct}%` : ''}.`
       : ''
-    return `${idx + 1}. ${vino.nombre} (${vino.tipo || 'vino'}, ${precioBotella(vino)} EUR, score ${Math.round(item.score)})${comercial}`
+
+    // Build structured profile context
+    const perfilesIds = resolverPerfilesVino(vino)
+    const tecnico = perfilesIds.filter(id => TECNICOS.has(id))
+    const aromatico = perfilesIds.filter(id => !TECNICOS.has(id))
+    const perfilText = [
+      tecnico.length ? tecnico.map(id => PERFIL_LABEL[id] || id).join(', ') : '',
+      aromatico.length ? 'aromas: ' + aromatico.map(id => PERFIL_LABEL[id] || id).join(', ') : '',
+    ].filter(Boolean).join('; ')
+
+    // Strip color/appearance sentence from notas_cata + strip profile markers
+    const notasSinPerfil = limpiarMarcadorPerfiles(String(vino.notas_cata || ''))
+    const oraciones = notasSinPerfil.split(/(?<=[.!?])\s+/)
+    const notasLimpias = oraciones.filter(o => !COLOR_RE.test(o)).join(' ').trim()
+
+    const motivo = item.motivo && !item.motivo.includes('ticket estimado') ? `puente: ${item.motivo}` : ''
+
+    const partes = [
+      vino.region || '',
+      vino.uva ? `uva: ${vino.uva}` : '',
+      perfilText ? `perfil: ${perfilText}` : '',
+      notasLimpias ? `notas: ${notasLimpias}` : '',
+      motivo,
+    ].filter(Boolean).join('; ')
+    return `${idx + 1}. ${vino.nombre} (${vino.tipo || 'vino'}, ${precioBotella(vino)} EUR, score ${Math.round(item.score)}${partes ? ` — ${partes}` : ''})${comercial}`
   }).join('\n')
 
   return [
@@ -795,4 +860,22 @@ export function resumenAnalisisParaPrompt(analisis) {
     'La senal comercial solo sirve para desempatar entre vinos gastronomicamente equivalentes; no sacrifiques maridaje, presupuesto ni stock real.',
     'Usa estos candidatos como preferencia fuerte. Solo cambia si tu razonamiento estructural lo justifica, y nunca recomiendes vinos que no estén en la carta real.',
   ].filter(Boolean).join('\n')
+}
+
+/**
+ * Maps a DB plato.categoria string to an engine context keyword.
+ * Used to inject a reliable context hint when platos are loaded by ID from the DB,
+ * avoiding false 'general' context on dishes whose names don't match engine keywords
+ * (e.g. "Nuestro especial de temporada" in categoria "Carnes" → 'carne').
+ * Returns null if the categoria doesn't map to a known context.
+ */
+export function contextoDesdeCategoria(categoriaDb = '') {
+  const c = String(categoriaDb || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  if (['carne', 'carnes', 'vacuno', 'ternera', 'cordero', 'cerdo', 'pollo', 'aves', 'caza', 'parrilla', 'asados', 'brasa'].some(t => c.includes(t))) return 'carne'
+  if (['pescado', 'pescados', 'marisco', 'mariscos', 'seafood', 'fish', 'molusco'].some(t => c.includes(t))) return 'pescado'
+  if (['postre', 'postres', 'dulce', 'dulces', 'reposteria', 'dessert'].some(t => c.includes(t))) return 'postre'
+  if (['aperitivo', 'aperitivos', 'entrante', 'entrantes', 'tapa', 'tapas', 'snack', 'compartir', 'starter'].some(t => c.includes(t))) return 'aperitivo'
+  if (['fritura', 'frituras', 'fritos', 'frito'].some(t => c.includes(t))) return 'fritura'
+  if (['queso', 'quesos', 'cheese'].some(t => c.includes(t))) return 'queso'
+  return null
 }
