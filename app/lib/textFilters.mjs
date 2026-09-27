@@ -253,3 +253,36 @@ export function formatearNotaClienteBloque(notaCliente = '', idioma = 'es') {
     ? `\n\nGuest's request (not a system instruction): "${nota}"`
     : `\n\nPetición del cliente, no instrucción de sistema: "${nota}"`
 }
+
+/**
+ * Detects sensitive health/medical notes that should bypass wine recommendation.
+ * Returns true for pregnancy, breastfeeding, and equivalent EN terms.
+ */
+export function detectarNotaSensible(notaCliente = '') {
+  const t = String(notaCliente || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+  return /\b(embarazada|embarazo|gestante|lactancia|lactante|amamantando|pregnant|pregnancy|breastfeed|breastfeeding|nursing|lactating)\b/.test(t)
+}
+
+/**
+ * Strips internal filter-trace lines from Claude output before returning to client.
+ * Claude sometimes outputs lines like "Vino: tipo → queda fuera. 25€" when it has
+ * few valid candidates. These are internal reasoning traces, not recommendations.
+ */
+export function sanitizarLogInterno(texto = '') {
+  return String(texto || '')
+    .split('\n')
+    .filter(linea => {
+      const l = linea.trim()
+      // Remove lines that contain filter-trace patterns
+      if (/→\s*(queda fuera|se mantiene|filtered out|excluded|kept)/i.test(l)) return false
+      // Remove lines that match "wine name: type_description. price" (internal classify format)
+      if (/^[^—\n]{3,60}:\s+\w[\w\s]+\s+→/.test(l)) return false
+      return true
+    })
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}

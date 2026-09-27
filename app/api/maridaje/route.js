@@ -14,6 +14,7 @@ import {
   filtrarPalabrasProhibidasPost, asegurarMayusculas, aplicarFiltrosVoz,
   extraerTechoPrecio, formatearNotaClienteBloque,
   detectarExclusionTipoVino, detectarRequisitoTipoVino,
+  detectarNotaSensible, sanitizarLogInterno,
 } from '../../lib/textFilters.mjs'
 import { candidatosUnicos, seleccionarVinosConRoles, SCORE_MINIMO_RECOMENDACION } from '../../lib/wineSelection.mjs'
 
@@ -184,7 +185,9 @@ function vinoAlInicioDeRecomendacion(linea, vinos) {
   return (vinos || []).find(vino => {
     const nombre = normalizarTexto(vino.nombre || '')
     if (nombre.length < 4 || !texto.startsWith(nombre)) return false
-    return /^[-–—:]\s*\S/.test(texto.slice(nombre.length).trimStart())
+    // Only accept role separators — dash/em-dash. Colon alone (": tipo → queda fuera")
+    // is the internal trace format and must NOT be treated as a valid recommendation.
+    return /^[-–—]\s*\S/.test(texto.slice(nombre.length).trimStart())
   })
 }
 
@@ -250,7 +253,7 @@ function detectarSubtipoGeneroso(vino, idioma = 'es') {
     : 'un generoso seco que aguanta sal y grasa sin cansar'
 }
 
-function lineaFallback(consulta, item, idioma = 'es', soloCopa = false) {
+function lineaFallback(consulta, item, idioma = 'es', soloCopa = false, index = 0) {
   const vino = item.vino
   const precio = soloCopa
     ? (Number(vino.precio_copa) ? `${Number(vino.precio_copa)}€/copa` : '')
@@ -258,25 +261,35 @@ function lineaFallback(consulta, item, idioma = 'es', soloCopa = false) {
   const tipo = String(vino.tipo || '').toLowerCase()
   const plato = extractDishName(consulta, idioma)
   const esPostre = /postre|tarta|helad|browni|chocolat|flan|natill|pannacotta|arrozcon|pudding|cheesecake|bizcocho|toffee|crepe/i.test(String(consulta).toLowerCase())
+  const region = vino.region ? (idioma === 'en' ? `from ${vino.region}` : `de ${vino.region}`) : ''
 
-  const motivo = idioma === 'en' ? ({
-    tinto:    `a red that pairs well with ${plato}`,
-    blanco:   `a white that fits ${plato}`,
-    rosado:   `a fresh rosé alongside ${plato}`,
-    espumoso: `a sparkling that brings freshness to ${plato}`,
-    generoso: detectarSubtipoGeneroso(vino, 'en'),
-    dulce:    esPostre ? `a sweet option to accompany ${plato}` : 'a sweet fortified to close the meal',
-  }[tipo] || `a good option with ${plato}`)
-  : ({
-    tinto:    `un tinto que acompaña bien ${plato}`,
-    blanco:   `un blanco que va bien con ${plato}`,
-    rosado:   `un rosado fresco junto a ${plato}`,
-    espumoso: `un espumoso que aporta frescura a ${plato}`,
-    generoso: detectarSubtipoGeneroso(vino, 'es'),
-    dulce:    esPostre ? `una opción dulce para acompañar ${plato}` : 'una opción dulce para cerrar la comida',
-  }[tipo] || `una buena opción con ${plato}`)
+  // Three distinct templates by position to avoid identical lines
+  if (idioma === 'en') {
+    const base = {
+      tinto:    [`a red that pairs well with ${plato}`, `a red${region ? ' ' + region : ''} to accompany ${plato}`, `an accessible red for ${plato}`],
+      blanco:   [`a white that fits ${plato}`, `a white${region ? ' ' + region : ''} to go with ${plato}`, `a fresh white for ${plato}`],
+      rosado:   [`a fresh rosé alongside ${plato}`, `a rosé that balances ${plato}`, `a light rosé for ${plato}`],
+      espumoso: [`a sparkling that brings freshness to ${plato}`, `a fizz to liven up ${plato}`, `a sparkling for ${plato}`],
+      generoso: [detectarSubtipoGeneroso(vino, 'en'), `a fortified to go with ${plato}`, `a classic pairing for ${plato}`],
+      dulce:    esPostre
+        ? [`a sweet option to accompany ${plato}`, `a dessert wine for ${plato}`, `a sweet finish with ${plato}`]
+        : [`a sweet fortified to close the meal`, `a sweet wine to finish on`, `a sweet option to round off the meal`],
+    }[tipo] || [`a good option with ${plato}`, `another solid choice with ${plato}`, `a reliable pairing for ${plato}`]
+    return `${vino.nombre} — It's ${base[Math.min(index, 2)]}. ${precio}`.trim()
+  }
 
-  return `${vino.nombre} — ${idioma === 'en' ? "It's" : 'Es'} ${motivo}. ${precio}`.trim()
+  const base = {
+    tinto:    [`un tinto que acompaña bien ${plato}`, `un tinto${region ? ' ' + region : ''} para acompañar ${plato}`, `una opción de tinto para ${plato}`],
+    blanco:   [`un blanco que va bien con ${plato}`, `un blanco${region ? ' ' + region : ''} para ${plato}`, `una opción fresca para ${plato}`],
+    rosado:   [`un rosado fresco junto a ${plato}`, `un rosado que equilibra ${plato}`, `un rosado ligero para ${plato}`],
+    espumoso: [`un espumoso que aporta frescura a ${plato}`, `un espumoso para animar ${plato}`, `un espumoso para ${plato}`],
+    generoso: [detectarSubtipoGeneroso(vino, 'es'), `un generoso para acompañar ${plato}`, `un maridaje clásico para ${plato}`],
+    dulce:    esPostre
+      ? [`una opción dulce para acompañar ${plato}`, `un dulce que va con ${plato}`, `un vino dulce para ${plato}`]
+      : [`una opción dulce para cerrar la comida`, `un dulce para terminar`, `una opción dulce de cierre`],
+  }[tipo] || [`una buena opción con ${plato}`, `otra opción sólida con ${plato}`, `una opción fiable para ${plato}`]
+
+  return `${vino.nombre} — Es ${base[Math.min(index, 2)]}. ${precio}`.trim()
 }
 
 
@@ -297,7 +310,7 @@ function candidatoDesdeGrafo(item) {
 }
 
 function fallbackDesdeMotor(candidatos = [], consulta = '', idioma = 'es', soloCopa = false) {
-  const lineas = candidatosUnicos(candidatos, 3).map(item => lineaFallback(consulta, item, idioma, soloCopa))
+  const lineas = candidatosUnicos(candidatos, 3).map((item, idx) => lineaFallback(consulta, item, idioma, soloCopa, idx))
   if (lineas.length) return lineas.join('\n\n')
   return idioma === 'en'
     ? 'I cannot find a reliable pairing with the available wine list.'
@@ -361,6 +374,7 @@ Voice — this is critical:
 - ANTI-MULETILLA: the 3 sentences cannot share the same main verb or the same structure. If two wines work with the dish's fat, say it differently each time.
 - UPPERCASE: every sentence starts with a capital letter after the role label.
 - When 3 options: each sentence must be different — forbidden to repeat the same phrasing for two wines.
+- NEVER output filtering traces or explain which wines are "filtered out" or "kept". That is internal logic. If you cannot honestly recommend anything, say so in one waiter sentence ("I don't have a red that truly works here, but if you insist on avoiding white, X holds up best"). Never use "→", "filtered out", "kept", or the format "name: type → action".
 - ${REGLA_CONTEXTO_TEMPORAL_EN}
 
 FORMAT — exactly this, nothing more:
@@ -411,6 +425,7 @@ Voz — esto es crítico:
 - ANTI-MULETILLA: las 3 frases no pueden compartir el mismo verbo principal ni la misma estructura. Si dos vinos funcionan con la grasa del plato, exprésalo de forma distinta cada vez.
 - MAYÚSCULA: cada frase empieza siempre con letra mayúscula después del rol.
 - Cuando haya 3 opciones: cada frase debe diferenciarse de las demás — prohibido repetir el mismo texto para dos vinos distintos.
+- NUNCA hagas trazas de filtrado ni expliques qué vinos "quedan fuera" o "se mantienen". Eso es lógica interna. Si no puedes recomendar algo con honestidad, exprésalo en una sola frase de camarero ("No tengo un tinto que encaje bien con este plato, pero si insistes en evitar el blanco, el que mejor resiste es X"). Nunca uses "→", "queda fuera", "se mantiene" ni el formato "nombre: tipo → acción".
 - ${REGLA_CONTEXTO_TEMPORAL_ES}
 
 FORMATO — exactamente esto, nada más:
@@ -568,6 +583,25 @@ export async function POST(request) {
       return Response.json({ error: 'Consulta demasiado larga.' }, { status: 400 })
     }
     const notaCliente = String(nota_cliente || '').trim().slice(0, 200)
+
+    // ── Detección de nota sensible (embarazo/lactancia) ─────────────────────
+    // Early return: no consume cuota IA ni genera recomendación de vino.
+    if (detectarNotaSensible(notaCliente)) {
+      const mensajeNeutro = idioma === 'en'
+        ? 'Given what you mentioned, it\'s best to check with the team about non-alcoholic options — they\'ll be happy to help.'
+        : 'Por el contexto que comentas, mejor consulta con el equipo sobre opciones sin alcohol. Estarán encantados de ayudarte.'
+      const encoder = new TextEncoder()
+      const readable = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: mensajeNeutro })}\n\n`))
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, prefill: '' })}\n\n`))
+          controller.close()
+        },
+      })
+      return new Response(readable, {
+        headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' },
+      })
+    }
 
     // Hard constraints extracted from nota_cliente — applied before the motor runs
     const exclusionTipo = detectarExclusionTipoVino(notaCliente)
@@ -968,11 +1002,15 @@ export async function POST(request) {
       },
     })
 
-    const respuestaClaude = limpiarTagsInternos(msg.content?.[0]?.text || '')
+    const respuestaClaude = sanitizarLogInterno(limpiarTagsInternos(msg.content?.[0]?.text || ''))
     const textoRespuestaBase = (esSeguimiento || esSucesion || esModoPlatosParaVino)
       ? respuestaClaude
       : respuestaSoloConCarta(respuestaClaude, vinosParaClaude, fallbackCandidatos, idioma, soloCopa, consultaInterna)
-    const textoRespuesta = limpiarMencionesTemporales(aplicarFiltrosVoz(textoRespuestaBase))
+    const textoRespuestaNeto = limpiarMencionesTemporales(aplicarFiltrosVoz(textoRespuestaBase))
+    // Safety net: if sanitizer or filters emptied everything, use motor fallback.
+    // Prevents blank SSE response reaching the client under any code path.
+    const textoRespuesta = textoRespuestaNeto.trim()
+      || fallbackDesdeMotor(fallbackCandidatos, consultaInterna, idioma, soloCopa)
 
     // ── Devolver como SSE para que el cliente lo lea igual que antes ──────
     const encoder = new TextEncoder()
