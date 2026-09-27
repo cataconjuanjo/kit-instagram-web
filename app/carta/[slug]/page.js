@@ -2147,7 +2147,7 @@ export default function CartaPublica() {
   )
 
   if (vista === 'sommelier') return (
-    <div className={`${styles.shell} ${mostrarDockSeleccionPlatos ? styles.shellWithSelectionDock : ''} ${claseTipografia}`}>
+    <div className={`${styles.shell} ${claseTipografia}`}>
       {restaurante?.modo_prueba && (
         <PreviewModeBanner
           styles={styles}
@@ -2217,7 +2217,6 @@ export default function CartaPublica() {
                   setInputSeguimiento('')
                   trackArmoniaEvento(restaurante?.id, `armonia_modo_${m.id}`)
                 }}
-                style={modoSommelier === m.id ? { background: colorAcento } : undefined}
                 {...(m.id === 'duelo' ? { 'data-duelo': 'true' } : {})}
               >
                 {m.label}
@@ -2585,18 +2584,6 @@ export default function CartaPublica() {
           )
         })}
       </main>
-
-      {mostrarDockSeleccionPlatos && (
-        <div className={styles.selectionDock}>
-          <div>
-            <strong>{platosSeleccionados.length}</strong>
-            <span>{idioma === 'en' ? 'dishes selected' : platosSeleccionados.length === 1 ? 'plato seleccionado' : 'platos seleccionados'}</span>
-          </div>
-          <button type="button" onClick={irASeleccionSommelier}>
-            {idioma === 'en' ? 'Continue' : 'Continuar'}
-          </button>
-        </div>
-      )}
 
       <BottomNav
         vista={vista}
