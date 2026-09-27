@@ -392,7 +392,19 @@ function fallbackDesdeMotor(candidatos = [], consulta = '', idioma = 'es', soloC
 }
 
 function respuestaSoloConCarta(texto, vinos, fallbackCandidatos, idioma, soloCopa = false, consulta = '') {
-  const lineas = String(texto || '').split(/\n+/).map(linea => linea.trim()).filter(Boolean)
+  // When Claude returns multiple wines on a single line (no \n between them), detect each
+  // wine name + role-separator (—) that appears after a price (€) or sentence-end (.)
+  // and inject a newline before it so the split below can separate them properly.
+  let textoNorm = String(texto || '')
+  for (const vino of (vinos || [])) {
+    if ((vino.nombre || '').length < 4) continue
+    const escaped = vino.nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    textoNorm = textoNorm.replace(
+      new RegExp(`([€.])\\s+(${escaped}\\s*(?:—|–|-)\\s)`, 'gi'),
+      '$1\n$2'
+    )
+  }
+  const lineas = textoNorm.split(/\n+/).map(linea => linea.trim()).filter(Boolean)
   const usadas = new Set()
   const validasOrdenadas = []
   for (const linea of lineas) {
