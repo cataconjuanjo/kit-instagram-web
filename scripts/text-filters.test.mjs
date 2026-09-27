@@ -130,6 +130,55 @@ describe('filtrarPalabrasProhibidasPost', () => {
   it('reemplaza "fondo oscuro" por "fondo"', () => {
     assert.equal(filtrarPalabrasProhibidasPost('un fondo oscuro intenso'), 'un fondo intenso')
   })
+
+  // BUG A — taninos/tannins: palabra técnica prohibida que Claude filtra mal
+  it('"taninos suaves" → "suavidad en boca" (ES)', () => {
+    const r = filtrarPalabrasProhibidasPost('con taninos suaves')
+    assert.ok(!r.toLowerCase().includes('tanino'), `"tanino" no eliminado: "${r}"`)
+    assert.ok(r.includes('suavidad en boca'), `Esperado "suavidad en boca": "${r}"`)
+  })
+
+  it('"tanino suave" singular → "suavidad en boca" (ES)', () => {
+    const r = filtrarPalabrasProhibidasPost('su tanino suave no pelea')
+    assert.ok(!r.toLowerCase().includes('tanino'), `"tanino" no eliminado: "${r}"`)
+  })
+
+  it('"taninos" suelto → "cuerpo" (ES)', () => {
+    const r = filtrarPalabrasProhibidasPost('sus taninos se integran')
+    assert.ok(!r.toLowerCase().includes('tanino'), `"tanino" no eliminado: "${r}"`)
+    assert.ok(r.includes('cuerpo'), `Esperado "cuerpo": "${r}"`)
+  })
+
+  it('"tannins soft" → "softness on the palate" (EN)', () => {
+    const r = filtrarPalabrasProhibidasPost('with tannins soft and round')
+    assert.ok(!r.toLowerCase().includes('tannin'), `"tannin" no eliminado: "${r}"`)
+    assert.ok(r.includes('softness on the palate'), `Esperado "softness on the palate": "${r}"`)
+  })
+
+  it('"tannins" suelto → "body" (EN)', () => {
+    const r = filtrarPalabrasProhibidasPost('its tannins work well')
+    assert.ok(!r.toLowerCase().includes('tannin'), `"tannin" no eliminado: "${r}"`)
+    assert.ok(r.includes('body'), `Esperado "body": "${r}"`)
+  })
+
+  // BUG B — "vino sin alcohol blanco": frase incoherente que Claude mezcla
+  // cuando el cliente pide "nada de blanco" y el pool de candidatos es reducido
+  it('"vino sin alcohol blanco" → "vino blanco" (limpieza BUG B)', () => {
+    const r = filtrarPalabrasProhibidasPost('No tengo un vino sin alcohol blanco que encaje')
+    assert.ok(!r.includes('sin alcohol blanco'), `Frase incoherente no eliminada: "${r}"`)
+    assert.ok(r.includes('vino blanco'), `Esperado "vino blanco": "${r}"`)
+  })
+
+  it('"non-alcoholic white wine" → "white wine" (EN BUG B)', () => {
+    const r = filtrarPalabrasProhibidasPost('I have no non-alcoholic white wine for this')
+    assert.ok(!r.toLowerCase().includes('non-alcoholic white'), `Frase incoherente no eliminada: "${r}"`)
+  })
+
+  // aplicarFiltrosVoz incluye filtrarPalabrasProhibidasPost — verificar que la ruta integrada también limpia
+  it('aplicarFiltrosVoz elimina "taninos suaves" (ruta integrada)', () => {
+    const r = aplicarFiltrosVoz('Syrah — La Syrah con taninos suaves no pelea con la ensaladilla.')
+    assert.ok(!r.toLowerCase().includes('tanino'), `"tanino" sobrevivió a aplicarFiltrosVoz: "${r}"`)
+  })
 })
 
 // ── formatearNotaClienteBloque (injection framing) ───────────────────────────
