@@ -1126,6 +1126,7 @@ export default function AdminKioskoPage() {
   const [ordenDir, setOrdenDir]           = useState('asc')
   const [rendSortField, setRendSortField] = useState('ingresos')
   const [rendSortDir, setRendSortDir]     = useState('desc')
+  const [rendExpandedId, setRendExpandedId] = useState(null)
   const [paginaActual, setPaginaActual]   = useState(1)
   const [porPagina, setPorPagina]         = useState(20)
 
@@ -2919,6 +2920,9 @@ export default function AdminKioskoPage() {
         const vp  = analitica.ventasPorVino
         const tp  = analitica.tendenciaPorVino || {}
         const uva = analitica.ultimaVentaAt || {}
+        const dd  = analitica.ventasDiarias || {}
+        const fmtMadrid = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' })
+        const ayerKey   = fmtMadrid.format(new Date(Date.now() - 86400000))
         const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: '#c03030' }
         const filas = vinosVino
           .filter(v => vp[v.id])
@@ -2944,7 +2948,8 @@ export default function AdminKioskoPage() {
               if (d.toDateString() === ayer.toDateString()) return `ayer ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
               return fmt(d)
             })()
-            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ingresos, margen, categoria, agotado, stock: v.stock ?? null, pvpVal: pvp > 0 ? pvp : null, beneficio, ultimaVentaFecha, ultimaVentaIso, diasSinVender }
+            const ayerUds = (dd[v.id] || {})[ayerKey] || 0
+            return { id: v.id, nombre: v.nombre, bodega: v.bodega, uds, ayerUds, ingresos, margen, categoria, agotado, stock: v.stock ?? null, pvpVal: pvp > 0 ? pvp : null, beneficio, ultimaVentaFecha, ultimaVentaIso, diasSinVender }
           })
           .sort((a, b) => {
             if (rendSortField === 'ultimaVenta') {
@@ -3017,6 +3022,7 @@ export default function AdminKioskoPage() {
                     <tr>
                       <th className={styles.rendThNombre}>Vino</th>
                       <th className={styles.rendThNum}>Vendidas (uds.)</th>
+                      <th className={styles.rendThNum}>Ayer</th>
                       <th className={styles.rendThNum}>Ingresos</th>
                       <th className={styles.rendThNum}>Beneficio €</th>
                       <th className={styles.rendThNum}>Margen bruto</th>
@@ -3036,41 +3042,97 @@ export default function AdminKioskoPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filas.map(f => (
-                      <tr key={f.id} className={styles.rendRow}>
-                        <td className={styles.rendTdNombre}>
-                          {f.categoria && (
-                            <span className={styles.rendDot} style={{ background: catColor[f.categoria] }} title={f.categoria} />
-                          )}
-                          <span className={styles.rendVinoNombre}>{f.nombre}</span>
-                          {f.bodega && <span className={styles.rendBodega}> · {f.bodega}</span>}
-                          {f.agotado && <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#999', fontWeight: 400, letterSpacing: '0.02em' }}>agotado</span>}
-                        </td>
-                        <td className={styles.rendTdNum}>{f.uds}</td>
-                        <td className={styles.rendTdNum}>{f.ingresos > 0 ? `${f.ingresos.toFixed(0)} €` : '—'}</td>
-                        <td className={styles.rendTdNum}>{f.beneficio !== null ? `${f.beneficio} €` : '—'}</td>
-                        <td className={styles.rendTdNum}>
-                          {f.margen !== null
-                            ? <span className={`${styles.margenBadge} ${f.margen >= 40 ? styles.margenHigh : f.margen >= 25 ? styles.margenMid : styles.margenLow}`}>{f.margen}%</span>
-                            : <em className={styles.dash}>—</em>}
-                        </td>
-                        <td className={styles.rendTdNum}>{f.pvpVal ? `${f.pvpVal.toFixed(2)} €` : '—'}</td>
-                        <td className={styles.rendTdNum}>
-                          <span style={{ color: f.stock === 0 ? '#c03030' : f.stock !== null && f.stock <= 3 ? '#d4a636' : '#2e6b47', fontWeight: 600 }}>
-                            {f.stock ?? '—'}
-                          </span>
-                        </td>
-                        <td className={styles.rendTdNum} style={{ fontSize: '0.78rem', color: '#888' }}>{f.ultimaVentaFecha || '—'}</td>
-                        <td className={styles.rendTdNum} style={{ color: '#888' }}>
-                          {f.diasSinVender !== null ? `${f.diasSinVender}d` : '—'}
-                        </td>
-                      </tr>
-                    ))}
+                    {filas.flatMap(f => {
+                      const expanded = rendExpandedId === f.id
+                      const rows = [
+                        <tr
+                          key={f.id}
+                          className={styles.rendRow}
+                          onClick={() => setRendExpandedId(id => id === f.id ? null : f.id)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <td className={styles.rendTdNombre}>
+                            <span style={{ fontSize: '0.55rem', color: '#ccc', marginRight: '0.2rem', display: 'inline-block', transition: 'transform 0.15s', transform: expanded ? 'rotate(90deg)' : 'none' }}>▶</span>
+                            {f.categoria && (
+                              <span className={styles.rendDot} style={{ background: catColor[f.categoria] }} title={f.categoria} />
+                            )}
+                            <span className={styles.rendVinoNombre}>{f.nombre}</span>
+                            {f.bodega && <span className={styles.rendBodega}> · {f.bodega}</span>}
+                            {f.agotado && <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#999', fontWeight: 400, letterSpacing: '0.02em' }}>agotado</span>}
+                          </td>
+                          <td className={styles.rendTdNum}>{f.uds}</td>
+                          <td className={styles.rendTdNum} style={{ color: f.ayerUds > 0 ? '#2e6b47' : undefined, fontWeight: f.ayerUds > 0 ? 600 : undefined }}>
+                            {f.ayerUds > 0 ? f.ayerUds : <em className={styles.dash}>—</em>}
+                          </td>
+                          <td className={styles.rendTdNum}>{f.ingresos > 0 ? `${f.ingresos.toFixed(0)} €` : '—'}</td>
+                          <td className={styles.rendTdNum}>{f.beneficio !== null ? `${f.beneficio} €` : '—'}</td>
+                          <td className={styles.rendTdNum}>
+                            {f.margen !== null
+                              ? <span className={`${styles.margenBadge} ${f.margen >= 40 ? styles.margenHigh : f.margen >= 25 ? styles.margenMid : styles.margenLow}`}>{f.margen}%</span>
+                              : <em className={styles.dash}>—</em>}
+                          </td>
+                          <td className={styles.rendTdNum}>{f.pvpVal ? `${f.pvpVal.toFixed(2)} €` : '—'}</td>
+                          <td className={styles.rendTdNum}>
+                            <span style={{ color: f.stock === 0 ? '#c03030' : f.stock !== null && f.stock <= 3 ? '#d4a636' : '#2e6b47', fontWeight: 600 }}>
+                              {f.stock ?? '—'}
+                            </span>
+                          </td>
+                          <td className={styles.rendTdNum} style={{ fontSize: '0.78rem', color: '#888' }}>{f.ultimaVentaFecha || '—'}</td>
+                          <td className={styles.rendTdNum} style={{ color: '#888' }}>
+                            {f.diasSinVender !== null ? `${f.diasSinVender}d` : '—'}
+                          </td>
+                        </tr>
+                      ]
+                      if (expanded) {
+                        const NDIAS = 28
+                        const dias = Array.from({ length: NDIAS }, (_, i) => {
+                          const ts  = Date.now() - (NDIAS - 1 - i) * 86400000
+                          const key = fmtMadrid.format(new Date(ts))
+                          const [, mm, d2] = key.split('-')
+                          const label = (i === 0 || i % 7 === 0) ? `${parseInt(d2)}/${parseInt(mm)}` : ''
+                          return { key, label, uds: (dd[f.id] || {})[key] || 0 }
+                        })
+                        const maxDia = Math.max(...dias.map(d => d.uds), 1)
+                        const hayDatos = dias.some(d => d.uds > 0)
+                        rows.push(
+                          <tr key={`${f.id}-d`}>
+                            <td colSpan={10} className={styles.rendDetailCell}>
+                              <div className={styles.rendDetailSection}>
+                                <div className={styles.rendDetailTitle}>
+                                  Últimas 4 semanas · día a día{!hayDatos ? ' · sin ventas en este período' : ''}
+                                </div>
+                                {hayDatos && (
+                                  <div className={styles.ventasChartBars} style={{ height: '70px' }}>
+                                    {dias.map(d => (
+                                      <div key={d.key} className={styles.ventasChartCol}>
+                                        <span className={styles.ventasChartVal}>{d.uds > 0 ? d.uds : ''}</span>
+                                        <div
+                                          className={styles.ventasChartBar}
+                                          style={{
+                                            height: `${Math.round((d.uds / maxDia) * 100)}%`,
+                                            background: d.key === ayerKey ? '#7a6a5a' : '#c9a96e',
+                                            opacity: d.uds > 0 ? 1 : 0.1,
+                                            minHeight: '2px',
+                                          }}
+                                        />
+                                        <span className={styles.ventasChartLabel}>{d.label}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      }
+                      return rows
+                    })}
                   </tbody>
                   <tfoot>
                     <tr className={styles.rendTotalRow}>
                       <td className={styles.rendTdNombre}>Total</td>
                       <td className={styles.rendTdNum}>{totalUds} ud.</td>
+                      <td />
                       <td className={styles.rendTdNum}>{totalIngresos.toFixed(0)} €</td>
                       <td className={styles.rendTdNum}>{hayBeneficio ? `${totalBeneficio} €` : '—'}</td>
                       <td className={styles.rendTdNum}>

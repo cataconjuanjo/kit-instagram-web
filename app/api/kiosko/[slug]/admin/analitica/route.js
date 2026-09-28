@@ -161,8 +161,13 @@ export async function GET(request, { params }) {
   })
 
   // ── Ventas reales desde Square ──────────────────────────────────────────────
-  // Paginar para superar el tope de 1.000 filas de Supabase/PostgREST.
-  // Deuda: acotar por rango de fechas (ej. últimos 90 días) cuando el log crezca.
+  // Paginado para superar el tope de 1.000 filas de Supabase/PostgREST.
+  // Filtro a 90 días: equilibrio entre histórico útil y coste de scan por tienda.
+  // Revisar hacia tabla de rollup diario si se cumple alguna de estas condiciones:
+  //   · square_sync_log supera ~5.000 filas para una tienda_slug
+  //   · varias tiendas activas con carga frecuente del panel de admin
+  //   · se necesita histórico rutinario > 90 días en la vista de rendimiento
+  const hace90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
   let syncLogs = []
   {
     const PAGE = 1000
@@ -173,6 +178,7 @@ export async function GET(request, { params }) {
         .select('lineas, created_at')
         .eq('tienda_slug', slug)
         .eq('ok', true)
+        .gte('created_at', hace90)
         .order('created_at', { ascending: true })
         .range(from, from + PAGE - 1)
       if (pageError) { console.error('[analitica] square_sync_log page error:', pageError.message); break }
@@ -184,15 +190,18 @@ export async function GET(request, { params }) {
 
   const ventasPorVino = {}
   const tendenciaPorVino = {}
+  const ventasDiarias = {}  // { vino_id: { 'YYYY-MM-DD': unidades } } — zona Europe/Madrid
   const ultimaVentaAt = {}
   let ultimoSyncAt = null
   const NUM_SEMANAS = 8
   const ahoraMs = Date.now()
+  const fmtMadrid = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' })
   for (const log of syncLogs || []) {
     if (!ultimoSyncAt || log.created_at > ultimoSyncAt) ultimoSyncAt = log.created_at
     const logMs = new Date(log.created_at).getTime()
     const semanasAtras = Math.floor((ahoraMs - logMs) / (7 * 24 * 60 * 60 * 1000))
     const weekIdx = NUM_SEMANAS - 1 - semanasAtras // 7 = esta semana, 0 = hace 8 semanas
+    const fechaKey = fmtMadrid.format(new Date(log.created_at))
     for (const linea of log.lineas || []) {
       if (linea.status === 'ok' && linea.vino_id) {
         const id = linea.vino_id
@@ -202,6 +211,8 @@ export async function GET(request, { params }) {
           if (!tendenciaPorVino[id]) tendenciaPorVino[id] = Array(NUM_SEMANAS).fill(0)
           tendenciaPorVino[id][weekIdx] += (linea.quantity || 1)
         }
+        if (!ventasDiarias[id]) ventasDiarias[id] = {}
+        ventasDiarias[id][fechaKey] = (ventasDiarias[id][fechaKey] || 0) + (linea.quantity || 1)
       }
     }
   }
@@ -264,6 +275,7 @@ export async function GET(request, { params }) {
     },
     ventasPorVino,
     tendenciaPorVino,
+    ventasDiarias,
     ultimaVentaAt,
     ultimoSyncAt,
     conversion,

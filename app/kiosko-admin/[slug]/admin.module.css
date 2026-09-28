@@ -2285,6 +2285,22 @@
   font-weight: 700;
   border-top: 2px solid #e8e5e0;
 }
+.rendDetailCell {
+  padding: 0;
+  border-bottom: 2px solid #f0ece6;
+}
+.rendDetailSection {
+  padding: 0.65rem 0.75rem 1.1rem;
+  background: #faf9f7;
+}
+.rendDetailTitle {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #bbb;
+  margin-bottom: 0.5rem;
+}
 
 /* ── Analítica ───────────────────────────────────────────────────────────── */
 .analiticaWrap {
