@@ -2826,7 +2826,7 @@ export default function AdminKioskoPage() {
                 <div>
                   <h3 className={styles.analiticaBloqueTitle}>Vinos sin movimiento</h3>
                   <p className={styles.analiticaBloqueDesc}>
-                    Activos con stock pero sin ventas Square registradas · {sinMovimiento.length} vinos · {valorParado.toFixed(0)} € parados en lineal
+                    Activos con stock pero sin ventas en los últimos 90 días · {sinMovimiento.length} vinos · {valorParado.toFixed(0)} € parados en lineal
                   </p>
                 </div>
               </div>
