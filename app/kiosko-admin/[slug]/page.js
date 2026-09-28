@@ -2922,7 +2922,7 @@ export default function AdminKioskoPage() {
         const uva = analitica.ultimaVentaAt || {}
         const dd  = analitica.ventasDiarias || {}
         const fmtMadrid = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' })
-        const ayerKey   = fmtMadrid.format(new Date(Date.now() - 86400000))
+        const ayerKey   = analitica.ayerKey || ''
         const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: '#c03030' }
         const filas = vinosVino
           .filter(v => vp[v.id])
@@ -3012,7 +3012,7 @@ export default function AdminKioskoPage() {
                 <div>
                   <h3 className={styles.analiticaBloqueTitle}>Rendimiento por vino</h3>
                   <p className={styles.analiticaBloqueDesc}>
-                    Ventas registradas vía TPV Square · {filas.length} vino{filas.length !== 1 ? 's' : ''} vendido{filas.length !== 1 ? 's' : ''}
+                    Ventas registradas vía TPV Square · {filas.length} vino{filas.length !== 1 ? 's' : ''} vendido{filas.length !== 1 ? 's' : ''} (últimos 90 días)
                   </p>
                 </div>
               </div>
@@ -3021,7 +3021,7 @@ export default function AdminKioskoPage() {
                   <thead>
                     <tr>
                       <th className={styles.rendThNombre}>Vino</th>
-                      <th className={styles.rendThNum}>Vendidas (uds.)</th>
+                      <th className={styles.rendThNum}>Vendidas (90d)</th>
                       <th className={styles.rendThNum}>Ayer</th>
                       <th className={styles.rendThNum}>Ingresos</th>
                       <th className={styles.rendThNum}>Beneficio €</th>
@@ -3131,7 +3131,7 @@ export default function AdminKioskoPage() {
                   <tfoot>
                     <tr className={styles.rendTotalRow}>
                       <td className={styles.rendTdNombre}>Total</td>
-                      <td className={styles.rendTdNum}>{totalUds} ud.</td>
+                      <td className={styles.rendTdNum}>{totalUds} ud. (90d)</td>
                       <td />
                       <td className={styles.rendTdNum}>{totalIngresos.toFixed(0)} €</td>
                       <td className={styles.rendTdNum}>{hayBeneficio ? `${totalBeneficio} €` : '—'}</td>

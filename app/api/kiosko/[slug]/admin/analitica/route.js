@@ -216,6 +216,7 @@ export async function GET(request, { params }) {
       }
     }
   }
+  const ayerKey = fmtMadrid.format(new Date(Date.now() - 86400000))
 
   // ── Motor de conversión ─────────────────────────────────────────────────────
   const movilPorVinoId = {}
@@ -276,6 +277,7 @@ export async function GET(request, { params }) {
     ventasPorVino,
     tendenciaPorVino,
     ventasDiarias,
+    ayerKey,
     ultimaVentaAt,
     ultimoSyncAt,
     conversion,
