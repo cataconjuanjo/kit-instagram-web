@@ -49,6 +49,12 @@ export default function Login() {
     } else {
       clearAdminRestaurantEmail()
       clearDemoEmail()
+      // Inicializar last_activity antes de navegar para que PrivateSessionTimeout
+      // no encuentre un timestamp stale de la sesión anterior y expulse al usuario
+      // nada más montar el layout (condición de carrera observada en producción).
+      try {
+        window.localStorage.setItem('carta_viva_private_last_activity', String(Date.now()))
+      } catch {}
       if (isAdminEmail(emailLimpio)) {
         window.location.href = '/admin/consultoria'
       } else {

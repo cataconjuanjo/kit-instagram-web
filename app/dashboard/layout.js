@@ -323,6 +323,9 @@ export default function DashboardLayout({ children }) {
   async function cerrarSesion() {
     clearAdminRestaurantEmail()
     clearDemoEmail()
+    try {
+      window.localStorage.removeItem('carta_viva_private_last_activity')
+    } catch {}
     await supabase.auth.signOut()
     window.location.href = '/login'
   }
