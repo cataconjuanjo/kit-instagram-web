@@ -2970,7 +2970,21 @@ export default function KioskoPage() {
     return () => events.forEach(e => window.removeEventListener(e, resetIdle))
   }, [resetIdle])
 
-  const destacadosLen = vinos.filter(v => v.destacado).length
+  // Vinos efectivos del carrusel: auto_featured_ids (ordenados por margen, calculados en servidor)
+  // cuando el modo automático está activo, o los favoritos manuales en caso contrario.
+  // Se cruzan con el array de vinos descargado para descartar huecos por caché o stock cambiado.
+  const vinosDestacadosEfectivos = useMemo(() => {
+    const autoIds = tienda?.auto_featured_ids
+    if (Array.isArray(autoIds) && autoIds.length > 0) {
+      const vinosMap = new Map(vinos.map(v => [String(v.id), v]))
+      return autoIds
+        .map(id => vinosMap.get(String(id)))
+        .filter(v => v && Number(v.stock) > 0)
+    }
+    return vinos.filter(v => v.destacado)
+  }, [tienda?.auto_featured_ids, vinos])
+
+  const destacadosLen = vinosDestacadosEfectivos.length
 
   useEffect(() => {
     const el = stripRef.current
@@ -3315,13 +3329,13 @@ export default function KioskoPage() {
             Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
           </span>
 
-          {vinos.filter(v => v.destacado).length > 0 && (
+          {vinosDestacadosEfectivos.length > 0 && (
             <div className={styles.welcomeFeatured}>
               <p className={styles.featuredLabel} style={{ color: colorAcento }}>{T[lang].destacados}</p>
               <div className={styles.featuredStripWrap}>
                 <button className={styles.featuredArrowBtn} onClick={() => stripRef.current?.scrollBy({ left: -280, behavior: 'smooth' })} type="button" aria-label="Anterior">‹</button>
                 <div className={styles.featuredStrip} ref={stripRef}>
-                  {vinos.filter(v => v.destacado).slice(0, 8).map(v => (
+                  {vinosDestacadosEfectivos.map(v => (
                     <button key={v.id} className={styles.featuredCard} onClick={() => abrirDetalle(v)} type="button">
                       <SafeImage
                         src={v.foto_url}

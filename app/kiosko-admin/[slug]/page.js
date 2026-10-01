@@ -157,6 +157,15 @@ function PremiumLock({ children, label = 'Premium' }) {
 }
 
 const UPGRADE_CONFIG = {
+  autoFeatured: {
+    icon: '⭐',
+    title: 'Destacados automáticos por margen',
+    bullets: [
+      'El carrusel siempre muestra vinos con stock, nunca queda vacío',
+      'Prioriza los vinos con más margen para maximizar tu rentabilidad',
+      'Se actualiza en cada visita; tus favoritos manuales se conservan',
+    ],
+  },
   analitica: {
     icon: '📊',
     title: 'Analítica avanzada',
@@ -314,6 +323,9 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
     cesta_activa: tienda?.cesta_activa === true,
     escaparate_timeout_segundos: tienda?.escaparate_timeout_segundos ?? 60,
     informe_email:  tienda?.informe_email  || tienda?.propietario_email || tienda?.email || '',
+    auto_featured_enabled:  tienda?.auto_featured_enabled  === true,
+    auto_featured_n:        tienda?.auto_featured_n        ?? 8,
+    auto_featured_max_tipo: tienda?.auto_featured_max_tipo ?? 3,
   })
   const [logoFile,     setLogoFile]     = useState(null)
   const [logoPreview,  setLogoPreview]  = useState(tienda?.logo_url || '')
@@ -404,10 +416,18 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         setLogoFile(null)
       }
 
+      const payload = { ...ajustes, logo_url: logoUrl }
+      // El plan básico no puede modificar los campos AF; el servidor lo rechazaría con 403.
+      // Los excluimos aquí para no generar un error innecesario al guardar otros ajustes.
+      if (!esPremium) {
+        delete payload.auto_featured_enabled
+        delete payload.auto_featured_n
+        delete payload.auto_featured_max_tipo
+      }
       const r = await fetch(`/api/kiosko/${slug}/admin/ajustes`, {
         method: 'PATCH',
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...ajustes, logo_url: logoUrl }),
+        body: JSON.stringify(payload),
       })
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || 'Error al guardar')
@@ -749,6 +769,85 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
             </button>
           </div>
           {squareMsg && <p style={{ fontSize: '.78rem', marginTop: '.5rem', color: squareMsg.startsWith('✓') ? '#4caf50' : '#e57373' }}>{squareMsg}</p>}
+        </div>
+
+        {/* ── Destacados automáticos ── */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>
+            Destacados automáticos <span className={styles.premiumTag}>Premium</span>
+          </p>
+
+          {!esPremium && (
+            <p style={{ fontSize: '.82rem', color: '#776040', lineHeight: 1.5, margin: '0 0 .75rem',
+              background: 'rgba(201,169,110,.1)', border: '1px solid rgba(201,169,110,.3)',
+              borderRadius: 8, padding: '.6rem .85rem' }}>
+              Disponible en el plan Premium. Mejora tu plan para que tus destacados se actualicen solos según stock y margen.{' '}
+              <button type="button" onClick={() => setAjustesUpgradeModal('autoFeatured')}
+                style={{ background: 'none', border: 'none', color: '#c9a96e', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}>
+                Ver planes →
+              </button>
+            </p>
+          )}
+
+          <button
+            type="button"
+            className={`${styles.settingToggleCard}
+              ${ajustes.auto_featured_enabled && esPremium ? styles.settingToggleCardOn : ''}
+              ${!esPremium ? styles.settingToggleCardDisabled : ''}`}
+            onClick={() => esPremium && cambiar('auto_featured_enabled', !ajustes.auto_featured_enabled)}
+            disabled={!esPremium}
+            aria-disabled={!esPremium}
+          >
+            <span className={styles.settingToggleText}>
+              <strong>Activar destacados automáticos</strong>
+              <small>
+                {!esPremium
+                  ? 'Requiere plan Premium.'
+                  : ajustes.auto_featured_enabled
+                    ? 'Activos — el kiosko muestra los vinos con más margen que tengan stock. Tus favoritos manuales se conservan y volverán si lo desactivas.'
+                    : 'Inactivos — el kiosko usa tus favoritos manuales (comportamiento actual).'}
+              </small>
+            </span>
+            <span className={styles.settingSwitch} aria-hidden="true"><span /></span>
+          </button>
+
+          {/* Controles de configuración: siempre visibles, deshabilitados si no es premium */}
+          {(ajustes.auto_featured_enabled || !esPremium) && (
+            <div className={styles.ajustesFormGrid} style={{ marginTop: '.75rem', opacity: !esPremium ? .5 : 1 }}>
+              <div className={styles.ajustesFormField}>
+                <label>Vinos en el carrusel (3–12)</label>
+                <input
+                  type="number"
+                  min={3} max={12}
+                  value={ajustes.auto_featured_n}
+                  onChange={e => {
+                    const v = Math.max(3, Math.min(12, parseInt(e.target.value, 10) || 8))
+                    cambiar('auto_featured_n', v)
+                    if (ajustes.auto_featured_max_tipo > v) cambiar('auto_featured_max_tipo', v)
+                  }}
+                  disabled={!esPremium}
+                  aria-disabled={!esPremium}
+                />
+              </div>
+              <div className={styles.ajustesFormField}>
+                <label>Máximo por tipo de vino (1–{ajustes.auto_featured_n})</label>
+                <input
+                  type="number"
+                  min={1} max={ajustes.auto_featured_n}
+                  value={ajustes.auto_featured_max_tipo}
+                  onChange={e => {
+                    const v = Math.max(1, Math.min(ajustes.auto_featured_n, parseInt(e.target.value, 10) || 3))
+                    cambiar('auto_featured_max_tipo', v)
+                  }}
+                  disabled={!esPremium}
+                  aria-disabled={!esPremium}
+                />
+                <small style={{ fontSize: '.74rem', color: '#888', display: 'block', marginTop: '.25rem' }}>
+                  Máximo de vinos del mismo tipo (tinto, blanco…) en el carrusel. Evita que un solo tipo acapare todos los huecos.
+                </small>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Guardar */}
@@ -1722,16 +1821,20 @@ export default function AdminKioskoPage() {
   }
 
   // Stats (memoizadas — solo sobre vinos, no otros productos)
-  const { sinFoto, sinPrecio, sinCoste, sinStock, nActivos, nInactivos, nDestacados, conFichaIA } = useMemo(() => ({
-    sinFoto:     vinosVino.filter(v => v.activo !== false && !v.foto_url).length,
-    sinPrecio:   vinosVino.filter(v => v.activo !== false && !v.precio_pvp).length,
-    sinCoste:    vinosVino.filter(v => v.activo !== false && v.precio_pvp && !v.precio_coste).length,
-    sinStock:    vinosVino.filter(v => v.activo !== false && !Number(v.stock)).length,
-    nActivos:    vinosVino.filter(v => v.activo).length,
-    nInactivos:  vinosVino.filter(v => v.activo === false).length,
-    nDestacados: vinosVino.filter(v => v.destacado).length,
-    conFichaIA:  vinosVino.filter(v => v.has_ficha_ia).length,
+  const { sinFoto, sinPrecio, sinCoste, sinStock, nActivos, nInactivos, nDestacados, conFichaIA, nDestacadosConStock } = useMemo(() => ({
+    sinFoto:              vinosVino.filter(v => v.activo !== false && !v.foto_url).length,
+    sinPrecio:            vinosVino.filter(v => v.activo !== false && !v.precio_pvp).length,
+    sinCoste:             vinosVino.filter(v => v.activo !== false && v.precio_pvp && !v.precio_coste).length,
+    sinStock:             vinosVino.filter(v => v.activo !== false && !Number(v.stock)).length,
+    nActivos:             vinosVino.filter(v => v.activo).length,
+    nInactivos:           vinosVino.filter(v => v.activo === false).length,
+    nDestacados:          vinosVino.filter(v => v.destacado).length,
+    conFichaIA:           vinosVino.filter(v => v.has_ficha_ia).length,
+    nDestacadosConStock:  vinosVino.filter(v => v.destacado && Number(v.stock) > 0).length,
   }), [vinosVino])
+
+  // Modo manual: cuando los destacados automáticos están desactivados o el plan no los soporta
+  const modoManualDestacados = !esPremium || !tienda?.auto_featured_enabled
 
   const catalogoChecklist = useMemo(() => {
     const activos = vinosVino.filter(v => v.activo !== false)
@@ -3845,7 +3948,7 @@ export default function AdminKioskoPage() {
           <span className={styles.statNum}>{sinStock}</span>
           <span className={styles.statLabel}>Sin stock</span>
         </button>
-        <div className={styles.statCard}>
+        <div className={`${styles.statCard} ${modoManualDestacados && nDestacadosConStock < 3 ? styles.statWarn : ''}`}>
           <span className={styles.statNum}>{nDestacados}</span>
           <span className={styles.statLabel}>Destacados</span>
         </div>
@@ -3854,6 +3957,32 @@ export default function AdminKioskoPage() {
           <span className={styles.statLabel}>Fichas IA</span>
         </div>
       </div>
+
+      {/* Aviso destacados manuales bajos — se muestra a todos los clientes en modo manual */}
+      {modoManualDestacados && nDestacadosConStock < 3 && (
+        <div style={{
+          margin: '0 0 0', padding: '.65rem 1.75rem',
+          background: '#fffbeb', borderBottom: '1px solid #fde68a',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: '1rem', flexWrap: 'wrap',
+        }}>
+          <p style={{ margin: 0, fontSize: '.82rem', color: '#92400e', lineHeight: 1.5 }}>
+            <strong>Tu sección Destacados tiene {nDestacadosConStock} vino{nDestacadosConStock !== 1 ? 's' : ''} disponible{nDestacadosConStock !== 1 ? 's' : ''}.</strong>
+            {' '}Revisa tus favoritos para que el carrusel no quede vacío.
+            {!esPremium && (
+              <>{' '}Con el plan Premium los destacados se actualizan solos según stock y margen.{' '}
+                <button
+                  type="button"
+                  onClick={() => setTab('ajustes')}
+                  style={{ background: 'none', border: 'none', color: '#b45309', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}
+                >
+                  Ver ajustes →
+                </button>
+              </>
+            )}
+          </p>
+        </div>
+      )}
 
       {lastSync && (lastSync.ultimoPagoAt || lastSync.ultimoCatalogoAt) && (
         <div style={{ padding: '.55rem 1.75rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '.78rem', color: '#999', borderBottom: '1px solid rgba(0,0,0,.06)' }}>

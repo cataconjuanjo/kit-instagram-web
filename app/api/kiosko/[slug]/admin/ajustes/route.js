@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess, getKioskoUser, isKioskoAdminEmail } from '../../../../_lib/kioskoAuth'
+import { planTieneCapacidad } from '../../../../_lib/autoFeatured'
 
 const PERMITIDOS = new Set([
   'nombre', 'ciudad', 'descripcion',
   'logo_url', 'color_primario', 'color_acento', 'font_family', 'kiosko_icon_style', 'kiosko_orders_enabled', 'banner_url',
   'informe_email', 'cesta_activa', 'square_location_id', 'escaparate_timeout_segundos',
+  'auto_featured_enabled', 'auto_featured_n', 'auto_featured_max_tipo',
 ])
 
 const ICON_STYLES = new Set(['emoji', 'lineal'])
@@ -17,7 +19,13 @@ const OPTIONAL_MIGRATIONS = {
   square_access_token: 'supabase/square_access_token.sql',
   square_location_id: 'supabase/square_location_id.sql',
   escaparate_timeout_segundos: 'supabase/escaparate_timeout.sql',
+  auto_featured_enabled: 'supabase/auto_featured.sql',
+  auto_featured_n: 'supabase/auto_featured.sql',
+  auto_featured_max_tipo: 'supabase/auto_featured.sql',
 }
+
+// Campos que requieren capacidad autoFeaturedByMargin para ser modificados
+const AF_CAMPOS = new Set(['auto_featured_enabled', 'auto_featured_n', 'auto_featured_max_tipo'])
 
 function missingOptionalFields(error, updates) {
   const texto = `${error?.code || ''} ${error?.message || ''}`.toLowerCase()
@@ -76,11 +84,54 @@ export async function PATCH(request, { params }) {
       updates[k] = (!isNaN(n) && n >= 0 && n <= 600) ? n : 60
       continue
     }
+    if (k === 'auto_featured_enabled') {
+      updates[k] = v === true
+      continue
+    }
+    if (k === 'auto_featured_n') {
+      updates[k] = v  // validado abajo
+      continue
+    }
+    if (k === 'auto_featured_max_tipo') {
+      updates[k] = v  // validado abajo
+      continue
+    }
     updates[k] = v === '' ? null : v
   }
 
   if (!Object.keys(updates).length) {
     return NextResponse.json({ error: 'Sin campos válidos' }, { status: 400 })
+  }
+
+  // Control de acceso: rechazar modificación de campos AF si el plan no lo permite.
+  // Esta comprobación es en servidor y no depende del estado enviado por el frontend.
+  const hayAF = Object.keys(updates).some(k => AF_CAMPOS.has(k))
+  if (hayAF && !esMasterAdmin && !planTieneCapacidad(access.tienda, 'autoFeaturedByMargin')) {
+    return NextResponse.json(
+      { error: 'El plan Premium es necesario para activar o modificar los destacados automáticos' },
+      { status: 403 }
+    )
+  }
+
+  // Validación de rangos para campos AF (400, nunca recortar en silencio)
+  if (updates.auto_featured_n !== undefined) {
+    const n = parseInt(updates.auto_featured_n, 10)
+    if (isNaN(n) || n < 3 || n > 12) {
+      return NextResponse.json({ error: 'auto_featured_n debe ser un número entre 3 y 12' }, { status: 400 })
+    }
+    updates.auto_featured_n = n
+  }
+  if (updates.auto_featured_max_tipo !== undefined) {
+    const mt = parseInt(updates.auto_featured_max_tipo, 10)
+    // Si n también viene en este request, max_tipo debe ser ≤ n; si no, lo limitamos a 12
+    const maxPermitido = updates.auto_featured_n ?? 12
+    if (isNaN(mt) || mt < 1 || mt > maxPermitido) {
+      return NextResponse.json(
+        { error: `auto_featured_max_tipo debe ser un número entre 1 y ${maxPermitido}` },
+        { status: 400 }
+      )
+    }
+    updates.auto_featured_max_tipo = mt
   }
 
   let { error } = await supabaseAdmin
