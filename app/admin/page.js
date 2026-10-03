@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { clearAdminRestaurantEmail, isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../demo'
+import { openRestaurantDashboard } from './openRestaurantDashboard'
 import { SELECT_CLIENT_RESTAURANTE_ADMIN } from '../lib/clientSupabaseSelects'
 import { puedeUsar } from '../lib/plans'
 import AdminOverlay from './components/AdminOverlay'
@@ -324,9 +325,7 @@ function AdminPageContent() {
   }, [])
 
   function gestionar(restaurante) {
-    setAdminRestaurantEmail(restaurante.email)
-    setAdminRestaurantId(restaurante.id)
-    router.push(`/dashboard?restaurante_id=${restaurante.id}`)
+    openRestaurantDashboard(restaurante.id, restaurante.email, router.push)
   }
 
   function abrirPublicacion(restaurante) {

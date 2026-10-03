@@ -8,6 +8,7 @@ import styles from './layout.module.css'
 import { GuideModeProvider, GuidePanel, GuideToggle } from '../dashboard/GuideMode'
 import BrandLogo from '../components/BrandLogo'
 import PrivateSessionTimeout from '../components/PrivateSessionTimeout'
+import { openRestaurantDashboard } from './openRestaurantDashboard'
 
 function readLS(key, def) {
   try { const v = localStorage.getItem(key); return v === null ? def : v === 'true' } catch { return def }
@@ -19,6 +20,7 @@ function writeLS(key, val) {
 export default function AdminLayout({ children }) {
   const [restaurantes, setRestaurantes] = useState([])
   const [tiendas, setTiendas] = useState([])
+  const [loadingId, setLoadingId] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [profileOpen, setProfileOpen] = useState(false)
@@ -32,6 +34,11 @@ export default function AdminLayout({ children }) {
   )
   const pathname = usePathname()
 
+  function handleOpenDashboard(r) {
+    setLoadingId(r.id)
+    openRestaurantDashboard(r.id, r.email)
+  }
+
   async function cerrarSesion() {
     await supabase.auth.signOut()
     window.location.href = '/login'
@@ -39,7 +46,7 @@ export default function AdminLayout({ children }) {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserEmail(data?.user?.email || ''))
-    supabase.from('restaurantes').select('id, nombre, ciudad, subscription_status').order('nombre')
+    supabase.from('restaurantes').select('id, nombre, ciudad, email, subscription_status').order('nombre')
       .then(({ data }) => setRestaurantes(data || []))
     supabase.from('tiendas').select('id, nombre, slug, ciudad, activo, subscription_status, plan').order('nombre')
       .then(({ data }) => setTiendas(data || []))
@@ -173,21 +180,41 @@ export default function AdminLayout({ children }) {
                   <ul className={styles.subList}>
                     {shownRestaurants.map(r => {
                       const statusLabel = r.subscription_status === 'active' ? 'Activo' : 'En prueba'
+                      const isActive = currentId === String(r.id)
+                      const isLoading = loadingId === r.id
                       return (
-                        <li key={r.id}>
+                        <li key={r.id} className={`${styles.subItem} ${isActive ? styles.subItemIsActive : ''}`}>
+                          <button
+                            type="button"
+                            className={styles.subItemBtn}
+                            onClick={() => { setMenuOpen(false); handleOpenDashboard(r) }}
+                            disabled={isLoading}
+                            aria-label={`Abrir dashboard de ${r.nombre}`}
+                          >
+                            {isLoading ? (
+                              <span className={styles.subItemSpinner} aria-hidden="true" />
+                            ) : (
+                              <span
+                                className={styles.statusDot}
+                                role="img"
+                                aria-label={statusLabel}
+                                title={`${statusLabel} · ${r.ciudad || 'Sin ubicación'}`}
+                                data-status={r.subscription_status}
+                              />
+                            )}
+                            <span className={styles.subItemName}>{r.nombre}</span>
+                          </button>
                           <Link
                             href={`/admin/restaurante/${r.id}`}
-                            className={`${styles.subItemLink} ${currentId === String(r.id) ? styles.subItemActive : ''}`}
+                            className={styles.subItemFicha}
+                            aria-label={`Ver ficha de ${r.nombre}`}
+                            title="Ficha"
                             onClick={() => setMenuOpen(false)}
                           >
-                            <span
-                              className={styles.statusDot}
-                              role="img"
-                              aria-label={statusLabel}
-                              title={`${statusLabel} · ${r.ciudad || 'Sin ubicación'}`}
-                              data-status={r.subscription_status}
-                            />
-                            <span className={styles.subItemName}>{r.nombre}</span>
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                              <rect x="1.5" y="1" width="7" height="8" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                              <path d="M3 4h4M3 6h2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                            </svg>
                           </Link>
                         </li>
                       )

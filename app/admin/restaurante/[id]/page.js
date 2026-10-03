@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../supabase'
 import { isAdminEmail, setAdminRestaurantEmail, setAdminRestaurantId } from '../../../demo'
+import { openRestaurantDashboard } from '../../openRestaurantDashboard'
 import {
   SELECT_CLIENT_ESTADISTICA_ADMIN,
   SELECT_CLIENT_PLATO_ADMIN,
@@ -601,9 +602,7 @@ export default function RestauranteWorkspace() {
   }, [analisis, alertaAbierta])
 
   function gestionar() {
-    setAdminRestaurantEmail(restaurante.email)
-    setAdminRestaurantId(restaurante.id)
-    window.location.href = `/dashboard?restaurante_id=${restaurante.id}`
+    openRestaurantDashboard(restaurante.id, restaurante.email)
   }
 
   function alternarCandidatoSalida(vinoId) {
