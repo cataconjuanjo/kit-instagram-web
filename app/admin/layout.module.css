@@ -18,12 +18,7 @@
   background: #1c0e13;
   border-right: 1px solid rgba(255, 250, 243, 0.06);
   z-index: 50;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.sidebar::-webkit-scrollbar {
-  display: none;
+  overflow: hidden;
 }
 
 /* Brand */
@@ -83,7 +78,13 @@
   list-style: none;
   margin: 0;
   padding: 6px 0;
-  flex-shrink: 0;
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
 }
 
 .nav li {
@@ -715,6 +716,161 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.52);
   z-index: 45;
+}
+
+/* ── Collapsible nav group header ── */
+
+.navGroupHeaderBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px 5px;
+  margin: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 8.5px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.navGroupHeaderBtn:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.navGroupHeaderBtn:focus-visible {
+  outline: 2px solid rgba(255, 250, 243, 0.45);
+  outline-offset: -2px;
+  border-radius: 3px;
+}
+
+.navGroupHeaderBtn svg:first-child {
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.navGroupHeaderBtnText {
+  flex: 1;
+}
+
+.navGroupCount {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 8.5px;
+  letter-spacing: 0;
+  font-weight: 900;
+}
+
+.navGroupChevron {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.35);
+  transition: transform 200ms ease;
+}
+
+.navGroupChevronCollapsed {
+  transform: rotate(-90deg);
+}
+
+/* ── Sub-list (restaurants / kioscos indented below section header) ── */
+
+.subList {
+  list-style: none;
+  margin: 0;
+  padding: 1px 0 4px;
+}
+
+.subItemLink {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px 5px 24px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  min-width: 0;
+  transition: color 120ms, background 120ms;
+}
+
+.subItemLink:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.subItemLink:focus-visible {
+  outline: 2px solid rgba(255, 250, 243, 0.45);
+  outline-offset: -2px;
+}
+
+.subItemActive {
+  color: #ffffff;
+  background: #74223d;
+  border-left-color: rgba(255, 250, 243, 0.55);
+}
+
+.subItemName {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusDot {
+  flex-shrink: 0;
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.statusDot[data-status="active"] {
+  background: #3ab77e;
+}
+
+.statusDot[data-status="trialing"],
+.statusDot[data-status="pending"] {
+  background: #e8a83e;
+}
+
+.subEmpty {
+  display: block;
+  padding: 4px 12px 4px 24px;
+  color: rgba(255, 250, 243, 0.28);
+  font-size: 10.5px;
+  font-style: italic;
+}
+
+.subViewAll {
+  display: block;
+  padding: 4px 12px 6px 24px;
+  color: rgba(255, 250, 243, 0.48);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 120ms;
+}
+
+.subViewAll:hover {
+  color: rgba(255, 250, 243, 0.78);
+  text-decoration: underline;
+}
+
+/* lab-main compact overrides for new sub-list classes */
+.shell:has(:global(.lab-main)) .subItemLink {
+  padding: 4px 6px 4px 18px;
+  font-size: 10.5px;
+}
+
+.shell:has(:global(.lab-main)) .subEmpty,
+.shell:has(:global(.lab-main)) .subViewAll {
+  padding-left: 18px;
 }
 
 @media (max-width: 1024px) {

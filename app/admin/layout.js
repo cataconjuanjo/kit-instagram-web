@@ -9,13 +9,27 @@ import { GuideModeProvider, GuidePanel, GuideToggle } from '../dashboard/GuideMo
 import BrandLogo from '../components/BrandLogo'
 import PrivateSessionTimeout from '../components/PrivateSessionTimeout'
 
+function readLS(key, def) {
+  try { const v = localStorage.getItem(key); return v === null ? def : v === 'true' } catch { return def }
+}
+function writeLS(key, val) {
+  try { localStorage.setItem(key, String(val)) } catch {}
+}
+
 export default function AdminLayout({ children }) {
   const [restaurantes, setRestaurantes] = useState([])
+  const [tiendas, setTiendas] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [profileOpen, setProfileOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [userEmail, setUserEmail] = useState('')
+  const [restCollapsed, setRestCollapsed] = useState(
+    () => typeof window !== 'undefined' ? readLS('admin_rest_collapsed', false) : false
+  )
+  const [kioscosCollapsed, setKioscosCollapsed] = useState(
+    () => typeof window !== 'undefined' ? readLS('admin_kioscos_collapsed', false) : false
+  )
   const pathname = usePathname()
 
   async function cerrarSesion() {
@@ -27,6 +41,8 @@ export default function AdminLayout({ children }) {
     supabase.auth.getUser().then(({ data }) => setUserEmail(data?.user?.email || ''))
     supabase.from('restaurantes').select('id, nombre, ciudad, subscription_status').order('nombre')
       .then(({ data }) => setRestaurantes(data || []))
+    supabase.from('tiendas').select('id, nombre, slug, ciudad, activo, subscription_status, plan').order('nombre')
+      .then(({ data }) => setTiendas(data || []))
   }, [])
 
   useEffect(() => {
@@ -52,6 +68,14 @@ export default function AdminLayout({ children }) {
     ? restaurantes.filter(r => `${r.nombre || ''} ${r.ciudad || ''}`.toLowerCase().includes(search.toLowerCase())).slice(0, 8)
     : []
   const pendientes = restaurantes.filter(r => r.subscription_status === 'trialing' || r.subscription_status === 'past_due').length
+
+  const activeRestaurants = restaurantes.filter(r => r.subscription_status === 'active' || r.subscription_status === 'trialing')
+  const shownRestaurants = activeRestaurants.slice(0, 8)
+  const hasMoreRestaurants = activeRestaurants.length > 8
+  const activeTiendas = tiendas.filter(t => t.activo)
+  const shownTiendas = activeTiendas.slice(0, 8)
+  const hasMoreTiendas = activeTiendas.length > 8
+
   const breadcrumbs = [
     { label: 'Panel', href: '/admin/consultoria' },
     pathname === '/admin/consultoria' && { label: 'Radar' },
@@ -70,7 +94,7 @@ export default function AdminLayout({ children }) {
     <GuideModeProvider restaurantId="consultor">
     <PrivateSessionTimeout timeoutMinutes={30} />
     <div className={styles.shell}>
-      <nav className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
+      <nav className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`} aria-label="Panel de administración">
         <div className={styles.brand}>
           <div className={styles.brandIdentity}>
             <BrandLogo variant="markDark" className={styles.brandMark} />
@@ -125,31 +149,119 @@ export default function AdminLayout({ children }) {
           </li>
 
           <li className={styles.navGroup}>
-            <p className={styles.navGroupTitle}>
-              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><path d="M1.5 10.5V5L5.5 1.5 9.5 5v5.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M4 10.5V7.5h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
-              Restaurantes
-            </p>
-            <Link
-              href="/admin"
-              className={`${styles.navLink} ${pathname === '/admin' ? styles.navActive : ''}`}
-              onClick={() => setMenuOpen(false)}
+            <button
+              type="button"
+              className={styles.navGroupHeaderBtn}
+              onClick={() => { setRestCollapsed(c => { const next = !c; writeLS('admin_rest_collapsed', next); return next }) }}
+              aria-expanded={!restCollapsed}
             >
-              Accesos
-            </Link>
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><path d="M1.5 10.5V5L5.5 1.5 9.5 5v5.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M4 10.5V7.5h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
+              <span className={styles.navGroupHeaderBtnText}>Restaurantes</span>
+              <span className={styles.navGroupCount}>{restaurantes.length}</span>
+              <svg className={`${styles.navGroupChevron} ${restCollapsed ? styles.navGroupChevronCollapsed : ''}`} width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+            {!restCollapsed && (
+              <>
+                <Link
+                  href="/admin"
+                  className={`${styles.navLink} ${pathname === '/admin' ? styles.navActive : ''}`}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Accesos
+                </Link>
+                {shownRestaurants.length > 0 ? (
+                  <ul className={styles.subList}>
+                    {shownRestaurants.map(r => {
+                      const statusLabel = r.subscription_status === 'active' ? 'Activo' : 'En prueba'
+                      return (
+                        <li key={r.id}>
+                          <Link
+                            href={`/admin/restaurante/${r.id}`}
+                            className={`${styles.subItemLink} ${currentId === String(r.id) ? styles.subItemActive : ''}`}
+                            onClick={() => setMenuOpen(false)}
+                          >
+                            <span
+                              className={styles.statusDot}
+                              role="img"
+                              aria-label={statusLabel}
+                              title={`${statusLabel} · ${r.ciudad || 'Sin ubicación'}`}
+                              data-status={r.subscription_status}
+                            />
+                            <span className={styles.subItemName}>{r.nombre}</span>
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <span className={styles.subEmpty}>Sin restaurantes activos</span>
+                )}
+                {hasMoreRestaurants && (
+                  <Link href="/admin" className={styles.subViewAll} onClick={() => setMenuOpen(false)}>
+                    Ver todos ({activeRestaurants.length})
+                  </Link>
+                )}
+              </>
+            )}
           </li>
 
           <li className={styles.navGroup}>
-            <p className={styles.navGroupTitle}>
-              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><rect x="1" y="1.5" width="9" height="6" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M4 9.5h3M5.5 7.5v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-              Kioscos
-            </p>
-            <Link
-              href="/admin/kioscos"
-              className={`${styles.navLink} ${pathname === '/admin/kioscos' ? styles.navActive : ''}`}
-              onClick={() => setMenuOpen(false)}
+            <button
+              type="button"
+              className={styles.navGroupHeaderBtn}
+              onClick={() => { setKioscosCollapsed(c => { const next = !c; writeLS('admin_kioscos_collapsed', next); return next }) }}
+              aria-expanded={!kioscosCollapsed}
             >
-              Gestionar kioscos
-            </Link>
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><rect x="1" y="1.5" width="9" height="6" rx="1" stroke="currentColor" strokeWidth="1.3"/><path d="M4 9.5h3M5.5 7.5v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+              <span className={styles.navGroupHeaderBtnText}>Kioscos</span>
+              <span className={styles.navGroupCount}>{activeTiendas.length}</span>
+              <svg className={`${styles.navGroupChevron} ${kioscosCollapsed ? styles.navGroupChevronCollapsed : ''}`} width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+            {!kioscosCollapsed && (
+              <>
+                <Link
+                  href="/admin/kioscos"
+                  className={`${styles.navLink} ${pathname === '/admin/kioscos' ? styles.navActive : ''}`}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Gestionar kioscos
+                </Link>
+                {shownTiendas.length > 0 ? (
+                  <ul className={styles.subList}>
+                    {shownTiendas.map(t => {
+                      const planLabel = t.plan === 'premium' ? 'Premium' : t.plan === 'basico' ? 'Básico' : t.plan === 'trial' ? 'Trial' : 'Sin plan'
+                      const statusLabel = t.subscription_status === 'active' ? 'Activo' : t.subscription_status === 'pending' ? 'Pendiente' : t.subscription_status || 'Sin estado'
+                      return (
+                        <li key={t.id}>
+                          <a
+                            href={`/kiosko-admin/${t.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={styles.subItemLink}
+                          >
+                            <span
+                              className={styles.statusDot}
+                              role="img"
+                              aria-label={statusLabel}
+                              title={`${planLabel} · ${statusLabel} · ${t.ciudad || 'Sin ubicación'}`}
+                              data-status={t.subscription_status}
+                            />
+                            <span className={styles.subItemName}>{t.nombre}</span>
+                          </a>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <span className={styles.subEmpty}>Sin kioscos activos</span>
+                )}
+                {hasMoreTiendas && (
+                  <Link href="/admin/kioscos" className={styles.subViewAll} onClick={() => setMenuOpen(false)}>
+                    Ver todos ({activeTiendas.length})
+                  </Link>
+                )}
+              </>
+            )}
           </li>
 
           <li className={styles.navGroup}>
@@ -166,29 +278,6 @@ export default function AdminLayout({ children }) {
             </Link>
           </li>
         </ul>
-
-        <hr className={styles.divider} />
-
-        <div className={styles.restSection}>
-          <p className={styles.restLabel}>Restaurantes activos <span>{restaurantes.length}</span></p>
-          {restaurantes.map(r => (
-            <Link
-              key={r.id}
-              href={`/admin/restaurante/${r.id}`}
-              className={`${styles.restLink} ${currentId === String(r.id) ? styles.restLinkActive : ''}`}
-              onClick={() => setMenuOpen(false)}
-            >
-              <span className={styles.restName}>{r.nombre}</span>
-              <span className={styles.restMeta}>
-                <span>{r.ciudad || r.provincia || 'Sin ubicación'}</span>
-                <span className={styles.restStatus}>{r.subscription_status || 'activo'}</span>
-              </span>
-            </Link>
-          ))}
-          {restaurantes.length === 0 && (
-            <span className={styles.restEmpty}>Sin restaurantes</span>
-          )}
-        </div>
 
         <div className={styles.sidebarFooter}>
           <button type="button" onClick={cerrarSesion} className={styles.logoutButton}>Salir</button>
