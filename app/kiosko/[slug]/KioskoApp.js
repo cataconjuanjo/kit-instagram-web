@@ -895,7 +895,23 @@ function TipoChip({ tipo, size = 'sm' }) {
   )
 }
 
-function WineCardPlaceholder({ tipo }) {
+const CAT_SILHOUETTE = {
+  'Embutido':    '/assets/eci-gourmet-demo/products/silhouette-embutido.svg',
+  'Queso':       '/assets/eci-gourmet-demo/products/silhouette-queso.svg',
+  'Foie·Paté':   '/assets/eci-gourmet-demo/products/silhouette-foie.svg',
+  'Conserva mar':'/assets/eci-gourmet-demo/products/silhouette-conserva.svg',
+  'Conserva':    '/assets/eci-gourmet-demo/products/silhouette-conserva.svg',
+  'Aceite·AOVE': '/assets/eci-gourmet-demo/products/silhouette-aove.svg',
+}
+
+function WineCardPlaceholder({ tipo, catGourmet }) {
+  if (catGourmet && CAT_SILHOUETTE[catGourmet]) {
+    return (
+      <div className={styles.cardImgPlaceholder}>
+        <img src={CAT_SILHOUETTE[catGourmet]} alt="" width="80" height="80" style={{ opacity: 0.6 }} />
+      </div>
+    )
+  }
   const color = TIPO_COLORS[tipo] || '#2a2a2a'
   return (
     <div className={styles.cardImgPlaceholder} style={{ background: `linear-gradient(135deg, ${color}33, ${color}88)` }}>
@@ -913,7 +929,7 @@ function WineCard({ vino, onClick }) {
           alt={vino.nombre}
           className={styles.cardImgPhoto}
           loading="lazy"
-          fallback={<WineCardPlaceholder tipo={vino.tipo} />}
+          fallback={<WineCardPlaceholder tipo={vino.tipo} catGourmet={vino.cat_gourmet} />}
         />
         {vino.destacado && <span className={styles.cardDestacado}>★ Destacado</span>}
       </div>
@@ -933,6 +949,9 @@ function WineCard({ vino, onClick }) {
                 <span className={styles.ofertaBadge}>OFERTA</span>
               </span>
             : vino.precio_pvp && <span className={styles.cardPrecio}>{formatPrecio(vino.precio_pvp)}</span>}
+          {vino.categoria !== 'otro' && vino.precio_pvp && (
+            <span className={styles.cardPpu}>{(vino.precio_pvp / 0.75).toFixed(2).replace('.', ',')} €/l</span>
+          )}
           {vino.ubicacion_estanteria && (
             <span className={styles.cardUbicacion}>
               <LocationMark className={styles.locationIcon} />
@@ -947,7 +966,7 @@ function WineCard({ vino, onClick }) {
 
 // ── Ficha de vino enriquecida ─────────────────────────────────────────────────
 
-function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es' }) {
+function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', tienda, onWineFood }) {
   const fichaInicial = useMemo(() => {
     if (!vino?.ficha_ia) return null
     try { return typeof vino.ficha_ia === 'string' ? JSON.parse(vino.ficha_ia) : vino.ficha_ia }
@@ -1023,7 +1042,7 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es' })
                 </div>
               : vino.precio_pvp && <div className={styles.detailPrecio} style={{ color: colorAcento }}>{formatPrecio(vino.precio_pvp)}</div>}
 
-            {vino.ubicacion_estanteria && (
+            {tienda?.theme_preset !== 'eci' && vino.ubicacion_estanteria && (
               <div className={styles.detailUbicacion}>
                 <span className={styles.detailUbicacionLabel}>{T[lang].encuentraEn}</span>
                 <span className={styles.detailUbicacionValor} style={{ color: colorAcento }}>
@@ -1037,6 +1056,16 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es' })
               <span aria-hidden="true">+</span>
               {T[lang]?.addToCart ?? T.es.addToCart}
             </button>
+
+            {tienda?.features?.wine_to_food === true && (
+              <button
+                className={styles.wineFoodBtn}
+                onClick={() => onWineFood?.(vino)}
+                type="button"
+              >
+                ¿Qué como con este vino?
+              </button>
+            )}
 
             {/* Notas de cata — skeleton mientras carga */}
             {!fichaReady ? (
@@ -2360,7 +2389,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
                   <p className={styles.pairingWineNombre}>{vino.nombre}</p>
                   {vino.bodega && <p className={styles.pairingWineBodega}>{vino.bodega}</p>}
                   <p className={styles.pairingWineRazon}>{iconStyle === 'lineal' ? stripEmoji(vino.razon) : vino.razon}</p>
-                  {vino.ubicacion_estanteria && (
+                  {tienda?.theme_preset !== 'eci' && vino.ubicacion_estanteria && (
                     <p className={styles.pairingWineUbicacion}>
                       <LocationMark className={styles.locationIcon} />
                       {vino.ubicacion_estanteria}
@@ -2414,7 +2443,12 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
 
   const lista = useMemo(() => {
     const dest = vinos.filter(v => v.destacado && v.foto_url)
-    return dest.length >= 3 ? dest : vinos.filter(v => v.foto_url).slice(0, 12)
+    if (dest.length >= 3) return dest
+    const withFoto = vinos.filter(v => v.foto_url).slice(0, 12)
+    if (withFoto.length > 0) return withFoto
+    // Sin fotos: usar destacados para que el showcase funcione con el fallback de gradiente
+    const sinFoto = vinos.filter(v => v.destacado)
+    return sinFoto.length >= 2 ? sinFoto.slice(0, 8) : vinos.slice(0, 8)
   }, [vinos])
 
   const valuePropsList = useMemo(
@@ -2657,7 +2691,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
                   <p className={styles.pairingWineNombre}>{vino.nombre}</p>
                   {vino.bodega && <p className={styles.pairingWineBodega}>{vino.bodega}</p>}
                   <p className={styles.pairingWineRazon}>{iconStyle === 'lineal' ? stripEmoji(vino.razon) : vino.razon}</p>
-                  {vino.ubicacion_estanteria && (
+                  {tienda?.theme_preset !== 'eci' && vino.ubicacion_estanteria && (
                     <p className={styles.pairingWineUbicacion}>
                       <LocationMark className={styles.locationIcon} />
                       {vino.ubicacion_estanteria}
@@ -2843,6 +2877,152 @@ function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es
   )
 }
 
+// ── Wine → Food panel ─────────────────────────────────────────────────────────
+
+function QrOrderModal({ item, lang, onClose }) {
+  const canvasRef = useRef(null)
+  const T_QR = {
+    es: {
+      titulo:     'Pedir en El Corte Inglés',
+      disclaimer: 'Demo: el enlace lleva a la web de El Corte Inglés. No se realiza ninguna compra desde este kiosko.',
+      cerrar:     'Cerrar',
+    },
+    en: {
+      titulo:     'Order at El Corte Inglés',
+      disclaimer: 'Demo: the link goes to El Corte Inglés website. No purchase is made from this kiosk.',
+      cerrar:     'Close',
+    },
+    fr: {
+      titulo:     'Commander chez El Corte Inglés',
+      disclaimer: "Démo : le lien mène au site d'El Corte Inglés. Aucun achat n'est effectué depuis ce kiosque.",
+      cerrar:     'Fermer',
+    },
+    de: {
+      titulo:     'Bei El Corte Inglés bestellen',
+      disclaimer: 'Demo: Der Link führt zur Website von El Corte Inglés. Kein Kauf erfolgt über diesen Kiosk.',
+      cerrar:     'Schließen',
+    },
+  }
+  const tl  = T_QR[lang] || T_QR.en
+  const url = item.fuente_url ||
+    `https://www.elcorteingles.es/club-del-gourmet/search-nwx/?s=${encodeURIComponent(item.nombre)}`
+
+  useEffect(() => {
+    if (!canvasRef.current) return
+    import('qrcode').then(mod => {
+      const QRCode = mod.default || mod
+      QRCode.toCanvas(canvasRef.current, url, {
+        width: 280,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' },
+      })
+    })
+  }, [url])
+
+  return (
+    <div className={styles.qrOverlay} onClick={onClose} role="dialog" aria-modal="true">
+      <div className={styles.qrModal} onClick={e => e.stopPropagation()}>
+        <button className={styles.qrClose} onClick={onClose} type="button" aria-label={tl.cerrar}>×</button>
+        <p className={styles.qrProductNombre}>{item.nombre}</p>
+        <h3 className={styles.qrTitulo}>{tl.titulo}</h3>
+        <div className={styles.qrCanvasWrap}>
+          <canvas ref={canvasRef} />
+        </div>
+        <p className={styles.qrDisclaimer}>{tl.disclaimer}</p>
+      </div>
+    </div>
+  )
+}
+
+function WineFoodPanel({ vino, resultados, onClose, lang, qrOrderEnabled }) {
+  const T_WF = {
+    es: { titulo: '¿Qué como con este vino?', cargando: 'Buscando maridajes...', vacio: 'No encontramos maridajes en el catálogo.', pedir: 'Pedir en El Corte Inglés' },
+    en: { titulo: 'What to eat with this wine?', cargando: 'Finding pairings...', vacio: 'No pairings found in catalogue.', pedir: 'Order at El Corte Inglés' },
+    fr: { titulo: 'Que manger avec ce vin?', cargando: 'Recherche...', vacio: 'Aucun accord trouvé.', pedir: 'Commander chez El Corte Inglés' },
+    de: { titulo: 'Was esse ich dazu?', cargando: 'Suche...', vacio: 'Keine Ergebnisse.', pedir: 'Bei El Corte Inglés bestellen' },
+  }
+  const tl = T_WF[lang] || T_WF.en
+  const [qrItem, setQrItem] = useState(null)
+
+  return (
+    <div className={styles.wineFoodPanel}>
+      <div className={styles.wineFoodHeader}>
+        <div>
+          <p className={styles.wineFoodVinoNombre}>{vino?.nombre}</p>
+          <h3 className={styles.wineFoodTitulo}>{tl.titulo}</h3>
+        </div>
+        <button className={styles.wineFoodClose} onClick={onClose} type="button" aria-label="Cerrar">×</button>
+      </div>
+
+      {resultados === 'loading' && (
+        <div className={styles.wineFoodLoading}>{tl.cargando}</div>
+      )}
+
+      {Array.isArray(resultados) && resultados.length === 0 && (
+        <p className={styles.wineFoodVacio}>{tl.vacio}</p>
+      )}
+
+      {Array.isArray(resultados) && resultados.length > 0 && (
+        <div className={styles.wineFoodGrid}>
+          {resultados.map(g => (
+            <div key={g.id} className={styles.wineFoodCard}>
+              <div className={styles.wineFoodCardImg}>
+                <SafeImage
+                  src={g.foto_url}
+                  alt={g.nombre}
+                  className={styles.wineFoodCardPhoto}
+                  fallback={
+                    <img
+                      src={CAT_SILHOUETTE[g.cat_gourmet] || '/assets/eci-gourmet-demo/products/silhouette-conserva.svg'}
+                      alt=""
+                      width="60"
+                      height="60"
+                      style={{ opacity: 0.55 }}
+                    />
+                  }
+                />
+              </div>
+              <div className={styles.wineFoodCardBody}>
+                {g.cat_gourmet && <span className={styles.wineFoodCat}>{g.cat_gourmet}</span>}
+                <p className={styles.wineFoodCardNombre}>{g.nombre}</p>
+                {g.bodega && <p className={styles.wineFoodCardBodega}>{g.bodega}</p>}
+                {g.razon && <p className={styles.wineFoodRazon}>{g.razon}</p>}
+                <div className={styles.wineFoodCardFooter}>
+                  {g.precio_pvp && (
+                    <span className={styles.wineFoodPrecio}>{formatPrecio(g.precio_pvp)}</span>
+                  )}
+                  {qrOrderEnabled ? (
+                    <button
+                      type="button"
+                      className={styles.wineFoodPedirBtn}
+                      onClick={() => setQrItem(g)}
+                    >
+                      {tl.pedir}
+                    </button>
+                  ) : (
+                    <a
+                      href={g.fuente_url || 'https://www.elcorteingles.es/club-del-gourmet/'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.wineFoodPedirBtn}
+                    >
+                      {tl.pedir}
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {qrItem && (
+        <QrOrderModal item={qrItem} lang={lang} onClose={() => setQrItem(null)} />
+      )}
+    </div>
+  )
+}
+
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function KioskoPage() {
@@ -2864,6 +3044,12 @@ export default function KioskoPage() {
   const [longPressTimer, setLongPressTimer] = useState(null)
   const [lang, setLang]             = useState('es')
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [wineFoodVino, setWineFoodVino] = useState(null)
+  const [wineFoodResultados, setWineFoodResultados] = useState(null)
+  const [wineFoodError, setWineFoodError] = useState('')
+  const [reposoActivo, setReposoActivo] = useState(false)
+  const reposoTimer  = useRef(null)
+  const reposoResetTimer = useRef(null)
 
   const idleTimer = useRef(null)
   const cartNoticeTimer = useRef(null)
@@ -2932,17 +3118,39 @@ export default function KioskoPage() {
 
   // Mantiene idleTimeoutMsRef sincronizado con la configuración de la tienda.
   // IDLE_DEFAULT_MS actúa como suelo: la BD puede subir el timeout, nunca bajarlo.
+  // features.idle_reposo_s anula el suelo para demos que necesiten timeouts cortos.
   useEffect(() => {
+    const reposoOverride = tienda?.features?.idle_reposo_s
+    if (typeof reposoOverride === 'number') {
+      idleTimeoutMsRef.current = reposoOverride > 0 ? reposoOverride * 1000 : 0
+      return
+    }
     const seg = tienda?.escaparate_timeout_segundos
     if (typeof seg === 'number') {
       idleTimeoutMsRef.current = seg === 0 ? 0 : Math.max(seg * 1000, IDLE_DEFAULT_MS)
     } else {
       idleTimeoutMsRef.current = IDLE_DEFAULT_MS
     }
-  }, [tienda?.escaparate_timeout_segundos])
+  }, [tienda?.escaparate_timeout_segundos, tienda?.features?.idle_reposo_s])
+
+  function doSessionReset() {
+    clearTimeout(reposoTimer.current)
+    clearTimeout(reposoResetTimer.current)
+    setReposoActivo(false)
+    abandonFunnel('idle_timeout')
+    setVinoDetalle(null)
+    setMobileVinos([])
+    setMobileSelection(null)
+    setCartNotice('')
+    showcaseManualRef.current = false
+    setView(VIEWS.SHOWCASE)
+  }
 
   const resetIdle = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current)
+    clearTimeout(reposoTimer.current)
+    clearTimeout(reposoResetTimer.current)
+    setReposoActivo(false)
 
     const ms = idleTimeoutMsRef.current
     // 0 = escaparate desactivado
@@ -2952,16 +3160,17 @@ export default function KioskoPage() {
     // Ya en SHOWCASE automático: no relanzar el timer
     if (view === VIEWS.SHOWCASE) return
 
-    idleTimer.current = setTimeout(() => {
-      abandonFunnel('idle_timeout')
-      setVinoDetalle(null)
-      setMobileVinos([])
-      setMobileSelection(null)
-      setCartNotice('')
-      showcaseManualRef.current = false
-      setView(VIEWS.SHOWCASE)
-    }, ms)
-  }, [view])
+    const resetS = tienda?.features?.idle_reset_s
+    if (typeof resetS === 'number' && resetS > 0) {
+      // Dos fases: reposo visual → reset de sesión
+      reposoTimer.current = setTimeout(() => {
+        setReposoActivo(true)
+        reposoResetTimer.current = setTimeout(doSessionReset, resetS * 1000)
+      }, ms)
+    } else {
+      idleTimer.current = setTimeout(doSessionReset, ms)
+    }
+  }, [view, tienda?.features?.idle_reset_s])
 
   useEffect(() => { resetIdle(); return () => { if (idleTimer.current) clearTimeout(idleTimer.current) } }, [resetIdle])
   useEffect(() => {
@@ -3153,6 +3362,43 @@ export default function KioskoPage() {
   }
   function onLogoRelease() { if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null) } }
 
+  const wineFoodEnabled = tienda?.features?.wine_to_food === true
+
+  async function buscarWineFood(vino) {
+    setWineFoodVino(vino)
+    setWineFoodResultados('loading')
+    setWineFoodError('')
+    // Check client-side cache first
+    const cached = tienda?.wine_food_cache?.[vino.id]
+    if (cached?.length) {
+      const gourmetMap = Object.fromEntries(gourmet.map(g => [g.id, g]))
+      setWineFoodResultados(cached.map(r => ({ ...r, fuente_url: gourmetMap[r.id]?.fuente_url || r.fuente_url })))
+      return
+    }
+    try {
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), 7000)
+      const res = await fetch(`/api/kiosko/${slug}/maridaje`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'wine-to-food', vinoId: vino.id, lang }),
+        signal: ctrl.signal,
+      })
+      clearTimeout(timer)
+      const data = await res.json()
+      if (data.recomendaciones?.length) {
+        setWineFoodResultados(data.recomendaciones)
+      } else {
+        setWineFoodResultados([])
+        setWineFoodError(data.error || 'Sin resultados')
+      }
+    } catch {
+      const cached2 = tienda?.wine_food_cache?.[vino.id]
+      setWineFoodResultados(cached2?.length ? cached2 : [])
+      if (!cached2?.length) setWineFoodError('Sin conexión — intenta de nuevo')
+    }
+  }
+
   const colorPrimario = tienda?.color_primario || '#0d0d1a'
   const colorAcento   = tienda?.color_acento   || '#c9a96e'
   const temaClaro     = esColorClaro(colorPrimario)
@@ -3182,6 +3428,11 @@ export default function KioskoPage() {
     '--featured-b':temaClaro? '#EEEEEE'            : 'rgba(255,255,255,.08)',
   }
 
+  if (tienda?.theme_preset === 'eci') {
+    themeVars['--font-family'] = "'ECI-TITLE', 'ECI-TEXT', 'Montserrat', 'Helvetica Neue', Arial, sans-serif"
+    themeVars['--br-pill'] = '9999px'
+  }
+
   if (cargando) return (
     <div className={styles.loadingScreen} style={themeVars}>
       <div className={styles.loadingSpinner} />
@@ -3196,7 +3447,15 @@ export default function KioskoPage() {
   )
 
   return (
-    <div className={styles.kiosko} style={themeVars}>
+    <div className={styles.kiosko} data-theme={tienda?.theme_preset || undefined} style={themeVars}>
+      {tienda?.features?.is_demo && (
+        <div className={styles.demoBadge}>Prototipo · no oficial</div>
+      )}
+      {reposoActivo && (
+        <div className={styles.reposoOverlay} onClick={resetIdle} role="button" tabIndex={0} aria-label="Toca para continuar">
+          <p className={styles.reposoLabel}>Toca para continuar</p>
+        </div>
+      )}
       <MobileQrModal
         selection={mobileSelection}
         onClose={() => setMobileSelection(null)}
@@ -3249,52 +3508,77 @@ export default function KioskoPage() {
             {tienda?.descripcion && <p className={styles.welcomeDesc}>{tienda.descripcion}</p>}
             <div className={styles.welcomeStats}>
               <span>{T[lang].referencias(vinos.length)}</span>
-              {(() => { const d = vinos.filter(v => v.stock > 0).length; return d > 0 && d < vinos.length ? <span>{T[lang].disponibles(d)}</span> : null })()}
+              {tienda?.theme_preset !== 'eci' && (() => { const d = vinos.filter(v => v.stock > 0).length; return d > 0 && d < vinos.length ? <span>{T[lang].disponibles(d)}</span> : null })()}
             </div>
           </div>
 
           {/* Acciones — tarjetas con icono grande centradas en el kiosko */}
-          <div className={styles.welcomeActions}>
-            <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.BROWSE)} type="button"
-              style={{ '--acento': colorAcento }}>
-              <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
-                <WelcomeActionIcon name="browse" variant={iconStyle} />
-              </span>
-              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].explorar}</span>
-            </button>
-            <button className={styles.welcomeActionCard} onClick={() => { startFunnel('wizard'); setView(VIEWS.WIZARD) }} type="button"
-              style={{ '--acento': colorAcento }}>
-              <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
-                <WelcomeActionIcon name="choose" variant={iconStyle} />
-              </span>
-              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].elegir}</span>
-            </button>
-            <button className={styles.welcomeActionCard} onClick={() => { startFunnel('pairing'); setView(VIEWS.PAIRING) }} type="button"
-              style={{ '--acento': colorAcento }}>
-              <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
-                <WelcomeActionIcon name="pairing" variant={iconStyle} />
-              </span>
-              <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].maridaje}</span>
-            </button>
-            {cestaActiva && (
-              <button className={styles.welcomeActionCard} onClick={() => { startFunnel('cesta'); setView(VIEWS.CESTA) }} type="button"
+          {tienda?.theme_preset === 'eci' ? (
+            <div className={`${styles.welcomeActions} ${styles.welcomeActionsEci}`}>
+              <button className={`${styles.welcomeActionCard} ${styles.welcomeActionCardEci}`}
+                onClick={() => { startFunnel('pairing'); setView(VIEWS.PAIRING) }} type="button">
+                <span className={styles.eciActionLabel}>Maridajes</span>
+                <span className={styles.eciActionSub}>Vino y gourmet</span>
+              </button>
+              <button className={`${styles.welcomeActionCard} ${styles.welcomeActionCardEci}`}
+                onClick={() => { startFunnel('wizard'); setView(VIEWS.WIZARD) }} type="button">
+                <span className={styles.eciActionLabel}>Ayúdame a elegir</span>
+                <span className={styles.eciActionSub}>Para cada ocasión</span>
+              </button>
+              <button className={`${styles.welcomeActionCard} ${styles.welcomeActionCardEci}`}
+                onClick={() => setView(VIEWS.BROWSE)} type="button">
+                <span className={styles.eciActionLabel}>Explorar vinos</span>
+                <span className={styles.eciActionSub}>{vinos.length} referencias</span>
+              </button>
+              <button className={`${styles.welcomeActionCard} ${styles.welcomeActionCardEci}`}
+                onClick={() => { startFunnel('cesta'); setView(VIEWS.CESTA) }} type="button">
+                <span className={styles.eciActionLabel}>Cestas regalo</span>
+                <span className={styles.eciActionSub}>Selecciones especiales</span>
+              </button>
+            </div>
+          ) : (
+            <div className={styles.welcomeActions}>
+              <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.BROWSE)} type="button"
                 style={{ '--acento': colorAcento }}>
                 <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
-                  <WelcomeActionIcon name="cesta" variant={iconStyle} />
+                  <WelcomeActionIcon name="browse" variant={iconStyle} />
                 </span>
-                <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].cesta}</span>
+                <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].explorar}</span>
               </button>
-            )}
-            {dueloActivo && (
-              <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.DUELO)} type="button"
+              <button className={styles.welcomeActionCard} onClick={() => { startFunnel('wizard'); setView(VIEWS.WIZARD) }} type="button"
                 style={{ '--acento': colorAcento }}>
                 <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
-                  <WelcomeActionIcon name="duelo" variant={iconStyle} />
+                  <WelcomeActionIcon name="choose" variant={iconStyle} />
                 </span>
-                <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].duelo}</span>
+                <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].elegir}</span>
               </button>
-            )}
-          </div>
+              <button className={styles.welcomeActionCard} onClick={() => { startFunnel('pairing'); setView(VIEWS.PAIRING) }} type="button"
+                style={{ '--acento': colorAcento }}>
+                <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
+                  <WelcomeActionIcon name="pairing" variant={iconStyle} />
+                </span>
+                <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].maridaje}</span>
+              </button>
+              {cestaActiva && (
+                <button className={styles.welcomeActionCard} onClick={() => { startFunnel('cesta'); setView(VIEWS.CESTA) }} type="button"
+                  style={{ '--acento': colorAcento }}>
+                  <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
+                    <WelcomeActionIcon name="cesta" variant={iconStyle} />
+                  </span>
+                  <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].cesta}</span>
+                </button>
+              )}
+              {dueloActivo && (
+                <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.DUELO)} type="button"
+                  style={{ '--acento': colorAcento }}>
+                  <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
+                    <WelcomeActionIcon name="duelo" variant={iconStyle} />
+                  </span>
+                  <span className={styles.welcomeActionLabel} style={{ color: colorAcento }}>{T[lang].duelo}</span>
+                </button>
+              )}
+            </div>
+          )}
 
           <div className={styles.langSelector}>
             {IDIOMAS.map(i => (
@@ -3326,7 +3610,9 @@ export default function KioskoPage() {
           )}
 
           <span className={styles.kioskoCredit}>
-            Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo
+            {tienda?.theme_preset === 'eci'
+              ? 'Prototipo · no oficial'
+              : <>Kiosko Virtual <span aria-hidden="true">×</span> @cataconjuanjo</>}
           </span>
 
           {vinosDestacadosEfectivos.length > 0 && (
@@ -3407,7 +3693,19 @@ export default function KioskoPage() {
       {/* DETALLE — overlay sobre cualquier vista */}
       {vinoDetalle && (
         <WineDetail vino={vinoDetalle} slug={slug} colorAcento={colorAcento}
-          onClose={cerrarDetalle} onMobile={abrirMobileQr} lang={lang} />
+          onClose={cerrarDetalle} onMobile={abrirMobileQr} lang={lang}
+          tienda={tienda} onWineFood={wineFoodEnabled ? buscarWineFood : undefined} />
+      )}
+
+      {/* WINE → FOOD panel — overlay sobre el detalle cuando está activo */}
+      {wineFoodEnabled && wineFoodVino && wineFoodResultados !== null && (
+        <WineFoodPanel
+          vino={wineFoodVino}
+          resultados={wineFoodResultados}
+          onClose={() => { setWineFoodVino(null); setWineFoodResultados(null) }}
+          lang={lang}
+          qrOrderEnabled={tienda?.features?.qr_order === true}
+        />
       )}
     </div>
   )

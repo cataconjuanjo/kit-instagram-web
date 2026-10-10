@@ -1120,6 +1120,7 @@ export default function AdminKioskoPage() {
   const [lastSync, setLastSync]     = useState(null) // { ultimoPagoAt, ultimoCatalogoAt }
 
   const esPremium = !tienda?.plan || tienda.plan === 'premium' || tienda.plan === 'trial'
+  const hideSensitive = tienda?.features?.hide_sensitive === true
   const pedidosMostradorActivos = tienda?.kiosko_orders_enabled === true && !COUNTER_ORDERS_IN_DEVELOPMENT
   const authHeaders = useMemo(
     () => tienda?._token ? { Authorization: `Bearer ${tienda._token}` } : {},
@@ -2542,8 +2543,10 @@ export default function AdminKioskoPage() {
               { id: 'embudo',        label: 'Embudo' },
               { id: 'conversion',    label: 'Conversión' },
               { id: 'precios',       label: 'Precios' },
-              { id: 'ventas',        label: 'Ventas TPV' },
-              { id: 'rentabilidad',  label: 'Rentabilidad' },
+              ...(!hideSensitive ? [
+                { id: 'ventas',        label: 'Ventas TPV' },
+                { id: 'rentabilidad',  label: 'Rentabilidad' },
+              ] : []),
             ].map(st => (
               <button key={st.id} type="button"
                 className={`${styles.subTabBtn} ${subTabAnalitica === st.id ? styles.subTabBtnActive : ''}`}
@@ -3934,11 +3937,11 @@ export default function AdminKioskoPage() {
           <span className={styles.statNum}>{sinPrecio}</span>
           <span className={styles.statLabel}>Sin PVP</span>
         </button>
-        <div className={`${styles.statCard} ${sinCoste ? styles.statWarn : ''}`}>
+        {!hideSensitive && <div className={`${styles.statCard} ${sinCoste ? styles.statWarn : ''}`}>
           <span className={styles.statNum}>{sinCoste}</span>
           <span className={styles.statLabel}>Sin coste</span>
-        </div>
-        <button
+        </div>}
+        {!hideSensitive && <button
           type="button"
           className={`${styles.statCard} ${styles.statCardClickable} ${sinStock ? styles.statWarn : styles.statResolved}`}
           onClick={() => sinStock ? aplicarFiltroCalidad('sin_stock') : undefined}
@@ -3947,7 +3950,7 @@ export default function AdminKioskoPage() {
         >
           <span className={styles.statNum}>{sinStock}</span>
           <span className={styles.statLabel}>Sin stock</span>
-        </button>
+        </button>}
         <div className={`${styles.statCard} ${modoManualDestacados && nDestacadosConStock < 3 ? styles.statWarn : ''}`}>
           <span className={styles.statNum}>{nDestacados}</span>
           <span className={styles.statLabel}>Destacados</span>
@@ -4157,12 +4160,12 @@ export default function AdminKioskoPage() {
               <th className={styles.thSortable} onClick={() => sortHead('uva')}>Uva{sortArrow('uva')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('anada')}>Añada{sortArrow('anada')}</th>
               <th className={styles.thSortable} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>
-              <th className={styles.thSortable} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>
-              <th className={styles.thSortable} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>
+              {!hideSensitive && <th className={styles.thSortable} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>}
+              {!hideSensitive && <th className={styles.thSortable} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>}
               <th className={styles.thSortable} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>
-              <th className={styles.thSortable} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>
-              <th title="Stock mínimo — alerta si stock ≤ este valor">Mín.</th>
-              <th>Estantería</th>
+              {!hideSensitive && <th className={styles.thSortable} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>}
+              {!hideSensitive && <th title="Stock mínimo — alerta si stock ≤ este valor">Mín.</th>}
+              {!hideSensitive && <th>Estantería</th>}
               <th className={styles.thCenter}>★</th>
               <th className={styles.thCenter}>Estado</th>
               <th></th>
@@ -4262,7 +4265,7 @@ export default function AdminKioskoPage() {
                 </td>
 
                 {/* Coste inline */}
-                <td className={styles.tdEditable} onClick={e => startInline(v.id, 'precio_coste', v.precio_coste, e)}>
+                {!hideSensitive && <td className={styles.tdEditable} onClick={e => startInline(v.id, 'precio_coste', v.precio_coste, e)}>
                   {inlineEdit?.id === v.id && inlineEdit.campo === 'precio_coste' ? (
                     <input
                       className={styles.inlineInput}
@@ -4280,14 +4283,14 @@ export default function AdminKioskoPage() {
                       <span className={styles.editIcon}>✎</span>
                     </span>
                   )}
-                </td>
+                </td>}
 
                 {/* Margen */}
-                <td>
+                {!hideSensitive && <td>
                   {Number(v.precio_pvp) > 0 && Number(v.precio_coste) > 0
                     ? (() => { const m = Math.round(((Number(v.precio_pvp) - Number(v.precio_coste)) / Number(v.precio_pvp)) * 100); return <span className={`${styles.margenBadge} ${m >= 40 ? styles.margenHigh : m >= 25 ? styles.margenMid : styles.margenLow}`}>{m}%</span> })()
                     : <em className={styles.dash}>—</em>}
-                </td>
+                </td>}
 
                 {/* Oferta inline */}
                 <td
@@ -4316,7 +4319,7 @@ export default function AdminKioskoPage() {
                 </td>
 
                 {/* Stock inline */}
-                <td
+                {!hideSensitive && <td
                   className={`${styles.tdEditable} ${v.stock === 0 ? styles.stockCero : ''}`}
                   onClick={stockPending?.id === v.id ? undefined : e => startInline(v.id, 'stock', v.stock, e)}
                 >
@@ -4348,10 +4351,10 @@ export default function AdminKioskoPage() {
                       <span className={styles.editIcon}>✎</span>
                     </span>
                   )}
-                </td>
+                </td>}
 
                 {/* Stock mínimo inline */}
-                <td
+                {!hideSensitive && <td
                   className={`${styles.tdEditable} ${Number(v.stock ?? 0) <= Number(v.stock_minimo ?? 0) && Number(v.stock_minimo ?? 0) > 0 ? styles.stockBajoMinimo : ''}`}
                   onClick={e => startInline(v.id, 'stock_minimo', v.stock_minimo ?? 0, e)}
                 >
@@ -4373,10 +4376,10 @@ export default function AdminKioskoPage() {
                       <span className={styles.editIcon}>✎</span>
                     </span>
                   )}
-                </td>
+                </td>}
 
                 {/* Estantería inline */}
-                <td
+                {!hideSensitive && <td
                   className={styles.tdEditable}
                   onClick={e => startInline(v.id, 'ubicacion_estanteria', v.ubicacion_estanteria, e)}
                 >
@@ -4397,7 +4400,7 @@ export default function AdminKioskoPage() {
                       <span className={styles.editIcon}>✎</span>
                     </span>
                   )}
-                </td>
+                </td>}
 
                 {/* Destacado toggle */}
                 <td className={styles.tdCenter}>
@@ -4498,8 +4501,8 @@ export default function AdminKioskoPage() {
                 step: '0.01',
                 display: wine => Number(wine.precio_pvp) > 0 ? formatPVP(wine.precio_pvp) : <em className={styles.dash}>-</em>,
               })}
-              {renderMobileStockField(v)}
-              {renderMobileInlineField(v, 'ubicacion_estanteria', 'Ubicacion', v.ubicacion_estanteria, {
+              {!hideSensitive && renderMobileStockField(v)}
+              {!hideSensitive && renderMobileInlineField(v, 'ubicacion_estanteria', 'Ubicacion', v.ubicacion_estanteria, {
                 wide: true,
                 display: wine => wine.ubicacion_estanteria || <em className={styles.dash}>Sin ubicar</em>,
               })}
@@ -4772,26 +4775,26 @@ export default function AdminKioskoPage() {
                     <label>PVP (€)</label>
                     <input type="number" min="0" step="0.01" value={form.precio_pvp} onChange={e => cambiar('precio_pvp', e.target.value)} placeholder="0.00" />
                   </div>
-                  <div className={styles.formField}>
+                  {!hideSensitive && <div className={styles.formField}>
                     <label>Coste (€)</label>
                     <input type="number" min="0" step="0.01" value={form.precio_coste} onChange={e => cambiar('precio_coste', e.target.value)} placeholder="0.00" />
-                  </div>
+                  </div>}
                   <div className={styles.formField}>
                     <label>Precio oferta (€)</label>
                     <input type="number" min="0" step="0.01" value={form.precio_oferta} onChange={e => cambiar('precio_oferta', e.target.value)} placeholder="0.00" />
                   </div>
-                  <div className={styles.formField}>
+                  {!hideSensitive && <div className={styles.formField}>
                     <label>Stock</label>
                     <input type="number" min="0" value={form.stock} onChange={e => cambiar('stock', e.target.value)} placeholder="0" />
-                  </div>
-                  <div className={styles.formField}>
+                  </div>}
+                  {!hideSensitive && <div className={styles.formField}>
                     <label>Stock mínimo</label>
                     <input type="number" min="0" value={form.stock_minimo ?? 0} onChange={e => cambiar('stock_minimo', e.target.value)} placeholder="0" />
-                  </div>
-                  <div className={styles.formField}>
+                  </div>}
+                  {!hideSensitive && <div className={styles.formField}>
                     <label>Estantería</label>
                     <input value={form.ubicacion_estanteria} onChange={e => cambiar('ubicacion_estanteria', e.target.value)} placeholder="Pasillo B3…" />
-                  </div>
+                  </div>}
                   <div className={styles.formField}>
                     <label>Puntuación</label>
                     <input type="number" min="0" max="100" value={form.puntuacion} onChange={e => cambiar('puntuacion', e.target.value)} placeholder="92" />

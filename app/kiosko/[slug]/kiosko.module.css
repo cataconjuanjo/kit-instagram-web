@@ -1,5 +1,5 @@
 /* ── Google Fonts ─────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500&family=Mulish:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500&family=Mulish:wght@500;600;700;800&family=Montserrat:wght@400;500;600;700&display=swap');
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
 .kiosko {
@@ -952,6 +952,11 @@
   font-size: 1.3rem;
   font-weight: 800;
   color: var(--color-acento);
+}
+
+/* ── Precio por litro (oculto por defecto, visible solo en tema ECI) ─────── */
+.cardPpu {
+  display: none;
 }
 
 .cardUbicacion {
@@ -4047,4 +4052,597 @@
     flex: 1;
     min-width: 0;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ECI GOURMET DEMO  —  data-theme="eci"
+   Todos los selectores usan .kiosko[data-theme="eci"] como prefijo.
+   Sibaris y el resto de tiendas no se ven afectados ni un píxel.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── @font-face ECI (opcional; cae a Montserrat si no hay woff2) ─────────── */
+@font-face {
+  font-family: 'ECI-TITLE';
+  src: local('Montserrat Bold'),
+       url('/assets/eci-gourmet-demo/fonts/ECI-TITLE-700.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'ECI-TITLE';
+  src: local('Montserrat'),
+       url('/assets/eci-gourmet-demo/fonts/ECI-TITLE-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'ECI-TEXT';
+  src: local('Montserrat'),
+       url('/assets/eci-gourmet-demo/fonts/ECI-TEXT-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'ECI-TEXT';
+  src: local('Montserrat Medium'),
+       url('/assets/eci-gourmet-demo/fonts/ECI-TEXT-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
+/* ── Portada: entradas de acción ECI ────────────────────────────────────── */
+
+/* Contenedor: 2×2 grid centrado, no scroll horizontal */
+.welcomeActionsEci {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  width: 100%;
+  max-width: 680px;
+  padding: 0 1.5rem;
+  box-sizing: border-box;
+  /* Override welcomeActions flex:1 — el grid no debe estirarse verticalmente */
+  flex: none;
+  flex-direction: unset;
+  align-items: unset;
+  justify-content: unset;
+}
+
+/* Tarjeta grande tipo pill */
+.welcomeActionCardEci {
+  flex: unset;
+  max-width: unset;
+  min-height: 160px;
+  gap: .6rem;
+  background: #FFFFFF;
+  border: 1.5px solid #D8D8D8;
+  border-radius: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  transition: border-color .15s, box-shadow .15s, transform .12s;
+}
+
+.welcomeActionCardEci:hover {
+  border-color: #1a1a1a;
+  box-shadow: 0 4px 20px rgba(0,0,0,.12);
+  background: #FFFFFF;
+}
+
+.eciActionLabel {
+  font-size: clamp(.95rem, 1.8vw, 1.2rem);
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: #1a1a1a;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.eciActionSub {
+  font-size: clamp(.75rem, 1.3vw, .9rem);
+  font-weight: 400;
+  letter-spacing: .04em;
+  color: #888888;
+  text-align: center;
+}
+
+/* ── Portada / pantalla de bienvenida ───────────────────────────────────── */
+.kiosko[data-theme="eci"] .welcomeContent {
+  padding: 3rem 3rem 1.5rem;
+  gap: 1.25rem;
+}
+
+.kiosko[data-theme="eci"] .welcomeLogoHero {
+  max-width: 320px;
+  max-height: 90px;
+}
+
+.kiosko[data-theme="eci"] .welcomeNombre {
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
+  letter-spacing: .12em;
+  border-bottom: 2px solid #1a1a1a;
+  padding-bottom: .6rem;
+}
+
+.kiosko[data-theme="eci"] .welcomeDesc {
+  font-size: clamp(.95rem, 1.6vw, 1.15rem);
+  letter-spacing: .02em;
+}
+
+.kiosko[data-theme="eci"] .welcomeStats {
+  font-size: .85rem;
+  letter-spacing: .14em;
+}
+
+/* ── Chips de filtro ─────────────────────────────────────────────────────── */
+.kiosko[data-theme="eci"] .tipoChipBtn {
+  border-radius: var(--br-pill, 9999px);
+  border-width: 1.5px;
+  font-size: .88rem;
+  letter-spacing: .06em;
+  padding: .45rem 1.2rem;
+  min-height: 44px;
+}
+
+/* ── Grid de productos ───────────────────────────────────────────────────── */
+.kiosko[data-theme="eci"] .wineGrid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+/* ── Tarjeta de producto ─────────────────────────────────────────────────── */
+.kiosko[data-theme="eci"] .wineCard {
+  border-radius: 0;
+  border: 1px solid #E0E0E0;
+  box-shadow: none;
+}
+
+.kiosko[data-theme="eci"] .wineCard:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  transform: translateY(-2px);
+  border-color: #1a1a1a;
+}
+
+/* Imagen producto: fondo blanco limpio para gourmet */
+.kiosko[data-theme="eci"] .cardImg {
+  background: #FAFAFA;
+  aspect-ratio: 1 / 1;
+}
+
+/* Silhouette centrada en el placeholder gourmet */
+.kiosko[data-theme="eci"] .cardImgPlaceholder {
+  background: #F5F5F5;
+}
+
+/* Borde superior de body: línea ECI */
+.kiosko[data-theme="eci"] .cardBody {
+  border-top: 1px solid #E0E0E0;
+}
+
+/* Nombre del producto */
+.kiosko[data-theme="eci"] .cardNombre {
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+/* Bodega / marca */
+.kiosko[data-theme="eci"] .cardBodega {
+  font-size: .82rem;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: #888888;
+}
+
+/* Precio: tamaño y peso ECI */
+.kiosko[data-theme="eci"] .cardPrecio {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+/* Precio por litro: visible solo en ECI */
+.kiosko[data-theme="eci"] .cardPpu {
+  display: inline-block;
+  font-size: .72rem;
+  color: #999999;
+  letter-spacing: .02em;
+  margin-left: .35rem;
+}
+
+/* Badge destacado */
+.kiosko[data-theme="eci"] .cardDestacado {
+  border-radius: 0;
+  font-size: .68rem;
+  letter-spacing: .1em;
+  padding: .18rem .5rem;
+  background: #1a1a1a;
+  color: #ffffff;
+}
+
+/* Footer de la tarjeta */
+.kiosko[data-theme="eci"] .cardFooter {
+  border-top: 1px solid #EEEEEE;
+}
+
+/* ── Crédito de prototipo ─────────────────────────────────────────────────── */
+.kiosko[data-theme="eci"] .kioskoCredit {
+  font-size: .58rem;
+  letter-spacing: .14em;
+  color: #BBBBBB;
+  opacity: .8;
+}
+
+/* ── Welcome: logo grande ECI en la portada ──────────────────────────────── */
+.kiosko[data-theme="eci"] .welcomeLogoFallback {
+  border-radius: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border: 2px solid #1a1a1a;
+  background: transparent;
+  color: #1a1a1a;
+}
+
+/* ── Pantalla de reposo (showcase) — modo claro ECI ─────────────────────── */
+.kiosko[data-theme="eci"] .showcaseView {
+  background: #F1F4F1;
+}
+.kiosko[data-theme="eci"] .showcaseBg {
+  display: none;
+}
+.kiosko[data-theme="eci"] .showcaseBgOverlay {
+  display: none;
+}
+.kiosko[data-theme="eci"] .showcaseInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+}
+.kiosko[data-theme="eci"] .showcaseNombre {
+  color: #242424;
+}
+.kiosko[data-theme="eci"] .showcaseBodega {
+  color: #242424;
+}
+.kiosko[data-theme="eci"] .showcaseMeta {
+  color: #242424;
+}
+.kiosko[data-theme="eci"] .showcasePrecio {
+  color: #242424 !important;
+}
+.kiosko[data-theme="eci"] .showcaseDestacado {
+  color: #242424 !important;
+}
+.kiosko[data-theme="eci"] .showcaseLogoWrap {
+  background: transparent;
+  backdrop-filter: none;
+}
+.kiosko[data-theme="eci"] .showcaseTienda {
+  color: #242424;
+}
+.kiosko[data-theme="eci"] .showcaseHora {
+  color: #242424;
+}
+.kiosko[data-theme="eci"] .showcaseValueProp {
+  color: #666666;
+}
+.kiosko[data-theme="eci"] .showcaseDot {
+  background: rgba(36, 36, 36, .25);
+}
+.kiosko[data-theme="eci"] .showcaseDotActive {
+  background: #242424;
+}
+.kiosko[data-theme="eci"] .showcaseDotActive::after {
+  display: none;
+}
+.kiosko[data-theme="eci"] .showcaseTapPill {
+  background: #1a1a1a;
+  color: #fff;
+  border-color: #1a1a1a;
+  backdrop-filter: none;
+}
+.kiosko[data-theme="eci"] .showcaseUbicacion {
+  display: none;
+}
+
+/* ── 1B: Ocultar ubicacion estantería y stock en ECI ─────────────────────── */
+.kiosko[data-theme="eci"] .cardUbicacion {
+  display: none;
+}
+
+/* ── Responsive: pantalla estrecha ──────────────────────────────────────── */
+@media (max-width: 600px) {
+  .kiosko[data-theme="eci"] .wineGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: .75rem;
+  }
+
+  .kiosko[data-theme="eci"] .welcomeLogoHero {
+    max-width: 220px;
+  }
+
+  .welcomeActionsEci {
+    grid-template-columns: 1fr;
+    max-width: 340px;
+    gap: .75rem;
+  }
+
+  .welcomeActionCardEci {
+    min-height: 90px;
+    border-radius: 14px;
+  }
+}
+
+/* ── Wine → Food panel ───────────────────────────────────────────────────── */
+.wineFoodPanel {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: #FFFFFF;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  gap: 1.5rem;
+}
+.wineFoodHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.wineFoodVinoNombre {
+  font-size: .85rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--texto-m);
+  margin: 0 0 .3rem;
+}
+.wineFoodTitulo {
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
+  font-weight: 700;
+  margin: 0;
+  color: var(--texto);
+}
+.wineFoodClose {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: var(--texto-m);
+  line-height: 1;
+  padding: .2rem .5rem;
+  flex-shrink: 0;
+}
+.wineFoodLoading {
+  padding: 3rem;
+  text-align: center;
+  color: var(--texto-m);
+  font-size: 1rem;
+}
+.wineFoodVacio {
+  padding: 3rem;
+  text-align: center;
+  color: var(--texto-m);
+}
+.wineFoodGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.wineFoodCard {
+  display: flex;
+  gap: 1rem;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.wineFoodCardImg {
+  width: 100px;
+  min-width: 100px;
+  background: #F5F5F5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wineFoodCardPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.wineFoodCardBody {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.wineFoodCat {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--texto-d);
+}
+.wineFoodCardNombre {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--texto);
+  margin: 0;
+  line-height: 1.3;
+}
+.wineFoodCardBodega {
+  font-size: .82rem;
+  color: var(--texto-m);
+  margin: 0;
+}
+.wineFoodRazon {
+  font-size: .85rem;
+  color: var(--texto-m);
+  margin: .2rem 0;
+  font-style: italic;
+  line-height: 1.4;
+}
+.wineFoodCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: auto;
+  padding-top: .5rem;
+}
+.wineFoodPrecio {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-acento);
+}
+.wineFoodPedirBtn {
+  display: inline-block;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .45rem 1rem;
+  border-radius: 9999px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.wineFoodBtn {
+  width: 100%;
+  background: none;
+  border: 2px solid #1a1a1a;
+  border-radius: 9999px;
+  color: #1a1a1a;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: .85rem 1.5rem;
+  cursor: pointer;
+  letter-spacing: .04em;
+  transition: background .15s, color .15s;
+  margin-top: .5rem;
+}
+.wineFoodBtn:hover {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+/* ── Reposo overlay ──────────────────────────────────────────────────────────── */
+.reposoOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0, 0, 0, .88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.reposoLabel {
+  color: rgba(255, 255, 255, .5);
+  font-size: clamp(1rem, 3vw, 1.4rem);
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* ── Demo badge ──────────────────────────────────────────────────────────────── */
+.demoBadge {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, .72);
+  color: rgba(255, 255, 255, .6);
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: .3rem 1rem;
+  pointer-events: none;
+}
+
+/* ── QR Order Modal ──────────────────────────────────────────────────────────── */
+.qrOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(0, 0, 0, .55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.qrModal {
+  position: relative;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 2rem 1.75rem 1.75rem;
+  max-width: 360px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
+}
+.qrClose {
+  position: absolute;
+  top: .75rem;
+  right: .75rem;
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: #666;
+  cursor: pointer;
+  padding: .2rem .5rem;
+}
+.qrProductNombre {
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: #888;
+  text-align: center;
+  margin: 0;
+  max-width: 280px;
+}
+.qrTitulo {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: #1a1a1a;
+  text-align: center;
+  margin: 0;
+  text-transform: uppercase;
+}
+.qrCanvasWrap {
+  background: #ffffff;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: .5rem;
+  line-height: 0;
+}
+.qrCanvasWrap canvas {
+  display: block;
+  width: 280px !important;
+  height: 280px !important;
+}
+.qrDisclaimer {
+  font-size: .72rem;
+  color: #999;
+  text-align: center;
+  line-height: 1.45;
+  margin: 0;
+  max-width: 280px;
 }

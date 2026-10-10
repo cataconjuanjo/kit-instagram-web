@@ -37,7 +37,7 @@ export async function GET(request, { params }) {
   // categoria='carta' = platos de la carta del restaurante (sin foto, siempre incluidos)
   const { data: raw, error } = await supabaseAdmin
     .from('vinos_tienda')
-    .select('id, nombre, precio_pvp, foto_url, descripcion, apto_cesta, es_vegano, con_alcohol, cat_gourmet, sin_gluten, categoria')
+    .select('id, nombre, precio_pvp, foto_url, descripcion, apto_cesta, es_vegano, con_alcohol, cat_gourmet, sin_gluten, categoria, fuente_url')
     .eq('tienda_id', tienda.id)
     .in('categoria', ['otro', 'carta'])
     .gte('precio_pvp', 3)
