@@ -1052,10 +1052,12 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
               </div>
             )}
 
-            <button className={styles.mobileCarryBtn} type="button" onClick={() => onMobile?.(vino, 'detail')}>
-              <span aria-hidden="true">+</span>
-              {T[lang]?.addToCart ?? T.es.addToCart}
-            </button>
+            {!tienda?.features?.qr_order && (
+              <button className={styles.mobileCarryBtn} type="button" onClick={() => onMobile?.(vino, 'detail')}>
+                <span aria-hidden="true">+</span>
+                {T[lang]?.addToCart ?? T.es.addToCart}
+              </button>
+            )}
 
             {tienda?.features?.wine_to_food === true && (
               <button
@@ -1087,7 +1089,7 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
                     {ficha.copa && <span>🍷 {ficha.copa.replace(/^(copa\s+)+/i, 'Copa ')}</span>}
                   </div>
                 )}
-                {ficha.maridajes?.length > 0 && (
+                {ficha.maridajes?.length > 0 && !tienda?.features?.wine_to_food && (
                   <div className={styles.fichaMaridajes}>
                     <p className={styles.fichaMaridajesLabel}>{T[lang].maridaCon}</p>
                     <div className={styles.fichaMaridajesGrid}>
@@ -2425,7 +2427,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
             ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.viewBrandLogo} />
             : <div className={styles.viewBrandLogoFallback}>{tienda.nombre[0]}</div>
           }
-          <span className={styles.viewBrandCredit}>× @cataconjuanjo</span>
+          {tienda?.theme_preset !== 'eci' && <span className={styles.viewBrandCredit}>× @cataconjuanjo</span>}
         </div>
       )}
     </div>
@@ -2727,7 +2729,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
             ? <img src={tienda.logo_url} alt={tienda.nombre} className={styles.viewBrandLogo} />
             : <div className={styles.viewBrandLogoFallback}>{tienda.nombre[0]}</div>
           }
-          <span className={styles.viewBrandCredit}>× @cataconjuanjo</span>
+          {tienda?.theme_preset !== 'eci' && <span className={styles.viewBrandCredit}>× @cataconjuanjo</span>}
         </div>
       )}
     </div>
