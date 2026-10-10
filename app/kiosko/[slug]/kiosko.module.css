@@ -4145,6 +4145,10 @@
 }
 
 /* ── Portada / pantalla de bienvenida ───────────────────────────────────── */
+.kiosko[data-theme="eci"] .welcomeView {
+  padding-bottom: 2.5rem;
+}
+
 .kiosko[data-theme="eci"] .welcomeContent {
   padding: 3rem 3rem 1.5rem;
   gap: 1.25rem;
