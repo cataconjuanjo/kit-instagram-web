@@ -25,6 +25,21 @@ async function checkRateLimit(ip) {
   return true
 }
 
+// Límite diario por tienda demo (usa tienda_id como clave en rate_limits).
+async function checkDemoTiendaLimit(tiendaId, dailyLimit) {
+  const since = new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+  const endpoint = `demo_daily`
+  const { count } = await supabaseAdmin
+    .from('rate_limits')
+    .select('id', { count: 'exact', head: true })
+    .eq('ip', `tienda:${tiendaId}`)
+    .eq('endpoint', endpoint)
+    .gte('created_at', since)
+  if ((count || 0) >= dailyLimit) return false
+  await supabaseAdmin.from('rate_limits').insert({ ip: `tienda:${tiendaId}`, endpoint })
+  return true
+}
+
 function getIP(request) {
   return (
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -220,6 +235,308 @@ function langInstruction(lang) {
   return ''
 }
 
+// ── Rate limiting para wine-to-food (20 req / 10 min por IP) ─────────────────
+
+const WINE_FOOD_LIMIT     = 20
+const WINE_FOOD_WINDOW_MS = 10 * 60 * 1000
+
+async function checkWineFoodRateLimit(ip) {
+  const since = new Date(Date.now() - WINE_FOOD_WINDOW_MS).toISOString()
+  const { count } = await supabaseAdmin
+    .from('rate_limits')
+    .select('id', { count: 'exact', head: true })
+    .eq('ip', ip)
+    .eq('endpoint', 'kiosko_wine_food')
+    .gte('created_at', since)
+  if ((count || 0) >= WINE_FOOD_LIMIT) return false
+  await supabaseAdmin.from('rate_limits').insert({ ip, endpoint: 'kiosko_wine_food' })
+  return true
+}
+
+// ── Frases genéricas de fallback para wine-to-food ───────────────────────────
+
+const WINE_FOOD_FALLBACK_ES = {
+  'Embutido':     'El tanino pulido integra la sal y la grasa curada del embutido ibérico',
+  'Queso':        'La acidez equilibra la cremosidad del queso y realza su complejidad aromática',
+  'Foie·Paté':   'La untuosidad del foie se equilibra con la tensión ácida o las burbujas del vino',
+  'Conserva mar': 'La salinidad marina amplifica la expresión mineral del vino',
+  'Conserva':     'El cuerpo del vino aguanta la intensidad del plato sin dominar su sabor',
+}
+const WINE_FOOD_FALLBACK_EN = {
+  'Embutido':     'The polished tannin integrates the salt and cured fat of the ibérico',
+  'Queso':        'The acidity balances the creaminess of the cheese and enhances its aromatic complexity',
+  'Foie·Paté':   'The richness of the foie is balanced by the wine\'s acidity or bubbles',
+  'Conserva mar': 'The brine of the sea amplifies the mineral expression of the wine',
+  'Conserva':     'The wine\'s body matches the dish\'s intensity without overwhelming its flavour',
+}
+
+function wineFoodFallbackRazon(catGourmet, lang) {
+  const map = lang === 'en' ? WINE_FOOD_FALLBACK_EN : WINE_FOOD_FALLBACK_ES
+  return map[catGourmet] || (lang === 'en' ? 'A balanced pairing by intensity and body' : 'Maridaje equilibrado por intensidad y cuerpo')
+}
+
+// ── Scorer de tags vino→gourmet ───────────────────────────────────────────────
+
+function scoreGourmetForWine(vino, gourmetItem) {
+  const vinoTags  = new Set((vino.maridaje_tags || []).map(t => String(t).toLowerCase()))
+  const gTags     = (gourmetItem.maridaje_tags || []).map(t => String(t).toLowerCase())
+  let score = 0
+  for (const gt of gTags) {
+    if (vinoTags.has(gt)) score++
+  }
+  // Bonus si cat_gourmet hace match con algún tag del vino
+  const cat = String(gourmetItem.cat_gourmet || '').toLowerCase()
+  const catKeywords = cat.split(/[·\s]+/)
+  for (const kw of catKeywords) {
+    if (kw.length > 2 && vinoTags.has(kw)) score += 2
+  }
+  return score
+}
+
+// ── Filtro maridable (excluye aceites, mermeladas) ────────────────────────────
+
+function isMaridable(g) {
+  const cat = (g.cat_gourmet || '').toLowerCase()
+  if (cat === 'aceite·aove') return false
+  if (cat === 'dulce')       return false
+  return true
+}
+
+// ── Filtros WSET duros para wine-to-food ────────────────────────────────────
+
+function wsetsFilterRoute(vino, items) {
+  const tipo   = (vino.tipo || '').toLowerCase()
+  const nombre = (vino.nombre || '').toLowerCase()
+  const tags   = new Set((vino.maridaje_tags || []).map(t => String(t).toLowerCase()))
+  const isFino       = tipo === 'generoso' || tags.has('fino')
+  const isEspumoso   = tipo === 'espumoso'
+  const isTinto      = tipo === 'tinto'
+  const isSemidulce  = nombre.includes('semidulce') || tags.has('semidulce')
+  const isVermut     = tipo === 'vermut'
+  const isBlancoPremium = tipo === 'blanco' && (tags.has('premium') || tags.has('reserva') || tags.has('borgona') || tags.has('chardonnay'))
+  const isBlancoLigero  = tipo === 'blanco' && !isBlancoPremium
+
+  return items.filter(g => {
+    if (!isMaridable(g)) return false
+    const cat  = g.cat_gourmet || ''
+    const gnom = (g.nombre || '').toLowerCase()
+
+    if (isTinto      && cat === 'Conserva mar') return false
+    if (isFino       && (cat === 'Queso' || cat === 'Foie·Paté')) return false
+    if (isEspumoso   && gnom.includes('fabada')) return false
+    if (isVermut     && cat === 'Queso') return false
+    if (isBlancoLigero && (gnom.includes('fabada') || gnom.includes('cecina'))) return false
+    if (isSemidulce  && cat === 'Embutido') {
+      const esLigero = gnom.includes('fuet') || (gnom.includes('salchich') && gnom.includes('loncheado'))
+      if (!esLigero) return false
+    }
+    return true
+  })
+}
+
+// ── Selección de candidatos con diversidad de categorías ─────────────────────
+
+function buildWineFoodCandidates(vino, gourmetFiltered) {
+  const scored = gourmetFiltered.map(g => ({ ...g, _score: scoreGourmetForWine(vino, g) }))
+  scored.sort((a, b) => b._score - a._score || a.nombre.localeCompare(b.nombre))
+
+  const result  = []
+  const catDone = {}
+  const added   = new Set()
+
+  // Garantiza al menos 1 de cada categoría disponible
+  for (const g of scored) {
+    const cat = g.cat_gourmet || 'unknown'
+    if (!catDone[cat]) { catDone[cat] = true; result.push(g); added.add(g.id) }
+  }
+  // Rellena hasta 15
+  for (const g of scored) {
+    if (result.length >= 15) break
+    if (!added.has(g.id)) { result.push(g); added.add(g.id) }
+  }
+
+  result.sort((a, b) => b._score - a._score)
+  return result
+}
+
+// ── Handler wine-to-food ──────────────────────────────────────────────────────
+
+async function handleWineToFood(request, slug, ip, body, lang) {
+  const allowed = await checkWineFoodRateLimit(ip)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Demasiadas consultas. Inténtalo en unos minutos.' }, { status: 429 })
+  }
+
+  const vinoId = typeof body?.vinoId === 'string' ? body.vinoId.trim() : ''
+  if (!vinoId) {
+    return NextResponse.json({ error: 'vinoId requerido' }, { status: 400 })
+  }
+
+  const { data: tienda } = await supabaseAdmin
+    .from('tiendas')
+    .select('id, nombre, activo, subscription_status, billing_grace_until, plan, trial_used_seconds, is_demo, demo_daily_limit, wine_food_cache')
+    .eq('slug', slug)
+    .eq('activo', true)
+    .single()
+
+  if (!tienda || !isTiendaAccesible(tienda)) {
+    return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+  }
+
+  if (tienda.is_demo && tienda.demo_daily_limit) {
+    const ok = await checkDemoTiendaLimit(tienda.id, tienda.demo_daily_limit)
+    if (!ok) {
+      return NextResponse.json({ error: 'Límite diario de consultas alcanzado para esta demo.' }, { status: 429 })
+    }
+  }
+
+  // Cache de servidor: respuesta instantánea
+  if (tienda.wine_food_cache?.[vinoId]) {
+    const cached = tienda.wine_food_cache[vinoId]
+    return NextResponse.json({ intro: '', recomendaciones: cached, fromCache: true })
+  }
+
+  const { data: vino } = await supabaseAdmin
+    .from('vinos_tienda')
+    .select('id, nombre, tipo, uva, region, maridaje_tags, notas_cata, descripcion')
+    .eq('id', vinoId)
+    .eq('tienda_id', tienda.id)
+    .eq('activo', true)
+    .single()
+
+  if (!vino) {
+    return NextResponse.json({ error: 'Vino no encontrado' }, { status: 404 })
+  }
+
+  const { data: gourmetRaw } = await supabaseAdmin
+    .from('vinos_tienda')
+    .select('id, nombre, bodega, cat_gourmet, precio_pvp, foto_url, notas_cata, descripcion, maridaje_tags')
+    .eq('tienda_id', tienda.id)
+    .eq('categoria', 'otro')
+    .eq('activo', true)
+    .gt('stock', 0)
+
+  const gourmetList = gourmetRaw || []
+  if (gourmetList.length < 1) {
+    return NextResponse.json({ noResults: true, reason: 'sin_gourmet' })
+  }
+
+  // Filtros WSET + maridable + candidatos con diversidad
+  const filtered   = wsetsFilterRoute(vino, gourmetList)
+  const candidates = buildWineFoodCandidates(vino, filtered)
+  const gourmetMap = Object.fromEntries(gourmetList.map(g => [g.id, g]))
+
+  // Fallback con razones inteligentes
+  function fallbackRecomendaciones() {
+    const sorted = filtered
+      .map(g => ({ ...g, _score: scoreGourmetForWine(vino, g) }))
+      .sort((a, b) => b._score - a._score)
+
+    const result  = []
+    const catUsed = new Set()
+    const added   = new Set()
+
+    for (const g of sorted) {
+      if (result.length >= 3) break
+      const cat = g.cat_gourmet || 'unknown'
+      if (!catUsed.has(cat)) {
+        result.push({ id: g.id, nombre: g.nombre, bodega: g.bodega, cat_gourmet: g.cat_gourmet,
+          precio_pvp: g.precio_pvp, foto_url: g.foto_url, razon: wineFoodFallbackRazon(g.cat_gourmet, lang) })
+        catUsed.add(cat); added.add(g.id)
+      }
+    }
+    for (const g of sorted) {
+      if (result.length >= 3) break
+      if (!added.has(g.id)) {
+        result.push({ id: g.id, nombre: g.nombre, bodega: g.bodega, cat_gourmet: g.cat_gourmet,
+          precio_pvp: g.precio_pvp, foto_url: g.foto_url, razon: wineFoodFallbackRazon(g.cat_gourmet, lang) })
+        added.add(g.id)
+      }
+    }
+    return result.slice(0, 3)
+  }
+
+  if (candidates.length < 3) {
+    return NextResponse.json({ intro: '', recomendaciones: fallbackRecomendaciones() })
+  }
+
+  // Prompt mejorado
+  const vinoInfo = [
+    `Vino: ${vino.nombre}`,
+    `Tipo: ${vino.tipo || 'desconocido'}`,
+    vino.uva    ? `Uva: ${vino.uva}` : '',
+    vino.region ? `Región: ${vino.region}` : '',
+    vino.notas_cata ? `Notas: ${vino.notas_cata}` : '',
+  ].filter(Boolean).join(' | ')
+
+  const listaGourmet = candidates.map(g =>
+    `- ID:${g.id} | ${g.nombre}${g.bodega ? ` (${g.bodega})` : ''} | ${g.cat_gourmet || ''} | ${g.precio_pvp ? `${g.precio_pvp}€` : ''}`
+  ).join('\n')
+
+  const langSuffix = lang === 'en' ? '\nRespond entirely in English.' : lang === 'fr' ? '\nRéponds entièrement en français.' : lang === 'de' ? '\nAntworte vollständig auf Deutsch.' : ''
+
+  const systemPrompt = `Eres sumiller en Club del Gourmet. Elige 3 productos que acompañen este vino.
+
+${vinoInfo}
+
+Candidatos:
+${listaGourmet}
+
+Reglas: devuelve 3, máximo 1 por categoría (cat_gourmet), razón ≤140 chars citando una propiedad concreta del vino Y una del producto. Sin "complemento perfecto", "maridaje clásico", "ideal para". Sin inventar propiedades.
+
+Responde ÚNICAMENTE con JSON:
+{"recomendaciones": [{"id": "uuid", "razon": "frase"}]}
+Exactamente 3.${langSuffix}`
+
+  try {
+    const response = await anthropic.messages.create({
+      model:      'claude-sonnet-4-6',
+      max_tokens: 600,
+      system:     systemPrompt,
+      messages:   [{ role: 'user', content: `¿Qué gourmet acompaña al ${vino.nombre}?` }],
+      signal:     AbortSignal.timeout(6000),
+    })
+
+    const texto = response.content[0]?.text || ''
+    let parsed = null
+    try {
+      const match = texto.match(/\{[\s\S]*\}/)
+      if (match) parsed = JSON.parse(match[0])
+    } catch {}
+
+    if (!parsed?.recomendaciones?.length) {
+      return NextResponse.json({ intro: '', recomendaciones: fallbackRecomendaciones() })
+    }
+
+    const recomendaciones = parsed.recomendaciones
+      .filter(r => r?.id && gourmetMap[r.id])
+      .map(r => ({
+        id:          r.id,
+        nombre:      gourmetMap[r.id].nombre,
+        bodega:      gourmetMap[r.id].bodega,
+        cat_gourmet: gourmetMap[r.id].cat_gourmet,
+        precio_pvp:  gourmetMap[r.id].precio_pvp,
+        foto_url:    gourmetMap[r.id].foto_url,
+        notas_cata:  gourmetMap[r.id].notas_cata,
+        razon:       (r.razon || '').slice(0, 140),
+      }))
+      .slice(0, 3)
+
+    if (!recomendaciones.length) {
+      return NextResponse.json({ intro: '', recomendaciones: fallbackRecomendaciones() })
+    }
+
+    return NextResponse.json({ intro: '', recomendaciones })
+
+  } catch (err) {
+    if (tienda.wine_food_cache?.[vinoId]) {
+      return NextResponse.json({ intro: '', recomendaciones: tienda.wine_food_cache[vinoId], fromCache: true })
+    }
+    console.error('wine-to-food error:', err?.message || err)
+    return NextResponse.json({ intro: '', recomendaciones: fallbackRecomendaciones() })
+  }
+}
+
 // ── Handler principal ─────────────────────────────────────────────────────────
 
 export async function POST(request, { params }) {
@@ -236,9 +553,15 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'Petición inválida' }, { status: 400 })
   }
 
-  const consulta    = String(body?.consulta  || '').trim()
-  const mode        = String(body?.mode      || 'maridaje') // 'maridaje' | 'wizard'
+  const mode        = String(body?.mode      || 'maridaje') // 'maridaje' | 'wizard' | 'wine-to-food'
   const lang        = ['en','fr','de'].includes(body?.lang) ? body.lang : 'es'
+
+  // ── Bifurcación wine-to-food — antes de la validación de consulta ─────────
+  if (mode === 'wine-to-food') {
+    return handleWineToFood(request, slug, ip, body, lang)
+  }
+
+  const consulta    = String(body?.consulta  || '').trim()
   const regionCCAA  = typeof body?.regionCCAA === 'string' ? body.regionCCAA.trim() : null
 
   if (consulta.length < 2) {
@@ -247,13 +570,20 @@ export async function POST(request, { params }) {
 
   const { data: tienda } = await supabaseAdmin
     .from('tiendas')
-    .select('id, nombre, ciudad, activo, subscription_status, billing_grace_until, plan, trial_used_seconds')
+    .select('id, nombre, ciudad, activo, subscription_status, billing_grace_until, plan, trial_used_seconds, is_demo, demo_daily_limit')
     .eq('slug', slug)
     .eq('activo', true)
     .single()
 
   if (!tienda || !isTiendaAccesible(tienda)) {
     return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
+  }
+
+  if (tienda.is_demo && tienda.demo_daily_limit) {
+    const ok = await checkDemoTiendaLimit(tienda.id, tienda.demo_daily_limit)
+    if (!ok) {
+      return NextResponse.json({ error: 'Límite diario de consultas alcanzado para esta demo.' }, { status: 429 })
+    }
   }
 
   const { data: vinosBrutosRaw } = await supabaseAdmin

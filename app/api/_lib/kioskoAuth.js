@@ -3,13 +3,13 @@ import { supabaseAdmin } from '../../lib/supabaseAdmin'
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'cataconjuanjo@gmail.com').toLowerCase()
 
 export const ADMIN_TIENDA_SELECT =
-  'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, informe_email, trial_expires_at, trial_used_seconds, precio_especial, setup_fee_incluido, activo, subscription_status, billing_failed_at, billing_grace_until, propietario_email, email'
+  'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, informe_email, trial_expires_at, trial_used_seconds, precio_especial, setup_fee_incluido, activo, subscription_status, billing_failed_at, billing_grace_until, propietario_email, email, features'
 
 export const ADMIN_VINO_SELECT =
   'id, nombre, bodega, tipo, uva, region, pais, anada, precio_pvp, precio_coste, precio_oferta, stock, stock_minimo, ubicacion_estanteria, foto_url, notas_cata, descripcion, puntuacion, destacado, activo, ficha_ia, square_catalog_id, categoria, apto_cesta, es_vegano, con_alcohol, cat_gourmet, sin_gluten'
 
 export const PUBLIC_VINO_SELECT =
-  'id, nombre, bodega, tipo, uva, region, pais, anada, precio_pvp, precio_oferta, stock, ubicacion_estanteria, foto_url, notas_cata, descripcion, puntuacion, destacado, activo'
+  'id, nombre, bodega, tipo, uva, region, pais, anada, precio_pvp, precio_oferta, stock, ubicacion_estanteria, foto_url, notas_cata, descripcion, puntuacion, destacado, activo, categoria, cat_gourmet'
 
 const WRITABLE_VINO_FIELDS = new Set([
   'nombre', 'bodega', 'tipo', 'uva', 'region', 'pais', 'anada',
@@ -80,7 +80,7 @@ export function isTiendaAccesible(tienda, now = Date.now()) {
 
 export async function getPublicTienda(slug) {
   const publicSelect =
-    'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, activo, subscription_status, billing_grace_until, trial_used_seconds'
+    'id, nombre, slug, logo_url, descripcion, ciudad, color_primario, color_acento, banner_url, font_family, plan, activo, subscription_status, billing_grace_until, trial_used_seconds, theme_preset, features, wine_food_cache'
 
   const { data, error } = await supabaseAdmin
     .from('tiendas')

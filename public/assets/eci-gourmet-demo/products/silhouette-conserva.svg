@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F7F7F7"/>
+  <!-- Lata de conserva -->
+  <g fill="none" stroke="#C8C8C8" stroke-width="2.5">
+    <!-- cuerpo lata -->
+    <rect x="130" y="155" width="140" height="120" rx="4" fill="#E8E8E8" stroke="#C0C0C0"/>
+    <!-- tapa superior -->
+    <ellipse cx="200" cy="155" rx="70" ry="14" fill="#EFEFEF" stroke="#C0C0C0"/>
+    <!-- fondo -->
+    <ellipse cx="200" cy="275" rx="70" ry="14" fill="#E0E0E0" stroke="#C0C0C0"/>
+    <!-- etiqueta -->
+    <rect x="138" y="175" width="124" height="76" rx="2" fill="#F2F2F2" stroke="#D4D4D4" stroke-width="1.5"/>
+    <!-- líneas etiqueta -->
+    <line x1="150" y1="193" x2="250" y2="193" stroke="#D0D0D0" stroke-width="1.5"/>
+    <line x1="150" y1="205" x2="250" y2="205" stroke="#D0D0D0" stroke-width="1.5"/>
+    <line x1="150" y1="217" x2="222" y2="217" stroke="#D0D0D0" stroke-width="1.5"/>
+    <line x1="150" y1="234" x2="240" y2="234" stroke="#D0D0D0" stroke-width="1.5"/>
+    <!-- anilla -->
+    <path d="M196 148 C196 142 200 138 204 138 L214 138" stroke="#C0C0C0" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

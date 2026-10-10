@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F7F7F7"/>
+  <!-- Jamón / pata ibérica estilizada -->
+  <g fill="none" stroke="#C8C8C8" stroke-width="2.5" stroke-linejoin="round">
+    <!-- cuerpo jamón -->
+    <path d="M130 280 C110 260 105 220 115 190 C125 160 150 145 170 150 L250 150 C270 150 290 165 295 195 C300 225 285 265 265 280 Z" fill="#E8E8E8" stroke="#C0C0C0"/>
+    <!-- jarrete / pezuña -->
+    <path d="M175 150 C170 130 165 110 168 92 C170 80 180 74 192 76 C204 78 210 88 208 102 L205 150" fill="#DEDEDE" stroke="#C0C0C0"/>
+    <!-- marbrado -->
+    <path d="M145 220 Q165 210 185 220 Q205 230 225 218" stroke="#D4D4D4" stroke-width="1.5" fill="none"/>
+    <path d="M150 240 Q170 230 195 238 Q215 245 240 235" stroke="#D4D4D4" stroke-width="1.5" fill="none"/>
+  </g>
+</svg>

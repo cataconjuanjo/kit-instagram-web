@@ -1,6 +1,7 @@
 node_modules/
 .next/
 .env*
+.eci-demo-credentials
 dev-server*.log
 .next-*.log
 .next-dev.pid

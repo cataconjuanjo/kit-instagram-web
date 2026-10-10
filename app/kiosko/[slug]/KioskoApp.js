@@ -967,6 +967,9 @@ function WineCard({ vino, onClick }) {
 // ── Ficha de vino enriquecida ─────────────────────────────────────────────────
 
 function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', tienda, onWineFood }) {
+  const isEci = tienda?.theme_preset === 'eci'
+  const [qrItem, setQrItem] = useState(null)
+
   const fichaInicial = useMemo(() => {
     if (!vino?.ficha_ia) return null
     try { return typeof vino.ficha_ia === 'string' ? JSON.parse(vino.ficha_ia) : vino.ficha_ia }
@@ -976,6 +979,12 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
   const [ficha, setFicha] = useState(fichaInicial)
   const [fichaReady, setFichaReady] = useState(!!fichaInicial)
   useEffect(() => {
+    // En ECI solo usamos la ficha cacheada; nunca regeneramos vía API
+    if (isEci) {
+      setFicha(fichaInicial)
+      setFichaReady(true)
+      return
+    }
     // La ficha cacheada es en español — si el idioma es distinto, regeneramos
     if (fichaInicial && lang === 'es') {
       queueMicrotask(() => {
@@ -990,7 +999,7 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
       .then(d => { if (d.ficha) setFicha(d.ficha) })
       .catch(() => {})
       .finally(() => setFichaReady(true))
-  }, [vino?.id, slug, fichaInicial, lang])
+  }, [vino?.id, slug, fichaInicial, lang, isEci])
 
   const notasMostrar = ficha?.notas || vino.descripcion || vino.notas_cata
 
@@ -1052,7 +1061,11 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
               </div>
             )}
 
-            {!tienda?.features?.qr_order && (
+            {tienda?.features?.qr_order ? (
+              <button className={styles.qrOrderBtn} type="button" onClick={() => setQrItem(vino)} style={{ '--acento': colorAcento }}>
+                Pedir en El Corte Inglés
+              </button>
+            ) : (
               <button className={styles.mobileCarryBtn} type="button" onClick={() => onMobile?.(vino, 'detail')}>
                 <span aria-hidden="true">+</span>
                 {T[lang]?.addToCart ?? T.es.addToCart}
@@ -1111,6 +1124,7 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
           </div>
         </div>
       </div>
+      {qrItem && <QrOrderModal item={qrItem} lang={lang} onClose={() => setQrItem(null)} />}
     </div>
   )
 }
@@ -3683,8 +3697,8 @@ export default function KioskoPage() {
         />
       )}
 
-      {/* CESTA REGALO — solo si la tienda la tiene activada en ajustes */}
-      {cestaActiva && view === VIEWS.CESTA && (
+      {/* CESTA REGALO — activada en ajustes o si la tienda es ECI */}
+      {(cestaActiva || tienda?.theme_preset === 'eci') && view === VIEWS.CESTA && (
         <CestaView slug={slug} vinos={vinos} colorAcento={colorAcento} colorPrimario={colorPrimario}
           onBack={() => { abandonFunnel('user_exit'); setView(VIEWS.WELCOME) }}
           onFunnelStep={step => trackFunnelStep('cesta', step)}

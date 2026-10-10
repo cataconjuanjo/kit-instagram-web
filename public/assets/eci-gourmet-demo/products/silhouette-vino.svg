@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F7F7F7"/>
+  <!-- Botella de vino -->
+  <g fill="none" stroke="#C8C8C8" stroke-width="2.5" stroke-linejoin="round">
+    <!-- cuerpo botella -->
+    <path d="M168 240 C158 240 152 230 152 210 L152 160 C152 145 160 130 168 118 L168 90 L232 90 L232 118 C240 130 248 145 248 160 L248 210 C248 230 242 240 232 240 Z" fill="#E8E8E8" stroke="#C0C0C0"/>
+    <!-- cuello -->
+    <rect x="176" y="60" width="48" height="34" rx="6" fill="#E8E8E8" stroke="#C0C0C0"/>
+    <!-- cápsula -->
+    <rect x="176" y="56" width="48" height="14" rx="3" fill="#D4D4D4" stroke="#BABABA"/>
+    <!-- etiqueta -->
+    <rect x="160" y="170" width="80" height="56" rx="4" fill="#EFEFEF" stroke="#C8C8C8"/>
+    <!-- líneas etiqueta -->
+    <line x1="172" y1="185" x2="228" y2="185" stroke="#D0D0D0" stroke-width="1.5"/>
+    <line x1="172" y1="196" x2="228" y2="196" stroke="#D0D0D0" stroke-width="1.5"/>
+    <line x1="172" y1="207" x2="210" y2="207" stroke="#D0D0D0" stroke-width="1.5"/>
+    <!-- base -->
+    <ellipse cx="200" cy="240" rx="48" ry="8" fill="#DEDEDE" stroke="#C0C0C0"/>
+  </g>
+</svg>

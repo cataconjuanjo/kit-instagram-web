@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F7F7F7"/>
+  <!-- Cuña de queso -->
+  <g fill="none" stroke="#C8C8C8" stroke-width="2.5" stroke-linejoin="round">
+    <!-- base cuña -->
+    <path d="M100 295 L300 295 L260 180 L140 180 Z" fill="#E8E8E8" stroke="#C0C0C0"/>
+    <!-- cara superior -->
+    <path d="M140 180 L260 180 L230 105 L170 105 Z" fill="#EFEFEF" stroke="#C0C0C0"/>
+    <!-- cara lateral -->
+    <path d="M260 180 L300 295 L270 270 L230 105 Z" fill="#E0E0E0" stroke="#C0C0C0"/>
+    <!-- corteza superior -->
+    <path d="M168 104 L232 104 L232 113 L168 113 Z" fill="#DEDEDE" stroke="#BABABA"/>
+    <!-- agujeros típicos del queso -->
+    <circle cx="190" cy="240" r="8" fill="#F7F7F7" stroke="#C8C8C8" stroke-width="1.5"/>
+    <circle cx="220" cy="225" r="6" fill="#F7F7F7" stroke="#C8C8C8" stroke-width="1.5"/>
+    <circle cx="175" cy="260" r="5" fill="#F7F7F7" stroke="#C8C8C8" stroke-width="1.5"/>
+    <circle cx="245" cy="255" r="7" fill="#F7F7F7" stroke="#C8C8C8" stroke-width="1.5"/>
+  </g>
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <rect width="400" height="400" fill="#F7F7F7"/>
+  <!-- Tarro de foie / paté -->
+  <g fill="none" stroke="#C8C8C8" stroke-width="2.5">
+    <!-- cuerpo tarro -->
+    <path d="M145 290 C138 290 132 284 132 277 L132 190 C132 183 138 177 145 177 L255 177 C262 177 268 183 268 190 L268 277 C268 284 262 290 255 290 Z" fill="#E8E8E8" stroke="#C0C0C0"/>
+    <!-- tapa -->
+    <rect x="125" y="160" width="150" height="24" rx="8" fill="#EFEFEF" stroke="#C0C0C0"/>
+    <!-- detalle tapa: roscado -->
+    <line x1="125" y1="170" x2="275" y2="170" stroke="#D4D4D4" stroke-width="1"/>
+    <!-- contenido (foie color) -->
+    <rect x="140" y="185" width="120" height="88" rx="2" fill="#F0EBE0" stroke="#D8D0C0" stroke-width="1.5"/>
+    <!-- etiqueta -->
+    <rect x="148" y="225" width="104" height="40" rx="3" fill="#F5F5F5" stroke="#D4D4D4" stroke-width="1.5"/>
+    <line x1="158" y1="238" x2="242" y2="238" stroke="#D0D0D0" stroke-width="1.5"/>
+    <line x1="158" y1="250" x2="230" y2="250" stroke="#D0D0D0" stroke-width="1.5"/>
+  </g>
+</svg>

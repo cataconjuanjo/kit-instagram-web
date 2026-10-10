@@ -4533,6 +4533,23 @@
   color: #fff;
 }
 
+/* ── Botón "Pedir en El Corte Inglés" (qr_order) ────────────────────────────── */
+.qrOrderBtn {
+  width: 100%;
+  background: var(--acento, #1a1a1a);
+  border: none;
+  border-radius: 9999px;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: .9rem 1.5rem;
+  cursor: pointer;
+  letter-spacing: .04em;
+  transition: opacity .15s;
+  margin-top: .5rem;
+}
+.qrOrderBtn:hover { opacity: .88; }
+
 /* ── Reposo overlay ──────────────────────────────────────────────────────────── */
 .reposoOverlay {
   position: fixed;
