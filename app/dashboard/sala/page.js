@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
+import ParteServicio from './ParteServicio'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import {
   SELECT_CLIENT_ESTADISTICA_DASHBOARD,
@@ -142,6 +143,7 @@ function LineaBriefing({ titulo, detalle }) {
 
 export default function SalaHub() {
   const [restaurante, setRestaurante] = useState(null)
+  const [vinos, setVinos] = useState([])
   const [eventos, setEventos] = useState([])
   const [briefing, setBriefing] = useState({ vinosServicio: [], vinosRiesgo: [], platosArgumento: [] })
   const [mensajeBriefing, setMensajeBriefing] = useState('')
@@ -169,6 +171,7 @@ export default function SalaHub() {
           supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true),
           supabase.from('platos').select(SELECT_CLIENT_PLATO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true),
         ])
+        setVinos(vinos || [])
         setEventos((estadisticas || []).map(item => ({ ...item, parsed: leerDetalle(item.detalle) })))
         setBriefing(prepararBriefing(vinos || [], platos || [], rest))
       }
@@ -278,6 +281,8 @@ export default function SalaHub() {
           </div>
         </div>
       </section>
+
+      <ParteServicio restauranteId={restaurante.id} vinos={vinos} />
 
       <section className={styles.hubGrid}>
         <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/cierre">

@@ -713,8 +713,8 @@ export default function CierreServicio() {
         <section className={styles.panel} id="ventas" style={{ marginBottom: 16 }}>
           <div className={styles.panelHead}>
             <div>
-              <h2 className={styles.panelTitle}>Ventas para descontar</h2>
-              <p className={styles.panelSub}>Aplica solo las ventas que quieras convertir en movimiento de stock.</p>
+              <h2 className={styles.panelTitle}>Ventas del servicio</h2>
+              <p className={styles.panelSub}>Añade estas ventas al parte de servicio en Sala para descontarlas del stock.</p>
             </div>
             <span className={styles.badge}>{datos.vendidas.length}</span>
           </div>
@@ -731,9 +731,7 @@ export default function CierreServicio() {
                         <p className={styles.sectionText}>{evento.parsed?.plato || 'Sin contexto'}{vino ? ` · stock actual ${vino.stock || 0}` : ''}</p>
                       </div>
                       <div className={styles.actionRow}>
-                        <button className={styles.primary} disabled={eventoProcesando === evento.id} onClick={() => descontarVenta(evento)}>
-                          {eventoProcesando === evento.id ? 'Aplicando...' : 'Descontar 1'}
-                        </button>
+                        <Link className={styles.secondary} href="/dashboard/sala">Ir al parte →</Link>
                         <button className={styles.ghost} onClick={() => ocultarEvento(evento.id)}>Dejar como señal</button>
                       </div>
                     </div>
