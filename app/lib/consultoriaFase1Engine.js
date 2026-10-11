@@ -1,3 +1,5 @@
+import { esEntrada } from './movimientosTipos.js'
+
 export const COEFICIENTES_CONSULTORIA_FASE1 = {
   dias_periodo: {
     valor: 30,
@@ -610,10 +612,23 @@ export function calcularConsultoriaFase1({
   const sinCoste = activos.filter(vino => !numero(vino.coste_compra))
   const sinPrecio = activos.filter(vino => !numero(vino.precio_botella))
   const margenBajo = conCostePrecio.filter(vino => margenPct(vino.precio_botella, vino.coste_compra) < COEFICIENTES_CONSULTORIA_FASE1.margen_saludable_pct.valor)
-  const ajustesNegativos = movimientos.filter(mov => ['merma', 'ajuste', 'cata', 'invitacion'].includes(mov.tipo) && numero(mov.cantidad) < 0)
+  // R3: mismos tipos que la lista original + sus equivalentes canónicos tras el backfill.
+  // Original: ['merma','ajuste','cata','invitacion']
+  // Mapeado:  merma→rotura  invitacion→invitacion_botella/copa
+  // NO incluye cocina, grupo_evento, maridaje (no estaban en la lista original).
+  // devolucion excluida: no existía antes de B1.
+  const TIPOS_AJUSTES_NEG = new Set(['merma', 'rotura', 'ajuste', 'cata', 'invitacion', 'invitacion_botella', 'invitacion_copa'])
+  const ajustesNegativos = movimientos.filter(mov => TIPOS_AJUSTES_NEG.has(mov.tipo) && numero(mov.cantidad) < 0)
   const mermaUnidades = Math.abs(ajustesNegativos.reduce((sum, mov) => sum + numero(mov.cantidad), 0))
-  const entradasUnidades = movimientos.filter(mov => mov.tipo === 'entrada').reduce((sum, mov) => sum + Math.max(0, numero(mov.cantidad)), 0)
-  const salidasUnidades = movimientos.filter(mov => ['venta', 'merma', 'ajuste', 'cata', 'invitacion'].includes(mov.tipo)).reduce((sum, mov) => sum + Math.abs(Math.min(0, numero(mov.cantidad))), 0)
+  // R4: entradas de stock (canónico: compra; legacy: entrada)
+  const entradasUnidades = movimientos.filter(mov => esEntrada(mov.tipo)).reduce((sum, mov) => sum + Math.max(0, numero(mov.cantidad)), 0)
+  // R5: mismos tipos que la lista original + sus equivalentes canónicos.
+  // Original: ['venta','merma','ajuste','cata','invitacion']
+  // Mapeado:  venta→venta_botella/copa  merma→rotura  invitacion→invitacion_botella/copa
+  // NO incluye cocina, grupo_evento, maridaje (no estaban en la lista original).
+  // devolucion excluida: no existía antes de B1.
+  const TIPOS_SALIDAS = new Set(['venta', 'venta_botella', 'venta_copa', 'merma', 'rotura', 'ajuste', 'cata', 'invitacion', 'invitacion_botella', 'invitacion_copa'])
+  const salidasUnidades = movimientos.filter(mov => TIPOS_SALIDAS.has(mov.tipo)).reduce((sum, mov) => sum + Math.abs(Math.min(0, numero(mov.cantidad))), 0)
 
   const winePerformance = activos.map(vino => {
     const ventasUnidades = ventasPorVino[String(vino.id)] || 0
