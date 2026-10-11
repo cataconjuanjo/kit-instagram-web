@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { calcularPmp, kpiStockVentas } from '../../lib/sommExplotacion'
+import { esEntrada } from '../../lib/movimientosTipos'
 
 const ZONAS = ['todas', 'Sin zona', 'Almacen', 'Cava1', 'Cava2', 'Cava3']
 
@@ -67,7 +68,7 @@ export default function SommStockSection({ restauranteId }) {
   }
 
   function calcularPmpVino(vino, movs) {
-    const movVino = movs.filter(m => m.vino_id === vino.id && m.tipo === 'entrada')
+    const movVino = movs.filter(m => m.vino_id === vino.id && esEntrada(m.tipo))
     const entradasCoste = movVino.reduce((sum, m) => {
       const cu = m.coste_medio_ponderado || vino.coste_compra || 0
       return sum + m.cantidad * cu
@@ -165,7 +166,9 @@ export default function SommStockSection({ restauranteId }) {
         </div>
         <div style={cardStyle}>
           <div style={cardLabel}>Salidas este mes</div>
-          <div style={cardValue}>{movimientos.filter(m => m.tipo !== 'entrada').length}</div>
+          {/* R2: todo lo que no es entrada (incluido ajuste), igual que antes.
+               devolucion excluida: tipo nuevo en B1, no existía en datos previos. */}
+          <div style={cardValue}>{movimientos.filter(m => !esEntrada(m.tipo) && m.tipo !== 'devolucion').length}</div>
         </div>
       </div>
 
