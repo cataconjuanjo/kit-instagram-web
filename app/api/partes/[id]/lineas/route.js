@@ -23,7 +23,8 @@ async function resolverParte(parteId) {
 // GET /api/partes/[id]/lineas
 export async function GET(req, { params }) {
   try {
-    const parte = await resolverParte(params.id)
+    const { id } = await params
+    const parte = await resolverParte(id)
     if (!parte) return Response.json({ error: 'Parte no encontrado' }, { status: 404 })
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, parte.restaurante_id)
@@ -32,7 +33,7 @@ export async function GET(req, { params }) {
     const { data, error } = await supabaseAdmin
       .from('partes_servicio_lineas')
       .select('*, vino:vinos(id, nombre, stock, precio_botella, precio_copa)')
-      .eq('parte_id', params.id)
+      .eq('parte_id', id)
       .order('created_at', { ascending: true })
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
@@ -45,8 +46,9 @@ export async function GET(req, { params }) {
 // POST /api/partes/[id]/lineas
 export async function POST(req, { params }) {
   try {
+    const { id } = await params
     const body = await req.json()
-    const parte = await resolverParte(params.id)
+    const parte = await resolverParte(id)
     if (!parte) return Response.json({ error: 'Parte no encontrado' }, { status: 404 })
     if (parte.estado !== 'borrador') {
       return Response.json({ error: 'El parte ya está cerrado' }, { status: 409 })
@@ -79,12 +81,12 @@ export async function POST(req, { params }) {
     const { data, error } = await supabaseAdmin
       .from('partes_servicio_lineas')
       .insert({
-        parte_id:       params.id,
-        restaurante_id: parte.restaurante_id,
-        vino_id:        vinoId,
+        parte_id:        id,
+        restaurante_id:  parte.restaurante_id,
+        vino_id:         vinoId,
         tipo,
         cantidad,
-        copas_vendidas: copasVendidas,
+        copas_vendidas:  copasVendidas,
         mesa,
         precio_unitario: precioUnitario,
       })
@@ -101,11 +103,12 @@ export async function POST(req, { params }) {
 // DELETE /api/partes/[id]/lineas?linea_id=
 export async function DELETE(req, { params }) {
   try {
+    const { id } = await params
     const { searchParams } = new URL(req.url)
     const lineaId = texto(searchParams.get('linea_id'), 80)
     if (!lineaId) return Response.json({ error: 'linea_id obligatorio' }, { status: 400 })
 
-    const parte = await resolverParte(params.id)
+    const parte = await resolverParte(id)
     if (!parte) return Response.json({ error: 'Parte no encontrado' }, { status: 404 })
     if (parte.estado !== 'borrador') {
       return Response.json({ error: 'El parte ya está cerrado' }, { status: 409 })
@@ -118,7 +121,7 @@ export async function DELETE(req, { params }) {
       .from('partes_servicio_lineas')
       .delete()
       .eq('id', lineaId)
-      .eq('parte_id', params.id)
+      .eq('parte_id', id)
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
     return Response.json({ ok: true })
