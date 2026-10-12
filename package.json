@@ -26,7 +26,8 @@
     "demo:generate-cache": "node scripts/generate-wine-food-cache.js",
     "demo:generate-cache-dry": "node scripts/generate-wine-food-cache.js --dry-run",
     "demo:purge": "node scripts/purge-eci-demo.js",
-    "test:partes": "node scripts/test-partes-routes.mjs"
+    "test:partes": "node scripts/test-partes-routes.mjs",
+    "test:partes-cerrar": "node scripts/test-partes-cerrar.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

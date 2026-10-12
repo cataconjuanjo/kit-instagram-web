@@ -123,7 +123,7 @@ export default function ParteServicio({ restauranteId, vinos = [] }) {
         body: JSON.stringify({
           vino_id:         vinoId,
           tipo,
-          cantidad:        Number(cantidad),
+          cantidad:        esCopa ? 1 : Number(cantidad),
           copas_vendidas:  esCopa && copas ? Number(copas) : null,
           mesa:            mesa || null,
           precio_unitario: precioUnitario,
@@ -291,7 +291,7 @@ export default function ParteServicio({ restauranteId, vinos = [] }) {
                         {' · '}{linea.cantidad} {linea.cantidad === 1 ? 'ud' : 'uds'}
                         {linea.copas_vendidas ? ` · ${linea.copas_vendidas} copas` : ''}
                         {linea.mesa ? ` · mesa ${linea.mesa}` : ''}
-                        {linea.precio_unitario ? ` · ${Number(linea.precio_unitario).toFixed(2)} €` : ''}
+                        {linea.precio_unitario ? ` · ${Number(linea.precio_unitario).toFixed(2)} € carta` : ''}
                       </span>
                     </div>
                     {esBorrador && (
@@ -354,16 +354,18 @@ export default function ParteServicio({ restauranteId, vinos = [] }) {
                   </select>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                  <div>
-                    <label style={labelStyle}>Botellas</label>
-                    <input
-                      type="number" min="1" max="999"
-                      value={cantidad}
-                      onChange={e => setCantidad(e.target.value)}
-                      required
-                      style={{ ...inputStyle, width: 76 }}
-                    />
-                  </div>
+                  {!esCopa && (
+                    <div>
+                      <label style={labelStyle}>Botellas</label>
+                      <input
+                        type="number" min="1" max="999"
+                        value={cantidad}
+                        onChange={e => setCantidad(e.target.value)}
+                        required
+                        style={{ ...inputStyle, width: 76 }}
+                      />
+                    </div>
+                  )}
                   {esCopa && (
                     <div>
                       <label style={labelStyle}>Copas servidas</label>

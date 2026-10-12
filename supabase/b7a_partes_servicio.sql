@@ -259,14 +259,15 @@ BEGIN
     IF v_cantidad <> 0
       OR (v_tipo IN ('venta_botella','venta_copa','venta') AND NOT v_actualiza_stock)
     THEN
+      -- created_by omitido: la columna no existe en movimientos_stock
       INSERT INTO public.movimientos_stock (
         restaurante_id, vino_id, tipo, cantidad,
         stock_anterior, stock_nuevo, motivo, coste_medio_ponderado,
-        origen, copas_vendidas, mesa, parte_servicio_id, created_by
+        origen, copas_vendidas, mesa, parte_servicio_id
       ) VALUES (
         p_restaurante_id, v_vino_id, v_tipo, v_cantidad,
         v_stock_anterior, v_stock_nuevo, v_motivo, v_coste_capturado,
-        v_origen, v_copas_vendidas, v_mesa, v_parte_servicio_id, p_actor_id
+        v_origen, v_copas_vendidas, v_mesa, v_parte_servicio_id
       );
     END IF;
 
