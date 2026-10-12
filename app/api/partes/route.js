@@ -19,15 +19,25 @@ export async function GET(req) {
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
 
-    const { data, error } = await supabaseAdmin
-      .from('partes_servicio')
-      .select('*, lineas:partes_servicio_lineas(*, vino:vinos(id, nombre, stock, precio_botella, precio_copa))')
-      .eq('restaurante_id', restauranteId)
-      .eq('fecha', fecha)
-      .order('created_at', { ascending: true })
+    const [{ data, error }, { data: settings }] = await Promise.all([
+      supabaseAdmin
+        .from('partes_servicio')
+        .select('*, lineas:partes_servicio_lineas(*, vino:vinos(id, nombre, stock, precio_botella, precio_copa))')
+        .eq('restaurante_id', restauranteId)
+        .eq('fecha', fecha)
+        .order('created_at', { ascending: true }),
+      supabaseAdmin
+        .from('restaurant_economic_settings')
+        .select('control_stock_desde')
+        .eq('restaurante_id', restauranteId)
+        .single(),
+    ])
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json({ partes: data })
+    return Response.json({
+      partes: data,
+      control_stock_desde: settings?.control_stock_desde ?? null,
+    })
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 })
   }
@@ -57,7 +67,17 @@ export async function POST(req) {
 
     if (error) {
       if (error.code === '23505') {
-        return Response.json({ error: 'Ya existe un parte para este turno y fecha' }, { status: 409 })
+        const { data: existente } = await supabaseAdmin
+          .from('partes_servicio')
+          .select('*, lineas:partes_servicio_lineas(*, vino:vinos(id, nombre, stock, precio_botella, precio_copa))')
+          .eq('restaurante_id', restauranteId)
+          .eq('fecha', fecha)
+          .eq('turno', turno)
+          .single()
+        return Response.json(
+          { error: 'Ya existe un parte para este turno y fecha', parte: existente || null },
+          { status: 409 }
+        )
       }
       return Response.json({ error: error.message }, { status: 500 })
     }

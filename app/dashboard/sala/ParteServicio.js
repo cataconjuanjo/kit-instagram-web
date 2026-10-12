@@ -57,6 +57,7 @@ export default function ParteServicio({ restauranteId, vinos = [] }) {
   const [cerrando, setCerrando] = useState(false)
   const [turnoNuevo, setTurnoNuevo] = useState('mediodia')
   const [resultado, setResultado] = useState(null)
+  const [controlStockDesde, setControlStockDesde] = useState(undefined)
 
   // Form línea
   const [filtroVino, setFiltroVino] = useState('')
@@ -75,12 +76,13 @@ export default function ParteServicio({ restauranteId, vinos = [] }) {
     setCargando(true)
     setError('')
     try {
-      const { partes: data } = await apiFetch(
+      const resp = await apiFetch(
         `/api/partes?restaurante_id=${restauranteId}&fecha=${fechaHoy()}`
       )
-      setPartes(data || [])
-      const borrador = (data || []).find(p => p.estado === 'borrador')
-      setParteActivo(borrador || (data || [])[0] || null)
+      setPartes(resp.partes || [])
+      setControlStockDesde(resp.control_stock_desde ?? null)
+      const borrador = (resp.partes || []).find(p => p.estado === 'borrador')
+      setParteActivo(borrador || (resp.partes || [])[0] || null)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -193,6 +195,8 @@ export default function ParteServicio({ restauranteId, vinos = [] }) {
   const lineas = parteActivo?.lineas || []
   const esBorrador = parteActivo?.estado === 'borrador'
   const turnosDisponibles = TURNOS.filter(t => !partes.some(p => p.turno === t))
+  const hayVentasSinStock = controlStockDesde === null &&
+    lineas.some(l => l.tipo === 'venta_botella' || l.tipo === 'venta_copa')
 
   if (cargando) return (
     <section className={styles.panel}>
@@ -310,6 +314,13 @@ export default function ParteServicio({ restauranteId, vinos = [] }) {
 
             {lineas.length === 0 && !esBorrador && (
               <p className={styles.sectionText} style={{ marginBottom: 12 }}>Parte cerrado sin líneas.</p>
+            )}
+
+            {/* Aviso control_stock_desde NULL */}
+            {hayVentasSinStock && (
+              <div style={{ marginBottom: 12, padding: '8px 12px', background: '#fff8e1', borderRadius: 7, border: '1px solid #ffe082', fontSize: 13, color: '#795548' }}>
+                Las ventas aún no descuentan stock — falta el conteo inicial de bodega.
+              </div>
             )}
 
             {/* Resultado del cierre */}
