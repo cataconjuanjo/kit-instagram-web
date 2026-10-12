@@ -292,7 +292,9 @@ export default function ParteServicio({ restauranteId, vinos = [] }) {
                       </span>
                       <span style={{ marginLeft: 8, fontSize: 12, color: '#777' }}>
                         {LABEL_TIPO[linea.tipo]}
-                        {' · '}{linea.cantidad} {linea.cantidad === 1 ? 'ud' : 'uds'}
+                        {linea.tipo !== 'venta_copa' && linea.tipo !== 'invitacion_copa' && (
+                          <>{' · '}{linea.cantidad} {linea.cantidad === 1 ? 'ud' : 'uds'}</>
+                        )}
                         {linea.copas_vendidas ? ` · ${linea.copas_vendidas} copas` : ''}
                         {linea.mesa ? ` · mesa ${linea.mesa}` : ''}
                         {linea.precio_unitario ? ` · ${Number(linea.precio_unitario).toFixed(2)} € carta` : ''}

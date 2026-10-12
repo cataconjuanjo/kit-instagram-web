@@ -99,6 +99,7 @@ export function _agruparLineas(lineas, { copas_por_botella = 5 } = {}) {
     const copas    = Math.max(0, Number(l.copas_vendidas) || 0)
     // Ingreso real: copa usa copas_vendidas (precio por copa × copas), otros usan cantidad
     const esCopa   = l.tipo === 'venta_copa' || l.tipo === 'invitacion_copa'
+    const esVenta  = l.tipo === 'venta_botella' || l.tipo === 'venta_copa'
     const ingreso  = esCopa ? r2(precio * copas) : r2(precio * cantidad)
 
     // — Canal —
@@ -112,7 +113,6 @@ export function _agruparLineas(lineas, { copas_por_botella = 5 } = {}) {
       case 'venta_copa':
         ingresos_venta    += ingreso
         copas_total       += copas
-        canal.copa.uds      += cantidad
         canal.copa.copas    += copas
         canal.copa.ingresos += ingreso
         break
@@ -182,14 +182,14 @@ export function _agruparLineas(lineas, { copas_por_botella = 5 } = {}) {
         diaTurnoMap[key] = { fecha: l.parte.fecha, turno: l.parte.turno, lineas: 0, ingresos: 0 }
       }
       diaTurnoMap[key].lineas   += 1
-      diaTurnoMap[key].ingresos += ingreso
+      if (esVenta) diaTurnoMap[key].ingresos += ingreso
     }
 
     // — Por mesa —
     if (l.mesa) {
       if (!mesaMap[l.mesa]) mesaMap[l.mesa] = { mesa: l.mesa, uds: 0, ingresos: 0 }
       mesaMap[l.mesa].uds      += esCopa ? copas : cantidad
-      mesaMap[l.mesa].ingresos += ingreso
+      if (esVenta) mesaMap[l.mesa].ingresos += ingreso
     }
   }
 

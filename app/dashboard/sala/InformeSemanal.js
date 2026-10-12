@@ -6,21 +6,28 @@ import styles from '../module.module.css'
 
 // ── Utilidades de semana ──────────────────────────────────────────────────────
 
-function semanaAnteriorCerrada() {
+function localDateStr(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+function semanaActual() {
   const hoy = new Date()
-  const dia = hoy.getDay() // 0=Dom,1=Lun,...,6=Sab
+  const dia = hoy.getDay() // 0=Dom, 1=Lun, ..., 6=Sab
   const diasDesdeEsteLunes = dia === 0 ? 6 : dia - 1
-  const lunesEstaSemana = new Date(hoy)
-  lunesEstaSemana.setDate(hoy.getDate() - diasDesdeEsteLunes)
-  const lunesAnterior = new Date(lunesEstaSemana)
-  lunesAnterior.setDate(lunesEstaSemana.getDate() - 7)
-  const domingoAnterior = new Date(lunesAnterior)
-  domingoAnterior.setDate(lunesAnterior.getDate() + 6)
-  return fmtSemana(lunesAnterior, domingoAnterior)
+  const lunes = new Date(hoy)
+  lunes.setDate(hoy.getDate() - diasDesdeEsteLunes)
+  const domingo = new Date(lunes)
+  domingo.setDate(lunes.getDate() + 6)
+  return fmtSemana(lunes, domingo)
 }
 
 function navegarSemana(desde, delta) {
-  const d = new Date(desde)
+  // desde is always a local YYYY-MM-DD string; parse as local midnight
+  const [y, mo, dd] = desde.split('-').map(Number)
+  const d = new Date(y, mo - 1, dd)
   d.setDate(d.getDate() + delta * 7)
   const h = new Date(d)
   h.setDate(d.getDate() + 6)
@@ -29,8 +36,8 @@ function navegarSemana(desde, delta) {
 
 function fmtSemana(d, h) {
   return {
-    desde: d.toISOString().slice(0, 10),
-    hasta: h.toISOString().slice(0, 10),
+    desde: localDateStr(d),
+    hasta: localDateStr(h),
   }
 }
 
@@ -180,7 +187,7 @@ async function generarPDF(informe, semanaAnterior, semana, restaurante) {
   hdr('Por canal', 10)
   const canalRows = [
     ['Venta botella',  por_canal.botella.uds,    eur(por_canal.botella.ingresos)],
-    ['Venta copa',     `${por_canal.copa.uds} ap / ${por_canal.copa.copas} copas`, eur(por_canal.copa.ingresos)],
+    ['Venta copa',     `${por_canal.copa.copas} copas`,  eur(por_canal.copa.ingresos)],
     ['Invitación',     por_canal.invitacion.uds, '—'],
     ['Cocina',         por_canal.cocina.uds,     por_canal.cocina.valor ? eur(por_canal.cocina.valor) : '—'],
     ['Evento',         por_canal.evento.uds,     por_canal.evento.valor ? eur(por_canal.evento.valor) : '—'],
@@ -325,7 +332,7 @@ async function generarExcel(informe, semana, restaurante) {
 // ── Componente ────────────────────────────────────────────────────────────────
 
 export default function InformeSemanal({ restauranteId, restaurante }) {
-  const [semana, setSemana]     = useState(() => semanaAnteriorCerrada())
+  const [semana, setSemana]     = useState(() => semanaActual())
   const [informe, setInforme]   = useState(null)
   const [semAnt, setSemAnt]     = useState(null)
   const [cargando, setCargando] = useState(false)

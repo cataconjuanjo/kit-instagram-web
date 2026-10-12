@@ -151,6 +151,30 @@ describe('_agruparLineas — por_dia_turno y por_mesa', () => {
   })
 })
 
+describe('_agruparLineas — por_dia_turno y por_mesa solo ingresos venta', () => {
+  const parte = { fecha: '2026-10-12', turno: 'mediodia' }
+  const lineas = [
+    linea('venta_botella', 2, 30, { parte, mesa: '3' }),          // ingreso=60 → cuenta
+    linea('venta_copa',    1,  8, { parte, mesa: '3', copas_vendidas: 3 }), // ingreso=24 → cuenta
+    linea('invitacion_botella', 1, 90, { parte, mesa: '3' }),     // ingreso=90 → NO cuenta
+    linea('cocina',        1, 20, { parte }),                     // ingreso=20 → NO cuenta
+  ]
+  const r = _agruparLineas(lineas, { copas_por_botella: 5 })
+
+  it('por_dia_turno.ingresos = solo ventas (60+24=84)', () => {
+    assert.equal(r.por_dia_turno[0].ingresos, 84)
+  })
+  it('resumen.ingresos_venta = 84', () => {
+    assert.equal(r.resumen.ingresos_venta, 84)
+  })
+  it('por_mesa.ingresos = 84 (sin invitacion)', () => {
+    assert.equal(r.por_mesa[0].ingresos, 84)
+  })
+  it('canal.copa.uds = 0 (apertura no cuenta como ud)', () => {
+    assert.equal(r.por_canal.copa.uds, 0)
+  })
+})
+
 describe('_agruparLineas — top 5 vinos', () => {
   const lineas = [
     linea('venta_botella', 1, 10, { vino_id: 'v1', nombre: 'V1' }),
