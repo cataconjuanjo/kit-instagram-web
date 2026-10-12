@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import ParteServicio from './ParteServicio'
+import InformeSemanal from './InformeSemanal'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import {
   SELECT_CLIENT_ESTADISTICA_DASHBOARD,
@@ -283,6 +284,8 @@ export default function SalaHub() {
       </section>
 
       <ParteServicio restauranteId={restaurante.id} vinos={vinos} />
+
+      <InformeSemanal restauranteId={restaurante.id} restaurante={restaurante} />
 
       <section className={styles.hubGrid}>
         <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/cierre">
