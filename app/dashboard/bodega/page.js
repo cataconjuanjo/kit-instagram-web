@@ -28,6 +28,7 @@ import bStyles from './bodega.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 import InventarioPanel from '../inventario/InventarioPanel'
 import PreciosPanel from './PreciosPanel'
+import ConteoInventario from './ConteoInventario'
 
 function eur(valor) {
   return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
@@ -1052,6 +1053,13 @@ export default function ControlBodega() {
             </button>
             <button
               type="button"
+              className={panelAbierto === 'conteo_fisico' ? styles.secondary : styles.ghost}
+              onClick={() => setPanelAbierto(panelAbierto === 'conteo_fisico' ? null : 'conteo_fisico')}
+            >
+              Conteo
+            </button>
+            <button
+              type="button"
               className={panelAbierto === 'precios' ? styles.secondary : styles.ghost}
               onClick={() => setPanelAbierto(panelAbierto === 'precios' ? null : 'precios')}
             >
@@ -1147,6 +1155,18 @@ export default function ControlBodega() {
               ))}
               compact
               onClose={() => setPanelAbierto(null)}
+            />
+          </section>
+        )}
+
+        {/* ── Panel: Conteo físico ─────────────────────────── */}
+        {panelAbierto === 'conteo_fisico' && (
+          <section className={styles.panel} id="conteo_fisico">
+            <ConteoInventario
+              restauranteId={restaurante.id}
+              onVinosActualizados={() => {
+                setVinos(prev => [...prev])
+              }}
             />
           </section>
         )}
