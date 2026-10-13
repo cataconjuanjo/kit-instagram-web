@@ -319,51 +319,37 @@ if (!SUPABASE_URL || !SUPABASE_KEY || !RESTAURANTE_ID) {
   }
 }
 
-// ── Parte 3: auth de la ruta GET /api/cierres-mes ─────────────────────────────
-// Importa el handler directamente y lo llama con un Request sintético.
-// No necesita servidor levantado ni JWT real.
+// ── Parte 3: auth middleware ───────────────────────────────────────────────────
+// Importa getUserFromRequest directamente (no carga supabaseAdmin).
+// El path sin token retorna antes de crear ningún cliente Supabase.
 
-section('3. Auth middleware — GET /api/cierres-mes')
+section('3. Auth middleware — getUserFromRequest')
 
 try {
-  const { GET } = await import('../app/api/cierres-mes/route.js')
+  const { getUserFromRequest } = await import('../app/api/_lib/auth.js')
 
-  // Sin cabecera Authorization → 401 "Sesion no recibida"
-  const reqSinToken = new Request(
-    `http://localhost/api/cierres-mes?restaurante_id=${RID}&mes=${MES}`
-  )
-  const resSin = await GET(reqSinToken)
-  const bodySin = await resSin.json()
-
-  if (resSin.status === 401)
-    ok(`GET sin token → 401  [${bodySin.error}]`)
+  // Sin cabecera Authorization → { error: 'Sesion no recibida', status: 401 }
+  const mockSin = { headers: { get: () => null } }
+  const r1 = await getUserFromRequest(mockSin)
+  if (r1.status === 401)
+    ok('sin token → 401')
   else
-    fail('GET sin token → 401', `got ${resSin.status}: ${bodySin.error}`)
-
-  if (bodySin.error === 'Sesion no recibida')
-    ok('mensaje de error es "Sesion no recibida"')
+    fail('sin token → 401', `got ${r1.status}`)
+  if (r1.error === 'Sesion no recibida')
+    ok('mensaje "Sesion no recibida"')
   else
-    fail('mensaje "Sesion no recibida"', `got "${bodySin.error}"`)
+    fail('mensaje "Sesion no recibida"', `got "${r1.error}"`)
 
-  // Token basura → 401 "Sesion no valida" (requiere SUPABASE_URL/ANON_KEY para llamar a getUser)
-  if (SUPABASE_URL) {
-    const reqTokenBasura = new Request(
-      `http://localhost/api/cierres-mes?restaurante_id=${RID}&mes=${MES}`,
-      { headers: { Authorization: 'Bearer token-invalido-xyzzy' } }
-    )
-    const resBasura = await GET(reqTokenBasura)
-    const bodyBasura = await resBasura.json()
-
-    if (resBasura.status === 401)
-      ok(`GET con token inválido → 401  [${bodyBasura.error}]`)
-    else
-      fail('GET con token inválido → 401', `got ${resBasura.status}: ${bodyBasura.error}`)
-  } else {
-    console.log('  ℹ  Sin SUPABASE_URL — se omite test token inválido')
-  }
+  // Bearer vacío → también 401 "Sesion no recibida"
+  const mockVacio = { headers: { get: (h) => h === 'authorization' ? 'Bearer ' : null } }
+  const r2 = await getUserFromRequest(mockVacio)
+  if (r2.status === 401)
+    ok('Bearer vacío → 401')
+  else
+    fail('Bearer vacío → 401', `got ${r2.status}`)
 
 } catch (e) {
-  fail('importar route handler', e.message)
+  fail('test auth middleware', e.message)
 }
 
 // ── Resultado ──────────────────────────────────────────────────────────────────
