@@ -29,6 +29,7 @@ import ResponsiveOverlay from '../ResponsiveOverlay'
 import InventarioPanel from '../inventario/InventarioPanel'
 import PreciosPanel from './PreciosPanel'
 import ConteoInventario from './ConteoInventario'
+import CierreMensual from './CierreMensual'
 
 function eur(valor) {
   return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
@@ -1060,6 +1061,13 @@ export default function ControlBodega() {
             </button>
             <button
               type="button"
+              className={panelAbierto === 'cierre_mensual' ? styles.secondary : styles.ghost}
+              onClick={() => setPanelAbierto(panelAbierto === 'cierre_mensual' ? null : 'cierre_mensual')}
+            >
+              Cierre mensual
+            </button>
+            <button
+              type="button"
               className={panelAbierto === 'precios' ? styles.secondary : styles.ghost}
               onClick={() => setPanelAbierto(panelAbierto === 'precios' ? null : 'precios')}
             >
@@ -1172,6 +1180,13 @@ export default function ControlBodega() {
                 }
               }}
             />
+          </section>
+        )}
+
+        {/* ── Panel: Cierre mensual ─────────────────────── */}
+        {panelAbierto === 'cierre_mensual' && (
+          <section className={styles.panel} id="cierre_mensual">
+            <CierreMensual restauranteId={restaurante.id} />
           </section>
         )}
 

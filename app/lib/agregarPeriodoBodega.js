@@ -245,3 +245,142 @@ function emptyAgregacion() {
 
 function r2(n) { return Math.round(Number(n) * 100) / 100 }
 function r4(n) { return Math.round(Number(n) * 10000) / 10000 }
+
+// ── B5: Cierre mensual P&L ────────────────────────────────────────────────────
+export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
+  const [y, m] = mes.split('-').map(Number)
+  const lastDay = new Date(y, m, 0).getDate()
+  const desde = `${mes}-01`
+  const hasta = `${mes}-${String(lastDay).padStart(2, '0')}`
+  // UTC bounds for Madrid timestamps (CET=+01:00 winter, CEST=+02:00 summer)
+  const tzOff   = (m >= 4 && m <= 10) ? '+02:00' : '+01:00'
+  const desde_ts = new Date(`${desde}T00:00:00${tzOff}`).toISOString()
+  const hasta_ts  = new Date(`${hasta}T23:59:59${tzOff}`).toISOString()
+
+  const { data: settings } = await supabase
+    .from('restaurant_economic_settings')
+    .select('iva_venta_pct, copas_por_botella, merma_copa_pct, gastos_mensuales')
+    .eq('restaurante_id', restaurante_id)
+    .single()
+
+  const ivaPct       = Number(settings?.iva_venta_pct) > 0  ? Number(settings.iva_venta_pct)  : 10
+  const copasXBot    = Number(settings?.copas_por_botella) > 0 ? Number(settings.copas_por_botella) : 5
+  const merraPct     = Number(settings?.merma_copa_pct) || 0
+  const gastosArr    = Array.isArray(settings?.gastos_mensuales) ? settings.gastos_mensuales : []
+  const gastosDelMes = gastosArr.filter(g => g.mes === mes)
+  const gastos_total = r2(gastosDelMes.reduce((s, g) => s + (Number(g.importe) || 0), 0))
+
+  const informe = await agregarPeriodoBodega({ restaurante_id, desde, hasta, supabase })
+
+  const ventas_bruto     = informe.resumen.ingresos_venta
+  const ventas_neto      = r2(ventas_bruto / (1 + ivaPct / 100))
+  const salidas_no_venta = informe.resumen.consumos_valor
+
+  // Coste de ventas teórico
+  const copasVendibles = r4(copasXBot * (1 - merraPct / 100))
+  let coste_acc = 0
+  const sin_coste = []
+  for (const v of informe.por_vino) {
+    if (!v.tiene_coste) { sin_coste.push(v.nombre); continue }
+    const c = Number(v.coste_unitario)
+    if (v.uds > 0)                           coste_acc += r2(v.uds * c)
+    if (v.copas > 0 && copasVendibles > 0)   coste_acc += r2((v.copas / copasVendibles) * c)
+  }
+  const coste_ventas_teorico = r2(coste_acc)
+  const margen_bruto = r2(ventas_neto - coste_ventas_teorico)
+  const margen_pct   = ventas_neto > 0 ? Math.round(margen_bruto / ventas_neto * 100) : null
+
+  // Compras y devoluciones
+  const { data: movsCD } = await supabase
+    .from('movimientos_stock')
+    .select('tipo, cantidad, vino:vinos(coste_medio_pmp, coste_compra)')
+    .eq('restaurante_id', restaurante_id)
+    .in('tipo', ['compra', 'devolucion'])
+    .gte('created_at', desde_ts)
+    .lte('created_at', hasta_ts)
+
+  let compras_acc = 0, devol_acc = 0
+  for (const mov of movsCD || []) {
+    const c   = Number(mov.vino?.coste_medio_pmp) || Number(mov.vino?.coste_compra) || 0
+    const val = r2(Math.max(0, Number(mov.cantidad) || 0) * c)
+    if (mov.tipo === 'compra')     compras_acc += val
+    if (mov.tipo === 'devolucion') devol_acc   += val
+  }
+  const compras_bruto = r2(compras_acc)
+  const devoluciones  = r2(devol_acc)
+  const compras_netas = r2(compras_bruto - devoluciones)
+
+  // Conteos del mes para stock y diferencias de inventario
+  const { data: conteosMes } = await supabase
+    .from('conteos_inventario')
+    .select('id, cerrado_en')
+    .eq('restaurante_id', restaurante_id)
+    .eq('estado', 'cerrado')
+    .gte('cerrado_en', desde_ts)
+    .lte('cerrado_en', hasta_ts)
+    .order('cerrado_en')
+
+  let stock_inicial        = null
+  let stock_final          = null
+  let diferencias_inventario = null
+  let aviso_stock          = null
+
+  if (conteosMes && conteosMes.length > 0) {
+    const conteoFin = conteosMes[conteosMes.length - 1]
+    const { data: lineasFin } = await supabase
+      .from('conteos_inventario_lineas')
+      .select('stock_teorico, stock_contado, coste_unitario_snapshot, contado, diferencia')
+      .eq('conteo_id', conteoFin.id)
+
+    stock_final = r2((lineasFin || []).reduce((s, l) => {
+      const coste = Number(l.coste_unitario_snapshot) || 0
+      const stock = (l.contado && l.stock_contado != null)
+        ? Number(l.stock_contado)
+        : Number(l.stock_teorico) || 0
+      return s + stock * coste
+    }, 0))
+
+    diferencias_inventario = r2((lineasFin || []).reduce((s, l) => {
+      if (!l.contado || l.diferencia == null) return s
+      return s + Number(l.diferencia) * (Number(l.coste_unitario_snapshot) || 0)
+    }, 0))
+
+    if (conteosMes.length >= 2) {
+      const conteoIni = conteosMes[0]
+      const { data: lineasIni } = await supabase
+        .from('conteos_inventario_lineas')
+        .select('stock_teorico, coste_unitario_snapshot')
+        .eq('conteo_id', conteoIni.id)
+      stock_inicial = r2((lineasIni || []).reduce((s, l) =>
+        s + (Number(l.stock_teorico) || 0) * (Number(l.coste_unitario_snapshot) || 0), 0))
+    } else {
+      aviso_stock = 'Solo un conteo en el mes — stock inicial no disponible'
+    }
+  } else {
+    aviso_stock = 'Sin conteos en el mes — diferencias de inventario no disponibles'
+  }
+
+  const resultado = r2(
+    ventas_neto
+    - coste_ventas_teorico
+    - salidas_no_venta
+    - (diferencias_inventario ?? 0)
+    - gastos_total
+  )
+
+  return {
+    mes, desde, hasta,
+    partes_incluidos:     informe.meta.partes_incluidos,
+    borradores_excluidos: informe.meta.borradores_excluidos ?? 0,
+    b8_pendiente:         informe.meta.b8_pendiente ?? false,
+    ventas_bruto, ventas_neto, iva_pct: ivaPct,
+    coste_ventas_teorico, margen_bruto, margen_pct,
+    compras_bruto, devoluciones, compras_netas,
+    salidas_no_venta,
+    diferencias_inventario, stock_inicial, stock_final, aviso_stock,
+    gastos: gastosDelMes, gastos_total,
+    resultado,
+    cobertura: { partes_incluidos: informe.meta.partes_incluidos, sin_coste },
+    informe,
+  }
+}
