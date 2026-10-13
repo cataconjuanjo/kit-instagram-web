@@ -1,5 +1,25 @@
 {
   "permissions": {
+    "deny": [
+      "Read(.env*)",
+      "Grep(.env*)",
+      "Grep(**/.env*)",
+      "Read(**/.env*)",
+      "Bash(cat .env*)",
+      "Bash(cat **/.env*)",
+      "Bash(type .env*)",
+      "Bash(type **/.env*)",
+      "Bash(more .env*)",
+      "Bash(Get-Content .env*)",
+      "Bash(Get-Content **/.env*)",
+      "Bash(gc .env*)",
+      "Bash(gc **/.env*)",
+      "PowerShell(Get-Content .env*)",
+      "PowerShell(Get-Content **/.env*)",
+      "PowerShell(gc .env*)",
+      "PowerShell(gc **/.env*)",
+      "PowerShell(cat .env*)"
+    ],
     "allow": [
       "Bash(Start-Process \"c:\\\\Users\\\\jjgar\\\\Desktop\\\\10 SKILLS ADRI Y JUANPE\\\\kit-instagram-web\\\\web-cataconjuanjo.html\")",
       "PowerShell(Start-Process \"c:\\\\Users\\\\jjgar\\\\Desktop\\\\10 SKILLS ADRI Y JUANPE\\\\kit-instagram-web\\\\web-cataconjuanjo.html\")",
@@ -13,6 +33,18 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$PWD/.claude/hooks/check-env-access.js\"",
+            "timeout": 5,
+            "statusMessage": "Verificando acceso a credenciales..."
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",

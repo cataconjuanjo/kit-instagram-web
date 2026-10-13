@@ -446,6 +446,7 @@ export default function ExplotacionPage() {
     copa_barra: '', botella_mesa: '', grupos_eventos: '', take_away: '',
   })
   const [historico, setHistorico] = useState([])
+  const [datosVino, setDatosVino] = useState(null)
 
   useEffect(() => {
     async function cargar() {
@@ -519,6 +520,14 @@ export default function ExplotacionPage() {
         setBancarios({ comisiones_datafono: '', mantenimiento_datafono: '', resto_comisiones: '' })
         setCanales({ copa_barra: '', botella_mesa: '', grupos_eventos: '', take_away: '' })
       }
+
+      const { data: cierre } = await supabase
+        .from('cierres_mensuales_bodega')
+        .select('snapshot')
+        .eq('restaurante_id', restaurante.id)
+        .eq('mes', periodo)
+        .maybeSingle()
+      setDatosVino(cierre?.snapshot || null)
     }
     cargarPeriodo()
   }, [restaurante, periodo])
@@ -676,6 +685,22 @@ export default function ExplotacionPage() {
                 </small>
               </label>
             </div>
+            {datosVino && (
+              <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(74,140,111,0.10)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ fontSize: 13, color: '#8b8278' }}>
+                  <span style={{ marginRight: 16 }}>Ventas vino (s/IVA): <strong style={{ color: '#ccc' }}>{eur(datosVino.ventas_neto, 2)}</strong></span>
+                  <span>Coste de ventas: <strong style={{ color: '#ccc' }}>{eur(datosVino.coste_ventas_teorico, 2)}</strong></span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.ghost}
+                  onClick={() => setConsumoMp(String(datosVino.coste_ventas_teorico))}
+                  style={{ fontSize: 12, padding: '3px 10px', whiteSpace: 'nowrap' }}
+                >
+                  ← Usar coste de vino como MP
+                </button>
+              </div>
+            )}
           </div>
         </section>
 

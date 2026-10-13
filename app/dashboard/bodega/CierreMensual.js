@@ -19,7 +19,7 @@ function mesLabel(mes) {
 
 function mesAnterior() {
   const now = new Date()
-  const m = now.getMonth()  // 0-indexed
+  const m = now.getMonth()
   const y = now.getFullYear()
   if (m === 0) return `${y - 1}-12`
   return `${y}-${String(m).padStart(2, '0')}`
@@ -37,28 +37,253 @@ function nextMes(mes) {
   return `${y}-${String(m + 1).padStart(2, '0')}`
 }
 
+function variPct(actual, anterior) {
+  if (anterior == null || anterior === 0) return null
+  return Math.round(((actual - anterior) / Math.abs(anterior)) * 100)
+}
+
+function variTag(pct) {
+  if (pct === null) return null
+  const sign = pct >= 0 ? '+' : ''
+  return `${sign}${pct}%`
+}
+
 function SectionRow({ label }) {
   return (
     <tr>
-      <td colSpan={2} style={{ paddingTop: 18, paddingBottom: 4, fontWeight: 700, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.45 }}>
+      <td colSpan={3} style={{ paddingTop: 18, paddingBottom: 4, fontWeight: 700, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.45 }}>
         {label}
       </td>
     </tr>
   )
 }
 
-function DataRow({ label, value, strong, dim, color }) {
+function DataRow({ label, value, strong, dim, color, vari }) {
+  const tag = variTag(vari)
+  const tagColor = vari == null ? null : vari >= 0 ? '#4A8C6F' : '#b85454'
   return (
     <tr>
       <td style={{ padding: '3px 0 3px 8px', fontSize: 14, fontWeight: strong ? 600 : 400, opacity: dim ? 0.55 : 1 }}>{label}</td>
       <td style={{ padding: '3px 0', textAlign: 'right', fontSize: 14, fontWeight: strong ? 700 : 400, color: color || 'inherit', opacity: dim ? 0.55 : 1, whiteSpace: 'nowrap' }}>{value}</td>
+      <td style={{ padding: '3px 0 3px 6px', textAlign: 'right', fontSize: 11, color: tagColor || 'transparent', opacity: dim ? 0.55 : 0.8, whiteSpace: 'nowrap', minWidth: 54 }}>
+        {tag || ''}
+      </td>
     </tr>
   )
 }
 
-export default function CierreMensual({ restauranteId }) {
+// ── PDF ────────────────────────────────────────────────────────────────────────
+
+async function generarPDF(datos, datosAnt, mes, restaurante) {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const PW = 210, ML = 14, MR = 14, CW = PW - ML - MR
+  let y = 14
+
+  function hdr(txt, size = 11, bold = true) {
+    doc.setFont('helvetica', bold ? 'bold' : 'normal')
+    doc.setFontSize(size)
+    doc.setTextColor(40, 40, 40)
+    doc.text(txt, ML, y)
+    y += size * 0.5 + 2
+  }
+
+  function sub(txt) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    doc.setTextColor(100, 100, 100)
+    doc.text(txt, ML, y)
+    y += 5
+  }
+
+  function sep() {
+    doc.setDrawColor(200, 200, 200)
+    doc.line(ML, y, PW - MR, y)
+    y += 3
+  }
+
+  function tabla(headers, rows, colWidths) {
+    const ROW_H = 6, HEADER_H = 7
+    doc.setFillColor(245, 245, 245)
+    doc.rect(ML, y, CW, HEADER_H, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8)
+    doc.setTextColor(60, 60, 60)
+    let x = ML + 2
+    headers.forEach((h, i) => {
+      doc.text(String(h), x, y + 4.5, { align: i > 0 ? 'right' : 'left', maxWidth: colWidths[i] - 2 })
+      x += colWidths[i]
+    })
+    y += HEADER_H
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    rows.forEach((row, ri) => {
+      if (y > 270) { doc.addPage(); y = 14 }
+      if (ri % 2 === 1) {
+        doc.setFillColor(252, 252, 252)
+        doc.rect(ML, y, CW, ROW_H, 'F')
+      }
+      doc.setTextColor(40, 40, 40)
+      let cx = ML + 2
+      row.forEach((cell, ci) => {
+        doc.text(String(cell ?? ''), cx, y + 4, { align: ci > 0 ? 'right' : 'left', maxWidth: colWidths[ci] - 2 })
+        cx += colWidths[ci]
+      })
+      y += ROW_H
+    })
+    doc.setDrawColor(210, 210, 210)
+    doc.rect(ML, y - rows.length * ROW_H - HEADER_H, CW, rows.length * ROW_H + HEADER_H, 'S')
+    y += 4
+  }
+
+  function vTag(actual, anterior) {
+    if (anterior == null || anterior === 0) return ''
+    const p = Math.round(((actual - anterior) / Math.abs(anterior)) * 100)
+    return `${p >= 0 ? '+' : ''}${p}%`
+  }
+
+  // Cabecera
+  doc.setFillColor(30, 30, 30)
+  doc.rect(0, 0, PW, 22, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(14)
+  doc.setTextColor(255, 255, 255)
+  doc.text(restaurante?.nombre || 'Restaurante', ML, 10)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Cierre mensual de bodega · ${mesLabel(mes)}`, ML, 17)
+  y = 28
+
+  sub(`${datos.partes_incluidos} partes · ${datos.desde} → ${datos.hasta}${datos.borradores_excluidos > 0 ? ` · ${datos.borradores_excluidos} borrador(es) excluido(s)` : ''}`)
+  sep()
+
+  hdr('Ventas', 10)
+  tabla(
+    ['Concepto', 'Valor', 'vs mes ant.'],
+    [
+      ['Bruto (con IVA)',       eur(datos.ventas_bruto),  vTag(datos.ventas_bruto, datosAnt?.ventas_bruto)],
+      [`IVA ${datos.iva_pct}%`, `− ${eur(datos.ventas_bruto - datos.ventas_neto)}`, ''],
+      ['Netas (sin IVA)',       eur(datos.ventas_neto),   vTag(datos.ventas_neto, datosAnt?.ventas_neto)],
+    ],
+    [90, 52, 40]
+  )
+
+  hdr('Coste de ventas', 10)
+  tabla(
+    ['Concepto', 'Valor', 'vs mes ant.'],
+    [
+      ['Coste teórico (botellas + copas)', `− ${eur(datos.coste_ventas_teorico)}`, vTag(datos.coste_ventas_teorico, datosAnt?.coste_ventas_teorico)],
+      [`Margen bruto${datos.margen_pct != null ? ` (${datos.margen_pct}%)` : ''}`, eur(datos.margen_bruto), vTag(datos.margen_bruto, datosAnt?.margen_bruto)],
+    ],
+    [110, 40, 32]
+  )
+
+  hdr('Compras', 10)
+  const comprasRows = [
+    ['Compras brutas',  eur(datos.compras_bruto),  vTag(datos.compras_bruto, datosAnt?.compras_bruto)],
+  ]
+  if (datos.devoluciones > 0) comprasRows.push(['Devoluciones', `− ${eur(datos.devoluciones)}`, ''])
+  comprasRows.push(['Compras netas', eur(datos.compras_netas), vTag(datos.compras_netas, datosAnt?.compras_netas)])
+  tabla(['Concepto', 'Valor', 'vs mes ant.'], comprasRows, [90, 52, 40])
+
+  hdr('Diferencias inventario', 10)
+  if (datos.diferencias_inventario != null) {
+    const d = datos.diferencias_inventario
+    tabla(['Concepto', 'Valor', ''],
+      [['Diferencia física vs teórico', `${d >= 0 ? '+' : '−'} ${eur(Math.abs(d))}`, '']],
+      [90, 52, 40]
+    )
+  } else {
+    sub(datos.aviso_stock || 'Sin conteos en el mes')
+    y += 2
+  }
+
+  if ((datos.gastos || []).length > 0) {
+    hdr('Gastos del mes', 10)
+    tabla(['Concepto', 'Importe', ''],
+      [...datos.gastos.map(g => [g.concepto, eur(g.importe), '']), ['TOTAL', eur(datos.gastos_total), '']],
+      [110, 52, 20]
+    )
+  }
+
+  sep()
+  const signo = datos.resultado >= 0 ? '' : '− '
+  hdr(`Resultado neto bodega: ${signo}${eur(Math.abs(datos.resultado))}`, 12)
+  if (datosAnt?.resultado != null) {
+    const antSigno = datosAnt.resultado >= 0 ? '' : '− '
+    sub(`Mes anterior: ${antSigno}${eur(Math.abs(datosAnt.resultado))}  ${vTag(datos.resultado, datosAnt.resultado)}`)
+  }
+
+  const totalPags = doc.getNumberOfPages()
+  for (let p = 1; p <= totalPags; p++) {
+    doc.setPage(p)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.setTextColor(160, 160, 160)
+    doc.text(`Carta Viva · ${new Date().toLocaleDateString('es-ES')} · Pág. ${p}/${totalPags}`, PW / 2, 292, { align: 'center' })
+  }
+
+  doc.save(`cierre-mensual-${mes}.pdf`)
+}
+
+// ── Excel ──────────────────────────────────────────────────────────────────────
+
+async function generarExcel(datos, mes, restaurante) {
+  const XLSX = await import('xlsx')
+  const wb = XLSX.utils.book_new()
+
+  function sheet(nombre, filas) {
+    const ws = XLSX.utils.aoa_to_sheet(filas)
+    XLSX.utils.book_append_sheet(wb, ws, nombre)
+  }
+
+  sheet('Resumen', [
+    [`Cierre mensual de bodega — ${restaurante?.nombre || ''}`],
+    [`Mes: ${mesLabel(mes)}`],
+    [`Partes: ${datos.partes_incluidos}   Período: ${datos.desde} → ${datos.hasta}`],
+    [],
+    ['Concepto', 'Valor'],
+    ['Ventas brutas (con IVA, €)',        datos.ventas_bruto],
+    [`IVA ${datos.iva_pct}% (€)`,         datos.ventas_bruto - datos.ventas_neto],
+    ['Ventas netas (sin IVA, €)',          datos.ventas_neto],
+    ['Coste ventas teórico (€)',           datos.coste_ventas_teorico],
+    ['Margen bruto (€)',                   datos.margen_bruto],
+    ['Margen bruto (%)',                   datos.margen_pct ?? ''],
+    [],
+    ['Compras brutas (€)',                 datos.compras_bruto],
+    ['Devoluciones (€)',                   datos.devoluciones],
+    ['Compras netas (€)',                  datos.compras_netas],
+    [],
+    ['Salidas no venta (€)',               datos.salidas_no_venta],
+    ['Diferencias inventario (€)',         datos.diferencias_inventario ?? ''],
+    [],
+    ['Stock inicial (€)',                  datos.stock_inicial ?? ''],
+    ['Stock final (€)',                    datos.stock_final ?? ''],
+    [],
+    ['Total gastos (€)',                   datos.gastos_total],
+    ['Resultado neto bodega (€)',          datos.resultado],
+  ])
+
+  if ((datos.gastos || []).length > 0) {
+    const ng = datos.gastos.length
+    sheet('Gastos', [
+      [`Gastos del mes — ${mesLabel(mes)}`],
+      [],
+      ['Concepto', 'Importe (€)'],
+      ...datos.gastos.map(g => [g.concepto, g.importe]),
+      ['TOTAL', { f: `SUM(B4:B${ng + 3})` }],
+    ])
+  }
+
+  XLSX.writeFile(wb, `cierre-mensual-${mes}.xlsx`)
+}
+
+// ── Componente ─────────────────────────────────────────────────────────────────
+
+export default function CierreMensual({ restauranteId, restaurante }) {
   const [mes, setMes] = useState(mesAnterior)
   const [estado, setEstado] = useState(null)
+  const [datosMesAnt, setDatosMesAnt] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [cerrando, setCerrando] = useState(false)
@@ -66,19 +291,32 @@ export default function CierreMensual({ restauranteId }) {
   const [nuevoConcepto, setNuevoConcepto] = useState('')
   const [nuevoImporte, setNuevoImporte] = useState('')
   const [guardandoGasto, setGuardandoGasto] = useState(false)
+  const [exportandoPDF, setExportandoPDF] = useState(false)
+  const [exportandoXLS, setExportandoXLS] = useState(false)
 
   const cargar = useCallback(async () => {
     if (!restauranteId || !mes) return
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/cierres-mes?restaurante_id=${restauranteId}&mes=${mes}`)
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Error al cargar')
-      setEstado(json)
+      const [resActual, resAnt] = await Promise.all([
+        fetch(`/api/cierres-mes?restaurante_id=${restauranteId}&mes=${mes}`),
+        fetch(`/api/cierres-mes?restaurante_id=${restauranteId}&mes=${prevMes(mes)}`),
+      ])
+      const jsonActual = await resActual.json()
+      if (!resActual.ok) throw new Error(jsonActual.error || 'Error al cargar')
+      setEstado(jsonActual)
+
+      if (resAnt.ok) {
+        const jsonAnt = await resAnt.json()
+        setDatosMesAnt(jsonAnt.cerrado ? jsonAnt.cierre?.snapshot : jsonAnt.datos)
+      } else {
+        setDatosMesAnt(null)
+      }
     } catch (e) {
       setError(e.message)
       setEstado(null)
+      setDatosMesAnt(null)
     } finally {
       setLoading(false)
     }
@@ -169,6 +407,22 @@ export default function CierreMensual({ restauranteId }) {
     }
   }
 
+  async function exportarPDF() {
+    if (!datos) return
+    setExportandoPDF(true)
+    try { await generarPDF(datos, datosMesAnt, mes, restaurante) }
+    catch (e) { setError(e.message) }
+    finally { setExportandoPDF(false) }
+  }
+
+  async function exportarExcel() {
+    if (!datos) return
+    setExportandoXLS(true)
+    try { await generarExcel(datos, mes, restaurante) }
+    catch (e) { setError(e.message) }
+    finally { setExportandoXLS(false) }
+  }
+
   const resultadoColor = datos?.resultado == null
     ? 'inherit'
     : datos.resultado >= 0 ? '#4A8C6F' : '#b85454'
@@ -184,7 +438,17 @@ export default function CierreMensual({ restauranteId }) {
             <button className={styles.ghost} onClick={() => setMes(nextMes(mes))} style={{ padding: '2px 10px' }}>►</button>
           </div>
         </div>
-        <div className={styles.actionRow} style={{ alignItems: 'flex-end' }}>
+        <div className={styles.actionRow} style={{ alignItems: 'flex-end', gap: 8 }}>
+          {datos && !loading && (
+            <>
+              <button className={styles.ghost} onClick={exportarPDF} disabled={exportandoPDF} style={{ fontSize: 12 }}>
+                {exportandoPDF ? 'Generando…' : 'PDF'}
+              </button>
+              <button className={styles.ghost} onClick={exportarExcel} disabled={exportandoXLS} style={{ fontSize: 12 }}>
+                {exportandoXLS ? 'Generando…' : 'Excel'}
+              </button>
+            </>
+          )}
           {cerrado && (
             <span style={{ fontSize: 12, color: '#4A8C6F' }}>
               Cerrado {new Date(estado.cierre.cerrado_en).toLocaleDateString('es-ES')}
@@ -215,25 +479,26 @@ export default function CierreMensual({ restauranteId }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <tbody>
               <SectionRow label="Ventas" />
-              <DataRow label="Bruto (con IVA)" value={eur(datos.ventas_bruto)} />
+              <DataRow label="Bruto (con IVA)" value={eur(datos.ventas_bruto)} vari={variPct(datos.ventas_bruto, datosMesAnt?.ventas_bruto)} />
               <DataRow label={`IVA ${datos.iva_pct}%`} value={`− ${eur(datos.ventas_bruto - datos.ventas_neto)}`} dim />
-              <DataRow label="Netas (sin IVA)" value={eur(datos.ventas_neto)} strong />
+              <DataRow label="Netas (sin IVA)" value={eur(datos.ventas_neto)} strong vari={variPct(datos.ventas_neto, datosMesAnt?.ventas_neto)} />
 
               <SectionRow label="Coste de ventas teórico" />
-              <DataRow label="Botellas y copas" value={`− ${eur(datos.coste_ventas_teorico)}`} />
+              <DataRow label="Botellas y copas" value={`− ${eur(datos.coste_ventas_teorico)}`} vari={variPct(datos.coste_ventas_teorico, datosMesAnt?.coste_ventas_teorico)} />
               <DataRow
                 label={`Margen bruto${datos.margen_pct != null ? ` (${datos.margen_pct}%)` : ''}`}
                 value={eur(datos.margen_bruto)}
                 strong
                 color={datos.margen_pct == null ? null : datos.margen_pct >= 55 ? '#4A8C6F' : '#b85454'}
+                vari={variPct(datos.margen_bruto, datosMesAnt?.margen_bruto)}
               />
 
               <SectionRow label="Compras" />
-              <DataRow label="Compras" value={eur(datos.compras_bruto)} />
+              <DataRow label="Compras" value={eur(datos.compras_bruto)} vari={variPct(datos.compras_bruto, datosMesAnt?.compras_bruto)} />
               {datos.devoluciones > 0 && (
                 <DataRow label="Devoluciones" value={`− ${eur(datos.devoluciones)}`} dim />
               )}
-              <DataRow label="Compras netas" value={eur(datos.compras_netas)} strong />
+              <DataRow label="Compras netas" value={eur(datos.compras_netas)} strong vari={variPct(datos.compras_netas, datosMesAnt?.compras_netas)} />
 
               {datos.salidas_no_venta > 0 && (
                 <>
@@ -316,9 +581,16 @@ export default function CierreMensual({ restauranteId }) {
           {/* Resultado */}
           <div style={{ marginTop: 20, padding: '14px 0', borderTop: '2px solid rgba(255,255,255,0.18)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>Resultado neto bodega</span>
-            <span style={{ fontWeight: 700, fontSize: 20, color: resultadoColor }}>
-              {datos.resultado >= 0 ? '' : '− '}{eur(Math.abs(datos.resultado))}
-            </span>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontWeight: 700, fontSize: 20, color: resultadoColor }}>
+                {datos.resultado >= 0 ? '' : '− '}{eur(Math.abs(datos.resultado))}
+              </span>
+              {variPct(datos.resultado, datosMesAnt?.resultado) != null && (
+                <div style={{ fontSize: 12, marginTop: 2, color: variPct(datos.resultado, datosMesAnt?.resultado) >= 0 ? '#4A8C6F' : '#b85454', opacity: 0.8 }}>
+                  {variTag(variPct(datos.resultado, datosMesAnt?.resultado))} vs {mesLabel(prevMes(mes))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Stock valorado */}

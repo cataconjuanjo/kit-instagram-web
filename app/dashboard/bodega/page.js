@@ -1186,7 +1186,7 @@ export default function ControlBodega() {
         {/* ── Panel: Cierre mensual ─────────────────────── */}
         {panelAbierto === 'cierre_mensual' && (
           <section className={styles.panel} id="cierre_mensual">
-            <CierreMensual restauranteId={restaurante.id} />
+            <CierreMensual restauranteId={restaurante.id} restaurante={restaurante} />
           </section>
         )}
 
