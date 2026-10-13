@@ -290,23 +290,45 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
   const margen_bruto = r2(ventas_neto - coste_ventas_teorico)
   const margen_pct   = ventas_neto > 0 ? Math.round(margen_bruto / ventas_neto * 100) : null
 
-  // Compras y devoluciones
+  // Compras B2 (con cabecera) — fuente canónica: lineas_compra.importe_neto
+  // por fecha de cabecera (DATE en Europe/Madrid, desde/hasta ya son YYYY-MM-DD Madrid)
+  const { data: cabecerasMes } = await supabase
+    .from('cabecera_compras')
+    .select('id')
+    .eq('restaurante_id', restaurante_id)
+    .gte('fecha', desde)
+    .lte('fecha', hasta)
+    .eq('estado', 'aplicada')
+
+  const cabeceraIds = (cabecerasMes || []).map(c => c.id)
+  let compras_b2 = 0
+  if (cabeceraIds.length > 0) {
+    const { data: lineasB2 } = await supabase
+      .from('lineas_compra')
+      .select('importe_neto')
+      .in('cabecera_id', cabeceraIds)
+    compras_b2 = r2((lineasB2 || []).reduce((s, l) => s + (Number(l.importe_neto) || 0), 0))
+  }
+
+  // Compras históricas (sin cabecera) + devoluciones — movimientos_stock
+  // IS NULL cabecera_compra_id evita doble conteo con compras B2
   const { data: movsCD } = await supabase
     .from('movimientos_stock')
     .select('tipo, cantidad, vino:vinos(coste_medio_pmp, coste_compra)')
     .eq('restaurante_id', restaurante_id)
     .in('tipo', ['compra', 'devolucion'])
+    .is('cabecera_compra_id', null)
     .gte('created_at', desde_ts)
     .lte('created_at', hasta_ts)
 
-  let compras_acc = 0, devol_acc = 0
+  let compras_hist = 0, devol_acc = 0
   for (const mov of movsCD || []) {
     const c   = Number(mov.vino?.coste_medio_pmp) || Number(mov.vino?.coste_compra) || 0
     const val = r2(Math.max(0, Number(mov.cantidad) || 0) * c)
-    if (mov.tipo === 'compra')     compras_acc += val
-    if (mov.tipo === 'devolucion') devol_acc   += val
+    if (mov.tipo === 'compra')     compras_hist += val
+    if (mov.tipo === 'devolucion') devol_acc    += val
   }
-  const compras_bruto = r2(compras_acc)
+  const compras_bruto = r2(compras_b2 + compras_hist)
   const devoluciones  = r2(devol_acc)
   const compras_netas = r2(compras_bruto - devoluciones)
 

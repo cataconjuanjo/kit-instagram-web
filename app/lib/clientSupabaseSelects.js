@@ -54,6 +54,7 @@ export const SELECT_CLIENT_RESTAURANTE_DASHBOARD = [
 export const SELECT_CLIENT_VINO_DASHBOARD = [
   'id', 'restaurante_id', 'nombre', 'bodega', 'tipo', 'region',
   'uva', 'anada', 'precio_botella', 'precio_copa', 'copa_ml', 'coste_compra',
+  'coste_medio_pmp',
   'stock', 'stock_minimo', 'proveedor', 'referencia_proveedor',
   'formato_compra', 'notas_cata', 'activo', 'internacional', 'foto_url',
 ].join(', ')

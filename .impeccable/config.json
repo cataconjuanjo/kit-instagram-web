@@ -151,6 +151,48 @@
         "value": "16px",
         "createdAt": "2026-09-05T16:32:52.444Z",
         "reason": "kiosko interactive card radius: identical to FeedbackWidget card in kiosko.module.css:316 — established kiosko card convention for tappable containers"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#4a8c6f",
+        "createdAt": "2026-10-13T18:50:33.564Z",
+        "reason": "Existing bodega green accent, 112+ uses in module.module.css"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#8b8278",
+        "createdAt": "2026-10-13T18:50:34.696Z",
+        "reason": "Existing bodega muted text, 112+ uses in module.module.css"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#6b5f63",
+        "createdAt": "2026-10-13T18:50:35.794Z",
+        "reason": "Existing bodega subtle text, 112+ uses in module.module.css"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#fffaf3",
+        "createdAt": "2026-10-13T18:52:22.569Z",
+        "reason": "Primary text on dark, 112+ uses in module.module.css"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#c0393b",
+        "createdAt": "2026-10-13T18:52:23.680Z",
+        "reason": "Error red, used throughout dashboard"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#3a3033",
+        "createdAt": "2026-10-13T18:52:24.829Z",
+        "reason": "Border/divider color, 112+ uses in module.module.css"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#231e20",
+        "createdAt": "2026-10-13T18:52:25.929Z",
+        "reason": "Dark surface, used throughout dashboard"
       }
     ]
   }

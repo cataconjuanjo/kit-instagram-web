@@ -30,6 +30,7 @@ import InventarioPanel from '../inventario/InventarioPanel'
 import PreciosPanel from './PreciosPanel'
 import ConteoInventario from './ConteoInventario'
 import CierreMensual from './CierreMensual'
+import FormularioCompra from './FormularioCompra'
 
 function eur(valor) {
   return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
@@ -132,6 +133,7 @@ export default function ControlBodega() {
   const [pedidoCopiado, setPedidoCopiado] = useState(false)
   const [proveedorCopiado, setProveedorCopiado] = useState('')
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
   const [guardando, setGuardando] = useState(false)
   const [guardadoBodega, setGuardadoBodega] = useState('')
   const [error, setError] = useState('')
@@ -207,7 +209,7 @@ export default function ControlBodega() {
       setLoading(false)
     }
     cargar()
-  }, [])
+  }, [refreshKey])
 
   useEffect(() => {
     if (loading || typeof window === 'undefined') return
@@ -275,7 +277,7 @@ export default function ControlBodega() {
         return { ...vino, ventasMarcadas: reposicion.ventasMarcadas, reposicion }
       })
     const conCoste = activos.filter(vino => decimal(vino.coste_compra) > 0 && decimal(vino.precio_botella) > 0)
-    const valorCoste = activos.reduce((sum, vino) => sum + decimal(vino.stock) * decimal(vino.coste_compra), 0)
+    const valorCoste = activos.reduce((sum, vino) => sum + decimal(vino.stock) * (decimal(vino.coste_medio_pmp) || decimal(vino.coste_compra)), 0)
     const valorVenta = activos.reduce((sum, vino) => sum + decimal(vino.stock) * decimal(vino.precio_botella), 0)
     const margenMedio = conCoste.length
       ? Math.round(conCoste.reduce((sum, vino) => sum + margenBrutoPct(vino.precio_botella, vino.coste_compra, criterioBodega), 0) / conCoste.length)
@@ -1040,6 +1042,13 @@ export default function ControlBodega() {
             </button>
             <button
               type="button"
+              className={panelAbierto === 'nueva_compra' ? styles.secondary : styles.ghost}
+              onClick={() => setPanelAbierto(panelAbierto === 'nueva_compra' ? null : 'nueva_compra')}
+            >
+              Nueva compra
+            </button>
+            <button
+              type="button"
               className={panelAbierto === 'propuestas' ? styles.secondary : styles.ghost}
               onClick={() => setPanelAbierto(panelAbierto === 'propuestas' ? null : 'propuestas')}
             >
@@ -1109,6 +1118,26 @@ export default function ControlBodega() {
                 ? <div className={styles.itemStack}>{pedidoPorProveedor.map(renderGrupoPedido)}</div>
                 : <div className={styles.empty}>No hay pedido sugerido ahora. Con stock mínimo y ventas marcadas se genera automáticamente.</div>
               }
+            </div>
+          </section>
+        )}
+
+        {/* ── Panel: Nueva compra ──────────────────────────── */}
+        {panelAbierto === 'nueva_compra' && (
+          <section className={styles.panel} id="nueva_compra">
+            <div className={styles.panelHead}>
+              <div>
+                <h2 className={styles.panelTitle}>Registrar compra</h2>
+                <p className={styles.panelSub}>PMP actualizado automáticamente al guardar.</p>
+              </div>
+              <button className={styles.ghost} onClick={() => setPanelAbierto(null)}>Cerrar ×</button>
+            </div>
+            <div className={styles.panelBody}>
+              <FormularioCompra
+                restauranteId={restaurante?.id}
+                vinosActivos={vinosActivos}
+                onCompraRegistrada={() => setRefreshKey(k => k + 1)}
+              />
             </div>
           </section>
         )}
