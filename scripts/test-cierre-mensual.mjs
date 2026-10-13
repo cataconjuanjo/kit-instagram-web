@@ -134,7 +134,7 @@ try {
 
   const { data: conteos, error: contErr } = await db
     .from('conteos_inventario')
-    .select('id, mes, estado, cerrado_en')
+    .select('id, estado, cerrado_en')
     .eq('restaurante_id', RESTAURANTE_ID)
     .eq('estado', 'cerrado')
     .order('cerrado_en', { ascending: false })
