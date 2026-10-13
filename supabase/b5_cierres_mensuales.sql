@@ -12,10 +12,33 @@ CREATE TABLE IF NOT EXISTS cierres_mensuales_bodega (
 
 ALTER TABLE cierres_mensuales_bodega ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "restaurante_owner_access"
-  ON cierres_mensuales_bodega FOR ALL
-  USING (
-    restaurante_id IN (
-      SELECT restaurante_id FROM restaurante_usuarios WHERE user_id = auth.uid()
-    )
-  );
+DO $$ BEGIN
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'cierres_mensuales_bodega' AND policyname = 'cmb_select') THEN
+    CREATE POLICY cmb_select ON cierres_mensuales_bodega FOR SELECT
+      USING (EXISTS (
+        SELECT 1 FROM public.restaurantes r
+        WHERE r.id = cierres_mensuales_bodega.restaurante_id
+          AND r.email = (auth.jwt() ->> 'email')
+      ));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'cierres_mensuales_bodega' AND policyname = 'cmb_insert') THEN
+    CREATE POLICY cmb_insert ON cierres_mensuales_bodega FOR INSERT
+      WITH CHECK (EXISTS (
+        SELECT 1 FROM public.restaurantes r
+        WHERE r.id = cierres_mensuales_bodega.restaurante_id
+          AND r.email = (auth.jwt() ->> 'email')
+      ));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'cierres_mensuales_bodega' AND policyname = 'cmb_delete') THEN
+    CREATE POLICY cmb_delete ON cierres_mensuales_bodega FOR DELETE
+      USING (EXISTS (
+        SELECT 1 FROM public.restaurantes r
+        WHERE r.id = cierres_mensuales_bodega.restaurante_id
+          AND r.email = (auth.jwt() ->> 'email')
+      ));
+  END IF;
+
+END $$;
