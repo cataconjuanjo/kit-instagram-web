@@ -319,6 +319,53 @@ if (!SUPABASE_URL || !SUPABASE_KEY || !RESTAURANTE_ID) {
   }
 }
 
+// ── Parte 3: auth de la ruta GET /api/cierres-mes ─────────────────────────────
+// Importa el handler directamente y lo llama con un Request sintético.
+// No necesita servidor levantado ni JWT real.
+
+section('3. Auth middleware — GET /api/cierres-mes')
+
+try {
+  const { GET } = await import('../app/api/cierres-mes/route.js')
+
+  // Sin cabecera Authorization → 401 "Sesion no recibida"
+  const reqSinToken = new Request(
+    `http://localhost/api/cierres-mes?restaurante_id=${RID}&mes=${MES}`
+  )
+  const resSin = await GET(reqSinToken)
+  const bodySin = await resSin.json()
+
+  if (resSin.status === 401)
+    ok(`GET sin token → 401  [${bodySin.error}]`)
+  else
+    fail('GET sin token → 401', `got ${resSin.status}: ${bodySin.error}`)
+
+  if (bodySin.error === 'Sesion no recibida')
+    ok('mensaje de error es "Sesion no recibida"')
+  else
+    fail('mensaje "Sesion no recibida"', `got "${bodySin.error}"`)
+
+  // Token basura → 401 "Sesion no valida" (requiere SUPABASE_URL/ANON_KEY para llamar a getUser)
+  if (SUPABASE_URL) {
+    const reqTokenBasura = new Request(
+      `http://localhost/api/cierres-mes?restaurante_id=${RID}&mes=${MES}`,
+      { headers: { Authorization: 'Bearer token-invalido-xyzzy' } }
+    )
+    const resBasura = await GET(reqTokenBasura)
+    const bodyBasura = await resBasura.json()
+
+    if (resBasura.status === 401)
+      ok(`GET con token inválido → 401  [${bodyBasura.error}]`)
+    else
+      fail('GET con token inválido → 401', `got ${resBasura.status}: ${bodyBasura.error}`)
+  } else {
+    console.log('  ℹ  Sin SUPABASE_URL — se omite test token inválido')
+  }
+
+} catch (e) {
+  fail('importar route handler', e.message)
+}
+
 // ── Resultado ──────────────────────────────────────────────────────────────────
 
 console.log(`\n────────────────────────────────────────────────────────────────`)

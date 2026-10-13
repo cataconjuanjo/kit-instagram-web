@@ -1,7 +1,21 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { supabase } from '../../supabase'
 import styles from '../module.module.css'
+
+async function authedFetch(path, opts = {}) {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token || ''
+  return fetch(path, {
+    ...opts,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    },
+  })
+}
 
 function eur(v) {
   return (Number(v) || 0).toLocaleString('es-ES', {
@@ -300,8 +314,8 @@ export default function CierreMensual({ restauranteId, restaurante }) {
     setError(null)
     try {
       const [resActual, resAnt] = await Promise.all([
-        fetch(`/api/cierres-mes?restaurante_id=${restauranteId}&mes=${mes}`),
-        fetch(`/api/cierres-mes?restaurante_id=${restauranteId}&mes=${prevMes(mes)}`),
+        authedFetch(`/api/cierres-mes?restaurante_id=${restauranteId}&mes=${mes}`),
+        authedFetch(`/api/cierres-mes?restaurante_id=${restauranteId}&mes=${prevMes(mes)}`),
       ])
       const jsonActual = await resActual.json()
       if (!resActual.ok) throw new Error(jsonActual.error || 'Error al cargar')
@@ -331,9 +345,8 @@ export default function CierreMensual({ restauranteId, restaurante }) {
     setCerrando(true)
     setError(null)
     try {
-      const res = await fetch('/api/cierres-mes', {
+      const res = await authedFetch('/api/cierres-mes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ restaurante_id: restauranteId, mes }),
       })
       const json = await res.json()
@@ -350,9 +363,8 @@ export default function CierreMensual({ restauranteId, restaurante }) {
     setReabriendo(true)
     setError(null)
     try {
-      const res = await fetch(`/api/cierres-mes/${mes}/reabrir`, {
+      const res = await authedFetch(`/api/cierres-mes/${mes}/reabrir`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ restaurante_id: restauranteId }),
       })
       const json = await res.json()
@@ -366,9 +378,8 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   }
 
   async function guardarGastos(nuevosGastos) {
-    const res = await fetch('/api/cierres-mes/gastos', {
+    const res = await authedFetch('/api/cierres-mes/gastos', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ restaurante_id: restauranteId, mes, gastos: nuevosGastos }),
     })
     const json = await res.json()
