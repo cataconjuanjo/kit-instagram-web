@@ -139,7 +139,8 @@ const SETTINGS = {
 // compras_netas = 210€
 // gastos_total  = 100€
 //
-// resultado = 168.18 − 162.78 − 20 − 0 − 100 = −114.60€
+// resultado = 168.18 − 162.78 − 20 + 0 − 100 = −114.60€
+//   (diferencias se SUMA con su signo: físico−teórico negativo = pérdida)
 
 const EXP = {
   ventas_bruto:         185,
@@ -209,11 +210,12 @@ try {
   else
     fail('compras_netas identity', `${d.compras_netas.toFixed(2)} ≠ ${cnId.toFixed(2)}`)
 
-  // Identity: resultado = ventas_neto − coste − salidas − diff − gastos
+  // Identity: resultado = ventas_neto − coste − salidas + diff − gastos
+  //   diff = físico−teórico; negativo=pérdida → se suma con su signo
   const diff = d.diferencias_inventario ?? 0
-  const resId = d.ventas_neto - d.coste_ventas_teorico - d.salidas_no_venta - diff - d.gastos_total
+  const resId = d.ventas_neto - d.coste_ventas_teorico - d.salidas_no_venta + diff - d.gastos_total
   if (cerca(d.resultado, resId, 0.02))
-    ok(`resultado = ventas_neto − coste − salidas − diff − gastos  [${d.resultado.toFixed(2)}]`)
+    ok(`resultado = ventas_neto − coste − salidas + diff − gastos  [${d.resultado.toFixed(2)}]`)
   else
     fail('resultado identity', `${d.resultado.toFixed(2)} ≠ ${resId.toFixed(2)}`)
 
@@ -241,6 +243,61 @@ try {
 
 } catch (e) {
   if (e.message !== 'sin datos') fail('calcularMesBodega (excepción)', e.message)
+}
+
+// ── 1b. Signo de diferencias_inventario ───────────────────────────────────────
+// Con un conteo que muestra −1 ud × 13 €/ud = −13 € de diferencia,
+// el resultado debe empeorar (no mejorar).
+// margen_bruto fixture = 168.18 − 162.78 = 5.40
+// resultado esperado   = 168.18 − 162.78 − 20 + (−13) − 100 = −127.60
+
+section('1b. Signo diferencias_inventario (fixture con conteo)')
+
+const CONTEO_ID = 'conteo-enero-1'
+try {
+  const supabaseCon = mockClient({
+    partes_servicio:              PARTES,
+    partes_servicio_lineas:       LINEAS,
+    movimientos_stock:            MOVIMIENTOS,
+    restaurant_economic_settings: [SETTINGS],
+    conteos_inventario: [
+      { id: CONTEO_ID, restaurante_id: RID, estado: 'cerrado', cerrado_en: '2026-01-15T12:00:00+01:00' },
+    ],
+    conteos_inventario_lineas: [
+      { id: 'cl1', conteo_id: CONTEO_ID, vino_id: VA,
+        contado: true, diferencia: -1, coste_unitario_snapshot: 13,
+        stock_contado: 5, stock_teorico: 6 },
+    ],
+  })
+
+  const dc = await calcularMesBodega({ restaurante_id: RID, mes: MES, supabase: supabaseCon })
+
+  if (dc.diferencias_inventario === -13)
+    ok('diferencias_inventario = −13 (−1 ud × 13 €)')
+  else
+    fail('diferencias_inventario = −13', `got ${dc.diferencias_inventario}`)
+
+  // Con pérdida de stock, el resultado debe ser PEOR que sin conteo
+  if (dc.resultado < d?.resultado)
+    ok(`resultado con pérdida < resultado sin conteo  [${dc.resultado.toFixed(2)} < ${d?.resultado.toFixed(2)}]`)
+  else
+    fail('pérdida de stock empeora resultado', `${dc.resultado.toFixed(2)} no es < ${d?.resultado.toFixed(2)}`)
+
+  // Identity: resultado = ventas_neto − coste − salidas + diff − gastos
+  const diffC = dc.diferencias_inventario ?? 0
+  const resIdC = dc.ventas_neto - dc.coste_ventas_teorico - dc.salidas_no_venta + diffC - dc.gastos_total
+  if (cerca(dc.resultado, resIdC, 0.02))
+    ok(`resultado identity con diff=−13  [${dc.resultado.toFixed(2)} ≈ ${resIdC.toFixed(2)}]`)
+  else
+    fail('resultado identity con diff=−13', `${dc.resultado.toFixed(2)} ≠ ${resIdC.toFixed(2)}`)
+
+  if (cerca(dc.stock_final, 65, 0.01))
+    ok('stock_final = 5 uds × 13 € = 65 €')
+  else
+    fail('stock_final fixture', `got ${dc.stock_final}`)
+
+} catch (e) {
+  fail('calcularMesBodega con conteo', e.message)
 }
 
 // ── Parte 2: integración con restaurante real ──────────────────────────────────
@@ -306,9 +363,9 @@ if (!SUPABASE_URL || !SUPABASE_KEY || !RESTAURANTE_ID) {
       else
         fail('compras_netas identity real', `${dr.compras_netas.toFixed(2)} ≠ ${cn.toFixed(2)}`)
 
-      // resultado identity
+      // resultado identity (diff se suma con su signo)
       const diff = dr.diferencias_inventario ?? 0
-      const res = dr.ventas_neto - dr.coste_ventas_teorico - dr.salidas_no_venta - diff - dr.gastos_total
+      const res = dr.ventas_neto - dr.coste_ventas_teorico - dr.salidas_no_venta + diff - dr.gastos_total
       if (cerca(dr.resultado, res, 0.05))
         ok(`resultado identity real  [${dr.resultado.toFixed(2)}]`)
       else

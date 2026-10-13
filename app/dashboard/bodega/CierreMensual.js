@@ -57,7 +57,7 @@ function variPct(actual, anterior) {
 }
 
 function variTag(pct) {
-  if (pct === null) return null
+  if (pct == null) return null
   const sign = pct >= 0 ? '+' : ''
   return `${sign}${pct}%`
 }
@@ -608,20 +608,23 @@ export default function CierreMensual({ restauranteId, restaurante }) {
           {(datos.stock_inicial != null || datos.stock_final != null) && (
             <div style={{ marginTop: 16, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <p style={{ fontWeight: 700, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.45, marginBottom: 8 }}>
-                Stock valorado
+                Stock valorado (conteos)
               </p>
               {datos.stock_inicial != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4, opacity: 0.75 }}>
-                  <span>Inicial (sistema)</span>
+                  <span>Inicial (1.er conteo del mes)</span>
                   <span>{eur(datos.stock_inicial)}</span>
                 </div>
               )}
               {datos.stock_final != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, opacity: 0.75 }}>
-                  <span>Final (físico)</span>
+                  <span>Final (último conteo del mes)</span>
                   <span>{eur(datos.stock_final)}</span>
                 </div>
               )}
+              <p style={{ fontSize: 11, opacity: 0.35, marginTop: 6 }}>
+                Base: uds. contadas × coste snapshot · La cifra «Valor a coste» de la cabecera usa stock teórico × coste_compra actual.
+              </p>
             </div>
           )}
 

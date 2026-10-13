@@ -360,11 +360,13 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     aviso_stock = 'Sin conteos en el mes — diferencias de inventario no disponibles'
   }
 
+  // diferencias_inventario = físico − teórico (negativo = pérdida de stock)
+  // Se SUMA con su signo: pérdida reduce el resultado, ganancia lo mejora
   const resultado = r2(
     ventas_neto
     - coste_ventas_teorico
     - salidas_no_venta
-    - (diferencias_inventario ?? 0)
+    + (diferencias_inventario ?? 0)
     - gastos_total
   )
 
