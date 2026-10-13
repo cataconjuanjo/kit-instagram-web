@@ -1164,8 +1164,12 @@ export default function ControlBodega() {
           <section className={styles.panel} id="conteo_fisico">
             <ConteoInventario
               restauranteId={restaurante.id}
-              onVinosActualizados={() => {
-                setVinos(prev => [...prev])
+              onVinosActualizados={stockMap => {
+                if (stockMap?.size > 0) {
+                  setVinos(prev => prev.map(v =>
+                    stockMap.has(String(v.id)) ? { ...v, stock: stockMap.get(String(v.id)) } : v
+                  ))
+                }
               }}
             />
           </section>

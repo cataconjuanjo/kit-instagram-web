@@ -267,8 +267,15 @@ export default function ConteoInventario({ restauranteId, onVinosActualizados })
       setResultado(data)
       setEstado('cerrado')
       setConfirmar(false)
-      // Refrescar la lista de vinos en el padre
-      if (onVinosActualizados) onVinosActualizados()
+      if (onVinosActualizados) {
+        const stockMap = new Map()
+        for (const l of lineas) {
+          if (l.contado && l.stock_contado != null) {
+            stockMap.set(String(l.vino_id), l.stock_contado)
+          }
+        }
+        onVinosActualizados(stockMap)
+      }
     } catch (e) {
       setError(e.message)
     } finally {
