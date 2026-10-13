@@ -2,20 +2,27 @@
  * Test de integración: conteo de inventario (B3)
  *
  * Uso:
- *   . .env.local && node scripts/test-conteo-inventario.mjs
+ *   node --env-file=.env.local scripts/test-conteo-inventario.mjs
  *
- * Requiere: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TEST_RESTAURANTE_ID
+ * Requiere: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TEST_RESTAURANTE_ID
  * Necesita al menos 3 vinos activos en el restaurante de prueba.
  */
 
 import { createClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL      = process.env.SUPABASE_URL      || process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_KEY      = process.env.SUPABASE_SERVICE_ROLE_KEY
-const RESTAURANTE_ID    = process.env.TEST_RESTAURANTE_ID
+const SUPABASE_URL   = Object.entries(process.env)
+  .find(([k]) => k.replace(/^﻿/, '') === 'NEXT_PUBLIC_SUPABASE_URL')?.[1]
+const SUPABASE_KEY   = process.env.SUPABASE_SERVICE_ROLE_KEY
+const RESTAURANTE_ID = process.env.TEST_RESTAURANTE_ID
 
-if (!SUPABASE_URL || !SUPABASE_KEY || !RESTAURANTE_ID) {
-  console.error('Falta SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY o TEST_RESTAURANTE_ID')
+const faltantes = [
+  !SUPABASE_URL   && 'NEXT_PUBLIC_SUPABASE_URL',
+  !SUPABASE_KEY   && 'SUPABASE_SERVICE_ROLE_KEY',
+  !RESTAURANTE_ID && 'TEST_RESTAURANTE_ID',
+].filter(Boolean)
+
+if (faltantes.length) {
+  console.error(`ERROR: falta${faltantes.length > 1 ? 'n' : ''}: ${faltantes.join(', ')}`)
   process.exit(1)
 }
 
