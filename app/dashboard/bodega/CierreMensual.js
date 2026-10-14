@@ -623,7 +623,7 @@ export default function CierreMensual({ restauranteId, restaurante }) {
                 </div>
               )}
               <p style={{ fontSize: 11, opacity: 0.35, marginTop: 6 }}>
-                Base: uds. contadas × coste snapshot · La cifra «Valor a coste» de la cabecera usa stock teórico × coste_compra actual.
+                Base: uds. contadas × coste snapshot · La cifra «Valor a coste» de la cabecera usa stock teórico × coste medio (PMP), con fallback a coste_compra.
               </p>
             </div>
           )}
