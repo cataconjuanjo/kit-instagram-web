@@ -1522,6 +1522,10 @@ export default function ControlBodega() {
                   )
                 }
                 const eurCell = v => v ? eur(v) : <span className={bStyles.tdEmpty}>—</span>
+                const saldoCopas = Number(botellaMap[vino.id]?.copas_restantes ?? 0)
+                const saldoTxt = Number.isInteger(saldoCopas)
+                  ? String(saldoCopas)
+                  : saldoCopas.toFixed(1).replace('.', ',')
                 return (
                   <tr key={vino.id}>
                     <td className={bStyles.tdNombre}>
@@ -1529,7 +1533,7 @@ export default function ControlBodega() {
                       {vino.bodega && <small>{vino.bodega}</small>}
                       {vino.por_copa && botellaMap[vino.id] && (
                         <small style={{ color: '#b8860b', marginLeft: 6 }}>
-                          {Math.floor(botellaMap[vino.id].copas_restantes)} copa{Math.floor(botellaMap[vino.id].copas_restantes) !== 1 ? 's' : ''} abiertas
+                          {saldoTxt} copa{saldoCopas !== 1 ? 's' : ''} abiertas
                         </small>
                       )}
                     </td>
