@@ -100,7 +100,7 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.gestionar_botella_copa(uuid, uuid, text, text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.gestionar_botella_copa(uuid, uuid, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.gestionar_botella_copa(uuid, uuid, text, text) TO service_role;
 
 NOTIFY pgrst, 'reload schema';
 COMMIT;

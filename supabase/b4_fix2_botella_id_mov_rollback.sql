@@ -72,8 +72,10 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.gestionar_botella_copa(uuid, uuid, text, text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.gestionar_botella_copa(uuid, uuid, text, text) TO authenticated;
+REVOKE ALL ON FUNCTION public.gestionar_botella_copa(uuid, uuid, text, text)
+  FROM public, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.gestionar_botella_copa(uuid, uuid, text, text)
+  TO service_role, authenticated;
 
 -- ── 2. Eliminar índice y columna ──────────────────────────────────────────────
 DROP INDEX IF EXISTS public.movimientos_stock_botella_abierta_idx;
