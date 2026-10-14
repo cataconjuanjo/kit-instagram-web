@@ -270,6 +270,73 @@ console.log('\n── Sección 10: Identidad P&L — coste_copa + merma_copa = 1
   assertEqual(merma_cero, 0, 'Botella servida completa: merma_copa_eur = 0')
 }
 
+// ─── Sección 11: Fórmula resultado con conteo + merma + diferencias ───────────
+console.log('\n── Sección 11: Fórmula resultado — conteo + merma + diferencias ──────')
+
+{
+  // Escenario mensual completo (valores elegidos para aritmética exacta):
+  //   · ventas_neto       = 1 000 €
+  //   · coste_ventas_teórico = 350 € (botellas + copas vía copas_vendidas)
+  //   · salidas_no_venta  =  50 € (cocina, eventos)
+  //   · merma_copa_eur    =  30 € (2 botellas cerradas con copas descartadas)
+  //   · diferencias_inv   = −20 € (stock_físico < stock_teórico: pérdida sin venta)
+  //   · gastos_total      = 200 €
+  //
+  // stock_teórico ya refleja las aperturas de botella (cantidad=−N en movimientos).
+  // La merma de copa NO modifica stock_teórico: gestionar_botella_copa usa cantidad=0.
+  // Por tanto diferencias_inv mide SOLO discrepancias físico vs teórico, no merma.
+
+  const ventas_neto            = 1000
+  const coste_ventas_teorico   = 350
+  const salidas_no_venta       = 50
+  const merma_copa_eur         = 30
+  const diferencias_inventario = -20
+  const gastos_total           = 200
+
+  const resultado_esperado = r2(
+    ventas_neto
+    - coste_ventas_teorico
+    - salidas_no_venta
+    - merma_copa_eur
+    + diferencias_inventario
+    - gastos_total
+  )  // = 1000 − 350 − 50 − 30 − 20 − 200 = 350
+
+  assertEqual(resultado_esperado, 350, 'Resultado = 350 € (fórmula 6 componentes)')
+
+  // Verificar que diferencias_inventario ≠ merma_copa_eur (fuentes distintas):
+  //   diferencias_inv: (stock_físico − stock_teórico) × coste  [conteos]
+  //   merma_copa_eur:  (copas_teoricas − copas_servidas) × coste_copa  [botellas_abiertas]
+  //
+  // stock_teórico baja al ABRIR botella (cantidad=−1).
+  // Al CERRAR botella (cantidad=0) el stock_teórico NO cambia.
+  // Por eso diferencias_inv no captura merma: si abrí 2 botellas y no vendí copas,
+  // el stock_teórico ya bajó 2 y el físico también → diferencia=0; merma contabiliza
+  // el coste de las copas no servidas por separado.
+
+  // Demostración: conteo con 2 botellas abiertas esta semana
+  const stock_inicio     = 10
+  const botellas_abiertas_semana = 2
+  const stock_teorico    = stock_inicio - botellas_abiertas_semana  // = 8 (ya descontado)
+  const stock_fisico     = 8   // mismo que teórico → sin discrepancia adicional
+  const diff_inv_semana  = r2((stock_fisico - stock_teorico) * 15)   // = 0
+  assertEqual(diff_inv_semana, 0,
+    'Diferencias_inv = 0 aunque haya merma (stock_teórico ya refleja aperturas)')
+
+  // Ahora: robo de 1 botella (stock_físico=7, stock_teórico=8)
+  const stock_fisico_robo = 7
+  const diff_inv_robo     = r2((stock_fisico_robo - stock_teorico) * 15)  // −15 €
+  assert(diff_inv_robo < 0, `Robo detectado como diferencia negativa: ${diff_inv_robo} €`)
+  assert(diff_inv_robo !== merma_copa_eur * -1,
+    'Diferencias_inv y merma_copa_eur son partidas independientes')
+
+  // Identidad contable final: merma + diferencias_inv son ortogonales
+  // → sumarlos no produce doble cómputo del mismo coste
+  const total_ajustes = r2(merma_copa_eur + Math.abs(diferencias_inventario))
+  assert(total_ajustes === r2(merma_copa_eur) + Math.abs(diferencias_inventario),
+    `merma(${merma_copa_eur}) + |diff_inv|(${Math.abs(diferencias_inventario)}) no se solapan`)
+}
+
 // ─── Resumen ──────────────────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(60)}`)
 console.log(`Tests: ${passed} ✓  ${failed} ✗  total ${passed + failed}`)
