@@ -14,7 +14,7 @@ export async function agregarPeriodoBodega({ restaurante_id, desde, hasta, supab
   // Ajustes económicos del restaurante
   const { data: settings } = await supabase
     .from('restaurant_economic_settings')
-    .select('fuente_ventas, copas_por_botella, ml_por_copa')
+    .select('fuente_ventas, copas_por_botella, ml_por_copa, merma_copa_pct')
     .eq('restaurante_id', restaurante_id)
     .single()
 
@@ -22,6 +22,7 @@ export async function agregarPeriodoBodega({ restaurante_id, desde, hasta, supab
   const copasXBotella = Number(settings?.copas_por_botella) > 0
     ? Number(settings.copas_por_botella)
     : (settings?.ml_por_copa > 0 ? Math.round(750 / settings.ml_por_copa) : 5)
+  const merraPct = Number(settings?.merma_copa_pct) || 0
 
   const meta = { restaurante_id, desde, hasta, fuente_usada: 'parte', b8_pendiente: false }
 
@@ -65,12 +66,13 @@ export async function agregarPeriodoBodega({ restaurante_id, desde, hasta, supab
 
   return {
     meta: { ...meta, partes_incluidos: cerrados.length, borradores_excluidos: borradores },
-    ..._agruparLineas(lineasConParte, { copas_por_botella: copasXBotella }),
+    ..._agruparLineas(lineasConParte, { copas_por_botella: copasXBotella, merma_copa_pct: merraPct }),
   }
 }
 
 // ── Función pura exportada para tests ─────────────────────────────────────────
-export function _agruparLineas(lineas, { copas_por_botella = 5 } = {}) {
+export function _agruparLineas(lineas, { copas_por_botella = 5, merma_copa_pct = 0 } = {}) {
+  const copasVendibles = r4(copas_por_botella * (1 - merma_copa_pct / 100))
   let ingresos_venta    = 0
   let botellas_vendidas = 0
   let copas_total       = 0
@@ -199,8 +201,8 @@ export function _agruparLineas(lineas, { copas_por_botella = 5 } = {}) {
     let margen_pct = null
     if (v.tiene_coste && v.ingresos > 0) {
       const coste_botellas = r2(v.coste_unitario * v.uds)
-      const coste_copas    = v.copas > 0 && copas_por_botella > 0
-        ? r2((v.copas / copas_por_botella) * v.coste_unitario)
+      const coste_copas    = v.copas > 0 && copasVendibles > 0
+        ? r2((v.copas / copasVendibles) * v.coste_unitario)
         : 0
       const coste_total = r2(coste_botellas + coste_copas)
       margen_pct = coste_total > 0
@@ -210,7 +212,7 @@ export function _agruparLineas(lineas, { copas_por_botella = 5 } = {}) {
     return { ...v, margen_pct }
   }).sort((a, b) => b.ingresos - a.ingresos)
 
-  const botellas_equivalentes = r2(copas_total / copas_por_botella)
+  const botellas_equivalentes = r2(copas_total / copasVendibles)
 
   return {
     resumen: {

@@ -13,6 +13,8 @@
  * La suite --real limpia al final todos los datos que crea.
  */
 
+import { _agruparLineas } from '../app/lib/agregarPeriodoBodega.js'
+
 // ─── helpers ──────────────────────────────────────────────────────────────────
 let passed = 0, failed = 0
 
@@ -335,6 +337,52 @@ console.log('\n── Sección 11: Fórmula resultado — conteo + merma + difer
   const total_ajustes = r2(merma_copa_eur + Math.abs(diferencias_inventario))
   assert(total_ajustes === r2(merma_copa_eur) + Math.abs(diferencias_inventario),
     `merma(${merma_copa_eur}) + |diff_inv|(${Math.abs(diferencias_inventario)}) no se solapan`)
+}
+
+// ─── Sección 12: _agruparLineas usa copasVendibles (mismo coste que B5) ───────
+console.log('\n── Sección 12: _agruparLineas — coste copa usa copasVendibles ──────────')
+
+{
+  // Parámetros: 6 copas vendidas, coste_botella=14€, 5 copas/botella, merma=10%
+  // copasVendibles = 5 × 0.9 = 4.5
+  // coste_copas_esperado = r2((6/4.5) × 14) = 18.67€  ← mismo que B5
+  //
+  // Sin unificación (copas_por_botella nominal): (6/5)×14 = 16.8€  ← divergía
+
+  const CPB = 5, MERMA = 10, COSTE = 14, PRECIO_COPA = 5, COPAS = 6
+  const ingresos = r2(PRECIO_COPA * COPAS)  // 30
+
+  const lineaCopa = {
+    tipo: 'venta_copa',
+    precio_unitario: PRECIO_COPA,
+    cantidad: 1,
+    copas_vendidas: COPAS,
+    vino_id: 'v1',
+    vino: { id: 'v1', nombre: 'TestVino', coste_medio_pmp: COSTE, coste_compra: COSTE },
+    mesa: null, parte: null,
+  }
+
+  // Con merma=10%: debe coincidir con costeCopasPorLineas
+  const { por_vino: porVinoConMerma } = _agruparLineas([lineaCopa], {
+    copas_por_botella: CPB, merma_copa_pct: MERMA,
+  })
+  const v = porVinoConMerma[0]
+  const coste_esperado = costeCopasPorLineas(COPAS, COSTE, CPB, MERMA)  // 18.67
+  const margen_esperado = Math.round(((ingresos - coste_esperado) / ingresos) * 100)  // 38
+  assertEqual(v.margen_pct, margen_esperado,
+    `margen copa con merma=10% = ${margen_esperado}% (coste=${coste_esperado}€, informe≡cierre)`)
+
+  // Sin merma (merma_copa_pct=0 por defecto): vuelve a copas_por_botella nominal
+  const { por_vino: porVinoSinMerma } = _agruparLineas([lineaCopa], { copas_por_botella: CPB })
+  const vSin = porVinoSinMerma[0]
+  const coste_sin_merma = costeCopasPorLineas(COPAS, COSTE, CPB, 0)     // 16.8
+  const margen_sin_merma = Math.round(((ingresos - coste_sin_merma) / ingresos) * 100)  // 44
+  assertEqual(vSin.margen_pct, margen_sin_merma,
+    `margen copa sin merma = ${margen_sin_merma}% (retrocompatible, merma_copa_pct omitido)`)
+
+  // Divergencia esperada: con merma ≠ sin merma
+  assert(v.margen_pct !== vSin.margen_pct,
+    `margen con merma(${v.margen_pct}%) ≠ sin merma(${vSin.margen_pct}%) — merma incrementa coste`)
 }
 
 // ─── Resumen ──────────────────────────────────────────────────────────────────
