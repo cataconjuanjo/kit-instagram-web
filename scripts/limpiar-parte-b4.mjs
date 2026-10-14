@@ -16,17 +16,22 @@
  *   Vino        : Ariyanas Natural     (760a5295-2146-4e0f-8261-21ca3a59a469)
  *   Stock rest. : 8
  *
- * Para si encuentra más de 1 parte con esa fecha+turno.
- * Verifica exactamente: 1 parte, 1 línea, 2 movimientos, 1 botella.
+ * Para si encuentra más de 1 parte con esa fecha+turno o si los conteos
+ * no son exactamente 1 parte + 1 línea + 2 movimientos + 1 botella.
  *
- * Movimientos buscados:
- *   - Apertura : parte_servicio_id = PARTE_ID, vino_id = VINO_ID
- *   - Rotura   : tipo='rotura', vino_id=VINO_ID, parte_servicio_id IS NULL
- *     (gestionar_botella_copa no guarda parte_servicio_id en la rotura)
+ * Movimientos:
+ *   - Apertura : parte_servicio_id = PARTE_ID (vino_id = VINO_ID)
+ *   - Rotura   : tipo='rotura', cantidad=0, parte_servicio_id IS NULL,
+ *                created_at >= botella.abierta_at
+ *     (gestionar_botella_copa no guarda parte_servicio_id; cantidad=0 distingue
+ *     del movimiento "Botella rota en servicio" que usa cantidad=-1)
+ *
+ * Nota: cuando se aplique supabase/b4_fix2_botella_id_mov.sql, la rotura
+ * tendrá botella_abierta_id y el filtro puede simplificarse a esa FK.
  *
  * Orden seguro:
  *   1. Restaurar vino (stock → 8)
- *   2. Borrar movimientos (apertura + rotura)
+ *   2. Borrar movimientos (apertura + rotura por id)
  *   3. Borrar líneas del parte
  *   4. Borrar parte de servicio
  *   5. Borrar botellas_abiertas (vino + restaurante, estados activos)
@@ -59,7 +64,7 @@ const FECHA  = arg('--fecha') ?? '2026-10-14'
 const TURNO  = arg('--turno') ?? 'mediodia'
 const DRY_RUN = !argv.includes('--apply')
 
-if (process.exitCode === 1) process.exit()   // solo para el check de vars arriba
+if (process.exitCode === 1) process.exit()
 
 const db = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } })
 
@@ -70,7 +75,7 @@ async function main() {
   console.log(`Fecha       : ${FECHA}`)
   console.log(`Turno       : ${TURNO}\n`)
 
-  // ── Diagnóstico: todos los partes de ese día ─────────────────────────────────
+  // ── Diagnóstico: todos los partes del día ─────────────────────────────────────
   const { data: partesDelDia, error: diaErr } = await db
     .from('partes_servicio')
     .select('id, turno, estado')
@@ -94,14 +99,13 @@ async function main() {
   }
   console.log()
 
-  // ── 1. Buscar parte por fecha + turno ────────────────────────────────────────
+  // ── 1. Seleccionar parte por turno ────────────────────────────────────────────
   const partes = (partesDelDia || []).filter(p => p.turno === TURNO)
 
   if (partes.length === 0) {
     console.log(`Parte no encontrado para turno="${TURNO}" — ya fue borrado o no existe.`)
     return
   }
-
   if (partes.length > 1) {
     console.error(`ERROR: ${partes.length} partes encontrados para ${FECHA} / turno=${TURNO}:`)
     for (const p of partes) console.error(`  ${p.id}  [${p.estado}]`)
@@ -126,7 +130,30 @@ async function main() {
   console.log(`\nVino   : ${vino.nombre}`)
   console.log(`  stock = ${vino.stock}  →  restaurará a ${STOCK_RESTORE}`)
 
-  // ── 3. Líneas del parte ───────────────────────────────────────────────────────
+  // ── 3. Botellas activas del vino (se necesita abierta_at como ancla) ──────────
+  const { data: bots, error: botsErr } = await db
+    .from('botellas_abiertas')
+    .select('id, estado, abierta_at, cerrada_at, copas_restantes, copas_servidas, copas_teoricas')
+    .eq('vino_id', VINO_ID)
+    .eq('restaurante_id', RESTAURANTE_ID)
+    .in('estado', ['abierta', 'agotada', 'cerrada_manual'])
+  if (botsErr) {
+    console.error(`ERROR leyendo botellas: ${botsErr.message}`)
+    process.exitCode = 1; return
+  }
+
+  // abierta_at más antigua de las botellas activas → ancla para buscar la rotura
+  const botAncla = (bots || []).reduce((min, b) =>
+    (!min || b.abierta_at < min.abierta_at) ? b : min, null)
+  const anclaTs = botAncla?.abierta_at ?? `${FECHA}T00:00:00Z`
+
+  console.log(`\nBotellas_abiertas a borrar (${bots?.length ?? 0} — esperado 1):`)
+  for (const b of bots || []) {
+    console.log(`  ${b.id}  [${b.estado}]  servidas=${b.copas_servidas}  restantes=${b.copas_restantes}  teoricas=${b.copas_teoricas}  abierta_at=${b.abierta_at}`)
+  }
+  console.log(`  ancla temporal para rotura: ${anclaTs}`)
+
+  // ── 4. Líneas del parte ───────────────────────────────────────────────────────
   const { data: lineas, error: lineasErr } = await db
     .from('partes_servicio_lineas')
     .select('id, tipo, cantidad, copas_vendidas, precio_unitario')
@@ -141,25 +168,35 @@ async function main() {
     console.log(`  ${l.id}  ${l.tipo}  cantidad=${l.cantidad}  copas=${l.copas_vendidas}  precio=${l.precio_unitario}€`)
   }
 
-  // ── 4. Movimientos: apertura (parte_servicio_id) + rotura (tipo+vino) ─────────
+  // ── 5. Movimientos: apertura (parte_servicio_id) ──────────────────────────────
   const { data: movsApertura, error: movAErr } = await db
     .from('movimientos_stock')
-    .select('id, tipo, cantidad, stock_anterior, stock_nuevo, copas_vendidas, motivo, parte_servicio_id')
+    .select('id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, parte_servicio_id, created_at')
     .eq('parte_servicio_id', PARTE_ID)
+    .eq('vino_id', VINO_ID)
     .eq('restaurante_id', RESTAURANTE_ID)
   if (movAErr) {
     console.error(`ERROR leyendo movimientos apertura: ${movAErr.message}`)
     process.exitCode = 1; return
   }
 
-  // gestionar_botella_copa inserta la rotura sin parte_servicio_id
+  // ── 6. Movimientos: rotura de cierre manual ───────────────────────────────────
+  // Filtros para distinguir del movimiento demo "Botella rota en servicio":
+  //   · tipo='rotura'             — igual para ambos
+  //   · cantidad=0                — cierre manual; la rotura normal tiene cantidad<0
+  //   · parte_servicio_id IS NULL — gestionar_botella_copa no lo rellena
+  //   · created_at >= anclaTs     — no anterior a la apertura de la botella
+  //
+  // Tras aplicar b4_fix2_botella_id_mov.sql el filtro podrá usar botella_abierta_id.
   const { data: movsRotura, error: movRErr } = await db
     .from('movimientos_stock')
-    .select('id, tipo, cantidad, stock_anterior, stock_nuevo, copas_vendidas, motivo, parte_servicio_id')
+    .select('id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, parte_servicio_id, created_at')
     .eq('tipo', 'rotura')
     .eq('vino_id', VINO_ID)
     .eq('restaurante_id', RESTAURANTE_ID)
     .is('parte_servicio_id', null)
+    .eq('cantidad', 0)
+    .gte('created_at', anclaTs)
   if (movRErr) {
     console.error(`ERROR leyendo movimientos rotura: ${movRErr.message}`)
     process.exitCode = 1; return
@@ -171,44 +208,28 @@ async function main() {
   console.log(`\nMovimientos a borrar (${movs.length} — esperado 2):`)
   for (const m of movs) {
     const linked = m.parte_servicio_id ? `parte=${m.parte_servicio_id.slice(0,8)}…` : 'parte_servicio_id=null'
-    console.log(`  ${m.id}  ${m.tipo}  cantidad=${m.cantidad}  stock ${m.stock_anterior}→${m.stock_nuevo}  motivo=${m.motivo}  [${linked}]`)
+    console.log(`  ${m.id}  ${m.tipo}  cantidad=${m.cantidad}  stock ${m.stock_anterior}→${m.stock_nuevo}  motivo=${m.motivo}  [${linked}]  created_at=${m.created_at}`)
   }
 
-  // ── 5. Botellas abiertas del vino (estados activos) ───────────────────────────
-  const { data: bots, error: botsErr } = await db
-    .from('botellas_abiertas')
-    .select('id, estado, copas_restantes, copas_servidas, copas_teoricas')
-    .eq('vino_id', VINO_ID)
-    .eq('restaurante_id', RESTAURANTE_ID)
-    .in('estado', ['abierta', 'agotada', 'cerrada_manual'])
-  if (botsErr) {
-    console.error(`ERROR leyendo botellas: ${botsErr.message}`)
-    process.exitCode = 1; return
-  }
-
-  console.log(`\nBotellas_abiertas a borrar (${bots?.length ?? 0} — esperado 1):`)
-  for (const b of bots || []) {
-    console.log(`  ${b.id}  [${b.estado}]  servidas=${b.copas_servidas}  restantes=${b.copas_restantes}  teoricas=${b.copas_teoricas}`)
-  }
-
-  // ── Verificación de conteos esperados ─────────────────────────────────────────
-  const alertas = []
-  if ((lineas?.length ?? 0) !== 1)  alertas.push(`líneas: ${lineas?.length ?? 0} (esperado 1)`)
-  if (movs.length !== 2)            alertas.push(`movimientos: ${movs.length} (esperado 2)`)
-  if ((bots?.length ?? 0) !== 1)    alertas.push(`botellas: ${bots?.length ?? 0} (esperado 1)`)
+  // ── Verificación de conteos — para en error si no son exactamente los esperados ─
+  const errores = []
+  if ((bots?.length ?? 0) !== 1)     errores.push(`botellas: ${bots?.length ?? 0} (esperado 1)`)
+  if ((lineas?.length ?? 0) !== 1)   errores.push(`líneas: ${lineas?.length ?? 0} (esperado 1)`)
+  if ((movsApertura?.length ?? 0) !== 1) errores.push(`movimientos apertura: ${movsApertura?.length ?? 0} (esperado 1)`)
+  if ((movsRotura?.length ?? 0) !== 1)   errores.push(`movimientos rotura cierre: ${movsRotura?.length ?? 0} (esperado 1)`)
 
   console.log(`\n${'─'.repeat(60)}`)
-  if (alertas.length) {
-    console.warn(`⚠  Conteos inesperados: ${alertas.join('; ')}`)
-    console.warn('   Revisa los datos antes de aplicar.')
-  } else {
-    console.log('Conteos verificados: 1 parte, 1 línea, 2 movimientos, 1 botella ✓')
+  if (errores.length) {
+    console.error(`ERROR: conteos inesperados — ${errores.join('; ')}`)
+    console.error('Revisa los datos antes de aplicar. El script no continuará.')
+    process.exitCode = 1; return
   }
+  console.log('Conteos verificados: 1 parte, 1 línea, 2 movimientos, 1 botella ✓')
 
   const botIds = (bots || []).map(b => b.id)
   console.log('\nAcciones que se ejecutarán:')
   console.log(`  1. Restaurar ${vino.nombre}: stock ${vino.stock} → ${STOCK_RESTORE}`)
-  console.log(`  2. Borrar ${movs.length} movimiento(s) (apertura + rotura)`)
+  console.log(`  2. Borrar ${movIds.length} movimiento(s) (apertura + rotura de cierre)`)
   console.log(`  3. Borrar ${lineas?.length ?? 0} línea(s)  (parte_id=${PARTE_ID})`)
   console.log(`  4. Borrar parte  ${PARTE_ID}`)
   console.log(`  5. Borrar ${botIds.length} botella(s)  [${botIds.join(', ')}]`)
@@ -223,68 +244,49 @@ async function main() {
   // ── Aplicar cambios ───────────────────────────────────────────────────────────
   console.log('\nAplicando cambios...\n')
 
-  // Paso 1: restaurar vino
   const { error: vinoUpdErr } = await db
-    .from('vinos')
-    .update({ stock: STOCK_RESTORE })
-    .eq('id', VINO_ID)
+    .from('vinos').update({ stock: STOCK_RESTORE }).eq('id', VINO_ID)
   if (vinoUpdErr) {
-    console.error(`ERROR restaurando vino — abortando (no se borró nada): ${vinoUpdErr.message}`)
+    console.error(`ERROR restaurando vino — abortando (nada borrado): ${vinoUpdErr.message}`)
     process.exitCode = 1; return
   }
   console.log(`✓ ${vino.nombre}: stock → ${STOCK_RESTORE}`)
 
-  // Paso 2: borrar movimientos (apertura por parte_servicio_id, rotura por ids)
-  if (movIds.length > 0) {
-    const { error: movDelErr } = await db
-      .from('movimientos_stock')
-      .delete()
-      .in('id', movIds)
-      .eq('restaurante_id', RESTAURANTE_ID)
-    if (movDelErr) {
-      console.error(`ERROR borrando movimientos — vino ya restaurado, borra el resto manualmente: ${movDelErr.message}`)
-      process.exitCode = 1; return
-    }
-    console.log(`✓ ${movIds.length} movimiento(s) eliminado(s)`)
+  const { error: movDelErr } = await db
+    .from('movimientos_stock').delete()
+    .in('id', movIds).eq('restaurante_id', RESTAURANTE_ID)
+  if (movDelErr) {
+    console.error(`ERROR borrando movimientos — vino ya restaurado, borra el resto manualmente: ${movDelErr.message}`)
+    process.exitCode = 1; return
   }
+  console.log(`✓ ${movIds.length} movimiento(s) eliminado(s)`)
 
-  // Paso 3: borrar líneas
   const { error: linDelErr } = await db
-    .from('partes_servicio_lineas')
-    .delete()
-    .eq('parte_id', PARTE_ID)
+    .from('partes_servicio_lineas').delete().eq('parte_id', PARTE_ID)
   if (linDelErr) {
     console.error(`ERROR borrando líneas — borra parte y botellas manualmente: ${linDelErr.message}`)
     process.exitCode = 1; return
   }
   console.log(`✓ ${lineas?.length ?? 0} línea(s) eliminada(s)`)
 
-  // Paso 4: borrar parte
   const { error: parteDelErr } = await db
-    .from('partes_servicio')
-    .delete()
-    .eq('id', PARTE_ID)
-    .eq('restaurante_id', RESTAURANTE_ID)
+    .from('partes_servicio').delete()
+    .eq('id', PARTE_ID).eq('restaurante_id', RESTAURANTE_ID)
   if (parteDelErr) {
     console.error(`ERROR borrando parte — borra botellas manualmente: ${parteDelErr.message}`)
     process.exitCode = 1; return
   }
   console.log(`✓ Parte eliminado (${PARTE_ID})`)
 
-  // Paso 5: borrar botellas_abiertas
   if (botIds.length > 0) {
     const { error: botDelErr } = await db
-      .from('botellas_abiertas')
-      .delete()
-      .in('id', botIds)
-      .eq('restaurante_id', RESTAURANTE_ID)
+      .from('botellas_abiertas').delete()
+      .in('id', botIds).eq('restaurante_id', RESTAURANTE_ID)
     if (botDelErr) {
       console.error(`ERROR borrando botellas_abiertas: ${botDelErr.message}`)
       process.exitCode = 1; return
     }
     console.log(`✓ ${botIds.length} botella(s) eliminada(s)`)
-  } else {
-    console.log('  (no hay botellas_abiertas activas que borrar)')
   }
 
   // ── Verificación final ────────────────────────────────────────────────────────
