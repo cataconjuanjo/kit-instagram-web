@@ -1135,7 +1135,7 @@ export default function ControlBodega() {
             <div className={styles.panelBody}>
               <FormularioCompra
                 restauranteId={restaurante?.id}
-                vinosActivos={vinosActivos}
+                vinosActivos={datos.activos}
                 onCompraRegistrada={() => setRefreshKey(k => k + 1)}
               />
             </div>
