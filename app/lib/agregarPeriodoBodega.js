@@ -194,10 +194,15 @@ export function _agruparLineas(lineas, { copas_por_botella = 5 } = {}) {
   }
 
   // Margen por vino (solo si tiene_coste y tiene ingresos)
+  // Copa: coste = (copas / copas_por_botella) × coste_unitario
   const porVino = Object.values(vinoMap).map(v => {
     let margen_pct = null
     if (v.tiene_coste && v.ingresos > 0) {
-      const coste_total = r2(v.coste_unitario * v.uds)
+      const coste_botellas = r2(v.coste_unitario * v.uds)
+      const coste_copas    = v.copas > 0 && copas_por_botella > 0
+        ? r2((v.copas / copas_por_botella) * v.coste_unitario)
+        : 0
+      const coste_total = r2(coste_botellas + coste_copas)
       margen_pct = coste_total > 0
         ? Math.round(((v.ingresos - coste_total) / v.ingresos) * 100)
         : null
