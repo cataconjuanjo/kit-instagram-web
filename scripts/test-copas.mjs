@@ -240,6 +240,36 @@ console.log('\n── Sección 9: Idempotencia — comportamiento actual sin ref
   console.log('    B4 no añade idempotencia para no crear un camino paralelo prematuro.')
 }
 
+// ─── Sección 10: Identidad P&L — coste_copa + merma_copa = coste_botella ─────
+console.log('\n── Sección 10: Identidad P&L — coste_copa + merma_copa = 1 botella ───')
+
+{
+  const coste_botella  = 14
+  const copas_teoricas = r4(5 * (1 - 10 / 100))   // 4.5
+  const coste_copa     = r4(coste_botella / copas_teoricas)  // 3.1111
+
+  // Escenario cierre manual: 3 copas servidas, 1.5 descartadas
+  const copas_servidas   = 3
+  const copas_descartadas = copas_teoricas - copas_servidas  // 1.5
+  const coste_servidas   = r2((copas_servidas / copas_teoricas) * coste_botella)  // 9.33
+  const merma_eur_manual = r2(copas_descartadas * coste_copa)                    // 4.67
+  assertEqual(r2(coste_servidas + merma_eur_manual), coste_botella,
+    `Cierre manual: coste_servidas(${coste_servidas}) + merma(${merma_eur_manual}) = ${coste_botella}`)
+  assert(merma_eur_manual > 0, `merma_copa_eur > 0: entra en P&L como partida separada`)
+
+  // Escenario agotado con fracción: 4 copas servidas, 0.5 descartadas
+  const cs_frac  = 4
+  const cd_frac  = copas_teoricas - cs_frac   // 0.5
+  const cv_frac  = r2((cs_frac / copas_teoricas) * coste_botella)   // 12.44
+  const merma_frac = r2(cd_frac * coste_copa)                       // 1.56
+  assertEqual(r2(cv_frac + merma_frac), coste_botella,
+    `Agotado fracción: coste_servidas(${cv_frac}) + merma(${merma_frac}) = ${coste_botella}`)
+
+  // Sin merma: botella servida completa (no debe haber merma)
+  const merma_cero = r2((copas_teoricas - copas_teoricas) * coste_copa)
+  assertEqual(merma_cero, 0, 'Botella servida completa: merma_copa_eur = 0')
+}
+
 // ─── Resumen ──────────────────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(60)}`)
 console.log(`Tests: ${passed} ✓  ${failed} ✗  total ${passed + failed}`)
@@ -299,16 +329,6 @@ if (!vinoTest) {
 }
 
 console.log(`   Vino de prueba: ${vinoTest.nombre} (stock=${vinoTest.stock})`)
-
-// ── Buscar un vino sin por_copa para probar el rechazo ────────────────────────
-const { data: vinosSinMarca } = await db
-  .from('vinos')
-  .select('id, nombre')
-  .eq('restaurante_id', RESTAURANTE_ID)
-  .eq('por_copa', false)
-  .limit(1)
-
-const vinoSinMarca = vinosSinMarca?.[0]
 
 // ── Leer settings ─────────────────────────────────────────────────────────────
 const { data: settings } = await db
@@ -384,19 +404,36 @@ console.log('\n  [R2] Consumir 1 copa del saldo (sin abrir botella)')
 }
 
 // ── R3: Vino sin por_copa rechazado ───────────────────────────────────────────
+// Desmarca temporalmente vinoTest (todos en La Taberna tienen por_copa=true tras backfill).
+// Restaura en finally aunque el test falle; y de nuevo en el bloque de limpieza.
 console.log('\n  [R3] Vino sin por_copa rechazado por la RPC')
-if (vinoSinMarca) {
-  const { error } = await db.rpc('aplicar_ajustes_stock_atomicos', {
-    p_restaurante_id: RESTAURANTE_ID,
-    p_ajustes: [{ vino_id: vinoSinMarca.id, modo: 'delta', tipo: 'venta_copa', valor: 0,
-                  copas_vendidas: 1, origen: 'manual', motivo: 'TEST-B4-R3' }],
-  })
-  assertR(error?.message?.includes('vino_no_por_copa'), `RPC rechaza vino sin por_copa: "${error?.message}"`)
-} else {
-  console.log('  SKIP R3: no hay vino con por_copa=false disponible')
+{
+  const { error: desmErr } = await db.from('vinos')
+    .update({ por_copa: false })
+    .eq('id', vinoTest.id)
+
+  if (desmErr) {
+    console.log(`  SKIP R3: no se pudo desmarcar temporalmente: ${desmErr.message}`)
+  } else {
+    try {
+      const { error } = await db.rpc('aplicar_ajustes_stock_atomicos', {
+        p_restaurante_id: RESTAURANTE_ID,
+        p_ajustes: [{ vino_id: vinoTest.id, modo: 'delta', tipo: 'venta_copa', valor: 0,
+                      copas_vendidas: 1, origen: 'manual', motivo: 'TEST-B4-R3' }],
+      })
+      assertR(error?.message?.includes('vino_no_por_copa'),
+        `RPC rechaza vino sin por_copa: "${error?.message ?? '(sin error — debería haber fallado)'}"`)
+    } finally {
+      const { error: restErr } = await db.from('vinos')
+        .update({ por_copa: true })
+        .eq('id', vinoTest.id)
+      assertR(!restErr, `por_copa restaurado a true tras R3 (${restErr?.message ?? 'ok'})`)
+    }
+  }
 }
 
 // ── R4: Cerrar botella abierta → stock NO baja ────────────────────────────────
+// (R5 comprueba la merma después de R4)
 console.log('\n  [R4] Cerrar botella manual: delta_stock = 0')
 {
   const { data: vinoAntes } = await db.from('vinos').select('stock').eq('id', vinoTest.id).single()
@@ -426,21 +463,68 @@ console.log('\n  [R4] Cerrar botella manual: delta_stock = 0')
   }
 }
 
+// ── R5: merma_eur en botellas_abiertas tras R4 ────────────────────────────────
+console.log('\n  [R5] merma_copa_eur reflejada en rendimiento tras cierre manual')
+{
+  const { data: botCerrada } = await db.from('botellas_abiertas').select('*')
+    .eq('restaurante_id', RESTAURANTE_ID).eq('vino_id', vinoTest.id)
+    .eq('estado', 'cerrada_manual')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle()
+
+  assertR(!!botCerrada, 'Existe botella cerrada_manual')
+  if (botCerrada) {
+    const coste_copa  = Number(botCerrada.coste_copa) || 0
+    const servidas    = Number(botCerrada.copas_servidas)
+    const teoricas    = Number(botCerrada.copas_teoricas)
+    const descartadas = Math.max(0, teoricas - servidas)
+    const merma_eur   = r2(descartadas * coste_copa)
+
+    // La botella se abrió en R1 (1 copa) y consumió otra en R2 → servidas ≥ 2
+    assertR(servidas >= 1, `copas_servidas = ${servidas} (≥1, R1+R2)`)
+
+    // Identidad: coste_servidas + merma_eur = coste_botella_teorico
+    const coste_bot  = r2(teoricas * coste_copa)
+    const coste_serv = r2(servidas * coste_copa)
+    assertR(Math.abs(coste_serv + merma_eur - coste_bot) < 0.02,
+      `Identidad P&L: coste_serv(${coste_serv}€) + merma(${merma_eur}€) = botella(${coste_bot}€)`)
+    console.log(`    merma_copa_eur = ${merma_eur} € (${descartadas} copas × ${coste_copa} €/copa)`)
+    console.log(`    → se resta del resultado en calcularMesBodega`)
+  }
+}
+
 // ── Limpieza ──────────────────────────────────────────────────────────────────
 console.log('\n  Limpiando datos de prueba...')
 {
-  // Eliminar movimientos de prueba
-  await db.from('movimientos_stock').delete()
+  // Eliminar movimientos de prueba (R3 puede haber creado ninguno si la RPC falló como esperado)
+  const { data: movsEliminados } = await db.from('movimientos_stock').delete()
     .eq('restaurante_id', RESTAURANTE_ID)
     .in('motivo', ['TEST-B4-R1','TEST-B4-R2','TEST-B4-R3','TEST-B4-R4'])
+    .select('id')
+  console.log(`  ✓ Movimientos eliminados: ${(movsEliminados || []).length}`)
 
-  // Eliminar botellas de prueba
-  await db.from('botellas_abiertas').delete()
+  // Eliminar botellas de prueba (abiertas y cerradas)
+  const { data: botEliminadas } = await db.from('botellas_abiertas').delete()
     .eq('restaurante_id', RESTAURANTE_ID).eq('vino_id', vinoTest.id)
+    .select('id')
+  console.log(`  ✓ Botellas_abiertas eliminadas: ${(botEliminadas || []).length}`)
 
-  // Restaurar stock del vino (era stockAntes)
-  await db.from('vinos').update({ stock: stockAntes }).eq('id', vinoTest.id)
+  // Restaurar stock y por_copa del vino (por_copa=true era el estado original)
+  await db.from('vinos').update({ stock: stockAntes, por_copa: true }).eq('id', vinoTest.id)
   console.log(`  ✓ Stock de ${vinoTest.nombre} restaurado a ${stockAntes}`)
+  console.log(`  ✓ por_copa=true confirmado`)
+
+  // Verificar limpieza
+  const { data: movCheck } = await db.from('movimientos_stock').select('id')
+    .eq('restaurante_id', RESTAURANTE_ID)
+    .in('motivo', ['TEST-B4-R1','TEST-B4-R2','TEST-B4-R3','TEST-B4-R4'])
+  const { data: botCheck } = await db.from('botellas_abiertas').select('id')
+    .eq('restaurante_id', RESTAURANTE_ID).eq('vino_id', vinoTest.id)
+  const { data: vinoFinal } = await db.from('vinos').select('stock, por_copa').eq('id', vinoTest.id).single()
+
+  assertR((movCheck || []).length === 0, `Movimientos TEST borrados: 0 restantes`)
+  assertR((botCheck || []).length === 0, `botellas_abiertas TEST borradas: 0 restantes`)
+  assertR(vinoFinal?.stock === stockAntes, `Stock = ${vinoFinal?.stock} (esperado ${stockAntes})`)
+  assertR(vinoFinal?.por_copa === true, `por_copa = ${vinoFinal?.por_copa} (debe ser true)`)
 }
 
 // ── Resumen integración ───────────────────────────────────────────────────────

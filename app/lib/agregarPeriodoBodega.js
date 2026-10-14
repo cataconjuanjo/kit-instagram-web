@@ -425,12 +425,18 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     }))
     .sort((a, b) => b.merma_eur - a.merma_eur)
 
+  // Merma copa: coste de copas descartadas en botellas cerradas del período.
+  // Fuente: rendimiento_copa.merma_eur (suma de (copas_teoricas − copas_servidas) × coste_copa).
+  // Identidad: coste_servidas + merma_eur = coste_botella → sin doble conteo con coste_ventas_teorico.
+  const merma_copa_eur = r2(rendimiento_copa.reduce((s, r) => s + r.merma_eur, 0))
+
   // diferencias_inventario = físico − teórico (negativo = pérdida de stock)
   // Se SUMA con su signo: pérdida reduce el resultado, ganancia lo mejora
   const resultado = r2(
     ventas_neto
     - coste_ventas_teorico
     - salidas_no_venta
+    - merma_copa_eur
     + (diferencias_inventario ?? 0)
     - gastos_total
   )
@@ -444,6 +450,7 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     coste_ventas_teorico, margen_bruto, margen_pct,
     compras_bruto, devoluciones, compras_netas,
     salidas_no_venta,
+    merma_copa_eur,
     diferencias_inventario, stock_inicial, stock_final, aviso_stock,
     gastos: gastosDelMes, gastos_total,
     resultado,

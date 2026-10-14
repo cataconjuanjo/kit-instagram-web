@@ -269,6 +269,7 @@ async function generarExcel(datos, mes, restaurante) {
     ['Compras netas (€)',                  datos.compras_netas],
     [],
     ['Salidas no venta (€)',               datos.salidas_no_venta],
+    ['Merma copa (€)',                     datos.merma_copa_eur ?? 0],
     ['Diferencias inventario (€)',         datos.diferencias_inventario ?? ''],
     [],
     ['Stock inicial (€)',                  datos.stock_inicial ?? ''],
@@ -515,6 +516,18 @@ export default function CierreMensual({ restauranteId, restaurante }) {
                 <>
                   <SectionRow label="Salidas no venta" />
                   <DataRow label="Cocina · eventos · roturas" value={`− ${eur(datos.salidas_no_venta)}`} />
+                </>
+              )}
+
+              {datos.merma_copa_eur > 0 && (
+                <>
+                  <SectionRow label="Merma copa" />
+                  <DataRow
+                    label="Copas descartadas (botellas cerradas)"
+                    value={`− ${eur(datos.merma_copa_eur)}`}
+                    color="#b85454"
+                    vari={variPct(datos.merma_copa_eur, datosMesAnt?.merma_copa_eur)}
+                  />
                 </>
               )}
 
