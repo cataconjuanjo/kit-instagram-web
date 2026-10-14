@@ -382,6 +382,49 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     aviso_stock = 'Sin conteos en el mes — diferencias de inventario no disponibles'
   }
 
+  // B4: Rendimiento por copa — botellas agotadas/cerradas en el período
+  // Fuente: botellas_abiertas cerradas (estado agotada o cerrada_manual)
+  // No afecta identidades contables; es una vista de eficiencia de servicio
+  const { data: botellasRendimiento } = await supabase
+    .from('botellas_abiertas')
+    .select('vino_id, copas_servidas, copas_teoricas, coste_copa, vinos(nombre)')
+    .eq('restaurante_id', restaurante_id)
+    .in('estado', ['agotada', 'cerrada_manual'])
+    .gte('cerrada_at', desde_ts)
+    .lte('cerrada_at', hasta_ts)
+
+  const rendimiento_copa = Object.values(
+    (botellasRendimiento || []).reduce((acc, b) => {
+      const vid = b.vino_id
+      if (!acc[vid]) {
+        acc[vid] = {
+          vino_id:        vid,
+          nombre:         b.vinos?.nombre || vid,
+          botellas:       0,
+          copas_reales:   0,
+          copas_teoricas: 0,
+          merma_eur:      0,
+        }
+      }
+      acc[vid].botellas       += 1
+      acc[vid].copas_reales   += Number(b.copas_servidas)  || 0
+      acc[vid].copas_teoricas += Number(b.copas_teoricas)  || 0
+      const perdida = Math.max(0, (Number(b.copas_teoricas) || 0) - (Number(b.copas_servidas) || 0))
+      acc[vid].merma_eur      += r2(perdida * (Number(b.coste_copa) || 0))
+      return acc
+    }, {})
+  ).filter(r => r.botellas > 0)
+    .map(r => ({
+      ...r,
+      copas_reales:   r4(r.copas_reales),
+      copas_teoricas: r4(r.copas_teoricas),
+      merma_eur:      r2(r.merma_eur),
+      rendimiento_pct: r.copas_teoricas > 0
+        ? Math.round((r.copas_reales / r.copas_teoricas) * 100)
+        : null,
+    }))
+    .sort((a, b) => b.merma_eur - a.merma_eur)
+
   // diferencias_inventario = físico − teórico (negativo = pérdida de stock)
   // Se SUMA con su signo: pérdida reduce el resultado, ganancia lo mejora
   const resultado = r2(
@@ -405,6 +448,7 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     gastos: gastosDelMes, gastos_total,
     resultado,
     cobertura: { partes_incluidos: informe.meta.partes_incluidos, sin_coste },
+    rendimiento_copa,
     informe,
   }
 }

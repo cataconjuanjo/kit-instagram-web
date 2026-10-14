@@ -628,6 +628,32 @@ export default function CierreMensual({ restauranteId, restaurante }) {
             </div>
           )}
 
+          {/* Rendimiento por copa — B4 */}
+          {datos.rendimiento_copa?.length > 0 && (
+            <div style={{ marginTop: 16, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <p style={{ fontWeight: 700, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.45, marginBottom: 8 }}>
+                Rendimiento copa (botellas cerradas)
+              </p>
+              {datos.rendimiento_copa.map(r => (
+                <div key={r.vino_id} style={{ marginBottom: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, opacity: 0.85 }}>
+                    <span>{r.nombre}</span>
+                    <span style={{ color: r.rendimiento_pct != null && r.rendimiento_pct < 90 ? '#b85454' : '#4A8C6F' }}>
+                      {r.rendimiento_pct != null ? `${r.rendimiento_pct}%` : '—'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, opacity: 0.5 }}>
+                    <span>{r.botellas} bot. · {r.copas_reales} / {r.copas_teoricas} copas</span>
+                    {r.merma_eur > 0 && <span style={{ color: '#b85454' }}>−{r.merma_eur.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>}
+                  </div>
+                </div>
+              ))}
+              <p style={{ fontSize: 11, opacity: 0.35, marginTop: 6 }}>
+                Copas reales / teóricas (copas_por_botella × (1−merma)). Merma en € = copas perdidas × coste copa.
+              </p>
+            </div>
+          )}
+
           {/* Cobertura warnings */}
           {(datos.cobertura?.sin_coste?.length > 0 || datos.borradores_excluidos > 0) && (
             <div style={{ marginTop: 14, padding: '10px 12px', background: 'rgba(184,134,11,0.10)', borderRadius: 8 }}>

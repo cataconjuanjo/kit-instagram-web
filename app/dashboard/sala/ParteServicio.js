@@ -186,12 +186,13 @@ export default function ParteServicio({ restauranteId, vinos = [] }) {
     setFiltroVino('')
   }
 
+  const esCopa = tipo === 'venta_copa' || tipo === 'invitacion_copa'
+
   const vinosFiltrados = vinos
     .filter(v => v.activo !== false)
+    .filter(v => !esCopa || v.por_copa === true)
     .filter(v => !filtroVino || v.nombre?.toLowerCase().includes(filtroVino.toLowerCase()))
     .slice(0, 40)
-
-  const esCopa = tipo === 'venta_copa' || tipo === 'invitacion_copa'
   const lineas = parteActivo?.lineas || []
   const esBorrador = parteActivo?.estado === 'borrador'
   const turnosDisponibles = TURNOS.filter(t => !partes.some(p => p.turno === t))

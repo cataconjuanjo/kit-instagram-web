@@ -123,6 +123,7 @@ export default function ControlBodega() {
   const [incidencias, setIncidencias] = useState([])
   const [eventosSala, setEventosSala] = useState([])
   const [movimientos, setMovimientos] = useState([])
+  const [botellas, setBotellas] = useState([])
   const [editando, setEditando] = useState(null)
   const [inlineEdit, setInlineEdit] = useState(null)
   const [panelAbierto, setPanelAbierto] = useState(null)
@@ -188,15 +189,17 @@ export default function ControlBodega() {
         const proveedoresQuery = token
           ? fetch(`/api/proveedores-visibles?${new URLSearchParams({ restaurante_id: rest.id })}`, { headers: { Authorization: `Bearer ${token}` } })
           : Promise.resolve(null)
-        const [{ data: vinosData }, { data: propuestasData }, { data: incidenciasData }, { data: movimientosData }, proveedoresRes] = await Promise.all([
+        const [{ data: vinosData }, { data: propuestasData }, { data: incidenciasData }, { data: movimientosData }, { data: botellasData }, proveedoresRes] = await Promise.all([
           supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id).order('nombre'),
           supabase.from('consultor_propuestas').select(SELECT_CLIENT_PROPUESTA_ADMIN).eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
           ventasQuery,
           supabase.from('movimientos_stock').select(SELECT_CLIENT_MOVIMIENTO_STOCK_DASHBOARD).eq('restaurante_id', rest.id).order('created_at', { ascending: false }).limit(10),
+          supabase.from('botellas_abiertas').select('id, vino_id, copas_restantes, copas_servidas, copas_teoricas, coste_copa').eq('restaurante_id', rest.id).eq('estado', 'abierta'),
           proveedoresQuery,
         ])
         const proveedoresData = proveedoresRes?.ok ? await proveedoresRes.json() : {}
         setVinos(vinosData || [])
+        setBotellas(botellasData || [])
         setProveedoresContacto(proveedoresData.proveedores_detalle || [])
         setPropuestas(propuestasData || [])
         setMovimientos(movimientosData || [])
@@ -322,6 +325,30 @@ export default function ControlBodega() {
 
     return { activos, valorCoste, valorVenta, margenMedio, margenPotencial, bajoMinimo, sinCoste, margenBajo, sinPrecio, sinProveedor, sinStockActual, sinStockMinimo, pedido, pedidoPorProveedor, proveedores, proveedoresExistentes, sinRotacion, topRotacion }
   }, [vinos, eventosSala, criterioBodega])
+  const botellaMap = useMemo(
+    () => Object.fromEntries(botellas.map(b => [b.vino_id, b])),
+    [botellas]
+  )
+
+  async function cerrarBotella(vinoId, motivo) {
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const res = await fetch('/api/copas/gestionar-botella', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ restaurante_id: restaurante?.id, vino_id: vinoId, accion: 'cerrar', motivo: motivo || null }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        setError(err.error || 'Error al cerrar la botella.')
+        return
+      }
+      setRefreshKey(k => k + 1)
+    } catch {
+      setError('No se pudo cerrar la botella.')
+    }
+  }
+
   const contactosPorProveedor = useMemo(() => {
     return Object.fromEntries(proveedoresContacto.map(proveedor => [
       normalizar(proveedor.nombre),
@@ -1500,6 +1527,11 @@ export default function ControlBodega() {
                     <td className={bStyles.tdNombre}>
                       <strong>{vino.nombre}</strong>
                       {vino.bodega && <small>{vino.bodega}</small>}
+                      {vino.por_copa && botellaMap[vino.id] && (
+                        <small style={{ color: '#b8860b', marginLeft: 6 }}>
+                          {Math.floor(botellaMap[vino.id].copas_restantes)} copa{Math.floor(botellaMap[vino.id].copas_restantes) !== 1 ? 's' : ''} abiertas
+                        </small>
+                      )}
                     </td>
                     <td>{tipoVino(vino)}</td>
                     {cell('proveedor', 'text', undefined, 'proveedores-bodega')}
@@ -1522,6 +1554,18 @@ export default function ControlBodega() {
                     {cell('stock_minimo', 'number', '1')}
                     <td className={bStyles.tdActions}>
                       <button className={styles.ghost} onClick={() => iniciarEdicion(vino)}>Editar</button>
+                      {vino.por_copa && botellaMap[vino.id] && (
+                        <button
+                          className={styles.ghost}
+                          style={{ marginLeft: 4, color: '#b8860b' }}
+                          onClick={() => {
+                            const motivo = window.prompt('Motivo del cierre (opcional):') ?? ''
+                            cerrarBotella(vino.id, motivo)
+                          }}
+                        >
+                          Cerrar botella
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )
