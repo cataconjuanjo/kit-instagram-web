@@ -20,6 +20,7 @@ export const DEFAULT_ECONOMIC_TRACE_SETTINGS = {
   margen_objetivo_copa_pct: DEFAULT_WINE_ECONOMICS.margenObjetivoCopaPct,
   precio_minimo_copa: DEFAULT_WINE_ECONOMICS.precioMinimoCopa,
   stock_seguridad_default: 2,
+  margen_minimo_pct: null,
 }
 
 function bool(valor, fallback = false) {
@@ -76,6 +77,12 @@ export function normalizarAjustesEconomicos(settings = {}) {
     margen_objetivo_copa_pct: pct(base.margen_objetivo_copa_pct, DEFAULT_ECONOMIC_TRACE_SETTINGS.margen_objetivo_copa_pct),
     precio_minimo_copa: valorPositivo(base.precio_minimo_copa, DEFAULT_ECONOMIC_TRACE_SETTINGS.precio_minimo_copa),
     stock_seguridad_default: valorPositivo(base.stock_seguridad_default, DEFAULT_ECONOMIC_TRACE_SETTINGS.stock_seguridad_default),
+    margen_minimo_pct: (() => {
+      const v = base.margen_minimo_pct
+      if (v === null || v === undefined) return null
+      const n = numero(v)
+      return n > 0 && n < 100 ? n : null
+    })(),
   }
 }
 

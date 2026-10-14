@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
+import { pvpMinimoBottle, pvpMinimoCopa, descuentoMaximo, estadoFila, costeBase } from '../../lib/margenMinimo'
 import styles from '../module.module.css'
 import priceStyles from '../precios/precios.module.css'
 
@@ -35,6 +36,12 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
   const [busqueda, setBusqueda] = useState('')
   const [filtro, setFiltro] = useState('todos')
   const [pagina, setPagina] = useState(1)
+  const [margenMinInput, setMargenMinInput] = useState(
+    settings?.margen_minimo_pct != null ? String(settings.margen_minimo_pct) : ''
+  )
+  const [guardandoMargen, setGuardandoMargen] = useState(false)
+  const [mensajeMargen, setMensajeMargen] = useState('')
+  const [filtroMargen, setFiltroMargen] = useState('todos')
 
   const mlInicial = settings?.formato_botella_ml && settings?.copas_por_botella
     ? Math.round(settings.formato_botella_ml / settings.copas_por_botella)
@@ -77,6 +84,26 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
       recalcularCopaCatalogo()
     } else {
       setMensajeConfig(`Error: ${result.error}`)
+    }
+  }
+
+  async function guardarMargenMinimo() {
+    const v = num(margenMinInput)
+    if (margenMinInput !== '' && (v <= 0 || v >= 100)) {
+      setMensajeMargen('El margen debe estar entre 0 y 100 (exclusivo).')
+      return
+    }
+    setGuardandoMargen(true)
+    setMensajeMargen('')
+    const payload = { ...trabajando, margen_minimo_pct: margenMinInput === '' ? null : v }
+    const result = await guardarAjustes(payload)
+    setGuardandoMargen(false)
+    if (result.ok) {
+      setTrabajando(payload)
+      onAjustesChange?.(payload)
+      setMensajeMargen(result.fallback ? 'Guardado localmente.' : 'Margen mínimo guardado.')
+    } else {
+      setMensajeMargen(`Error: ${result.error}`)
     }
   }
 
@@ -128,6 +155,32 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
       .filter(vino => !termino || `${vino.nombre} ${vino.bodega || ''}`.toLowerCase().includes(termino))
   }, [vinosActivos, busqueda, filtro, ajustes])
 
+  const margenMinPct = num(trabajando?.margen_minimo_pct) || null
+  const filasMargen = useMemo(() => {
+    if (!margenMinPct) return []
+    return vinosActivos.map(vino => {
+      const coste = costeBase(vino)
+      const tieneCoste = coste > 0
+      const minBot = pvpMinimoBottle(coste, margenMinPct, ajustes)
+      const minCopa = vino.por_copa ? pvpMinimoCopa(coste, margenMinPct, ajustes) : null
+      const estadoBot = estadoFila(vino.precio_botella, minBot?.exacto ?? null, tieneCoste)
+      const estadoCopa = vino.por_copa ? estadoFila(vino.precio_copa, minCopa?.exacto ?? null, tieneCoste) : null
+      const descBot = minBot ? descuentoMaximo(vino.precio_botella, minBot.exacto) : null
+      const descCopa = minCopa ? descuentoMaximo(vino.precio_copa, minCopa.exacto) : null
+      return { vino, coste, tieneCoste, minBot, minCopa, estadoBot, estadoCopa, descBot, descCopa }
+    }).sort((a, b) => {
+      const ord = { por_debajo: 0, sin_pvp: 1, sin_coste: 2, ok: 3 }
+      const oa = Math.min(ord[a.estadoBot] ?? 3, a.estadoCopa != null ? (ord[a.estadoCopa] ?? 3) : 3)
+      const ob = Math.min(ord[b.estadoBot] ?? 3, b.estadoCopa != null ? (ord[b.estadoCopa] ?? 3) : 3)
+      return oa - ob || (a.vino.nombre || '').localeCompare(b.vino.nombre || '', 'es')
+    })
+  }, [vinosActivos, margenMinPct, ajustes])
+
+  const filasMargenFiltradas = useMemo(() => {
+    if (filtroMargen === 'por_debajo') return filasMargen.filter(f => f.estadoBot === 'por_debajo' || f.estadoCopa === 'por_debajo')
+    return filasMargen
+  }, [filasMargen, filtroMargen])
+
   const totalPaginas = Math.max(1, Math.ceil(referencias.length / 10))
   const paginaActual = Math.min(pagina, totalPaginas)
   const referenciasPagina = referencias.slice((paginaActual - 1) * 10, paginaActual * 10)
@@ -152,6 +205,7 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" style={tabStyle(tab === 'precios')} onClick={() => setTab('precios')}>Precios y márgenes</button>
         <button type="button" style={tabStyle(tab === 'configuracion')} onClick={() => setTab('configuracion')}>Configuración</button>
+        <button type="button" style={tabStyle(tab === 'margen_minimo')} onClick={() => setTab('margen_minimo')}>Margen mínimo</button>
       </div>
 
       {tab === 'precios' && (
@@ -419,6 +473,108 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
                   )}
                 </div>
               </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {tab === 'margen_minimo' && (
+        <section className={styles.panel}>
+          <div className={styles.panelHead}>
+            <div>
+              <h2 className={styles.panelTitle}>Margen mínimo</h2>
+              <p className={styles.panelSub}>Define el margen mínimo exigido. La tabla muestra el PVP suelo y alerta cuando el precio actual está por debajo.</p>
+            </div>
+            {margenMinPct && (
+              <span className={styles.badge}>{filasMargen.filter(f => f.estadoBot === 'por_debajo' || f.estadoCopa === 'por_debajo').length} por debajo</span>
+            )}
+          </div>
+          <div className={styles.panelBody}>
+            <div className={styles.formGrid}>
+              <div>
+                <label className={styles.label}>Margen mínimo (%)</label>
+                <div className={priceStyles.inputSuffix}>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min="1"
+                    max="99"
+                    step="1"
+                    placeholder="p.ej. 55"
+                    value={margenMinInput}
+                    onChange={e => setMargenMinInput(e.target.value)}
+                  />
+                  <span>%</span>
+                </div>
+              </div>
+            </div>
+            {mensajeMargen && <div className={priceStyles.notice} role="status" style={{ marginTop: 8 }}>{mensajeMargen}</div>}
+            <div className={styles.actionRow} style={{ marginTop: 12 }}>
+              <button type="button" className={styles.primary} onClick={guardarMargenMinimo} disabled={guardandoMargen}>
+                {guardandoMargen ? 'Guardando...' : 'Guardar margen mínimo'}
+              </button>
+            </div>
+
+            {!margenMinPct ? (
+              <div className={priceStyles.notice} style={{ marginTop: 16 }}>
+                Configura un margen mínimo para ver el análisis de la carta.
+              </div>
+            ) : (
+              <>
+                <div className={priceStyles.toolbar} style={{ marginTop: 16 }}>
+                  <select className={styles.select} value={filtroMargen} onChange={e => setFiltroMargen(e.target.value)}>
+                    <option value="todos">Todos los vinos</option>
+                    <option value="por_debajo">Solo por debajo del mínimo</option>
+                  </select>
+                </div>
+                <div className={priceStyles.priceList} style={{ marginTop: 8 }}>
+                  {filasMargenFiltradas.map(({ vino, coste, tieneCoste, minBot, minCopa, estadoBot, estadoCopa, descBot, descCopa }) => {
+                    const colorEstado = e => {
+                      if (e === 'por_debajo') return '#c0392b'
+                      if (e === 'ok') return '#3a7d44'
+                      return 'var(--cv-text-muted, #999)'
+                    }
+                    const etiquetaEstado = e => {
+                      if (e === 'por_debajo') return '↓ Por debajo'
+                      if (e === 'ok') return '✓ OK'
+                      if (e === 'sin_pvp') return 'Sin PVP'
+                      return 'Sin coste'
+                    }
+                    return (
+                      <article className={`${priceStyles.priceRow} ${priceStyles.priceRowReadOnly}`} key={vino.id}>
+                        <div className={priceStyles.wineIdentity}>
+                          <strong>{vino.nombre}</strong>
+                          <span>{vino.bodega || 'Sin bodega'} · coste {tieneCoste ? eur(coste) : 'pendiente'}</span>
+                        </div>
+                        <div className={priceStyles.comparison}>
+                          <span>Botella</span>
+                          <strong>{num(vino.precio_botella) ? eur(vino.precio_botella, 0) : '—'} → suelo {minBot ? eur(minBot.redondeado, 0) : '—'}</strong>
+                          <small data-tone={estadoBot === 'ok' ? 'ok' : estadoBot === 'por_debajo' ? 'down' : 'pending'}
+                            style={{ color: colorEstado(estadoBot) }}>
+                            {etiquetaEstado(estadoBot)}
+                            {descBot && !descBot.porDebajo && descBot.pct != null && ` · máx. ${descBot.pct}% dto.`}
+                          </small>
+                        </div>
+                        {vino.por_copa && (
+                          <div className={priceStyles.comparison}>
+                            <span>Copa</span>
+                            <strong>{num(vino.precio_copa) ? eur(vino.precio_copa) : '—'} → suelo {minCopa ? eur(minCopa.redondeado) : '—'}</strong>
+                            <small style={{ color: colorEstado(estadoCopa) }}>
+                              {etiquetaEstado(estadoCopa)}
+                              {descCopa && !descCopa.porDebajo && descCopa.pct != null && ` · máx. ${descCopa.pct}% dto.`}
+                            </small>
+                          </div>
+                        )}
+                      </article>
+                    )
+                  })}
+                  {filasMargenFiltradas.length === 0 && (
+                    <div className={styles.empty}>
+                      {filtroMargen === 'por_debajo' ? 'Ningún vino está por debajo del margen mínimo.' : 'No hay vinos activos.'}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </section>

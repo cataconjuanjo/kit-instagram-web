@@ -14,7 +14,7 @@ const SELECT_ECONOMIC_SETTINGS = [
   'id', 'restaurante_id', 'formula_version', 'iva_venta_pct', 'pvp_incluye_iva',
   'coste_incluye_iva', 'formato_botella_ml', 'copas_por_botella', 'merma_copa_pct',
   'margen_objetivo_botella_pct', 'margen_objetivo_copa_pct', 'precio_minimo_copa',
-  'stock_seguridad_default', 'created_at', 'updated_at',
+  'stock_seguridad_default', 'margen_minimo_pct', 'created_at', 'updated_at',
 ].join(', ')
 const SELECT_RESTAURANTE_TRACE = 'id, nombre, slug, email, plan, subscription_status, actividad_real_desde'
 const SELECT_VINO_TRACE = 'id, nombre, bodega, precio_botella, precio_copa, coste_compra, stock, stock_minimo, activo'
