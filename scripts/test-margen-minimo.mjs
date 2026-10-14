@@ -146,6 +146,18 @@ console.log('\n── 10. Sin IVA en PVP ─────────────
   assertEqual(r.redondeado, 35, 'sin IVA: redondeado = 35 (ya múltiplo de 1)')
 }
 
+// ── 11. Campo vaciado (margen='') → null ─────────────────────────────────────
+console.log('\n── 11. Campo vaciado (margen vacío o null) ────────────────────────────')
+{
+  assert(pvpMinimoBottle(14, '',   DEF) === null, 'margen="" → null (campo vaciado)')
+  assert(pvpMinimoBottle(14, null, DEF) === null, 'margen=null → null')
+  assert(pvpMinimoCopa(14,   '',   DEF) === null, 'copa margen="" → null')
+  assert(pvpMinimoCopa(14,   null, DEF) === null, 'copa margen=null → null')
+  // Valor 0 también es inválido (margen ∈ (0,100))
+  assert(pvpMinimoBottle(14, 0,    DEF) === null, 'margen=0 → null (fuera de rango)')
+  assert(pvpMinimoBottle(14, 100,  DEF) === null, 'margen=100 → null (fuera de rango)')
+}
+
 // ─── Resumen ──────────────────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(60)}`)
 console.log(`Tests: ${passed} ✓  ${failed} ✗  total ${passed + failed}`)

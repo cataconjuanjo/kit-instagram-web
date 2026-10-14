@@ -229,6 +229,17 @@ export async function PATCH(req) {
       throw error
     }
 
+    // PostgREST upsert silently skips null in the UPDATE SET clause.
+    // Explicit update ensures null is persisted when the client clears the field.
+    if (settings.margen_minimo_pct === null) {
+      const { error: nullErr } = await supabaseAdmin
+        .from('restaurant_economic_settings')
+        .update({ margen_minimo_pct: null })
+        .eq('restaurante_id', restauranteId)
+      if (nullErr && !esTablaNoExiste(nullErr) && !esColumnaNoExiste(nullErr)) throw nullErr
+      if (data) data.margen_minimo_pct = null
+    }
+
     const base = await cargarBase(restauranteId)
     return Response.json({ settings: data, ...base })
   } catch (error) {

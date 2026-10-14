@@ -40,6 +40,10 @@ export default function PreciosPanel({ settings, guardarAjustes, apiDisponible, 
     settings?.margen_minimo_pct != null ? String(settings.margen_minimo_pct) : ''
   )
   const [guardandoMargen, setGuardandoMargen] = useState(false)
+
+  useEffect(() => {
+    setMargenMinInput(settings?.margen_minimo_pct != null ? String(settings.margen_minimo_pct) : '')
+  }, [settings?.margen_minimo_pct])
   const [mensajeMargen, setMensajeMargen] = useState('')
   const [filtroMargen, setFiltroMargen] = useState('todos')
 
