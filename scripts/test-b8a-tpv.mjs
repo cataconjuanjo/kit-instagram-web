@@ -14,7 +14,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { describe, it, after } from 'node:test'
 
 const SUPABASE_URL     = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -39,6 +39,7 @@ async function crearVinoTest(extra = {}) {
     .insert({
       restaurante_id: RESTAURANTE_ID,
       nombre:         `__test_b8a_${Date.now()}`,
+      tipo:           'tinto',
       stock:          10,
       por_copa:       false,
       ...extra,
@@ -304,7 +305,7 @@ describe('T8 — registrar_ventas_tpv: venta copa válida → ok + movimiento', 
   let vino
 
   try {
-    vino = await crearVinoTest({ por_copa: true, copas_restantes: 5 })
+    vino = await crearVinoTest({ por_copa: true })
     await crearMapeo(varId, vino.id, 'copa')
 
     const linea = {
@@ -396,7 +397,7 @@ describe('T11 — asignar_lineas_tpv: ignorar producto', async () => {
     assert.equal(r.pendientes_restantes, 0)
     console.log('T11 ✓')
   } finally {
-    await limpiar({ payment_ids: [pid] })
+    await limpiar({ payment_ids: [pid], producto_ids: [varId] })
   }
 })
 
@@ -557,6 +558,30 @@ describe('T14 — 201 no_asignables + 1 asignable: se procesa en 1 llamada, sin 
   } finally {
     await limpiar({ vinos: vino ? [vino] : [], producto_ids: [varId], payment_ids: [pid] })
   }
+})
+
+after(async () => {
+  const { data: mapRows } = await db
+    .from('tpv_vino_map')
+    .select('producto_externo_id')
+    .eq('restaurante_id', RESTAURANTE_ID)
+    .like('producto_externo_id', 'var_t%')
+
+  const { data: colaRows } = await db
+    .from('tpv_lineas_sin_asignar')
+    .select('producto_externo_id')
+    .eq('restaurante_id', RESTAURANTE_ID)
+    .like('producto_externo_id', 'var_t%')
+
+  assert.equal(
+    mapRows?.length ?? 0, 0,
+    `tpv_vino_map: ${mapRows?.length ?? 0} fila(s) residual(es) con var_t*`
+  )
+  assert.equal(
+    colaRows?.length ?? 0, 0,
+    `tpv_lineas_sin_asignar: ${colaRows?.length ?? 0} fila(s) residual(es) con var_t*`
+  )
+  console.log('Check limpieza ✓')
 })
 
 console.log('\nTodos los tests B8a completados.')

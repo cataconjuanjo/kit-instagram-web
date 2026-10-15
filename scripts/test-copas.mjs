@@ -385,6 +385,168 @@ console.log('\n── Sección 12: _agruparLineas — coste copa usa copasVendib
     `margen con merma(${v.margen_pct}%) ≠ sin merma(${vSin.margen_pct}%) — merma incrementa coste`)
 }
 
+// ─── Helpers v5: gate y copa observación ─────────────────────────────────────
+
+/**
+ * Réplica JS del gate v5 de aplicar_ajustes_stock_atomicos.
+ * Solo aplica a tipos de venta con origen tpv|parte.
+ * Orden: A → B → C → D → activo.
+ */
+function calcularGateV5({ tipo, origen, fuente_ventas, ctrl_stock_desde, fecha_pago = null }) {
+  const esVenta = ['venta_botella', 'venta_copa', 'venta'].includes(tipo)
+  if (!esVenta || !['tpv', 'parte'].includes(origen)) {
+    return { actualizaStock: true, motivo: 'no_aplica' }
+  }
+  // A) fuente_ventas=NULL + origen=tpv → modo observación
+  if (origen === 'tpv' && fuente_ventas == null) {
+    return { actualizaStock: false, motivo: 'gate_A' }
+  }
+  // B) ctrl_stock_desde IS NULL o fecha_pago anterior a la activación
+  const fecha = fecha_pago ? new Date(fecha_pago) : new Date()
+  const activacion = ctrl_stock_desde ? new Date(ctrl_stock_desde) : null
+  if (!activacion || fecha < activacion) {
+    return { actualizaStock: false, motivo: 'gate_B' }
+  }
+  // C) fuente_ventas='ambas' + origen='parte' → parte solo registra
+  if (fuente_ventas === 'ambas' && origen === 'parte') {
+    return { actualizaStock: false, motivo: 'gate_C' }
+  }
+  // D) mismatch → registra sin descontar (v5: sin excepción, v4 lanzaba RAISE)
+  if (fuente_ventas === 'tpv'   && origen !== 'tpv')   return { actualizaStock: false, motivo: 'gate_D' }
+  if (fuente_ventas === 'parte' && origen !== 'parte') return { actualizaStock: false, motivo: 'gate_D' }
+  return { actualizaStock: true, motivo: 'activo' }
+}
+
+/**
+ * Cantidad resultante para copa en modo observación (v5).
+ * Cuando actualizaStock=false y por_copa=true y tipo=venta_copa|invitacion_copa:
+ * retorna 0 (el valor_placeholder=-1 del caller es solo un sentinel para el CASE WHEN).
+ */
+function cantidadCopaObservacion({ por_copa, tipo, actualiza_stock, valor_placeholder }) {
+  if (!actualiza_stock && por_copa && ['venta_copa', 'invitacion_copa'].includes(tipo)) {
+    return 0
+  }
+  return valor_placeholder
+}
+
+// ─── Sección 13: Gate A — fuente_ventas=NULL + origen=tpv → observación ──────
+console.log('\n── Sección 13: Gate A — fuente_ventas=NULL + origen=tpv → observación ──')
+
+{
+  // Restaurante recién conectado: fuente_ventas aún no configurada.
+  // v5 detecta origen=tpv sin fuente_ventas → modo observación (gate A).
+  const gA = calcularGateV5({
+    tipo: 'venta_botella', origen: 'tpv', fuente_ventas: null,
+    ctrl_stock_desde: '2025-01-01', fecha_pago: '2025-06-01',
+  })
+  assert(!gA.actualizaStock, 'Gate A: fuente_ventas=NULL + origen=tpv → no descuenta')
+  assertEqual(gA.motivo, 'gate_A', 'Motivo = gate_A')
+
+  // fuente_ventas=null + origen=parte: evalúa gate B (ctrl_stock_desde), no gate A
+  const gB = calcularGateV5({
+    tipo: 'venta_botella', origen: 'parte', fuente_ventas: null,
+    ctrl_stock_desde: '2999-12-31', fecha_pago: '2025-06-01',
+  })
+  assert(!gB.actualizaStock, 'Gate B actúa para origen=parte cuando ctrl_stock_desde no alcanzado')
+  assertEqual(gB.motivo, 'gate_B', 'Motivo = gate_B (no gate_A)')
+
+  // Gate A no afecta tipos que no son venta
+  const noVenta = calcularGateV5({
+    tipo: 'cocina', origen: 'tpv', fuente_ventas: null,
+    ctrl_stock_desde: '2025-01-01', fecha_pago: '2025-06-01',
+  })
+  assert(noVenta.actualizaStock, 'Gate A no aplica a tipo=cocina')
+  assertEqual(noVenta.motivo, 'no_aplica', 'Motivo = no_aplica para tipo no-venta')
+}
+
+// ─── Sección 14: Gate D — mismatch fuente_ventas/origen → sin excepción ──────
+console.log('\n── Sección 14: Gate D — mismatch → sin excepción (v5 vs v4 RAISE) ───────')
+
+{
+  // v4: fuente_ventas=tpv + origen=parte → RAISE EXCEPTION invariant_violated
+  // v5: mismo caso → actualizaStock=false (registra sin descontar, flujo continúa)
+  const mismatch1 = calcularGateV5({
+    tipo: 'venta_copa', origen: 'parte', fuente_ventas: 'tpv',
+    ctrl_stock_desde: '2025-01-01', fecha_pago: '2025-06-01',
+  })
+  assert(!mismatch1.actualizaStock, 'fuente=tpv + origen=parte → no descuenta (gate D)')
+  assertEqual(mismatch1.motivo, 'gate_D', 'Motivo gate_D')
+
+  // Mismatch inverso: fuente_ventas=parte + origen=tpv
+  const mismatch2 = calcularGateV5({
+    tipo: 'venta_botella', origen: 'tpv', fuente_ventas: 'parte',
+    ctrl_stock_desde: '2025-01-01', fecha_pago: '2025-06-01',
+  })
+  assert(!mismatch2.actualizaStock, 'fuente=parte + origen=tpv → no descuenta (gate D)')
+  assertEqual(mismatch2.motivo, 'gate_D', 'Motivo gate_D (inverso)')
+
+  // fuente_ventas=tpv + origen=tpv → SÍ descuenta (sin mismatch)
+  const match = calcularGateV5({
+    tipo: 'venta_botella', origen: 'tpv', fuente_ventas: 'tpv',
+    ctrl_stock_desde: '2025-01-01', fecha_pago: '2025-06-01',
+  })
+  assert(match.actualizaStock, 'fuente=tpv + origen=tpv → sí descuenta')
+  assertEqual(match.motivo, 'activo', 'Motivo = activo')
+
+  // fuente_ventas=ambas + origen=tpv → descuenta (gate C solo bloquea origen=parte)
+  const ambasTpv = calcularGateV5({
+    tipo: 'venta_botella', origen: 'tpv', fuente_ventas: 'ambas',
+    ctrl_stock_desde: '2025-01-01', fecha_pago: '2025-06-01',
+  })
+  assert(ambasTpv.actualizaStock, 'fuente=ambas + origen=tpv → sí descuenta')
+
+  // fuente_ventas=ambas + origen=parte → no descuenta (gate C)
+  const ambasParte = calcularGateV5({
+    tipo: 'venta_copa', origen: 'parte', fuente_ventas: 'ambas',
+    ctrl_stock_desde: '2025-01-01', fecha_pago: '2025-06-01',
+  })
+  assert(!ambasParte.actualizaStock, 'fuente=ambas + origen=parte → gate C')
+  assertEqual(ambasParte.motivo, 'gate_C', 'Motivo = gate_C (no gate_D)')
+}
+
+// ─── Sección 15: Copa observación — v_cantidad = 0, no v_valor = −1 ──────────
+console.log('\n── Sección 15: Copa observación — v_cantidad = 0 (no placeholder −1) ──')
+
+{
+  // v5: copa por_copa=true con actualizaStock=false → cantidad=0.
+  // El caller (registrar_ventas_tpv) pasa valor=-1 como sentinel para el CASE WHEN
+  // del tipo en el jsonb_build_object, pero v5 nunca entra en el loop de copa.
+  const cantObs = cantidadCopaObservacion({
+    por_copa: true, tipo: 'venta_copa', actualiza_stock: false, valor_placeholder: -1,
+  })
+  assertEqual(cantObs, 0, 'Copa observación: v_cantidad = 0 (no −1)')
+
+  // Copa activa: v_cantidad viene del loop (botellas abiertas), no del placeholder
+  const cantActiva = cantidadCopaObservacion({
+    por_copa: true, tipo: 'venta_copa', actualiza_stock: true, valor_placeholder: -3,
+  })
+  assertEqual(cantActiva, -3, 'Copa activa: pasa valor_placeholder (−3 botellas abiertas)')
+
+  // invitacion_copa en observación: igual que venta_copa → cantidad=0
+  // (invitacion_copa nunca activa el gate en v5, pero si llegara aquí el valor sería 0)
+  const cantInvObs = cantidadCopaObservacion({
+    por_copa: true, tipo: 'invitacion_copa', actualiza_stock: false, valor_placeholder: -1,
+  })
+  assertEqual(cantInvObs, 0, 'invitacion_copa observación: cantidad = 0')
+
+  // Botella en modo no-descuento: usa v_valor directamente (CASE delta → v_valor)
+  const cantBotObs = cantidadCopaObservacion({
+    por_copa: false, tipo: 'venta_botella', actualiza_stock: false, valor_placeholder: -2,
+  })
+  assertEqual(cantBotObs, -2, 'Botella observación: usa v_valor directamente (−2)')
+
+  // Regresión gate A + copa: fuente_ventas=null + origen=tpv → observación → cantidad=0
+  const { actualizaStock } = calcularGateV5({
+    tipo: 'venta_copa', origen: 'tpv', fuente_ventas: null,
+    ctrl_stock_desde: '2025-01-01', fecha_pago: '2025-06-01',
+  })
+  const cantGateA = cantidadCopaObservacion({
+    por_copa: true, tipo: 'venta_copa', actualiza_stock: actualizaStock, valor_placeholder: -1,
+  })
+  assert(!actualizaStock, 'Gate A activo para copa')
+  assertEqual(cantGateA, 0, 'Gate A + copa: v_cantidad = 0')
+}
+
 // ─── Resumen ──────────────────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(60)}`)
 console.log(`Tests: ${passed} ✓  ${failed} ✗  total ${passed + failed}`)
