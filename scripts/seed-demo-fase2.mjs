@@ -223,14 +223,33 @@ function frasePerfilPorTipo(tipo, uva, region, nombre) {
   return 'Alta acidez y fruta cítrica de lima. Fresco y equilibrado.'
 }
 
-// Valida que los tags inferidos no violen reglas de exclusividad ni tipo.
-// Devuelve array de mensajes de error (vacío = ok).
+// Tintos con perfil estructurado que nunca deben resultar en cuerpo_ligero.
+const TINTOS_ESTRUCTURADOS_RE = [
+  /pintia/i, /alto los zorros/i, /camins/i, /san lorenzo/i,
+  /parada de atauta/i, /poderi colla/i, /grand rousseau/i,
+]
+
+// Valida tags de un vino. Devuelve array de errores (vacío = ok).
+// (i)   blanco/espumoso/dulce/generoso sin tanino_*
+// (ii)  rosado sin tanino_medio_alto
+// (iii) espumoso con alta_acidez o lias_autolisis
+// (iv)  ≥2 tags significativos (no seco/dulce)
+// (v)   tinto de lista estructurada sin cuerpo_ligero
 function validarTagsVino(tipo, tags, nombre) {
   const t = (tipo || '').toLowerCase()
   const errs = []
   const has = id => tags.includes(id)
-  if (['blanco', 'espumoso', 'rosado'].includes(t) && (has('tanino_bajo') || has('tanino_medio_alto')))
-    errs.push(`[tipo=${t}] con tanino → ${nombre}`)
+  const sig = tags.filter(id => !['seco', 'dulce'].includes(id))
+  if (['blanco', 'espumoso', 'dulce', 'generoso'].includes(t) && (has('tanino_bajo') || has('tanino_medio_alto')))
+    errs.push(`(i) [tipo=${t}] con tanino → ${nombre}`)
+  if (t === 'rosado' && has('tanino_medio_alto'))
+    errs.push(`(ii) [rosado] con tanino_medio_alto → ${nombre}`)
+  if (t === 'espumoso' && !has('lias_autolisis') && !has('alta_acidez'))
+    errs.push(`(iii) [espumoso] sin alta_acidez ni lias_autolisis → ${nombre}`)
+  if (sig.length < 2)
+    errs.push(`(iv) tags insuficientes (${sig.length}/≥2 sig) → ${nombre}`)
+  if (t === 'tinto' && has('cuerpo_ligero') && TINTOS_ESTRUCTURADOS_RE.some(re => re.test(nombre)))
+    errs.push(`(v) [tinto estructurado] con cuerpo_ligero → ${nombre}`)
   if (has('tanino_bajo') && has('tanino_medio_alto'))
     errs.push(`tanino_bajo + tanino_medio_alto → ${nombre}`)
   if (has('alta_acidez') && has('baja_acidez'))
@@ -263,6 +282,107 @@ function enriquecerNotaConPerfil(nota, tipo, uva, region, nombre, inferirFn) {
     notaFinal = notaFinal + (frase ? ' ' + frase : '')
   }
   return notaFinal
+}
+
+// ── Overrides manuales: vinos con datos de catálogo dudosos o perfil singular ──
+// Prioridad máxima en S2. Tags y nota son canónicos; bypasan inferirPerfilesVino.
+const NOMBRE_OVERRIDES = [
+  // Espumosos
+  { match: /laherte/i,
+    tags: ['seco', 'alta_acidez', 'lias_autolisis', 'fruta_citrica', 'fruta_verde', 'mineral_salino'],
+    nota: 'Champagne de viticultor sobre lías prolongadas. Alta acidez vibrante y burbuja fina persistente. Fruta verde de manzana y pera, fruta cítrica de lima y limón. Mineral y salino. Notas de brioche y pan tostado por la autolisis. Seco, brut nature sin dosaje.',
+    aviso: null },
+  // Blancos con zona conflictiva (region=Priorat → inferirPerfilesVino asignaría tanino desde uvaRegionNombre)
+  { match: /pedra de guix/i,
+    tags: ['seco', 'con_cuerpo', 'alcohol_alto', 'fruta_hueso', 'mineral_salino'],
+    nota: 'Blanco del Priorat con fermentación y crianza. Con cuerpo y alcohol alto. Fruta de hueso de melocotón y albaricoque maduro. Mineral y salino. Seco y muy persistente.',
+    aviso: null },
+  // Tintos Ribera sin "crianza/reserva" en nombre
+  { match: /parada de atauta/i,
+    tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra', 'roble'],
+    nota: 'Tinto de Ribera del Duero con fruta negra de cereza negra y ciruela. Tanino firme y marcado, con cuerpo. Notas de barrica de cedro y café. Largo y bien estructurado.',
+    aviso: null },
+  // Nebbiolo italiano
+  { match: /poderi colla|colla nebbiolo/i,
+    tags: ['seco', 'tanino_medio_alto', 'alta_acidez', 'fruta_roja', 'floral', 'evolucion_botella'],
+    nota: 'Nebbiolo de perfil sobrio y austero. Tanino firme y marcado con alta acidez vibrante. Fruta roja de cereza seca y notas florales de violeta. Evolucion en botella, cuero y tierra. Seco y muy persistente.',
+    aviso: null },
+  // Dato de catálogo incoherente: uva≠tipo
+  { match: /grand rousseau/i,
+    tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra'],
+    nota: 'Tinto de carácter potente y con cuerpo. Fruta negra de ciruela negra y mora. Tanino firme y marcado. Especiado y persistente. Seco y bien estructurado.',
+    aviso: '[AVISO catálogo] Grand Rousseau: campo uva=Sauvignon Blanc pero tipo=tinto — dato incoherente en catálogo proveedor. Tratado como tinto.' },
+  // Zona errónea en catálogo
+  { match: /salvajes de gredos/i,
+    tags: ['seco', 'tanino_bajo', 'alta_acidez', 'fruta_roja', 'mineral_salino'],
+    nota: 'Garnacha de las sierras de Gredos. Alta acidez vibrante, tanino amable y bajo. Mineral y salino, perfil de montaña. Fruta roja de frambuesa y cereza roja. Sin paso por madera. Seco.',
+    aviso: '[AVISO catálogo] Salvajes de Gredos: zona en catálogo indica Priorat, pero es garnacha de Gredos (Madrid). Perfil corregido a garnacha de montaña.' },
+  // Tintos estructurados explícitos
+  { match: /pintia/i,
+    tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra', 'roble', 'alcohol_alto'],
+    nota: 'Tinto de Toro con tanino firme y marcado. Con cuerpo amplio y alcohol alto. Fruta negra de ciruela y mora. Notas de barrica de cedro y café. Largo y robusto.',
+    aviso: null },
+  { match: /alto los zorros/i,
+    tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra'],
+    nota: 'Tinto potente con cuerpo y tanino firme y marcado. Fruta negra de ciruela negra y cereza negra. Especiado y persistente. Seco y bien estructurado.',
+    aviso: null },
+  { match: /camins/i,
+    tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra', 'mineral_salino'],
+    nota: 'Tinto del Priorat concentrado. Con cuerpo amplio y tanino firme y marcado. Fruta negra de zarzamora y ciruela negra. Mineral y salino. Especiado y roble integrado. Largo.',
+    aviso: null },
+  { match: /san lorenzo/i,
+    tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra', 'roble'],
+    nota: 'Tinto con crianza en barrica. Fruta negra de madurez plena. Tanino firme y marcado, con cuerpo. Notas de roble, barrica, especiado y vainilla. Persistente y bien estructurado.',
+    aviso: null },
+]
+
+// Resuelve nota canónica + tags para un vino sin perfil.
+// Prioridad: override → nota catálogo → generada por tipo/uva.
+// La inferencia de tags usa solo el texto de la nota (sin uva/region) para evitar
+// falsos positivos de zona (p.ej. region=Priorat en blancos → tanino_medio_alto).
+function resolverNotaYTags(v, rawCatNota) {
+  const nombre = v.nombre || ''
+  const tipo   = (v.tipo || '').toLowerCase()
+  const uva    = v.uva || ''
+
+  // 1. Override manual: tags y nota son canónicos, se usan sin inferencia
+  for (const ov of NOMBRE_OVERRIDES) {
+    if (ov.match.test(nombre)) {
+      return { nota: ov.nota, tags: ov.tags, origen: 'override', aviso: ov.aviso }
+    }
+  }
+
+  // Inferencia de texto puro (uva/region vacíos → sin falsos positivos de zona)
+  const inferirDeTexto = nota =>
+    inferirPerfilesVino({ notas_cata: nota, tipo, uva: '', region: '', nombre: '' })
+
+  // 2. Nota del catálogo de proveedor
+  if (rawCatNota) {
+    let nota = rawCatNota
+    let tags = inferirDeTexto(nota)
+    // Sanitizar: no-tinto nunca debe tener tanino
+    if (['blanco', 'espumoso', 'rosado', 'dulce', 'generoso'].includes(tipo) &&
+        (tags.includes('tanino_bajo') || tags.includes('tanino_medio_alto'))) {
+      nota = generarNotasCata(v.tipo, uva, v.region, nombre)
+      tags = inferirDeTexto(nota)
+    }
+    // Enriquecer si < 2 tags significativos
+    if (tags.filter(id => !['seco', 'dulce'].includes(id)).length < 2) {
+      const frase = frasePerfilPorTipo(tipo, uva, v.region, nombre)
+      if (frase) { nota = nota + ' ' + frase; tags = inferirDeTexto(nota) }
+    }
+    const enriquecido = nota !== rawCatNota
+    return { nota, tags, origen: enriquecido ? 'cat+enrich' : 'catálogo', aviso: null }
+  }
+
+  // 3. Generar desde tipo/uva/crianza
+  const nota = generarNotasCata(v.tipo, uva, v.region, nombre)
+  const tags = inferirDeTexto(nota)
+  let origen
+  if (['espumoso', 'rosado', 'generoso', 'dulce', 'naranja'].includes(tipo)) origen = 'regla-tipo'
+  else if (uva) origen = 'regla-uva'
+  else origen = 'generico'
+  return { nota, tags, origen, aviso: null }
 }
 
 // ── 36 platos de Casa Marisma ─────────────────────────────────────────────────
@@ -386,7 +506,7 @@ async function main() {
   }
 
   const mode = DRY_RUN ? '[DRY-RUN]' : `[CONFIRM — ${dbName}]`
-  console.log(`\n${mode} seed-demo-fase2 v3  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
+  console.log(`\n${mode} seed-demo-fase2 v5  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
 
   // ── Query única de vinos ─────────────────────────────────────────────────
   const { data: vinos, error: vinosErr } = await sb
@@ -546,47 +666,45 @@ async function main() {
 
   const vinosSinPerfil = todosVinos.filter(v => !v.notas_cata || v.notas_cata.length < 12)
   const updates2 = []
-  let realCount = 0, ficticioCount = 0, enriquecidoCount = 0
+  let realCount = 0, ficticioCount = 0, enriquecidoCount = 0, overrideCount = 0
 
   console.log(`\n  Total vinos activos: ${todosVinos.length}`)
   console.log(`  Con perfil existente (≥12 chars): ${todosVinos.length - vinosSinPerfil.length}`)
   console.log(`  Sin perfil → a actualizar: ${vinosSinPerfil.length}`)
 
   const s2ValidationErrors = []
+  const s2Avisos = []
 
   if (vinosSinPerfil.length > 0) {
-    console.log('\n  ' + 'nombre'.padEnd(32) + 'tipo'.padEnd(9) + 'uva'.padEnd(14) + 'zona/región'.padEnd(18) + 'fuente     ' + 'tags inferidos')
+    console.log('\n  ' + 'nombre'.padEnd(32) + 'tipo'.padEnd(9) + 'uva'.padEnd(14) + 'origen'.padEnd(12) + 'tags')
     console.log('  ' + '─'.repeat(110))
     for (const v of vinosSinPerfil) {
       const rawCatNota = v.catalogo_vino_id ? catNotasMap[v.catalogo_vino_id] : null
-      let nota, fuente
-      if (rawCatNota) {
-        nota = enriquecerNotaConPerfil(rawCatNota, v.tipo, v.uva, v.region, v.nombre, inferirPerfilesVino)
-        const enriquecido = nota !== rawCatNota
-        fuente = enriquecido ? 'cat+enrich' : 'catálogo'
-        realCount++
-        if (enriquecido) enriquecidoCount++
-      } else {
-        nota = generarNotasCata(v.tipo, v.uva, v.region, v.nombre)
-        fuente = 'ficticio'
-        ficticioCount++
-      }
-      const tags = inferirPerfilesVino({ notas_cata: nota, tipo: v.tipo||'', uva: v.uva||'', region: v.region||'', nombre: v.nombre||'' })
+      const { nota, tags, origen, aviso } = resolverNotaYTags(v, rawCatNota)
+      if (aviso) s2Avisos.push(aviso)
+      if (origen === 'catálogo') realCount++
+      else if (origen === 'cat+enrich') { realCount++; enriquecidoCount++ }
+      else if (origen === 'override') overrideCount++
+      else ficticioCount++
       const errs = validarTagsVino(v.tipo, tags, v.nombre)
       s2ValidationErrors.push(...errs)
-      const uvaStr   = (v.uva    || '—').slice(0,13).padEnd(14)
-      const zonaStr  = (v.region || '—').slice(0,17).padEnd(18)
-      const errFlag  = errs.length ? ' ← ✗ INVALID' : ''
-      console.log('  ' + (v.nombre||'').slice(0,31).padEnd(32) + (v.tipo||'—').slice(0,8).padEnd(9) + uvaStr + zonaStr + fuente.padEnd(11) + tags.join(', ') + errFlag)
+      const uvaStr    = (v.uva || '—').slice(0, 13).padEnd(14)
+      const origenStr = origen.padEnd(12)
+      const errFlag   = errs.length ? ' ← ✗' : ''
+      console.log('  ' + (v.nombre || '').slice(0, 31).padEnd(32) + (v.tipo || '—').slice(0, 8).padEnd(9) + uvaStr + origenStr + tags.join(', ') + errFlag)
       updates2.push({ id: v.id, notas_cata: nota })
     }
-    console.log(`\n  Fuentes: catálogo=${realCount} (${enriquecidoCount} enriquecidas), ficticio=${ficticioCount}`)
+    console.log(`\n  Orígenes: override=${overrideCount} · cat=${realCount}[${enriquecidoCount} enr] · gen=${ficticioCount}`)
+    if (s2Avisos.length > 0) {
+      console.log('\n  Avisos de catálogo:')
+      for (const a of s2Avisos) console.log(`    ⚠  ${a}`)
+    }
   }
 
   if (s2ValidationErrors.length > 0) {
     console.log('\n  [S2 ERRORES DE VALIDACIÓN]')
     for (const e of s2ValidationErrors) console.log(`    ✗ ${e}`)
-    console.log('\n  Abortando: corregir notas_cata antes de aplicar el seed.')
+    console.log('\n  Abortando: corregir perfiles antes de aplicar el seed.')
     process.exit(2)
   }
 
@@ -1379,7 +1497,7 @@ async function main() {
   console.log('═'.repeat(66))
   console.log(`  S0  restaurante: slug=casa-marisma, colores, carta_publica=true`)
   console.log(`  S1  platos: ${PLATOS.length} en ${cats.length} categorías`)
-  console.log(`  S2  perfiles: ${updates2.length} actualizados (cat=${realCount} [${enriquecidoCount} enriquecidas], ficticio=${ficticioCount})`)
+  console.log(`  S2  perfiles: ${updates2.length} actualizados (override=${overrideCount} cat=${realCount}[${enriquecidoCount}enr] gen=${ficticioCount})`)
   console.log(`  S3  simulador: ${vinosActual.length} actual + ${vinoFuera ? 1 : 0} fuera + ${catListNuevos.length} nuevo (ilike tipo)`)
   console.log(`  S4  inventario: 3 snapshots × ${todosVinos.length} refs; Sep=stock real`)
   console.log(`  S5  oportunidades: ${oppItems.length} items · ${oppSnap.recuperacion_anual_estimada}€`)
