@@ -55,7 +55,7 @@ function BarChart({ datos, titulo, colorFn }) {
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <style>{`.bc-col{flex:1;display:flex;flex-direction:column;min-width:0;cursor:default}@media(max-width:599px){.bc-col:nth-child(even){display:none}}`}</style>
+      <style>{`.bc-col{flex:1;display:flex;flex-direction:column;min-width:0;cursor:default}.bc-label{overflow:hidden}@media(max-width:599px){.bc-col:nth-child(even) .bc-label{visibility:hidden}}`}</style>
       <p style={{ fontSize: 12, fontWeight: 600, color: '#666', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{titulo}</p>
       <div style={{ display: 'flex', width: '100%' }}>
         {visibles.map((d, i) => {
@@ -85,7 +85,7 @@ function BarChart({ datos, titulo, colorFn }) {
                   )}
                 </div>
               )}
-              <div style={{ textAlign: 'center', lineHeight: 1.1, marginTop: 4, overflow: 'hidden' }}>
+              <div className="bc-label" style={{ textAlign: 'center', lineHeight: 1.1, marginTop: 4 }}>
                 <span style={{ fontSize: 9, color: '#999', display: 'block' }}>{mesLabel}</span>
                 {showYear && yearLabel && (
                   <span style={{ fontSize: 8, color: '#bbb', display: 'block' }}>{yearLabel}</span>

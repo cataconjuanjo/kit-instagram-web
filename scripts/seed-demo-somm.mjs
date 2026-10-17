@@ -67,11 +67,9 @@ function marginPct(coste) {
   return 0.60
 }
 
-function calcPvpBotella(coste, nombre) {
-  const isGoya = /gitana|la\s*goya/i.test(nombre || '')
-  const m      = isGoya ? 0.55 : marginPct(coste)
-  const raw    = coste / (1 - m) * 1.10
-  if (isGoya)      return Math.round(raw * 2) / 2   // ±0.50€
+function calcPvpBotella(coste) {
+  const m   = marginPct(coste)
+  const raw = coste / (1 - m) * 1.10
   if (coste >= 25) return Math.round(raw / 5) * 5   // múltiplo de 5€
   return Math.round(raw)                             // entero
 }
@@ -227,12 +225,11 @@ async function main() {
     const cat    = v.catalogo_vino_id ? catMap[v.catalogo_vino_id] : null
     const prov   = cat ? (provMap[cat.proveedor_id] ?? null) : null
     const ref    = cat?.referencia ?? null
-    const isGoya = /gitana|la\s*goya/i.test(v.nombre || '')
 
     vinoProveedorById[v.id] = prov
 
     // Precio botella: todos los vinos con coste conocido (incluye antes solo-copa sin PVP)
-    const newPvp = coste > 0 ? calcPvpBotella(coste, v.nombre) : null
+    const newPvp = coste > 0 ? calcPvpBotella(coste) : null
     const marg   = margenBotella(coste, newPvp)
 
     // Registrar vinos que antes no tenían precio_botella y ahora lo reciben (B6)
@@ -240,8 +237,7 @@ async function main() {
       soloCopaNew.push({ nombre: v.nombre, coste, pvp: newPvp, margen: marg })
     }
 
-    // Advertencia si margen < 55 % y no es un caso previsto (La Goya: ~54-55 %)
-    if (marg !== null && marg < 55 && !isGoya) {
+    if (marg !== null && marg < 55) {
       margWarnings.push({ nombre: v.nombre, coste, pvp: newPvp, margen: marg })
     }
 
@@ -482,7 +478,8 @@ async function main() {
     // personal_bodega en el simulador = calcularTotalPersonal().total = P_oct (incluye SS, IRPF, extras)
     const oct_gastos_total = P_oct + ALQUILER_BODEGA + SUMINISTROS_BODEGA[last_i]
     const oct_marg_nec     = (oct_gastos_total + oct_benef_obj) / oct_ventas_previstas
-    const oct_mult         = oct_marg_nec < 1 ? (1 / (1 - oct_marg_nec)).toFixed(3) : 'n/a'
+    // redondear(x, 3) = Math.round(x * 1000) / 1000 — misma fórmula que SimuladorMultiplicador
+    const oct_mult         = oct_marg_nec < 1 ? Math.round((1 / (1 - oct_marg_nec)) * 1000) / 1000 : 'n/a'
 
     console.log(`\n  [B3] 2026-10: personal=${P_oct}€ alquiler=${ALQUILER_BODEGA}€ sumin=${SUMINISTROS_BODEGA[last_i]}€ → gastos=${oct_gastos_total}€`)
     console.log(`       ventas_prev=${oct_ventas_previstas}€ benef_obj=${oct_benef_obj}€ → multiplicador_mínimo=×${oct_mult}`)
