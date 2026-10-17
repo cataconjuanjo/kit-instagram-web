@@ -47,36 +47,40 @@ function BarChart({ datos, titulo, colorFn }) {
   const HEIGHT = 120
   const BAR_W = 18
   const GAP = 4
-  const width = visibles.length * (BAR_W + GAP)
+  const VB_W = Math.max(visibles.length * (BAR_W + GAP), 1)
+  const VB_H = HEIGHT + 36
 
   return (
     <div style={{ marginBottom: 24 }}>
       <p style={{ fontSize: 12, fontWeight: 600, color: '#666', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{titulo}</p>
-      <div style={{ overflowX: 'auto' }}>
-        <svg width={Math.max(width, 300)} height={HEIGHT + 36} style={{ display: 'block' }}>
-          {visibles.map((d, i) => {
-            const h = Math.max(2, (Math.abs(d.valor) / maxVal) * HEIGHT)
-            const x = i * (BAR_W + GAP)
-            const y = d.valor >= 0 ? HEIGHT - h : HEIGHT
-            const color = colorFn ? colorFn(d) : '#2a2723'
-            return (
-              <g key={i}>
-                <rect x={x} y={y} width={BAR_W} height={h} fill={color} rx={2} opacity={0.85}>
-                  <title>{d.label}: {eur(d.valor)}{d.yoy != null ? ` (${pct(d.yoy)})` : ''}</title>
-                </rect>
-                <text x={x + BAR_W / 2} y={HEIGHT + 14} textAnchor="middle" fontSize={9} fill="#999">{d.label}</text>
-                {d.yoy != null && (
-                  <text x={x + BAR_W / 2} y={y - 3} textAnchor="middle" fontSize={8} fill={d.yoy >= 0 ? '#27ae60' : '#e74c3c'}>
-                    {d.yoy > 0 ? '+' : ''}{Math.round(d.yoy)}%
-                  </text>
-                )}
-              </g>
-            )
-          })}
-          {/* Línea base */}
-          <line x1={0} y1={HEIGHT} x2={width} y2={HEIGHT} stroke="#e8e3d8" strokeWidth={1} />
-        </svg>
-      </div>
+      <svg width="100%" height={VB_H} viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+        {visibles.map((d, i) => {
+          const h = Math.max(2, (Math.abs(d.valor) / maxVal) * HEIGHT)
+          const x = i * (BAR_W + GAP)
+          const y = d.valor >= 0 ? HEIGHT - h : HEIGHT
+          const color = colorFn ? colorFn(d) : '#2a2723'
+          const [mesLabel, yearLabel] = d.label.split(' ')
+          const showYear = i === 0 || mesLabel === 'Ene'
+          return (
+            <g key={i}>
+              <rect x={x} y={y} width={BAR_W} height={h} fill={color} rx={2} opacity={0.85}>
+                <title>{d.label}: {eur(d.valor)}{d.yoy != null ? ` (${pct(d.yoy)})` : ''}</title>
+              </rect>
+              <text x={x + BAR_W / 2} y={HEIGHT + 14} textAnchor="middle" fontSize={9} fill="#999">{mesLabel}</text>
+              {showYear && yearLabel && (
+                <text x={x + BAR_W / 2} y={HEIGHT + 26} textAnchor="middle" fontSize={8} fill="#bbb">{yearLabel}</text>
+              )}
+              {d.yoy != null && (
+                <text x={x + BAR_W / 2} y={y - 3} textAnchor="middle" fontSize={8} fill={d.yoy >= 0 ? '#27ae60' : '#e74c3c'}>
+                  {d.yoy > 0 ? '+' : ''}{Math.round(d.yoy)}%
+                </text>
+              )}
+            </g>
+          )
+        })}
+        {/* Línea base */}
+        <line x1={0} y1={HEIGHT} x2={VB_W} y2={HEIGHT} stroke="#e8e3d8" strokeWidth={1} />
+      </svg>
     </div>
   )
 }
