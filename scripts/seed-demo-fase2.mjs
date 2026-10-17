@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * seed-demo-fase2.mjs — Fase 2 (v5.1)
+ * seed-demo-fase2.mjs — Fase 2 (v6)
  *
  * Uso:
  *   node --env-file=.env.local scripts/seed-demo-fase2.mjs
@@ -56,6 +56,12 @@ function margenPct(pvp, coste) {
   if (!pvp || !coste) return null
   const pvpNeto = pvp / 1.1
   return Math.round((pvpNeto - coste) / pvpNeto * 100)
+}
+
+// PVP comercial = coste × 3.2 con IVA, redondeado a entero o x.5
+function pvpComercial(coste) {
+  if (!coste || coste <= 0) return 0
+  return Math.round(coste * 3.2 * 2) / 2
 }
 
 // Genera notas de cata profesionales SIN marcadores.
@@ -148,7 +154,7 @@ function generarNotasCata(tipo, uva, region, nombre) {
       return 'Tinto con crianza en barrica. Fruta negra de madurez media. Tanino firme y marcado, con cuerpo. Notas de roble, barrica, especiado y vainilla. Persistente y bien estructurado.'
     // Gredos o Garnacha de altura: tanino_bajo + alta_acidez + mineral_salino + cuerpo_ligero
     if (/gredos/.test(r) || (/garnacha|grenache/.test(u) && /gredos|sierra|madrid|cebreros|avila/.test(r)))
-      return 'Garnacha de las sierras de Gredos. Alta acidez vibrante, tanino amable y bajo. Mineral y salino, perfil fresco. Fruta roja de frambuesa y cereza roja. Cuerpo ligero, sin paso por madera.'
+      return 'Garnacha de las sierras de Gredos. Alta acidez vibrante, tanino amable y bajo. Mineral y salino, perfil fresco. Fruta roja de frambuesa y cereza roja. Cuerpo ligero, joven y fresco.'
     // Garnacha general: tanino_bajo + alta_acidez + fruta_roja
     if (/garnacha|grenache/.test(u))
       return 'Garnacha de carácter frutal. Fruta roja de fresa y cereza roja. Tanino amable y bajo, alta acidez natural. Seco y sin paso por madera.'
@@ -231,14 +237,19 @@ const TINTOS_ESTRUCTURADOS_RE = [
   /pintia/i, /alto los zorros/i, /camins/i, /san lorenzo/i,
   /parada de atauta/i, /poderi colla/i, /grand rousseau/i,
 ]
+const UVAS_ESTRUCTURADAS_RE = /monastrell|petit.verdot|syrah|cabernet|merlot|nebbiolo/i
 
 // Valida tags de un vino. Devuelve array de errores (vacío = ok).
-// (i)   blanco/espumoso/dulce/generoso sin tanino_*
-// (ii)  rosado sin tanino_medio_alto
-// (iii) espumoso con alta_acidez o lias_autolisis
-// (iv)  ≥2 tags significativos (no seco/dulce)
-// (v)   tinto de lista estructurada sin cuerpo_ligero
-function validarTagsVino(tipo, tags, nombre) {
+// (i)    blanco/espumoso/dulce/generoso sin tanino_*
+// (ii)   rosado sin tanino_medio_alto
+// (iii)  espumoso con alta_acidez o lias_autolisis
+// (iv)   ≥2 tags significativos (no seco/dulce)
+// (v)    tinto de lista estructurada sin cuerpo_ligero
+// (vi)   espumoso con roble solo si "barrica" en nombre
+// (vii)  tinto con uva estructurada (monastrell/petit verdot/syrah/cab/merlot/nebbiolo) sin cuerpo_ligero
+//        o tinto tempranillo+roble sin cuerpo_ligero
+// (viii) tinto con "joven" en nombre sin roble
+function validarTagsVino(tipo, tags, nombre, uva = '') {
   const t = (tipo || '').toLowerCase()
   const errs = []
   const has = id => tags.includes(id)
@@ -255,6 +266,12 @@ function validarTagsVino(tipo, tags, nombre) {
     errs.push(`(v) [tinto estructurado] con cuerpo_ligero → ${nombre}`)
   if (t === 'espumoso' && has('roble') && !/barrica/.test((nombre || '').toLowerCase()))
     errs.push(`(vi) [espumoso] con roble sin crianza en barrica → ${nombre}`)
+  const uvaLow = (uva || '').toLowerCase()
+  if (t === 'tinto' && has('cuerpo_ligero') &&
+      (UVAS_ESTRUCTURADAS_RE.test(uvaLow) || (uvaLow.includes('tempranillo') && has('roble'))))
+    errs.push(`(vii) [tinto ${uva}] uva estructurada con cuerpo_ligero → ${nombre}`)
+  if (t === 'tinto' && has('roble') && /\bjoven\b/i.test(nombre || ''))
+    errs.push(`(viii) [tinto joven] con roble → ${nombre}`)
   if (has('tanino_bajo') && has('tanino_medio_alto'))
     errs.push(`tanino_bajo + tanino_medio_alto → ${nombre}`)
   if (has('alta_acidez') && has('baja_acidez'))
@@ -338,6 +355,46 @@ const NOMBRE_OVERRIDES = [
   { match: /san lorenzo/i,
     tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra', 'roble'],
     nota: 'Tinto con crianza en barrica. Fruta negra de madurez plena. Tanino firme y marcado, con cuerpo. Notas de roble, barrica, especiado y vainilla. Persistente y bien estructurado.',
+    aviso: null },
+  // Monastrell estructurada (uva potente, nunca cuerpo_ligero)
+  { match: /depaula|de paula/i,
+    tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'alcohol_alto', 'fruta_negra'],
+    nota: 'Monastrell de estructura potente. Tanino firme y marcado, con cuerpo amplio y alcohol alto. Fruta negra de ciruela negra, mora y cerezas negras. Especiado con pimienta y regaliz. Largo y persistente.',
+    aviso: null },
+  // Petit Verdot estructurada (uva potente, nunca cuerpo_ligero)
+  { match: /rosa-o|rosa o\b/i,
+    tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra'],
+    nota: 'Petit Verdot de carácter potente y con cuerpo. Fruta negra de mora, ciruela negra y arándano. Tanino firme y marcado. Especiado y persistente. Seco y bien estructurado.',
+    aviso: null },
+  // Viña Bujanda Joven: tempranillo joven sin paso por roble
+  { match: /bujanda.*joven|joven.*bujanda/i,
+    tags: ['seco', 'tanino_bajo', 'fruta_roja', 'alta_acidez'],
+    nota: 'Tempranillo joven de Rioja. Alta acidez vibrante y tanino amable y bajo. Fruta roja de cereza, fresa y frambuesa fresca. Sin paso por madera. Seco y fácil de beber.',
+    aviso: null },
+  // J.L. Chave Hermitage Blanc: Roussanne/Marsanne — sin alta_acidez, sin fruta_citrica
+  { match: /chave|hermitage.*blanc|hermitage.*blanco/i,
+    tags: ['seco', 'con_cuerpo', 'fruta_hueso', 'floral', 'alcohol_alto', 'mineral_salino'],
+    nota: 'Blanco del Ródano de Roussanne y Marsanne. Con cuerpo y alcohol alto. Fruta de hueso de melocotón y albaricoque maduro, notas florales de acacia y almendro. Mineral y salino. Seco y muy persistente.',
+    aviso: null },
+  // Les Terrasses (Priorat): tanino_medio_alto + mineral
+  { match: /les terrasses/i,
+    tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra', 'mineral_salino'],
+    nota: 'Tinto del Priorat concentrado. Con cuerpo amplio y tanino firme y marcado. Fruta negra de zarzamora, ciruela negra y arándano. Mineral y salino, suelo pizarroso. Especiado y persistente.',
+    aviso: null },
+  // Finca Antigua CZA. Tempranillo: crianza, sin cuerpo_ligero, sin marcar con_cuerpo
+  { match: /finca antigua.*cza|finca antigua.*crianza/i,
+    tags: ['seco', 'tanino_bajo', 'fruta_roja', 'roble'],
+    nota: 'Tempranillo con crianza en roble. Fruta roja de cereza madura y fresa. Tanino amable y bajo, integrado por la crianza. Notas de barrica de vainilla y cedro. Seco y equilibrado.',
+    aviso: null },
+  // Reserve Blanc de Blancs (espumoso): fruta_citrica + fruta_verde
+  { match: /reserve.*blanc.de.blancs|blanc.de.blancs.*reserve/i,
+    tags: ['seco', 'alta_acidez', 'lias_autolisis', 'fruta_citrica', 'fruta_verde'],
+    nota: 'Cava Blanc de Blancs de larga crianza sobre lías. Alta acidez vibrante y burbuja fina persistente. Fruta verde de manzana y pera, fruta cítrica de lima y pomelo. Notas de brioche y levaduras frescas. Seco y muy refrescante.',
+    aviso: null },
+  // Essential Púrpura Rva (espumoso rosado): fruta_roja + fruta_citrica
+  { match: /p[uú]rpura/i,
+    tags: ['seco', 'alta_acidez', 'lias_autolisis', 'fruta_roja', 'fruta_citrica'],
+    nota: 'Cava Rosado de larga crianza sobre lías. Alta acidez vibrante y burbuja fina persistente. Fruta roja de fresa y frambuesa, fruta cítrica de pomelo rosa. Notas de brioche por la autolisis. Seco y muy fresco.',
     aviso: null },
 ]
 
@@ -546,6 +603,19 @@ async function runSelftest() {
     { nombre: 'Tinto cat alta_acidez Mencía',      tipo: 'tinto',    uva: 'mencía',           region: 'Bierzo',          notas_cata: 'Alta acidez vibrante. Fruta roja. Mineral y salino.' },
     { nombre: 'Tinto cat evolucion Rioja Gran Reserva', tipo: 'tinto', uva: 'tempranillo',   region: 'Rioja',           notas_cata: 'Larga crianza en barrica y botella. Tanino amable y bajo, con cuerpo. Notas de cuero, tabaco y fruta seca. Evolucion en botella.' },
     { nombre: 'Blanco sin uva ni region',          tipo: 'blanco',   uva: '',                 region: '',                notas_cata: null },
+    // nuevos overrides v6 (8)
+    { nombre: 'Depaula Monastrel 2021',            tipo: 'tinto',    uva: 'monastrell',       region: 'Murcia',          notas_cata: null },
+    { nombre: 'Rosa-o Petit Verdot',               tipo: 'tinto',    uva: 'petit verdot',     region: 'La Mancha',       notas_cata: null },
+    { nombre: 'Viña Bujanda Joven',                tipo: 'tinto',    uva: 'tempranillo',      region: 'Rioja',           notas_cata: null },
+    { nombre: 'J.L. Chave Hermitage blanc 2021',   tipo: 'blanco',   uva: 'roussanne',        region: 'Hermitage',       notas_cata: null },
+    { nombre: 'Les Terrasses del Priorat 2022',    tipo: 'tinto',    uva: 'garnacha',         region: 'Priorat',         notas_cata: null },
+    { nombre: 'Finca Antigua CZA. Tempranillo',    tipo: 'tinto',    uva: 'tempranillo',      region: 'La Mancha',       notas_cata: null },
+    { nombre: 'Reserve Blanc de Blancs Cava',      tipo: 'espumoso', uva: 'macabeo',          region: 'Cava',            notas_cata: null },
+    { nombre: 'Essential Púrpura Rva Cava',        tipo: 'espumoso', uva: 'trepat',           region: 'Cava',            notas_cata: null },
+    // verificación regla (vii): monastrell con catalog note ligero → debe dar ERROR → se bypasa con override depaula
+    // verificación regla (viii): tempranillo joven sin roble (override Bujanda)
+    { nombre: 'Monastrell cat ligero correcto',    tipo: 'tinto',    uva: 'monastrell',       region: 'Murcia',          notas_cata: 'Monastrell con cuerpo y tanino firme y marcado. Fruta negra. Alcohol alto. Seco.' },
+    { nombre: 'Syrah con cuerpo correcto',         tipo: 'tinto',    uva: 'syrah',            region: 'Jumilla',         notas_cata: 'Syrah potente con cuerpo y tanino firme y marcado. Fruta negra. Especiado. Alcohol alto.' },
   ]
 
   let passed = 0
@@ -555,7 +625,7 @@ async function runSelftest() {
 
   for (const v of casos) {
     const { nota, tags, origen } = resolverNotaYTags(v, v.notas_cata || null)
-    const errs = validarTagsVino(v.tipo, tags, v.nombre)
+    const errs = validarTagsVino(v.tipo, tags, v.nombre, v.uva || '')
     const ok = errs.length === 0
     if (ok) passed++; else failed++
     rows.push({ nombre: v.nombre, tipo: v.tipo, origen, tags: tags.join(' '), errs })
@@ -617,7 +687,7 @@ async function main() {
   }
 
   const mode = DRY_RUN ? '[DRY-RUN]' : `[CONFIRM — ${dbName}]`
-  console.log(`\n${mode} seed-demo-fase2 v5  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
+  console.log(`\n${mode} seed-demo-fase2 v6  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
 
   // ── Query única de vinos ─────────────────────────────────────────────────
   const { data: vinos, error: vinosErr } = await sb
@@ -642,7 +712,8 @@ async function main() {
     .sort((a, b) => a._margen - b._margen)
 
   const vinosConPrecio    = todosVinos.filter(v => Number(v.precio_botella) > 0)
-  const vinosBajoMargen   = vinosConMargenCalc.filter(v => v._margen < 60)
+  const MARGEN_OBJETIVO   = 65
+  const vinosBajoMargen   = vinosConMargenCalc.filter(v => v._margen < MARGEN_OBJETIVO)
   const vinosConStock     = todosVinos.filter(v => Number(v.stock) > 0)
   const vinosSinCoste     = todosVinos.filter(v => !Number(v.coste_compra))
   const vinosSinProveedor = todosVinos.filter(v => !v.proveedor)
@@ -709,6 +780,24 @@ async function main() {
     if (extraIlike) q = q.ilike('nombre', `%${extraIlike}%`)
     const { data } = await q
     return (data || []).find(c => !catalogoEnCartaIds.has(c.id)) || null
+  }
+
+  // Helper: busca en catálogo con filtro de coste máximo; fallback al más barato con WARN
+  async function buscarEnCatalogoConCoste(tipo, costeMax, extraIlike = null) {
+    let q = sb.from('proveedor_catalogo_vinos')
+      .select(CAT_SELECT)
+      .eq('activo', true)
+      .ilike('tipo', `%${tipo}%`)
+      .lte('coste_estimado', costeMax)
+      .order('coste_estimado', { ascending: true })
+      .limit(20)
+    if (extraIlike) q = q.ilike('nombre', `%${extraIlike}%`)
+    const { data } = await q
+    const found = (data || []).find(c => !catalogoEnCartaIds.has(c.id))
+    if (found) return { ...found, _dentroRango: true }
+    // Fallback: el más barato sin filtro de coste
+    const fallback = await buscarEnCatalogoSinRepetir(tipo, extraIlike)
+    return fallback ? { ...fallback, _dentroRango: false } : null
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -797,7 +886,7 @@ async function main() {
       else if (origen === 'cat+enrich') { realCount++; enriquecidoCount++ }
       else if (origen === 'override') overrideCount++
       else ficticioCount++
-      const errs = validarTagsVino(v.tipo, tags, v.nombre)
+      const errs = validarTagsVino(v.tipo, tags, v.nombre, v.uva || '')
       s2ValidationErrors.push(...errs)
       const uvaStr    = (v.uva || '—').slice(0, 13).padEnd(14)
       const origenStr = origen.padEnd(12)
@@ -879,12 +968,18 @@ async function main() {
   console.log(`  actual: ${vinosActual.length} vinos (TODOS los activos excepto fuera)`)
   console.log(`  nuevos: ${catListNuevos.length} del catálogo (columnas: pvp_recomendado, coste_estimado, zona)`)
   if (catNuevo1) {
-    const pn1 = catProveedorNombre(catNuevo1)
-    console.log(`    nuevo1: "${catNuevo1.nombre}" (${catNuevo1.bodega||'—'}) tipo=${catNuevo1.tipo} proveedor=${pn1} coste=${catCoste(catNuevo1)}€ PVP=${catPvp(catNuevo1)}€ margen=${catMargen(catNuevo1) ?? '—'}% → mismo estilo que fuera`)
+    const pn1  = catProveedorNombre(catNuevo1)
+    const pvp1 = pvpComercial(catCoste(catNuevo1))
+    const mg1  = margenPct(pvp1, catCoste(catNuevo1))
+    console.log(`    nuevo1: "${catNuevo1.nombre}" (${catNuevo1.bodega||'—'}) tipo=${catNuevo1.tipo} proveedor=${pn1}`)
+    console.log(`             coste=${catCoste(catNuevo1)}€  PVP×3.2=${pvp1}€  margen=${mg1 ?? '—'}% → mismo estilo que fuera`)
   }
   if (catNuevo2) {
-    const pn2 = catProveedorNombre(catNuevo2)
-    console.log(`    nuevo2: "${catNuevo2.nombre}" (${catNuevo2.bodega||'—'}) tipo=${catNuevo2.tipo} proveedor=${pn2} coste=${catCoste(catNuevo2)}€ PVP=${catPvp(catNuevo2)}€ margen=${catMargen(catNuevo2) ?? '—'}% → hueco: ${tipoHueco2||'—'}`)
+    const pn2  = catProveedorNombre(catNuevo2)
+    const pvp2 = pvpComercial(catCoste(catNuevo2))
+    const mg2  = margenPct(pvp2, catCoste(catNuevo2))
+    console.log(`    nuevo2: "${catNuevo2.nombre}" (${catNuevo2.bodega||'—'}) tipo=${catNuevo2.tipo} proveedor=${pn2}`)
+    console.log(`             coste=${catCoste(catNuevo2)}€  PVP×3.2=${pvp2}€  margen=${mg2 ?? '—'}% → hueco: ${tipoHueco2||'—'}`)
   }
   if (catListNuevos.length < 2) console.log('  [WARN] catálogo devolvió < 2 vinos — revisa datos en proveedor_catalogo_vinos (columnas: tipo, activo, pvp_recomendado, coste_estimado)')
 
@@ -917,12 +1012,13 @@ async function main() {
 
     for (let i = 0; i < catListNuevos.length; i++) {
       const c = catListNuevos[i]
+      const pvpNvo = pvpComercial(catCoste(c)) || catPvp(c) || null
       const { error: ne } = await sb.from('carta_simulacion').insert({
         restaurante_id: DEMO_ID, catalogo_vino_id: c.id,
         nombre: c.nombre || 'Vino nuevo', bodega: c.bodega || null,
         tipo: c.tipo || null, region: c.region || null,
         anada: c.anada ? String(c.anada) : null,
-        precio_botella: catPvp(c) || null, precio_copa: c.pvp_copa || null,
+        precio_botella: pvpNvo, precio_copa: c.pvp_copa || null,
         coste_compra: catCoste(c) || null, estado: 'nuevo',
         sustituye_a: i === 0 ? fueraId : null,
       })
@@ -1107,8 +1203,8 @@ async function main() {
     },
     {
       area: 'Precios',
-      titulo: `Revisar PVP en ${vinosBajoMargen.length} vinos con margen < 60%`,
-      detalle: `${vinosBajoMargen.length} referencias tienen margen bruto < 60% (sin IVA). Ajuste de +10% en PVP recupera margen sin impacto visible al cliente.`,
+      titulo: `Revisar PVP en ${vinosBajoMargen.length} vinos con margen < ${MARGEN_OBJETIVO}%`,
+      detalle: `${vinosBajoMargen.length} referencias tienen margen bruto < ${MARGEN_OBJETIVO}% (objetivo carta, sin IVA). Ajuste de +10% en PVP recupera margen sin impacto visible al cliente.`,
       accion: 'Revisar precios en /dashboard/vinos?filtro=pendientes e incrementar PVP un 10%',
       impacto_estimado: imp2,
       tipo_impacto: 'margen',
@@ -1116,7 +1212,7 @@ async function main() {
       dificultad: 'baja',
       confianza_pct: 78,
       prioridad: 'alta',
-      formula: `${imp2Vinos.length} vinos <60% × +10% PVP × 2 uds/sem × 52 sem × 50% = ${imp2}€/año`,
+      formula: `${imp2Vinos.length} vinos <${MARGEN_OBJETIVO}% × +10% PVP × 2 uds/sem × 52 sem × 50% = ${imp2}€/año`,
     },
     ...items3Capital,
     {
@@ -1166,11 +1262,18 @@ async function main() {
     resumen: `Recuperación estimada: ${oppItems.reduce((s, it) => s + it.impacto_estimado, 0)}€/año. Prioridad 1: vino dulce (${tieneDulce ? 'ampliar' : 'FALTA — postres sin maridaje'}).`,
   }
 
-  console.log(`\n  Recuperación estimada (fórmula): ${oppSnap.recuperacion_anual_estimada}€/año`)
+  const ventasVinoAnualEst = Math.round(46 * 25 * 260 * 0.30)  // ticket × covers/día × días × 30% vino ≈ 89.7k€
+  const limiteImpacto4pct  = Math.round(ventasVinoAnualEst * 0.04)
+  const totalImpacto = oppSnap.recuperacion_anual_estimada
+  console.log(`\n  Recuperación estimada: ${totalImpacto}€/año  (límite 4% ventas vino ≈${limiteImpacto4pct}€)${totalImpacto > limiteImpacto4pct ? '  ⚠ SUPERA límite — revisar inputs' : '  ✓'}`)
+  if (vinosBajoMargen.length > 0) {
+    console.log(`  Vinos margen <${MARGEN_OBJETIVO}%: ${vinosBajoMargen.map(v => `"${(v.nombre||'').slice(0,22)}" (${Math.round(v._margen)}%)`).join('  ')}`)
+  }
   console.log('\n  prioridad  horizonte         impacto€  titulo')
-  console.log('  ' + '─'.repeat(72))
+  console.log('  ' + '─'.repeat(90))
   for (const it of oppItems) {
-    console.log(`  ${it.prioridad.padEnd(9)}  ${it.horizonte.padEnd(16)}  ${String(it.impacto_estimado).padStart(8)}  ${it.titulo.slice(0, 42)}`)
+    console.log(`  ${it.prioridad.padEnd(9)}  ${it.horizonte.padEnd(16)}  ${String(it.impacto_estimado).padStart(8)}  ${it.titulo}`)
+    console.log(`                                              fórmula: ${it.formula}`)
   }
 
   if (!DRY_RUN) {
@@ -1199,17 +1302,18 @@ async function main() {
   console.log('\n[S6] consultor_propuestas (huecos reales, sin repetir carta actual)...')
 
   await fetchProveedorNombres()
+  // Límites de coste coherentes con la carta actual
   const [catDulceRow, catBlancoConCuerpoRow, catGenComplejoRow, catEspumosoRow] = await Promise.all([
-    buscarEnCatalogoSinRepetir('dulce'),
+    buscarEnCatalogoConCoste('dulce', 15),
     (async () => {
-      const r = await buscarEnCatalogoSinRepetir('blanco', 'barrica')
-      return r || await buscarEnCatalogoSinRepetir('blanco', 'crianza')
+      const r = await buscarEnCatalogoConCoste('blanco', 20, 'barrica')
+      return r || await buscarEnCatalogoConCoste('blanco', 20, 'crianza')
     })(),
     (async () => {
-      const r = await buscarEnCatalogoSinRepetir('generoso', 'oloroso')
-      return r || await buscarEnCatalogoSinRepetir('generoso', 'amontillado')
+      const r = await buscarEnCatalogoConCoste('generoso', 25, 'oloroso')
+      return r || await buscarEnCatalogoConCoste('generoso', 25, 'amontillado')
     })(),
-    buscarEnCatalogoSinRepetir('espumoso'),
+    buscarEnCatalogoConCoste('espumoso', 18),
   ])
   const catTintoBajoMargenRow = vinosBajoMargen[0]?.catalogo_vino_id
     ? await (async () => { const { data } = await sb.from('proveedor_catalogo_vinos').select(CAT_SELECT).eq('id', vinosBajoMargen[0].catalogo_vino_id).maybeSingle(); return data })()
@@ -1219,11 +1323,12 @@ async function main() {
   function mostrarCatRow(label, row) {
     if (!row) { console.log(`    ${label}: — sin match en catálogo`); return }
     const pn  = catProveedorNombre(row)
-    const pvp = catPvp(row)
     const cst = catCoste(row)
-    const mg  = catMargen(row)
-    console.log(`    ${label}: "${row.nombre}" (${row.bodega||'—'}) · zona: ${catZona(row)} · proveedor: ${pn}`)
-    console.log(`       coste: ${cst}€ · PVP sugerido: ${pvp}€ · margen: ${mg !== null ? mg + '%' : '—'}`)
+    const pvp = pvpComercial(cst) || catPvp(row)
+    const mg  = margenPct(pvp, cst)
+    const warn = row._dentroRango === false ? '  ⚠ FUERA DE RANGO — más barato disponible' : ''
+    console.log(`    ${label}: "${row.nombre}" (${row.bodega||'—'}) · zona: ${catZona(row)} · proveedor: ${pn}${warn}`)
+    console.log(`       coste: ${cst}€ · PVP×3.2: ${pvp}€ · margen: ${mg !== null ? mg + '%' : '—'}`)
   }
 
   const propuestasRows = [
@@ -1392,14 +1497,13 @@ async function main() {
   try {
     const { analizarMaridaje } = await import('../app/lib/maridajeEngine.js')
 
-    // En dry-run las notas aún no están actualizadas; aplicamos la generada en memoria.
+    // En dry-run las notas aún no están actualizadas; aplicamos resolverNotaYTags en memoria
+    // (incluye NOMBRE_OVERRIDES, por lo que el motor evalúa el estado post-confirm).
     const notasGeneradas = new Map()
     for (const v of todosVinos) {
       if (!v.notas_cata || v.notas_cata.length < 12) {
         const rawCat = v.catalogo_vino_id ? catNotasMap[v.catalogo_vino_id] : null
-        const nota = rawCat
-          ? enriquecerNotaConPerfil(rawCat, v.tipo, v.uva, v.region, v.nombre, inferirPerfilesVino)
-          : generarNotasCata(v.tipo, v.uva, v.region, v.nombre)
+        const { nota } = resolverNotaYTags(v, rawCat)
         notasGeneradas.set(v.id, nota)
       }
     }
@@ -1455,21 +1559,23 @@ async function main() {
       }
 
       // ── Tabla extendida: motivo, PVP y margen ─────────────────────────────
-      const fmtRec = (item) => {
-        if (!item?.vino) return '— (vacío)'.padEnd(40)
-        const pvp   = Number(item.vino.precio_botella) || 0
-        const coste = Number(item.vino.coste_compra) || 0
-        const mg    = pvp && coste ? margenPct(pvp, coste) : null
-        const nombre  = (item.vino.nombre || '?').slice(0, 13)
-        const motivo  = (item.motivo || '').slice(0, 16)
-        const precios = `${pvp ? pvp + '€' : '—'}${mg !== null ? '/' + mg + '%' : ''}`
-        return `${nombre.padEnd(14)}${precios.padEnd(9)}[${motivo}]`.slice(0, 40).padEnd(40)
+      const fmtNom = (item) => {
+        if (!item?.vino) return '— (vacío)'.padEnd(22)
+        const pvp  = Number(item.vino.precio_botella) || 0
+        const cst  = Number(item.vino.coste_compra) || 0
+        const mg   = pvp && cst ? margenPct(pvp, cst) : null
+        const nom  = (item.vino.nombre || '?').slice(0, 14)
+        const prc  = pvp ? `${pvp}€${mg !== null ? '/' + mg + '%' : ''}` : '—'
+        return `${nom.padEnd(15)}${prc.padEnd(9)}`.slice(0, 24).padEnd(24)
       }
-      console.log('\n  plato                                  ctx       top-1 (nombre PVP/mg [motivo])           top-2                                     top-3')
-      console.log('  ' + '─'.repeat(150))
+      console.log('\n  plato                                  ctx       top-1                    top-2                    top-3')
+      console.log('  ' + '─'.repeat(110))
       for (const { plato, ctx } of PLATOS_DEMO) {
         const { recs } = resultados.get(plato)
-        console.log(`  ${plato.slice(0, 38).padEnd(38)} ${ctx.padEnd(9)} ${fmtRec(recs[0])}  ${fmtRec(recs[1])}  ${fmtRec(recs[2])}`)
+        console.log(`  ${plato.slice(0, 38).padEnd(38)} ${ctx.padEnd(9)} ${fmtNom(recs[0])}  ${fmtNom(recs[1])}  ${fmtNom(recs[2])}`)
+        for (const r of recs.filter(r => r?.motivo)) {
+          console.log(`      → ${(r.vino?.nombre||'?').slice(0,18).padEnd(18)} motivo: ${r.motivo}`)
+        }
       }
 
       // ── Aserciones (i)–(iv) ───────────────────────────────────────────────
@@ -1511,6 +1617,30 @@ async function main() {
       const pasaIII = tintoEnNoTinto.length === 0
       if (!pasaIII) asercionFails.push(`(iii) tinto en arroces/marisco:\n      ${tintoEnNoTinto.join('\n      ')}`)
 
+      // (v) ningún tinto de cuerpo_ligero en platos de carne
+      const platosCarne = PLATOS_DEMO.filter(p => p.ctx === 'carne')
+      const tintoLigeroEnCarne = []
+      for (const p of platosCarne) {
+        const recs = resultados.get(p.plato)?.recs || []
+        for (const r of recs) {
+          if (!r?.vino) continue
+          const tipo = (r.vino.tipo || '').toLowerCase()
+          if (tipo === 'tinto') {
+            const tags = inferirPerfilesVino({ notas_cata: r.vino.notas_cata || '', tipo, uva: r.vino.uva || '', region: r.vino.region || '', nombre: r.vino.nombre || '' })
+            if (tags.includes('cuerpo_ligero'))
+              tintoLigeroEnCarne.push(`${p.plato.slice(0, 28)} → ${r.vino.nombre} (pos ${recs.indexOf(r) + 1})`)
+          }
+        }
+      }
+      const pasaV = tintoLigeroEnCarne.length === 0
+      if (!pasaV) asercionFails.push(`(v) tinto cuerpo_ligero en platos de carne:\n      ${tintoLigeroEnCarne.join('\n      ')}`)
+
+      // (vi) rabo de toro: top-1 diferente de top-1 de presa
+      const raboTop1Id  = raboRecs[0]?.vino?.id
+      const presaTop1Id = presaRecs[0]?.vino?.id
+      const pasaVI = !raboTop1Id || !presaTop1Id || raboTop1Id !== presaTop1Id
+      if (!pasaVI) asercionFails.push(`(vi) rabo de toro y presa ibérica tienen mismo top-1: "${raboRecs[0]?.vino?.nombre}"`)
+
       // (iv) postres: solo dulce/generoso en top-3
       const platosPostre = PLATOS_DEMO.filter(p => p.ctx === 'postre')
       const noAptoPostre = []
@@ -1526,12 +1656,14 @@ async function main() {
       if (!pasaIV) asercionFails.push(`(iv) vinos no dulce/oxidativo en postres:\n      ${noAptoPostre.join('\n      ')}`)
 
       console.log('\n  ── Aserciones ──')
-      console.log(`  (i)   presa vs rabo top-3 distintos:      ${pasaI   ? '✓' : '✗'}  intersección=${intersect.length}`)
-      console.log(`  (ii)  ≥5 sets distintos en marisco/frito: ${pasaII  ? '✓' : '✗'}  sets=${setsMarisco.size}/${platosMarisco.length}`)
-      console.log(`  (iii) sin tinto en arroces/marisco:       ${pasaIII ? '✓' : '✗'}${!pasaIII ? `  (${tintoEnNoTinto.length} casos)` : ''}`)
-      console.log(`  (iv)  postres solo dulce/oxidativo:       ${pasaIV  ? '✓' : '✗'}${!pasaIV  ? `  (${noAptoPostre.length} casos)` : ''}`)
+      console.log(`  (i)    presa vs rabo top-3 distintos:      ${pasaI   ? '✓' : '✗'}  intersección=${intersect.length}`)
+      console.log(`  (ii)   ≥5 sets distintos en marisco/frito: ${pasaII  ? '✓' : '✗'}  sets=${setsMarisco.size}/${platosMarisco.length}`)
+      console.log(`  (iii)  sin tinto en arroces/marisco:       ${pasaIII ? '✓' : '✗'}${!pasaIII ? `  (${tintoEnNoTinto.length} casos)` : ''}`)
+      console.log(`  (iv)   postres solo dulce/oxidativo:       ${pasaIV  ? '✓' : '✗'}${!pasaIV  ? `  (${noAptoPostre.length} casos)` : ''}`)
+      console.log(`  (v)    sin tinto ligero en platos carne:   ${pasaV   ? '✓' : '✗'}${!pasaV   ? `  (${tintoLigeroEnCarne.length} casos)` : ''}`)
+      console.log(`  (vi)   rabo top-1 ≠ presa top-1:          ${pasaVI  ? '✓' : '✗'}`)
       if (asercionFails.length === 0) {
-        console.log('\n  ✓ Todas las aserciones (i–iv) superadas.')
+        console.log('\n  ✓ Todas las aserciones (i–vi) superadas.')
       } else {
         console.log(`\n  [WARN] ${asercionFails.length} aserción(es) fallaron:`)
         for (const f of asercionFails) console.log(`    ✗ ${f}`)
