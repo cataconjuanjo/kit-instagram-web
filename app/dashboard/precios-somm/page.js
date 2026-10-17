@@ -24,6 +24,7 @@ import {
   impactoTotalSeleccion,
   diferencialCopaVsBotella,
 } from '../../lib/sommPricing'
+import { calcularTotalPersonal, calcularTotalGastos, calcularTotalAlquiler } from '../../lib/sommExplotacion'
 
 const TABS = [
   { id: 'simulador', label: 'Simulador multiplicador' },
@@ -57,25 +58,12 @@ function num(v) {
 // ── Simulador de Multiplicador ───────────────────────────────────────────────
 
 function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
-  const camposGastos = [
-    { key: 'personal_bodega', label: 'Personal asignado a bodega' },
-    { key: 'roturas_mermas', label: 'Roturas, mermas e invitaciones' },
-    { key: 'materiales', label: 'Materiales (copas, sacacorchos…)' },
-    { key: 'suministros', label: 'Suministros y mantenimiento' },
-    { key: 'alquiler_proporcional', label: 'Alquiler proporcional bodega' },
-    { key: 'otros', label: 'Otros / vino inmovilizado' },
-  ]
-
   const [form, setForm] = useState({
     personal_bodega: '',
-    roturas_mermas: '',
-    materiales: '',
-    suministros: '',
-    alquiler_proporcional: '',
-    otros: '',
     beneficio_objetivo: '',
     ventas_previstas: '',
   })
+  const [derivado, setDerivado] = useState({ alquiler: 0, partidas: 0 })
   const [guardado, setGuardado] = useState(false)
   const [guardando, setGuardando] = useState(false)
 
@@ -83,29 +71,32 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
     async function cargar() {
       const { data } = await supabase
         .from('parametros_explotacion')
-        .select('*')
+        .select('nominas_brutas, ss_empresa, retenciones_irpf, extras_personal, partidas_alquiler, partidas_gastos, beneficio_objetivo, ventas_previstas')
         .eq('restaurante_id', restauranteId)
         .eq('periodo', PERIODO_HOY)
         .maybeSingle()
       if (data) {
         setForm({
-          personal_bodega: data.nominas_brutas || '',
-          roturas_mermas: data.ss_empresa || '',
-          materiales: data.retenciones_irpf || '',
-          suministros: data.extras_personal || '',
-          alquiler_proporcional: data.alquiler_proporcional || '',
-          otros: data.otros || '',
+          // personal_bodega = coste total de personal (nóminas + SS empresa + IRPF + extras)
+          personal_bodega:    calcularTotalPersonal(data).total || '',
           beneficio_objetivo: data.beneficio_objetivo || '',
-          ventas_previstas: data.ventas_previstas || '',
+          // ventas_previstas es NETO (sin IVA) — la fórmula opera sobre márgenes netos
+          ventas_previstas:   data.ventas_previstas   || '',
+        })
+        setDerivado({
+          alquiler: calcularTotalAlquiler(data.partidas_alquiler || []).total,
+          partidas: calcularTotalGastos(data.partidas_gastos   || []).total,
         })
       }
     }
     if (restauranteId) cargar()
   }, [restauranteId])
 
+  // totalGastos = personal (completo) + alquileres del periodo + otras partidas (con amortización)
+  // Todos los valores de parametros_explotacion son ya la fracción bodega, no el restaurante completo.
   const totalGastos = useMemo(() => {
-    return camposGastos.reduce((s, c) => s + num(form[c.key]), 0)
-  }, [form])
+    return num(form.personal_bodega) + derivado.alquiler + derivado.partidas
+  }, [form, derivado])
 
   const multiplicador = useMemo(() => {
     const ventas = num(form.ventas_previstas)
@@ -139,21 +130,30 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
       </div>
       <div className={styles.panelBody}>
         <div className={styles.formGrid}>
-          {camposGastos.map(({ key, label }) => (
-            <label key={key} className={styles.label}>
-              {label}
-              <input
-                className={styles.input}
-                type="number"
-                min="0"
-                step="10"
-                value={form[key]}
-                onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                placeholder="0 €"
-              />
-            </label>
-          ))}
+          <label className={styles.label}>
+            Personal asignado a bodega
+            <input
+              className={styles.input}
+              type="number"
+              min="0"
+              step="10"
+              value={form.personal_bodega}
+              onChange={e => setForm(f => ({ ...f, personal_bodega: e.target.value }))}
+              placeholder="0 €"
+            />
+          </label>
+          <label className={styles.label}>
+            Alquileres del periodo
+            <input className={styles.input} type="text" value={eur(derivado.alquiler)} readOnly disabled />
+          </label>
+          <label className={styles.label}>
+            Otros gastos del periodo
+            <input className={styles.input} type="text" value={eur(derivado.partidas)} readOnly disabled />
+          </label>
         </div>
+        <p style={{ fontSize: 11, color: '#888', marginTop: -8, marginBottom: 8 }}>
+          Alquileres y partidas se cargan del periodo actual en Explotación.
+        </p>
 
         <div style={{ margin: '16px 0', padding: '12px 16px', background: 'var(--panel-bg, #f7f5f0)', borderRadius: 4 }}>
           <strong>Total gastos fijos: {eur(totalGastos)}</strong>

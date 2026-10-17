@@ -391,8 +391,10 @@ async function main() {
         grupos_eventos: grupos_neto,
         take_away:      0,
       },
-      beneficio_objetivo: 0,
-      ventas_previstas:   0,
+      // ventas_previstas es NETO (sin IVA) — el SimuladorMultiplicador opera sobre márgenes netos.
+      // ×1.10 es crecimiento YoY del 10 %, no conversión de IVA.
+      ventas_previstas:   Math.round(snap.ventas_neto * 1.10),
+      beneficio_objetivo: Math.round(snap.ventas_neto * 1.10 * 0.25),
       updated_at: new Date().toISOString(),
     }
   })
@@ -451,7 +453,9 @@ async function main() {
     const oct_ss_empresa       = Math.round(P_oct * 0.27)
     const oct_retenciones_irpf = Math.round(P_oct * 0.05)
     const oct_extras_personal  = P_oct - oct_nominas_brutas - oct_ss_empresa - oct_retenciones_irpf
+    // ventas_previstas NETO; ×1.10 = crecimiento YoY, no IVA (igual que paramRows)
     const oct_ventas_previstas = Math.round(cierresPorMes['2025-10'].ventas_neto * 1.10)
+    const oct_benef_obj        = Math.round(oct_ventas_previstas * 0.25)
 
     const oct2026Row = {
       restaurante_id: DEMO_ID,
@@ -468,12 +472,20 @@ async function main() {
       mantenimiento_datafono: 0,
       resto_comisiones:       0,
       canales_negocio: { copa_barra: 0, botella_mesa: 0, grupos_eventos: 0, take_away: 0 },
-      beneficio_objetivo: 0,
+      beneficio_objetivo: oct_benef_obj,
       ventas_previstas:   oct_ventas_previstas,
       updated_at: new Date().toISOString(),
     }
 
-    console.log(`\n  [B3] 2026-10 (mes en curso): personal=${P_oct}€, alquiler=${ALQUILER_BODEGA}€, sumin=${SUMINISTROS_BODEGA[last_i]}€, ventas_previstas=${oct_ventas_previstas}€`)
+    // Multiplicador mínimo simulado para 2026-10
+    // Fórmula idéntica a SimuladorMultiplicador: multiplicador = 1 / (1 − margenNecesario)
+    // personal_bodega en el simulador = calcularTotalPersonal().total = P_oct (incluye SS, IRPF, extras)
+    const oct_gastos_total = P_oct + ALQUILER_BODEGA + SUMINISTROS_BODEGA[last_i]
+    const oct_marg_nec     = (oct_gastos_total + oct_benef_obj) / oct_ventas_previstas
+    const oct_mult         = oct_marg_nec < 1 ? (1 / (1 - oct_marg_nec)).toFixed(3) : 'n/a'
+
+    console.log(`\n  [B3] 2026-10: personal=${P_oct}€ alquiler=${ALQUILER_BODEGA}€ sumin=${SUMINISTROS_BODEGA[last_i]}€ → gastos=${oct_gastos_total}€`)
+    console.log(`       ventas_prev=${oct_ventas_previstas}€ benef_obj=${oct_benef_obj}€ → multiplicador_mínimo=×${oct_mult}`)
 
     if (!DRY_RUN) {
       const { error } = await supabase.from('parametros_explotacion')
