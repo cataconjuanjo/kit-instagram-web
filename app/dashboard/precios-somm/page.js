@@ -131,16 +131,8 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
       <div className={styles.panelBody}>
         <div className={styles.formGrid}>
           <label className={styles.label}>
-            Personal asignado a bodega
-            <input
-              className={styles.input}
-              type="number"
-              min="0"
-              step="10"
-              value={form.personal_bodega}
-              onChange={e => setForm(f => ({ ...f, personal_bodega: e.target.value }))}
-              placeholder="0 €"
-            />
+            Personal bodega (nóminas + SS + retenciones + extras)
+            <input className={styles.input} type="text" value={eur(num(form.personal_bodega))} readOnly disabled />
           </label>
           <label className={styles.label}>
             Alquileres del periodo
@@ -152,7 +144,7 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
           </label>
         </div>
         <p style={{ fontSize: 11, color: '#888', marginTop: -8, marginBottom: 8 }}>
-          Alquileres y partidas se cargan del periodo actual en Explotación.
+          Personal, alquileres y partidas se cargan del periodo actual en Explotación.
         </p>
 
         <div style={{ margin: '16px 0', padding: '12px 16px', background: 'var(--panel-bg, #f7f5f0)', borderRadius: 4 }}>
@@ -173,7 +165,7 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
             />
           </label>
           <label className={styles.label}>
-            Ventas previstas (€/mes)
+            Ventas previstas sin IVA (€/mes)
             <input
               className={styles.input}
               type="number"
