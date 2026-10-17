@@ -125,39 +125,60 @@ function generarNotasCata(tipo, uva, region, nombre) {
 
   // ── Tinto ────────────────────────────────────────────────────────────────────
   if (t === 'tinto') {
+    // Nebbiolo: siempre tanino_medio_alto + alta_acidez + con_cuerpo + evolucion_botella
+    if (/nebbiolo/.test(u))
+      return 'Nebbiolo de perfil sobrio y austero. Tanino firme y marcado con alta acidez vibrante. Con cuerpo y evolucion en botella. Notas de cuero, tierra y cereza seca. Especiado y muy persistente.'
+    // Priorat: tanino_medio_alto + con_cuerpo + alcohol_alto + roble
     if (/priorat/.test(r))
       return 'Tinto del Priorat concentrado. Con cuerpo amplio y tanino firme y marcado. Fruta negra de zarzamora y ciruela negra. Especiado con pimienta y regaliz, roble integrado. Alcohol alto y muy largo.'
-    if (/ribera del duero|ribera/.test(r) && /crianza|reserva/.test(n))
-      return 'Tinto de Ribera del Duero con crianza en roble. Fruta negra de cereza negra y ciruela. Tanino firme y marcado, con cuerpo. Barrica de cedro, café y vainilla bien integrada. Largo y elegante.'
+    // Toro: tanino_medio_alto + con_cuerpo + alcohol_alto
+    if (/toro/.test(r))
+      return 'Tinto de Toro con tanino firme y marcado. Con cuerpo amplio y alcohol alto. Fruta negra de ciruela y mora. Profundo, con notas especiadas y minerales. Largo y robusto.'
+    // Ribera del Duero: tanino_medio_alto + con_cuerpo (sin requerir crianza en nombre)
+    if (/ribera del duero|ribera del duero/.test(r) || /ribera/.test(r) && /duero|arlanza/.test(r))
+      return 'Tinto de Ribera del Duero con fruta negra de cereza negra y ciruela. Tanino firme y marcado, con cuerpo. Notas de barrica de cedro y café. Largo y bien estructurado.'
+    // Rioja con crianza: tanino_medio_alto + con_cuerpo + roble
     if (/rioja/.test(r) && /crianza|reserva/.test(n))
-      return 'Tinto riojano con crianza en barrica americana. Fruta roja madura, notas de vainilla, roble y café tostado. Tanino amable y redondo, con cuerpo medio. Largo, equilibrado y clásico.'
+      return 'Tinto riojano con crianza en barrica. Fruta roja madura, notas de vainilla, roble y café tostado. Tanino firme y marcado, con cuerpo. Largo, equilibrado y clásico.'
+    // Otros con crianza en nombre: tanino_medio_alto + con_cuerpo
     if (/crianza|reserva|gran reserva/.test(n))
       return 'Tinto con crianza en barrica. Fruta negra de madurez media. Tanino firme y marcado, con cuerpo. Notas de roble, barrica, especiado y vainilla. Persistente y bien estructurado.'
+    // Gredos o Garnacha de altura: tanino_bajo + alta_acidez + mineral_salino + cuerpo_ligero
+    if (/gredos/.test(r) || (/garnacha|grenache/.test(u) && /gredos|sierra|madrid|cebreros|avila/.test(r)))
+      return 'Garnacha de las sierras de Gredos. Alta acidez vibrante, tanino amable y bajo. Mineral y salino, perfil fresco. Fruta roja de frambuesa y cereza roja. Cuerpo ligero, sin paso por madera.'
+    // Garnacha general: tanino_bajo + alta_acidez + fruta_roja
     if (/garnacha|grenache/.test(u))
-      return 'Garnacha de carácter frutal y fresco. Fruta roja de fresa y cereza roja. Tanino amable y bajo, alta acidez natural. Seco y sin paso por madera. Muy bebible.'
+      return 'Garnacha de carácter frutal. Fruta roja de fresa y cereza roja. Tanino amable y bajo, alta acidez natural. Seco y sin paso por madera.'
+    // Mencía / Bierzo: tanino_bajo + alta_acidez + cuerpo_ligero + mineral_salino
     if (/mencia|mencía/.test(u) || /bierzo/.test(r))
-      return 'Mencía de Bierzo fresca y mineral. Alta acidez vibrante. Fruta roja y notas florales. Tanino amable y sedoso. Seco, con carácter cítrico y notas de hierbas frescas.'
+      return 'Mencía de Bierzo fresca y mineral. Alta acidez vibrante. Fruta roja y notas florales. Tanino amable y sedoso. Seco y mineral.'
+    // Tempranillo / Rioja sin crianza: tanino_bajo + fruta_roja
     if (/tempranillo/.test(u) || /rioja/.test(r))
-      return 'Tinto de Rioja de carácter frutal. Fruta roja de cereza y fresa. Tanino amable y bajo, perfil fresco. Ligero toque de roble. Seco y equilibrado.'
-    return 'Tinto joven de carácter frutal. Fruta roja de fresa y frambuesa. Tanino amable y bajo, perfil fresco sin paso por madera. Seco y fácil de beber.'
+      return 'Tinto frutal de Rioja. Fruta roja de cereza y fresa. Tanino amable y bajo. Seco y equilibrado.'
+    // Genérico joven: tanino_bajo + fruta_roja (sin 'ligero'/'perfil fresco' que alteran estimarPerfil)
+    return 'Tinto joven frutal. Fruta roja de fresa y cereza. Tanino amable y bajo. Seco, fácil de beber.'
   }
 
   // ── Blanco ───────────────────────────────────────────────────────────────────
+  // REGLA: blancos NUNCA llevan tanino. Las notas deben evitar 'tanino', 'sedoso', 'astringente'.
   if (t === 'blanco') {
     if (/albarino|albariño/.test(u) || /rias baixas|rías baixas/.test(r))
-      return 'Albariño de Rías Baixas con alta acidez vibrante. Fruta cítrica de lima, limón y pomelo, con toque de melocotón. Mineral y salino, frescura oceánica. Seco y largo. Fin muy sabroso.'
+      return 'Albariño de Rías Baixas con alta acidez vibrante. Fruta cítrica de lima, limón y pomelo, con toque de melocotón. Mineral y salino, frescura oceánica. Seco y largo.'
     if (/txakoli|txakolina/.test(all))
-      return 'Txakolina con alta acidez vibrante y salinidad marcada. Fruta cítrica de lima y fruta verde de pera. Mineral y marino. Baja graduación de alcohol. Seco y muy refrescante.'
+      return 'Txakolina con alta acidez vibrante y salinidad marcada. Fruta cítrica de lima y fruta verde de pera. Mineral y marino. Alcohol bajo. Seco y muy refrescante.'
     if (/verdejo/.test(u) || /rueda/.test(r))
-      return 'Verdejo de Rueda con alta acidez y perfil herbáceo fresco. Fruta verde de manzana y pera, fruta cítrica de lima. Notas de hierba fresca. Seco y afrutado.'
+      return 'Verdejo de Rueda con alta acidez y perfil herbáceo. Fruta verde de manzana y pera, fruta cítrica de lima. Notas de hierba fresca. Seco y afrutado.'
     if (/chardonnay/.test(u) && /crianza|barrica|reserva|fermentado/.test(n))
       return 'Chardonnay con crianza en roble. Con cuerpo y voluminoso. Fruta de hueso de melocotón y albaricoque. Mantequilla y nata por la maloláctica. Barrica de vainilla y cedro. Seco y persistente.'
     if (/chardonnay/.test(u))
-      return 'Chardonnay fresco y afrutado, alta acidez vibrante. Fruta de hueso de melocotón y fruta tropical. Cuerpo medio. Seco y fácil de beber.'
+      return 'Chardonnay fresco y afrutado, alta acidez vibrante. Fruta de hueso de melocotón y fruta tropical. Seco y fácil de beber.'
     if (/godello/.test(u) || /valdeorras|ribeira sacra/.test(r))
-      return 'Godello con alta acidez vibrante y cuerpo. Fruta cítrica de lima y melocotón. Mineral y salino. Con cuerpo, tensión en boca. Seco y largo.'
+      return 'Godello con alta acidez vibrante y con cuerpo. Fruta cítrica de lima y melocotón. Mineral y salino. Tensión en boca. Seco y largo.'
     if (/palomino/.test(u) || /jerez/.test(r))
       return 'Palomino seco de Jerez. Alta acidez, mineral y salino. Fruta cítrica de lima con hierba fresca. Seco y sabroso.'
+    // Priorat blanco: con_cuerpo + alcohol_alto + mineral_salino. SIN tanino.
+    if (/priorat/.test(r) || /priorat/.test(n))
+      return 'Blanco del Priorat con cuerpo y alcohol alto. Mineral y salino. Fruta de hueso de melocotón y albaricoque maduro. Seco y muy persistente.'
     return 'Blanco fresco con alta acidez vibrante. Fruta cítrica de lima y pomelo, mineral y salino. Seco, con notas de fruta verde de manzana.'
   }
 
@@ -202,14 +223,46 @@ function frasePerfilPorTipo(tipo, uva, region, nombre) {
   return 'Alta acidez y fruta cítrica de lima. Fresco y equilibrado.'
 }
 
+// Valida que los tags inferidos no violen reglas de exclusividad ni tipo.
+// Devuelve array de mensajes de error (vacío = ok).
+function validarTagsVino(tipo, tags, nombre) {
+  const t = (tipo || '').toLowerCase()
+  const errs = []
+  const has = id => tags.includes(id)
+  if (['blanco', 'espumoso', 'rosado'].includes(t) && (has('tanino_bajo') || has('tanino_medio_alto')))
+    errs.push(`[tipo=${t}] con tanino → ${nombre}`)
+  if (has('tanino_bajo') && has('tanino_medio_alto'))
+    errs.push(`tanino_bajo + tanino_medio_alto → ${nombre}`)
+  if (has('alta_acidez') && has('baja_acidez'))
+    errs.push(`alta_acidez + baja_acidez → ${nombre}`)
+  if (has('seco') && has('dulce'))
+    errs.push(`seco + dulce → ${nombre}`)
+  if (has('cuerpo_ligero') && has('con_cuerpo'))
+    errs.push(`cuerpo_ligero + con_cuerpo → ${nombre}`)
+  if (has('alcohol_bajo') && has('alcohol_alto'))
+    errs.push(`alcohol_bajo + alcohol_alto → ${nombre}`)
+  return errs
+}
+
 // Enriquece una nota de catálogo real cuando tiene < 2 perfiles inferidos.
-// inferirFn = inferirPerfilesVino import (puede ser no-op si falló el import).
+// Para blancos/espumosos: si la nota del catálogo produce tags de tanino, se
+// sustituye por la nota generada (evita notas en otro idioma con 'sedoso', etc.).
 function enriquecerNotaConPerfil(nota, tipo, uva, region, nombre, inferirFn) {
+  const t = (tipo || '').toLowerCase()
   if (!nota) return generarNotasCata(tipo, uva, region, nombre)
-  const tags = inferirFn({ notas_cata: nota, tipo: tipo||'', uva: uva||'', region: region||'', nombre: nombre||'' })
-  if (tags.length >= 2) return nota
-  const frase = frasePerfilPorTipo(tipo, uva, region, nombre)
-  return nota + (frase ? ' ' + frase : '')
+  let notaFinal = nota
+  let tags = inferirFn({ notas_cata: notaFinal, tipo: t, uva: uva||'', region: region||'', nombre: nombre||'' })
+  // Blancos/espumosos/rosados NO deben llevar tanino: si la nota lo activa, sustituir
+  if (['blanco', 'espumoso', 'rosado'].includes(t) && (tags.includes('tanino_bajo') || tags.includes('tanino_medio_alto'))) {
+    notaFinal = generarNotasCata(tipo, uva, region, nombre)
+    tags = inferirFn({ notas_cata: notaFinal, tipo: t, uva: uva||'', region: region||'', nombre: nombre||'' })
+  }
+  // Enriquecer si < 2 tags
+  if (tags.length < 2) {
+    const frase = frasePerfilPorTipo(tipo, uva, region, nombre)
+    notaFinal = notaFinal + (frase ? ' ' + frase : '')
+  }
+  return notaFinal
 }
 
 // ── 36 platos de Casa Marisma ─────────────────────────────────────────────────
@@ -393,10 +446,32 @@ async function main() {
   const provPrinc   = provSort[0]?.[0] || null
   const provPrincPct = provSort[0] ? Math.round(provSort[0][1] / todosVinos.length * 100) : 0
 
-  // Helper: busca en catálogo un vino de ese tipo que no esté ya en carta
+  // Columnas reales de proveedor_catalogo_vinos (schema en add_proveedores_catalogos.sql):
+  //   coste_estimado, pvp_recomendado, pvp_copa, zona (de normalizar_catalogo_v1.sql), region
+  //   proveedor_id → proveedores_vino(id, nombre) — se resuelve con fetchProveedorNombres()
+  const CAT_SELECT = 'id, nombre, bodega, tipo, region, uva, anada, coste_estimado, pvp_recomendado, pvp_copa, zona, disponibilidad, proveedor_id'
+
+  // Cache de nombres de proveedores (proveedor_id → nombre)
+  let _proveedorNombres = null
+  async function fetchProveedorNombres() {
+    if (_proveedorNombres) return _proveedorNombres
+    const { data } = await sb.from('proveedores_vino').select('id, nombre')
+    _proveedorNombres = Object.fromEntries((data || []).map(p => [p.id, p.nombre]))
+    return _proveedorNombres
+  }
+  function catProveedorNombre(row) {
+    if (!row?.proveedor_id) return 'Consultar catálogo'
+    return (_proveedorNombres || {})[row.proveedor_id] || 'Consultar catálogo'
+  }
+  function catZona(row) { return row?.zona || row?.region || '—' }
+  function catPvp(row)  { return Number(row?.pvp_recomendado) || 0 }
+  function catCoste(row){ return Number(row?.coste_estimado) || 0 }
+  function catMargen(row) { return margenPct(catPvp(row), catCoste(row)) }
+
+  // Helper: busca en catálogo un vino del tipo indicado que no esté ya en carta
   async function buscarEnCatalogoSinRepetir(tipo, extraIlike = null) {
     let q = sb.from('proveedor_catalogo_vinos')
-      .select('id, nombre, bodega, tipo, zona_dop, region, precio_pvp_botella, precio_pvp_copa, coste_neto, proveedor')
+      .select(CAT_SELECT)
       .eq('activo', true)
       .ilike('tipo', `%${tipo}%`)
       .limit(10)
@@ -477,9 +552,11 @@ async function main() {
   console.log(`  Con perfil existente (≥12 chars): ${todosVinos.length - vinosSinPerfil.length}`)
   console.log(`  Sin perfil → a actualizar: ${vinosSinPerfil.length}`)
 
+  const s2ValidationErrors = []
+
   if (vinosSinPerfil.length > 0) {
-    console.log('\n  ' + 'nombre'.padEnd(36) + 'tipo'.padEnd(10) + 'fuente       ' + 'perfiles_inferidos')
-    console.log('  ' + '─'.repeat(96))
+    console.log('\n  ' + 'nombre'.padEnd(32) + 'tipo'.padEnd(9) + 'uva'.padEnd(14) + 'zona/región'.padEnd(18) + 'fuente     ' + 'tags inferidos')
+    console.log('  ' + '─'.repeat(110))
     for (const v of vinosSinPerfil) {
       const rawCatNota = v.catalogo_vino_id ? catNotasMap[v.catalogo_vino_id] : null
       let nota, fuente
@@ -495,10 +572,22 @@ async function main() {
         ficticioCount++
       }
       const tags = inferirPerfilesVino({ notas_cata: nota, tipo: v.tipo||'', uva: v.uva||'', region: v.region||'', nombre: v.nombre||'' })
-      console.log('  ' + (v.nombre||'').slice(0,35).padEnd(36) + (v.tipo||'—').slice(0,9).padEnd(10) + fuente.padEnd(13) + tags.join(', '))
+      const errs = validarTagsVino(v.tipo, tags, v.nombre)
+      s2ValidationErrors.push(...errs)
+      const uvaStr   = (v.uva    || '—').slice(0,13).padEnd(14)
+      const zonaStr  = (v.region || '—').slice(0,17).padEnd(18)
+      const errFlag  = errs.length ? ' ← ✗ INVALID' : ''
+      console.log('  ' + (v.nombre||'').slice(0,31).padEnd(32) + (v.tipo||'—').slice(0,8).padEnd(9) + uvaStr + zonaStr + fuente.padEnd(11) + tags.join(', ') + errFlag)
       updates2.push({ id: v.id, notas_cata: nota })
     }
     console.log(`\n  Fuentes: catálogo=${realCount} (${enriquecidoCount} enriquecidas), ficticio=${ficticioCount}`)
+  }
+
+  if (s2ValidationErrors.length > 0) {
+    console.log('\n  [S2 ERRORES DE VALIDACIÓN]')
+    for (const e of s2ValidationErrors) console.log(`    ✗ ${e}`)
+    console.log('\n  Abortando: corregir notas_cata antes de aplicar el seed.')
+    process.exit(2)
   }
 
   if (!DRY_RUN) {
@@ -525,8 +614,9 @@ async function main() {
 
   const tipoFuera = vinoFuera?.tipo || 'blanco'
   // ilike para tipo: captura 'Tinto', 'tinto', 'Tinto Crianza', 'tinto joven', etc.
+  await fetchProveedorNombres()
   const { data: catVinos1 } = await sb.from('proveedor_catalogo_vinos')
-    .select('id, nombre, bodega, tipo, region, anada, precio_pvp_botella, precio_pvp_copa, coste_neto, proveedor')
+    .select(CAT_SELECT)
     .eq('activo', true).ilike('tipo', `%${tipoFuera}%`).limit(10)
   const catNuevo1 = (catVinos1 || []).find(c => !catalogoEnCartaIds.has(c.id)) || null
 
@@ -537,7 +627,7 @@ async function main() {
   const extraHueco2 = !tieneDulce ? null : !tieneGenerosoComplejo && tieneGeneroso ? 'oloroso' : !tieneBlancoConCuerpo ? 'barrica' : null
   if (tipoHueco2) {
     let q2 = sb.from('proveedor_catalogo_vinos')
-      .select('id, nombre, bodega, tipo, region, anada, precio_pvp_botella, precio_pvp_copa, coste_neto, proveedor')
+      .select(CAT_SELECT)
       .eq('activo', true).ilike('tipo', `%${tipoHueco2}%`).limit(10)
     if (extraHueco2) q2 = q2.ilike('nombre', `%${extraHueco2}%`)
     const { data: catVinos2 } = await q2
@@ -545,7 +635,7 @@ async function main() {
     // fallback: any activo not in carta
     if (!catNuevo2) {
       const { data: fb } = await sb.from('proveedor_catalogo_vinos')
-        .select('id, nombre, bodega, tipo, region, anada, precio_pvp_botella, precio_pvp_copa, coste_neto, proveedor')
+        .select(CAT_SELECT)
         .eq('activo', true).limit(20)
       catNuevo2 = (fb || []).find(c => !yaUsado1.has(c.id)) || null
     }
@@ -558,10 +648,16 @@ async function main() {
     console.log(`\n  fuera:  "${vinoFuera.nombre}" tipo=${vinoFuera.tipo} margen=${m !== null ? m + '%' : 'sin precio'} (menor de carta)`)
   }
   console.log(`  actual: ${vinosActual.length} vinos (TODOS los activos excepto fuera)`)
-  console.log(`  nuevos: ${catListNuevos.length} del catálogo`)
-  if (catNuevo1) console.log(`    nuevo1: "${catNuevo1.nombre}" tipo=${catNuevo1.tipo} (mismo estilo que fuera)`)
-  if (catNuevo2) console.log(`    nuevo2: "${catNuevo2.nombre}" tipo=${catNuevo2.tipo} (cubre hueco: ${tipoHueco2||'—'})`)
-  if (catListNuevos.length < 2) console.log('  [WARN] catálogo devolvió < 2 vinos — revisa datos de proveedor_catalogo_vinos')
+  console.log(`  nuevos: ${catListNuevos.length} del catálogo (columnas: pvp_recomendado, coste_estimado, zona)`)
+  if (catNuevo1) {
+    const pn1 = catProveedorNombre(catNuevo1)
+    console.log(`    nuevo1: "${catNuevo1.nombre}" (${catNuevo1.bodega||'—'}) tipo=${catNuevo1.tipo} proveedor=${pn1} coste=${catCoste(catNuevo1)}€ PVP=${catPvp(catNuevo1)}€ margen=${catMargen(catNuevo1) ?? '—'}% → mismo estilo que fuera`)
+  }
+  if (catNuevo2) {
+    const pn2 = catProveedorNombre(catNuevo2)
+    console.log(`    nuevo2: "${catNuevo2.nombre}" (${catNuevo2.bodega||'—'}) tipo=${catNuevo2.tipo} proveedor=${pn2} coste=${catCoste(catNuevo2)}€ PVP=${catPvp(catNuevo2)}€ margen=${catMargen(catNuevo2) ?? '—'}% → hueco: ${tipoHueco2||'—'}`)
+  }
+  if (catListNuevos.length < 2) console.log('  [WARN] catálogo devolvió < 2 vinos — revisa datos en proveedor_catalogo_vinos (columnas: tipo, activo, pvp_recomendado, coste_estimado)')
 
   if (!DRY_RUN) {
     const { error: delErr } = await sb.from('carta_simulacion').delete().eq('restaurante_id', DEMO_ID)
@@ -597,8 +693,8 @@ async function main() {
         nombre: c.nombre || 'Vino nuevo', bodega: c.bodega || null,
         tipo: c.tipo || null, region: c.region || null,
         anada: c.anada ? String(c.anada) : null,
-        precio_botella: c.precio_pvp_botella || null, precio_copa: c.precio_pvp_copa || null,
-        coste_compra: c.coste_neto || null, estado: 'nuevo',
+        precio_botella: catPvp(c) || null, precio_copa: c.pvp_copa || null,
+        coste_compra: catCoste(c) || null, estado: 'nuevo',
         sustituye_a: i === 0 ? fueraId : null,
       })
       if (ne) throw new Error(`S3 nuevo ${c.id}: ${ne.message}`)
@@ -716,33 +812,51 @@ async function main() {
   console.log('\n[S5] opportunity_snapshot — derivado de huecos reales de carta...')
   console.log(`\n  Huecos funcionales detectados: ${huecosFuncionales.length ? huecosFuncionales.join(', ') : 'ninguno relevante'}`)
 
-  const COPAS_SEMANA = 15
   const MARGEN_COPA  = 3.0
-  const adopcionPct  = 0.50
 
-  // Fórmula 1: dulce para postres — 4 postres en carta sin vino para ellos
+  // Fórmula 1: dulce para postres
+  // Base: 4 copas/día (1 por postre × 4 postres) × 5 días × 3€ × 52 × 50% adopción
+  // = 4 × 5 × 3 × 52 × 0.5 = 1560€/año  (< 2% de 118k ventas anuales estimadas → creíble)
   const impDulce = !tieneDulce
-    ? Math.round(5 * 2 * 5 * MARGEN_COPA * 52 * adopcionPct)   // 5 copas/serv × 2 serv × 5 días × 3€ × 52s × 50%
-    : Math.round(2 * 2 * 5 * MARGEN_COPA * 52 * adopcionPct)   // ampliar si hay 1 solo
+    ? Math.round(4 * 5 * MARGEN_COPA * 52 * 0.50)   // 1560€
+    : Math.round(2 * 5 * MARGEN_COPA * 52 * 0.40)   // 624€ si ampliar
 
   // Fórmula 2: margen bajo — potencial de subida de PVP
+  // +10% en PVP × rotación estimada 2 uds/semana × 52 semanas (conservador)
   const imp2Vinos = vinosBajoMargen.slice(0, 5)
   const imp2 = imp2Vinos.length > 0
-    ? Math.round(imp2Vinos.reduce((s, v) => s + Number(v.precio_botella) * 0.10 * 24, 0))
-    : 520
+    ? Math.round(imp2Vinos.reduce((s, v) => s + Number(v.precio_botella) * 0.10 * 2 * 52 * 0.5, 0))
+    : 480
 
-  // Fórmula 3: capital inmovilizado (Sep)
+  // Fórmula 3: capital inmovilizado — SOLO si hay referencias inmovilizadas
   const impCapital = Math.round(totalInmovilizadosLastSnap * 4 * 7.5)
 
-  // Fórmula 4: blanco con cuerpo para arroces (4 arroces × 2 botellas/servicio × ...)
+  // Fórmula 4: blanco con cuerpo para arroces
+  // 4 arroces × 1 botella/día en arroces × 8€ margen × 52 × 40% adopción
+  // = 1 × 5 × 8 × 52 × 0.40 = 832€/año (< 1% de 118k → creíble)
   const impBlancoArroces = !tieneBlancoConCuerpo
-    ? Math.round(2 * 2 * 5 * 8 * 52 * adopcionPct)   // 2 botellas × 2 serv × 5 días × 8€ margen × 52s × 50%
-    : Math.round(1 * 2 * 5 * 8 * 52 * adopcionPct)
+    ? Math.round(1 * 5 * 8 * 52 * 0.40)   // 832€
+    : Math.round(1 * 3 * 8 * 52 * 0.30)   // 374€ si optimizar
 
-  // Fórmula 5: diversificación proveedor (3% mejora sobre coste)
+  // Fórmula 5: diversificación proveedor (ahorro 3% en negociación)
   const impProveedor = provPrincPct > 40
-    ? Math.round(imp2Vinos.reduce((s, v) => s + Number(v.precio_botella) * 0.03 * 12, 0) || 800)
-    : 600
+    ? Math.round(imp2Vinos.reduce((s, v) => s + Number(v.coste_compra || 0) * 0.03 * 24, 0) || 650)
+    : 500
+
+  // Ítem 3 solo se incluye si hay referencias inmovilizadas
+  const items3Capital = totalInmovilizadosLastSnap > 0 ? [{
+    area: 'Gestión de stock',
+    titulo: `Liberar capital inmovilizado (${totalInmovilizadosLastSnap} refs en Sep)`,
+    detalle: `Snapshot de Sep 2026 detecta ${totalInmovilizadosLastSnap} referencias sin rotación en 60+ días. Capital bloqueado estimado: ${impCapital}€ a coste. Los vinos bajo mínimo requieren reposición urgente.`,
+    accion: 'Copa del día o menú degustación con vinos inmovilizados; reposición de bajo mínimo',
+    impacto_estimado: Math.max(impCapital, 300),
+    tipo_impacto: 'capital',
+    horizonte: 'medio_plazo',
+    dificultad: 'media',
+    confianza_pct: 72,
+    prioridad: 'media',
+    formula: `${totalInmovilizadosLastSnap} refs × 4 uds × 7.5€ coste = ${impCapital}€`,
+  }] : []
 
   const oppItems = [
     {
@@ -751,8 +865,8 @@ async function main() {
         ? 'Incorporar vino dulce (PX/Moscatel) — los 4 postres quedan sin maridaje'
         : 'Ampliar vinos dulces para maridaje de postres',
       detalle: !tieneDulce
-        ? `La carta tiene 4 postres (tarta, torrijas, tocino, piononos) y NINGÚN vino dulce. El motor de maridaje devuelve vacío para postre: todos los vinos secos quedan penalizados -80 pts. Un PX o Moscatel por copa (4.50€, margen ~70%) resuelve el hueco y activa la venta cruzada postre+copa.`
-        : `Existe vino dulce en carta pero la oferta es limitada. Ampliar a PX + Moscatel mejora la cobertura de postres.`,
+        ? `La carta tiene 4 postres y NINGÚN vino dulce. El motor penaliza -80 pts todos los vinos secos en contexto postre → devuelve vacío. Un PX o Moscatel por copa (4.50€, ~70% margen) activa la venta cruzada postre+copa.`
+        : `Existe vino dulce pero la oferta es limitada. Ampliar a PX + Moscatel mejora cobertura de postres.`,
       accion: 'Añadir Pedro Ximénez y/o Moscatel por copa — ver propuesta S6',
       impacto_estimado: impDulce,
       tipo_impacto: 'ventas',
@@ -760,41 +874,29 @@ async function main() {
       dificultad: 'baja',
       confianza_pct: 88,
       prioridad: 'alta',
-      formula: `5 copas/servicio × 2 servicios × 5 días × ${MARGEN_COPA}€ margen × 52 semanas × ${adopcionPct * 100}% adopción = ${impDulce}€/año`,
+      formula: `4 copas/día × 5 días × ${MARGEN_COPA}€ margen × 52 sem × 50% adopción = ${impDulce}€/año`,
     },
     {
       area: 'Precios',
       titulo: `Revisar PVP en ${vinosBajoMargen.length} vinos con margen < 60%`,
-      detalle: `${vinosBajoMargen.length} referencias tienen margen bruto < 60% (sin IVA). Los vinos con margen < 60% se muestran como "margen bajo" en la calidad de bodega y bajan calidadVinos. Ajuste de +10% en PVP recupera margen sin impacto visible al cliente.`,
-      accion: 'Revisar precios en /dashboard/vinos?filtro=pendientes e incrementar PVP un 10% en referencias identificadas',
+      detalle: `${vinosBajoMargen.length} referencias tienen margen bruto < 60% (sin IVA). Ajuste de +10% en PVP recupera margen sin impacto visible al cliente.`,
+      accion: 'Revisar precios en /dashboard/vinos?filtro=pendientes e incrementar PVP un 10%',
       impacto_estimado: imp2,
       tipo_impacto: 'margen',
       horizonte: 'accion_rapida',
       dificultad: 'baja',
       confianza_pct: 78,
       prioridad: 'alta',
-      formula: `${imp2Vinos.length} vinos con margen <60% × +10% PVP × 24 uds/año = ${imp2}€/año`,
+      formula: `${imp2Vinos.length} vinos <60% × +10% PVP × 2 uds/sem × 52 sem × 50% = ${imp2}€/año`,
     },
-    {
-      area: 'Gestión de stock',
-      titulo: `Liberar capital inmovilizado (${totalInmovilizadosLastSnap} refs en Sep)`,
-      detalle: `Snapshot de Sep 2026 detecta ${totalInmovilizadosLastSnap} referencias sin rotación en 60+ días. Capital bloqueado estimado: ${impCapital}€ a coste. Los 5 vinos bajo mínimo requieren reposición urgente.`,
-      accion: 'Copa del día o menú degustación con vinos inmovilizados; reposición inmediata de los 5 bajo mínimo',
-      impacto_estimado: Math.max(impCapital, 300),
-      tipo_impacto: 'capital',
-      horizonte: 'medio_plazo',
-      dificultad: 'media',
-      confianza_pct: 72,
-      prioridad: 'media',
-      formula: `${totalInmovilizadosLastSnap} refs inmovilizadas × 4 uds estimadas × 7.5€ coste medio = ${impCapital}€`,
-    },
+    ...items3Capital,
     {
       area: 'Carta de vinos',
       titulo: !tieneBlancoConCuerpo
         ? 'Añadir blanco con cuerpo (Chardonnay/Godello barrica) para arroces'
         : 'Optimizar blanco con cuerpo en carta para arroces',
       detalle: !tieneBlancoConCuerpo
-        ? `La carta tiene 4 arroces (caldoso, bogavante, negro, fideuá) que piden blanco con cuerpo y maloláctica. Los blancos atlánticos actuales (albariño) son más ligeros; un Chardonnay en barrica o Godello con crianza sube el ticket y el margen por botella.`
+        ? `La carta tiene 4 arroces que piden blanco con cuerpo y maloláctica. Los albariños son más ligeros; un Chardonnay en barrica o Godello con crianza sube ticket y margen por botella.`
         : `Existe blanco con cuerpo; optimizar precio y rotación para maximizar el ticket en arroces.`,
       accion: 'Incorporar Chardonnay fermentado en barrica o Godello D.O. Valdeorras — ver propuesta S6',
       impacto_estimado: impBlancoArroces,
@@ -803,22 +905,22 @@ async function main() {
       dificultad: 'baja',
       confianza_pct: 75,
       prioridad: 'media',
-      formula: `2 botellas/servicio × 2 servicios × 5 días × 8€ margen × 52 semanas × ${adopcionPct * 100}% adopción = ${impBlancoArroces}€/año`,
+      formula: `1 botella/día × 5 días × 8€ margen × 52 sem × 40% adopción = ${impBlancoArroces}€/año`,
     },
     {
       area: 'Proveedores',
       titulo: `Diversificar — ${provPrinc || 'principal'} al ${provPrincPct}% de la bodega`,
       detalle: provPrincPct > 40
-        ? `${provPrinc} aporta el ${provPrincPct}% de las referencias. Alta concentración en un solo distribuidor limita la capacidad de negociación de rappels y aumenta el riesgo de desabastecimiento.`
-        : `Distribución de proveedores razonablemente diversificada. Optimizar condiciones con el proveedor principal.`,
-      accion: `Negociar rappel anual con ${provPrinc || 'proveedor principal'}; explorar 2 referencias alternativas para los vinos de mayor rotación`,
+        ? `${provPrinc} aporta el ${provPrincPct}% de las referencias. Alta concentración limita la negociación de rappels y aumenta el riesgo de desabastecimiento.`
+        : `Distribución de proveedores razonablemente diversificada. Optimizar condiciones con el principal.`,
+      accion: `Negociar rappel anual con ${provPrinc || 'proveedor principal'}; explorar 2 referencias alternativas`,
       impacto_estimado: impProveedor,
       tipo_impacto: 'riesgo',
       horizonte: 'estrategico',
       dificultad: 'alta',
       confianza_pct: 60,
       prioridad: provPrincPct > 40 ? 'media' : 'baja',
-      formula: `3% mejora negociación × ${imp2Vinos.length} refs × 12 meses = ${impProveedor}€/año estimado`,
+      formula: `3% ahorro negociación × coste anual referencias ≈ ${impProveedor}€/año estimado`,
     },
   ]
 
@@ -867,102 +969,134 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════════════════
   console.log('\n[S6] consultor_propuestas (huecos reales, sin repetir carta actual)...')
 
-  const [catDulceRow, catBlancoConCuerpoRow, catGenComplejoRow, catTintoBajoMargenRow, catEspumosoRow] = await Promise.all([
+  await fetchProveedorNombres()
+  const [catDulceRow, catBlancoConCuerpoRow, catGenComplejoRow, catEspumosoRow] = await Promise.all([
     buscarEnCatalogoSinRepetir('dulce'),
-    buscarEnCatalogoSinRepetir('blanco', 'barrica') || buscarEnCatalogoSinRepetir('blanco', 'crianza'),
-    buscarEnCatalogoSinRepetir('generoso', 'oloroso') || buscarEnCatalogoSinRepetir('generoso', 'amontillado'),
-    vinosBajoMargen[0]?.catalogo_vino_id
-      ? (async () => { const { data } = await sb.from('proveedor_catalogo_vinos').select('id, nombre, bodega, tipo, zona_dop').eq('id', vinosBajoMargen[0].catalogo_vino_id).maybeSingle(); return data })()
-      : buscarEnCatalogoSinRepetir(vinosBajoMargen[0]?.tipo || 'tinto'),
+    (async () => {
+      const r = await buscarEnCatalogoSinRepetir('blanco', 'barrica')
+      return r || await buscarEnCatalogoSinRepetir('blanco', 'crianza')
+    })(),
+    (async () => {
+      const r = await buscarEnCatalogoSinRepetir('generoso', 'oloroso')
+      return r || await buscarEnCatalogoSinRepetir('generoso', 'amontillado')
+    })(),
     buscarEnCatalogoSinRepetir('espumoso'),
   ])
+  const catTintoBajoMargenRow = vinosBajoMargen[0]?.catalogo_vino_id
+    ? await (async () => { const { data } = await sb.from('proveedor_catalogo_vinos').select(CAT_SELECT).eq('id', vinosBajoMargen[0].catalogo_vino_id).maybeSingle(); return data })()
+    : await buscarEnCatalogoSinRepetir(vinosBajoMargen[0]?.tipo || 'tinto')
+
+  // Helper para mostrar el vino real del catálogo
+  function mostrarCatRow(label, row) {
+    if (!row) { console.log(`    ${label}: — sin match en catálogo`); return }
+    const pn  = catProveedorNombre(row)
+    const pvp = catPvp(row)
+    const cst = catCoste(row)
+    const mg  = catMargen(row)
+    console.log(`    ${label}: "${row.nombre}" (${row.bodega||'—'}) · zona: ${catZona(row)} · proveedor: ${pn}`)
+    console.log(`       coste: ${cst}€ · PVP sugerido: ${pvp}€ · margen: ${mg !== null ? mg + '%' : '—'}`)
+  }
 
   const propuestasRows = [
     {
       restaurante_id: DEMO_ID,
       titulo: catDulceRow
-        ? `Incorporar ${catDulceRow.nombre} para maridaje de los 4 postres`
+        ? `Incorporar ${catDulceRow.nombre} (${catDulceRow.bodega||'—'}) — PX/dulce para postres`
         : 'Incorporar Pedro Ximénez para maridaje de postres',
       vino:               catDulceRow?.nombre || 'Pedro Ximénez Gran Barquero',
       tipo:               'Dulce',
-      zona:               catDulceRow?.zona_dop || 'Montilla-Moriles D.O.',
-      proveedor_sugerido: catDulceRow?.proveedor || 'Consultar catálogo',
-      coste_estimado: 6.50, precio_recomendado: 4.50, margen_objetivo: 70,
+      zona:               catZona(catDulceRow) || 'Montilla-Moriles D.O.',
+      proveedor_sugerido: catProveedorNombre(catDulceRow),
+      coste_estimado:     catCoste(catDulceRow) || 6.50,
+      precio_recomendado: catPvp(catDulceRow) || 4.50,
+      margen_objetivo:    catMargen(catDulceRow) ?? 70,
       plato_objetivo: 'Tarta de queso al horno, torrijas, tocino de cielo, piononos',
-      motivo: `La carta tiene 4 postres y ningún vino dulce. El motor devuelve vacío para contexto "postre" cuando no hay dulce/PX. Margen por copa (~70%) superior a cualquier blanco. Diferenciador de servicio para los arroces y la tabla ibérica.`,
+      motivo: `La carta tiene 4 postres y ningún vino dulce. El motor penaliza -80 pts todos los vinos secos en contexto postre → devuelve vacío. Un PX por copa (~70% margen) activa venta cruzada postre+copa. Prioridad 1 del onboarding de maridaje.`,
       prioridad: 'alta', estado: 'propuesta',
       catalogo_vino_id: catDulceRow?.id || null,
     },
     {
       restaurante_id: DEMO_ID,
       titulo: catBlancoConCuerpoRow
-        ? `Añadir ${catBlancoConCuerpoRow.nombre} — blanco con cuerpo para arroces`
+        ? `Añadir ${catBlancoConCuerpoRow.nombre} (${catBlancoConCuerpoRow.bodega||'—'}) — blanco con cuerpo para arroces`
         : 'Añadir Chardonnay fermentado en barrica para arroces',
       vino:               catBlancoConCuerpoRow?.nombre || 'Chardonnay fermentado en barrica',
       tipo:               'Blanco',
-      zona:               catBlancoConCuerpoRow?.zona_dop || 'D.O. Penedès / D.O. Conca de Barberà',
-      proveedor_sugerido: catBlancoConCuerpoRow?.proveedor || 'Consultar catálogo',
-      coste_estimado: 7.80, precio_recomendado: 28, margen_objetivo: 65,
+      zona:               catZona(catBlancoConCuerpoRow) || 'D.O. Penedès',
+      proveedor_sugerido: catProveedorNombre(catBlancoConCuerpoRow),
+      coste_estimado:     catCoste(catBlancoConCuerpoRow) || 7.80,
+      precio_recomendado: catPvp(catBlancoConCuerpoRow) || 28,
+      margen_objetivo:    catMargen(catBlancoConCuerpoRow) ?? 65,
       plato_objetivo: 'Arroz caldoso de mariscos, arroz meloso de bogavante, fideuá marinera',
-      motivo: `Los 4 arroces piden volumen en boca y maloláctica que los blancos atlánticos actuales (albariño) no aportan. El Chardonnay en barrica tiene mantequilla+nata que contrarresta el azafrán y el sofrito. Sube el ticket de arroz de 22€ a 26€ con recomendación activa.`,
+      motivo: `Los 4 arroces piden maloláctica y volumen en boca que el albariño no aporta. Chardonnay en barrica: mantequilla+nata contrarresta azafrán y sofrito. Sube ticket de arroz de 22€ a 26€ con recomendación activa.`,
       prioridad: 'alta', estado: 'interesa',
       catalogo_vino_id: catBlancoConCuerpoRow?.id || null,
     },
     {
       restaurante_id: DEMO_ID,
       titulo: catGenComplejoRow
-        ? `Incorporar ${catGenComplejoRow.nombre} para estofados y carnes al Jerez`
+        ? `Incorporar ${catGenComplejoRow.nombre} (${catGenComplejoRow.bodega||'—'}) — generoso complejo para estofados`
         : 'Incorporar oloroso/amontillado para carrillera y estofados',
-      vino:               catGenComplejoRow?.nombre || 'Oloroso Seco Tío Pepe en Rama',
+      vino:               catGenComplejoRow?.nombre || 'Oloroso Seco VOS Sacristía',
       tipo:               'Generoso',
-      zona:               catGenComplejoRow?.zona_dop || 'Jerez D.O.',
-      proveedor_sugerido: catGenComplejoRow?.proveedor || 'Consultar catálogo',
-      coste_estimado: 5.50, precio_recomendado: 5.50, margen_objetivo: 68,
+      zona:               catZona(catGenComplejoRow) || 'Jerez D.O.',
+      proveedor_sugerido: catProveedorNombre(catGenComplejoRow),
+      coste_estimado:     catCoste(catGenComplejoRow) || 5.50,
+      precio_recomendado: catPvp(catGenComplejoRow) || 5.50,
+      margen_objetivo:    catMargen(catGenComplejoRow) ?? 68,
       plato_objetivo: 'Carrillera de ternera al Jerez, costilla lacada, rabo de toro estofado',
-      motivo: `La carta tiene finos y manzanillas pero no generoso complejo. El oloroso/amontillado conecta con los platos cocinados al Jerez (carrillera) y con umami intenso. Chartier lo sitúa en la misma familia aromática que las carnes braseadas con reducción.`,
+      motivo: `La carta tiene finos y manzanillas pero no generoso complejo. El oloroso/amontillado conecta con los platos cocinados al Jerez (carrillera) y con umami intenso. Chartier: misma familia aromática que carnes braseadas con reducción.`,
       prioridad: 'media', estado: 'propuesta',
       catalogo_vino_id: catGenComplejoRow?.id || null,
     },
     {
       restaurante_id: DEMO_ID,
       titulo: vinosBajoMargen[0]
-        ? `Sustituir "${(vinosBajoMargen[0].nombre||'').slice(0, 30)}" (margen ${Math.round(vinosBajoMargen[0]._margen)}%) por alternativa`
-        : 'Revisar tintos con margen < 60%',
+        ? `Sustituir "${(vinosBajoMargen[0].nombre||'').slice(0, 28)}" (margen ${Math.round(vinosBajoMargen[0]._margen)}%) por alternativa de catálogo`
+        : 'Revisar vinos con margen < 60%',
       vino:               catTintoBajoMargenRow?.nombre || (vinosBajoMargen[0]?.tipo ? `Alternativa de ${vinosBajoMargen[0].tipo}` : 'Alternativa de tinto'),
       tipo:               catTintoBajoMargenRow?.tipo || vinosBajoMargen[0]?.tipo || 'Tinto',
-      zona:               catTintoBajoMargenRow?.zona_dop || '—',
-      proveedor_sugerido: catTintoBajoMargenRow?.proveedor || 'Consultar catálogo',
-      coste_estimado: Number(vinosBajoMargen[0]?.coste_compra) || 6,
-      precio_recomendado: Number(vinosBajoMargen[0]?.precio_botella) ? Math.round(Number(vinosBajoMargen[0].precio_botella) * 1.1) : 22,
-      margen_objetivo: 65,
+      zona:               catZona(catTintoBajoMargenRow) || '—',
+      proveedor_sugerido: catProveedorNombre(catTintoBajoMargenRow),
+      coste_estimado:     catCoste(catTintoBajoMargenRow) || Number(vinosBajoMargen[0]?.coste_compra) || 6,
+      precio_recomendado: catPvp(catTintoBajoMargenRow) || (Number(vinosBajoMargen[0]?.precio_botella) ? Math.round(Number(vinosBajoMargen[0].precio_botella) * 1.1) : 22),
+      margen_objetivo:    catMargen(catTintoBajoMargenRow) ?? 65,
       plato_objetivo: 'Presa ibérica a la brasa, secreto ibérico, rabo de toro estofado',
-      motivo: `El vino de menor margen (${Math.round(vinosBajoMargen[0]?._margen || 0)}%) puede sustituirse por una alternativa de mismo tipo con mejor estructura de coste. Impacto inmediato en margen sin cambio visible en carta.`,
+      motivo: `El vino de menor margen (${Math.round(vinosBajoMargen[0]?._margen || 0)}%) se sustituye por alternativa del mismo tipo con mejor estructura de coste. Impacto inmediato en margen sin cambio visible en carta.`,
       prioridad: 'media', estado: 'interesa',
       catalogo_vino_id: catTintoBajoMargenRow?.id || null,
     },
     {
       restaurante_id: DEMO_ID,
       titulo: catEspumosoRow
-        ? `Añadir ${catEspumosoRow.nombre} — aperitivo de bienvenida`
+        ? `Añadir ${catEspumosoRow.nombre} (${catEspumosoRow.bodega||'—'}) — espumoso diferencial para aperitivo`
         : 'Añadir espumoso rosado para aperitivo diferencial',
       vino:               catEspumosoRow?.nombre || 'Cava Rosado Brut Nature',
       tipo:               'Espumoso',
-      zona:               catEspumosoRow?.zona_dop || 'Cava D.O.',
-      proveedor_sugerido: catEspumosoRow?.proveedor || 'Consultar catálogo',
-      coste_estimado: 6.20, precio_recomendado: 24, margen_objetivo: 64,
+      zona:               catZona(catEspumosoRow) || 'Cava D.O.',
+      proveedor_sugerido: catProveedorNombre(catEspumosoRow),
+      coste_estimado:     catCoste(catEspumosoRow) || 6.20,
+      precio_recomendado: catPvp(catEspumosoRow) || 24,
+      margen_objetivo:    catMargen(catEspumosoRow) ?? 64,
       plato_objetivo: 'Entrantes fríos, boquerones, ceviche, tortillitas',
-      motivo: `La carta ya tiene espumosos blancos. Un rosado de cava diferencia el aperitivo y atrae a clientes que buscan color en copa. Armoniza con entrantes fríos y frutos del mar. Estado descartada: revisar tras incorporar el dulce que es prioridad 1.`,
+      motivo: `La carta ya tiene espumosos blancos. Un espumoso rosado diferencia el aperitivo y armoniza con entrantes fríos y frutos del mar. Estado descartada: revisar tras incorporar el dulce (prioridad 1).`,
       prioridad: 'baja', estado: 'descartada',
       catalogo_vino_id: catEspumosoRow?.id || null,
     },
   ]
 
   console.log('\n  prioridad  estado       cat_id?  titulo')
-  console.log('  ' + '─'.repeat(74))
+  console.log('  ' + '─'.repeat(80))
   for (const p of propuestasRows) {
-    const catTag = p.catalogo_vino_id ? '✓ real' : '—'
-    console.log(`  ${p.prioridad.padEnd(9)}  ${p.estado.padEnd(11)}  ${catTag.padEnd(7)}  ${p.titulo.slice(0, 46)}`)
+    const catTag = p.catalogo_vino_id ? '✓ real' : '— sin cat'
+    console.log(`  ${p.prioridad.padEnd(9)}  ${p.estado.padEnd(11)}  ${catTag.padEnd(9)}  ${p.titulo.slice(0, 50)}`)
   }
+  console.log('\n  Vinos reales del catálogo encontrados:')
+  mostrarCatRow('dulce (p1)     ', catDulceRow)
+  mostrarCatRow('blanco cuerpo (p2)', catBlancoConCuerpoRow)
+  mostrarCatRow('gen. complejo (p3)', catGenComplejoRow)
+  mostrarCatRow('bajo margen (p4)', catTintoBajoMargenRow)
+  mostrarCatRow('espumoso (p5)  ', catEspumosoRow)
   console.log('\n  NOTA: catalogo_vino_id se trackea localmente; NO se inserta en BD.')
   console.log('  Para guardarlo: ALTER TABLE consultor_propuestas ADD COLUMN catalogo_vino_id uuid REFERENCES proveedor_catalogo_vinos(id);')
 
@@ -1052,18 +1186,18 @@ async function main() {
       { plato: 'Tortillitas de camarones, masa frita crujiente en aceite de oliva',    ctx: 'fritura' },
       // pescado marisco: 'gamba' → contexto=pescado; taninosMax=2
       { plato: 'Gambas blancas cocidas al vapor con sal marina de la bahía',           ctx: 'pescado' },
-      // pescado marisco: 'marisco' → pescado; 'plancha' = brasa → tinto justificado pero blanco sigue mejor
-      { plato: 'Langostinos a la plancha, marisco del día con sal gruesa y limón',     ctx: 'pescado' },
+      // pescado marisco: 'marisco' → pescado; sin plancha para no activar brasa
+      { plato: 'Langostinos salteados, marisco del día con sal gruesa y limón',         ctx: 'pescado' },
       // pescado marisco: 'almejas' → pescado
       { plato: 'Almejas a la marinera con salsa de manzanilla, ajo y perejil',        ctx: 'pescado' },
-      // pescado: 'marisco' → pescado (ostras no en lista, se añade marisco)
-      { plato: 'Ostras frescas, marisco vivo, servidas con hielo pilé y limón',        ctx: 'pescado' },
+      // pescado: 'marisco' → pescado; mineral/yodado activan mineralidad
+      { plato: 'Ostras frescas, marisco vivo, mineral y yodado, servidas con hielo',   ctx: 'pescado' },
       // fritura: 'frito' → contexto=fritura
       { plato: 'Pescaíto frito de la bahía: boquerones, calamares fritos y gambas',   ctx: 'fritura' },
-      // pescado: 'atun' → pescado
-      { plato: 'Atún encebollado al estilo gaditano con tomate y laurel',             ctx: 'pescado' },
-      // pescado: 'pescado' + 'rape' → pescado
-      { plato: 'Urta a la roteña al horno, pescado entero con tomate y pimiento',     ctx: 'pescado' },
+      // pescado: 'atun' → pescado; 'guiso' activa umami → acidezMin=3
+      { plato: 'Atún encebollado al estilo gaditano, guiso con tomate y laurel',       ctx: 'pescado' },
+      // pescado: 'pescado' → pescado; 'sofrito' activa umami → acidezMin=3
+      { plato: 'Urta a la roteña al horno, pescado entero con sofrito de tomate',      ctx: 'pescado' },
       // pescado: 'marisco' en sepia/arroz negro → pescado; tinto penalizado -85
       { plato: 'Arroz negro meloso con sepia y marisco, ali-oli de ajo asado',        ctx: 'pescado' },
       // pescado: 'marisco' → pescado
@@ -1083,28 +1217,96 @@ async function main() {
     if (vinosParaMotor.length === 0) {
       console.log('  Sin vinos — omitido.')
     } else {
-      const nomPad = (item) => {
-        if (!item?.vino) return '—'.padEnd(22)
-        const pvp = Number(item.vino.precio_botella) || 0
-        const mg  = pvp && item.vino.coste_compra ? margenPct(pvp, Number(item.vino.coste_compra)) : null
-        return ((item.vino.nombre||'?').slice(0, 14).padEnd(15) + (pvp ? pvp + '€' : '—').padStart(4) + (mg !== null ? ' ' + mg + '%' : '')).slice(0, 22).padEnd(22)
-      }
-      console.log('\n  plato                                  ctx       top-1                   top-2                   top-3')
-      console.log('  ' + '─'.repeat(112))
-      let allPass = true
+      // ── Ejecutar motor para todos los platos ─────────────────────────────
+      const resultados = new Map()
       for (const { plato, ctx } of PLATOS_DEMO) {
         let res
         try { res = analizarMaridaje(plato, vinosParaMotor) } catch { res = { recomendados: [] } }
-        const recs = (res.recomendados || []).slice(0, 3)
-        const top1Tipo = recs[0]?.vino?.tipo || ''
-        // Validación rápida de criterios 2a-2e
-        let flag = ''
-        if ((ctx === 'fritura' || ctx === 'pescado') && top1Tipo === 'tinto') { flag = ' ← ⚠ tinto arriba'; allPass = false }
-        if (ctx === 'postre' && recs.length > 0 && !['dulce'].includes(top1Tipo)) { flag = ' ← ⚠ no dulce'; allPass = false }
-        if (ctx === 'jamón' && top1Tipo === 'tinto') { flag = ' ← ⚠ tinto en jamón'; allPass = false }
-        console.log(`  ${plato.slice(0, 38).padEnd(38)} ${ctx.padEnd(9)} ${nomPad(recs[0])}  ${nomPad(recs[1])}  ${nomPad(recs[2])}${flag}`)
+        resultados.set(plato, { ctx, recs: (res.recomendados || []).slice(0, 3) })
       }
-      console.log(allPass ? '\n  ✓ Todos los criterios 2(a-e) superados.' : '\n  [WARN] Algunos criterios fallaron — revisar perfiles de vinos o consultas.')
+
+      // ── Tabla extendida: motivo, PVP y margen ─────────────────────────────
+      const fmtRec = (item) => {
+        if (!item?.vino) return '— (vacío)'.padEnd(40)
+        const pvp   = Number(item.vino.precio_botella) || 0
+        const coste = Number(item.vino.coste_compra) || 0
+        const mg    = pvp && coste ? margenPct(pvp, coste) : null
+        const nombre  = (item.vino.nombre || '?').slice(0, 13)
+        const motivo  = (item.motivo || '').slice(0, 16)
+        const precios = `${pvp ? pvp + '€' : '—'}${mg !== null ? '/' + mg + '%' : ''}`
+        return `${nombre.padEnd(14)}${precios.padEnd(9)}[${motivo}]`.slice(0, 40).padEnd(40)
+      }
+      console.log('\n  plato                                  ctx       top-1 (nombre PVP/mg [motivo])           top-2                                     top-3')
+      console.log('  ' + '─'.repeat(150))
+      for (const { plato, ctx } of PLATOS_DEMO) {
+        const { recs } = resultados.get(plato)
+        console.log(`  ${plato.slice(0, 38).padEnd(38)} ${ctx.padEnd(9)} ${fmtRec(recs[0])}  ${fmtRec(recs[1])}  ${fmtRec(recs[2])}`)
+      }
+
+      // ── Aserciones (i)–(iv) ───────────────────────────────────────────────
+      const asercionFails = []
+
+      // (i) presa vs rabo: top-3 conjuntos distintos
+      const presaEntry = PLATOS_DEMO.find(p => p.plato.includes('Presa'))
+      const raboEntry  = PLATOS_DEMO.find(p => p.plato.includes('Rabo'))
+      const presaRecs  = presaEntry ? (resultados.get(presaEntry.plato)?.recs || []) : []
+      const raboRecs   = raboEntry  ? (resultados.get(raboEntry.plato)?.recs  || []) : []
+      const presaIds   = presaRecs.map(r => r?.vino?.id).filter(Boolean)
+      const raboIds    = raboRecs.map(r => r?.vino?.id).filter(Boolean)
+      const intersect  = presaIds.filter(id => raboIds.includes(id))
+      const pasaI = presaIds.length > 0 && raboIds.length > 0 && intersect.length < Math.min(presaIds.length, raboIds.length)
+      if (!pasaI) asercionFails.push(`(i) presa y rabo comparten todo el top-3 (intersección ${intersect.length}/${Math.max(presaIds.length, raboIds.length)})`)
+
+      // (ii) ≥5 sets top-3 distintos entre los 8 platos pescado/frito
+      const platosMarisco = PLATOS_DEMO.filter(p => p.ctx === 'pescado' || p.ctx === 'fritura')
+      const setsMarisco   = new Set(
+        platosMarisco.map(p => (resultados.get(p.plato)?.recs || []).map(r => r?.vino?.id || '').join('|'))
+      )
+      const pasaII = setsMarisco.size >= 5
+      if (!pasaII) asercionFails.push(`(ii) solo ${setsMarisco.size}/≥5 sets top-3 distintos entre ${platosMarisco.length} platos marisco/frito`)
+
+      // (iii) ningún tinto en top-3 de arroces y marisco puro (no carne, no fritura)
+      const platosNoTinto = PLATOS_DEMO.filter(p =>
+        p.plato.toLowerCase().includes('arroz') ||
+        p.plato.startsWith('Gambas') || p.plato.startsWith('Langostinos') ||
+        p.plato.startsWith('Almejas') || p.plato.startsWith('Ostras')
+      )
+      const tintoEnNoTinto = []
+      for (const p of platosNoTinto) {
+        const recs = resultados.get(p.plato)?.recs || []
+        for (const r of recs) {
+          if ((r?.vino?.tipo || '').toLowerCase() === 'tinto')
+            tintoEnNoTinto.push(`${p.plato.slice(0, 28)} → ${r.vino.nombre} (pos ${recs.indexOf(r) + 1})`)
+        }
+      }
+      const pasaIII = tintoEnNoTinto.length === 0
+      if (!pasaIII) asercionFails.push(`(iii) tinto en arroces/marisco:\n      ${tintoEnNoTinto.join('\n      ')}`)
+
+      // (iv) postres: solo dulce/generoso en top-3
+      const platosPostre = PLATOS_DEMO.filter(p => p.ctx === 'postre')
+      const noAptoPostre = []
+      for (const p of platosPostre) {
+        const recs = resultados.get(p.plato)?.recs || []
+        for (const r of recs) {
+          const tipo = (r?.vino?.tipo || '').toLowerCase()
+          if (!['dulce', 'generoso'].includes(tipo))
+            noAptoPostre.push(`${p.plato.slice(0, 28)} → ${r.vino.nombre} tipo=${tipo}`)
+        }
+      }
+      const pasaIV = noAptoPostre.length === 0 || platosPostre.every(p => (resultados.get(p.plato)?.recs || []).length === 0)
+      if (!pasaIV) asercionFails.push(`(iv) vinos no dulce/oxidativo en postres:\n      ${noAptoPostre.join('\n      ')}`)
+
+      console.log('\n  ── Aserciones ──')
+      console.log(`  (i)   presa vs rabo top-3 distintos:      ${pasaI   ? '✓' : '✗'}  intersección=${intersect.length}`)
+      console.log(`  (ii)  ≥5 sets distintos en marisco/frito: ${pasaII  ? '✓' : '✗'}  sets=${setsMarisco.size}/${platosMarisco.length}`)
+      console.log(`  (iii) sin tinto en arroces/marisco:       ${pasaIII ? '✓' : '✗'}${!pasaIII ? `  (${tintoEnNoTinto.length} casos)` : ''}`)
+      console.log(`  (iv)  postres solo dulce/oxidativo:       ${pasaIV  ? '✓' : '✗'}${!pasaIV  ? `  (${noAptoPostre.length} casos)` : ''}`)
+      if (asercionFails.length === 0) {
+        console.log('\n  ✓ Todas las aserciones (i–iv) superadas.')
+      } else {
+        console.log(`\n  [WARN] ${asercionFails.length} aserción(es) fallaron:`)
+        for (const f of asercionFails) console.log(`    ✗ ${f}`)
+      }
       console.log('\n  Nota motor: comercial pesa max ±3 pts (capped) para que el margen no voltee la compatibilidad.')
     }
   } catch (err) {
