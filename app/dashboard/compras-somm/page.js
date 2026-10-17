@@ -292,7 +292,7 @@ export default function ComprasSomm() {
   async function cargarRegistros(restId) {
     const { data } = await supabase
       .from('libro_compras')
-      .select('id, proveedor, periodo, facturas, importe_total')
+      .select('id, proveedor, periodo, facturas')
       .eq('restaurante_id', restId)
       .order('periodo', { ascending: false })
     setRegistros(data || [])
