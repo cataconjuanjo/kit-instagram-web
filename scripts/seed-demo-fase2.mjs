@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 /**
- * seed-demo-fase2.mjs — Fase 2 (v3)
+ * seed-demo-fase2.mjs — Fase 2 (v5.1)
  *
  * Uso:
  *   node --env-file=.env.local scripts/seed-demo-fase2.mjs
  *   node --env-file=.env.local scripts/seed-demo-fase2.mjs --confirm --nombre "Casa Marisma"
+ *   node scripts/seed-demo-fase2.mjs --selftest          # sin BD ni .env
  *
  * Requisitos: SEED_DEMO_ID, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ * (--selftest no requiere ninguna variable de entorno)
  */
 
 import { fileURLToPath } from 'url'
@@ -16,18 +18,19 @@ import { createClient } from '@supabase/supabase-js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // ── flags ─────────────────────────────────────────────────────────────────────
-const DRY_RUN    = !process.argv.includes('--confirm')
-const NOMBRE_IDX = process.argv.indexOf('--nombre')
-const NOMBRE     = NOMBRE_IDX !== -1 ? process.argv[NOMBRE_IDX + 1] : null
+const DRY_RUN     = !process.argv.includes('--confirm')
+const NOMBRE_IDX  = process.argv.indexOf('--nombre')
+const NOMBRE      = NOMBRE_IDX !== -1 ? process.argv[NOMBRE_IDX + 1] : null
+const IS_SELFTEST = process.argv.includes('--selftest') || process.env.SEED_SELFTEST === '1'
 
-if (!DRY_RUN && !NOMBRE) {
+if (!IS_SELFTEST && !DRY_RUN && !NOMBRE) {
   console.error('ERROR: --confirm requiere --nombre "<nombre del restaurante DEMO>"')
   process.exit(1)
 }
 
 // ── DEMO_ID + denylist ────────────────────────────────────────────────────────
 const DEMO_ID = process.env.SEED_DEMO_ID
-if (!DEMO_ID) { console.error('ERROR: SEED_DEMO_ID no está definido'); process.exit(1) }
+if (!IS_SELFTEST && !DEMO_ID) { console.error('ERROR: SEED_DEMO_ID no está definido'); process.exit(1) }
 
 const UUID_DENYLIST = new Set([
   'a1000000-0000-4000-8000-000000000000',
@@ -35,7 +38,7 @@ const UUID_DENYLIST = new Set([
   'c3000000-0000-4000-8000-000000000000',
   'e5000000-0000-4000-8000-000000000000',
 ])
-if (UUID_DENYLIST.has(DEMO_ID)) {
+if (!IS_SELFTEST && UUID_DENYLIST.has(DEMO_ID)) {
   console.error(`ERROR: SEED_DEMO_ID ${DEMO_ID} está en la denylist`)
   process.exit(1)
 }
@@ -109,7 +112,7 @@ function generarNotasCata(tipo, uva, region, nombre) {
 
   // ── Espumoso ─────────────────────────────────────────────────────────────────
   if (t === 'espumoso') {
-    return 'Espumoso con crianza sobre lías. Burbuja fina y persistente, alta acidez vibrante. Fruta verde de manzana y pera, fruta cítrica de lima. Notas de brioche y pan tostado por la autolisis. Seco y tenso.'
+    return 'Espumoso de método tradicional sobre lías. Burbuja fina y persistente, alta acidez vibrante. Fruta verde de manzana y pera, fruta cítrica de lima. Notas de brioche y levaduras frescas por la autolisis. Seco y tenso.'
   }
 
   // ── Rosado ───────────────────────────────────────────────────────────────────
@@ -204,7 +207,7 @@ function frasePerfilPorTipo(tipo, uva, region, nombre) {
     if (/moscatel|muscat/.test(all)) return 'Dulce y con cuerpo. Fruta tropical de lichi y mango. Flores blancas y fruta confitada.'
     return 'Dulce y con cuerpo. Notas de fruta seca, fruta cocida, toffee y caramelo.'
   }
-  if (t === 'espumoso') return 'Alta acidez vibrante. Notas de brioche y pan tostado por la autolisis sobre lías.'
+  if (t === 'espumoso') return 'Alta acidez vibrante. Notas de brioche y levaduras por la autolisis sobre lías.'
   if (t === 'rosado') return 'Alta acidez limpia. Fruta roja de fresa y frambuesa.'
   if (t === 'naranja') return 'Alta acidez con tanino firme y marcado. Mineral y salino. Notas de almendra.'
   if (t === 'tinto') {
@@ -250,6 +253,8 @@ function validarTagsVino(tipo, tags, nombre) {
     errs.push(`(iv) tags insuficientes (${sig.length}/≥2 sig) → ${nombre}`)
   if (t === 'tinto' && has('cuerpo_ligero') && TINTOS_ESTRUCTURADOS_RE.some(re => re.test(nombre)))
     errs.push(`(v) [tinto estructurado] con cuerpo_ligero → ${nombre}`)
+  if (t === 'espumoso' && has('roble') && !/barrica/.test((nombre || '').toLowerCase()))
+    errs.push(`(vi) [espumoso] con roble sin crianza en barrica → ${nombre}`)
   if (has('tanino_bajo') && has('tanino_medio_alto'))
     errs.push(`tanino_bajo + tanino_medio_alto → ${nombre}`)
   if (has('alta_acidez') && has('baja_acidez'))
@@ -290,7 +295,7 @@ const NOMBRE_OVERRIDES = [
   // Espumosos
   { match: /laherte/i,
     tags: ['seco', 'alta_acidez', 'lias_autolisis', 'fruta_citrica', 'fruta_verde', 'mineral_salino'],
-    nota: 'Champagne de viticultor sobre lías prolongadas. Alta acidez vibrante y burbuja fina persistente. Fruta verde de manzana y pera, fruta cítrica de lima y limón. Mineral y salino. Notas de brioche y pan tostado por la autolisis. Seco, brut nature sin dosaje.',
+    nota: 'Champagne de viticultor sobre lías prolongadas. Alta acidez vibrante y burbuja fina persistente. Fruta verde de manzana y pera, fruta cítrica de lima y limón. Mineral y salino. Notas de brioche y levaduras frescas por la autolisis. Seco, brut nature sin dosaje.',
     aviso: null },
   // Blancos con zona conflictiva (region=Priorat → inferirPerfilesVino asignaría tanino desde uvaRegionNombre)
   { match: /pedra de guix/i,
@@ -469,8 +474,124 @@ const PLATOS = [
 ]
 // total: 5+7+9+4+4+3+4 = 36
 
+// ── Cargar inferirPerfilesVino a nivel de módulo (accesible por resolverNotaYTags) ──
+let inferirPerfilesVino
+try {
+  inferirPerfilesVino = (await import('../app/lib/wineProfileTags.js')).inferirPerfilesVino
+  if (!IS_SELFTEST) console.log('[OK] wineProfileTags cargado — inferirPerfilesVino disponible')
+} catch (err) {
+  console.error(`ERROR: no se puede cargar wineProfileTags.js: ${err.message}\nAbortando.`)
+  process.exit(2)
+}
+
+// ── selftest S2 ───────────────────────────────────────────────────────────────
+async function runSelftest() {
+  console.log('\n── SELFTEST S2 (sin BD) ────────────────────────────────────────')
+  const casos = [
+    // overrides (10)
+    { nombre: 'Laherte Umbrage',                  tipo: 'espumoso', uva: 'pinot noir',       region: 'Champagne',       notas_cata: null },
+    { nombre: 'Terroir Al Límit Pedra de Guix',   tipo: 'blanco',   uva: 'garnacha blanca',  region: 'Priorat',         notas_cata: null },
+    { nombre: 'Parada de Atauta 2021',             tipo: 'tinto',    uva: 'tempranillo',      region: 'Ribera del Duero',notas_cata: null },
+    { nombre: 'Poderi Colla Nebbiolo 2019',        tipo: 'tinto',    uva: 'nebbiolo',         region: 'Piemonte',        notas_cata: null },
+    { nombre: 'Grand Rousseau 2020',               tipo: 'tinto',    uva: 'Sauvignon Blanc',  region: 'Rhône',           notas_cata: null },
+    { nombre: 'Salvajes de Gredos 2022',           tipo: 'tinto',    uva: 'garnacha',         region: 'Priorat',         notas_cata: null },
+    { nombre: 'Pintia 2018',                       tipo: 'tinto',    uva: 'tinta de toro',    region: 'Toro',            notas_cata: null },
+    { nombre: 'Alto los Zorros 2020',              tipo: 'tinto',    uva: 'tempranillo',      region: 'Ribera del Duero',notas_cata: null },
+    { nombre: 'Camins del Priorat 2021',           tipo: 'tinto',    uva: 'garnacha',         region: 'Priorat',         notas_cata: null },
+    { nombre: 'San Lorenzo 2019',                  tipo: 'tinto',    uva: 'mencia',           region: 'Bierzo',          notas_cata: null },
+    // espumosos (3)
+    { nombre: 'Cava genérico',                     tipo: 'espumoso', uva: 'macabeo',          region: 'Penedès',         notas_cata: null },
+    { nombre: 'Espumoso barrica Chardonnay',       tipo: 'espumoso', uva: 'chardonnay',       region: 'Borgoña',         notas_cata: 'Champagne con crianza en barrica de roble. Notas de vainilla y brioche. Alta acidez.' },
+    { nombre: 'Cava catalogo sedoso',              tipo: 'espumoso', uva: 'xarello',          region: 'Penedès',         notas_cata: 'Espumoso sedoso y fresco. Alta acidez.' },
+    // blancos (6)
+    { nombre: 'Albariño Rías Baixas',              tipo: 'blanco',   uva: 'albariño',         region: 'Rías Baixas',     notas_cata: null },
+    { nombre: 'Chardonnay con barrica',            tipo: 'blanco',   uva: 'chardonnay',       region: 'Rioja',           notas_cata: 'Chardonnay con crianza en barrica. Con cuerpo y mantequilloso.' },
+    { nombre: 'Verdejo Rueda joven',               tipo: 'blanco',   uva: 'verdejo',          region: 'Rueda',           notas_cata: null },
+    { nombre: 'Priorat blanco genérico',           tipo: 'blanco',   uva: 'garnacha blanca',  region: 'Priorat',         notas_cata: null },
+    { nombre: 'Blanco Priorat nota sedosa',        tipo: 'blanco',   uva: 'garnacha blanca',  region: 'Priorat',         notas_cata: 'Sedoso y frutal. Blanco de carácter.' },
+    { nombre: 'Gewurztraminer Alsacia',            tipo: 'blanco',   uva: 'gewurztraminer',   region: 'Alsacia',         notas_cata: null },
+    // rosados (3)
+    { nombre: 'Rosado Navarra joven',              tipo: 'rosado',   uva: 'garnacha',         region: 'Navarra',         notas_cata: null },
+    { nombre: 'Rosado nota sedosa',                tipo: 'rosado',   uva: 'grenache',         region: 'Provence',        notas_cata: 'Rosado con notas de fresa y frambuesa. Sedoso y fresco.' },
+    { nombre: 'Rosado Rioja',                      tipo: 'rosado',   uva: 'tempranillo',      region: 'Rioja',           notas_cata: null },
+    // dulces / generosos (3)
+    { nombre: 'Pedro Ximénez Colosía',             tipo: 'dulce',    uva: 'pedro ximenez',    region: 'Jerez',           notas_cata: null },
+    { nombre: 'Moscatel Málaga',                   tipo: 'dulce',    uva: 'moscatel',         region: 'Málaga',          notas_cata: null },
+    { nombre: 'Amontillado Barbadillo',            tipo: 'generoso', uva: 'palomino',         region: 'Jerez',           notas_cata: null },
+    // naranja (1)
+    { nombre: 'Naranja maceración pieles',         tipo: 'naranja',  uva: 'airén',            region: 'La Mancha',       notas_cata: null },
+    // tintos variados (25)
+    { nombre: 'Rioja Crianza genérico',            tipo: 'tinto',    uva: 'tempranillo',      region: 'Rioja',           notas_cata: null },
+    { nombre: 'Ribera del Duero Reserva',          tipo: 'tinto',    uva: 'tempranillo',      region: 'Ribera del Duero',notas_cata: null },
+    { nombre: 'Toro 2020 genérico',                tipo: 'tinto',    uva: 'tinta de toro',    region: 'Toro',            notas_cata: null },
+    { nombre: 'Garnacha Gredos joven',             tipo: 'tinto',    uva: 'garnacha',         region: 'Gredos',          notas_cata: null },
+    { nombre: 'Mencía joven Bierzo',               tipo: 'tinto',    uva: 'mencía',           region: 'Bierzo',          notas_cata: null },
+    { nombre: 'Tempranillo Castilla joven',        tipo: 'tinto',    uva: 'tempranillo',      region: 'Castilla',        notas_cata: null },
+    { nombre: 'Merlot Penedès genérico',           tipo: 'tinto',    uva: 'merlot',           region: 'Penedès',         notas_cata: null },
+    { nombre: 'Syrah Jumilla',                     tipo: 'tinto',    uva: 'syrah',            region: 'Jumilla',         notas_cata: null },
+    { nombre: 'Cabernet Sauvignon Ribera',         tipo: 'tinto',    uva: 'cabernet sauvignon',region:'Ribera del Duero',notas_cata: null },
+    { nombre: 'Pinot Noir Borgoña',                tipo: 'tinto',    uva: 'pinot noir',       region: 'Borgoña',         notas_cata: null },
+    { nombre: 'Priorat tinto garnacha',            tipo: 'tinto',    uva: 'garnacha',         region: 'Priorat',         notas_cata: null },
+    { nombre: 'Cariñena genérico',                 tipo: 'tinto',    uva: 'cariñena',         region: 'Cariñena',        notas_cata: null },
+    { nombre: 'Navarra tinto tempranillo',         tipo: 'tinto',    uva: 'tempranillo',      region: 'Navarra',         notas_cata: null },
+    { nombre: 'Bobal Valencia',                    tipo: 'tinto',    uva: 'bobal',            region: 'Valencia',        notas_cata: null },
+    { nombre: 'Tinto uva desconocida',             tipo: 'tinto',    uva: '',                 region: 'Castilla',        notas_cata: null },
+    { nombre: 'Tinto cat tanino firme',            tipo: 'tinto',    uva: 'tempranillo',      region: 'Rioja',           notas_cata: 'Tanino firme y marcado, con cuerpo robusto. Fruta negra. Roble y vainilla.' },
+    { nombre: 'Tinto cat cuerpo ligero',           tipo: 'tinto',    uva: 'garnacha',         region: 'Gredos',          notas_cata: 'Fruta roja fresca. Ligero y fresco. Tanino amable y bajo.' },
+    { nombre: 'Nebbiolo genérico',                 tipo: 'tinto',    uva: 'nebbiolo',         region: 'Piemonte',        notas_cata: null },
+    { nombre: 'Monastrell Jumilla',                tipo: 'tinto',    uva: 'monastrell',       region: 'Jumilla',         notas_cata: null },
+    { nombre: 'Graciano Rioja',                    tipo: 'tinto',    uva: 'graciano',         region: 'Rioja',           notas_cata: null },
+    { nombre: 'Tinto zona engañosa Salvajes',      tipo: 'tinto',    uva: 'garnacha',         region: 'Priorat',         notas_cata: 'Fruta roja fresca. Ligero y perfil fresco. Sin madera. Seco.' },
+    { nombre: 'Tinto cat con_cuerpo Ribera',       tipo: 'tinto',    uva: 'tempranillo',      region: 'Ribera del Duero',notas_cata: 'Con cuerpo robusto. Fruta negra y tanino firme y marcado.' },
+    { nombre: 'Tinto cat alta_acidez Mencía',      tipo: 'tinto',    uva: 'mencía',           region: 'Bierzo',          notas_cata: 'Alta acidez vibrante. Fruta roja. Mineral y salino.' },
+    { nombre: 'Tinto cat evolucion Rioja Gran Reserva', tipo: 'tinto', uva: 'tempranillo',   region: 'Rioja',           notas_cata: 'Larga crianza en barrica y botella. Tanino amable y bajo, con cuerpo. Notas de cuero, tabaco y fruta seca. Evolucion en botella.' },
+    { nombre: 'Blanco sin uva ni region',          tipo: 'blanco',   uva: '',                 region: '',                notas_cata: null },
+  ]
+
+  let passed = 0
+  let failed = 0
+  const errLines = []
+  const rows = []
+
+  for (const v of casos) {
+    const { nota, tags, origen } = resolverNotaYTags(v, v.notas_cata || null)
+    const errs = validarTagsVino(v.tipo, tags, v.nombre)
+    const ok = errs.length === 0
+    if (ok) passed++; else failed++
+    rows.push({ nombre: v.nombre, tipo: v.tipo, origen, tags: tags.join(' '), errs })
+    if (!ok) errLines.push(...errs)
+  }
+
+  // tabla completa
+  const W = 44
+  console.log(`\n  ${'nombre'.padEnd(W)} ${'tipo'.padEnd(9)} ${'origen'.padEnd(13)} tags`)
+  console.log('  ' + '─'.repeat(110))
+  for (const r of rows) {
+    const flag = r.errs.length ? '  ✗' : ''
+    console.log(`  ${r.nombre.padEnd(W)} ${r.tipo.padEnd(9)} ${r.origen.padEnd(13)} ${r.tags}${flag}`)
+    for (const e of r.errs) console.log(`      ERROR: ${e}`)
+  }
+
+  // resumen por origen
+  const byOrigen = {}
+  for (const r of rows) byOrigen[r.origen] = (byOrigen[r.origen] || 0) + 1
+  console.log('\n  Origen:')
+  for (const [k, n] of Object.entries(byOrigen)) console.log(`    ${k}: ${n}`)
+
+  console.log(`\n  ${passed}/${casos.length} checks pasados`)
+  if (failed > 0) {
+    console.log(`  FALLOS (${failed}):`)
+    for (const e of errLines) console.log(`    ✗ ${e}`)
+    process.exit(1)
+  } else {
+    console.log('  ✓ Todos los casos superados.')
+    process.exit(0)
+  }
+}
+
 // ── main ──────────────────────────────────────────────────────────────────────
 async function main() {
+  if (IS_SELFTEST) { await runSelftest(); return }
   const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
   const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!SUPA_URL || !SUPA_KEY) {
@@ -480,16 +601,6 @@ async function main() {
   const sb = createClient(SUPA_URL, SUPA_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
-
-  // ── Cargar inferirPerfilesVino (puro ESM, sin deps de browser) ─────────────
-  let inferirPerfilesVino = () => []
-  try {
-    const wpt = await import('../app/lib/wineProfileTags.js')
-    inferirPerfilesVino = wpt.inferirPerfilesVino
-    console.log('[OK] wineProfileTags cargado — inferirPerfilesVino disponible')
-  } catch (err) {
-    console.warn(`[WARN] wineProfileTags no disponible (${err.message}) — perfiles_inferidos: []`)
-  }
 
   // ── Verificación nombre + denylist ────────────────────────────────────────
   const { data: rest } = await sb.from('restaurantes').select('nombre').eq('id', DEMO_ID).maybeSingle()
