@@ -38,49 +38,63 @@ function pct(v, dec = 1) {
   return `${val > 0 ? '+' : ''}${val} %`
 }
 
-// ── Gráfico de barras simple (SVG) ───────────────────────────────────────────
+// ── Gráfico de barras (div/flex, sin SVG) ────────────────────────────────────
 
 function BarChart({ datos, titulo, colorFn }) {
   const MAX_BARRAS = 24
-  const visibles = datos.slice(-MAX_BARRAS)
-  const maxVal = Math.max(...visibles.map(d => Math.abs(d.valor)), 1)
-  const HEIGHT = 120
-  const BAR_W = 18
-  const GAP = 4
-  const VB_W = Math.max(visibles.length * (BAR_W + GAP), 1)
-  const VB_H = HEIGHT + 36
+  const visibles    = datos.slice(-MAX_BARRAS)
+  const CHART_H     = 190
+
+  const maxPositive = Math.max(...visibles.map(d => d.valor), 0)
+  const maxNegative = Math.max(...visibles.map(d => -d.valor), 0)
+  const totalRange  = Math.max(maxPositive + maxNegative, 1)
+  const posH = maxPositive > 0 ? Math.round((maxPositive / totalRange) * CHART_H) : 0
+  const negH = CHART_H - posH
+
+  if (!visibles.length) return null
 
   return (
     <div style={{ marginBottom: 24 }}>
+      <style>{`.bc-col{flex:1;display:flex;flex-direction:column;min-width:0;cursor:default}@media(max-width:599px){.bc-col:nth-child(even){display:none}}`}</style>
       <p style={{ fontSize: 12, fontWeight: 600, color: '#666', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{titulo}</p>
-      <svg width="100%" height={VB_H} viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+      <div style={{ display: 'flex', width: '100%' }}>
         {visibles.map((d, i) => {
-          const h = Math.max(2, (Math.abs(d.valor) / maxVal) * HEIGHT)
-          const x = i * (BAR_W + GAP)
-          const y = d.valor >= 0 ? HEIGHT - h : HEIGHT
-          const color = colorFn ? colorFn(d) : '#2a2723'
-          const [mesLabel, yearLabel] = d.label.split(' ')
+          const color    = colorFn ? colorFn(d) : '#2a2723'
+          const parts    = d.label.split(' ')
+          const mesLabel = parts[0]
+          const yearLabel = parts[1]
           const showYear = i === 0 || mesLabel === 'Ene'
+          const posBarH  = d.valor > 0 ? Math.max(2, Math.round((d.valor / totalRange) * CHART_H)) : 0
+          const negBarH  = d.valor < 0 ? Math.max(2, Math.round((-d.valor / totalRange) * CHART_H)) : 0
+          const tooltip  = `${d.label}: ${eur(d.valor)}${d.yoy != null ? ` (${pct(d.yoy)})` : ''}`
+
           return (
-            <g key={i}>
-              <rect x={x} y={y} width={BAR_W} height={h} fill={color} rx={2} opacity={0.85}>
-                <title>{d.label}: {eur(d.valor)}{d.yoy != null ? ` (${pct(d.yoy)})` : ''}</title>
-              </rect>
-              <text x={x + BAR_W / 2} y={HEIGHT + 14} textAnchor="middle" fontSize={9} fill="#999">{mesLabel}</text>
-              {showYear && yearLabel && (
-                <text x={x + BAR_W / 2} y={HEIGHT + 26} textAnchor="middle" fontSize={8} fill="#bbb">{yearLabel}</text>
+            <div key={i} className="bc-col" title={tooltip}>
+              {posH > 0 && (
+                <div style={{ height: posH, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                  {posBarH > 0 && (
+                    <div style={{ height: posBarH, background: color, borderRadius: '2px 2px 0 0', opacity: 0.85, margin: '0 1px' }} />
+                  )}
+                </div>
               )}
-              {d.yoy != null && (
-                <text x={x + BAR_W / 2} y={y - 3} textAnchor="middle" fontSize={8} fill={d.yoy >= 0 ? '#27ae60' : '#e74c3c'}>
-                  {d.yoy > 0 ? '+' : ''}{Math.round(d.yoy)}%
-                </text>
+              <div style={{ height: 1, background: '#e8e3d8', flexShrink: 0 }} />
+              {negH > 0 && (
+                <div style={{ height: negH, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+                  {negBarH > 0 && (
+                    <div style={{ height: negBarH, background: color, borderRadius: '0 0 2px 2px', opacity: 0.85, margin: '0 1px' }} />
+                  )}
+                </div>
               )}
-            </g>
+              <div style={{ textAlign: 'center', lineHeight: 1.1, marginTop: 4, overflow: 'hidden' }}>
+                <span style={{ fontSize: 9, color: '#999', display: 'block' }}>{mesLabel}</span>
+                {showYear && yearLabel && (
+                  <span style={{ fontSize: 8, color: '#bbb', display: 'block' }}>{yearLabel}</span>
+                )}
+              </div>
+            </div>
           )
         })}
-        {/* Línea base */}
-        <line x1={0} y1={HEIGHT} x2={VB_W} y2={HEIGHT} stroke="#e8e3d8" strokeWidth={1} />
-      </svg>
+      </div>
     </div>
   )
 }
