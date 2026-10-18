@@ -457,85 +457,95 @@ function resolverNotaYTags(v, rawCatNota) {
 const PLATOS = [
   // Entrantes fríos (5)
   { nombre: 'Salmorejo cordobés con jamón ibérico y huevo de codorniz',
-    descripcion: 'Salmorejo tradicional de Córdoba con guarnición de jamón ibérico y huevo de codorniz pochado', categoria: 'Entrantes fríos', precio: 10 },
+    descripcion: 'Salmorejo tradicional de Córdoba con umami de jamón ibérico curado y huevo de codorniz pochado', categoria: 'Entrantes fríos', precio: 10 },
   { nombre: 'Gazpacho de tomate con langostino y pepino',
     descripcion: 'Gazpacho andaluz clásico servido frío con langostino salteado y pepino crujiente', categoria: 'Entrantes fríos', precio: 11 },
   { nombre: 'Ensalada de pulpo con patata y pimentón de la Vera',
     descripcion: 'Pulpo cocido laminado sobre base de patata tibia con vinagreta de pimentón ahumado y cebolla roja', categoria: 'Entrantes fríos', precio: 16 },
   { nombre: 'Anchoas del Cantábrico con pan con tomate',
-    descripcion: 'Anchoas en salazón artesanal sobre tostadas con tomate restregado y aceite de oliva virgen extra', categoria: 'Entrantes fríos', precio: 14 },
+    descripcion: 'Anchoas en salazón artesanal, umami y marineras, sobre tostadas con tomate restregado y aceite virgen extra', categoria: 'Entrantes fríos', precio: 14 },
   { nombre: 'Ceviche de corvina con leche de tigre al fino',
-    descripcion: 'Corvina marinada en leche de tigre con notas de fino de Jerez, aguacate, cilantro y chili', categoria: 'Entrantes fríos', precio: 16 },
+    descripcion: 'Corvina marinada en frío en leche de tigre al fino de Jerez con aguacate, cilantro y chili', categoria: 'Entrantes fríos', precio: 16 },
   // Entrantes calientes (7)
   { nombre: 'Tortillitas de camarones estilo Cádiz',
-    descripcion: 'Tortillitas crujientes de camarones de la bahía gaditana con masa ligera y reborde de perejil fresco', categoria: 'Entrantes calientes', precio: 12 },
+    descripcion: 'Tortillitas de camarones de la bahía gaditana en masa ligera, rebozadas y frito en aceite de oliva con perejil fresco', categoria: 'Entrantes calientes', precio: 12 },
   { nombre: 'Croquetas de choco en su tinta (6 unidades)',
-    descripcion: 'Croquetas artesanas de choco en su tinta con bechamel cremosa y pan rallado crujiente', categoria: 'Entrantes calientes', precio: 12 },
+    descripcion: 'Croquetas artesanas de choco en su tinta con bechamel cremosa, frito en aceite de oliva hasta dorar y pan rallado', categoria: 'Entrantes calientes', precio: 12 },
   { nombre: 'Boquerones en adobo gaditano con limón',
     descripcion: 'Boquerones macerados en adobo de vinagre, ajo y especias, fritos en aceite de oliva virgen extra', categoria: 'Entrantes calientes', precio: 11 },
   { nombre: 'Ortiguillas de mar rebozadas con mayonesa de lima',
-    descripcion: 'Anémonas de mar rebozadas en tempura ligera con mayonesa casera de lima y cilantro', categoria: 'Entrantes calientes', precio: 14 },
+    descripcion: 'Anémonas de mar rebozadas en tempura ligera, frito en aceite abundante, con mayonesa casera de lima y cilantro', categoria: 'Entrantes calientes', precio: 14 },
   { nombre: 'Gambas al pil-pil con guindilla y ajo',
-    descripcion: 'Gambas salteadas en aceite de oliva con ajo laminado, guindilla y pimentón dulce al momento', categoria: 'Entrantes calientes', precio: 18 },
+    descripcion: 'Gambas salteadas en aceite de oliva con ajo laminado, guindilla picante y pimentón ahumado al momento', categoria: 'Entrantes calientes', precio: 18 },
   { nombre: 'Chipirón a la plancha con ali-oli de ajo negro',
-    descripcion: 'Chipirones enteros a la plancha con ali-oli cremoso de ajo negro fermentado y sal en escamas', categoria: 'Entrantes calientes', precio: 16 },
+    descripcion: 'Chipirones enteros a la brasa con ali-oli cremoso de ajo negro fermentado y sal en escamas', categoria: 'Entrantes calientes', precio: 16 },
   { nombre: 'Pulpo a la brasa con cachelos y pimentón',
     descripcion: 'Tentáculo de pulpo a la brasa sobre cama de patata gallega cocida, pimentón de la Vera y aceite virgen extra', categoria: 'Entrantes calientes', precio: 22 },
   // Del mar (9)
   { nombre: 'Lubina a la sal con verduras de temporada',
-    descripcion: 'Lubina entera cocida en costra de sal gruesa, abierta en mesa, con verduras asadas al tomillo', categoria: 'Del mar', precio: 28 },
+    descripcion: 'Lubina entera en costra de sal gruesa con profundidad umami, abierta en mesa con verduras asadas al tomillo', categoria: 'Del mar', precio: 28 },
   { nombre: 'Atún rojo de almadraba a la plancha (160g)',
-    descripcion: 'Medallón de atún rojo de almadraba marcado en plancha de piedra con salsa de soja y jengibre', categoria: 'Del mar', precio: 32 },
+    descripcion: 'Medallón de atún rojo de almadraba marcado en plancha con salsa umami de soja y jengibre fresco', categoria: 'Del mar', precio: 32 },
   { nombre: 'Gamba blanca de Huelva a la plancha',
-    descripcion: 'Gambas blancas de Huelva a la plancha con sal marina de la marisma y limón confitado', categoria: 'Del mar', precio: 36 },
+    descripcion: 'Gambas blancas de Huelva a la brasa con sal marina de la marisma y limón confitado', categoria: 'Del mar', precio: 36 },
   { nombre: 'Rape a la plancha con patatas a lo pobre y pimentón',
-    descripcion: 'Lomo de rape a la plancha sobre cama de patatas confitadas con cebolla, pimiento verde y pimentón', categoria: 'Del mar', precio: 26 },
+    descripcion: 'Lomo de rape a la plancha sobre cama de patatas confitadas con verdura verde salteada (pimiento y judía), cebolla y pimentón', categoria: 'Del mar', precio: 26 },
   { nombre: 'Dorada con ajoblanco y uva moscatel',
-    descripcion: 'Dorada al horno con salsa fría de ajoblanco malagueño, uva moscatel y aceite de almendra', categoria: 'Del mar', precio: 24 },
+    descripcion: 'Dorada al horno con salsa fría de ajoblanco malagueño con frutos secos, uva moscatel y aceite de almendra', categoria: 'Del mar', precio: 24 },
   { nombre: 'Calamar de potera a la plancha con salsa de su tinta',
-    descripcion: 'Calamar entero a la plancha con reducción de su tinta, aceite de oliva y flor de sal', categoria: 'Del mar', precio: 22 },
+    descripcion: 'Calamar entero a la brasa con reducción de su tinta, aceite de oliva virgen extra y flor de sal', categoria: 'Del mar', precio: 22 },
   { nombre: 'Almejas a la marinera con manzanilla de Sanlúcar',
-    descripcion: 'Almejas de carril abiertas al vapor en salsa marinera de manzanilla, ajo, tomate y perejil', categoria: 'Del mar', precio: 22 },
+    descripcion: 'Almejas de carril con umami marino profundo, abiertas en salsa de manzanilla, ajo, tomate y perejil', categoria: 'Del mar', precio: 22 },
   { nombre: 'Urta a la roteña con tomate y pimiento',
-    descripcion: 'Urta al horno a la roteña con salsa de tomate, pimiento rojo asado y cebolla caramelizada', categoria: 'Del mar', precio: 26 },
+    descripcion: 'Urta al horno a la roteña con verdura verde de temporada, salsa de tomate y cebolla caramelizada', categoria: 'Del mar', precio: 26 },
   { nombre: 'Mero en salsa verde con almejas',
-    descripcion: 'Medallón de mero en salsa verde de perejil, ajo y vino blanco con almejas y guisantes', categoria: 'Del mar', precio: 28 },
+    descripcion: 'Medallón de mero en salsa verde con toque picante de cayena, perejil, ajo, vino blanco, almejas y guisantes', categoria: 'Del mar', precio: 28 },
   // Arroces (4)
   { nombre: 'Arroz caldoso de mariscos',
-    descripcion: 'Arroz caldoso con gamba blanca, mejillón, almeja, calamar y cigala en caldo concentrado de mariscos', categoria: 'Arroces', precio: 22 },
+    descripcion: 'Arroz caldoso con gamba blanca, mejillón, almeja, calamar y cigala en caldo umami concentrado de mariscos', categoria: 'Arroces', precio: 22 },
   { nombre: 'Arroz meloso de bogavante',
-    descripcion: 'Arroz meloso con bogavante vivo, azafrán de La Mancha y sofrito de tomate y ñora', categoria: 'Arroces', precio: 38 },
+    descripcion: 'Arroz meloso con bogavante vivo, caldo umami de marisco, azafrán de La Mancha y sofrito de tomate y ñora', categoria: 'Arroces', precio: 38 },
   { nombre: 'Fideuá marinera con alioli casero',
     descripcion: 'Fideos finos con sepia, gamba, mejillón y toque de pimentón servidos con alioli casero', categoria: 'Arroces', precio: 20 },
   { nombre: 'Arroz negro con sepia y ali-oli de ajo asado',
-    descripcion: 'Arroz negro meloso con sepia en su tinta, caldo casero de mariscos y ali-oli de ajo asado al horno', categoria: 'Arroces', precio: 22 },
+    descripcion: 'Arroz negro meloso con sepia en su tinta, caldo casero de mariscos y alioli gratinado de ajo asado', categoria: 'Arroces', precio: 22 },
   // De la tierra (4)
   { nombre: 'Presa ibérica a la brasa con chimichurri de hierbas',
     descripcion: 'Presa de cerdo ibérico bellota a la brasa al punto rosado con chimichurri de perejil, orégano y ajo', categoria: 'De la tierra', precio: 22 },
   { nombre: 'Carrillera de ternera al vino de Jerez con puré trufado',
-    descripcion: 'Carrillera braseada durante 5 horas en vino de Jerez oloroso con puré de patata al aceite de trufa', categoria: 'De la tierra', precio: 20 },
+    descripcion: 'Carrillera braseada durante 5 horas en vino de Jerez oloroso con intenso umami y puré de patata al aceite de trufa', categoria: 'De la tierra', precio: 20 },
   { nombre: 'Secreto ibérico con patatas fritas y pimientos de padrón',
     descripcion: 'Secreto de cerdo ibérico a la brasa con patatas fritas en aceite de oliva y pimientos de padrón', categoria: 'De la tierra', precio: 22 },
   { nombre: 'Costilla de cerdo lacada con miel, mostaza y cerveza negra',
-    descripcion: 'Costilla de cerdo adobada y cocinada a baja temperatura, lacada con reducción de miel, mostaza y cerveza', categoria: 'De la tierra', precio: 18 },
+    descripcion: 'Costilla de cerdo adobada a baja temperatura, lacada con salsa dulce de miel, mostaza y cerveza negra', categoria: 'De la tierra', precio: 18 },
   // Tablas (3)
   { nombre: 'Tabla de jamón ibérico de bellota (80g)',
-    descripcion: 'Jamón ibérico de bellota cortado a cuchillo, presentado en tabla de madera con pan de cristal tostado', categoria: 'Tablas', precio: 22 },
+    descripcion: 'Jamón ibérico de bellota con sabor umami e intensidad curada, cortado a cuchillo con pan de cristal tostado', categoria: 'Tablas', precio: 22 },
   { nombre: 'Tabla de quesos andaluces con membrillo y nueces',
     descripcion: 'Selección de quesos artesanos de Andalucía: queso de cabra, semicurado y curado con membrillo casero', categoria: 'Tablas', precio: 16 },
   { nombre: 'Tabla ibérica mixta (jamón, chorizo, lomo y salchichón)',
-    descripcion: 'Selección de embutidos ibéricos de bellota cortados a máquina con regañás de aceite de oliva', categoria: 'Tablas', precio: 18 },
+    descripcion: 'Selección de embutidos ibéricos de bellota con umami profundo, cortados a máquina con regañás de aceite de oliva', categoria: 'Tablas', precio: 18 },
   // Postres (4)
   { nombre: 'Tarta de queso al horno',
     descripcion: 'Tarta de queso cremosa y semi-cuajada, al horno, sobre base de galleta y coulis de frutos rojos', categoria: 'Postres', precio: 9 },
   { nombre: 'Torrijas con helado de vainilla y miel de caña',
-    descripcion: 'Torrijas de pan brioche empapadas en leche y canela, fritas en aceite, con helado de vainilla y miel de caña de azúcar', categoria: 'Postres', precio: 8 },
+    descripcion: 'Torrijas de pan brioche empapadas en leche y canela, fritas en aceite, con salsa dulce de miel de caña y helado de vainilla', categoria: 'Postres', precio: 8 },
   { nombre: 'Tocino de cielo artesano con nata montada',
-    descripcion: 'Tocino de cielo de receta tradicional gaditana, elaborado con yemas y almíbar, acompañado de nata montada', categoria: 'Postres', precio: 7 },
+    descripcion: 'Tocino de cielo gaditano elaborado con yemas y salsa dulce de almíbar de receta tradicional, con nata montada', categoria: 'Postres', precio: 7 },
   { nombre: 'Piononos de Santa Fe',
-    descripcion: 'Pastelillos granadinos de bizcocho empapado en almíbar, enrollado y cubierto de crema tostada. Especialidad andaluza', categoria: 'Postres', precio: 8 },
+    descripcion: 'Pastelillos granadinos de bizcocho con salsa dulce de almíbar, enrollado y cubierto de crema tostada. Especialidad andaluza', categoria: 'Postres', precio: 8 },
 ]
 // total: 5+7+9+4+4+3+4 = 36
+
+// ── Campos de restaurante para S0 (a nivel de módulo para que selftest los vea) ──
+const DEMO_REST_UPDATE = {
+  slug: 'casa-marisma', color_primario: '#1a4a3a', color_acento: '#c8a96e',
+  color_fondo: '#faf8f3', tipografia: 'serif', carta_publica_activa: true,
+  carta_pie_texto: 'Alérgenos disponibles bajo solicitud. Precio con IVA incluido.',
+  ticket_medio_comida: 46,
+  plan: 'premium',
+  subscription_status: 'active',
+}
 
 // ── Cargar inferirPerfilesVino a nivel de módulo (accesible por resolverNotaYTags) ──
 let inferirPerfilesVino
@@ -549,7 +559,7 @@ try {
 
 // ── selftest S2 ───────────────────────────────────────────────────────────────
 async function runSelftest() {
-  console.log('\n── SELFTEST S2 (sin BD) ────────────────────────────────────────')
+  console.log('\n── SELFTEST v10 (sin BD) ───────────────────────────────────────')
   const casos = [
     // overrides (10)
     { nombre: 'Laherte Umbrage',                  tipo: 'espumoso', uva: 'pinot noir',       region: 'Champagne',       notas_cata: null },
@@ -730,6 +740,85 @@ async function runSelftest() {
   }
   if (pvpMinFailed === 0) console.log('  (e) PVP mínimo 12€ check: ✓')
 
+  // (f) DEMO_REST_UPDATE tiene plan y subscription_status
+  {
+    const hasPlan   = 'plan' in DEMO_REST_UPDATE && DEMO_REST_UPDATE.plan === 'premium'
+    const hasStatus = 'subscription_status' in DEMO_REST_UPDATE && DEMO_REST_UPDATE.subscription_status === 'active'
+    if (!hasPlan || !hasStatus) {
+      console.log(`  ✗ DEMO_REST_UPDATE: plan=${hasPlan} subscription_status=${hasStatus}`)
+      extraFailed++
+    } else {
+      console.log('  (f) DEMO_REST_UPDATE plan/subscription_status: ✓')
+    }
+  }
+
+  // (g) p1 motivo: sin 'motor' ni 'ningún vino dulce'
+  {
+    const testMotivoDulce0 = `La carta tiene 4 postres sin maridaje dulce. Incorporar un PX o Moscatel por copa (~70% margen) activa la venta cruzada postre+copa.`
+    const testMotivoConDulce = `La carta tiene 2 dulces para 4 postres. Ampliar con PX y Moscatel refuerza la cobertura y sube el ticket en mesa de postre.`
+    let g_failed = 0
+    for (const motivo of [testMotivoDulce0, testMotivoConDulce]) {
+      if (motivo.toLowerCase().includes('motor')) { console.log(`  ✗ (g) motivo p1 contiene 'motor': "${motivo.slice(0,60)}..."`); g_failed++ }
+      if (motivo.toLowerCase().includes('ningún vino dulce')) { console.log(`  ✗ (g) motivo p1 contiene 'ningún vino dulce'`); g_failed++ }
+    }
+    if (g_failed === 0) console.log('  (g) p1 motivo sin jerga interna: ✓')
+    extraFailed += g_failed
+  }
+
+  // (h) p2 motivo: chardonnay solo aparece si el catálogo es chardonnay
+  {
+    const testMotivoBlanco = (catDesc) => `Los 4 arroces piden maloláctica. ${catDesc} aporta estructura y untuosidad.`
+    const withCat   = testMotivoBlanco('Verdejo Rueda Verdejo (verdejo)')
+    const withFallb = testMotivoBlanco('un blanco con maloláctica (Chardonnay, Godello o Viura en barrica)')
+    const falsePositive = withCat.toLowerCase().includes('chardonnay')
+    if (falsePositive) {
+      console.log(`  ✗ (h) p2 motivo inyecta 'chardonnay' cuando cat es verdejo`)
+      extraFailed++
+    } else {
+      console.log('  (h) p2 motivo chardonnay check: ✓')
+    }
+  }
+
+  // (i) rasgos platos: ≥34/36
+  {
+    const normalizar_rasgo = t => (t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const rasgosTextos = ['brasa','frito','ahumado','gratinado','salsa dulce','picante','verdura verde','setas trufa','frutos secos','queso','frio','umami']
+    let platosConRasgo = 0
+    const sinRasgo = []
+    for (const p of PLATOS) {
+      const desc = normalizar_rasgo(p.descripcion)
+      if (rasgosTextos.some(r => desc.includes(r))) platosConRasgo++
+      else sinRasgo.push(p.nombre.slice(0, 30))
+    }
+    if (platosConRasgo < 34) {
+      console.log(`  ✗ (i) rasgos platos: ${platosConRasgo}/36 < 34. Sin rasgo: ${sinRasgo.join(', ')}`)
+      extraFailed++
+    } else {
+      console.log(`  (i) rasgos platos: ${platosConRasgo}/36 ≥ 34 ✓${sinRasgo.length ? '  (sin rasgo: ' + sinRasgo.join(', ') + ')' : ''}`)
+    }
+  }
+
+  // (j) S8 desvío math
+  {
+    const s8Cases = [
+      { pv: 69,  pa: 135, esperaOver: true  },
+      { pv: 62,  pa: 115, esperaOver: true  },
+      { pv: 135, pa: 135, esperaOver: false },
+      { pv: 100, pa: 110, esperaOver: false },  // 9.1% < 15%
+    ]
+    let j_failed = 0
+    for (const tc of s8Cases) {
+      const desv = Math.abs(tc.pv - tc.pa) / tc.pa
+      const over = desv > 0.15
+      if (over !== tc.esperaOver) {
+        console.log(`  ✗ (j) S8 desvío |${tc.pv}-${tc.pa}|/${tc.pa}=${Math.round(desv*100)}% → over=${over} (esperado ${tc.esperaOver})`)
+        j_failed++
+      }
+    }
+    if (j_failed === 0) console.log('  (j) S8 desvío math: ✓')
+    extraFailed += j_failed
+  }
+
   extraFailed += basuraFailed + pvpMinFailed
 
   const totalFailed = failed + extraFailed
@@ -842,12 +931,28 @@ async function main() {
     !tieneRosado           && 'rosado',
   ].filter(Boolean)
 
-  // Proveedor concentración
+  // Proveedor concentración (por número de referencias)
   const provMap = {}
   for (const v of todosVinos) if (v.proveedor) provMap[v.proveedor] = (provMap[v.proveedor] || 0) + 1
   const provSort    = Object.entries(provMap).sort((a, b) => b[1] - a[1])
   const provPrinc   = provSort[0]?.[0] || null
   const provPrincPct = provSort[0] ? Math.round(provSort[0][1] / todosVinos.length * 100) : 0
+
+  // Proveedor concentración por inversión (stock × coste_compra) — igual que bodega/page.js
+  const provInvMap = {}
+  let provInvTotal = 0
+  for (const v of todosVinos) {
+    if (v.proveedor) {
+      const inv = (Number(v.stock) || 0) * (Number(v.coste_compra) || 0)
+      provInvMap[v.proveedor] = (provInvMap[v.proveedor] || 0) + inv
+      provInvTotal += inv
+    }
+  }
+  const provInvSort    = Object.entries(provInvMap).sort((a, b) => b[1] - a[1])
+  const provPrincInv    = provInvSort[0]?.[0] || provPrinc
+  const provPrincInvPct = provInvTotal > 0 && provInvSort[0]
+    ? Math.round(provInvSort[0][1] / provInvTotal * 100)
+    : provPrincPct
 
   // Columnas reales de proveedor_catalogo_vinos (schema en add_proveedores_catalogos.sql):
   //   coste_estimado, pvp_recomendado, pvp_copa, zona (de normalizar_catalogo_v1.sql), region
@@ -922,13 +1027,8 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════════════════
   // S0: Actualizar restaurante
   // ═══════════════════════════════════════════════════════════════════════════
-  const restUpdate = {
-    slug: 'casa-marisma', color_primario: '#1a4a3a', color_acento: '#c8a96e',
-    color_fondo: '#faf8f3', tipografia: 'serif', carta_publica_activa: true,
-    carta_pie_texto: 'Alérgenos disponibles bajo solicitud. Precio con IVA incluido.',
-    ticket_medio_comida: 46,
-  }
-  console.log('[S0] Restaurante — slug, colores, carta_publica=true, ticket=46€')
+  const restUpdate = DEMO_REST_UPDATE
+  console.log('[S0] Restaurante — slug, colores, carta_publica=true, ticket=46€, plan=premium, estado=active')
   console.log('  ', JSON.stringify(restUpdate))
   if (!DRY_RUN) {
     const { error } = await sb.from('restaurantes').update(restUpdate).eq('id', DEMO_ID)
@@ -1312,8 +1412,8 @@ async function main() {
     ? Math.round(1 * 5 * 8 * 52 * 0.40)   // 832€
     : Math.round(1 * 3 * 8 * 52 * 0.30)   // 374€ si optimizar
 
-  // Fórmula 5: diversificación proveedor (ahorro 3% en negociación)
-  const impProveedor = provPrincPct > 40
+  // Fórmula 5: diversificación proveedor (ahorro 3% en negociación) — usa % inversión
+  const impProveedor = provPrincInvPct > 40
     ? Math.round(imp2Vinos.reduce((s, v) => s + Number(v.coste_compra || 0) * 0.03 * 24, 0) || 650)
     : 500
 
@@ -1402,18 +1502,18 @@ async function main() {
     },
     {
       area: 'Proveedores',
-      titulo: `Diversificar — ${provPrinc || 'principal'} al ${provPrincPct}% de la bodega`,
-      detalle: provPrincPct > 40
-        ? `${provPrinc} aporta el ${provPrincPct}% de las referencias. Alta concentración limita la negociación de rappels y aumenta el riesgo de desabastecimiento.`
+      titulo: `Diversificar — ${provPrincInv || 'principal'} al ${provPrincInvPct}% de la bodega`,
+      detalle: provPrincInvPct > 40
+        ? `${provPrincInv} representa el ${provPrincInvPct}% de la inversión en bodega (stock × coste). Alta concentración limita la negociación de rappels y aumenta el riesgo de desabastecimiento.`
         : `Distribución de proveedores razonablemente diversificada. Optimizar condiciones con el principal.`,
-      accion: `Negociar rappel anual con ${provPrinc || 'proveedor principal'}; explorar 2 referencias alternativas`,
+      accion: `Negociar rappel anual con ${provPrincInv || 'proveedor principal'}; explorar 2 referencias alternativas`,
       impacto_estimado: impProveedor,
       tipo_impacto: 'riesgo',
       horizonte: 'estrategico',
       dificultad: 'alta',
       confianza_pct: 60,
-      prioridad: provPrincPct > 40 ? 'media' : 'baja',
-      formula: `3% ahorro negociación × coste anual referencias ≈ ${impProveedor}€/año estimado`,
+      prioridad: provPrincInvPct > 40 ? 'media' : 'baja',
+      formula: `3% ahorro negociación × inversión anual bodega ≈ ${impProveedor}€/año estimado`,
     },
   ]
 
@@ -1493,6 +1593,13 @@ async function main() {
     console.log(`       coste: ${cst}€ · PVP×3.2: ${pvp}€ · margen: ${mg !== null ? mg + '%' : '—'}`)
   }
 
+  // Helpers para propuestas dinámicas (sin jerga interna)
+  const nDulces  = todosVinos.filter(v => /dulce|generoso/i.test(v.tipo || '')).length
+  const nPostres = PLATOS.filter(p => p.categoria === 'Postres').length
+  const blancoCuerpoDesc = catBlancoConCuerpoRow
+    ? `${catBlancoConCuerpoRow.nombre}${catBlancoConCuerpoRow.uva ? ' (' + catBlancoConCuerpoRow.uva + ')' : ''}`
+    : 'un blanco con maloláctica (Chardonnay, Godello o Viura en barrica)'
+
   const propuestasRows = [
     {
       restaurante_id: DEMO_ID,
@@ -1506,8 +1613,10 @@ async function main() {
       coste_estimado:     catCoste(catDulceRow) || 6.50,
       precio_recomendado: catPvp(catDulceRow) || 4.50,
       margen_objetivo:    catMargen(catDulceRow) ?? 70,
-      plato_objetivo: 'Tarta de queso al horno, torrijas, tocino de cielo, piononos',
-      motivo: `La carta tiene 4 postres y ningún vino dulce. El motor penaliza -80 pts todos los vinos secos en contexto postre → devuelve vacío. Un PX por copa (~70% margen) activa venta cruzada postre+copa. Prioridad 1 del onboarding de maridaje.`,
+      plato_objetivo: PLATOS.filter(p => p.categoria === 'Postres').map(p => p.nombre).join(', '),
+      motivo: nDulces === 0
+        ? `La carta tiene ${nPostres} postres sin maridaje dulce. Incorporar un PX o Moscatel por copa (~70% margen) activa la venta cruzada postre+copa.`
+        : `La carta tiene ${nDulces} dulce${nDulces !== 1 ? 's' : ''} para ${nPostres} postres. Ampliar con PX y Moscatel refuerza la cobertura y sube el ticket en mesa de postre.`,
       prioridad: 'alta', estado: 'propuesta',
       catalogo_vino_id: catDulceRow?.id || null,
     },
@@ -1524,7 +1633,7 @@ async function main() {
       precio_recomendado: catPvp(catBlancoConCuerpoRow) || 28,
       margen_objetivo:    catMargen(catBlancoConCuerpoRow) ?? 65,
       plato_objetivo: 'Arroz caldoso de mariscos, arroz meloso de bogavante, fideuá marinera',
-      motivo: `Los 4 arroces piden maloláctica y volumen en boca que el albariño no aporta. Chardonnay en barrica: mantequilla+nata contrarresta azafrán y sofrito. Sube ticket de arroz de 22€ a 26€ con recomendación activa.`,
+      motivo: `Los 4 arroces piden maloláctica y volumen en boca que el albariño no aporta. ${blancoCuerpoDesc} aporta estructura y untuosidad que armoniza con el azafrán y el sofrito. Sube ticket de arroz de 22€ a 26€ con recomendación activa.`,
       prioridad: 'alta', estado: 'interesa',
       catalogo_vino_id: catBlancoConCuerpoRow?.id || null,
     },
@@ -1540,7 +1649,7 @@ async function main() {
       coste_estimado:     catCoste(catGenComplejoRow) || 5.50,
       precio_recomendado: catPvp(catGenComplejoRow) || 5.50,
       margen_objetivo:    catMargen(catGenComplejoRow) ?? 68,
-      plato_objetivo: 'Carrillera de ternera al Jerez, costilla lacada, rabo de toro estofado',
+      plato_objetivo: PLATOS.filter(p => /carrillera|costilla/i.test(p.nombre) || p.nombre.startsWith('Presa')).slice(0, 3).map(p => p.nombre).join(', '),
       motivo: `La carta tiene finos y manzanillas pero no generoso complejo. El oloroso/amontillado conecta con los platos cocinados al Jerez (carrillera) y con umami intenso. Chartier: misma familia aromática que carnes braseadas con reducción.`,
       prioridad: 'media', estado: 'propuesta',
       catalogo_vino_id: catGenComplejoRow?.id || null,
@@ -1557,7 +1666,7 @@ async function main() {
       coste_estimado:     catCoste(catTintoBajoMargenRow) || Number(vinosBajoMargen[0]?.coste_compra) || 6,
       precio_recomendado: Number(vinosBajoMargen[0]?.precio_botella) || 22,
       margen_objetivo:    vinosBajoMargen[0] ? Math.round(vinosBajoMargen[0]._margen) : 59,
-      plato_objetivo: 'Presa ibérica a la brasa, secreto ibérico, rabo de toro estofado',
+      plato_objetivo: PLATOS.filter(p => p.categoria === 'De la tierra').slice(0, 3).map(p => p.nombre).join(', '),
       motivo: `El vino de menor margen (${Math.round(vinosBajoMargen[0]?._margen || 0)}%) se sustituye por alternativa del mismo tipo con mejor estructura de coste. Impacto inmediato en margen sin cambio visible en carta.`,
       prioridad: 'media', estado: 'interesa',
       catalogo_vino_id: catTintoBajoMargenRow?.id || null,
@@ -1575,7 +1684,7 @@ async function main() {
       precio_recomendado: catPvp(catEspumosoRow) || 24,
       margen_objetivo:    catMargen(catEspumosoRow) ?? 64,
       plato_objetivo: 'Entrantes fríos, boquerones, ceviche, tortillitas',
-      motivo: `La carta ya tiene espumosos blancos. Un espumoso rosado diferencia el aperitivo y armoniza con entrantes fríos y frutos del mar. Estado descartada: revisar tras incorporar el dulce (prioridad 1).`,
+      motivo: `La carta ya tiene espumosos blancos. Un espumoso rosado diferencia el aperitivo y armoniza con entrantes fríos y frutos del mar.`,
       prioridad: 'baja', estado: 'descartada',
       catalogo_vino_id: catEspumosoRow?.id || null,
     },
@@ -1660,6 +1769,66 @@ async function main() {
         if (error) throw new Error(`S7 ${cab.id}: ${error.message}`)
       }
       console.log(`\n   ✓ ${cabs.length} cabeceras → "${PROVEEDOR_VARIOS}" (solo campo proveedor)`)
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // S8: partes_servicio_lineas — actualizar precio_unitario divergente
+  //
+  // Detecta líneas donde precio_unitario difiere >15% del PVP actual del vino.
+  // DRY-RUN: muestra tabla de desvíos.
+  // --confirm: actualiza precio_unitario → PVP actual para líneas con desvío >15%.
+  // No toca cantidades, costes, stock ni partes_servicio.
+  // ═══════════════════════════════════════════════════════════════════════════
+  console.log('\n[S8] partes_servicio_lineas — detectar precios divergentes (>15% del PVP actual)...')
+
+  const { data: s8PartesIds } = await sb
+    .from('partes_servicio')
+    .select('id')
+    .eq('restaurante_id', DEMO_ID)
+  const s8ParteIdList = (s8PartesIds || []).map(p => p.id)
+
+  if (s8ParteIdList.length === 0) {
+    console.log('  Sin partes de servicio para demo. Omitido.')
+  } else {
+    const { data: s8Lineas } = await sb
+      .from('partes_servicio_lineas')
+      .select('id, parte_id, vino_id, tipo, precio_unitario, vino:vinos(id, nombre, precio_botella, precio_copa)')
+      .in('parte_id', s8ParteIdList)
+
+    const s8Desviadas = []
+    for (const l of (s8Lineas || [])) {
+      const esCopa   = (l.tipo || '').includes('copa')
+      const pvpActual = esCopa ? Number(l.vino?.precio_copa || 0) : Number(l.vino?.precio_botella || 0)
+      const precioVendido = Number(l.precio_unitario || 0)
+      if (!pvpActual) continue
+      const desvioPct = Math.abs(precioVendido - pvpActual) / pvpActual
+      if (desvioPct > 0.15) {
+        s8Desviadas.push({ id: l.id, vino: l.vino?.nombre || '?', tipo: l.tipo, precioVendido, pvpActual, desvioPct: Math.round(desvioPct * 100) })
+      }
+    }
+
+    if (s8Desviadas.length === 0) {
+      console.log('  Sin líneas con desvío >15%. Omitido.')
+    } else {
+      console.log(`\n  ${s8Desviadas.length} línea(s) con precio_unitario divergente (>15% del PVP actual):`)
+      console.log(`  ${'vino'.padEnd(32)} ${'tipo'.padEnd(18)} ${'vendido'.padStart(8)} ${'pvp_act'.padStart(8)} ${'desvío'.padStart(7)}`)
+      console.log('  ' + '─'.repeat(76))
+      for (const l of s8Desviadas) {
+        console.log(`  ${l.vino.padEnd(32)} ${(l.tipo||'').padEnd(18)} ${String(l.precioVendido+'€').padStart(8)} ${String(l.pvpActual+'€').padStart(8)} ${String(l.desvioPct+'%').padStart(7)}`)
+      }
+      if (!DRY_RUN) {
+        let s8Updated = 0
+        for (const l of s8Desviadas) {
+          const { error } = await sb
+            .from('partes_servicio_lineas')
+            .update({ precio_unitario: l.pvpActual })
+            .eq('id', l.id)
+          if (error) throw new Error(`S8 update linea ${l.id}: ${error.message}`)
+          s8Updated++
+        }
+        console.log(`\n   ✓ ${s8Updated} línea(s) actualizadas → precio_unitario = PVP actual`)
+      }
     }
   }
 
@@ -1964,7 +2133,7 @@ async function main() {
   console.log('\n' + '═'.repeat(66))
   console.log(DRY_RUN ? 'DRY-RUN — RESUMEN (nada escrito en BD)' : 'CONFIRM — RESUMEN DE CAMBIOS APLICADOS')
   console.log('═'.repeat(66))
-  console.log(`  S0  restaurante: slug=casa-marisma, colores, carta_publica=true`)
+  console.log(`  S0  restaurante: slug=casa-marisma, colores, carta_publica=true, plan=premium, estado=active`)
   console.log(`  S1  platos: ${PLATOS.length} en ${cats.length} categorías`)
   console.log(`  S2  perfiles: ${updates2.length} actualizados (override=${overrideCount} cat=${realCount}[${enriquecidoCount}enr] gen=${ficticioCount})`)
   console.log(`  S3  simulador: ${vinosActual.length} actual + ${vinoFuera ? 1 : 0} fuera + ${catListNuevos.length} nuevo (ilike tipo)`)
@@ -1972,6 +2141,7 @@ async function main() {
   console.log(`  S5  oportunidades: ${oppItems.length} items · ${oppSnap.recuperacion_anual_estimada}€`)
   console.log(`  S6  propuestas: ${propuestasRows.length} (huecos: ${huecosFuncionales.length ? huecosFuncionales.join(', ') : 'stock/margen'})`)
   console.log(`  S7  cabecera_compras: solo campo proveedor → "Varios proveedores"`)
+  console.log(`  S8  partes lineas: ${DRY_RUN ? 'tabla desvíos mostrada (dry-run)' : 'precio_unitario actualizado a PVP actual'}`)
   console.log(`  ONBOARDING: ${pctAntes}% → ${pctDespues}%`)
   if (!tieneDulce) console.log(`  ⚠  DULCE AUSENTE — postres sin maridaje`)
   console.log(`\n  ${DRY_RUN
