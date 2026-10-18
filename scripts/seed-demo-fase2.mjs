@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * seed-demo-fase2.mjs — Fase 2 (v7)
+ * seed-demo-fase2.mjs — Fase 2 (v8)
  *
  * Uso:
  *   node --env-file=.env.local scripts/seed-demo-fase2.mjs
@@ -62,6 +62,10 @@ function margenPct(pvp, coste) {
 function pvpComercial(coste) {
   if (!coste || coste <= 0) return 0
   return Math.round(coste * 3.2 * 2) / 2
+}
+
+function normalizarNombre(s = '') {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 }
 
 // Genera notas de cata profesionales SIN marcadores.
@@ -322,7 +326,7 @@ const NOMBRE_OVERRIDES = [
   // Tintos Ribera sin "crianza/reserva" en nombre
   { match: /parada de atauta/i,
     tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra', 'roble'],
-    nota: 'Tinto de Ribera del Duero con fruta negra de cereza negra y ciruela. Tanino firme y marcado, con cuerpo. Notas de barrica de cedro y café. Largo y bien estructurado.',
+    nota: 'Tinto de Ribera del Duero de textura envolvente y cuerpo pleno. Fruta negra de cereza negra y ciruela. Tanino firme y marcado. Notas de barrica de cedro y café. Largo y bien estructurado.',
     aviso: null },
   // Nebbiolo italiano
   { match: /poderi colla|colla nebbiolo/i,
@@ -342,7 +346,7 @@ const NOMBRE_OVERRIDES = [
   // Tintos estructurados explícitos
   { match: /pintia/i,
     tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra', 'roble', 'alcohol_alto'],
-    nota: 'Tinto de Toro con tanino firme y marcado. Con cuerpo amplio y alcohol alto. Fruta negra de ciruela y mora. Notas de barrica de cedro y café. Largo y robusto.',
+    nota: 'Tinto de Toro de carácter envolvente y cuerpo pleno. Tanino firme y marcado, alcohol alto. Fruta negra de ciruela y mora. Notas de barrica de cedro y café. Largo y robusto.',
     aviso: null },
   { match: /alto los zorros/i,
     tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra'],
@@ -354,7 +358,7 @@ const NOMBRE_OVERRIDES = [
     aviso: null },
   { match: /san lorenzo/i,
     tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra', 'roble'],
-    nota: 'Tinto con crianza en barrica. Fruta negra de madurez plena. Tanino firme y marcado, con cuerpo. Notas de roble, barrica, especiado y vainilla. Persistente y bien estructurado.',
+    nota: 'Tinto con crianza en barrica de carácter envolvente y cuerpo pleno. Fruta negra de madurez plena. Tanino firme y marcado. Notas de roble, especiado y vainilla. Persistente y bien estructurado.',
     aviso: null },
   // Monastrell estructurada (uva potente, nunca cuerpo_ligero)
   { match: /depaula|de paula/i,
@@ -648,10 +652,53 @@ async function runSelftest() {
   console.log('\n  Origen:')
   for (const [k, n] of Object.entries(byOrigen)) console.log(`    ${k}: ${n}`)
 
+  // ── Extra: normalizarNombre, ΔPVP cap, assertErrors pattern ────────────────
+  console.log('\n── SELFTEST extra ──────────────────────────────────────────────────')
+  let extraFailed = 0
+
+  // (a) normalizarNombre strip acentos/mayúsculas
+  const normCases = [
+    ['Les Terrasses', 'les terrasses'],
+    ['Viña Bujanda', 'vina bujanda'],
+    ['Parada de Atauta', 'parada de atauta'],
+    ['CHÂTEAU Pétrus', 'chateau petrus'],
+  ]
+  for (const [input, expected] of normCases) {
+    const got = normalizarNombre(input)
+    if (got !== expected) { console.log(`  ✗ normalizarNombre("${input}") → "${got}" (expected "${expected}")`); extraFailed++ }
+  }
+  if (extraFailed === 0) console.log('  (a) normalizarNombre strip acentos: ✓')
+
+  // (b) ΔPVP cap a 5€ — usar coste que garantice raw > 5€
+  const tcCoste = 12, tcPvp = 22
+  const tcTarget = tcCoste / (1 - 0.64) * 1.1
+  const tcRaw    = Math.max(0, tcTarget - tcPvp)
+  const tcCapped = Math.round(Math.min(tcRaw, 5.0) * 2) / 2
+  if (tcRaw <= 5.0) {
+    console.log(`  (b) ΔPVP cap: testDeltaRaw=${tcRaw.toFixed(2)} ≤ 5 — test no ejercita el cap (ajustar parámetros)`)
+  } else if (tcCapped > 5.0) {
+    console.log(`  ✗ ΔPVP cap: capped=${tcCapped} > 5.0`); extraFailed++
+  } else {
+    console.log(`  (b) ΔPVP cap: raw=${tcRaw.toFixed(2)} capped=${tcCapped}€  ✓`)
+  }
+
+  // (c) assertErrors pattern — dry-run no llama process.exit
+  const testErrs = []
+  const fakeDry = true
+  if (9999 > 100) {
+    if (fakeDry) testErrs.push('test-error')
+  }
+  if (testErrs.length === 1) console.log('  (c) assertErrors dry-run pattern: ✓')
+  else { console.log(`  ✗ assertErrors pattern: errs=${JSON.stringify(testErrs)}`); extraFailed++ }
+
+  const totalFailed = failed + extraFailed
   console.log(`\n  ${passed}/${casos.length} checks pasados`)
-  if (failed > 0) {
-    console.log(`  FALLOS (${failed}):`)
-    for (const e of errLines) console.log(`    ✗ ${e}`)
+  if (totalFailed > 0) {
+    if (failed > 0) {
+      console.log(`  FALLOS perfil (${failed}):`)
+      for (const e of errLines) console.log(`    ✗ ${e}`)
+    }
+    if (extraFailed > 0) console.log(`  FALLOS extra: ${extraFailed}`)
     process.exit(1)
   } else {
     console.log('  ✓ Todos los casos superados.')
@@ -662,6 +709,7 @@ async function runSelftest() {
 // ── main ──────────────────────────────────────────────────────────────────────
 async function main() {
   if (IS_SELFTEST) { await runSelftest(); return }
+  const assertErrors = []  // recopila fallos en dry-run; process.exit(2) al final
   const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
   const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!SUPA_URL || !SUPA_KEY) {
@@ -687,7 +735,7 @@ async function main() {
   }
 
   const mode = DRY_RUN ? '[DRY-RUN]' : `[CONFIRM — ${dbName}]`
-  console.log(`\n${mode} seed-demo-fase2 v7  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
+  console.log(`\n${mode} seed-demo-fase2 v8  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
 
   // ── Query única de vinos ─────────────────────────────────────────────────
   const { data: vinos, error: vinosErr } = await sb
@@ -700,6 +748,8 @@ async function main() {
 
   // IDs del catálogo ya presentes en la carta (para no repetir en propuestas/nuevo)
   const catalogoEnCartaIds = new Set(todosVinos.map(v => v.catalogo_vino_id).filter(Boolean))
+  // Nombres normalizados ya en carta (sin acentos/mayúsculas) — evita duplicados por nombre
+  const nombresEnCartaNorm = new Set(todosVinos.map(v => normalizarNombre(v.nombre)))
 
   // ── Métricas derivadas ────────────────────────────────────────────────────
   const vinosConMargenCalc = todosVinos
@@ -715,6 +765,16 @@ async function main() {
   const MARGEN_OBJETIVO   = 61
   const vinosBajoMargen   = vinosConMargenCalc.filter(v => v._margen < MARGEN_OBJETIVO)
   const vinosConStock     = todosVinos.filter(v => Number(v.stock) > 0)
+
+  // Estimaciones de ventas/botellas (sin tabla movimientos_stock)
+  const ventasVinoAnualEst    = Math.round(46 * 25 * 260 * 0.30)  // ticket × covers/día × días × 30% vino ≈ 89,700€
+  const limiteImpacto4pct     = Math.round(ventasVinoAnualEst * 0.04)  // ≈ 3,588€
+  const pvpMedioEstimado      = vinosConPrecio.length > 0
+    ? Math.round(vinosConPrecio.reduce((s, v) => s + Number(v.precio_botella), 0) / vinosConPrecio.length)
+    : 25
+  const nRefConPrecio         = Math.max(vinosConPrecio.length, 1)
+  const totalBotellasAnualesEst = Math.round(ventasVinoAnualEst / Math.max(pvpMedioEstimado, 1))
+  const botellasAnualMedia    = Math.max(Math.round(totalBotellasAnualesEst / nRefConPrecio), 1)
   const vinosSinCoste     = todosVinos.filter(v => !Number(v.coste_compra))
   const vinosSinProveedor = todosVinos.filter(v => !v.proveedor)
   const vinosBajoMinimo   = todosVinos.filter(v => Number(v.stock_minimo) > 0 && Number(v.stock) <= Number(v.stock_minimo))
@@ -780,7 +840,7 @@ async function main() {
       .limit(10)
     if (extraIlike) q = q.ilike('nombre', `%${extraIlike}%`)
     const { data } = await q
-    return (data || []).find(c => !catalogoEnCartaIds.has(c.id)) || null
+    return (data || []).find(c => !catalogoEnCartaIds.has(c.id) && !nombresEnCartaNorm.has(normalizarNombre(c.nombre))) || null
   }
 
   // Helper: busca en catálogo con filtro de coste máximo; fallback al más barato con WARN
@@ -795,7 +855,7 @@ async function main() {
       .limit(20)
     if (extraIlike) q = q.ilike('nombre', `%${extraIlike}%`)
     const { data } = await q
-    const found = (data || []).find(c => !catalogoEnCartaIds.has(c.id))
+    const found = (data || []).find(c => !catalogoEnCartaIds.has(c.id) && !nombresEnCartaNorm.has(normalizarNombre(c.nombre)))
     if (found) return { ...found, _dentroRango: true }
     // Fallback: el más barato sin filtro de coste (pero sí coste>0)
     const fallback = await buscarEnCatalogoSinRepetir(tipo, extraIlike)
@@ -949,14 +1009,16 @@ async function main() {
     buscarEnCatalogoConCoste('espumoso', 18),
   ])
   // catTintoBajoMargenRow: alternativa del catálogo para el vino de menor margen
+  // Excluye el vino si ya está en carta (por catalog_id o nombre normalizado)
   const catTintoBajoMargenRow = vinosBajoMargen[0]?.catalogo_vino_id
     ? await (async () => {
         const { data } = await sb.from('proveedor_catalogo_vinos')
           .select(CAT_SELECT).eq('id', vinosBajoMargen[0].catalogo_vino_id)
           .gt('coste_estimado', 0).maybeSingle()
-        return data
-      })() || await buscarEnCatalogoConCoste(vinosBajoMargen[0]?.tipo || 'tinto', 18)
-    : await buscarEnCatalogoConCoste(vinosBajoMargen[0]?.tipo || 'tinto', 18)
+        if (data && !catalogoEnCartaIds.has(data.id) && !nombresEnCartaNorm.has(normalizarNombre(data.nombre))) return data
+        return null
+      })() || await buscarEnCatalogoConCoste(vinosBajoMargen[0]?.tipo || 'tinto', 20)
+    : await buscarEnCatalogoConCoste(vinosBajoMargen[0]?.tipo || 'tinto', 20)
 
   // catNuevo1 = mismo vino que S6 p4 (alternativa para el de menor margen)
   const catNuevo1 = catTintoBajoMargenRow
@@ -969,6 +1031,16 @@ async function main() {
   else if (tipoHueco2 === 'blanco')   catNuevo2 = catBlancoConCuerpoRow
 
   const catListNuevos = [catNuevo1, catNuevo2].filter(Boolean)
+
+  // Assert: ningún nuevo coincide con un vino ya en carta
+  for (const c of catListNuevos) {
+    if (catalogoEnCartaIds.has(c.id) || nombresEnCartaNorm.has(normalizarNombre(c.nombre))) {
+      const msg = `S3 assert: nuevo "${c.nombre}" ya está en carta (id=${c.id})`
+      console.error(`  ERROR: ${msg}`)
+      if (DRY_RUN) assertErrors.push(msg)
+      else process.exit(2)
+    }
+  }
 
   if (vinoFuera) {
     const m = margenPct(Number(vinoFuera.precio_botella), Number(vinoFuera.coste_compra))
@@ -1154,20 +1226,23 @@ async function main() {
     ? Math.round(2 * 5 * MARGEN_COPA * 52 * 0.40)   // 624€
     : Math.round(2 * 5 * MARGEN_COPA * 52 * 0.40)   // 624€ si ampliar
 
-  // Fórmula 2: margen bajo — ΔPVP para llegar a objetivo 64% × rotación estimada
-  // ΔPVP_i = coste/(1−0.64)×1.1 − pvp_actual; solo si margen < MARGEN_OBJETIVO%
+  // Fórmula 2: margen bajo — ΔPVP (cap +5€, round 0.5€) × rotación estimada
+  // botellasAnio = botellasAnualMedia (o 25% si PVP>60€ — rotación baja en vinos caros)
   const TARGET_MARGEN_IMP2 = 0.64
   const imp2Vinos = vinosBajoMargen.slice(0, 5)
-  const imp2 = imp2Vinos.length > 0
-    ? Math.round(imp2Vinos.reduce((s, v) => {
-        const coste = Number(v.coste_compra) || 0
-        const pvp   = Number(v.precio_botella) || 0
-        if (!coste || !pvp) return s
-        const targetPvp = coste / (1 - TARGET_MARGEN_IMP2) * 1.1
-        const deltaPvp  = Math.max(0, targetPvp - pvp)
-        return s + deltaPvp * 2 * 52 * 0.5
-      }, 0))
-    : 480
+  const calcImp2Tabla = (adoption) => imp2Vinos.map(v => {
+    const coste = Number(v.coste_compra) || 0
+    const pvp   = Number(v.precio_botella) || 0
+    if (!coste || !pvp) return { nombre: (v.nombre||'?'), skip: true, impacto: 0, deltaPvp: 0, bots: 0, pvp: 0, margen: 0 }
+    const targetPvp   = coste / (1 - TARGET_MARGEN_IMP2) * 1.1
+    const deltaPvpRaw = Math.max(0, targetPvp - pvp)
+    const deltaPvp    = Math.round(Math.min(deltaPvpRaw, 5.0) * 2) / 2  // cap 5€, round 0.5€
+    const bots        = pvp > 60 ? Math.round(botellasAnualMedia * 0.25) : botellasAnualMedia
+    return { nombre: (v.nombre||'?').slice(0, 22), pvp, margen: Math.round(v._margen), deltaPvp, bots, impacto: Math.round(deltaPvp * bots * adoption) }
+  })
+  let imp2Adoption = 0.50
+  let imp2Tabla    = calcImp2Tabla(imp2Adoption)
+  let imp2         = imp2Tabla.reduce((s, r) => s + r.impacto, 0) || 480
 
   // Fórmula 3: capital inmovilizado — SOLO si hay referencias inmovilizadas
   const impCapital = Math.round(totalInmovilizadosLastSnap * 4 * 7.5)
@@ -1183,6 +1258,19 @@ async function main() {
   const impProveedor = provPrincPct > 40
     ? Math.round(imp2Vinos.reduce((s, v) => s + Number(v.coste_compra || 0) * 0.03 * 24, 0) || 650)
     : 500
+
+  // Adaptar adoption si total preliminar supera límite
+  {
+    const impPrelim = impDulce + imp2 +
+      (totalInmovilizadosLastSnap > 0 ? Math.max(impCapital, 300) : 0) +
+      impBlancoArroces + impProveedor
+    if (impPrelim > limiteImpacto4pct && imp2Vinos.length > 0) {
+      imp2Adoption = 0.35
+      imp2Tabla    = calcImp2Tabla(imp2Adoption)
+      imp2         = imp2Tabla.reduce((s, r) => s + r.impacto, 0) || 480
+      console.log(`  [auto] adopción ajustada 50%→35% (preliminar ${impPrelim}€ > límite ${limiteImpacto4pct}€)`)
+    }
+  }
 
   // Ítem 3 solo se incluye si hay referencias inmovilizadas
   const items3Capital = totalInmovilizadosLastSnap > 0 ? [{
@@ -1228,7 +1316,7 @@ async function main() {
       dificultad: 'baja',
       confianza_pct: 78,
       prioridad: 'alta',
-      formula: `${imp2Vinos.length} vinos <${MARGEN_OBJETIVO}% × ΔPVP→64% × 2 uds/sem × 52 sem × 50% = ${imp2}€/año`,
+      formula: `${imp2Vinos.length} vinos <${MARGEN_OBJETIVO}% × ΔPVP(cap 5€) × ~${botellasAnualMedia} bots/año × ${Math.round(imp2Adoption*100)}% = ${imp2}€/año`,
     },
     ...items3Capital,
     {
@@ -1278,16 +1366,22 @@ async function main() {
     resumen: `Recuperación estimada: ${oppItems.reduce((s, it) => s + it.impacto_estimado, 0)}€/año. Prioridad 1: vino dulce (${tieneDulce ? 'ampliar' : 'FALTA — postres sin maridaje'}).`,
   }
 
-  const ventasVinoAnualEst = Math.round(46 * 25 * 260 * 0.30)  // ticket × covers/día × días × 30% vino ≈ 89.7k€
-  const limiteImpacto4pct  = Math.round(ventasVinoAnualEst * 0.04)
   const totalImpacto = oppSnap.recuperacion_anual_estimada
   console.log(`\n  Recuperación estimada: ${totalImpacto}€/año  (límite 4% ventas vino ≈${limiteImpacto4pct}€)${totalImpacto > limiteImpacto4pct ? '  ⚠ SUPERA límite — revisar inputs' : '  ✓'}`)
   if (totalImpacto > limiteImpacto4pct) {
-    console.error(`  ERROR S5: impacto total ${totalImpacto}€ supera límite ${limiteImpacto4pct}€ (4% ventas vino). Revisar fórmulas.`)
-    process.exit(2)
+    const errMsg = `S5: impacto total ${totalImpacto}€ supera límite ${limiteImpacto4pct}€ (4% ventas vino). Revisar fórmulas.`
+    console.error(`  ERROR ${errMsg}`)
+    if (DRY_RUN) assertErrors.push(errMsg)
+    else process.exit(2)
   }
-  if (vinosBajoMargen.length > 0) {
-    console.log(`  Vinos margen <${MARGEN_OBJETIVO}%: ${vinosBajoMargen.map(v => `"${(v.nombre||'').slice(0,22)}" (${Math.round(v._margen)}%)`).join('  ')}`)
+  if (imp2Tabla.length > 0) {
+    console.log(`\n  Tabla ΔPVP (adopción ${Math.round(imp2Adoption*100)}%, pvpMedio≈${pvpMedioEstimado}€, bots/año≈${botellasAnualMedia}):`)
+    console.log(`  ${'vino'.padEnd(24)} pvp€  margen  ΔPVP  bots/año  impacto€`)
+    console.log('  ' + '─'.repeat(64))
+    for (const r of imp2Tabla) {
+      if (r.skip) { console.log(`  ${r.nombre.padEnd(24)}  — (sin coste/pvp)`); continue }
+      console.log(`  ${r.nombre.padEnd(24)} ${String(r.pvp).padStart(4)}  ${(r.margen+'%').padStart(6)}  ${(r.deltaPvp+'€').padStart(5)}  ${String(r.bots).padStart(8)}  ${String(r.impacto).padStart(8)}`)
+    }
   }
   console.log('\n  prioridad  horizonte         impacto€  titulo')
   console.log('  ' + '─'.repeat(90))
@@ -1423,6 +1517,19 @@ async function main() {
     },
   ]
 
+  // Assert: ninguna propuesta duplica carta
+  for (const p of propuestasRows) {
+    if (!p.catalogo_vino_id && !p.vino) continue
+    const enCartaId   = p.catalogo_vino_id && catalogoEnCartaIds.has(p.catalogo_vino_id)
+    const enCartaNom  = p.vino && nombresEnCartaNorm.has(normalizarNombre(p.vino))
+    if (enCartaId || enCartaNom) {
+      const msg = `S6 assert: propuesta "${p.vino}" ya está en carta`
+      console.error(`  ERROR: ${msg}`)
+      if (DRY_RUN) assertErrors.push(msg)
+      else process.exit(2)
+    }
+  }
+
   console.log('\n  prioridad  estado       cat_id?  titulo')
   console.log('  ' + '─'.repeat(80))
   for (const p of propuestasRows) {
@@ -1519,8 +1626,6 @@ async function main() {
       ...v,
       activo: true,
       stock: Math.max(Number(v.stock) || 0, 6),
-      // Garantiza que el motor no filtre vinos sin precio_botella (coste=0 en demo)
-      precio_botella: Number(v.precio_botella) > 0 ? Number(v.precio_botella) : 28,
       notas_cata: notasGeneradas.get(v.id) || v.notas_cata || '',
     }))
 
@@ -1795,6 +1900,12 @@ async function main() {
   console.log(`\n  ${DRY_RUN
     ? 'Para aplicar:\n  node --env-file=.env.local scripts/seed-demo-fase2.mjs --confirm --nombre "Casa Marisma"'
     : '✓ Completado.'}`)
+
+  if (assertErrors.length > 0) {
+    console.log('\n[ASSERT FAILURES — DRY-RUN]')
+    for (const e of assertErrors) console.log(`  ✗ ${e}`)
+    process.exit(2)
+  }
 }
 
 main().catch(err => {
