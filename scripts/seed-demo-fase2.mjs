@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * seed-demo-fase2.mjs — Fase 2 (v11)
+ * seed-demo-fase2.mjs — Fase 2 (v12)
  *
  * Uso:
  *   node --env-file=.env.local scripts/seed-demo-fase2.mjs
@@ -17,6 +17,7 @@
 
 import { fileURLToPath } from 'url'
 import path from 'path'
+import { readFileSync } from 'fs'
 import { createClient } from '@supabase/supabase-js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -564,7 +565,7 @@ try {
 
 // ── selftest S2 ───────────────────────────────────────────────────────────────
 async function runSelftest() {
-  console.log('\n── SELFTEST v10 (sin BD) ───────────────────────────────────────')
+  console.log('\n── SELFTEST v12 (sin BD) ───────────────────────────────────────')
   const casos = [
     // overrides (10)
     { nombre: 'Laherte Umbrage',                  tipo: 'espumoso', uva: 'pinot noir',       region: 'Champagne',       notas_cata: null },
@@ -860,6 +861,31 @@ async function runSelftest() {
     }
   }
 
+  // (m) no-use-before-define: vinosActual / vinoFuera / catListNuevos declarados antes de primer uso
+  {
+    const src = readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n')
+    const checkVars = ['vinosActual', 'vinoFuera', 'catListNuevos']
+    let mFailed = 0
+    for (const v of checkVars) {
+      const declRe = new RegExp(`^\\s+const ${v}\\s*=`)
+      const useRe  = new RegExp(`\\b${v}\\b`)
+      const declIdx  = src.findIndex(l => declRe.test(l))
+      if (declIdx < 0) { console.log(`  ✗ (m) '${v}': sin declaración`); mFailed++; continue }
+      // strip comments and string literals before matching to avoid false positives
+      const earlyUse = src.slice(0, declIdx).findIndex(l => {
+        const stripped = l.replace(/\/\/.*$/, '').replace(/'[^']*'|"[^"]*"|`[^`]*`/g, '§')
+        return useRe.test(stripped) && !declRe.test(l)
+      })
+      if (earlyUse >= 0) {
+        console.log(`  ✗ (m) TDZ '${v}': primer uso en línea ${earlyUse+1}, declarado en ${declIdx+1}`)
+        mFailed++
+      } else {
+        console.log(`  (m) no-use-before-define '${v}' (decl. línea ${declIdx+1}): ✓`)
+      }
+    }
+    if (mFailed > 0) extraFailed += mFailed
+  }
+
   extraFailed += basuraFailed + pvpMinFailed
 
   const totalFailed = failed + extraFailed
@@ -906,7 +932,7 @@ async function main() {
   }
 
   const mode = DRY_RUN ? '[DRY-RUN]' : `[CONFIRM — ${dbName}]`
-  console.log(`\n${mode} seed-demo-fase2 v8  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
+  console.log(`\n${mode} seed-demo-fase2 v12  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
 
   // ── Query única de vinos ─────────────────────────────────────────────────
   const { data: vinos, error: vinosErr } = await sb
@@ -993,28 +1019,6 @@ async function main() {
   const provPrincInv    = provInvSort[0]?.[0] || provPrinc
   const provPrincInvPct = provInvTotal > 0 && provInvSort[0]
     ? Math.round(provInvSort[0][1] / provInvTotal * 100)
-    : provPrincPct
-
-  // Proveedor por referencias en carta simulada (coincide con bodega/page.js display)
-  const provCartaSimMap = {}
-  for (const v of vinosActual) {
-    if (v.proveedor) provCartaSimMap[v.proveedor] = (provCartaSimMap[v.proveedor] || 0) + 1
-  }
-  if (vinoFuera?.proveedor) {
-    const prev = provCartaSimMap[vinoFuera.proveedor] || 0
-    if (prev > 0) provCartaSimMap[vinoFuera.proveedor] = prev - 1
-  }
-  for (const c of catListNuevos) {
-    const pn = catProveedorNombre(c)
-    if (pn && pn !== 'Consultar catálogo') {
-      provCartaSimMap[pn] = (provCartaSimMap[pn] || 0) + 1
-    }
-  }
-  const cartaSimTotal    = vinosActual.length - (vinoFuera ? 1 : 0) + catListNuevos.length
-  const provCartaSimSort = Object.entries(provCartaSimMap).sort((a, b) => b[1] - a[1])
-  const provCartaSim     = provCartaSimSort[0]?.[0] || provPrinc
-  const provCartaSimPct  = cartaSimTotal > 0 && provCartaSimSort[0]
-    ? Math.round(provCartaSimSort[0][1] / cartaSimTotal * 100)
     : provPrincPct
 
   // Columnas reales de proveedor_catalogo_vinos (schema en add_proveedores_catalogos.sql):
@@ -1291,6 +1295,28 @@ async function main() {
   else if (tipoHueco2 === 'blanco')   catNuevo2 = catBlancoConCuerpoRow
 
   const catListNuevos = [catNuevo1, catNuevo2].filter(Boolean)
+
+  // Proveedor por referencias en carta simulada (coincide con bodega/page.js display)
+  const provCartaSimMap = {}
+  for (const v of vinosActual) {
+    if (v.proveedor) provCartaSimMap[v.proveedor] = (provCartaSimMap[v.proveedor] || 0) + 1
+  }
+  if (vinoFuera?.proveedor) {
+    const prev = provCartaSimMap[vinoFuera.proveedor] || 0
+    if (prev > 0) provCartaSimMap[vinoFuera.proveedor] = prev - 1
+  }
+  for (const c of catListNuevos) {
+    const pn = catProveedorNombre(c)
+    if (pn && pn !== 'Consultar catálogo') {
+      provCartaSimMap[pn] = (provCartaSimMap[pn] || 0) + 1
+    }
+  }
+  const cartaSimTotal    = vinosActual.length - (vinoFuera ? 1 : 0) + catListNuevos.length
+  const provCartaSimSort = Object.entries(provCartaSimMap).sort((a, b) => b[1] - a[1])
+  const provCartaSim     = provCartaSimSort[0]?.[0] || provPrinc
+  const provCartaSimPct  = cartaSimTotal > 0 && provCartaSimSort[0]
+    ? Math.round(provCartaSimSort[0][1] / cartaSimTotal * 100)
+    : provPrincPct
 
   // Assert: ningún nuevo coincide con un vino ya en carta
   for (const c of catListNuevos) {
