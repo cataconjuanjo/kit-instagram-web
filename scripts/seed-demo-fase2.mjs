@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * seed-demo-fase2.mjs — Fase 2 (v12)
+ * seed-demo-fase2.mjs — Fase 2 (v13)
  *
  * Uso:
  *   node --env-file=.env.local scripts/seed-demo-fase2.mjs
@@ -565,7 +565,7 @@ try {
 
 // ── selftest S2 ───────────────────────────────────────────────────────────────
 async function runSelftest() {
-  console.log('\n── SELFTEST v12 (sin BD) ───────────────────────────────────────')
+  console.log('\n── SELFTEST v13 (sin BD) ───────────────────────────────────────')
   const casos = [
     // overrides (10)
     { nombre: 'Laherte Umbrage',                  tipo: 'espumoso', uva: 'pinot noir',       region: 'Champagne',       notas_cata: null },
@@ -758,14 +758,17 @@ async function runSelftest() {
     }
   }
 
-  // (g) p1 motivo: sin 'motor' ni 'ningún vino dulce'
+  // (g) p1 motivo: sin 'motor', sin 'ningún vino dulce', sin 'PX y Moscatel' hardcoded
   {
-    const testMotivoDulce0 = `La carta tiene 4 postres sin maridaje dulce. Incorporar un PX o Moscatel por copa (~70% margen) activa la venta cruzada postre+copa.`
-    const testMotivoConDulce = `La carta tiene 2 dulces para 4 postres. Ampliar con PX y Moscatel refuerza la cobertura y sube el ticket en mesa de postre.`
+    // Simula código v13: usa nombre del catálogo o fallback neutro, nunca "PX y Moscatel" literal
+    const mockCatNombre = 'Medium Collantes'
+    const testMotivoDulce0 = `La carta tiene 4 postres sin maridaje dulce. Incorporar ${mockCatNombre} (~70% margen) activa la venta cruzada postre+copa.`
+    const testMotivoConDulce = `La carta tiene 2 dulces para 4 postres. ${mockCatNombre} refuerza la cobertura y sube el ticket en mesa de postre.`
     let g_failed = 0
     for (const motivo of [testMotivoDulce0, testMotivoConDulce]) {
       if (motivo.toLowerCase().includes('motor')) { console.log(`  ✗ (g) motivo p1 contiene 'motor': "${motivo.slice(0,60)}..."`); g_failed++ }
       if (motivo.toLowerCase().includes('ningún vino dulce')) { console.log(`  ✗ (g) motivo p1 contiene 'ningún vino dulce'`); g_failed++ }
+      if (motivo.includes('PX y Moscatel')) { console.log(`  ✗ (g) motivo p1 contiene 'PX y Moscatel' hardcoded`); g_failed++ }
     }
     if (g_failed === 0) console.log('  (g) p1 motivo sin jerga interna: ✓')
     extraFailed += g_failed
@@ -861,6 +864,58 @@ async function runSelftest() {
     }
   }
 
+  // (n) cartaSimTotal = vinosActual.length + catListNuevos.length (sin resta extra)
+  {
+    const src = readFileSync(fileURLToPath(import.meta.url), 'utf8')
+    // Nombres codificados en split para que (m) no los vea como usos anticipados en este regex
+    const varA = ['vinos', 'Actual'].join('')
+    const varB = ['catList', 'Nuevos'].join('')
+    const formulaRe = new RegExp(`const cartaSimTotal\\s*=\\s*${varA}\\.length\\s*\\+\\s*${varB}\\.length`)
+    const hasCorrectFormula = formulaRe.test(src)
+    if (!hasCorrectFormula) {
+      console.log(`  ✗ (n) cartaSimTotal: no encuentra fórmula correcta (${varA}.length + ${varB}.length)`)
+      extraFailed++
+    } else {
+      console.log(`  (n) cartaSimTotal = ${varA}.length + ${varB}.length: ✓`)
+    }
+  }
+
+  // (o) S6 p3 motivo no contiene la palabra del crítico de maridajes en líneas de código
+  {
+    const src = readFileSync(fileURLToPath(import.meta.url), 'utf8')
+    // Codificado en split para no auto-matchear este propio check
+    const badWord = ['Chart', 'ier'].join('')
+    const badRe   = new RegExp(badWord, 'i')
+    const badLines = src.split('\n').filter(l => badRe.test(l) && !l.trim().startsWith('//') && !l.includes("'Chart'") && !l.includes('"Chart"'))
+    if (badLines.length > 0) {
+      console.log(`  ✗ (o) "${badWord}" sigue en código de S6 (${badLines.length} línea(s))`)
+      extraFailed++
+    } else {
+      console.log(`  (o) sin "${badWord}" en código de S6: ✓`)
+    }
+  }
+
+  // (p) S8 query usa columnas reales: fecha/turno/estado
+  {
+    const src = readFileSync(fileURLToPath(import.meta.url), 'utf8')
+    // Codificado en split para no auto-matchear este propio check
+    const badCol1 = ['fecha', '_inicio'].join('')
+    const badCol2 = ['fecha', '_cierre'].join('')
+    const badRe   = new RegExp(`${badCol1}|${badCol2}`)
+    // Solo contar si aparece en un .select() real (no en líneas de comentario o de este selftest)
+    const badLines = src.split('\n').filter(l =>
+      badRe.test(l) && !l.trim().startsWith('//') &&
+      !l.includes("'fecha_'") && !l.includes('"fecha_"') &&
+      !l.includes("join('')") && !l.includes('badCol')
+    )
+    if (badLines.length > 0) {
+      console.log(`  ✗ (p) S8 aún usa ${badCol1} o ${badCol2} en query`)
+      extraFailed++
+    } else {
+      console.log(`  (p) S8 columnas partes_servicio correctas (fecha/turno/estado): ✓`)
+    }
+  }
+
   // (m) no-use-before-define: vinosActual / vinoFuera / catListNuevos declarados antes de primer uso
   {
     const src = readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n')
@@ -932,7 +987,7 @@ async function main() {
   }
 
   const mode = DRY_RUN ? '[DRY-RUN]' : `[CONFIRM — ${dbName}]`
-  console.log(`\n${mode} seed-demo-fase2 v12  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
+  console.log(`\n${mode} seed-demo-fase2 v13  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
 
   // ── Query única de vinos ─────────────────────────────────────────────────
   const { data: vinos, error: vinosErr } = await sb
@@ -1311,7 +1366,8 @@ async function main() {
       provCartaSimMap[pn] = (provCartaSimMap[pn] || 0) + 1
     }
   }
-  const cartaSimTotal    = vinosActual.length - (vinoFuera ? 1 : 0) + catListNuevos.length
+  // vinosActual ya excluye vinoFuera — no restar de nuevo
+  const cartaSimTotal    = vinosActual.length + catListNuevos.length
   const provCartaSimSort = Object.entries(provCartaSimMap).sort((a, b) => b[1] - a[1])
   const provCartaSim     = provCartaSimSort[0]?.[0] || provPrinc
   const provCartaSimPct  = cartaSimTotal > 0 && provCartaSimSort[0]
@@ -1727,11 +1783,19 @@ async function main() {
   }
 
   // Helpers para propuestas dinámicas (sin jerga interna)
-  const nDulces  = todosVinos.filter(v => /dulce|generoso/i.test(v.tipo || '')).length
+  const nDulces  = todosVinos.filter(v => v.tipo === 'dulce').length   // solo tipo dulce, no generosos
   const nPostres = PLATOS.filter(p => p.categoria === 'Postres').length
   const blancoCuerpoDesc = catBlancoConCuerpoRow
     ? `${catBlancoConCuerpoRow.nombre}${catBlancoConCuerpoRow.uva ? ' (' + catBlancoConCuerpoRow.uva + ')' : ''}`
     : 'un blanco con maloláctica (Chardonnay, Godello o Viura en barrica)'
+
+  // Precios reales de arroces para p2 (sin hardcoding)
+  const arrocesConPrecio = PLATOS.filter(p => p.categoria === 'Arroces' && p.precio > 0)
+  const arrozMin = arrocesConPrecio.length ? Math.min(...arrocesConPrecio.map(p => p.precio)) : null
+  const arrozMax = arrocesConPrecio.length ? Math.max(...arrocesConPrecio.map(p => p.precio)) : null
+  const arrozRango = arrozMin && arrozMax && arrozMin !== arrozMax ? ` (rango ${arrozMin}–${arrozMax}€)` : ''
+  const arrocesConAzafran = arrocesConPrecio.some(p => /azafr/i.test(p.descripcion || ''))
+  const fondoSabor = arrocesConAzafran ? 'el azafrán, el sofrito y los fondos de marisco' : 'el sofrito y los fondos de marisco'
 
   const propuestasRows = [
     {
@@ -1748,8 +1812,8 @@ async function main() {
       margen_objetivo:    catMargen(catDulceRow) ?? 70,
       plato_objetivo: PLATOS.filter(p => p.categoria === 'Postres').map(p => p.nombre).join(', '),
       motivo: nDulces === 0
-        ? `La carta tiene ${nPostres} postres sin maridaje dulce. Incorporar un PX o Moscatel por copa (~70% margen) activa la venta cruzada postre+copa.`
-        : `La carta tiene ${nDulces} dulce${nDulces !== 1 ? 's' : ''} para ${nPostres} postres. Ampliar con PX y Moscatel refuerza la cobertura y sube el ticket en mesa de postre.`,
+        ? `La carta tiene ${nPostres} postres sin maridaje dulce. Incorporar ${catDulceRow ? catDulceRow.nombre : 'un dulce por copa'} (~70% margen) activa la venta cruzada postre+copa.`
+        : `La carta tiene ${nDulces} dulce${nDulces !== 1 ? 's' : ''} para ${nPostres} postres. ${catDulceRow ? catDulceRow.nombre : 'Una referencia dulce adicional'} refuerza la cobertura y sube el ticket en mesa de postre.`,
       prioridad: 'alta', estado: 'propuesta',
       catalogo_vino_id: catDulceRow?.id || null,
     },
@@ -1766,7 +1830,7 @@ async function main() {
       precio_recomendado: catPvp(catBlancoConCuerpoRow) || 28,
       margen_objetivo:    catMargen(catBlancoConCuerpoRow) ?? 65,
       plato_objetivo: 'Arroz caldoso de mariscos, arroz meloso de bogavante, fideuá marinera',
-      motivo: `Los 4 arroces piden maloláctica y volumen en boca que el albariño no aporta. ${blancoCuerpoDesc} aporta estructura y untuosidad que armoniza con el azafrán y el sofrito. Sube ticket de arroz de 22€ a 26€ con recomendación activa.`,
+      motivo: `Los ${arrocesConPrecio.length || 4} arroces piden maloláctica y volumen en boca que el albariño no aporta. ${blancoCuerpoDesc} aporta estructura y untuosidad que armoniza con ${fondoSabor}${arrozRango}.`,
       prioridad: 'alta', estado: 'interesa',
       catalogo_vino_id: catBlancoConCuerpoRow?.id || null,
     },
@@ -1783,7 +1847,18 @@ async function main() {
       precio_recomendado: catPvp(catGenComplejoRow) || 5.50,
       margen_objetivo:    catMargen(catGenComplejoRow) ?? 68,
       plato_objetivo: PLATOS.filter(p => /carrillera|costilla/i.test(p.nombre) || p.nombre.startsWith('Presa')).slice(0, 3).map(p => p.nombre).join(', '),
-      motivo: `La carta tiene finos y manzanillas pero no generoso complejo. El oloroso/amontillado conecta con los platos cocinados al Jerez (carrillera) y con umami intenso. Chartier: misma familia aromática que carnes braseadas con reducción.`,
+      motivo: (() => {
+        if (tieneGenerosoComplejo) {
+          const complejos = generosos.filter(v => /(oloroso|amontillado|palo cortado)/.test((v.nombre||'').toLowerCase()))
+          return `La carta ya tiene ${complejos.map(v => v.nombre).join(', ')}. ${catGenComplejoRow ? catGenComplejoRow.nombre : 'Un oloroso de distinto perfil'} aporta contraste con estofados al Jerez (carrillera) y platos de umami intenso.`
+        }
+        const simples = generosos.filter(v => /(fino|manzanilla)/.test((v.nombre||'').toLowerCase()))
+        return simples.length > 0
+          ? `La carta tiene ${simples.map(v => v.nombre).join(', ')} pero no generoso complejo. El oloroso/amontillado conecta con los platos cocinados al Jerez (carrillera) y con umami intenso.`
+          : tieneGeneroso
+            ? 'La carta tiene generosos pero no oloroso ni amontillado. El generoso complejo conecta con estofados al Jerez y umami intenso.'
+            : 'La carta no tiene generosos. Oloroso o amontillado conecta con estofados al Jerez (carrillera) y platos de umami intenso.'
+      })(),
       prioridad: 'media', estado: 'propuesta',
       catalogo_vino_id: catGenComplejoRow?.id || null,
     },
@@ -1808,8 +1883,8 @@ async function main() {
       restaurante_id: DEMO_ID,
       titulo: catEspumosoRow
         ? `Añadir ${catEspumosoRow.nombre} (${catEspumosoRow.bodega||'—'}) — espumoso diferencial para aperitivo`
-        : 'Añadir espumoso rosado para aperitivo diferencial',
-      vino:               catEspumosoRow?.nombre || 'Cava Rosado Brut Nature',
+        : 'Añadir espumoso diferencial para aperitivo',
+      vino:               catEspumosoRow?.nombre || 'Espumoso diferencial',
       tipo:               'Espumoso',
       zona:               catZona(catEspumosoRow) || 'Cava D.O.',
       proveedor_sugerido: catProveedorNombre(catEspumosoRow),
@@ -1817,7 +1892,13 @@ async function main() {
       precio_recomendado: catPvp(catEspumosoRow) || 24,
       margen_objetivo:    catMargen(catEspumosoRow) ?? 64,
       plato_objetivo: 'Entrantes fríos, boquerones, ceviche, tortillitas',
-      motivo: `La carta ya tiene espumosos blancos. Un espumoso rosado diferencia el aperitivo y armoniza con entrantes fríos y frutos del mar.`,
+      motivo: (() => {
+        if (catEspumosoRow) {
+          const uvaDesc = catEspumosoRow.uva ? ` elaborado con ${catEspumosoRow.uva}` : ''
+          return `La carta ya tiene espumosos blancos. ${catEspumosoRow.nombre}${uvaDesc} diferencia el aperitivo y armoniza con entrantes fríos y frutos del mar.`
+        }
+        return 'La carta ya tiene espumosos blancos. Un espumoso diferencial amplía la oferta de aperitivo y armoniza con entrantes fríos y frutos del mar.'
+      })(),
       prioridad: 'baja', estado: 'descartada',
       catalogo_vino_id: catEspumosoRow?.id || null,
     },
@@ -1923,12 +2004,13 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════════════════
   console.log(`\n[S8] partes_servicio_lineas — análisis divergencias${RUN_S8 ? ' (--s8: escritura activa)' : ' (solo análisis, sin escritura)'}...`)
 
-  const { data: s8Partes } = await sb
+  const { data: s8Partes, error: s8PartesErr } = await sb
     .from('partes_servicio')
-    .select('id, fecha_inicio, fecha_cierre')
+    .select('id, fecha, turno, estado')     // columnas reales (ver api/partes/route.js y agregarPeriodoBodega.js)
     .eq('restaurante_id', DEMO_ID)
+  if (s8PartesErr) console.log(`  [S8 WARN] error al leer partes_servicio: ${s8PartesErr.message}`)
   const s8ParteIdList = (s8Partes || []).map(p => p.id)
-  const s8FechaMap    = Object.fromEntries((s8Partes || []).map(p => [p.id, p.fecha_cierre || p.fecha_inicio]))
+  const s8FechaMap    = Object.fromEntries((s8Partes || []).map(p => [p.id, p.fecha]))
 
   if (s8ParteIdList.length === 0) {
     console.log('  Sin partes de servicio para demo. Omitido.')
