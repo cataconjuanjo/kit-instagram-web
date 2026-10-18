@@ -74,6 +74,31 @@ function normalizarNombre(s = '') {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 }
 
+// Paginación Supabase: devuelve todas las filas superando el límite de 1000 por consulta
+const S8_PAGE_SIZE = 1000
+async function fetchAllPagesS8(queryFn) {
+  let offset = 0
+  let all = []
+  let pages = 0
+  for (;;) {
+    const { data, error } = await queryFn(offset, offset + S8_PAGE_SIZE - 1)
+    if (error) throw error
+    const rows = data || []
+    all = all.concat(rows)
+    pages++
+    if (rows.length < S8_PAGE_SIZE) break
+    offset += S8_PAGE_SIZE
+  }
+  return { data: all, pages }
+}
+
+// Divide array en chunks de tamaño máximo `size`
+function chunkArrayS8(arr, size) {
+  const chunks = []
+  for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size))
+  return chunks
+}
+
 const NOMBRE_BASURA_RE = /estuche|pack|caja|lote|regalo|no\s*v[aá]lido|magnum sin precio|s\/\s*d\.?o|cosecha\s*s\//i
 
 // Genera notas de cata profesionales SIN marcadores.
@@ -2004,21 +2029,43 @@ async function main() {
   // ═══════════════════════════════════════════════════════════════════════════
   console.log(`\n[S8] partes_servicio_lineas — análisis divergencias${RUN_S8 ? ' (--s8: escritura activa)' : ' (solo análisis, sin escritura)'}...`)
 
-  const { data: s8Partes, error: s8PartesErr } = await sb
-    .from('partes_servicio')
-    .select('id, fecha, turno, estado')     // columnas reales (ver api/partes/route.js y agregarPeriodoBodega.js)
-    .eq('restaurante_id', DEMO_ID)
+  let s8Partes, s8PartesErr, s8PartesPaginas
+  try {
+    const r = await fetchAllPagesS8(
+      (lo, hi) => sb
+        .from('partes_servicio')
+        .select('id, fecha, turno, estado')
+        .eq('restaurante_id', DEMO_ID)
+        .range(lo, hi)
+    )
+    s8Partes = r.data; s8PartesPaginas = r.pages
+  } catch (e) {
+    s8PartesErr = e; s8Partes = []
+  }
   if (s8PartesErr) console.log(`  [S8 WARN] error al leer partes_servicio: ${s8PartesErr.message}`)
+  else console.log(`  partes_servicio: ${s8Partes.length} filas en ${s8PartesPaginas} página(s)`)
   const s8ParteIdList = (s8Partes || []).map(p => p.id)
   const s8FechaMap    = Object.fromEntries((s8Partes || []).map(p => [p.id, p.fecha]))
 
   if (s8ParteIdList.length === 0) {
     console.log('  Sin partes de servicio para demo. Omitido.')
   } else {
-    const { data: s8Lineas } = await sb
-      .from('partes_servicio_lineas')
-      .select('id, parte_id, vino_id, tipo, precio_unitario, vino:vinos(id, nombre, precio_botella, precio_copa)')
-      .in('parte_id', s8ParteIdList)
+    // Leer líneas en chunks de 100 ids (límite URL) + paginación por chunk
+    const s8LineasAll = []
+    let s8LineasPaginas = 0
+    for (const chunk of chunkArrayS8(s8ParteIdList, 100)) {
+      const { data: chunkData, pages: pgs } = await fetchAllPagesS8(
+        (lo, hi) => sb
+          .from('partes_servicio_lineas')
+          .select('id, parte_id, vino_id, tipo, precio_unitario, vino:vinos(id, nombre, precio_botella, precio_copa)')
+          .in('parte_id', chunk)
+          .range(lo, hi)
+      )
+      s8LineasAll.push(...chunkData)
+      s8LineasPaginas += pgs
+    }
+    console.log(`  partes_servicio_lineas: ${s8LineasAll.length} filas en ${s8LineasPaginas} página(s)`)
+    const s8Lineas = s8LineasAll
 
     // Construir detalle por línea
     const s8Detalle = []
