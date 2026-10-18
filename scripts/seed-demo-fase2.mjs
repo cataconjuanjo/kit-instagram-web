@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 /**
- * seed-demo-fase2.mjs — Fase 2 (v8)
+ * seed-demo-fase2.mjs — Fase 2 (v11)
  *
  * Uso:
  *   node --env-file=.env.local scripts/seed-demo-fase2.mjs
  *   node --env-file=.env.local scripts/seed-demo-fase2.mjs --confirm --nombre "Casa Marisma"
+ *   node --env-file=.env.local scripts/seed-demo-fase2.mjs --confirm --nombre "Casa Marisma" --s8
  *   node scripts/seed-demo-fase2.mjs --selftest          # sin BD ni .env
+ *
+ * Flags especiales:
+ *   --s8   activa escritura de S8 (alinear precio_unitario). Sin este flag S8 imprime análisis pero NO escribe.
  *
  * Requisitos: SEED_DEMO_ID, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  * (--selftest no requiere ninguna variable de entorno)
@@ -19,6 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // ── flags ─────────────────────────────────────────────────────────────────────
 const DRY_RUN     = !process.argv.includes('--confirm')
+const RUN_S8      = process.argv.includes('--s8')
 const NOMBRE_IDX  = process.argv.indexOf('--nombre')
 const NOMBRE      = NOMBRE_IDX !== -1 ? process.argv[NOMBRE_IDX + 1] : null
 const IS_SELFTEST = process.argv.includes('--selftest') || process.env.SEED_SELFTEST === '1'
@@ -819,6 +824,42 @@ async function runSelftest() {
     extraFailed += j_failed
   }
 
+  // (k) --s8 opt-in: sin flag no escribe
+  {
+    const mockRUN_S8 = false
+    const mockDRY_RUN = false
+    const wouldWrite = !mockDRY_RUN && mockRUN_S8
+    if (wouldWrite) {
+      console.log('  ✗ (k) --s8 opt-in: sin flag escribiría igual')
+      extraFailed++
+    } else {
+      console.log('  (k) --s8 opt-in (sin flag → no escribe): ✓')
+    }
+  }
+
+  // (l) S8 grouping por vino: misma vinoId+tipo → se agrupa
+  {
+    const mockLineas = [
+      { vinoId: 'uuid-a', vino: 'San Lorenzo', tipo: 'venta_botella', precioReal: 69, pvpActual: 135 },
+      { vinoId: 'uuid-a', vino: 'San Lorenzo', tipo: 'venta_botella', precioReal: 69, pvpActual: 135 },
+      { vinoId: 'uuid-b', vino: 'Salvajes',    tipo: 'venta_botella', precioReal: 62, pvpActual: 115 },
+    ]
+    const mockPorVino = {}
+    for (const l of mockLineas) {
+      const key = `${l.vinoId}|${l.tipo}`
+      if (!mockPorVino[key]) mockPorVino[key] = { n: 0, sumReal: 0 }
+      mockPorVino[key].n++
+      mockPorVino[key].sumReal += l.precioReal
+    }
+    const keys = Object.keys(mockPorVino)
+    if (keys.length !== 2 || mockPorVino['uuid-a|venta_botella'].n !== 2) {
+      console.log(`  ✗ (l) S8 grouping: keys=${keys.length} n(uuid-a)=${mockPorVino['uuid-a|venta_botella']?.n}`)
+      extraFailed++
+    } else {
+      console.log('  (l) S8 grouping por vino+tipo: ✓')
+    }
+  }
+
   extraFailed += basuraFailed + pvpMinFailed
 
   const totalFailed = failed + extraFailed
@@ -954,6 +995,28 @@ async function main() {
     ? Math.round(provInvSort[0][1] / provInvTotal * 100)
     : provPrincPct
 
+  // Proveedor por referencias en carta simulada (coincide con bodega/page.js display)
+  const provCartaSimMap = {}
+  for (const v of vinosActual) {
+    if (v.proveedor) provCartaSimMap[v.proveedor] = (provCartaSimMap[v.proveedor] || 0) + 1
+  }
+  if (vinoFuera?.proveedor) {
+    const prev = provCartaSimMap[vinoFuera.proveedor] || 0
+    if (prev > 0) provCartaSimMap[vinoFuera.proveedor] = prev - 1
+  }
+  for (const c of catListNuevos) {
+    const pn = catProveedorNombre(c)
+    if (pn && pn !== 'Consultar catálogo') {
+      provCartaSimMap[pn] = (provCartaSimMap[pn] || 0) + 1
+    }
+  }
+  const cartaSimTotal    = vinosActual.length - (vinoFuera ? 1 : 0) + catListNuevos.length
+  const provCartaSimSort = Object.entries(provCartaSimMap).sort((a, b) => b[1] - a[1])
+  const provCartaSim     = provCartaSimSort[0]?.[0] || provPrinc
+  const provCartaSimPct  = cartaSimTotal > 0 && provCartaSimSort[0]
+    ? Math.round(provCartaSimSort[0][1] / cartaSimTotal * 100)
+    : provPrincPct
+
   // Columnas reales de proveedor_catalogo_vinos (schema en add_proveedores_catalogos.sql):
   //   coste_estimado, pvp_recomendado, pvp_copa, zona (de normalizar_catalogo_v1.sql), region
   //   proveedor_id → proveedores_vino(id, nombre) — se resuelve con fetchProveedorNombres()
@@ -1061,6 +1124,45 @@ async function main() {
     const { error: insErr } = await sb.from('platos').insert(platoRows)
     if (insErr) throw new Error(`S1 insert: ${insErr.message}`)
     console.log(`\n   ✓ ${platoRows.length} platos insertados`)
+  }
+
+  // ── S1 rasgos: tabla de detección (replica rasgosSugeridos + rasgosMaridaje exacto) ──
+  {
+    const nrm = t => (t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    // rasgosSugeridos (mismo logic que app/dashboard/platos/page.js:79-99)
+    const reglasSug = [
+      { match: ['brasa', 'parrilla', 'plancha'], rasgo: 'brasa' },
+      { match: ['frito', 'frita', 'fritura', 'croqueta', 'flamenquin', 'rebozado'], rasgo: 'frito' },
+      { match: ['ahumado', 'ahumada'], rasgo: 'ahumado' },
+      { match: ['gratinado', 'gratinada', 'alioli', 'parmentier'], rasgo: 'gratinado' },
+      { match: ['pedro ximenez', 'px', 'miel', 'caramelizada', 'caramelizado', 'barbacoa'], rasgo: 'salsa dulce' },
+      { match: ['picante', 'pil pil', 'ajillo', 'curry', 'brava'], rasgo: 'picante' },
+      { match: ['esparrago', 'esparragos', 'pimiento', 'hinojo', 'apio', 'pepino'], rasgo: 'verdura verde' },
+      { match: ['seta', 'setas', 'trufa', 'boletus', 'champinon'], rasgo: 'setas trufa' },
+      { match: ['almendra', 'almendras', 'nuez', 'nueces', 'avellana'], rasgo: 'frutos secos' },
+      { match: ['queso', 'quesos', 'cheddar', 'cabra', 'curado'], rasgo: 'queso' },
+      { match: ['frio', 'fria', 'salmorejo', 'mazamorra', 'ensaladilla', 'gazpacho'], rasgo: 'frio' },
+      { match: ['rabo', 'codillo', 'madurada', 'jamon', 'trufa', 'soja'], rasgo: 'umami' },
+    ]
+    // rasgosMaridaje exact-match (los que usa platosSinRasgos en el dashboard)
+    const rasgosExactos = ['brasa','frito','ahumado','gratinado','salsa dulce','picante','verdura verde','setas trufa','frutos secos','queso','frio','umami']
+    let conSug = 0, conExacto = 0
+    console.log('\n  [S1 rasgos] plato → sugerido (import) | exacto (platosSinRasgos)')
+    console.log(`  ${'#'.padStart(2)}  ${'nombre'.padEnd(44)} ${'sugerido'.padEnd(16)} exacto`)
+    console.log('  ' + '─'.repeat(82))
+    for (let i = 0; i < PLATOS.length; i++) {
+      const p    = PLATOS[i]
+      const txt  = nrm(`${p.nombre} ${p.descripcion}`)
+      const desc = nrm(p.descripcion)
+      const sug  = reglasSug.filter(r => r.match.some(m => txt.includes(m))).map(r => r.rasgo)
+      const ext  = rasgosExactos.find(r => desc.includes(r)) || '—'
+      if (sug.length > 0) conSug++
+      if (ext !== '—') conExacto++
+      const sugStr = sug.length ? sug.join(',') : '—'
+      console.log(`  ${String(i+1).padStart(2)}  ${p.nombre.padEnd(44)} ${sugStr.padEnd(16)} ${ext}`)
+    }
+    console.log(`  ${'─'.repeat(82)}`)
+    console.log(`  Total: sugeridos=${conSug}/${PLATOS.length}  exactos=${conExacto}/${PLATOS.length}`)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1396,7 +1498,8 @@ async function main() {
     const deltaPvpRaw = Math.max(0, targetPvp - pvp)
     const deltaPvp    = Math.round(Math.min(deltaPvpRaw, 5.0) * 2) / 2  // cap 5€, round 0.5€
     const bots        = pvp > 60 ? Math.round(botellasAnualMedia * 0.25) : botellasAnualMedia
-    return { nombre: (v.nombre||'?').slice(0, 22), pvp, margen: Math.round(v._margen), deltaPvp, bots, impacto: Math.round(deltaPvp * bots * adoption) }
+    const botsLabel   = pvp > 60 ? `${bots}(25%×${botellasAnualMedia})` : String(bots)
+    return { nombre: (v.nombre||'?').slice(0, 22), pvp, margen: Math.round(v._margen), deltaPvp, bots, botsLabel, impacto: Math.round(deltaPvp * bots * adoption) }
   })
   let imp2Adoption = 0.50
   let imp2Tabla    = calcImp2Tabla(imp2Adoption)
@@ -1412,8 +1515,8 @@ async function main() {
     ? Math.round(1 * 5 * 8 * 52 * 0.40)   // 832€
     : Math.round(1 * 3 * 8 * 52 * 0.30)   // 374€ si optimizar
 
-  // Fórmula 5: diversificación proveedor (ahorro 3% en negociación) — usa % inversión
-  const impProveedor = provPrincInvPct > 40
+  // Fórmula 5: diversificación proveedor (ahorro 3% en negociación) — usa carta-simulada refs
+  const impProveedor = provCartaSimPct > 40
     ? Math.round(imp2Vinos.reduce((s, v) => s + Number(v.coste_compra || 0) * 0.03 * 24, 0) || 650)
     : 500
 
@@ -1480,7 +1583,11 @@ async function main() {
       dificultad: 'baja',
       confianza_pct: 78,
       prioridad: imp2 >= 500 ? 'media' : 'baja',
-      formula: `${imp2Vinos.length} vinos <${MARGEN_OBJETIVO}% × ΔPVP(cap 5€) × ${botellasAnualMedia} bots/año × ${Math.round(imp2Adoption*100)}% = ${imp2}€/año`,
+      formula: (() => {
+        const hasHighPvp = imp2Tabla.some(r => !r.skip && r.pvp > 60)
+        const botsDesc = hasHighPvp ? `${Math.round(botellasAnualMedia*0.25)}–${botellasAnualMedia} bots/año (PVP>60€→25% de media)` : `${botellasAnualMedia} bots/año`
+        return `${imp2Vinos.length} vinos <${MARGEN_OBJETIVO}% × ΔPVP(cap 5€) × ${botsDesc} × ${Math.round(imp2Adoption*100)}% = ${imp2}€/año`
+      })(),
     },
     ...items3Capital,
     {
@@ -1502,18 +1609,18 @@ async function main() {
     },
     {
       area: 'Proveedores',
-      titulo: `Diversificar — ${provPrincInv || 'principal'} al ${provPrincInvPct}% de la bodega`,
-      detalle: provPrincInvPct > 40
-        ? `${provPrincInv} representa el ${provPrincInvPct}% de la inversión en bodega (stock × coste). Alta concentración limita la negociación de rappels y aumenta el riesgo de desabastecimiento.`
+      titulo: `Diversificar — ${provCartaSim || 'principal'} al ${provCartaSimPct}% de la carta`,
+      detalle: provCartaSimPct > 40
+        ? `${provCartaSim} aporta el ${provCartaSimPct}% de las referencias en la carta simulada (${cartaSimTotal} vinos). Alta concentración limita la negociación de rappels y aumenta el riesgo de desabastecimiento.`
         : `Distribución de proveedores razonablemente diversificada. Optimizar condiciones con el principal.`,
-      accion: `Negociar rappel anual con ${provPrincInv || 'proveedor principal'}; explorar 2 referencias alternativas`,
+      accion: `Negociar rappel anual con ${provCartaSim || 'proveedor principal'}; explorar 2 referencias alternativas`,
       impacto_estimado: impProveedor,
       tipo_impacto: 'riesgo',
       horizonte: 'estrategico',
       dificultad: 'alta',
       confianza_pct: 60,
-      prioridad: provPrincInvPct > 40 ? 'media' : 'baja',
-      formula: `3% ahorro negociación × inversión anual bodega ≈ ${impProveedor}€/año estimado`,
+      prioridad: provCartaSimPct > 40 ? 'media' : 'baja',
+      formula: `3% ahorro negociación × ${provCartaSim} (${provCartaSimPct}% de ${cartaSimTotal} refs carta simulada) ≈ ${impProveedor}€/año estimado`,
     },
   ]
 
@@ -1540,11 +1647,11 @@ async function main() {
   }
   if (imp2Tabla.length > 0) {
     console.log(`\n  Tabla ΔPVP (adopción ${Math.round(imp2Adoption*100)}%, pvpMedio≈${pvpMedioEstimado}€, bots/año≈${botellasAnualMedia}):`)
-    console.log(`  ${'vino'.padEnd(24)} pvp€  margen  ΔPVP  bots/año  impacto€`)
-    console.log('  ' + '─'.repeat(64))
+    console.log(`  ${'vino'.padEnd(24)} pvp€  margen  ΔPVP  bots/año           impacto€`)
+    console.log('  ' + '─'.repeat(72))
     for (const r of imp2Tabla) {
       if (r.skip) { console.log(`  ${r.nombre.padEnd(24)}  — (sin coste/pvp)`); continue }
-      console.log(`  ${r.nombre.padEnd(24)} ${String(r.pvp).padStart(4)}  ${(r.margen+'%').padStart(6)}  ${(r.deltaPvp+'€').padStart(5)}  ${String(r.bots).padStart(8)}  ${String(r.impacto).padStart(8)}`)
+      console.log(`  ${r.nombre.padEnd(24)} ${String(r.pvp).padStart(4)}  ${(r.margen+'%').padStart(6)}  ${(r.deltaPvp+'€').padStart(5)}  ${r.botsLabel.padStart(16)}  ${String(r.impacto).padStart(8)}`)
     }
   }
   console.log('\n  prioridad  horizonte         impacto€  titulo')
@@ -1722,6 +1829,15 @@ async function main() {
   console.log('\n  NOTA: catalogo_vino_id se trackea localmente; NO se inserta en BD.')
   console.log('  Para guardarlo: ALTER TABLE consultor_propuestas ADD COLUMN catalogo_vino_id uuid REFERENCES proveedor_catalogo_vinos(id);')
 
+  console.log('\n  [S6 textos completos]')
+  console.log('  ' + '─'.repeat(80))
+  for (let i = 0; i < propuestasRows.length; i++) {
+    const p = propuestasRows[i]
+    console.log(`\n  [p${i+1}] ${p.titulo}`)
+    console.log(`  plato_objetivo: ${p.plato_objetivo}`)
+    console.log(`  motivo: ${p.motivo}`)
+  }
+
   if (!DRY_RUN) {
     const { error: de } = await sb.from('consultor_propuestas').delete().eq('restaurante_id', DEMO_ID)
     if (de) throw new Error(`S6 delete: ${de.message}`)
@@ -1773,20 +1889,20 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // S8: partes_servicio_lineas — actualizar precio_unitario divergente
+  // S8: partes_servicio_lineas — análisis de precios divergentes (OPT-IN)
   //
-  // Detecta líneas donde precio_unitario difiere >15% del PVP actual del vino.
-  // DRY-RUN: muestra tabla de desvíos.
-  // --confirm: actualiza precio_unitario → PVP actual para líneas con desvío >15%.
+  // Sin --s8: siempre imprime análisis, NUNCA escribe (ni con --confirm).
+  // Con --s8 + --confirm: actualiza precio_unitario → PVP actual en líneas >15%.
   // No toca cantidades, costes, stock ni partes_servicio.
   // ═══════════════════════════════════════════════════════════════════════════
-  console.log('\n[S8] partes_servicio_lineas — detectar precios divergentes (>15% del PVP actual)...')
+  console.log(`\n[S8] partes_servicio_lineas — análisis divergencias${RUN_S8 ? ' (--s8: escritura activa)' : ' (solo análisis, sin escritura)'}...`)
 
-  const { data: s8PartesIds } = await sb
+  const { data: s8Partes } = await sb
     .from('partes_servicio')
-    .select('id')
+    .select('id, fecha_inicio, fecha_cierre')
     .eq('restaurante_id', DEMO_ID)
-  const s8ParteIdList = (s8PartesIds || []).map(p => p.id)
+  const s8ParteIdList = (s8Partes || []).map(p => p.id)
+  const s8FechaMap    = Object.fromEntries((s8Partes || []).map(p => [p.id, p.fecha_cierre || p.fecha_inicio]))
 
   if (s8ParteIdList.length === 0) {
     console.log('  Sin partes de servicio para demo. Omitido.')
@@ -1796,39 +1912,98 @@ async function main() {
       .select('id, parte_id, vino_id, tipo, precio_unitario, vino:vinos(id, nombre, precio_botella, precio_copa)')
       .in('parte_id', s8ParteIdList)
 
-    const s8Desviadas = []
+    // Construir detalle por línea
+    const s8Detalle = []
     for (const l of (s8Lineas || [])) {
-      const esCopa   = (l.tipo || '').includes('copa')
+      const esCopa    = (l.tipo || '').includes('copa')
       const pvpActual = esCopa ? Number(l.vino?.precio_copa || 0) : Number(l.vino?.precio_botella || 0)
-      const precioVendido = Number(l.precio_unitario || 0)
-      if (!pvpActual) continue
-      const desvioPct = Math.abs(precioVendido - pvpActual) / pvpActual
-      if (desvioPct > 0.15) {
-        s8Desviadas.push({ id: l.id, vino: l.vino?.nombre || '?', tipo: l.tipo, precioVendido, pvpActual, desvioPct: Math.round(desvioPct * 100) })
+      const precioReal = Number(l.precio_unitario || 0)
+      if (!pvpActual || !precioReal) continue
+      const desvioPct = Math.abs(precioReal - pvpActual) / pvpActual
+      const fecha     = s8FechaMap[l.parte_id] || null
+      const mes       = fecha ? fecha.slice(0, 7) : '????-??'
+      s8Detalle.push({
+        id: l.id, vino: l.vino?.nombre || '?', vinoId: l.vino_id,
+        tipo: l.tipo, precioReal, pvpActual, desvioPct,
+        desviada: desvioPct > 0.15, mes, fecha,
+      })
+    }
+
+    const s8Desviadas = s8Detalle.filter(l => l.desviada)
+    const fechas      = s8Detalle.map(l => l.fecha).filter(Boolean).sort()
+    console.log(`\n  Período cubierto: ${fechas[0] || '—'} → ${fechas[fechas.length-1] || '—'}`)
+    console.log(`  Total líneas analizadas: ${s8Detalle.length}  |  Divergentes >15%: ${s8Desviadas.length}`)
+
+    // ── Análisis mensual ────────────────────────────────────────────────────
+    const s8PorMes = {}
+    for (const l of s8Desviadas) {
+      if (!s8PorMes[l.mes]) s8PorMes[l.mes] = { n: 0, ingrReal: 0, ingrAlin: 0 }
+      s8PorMes[l.mes].n++
+      s8PorMes[l.mes].ingrReal += l.precioReal
+      s8PorMes[l.mes].ingrAlin += l.pvpActual
+    }
+    if (Object.keys(s8PorMes).length > 0) {
+      console.log('\n  Análisis mensual (líneas divergentes):')
+      console.log(`  ${'mes'.padEnd(8)} ${'n'.padStart(4)} ${'€ actual'.padStart(10)} ${'€ alin.'.padStart(10)} ${'delta€'.padStart(9)} ${'delta%'.padStart(7)}`)
+      console.log('  ' + '─'.repeat(52))
+      for (const [mes, m] of Object.entries(s8PorMes).sort()) {
+        const delta    = m.ingrAlin - m.ingrReal
+        const deltaPct = m.ingrReal > 0 ? Math.round(delta / m.ingrReal * 100) : 0
+        console.log(`  ${mes.padEnd(8)} ${String(m.n).padStart(4)} ${(m.ingrReal.toFixed(2)+'€').padStart(10)} ${(m.ingrAlin.toFixed(2)+'€').padStart(10)} ${('+'+delta.toFixed(2)+'€').padStart(9)} ${('+'+deltaPct+'%').padStart(7)}`)
       }
     }
 
-    if (s8Desviadas.length === 0) {
-      console.log('  Sin líneas con desvío >15%. Omitido.')
-    } else {
-      console.log(`\n  ${s8Desviadas.length} línea(s) con precio_unitario divergente (>15% del PVP actual):`)
-      console.log(`  ${'vino'.padEnd(32)} ${'tipo'.padEnd(18)} ${'vendido'.padStart(8)} ${'pvp_act'.padStart(8)} ${'desvío'.padStart(7)}`)
-      console.log('  ' + '─'.repeat(76))
+    // ── Coherencia con histórico y cierres ──────────────────────────────────
+    console.log('\n  ── Coherencia con histórico y cierres ──')
+    console.log('  agregarPeriodoBodega lee partes_servicio_lineas.precio_unitario → ingresos DERIVADOS.')
+    console.log('  Alinear líneas cambia los totales en el próximo recálculo del informe semanal.')
+    console.log('  Cierres mensuales ya guardados en BD son snapshots fijos → no se ven afectados.')
+    console.log('  ⚠  Verificar si historico_mensual tiene triggers antes de aplicar --s8.')
+
+    // ── Resumen por vino ────────────────────────────────────────────────────
+    if (s8Desviadas.length > 0) {
+      const s8PorVino = {}
       for (const l of s8Desviadas) {
-        console.log(`  ${l.vino.padEnd(32)} ${(l.tipo||'').padEnd(18)} ${String(l.precioVendido+'€').padStart(8)} ${String(l.pvpActual+'€').padStart(8)} ${String(l.desvioPct+'%').padStart(7)}`)
+        const key = `${l.vinoId}|${l.tipo}`
+        if (!s8PorVino[key]) s8PorVino[key] = { vino: l.vino, tipo: l.tipo, n: 0, sumReal: 0, pvpActual: l.pvpActual }
+        s8PorVino[key].n++
+        s8PorVino[key].sumReal += l.precioReal
       }
-      if (!DRY_RUN) {
-        let s8Updated = 0
-        for (const l of s8Desviadas) {
-          const { error } = await sb
-            .from('partes_servicio_lineas')
-            .update({ precio_unitario: l.pvpActual })
-            .eq('id', l.id)
-          if (error) throw new Error(`S8 update linea ${l.id}: ${error.message}`)
-          s8Updated++
-        }
-        console.log(`\n   ✓ ${s8Updated} línea(s) actualizadas → precio_unitario = PVP actual`)
+      console.log('\n  Resumen por vino (líneas divergentes):')
+      console.log(`  ${'vino'.padEnd(32)} ${'tipo'.padEnd(16)} ${'n'.padStart(3)} ${'€ medio'.padStart(8)} ${'PVP act'.padStart(8)} ${'desvío'.padStart(7)}`)
+      console.log('  ' + '─'.repeat(78))
+      for (const r of Object.values(s8PorVino)) {
+        const medio    = r.sumReal / r.n
+        const desvPct  = Math.round(Math.abs(medio - r.pvpActual) / r.pvpActual * 100)
+        console.log(`  ${r.vino.padEnd(32)} ${(r.tipo||'').padEnd(16)} ${String(r.n).padStart(3)} ${(medio.toFixed(2)+'€').padStart(8)} ${(r.pvpActual+'€').padStart(8)} ${(desvPct+'%').padStart(7)}`)
       }
+    }
+
+    // ── Variante acotada (últimas 2 semanas del período demo) ───────────────
+    const s8RefDate = new Date('2026-09-30T23:59:59Z')
+    const s8CutDate = new Date(s8RefDate.getTime() - 14 * 24 * 3600 * 1000)
+    const s8Acotadas = s8Desviadas.filter(l => l.fecha && new Date(l.fecha) >= s8CutDate)
+    console.log(`\n  Variante acotada (≥${s8CutDate.toISOString().slice(0,10)}, últimas 2 semanas):`)
+    console.log(`  ${s8Acotadas.length} líneas divergentes (de ${s8Desviadas.length} totales)`)
+    if (s8Acotadas.length > 0) {
+      const impAcot = s8Acotadas.reduce((s, l) => s + (l.pvpActual - l.precioReal), 0)
+      console.log(`  Impacto si se alinean: +${impAcot.toFixed(2)}€ en ingresos sobre precio_unitario`)
+    }
+
+    // ── Escritura (solo con --s8 + --confirm) ──────────────────────────────
+    if (!DRY_RUN && RUN_S8 && s8Desviadas.length > 0) {
+      let s8Updated = 0
+      for (const l of s8Desviadas) {
+        const { error } = await sb
+          .from('partes_servicio_lineas')
+          .update({ precio_unitario: l.pvpActual })
+          .eq('id', l.id)
+        if (error) throw new Error(`S8 update linea ${l.id}: ${error.message}`)
+        s8Updated++
+      }
+      console.log(`\n   ✓ ${s8Updated} línea(s) actualizadas → precio_unitario = PVP actual`)
+    } else if (!DRY_RUN && !RUN_S8) {
+      console.log('\n  (--s8 no activo — sin escritura. Para aplicar: añadir --s8 al comando --confirm)')
     }
   }
 
@@ -2141,7 +2316,7 @@ async function main() {
   console.log(`  S5  oportunidades: ${oppItems.length} items · ${oppSnap.recuperacion_anual_estimada}€`)
   console.log(`  S6  propuestas: ${propuestasRows.length} (huecos: ${huecosFuncionales.length ? huecosFuncionales.join(', ') : 'stock/margen'})`)
   console.log(`  S7  cabecera_compras: solo campo proveedor → "Varios proveedores"`)
-  console.log(`  S8  partes lineas: ${DRY_RUN ? 'tabla desvíos mostrada (dry-run)' : 'precio_unitario actualizado a PVP actual'}`)
+  console.log(`  S8  partes lineas: ${RUN_S8 ? (!DRY_RUN ? 'precio_unitario actualizado' : 'análisis mostrado (dry-run)') : 'análisis mostrado (opt-in desactivado — añadir --s8 para escribir)'}`)
   console.log(`  ONBOARDING: ${pctAntes}% → ${pctDespues}%`)
   if (!tieneDulce) console.log(`  ⚠  DULCE AUSENTE — postres sin maridaje`)
   console.log(`\n  ${DRY_RUN
