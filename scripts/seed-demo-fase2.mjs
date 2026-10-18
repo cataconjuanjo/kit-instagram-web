@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * seed-demo-fase2.mjs — Fase 2 (v6)
+ * seed-demo-fase2.mjs — Fase 2 (v7)
  *
  * Uso:
  *   node --env-file=.env.local scripts/seed-demo-fase2.mjs
@@ -381,10 +381,10 @@ const NOMBRE_OVERRIDES = [
     tags: ['seco', 'tanino_medio_alto', 'con_cuerpo', 'fruta_negra', 'mineral_salino'],
     nota: 'Tinto del Priorat concentrado. Con cuerpo amplio y tanino firme y marcado. Fruta negra de zarzamora, ciruela negra y arándano. Mineral y salino, suelo pizarroso. Especiado y persistente.',
     aviso: null },
-  // Finca Antigua CZA. Tempranillo: crianza, sin cuerpo_ligero, sin marcar con_cuerpo
+  // Finca Antigua CZA. Tempranillo: crianza suave, sin cuerpo_ligero, sin roble explícito
   { match: /finca antigua.*cza|finca antigua.*crianza/i,
-    tags: ['seco', 'tanino_bajo', 'fruta_roja', 'roble'],
-    nota: 'Tempranillo con crianza en roble. Fruta roja de cereza madura y fresa. Tanino amable y bajo, integrado por la crianza. Notas de barrica de vainilla y cedro. Seco y equilibrado.',
+    tags: ['seco', 'tanino_bajo', 'fruta_roja'],
+    nota: 'Tempranillo con crianza suave. Fruta roja de cereza madura y fresa. Tanino amable y bajo, bien integrado. Notas de fruta y especias suaves. Seco y equilibrado.',
     aviso: null },
   // Reserve Blanc de Blancs (espumoso): fruta_citrica + fruta_verde
   { match: /reserve.*blanc.de.blancs|blanc.de.blancs.*reserve/i,
@@ -687,7 +687,7 @@ async function main() {
   }
 
   const mode = DRY_RUN ? '[DRY-RUN]' : `[CONFIRM — ${dbName}]`
-  console.log(`\n${mode} seed-demo-fase2 v6  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
+  console.log(`\n${mode} seed-demo-fase2 v7  DEMO_ID=${DEMO_ID}  restaurante="${dbName}"\n`)
 
   // ── Query única de vinos ─────────────────────────────────────────────────
   const { data: vinos, error: vinosErr } = await sb
@@ -712,7 +712,7 @@ async function main() {
     .sort((a, b) => a._margen - b._margen)
 
   const vinosConPrecio    = todosVinos.filter(v => Number(v.precio_botella) > 0)
-  const MARGEN_OBJETIVO   = 65
+  const MARGEN_OBJETIVO   = 61
   const vinosBajoMargen   = vinosConMargenCalc.filter(v => v._margen < MARGEN_OBJETIVO)
   const vinosConStock     = todosVinos.filter(v => Number(v.stock) > 0)
   const vinosSinCoste     = todosVinos.filter(v => !Number(v.coste_compra))
@@ -776,6 +776,7 @@ async function main() {
       .select(CAT_SELECT)
       .eq('activo', true)
       .ilike('tipo', `%${tipo}%`)
+      .gt('coste_estimado', 0)
       .limit(10)
     if (extraIlike) q = q.ilike('nombre', `%${extraIlike}%`)
     const { data } = await q
@@ -788,6 +789,7 @@ async function main() {
       .select(CAT_SELECT)
       .eq('activo', true)
       .ilike('tipo', `%${tipo}%`)
+      .gt('coste_estimado', 0)
       .lte('coste_estimado', costeMax)
       .order('coste_estimado', { ascending: true })
       .limit(20)
@@ -795,7 +797,7 @@ async function main() {
     const { data } = await q
     const found = (data || []).find(c => !catalogoEnCartaIds.has(c.id))
     if (found) return { ...found, _dentroRango: true }
-    // Fallback: el más barato sin filtro de coste
+    // Fallback: el más barato sin filtro de coste (pero sí coste>0)
     const fallback = await buscarEnCatalogoSinRepetir(tipo, extraIlike)
     return fallback ? { ...fallback, _dentroRango: false } : null
   }
@@ -931,33 +933,40 @@ async function main() {
   const vinosActual = vinoFuera ? todosVinos.filter(v => v.id !== vinoFuera.id) : todosVinos
 
   const tipoFuera = vinoFuera?.tipo || 'blanco'
-  // ilike para tipo: captura 'Tinto', 'tinto', 'Tinto Crianza', 'tinto joven', etc.
-  await fetchProveedorNombres()
-  const { data: catVinos1 } = await sb.from('proveedor_catalogo_vinos')
-    .select(CAT_SELECT)
-    .eq('activo', true).ilike('tipo', `%${tipoFuera}%`).limit(10)
-  const catNuevo1 = (catVinos1 || []).find(c => !catalogoEnCartaIds.has(c.id)) || null
 
-  // nuevo 2: cubre hueco real (no puede repetir catNuevo1)
-  const yaUsado1 = catNuevo1 ? new Set([...catalogoEnCartaIds, catNuevo1.id]) : catalogoEnCartaIds
-  let catNuevo2 = null
+  // ── Consultas de catálogo compartidas entre S3 y S6 (coste>0, una sola vez) ──
+  await fetchProveedorNombres()
+  const [catDulceRow, catBlancoConCuerpoRow, catGenComplejoRow, catEspumosoRow] = await Promise.all([
+    buscarEnCatalogoConCoste('dulce', 15),
+    (async () => {
+      const r = await buscarEnCatalogoConCoste('blanco', 20, 'barrica')
+      return r || await buscarEnCatalogoConCoste('blanco', 20, 'crianza')
+    })(),
+    (async () => {
+      const r = await buscarEnCatalogoConCoste('generoso', 25, 'oloroso')
+      return r || await buscarEnCatalogoConCoste('generoso', 25, 'amontillado')
+    })(),
+    buscarEnCatalogoConCoste('espumoso', 18),
+  ])
+  // catTintoBajoMargenRow: alternativa del catálogo para el vino de menor margen
+  const catTintoBajoMargenRow = vinosBajoMargen[0]?.catalogo_vino_id
+    ? await (async () => {
+        const { data } = await sb.from('proveedor_catalogo_vinos')
+          .select(CAT_SELECT).eq('id', vinosBajoMargen[0].catalogo_vino_id)
+          .gt('coste_estimado', 0).maybeSingle()
+        return data
+      })() || await buscarEnCatalogoConCoste(vinosBajoMargen[0]?.tipo || 'tinto', 18)
+    : await buscarEnCatalogoConCoste(vinosBajoMargen[0]?.tipo || 'tinto', 18)
+
+  // catNuevo1 = mismo vino que S6 p4 (alternativa para el de menor margen)
+  const catNuevo1 = catTintoBajoMargenRow
+
+  // catNuevo2: primer hueco real — reutiliza el vino ya consultado por S6
   const tipoHueco2 = !tieneDulce ? 'dulce' : !tieneGenerosoComplejo && tieneGeneroso ? 'generoso' : !tieneBlancoConCuerpo ? 'blanco' : null
-  const extraHueco2 = !tieneDulce ? null : !tieneGenerosoComplejo && tieneGeneroso ? 'oloroso' : !tieneBlancoConCuerpo ? 'barrica' : null
-  if (tipoHueco2) {
-    let q2 = sb.from('proveedor_catalogo_vinos')
-      .select(CAT_SELECT)
-      .eq('activo', true).ilike('tipo', `%${tipoHueco2}%`).limit(10)
-    if (extraHueco2) q2 = q2.ilike('nombre', `%${extraHueco2}%`)
-    const { data: catVinos2 } = await q2
-    catNuevo2 = (catVinos2 || []).find(c => !yaUsado1.has(c.id)) || null
-    // fallback: any activo not in carta
-    if (!catNuevo2) {
-      const { data: fb } = await sb.from('proveedor_catalogo_vinos')
-        .select(CAT_SELECT)
-        .eq('activo', true).limit(20)
-      catNuevo2 = (fb || []).find(c => !yaUsado1.has(c.id)) || null
-    }
-  }
+  let catNuevo2 = null
+  if      (tipoHueco2 === 'dulce')    catNuevo2 = catDulceRow
+  else if (tipoHueco2 === 'generoso') catNuevo2 = catGenComplejoRow
+  else if (tipoHueco2 === 'blanco')   catNuevo2 = catBlancoConCuerpoRow
 
   const catListNuevos = [catNuevo1, catNuevo2].filter(Boolean)
 
@@ -1140,17 +1149,24 @@ async function main() {
   const MARGEN_COPA  = 3.0
 
   // Fórmula 1: dulce para postres
-  // Base: 4 copas/día (1 por postre × 4 postres) × 5 días × 3€ × 52 × 50% adopción
-  // = 4 × 5 × 3 × 52 × 0.5 = 1560€/año  (< 2% de 118k ventas anuales estimadas → creíble)
+  // Base: 2 copas/día × 5 días × 3€ × 52 × 40% adopción = 624€/año
   const impDulce = !tieneDulce
-    ? Math.round(4 * 5 * MARGEN_COPA * 52 * 0.50)   // 1560€
+    ? Math.round(2 * 5 * MARGEN_COPA * 52 * 0.40)   // 624€
     : Math.round(2 * 5 * MARGEN_COPA * 52 * 0.40)   // 624€ si ampliar
 
-  // Fórmula 2: margen bajo — potencial de subida de PVP
-  // +10% en PVP × rotación estimada 2 uds/semana × 52 semanas (conservador)
+  // Fórmula 2: margen bajo — ΔPVP para llegar a objetivo 64% × rotación estimada
+  // ΔPVP_i = coste/(1−0.64)×1.1 − pvp_actual; solo si margen < MARGEN_OBJETIVO%
+  const TARGET_MARGEN_IMP2 = 0.64
   const imp2Vinos = vinosBajoMargen.slice(0, 5)
   const imp2 = imp2Vinos.length > 0
-    ? Math.round(imp2Vinos.reduce((s, v) => s + Number(v.precio_botella) * 0.10 * 2 * 52 * 0.5, 0))
+    ? Math.round(imp2Vinos.reduce((s, v) => {
+        const coste = Number(v.coste_compra) || 0
+        const pvp   = Number(v.precio_botella) || 0
+        if (!coste || !pvp) return s
+        const targetPvp = coste / (1 - TARGET_MARGEN_IMP2) * 1.1
+        const deltaPvp  = Math.max(0, targetPvp - pvp)
+        return s + deltaPvp * 2 * 52 * 0.5
+      }, 0))
     : 480
 
   // Fórmula 3: capital inmovilizado — SOLO si hay referencias inmovilizadas
@@ -1199,7 +1215,7 @@ async function main() {
       dificultad: 'baja',
       confianza_pct: 88,
       prioridad: 'alta',
-      formula: `4 copas/día × 5 días × ${MARGEN_COPA}€ margen × 52 sem × 50% adopción = ${impDulce}€/año`,
+      formula: `2 copas/día × 5 días × ${MARGEN_COPA}€ margen × 52 sem × 40% adopción = ${impDulce}€/año`,
     },
     {
       area: 'Precios',
@@ -1212,7 +1228,7 @@ async function main() {
       dificultad: 'baja',
       confianza_pct: 78,
       prioridad: 'alta',
-      formula: `${imp2Vinos.length} vinos <${MARGEN_OBJETIVO}% × +10% PVP × 2 uds/sem × 52 sem × 50% = ${imp2}€/año`,
+      formula: `${imp2Vinos.length} vinos <${MARGEN_OBJETIVO}% × ΔPVP→64% × 2 uds/sem × 52 sem × 50% = ${imp2}€/año`,
     },
     ...items3Capital,
     {
@@ -1266,6 +1282,10 @@ async function main() {
   const limiteImpacto4pct  = Math.round(ventasVinoAnualEst * 0.04)
   const totalImpacto = oppSnap.recuperacion_anual_estimada
   console.log(`\n  Recuperación estimada: ${totalImpacto}€/año  (límite 4% ventas vino ≈${limiteImpacto4pct}€)${totalImpacto > limiteImpacto4pct ? '  ⚠ SUPERA límite — revisar inputs' : '  ✓'}`)
+  if (totalImpacto > limiteImpacto4pct) {
+    console.error(`  ERROR S5: impacto total ${totalImpacto}€ supera límite ${limiteImpacto4pct}€ (4% ventas vino). Revisar fórmulas.`)
+    process.exit(2)
+  }
   if (vinosBajoMargen.length > 0) {
     console.log(`  Vinos margen <${MARGEN_OBJETIVO}%: ${vinosBajoMargen.map(v => `"${(v.nombre||'').slice(0,22)}" (${Math.round(v._margen)}%)`).join('  ')}`)
   }
@@ -1300,24 +1320,8 @@ async function main() {
   //   catalogo_vino_id uuid REFERENCES proveedor_catalogo_vinos(id);
   // ═══════════════════════════════════════════════════════════════════════════
   console.log('\n[S6] consultor_propuestas (huecos reales, sin repetir carta actual)...')
-
-  await fetchProveedorNombres()
-  // Límites de coste coherentes con la carta actual
-  const [catDulceRow, catBlancoConCuerpoRow, catGenComplejoRow, catEspumosoRow] = await Promise.all([
-    buscarEnCatalogoConCoste('dulce', 15),
-    (async () => {
-      const r = await buscarEnCatalogoConCoste('blanco', 20, 'barrica')
-      return r || await buscarEnCatalogoConCoste('blanco', 20, 'crianza')
-    })(),
-    (async () => {
-      const r = await buscarEnCatalogoConCoste('generoso', 25, 'oloroso')
-      return r || await buscarEnCatalogoConCoste('generoso', 25, 'amontillado')
-    })(),
-    buscarEnCatalogoConCoste('espumoso', 18),
-  ])
-  const catTintoBajoMargenRow = vinosBajoMargen[0]?.catalogo_vino_id
-    ? await (async () => { const { data } = await sb.from('proveedor_catalogo_vinos').select(CAT_SELECT).eq('id', vinosBajoMargen[0].catalogo_vino_id).maybeSingle(); return data })()
-    : await buscarEnCatalogoSinRepetir(vinosBajoMargen[0]?.tipo || 'tinto')
+  // catDulceRow, catBlancoConCuerpoRow, catGenComplejoRow, catEspumosoRow, catTintoBajoMargenRow
+  // — todos ya computados en bloque compartido S3/S6 (coste>0 filtrado)
 
   // Helper para mostrar el vino real del catálogo
   function mostrarCatRow(label, row) {
@@ -1387,14 +1391,14 @@ async function main() {
       restaurante_id: DEMO_ID,
       titulo: vinosBajoMargen[0]
         ? `Sustituir "${(vinosBajoMargen[0].nombre||'').slice(0, 28)}" (margen ${Math.round(vinosBajoMargen[0]._margen)}%) por alternativa de catálogo`
-        : 'Revisar vinos con margen < 60%',
+        : `Revisar vinos con margen < ${MARGEN_OBJETIVO}%`,
       vino:               catTintoBajoMargenRow?.nombre || (vinosBajoMargen[0]?.tipo ? `Alternativa de ${vinosBajoMargen[0].tipo}` : 'Alternativa de tinto'),
       tipo:               catTintoBajoMargenRow?.tipo || vinosBajoMargen[0]?.tipo || 'Tinto',
       zona:               catZona(catTintoBajoMargenRow) || '—',
       proveedor_sugerido: catProveedorNombre(catTintoBajoMargenRow),
       coste_estimado:     catCoste(catTintoBajoMargenRow) || Number(vinosBajoMargen[0]?.coste_compra) || 6,
-      precio_recomendado: catPvp(catTintoBajoMargenRow) || (Number(vinosBajoMargen[0]?.precio_botella) ? Math.round(Number(vinosBajoMargen[0].precio_botella) * 1.1) : 22),
-      margen_objetivo:    catMargen(catTintoBajoMargenRow) ?? 65,
+      precio_recomendado: Number(vinosBajoMargen[0]?.precio_botella) || 22,
+      margen_objetivo:    vinosBajoMargen[0] ? Math.round(vinosBajoMargen[0]._margen) : 59,
       plato_objetivo: 'Presa ibérica a la brasa, secreto ibérico, rabo de toro estofado',
       motivo: `El vino de menor margen (${Math.round(vinosBajoMargen[0]?._margen || 0)}%) se sustituye por alternativa del mismo tipo con mejor estructura de coste. Impacto inmediato en margen sin cambio visible en carta.`,
       prioridad: 'media', estado: 'interesa',
@@ -1429,7 +1433,11 @@ async function main() {
   mostrarCatRow('dulce (p1)     ', catDulceRow)
   mostrarCatRow('blanco cuerpo (p2)', catBlancoConCuerpoRow)
   mostrarCatRow('gen. complejo (p3)', catGenComplejoRow)
-  mostrarCatRow('bajo margen (p4)', catTintoBajoMargenRow)
+  if (vinosBajoMargen[0]) {
+    const bm = vinosBajoMargen[0]
+    console.log(`    bajo margen (p4 actual): "${(bm.nombre||'').slice(0,30)}" PVP real=${bm.precio_botella}€ margen actual=${Math.round(bm._margen)}%`)
+  }
+  mostrarCatRow('bajo margen (p4 alt cat)', catTintoBajoMargenRow)
   mostrarCatRow('espumoso (p5)  ', catEspumosoRow)
   console.log('\n  NOTA: catalogo_vino_id se trackea localmente; NO se inserta en BD.')
   console.log('  Para guardarlo: ALTER TABLE consultor_propuestas ADD COLUMN catalogo_vino_id uuid REFERENCES proveedor_catalogo_vinos(id);')
@@ -1511,6 +1519,8 @@ async function main() {
       ...v,
       activo: true,
       stock: Math.max(Number(v.stock) || 0, 6),
+      // Garantiza que el motor no filtre vinos sin precio_botella (coste=0 en demo)
+      precio_botella: Number(v.precio_botella) > 0 ? Number(v.precio_botella) : 28,
       notas_cata: notasGeneradas.get(v.id) || v.notas_cata || '',
     }))
 
@@ -1556,6 +1566,40 @@ async function main() {
         let res
         try { res = analizarMaridaje(plato, vinosParaMotor) } catch { res = { recomendados: [] } }
         resultados.set(plato, { ctx, recs: (res.recomendados || []).slice(0, 3) })
+      }
+
+      // ── Diagnóstico presa/rabo: top-8 + tintos estructurales ─────────────
+      const TINTOS_ESTRUCTURALES_NOMBRES = ['Pintia', 'Parada de Atauta', 'San Lorenzo', 'Poderi Colla', 'Grand Rousseau', 'Camins', 'Salvajes']
+      console.log('\n  [DIAG] Tintos estructurales — stock y precio_botella en vinosParaMotor:')
+      const diagnosticoTintos = vinosParaMotor
+        .filter(v => (v.tipo || '').toLowerCase() === 'tinto' &&
+          TINTOS_ESTRUCTURALES_NOMBRES.some(n => (v.nombre || '').toLowerCase().includes(n.toLowerCase())))
+        .map(v => ({ nombre: (v.nombre||'').slice(0,30), stock: v.stock, precio_botella: v.precio_botella, id: v.id }))
+      if (diagnosticoTintos.length === 0) {
+        console.log('    (ninguno de los tintos estructurales en la carta)')
+      } else {
+        for (const t of diagnosticoTintos) {
+          const flag = t.precio_botella > 0 ? '✓' : '✗ precio=0 filtrado por motor'
+          console.log(`    ${t.nombre.padEnd(32)} stock=${String(t.stock).padStart(3)}  precio=${String(t.precio_botella).padStart(5)}€  ${flag}`)
+        }
+      }
+      const platoDiag = [
+        'Presa ibérica a la brasa con chimichurri de hierbas',
+        'Rabo de toro estofado con vino tinto, verduras y puré de patata',
+      ]
+      for (const platoDiagNombre of platoDiag) {
+        let resDiag
+        try { resDiag = analizarMaridaje(platoDiagNombre, vinosParaMotor) } catch { resDiag = { recomendados: [] } }
+        const top8 = (resDiag.recomendados || []).slice(0, 8)
+        console.log(`\n  [DIAG] top-8 "${platoDiagNombre.slice(0, 45)}":`)
+        if (top8.length === 0) { console.log('    (sin resultados)'); continue }
+        for (let i = 0; i < top8.length; i++) {
+          const r = top8[i]
+          const nom = (r?.vino?.nombre || '?').slice(0, 28)
+          const sc  = typeof r?.score === 'number' ? `score=${r.score}` : ''
+          const mot = (r?.motivo || '').slice(0, 50)
+          console.log(`    ${String(i+1).padStart(2)}. ${nom.padEnd(30)} ${sc.padEnd(10)}  ${mot}`)
+        }
       }
 
       // ── Tabla extendida: motivo, PVP y margen ─────────────────────────────
