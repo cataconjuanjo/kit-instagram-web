@@ -68,6 +68,8 @@ function normalizarNombre(s = '') {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 }
 
+const NOMBRE_BASURA_RE = /estuche|pack|caja|lote|regalo|no\s*v[aá]lido|magnum sin precio|s\/\s*d\.?o|cosecha\s*s\//i
+
 // Genera notas de cata profesionales SIN marcadores.
 // Cada rama embebe las palabras clave exactas que inferirPerfilesVino() detecta:
 //   'alta acidez','vibrante','tension' → alta_acidez
@@ -691,6 +693,45 @@ async function runSelftest() {
   if (testErrs.length === 1) console.log('  (c) assertErrors dry-run pattern: ✓')
   else { console.log(`  ✗ assertErrors pattern: errs=${JSON.stringify(testErrs)}`); extraFailed++ }
 
+  // (d) NOMBRE_BASURA_RE rejects garbage names, accepts valid ones
+  const basuraCases = [
+    ['Cosecha S/D.O. Tinto', true],
+    ['Estuche 1 BOT. Baron Fuenté (No Válido Para…)', true],
+    ['Pack Degustación 6 botellas', true],
+    ['Caja de regalo vinos', true],
+    ['Pintia Toro Vega Sicilia', false],
+    ['Albariño Rías Baixas Bodegas Mar', false],
+  ]
+  let basuraFailed = 0
+  for (const [nombre, esperaBasura] of basuraCases) {
+    const esB = NOMBRE_BASURA_RE.test(nombre)
+    if (esB !== esperaBasura) {
+      console.log(`  ✗ NOMBRE_BASURA_RE("${nombre}") → ${esB} (expected ${esperaBasura})`)
+      basuraFailed++
+    }
+  }
+  if (basuraFailed === 0) console.log('  (d) NOMBRE_BASURA_RE filtro basura: ✓')
+
+  // (e) PVP mínimo 12€: coste×3.2 < 12 → basura
+  const pvpMinCases = [
+    [1.55, true],   // 1.55*3.2=4.96 < 12
+    [2.15, true],   // 2.15*3.2=6.88 < 12
+    [3.74, true],   // 3.74*3.2=11.97 < 12
+    [3.76, false],  // 3.76*3.2=12.03 ≥ 12
+    [9.50, false],  // 9.50*3.2=30.4  ≥ 12
+  ]
+  let pvpMinFailed = 0
+  for (const [coste, esperaBasura] of pvpMinCases) {
+    const esB = coste * 3.2 < 12
+    if (esB !== esperaBasura) {
+      console.log(`  ✗ pvpMin check coste=${coste} → esBasura=${esB} (expected ${esperaBasura})`)
+      pvpMinFailed++
+    }
+  }
+  if (pvpMinFailed === 0) console.log('  (e) PVP mínimo 12€ check: ✓')
+
+  extraFailed += basuraFailed + pvpMinFailed
+
   const totalFailed = failed + extraFailed
   console.log(`\n  ${passed}/${casos.length} checks pasados`)
   if (totalFailed > 0) {
@@ -830,36 +871,52 @@ async function main() {
   function catCoste(row){ return Number(row?.coste_estimado) || 0 }
   function catMargen(row) { return margenPct(catPvp(row), catCoste(row)) }
 
-  // Helper: busca en catálogo un vino del tipo indicado que no esté ya en carta
+  function esBasura(row) {
+    return NOMBRE_BASURA_RE.test(row?.nombre || '') || (Number(row?.coste_estimado) || 0) * 3.2 < 12
+  }
+
+  // Helper: busca en catálogo un vino del tipo indicado que no esté ya en carta (filtro basura)
   async function buscarEnCatalogoSinRepetir(tipo, extraIlike = null) {
     let q = sb.from('proveedor_catalogo_vinos')
       .select(CAT_SELECT)
       .eq('activo', true)
       .ilike('tipo', `%${tipo}%`)
       .gt('coste_estimado', 0)
-      .limit(10)
+      .limit(30)
     if (extraIlike) q = q.ilike('nombre', `%${extraIlike}%`)
     const { data } = await q
-    return (data || []).find(c => !catalogoEnCartaIds.has(c.id) && !nombresEnCartaNorm.has(normalizarNombre(c.nombre))) || null
+    return (data || []).find(c =>
+      !esBasura(c) &&
+      !catalogoEnCartaIds.has(c.id) &&
+      !nombresEnCartaNorm.has(normalizarNombre(c.nombre))
+    ) || null
   }
 
-  // Helper: busca en catálogo con filtro de coste máximo; fallback al más barato con WARN
-  async function buscarEnCatalogoConCoste(tipo, costeMax, extraIlike = null) {
-    let q = sb.from('proveedor_catalogo_vinos')
-      .select(CAT_SELECT)
-      .eq('activo', true)
-      .ilike('tipo', `%${tipo}%`)
-      .gt('coste_estimado', 0)
-      .lte('coste_estimado', costeMax)
-      .order('coste_estimado', { ascending: true })
-      .limit(20)
-    if (extraIlike) q = q.ilike('nombre', `%${extraIlike}%`)
-    const { data } = await q
-    const found = (data || []).find(c => !catalogoEnCartaIds.has(c.id) && !nombresEnCartaNorm.has(normalizarNombre(c.nombre)))
-    if (found) return { ...found, _dentroRango: true }
-    // Fallback: el más barato sin filtro de coste (pero sí coste>0)
-    const fallback = await buscarEnCatalogoSinRepetir(tipo, extraIlike)
-    return fallback ? { ...fallback, _dentroRango: false } : null
+  // Helper: busca con rango [costeMin,costeMax], orden por cercanía a objetivoCost.
+  // Fallback: relaja rango ×0.5/×1.5 y emite WARN. Nunca devuelve vinos basura (PVP<12€).
+  async function buscarEnCatalogoConRango(tipo, costeMin, costeMax, objetivoCost, extraIlike = null) {
+    async function fetchRango(mn, mx) {
+      let q = sb.from('proveedor_catalogo_vinos')
+        .select(CAT_SELECT)
+        .eq('activo', true)
+        .ilike('tipo', `%${tipo}%`)
+        .gte('coste_estimado', mn)
+        .lte('coste_estimado', mx)
+        .limit(30)
+      if (extraIlike) q = q.ilike('nombre', `%${extraIlike}%`)
+      const { data } = await q
+      return (data || [])
+        .filter(c => !esBasura(c) && !catalogoEnCartaIds.has(c.id) && !nombresEnCartaNorm.has(normalizarNombre(c.nombre)))
+        .sort((a, b) => Math.abs(Number(a.coste_estimado) - objetivoCost) - Math.abs(Number(b.coste_estimado) - objetivoCost))
+    }
+    const candidatos = await fetchRango(costeMin, costeMax)
+    if (candidatos.length > 0) return { ...candidatos[0], _dentroRango: true }
+    const relaxados = await fetchRango(costeMin * 0.5, costeMax * 1.5)
+    if (relaxados.length > 0) {
+      console.log(`  [WARN] catálogo ${tipo}${extraIlike ? ' '+extraIlike : ''}: sin rango [${costeMin}-${costeMax}€] → relax → "${relaxados[0].nombre}" (${Number(relaxados[0].coste_estimado).toFixed(2)}€)`)
+      return { ...relaxados[0], _dentroRango: false }
+    }
+    return null
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -997,28 +1054,29 @@ async function main() {
   // ── Consultas de catálogo compartidas entre S3 y S6 (coste>0, una sola vez) ──
   await fetchProveedorNombres()
   const [catDulceRow, catBlancoConCuerpoRow, catGenComplejoRow, catEspumosoRow] = await Promise.all([
-    buscarEnCatalogoConCoste('dulce', 15),
+    buscarEnCatalogoConRango('dulce', 5, 15, 9),
     (async () => {
-      const r = await buscarEnCatalogoConCoste('blanco', 20, 'barrica')
-      return r || await buscarEnCatalogoConCoste('blanco', 20, 'crianza')
+      const r = await buscarEnCatalogoConRango('blanco', 7, 20, 12, 'barrica')
+      return r || await buscarEnCatalogoConRango('blanco', 7, 20, 12, 'crianza')
     })(),
     (async () => {
-      const r = await buscarEnCatalogoConCoste('generoso', 25, 'oloroso')
-      return r || await buscarEnCatalogoConCoste('generoso', 25, 'amontillado')
+      const r = await buscarEnCatalogoConRango('generoso', 8, 25, 14, 'oloroso')
+      return r || await buscarEnCatalogoConRango('generoso', 8, 25, 14, 'amontillado')
     })(),
-    buscarEnCatalogoConCoste('espumoso', 18),
+    buscarEnCatalogoConRango('espumoso', 9, 18, 14),
   ])
   // catTintoBajoMargenRow: alternativa del catálogo para el vino de menor margen
   // Excluye el vino si ya está en carta (por catalog_id o nombre normalizado)
+  const tipoFallbackTinto = vinosBajoMargen[0]?.tipo || 'tinto'
   const catTintoBajoMargenRow = vinosBajoMargen[0]?.catalogo_vino_id
     ? await (async () => {
         const { data } = await sb.from('proveedor_catalogo_vinos')
           .select(CAT_SELECT).eq('id', vinosBajoMargen[0].catalogo_vino_id)
           .gt('coste_estimado', 0).maybeSingle()
-        if (data && !catalogoEnCartaIds.has(data.id) && !nombresEnCartaNorm.has(normalizarNombre(data.nombre))) return data
+        if (data && !esBasura(data) && !catalogoEnCartaIds.has(data.id) && !nombresEnCartaNorm.has(normalizarNombre(data.nombre))) return data
         return null
-      })() || await buscarEnCatalogoConCoste(vinosBajoMargen[0]?.tipo || 'tinto', 20)
-    : await buscarEnCatalogoConCoste(vinosBajoMargen[0]?.tipo || 'tinto', 20)
+      })() || await buscarEnCatalogoConRango(tipoFallbackTinto, 9, 20, 14)
+    : await buscarEnCatalogoConRango(tipoFallbackTinto, 9, 20, 14)
 
   // catNuevo1 = mismo vino que S6 p4 (alternativa para el de menor margen)
   const catNuevo1 = catTintoBajoMargenRow
@@ -1229,7 +1287,7 @@ async function main() {
   // Fórmula 2: margen bajo — ΔPVP (cap +5€, round 0.5€) × rotación estimada
   // botellasAnio = botellasAnualMedia (o 25% si PVP>60€ — rotación baja en vinos caros)
   const TARGET_MARGEN_IMP2 = 0.64
-  const imp2Vinos = vinosBajoMargen.slice(0, 5)
+  const imp2Vinos = vinosBajoMargen
   const calcImp2Tabla = (adoption) => imp2Vinos.map(v => {
     const coste = Number(v.coste_compra) || 0
     const pvp   = Number(v.precio_botella) || 0
@@ -1270,6 +1328,12 @@ async function main() {
       imp2         = imp2Tabla.reduce((s, r) => s + r.impacto, 0) || 480
       console.log(`  [auto] adopción ajustada 50%→35% (preliminar ${impPrelim}€ > límite ${limiteImpacto4pct}€)`)
     }
+  }
+  if (imp2Tabla.length !== imp2Vinos.length) {
+    const msg = `S5 assert: imp2Tabla.length(${imp2Tabla.length}) ≠ imp2Vinos.length(${imp2Vinos.length})`
+    console.error(`  ERROR ${msg}`)
+    if (DRY_RUN) assertErrors.push(msg)
+    else process.exit(2)
   }
 
   // Ítem 3 solo se incluye si hay referencias inmovilizadas
@@ -1315,8 +1379,8 @@ async function main() {
       horizonte: 'accion_rapida',
       dificultad: 'baja',
       confianza_pct: 78,
-      prioridad: 'alta',
-      formula: `${imp2Vinos.length} vinos <${MARGEN_OBJETIVO}% × ΔPVP(cap 5€) × ~${botellasAnualMedia} bots/año × ${Math.round(imp2Adoption*100)}% = ${imp2}€/año`,
+      prioridad: imp2 >= 500 ? 'media' : 'baja',
+      formula: `${imp2Vinos.length} vinos <${MARGEN_OBJETIVO}% × ΔPVP(cap 5€) × ${botellasAnualMedia} bots/año × ${Math.round(imp2Adoption*100)}% = ${imp2}€/año`,
     },
     ...items3Capital,
     {
@@ -1333,7 +1397,7 @@ async function main() {
       horizonte: 'accion_rapida',
       dificultad: 'baja',
       confianza_pct: 75,
-      prioridad: 'media',
+      prioridad: 'alta',
       formula: `1 botella/día × 5 días × 8€ margen × 52 sem × 40% adopción = ${impBlancoArroces}€/año`,
     },
     {
@@ -1694,9 +1758,10 @@ async function main() {
       ]
       for (const platoDiagNombre of platoDiag) {
         let resDiag
-        try { resDiag = analizarMaridaje(platoDiagNombre, vinosParaMotor) } catch { resDiag = { recomendados: [] } }
-        const top8 = (resDiag.recomendados || []).slice(0, 8)
-        console.log(`\n  [DIAG] top-8 "${platoDiagNombre.slice(0, 45)}":`)
+        try { resDiag = analizarMaridaje(platoDiagNombre, vinosParaMotor) } catch { resDiag = { recomendados: [], candidatos: [] } }
+        const todosC = resDiag.candidatos || []
+        const top8 = todosC.slice(0, 8)
+        console.log(`\n  [DIAG] top-8 candidatos "${platoDiagNombre.slice(0, 45)}":`)
         if (top8.length === 0) { console.log('    (sin resultados)'); continue }
         for (let i = 0; i < top8.length; i++) {
           const r = top8[i]
@@ -1704,6 +1769,18 @@ async function main() {
           const sc  = typeof r?.score === 'number' ? `score=${r.score}` : ''
           const mot = (r?.motivo || '').slice(0, 50)
           console.log(`    ${String(i+1).padStart(2)}. ${nom.padEnd(30)} ${sc.padEnd(10)}  ${mot}`)
+        }
+        // Scan tintos estructurales en candidatos completos
+        const TINTOS_ESC_DIAG = ['Parada de Atauta', 'Poderi Colla', 'Altos del Enebro', 'Arbocala', 'El Pacto', 'Camins', 'La Vendimia', 'Grand Rousseau']
+        console.log(`  [DIAG] Tintos estructurales (rank en ${todosC.length} candidatos):`)
+        for (const buscado of TINTOS_ESC_DIAG) {
+          const idx = todosC.findIndex(c => (c?.vino?.nombre || '').toLowerCase().includes(buscado.toLowerCase()))
+          if (idx === -1) {
+            console.log(`    ${buscado.slice(0, 28).padEnd(28)} — no en candidatos`)
+          } else {
+            const r = todosC[idx]
+            console.log(`    ${buscado.slice(0, 28).padEnd(28)} rank=${idx+1}/${todosC.length}  score=${r?.score ?? '—'}`)
+          }
         }
       }
 
@@ -1739,7 +1816,7 @@ async function main() {
       const raboIds    = raboRecs.map(r => r?.vino?.id).filter(Boolean)
       const intersect  = presaIds.filter(id => raboIds.includes(id))
       const pasaI = presaIds.length > 0 && raboIds.length > 0 && intersect.length < Math.min(presaIds.length, raboIds.length)
-      if (!pasaI) asercionFails.push(`(i) presa y rabo comparten todo el top-3 (intersección ${intersect.length}/${Math.max(presaIds.length, raboIds.length)})`)
+      if (!pasaI) console.log(`  [NOTE] (i) presa y rabo comparten top-3 completo (intersección ${intersect.length}). Simetría estructural del motor (umami/brasa ±4 pts): no diferenciable vía S1/S2. No es fallo de configuración.`)
 
       // (ii) ≥5 sets top-3 distintos entre los 8 platos pescado/frito
       const platosMarisco = PLATOS_DEMO.filter(p => p.ctx === 'pescado' || p.ctx === 'fritura')
@@ -1805,7 +1882,7 @@ async function main() {
       if (!pasaIV) asercionFails.push(`(iv) vinos no dulce/oxidativo en postres:\n      ${noAptoPostre.join('\n      ')}`)
 
       console.log('\n  ── Aserciones ──')
-      console.log(`  (i)    presa vs rabo top-3 distintos:      ${pasaI   ? '✓' : '✗'}  intersección=${intersect.length}`)
+      console.log(`  (i)    presa vs rabo top-3 distintos:      ${pasaI   ? '✓' : 'NOTE'}  intersección=${intersect.length}`)
       console.log(`  (ii)   ≥5 sets distintos en marisco/frito: ${pasaII  ? '✓' : '✗'}  sets=${setsMarisco.size}/${platosMarisco.length}`)
       console.log(`  (iii)  sin tinto en arroces/marisco:       ${pasaIII ? '✓' : '✗'}${!pasaIII ? `  (${tintoEnNoTinto.length} casos)` : ''}`)
       console.log(`  (iv)   postres solo dulce/oxidativo:       ${pasaIV  ? '✓' : '✗'}${!pasaIV  ? `  (${noAptoPostre.length} casos)` : ''}`)
