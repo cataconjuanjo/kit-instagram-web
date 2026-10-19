@@ -1059,7 +1059,47 @@ export default function ControlBodega() {
             onChange={e => setBusquedaReferencias(e.target.value)}
             placeholder="Buscar vino, bodega, proveedor..."
           />
-          <div className={bStyles.cellarToolbarActions}>
+          <div className={bStyles.cellarGroupNav}>
+            {/* Grupo Compras */}
+            <button
+              type="button"
+              className={['compras', 'nueva_compra', 'propuestas'].includes(panelAbierto) ? styles.secondary : styles.ghost}
+              onClick={() => setPanelAbierto(['compras', 'nueva_compra', 'propuestas'].includes(panelAbierto) ? null : 'compras')}
+            >
+              Compras {propuestas.length > 0 && <span className={styles.badge}>{propuestas.length}</span>}
+            </button>
+            {/* Grupo Inventario */}
+            <button
+              type="button"
+              className={['conteo', 'conteo_fisico', 'cierre_mensual'].includes(panelAbierto) ? styles.secondary : styles.ghost}
+              onClick={() => setPanelAbierto(['conteo', 'conteo_fisico', 'cierre_mensual'].includes(panelAbierto) ? null : 'conteo')}
+            >
+              Inventario
+            </button>
+            {/* Grupo Precios */}
+            <button
+              type="button"
+              className={panelAbierto === 'precios' ? styles.secondary : styles.ghost}
+              onClick={() => setPanelAbierto(panelAbierto === 'precios' ? null : 'precios')}
+            >
+              Precios
+            </button>
+            {/* Grupo Catálogo */}
+            {esPlanPremium && (
+              <button
+                type="button"
+                className={panelAbierto === 'catalogo' ? styles.secondary : styles.ghost}
+                onClick={() => setPanelAbierto(panelAbierto === 'catalogo' ? null : 'catalogo')}
+              >
+                Catálogo
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── Sub-nav Compras ───────────────────────────────── */}
+        {['compras', 'nueva_compra', 'propuestas'].includes(panelAbierto) && (
+          <div className={bStyles.cellarSubNav}>
             <button
               type="button"
               className={panelAbierto === 'compras' ? styles.secondary : styles.ghost}
@@ -1079,8 +1119,14 @@ export default function ControlBodega() {
               className={panelAbierto === 'propuestas' ? styles.secondary : styles.ghost}
               onClick={() => setPanelAbierto(panelAbierto === 'propuestas' ? null : 'propuestas')}
             >
-              Propuestas {propuestas.length > 0 && <span className={styles.badge}>{propuestas.length}</span>}
+              Propuestas
             </button>
+          </div>
+        )}
+
+        {/* ── Sub-nav Inventario ────────────────────────────── */}
+        {['conteo', 'conteo_fisico', 'cierre_mensual'].includes(panelAbierto) && (
+          <div className={bStyles.cellarSubNav}>
             <button
               type="button"
               className={panelAbierto === 'conteo' ? styles.secondary : styles.ghost}
@@ -1102,24 +1148,8 @@ export default function ControlBodega() {
             >
               Cierre mensual
             </button>
-            <button
-              type="button"
-              className={panelAbierto === 'precios' ? styles.secondary : styles.ghost}
-              onClick={() => setPanelAbierto(panelAbierto === 'precios' ? null : 'precios')}
-            >
-              Precios
-            </button>
-            {esPlanPremium && (
-              <button
-                type="button"
-                className={panelAbierto === 'catalogo' ? styles.secondary : styles.ghost}
-                onClick={() => setPanelAbierto(panelAbierto === 'catalogo' ? null : 'catalogo')}
-              >
-                Catálogo
-              </button>
-            )}
           </div>
-        </div>
+        )}
 
         {/* ── Panel: Pedido sugerido ────────────────────────── */}
         {panelAbierto === 'compras' && (
