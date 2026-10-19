@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * seed-demo-fase3.mjs — Fase 3 (v2)
+ * seed-demo-fase3.mjs — Fase 3 (v3)
  *
  * F3-B: partes_servicio + lineas 2026-10-15 a 2026-10-17 (mediodía + noche).
  *       INSERT directo con estado='cerrado' — sin llamar a cerrar_parte_servicio
@@ -53,12 +53,12 @@ if (!IS_SELFTEST && UUID_DENYLIST.has(DEMO_ID)) {
 const NAME_DENYLIST = ['lo de carmen', 'araboka', 'la taberna', 'modo sumiller']
 
 // ── Constantes de rate F3-A ───────────────────────────────────────────────────
-const RATE_ESCANEOS_POR_PARTE   = 1.3   // escaneos por parte de servicio
-const RATE_SOMMELIER_POR_PARTE  = 0.6   // consultas sommelier por parte
-const RATE_RECOM_POR_SOMMELIER  = 1.8   // recomendaciones por consulta sommelier
-const RATE_EVENTO_POR_ESCANEO   = 2.1   // eventos_carta por escaneo
-const MULT_VERANO               = 1.2   // factor estacional (abr-oct)
-const MULT_FIN_SEMANA           = 1.4   // factor viernes-sábado-domingo
+const ESCANEOS_POR_PARTE         = 10    // escaneos absolutos por parte de servicio
+const RATE_SOMMELIER_DE_ESCANEOS = 0.25  // consultas sommelier = fracción de escaneos
+const RATE_RECOM_POR_SOMMELIER   = 1.8   // recomendaciones por consulta sommelier
+const RATE_EVENTO_POR_ESCANEO    = 1.5   // eventos_carta por escaneo (total < 15000)
+const MULT_VERANO                = 1.2   // factor estacional (abr-oct)
+const MULT_FIN_SEMANA            = 1.4   // factor viernes-sábado-domingo
 
 // ── Constantes F3-B ───────────────────────────────────────────────────────────
 const F3B_FECHAS  = ['2026-10-15', '2026-10-16', '2026-10-17']
@@ -122,6 +122,14 @@ function chunkArray(arr, size) {
   return chunks
 }
 
+// Mediana de un array numérico; null si vacío
+function mediana(arr) {
+  if (!arr || arr.length === 0) return null
+  const sorted = [...arr].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+}
+
 // Devuelve las n fechas con el mismo día de semana, yendo atrás semana a semana
 function fechasSemanaAnterior(fechaStr, n = 8) {
   const ms = new Date(fechaStr + 'T12:00:00Z').getTime()
@@ -134,7 +142,7 @@ function fechasSemanaAnterior(fechaStr, n = 8) {
 
 // ── Selftest ──────────────────────────────────────────────────────────────────
 async function runSelftest() {
-  console.log('\n── SELFTEST F3-A v2 (sin BD) ──────────────────────────────────')
+  console.log('\n── SELFTEST F3-A v3 (sin BD) ──────────────────────────────────')
   let extraFailed = 0
   const src = readFileSync(fileURLToPath(import.meta.url), 'utf8')
   const srcLines = src.split('\n')
@@ -285,7 +293,29 @@ async function runSelftest() {
     }
   }
 
-  const total  = 8
+  // (i) variable de entorno: NEXT_PUBLIC_SUPABASE_URL, nunca process.env.SUPABASE_URL suelto
+  {
+    const correctVar = ['NEXT_PUBLIC', '_SUPABASE_URL'].join('')
+    const badEnvRef  = ['process.env.SUPABASE', '_URL'].join('')
+    // Excluir líneas del propio selftest (que declaran estas variables)
+    const realLines  = srcLines.filter(l => !l.includes('correctVar') && !l.includes('badEnvRef'))
+    const hasCorrect = src.includes(correctVar)
+    const hasBad     = realLines.some(l => {
+      const stripped = l.replace(/\/\/.*$/, '').replace(/'[^']*'|"[^"]*"|`[^`]*`/g, '§')
+      return stripped.includes(badEnvRef)
+    })
+    if (!hasCorrect) {
+      console.log(`  ✗ (i) ${correctVar} no aparece en el código`)
+      extraFailed++
+    } else if (hasBad) {
+      console.log(`  ✗ (i) ${badEnvRef} encontrado sin prefijo NEXT_PUBLIC_ (variable incorrecta)`)
+      extraFailed++
+    } else {
+      console.log(`  (i) variable de entorno ${correctVar} correcta: ✓`)
+    }
+  }
+
+  const total  = 9
   const passed = total - Math.min(extraFailed, total)
   console.log(`\n  ${passed}/${total} checks pasados`)
   if (extraFailed === 0) console.log('  ✓ Todos los casos superados.')
@@ -297,14 +327,20 @@ if (IS_SELFTEST) { await runSelftest(); process.exit(0) }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 async function main() {
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('ERROR: faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY')
+  const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!SUPA_URL) {
+    console.error('ERROR: NEXT_PUBLIC_SUPABASE_URL no está definido')
+    process.exit(1)
+  }
+  if (!SUPA_KEY) {
+    console.error('ERROR: SUPABASE_SERVICE_ROLE_KEY no está definido')
     process.exit(1)
   }
 
-  const sb   = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  const sb   = createClient(SUPA_URL, SUPA_KEY)
   const mode = DRY_RUN ? '[DRY-RUN]' : '[CONFIRM]'
-  console.log(`\n${mode} seed-demo-fase3 v2  DEMO_ID=${DEMO_ID}\n`)
+  console.log(`\n${mode} seed-demo-fase3 v3  DEMO_ID=${DEMO_ID}\n`)
 
   // ── Paso 0: restaurante ──────────────────────────────────────────────────────
   const { data: rest, error: restErr } = await sb
@@ -451,9 +487,10 @@ async function main() {
   console.log(`  Líneas de referencia leídas: ${refLineas.length}`)
 
   // Calcular medias por vino+tipo para las F3B_FECHAS
-  const refTotals  = {}  // key: `${vino_id}|${tipo}` → total cantidad
-  const refDates   = {}  // key → Set<fecha>
-  const refVinos   = {}  // key → vino info
+  const refTotals      = {}  // key: `${vino_id}|${tipo}` → total cantidad
+  const refDates       = {}  // key → Set<fecha>
+  const refVinos       = {}  // key → vino info
+  const precios8SemMap = {}  // key → [precio_unitario de 8 semanas, ...]
   for (const l of refLineas) {
     const parte = parteMap[l.parte_id]
     if (!parte?.fecha || !l.vino_id) continue
@@ -465,6 +502,10 @@ async function main() {
     if (!refDates[key]) refDates[key] = new Set()
     refDates[key].add(parte.fecha)
     if (!refVinos[key]) refVinos[key] = l.vino
+    if (l.precio_unitario != null) {
+      if (!precios8SemMap[key]) precios8SemMap[key] = []
+      precios8SemMap[key].push(Number(l.precio_unitario))
+    }
   }
 
   // Media por fecha (sobre fechas de referencia únicas)
@@ -474,27 +515,93 @@ async function main() {
     refAvg[key] = { avg: total / nDates, vino: refVinos[key] }
   }
 
+  // Fallback all-time: para claves sin precio_unitario en las 8 semanas de referencia
+  const keysNeedAllTime = Object.keys(refAvg).filter(k => !precios8SemMap[k]?.length)
+  const preciosAllTimeMap = {}
+  if (keysNeedAllTime.length > 0) {
+    const vinoIdsNeed = [...new Set(keysNeedAllTime.map(k => k.split('|')[0]))]
+    const allTimeLineas = []
+    for (const chunk of chunkArray(vinoIdsNeed, IN_CHUNK)) {
+      const { data: atChunk } = await fetchAllPages(
+        (lo, hi) => sb
+          .from('partes_servicio_lineas')
+          .select('vino_id, tipo, precio_unitario')
+          .eq('restaurante_id', DEMO_ID)
+          .in('vino_id', chunk)
+          .not('precio_unitario', 'is', null)
+          .range(lo, hi)
+      )
+      allTimeLineas.push(...(atChunk || []))
+    }
+    for (const l of allTimeLineas) {
+      const key = `${l.vino_id}|${l.tipo}`
+      if (!preciosAllTimeMap[key]) preciosAllTimeMap[key] = []
+      preciosAllTimeMap[key].push(Number(l.precio_unitario))
+    }
+    console.log(`  Fallback all-time: ${vinoIdsNeed.length} vinos → ${allTimeLineas.length} líneas`)
+  }
+
+  // Construir mapa de precios con cadena: 8-sem → historico → carta-pvp
+  const precioResultMap   = {}
+  const avisoSinHistorico = []
+  for (const key of Object.keys(refAvg)) {
+    const [, tipo]  = key.split('|')
+    const vinoData  = refVinos[key]
+    const pvpActual = tipo === 'venta_copa'
+      ? Number(vinoData?.precio_copa   || 0) || null
+      : Number(vinoData?.precio_botella || 0) || null
+    const med8 = mediana(precios8SemMap[key] || [])
+    if (med8 != null) {
+      precioResultMap[key] = { precio: med8,      origen: '8-sem',    pvp: pvpActual, nombre: vinoData?.nombre || '?' }
+    } else {
+      const medAll = mediana(preciosAllTimeMap[key] || [])
+      if (medAll != null) {
+        precioResultMap[key] = { precio: medAll,    origen: 'historico', pvp: pvpActual, nombre: vinoData?.nombre || '?' }
+      } else {
+        precioResultMap[key] = { precio: pvpActual, origen: 'carta-pvp', pvp: pvpActual, nombre: vinoData?.nombre || '?' }
+        avisoSinHistorico.push(vinoData?.nombre || key.split('|')[0])
+      }
+    }
+  }
+
+  // Tabla de precios (visible siempre, también en dry-run)
+  console.log('\n  Precios F3-B (mediana precio_unitario):')
+  if (Object.keys(precioResultMap).length > 0) {
+    console.log(`  ${'Vino'.padEnd(32)} ${'tipo'.padEnd(14)} ${'precio_usado'.padStart(13)} ${'PVP_actual'.padStart(11)} ${'origen'.padStart(10)}`)
+    console.log('  ' + '─'.repeat(82))
+    for (const [key, info] of Object.entries(precioResultMap).slice(0, 25)) {
+      const [, tipo] = key.split('|')
+      const nombre   = (info.nombre || '?').slice(0, 32)
+      const precio   = info.precio != null ? `${Number(info.precio).toFixed(2)} €` : '—'
+      const pvpStr   = info.pvp    != null ? `${Number(info.pvp).toFixed(2)} €`    : '—'
+      console.log(`  ${nombre.padEnd(32)} ${tipo.padEnd(14)} ${precio.padStart(13)} ${pvpStr.padStart(11)} ${info.origen.padStart(10)}`)
+    }
+    if (Object.keys(precioResultMap).length > 25) {
+      console.log(`  ... (${Object.keys(precioResultMap).length - 25} filas más)`)
+    }
+  }
+  if (avisoSinHistorico.length > 0) {
+    console.log(`\n  ⚠ Sin historial de precio (usando PVP carta): ${avisoSinHistorico.join(', ')}`)
+  }
+
   // F3-B líneas a insertar por parte: top vinos con avg ≥ 0.1
   const f3bLineaTemplate = Object.entries(refAvg)
     .filter(([, v]) => v.avg >= 0.1)
     .map(([key, v]) => {
       const [vinoId, tipo] = key.split('|')
-      const cantidad  = Math.max(1, Math.round(v.avg))
-      const vinoData  = v.vino
-      const precioUni = tipo === 'venta_copa'
-        ? Number(vinoData?.precio_copa || 0) || null
-        : Number(vinoData?.precio_botella || 0) || null
+      const cantidad = Math.max(1, Math.round(v.avg))
+      const info     = precioResultMap[key]
       return {
         vino_id:         vinoId,
         tipo,
         cantidad,
         copas_vendidas:  tipo === 'venta_copa' ? cantidad : null,
-        precio_unitario: precioUni,
-        nombre:          vinoData?.nombre || '?',
+        precio_unitario: info?.precio ?? null,
+        nombre:          info?.nombre || '?',
       }
     })
     .sort((a, b) => b.cantidad - a.cantidad)
-    .slice(0, 20)  // máximo 20 SKUs por parte
+    .slice(0, 20)
 
   // F3-B dry-run: tabla comparativa
   const f3bTotalLineas = F3B_FECHAS.length * F3B_TURNOS.length * f3bLineaTemplate.length
@@ -712,9 +819,9 @@ async function main() {
     const multEst     = esVerano(fecha) ? MULT_VERANO  : 1.0
     const turnosSet   = new Set(diasPartes.map(p => p.turno))
 
-    const nEscaneos  = Math.round(RATE_ESCANEOS_POR_PARTE  * nPartes * multFin * multEst)
-    const nSommelier = Math.round(RATE_SOMMELIER_POR_PARTE  * nPartes * multFin)
-    const nEvento    = Math.round(RATE_EVENTO_POR_ESCANEO   * nEscaneos)
+    const nEscaneos  = Math.round(ESCANEOS_POR_PARTE * nPartes * multFin * multEst)
+    const nSommelier = Math.round(RATE_SOMMELIER_DE_ESCANEOS * nEscaneos)
+    const nEvento    = Math.round(RATE_EVENTO_POR_ESCANEO    * nEscaneos)
 
     const tsBase = turnoCreatedAt(fecha, turnosSet)
 
