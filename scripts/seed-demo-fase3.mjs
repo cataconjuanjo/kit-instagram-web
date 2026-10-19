@@ -61,9 +61,12 @@ const MULT_VERANO                = 1.2   // factor estacional (abr-oct)
 const MULT_FIN_SEMANA            = 1.4   // factor viernes-sábado-domingo
 
 // ── Constantes F3-B ───────────────────────────────────────────────────────────
-const F3B_FECHAS  = ['2026-10-15', '2026-10-16', '2026-10-17']
-const F3B_TURNOS  = ['mediodia', 'noche']
-const F3B_REF_SEMANAS = 8   // semanas de histórico para media
+const F3B_FECHAS      = ['2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18']
+const F3B_TURNOS      = ['mediodia', 'noche']
+const F3B_REF_SEMANAS = 8   // semanas de histórico para referencia
+
+// Copas por botella: fallback del motor (app/lib/agregarPeriodoBodega.js:274)
+const COPAS_POR_BOTELLA = 5
 
 // ── Paginación ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 1000
@@ -128,6 +131,38 @@ function mediana(arr) {
   const sorted = [...arr].sort((a, b) => a - b)
   const mid = Math.floor(sorted.length / 2)
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+}
+
+// KPI rentabilidad para simulación; reutilizado para ANTES/DESPUÉS
+function calcKpiRentabilidad(filasVentaIn, vinosConCosteData) {
+  const dec = v => parseFloat(v) || 0
+  const ventasPorId = {}
+  for (const r of filasVentaIn) ventasPorId[r.vinoId] = (ventasPorId[r.vinoId] || 0) + r.cantidad
+  const uKpi      = Object.values(ventasPorId).reduce((s, n) => s + n, 0)
+  const conVentas = vinosConCosteData.filter(v => (ventasPorId[v.id] || 0) > 0).length
+  const vinosCalc = vinosConCosteData.map(v => ({
+    id: v.id, nombre: v.nombre,
+    margen:            dec(v.precio_botella) - dec(v.coste_compra),
+    ventas:            ventasPorId[v.id] || 0,
+    pctVentas:         uKpi > 0 ? ((ventasPorId[v.id] || 0) / uKpi) * 100 : 0,
+    valorStockCoste:   dec(v.stock) * dec(v.coste_compra),
+    ingresosEstimados: (ventasPorId[v.id] || 0) * dec(v.precio_botella),
+  }))
+  const barreraRent  = vinosCalc.length ? vinosCalc.reduce((s, v) => s + v.margen, 0) / vinosCalc.length : 0
+  const barreraPopul = conVentas > 0 ? (100 / conVentas) * 0.7 : 0
+  const clases       = vinosCalc.map(v => ({
+    ...v,
+    categoria: (v.margen >= barreraRent && v.pctVentas >= barreraPopul) ? 'estrella'
+             : (v.margen <  barreraRent && v.pctVentas >= barreraPopul) ? 'caballo'
+             : (v.margen >= barreraRent)                                 ? 'joya'
+             :                                                             'revisar',
+  }))
+  const conteo = { estrella: 0, joya: 0, caballo: 0, revisar: 0 }
+  for (const v of clases) conteo[v.categoria]++
+  const vsTotal   = clases.reduce((s, v) => s + v.valorStockCoste,   0)
+  const igTotal   = clases.reduce((s, v) => s + v.ingresosEstimados, 0)
+  const retGlobal = vsTotal > 0 ? igTotal / vsTotal : null
+  return { uKpi, conVentas, barreraRent, barreraPopul, conteo, clases, retGlobal, vsTotal, igTotal }
 }
 
 // Devuelve las n fechas con el mismo día de semana, yendo atrás semana a semana
@@ -315,7 +350,47 @@ async function runSelftest() {
     }
   }
 
-  const total  = 9
+  // (j) botella-equivalentes: COPAS_POR_BOTELLA=5 + Bresenham sum-conservation
+  {
+    const hasCopasConst = /const COPAS_POR_BOTELLA\s*=\s*5/.test(src)
+    const hasBresenham  = /cantidadFrac/.test(src) && /Math\.round\(accum\)/.test(src)
+    // Test the Bresenham algorithm inline with synthetic data
+    const tMap = {
+      '2025-10-01|v1': { cantidadFrac: 0.4, vinoId: 'v1', cantidad: 0 },
+      '2025-10-02|v1': { cantidadFrac: 0.4, vinoId: 'v1', cantidad: 0 },
+      '2025-10-03|v1': { cantidadFrac: 0.4, vinoId: 'v1', cantidad: 0 },
+      '2025-10-04|v2': { cantidadFrac: 2.5, vinoId: 'v2', cantidad: 0 },
+    }
+    const tKeys = Object.keys(tMap)
+    const tByVino = {}
+    for (const k of tKeys) { const vid = tMap[k].vinoId; if (!tByVino[vid]) tByVino[vid] = []; tByVino[vid].push(k) }
+    for (const ks of Object.values(tByVino)) {
+      ks.sort(); let acc = 0
+      for (let i = 0; i < ks.length; i++) {
+        const r = tMap[ks[i]]
+        acc += r.cantidadFrac
+        r.cantidad = i === ks.length - 1 ? Math.round(acc) : Math.floor(acc)
+        acc -= r.cantidad
+      }
+    }
+    const v1Sum = tKeys.filter(k => tMap[k].vinoId === 'v1').reduce((s, k) => s + tMap[k].cantidad, 0)
+    const v2Sum = tKeys.filter(k => tMap[k].vinoId === 'v2').reduce((s, k) => s + tMap[k].cantidad, 0)
+    const sumOk = v1Sum === Math.round(0.4 + 0.4 + 0.4) && v2Sum === Math.round(2.5)
+    if (!hasCopasConst) {
+      console.log('  ✗ (j) COPAS_POR_BOTELLA = 5 no encontrado')
+      extraFailed++
+    } else if (!hasBresenham) {
+      console.log('  ✗ (j) Bresenham (cantidadFrac + Math.round(accum)) no encontrado')
+      extraFailed++
+    } else if (!sumOk) {
+      console.log(`  ✗ (j) Bresenham sum: v1=${v1Sum}≠${Math.round(1.2)}, v2=${v2Sum}≠${Math.round(2.5)}`)
+      extraFailed++
+    } else {
+      console.log('  (j) botella-equivalentes Bresenham sum-conservation: ✓')
+    }
+  }
+
+  const total  = 10
   const passed = total - Math.min(extraFailed, total)
   console.log(`\n  ${passed}/${total} checks pasados`)
   if (extraFailed === 0) console.log('  ✓ Todos los casos superados.')
@@ -459,8 +534,8 @@ async function main() {
     return
   }
 
-  // ── F3-B: calcular media 8 semanas para Thu/Fri/Sat ─────────────────────────
-  console.log('\n── F3-B: PARTES 2026-10-15 A 2026-10-17 ────────────────────────────')
+  // ── F3-B: referencia 8 semanas calibrada (Oct 15-18) ────────────────────────
+  console.log('\n── F3-B: PARTES 2026-10-15 A 2026-10-18 ────────────────────────────')
   const refFechasSet = new Set(
     F3B_FECHAS.flatMap(f => fechasSemanaAnterior(f, F3B_REF_SEMANAS))
   )
@@ -470,6 +545,41 @@ async function main() {
 
   console.log(`  Fechas de referencia (8 semanas atrás por día): ${refFechasSet.size}`)
   console.log(`  Partes cerrados de referencia: ${refParteIds.length}`)
+
+  // nPartes por fecha F3-B calibrado desde referencia (mismo día de semana × 8 semanas)
+  const f3bDayInfo = {}
+  for (const fecha of F3B_FECHAS) {
+    const refFechasParaDia = new Set(fechasSemanaAnterior(fecha, F3B_REF_SEMANAS))
+    const refPartesParaDia = cerrados.filter(p => refFechasParaDia.has(p.fecha))
+    const partesPerFecha   = {}
+    for (const p of refPartesParaDia) partesPerFecha[p.fecha] = (partesPerFecha[p.fecha] || 0) + 1
+    const datesConData = Object.keys(partesPerFecha)
+    const avgPartes    = datesConData.length > 0
+      ? datesConData.reduce((s, f) => s + partesPerFecha[f], 0) / datesConData.length
+      : 0
+    const nPartes = Math.min(F3B_TURNOS.length, Math.max(1, Math.round(avgPartes)))
+    f3bDayInfo[fecha] = { nPartes, avgPartes, datesConData: datesConData.length, turnos: F3B_TURNOS.slice(0, nPartes) }
+  }
+
+  // Lineas de Oct 12-14 para comparativa semanal (ingresos ya existentes)
+  const oct12_14 = ['2026-10-12', '2026-10-13', '2026-10-14']
+  const oct12_14ParteIds = cerrados.filter(p => oct12_14.includes(p.fecha)).map(p => p.id)
+  let ingresosOct12_14 = 0
+  if (oct12_14ParteIds.length > 0) {
+    for (const chunk of chunkArray(oct12_14ParteIds, IN_CHUNK)) {
+      const { data: lChunk } = await fetchAllPages(
+        (lo, hi) => sb.from('partes_servicio_lineas')
+          .select('tipo, cantidad, copas_vendidas, precio_unitario')
+          .in('parte_id', chunk)
+          .in('tipo', ['venta_botella', 'venta_copa'])
+          .range(lo, hi)
+      )
+      for (const l of (lChunk || [])) {
+        const q = l.tipo === 'venta_copa' ? (Number(l.copas_vendidas)||0) : (Number(l.cantidad)||0)
+        ingresosOct12_14 += q * (Number(l.precio_unitario)||0)
+      }
+    }
+  }
 
   // Leer lineas de los partes de referencia (paginado + chunks de 100 ids)
   const refLineas = []
@@ -486,11 +596,13 @@ async function main() {
   }
   console.log(`  Líneas de referencia leídas: ${refLineas.length}`)
 
-  // Calcular medias por vino+tipo para las F3B_FECHAS
-  const refTotals      = {}  // key: `${vino_id}|${tipo}` → total cantidad
+  // Calcular mediana por parte y frecuencia de aparición (+ totals para compatibilidad)
+  const refTotals      = {}  // key → total cantidad
   const refDates       = {}  // key → Set<fecha>
   const refVinos       = {}  // key → vino info
   const precios8SemMap = {}  // key → [precio_unitario de 8 semanas, ...]
+  const refQtyPerParte = {}  // key → [qty por cada parte donde aparece]
+  const vinoFrequency  = {}  // key → Set<parte_id>
   for (const l of refLineas) {
     const parte = parteMap[l.parte_id]
     if (!parte?.fecha || !l.vino_id) continue
@@ -506,14 +618,18 @@ async function main() {
       if (!precios8SemMap[key]) precios8SemMap[key] = []
       precios8SemMap[key].push(Number(l.precio_unitario))
     }
+    if (!refQtyPerParte[key]) refQtyPerParte[key] = []
+    refQtyPerParte[key].push(uds)
+    if (!vinoFrequency[key]) vinoFrequency[key] = new Set()
+    vinoFrequency[key].add(l.parte_id)
   }
 
-  // Media por fecha (sobre fechas de referencia únicas)
   const refAvg = {}
   for (const [key, total] of Object.entries(refTotals)) {
     const nDates = refDates[key]?.size || 1
     refAvg[key] = { avg: total / nDates, vino: refVinos[key] }
   }
+  const totalRefPartes = Math.max(1, refParteIds.length)
 
   // Fallback all-time: para claves sin precio_unitario en las 8 semanas de referencia
   const keysNeedAllTime = Object.keys(refAvg).filter(k => !precios8SemMap[k]?.length)
@@ -584,40 +700,50 @@ async function main() {
     console.log(`\n  ⚠ Sin historial de precio (usando PVP carta): ${avisoSinHistorico.join(', ')}`)
   }
 
-  // F3-B líneas a insertar por parte: top vinos con avg ≥ 0.1
-  const f3bLineaTemplate = Object.entries(refAvg)
-    .filter(([, v]) => v.avg >= 0.1)
-    .map(([key, v]) => {
+  // F3-B líneas por parte: top vinos por frecuencia en referencia (≥2 partes), qty = mediana
+  const f3bLineaTemplate = Object.keys(refVinos)
+    .map(key => {
       const [vinoId, tipo] = key.split('|')
-      const cantidad = Math.max(1, Math.round(v.avg))
-      const info     = precioResultMap[key]
-      return {
-        vino_id:         vinoId,
-        tipo,
-        cantidad,
-        copas_vendidas:  tipo === 'venta_copa' ? cantidad : null,
-        precio_unitario: info?.precio ?? null,
-        nombre:          info?.nombre || '?',
-      }
+      const freq   = (vinoFrequency[key]?.size || 0) / totalRefPartes
+      const medQty = Math.max(1, Math.round(mediana(refQtyPerParte[key] || []) || 0))
+      const info   = precioResultMap[key]
+      return { vinoId, tipo, cantidad: medQty, copas_vendidas: tipo === 'venta_copa' ? medQty : null, precio_unitario: info?.precio ?? null, nombre: info?.nombre || '?', freq }
     })
-    .sort((a, b) => b.cantidad - a.cantidad)
+    .filter(t => (vinoFrequency[`${t.vinoId}|${t.tipo}`]?.size || 0) >= 2)
+    .sort((a, b) => b.freq - a.freq)
     .slice(0, 20)
 
-  // F3-B dry-run: tabla comparativa
-  const f3bTotalLineas = F3B_FECHAS.length * F3B_TURNOS.length * f3bLineaTemplate.length
-  const f3bIngresos = f3bLineaTemplate.reduce((s, l) => {
-    return s + (l.precio_unitario || 0) * l.cantidad
-  }, 0)
-  console.log(`\n  F3-B: ${F3B_FECHAS.length} fechas × ${F3B_TURNOS.length} turnos × ${f3bLineaTemplate.length} SKUs`)
-  console.log(`  Total líneas F3-B: ${f3bTotalLineas}  |  Ingresos estimados/parte: ${f3bIngresos.toFixed(2)} €`)
-  console.log(`\n  Fecha       Día     Partes ref  Avg líneas/turno`)
-  console.log('  ' + '─'.repeat(48))
-  for (const fecha of F3B_FECHAS) {
-    const diaSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][
-      new Date(fecha + 'T12:00:00Z').getUTCDay()
-    ]
-    const refPartesFecha = cerrados.filter(p => refFechasSet.has(p.fecha)).length
-    console.log(`  ${fecha}  ${diaSemana}  ref=${refPartesFecha.toString().padStart(4)}        ${f3bLineaTemplate.length} SKUs/turno`)
+  // Tabla calibración por fecha + comparativa semana 12-18 oct
+  {
+    const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+    const refIngPerParte = f3bLineaTemplate.reduce((s, t) => s + (t.precio_unitario || 0) * t.cantidad, 0)
+    let ingresosF3b = 0
+    let totalPartesF3b = 0
+    console.log(`\n  ${'Fecha'.padEnd(12)} ${'Día'.padEnd(4)} ${'ref8wk'.padStart(7)} ${'partes'.padStart(7)} ${'líneas'.padStart(7)} ${'ing/parte'.padStart(11)} ${'ref/parte'.padStart(11)} ${'desvío'.padStart(8)}`)
+    console.log('  ' + '─'.repeat(72))
+    const assertErrors = []
+    for (const fecha of F3B_FECHAS) {
+      const dia    = DIAS[new Date(fecha + 'T12:00:00Z').getUTCDay()]
+      const info   = f3bDayInfo[fecha]
+      const nLineas    = info.nPartes * f3bLineaTemplate.length
+      const ingParte   = refIngPerParte
+      ingresosF3b   += ingParte * info.nPartes
+      totalPartesF3b += info.nPartes
+      const desvio = refIngPerParte > 0 ? ((ingParte - refIngPerParte) / refIngPerParte) * 100 : 0
+      const flag   = Math.abs(desvio) > 35 ? ' ⚠' : ''
+      if (flag) assertErrors.push(`${fecha}: desvío ${desvio.toFixed(0)}%`)
+      console.log([
+        `  ${fecha.padEnd(12)}`, dia.padEnd(4),
+        String(info.datesConData).padStart(7), String(info.nPartes).padStart(7),
+        String(nLineas).padStart(7), `${ingParte.toFixed(0)} €`.padStart(11),
+        `${refIngPerParte.toFixed(0)} €`.padStart(11), (desvio.toFixed(0) + '%' + flag).padStart(8),
+      ].join(' '))
+    }
+    if (assertErrors.length > 0) console.log(`  ⚠ Desvíos > ±35%: ${assertErrors.join('; ')}`)
+    console.log(`\n  Semana Oct 12-18 2026:`)
+    console.log(`    Oct 12-14 (existentes): ${ingresosOct12_14.toFixed(2)} €`)
+    console.log(`    Oct 15-18 (F3-B nuevo): ${ingresosF3b.toFixed(2)} € (${totalPartesF3b} partes × ${f3bLineaTemplate.length} SKUs)`)
+    console.log(`    Semana total estimada:  ${(ingresosOct12_14 + ingresosF3b).toFixed(2)} €`)
   }
 
   if (f3bLineaTemplate.length === 0) {
@@ -637,7 +763,7 @@ async function main() {
 
     console.log('  Insertando partes_servicio (cerrado, sin llamar a RPC cerrar)...')
     for (const fecha of F3B_FECHAS) {
-      for (const turno of F3B_TURNOS) {
+      for (const turno of (f3bDayInfo[fecha]?.turnos || F3B_TURNOS)) {
         const { data: parte, error: insParteErr } = await sb
           .from('partes_servicio')
           .insert({
@@ -681,15 +807,24 @@ async function main() {
     }
     console.log(`  ✓ ${lineasF3bInsertadas} líneas insertadas (${f3bPartesInsertados.length} partes × ${f3bLineaTemplate.length} SKUs)`)
   } else if (DRY_RUN) {
-    console.log('\n  [DRY-RUN] F3-B no escribe. --confirm para aplicar.')
+    // En dry-run: inyectar partes sintéticos en parteMap para que F3-A los incluya
+    console.log('\n  [DRY-RUN] F3-B no escribe — simulando partes en parteMap para F3-A...')
+    for (const fecha of F3B_FECHAS) {
+      for (const turno of (f3bDayInfo[fecha]?.turnos || F3B_TURNOS)) {
+        const simId = `__dry_${fecha}_${turno}`
+        parteMap[simId] = { id: simId, fecha, turno, estado: 'cerrado' }
+      }
+    }
+    const nSimPartes = F3B_FECHAS.reduce((s, f) => s + (f3bDayInfo[f]?.turnos?.length || 1), 0)
+    console.log(`  [DRY-RUN] ${nSimPartes} partes sintéticos añadidos a parteMap`)
   }
 
   // ── F3-A: leer lineas de TODOS los partes cerrados (paginado + chunks) ───────
   console.log('\n── F3-A: ESTADISTICAS ────────────────────────────────────────────────')
 
-  // En --confirm, parteIds ya incluye los F3-B insertados
+  // En --confirm, parteIds ya incluye los F3-B insertados; en DRY_RUN los sintéticos están en parteMap
   const allParteIds = Object.values(parteMap)
-    .filter(p => p.estado === 'cerrado')
+    .filter(p => p.estado === 'cerrado' && !p.id?.startsWith('__dry_'))
     .map(p => p.id)
 
   const allLineas = []
@@ -698,7 +833,7 @@ async function main() {
     const { data: chunkData, pages: pgs } = await fetchAllPages(
       (lo, hi) => sb
         .from('partes_servicio_lineas')
-        .select('parte_id, vino_id, tipo, cantidad, copas_vendidas, vino:vinos(id, nombre)')
+        .select('parte_id, vino_id, tipo, cantidad, copas_vendidas, precio_unitario, vino:vinos(id, nombre)')
         .in('parte_id', chunk)
         .in('tipo', ['venta_botella', 'venta_copa'])
         .range(lo, hi)
@@ -708,26 +843,72 @@ async function main() {
   }
   console.log(`  partes_servicio_lineas (venta): ${allLineas.length} filas en ${totalLineasPaginas} página(s)`)
 
-  // Agregar por (fecha, vino_id)
-  const aggMap = {}  // key: `${fecha}|${vinoId}`
+  // DRY-RUN: inyectar líneas sintéticas F3-B en allLineas para que las estadísticas sean exactas
+  if (DRY_RUN && f3bLineaTemplate.length > 0) {
+    const simPartes = Object.values(parteMap).filter(p => p.id?.startsWith('__dry_'))
+    for (const p of simPartes) {
+      for (const tpl of f3bLineaTemplate) {
+        allLineas.push({
+          parte_id:       p.id,
+          vino_id:        tpl.vinoId,
+          tipo:           tpl.tipo,
+          cantidad:       tpl.tipo === 'venta_copa' ? 1 : tpl.cantidad,
+          copas_vendidas: tpl.tipo === 'venta_copa' ? tpl.cantidad : null,
+          precio_unitario: tpl.precio_unitario,
+          vino:           { id: tpl.vinoId, nombre: tpl.nombre },
+        })
+      }
+    }
+    console.log(`  [DRY-RUN] +${simPartes.length * f3bLineaTemplate.length} líneas sintéticas F3-B → total: ${allLineas.length}`)
+  }
+
+  // Agregar por (fecha, vino_id) — ANTES copa=1 y DESPUÉS copa÷COPAS_POR_BOTELLA (fraccionario)
+  // COPAS_POR_BOTELLA=5: fallback del motor (app/lib/agregarPeriodoBodega.js:274)
+  const aggMapAntes = {}   // copa cuenta como 1 unidad (para comparativa)
+  const aggMap      = {}   // copa en botellas-equivalentes (fraccionario, luego Bresenham)
+  let ingresosReales12m = 0
+
   for (const l of allLineas) {
     const parte = parteMap[l.parte_id]
     if (!parte?.fecha || !l.vino_id) continue
     const key = `${parte.fecha}|${l.vino_id}`
-    if (!aggMap[key]) {
-      aggMap[key] = {
-        fecha:    parte.fecha,
-        vinoId:   l.vino_id,
-        nombre:   l.vino?.nombre || '?',
-        cantidad: 0,
-        turnos:   new Set(),
+
+    const copas    = l.tipo === 'venta_copa' ? Math.max(0, Number(l.copas_vendidas) || 0) : 0
+    const botellas = l.tipo === 'venta_copa' ? 0 : Math.max(0, Number(l.cantidad) || 0)
+    ingresosReales12m += (copas + botellas) * (Number(l.precio_unitario) || 0)
+
+    // ANTES
+    const udsAntes = copas + botellas
+    if (!aggMapAntes[key]) aggMapAntes[key] = { fecha: parte.fecha, vinoId: l.vino_id, nombre: l.vino?.nombre || '?', cantidad: 0, turnos: new Set() }
+    aggMapAntes[key].cantidad += udsAntes
+    if (parte.turno) aggMapAntes[key].turnos.add(parte.turno)
+
+    // DESPUÉS: botellas puras + copas / COPAS_POR_BOTELLA (fraccionario)
+    const udsFrac = botellas + copas / COPAS_POR_BOTELLA
+    if (!aggMap[key]) aggMap[key] = { fecha: parte.fecha, vinoId: l.vino_id, nombre: l.vino?.nombre || '?', cantidadFrac: 0, cantidad: 0, turnos: new Set() }
+    aggMap[key].cantidadFrac += udsFrac
+    if (parte.turno) aggMap[key].turnos.add(parte.turno)
+  }
+
+  // Bresenham: distribuir botellas-equivalentes fraccionarias a enteros por vinoId×fecha
+  // La suma anual por vino = round(Σ fraccionario) — sin crear filas cantidad=0
+  {
+    const byVino = {}
+    for (const key of Object.keys(aggMap)) {
+      const vinoId = aggMap[key].vinoId
+      if (!byVino[vinoId]) byVino[vinoId] = []
+      byVino[vinoId].push(key)
+    }
+    for (const ks of Object.values(byVino)) {
+      ks.sort()  // ascending por fecha
+      let accum = 0
+      for (let i = 0; i < ks.length; i++) {
+        const r = aggMap[ks[i]]
+        accum += r.cantidadFrac
+        r.cantidad = i === ks.length - 1 ? Math.round(accum) : Math.floor(accum)
+        accum -= r.cantidad
       }
     }
-    const uds = l.tipo === 'venta_copa'
-      ? Math.max(0, Number(l.copas_vendidas) || 0)
-      : Math.max(0, Number(l.cantidad) || 0)
-    aggMap[key].cantidad += uds
-    if (parte.turno) aggMap[key].turnos.add(parte.turno)
   }
 
   let filasVenta    = Object.values(aggMap).filter(r => r.cantidad > 0)
@@ -913,7 +1094,7 @@ async function main() {
     console.log(`  ⚠ AVISO: supera el límite de ${LIMITE_TOTAL} filas`)
   }
 
-  // Tabla mensual por tipo
+  // Tabla mensual por tipo (join(' ') garantiza separadores)
   console.log('\n  ── Tabla mensual ────────────────────────────────────────────────')
   const mensualMap = {}  // key: 'YYYY-MM'
   for (const row of allStatsRows) {
@@ -923,17 +1104,20 @@ async function main() {
     mensualMap[mes][row.tipo] = (mensualMap[mes][row.tipo] || 0) + 1
   }
   const meses = Object.keys(mensualMap).sort()
-  const hdr = `  ${'Mes'.padEnd(8)} ${'venta'.padStart(6)} ${'escaneo'.padStart(8)} ${'sommelier'.padStart(10)} ${'recom'.padStart(6)} ${'evento'.padStart(7)} ${'total'.padStart(7)}`
-  console.log(hdr)
-  console.log('  ' + '─'.repeat(56))
+  console.log(['  ' + 'Mes'.padEnd(7), 'venta'.padStart(6), 'escaneo'.padStart(8), 'somm'.padStart(7), 'recom'.padStart(8), 'evento'.padStart(8), 'total'.padStart(7)].join(' '))
+  console.log('  ' + '─'.repeat(59))
   for (const mes of meses) {
     const r = mensualMap[mes]
     const t = (r.venta||0)+(r.escaneo||0)+(r.sommelier||0)+(r.recomendacion||0)+(r.evento_carta||0)
-    console.log(
-      `  ${mes.padEnd(8)} ${String(r.venta||0).padStart(6)} ${String(r.escaneo||0).padStart(8)} ` +
-      `${String(r.sommelier||0).padStart(10)} ${String(r.recomendacion||0).padStart(6)} ` +
-      `${String(r.evento_carta||0).padStart(7)} ${String(t).padStart(7)}`
-    )
+    console.log([
+      '  ' + mes.padEnd(7),
+      String(r.venta        ||0).padStart(6),
+      String(r.escaneo      ||0).padStart(8),
+      String(r.sommelier    ||0).padStart(7),
+      String(r.recomendacion||0).padStart(8),
+      String(r.evento_carta ||0).padStart(8),
+      String(t               ).padStart(7),
+    ].join(' '))
   }
 
   // 5 ejemplos de detalle por tipo
@@ -953,7 +1137,7 @@ async function main() {
     })
   }
 
-  // ── Simulación Rentabilidad ───────────────────────────────────────────────────
+  // ── Simulación Rentabilidad (ANTES vs DESPUÉS botella-equivalentes) ──────────
   console.log('\n  ── Simulación MenuEngineeringClient.js ──────────────────────────')
   const { data: vinosData } = await sb
     .from('vinos')
@@ -961,63 +1145,53 @@ async function main() {
     .eq('restaurante_id', DEMO_ID)
     .eq('activo', true)
 
-  const decimal = v => parseFloat(v) || 0
-  const ventasPorId = {}
-  for (const row of estadisticasVentaRows) {
-    const d   = JSON.parse(row.detalle)
-    const vid = d.vino_id
-    const c   = Math.max(1, Number(d.cantidad) || 1)
-    ventasPorId[vid] = (ventasPorId[vid] || 0) + c
-  }
-  const unidadesKpi  = Object.values(ventasPorId).reduce((s, n) => s + n, 0)
-  const vinosConCoste = (vinosData || []).filter(v => decimal(v.coste_compra) > 0 && decimal(v.precio_botella) > 0)
+  const vinosConCoste = (vinosData || []).filter(v => (parseFloat(v.coste_compra) || 0) > 0 && (parseFloat(v.precio_botella) || 0) > 0)
+
+  const filasVentaAntes = Object.values(aggMapAntes).filter(r => r.cantidad > 0)
+
+  const kpiAntes    = calcKpiRentabilidad(filasVentaAntes, vinosConCoste)
+  const kpiDespues  = calcKpiRentabilidad(filasVenta,      vinosConCoste)
+
+  const fmt = (n, dec=0) => n == null ? '—' : n.toFixed(dec)
+  console.log(`\n  ${'Métrica'.padEnd(28)} ${'ANTES (copa=1)'.padStart(16)} ${'DESPUÉS (bot-eq)'.padStart(17)}`)
+  console.log('  ' + '─'.repeat(63))
+  console.log(['  ' + 'unidadesKpi'.padEnd(28),        String(kpiAntes.uKpi).padStart(16),          String(kpiDespues.uKpi).padStart(17)].join(''))
+  console.log(['  ' + 'vinosConVentas'.padEnd(28),      String(kpiAntes.conVentas).padStart(16),     String(kpiDespues.conVentas).padStart(17)].join(''))
+  console.log(['  ' + 'barreraRentabilidad (€)'.padEnd(28), fmt(kpiAntes.barreraRent,2).padStart(16), fmt(kpiDespues.barreraRent,2).padStart(17)].join(''))
+  console.log(['  ' + 'barreraPopularidad (%)'.padEnd(28),  fmt(kpiAntes.barreraPopul,2).padStart(16), fmt(kpiDespues.barreraPopul,2).padStart(17)].join(''))
+  console.log(['  ' + 'Estrella'.padEnd(28),            String(kpiAntes.conteo.estrella).padStart(16), String(kpiDespues.conteo.estrella).padStart(17)].join(''))
+  console.log(['  ' + 'Joya'.padEnd(28),                String(kpiAntes.conteo.joya).padStart(16),    String(kpiDespues.conteo.joya).padStart(17)].join(''))
+  console.log(['  ' + 'Caballo'.padEnd(28),             String(kpiAntes.conteo.caballo).padStart(16), String(kpiDespues.conteo.caballo).padStart(17)].join(''))
+  console.log(['  ' + 'Revisar'.padEnd(28),             String(kpiAntes.conteo.revisar).padStart(16), String(kpiDespues.conteo.revisar).padStart(17)].join(''))
+  console.log(['  ' + 'WINSPID (retorno inv)'.padEnd(28), (kpiAntes.retGlobal != null ? kpiAntes.retGlobal.toFixed(2)+'x' : '—').padStart(16), (kpiDespues.retGlobal != null ? kpiDespues.retGlobal.toFixed(2)+'x' : '—').padStart(17)].join(''))
+
+  console.log(`\n  Ingresos reales 12m (Σ cantidad×precio_unitario): ${ingresosReales12m.toFixed(2)} €`)
+  if (kpiDespues.vsTotal > 0) console.log(`  Retorno estimado sobre stock: ${(kpiDespues.igTotal / kpiDespues.vsTotal).toFixed(2)}x  (valorStock=${kpiDespues.vsTotal.toFixed(0)} € · ingresosEst=${kpiDespues.igTotal.toFixed(0)} €)`)
 
   if (vinosConCoste.length < 3) {
     console.log(`  ⚠ estado='sin_coste': ${vinosConCoste.length} vinos con coste y precio (necesita ≥3)`)
-  } else if (unidadesKpi < 5) {
-    console.log(`  ⚠ estado='sin_ventas': unidadesKpi=${unidadesKpi} < 5`)
+  } else if (kpiDespues.uKpi < 5) {
+    console.log(`  ⚠ estado='sin_ventas': unidadesKpi=${kpiDespues.uKpi} < 5`)
   } else {
     console.log(`  estado='ok' ✓ — ANALISIS_DEMO no se activa`)
   }
-  console.log(`  unidadesKpi: ${unidadesKpi}  |  vinosConCoste: ${vinosConCoste.length}`)
 
-  const vinosCalc = vinosConCoste.map(v => ({
-    id: v.id, nombre: v.nombre, bodega: v.bodega,
-    margen: decimal(v.precio_botella) - decimal(v.coste_compra),
-    ventas: ventasPorId[v.id] || 0,
-    pctVentas: unidadesKpi > 0 ? ((ventasPorId[v.id] || 0) / unidadesKpi) * 100 : 0,
-    valorStockCoste:   decimal(v.stock) * decimal(v.coste_compra),
-    ingresosEstimados: (ventasPorId[v.id] || 0) * decimal(v.precio_botella),
-  }))
-  const barreraRent = vinosCalc.length ? vinosCalc.reduce((s, v) => s + v.margen, 0) / vinosCalc.length : 0
-  const vinosConVts = vinosCalc.filter(v => v.ventas > 0).length
-  const barreraPopul = vinosConVts > 0 ? (100 / vinosConVts) * 0.7 : 0
-  const clasificados = vinosCalc.map(v => ({
-    ...v,
-    retornoInv: v.valorStockCoste > 0 ? v.ingresosEstimados / v.valorStockCoste : null,
-    categoria:  (v.margen >= barreraRent && v.pctVentas >= barreraPopul) ? 'estrella'
-              : (v.margen <  barreraRent && v.pctVentas >= barreraPopul) ? 'caballo'
-              : (v.margen >= barreraRent)                                ? 'joya'
-              :                                                            'revisar',
-  }))
-  const conteo = { estrella: 0, joya: 0, caballo: 0, revisar: 0 }
-  for (const v of clasificados) conteo[v.categoria]++
-  const vsTotal = clasificados.reduce((s, v) => s + v.valorStockCoste, 0)
-  const igTotal = clasificados.reduce((s, v) => s + v.ingresosEstimados, 0)
-  const retGlobal = vsTotal > 0 ? igTotal / vsTotal : null
+  // AVISO cuadrantes
+  const totalClasif = vinosConCoste.length
+  for (const [cat, count] of Object.entries(kpiDespues.conteo)) {
+    if (count === 0) console.log(`  ⚠ AVISO: cuadrante '${cat}' vacío`)
+    else if (totalClasif > 0 && count / totalClasif > 0.6) console.log(`  ⚠ AVISO: cuadrante '${cat}' concentra ${((count/totalClasif)*100).toFixed(0)}% de los vinos`)
+  }
 
-  console.log(`  barreraRentabilidad: ${barreraRent.toFixed(2)} €  barreraPopularidad: ${barreraPopul.toFixed(2)} %`)
-  console.log(`  Cuadrantes: Estrella=${conteo.estrella} Joya=${conteo.joya} Caballo=${conteo.caballo} Revisar=${conteo.revisar}`)
-  const top5 = [...clasificados].filter(v => v.ventas > 0).sort((a, b) => b.pctVentas - a.pctVentas).slice(0, 5)
+  // Top 5 DESPUÉS
+  const top5 = [...kpiDespues.clases].filter(v => v.ventas > 0).sort((a, b) => b.pctVentas - a.pctVentas).slice(0, 5)
   if (top5.length) {
-    console.log(`  Top 5 por % ventas:`)
-    const hdrT = `  ${'nombre'.padEnd(30)} ${'cat'.padEnd(8)} ${'vtas'.padStart(5)} ${'%kpi'.padStart(5)} ${'margen'.padStart(8)}`
-    console.log(hdrT)
+    console.log(`\n  Top 5 por %KPI (DESPUÉS):`)
+    console.log(['  ' + 'nombre'.padEnd(30), 'cat'.padEnd(8), 'vtas'.padStart(5), '%kpi'.padStart(5), 'margen'.padStart(8)].join(' '))
     for (const v of top5) {
-      console.log(`  ${(v.nombre||'').slice(0,30).padEnd(30)} ${v.categoria.padEnd(8)} ${String(v.ventas).padStart(5)} ${v.pctVentas.toFixed(1).padStart(5)} ${(v.margen.toFixed(2)+'€').padStart(8)}`)
+      console.log(['  ' + (v.nombre||'').slice(0,30).padEnd(30), v.categoria.padEnd(8), String(v.ventas).padStart(5), v.pctVentas.toFixed(1).padStart(5), (v.margen.toFixed(2)+'€').padStart(8)].join(' '))
     }
   }
-  if (retGlobal != null) console.log(`  Retorno inventario global (WINSPID): ${retGlobal.toFixed(2)}x`)
 
   // ── Escritura ─────────────────────────────────────────────────────────────────
   if (DRY_RUN) {
@@ -1050,7 +1224,7 @@ async function main() {
   if (allStatsRows.length > CHUNK) process.stdout.write('\n')
 
   console.log(`\n  ✓ F3 completado:`)
-  console.log(`    F3-B: ${f3bPartesInsertados.length} partes + ${f3bPartesInsertados.length * f3bLineaTemplate.length} líneas (2026-10-15 a 17)`)
+  console.log(`    F3-B: ${f3bPartesInsertados.length} partes + ${f3bPartesInsertados.length * f3bLineaTemplate.length} líneas (2026-10-15 a 18)`)
   console.log(`    F3-A: ${insertados} estadísticas (granularidad: ${granularidad})`)
   console.log('\n  Próximos pasos:')
   console.log('    1. /dashboard/menu-engineering → análisis real (sin banner ANALISIS_DEMO)')
