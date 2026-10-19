@@ -10,6 +10,7 @@ import {
   SELECT_CLIENT_RESTAURANTE_DASHBOARD,
   SELECT_CLIENT_VINO_DASHBOARD,
 } from '../../lib/clientSupabaseSelects'
+import { fetchAllPages } from '../../lib/fetchAllPages'
 import { esVentaTPV, priorizarVentas } from '../../lib/salesPriority'
 import { esPerfilBodega } from '../../lib/plans'
 import { beneficioBruto, costeNetoCompra, copasVendibles, margenBrutoPct, numero, precioNetoVenta, redondear } from '../../lib/wineEconomics'
@@ -314,42 +315,50 @@ export default function Estadisticas() {
 
   useEffect(() => {
     async function cargar() {
-      const { email, isAdmin, isDemo } = await getEffectiveRestaurantEmail(supabase)
-      if (!email) { window.location.href = '/login'; return }
-      setEsAdmin(Boolean(isAdmin))
-      if (isDemo) {
-        const demo = await cargarDemoDashboard(email)
-        if (demo?.restaurante) {
-          setRestaurante(demo.restaurante)
-          setVinos(demo.vinos || [])
-          setStats([])
-        }
-        setLoading(false)
-        return
-      }
-      const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
-      if (rest) {
-        setRestaurante(rest)
-        const desdeActividad = actividadRealDesdeISO(rest)
-        if (!desdeActividad) {
-          setStats([])
-          setLoading(false)
+      try {
+        const { email, isAdmin, isDemo } = await getEffectiveRestaurantEmail(supabase)
+        if (!email) { window.location.href = '/login'; return }
+        setEsAdmin(Boolean(isAdmin))
+        if (isDemo) {
+          const demo = await cargarDemoDashboard(email)
+          if (demo?.restaurante) {
+            setRestaurante(demo.restaurante)
+            setVinos(demo.vinos || [])
+            setStats([])
+          }
           return
         }
-        let query = supabase
-          .from('estadisticas')
-          .select(SELECT_CLIENT_ESTADISTICA_DASHBOARD)
-          .eq('restaurante_id', rest.id)
-          .order('created_at', { ascending: false })
-        if (desdeActividad) query = query.gte('created_at', desdeActividad)
-        const [{ data }, { data: vinosData }] = await Promise.all([
-          query,
-          supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id),
-        ])
-        setStats(data || [])
-        setVinos(vinosData || [])
+        const { data: rest } = await supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD).eq('email', email).single()
+        if (rest) {
+          setRestaurante(rest)
+          const desdeActividad = actividadRealDesdeISO(rest)
+          if (!desdeActividad) {
+            setStats([])
+            return
+          }
+          const buildStatsQuery = () => {
+            let q = supabase
+              .from('estadisticas')
+              .select(SELECT_CLIENT_ESTADISTICA_DASHBOARD)
+              .eq('restaurante_id', rest.id)
+            if (desdeActividad) q = q.gte('created_at', desdeActividad)
+            return q
+          }
+          const [allStats, { data: vinosData }] = await Promise.all([
+            fetchAllPages(buildStatsQuery),
+            supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id),
+          ])
+          setStats(allStats)
+          setVinos(vinosData || [])
+        }
+      } catch (err) {
+        console.error('[estadisticas] Error al cargar datos:', err)
+        setStats([])
+        setVinos([])
+        setMensajeInforme('No se pudieron cargar los datos de actividad.')
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     cargar()
   }, [])

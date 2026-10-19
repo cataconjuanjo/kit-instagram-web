@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
+import { fetchAllPages } from '../../lib/fetchAllPages'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
@@ -134,37 +135,46 @@ export default function MenuEngineering() {
 
   useEffect(() => {
     async function cargar() {
-      const { email, restauranteId } = await getEffectiveRestaurantEmail(supabase)
-      if (!email && !restauranteId) { window.location.href = '/login'; return }
-      const queryRestaurante = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
-      const { data: rest } = restauranteId
-        ? await queryRestaurante.eq('id', restauranteId).single()
-        : await queryRestaurante.eq('email', email).single()
-      if (rest) {
-        setRestaurante(rest)
-        setTicketDraft(String(rest.ticket_medio_comida || rest.ticket_medio || rest.ticket_comida || ''))
-        const desdeActividad = actividadRealDesdeISO(rest)
-        let ventasQuery = Promise.resolve({ data: [] })
-        if (desdeActividad) {
-          ventasQuery = supabase
-            .from('estadisticas')
-            .select('id, detalle, created_at')
-            .eq('restaurante_id', rest.id)
-            .eq('tipo', 'venta')
-            .gte('created_at', desdeActividad)
+      try {
+        const { email, restauranteId } = await getEffectiveRestaurantEmail(supabase)
+        if (!email && !restauranteId) { window.location.href = '/login'; return }
+        const queryRestaurante = supabase.from('restaurantes').select(SELECT_CLIENT_RESTAURANTE_DASHBOARD)
+        const { data: rest } = restauranteId
+          ? await queryRestaurante.eq('id', restauranteId).single()
+          : await queryRestaurante.eq('email', email).single()
+        if (rest) {
+          setRestaurante(rest)
+          setTicketDraft(String(rest.ticket_medio_comida || rest.ticket_medio || rest.ticket_comida || ''))
+          const desdeActividad = actividadRealDesdeISO(rest)
+          const ventasPromise = desdeActividad
+            ? fetchAllPages(() =>
+                supabase
+                  .from('estadisticas')
+                  .select('id, detalle, created_at')
+                  .eq('restaurante_id', rest.id)
+                  .eq('tipo', 'venta')
+                  .gte('created_at', desdeActividad)
+              )
+            : Promise.resolve([])
+          const [{ data: vinosData }, statsData] = await Promise.all([
+            supabase
+              .from('vinos')
+              .select('id, nombre, bodega, tipo, region, precio_botella, coste_compra, stock, proveedor')
+              .eq('restaurante_id', rest.id)
+              .eq('activo', true),
+            ventasPromise,
+          ])
+          setVinos(vinosData || [])
+          setVentas(statsData || [])
         }
-        const [{ data: vinosData }, { data: statsData }] = await Promise.all([
-          supabase
-            .from('vinos')
-            .select('id, nombre, bodega, tipo, region, precio_botella, coste_compra, stock, proveedor')
-            .eq('restaurante_id', rest.id)
-            .eq('activo', true),
-          ventasQuery,
-        ])
-        setVinos(vinosData || [])
-        setVentas(statsData || [])
+      } catch (err) {
+        console.error('[menu-engineering] Error al cargar datos:', err)
+        setVinos([])
+        setVentas([])
+        setMensaje('No se pudieron cargar los datos.')
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     cargar()
   }, [])
