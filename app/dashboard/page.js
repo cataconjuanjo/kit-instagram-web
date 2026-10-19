@@ -729,6 +729,11 @@ function DashboardHome() {
   ).length
   const vinosPorCopa = vinosActivos.filter(vino => decimal(vino.precio_copa) > 0).length
   const referenciasCriticas = bajoMinimo.length + vinosSinStock.length
+  const kpiHrefs = [
+    bajoMinimo.length > 0 ? '/dashboard/bodega#pedido' : null,
+    propuestasActivas.length > 0 ? '/dashboard/bodega#propuestas' : null,
+  ].filter(Boolean)
+  const accionesRadarFiltradas = accionesRadarAbiertas.filter(a => !kpiHrefs.includes(a.href))
   return (
     <main>
       {kioskos !== null && (
@@ -784,6 +789,28 @@ function DashboardHome() {
       )}
 
       <div className={styles.wrap}>
+        {restaurante?.actividad_real_desde && (
+          <div className={styles.kpiStrip}>
+            <Link href="/dashboard/cierre" className={styles.kpiStripCard}>
+              <span className={styles.kpiStripValue}>{stats.ventasHoy}</span>
+              <span className={styles.kpiStripLabel}>Ventas hoy</span>
+            </Link>
+            {margenMedio > 0 && (
+              <Link href="/dashboard/menu-engineering" className={styles.kpiStripCard}>
+                <span className={styles.kpiStripValue}>{margenMedio}%</span>
+                <span className={styles.kpiStripLabel}>Margen medio</span>
+              </Link>
+            )}
+            <Link href="/dashboard/bodega#pedido" className={styles.kpiStripCard}>
+              <span className={styles.kpiStripValue}>{bajoMinimo.length}</span>
+              <span className={styles.kpiStripLabel}>Bajo mínimo</span>
+            </Link>
+            <Link href="/dashboard/bodega#propuestas" className={styles.kpiStripCard}>
+              <span className={styles.kpiStripValue}>{propuestasActivas.length}</span>
+              <span className={styles.kpiStripLabel}>Propuestas</span>
+            </Link>
+          </div>
+        )}
         {tareasInicioVisibles.length > 0 && (
           <section className={`${styles.activationPanel} ${activacionCompacta ? styles.activationCompact : ''}`}>
             <div className={styles.activationHead}>
@@ -899,7 +926,7 @@ function DashboardHome() {
               <section className={styles.dailyRadarPanel}>
                 {radarError && <div className={styles.radarNotice}>{radarError}</div>}
                 <div className={styles.dailyRadarList}>
-                  {(accionesRadarAbiertas.length ? accionesRadarAbiertas : radarAcciones).slice(0, 3).map(accion => (
+                  {(accionesRadarFiltradas.length ? accionesRadarFiltradas : radarAcciones).slice(0, 3).map(accion => (
                     <article className={styles.dailyRadarItem} key={accion.id || accion.clave}>
                       <div>
                         <span>{accion.area}</span>
