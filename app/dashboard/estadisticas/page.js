@@ -10,6 +10,7 @@ import {
   SELECT_CLIENT_RESTAURANTE_DASHBOARD,
   SELECT_CLIENT_VINO_DASHBOARD,
 } from '../../lib/clientSupabaseSelects'
+import { fetchAllPages } from '../../lib/fetchAllPages'
 import { esVentaTPV, priorizarVentas } from '../../lib/salesPriority'
 import { esPerfilBodega } from '../../lib/plans'
 import { beneficioBruto, costeNetoCompra, copasVendibles, margenBrutoPct, numero, precioNetoVenta, redondear } from '../../lib/wineEconomics'
@@ -336,17 +337,19 @@ export default function Estadisticas() {
           setLoading(false)
           return
         }
-        let query = supabase
-          .from('estadisticas')
-          .select(SELECT_CLIENT_ESTADISTICA_DASHBOARD)
-          .eq('restaurante_id', rest.id)
-          .order('created_at', { ascending: false })
-        if (desdeActividad) query = query.gte('created_at', desdeActividad)
-        const [{ data }, { data: vinosData }] = await Promise.all([
-          query,
+        const buildStatsQuery = () => {
+          let q = supabase
+            .from('estadisticas')
+            .select(SELECT_CLIENT_ESTADISTICA_DASHBOARD)
+            .eq('restaurante_id', rest.id)
+          if (desdeActividad) q = q.gte('created_at', desdeActividad)
+          return q
+        }
+        const [allStats, { data: vinosData }] = await Promise.all([
+          fetchAllPages(buildStatsQuery),
           supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id),
         ])
-        setStats(data || [])
+        setStats(allStats)
         setVinos(vinosData || [])
       }
       setLoading(false)
