@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
+import { fetchAllPages } from '../../lib/fetchAllPages'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { actividadRealDesdeISO } from '../../lib/actividadReal'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
@@ -144,22 +145,23 @@ export default function MenuEngineering() {
         setRestaurante(rest)
         setTicketDraft(String(rest.ticket_medio_comida || rest.ticket_medio || rest.ticket_comida || ''))
         const desdeActividad = actividadRealDesdeISO(rest)
-        let ventasQuery = Promise.resolve({ data: [] })
-        if (desdeActividad) {
-          ventasQuery = supabase
-            .from('estadisticas')
-            .select('id, detalle, created_at')
-            .eq('restaurante_id', rest.id)
-            .eq('tipo', 'venta')
-            .gte('created_at', desdeActividad)
-        }
-        const [{ data: vinosData }, { data: statsData }] = await Promise.all([
+        const ventasPromise = desdeActividad
+          ? fetchAllPages(() =>
+              supabase
+                .from('estadisticas')
+                .select('id, detalle, created_at')
+                .eq('restaurante_id', rest.id)
+                .eq('tipo', 'venta')
+                .gte('created_at', desdeActividad)
+            )
+          : Promise.resolve([])
+        const [{ data: vinosData }, statsData] = await Promise.all([
           supabase
             .from('vinos')
             .select('id, nombre, bodega, tipo, region, precio_botella, coste_compra, stock, proveedor')
             .eq('restaurante_id', rest.id)
             .eq('activo', true),
-          ventasQuery,
+          ventasPromise,
         ])
         setVinos(vinosData || [])
         setVentas(statsData || [])
