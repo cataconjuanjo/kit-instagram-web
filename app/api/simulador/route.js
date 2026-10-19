@@ -33,7 +33,7 @@ export async function GET(req) {
     const [vinosResult, borradorResult] = await Promise.all([
       supabaseAdmin
         .from('vinos')
-        .select('id, activo, nombre, bodega, tipo, region, anada, formato_compra, precio_botella, precio_copa, coste_compra')
+        .select('id, activo, nombre, bodega, tipo, region, anada, formato_compra, precio_botella, precio_copa, coste_compra, proveedor')
         .eq('restaurante_id', restauranteId),
       supabaseAdmin
         .from('carta_simulacion')
@@ -124,7 +124,11 @@ export async function GET(req) {
       const vino = linea.vino_id ? vinoMap[linea.vino_id] : null
       return {
         ...linea,
-        ...(vino ? { region: vino.region ?? linea.region, anada: vino.anada ?? linea.anada } : {}),
+        ...(vino ? {
+          region: vino.region ?? linea.region,
+          anada: vino.anada ?? linea.anada,
+          proveedor_nombre: linea.proveedor_nombre || vino.proveedor || null,
+        } : {}),
         ...(linea.catalogo_vino_id && proveedorPorOferta[linea.catalogo_vino_id]
           ? proveedorPorOferta[linea.catalogo_vino_id]
           : {}),
