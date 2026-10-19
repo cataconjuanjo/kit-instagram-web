@@ -173,7 +173,7 @@ export default function AjustesHub() {
       title={perfilBodega ? 'Cuenta y puesta en marcha de bodega' : 'Accesos, marca y puesta en marcha'}
       subtitle={perfilBodega
         ? 'Ajustes operativos de la membresía sommelier: actividad real, accesos internos y enlaces de trabajo. Sin QR, sin carta pública.'
-        : 'Configuración que se toca poco, pero que debe quedar perfecta antes de entregar la carta al restaurante.'}
+        : 'QR, diseño de carta, acceso de sala y suscripción. Configúralo una vez antes del lanzamiento.'}
       actions={perfilBodega
         ? <Link className={styles.secondary} href="/dashboard/menu-engineering">Ver mapa estrella/joya</Link>
         : <OpenCartaPruebaButton className={styles.secondary} restauranteId={restaurante?.id}>Probar carta</OpenCartaPruebaButton>}
