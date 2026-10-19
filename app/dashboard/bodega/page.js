@@ -1029,7 +1029,7 @@ export default function ControlBodega() {
             { id: 'sin_pvp',       label: 'Sin PVP',       count: datos.sinPrecio.length },
             { id: 'bajo_minimo',   label: 'Bajo mínimo',   count: datos.bajoMinimo.length },
             { id: 'sin_stock',     label: 'Sin stock',     count: datos.sinStockActual.length },
-          ].filter(({ count }) => count > 0).map(({ id, label, count }) => (
+          ].filter(({ id, count }) => count > 0 || filtroReferencias === id).map(({ id, label, count }) => (
             <button
               key={id}
               type="button"
