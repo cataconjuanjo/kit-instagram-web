@@ -1066,7 +1066,7 @@ export default function ControlBodega() {
               className={['compras', 'nueva_compra', 'propuestas'].includes(panelAbierto) ? styles.secondary : styles.ghost}
               onClick={() => setPanelAbierto(['compras', 'nueva_compra', 'propuestas'].includes(panelAbierto) ? null : 'compras')}
             >
-              Compras {propuestas.length > 0 && <span className={styles.badge}>{propuestas.length}</span>}
+              Compras
             </button>
             {/* Grupo Inventario */}
             <button
@@ -1119,7 +1119,7 @@ export default function ControlBodega() {
               className={panelAbierto === 'propuestas' ? styles.secondary : styles.ghost}
               onClick={() => setPanelAbierto(panelAbierto === 'propuestas' ? null : 'propuestas')}
             >
-              Propuestas
+              Propuestas {propuestas.length > 0 && <span className={styles.badge}>{propuestas.length}</span>}
             </button>
           </div>
         )}
