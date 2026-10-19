@@ -916,14 +916,14 @@ export default function Camarero() {
 
     if (contexto === 'queso') {
       if (vino.tipo === 'tinto' && !quesoTrucadoParaTinto) {
-        return { compatible: false, penalizacion: 80, razon: 'En quesos, el KB prioriza blancos, finos/manzanillas, rosados, dulces y oportos; el tinto queda como excepción si el queso está trucado.' }
+        return { compatible: false, penalizacion: 80, razon: 'En quesos, la guía de maridaje prioriza blancos, finos/manzanillas, rosados, dulces y oportos; el tinto queda como excepción si el queso está trucado.' }
       }
       return { compatible: true, penalizacion: 0 }
     }
 
     if (contexto === 'fritura') {
       if (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto) {
-        return { compatible: false, penalizacion: 90, razon: 'Para fritura conviene tensión, salinidad o burbuja; un tinto potente o un tawny no es la primera lectura del KB.' }
+        return { compatible: false, penalizacion: 90, razon: 'Para fritura conviene tensión, salinidad o burbuja; un tinto potente o un tawny no es la primera opción de maridaje.' }
       }
       if (!['generoso', 'espumoso', 'blanco', 'rosado'].includes(vino.tipo)) {
         return { compatible: false, penalizacion: 50, razon: 'Para fritura se priorizan estilos frescos, salinos o con burbuja.' }
@@ -1203,7 +1203,7 @@ export default function Camarero() {
 
     if (!compatibilidad.compatible && compatibilidad.razon) {
       motivo = compatibilidad.razon
-      fuente = 'Restricción de contexto del KB'
+      fuente = 'Restricción de contexto de maridaje'
     }
 
     return { vino, score, motivo, fuente, compatible: compatibilidad.compatible, aprendizaje, exposicion, senalSala }
@@ -2857,7 +2857,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
           </p>
         )}
         {goldsteinActivo && (
-          <p className={styles.statusLine} style={{ color: '#6f767d' }}>Goldstein estructural</p>
+          <p className={styles.statusLine} style={{ color: '#6f767d' }}>Validación estructural</p>
         )}
         {ticketComida > 0 && rangoTicket && (
           <p className={styles.statusLine} style={{ color: precioEnRango ? '#1f7a61' : '#6f767d' }}>
@@ -2930,7 +2930,7 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         )}
         {goldsteinActivo && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            Goldstein estructural
+            Validación estructural
           </p>
         )}
         {ticketComida > 0 && rangoTicket && (
