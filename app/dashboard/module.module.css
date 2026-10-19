@@ -6335,3 +6335,33 @@ button.itemCard {
   outline-offset: 2px;
   border-radius: 2px;
 }
+
+/* ── Modal de confirmación de actividad real ───────────── */
+.actividadModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  background: rgba(23, 20, 22, 0.56);
+  padding: 18px;
+}
+
+.actividadModalDialog {
+  width: min(440px, 100%);
+  border-radius: 12px;
+  background: #fff;
+  padding: 28px 28px 24px;
+  box-shadow: 0 24px 70px rgba(23, 20, 22, 0.28);
+}
+
+.actividadModalDialog .sectionText {
+  margin: 0 0 14px;
+}
+
+.actividadModalActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}

@@ -20,6 +20,8 @@ export default function AjustesHub() {
   const [mensajePin, setMensajePin] = useState('')
   const [mensajeActividad, setMensajeActividad] = useState('')
   const [guardandoActividad, setGuardandoActividad] = useState(false)
+  const [modalActividad, setModalActividad] = useState(null) // null | 'reiniciar' | 'pausar'
+  const [confirmInput, setConfirmInput] = useState('')
   const [copiado, setCopiado] = useState('')
   const [loading, setLoading] = useState(true)
   const [esAdmin, setEsAdmin] = useState(false)
@@ -36,6 +38,15 @@ export default function AjustesHub() {
     }
     cargar()
   }, [])
+
+  useEffect(() => {
+    if (!modalActividad) return
+    function onKeyDown(e) {
+      if (e.key === 'Escape') { setModalActividad(null); setConfirmInput('') }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [modalActividad])
 
   if (loading) return <LoadingState />
 
@@ -121,6 +132,18 @@ export default function AjustesHub() {
     await navigator.clipboard?.writeText(texto)
     setCopiado(tipo)
     setTimeout(() => setCopiado(''), 1800)
+  }
+
+  function abrirModalActividad(tipo) {
+    setModalActividad(tipo)
+    setConfirmInput('')
+  }
+
+  async function confirmarActividad() {
+    const fechaISO = modalActividad === 'reiniciar' ? new Date().toISOString() : null
+    setModalActividad(null)
+    setConfirmInput('')
+    await guardarInicioActividad(fechaISO)
   }
 
   async function guardarInicioActividad(fechaISO) {
@@ -293,11 +316,11 @@ export default function AjustesHub() {
             </div>
             {esAdmin && (
               <div className={styles.itemStack}>
-                <button className={styles.primary} onClick={() => guardarInicioActividad(new Date().toISOString())} disabled={guardandoActividad}>
+                <button className={styles.primary} onClick={() => abrirModalActividad('reiniciar')} disabled={guardandoActividad}>
                   {actividadIniciada ? 'Reiniciar desde hoy' : 'Empezar actividad real hoy'}
                 </button>
                 {actividadIniciada && (
-                  <button className={styles.ghost} onClick={() => guardarInicioActividad(null)} disabled={guardandoActividad}>
+                  <button className={styles.ghost} onClick={() => abrirModalActividad('pausar')} disabled={guardandoActividad}>
                     Pausar actividad real
                   </button>
                 )}
@@ -373,6 +396,56 @@ export default function AjustesHub() {
           </div>
         </div>
       </section>
+      {modalActividad && (
+        <div className={styles.actividadModalOverlay} onClick={() => { setModalActividad(null); setConfirmInput('') }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="actividad-modal-title"
+            className={styles.actividadModalDialog}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 id="actividad-modal-title" className={styles.sectionTitle}>
+              {modalActividad === 'reiniciar' ? 'Reiniciar actividad real desde hoy' : 'Pausar actividad real'}
+            </h3>
+            {modalActividad === 'reiniciar' ? (
+              <p className={styles.sectionText}>
+                Las estadísticas, el análisis de carta y el simulador mostrarán únicamente datos desde hoy.
+                Hasta que haya actividad nueva, las pantallas aparecerán vacías.
+                No se borra ningún dato: el historial anterior permanece en la base de datos.
+              </p>
+            ) : (
+              <p className={styles.sectionText}>
+                Se elimina la fecha de corte. Las pantallas de Estadísticas y Análisis de carta quedan
+                vacías (no muestran datos sin fecha de inicio). El modo camarero deja de registrar ventas
+                nuevas. El panel mostrará el restaurante como &ldquo;Cerrado&rdquo;. No se borra ningún dato.
+              </p>
+            )}
+            <p className={styles.sectionText}>
+              Escribe <strong>{modalActividad === 'reiniciar' ? 'REINICIAR' : 'PAUSAR'}</strong> para confirmar:
+            </p>
+            <input
+              className={styles.input}
+              value={confirmInput}
+              onChange={e => setConfirmInput(e.target.value)}
+              placeholder={modalActividad === 'reiniciar' ? 'REINICIAR' : 'PAUSAR'}
+              autoFocus
+            />
+            <div className={styles.actividadModalActions}>
+              <button className={styles.ghost} onClick={() => { setModalActividad(null); setConfirmInput('') }}>
+                Cancelar
+              </button>
+              <button
+                className={styles.primary}
+                disabled={confirmInput.trim().toUpperCase() !== (modalActividad === 'reiniciar' ? 'REINICIAR' : 'PAUSAR') || guardandoActividad}
+                onClick={confirmarActividad}
+              >
+                {guardandoActividad ? 'Aplicando...' : modalActividad === 'reiniciar' ? 'Reiniciar' : 'Pausar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ModuleShell>
   )
 }
