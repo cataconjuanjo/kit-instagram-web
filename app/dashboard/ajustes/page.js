@@ -386,7 +386,11 @@ export default function AjustesHub() {
                   <button className={styles.ghost} onClick={() => copiar(urlInventario, 'inventario')}>{copiado === 'inventario' ? 'Copiado' : 'Copiar inventario'}</button>
                 </>
               ) : (
-                <Link className={styles.secondary} href="/dashboard/qr">Ver QR y enlaces</Link>
+                <>
+                  <Link className={styles.secondary} href="/dashboard/qr">Ver QR y enlaces</Link>
+                  <button className={styles.ghost} onClick={() => copiar(urlCarta, 'carta')}>{copiado === 'carta' ? 'Copiado' : 'Copiar carta directa'}</button>
+                  <button className={styles.ghost} onClick={() => copiar(urlCamarero, 'camarero')}>{copiado === 'camarero' ? 'Copiado' : 'Copiar camarero'}</button>
+                </>
               )}
             </div>
           </div>
