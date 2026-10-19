@@ -30,7 +30,7 @@ const GUIDES = {
   },
   '/admin/acciones': {
     title: 'Convierte diagnósticos en seguimiento',
-    intro: 'El pipeline evita que una buena recomendación se pierda entre conversaciones y tareas.',
+    intro: 'El seguimiento evita que una buena recomendación se pierda entre conversaciones y tareas.',
     items: [
       ['Estado', 'Indica si la acción está pendiente, en curso, bloqueada o terminada.', 'Actualízalo tras cada contacto para mantener fiable la agenda.'],
       ['Impacto', 'Valor esperado si la acción se ejecuta correctamente.', 'Prioriza impacto junto con esfuerzo y urgencia, no de forma aislada.'],

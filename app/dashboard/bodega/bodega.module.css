@@ -82,6 +82,26 @@
 
 .checklistClear:hover { color: #74223d; }
 
+/* ── Group nav + sub-nav ─────────────────────────────────────── */
+
+.cellarGroupNav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.cellarSubNav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(216, 200, 152, 0.06);
+  border: 1px solid rgba(216, 200, 152, 0.22);
+  border-radius: 8px;
+}
+
 /* ── Toolbar ──────────────────────────────────────────────────── */
 
 .cellarToolbar {

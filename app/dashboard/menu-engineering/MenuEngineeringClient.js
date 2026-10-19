@@ -448,7 +448,6 @@ export default function MenuEngineering() {
             <section className={styles.panel} style={{ marginBottom: 16, borderLeft: '3px solid #74223d' }}>
               <div className={styles.panelHead}>
                 <div>
-                  <p className={styles.eyebrow}>Capa WINSPID</p>
                   <h2 className={styles.panelTitle}>Retorno de inventario</h2>
                   <p className={styles.panelSub}>
                     Mide cuánto vende cada euro inmovilizado en bodega. No cambia los cuadrantes: ayuda a saber si Estrella, Joya, Caballo o Revisar también trabajan bien el capital.

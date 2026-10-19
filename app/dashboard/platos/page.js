@@ -710,7 +710,7 @@ export default function Platos() {
           <section style={{ background: '#fafaf8', border: '1px solid #ede8df', padding: '20px 24px', marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: huecos ? 16 : 0 }}>
               <div>
-                <p style={{ fontSize: 10, color: '#b8a07a', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 4px' }}>Motor Chartier KB · WSET</p>
+                <p style={{ fontSize: 10, color: '#b8a07a', letterSpacing: '0.12em', textTransform: 'uppercase', margin: '0 0 4px' }}>Análisis aromático y maridaje</p>
                 <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111' }}>
                   {huecos === null
                     ? 'Platos sin vino asignado'
@@ -922,9 +922,9 @@ export default function Platos() {
               onClick={enriquecerTodosLosPlatos}
               className={styles.bulkToggle}
               disabled={enriqueciendoBatch}
-              title="Analiza con IA los platos sin perfil aromático Chartier"
+              title="Analiza perfiles aromáticos con IA"
             >
-              {enriqueciendoBatch ? '⏳ Analizando...' : '✦ Analizar Chartier'}
+              {enriqueciendoBatch ? '⏳ Analizando...' : '✦ Analizar aromas'}
             </button>
             )}
             <div className={styles.quickActions}>

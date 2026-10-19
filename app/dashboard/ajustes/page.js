@@ -173,7 +173,7 @@ export default function AjustesHub() {
       title={perfilBodega ? 'Cuenta y puesta en marcha de bodega' : 'Accesos, marca y puesta en marcha'}
       subtitle={perfilBodega
         ? 'Ajustes operativos de la membresía sommelier: actividad real, accesos internos y enlaces de trabajo. Sin QR, sin carta pública.'
-        : 'Configuración que se toca poco, pero que debe quedar perfecta antes de entregar la carta al restaurante.'}
+        : 'QR, diseño de carta, acceso de sala y suscripción. Configúralo una vez antes del lanzamiento.'}
       actions={perfilBodega
         ? <Link className={styles.secondary} href="/dashboard/menu-engineering">Ver mapa estrella/joya</Link>
         : <OpenCartaPruebaButton className={styles.secondary} restauranteId={restaurante?.id}>Probar carta</OpenCartaPruebaButton>}
@@ -279,20 +279,12 @@ export default function AjustesHub() {
             </Link>
           </>
         ) : (
-          <>
-            <Link className={styles.hubCard} href="/dashboard/qr">
-              <p className={styles.eyebrow}>Mesas</p>
-              <h2>QR y accesos</h2>
-              <p>Descarga el QR y revisa adónde envía: carta o hub público.</p>
-              <span>{restaurante?.hub_activo ? 'Hub activo' : 'Carta directa'}</span>
-            </Link>
-            <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/personalizar">
-              <p className={styles.eyebrow}>Marca</p>
-              <h2>Diseno de carta</h2>
-              <p>Colores, tipografia, logo y banner de la carta publica.</p>
-              <span>Editar identidad</span>
-            </Link>
-          </>
+          <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/personalizar">
+            <p className={styles.eyebrow}>Marca</p>
+            <h2>Diseno de carta</h2>
+            <p>Colores, tipografia, logo y banner de la carta publica.</p>
+            <span>Editar identidad</span>
+          </Link>
         )}
       </section>
 
@@ -372,8 +364,8 @@ export default function AjustesHub() {
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
-              <h2 className={styles.panelTitle}>{perfilBodega ? 'Enlaces internos de trabajo' : 'Enlaces para compartir'}</h2>
-              <p className={styles.panelSub}>{perfilBodega ? 'Atajos para compartir con el equipo de bodega o volver rápido a pantallas clave.' : 'Útiles para imprenta, equipo de sala, WhatsApp o pruebas rápidas.'}</p>
+              <h2 className={styles.panelTitle}>{perfilBodega ? 'Enlaces internos de trabajo' : 'QR y enlaces'}</h2>
+              <p className={styles.panelSub}>{perfilBodega ? 'Atajos para compartir con el equipo de bodega o volver rápido a pantallas clave.' : 'QR, carta pública, modo camarero y todos los enlaces en un solo lugar.'}</p>
             </div>
           </div>
           <div className={styles.panelBody}>
@@ -387,9 +379,9 @@ export default function AjustesHub() {
                 </>
               ) : (
                 <>
-                  <button className={styles.ghost} onClick={() => copiar(urlPublica, 'publica')} disabled={!cartaPublicada}>{copiado === 'publica' ? 'Copiado' : 'Copiar experiencia publica'}</button>
-                  <button className={styles.ghost} onClick={() => copiar(urlCarta, 'carta')} disabled={!cartaPublicada}>{copiado === 'carta' ? 'Copiado' : 'Copiar carta directa'}</button>
-                  <button className={styles.ghost} onClick={() => copiar(urlCamarero, 'camarero')}>{copiado === 'camarero' ? 'Copiado' : 'Copiar modo camarero'}</button>
+                  <Link className={styles.secondary} href="/dashboard/qr">Ver QR y enlaces</Link>
+                  <button className={styles.ghost} onClick={() => copiar(urlCarta, 'carta')}>{copiado === 'carta' ? 'Copiado' : 'Copiar carta directa'}</button>
+                  <button className={styles.ghost} onClick={() => copiar(urlCamarero, 'camarero')}>{copiado === 'camarero' ? 'Copiado' : 'Copiar camarero'}</button>
                 </>
               )}
             </div>

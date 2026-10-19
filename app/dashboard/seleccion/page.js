@@ -183,7 +183,7 @@ export default function SeleccionEspecial() {
                   <div>
                     <p className={styles.eyebrow} style={{ marginBottom: 5 }}>Recomendación de la casa</p>
                     <h3 className={styles.sectionTitle}>{s.vinos?.nombre}</h3>
-                    <p className={styles.sectionText}>{s.vinos?.bodega} · {s.vinos?.region || 'Sin region'}</p>
+                    <p className={styles.sectionText}>{[s.vinos?.bodega, s.vinos?.region].filter(Boolean).join(' · ') || 'Sin region'}</p>
                   </div>
                 </div>
                 <button className={styles.ghost} onClick={() => quitarSeleccion(s.id)}>Quitar</button>

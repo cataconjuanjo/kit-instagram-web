@@ -1115,22 +1115,18 @@ export default function SimuladorCarta() {
           <div className={simStyles.comparacion}>
             <span className={simStyles.comparacionLabel}>Si publicas:</span>
 
-            {comparacion.deltaMargen !== null ? (
+            {comparacion.deltaMargen !== null && comparacion.deltaMargen !== 0 ? (
               <span>
                 Margen{' '}
-                <span className={
-                  comparacion.deltaMargen > 0 ? simStyles.comparacionPos
-                  : comparacion.deltaMargen < 0 ? simStyles.comparacionNeg
-                  : simStyles.comparacionNeutral
-                }>
+                <span className={comparacion.deltaMargen > 0 ? simStyles.comparacionPos : simStyles.comparacionNeg}>
                   {comparacion.deltaMargen > 0 ? '+' : ''}{comparacion.deltaMargen} pp
                 </span>
               </span>
-            ) : (
+            ) : comparacion.deltaMargen === null ? (
               <span className={simStyles.comparacionNeutral}>
                 registra costes en tu carta actual para comparar margen
               </span>
-            )}
+            ) : null}
 
             {comparacion.deltaRegiones !== 0 && (
               <span>
@@ -1142,7 +1138,7 @@ export default function SimuladorCarta() {
             )}
 
             {comparacion.deltaMargen === 0 && comparacion.deltaRegiones === 0 && (
-              <span className={simStyles.comparacionNeutral}>sin cambios en margen ni regiones</span>
+              <span className={simStyles.comparacionNeutral}>Sin cambios respecto a tu carta actual</span>
             )}
           </div>
         )}
@@ -1948,7 +1944,7 @@ export default function SimuladorCarta() {
                     </div>
                   ))}
                 </div>
-                <p className={simStyles.maridajeFuente}>Motor Chartier KB · WSET — análisis estructural</p>
+                <p className={simStyles.maridajeFuente}>Análisis de maridaje y afinidad</p>
               </>
             )
           })()}
