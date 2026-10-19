@@ -1170,7 +1170,7 @@ async function aplicarAccionMasiva(confirmado = false) {
         {errorBodega && <div className={styles.empty} style={{ minHeight: 70, marginBottom: 16, color: '#9b3535' }}>{errorBodega}</div>}
         <section className={styles.workflowStrip}>
           <div>
-            <p className={styles.eyebrow}>Trabajo de hoy</p>
+            <p className={styles.eyebrow}>{perfilBodega ? 'Lo que hace que la bodega sea controlable' : 'Lo que hace que la carta venda mejor'}</p>
             <h2>{prioridadVinos ? prioridadVinos.label : 'La base de vinos esta limpia'}</h2>
             <p>
               {prioridadVinos
@@ -1181,15 +1181,15 @@ async function aplicarAccionMasiva(confirmado = false) {
           <div className={styles.workflowStats}>
             <article>
               <strong>{vinosActivos.length}</strong>
-              <span>activas</span>
+              <span>vinos activos</span>
             </article>
             <article>
               <strong>{totalPendientesVinos}</strong>
-              <span>pendientes</span>
+              <span>pendientes de revisar</span>
             </article>
             <article>
               <strong>{vinosVisibles.length}</strong>
-              <span>en vista</span>
+              <span>en esta lista</span>
             </article>
           </div>
           <div className={styles.workflowActions}>
@@ -1209,13 +1209,6 @@ async function aplicarAccionMasiva(confirmado = false) {
             >
               {mostrarImportadorEtiquetas ? 'Cerrar etiquetas' : 'Importar etiquetas'}
             </button>
-          </div>
-        </section>
-        <section className={styles.pendingStrip}>
-          <div>
-            <p className={styles.eyebrow}>Cola de mejora</p>
-            <h2>{perfilBodega ? 'Lo que hace que la bodega sea controlable' : 'Lo que hace que la carta venda mejor'}</h2>
-            <p>{pendientesVinosVisibles.length ? (perfilBodega ? 'Mostramos solo bloqueos con trabajo pendiente. Lo demas queda fuera para no meter ruido.' : 'Mostramos solo bloqueos con trabajo pendiente. Precio, perfil y stock van primero.') : 'Sin bloqueos operativos: puedes seguir filtrando o editar referencias concretas desde la tabla.'}</p>
           </div>
           <div className={styles.pendingGrid}>
             {pendientesVinosVisibles.length ? pendientesVinosVisibles.map(item => (
