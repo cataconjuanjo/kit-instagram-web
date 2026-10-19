@@ -279,20 +279,12 @@ export default function AjustesHub() {
             </Link>
           </>
         ) : (
-          <>
-            <Link className={styles.hubCard} href="/dashboard/qr">
-              <p className={styles.eyebrow}>Mesas</p>
-              <h2>QR y accesos</h2>
-              <p>Descarga el QR y revisa adónde envía: carta o hub público.</p>
-              <span>{restaurante?.hub_activo ? 'Hub activo' : 'Carta directa'}</span>
-            </Link>
-            <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/personalizar">
-              <p className={styles.eyebrow}>Marca</p>
-              <h2>Diseno de carta</h2>
-              <p>Colores, tipografia, logo y banner de la carta publica.</p>
-              <span>Editar identidad</span>
-            </Link>
-          </>
+          <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/personalizar">
+            <p className={styles.eyebrow}>Marca</p>
+            <h2>Diseno de carta</h2>
+            <p>Colores, tipografia, logo y banner de la carta publica.</p>
+            <span>Editar identidad</span>
+          </Link>
         )}
       </section>
 
