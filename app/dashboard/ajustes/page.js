@@ -372,8 +372,8 @@ export default function AjustesHub() {
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
-              <h2 className={styles.panelTitle}>{perfilBodega ? 'Enlaces internos de trabajo' : 'Enlaces para compartir'}</h2>
-              <p className={styles.panelSub}>{perfilBodega ? 'Atajos para compartir con el equipo de bodega o volver rápido a pantallas clave.' : 'Útiles para imprenta, equipo de sala, WhatsApp o pruebas rápidas.'}</p>
+              <h2 className={styles.panelTitle}>{perfilBodega ? 'Enlaces internos de trabajo' : 'QR y enlaces'}</h2>
+              <p className={styles.panelSub}>{perfilBodega ? 'Atajos para compartir con el equipo de bodega o volver rápido a pantallas clave.' : 'QR, carta pública, modo camarero y todos los enlaces en un solo lugar.'}</p>
             </div>
           </div>
           <div className={styles.panelBody}>
@@ -386,11 +386,7 @@ export default function AjustesHub() {
                   <button className={styles.ghost} onClick={() => copiar(urlInventario, 'inventario')}>{copiado === 'inventario' ? 'Copiado' : 'Copiar inventario'}</button>
                 </>
               ) : (
-                <>
-                  <button className={styles.ghost} onClick={() => copiar(urlPublica, 'publica')} disabled={!cartaPublicada}>{copiado === 'publica' ? 'Copiado' : 'Copiar experiencia publica'}</button>
-                  <button className={styles.ghost} onClick={() => copiar(urlCarta, 'carta')} disabled={!cartaPublicada}>{copiado === 'carta' ? 'Copiado' : 'Copiar carta directa'}</button>
-                  <button className={styles.ghost} onClick={() => copiar(urlCamarero, 'camarero')}>{copiado === 'camarero' ? 'Copiado' : 'Copiar modo camarero'}</button>
-                </>
+                <Link className={styles.secondary} href="/dashboard/qr">Ver QR y enlaces</Link>
               )}
             </div>
           </div>
