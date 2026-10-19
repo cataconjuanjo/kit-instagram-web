@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * seed-demo-fase3.mjs — Fase 3 (v3)
+ * seed-demo-fase3.mjs — Fase 3 (v5)
  *
- * F3-B: partes_servicio + lineas 2026-10-15 a 2026-10-17 (mediodía + noche).
+ * F3-B: partes_servicio + lineas 2026-10-15 a 2026-10-18 (mediodía + noche).
  *       INSERT directo con estado='cerrado' — sin llamar a cerrar_parte_servicio
  *       → no activa movimientos_stock (confirmado en b7a_partes_servicio.sql:
  *       no hay triggers automáticos; solo la RPC explícita mueve stock).
@@ -390,7 +390,21 @@ async function runSelftest() {
     }
   }
 
-  const total  = 10
+  // (k) mediana de referencia calculada desde partes reales (dowStats), no desde plantilla
+  {
+    const hasDownStats     = /dowStats\[/.test(src)
+    const hasParteIngr     = /parteIngresos\[/.test(src)
+    const hasMedianaIngr   = /mediana\([^)]*ingresosPorParte/.test(src)
+    const hasMedianaLineas = /mediana\([^)]*lineasPorParte/.test(src)
+    if (!hasDownStats || !hasParteIngr || !hasMedianaIngr || !hasMedianaLineas) {
+      console.log(`  ✗ (k) mediana ref partes reales: dowStats=${hasDownStats} parteIngr=${hasParteIngr} medIngr=${hasMedianaIngr} medLin=${hasMedianaLineas}`)
+      extraFailed++
+    } else {
+      console.log('  (k) mediana de referencia calculada desde partes reales: ✓')
+    }
+  }
+
+  const total  = 11
   const passed = total - Math.min(extraFailed, total)
   console.log(`\n  ${passed}/${total} checks pasados`)
   if (extraFailed === 0) console.log('  ✓ Todos los casos superados.')
@@ -415,7 +429,7 @@ async function main() {
 
   const sb   = createClient(SUPA_URL, SUPA_KEY)
   const mode = DRY_RUN ? '[DRY-RUN]' : '[CONFIRM]'
-  console.log(`\n${mode} seed-demo-fase3 v3  DEMO_ID=${DEMO_ID}\n`)
+  console.log(`\n${mode} seed-demo-fase3 v5  DEMO_ID=${DEMO_ID}\n`)
 
   // ── Paso 0: restaurante ──────────────────────────────────────────────────────
   const { data: rest, error: restErr } = await sb
@@ -534,225 +548,299 @@ async function main() {
     return
   }
 
-  // ── F3-B: referencia 8 semanas calibrada (Oct 15-18) ────────────────────────
+  // ── F3-B: calibración desde TODO el histórico de partes ─────────────────────
   console.log('\n── F3-B: PARTES 2026-10-15 A 2026-10-18 ────────────────────────────')
-  const refFechasSet = new Set(
-    F3B_FECHAS.flatMap(f => fechasSemanaAnterior(f, F3B_REF_SEMANAS))
-  )
-  const refParteIds = cerrados
-    .filter(p => refFechasSet.has(p.fecha))
-    .map(p => p.id)
 
-  console.log(`  Fechas de referencia (8 semanas atrás por día): ${refFechasSet.size}`)
-  console.log(`  Partes cerrados de referencia: ${refParteIds.length}`)
-
-  // nPartes por fecha F3-B calibrado desde referencia (mismo día de semana × 8 semanas)
-  const f3bDayInfo = {}
-  for (const fecha of F3B_FECHAS) {
-    const refFechasParaDia = new Set(fechasSemanaAnterior(fecha, F3B_REF_SEMANAS))
-    const refPartesParaDia = cerrados.filter(p => refFechasParaDia.has(p.fecha))
-    const partesPerFecha   = {}
-    for (const p of refPartesParaDia) partesPerFecha[p.fecha] = (partesPerFecha[p.fecha] || 0) + 1
-    const datesConData = Object.keys(partesPerFecha)
-    const avgPartes    = datesConData.length > 0
-      ? datesConData.reduce((s, f) => s + partesPerFecha[f], 0) / datesConData.length
-      : 0
-    const nPartes = Math.min(F3B_TURNOS.length, Math.max(1, Math.round(avgPartes)))
-    f3bDayInfo[fecha] = { nPartes, avgPartes, datesConData: datesConData.length, turnos: F3B_TURNOS.slice(0, nPartes) }
-  }
-
-  // Lineas de Oct 12-14 para comparativa semanal (ingresos ya existentes)
-  const oct12_14 = ['2026-10-12', '2026-10-13', '2026-10-14']
-  const oct12_14ParteIds = cerrados.filter(p => oct12_14.includes(p.fecha)).map(p => p.id)
-  let ingresosOct12_14 = 0
-  if (oct12_14ParteIds.length > 0) {
-    for (const chunk of chunkArray(oct12_14ParteIds, IN_CHUNK)) {
-      const { data: lChunk } = await fetchAllPages(
-        (lo, hi) => sb.from('partes_servicio_lineas')
-          .select('tipo, cantidad, copas_vendidas, precio_unitario')
-          .in('parte_id', chunk)
-          .in('tipo', ['venta_botella', 'venta_copa'])
-          .range(lo, hi)
-      )
-      for (const l of (lChunk || [])) {
-        const q = l.tipo === 'venta_copa' ? (Number(l.copas_vendidas)||0) : (Number(l.cantidad)||0)
-        ingresosOct12_14 += q * (Number(l.precio_unitario)||0)
-      }
-    }
-  }
-
-  // Leer lineas de los partes de referencia (paginado + chunks de 100 ids)
-  const refLineas = []
-  for (const chunk of chunkArray(refParteIds, IN_CHUNK)) {
+  // Lee TODAS las líneas de venta de partes cerrados (reutilizadas en F3-A)
+  const allLineas = []
+  let totalLineasPaginas = 0
+  for (const chunk of chunkArray(parteIds, IN_CHUNK)) {
     const { data: chunkData, pages: pgs } = await fetchAllPages(
       (lo, hi) => sb
         .from('partes_servicio_lineas')
         .select('parte_id, vino_id, tipo, cantidad, copas_vendidas, precio_unitario, vino:vinos(id, nombre, precio_botella, precio_copa)')
         .in('parte_id', chunk)
+        .in('tipo', ['venta_botella', 'venta_copa'])
         .range(lo, hi)
     )
-    refLineas.push(...chunkData)
-    if (pgs > 1) console.log(`    chunk ${chunk.length} ids → ${chunkData.length} filas en ${pgs} páginas`)
+    allLineas.push(...chunkData)
+    totalLineasPaginas += pgs
   }
-  console.log(`  Líneas de referencia leídas: ${refLineas.length}`)
+  console.log(`  partes_servicio_lineas: ${allLineas.length} filas en ${totalLineasPaginas} página(s)`)
 
-  // Calcular mediana por parte y frecuencia de aparición (+ totals para compatibilidad)
-  const refTotals      = {}  // key → total cantidad
-  const refDates       = {}  // key → Set<fecha>
-  const refVinos       = {}  // key → vino info
-  const precios8SemMap = {}  // key → [precio_unitario de 8 semanas, ...]
-  const refQtyPerParte = {}  // key → [qty por cada parte donde aparece]
-  const vinoFrequency  = {}  // key → Set<parte_id>
-  for (const l of refLineas) {
-    const parte = parteMap[l.parte_id]
-    if (!parte?.fecha || !l.vino_id) continue
-    const key = `${l.vino_id}|${l.tipo}`
-    const uds = l.tipo === 'venta_copa'
-      ? Math.max(0, Number(l.copas_vendidas) || 0)
-      : Math.max(0, Number(l.cantidad) || 0)
-    refTotals[key]  = (refTotals[key] || 0) + uds
-    if (!refDates[key]) refDates[key] = new Set()
-    refDates[key].add(parte.fecha)
-    if (!refVinos[key]) refVinos[key] = l.vino
-    if (l.precio_unitario != null) {
-      if (!precios8SemMap[key]) precios8SemMap[key] = []
-      precios8SemMap[key].push(Number(l.precio_unitario))
-    }
-    if (!refQtyPerParte[key]) refQtyPerParte[key] = []
-    refQtyPerParte[key].push(uds)
-    if (!vinoFrequency[key]) vinoFrequency[key] = new Set()
-    vinoFrequency[key].add(l.parte_id)
+  // Stats por parte: nLineas e ingresos (base para calibración DOW)
+  const parteLineasCount = {}
+  const parteIngresos    = {}
+  for (const l of allLineas) {
+    const qty = l.tipo === 'venta_copa' ? (Number(l.copas_vendidas) || 0) : (Number(l.cantidad) || 0)
+    parteLineasCount[l.parte_id] = (parteLineasCount[l.parte_id] || 0) + 1
+    parteIngresos[l.parte_id]    = (parteIngresos[l.parte_id]    || 0) + qty * (Number(l.precio_unitario) || 0)
   }
 
-  const refAvg = {}
-  for (const [key, total] of Object.entries(refTotals)) {
-    const nDates = refDates[key]?.size || 1
-    refAvg[key] = { avg: total / nDates, vino: refVinos[key] }
-  }
-  const totalRefPartes = Math.max(1, refParteIds.length)
-
-  // Fallback all-time: para claves sin precio_unitario en las 8 semanas de referencia
-  const keysNeedAllTime = Object.keys(refAvg).filter(k => !precios8SemMap[k]?.length)
-  const preciosAllTimeMap = {}
-  if (keysNeedAllTime.length > 0) {
-    const vinoIdsNeed = [...new Set(keysNeedAllTime.map(k => k.split('|')[0]))]
-    const allTimeLineas = []
-    for (const chunk of chunkArray(vinoIdsNeed, IN_CHUNK)) {
-      const { data: atChunk } = await fetchAllPages(
-        (lo, hi) => sb
-          .from('partes_servicio_lineas')
-          .select('vino_id, tipo, precio_unitario')
-          .eq('restaurante_id', DEMO_ID)
-          .in('vino_id', chunk)
-          .not('precio_unitario', 'is', null)
-          .range(lo, hi)
-      )
-      allTimeLineas.push(...(atChunk || []))
-    }
-    for (const l of allTimeLineas) {
-      const key = `${l.vino_id}|${l.tipo}`
-      if (!preciosAllTimeMap[key]) preciosAllTimeMap[key] = []
-      preciosAllTimeMap[key].push(Number(l.precio_unitario))
-    }
-    console.log(`  Fallback all-time: ${vinoIdsNeed.length} vinos → ${allTimeLineas.length} líneas`)
+  // Agrupación por día de semana desde TODO el histórico de partes cerrados
+  const dowStats = {}
+  for (const p of cerrados) {
+    const dow = new Date(p.fecha + 'T12:00:00Z').getUTCDay()
+    if (!dowStats[dow]) dowStats[dow] = { partesPorFecha: {}, lineasPorParte: [], ingresosPorParte: [] }
+    dowStats[dow].partesPorFecha[p.fecha] = (dowStats[dow].partesPorFecha[p.fecha] || 0) + 1
+    dowStats[dow].lineasPorParte.push(parteLineasCount[p.id] ?? 0)
+    dowStats[dow].ingresosPorParte.push(parteIngresos[p.id] ?? 0)
   }
 
-  // Construir mapa de precios con cadena: 8-sem → historico → carta-pvp
-  const precioResultMap   = {}
-  const avisoSinHistorico = []
-  for (const key of Object.keys(refAvg)) {
-    const [, tipo]  = key.split('|')
-    const vinoData  = refVinos[key]
-    const pvpActual = tipo === 'venta_copa'
-      ? Number(vinoData?.precio_copa   || 0) || null
-      : Number(vinoData?.precio_botella || 0) || null
-    const med8 = mediana(precios8SemMap[key] || [])
-    if (med8 != null) {
-      precioResultMap[key] = { precio: med8,      origen: '8-sem',    pvp: pvpActual, nombre: vinoData?.nombre || '?' }
-    } else {
-      const medAll = mediana(preciosAllTimeMap[key] || [])
-      if (medAll != null) {
-        precioResultMap[key] = { precio: medAll,    origen: 'historico', pvp: pvpActual, nombre: vinoData?.nombre || '?' }
-      } else {
-        precioResultMap[key] = { precio: pvpActual, origen: 'carta-pvp', pvp: pvpActual, nombre: vinoData?.nombre || '?' }
-        avisoSinHistorico.push(vinoData?.nombre || key.split('|')[0])
+  // Medianas globales — fallback para DOW con < 10 partes
+  const medGlobalLineas = mediana(cerrados.map(p => parteLineasCount[p.id] ?? 0)) || 0
+  const medGlobalIngr   = mediana(cerrados.map(p => parteIngresos[p.id]    ?? 0)) || 0
+
+  // Stats derivadas por DOW
+  const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  const dowRef = {}
+  for (let dow = 0; dow <= 6; dow++) {
+    const s = dowStats[dow] || { partesPorFecha: {}, lineasPorParte: [], ingresosPorParte: [] }
+    const fechasDow = Object.keys(s.partesPorFecha)
+    const nFechas   = fechasDow.length
+    const avgPartes = nFechas > 0
+      ? fechasDow.reduce((sum, f) => sum + s.partesPorFecha[f], 0) / nFechas
+      : 0
+    const useGlobal = s.lineasPorParte.length < 10
+    const medLineas = useGlobal ? medGlobalLineas : (mediana(s.lineasPorParte) ?? medGlobalLineas)
+    const medIngr   = useGlobal ? medGlobalIngr   : (mediana(s.ingresosPorParte) ?? medGlobalIngr)
+    dowRef[dow] = { avgPartes, medLineas, medIngr, nFechas, totalPartes: s.lineasPorParte.length, useGlobal }
+  }
+
+  // Tabla año completo por día de semana
+  console.log(`\n  Calibración anual por día de semana (${cerrados.length} partes cerrados):`)
+  console.log(['  ' + 'Día'.padEnd(4), 'fechas'.padStart(7), 'partes'.padStart(7), 'avg/fecha'.padStart(10), 'med lin/p'.padStart(10), 'med €/p'.padStart(9), 'fuente'.padStart(8)].join(' '))
+  console.log('  ' + '─'.repeat(62))
+  for (let dow = 0; dow <= 6; dow++) {
+    const r = dowRef[dow]
+    console.log([
+      '  ' + DIAS_SEMANA[dow].padEnd(4),
+      String(r.nFechas).padStart(7),
+      String(r.totalPartes).padStart(7),
+      r.avgPartes.toFixed(2).padStart(10),
+      r.medLineas.toFixed(1).padStart(10),
+      (r.medIngr.toFixed(0) + ' €').padStart(9),
+      (r.useGlobal ? 'global' : 'dow').padStart(8),
+    ].join(' '))
+  }
+
+  // Asignar nPartes a F3B_FECHAS con acumulación de resto (Bresenham sobre medias DOW)
+  const f3bDayInfo = {}
+  {
+    let accum = 0
+    for (let i = 0; i < F3B_FECHAS.length; i++) {
+      const fecha = F3B_FECHAS[i]
+      const dow   = new Date(fecha + 'T12:00:00Z').getUTCDay()
+      accum += dowRef[dow].avgPartes
+      const raw = i === F3B_FECHAS.length - 1 ? Math.round(accum) : Math.floor(accum)
+      accum -= raw
+      const n = Math.min(F3B_TURNOS.length, Math.max(0, raw))
+      f3bDayInfo[fecha] = {
+        dow, nPartes: n, avgPartes: dowRef[dow].avgPartes,
+        medLineas: Math.max(1, Math.round(dowRef[dow].medLineas)),
+        medIngr:   dowRef[dow].medIngr,
+        turnos:    F3B_TURNOS.slice(0, n),
       }
     }
   }
 
-  // Tabla de precios (visible siempre, también en dry-run)
+  // Construir pool de SKUs desde TODO el histórico
+  const vinoFreqFull   = {}  // key → Set<parte_id>
+  const refQtyFull     = {}  // key → [qty por aparición]
+  const precios8SemMap = {}  // key → [precio de las 8 semanas de referencia]
+  const preciosAllMap  = {}  // key → [precio de todo el histórico]
+  const vinoInfoMap    = {}  // key → vino info
+  const refFechas8Sem  = new Set(F3B_FECHAS.flatMap(f => fechasSemanaAnterior(f, F3B_REF_SEMANAS)))
+
+  for (const l of allLineas) {
+    const parte = parteMap[l.parte_id]
+    if (!parte?.fecha || !l.vino_id) continue
+    const key = `${l.vino_id}|${l.tipo}`
+    const qty = l.tipo === 'venta_copa' ? (Number(l.copas_vendidas) || 0) : (Number(l.cantidad) || 0)
+    if (!vinoFreqFull[key]) vinoFreqFull[key] = new Set()
+    vinoFreqFull[key].add(l.parte_id)
+    if (!refQtyFull[key]) refQtyFull[key] = []
+    refQtyFull[key].push(qty)
+    if (l.precio_unitario != null) {
+      const p = Number(l.precio_unitario)
+      if (!preciosAllMap[key]) preciosAllMap[key] = []
+      preciosAllMap[key].push(p)
+      if (refFechas8Sem.has(parte.fecha)) {
+        if (!precios8SemMap[key]) precios8SemMap[key] = []
+        precios8SemMap[key].push(p)
+      }
+    }
+    if (!vinoInfoMap[key]) vinoInfoMap[key] = l.vino
+  }
+
+  // Mapa de precios: 8sem → histórico → carta-pvp
+  const precioResultMap   = {}
+  const avisoSinHistorico = []
+  for (const key of Object.keys(vinoFreqFull)) {
+    const [, tipo]  = key.split('|')
+    const vinoData  = vinoInfoMap[key]
+    const pvp = tipo === 'venta_copa'
+      ? Number(vinoData?.precio_copa   || 0) || null
+      : Number(vinoData?.precio_botella || 0) || null
+    const med8   = mediana(precios8SemMap[key] || [])
+    const medAll = mediana(preciosAllMap[key]   || [])
+    if (med8   != null) precioResultMap[key] = { precio: med8,   origen: '8-sem',    pvp, nombre: vinoData?.nombre || '?' }
+    else if (medAll != null) precioResultMap[key] = { precio: medAll, origen: 'historico', pvp, nombre: vinoData?.nombre || '?' }
+    else {
+      precioResultMap[key] = { precio: pvp, origen: 'carta-pvp', pvp, nombre: vinoData?.nombre || '?' }
+      avisoSinHistorico.push(vinoData?.nombre || key.split('|')[0])
+    }
+  }
+
+  // Tabla de precios
   console.log('\n  Precios F3-B (mediana precio_unitario):')
   if (Object.keys(precioResultMap).length > 0) {
-    console.log(`  ${'Vino'.padEnd(32)} ${'tipo'.padEnd(14)} ${'precio_usado'.padStart(13)} ${'PVP_actual'.padStart(11)} ${'origen'.padStart(10)}`)
+    console.log(['  ' + 'Vino'.padEnd(32), 'tipo'.padEnd(14), 'precio_usado'.padStart(13), 'PVP_actual'.padStart(11), 'origen'.padStart(10)].join(' '))
     console.log('  ' + '─'.repeat(82))
     for (const [key, info] of Object.entries(precioResultMap).slice(0, 25)) {
       const [, tipo] = key.split('|')
-      const nombre   = (info.nombre || '?').slice(0, 32)
-      const precio   = info.precio != null ? `${Number(info.precio).toFixed(2)} €` : '—'
-      const pvpStr   = info.pvp    != null ? `${Number(info.pvp).toFixed(2)} €`    : '—'
-      console.log(`  ${nombre.padEnd(32)} ${tipo.padEnd(14)} ${precio.padStart(13)} ${pvpStr.padStart(11)} ${info.origen.padStart(10)}`)
+      console.log(['  ' + (info.nombre||'?').slice(0,32).padEnd(32), tipo.padEnd(14), (info.precio!=null?`${Number(info.precio).toFixed(2)} €`:'—').padStart(13), (info.pvp!=null?`${Number(info.pvp).toFixed(2)} €`:'—').padStart(11), info.origen.padStart(10)].join(' '))
     }
-    if (Object.keys(precioResultMap).length > 25) {
-      console.log(`  ... (${Object.keys(precioResultMap).length - 25} filas más)`)
-    }
+    if (Object.keys(precioResultMap).length > 25) console.log(`  ... (${Object.keys(precioResultMap).length - 25} filas más)`)
   }
-  if (avisoSinHistorico.length > 0) {
-    console.log(`\n  ⚠ Sin historial de precio (usando PVP carta): ${avisoSinHistorico.join(', ')}`)
-  }
+  if (avisoSinHistorico.length > 0) console.log(`\n  ⚠ Sin historial de precio (usando PVP carta): ${avisoSinHistorico.join(', ')}`)
 
-  // F3-B líneas por parte: top vinos por frecuencia en referencia (≥2 partes), qty = mediana
-  const f3bLineaTemplate = Object.keys(refVinos)
+  // Pool ponderado de SKUs (top 40 por frecuencia, ≥2 apariciones)
+  const totalCerradosPartes = Math.max(1, cerrados.length)
+  const skuPool = Object.keys(vinoFreqFull)
     .map(key => {
       const [vinoId, tipo] = key.split('|')
-      const freq   = (vinoFrequency[key]?.size || 0) / totalRefPartes
-      const medQty = Math.max(1, Math.round(mediana(refQtyPerParte[key] || []) || 0))
+      const freq   = vinoFreqFull[key].size
+      const medQty = Math.max(1, Math.round(mediana(refQtyFull[key] || []) || 1))
       const info   = precioResultMap[key]
-      return { vinoId, tipo, cantidad: medQty, copas_vendidas: tipo === 'venta_copa' ? medQty : null, precio_unitario: info?.precio ?? null, nombre: info?.nombre || '?', freq }
+      return { vinoId, tipo, freq, freqRate: freq / totalCerradosPartes, medQty, precio_unitario: info?.precio ?? null, nombre: info?.nombre || '?' }
     })
-    .filter(t => (vinoFrequency[`${t.vinoId}|${t.tipo}`]?.size || 0) >= 2)
+    .filter(s => s.freq >= 2)
     .sort((a, b) => b.freq - a.freq)
-    .slice(0, 20)
+    .slice(0, 40)
 
-  // Tabla calibración por fecha + comparativa semana 12-18 oct
-  {
-    const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-    const refIngPerParte = f3bLineaTemplate.reduce((s, t) => s + (t.precio_unitario || 0) * t.cantidad, 0)
-    let ingresosF3b = 0
-    let totalPartesF3b = 0
-    console.log(`\n  ${'Fecha'.padEnd(12)} ${'Día'.padEnd(4)} ${'ref8wk'.padStart(7)} ${'partes'.padStart(7)} ${'líneas'.padStart(7)} ${'ing/parte'.padStart(11)} ${'ref/parte'.padStart(11)} ${'desvío'.padStart(8)}`)
-    console.log('  ' + '─'.repeat(72))
-    const assertErrors = []
-    for (const fecha of F3B_FECHAS) {
-      const dia    = DIAS[new Date(fecha + 'T12:00:00Z').getUTCDay()]
-      const info   = f3bDayInfo[fecha]
-      const nLineas    = info.nPartes * f3bLineaTemplate.length
-      const ingParte   = refIngPerParte
-      ingresosF3b   += ingParte * info.nPartes
-      totalPartesF3b += info.nPartes
-      const desvio = refIngPerParte > 0 ? ((ingParte - refIngPerParte) / refIngPerParte) * 100 : 0
-      const flag   = Math.abs(desvio) > 35 ? ' ⚠' : ''
-      if (flag) assertErrors.push(`${fecha}: desvío ${desvio.toFixed(0)}%`)
-      console.log([
-        `  ${fecha.padEnd(12)}`, dia.padEnd(4),
-        String(info.datesConData).padStart(7), String(info.nPartes).padStart(7),
-        String(nLineas).padStart(7), `${ingParte.toFixed(0)} €`.padStart(11),
-        `${refIngPerParte.toFixed(0)} €`.padStart(11), (desvio.toFixed(0) + '%' + flag).padStart(8),
-      ].join(' '))
-    }
-    if (assertErrors.length > 0) console.log(`  ⚠ Desvíos > ±35%: ${assertErrors.join('; ')}`)
-    console.log(`\n  Semana Oct 12-18 2026:`)
-    console.log(`    Oct 12-14 (existentes): ${ingresosOct12_14.toFixed(2)} €`)
-    console.log(`    Oct 15-18 (F3-B nuevo): ${ingresosF3b.toFixed(2)} € (${totalPartesF3b} partes × ${f3bLineaTemplate.length} SKUs)`)
-    console.log(`    Semana total estimada:  ${(ingresosOct12_14 + ingresosF3b).toFixed(2)} €`)
+  if (skuPool.length === 0) {
+    console.log('\n  ⚠ Sin histórico de vinos — F3-B omitida (no hay lineas de referencia)')
   }
 
-  if (f3bLineaTemplate.length === 0) {
-    console.log('\n  ⚠ Sin histórico de vinos — F3-B omitida (no hay lineas de referencia)')
+  // PRNG determinista (mulberry32) — variación reproducible entre partes
+  function strHash32(str) {
+    let h = 2166136261 >>> 0
+    for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619) >>> 0
+    return h
+  }
+  function makePRNG(seed) {
+    let s = seed >>> 0
+    return () => {
+      s = (s + 0x6D2B79F5) >>> 0
+      let t = Math.imul(s ^ (s >>> 15), 1 | s)
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+  }
+  function generarLineasParte(fecha, turno, nLineas) {
+    const rng   = makePRNG(strHash32(`${fecha}_${turno}`))
+    const avail = skuPool.map((_, i) => i)
+    const avWts = skuPool.map(s => s.freq)
+    const result = []
+    const target = Math.min(nLineas, skuPool.length)
+    for (let pick = 0; pick < target; pick++) {
+      const total = avWts.reduce((s, w) => s + w, 0)
+      if (total <= 0) break
+      let r = rng() * total
+      let chosen = avail.length - 1
+      for (let i = 0; i < avail.length; i++) { r -= avWts[i]; if (r <= 0) { chosen = i; break } }
+      result.push(skuPool[avail[chosen]])
+      avail.splice(chosen, 1)
+      avWts.splice(chosen, 1)
+    }
+    return result.map(s => ({
+      vinoId: s.vinoId, tipo: s.tipo, cantidad: s.medQty,
+      copas_vendidas: s.tipo === 'venta_copa' ? s.medQty : null,
+      precio_unitario: s.precio_unitario, nombre: s.nombre,
+    }))
+  }
+
+  // Pre-generar lineas por (fecha, turno) — determinista; usadas en escritura y dry-run
+  const f3bSimLineas = {}
+  for (const fecha of F3B_FECHAS) {
+    for (const turno of (f3bDayInfo[fecha]?.turnos || [])) {
+      f3bSimLineas[`${fecha}_${turno}`] = generarLineasParte(fecha, turno, f3bDayInfo[fecha].medLineas)
+    }
+  }
+
+  // Promedio semanal ingresos últimas 8 semanas (para comparación)
+  const semanas8IngrRef = []
+  for (let w = 1; w <= F3B_REF_SEMANAS; w++) {
+    const lunes = new Date('2026-10-12T00:00:00Z')
+    lunes.setUTCDate(lunes.getUTCDate() - w * 7)
+    let semIngr = 0
+    for (let d = 0; d < 7; d++) {
+      const dd = new Date(lunes); dd.setUTCDate(lunes.getUTCDate() + d)
+      const fec = dd.toISOString().slice(0, 10)
+      semIngr += cerrados.filter(p => p.fecha === fec).reduce((s, p) => s + (parteIngresos[p.id] || 0), 0)
+    }
+    semanas8IngrRef.push(semIngr)
+  }
+  const avgSemanal8wk = semanas8IngrRef.length > 0
+    ? semanas8IngrRef.reduce((s, x) => s + x, 0) / semanas8IngrRef.length : 0
+
+  // Oct 12-14 ingresos desde allLineas ya leídas
+  let ingresosOct12_14 = 0
+  const oct12_14Set = new Set(['2026-10-12', '2026-10-13', '2026-10-14'])
+  for (const l of allLineas) {
+    const parte = parteMap[l.parte_id]
+    if (!parte || !oct12_14Set.has(parte.fecha)) continue
+    const q = l.tipo === 'venta_copa' ? (Number(l.copas_vendidas) || 0) : (Number(l.cantidad) || 0)
+    ingresosOct12_14 += q * (Number(l.precio_unitario) || 0)
+  }
+
+  // Tabla calibración F3-B: estimación vs mediana real DOW
+  {
+    const assertErrors = []
+    let ingresosF3b    = 0
+    let totalPartesF3b = 0
+    console.log(`\n  ${'Fecha'.padEnd(12)} ${'Día'.padEnd(4)} ${'partes'.padStart(7)} ${'líneas'.padStart(7)} ${'ing total'.padStart(10)} ${'ing/parte'.padStart(10)} ${'ref/parte'.padStart(10)} ${'desvío'.padStart(8)}`)
+    console.log('  ' + '─'.repeat(74))
+    for (const fecha of F3B_FECHAS) {
+      const info = f3bDayInfo[fecha]
+      const dia  = DIAS_SEMANA[info.dow]
+      let linEstTotal = 0, ingEstTotal = 0
+      for (const turno of info.turnos) {
+        const lins = f3bSimLineas[`${fecha}_${turno}`] || []
+        linEstTotal += lins.length
+        ingEstTotal += lins.reduce((s, t) => s + (t.precio_unitario || 0) * t.cantidad, 0)
+      }
+      ingresosF3b   += ingEstTotal
+      totalPartesF3b += info.nPartes
+      const ingPorParte = info.nPartes > 0 ? ingEstTotal / info.nPartes : 0
+      const ref     = info.medIngr
+      const desvio  = ref > 0 ? ((ingPorParte - ref) / ref) * 100 : 0
+      const flag    = Math.abs(desvio) > 35 ? ' ⚠' : ''
+      if (flag) assertErrors.push(`${fecha}: ing/parte ${ingPorParte.toFixed(0)} € vs ref ${ref.toFixed(0)} € (${desvio.toFixed(0)}%)`)
+      if (info.nPartes === 0 && dowRef[info.dow].avgPartes >= 0.5)
+        assertErrors.push(`${fecha} (${dia}): 0 partes asignados, avg anual = ${dowRef[info.dow].avgPartes.toFixed(2)}`)
+      console.log([
+        `  ${fecha.padEnd(12)}`, dia.padEnd(4),
+        String(info.nPartes).padStart(7), String(linEstTotal).padStart(7),
+        (ingEstTotal.toFixed(0) + ' €').padStart(10),
+        (ingPorParte.toFixed(0) + ' €').padStart(10),
+        (ref.toFixed(0) + ' €').padStart(10),
+        (desvio.toFixed(0) + '%' + flag).padStart(8),
+      ].join(' '))
+    }
+    if (assertErrors.length > 0) console.log(`  ⚠ Calibración: ${assertErrors.join('; ')}`)
+    console.log(`\n  Semana Oct 12-18 2026:`)
+    console.log(`    Oct 12-14 (existentes):       ${ingresosOct12_14.toFixed(2)} €`)
+    console.log(`    Oct 15-18 (F3-B nuevo):        ${ingresosF3b.toFixed(2)} € (${totalPartesF3b} partes)`)
+    console.log(`    Semana total estimada:          ${(ingresosOct12_14 + ingresosF3b).toFixed(2)} €`)
+    console.log(`    Promedio semanal últimas 8 sem: ${avgSemanal8wk.toFixed(2)} €`)
   }
 
   // ── F3-B escritura ───────────────────────────────────────────────────────────
   const f3bPartesInsertados = []
-  if (!DRY_RUN && f3bLineaTemplate.length > 0) {
+  let lineasF3bInsertadas = 0
+  if (!DRY_RUN && skuPool.length > 0) {
     console.log('\n  Borrando partes F3-B existentes (ON DELETE CASCADE borra sus líneas)...')
     const { error: delPartesErr } = await sb
       .from('partes_servicio')
@@ -763,13 +851,12 @@ async function main() {
 
     console.log('  Insertando partes_servicio (cerrado, sin llamar a RPC cerrar)...')
     for (const fecha of F3B_FECHAS) {
-      for (const turno of (f3bDayInfo[fecha]?.turnos || F3B_TURNOS)) {
+      for (const turno of (f3bDayInfo[fecha]?.turnos || [])) {
         const { data: parte, error: insParteErr } = await sb
           .from('partes_servicio')
           .insert({
             restaurante_id: DEMO_ID,
-            fecha,
-            turno,
+            fecha, turno,
             estado:     'cerrado',
             cerrado_at: new Date(turnoCreatedAt(fecha, new Set([turno]))).toISOString(),
           })
@@ -777,7 +864,6 @@ async function main() {
           .single()
         if (insParteErr) throw new Error(`F3-B insert parte ${fecha}/${turno}: ${insParteErr.message}`)
         f3bPartesInsertados.push(parte)
-        // Añadir a parteMap para que F3-A los incluya
         parteMap[parte.id] = parte
         parteIds.push(parte.id)
       }
@@ -785,13 +871,12 @@ async function main() {
     console.log(`  ✓ ${f3bPartesInsertados.length} partes insertados`)
 
     console.log('  Insertando partes_servicio_lineas F3-B...')
-    let lineasF3bInsertadas = 0
     for (const parte of f3bPartesInsertados) {
-      const lineas = f3bLineaTemplate.map(tpl => ({
-        parte_id:        parte.id,
-        restaurante_id:  DEMO_ID,
-        vino_id:         tpl.vino_id,
-        tipo:            tpl.tipo,
+      const lineasTpl = f3bSimLineas[`${parte.fecha}_${parte.turno}`]
+        || generarLineasParte(parte.fecha, parte.turno, f3bDayInfo[parte.fecha]?.medLineas || 1)
+      const lineas = lineasTpl.map(tpl => ({
+        parte_id: parte.id, restaurante_id: DEMO_ID,
+        vino_id: tpl.vinoId, tipo: tpl.tipo,
         cantidad:        tpl.tipo === 'venta_copa' ? 1 : tpl.cantidad,
         copas_vendidas:  tpl.tipo === 'venta_copa' ? tpl.cantidad : null,
         precio_unitario: tpl.precio_unitario,
@@ -805,62 +890,38 @@ async function main() {
       }
       lineasF3bInsertadas += lineas.length
     }
-    console.log(`  ✓ ${lineasF3bInsertadas} líneas insertadas (${f3bPartesInsertados.length} partes × ${f3bLineaTemplate.length} SKUs)`)
+    console.log(`  ✓ ${lineasF3bInsertadas} líneas insertadas (${f3bPartesInsertados.length} partes)`)
   } else if (DRY_RUN) {
-    // En dry-run: inyectar partes sintéticos en parteMap para que F3-A los incluya
+    // En dry-run: inyectar partes sintéticos + lineas pre-generadas en allLineas
     console.log('\n  [DRY-RUN] F3-B no escribe — simulando partes en parteMap para F3-A...')
     for (const fecha of F3B_FECHAS) {
-      for (const turno of (f3bDayInfo[fecha]?.turnos || F3B_TURNOS)) {
+      for (const turno of (f3bDayInfo[fecha]?.turnos || [])) {
         const simId = `__dry_${fecha}_${turno}`
         parteMap[simId] = { id: simId, fecha, turno, estado: 'cerrado' }
       }
     }
-    const nSimPartes = F3B_FECHAS.reduce((s, f) => s + (f3bDayInfo[f]?.turnos?.length || 1), 0)
-    console.log(`  [DRY-RUN] ${nSimPartes} partes sintéticos añadidos a parteMap`)
-  }
-
-  // ── F3-A: leer lineas de TODOS los partes cerrados (paginado + chunks) ───────
-  console.log('\n── F3-A: ESTADISTICAS ────────────────────────────────────────────────')
-
-  // En --confirm, parteIds ya incluye los F3-B insertados; en DRY_RUN los sintéticos están en parteMap
-  const allParteIds = Object.values(parteMap)
-    .filter(p => p.estado === 'cerrado' && !p.id?.startsWith('__dry_'))
-    .map(p => p.id)
-
-  const allLineas = []
-  let totalLineasPaginas = 0
-  for (const chunk of chunkArray(allParteIds, IN_CHUNK)) {
-    const { data: chunkData, pages: pgs } = await fetchAllPages(
-      (lo, hi) => sb
-        .from('partes_servicio_lineas')
-        .select('parte_id, vino_id, tipo, cantidad, copas_vendidas, precio_unitario, vino:vinos(id, nombre)')
-        .in('parte_id', chunk)
-        .in('tipo', ['venta_botella', 'venta_copa'])
-        .range(lo, hi)
-    )
-    allLineas.push(...chunkData)
-    totalLineasPaginas += pgs
-  }
-  console.log(`  partes_servicio_lineas (venta): ${allLineas.length} filas en ${totalLineasPaginas} página(s)`)
-
-  // DRY-RUN: inyectar líneas sintéticas F3-B en allLineas para que las estadísticas sean exactas
-  if (DRY_RUN && f3bLineaTemplate.length > 0) {
     const simPartes = Object.values(parteMap).filter(p => p.id?.startsWith('__dry_'))
+    let nSimLineas = 0
     for (const p of simPartes) {
-      for (const tpl of f3bLineaTemplate) {
+      const lins = f3bSimLineas[`${p.fecha}_${p.turno}`] || []
+      nSimLineas += lins.length
+      for (const tpl of lins) {
         allLineas.push({
-          parte_id:       p.id,
-          vino_id:        tpl.vinoId,
-          tipo:           tpl.tipo,
-          cantidad:       tpl.tipo === 'venta_copa' ? 1 : tpl.cantidad,
-          copas_vendidas: tpl.tipo === 'venta_copa' ? tpl.cantidad : null,
+          parte_id: p.id, vino_id: tpl.vinoId, tipo: tpl.tipo,
+          cantidad:        tpl.tipo === 'venta_copa' ? 1 : tpl.cantidad,
+          copas_vendidas:  tpl.tipo === 'venta_copa' ? tpl.cantidad : null,
           precio_unitario: tpl.precio_unitario,
-          vino:           { id: tpl.vinoId, nombre: tpl.nombre },
+          vino: { id: tpl.vinoId, nombre: tpl.nombre },
         })
       }
     }
-    console.log(`  [DRY-RUN] +${simPartes.length * f3bLineaTemplate.length} líneas sintéticas F3-B → total: ${allLineas.length}`)
+    console.log(`  [DRY-RUN] ${simPartes.length} partes sintéticos, ${nSimLineas} líneas → total allLineas: ${allLineas.length}`)
   }
+
+  // ── F3-A: ESTADISTICAS ─────────────────────────────────────────────────────────
+  // (allLineas leído en F3-B, incluyendo líneas sintéticas F3-B inyectadas en dry-run)
+  console.log('\n── F3-A: ESTADISTICAS ────────────────────────────────────────────────')
+  console.log(`  Líneas de venta disponibles (incluye F3-B sim): ${allLineas.length}`)
 
   // Agregar por (fecha, vino_id) — ANTES copa=1 y DESPUÉS copa÷COPAS_POR_BOTELLA (fraccionario)
   // COPAS_POR_BOTELLA=5: fallback del motor (app/lib/agregarPeriodoBodega.js:274)
@@ -1193,6 +1254,25 @@ async function main() {
     }
   }
 
+  // Diagnóstico dry-run: top 10 por margen€ con %KPI y unidades faltantes para barrera
+  if (DRY_RUN) {
+    console.log('\n  ── Diagnóstico: top margen / bajo %KPI ──────────────────────────')
+    const barrera = kpiDespues.barreraPopul
+    const uKpiD   = kpiDespues.uKpi
+    const top10mg = [...kpiDespues.clases].sort((a, b) => b.margen - a.margen).slice(0, 10)
+    console.log(['  ' + 'nombre'.padEnd(30), 'margen'.padStart(8), '%KPI'.padStart(6), 'faltan u'.padStart(9), 'cat'.padEnd(8)].join(' '))
+    console.log('  ' + '─'.repeat(68))
+    for (const v of top10mg) {
+      let falta = '—'
+      if (barrera > 0 && v.pctVentas < barrera) {
+        const bp = barrera / 100
+        const f  = Math.ceil((bp * uKpiD - v.ventas) / (1 - bp))
+        if (f > 0) falta = '+' + f
+      }
+      console.log(['  ' + (v.nombre||'').slice(0,30).padEnd(30), (v.margen.toFixed(2)+'€').padStart(8), v.pctVentas.toFixed(1).padStart(6), String(falta).padStart(9), v.categoria.padEnd(8)].join(' '))
+    }
+  }
+
   // ── Escritura ─────────────────────────────────────────────────────────────────
   if (DRY_RUN) {
     console.log('\n  [DRY-RUN] Sin escritura. Añade --confirm para aplicar.')
@@ -1224,7 +1304,7 @@ async function main() {
   if (allStatsRows.length > CHUNK) process.stdout.write('\n')
 
   console.log(`\n  ✓ F3 completado:`)
-  console.log(`    F3-B: ${f3bPartesInsertados.length} partes + ${f3bPartesInsertados.length * f3bLineaTemplate.length} líneas (2026-10-15 a 18)`)
+  console.log(`    F3-B: ${f3bPartesInsertados.length} partes + ${lineasF3bInsertadas} líneas (2026-10-15 a 18)`)
   console.log(`    F3-A: ${insertados} estadísticas (granularidad: ${granularidad})`)
   console.log('\n  Próximos pasos:')
   console.log('    1. /dashboard/menu-engineering → análisis real (sin banner ANALISIS_DEMO)')
