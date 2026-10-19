@@ -1015,11 +1015,6 @@ export default function ControlBodega() {
             <div className={styles.kpiHintText}>IVA venta {criterioBodega.ivaVentaPct}%</div>
           </div>
           <div className={styles.kpiItem}>
-            <div className={styles.kpiNum}>{datos.bajoMinimo.length}</div>
-            <div className={styles.kpiCaption}>Bajo mínimo</div>
-            <div className={styles.kpiHintText}>Riesgo de rotura de stock</div>
-          </div>
-          <div className={styles.kpiItem}>
             <div className={styles.kpiNum}>{pedidoCombinado.length}</div>
             <div className={styles.kpiCaption}>Pedido sugerido</div>
             <div className={styles.kpiHintText}>Reposición calculada</div>
@@ -1034,7 +1029,7 @@ export default function ControlBodega() {
             { id: 'sin_pvp',       label: 'Sin PVP',       count: datos.sinPrecio.length },
             { id: 'bajo_minimo',   label: 'Bajo mínimo',   count: datos.bajoMinimo.length },
             { id: 'sin_stock',     label: 'Sin stock',     count: datos.sinStockActual.length },
-          ].map(({ id, label, count }) => (
+          ].filter(({ count }) => count > 0).map(({ id, label, count }) => (
             <button
               key={id}
               type="button"
