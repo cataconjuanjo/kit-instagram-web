@@ -177,7 +177,7 @@ export default function BillingPanel({ restaurante, compact = false }) {
           <p className={styles.panelSub}>
             {activo
               ? 'Gestiona tu tarjeta, facturas y plan desde el portal seguro de Stripe.'
-              : 'Empieza con 14 días de prueba gratuita. Sin compromiso hasta que actives el pago.'}
+              : '14 días de prueba gratuita. Se solicita tarjeta al activar; cancela antes de que termine si no quieres que empiece el cobro.'}
           </p>
         </div>
       </div>
