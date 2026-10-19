@@ -473,11 +473,6 @@ export default function DashboardLayout({ children }) {
           )}
           <div className={styles.topRight}>
             <div className={styles.topStatus}>
-              {propuestasCount > 0 && (
-                <Link href="/dashboard/bodega#propuestas" className={styles.alertPillCritical}>
-                  {propuestasCount} propuestas
-                </Link>
-              )}
               <div className={styles.profileMenu}>
                 <button type="button" onClick={() => setProfileOpen(open => !open)} aria-label="Abrir perfil">Perfil</button>
                 {profileOpen && (
@@ -701,11 +696,6 @@ export default function DashboardLayout({ children }) {
           </div>
 
           <div className={styles.topStatus}>
-            {propuestasCount > 0 && (
-              <Link href="/dashboard/bodega#propuestas" className={styles.alertPillCritical}>
-                {propuestasCount} propuestas
-              </Link>
-            )}
             <div className={styles.profileMenu}>
               <button type="button" onClick={() => setProfileOpen(open => !open)} aria-label="Abrir perfil">Perfil</button>
               {profileOpen && (
