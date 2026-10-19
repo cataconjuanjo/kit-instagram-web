@@ -1177,7 +1177,7 @@ async function aplicarAccionMasiva(confirmado = false) {
             <h2>{prioridadVinos ? `${totalPendientesVinos} ${totalPendientesVinos === 1 ? 'vino por completar' : 'vinos por completar'}` : 'La base de vinos está limpia'}</h2>
             <p>
               {prioridadVinos
-                ? `${prioridadVinos.count} referencias necesitan atencion. ${prioridadVinos.text}`
+                ? `${prioridadVinos.count} referencias necesitan atención.`
                 : 'No hay bloqueos visibles en precio, perfil, etiqueta, stock, coste o proveedor.'}
             </p>
           </div>
@@ -1186,14 +1186,18 @@ async function aplicarAccionMasiva(confirmado = false) {
               <strong>{vinosActivos.length}</strong>
               <span>vinos activos</span>
             </article>
-            <article>
-              <strong>{totalPendientesVinos}</strong>
-              <span>pendientes de revisar</span>
-            </article>
-            <article>
-              <strong>{vinosVisibles.length}</strong>
-              <span>en esta lista</span>
-            </article>
+            {totalPendientesVinos !== vinosActivos.length && (
+              <article>
+                <strong>{totalPendientesVinos}</strong>
+                <span>pendientes de revisar</span>
+              </article>
+            )}
+            {vinosVisibles.length !== vinosActivos.length && (
+              <article>
+                <strong>{vinosVisibles.length}</strong>
+                <span>en esta lista</span>
+              </article>
+            )}
           </div>
           <div className={styles.workflowActions}>
             {puedeUsar(restaurante, 'importador_pdf') && (
