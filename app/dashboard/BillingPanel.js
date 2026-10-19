@@ -175,7 +175,9 @@ export default function BillingPanel({ restaurante, compact = false }) {
         <div>
           <h2 className={styles.panelTitle}>Plan y facturacion</h2>
           <p className={styles.panelSub}>
-            Activa la prueba, recupera una cuenta bloqueada o gestiona la suscripcion sin depender de un enlace manual.
+            {activo
+              ? 'Gestiona tu tarjeta, facturas y plan desde el portal seguro de Stripe.'
+              : 'Empieza con 14 días de prueba gratuita. Sin compromiso hasta que actives el pago.'}
           </p>
         </div>
       </div>
