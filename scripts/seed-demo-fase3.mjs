@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * seed-demo-fase3.mjs — Fase 3 (v5)
+ * seed-demo-fase3.mjs — Fase 3 (v6)
  *
  * F3-B: partes_servicio + lineas 2026-10-15 a 2026-10-18 (mediodía + noche).
  *       INSERT directo con estado='cerrado' — sin llamar a cerrar_parte_servicio
@@ -404,7 +404,33 @@ async function runSelftest() {
     }
   }
 
-  const total  = 11
+  // (l) assertErrors guard precede a primera escritura BD en main (static check)
+  {
+    const mainStart = srcLines.findIndex(l => /^async function main/.test(l))
+    // Guard: línea con assertErrors.length y process.exit en las 4 siguientes
+    const guardIdx = srcLines.findIndex((l, i) => {
+      if (i <= mainStart) return false
+      const win = srcLines.slice(i, i + 6).join('\n')
+      return l.includes('assertErrors.length') && win.includes('process.exit')
+    })
+    // Primera escritura BD en main: línea con .delete() o .insert(
+    const writeIdx = srcLines.findIndex((l, i) => {
+      if (i <= mainStart) return false
+      const stripped = l.replace(/\/\/.*$/, '')
+      return stripped.includes(['.delete', '()'].join('')) || stripped.includes(['.insert', '('].join(''))
+    })
+    if (guardIdx < 0) {
+      console.log('  ✗ (l) guard assertErrors.length + process.exit no encontrado en main')
+      extraFailed++
+    } else if (writeIdx > 0 && writeIdx < guardIdx) {
+      console.log(`  ✗ (l) escritura BD (l.${writeIdx+1}) precede al guard assertErrors (l.${guardIdx+1})`)
+      extraFailed++
+    } else {
+      console.log(`  (l) assertErrors guard (l.${guardIdx+1}) precede a primera escritura BD (l.${writeIdx+1}): ✓`)
+    }
+  }
+
+  const total  = 12
   const passed = total - Math.min(extraFailed, total)
   console.log(`\n  ${passed}/${total} checks pasados`)
   if (extraFailed === 0) console.log('  ✓ Todos los casos superados.')
@@ -429,7 +455,7 @@ async function main() {
 
   const sb   = createClient(SUPA_URL, SUPA_KEY)
   const mode = DRY_RUN ? '[DRY-RUN]' : '[CONFIRM]'
-  console.log(`\n${mode} seed-demo-fase3 v5  DEMO_ID=${DEMO_ID}\n`)
+  console.log(`\n${mode} seed-demo-fase3 v6  DEMO_ID=${DEMO_ID}\n`)
 
   // ── Paso 0: restaurante ──────────────────────────────────────────────────────
   const { data: rest, error: restErr } = await sb
@@ -796,8 +822,9 @@ async function main() {
   }
 
   // Tabla calibración F3-B: estimación vs mediana real DOW
+  // assertErrors hoisted para que el guard pueda abortare antes de cualquier escritura BD
+  const assertErrors = []
   {
-    const assertErrors = []
     let ingresosF3b    = 0
     let totalPartesF3b = 0
     console.log(`\n  ${'Fecha'.padEnd(12)} ${'Día'.padEnd(4)} ${'partes'.padStart(7)} ${'líneas'.padStart(7)} ${'ing total'.padStart(10)} ${'ing/parte'.padStart(10)} ${'ref/parte'.padStart(10)} ${'desvío'.padStart(8)}`)
@@ -805,6 +832,15 @@ async function main() {
     for (const fecha of F3B_FECHAS) {
       const info = f3bDayInfo[fecha]
       const dia  = DIAS_SEMANA[info.dow]
+      // Día cerrado: sin partes en todo el histórico → sin aviso ni error
+      if (dowRef[info.dow].avgPartes === 0) {
+        console.log([
+          `  ${fecha.padEnd(12)}`, dia.padEnd(4),
+          '—'.padStart(7), '—'.padStart(7), '—'.padStart(10), '—'.padStart(10), '—'.padStart(10),
+          'cerrado'.padStart(8),
+        ].join(' '))
+        continue
+      }
       let linEstTotal = 0, ingEstTotal = 0
       for (const turno of info.turnos) {
         const lins = f3bSimLineas[`${fecha}_${turno}`] || []
@@ -835,6 +871,14 @@ async function main() {
     console.log(`    Oct 15-18 (F3-B nuevo):        ${ingresosF3b.toFixed(2)} € (${totalPartesF3b} partes)`)
     console.log(`    Semana total estimada:          ${(ingresosOct12_14 + ingresosF3b).toFixed(2)} €`)
     console.log(`    Promedio semanal últimas 8 sem: ${avgSemanal8wk.toFixed(2)} €`)
+  }
+
+  // Guard: abortar ANTES de cualquier escritura BD si hay errores de calibración
+  if (!DRY_RUN && assertErrors.length > 0) {
+    console.error(`\nERROR calibración F3-B — abortar antes de escribir en BD:`)
+    for (const e of assertErrors) console.error(`  ${e}`)
+    console.error('Corrige los datos o ajusta F3B_FECHAS antes de aplicar con --confirm.')
+    process.exit(1)
   }
 
   // ── F3-B escritura ───────────────────────────────────────────────────────────
@@ -1275,6 +1319,24 @@ async function main() {
 
   // ── Escritura ─────────────────────────────────────────────────────────────────
   if (DRY_RUN) {
+    const TIPOS_DRY = ['venta', 'escaneo', 'sommelier', 'recomendacion', 'evento_carta']
+    const partesPrevistos = F3B_FECHAS.flatMap(f => (f3bDayInfo[f]?.turnos || []).map(t => `${f}/${t}`))
+    const lineasPrevistas = partesPrevistos.reduce((s, k) => s + (f3bSimLineas[k.replace('/', '_')]?.length || 0), 0)
+    console.log('\n  ── Escritura prevista con --confirm ─────────────────────────────')
+    console.log(`  F3-B partes a insertar (${partesPrevistos.length}): ${partesPrevistos.join(', ') || 'ninguno (días cerrados)'}`)
+    console.log(`  F3-B líneas a insertar: ${lineasPrevistas}`)
+    console.log(`  Estadísticas a insertar:`)
+    console.log(`    venta:         ${estadisticasVentaRows.length}`)
+    console.log(`    escaneo:       ${escaneoRows.length}`)
+    console.log(`    sommelier:     ${sommelierRows.length}`)
+    console.log(`    recomendacion: ${recomendacionRows.length}`)
+    console.log(`    evento_carta:  ${eventoCartaRows.length}`)
+    console.log(`    TOTAL:         ${allStatsRows.length}`)
+    console.log(`  Deletes previstos:`)
+    console.log(`    partes_servicio WHERE restaurante_id='${DEMO_ID}' AND fecha IN [${F3B_FECHAS.join(', ')}]`)
+    for (const tipo of TIPOS_DRY) {
+      console.log(`    estadisticas    WHERE restaurante_id='${DEMO_ID}' AND tipo='${tipo}'`)
+    }
     console.log('\n  [DRY-RUN] Sin escritura. Añade --confirm para aplicar.')
     return
   }
