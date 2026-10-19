@@ -1621,7 +1621,7 @@ async function aplicarAccionMasiva(confirmado = false) {
 </p>
                   </div>
                 </div>
-                <p data-label="Bodega" style={{ margin: 0, fontSize: 13, color: '#888', alignSelf: 'center' }}>{v.bodega}{v.region ? ` · ${v.region}` : ''}</p>
+                <p data-label="Bodega" style={{ margin: 0, fontSize: 13, color: '#888', alignSelf: 'center' }}>{[v.bodega, v.region].filter(Boolean).join(' · ')}</p>
                 <p data-label="Copa" style={{ margin: 0, fontSize: 13, color: '#111', alignSelf: 'center' }}>{precioCelda(v.precio_copa)}</p>
                 <p data-label="Botella" style={{ margin: 0, fontSize: 13, color: '#111', alignSelf: 'center' }}>
   {editandoPrecio === v.id ? (

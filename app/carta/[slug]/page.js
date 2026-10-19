@@ -2726,7 +2726,7 @@ export default function CartaPublica() {
           {precioValido(s.vinos?.precio_botella) && <div style={{ background: colorPrimario, color: '#fff', fontSize: 13, fontWeight: 500, padding: '4px 12px', borderRadius: 20, flexShrink: 0 }}>{precioBotellaCarta(s.vinos.precio_botella)}</div>}
         </div>
         <p style={{ margin: '0 0 10px 18px', fontSize: 13, color: '#555', lineHeight: 1.8, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>{limpiarNotaSeleccion(s.nota_personal)}</p>
-        <p style={{ margin: '0 0 0 18px', fontSize: 11, color: '#aaa' }}>{s.vinos?.bodega}{s.vinos?.region ? ` · ${s.vinos.region}` : ''}</p>
+        <p style={{ margin: '0 0 0 18px', fontSize: 11, color: '#aaa' }}>{[s.vinos?.bodega, s.vinos?.region].filter(Boolean).join(' · ')}</p>
       </div>
     ))}
 
@@ -2753,7 +2753,7 @@ export default function CartaPublica() {
           {precioValido(s.vinos?.precio_botella) && <div style={{ background: colorPrimario, color: '#fff', fontSize: 13, fontWeight: 500, padding: '4px 12px', borderRadius: 20, flexShrink: 0 }}>{precioBotellaCarta(s.vinos.precio_botella)}</div>}
         </div>
         <p style={{ margin: '0 0 10px 18px', fontSize: 13, color: '#555', lineHeight: 1.8, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>{limpiarNotaSeleccion(s.nota_personal)}</p>
-        <p style={{ margin: '0 0 0 18px', fontSize: 11, color: '#aaa' }}>{s.vinos?.bodega}{s.vinos?.region ? ` · ${s.vinos.region}` : ''}</p>
+        <p style={{ margin: '0 0 0 18px', fontSize: 11, color: '#aaa' }}>{[s.vinos?.bodega, s.vinos?.region].filter(Boolean).join(' · ')}</p>
       </div>
     ))}
 
