@@ -94,6 +94,10 @@ export async function GET(req) {
       ...lineasInsertadas,
     ].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }))
 
+    // Índice de vinos para recuperar region/anada actuales (el snapshot en
+    // carta_simulacion puede estar desactualizado si vinos fue editado después).
+    const vinoMap = Object.fromEntries(todosVinos.map(v => [v.id, v]))
+
     // La oferta seleccionada se conserva en catalogo_vino_id. Enriquecemos la
     // vista con el distribuidor real sin alterar el snapshot de la línea.
     const catalogoIds = [...new Set(lineasFinalesBase.map(linea => linea.catalogo_vino_id).filter(Boolean))]
@@ -116,13 +120,17 @@ export async function GET(req) {
       }]))
     }
 
-    const lineasFinales = lineasFinalesBase.map(linea => ({
-      ...linea,
-      ...(linea.catalogo_vino_id && proveedorPorOferta[linea.catalogo_vino_id]
-        ? proveedorPorOferta[linea.catalogo_vino_id]
-        : {}),
-      oferta_seleccionada_id: linea.catalogo_vino_id || null,
-    }))
+    const lineasFinales = lineasFinalesBase.map(linea => {
+      const vino = linea.vino_id ? vinoMap[linea.vino_id] : null
+      return {
+        ...linea,
+        ...(vino ? { region: vino.region ?? linea.region, anada: vino.anada ?? linea.anada } : {}),
+        ...(linea.catalogo_vino_id && proveedorPorOferta[linea.catalogo_vino_id]
+          ? proveedorPorOferta[linea.catalogo_vino_id]
+          : {}),
+        oferta_seleccionada_id: linea.catalogo_vino_id || null,
+      }
+    })
 
     return Response.json({ lineas: lineasFinales })
   } catch (err) {
