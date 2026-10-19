@@ -2616,6 +2616,10 @@ button.itemCard {
   gap: 8px;
 }
 
+.workflowStrip .pendingGrid {
+  grid-column: 1 / -1;
+}
+
 .pendingItem,
 .pendingItemActive {
   min-height: 92px;

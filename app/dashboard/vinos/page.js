@@ -1098,7 +1098,10 @@ async function aplicarAccionMasiva(confirmado = false) {
     { label: 'Sin proveedor', count: vinosSinProveedor.length, href: '?filtro=sin_proveedor', filter: 'sin_proveedor', text: 'Complica el pedido.' },
   ]
   const pendientesVinosVisibles = pendientesVinos.filter(item => item.count > 0)
-  const totalPendientesVinos = pendientesVinosVisibles.reduce((total, item) => total + item.count, 0)
+  const totalPendientesVinos = new Set([
+    ...vinosSinPrecio, ...vinosSinPerfil, ...vinosSinEtiqueta,
+    ...vinosSinStock, ...vinosSinCoste, ...vinosSinProveedor,
+  ].map(v => v.id)).size
   const prioridadVinos = pendientesVinosVisibles[0] || null
   const filtrosColumnaActivos = Object.values(filtrosColumnaVinos).filter(Boolean).length
   const vinosOrdenadosSelector = [...vinos].sort((a, b) => normalizar(a.nombre || '').localeCompare(normalizar(b.nombre || '')))
@@ -1171,7 +1174,7 @@ async function aplicarAccionMasiva(confirmado = false) {
         <section className={styles.workflowStrip}>
           <div>
             <p className={styles.eyebrow}>{perfilBodega ? 'Lo que hace que la bodega sea controlable' : 'Lo que hace que la carta venda mejor'}</p>
-            <h2>{prioridadVinos ? prioridadVinos.label : 'La base de vinos esta limpia'}</h2>
+            <h2>{prioridadVinos ? `${totalPendientesVinos} ${totalPendientesVinos === 1 ? 'vino por completar' : 'vinos por completar'}` : 'La base de vinos está limpia'}</h2>
             <p>
               {prioridadVinos
                 ? `${prioridadVinos.count} referencias necesitan atencion. ${prioridadVinos.text}`
