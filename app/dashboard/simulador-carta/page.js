@@ -1948,7 +1948,7 @@ export default function SimuladorCarta() {
                     </div>
                   ))}
                 </div>
-                <p className={simStyles.maridajeFuente}>Motor Chartier KB · WSET — análisis estructural</p>
+                <p className={simStyles.maridajeFuente}>Análisis de maridaje y afinidad</p>
               </>
             )
           })()}

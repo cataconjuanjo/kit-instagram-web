@@ -174,7 +174,7 @@ function PerfilVino({ vino, onChange, perfilBodega = false }) {
       <p style={{ fontSize: 11, color: '#bbb', margin: '10px 0 0', lineHeight: 1.5 }}>
         {perfilBodega
           ? 'La IA propone una primera lectura. El revisor puede confirmar o descartar cada rasgo.'
-          : 'La IA propone una primera lectura. El perfil tecnico pesa mas en maridaje; las familias WSET ayudan a explicar afinidades.'}
+          : 'La IA propone una primera lectura. El perfil tecnico pesa mas en maridaje; las familias aromáticas ayudan a explicar afinidades.'}
       </p>
     </div>
   )
