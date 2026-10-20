@@ -853,7 +853,7 @@ function DashboardHome() {
                   const barH = Math.round((d.total / maxVentasDia30) * 52)
                   const x = i * 10 + 1
                   return (
-                    <rect key={d.fecha} x={x} y={58 - barH} width={8} height={barH} fill="var(--color-accent, #2563eb)" opacity={0.75} rx={1}>
+                    <rect key={d.fecha} x={x} y={58 - barH} width={8} height={barH} style={{ fill: 'var(--gold)' }} rx={1}>
                       <title>{d.fecha}: {d.total} uds.</title>
                     </rect>
                   )
