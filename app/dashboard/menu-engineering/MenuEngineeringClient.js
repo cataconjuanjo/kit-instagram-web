@@ -454,7 +454,7 @@ export default function MenuEngineering() {
                   </p>
                 </div>
               </div>
-              <div className={styles.statsGrid} style={{ marginBottom: 0 }}>
+              <div className={styles.statsGrid} style={{ marginBottom: 0, paddingLeft: 24 }}>
                 <div className={styles.stat}>
                   <p className={styles.statValue}>{retornoInventarioGlobal == null ? '-' : `${retornoInventarioGlobal.toFixed(2)}x`}</p>
                   <p className={styles.statLabel}>Ventas por euro en bodega</p>
@@ -481,12 +481,14 @@ export default function MenuEngineering() {
                 hint="Base del mapa."
                 info="Ventas usadas para clasificar la carta. TPV tiene prioridad y sala se usa solo cuando no duplica una venta real."
               />
-              <StatCard
-                value={`${analisisVisible.ventasTPV ?? '-'}/${analisisVisible.ventasSalaKpi ?? '-'}`}
-                label={perfilBodega ? 'TPV/movimientos' : 'TPV/Sala'}
-                hint={analisisVisible.ventasTPV > 0 && analisisVisible.ventasSalaKpi > 0 ? 'Sin doble conteo' : null}
-                info="Muestra cuantas ventas vienen del TPV y cuantas de sala o movimientos no duplicados. Sirve para saber de donde nace el analisis."
-              />
+              {analisisVisible.ventasTPV > 0 && analisisVisible.ventasSalaKpi > 0 && (
+                <StatCard
+                  value={`${analisisVisible.ventasTPV}/${analisisVisible.ventasSalaKpi}`}
+                  label="Ventas TPV / sala"
+                  hint="Sin doble conteo"
+                  info="Muestra cuantas ventas vienen del TPV y cuantas de sala o movimientos no duplicados. Sirve para saber de donde nace el analisis."
+                />
+              )}
               <StatCard
                 value={`${analisisVisible.barreraRentabilidad.toFixed(2)}€`}
                 label="Margen medio"
