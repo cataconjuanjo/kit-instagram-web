@@ -821,7 +821,7 @@ function DashboardHome() {
             </Link>
           </div>
         )}
-        {tareasInicioVisibles.length > 0 && !cartaPublicada && (
+        {tareasInicioVisibles.length > 0 && !(cartaPublicada && restaurante?.actividad_real_desde) && (
           <section className={`${styles.activationPanel} ${activacionCompacta ? styles.activationCompact : ''}`}>
             <div className={styles.activationHead}>
               <div>
