@@ -898,9 +898,13 @@ function DashboardHome() {
             </div>
             <div className={styles.ventas30Panel}>
               <p className={styles.eyebrow}>Los 5 vinos más vendidos (30 días)</p>
-              <ol style={{ margin: 0, padding: '0 0 0 18px', fontSize: 13, lineHeight: '1.7' }}>
-                {top5Vinos.map(v => (
-                  <li key={v.nombre}><strong>{v.nombre}</strong> — {v.total} uds.</li>
+              <ol style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 13, lineHeight: '1.9' }}>
+                {top5Vinos.map((v, idx) => (
+                  <li key={v.nombre} style={{ display: 'flex', gap: 6, overflow: 'hidden' }}>
+                    <span style={{ color: '#bfa984', flexShrink: 0 }}>{idx + 1}.</span>
+                    <span style={{ flex: '1 1 0', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.nombre}</span>
+                    <span style={{ flexShrink: 0, color: '#bfa984', textAlign: 'right' }}>{v.total === 1 ? '1 ud.' : `${v.total} uds.`}</span>
+                  </li>
                 ))}
               </ol>
               <Link href="/dashboard/estadisticas" style={{ display: 'inline-block', marginTop: 8, fontSize: 12, opacity: 0.7 }}>Ver Estadísticas →</Link>
