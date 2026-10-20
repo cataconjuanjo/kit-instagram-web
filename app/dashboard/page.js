@@ -77,6 +77,11 @@ function fmtDia(isoDate) {
   return `${d.getDate()} ${mon}`
 }
 
+function haceDiasMadrid(n) {
+  return new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Madrid' })
+    .format(new Date(Date.now() - n * 86400000))
+}
+
 function fechaLocalClave() {
   const d = new Date()
   const yyyy = d.getFullYear()
@@ -531,9 +536,6 @@ function DashboardHome() {
           incidenciasSala: ventasHoy.filter(item => ['no_stock', 'agotado'].includes(item.resultado)).length,
           dudasSala: ventasHoy.filter(item => ['no_convence', 'otra'].includes(item.resultado)).length,
         })
-        const hace30dias = new Date()
-        hace30dias.setDate(hace30dias.getDate() - 29)
-        hace30dias.setHours(0, 0, 0, 0)
         let v30 = null
         try {
           v30 = await fetchAllPages(() =>
@@ -541,7 +543,8 @@ function DashboardHome() {
               .select('detalle, created_at')
               .eq('restaurante_id', rest.id)
               .eq('tipo', 'venta')
-              .gte('created_at', hace30dias.toISOString())
+              .gte('created_at', haceDiasMadrid(30))
+              .lt('created_at', haceDiasMadrid(0))
           )
         } catch (err) {
           console.error('[Inicio] ventas 30d:', err)
@@ -759,10 +762,10 @@ function DashboardHome() {
   ].filter(Boolean)
   const accionesRadarFiltradas = accionesRadarAbiertas.filter(a => !kpiHrefs.includes(a.href))
 
-  const hace7diasStr = (() => { const d = new Date(); d.setDate(d.getDate() - 6); d.setHours(0, 0, 0, 0); return d.toISOString().slice(0, 10) })()
+  const hace7diasStr = haceDiasMadrid(7)
   const ventas30Vendidas = (ventas30 || []).map(s => ({ ...leerDetalle(s.detalle), fecha: (s.created_at || '').slice(0, 10) })).filter(item => item.resultado === 'vendida')
   const ventasSemana = ventas30 === null ? 0 : ventas30Vendidas.filter(item => item.fecha >= hace7diasStr).reduce((sum, item) => sum + (Number(item.cantidad) || 1), 0)
-  const fechas30 = Array.from({ length: 30 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 29 + i); return d.toISOString().slice(0, 10) })
+  const fechas30 = Array.from({ length: 30 }, (_, i) => haceDiasMadrid(30 - i))
   const ventasPorDia30 = fechas30.map(f => ({ fecha: f, total: ventas30Vendidas.filter(v => v.fecha === f).reduce((s, v) => s + (Number(v.cantidad) || 1), 0) }))
   const maxVentasDia30 = Math.max(...ventasPorDia30.map(d => d.total), 1)
   const vinoMap30 = {}
