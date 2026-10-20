@@ -41,6 +41,31 @@ function fmtSemana(d, h) {
   }
 }
 
+function fechaMadrid() {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' })
+}
+
+function semanaEnCurso(sem) {
+  const hoy = fechaMadrid()
+  return hoy >= sem.desde && hoy <= sem.hasta
+}
+
+function diasTranscurridosMadrid(sem) {
+  const [y, m, d] = sem.desde.split('-').map(Number)
+  const hoy = fechaMadrid()
+  const [yh, mh, dh] = hoy.split('-').map(Number)
+  const lunes = new Date(y, m - 1, d)
+  const hoyDate = new Date(yh, mh - 1, dh)
+  return Math.min(Math.round((hoyDate - lunes) / 86400000) + 1, 7)
+}
+
+function offsetDate(dateStr, days) {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  date.setDate(date.getDate() + days)
+  return localDateStr(date)
+}
+
 function labelSemana({ desde, hasta }) {
   const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
   const d = new Date(desde + 'T00:00:00')
@@ -332,13 +357,14 @@ async function generarExcel(informe, semana, restaurante) {
 // ── Componente ────────────────────────────────────────────────────────────────
 
 export default function InformeSemanal({ restauranteId, restaurante }) {
-  const [semana, setSemana]     = useState(() => semanaActual())
-  const [informe, setInforme]   = useState(null)
-  const [semAnt, setSemAnt]     = useState(null)
-  const [cargando, setCargando] = useState(false)
-  const [error, setError]       = useState('')
-  const [genPDF, setGenPDF]     = useState(false)
-  const [genXLS, setGenXLS]     = useState(false)
+  const [semana, setSemana]         = useState(() => semanaActual())
+  const [informe, setInforme]       = useState(null)
+  const [semAnt, setSemAnt]         = useState(null)
+  const [semAntComparable, setSemAntComparable] = useState(null)
+  const [cargando, setCargando]     = useState(false)
+  const [error, setError]           = useState('')
+  const [genPDF, setGenPDF]         = useState(false)
+  const [genXLS, setGenXLS]         = useState(false)
 
   useEffect(() => {
     cargar()
@@ -356,6 +382,17 @@ export default function InformeSemanal({ restauranteId, restaurante }) {
       )
       setInforme(inf)
       setSemAnt(ant)
+      if (semanaEnCurso(semana)) {
+        const diasElapsed = diasTranscurridosMadrid(semana)
+        const desdeComp = offsetDate(semana.desde, -7)
+        const hastaComp = offsetDate(semana.desde, diasElapsed - 8)
+        const { informe: antComp } = await apiFetch(
+          `/api/partes/informe?restaurante_id=${restauranteId}&desde=${desdeComp}&hasta=${hastaComp}`
+        )
+        setSemAntComparable(antComp)
+      } else {
+        setSemAntComparable(null)
+      }
     } catch (e) {
       setError(e.message)
     } finally {
@@ -380,6 +417,9 @@ export default function InformeSemanal({ restauranteId, restaurante }) {
   }
 
   const sinDatos = informe && informe.meta.partes_incluidos === 0
+  const enCurso = semanaEnCurso(semana)
+  const semBase = enCurso ? semAntComparable : semAnt
+  const vsLabel = enCurso ? 'vs mismos días sem. ant.' : 'vs sem. ant.'
 
   return (
     <section className={styles.panel}>
@@ -432,15 +472,18 @@ export default function InformeSemanal({ restauranteId, restaurante }) {
 
             {/* Resumen */}
             <div className={styles.gridTwo} style={{ marginBottom: 20 }}>
-              <Kpi label="Ingresos venta"   valor={eur(informe.resumen.ingresos_venta)}
-                   variacion={variPct(informe.resumen.ingresos_venta, semAnt?.resumen?.ingresos_venta)} />
+              <Kpi label="Ingresos venta"    valor={eur(informe.resumen.ingresos_venta)}
+                   variacion={variPct(informe.resumen.ingresos_venta, semBase?.resumen?.ingresos_venta)}
+                   labelVsAnt={vsLabel} />
               <Kpi label="Botellas vendidas" valor={informe.resumen.botellas_vendidas}
-                   variacion={variPct(informe.resumen.botellas_vendidas, semAnt?.resumen?.botellas_vendidas)} />
-              <Kpi label="Copas servidas"   valor={informe.resumen.copas_vendidas}
-                   variacion={variPct(informe.resumen.copas_vendidas, semAnt?.resumen?.copas_vendidas)} />
+                   variacion={variPct(informe.resumen.botellas_vendidas, semBase?.resumen?.botellas_vendidas)}
+                   labelVsAnt={vsLabel} />
+              <Kpi label="Copas servidas"    valor={informe.resumen.copas_vendidas}
+                   variacion={variPct(informe.resumen.copas_vendidas, semBase?.resumen?.copas_vendidas)}
+                   labelVsAnt={vsLabel} />
               <Kpi label="Bots. equivalentes" valor={informe.resumen.botellas_equivalentes} variacion={null} />
-              <Kpi label="Invitaciones"      valor={`${informe.resumen.invitaciones_uds} uds`} variacion={null} />
-              <Kpi label="Consumos no venta" valor={`${informe.resumen.consumos_uds} uds · ${eur(informe.resumen.consumos_valor)}`} variacion={null} />
+              <Kpi label="Invitaciones"       valor={`${informe.resumen.invitaciones_uds} uds`} variacion={null} />
+              <Kpi label="Consumos no venta"  valor={`${informe.resumen.consumos_uds} uds · ${eur(informe.resumen.consumos_valor)}`} variacion={null} />
             </div>
 
             {/* Por canal */}
@@ -501,14 +544,14 @@ export default function InformeSemanal({ restauranteId, restaurante }) {
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
 
-function Kpi({ label, valor, variacion }) {
+function Kpi({ label, valor, variacion, labelVsAnt = 'vs sem. ant.' }) {
   return (
     <div style={{ background: '#fafafa', border: '1px solid #eee', borderRadius: 8, padding: '10px 14px' }}>
       <p style={{ fontSize: 11, color: '#888', margin: '0 0 3px' }}>{label}</p>
       <p style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#222' }}>{valor}</p>
       {variacion !== null && (
         <p style={{ fontSize: 11, margin: '3px 0 0', color: variacion >= 0 ? '#2e7d32' : '#c62828' }}>
-          {variacion >= 0 ? '▲' : '▼'} {Math.abs(variacion)}% vs sem. ant.
+          {variacion >= 0 ? '▲' : '▼'} {Math.abs(variacion)}% {labelVsAnt}
         </p>
       )}
     </div>
