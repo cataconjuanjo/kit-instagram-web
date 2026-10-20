@@ -959,14 +959,13 @@
 .profitMatrix {
   position: relative;
   min-height: 360px;
-  border: 1px solid rgba(255, 250, 243, 0.14);
+  border: 1px solid #e0d4bc;
   border-radius: 8px;
   background:
-    linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px),
-    linear-gradient(rgba(255,255,255,0.055) 1px, transparent 1px),
-    radial-gradient(circle at 75% 25%, rgba(191, 169, 132, 0.16), transparent 30%),
-    rgba(255, 250, 243, 0.04);
-  background-size: 25% 100%, 100% 25%, auto, auto;
+    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px),
+    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+    #fffaf3;
+  background-size: 25% 100%, 100% 25%, auto;
   overflow: hidden;
 }
 
@@ -974,12 +973,12 @@
 .profitAxisX {
   position: absolute;
   z-index: 2;
-  color: var(--cv-gold, #C9A24B);
+  color: #756d63;
   font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.82;
+  opacity: 0.8;
 }
 
 .profitAxisY {
@@ -996,7 +995,7 @@
 .profitThresholdX {
   position: absolute;
   z-index: 1;
-  background: rgba(255, 250, 243, 0.2);
+  background: rgba(116, 34, 61, 0.2);
 }
 
 .profitThresholdY {
@@ -1014,11 +1013,10 @@
 .profitQuadrantLabel {
   position: absolute;
   z-index: 2;
-  border: 1px solid rgba(255, 250, 243, 0.18);
+  border: 1px solid #e0d4bc;
   border-radius: 999px;
-  backdrop-filter: blur(6px);
-  background: rgba(23, 20, 22, 0.38);
-  color: rgba(255, 250, 243, 0.68);
+  background: rgba(255, 250, 243, 0.92);
+  color: #4a3f36;
   padding: 5px 8px;
   font-size: 10px;
   font-weight: 850;
@@ -1050,11 +1048,11 @@
   width: 18px;
   height: 18px;
   min-height: 18px;
-  border: 2px solid #fffaf3;
+  border: 2px solid rgba(255, 250, 243, 0.7);
   border-radius: 999px;
   padding: 0;
   cursor: pointer;
-  box-shadow: 0 0 0 4px rgba(255, 250, 243, 0.1), 0 10px 24px rgba(0, 0, 0, 0.24);
+  box-shadow: 0 1px 4px rgba(23, 18, 10, 0.18), 0 0 0 3px rgba(255, 250, 243, 0.6);
   transform: translate(-50%, 50%);
   transition: transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease;
 }
@@ -1062,7 +1060,7 @@
 .profitPoint:hover,
 .profitPoint:focus-visible {
   transform: translate(-50%, 50%) scale(1.28);
-  box-shadow: 0 0 0 6px rgba(255, 250, 243, 0.16), 0 12px 28px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(23, 18, 10, 0.24), 0 0 0 4px rgba(255, 250, 243, 0.8);
 }
 
 .profitPointMuted {
@@ -1171,6 +1169,154 @@
   font-size: 11px;
   font-weight: 950;
   vertical-align: 2px;
+}
+
+/* ── Rentabilidad: Fila 1 — mapa + stats panel ──────────────── */
+
+.profitFila1 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.profitStatsPanel {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  background: #fffaf3;
+  overflow: hidden;
+}
+
+.profitStatsPanelItem {
+  padding: 16px 18px;
+  border-bottom: 1px solid #e8e2d9;
+}
+
+.profitStatsPanelItem:last-child {
+  border-bottom: none;
+}
+
+.profitStatsPanelVal {
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: #171416;
+  margin-bottom: 5px;
+}
+
+.profitStatsPanelLabel {
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #756d63;
+}
+
+/* ── Rentabilidad: Fila 2 — tarjetas de cuadrante ───────────── */
+
+.profitQuadrantCards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.profitQuadrantCard {
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  background: #fffaf3;
+  padding: 16px;
+  cursor: pointer;
+  transition: background 0.12s, box-shadow 0.12s;
+  text-align: left;
+  width: 100%;
+}
+
+.profitQuadrantCard:hover {
+  background: #f9f5ed;
+  box-shadow: 0 1px 6px rgba(116, 34, 61, 0.08);
+}
+
+.profitQuadrantCardActive {
+  box-shadow: inset 0 0 0 1.5px currentColor;
+  background: #faf6ef;
+}
+
+.profitQuadrantCardHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.profitQuadrantCardIcon {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 950;
+  flex-shrink: 0;
+}
+
+.profitQuadrantCardTitle {
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.profitQuadrantCardDesc {
+  font-size: 10px;
+  color: #756d63;
+  line-height: 1.3;
+}
+
+.profitQuadrantCardCount {
+  margin-left: auto;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.profitQuadrantCardList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-top: 1px solid #ece6db;
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+.profitQuadrantCardVino {
+  font-size: 11px;
+  color: #4a3f36;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profitQuadrantCardEmpty {
+  font-size: 11px;
+  color: #aaa8a4;
+  font-style: italic;
+}
+
+@media (max-width: 820px) {
+  .profitFila1 {
+    grid-template-columns: 1fr;
+  }
+  .profitQuadrantCards {
+    grid-template-columns: 1fr;
+  }
 }
 
 .brandHealth,

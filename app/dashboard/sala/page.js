@@ -239,7 +239,8 @@ export default function SalaHub() {
           <article className={styles.inicioCard}>
             <div className={styles.panelHead}>
               <div>
-                <p className={styles.inicioCardLabel}>Briefing de hoy</p>
+                <h2 className={styles.cardH2}>Briefing de hoy</h2>
+                <p className={styles.cardH2Sub}>Qué empujar y qué no prometer hoy en sala.</p>
                 {mensajeBriefing && <p className={styles.tiny}>{mensajeBriefing}</p>}
               </div>
               <div className={styles.actionRow}>

@@ -9,7 +9,7 @@ import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSel
 import { esPerfilBodega } from '../../lib/plans'
 import { priorizarVentas } from '../../lib/salesPriority'
 import { calcularWineMapping, ticketReferencia } from '../../lib/wineMapping'
-import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
+import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import styles from '../module.module.css'
 
 function decimal(val) { return parseFloat(val) || 0 }
@@ -42,8 +42,8 @@ const CATEGORIAS = [
       'Mantén el precio salvo que el coste cambie.',
       'Úsalo como referencia de confianza para dirección.',
     ],
-    color: '#7a5a1a',
-    borde: '#d4a636',
+    color: '#af8b52',
+    borde: '#af8b52',
     fondo: '#fdf8ee',
   },
   {
@@ -56,8 +56,8 @@ const CATEGORIAS = [
       'Prepara argumento de venta y momento de consumo.',
       'Mide 30 días antes de tocar precio.',
     ],
-    color: '#2e6b47',
-    borde: '#4a9c69',
+    color: '#4f8a62',
+    borde: '#4f8a62',
     fondo: '#eef7f2',
   },
   {
@@ -70,8 +70,8 @@ const CATEGORIAS = [
       'Ajusta PVP si el posicionamiento lo permite.',
       'Busca sustituto si el margen no se puede defender.',
     ],
-    color: '#1a4f7a',
-    borde: '#2e7ab8',
+    color: '#5b86b5',
+    borde: '#5b86b5',
     fondo: '#eef4fb',
   },
   {
@@ -84,8 +84,8 @@ const CATEGORIAS = [
       'Negocia el precio de compra o busca otro proveedor.',
       'Si se conserva por criterio, documenta el motivo.',
     ],
-    color: '#7a2020',
-    borde: '#c03030',
+    color: '#b4564a',
+    borde: '#b4564a',
     fondo: '#fdf0f0',
   },
 ]
@@ -425,8 +425,8 @@ export default function MenuEngineering() {
           <>
             <section className={styles.profitHero}>
               <div>
-                <p className={styles.eyebrow}>{perfilBodega ? 'Mapa estrella / joya' : 'Mapa de decisión'}</p>
-                <h2>{perfilBodega ? 'Qué proteger, activar o sacar de bodega' : 'Qué vino empujar, cuidar o sacar'}</h2>
+                <p className={styles.eyebrow}>{perfilBodega ? 'Mapa estrella / joya' : 'Rentabilidad de carta'}</p>
+                <h2>{perfilBodega ? 'Qué proteger, activar o sacar de bodega' : 'Qué empujar, cuidar o sacar'}</h2>
                 <p>
                   {perfilBodega
                     ? 'La bodega se cruza por margen, salida real y capital. Arriba interesa; a la derecha se mueve. Lo importante es decidir el siguiente movimiento.'
@@ -474,48 +474,6 @@ export default function MenuEngineering() {
               </div>
             </section>
 
-            <section className={`${styles.statsGrid} ${styles.profitStats}`}>
-              <StatCard
-                value={analisisVisible.totalVentas}
-                label="Ventas KPI"
-                hint="Base del mapa."
-                info="Ventas usadas para clasificar la carta. TPV tiene prioridad y sala se usa solo cuando no duplica una venta real."
-              />
-              {analisisVisible.ventasTPV > 0 && analisisVisible.ventasSalaKpi > 0 && (
-                <StatCard
-                  value={`${analisisVisible.ventasTPV}/${analisisVisible.ventasSalaKpi}`}
-                  label="Ventas TPV / sala"
-                  hint="Sin doble conteo"
-                  info="Muestra cuantas ventas vienen del TPV y cuantas de sala o movimientos no duplicados. Sirve para saber de donde nace el analisis."
-                />
-              )}
-              <StatCard
-                value={`${analisisVisible.barreraRentabilidad.toFixed(2)}€`}
-                label="Margen medio"
-                hint="Línea margen alto/bajo"
-                info="Media del beneficio absoluto por botella entre vinos con coste y PVP. Se usa como linea para separar margen alto y bajo."
-              />
-              <StatCard
-                value={`${analisisVisible.barreraPopularidad.toFixed(1)}%`}
-                label={perfilBodega ? 'Barrera salida' : 'Barrera popularidad'}
-                hint="Línea venta alta/baja"
-                info="Porcentaje minimo de ventas sobre el total para considerar que una referencia se mueve bien dentro del periodo analizado."
-              />
-              <StatCard
-                value={resumenCategorias.find(c => c.id === 'estrella')?.vinos.length || 0}
-                label="Vinos estrella"
-                hint="Alta salida y margen."
-                info="Referencias que venden por encima de la barrera de salida y dejan margen por encima de la media. Conviene proteger stock y proveedor."
-              />
-              {analisisVisible.vinosSinCoste > 0 && (
-                <StatCard
-                  value={analisisVisible.vinosSinCoste}
-                  label="Sin coste de compra"
-                  hint="No entran en margen."
-                  info="Vinos activos sin coste informado. No se pueden clasificar bien por rentabilidad hasta completar ese dato."
-                />
-              )}
-            </section>
 
             {perfilBodega && (
               <section id="winemapping" className={styles.panel} style={{ marginBottom: 16, borderLeft: '3px solid #74223d' }}>
@@ -748,8 +706,8 @@ export default function MenuEngineering() {
               </section>
             )}
 
-            <section className={styles.gridTwo}>
-              <div className={styles.panelDark}>
+            <div className={styles.profitFila1}>
+              <div className={styles.panel}>
                 <div className={styles.panelHead}>
                   <div>
                     <h2 className={styles.panelTitle}>{perfilBodega ? 'Matriz de bodega' : 'Matriz de carta'}</h2>
@@ -760,7 +718,7 @@ export default function MenuEngineering() {
                   <div className={styles.profitMatrix}>
                     <span className={styles.profitAxisY}>Margen</span>
                     <span className={styles.profitAxisX}>Popularidad</span>
-                    <span className={styles.profitThresholdY} style={{ left: `${Math.min(88, Math.max(12, (analisisVisible.barreraPopularidad / maxPopularidad) * 82 + 8))}%` }} />
+                    <span className={styles.profitThresholdY} style={{ left: `${Math.min(88, Math.max(12, (maxPopularidad > 0 ? Math.sqrt(analisisVisible.barreraPopularidad) / Math.sqrt(maxPopularidad) : 0) * 82 + 8))}%` }} />
                     <span className={styles.profitThresholdX} style={{ bottom: `${Math.min(88, Math.max(12, (analisisVisible.barreraRentabilidad / maxMargen) * 82 + 8))}%` }} />
                     <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantTopRight}`}>Estrella</span>
                     <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantTopLeft}`}>Joya</span>
@@ -768,7 +726,8 @@ export default function MenuEngineering() {
                     <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantBottomLeft}`}>Revisar</span>
                     {vinosAnalizados.map(vino => {
                       const cat = CATEGORIAS.find(c => c.id === vino.categoria)
-                      const left = Math.min(92, Math.max(8, (vino.pctVentas / maxPopularidad) * 84 + 6))
+                      const sqrtRatio = maxPopularidad > 0 ? Math.sqrt(vino.pctVentas) / Math.sqrt(maxPopularidad) : 0
+                      const left = Math.min(92, Math.max(8, sqrtRatio * 84 + 6))
                       const bottom = Math.min(92, Math.max(8, (vino.margen / maxMargen) * 84 + 6))
                       return (
                         <button
@@ -785,7 +744,77 @@ export default function MenuEngineering() {
                   </div>
                 </div>
               </div>
+              <div className={styles.profitStatsPanel}>
+                <div className={styles.profitStatsPanelItem}>
+                  <p className={styles.profitStatsPanelVal}>{vinosAnalizados.length}</p>
+                  <p className={styles.profitStatsPanelLabel}>Referencias activas</p>
+                </div>
+                <div className={styles.profitStatsPanelItem}>
+                  <p className={styles.profitStatsPanelVal}>{analisisVisible.barreraRentabilidad.toFixed(2)}€</p>
+                  <p className={styles.profitStatsPanelLabel}>Margen medio</p>
+                </div>
+                <div className={styles.profitStatsPanelItem}>
+                  <p className={styles.profitStatsPanelVal}>{analisisVisible.barreraPopularidad.toFixed(1)}%</p>
+                  <p className={styles.profitStatsPanelLabel}>Barrera popularidad</p>
+                </div>
+              </div>
+            </div>
 
+            <div className={styles.profitQuadrantCards} style={{ marginTop: 16 }}>
+              {resumenCategorias.map(cat => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  className={`${styles.profitQuadrantCard} ${categoriaActiva === cat.id ? styles.profitQuadrantCardActive : ''}`}
+                  onClick={() => setCategoriaActiva(categoriaActiva === cat.id ? 'todas' : cat.id)}
+                >
+                  <div className={styles.profitQuadrantCardHead}>
+                    <span className={styles.profitQuadrantCardIcon} style={{ borderColor: cat.borde, color: cat.color }}>{cat.icon}</span>
+                    <div>
+                      <p className={styles.profitQuadrantCardTitle} style={{ color: cat.color }}>{cat.label}</p>
+                      <p className={styles.profitQuadrantCardDesc}>{cat.desc}</p>
+                    </div>
+                    <p className={styles.profitQuadrantCardCount} style={{ color: cat.color }}>{cat.vinos.length}</p>
+                  </div>
+                  <div className={styles.profitQuadrantCardList}>
+                    {cat.vinos.slice(0, 3).map(v => (
+                      <p key={v.id} className={styles.profitQuadrantCardVino}>{v.nombre}</p>
+                    ))}
+                    {cat.vinos.length === 0 && <p className={styles.profitQuadrantCardEmpty}>Sin referencias</p>}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <section className={styles.gridTwo} style={{ marginTop: 16 }}>
+              <div className={styles.panel}>
+                <div className={styles.panelHead}>
+                  <div>
+                    <h2 className={styles.panelTitle}>Top Estrellas</h2>
+                    <p className={styles.panelSub}>Las cinco referencias con más salida y mejor margen.</p>
+                  </div>
+                </div>
+                <div className={styles.panelBody}>
+                  {(resumenCategorias.find(c => c.id === 'estrella')?.vinos || []).length ? (
+                    <div className={styles.itemStack}>
+                      {(resumenCategorias.find(c => c.id === 'estrella')?.vinos || [])
+                        .sort((a, b) => b.ventas - a.ventas)
+                        .slice(0, 5)
+                        .map(v => (
+                          <article className={styles.profitActionCard} key={v.id}>
+                            <span style={{ borderColor: '#af8b52', color: '#af8b52' }}>E</span>
+                            <div>
+                              <h3>{v.nombre}</h3>
+                              <p>{v.bodega ? `${v.bodega} · ` : ''}{v.ventas} {v.ventas === 1 ? 'venta' : 'ventas'} · +{v.margen.toFixed(2)}€/bot.</p>
+                            </div>
+                          </article>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className={styles.empty}>Sin vinos estrella con los datos actuales.</div>
+                  )}
+                </div>
+              </div>
               <div className={styles.panel}>
                 <div className={styles.panelHead}>
                   <div>
@@ -814,40 +843,6 @@ export default function MenuEngineering() {
                   ) : (
                     <div className={styles.empty}>Sin acciones urgentes con los datos actuales.</div>
                   )}
-                </div>
-              </div>
-            </section>
-
-            <section className={styles.panel} style={{ marginTop: 16 }}>
-              <div className={styles.panelHead}>
-                <div>
-                  <h2 className={styles.panelTitle}>Cuadrantes</h2>
-                  <p className={styles.panelSub}>{perfilBodega ? 'Filtra la bodega por tipo de decisión: proteger, activar, renegociar o revisar.' : 'Filtra la lista para trabajar solo el tipo de vino que toca ahora.'}</p>
-                </div>
-                <div className={styles.segmented} role="group" aria-label="Filtrar rentabilidad por cuadrante">
-                  <button type="button" className={categoriaActiva === 'todas' ? styles.segmentActive : ''} onClick={() => setCategoriaActiva('todas')}>Todos</button>
-                  {CATEGORIAS.map(cat => (
-                    <button key={cat.id} type="button" className={categoriaActiva === cat.id ? styles.segmentActive : ''} onClick={() => setCategoriaActiva(cat.id)}>
-                      {cat.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className={styles.panelBody}>
-                <div className={styles.profitCategoryGrid}>
-                  {resumenCategorias.map(cat => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      className={`${styles.profitCategoryChip} ${categoriaActiva === cat.id ? styles.profitCategoryChipActive : ''}`}
-                      onClick={() => setCategoriaActiva(cat.id)}
-                      style={{ borderColor: cat.borde }}
-                    >
-                      <span style={{ color: cat.color }}>{cat.icon}</span>
-                      <strong>{cat.vinos.length}</strong>
-                      <small>{cat.label}</small>
-                    </button>
-                  ))}
                 </div>
               </div>
             </section>
