@@ -3526,3 +3526,314 @@
 .kioskosLink:hover {
   opacity: 0.82;
 }
+
+/* ── Inicio: page header ────────────────────────────────────────────────────── */
+
+.wrap {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.pageHeader {
+  margin-bottom: 24px;
+}
+
+.pageH1 {
+  margin: 0;
+  color: #171416;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 46px;
+  font-weight: 600;
+  line-height: 1.08;
+}
+
+.pageSub {
+  margin: 8px 0 0;
+  color: #6b5a56;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ── Inicio: shared card token ──────────────────────────────────────────────── */
+
+.inicioCard {
+  background: #fffdf9;
+  border: 1px solid #e8dfd0;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 1px 2px rgba(60, 30, 20, 0.05);
+}
+
+.inicioCardLabel {
+  margin: 0 0 10px;
+  color: #6b5a56;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* ── Inicio: Fila 1 – hero + margen ─────────────────────────────────────────── */
+
+.inicioRow1 {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: start;
+}
+
+.heroTopRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.heroKpi {
+  display: block;
+  color: var(--wine, #74223d);
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 88px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.heroKpiUnit {
+  display: block;
+  margin-top: 4px;
+  color: #6b5a56;
+  font-size: 14px;
+}
+
+.heroKpiSecGroup {
+  padding-bottom: 6px;
+}
+
+.heroKpiSec {
+  display: block;
+  color: #2a1a1d;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.heroKpiSecLabel {
+  display: block;
+  margin-top: 4px;
+  color: #6b5a56;
+  font-size: 13px;
+}
+
+.heroChartWrap {
+  margin-top: 4px;
+}
+
+.heroChartAxis {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  color: #6b5a56;
+  font-size: 12px;
+}
+
+.heroChartNote {
+  color: #6b5a56;
+  font-size: 12px;
+  text-align: center;
+}
+
+.sideKpi {
+  display: block;
+  color: var(--gold, #af8b52);
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.sideKpiSub {
+  margin: 6px 0 20px;
+  color: #6b5a56;
+  font-size: 13px;
+}
+
+.cardLink {
+  color: var(--wine, #74223d);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.cardLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Inicio: Fila 2 – para decidir + top 5 ──────────────────────────────────── */
+
+.inicioRow2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+  align-items: start;
+}
+
+.cardH2 {
+  margin: 0 0 16px;
+  color: #171416;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.decideList {
+  display: grid;
+}
+
+.decideRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #eee5d6;
+  padding: 14px 0;
+}
+
+.decideRowText {
+  color: #2a1a1d;
+  font-size: 14px;
+  line-height: 1.4;
+  min-width: 0;
+}
+
+.decideRowText strong {
+  color: var(--wine, #74223d);
+  font-weight: 700;
+}
+
+.decideBtn {
+  flex-shrink: 0;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--wine, #74223d);
+  border-radius: 10px;
+  background: #fffdf9;
+  color: var(--wine, #74223d);
+  padding: 0 16px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.decideBtn:hover {
+  background: var(--wine, #74223d);
+  color: #fffaf3;
+}
+
+.decideEmpty {
+  margin: 14px 0 0;
+  color: #6b5a56;
+  font-size: 14px;
+}
+
+.topVinosList {
+  display: grid;
+  gap: 0;
+  margin-bottom: 16px;
+}
+
+.topVinoRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px 48px;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid #eee5d6;
+  padding: 12px 0;
+}
+
+.topVinoName {
+  color: #2a1a1d;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topVinoBarWrap {
+  height: 6px;
+  border-radius: 999px;
+  background: #efe6d6;
+  overflow: hidden;
+}
+
+.topVinoBar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--gold, #af8b52);
+  min-width: 6px;
+}
+
+.topVinoCount {
+  color: #6b5a56;
+  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Inicio: Activation panel – light card overrides ─────────────────────────── */
+
+.activationCardStyle {
+  background: #fffdf9;
+  border-color: #e8dfd0;
+  border-radius: 16px;
+  padding: 28px;
+  color: #2a1a1d;
+}
+
+.activationCardStyle .activationHead h2 { color: #171416; }
+.activationCardStyle .activationHead p:not(.eyebrow) { color: #6b5a56; }
+.activationCardStyle .activationProgress strong { color: var(--wine, #74223d); }
+.activationCardStyle .activationProgress span { color: #6b5a56; }
+.activationCardStyle .activationWelcome { border-color: #e8dfd0; background: #f7f0e4; }
+.activationCardStyle .activationWelcome strong { color: #2a1a1d; }
+.activationCardStyle .activationWelcome span { color: #6b5a56; }
+.activationCardStyle .activationBar { background: #eee5d6; }
+.activationCardStyle .activationStepsFocused article { border-color: #e8dfd0; background: rgba(175, 139, 82, 0.1); }
+.activationCardStyle .activationStepsFocused article > span { background: rgba(60, 30, 20, 0.08); color: #171416; }
+.activationCardStyle .activationStepsFocused article small { color: var(--gold, #af8b52); }
+.activationCardStyle .activationStepsFocused article strong { color: #171416; }
+.activationCardStyle .activationStepsFocused article p { color: #6b5a56; }
+.activationCardStyle .activationStepActions a { background: var(--wine, #74223d); color: #fffaf3; }
+.activationCardStyle .activationStepActions button { border-color: #d9cfbd; background: #fffdf9; color: #2a1a1d; }
+.activationCardStyle .activationQueue { border-color: #e8dfd0; background: #f7f3ec; }
+.activationCardStyle .activationQueue p { color: var(--gold, #af8b52); }
+.activationCardStyle .activationQueue a { background: #f0ebe3; color: #2a1a1d; }
+.activationCardStyle .activationTrust { color: #6b5a56; }
+.activationCardStyle .activationTrust a { color: var(--wine, #74223d); }
+
+/* ── Responsive: Inicio ──────────────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .inicioRow1 {
+    grid-template-columns: 1fr;
+  }
+  .heroKpi { font-size: 64px; }
+}
+
+@media (max-width: 640px) {
+  .wrap {
+    padding: 20px 20px 40px;
+  }
+  .pageH1 { font-size: 32px; }
+  .inicioRow2 {
+    grid-template-columns: 1fr;
+  }
+  .heroKpi { font-size: 56px; }
+  .heroTopRow { gap: 16px; }
+}

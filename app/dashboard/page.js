@@ -71,6 +71,22 @@ function leerDetalle(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return {} }
 }
 
+function semanaActualLabel() {
+  const hoy = new Date()
+  const dia = hoy.getDay()
+  const diasDesdeEsteLunes = dia === 0 ? 6 : dia - 1
+  const lunes = new Date(hoy)
+  lunes.setDate(hoy.getDate() - diasDesdeEsteLunes)
+  const domingo = new Date(lunes)
+  domingo.setDate(lunes.getDate() + 6)
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+  const dL = lunes.getDate(), dD = domingo.getDate()
+  if (lunes.getMonth() === domingo.getMonth()) {
+    return `Del ${dL} al ${dD} de ${MESES[lunes.getMonth()]}`
+  }
+  return `Del ${dL} de ${MESES[lunes.getMonth()]} al ${dD} de ${MESES[domingo.getMonth()]}`
+}
+
 function fmtDia(isoDate) {
   const d = new Date(isoDate + 'T12:00:00')
   const mon = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getMonth()]
@@ -831,92 +847,109 @@ function DashboardHome() {
       )}
 
       <div className={styles.wrap}>
-        {restaurante?.actividad_real_desde && (
-          <div className={styles.kpiStrip}>
-            {ventasSemana > 0 && (
-              <Link href="/dashboard/cierre" className={styles.kpiStripCard}>
-                <span className={styles.kpiStripValue}>{ventasSemana}</span>
-                <span className={styles.kpiStripLabel}>Ventas 7 días (copas y botellas)</span>
-              </Link>
-            )}
-            {margenMedio > 0 && (
-              <Link href="/dashboard/menu-engineering" className={styles.kpiStripCard}>
-                <span className={styles.kpiStripValue}>{margenMedio}%</span>
-                <span className={styles.kpiStripLabel}>Margen medio</span>
-              </Link>
-            )}
-            <Link href="/dashboard/bodega#pedido" className={styles.kpiStripCard}>
-              <span className={styles.kpiStripValue}>{bajoMinimo.length}</span>
-              <span className={styles.kpiStripLabel}>Bajo mínimo</span>
-            </Link>
-            <Link href="/dashboard/bodega#propuestas" className={styles.kpiStripCard}>
-              <span className={styles.kpiStripValue}>{propuestasActivas.length}</span>
-              <span className={styles.kpiStripLabel}>Propuestas</span>
-            </Link>
-          </div>
+        {restaurante && (
+          <header className={styles.pageHeader}>
+            <h1 className={styles.pageH1}>Esta semana en {restaurante.nombre || 'tu restaurante'}</h1>
+            <p className={styles.pageSub}>{semanaActualLabel()}. Lo esencial para decidir hoy.</p>
+          </header>
         )}
 
-        {hayVentas30 && (
-          <div className={styles.ventas30Wrap}>
-            <div className={styles.ventas30Panel}>
-              <p className={styles.eyebrow}>
-                {totalVentas30} {totalVentas30 === 1 ? 'copa o botella' : 'copas y botellas'} en 30 días
-              </p>
-              <div style={{ position: 'relative', marginTop: 8 }}>
-                <div style={{ height: 14, position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 0, bottom: 0, fontSize: 10, color: '#bfa984', lineHeight: 1 }}>
-                    {maxVentasDia30}
-                  </span>
-                  <span style={{
-                    position: 'absolute',
-                    left: `${((peakIdx * 10 + 5) / 300 * 100).toFixed(1)}%`,
-                    bottom: 0,
-                    transform: 'translateX(-50%)',
-                    fontSize: 10,
-                    color: '#fffaf3',
-                    lineHeight: 1,
-                    pointerEvents: 'none',
-                  }}>
-                    {peakDay.total}
-                  </span>
+        {restaurante?.actividad_real_desde && (
+          <div className={styles.inicioRow1}>
+            <article className={styles.inicioCard}>
+              <p className={styles.inicioCardLabel}>Ventas de los últimos 7 días</p>
+              <div className={styles.heroTopRow}>
+                <div>
+                  <strong className={styles.heroKpi}>{ventasSemana}</strong>
+                  <span className={styles.heroKpiUnit}>copas y botellas</span>
                 </div>
-                <svg viewBox="0 0 300 120" preserveAspectRatio="none" style={{ width: '100%', height: 140, display: 'block' }}>
-                  <line x1="0" y1="117" x2="300" y2="117" stroke="#78716a" strokeWidth="0.8" strokeOpacity="0.5" />
+                {totalVentas30 > 0 && (
+                  <div className={styles.heroKpiSecGroup}>
+                    <strong className={styles.heroKpiSec}>{totalVentas30}</strong>
+                    <span className={styles.heroKpiSecLabel}>en los últimos 30 días</span>
+                  </div>
+                )}
+              </div>
+              <div className={styles.heroChartWrap}>
+                <svg viewBox="0 0 300 60" preserveAspectRatio="none" style={{ width: '100%', height: 80, display: 'block' }}>
                   {ventasPorDia30.map((d, i) => {
-                    const barH = d.total === 0 ? 3 : Math.max(4, Math.round((d.total / maxVentasDia30) * 113))
+                    const barH = d.total === 0 ? 3 : Math.max(4, Math.round((d.total / maxVentasDia30) * 56))
                     const x = i * 10 + 1
+                    const fill = d.total === 0 ? '#d9d0c0' : i === 29 ? '#74223d' : '#af8b52'
                     return (
-                      <rect key={d.fecha} x={x} y={117 - barH} width={8} height={barH} style={{ fill: d.total === 0 ? '#78716a' : 'var(--gold)' }} rx={1}>
+                      <rect key={d.fecha} x={x} y={60 - barH} width={8} height={barH} fill={fill} rx={1}>
                         <title>{d.fecha}: {d.total === 1 ? '1 ud.' : `${d.total} uds.`}</title>
                       </rect>
                     )
                   })}
                 </svg>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#78716a', marginTop: 4 }}>
+                <div className={styles.heroChartAxis}>
                   <span>{fmtDia(fechas30[0])}</span>
-                  <span>{fmtDia(fechas30[14])}</span>
+                  <span className={styles.heroChartNote}>Los días sin ventas aparecen en gris</span>
                   <span>{fmtDia(fechas30[29])}</span>
                 </div>
               </div>
-            </div>
-            <div className={styles.ventas30Panel}>
-              <p className={styles.eyebrow}>Los 5 vinos más vendidos (30 días)</p>
-              <ol style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 13, lineHeight: '1.9' }}>
-                {top5Vinos.map((v, idx) => (
-                  <li key={v.nombre} style={{ display: 'flex', gap: 6, overflow: 'hidden' }}>
-                    <span style={{ color: '#bfa984', flexShrink: 0 }}>{idx + 1}.</span>
-                    <span style={{ flex: '1 1 0', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.nombre}</span>
-                    <span style={{ flexShrink: 0, color: '#bfa984', textAlign: 'right' }}>{v.total === 1 ? '1 ud.' : `${v.total} uds.`}</span>
-                  </li>
-                ))}
-              </ol>
-              <Link href="/dashboard/estadisticas" style={{ display: 'inline-block', marginTop: 8, fontSize: 12, opacity: 0.7 }}>Ver Estadísticas →</Link>
-            </div>
+            </article>
+            <article className={styles.inicioCard}>
+              <p className={styles.inicioCardLabel}>Margen medio</p>
+              <strong className={styles.sideKpi}>{margenMedio || '—'}%</strong>
+              <p className={styles.sideKpiSub}>sobre el precio de venta</p>
+              <Link href="/dashboard/precios" className={styles.cardLink}>Ver rentabilidad →</Link>
+            </article>
+          </div>
+        )}
+
+        {restaurante?.actividad_real_desde && (
+          <div className={styles.inicioRow2}>
+            <article className={styles.inicioCard}>
+              <p className={styles.inicioCardLabel}>Para decidir hoy</p>
+              <h2 className={styles.cardH2}>Avisos activos</h2>
+              <div className={styles.decideList}>
+                {bajoMinimo.length > 0 && (
+                  <div className={styles.decideRow}>
+                    <span className={styles.decideRowText}>
+                      <strong>{bajoMinimo.length}</strong> vino{bajoMinimo.length !== 1 ? 's' : ''} bajo mínimo
+                      {bajoMinimo[0]?.nombre && <> · {bajoMinimo[0].nombre}</>}
+                    </span>
+                    <Link href="/dashboard/bodega#pedido" className={styles.decideBtn}>Preparar pedido</Link>
+                  </div>
+                )}
+                {propuestasActivas.length > 0 && (
+                  <div className={styles.decideRow}>
+                    <span className={styles.decideRowText}>
+                      <strong>{propuestasActivas.length}</strong> propuesta{propuestasActivas.length !== 1 ? 's' : ''} pendiente{propuestasActivas.length !== 1 ? 's' : ''}
+                    </span>
+                    <Link href="/dashboard/bodega#propuestas" className={styles.decideBtn}>Revisar</Link>
+                  </div>
+                )}
+                {bajoMinimo.length === 0 && propuestasActivas.length === 0 && (
+                  <p className={styles.decideEmpty}>Todo en orden. Sin avisos activos.</p>
+                )}
+              </div>
+            </article>
+            {top5Vinos.length > 0 && (
+              <article className={styles.inicioCard}>
+                <p className={styles.inicioCardLabel}>Más vendidos del mes</p>
+                <h2 className={styles.cardH2}>Top 5 referencias</h2>
+                <div className={styles.topVinosList}>
+                  {top5Vinos.map((v) => (
+                    <div key={v.nombre} className={styles.topVinoRow}>
+                      <span className={styles.topVinoName}>{v.nombre}</span>
+                      <div className={styles.topVinoBarWrap}>
+                        <div className={styles.topVinoBar} style={{ width: `${Math.round((v.total / top5Vinos[0].total) * 100)}%` }} />
+                      </div>
+                      <span className={styles.topVinoCount}>{v.total} uds.</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/dashboard/estadisticas" className={styles.cardLink}>Ver estadísticas →</Link>
+              </article>
+            )}
           </div>
         )}
 
         {tareasInicioVisibles.length > 0 && !(cartaPublicada && restaurante?.actividad_real_desde) && (
-          <section className={`${styles.activationPanel} ${activacionCompacta ? styles.activationCompact : ''}`}>
+          <section className={`${styles.activationPanel} ${styles.activationCardStyle} ${activacionCompacta ? styles.activationCompact : ''}`}>
             <div className={styles.activationHead}>
               <div>
                 <p className={styles.eyebrow}>Puesta en marcha</p>
