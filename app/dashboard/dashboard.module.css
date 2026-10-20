@@ -81,6 +81,8 @@
 
 .wrap {
   padding: 28px 48px 48px;
+  max-width: 1160px;
+  margin: 0 auto;
 }
 
 .loadingShell {
@@ -3529,11 +3531,6 @@
 
 /* ── Inicio: page header ────────────────────────────────────────────────────── */
 
-.wrap {
-  max-width: 1160px;
-  margin: 0 auto;
-}
-
 .pageHeader {
   margin-bottom: 24px;
 }
@@ -3678,16 +3675,22 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .cardH2 {
-  margin: 0 0 16px;
+  margin: 0 0 4px;
   color: #171416;
   font-family: var(--font-cormorant-garamond), Georgia, serif;
   font-size: 30px;
   font-weight: 600;
   line-height: 1.1;
+}
+
+.cardH2Sub {
+  margin: 0 0 16px;
+  color: #6b5a56;
+  font-size: 13px;
 }
 
 .decideList {

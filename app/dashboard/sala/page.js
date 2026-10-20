@@ -216,6 +216,7 @@ export default function SalaHub() {
       eyebrow="Sala"
       title="Sala"
       subtitle="Prepara el servicio de hoy y revisa cómo fue."
+      centered
       actions={<a className={styles.primary} href={urlCamarero} target="_blank" rel="noreferrer">Abrir modo camarero</a>}
       help={{
         title: 'Rutina de sala',

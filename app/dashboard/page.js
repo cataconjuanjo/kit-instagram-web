@@ -72,19 +72,13 @@ function leerDetalle(detalle) {
 }
 
 function semanaActualLabel() {
-  const hoy = new Date()
-  const dia = hoy.getDay()
-  const diasDesdeEsteLunes = dia === 0 ? 6 : dia - 1
-  const lunes = new Date(hoy)
-  lunes.setDate(hoy.getDate() - diasDesdeEsteLunes)
-  const domingo = new Date(lunes)
-  domingo.setDate(lunes.getDate() + 6)
+  const inicio = haceDiasMadrid(7)
+  const fin = haceDiasMadrid(1)
+  const [, mI, dI] = inicio.split('-').map(Number)
+  const [, mF, dF] = fin.split('-').map(Number)
   const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
-  const dL = lunes.getDate(), dD = domingo.getDate()
-  if (lunes.getMonth() === domingo.getMonth()) {
-    return `Del ${dL} al ${dD} de ${MESES[lunes.getMonth()]}`
-  }
-  return `Del ${dL} de ${MESES[lunes.getMonth()]} al ${dD} de ${MESES[domingo.getMonth()]}`
+  if (mI === mF) return `Del ${dI} al ${dF} de ${MESES[mI - 1]}`
+  return `Del ${dI} de ${MESES[mI - 1]} al ${dF} de ${MESES[mF - 1]}`
 }
 
 function fmtDia(isoDate) {
@@ -892,9 +886,9 @@ function DashboardHome() {
             </article>
             <article className={styles.inicioCard}>
               <p className={styles.inicioCardLabel}>Margen medio</p>
-              <strong className={styles.sideKpi}>{margenMedio || '—'}%</strong>
+              <strong className={styles.sideKpi}>{margenMedio ? `${margenMedio}%` : '—'}</strong>
               <p className={styles.sideKpiSub}>sobre el precio de venta</p>
-              <Link href="/dashboard/precios" className={styles.cardLink}>Ver rentabilidad →</Link>
+              <Link href="/dashboard/menu-engineering" className={styles.cardLink}>Ver rentabilidad →</Link>
             </article>
           </div>
         )}
@@ -902,8 +896,8 @@ function DashboardHome() {
         {restaurante?.actividad_real_desde && (
           <div className={styles.inicioRow2}>
             <article className={styles.inicioCard}>
-              <p className={styles.inicioCardLabel}>Para decidir hoy</p>
-              <h2 className={styles.cardH2}>Avisos activos</h2>
+              <h2 className={styles.cardH2}>Para decidir hoy</h2>
+              <p className={styles.cardH2Sub}>Lo que mueve dinero esta semana.</p>
               <div className={styles.decideList}>
                 {bajoMinimo.length > 0 && (
                   <div className={styles.decideRow}>
@@ -929,8 +923,8 @@ function DashboardHome() {
             </article>
             {top5Vinos.length > 0 && (
               <article className={styles.inicioCard}>
-                <p className={styles.inicioCardLabel}>Más vendidos del mes</p>
-                <h2 className={styles.cardH2}>Top 5 referencias</h2>
+                <h2 className={styles.cardH2}>Más vendidos del mes</h2>
+                <p className={styles.cardH2Sub}>Copas y botellas, últimos 30 días.</p>
                 <div className={styles.topVinosList}>
                   {top5Vinos.map((v) => (
                     <div key={v.nombre} className={styles.topVinoRow}>
@@ -938,7 +932,7 @@ function DashboardHome() {
                       <div className={styles.topVinoBarWrap}>
                         <div className={styles.topVinoBar} style={{ width: `${Math.round((v.total / top5Vinos[0].total) * 100)}%` }} />
                       </div>
-                      <span className={styles.topVinoCount}>{v.total} uds.</span>
+                      <span className={styles.topVinoCount}>{v.total} {v.total === 1 ? 'ud.' : 'uds.'}</span>
                     </div>
                   ))}
                 </div>
