@@ -1035,7 +1035,7 @@ export default function Camarero() {
   function motivoMesaVenta(vino, numeroPlatos, consultaNormalizada) {
     const textoVino = normalizar(textoVinoParaMaridaje(vino))
     const metodo = metodosPlato(consultaNormalizada)
-    const platos = numeroPlatos > 1 ? `${numeroPlatos} platos` : 'la mesa'
+    const platos = numeroPlatos > 1 ? `${numeroPlatos} platos` : 'el plato'
 
     if (vino.tipo === 'blanco') {
       if (metodo.gratinado) return `aporta frescura para limpiar la parte cremosa y suficiente volumen para acompañar ${platos}`
@@ -1409,7 +1409,7 @@ export default function Camarero() {
     const motorApiListo = grafoVenta?.consulta === consultaGrafoVenta && grafoVenta?.motor && !requiereCopa
     const motorCentral = motorApiListo
       ? grafoVenta.motor
-      : analizarMaridaje(esMesa ? consultas : consultaActiva, vinosParaMotor)
+      : analizarMaridaje(esMesa ? consultas : [consultaActiva], vinosParaMotor)
     const itemsMotor = [
       ...(motorCentral?.candidatos || []),
       ...(motorCentral?.recomendados || []),
