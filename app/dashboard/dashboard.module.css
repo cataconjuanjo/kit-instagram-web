@@ -190,6 +190,26 @@
   }
 }
 
+.ventas30Wrap {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ventas30Panel {
+  background: #171416;
+  border-radius: 10px;
+  padding: 16px;
+  color: #fffaf3;
+}
+
+@media (max-width: 640px) {
+  .ventas30Wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
 .activationPanel {
   margin-bottom: 16px;
   border: 1px solid #d5c7b5;
