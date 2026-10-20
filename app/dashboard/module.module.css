@@ -6714,6 +6714,21 @@ button.itemCard {
   font-weight: 500;
 }
 
+.cardH2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.22;
+  color: inherit;
+}
+
+.cardH2Sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #78716a;
+  line-height: 1.45;
+}
+
 /* ── Responsive: Sala ────────────────────────────────────────────────────────── */
 
 @media (max-width: 860px) {
