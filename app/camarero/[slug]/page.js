@@ -2861,7 +2861,11 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         )}
         {ticketComida > 0 && rangoTicket && (
           <p className={styles.statusLine} style={{ color: precioEnRango ? '#1f7a61' : '#6f767d' }}>
-            {precioEnRango ? 'Precio coherente para la mesa' : `Revisar precio: ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
+            {precioEnRango
+              ? 'Precio coherente para la mesa'
+              : precioVino < rangoTicket.min
+                ? `Por debajo del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`
+                : `Por encima del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`}
           </p>
         )}
         {stockCritico && (
@@ -2935,7 +2939,11 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         )}
         {ticketComida > 0 && rangoTicket && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: precioEnRango ? '#7BAF8A' : '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            {precioEnRango ? 'Precio coherente para la mesa' : `Revisar precio: ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
+            {precioEnRango
+              ? 'Precio coherente para la mesa'
+              : precioVino < rangoTicket.min
+                ? `Por debajo del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`
+                : `Por encima del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`}
           </p>
         )}
         {stockCritico && (
