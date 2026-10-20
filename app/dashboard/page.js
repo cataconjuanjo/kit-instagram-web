@@ -15,6 +15,7 @@ import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceDay'
 import { esPerfilBodega, puedeUsar } from '../lib/plans'
 import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationReadiness'
+import { fetchAllPages } from '../lib/fetchAllPages'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -495,7 +496,7 @@ function DashboardHome() {
           { data: platosData },
           { data: statsHoy },
           { data: propuestasData },
-          { data: stats7Data },
+          stats7Data,
         ] = await Promise.all([
           supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id),
           supabase.from('platos').select(SELECT_CLIENT_PLATO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true),
@@ -504,7 +505,7 @@ function DashboardHome() {
             ventanaDia
           ),
           supabase.from('consultor_propuestas').select(SELECT_CLIENT_PROPUESTA_ADMIN).eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
-          supabase.from('estadisticas').select('detalle').eq('restaurante_id', rest.id).eq('tipo', 'venta').gte('created_at', hace7dias.toISOString()),
+          fetchAllPages(() => supabase.from('estadisticas').select('detalle').eq('restaurante_id', rest.id).eq('tipo', 'venta').gte('created_at', hace7dias.toISOString())),
         ])
         const eventosVentaHoy = (statsHoy || []).filter(s => s.tipo === 'venta')
         const ventasHoy = eventosVentaHoy.map(s => leerDetalle(s.detalle))
