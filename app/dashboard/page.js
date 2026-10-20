@@ -191,7 +191,8 @@ function DashboardHome() {
   const [restaurante, setRestaurante] = useState(null)
   const [generandoCheckout, setGenerandoCheckout] = useState(false)
   const [esperandoWebhook, setEsperandoWebhook]   = useState(false)
-  const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, ventasSemana: 0, incidenciasSala: 0, dudasSala: 0 })
+  const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, incidenciasSala: 0, dudasSala: 0 })
+  const [ventas30, setVentas30] = useState(null)
   const [vinos, setVinos] = useState([])
   const [platos, setPlatos] = useState([])
   const [propuestas, setPropuestas] = useState([])
@@ -488,15 +489,11 @@ function DashboardHome() {
         }
         const ventanaDia = await resolverVentanaDiaOperativo(supabase, rest, { tipo: 'venta' })
         setEtiquetaDia(ventanaDia.etiqueta)
-        const hace7dias = new Date()
-        hace7dias.setDate(hace7dias.getDate() - 6)
-        hace7dias.setHours(0, 0, 0, 0)
         const [
           { data: vinosData },
           { data: platosData },
           { data: statsHoy },
           { data: propuestasData },
-          stats7Data,
         ] = await Promise.all([
           supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id),
           supabase.from('platos').select(SELECT_CLIENT_PLATO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true),
@@ -505,7 +502,6 @@ function DashboardHome() {
             ventanaDia
           ),
           supabase.from('consultor_propuestas').select(SELECT_CLIENT_PROPUESTA_ADMIN).eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
-          fetchAllPages(() => supabase.from('estadisticas').select('detalle').eq('restaurante_id', rest.id).eq('tipo', 'venta').gte('created_at', hace7dias.toISOString())),
         ])
         const eventosVentaHoy = (statsHoy || []).filter(s => s.tipo === 'venta')
         const ventasHoy = eventosVentaHoy.map(s => leerDetalle(s.detalle))
@@ -522,15 +518,29 @@ function DashboardHome() {
         setVinos(vinosData || [])
         setPlatos(platosData || [])
         setPropuestas(propuestasData || [])
-        const ventasSemana = (stats7Data || []).map(s => leerDetalle(s.detalle)).filter(item => item.resultado === 'vendida').length
         setStats({
           escaneos: statsHoy?.filter(s => s.tipo === 'escaneo').length || 0,
           sommelier: statsHoy?.filter(s => s.tipo === 'sommelier').length || 0,
           ventasHoy: ventasHoy.filter(item => item.resultado === 'vendida').length,
           incidenciasSala: ventasHoy.filter(item => ['no_stock', 'agotado'].includes(item.resultado)).length,
           dudasSala: ventasHoy.filter(item => ['no_convence', 'otra'].includes(item.resultado)).length,
-          ventasSemana,
         })
+        const hace30dias = new Date()
+        hace30dias.setDate(hace30dias.getDate() - 29)
+        hace30dias.setHours(0, 0, 0, 0)
+        let v30 = null
+        try {
+          v30 = await fetchAllPages(() =>
+            supabase.from('estadisticas')
+              .select('detalle, created_at')
+              .eq('restaurante_id', rest.id)
+              .eq('tipo', 'venta')
+              .gte('created_at', hace30dias.toISOString())
+          )
+        } catch (err) {
+          console.error('[Inicio] ventas 30d:', err)
+        }
+        setVentas30(v30)
         await Promise.all([
           cargarRadarDiario(rest.id),
           cargarResumenSemanal(rest.id, rest),
@@ -742,6 +752,18 @@ function DashboardHome() {
     propuestasActivas.length > 0 ? '/dashboard/bodega#propuestas' : null,
   ].filter(Boolean)
   const accionesRadarFiltradas = accionesRadarAbiertas.filter(a => !kpiHrefs.includes(a.href))
+
+  const hace7diasStr = (() => { const d = new Date(); d.setDate(d.getDate() - 6); d.setHours(0, 0, 0, 0); return d.toISOString().slice(0, 10) })()
+  const ventas30Vendidas = (ventas30 || []).map(s => ({ ...leerDetalle(s.detalle), fecha: (s.created_at || '').slice(0, 10) })).filter(item => item.resultado === 'vendida')
+  const ventasSemana = ventas30 === null ? 0 : ventas30Vendidas.filter(item => item.fecha >= hace7diasStr).reduce((sum, item) => sum + (Number(item.cantidad) || 1), 0)
+  const fechas30 = Array.from({ length: 30 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 29 + i); return d.toISOString().slice(0, 10) })
+  const ventasPorDia30 = fechas30.map(f => ({ fecha: f, total: ventas30Vendidas.filter(v => v.fecha === f).reduce((s, v) => s + (Number(v.cantidad) || 1), 0) }))
+  const maxVentasDia30 = Math.max(...ventasPorDia30.map(d => d.total), 1)
+  const vinoMap30 = {}
+  for (const v of ventas30Vendidas) { const n = v.vino || '—'; if (!vinoMap30[n]) vinoMap30[n] = { nombre: n, total: 0 }; vinoMap30[n].total += (Number(v.cantidad) || 1) }
+  const top5Vinos = Object.values(vinoMap30).sort((a, b) => b.total - a.total).slice(0, 5)
+  const hayVentas30 = ventas30 !== null && ventas30Vendidas.length > 0
+
   return (
     <main>
       {kioskos !== null && (
@@ -799,10 +821,10 @@ function DashboardHome() {
       <div className={styles.wrap}>
         {restaurante?.actividad_real_desde && (
           <div className={styles.kpiStrip}>
-            {stats.ventasSemana > 0 && (
+            {ventasSemana > 0 && (
               <Link href="/dashboard/cierre" className={styles.kpiStripCard}>
-                <span className={styles.kpiStripValue}>{stats.ventasSemana}</span>
-                <span className={styles.kpiStripLabel}>Ventas 7 días</span>
+                <span className={styles.kpiStripValue}>{ventasSemana}</span>
+                <span className={styles.kpiStripLabel}>Ventas 7 días (copas y botellas)</span>
               </Link>
             )}
             {margenMedio > 0 && (
@@ -821,6 +843,35 @@ function DashboardHome() {
             </Link>
           </div>
         )}
+
+        {hayVentas30 && (
+          <div className={styles.ventas30Wrap}>
+            <div className={styles.ventas30Panel}>
+              <p className={styles.eyebrow}>Ventas de los últimos 30 días</p>
+              <svg viewBox="0 0 300 60" preserveAspectRatio="none" style={{ width: '100%', height: 60, display: 'block' }}>
+                {ventasPorDia30.map((d, i) => {
+                  const barH = Math.round((d.total / maxVentasDia30) * 52)
+                  const x = i * 10 + 1
+                  return (
+                    <rect key={d.fecha} x={x} y={58 - barH} width={8} height={barH} fill="var(--color-accent, #2563eb)" opacity={0.75} rx={1}>
+                      <title>{d.fecha}: {d.total} uds.</title>
+                    </rect>
+                  )
+                })}
+              </svg>
+            </div>
+            <div className={styles.ventas30Panel}>
+              <p className={styles.eyebrow}>Los 5 vinos más vendidos (30 días)</p>
+              <ol style={{ margin: 0, padding: '0 0 0 18px', fontSize: 13, lineHeight: '1.7' }}>
+                {top5Vinos.map(v => (
+                  <li key={v.nombre}><strong>{v.nombre}</strong> — {v.total} uds.</li>
+                ))}
+              </ol>
+              <Link href="/dashboard/estadisticas" style={{ display: 'inline-block', marginTop: 8, fontSize: 12, opacity: 0.7 }}>Ver Estadísticas →</Link>
+            </div>
+          </div>
+        )}
+
         {tareasInicioVisibles.length > 0 && !(cartaPublicada && restaurante?.actividad_real_desde) && (
           <section className={`${styles.activationPanel} ${activacionCompacta ? styles.activationCompact : ''}`}>
             <div className={styles.activationHead}>
