@@ -56,7 +56,8 @@ function diasTranscurridosMadrid(sem) {
   const [yh, mh, dh] = hoy.split('-').map(Number)
   const lunes = new Date(y, m - 1, d)
   const hoyDate = new Date(yh, mh - 1, dh)
-  return Math.min(Math.round((hoyDate - lunes) / 86400000) + 1, 7)
+  // Días COMPLETOS transcurridos: hoy no cuenta (su parte puede no estar cerrado aún)
+  return Math.min(Math.round((hoyDate - lunes) / 86400000), 7)
 }
 
 function offsetDate(dateStr, days) {
@@ -384,12 +385,16 @@ export default function InformeSemanal({ restauranteId, restaurante }) {
       setSemAnt(ant)
       if (semanaEnCurso(semana)) {
         const diasElapsed = diasTranscurridosMadrid(semana)
-        const desdeComp = offsetDate(semana.desde, -7)
-        const hastaComp = offsetDate(semana.desde, diasElapsed - 8)
-        const { informe: antComp } = await apiFetch(
-          `/api/partes/informe?restaurante_id=${restauranteId}&desde=${desdeComp}&hasta=${hastaComp}`
-        )
-        setSemAntComparable(antComp)
+        if (diasElapsed >= 1) {
+          const desdeComp = offsetDate(semana.desde, -7)
+          const hastaComp = offsetDate(semana.desde, diasElapsed - 8)
+          const { informe: antComp } = await apiFetch(
+            `/api/partes/informe?restaurante_id=${restauranteId}&desde=${desdeComp}&hasta=${hastaComp}`
+          )
+          setSemAntComparable(antComp)
+        } else {
+          setSemAntComparable(null)
+        }
       } else {
         setSemAntComparable(null)
       }
