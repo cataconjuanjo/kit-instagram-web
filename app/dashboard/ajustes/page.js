@@ -250,43 +250,34 @@ export default function AjustesHub() {
         </div>
       </section>}
 
-      <section className={styles.hubGrid}>
-        {perfilBodega ? (
-          <>
-            <Link className={styles.hubCard} href="/dashboard/vinos">
-              <p className={styles.eyebrow}>Base de bodega</p>
-              <h2>Referencias</h2>
-              <p>Fichas, anadas, coste, proveedor, stock minimo y estado comercial.</p>
-              <span>Gestionar vinos</span>
-            </Link>
-            <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/bodega">
-              <p className={styles.eyebrow}>Compra</p>
-              <h2>Stock y pedido</h2>
-              <p>Bajo minimo, compra sugerida, movimientos y capital inmovilizado.</p>
-              <span>Ver bodega</span>
-            </Link>
-            <Link className={styles.hubCard} href="/dashboard/menu-engineering">
-              <p className={styles.eyebrow}>Decision</p>
-              <h2>Estrellas y joyas</h2>
-              <p>Mapa de salida real, margen, rotacion y potencial de cada referencia.</p>
-              <span>Analizar mapa</span>
-            </Link>
-            <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/inventario">
-              <p className={styles.eyebrow}>Conteo</p>
-              <h2>Inventario</h2>
-              <p>Prioriza conteos, revisa desviaciones y protege las referencias clave.</p>
-              <span>Preparar inventario</span>
-            </Link>
-          </>
-        ) : (
-          <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/personalizar">
-            <p className={styles.eyebrow}>Marca</p>
-            <h2>Diseno de carta</h2>
-            <p>Colores, tipografia, logo y banner de la carta publica.</p>
-            <span>Editar identidad</span>
+      {perfilBodega && (
+        <section className={styles.hubGrid}>
+          <Link className={styles.hubCard} href="/dashboard/vinos">
+            <p className={styles.eyebrow}>Base de bodega</p>
+            <h2>Referencias</h2>
+            <p>Fichas, anadas, coste, proveedor, stock minimo y estado comercial.</p>
+            <span>Gestionar vinos</span>
           </Link>
-        )}
-      </section>
+          <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/bodega">
+            <p className={styles.eyebrow}>Compra</p>
+            <h2>Stock y pedido</h2>
+            <p>Bajo minimo, compra sugerida, movimientos y capital inmovilizado.</p>
+            <span>Ver bodega</span>
+          </Link>
+          <Link className={styles.hubCard} href="/dashboard/menu-engineering">
+            <p className={styles.eyebrow}>Decision</p>
+            <h2>Estrellas y joyas</h2>
+            <p>Mapa de salida real, margen, rotacion y potencial de cada referencia.</p>
+            <span>Analizar mapa</span>
+          </Link>
+          <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/inventario">
+            <p className={styles.eyebrow}>Conteo</p>
+            <h2>Inventario</h2>
+            <p>Prioriza conteos, revisa desviaciones y protege las referencias clave.</p>
+            <span>Preparar inventario</span>
+          </Link>
+        </section>
+      )}
 
       <section className={styles.gridTwo} style={{ marginTop: 16 }}>
         <BillingPanel restaurante={restaurante} />
@@ -364,8 +355,8 @@ export default function AjustesHub() {
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
-              <h2 className={styles.panelTitle}>{perfilBodega ? 'Enlaces internos de trabajo' : 'QR y enlaces'}</h2>
-              <p className={styles.panelSub}>{perfilBodega ? 'Atajos para compartir con el equipo de bodega o volver rápido a pantallas clave.' : 'QR, carta pública, modo camarero y todos los enlaces en un solo lugar.'}</p>
+              <h2 className={styles.panelTitle}>{perfilBodega ? 'Enlaces internos de trabajo' : 'Enlaces de la carta'}</h2>
+              <p className={styles.panelSub}>{perfilBodega ? 'Atajos para compartir con el equipo de bodega o volver rápido a pantallas clave.' : 'Copia y comparte la carta y el acceso de sala con quien lo necesite.'}</p>
             </div>
           </div>
           <div className={styles.panelBody}>
@@ -379,7 +370,6 @@ export default function AjustesHub() {
                 </>
               ) : (
                 <>
-                  <Link className={styles.secondary} href="/dashboard/qr">Ver QR y enlaces</Link>
                   <button className={styles.ghost} onClick={() => copiar(urlCarta, 'carta')}>{copiado === 'carta' ? 'Copiado' : 'Copiar carta directa'}</button>
                   <button className={styles.ghost} onClick={() => copiar(urlCamarero, 'camarero')}>{copiado === 'camarero' ? 'Copiado' : 'Copiar camarero'}</button>
                 </>

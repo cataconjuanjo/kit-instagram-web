@@ -15,6 +15,7 @@ import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceDay'
 import { esPerfilBodega, puedeUsar } from '../lib/plans'
 import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationReadiness'
+import { fetchAllPages } from '../lib/fetchAllPages'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -190,7 +191,7 @@ function DashboardHome() {
   const [restaurante, setRestaurante] = useState(null)
   const [generandoCheckout, setGenerandoCheckout] = useState(false)
   const [esperandoWebhook, setEsperandoWebhook]   = useState(false)
-  const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, incidenciasSala: 0, dudasSala: 0 })
+  const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, ventasSemana: 0, incidenciasSala: 0, dudasSala: 0 })
   const [vinos, setVinos] = useState([])
   const [platos, setPlatos] = useState([])
   const [propuestas, setPropuestas] = useState([])
@@ -487,11 +488,15 @@ function DashboardHome() {
         }
         const ventanaDia = await resolverVentanaDiaOperativo(supabase, rest, { tipo: 'venta' })
         setEtiquetaDia(ventanaDia.etiqueta)
+        const hace7dias = new Date()
+        hace7dias.setDate(hace7dias.getDate() - 6)
+        hace7dias.setHours(0, 0, 0, 0)
         const [
           { data: vinosData },
           { data: platosData },
           { data: statsHoy },
           { data: propuestasData },
+          stats7Data,
         ] = await Promise.all([
           supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id),
           supabase.from('platos').select(SELECT_CLIENT_PLATO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true),
@@ -500,6 +505,7 @@ function DashboardHome() {
             ventanaDia
           ),
           supabase.from('consultor_propuestas').select(SELECT_CLIENT_PROPUESTA_ADMIN).eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
+          fetchAllPages(() => supabase.from('estadisticas').select('detalle').eq('restaurante_id', rest.id).eq('tipo', 'venta').gte('created_at', hace7dias.toISOString())),
         ])
         const eventosVentaHoy = (statsHoy || []).filter(s => s.tipo === 'venta')
         const ventasHoy = eventosVentaHoy.map(s => leerDetalle(s.detalle))
@@ -516,12 +522,14 @@ function DashboardHome() {
         setVinos(vinosData || [])
         setPlatos(platosData || [])
         setPropuestas(propuestasData || [])
+        const ventasSemana = (stats7Data || []).map(s => leerDetalle(s.detalle)).filter(item => item.resultado === 'vendida').length
         setStats({
           escaneos: statsHoy?.filter(s => s.tipo === 'escaneo').length || 0,
           sommelier: statsHoy?.filter(s => s.tipo === 'sommelier').length || 0,
           ventasHoy: ventasHoy.filter(item => item.resultado === 'vendida').length,
           incidenciasSala: ventasHoy.filter(item => ['no_stock', 'agotado'].includes(item.resultado)).length,
           dudasSala: ventasHoy.filter(item => ['no_convence', 'otra'].includes(item.resultado)).length,
+          ventasSemana,
         })
         await Promise.all([
           cargarRadarDiario(rest.id),
@@ -729,6 +737,11 @@ function DashboardHome() {
   ).length
   const vinosPorCopa = vinosActivos.filter(vino => decimal(vino.precio_copa) > 0).length
   const referenciasCriticas = bajoMinimo.length + vinosSinStock.length
+  const kpiHrefs = [
+    bajoMinimo.length > 0 ? '/dashboard/bodega#pedido' : null,
+    propuestasActivas.length > 0 ? '/dashboard/bodega#propuestas' : null,
+  ].filter(Boolean)
+  const accionesRadarFiltradas = accionesRadarAbiertas.filter(a => !kpiHrefs.includes(a.href))
   return (
     <main>
       {kioskos !== null && (
@@ -784,7 +797,31 @@ function DashboardHome() {
       )}
 
       <div className={styles.wrap}>
-        {tareasInicioVisibles.length > 0 && (
+        {restaurante?.actividad_real_desde && (
+          <div className={styles.kpiStrip}>
+            {stats.ventasSemana > 0 && (
+              <Link href="/dashboard/cierre" className={styles.kpiStripCard}>
+                <span className={styles.kpiStripValue}>{stats.ventasSemana}</span>
+                <span className={styles.kpiStripLabel}>Ventas 7 días</span>
+              </Link>
+            )}
+            {margenMedio > 0 && (
+              <Link href="/dashboard/menu-engineering" className={styles.kpiStripCard}>
+                <span className={styles.kpiStripValue}>{margenMedio}%</span>
+                <span className={styles.kpiStripLabel}>Margen medio</span>
+              </Link>
+            )}
+            <Link href="/dashboard/bodega#pedido" className={styles.kpiStripCard}>
+              <span className={styles.kpiStripValue}>{bajoMinimo.length}</span>
+              <span className={styles.kpiStripLabel}>Bajo mínimo</span>
+            </Link>
+            <Link href="/dashboard/bodega#propuestas" className={styles.kpiStripCard}>
+              <span className={styles.kpiStripValue}>{propuestasActivas.length}</span>
+              <span className={styles.kpiStripLabel}>Propuestas</span>
+            </Link>
+          </div>
+        )}
+        {tareasInicioVisibles.length > 0 && !(cartaPublicada && restaurante?.actividad_real_desde) && (
           <section className={`${styles.activationPanel} ${activacionCompacta ? styles.activationCompact : ''}`}>
             <div className={styles.activationHead}>
               <div>
@@ -899,7 +936,7 @@ function DashboardHome() {
               <section className={styles.dailyRadarPanel}>
                 {radarError && <div className={styles.radarNotice}>{radarError}</div>}
                 <div className={styles.dailyRadarList}>
-                  {(accionesRadarAbiertas.length ? accionesRadarAbiertas : radarAcciones).slice(0, 3).map(accion => (
+                  {(accionesRadarFiltradas.length ? accionesRadarFiltradas : radarAcciones).slice(0, 3).map(accion => (
                     <article className={styles.dailyRadarItem} key={accion.id || accion.clave}>
                       <div>
                         <span>{accion.area}</span>

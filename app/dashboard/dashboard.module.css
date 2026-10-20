@@ -147,6 +147,49 @@
   }
 }
 
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.kpiStripCard {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px;
+  background: #fffdf9;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.15s;
+}
+
+.kpiStripCard:hover {
+  box-shadow: 0 2px 8px rgba(23, 20, 22, 0.1);
+}
+
+.kpiStripValue {
+  font-size: 22px;
+  font-weight: 800;
+  color: #171416;
+  line-height: 1.1;
+}
+
+.kpiStripLabel {
+  font-size: 12px;
+  color: #78716a;
+}
+
+@media (max-width: 640px) {
+  .kpiStrip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .activationPanel {
   margin-bottom: 16px;
   border: 1px solid #d5c7b5;

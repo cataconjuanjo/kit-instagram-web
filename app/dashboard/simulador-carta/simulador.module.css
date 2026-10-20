@@ -240,6 +240,47 @@
   cursor: not-allowed;
 }
 
+.masAccionesWrap {
+  position: relative;
+}
+
+.masAccionesMenu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 100;
+  min-width: 210px;
+  background: #fffaf3;
+  border: 1px solid #e0d4bc;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(23, 20, 22, 0.10);
+  padding: 4px 0;
+}
+
+.masAccionesItem {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cv-wine);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+
+.masAccionesItem:hover:not(:disabled) {
+  background: #f5ede0;
+}
+
+.masAccionesItem:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* --cv-red tintado al 36% sobre blanco; equivalente visual a #ddb8b8 (.danger en module.module.css) */
 .accionBtnDanger {
   color: var(--cv-red);

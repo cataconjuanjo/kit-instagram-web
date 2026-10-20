@@ -446,7 +446,7 @@ export default function MenuEngineering() {
             </section>
 
             <section className={styles.panel} style={{ marginBottom: 16, borderLeft: '3px solid #74223d' }}>
-              <div className={styles.panelHead}>
+              <div className={styles.panelHead} style={{ paddingLeft: 24 }}>
                 <div>
                   <h2 className={styles.panelTitle}>Retorno de inventario</h2>
                   <p className={styles.panelSub}>
@@ -484,19 +484,19 @@ export default function MenuEngineering() {
               <StatCard
                 value={`${analisisVisible.ventasTPV ?? '-'}/${analisisVisible.ventasSalaKpi ?? '-'}`}
                 label={perfilBodega ? 'TPV/movimientos' : 'TPV/Sala'}
-                hint="Fuentes separadas."
+                hint={analisisVisible.ventasTPV > 0 && analisisVisible.ventasSalaKpi > 0 ? 'Sin doble conteo' : null}
                 info="Muestra cuantas ventas vienen del TPV y cuantas de sala o movimientos no duplicados. Sirve para saber de donde nace el analisis."
               />
               <StatCard
                 value={`${analisisVisible.barreraRentabilidad.toFixed(2)}€`}
                 label="Margen medio"
-                hint="Umbral del cuadrante."
+                hint="Línea margen alto/bajo"
                 info="Media del beneficio absoluto por botella entre vinos con coste y PVP. Se usa como linea para separar margen alto y bajo."
               />
               <StatCard
                 value={`${analisisVisible.barreraPopularidad.toFixed(1)}%`}
                 label={perfilBodega ? 'Barrera salida' : 'Barrera popularidad'}
-                hint="Umbral de movimiento."
+                hint="Línea venta alta/baja"
                 info="Porcentaje minimo de ventas sobre el total para considerar que una referencia se mueve bien dentro del periodo analizado."
               />
               <StatCard
@@ -504,18 +504,6 @@ export default function MenuEngineering() {
                 label="Vinos estrella"
                 hint="Alta salida y margen."
                 info="Referencias que venden por encima de la barrera de salida y dejan margen por encima de la media. Conviene proteger stock y proveedor."
-              />
-              <StatCard
-                value={retornoInventarioGlobal == null ? '-' : `${retornoInventarioGlobal.toFixed(2)}x`}
-                label="Retorno inventario"
-                hint="Ventas por euro en bodega."
-                info="Relaciona venta estimada con el capital a coste inmovilizado. Cuanto mas bajo, mas dinero hay parado respecto a la salida."
-              />
-              <StatCard
-                value={`${capitalSinVenta.toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR`}
-                label="Capital sin venta"
-                hint="Stock parado."
-                info="Valor a coste de referencias con stock pero sin ventas KPI en el periodo. Es una senal para no comprar mas, activar o retirar."
               />
               {analisisVisible.vinosSinCoste > 0 && (
                 <StatCard

@@ -206,6 +206,20 @@ export default function SimuladorCarta() {
   const [guardandoCopa, setGuardandoCopa] = useState(false)
   const [activeTab, setActiveTab] = useState('tabla')     // 'tabla' | 'impacto' | 'proveedores'
   const [token, setToken] = useState(null)
+  const [masAccionesOpen, setMasAccionesOpen] = useState(false)
+
+  // Cierra "Más acciones" con Escape o clic fuera
+  useEffect(() => {
+    if (!masAccionesOpen) return
+    function onKey(e) { if (e.key === 'Escape') setMasAccionesOpen(false) }
+    function onOutside(e) { if (!e.target.closest('[data-mas-acciones]')) setMasAccionesOpen(false) }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onOutside)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onOutside)
+    }
+  }, [masAccionesOpen])
 
   // Cierra el popover si el usuario hace scroll o redimensiona la ventana
   useEffect(() => {
@@ -402,6 +416,10 @@ export default function SimuladorCarta() {
     }
     return base
   }, [lineasOrdenadas, busquedaTabla, ordenTabla, mostrarRetirados, economicSettings])
+
+  // Columnas sugeridas: visibles solo si al menos una línea tiene el valor
+  const hayBotSug = lineas.some(l => l.pvp_recomendado_catalogo)
+  const hayCopaSug = lineas.some(l => l.pvp_copa_catalogo)
 
   // Paginación aplicada sobre lineasFiltradas
   const totalPaginas = Math.max(1, Math.ceil(lineasFiltradas.length / porPaginaTabla))
@@ -995,41 +1013,83 @@ export default function SimuladorCarta() {
         subtitle="Prepara el borrador de tu futura carta sin afectar a la que ven tus clientes."
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {(resumen.nuevos > 0 || resumen.retirados > 0) && (
+            {/* Más acciones — desplegable */}
+            <div className={simStyles.masAccionesWrap} data-mas-acciones>
               <button
                 type="button"
                 className={simStyles.accionBtn}
-                onClick={() => setMostrarBriefing(true)}
+                aria-haspopup="menu"
+                aria-expanded={masAccionesOpen}
+                onClick={() => setMasAccionesOpen(v => !v)}
               >
-                Vista previa para sala
+                Más acciones {masAccionesOpen ? '▲' : '▼'}
               </button>
-            )}
-            {lineas.some(l => l.origen?.startsWith('sugerido')) && (
-              <button
-                type="button"
-                className={simStyles.accionBtn}
-                style={{ color: 'var(--cv-text-muted)', borderColor: '#e0d4bc' }}
-                disabled={descartandoSugerencias}
-                onClick={descartarSugerencias}
-              >
-                {descartandoSugerencias ? 'Descartando…' : 'Descartar sugerencias'}
-              </button>
-            )}
-            <button
-              type="button"
-              className={simStyles.accionBtn}
-              onClick={abrirAnadirCatalogo}
-            >
-              Añadir del catálogo
-            </button>
-            <button
-              type="button"
-              className={simStyles.accionBtn}
-              onClick={abrirSugerencias}
-              disabled={mostrarSugeridor && sugerencias === null}
-            >
-              {mostrarSugeridor && sugerencias === null ? 'Analizando…' : 'Sugerir carta'}
-            </button>
+              {masAccionesOpen && (
+                <div role="menu" className={simStyles.masAccionesMenu}>
+                  {(resumen.nuevos > 0 || resumen.retirados > 0) && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={simStyles.masAccionesItem}
+                      onClick={() => { setMostrarBriefing(true); setMasAccionesOpen(false) }}
+                    >
+                      Vista previa para sala
+                    </button>
+                  )}
+                  {lineas.some(l => l.origen?.startsWith('sugerido')) && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={simStyles.masAccionesItem}
+                      disabled={descartandoSugerencias}
+                      onClick={() => { descartarSugerencias(); setMasAccionesOpen(false) }}
+                    >
+                      {descartandoSugerencias ? 'Descartando…' : 'Descartar sugerencias'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={simStyles.masAccionesItem}
+                    onClick={() => { abrirAnadirCatalogo(); setMasAccionesOpen(false) }}
+                  >
+                    Añadir del catálogo
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={simStyles.masAccionesItem}
+                    disabled={mostrarSugeridor && sugerencias === null}
+                    onClick={() => { abrirSugerencias(); setMasAccionesOpen(false) }}
+                  >
+                    {mostrarSugeridor && sugerencias === null ? 'Analizando…' : 'Sugerir carta'}
+                  </button>
+                  {lineas.some(l => l.estado === 'nuevo') && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={simStyles.masAccionesItem}
+                      onClick={() => { setActiveTab('proveedores'); setMasAccionesOpen(false) }}
+                    >
+                      Pedido a proveedores
+                    </button>
+                  )}
+                  {revision === null && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={simStyles.masAccionesItem}
+                      disabled={lineas.filter(l => l.estado === 'actual' || l.estado === 'nuevo').length === 0}
+                      onClick={() => { setMensajeRevision(''); setModalEnviarRevision(true); setMasAccionesOpen(false) }}
+                    >
+                      Enviar al consultor
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Vista previa — abre la carta pública */}
             <button
               type="button"
               className={simStyles.accionBtn}
@@ -1038,25 +1098,7 @@ export default function SimuladorCarta() {
             >
               Vista previa
             </button>
-            {lineas.some(l => l.estado === 'nuevo') && (
-              <button
-                type="button"
-                className={simStyles.accionBtn}
-                onClick={() => setActiveTab('proveedores')}
-              >
-                Pedido a proveedores
-              </button>
-            )}
-            {revision === null && (
-              <button
-                type="button"
-                className={simStyles.accionBtn}
-                disabled={lineas.filter(l => l.estado === 'actual' || l.estado === 'nuevo').length === 0}
-                onClick={() => { setMensajeRevision(''); setModalEnviarRevision(true) }}
-              >
-                Enviar al consultor
-              </button>
-            )}
+
             <button
               type="button"
               className={styles.primary}
@@ -1296,9 +1338,9 @@ export default function SimuladorCarta() {
                   <th className={simStyles.thSortable} onClick={() => toggleOrden('region')}>D.O. / Zona{icono('region')}</th>
                   <th className={simStyles.thSortable} onClick={() => toggleOrden('anada')}>Añada{icono('anada')}</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_botella')}>PVP bot. €{icono('precio_botella')}</th>
-                  <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_recomendado_catalogo')} title="Precio botella sugerido por el catálogo">Bot. sug.{icono('pvp_recomendado_catalogo')}</th>
+                  {hayBotSug && <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_recomendado_catalogo')} title="Precio botella sugerido por el catálogo">Bot. sug.{icono('pvp_recomendado_catalogo')}</th>}
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_copa')}>PVP copa €{icono('precio_copa')}</th>
-                  <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_copa_catalogo')} title="Precio copa sugerido por el catálogo">Copa sug.{icono('pvp_copa_catalogo')}</th>
+                  {hayCopaSug && <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_copa_catalogo')} title="Precio copa sugerido por el catálogo">Copa sug.{icono('pvp_copa_catalogo')}</th>}
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('coste_compra')}>Coste €{icono('coste_compra')}</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen')}>Mrg. bot. %{icono('margen')}</th>
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen_copa')}>Mrg. copa %{icono('margen_copa')}</th>
@@ -1395,9 +1437,11 @@ export default function SimuladorCarta() {
                       })()}
 
                       {/* Bot. sug. — referencia del catálogo, solo lectura */}
-                      <td className={simStyles.tdSugerido}>
-                        {linea.pvp_recomendado_catalogo ? eur(linea.pvp_recomendado_catalogo) : '—'}
-                      </td>
+                      {hayBotSug && (
+                        <td className={simStyles.tdSugerido}>
+                          {linea.pvp_recomendado_catalogo ? eur(linea.pvp_recomendado_catalogo) : '—'}
+                        </td>
+                      )}
 
                       {/* PVP copa € — comportamiento condicional según ofrecido_por_copa */}
                       {(() => {
@@ -1452,9 +1496,11 @@ export default function SimuladorCarta() {
                       })()}
 
                       {/* Copa sug. — referencia del catálogo, solo lectura */}
-                      <td className={simStyles.tdSugerido}>
-                        {linea.pvp_copa_catalogo ? eur(linea.pvp_copa_catalogo) : '—'}
-                      </td>
+                      {hayCopaSug && (
+                        <td className={simStyles.tdSugerido}>
+                          {linea.pvp_copa_catalogo ? eur(linea.pvp_copa_catalogo) : '—'}
+                        </td>
+                      )}
 
                       {/* Coste € — editable */}
                       {(() => {
