@@ -848,12 +848,12 @@ function DashboardHome() {
           <div className={styles.ventas30Wrap}>
             <div className={styles.ventas30Panel}>
               <p className={styles.eyebrow}>Ventas de los últimos 30 días</p>
-              <svg viewBox="0 0 300 60" preserveAspectRatio="none" style={{ width: '100%', height: 60, display: 'block' }}>
+              <svg viewBox="0 0 300 120" preserveAspectRatio="none" style={{ width: '100%', height: 140, display: 'block' }}>
                 {ventasPorDia30.map((d, i) => {
-                  const barH = Math.round((d.total / maxVentasDia30) * 52)
+                  const barH = Math.round((d.total / maxVentasDia30) * 113)
                   const x = i * 10 + 1
                   return (
-                    <rect key={d.fecha} x={x} y={58 - barH} width={8} height={barH} style={{ fill: 'var(--gold)' }} rx={1}>
+                    <rect key={d.fecha} x={x} y={117 - barH} width={8} height={barH} style={{ fill: 'var(--gold)' }} rx={1}>
                       <title>{d.fecha}: {d.total} uds.</title>
                     </rect>
                   )
