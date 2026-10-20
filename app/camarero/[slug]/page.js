@@ -2500,7 +2500,7 @@ export default function Camarero() {
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.eyebrow}>Bodega</p>
-                <h2 className={styles.panelTitle}>{vinosFiltrados.length} referencias</h2>
+                <h2 className={styles.panelTitle}>{vinosFiltrados.length} {vinosFiltrados.length === 1 ? 'referencia' : 'referencias'}</h2>
               </div>
             </div>
             <div className={styles.bodegaControls}>
@@ -2540,7 +2540,7 @@ export default function Camarero() {
                   <div key={tipo} className={styles.wineSection}>
                     <button type="button" className={styles.wineSectionButton} onClick={() => setTipoVinoAbierto(abierto ? null : tipo)}>
                       <span>{tipoPlural[tipo]}</span>
-                      <small>{grupo.length} referencias · {abierto ? 'Cerrar' : 'Abrir'}</small>
+                      <small>{grupo.length} {grupo.length === 1 ? 'referencia' : 'referencias'} · {abierto ? 'Cerrar' : 'Abrir'}</small>
                     </button>
                     {abierto && grupo.map(v => (
                         <VinoRow key={v.id} v={v} tipoDot={tipoDot} tipoLabel={tipoLabel} enComparador={!!vinosComparador.find(vc => vc.id === v.id)} onSelect={setVinoSeleccionado} onComparador={toggleComparador} comparadorLleno={vinosComparador.length >= 4} />
@@ -2594,7 +2594,7 @@ export default function Camarero() {
             </button>
           ))}
         </div>
-        <p style={{ fontSize: 11, color: '#444', margin: '10px 0 0' }}>{vinosFiltrados.length} referencias</p>
+        <p style={{ fontSize: 11, color: '#444', margin: '10px 0 0' }}>{vinosFiltrados.length} {vinosFiltrados.length === 1 ? 'referencia' : 'referencias'}</p>
       </div>
 
       {/* Venta asistida */}
