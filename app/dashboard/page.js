@@ -71,6 +71,12 @@ function leerDetalle(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return {} }
 }
 
+function fmtDia(isoDate) {
+  const d = new Date(isoDate + 'T12:00:00')
+  const mon = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getMonth()]
+  return `${d.getDate()} ${mon}`
+}
+
 function fechaLocalClave() {
   const d = new Date()
   const yyyy = d.getFullYear()
@@ -763,6 +769,9 @@ function DashboardHome() {
   for (const v of ventas30Vendidas) { const n = v.vino || '—'; if (!vinoMap30[n]) vinoMap30[n] = { nombre: n, total: 0 }; vinoMap30[n].total += (Number(v.cantidad) || 1) }
   const top5Vinos = Object.values(vinoMap30).sort((a, b) => b.total - a.total).slice(0, 5)
   const hayVentas30 = ventas30 !== null && ventas30Vendidas.length > 0
+  const totalVentas30 = ventas30Vendidas.reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
+  const peakIdx = ventasPorDia30.reduce((best, d, i, arr) => d.total > arr[best].total ? i : best, 0)
+  const peakDay = ventasPorDia30[peakIdx]
 
   return (
     <main>
@@ -847,18 +856,45 @@ function DashboardHome() {
         {hayVentas30 && (
           <div className={styles.ventas30Wrap}>
             <div className={styles.ventas30Panel}>
-              <p className={styles.eyebrow}>Ventas de los últimos 30 días</p>
-              <svg viewBox="0 0 300 120" preserveAspectRatio="none" style={{ width: '100%', height: 140, display: 'block' }}>
-                {ventasPorDia30.map((d, i) => {
-                  const barH = Math.round((d.total / maxVentasDia30) * 113)
-                  const x = i * 10 + 1
-                  return (
-                    <rect key={d.fecha} x={x} y={117 - barH} width={8} height={barH} style={{ fill: 'var(--gold)' }} rx={1}>
-                      <title>{d.fecha}: {d.total} uds.</title>
-                    </rect>
-                  )
-                })}
-              </svg>
+              <p className={styles.eyebrow}>
+                {totalVentas30} {totalVentas30 === 1 ? 'copa o botella' : 'copas y botellas'} en 30 días
+              </p>
+              <div style={{ position: 'relative', marginTop: 8 }}>
+                <div style={{ height: 14, position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 0, bottom: 0, fontSize: 10, color: '#bfa984', lineHeight: 1 }}>
+                    {maxVentasDia30}
+                  </span>
+                  <span style={{
+                    position: 'absolute',
+                    left: `${((peakIdx * 10 + 5) / 300 * 100).toFixed(1)}%`,
+                    bottom: 0,
+                    transform: 'translateX(-50%)',
+                    fontSize: 10,
+                    color: '#fffaf3',
+                    lineHeight: 1,
+                    pointerEvents: 'none',
+                  }}>
+                    {peakDay.total}
+                  </span>
+                </div>
+                <svg viewBox="0 0 300 120" preserveAspectRatio="none" style={{ width: '100%', height: 140, display: 'block' }}>
+                  <line x1="0" y1="117" x2="300" y2="117" stroke="#78716a" strokeWidth="0.8" strokeOpacity="0.5" />
+                  {ventasPorDia30.map((d, i) => {
+                    const barH = d.total === 0 ? 3 : Math.max(4, Math.round((d.total / maxVentasDia30) * 113))
+                    const x = i * 10 + 1
+                    return (
+                      <rect key={d.fecha} x={x} y={117 - barH} width={8} height={barH} style={{ fill: d.total === 0 ? '#78716a' : 'var(--gold)' }} rx={1}>
+                        <title>{d.fecha}: {d.total === 1 ? '1 ud.' : `${d.total} uds.`}</title>
+                      </rect>
+                    )
+                  })}
+                </svg>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#78716a', marginTop: 4 }}>
+                  <span>{fmtDia(fechas30[0])}</span>
+                  <span>{fmtDia(fechas30[14])}</span>
+                  <span>{fmtDia(fechas30[29])}</span>
+                </div>
+              </div>
             </div>
             <div className={styles.ventas30Panel}>
               <p className={styles.eyebrow}>Los 5 vinos más vendidos (30 días)</p>
