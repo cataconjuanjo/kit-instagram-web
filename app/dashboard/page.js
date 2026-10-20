@@ -190,7 +190,7 @@ function DashboardHome() {
   const [restaurante, setRestaurante] = useState(null)
   const [generandoCheckout, setGenerandoCheckout] = useState(false)
   const [esperandoWebhook, setEsperandoWebhook]   = useState(false)
-  const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, incidenciasSala: 0, dudasSala: 0 })
+  const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, ventasSemana: 0, incidenciasSala: 0, dudasSala: 0 })
   const [vinos, setVinos] = useState([])
   const [platos, setPlatos] = useState([])
   const [propuestas, setPropuestas] = useState([])
@@ -487,11 +487,15 @@ function DashboardHome() {
         }
         const ventanaDia = await resolverVentanaDiaOperativo(supabase, rest, { tipo: 'venta' })
         setEtiquetaDia(ventanaDia.etiqueta)
+        const hace7dias = new Date()
+        hace7dias.setDate(hace7dias.getDate() - 6)
+        hace7dias.setHours(0, 0, 0, 0)
         const [
           { data: vinosData },
           { data: platosData },
           { data: statsHoy },
           { data: propuestasData },
+          { data: stats7Data },
         ] = await Promise.all([
           supabase.from('vinos').select(SELECT_CLIENT_VINO_DASHBOARD).eq('restaurante_id', rest.id),
           supabase.from('platos').select(SELECT_CLIENT_PLATO_DASHBOARD).eq('restaurante_id', rest.id).eq('activo', true),
@@ -500,6 +504,7 @@ function DashboardHome() {
             ventanaDia
           ),
           supabase.from('consultor_propuestas').select(SELECT_CLIENT_PROPUESTA_ADMIN).eq('restaurante_id', rest.id).neq('estado', 'descartada').order('created_at', { ascending: false }),
+          supabase.from('estadisticas').select('detalle').eq('restaurante_id', rest.id).eq('tipo', 'venta').gte('created_at', hace7dias.toISOString()),
         ])
         const eventosVentaHoy = (statsHoy || []).filter(s => s.tipo === 'venta')
         const ventasHoy = eventosVentaHoy.map(s => leerDetalle(s.detalle))
@@ -516,12 +521,14 @@ function DashboardHome() {
         setVinos(vinosData || [])
         setPlatos(platosData || [])
         setPropuestas(propuestasData || [])
+        const ventasSemana = (stats7Data || []).map(s => leerDetalle(s.detalle)).filter(item => item.resultado === 'vendida').length
         setStats({
           escaneos: statsHoy?.filter(s => s.tipo === 'escaneo').length || 0,
           sommelier: statsHoy?.filter(s => s.tipo === 'sommelier').length || 0,
           ventasHoy: ventasHoy.filter(item => item.resultado === 'vendida').length,
           incidenciasSala: ventasHoy.filter(item => ['no_stock', 'agotado'].includes(item.resultado)).length,
           dudasSala: ventasHoy.filter(item => ['no_convence', 'otra'].includes(item.resultado)).length,
+          ventasSemana,
         })
         await Promise.all([
           cargarRadarDiario(rest.id),
@@ -791,10 +798,12 @@ function DashboardHome() {
       <div className={styles.wrap}>
         {restaurante?.actividad_real_desde && (
           <div className={styles.kpiStrip}>
-            <Link href="/dashboard/cierre" className={styles.kpiStripCard}>
-              <span className={styles.kpiStripValue}>{stats.ventasHoy}</span>
-              <span className={styles.kpiStripLabel}>Ventas hoy</span>
-            </Link>
+            {stats.ventasSemana > 0 && (
+              <Link href="/dashboard/cierre" className={styles.kpiStripCard}>
+                <span className={styles.kpiStripValue}>{stats.ventasSemana}</span>
+                <span className={styles.kpiStripLabel}>Ventas 7 días</span>
+              </Link>
+            )}
             {margenMedio > 0 && (
               <Link href="/dashboard/menu-engineering" className={styles.kpiStripCard}>
                 <span className={styles.kpiStripValue}>{margenMedio}%</span>
@@ -811,7 +820,7 @@ function DashboardHome() {
             </Link>
           </div>
         )}
-        {tareasInicioVisibles.length > 0 && (
+        {tareasInicioVisibles.length > 0 && !cartaPublicada && (
           <section className={`${styles.activationPanel} ${activacionCompacta ? styles.activationCompact : ''}`}>
             <div className={styles.activationHead}>
               <div>
