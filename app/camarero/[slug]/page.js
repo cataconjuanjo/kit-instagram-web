@@ -1035,7 +1035,7 @@ export default function Camarero() {
   function motivoMesaVenta(vino, numeroPlatos, consultaNormalizada) {
     const textoVino = normalizar(textoVinoParaMaridaje(vino))
     const metodo = metodosPlato(consultaNormalizada)
-    const platos = numeroPlatos > 1 ? `${numeroPlatos} platos` : 'la mesa'
+    const platos = numeroPlatos > 1 ? `${numeroPlatos} platos` : numeroPlatos === 1 ? 'el plato' : 'la mesa'
 
     if (vino.tipo === 'blanco') {
       if (metodo.gratinado) return `aporta frescura para limpiar la parte cremosa y suficiente volumen para acompañar ${platos}`
@@ -1409,7 +1409,7 @@ export default function Camarero() {
     const motorApiListo = grafoVenta?.consulta === consultaGrafoVenta && grafoVenta?.motor && !requiereCopa
     const motorCentral = motorApiListo
       ? grafoVenta.motor
-      : analizarMaridaje(esMesa ? consultas : consultaActiva, vinosParaMotor)
+      : analizarMaridaje(esMesa ? consultas : [consultaActiva].filter(Boolean), vinosParaMotor)
     const itemsMotor = [
       ...(motorCentral?.candidatos || []),
       ...(motorCentral?.recomendados || []),
@@ -2500,7 +2500,7 @@ export default function Camarero() {
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.eyebrow}>Bodega</p>
-                <h2 className={styles.panelTitle}>{vinosFiltrados.length} referencias</h2>
+                <h2 className={styles.panelTitle}>{vinosFiltrados.length} {vinosFiltrados.length === 1 ? 'referencia' : 'referencias'}</h2>
               </div>
             </div>
             <div className={styles.bodegaControls}>
@@ -2540,7 +2540,7 @@ export default function Camarero() {
                   <div key={tipo} className={styles.wineSection}>
                     <button type="button" className={styles.wineSectionButton} onClick={() => setTipoVinoAbierto(abierto ? null : tipo)}>
                       <span>{tipoPlural[tipo]}</span>
-                      <small>{grupo.length} referencias · {abierto ? 'Cerrar' : 'Abrir'}</small>
+                      <small>{grupo.length} {grupo.length === 1 ? 'referencia' : 'referencias'} · {abierto ? 'Cerrar' : 'Abrir'}</small>
                     </button>
                     {abierto && grupo.map(v => (
                         <VinoRow key={v.id} v={v} tipoDot={tipoDot} tipoLabel={tipoLabel} enComparador={!!vinosComparador.find(vc => vc.id === v.id)} onSelect={setVinoSeleccionado} onComparador={toggleComparador} comparadorLleno={vinosComparador.length >= 4} />
@@ -2594,7 +2594,7 @@ export default function Camarero() {
             </button>
           ))}
         </div>
-        <p style={{ fontSize: 11, color: '#444', margin: '10px 0 0' }}>{vinosFiltrados.length} referencias</p>
+        <p style={{ fontSize: 11, color: '#444', margin: '10px 0 0' }}>{vinosFiltrados.length} {vinosFiltrados.length === 1 ? 'referencia' : 'referencias'}</p>
       </div>
 
       {/* Venta asistida */}
@@ -2861,7 +2861,11 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         )}
         {ticketComida > 0 && rangoTicket && (
           <p className={styles.statusLine} style={{ color: precioEnRango ? '#1f7a61' : '#6f767d' }}>
-            {precioEnRango ? 'Precio coherente para la mesa' : `Revisar precio: ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
+            {precioEnRango
+              ? 'Precio coherente para la mesa'
+              : precioVino < rangoTicket.min
+                ? `Por debajo del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`
+                : `Por encima del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`}
           </p>
         )}
         {stockCritico && (
@@ -2935,7 +2939,11 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         )}
         {ticketComida > 0 && rangoTicket && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: precioEnRango ? '#7BAF8A' : '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            {precioEnRango ? 'Precio coherente para la mesa' : `Revisar precio: ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
+            {precioEnRango
+              ? 'Precio coherente para la mesa'
+              : precioVino < rangoTicket.min
+                ? `Por debajo del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`
+                : `Por encima del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`}
           </p>
         )}
         {stockCritico && (
