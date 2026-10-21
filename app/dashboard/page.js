@@ -72,6 +72,12 @@ function leerDetalle(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return {} }
 }
 
+function fmtUnidad(tieneCopa, tieneBot, total) {
+  if (tieneCopa && !tieneBot) return total === 1 ? 'copa' : 'copas'
+  if (tieneBot && !tieneCopa) return 'bot.'
+  return total === 1 ? 'ud.' : 'uds.'
+}
+
 function semanaActualLabel() {
   const inicio = haceDiasMadrid(7)
   const fin = haceDiasMadrid(1)
@@ -780,7 +786,13 @@ function DashboardHome() {
   const ventasPorDia30 = fechas30.map(f => ({ fecha: f, total: ventas30Vendidas.filter(v => v.fecha === f).reduce((s, v) => s + (Number(v.cantidad) || 1), 0) }))
   const maxVentasDia30 = Math.max(...ventasPorDia30.map(d => d.total), 1)
   const vinoMap30 = {}
-  for (const v of ventas30Vendidas) { const n = v.vino || '—'; if (!vinoMap30[n]) vinoMap30[n] = { nombre: n, total: 0 }; vinoMap30[n].total += (Number(v.cantidad) || 1) }
+  for (const v of ventas30Vendidas) {
+    const n = v.vino || '—'
+    if (!vinoMap30[n]) vinoMap30[n] = { nombre: n, total: 0, tieneCopa: false, tieneBot: false }
+    vinoMap30[n].total += (Number(v.cantidad) || 1)
+    if (v.formato_venta === 'copa') vinoMap30[n].tieneCopa = true
+    if (v.formato_venta === 'botella') vinoMap30[n].tieneBot = true
+  }
   const top5Vinos = Object.values(vinoMap30).sort((a, b) => b.total - a.total).slice(0, 5)
   const hayVentas30 = ventas30 !== null && ventas30Vendidas.length > 0
   const totalVentas30 = ventas30Vendidas.reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
@@ -922,7 +934,12 @@ function DashboardHome() {
                   <div className={styles.decideRow}>
                     <span className={styles.decideRowText}>
                       <strong>{bajoMinimo.length}</strong> vino{bajoMinimo.length !== 1 ? 's' : ''} bajo mínimo
-                      {bajoMinimo[0]?.nombre && <> · {bajoMinimo[0].nombre}</>}
+                      {(() => {
+                        const visible = bajoMinimo.slice(0, 3).map(v => v.nombre).filter(Boolean)
+                        if (!visible.length) return null
+                        const resto = bajoMinimo.length - 3
+                        return <> · {visible.join(', ')}{resto > 0 ? ` y ${resto} más` : ''}</>
+                      })()}
                     </span>
                     <Link href="/dashboard/bodega#pedido" className={styles.decideBtn}>Preparar pedido</Link>
                   </div>
@@ -951,7 +968,7 @@ function DashboardHome() {
                       <div className={styles.topVinoBarWrap}>
                         <div className={styles.topVinoBar} style={{ width: `${Math.round((v.total / top5Vinos[0].total) * 100)}%` }} />
                       </div>
-                      <span className={styles.topVinoCount}>{v.total} {v.total === 1 ? 'ud.' : 'uds.'}</span>
+                      <span className={styles.topVinoCount}>{v.total} {fmtUnidad(v.tieneCopa, v.tieneBot, v.total)}</span>
                     </div>
                   ))}
                 </div>
