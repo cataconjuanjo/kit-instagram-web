@@ -865,7 +865,7 @@ function DashboardHome() {
                     <>
                       <strong className={styles.heroKpi}>{eur(euros7d)}</strong>
                       <span className={styles.heroKpiUnit}>vendidos en vino · últimos 7 días</span>
-                      <span className={styles.heroKpiSub}>{copas7d} copas · {botellas7d} botellas</span>
+                      {(copas7d + botellas7d) > 0 && <span className={styles.heroKpiSub}>{copas7d} copas · {botellas7d} botellas</span>}
                     </>
                   ) : (
                     <>
