@@ -942,8 +942,8 @@ export default function ControlBodega() {
             <button className={styles.ghost} onClick={() => copiarPedidoProveedor(proveedor, vinosProveedor)}>
               {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar'}
             </button>
-            <button className={styles.ghost} onClick={() => abrirWhatsAppProveedor(proveedor, vinosProveedor)}>
-              {tieneTelefono ? 'WhatsApp' : 'Abrir WA'}
+            <button className={styles.ghost} onClick={() => abrirWhatsAppProveedor(proveedor, vinosProveedor)} title={tieneTelefono ? undefined : 'Elige el contacto en WhatsApp'}>
+              WhatsApp
             </button>
           </div>
         )}
