@@ -783,6 +783,12 @@ function DashboardHome() {
   const top5Vinos = Object.values(vinoMap30).sort((a, b) => b.total - a.total).slice(0, 5)
   const hayVentas30 = ventas30 !== null && ventas30Vendidas.length > 0
   const totalVentas30 = ventas30Vendidas.reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
+  const ventas7dRow  = ventas30Vendidas.filter(item => item.fecha >= hace7diasStr)
+  const copas7d      = ventas7dRow.filter(v => v.formato_venta === 'copa').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
+  const botellas7d   = ventas7dRow.filter(v => v.formato_venta === 'botella').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
+  const euros7d      = ventas7dRow.reduce((s, v) => s + (Number(v.importe_vino_estimado) || 0), 0)
+  const euros30d     = ventas30Vendidas.reduce((s, v) => s + (Number(v.importe_vino_estimado) || 0), 0)
+  const hayEuros7d   = euros7d > 0
   const peakIdx = ventasPorDia30.reduce((best, d, i, arr) => d.total > arr[best].total ? i : best, 0)
   const peakDay = ventasPorDia30[peakIdx]
 
@@ -854,12 +860,24 @@ function DashboardHome() {
               <p className={styles.inicioCardLabel}>Ventas de los últimos 7 días</p>
               <div className={styles.heroTopRow}>
                 <div>
-                  <strong className={styles.heroKpi}>{ventasSemana}</strong>
-                  <span className={styles.heroKpiUnit}>copas y botellas</span>
+                  {hayEuros7d ? (
+                    <>
+                      <strong className={styles.heroKpi}>{eur(euros7d)}</strong>
+                      <span className={styles.heroKpiUnit}>vendidos en vino · últimos 7 días</span>
+                      <span className={styles.heroKpiSub}>{copas7d} copas · {botellas7d} botellas</span>
+                    </>
+                  ) : (
+                    <>
+                      <strong className={styles.heroKpi}>{ventasSemana}</strong>
+                      <span className={styles.heroKpiUnit}>copas y botellas</span>
+                    </>
+                  )}
                 </div>
-                {totalVentas30 > 0 && (
+                {(hayEuros7d ? euros30d : totalVentas30) > 0 && (
                   <div className={styles.heroKpiSecGroup}>
-                    <strong className={styles.heroKpiSec}>{totalVentas30}</strong>
+                    <strong className={styles.heroKpiSec}>
+                      {hayEuros7d ? eur(euros30d) : totalVentas30}
+                    </strong>
                     <span className={styles.heroKpiSecLabel}>en los últimos 30 días</span>
                   </div>
                 )}
