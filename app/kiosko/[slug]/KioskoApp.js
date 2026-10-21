@@ -408,7 +408,7 @@ function inicialesTienda(nombre = '') {
 }
 function formatPrecio(p) {
   if (!p) return ''
-  return Number(p).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+  return Number(p).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €'
 }
 
 function precioActual(vino) {

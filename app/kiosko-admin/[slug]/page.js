@@ -3434,7 +3434,7 @@ export default function AdminKioskoPage() {
               </div>
               <div className={styles.analiticaKpi}>
                 <span className={styles.analiticaKpiNum} style={{ color: totalOportunidad > 0 ? '#2e6b47' : '#aaa' }}>
-                  {totalOportunidad > 0 ? `${totalOportunidad.toLocaleString('es-ES')} €` : '—'}
+                  {totalOportunidad > 0 ? `${totalOportunidad.toLocaleString('es-ES', { useGrouping: true })} €` : '—'}
                 </span>
                 <span className={styles.analiticaKpiLabel}>Oportunidad estimada/año</span>
                 <span className={styles.analiticaKpiSub}>Si aplicas las sugerencias</span>
@@ -3483,7 +3483,7 @@ export default function AdminKioskoPage() {
                             <span className={`${styles.margenBadge} ${c.margenNew >= 40 ? styles.margenHigh : styles.margenMid}`}>{c.margenNew}%</span>
                           </td>
                           <td className={styles.rendTdNum} style={{ fontWeight: 600, color: '#2e6b47' }}>
-                            ~{c.impacto.toLocaleString('es-ES')} €
+                            ~{c.impacto.toLocaleString('es-ES', { useGrouping: true })} €
                           </td>
                         </tr>
                       ))}
@@ -3537,7 +3537,7 @@ export default function AdminKioskoPage() {
                                 : <span style={{ color: '#c03030', fontSize: '.8rem' }}>✗ No — destácalo</span>}
                             </td>
                             <td className={styles.rendTdNum} style={{ fontWeight: 600, color: '#666' }}>
-                              {j.impacto > 0 ? `~${j.impacto.toLocaleString('es-ES')} €` : '—'}
+                              {j.impacto > 0 ? `~${j.impacto.toLocaleString('es-ES', { useGrouping: true })} €` : '—'}
                             </td>
                           </tr>
                         )

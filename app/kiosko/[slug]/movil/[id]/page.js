@@ -16,7 +16,7 @@ const TIPO_LABELS = {
 
 function formatPrecio(p) {
   if (!p) return ''
-  return Number(p).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' EUR'
+  return Number(p).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' EUR'
 }
 
 function BottleMark({ className }) {
