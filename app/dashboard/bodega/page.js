@@ -149,6 +149,8 @@ export default function ControlBodega() {
   const [simDuplicado, setSimDuplicado] = useState(null)
   const [simMensaje, setSimMensaje] = useState({ texto: '', tipo: 'ok' })
   const [simEnBorrador, setSimEnBorrador] = useState(new Set())
+  const [vistaSimple, setVistaSimple] = useState(true)
+  const [pedidoAbierto, setPedidoAbierto] = useState(false)
 
   useEffect(() => {
     setAjustesBodega(economicSettings)
@@ -218,7 +220,7 @@ export default function ControlBodega() {
     if (loading || typeof window === 'undefined') return
     const hash = window.location.hash
     window.requestAnimationFrame(() => {
-      if (hash === '#pedido') { setPanelAbierto('compras'); return }
+      if (hash === '#pedido') { setPedidoAbierto(true); return }
       if (hash === '#propuestas') { setPanelAbierto('propuestas'); return }
       const filtrosPorHash = {
         '#referencias-pendientes': 'pendientes',
@@ -682,6 +684,10 @@ export default function ControlBodega() {
     }
   }
 
+  useEffect(() => {
+    if (datos.pedido.length > 0) setPedidoAbierto(true)
+  }, [datos.pedido.length])
+
   if (loading) return <LoadingState />
   if (!restaurante) return (
     <ModuleShell
@@ -913,57 +919,61 @@ export default function ControlBodega() {
     const faltaProveedor = proveedor === 'Sin proveedor'
     const contacto = contactoProveedor(proveedor)
     const tieneTelefono = Boolean(telefonoWhatsApp(contacto?.telefono))
+    const totalBotellas = vinosProveedor.reduce((sum, v) => sum + v.pedir, 0)
 
     return (
-      <article key={proveedor} className={styles.itemCard}>
-        <div className={styles.sectionHead} style={{ margin: 0 }}>
+      <div key={proveedor} className={bStyles.pedidoGrupo}>
+        <div className={bStyles.pedidoGrupoHead}>
           <div>
-            <p className={styles.eyebrow}>{vinosProveedor.length} referencias</p>
-            <h3 className={styles.sectionTitle}>{faltaProveedor ? `${vinosProveedor.length} vinos no se pueden mandar todavia` : proveedor}</h3>
-            {faltaProveedor && (
-              <p className={styles.sectionText} style={{ marginTop: 4 }}>
-                Falta proveedor. Completalo para que cada referencia entre en el mensaje correcto.
+            <p className={bStyles.pedidoGrupoNombre}>{faltaProveedor ? 'Sin proveedor' : proveedor}</p>
+            {contacto && !faltaProveedor && (
+              <p className={bStyles.pedidoGrupoContacto}>
+                {[contacto.telefono ? `Tel. ${contacto.telefono}` : null, contacto.email].filter(Boolean).join(' · ')}
               </p>
             )}
           </div>
-          <div className={styles.actionRow}>
-            <span className={styles.badge}>{vinosProveedor.reduce((sum, vino) => sum + vino.pedir, 0)} uds.</span>
-            {!faltaProveedor && (
-              <>
-                <button className={styles.ghost} onClick={() => copiarPedidoProveedor(proveedor, vinosProveedor)}>
-                  {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar para WhatsApp'}
-                </button>
-                <button className={styles.ghost} onClick={() => abrirWhatsAppProveedor(proveedor, vinosProveedor)}>
-                  {tieneTelefono ? 'WhatsApp directo' : 'Abrir WhatsApp'}
-                </button>
-              </>
-            )}
+          <div>
+            <p className={bStyles.pedidoGrupoTotal}>{totalBotellas}</p>
+            <p className={bStyles.pedidoGrupoTotalCaption}>BOT.</p>
           </div>
         </div>
-        {!faltaProveedor && contacto && (
-          <p className={styles.sectionText} style={{ margin: '8px 0 0' }}>
-            {[contacto.telefono ? `Tel. ${contacto.telefono}` : null, contacto.email].filter(Boolean).join(' · ')}
-          </p>
+        {!faltaProveedor && (
+          <div className={bStyles.pedidoGrupoAcciones}>
+            <button className={styles.ghost} onClick={() => copiarPedidoProveedor(proveedor, vinosProveedor)}>
+              {proveedorCopiado === proveedor ? 'Copiado' : 'Copiar'}
+            </button>
+            <button className={styles.ghost} onClick={() => abrirWhatsAppProveedor(proveedor, vinosProveedor)}>
+              {tieneTelefono ? 'WhatsApp' : 'Abrir WA'}
+            </button>
+          </div>
         )}
-        <div className={styles.itemStack} style={{ marginTop: 12 }}>
-          {vinosProveedor.map(vino => (
-            <div key={vino.id} className={styles.sectionHead} style={{ margin: 0, paddingTop: 8, borderTop: '1px solid rgba(23,20,22,0.08)' }}>
-              <p className={styles.sectionText} style={{ margin: 0 }}>
-                {vino.nombre} - stock {vino.stock || 0} - minimo {vino.stock_minimo || 0} - punto pedido {vino.reposicion?.puntoPedido || vino.stock_minimo || 0}
-                {vino.reposicion?.diasCobertura == null ? ' - sin ventas recientes' : ` - cobertura ${vino.reposicion.diasCobertura} dias`}
-              </p>
-              <div className={styles.actionRow}>
-                <strong className={styles.badge}>Pedir {vino.pedir}</strong>
-                {faltaProveedor && (
-                  <button className={styles.ghost} onClick={() => editarProveedorDesdePedido(vino)}>
-                    Completar proveedor
-                  </button>
-                )}
+        <div className={bStyles.pedidoVinos}>
+          {vinosProveedor.map(vino => {
+            const sinStock = decimal(vino.stock) <= 0
+            const bajoMin = !sinStock && decimal(vino.stock) <= decimal(vino.stock_minimo)
+            return (
+              <div key={vino.id} className={bStyles.pedidoVinoLinea}>
+                <div className={bStyles.pedidoVinoNombre}>
+                  {vino.nombre}
+                  <span className={bStyles.pedidoVinoMeta}>
+                    {vino.reposicion?.diasCobertura == null ? 'sin ventas' : `${vino.reposicion.diasCobertura}d cobertura`} · stock {vino.stock || 0}
+                  </span>
+                </div>
+                <div className={bStyles.pedidoVinoRight}>
+                  {sinStock && <span className={bStyles.pedidoChipRojo}>Sin stock</span>}
+                  {bajoMin && <span className={bStyles.pedidoChipAmbar}>Bajo mín.</span>}
+                  <span className={bStyles.pedidoPedir}>Pedir {vino.pedir}</span>
+                  {faltaProveedor && (
+                    <button className={styles.ghost} onClick={() => editarProveedorDesdePedido(vino)}>
+                      + Proveedor
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
-      </article>
+      </div>
     )
   }
 
@@ -982,11 +992,8 @@ export default function ControlBodega() {
     <ModuleShell
       restaurante={restaurante}
       wide
-      eyebrow="Bodega"
-      title={perfilBodega ? 'Control de bodega para sumiller' : 'Stock, margen y reposición'}
-      subtitle={perfilBodega
-        ? 'Tabla de inventario editable con margen, proveedor y reposición en una sola vista.'
-        : 'Inventario editable: coste, PVP, proveedor y stock directamente en la tabla.'}
+      title="Tu bodega, bajo control"
+      subtitle="Qué tienes parado, qué margen deja y qué pedir hoy."
       actions={null}
       help={{
         title: perfilBodega ? 'Rutina del sumiller' : 'Qué hacer aquí',
@@ -1002,24 +1009,50 @@ export default function ControlBodega() {
 
       <div className={bStyles.cellarPage}>
 
-        {/* ── KPIs ─────────────────────────────────────────── */}
-        <div className={styles.kpiStrip}>
-          <div className={styles.kpiItem}>
-            <div className={styles.kpiNum}>{eur(datos.valorCoste)}</div>
-            <div className={styles.kpiCaption}>Valor a coste</div>
-            <div className={styles.kpiHintText}>Dinero inmovilizado en bodega</div>
+        {/* ── KPI hero ─────────────────────────────────────── */}
+        <div className={bStyles.pedidoHero}>
+          <div className={bStyles.pedidoHeroKpi}>
+            <div className={bStyles.pedidoHeroNum}>{eur(datos.valorCoste)}</div>
+            <div className={bStyles.pedidoHeroCaption}>Valor a coste</div>
+            <div className={bStyles.pedidoHeroHint}>Dinero inmovilizado</div>
           </div>
-          <div className={styles.kpiItem}>
-            <div className={styles.kpiNum} style={{ color: margenColor(datos.margenMedio) }}>{datos.margenMedio == null ? '—' : `${datos.margenMedio}%`}</div>
-            <div className={styles.kpiCaption}>Margen medio</div>
-            <div className={styles.kpiHintText}>IVA venta {criterioBodega.ivaVentaPct}%</div>
+          <div className={bStyles.pedidoHeroKpi}>
+            <div className={bStyles.pedidoHeroNum} style={{ color: '#af8b52' }}>{datos.margenMedio == null ? '—' : `${datos.margenMedio}%`}</div>
+            <div className={bStyles.pedidoHeroCaption}>Margen medio</div>
+            <div className={bStyles.pedidoHeroHint}>IVA venta {criterioBodega.ivaVentaPct}%</div>
           </div>
-          <div className={styles.kpiItem}>
-            <div className={styles.kpiNum}>{pedidoCombinado.length}</div>
-            <div className={styles.kpiCaption}>Pedido sugerido</div>
-            <div className={styles.kpiHintText}>Reposición calculada</div>
+          <div className={bStyles.pedidoHeroKpi}>
+            <div className={bStyles.pedidoHeroNum} style={{ color: pedidoCombinado.length > 0 ? '#74223d' : '#171416' }}>{pedidoCombinado.length}</div>
+            <div className={bStyles.pedidoHeroCaption}>Pedido sugerido</div>
+            <div className={bStyles.pedidoHeroHint}>{pedidoCombinado.length > 0 ? 'Referencias por reponer' : 'Sin reposición pendiente'}</div>
           </div>
         </div>
+
+        {/* ── Pedido inline ─────────────────────────────────── */}
+        {pedidoCombinado.length > 0 && (
+          <section className={bStyles.pedidoSection}>
+            <div className={bStyles.pedidoSectionHeader} onClick={() => setPedidoAbierto(v => !v)}>
+              <div>
+                <h2 className={bStyles.pedidoH2}>Pedido sugerido</h2>
+                <p className={bStyles.pedidoSubtitle}>
+                  {pedidoCombinado.length} {pedidoCombinado.length === 1 ? 'referencia' : 'referencias'} · {pedidoCombinado.reduce((s, v) => s + v.pedir, 0)} botellas
+                </p>
+              </div>
+              <div className={bStyles.pedidoHeaderActions}>
+                <button className={styles.ghost} onClick={e => { e.stopPropagation(); copiarPedido() }}>{pedidoCopiado ? 'Copiado ✓' : 'Copiar'}</button>
+                <button className={styles.ghost} onClick={e => { e.stopPropagation(); abrirWhatsAppPedido() }}>WhatsApp</button>
+                <button className={styles.ghost} onClick={e => { e.stopPropagation(); setPedidoAbierto(v => !v) }}>{pedidoAbierto ? '▲' : '▼'}</button>
+              </div>
+            </div>
+            {pedidoAbierto && (
+              <div className={bStyles.pedidoBody}>
+                <div className={bStyles.pedidoGrupoGrid}>
+                  {pedidoPorProveedor.map(renderGrupoPedido)}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ── Checklist filtrable ───────────────────────────── */}
         <div className={bStyles.cellarChecklist}>
@@ -1055,35 +1088,31 @@ export default function ControlBodega() {
             placeholder="Buscar vino, bodega, proveedor..."
           />
           <div className={bStyles.cellarGroupNav}>
-            {/* Grupo Compras */}
             <button
               type="button"
-              className={['compras', 'nueva_compra', 'propuestas'].includes(panelAbierto) ? styles.secondary : styles.ghost}
-              onClick={() => setPanelAbierto(['compras', 'nueva_compra', 'propuestas'].includes(panelAbierto) ? null : 'compras')}
+              className={`${styles.tabPill} ${['nueva_compra', 'propuestas'].includes(panelAbierto) ? styles.tabPillActive : ''}`}
+              onClick={() => setPanelAbierto(['nueva_compra', 'propuestas'].includes(panelAbierto) ? null : 'nueva_compra')}
             >
               Compras
             </button>
-            {/* Grupo Inventario */}
             <button
               type="button"
-              className={['conteo', 'conteo_fisico', 'cierre_mensual'].includes(panelAbierto) ? styles.secondary : styles.ghost}
+              className={`${styles.tabPill} ${['conteo', 'conteo_fisico', 'cierre_mensual'].includes(panelAbierto) ? styles.tabPillActive : ''}`}
               onClick={() => setPanelAbierto(['conteo', 'conteo_fisico', 'cierre_mensual'].includes(panelAbierto) ? null : 'conteo')}
             >
               Inventario
             </button>
-            {/* Grupo Precios */}
             <button
               type="button"
-              className={panelAbierto === 'precios' ? styles.secondary : styles.ghost}
+              className={`${styles.tabPill} ${panelAbierto === 'precios' ? styles.tabPillActive : ''}`}
               onClick={() => setPanelAbierto(panelAbierto === 'precios' ? null : 'precios')}
             >
               Precios
             </button>
-            {/* Grupo Catálogo */}
             {esPlanPremium && (
               <button
                 type="button"
-                className={panelAbierto === 'catalogo' ? styles.secondary : styles.ghost}
+                className={`${styles.tabPill} ${panelAbierto === 'catalogo' ? styles.tabPillActive : ''}`}
                 onClick={() => setPanelAbierto(panelAbierto === 'catalogo' ? null : 'catalogo')}
               >
                 Catálogo
@@ -1093,15 +1122,8 @@ export default function ControlBodega() {
         </div>
 
         {/* ── Sub-nav Compras ───────────────────────────────── */}
-        {['compras', 'nueva_compra', 'propuestas'].includes(panelAbierto) && (
+        {['nueva_compra', 'propuestas'].includes(panelAbierto) && (
           <div className={bStyles.cellarSubNav}>
-            <button
-              type="button"
-              className={panelAbierto === 'compras' ? styles.secondary : styles.ghost}
-              onClick={() => setPanelAbierto(panelAbierto === 'compras' ? null : 'compras')}
-            >
-              Pedido {pedidoCombinado.length > 0 && <span className={styles.badge}>{pedidoCombinado.length}</span>}
-            </button>
             <button
               type="button"
               className={panelAbierto === 'nueva_compra' ? styles.secondary : styles.ghost}
@@ -1144,34 +1166,6 @@ export default function ControlBodega() {
               Cierre mensual
             </button>
           </div>
-        )}
-
-        {/* ── Panel: Pedido sugerido ────────────────────────── */}
-        {panelAbierto === 'compras' && (
-          <section className={styles.panel} id="pedido">
-            <div className={styles.panelHead}>
-              <div>
-                <h2 className={styles.panelTitle}>Pedido sugerido</h2>
-                <p className={styles.panelSub}>Agrupado por proveedor. Se activa por stock mínimo, ventas recientes, plazo de entrega y colchón de seguridad.</p>
-              </div>
-              <div className={styles.actionRow}>
-                <span className={styles.badge}>{pedidoCombinado.length}</span>
-                {pedidoCombinado.length > 0 && (
-                  <>
-                    <button className={styles.ghost} onClick={copiarPedido}>{pedidoCopiado ? 'Copiado' : 'Copiar'}</button>
-                    <button className={styles.ghost} onClick={abrirWhatsAppPedido}>WhatsApp</button>
-                  </>
-                )}
-                <button className={styles.ghost} onClick={() => setPanelAbierto(null)}>Cerrar ×</button>
-              </div>
-            </div>
-            <div className={styles.panelBody}>
-              {pedidoCombinado.length
-                ? <div className={styles.itemStack}>{pedidoPorProveedor.map(renderGrupoPedido)}</div>
-                : <div className={styles.empty}>No hay pedido sugerido ahora. Con stock mínimo y ventas marcadas se genera automáticamente.</div>
-              }
-            </div>
-          </section>
         )}
 
         {/* ── Panel: Nueva compra ──────────────────────────── */}
@@ -1483,34 +1477,47 @@ export default function ControlBodega() {
           </section>
         )}
 
-        {/* ── La tabla ─────────────────────────────────────── */}
-        <datalist id="proveedores-bodega">
-          {datos.proveedoresExistentes.map(p => <option key={p} value={p} />)}
-        </datalist>
+        {/* ── Inventario ───────────────────────────────────── */}
+        <section className={bStyles.inventarioCard}>
+          <div className={bStyles.inventarioHeader}>
+            <h2 className={bStyles.inventarioH2}>Inventario</h2>
+            <div className={bStyles.inventarioControls}>
+              <button
+                type="button"
+                className={`${styles.tabPill} ${!vistaSimple ? styles.tabPillActive : ''}`}
+                onClick={() => setVistaSimple(v => !v)}
+              >
+                {vistaSimple ? 'Ver completo' : 'Vista simple'}
+              </button>
+            </div>
+          </div>
+          <datalist id="proveedores-bodega">
+            {datos.proveedoresExistentes.map(p => <option key={p} value={p} />)}
+          </datalist>
 
-        <div className={bStyles.cellarTableWrap} id="bodega-tabla">
-          <table className={bStyles.cellarTable}>
+          <div className={bStyles.cellarTableWrap} id="bodega-tabla">
+            <table className={`${bStyles.cellarTable}${vistaSimple ? ` ${bStyles.cellarTableSimple}` : ''}`}>
             <thead>
               <tr>
                 <th>Vino</th>
-                <th>Tipo</th>
+                {!vistaSimple && <th>Tipo</th>}
                 <th title="Editable">Proveedor ✎</th>
                 <th title="Editable">Coste € ✎</th>
                 <th title="Editable">PVP bot. € ✎</th>
-                <th title="Editable">PVP copa € ✎</th>
+                {!vistaSimple && <th title="Editable">PVP copa € ✎</th>}
                 <th>Mrg. bot.</th>
-                <th>Mrg. copa</th>
-                <th title="PVP sugerido de botella">PVP sugerido</th>
-                <th title="PVP sugerido de copa">PVP sugerido copa</th>
+                {!vistaSimple && <th>Mrg. copa</th>}
+                {!vistaSimple && <th title="PVP sugerido de botella">PVP sugerido</th>}
+                {!vistaSimple && <th title="PVP sugerido de copa">PVP sugerido copa</th>}
                 <th title="Editable">Stock ✎</th>
-                <th title="Editable">Mín. ✎</th>
+                {!vistaSimple && <th title="Editable">Mín. ✎</th>}
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {referenciasVisibles.length === 0 && (
                 <tr>
-                  <td colSpan={13} className={bStyles.cellarTableEmpty}>
+                  <td colSpan={vistaSimple ? 7 : 13} className={bStyles.cellarTableEmpty}>
                     {filtroReferencias !== 'todos' ? 'No hay referencias con ese filtro.' : 'No hay referencias activas.'}
                   </td>
                 </tr>
@@ -1562,25 +1569,41 @@ export default function ControlBodega() {
                         </small>
                       )}
                     </td>
-                    <td>{tipoVino(vino)}</td>
+                    {!vistaSimple && <td>{tipoVino(vino)}</td>}
                     {cell('proveedor', 'text', undefined, 'proveedores-bodega')}
                     {cell('coste_compra',   'number', '0.01', undefined, eurCell)}
                     {cell('precio_botella', 'number', '0.01', undefined, eurCell)}
-                    {cell('precio_copa',    'number', '0.01', undefined, eurCell)}
-                    <td className={margenCls(mBotella)}>{mBotella == null ? <span className={bStyles.tdEmpty}>—</span> : `${mBotella}%`}</td>
-                    <td className={margenCls(mCopa)}>{mCopa == null ? <span className={bStyles.tdEmpty}>—</span> : `${mCopa}%`}</td>
-                    <td className={bStyles.tdPvpSug}>
-                      {preciosSug ? (
-                        <span className={bStyles.pvpSugValor}>{eur(preciosSug.botella)}</span>
-                      ) : <span className={bStyles.tdEmpty}>—</span>}
+                    {!vistaSimple && cell('precio_copa', 'number', '0.01', undefined, eurCell)}
+                    <td className={margenCls(mBotella)}>
+                      {vistaSimple ? (
+                        <div className={bStyles.margenBarWrap}>
+                          <div className={bStyles.margenBar}>
+                            <div className={bStyles.margenBarFill} style={{
+                              width: mBotella == null ? '0%' : `${Math.max(0, Math.min(100, mBotella))}%`,
+                              background: mBotella == null ? '#e8dfd0' : mBotella >= 68 ? '#4A8C6F' : mBotella >= 55 ? '#b8860b' : '#b85454',
+                            }} />
+                          </div>
+                          <span>{mBotella == null ? '—' : `${mBotella}%`}</span>
+                        </div>
+                      ) : (mBotella == null ? <span className={bStyles.tdEmpty}>—</span> : `${mBotella}%`)}
                     </td>
-                    <td className={bStyles.tdPvpSug}>
-                      {preciosSug ? (
-                        <span className={bStyles.pvpSugValor}>{eurDetalle(preciosSug.copa)}</span>
-                      ) : <span className={bStyles.tdEmpty}>—</span>}
-                    </td>
-                    {cell('stock',        'number', '1')}
-                    {cell('stock_minimo', 'number', '1')}
+                    {!vistaSimple && <td className={margenCls(mCopa)}>{mCopa == null ? <span className={bStyles.tdEmpty}>—</span> : `${mCopa}%`}</td>}
+                    {!vistaSimple && (
+                      <td className={bStyles.tdPvpSug}>
+                        {preciosSug ? (
+                          <span className={bStyles.pvpSugValor}>{eur(preciosSug.botella)}</span>
+                        ) : <span className={bStyles.tdEmpty}>—</span>}
+                      </td>
+                    )}
+                    {!vistaSimple && (
+                      <td className={bStyles.tdPvpSug}>
+                        {preciosSug ? (
+                          <span className={bStyles.pvpSugValor}>{eurDetalle(preciosSug.copa)}</span>
+                        ) : <span className={bStyles.tdEmpty}>—</span>}
+                      </td>
+                    )}
+                    {cell('stock', 'number', '1')}
+                    {!vistaSimple && cell('stock_minimo', 'number', '1')}
                     <td className={bStyles.tdActions}>
                       <button className={styles.ghost} onClick={() => iniciarEdicion(vino)}>Editar</button>
                       {vino.por_copa && botellaMap[vino.id] && (
@@ -1602,11 +1625,14 @@ export default function ControlBodega() {
             </tbody>
           </table>
         </div>
-        <div className={bStyles.pricingNote}>
-          <strong>Regla general del PVP sugerido</strong>
-          <span>Botella: coste neto por tramos, hasta 6 € x3,5; de 6 a 11 € x2+9; por encima de 11 € +20. IVA {criterioBodega.ivaVentaPct}% si se muestra con IVA y redondeo al euro.</span>
-          <span>Copa: coste dividido entre {criterioBodega.copasPorBotella} copas, {criterioBodega.mermaCopaPct}% de merma y margen de copa {criterioBodega.margenObjetivoCopaPct}%; IVA al final y redondeo al tramo de 0,50 € más cercano.</span>
-        </div>
+          <div className={bStyles.inventarioPricing}>
+            <div className={bStyles.pricingNote}>
+              <strong>Regla general del PVP sugerido</strong>
+              <span>Botella: coste neto por tramos, hasta 6 € x3,5; de 6 a 11 € x2+9; por encima de 11 € +20. IVA {criterioBodega.ivaVentaPct}% si se muestra con IVA y redondeo al euro.</span>
+              <span>Copa: coste dividido entre {criterioBodega.copasPorBotella} copas, {criterioBodega.mermaCopaPct}% de merma y margen de copa {criterioBodega.margenObjetivoCopaPct}%; IVA al final y redondeo al tramo de 0,50 € más cercano.</span>
+            </div>
+          </div>
+        </section>
 
         {/* ── Equilibrio de bodega ─────────────────────────── */}
         {datos.activos.length > 0 && (
