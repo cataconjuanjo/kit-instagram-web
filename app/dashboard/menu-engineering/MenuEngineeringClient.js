@@ -393,11 +393,11 @@ export default function MenuEngineering() {
     <FeatureGate restaurante={restaurante} feature="estadisticas" title={perfilBodega ? 'Mapa de bodega no incluido' : 'Análisis no incluido'}>
       <ModuleShell
         restaurante={restaurante}
-        eyebrow={perfilBodega ? 'Mapa sumiller' : 'Rentabilidad'}
-        title={perfilBodega ? 'Mapa de bodega: estrellas y joyas' : 'Rentabilidad de carta'}
+        eyebrow={perfilBodega ? 'Mapa sumiller' : undefined}
+        title={perfilBodega ? 'Mapa de bodega: estrellas y joyas' : 'Qué vinos te dan dinero'}
         subtitle={perfilBodega
           ? 'Cada referencia clasificada por salida real, margen y capital inmovilizado. Decide qué proteger, activar, renegociar o archivar.'
-          : 'Cada vino clasificado por popularidad real y margen.'}
+          : 'Cada vino de tu carta, clasificado por lo que se vende y lo que deja.'}
         help={{
           title: perfilBodega ? 'Lectura del sumiller' : 'Cómo funciona',
           intro: perfilBodega
@@ -450,16 +450,6 @@ export default function MenuEngineering() {
 
         {analisisVisible && (
           <>
-            {/* ── Título de página ─────────────────────────────────────────── */}
-            {!perfilBodega && (
-              <div style={{ marginBottom: 8 }}>
-                <h1 className={styles.profitPageTitle}>Qué vinos te dan dinero</h1>
-                <p className={styles.profitPageSubtitle}>
-                  Cada vino de tu carta, clasificado por lo que se vende y lo que deja.
-                </p>
-              </div>
-            )}
-
             {/* ── Fila 1: mapa + tarjeta lateral ───────────────────────────── */}
             <div className={styles.profitFila1}>
               {/* Mapa */}
@@ -860,76 +850,6 @@ export default function MenuEngineering() {
                 </div>
               </section>
             )}
-
-            <section className={styles.gridTwo}>
-              <div className={styles.panelDark}>
-                <div className={styles.panelHead}>
-                  <div>
-                    <h2 className={styles.panelTitle}>{perfilBodega ? 'Matriz de bodega' : 'Matriz de carta'}</h2>
-                    <p className={styles.panelSub}>{perfilBodega ? 'Cada punto es una referencia. Margen arriba, salida real a la derecha.' : 'Cada punto es un vino. Margen arriba, popularidad a la derecha.'}</p>
-                  </div>
-                </div>
-                <div className={styles.panelBody}>
-                  <div className={styles.profitMatrix}>
-                    <span className={styles.profitAxisY}>Margen</span>
-                    <span className={styles.profitAxisX}>Popularidad</span>
-                    <span className={styles.profitThresholdY} style={{ left: `${Math.min(88, Math.max(12, (analisisVisible.barreraPopularidad / maxPopularidad) * 82 + 8))}%` }} />
-                    <span className={styles.profitThresholdX} style={{ bottom: `${Math.min(88, Math.max(12, (analisisVisible.barreraRentabilidad / maxMargen) * 82 + 8))}%` }} />
-                    <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantTopRight}`}>Estrella</span>
-                    <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantTopLeft}`}>Joya</span>
-                    <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantBottomRight}`}>Renegociar</span>
-                    <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantBottomLeft}`}>Revisar</span>
-                    {vinosAnalizados.map(vino => {
-                      const cat = CATEGORIAS.find(c => c.id === vino.categoria)
-                      const left = Math.min(92, Math.max(8, (vino.pctVentas / maxPopularidad) * 84 + 6))
-                      const bottom = Math.min(92, Math.max(8, (vino.margen / maxMargen) * 84 + 6))
-                      return (
-                        <button
-                          key={vino.id}
-                          type="button"
-                          className={`${styles.profitPoint} ${categoriaActiva !== 'todas' && categoriaActiva !== vino.categoria ? styles.profitPointMuted : ''}`}
-                          style={{ left: `${left}%`, bottom: `${bottom}%`, borderColor: cat?.borde, background: cat?.color }}
-                          onClick={() => setCategoriaActiva(vino.categoria)}
-                          aria-label={`${vino.nombre}. ${cat?.label}. Margen ${vino.margen.toFixed(2)} euros, ${perfilBodega ? 'salida' : 'popularidad'} ${vino.pctVentas.toFixed(1)} por ciento`}
-                          title={`${vino.nombre} · ${cat?.label}`}
-                        />
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles.panel}>
-                <div className={styles.panelHead}>
-                  <div>
-                    <h2 className={styles.panelTitle}>Acciones prioritarias</h2>
-                    <p className={styles.panelSub}>{perfilBodega ? 'Ordenadas para que compra, inventario y dirección sepan qué mover primero.' : 'Ordenadas para que sala y compras sepan qué mover primero.'}</p>
-                  </div>
-                  <button type="button" className={styles.secondary} onClick={copiarPlan}>Copiar</button>
-                </div>
-                <div className={styles.panelBody}>
-                  {accionesPrioritarias.length ? (
-                    <div className={styles.itemStack}>
-                      {accionesPrioritarias.map(item => {
-                        const cat = CATEGORIAS.find(c => c.id === item.vino.categoria)
-                        return (
-                          <article className={styles.profitActionCard} key={`${item.tipo}-${item.vino.id}`}>
-                            <span style={{ borderColor: cat?.borde, color: cat?.color }}>{cat?.icon}</span>
-                            <div>
-                              <p className={styles.eyebrow}>{item.tipo}</p>
-                              <h3>{item.vino.nombre}</h3>
-                              <p>{item.texto}</p>
-                            </div>
-                          </article>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div className={styles.empty}>Sin acciones urgentes con los datos actuales.</div>
-                  )}
-                </div>
-              </div>
-            </section>
 
             {/* ── Listas por cuadrante ─────────────────────────────────── */}
             <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>

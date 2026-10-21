@@ -207,7 +207,7 @@ export default function SimuladorCarta() {
   const [activeTab, setActiveTab] = useState('tabla')     // 'tabla' | 'impacto' | 'proveedores'
   const [token, setToken] = useState(null)
   const [masAccionesOpen, setMasAccionesOpen] = useState(false)
-  const [vistaSimple, setVistaSimple] = useState(false)
+  const [vistaSimple, setVistaSimple] = useState(true)
 
   // Cierra "Más acciones" con Escape o clic fuera
   useEffect(() => {
@@ -1227,24 +1227,24 @@ export default function SimuladorCarta() {
         )}
 
         {/* ── Sub-navegación de vistas ─────────────────────── */}
-        <div className={simStyles.subNav}>
+        <div className={styles.tabsNav}>
           <button
             type="button"
-            className={`${simStyles.subNavBtn} ${activeTab === 'tabla' ? simStyles.subNavBtnActive : ''}`}
+            className={`${styles.tabPill} ${activeTab === 'tabla' ? styles.tabPillActive : ''}`}
             onClick={() => setActiveTab('tabla')}
           >
             Tabla
           </button>
           <button
             type="button"
-            className={`${simStyles.subNavBtn} ${activeTab === 'impacto' ? simStyles.subNavBtnActive : ''}`}
+            className={`${styles.tabPill} ${activeTab === 'impacto' ? styles.tabPillActive : ''}`}
             onClick={() => setActiveTab('impacto')}
           >
             Impacto en platos
           </button>
           <button
             type="button"
-            className={`${simStyles.subNavBtn} ${activeTab === 'proveedores' ? simStyles.subNavBtnActive : ''}`}
+            className={`${styles.tabPill} ${activeTab === 'proveedores' ? styles.tabPillActive : ''}`}
             onClick={() => setActiveTab('proveedores')}
           >
             Proveedores
@@ -1344,15 +1344,15 @@ export default function SimuladorCarta() {
                   <th className={`${simStyles.thVino} ${simStyles.thSortable}`} onClick={() => toggleOrden('nombre')}>Vino{icono('nombre')}</th>
                   {!vistaSimple && <th className={simStyles.thSortable} onClick={() => toggleOrden('tipo')}>Tipo{icono('tipo')}</th>}
                   <th className={simStyles.thSortable} onClick={() => toggleOrden('region')}>D.O. / Zona{icono('region')}</th>
-                  <th className={simStyles.thSortable} onClick={() => toggleOrden('anada')}>Añada{icono('anada')}</th>
+                  {!vistaSimple && <th className={simStyles.thSortable} onClick={() => toggleOrden('anada')}>Añada{icono('anada')}</th>}
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_botella')}>PVP bot. €{icono('precio_botella')}</th>
-                  {hayBotSug && <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_recomendado_catalogo')} title="Precio botella sugerido por el catálogo">Bot. sug.{icono('pvp_recomendado_catalogo')}</th>}
-                  <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_copa')}>PVP copa €{icono('precio_copa')}</th>
-                  {hayCopaSug && <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_copa_catalogo')} title="Precio copa sugerido por el catálogo">Copa sug.{icono('pvp_copa_catalogo')}</th>}
+                  {hayBotSug && !vistaSimple && <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_recomendado_catalogo')} title="Precio botella sugerido por el catálogo">Bot. sug.{icono('pvp_recomendado_catalogo')}</th>}
+                  {!vistaSimple && <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_copa')}>PVP copa €{icono('precio_copa')}</th>}
+                  {hayCopaSug && !vistaSimple && <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_copa_catalogo')} title="Precio copa sugerido por el catálogo">Copa sug.{icono('pvp_copa_catalogo')}</th>}
                   {!vistaSimple && <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('coste_compra')}>Coste €{icono('coste_compra')}</th>}
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen')}>Mrg. bot. %{icono('margen')}</th>
-                  <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen_copa')}>Mrg. copa %{icono('margen_copa')}</th>
-                  <th>Proveedor seleccionado</th>
+                  {!vistaSimple && <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen_copa')}>Mrg. copa %{icono('margen_copa')}</th>}
+                  {!vistaSimple && <th>Proveedor seleccionado</th>}
                   <th className={simStyles.thEstado}>Estado</th>
                   <th className={simStyles.thAccionWide}>Acción</th>
                 </tr>
@@ -1402,6 +1402,9 @@ export default function SimuladorCarta() {
                           )}
                           <span className={isFuera ? simStyles.tachado : ''}>{linea.nombre}</span>
                           {linea.bodega && <span className={simStyles.bodega}>{linea.bodega}</span>}
+                          {vistaSimple && (linea.tipo || linea.anada) && (
+                            <span className={simStyles.bodega}>{[linea.tipo, linea.anada].filter(Boolean).join(' · ')}</span>
+                          )}
                           {linea.origen?.startsWith('sugerido') && (
                             <span className={simStyles.origenAuto}>✦ Auto</span>
                           )}
@@ -1410,7 +1413,7 @@ export default function SimuladorCarta() {
 
                       {!vistaSimple && <td className={simStyles.tdTipo}>{linea.tipo || '—'}</td>}
                       <td className={simStyles.tdZona}>{linea.region || '—'}</td>
-                      <td className={simStyles.tdAnada}>{linea.anada || '—'}</td>
+                      {!vistaSimple && <td className={simStyles.tdAnada}>{linea.anada || '—'}</td>}
 
                       {/* PVP bot. € — pill si pendiente, editable si ya tiene precio */}
                       {(() => {
@@ -1445,14 +1448,14 @@ export default function SimuladorCarta() {
                       })()}
 
                       {/* Bot. sug. — referencia del catálogo, solo lectura */}
-                      {hayBotSug && (
+                      {hayBotSug && !vistaSimple && (
                         <td className={simStyles.tdSugerido}>
                           {linea.pvp_recomendado_catalogo ? eur(linea.pvp_recomendado_catalogo) : '—'}
                         </td>
                       )}
 
                       {/* PVP copa € — comportamiento condicional según ofrecido_por_copa */}
-                      {(() => {
+                      {!vistaSimple && (() => {
                         const pendiente = linea.ofrecido_por_copa === null && !!linea.catalogo_vino_id && !linea.precio_copa
                         const noSirve   = linea.ofrecido_por_copa === false
                         if (pendiente) {
@@ -1504,7 +1507,7 @@ export default function SimuladorCarta() {
                       })()}
 
                       {/* Copa sug. — referencia del catálogo, solo lectura */}
-                      {hayCopaSug && (
+                      {hayCopaSug && !vistaSimple && (
                         <td className={simStyles.tdSugerido}>
                           {linea.pvp_copa_catalogo ? eur(linea.pvp_copa_catalogo) : '—'}
                         </td>
@@ -1540,7 +1543,7 @@ export default function SimuladorCarta() {
                       </td>
 
                       {/* Margen copa */}
-                      {(() => {
+                      {!vistaSimple && (() => {
                         const mrgCopa = (linea.ofrecido_por_copa === true && linea.precio_copa && linea.coste_compra)
                           ? Math.round(margenCopaPct(linea.precio_copa, linea.coste_compra, economicSettings))
                           : null
@@ -1556,7 +1559,7 @@ export default function SimuladorCarta() {
                       })()}
 
                       {/* Proveedor seleccionado + comparación de ofertas */}
-                      <td className={simStyles.tdProveedor}>
+                      {!vistaSimple && <td className={simStyles.tdProveedor}>
                         <span className={simStyles.proveedorSeleccionado}>{proveedorSeleccionado}</span>
                         {grupo && grupo.numeroProveedores > 1 && (
                           <button
@@ -1582,7 +1585,7 @@ export default function SimuladorCarta() {
                             </button>
                           </>
                         )}
-                      </td>
+                      </td>}
 
                       {/* Badge de estado */}
                       <td className={simStyles.tdEstado}>
@@ -1605,7 +1608,7 @@ export default function SimuladorCarta() {
                             </button>
                             <button
                               type="button"
-                              className={simStyles.maridajeBtn}
+                              className={simStyles.accionLink}
                               onClick={() => { setMaridajeVinoId(linea.id); cargarPlatosMaridaje().catch(() => setPlatosMaridaje([])) }}
                             >
                               Platos
@@ -1615,7 +1618,7 @@ export default function SimuladorCarta() {
                           <div className={simStyles.accionGroup}>
                             <button
                               type="button"
-                              className={`${simStyles.accionBtn} ${simStyles.accionBtnDanger}`}
+                              className={simStyles.accionLinkDanger}
                               disabled={busy || isBlocked}
                               onClick={() => eliminarNuevo(linea)}
                             >
@@ -1623,7 +1626,7 @@ export default function SimuladorCarta() {
                             </button>
                             <button
                               type="button"
-                              className={simStyles.maridajeBtn}
+                              className={simStyles.accionLink}
                               onClick={() => { setMaridajeVinoId(linea.id); cargarPlatosMaridaje().catch(() => setPlatosMaridaje([])) }}
                             >
                               Platos
@@ -1633,7 +1636,7 @@ export default function SimuladorCarta() {
                           <div className={simStyles.accionGroup}>
                             <button
                               type="button"
-                              className={`${simStyles.accionBtn} ${simStyles.accionBtnDanger}`}
+                              className={simStyles.accionLinkDanger}
                               disabled={busy || isBlocked}
                               onClick={() => cambiarEstado(linea, 'fuera')}
                             >
@@ -1649,7 +1652,7 @@ export default function SimuladorCarta() {
                             </button>
                             <button
                               type="button"
-                              className={simStyles.maridajeBtn}
+                              className={simStyles.accionLink}
                               onClick={() => { setMaridajeVinoId(linea.id); cargarPlatosMaridaje().catch(() => setPlatosMaridaje([])) }}
                             >
                               Platos
@@ -1699,14 +1702,20 @@ export default function SimuladorCarta() {
         ))}
 
         {/* ── Proyección (solo en vista Tabla) ──────────────── */}
-        {activeTab === 'tabla' && proyeccion && (
+        {activeTab === 'tabla' && (
           <div className={simStyles.proyeccion}>
             <span>Inversión estimada</span>
-            <span className={simStyles.proyeccionTotal}>{eur(proyeccion.total)}</span>
-            <span className={simStyles.proyeccionNota}>
-              · estimado a 6 uds/referencia
-              {proyeccion.sinCoste > 0 && ` · ${proyeccion.sinCoste} ref. sin coste no incluidas`}
-            </span>
+            {proyeccion ? (
+              <>
+                <span className={simStyles.proyeccionTotal}>{eur(proyeccion.total)}</span>
+                <span className={simStyles.proyeccionNota}>
+                  · estimado a 6 uds/referencia
+                  {proyeccion.sinCoste > 0 && ` · ${proyeccion.sinCoste} ref. sin coste no incluidas`}
+                </span>
+              </>
+            ) : (
+              <span className={simStyles.proyeccionNota}>— Sin vinos nuevos en el borrador</span>
+            )}
           </div>
         )}
 

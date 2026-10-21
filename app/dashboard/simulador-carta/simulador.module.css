@@ -190,7 +190,7 @@
 .thEstado,
 .tdEstado { text-align: center; width: 76px; }
 .thAccion,
-.tdAccion { text-align: center; width: 86px; }
+.tdAccion { text-align: left; width: 160px; }
 
 /* ── Edición inline ──────────────────────────────────────────── */
 
@@ -426,10 +426,41 @@
 
 .accionGroup {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  gap: 8px;
   align-items: center;
+  flex-wrap: nowrap;
 }
+
+.accionLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cv-text-muted, #8b8278);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.accionLink:hover:not(:disabled) { color: var(--cv-gold); }
+.accionLink:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.accionLinkDanger {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cv-red);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.accionLinkDanger:hover:not(:disabled) { opacity: 0.75; }
+.accionLinkDanger:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .thAccionWide { text-align: center; width: 100px; }
 
