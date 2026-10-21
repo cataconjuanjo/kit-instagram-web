@@ -33,11 +33,11 @@ import CierreMensual from './CierreMensual'
 import FormularioCompra from './FormularioCompra'
 
 function eur(valor) {
-  return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
+  return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0, useGrouping: true })} €`
 }
 
 function eurDetalle(valor) {
-  return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+  return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true })} €`
 }
 
 function decimal(valor) {

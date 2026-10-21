@@ -30,7 +30,7 @@ const ESTADO_ORDER = { actual: 0, nuevo: 1, fuera: 2 }
 
 function eur(valor) {
   if (!Number(valor)) return '—'
-  return Number(valor).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+  return Number(valor).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €'
 }
 
 function margenBotella(pvp, coste) {

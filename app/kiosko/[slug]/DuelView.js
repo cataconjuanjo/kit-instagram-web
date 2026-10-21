@@ -277,7 +277,7 @@ export default function DuelView({ vinos = [], slug, colorAcento, onBack, onFunn
             )}
             {campeon.precio_pvp && (
               <p className={styles.resultadoPrecio} style={{ color: colorAcento }}>
-                {Number(campeon.precio_pvp).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                {Number(campeon.precio_pvp).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', useGrouping: true })}
               </p>
             )}
             <button
