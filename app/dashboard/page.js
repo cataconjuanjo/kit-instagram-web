@@ -33,6 +33,7 @@ function decimal(valor) {
 
 function eur(valor, decimales = 0) {
   return `${decimal(valor).toLocaleString('es-ES', {
+    useGrouping: true,
     minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
   })} €`
