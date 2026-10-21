@@ -171,6 +171,32 @@
   background: #fffaf3;
 }
 
+.profitHelpBtnSmall {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  border: 1px solid #d8c898;
+  border-radius: 999px;
+  background: #f8f4ea;
+  color: #74223d;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-cormorant-garamond), Georgia, serif;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.profitHelpBtnSmall:hover {
+  border-color: #bfa984;
+  background: #fffaf3;
+}
+
 .helpBox {
   display: grid;
   grid-template-columns: minmax(190px, 0.65fr) minmax(0, 1.35fr);
@@ -1012,7 +1038,8 @@
 
 .profitQuadrantLabel {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
+  pointer-events: none;
   border: 1px solid #e0d4bc;
   border-radius: 999px;
   background: rgba(255, 250, 243, 0.92);
@@ -6788,9 +6815,9 @@ button.itemCard {
   font-size: 88px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  line-height: 0.9;
+  line-height: 1;
   color: #8a6a2f;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .profitStatsPanelValSmall {
