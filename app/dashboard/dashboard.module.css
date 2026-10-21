@@ -3602,6 +3602,13 @@
   font-size: 14px;
 }
 
+.heroKpiSub {
+  display: block;
+  margin-top: 6px;
+  color: #6b5a56;
+  font-size: 13px;
+}
+
 .heroKpiSecGroup {
   padding-bottom: 6px;
 }
