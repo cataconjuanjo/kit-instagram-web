@@ -14,6 +14,10 @@ import styles from '../module.module.css'
 
 function decimal(val) { return parseFloat(val) || 0 }
 
+function fmtN(val, dec = 2) {
+  return Number(val).toLocaleString('es-ES', { minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: true })
+}
+
 function percentilPos(valor, todos, min = 8, max = 92) {
   if (!todos.length) return (min + max) / 2
   const sorted = [...todos].sort((a, b) => a - b)
@@ -159,6 +163,7 @@ export default function MenuEngineering() {
   const [mappingPage, setMappingPage] = useState(1)
   const [retornoAbierto, setRetornoAbierto] = useState(false)
   const [comoCalculaAbierto, setComoCalculaAbierto] = useState(false)
+  const [helpAbierto, setHelpAbierto] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -321,12 +326,12 @@ export default function MenuEngineering() {
       .filter(v => ['joya', 'revisar'].includes(v.categoria) && decimal(v.valorStockCoste) > 0 && (v.retornoInventario == null || v.retornoInventario < 0.5))
       .sort((a, b) => decimal(b.valorStockCoste) - decimal(a.valorStockCoste))
       .slice(0, 2)
-      .map(v => ({ vino: v, tipo: 'Liberar capital', texto: `Tiene ${decimal(v.valorStockCoste).toFixed(0)} EUR a coste y retorno ${v.retornoInventario == null ? '0.00' : v.retornoInventario.toFixed(2)}x.` })),
+      .map(v => ({ vino: v, tipo: 'Liberar capital', texto: `Tiene ${fmtN(decimal(v.valorStockCoste), 0)} EUR a coste y retorno ${v.retornoInventario == null ? '0,00' : fmtN(v.retornoInventario, 2)}x.` })),
     ...vinosAnalizados
       .filter(v => v.categoria === 'caballo')
       .sort((a, b) => b.ventas - a.ventas)
       .slice(0, 3)
-      .map(v => ({ vino: v, tipo: 'Renegociar margen', texto: `Se vende bien (${v.ventas}) pero deja ${v.margen.toFixed(2)}€ por botella.` })),
+      .map(v => ({ vino: v, tipo: 'Renegociar margen', texto: `Se vende bien (${v.ventas}) pero deja ${fmtN(v.margen, 2)} € por botella.` })),
     ...vinosAnalizados
       .filter(v => v.categoria === 'joya')
       .sort((a, b) => b.margen - a.margen)
@@ -335,8 +340,8 @@ export default function MenuEngineering() {
         vino: v,
         tipo: perfilBodega ? 'Activar joya' : 'Empujar en sala',
         texto: perfilBodega
-          ? `Margen alto (${v.margen.toFixed(2)}€) con poca salida (${v.pctVentas.toFixed(1)}%). Decidir si se defiende, se rota o se libera capital.`
-          : `Margen alto (${v.margen.toFixed(2)}€) con poca salida (${v.pctVentas.toFixed(1)}%).`,
+          ? `Margen alto (${fmtN(v.margen, 2)} €) con poca salida (${fmtN(v.pctVentas, 1)}%). Decidir si se defiende, se rota o se libera capital.`
+          : `Margen alto (${fmtN(v.margen, 2)} €) con poca salida (${fmtN(v.pctVentas, 1)}%).`,
       })),
     ...vinosAnalizados
       .filter(v => v.categoria === 'revisar')
@@ -352,8 +357,8 @@ export default function MenuEngineering() {
     `Fuente prioritaria: ${fuenteOperativa}`,
     `TPV: ${analisisVisible?.ventasTPV || 0} | ${perfilBodega ? 'movimientos no duplicados' : 'Sala no duplicada'}: ${analisisVisible?.ventasSalaKpi || 0}`,
     analisisVisible?.ventasSalaOmitidas ? `${perfilBodega ? 'Movimientos omitidos por TPV' : 'Sala omitida por TPV'}: ${analisisVisible.ventasSalaOmitidas}` : null,
-    `Margen medio: ${analisisVisible?.barreraRentabilidad?.toFixed(2) || '0.00'}€`,
-    `${perfilBodega ? 'Barrera de salida' : 'Barrera popularidad'}: ${analisisVisible?.barreraPopularidad?.toFixed(1) || '0.0'}%`,
+    `Margen medio: ${fmtN(analisisVisible?.barreraRentabilidad ?? 0, 2)} €`,
+    `${perfilBodega ? 'Barrera de salida' : 'Barrera popularidad'}: ${fmtN(analisisVisible?.barreraPopularidad ?? 0, 1)}%`,
     '',
     'Acciones prioritarias:',
     ...(accionesPrioritarias.length
@@ -395,27 +400,43 @@ export default function MenuEngineering() {
         restaurante={restaurante}
         eyebrow={perfilBodega ? 'Mapa sumiller' : undefined}
         title={perfilBodega ? 'Mapa de bodega: estrellas y joyas' : 'Qué vinos te dan dinero'}
-        subtitle={perfilBodega
-          ? 'Cada referencia clasificada por salida real, margen y capital inmovilizado. Decide qué proteger, activar, renegociar o archivar.'
-          : 'Cada vino de tu carta, clasificado por lo que se vende y lo que deja.'}
-        help={{
-          title: perfilBodega ? 'Lectura del sumiller' : 'Cómo funciona',
-          intro: perfilBodega
-            ? 'Cruza coste, PVP, ventas KPI y stock para convertir la bodega en decisiones: proteger, activar, renegociar o liberar capital.'
-            : 'Necesita dos datos por vino: precio de coste (en Bodega) y ventas registradas en Sala. Cuantas más ventas acumuladas, más preciso el análisis.',
-          items: perfilBodega ? [
-            { title: 'Estrella', text: 'Alta salida y margen sano. Proteger stock y continuidad.' },
-            { title: 'Joya oculta', text: 'Rentable pero dormida. Decidir si se activa o libera capital.' },
-            { title: 'Caballo de batalla', text: 'Sale mucho pero deja poco. Renegociar coste, PVP o sustituto.' },
-            { title: 'Revisar', text: 'Poca salida y bajo margen. Archivar, liquidar o justificar por criterio.' },
-          ] : [
-            { title: 'Estrella', text: 'Se vende bien y deja buen margen. Cuídalo y dale visibilidad.' },
-            { title: 'Joya oculta', text: 'Rentable pero poco pedido. Entrenar sala o darle mejor posición en carta.' },
-            { title: 'Caballo de batalla', text: 'Se vende mucho pero con poco margen. Renegociar coste o ajustar PVP.' },
-            { title: 'Revisar', text: 'Poco vendido y poco rentable. Candidato a salir de carta.' },
-          ],
-        }}
+        subtitle={<>
+          {perfilBodega
+            ? 'Cada referencia clasificada por salida real, margen y capital inmovilizado. Decide qué proteger, activar, renegociar o archivar.'
+            : 'Cada vino de tu carta, clasificado por lo que se vende y lo que deja.'}
+          {' '}<button type="button" className={styles.profitHelpBtnSmall} onClick={() => setHelpAbierto(v => !v)} aria-expanded={helpAbierto} aria-label={helpAbierto ? 'Cerrar ayuda' : 'Ayuda'}>i</button>
+        </>}
       >
+        {helpAbierto && (
+          <section className={styles.helpBox}>
+            <div>
+              <p className={styles.eyebrow}>Ayuda</p>
+              <h2>{perfilBodega ? 'Lectura del sumiller' : 'Cómo funciona'}</h2>
+              <p>{perfilBodega
+                ? 'Cruza coste, PVP, ventas KPI y stock para convertir la bodega en decisiones: proteger, activar, renegociar o liberar capital.'
+                : 'Necesita dos datos por vino: precio de coste (en Bodega) y ventas registradas en Sala. Cuantas más ventas acumuladas, más preciso el análisis.'}</p>
+            </div>
+            <div className={styles.helpGrid}>
+              {(perfilBodega ? [
+                { title: 'Estrella', text: 'Alta salida y margen sano. Proteger stock y continuidad.' },
+                { title: 'Joya oculta', text: 'Rentable pero dormida. Decidir si se activa o libera capital.' },
+                { title: 'Caballo de batalla', text: 'Sale mucho pero deja poco. Renegociar coste, PVP o sustituto.' },
+                { title: 'Revisar', text: 'Poca salida y bajo margen. Archivar, liquidar o justificar por criterio.' },
+              ] : [
+                { title: 'Estrella', text: 'Se vende bien y deja buen margen. Cuídalo y dale visibilidad.' },
+                { title: 'Joya oculta', text: 'Rentable pero poco pedido. Entrenar sala o darle mejor posición en carta.' },
+                { title: 'Caballo de batalla', text: 'Se vende mucho pero con poco margen. Renegociar coste o ajustar PVP.' },
+                { title: 'Revisar', text: 'Poco vendido y poco rentable. Candidato a salir de carta.' },
+              ]).map(item => (
+                <article key={item.title}>
+                  <h3>{item.title}</h3>
+                  <p>{item.text}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
         {analisis?.estado === 'sin_coste' && (
           <div className={styles.panel} style={{ borderLeft: '3px solid #d4a636', marginBottom: 16 }}>
             <p style={{ margin: 0, fontSize: 14, color: '#7a5a20' }}>
@@ -469,16 +490,16 @@ export default function MenuEngineering() {
                       const todosMargen = vinosAnalizados.map(v => v.margen)
                       return (
                         <>
-                          <span className={styles.profitThresholdY} style={{ left: `${barrierPos(analisisVisible.barreraPopularidad, todasPct)}%` }} />
-                          <span className={styles.profitThresholdX} style={{ bottom: `${barrierPos(analisisVisible.barreraRentabilidad, todosMargen)}%` }} />
+                          <span className={styles.profitThresholdY} style={{ left: `${barrierPos(analisisVisible.barreraPopularidad, todasPct, 12, 88)}%` }} />
+                          <span className={styles.profitThresholdX} style={{ bottom: `${barrierPos(analisisVisible.barreraRentabilidad, todosMargen, 16, 84)}%` }} />
                           <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantTopRight}`}>Estrella</span>
                           <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantTopLeft}`}>Joya</span>
                           <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantBottomRight}`}>Renegociar</span>
                           <span className={`${styles.profitQuadrantLabel} ${styles.profitQuadrantBottomLeft}`}>Revisar</span>
                           {vinosAnalizados.map(vino => {
                             const cat = CATEGORIAS.find(c => c.id === vino.categoria)
-                            const left = percentilPos(vino.pctVentas, todasPct)
-                            const bottom = percentilPos(vino.margen, todosMargen)
+                            const left = percentilPos(vino.pctVentas, todasPct, 12, 88)
+                            const bottom = percentilPos(vino.margen, todosMargen, 16, 84)
                             return (
                               <button
                                 key={vino.id}
@@ -486,7 +507,7 @@ export default function MenuEngineering() {
                                 className={`${styles.profitPoint} ${categoriaActiva !== 'todas' && categoriaActiva !== vino.categoria ? styles.profitPointMuted : ''}`}
                                 style={{ left: `${left}%`, bottom: `${bottom}%`, borderColor: cat?.borde, background: cat?.color }}
                                 onClick={() => setCategoriaActiva(vino.categoria)}
-                                aria-label={`${vino.nombre}. ${cat?.label}. Margen ${vino.margen.toFixed(2)} euros, ${perfilBodega ? 'salida' : 'popularidad'} ${vino.pctVentas.toFixed(1)} por ciento`}
+                                aria-label={`${vino.nombre}. ${cat?.label}. Margen ${fmtN(vino.margen, 2)} euros, ${perfilBodega ? 'salida' : 'popularidad'} ${fmtN(vino.pctVentas, 1)} por ciento`}
                                 title={`${vino.nombre} · ${cat?.label}`}
                               />
                             )
@@ -506,11 +527,11 @@ export default function MenuEngineering() {
                   <p className={styles.profitStatsPanelSublabel}>Alta salida y alto margen</p>
                 </div>
                 <div className={styles.profitStatsPanelItem}>
-                  <p className={styles.profitStatsPanelValSmall}>{analisisVisible.barreraRentabilidad.toFixed(2)}€</p>
+                  <p className={styles.profitStatsPanelValSmall}>{fmtN(analisisVisible.barreraRentabilidad, 2)} €</p>
                   <p className={styles.profitStatsPanelLabel}>Margen medio</p>
                 </div>
                 <div className={styles.profitStatsPanelItem}>
-                  <p className={styles.profitStatsPanelValSmall}>{retornoInventarioGlobal == null ? '—' : `${retornoInventarioGlobal.toFixed(2)}x`}</p>
+                  <p className={styles.profitStatsPanelValSmall}>{retornoInventarioGlobal == null ? '—' : `${fmtN(retornoInventarioGlobal, 2)}x`}</p>
                   <p className={styles.profitStatsPanelLabel}>Ventas por € en bodega</p>
                 </div>
                 <div className={styles.profitStatsPanelActions}>
@@ -578,7 +599,7 @@ export default function MenuEngineering() {
                             <span style={{ borderColor: '#af8b52', color: '#8a6a2f' }}>E</span>
                             <div>
                               <h3>{v.nombre}</h3>
-                              <p>{v.bodega ? `${v.bodega} · ` : ''}{v.ventas} {v.ventas === 1 ? 'venta' : 'ventas'} · +{v.margen.toFixed(2)}€/bot.</p>
+                              <p>{v.bodega ? `${v.bodega} · ` : ''}{v.ventas} {v.ventas === 1 ? 'venta' : 'ventas'} · +{fmtN(v.margen, 2)} €/bot.</p>
                             </div>
                           </article>
                         ))}
@@ -897,10 +918,10 @@ export default function MenuEngineering() {
                             </div>
                             <div style={{ textAlign: 'right', flexShrink: 0 }}>
                               <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: cat.color }}>
-                                +{v.margen.toFixed(2)}€
+                                +{fmtN(v.margen, 2)} €
                               </p>
                               <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--cv-text-muted, #8b8278)' }}>
-                                {v.ventas} {v.ventas === 1 ? 'venta' : 'ventas'} · {v.pctVentas.toFixed(1)}%
+                                {v.ventas} {v.ventas === 1 ? 'venta' : 'ventas'} · {fmtN(v.pctVentas, 1)}%
                               </p>
                             </div>
                           </div>
@@ -941,7 +962,7 @@ export default function MenuEngineering() {
                   </p>
                   <div className={styles.statsGrid}>
                     <div className={styles.stat}>
-                      <p className={styles.statValue}>{retornoInventarioGlobal == null ? '-' : `${retornoInventarioGlobal.toFixed(2)}x`}</p>
+                      <p className={styles.statValue}>{retornoInventarioGlobal == null ? '-' : `${fmtN(retornoInventarioGlobal, 2)}x`}</p>
                       <p className={styles.statLabel}>Ventas por euro en bodega</p>
                     </div>
                     <div className={styles.stat}>
@@ -986,11 +1007,11 @@ export default function MenuEngineering() {
                       </div>
                     )}
                     <div className={styles.stat}>
-                      <p className={styles.statValue}>{analisisVisible.barreraRentabilidad.toFixed(2)}€</p>
+                      <p className={styles.statValue}>{fmtN(analisisVisible.barreraRentabilidad, 2)} €</p>
                       <p className={styles.statLabel}>Barrera margen</p>
                     </div>
                     <div className={styles.stat}>
-                      <p className={styles.statValue}>{analisisVisible.barreraPopularidad.toFixed(1)}%</p>
+                      <p className={styles.statValue}>{fmtN(analisisVisible.barreraPopularidad, 1)}%</p>
                       <p className={styles.statLabel}>Barrera popularidad</p>
                     </div>
                     {analisisVisible.vinosSinCoste > 0 && (
