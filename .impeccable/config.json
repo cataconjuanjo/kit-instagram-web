@@ -193,55 +193,6 @@
         "value": "#231e20",
         "createdAt": "2026-10-13T18:52:25.929Z",
         "reason": "Dark surface, used throughout dashboard"
-      },
-      {
-        "rule": "design-system-color",
-        "value": "#af8b52",
-        "createdAt": "2026-10-20T00:00:00.000Z",
-        "reason": "Brief: color cuadrante Estrella"
-      },
-      {
-        "rule": "design-system-color",
-        "value": "#4f8a62",
-        "createdAt": "2026-10-20T00:00:00.000Z",
-        "reason": "Brief: color cuadrante Joya"
-      },
-      {
-        "rule": "design-system-color",
-        "value": "#5b86b5",
-        "createdAt": "2026-10-20T00:00:00.000Z",
-        "reason": "Brief: color cuadrante Caballo"
-      },
-      {
-        "rule": "design-system-color",
-        "value": "#b4564a",
-        "createdAt": "2026-10-20T00:00:00.000Z",
-        "reason": "Brief: color cuadrante Revisar"
-      },
-      {
-        "rule": "design-system-color",
-        "value": "#888",
-        "createdAt": "2026-10-20T00:00:00.000Z",
-        "reason": "Pre-existing inline muted text in category lists"
-      },
-      {
-        "rule": "design-system-color",
-        "value": "#aaa",
-        "createdAt": "2026-10-20T00:00:00.000Z",
-        "reason": "Pre-existing inline placeholder text in category lists"
-      },
-      {
-        "rule": "design-system-color",
-        "value": "#555",
-        "createdAt": "2026-10-20T00:00:00.000Z",
-        "reason": "Pre-existing inline secondary text in category action lists"
-      },
-      {
-        "rule": "design-system-color",
-        "value": "*",
-        "files": ["app/dashboard/module.module.css"],
-        "createdAt": "2026-10-20T00:00:00.000Z",
-        "reason": "module.module.css es el sistema CSS del dashboard completo (6000+ líneas, 195 colores pre-existentes intencionales). Fichero fuera de scope del detector de colores."
       }
     ]
   }
