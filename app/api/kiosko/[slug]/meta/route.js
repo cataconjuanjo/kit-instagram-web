@@ -14,6 +14,8 @@ const OPTIONAL_COLS = 'kiosko_icon_style, kiosko_orders_enabled, cesta_activa, s
 const OPTIONAL_COLS_V2 = 'escaparate_timeout_segundos'
 // Columnas de destacados automáticos — requieren supabase/auto_featured.sql
 const OPTIONAL_COLS_AF = 'auto_featured_enabled, auto_featured_n, auto_featured_max_tipo'
+// Columnas de control de agotados — requieren supabase/ocultar_agotados.sql
+const OPTIONAL_COLS_V3 = 'ocultar_agotados'
 
 async function getOptionalCols(slug) {
   const { data } = await supabaseAdmin
@@ -34,7 +36,14 @@ async function getOptionalCols(slug) {
     .eq('slug', slug)
     .single()
 
-  return { ...base, ...(v2 || {}) }
+  // Si la migración ocultar_agotados.sql no está aplicada aún, devuelve {}.
+  const { data: v3 } = await supabaseAdmin
+    .from('tiendas')
+    .select(OPTIONAL_COLS_V3)
+    .eq('slug', slug)
+    .single()
+
+  return { ...base, ...(v2 || {}), ...(v3 || {}) }
 }
 
 // Si la migración auto_featured.sql no está aplicada, devuelve {} sin error.

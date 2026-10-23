@@ -920,7 +920,8 @@ function WineCardPlaceholder({ tipo, catGourmet }) {
   )
 }
 
-function WineCard({ vino, onClick }) {
+function WineCard({ vino, onClick, ocultarAgotados = true }) {
+  const sinStock = !ocultarAgotados && Number(vino.stock) <= 0
   return (
     <button className={styles.wineCard} onClick={() => onClick(vino)} type="button">
       <div className={styles.cardImg}>
@@ -932,6 +933,7 @@ function WineCard({ vino, onClick }) {
           fallback={<WineCardPlaceholder tipo={vino.tipo} catGourmet={vino.cat_gourmet} />}
         />
         {vino.destacado && <span className={styles.cardDestacado}>★ Destacado</span>}
+        {sinStock && <span className={styles.cardAgotado}>Consultar disponibilidad</span>}
       </div>
       <div className={styles.cardBody}>
         <div className={styles.cardTop}>
@@ -2752,7 +2754,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
 
 // ── Vista Browse ──────────────────────────────────────────────────────────────
 
-function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es' }) {
+function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es', tienda }) {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroPais, setFiltroPais] = useState('')
@@ -2886,7 +2888,7 @@ function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es
       <div className={styles.browseResults}>
         {vinosFiltrados.length === 0
           ? <div className={styles.noResults}><p>{T[lang].sinResultados}</p><button onClick={limpiar} style={{ color: colorAcento }} type="button">{T[lang].limpiarFiltros}</button></div>
-          : <div className={styles.wineGrid}>{vinosFiltrados.map(v => <WineCard key={v.id} vino={v} onClick={onWineSelect} />)}</div>
+          : <div className={styles.wineGrid}>{vinosFiltrados.map(v => <WineCard key={v.id} vino={v} onClick={onWineSelect} ocultarAgotados={tienda?.ocultar_agotados !== false} />)}</div>
         }
       </div>
     </div>
@@ -3672,7 +3674,7 @@ export default function KioskoPage() {
       {/* EXPLORAR */}
       {view === VIEWS.BROWSE && (
         <BrowseView slug={slug} vinos={vinos} colorAcento={colorAcento}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} />
+          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} />
       )}
 
       {/* MARIDAJE */}

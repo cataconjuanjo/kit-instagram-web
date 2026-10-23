@@ -6,7 +6,7 @@ import { planTieneCapacidad } from '../../../../_lib/autoFeatured'
 const PERMITIDOS = new Set([
   'nombre', 'ciudad', 'descripcion',
   'logo_url', 'color_primario', 'color_acento', 'font_family', 'kiosko_icon_style', 'kiosko_orders_enabled', 'banner_url',
-  'informe_email', 'cesta_activa', 'square_location_id', 'escaparate_timeout_segundos',
+  'informe_email', 'cesta_activa', 'ocultar_agotados', 'square_location_id', 'escaparate_timeout_segundos',
   'auto_featured_enabled', 'auto_featured_n', 'auto_featured_max_tipo',
 ])
 
@@ -16,6 +16,7 @@ const OPTIONAL_MIGRATIONS = {
   kiosko_icon_style: 'supabase/kiosko_icon_style.sql',
   kiosko_orders_enabled: 'supabase/kiosko_assisted_orders.sql',
   cesta_activa: 'supabase/cesta_activa.sql',
+  ocultar_agotados: 'supabase/ocultar_agotados.sql',
   square_access_token: 'supabase/square_access_token.sql',
   square_location_id: 'supabase/square_location_id.sql',
   escaparate_timeout_segundos: 'supabase/escaparate_timeout.sql',
@@ -77,6 +78,10 @@ export async function PATCH(request, { params }) {
     }
     if (k === 'cesta_activa') {
       updates[k] = v === true
+      continue
+    }
+    if (k === 'ocultar_agotados') {
+      updates[k] = v !== false
       continue
     }
     if (k === 'escaparate_timeout_segundos') {
