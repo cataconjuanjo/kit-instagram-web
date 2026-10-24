@@ -2,7 +2,8 @@ import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
 async function bridgeLibroCompras({ restauranteId, cabecera, cabeceraId, lineas }) {
-  // Solo para plan sumiller. Upsert idempotente: comprueba cabecera_compra_id antes de añadir.
+  // Solo para plan sumiller. Bridge atómico via RPC para evitar race condition.
+  // importe = suma de importe_neto (base imponible neta: post-descuento, pre-IVA)
   const { data: rest } = await supabaseAdmin
     .from('restaurantes')
     .select('plan')
@@ -11,39 +12,23 @@ async function bridgeLibroCompras({ restauranteId, cabecera, cabeceraId, lineas 
   if (rest?.plan !== 'sumiller') return
 
   const periodo = cabecera.fecha.slice(0, 7) // 'YYYY-MM'
-  const importe = (lineas || []).reduce((s, l) => s + (Number(l.importe_neto) || 0), 0)
+  const importe = Math.round(
+    (lineas || []).reduce((s, l) => s + (Number(l.importe_neto) || 0), 0) * 100
+  ) / 100
 
-  const { data: existing } = await supabaseAdmin
-    .from('libro_compras')
-    .select('id, facturas')
-    .eq('restaurante_id', restauranteId)
-    .eq('periodo', periodo)
-    .eq('proveedor', cabecera.proveedor)
-    .maybeSingle()
-
-  const nuevaEntrada = {
+  const entrada = {
     fecha:              cabecera.fecha,
-    importe:            Math.round(importe * 100) / 100,
-    albaran:            cabecera.numero_documento || undefined,
+    importe,
     cabecera_compra_id: cabeceraId,
+    ...(cabecera.numero_documento ? { albaran: cabecera.numero_documento } : {}),
   }
 
-  if (existing) {
-    // Idempotencia: no añadir si ya existe la misma cabecera_compra_id
-    const yaExiste = (existing.facturas || []).some(f => f.cabecera_compra_id === cabeceraId)
-    if (yaExiste) return
-    await supabaseAdmin
-      .from('libro_compras')
-      .update({ facturas: [...(existing.facturas || []), nuevaEntrada] })
-      .eq('id', existing.id)
-  } else {
-    await supabaseAdmin.from('libro_compras').insert({
-      restaurante_id: restauranteId,
-      periodo,
-      proveedor: cabecera.proveedor,
-      facturas:  [nuevaEntrada],
-    })
-  }
+  await supabaseAdmin.rpc('upsert_libro_compras_factura', {
+    p_restaurante_id: restauranteId,
+    p_periodo:        periodo,
+    p_proveedor:      cabecera.proveedor,
+    p_entrada:        entrada,
+  })
 }
 
 function str(v, max = 500) {

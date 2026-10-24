@@ -2,7 +2,7 @@ import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
 const BUCKET = 'facturas-bodega'
-const MAX_BYTES = 5 * 1024 * 1024
+const MAX_BYTES = 10 * 1024 * 1024
 const ALLOWED_MIME = new Set(['application/pdf', 'image/png', 'image/jpeg'])
 
 // GET ?cabecera_compra_id=xxx&restaurante_id=xxx
@@ -54,7 +54,7 @@ export async function POST(req) {
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
 
     if (Number(tamano_bytes) > MAX_BYTES) {
-      return Response.json({ error: 'El archivo supera el límite de 5 MB.' }, { status: 400 })
+      return Response.json({ error: 'El archivo supera el límite de 10 MB.' }, { status: 400 })
     }
     if (!ALLOWED_MIME.has(mime_type)) {
       return Response.json({ error: 'Solo se permiten archivos PDF, PNG o JPG.' }, { status: 400 })

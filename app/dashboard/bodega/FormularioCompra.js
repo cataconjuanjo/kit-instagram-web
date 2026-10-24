@@ -67,7 +67,7 @@ function AdjuntosFactura({ restauranteId, cabeceraId }) {
   async function handleFileChange(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 5 * 1024 * 1024) { setErrorMsg('Tamaño máximo: 5 MB'); return }
+    if (file.size > 10 * 1024 * 1024) { setErrorMsg('Tamaño máximo: 10 MB'); return }
     if (!['application/pdf', 'image/png', 'image/jpeg'].includes(file.type)) {
       setErrorMsg('Solo PDF, PNG o JPG'); return
     }

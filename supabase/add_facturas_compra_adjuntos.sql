@@ -50,13 +50,13 @@ DO $$ BEGIN
 END $$;
 
 -- Storage bucket --------------------------------------------------------------
--- El bucket es privado (public=false). file_size_limit=5MB.
+-- El bucket es privado (public=false). file_size_limit=10MB.
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
   'facturas-bodega',
   'facturas-bodega',
   false,
-  5242880,
+  10485760,
   ARRAY['application/pdf', 'image/png', 'image/jpeg']
 )
 ON CONFLICT (id) DO NOTHING;
