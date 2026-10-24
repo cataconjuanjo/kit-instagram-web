@@ -328,6 +328,18 @@ async function handleInventoryUpdate(event, eventId) {
         continue
       }
 
+      // Si la tienda no ha activado square_tracks_inventory, los eventos
+      // inventory.count.updated no deben modificar el stock (la RPC decrementa
+      // por pago). Registramos como skipped para que el log sea trazable sin
+      // que el webhook cause efectos colaterales si se activa la suscripción
+      // antes de activar la bandera.
+      if (!tienda.squareTracksInventory) {
+        for (const [catalogId, { quantity }] of group.counts) {
+          lineas.push({ catalog_object_id: catalogId, quantity, tienda_slug: tienda.slug, status: 'skipped', reason: 'tracks_inventory_disabled' })
+        }
+        continue
+      }
+
       const catalogIds = [...group.counts.keys()]
       const vinosBySquareId = await selectVinosBySquareIds(tienda.id, catalogIds, catalogIds)
       const now = new Date().toISOString()

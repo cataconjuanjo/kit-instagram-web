@@ -174,3 +174,6 @@ DROP FUNCTION IF EXISTS apply_payment_lines(uuid, text, jsonb, boolean);
 
 -- Permisos sobre la nueva firma
 REVOKE ALL ON FUNCTION apply_payment_lines(uuid, text, jsonb, boolean, boolean) FROM PUBLIC;
+
+-- Notificar a PostgREST para que recargue el esquema inmediatamente.
+NOTIFY pgrst, 'reload schema';
