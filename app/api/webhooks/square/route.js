@@ -386,6 +386,8 @@ async function handleInventoryUpdate(event, eventId) {
           lineas.push({
             catalog_object_id: catalogId, quantity: nuevoStock, tienda_slug: tienda.slug,
             vino_id: vino.id, status: 'error',
+            error_detail: error.message || null,
+            error_code:   error.code   || null,
           })
         } else if (rowsAffected === 0) {
           // Evento obsoleto descartado por el filtro de calculated_at
