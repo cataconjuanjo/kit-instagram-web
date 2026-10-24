@@ -72,13 +72,52 @@ export async function POST(req) {
 
     const snapshot = await calcularMesBodega({ restaurante_id, mes, supabase: supabaseAdmin })
 
+    // Si plan sumiller: adjuntar snapshot de stock por vino para backfill futuro
+    const { data: rest } = await supabaseAdmin
+      .from('restaurantes')
+      .select('plan')
+      .eq('id', restaurante_id)
+      .single()
+
+    let snapshotFinal = snapshot
+    if (rest?.plan === 'sumiller') {
+      const { data: vinos } = await supabaseAdmin
+        .from('vinos')
+        .select('id, stock, coste_medio_pmp, coste_compra')
+        .eq('restaurante_id', restaurante_id)
+        .gt('stock', 0)
+      snapshotFinal = {
+        ...snapshot,
+        vinos_stock: (vinos || []).map(v => ({
+          vino_id:    v.id,
+          stock_uds:  Math.max(0, Math.floor(Number(v.stock) || 0)),
+          coste_medio: Number(v.coste_medio_pmp) || Number(v.coste_compra) || 0,
+        })),
+      }
+    }
+
     const { data: cierre, error } = await supabaseAdmin
       .from('cierres_mensuales_bodega')
-      .insert({ restaurante_id, mes, snapshot })
+      .insert({ restaurante_id, mes, snapshot: snapshotFinal })
       .select()
       .single()
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
+
+    // Insertar filas en stock_mensual_bodega (solo sumiller)
+    if (rest?.plan === 'sumiller' && snapshotFinal.vinos_stock?.length > 0) {
+      const filas = snapshotFinal.vinos_stock.map(v => ({
+        restaurante_id,
+        mes,
+        vino_id:    v.vino_id,
+        stock_uds:  v.stock_uds,
+        coste_medio: v.coste_medio,
+      }))
+      await supabaseAdmin
+        .from('stock_mensual_bodega')
+        .upsert(filas, { onConflict: 'restaurante_id,mes,vino_id', ignoreDuplicates: true })
+    }
+
     return Response.json({ cierre }, { status: 201 })
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 })
