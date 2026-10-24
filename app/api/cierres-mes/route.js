@@ -1,6 +1,7 @@
 import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { calcularMesBodega } from '../../lib/agregarPeriodoBodega'
+import { historicoPayloadDesdeCierre } from '../../lib/sommCierre'
 
 function texto(v, max = 200) { return String(v || '').trim().slice(0, max) }
 
@@ -116,6 +117,25 @@ export async function POST(req) {
       await supabaseAdmin
         .from('stock_mensual_bodega')
         .upsert(filas, { onConflict: 'restaurante_id,mes,vino_id', ignoreDuplicates: true })
+    }
+
+    // Upsert historico_mensual con origen='auto' (no sobreescribe filas con origen='manual')
+    if (rest?.plan === 'sumiller') {
+      const [anioStr, mesStr] = mes.split('-')
+      const { data: existente } = await supabaseAdmin
+        .from('historico_mensual')
+        .select('origen')
+        .eq('restaurante_id', restaurante_id)
+        .eq('anio', parseInt(anioStr, 10))
+        .eq('mes', parseInt(mesStr, 10))
+        .maybeSingle()
+
+      if (!existente || existente.origen !== 'manual') {
+        const payload = historicoPayloadDesdeCierre({ restaurante_id, mes, snapshot: snapshotFinal })
+        await supabaseAdmin
+          .from('historico_mensual')
+          .upsert(payload, { onConflict: 'restaurante_id,anio,mes' })
+      }
     }
 
     return Response.json({ cierre }, { status: 201 })

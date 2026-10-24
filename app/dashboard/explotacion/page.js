@@ -7,6 +7,7 @@ import { supabase } from '../../supabase'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 import { redondear } from '../../lib/wineEconomics'
+import { esPerfilSomm } from '../../lib/plans'
 import {
   calcularTotalPersonal,
   calcularTotalGastos,
@@ -447,6 +448,7 @@ export default function ExplotacionPage() {
   })
   const [historico, setHistorico] = useState([])
   const [datosVino, setDatosVino] = useState(null)
+  const [cierreExiste, setCierreExiste] = useState(null) // null=cargando, true/false
 
   useEffect(() => {
     async function cargar() {
@@ -528,6 +530,7 @@ export default function ExplotacionPage() {
         .eq('mes', periodo)
         .maybeSingle()
       setDatosVino(cierre?.snapshot || null)
+      setCierreExiste(!!cierre)
     }
     cargarPeriodo()
   }, [restaurante, periodo])
@@ -590,7 +593,7 @@ export default function ExplotacionPage() {
 
     await supabase.from('parametros_explotacion').upsert(payload, { onConflict: 'restaurante_id,periodo' })
 
-    // Actualizar histórico mensual
+    // Actualizar histórico mensual — siempre con origen='manual'
     const [anioStr, mesStr] = periodo.split('-')
     await supabase.from('historico_mensual').upsert({
       restaurante_id: restaurante.id,
@@ -599,6 +602,7 @@ export default function ExplotacionPage() {
       ingresos: num(facturacion),
       consumo_mp: num(consumoMp),
       gastos_fijos: totales.totalPersonal + totales.totalGastos + totales.totalAlquiler + totales.totalBancarios,
+      origen: 'manual',
     }, { onConflict: 'restaurante_id,anio,mes' })
 
     // Refrescar histórico
@@ -633,7 +637,12 @@ export default function ExplotacionPage() {
             <button type="button" className={styles.primary} onClick={guardar} disabled={guardando}>
               {guardando ? 'Guardando…' : 'Guardar periodo'}
             </button>
-            <a
+            {esPerfilSomm(restaurante) && cierreExiste === false && (
+              <span style={{ fontSize: 12, color: '#F59E0B', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '5px 10px' }}>
+                Sin cierre de mes — los datos se guardan como entrada manual
+              </span>
+            )}
+            <
               href={restaurante ? `/api/somm/informe-mensual?restaurante_id=${restaurante.id}&periodo=${periodo}` : '#'}
               download
               style={{

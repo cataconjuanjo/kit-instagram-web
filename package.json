@@ -28,7 +28,8 @@
     "demo:purge": "node scripts/purge-eci-demo.js",
     "test:partes": "node scripts/test-partes-routes.mjs",
     "test:partes-cerrar": "node scripts/test-partes-cerrar.mjs",
-    "test:agregar-periodo": "node --test scripts/test-agregar-periodo-bodega.mjs"
+    "test:agregar-periodo": "node --test scripts/test-agregar-periodo-bodega.mjs",
+    "test:somm-cierre": "node --test scripts/test-somm-cierre.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",
