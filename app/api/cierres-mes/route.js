@@ -2,6 +2,7 @@ import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { calcularMesBodega } from '../../lib/agregarPeriodoBodega'
 import { historicoPayloadDesdeCierre } from '../../lib/sommCierre'
+import { compararHistoricoConflicto } from '../../lib/compararHistoricoConflicto'
 
 function texto(v, max = 200) { return String(v || '').trim().slice(0, max) }
 
@@ -190,23 +191,8 @@ export async function POST(req) {
       }
 
       // Manual row exists — compute per-field diff
-      const CAMPOS_DIFF = ['ingresos', 'consumo_mp', 'gastos_fijos']
-      const conflicto = {}
-      for (const c of CAMPOS_DIFF) {
-        const auto   = payload[c] ?? 0
-        const manual = Number(filaExistente[c]) ?? 0
-        if (Math.abs(auto - manual) > 0.01) {
-          conflicto[c] = { auto, manual }
-        }
-      }
-      // stock_final_valor vs valor_stock_bodega (legacy col name)
-      const autoStock   = payload.stock_final_valor ?? 0
-      const manualStock = Number(filaExistente.valor_stock_bodega) ?? 0
-      if (Math.abs(autoStock - manualStock) > 0.01) {
-        conflicto.stock_final_valor = { auto: autoStock, manual: manualStock }
-      }
-
-      if (Object.keys(conflicto).length > 0) {
+      const conflicto = compararHistoricoConflicto(payload, filaExistente)
+      if (conflicto) {
         return Response.json({ cierre, conflicto }, { status: 201 })
       }
       return Response.json({ cierre }, { status: 201 })

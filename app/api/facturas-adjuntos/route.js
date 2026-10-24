@@ -5,6 +5,18 @@ const BUCKET = 'facturas-bodega'
 const MAX_BYTES = 10 * 1024 * 1024
 const ALLOWED_MIME = new Set(['application/pdf', 'image/png', 'image/jpeg'])
 
+async function requireSumiller(restauranteId) {
+  const { data: rest } = await supabaseAdmin
+    .from('restaurantes')
+    .select('plan')
+    .eq('id', restauranteId)
+    .single()
+  if (rest?.plan !== 'sumiller') {
+    return { error: 'Solo disponible para plan sumiller.', status: 403 }
+  }
+  return null
+}
+
 // GET ?cabecera_compra_id=xxx&restaurante_id=xxx
 export async function GET(req) {
   try {
@@ -17,6 +29,9 @@ export async function GET(req) {
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+
+    const plan = await requireSumiller(restauranteId)
+    if (plan) return Response.json({ error: plan.error }, { status: plan.status })
 
     const { data, error } = await supabaseAdmin
       .from('facturas_compra_adjuntos')
@@ -52,6 +67,9 @@ export async function POST(req) {
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restaurante_id)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+
+    const plan = await requireSumiller(restaurante_id)
+    if (plan) return Response.json({ error: plan.error }, { status: plan.status })
 
     if (Number(tamano_bytes) > MAX_BYTES) {
       return Response.json({ error: 'El archivo supera el límite de 10 MB.' }, { status: 400 })
@@ -108,6 +126,9 @@ export async function DELETE(req) {
 
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restauranteId)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
+
+    const plan = await requireSumiller(restauranteId)
+    if (plan) return Response.json({ error: plan.error }, { status: plan.status })
 
     const { data: adj, error: fetchErr } = await supabaseAdmin
       .from('facturas_compra_adjuntos')

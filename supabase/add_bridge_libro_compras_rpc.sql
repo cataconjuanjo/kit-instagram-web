@@ -11,7 +11,7 @@ CREATE OR REPLACE FUNCTION public.upsert_libro_compras_factura(
 )
 RETURNS void
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
@@ -31,6 +31,6 @@ $$;
 REVOKE ALL ON FUNCTION public.upsert_libro_compras_factura(uuid, text, text, jsonb)
   FROM public, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.upsert_libro_compras_factura(uuid, text, text, jsonb)
-  TO service_role, authenticated;
+  TO service_role;
 
 NOTIFY pgrst, 'reload schema';
