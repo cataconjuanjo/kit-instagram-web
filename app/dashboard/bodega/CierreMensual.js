@@ -303,6 +303,7 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   const [error, setError] = useState(null)
   const [cerrando, setCerrando] = useState(false)
   const [reabriendo, setReabriendo] = useState(false)
+  const [conflicto, setConflicto] = useState(null)
   const [nuevoConcepto, setNuevoConcepto] = useState('')
   const [nuevoImporte, setNuevoImporte] = useState('')
   const [guardandoGasto, setGuardandoGasto] = useState(false)
@@ -345,6 +346,7 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   async function cerrarMes() {
     setCerrando(true)
     setError(null)
+    setConflicto(null)
     try {
       const res = await authedFetch('/api/cierres-mes', {
         method: 'POST',
@@ -352,11 +354,27 @@ export default function CierreMensual({ restauranteId, restaurante }) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Error al cerrar')
+      if (json.conflicto) setConflicto(json.conflicto)
       await cargar()
     } catch (e) {
       setError(e.message)
     } finally {
       setCerrando(false)
+    }
+  }
+
+  async function usarValoresCierre() {
+    setError(null)
+    try {
+      const res = await authedFetch('/api/cierres-mes', {
+        method: 'PATCH',
+        body: JSON.stringify({ restaurante_id: restauranteId, mes }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Error al actualizar')
+      setConflicto(null)
+    } catch (e) {
+      setError(e.message)
     }
   }
 
@@ -687,6 +705,42 @@ export default function CierreMensual({ restauranteId, restaurante }) {
           <p style={{ marginTop: 12, fontSize: 12, opacity: 0.35 }}>
             {datos.partes_incluidos} parte(s) · {datos.desde} → {datos.hasta}
           </p>
+
+          {conflicto && (
+            <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(245,158,11,0.08)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.25)' }}>
+              <p style={{ color: '#F59E0B', fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
+                Hay datos manuales en Explotación que difieren del cierre
+              </p>
+              <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', opacity: 0.6, paddingBottom: 4, fontWeight: 500 }}>Campo</th>
+                    <th style={{ textAlign: 'right', opacity: 0.6, paddingBottom: 4, fontWeight: 500 }}>Manual</th>
+                    <th style={{ textAlign: 'right', opacity: 0.6, paddingBottom: 4, fontWeight: 500 }}>Cierre</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(conflicto).map(([campo, vals]) => (
+                    <tr key={campo}>
+                      <td style={{ padding: '2px 0', opacity: 0.85 }}>
+                        {{ ingresos: 'Ingresos netos', consumo_mp: 'Consumo MP', gastos_fijos: 'Gastos fijos', stock_final_valor: 'Stock final' }[campo] || campo}
+                      </td>
+                      <td style={{ textAlign: 'right', padding: '2px 0', opacity: 0.7 }}>{eur(vals.manual)}</td>
+                      <td style={{ textAlign: 'right', padding: '2px 0', color: '#F59E0B' }}>{eur(vals.auto)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button className={styles.secondary} onClick={usarValoresCierre} style={{ fontSize: 13 }}>
+                  Usar valores del cierre
+                </button>
+                <button className={styles.ghost} onClick={() => setConflicto(null)} style={{ fontSize: 13 }}>
+                  Mantener manual
+                </button>
+              </div>
+            </div>
+          )}
 
           {!cerrado && (
             <div style={{ marginTop: 20 }}>

@@ -33,6 +33,15 @@ const DEMO_EMAIL = 'sumiller.demo@cartaviva.local'
 const DEMO_SLUG = 'sumiller-demo-bodega'
 const DEMO_PASSWORD = 'SumillerDemo24!'
 
+// ── Denylist de restaurantes de producción ────────────────────────────────────
+const UUID_DENYLIST = new Set([
+  'db3af496-00f1-4295-82b6-35427b9b6286', // Lo de Carmen
+  '7af94e33-48cd-43b8-b939-4796ba58e4d8', // Araboka
+  'a4346301-4dc5-4cb5-a2f5-3ca6469acd66', // La Taberna del Puerto
+  '6b528438-3d24-432d-9728-dc2ff868baf6', // Modo Sumiller
+])
+const NAME_DENYLIST = ['lo de carmen', 'araboka', 'la taberna', 'modo sumiller']
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -321,6 +330,24 @@ async function main() {
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
+
+  // Verificar que el restaurante objetivo no es producción antes de cualquier escritura
+  const { data: targetCheck } = await supabase
+    .from('restaurantes')
+    .select('id, nombre')
+    .or(`slug.eq.${DEMO_SLUG},email.eq.${DEMO_EMAIL}`)
+    .maybeSingle()
+  if (targetCheck) {
+    if (UUID_DENYLIST.has(targetCheck.id)) {
+      console.error(`ERROR: el restaurante encontrado (${targetCheck.id}) está en la denylist de UUIDs de producción. Abortando.`)
+      process.exit(1)
+    }
+    const nombre = (targetCheck.nombre || '').toLowerCase()
+    if (NAME_DENYLIST.some(n => nombre.includes(n))) {
+      console.error(`ERROR: el restaurante encontrado ("${targetCheck.nombre}") coincide con la denylist de nombres. Abortando.`)
+      process.exit(1)
+    }
+  }
 
   for (const provider of proveedores) {
     await ensureProvider(supabase, provider)

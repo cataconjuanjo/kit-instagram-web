@@ -7,6 +7,7 @@ import { supabase } from '../../supabase'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 import { redondear } from '../../lib/wineEconomics'
+import { esPerfilSomm } from '../../lib/plans'
 import {
   calcularTotalPersonal,
   calcularTotalGastos,
@@ -447,6 +448,8 @@ export default function ExplotacionPage() {
   })
   const [historico, setHistorico] = useState([])
   const [datosVino, setDatosVino] = useState(null)
+  const [cierreExiste, setCierreExiste] = useState(null) // null=cargando, true/false
+  const [aplicandoCierre, setAplicandoCierre] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -528,6 +531,7 @@ export default function ExplotacionPage() {
         .eq('mes', periodo)
         .maybeSingle()
       setDatosVino(cierre?.snapshot || null)
+      setCierreExiste(!!cierre)
     }
     cargarPeriodo()
   }, [restaurante, periodo])
@@ -590,7 +594,7 @@ export default function ExplotacionPage() {
 
     await supabase.from('parametros_explotacion').upsert(payload, { onConflict: 'restaurante_id,periodo' })
 
-    // Actualizar histórico mensual
+    // Actualizar histórico mensual — siempre con origen='manual'
     const [anioStr, mesStr] = periodo.split('-')
     await supabase.from('historico_mensual').upsert({
       restaurante_id: restaurante.id,
@@ -599,6 +603,7 @@ export default function ExplotacionPage() {
       ingresos: num(facturacion),
       consumo_mp: num(consumoMp),
       gastos_fijos: totales.totalPersonal + totales.totalGastos + totales.totalAlquiler + totales.totalBancarios,
+      origen: 'manual',
     }, { onConflict: 'restaurante_id,anio,mes' })
 
     // Refrescar histórico
@@ -614,6 +619,23 @@ export default function ExplotacionPage() {
     setGuardando(false)
     setGuardado(true)
     setTimeout(() => setGuardado(false), 2000)
+  }
+
+  async function usarValoresCierreExplotacion() {
+    if (!restaurante || !datosVino) return
+    setAplicandoCierre(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token || ''
+      await fetch('/api/cierres-mes', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurante_id: restaurante.id, mes: periodo }),
+      })
+      setFacturacion(String(datosVino.ventas_neto || ''))
+    } finally {
+      setAplicandoCierre(false)
+    }
   }
 
   if (loading) return <LoadingState title="Cargando cuenta de explotación" text="Preparando el P&L de la bodega." />
@@ -633,6 +655,11 @@ export default function ExplotacionPage() {
             <button type="button" className={styles.primary} onClick={guardar} disabled={guardando}>
               {guardando ? 'Guardando…' : 'Guardar periodo'}
             </button>
+            {esPerfilSomm(restaurante) && cierreExiste === false && (
+              <span style={{ fontSize: 12, color: '#F59E0B', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '5px 10px' }}>
+                Sin cierre de mes — los datos se guardan como entrada manual
+              </span>
+            )}
             <a
               href={restaurante ? `/api/somm/informe-mensual?restaurante_id=${restaurante.id}&periodo=${periodo}` : '#'}
               download
@@ -698,6 +725,27 @@ export default function ExplotacionPage() {
                   style={{ fontSize: 12, padding: '3px 10px', whiteSpace: 'nowrap' }}
                 >
                   ← Usar coste de vino como MP
+                </button>
+              </div>
+            )}
+            {esPerfilSomm(restaurante) && datosVino && num(facturacion) > 0 &&
+              Math.abs((Number(datosVino.ventas_neto) || 0) - num(facturacion)) > 0.01 && (
+              <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(245,158,11,0.08)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.25)' }}>
+                <p style={{ color: '#F59E0B', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+                  Los ingresos del formulario difieren del cierre de bodega
+                </p>
+                <div style={{ display: 'flex', gap: 20, fontSize: 13, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <span style={{ opacity: 0.7 }}>Formulario: <strong>{eur(num(facturacion), 2)}</strong></span>
+                  <span style={{ color: '#F59E0B' }}>Cierre: <strong>{eur(datosVino.ventas_neto, 2)}</strong></span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.ghost}
+                  onClick={usarValoresCierreExplotacion}
+                  disabled={aplicandoCierre}
+                  style={{ fontSize: 12, padding: '3px 10px' }}
+                >
+                  {aplicandoCierre ? 'Aplicando…' : 'Usar valores del cierre'}
                 </button>
               </div>
             )}
