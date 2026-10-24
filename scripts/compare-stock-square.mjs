@@ -97,7 +97,7 @@ async function main() {
   // ── 0. Tienda ──────────────────────────────────────────────────────────────
   const { data: tienda, error: te } = await db
     .from('tiendas')
-    .select('id, slug, square_access_token, square_location_id, square_tracks_inventory, ocultar_agotados')
+    .select('id, slug, square_access_token, square_location_id, square_tracks_inventory')
     .eq('slug', SLUG)
     .single()
   if (te || !tienda) {
@@ -115,7 +115,6 @@ async function main() {
 
   console.log(`tienda_id              : ${tienda.id}`)
   console.log(`square_tracks_inventory: ${tienda.square_tracks_inventory}`)
-  console.log(`ocultar_agotados       : ${tienda.ocultar_agotados ?? 'NULL (default true)'}`)
   console.log(`square_location_id     : ${locationId || '(no configurado — consulta a todas las locations)'}`)
   console.log()
 
