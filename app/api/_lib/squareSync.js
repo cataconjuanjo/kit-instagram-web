@@ -99,7 +99,7 @@ function getTokenForTienda(tienda) {
 export async function listSquareSyncTiendas({ includePaused = false } = {}) {
   const { data: tiendas, error } = await supabaseAdmin
     .from('tiendas')
-    .select('id, slug, square_access_token, square_location_id, square_tracks_inventory')
+    .select('id, slug, square_access_token, square_location_id, square_tracks_inventory, ocultar_agotados')
     .eq('activo', true)
     .order('slug')
 
@@ -116,6 +116,7 @@ export async function listSquareSyncTiendas({ includePaused = false } = {}) {
               squareTokenSource: 'paused',
               squareSyncPaused: true,
               squareTracksInventory: Boolean(tienda.square_tracks_inventory),
+              ocultarAgotados: tienda.ocultar_agotados !== false,
             }
           : null
       }
@@ -127,6 +128,7 @@ export async function listSquareSyncTiendas({ includePaused = false } = {}) {
         squareTokenSource: source,
         squareSyncPaused: false,
         squareTracksInventory: Boolean(tienda.square_tracks_inventory),
+        ocultarAgotados: tienda.ocultar_agotados !== false,
       } : null
     })
     .filter(Boolean)
@@ -1959,9 +1961,11 @@ export async function applyPaymentLinesRpc(payment, tienda) {
   }))
 
   const { data, error } = await supabaseAdmin.rpc('apply_payment_lines', {
-    p_tienda_id:  tienda.id,
-    p_payment_id: payment.id,
-    p_lines:      pLines,
+    p_tienda_id:         tienda.id,
+    p_payment_id:        payment.id,
+    p_lines:             pLines,
+    p_ocultar_agotados:  tienda.ocultarAgotados ?? true,
+    p_tracks_inventory:  tienda.squareTracksInventory ?? false,
   })
 
   if (error) throw new Error(`RPC apply_payment_lines: ${error.message}`)

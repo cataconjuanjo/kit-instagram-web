@@ -321,6 +321,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
     kiosko_icon_style: tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji',
     kiosko_orders_enabled: tienda?.kiosko_orders_enabled === true,
     cesta_activa: tienda?.cesta_activa === true,
+    ocultar_agotados: tienda?.ocultar_agotados !== false,
     escaparate_timeout_segundos: tienda?.escaparate_timeout_segundos ?? 60,
     informe_email:  tienda?.informe_email  || tienda?.propietario_email || tienda?.email || '',
     auto_featured_enabled:  tienda?.auto_featured_enabled  === true,
@@ -586,6 +587,28 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
                   Función en fase beta. Actívala solo si has revisado el catálogo de productos gourmet (pestaña Otros).
                 </small>
               )}
+            </span>
+            <span className={styles.settingSwitch} aria-hidden="true">
+              <span />
+            </span>
+          </button>
+        </div>
+
+        {/* Vinos agotados */}
+        <div className={styles.ajustesSec}>
+          <p className={styles.ajustesSecTitulo}>Vinos agotados</p>
+          <button
+            type="button"
+            className={`${styles.settingToggleCard} ${!ajustes.ocultar_agotados ? styles.settingToggleCardOn : ''}`}
+            onClick={() => cambiar('ocultar_agotados', !ajustes.ocultar_agotados)}
+          >
+            <span className={styles.settingToggleText}>
+              <strong>Mostrar vinos sin stock con etiqueta «Consultar disponibilidad»</strong>
+              <small>
+                {!ajustes.ocultar_agotados
+                  ? 'Activo — los vinos que llegan a 0 permanecen visibles en el kiosko con la etiqueta «Consultar disponibilidad». El stock no se recalcula.'
+                  : 'Inactivo — comportamiento por defecto: los vinos con stock 0 se ocultan automáticamente del kiosko público.'}
+              </small>
             </span>
             <span className={styles.settingSwitch} aria-hidden="true">
               <span />
@@ -1101,6 +1124,7 @@ export default function AdminKioskoPage() {
 
   const [inlineEdit,   setInlineEdit]   = useState(null)  // { id, campo, valor }
   const [stockPending, setStockPending] = useState(null)  // { id, anterior, nuevo }
+  const [descuadresEdits, setDescuadresEdits] = useState({})  // { [vino_id]: string }
 
   const [subiendoFoto, setSubiendoFoto] = useState(null)  // vinoId
   const fotoInputFilaRef  = useRef(null)
@@ -2546,6 +2570,7 @@ export default function AdminKioskoPage() {
               ...(!hideSensitive ? [
                 { id: 'ventas',        label: 'Ventas TPV' },
                 { id: 'rentabilidad',  label: 'Rentabilidad' },
+                { id: 'descuadres',    label: 'Descuadres' },
               ] : []),
             ].map(st => (
               <button key={st.id} type="button"
@@ -3358,6 +3383,87 @@ export default function AdminKioskoPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Descuadres de stock */}
+      {tab === 'analitica' && !hideSensitive && subTabAnalitica === 'descuadres' && (() => {
+        const descuadres = analitica?.descuadres || []
+        return (
+          <div style={{ padding: '0 1.75rem 1.75rem' }}>
+            <div className={styles.analiticaBloque}>
+              <p className={styles.analiticaBloqueDesc}>
+                Ventas registradas por Square donde el stock de la app ya era 0 o negativo en los últimos 90 días.
+                Estos vinos siguen vendiéndose en TPV pero han desaparecido del kiosko. Corrige el stock para que vuelvan a aparecer.
+              </p>
+              {descuadres.length === 0
+                ? <p style={{ color: '#3a7d44', fontWeight: 600 }}>Sin descuadres detectados en los últimos 90 días.</p>
+                : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className={styles.rendTable} style={{ minWidth: 640 }}>
+                      <thead>
+                        <tr>
+                          <th className={styles.rendTh}>Vino</th>
+                          <th className={styles.rendTh} style={{ textAlign: 'right' }}>Ventas s0</th>
+                          <th className={styles.rendTh} style={{ textAlign: 'right' }}>Stock actual</th>
+                          <th className={styles.rendTh} style={{ textAlign: 'right' }}>PVP</th>
+                          <th className={styles.rendTh}>Última venta</th>
+                          <th className={styles.rendTh}>Corregir stock</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {descuadres.map(d => (
+                          <tr key={d.vino_id || d.catalog_id} className={styles.rendTr}>
+                            <td className={styles.rendTd}>
+                              <span style={{ fontWeight: 500 }}>{d.nombre}</span>
+                              {d.activo === false && (
+                                <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: '#c03030', fontWeight: 600 }}>OCULTO</span>
+                              )}
+                            </td>
+                            <td className={styles.rendTdNum}>
+                              <span style={{ color: '#c03030', fontWeight: 600 }}>{d.ventas}</span>
+                            </td>
+                            <td className={styles.rendTdNum}>{d.stock_actual ?? '—'}</td>
+                            <td className={styles.rendTdNum}>{d.precio_pvp ? `${Number(d.precio_pvp).toFixed(2)} €` : '—'}</td>
+                            <td className={styles.rendTd} style={{ fontSize: '.8rem', color: '#666' }}>
+                              {d.ultima_venta ? new Date(d.ultima_venta).toLocaleDateString('es-ES') : '—'}
+                            </td>
+                            <td className={styles.rendTd}>
+                              {d.vino_id ? (
+                                <span style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    placeholder="uds"
+                                    value={descuadresEdits[d.vino_id] ?? ''}
+                                    onChange={e => setDescuadresEdits(prev => ({ ...prev, [d.vino_id]: e.target.value }))}
+                                    style={{ width: 64, padding: '.2rem .4rem', borderRadius: 4, border: '1px solid #ccc', fontSize: '.85rem' }}
+                                  />
+                                  <button
+                                    type="button"
+                                    className={styles.btnSecundario}
+                                    style={{ padding: '.2rem .7rem', fontSize: '.8rem' }}
+                                    disabled={descuadresEdits[d.vino_id] === '' || descuadresEdits[d.vino_id] == null}
+                                    onClick={() => {
+                                      const nuevo = Number(descuadresEdits[d.vino_id] || 0)
+                                      setStockPending({ id: d.vino_id, anterior: d.stock_actual ?? 0, nuevo })
+                                      setDescuadresEdits(prev => { const n = { ...prev }; delete n[d.vino_id]; return n })
+                                    }}
+                                  >
+                                    Aplicar
+                                  </button>
+                                </span>
+                              ) : <em style={{ color: '#999', fontSize: '.8rem' }}>sin ID</em>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
             </div>
           </div>
         )
