@@ -174,7 +174,7 @@ function PerfilVino({ vino, onChange, perfilBodega = false }) {
       <p style={{ fontSize: 11, color: '#bbb', margin: '10px 0 0', lineHeight: 1.5 }}>
         {perfilBodega
           ? 'La IA propone una primera lectura. El revisor puede confirmar o descartar cada rasgo.'
-          : 'La IA propone una primera lectura. El perfil tecnico pesa mas en maridaje; las familias WSET ayudan a explicar afinidades.'}
+          : 'La IA propone una primera lectura. El perfil tecnico pesa mas en maridaje; las familias aromáticas ayudan a explicar afinidades.'}
       </p>
     </div>
   )
@@ -1098,7 +1098,10 @@ async function aplicarAccionMasiva(confirmado = false) {
     { label: 'Sin proveedor', count: vinosSinProveedor.length, href: '?filtro=sin_proveedor', filter: 'sin_proveedor', text: 'Complica el pedido.' },
   ]
   const pendientesVinosVisibles = pendientesVinos.filter(item => item.count > 0)
-  const totalPendientesVinos = pendientesVinosVisibles.reduce((total, item) => total + item.count, 0)
+  const totalPendientesVinos = new Set([
+    ...vinosSinPrecio, ...vinosSinPerfil, ...vinosSinEtiqueta,
+    ...vinosSinStock, ...vinosSinCoste, ...vinosSinProveedor,
+  ].map(v => v.id)).size
   const prioridadVinos = pendientesVinosVisibles[0] || null
   const filtrosColumnaActivos = Object.values(filtrosColumnaVinos).filter(Boolean).length
   const vinosOrdenadosSelector = [...vinos].sort((a, b) => normalizar(a.nombre || '').localeCompare(normalizar(b.nombre || '')))
@@ -1170,27 +1173,31 @@ async function aplicarAccionMasiva(confirmado = false) {
         {errorBodega && <div className={styles.empty} style={{ minHeight: 70, marginBottom: 16, color: '#9b3535' }}>{errorBodega}</div>}
         <section className={styles.workflowStrip}>
           <div>
-            <p className={styles.eyebrow}>Trabajo de hoy</p>
-            <h2>{prioridadVinos ? prioridadVinos.label : 'La base de vinos esta limpia'}</h2>
+            <p className={styles.eyebrow}>{perfilBodega ? 'Lo que hace que la bodega sea controlable' : 'Lo que hace que la carta venda mejor'}</p>
+            <h2>{prioridadVinos ? `${totalPendientesVinos} ${totalPendientesVinos === 1 ? 'vino por completar' : 'vinos por completar'}` : 'La base de vinos está limpia'}</h2>
             <p>
               {prioridadVinos
-                ? `${prioridadVinos.count} referencias necesitan atencion. ${prioridadVinos.text}`
+                ? `${prioridadVinos.count} referencias necesitan atención.`
                 : 'No hay bloqueos visibles en precio, perfil, etiqueta, stock, coste o proveedor.'}
             </p>
           </div>
           <div className={styles.workflowStats}>
             <article>
               <strong>{vinosActivos.length}</strong>
-              <span>activas</span>
+              <span>vinos activos</span>
             </article>
-            <article>
-              <strong>{totalPendientesVinos}</strong>
-              <span>pendientes</span>
-            </article>
-            <article>
-              <strong>{vinosVisibles.length}</strong>
-              <span>en vista</span>
-            </article>
+            {totalPendientesVinos !== vinosActivos.length && (
+              <article>
+                <strong>{totalPendientesVinos}</strong>
+                <span>pendientes de revisar</span>
+              </article>
+            )}
+            {vinosVisibles.length !== vinosActivos.length && (
+              <article>
+                <strong>{vinosVisibles.length}</strong>
+                <span>en esta lista</span>
+              </article>
+            )}
           </div>
           <div className={styles.workflowActions}>
             {puedeUsar(restaurante, 'importador_pdf') && (
@@ -1209,13 +1216,6 @@ async function aplicarAccionMasiva(confirmado = false) {
             >
               {mostrarImportadorEtiquetas ? 'Cerrar etiquetas' : 'Importar etiquetas'}
             </button>
-          </div>
-        </section>
-        <section className={styles.pendingStrip}>
-          <div>
-            <p className={styles.eyebrow}>Cola de mejora</p>
-            <h2>{perfilBodega ? 'Lo que hace que la bodega sea controlable' : 'Lo que hace que la carta venda mejor'}</h2>
-            <p>{pendientesVinosVisibles.length ? (perfilBodega ? 'Mostramos solo bloqueos con trabajo pendiente. Lo demas queda fuera para no meter ruido.' : 'Mostramos solo bloqueos con trabajo pendiente. Precio, perfil y stock van primero.') : 'Sin bloqueos operativos: puedes seguir filtrando o editar referencias concretas desde la tabla.'}</p>
           </div>
           <div className={styles.pendingGrid}>
             {pendientesVinosVisibles.length ? pendientesVinosVisibles.map(item => (
@@ -1628,7 +1628,7 @@ async function aplicarAccionMasiva(confirmado = false) {
 </p>
                   </div>
                 </div>
-                <p data-label="Bodega" style={{ margin: 0, fontSize: 13, color: '#888', alignSelf: 'center' }}>{v.bodega}{v.region ? ` · ${v.region}` : ''}</p>
+                <p data-label="Bodega" style={{ margin: 0, fontSize: 13, color: '#888', alignSelf: 'center' }}>{[v.bodega, v.region].filter(Boolean).join(' · ')}</p>
                 <p data-label="Copa" style={{ margin: 0, fontSize: 13, color: '#111', alignSelf: 'center' }}>{precioCelda(v.precio_copa)}</p>
                 <p data-label="Botella" style={{ margin: 0, fontSize: 13, color: '#111', alignSelf: 'center' }}>
   {editandoPrecio === v.id ? (

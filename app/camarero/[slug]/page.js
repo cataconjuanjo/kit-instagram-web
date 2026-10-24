@@ -916,14 +916,14 @@ export default function Camarero() {
 
     if (contexto === 'queso') {
       if (vino.tipo === 'tinto' && !quesoTrucadoParaTinto) {
-        return { compatible: false, penalizacion: 80, razon: 'En quesos, el KB prioriza blancos, finos/manzanillas, rosados, dulces y oportos; el tinto queda como excepción si el queso está trucado.' }
+        return { compatible: false, penalizacion: 80, razon: 'En quesos, la guía de maridaje prioriza blancos, finos/manzanillas, rosados, dulces y oportos; el tinto queda como excepción si el queso está trucado.' }
       }
       return { compatible: true, penalizacion: 0 }
     }
 
     if (contexto === 'fritura') {
       if (vino.tipo === 'tinto' || vino.tipo === 'dulce' || esTawnyOPorto) {
-        return { compatible: false, penalizacion: 90, razon: 'Para fritura conviene tensión, salinidad o burbuja; un tinto potente o un tawny no es la primera lectura del KB.' }
+        return { compatible: false, penalizacion: 90, razon: 'Para fritura conviene tensión, salinidad o burbuja; un tinto potente o un tawny no es la primera opción de maridaje.' }
       }
       if (!['generoso', 'espumoso', 'blanco', 'rosado'].includes(vino.tipo)) {
         return { compatible: false, penalizacion: 50, razon: 'Para fritura se priorizan estilos frescos, salinos o con burbuja.' }
@@ -1035,7 +1035,7 @@ export default function Camarero() {
   function motivoMesaVenta(vino, numeroPlatos, consultaNormalizada) {
     const textoVino = normalizar(textoVinoParaMaridaje(vino))
     const metodo = metodosPlato(consultaNormalizada)
-    const platos = numeroPlatos > 1 ? `${numeroPlatos} platos` : 'la mesa'
+    const platos = numeroPlatos > 1 ? `${numeroPlatos} platos` : numeroPlatos === 1 ? 'el plato' : 'la mesa'
 
     if (vino.tipo === 'blanco') {
       if (metodo.gratinado) return `aporta frescura para limpiar la parte cremosa y suficiente volumen para acompañar ${platos}`
@@ -1203,7 +1203,7 @@ export default function Camarero() {
 
     if (!compatibilidad.compatible && compatibilidad.razon) {
       motivo = compatibilidad.razon
-      fuente = 'Restricción de contexto del KB'
+      fuente = 'Restricción de contexto de maridaje'
     }
 
     return { vino, score, motivo, fuente, compatible: compatibilidad.compatible, aprendizaje, exposicion, senalSala }
@@ -1280,9 +1280,9 @@ export default function Camarero() {
       const penalizacionRiesgo = (item.riesgos?.length || 0) * 8
       const motivoGrafo = ev?.concepto && ev?.wineLabel
         ? directo
-          ? `Chartier conecta ${ev.concepto} con ${ev.wineLabel}`
-          : `afinidad Chartier por ${ev.familia || ev.concepto}`
-        : 'evidencia del grafo Chartier unificado'
+          ? `Conexión aromática: ${ev.concepto} con ${ev.wineLabel}`
+          : `afinidad aromática por ${ev.familia || ev.concepto}`
+        : 'evidencia de afinidad aromática'
 
       return {
         ...resultado,
@@ -1290,7 +1290,7 @@ export default function Camarero() {
         motivo: item.riesgos?.length && penalizacionRiesgo >= bonus
           ? item.riesgos[0]
           : `${motivoGrafo}; ${resultado.motivo}`,
-        fuente: `${directo ? 'Grafo Chartier unificado: evidencia directa' : 'Grafo Chartier unificado: familia aromática'}${goldsteinActivo ? ' + validación estructural Goldstein' : ''}`,
+        fuente: `${directo ? 'Afinidad aromática: evidencia directa' : 'Afinidad aromática por familia'}${goldsteinActivo ? ' + validación estructural' : ''}`,
         chartierGrafo: item,
         goldsteinEstructural: goldsteinActivo ? item.goldstein : null,
       }
@@ -1409,7 +1409,7 @@ export default function Camarero() {
     const motorApiListo = grafoVenta?.consulta === consultaGrafoVenta && grafoVenta?.motor && !requiereCopa
     const motorCentral = motorApiListo
       ? grafoVenta.motor
-      : analizarMaridaje(esMesa ? consultas : consultaActiva, vinosParaMotor)
+      : analizarMaridaje(esMesa ? consultas : [consultaActiva].filter(Boolean), vinosParaMotor)
     const itemsMotor = [
       ...(motorCentral?.candidatos || []),
       ...(motorCentral?.recomendados || []),
@@ -2048,7 +2048,7 @@ export default function Camarero() {
                 </div>
                 <p className={styles.modeHint}>
                   {modoRecomendacionVenta === 'platos'
-                    ? 'Elige uno o varios platos. Chartier y Goldstein buscan el vino que mejor acompaña la mesa.'
+                    ? 'Elige uno o varios platos. Analizamos el vino que mejor acompaña la mesa.'
                     : modoRecomendacionVenta === 'vino'
                       ? 'Primero eliges el vino. Despues la carta se ordena por los platos que mejor lo hacen brillar.'
                       : 'Haz una o dos preguntas. La recomendación parte de lo que busca el cliente.'}
@@ -2286,9 +2286,9 @@ export default function Camarero() {
                     {modoRecomendacionVenta === 'vino'
                       ? vinoMandatoVenta ? 'La comida se adapta a la botella elegida' : 'Esperando vino elegido'
                       : consultaGrafoVenta && grafoVenta?.consulta !== consultaGrafoVenta
-                      ? 'Cruzando grafo Chartier...'
+                      ? 'Analizando afinidades...'
                       : grafoVenta?.consulta === consultaGrafoVenta && grafoVenta?.candidatos?.length
-                        ? 'Chartier + Goldstein activos'
+                        ? 'Análisis activo'
                         : platosMesaVenta.length > 1 ? 'Botella puente para la mesa' : hayConsultaVenta() ? 'Tres opciones para la mesa' : 'Esperando selección'}
                   </p>
                 </div>
@@ -2500,7 +2500,7 @@ export default function Camarero() {
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.eyebrow}>Bodega</p>
-                <h2 className={styles.panelTitle}>{vinosFiltrados.length} referencias</h2>
+                <h2 className={styles.panelTitle}>{vinosFiltrados.length} {vinosFiltrados.length === 1 ? 'referencia' : 'referencias'}</h2>
               </div>
             </div>
             <div className={styles.bodegaControls}>
@@ -2540,7 +2540,7 @@ export default function Camarero() {
                   <div key={tipo} className={styles.wineSection}>
                     <button type="button" className={styles.wineSectionButton} onClick={() => setTipoVinoAbierto(abierto ? null : tipo)}>
                       <span>{tipoPlural[tipo]}</span>
-                      <small>{grupo.length} referencias · {abierto ? 'Cerrar' : 'Abrir'}</small>
+                      <small>{grupo.length} {grupo.length === 1 ? 'referencia' : 'referencias'} · {abierto ? 'Cerrar' : 'Abrir'}</small>
                     </button>
                     {abierto && grupo.map(v => (
                         <VinoRow key={v.id} v={v} tipoDot={tipoDot} tipoLabel={tipoLabel} enComparador={!!vinosComparador.find(vc => vc.id === v.id)} onSelect={setVinoSeleccionado} onComparador={toggleComparador} comparadorLleno={vinosComparador.length >= 4} />
@@ -2594,7 +2594,7 @@ export default function Camarero() {
             </button>
           ))}
         </div>
-        <p style={{ fontSize: 11, color: '#444', margin: '10px 0 0' }}>{vinosFiltrados.length} referencias</p>
+        <p style={{ fontSize: 11, color: '#444', margin: '10px 0 0' }}>{vinosFiltrados.length} {vinosFiltrados.length === 1 ? 'referencia' : 'referencias'}</p>
       </div>
 
       {/* Venta asistida */}
@@ -2853,15 +2853,19 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         )}
         {item.chartierGrafo && (
           <p className={styles.statusLine} style={{ color: chartierDirecto ? '#1f7a61' : '#6f767d' }}>
-            {chartierDirecto ? 'Chartier directo' : 'Chartier por familia aromática'}
+            {chartierDirecto ? 'Afinidad directa' : 'Por familia aromática'}
           </p>
         )}
         {goldsteinActivo && (
-          <p className={styles.statusLine} style={{ color: '#6f767d' }}>Goldstein estructural</p>
+          <p className={styles.statusLine} style={{ color: '#6f767d' }}>Validación estructural</p>
         )}
         {ticketComida > 0 && rangoTicket && (
           <p className={styles.statusLine} style={{ color: precioEnRango ? '#1f7a61' : '#6f767d' }}>
-            {precioEnRango ? 'Precio coherente para la mesa' : `Revisar precio: ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
+            {precioEnRango
+              ? 'Precio coherente para la mesa'
+              : precioVino < rangoTicket.min
+                ? `Por debajo del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`
+                : `Por encima del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`}
           </p>
         )}
         {stockCritico && (
@@ -2925,17 +2929,21 @@ function RecomendacionVenta({ item, tipoDot, tipoLabel, fraseVenta, onSelect, on
         <p style={{ margin: 0, fontSize: 12, color: '#aaa', lineHeight: 1.55 }}>{fraseVenta(vino, motivo)}</p>
         {item.chartierGrafo && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: chartierDirecto ? '#7BAF8A' : '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            {chartierDirecto ? 'Chartier directo' : 'Chartier por familia aromática'}
+            {chartierDirecto ? 'Afinidad directa' : 'Por familia aromática'}
           </p>
         )}
         {goldsteinActivo && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            Goldstein estructural
+            Validación estructural
           </p>
         )}
         {ticketComida > 0 && rangoTicket && (
           <p style={{ margin: '10px 0 0', fontSize: 10, color: precioEnRango ? '#7BAF8A' : '#777', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            {precioEnRango ? 'Precio coherente para la mesa' : `Revisar precio: ${rangoTicket.min.toFixed(0)}-${rangoTicket.max.toFixed(0)} EUR`}
+            {precioEnRango
+              ? 'Precio coherente para la mesa'
+              : precioVino < rangoTicket.min
+                ? `Por debajo del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`
+                : `Por encima del rango habitual (${rangoTicket.min.toFixed(0)}–${rangoTicket.max.toFixed(0)} EUR)`}
           </p>
         )}
         {stockCritico && (

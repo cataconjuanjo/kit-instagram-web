@@ -5,7 +5,7 @@ import simStyles from './simulador.module.css'
 
 function eur(v) {
   if (!Number(v)) return '—'
-  return Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+  return Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €'
 }
 
 // Dumbbell SVG por categoría: dos puntos (antes / después) unidos por una línea.

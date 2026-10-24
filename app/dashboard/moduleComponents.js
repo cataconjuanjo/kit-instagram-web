@@ -91,13 +91,13 @@ function ModuleHelp({ help }) {
   )
 }
 
-export function ModuleShell({ restaurante, eyebrow, title, subtitle, actions, help, children, narrow = false, wide = false }) {
+export function ModuleShell({ restaurante, eyebrow, title, subtitle, actions, help, children, narrow = false, wide = false, centered = false }) {
   const [helpOpen, setHelpOpen] = useState(false)
   const { enabled: guideEnabled } = useGuideMode()
 
   return (
     <main className={styles.shell}>
-      <div className={`${styles.wrap} ${narrow ? styles.narrow : wide ? styles.wide : ''}`}>
+      <div className={`${styles.wrap} ${narrow ? styles.narrow : wide ? styles.wide : centered ? styles.centered : ''}`}>
         <section className={styles.hero}>
           <div>
             <p className={styles.eyebrow}>{eyebrow}</p>

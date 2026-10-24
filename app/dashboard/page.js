@@ -15,6 +15,7 @@ import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceDay'
 import { esPerfilBodega, puedeUsar } from '../lib/plans'
 import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationReadiness'
+import { fetchAllPages } from '../lib/fetchAllPages'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -32,6 +33,7 @@ function decimal(valor) {
 
 function eur(valor, decimales = 0) {
   return `${decimal(valor).toLocaleString('es-ES', {
+    useGrouping: true,
     minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
   })} €`
@@ -68,6 +70,33 @@ function labelNavegacion(href = '') {
 
 function leerDetalle(detalle) {
   try { return JSON.parse(detalle || '{}') } catch { return {} }
+}
+
+function fmtUnidad(tieneCopa, tieneBot, total) {
+  if (tieneCopa && !tieneBot) return total === 1 ? 'copa' : 'copas'
+  if (tieneBot && !tieneCopa) return 'bot.'
+  return total === 1 ? 'ud.' : 'uds.'
+}
+
+function semanaActualLabel() {
+  const inicio = haceDiasMadrid(7)
+  const fin = haceDiasMadrid(1)
+  const [, mI, dI] = inicio.split('-').map(Number)
+  const [, mF, dF] = fin.split('-').map(Number)
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+  if (mI === mF) return `Del ${dI} al ${dF} de ${MESES[mI - 1]}`
+  return `Del ${dI} de ${MESES[mI - 1]} al ${dF} de ${MESES[mF - 1]}`
+}
+
+function fmtDia(isoDate) {
+  const d = new Date(isoDate + 'T12:00:00')
+  const mon = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][d.getMonth()]
+  return `${d.getDate()} ${mon}`
+}
+
+function haceDiasMadrid(n) {
+  return new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Madrid' })
+    .format(new Date(Date.now() - n * 86400000))
 }
 
 function fechaLocalClave() {
@@ -191,6 +220,7 @@ function DashboardHome() {
   const [generandoCheckout, setGenerandoCheckout] = useState(false)
   const [esperandoWebhook, setEsperandoWebhook]   = useState(false)
   const [stats, setStats] = useState({ escaneos: 0, sommelier: 0, ventasHoy: 0, incidenciasSala: 0, dudasSala: 0 })
+  const [ventas30, setVentas30] = useState(null)
   const [vinos, setVinos] = useState([])
   const [platos, setPlatos] = useState([])
   const [propuestas, setPropuestas] = useState([])
@@ -523,6 +553,20 @@ function DashboardHome() {
           incidenciasSala: ventasHoy.filter(item => ['no_stock', 'agotado'].includes(item.resultado)).length,
           dudasSala: ventasHoy.filter(item => ['no_convence', 'otra'].includes(item.resultado)).length,
         })
+        let v30 = null
+        try {
+          v30 = await fetchAllPages(() =>
+            supabase.from('estadisticas')
+              .select('detalle, created_at')
+              .eq('restaurante_id', rest.id)
+              .eq('tipo', 'venta')
+              .gte('created_at', haceDiasMadrid(30))
+              .lt('created_at', haceDiasMadrid(0))
+          )
+        } catch (err) {
+          console.error('[Inicio] ventas 30d:', err)
+        }
+        setVentas30(v30)
         await Promise.all([
           cargarRadarDiario(rest.id),
           cargarResumenSemanal(rest.id, rest),
@@ -729,6 +773,38 @@ function DashboardHome() {
   ).length
   const vinosPorCopa = vinosActivos.filter(vino => decimal(vino.precio_copa) > 0).length
   const referenciasCriticas = bajoMinimo.length + vinosSinStock.length
+  const kpiHrefs = [
+    bajoMinimo.length > 0 ? '/dashboard/bodega#pedido' : null,
+    propuestasActivas.length > 0 ? '/dashboard/bodega#propuestas' : null,
+  ].filter(Boolean)
+  const accionesRadarFiltradas = accionesRadarAbiertas.filter(a => !kpiHrefs.includes(a.href))
+
+  const hace7diasStr = haceDiasMadrid(7)
+  const ventas30Vendidas = (ventas30 || []).map(s => ({ ...leerDetalle(s.detalle), fecha: (s.created_at || '').slice(0, 10) })).filter(item => item.resultado === 'vendida')
+  const ventasSemana = ventas30 === null ? 0 : ventas30Vendidas.filter(item => item.fecha >= hace7diasStr).reduce((sum, item) => sum + (Number(item.cantidad) || 1), 0)
+  const fechas30 = Array.from({ length: 30 }, (_, i) => haceDiasMadrid(30 - i))
+  const ventasPorDia30 = fechas30.map(f => ({ fecha: f, total: ventas30Vendidas.filter(v => v.fecha === f).reduce((s, v) => s + (Number(v.cantidad) || 1), 0) }))
+  const maxVentasDia30 = Math.max(...ventasPorDia30.map(d => d.total), 1)
+  const vinoMap30 = {}
+  for (const v of ventas30Vendidas) {
+    const n = v.vino || '—'
+    if (!vinoMap30[n]) vinoMap30[n] = { nombre: n, total: 0, tieneCopa: false, tieneBot: false }
+    vinoMap30[n].total += (Number(v.cantidad) || 1)
+    if (v.formato_venta === 'copa') vinoMap30[n].tieneCopa = true
+    if (v.formato_venta === 'botella') vinoMap30[n].tieneBot = true
+  }
+  const top5Vinos = Object.values(vinoMap30).sort((a, b) => b.total - a.total).slice(0, 5)
+  const hayVentas30 = ventas30 !== null && ventas30Vendidas.length > 0
+  const totalVentas30 = ventas30Vendidas.reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
+  const ventas7dRow  = ventas30Vendidas.filter(item => item.fecha >= hace7diasStr)
+  const copas7d      = ventas7dRow.filter(v => v.formato_venta === 'copa').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
+  const botellas7d   = ventas7dRow.filter(v => v.formato_venta === 'botella').reduce((s, v) => s + (Number(v.cantidad) || 1), 0)
+  const euros7d      = ventas7dRow.reduce((s, v) => s + (Number(v.importe_vino_estimado) || 0), 0)
+  const euros30d     = ventas30Vendidas.reduce((s, v) => s + (Number(v.importe_vino_estimado) || 0), 0)
+  const hayEuros7d   = euros7d > 0
+  const peakIdx = ventasPorDia30.reduce((best, d, i, arr) => d.total > arr[best].total ? i : best, 0)
+  const peakDay = ventasPorDia30[peakIdx]
+
   return (
     <main>
       {kioskos !== null && (
@@ -784,8 +860,126 @@ function DashboardHome() {
       )}
 
       <div className={styles.wrap}>
-        {tareasInicioVisibles.length > 0 && (
-          <section className={`${styles.activationPanel} ${activacionCompacta ? styles.activationCompact : ''}`}>
+        {restaurante && (
+          <header className={styles.pageHeader}>
+            <h1 className={styles.pageH1}>Esta semana en {restaurante.nombre || 'tu restaurante'}</h1>
+            <p className={styles.pageSub}>{semanaActualLabel()}. Lo esencial para decidir hoy.</p>
+          </header>
+        )}
+
+        {restaurante?.actividad_real_desde && (
+          <div className={styles.inicioRow1}>
+            <article className={styles.inicioCard}>
+              <p className={styles.inicioCardLabel}>Ventas de los últimos 7 días</p>
+              <div className={styles.heroTopRow}>
+                <div>
+                  {hayEuros7d ? (
+                    <>
+                      <strong className={styles.heroKpi}>{eur(euros7d)}</strong>
+                      <span className={styles.heroKpiUnit}>vendidos en vino · últimos 7 días</span>
+                      {(copas7d + botellas7d) > 0 && <span className={styles.heroKpiSub}>{copas7d} copas · {botellas7d} botellas</span>}
+                    </>
+                  ) : (
+                    <>
+                      <strong className={styles.heroKpi}>{ventasSemana}</strong>
+                      <span className={styles.heroKpiUnit}>copas y botellas</span>
+                    </>
+                  )}
+                </div>
+                {(hayEuros7d ? euros30d : totalVentas30) > 0 && (
+                  <div className={styles.heroKpiSecGroup}>
+                    <strong className={styles.heroKpiSec}>
+                      {hayEuros7d ? eur(euros30d) : totalVentas30}
+                    </strong>
+                    <span className={styles.heroKpiSecLabel}>en los últimos 30 días</span>
+                  </div>
+                )}
+              </div>
+              <div className={styles.heroChartWrap}>
+                <svg viewBox="0 0 300 60" preserveAspectRatio="none" style={{ width: '100%', height: 80, display: 'block' }}>
+                  {ventasPorDia30.map((d, i) => {
+                    const barH = d.total === 0 ? 3 : Math.max(4, Math.round((d.total / maxVentasDia30) * 56))
+                    const x = i * 10 + 1
+                    const fill = d.total === 0 ? '#d9d0c0' : i === 29 ? '#74223d' : '#af8b52'
+                    return (
+                      <rect key={d.fecha} x={x} y={60 - barH} width={8} height={barH} fill={fill} rx={1}>
+                        <title>{d.fecha}: {d.total === 1 ? '1 ud.' : `${d.total} uds.`}</title>
+                      </rect>
+                    )
+                  })}
+                </svg>
+                <div className={styles.heroChartAxis}>
+                  <span>{fmtDia(fechas30[0])}</span>
+                  <span className={styles.heroChartNote}>Los días sin ventas aparecen en gris</span>
+                  <span>{fmtDia(fechas30[29])}</span>
+                </div>
+              </div>
+            </article>
+            <article className={styles.inicioCard}>
+              <p className={styles.inicioCardLabel}>Margen medio</p>
+              <strong className={styles.sideKpi}>{margenMedio ? `${margenMedio}%` : '—'}</strong>
+              <p className={styles.sideKpiSub}>sobre el precio de venta</p>
+              <Link href="/dashboard/menu-engineering" className={styles.cardLink}>Ver rentabilidad →</Link>
+            </article>
+          </div>
+        )}
+
+        {restaurante?.actividad_real_desde && (
+          <div className={styles.inicioRow2}>
+            <article className={styles.inicioCard}>
+              <h2 className={styles.cardH2}>Para decidir hoy</h2>
+              <p className={styles.cardH2Sub}>Lo que mueve dinero esta semana.</p>
+              <div className={styles.decideList}>
+                {bajoMinimo.length > 0 && (
+                  <div className={styles.decideRow}>
+                    <span className={styles.decideRowText}>
+                      <strong>{bajoMinimo.length}</strong> vino{bajoMinimo.length !== 1 ? 's' : ''} bajo mínimo
+                      {(() => {
+                        const visible = bajoMinimo.slice(0, 3).map(v => v.nombre).filter(Boolean)
+                        if (!visible.length) return null
+                        const resto = bajoMinimo.length - 3
+                        return <> · {visible.join(', ')}{resto > 0 ? ` y ${resto} más` : ''}</>
+                      })()}
+                    </span>
+                    <Link href="/dashboard/bodega#pedido" className={styles.decideBtn}>Preparar pedido</Link>
+                  </div>
+                )}
+                {propuestasActivas.length > 0 && (
+                  <div className={styles.decideRow}>
+                    <span className={styles.decideRowText}>
+                      <strong>{propuestasActivas.length}</strong> propuesta{propuestasActivas.length !== 1 ? 's' : ''} pendiente{propuestasActivas.length !== 1 ? 's' : ''}
+                    </span>
+                    <Link href="/dashboard/bodega#propuestas" className={styles.decideBtn}>Revisar</Link>
+                  </div>
+                )}
+                {bajoMinimo.length === 0 && propuestasActivas.length === 0 && (
+                  <p className={styles.decideEmpty}>Todo en orden. Sin avisos activos.</p>
+                )}
+              </div>
+            </article>
+            {top5Vinos.length > 0 && (
+              <article className={styles.inicioCard}>
+                <h2 className={styles.cardH2}>Más vendidos del mes</h2>
+                <p className={styles.cardH2Sub}>Copas y botellas, últimos 30 días.</p>
+                <div className={styles.topVinosList}>
+                  {top5Vinos.map((v) => (
+                    <div key={v.nombre} className={styles.topVinoRow}>
+                      <span className={styles.topVinoName}>{v.nombre}</span>
+                      <div className={styles.topVinoBarWrap}>
+                        <div className={styles.topVinoBar} style={{ width: `${Math.round((v.total / top5Vinos[0].total) * 100)}%` }} />
+                      </div>
+                      <span className={styles.topVinoCount}>{v.total} {fmtUnidad(v.tieneCopa, v.tieneBot, v.total)}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/dashboard/estadisticas" className={styles.cardLink}>Ver estadísticas →</Link>
+              </article>
+            )}
+          </div>
+        )}
+
+        {tareasInicioVisibles.length > 0 && !(cartaPublicada && restaurante?.actividad_real_desde) && (
+          <section className={`${styles.activationPanel} ${styles.activationCardStyle} ${activacionCompacta ? styles.activationCompact : ''}`}>
             <div className={styles.activationHead}>
               <div>
                 <p className={styles.eyebrow}>Puesta en marcha</p>
@@ -899,7 +1093,7 @@ function DashboardHome() {
               <section className={styles.dailyRadarPanel}>
                 {radarError && <div className={styles.radarNotice}>{radarError}</div>}
                 <div className={styles.dailyRadarList}>
-                  {(accionesRadarAbiertas.length ? accionesRadarAbiertas : radarAcciones).slice(0, 3).map(accion => (
+                  {(accionesRadarFiltradas.length ? accionesRadarFiltradas : radarAcciones).slice(0, 3).map(accion => (
                     <article className={styles.dailyRadarItem} key={accion.id || accion.clave}>
                       <div>
                         <span>{accion.area}</span>

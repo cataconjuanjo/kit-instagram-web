@@ -8,7 +8,7 @@ const UNIDADES_DEFAULT = 6
 
 function eur(v) {
   if (!Number(v)) return '—'
-  return Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+  return Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €'
 }
 
 // Paleta fija por posición (categoríco, mismo orden siempre)

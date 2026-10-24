@@ -7,7 +7,7 @@ import styles from './movil.module.css'
 
 function formatPrecio(n) {
   if (!n && n !== 0) return ''
-  return Number(n).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })
+  return Number(n).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, useGrouping: true })
 }
 
 function precioActual(vino) {

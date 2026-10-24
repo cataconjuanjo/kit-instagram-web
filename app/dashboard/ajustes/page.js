@@ -20,6 +20,8 @@ export default function AjustesHub() {
   const [mensajePin, setMensajePin] = useState('')
   const [mensajeActividad, setMensajeActividad] = useState('')
   const [guardandoActividad, setGuardandoActividad] = useState(false)
+  const [modalActividad, setModalActividad] = useState(null) // null | 'reiniciar' | 'pausar'
+  const [confirmInput, setConfirmInput] = useState('')
   const [copiado, setCopiado] = useState('')
   const [loading, setLoading] = useState(true)
   const [esAdmin, setEsAdmin] = useState(false)
@@ -36,6 +38,15 @@ export default function AjustesHub() {
     }
     cargar()
   }, [])
+
+  useEffect(() => {
+    if (!modalActividad) return
+    function onKeyDown(e) {
+      if (e.key === 'Escape') { setModalActividad(null); setConfirmInput('') }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [modalActividad])
 
   if (loading) return <LoadingState />
 
@@ -123,6 +134,18 @@ export default function AjustesHub() {
     setTimeout(() => setCopiado(''), 1800)
   }
 
+  function abrirModalActividad(tipo) {
+    setModalActividad(tipo)
+    setConfirmInput('')
+  }
+
+  async function confirmarActividad() {
+    const fechaISO = modalActividad === 'reiniciar' ? new Date().toISOString() : null
+    setModalActividad(null)
+    setConfirmInput('')
+    await guardarInicioActividad(fechaISO)
+  }
+
   async function guardarInicioActividad(fechaISO) {
     if (!restaurante?.id || guardandoActividad) return
     setGuardandoActividad(true)
@@ -150,7 +173,7 @@ export default function AjustesHub() {
       title={perfilBodega ? 'Cuenta y puesta en marcha de bodega' : 'Accesos, marca y puesta en marcha'}
       subtitle={perfilBodega
         ? 'Ajustes operativos de la membresía sommelier: actividad real, accesos internos y enlaces de trabajo. Sin QR, sin carta pública.'
-        : 'Configuración que se toca poco, pero que debe quedar perfecta antes de entregar la carta al restaurante.'}
+        : 'QR, diseño de carta, acceso de sala y suscripción. Configúralo una vez antes del lanzamiento.'}
       actions={perfilBodega
         ? <Link className={styles.secondary} href="/dashboard/menu-engineering">Ver mapa estrella/joya</Link>
         : <OpenCartaPruebaButton className={styles.secondary} restauranteId={restaurante?.id}>Probar carta</OpenCartaPruebaButton>}
@@ -227,51 +250,34 @@ export default function AjustesHub() {
         </div>
       </section>}
 
-      <section className={styles.hubGrid}>
-        {perfilBodega ? (
-          <>
-            <Link className={styles.hubCard} href="/dashboard/vinos">
-              <p className={styles.eyebrow}>Base de bodega</p>
-              <h2>Referencias</h2>
-              <p>Fichas, anadas, coste, proveedor, stock minimo y estado comercial.</p>
-              <span>Gestionar vinos</span>
-            </Link>
-            <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/bodega">
-              <p className={styles.eyebrow}>Compra</p>
-              <h2>Stock y pedido</h2>
-              <p>Bajo minimo, compra sugerida, movimientos y capital inmovilizado.</p>
-              <span>Ver bodega</span>
-            </Link>
-            <Link className={styles.hubCard} href="/dashboard/menu-engineering">
-              <p className={styles.eyebrow}>Decision</p>
-              <h2>Estrellas y joyas</h2>
-              <p>Mapa de salida real, margen, rotacion y potencial de cada referencia.</p>
-              <span>Analizar mapa</span>
-            </Link>
-            <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/inventario">
-              <p className={styles.eyebrow}>Conteo</p>
-              <h2>Inventario</h2>
-              <p>Prioriza conteos, revisa desviaciones y protege las referencias clave.</p>
-              <span>Preparar inventario</span>
-            </Link>
-          </>
-        ) : (
-          <>
-            <Link className={styles.hubCard} href="/dashboard/qr">
-              <p className={styles.eyebrow}>Mesas</p>
-              <h2>QR y accesos</h2>
-              <p>Descarga el QR y revisa adónde envía: carta o hub público.</p>
-              <span>{restaurante?.hub_activo ? 'Hub activo' : 'Carta directa'}</span>
-            </Link>
-            <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/personalizar">
-              <p className={styles.eyebrow}>Marca</p>
-              <h2>Diseno de carta</h2>
-              <p>Colores, tipografia, logo y banner de la carta publica.</p>
-              <span>Editar identidad</span>
-            </Link>
-          </>
-        )}
-      </section>
+      {perfilBodega && (
+        <section className={styles.hubGrid}>
+          <Link className={styles.hubCard} href="/dashboard/vinos">
+            <p className={styles.eyebrow}>Base de bodega</p>
+            <h2>Referencias</h2>
+            <p>Fichas, anadas, coste, proveedor, stock minimo y estado comercial.</p>
+            <span>Gestionar vinos</span>
+          </Link>
+          <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/bodega">
+            <p className={styles.eyebrow}>Compra</p>
+            <h2>Stock y pedido</h2>
+            <p>Bajo minimo, compra sugerida, movimientos y capital inmovilizado.</p>
+            <span>Ver bodega</span>
+          </Link>
+          <Link className={styles.hubCard} href="/dashboard/menu-engineering">
+            <p className={styles.eyebrow}>Decision</p>
+            <h2>Estrellas y joyas</h2>
+            <p>Mapa de salida real, margen, rotacion y potencial de cada referencia.</p>
+            <span>Analizar mapa</span>
+          </Link>
+          <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/inventario">
+            <p className={styles.eyebrow}>Conteo</p>
+            <h2>Inventario</h2>
+            <p>Prioriza conteos, revisa desviaciones y protege las referencias clave.</p>
+            <span>Preparar inventario</span>
+          </Link>
+        </section>
+      )}
 
       <section className={styles.gridTwo} style={{ marginTop: 16 }}>
         <BillingPanel restaurante={restaurante} />
@@ -293,11 +299,11 @@ export default function AjustesHub() {
             </div>
             {esAdmin && (
               <div className={styles.itemStack}>
-                <button className={styles.primary} onClick={() => guardarInicioActividad(new Date().toISOString())} disabled={guardandoActividad}>
+                <button className={styles.primary} onClick={() => abrirModalActividad('reiniciar')} disabled={guardandoActividad}>
                   {actividadIniciada ? 'Reiniciar desde hoy' : 'Empezar actividad real hoy'}
                 </button>
                 {actividadIniciada && (
-                  <button className={styles.ghost} onClick={() => guardarInicioActividad(null)} disabled={guardandoActividad}>
+                  <button className={styles.ghost} onClick={() => abrirModalActividad('pausar')} disabled={guardandoActividad}>
                     Pausar actividad real
                   </button>
                 )}
@@ -349,8 +355,8 @@ export default function AjustesHub() {
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <div>
-              <h2 className={styles.panelTitle}>{perfilBodega ? 'Enlaces internos de trabajo' : 'Enlaces para compartir'}</h2>
-              <p className={styles.panelSub}>{perfilBodega ? 'Atajos para compartir con el equipo de bodega o volver rápido a pantallas clave.' : 'Útiles para imprenta, equipo de sala, WhatsApp o pruebas rápidas.'}</p>
+              <h2 className={styles.panelTitle}>{perfilBodega ? 'Enlaces internos de trabajo' : 'Enlaces de la carta'}</h2>
+              <p className={styles.panelSub}>{perfilBodega ? 'Atajos para compartir con el equipo de bodega o volver rápido a pantallas clave.' : 'Copia y comparte la carta y el acceso de sala con quien lo necesite.'}</p>
             </div>
           </div>
           <div className={styles.panelBody}>
@@ -364,15 +370,64 @@ export default function AjustesHub() {
                 </>
               ) : (
                 <>
-                  <button className={styles.ghost} onClick={() => copiar(urlPublica, 'publica')} disabled={!cartaPublicada}>{copiado === 'publica' ? 'Copiado' : 'Copiar experiencia publica'}</button>
-                  <button className={styles.ghost} onClick={() => copiar(urlCarta, 'carta')} disabled={!cartaPublicada}>{copiado === 'carta' ? 'Copiado' : 'Copiar carta directa'}</button>
-                  <button className={styles.ghost} onClick={() => copiar(urlCamarero, 'camarero')}>{copiado === 'camarero' ? 'Copiado' : 'Copiar modo camarero'}</button>
+                  <button className={styles.ghost} onClick={() => copiar(urlCarta, 'carta')}>{copiado === 'carta' ? 'Copiado' : 'Copiar carta directa'}</button>
+                  <button className={styles.ghost} onClick={() => copiar(urlCamarero, 'camarero')}>{copiado === 'camarero' ? 'Copiado' : 'Copiar camarero'}</button>
                 </>
               )}
             </div>
           </div>
         </div>
       </section>
+      {modalActividad && (
+        <div className={styles.actividadModalOverlay} onClick={() => { setModalActividad(null); setConfirmInput('') }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="actividad-modal-title"
+            className={styles.actividadModalDialog}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 id="actividad-modal-title" className={styles.sectionTitle}>
+              {modalActividad === 'reiniciar' ? 'Reiniciar actividad real desde hoy' : 'Pausar actividad real'}
+            </h3>
+            {modalActividad === 'reiniciar' ? (
+              <p className={styles.sectionText}>
+                Las estadísticas, el análisis de carta y el simulador mostrarán únicamente datos desde hoy.
+                Hasta que haya actividad nueva, las pantallas aparecerán vacías.
+                No se borra ningún dato: el historial anterior permanece en la base de datos.
+              </p>
+            ) : (
+              <p className={styles.sectionText}>
+                Se elimina la fecha de corte. Las pantallas de Estadísticas y Análisis de carta quedan
+                vacías (no muestran datos sin fecha de inicio). El modo camarero deja de registrar ventas
+                nuevas. El panel mostrará el restaurante como &ldquo;Cerrado&rdquo;. No se borra ningún dato.
+              </p>
+            )}
+            <p className={styles.sectionText}>
+              Escribe <strong>{modalActividad === 'reiniciar' ? 'REINICIAR' : 'PAUSAR'}</strong> para confirmar:
+            </p>
+            <input
+              className={styles.input}
+              value={confirmInput}
+              onChange={e => setConfirmInput(e.target.value)}
+              placeholder={modalActividad === 'reiniciar' ? 'REINICIAR' : 'PAUSAR'}
+              autoFocus
+            />
+            <div className={styles.actividadModalActions}>
+              <button className={styles.ghost} onClick={() => { setModalActividad(null); setConfirmInput('') }}>
+                Cancelar
+              </button>
+              <button
+                className={styles.primary}
+                disabled={confirmInput.trim().toUpperCase() !== (modalActividad === 'reiniciar' ? 'REINICIAR' : 'PAUSAR') || guardandoActividad}
+                onClick={confirmarActividad}
+              >
+                {guardandoActividad ? 'Aplicando...' : modalActividad === 'reiniciar' ? 'Reiniciar' : 'Pausar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ModuleShell>
   )
 }

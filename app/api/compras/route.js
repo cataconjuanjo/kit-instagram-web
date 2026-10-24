@@ -1,6 +1,36 @@
 import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
+async function bridgeLibroCompras({ restauranteId, cabecera, cabeceraId, lineas }) {
+  // Solo para plan sumiller. Bridge atómico via RPC para evitar race condition.
+  // importe = suma de importe_neto (base imponible neta: post-descuento, pre-IVA)
+  const { data: rest } = await supabaseAdmin
+    .from('restaurantes')
+    .select('plan')
+    .eq('id', restauranteId)
+    .single()
+  if (rest?.plan !== 'sumiller') return
+
+  const periodo = cabecera.fecha.slice(0, 7) // 'YYYY-MM'
+  const importe = Math.round(
+    (lineas || []).reduce((s, l) => s + (Number(l.importe_neto) || 0), 0) * 100
+  ) / 100
+
+  const entrada = {
+    fecha:              cabecera.fecha,
+    importe,
+    cabecera_compra_id: cabeceraId,
+    ...(cabecera.numero_documento ? { albaran: cabecera.numero_documento } : {}),
+  }
+
+  await supabaseAdmin.rpc('upsert_libro_compras_factura', {
+    p_restaurante_id: restauranteId,
+    p_periodo:        periodo,
+    p_proveedor:      cabecera.proveedor,
+    p_entrada:        entrada,
+  })
+}
+
 function str(v, max = 500) {
   return String(v ?? '').trim().slice(0, max)
 }
@@ -67,6 +97,16 @@ export async function POST(req) {
         return Response.json({ error: 'El proveedor es obligatorio.' }, { status: 400 })
       }
       throw error
+    }
+
+    // Bridge asíncrono — fallo no bloquea la respuesta al cliente
+    if (data?.cabecera_id) {
+      bridgeLibroCompras({
+        restauranteId,
+        cabecera,
+        cabeceraId: data.cabecera_id,
+        lineas:     data.lineas,
+      }).catch(err => console.error('[compras bridge]', err))
     }
 
     return Response.json({ ok: true, ...data })

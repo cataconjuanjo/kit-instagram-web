@@ -337,6 +337,16 @@ function nombreVinoCarta(vino = {}) {
     .trim()
 }
 
+function aniadaEnNombre(nombre, anada) {
+  if (!nombre || !anada) return false
+  return new RegExp(`\\b${String(anada)}\\b`).test(String(nombre))
+}
+
+function normUvas(uva) {
+  if (!uva) return uva
+  return uva.split(/[,;]/).map(u => u.trim()).filter(Boolean).join(', ')
+}
+
 function activarConTeclado(event, accion) {
   if (event.key !== 'Enter' && event.key !== ' ') return
   event.preventDefault()
@@ -1380,12 +1390,12 @@ export default function CartaPublica() {
             <RacimoIcon color={tipoDot[_tipoNorm(v)] || colorPrimario} className={styles.dotIcon} />
             <div className={styles.wineTitleBlock}>
               <h3 className={styles.wineName}>{nombreVinoCarta(v)}</h3>
-              {v.anada && <span className={styles.vintagePill}>{v.anada}</span>}
+              {v.anada && !aniadaEnNombre(v.nombre, v.anada) && <span className={styles.vintagePill}>{v.anada}</span>}
             </div>
           </div>
           {(v.bodega || v.uva || (opciones.mostrarDo && v.region)) && (
             <p className={styles.wineSecondary}>
-              {[v.bodega, v.uva, opciones.mostrarDo && v.region ? regionCartaVisible(v) : null].filter(Boolean).join(' · ')}
+              {[v.bodega, normUvas(v.uva), opciones.mostrarDo && v.region ? regionCartaVisible(v) : null].filter(Boolean).join(' · ')}
             </p>
           )}
           {etiquetas.length > 0 && (
@@ -1622,7 +1632,7 @@ export default function CartaPublica() {
               <div key={v.id} style={{ background: '#fff', padding: '12px 16px', textAlign: 'center' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: coloresVino[idx], margin: '0 auto 4px' }} />
                 <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: '#111' }}>{nombreVinoCarta(v)}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 10, color: '#bbb' }}>{[v.bodega, v.uva].filter(Boolean).join(' · ')}</p>
+                <p style={{ margin: '2px 0 0', fontSize: 10, color: '#bbb' }}>{[v.bodega, normUvas(v.uva)].filter(Boolean).join(' · ')}</p>
               </div>
             ))}
             {ejes.map(eje => (
@@ -1736,8 +1746,8 @@ export default function CartaPublica() {
         <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0f0f0', overflow: 'hidden', marginBottom: 20 }}>
           {[
             { label: i.region, valor: vinoSeleccionado.region },
-            { label: i.uva, valor: vinoSeleccionado.uva },
-            { label: i.anada, valor: vinoSeleccionado.anada },
+            { label: i.uva, valor: normUvas(vinoSeleccionado.uva) },
+            { label: i.anada, valor: aniadaEnNombre(vinoSeleccionado.nombre, vinoSeleccionado.anada) ? null : vinoSeleccionado.anada },
             { label: i.copa, valor: precioValido(vinoSeleccionado.precio_copa) ? precioCopaCarta(vinoSeleccionado.precio_copa) : null },
             { label: i.botella, valor: precioValido(vinoSeleccionado.precio_botella) ? precioBotellaCarta(vinoSeleccionado.precio_botella) : null },
           ].filter(f => f.valor).map((f, idx, arr) => (
@@ -2345,7 +2355,7 @@ export default function CartaPublica() {
               >
                 <div>
                   <h3>{nombreVinoCarta(vinoMandatoCliente)}</h3>
-                  <p>{[vinoMandatoCliente.bodega, vinoMandatoCliente.uva, vinoMandatoCliente.region].filter(Boolean).join(' · ')}</p>
+                  <p>{[vinoMandatoCliente.bodega, normUvas(vinoMandatoCliente.uva), vinoMandatoCliente.region].filter(Boolean).join(' · ')}</p>
                 </div>
                 <strong>{precioBotellaCarta(vinoMandatoCliente.precio_botella)}</strong>
               </article>
@@ -2370,7 +2380,7 @@ export default function CartaPublica() {
                       <span className={styles.dot} style={{ background: tipoDot[vino.tipo] || colorPrimario }} />
                       <span>
                         <strong>{nombreVinoCarta(vino)}</strong>
-                        <em>{[vino.bodega, vino.uva, vino.region].filter(Boolean).join(' · ')}</em>
+                        <em>{[vino.bodega, normUvas(vino.uva), vino.region].filter(Boolean).join(' · ')}</em>
                       </span>
                       <b>{precioBotellaCarta(vino.precio_botella)}</b>
                     </button>
@@ -2726,7 +2736,7 @@ export default function CartaPublica() {
           {precioValido(s.vinos?.precio_botella) && <div style={{ background: colorPrimario, color: '#fff', fontSize: 13, fontWeight: 500, padding: '4px 12px', borderRadius: 20, flexShrink: 0 }}>{precioBotellaCarta(s.vinos.precio_botella)}</div>}
         </div>
         <p style={{ margin: '0 0 10px 18px', fontSize: 13, color: '#555', lineHeight: 1.8, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>{limpiarNotaSeleccion(s.nota_personal)}</p>
-        <p style={{ margin: '0 0 0 18px', fontSize: 11, color: '#aaa' }}>{s.vinos?.bodega}{s.vinos?.region ? ` · ${s.vinos.region}` : ''}</p>
+        <p style={{ margin: '0 0 0 18px', fontSize: 11, color: '#aaa' }}>{[s.vinos?.bodega, s.vinos?.region].filter(Boolean).join(' · ')}</p>
       </div>
     ))}
 
@@ -2753,7 +2763,7 @@ export default function CartaPublica() {
           {precioValido(s.vinos?.precio_botella) && <div style={{ background: colorPrimario, color: '#fff', fontSize: 13, fontWeight: 500, padding: '4px 12px', borderRadius: 20, flexShrink: 0 }}>{precioBotellaCarta(s.vinos.precio_botella)}</div>}
         </div>
         <p style={{ margin: '0 0 10px 18px', fontSize: 13, color: '#555', lineHeight: 1.8, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>{limpiarNotaSeleccion(s.nota_personal)}</p>
-        <p style={{ margin: '0 0 0 18px', fontSize: 11, color: '#aaa' }}>{s.vinos?.bodega}{s.vinos?.region ? ` · ${s.vinos.region}` : ''}</p>
+        <p style={{ margin: '0 0 0 18px', fontSize: 11, color: '#aaa' }}>{[s.vinos?.bodega, s.vinos?.region].filter(Boolean).join(' · ')}</p>
       </div>
     ))}
 
@@ -2793,7 +2803,7 @@ export default function CartaPublica() {
                           <div style={{ flex: 1 }}>
                             <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111' }}>{nombreVinoCarta(v)}</p>
                             <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>
-                              {[v.bodega, v.anada].filter(Boolean).join(' · ')}
+                              {[v.bodega, aniadaEnNombre(v.nombre, v.anada) ? null : v.anada].filter(Boolean).join(' · ')}
                             </p>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -2858,7 +2868,7 @@ export default function CartaPublica() {
                           <div style={{ flex: 1 }}>
                             <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: '#111' }}>{nombreVinoCarta(v)}</p>
                             <p style={{ margin: '3px 0 0', fontSize: 12, color: '#999' }}>
-                              {[v.bodega, v.anada].filter(Boolean).join(' · ')}
+                              {[v.bodega, aniadaEnNombre(v.nombre, v.anada) ? null : v.anada].filter(Boolean).join(' · ')}
                             </p>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>

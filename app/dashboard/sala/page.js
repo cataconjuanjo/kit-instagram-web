@@ -133,11 +133,15 @@ async function copiarTexto(texto) {
   document.body.removeChild(textarea)
 }
 
-function LineaBriefing({ titulo, detalle }) {
+function LineaBriefing({ titulo, detalle, chipTipo }) {
   return (
-    <div style={{ borderTop: '1px solid rgba(90, 72, 55, 0.12)', paddingTop: 10 }}>
-      <p className={styles.sectionTitle} style={{ fontSize: 14 }}>{titulo}</p>
-      {detalle && <p className={styles.sectionText} style={{ marginTop: 3 }}>{detalle}</p>}
+    <div className={styles.briefingRow}>
+      <span className={styles.briefingRowTitle}>{titulo}</span>
+      <div className={styles.briefingRowRight}>
+        {chipTipo === 'out' && <span className={styles.stockChipOut}>sin stock</span>}
+        {chipTipo === 'min' && <span className={styles.stockChipMin}>stock en mínimo</span>}
+        {!chipTipo && detalle && <span className={styles.briefingRowDetail}>{detalle}</span>}
+      </div>
     </div>
   )
 }
@@ -150,6 +154,7 @@ export default function SalaHub() {
   const [mensajeBriefing, setMensajeBriefing] = useState('')
   const [etiquetaDia, setEtiquetaDia] = useState('hoy')
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState('hoy')
 
   useEffect(() => {
     async function cargar() {
@@ -209,9 +214,10 @@ export default function SalaHub() {
     <ModuleShell
       restaurante={restaurante}
       eyebrow="Sala"
-      title="Servicio y actividad"
-      subtitle="Rutina diaria para revisar lo que ha pasado en mesa y dejar la carta lista para el siguiente servicio."
-      actions={<a className={styles.secondary} href={urlCamarero} target="_blank" rel="noreferrer">Abrir modo camarero</a>}
+      title="Sala"
+      subtitle="Prepara el servicio de hoy y revisa cómo fue."
+      centered
+      actions={<a className={styles.primary} href={urlCamarero} target="_blank" rel="noreferrer">Abrir modo camarero</a>}
       help={{
         title: 'Rutina de sala',
         intro: 'No es para tocarlo todo durante el servicio. Es para recoger señales y decidir después con calma.',
@@ -222,85 +228,87 @@ export default function SalaHub() {
         ],
       }}
     >
-      <section className={styles.panel}>
-        <div className={styles.panelHead}>
-          <div>
-            <p className={styles.eyebrow}>Antes de abrir</p>
-            <h2 className={styles.panelTitle}>Briefing de sala</h2>
-            <p className={styles.panelSub}>Qué vender con intención, qué revisar antes de prometer y qué platos usar para abrir conversación.</p>
-            {mensajeBriefing && <p className={styles.tiny}>{mensajeBriefing}</p>}
-          </div>
-          <div className={styles.actionRow}>
-            <button type="button" className={styles.primary} onClick={copiarBriefing}>Copiar briefing</button>
-            <button type="button" className={styles.secondary} onClick={abrirWhatsAppBriefing}>Enviar WhatsApp</button>
-            <Link className={styles.secondary} href="/dashboard/cierre">Ir a cierre</Link>
-          </div>
-        </div>
-        <div className={styles.panelBody}>
-          <div className={styles.gridTwo}>
-            <article className={styles.itemCard}>
-              <p className={styles.eyebrow}>Empujar hoy</p>
-              <h3 className={styles.sectionTitle}>Vinos con recorrido</h3>
-              <div className={styles.itemStack} style={{ marginTop: 12 }}>
+      <nav className={styles.tabsNav}>
+        <button type="button" className={tab === 'hoy' ? `${styles.tabPill} ${styles.tabPillActive}` : styles.tabPill} onClick={() => setTab('hoy')}>Hoy</button>
+        <button type="button" className={tab === 'parte' ? `${styles.tabPill} ${styles.tabPillActive}` : styles.tabPill} onClick={() => setTab('parte')}>Parte de servicio</button>
+        <button type="button" className={tab === 'semana' ? `${styles.tabPill} ${styles.tabPillActive}` : styles.tabPill} onClick={() => setTab('semana')}>Semana</button>
+      </nav>
+
+      {tab === 'hoy' && (
+        <div className={styles.salaGrid}>
+          <article className={styles.inicioCard}>
+            <div className={styles.panelHead}>
+              <div>
+                <h2 className={styles.cardH2}>Briefing de hoy</h2>
+                <p className={styles.cardH2Sub}>Qué empujar y qué no prometer hoy en sala.</p>
+                {mensajeBriefing && <p className={styles.tiny}>{mensajeBriefing}</p>}
+              </div>
+              <div className={styles.actionRow}>
+                <button type="button" className={styles.secondary} onClick={copiarBriefing}>Copiar</button>
+                <button type="button" className={styles.secondary} onClick={abrirWhatsAppBriefing}>WhatsApp</button>
+              </div>
+            </div>
+
+            <div className={styles.briefingSection}>
+              <p className={styles.briefingSectionTitle}>
+                <span className={styles.briefingDot} style={{ background: '#af8b52' }} />
+                Empujar hoy
+              </p>
+              <div className={styles.itemStack}>
                 {briefing.vinosServicio.length ? briefing.vinosServicio.map(vino => (
-                  <LineaBriefing
-                    key={vino.id}
-                    titulo={vino.nombre}
-                    detalle={detalleVinoServicio(vino)}
-                  />
+                  <LineaBriefing key={vino.id} titulo={vino.nombre} detalle={detalleVinoServicio(vino)} />
                 )) : <p className={styles.sectionText}>Añade stock, precio y coste para generar recomendaciones de venta.</p>}
               </div>
-            </article>
+            </div>
 
-            <article className={styles.itemCard}>
-              <p className={styles.eyebrow}>Revisar antes</p>
-              <h3 className={styles.sectionTitle}>No prometer sin mirar bodega</h3>
-              <div className={styles.itemStack} style={{ marginTop: 12 }}>
+            <div className={styles.briefingSection}>
+              <p className={styles.briefingSectionTitle}>
+                <span className={styles.briefingDot} style={{ background: '#b4532a' }} />
+                Revisar antes de prometer
+              </p>
+              <div className={styles.itemStack}>
                 {briefing.vinosRiesgo.length ? briefing.vinosRiesgo.map(vino => (
                   <LineaBriefing
                     key={vino.id}
                     titulo={vino.nombre}
-                    detalle={detalleVinoRiesgo(vino)}
+                    chipTipo={decimal(vino.stock) === 0 ? 'out' : 'min'}
                   />
-                )) : <p className={styles.sectionText}>No hay referencias críticas de stock para este servicio.</p>}
+                )) : <p className={styles.sectionText}>Sin referencias críticas de stock para este servicio.</p>}
               </div>
-            </article>
+            </div>
 
-            <article className={styles.itemCard}>
-              <p className={styles.eyebrow}>Argumentos</p>
-              <h3 className={styles.sectionTitle}>Platos para vender mejor</h3>
-              <div className={styles.itemStack} style={{ marginTop: 12 }}>
+            <div className={styles.briefingSection}>
+              <p className={styles.briefingSectionTitle}>
+                <span className={styles.briefingDot} style={{ background: '#74223d' }} />
+                Platos para vender mejor
+              </p>
+              <div className={styles.itemStack}>
                 {briefing.platosArgumento.length ? briefing.platosArgumento.map(plato => (
-                  <LineaBriefing
-                    key={plato.id}
-                    titulo={plato.nombre}
-                    detalle={detallePlato(plato)}
-                  />
+                  <LineaBriefing key={plato.id} titulo={plato.nombre} detalle={detallePlato(plato)} />
                 )) : <p className={styles.sectionText}>Completa descripciones de platos para preparar mejores argumentos de sala.</p>}
               </div>
+            </div>
+          </article>
+
+          <div className={styles.salaRightCol}>
+            <ParteServicio restauranteId={restaurante.id} vinos={vinos} />
+            <article className={styles.salaLinksCard}>
+              <Link className={styles.salaLinkRow} href="/dashboard/cierre">
+                <span>Cierre de servicio</span>
+                <span className={styles.salaLinkBadge}>{incidencias + dudas} señales</span>
+              </Link>
+              <Link className={styles.salaLinkRow} href="/dashboard/estadisticas">
+                <span>Actividad</span>
+                <span className={styles.salaLinkBadge}>Ver →</span>
+              </Link>
             </article>
           </div>
         </div>
-      </section>
+      )}
 
-      <ParteServicio restauranteId={restaurante.id} vinos={vinos} />
+      {tab === 'parte' && <ParteServicio restauranteId={restaurante.id} vinos={vinos} />}
 
-      <InformeSemanal restauranteId={restaurante.id} restaurante={restaurante} />
-
-      <section className={styles.hubGrid}>
-        <Link className={`${styles.hubCard} ${styles.hubCardDark}`} href="/dashboard/cierre">
-          <p className={styles.eyebrow}>Hoy</p>
-          <h2>Cierre de servicio</h2>
-          <p>Resolver incidencias, limpiar dudas y detectar vinos con tracción.</p>
-          <span>{incidencias + dudas} señales pendientes</span>
-        </Link>
-        <Link className={styles.hubCard} href="/dashboard/estadisticas">
-          <p className={styles.eyebrow}>Histórico</p>
-          <h2>Actividad</h2>
-          <p>Escaneos, consultas de maridaje y feedback acumulado.</p>
-          <span>Ver tendencias</span>
-        </Link>
-      </section>
+      {tab === 'semana' && <InformeSemanal restauranteId={restaurante.id} restaurante={restaurante} />}
     </ModuleShell>
     </FeatureGate>
   )

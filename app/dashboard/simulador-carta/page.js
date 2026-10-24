@@ -30,7 +30,7 @@ const ESTADO_ORDER = { actual: 0, nuevo: 1, fuera: 2 }
 
 function eur(valor) {
   if (!Number(valor)) return '—'
-  return Number(valor).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+  return Number(valor).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €'
 }
 
 function margenBotella(pvp, coste) {
@@ -206,6 +206,21 @@ export default function SimuladorCarta() {
   const [guardandoCopa, setGuardandoCopa] = useState(false)
   const [activeTab, setActiveTab] = useState('tabla')     // 'tabla' | 'impacto' | 'proveedores'
   const [token, setToken] = useState(null)
+  const [masAccionesOpen, setMasAccionesOpen] = useState(false)
+  const [vistaSimple, setVistaSimple] = useState(true)
+
+  // Cierra "Más acciones" con Escape o clic fuera
+  useEffect(() => {
+    if (!masAccionesOpen) return
+    function onKey(e) { if (e.key === 'Escape') setMasAccionesOpen(false) }
+    function onOutside(e) { if (!e.target.closest('[data-mas-acciones]')) setMasAccionesOpen(false) }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onOutside)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onOutside)
+    }
+  }, [masAccionesOpen])
 
   // Cierra el popover si el usuario hace scroll o redimensiona la ventana
   useEffect(() => {
@@ -402,6 +417,10 @@ export default function SimuladorCarta() {
     }
     return base
   }, [lineasOrdenadas, busquedaTabla, ordenTabla, mostrarRetirados, economicSettings])
+
+  // Columnas sugeridas: visibles solo si al menos una línea tiene el valor
+  const hayBotSug = lineas.some(l => l.pvp_recomendado_catalogo)
+  const hayCopaSug = lineas.some(l => l.pvp_copa_catalogo)
 
   // Paginación aplicada sobre lineasFiltradas
   const totalPaginas = Math.max(1, Math.ceil(lineasFiltradas.length / porPaginaTabla))
@@ -991,45 +1010,87 @@ export default function SimuladorCarta() {
       <ModuleShell
         restaurante={restaurante}
         eyebrow="Carta pública"
-        title="Simulador de carta"
-        subtitle="Prepara el borrador de tu futura carta sin afectar a la que ven tus clientes."
+        title="Prueba tu próxima carta"
+        subtitle="Cambia vinos en un borrador, mira el efecto en margen y platos, y publica solo cuando estés seguro."
         actions={
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {(resumen.nuevos > 0 || resumen.retirados > 0) && (
+            {/* Más acciones — desplegable */}
+            <div className={simStyles.masAccionesWrap} data-mas-acciones>
               <button
                 type="button"
                 className={simStyles.accionBtn}
-                onClick={() => setMostrarBriefing(true)}
+                aria-haspopup="menu"
+                aria-expanded={masAccionesOpen}
+                onClick={() => setMasAccionesOpen(v => !v)}
               >
-                Vista previa para sala
+                Más acciones {masAccionesOpen ? '▲' : '▼'}
               </button>
-            )}
-            {lineas.some(l => l.origen?.startsWith('sugerido')) && (
-              <button
-                type="button"
-                className={simStyles.accionBtn}
-                style={{ color: 'var(--cv-text-muted)', borderColor: '#e0d4bc' }}
-                disabled={descartandoSugerencias}
-                onClick={descartarSugerencias}
-              >
-                {descartandoSugerencias ? 'Descartando…' : 'Descartar sugerencias'}
-              </button>
-            )}
-            <button
-              type="button"
-              className={simStyles.accionBtn}
-              onClick={abrirAnadirCatalogo}
-            >
-              Añadir del catálogo
-            </button>
-            <button
-              type="button"
-              className={simStyles.accionBtn}
-              onClick={abrirSugerencias}
-              disabled={mostrarSugeridor && sugerencias === null}
-            >
-              {mostrarSugeridor && sugerencias === null ? 'Analizando…' : 'Sugerir carta'}
-            </button>
+              {masAccionesOpen && (
+                <div role="menu" className={simStyles.masAccionesMenu}>
+                  {(resumen.nuevos > 0 || resumen.retirados > 0) && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={simStyles.masAccionesItem}
+                      onClick={() => { setMostrarBriefing(true); setMasAccionesOpen(false) }}
+                    >
+                      Vista previa para sala
+                    </button>
+                  )}
+                  {lineas.some(l => l.origen?.startsWith('sugerido')) && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={simStyles.masAccionesItem}
+                      disabled={descartandoSugerencias}
+                      onClick={() => { descartarSugerencias(); setMasAccionesOpen(false) }}
+                    >
+                      {descartandoSugerencias ? 'Descartando…' : 'Descartar sugerencias'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={simStyles.masAccionesItem}
+                    onClick={() => { abrirAnadirCatalogo(); setMasAccionesOpen(false) }}
+                  >
+                    Añadir del catálogo
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={simStyles.masAccionesItem}
+                    disabled={mostrarSugeridor && sugerencias === null}
+                    onClick={() => { abrirSugerencias(); setMasAccionesOpen(false) }}
+                  >
+                    {mostrarSugeridor && sugerencias === null ? 'Analizando…' : 'Sugerir carta'}
+                  </button>
+                  {lineas.some(l => l.estado === 'nuevo') && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={simStyles.masAccionesItem}
+                      onClick={() => { setActiveTab('proveedores'); setMasAccionesOpen(false) }}
+                    >
+                      Pedido a proveedores
+                    </button>
+                  )}
+                  {revision === null && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={simStyles.masAccionesItem}
+                      disabled={lineas.filter(l => l.estado === 'actual' || l.estado === 'nuevo').length === 0}
+                      onClick={() => { setMensajeRevision(''); setModalEnviarRevision(true); setMasAccionesOpen(false) }}
+                    >
+                      Enviar al consultor
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Vista previa — abre la carta pública */}
             <button
               type="button"
               className={simStyles.accionBtn}
@@ -1038,25 +1099,7 @@ export default function SimuladorCarta() {
             >
               Vista previa
             </button>
-            {lineas.some(l => l.estado === 'nuevo') && (
-              <button
-                type="button"
-                className={simStyles.accionBtn}
-                onClick={() => setActiveTab('proveedores')}
-              >
-                Pedido a proveedores
-              </button>
-            )}
-            {revision === null && (
-              <button
-                type="button"
-                className={simStyles.accionBtn}
-                disabled={lineas.filter(l => l.estado === 'actual' || l.estado === 'nuevo').length === 0}
-                onClick={() => { setMensajeRevision(''); setModalEnviarRevision(true) }}
-              >
-                Enviar al consultor
-              </button>
-            )}
+
             <button
               type="button"
               className={styles.primary}
@@ -1074,40 +1117,39 @@ export default function SimuladorCarta() {
         }
       >
         {/* ── Resumen en vivo ───────────────────────────────── */}
-        <div className={simStyles.summary}>
-          <StatCard value={resumen.total} label="Referencias activas" />
-          <StatCard
-            value={resumen.nuevos}
-            label="Nuevas"
-            hint="Vienen del catálogo del consultor"
-            valueStyle={resumen.nuevos > 0 ? { color: 'var(--cv-gold)' } : undefined}
-          />
+        <div className={simStyles.kpiHeroCard}>
+          <div className={simStyles.kpiHeroItem}>
+            <span className={simStyles.kpiHeroNum}>{resumen.total}</span>
+            <span className={simStyles.kpiHeroLabel}>Referencias activas</span>
+          </div>
+          <div className={simStyles.kpiHeroItem}>
+            <span className={simStyles.kpiHeroNum} style={resumen.nuevos > 0 ? { color: 'var(--cv-gold)' } : undefined}>{resumen.nuevos}</span>
+            <span className={simStyles.kpiHeroLabel}>Nuevas</span>
+            <span className={simStyles.kpiHeroHint}>Vienen del catálogo del consultor</span>
+          </div>
           <div
-            className={resumen.retirados > 0 ? simStyles.statCardClickable : undefined}
+            className={simStyles.kpiHeroItem}
+            style={resumen.retirados > 0 ? { cursor: 'pointer' } : undefined}
             onClick={resumen.retirados > 0 ? () => setMostrarRetirados(v => !v) : undefined}
             title={resumen.retirados > 0 ? (mostrarRetirados ? 'Ocultar retirados' : 'Mostrar retirados en tabla') : undefined}
           >
-            <StatCard
-              value={resumen.retirados}
-              label="Para retirar"
-              hint={resumen.retirados > 0 ? (mostrarRetirados ? 'Visibles en tabla · haz clic para ocultar' : 'Haz clic para mostrar en tabla') : 'Se ocultarán al publicar'}
-              valueStyle={resumen.retirados > 0 ? { color: 'var(--cv-red)' } : undefined}
-            />
+            <span className={simStyles.kpiHeroNum} style={resumen.retirados > 0 ? { color: 'var(--cv-red)' } : undefined}>{resumen.retirados}</span>
+            <span className={simStyles.kpiHeroLabel}>Para retirar</span>
+            <span className={simStyles.kpiHeroHint}>{resumen.retirados > 0 ? (mostrarRetirados ? 'Visibles en tabla · haz clic para ocultar' : 'Haz clic para mostrar en tabla') : 'Se ocultarán al publicar'}</span>
           </div>
-          <StatCard
-            value={
-              resumen.margenMedio !== null
+          <div className={simStyles.kpiHeroItem}>
+            <span
+              className={simStyles.kpiHeroNum}
+              style={resumen.margenMedio !== null ? { color: resumen.margenMedio >= 65 ? 'var(--cv-green)' : resumen.margenMedio < 55 ? 'var(--cv-red)' : undefined } : undefined}
+            >
+              {resumen.margenMedio !== null
                 ? `${resumen.margenMedio} %`
                 : <Link href="/dashboard/vinos" className={simStyles.margenCta}>Añadir costes →</Link>
-            }
-            label="Margen medio est."
-            hint={resumen.margenMedio !== null ? 'Solo activas con coste registrado' : 'Registra el coste de tus vinos para ver el margen'}
-            valueStyle={
-              resumen.margenMedio !== null
-                ? { color: resumen.margenMedio >= 65 ? 'var(--cv-green)' : resumen.margenMedio < 55 ? 'var(--cv-red)' : undefined }
-                : undefined
-            }
-          />
+              }
+            </span>
+            <span className={simStyles.kpiHeroLabel}>Margen medio est.</span>
+            <span className={simStyles.kpiHeroHint}>{resumen.margenMedio !== null ? 'sobre PVP con IVA · solo activas con coste' : 'Registra el coste de tus vinos para ver el margen'}</span>
+          </div>
         </div>
 
         {/* ── Comparación borrador vs carta actual ──────────── */}
@@ -1115,22 +1157,18 @@ export default function SimuladorCarta() {
           <div className={simStyles.comparacion}>
             <span className={simStyles.comparacionLabel}>Si publicas:</span>
 
-            {comparacion.deltaMargen !== null ? (
+            {comparacion.deltaMargen !== null && comparacion.deltaMargen !== 0 ? (
               <span>
                 Margen{' '}
-                <span className={
-                  comparacion.deltaMargen > 0 ? simStyles.comparacionPos
-                  : comparacion.deltaMargen < 0 ? simStyles.comparacionNeg
-                  : simStyles.comparacionNeutral
-                }>
+                <span className={comparacion.deltaMargen > 0 ? simStyles.comparacionPos : simStyles.comparacionNeg}>
                   {comparacion.deltaMargen > 0 ? '+' : ''}{comparacion.deltaMargen} pp
                 </span>
               </span>
-            ) : (
+            ) : comparacion.deltaMargen === null ? (
               <span className={simStyles.comparacionNeutral}>
                 registra costes en tu carta actual para comparar margen
               </span>
-            )}
+            ) : null}
 
             {comparacion.deltaRegiones !== 0 && (
               <span>
@@ -1142,7 +1180,7 @@ export default function SimuladorCarta() {
             )}
 
             {comparacion.deltaMargen === 0 && comparacion.deltaRegiones === 0 && (
-              <span className={simStyles.comparacionNeutral}>sin cambios en margen ni regiones</span>
+              <span className={simStyles.comparacionNeutral}>Sin cambios respecto a tu carta actual</span>
             )}
           </div>
         )}
@@ -1189,24 +1227,24 @@ export default function SimuladorCarta() {
         )}
 
         {/* ── Sub-navegación de vistas ─────────────────────── */}
-        <div className={simStyles.subNav}>
+        <div className={styles.tabsNav}>
           <button
             type="button"
-            className={`${simStyles.subNavBtn} ${activeTab === 'tabla' ? simStyles.subNavBtnActive : ''}`}
+            className={`${styles.tabPill} ${activeTab === 'tabla' ? styles.tabPillActive : ''}`}
             onClick={() => setActiveTab('tabla')}
           >
             Tabla
           </button>
           <button
             type="button"
-            className={`${simStyles.subNavBtn} ${activeTab === 'impacto' ? simStyles.subNavBtnActive : ''}`}
+            className={`${styles.tabPill} ${activeTab === 'impacto' ? styles.tabPillActive : ''}`}
             onClick={() => setActiveTab('impacto')}
           >
             Impacto en platos
           </button>
           <button
             type="button"
-            className={`${simStyles.subNavBtn} ${activeTab === 'proveedores' ? simStyles.subNavBtnActive : ''}`}
+            className={`${styles.tabPill} ${activeTab === 'proveedores' ? styles.tabPillActive : ''}`}
             onClick={() => setActiveTab('proveedores')}
           >
             Proveedores
@@ -1246,6 +1284,14 @@ export default function SimuladorCarta() {
                   {mostrarRetirados ? 'Ocultar retirados' : `Mostrar retirados (${resumen.retirados})`}
                 </button>
               )}
+              <button
+                type="button"
+                className={`${simStyles.historialBtn} ${vistaSimple ? simStyles.toggleRetiradosActivo : ''}`}
+                onClick={() => setVistaSimple(v => !v)}
+                title={vistaSimple ? 'Mostrar todas las columnas' : 'Vista compacta: oculta Tipo y Coste'}
+              >
+                {vistaSimple ? 'Vista completa' : 'Vista simple'}
+              </button>
               <button
                 type="button"
                 className={simStyles.historialBtn}
@@ -1296,17 +1342,17 @@ export default function SimuladorCarta() {
                     />
                   </th>
                   <th className={`${simStyles.thVino} ${simStyles.thSortable}`} onClick={() => toggleOrden('nombre')}>Vino{icono('nombre')}</th>
-                  <th className={simStyles.thSortable} onClick={() => toggleOrden('tipo')}>Tipo{icono('tipo')}</th>
+                  {!vistaSimple && <th className={simStyles.thSortable} onClick={() => toggleOrden('tipo')}>Tipo{icono('tipo')}</th>}
                   <th className={simStyles.thSortable} onClick={() => toggleOrden('region')}>D.O. / Zona{icono('region')}</th>
-                  <th className={simStyles.thSortable} onClick={() => toggleOrden('anada')}>Añada{icono('anada')}</th>
+                  {!vistaSimple && <th className={simStyles.thSortable} onClick={() => toggleOrden('anada')}>Añada{icono('anada')}</th>}
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_botella')}>PVP bot. €{icono('precio_botella')}</th>
-                  <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_recomendado_catalogo')} title="Precio botella sugerido por el catálogo">Bot. sug.{icono('pvp_recomendado_catalogo')}</th>
-                  <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_copa')}>PVP copa €{icono('precio_copa')}</th>
-                  <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_copa_catalogo')} title="Precio copa sugerido por el catálogo">Copa sug.{icono('pvp_copa_catalogo')}</th>
-                  <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('coste_compra')}>Coste €{icono('coste_compra')}</th>
+                  {hayBotSug && !vistaSimple && <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_recomendado_catalogo')} title="Precio botella sugerido por el catálogo">Bot. sug.{icono('pvp_recomendado_catalogo')}</th>}
+                  {!vistaSimple && <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('precio_copa')}>PVP copa €{icono('precio_copa')}</th>}
+                  {hayCopaSug && !vistaSimple && <th className={`${simStyles.thNum} ${simStyles.thSugerido} ${simStyles.thSortable}`} onClick={() => toggleOrden('pvp_copa_catalogo')} title="Precio copa sugerido por el catálogo">Copa sug.{icono('pvp_copa_catalogo')}</th>}
+                  {!vistaSimple && <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('coste_compra')}>Coste €{icono('coste_compra')}</th>}
                   <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen')}>Mrg. bot. %{icono('margen')}</th>
-                  <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen_copa')}>Mrg. copa %{icono('margen_copa')}</th>
-                  <th>Proveedor seleccionado</th>
+                  {!vistaSimple && <th className={`${simStyles.thNum} ${simStyles.thSortable}`} onClick={() => toggleOrden('margen_copa')}>Mrg. copa %{icono('margen_copa')}</th>}
+                  {!vistaSimple && <th>Proveedor seleccionado</th>}
                   <th className={simStyles.thEstado}>Estado</th>
                   <th className={simStyles.thAccionWide}>Acción</th>
                 </tr>
@@ -1356,15 +1402,18 @@ export default function SimuladorCarta() {
                           )}
                           <span className={isFuera ? simStyles.tachado : ''}>{linea.nombre}</span>
                           {linea.bodega && <span className={simStyles.bodega}>{linea.bodega}</span>}
+                          {vistaSimple && (linea.tipo || linea.anada) && (
+                            <span className={simStyles.bodega}>{[linea.tipo, linea.anada].filter(Boolean).join(' · ')}</span>
+                          )}
                           {linea.origen?.startsWith('sugerido') && (
                             <span className={simStyles.origenAuto}>✦ Auto</span>
                           )}
                         </div>
                       </td>
 
-                      <td className={simStyles.tdTipo}>{linea.tipo || '—'}</td>
+                      {!vistaSimple && <td className={simStyles.tdTipo}>{linea.tipo || '—'}</td>}
                       <td className={simStyles.tdZona}>{linea.region || '—'}</td>
-                      <td className={simStyles.tdAnada}>{linea.anada || '—'}</td>
+                      {!vistaSimple && <td className={simStyles.tdAnada}>{linea.anada || '—'}</td>}
 
                       {/* PVP bot. € — pill si pendiente, editable si ya tiene precio */}
                       {(() => {
@@ -1399,12 +1448,14 @@ export default function SimuladorCarta() {
                       })()}
 
                       {/* Bot. sug. — referencia del catálogo, solo lectura */}
-                      <td className={simStyles.tdSugerido}>
-                        {linea.pvp_recomendado_catalogo ? eur(linea.pvp_recomendado_catalogo) : '—'}
-                      </td>
+                      {hayBotSug && !vistaSimple && (
+                        <td className={simStyles.tdSugerido}>
+                          {linea.pvp_recomendado_catalogo ? eur(linea.pvp_recomendado_catalogo) : '—'}
+                        </td>
+                      )}
 
                       {/* PVP copa € — comportamiento condicional según ofrecido_por_copa */}
-                      {(() => {
+                      {!vistaSimple && (() => {
                         const pendiente = linea.ofrecido_por_copa === null && !!linea.catalogo_vino_id && !linea.precio_copa
                         const noSirve   = linea.ofrecido_por_copa === false
                         if (pendiente) {
@@ -1456,12 +1507,14 @@ export default function SimuladorCarta() {
                       })()}
 
                       {/* Copa sug. — referencia del catálogo, solo lectura */}
-                      <td className={simStyles.tdSugerido}>
-                        {linea.pvp_copa_catalogo ? eur(linea.pvp_copa_catalogo) : '—'}
-                      </td>
+                      {hayCopaSug && !vistaSimple && (
+                        <td className={simStyles.tdSugerido}>
+                          {linea.pvp_copa_catalogo ? eur(linea.pvp_copa_catalogo) : '—'}
+                        </td>
+                      )}
 
                       {/* Coste € — editable */}
-                      {(() => {
+                      {!vistaSimple && (() => {
                         const campo = 'coste_compra'
                         const editando = inlineEdit?.id === linea.id && inlineEdit?.campo === campo
                         return (
@@ -1490,7 +1543,7 @@ export default function SimuladorCarta() {
                       </td>
 
                       {/* Margen copa */}
-                      {(() => {
+                      {!vistaSimple && (() => {
                         const mrgCopa = (linea.ofrecido_por_copa === true && linea.precio_copa && linea.coste_compra)
                           ? Math.round(margenCopaPct(linea.precio_copa, linea.coste_compra, economicSettings))
                           : null
@@ -1506,7 +1559,7 @@ export default function SimuladorCarta() {
                       })()}
 
                       {/* Proveedor seleccionado + comparación de ofertas */}
-                      <td className={simStyles.tdProveedor}>
+                      {!vistaSimple && <td className={simStyles.tdProveedor}>
                         <span className={simStyles.proveedorSeleccionado}>{proveedorSeleccionado}</span>
                         {grupo && grupo.numeroProveedores > 1 && (
                           <button
@@ -1532,7 +1585,7 @@ export default function SimuladorCarta() {
                             </button>
                           </>
                         )}
-                      </td>
+                      </td>}
 
                       {/* Badge de estado */}
                       <td className={simStyles.tdEstado}>
@@ -1555,7 +1608,7 @@ export default function SimuladorCarta() {
                             </button>
                             <button
                               type="button"
-                              className={simStyles.maridajeBtn}
+                              className={simStyles.accionLink}
                               onClick={() => { setMaridajeVinoId(linea.id); cargarPlatosMaridaje().catch(() => setPlatosMaridaje([])) }}
                             >
                               Platos
@@ -1565,7 +1618,7 @@ export default function SimuladorCarta() {
                           <div className={simStyles.accionGroup}>
                             <button
                               type="button"
-                              className={`${simStyles.accionBtn} ${simStyles.accionBtnDanger}`}
+                              className={simStyles.accionLinkDanger}
                               disabled={busy || isBlocked}
                               onClick={() => eliminarNuevo(linea)}
                             >
@@ -1573,7 +1626,7 @@ export default function SimuladorCarta() {
                             </button>
                             <button
                               type="button"
-                              className={simStyles.maridajeBtn}
+                              className={simStyles.accionLink}
                               onClick={() => { setMaridajeVinoId(linea.id); cargarPlatosMaridaje().catch(() => setPlatosMaridaje([])) }}
                             >
                               Platos
@@ -1583,7 +1636,7 @@ export default function SimuladorCarta() {
                           <div className={simStyles.accionGroup}>
                             <button
                               type="button"
-                              className={`${simStyles.accionBtn} ${simStyles.accionBtnDanger}`}
+                              className={simStyles.accionLinkDanger}
                               disabled={busy || isBlocked}
                               onClick={() => cambiarEstado(linea, 'fuera')}
                             >
@@ -1599,7 +1652,7 @@ export default function SimuladorCarta() {
                             </button>
                             <button
                               type="button"
-                              className={simStyles.maridajeBtn}
+                              className={simStyles.accionLink}
                               onClick={() => { setMaridajeVinoId(linea.id); cargarPlatosMaridaje().catch(() => setPlatosMaridaje([])) }}
                             >
                               Platos
@@ -1649,14 +1702,20 @@ export default function SimuladorCarta() {
         ))}
 
         {/* ── Proyección (solo en vista Tabla) ──────────────── */}
-        {activeTab === 'tabla' && proyeccion && (
+        {activeTab === 'tabla' && (
           <div className={simStyles.proyeccion}>
             <span>Inversión estimada</span>
-            <span className={simStyles.proyeccionTotal}>{eur(proyeccion.total)}</span>
-            <span className={simStyles.proyeccionNota}>
-              · estimado a 6 uds/referencia
-              {proyeccion.sinCoste > 0 && ` · ${proyeccion.sinCoste} ref. sin coste no incluidas`}
-            </span>
+            {proyeccion ? (
+              <>
+                <span className={simStyles.proyeccionTotal}>{eur(proyeccion.total)}</span>
+                <span className={simStyles.proyeccionNota}>
+                  · estimado a 6 uds/referencia
+                  {proyeccion.sinCoste > 0 && ` · ${proyeccion.sinCoste} ref. sin coste no incluidas`}
+                </span>
+              </>
+            ) : (
+              <span className={simStyles.proyeccionNota}>— Sin vinos nuevos en el borrador</span>
+            )}
           </div>
         )}
 
@@ -1948,7 +2007,7 @@ export default function SimuladorCarta() {
                     </div>
                   ))}
                 </div>
-                <p className={simStyles.maridajeFuente}>Motor Chartier KB · WSET — análisis estructural</p>
+                <p className={simStyles.maridajeFuente}>Análisis de maridaje y afinidad</p>
               </>
             )
           })()}

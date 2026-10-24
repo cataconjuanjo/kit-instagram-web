@@ -12,6 +12,7 @@ function eur(valor, decimales = 2) {
   return `${(Number(valor) || 0).toLocaleString('es-ES', {
     minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
+    useGrouping: true,
   })} EUR`
 }
 

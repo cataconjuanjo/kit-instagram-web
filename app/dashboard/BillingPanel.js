@@ -109,7 +109,7 @@ export default function BillingPanel({ restaurante, compact = false }) {
             <h3 className={styles.sectionTitle}>{PLAN_COPY[planActual]?.nombre || planActual}</h3>
             <p className={styles.sectionText}>
               Estado: {estadoLabel}
-              {trialEnd ? ` · prueba hasta ${trialEnd}` : ''}
+              {estado === 'trialing' && trialEnd ? ` · prueba hasta ${trialEnd}` : ''}
             </p>
           </div>
           <span className={styles.badge}>{precioPlan(planActual) || 'Plan'}</span>
@@ -118,9 +118,6 @@ export default function BillingPanel({ restaurante, compact = false }) {
 
       {activo ? (
         <div className={styles.itemStack}>
-          <p className={styles.sectionText} style={{ marginTop: 0 }}>
-            Gestiona tarjeta, facturas, cancelacion o cambio de plan desde el portal seguro de Stripe.
-          </p>
           <button
             type="button"
             className={styles.primary}
@@ -175,7 +172,9 @@ export default function BillingPanel({ restaurante, compact = false }) {
         <div>
           <h2 className={styles.panelTitle}>Plan y facturacion</h2>
           <p className={styles.panelSub}>
-            Activa la prueba, recupera una cuenta bloqueada o gestiona la suscripcion sin depender de un enlace manual.
+            {activo
+              ? 'Gestiona tu tarjeta, facturas y plan desde el portal seguro de Stripe.'
+              : '14 días de prueba gratuita. Se solicita tarjeta al activar; cancela antes de que termine si no quieres que empiece el cobro.'}
           </p>
         </div>
       </div>

@@ -14,7 +14,7 @@ const TIPO_DOT = {
 function fmt(valor) {
   const n = Number(valor)
   if (!n || n <= 0) return null
-  return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+  return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €'
 }
 
 function normalizar(s = '') {
