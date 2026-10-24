@@ -1,5 +1,6 @@
 import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
+import { clasificarCierresParaBackfill } from '../../lib/backfillCierresUtil'
 
 // POST /api/backfill-stock-mensual
 // Body: { restaurante_id, dry_run?: boolean }  (dry_run defaults to true)
@@ -41,9 +42,7 @@ export async function POST(req) {
       return Response.json({ ok: true, dry_run, meses_procesados: 0, filas_insertadas: 0, meses_no_reconstruibles: [] })
     }
 
-    // Separar reconstruibles de no-reconstruibles
-    const reconstruibles    = todosCierres.filter(c => Array.isArray(c.snapshot?.vinos_stock) && c.snapshot.vinos_stock.length > 0)
-    const noReconstruibles  = todosCierres.filter(c => !Array.isArray(c.snapshot?.vinos_stock) || c.snapshot.vinos_stock.length === 0).map(c => c.mes)
+    const { reconstruibles, noReconstruibles } = clasificarCierresParaBackfill(todosCierres)
 
     if (!reconstruibles.length) {
       return Response.json({ ok: true, dry_run, meses_procesados: 0, filas_insertadas: 0, meses_no_reconstruibles: noReconstruibles })

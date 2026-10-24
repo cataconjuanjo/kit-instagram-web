@@ -2,7 +2,7 @@ import { requireRestaurantAccess } from '../_lib/auth'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { calcularMesBodega } from '../../lib/agregarPeriodoBodega'
 import { historicoPayloadDesdeCierre } from '../../lib/sommCierre'
-import { compararHistoricoConflicto } from '../../lib/compararHistoricoConflicto'
+import { decidirHistoricoAuto } from '../../lib/historicoAutoDecision'
 
 function texto(v, max = 200) { return String(v || '').trim().slice(0, max) }
 
@@ -183,15 +183,12 @@ export async function POST(req) {
         restaurante_id, mes, snapshot: snapshotFinal, stock_inicial_valor, compras_total,
       })
 
-      if (!filaExistente || filaExistente.origen !== 'manual') {
+      const { upsert, conflicto } = decidirHistoricoAuto(payload, filaExistente)
+      if (upsert) {
         await supabaseAdmin
           .from('historico_mensual')
           .upsert(payload, { onConflict: 'restaurante_id,anio,mes' })
-        return Response.json({ cierre }, { status: 201 })
       }
-
-      // Manual row exists — compute per-field diff
-      const conflicto = compararHistoricoConflicto(payload, filaExistente)
       if (conflicto) {
         return Response.json({ cierre, conflicto }, { status: 201 })
       }
