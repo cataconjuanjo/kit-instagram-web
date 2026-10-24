@@ -339,7 +339,14 @@ async function handleInventoryUpdate(event, eventId) {
           continue
         }
 
-        const activo = squareActivoFromStock(vino, nuevoStock)
+        // Respetar ocultar_agotados: si es false el vino no se desactiva al llegar a 0.
+        // Misma lógica que la RPC para mantener consistencia.
+        const cat    = String(vino.categoria || '').toLowerCase()
+        const activo = cat === 'carta'
+          ? true
+          : nuevoStock > 0
+            ? true
+            : tienda.ocultarAgotados !== false
 
         // Si el evento no tiene calculated_at, actualizamos sin filtro de orden.
         // Si lo tiene, solo aplicamos si es más reciente que el último aplicado
@@ -451,16 +458,9 @@ async function handlePaymentUpdated(eventId, payment, eventCreatedAt) {
     )
   }
 
-  // Si Square gestiona el inventario directamente, inventory.count.updated
-  // es la fuente de verdad. payment.updated no debe decrementar.
-  if (tienda.squareTracksInventory) {
-    console.log(`[square-webhook] event_id=${eventId} payment_id=${paymentId} tienda=${tienda.slug}: square_tracks_inventory → skip decrement`)
-    return finishAndReturn(
-      eventId,
-      { ok: true, skipped: 'square_tracks_inventory', payment_id: paymentId },
-      { payment_id: paymentId, order_id: orderId, tienda_slug: tienda.slug, lineas: [], ok: true, error_msg: 'square_tracks_inventory' }
-    )
-  }
+  // Con squareTracksInventory=true Square es la fuente de verdad del stock;
+  // la RPC registra el pago sin decrementar (p_tracks_inventory=true).
+  // Con false, decrementa como siempre.
 
   try {
     // Diagnóstico temporal: confirma si event.created_at llega en eventos POS

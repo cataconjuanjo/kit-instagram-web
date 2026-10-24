@@ -1965,6 +1965,7 @@ export async function applyPaymentLinesRpc(payment, tienda) {
     p_payment_id:        payment.id,
     p_lines:             pLines,
     p_ocultar_agotados:  tienda.ocultarAgotados ?? true,
+    p_tracks_inventory:  tienda.squareTracksInventory ?? false,
   })
 
   if (error) throw new Error(`RPC apply_payment_lines: ${error.message}`)
