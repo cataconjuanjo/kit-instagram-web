@@ -234,3 +234,119 @@ test('T8: clasificarCierresParaBackfill separa reconstruibles/no-reconstruibles'
   assert.equal(reconstruibles[0].mes, '2026-08')
   assert.deepEqual(noReconstruibles, ['2026-09', '2026-10'])
 })
+
+// ── T9: RPC upsert_libro_compras_factura — idempotencia + segunda entrada ──────
+test('T9: RPC upsert_libro_compras_factura — idempotencia + segunda cabecera', async () => {
+  const PERIODO  = '2026-10'
+  const PROVEEDOR = 'smoke-proveedor-t9'
+  const CAB_ID_1  = '00000001-f100-4000-0000-000000000010'
+  const CAB_ID_2  = '00000001-f100-4000-0000-000000000011'
+  let restCreated = false
+
+  try {
+    // Fixture restaurante
+    const { error: rErr } = await admin.from('restaurantes').upsert({
+      id:                   SMOKE_REST_ID,
+      nombre:               'Smoke Test F1',
+      slug:                 'smoke-sumiller-f1-test',
+      email:                'smoke-f1@cartaviva.local',
+      ciudad:               'Test',
+      provincia_codigo:     'XX',
+      plan:                 'sumiller',
+      subscription_status:  'active',
+      subscription_ends_at: '2027-12-31T00:00:00Z',
+      camarero_pin:         '',
+      hub_activo:           false,
+    }, { onConflict: 'id' })
+    assert.equal(rErr, null, `Fixture restaurante: ${rErr?.message}`)
+    restCreated = true
+
+    const entry1 = { fecha: '2026-10-01', importe: 150.00, cabecera_compra_id: CAB_ID_1 }
+    const entry2 = { fecha: '2026-10-15', importe: 200.00, cabecera_compra_id: CAB_ID_2 }
+
+    // 1ª llamada — crea fila
+    const { error: e1 } = await admin.rpc('upsert_libro_compras_factura', {
+      p_restaurante_id: SMOKE_REST_ID,
+      p_periodo:        PERIODO,
+      p_proveedor:      PROVEEDOR,
+      p_entrada:        entry1,
+    })
+    if (e1) console.error('[T9] llamada 1 error literal:', JSON.stringify(e1))
+    assert.equal(e1, null, `1ª llamada RPC falló: ${e1?.message}`)
+
+    // 2ª llamada — mismo cabecera_compra_id (idempotente, no debe duplicar)
+    const { error: e2 } = await admin.rpc('upsert_libro_compras_factura', {
+      p_restaurante_id: SMOKE_REST_ID,
+      p_periodo:        PERIODO,
+      p_proveedor:      PROVEEDOR,
+      p_entrada:        entry1,
+    })
+    if (e2) console.error('[T9] llamada 2 error literal:', JSON.stringify(e2))
+    assert.equal(e2, null, `2ª llamada RPC (idempotente) falló: ${e2?.message}`)
+
+    // a) 1 fila — b) 1 entrada con CAB_ID_1
+    const { data: rows, error: selErr } = await admin.from('libro_compras')
+      .select('facturas')
+      .eq('restaurante_id', SMOKE_REST_ID)
+      .eq('periodo', PERIODO)
+      .eq('proveedor', PROVEEDOR)
+    assert.equal(selErr, null, `Select libro_compras: ${selErr?.message}`)
+    assert.equal(rows.length, 1, `a) esperaba 1 fila, encontró ${rows.length}`)
+    const entradasCab1 = rows[0].facturas.filter(f => f.cabecera_compra_id === CAB_ID_1)
+    assert.equal(entradasCab1.length, 1,
+      `b) esperaba 1 entrada con cabecera_compra_id=${CAB_ID_1}, encontró ${entradasCab1.length}`)
+
+    // 3ª llamada — otra cabecera_compra_id → añade segunda entrada
+    const { error: e3 } = await admin.rpc('upsert_libro_compras_factura', {
+      p_restaurante_id: SMOKE_REST_ID,
+      p_periodo:        PERIODO,
+      p_proveedor:      PROVEEDOR,
+      p_entrada:        entry2,
+    })
+    if (e3) console.error('[T9] llamada 3 error literal:', JSON.stringify(e3))
+    assert.equal(e3, null, `3ª llamada RPC falló: ${e3?.message}`)
+
+    // c) 2 entradas totales
+    const { data: row3, error: sel3 } = await admin.from('libro_compras')
+      .select('facturas')
+      .eq('restaurante_id', SMOKE_REST_ID)
+      .eq('periodo', PERIODO)
+      .eq('proveedor', PROVEEDOR)
+      .single()
+    assert.equal(sel3, null, `Select final libro_compras: ${sel3?.message}`)
+    assert.equal(row3.facturas.length, 2,
+      `c) esperaba 2 entradas totales, encontró ${row3.facturas.length}: ${JSON.stringify(row3.facturas)}`)
+
+  } finally {
+    await admin.from('libro_compras').delete().eq('restaurante_id', SMOKE_REST_ID)
+    if (restCreated) await admin.from('restaurantes').delete().eq('id', SMOKE_REST_ID)
+  }
+})
+
+// ── T10: verificación limpieza — 0 filas del restaurante temporal ─────────────
+test('T10: limpieza — 0 filas del restaurante temporal en todas las tablas', async () => {
+  const checks = {
+    restaurantes:        admin.from('restaurantes').select('*', { count: 'exact', head: true }).eq('id', SMOKE_REST_ID),
+    vinos:               admin.from('vinos').select('*', { count: 'exact', head: true }).eq('restaurante_id', SMOKE_REST_ID),
+    stock_mensual_bodega: admin.from('stock_mensual_bodega').select('*', { count: 'exact', head: true }).eq('restaurante_id', SMOKE_REST_ID),
+    libro_compras:        admin.from('libro_compras').select('*', { count: 'exact', head: true }).eq('restaurante_id', SMOKE_REST_ID),
+    cabecera_compras:     admin.from('cabecera_compras').select('*', { count: 'exact', head: true }).eq('restaurante_id', SMOKE_REST_ID),
+    lineas_compra:        admin.from('lineas_compra').select('*', { count: 'exact', head: true }).eq('restaurante_id', SMOKE_REST_ID),
+  }
+
+  const resultados = {}
+  for (const [tabla, query] of Object.entries(checks)) {
+    const { count, error } = await query
+    resultados[tabla] = error ? `ERROR: ${error.message}` : count
+  }
+
+  console.log('\n  T10 recuentos por tabla:')
+  for (const [tabla, val] of Object.entries(resultados)) {
+    const ok = val === 0
+    console.log(`    ${ok ? '✔' : '✖'} ${tabla}: ${val}`)
+  }
+
+  for (const [tabla, val] of Object.entries(resultados)) {
+    assert.equal(val, 0, `${tabla} tiene ${val} filas del restaurante temporal`)
+  }
+})
