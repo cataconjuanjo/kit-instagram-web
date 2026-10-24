@@ -143,7 +143,7 @@ function FormFactura({ proveedores, onGuardar }) {
 
 // ── Tabla de facturas del periodo ─────────────────────────────────────────────
 
-function TablaFacturas({ registros, periodoFiltro, onEliminarFactura }) {
+function TablaFacturas({ registros, periodoFiltro, onEliminarFactura, adjuntosPorCabecera = {} }) {
   const filtrados = registros.filter(r => r.periodo === periodoFiltro)
   if (filtrados.length === 0) return (
     <div style={{ padding: '32px 0', textAlign: 'center', color: '#aaa', fontSize: 13 }}>
@@ -160,34 +160,40 @@ function TablaFacturas({ registros, periodoFiltro, onEliminarFactura }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead>
           <tr style={{ background: '#faf8f4' }}>
-            {['Fecha', 'Proveedor', 'Importe', 'Albarán / Ref.', ''].map(h => (
+            {['Fecha', 'Proveedor', 'Importe', 'Albarán / Ref.', 'Adj.', ''].map(h => (
               <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#888', letterSpacing: '0.05em', borderBottom: '2px solid #e8e3d8' }}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {filas.map((f, i) => (
-            <tr key={i} style={{ borderBottom: '1px solid #f0ece4' }}>
-              <td style={tdS}>{f.fecha || '—'}</td>
-              <td style={tdS}><strong>{f.proveedor}</strong></td>
-              <td style={{ ...tdS, fontWeight: 600 }}>{formatEur(f.importe)}</td>
-              <td style={{ ...tdS, color: '#888' }}>{f.albaran || '—'}</td>
-              <td style={{ ...tdS, textAlign: 'right' }}>
-                <button
-                  onClick={() => onEliminarFactura(f.registroId, f.fi)}
-                  style={{ padding: '3px 8px', fontSize: 11, border: '1px solid #e8e3d8', borderRadius: 4, background: '#fff', cursor: 'pointer', color: '#888' }}
-                >
-                  Eliminar
-                </button>
-              </td>
-            </tr>
-          ))}
+          {filas.map((f, i) => {
+            const nAdj = f.cabecera_compra_id ? (adjuntosPorCabecera[f.cabecera_compra_id] || 0) : 0
+            return (
+              <tr key={i} style={{ borderBottom: '1px solid #f0ece4' }}>
+                <td style={tdS}>{f.fecha || '—'}</td>
+                <td style={tdS}><strong>{f.proveedor}</strong></td>
+                <td style={{ ...tdS, fontWeight: 600 }}>{formatEur(f.importe)}</td>
+                <td style={{ ...tdS, color: '#888' }}>{f.albaran || '—'}</td>
+                <td style={{ ...tdS, color: nAdj > 0 ? '#385f4f' : '#ccc', fontWeight: nAdj > 0 ? 600 : 400 }}>
+                  {nAdj > 0 ? `📎 ${nAdj}` : '—'}
+                </td>
+                <td style={{ ...tdS, textAlign: 'right' }}>
+                  <button
+                    onClick={() => onEliminarFactura(f.registroId, f.fi)}
+                    style={{ padding: '3px 8px', fontSize: 11, border: '1px solid #e8e3d8', borderRadius: 4, background: '#fff', cursor: 'pointer', color: '#888' }}
+                  >
+                    Eliminar
+                  </button>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
         <tfoot>
           <tr style={{ background: '#faf8f4' }}>
             <td colSpan={2} style={{ ...tdS, fontWeight: 700, fontSize: 13 }}>Total {nombreMes(periodoFiltro)}</td>
             <td style={{ ...tdS, fontWeight: 700, fontSize: 15 }}>{formatEur(filas.reduce((s, f) => s + (f.importe || 0), 0))}</td>
-            <td colSpan={2} />
+            <td colSpan={3} />
           </tr>
         </tfoot>
       </table>
@@ -267,6 +273,7 @@ function ConcentracionProveedores({ registros, anioFiltro }) {
 export default function ComprasSomm() {
   const [restaurante, setRestaurante] = useState(null)
   const [registros, setRegistros] = useState([])
+  const [adjuntosPorCabecera, setAdjuntosPorCabecera] = useState({})
   const [loading, setLoading] = useState(true)
   const [periodoFiltro, setPeriodoFiltro] = useState(periodoActual())
   const [anioFiltro, setAnioFiltro] = useState(new Date().getFullYear())
@@ -282,7 +289,7 @@ export default function ComprasSomm() {
         : await consulta.eq('email', email).single()
       if (rest) {
         setRestaurante(rest)
-        await cargarRegistros(rest.id)
+        await Promise.all([cargarRegistros(rest.id), cargarAdjuntos(rest.id)])
       }
       setLoading(false)
     }
@@ -296,6 +303,18 @@ export default function ComprasSomm() {
       .eq('restaurante_id', restId)
       .order('periodo', { ascending: false })
     setRegistros(data || [])
+  }
+
+  async function cargarAdjuntos(restId) {
+    const { data } = await supabase
+      .from('facturas_compra_adjuntos')
+      .select('cabecera_compra_id')
+      .eq('restaurante_id', restId)
+    const mapa = {}
+    for (const row of (data || [])) {
+      mapa[row.cabecera_compra_id] = (mapa[row.cabecera_compra_id] || 0) + 1
+    }
+    setAdjuntosPorCabecera(mapa)
   }
 
   async function handleGuardarFactura({ proveedor, periodo, factura }) {
@@ -416,6 +435,7 @@ export default function ComprasSomm() {
               registros={registros}
               periodoFiltro={periodoFiltro}
               onEliminarFactura={handleEliminarFactura}
+              adjuntosPorCabecera={adjuntosPorCabecera}
             />
           </div>
         )}

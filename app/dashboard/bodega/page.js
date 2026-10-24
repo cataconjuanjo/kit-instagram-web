@@ -16,7 +16,7 @@ import {
 import { margenBrutoPct } from '../../lib/wineEconomics'
 import { calcularWineMapping, ticketReferencia } from '../../lib/wineMapping'
 import { calcularPreciosSugeridos, margenCopaPct, normalizarAjustesPrecios } from '../../lib/pricingUtils'
-import { esPerfilBodega, puedeUsar } from '../../lib/plans'
+import { esPerfilBodega, esPerfilSomm, puedeUsar } from '../../lib/plans'
 import { normWine, normWineRegion, normWineTipo } from '../../lib/textNormalize'
 import { priorizarVentas } from '../../lib/salesPriority'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
@@ -1183,6 +1183,7 @@ export default function ControlBodega() {
                 restauranteId={restaurante?.id}
                 vinosActivos={datos.activos}
                 onCompraRegistrada={() => setRefreshKey(k => k + 1)}
+                esSumiller={esPerfilSomm(restaurante)}
               />
             </div>
           </section>

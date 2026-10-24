@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { supabase } from '../../supabase'
 import styles from '../module.module.css'
 
@@ -41,7 +41,111 @@ function lineaVacia() {
   return { vino_id: '', uds: 1, uds_bonificadas: 0, precio_tarifa: '', descuento_linea: 0 }
 }
 
-export default function FormularioCompra({ restauranteId, vinosActivos = [], onCompraRegistrada }) {
+// ── Adjuntos de factura (solo plan sumiller) ──────────────────────────────────
+
+function AdjuntosFactura({ restauranteId, cabeceraId }) {
+  const [adjuntos, setAdjuntos] = useState([])
+  const [subiendo,  setSubiendo]  = useState(false)
+  const [errorMsg,  setErrorMsg]  = useState(null)
+
+  useEffect(() => { cargarAdjuntos() }, [])
+
+  async function getToken() {
+    const { data } = await supabase.auth.getSession()
+    return data.session?.access_token || ''
+  }
+
+  async function cargarAdjuntos() {
+    const token = await getToken()
+    const res = await fetch(
+      `/api/facturas-adjuntos?cabecera_compra_id=${cabeceraId}&restaurante_id=${restauranteId}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    if (res.ok) { const json = await res.json(); setAdjuntos(json.adjuntos || []) }
+  }
+
+  async function handleFileChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { setErrorMsg('Tamaño máximo: 5 MB'); return }
+    if (!['application/pdf', 'image/png', 'image/jpeg'].includes(file.type)) {
+      setErrorMsg('Solo PDF, PNG o JPG'); return
+    }
+    setSubiendo(true); setErrorMsg(null)
+    try {
+      const token = await getToken()
+      const prepRes = await fetch('/api/facturas-adjuntos', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurante_id:     restauranteId,
+          cabecera_compra_id: cabeceraId,
+          nombre_archivo:     file.name,
+          mime_type:          file.type,
+          tamano_bytes:       file.size,
+        }),
+      })
+      const prep = await prepRes.json()
+      if (!prepRes.ok) { setErrorMsg(prep.error || 'Error al preparar subida'); return }
+
+      const uploadRes = await fetch(prep.signed_url, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!uploadRes.ok) { setErrorMsg('Error al subir el archivo al servidor'); return }
+
+      await cargarAdjuntos()
+    } catch { setErrorMsg('Error de red al subir el archivo')
+    } finally { setSubiendo(false); e.target.value = '' }
+  }
+
+  async function handleEliminar(id) {
+    const token = await getToken()
+    await fetch(`/api/facturas-adjuntos?id=${id}&restaurante_id=${restauranteId}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+    })
+    setAdjuntos(prev => prev.filter(a => a.id !== id))
+  }
+
+  return (
+    <div style={{ marginBottom: 16, padding: '14px 16px', background: 'rgba(56,95,79,0.07)', borderRadius: 8, border: '1px solid rgba(56,95,79,0.2)' }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#385f4f', marginBottom: 10 }}>
+        Adjuntar facturas / albaranes
+      </div>
+      {adjuntos.length > 0 && (
+        <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {adjuntos.map(adj => (
+            <li key={adj.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+              <a href={adj.url} target="_blank" rel="noopener noreferrer"
+                style={{ color: '#385f4f', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {adj.nombre_archivo}
+              </a>
+              {adj.tamano_bytes > 0 && (
+                <span style={{ color: '#8b8278', flexShrink: 0 }}>
+                  {(adj.tamano_bytes / 1024).toFixed(0)} KB
+                </span>
+              )}
+              <button type="button" onClick={() => handleEliminar(adj.id)}
+                style={{ background: 'none', border: 'none', color: '#6b5f63', cursor: 'pointer', fontSize: 16, padding: '0 4px', flexShrink: 0 }}
+                title="Eliminar adjunto">×</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {errorMsg && <p style={{ color: '#c0393b', fontSize: 12, marginBottom: 8 }}>{errorMsg}</p>}
+      <label style={{ display: 'inline-block', cursor: 'pointer', padding: '6px 14px', background: 'rgba(56,95,79,0.15)', borderRadius: 6, border: '1px solid rgba(56,95,79,0.3)', fontSize: 12, color: '#385f4f', fontWeight: 600 }}>
+        {subiendo ? 'Subiendo…' : '+ Adjuntar archivo'}
+        <input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={handleFileChange} disabled={subiendo} style={{ display: 'none' }} />
+      </label>
+      <span style={{ fontSize: 11, color: '#8b8278', marginLeft: 10 }}>PDF, PNG o JPG · máx. 5 MB</span>
+    </div>
+  )
+}
+
+// ── Formulario de compra ──────────────────────────────────────────────────────
+
+export default function FormularioCompra({ restauranteId, vinosActivos = [], onCompraRegistrada, esSumiller = false }) {
   const [proveedor,   setProveedor]   = useState('')
   const [fecha,       setFecha]       = useState(hoy)
   const [numDoc,      setNumDoc]      = useState('')
@@ -160,6 +264,9 @@ export default function FormularioCompra({ restauranteId, vinosActivos = [], onC
         <p style={{ color: '#8b8278', fontSize: 13, marginBottom: 16 }}>
           El PMP de cada vino ha sido actualizado.
         </p>
+        {esSumiller && resultado.cabecera_id && (
+          <AdjuntosFactura restauranteId={restauranteId} cabeceraId={resultado.cabecera_id} />
+        )}
         <div className={styles.actionRow}>
           <button type="button" className={styles.secondary} onClick={resetForm}>
             Nueva compra
