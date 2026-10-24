@@ -33,10 +33,10 @@ const DEMO_ID = process.env.SEED_DEMO_ID
 if (!DEMO_ID) { console.error('ERROR: SEED_DEMO_ID no está definido'); process.exit(1) }
 
 const UUID_DENYLIST = new Set([
-  'a1000000-0000-4000-8000-000000000000',
-  'b2000000-0000-4000-8000-000000000000',
-  'c3000000-0000-4000-8000-000000000000',
-  'e5000000-0000-4000-8000-000000000000',
+  'db3af496-00f1-4295-82b6-35427b9b6286', // Lo de Carmen
+  '7af94e33-48cd-43b8-b939-4796ba58e4d8', // Araboka
+  'a4346301-4dc5-4cb5-a2f5-3ca6469acd66', // La Taberna del Puerto
+  '6b528438-3d24-432d-9728-dc2ff868baf6', // Modo Sumiller
 ])
 if (UUID_DENYLIST.has(DEMO_ID)) {
   console.error(`ERROR: SEED_DEMO_ID ${DEMO_ID} está en la denylist de UUIDs`)
