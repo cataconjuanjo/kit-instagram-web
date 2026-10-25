@@ -1125,6 +1125,7 @@ export default function AdminKioskoPage() {
   const [inlineEdit,   setInlineEdit]   = useState(null)  // { id, campo, valor }
   const [stockPending, setStockPending] = useState(null)  // { id, anterior, nuevo }
   const [descuadresEdits, setDescuadresEdits] = useState({})  // { [vino_id]: string }
+  const [descuadresIncluirOtros, setDescuadresIncluirOtros] = useState(false)
 
   const [subiendoFoto, setSubiendoFoto] = useState(null)  // vinoId
   const fotoInputFilaRef  = useRef(null)
@@ -3390,16 +3391,48 @@ export default function AdminKioskoPage() {
 
       {/* Descuadres de stock */}
       {tab === 'analitica' && !hideSensitive && subTabAnalitica === 'descuadres' && (() => {
-        const descuadres = analitica?.descuadres || []
+        const todosDescuadres = analitica?.descuadres || []
+        // Por defecto solo vinos (excluye categoria 'otro', 'carta' y sin enlace en vinos_tienda)
+        const descuadres = descuadresIncluirOtros
+          ? todosDescuadres
+          : todosDescuadres.filter(d => d.vino_id && d.categoria !== 'otro' && d.categoria !== 'carta')
+        const ocultos = todosDescuadres.length - descuadres.length
         return (
           <div style={{ padding: '0 1.75rem 1.75rem' }}>
             <div className={styles.analiticaBloque}>
               <p className={styles.analiticaBloqueDesc}>
-                Ventas registradas por Square donde el stock de la app ya era 0 o negativo en los últimos 90 días.
+                Vinos con ventas registradas en Square mientras el stock de la app ya era 0 o negativo, en los últimos 90 días.
                 Estos vinos siguen vendiéndose en TPV pero han desaparecido del kiosko. Corrige el stock para que vuelvan a aparecer.
               </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '.75rem' }}>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={descuadresIncluirOtros}
+                  onClick={() => setDescuadresIncluirOtros(v => !v)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', width: 36, height: 20,
+                    borderRadius: 999, padding: 2, border: 'none', cursor: 'pointer',
+                    background: descuadresIncluirOtros ? '#c9a96e' : '#d6d0c6',
+                    transition: 'background .15s', flexShrink: 0,
+                  }}
+                >
+                  <span style={{
+                    display: 'block', width: 16, height: 16, borderRadius: '50%',
+                    background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.18)',
+                    transform: descuadresIncluirOtros ? 'translateX(16px)' : 'translateX(0)',
+                    transition: 'transform .15s',
+                  }} />
+                </button>
+                <span style={{ fontSize: '.82rem', color: '#666', userSelect: 'none' }}>
+                  Incluir otros productos
+                  {ocultos > 0 && !descuadresIncluirOtros && (
+                    <span style={{ marginLeft: '.35rem', color: '#999' }}>({ocultos} ocultos)</span>
+                  )}
+                </span>
+              </div>
               {descuadres.length === 0
-                ? <p style={{ color: '#3a7d44', fontWeight: 600 }}>Sin descuadres detectados en los últimos 90 días.</p>
+                ? <p style={{ color: '#3a7d44', fontWeight: 600 }}>Sin descuadres de vino detectados en los últimos 90 días.</p>
                 : (
                   <div style={{ overflowX: 'auto' }}>
                     <table className={styles.rendTable} style={{ minWidth: 640 }}>
@@ -3420,6 +3453,9 @@ export default function AdminKioskoPage() {
                               <span style={{ fontWeight: 500 }}>{d.nombre}</span>
                               {d.activo === false && (
                                 <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: '#c03030', fontWeight: 600 }}>OCULTO</span>
+                              )}
+                              {d.categoria === 'otro' && (
+                                <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: '#999' }}>otro</span>
                               )}
                             </td>
                             <td className={styles.rendTdNum}>

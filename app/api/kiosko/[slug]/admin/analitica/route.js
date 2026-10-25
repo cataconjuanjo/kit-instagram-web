@@ -87,12 +87,12 @@ export async function GET(request, { params }) {
     const [{ data: byVariation }, { data: byCatalog }] = await Promise.all([
       supabaseAdmin
         .from('vinos_tienda')
-        .select('id, nombre, stock, activo, precio_pvp, square_variation_id, square_catalog_id')
+        .select('id, nombre, stock, activo, precio_pvp, categoria, square_variation_id, square_catalog_id')
         .eq('tienda_id', tiendaId)
         .in('square_variation_id', chunk),
       supabaseAdmin
         .from('vinos_tienda')
-        .select('id, nombre, stock, activo, precio_pvp, square_variation_id, square_catalog_id')
+        .select('id, nombre, stock, activo, precio_pvp, categoria, square_variation_id, square_catalog_id')
         .eq('tienda_id', tiendaId)
         .in('square_catalog_id', chunk),
     ])
@@ -108,6 +108,7 @@ export async function GET(request, { params }) {
         vino_id:      vino.id || null,
         catalog_id:   d.catalog_id,
         nombre:       vino.nombre || d.catalog_id || '?',
+        categoria:    vino.categoria || null,
         ventas:       d.ventas,
         stock_actual: vino.stock ?? null,
         activo:       vino.activo ?? null,
