@@ -43,10 +43,70 @@ export async function GET(request, { params }) {
     mobileIntents = mobileData || []
   }
 
+  // ── Descuadres: ventas con stock_antes ≤ 0 en 90 días ───────────────────────
+  // Ejecutado siempre, antes del early-return de analytics vacío, para que el
+  // tab Descuadres muestre datos aunque la tienda no tenga búsquedas de kiosko.
+  const hace90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+  const PAGE3 = 1000; let plaDescuadre = []; let from3 = 0
+  while (true) {
+    const { data: plaPage } = await supabaseAdmin
+      .from('payment_lines_applied')
+      .select('vino_id, catalog_id, qty, stock_antes, stock_despues, created_at')
+      .eq('tienda_id', tiendaId)
+      .lte('stock_antes', 0)
+      .gte('created_at', hace90)
+      .order('created_at', { ascending: false })
+      .range(from3, from3 + PAGE3 - 1)
+    plaDescuadre = plaDescuadre.concat(plaPage || [])
+    if (!plaPage || plaPage.length < PAGE3) break
+    from3 += PAGE3
+  }
+
+  const descuadreMap = {}
+  for (const row of plaDescuadre) {
+    const key = row.vino_id || row.catalog_id
+    if (!key) continue
+    if (!descuadreMap[key]) {
+      descuadreMap[key] = { vino_id: row.vino_id, catalog_id: row.catalog_id, ventas: 0, ultima_venta: row.created_at }
+    }
+    descuadreMap[key].ventas++
+    if (row.created_at > descuadreMap[key].ultima_venta) descuadreMap[key].ultima_venta = row.created_at
+  }
+
+  const descuadreVinoIds = Object.values(descuadreMap).map(d => d.vino_id).filter(Boolean)
+  let descuadreVinoData = []
+  if (descuadreVinoIds.length) {
+    const { data: dvd } = await supabaseAdmin
+      .from('vinos_tienda')
+      .select('id, nombre, stock, activo, precio_pvp')
+      .eq('tienda_id', tiendaId)
+      .in('id', descuadreVinoIds.slice(0, 200))
+    descuadreVinoData = dvd || []
+  }
+  const descuadreVinoMap = {}
+  for (const v of descuadreVinoData) descuadreVinoMap[String(v.id)] = v
+
+  const descuadres = Object.values(descuadreMap)
+    .sort((a, b) => b.ventas - a.ventas)
+    .map(d => {
+      const vino = descuadreVinoMap[String(d.vino_id)] || {}
+      return {
+        vino_id:      d.vino_id,
+        catalog_id:   d.catalog_id,
+        nombre:       vino.nombre || d.catalog_id || '?',
+        ventas:       d.ventas,
+        stock_actual: vino.stock ?? null,
+        activo:       vino.activo ?? null,
+        precio_pvp:   vino.precio_pvp ?? null,
+        ultima_venta: d.ultima_venta,
+      }
+    })
+
   if (searches.length === 0 && mobileIntents.length === 0) {
     return NextResponse.json({
       vacio: true,
       movil: { total: 0, semanaActual: 0, pendiente: mobilePendiente, topVinos: [], recientes: [] },
+      descuadres,
     })
   }
 
@@ -167,7 +227,7 @@ export async function GET(request, { params }) {
   //   · square_sync_log supera ~5.000 filas para una tienda_slug
   //   · varias tiendas activas con carga frecuente del panel de admin
   //   · se necesita histórico rutinario > 90 días en la vista de rendimiento
-  const hace90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+  // hace90 ya definido arriba (bloque descuadres)
   let syncLogs = []
   {
     const PAGE = 1000
@@ -240,67 +300,6 @@ export async function GET(request, { params }) {
     return { id, nombre, recomendado_n: veces, movil_n, vendido_n, tasa_conv, euros_perdidos, fuga, causas }
   }).sort((a, b) => (b.euros_perdidos ?? 0) - (a.euros_perdidos ?? 0))
 
-  // ── Descuadres: ventas con stock_antes ≤ 0 en 90 días ─────────────────────────
-  // Son pagos donde la RPC aplicó el descuento partiendo ya de stock=0 (anomalia).
-  // Fuente: payment_lines_applied (idempotente por línea), no square_sync_log.
-  const PAGE3 = 1000; let plaDescuadre = []; let from3 = 0
-  while (true) {
-    const { data: plaPage } = await supabaseAdmin
-      .from('payment_lines_applied')
-      .select('vino_id, catalog_id, qty, stock_antes, stock_despues, created_at')
-      .eq('tienda_id', tiendaId)
-      .lte('stock_antes', 0)
-      .gte('created_at', hace90)
-      .order('created_at', { ascending: false })
-      .range(from3, from3 + PAGE3 - 1)
-    plaDescuadre = plaDescuadre.concat(plaPage || [])
-    if (!plaPage || plaPage.length < PAGE3) break
-    from3 += PAGE3
-  }
-
-  // Agregar por vino_id para obtener conteo y última venta
-  const descuadreMap = {}
-  for (const row of plaDescuadre) {
-    const key = row.vino_id || row.catalog_id
-    if (!key) continue
-    if (!descuadreMap[key]) {
-      descuadreMap[key] = { vino_id: row.vino_id, catalog_id: row.catalog_id, ventas: 0, ultima_venta: row.created_at }
-    }
-    descuadreMap[key].ventas++
-    if (row.created_at > descuadreMap[key].ultima_venta) descuadreMap[key].ultima_venta = row.created_at
-  }
-
-  // Enriquecer con nombre y stock actual desde vinos_tienda
-  const descuadreVinoIds = Object.values(descuadreMap)
-    .map(d => d.vino_id).filter(Boolean)
-  let descuadreVinoData = []
-  if (descuadreVinoIds.length) {
-    const { data: dvd } = await supabaseAdmin
-      .from('vinos_tienda')
-      .select('id, nombre, stock, activo, precio_pvp')
-      .eq('tienda_id', tiendaId)
-      .in('id', descuadreVinoIds.slice(0, 200))
-    descuadreVinoData = dvd || []
-  }
-  const descuadreVinoMap = {}
-  for (const v of descuadreVinoData) descuadreVinoMap[String(v.id)] = v
-
-  const descuadres = Object.values(descuadreMap)
-    .sort((a, b) => b.ventas - a.ventas)
-    .map(d => {
-      const vino = descuadreVinoMap[String(d.vino_id)] || {}
-      return {
-        vino_id:      d.vino_id,
-        catalog_id:   d.catalog_id,
-        nombre:       vino.nombre || d.catalog_id || '?',
-        ventas:       d.ventas,
-        stock_actual: vino.stock ?? null,
-        activo:       vino.activo ?? null,
-        precio_pvp:   vino.precio_pvp ?? null,
-        ultima_venta: d.ultima_venta,
-      }
-    })
-
   const hayDatosTPV        = Object.keys(ventasPorVino).length > 0
   const fugasCount         = conversionPorVino.filter(v => v.fuga).length
   const totalEurosPerdidos = conversionPorVino.reduce((s, v) => s + (v.euros_perdidos ?? 0), 0)
@@ -308,10 +307,7 @@ export async function GET(request, { params }) {
     ? Math.round((conversionPorVino.reduce((s, v) => s + v.tasa_conv, 0) / conversionPorVino.length) * 100)
     : 0
 
-  const conversion = {
-    porVino: conversionPorVino.slice(0, 30),
-    resumen: { totalEurosPerdidos, fugasCount, avgConvPct, hayDatosTPV },
-  }
+  const conversion = { porVino: conversionPorVino.slice(0, 30), resumen: { totalEurosPerdidos, fugasCount, avgConvPct, hayDatosTPV } }
 
   return NextResponse.json({
     vacio: false,
