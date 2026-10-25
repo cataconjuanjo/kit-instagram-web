@@ -46,17 +46,23 @@ export async function GET(request, { params }) {
   // ── Descuadres: ventas con stock_antes ≤ 0 en 90 días ───────────────────────
   // Ejecutado siempre, antes del early-return de analytics vacío, para que el
   // tab Descuadres muestre datos aunque la tienda no tenga búsquedas de kiosko.
+  // payment_lines_applied NO tiene vino_id; el enlace es catalog_id →
+  // vinos_tienda.square_variation_id (prioridad) o .square_catalog_id.
   const hace90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
   const PAGE3 = 1000; let plaDescuadre = []; let from3 = 0
   while (true) {
-    const { data: plaPage } = await supabaseAdmin
+    const { data: plaPage, error: plaError } = await supabaseAdmin
       .from('payment_lines_applied')
-      .select('vino_id, catalog_id, qty, stock_antes, stock_despues, created_at')
+      .select('catalog_id, qty, stock_antes, stock_despues, created_at')
       .eq('tienda_id', tiendaId)
       .lte('stock_antes', 0)
       .gte('created_at', hace90)
       .order('created_at', { ascending: false })
       .range(from3, from3 + PAGE3 - 1)
+    if (plaError) {
+      console.error('[analitica] payment_lines_applied error:', plaError.message, plaError.code)
+      break
+    }
     plaDescuadre = plaDescuadre.concat(plaPage || [])
     if (!plaPage || plaPage.length < PAGE3) break
     from3 += PAGE3
@@ -64,34 +70,42 @@ export async function GET(request, { params }) {
 
   const descuadreMap = {}
   for (const row of plaDescuadre) {
-    const key = row.vino_id || row.catalog_id
+    const key = row.catalog_id
     if (!key) continue
     if (!descuadreMap[key]) {
-      descuadreMap[key] = { vino_id: row.vino_id, catalog_id: row.catalog_id, ventas: 0, ultima_venta: row.created_at }
+      descuadreMap[key] = { catalog_id: key, ventas: 0, ultima_venta: row.created_at }
     }
     descuadreMap[key].ventas++
     if (row.created_at > descuadreMap[key].ultima_venta) descuadreMap[key].ultima_venta = row.created_at
   }
 
-  const descuadreVinoIds = Object.values(descuadreMap).map(d => d.vino_id).filter(Boolean)
-  let descuadreVinoData = []
-  if (descuadreVinoIds.length) {
-    const { data: dvd } = await supabaseAdmin
-      .from('vinos_tienda')
-      .select('id, nombre, stock, activo, precio_pvp')
-      .eq('tienda_id', tiendaId)
-      .in('id', descuadreVinoIds.slice(0, 200))
-    descuadreVinoData = dvd || []
+  // Enriquecer: dos queries paralelas por square_variation_id y square_catalog_id
+  const catalogIds = Object.keys(descuadreMap)
+  const catalogVinoMap = {}
+  if (catalogIds.length) {
+    const chunk = catalogIds.slice(0, 200)
+    const [{ data: byVariation }, { data: byCatalog }] = await Promise.all([
+      supabaseAdmin
+        .from('vinos_tienda')
+        .select('id, nombre, stock, activo, precio_pvp, square_variation_id, square_catalog_id')
+        .eq('tienda_id', tiendaId)
+        .in('square_variation_id', chunk),
+      supabaseAdmin
+        .from('vinos_tienda')
+        .select('id, nombre, stock, activo, precio_pvp, square_variation_id, square_catalog_id')
+        .eq('tienda_id', tiendaId)
+        .in('square_catalog_id', chunk),
+    ])
+    for (const v of byCatalog   || []) if (v.square_catalog_id)   catalogVinoMap[v.square_catalog_id]   = v
+    for (const v of byVariation || []) if (v.square_variation_id) catalogVinoMap[v.square_variation_id] = v
   }
-  const descuadreVinoMap = {}
-  for (const v of descuadreVinoData) descuadreVinoMap[String(v.id)] = v
 
   const descuadres = Object.values(descuadreMap)
     .sort((a, b) => b.ventas - a.ventas)
     .map(d => {
-      const vino = descuadreVinoMap[String(d.vino_id)] || {}
+      const vino = catalogVinoMap[d.catalog_id] || {}
       return {
-        vino_id:      d.vino_id,
+        vino_id:      vino.id || null,
         catalog_id:   d.catalog_id,
         nombre:       vino.nombre || d.catalog_id || '?',
         ventas:       d.ventas,
