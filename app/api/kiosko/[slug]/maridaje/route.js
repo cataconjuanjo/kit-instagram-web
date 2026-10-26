@@ -4,8 +4,12 @@ import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { isTiendaAccesible } from '../../../_lib/kioskoAuth'
 import { analizarConGoldstein } from '../../../../lib/goldsteinStructural'
 import { estimarPerfil, criteriosEstructurales } from '../../../../lib/maridajeEngine'
+import { checkRateLimit as checkGlobalRateLimit } from '../../../../lib/security'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+const GLOBAL_DAILY_MAX = 1000
+const GLOBAL_DAILY_MS  = 24 * 60 * 60 * 1000
 
 const RATE_LIMIT    = 30
 const RATE_WINDOW_MS = 60 * 60 * 1000
@@ -542,6 +546,13 @@ Exactamente 3.${langSuffix}`
 export async function POST(request, { params }) {
   const { slug } = await params
   const ip = getIP(request)
+
+  const globalOk = await checkGlobalRateLimit('__global__', 'kiosko_maridaje', {
+    max: GLOBAL_DAILY_MAX, windowMs: GLOBAL_DAILY_MS,
+  })
+  if (!globalOk) {
+    return NextResponse.json({ error: 'Servicio temporalmente no disponible. Inténtalo mañana.' }, { status: 503 })
+  }
 
   const allowed = await checkRateLimit(ip)
   if (!allowed) {

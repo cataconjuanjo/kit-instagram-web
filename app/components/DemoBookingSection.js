@@ -377,6 +377,12 @@ export default function DemoBookingSection({ id = 'demo', calendarOnly = false }
               />
             </label>
 
+            <label className="booking-consent">
+              <input type="checkbox" required />
+              {' '}He leído y acepto la{' '}
+              <a href="/privacidad" target="_blank" rel="noopener noreferrer">política de privacidad</a>
+            </label>
+
             <button className="btn btn-primary booking-submit" type="submit" disabled={status === 'submitting' || !selectedSlot}>
               {status === 'submitting' ? 'Reservando...' : 'Reservar demo'}
             </button>

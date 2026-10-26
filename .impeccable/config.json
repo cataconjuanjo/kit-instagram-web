@@ -193,6 +193,12 @@
         "value": "#231e20",
         "createdAt": "2026-10-13T18:52:25.929Z",
         "reason": "Dark surface, used throughout dashboard"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#7a6748",
+        "createdAt": "2026-10-26T07:06:34.545Z",
+        "reason": "H14 accessibility fix: replaces #a08c72 (3.1:1 contrast) with #7a6748 (5.5:1) to meet WCAG AA for the Espumosos bar in the bodega chart"
       }
     ]
   }

@@ -3,6 +3,8 @@ import { requireRestaurantAccess } from '../_lib/auth'
 import { comprobarCuotaIaRestaurante, registrarConsumoAnthropic, responderCuotaIaAgotada } from '../../lib/anthropicUsage'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 
+export const maxDuration = 30
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MAX_BASE64_LENGTH = 4_500_000
 

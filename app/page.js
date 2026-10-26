@@ -59,7 +59,7 @@ const metodologia = [
 const bodegaChart = [
   { label: 'Tintos',     pct: 58, color: '#6b1a2e', trend: 'up' },
   { label: 'Blancos',    pct: 42, color: '#c4a84a', trend: 'up' },
-  { label: 'Espumosos',  pct: 51, color: '#a08c72', trend: 'flat' },
+  { label: 'Espumosos',  pct: 51, color: '#7a6748', trend: 'flat' },
   { label: 'Rosados',    pct: 28, color: '#c4707a', trend: 'down' },
 ]
 
