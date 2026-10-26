@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { PUBLIC_VINO_SELECT, isTiendaAccesible } from '../../../_lib/kioskoAuth'
 import { noStoreHeaders, publicCdnCacheHeaders } from '../../../../lib/publicCacheHeaders'
+import { checkRateLimit, getClientIp } from '../../../../lib/security'
+
+const VINOS_RATE_MAX    = 60
+const VINOS_RATE_WINDOW = 60 * 1000  // 60 requests / IP / minute
 
 function normalizarTexto(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -11,6 +15,15 @@ export async function GET(request, { params }) {
   const { slug } = await params
   const { searchParams } = new URL(request.url)
   const hasFilters = searchParams.size > 0
+
+  const ip = getClientIp(request)
+  const rateLimitOk = await checkRateLimit(ip, 'kiosko_vinos', {
+    max: VINOS_RATE_MAX,
+    windowMs: VINOS_RATE_WINDOW,
+  })
+  if (!rateLimitOk) {
+    return NextResponse.json({ error: 'Demasiadas solicitudes.' }, { status: 429 })
+  }
 
   const { data: tienda, error: tiendaError } = await supabaseAdmin
     .from('tiendas')

@@ -1,40 +1,32 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { registrarConsumoAnthropic } from '../../lib/anthropicUsage'
+import { checkRateLimit, getClientIp } from '../../lib/security'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MAX_BASE64_LENGTH = 4_500_000
-const RATE_LIMIT = 5
-const RATE_WINDOW_MS = 60 * 60 * 1000
-
-function getIP(request) {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    '0.0.0.0'
-  )
-}
-
-async function checkRateLimit(ip) {
-  const since = new Date(Date.now() - RATE_WINDOW_MS).toISOString()
-  const { count } = await supabaseAdmin
-    .from('rate_limits')
-    .select('id', { count: 'exact', head: true })
-    .eq('ip', ip)
-    .eq('endpoint', 'analisis-carta')
-    .gte('created_at', since)
-
-  if ((count || 0) >= RATE_LIMIT) return false
-
-  await supabaseAdmin.from('rate_limits').insert({ ip, endpoint: 'analisis-carta' })
-  return true
-}
+const PER_IP_MAX   = 5
+const PER_IP_WINDOW_MS = 60 * 60 * 1000         // 5 calls / IP / hour
+const GLOBAL_DAILY_MAX = 500
+const GLOBAL_DAILY_MS  = 24 * 60 * 60 * 1000    // hard ceiling: 500 calls / day total
 
 export async function POST(req) {
   const { pdfBase64 } = await req.json()
 
   try {
-    const allowed = await checkRateLimit(getIP(req))
+    // Global daily cap — prevents distributed-IP abuse draining LLM budget
+    const globalOk = await checkRateLimit('__global__', 'analisis-carta', {
+      max: GLOBAL_DAILY_MAX,
+      windowMs: GLOBAL_DAILY_MS,
+    })
+    if (!globalOk) {
+      return Response.json({ analisis: null, error: 'Servicio temporalmente no disponible. Inténtalo mañana.' }, { status: 503 })
+    }
+
+    const allowed = await checkRateLimit(getClientIp(req), 'analisis-carta', {
+      max: PER_IP_MAX,
+      windowMs: PER_IP_WINDOW_MS,
+    })
     if (!allowed) {
       return Response.json({ analisis: null, error: 'Demasiadas consultas. Prueba de nuevo en un rato.' }, { status: 429 })
     }
