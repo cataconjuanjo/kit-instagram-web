@@ -81,6 +81,39 @@ ORDER BY name;
 -- (No aplica en SQL. Ver comentario a continuación.)
 -- Buscar manualmente en el código: grep -r "NEXT_PUBLIC_.*SERVICE\|NEXT_PUBLIC_.*service_role" app/
 
+-- ── 8. SECURITY DEFINER sin REVOKE explícito (PUBLIC puede ejecutar) ─────────
+-- proacl IS NULL → creadas sin GRANT/REVOKE → PUBLIC tiene EXECUTE por defecto.
+SELECT
+  n.nspname                       AS esquema,
+  p.proname                       AS funcion,
+  pg_get_function_arguments(p.oid) AS argumentos,
+  'SECURITY DEFINER sin REVOKE → PUBLIC puede ejecutar' AS problema
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.prosecdef = true
+  AND p.proacl IS NULL
+ORDER BY p.proname;
+
+-- ── 9. SECURITY DEFINER con parámetro restaurante_id — verificar ownership ───
+-- Revisar manualmente que incluyan validación de pertenencia (auth.uid check).
+SELECT
+  n.nspname                       AS esquema,
+  p.proname                       AS funcion,
+  pg_get_function_arguments(p.oid) AS argumentos,
+  CASE WHEN p.proacl IS NULL THEN 'SIN REVOKE (PUBLIC execute)'
+       ELSE array_to_string(
+         ARRAY(SELECT acl::text FROM unnest(p.proacl) acl), ', '
+       )
+  END                             AS grants_actuales,
+  'Revisar: tiene restaurante_id — ¿valida ownership?' AS nota
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.prosecdef = true
+  AND pg_get_function_arguments(p.oid) ILIKE '%restaurante_id%'
+ORDER BY p.proname;
+
 -- ── 7. Resumen ejecutivo ──────────────────────────────────────────
 SELECT
   (SELECT count(*) FROM pg_tables

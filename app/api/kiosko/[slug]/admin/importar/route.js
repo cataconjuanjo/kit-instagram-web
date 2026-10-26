@@ -3,6 +3,8 @@ import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import Anthropic from '@anthropic-ai/sdk'
 import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
+export const maxDuration = 30
+
 const TIPOS_VALIDOS = new Set([
   'tinto', 'blanco', 'rosado', 'espumoso', 'generoso', 'dulce', 'naranja', 'sin_alcohol',
 ])

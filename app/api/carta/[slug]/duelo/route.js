@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
+import { checkRateLimit, getClientIp } from '../../../../lib/security'
+
+const DUELO_RATE_MAX    = 20
+const DUELO_RATE_WINDOW = 60 * 1000
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 function isUuid(v) { return typeof v === 'string' && UUID_RE.test(v) }
@@ -12,6 +16,14 @@ function isMigrationMissing(error) {
 
 export async function POST(request, { params }) {
   const { slug } = await params
+
+  const ip = getClientIp(request)
+  const rateLimitOk = await checkRateLimit(ip, 'carta_duelo', {
+    max: DUELO_RATE_MAX, windowMs: DUELO_RATE_WINDOW,
+  })
+  if (!rateLimitOk) {
+    return NextResponse.json({ ok: false }, { status: 429 })
+  }
 
   let body
   try { body = await request.json() } catch {
