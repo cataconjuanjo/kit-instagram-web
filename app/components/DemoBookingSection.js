@@ -237,7 +237,7 @@ export default function DemoBookingSection({ id = 'demo', calendarOnly = false }
       <div className="booking-calendar-shell" aria-live="polite">
         <div className="booking-calendar-meta">
           <strong>Agenda propia · 30 minutos</strong>
-          <span>Lun-vie · 10:00-13:00 y 16:00-18:00</span>
+          <span>Lun y mié · 09:00-14:00 y 16:00-20:00 · Vie · 09:00-14:00</span>
         </div>
 
         <div className="booking-app">
