@@ -1,13 +1,20 @@
+import { blockedDates, blockedSlots, extraDates } from './availability.config.js'
+
 export const DEMO_BOOKING_CONFIG = {
   timezone: 'Europe/Madrid',
   durationMinutes: 30,
   minNoticeHours: 24,
   horizonDays: 30,
-  weekdays: [1, 2, 3, 4, 5],
-  windows: [
-    { start: '10:00', end: '13:00' },
-    { start: '16:00', end: '18:00' },
-  ],
+  // Horario por día (0=dom, 1=lun, …, 6=sáb). Array vacío = día cerrado.
+  schedule: {
+    0: [],
+    1: [{ start: '09:00', end: '14:00' }, { start: '16:00', end: '20:00' }],
+    2: [],
+    3: [{ start: '09:00', end: '14:00' }, { start: '16:00', end: '20:00' }],
+    4: [],
+    5: [{ start: '09:00', end: '14:00' }],
+    6: [],
+  },
 }
 
 const dateFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -82,6 +89,9 @@ function timeToMinutes(time) {
 export function generateDemoSlots({ now = new Date(), bookedStarts = [] } = {}) {
   const minStartTime = now.getTime() + DEMO_BOOKING_CONFIG.minNoticeHours * 60 * 60 * 1000
   const booked = new Set(bookedStarts)
+  const blockedDatesSet = new Set(blockedDates)
+  const blockedSlotsSet = new Set(blockedSlots.map((s) => `${s.date}|${s.time}`))
+  const extraByDate = new Map(extraDates.map((e) => [e.date, e.slots]))
   const days = []
 
   for (let offset = 0; offset < DEMO_BOOKING_CONFIG.horizonDays; offset += 1) {
@@ -89,16 +99,44 @@ export function generateDemoSlots({ now = new Date(), bookedStarts = [] } = {}) 
     cursor.setUTCDate(cursor.getUTCDate() + offset)
 
     const dateKey = formatDateKey(cursor)
+    if (blockedDatesSet.has(dateKey)) continue
+
     const weekday = getWeekdayIndex(cursor)
-    if (!DEMO_BOOKING_CONFIG.weekdays.includes(weekday)) continue
+    const dayWindows = DEMO_BOOKING_CONFIG.schedule[weekday] ?? []
+    const isRegularDay = dayWindows.length > 0
+
+    if (!isRegularDay && !extraByDate.has(dateKey)) continue
 
     const slots = []
 
-    for (const window of DEMO_BOOKING_CONFIG.windows) {
-      let time = window.start
-      const latestStart = timeToMinutes(window.end) - DEMO_BOOKING_CONFIG.durationMinutes
+    if (isRegularDay) {
+      for (const window of dayWindows) {
+        let time = window.start
+        const latestStart = timeToMinutes(window.end) - DEMO_BOOKING_CONFIG.durationMinutes
 
-      while (timeToMinutes(time) <= latestStart) {
+        while (timeToMinutes(time) <= latestStart) {
+          if (!blockedSlotsSet.has(`${dateKey}|${time}`)) {
+            const start = zonedDateTimeToUtc(dateKey, time)
+            const startIso = start.toISOString()
+            if (start.getTime() >= minStartTime && !booked.has(startIso)) {
+              slots.push({
+                id: startIso,
+                date: dateKey,
+                time,
+                start: startIso,
+                end: new Date(start.getTime() + DEMO_BOOKING_CONFIG.durationMinutes * 60 * 1000).toISOString(),
+              })
+            }
+          }
+          time = addMinutesToTime(time, DEMO_BOOKING_CONFIG.durationMinutes)
+        }
+      }
+    }
+
+    if (extraByDate.has(dateKey)) {
+      const existingTimes = new Set(slots.map((s) => s.time))
+      for (const time of extraByDate.get(dateKey)) {
+        if (existingTimes.has(time) || blockedSlotsSet.has(`${dateKey}|${time}`)) continue
         const start = zonedDateTimeToUtc(dateKey, time)
         const startIso = start.toISOString()
         if (start.getTime() >= minStartTime && !booked.has(startIso)) {
@@ -110,7 +148,9 @@ export function generateDemoSlots({ now = new Date(), bookedStarts = [] } = {}) 
             end: new Date(start.getTime() + DEMO_BOOKING_CONFIG.durationMinutes * 60 * 1000).toISOString(),
           })
         }
-        time = addMinutesToTime(time, DEMO_BOOKING_CONFIG.durationMinutes)
+      }
+      if (!isRegularDay) {
+        slots.sort((a, b) => a.start.localeCompare(b.start))
       }
     }
 
