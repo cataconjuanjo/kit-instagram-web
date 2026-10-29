@@ -136,7 +136,11 @@ export async function POST(req) {
         .select('id, stock, coste_medio_pmp, coste_compra')
         .eq('restaurante_id', restaurante_id)
         .gt('stock', 0)
-      snapshotFinal = añadirVinosStockAlSnapshot(snapshot, vinos)
+      const enriched = añadirVinosStockAlSnapshot(snapshot, vinos)
+      // If stock_final already comes from a conteo_inventario, preserve it.
+      snapshotFinal = snapshot.stock_final != null
+        ? { ...enriched, stock_final: snapshot.stock_final }
+        : enriched
     }
 
     const { data: cierre, error } = await supabaseAdmin
@@ -148,7 +152,8 @@ export async function POST(req) {
     if (error) return Response.json({ error: error.message }, { status: 500 })
 
     if (rest?.plan === 'sumiller') {
-      await insertarStockMensualBodega(supabaseAdmin, { restaurante_id, mes, vinos_stock: snapshotFinal.vinos_stock })
+      const { error: stockErr } = await insertarStockMensualBodega(supabaseAdmin, { restaurante_id, mes, vinos_stock: snapshotFinal.vinos_stock })
+      if (stockErr) console.error('[cierres-mes] stock_mensual_bodega upsert error:', stockErr.message)
     }
 
     // Upsert historico_mensual con origen='auto' (no sobreescribe filas con origen='manual')

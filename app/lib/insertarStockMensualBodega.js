@@ -17,7 +17,7 @@ export function añadirVinosStockAlSnapshot(snapshot, vinos) {
 }
 
 export async function insertarStockMensualBodega(supabase, { restaurante_id, mes, vinos_stock }) {
-  if (!vinos_stock?.length) return
+  if (!vinos_stock?.length) return { error: null }
   const filas = vinos_stock.map(v => ({
     restaurante_id,
     mes,
@@ -28,5 +28,5 @@ export async function insertarStockMensualBodega(supabase, { restaurante_id, mes
   const { error } = await supabase
     .from('stock_mensual_bodega')
     .upsert(filas, { onConflict: 'restaurante_id,mes,vino_id', ignoreDuplicates: true })
-  if (error) throw error
+  return { error: error || null }
 }

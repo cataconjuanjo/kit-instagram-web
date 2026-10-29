@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { historicoPayloadDesdeCierre } from '../app/lib/sommCierre.js'
-import { añadirVinosStockAlSnapshot } from '../app/lib/insertarStockMensualBodega.js'
+import { añadirVinosStockAlSnapshot, insertarStockMensualBodega } from '../app/lib/insertarStockMensualBodega.js'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 
@@ -252,4 +252,34 @@ test('encadenamiento: tres meses en cadena son consistentes', () => {
     assert.notEqual(p.consumo_mp, p.compras_total,
       `consumo_mp ${p.consumo_mp} no debe igualar compras_total ${p.compras_total} en mes ${p.mes}`)
   }
+})
+
+// ── Tests insertarStockMensualBodega (resilencia + conteo inventario) ─────────
+
+test('insertarStockMensualBodega: error de upsert devuelve { error }, no lanza', async () => {
+  const mockSupabase = {
+    from: () => ({ upsert: () => Promise.resolve({ error: { message: 'connection refused' } }) }),
+  }
+  const result = await insertarStockMensualBodega(mockSupabase, {
+    restaurante_id: ID,
+    mes: '2026-01',
+    vinos_stock: [{ vino_id: 'v1', stock_uds: 5, coste_medio: 10 }],
+  })
+  assert.ok(result.error, 'debe devolver el error')
+  assert.equal(result.error.message, 'connection refused')
+})
+
+test('conteo inventario: stock_final existente no se pisa, vinos_stock siempre se adjunta', () => {
+  const vinos = [
+    { id: 'v1', stock: '10', coste_medio_pmp: '5.00', coste_compra: '4.00' },
+  ]
+  const snapshotConConteo = { ventas_neto: 3000, stock_final: 9999 }
+  const enriched = añadirVinosStockAlSnapshot(snapshotConConteo, vinos)
+  // Lógica de la ruta: preservar stock_final si ya venía del snapshot
+  const snapshotFinal = snapshotConConteo.stock_final != null
+    ? { ...enriched, stock_final: snapshotConConteo.stock_final }
+    : enriched
+  assert.equal(snapshotFinal.stock_final, 9999, 'stock_final de conteo no se pisa')
+  assert.equal(snapshotFinal.vinos_stock.length, 1, 'vinos_stock siempre se adjunta')
+  assert.equal(snapshotFinal.ventas_neto, 3000, 'resto del snapshot se preserva')
 })
