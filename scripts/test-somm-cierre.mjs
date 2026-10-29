@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { historicoPayloadDesdeCierre } from '../app/lib/sommCierre.js'
+import { añadirVinosStockAlSnapshot } from '../app/lib/insertarStockMensualBodega.js'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 
@@ -143,4 +144,112 @@ test('pct_mp = 0 cuando ingresos = 0 (sin división por cero)', () => {
   })
   assert.equal(payload.ingresos, 0)
   assert.equal(payload.pct_mp, 0)
+})
+
+// ── Tests añadirVinosStockAlSnapshot (fix consumo_mp) ────────────────────────
+
+test('añadirVinosStockAlSnapshot: stock_final = Σ(stock_uds × coste_medio)', () => {
+  const vinos = [
+    { id: 'v1', stock: '10', coste_medio_pmp: '5.00', coste_compra: '4.00' },
+    { id: 'v2', stock: '3',  coste_medio_pmp: '20.00', coste_compra: '18.00' },
+  ]
+  // v1: 10×5 = 50, v2: 3×20 = 60  → total 110
+  const result = añadirVinosStockAlSnapshot({ ventas_neto: 1000 }, vinos)
+  assert.equal(result.ventas_neto, 1000, 'preserva campos del snapshot original')
+  assert.equal(result.stock_final, 110)
+  assert.equal(result.vinos_stock.length, 2)
+  assert.equal(result.vinos_stock[0].vino_id, 'v1')
+  assert.equal(result.vinos_stock[0].stock_uds, 10)
+  assert.equal(result.vinos_stock[0].coste_medio, 5)
+})
+
+test('añadirVinosStockAlSnapshot: coste_medio nulo/0 → usa coste_compra', () => {
+  const vinos = [
+    { id: 'v3', stock: '5', coste_medio_pmp: null,    coste_compra: '8.00' },
+    { id: 'v4', stock: '2', coste_medio_pmp: '0',     coste_compra: '12.00' },
+  ]
+  // v3: 5×8=40, v4: 2×12=24 (coste_medio_pmp=0 → falsy → usa coste_compra)
+  const result = añadirVinosStockAlSnapshot({}, vinos)
+  assert.equal(result.vinos_stock[0].coste_medio, 8)
+  assert.equal(result.vinos_stock[1].coste_medio, 12)
+  assert.equal(result.stock_final, 64)
+})
+
+test('añadirVinosStockAlSnapshot: stock 0 → stock_uds=0, contribuye 0 al stock_final', () => {
+  const vinos = [
+    { id: 'v5', stock: '0',  coste_medio_pmp: '10', coste_compra: '10' },
+    { id: 'v6', stock: '-3', coste_medio_pmp: '10', coste_compra: '10' },
+  ]
+  const result = añadirVinosStockAlSnapshot({}, vinos)
+  assert.equal(result.vinos_stock[0].stock_uds, 0)
+  assert.equal(result.vinos_stock[1].stock_uds, 0)
+  assert.equal(result.stock_final, 0)
+})
+
+test('añadirVinosStockAlSnapshot: lista vacía → stock_final=0, vinos_stock=[]', () => {
+  const result = añadirVinosStockAlSnapshot({ gastos_total: 500 }, [])
+  assert.equal(result.stock_final, 0)
+  assert.deepEqual(result.vinos_stock, [])
+  assert.equal(result.gastos_total, 500)
+})
+
+test('añadirVinosStockAlSnapshot: vinos=null → stock_final=0', () => {
+  const result = añadirVinosStockAlSnapshot({}, null)
+  assert.equal(result.stock_final, 0)
+  assert.deepEqual(result.vinos_stock, [])
+})
+
+// ── Tests encadenamiento de meses (fix consumo_mp ≠ compras_total) ───────────
+
+test('encadenamiento: stock_inicial(N) = stock_final(N-1)', () => {
+  // Mes 1 (enero): sin stock previo, compras=2000, stock_final=1800
+  const mesEne = historicoPayloadDesdeCierre({
+    restaurante_id: ID, mes: '2026-01',
+    snapshot: { ventas_neto: 8000, stock_final: 1800 },
+    stock_inicial_valor: 0,
+    compras_total: 2000,
+  })
+  // Mes 2 (febrero): stock_inicial = stock_final de enero = 1800
+  const mesFeb = historicoPayloadDesdeCierre({
+    restaurante_id: ID, mes: '2026-02',
+    snapshot: { ventas_neto: 7000, stock_final: 2100 },
+    stock_inicial_valor: mesEne.stock_final_valor,
+    compras_total: 1500,
+  })
+
+  assert.equal(mesFeb.stock_inicial_valor, mesEne.stock_final_valor,
+    'stock_inicial(feb) = stock_final(ene)')
+  assert.equal(mesFeb.stock_inicial_valor, 1800)
+
+  // consumo_mp(feb) = 1800 + 1500 - 2100 = 1200  ≠ compras_total(1500)
+  assert.equal(mesFeb.consumo_mp, 1200)
+  assert.notEqual(mesFeb.consumo_mp, mesFeb.compras_total,
+    'consumo_mp ≠ compras_total cuando hay stock')
+})
+
+test('encadenamiento: tres meses en cadena son consistentes', () => {
+  const meses = [
+    { mes: '2026-01', ventas_neto: 8000, stock_final: 2000, compras_total: 2500 },
+    { mes: '2026-02', ventas_neto: 7000, stock_final: 1800, compras_total: 1200 },
+    { mes: '2026-03', ventas_neto: 9000, stock_final: 2400, compras_total: 3000 },
+  ]
+  const payloads = []
+  for (let i = 0; i < meses.length; i++) {
+    const { mes, ventas_neto, stock_final, compras_total } = meses[i]
+    payloads.push(historicoPayloadDesdeCierre({
+      restaurante_id: ID, mes,
+      snapshot: { ventas_neto, stock_final },
+      stock_inicial_valor: i === 0 ? 0 : payloads[i - 1].stock_final_valor,
+      compras_total,
+    }))
+  }
+  // ene: 0+2500-2000=500 | feb: 2000+1200-1800=1400 | mar: 1800+3000-2400=2400
+  assert.equal(payloads[0].consumo_mp, 500)
+  assert.equal(payloads[1].consumo_mp, 1400)
+  assert.equal(payloads[2].consumo_mp, 2400)
+  // Comprobamos que ninguno iguala compras_total
+  for (const p of payloads) {
+    assert.notEqual(p.consumo_mp, p.compras_total,
+      `consumo_mp ${p.consumo_mp} no debe igualar compras_total ${p.compras_total} en mes ${p.mes}`)
+  }
 })
