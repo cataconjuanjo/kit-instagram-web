@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../lib/supabaseAdmin'
 import { calcularMesBodega } from '../../lib/agregarPeriodoBodega'
 import { historicoPayloadDesdeCierre } from '../../lib/sommCierre'
 import { decidirHistoricoAuto } from '../../lib/historicoAutoDecision'
+import { añadirVinosStockAlSnapshot, insertarStockMensualBodega } from '../../lib/insertarStockMensualBodega'
 
 function texto(v, max = 200) { return String(v || '').trim().slice(0, max) }
 
@@ -135,14 +136,11 @@ export async function POST(req) {
         .select('id, stock, coste_medio_pmp, coste_compra')
         .eq('restaurante_id', restaurante_id)
         .gt('stock', 0)
-      snapshotFinal = {
-        ...snapshot,
-        vinos_stock: (vinos || []).map(v => ({
-          vino_id:     v.id,
-          stock_uds:   Math.max(0, Math.floor(Number(v.stock) || 0)),
-          coste_medio: Number(v.coste_medio_pmp) || Number(v.coste_compra) || 0,
-        })),
-      }
+      const enriched = añadirVinosStockAlSnapshot(snapshot, vinos)
+      // If stock_final already comes from a conteo_inventario, preserve it.
+      snapshotFinal = snapshot.stock_final != null
+        ? { ...enriched, stock_final: snapshot.stock_final }
+        : enriched
     }
 
     const { data: cierre, error } = await supabaseAdmin
@@ -153,18 +151,9 @@ export async function POST(req) {
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
 
-    // Insertar filas en stock_mensual_bodega (solo sumiller)
-    if (rest?.plan === 'sumiller' && snapshotFinal.vinos_stock?.length > 0) {
-      const filas = snapshotFinal.vinos_stock.map(v => ({
-        restaurante_id,
-        mes,
-        vino_id:          v.vino_id,
-        stock_final_real: v.stock_uds,
-        coste_medio:      v.coste_medio,
-      }))
-      await supabaseAdmin
-        .from('stock_mensual_bodega')
-        .upsert(filas, { onConflict: 'restaurante_id,mes,vino_id', ignoreDuplicates: true })
+    if (rest?.plan === 'sumiller') {
+      const { error: stockErr } = await insertarStockMensualBodega(supabaseAdmin, { restaurante_id, mes, vinos_stock: snapshotFinal.vinos_stock })
+      if (stockErr) console.error('[cierres-mes] stock_mensual_bodega upsert error:', stockErr.message)
     }
 
     // Upsert historico_mensual con origen='auto' (no sobreescribe filas con origen='manual')
