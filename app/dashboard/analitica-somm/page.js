@@ -155,10 +155,11 @@ function TabHistorico({ historico }) {
   const totalPorAnio = useMemo(() => {
     const t = {}
     historico.forEach(h => {
-      if (!t[h.anio]) t[h.anio] = { ingresos: 0, consumo: 0, margen: 0 }
+      if (!t[h.anio]) t[h.anio] = { ingresos: 0, consumo: 0, margen: 0, meses: new Set() }
       t[h.anio].ingresos += h.ingresos
       t[h.anio].consumo += h.consumo_mp
       t[h.anio].margen += h.margen_explotacion ?? (h.ingresos - h.consumo_mp - h.gastos_fijos)
+      t[h.anio].meses.add(h.mes)
     })
     return t
   }, [historico])
@@ -200,10 +201,21 @@ function TabHistorico({ historico }) {
                 {anios.slice().reverse().map(anio => {
                   const d = totalPorAnio[anio]
                   const dAnt = totalPorAnio[anio - 1]
-                  const yoy = dAnt?.ingresos ? redondear(((d.ingresos - dAnt.ingresos) / dAnt.ingresos) * 100, 1) : null
+                  const commonMeses = dAnt ? [...d.meses].filter(m => dAnt.meses.has(m)) : []
+                  const yoy = (() => {
+                    if (!dAnt || !commonMeses.length) return null
+                    const ingN   = commonMeses.reduce((s, m) => s + (porAnioMes[`${anio}-${m}`]?.ingresos || 0), 0)
+                    const ingAnt = commonMeses.reduce((s, m) => s + (porAnioMes[`${anio - 1}-${m}`]?.ingresos || 0), 0)
+                    return ingAnt ? redondear(((ingN - ingAnt) / ingAnt) * 100, 1) : null
+                  })()
+                  const mesesLabel = commonMeses.length > 0 && commonMeses.length < 12
+                    ? ` (${MESES_LABEL[Math.min(...commonMeses) - 1]}–${MESES_LABEL[Math.max(...commonMeses) - 1]})`
+                    : null
                   return (
                     <tr key={anio} style={{ borderBottom: '1px solid #f0ece4' }}>
-                      <td style={{ padding: '7px 8px', fontWeight: 600 }}>{anio}</td>
+                      <td style={{ padding: '7px 8px', fontWeight: 600 }}>
+                        {anio}{mesesLabel && <span style={{ fontWeight: 400, fontSize: 11, color: '#888' }}>{mesesLabel}</span>}
+                      </td>
                       <td style={{ padding: '7px 8px', textAlign: 'right' }}>{eur(d.ingresos)}</td>
                       <td style={{ padding: '7px 8px', textAlign: 'right', color: yoy == null ? '#888' : yoy >= 0 ? '#27ae60' : '#e74c3c', fontSize: 12 }}>
                         {yoy != null ? `${yoy >= 0 ? '+' : ''}${yoy}%` : '—'}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
 import { supabase } from '../../supabase'
@@ -419,9 +420,23 @@ function MapaCalorEstacional({ historico, objetivoMargenPct = 20 }) {
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function ExplotacionPage() {
+  const searchParams = useSearchParams()
   const [restaurante, setRestaurante] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [periodo, setPeriodo] = useState(periodoHoy())
+  const [periodo, setPeriodo] = useState(() => {
+    const param = searchParams?.get('periodo') ?? null
+    if (param && /^\d{4}-\d{2}$/.test(param)) {
+      // Validate the param is within the 12-month selector range
+      const anioHoy = new Date().getFullYear()
+      const opciones = []
+      for (let m = 11; m >= 0; m--) {
+        const fecha = new Date(anioHoy, new Date().getMonth() - m, 1)
+        opciones.push(`${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`)
+      }
+      if (opciones.includes(param)) return param
+    }
+    return periodoHoy()
+  })
   const [guardando, setGuardando] = useState(false)
   const [guardado, setGuardado] = useState(false)
 

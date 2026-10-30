@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
+import { esPerfilSomm } from '../../lib/plans'
 import styles from '../module.module.css'
 
 async function authedFetch(path, opts = {}) {
@@ -622,7 +623,9 @@ export default function CierreMensual({ restauranteId, restaurante }) {
 
           {/* Resultado */}
           <div style={{ marginTop: 20, padding: '14px 0', borderTop: '2px solid rgba(255,255,255,0.18)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 700, fontSize: 15 }}>Resultado neto bodega</span>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>
+              {esPerfilSomm(restaurante) ? 'Resultado antes de comisiones bancarias' : 'Resultado neto bodega'}
+            </span>
             <div style={{ textAlign: 'right' }}>
               <span style={{ fontWeight: 700, fontSize: 20, color: resultadoColor }}>
                 {datos.resultado >= 0 ? '' : '− '}{eur(Math.abs(datos.resultado))}
@@ -649,7 +652,7 @@ export default function CierreMensual({ restauranteId, restaurante }) {
               )}
               {datos.stock_final != null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, opacity: 0.75 }}>
-                  <span>Final (último conteo del mes)</span>
+                  <span>{datos.diferencias_inventario != null ? 'Final (último conteo del mes)' : 'Final (valoración de inventario)'}</span>
                   <span>{eur(datos.stock_final)}</span>
                 </div>
               )}

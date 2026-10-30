@@ -25,12 +25,12 @@ function nombreMes(periodo) {
 // Genera los últimos 12 meses como opciones
 function ultimosMeses(n = 12) {
   const meses = []
-  const d = new Date()
+  const hoy = new Date()
+  const anio0 = hoy.getFullYear()
+  const mes0  = hoy.getMonth() + 1  // 1-12
   for (let i = 0; i < n; i++) {
-    const anio = d.getFullYear()
-    const mes = String(d.getMonth() + 1).padStart(2, '0')
-    meses.push(`${anio}-${mes}`)
-    d.setMonth(d.getMonth() - 1)
+    const fecha = new Date(anio0, mes0 - 1 - i, 1)
+    meses.push(`${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`)
   }
   return meses
 }
