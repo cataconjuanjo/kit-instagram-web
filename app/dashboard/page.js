@@ -13,7 +13,7 @@ import {
 } from '../lib/clientSupabaseSelects'
 import { cargarDemoDashboard } from '../lib/demoDashboardClient'
 import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceDay'
-import { esPerfilBodega, puedeUsar } from '../lib/plans'
+import { esPerfilBodega, esPerfilSomm, puedeUsar } from '../lib/plans'
 import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationReadiness'
 import { fetchAllPages } from '../lib/fetchAllPages'
 import styles from './dashboard.module.css'
@@ -695,7 +695,9 @@ function DashboardHome() {
   const accionesRadarAbiertas = radarAcciones.filter(item => !['hecha', 'descartada'].includes(item.estado))
   const accionesRadarHechas = radarAcciones.filter(item => item.estado === 'hecha').length
   const radarPrincipal = accionesRadarAbiertas[0] || null
-  const tareasInicio = perfilBodega
+  const tareasInicio = esPerfilSomm(restaurante)
+    ? []
+    : perfilBodega
     ? [
         { id: 'bodega_vinos', titulo: 'Cargar referencias de bodega', texto: 'Importa o crea los vinos con stock inicial, precio y datos principales.', href: '/dashboard/vinos?importar=1', autoHide: () => vinosActivos.length > 0 },
         { id: 'bodega_control', titulo: 'Completar control de bodega', texto: 'Coste, proveedor y stock actual convierten la lista en una herramienta de gestión.', href: '/dashboard/bodega#referencias-pendientes', feature: 'bodega', autoHide: () => vinosActivos.length === 0 || (sinCosteCompra.length === 0 && sinProveedor.length === 0 && vinosSinStock.length === 0 && sinStockMinimo.length === 0) },
