@@ -1095,7 +1095,7 @@ function DashboardHome() {
               <section className={styles.dailyRadarPanel}>
                 {radarError && <div className={styles.radarNotice}>{radarError}</div>}
                 <div className={styles.dailyRadarList}>
-                  {(accionesRadarFiltradas.length ? accionesRadarFiltradas : radarAcciones).slice(0, 3).map(accion => (
+                  {(accionesRadarFiltradas.length ? accionesRadarFiltradas : accionesRadarAbiertas).slice(0, 3).map(accion => (
                     <article className={styles.dailyRadarItem} key={accion.id || accion.clave}>
                       <div>
                         <span>{accion.area}</span>
