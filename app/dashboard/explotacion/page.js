@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
@@ -419,7 +419,7 @@ function MapaCalorEstacional({ historico, objetivoMargenPct = 20 }) {
 
 // ── Página principal ──────────────────────────────────────────────────────────
 
-export default function ExplotacionPage() {
+function ExplotacionContent() {
   const searchParams = useSearchParams()
   const [restaurante, setRestaurante] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -901,5 +901,13 @@ export default function ExplotacionPage() {
         </div>
       </ModuleShell>
     </FeatureGate>
+  )
+}
+
+export default function ExplotacionPage() {
+  return (
+    <Suspense fallback={<LoadingState title="Cargando cuenta de explotación" text="Preparando el P&L de la bodega." />}>
+      <ExplotacionContent />
+    </Suspense>
   )
 }
