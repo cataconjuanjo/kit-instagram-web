@@ -56,7 +56,7 @@ describe('indexarMovimientos', () => {
     assert.strictEqual(idx['2026-01']['v1'].ventas_bot_u, 2)
   })
 
-  it('acumula ventas_copa_u', () => {
+  it('ventas_copa_u = botellas abiertas (abs de movimientos, no copas)', () => {
     const idx = indexarMovimientos(movs)
     assert.strictEqual(idx['2026-01']['v1'].ventas_copa_u, 1)
   })
@@ -103,6 +103,7 @@ describe('indexarCompras', () => {
 
 describe('indexarPartes', () => {
   const parteFechaMap = { 'p1': '2026-01-10' }
+  // venta_copa: cantidad=1 (evento), copas_vendidas=4 (copas reales servidas)
   const lineas = [
     { parte_id: 'p1', vino_id: 'v1', tipo: 'venta_botella', cantidad: 2, copas_vendidas: 0, precio_unitario: 30 },
     { parte_id: 'p1', vino_id: 'v1', tipo: 'venta_copa',    cantidad: 1, copas_vendidas: 4, precio_unitario: 4 },
@@ -114,10 +115,10 @@ describe('indexarPartes', () => {
     assert.strictEqual(idx['2026-01']['v1'].bot_eur_bruto, 60)
   })
 
-  it('acumula copa_u (botellas abiertas) y copa_eur_bruto (copas × pvp)', () => {
+  it('copas_servidas_u usa copas_vendidas (no cantidad) y copa_eur_bruto = copas × pvp', () => {
     const idx = indexarPartes(lineas, parteFechaMap)
-    assert.strictEqual(idx['2026-01']['v1'].copa_u, 1)
-    assert.strictEqual(idx['2026-01']['v1'].copa_eur_bruto, 16)
+    assert.strictEqual(idx['2026-01']['v1'].copas_servidas_u, 4)  // de copas_vendidas, no cantidad
+    assert.strictEqual(idx['2026-01']['v1'].copa_eur_bruto, 16)    // 4 copas × 4€
   })
 })
 
@@ -126,19 +127,21 @@ describe('indexarPartes', () => {
 describe('calcularFilaVino', () => {
   const vino = { id: 'v1', nombre: 'Granito 2022', tipo: 'tinto' }
 
-  it('calcula stock_fin_rec y descuadre cero cuando cuadra', () => {
+  it('calcula stock_fin y descuadre cero cuando cuadra', () => {
     const fila = calcularFilaVino({
       vino,
       smbPrev:      { stock_final_real: 5, coste_medio: 10 },
       smbCurrent:   { stock_final_real: 8, coste_medio: 10 },
       movsEntry:    { entradas_u: 6, ventas_bot_u: 2, ventas_copa_u: 1, otras_u: 0, ajustes_u: 0 },
       comprasEntry: { eur: 60 },
-      partesEntry:  { bot_u: 2, bot_eur_bruto: 44, copa_u: 1, copa_eur_bruto: 11 },
+      partesEntry:  { bot_u: 2, bot_eur_bruto: 44, copas_servidas_u: 1, copa_eur_bruto: 11 },
       ivaPct: 10,
     })
-    // stock_fin_rec = 5 + 6 - 2 - 1 + 0 = 8
+    // stock_fin_rec = 5 + 6 - 2 - 1 + 0 = 8, SMB = 8 → descuadre = 0
     assert.strictEqual(fila.stock_fin, 8)
     assert.strictEqual(fila.descuadre, 0)
+    // consumo_mp: 5×10 + 60 - 8×10 = 50+60-80 = 30
+    assert.strictEqual(fila.consumo_mp, 30)
   })
 
   it('descuadre no cero cuando movimientos no cuadran con SMB', () => {
@@ -157,13 +160,13 @@ describe('calcularFilaVino', () => {
     const fila = calcularFilaVino({
       vino,
       smbPrev: null, smbCurrent: null, movsEntry: null, comprasEntry: null,
-      partesEntry: { bot_u: 1, bot_eur_bruto: 33, copa_u: 0, copa_eur_bruto: 0 },
+      partesEntry: { bot_u: 1, bot_eur_bruto: 33, copas_servidas_u: 0, copa_eur_bruto: 0 },
       ivaPct: 10,
     })
     assert.strictEqual(fila.ventas_bot_eur, r2(33 / 1.1))
   })
 
-  it('stock_ini null cuando no hay SMB previo', () => {
+  it('stock_ini null cuando no hay SMB previo ni vinoStockActual', () => {
     const fila = calcularFilaVino({
       vino,
       smbPrev: null, smbCurrent: null, movsEntry: null, comprasEntry: null, partesEntry: null,
@@ -184,6 +187,33 @@ describe('calcularFilaVino', () => {
     assert.strictEqual(fila.descuadre, 0)
     assert.strictEqual(fila.ajustes_u, 1)
   })
+
+  it('mes abierto: reconstruye stock_ini hacia atrás desde vinoStockActual', () => {
+    const fila = calcularFilaVino({
+      vino,
+      smbPrev: null, smbCurrent: null,
+      movsEntry: { entradas_u: 6, ventas_bot_u: 2, ventas_copa_u: 1, otras_u: 0, ajustes_u: 0 },
+      comprasEntry: null, partesEntry: null, ivaPct: 10,
+      vinoStockActual: 4,
+    })
+    // ini = 4 - 6 + 2 + 1 + 0 - 0 = 1
+    assert.strictEqual(fila.stock_fin, 4)
+    assert.strictEqual(fila.stock_ini, 1)
+    assert.strictEqual(fila.descuadre, 0)  // no hay SMB para comparar
+  })
+
+  it('copas_servidas_u viene de partesEntry, ventas_copa_u de movsEntry', () => {
+    const fila = calcularFilaVino({
+      vino,
+      smbPrev: null, smbCurrent: null, movsEntry: { entradas_u:0, ventas_bot_u:0, ventas_copa_u:2, otras_u:0, ajustes_u:0 },
+      comprasEntry: null,
+      partesEntry: { bot_u: 0, bot_eur_bruto: 0, copas_servidas_u: 7, copa_eur_bruto: 28 },
+      ivaPct: 10,
+    })
+    assert.strictEqual(fila.ventas_copa_u, 2)       // botellas abiertas (movimientos)
+    assert.strictEqual(fila.copas_servidas_u, 7)    // copas servidas (partes)
+    assert.strictEqual(fila.ventas_copa_eur, r2(28 / 1.1))
+  })
 })
 
 // ── totalizarFilas ────────────────────────────────────────────────────────────
@@ -192,16 +222,17 @@ describe('totalizarFilas', () => {
   it('suma todas las columnas numéricas', () => {
     const filas = [
       { entradas_u:2, entradas_eur:100, ventas_bot_u:1, ventas_bot_eur:30,
-        ventas_copa_u:0, ventas_copa_eur:0, otras_salidas_u:0, ajustes_u:0,
+        ventas_copa_u:0, copas_servidas_u:3, ventas_copa_eur:0, otras_salidas_u:0, ajustes_u:0,
         stock_ini:5, stock_fin:6, consumo_mp:30 },
       { entradas_u:3, entradas_eur:150, ventas_bot_u:2, ventas_bot_eur:60,
-        ventas_copa_u:1, ventas_copa_eur:15, otras_salidas_u:0, ajustes_u:0,
+        ventas_copa_u:1, copas_servidas_u:4, ventas_copa_eur:15, otras_salidas_u:0, ajustes_u:0,
         stock_ini:10, stock_fin:11, consumo_mp:75 },
     ]
     const t = totalizarFilas(filas)
     assert.strictEqual(t.entradas_u, 5)
     assert.strictEqual(t.entradas_eur, 250)
     assert.strictEqual(t.ventas_bot_eur, 90)
+    assert.strictEqual(t.copas_servidas_u, 7)
     assert.strictEqual(t.consumo_mp, 105)
     assert.strictEqual(t.stock_ini, 15)
   })
@@ -209,6 +240,7 @@ describe('totalizarFilas', () => {
   it('array vacío → ceros', () => {
     const t = totalizarFilas([])
     assert.strictEqual(t.entradas_u, 0)
+    assert.strictEqual(t.copas_servidas_u, 0)
     assert.strictEqual(t.consumo_mp, 0)
   })
 })
@@ -221,13 +253,14 @@ describe('exportarCSV', () => {
     vinos: [{ vino_id:'v1', nombre:'Test "vino"', tipo:'tinto',
               stock_ini:5, entradas_u:6, entradas_eur:60,
               ventas_bot_u:2, ventas_bot_eur:40,
-              ventas_copa_u:1, ventas_copa_eur:10,
+              ventas_copa_u:1, copas_servidas_u:4, ventas_copa_eur:10,
               otras_salidas_u:0, ajustes_u:0, stock_fin:8, consumo_mp:30, coste_medio:10, descuadre:0 }],
   }]
 
-  it('primera línea es cabecera', () => {
+  it('primera línea es cabecera con copas_servidas_u', () => {
     const csv = exportarCSV(meses)
     assert.ok(csv.startsWith('mes,estado,vino,'))
+    assert.ok(csv.includes('copas_servidas_u'))
   })
 
   it('segunda línea contiene el mes y el vino', () => {

@@ -18,12 +18,12 @@ function BadgeEstado({ estado }) {
 }
 
 export default function LibroBodegaTable({ restauranteId }) {
-  const [anio,      setAnio]      = useState(new Date().getFullYear())
-  const [filtroMes, setFiltroMes] = useState('')
+  const [anio,       setAnio]       = useState(new Date().getFullYear())
+  const [filtroMes,  setFiltroMes]  = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
-  const [data,      setData]      = useState(null)
-  const [loading,   setLoading]   = useState(false)
-  const [error,     setError]     = useState(null)
+  const [data,       setData]       = useState(null)
+  const [loading,    setLoading]    = useState(false)
+  const [error,      setError]      = useState(null)
 
   const cargar = useCallback(async () => {
     if (!restauranteId) return
@@ -61,7 +61,9 @@ export default function LibroBodegaTable({ restauranteId }) {
   }
 
   const meses = data?.meses ?? []
-  const mesesFiltrados = meses.filter(m => !filtroMes || m.mes === filtroMes)
+  // Solo listar en el selector los meses que tienen datos
+  const mesesConDatos   = meses.filter(m => m.vinos.length > 0)
+  const mesesFiltrados  = meses.filter(m => !filtroMes || m.mes === filtroMes)
 
   const tiposDisponibles = [...new Set(
     meses.flatMap(m => m.vinos.map(v => v.tipo)).filter(Boolean)
@@ -84,7 +86,7 @@ export default function LibroBodegaTable({ restauranteId }) {
           onChange={e => setFiltroMes(e.target.value)}
         >
           <option value="">Todos los meses</option>
-          {meses.map(m => (
+          {mesesConDatos.map(m => (
             <option key={m.mes} value={m.mes}>{m.mes}</option>
           ))}
         </select>
@@ -130,12 +132,13 @@ export default function LibroBodegaTable({ restauranteId }) {
                     <th title="Entradas (€ neto)">Ent.€</th>
                     <th title="Ventas botella unidades">Bot.u</th>
                     <th title="Ventas botella € neto">Bot.€</th>
-                    <th title="Ventas copa unidades (botellas abiertas)">Copa.u</th>
+                    <th title="Botellas abiertas para copa (impacto en stock)">Copa.bot</th>
+                    <th title="Copas servidas (ingresos)">Copa.cop</th>
                     <th title="Ventas copa € neto">Copa.€</th>
                     <th title="Otras salidas (merma, cata, invitación…)">Otras</th>
                     <th title="Ajustes de inventario">Aj.</th>
                     <th title="Stock fin de mes">Fin</th>
-                    <th title="Coste de ventas estimado">CoGS€</th>
+                    <th title="Coste de ventas (BI_valor + compras − EI_valor)">CoGS€</th>
                     <th title="Descuadre respecto a stock_mensual_bodega (0 = cuadra)">Δ</th>
                   </tr>
                 </thead>
@@ -152,6 +155,7 @@ export default function LibroBodegaTable({ restauranteId }) {
                       <td>{N(v.ventas_bot_u)}</td>
                       <td>{EUR(v.ventas_bot_eur)}</td>
                       <td>{N(v.ventas_copa_u)}</td>
+                      <td>{N(v.copas_servidas_u)}</td>
                       <td>{EUR(v.ventas_copa_eur)}</td>
                       <td>{N(v.otras_salidas_u)}</td>
                       <td>{v.ajustes_u !== 0 ? (v.ajustes_u > 0 ? `+${v.ajustes_u}` : v.ajustes_u) : '—'}</td>
@@ -172,6 +176,7 @@ export default function LibroBodegaTable({ restauranteId }) {
                     <td>{N(mes.totales.ventas_bot_u)}</td>
                     <td>{EUR(mes.totales.ventas_bot_eur)}</td>
                     <td>{N(mes.totales.ventas_copa_u)}</td>
+                    <td>{N(mes.totales.copas_servidas_u)}</td>
                     <td>{EUR(mes.totales.ventas_copa_eur)}</td>
                     <td>{N(mes.totales.otras_salidas_u)}</td>
                     <td>—</td>

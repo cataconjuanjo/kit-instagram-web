@@ -51,12 +51,16 @@ export async function GET(req) {
     const auth = await requireRestaurantAccess(req, supabaseAdmin, restaurante_id)
     if (auth.error) return Response.json({ error: auth.error }, { status: auth.status })
 
+    const now    = new Date()
+    const curAnio = now.getFullYear()
+    const curMes  = now.getMonth() + 1  // 1-12
+
     const desde = `${anio}-01-01`
     const hasta = `${anio}-12-31`
 
-    // 1. Vinos
+    // 1. Vinos (incluye stock para reconstrucción del mes abierto actual)
     const { data: vinos } = await supabaseAdmin
-      .from('vinos').select('id,nombre,tipo').eq('restaurante_id', restaurante_id)
+      .from('vinos').select('id,nombre,tipo,stock').eq('restaurante_id', restaurante_id)
 
     // 2. stock_mensual_bodega (año anterior dic + año completo para stock_ini del primer mes)
     const smbRaw = await fetchAll((f, t) =>
@@ -100,9 +104,9 @@ export async function GET(req) {
         .eq('estado', 'cerrado').gte('fecha', desde).lte('fecha', hasta)
         .range(f, t)
     )
-    const parteIds     = partesRaw.map(p => p.id)
+    const parteIds      = partesRaw.map(p => p.id)
     const parteFechaMap = Object.fromEntries(partesRaw.map(p => [p.id, p.fecha]))
-    const lineasPartes = parteIds.length > 0
+    const lineasPartes  = parteIds.length > 0
       ? await fetchByIds(
           'partes_servicio_lineas',
           'parte_id,vino_id,tipo,cantidad,copas_vendidas,precio_unitario',
@@ -127,28 +131,35 @@ export async function GET(req) {
     // Construir respuesta por mes
     const meses = []
     for (let m = 1; m <= 12; m++) {
+      // No mostrar meses futuros del año en curso
+      if (anio === curAnio && m > curMes) continue
+
       const mesK    = `${anio}-${String(m).padStart(2, '0')}`
       const prevMes = m === 1 ? `${anio - 1}-12` : `${anio}-${String(m - 1).padStart(2, '0')}`
       const cierre  = cierresMap[mesK]
       const estado  = cierre ? 'cerrado' : 'estimado'
       const ivaPct  = Number(cierre?.iva_pct) || 10
 
+      // Para el mes abierto actual, usar vinos.stock como stock_fin y reconstruir hacia atrás
+      const isOpenCurrentMonth = !cierre && anio === curAnio && m === curMes
+
       const filas = (vinos || []).map(vino =>
         calcularFilaVino({
           vino,
-          smbPrev:      smbMap[prevMes]?.[vino.id]  ?? null,
-          smbCurrent:   smbMap[mesK]?.[vino.id]     ?? null,
-          movsEntry:    movsIdx[mesK]?.[vino.id]    ?? null,
-          comprasEntry: comprasIdx[mesK]?.[vino.id] ?? null,
-          partesEntry:  partesIdx[mesK]?.[vino.id]  ?? null,
+          smbPrev:         smbMap[prevMes]?.[vino.id]  ?? null,
+          smbCurrent:      smbMap[mesK]?.[vino.id]     ?? null,
+          movsEntry:       movsIdx[mesK]?.[vino.id]    ?? null,
+          comprasEntry:    comprasIdx[mesK]?.[vino.id] ?? null,
+          partesEntry:     partesIdx[mesK]?.[vino.id]  ?? null,
           ivaPct,
+          vinoStockActual: isOpenCurrentMonth ? (Number(vino.stock) || 0) : null,
         })
       )
 
       // Omitir filas sin actividad ni stock
       const filasActivas = filas.filter(f =>
-        f.entradas_u   > 0 || f.ventas_bot_u  > 0 || f.ventas_copa_u > 0 ||
-        f.otras_salidas_u > 0 || f.ajustes_u  > 0 ||
+        f.entradas_u      > 0 || f.ventas_bot_u    > 0 || f.ventas_copa_u > 0 ||
+        f.copas_servidas_u > 0 || f.otras_salidas_u > 0 || f.ajustes_u    > 0 ||
         (f.stock_ini ?? 0) > 0 || (f.stock_fin ?? 0) > 0
       )
 
@@ -163,6 +174,6 @@ export async function GET(req) {
     return Response.json({ anio, meses })
   } catch (e) {
     console.error('libro-bodega GET:', e)
-    return Response.json({ error: e.message }, { status: 500 })
+    return Response.json({ error: 'Error interno al cargar el libro de bodega' }, { status: 500 })
   }
 }
