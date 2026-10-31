@@ -138,8 +138,10 @@ export default function LibroBodegaTable({ restauranteId }) {
                     <th title="Otras salidas (merma, cata, invitación…)">Otras</th>
                     <th title="Ajustes de inventario">Aj.</th>
                     <th title="Stock fin de mes">Fin</th>
-                    <th title="Coste de ventas (BI_valor + compras − EI_valor)">CoGS€</th>
-                    <th title="Descuadre respecto a stock_mensual_bodega (0 = cuadra)">Δ</th>
+                    <th title="(a) Coste teórico de ventas = (bot + bot_copa) × coste_medio">CoGS€</th>
+                    <th title="(b) Consumo real por stock = BI_valor + compras − EI_valor">Consumo€</th>
+                    <th title="(c) Merma implícita / diferencia (b − a)">ΔCoGS€</th>
+                    <th title="Descuadre respecto a stock_mensual_bodega (0 = cuadra)">Δu</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -160,7 +162,11 @@ export default function LibroBodegaTable({ restauranteId }) {
                       <td>{N(v.otras_salidas_u)}</td>
                       <td>{v.ajustes_u !== 0 ? (v.ajustes_u > 0 ? `+${v.ajustes_u}` : v.ajustes_u) : '—'}</td>
                       <td>{v.stock_fin ?? '—'}</td>
-                      <td>{EUR(v.consumo_mp)}</td>
+                      <td>{EUR(v.coste_teorico_ventas)}</td>
+                      <td>{EUR(v.consumo_real_stock)}</td>
+                      <td title="Merma implícita = (b)−(a)" style={{ color: 'var(--c-muted, #888)' }}>
+                        {v.diferencia_consumo !== 0 ? EUR(v.diferencia_consumo) : '—'}
+                      </td>
                       <td style={v.descuadre !== 0 ? { color: 'var(--c-error, #b00)', fontWeight: 600 } : { color: 'var(--c-muted, #888)' }}>
                         {v.descuadre !== 0 ? (v.descuadre > 0 ? `+${v.descuadre}` : v.descuadre) : '✓'}
                       </td>
@@ -181,7 +187,9 @@ export default function LibroBodegaTable({ restauranteId }) {
                     <td>{N(mes.totales.otras_salidas_u)}</td>
                     <td>—</td>
                     <td>{N(mes.totales.stock_fin)}</td>
-                    <td>{EUR(mes.totales.consumo_mp)}</td>
+                    <td>{EUR(mes.totales.coste_teorico_ventas)}</td>
+                    <td>{EUR(mes.totales.consumo_real_stock)}</td>
+                    <td>{EUR(mes.totales.diferencia_consumo)}</td>
                     <td>—</td>
                   </tr>
                 </tfoot>

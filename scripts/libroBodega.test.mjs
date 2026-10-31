@@ -71,9 +71,16 @@ describe('indexarMovimientos', () => {
     assert.strictEqual(idx['2026-01']['v1'].otras_u, 1)
   })
 
-  it('omite filas sin fecha_movimiento', () => {
-    const idx = indexarMovimientos([{ tipo: 'compra', cantidad: 1, fecha_movimiento: null, vino_id: 'v1' }])
-    assert.deepStrictEqual(idx, {})
+  it('omite filas con fecha_movimiento null (sin fallback: política documentada)', () => {
+    // Decisión: skip. En el demo actual no hay filas con fecha_movimiento NULL
+    // (query de verificación: 0 filas). Si en el futuro aparecen, hay que
+    // decidir el fallback (parte.fecha vs created_at) por tipo de movimiento.
+    const idx = indexarMovimientos([
+      { tipo: 'compra', cantidad: 1, fecha_movimiento: null,         vino_id: 'v1' },
+      { tipo: 'compra', cantidad: 5, fecha_movimiento: '2026-01-10', vino_id: 'v1' },
+    ])
+    assert.strictEqual(idx['2026-01']['v1'].entradas_u, 5)  // solo la que tiene fecha
+    assert.strictEqual(Object.keys(idx).length, 1)
   })
 })
 
@@ -140,8 +147,24 @@ describe('calcularFilaVino', () => {
     // stock_fin_rec = 5 + 6 - 2 - 1 + 0 = 8, SMB = 8 → descuadre = 0
     assert.strictEqual(fila.stock_fin, 8)
     assert.strictEqual(fila.descuadre, 0)
-    // consumo_mp: 5×10 + 60 - 8×10 = 50+60-80 = 30
-    assert.strictEqual(fila.consumo_mp, 30)
+  })
+
+  it('tres cifras de consumo: (a) teórico, (b) real stock, (c) merma implícita', () => {
+    const fila = calcularFilaVino({
+      vino,
+      smbPrev:      { stock_final_real: 10, coste_medio: 10 },
+      smbCurrent:   { stock_final_real: 8,  coste_medio: 10 },
+      movsEntry:    { entradas_u: 5, ventas_bot_u: 3, ventas_copa_u: 2, otras_u: 2, ajustes_u: 0 },
+      comprasEntry: { eur: 50 },
+      partesEntry:  { bot_u: 3, bot_eur_bruto: 90, copas_servidas_u: 5, copa_eur_bruto: 25 },
+      ivaPct: 10,
+    })
+    // (a) coste_teorico = (ventas_bot_u + copas_servidas/5) × coste_fin = (3 + 5/5) × 10 = 40
+    assert.strictEqual(fila.coste_teorico_ventas, 40)
+    // (b) consumo_real = 10×10 + 50 - 8×10 = 100+50-80 = 70
+    assert.strictEqual(fila.consumo_real_stock, 70)
+    // (c) merma implícita = 70 - 40 = 30 (hay 2 bot abiertas vs 1 teórica → 1 extra + 2 otras_salidas)
+    assert.strictEqual(fila.diferencia_consumo, 30)
   })
 
   it('descuadre no cero cuando movimientos no cuadran con SMB', () => {
@@ -219,21 +242,25 @@ describe('calcularFilaVino', () => {
 // ── totalizarFilas ────────────────────────────────────────────────────────────
 
 describe('totalizarFilas', () => {
-  it('suma todas las columnas numéricas', () => {
+  it('suma todas las columnas numéricas incluidas las 3 cifras de consumo', () => {
     const filas = [
       { entradas_u:2, entradas_eur:100, ventas_bot_u:1, ventas_bot_eur:30,
         ventas_copa_u:0, copas_servidas_u:3, ventas_copa_eur:0, otras_salidas_u:0, ajustes_u:0,
-        stock_ini:5, stock_fin:6, consumo_mp:30 },
+        stock_ini:5, stock_fin:6,
+        coste_teorico_ventas:10, consumo_real_stock:30, diferencia_consumo:20 },
       { entradas_u:3, entradas_eur:150, ventas_bot_u:2, ventas_bot_eur:60,
         ventas_copa_u:1, copas_servidas_u:4, ventas_copa_eur:15, otras_salidas_u:0, ajustes_u:0,
-        stock_ini:10, stock_fin:11, consumo_mp:75 },
+        stock_ini:10, stock_fin:11,
+        coste_teorico_ventas:30, consumo_real_stock:75, diferencia_consumo:45 },
     ]
     const t = totalizarFilas(filas)
     assert.strictEqual(t.entradas_u, 5)
     assert.strictEqual(t.entradas_eur, 250)
     assert.strictEqual(t.ventas_bot_eur, 90)
     assert.strictEqual(t.copas_servidas_u, 7)
-    assert.strictEqual(t.consumo_mp, 105)
+    assert.strictEqual(t.coste_teorico_ventas, 40)
+    assert.strictEqual(t.consumo_real_stock, 105)
+    assert.strictEqual(t.diferencia_consumo, 65)
     assert.strictEqual(t.stock_ini, 15)
   })
 
@@ -241,7 +268,9 @@ describe('totalizarFilas', () => {
     const t = totalizarFilas([])
     assert.strictEqual(t.entradas_u, 0)
     assert.strictEqual(t.copas_servidas_u, 0)
-    assert.strictEqual(t.consumo_mp, 0)
+    assert.strictEqual(t.coste_teorico_ventas, 0)
+    assert.strictEqual(t.consumo_real_stock, 0)
+    assert.strictEqual(t.diferencia_consumo, 0)
   })
 })
 
@@ -254,13 +283,18 @@ describe('exportarCSV', () => {
               stock_ini:5, entradas_u:6, entradas_eur:60,
               ventas_bot_u:2, ventas_bot_eur:40,
               ventas_copa_u:1, copas_servidas_u:4, ventas_copa_eur:10,
-              otras_salidas_u:0, ajustes_u:0, stock_fin:8, consumo_mp:30, coste_medio:10, descuadre:0 }],
+              otras_salidas_u:0, ajustes_u:0, stock_fin:8,
+              coste_teorico_ventas:30, consumo_real_stock:35, diferencia_consumo:5,
+              coste_medio:10, descuadre:0 }],
   }]
 
-  it('primera línea es cabecera con copas_servidas_u', () => {
+  it('primera línea es cabecera con copas_servidas_u y las 3 cifras de consumo', () => {
     const csv = exportarCSV(meses)
     assert.ok(csv.startsWith('mes,estado,vino,'))
     assert.ok(csv.includes('copas_servidas_u'))
+    assert.ok(csv.includes('coste_teorico_ventas'))
+    assert.ok(csv.includes('consumo_real_stock'))
+    assert.ok(csv.includes('diferencia_consumo'))
   })
 
   it('segunda línea contiene el mes y el vino', () => {

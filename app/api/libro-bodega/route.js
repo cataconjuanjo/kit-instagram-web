@@ -55,8 +55,9 @@ export async function GET(req) {
     const curAnio = now.getFullYear()
     const curMes  = now.getMonth() + 1  // 1-12
 
-    const desde = `${anio}-01-01`
-    const hasta = `${anio}-12-31`
+    const desde      = `${anio}-01-01`
+    const hasta      = `${anio}-12-31`
+    const hastaExcl  = `${anio + 1}-01-01`  // Para timestamp fields: evita perder movs del 31-dic con hora >00:00
 
     // 1. Vinos (incluye stock para reconstrucción del mes abierto actual)
     const { data: vinos } = await supabaseAdmin
@@ -115,11 +116,12 @@ export async function GET(req) {
       : []
 
     // 6. Movimientos del año
+    // fecha_movimiento es timestamp with timezone; usar lt(hastaExcl) para no perder horas del 31-dic
     const movs = await fetchAll((f, t) =>
       supabaseAdmin.from('movimientos_stock')
         .select('tipo,cantidad,fecha_movimiento,vino_id')
         .eq('restaurante_id', restaurante_id)
-        .gte('fecha_movimiento', desde).lte('fecha_movimiento', hasta)
+        .gte('fecha_movimiento', desde).lt('fecha_movimiento', hastaExcl)
         .range(f, t)
     )
 
@@ -158,9 +160,9 @@ export async function GET(req) {
 
       // Omitir filas sin actividad ni stock
       const filasActivas = filas.filter(f =>
-        f.entradas_u      > 0 || f.ventas_bot_u    > 0 || f.ventas_copa_u > 0 ||
-        f.copas_servidas_u > 0 || f.otras_salidas_u > 0 || f.ajustes_u    > 0 ||
-        (f.stock_ini ?? 0) > 0 || (f.stock_fin ?? 0) > 0
+        f.entradas_u        > 0 || f.ventas_bot_u    > 0 || f.ventas_copa_u > 0 ||
+        f.copas_servidas_u  > 0 || f.otras_salidas_u > 0 || f.ajustes_u !== 0 ||
+        (f.stock_ini ?? 0)  > 0 || (f.stock_fin ?? 0) > 0
       )
 
       meses.push({

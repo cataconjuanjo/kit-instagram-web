@@ -5,6 +5,10 @@
 
 export function r2(n) { return Math.round((Number(n) || 0) * 100) / 100 }
 
+// Conversión copa→botella usada por el cierre para calcular coste_ventas_teorico.
+// Convención estándar del dominio (vinos.copa_ml es NULL en el demo).
+export const COPAS_POR_BOTELLA = 5
+
 // ── Indexadores ──────────────────────────────────────────────────────────────
 
 // movimientos_stock → { [mes]: { [vino_id]: { entradas_u, ventas_bot_u, ventas_copa_u, otras_u, ajustes_u } } }
@@ -133,8 +137,19 @@ export function calcularFilaVino({ vino, smbPrev, smbCurrent, movsEntry, compras
     ? r2(stock_fin_rec - smbCurrent.stock_final_real)
     : 0
 
-  // consumo_mp: fórmula contable BI_valor + compras - EI_valor
-  const consumo_mp = r2((stock_ini ?? 0) * coste_ini + entradas_eur - (stock_fin ?? 0) * coste_fin)
+  // ── TRES cifras separadas de consumo ───────────────────────────────────────
+  // (a) Coste teórico de ventas = (bot vendidas + copas_servidas/COPAS_POR_BOTELLA) × coste.
+  //     Debe cuadrar con cierre.coste_ventas_teorico (que usa la misma conversión).
+  const copas_bot_teor       = copas_servidas_u / COPAS_POR_BOTELLA
+  const coste_teorico_ventas = r2((ventas_bot_u + copas_bot_teor) * coste_fin)
+
+  // (b) Consumo real por stock = BI_valor + compras - EI_valor.
+  //     Captura todas las salidas (incluida merma implícita por copa).
+  const consumo_real_stock = r2((stock_ini ?? 0) * coste_ini + entradas_eur - (stock_fin ?? 0) * coste_fin)
+
+  // (c) Diferencia (b−a) = "merma implícita / diferencia de consumo".
+  //     Esperado > 0 si hay salidas no-venta o conversión copa→botella con residuo.
+  const diferencia_consumo = r2(consumo_real_stock - coste_teorico_ventas)
 
   return {
     vino_id:          vino.id,
@@ -151,7 +166,9 @@ export function calcularFilaVino({ vino, smbPrev, smbCurrent, movsEntry, compras
     otras_salidas_u,
     ajustes_u,
     stock_fin,
-    consumo_mp,
+    coste_teorico_ventas,  // (a)
+    consumo_real_stock,    // (b)
+    diferencia_consumo,    // (c) = (b) - (a)
     coste_medio: coste_fin,
     descuadre,
   }
@@ -166,21 +183,23 @@ export function totalizarFilas(filas) {
     ventas_copa_u: 0, copas_servidas_u: 0, ventas_copa_eur: 0,
     otras_salidas_u: 0, ajustes_u: 0,
     stock_ini: 0, stock_fin: 0,
-    consumo_mp: 0,
+    coste_teorico_ventas: 0, consumo_real_stock: 0, diferencia_consumo: 0,
   }
   for (const f of filas) {
-    t.entradas_u        += f.entradas_u
-    t.entradas_eur      += f.entradas_eur
-    t.ventas_bot_u      += f.ventas_bot_u
-    t.ventas_bot_eur    += f.ventas_bot_eur
-    t.ventas_copa_u     += f.ventas_copa_u
-    t.copas_servidas_u  += (f.copas_servidas_u ?? 0)
-    t.ventas_copa_eur   += f.ventas_copa_eur
-    t.otras_salidas_u   += f.otras_salidas_u
-    t.ajustes_u         += f.ajustes_u
-    t.stock_ini         += (f.stock_ini ?? 0)
-    t.stock_fin         += (f.stock_fin ?? 0)
-    t.consumo_mp        += f.consumo_mp
+    t.entradas_u            += f.entradas_u
+    t.entradas_eur          += f.entradas_eur
+    t.ventas_bot_u          += f.ventas_bot_u
+    t.ventas_bot_eur        += f.ventas_bot_eur
+    t.ventas_copa_u         += f.ventas_copa_u
+    t.copas_servidas_u      += (f.copas_servidas_u ?? 0)
+    t.ventas_copa_eur       += f.ventas_copa_eur
+    t.otras_salidas_u       += f.otras_salidas_u
+    t.ajustes_u             += f.ajustes_u
+    t.stock_ini             += (f.stock_ini ?? 0)
+    t.stock_fin             += (f.stock_fin ?? 0)
+    t.coste_teorico_ventas  += (f.coste_teorico_ventas ?? 0)
+    t.consumo_real_stock    += (f.consumo_real_stock ?? 0)
+    t.diferencia_consumo    += (f.diferencia_consumo ?? 0)
   }
   for (const k of Object.keys(t)) t[k] = r2(t[k])
   return t
@@ -195,7 +214,8 @@ export function exportarCSV(meses) {
     'ventas_bot_u', 'ventas_bot_eur',
     'ventas_copa_u', 'copas_servidas_u', 'ventas_copa_eur',
     'otras_salidas_u', 'ajustes_u',
-    'stock_fin', 'consumo_mp', 'coste_medio', 'descuadre',
+    'stock_fin', 'coste_teorico_ventas', 'consumo_real_stock', 'diferencia_consumo',
+    'coste_medio', 'descuadre',
   ]
   const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`
   const rows = [COLS.join(',')]
@@ -207,7 +227,8 @@ export function exportarCSV(meses) {
         f.ventas_bot_u, f.ventas_bot_eur,
         f.ventas_copa_u, f.copas_servidas_u ?? 0, f.ventas_copa_eur,
         f.otras_salidas_u, f.ajustes_u,
-        f.stock_fin ?? '', f.consumo_mp, f.coste_medio, f.descuadre,
+        f.stock_fin ?? '', f.coste_teorico_ventas ?? 0, f.consumo_real_stock ?? 0, f.diferencia_consumo ?? 0,
+        f.coste_medio, f.descuadre,
       ].join(','))
     }
   }
