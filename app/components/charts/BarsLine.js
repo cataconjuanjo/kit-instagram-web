@@ -10,7 +10,7 @@
 import { useState } from 'react'
 import { ChartShell } from './ChartShell'
 import { useChartWidth } from './useChartWidth'
-import { useDashboardDarkMode, tokensChart } from './useDashboardDarkMode'
+import { tokensChart } from './useDashboardDarkMode'
 import { fmtMes, fmtEur, fmtPct, nicemax } from './format'
 import { segmentarPorEstado } from './segmentos'
 
@@ -19,12 +19,11 @@ const PAD_L = 48, PAD_R = 44, PAD_T = 14, PAD_B = 36
 export function BarsLine({
   data, titulo, subtitulo, loading = false,
   formatBar = fmtEur, formatLine = fmtPct,
-  height = 240, mensajeVacio,
+  height = 240, mensajeVacio, tema = 'claro',
 }) {
   const [hoverIdx, setHoverIdx] = useState(null)
   const [ref, W]                = useChartWidth(600)
-  const dark = useDashboardDarkMode()
-  const t = tokensChart(dark)
+  const t = tokensChart(tema === 'oscuro')
 
   const vacio = !data || data.length === 0 ||
     data.every(d =>
@@ -33,7 +32,7 @@ export function BarsLine({
 
   return (
     <ChartShell titulo={titulo} subtitulo={subtitulo} loading={loading} vacio={vacio}
-                mensajeVacio={mensajeVacio} height={height}>
+                mensajeVacio={mensajeVacio} height={height} tema={tema}>
       <div ref={ref} style={{ width: '100%', minWidth: 0 }}>
         <Svg data={data} t={t} W={W} H={height}
              formatBar={formatBar} formatLine={formatLine}

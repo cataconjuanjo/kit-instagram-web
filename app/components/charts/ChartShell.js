@@ -1,16 +1,19 @@
 'use client'
 
 /**
- * ChartShell — contenedor común (título, estado vacío/carga, modo oscuro).
- * Mantiene el estilo visual coherente con analitica-somm/BarChart (titulos
- * en mayúsculas, letter-spacing, color dim).
+ * ChartShell — contenedor común (título, estado vacío/carga).
+ * Tema fijo via prop `tema` ('claro' | 'oscuro'); por defecto 'claro'
+ * porque las pantallas que montan gráficos (Explotación, Cierre,
+ * Libro) no reaccionan a dashboard_dark_mode: sus tarjetas siguen
+ * siendo claras incluso con el shell en oscuro. Los charts
+ * ignoran el hook para que no queden ilegibles sobre fondo crema.
+ * El llamador puede forzar oscuro con tema="oscuro".
  */
 
-import { useDashboardDarkMode, tokensChart } from './useDashboardDarkMode'
+import { tokensChart } from './useDashboardDarkMode'
 
-export function ChartShell({ titulo, subtitulo, loading, vacio, mensajeVacio = 'Aún no hay datos suficientes', height = 240, children }) {
-  const dark = useDashboardDarkMode()
-  const t = tokensChart(dark)
+export function ChartShell({ titulo, subtitulo, loading, vacio, mensajeVacio = 'Aún no hay datos suficientes', height = 240, tema = 'claro', children }) {
+  const t = tokensChart(tema === 'oscuro')
 
   return (
     <div style={{ marginBottom: 24, color: t.text }}>

@@ -9,26 +9,25 @@
 import { useState } from 'react'
 import { ChartShell } from './ChartShell'
 import { useChartWidth } from './useChartWidth'
-import { useDashboardDarkMode, tokensChart } from './useDashboardDarkMode'
+import { tokensChart } from './useDashboardDarkMode'
 import { fmtMes, fmtEur, nicemax } from './format'
 
 const PAD_L = 44, PAD_R = 10, PAD_T = 14, PAD_B = 36
 
 export function Bars({
   data, titulo, subtitulo, loading = false, formatValor = fmtEur,
-  target = null, height = 240, mensajeVacio,
+  target = null, height = 240, mensajeVacio, tema = 'claro',
 }) {
   const [hoverIdx, setHoverIdx] = useState(null)
   const [ref, W]                = useChartWidth(600)
-  const dark = useDashboardDarkMode()
-  const t = tokensChart(dark)
+  const t = tokensChart(tema === 'oscuro')
 
   const vacio = !data || data.length === 0 ||
     data.every(d => d.valor == null || !Number.isFinite(Number(d.valor)))
 
   return (
     <ChartShell titulo={titulo} subtitulo={subtitulo} loading={loading} vacio={vacio}
-                mensajeVacio={mensajeVacio} height={height}>
+                mensajeVacio={mensajeVacio} height={height} tema={tema}>
       <div ref={ref} style={{ width: '100%', minWidth: 0 }}>
         <BarsSvg data={data} t={t} W={W} H={height} target={target}
                  formatValor={formatValor} hoverIdx={hoverIdx} setHoverIdx={setHoverIdx} />

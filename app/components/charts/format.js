@@ -52,3 +52,38 @@ export function nicemax(v) {
   const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10
   return nice * base
 }
+
+/**
+ * Escala Y automática en puntos porcentuales para la línea de CoGS%.
+ * Toma el min/max de la serie (valores + objetivos), añade 10% de
+ * margen, redondea los extremos a múltiplos de 5 y garantiza un
+ * rango mínimo de 10 puntos.
+ *
+ * Función pura; devuelve { min, max }.
+ */
+export function escalaPct(values) {
+  const nums = (values || [])
+    .filter(v => v !== null && v !== undefined && v !== '')
+    .map(v => Number(v))
+    .filter(Number.isFinite)
+  if (nums.length === 0) return { min: 0, max: 50 }
+
+  const dMin = Math.min(...nums)
+  const dMax = Math.max(...nums)
+  const span = Math.max(1, dMax - dMin)
+  const pad  = span * 0.1
+
+  let min = Math.floor((dMin - pad) / 5) * 5
+  let max = Math.ceil((dMax + pad) / 5) * 5
+
+  // Rango mínimo 10 puntos: expandir simétricamente si hace falta.
+  if (max - min < 10) {
+    const centroExacto = (dMin + dMax) / 2
+    min = Math.floor((centroExacto - 5) / 5) * 5
+    max = Math.ceil((centroExacto + 5) / 5) * 5
+    while (max - min < 10) max += 5
+  }
+
+  // Normaliza -0 → 0 para no romper assert.strictEqual (Object.is).
+  return { min: min + 0, max: max + 0 }
+}

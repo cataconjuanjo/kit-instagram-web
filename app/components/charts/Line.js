@@ -9,27 +9,26 @@
 import { useState } from 'react'
 import { ChartShell } from './ChartShell'
 import { useChartWidth } from './useChartWidth'
-import { useDashboardDarkMode, tokensChart } from './useDashboardDarkMode'
-import { fmtMes, fmtPct, nicemax } from './format'
+import { tokensChart } from './useDashboardDarkMode'
+import { fmtMes, fmtPct, escalaPct } from './format'
 import { segmentarPorEstado } from './segmentos'
 
 const PAD_L = 44, PAD_R = 14, PAD_T = 14, PAD_B = 36
 
 export function Line({
   data, titulo, subtitulo, loading = false, formatValor = fmtPct,
-  target = null, height = 240, mensajeVacio,
+  target = null, height = 240, mensajeVacio, tema = 'claro',
 }) {
   const [hoverIdx, setHoverIdx] = useState(null)
   const [ref, W]                = useChartWidth(600)
-  const dark = useDashboardDarkMode()
-  const t = tokensChart(dark)
+  const t = tokensChart(tema === 'oscuro')
 
   const vacio = !data || data.length === 0 ||
     data.every(d => d.valor == null || !Number.isFinite(Number(d.valor)))
 
   return (
     <ChartShell titulo={titulo} subtitulo={subtitulo} loading={loading} vacio={vacio}
-                mensajeVacio={mensajeVacio} height={height}>
+                mensajeVacio={mensajeVacio} height={height} tema={tema}>
       <div ref={ref} style={{ width: '100%', minWidth: 0 }}>
         <LineSvg data={data} t={t} W={W} H={height} target={target}
                  formatValor={formatValor} hoverIdx={hoverIdx} setHoverIdx={setHoverIdx} />
@@ -44,18 +43,18 @@ function LineSvg({ data, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) 
   const n = data.length
   const esEstrecho = W <= 360
 
-  const valuesForMax = []
+  const valoresEscala = []
   for (const d of data) {
-    if (Number.isFinite(Number(d.valor))) valuesForMax.push(Number(d.valor))
-    if (Number.isFinite(Number(d.objetivo))) valuesForMax.push(Number(d.objetivo))
+    if (Number.isFinite(Number(d.valor))) valoresEscala.push(Number(d.valor))
+    if (Number.isFinite(Number(d.objetivo))) valoresEscala.push(Number(d.objetivo))
   }
-  const maxV = Math.max(...valuesForMax, 1)
-  const yMax = nicemax(maxV)
-  const yTicks = [0, yMax * 0.25, yMax * 0.5, yMax * 0.75, yMax]
+  const { min: yMin, max: yMax } = escalaPct(valoresEscala)
+  const yTicks = [yMin, yMin + (yMax - yMin) * 0.25, yMin + (yMax - yMin) * 0.5,
+                  yMin + (yMax - yMin) * 0.75, yMax]
   const colW = innerW / Math.max(1, n - 1)
 
   const xFor = i => PAD_L + i * colW
-  const yFor = v => PAD_T + innerH - (v / yMax) * innerH
+  const yFor = v => PAD_T + innerH - ((v - yMin) / (yMax - yMin)) * innerH
 
   const puntos = data
     .map((d, i) => (d.valor != null && Number.isFinite(Number(d.valor)))
