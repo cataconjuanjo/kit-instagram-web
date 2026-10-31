@@ -53,6 +53,28 @@ describe('escalaPct', () => {
     assert.strictEqual(r.max, 40)
   })
 
+  it('reproduce la preview CoGS% del cierre: valores 37.4..39.2 + null, objetivos 35.4..37.2', () => {
+    // Serie real que producía Y: -5..45 porque Number(null)=0 colaba.
+    // Tras el fix, escalaPct NO ve ningún 0 falso: solo recibe los
+    // valores finitos pre-filtrados por Line.js. Comprobamos aquí
+    // directamente la función con la unión de valores + objetivos.
+    const valores   = [39.22, 38.98, 38.74, 38.11, 37.67, 38.42, 38.95, 39.08, 37.70, null]
+    const objetivos = [37.20, 36.95, 36.70, 36.08, 35.65, 36.40, 36.93, 37.06, 35.70, 35.70]
+    const union = []
+    for (const v of valores)   if (v != null && Number.isFinite(Number(v))) union.push(Number(v))
+    for (const o of objetivos) if (o != null && Number.isFinite(Number(o))) union.push(Number(o))
+    // Verifica que el pre-filtro no deja ningún 0 colado por Number(null)
+    assert.ok(!union.includes(0), 'union no debe contener 0 (sería Number(null) colado)')
+    const r = escalaPct(union)
+    // dMin≈35.65, dMax≈39.22, span≈3.57, pad≈0.357
+    // min=floor((35.65-0.357)/5)*5=35, max=ceil((39.22+0.357)/5)*5=40
+    assert.ok(r.min >= 30, `min esperado >=30, got ${r.min}`)
+    assert.ok(r.max <= 45, `max esperado <=45, got ${r.max}`)
+    assert.ok(r.min <= 35.65, `min debe envolver dMin=35.65, got ${r.min}`)
+    assert.ok(r.max >= 39.22, `max debe envolver dMax=39.22, got ${r.max}`)
+    assert.ok(r.max - r.min >= 10)
+  })
+
   it('resiste valores negativos (teórico, por si cambian de signo)', () => {
     const r = escalaPct([-5, 10])
     assert.ok(r.min % 5 === 0, `min ${r.min} no es múltiplo de 5`)

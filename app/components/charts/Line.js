@@ -43,10 +43,16 @@ function LineSvg({ data, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) 
   const n = data.length
   const esEstrecho = W <= 360
 
+  // Filtrar null/undefined ANTES de Number(): Number(null)===0 pasa
+  // Number.isFinite, lo cual mete un 0 falso en la escala y la aplasta.
   const valoresEscala = []
   for (const d of data) {
-    if (Number.isFinite(Number(d.valor))) valoresEscala.push(Number(d.valor))
-    if (Number.isFinite(Number(d.objetivo))) valoresEscala.push(Number(d.objetivo))
+    if (d.valor != null && Number.isFinite(Number(d.valor))) {
+      valoresEscala.push(Number(d.valor))
+    }
+    if (d.objetivo != null && Number.isFinite(Number(d.objetivo))) {
+      valoresEscala.push(Number(d.objetivo))
+    }
   }
   const { min: yMin, max: yMax } = escalaPct(valoresEscala)
   const yTicks = [yMin, yMin + (yMax - yMin) * 0.25, yMin + (yMax - yMin) * 0.5,
@@ -65,7 +71,7 @@ function LineSvg({ data, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) 
   const segmentos = segmentarPorEstado(puntos)
 
   const objetivos = data
-    .map((d, i) => Number.isFinite(Number(d.objetivo))
+    .map((d, i) => (d.objetivo != null && Number.isFinite(Number(d.objetivo)))
       ? { i, x: xFor(i), y: yFor(Number(d.objetivo)), v: Number(d.objetivo) }
       : null)
     .filter(Boolean)
