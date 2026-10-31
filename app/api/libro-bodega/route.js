@@ -6,6 +6,7 @@ import {
   indexarPartes,
   calcularFilaVino,
   totalizarFilas,
+  resolverCopasVendibles,
 } from '../../lib/libroBodega'
 
 const PAGE   = 1000
@@ -59,9 +60,19 @@ export async function GET(req) {
     const hasta      = `${anio}-12-31`
     const hastaExcl  = `${anio + 1}-01-01`  // Para timestamp fields: evita perder movs del 31-dic con hora >00:00
 
-    // 1. Vinos (incluye stock para reconstrucción del mes abierto actual)
+    // 1. Vinos (coste_medio_pmp + coste_compra para cuadrar (a) con el cierre;
+    //    stock para reconstrucción del mes abierto actual)
     const { data: vinos } = await supabaseAdmin
-      .from('vinos').select('id,nombre,tipo,stock').eq('restaurante_id', restaurante_id)
+      .from('vinos').select('id,nombre,tipo,stock,coste_medio_pmp,coste_compra')
+      .eq('restaurante_id', restaurante_id)
+
+    // Settings económicos del restaurante → copasVendibles (misma lógica que el cierre).
+    // Si no hay fila: defaults 5 copas/botella y 0% merma.
+    const { data: settings } = await supabaseAdmin
+      .from('restaurant_economic_settings')
+      .select('copas_por_botella,ml_por_copa,merma_copa_pct')
+      .eq('restaurante_id', restaurante_id).maybeSingle()
+    const copasVendibles = resolverCopasVendibles(settings)
 
     // 2. stock_mensual_bodega (año anterior dic + año completo para stock_ini del primer mes)
     const smbRaw = await fetchAll((f, t) =>
@@ -155,6 +166,7 @@ export async function GET(req) {
           partesEntry:     partesIdx[mesK]?.[vino.id]  ?? null,
           ivaPct,
           vinoStockActual: isOpenCurrentMonth ? (Number(vino.stock) || 0) : null,
+          copasVendibles,
         })
       )
 

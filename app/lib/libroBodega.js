@@ -5,9 +5,19 @@
 
 export function r2(n) { return Math.round((Number(n) || 0) * 100) / 100 }
 
-// Conversión copa→botella usada por el cierre para calcular coste_ventas_teorico.
-// Convención estándar del dominio (vinos.copa_ml es NULL en el demo).
-export const COPAS_POR_BOTELLA = 5
+// ── Conversión copa→botella coherente con el cierre ──────────────────────────
+// Reproduce agregarPeriodoBodega.js:22-25 y L287: copasVendibles = copas_por_botella
+// × (1 − merma_copa_pct/100). Precedencia: copas_por_botella > derivado de ml_por_copa
+// > default 5. Si merma es NULL o 0, no reduce.
+export function resolverCopasVendibles(settings) {
+  const explicit = Number(settings?.copas_por_botella)
+  const cxb = explicit > 0
+    ? explicit
+    : (Number(settings?.ml_por_copa) > 0 ? Math.round(750 / Number(settings.ml_por_copa)) : 5)
+  const merma = Number(settings?.merma_copa_pct) || 0
+  // r4 (4 decimales) alineado con agregarPeriodoBodega.js:75 y L287.
+  return Math.round(cxb * (1 - merma / 100) * 10000) / 10000
+}
 
 // ── Indexadores ──────────────────────────────────────────────────────────────
 
@@ -83,12 +93,18 @@ export function indexarPartes(lineas, parteFechaMap) {
 
 /**
  * vinoStockActual: stock real de vinos.stock, solo para el mes abierto actual (sin SMB).
+ * copasVendibles: copas por botella netas de merma, derivadas de restaurant_economic_settings
+ *   (idéntico a agregarPeriodoBodega.js). Default 5 cuando no se pasa.
  * Cuando se pasa, se usa como stock_fin y se reconstruye stock_ini hacia atrás desde movimientos.
  */
-export function calcularFilaVino({ vino, smbPrev, smbCurrent, movsEntry, comprasEntry, partesEntry, ivaPct = 10, vinoStockActual = null }) {
+export function calcularFilaVino({ vino, smbPrev, smbCurrent, movsEntry, comprasEntry, partesEntry, ivaPct = 10, vinoStockActual = null, copasVendibles = 5 }) {
   const iva       = 1 + ivaPct / 100
   const coste_ini = smbPrev?.coste_medio    ?? 0
   const coste_fin = smbCurrent?.coste_medio ?? coste_ini
+  // (a) usa el MISMO coste que el cierre (agregarPeriodoBodega.js:163):
+  // coste_medio_pmp || coste_compra del vino. Puede diferir de SMB.coste_medio
+  // (que es el WAC de inventario); el cierre no lo usa.
+  const coste_cierre = Number(vino?.coste_medio_pmp) || Number(vino?.coste_compra) || coste_fin
 
   const entradas_u   = movsEntry?.entradas_u   ?? 0
   const entradas_eur = r2(comprasEntry?.eur     ?? 0)
@@ -138,17 +154,18 @@ export function calcularFilaVino({ vino, smbPrev, smbCurrent, movsEntry, compras
     : 0
 
   // ── TRES cifras separadas de consumo ───────────────────────────────────────
-  // (a) Coste teórico de ventas = (bot vendidas + copas_servidas/COPAS_POR_BOTELLA) × coste.
-  //     Debe cuadrar con cierre.coste_ventas_teorico (que usa la misma conversión).
-  const copas_bot_teor       = copas_servidas_u / COPAS_POR_BOTELLA
-  const coste_teorico_ventas = r2((ventas_bot_u + copas_bot_teor) * coste_fin)
+  // (a) Coste teórico de ventas = (bot vendidas + copas_servidas/copasVendibles) × coste.
+  //     Reproduce agregarPeriodoBodega.js:287-296 exactamente: mismo coste
+  //     (coste_medio_pmp || coste_compra) y mismo denominador (copasVendibles).
+  const copas_bot_teor       = copasVendibles > 0 ? copas_servidas_u / copasVendibles : 0
+  const coste_teorico_ventas = r2(ventas_bot_u * coste_cierre + copas_bot_teor * coste_cierre)
 
   // (b) Consumo real por stock = BI_valor + compras - EI_valor.
-  //     Captura todas las salidas (incluida merma implícita por copa).
+  //     Captura todas las salidas (incluida merma por copa quantizada en botellas).
   const consumo_real_stock = r2((stock_ini ?? 0) * coste_ini + entradas_eur - (stock_fin ?? 0) * coste_fin)
 
   // (c) Diferencia (b−a) = "merma implícita / diferencia de consumo".
-  //     Esperado > 0 si hay salidas no-venta o conversión copa→botella con residuo.
+  //     Esperado > 0 si abres más botellas de las necesarias para N copas.
   const diferencia_consumo = r2(consumo_real_stock - coste_teorico_ventas)
 
   return {

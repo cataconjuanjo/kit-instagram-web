@@ -12,7 +12,34 @@ import {
   calcularFilaVino,
   totalizarFilas,
   exportarCSV,
+  resolverCopasVendibles,
 } from '../app/lib/libroBodega.js'
+
+// ── resolverCopasVendibles ────────────────────────────────────────────────────
+
+describe('resolverCopasVendibles', () => {
+  it('defaults (sin settings) → 5 (no merma)', () => {
+    assert.strictEqual(resolverCopasVendibles(null), 5)
+    assert.strictEqual(resolverCopasVendibles({}), 5)
+  })
+
+  it('demo real: 6 copas/bot, 5% merma → 5.7', () => {
+    assert.strictEqual(resolverCopasVendibles({ copas_por_botella: 6, merma_copa_pct: 5 }), 5.7)
+  })
+
+  it('deriva de ml_por_copa si no hay copas_por_botella: 125ml → 6', () => {
+    assert.strictEqual(resolverCopasVendibles({ ml_por_copa: 125 }), 6)
+  })
+
+  it('precedencia: copas_por_botella > ml_por_copa', () => {
+    assert.strictEqual(resolverCopasVendibles({ copas_por_botella: 5, ml_por_copa: 125 }), 5)
+  })
+
+  it('merma 0 o null no reduce', () => {
+    assert.strictEqual(resolverCopasVendibles({ copas_por_botella: 5, merma_copa_pct: 0 }), 5)
+    assert.strictEqual(resolverCopasVendibles({ copas_por_botella: 5, merma_copa_pct: null }), 5)
+  })
+})
 
 // ── r2 ────────────────────────────────────────────────────────────────────────
 
@@ -149,22 +176,70 @@ describe('calcularFilaVino', () => {
     assert.strictEqual(fila.descuadre, 0)
   })
 
-  it('tres cifras de consumo: (a) teórico, (b) real stock, (c) merma implícita', () => {
+  it('tres cifras de consumo con copasVendibles=5 (defaults): (a), (b), (c)', () => {
     const fila = calcularFilaVino({
-      vino,
+      vino:         { id: 'v1', nombre: 'X', tipo: 'tinto', coste_medio_pmp: 10 },
       smbPrev:      { stock_final_real: 10, coste_medio: 10 },
       smbCurrent:   { stock_final_real: 8,  coste_medio: 10 },
       movsEntry:    { entradas_u: 5, ventas_bot_u: 3, ventas_copa_u: 2, otras_u: 2, ajustes_u: 0 },
       comprasEntry: { eur: 50 },
       partesEntry:  { bot_u: 3, bot_eur_bruto: 90, copas_servidas_u: 5, copa_eur_bruto: 25 },
       ivaPct: 10,
+      copasVendibles: 5,
     })
-    // (a) coste_teorico = (ventas_bot_u + copas_servidas/5) × coste_fin = (3 + 5/5) × 10 = 40
+    // (a) = (3 + 5/5) × 10 = 40
     assert.strictEqual(fila.coste_teorico_ventas, 40)
-    // (b) consumo_real = 10×10 + 50 - 8×10 = 100+50-80 = 70
+    // (b) = 10×10 + 50 − 8×10 = 70
     assert.strictEqual(fila.consumo_real_stock, 70)
-    // (c) merma implícita = 70 - 40 = 30 (hay 2 bot abiertas vs 1 teórica → 1 extra + 2 otras_salidas)
+    // (c) = 70 − 40 = 30
     assert.strictEqual(fila.diferencia_consumo, 30)
+  })
+
+  it('(a) con copasVendibles=5.7 (demo: 6 copas/bot, 5% merma)', () => {
+    const fila = calcularFilaVino({
+      vino:         { id: 'v1', nombre: 'X', tipo: 'tinto', coste_medio_pmp: 10 },
+      smbPrev:      { stock_final_real: 10, coste_medio: 10 },
+      smbCurrent:   { stock_final_real: 8,  coste_medio: 10 },
+      movsEntry:    { entradas_u: 5, ventas_bot_u: 3, ventas_copa_u: 2, otras_u: 0, ajustes_u: 0 },
+      comprasEntry: { eur: 50 },
+      partesEntry:  { bot_u: 3, bot_eur_bruto: 90, copas_servidas_u: 57, copa_eur_bruto: 285 },
+      ivaPct: 10,
+      copasVendibles: 5.7,
+    })
+    // (a) = (3 + 57/5.7) × 10 = (3 + 10) × 10 = 130
+    assert.strictEqual(fila.coste_teorico_ventas, 130)
+  })
+
+  it('(a) usa coste_medio_pmp del vino (no SMB.coste_medio) para cuadrar con cierre', () => {
+    const fila = calcularFilaVino({
+      vino:         { id: 'v1', nombre: 'X', tipo: 'tinto', coste_medio_pmp: 8, coste_compra: 7 },
+      smbPrev:      { stock_final_real: 10, coste_medio: 10 },
+      smbCurrent:   { stock_final_real: 8,  coste_medio: 10 },
+      movsEntry:    { entradas_u: 5, ventas_bot_u: 2, ventas_copa_u: 0, otras_u: 0, ajustes_u: 0 },
+      comprasEntry: null,
+      partesEntry:  { bot_u: 2, bot_eur_bruto: 40, copas_servidas_u: 0, copa_eur_bruto: 0 },
+      ivaPct: 10,
+      copasVendibles: 5,
+    })
+    // (a) usa coste_medio_pmp=8 (no SMB=10): 2 × 8 = 16
+    assert.strictEqual(fila.coste_teorico_ventas, 16)
+    // (b) usa SMB WAC: 10×10 + 0 − 8×10 = 20
+    assert.strictEqual(fila.consumo_real_stock, 20)
+  })
+
+  it('(a) fallback a coste_compra si no hay coste_medio_pmp', () => {
+    const fila = calcularFilaVino({
+      vino:         { id: 'v1', nombre: 'X', tipo: 'tinto', coste_compra: 7 },
+      smbPrev:      { stock_final_real: 5, coste_medio: 10 },
+      smbCurrent:   { stock_final_real: 3, coste_medio: 10 },
+      movsEntry:    { entradas_u: 0, ventas_bot_u: 2, ventas_copa_u: 0, otras_u: 0, ajustes_u: 0 },
+      comprasEntry: null,
+      partesEntry:  { bot_u: 2, bot_eur_bruto: 40, copas_servidas_u: 0, copa_eur_bruto: 0 },
+      ivaPct: 10,
+      copasVendibles: 5,
+    })
+    // (a) = 2 × 7 = 14 (fallback a coste_compra)
+    assert.strictEqual(fila.coste_teorico_ventas, 14)
   })
 
   it('descuadre no cero cuando movimientos no cuadran con SMB', () => {

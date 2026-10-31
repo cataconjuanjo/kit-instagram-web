@@ -18,7 +18,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { indexarMovimientos, indexarCompras, indexarPartes, COPAS_POR_BOTELLA } from '../app/lib/libroBodega.js'
+import { indexarMovimientos, indexarCompras, indexarPartes, resolverCopasVendibles } from '../app/lib/libroBodega.js'
 
 const RESTAURANTE_ID = process.argv[2] || process.env.NEXT_PUBLIC_DEMO_RESTAURANTE_ID
 if (!RESTAURANTE_ID) {
@@ -68,6 +68,20 @@ if (!cierresRaw || cierresRaw.length === 0) {
   console.log('Sin cierres.')
   process.exit(0)
 }
+
+// Settings → copasVendibles (misma lógica que el cierre)
+const { data: settings } = await s.from('restaurant_economic_settings')
+  .select('copas_por_botella,ml_por_copa,merma_copa_pct')
+  .eq('restaurante_id', RESTAURANTE_ID).maybeSingle()
+const copasVendibles = resolverCopasVendibles(settings)
+console.log(`Settings: copas_por_botella=${settings?.copas_por_botella ?? 'default 5'}, merma=${settings?.merma_copa_pct ?? 0}%, copasVendibles=${copasVendibles}`)
+
+// Vinos (coste del cierre)
+const { data: vinosRaw } = await s.from('vinos')
+  .select('id,coste_medio_pmp,coste_compra').eq('restaurante_id', RESTAURANTE_ID)
+const costeCierreMap = Object.fromEntries(
+  (vinosRaw || []).map(v => [v.id, Number(v.coste_medio_pmp) || Number(v.coste_compra) || 0])
+)
 
 const smbRaw = await fetchAll((f, t) =>
   s.from('stock_mensual_bodega')
@@ -133,9 +147,14 @@ for (const cierre of cierresRaw) {
   const smbPrev = smbMap[prevMes] || {}
   const smbCurr = smbMap[mesK]   || {}
 
-  // (a) coste teórico = Σ(uds_bot + uds_copa_bot) × coste_fin   -- debería cuadrar con cierre
+  // (a) coste teórico = Σ((bot vendidas + copas/copasVendibles) × coste_cierre)
+  //     coste_cierre = vino.coste_medio_pmp || coste_compra (misma fuente que el cierre)
   // (b) consumo real = Σ(ini×coste_ini + compras - fin×coste_fin)
-  const allVinos = new Set([...Object.keys(smbPrev), ...Object.keys(smbCurr)])
+  //     usa SMB.coste_medio (WAC de inventario — fórmula contable BI+compras-EI)
+  const allVinos = new Set([
+    ...Object.keys(smbPrev), ...Object.keys(smbCurr),
+    ...Object.keys(movsIdx[mesK] || {}), ...Object.keys(partesIdx[mesK] || {}),
+  ])
   let costeTeor = 0, consumoReal = 0
   for (const vid of allVinos) {
     const ini   = smbPrev[vid]?.stock_final_real ?? 0
@@ -143,10 +162,11 @@ for (const cierre of cierresRaw) {
     const fin   = smbCurr[vid]?.stock_final_real ?? 0
     const cFin  = smbCurr[vid]?.coste_medio      ?? cIni
     const comp  = comprasIdx[mesK]?.[vid]?.eur   ?? 0
-    const vbot  = movsIdx[mesK]?.[vid]?.ventas_bot_u  ?? 0
-    const copasServ = partesIdx[mesK]?.[vid]?.copas_servidas_u ?? 0
-    const copasBotTeor = copasServ / COPAS_POR_BOTELLA
-    costeTeor   += (vbot + copasBotTeor) * cFin
+    const vbot  = partesIdx[mesK]?.[vid]?.bot_u          ?? 0  // ventas desde partes (fuente del cierre)
+    const copasServ    = partesIdx[mesK]?.[vid]?.copas_servidas_u ?? 0
+    const copasBotTeor = copasVendibles > 0 ? copasServ / copasVendibles : 0
+    const costeC       = costeCierreMap[vid] ?? cFin
+    costeTeor   += (vbot + copasBotTeor) * costeC
     consumoReal += (ini * cIni) + comp - (fin * cFin)
   }
   costeTeor   = r2(costeTeor)
@@ -170,10 +190,9 @@ for (const cierre of cierresRaw) {
   const diffC = r2(comprasLibro - cierreCompras)
   const diffV = r2(ventasNeto   - cierreVentas)
 
-  // FAIL solo en compras y ventas (críticos). diff(a) es informativo:
-  // la fórmula interna del cierre.coste_ventas_teorico no coincide con la
-  // fórmula publicada en informe.por_vino, es un artefacto del cierre.
-  const marca = (Math.abs(diffC) > 1 || Math.abs(diffV) > 1) ? ' ← FALLO' : ''
+  // FAIL si cualquiera de los tres descuadra >1€: (a), compras o ventas.
+  // Con copasVendibles del settings, (a) debe cuadrar con cierre.coste_ventas_teorico.
+  const marca = (Math.abs(diffA) > 1 || Math.abs(diffC) > 1 || Math.abs(diffV) > 1) ? ' ← FALLO' : ''
   if (marca) fallos++
 
   console.log(
@@ -193,11 +212,7 @@ for (const cierre of cierresRaw) {
 }
 
 console.log('─'.repeat(142))
-console.log(`\n${cierresRaw.length} meses cerrados. Fallos críticos (compras/ventas |diff|>1€): ${fallos}`)
-console.log('\nNota: diff(a) vs cierre.coste_ventas_teorico es INFORMATIVO.')
-console.log('El cierre usa una fórmula interna de coste_ventas_teorico que no cuadra con')
-console.log('informe.por_vino aplicando (bot_u + copas/5) × coste. El libro reproduce la')
-console.log('fórmula PUBLICADA en informe.por_vino, no el total agregado.')
+console.log(`\n${cierresRaw.length} meses cerrados. Fallos (|diff|>1€ en (a), compras o ventas): ${fallos}`)
 
-if (fallos > 0) { console.error('\n⚠ FALLO: hay meses con descuadre >1€ en compras o ventas.'); process.exit(1) }
-console.log('✓ Compras y ventas cuadran con los cierres (±1€).')
+if (fallos > 0) { console.error('\n⚠ FALLO: hay meses con descuadre >1€ en (a), compras o ventas.'); process.exit(1) }
+console.log('✓ (a), compras y ventas cuadran con los cierres (±1€).')
