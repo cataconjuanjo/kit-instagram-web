@@ -9,6 +9,7 @@ import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleCompo
 import styles from '../module.module.css'
 import { redondear } from '../../lib/wineEconomics'
 import { esPerfilSomm } from '../../lib/plans'
+import { GraficoEvolucion } from '../somm-graficos/GraficoEvolucion'
 import {
   calcularTotalPersonal,
   calcularTotalGastos,
@@ -892,6 +893,10 @@ function ExplotacionContent() {
         <SeccionBancarios params={bancarios} onChange={setBancarios} />
 
         <MapaCalorEstacional historico={historico} />
+
+        {esPerfilSomm(restaurante) && (
+          <GraficoEvolucion restauranteId={restaurante?.id} enabled={!!restaurante?.id} />
+        )}
 
         <div style={{ marginTop: 24, display: 'flex', gap: 12, alignItems: 'center' }}>
           <button type="button" className={styles.primary} onClick={guardar} disabled={guardando}>

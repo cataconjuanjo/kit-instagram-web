@@ -5,6 +5,7 @@ import { supabase } from '../../supabase'
 import { exportarCSV } from '../../lib/libroBodega'
 import styles from '../module.module.css'
 import bStyles from './bodega.module.css'
+import { GraficoMermaImplicita } from '../somm-graficos/GraficoMermaImplicita'
 
 const EUR = n => (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + '€'
 const N   = n => String(Math.round(Number(n) || 0))
@@ -198,6 +199,10 @@ export default function LibroBodegaTable({ restauranteId }) {
           </div>
         )
       })}
+
+      {restauranteId && !loading && (
+        <GraficoMermaImplicita restauranteId={restauranteId} anio={anio} enabled />
+      )}
     </div>
   )
 }

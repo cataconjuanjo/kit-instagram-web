@@ -18,7 +18,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { indexarMovimientos, indexarCompras, indexarPartes, resolverCopasVendibles } from '../app/lib/libroBodega.js'
+import { indexarMovimientos, indexarCompras, indexarPartes, resolverCopasVendibles } from '../../app/lib/libroBodega.js'
 
 const RESTAURANTE_ID = process.argv[2] || process.env.NEXT_PUBLIC_DEMO_RESTAURANTE_ID
 if (!RESTAURANTE_ID) {
