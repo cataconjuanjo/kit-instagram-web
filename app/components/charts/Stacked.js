@@ -1,24 +1,21 @@
 'use client'
 
 /**
- * Stacked — barras apiladas SVG, misma lógica de ejes y tooltip que Bars.
- * Pensado para gráficos futuros (ej. canal: botella/copa/invitación por mes).
- * En F3-H2 queda como primitiva disponible, sin uso aún.
- *
- * Props:
- *   data: [{ mes: 'YYYY-MM', estado?, segmentos: [{ key, valor, color }] }]
- *   formatValor, titulo, subtitulo, height
+ * Stacked — barras apiladas SVG, viewBox = ancho real medido.
+ * Sin uso en F3-H2; primitiva disponible.
  */
 
 import { useState } from 'react'
 import { ChartShell } from './ChartShell'
+import { useChartWidth } from './useChartWidth'
 import { useDashboardDarkMode, tokensChart } from './useDashboardDarkMode'
 import { fmtMes, fmtEur, nicemax } from './format'
 
-const PAD_L = 48, PAD_R = 10, PAD_T = 14, PAD_B = 28
+const PAD_L = 48, PAD_R = 10, PAD_T = 14, PAD_B = 36
 
 export function Stacked({ data, titulo, subtitulo, loading = false, formatValor = fmtEur, height = 240, mensajeVacio }) {
   const [hoverIdx, setHoverIdx] = useState(null)
+  const [ref, W]                = useChartWidth(600)
   const dark = useDashboardDarkMode()
   const t = tokensChart(dark)
 
@@ -28,17 +25,19 @@ export function Stacked({ data, titulo, subtitulo, loading = false, formatValor 
   return (
     <ChartShell titulo={titulo} subtitulo={subtitulo} loading={loading} vacio={vacio}
                 mensajeVacio={mensajeVacio} height={height}>
-      <StackedSvg data={data} t={t} height={height}
-                  formatValor={formatValor} hoverIdx={hoverIdx} setHoverIdx={setHoverIdx} />
+      <div ref={ref} style={{ width: '100%' }}>
+        <StackedSvg data={data} t={t} W={W} H={height}
+                    formatValor={formatValor} hoverIdx={hoverIdx} setHoverIdx={setHoverIdx} />
+      </div>
     </ChartShell>
   )
 }
 
-function StackedSvg({ data, t, height, formatValor, hoverIdx, setHoverIdx }) {
-  const W = 600, H = height
+function StackedSvg({ data, t, W, H, formatValor, hoverIdx, setHoverIdx }) {
   const innerW = W - PAD_L - PAD_R
   const innerH = H - PAD_T - PAD_B
   const n = data.length
+  const esEstrecho = W <= 360
   const totals = data.map(d => (d.segmentos || []).reduce((s, x) => s + (Number(x.valor) || 0), 0))
   const maxV = Math.max(...totals, 1)
   const yMax = nicemax(maxV)
@@ -48,9 +47,9 @@ function StackedSvg({ data, t, height, formatValor, hoverIdx, setHoverIdx }) {
   const yFor = v => PAD_T + innerH - (v / yMax) * innerH
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img"
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img"
          aria-label={`Barras apiladas de ${data.length} meses`}
-         preserveAspectRatio="none" style={{ display: 'block', fontFamily: 'inherit' }}>
+         style={{ display: 'block', fontFamily: 'inherit' }}>
       {yTicks.map((v, i) => (
         <line key={`g${i}`} x1={PAD_L} x2={W - PAD_R} y1={yFor(v)} y2={yFor(v)}
               stroke={t.grid} strokeWidth="1" />
@@ -90,14 +89,15 @@ function StackedSvg({ data, t, height, formatValor, hoverIdx, setHoverIdx }) {
         )
       })}
       {data.map((d, i) => {
+        if (esEstrecho && i % 2 === 1) return null
         const mesLabel = fmtMes(d.mes)
         const parts = (d.mes || '').split('-')
-        const showYear = i === 0 || parts[1] === '01'
+        const esEnero = parts[1] === '01'
         const x = PAD_L + i * colW + colW / 2
         return (
           <g key={`x${i}`}>
-            <text x={x} y={H - PAD_B + 12} textAnchor="middle" fill={t.textDim} fontSize="10">{mesLabel}</text>
-            {showYear && <text x={x} y={H - PAD_B + 23} textAnchor="middle" fill={t.textDim} fontSize="9">{parts[0]}</text>}
+            <text x={x} y={H - PAD_B + 14} textAnchor="middle" fill={t.textDim} fontSize="10">{mesLabel}</text>
+            {esEnero && <text x={x} y={H - PAD_B + 28} textAnchor="middle" fill={t.textDim} fontSize="9">{parts[0]}</text>}
           </g>
         )
       })}
