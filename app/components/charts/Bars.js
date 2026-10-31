@@ -29,7 +29,7 @@ export function Bars({
   return (
     <ChartShell titulo={titulo} subtitulo={subtitulo} loading={loading} vacio={vacio}
                 mensajeVacio={mensajeVacio} height={height}>
-      <div ref={ref} style={{ width: '100%' }}>
+      <div ref={ref} style={{ width: '100%', minWidth: 0 }}>
         <BarsSvg data={data} t={t} W={W} H={height} target={target}
                  formatValor={formatValor} hoverIdx={hoverIdx} setHoverIdx={setHoverIdx} />
       </div>
