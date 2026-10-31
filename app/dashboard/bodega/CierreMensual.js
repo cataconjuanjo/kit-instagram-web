@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { esPerfilSomm } from '../../lib/plans'
 import styles from '../module.module.css'
+import { GraficoCogsPct } from '../somm-graficos/GraficoCogsPct'
 
 async function authedFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -708,6 +709,10 @@ export default function CierreMensual({ restauranteId, restaurante }) {
           <p style={{ marginTop: 12, fontSize: 12, opacity: 0.35 }}>
             {datos.partes_incluidos} parte(s) · {datos.desde} → {datos.hasta}
           </p>
+
+          {esPerfilSomm(restaurante) && restauranteId && (
+            <GraficoCogsPct restauranteId={restauranteId} enabled={!!restauranteId} />
+          )}
 
           {conflicto && (
             <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(245,158,11,0.08)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.25)' }}>
