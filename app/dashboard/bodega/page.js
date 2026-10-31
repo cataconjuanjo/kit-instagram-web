@@ -31,6 +31,7 @@ import PreciosPanel from './PreciosPanel'
 import ConteoInventario from './ConteoInventario'
 import CierreMensual from './CierreMensual'
 import FormularioCompra from './FormularioCompra'
+import LibroBodegaTable from './LibroBodegaTable'
 
 function eur(valor) {
   return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0, useGrouping: true })} €`
@@ -1118,6 +1119,15 @@ export default function ControlBodega() {
                 Catálogo
               </button>
             )}
+            {esPerfilSomm(restaurante) && (
+              <button
+                type="button"
+                className={`${styles.tabPill} ${panelAbierto === 'libro' ? styles.tabPillActive : ''}`}
+                onClick={() => setPanelAbierto(panelAbierto === 'libro' ? null : 'libro')}
+              >
+                Libro
+              </button>
+            )}
           </div>
         </div>
 
@@ -1474,6 +1484,22 @@ export default function ControlBodega() {
                   </table>
                 </div>
               )}
+            </div>
+          </section>
+        )}
+
+        {/* ── Panel: Libro de bodega ───────────────────────── */}
+        {panelAbierto === 'libro' && esPerfilSomm(restaurante) && (
+          <section className={styles.panel} id="libro">
+            <div className={styles.panelHead}>
+              <div>
+                <h2 className={styles.panelTitle}>Libro de bodega</h2>
+                <p className={styles.panelSub}>Movimientos mensuales por vino: entradas, ventas, stock y coste.</p>
+              </div>
+              <button className={styles.ghost} onClick={() => setPanelAbierto(null)}>Cerrar ×</button>
+            </div>
+            <div className={styles.panelBody}>
+              <LibroBodegaTable restauranteId={restaurante?.id} />
             </div>
           </section>
         )}
