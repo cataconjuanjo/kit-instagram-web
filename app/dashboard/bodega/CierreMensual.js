@@ -5,6 +5,8 @@ import { supabase } from '../../supabase'
 import { esPerfilSomm } from '../../lib/plans'
 import styles from '../module.module.css'
 import { GraficoCogsPct } from '../somm-graficos/GraficoCogsPct'
+import { construirCierreWorkbook } from '../../lib/excelSomm'
+import { descargarWorkbook } from '../../lib/excelSommDownload'
 
 async function authedFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -245,54 +247,13 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
 // ── Excel ──────────────────────────────────────────────────────────────────────
 
 async function generarExcel(datos, mes, restaurante) {
-  const XLSX = await import('xlsx')
-  const wb = XLSX.utils.book_new()
-
-  function sheet(nombre, filas) {
-    const ws = XLSX.utils.aoa_to_sheet(filas)
-    XLSX.utils.book_append_sheet(wb, ws, nombre)
-  }
-
-  sheet('Resumen', [
-    [`Cierre mensual de bodega — ${restaurante?.nombre || ''}`],
-    [`Mes: ${mesLabel(mes)}`],
-    [`Partes: ${datos.partes_incluidos}   Período: ${datos.desde} → ${datos.hasta}`],
-    [],
-    ['Concepto', 'Valor'],
-    ['Ventas brutas (con IVA, €)',        datos.ventas_bruto],
-    [`IVA ${datos.iva_pct}% (€)`,         datos.ventas_bruto - datos.ventas_neto],
-    ['Ventas netas (sin IVA, €)',          datos.ventas_neto],
-    ['Coste ventas teórico (€)',           datos.coste_ventas_teorico],
-    ['Margen bruto (€)',                   datos.margen_bruto],
-    ['Margen bruto (%)',                   datos.margen_pct ?? ''],
-    [],
-    ['Compras brutas (€)',                 datos.compras_bruto],
-    ['Devoluciones (€)',                   datos.devoluciones],
-    ['Compras netas (€)',                  datos.compras_netas],
-    [],
-    ['Salidas no venta (€)',               datos.salidas_no_venta],
-    ['Merma copa (€)',                     datos.merma_copa_eur ?? 0],
-    ['Diferencias inventario (€)',         datos.diferencias_inventario ?? ''],
-    [],
-    ['Stock inicial (€)',                  datos.stock_inicial ?? ''],
-    ['Stock final (€)',                    datos.stock_final ?? ''],
-    [],
-    ['Total gastos (€)',                   datos.gastos_total],
-    ['Resultado neto bodega (€)',          datos.resultado],
-  ])
-
-  if ((datos.gastos || []).length > 0) {
-    const ng = datos.gastos.length
-    sheet('Gastos', [
-      [`Gastos del mes — ${mesLabel(mes)}`],
-      [],
-      ['Concepto', 'Importe (€)'],
-      ...datos.gastos.map(g => [g.concepto, g.importe]),
-      ['TOTAL', { f: `SUM(B4:B${ng + 3})` }],
-    ])
-  }
-
-  XLSX.writeFile(wb, `cierre-mensual-${mes}.xlsx`)
+  // Delegamos en la spec pura de app/lib/excelSomm.js, que ya incluye
+  // la hoja Vinos (informe.por_vino con TOTAL en fórmulas SUM) y el
+  // Resumen económico. ExcelJS vía dynamic import.
+  const spec = construirCierreWorkbook({
+    datos, mes, restauranteNombre: restaurante?.nombre,
+  })
+  await descargarWorkbook(spec)
 }
 
 // ── Componente ─────────────────────────────────────────────────────────────────
