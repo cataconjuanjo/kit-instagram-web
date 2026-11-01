@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 
-export function useGraficosSomm({ restauranteId, anio, enabled = true }) {
+export function useGraficosSomm({ restauranteId, anio, compararCon = null, enabled = true }) {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState(null)
@@ -25,7 +25,9 @@ export function useGraficosSomm({ restauranteId, anio, enabled = true }) {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         const token  = session?.access_token
-        const params = new URLSearchParams({ restaurante_id: restauranteId, anio: String(anio) })
+        const paramsObj = { restaurante_id: restauranteId, anio: String(anio) }
+        if (compararCon != null) paramsObj.comparar_con = String(compararCon)
+        const params = new URLSearchParams(paramsObj)
         const res = await fetch(`/api/graficos-somm?${params}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -41,7 +43,7 @@ export function useGraficosSomm({ restauranteId, anio, enabled = true }) {
     }
     cargar()
     return () => { cancelled = true }
-  }, [restauranteId, anio, enabled])
+  }, [restauranteId, anio, compararCon, enabled])
 
   return { data, loading, error }
 }

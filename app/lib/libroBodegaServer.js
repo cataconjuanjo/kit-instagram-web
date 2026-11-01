@@ -14,7 +14,7 @@ import {
   calcularFilaVino,
   totalizarFilas,
   resolverCopasVendibles,
-} from './libroBodega'
+} from './libroBodega.js'
 
 const PAGE   = 1000
 const IN_MAX = 100
