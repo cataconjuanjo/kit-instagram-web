@@ -21,13 +21,15 @@ export async function descargarWorkbook(spec) {
     // Datos
     for (const row of sheet.rows) ws.addRow(row)
 
-    // Totales como FÓRMULA (nunca valor precomputado)
+    // Totales como FÓRMULA con RESULT precalculado: la fórmula es la fuente
+    // de verdad (se recalcula al abrir en Excel); el result sirve para que
+    // Numbers/LibreOffice/preview muestren el valor sin recalcular.
     if (sheet.totals) {
       const tr = ws.addRow({})
       for (const [key, val] of Object.entries(sheet.totals)) {
         const cell = tr.getCell(key)
         if (val && typeof val === 'object' && typeof val.formula === 'string') {
-          cell.value = { formula: val.formula }
+          cell.value = { formula: val.formula, result: val.result }
         } else {
           cell.value = val
         }

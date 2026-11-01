@@ -16,11 +16,27 @@
  *         format?,                            // ExcelJS numFmt string
  *       }],
  *       rows: [{ [key]: value }, ...],
- *       totals?: { [key]: { formula: 'SUM(B2:B10)' } | number | string },
+ *       totals?: { [key]: { formula, result } | number | string },
+ *                  // result = suma numérica real precalculada (número),
+ *                  // para que Numbers/LibreOffice muestren el valor sin
+ *                  // recalcular. Excel la respeta y la actualiza al abrir.
  *       freezeHeader: boolean,                // panel congelado fila 1
  *     }]
  *   }
  */
+
+/**
+ * Suma numérica de una clave sobre un array de filas. Ignora no-números.
+ * Redondea a 2 decimales (coherente con el resto del dominio).
+ */
+function sumNumeric(rows, key) {
+  let s = 0
+  for (const r of rows) {
+    const v = r[key]
+    if (typeof v === 'number' && Number.isFinite(v)) s += v
+  }
+  return Math.round(s * 100) / 100
+}
 
 const FMT_EUR     = '#,##0.00 €'
 const FMT_INT     = '#,##0'
@@ -113,47 +129,49 @@ export function construirLibroWorkbook({
 
   // Hoja Resumen (por mes)
   const sheets = []
+  const resumenRows = mesesVisibles.map(m => ({
+    mes:                  m.mes,
+    estado:               m.estado,
+    vinos_activos:        m.vinos.length,
+    coste_teorico_ventas: m.totales?.coste_teorico_ventas ?? 0,
+    consumo_real_stock:   m.totales?.consumo_real_stock   ?? 0,
+    diferencia_consumo:   m.totales?.diferencia_consumo   ?? 0,
+  }))
   sheets.push({
     name: 'Resumen',
     columns: COLS_RESUMEN_LIBRO,
-    rows: mesesVisibles.map(m => ({
-      mes:                  m.mes,
-      estado:               m.estado,
-      vinos_activos:        m.vinos.length,
-      coste_teorico_ventas: m.totales?.coste_teorico_ventas ?? 0,
-      consumo_real_stock:   m.totales?.consumo_real_stock   ?? 0,
-      diferencia_consumo:   m.totales?.diferencia_consumo   ?? 0,
-    })),
-    totals: totalesResumenLibro(mesesVisibles.length),
+    rows: resumenRows,
+    totals: totalesResumenLibro(resumenRows),
     freezeHeader: true,
   })
 
   // Hoja por mes visible
   for (const m of mesesVisibles) {
+    const vinosRows = m.vinos.map(v => ({
+      nombre:               v.nombre,
+      tipo:                 v.tipo ?? '',
+      stock_ini:            v.stock_ini,
+      entradas_u:           v.entradas_u,
+      entradas_eur:         v.entradas_eur,
+      ventas_bot_u:         v.ventas_bot_u,
+      ventas_bot_eur:       v.ventas_bot_eur,
+      ventas_copa_u:        v.ventas_copa_u,
+      copas_servidas_u:     v.copas_servidas_u,
+      ventas_copa_eur:      v.ventas_copa_eur,
+      otras_salidas_u:      v.otras_salidas_u,
+      ajustes_u:            v.ajustes_u,
+      stock_fin:            v.stock_fin,
+      coste_teorico_ventas: v.coste_teorico_ventas,
+      consumo_real_stock:   v.consumo_real_stock,
+      diferencia_consumo:   v.diferencia_consumo,
+      coste_medio:          v.coste_medio,
+      descuadre:            v.descuadre,
+    }))
     sheets.push({
       name: m.mes,  // 'YYYY-MM'
       columns: COLS_LIBRO,
-      rows: m.vinos.map(v => ({
-        nombre:               v.nombre,
-        tipo:                 v.tipo ?? '',
-        stock_ini:            v.stock_ini,
-        entradas_u:           v.entradas_u,
-        entradas_eur:         v.entradas_eur,
-        ventas_bot_u:         v.ventas_bot_u,
-        ventas_bot_eur:       v.ventas_bot_eur,
-        ventas_copa_u:        v.ventas_copa_u,
-        copas_servidas_u:     v.copas_servidas_u,
-        ventas_copa_eur:      v.ventas_copa_eur,
-        otras_salidas_u:      v.otras_salidas_u,
-        ajustes_u:            v.ajustes_u,
-        stock_fin:            v.stock_fin,
-        coste_teorico_ventas: v.coste_teorico_ventas,
-        consumo_real_stock:   v.consumo_real_stock,
-        diferencia_consumo:   v.diferencia_consumo,
-        coste_medio:          v.coste_medio,
-        descuadre:            v.descuadre,
-      })),
-      totals: totalesLibroMes(m.vinos.length),
+      rows: vinosRows,
+      totals: totalesLibroMes(vinosRows),
       freezeHeader: true,
     })
   }
@@ -161,28 +179,35 @@ export function construirLibroWorkbook({
   return { filename, sheets }
 }
 
-function totalesLibroMes(nFilas) {
+function totalesLibroMes(rows) {
+  const nFilas = rows.length
   const row = { nombre: 'TOTAL' }
-  // header=fila 1; datos filas 2..(nFilas+1)
   const fIni = 2
   const fFin = nFilas + 1
   for (const key of COLS_LIBRO_SUMABLES) {
     const idx = COLS_LIBRO.findIndex(c => c.key === key)
     if (idx < 0) continue
     const col = colLetter(idx + 1)
-    row[key] = { formula: `SUM(${col}${fIni}:${col}${fFin})` }
+    row[key] = {
+      formula: `SUM(${col}${fIni}:${col}${fFin})`,
+      result:  sumNumeric(rows, key),
+    }
   }
   return row
 }
 
-function totalesResumenLibro(nMeses) {
+function totalesResumenLibro(rows) {
+  const nMeses = rows.length
   const row = { mes: 'TOTAL' }
   const fIni = 2
   const fFin = nMeses + 1
   for (const key of ['coste_teorico_ventas', 'consumo_real_stock', 'diferencia_consumo']) {
     const idx = COLS_RESUMEN_LIBRO.findIndex(c => c.key === key)
     const col = colLetter(idx + 1)
-    row[key] = { formula: `SUM(${col}${fIni}:${col}${fFin})` }
+    row[key] = {
+      formula: `SUM(${col}${fIni}:${col}${fFin})`,
+      result:  sumNumeric(rows, key),
+    }
   }
   return row
 }
@@ -224,18 +249,22 @@ export function construirComprasWorkbook({
       name: periodoFiltro,
       columns: COLS_COMPRAS,
       rows: filas,
-      totals: totalesCompras(filas.length),
+      totals: totalesCompras(filas),
       freezeHeader: true,
     }],
   }
 }
 
-function totalesCompras(nFilas) {
+function totalesCompras(rows) {
+  const nFilas = rows.length
   const idx = COLS_COMPRAS.findIndex(c => c.key === 'importe')
   const col = colLetter(idx + 1)
   return {
     proveedor: 'TOTAL',
-    importe:   { formula: `SUM(${col}2:${col}${nFilas + 1})` },
+    importe:   {
+      formula: `SUM(${col}2:${col}${nFilas + 1})`,
+      result:  sumNumeric(rows, 'importe'),
+    },
   }
 }
 
@@ -259,54 +288,93 @@ export function construirCierreWorkbook({ datos, mes, restauranteNombre }) {
   if (porVino.length === 0) return { filename, sheets: [], empty: true }
 
   // Hoja Vinos
+  const vinosRows = porVino.map(v => ({
+    nombre:         v.nombre || '',
+    uds:            Number(v.uds) || 0,
+    copas:          Number(v.copas) || 0,
+    ingresos:       Number(v.ingresos) || 0,
+    coste_unitario: Number(v.coste_unitario) || 0,
+    margen_pct:     v.margen_pct ?? null,
+    tiene_coste:    v.tiene_coste ? 'sí' : 'no',
+  }))
   const sheetVinos = {
     name: 'Vinos',
     columns: COLS_CIERRE_VINOS,
-    rows: porVino.map(v => ({
-      nombre:         v.nombre || '',
-      uds:            Number(v.uds) || 0,
-      copas:          Number(v.copas) || 0,
-      ingresos:       Number(v.ingresos) || 0,
-      coste_unitario: Number(v.coste_unitario) || 0,
-      margen_pct:     v.margen_pct ?? null,
-      tiene_coste:    v.tiene_coste ? 'sí' : 'no',
-    })),
-    totals: totalesCierreVinos(porVino.length),
+    rows: vinosRows,
+    totals: totalesCierreVinos(vinosRows),
     freezeHeader: true,
   }
 
-  // Hoja Resumen económico (opcional, 1 fila: datos del cierre)
+  // Hoja Resumen: réplica fiel de las 16 filas del código xlsx anterior
+  // (ver 8dc966e7^:app/dashboard/bodega/CierreMensual.js:256-282). Etiquetas
+  // y orden idénticos para no regresionar al abrir cierres antiguos.
+  const resumenRowsOld = [
+    { concepto: 'Ventas brutas (con IVA, €)',       valor: Number(datos?.ventas_bruto)        || 0 },
+    { concepto: `IVA ${datos?.iva_pct ?? 10}% (€)`, valor: (Number(datos?.ventas_bruto) || 0) - (Number(datos?.ventas_neto) || 0) },
+    { concepto: 'Ventas netas (sin IVA, €)',        valor: Number(datos?.ventas_neto)         || 0 },
+    { concepto: 'Coste ventas teórico (€)',         valor: Number(datos?.coste_ventas_teorico) || 0 },
+    { concepto: 'Margen bruto (€)',                 valor: Number(datos?.margen_bruto)        || 0 },
+    { concepto: 'Margen bruto (%)',                 valor: datos?.margen_pct ?? null },
+    { concepto: 'Compras brutas (€)',               valor: Number(datos?.compras_bruto)       || 0 },
+    { concepto: 'Devoluciones (€)',                 valor: Number(datos?.devoluciones)        || 0 },
+    { concepto: 'Compras netas (€)',                valor: Number(datos?.compras_netas)       || 0 },
+    { concepto: 'Salidas no venta (€)',             valor: Number(datos?.salidas_no_venta)    || 0 },
+    { concepto: 'Merma copa (€)',                   valor: Number(datos?.merma_copa_eur)      || 0 },
+    { concepto: 'Diferencias inventario (€)',       valor: datos?.diferencias_inventario ?? null },
+    { concepto: 'Stock inicial (€)',                valor: datos?.stock_inicial ?? null },
+    { concepto: 'Stock final (€)',                  valor: datos?.stock_final ?? null },
+    { concepto: 'Total gastos (€)',                 valor: Number(datos?.gastos_total)        || 0 },
+    { concepto: 'Resultado neto bodega (€)',        valor: Number(datos?.resultado)           || 0 },
+  ]
   const sheetResumen = {
     name: 'Resumen',
     columns: [
       { header: 'Concepto', key: 'concepto', width: 32 },
       { header: 'Valor',    key: 'valor',    width: 16, format: FMT_EUR },
     ],
-    rows: [
-      { concepto: 'Mes',                             valor: mes },
-      { concepto: `Ventas brutas (IVA ${datos?.iva_pct ?? 10}%)`, valor: Number(datos?.ventas_bruto)        || 0 },
-      { concepto: 'Ventas netas',                    valor: Number(datos?.ventas_neto)        || 0 },
-      { concepto: 'Coste de ventas teórico',         valor: Number(datos?.coste_ventas_teorico) || 0 },
-      { concepto: 'Margen bruto',                    valor: Number(datos?.margen_bruto)       || 0 },
-      { concepto: 'Compras netas',                   valor: Number(datos?.compras_netas)      || 0 },
-      { concepto: 'Salidas no venta',                valor: Number(datos?.salidas_no_venta)   || 0 },
-      { concepto: 'Merma copa (€)',                  valor: Number(datos?.merma_copa_eur)     || 0 },
-      { concepto: 'Diferencias inventario',          valor: Number(datos?.diferencias_inventario) || 0 },
-      { concepto: 'Gastos del mes',                  valor: Number(datos?.gastos_total)       || 0 },
-      { concepto: 'Resultado neto bodega',           valor: Number(datos?.resultado)          || 0 },
-    ],
+    rows: resumenRowsOld,
     freezeHeader: true,
   }
 
-  return { filename, sheets: [sheetResumen, sheetVinos] }
+  // Hoja Gastos (réplica del OLD: lista de gastos del mes con TOTAL en fórmula)
+  const sheets = [sheetResumen, sheetVinos]
+  const gastos = Array.isArray(datos?.gastos) ? datos.gastos : []
+  if (gastos.length > 0) {
+    const gastosRows = gastos.map(g => ({
+      concepto: g.concepto || '',
+      importe:  Number(g.importe) || 0,
+    }))
+    sheets.push({
+      name: 'Gastos',
+      columns: [
+        { header: 'Concepto',    key: 'concepto', width: 32 },
+        { header: 'Importe (€)', key: 'importe',  width: 14, format: FMT_EUR },
+      ],
+      rows: gastosRows,
+      totals: {
+        concepto: 'TOTAL',
+        importe:  {
+          formula: `SUM(B2:B${gastosRows.length + 1})`,
+          result:  sumNumeric(gastosRows, 'importe'),
+        },
+      },
+      freezeHeader: true,
+    })
+  }
+
+  return { filename, sheets }
 }
 
-function totalesCierreVinos(nFilas) {
+function totalesCierreVinos(rows) {
+  const nFilas = rows.length
   const row = { nombre: 'TOTAL' }
   for (const key of ['uds', 'copas', 'ingresos']) {
     const idx = COLS_CIERRE_VINOS.findIndex(c => c.key === key)
     const col = colLetter(idx + 1)
-    row[key] = { formula: `SUM(${col}2:${col}${nFilas + 1})` }
+    row[key] = {
+      formula: `SUM(${col}2:${col}${nFilas + 1})`,
+      result:  sumNumeric(rows, key),
+    }
   }
   return row
 }

@@ -274,30 +274,48 @@ describe('construirCierreWorkbook', () => {
     assert.strictEqual(spec.filename, 't-cierre-2026-01.xlsx')
   })
 
-  it('devuelve Resumen + Vinos', () => {
+  it('devuelve Resumen + Vinos (Gastos opcional si hay datos.gastos)', () => {
     const spec = construirCierreWorkbook({ datos: datosCierre, mes: '2026-01', restauranteNombre: 'X' })
-    assert.strictEqual(spec.sheets.length, 2)
+    assert.strictEqual(spec.sheets.length, 2)   // sin datos.gastos → no hay hoja Gastos
     assert.strictEqual(spec.sheets[0].name, 'Resumen')
     assert.strictEqual(spec.sheets[1].name, 'Vinos')
     assert.strictEqual(spec.sheets[1].rows.length, 2)
   })
 
-  it('TOTAL de Vinos: fórmulas SUM para uds, copas e ingresos', () => {
+  it('añade hoja Gastos cuando datos.gastos tiene filas (TOTAL con fórmula y result)', () => {
+    const datos = {
+      ...datosCierre,
+      gastos: [
+        { concepto: 'Alquiler', importe: 1000 },
+        { concepto: 'Luz',      importe: 200 },
+      ],
+    }
+    const spec = construirCierreWorkbook({ datos, mes: '2026-01', restauranteNombre: 'X' })
+    assert.strictEqual(spec.sheets.length, 3)
+    assert.strictEqual(spec.sheets[2].name, 'Gastos')
+    const t = spec.sheets[2].totals
+    assert.strictEqual(t.importe.formula, 'SUM(B2:B3)')
+    assert.strictEqual(t.importe.result, 1200)
+  })
+
+  it('TOTAL de Vinos: fórmula SUM + result precalculado', () => {
     const spec = construirCierreWorkbook({ datos: datosCierre, mes: '2026-01', restauranteNombre: 'X' })
     const t = spec.sheets[1].totals
     assert.strictEqual(t.nombre, 'TOTAL')
     assert.ok(/^SUM\([A-Z]+2:[A-Z]+3\)$/.test(t.uds.formula))
-    assert.ok(/^SUM\([A-Z]+2:[A-Z]+3\)$/.test(t.copas.formula))
-    assert.ok(/^SUM\([A-Z]+2:[A-Z]+3\)$/.test(t.ingresos.formula))
+    assert.strictEqual(t.uds.result,      15)   // 10 + 5
+    assert.strictEqual(t.copas.result,    70)   // 50 + 20
+    assert.strictEqual(t.ingresos.result, 800)  // 500 + 300
   })
 
-  it('Resumen tiene 11 filas con valores number', () => {
+  it('Resumen tiene 16 filas (réplica del xlsx original del cierre)', () => {
     const spec = construirCierreWorkbook({ datos: datosCierre, mes: '2026-01', restauranteNombre: 'X' })
     const resumen = spec.sheets[0]
-    assert.strictEqual(resumen.rows.length, 11)
-    // Fila 1 = Mes (string). Las siguientes son number.
-    assert.strictEqual(typeof resumen.rows[1].valor, 'number')
-    assert.strictEqual(resumen.rows[1].valor, 5000)
+    assert.strictEqual(resumen.rows.length, 16)
+    assert.strictEqual(resumen.rows[0].concepto, 'Ventas brutas (con IVA, €)')
+    assert.strictEqual(resumen.rows[0].valor, 5000)
+    assert.strictEqual(resumen.rows[1].concepto, 'IVA 10% (€)')  // ventas_bruto − ventas_neto
+    assert.ok(Math.abs(resumen.rows[1].valor - (5000 - 4545.45)) < 0.01)
   })
 
   it('tiene_coste → "sí"/"no" (texto legible, no boolean)', () => {
