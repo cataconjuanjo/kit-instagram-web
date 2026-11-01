@@ -1499,7 +1499,7 @@ export default function ControlBodega() {
               <button className={styles.ghost} onClick={() => setPanelAbierto(null)}>Cerrar ×</button>
             </div>
             <div className={styles.panelBody}>
-              <LibroBodegaTable restauranteId={restaurante?.id} />
+              <LibroBodegaTable restauranteId={restaurante?.id} restauranteNombre={restaurante?.nombre} />
             </div>
           </section>
         )}

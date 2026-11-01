@@ -4,7 +4,10 @@ import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
+import { esPerfilSomm } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
+import { construirComprasWorkbook, filasComprasVisibles } from '../../lib/excelSomm'
+import { descargarWorkbook } from '../../lib/excelSommDownload'
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -138,6 +141,46 @@ function FormFactura({ proveedores, onGuardar }) {
         {guardando ? 'Guardando...' : 'Añadir factura'}
       </button>
     </form>
+  )
+}
+
+// ── Botón Exportar Excel (perfil Somm) ───────────────────────────────────────
+
+function ExportarExcelCompras({ registros, periodoFiltro, restauranteNombre }) {
+  const [generando, setGenerando] = useState(false)
+  const filas = useMemo(
+    () => filasComprasVisibles(registros, periodoFiltro),
+    [registros, periodoFiltro]
+  )
+  const disabled = filas.length === 0 || generando
+
+  async function onClick() {
+    if (disabled) return
+    setGenerando(true)
+    try {
+      const spec = construirComprasWorkbook({ registros, periodoFiltro, restauranteNombre })
+      await descargarWorkbook(spec)
+    } finally {
+      setGenerando(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={filas.length === 0 ? 'Sin facturas en este periodo' : 'Descargar .xlsx del periodo visible'}
+      style={{
+        marginLeft: 'auto', padding: '5px 14px', borderRadius: 20,
+        border: '1px solid #e8e3d8', background: 'transparent',
+        color: disabled ? '#aaa' : '#555',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        fontSize: 12, fontWeight: 500,
+      }}
+    >
+      {generando ? 'Generando…' : 'Exportar Excel'}
+    </button>
   )
 }
 
@@ -411,7 +454,7 @@ export default function ComprasSomm() {
         {/* Tab: Facturas */}
         {tab === 'facturas' && (
           <div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
               {ultimosMeses().map(p => (
                 <button
                   key={p}
@@ -430,6 +473,13 @@ export default function ComprasSomm() {
                   {nombreMes(p)}
                 </button>
               ))}
+              {esPerfilSomm(restaurante) && (
+                <ExportarExcelCompras
+                  registros={registros}
+                  periodoFiltro={periodoFiltro}
+                  restauranteNombre={restaurante?.nombre}
+                />
+              )}
             </div>
             <TablaFacturas
               registros={registros}
