@@ -84,7 +84,7 @@ const DESPUES = calcularYoY({
     { key: 'ingresos',           tipo: 'importe' },
     { key: 'consumo_mp',         tipo: 'importe' },
     { key: 'margen_explotacion', tipo: 'importe' },
-    { key: 'pct_mp',             tipo: 'ratio'   },
+    { key: 'pct_mp', tipo: 'ratio', num: 'consumo_mp', den: 'ingresos', escala: 100 },
   ],
   mesActualHoy: HOY,
 })

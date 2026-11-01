@@ -120,12 +120,41 @@ export function calcularYoY({ actual, prev, metricas = [], ...opts }) {
 
     // YTD: solo meses comparables
     if (tipo === 'ratio') {
-      // promedio simple en meses comparables
-      const vals = meses.map(m => Number(idxA[m]?.[key])).filter(esFinito)
-      const prevs = meses.map(m => Number(idxP[m]?.[key])).filter(esFinito)
-      const prom = arr => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null
-      const valor     = prom(vals)
-      const valorPrev = prom(prevs)
+      // PREFERIDO: ratio ponderado si la métrica declara num y den.
+      //   YTD = Σ(num) / Σ(den) × escala,   para cada año por separado,
+      //   usando SOLO los meses comparables donde el AÑO en cuestión
+      //   tiene num y den finitos. Si en un mes falta num o den, ese
+      //   mes se excluye del YTD del ratio para ese año.
+      // FALLBACK (sin num/den declarados): promedio simple del propio
+      //   key sobre los meses comparables donde el valor sea finito.
+      // Delta siempre en PUNTOS PORCENTUALES; deltaPct = null (no %/%).
+      const escala = Number.isFinite(Number(met.escala)) ? Number(met.escala) : 100
+
+      let valor = null, valorPrev = null
+
+      if (met.num && met.den) {
+        const ponderado = (idx) => {
+          let sN = 0, sD = 0, usados = 0
+          for (const m of meses) {
+            const n = Number(idx[m]?.[met.num])
+            const d = Number(idx[m]?.[met.den])
+            if (!esFinito(n) || !esFinito(d)) continue
+            sN += n; sD += d; usados++
+          }
+          if (usados === 0 || sD === 0) return null
+          return sN / sD * escala
+        }
+        valor     = ponderado(idxA)
+        valorPrev = ponderado(idxP)
+      } else {
+        // Fallback compat
+        const vals  = meses.map(m => Number(idxA[m]?.[key])).filter(esFinito)
+        const prevs = meses.map(m => Number(idxP[m]?.[key])).filter(esFinito)
+        const prom = arr => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null
+        valor     = prom(vals)
+        valorPrev = prom(prevs)
+      }
+
       const delta = (valor != null && valorPrev != null) ? r2(valor - valorPrev) : null
       ytd[key] = {
         valor:     valor     != null ? r2(valor)     : null,

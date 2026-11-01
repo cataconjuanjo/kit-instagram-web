@@ -189,7 +189,9 @@ function TabHistorico({ historico }) {
           { key: 'ingresos',           tipo: 'importe' },
           { key: 'consumo_mp',         tipo: 'importe' },
           { key: 'margen_explotacion', tipo: 'importe' },
-          { key: 'pct_mp',             tipo: 'ratio'   },
+          // % MP ponderado: Σ(consumo_mp) / Σ(ingresos) × 100 por año,
+          // NO promedio simple (que infla cuando los meses pesan distinto).
+          { key: 'pct_mp', tipo: 'ratio', num: 'consumo_mp', den: 'ingresos', escala: 100 },
         ],
       })
     }
