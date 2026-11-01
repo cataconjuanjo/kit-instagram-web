@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../../supabase'
 import { exportarCSV } from '../../lib/libroBodega'
+import { construirLibroWorkbook } from '../../lib/excelSomm'
+import { descargarWorkbook } from '../../lib/excelSommDownload'
 import styles from '../module.module.css'
 import bStyles from './bodega.module.css'
 import { GraficoMermaImplicita } from '../somm-graficos/GraficoMermaImplicita'
@@ -18,13 +20,14 @@ function BadgeEstado({ estado }) {
   return <span style={{ ...base, ...color }}>{estado === 'cerrado' ? 'cerrado' : 'estimado'}</span>
 }
 
-export default function LibroBodegaTable({ restauranteId }) {
-  const [anio,       setAnio]       = useState(new Date().getFullYear())
-  const [filtroMes,  setFiltroMes]  = useState('')
-  const [filtroTipo, setFiltroTipo] = useState('')
-  const [data,       setData]       = useState(null)
-  const [loading,    setLoading]    = useState(false)
-  const [error,      setError]      = useState(null)
+export default function LibroBodegaTable({ restauranteId, restauranteNombre }) {
+  const [anio,         setAnio]         = useState(new Date().getFullYear())
+  const [filtroMes,    setFiltroMes]    = useState('')
+  const [filtroTipo,   setFiltroTipo]   = useState('')
+  const [data,         setData]         = useState(null)
+  const [loading,      setLoading]      = useState(false)
+  const [error,        setError]        = useState(null)
+  const [exportandoXls, setExportandoXls] = useState(false)
 
   const cargar = useCallback(async () => {
     if (!restauranteId) return
@@ -61,10 +64,29 @@ export default function LibroBodegaTable({ restauranteId }) {
     URL.revokeObjectURL(url)
   }
 
+  const handleExportExcel = async () => {
+    if (!data) return
+    setExportandoXls(true)
+    try {
+      const spec = construirLibroWorkbook({
+        meses: data.meses, anio, filtroMes, filtroTipo, restauranteNombre,
+      })
+      await descargarWorkbook(spec)
+    } catch (e) {
+      setError(e.message || 'No se pudo generar el Excel')
+    } finally {
+      setExportandoXls(false)
+    }
+  }
+
   const meses = data?.meses ?? []
   // Solo listar en el selector los meses que tienen datos
   const mesesConDatos   = meses.filter(m => m.vinos.length > 0)
   const mesesFiltrados  = meses.filter(m => !filtroMes || m.mes === filtroMes)
+  // Hay vinos visibles aplicando filtros? (determina si el Excel es útil)
+  const hayDatosVisibles = mesesFiltrados.some(m =>
+    (filtroTipo ? m.vinos.filter(v => v.tipo === filtroTipo).length : m.vinos.length) > 0
+  )
 
   const tiposDisponibles = [...new Set(
     meses.flatMap(m => m.vinos.map(v => v.tipo)).filter(Boolean)
@@ -107,6 +129,15 @@ export default function LibroBodegaTable({ restauranteId }) {
           style={{ marginLeft: 'auto' }}
         >
           Exportar CSV
+        </button>
+        <button
+          type="button"
+          className={styles.ghost}
+          onClick={handleExportExcel}
+          disabled={!data || loading || !hayDatosVisibles || exportandoXls}
+          title={!hayDatosVisibles ? 'Sin datos visibles para exportar' : 'Descargar .xlsx'}
+        >
+          {exportandoXls ? 'Generando…' : 'Exportar Excel'}
         </button>
       </div>
 
