@@ -18,6 +18,7 @@ import { useChartWidth } from './useChartWidth'
 import { tokensChart } from './useDashboardDarkMode'
 import { fmtMes, fmtPct, escalaPct } from './format'
 import { segmentarPorEstado } from './segmentos'
+import { buildLineTooltip, etiquetaAnioPrev } from './tooltips'
 
 const PAD_L = 44, PAD_R = 14, PAD_T = 14, PAD_B = 36
 
@@ -40,12 +41,14 @@ export function Line({
     ? (subtitulo ? `${subtitulo} · ${etiquetaSeries}` : etiquetaSeries)
     : subtitulo
 
+  const anioPrevLabel = etiquetaAnioPrev(serieB, etiquetaSeries)
+
   return (
     <ChartShell titulo={titulo} subtitulo={subFinal} loading={loading} vacio={vacio}
                 mensajeVacio={mensajeVacio} height={height} tema={tema}>
       <div ref={ref} style={{ width: '100%', minWidth: 0 }}>
         <LineSvg data={data} serieB={serieB} comparables={comparables}
-                 tipoVariacion={tipoVariacion}
+                 tipoVariacion={tipoVariacion} anioPrevLabel={anioPrevLabel}
                  t={t} W={W} H={height} target={target}
                  formatValor={formatValor} hoverIdx={hoverIdx} setHoverIdx={setHoverIdx} />
       </div>
@@ -53,7 +56,7 @@ export function Line({
   )
 }
 
-function LineSvg({ data, serieB, comparables, tipoVariacion, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) {
+function LineSvg({ data, serieB, comparables, tipoVariacion, anioPrevLabel, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) {
   const innerW = W - PAD_L - PAD_R
   const innerH = H - PAD_T - PAD_B
   const n = data.length
@@ -137,16 +140,25 @@ function LineSvg({ data, serieB, comparables, tipoVariacion, t, W, H, target, fo
               textAnchor="end" fill={t.target} fontSize="10">{target.label}</text>
       )}
 
-      {/* Línea secundaria del año anterior (serieB) — detrás */}
+      {/* Línea secundaria del año anterior (serieB) — detrás.
+          Trazo distinto del objetivo: punteado FINO gris claro
+          (dasharray "2 2") para evitar confusión con la línea
+          "Objetivo" (dasharray "4 3" oscuro) del presupuesto. */}
       {puntosB.length > 1 && (
-        <polyline fill="none" stroke={t.target} strokeOpacity="0.75" strokeWidth="1.5"
-                  strokeDasharray="4 3"
+        <polyline fill="none" stroke={t.textDim} strokeOpacity="0.55" strokeWidth="1"
+                  strokeDasharray="2 2"
                   points={puntosB.map(p => `${p.x},${p.y}`).join(' ')} />
       )}
       {puntosB.map(p => (
         <circle key={`cB${p.i}`} cx={p.x} cy={p.y} r={2}
-                fill={t.target} opacity="0.75" pointerEvents="none" />
+                fill={t.textDim} opacity="0.55" pointerEvents="none" />
       ))}
+      {puntosB.length > 0 && anioPrevLabel && (
+        <text x={W - PAD_R - 2}
+              y={puntosB[puntosB.length - 1].y - 4}
+              textAnchor="end" fill={t.textDim} fontSize="10"
+              style={{ opacity: 0.75 }}>{anioPrevLabel}</text>
+      )}
 
       {segmentos.map((s, k) => (
         <polyline key={k} fill="none" stroke={t.lineStroke} strokeWidth="2"
@@ -162,7 +174,7 @@ function LineSvg({ data, serieB, comparables, tipoVariacion, t, W, H, target, fo
         const label = buildLineTooltip({
           mes: p.mes, valor: p.v, valorPrev: b?.valor,
           formatValor, estimado, esComparable, tieneSerieB: !!serieB,
-          tipoVariacion,
+          tipoVariacion, anioPrevLabel,
         })
         return (
           <g key={p.i}
@@ -246,30 +258,3 @@ function serieBToMap(serieB) {
   return m
 }
 
-function buildLineTooltip({ mes, valor, valorPrev, formatValor, estimado, esComparable, tieneSerieB, tipoVariacion }) {
-  const base = `${fmtMes(mes)}: ${formatValor(valor)}`
-  let yoy = ''
-  if (tieneSerieB && esComparable) {
-    if (valorPrev == null) {
-      yoy = '  (prev — · Δ —)'
-    } else {
-      const vp = Number(valorPrev)
-      if (!Number.isFinite(vp)) {
-        yoy = '  (prev — · Δ —)'
-      } else if (tipoVariacion === 'ratio') {
-        const d = valor - vp
-        const sign = d >= 0 ? '+' : ''
-        yoy = `  (prev ${formatValor(vp)} · ${sign}${d.toFixed(1)} pp)`
-      } else if (vp === 0) {
-        yoy = `  (prev ${formatValor(0)} · Δ —)`
-      } else {
-        const d    = valor - vp
-        const dPct = d / Math.abs(vp) * 100
-        const sign = dPct >= 0 ? '+' : ''
-        yoy = `  (prev ${formatValor(vp)} · ${sign}${dPct.toFixed(1)}%)`
-      }
-    }
-  }
-  const estimadoTxt = estimado ? ' (estimado)' : ''
-  return `${base}${yoy}${estimadoTxt}`
-}

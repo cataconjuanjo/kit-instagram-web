@@ -27,8 +27,14 @@ export function GraficoEvolucion({ restauranteId, enabled = true }) {
     restauranteId, anio, compararCon, enabled,
   })
 
-  // Derivado del data: no necesita state (evita setState en useEffect).
-  const hayAnioPrev = Array.isArray(data?.comparables) && data.comparables.length > 0
+  // La casilla NO se muestra:
+  //   - mientras loading=true (evita parpadeo "Comparar con 2024" al
+  //     cambiar de año);
+  //   - si el data recibido no corresponde al año seleccionado (ocurre
+  //     entre que el user cambia año y llega la nueva respuesta);
+  //   - si comparables está vacío (p.ej. 2025 sin 2024 en la base).
+  const dataListo    = !loading && data?.anio === anio
+  const hayAnioPrev  = dataListo && Array.isArray(data?.comparables) && data.comparables.length > 0
 
   if (!enabled) return null
 

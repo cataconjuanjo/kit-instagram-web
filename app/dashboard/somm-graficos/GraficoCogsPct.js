@@ -30,8 +30,10 @@ export function GraficoCogsPct({ restauranteId, enabled = true }) {
     restauranteId, anio, compararCon, enabled,
   })
 
-  // Derivado del data: evita setState en useEffect.
-  const hayAnioPrev = Array.isArray(data?.comparables) && data.comparables.length > 0
+  // La casilla NO se muestra: mientras loading, si data no corresponde
+  // al año seleccionado, o si comparables está vacío.
+  const dataListo   = !loading && data?.anio === anio
+  const hayAnioPrev = dataListo && Array.isArray(data?.comparables) && data.comparables.length > 0
 
   if (!enabled) return null
 
