@@ -4,6 +4,12 @@
  * Line — línea SVG con viewBox = ancho real medido. Segmentación por
  * segmentarPorEstado: sólido entre cerrados, discontinuo cuando toca
  * un mes estimado. No pinta punto para valor null.
+ *
+ * YoY opcional (prop `serieB`): segunda línea discontinua gris/tono
+ * atenuado con puntos pequeños del año anterior. El tooltip muestra
+ * la variación solo si el mes está en `comparables`. Para la variación
+ * se puede pedir Δ en pp (`tipoVariacion='ratio'`) o Δ% sobre |prev|
+ * (`tipoVariacion='importe'`, default).
  */
 
 import { useState } from 'react'
@@ -18,6 +24,10 @@ const PAD_L = 44, PAD_R = 14, PAD_T = 14, PAD_B = 36
 export function Line({
   data, titulo, subtitulo, loading = false, formatValor = fmtPct,
   target = null, height = 240, mensajeVacio, tema = 'claro',
+  serieB = null,
+  comparables = [],
+  etiquetaSeries = null,
+  tipoVariacion = 'importe',  // 'importe' | 'ratio'
 }) {
   const [hoverIdx, setHoverIdx] = useState(null)
   const [ref, W]                = useChartWidth(600)
@@ -26,22 +36,30 @@ export function Line({
   const vacio = !data || data.length === 0 ||
     data.every(d => d.valor == null || !Number.isFinite(Number(d.valor)))
 
+  const subFinal = etiquetaSeries
+    ? (subtitulo ? `${subtitulo} · ${etiquetaSeries}` : etiquetaSeries)
+    : subtitulo
+
   return (
-    <ChartShell titulo={titulo} subtitulo={subtitulo} loading={loading} vacio={vacio}
+    <ChartShell titulo={titulo} subtitulo={subFinal} loading={loading} vacio={vacio}
                 mensajeVacio={mensajeVacio} height={height} tema={tema}>
       <div ref={ref} style={{ width: '100%', minWidth: 0 }}>
-        <LineSvg data={data} t={t} W={W} H={height} target={target}
+        <LineSvg data={data} serieB={serieB} comparables={comparables}
+                 tipoVariacion={tipoVariacion}
+                 t={t} W={W} H={height} target={target}
                  formatValor={formatValor} hoverIdx={hoverIdx} setHoverIdx={setHoverIdx} />
       </div>
     </ChartShell>
   )
 }
 
-function LineSvg({ data, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) {
+function LineSvg({ data, serieB, comparables, tipoVariacion, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) {
   const innerW = W - PAD_L - PAD_R
   const innerH = H - PAD_T - PAD_B
   const n = data.length
   const esEstrecho = W <= 360
+
+  const idxBByMes = serieBToMap(serieB)
 
   // Filtrar null/undefined ANTES de Number(): Number(null)===0 pasa
   // Number.isFinite, lo cual mete un 0 falso en la escala y la aplasta.
@@ -52,6 +70,13 @@ function LineSvg({ data, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) 
     }
     if (d.objetivo != null && Number.isFinite(Number(d.objetivo))) {
       valoresEscala.push(Number(d.objetivo))
+    }
+  }
+  if (serieB) {
+    for (const s of serieB) {
+      if (s.valor != null && Number.isFinite(Number(s.valor))) {
+        valoresEscala.push(Number(s.valor))
+      }
     }
   }
   const { min: yMin, max: yMax } = escalaPct(valoresEscala)
@@ -70,11 +95,25 @@ function LineSvg({ data, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) 
 
   const segmentos = segmentarPorEstado(puntos)
 
+  // Línea secundaria (serieB) alineada por número de mes
+  const puntosB = []
+  if (serieB) {
+    data.forEach((d, i) => {
+      const m = mesNum(d.mes)
+      const b = idxBByMes.get(m)
+      if (b && b.valor != null && Number.isFinite(Number(b.valor))) {
+        puntosB.push({ i, x: xFor(i), y: yFor(Number(b.valor)), v: Number(b.valor) })
+      }
+    })
+  }
+
   const objetivos = data
     .map((d, i) => (d.objetivo != null && Number.isFinite(Number(d.objetivo)))
       ? { i, x: xFor(i), y: yFor(Number(d.objetivo)), v: Number(d.objetivo) }
       : null)
     .filter(Boolean)
+
+  const comparablesSet = new Set(comparables || [])
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img"
@@ -98,6 +137,17 @@ function LineSvg({ data, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) 
               textAnchor="end" fill={t.target} fontSize="10">{target.label}</text>
       )}
 
+      {/* Línea secundaria del año anterior (serieB) — detrás */}
+      {puntosB.length > 1 && (
+        <polyline fill="none" stroke={t.target} strokeOpacity="0.75" strokeWidth="1.5"
+                  strokeDasharray="4 3"
+                  points={puntosB.map(p => `${p.x},${p.y}`).join(' ')} />
+      )}
+      {puntosB.map(p => (
+        <circle key={`cB${p.i}`} cx={p.x} cy={p.y} r={2}
+                fill={t.target} opacity="0.75" pointerEvents="none" />
+      ))}
+
       {segmentos.map((s, k) => (
         <polyline key={k} fill="none" stroke={t.lineStroke} strokeWidth="2"
                   strokeDasharray={s.dashed ? '5 3' : undefined}
@@ -106,7 +156,14 @@ function LineSvg({ data, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) 
 
       {puntos.map(p => {
         const estimado = p.estado === 'estimado'
-        const label = `${fmtMes(p.mes)}: ${formatValor(p.v)}${estimado ? ' (estimado)' : ''}`
+        const m = mesNum(p.mes)
+        const b = idxBByMes.get(m)
+        const esComparable = comparablesSet.has(m)
+        const label = buildLineTooltip({
+          mes: p.mes, valor: p.v, valorPrev: b?.valor,
+          formatValor, estimado, esComparable, tieneSerieB: !!serieB,
+          tipoVariacion,
+        })
         return (
           <g key={p.i}
              onMouseEnter={() => setHoverIdx(p.i)}
@@ -149,7 +206,7 @@ function LineSvg({ data, t, W, H, target, formatValor, hoverIdx, setHoverIdx }) 
 }
 
 function Tip({ x, y, t, text, W }) {
-  const w = Math.min(220, Math.max(60, text.length * 6))
+  const w = Math.min(320, Math.max(60, text.length * 6))
   const tx = Math.max(4, Math.min(W - w - 4, x - w / 2))
   const ty = Math.max(4, y - 28)
   return (
@@ -160,4 +217,59 @@ function Tip({ x, y, t, text, W }) {
             fill={t.tooltipText} fontSize="11">{text}</text>
     </g>
   )
+}
+
+function mesNum(mesStr) {
+  if (mesStr == null) return null
+  const str = String(mesStr)
+  const parts = str.split('-')
+  const token = parts.length > 1 ? parts[1] : parts[0]
+  if (token == null || token === '' || !/^\d+$/.test(token)) return null
+  const n = Number(token)
+  return Number.isInteger(n) && n >= 1 && n <= 12 ? n : null
+}
+
+function serieBToMap(serieB) {
+  const m = new Map()
+  if (!serieB) return m
+  for (const s of serieB) {
+    const raw = s.mes
+    let k = null
+    if (typeof raw === 'number' && Number.isInteger(raw) && raw >= 1 && raw <= 12) k = raw
+    else if (typeof raw === 'string') {
+      const parts = raw.split('-')
+      const n = Number(parts.length > 1 ? parts[1] : parts[0])
+      if (Number.isInteger(n) && n >= 1 && n <= 12) k = n
+    }
+    if (k != null) m.set(k, s)
+  }
+  return m
+}
+
+function buildLineTooltip({ mes, valor, valorPrev, formatValor, estimado, esComparable, tieneSerieB, tipoVariacion }) {
+  const base = `${fmtMes(mes)}: ${formatValor(valor)}`
+  let yoy = ''
+  if (tieneSerieB && esComparable) {
+    if (valorPrev == null) {
+      yoy = '  (prev — · Δ —)'
+    } else {
+      const vp = Number(valorPrev)
+      if (!Number.isFinite(vp)) {
+        yoy = '  (prev — · Δ —)'
+      } else if (tipoVariacion === 'ratio') {
+        const d = valor - vp
+        const sign = d >= 0 ? '+' : ''
+        yoy = `  (prev ${formatValor(vp)} · ${sign}${d.toFixed(1)} pp)`
+      } else if (vp === 0) {
+        yoy = `  (prev ${formatValor(0)} · Δ —)`
+      } else {
+        const d    = valor - vp
+        const dPct = d / Math.abs(vp) * 100
+        const sign = dPct >= 0 ? '+' : ''
+        yoy = `  (prev ${formatValor(vp)} · ${sign}${dPct.toFixed(1)}%)`
+      }
+    }
+  }
+  const estimadoTxt = estimado ? ' (estimado)' : ''
+  return `${base}${yoy}${estimadoTxt}`
 }
