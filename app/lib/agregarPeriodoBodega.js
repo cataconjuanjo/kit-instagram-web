@@ -1,4 +1,4 @@
-import { fetchAllPages, chunkArray } from './fetchAllPages'
+import { fetchAllPages, chunkArray } from './fetchAllPages.js'
 
 /**
  * agregarPeriodoBodega — Agregación de ventas de sala por periodo.
