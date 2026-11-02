@@ -9,6 +9,7 @@ import { construirCierreWorkbook } from '../../lib/excelSomm'
 import { descargarWorkbook } from '../../lib/excelSommDownload'
 import {
   deltaMetrica, esComparable, metricaPorKey, MOTIVOS_TEXTO,
+  colorDelta,
 } from '../../lib/yoyCierre'
 
 async function authedFetch(path, opts = {}) {
@@ -85,9 +86,16 @@ function SectionRow({ label }) {
   )
 }
 
-function DataRow({ label, value, strong, dim, color, vari, variTitle }) {
+function DataRow({ label, value, strong, dim, color, vari, variTitle, variDir }) {
   const tag = variTag(vari)
-  const tagColor = vari == null ? null : vari >= 0 ? '#4A8C6F' : '#b85454'
+  // Fix H4b: color por dirección de métrica. Si `variDir` llega del
+  // llamador (vía vn/METRICAS_CIERRE_YOY), 'up-good' pinta positivo en
+  // verde y 'up-bad' en rojo. Si no llega (fallback), mantiene el
+  // comportamiento previo "cualquier positivo = verde".
+  let tagColor = null
+  if (vari != null) {
+    tagColor = variDir ? colorDelta(vari, variDir) : (vari >= 0 ? '#4A8C6F' : '#b85454')
+  }
   const mostrarGuion = tag == null && variTitle
   return (
     <tr>
@@ -386,9 +394,12 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   }
 
   // Spread helper para <DataRow>: convierte el resultado de vn(key) en
-  // las dos props que DataRow consume. Mantiene el JSX legible.
+  // las tres props que DataRow consume. Mantiene el JSX legible.
+  // variDir habilita el color por dirección de la métrica (up-bad para
+  // merma/gastos/coste/compras/salidas; up-good para ventas/margen/
+  // resultado/stock/devoluciones).
   function varProps(v) {
-    return { vari: v.pct, variTitle: v.title }
+    return { vari: v.pct, variTitle: v.title, variDir: v.dir }
   }
 
   async function cerrarMes() {
