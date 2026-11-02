@@ -8,8 +8,8 @@ import { GraficoCogsPct } from '../somm-graficos/GraficoCogsPct'
 import { construirCierreWorkbook } from '../../lib/excelSomm'
 import { descargarWorkbook } from '../../lib/excelSommDownload'
 import {
-  deltaMetrica, esComparable, metricaPorKey, MOTIVOS_TEXTO,
-  colorDelta,
+  deltaMetrica, esComparable, metricaPorKey, motivoText,
+  colorDelta, deltaResultado, TOOLTIP_RESULTADO_ANTES_DE_MERMA,
 } from '../../lib/yoyCierre'
 
 async function authedFetch(path, opts = {}) {
@@ -374,21 +374,34 @@ export default function CierreMensual({ restauranteId, restaurante }) {
     : true  // en MoM asumimos cerrado (comportamiento previo)
 
   // vn(key): calcula el % para la columna de delta de DataRow usando
-  // yoyCierre. Devuelve { pct, title }. pct = número (para `vari`) o null.
-  // title = texto tooltip explicando por qué no hay delta (o '').
+  // yoyCierre. Devuelve { pct, title, delta, dir, base? }. pct=número
+  // (para `vari`) o null. title=tooltip (vacío si comparable).
+  //
+  // Caso especial 'resultado': aplica deltaResultado para rebalancear
+  // "antes de merma" cuando solo uno de los dos lados tiene merma > 0.
+  // Esto evita comparar snapshot.resultado (que incluye −merma) de un
+  // mes con el de otro cuando la base aritmética no es la misma.
   function vn(key) {
     const meta = metricaPorKey(key)
     if (!meta) {
-      // Métrica no catalogada: fallback a variPct para no romper nada.
       return { pct: variPct(datos?.[key], datosComparar?.[key]), title: '' }
     }
     const motivo = esComparable(datos, datosComparar, meta, { prevCerrado })
     if (motivo !== 'ok') {
-      return { pct: null, title: MOTIVOS_TEXTO[motivo] || '' }
+      return { pct: null, title: motivoText(motivo, key) }
+    }
+    if (key === 'resultado') {
+      const r = deltaResultado(datos, datosComparar)
+      if (r.delta == null) return { pct: null, title: '' }
+      return {
+        pct: r.deltaPct,
+        title: r.base === 'antes_de_merma' ? TOOLTIP_RESULTADO_ANTES_DE_MERMA : '',
+        delta: r.delta,
+        dir: meta.dir,
+        base: r.base,
+      }
     }
     const { delta, deltaPct } = deltaMetrica(datos[key], datosComparar[key], meta.tipo)
-    // Para 'ratio' deltaPct es null; pasamos el delta en pp como "vari" para
-    // que la UI pueda pintarlo (DataRow redondea a entero igualmente).
     const pct = meta.tipo === 'ratio' ? delta : deltaPct
     return { pct, title: '', delta, dir: meta.dir }
   }
@@ -734,9 +747,18 @@ export default function CierreMensual({ restauranteId, restaurante }) {
                 const refLabel = modoComparar === 'anio_anterior'
                   ? mesLabel(prevYearMes(mes))
                   : mesLabel(prevMes(mes))
+                const esAntesDeMerma = r.base === 'antes_de_merma'
                 return (
-                  <div style={{ fontSize: 12, marginTop: 2, color: r.pct >= 0 ? '#4A8C6F' : '#b85454', opacity: 0.8 }}>
-                    {variTag(r.pct)} vs {refLabel}
+                  <div
+                    style={{
+                      fontSize: 12, marginTop: 2,
+                      color: r.pct >= 0 ? '#4A8C6F' : '#b85454',
+                      opacity: 0.8,
+                      cursor: esAntesDeMerma ? 'help' : 'default',
+                    }}
+                    title={esAntesDeMerma ? r.title : ''}
+                  >
+                    {variTag(r.pct)}{esAntesDeMerma ? ' *' : ''} vs {refLabel}
                   </div>
                 )
               })()}
