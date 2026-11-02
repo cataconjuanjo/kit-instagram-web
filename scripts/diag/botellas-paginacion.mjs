@@ -90,7 +90,6 @@ console.log('─'.repeat(109))
 const diferenciasRelevantes = []
 
 for (const mes of meses) {
-  // eslint-disable-next-line no-await-in-loop
   const recalc = await calcularMesBodega({ restaurante_id: RESTAURANTE_ID, mes, supabase })
   const bd     = snapByMes[mes] || {}
 
@@ -98,9 +97,6 @@ for (const mes of meses) {
   const ctB = bd.coste_ventas_teorico, ctR = recalc.coste_ventas_teorico
   const mcB = bd.merma_copa_eur, mcR = recalc.merma_copa_eur
   const rsB = bd.resultado, rsR = recalc.resultado
-
-  const dMerma = (mcB != null && mcR != null) ? Math.round(mcR - mcB) : null
-  const dRes   = (rsB != null && rsR != null) ? Math.round(rsR - rsB) : null
 
   console.log(
     `${mes}   ${fmt(vnB)} / ${fmt(vnR)}   ${fmt(ctB)} / ${fmt(ctR)}   ` +
