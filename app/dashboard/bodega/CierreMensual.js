@@ -698,12 +698,37 @@ export default function CierreMensual({ restauranteId, restaurante }) {
                 </div>
               </div>
             ))}
-            {datos.gastos_total > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontWeight: 600, fontSize: 14 }}>
-                <span>Total gastos</span>
-                <span>− {eur(datos.gastos_total)}</span>
-              </div>
-            )}
+            {datos.gastos_total > 0 && (() => {
+              // F4.1: Δ MoM/YoY en Total gastos. gastos_total está en
+              // METRICAS_CIERRE_YOY como 'up-bad' (subir es malo).
+              const g = vn('gastos_total')
+              const pct = g.pct
+              const tag = pct == null ? null : (pct >= 0 ? '+' : '') + pct + '%'
+              const col = tag != null ? colorDelta(pct, 'up-bad') : null
+              const guion = tag == null && g.title
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 0', fontWeight: 600, fontSize: 14 }}>
+                  <span>Total gastos</span>
+                  <span style={{ display: 'inline-flex', gap: 8, alignItems: 'baseline' }}>
+                    <span>− {eur(datos.gastos_total)}</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 400,
+                        color: col || (guion ? '#8b8278' : 'transparent'),
+                        opacity: 0.8,
+                        minWidth: 54,
+                        textAlign: 'right',
+                        cursor: guion ? 'help' : 'default',
+                      }}
+                      title={g.title || ''}
+                    >
+                      {tag || (guion ? '—' : '')}
+                    </span>
+                  </span>
+                </div>
+              )
+            })()}
             {!cerrado && (
               <form onSubmit={añadirGasto} style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                 <input
