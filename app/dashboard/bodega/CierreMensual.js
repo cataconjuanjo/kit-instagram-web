@@ -7,6 +7,9 @@ import styles from '../module.module.css'
 import { GraficoCogsPct } from '../somm-graficos/GraficoCogsPct'
 import { construirCierreWorkbook } from '../../lib/excelSomm'
 import { descargarWorkbook } from '../../lib/excelSommDownload'
+import {
+  deltaMetrica, esComparable, metricaPorKey, MOTIVOS_TEXTO,
+} from '../../lib/yoyCierre'
 
 async function authedFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -49,6 +52,12 @@ function prevMes(mes) {
   return `${y}-${String(m - 1).padStart(2, '0')}`
 }
 
+// Mismo mes del año anterior (H4b YoY).
+function prevYearMes(mes) {
+  const [y, m] = mes.split('-').map(Number)
+  return `${y - 1}-${String(m).padStart(2, '0')}`
+}
+
 function nextMes(mes) {
   const [y, m] = mes.split('-').map(Number)
   if (m === 12) return `${y + 1}-01`
@@ -76,15 +85,19 @@ function SectionRow({ label }) {
   )
 }
 
-function DataRow({ label, value, strong, dim, color, vari }) {
+function DataRow({ label, value, strong, dim, color, vari, variTitle }) {
   const tag = variTag(vari)
   const tagColor = vari == null ? null : vari >= 0 ? '#4A8C6F' : '#b85454'
+  const mostrarGuion = tag == null && variTitle
   return (
     <tr>
       <td style={{ padding: '3px 0 3px 8px', fontSize: 14, fontWeight: strong ? 600 : 400, opacity: dim ? 0.55 : 1 }}>{label}</td>
       <td style={{ padding: '3px 0', textAlign: 'right', fontSize: 14, fontWeight: strong ? 700 : 400, color: color || 'inherit', opacity: dim ? 0.55 : 1, whiteSpace: 'nowrap' }}>{value}</td>
-      <td style={{ padding: '3px 0 3px 6px', textAlign: 'right', fontSize: 11, color: tagColor || 'transparent', opacity: dim ? 0.55 : 0.8, whiteSpace: 'nowrap', minWidth: 54 }}>
-        {tag || ''}
+      <td
+        style={{ padding: '3px 0 3px 6px', textAlign: 'right', fontSize: 11, color: tagColor || (mostrarGuion ? '#8b8278' : 'transparent'), opacity: dim ? 0.55 : 0.8, whiteSpace: 'nowrap', minWidth: 54, cursor: mostrarGuion ? 'help' : 'default' }}
+        title={variTitle || ''}
+      >
+        {tag || (mostrarGuion ? '—' : '')}
       </td>
     </tr>
   )
@@ -262,6 +275,13 @@ export default function CierreMensual({ restauranteId, restaurante }) {
   const [mes, setMes] = useState(mesAnterior)
   const [estado, setEstado] = useState(null)
   const [datosMesAnt, setDatosMesAnt] = useState(null)
+  // Modo de comparación: 'mes_anterior' (default, septiembre vs agosto)
+  //                     | 'anio_anterior' (septiembre 2026 vs septiembre 2025)
+  const [modoComparar, setModoComparar] = useState('mes_anterior')
+  // Cache del snapshot YoY. Se carga perezosamente al activar el toggle.
+  // Estructura: { [mes]: { datos, cerrado } }. mes = del mes ACTUAL en la UI.
+  const [yoyCache, setYoyCache] = useState({})
+  const [loadingYoY, setLoadingYoY] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [cerrando, setCerrando] = useState(false)
@@ -303,8 +323,73 @@ export default function CierreMensual({ restauranteId, restaurante }) {
 
   useEffect(() => { cargar() }, [cargar])
 
+  // ── YoY: fetch perezoso del mes del año anterior, cacheado por `mes` ──
+  const cargarYoY = useCallback(async () => {
+    if (!restauranteId || !mes) return
+    if (yoyCache[mes]) return   // ya cacheado
+    setLoadingYoY(true)
+    try {
+      const resYoY = await authedFetch(
+        `/api/cierres-mes?restaurante_id=${restauranteId}&mes=${prevYearMes(mes)}`
+      )
+      if (resYoY.ok) {
+        const jsonYoY = await resYoY.json()
+        const datosYoY = jsonYoY.cerrado ? jsonYoY.cierre?.snapshot : jsonYoY.datos
+        setYoyCache(c => ({ ...c, [mes]: { datos: datosYoY ?? null, cerrado: !!jsonYoY.cerrado } }))
+      } else {
+        setYoyCache(c => ({ ...c, [mes]: { datos: null, cerrado: false } }))
+      }
+    } catch {
+      setYoyCache(c => ({ ...c, [mes]: { datos: null, cerrado: false } }))
+    } finally {
+      setLoadingYoY(false)
+    }
+  }, [restauranteId, mes, yoyCache])
+
+  // Dispara el fetch YoY cuando se activa el toggle y aún no hay caché.
+  useEffect(() => {
+    if (modoComparar === 'anio_anterior' && !yoyCache[mes]) cargarYoY()
+  }, [modoComparar, mes, yoyCache, cargarYoY])
+
   const cerrado = estado?.cerrado ?? false
   const datos   = cerrado ? estado?.cierre?.snapshot : estado?.datos
+
+  // Fuente de comparación según el modo + flag "prevCerrado" para la regla
+  // de comparabilidad de yoyCierre (sin-cierre-prev se decide con el flag
+  // `cerrado` del endpoint, NO con ventas_neto===0).
+  const yoyEntry = yoyCache[mes]
+  const datosComparar = modoComparar === 'anio_anterior'
+    ? (yoyEntry?.datos ?? null)
+    : (datosMesAnt ?? null)
+  const prevCerrado = modoComparar === 'anio_anterior'
+    ? !!yoyEntry?.cerrado
+    : true  // en MoM asumimos cerrado (comportamiento previo)
+
+  // vn(key): calcula el % para la columna de delta de DataRow usando
+  // yoyCierre. Devuelve { pct, title }. pct = número (para `vari`) o null.
+  // title = texto tooltip explicando por qué no hay delta (o '').
+  function vn(key) {
+    const meta = metricaPorKey(key)
+    if (!meta) {
+      // Métrica no catalogada: fallback a variPct para no romper nada.
+      return { pct: variPct(datos?.[key], datosComparar?.[key]), title: '' }
+    }
+    const motivo = esComparable(datos, datosComparar, meta, { prevCerrado })
+    if (motivo !== 'ok') {
+      return { pct: null, title: MOTIVOS_TEXTO[motivo] || '' }
+    }
+    const { delta, deltaPct } = deltaMetrica(datos[key], datosComparar[key], meta.tipo)
+    // Para 'ratio' deltaPct es null; pasamos el delta en pp como "vari" para
+    // que la UI pueda pintarlo (DataRow redondea a entero igualmente).
+    const pct = meta.tipo === 'ratio' ? delta : deltaPct
+    return { pct, title: '', delta, dir: meta.dir }
+  }
+
+  // Spread helper para <DataRow>: convierte el resultado de vn(key) en
+  // las dos props que DataRow consume. Mantiene el JSX legible.
+  function varProps(v) {
+    return { vari: v.pct, variTitle: v.title }
+  }
 
   async function cerrarMes() {
     setCerrando(true)
@@ -430,6 +515,46 @@ export default function CierreMensual({ restauranteId, restaurante }) {
             <span style={{ fontWeight: 600, minWidth: 150, textAlign: 'center', fontSize: 15 }}>{mesLabel(mes)}</span>
             <button className={styles.ghost} onClick={() => setMes(nextMes(mes))} style={{ padding: '2px 10px' }}>►</button>
           </div>
+          {/* Toggle "Comparar con" — H4b. En móvil se envuelve bajo la fila
+              anterior. Fetch del YoY es perezoso (al activar el toggle). */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12, opacity: 0.85 }}>
+            <span style={{ opacity: 0.6 }}>Comparar con:</span>
+            <button
+              className={styles.ghost}
+              onClick={() => setModoComparar('mes_anterior')}
+              style={{
+                padding: '2px 8px',
+                fontWeight: modoComparar === 'mes_anterior' ? 700 : 400,
+                opacity:    modoComparar === 'mes_anterior' ? 1 : 0.55,
+              }}
+            >
+              Mes anterior
+            </button>
+            <button
+              className={styles.ghost}
+              onClick={() => setModoComparar('anio_anterior')}
+              style={{
+                padding: '2px 8px',
+                fontWeight: modoComparar === 'anio_anterior' ? 700 : 400,
+                opacity:    modoComparar === 'anio_anterior' ? 1 : 0.55,
+              }}
+            >
+              {`Mismo mes ${prevYearMes(mes).slice(0, 4)}`}
+            </button>
+            {loadingYoY && modoComparar === 'anio_anterior' && (
+              <span style={{ fontSize: 11, opacity: 0.5 }}>cargando…</span>
+            )}
+            {modoComparar === 'anio_anterior' && yoyCache[mes] && !yoyCache[mes].cerrado && (
+              <span style={{ fontSize: 11, color: '#b8860b', opacity: 0.85 }} title="El mismo mes del año anterior no tiene cierre firmado">
+                sin cierre año anterior
+              </span>
+            )}
+          </div>
+          {!cerrado && (
+            <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
+              Mes en curso: dato parcial. El cierre se firma al cerrar el mes.
+            </div>
+          )}
         </div>
         <div className={styles.actionRow} style={{ alignItems: 'flex-end', gap: 8 }}>
           {datos && !loading && (
@@ -472,26 +597,26 @@ export default function CierreMensual({ restauranteId, restaurante }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <tbody>
               <SectionRow label="Ventas" />
-              <DataRow label="Bruto (con IVA)" value={eur(datos.ventas_bruto)} vari={variPct(datos.ventas_bruto, datosMesAnt?.ventas_bruto)} />
+              <DataRow label="Bruto (con IVA)" value={eur(datos.ventas_bruto)} {...varProps(vn('ventas_bruto'))} />
               <DataRow label={`IVA ${datos.iva_pct}%`} value={`− ${eur(datos.ventas_bruto - datos.ventas_neto)}`} dim />
-              <DataRow label="Netas (sin IVA)" value={eur(datos.ventas_neto)} strong vari={variPct(datos.ventas_neto, datosMesAnt?.ventas_neto)} />
+              <DataRow label="Netas (sin IVA)" value={eur(datos.ventas_neto)} strong {...varProps(vn('ventas_neto'))} />
 
               <SectionRow label="Coste de ventas teórico" />
-              <DataRow label="Botellas y copas" value={`− ${eur(datos.coste_ventas_teorico)}`} vari={variPct(datos.coste_ventas_teorico, datosMesAnt?.coste_ventas_teorico)} />
+              <DataRow label="Botellas y copas" value={`− ${eur(datos.coste_ventas_teorico)}`} {...varProps(vn('coste_ventas_teorico'))} />
               <DataRow
                 label={`Margen bruto${datos.margen_pct != null ? ` (${datos.margen_pct}%)` : ''}`}
                 value={eur(datos.margen_bruto)}
                 strong
                 color={datos.margen_pct == null ? null : datos.margen_pct >= 55 ? '#4A8C6F' : '#b85454'}
-                vari={variPct(datos.margen_bruto, datosMesAnt?.margen_bruto)}
+                {...varProps(vn('margen_bruto'))}
               />
 
               <SectionRow label="Compras" />
-              <DataRow label="Compras" value={eur(datos.compras_bruto)} vari={variPct(datos.compras_bruto, datosMesAnt?.compras_bruto)} />
+              <DataRow label="Compras" value={eur(datos.compras_bruto)} {...varProps(vn('compras_bruto'))} />
               {datos.devoluciones > 0 && (
                 <DataRow label="Devoluciones" value={`− ${eur(datos.devoluciones)}`} dim />
               )}
-              <DataRow label="Compras netas" value={eur(datos.compras_netas)} strong vari={variPct(datos.compras_netas, datosMesAnt?.compras_netas)} />
+              <DataRow label="Compras netas" value={eur(datos.compras_netas)} strong {...varProps(vn('compras_netas'))} />
 
               {datos.salidas_no_venta > 0 && (
                 <>
@@ -507,7 +632,7 @@ export default function CierreMensual({ restauranteId, restaurante }) {
                     label="Copas descartadas (botellas cerradas)"
                     value={`− ${eur(datos.merma_copa_eur)}`}
                     color="#b85454"
-                    vari={variPct(datos.merma_copa_eur, datosMesAnt?.merma_copa_eur)}
+                    {...varProps(vn('merma_copa_eur'))}
                   />
                 </>
               )}
@@ -592,11 +717,18 @@ export default function CierreMensual({ restauranteId, restaurante }) {
               <span style={{ fontWeight: 700, fontSize: 20, color: resultadoColor }}>
                 {datos.resultado >= 0 ? '' : '− '}{eur(Math.abs(datos.resultado))}
               </span>
-              {variPct(datos.resultado, datosMesAnt?.resultado) != null && (
-                <div style={{ fontSize: 12, marginTop: 2, color: variPct(datos.resultado, datosMesAnt?.resultado) >= 0 ? '#4A8C6F' : '#b85454', opacity: 0.8 }}>
-                  {variTag(variPct(datos.resultado, datosMesAnt?.resultado))} vs {mesLabel(prevMes(mes))}
-                </div>
-              )}
+              {(() => {
+                const r = vn('resultado')
+                if (r.pct == null) return null
+                const refLabel = modoComparar === 'anio_anterior'
+                  ? mesLabel(prevYearMes(mes))
+                  : mesLabel(prevMes(mes))
+                return (
+                  <div style={{ fontSize: 12, marginTop: 2, color: r.pct >= 0 ? '#4A8C6F' : '#b85454', opacity: 0.8 }}>
+                    {variTag(r.pct)} vs {refLabel}
+                  </div>
+                )
+              })()}
             </div>
           </div>
 
