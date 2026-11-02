@@ -7,11 +7,14 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   deltaMetrica,
+  deltaResultado,
   esComparable,
   metricaPorKey,
+  motivoText,
   colorDelta,
   METRICAS_CIERRE_YOY,
   MOTIVOS_TEXTO,
+  TOOLTIP_RESULTADO_ANTES_DE_MERMA,
   COLOR_VERDE, COLOR_ROJO,
 } from '../app/lib/yoyCierre.js'
 
@@ -183,5 +186,148 @@ describe('colorDelta', () => {
     const merma = metricaPorKey('merma_copa_eur')
     assert.equal(colorDelta(50, merma.dir), COLOR_ROJO,
       'subir la merma debe pintar ROJO, no verde')
+  })
+})
+
+// ── motivoText: overrides por métrica ───────────────────────────────────────
+
+describe('motivoText (per-metric override)', () => {
+  it('default genérico cuando no hay override', () => {
+    assert.equal(motivoText('sin-cierre-prev', 'ventas_neto'),
+      MOTIVOS_TEXTO['sin-cierre-prev'])
+    assert.equal(motivoText('ambos-null', 'resultado'),
+      MOTIVOS_TEXTO['ambos-null'])
+  })
+
+  it('override para merma_copa_eur/prev-cero: texto user-friendly', () => {
+    const txt = motivoText('prev-cero', 'merma_copa_eur')
+    assert.equal(txt, 'El mes de referencia no registra merma de copa, no es comparable.')
+    assert.notEqual(txt, MOTIVOS_TEXTO['prev-cero'])
+  })
+
+  it('motivos revisados: sin "año anterior" ni jerga interna (seed, cierre)', () => {
+    for (const motivo of ['sin-cierre-prev','metrica-no-util','ambos-null',
+                           'metrica-ausente-prev','prev-cero','metrica-desconocida']) {
+      const t = MOTIVOS_TEXTO[motivo]
+      assert.ok(!/año anterior/i.test(t),
+        `MOTIVOS_TEXTO.${motivo} no debe mencionar "año anterior": "${t}"`)
+      assert.ok(!/seed|re-cierre|snapshot/i.test(t),
+        `MOTIVOS_TEXTO.${motivo} no debe usar jerga interna: "${t}"`)
+    }
+  })
+
+  it('motivo desconocido → ""', () => {
+    assert.equal(motivoText('inexistente', 'ventas_neto'), '')
+    assert.equal(motivoText(undefined, 'ventas_neto'), '')
+  })
+})
+
+// ── deltaResultado: regla antes_de_merma ───────────────────────────────────
+
+describe('deltaResultado — regla antes_de_merma', () => {
+  it('asimétrico: actual con merma > 0, prev con merma = 0', () => {
+    // Caso real demo (YoY): oct-26 vs oct-25
+    //   oct-26: resultado=1894.70, merma=282.76  → antes_de_merma=2177.46
+    //   oct-25: resultado=1908.46, merma=0       → antes_de_merma=1908.46
+    //   delta = 2177.46 − 1908.46 = 269.00
+    //   deltaPct = round(269.00 / 1908.46 * 100) = 14
+    const r = deltaResultado(
+      { resultado: 1894.70, merma_copa_eur: 282.76 },
+      { resultado: 1908.46, merma_copa_eur: 0 },
+    )
+    assert.equal(r.base, 'antes_de_merma')
+    assert.equal(r.valor, 2177.46)
+    assert.equal(r.prev,  1908.46)
+    assert.equal(r.delta, 269)
+    assert.equal(r.deltaPct, 14)
+  })
+
+  it('asimétrico MoM: oct-26 vs sept-26', () => {
+    // oct-26: resultado=1894.70, merma=282.76  → 2177.46
+    // sept-26: resultado=2109.36, merma=0       → 2109.36
+    // delta = 68.10, pct = round(68.10/2109.36*100) = 3
+    const r = deltaResultado(
+      { resultado: 1894.70, merma_copa_eur: 282.76 },
+      { resultado: 2109.36, merma_copa_eur: 0 },
+    )
+    assert.equal(r.base, 'antes_de_merma')
+    assert.equal(r.valor, 2177.46)
+    assert.equal(r.prev,  2109.36)
+    assert.equal(r.delta, 68.1)
+    assert.equal(r.deltaPct, 3)
+  })
+
+  it('caso inverso: prev con merma > 0, actual con merma = 0', () => {
+    const r = deltaResultado(
+      { resultado: 2109.36, merma_copa_eur: 0 },      // actual
+      { resultado: 1894.70, merma_copa_eur: 282.76 }, // prev
+    )
+    // valor = 2109.36, prev = 1894.70 + 282.76 = 2177.46
+    // delta = -68.10, pct = round(-68.10/2177.46*100) = -3
+    assert.equal(r.base, 'antes_de_merma')
+    assert.equal(r.valor, 2109.36)
+    assert.equal(r.prev,  2177.46)
+    assert.equal(r.delta, -68.1)
+    assert.equal(r.deltaPct, -3)
+  })
+
+  it('ambos con merma > 0: compara resultado directo (base=resultado)', () => {
+    const r = deltaResultado(
+      { resultado: 1894.70, merma_copa_eur: 282.76 },
+      { resultado: 1800,    merma_copa_eur: 150 },
+    )
+    assert.equal(r.base, 'resultado')
+    assert.equal(r.valor, 1894.70)
+    assert.equal(r.prev,  1800)
+    assert.equal(r.delta, 94.7)
+  })
+
+  it('ambos sin merma (0 o ausente): compara resultado directo', () => {
+    const a = deltaResultado(
+      { resultado: 2000, merma_copa_eur: 0 },
+      { resultado: 1800, merma_copa_eur: 0 },
+    )
+    assert.equal(a.base, 'resultado')
+    assert.equal(a.delta, 200)
+
+    const b = deltaResultado(
+      { resultado: 2000 },  // merma ausente
+      { resultado: 1800 },
+    )
+    assert.equal(b.base, 'resultado')
+    assert.equal(b.delta, 200)
+
+    // Mixto: ausente vs 0 → simétrico (ambos tratados como 0)
+    const c = deltaResultado(
+      { resultado: 2000, merma_copa_eur: 0 },
+      { resultado: 1800 },
+    )
+    assert.equal(c.base, 'resultado', 'ausente debe tratarse como 0 para la simetría')
+  })
+
+  it('merma ausente en una parte, >0 en la otra: SIGUE siendo asimétrico', () => {
+    // merma_copa_eur falta en el snap prev → tratado como 0 → asimétrico.
+    const r = deltaResultado(
+      { resultado: 1894.70, merma_copa_eur: 282.76 },
+      { resultado: 1908.46 },  // sin campo merma
+    )
+    assert.equal(r.base, 'antes_de_merma')
+    assert.equal(r.valor, 2177.46)
+    assert.equal(r.prev,  1908.46)
+    assert.equal(r.deltaPct, 14)
+  })
+
+  it('resultado null/missing → delta null, base=resultado', () => {
+    const a = deltaResultado({ resultado: null, merma_copa_eur: 282.76 },
+                             { resultado: 1800, merma_copa_eur: 0 })
+    assert.equal(a.delta, null)
+    assert.equal(a.deltaPct, null)
+    const b = deltaResultado({ resultado: 1900 }, null)
+    assert.equal(b.delta, null)
+  })
+
+  it('tooltip texto fijo accesible', () => {
+    assert.ok(TOOLTIP_RESULTADO_ANTES_DE_MERMA.includes('antes de merma'))
+    assert.ok(TOOLTIP_RESULTADO_ANTES_DE_MERMA.includes('no registra merma'))
   })
 })

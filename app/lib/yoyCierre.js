@@ -112,16 +112,94 @@ export function esComparable(snapActual, snapPrev, metrica, flags = {}) {
   return 'ok'
 }
 
-/** Texto humano para el motivo (tooltip UI). */
+/**
+ * Texto humano para el motivo (tooltip UI). Redactado para ser
+ * agnóstico del modo (MoM / YoY): "mes de referencia" en lugar de
+ * "año anterior", y sin jerga interna (seed, re-cierre, snapshot).
+ */
 export const MOTIVOS_TEXTO = {
   'ok':                      '',
-  'sin-cierre-prev':         'Sin cierre del mismo mes del año anterior',
-  'metrica-no-util':         'No hay comparación interanual útil para esta métrica',
+  'sin-cierre-prev':         'Sin cierre del mes de referencia',
+  'metrica-no-util':         'No hay comparación útil para esta métrica',
   'ambos-null':              'Dato no disponible en ninguno de los dos meses',
-  'metrica-ausente-prev':    'Dato no disponible en el mes del año anterior',
-  'prev-cero':               'El mes del año anterior tenía valor 0 (comparación no significativa)',
-  'metrica-desconocida':     'Métrica no catalogada para YoY',
+  'metrica-ausente-prev':    'Dato no disponible en el mes de referencia',
+  'prev-cero':               'El mes de referencia tenía valor 0 (comparación no significativa)',
+  'metrica-desconocida':     'Métrica no catalogada para la comparación',
 }
+
+/**
+ * Overrides por métrica: cuando una métrica concreta quiere un texto
+ * más específico para el usuario final que el genérico. Devueltos por
+ * motivoText(motivo, metricKey).
+ */
+const MOTIVOS_POR_METRICA = {
+  'merma_copa_eur': {
+    'prev-cero': 'El mes de referencia no registra merma de copa, no es comparable.',
+  },
+}
+
+/**
+ * Texto humano para la UI, con override opcional por métrica.
+ * Nunca lanza; devuelve '' si el motivo es 'ok' o desconocido.
+ */
+export function motivoText(motivo, metricKey) {
+  return MOTIVOS_POR_METRICA[metricKey]?.[motivo]
+      ?? MOTIVOS_TEXTO[motivo]
+      ?? ''
+}
+
+/**
+ * deltaResultado(snapActual, snapPrev) — regla especial para la
+ * comparativa del campo `resultado`.
+ *
+ * Problema que resuelve: `snapshot.resultado` incluye `-merma_copa_eur`
+ * en su fórmula. En el demo, los snapshots 2025 tienen merma=0 por un
+ * artefacto previo; los 2026 (y oct en adelante tras los fixes de
+ * [5c]) ya la incluyen. Comparar directamente `resultado` cuando una
+ * de las dos partes tiene merma y la otra no mezcla cosas distintas.
+ *
+ * Regla:
+ *   · Si una tiene merma > 0 y la otra tiene 0 o ausente, comparamos
+ *     "resultado antes de merma" = resultado + merma_copa_eur en AMBOS
+ *     lados. La parte con merma=0 no cambia (sumar 0). Devuelve
+ *     base='antes_de_merma' para que la UI etiquete el delta.
+ *   · Si ambas tienen merma > 0 (o ambas 0 / ambas ausentes), compara
+ *     `resultado` directamente. Devuelve base='resultado'.
+ *
+ * Devuelve { delta, deltaPct, base, valor, prev }. delta/deltaPct
+ * siguen las reglas de deltaMetrica('importe').
+ */
+export function deltaResultado(snapActual, snapPrev) {
+  const SENTINEL = { delta: null, deltaPct: null, base: 'resultado', valor: null, prev: null }
+  if (snapActual == null || snapPrev == null) return SENTINEL
+  // Cuidado: Number(null) === 0 → check explícito null/undefined antes.
+  if (snapActual.resultado == null || snapPrev.resultado == null) return SENTINEL
+  const rA = Number(snapActual.resultado)
+  const rB = Number(snapPrev.resultado)
+  if (!Number.isFinite(rA) || !Number.isFinite(rB)) return SENTINEL
+
+  // Nota: tratamos merma ausente como 0 a efectos de simetría (si no
+  // está en el snapshot, no se descontó). Esto hace que ausencia y 0
+  // sean equivalentes para la asimetría.
+  const mAraw = snapActual.merma_copa_eur
+  const mBraw = snapPrev.merma_copa_eur
+  const mA = (mAraw == null || !Number.isFinite(Number(mAraw))) ? 0 : Number(mAraw)
+  const mB = (mBraw == null || !Number.isFinite(Number(mBraw))) ? 0 : Number(mBraw)
+
+  const asymmetric = (mA > 0 && mB === 0) || (mA === 0 && mB > 0)
+  if (asymmetric) {
+    const valor = round2(rA + mA)
+    const prev  = round2(rB + mB)
+    const r = deltaMetrica(valor, prev, 'importe')
+    return { ...r, base: 'antes_de_merma', valor, prev }
+  }
+  const r = deltaMetrica(rA, rB, 'importe')
+  return { ...r, base: 'resultado', valor: round2(rA), prev: round2(rB) }
+}
+
+/** Texto fijo para la etiqueta "antes de merma" en el delta de resultado. */
+export const TOOLTIP_RESULTADO_ANTES_DE_MERMA =
+  'Comparado antes de merma: el mes de referencia no registra merma de copa.'
 
 /**
  * Decide el color (tagColor) del delta según la dirección de la métrica.
