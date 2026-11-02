@@ -1,3 +1,5 @@
+import { fetchAllPages, chunkArray } from './fetchAllPages'
+
 /**
  * agregarPeriodoBodega — Agregación de ventas de sala por periodo.
  *
@@ -34,16 +36,18 @@ export async function agregarPeriodoBodega({ restaurante_id, desde, hasta, supab
     }
   }
 
-  // Partes del periodo
-  const { data: partes } = await supabase
-    .from('partes_servicio')
-    .select('id, fecha, turno, estado')
-    .eq('restaurante_id', restaurante_id)
-    .gte('fecha', desde)
-    .lte('fecha', hasta)
+  // Partes del periodo — paginado (PostgREST corta a 1000; un restaurante con
+  // 2+ turnos/día acumula ≈60 partes/mes, pero rangos amplios pueden pasarse).
+  const partes = await fetchAllPages(() =>
+    supabase.from('partes_servicio')
+      .select('id, fecha, turno, estado')
+      .eq('restaurante_id', restaurante_id)
+      .gte('fecha', desde)
+      .lte('fecha', hasta)
+  )
 
-  const cerrados  = (partes || []).filter(p => p.estado === 'cerrado')
-  const borradores = (partes || []).filter(p => p.estado === 'borrador').length
+  const cerrados  = partes.filter(p => p.estado === 'cerrado')
+  const borradores = partes.filter(p => p.estado === 'borrador').length
 
   if (cerrados.length === 0) {
     return {
@@ -55,14 +59,19 @@ export async function agregarPeriodoBodega({ restaurante_id, desde, hasta, supab
   const parteIds = cerrados.map(p => p.id)
   const parteMap = Object.fromEntries(cerrados.map(p => [p.id, p]))
 
-  // Líneas con datos de vino
-  const { data: lineas } = await supabase
-    .from('partes_servicio_lineas')
-    .select('*, vino:vinos(id, nombre, coste_medio_pmp, coste_compra)')
-    .in('parte_id', parteIds)
-    .order('created_at', { ascending: true })
+  // Líneas con datos de vino — paginado + chunking en .in() para no reventar
+  // la URL (PostgREST ≈100 ids por .in()) ni cortar a 1000 filas.
+  const lineas = []
+  for (const chunk of chunkArray(parteIds, 100)) {
+    const chunkRows = await fetchAllPages(() =>
+      supabase.from('partes_servicio_lineas')
+        .select('*, vino:vinos(id, nombre, coste_medio_pmp, coste_compra)')
+        .in('parte_id', chunk)
+    )
+    lineas.push(...chunkRows)
+  }
 
-  const lineasConParte = (lineas || []).map(l => ({ ...l, parte: parteMap[l.parte_id] }))
+  const lineasConParte = lineas.map(l => ({ ...l, parte: parteMap[l.parte_id] }))
 
   return {
     meta: { ...meta, partes_incluidos: cerrados.length, borradores_excluidos: borradores },
@@ -259,10 +268,17 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
   const lastDay = new Date(y, m, 0).getDate()
   const desde = `${mes}-01`
   const hasta = `${mes}-${String(lastDay).padStart(2, '0')}`
-  // UTC bounds for Madrid timestamps (CET=+01:00 winter, CEST=+02:00 summer)
-  const tzOff   = (m >= 4 && m <= 10) ? '+02:00' : '+01:00'
-  const desde_ts = new Date(`${desde}T00:00:00${tzOff}`).toISOString()
-  const hasta_ts  = new Date(`${hasta}T23:59:59${tzOff}`).toISOString()
+  // UTC bounds for Madrid timestamps (CET=+01:00 winter, CEST=+02:00 summer).
+  // Usamos [desde_ts, hasta_next_ts) semi-abierto: evita perder el último
+  // segundo que .lte('…T23:59:59') descartaba (p.ej. 23:59:59.5), y maneja
+  // bien el cambio DST cuando el día siguiente cae en otro offset.
+  const tzOff      = (m >= 4 && m <= 10) ? '+02:00' : '+01:00'
+  const desde_ts   = new Date(`${desde}T00:00:00${tzOff}`).toISOString()
+  const nextY      = (m === 12) ? y + 1 : y
+  const nextM      = (m === 12) ? 1     : m + 1
+  const tzOffNext  = (nextM >= 4 && nextM <= 10) ? '+02:00' : '+01:00'
+  const nextMesStr = `${nextY}-${String(nextM).padStart(2, '0')}-01`
+  const hasta_next_ts = new Date(`${nextMesStr}T00:00:00${tzOffNext}`).toISOString()
 
   const { data: settings } = await supabase
     .from('restaurant_economic_settings')
@@ -299,37 +315,49 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
 
   // Compras B2 (con cabecera) — fuente canónica: lineas_compra.importe_neto
   // por fecha de cabecera (DATE en Europe/Madrid, desde/hasta ya son YYYY-MM-DD Madrid)
-  const { data: cabecerasMes } = await supabase
-    .from('cabecera_compras')
-    .select('id')
-    .eq('restaurante_id', restaurante_id)
-    .gte('fecha', desde)
-    .lte('fecha', hasta)
-    .eq('estado', 'aplicada')
+  // Paginado: un mes con cientos de albaranes supera 1000.
+  const cabecerasMes = await fetchAllPages(() =>
+    supabase.from('cabecera_compras')
+      .select('id')
+      .eq('restaurante_id', restaurante_id)
+      .gte('fecha', desde)
+      .lte('fecha', hasta)
+      .eq('estado', 'aplicada')
+  )
 
-  const cabeceraIds = (cabecerasMes || []).map(c => c.id)
+  const cabeceraIds = cabecerasMes.map(c => c.id)
   let compras_b2 = 0
   if (cabeceraIds.length > 0) {
-    const { data: lineasB2 } = await supabase
-      .from('lineas_compra')
-      .select('importe_neto')
-      .in('cabecera_id', cabeceraIds)
-    compras_b2 = r2((lineasB2 || []).reduce((s, l) => s + (Number(l.importe_neto) || 0), 0))
+    // Chunk .in() a 100 ids y paginar cada chunk: lineas_compra puede acumular
+    // >1000 filas por mes aunque las cabeceras sean pocas.
+    let acc = 0
+    for (const chunk of chunkArray(cabeceraIds, 100)) {
+      const rows = await fetchAllPages(() =>
+        supabase.from('lineas_compra')
+          .select('importe_neto')
+          .in('cabecera_id', chunk)
+      )
+      for (const l of rows) acc += (Number(l.importe_neto) || 0)
+    }
+    compras_b2 = r2(acc)
   }
 
   // Compras históricas (sin cabecera) + devoluciones — movimientos_stock
-  // IS NULL cabecera_compra_id evita doble conteo con compras B2
-  const { data: movsCD } = await supabase
-    .from('movimientos_stock')
-    .select('tipo, cantidad, vino:vinos(coste_medio_pmp, coste_compra)')
-    .eq('restaurante_id', restaurante_id)
-    .in('tipo', ['compra', 'devolucion'])
-    .is('cabecera_compra_id', null)
-    .gte('created_at', desde_ts)
-    .lte('created_at', hasta_ts)
+  // IS NULL cabecera_compra_id evita doble conteo con compras B2.
+  // Paginado: histórico de movimientos puede superar 1000 por mes.
+  // Rango semi-abierto [desde_ts, hasta_next_ts) para no perder segundos.
+  const movsCD = await fetchAllPages(() =>
+    supabase.from('movimientos_stock')
+      .select('tipo, cantidad, vino:vinos(coste_medio_pmp, coste_compra)')
+      .eq('restaurante_id', restaurante_id)
+      .in('tipo', ['compra', 'devolucion'])
+      .is('cabecera_compra_id', null)
+      .gte('created_at', desde_ts)
+      .lt('created_at', hasta_next_ts)
+  )
 
   let compras_hist = 0, devol_acc = 0
-  for (const mov of movsCD || []) {
+  for (const mov of movsCD) {
     const c   = Number(mov.vino?.coste_medio_pmp) || Number(mov.vino?.coste_compra) || 0
     const val = r2(Math.max(0, Number(mov.cantidad) || 0) * c)
     if (mov.tipo === 'compra')     compras_hist += val
@@ -339,29 +367,36 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
   const devoluciones  = r2(devol_acc)
   const compras_netas = r2(compras_bruto - devoluciones)
 
-  // Conteos del mes para stock y diferencias de inventario
-  const { data: conteosMes } = await supabase
-    .from('conteos_inventario')
-    .select('id, cerrado_en')
-    .eq('restaurante_id', restaurante_id)
-    .eq('estado', 'cerrado')
-    .gte('cerrado_en', desde_ts)
-    .lte('cerrado_en', hasta_ts)
-    .order('cerrado_en')
+  // Conteos del mes para stock y diferencias de inventario.
+  // Paginado + semi-abierto por timestamptz. fetchAllPages ordena por
+  // created_at,id, así que re-ordenamos por cerrado_en para preservar la
+  // semántica de "primer / último conteo del mes".
+  const conteosRaw = await fetchAllPages(() =>
+    supabase.from('conteos_inventario')
+      .select('id, cerrado_en')
+      .eq('restaurante_id', restaurante_id)
+      .eq('estado', 'cerrado')
+      .gte('cerrado_en', desde_ts)
+      .lt('cerrado_en', hasta_next_ts)
+  )
+  const conteosMes = conteosRaw.slice().sort((a, b) =>
+    String(a.cerrado_en).localeCompare(String(b.cerrado_en))
+  )
 
   let stock_inicial        = null
   let stock_final          = null
   let diferencias_inventario = null
   let aviso_stock          = null
 
-  if (conteosMes && conteosMes.length > 0) {
+  if (conteosMes.length > 0) {
     const conteoFin = conteosMes[conteosMes.length - 1]
-    const { data: lineasFin } = await supabase
-      .from('conteos_inventario_lineas')
-      .select('stock_teorico, stock_contado, coste_unitario_snapshot, contado, diferencia')
-      .eq('conteo_id', conteoFin.id)
+    const lineasFin = await fetchAllPages(() =>
+      supabase.from('conteos_inventario_lineas')
+        .select('stock_teorico, stock_contado, coste_unitario_snapshot, contado, diferencia')
+        .eq('conteo_id', conteoFin.id)
+    )
 
-    stock_final = r2((lineasFin || []).reduce((s, l) => {
+    stock_final = r2(lineasFin.reduce((s, l) => {
       const coste = Number(l.coste_unitario_snapshot) || 0
       const stock = (l.contado && l.stock_contado != null)
         ? Number(l.stock_contado)
@@ -369,18 +404,19 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
       return s + stock * coste
     }, 0))
 
-    diferencias_inventario = r2((lineasFin || []).reduce((s, l) => {
+    diferencias_inventario = r2(lineasFin.reduce((s, l) => {
       if (!l.contado || l.diferencia == null) return s
       return s + Number(l.diferencia) * (Number(l.coste_unitario_snapshot) || 0)
     }, 0))
 
     if (conteosMes.length >= 2) {
       const conteoIni = conteosMes[0]
-      const { data: lineasIni } = await supabase
-        .from('conteos_inventario_lineas')
-        .select('stock_teorico, coste_unitario_snapshot')
-        .eq('conteo_id', conteoIni.id)
-      stock_inicial = r2((lineasIni || []).reduce((s, l) =>
+      const lineasIni = await fetchAllPages(() =>
+        supabase.from('conteos_inventario_lineas')
+          .select('stock_teorico, coste_unitario_snapshot')
+          .eq('conteo_id', conteoIni.id)
+      )
+      stock_inicial = r2(lineasIni.reduce((s, l) =>
         s + (Number(l.stock_teorico) || 0) * (Number(l.coste_unitario_snapshot) || 0), 0))
     } else {
       aviso_stock = 'Solo un conteo en el mes — stock inicial no disponible'
@@ -389,19 +425,22 @@ export async function calcularMesBodega({ restaurante_id, mes, supabase }) {
     aviso_stock = 'Sin conteos en el mes — diferencias de inventario no disponibles'
   }
 
-  // B4: Rendimiento por copa — botellas agotadas/cerradas en el período
-  // Fuente: botellas_abiertas cerradas (estado agotada o cerrada_manual)
-  // No afecta identidades contables; es una vista de eficiencia de servicio
-  const { data: botellasRendimiento } = await supabase
-    .from('botellas_abiertas')
-    .select('vino_id, copas_servidas, copas_teoricas, coste_copa, vinos(nombre)')
-    .eq('restaurante_id', restaurante_id)
-    .in('estado', ['agotada', 'cerrada_manual'])
-    .gte('cerrada_at', desde_ts)
-    .lte('cerrada_at', hasta_ts)
+  // B4: Rendimiento por copa — botellas agotadas/cerradas en el período.
+  // Fuente: botellas_abiertas cerradas (estado agotada o cerrada_manual).
+  // HOTFIX: paginar. Un mes con rotación alta de copa supera 1000 botellas
+  // cerradas y PostgREST truncaba, subestimando merma_copa_eur.
+  // Rango semi-abierto en cerrada_at (timestamptz) para no perder segundos.
+  const botellasRendimiento = await fetchAllPages(() =>
+    supabase.from('botellas_abiertas')
+      .select('vino_id, copas_servidas, copas_teoricas, coste_copa, vinos(nombre)')
+      .eq('restaurante_id', restaurante_id)
+      .in('estado', ['agotada', 'cerrada_manual'])
+      .gte('cerrada_at', desde_ts)
+      .lt('cerrada_at', hasta_next_ts)
+  )
 
   const rendimiento_copa = Object.values(
-    (botellasRendimiento || []).reduce((acc, b) => {
+    botellasRendimiento.reduce((acc, b) => {
       const vid = b.vino_id
       if (!acc[vid]) {
         acc[vid] = {
