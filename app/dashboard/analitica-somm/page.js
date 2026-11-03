@@ -482,7 +482,10 @@ function TabPresupuesto({ restauranteId, historico }) {
       : num(objetivosManuales[i])
     const ingresoBase = objYoY?.ingresoBase || 0
     const real = realActual[mes]?.ingresos || 0
-    const crecimientoReal = ingresoBase ? redondear(((real - ingresoBase) / ingresoBase) * 100, 1) : null
+    // A5: cuando no hay dato real del periodo (mes en curso o futuro),
+    // crecimientoReal queda en null para que la celda muestre "—" neutro
+    // en lugar de un "-100%" rojo falso.
+    const crecimientoReal = (ingresoBase && real) ? redondear(((real - ingresoBase) / ingresoBase) * 100, 1) : null
     const superaObjetivo = objetivo && real >= objetivo
     return { mes, label: MESES_LABEL[i], ingresoBase, objetivo, real, crecimientoReal, superaObjetivo }
   })
@@ -734,7 +737,7 @@ function TabBonus({ restauranteId, historico }) {
                   <td style={{ padding: '7px 8px', textAlign: 'right', color: '#888' }}>{f.anterior ? eur(f.anterior) : '—'}</td>
                   <td style={{ padding: '7px 8px', textAlign: 'right' }}>{f.objetivo ? eur(f.objetivo) : '—'}</td>
                   <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: f.facturado > 0 ? 600 : 400 }}>{f.facturado ? eur(f.facturado) : '—'}</td>
-                  <td style={{ padding: '7px 8px', textAlign: 'right', color: f.crecimientoYoyPct >= num(umbral) ? '#27ae60' : '#e74c3c', fontWeight: 500 }}>
+                  <td style={{ padding: '7px 8px', textAlign: 'right', color: !(f.facturado && f.anterior) ? '#888' : f.crecimientoYoyPct >= num(umbral) ? '#27ae60' : '#e74c3c', fontWeight: 500 }}>
                     {f.facturado && f.anterior ? `${f.crecimientoYoyPct >= 0 ? '+' : ''}${f.crecimientoYoyPct}%` : '—'}
                   </td>
                   <td style={{ padding: '7px 8px', textAlign: 'right', color: '#888' }}>
