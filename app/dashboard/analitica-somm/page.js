@@ -481,13 +481,18 @@ function TabPresupuesto({ restauranteId, historico }) {
       ? (objYoY?.objetivo || 0)
       : num(objetivosManuales[i])
     const ingresoBase = objYoY?.ingresoBase || 0
-    const real = realActual[mes]?.ingresos || 0
-    // A5: cuando no hay dato real del periodo (mes en curso o futuro),
-    // crecimientoReal queda en null para que la celda muestre "—" neutro
-    // en lugar de un "-100%" rojo falso.
-    const crecimientoReal = (ingresoBase && real) ? redondear(((real - ingresoBase) / ingresoBase) * 100, 1) : null
-    const superaObjetivo = objetivo && real >= objetivo
-    return { mes, label: MESES_LABEL[i], ingresoBase, objetivo, real, crecimientoReal, superaObjetivo }
+    // A5 (revisit): distinguir "sin dato real" (null/undefined) de "0 real".
+    // Un 0 facturado legitimo (p. ej. mes cerrado por vacaciones) debe mostrar
+    // su crecimiento (-100%) real; solo ocultamos cuando no hay fila en
+    // realActual[mes] o su ingresos viene null/undefined.
+    const realRaw = realActual[mes]?.ingresos
+    const tieneDatoReal = realRaw != null
+    const real = Number(realRaw) || 0
+    const crecimientoReal = (ingresoBase && tieneDatoReal)
+      ? redondear(((real - ingresoBase) / ingresoBase) * 100, 1)
+      : null
+    const superaObjetivo = objetivo && tieneDatoReal && real >= objetivo
+    return { mes, label: MESES_LABEL[i], ingresoBase, objetivo, real, tieneDatoReal, crecimientoReal, superaObjetivo }
   })
 
   return (
@@ -570,13 +575,13 @@ function TabPresupuesto({ restauranteId, historico }) {
                     )}
                   </td>
                   <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: f.real > 0 ? 600 : 400 }}>
-                    {f.real ? eur(f.real) : '—'}
+                    {f.tieneDatoReal ? eur(f.real) : '—'}
                   </td>
                   <td style={{ padding: '7px 8px', textAlign: 'right', color: f.crecimientoReal == null ? '#888' : f.crecimientoReal >= 0 ? '#27ae60' : '#e74c3c', fontWeight: 500 }}>
                     {f.crecimientoReal != null ? `${f.crecimientoReal >= 0 ? '+' : ''}${f.crecimientoReal}%` : '—'}
                   </td>
                   <td style={{ padding: '7px 8px', textAlign: 'center', fontSize: 15 }}>
-                    {f.real && f.objetivo ? (f.superaObjetivo ? '✅' : '❌') : '·'}
+                    {f.tieneDatoReal && f.objetivo ? (f.superaObjetivo ? '✅' : '❌') : '·'}
                   </td>
                 </tr>
               ))}
@@ -638,11 +643,17 @@ function TabBonus({ restauranteId, historico }) {
   const filasMeses = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
       const mes = i + 1
-      const facturado = realActual[mes]?.ingresos || 0
-      const anterior = realAnterior[mes]?.ingresos || 0
+      // A5 (revisit): tieneFacturadoReal / tieneAnteriorReal distinguen
+      // "sin fila en historico" (null/undefined) de un 0 legitimo.
+      const facturadoRaw = realActual[mes]?.ingresos
+      const anteriorRaw = realAnterior[mes]?.ingresos
+      const tieneFacturadoReal = facturadoRaw != null
+      const tieneAnteriorReal = anteriorRaw != null
+      const facturado = Number(facturadoRaw) || 0
+      const anterior = Number(anteriorRaw) || 0
       const objetivo = presupuesto[mes]?.objetivo_facturacion || (anterior * (1 + num(umbral) / 100))
       const r = calcularBonus(facturado, objetivo, num(umbral), num(bonusPct), anterior)
-      return { mes, label: MESES_LABEL[i], facturado, anterior, objetivo, ...r }
+      return { mes, label: MESES_LABEL[i], facturado, anterior, objetivo, tieneFacturadoReal, tieneAnteriorReal, ...r }
     })
   }, [realActual, realAnterior, presupuesto, umbral, bonusPct])
 
@@ -734,17 +745,17 @@ function TabBonus({ restauranteId, historico }) {
               {filasMeses.map(f => (
                 <tr key={f.mes} style={{ borderBottom: '1px solid #f0ece4', background: f.bonus > 0 ? '#f0faf4' : undefined }}>
                   <td style={{ padding: '7px 8px', fontWeight: 500 }}>{f.label}</td>
-                  <td style={{ padding: '7px 8px', textAlign: 'right', color: '#888' }}>{f.anterior ? eur(f.anterior) : '—'}</td>
+                  <td style={{ padding: '7px 8px', textAlign: 'right', color: '#888' }}>{f.tieneAnteriorReal ? eur(f.anterior) : '—'}</td>
                   <td style={{ padding: '7px 8px', textAlign: 'right' }}>{f.objetivo ? eur(f.objetivo) : '—'}</td>
-                  <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: f.facturado > 0 ? 600 : 400 }}>{f.facturado ? eur(f.facturado) : '—'}</td>
-                  <td style={{ padding: '7px 8px', textAlign: 'right', color: !(f.facturado && f.anterior) ? '#888' : f.crecimientoYoyPct >= num(umbral) ? '#27ae60' : '#e74c3c', fontWeight: 500 }}>
-                    {f.facturado && f.anterior ? `${f.crecimientoYoyPct >= 0 ? '+' : ''}${f.crecimientoYoyPct}%` : '—'}
+                  <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: f.facturado > 0 ? 600 : 400 }}>{f.tieneFacturadoReal ? eur(f.facturado) : '—'}</td>
+                  <td style={{ padding: '7px 8px', textAlign: 'right', color: !(f.tieneFacturadoReal && f.anterior) ? '#888' : f.crecimientoYoyPct >= num(umbral) ? '#27ae60' : '#e74c3c', fontWeight: 500 }}>
+                    {f.tieneFacturadoReal && f.anterior ? `${f.crecimientoYoyPct >= 0 ? '+' : ''}${f.crecimientoYoyPct}%` : '—'}
                   </td>
                   <td style={{ padding: '7px 8px', textAlign: 'right', color: '#888' }}>
                     {f.exceso > 0 ? eur(f.exceso) : '—'}
                   </td>
                   <td style={{ padding: '7px 8px', textAlign: 'right', fontWeight: 700, color: f.bonus > 0 ? '#27ae60' : '#888' }}>
-                    {f.bonus > 0 ? eur(f.bonus, 2) : f.facturado ? '—' : '·'}
+                    {f.bonus > 0 ? eur(f.bonus, 2) : f.tieneFacturadoReal ? '—' : '·'}
                   </td>
                 </tr>
               ))}
