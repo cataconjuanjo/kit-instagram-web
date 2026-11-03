@@ -544,14 +544,24 @@ function ExplotacionContent() {
         setCanales({ copa_barra: '', botella_mesa: '', grupos_eventos: '', take_away: '' })
       }
 
-      const { data: cierre } = await supabase
+      // A3: distinguir "sin fila" de "query fallida". Antes, cualquier error
+      // (RLS, red) silenciaba y marcaba cierreExiste=false, mostrando el banner
+      // de "Mes sin cerrar" como falso positivo. Ahora solo marcamos false si
+      // la query fue OK y no vino fila; si hay error, dejamos el estado como
+      // null (cargando) y el banner no se dispara.
+      const { data: cierre, error: errCierre } = await supabase
         .from('cierres_mensuales_bodega')
         .select('snapshot')
         .eq('restaurante_id', restaurante.id)
         .eq('mes', periodo)
         .maybeSingle()
       setDatosVino(cierre?.snapshot || null)
-      setCierreExiste(!!cierre)
+      if (errCierre) {
+        console.warn('[explotacion] no se pudo verificar cierre del periodo', periodo, errCierre.message)
+        setCierreExiste(null)
+      } else {
+        setCierreExiste(!!cierre)
+      }
     }
     cargarPeriodo()
   }, [restaurante, periodo])
