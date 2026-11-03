@@ -419,13 +419,16 @@ export default function ComprasSomm() {
           ],
         }}
       >
-        {/* Formulario nueva factura */}
-        <div style={{ padding: 20, background: '#faf8f4', borderRadius: 8, border: '1px solid #e8e3d8', marginBottom: 28 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, color: '#1a1a1a' }}>Nueva factura</div>
-          <FormFactura proveedores={proveedores} onGuardar={handleGuardarFactura} />
-        </div>
+        {/* A8: Formulario "Nueva factura" solo en la vista "Facturas por periodo";
+             en "Concentracion proveedores" no pinta nada y confunde. */}
+        {tab === 'facturas' && (
+          <div style={{ padding: 20, background: '#faf8f4', borderRadius: 8, border: '1px solid #e8e3d8', marginBottom: 28 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, color: '#1a1a1a' }}>Nueva factura</div>
+            <FormFactura proveedores={proveedores} onGuardar={handleGuardarFactura} />
+          </div>
+        )}
 
-        {/* Tabs */}
+        {/* Tabs — A8: estado activo mas visible (borde grueso + fondo tenue). */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e8e3d8', marginBottom: 24 }}>
           {[
             { id: 'facturas', label: 'Facturas por periodo' },
@@ -437,11 +440,11 @@ export default function ComprasSomm() {
               style={{
                 padding: '10px 20px',
                 border: 'none',
-                borderBottom: tab === t.id ? '2px solid #1a1a1a' : '2px solid transparent',
-                background: 'none',
+                borderBottom: tab === t.id ? '3px solid #1a1a1a' : '2px solid transparent',
+                background: tab === t.id ? '#faf8f4' : 'none',
                 fontSize: 13,
-                fontWeight: tab === t.id ? 700 : 400,
-                color: tab === t.id ? '#1a1a1a' : '#888',
+                fontWeight: tab === t.id ? 700 : 500,
+                color: tab === t.id ? '#1a1a1a' : '#555',
                 cursor: 'pointer',
                 marginBottom: -2,
               }}
