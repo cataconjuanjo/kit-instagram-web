@@ -382,6 +382,13 @@ export default function ComprasSomm() {
   async function handleEliminarFactura(registroId, indiceFactura) {
     const reg = registros.find(r => r.id === registroId)
     if (!reg) return
+    const fac = (reg.facturas || [])[indiceFactura]
+    // A4.3: confirmacion explicita antes de borrar la factura. Antes se eliminaba
+    // sin aviso con un solo clic.
+    const resumen = fac
+      ? `${reg.proveedor} - ${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(fac.importe) || 0)} €${fac.albaran ? ` (albaran ${fac.albaran})` : ''}`
+      : 'esta factura'
+    if (!window.confirm(`¿Eliminar ${resumen}? Esta accion no se puede deshacer.`)) return
     const nuevasFacturas = (reg.facturas || []).filter((_, i) => i !== indiceFactura)
     if (nuevasFacturas.length === 0) {
       await supabase.from('libro_compras').delete().eq('id', registroId)

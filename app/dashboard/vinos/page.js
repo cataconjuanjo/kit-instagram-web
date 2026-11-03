@@ -1651,10 +1651,14 @@ async function aplicarAccionMasiva(confirmado = false) {
     </span>
   )}
 </p>
-                <div data-label="Stock" style={{ display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'center' }}>
-  <button onClick={() => actualizarStock(v, -1)} style={{ width: 22, height: 22, borderRadius: 4, border: '1px solid #e8e8e8', background: 'none', cursor: v.stock === 0 ? 'not-allowed' : 'pointer', color: '#aaa', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>−</button>
+                {/* A4.4: separar los controles -/+ entre si y del boton "..." (details)
+                    para evitar pulsaciones erroneas en movil. Antes: gap 6, boton 22x22,
+                    pegado al menu. Ahora: gap 10 interno, boton 26x26, marginRight de 10
+                    para dejar aire antes del "...". */}
+                <div data-label="Stock" style={{ display: 'flex', alignItems: 'center', gap: 10, alignSelf: 'center', marginRight: 10 }}>
+  <button onClick={() => actualizarStock(v, -1)} aria-label={`Restar 1 unidad a ${v.nombre}`} style={{ width: 26, height: 26, borderRadius: 4, border: '1px solid #e8e8e8', background: 'none', cursor: v.stock === 0 ? 'not-allowed' : 'pointer', color: '#aaa', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>−</button>
   <span style={{ fontSize: 13, color: v.stock === 0 ? '#C47A8A' : v.stock <= 3 ? '#C4A55A' : '#888', minWidth: 20, textAlign: 'center' }}>{v.stock}</span>
-  <button onClick={() => actualizarStock(v, 1)} style={{ width: 22, height: 22, borderRadius: 4, border: '1px solid #e8e8e8', background: 'none', cursor: 'pointer', color: '#aaa', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>
+  <button onClick={() => actualizarStock(v, 1)} aria-label={`Sumar 1 unidad a ${v.nombre}`} style={{ width: 26, height: 26, borderRadius: 4, border: '1px solid #e8e8e8', background: 'none', cursor: 'pointer', color: '#aaa', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>
 </div>
                 <details className={styles.rowMenu}>
                   <summary aria-label={`Acciones para ${v.nombre}`}>...</summary>
