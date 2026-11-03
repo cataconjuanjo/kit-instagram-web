@@ -327,9 +327,10 @@ export default function DashboardLayout({ children }) {
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [profileOpen])
 
-  // A4.5: cambio de ruta cierra el menu "Perfil".
+  // A4.5: cambio de ruta cierra el menu "Perfil". Updater funcional +
+  // early-return cuando ya esta cerrado evita renders en cascada.
   useEffect(() => {
-    setProfileOpen(false)
+    setProfileOpen(prev => (prev ? false : prev))
   }, [pathname])
 
   function toggleDarkMode() {
