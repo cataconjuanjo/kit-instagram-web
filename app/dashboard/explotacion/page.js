@@ -9,6 +9,11 @@ import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleCompo
 import styles from '../module.module.css'
 import { redondear } from '../../lib/wineEconomics'
 import { esPerfilSomm } from '../../lib/plans'
+import {
+  formatoMoneda,
+  formatoPorcentaje,
+  formatoMesCorto,
+} from '../../lib/formatoEs'
 import { GraficoEvolucion } from '../somm-graficos/GraficoEvolucion'
 import {
   calcularTotalPersonal,
@@ -33,14 +38,13 @@ function periodoHoy() {
 }
 
 function eur(v, dec = 0) {
-  return `${redondear(Number(v) || 0, dec).toLocaleString('es-ES', {
-    minimumFractionDigits: dec,
-    maximumFractionDigits: dec,
-  })} €`
+  // Helper fino sobre formatoMoneda para forzar nº de decimales (reglas A1).
+  const n = Number(v) || 0
+  return formatoMoneda(redondear(n, dec), { decimales: dec })
 }
 
 function pct(v) {
-  return `${redondear(Number(v) || 0, 1)} %`
+  return formatoPorcentaje(Number(v) || 0, 1)
 }
 
 function num(v) {
@@ -113,8 +117,8 @@ function SeccionCanales({ canales, onChange, facturacionTotal }) {
                 {v > 0 && (
                   <div style={{ marginTop: 6 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888', marginBottom: 3 }}>
-                      <span>{pctCanal.toFixed(1)}% del total</span>
-                      <span style={{ color: c.color, fontWeight: 600 }}>{v.toLocaleString('es-ES')} €</span>
+                      <span>{formatoPorcentaje(pctCanal, 1)} del total</span>
+                      <span style={{ color: c.color, fontWeight: 600 }}>{formatoMoneda(v)}</span>
                     </div>
                     <div style={{ height: 4, background: '#f0ece4', borderRadius: 2, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${Math.min(pctCanal, 100)}%`, background: c.color, borderRadius: 2, transition: 'width 0.3s ease' }} />
