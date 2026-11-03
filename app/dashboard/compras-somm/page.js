@@ -8,11 +8,13 @@ import { esPerfilSomm } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import { construirComprasWorkbook, filasComprasVisibles } from '../../lib/excelSomm'
 import { descargarWorkbook } from '../../lib/excelSommDownload'
+import { formatoMoneda } from '../../lib/formatoEs'
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
+// A1: delega en formatoMoneda (convencion canonica es-ES).
 function formatEur(n) {
-  return (n ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+  return formatoMoneda(n, { decimales: 2 })
 }
 
 function periodoActual() {

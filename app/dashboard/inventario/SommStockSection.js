@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
 import { calcularPmp, kpiStockVentas } from '../../lib/sommExplotacion'
 import { esEntrada } from '../../lib/movimientosTipos'
+import { formatoMoneda } from '../../lib/formatoEs'
 
 const ZONAS = ['todas', 'Sin zona', 'Almacen', 'Cava1', 'Cava2', 'Cava3']
 
@@ -18,8 +19,9 @@ const TIPOS_SALIDA = [
   { value: 'ajuste', label: 'Ajuste' },
 ]
 
+// A1: delega en formatoMoneda (es-ES canonico).
 function formatEur(n) {
-  return (n ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+  return formatoMoneda(n, { decimales: 2 })
 }
 
 export default function SommStockSection({ restauranteId }) {

@@ -16,6 +16,7 @@ import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceD
 import { esPerfilBodega, esPerfilSomm, puedeUsar } from '../lib/plans'
 import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationReadiness'
 import { fetchAllPages } from '../lib/fetchAllPages'
+import { formatoMoneda } from '../lib/formatoEs'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -31,12 +32,9 @@ function decimal(valor) {
   return Number(valor) || 0
 }
 
+// A1: delega en formatoMoneda (es-ES canonico: 4 cifras sin miles, 5+ con).
 function eur(valor, decimales = 0) {
-  return `${decimal(valor).toLocaleString('es-ES', {
-    useGrouping: true,
-    minimumFractionDigits: decimales,
-    maximumFractionDigits: decimales,
-  })} €`
+  return formatoMoneda(valor, { decimales })
 }
 
 function labelNavegacion(href = '') {

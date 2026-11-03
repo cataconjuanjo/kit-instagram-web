@@ -11,6 +11,7 @@ import {
   deltaMetrica, esComparable, metricaPorKey, motivoText,
   colorDelta, deltaResultado, TOOLTIP_RESULTADO_ANTES_DE_MERMA,
 } from '../../lib/yoyCierre'
+import { formatoMoneda } from '../../lib/formatoEs'
 
 async function authedFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -25,10 +26,9 @@ async function authedFetch(path, opts = {}) {
   })
 }
 
+// A1: delega en formatoMoneda (es-ES canonico).
 function eur(v) {
-  return (Number(v) || 0).toLocaleString('es-ES', {
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
-  }) + ' €'
+  return formatoMoneda(v, { decimales: 2 })
 }
 
 function mesLabel(mes) {

@@ -11,11 +11,17 @@ import { priorizarVentas } from '../../lib/salesPriority'
 import { calcularWineMapping, ticketReferencia } from '../../lib/wineMapping'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
+import { formatoDecimal, formatoMoneda } from '../../lib/formatoEs'
 
 function decimal(val) { return parseFloat(val) || 0 }
 
+// A1: fmtN delega en formatoDecimal (es-ES canonico). Para "N €" usa fmtEur.
 function fmtN(val, dec = 2) {
-  return Number(val).toLocaleString('es-ES', { minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: true })
+  return formatoDecimal(val, dec)
+}
+
+function fmtEur(val, dec = 0) {
+  return formatoMoneda(val, { decimales: dec })
 }
 
 function percentilPos(valor, todos, min = 8, max = 92) {
@@ -967,15 +973,15 @@ export default function MenuEngineering() {
                       <p className={styles.statLabel}>Ventas por euro en bodega</p>
                     </div>
                     <div className={styles.stat}>
-                      <p className={styles.statValue}>{valorStockTotal.toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</p>
+                      <p className={styles.statValue}>{fmtEur(valorStockTotal)}</p>
                       <p className={styles.statLabel}>Capital analizado</p>
                     </div>
                     <div className={styles.stat}>
-                      <p className={styles.statValue}>{capitalSinVenta.toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</p>
+                      <p className={styles.statValue}>{fmtEur(capitalSinVenta)}</p>
                       <p className={styles.statLabel}>Capital sin venta</p>
                     </div>
                     <div className={styles.stat}>
-                      <p className={styles.statValue}>{ingresosInventarioTotal.toLocaleString('es-ES', { maximumFractionDigits: 0 })} EUR</p>
+                      <p className={styles.statValue}>{fmtEur(ingresosInventarioTotal)}</p>
                       <p className={styles.statLabel}>Venta estimada</p>
                     </div>
                   </div>
