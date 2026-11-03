@@ -1019,7 +1019,7 @@ export default function ControlBodega() {
           </div>
           <div className={bStyles.pedidoHeroKpi}>
             <div className={bStyles.pedidoHeroNum} style={{ color: '#af8b52' }}>{datos.margenMedio == null ? '—' : `${datos.margenMedio}%`}</div>
-            <div className={bStyles.pedidoHeroCaption}>Margen medio</div>
+            <div className={bStyles.pedidoHeroCaption}>Margen medio sobre venta</div>
             <div className={bStyles.pedidoHeroHint}>IVA venta {criterioBodega.ivaVentaPct}%</div>
           </div>
           <div className={bStyles.pedidoHeroKpi}>

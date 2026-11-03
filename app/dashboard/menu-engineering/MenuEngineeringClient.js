@@ -528,11 +528,12 @@ export default function MenuEngineering() {
                 </div>
                 <div className={styles.profitStatsPanelItem}>
                   <p className={styles.profitStatsPanelValSmall}>{fmtN(analisisVisible.barreraRentabilidad, 2)} €</p>
-                  <p className={styles.profitStatsPanelLabel}>Margen medio</p>
+                  <p className={styles.profitStatsPanelLabel}>Margen medio por botella</p>
                 </div>
                 <div className={styles.profitStatsPanelItem}>
                   <p className={styles.profitStatsPanelValSmall}>{retornoInventarioGlobal == null ? '—' : `${fmtN(retornoInventarioGlobal, 2)}x`}</p>
                   <p className={styles.profitStatsPanelLabel}>Ventas por € en bodega</p>
+                  <p className={styles.profitStatsPanelSublabel}>Rotación del capital inmovilizado</p>
                 </div>
                 <div className={styles.profitStatsPanelActions}>
                   <button type="button" className={styles.primary} onClick={copiarPlan}>Copiar plan de acción</button>

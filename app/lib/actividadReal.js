@@ -1,3 +1,5 @@
+import { formatoFechaCorta } from './formatoEs'
+
 export function actividadRealDesdeISO(restaurante) {
   if (!restaurante?.actividad_real_desde) return null
   const fecha = new Date(restaurante.actividad_real_desde)
@@ -17,5 +19,6 @@ export function maxFechaISO(...fechas) {
 export function etiquetaActividadReal(restaurante) {
   const desde = actividadRealDesdeISO(restaurante)
   if (!desde) return 'No iniciada'
-  return new Date(desde).toLocaleDateString('es-ES')
+  // A7: "1/1/2025" -> "1 ene 2025" via helper canonico es-ES.
+  return formatoFechaCorta(desde)
 }

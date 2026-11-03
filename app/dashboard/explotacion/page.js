@@ -818,7 +818,7 @@ function ExplotacionContent() {
         {facturacionNum > 0 && (
           <section className={styles.panel} style={{ marginBottom: 4 }}>
             <div className={styles.panelHead}>
-              <h2 className={styles.panelTitle}>Cuenta de Explotación — {periodo}</h2>
+              <h2 className={styles.panelTitle}>Cuenta de Explotación — {formatoMesCorto(periodo)}</h2>
               <label className={styles.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, margin: 0 }}>
                 <span style={{ fontSize: 12, color: '#666' }}>Benchmark:</span>
                 <select className={styles.select} value={tipoBenchmark} onChange={e => setTipoBenchmark(e.target.value)} style={{ fontSize: 12 }}>
