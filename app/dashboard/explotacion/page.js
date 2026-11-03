@@ -677,7 +677,7 @@ function ExplotacionContent() {
             </button>
             {esPerfilSomm(restaurante) && cierreExiste === false && (
               <span style={{ fontSize: 12, color: '#F59E0B', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '5px 10px' }}>
-                Sin cierre de mes — los datos se guardan como entrada manual
+                Mes sin cerrar: los datos son entrada manual
               </span>
             )}
             <a
