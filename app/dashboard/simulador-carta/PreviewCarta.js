@@ -1,5 +1,6 @@
 'use client'
 import pStyles from './previewCarta.module.css'
+import { formatoMoneda } from '../../lib/formatoEs'
 
 const TIPOS_ORDEN = ['tinto', 'blanco', 'rosado', 'espumoso', 'naranja', 'generoso', 'dulce', 'sin_alcohol']
 const TIPO_LABELS = {
@@ -11,10 +12,11 @@ const TIPO_DOT = {
   naranja: '#e8894a', generoso: '#9b6b2f', dulce: '#d4a24b', sin_alcohol: '#2e7d5b',
 }
 
+// A1: delega en formatoMoneda; mantiene null para valores <=0 (semantica previa).
 function fmt(valor) {
   const n = Number(valor)
   if (!n || n <= 0) return null
-  return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €'
+  return formatoMoneda(n, { decimales: 2 })
 }
 
 function normalizar(s = '') {

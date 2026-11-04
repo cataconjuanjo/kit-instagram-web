@@ -30,7 +30,8 @@
     "test:partes-cerrar": "node scripts/test-partes-cerrar.mjs",
     "test:agregar-periodo": "node --test scripts/test-agregar-periodo-bodega.mjs",
     "test:somm-cierre": "node --test scripts/test-somm-cierre.mjs",
-    "test:formato-es": "node --test scripts/formatoEs.test.mjs"
+    "test:formato-es": "node --test scripts/formatoEs.test.mjs",
+    "test:confirm-modal": "node --test scripts/smoke-confirm-modal.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

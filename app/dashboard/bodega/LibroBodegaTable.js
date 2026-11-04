@@ -155,6 +155,12 @@ export default function LibroBodegaTable({ restauranteId, restauranteNombre }) {
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{mes.mes}</h3>
               <BadgeEstado estado={mes.estado} />
             </div>
+            {/* A6.3: leyenda compacta de las cabeceras abreviadas. Los title
+                de cada <th> ya existen; esta linea evita que el usuario tenga
+                que pasar por encima de cada columna para descifrarla. */}
+            <p style={{ margin: '0 0 6px', fontSize: '0.72rem', color: 'var(--c-muted, #888)' }}>
+              Ini = stock inicial · Ent = entradas (u / €) · Bot = ventas botella (u / €) · Copa = copa (bot / cop / €) · Otras = mermas y cata · Aj = ajustes · Fin = stock final · CoGS = coste teorico · Consumo = consumo real por stock · ΔCoGS = merma implicita · Δu = descuadre.
+            </p>
             <div className={bStyles.cellarTableWrap}>
               <table className={bStyles.cellarTable} style={{ fontSize: '0.78rem' }}>
                 <thead>

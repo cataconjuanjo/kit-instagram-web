@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import ConfirmModal from '../_components/ConfirmModal'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import {
   SELECT_CLIENT_RESTAURANTE_DASHBOARD,
@@ -424,6 +425,7 @@ function PrevisualizacionCarta({ vinos, tramos, configPricing, ajustes, restaura
   const [filtro, setFiltro] = useState('')
   const [seleccionados, setSeleccionados] = useState(new Set())
   // A4.1: diálogo de confirmación con recuento e impacto antes de escribir PVPs.
+  // Focus/Escape se gestionan dentro de ConfirmModal.
   const [confirmando, setConfirmando] = useState(false)
 
   const metodo = configPricing?.metodo_pvp || 'multiplicador'
@@ -559,6 +561,21 @@ function PrevisualizacionCarta({ vinos, tramos, configPricing, ajustes, restaura
         <p className={styles.panelSub}>Compara los PVPs actuales con los propuestos según tus tramos. Aplica los cambios con un clic.</p>
       </div>
       <div className={styles.panelBody}>
+        {/* A10: estado vacio explicativo cuando no hay PVPs propuestos
+            (falta tramos y/o falta coste en las referencias). */}
+        {vinosConCambio.length === 0 && (
+          <div style={{ padding: 20, background: '#faf8f4', border: '1px dashed #d8d3c8', borderRadius: 8, marginBottom: 18, fontSize: 13, color: '#555', lineHeight: 1.6 }}>
+            <strong style={{ display: 'block', fontSize: 14, marginBottom: 6, color: '#1a1a1a' }}>
+              Sin cambios de PVP que previsualizar
+            </strong>
+            Posibles motivos:
+            <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+              <li>No has definido <strong>tramos de precio</strong> todavia (pestaña "Tramos de precio").</li>
+              <li>Tus vinos no tienen <strong>coste</strong> cargado, asi que no se puede calcular PVP propuesto.</li>
+              <li>Tus PVPs actuales ya coinciden con los propuestos.</li>
+            </ul>
+          </div>
+        )}
         <div className={styles.statsGrid} style={{ marginBottom: 20 }}>
           <StatCard value={vinosConCambio.length} label="Vinos con cambio de PVP" />
           <StatCard
@@ -590,56 +607,26 @@ function PrevisualizacionCarta({ vinos, tramos, configPricing, ajustes, restaura
         </div>
 
         {/* A4.1: diálogo de confirmación con recuento e impacto. */}
-        {confirmando && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="confirmar-pvp-titulo"
-            onClick={e => { if (e.target === e.currentTarget) setConfirmando(false) }}
-            onKeyDown={e => { if (e.key === 'Escape') setConfirmando(false) }}
-            style={{
-              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              zIndex: 1000, padding: 20,
-            }}
-          >
-            <div style={{ background: '#fff', borderRadius: 10, padding: 24, maxWidth: 440, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
-              <h3 id="confirmar-pvp-titulo" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 700 }}>
-                Confirmar aplicación de PVP
-              </h3>
-              <p style={{ margin: '0 0 14px', fontSize: 14, lineHeight: 1.5 }}>
-                Vas a cambiar el PVP de <strong>{impactoAAplicar.total}</strong> vino{impactoAAplicar.total === 1 ? '' : 's'}.
-              </p>
-              <ul style={{ margin: '0 0 18px', paddingLeft: 20, fontSize: 13, color: '#444', lineHeight: 1.6 }}>
-                <li>{impactoAAplicar.sube} suben de precio, {impactoAAplicar.baja} bajan.</li>
-                <li>
-                  Rango de variación: <strong>{eur(impactoAAplicar.min, 2)}</strong> a <strong>{eur(impactoAAplicar.max, 2)}</strong> por botella.
-                </li>
-                <li>El cambio es inmediato y se refleja en la carta pública.</li>
-              </ul>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  autoFocus
-                  className={styles.ghost || styles.secondary}
-                  onClick={() => setConfirmando(false)}
-                  style={{ padding: '8px 16px', fontSize: 13 }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  className={styles.primary}
-                  onClick={aplicarPvpSugeridos}
-                  disabled={aplicando}
-                  style={{ padding: '8px 16px', fontSize: 13 }}
-                >
-                  Sí, aplicar a {impactoAAplicar.total} vino{impactoAAplicar.total === 1 ? '' : 's'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmModal
+          open={confirmando}
+          title="Confirmar aplicación de PVP"
+          onCancel={() => setConfirmando(false)}
+          onConfirm={aplicarPvpSugeridos}
+          busy={aplicando}
+          confirmLabel={`Sí, aplicar a ${impactoAAplicar.total} vino${impactoAAplicar.total === 1 ? '' : 's'}`}
+          overlayAriaLabel="Cerrar sin aplicar"
+        >
+          <p style={{ margin: '0 0 14px' }}>
+            Vas a cambiar el PVP de <strong>{impactoAAplicar.total}</strong> vino{impactoAAplicar.total === 1 ? '' : 's'}.
+          </p>
+          <ul style={{ margin: '0 0 2px', paddingLeft: 20, fontSize: 13, color: '#444', lineHeight: 1.6 }}>
+            <li>{impactoAAplicar.sube} suben de precio, {impactoAAplicar.baja} bajan.</li>
+            <li>
+              Rango de variación: <strong>{eur(impactoAAplicar.min, 2)}</strong> a <strong>{eur(impactoAAplicar.max, 2)}</strong> por botella.
+            </li>
+            <li>El cambio es inmediato y se refleja en la carta pública.</li>
+          </ul>
+        </ConfirmModal>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>

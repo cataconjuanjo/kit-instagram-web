@@ -14,6 +14,7 @@ import { fetchAllPages } from '../../lib/fetchAllPages'
 import { esVentaTPV, priorizarVentas } from '../../lib/salesPriority'
 import { esPerfilBodega } from '../../lib/plans'
 import { beneficioBruto, costeNetoCompra, copasVendibles, margenBrutoPct, numero, precioNetoVenta, redondear } from '../../lib/wineEconomics'
+import { formatoMoneda } from '../../lib/formatoEs'
 import { useEconomicSettings } from '../../lib/economicSettings'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import ResponsiveOverlay from '../ResponsiveOverlay'
@@ -169,11 +170,9 @@ function servicioDeFecha(fecha) {
   return 'otro'
 }
 
+// A1: delega en formatoMoneda (es-ES canonico).
 function eur(valor, decimales = 0) {
-  return `${(Number(valor) || 0).toLocaleString('es-ES', {
-    minimumFractionDigits: decimales,
-    maximumFractionDigits: decimales,
-  })} €`
+  return formatoMoneda(valor, { decimales })
 }
 
 function textoAnalitica(valor, fallback = '') {

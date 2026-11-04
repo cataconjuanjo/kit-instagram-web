@@ -9,6 +9,7 @@ import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import { construirComprasWorkbook, filasComprasVisibles } from '../../lib/excelSomm'
 import { descargarWorkbook } from '../../lib/excelSommDownload'
 import { formatoMoneda } from '../../lib/formatoEs'
+import ConfirmModal from '../_components/ConfirmModal'
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -281,6 +282,21 @@ function ConcentracionProveedores({ registros, anioFiltro }) {
       <div style={{ marginBottom: 16, fontSize: 13, color: '#555' }}>
         Gasto total {anioFiltro}: <strong>{formatEur(totalAnio)}</strong>
       </div>
+      {/* A6: leyenda de los colores de la barra (umbrales reales usados abajo). */}
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', margin: '0 0 12px', fontSize: 11, color: '#666' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 2, background: '#27ae60' }} />
+          Verde: ≤15 % del gasto
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 2, background: '#e67e22' }} />
+          Naranja: 15–25 %
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 2, background: '#e74c3c' }} />
+          Rojo: &gt;25 % (alerta de concentracion)
+        </span>
+      </div>
       {resumen.map((r, i) => (
         <div key={r.proveedor} style={{ marginBottom: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -322,6 +338,8 @@ export default function ComprasSomm() {
   const [loading, setLoading] = useState(true)
   const [periodoFiltro, setPeriodoFiltro] = useState(periodoActual())
   const [anioFiltro, setAnioFiltro] = useState(new Date().getFullYear())
+  // A4.3: confirmación de borrado via modal compartido (ConfirmModal).
+  const [borrando, setBorrando] = useState(null) // { registroId, indiceFactura, resumen }
   const [tab, setTab] = useState('facturas')
 
   useEffect(() => {
@@ -381,16 +399,25 @@ export default function ComprasSomm() {
     await cargarRegistros(restaurante.id)
   }
 
-  async function handleEliminarFactura(registroId, indiceFactura) {
+  // A4.3: en vez de borrar al primer clic, se abre un modal con resumen de la
+  // factura (proveedor, importe, albaran). La confirmacion efectiva vive en
+  // confirmarBorradoFactura.
+  function handleEliminarFactura(registroId, indiceFactura) {
     const reg = registros.find(r => r.id === registroId)
     if (!reg) return
     const fac = (reg.facturas || [])[indiceFactura]
-    // A4.3: confirmacion explicita antes de borrar la factura. Antes se eliminaba
-    // sin aviso con un solo clic.
     const resumen = fac
-      ? `${reg.proveedor} - ${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(fac.importe) || 0)} €${fac.albaran ? ` (albaran ${fac.albaran})` : ''}`
+      ? `${reg.proveedor} — ${formatEur(Number(fac.importe) || 0)}${fac.albaran ? ` (albarán ${fac.albaran})` : ''}`
       : 'esta factura'
-    if (!window.confirm(`¿Eliminar ${resumen}? Esta accion no se puede deshacer.`)) return
+    setBorrando({ registroId, indiceFactura, resumen })
+  }
+
+  async function confirmarBorradoFactura() {
+    if (!borrando) return
+    const { registroId, indiceFactura } = borrando
+    const reg = registros.find(r => r.id === registroId)
+    setBorrando(null)
+    if (!reg) return
     const nuevasFacturas = (reg.facturas || []).filter((_, i) => i !== indiceFactura)
     if (nuevasFacturas.length === 0) {
       await supabase.from('libro_compras').delete().eq('id', registroId)
@@ -528,6 +555,24 @@ export default function ComprasSomm() {
             <ConcentracionProveedores registros={registros} anioFiltro={anioFiltro} />
           </div>
         )}
+
+        {/* A4.3: modal de confirmacion de borrado de factura. */}
+        <ConfirmModal
+          open={!!borrando}
+          title="Eliminar factura"
+          onCancel={() => setBorrando(null)}
+          onConfirm={confirmarBorradoFactura}
+          confirmLabel="Eliminar"
+          confirmTone="danger"
+          overlayAriaLabel="Cerrar sin eliminar"
+        >
+          <p style={{ margin: '0 0 8px' }}>
+            Vas a eliminar <strong>{borrando?.resumen}</strong>.
+          </p>
+          <p style={{ margin: 0, fontSize: 12, color: '#666' }}>
+            Esta acción no se puede deshacer.
+          </p>
+        </ConfirmModal>
       </ModuleShell>
     </FeatureGate>
   )

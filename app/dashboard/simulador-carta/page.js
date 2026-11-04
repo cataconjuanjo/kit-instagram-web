@@ -24,13 +24,15 @@ import styles from '../module.module.css'
 import simStyles from './simulador.module.css'
 import ImpactoPlatosPanel from './ImpactoPlatosPanel'
 import ProveedoresTab from './ProveedoresTab'
+import { formatoMoneda } from '../../lib/formatoEs'
 
 const ESTADO_LABEL = { actual: 'Actual', nuevo: 'Nuevo', fuera: 'Retirado' }
 const ESTADO_ORDER = { actual: 0, nuevo: 1, fuera: 2 }
 
+// A1: delega en formatoMoneda; mantiene "—" cuando valor es 0 (semantica previa).
 function eur(valor) {
   if (!Number(valor)) return '—'
-  return Number(valor).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €'
+  return formatoMoneda(valor, { decimales: 2 })
 }
 
 function margenBotella(pvp, coste) {

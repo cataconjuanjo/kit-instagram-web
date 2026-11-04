@@ -12,26 +12,30 @@ const STATUS_LABEL = {
   cancelled: 'Cancelado',
 }
 
-const PLAN_COPY = {
-  basic: {
-    nombre: 'Basico',
-    descripcion: 'Carta QR, hub publico y maridaje para cliente.',
-  },
-  pro: {
-    nombre: 'Sala',
-    descripcion: 'Modo camarero, estadisticas, objetivos de sala y control de bodega.',
-  },
-  bodega: {
-    nombre: 'Bodega',
-    descripcion: 'Inventario, margen, proveedores e inteligencia de referencias.',
-  },
-  premium: {
-    nombre: 'Acompanado',
-    descripcion: 'Acompanamiento consultor y soporte prioritario.',
-  },
+// Descripcion comercial corta por plan. El NOMBRE y el PRECIO se leen SIEMPRE
+// desde PLANES (app/lib/plans.js) — fuente de verdad unica. Aqui solo vive el
+// copy adicional que no existe en plans.js.
+const PLAN_DESCRIPCION = {
+  basic:    'Carta QR, hub publico y maridaje para cliente.',
+  pro:      'Modo camarero, estadisticas, objetivos de sala y control de bodega.',
+  bodega:   'Inventario, margen, proveedores e inteligencia de referencias.',
+  sumiller: 'Explotacion P&L, presupuesto, bonus variable y stock de bodega avanzado.',
+  premium:  'Acompanamiento consultor y soporte prioritario.',
 }
 
-const PLAN_OPTIONS = ['basic', 'pro', 'bodega', 'premium']
+// Orden de la opcion de upgrade (de menor a mayor). Incluye TODAS las keys
+// existentes en PLANES para que planInicial no caiga al fallback cuando
+// el usuario tenga un plan 'sumiller' (el bug reportado en v1 era que
+// PLAN_OPTIONS omitia 'sumiller' y los somm aparecian como Sala/99 €).
+const PLAN_OPTIONS = ['basic', 'pro', 'bodega', 'sumiller', 'premium']
+
+function nombrePlanKey(plan) {
+  return PLANES[plan]?.nombre || plan
+}
+
+function descripcionPlan(plan) {
+  return PLAN_DESCRIPCION[plan] || ''
+}
 
 function fechaCorta(value) {
   if (!value) return ''
@@ -46,7 +50,10 @@ function fechaCorta(value) {
 
 function planInicial(restaurante) {
   const plan = restaurante?.plan
-  return PLAN_OPTIONS.includes(plan) ? plan : 'pro'
+  // Si el plan esta en PLANES lo dejamos aunque no este en PLAN_OPTIONS
+  // (robusto ante planes futuros). Si no, fallback a 'pro'.
+  if (PLANES[plan]) return plan
+  return 'pro'
 }
 
 function precioPlan(plan) {
@@ -81,7 +88,7 @@ export default function BillingPanel({ restaurante, compact = false }) {
         restauranteId: restaurante.id,
         plan: planSeleccionado,
       })
-      window.location.href = url
+      window.location.assign(url)
     } catch (error) {
       setMensaje(error.message || 'No se pudo iniciar Stripe.')
       setLoadingAction('')
@@ -93,7 +100,7 @@ export default function BillingPanel({ restaurante, compact = false }) {
     setLoadingAction('portal')
     try {
       const url = await abrirPortalStripe({ restauranteId: restaurante.id })
-      window.location.href = url
+      window.location.assign(url)
     } catch (error) {
       setMensaje(error.message || 'No se pudo abrir la facturación.')
       setLoadingAction('')
@@ -106,7 +113,7 @@ export default function BillingPanel({ restaurante, compact = false }) {
         <div className={styles.sectionHead} style={{ margin: 0 }}>
           <div>
             <p className={styles.eyebrow}>Plan actual</p>
-            <h3 className={styles.sectionTitle}>{PLAN_COPY[planActual]?.nombre || planActual}</h3>
+            <h3 className={styles.sectionTitle}>{nombrePlanKey(planActual)}</h3>
             <p className={styles.sectionText}>
               Estado: {estadoLabel}
               {estado === 'trialing' && trialEnd ? ` · prueba hasta ${trialEnd}` : ''}
@@ -140,11 +147,11 @@ export default function BillingPanel({ restaurante, compact = false }) {
             >
               {PLAN_OPTIONS.map(plan => (
                 <option key={plan} value={plan}>
-                  {PLAN_COPY[plan].nombre} - {precioPlan(plan)}
+                  {nombrePlanKey(plan)}{precioPlan(plan) ? ` - ${precioPlan(plan)}` : ''}
                 </option>
               ))}
             </select>
-            <p className={styles.tiny}>{PLAN_COPY[planSeleccionado]?.descripcion}</p>
+            <p className={styles.tiny}>{descripcionPlan(planSeleccionado)}</p>
           </div>
           <button
             type="button"

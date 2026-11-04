@@ -581,13 +581,23 @@ function TabPresupuesto({ restauranteId, historico }) {
                     {f.crecimientoReal != null ? `${f.crecimientoReal >= 0 ? '+' : ''}${f.crecimientoReal}%` : '—'}
                   </td>
                   <td style={{ padding: '7px 8px', textAlign: 'center', fontSize: 15 }}>
-                    {f.tieneDatoReal && f.objetivo ? (f.superaObjetivo ? '✅' : '❌') : '·'}
+                    {f.tieneDatoReal && f.objetivo ? (
+                      <span role="img" aria-label={f.superaObjetivo ? 'Supera el objetivo' : 'Por debajo del objetivo'} title={f.superaObjetivo ? 'Supera el objetivo' : 'Por debajo del objetivo'}>
+                        {f.superaObjetivo ? '✅' : '❌'}
+                      </span>
+                    ) : (
+                      <span aria-label="Sin dato suficiente" title="Sin dato real de facturacion o sin objetivo definido">·</span>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {/* A6: leyenda compacta de los iconos de la columna 'Estado'. */}
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#666' }}>
+          <strong>Estado:</strong> ✅ supera el objetivo · ❌ por debajo · · sin dato suficiente (mes futuro o sin objetivo).
+        </p>
 
         <div style={{ marginTop: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
           <button type="button" className={styles.primary} onClick={guardar} disabled={guardando}>

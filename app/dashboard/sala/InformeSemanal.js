@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../supabase'
+import { formatoMoneda } from '../../lib/formatoEs'
 import styles from '../module.module.css'
 
 // ── Utilidades de semana ──────────────────────────────────────────────────────
@@ -79,8 +80,9 @@ function labelSemana({ desde, hasta }) {
 
 // ── Helpers de formato ────────────────────────────────────────────────────────
 
+// A1: delega en formatoMoneda (es-ES canonico).
 function eur(n) {
-  return `${Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+  return formatoMoneda(n, { decimales: 2 })
 }
 
 function variPct(actual, anterior) {
