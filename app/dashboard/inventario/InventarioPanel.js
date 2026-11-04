@@ -7,6 +7,7 @@ import {
 } from '../../lib/clientSupabaseSelects'
 import { maxFechaISO } from '../../lib/actividadReal'
 import { aplicarAjustesStock } from '../../lib/stockClient'
+import { formatoMoneda } from '../../lib/formatoEs'
 import styles from '../module.module.css'
 import ResponsiveOverlay from '../ResponsiveOverlay'
 
@@ -16,8 +17,9 @@ function decimal(valor) { return Number(valor) || 0 }
 function normalizar(texto = '') {
   return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
+// A1: delega en formatoMoneda (es-ES canonico).
 function eur(valor) {
-  return `${decimal(valor).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} €`
+  return formatoMoneda(valor, { decimales: 0 })
 }
 function haceDiasISO(dias) {
   const d = new Date()

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../supabase'
+import { formatoMoneda } from '../../lib/formatoEs'
 import styles from '../module.module.css'
 
 const MOTIVOS = [
@@ -13,9 +14,9 @@ const MOTIVOS = [
   { value: 'otro',              label: 'Otro' },
 ]
 
+// A1: delega en formatoMoneda (es-ES canonico, '—' en null/NaN).
 function eur(n) {
-  if (n == null) return '—'
-  return `${Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+  return formatoMoneda(n, { decimales: 2 })
 }
 
 function signo(n) {

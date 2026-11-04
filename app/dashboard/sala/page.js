@@ -14,6 +14,7 @@ import {
 } from '../../lib/clientSupabaseSelects'
 import { aplicarVentana, resolverVentanaDiaOperativo } from '../../lib/demoServiceDay'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
+import { formatoMoneda } from '../../lib/formatoEs'
 import styles from '../module.module.css'
 
 function leerDetalle(detalle) {
@@ -24,8 +25,9 @@ function decimal(valor) {
   return parseFloat(valor) || 0
 }
 
+// A1: delega en formatoMoneda y pasa de "EUR" a "€".
 function eur(valor) {
-  return `${decimal(valor).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} EUR`
+  return formatoMoneda(valor, { decimales: 0 })
 }
 
 function prepararBriefing(vinos = [], platos = [], restaurante = {}) {
