@@ -95,7 +95,7 @@ export default function BillingPanel({ restaurante, compact = false }) {
       const url = await abrirPortalStripe({ restauranteId: restaurante.id })
       window.location.href = url
     } catch (error) {
-      setMensaje(error.message || 'No se pudo abrir la facturacion.')
+      setMensaje(error.message || 'No se pudo abrir la facturación.')
       setLoadingAction('')
     }
   }
@@ -124,7 +124,7 @@ export default function BillingPanel({ restaurante, compact = false }) {
             onClick={redirigirPortal}
             disabled={loadingAction === 'portal'}
           >
-            {loadingAction === 'portal' ? 'Abriendo Stripe...' : 'Gestionar facturacion'}
+            {loadingAction === 'portal' ? 'Abriendo Stripe...' : 'Gestionar facturación'}
           </button>
         </div>
       ) : (
@@ -170,7 +170,7 @@ export default function BillingPanel({ restaurante, compact = false }) {
     <section className={styles.panel}>
       <div className={styles.panelHead}>
         <div>
-          <h2 className={styles.panelTitle}>Plan y facturacion</h2>
+          <h2 className={styles.panelTitle}>Plan y facturación</h2>
           <p className={styles.panelSub}>
             {activo
               ? 'Gestiona tu tarjeta, facturas y plan desde el portal seguro de Stripe.'

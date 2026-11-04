@@ -314,6 +314,25 @@ export default function DashboardLayout({ children }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [pathname, router, perfilBodega])
 
+  // A4.5: menu "Perfil" se cierra al hacer clic fuera (ademas de Escape,
+  // que ya estaba cubierto arriba, y de cambio de ruta - gestionado abajo).
+  useEffect(() => {
+    if (!profileOpen) return
+    function onPointerDown(event) {
+      const target = event.target
+      if (target && target.closest && target.closest('[data-perfil-menu="true"]')) return
+      setProfileOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [profileOpen])
+
+  // A4.5: cambio de ruta cierra el menu "Perfil". Updater funcional +
+  // early-return cuando ya esta cerrado evita renders en cascada.
+  useEffect(() => {
+    setProfileOpen(prev => (prev ? false : prev))
+  }, [pathname])
+
   function toggleDarkMode() {
     const next = !darkMode
     window.localStorage.setItem(DARK_MODE_KEY, next ? '1' : '0')
@@ -473,7 +492,7 @@ export default function DashboardLayout({ children }) {
           )}
           <div className={styles.topRight}>
             <div className={styles.topStatus}>
-              <div className={styles.profileMenu}>
+              <div className={styles.profileMenu} data-perfil-menu="true">
                 <button type="button" onClick={() => setProfileOpen(open => !open)} aria-label="Abrir perfil">Perfil</button>
                 {profileOpen && (
                   <div className={styles.profileDropdown}>

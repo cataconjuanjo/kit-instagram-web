@@ -8,11 +8,13 @@ import { esPerfilSomm } from '../../lib/plans'
 import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import { construirComprasWorkbook, filasComprasVisibles } from '../../lib/excelSomm'
 import { descargarWorkbook } from '../../lib/excelSommDownload'
+import { formatoMoneda } from '../../lib/formatoEs'
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
+// A1: delega en formatoMoneda (convencion canonica es-ES).
 function formatEur(n) {
-  return (n ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+  return formatoMoneda(n, { decimales: 2 })
 }
 
 function periodoActual() {
@@ -382,6 +384,13 @@ export default function ComprasSomm() {
   async function handleEliminarFactura(registroId, indiceFactura) {
     const reg = registros.find(r => r.id === registroId)
     if (!reg) return
+    const fac = (reg.facturas || [])[indiceFactura]
+    // A4.3: confirmacion explicita antes de borrar la factura. Antes se eliminaba
+    // sin aviso con un solo clic.
+    const resumen = fac
+      ? `${reg.proveedor} - ${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(fac.importe) || 0)} €${fac.albaran ? ` (albaran ${fac.albaran})` : ''}`
+      : 'esta factura'
+    if (!window.confirm(`¿Eliminar ${resumen}? Esta accion no se puede deshacer.`)) return
     const nuevasFacturas = (reg.facturas || []).filter((_, i) => i !== indiceFactura)
     if (nuevasFacturas.length === 0) {
       await supabase.from('libro_compras').delete().eq('id', registroId)
@@ -419,13 +428,16 @@ export default function ComprasSomm() {
           ],
         }}
       >
-        {/* Formulario nueva factura */}
-        <div style={{ padding: 20, background: '#faf8f4', borderRadius: 8, border: '1px solid #e8e3d8', marginBottom: 28 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, color: '#1a1a1a' }}>Nueva factura</div>
-          <FormFactura proveedores={proveedores} onGuardar={handleGuardarFactura} />
-        </div>
+        {/* A8: Formulario "Nueva factura" solo en la vista "Facturas por periodo";
+             en "Concentracion proveedores" no pinta nada y confunde. */}
+        {tab === 'facturas' && (
+          <div style={{ padding: 20, background: '#faf8f4', borderRadius: 8, border: '1px solid #e8e3d8', marginBottom: 28 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14, color: '#1a1a1a' }}>Nueva factura</div>
+            <FormFactura proveedores={proveedores} onGuardar={handleGuardarFactura} />
+          </div>
+        )}
 
-        {/* Tabs */}
+        {/* Tabs — A8: estado activo mas visible (borde grueso + fondo tenue). */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e8e3d8', marginBottom: 24 }}>
           {[
             { id: 'facturas', label: 'Facturas por periodo' },
@@ -437,11 +449,11 @@ export default function ComprasSomm() {
               style={{
                 padding: '10px 20px',
                 border: 'none',
-                borderBottom: tab === t.id ? '2px solid #1a1a1a' : '2px solid transparent',
-                background: 'none',
+                borderBottom: tab === t.id ? '3px solid #1a1a1a' : '2px solid transparent',
+                background: tab === t.id ? '#faf8f4' : 'none',
                 fontSize: 13,
-                fontWeight: tab === t.id ? 700 : 400,
-                color: tab === t.id ? '#1a1a1a' : '#888',
+                fontWeight: tab === t.id ? 700 : 500,
+                color: tab === t.id ? '#1a1a1a' : '#555',
                 cursor: 'pointer',
                 marginBottom: -2,
               }}

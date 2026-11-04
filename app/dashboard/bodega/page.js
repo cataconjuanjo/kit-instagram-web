@@ -32,13 +32,15 @@ import ConteoInventario from './ConteoInventario'
 import CierreMensual from './CierreMensual'
 import FormularioCompra from './FormularioCompra'
 import LibroBodegaTable from './LibroBodegaTable'
+import { formatoMoneda } from '../../lib/formatoEs'
 
+// A1: delegan en formatoMoneda (es-ES: 4 cifras sin miles, 5+ con, '—' si null).
 function eur(valor) {
-  return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0, useGrouping: true })} €`
+  return formatoMoneda(valor, { decimales: 0 })
 }
 
 function eurDetalle(valor) {
-  return `${(Number(valor) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true })} €`
+  return formatoMoneda(valor, { decimales: 2 })
 }
 
 function decimal(valor) {
@@ -1019,7 +1021,7 @@ export default function ControlBodega() {
           </div>
           <div className={bStyles.pedidoHeroKpi}>
             <div className={bStyles.pedidoHeroNum} style={{ color: '#af8b52' }}>{datos.margenMedio == null ? '—' : `${datos.margenMedio}%`}</div>
-            <div className={bStyles.pedidoHeroCaption}>Margen medio</div>
+            <div className={bStyles.pedidoHeroCaption}>Margen medio sobre venta</div>
             <div className={bStyles.pedidoHeroHint}>IVA venta {criterioBodega.ivaVentaPct}%</div>
           </div>
           <div className={bStyles.pedidoHeroKpi}>

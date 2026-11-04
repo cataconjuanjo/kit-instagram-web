@@ -16,6 +16,7 @@ import { aplicarVentana, resolverVentanaDiaOperativo } from '../lib/demoServiceD
 import { esPerfilBodega, esPerfilSomm, puedeUsar } from '../lib/plans'
 import { puedePublicarCarta, resumirContenidoCarta } from '../lib/publicationReadiness'
 import { fetchAllPages } from '../lib/fetchAllPages'
+import { formatoMoneda } from '../lib/formatoEs'
 import styles from './dashboard.module.css'
 
 function normalizar(texto = '') {
@@ -31,12 +32,9 @@ function decimal(valor) {
   return Number(valor) || 0
 }
 
+// A1: delega en formatoMoneda (es-ES canonico: 4 cifras sin miles, 5+ con).
 function eur(valor, decimales = 0) {
-  return `${decimal(valor).toLocaleString('es-ES', {
-    useGrouping: true,
-    minimumFractionDigits: decimales,
-    maximumFractionDigits: decimales,
-  })} €`
+  return formatoMoneda(valor, { decimales })
 }
 
 function labelNavegacion(href = '') {
@@ -918,9 +916,9 @@ function DashboardHome() {
               </div>
             </article>
             <article className={styles.inicioCard}>
-              <p className={styles.inicioCardLabel}>Margen medio</p>
+              <p className={styles.inicioCardLabel}>Margen medio sobre venta</p>
               <strong className={styles.sideKpi}>{margenMedio ? `${margenMedio}%` : '—'}</strong>
-              <p className={styles.sideKpiSub}>sobre el precio de venta</p>
+              <p className={styles.sideKpiSub}>% del PVP que queda como margen</p>
               <Link href="/dashboard/menu-engineering" className={styles.cardLink}>Ver rentabilidad →</Link>
             </article>
           </div>
@@ -1061,7 +1059,7 @@ function DashboardHome() {
                     <small>{referenciasCriticas} referencias críticas por stock o mínimo</small>
                   </article>
                   <article>
-                    <span>Margen medio</span>
+                    <span>Margen medio sobre venta</span>
                     <strong>{margenMedio || '-'}%</strong>
                     <small>{vinosConMargen.length} referencias con coste y PVP defendibles</small>
                   </article>

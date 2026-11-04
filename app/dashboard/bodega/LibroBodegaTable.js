@@ -8,8 +8,10 @@ import { descargarWorkbook } from '../../lib/excelSommDownload'
 import styles from '../module.module.css'
 import bStyles from './bodega.module.css'
 import { GraficoMermaImplicita } from '../somm-graficos/GraficoMermaImplicita'
+import { formatoMoneda } from '../../lib/formatoEs'
 
-const EUR = n => (Number(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + '€'
+// A1: formatoMoneda ya anade espacio antes del euro y maneja null.
+const EUR = n => formatoMoneda(n, { decimales: 0 })
 const N   = n => String(Math.round(Number(n) || 0))
 
 function BadgeEstado({ estado }) {

@@ -423,6 +423,8 @@ function PrevisualizacionCarta({ vinos, tramos, configPricing, ajustes, restaura
   const [aplicado, setAplicado] = useState(false)
   const [filtro, setFiltro] = useState('')
   const [seleccionados, setSeleccionados] = useState(new Set())
+  // A4.1: diálogo de confirmación con recuento e impacto antes de escribir PVPs.
+  const [confirmando, setConfirmando] = useState(false)
 
   const metodo = configPricing?.metodo_pvp || 'multiplicador'
   const descorcheFijo = num(configPricing?.descorche_fijo) || 9
@@ -502,12 +504,27 @@ function PrevisualizacionCarta({ vinos, tramos, configPricing, ajustes, restaura
     )
   }, [vinosConPvp, filtro])
 
+  // A4.1: calculo preventivo del impacto para el modal de confirmación.
+  const impactoAAplicar = useMemo(() => {
+    const targets = seleccionados.size > 0
+      ? vinosConPvp.filter(v => seleccionados.has(v.id))
+      : vinosConPvp.filter(v => v.pvpBotellaPropuesto > 0)
+    const efectivos = targets.filter(v => v.pvpBotellaPropuesto > 0)
+    const cambios = efectivos.map(v => Number(v.cambio) || 0)
+    const sube = cambios.filter(c => c > 0).length
+    const baja = cambios.filter(c => c < 0).length
+    const min = cambios.length ? Math.min(...cambios) : 0
+    const max = cambios.length ? Math.max(...cambios) : 0
+    return { total: efectivos.length, sube, baja, min, max }
+  }, [vinosConPvp, seleccionados])
+
   async function aplicarPvpSugeridos() {
     const targets = seleccionados.size > 0
       ? vinosConPvp.filter(v => seleccionados.has(v.id))
       : vinosConPvp.filter(v => v.pvpBotellaPropuesto > 0)
 
     if (!targets.length) return
+    setConfirmando(false)
     setAplicando(true)
     for (const v of targets) {
       if (!v.pvpBotellaPropuesto) continue
@@ -560,11 +577,69 @@ function PrevisualizacionCarta({ vinos, tramos, configPricing, ajustes, restaura
             placeholder="Filtrar por vino o bodega…"
             style={{ maxWidth: 260 }}
           />
-          <button type="button" className={styles.primary} onClick={aplicarPvpSugeridos} disabled={aplicando}>
+          <button
+            type="button"
+            className={styles.primary}
+            onClick={() => setConfirmando(true)}
+            disabled={aplicando || impactoAAplicar.total === 0}
+            title={impactoAAplicar.total === 0 ? 'No hay vinos con cambio de PVP' : undefined}
+          >
             {aplicando ? 'Aplicando…' : seleccionados.size > 0 ? `Aplicar ${seleccionados.size} seleccionados` : 'Aplicar todos los PVP propuestos'}
           </button>
           {aplicado && <span style={{ color: '#27ae60', fontSize: 13 }}>PVPs actualizados ✓</span>}
         </div>
+
+        {/* A4.1: diálogo de confirmación con recuento e impacto. */}
+        {confirmando && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirmar-pvp-titulo"
+            onClick={e => { if (e.target === e.currentTarget) setConfirmando(false) }}
+            onKeyDown={e => { if (e.key === 'Escape') setConfirmando(false) }}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 1000, padding: 20,
+            }}
+          >
+            <div style={{ background: '#fff', borderRadius: 10, padding: 24, maxWidth: 440, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+              <h3 id="confirmar-pvp-titulo" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 700 }}>
+                Confirmar aplicación de PVP
+              </h3>
+              <p style={{ margin: '0 0 14px', fontSize: 14, lineHeight: 1.5 }}>
+                Vas a cambiar el PVP de <strong>{impactoAAplicar.total}</strong> vino{impactoAAplicar.total === 1 ? '' : 's'}.
+              </p>
+              <ul style={{ margin: '0 0 18px', paddingLeft: 20, fontSize: 13, color: '#444', lineHeight: 1.6 }}>
+                <li>{impactoAAplicar.sube} suben de precio, {impactoAAplicar.baja} bajan.</li>
+                <li>
+                  Rango de variación: <strong>{eur(impactoAAplicar.min, 2)}</strong> a <strong>{eur(impactoAAplicar.max, 2)}</strong> por botella.
+                </li>
+                <li>El cambio es inmediato y se refleja en la carta pública.</li>
+              </ul>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  autoFocus
+                  className={styles.ghost || styles.secondary}
+                  onClick={() => setConfirmando(false)}
+                  style={{ padding: '8px 16px', fontSize: 13 }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className={styles.primary}
+                  onClick={aplicarPvpSugeridos}
+                  disabled={aplicando}
+                  style={{ padding: '8px 16px', fontSize: 13 }}
+                >
+                  Sí, aplicar a {impactoAAplicar.total} vino{impactoAAplicar.total === 1 ? '' : 's'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>

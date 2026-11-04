@@ -7059,3 +7059,21 @@ button.itemCard {
     grid-template-columns: 1fr;
   }
 }
+
+/* A2: numerales alineados (lining-nums) para cifras grandes en Cormorant.
+   Cormorant Garamond por defecto usa oldstyle-nums, lo que hace que el 1
+   parezca una I y el 0 una O en los KPI (p. ej. "1248" se lee "I248").
+   Fallback a tabular-nums si la familia no soporta "lnum". */
+.statValue,
+.statValueSmall,
+.sideKpi,
+.pedidoHeroNum,
+.profitStatsPanelVal,
+.profitStatsPanelValSmall,
+.kpiHero,
+.kpiHeroVal,
+.heroStatValue,
+.quadrantNum {
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: "lnum" 1, "tnum" 1;
+}

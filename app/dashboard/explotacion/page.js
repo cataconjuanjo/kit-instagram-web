@@ -9,6 +9,11 @@ import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleCompo
 import styles from '../module.module.css'
 import { redondear } from '../../lib/wineEconomics'
 import { esPerfilSomm } from '../../lib/plans'
+import {
+  formatoMoneda,
+  formatoPorcentaje,
+  formatoMesCorto,
+} from '../../lib/formatoEs'
 import { GraficoEvolucion } from '../somm-graficos/GraficoEvolucion'
 import {
   calcularTotalPersonal,
@@ -33,14 +38,13 @@ function periodoHoy() {
 }
 
 function eur(v, dec = 0) {
-  return `${redondear(Number(v) || 0, dec).toLocaleString('es-ES', {
-    minimumFractionDigits: dec,
-    maximumFractionDigits: dec,
-  })} €`
+  // Helper fino sobre formatoMoneda para forzar nº de decimales (reglas A1).
+  const n = Number(v) || 0
+  return formatoMoneda(redondear(n, dec), { decimales: dec })
 }
 
 function pct(v) {
-  return `${redondear(Number(v) || 0, 1)} %`
+  return formatoPorcentaje(Number(v) || 0, 1)
 }
 
 function num(v) {
@@ -113,8 +117,8 @@ function SeccionCanales({ canales, onChange, facturacionTotal }) {
                 {v > 0 && (
                   <div style={{ marginTop: 6 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888', marginBottom: 3 }}>
-                      <span>{pctCanal.toFixed(1)}% del total</span>
-                      <span style={{ color: c.color, fontWeight: 600 }}>{v.toLocaleString('es-ES')} €</span>
+                      <span>{formatoPorcentaje(pctCanal, 1)} del total</span>
+                      <span style={{ color: c.color, fontWeight: 600 }}>{formatoMoneda(v)}</span>
                     </div>
                     <div style={{ height: 4, background: '#f0ece4', borderRadius: 2, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${Math.min(pctCanal, 100)}%`, background: c.color, borderRadius: 2, transition: 'width 0.3s ease' }} />
@@ -540,14 +544,24 @@ function ExplotacionContent() {
         setCanales({ copa_barra: '', botella_mesa: '', grupos_eventos: '', take_away: '' })
       }
 
-      const { data: cierre } = await supabase
+      // A3: distinguir "sin fila" de "query fallida". Antes, cualquier error
+      // (RLS, red) silenciaba y marcaba cierreExiste=false, mostrando el banner
+      // de "Mes sin cerrar" como falso positivo. Ahora solo marcamos false si
+      // la query fue OK y no vino fila; si hay error, dejamos el estado como
+      // null (cargando) y el banner no se dispara.
+      const { data: cierre, error: errCierre } = await supabase
         .from('cierres_mensuales_bodega')
         .select('snapshot')
         .eq('restaurante_id', restaurante.id)
         .eq('mes', periodo)
         .maybeSingle()
       setDatosVino(cierre?.snapshot || null)
-      setCierreExiste(!!cierre)
+      if (errCierre) {
+        console.warn('[explotacion] no se pudo verificar cierre del periodo', periodo, errCierre.message)
+        setCierreExiste(null)
+      } else {
+        setCierreExiste(!!cierre)
+      }
     }
     cargarPeriodo()
   }, [restaurante, periodo])
@@ -673,7 +687,7 @@ function ExplotacionContent() {
             </button>
             {esPerfilSomm(restaurante) && cierreExiste === false && (
               <span style={{ fontSize: 12, color: '#F59E0B', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '5px 10px' }}>
-                Sin cierre de mes — los datos se guardan como entrada manual
+                Mes sin cerrar: los datos son entrada manual
               </span>
             )}
             <a
@@ -814,7 +828,7 @@ function ExplotacionContent() {
         {facturacionNum > 0 && (
           <section className={styles.panel} style={{ marginBottom: 4 }}>
             <div className={styles.panelHead}>
-              <h2 className={styles.panelTitle}>Cuenta de Explotación — {periodo}</h2>
+              <h2 className={styles.panelTitle}>Cuenta de Explotación — {formatoMesCorto(periodo)}</h2>
               <label className={styles.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, margin: 0 }}>
                 <span style={{ fontSize: 12, color: '#666' }}>Benchmark:</span>
                 <select className={styles.select} value={tipoBenchmark} onChange={e => setTipoBenchmark(e.target.value)} style={{ fontSize: 12 }}>

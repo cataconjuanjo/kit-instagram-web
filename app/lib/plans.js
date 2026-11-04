@@ -21,25 +21,25 @@ export const KIOSKO_PLANS = {
 export const PLANES = {
   basic: {
     nombre: 'Basico',
-    precioOrientativo: '59 EUR/mes',
+    precioOrientativo: '59 €/mes',
     limiteVinos: 100,
     features: ['carta_qr', 'hub', 'personalizacion_basica', 'maridaje_cliente'],
   },
   pro: {
     nombre: 'Sala',
-    precioOrientativo: '99 EUR/mes',
+    precioOrientativo: '99 €/mes',
     limiteVinos: 200,
     features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'vista_etiquetas_publica'],
   },
   bodega: {
     nombre: 'Bodega',
-    precioOrientativo: '149 EUR/mes',
+    precioOrientativo: '149 €/mes',
     limiteVinos: 1000,
     features: ['estadisticas', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'informes', 'proveedores'],
   },
   sumiller: {
     nombre: 'Carta Viva Somm',
-    precioOrientativo: '199 EUR/mes',
+    precioOrientativo: '199 €/mes',
     limiteVinos: 5000,
     features: [
       // Todo lo del plan Bodega

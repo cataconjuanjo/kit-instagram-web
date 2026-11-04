@@ -299,7 +299,14 @@ export default function AjustesHub() {
             </div>
             {esAdmin && (
               <div className={styles.itemStack}>
-                <button className={styles.primary} onClick={() => abrirModalActividad('reiniciar')} disabled={guardandoActividad}>
+                {/* A4.2: 'Empezar actividad' sigue siendo accion principal; 'Reiniciar'
+                    es destructiva (borra fecha anterior) y pasa a estilo secundario para
+                    no confundirse con la principal. La confirmacion escrita ya esta en el modal. */}
+                <button
+                  className={actividadIniciada ? styles.ghost : styles.primary}
+                  onClick={() => abrirModalActividad('reiniciar')}
+                  disabled={guardandoActividad}
+                >
                   {actividadIniciada ? 'Reiniciar desde hoy' : 'Empezar actividad real hoy'}
                 </button>
                 {actividadIniciada && (
