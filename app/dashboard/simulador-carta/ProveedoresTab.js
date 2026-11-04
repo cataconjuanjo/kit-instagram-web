@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { getProveedorBreakdown, calcularConcentracion } from '../../lib/cartaCoverageUtils'
+import { formatoMoneda } from '../../lib/formatoEs'
 import simStyles from './simulador.module.css'
 
 const UNIDADES_DEFAULT = 6
 
+// A1: delega en formatoMoneda; mantiene "—" para valor 0 (semantica previa).
 function eur(v) {
   if (!Number(v)) return '—'
-  return Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €'
+  return formatoMoneda(v, { decimales: 2 })
 }
 
 // Paleta fija por posición (categoríco, mismo orden siempre)

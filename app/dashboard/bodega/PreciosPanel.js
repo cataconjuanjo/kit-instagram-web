@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../supabase'
 import { calcularPreciosSugeridos } from '../../lib/pricingUtils'
 import { pvpMinimoBottle, pvpMinimoCopa, descuentoMaximo, estadoFila, costeBase } from '../../lib/margenMinimo'
+import { formatoMoneda } from '../../lib/formatoEs'
 import styles from '../module.module.css'
 import priceStyles from '../precios/precios.module.css'
 
@@ -13,8 +14,9 @@ function num(v) {
   return Number(v) || 0
 }
 
+// A1: delega en formatoMoneda (es-ES canonico).
 function eur(v, d = 2) {
-  return `${num(v).toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d })} €`
+  return formatoMoneda(num(v), { decimales: d })
 }
 
 function diff(actual, recomendado) {

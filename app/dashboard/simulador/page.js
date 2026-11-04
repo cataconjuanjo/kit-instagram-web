@@ -14,6 +14,7 @@ import { esPerfilBodega } from '../../lib/plans'
 import { priorizarVentas, esVentaTPV } from '../../lib/salesPriority'
 import { supabase } from '../../supabase'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
+import { formatoMoneda } from '../../lib/formatoEs'
 import styles from '../module.module.css'
 
 const FORMULA_VERSION = 'profit-simulator-v2-contextual-margin'
@@ -42,12 +43,9 @@ const ESCENARIOS = {
   },
 }
 
+// A1: delega en formatoMoneda y pasa de "EUR" a "€".
 function eur(valor, decimales = 0) {
-  return `${numero(valor).toLocaleString('es-ES', {
-    minimumFractionDigits: decimales,
-    maximumFractionDigits: decimales,
-    useGrouping: true,
-  })} EUR`
+  return formatoMoneda(numero(valor), { decimales })
 }
 
 function pct(valor) {

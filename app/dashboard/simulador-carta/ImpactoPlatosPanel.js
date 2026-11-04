@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import simStyles from './simulador.module.css'
+import { formatoMoneda } from '../../lib/formatoEs'
 
+// A1: delega en formatoMoneda; mantiene "—" para valor 0 (semantica previa).
 function eur(v) {
   if (!Number(v)) return '—'
-  return Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: true }) + ' €'
+  return formatoMoneda(v, { decimales: 2 })
 }
 
 // Dumbbell SVG por categoría: dos puntos (antes / después) unidos por una línea.
