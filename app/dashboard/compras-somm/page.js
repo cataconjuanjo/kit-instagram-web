@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
@@ -9,6 +9,7 @@ import { FeatureGate, LoadingState, ModuleShell } from '../moduleComponents'
 import { construirComprasWorkbook, filasComprasVisibles } from '../../lib/excelSomm'
 import { descargarWorkbook } from '../../lib/excelSommDownload'
 import { formatoMoneda } from '../../lib/formatoEs'
+import ConfirmModal from '../_components/ConfirmModal'
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
@@ -337,22 +338,8 @@ export default function ComprasSomm() {
   const [loading, setLoading] = useState(true)
   const [periodoFiltro, setPeriodoFiltro] = useState(periodoActual())
   const [anioFiltro, setAnioFiltro] = useState(new Date().getFullYear())
-  // A4.3: confirmación de borrado via modal (en vez de window.confirm nativo).
+  // A4.3: confirmación de borrado via modal compartido (ConfirmModal).
   const [borrando, setBorrando] = useState(null) // { registroId, indiceFactura, resumen }
-  const cancelarBorradoRef = useRef(null)
-
-  // Focus inicial sobre "Cancelar" cuando se abre el modal (sin autoFocus).
-  useEffect(() => {
-    if (borrando) cancelarBorradoRef.current?.focus()
-  }, [borrando])
-
-  // Escape cierra el modal (listener global).
-  useEffect(() => {
-    if (!borrando) return
-    const onKey = e => { if (e.key === 'Escape') setBorrando(null) }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [borrando])
   const [tab, setTab] = useState('facturas')
 
   useEffect(() => {
@@ -569,65 +556,23 @@ export default function ComprasSomm() {
           </div>
         )}
 
-        {/* A4.3: modal de confirmacion de borrado de factura.
-            Overlay = <button> accesible; focus y Escape se manejan en useEffect. */}
-        {borrando && (
-          <div
-            style={{
-              position: 'fixed', inset: 0, zIndex: 1000,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: 20,
-            }}
-          >
-            <button
-              type="button"
-              aria-label="Cerrar sin eliminar"
-              onClick={() => setBorrando(null)}
-              style={{
-                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)',
-                border: 'none', padding: 0, cursor: 'pointer',
-              }}
-            />
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="borrar-factura-titulo"
-              style={{
-                position: 'relative', zIndex: 1,
-                background: '#fff', borderRadius: 10, padding: 24,
-                maxWidth: 440, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
-              }}
-            >
-              <h3 id="borrar-factura-titulo" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 700 }}>
-                Eliminar factura
-              </h3>
-              <p style={{ margin: '0 0 8px', fontSize: 14, lineHeight: 1.5 }}>
-                Vas a eliminar <strong>{borrando.resumen}</strong>.
-              </p>
-              <p style={{ margin: '0 0 18px', fontSize: 12, color: '#666' }}>
-                Esta acción no se puede deshacer.
-              </p>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  ref={cancelarBorradoRef}
-                  className={styles.ghost || styles.secondary}
-                  onClick={() => setBorrando(null)}
-                  style={{ padding: '8px 16px', fontSize: 13 }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmarBorradoFactura}
-                  style={{ padding: '8px 16px', fontSize: 13, background: '#c0392b', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
-                >
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* A4.3: modal de confirmacion de borrado de factura. */}
+        <ConfirmModal
+          open={!!borrando}
+          title="Eliminar factura"
+          onCancel={() => setBorrando(null)}
+          onConfirm={confirmarBorradoFactura}
+          confirmLabel="Eliminar"
+          confirmTone="danger"
+          overlayAriaLabel="Cerrar sin eliminar"
+        >
+          <p style={{ margin: '0 0 8px' }}>
+            Vas a eliminar <strong>{borrando?.resumen}</strong>.
+          </p>
+          <p style={{ margin: 0, fontSize: 12, color: '#666' }}>
+            Esta acción no se puede deshacer.
+          </p>
+        </ConfirmModal>
       </ModuleShell>
     </FeatureGate>
   )

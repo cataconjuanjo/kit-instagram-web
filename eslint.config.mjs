@@ -7,6 +7,10 @@ const eslintConfig = defineConfig([
   // eslint-config-next only ships 6 jsx-a11y rules; add the full recommended set.
   // Plugin is already registered by eslint-config-next, so we spread only the rules.
   { rules: jsxA11y.flatConfigs.recommended.rules },
+  // Caza referencias a identificadores inexistentes (p. ej. usar "styles" sin
+  // importar el modulo CSS correspondiente — bug reportado en Libro de Compras
+  // en noviembre de 2026 que ni build ni la config previa cazaban).
+  { rules: { "no-undef": "error" } },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
