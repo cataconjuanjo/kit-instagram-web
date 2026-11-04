@@ -573,6 +573,21 @@ function PrevisualizacionCarta({ vinos, tramos, configPricing, ajustes, restaura
         <p className={styles.panelSub}>Compara los PVPs actuales con los propuestos según tus tramos. Aplica los cambios con un clic.</p>
       </div>
       <div className={styles.panelBody}>
+        {/* A10: estado vacio explicativo cuando no hay PVPs propuestos
+            (falta tramos y/o falta coste en las referencias). */}
+        {vinosConCambio.length === 0 && (
+          <div style={{ padding: 20, background: '#faf8f4', border: '1px dashed #d8d3c8', borderRadius: 8, marginBottom: 18, fontSize: 13, color: '#555', lineHeight: 1.6 }}>
+            <strong style={{ display: 'block', fontSize: 14, marginBottom: 6, color: '#1a1a1a' }}>
+              Sin cambios de PVP que previsualizar
+            </strong>
+            Posibles motivos:
+            <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+              <li>No has definido <strong>tramos de precio</strong> todavia (pestaña "Tramos de precio").</li>
+              <li>Tus vinos no tienen <strong>coste</strong> cargado, asi que no se puede calcular PVP propuesto.</li>
+              <li>Tus PVPs actuales ya coinciden con los propuestos.</li>
+            </ul>
+          </div>
+        )}
         <div className={styles.statsGrid} style={{ marginBottom: 20 }}>
           <StatCard value={vinosConCambio.length} label="Vinos con cambio de PVP" />
           <StatCard
