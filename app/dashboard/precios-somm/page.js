@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import {
   SELECT_CLIENT_RESTAURANTE_DASHBOARD,
@@ -425,6 +425,20 @@ function PrevisualizacionCarta({ vinos, tramos, configPricing, ajustes, restaura
   const [seleccionados, setSeleccionados] = useState(new Set())
   // A4.1: diálogo de confirmación con recuento e impacto antes de escribir PVPs.
   const [confirmando, setConfirmando] = useState(false)
+  const cancelarRef = useRef(null)
+
+  // Focus inicial sobre "Cancelar" cuando se abre el modal (sin autoFocus).
+  useEffect(() => {
+    if (confirmando) cancelarRef.current?.focus()
+  }, [confirmando])
+
+  // Escape cierra el modal (listener global, limpio al desmontar o cerrar).
+  useEffect(() => {
+    if (!confirmando) return
+    const onKey = e => { if (e.key === 'Escape') setConfirmando(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [confirmando])
 
   const metodo = configPricing?.metodo_pvp || 'multiplicador'
   const descorcheFijo = num(configPricing?.descorche_fijo) || 9
@@ -589,21 +603,37 @@ function PrevisualizacionCarta({ vinos, tramos, configPricing, ajustes, restaura
           {aplicado && <span style={{ color: '#27ae60', fontSize: 13 }}>PVPs actualizados ✓</span>}
         </div>
 
-        {/* A4.1: diálogo de confirmación con recuento e impacto. */}
+        {/* A4.1: diálogo de confirmación con recuento e impacto.
+            Overlay = <button> accesible (aria-label "Cerrar"); el diálogo
+            visible vive dentro como <div role="dialog">. Escape y focus
+            inicial se manejan con useEffect arriba. */}
         {confirmando && (
           <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="confirmar-pvp-titulo"
-            onClick={e => { if (e.target === e.currentTarget) setConfirmando(false) }}
-            onKeyDown={e => { if (e.key === 'Escape') setConfirmando(false) }}
             style={{
-              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+              position: 'fixed', inset: 0, zIndex: 1000,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              zIndex: 1000, padding: 20,
+              padding: 20,
             }}
           >
-            <div style={{ background: '#fff', borderRadius: 10, padding: 24, maxWidth: 440, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+            <button
+              type="button"
+              aria-label="Cerrar sin aplicar"
+              onClick={() => setConfirmando(false)}
+              style={{
+                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)',
+                border: 'none', padding: 0, cursor: 'pointer',
+              }}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="confirmar-pvp-titulo"
+              style={{
+                position: 'relative', zIndex: 1,
+                background: '#fff', borderRadius: 10, padding: 24,
+                maxWidth: 440, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+              }}
+            >
               <h3 id="confirmar-pvp-titulo" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 700 }}>
                 Confirmar aplicación de PVP
               </h3>
@@ -620,7 +650,7 @@ function PrevisualizacionCarta({ vinos, tramos, configPricing, ajustes, restaura
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
-                  autoFocus
+                  ref={cancelarRef}
                   className={styles.ghost || styles.secondary}
                   onClick={() => setConfirmando(false)}
                   style={{ padding: '8px 16px', fontSize: 13 }}

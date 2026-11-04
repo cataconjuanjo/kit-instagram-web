@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { supabase } from '../../supabase'
 import { getEffectiveRestaurantEmail } from '../../demo'
 import { SELECT_CLIENT_RESTAURANTE_DASHBOARD } from '../../lib/clientSupabaseSelects'
@@ -281,6 +281,21 @@ function ConcentracionProveedores({ registros, anioFiltro }) {
       <div style={{ marginBottom: 16, fontSize: 13, color: '#555' }}>
         Gasto total {anioFiltro}: <strong>{formatEur(totalAnio)}</strong>
       </div>
+      {/* A6: leyenda de los colores de la barra (umbrales reales usados abajo). */}
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', margin: '0 0 12px', fontSize: 11, color: '#666' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 2, background: '#27ae60' }} />
+          Verde: ≤15 % del gasto
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 2, background: '#e67e22' }} />
+          Naranja: 15–25 %
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 2, background: '#e74c3c' }} />
+          Rojo: &gt;25 % (alerta de concentracion)
+        </span>
+      </div>
       {resumen.map((r, i) => (
         <div key={r.proveedor} style={{ marginBottom: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -322,6 +337,22 @@ export default function ComprasSomm() {
   const [loading, setLoading] = useState(true)
   const [periodoFiltro, setPeriodoFiltro] = useState(periodoActual())
   const [anioFiltro, setAnioFiltro] = useState(new Date().getFullYear())
+  // A4.3: confirmación de borrado via modal (en vez de window.confirm nativo).
+  const [borrando, setBorrando] = useState(null) // { registroId, indiceFactura, resumen }
+  const cancelarBorradoRef = useRef(null)
+
+  // Focus inicial sobre "Cancelar" cuando se abre el modal (sin autoFocus).
+  useEffect(() => {
+    if (borrando) cancelarBorradoRef.current?.focus()
+  }, [borrando])
+
+  // Escape cierra el modal (listener global).
+  useEffect(() => {
+    if (!borrando) return
+    const onKey = e => { if (e.key === 'Escape') setBorrando(null) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [borrando])
   const [tab, setTab] = useState('facturas')
 
   useEffect(() => {
@@ -381,16 +412,25 @@ export default function ComprasSomm() {
     await cargarRegistros(restaurante.id)
   }
 
-  async function handleEliminarFactura(registroId, indiceFactura) {
+  // A4.3: en vez de borrar al primer clic, se abre un modal con resumen de la
+  // factura (proveedor, importe, albaran). La confirmacion efectiva vive en
+  // confirmarBorradoFactura.
+  function handleEliminarFactura(registroId, indiceFactura) {
     const reg = registros.find(r => r.id === registroId)
     if (!reg) return
     const fac = (reg.facturas || [])[indiceFactura]
-    // A4.3: confirmacion explicita antes de borrar la factura. Antes se eliminaba
-    // sin aviso con un solo clic.
     const resumen = fac
-      ? `${reg.proveedor} - ${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(fac.importe) || 0)} €${fac.albaran ? ` (albaran ${fac.albaran})` : ''}`
+      ? `${reg.proveedor} — ${formatEur(Number(fac.importe) || 0)}${fac.albaran ? ` (albarán ${fac.albaran})` : ''}`
       : 'esta factura'
-    if (!window.confirm(`¿Eliminar ${resumen}? Esta accion no se puede deshacer.`)) return
+    setBorrando({ registroId, indiceFactura, resumen })
+  }
+
+  async function confirmarBorradoFactura() {
+    if (!borrando) return
+    const { registroId, indiceFactura } = borrando
+    const reg = registros.find(r => r.id === registroId)
+    setBorrando(null)
+    if (!reg) return
     const nuevasFacturas = (reg.facturas || []).filter((_, i) => i !== indiceFactura)
     if (nuevasFacturas.length === 0) {
       await supabase.from('libro_compras').delete().eq('id', registroId)
@@ -526,6 +566,66 @@ export default function ComprasSomm() {
               ))}
             </div>
             <ConcentracionProveedores registros={registros} anioFiltro={anioFiltro} />
+          </div>
+        )}
+
+        {/* A4.3: modal de confirmacion de borrado de factura.
+            Overlay = <button> accesible; focus y Escape se manejan en useEffect. */}
+        {borrando && (
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1000,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 20,
+            }}
+          >
+            <button
+              type="button"
+              aria-label="Cerrar sin eliminar"
+              onClick={() => setBorrando(null)}
+              style={{
+                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)',
+                border: 'none', padding: 0, cursor: 'pointer',
+              }}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="borrar-factura-titulo"
+              style={{
+                position: 'relative', zIndex: 1,
+                background: '#fff', borderRadius: 10, padding: 24,
+                maxWidth: 440, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+              }}
+            >
+              <h3 id="borrar-factura-titulo" style={{ margin: '0 0 12px', fontSize: 18, fontWeight: 700 }}>
+                Eliminar factura
+              </h3>
+              <p style={{ margin: '0 0 8px', fontSize: 14, lineHeight: 1.5 }}>
+                Vas a eliminar <strong>{borrando.resumen}</strong>.
+              </p>
+              <p style={{ margin: '0 0 18px', fontSize: 12, color: '#666' }}>
+                Esta acción no se puede deshacer.
+              </p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  ref={cancelarBorradoRef}
+                  className={styles.ghost || styles.secondary}
+                  onClick={() => setBorrando(null)}
+                  style={{ padding: '8px 16px', fontSize: 13 }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmarBorradoFactura}
+                  style={{ padding: '8px 16px', fontSize: 13, background: '#c0392b', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </ModuleShell>
