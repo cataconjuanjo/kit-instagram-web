@@ -277,6 +277,17 @@ function TramosMultiplicador({ restauranteId, tramos, onTramosChange }) {
         <p className={styles.panelSub}>Define los factores de precio por rango de coste. Se aplican a todos los vinos de tu carta.</p>
       </div>
       <div className={styles.panelBody}>
+        {/* A10.c: estado vacío explicativo cuando no hay tramos aún. */}
+        {editables.length === 0 && (
+          <div style={{ padding: 20, background: '#faf8f4', border: '1px dashed #d8d3c8', borderRadius: 8, marginBottom: 18, fontSize: 13, color: '#555', lineHeight: 1.6 }}>
+            <strong style={{ display: 'block', fontSize: 14, marginBottom: 6, color: '#1a1a1a' }}>
+              Aún no tienes tramos
+            </strong>
+            Los tramos indican qué multiplicador aplicar al coste de cada vino para calcular el PVP.
+            Elige una plantilla abajo (p. ej. «Gastrotaberna») o pulsa <strong>+ Añadir tramo</strong> para crear el primero.
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           <span style={{ fontSize: 13, color: '#666', alignSelf: 'center' }}>Plantillas:</span>
           {Object.entries(PLANTILLAS_TRAMOS).map(([key, p]) => (
@@ -841,9 +852,19 @@ function SimuladorWhatIf({ vinos, ajustes }) {
             </div>
           </>
         ) : (
-          <p style={{ color: '#888', fontSize: 13, padding: '24px 0' }}>
-            Busca un vino arriba y añádelo para simular el impacto de cambiar su precio.
-          </p>
+          /* A10.c: estado vacío explicativo (mismo patrón que Tramos y Previsualización). */
+          <div style={{ padding: 20, background: '#faf8f4', border: '1px dashed #d8d3c8', borderRadius: 8, fontSize: 13, color: '#555', lineHeight: 1.6 }}>
+            <strong style={{ display: 'block', fontSize: 14, marginBottom: 6, color: '#1a1a1a' }}>
+              Aún no has añadido vinos al What-If
+            </strong>
+            Busca un vino en el campo de arriba y pulsa sobre él para añadirlo.
+            Para cada vino puedes ajustar:
+            <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+              <li><strong>PVP nuevo</strong>: el precio que probarías.</li>
+              <li><strong>Uds/año</strong>: cuántas botellas vendes de ese vino al año.</li>
+            </ul>
+            El impacto se recalcula al instante. Solo listamos vinos con coste y PVP cargados.
+          </div>
         )}
       </div>
     </section>
