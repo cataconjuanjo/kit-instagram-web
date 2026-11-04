@@ -410,7 +410,8 @@ export default function MenuEngineering() {
           {perfilBodega
             ? 'Cada referencia clasificada por salida real, margen y capital inmovilizado. Decide qué proteger, activar, renegociar o archivar.'
             : 'Cada vino de tu carta, clasificado por lo que se vende y lo que deja.'}
-          {' '}<button type="button" className={styles.profitHelpBtnSmall} onClick={() => setHelpAbierto(v => !v)} aria-expanded={helpAbierto} aria-label={helpAbierto ? 'Cerrar ayuda' : 'Ayuda'}>i</button>
+          {/* A6.4: aria-label descriptivo de la ayuda contextual (Menu Engineering / Rentabilidad). */}
+          {' '}<button type="button" className={styles.profitHelpBtnSmall} onClick={() => setHelpAbierto(v => !v)} aria-expanded={helpAbierto} aria-label={helpAbierto ? 'Cerrar ayuda de Rentabilidad' : 'Abrir ayuda de Rentabilidad (qué significa estrella, joya, caballo y archivar)'}>i</button>
         </>}
       >
         {helpAbierto && (

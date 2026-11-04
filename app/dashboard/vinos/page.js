@@ -1546,7 +1546,9 @@ async function aplicarAccionMasiva(confirmado = false) {
           {/* Cabecera columnas */}
           <div className={styles.wineListHeader}>
   {['Vino', 'Bodega · Región', 'Copa', 'Botella', 'Stock', ''].map(h => (
-              <p key={h} style={{ fontSize: 10, color: '#ccc', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>{h}</p>
+              /* A9: cabeceras de columna 10px uppercase. #ccc daba 1.61:1 sobre blanco (falla AA).
+                 Oscurecemos a #767676 (4.54:1) dentro de la misma familia gris neutra. */
+              <p key={h} style={{ fontSize: 10, color: '#767676', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>{h}</p>
             ))}
           </div>
 
@@ -1573,7 +1575,8 @@ async function aplicarAccionMasiva(confirmado = false) {
 
           {vinosVisibles.length === 0 ? (
             <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-              <p style={{ color: '#ccc', fontSize: 14, fontWeight: 300 }}>{filtroUrl === 'pendientes' ? 'No hay vinos pendientes de completar.' : 'Aún no hay vinos. Añade el primero.'}</p>
+              {/* A9: texto 14px light. #ccc = 1.61:1. Subido a #767676 (5.74:1 por tamaño y peso). */}
+              <p style={{ color: '#767676', fontSize: 14, fontWeight: 300 }}>{filtroUrl === 'pendientes' ? 'No hay vinos pendientes de completar.' : 'Aún no hay vinos. Añade el primero.'}</p>
             </div>
           ) : (
             vinosPagina.map((v, i) => (
@@ -1605,7 +1608,8 @@ async function aplicarAccionMasiva(confirmado = false) {
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: tipoDot[v.tipo], flexShrink: 0 }} />
                   <div>
                     <p style={{ margin: 0, fontSize: 14, color: '#111' }}>{v.nombre}</p>
-                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#ccc' }}>
+                    {/* A9: subtítulo 11px. #ccc = 1.61:1 sobre blanco. Subido a #767676 (4.54:1). */}
+                    <p style={{ margin: '2px 0 0', fontSize: 11, color: '#767676' }}>
   {tipoLabel[v.tipo]} · {editandoAnada === v.id ? (
     <span>
       <input
@@ -1618,7 +1622,7 @@ async function aplicarAccionMasiva(confirmado = false) {
         style={{ width: 60, fontSize: 11, border: 'none', borderBottom: '1px solid #111', outline: 'none', background: 'transparent', color: '#111', padding: '0 2px' }}
       />
       <span onClick={() => guardarAnada(v)} style={{ marginLeft: 6, color: '#111', cursor: 'pointer' }}>✓</span>
-      <span onClick={() => setEditandoAnada(null)} style={{ marginLeft: 4, color: '#ccc', cursor: 'pointer' }}>×</span>
+      <span onClick={() => setEditandoAnada(null)} style={{ marginLeft: 4, color: '#767676', cursor: 'pointer' }}>×</span>
     </span>
   ) : (
     <span onClick={() => { setEditandoAnada(v.id); setNuevaAnada(v.anada || '') }} style={{ cursor: 'pointer', borderBottom: '1px dashed #ccc' }}>
@@ -1643,7 +1647,7 @@ async function aplicarAccionMasiva(confirmado = false) {
       />
       <span style={{ fontSize: 11 }}>€</span>
       <span onClick={() => guardarPrecio(v)} style={{ color: '#111', cursor: 'pointer' }}>✓</span>
-      <span onClick={() => setEditandoPrecio(null)} style={{ color: '#ccc', cursor: 'pointer' }}>×</span>
+      <span onClick={() => setEditandoPrecio(null)} style={{ color: '#767676', cursor: 'pointer' }}>×</span>
     </span>
   ) : (
     <span onClick={() => { setEditandoPrecio(v.id); setNuevoPrecio(v.precio_botella || '') }} style={{ cursor: 'pointer', borderBottom: '1px dashed #ccc' }}>

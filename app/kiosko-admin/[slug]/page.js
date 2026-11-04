@@ -4377,7 +4377,7 @@ export default function AdminKioskoPage() {
                   ) : (
                     <span className={styles.inlineValue}>
                       {v.anada || <em className={styles.dash}>—</em>}
-                      <span className={styles.editIcon}>✎</span>
+                      <span className={styles.editIcon} role="img" aria-label="Celda editable" title="Haz clic sobre el valor para editarlo">✎</span>
                     </span>
                   )}
                 </td>
@@ -4401,7 +4401,7 @@ export default function AdminKioskoPage() {
                   ) : (
                     <span className={styles.inlineValue}>
                       {formatPVP(v.precio_pvp) ?? <em className={styles.dash}>—</em>}
-                      <span className={styles.editIcon}>✎</span>
+                      <span className={styles.editIcon} role="img" aria-label="Celda editable" title="Haz clic sobre el valor para editarlo">✎</span>
                     </span>
                   )}
                 </td>
@@ -4422,7 +4422,7 @@ export default function AdminKioskoPage() {
                   ) : (
                     <span className={styles.inlineValue}>
                       {v.precio_coste ? `${Number(v.precio_coste).toFixed(2)} €` : <em className={styles.dash}>—</em>}
-                      <span className={styles.editIcon}>✎</span>
+                      <span className={styles.editIcon} role="img" aria-label="Celda editable" title="Haz clic sobre el valor para editarlo">✎</span>
                     </span>
                   )}
                 </td>}
@@ -4455,7 +4455,7 @@ export default function AdminKioskoPage() {
                       {v.precio_oferta
                         ? <span className={styles.ofertaCeldaBadge}>{Number(v.precio_oferta).toFixed(2)} €</span>
                         : <em className={styles.dash}>—</em>}
-                      <span className={styles.editIcon}>✎</span>
+                      <span className={styles.editIcon} role="img" aria-label="Celda editable" title="Haz clic sobre el valor para editarlo">✎</span>
                     </span>
                   )}
                 </td>
@@ -4490,7 +4490,7 @@ export default function AdminKioskoPage() {
                   ) : (
                     <span className={styles.inlineValue}>
                       {v.stock ?? 0}
-                      <span className={styles.editIcon}>✎</span>
+                      <span className={styles.editIcon} role="img" aria-label="Celda editable" title="Haz clic sobre el valor para editarlo">✎</span>
                     </span>
                   )}
                 </td>}
@@ -4515,7 +4515,7 @@ export default function AdminKioskoPage() {
                   ) : (
                     <span className={styles.inlineValue}>
                       {v.stock_minimo ?? 0}
-                      <span className={styles.editIcon}>✎</span>
+                      <span className={styles.editIcon} role="img" aria-label="Celda editable" title="Haz clic sobre el valor para editarlo">✎</span>
                     </span>
                   )}
                 </td>}
@@ -4539,7 +4539,7 @@ export default function AdminKioskoPage() {
                   ) : (
                     <span className={styles.inlineValue}>
                       {v.ubicacion_estanteria ?? <em className={styles.dash}>—</em>}
-                      <span className={styles.editIcon}>✎</span>
+                      <span className={styles.editIcon} role="img" aria-label="Celda editable" title="Haz clic sobre el valor para editarlo">✎</span>
                     </span>
                   )}
                 </td>}

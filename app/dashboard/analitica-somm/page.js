@@ -315,15 +315,16 @@ function TabHistorico({ historico }) {
         <div className={styles.panelBody}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              {/* A10.b: tooltips (title) en las columnas con terminología fiscal/contable. */}
               <thead>
                 <tr style={{ borderBottom: '2px solid #e8e3d8' }}>
                   <th style={{ textAlign: 'left', padding: '7px 8px', fontWeight: 600 }}>Año</th>
-                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>Ingresos</th>
-                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>vs año ant.</th>
-                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>Consumo MP</th>
-                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>% MP</th>
-                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>Margen explot.</th>
-                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>% Margen</th>
+                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="Ingresos totales netos del año (sin IVA).">Ingresos</th>
+                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="Variación interanual de ingresos (%). Solo cuenta meses comparables entre los dos años.">vs año ant.</th>
+                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="Consumo real de materia prima (compras + stock inicial − stock final).">Consumo MP</th>
+                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="% de materia prima sobre ingresos. Benchmark hostelería: 30-45%.">% MP</th>
+                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="Margen de explotación: ingresos − MP − personal − gastos fijos. En €.">Margen explot.</th>
+                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="% del margen de explotación sobre ingresos. Objetivo: >20%.">% Margen</th>
                 </tr>
               </thead>
               <tbody>
@@ -741,14 +742,15 @@ function TabBonus({ restauranteId, historico }) {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
+              {/* A10.b: tooltips (title) en cabeceras con terminología específica del sistema de bonus. */}
               <tr style={{ borderBottom: '2px solid #e8e3d8' }}>
                 <th style={{ textAlign: 'left', padding: '7px 8px', fontWeight: 600 }}>Mes</th>
-                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>Real {anio - 1}</th>
-                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>Objetivo</th>
-                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>Real {anio}</th>
-                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>Crecim. YoY</th>
-                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>Exceso</th>
-                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }}>Bonus</th>
+                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title={`Ingresos reales del mismo mes del año anterior (${anio - 1}).`}>Real {anio - 1}</th>
+                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="Objetivo de facturación del mes: viene del Presupuesto si existe, o del año anterior × (1 + umbral%).">Objetivo</th>
+                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title={`Ingresos reales ya registrados en ${anio}. Vacío si el mes todavía no se ha cerrado.`}>Real {anio}</th>
+                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title={`Crecimiento interanual (%): (Real ${anio} − Real ${anio - 1}) ÷ Real ${anio - 1}. Si supera el umbral, activa bonus.`}>Crecim. YoY</th>
+                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="Exceso sobre el objetivo del mes (€). Solo cuenta cuando Crecim. YoY ≥ umbral.">Exceso</th>
+                <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="Bonus del mes = exceso × % bonus. Puedes ajustar umbral y % en Configuración.">Bonus</th>
               </tr>
             </thead>
             <tbody>

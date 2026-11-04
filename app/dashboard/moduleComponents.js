@@ -28,9 +28,16 @@ export function LoadingState({
 export function MetricInfo({ title, children }) {
   if (!children) return null
 
+  // A6.4: aria-label descriptivo por métrica — incluye el label del KPI
+  // para que el lector de pantalla diga "¿Qué significa Facturación?"
+  // en lugar del genérico "Abrir ayuda".
+  const metricaLabel = title || 'esta métrica'
   return (
     <details className={styles.metricInfo}>
-      <summary aria-label={`Explicar ${title || 'metrica'}`} title="Que significa este dato">
+      <summary
+        aria-label={`¿Qué significa ${metricaLabel}?`}
+        title={`¿Qué significa ${metricaLabel}?`}
+      >
         i
       </summary>
       <div className={styles.metricInfoBubble}>
@@ -113,8 +120,11 @@ export function ModuleShell({ restaurante, eyebrow, title, subtitle, actions, he
                   className={styles.helpButton}
                   onClick={() => setHelpOpen(!helpOpen)}
                   aria-expanded={helpOpen}
-                  aria-label={helpOpen ? 'Cerrar ayuda' : 'Abrir ayuda'}
-                  title={helpOpen ? 'Cerrar ayuda' : 'Ayuda'}
+                  /* A6.4: aria-label con el titulo de la pantalla para que
+                     el lector diga 'Abrir ayuda de Cuenta de Explotación'
+                     en vez del genérico 'Abrir ayuda'. */
+                  aria-label={`${helpOpen ? 'Cerrar' : 'Abrir'} ayuda de ${title || 'esta pantalla'}`}
+                  title={helpOpen ? 'Cerrar ayuda' : `Ayuda de ${title || 'esta pantalla'}`}
                 >
                   i
                 </button>

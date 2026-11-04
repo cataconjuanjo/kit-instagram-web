@@ -686,7 +686,7 @@ function ExplotacionContent() {
               {guardando ? 'Guardando…' : 'Guardar periodo'}
             </button>
             {esPerfilSomm(restaurante) && cierreExiste === false && (
-              <span style={{ fontSize: 12, color: '#F59E0B', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '5px 10px' }}>
+              <span style={{ fontSize: 12, color: '#b15a00', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '5px 10px' }}>
                 Mes sin cerrar: los datos son entrada manual
               </span>
             )}
@@ -745,8 +745,8 @@ function ExplotacionContent() {
             {datosVino && (
               <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(74,140,111,0.10)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                 <div style={{ fontSize: 13, color: '#8b8278' }}>
-                  <span style={{ marginRight: 16 }}>Ventas vino (s/IVA): <strong style={{ color: '#ccc' }}>{eur(datosVino.ventas_neto, 2)}</strong></span>
-                  <span>Coste de ventas: <strong style={{ color: '#ccc' }}>{eur(datosVino.coste_ventas_teorico, 2)}</strong></span>
+                  <span style={{ marginRight: 16 }}>Ventas vino (s/IVA): <strong style={{ color: '#1a1a1a' }}>{eur(datosVino.ventas_neto, 2)}</strong></span>
+                  <span>Coste de ventas: <strong style={{ color: '#1a1a1a' }}>{eur(datosVino.coste_ventas_teorico, 2)}</strong></span>
                 </div>
                 <button
                   type="button"
@@ -761,12 +761,12 @@ function ExplotacionContent() {
             {esPerfilSomm(restaurante) && datosVino && num(facturacion) > 0 &&
               Math.abs((Number(datosVino.ventas_neto) || 0) - num(facturacion)) > 0.01 && (
               <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(245,158,11,0.08)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.25)' }}>
-                <p style={{ color: '#F59E0B', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+                <p style={{ color: '#b15a00', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
                   Los ingresos del formulario difieren del cierre de bodega
                 </p>
                 <div style={{ display: 'flex', gap: 20, fontSize: 13, marginBottom: 8, flexWrap: 'wrap' }}>
                   <span style={{ opacity: 0.7 }}>Formulario: <strong>{eur(num(facturacion), 2)}</strong></span>
-                  <span style={{ color: '#F59E0B' }}>Cierre: <strong>{eur(datosVino.ventas_neto, 2)}</strong></span>
+                  <span style={{ color: '#b15a00' }}>Cierre: <strong>{eur(datosVino.ventas_neto, 2)}</strong></span>
                 </div>
                 <button
                   type="button"
@@ -782,38 +782,47 @@ function ExplotacionContent() {
           </div>
         </section>
 
-        {/* KPIs resumen */}
+        {/* A10.a: KPIs resumen dentro de una tarjeta con el mismo estilo (styles.panel)
+            que el resto de secciones, en vez de una franja suelta entre tarjetas. */}
         {facturacionNum > 0 && (
-          <div className={styles.statsGrid} style={{ marginBottom: 4 }}>
-            <StatCard
-              value={eur(facturacionNum)}
-              label="Facturación"
-            />
-            <StatCard
-              value={pct(totales.pctMp)}
-              label="% Materia Prima"
-              hint="Benchmark: 30-45% hostelería"
-              valueStyle={{ color: totales.pctMp > 45 ? '#e74c3c' : totales.pctMp > 38 ? '#f39c12' : '#27ae60' }}
-            />
-            <StatCard
-              value={pct(totales.pctPersonal)}
-              label="% Personal"
-              hint="Benchmark: 15-22%"
-              valueStyle={{ color: totales.pctPersonal > 25 ? '#e74c3c' : totales.pctPersonal > 22 ? '#f39c12' : '#27ae60' }}
-            />
-            <StatCard
-              value={pct(totales.pctResultado)}
-              label="Margen de Explotación"
-              hint="Objetivo: >20%"
-              valueStyle={{ color: totales.resultado < 0 ? '#e74c3c' : totales.pctResultado < 10 ? '#f39c12' : '#27ae60' }}
-            />
-            <StatCard
-              value={totales.breakEven ? eur(totales.breakEven) : '—'}
-              label="Break-Even del mes"
-              hint="Facturación mínima para cubrir costes fijos"
-              valueStyle={{ color: alertaBreakEven ? '#e74c3c' : undefined }}
-            />
-          </div>
+          <section className={styles.panel} style={{ marginBottom: 4 }}>
+            <div className={styles.panelHead}>
+              <h2 className={styles.panelTitle}>Resumen del periodo</h2>
+              <p className={styles.panelSub}>KPIs principales del P&amp;L del mes.</p>
+            </div>
+            <div className={styles.panelBody}>
+              <div className={styles.statsGrid}>
+                <StatCard
+                  value={eur(facturacionNum)}
+                  label="Facturación"
+                />
+                <StatCard
+                  value={pct(totales.pctMp)}
+                  label="% Materia Prima"
+                  hint="Benchmark: 30-45% hostelería"
+                  valueStyle={{ color: totales.pctMp > 45 ? '#e74c3c' : totales.pctMp > 38 ? '#f39c12' : '#27ae60' }}
+                />
+                <StatCard
+                  value={pct(totales.pctPersonal)}
+                  label="% Personal"
+                  hint="Benchmark: 15-22%"
+                  valueStyle={{ color: totales.pctPersonal > 25 ? '#e74c3c' : totales.pctPersonal > 22 ? '#f39c12' : '#27ae60' }}
+                />
+                <StatCard
+                  value={pct(totales.pctResultado)}
+                  label="Margen de Explotación"
+                  hint="Objetivo: >20%"
+                  valueStyle={{ color: totales.resultado < 0 ? '#e74c3c' : totales.pctResultado < 10 ? '#f39c12' : '#27ae60' }}
+                />
+                <StatCard
+                  value={totales.breakEven ? eur(totales.breakEven) : '—'}
+                  label="Break-Even del mes"
+                  hint="Facturación mínima para cubrir costes fijos"
+                  valueStyle={{ color: alertaBreakEven ? '#e74c3c' : undefined }}
+                />
+              </div>
+            </div>
+          </section>
         )}
 
         {alertaBreakEven && (
@@ -908,8 +917,17 @@ function ExplotacionContent() {
 
         <MapaCalorEstacional historico={historico} />
 
+        {/* A10.a: gráfico "Evolución mensual" dentro de tarjeta con el mismo estilo. */}
         {esPerfilSomm(restaurante) && (
-          <GraficoEvolucion restauranteId={restaurante?.id} enabled={!!restaurante?.id} />
+          <section className={styles.panel}>
+            <div className={styles.panelHead}>
+              <h2 className={styles.panelTitle}>Evolución mensual</h2>
+              <p className={styles.panelSub}>Facturación y margen de los últimos meses.</p>
+            </div>
+            <div className={styles.panelBody}>
+              <GraficoEvolucion restauranteId={restaurante?.id} enabled={!!restaurante?.id} />
+            </div>
+          </section>
         )}
 
         <div style={{ marginTop: 24, display: 'flex', gap: 12, alignItems: 'center' }}>

@@ -112,7 +112,9 @@
 
 .eyebrow {
   margin: 0 0 9px;
-  color: #9b7430;
+  /* A9: oscurecido de #9b7430 (4.26:1) a #956e2a (4.62:1) para cumplir
+     WCAG AA sobre blanco sin cambiar la familia dorada de marca. */
+  color: #956e2a;
   font-size: 10px;
   font-weight: 850;
   letter-spacing: 0.13em;
@@ -301,13 +303,16 @@
   font: 650 0.72rem Inter, sans-serif;
   letter-spacing: 0.8px;
   text-transform: uppercase;
-  color: #9a9186;
+  /* A9: oscurecido de #9a9186 (3.10:1) a #7e756a (4.53:1) sobre blanco.
+     Mismo gris cálido de la familia neutra, solo baja L. */
+  color: #7e756a;
 }
 
 .statHint {
   margin-top: 2px;
   font: 400 0.75rem Inter, sans-serif;
-  color: #b0a698;
+  /* A9: oscurecido de #b0a698 (2.40:1) a #7e7466 (4.59:1) sobre blanco. */
+  color: #7e7466;
 }
 
 .metricInfo {
