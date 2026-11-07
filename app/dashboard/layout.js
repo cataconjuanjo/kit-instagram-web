@@ -404,9 +404,16 @@ export default function DashboardLayout({ children }) {
         ]),
       ],
     },
-    ...(perfilSomm ? [{
+    // Grupo económico de bodega: visible para el perfil sumiller (que
+    // es la vista reducida solo-vino) y también para cualquier plan de
+    // restaurante que tenga la feature somm_simulador_mult (dueño del
+    // restaurante con vista completa, ej. plan premium / Acompañado).
+    // La vista "solo vino vs completa" se decide dentro de cada
+    // pantalla con esPerfilSomm(); aquí solo controlamos la visibilidad
+    // de las entradas del menú.
+    ...((perfilSomm || puedeUsar(restaurante, 'somm_simulador_mult')) ? [{
       href: '/dashboard/precios-somm',
-      label: 'Somm',
+      label: perfilSomm ? 'Somm' : 'Economía',
       hint: 'Motor de precios y explotación de bodega',
       icon: icon.sala,
       feature: 'somm_simulador_mult',

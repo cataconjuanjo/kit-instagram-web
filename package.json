@@ -32,7 +32,8 @@
     "test:somm-cierre": "node --test scripts/test-somm-cierre.mjs",
     "test:formato-es": "node --test scripts/formatoEs.test.mjs",
     "test:confirm-modal": "node --test scripts/smoke-confirm-modal.mjs",
-    "test:margen-bodega": "node --test scripts/margenBodega.test.mjs"
+    "test:margen-bodega": "node --test scripts/margenBodega.test.mjs",
+    "test:plan-access":   "node --test scripts/planAccess.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.82.0",

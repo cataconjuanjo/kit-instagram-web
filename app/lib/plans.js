@@ -75,7 +75,22 @@ export const PLANES = {
     nombre: 'Acompanado',
     precioOrientativo: 'Presupuesto personalizado',
     limiteVinos: 9999,
-    features: ['carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente', 'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import', 'bodega', 'precios_margenes', 'inventario', 'importador_pdf', 'informes', 'proveedores', 'consultoria', 'vista_etiquetas_publica', 'catalogo_consultor'],
+    // El plan Acompañado es la vista completa del dueño del restaurante:
+    // además de todo lo operativo, incluye el motor económico de bodega
+    // (Motor de Precios, Explotación, Histórico y Bonus, Libro de
+    // Compras) con la vista completa pre-#16 (personal, gastos, P&L,
+    // break-even, Resultado neto). La vista reducida solo-vino sigue
+    // gobernada por esPerfilSomm (plan === 'sumiller').
+    features: [
+      'carta_qr', 'hub', 'personalizacion_avanzada', 'maridaje_cliente',
+      'modo_camarero', 'estadisticas', 'cierre_servicio', 'tpv_import',
+      'bodega', 'precios_margenes', 'inventario', 'importador_pdf',
+      'informes', 'proveedores', 'consultoria', 'vista_etiquetas_publica',
+      'catalogo_consultor',
+      // Acceso económico del dueño (vista completa):
+      'somm_simulador_mult', 'somm_explotacion', 'somm_historico',
+      'somm_libro_compras',
+    ],
   },
 }
 
