@@ -19,7 +19,7 @@ const PLAN_DESCRIPCION = {
   basic:    'Carta QR, hub publico y maridaje para cliente.',
   pro:      'Modo camarero, estadisticas, objetivos de sala y control de bodega.',
   bodega:   'Inventario, margen, proveedores e inteligencia de referencias.',
-  sumiller: 'Explotacion P&L, presupuesto, bonus variable y stock de bodega avanzado.',
+  sumiller: 'Explotacion de bodega, presupuesto, bonus variable y stock de bodega avanzado.',
   premium:  'Acompanamiento consultor y soporte prioritario.',
 }
 
