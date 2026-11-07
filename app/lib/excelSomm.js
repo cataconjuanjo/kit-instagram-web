@@ -280,7 +280,7 @@ const COLS_CIERRE_VINOS = [
   { header: 'Tiene coste',       key: 'tiene_coste',    width: 10 },
 ]
 
-export function construirCierreWorkbook({ datos, mes, restauranteNombre }) {
+export function construirCierreWorkbook({ datos, mes, restauranteNombre, esSomm = false }) {
   const slug = slugRestaurante(restauranteNombre)
   const filename = `${slug}-cierre-${mes}.xlsx`
 
@@ -308,24 +308,35 @@ export function construirCierreWorkbook({ datos, mes, restauranteNombre }) {
   // Hoja Resumen: réplica fiel de las 16 filas del código xlsx anterior
   // (ver 8dc966e7^:app/dashboard/bodega/CierreMensual.js:256-282). Etiquetas
   // y orden idénticos para no regresionar al abrir cierres antiguos.
-  const resumenRowsOld = [
+  // En perfil Somm se omite "Total gastos" y "Resultado neto bodega" y
+  // se añade "Margen tras merma"; el resto del resumen queda igual.
+  const margenBruto    = Number(datos?.margen_bruto)      || 0
+  const mermaCopa      = Number(datos?.merma_copa_eur)    || 0
+  const salidasNoVenta = Number(datos?.salidas_no_venta)  || 0
+  const difInv         = Number(datos?.diferencias_inventario) || 0
+  const margenTrasMermaEur = Math.round((margenBruto - mermaCopa - salidasNoVenta + difInv) * 100) / 100
+  const filasComunes = [
     { concepto: 'Ventas brutas (con IVA, €)',       valor: Number(datos?.ventas_bruto)        || 0 },
     { concepto: `IVA ${datos?.iva_pct ?? 10}% (€)`, valor: (Number(datos?.ventas_bruto) || 0) - (Number(datos?.ventas_neto) || 0) },
     { concepto: 'Ventas netas (sin IVA, €)',        valor: Number(datos?.ventas_neto)         || 0 },
     { concepto: 'Coste ventas teórico (€)',         valor: Number(datos?.coste_ventas_teorico) || 0 },
-    { concepto: 'Margen bruto (€)',                 valor: Number(datos?.margen_bruto)        || 0 },
+    { concepto: 'Margen bruto (€)',                 valor: margenBruto },
     { concepto: 'Margen bruto (%)',                 valor: datos?.margen_pct ?? null },
     { concepto: 'Compras brutas (€)',               valor: Number(datos?.compras_bruto)       || 0 },
     { concepto: 'Devoluciones (€)',                 valor: Number(datos?.devoluciones)        || 0 },
     { concepto: 'Compras netas (€)',                valor: Number(datos?.compras_netas)       || 0 },
-    { concepto: 'Salidas no venta (€)',             valor: Number(datos?.salidas_no_venta)    || 0 },
-    { concepto: 'Merma copa (€)',                   valor: Number(datos?.merma_copa_eur)      || 0 },
+    { concepto: 'Salidas no venta (€)',             valor: salidasNoVenta },
+    { concepto: 'Merma copa (€)',                   valor: mermaCopa },
     { concepto: 'Diferencias inventario (€)',       valor: datos?.diferencias_inventario ?? null },
     { concepto: 'Stock inicial (€)',                valor: datos?.stock_inicial ?? null },
     { concepto: 'Stock final (€)',                  valor: datos?.stock_final ?? null },
-    { concepto: 'Total gastos (€)',                 valor: Number(datos?.gastos_total)        || 0 },
-    { concepto: 'Resultado neto bodega (€)',        valor: Number(datos?.resultado)           || 0 },
   ]
+  const resumenRowsOld = esSomm
+    ? [...filasComunes, { concepto: 'Margen tras merma (€)', valor: margenTrasMermaEur }]
+    : [...filasComunes,
+        { concepto: 'Total gastos (€)',          valor: Number(datos?.gastos_total) || 0 },
+        { concepto: 'Resultado neto bodega (€)', valor: Number(datos?.resultado)    || 0 },
+      ]
   const sheetResumen = {
     name: 'Resumen',
     columns: [
@@ -336,10 +347,10 @@ export function construirCierreWorkbook({ datos, mes, restauranteNombre }) {
     freezeHeader: true,
   }
 
-  // Hoja Gastos (réplica del OLD: lista de gastos del mes con TOTAL en fórmula)
+  // Hoja Gastos (réplica del OLD). En perfil Somm no se incluye.
   const sheets = [sheetResumen, sheetVinos]
   const gastos = Array.isArray(datos?.gastos) ? datos.gastos : []
-  if (gastos.length > 0) {
+  if (!esSomm && gastos.length > 0) {
     const gastosRows = gastos.map(g => ({
       concepto: g.concepto || '',
       importe:  Number(g.importe) || 0,

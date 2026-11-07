@@ -12,6 +12,7 @@ import {
   colorDelta, deltaResultado, TOOLTIP_RESULTADO_ANTES_DE_MERMA,
 } from '../../lib/yoyCierre'
 import { formatoMoneda } from '../../lib/formatoEs'
+import { margenTrasMerma } from '../../lib/margenBodega'
 
 async function authedFetch(path, opts = {}) {
   const { data } = await supabase.auth.getSession()
@@ -237,7 +238,11 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
     y += 2
   }
 
-  if ((datos.gastos || []).length > 0) {
+  // Perfil Somm: se omite el bloque "Gastos del mes" y la línea final
+  // "Resultado neto bodega". En su lugar se imprime "Margen tras merma".
+  const soloBodega = esPerfilSomm(restaurante)
+
+  if (!soloBodega && (datos.gastos || []).length > 0) {
     hdr('Gastos del mes', 10)
     tabla(['Concepto', 'Importe', ''],
       [...datos.gastos.map(g => [g.concepto, eur(g.importe), '']), ['TOTAL', eur(datos.gastos_total), '']],
@@ -246,11 +251,24 @@ async function generarPDF(datos, datosAnt, mes, restaurante) {
   }
 
   sep()
-  const signo = datos.resultado >= 0 ? '' : '− '
-  hdr(`Resultado neto bodega: ${signo}${eur(Math.abs(datos.resultado))}`, 12)
-  if (datosAnt?.resultado != null) {
-    const antSigno = datosAnt.resultado >= 0 ? '' : '− '
-    sub(`Mes anterior: ${antSigno}${eur(Math.abs(datosAnt.resultado))}  ${vTag(datos.resultado, datosAnt.resultado)}`)
+  if (soloBodega) {
+    const mtm    = margenTrasMerma(datos)
+    const mtmAnt = datosAnt ? margenTrasMerma(datosAnt) : null
+    if (mtm != null) {
+      const signo = mtm >= 0 ? '' : '− '
+      hdr(`Margen tras merma: ${signo}${eur(Math.abs(mtm))}`, 12)
+      if (mtmAnt != null) {
+        const antSigno = mtmAnt >= 0 ? '' : '− '
+        sub(`Mes anterior: ${antSigno}${eur(Math.abs(mtmAnt))}  ${vTag(mtm, mtmAnt)}`)
+      }
+    }
+  } else {
+    const signo = datos.resultado >= 0 ? '' : '− '
+    hdr(`Resultado neto bodega: ${signo}${eur(Math.abs(datos.resultado))}`, 12)
+    if (datosAnt?.resultado != null) {
+      const antSigno = datosAnt.resultado >= 0 ? '' : '− '
+      sub(`Mes anterior: ${antSigno}${eur(Math.abs(datosAnt.resultado))}  ${vTag(datos.resultado, datosAnt.resultado)}`)
+    }
   }
 
   const totalPags = doc.getNumberOfPages()
@@ -271,8 +289,11 @@ async function generarExcel(datos, mes, restaurante) {
   // Delegamos en la spec pura de app/lib/excelSomm.js, que ya incluye
   // la hoja Vinos (informe.por_vino con TOTAL en fórmulas SUM) y el
   // Resumen económico. ExcelJS vía dynamic import.
+  // esSomm omite "Total gastos" y "Resultado neto bodega" del resumen
+  // y añade "Margen tras merma"; también omite la hoja Gastos.
   const spec = construirCierreWorkbook({
     datos, mes, restauranteNombre: restaurante?.nombre,
+    esSomm: esPerfilSomm(restaurante),
   })
   await descargarWorkbook(spec)
 }
@@ -361,6 +382,10 @@ export default function CierreMensual({ restauranteId, restaurante }) {
 
   const cerrado = estado?.cerrado ?? false
   const datos   = cerrado ? estado?.cierre?.snapshot : estado?.datos
+  // Perfil Somm: el cierre habla solo de vino. Oculta "Gastos del mes"
+  // y la línea final "Resultado neto bodega"; en su lugar muestra
+  // "Margen tras merma". No cambia datos almacenados: solo presentación.
+  const esSomm = esPerfilSomm(restaurante)
 
   // Fuente de comparación según el modo + flag "prevCerrado" para la regla
   // de comparabilidad de yoyCierre (sin-cierre-prev se decide con el flag
@@ -674,7 +699,11 @@ export default function CierreMensual({ restauranteId, restaurante }) {
             </tbody>
           </table>
 
-          {/* Gastos */}
+          {/* Gastos — se oculta por completo en perfil Somm.
+              Motivo: el Somm solo gestiona vino; personal/alquileres/
+              bancarios se llevan en Explotación. Los datos almacenados
+              siguen intactos. */}
+          {!esSomm && (
           <div style={{ marginTop: 20 }}>
             <p style={{ fontWeight: 700, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', opacity: 0.45, marginBottom: 10 }}>
               Gastos del mes
@@ -756,12 +785,16 @@ export default function CierreMensual({ restauranteId, restaurante }) {
               </form>
             )}
           </div>
+          )}
 
-          {/* Resultado */}
+          {/* Resultado (perfil general) / Margen tras merma (perfil Somm).
+              Somm: no se enseña el resultado neto porque no suma ni resta
+              gastos operativos, personal, alquileres ni bancarios. La
+              métrica útil para el sumiller es cuánto queda tras merma
+              de copa. */}
+          {!esSomm && (
           <div style={{ marginTop: 20, padding: '14px 0', borderTop: '2px solid rgba(255,255,255,0.18)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 700, fontSize: 15 }}>
-              {esPerfilSomm(restaurante) ? 'Resultado antes de comisiones bancarias' : 'Resultado neto bodega'}
-            </span>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>Resultado neto bodega</span>
             <div style={{ textAlign: 'right' }}>
               <span style={{ fontWeight: 700, fontSize: 20, color: resultadoColor }}>
                 {datos.resultado >= 0 ? '' : '− '}{eur(Math.abs(datos.resultado))}
@@ -789,6 +822,38 @@ export default function CierreMensual({ restauranteId, restaurante }) {
               })()}
             </div>
           </div>
+          )}
+
+          {esSomm && (() => {
+            // Margen tras merma: métrica derivada del snapshot. Ver
+            // app/lib/margenBodega.js. La comparación MoM/YoY se calcula
+            // "fresca" desde el snapshot de referencia, respetando la
+            // regla de comparabilidad de yoyCierre (prevCerrado).
+            const mtm = margenTrasMerma(datos)
+            if (mtm == null) return null
+            const mtmColor = mtm >= 0 ? '#4A8C6F' : '#b85454'
+            const prevMtm = datosComparar ? margenTrasMerma(datosComparar) : null
+            const puedeComparar = (modoComparar !== 'anio_anterior' || prevCerrado) && prevMtm != null
+            const refLabel = modoComparar === 'anio_anterior'
+              ? mesLabel(prevYearMes(mes))
+              : mesLabel(prevMes(mes))
+            const pct = puedeComparar ? variPct(mtm, prevMtm) : null
+            return (
+              <div style={{ marginTop: 20, padding: '14px 0', borderTop: '2px solid rgba(255,255,255,0.18)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>Margen tras merma</span>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontWeight: 700, fontSize: 20, color: mtmColor }}>
+                    {mtm >= 0 ? '' : '− '}{eur(Math.abs(mtm))}
+                  </span>
+                  {pct != null && (
+                    <div style={{ fontSize: 12, marginTop: 2, color: pct >= 0 ? '#4A8C6F' : '#b85454', opacity: 0.8 }}>
+                      {variTag(pct)} vs {refLabel}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Stock valorado */}
           {(datos.stock_inicial != null || datos.stock_final != null) && (
