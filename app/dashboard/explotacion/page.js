@@ -470,6 +470,12 @@ function ExplotacionContent() {
   const [datosVino, setDatosVino] = useState(null)
   const [cierreExiste, setCierreExiste] = useState(null) // null=cargando, true/false
   const [aplicandoCierre, setAplicandoCierre] = useState(false)
+  // Perfil Somm: la pantalla habla solo de vino. Guardamos la fila
+  // cruda de parametros_explotacion del periodo para poder re-escribirla
+  // sin pisar los campos ocultos (personal/alquiler/bancarios/partidas
+  // de gastos que no se tocan en la vista Somm).
+  const [paramsRaw, setParamsRaw] = useState(null)
+  const esSomm = esPerfilSomm(restaurante)
 
   useEffect(() => {
     async function cargar() {
@@ -507,6 +513,7 @@ function ExplotacionContent() {
         .eq('periodo', periodo)
         .maybeSingle()
 
+      setParamsRaw(data || null)
       if (data) {
         setFacturacion(data.facturacion_total || '')
         setConsumoMp(data.consumo_mp || '')
@@ -599,20 +606,50 @@ function ExplotacionContent() {
     if (!restaurante) return
     setGuardando(true)
 
+    // Campos que la vista Somm no renderiza. Para evitar pisarlos con
+    // null/0 si algún día otro plan cargó datos, en perfil Somm se
+    // conservan los valores actuales de la fila existente (paramsRaw).
+    // Si no hay fila previa, se escribe null (no 0), porque 0 sería un
+    // dato significativo que la vista Somm no está en condiciones de
+    // introducir.
+    const hiddenPersonal = esSomm ? {
+      nominas_brutas:    paramsRaw?.nominas_brutas    ?? null,
+      ss_empresa:        paramsRaw?.ss_empresa        ?? null,
+      retenciones_irpf:  paramsRaw?.retenciones_irpf  ?? null,
+      extras_personal:   paramsRaw?.extras_personal   ?? null,
+    } : {
+      nominas_brutas:    num(personal.nominas_brutas),
+      ss_empresa:        num(personal.ss_empresa),
+      retenciones_irpf:  num(personal.retenciones_irpf),
+      extras_personal:   num(personal.extras_personal),
+    }
+    const hiddenBancarios = esSomm ? {
+      comisiones_datafono:    paramsRaw?.comisiones_datafono    ?? null,
+      mantenimiento_datafono: paramsRaw?.mantenimiento_datafono ?? null,
+      resto_comisiones:       paramsRaw?.resto_comisiones       ?? null,
+    } : {
+      comisiones_datafono:    num(bancarios.comisiones_datafono),
+      mantenimiento_datafono: num(bancarios.mantenimiento_datafono),
+      resto_comisiones:       num(bancarios.resto_comisiones),
+    }
+    // partidas_gastos y partidas_alquiler se conservan tal cual en Somm
+    // (son JSON y la vista Somm no las edita).
+    const hiddenPartidas = esSomm ? {
+      partidas_gastos:   paramsRaw?.partidas_gastos   ?? null,
+      partidas_alquiler: paramsRaw?.partidas_alquiler ?? null,
+    } : {
+      partidas_gastos:   gastosPartidas,
+      partidas_alquiler: alquilerPartidas,
+    }
+
     const payload = {
       restaurante_id: restaurante.id,
       periodo,
       facturacion_total: num(facturacion),
       consumo_mp: num(consumoMp),
-      nominas_brutas: num(personal.nominas_brutas),
-      ss_empresa: num(personal.ss_empresa),
-      retenciones_irpf: num(personal.retenciones_irpf),
-      extras_personal: num(personal.extras_personal),
-      partidas_gastos: gastosPartidas,
-      partidas_alquiler: alquilerPartidas,
-      comisiones_datafono: num(bancarios.comisiones_datafono),
-      mantenimiento_datafono: num(bancarios.mantenimiento_datafono),
-      resto_comisiones: num(bancarios.resto_comisiones),
+      ...hiddenPersonal,
+      ...hiddenPartidas,
+      ...hiddenBancarios,
       canales_negocio: {
         copa_barra: num(canales.copa_barra),
         botella_mesa: num(canales.botella_mesa),
@@ -624,17 +661,28 @@ function ExplotacionContent() {
 
     await supabase.from('parametros_explotacion').upsert(payload, { onConflict: 'restaurante_id,periodo' })
 
-    // Actualizar histórico mensual — siempre con origen='manual'
+    // Refrescar paramsRaw con lo que acabamos de escribir, para que un
+    // segundo guardado seguido no pierda los campos ocultos.
+    setParamsRaw(prev => ({ ...(prev || {}), ...payload }))
+
+    // Actualizar histórico mensual — siempre con origen='manual'.
+    // En Somm, gastos_fijos no se edita en esta vista; para no pisar
+    // con 0 los valores previos, se omite el campo del upsert (Supabase
+    // solo actualiza las columnas presentes en el objeto).
     const [anioStr, mesStr] = periodo.split('-')
-    await supabase.from('historico_mensual').upsert({
+    const historicoPayload = {
       restaurante_id: restaurante.id,
       anio: parseInt(anioStr),
       mes: parseInt(mesStr),
       ingresos: num(facturacion),
       consumo_mp: num(consumoMp),
-      gastos_fijos: totales.totalPersonal + totales.totalGastos + totales.totalAlquiler + totales.totalBancarios,
       origen: 'manual',
-    }, { onConflict: 'restaurante_id,anio,mes' })
+    }
+    if (!esSomm) {
+      historicoPayload.gastos_fijos =
+        totales.totalPersonal + totales.totalGastos + totales.totalAlquiler + totales.totalBancarios
+    }
+    await supabase.from('historico_mensual').upsert(historicoPayload, { onConflict: 'restaurante_id,anio,mes' })
 
     // Refrescar histórico
     const { data: hist } = await supabase
@@ -677,8 +725,10 @@ function ExplotacionContent() {
       <ModuleShell
         restaurante={restaurante}
         eyebrow="Carta Viva Somm"
-        title="Cuenta de Explotación"
-        subtitle="P&L completo de bodega: personal, gastos, alquileres, bancarios y margen de explotación real."
+        title={esSomm ? 'Explotación de bodega' : 'Cuenta de Explotación'}
+        subtitle={esSomm
+          ? 'Ventas de vino, consumo de materia prima, margen bruto y merma. Solo métricas de bodega.'
+          : 'P&L completo de bodega: personal, gastos, alquileres, bancarios y margen de explotación real.'}
         actions={
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <SelectorPeriodo valor={periodo} onChange={setPeriodo} />
@@ -711,7 +761,16 @@ function ExplotacionContent() {
             {guardado && <span style={{ fontSize: 13, color: '#27ae60' }}>Guardado ✓</span>}
           </div>
         }
-        help={{
+        help={esSomm ? {
+          eyebrow: 'Cómo funciona',
+          title: 'Explotación de bodega',
+          intro: 'Introduce los datos del periodo. Esta vista mide la actividad de bodega: ventas de vino, consumo de materia prima, margen bruto y merma.',
+          items: [
+            { title: 'Facturación y materia prima', text: 'Facturación total neta de vino y consumo real de materia prima (no las compras).' },
+            { title: 'Margen bruto', text: 'Ventas − consumo de materia prima. El objetivo marca la salud de la bodega mes a mes.' },
+            { title: 'Mapa de calor', text: 'Visualiza qué meses son rentables y cuáles no. Agosto suele ser una trampa: revenue bajo pero costes fijos inalterables.' },
+          ],
+        } : {
           eyebrow: 'Cómo funciona',
           title: 'Cuenta de Explotación',
           intro: 'Introduce los datos del periodo seleccionado. El sistema calcula el margen de explotación real de tu bodega y lo compara con el benchmark del sector.',
@@ -784,7 +843,48 @@ function ExplotacionContent() {
 
         {/* A10.a: KPIs resumen dentro de una tarjeta con el mismo estilo (styles.panel)
             que el resto de secciones, en vez de una franja suelta entre tarjetas. */}
-        {facturacionNum > 0 && (
+        {facturacionNum > 0 && esSomm && (() => {
+          // KPIs Somm: solo métricas de bodega. Margen bruto de bodega =
+          // facturación − consumo MP. Merma viene del cierre del mismo
+          // mes (snapshot.merma_copa_eur). Sin %personal, sin break-even,
+          // sin margen de explotación global.
+          const margenBodega    = facturacionNum - num(consumoMp)
+          const margenBodegaPct = facturacionNum > 0 ? (margenBodega / facturacionNum) * 100 : 0
+          const mermaEur        = Number(datosVino?.merma_copa_eur) || 0
+          const mermaPct        = facturacionNum > 0 ? (mermaEur / facturacionNum) * 100 : 0
+          return (
+            <section className={styles.panel} style={{ marginBottom: 4 }}>
+              <div className={styles.panelHead}>
+                <h2 className={styles.panelTitle}>Resumen del periodo</h2>
+                <p className={styles.panelSub}>Indicadores de bodega del mes.</p>
+              </div>
+              <div className={styles.panelBody}>
+                <div className={styles.statsGrid}>
+                  <StatCard value={eur(facturacionNum)} label="Facturación vino" />
+                  <StatCard
+                    value={pct(totales.pctMp)}
+                    label="% Materia Prima"
+                    hint="Consumo de vino sobre ventas"
+                    valueStyle={{ color: totales.pctMp > 45 ? '#e74c3c' : totales.pctMp > 38 ? '#f39c12' : '#27ae60' }}
+                  />
+                  <StatCard
+                    value={eur(margenBodega)}
+                    label="Margen bruto bodega"
+                    hint={`${pct(margenBodegaPct)} sobre ventas`}
+                    valueStyle={{ color: margenBodega < 0 ? '#e74c3c' : margenBodegaPct < 50 ? '#f39c12' : '#27ae60' }}
+                  />
+                  <StatCard
+                    value={mermaEur > 0 ? eur(mermaEur, 2) : '—'}
+                    label="Merma copa (cierre)"
+                    hint={mermaEur > 0 ? `${pct(mermaPct)} sobre ventas` : 'Sin cierre del periodo'}
+                  />
+                </div>
+              </div>
+            </section>
+          )
+        })()}
+
+        {facturacionNum > 0 && !esSomm && (
           <section className={styles.panel} style={{ marginBottom: 4 }}>
             <div className={styles.panelHead}>
               <h2 className={styles.panelTitle}>Resumen del periodo</h2>
@@ -825,7 +925,7 @@ function ExplotacionContent() {
           </section>
         )}
 
-        {alertaBreakEven && (
+        {alertaBreakEven && !esSomm && (
           <div style={{ margin: '8px 0 16px', padding: '12px 16px', background: '#fff4f1', border: '1px solid #e0b4aa', borderRadius: 4, fontSize: 13 }}>
             <strong>Alerta: el mes cierra en pérdidas a este ritmo.</strong>{' '}
             Break-even: {eur(totales.breakEven)}. Facturación actual: {eur(facturacionNum)}.
@@ -833,8 +933,8 @@ function ExplotacionContent() {
           </div>
         )}
 
-        {/* Resultado P&L completo */}
-        {facturacionNum > 0 && (
+        {/* Resultado P&L completo — oculto en perfil Somm */}
+        {facturacionNum > 0 && !esSomm && (
           <section className={styles.panel} style={{ marginBottom: 4 }}>
             <div className={styles.panelHead}>
               <h2 className={styles.panelTitle}>Cuenta de Explotación — {formatoMesCorto(periodo)}</h2>
@@ -910,10 +1010,10 @@ function ExplotacionContent() {
         )}
 
         <SeccionCanales canales={canales} onChange={setCanales} facturacionTotal={facturacion} />
-        <SeccionPersonal params={personal} onChange={setPersonal} />
-        <SeccionGastos partidas={gastosPartidas} onChange={setGastosPartidas} />
-        <SeccionAlquileres partidas={alquilerPartidas} onChange={setAlquilerPartidas} />
-        <SeccionBancarios params={bancarios} onChange={setBancarios} />
+        {!esSomm && <SeccionPersonal params={personal} onChange={setPersonal} />}
+        {!esSomm && <SeccionGastos partidas={gastosPartidas} onChange={setGastosPartidas} />}
+        {!esSomm && <SeccionAlquileres partidas={alquilerPartidas} onChange={setAlquilerPartidas} />}
+        {!esSomm && <SeccionBancarios params={bancarios} onChange={setBancarios} />}
 
         <MapaCalorEstacional historico={historico} />
 

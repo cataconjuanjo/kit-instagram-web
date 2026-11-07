@@ -7,6 +7,7 @@ import { supabase } from '../../supabase'
 import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleComponents'
 import styles from '../module.module.css'
 import { redondear } from '../../lib/wineEconomics'
+import { esPerfilSomm } from '../../lib/plans'
 import {
   generarObjetivosYoY,
   calcularBonus,
@@ -141,7 +142,19 @@ function KpiYtd({ label, ytd, tipo = 'importe', invertirColor = false }) {
 
 // ── Tab Histórico multianual ─────────────────────────────────────────────────
 
-function TabHistorico({ historico }) {
+function TabHistorico({ historico, esSomm = false }) {
+  // En perfil Somm, "Margen explotación" (ingresos − MP − personal −
+  // gastos fijos) se renombra a "Margen bodega" (ingresos − MP), porque
+  // Somm no gestiona personal ni gastos fijos. La fórmula cambia, el
+  // resto de la vista (YoY, YTD, gráficos) sigue igual.
+  const labelMargen    = esSomm ? 'Margen bodega'   : 'Margen explot.'
+  const labelMargenLargo = esSomm ? 'Margen bodega' : 'Margen explotación'
+  const tooltipMargen  = esSomm
+    ? 'Margen de bodega: ingresos − materia prima. No incluye personal ni gastos fijos.'
+    : 'Margen de explotación: ingresos − MP − personal − gastos fijos. En €.'
+  const tooltipPctMargen = esSomm
+    ? '% del margen de bodega sobre ingresos.'
+    : '% del margen de explotación sobre ingresos. Objetivo: >20%.'
   // Agrupar por año y mes
   const porAnioMes = useMemo(() => {
     const mapa = {}
@@ -172,12 +185,14 @@ function TabHistorico({ historico }) {
         ingresos:           Number(h.ingresos)   || 0,
         consumo_mp:         Number(h.consumo_mp) || 0,
         pct_mp:             Number(h.pct_mp)     || 0,
-        margen_explotacion: Number(h.margen_explotacion
-                                  ?? (h.ingresos - h.consumo_mp - h.gastos_fijos)) || 0,
+        margen_explotacion: esSomm
+          ? (Number(h.ingresos) || 0) - (Number(h.consumo_mp) || 0)
+          : Number(h.margen_explotacion
+                    ?? (h.ingresos - h.consumo_mp - h.gastos_fijos)) || 0,
       })
     }
     return porAnio
-  }, [historico])
+  }, [historico, esSomm])
 
   const yoyPorAnio = useMemo(() => {
     const out = {}
@@ -239,11 +254,13 @@ function TabHistorico({ historico }) {
       if (!t[h.anio]) t[h.anio] = { ingresos: 0, consumo: 0, margen: 0, meses: new Set() }
       t[h.anio].ingresos += h.ingresos
       t[h.anio].consumo += h.consumo_mp
-      t[h.anio].margen += h.margen_explotacion ?? (h.ingresos - h.consumo_mp - h.gastos_fijos)
+      t[h.anio].margen += esSomm
+        ? ((Number(h.ingresos) || 0) - (Number(h.consumo_mp) || 0))
+        : (h.margen_explotacion ?? (h.ingresos - h.consumo_mp - h.gastos_fijos))
       t[h.anio].meses.add(h.mes)
     })
     return t
-  }, [historico])
+  }, [historico, esSomm])
 
   // ── KPI YTD YoY: año más reciente con dato vs anterior ────────────────
   const anioActual = anios.length ? anios[anios.length - 1] : null
@@ -293,7 +310,7 @@ function TabHistorico({ historico }) {
               <KpiYtd label="% MP" tipo="ratio"
                       ytd={ytdActual.ytd.pct_mp}
                       invertirColor />
-              <KpiYtd label="Margen explotación" tipo="importe"
+              <KpiYtd label={labelMargenLargo} tipo="importe"
                       ytd={ytdActual.ytd.margen_explotacion} />
             </div>
             {mesAbierto && (
@@ -323,8 +340,8 @@ function TabHistorico({ historico }) {
                   <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="Variación interanual de ingresos (%). Solo cuenta meses comparables entre los dos años.">vs año ant.</th>
                   <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="Consumo real de materia prima (compras + stock inicial − stock final).">Consumo MP</th>
                   <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="% de materia prima sobre ingresos. Benchmark hostelería: 30-45%.">% MP</th>
-                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="Margen de explotación: ingresos − MP − personal − gastos fijos. En €.">Margen explot.</th>
-                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title="% del margen de explotación sobre ingresos. Objetivo: >20%.">% Margen</th>
+                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title={tooltipMargen}>{labelMargen}</th>
+                  <th style={{ textAlign: 'right', padding: '7px 8px', fontWeight: 600 }} title={tooltipPctMargen}>% Margen</th>
                 </tr>
               </thead>
               <tbody>
@@ -380,7 +397,7 @@ function TabHistorico({ historico }) {
             colorFn={d => '#2a2723'}
           />
           <BarChart
-            titulo="Margen de Explotación mensual"
+            titulo={esSomm ? 'Margen de bodega mensual' : 'Margen de Explotación mensual'}
             datos={datosMargen}
             colorFn={d => d.valor >= 0 ? '#27ae60' : '#e74c3c'}
           />
@@ -859,7 +876,7 @@ export default function AnaliticaSommPage() {
         </div>
 
         <div role="tabpanel" style={{ marginTop: 4 }}>
-          {tabActiva === 'historico' && <TabHistorico historico={historico} />}
+          {tabActiva === 'historico' && <TabHistorico historico={historico} esSomm={esPerfilSomm(restaurante)} />}
           {tabActiva === 'presupuesto' && <TabPresupuesto restauranteId={restaurante?.id} historico={historico} />}
           {tabActiva === 'bonus' && <TabBonus restauranteId={restaurante?.id} historico={historico} />}
         </div>
