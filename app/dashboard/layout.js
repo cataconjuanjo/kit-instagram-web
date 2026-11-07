@@ -407,12 +407,12 @@ export default function DashboardLayout({ children }) {
     ...(perfilSomm ? [{
       href: '/dashboard/precios-somm',
       label: 'Somm',
-      hint: 'Motor de precios y explotación',
+      hint: 'Motor de precios y explotación de bodega',
       icon: icon.sala,
       feature: 'somm_simulador_mult',
       children: [
         { href: '/dashboard/precios-somm', label: 'Motor de Precios', hint: 'Multiplicador, tramos y what-if', feature: 'somm_simulador_mult' },
-        { href: '/dashboard/explotacion', label: 'Explotación', hint: 'P&L, personal y break-even', feature: 'somm_explotacion' },
+        { href: '/dashboard/explotacion', label: 'Explotación de bodega', hint: 'Ventas, coste y margen de vino', feature: 'somm_explotacion' },
         { href: '/dashboard/analitica-somm', label: 'Histórico y Bonus', hint: 'Multianual, presupuesto YoY, bonus', feature: 'somm_historico' },
         { href: '/dashboard/compras-somm', label: 'Libro de Compras', hint: 'Proveedores y concentración', feature: 'somm_libro_compras' },
       ],
@@ -743,7 +743,7 @@ export default function DashboardLayout({ children }) {
                 <div><dt>Ctrl+N</dt><dd>Nuevo vino o plato segun contexto</dd></div>
                 <div><dt>Ctrl+E</dt><dd>Enfocar accion de edicion visible</dd></div>
                 <div><dt>Ctrl+S</dt><dd>Guardar formulario visible</dd></div>
-                <div><dt>Ctrl+1-5</dt><dd>{perfilSomm ? 'Inicio, Referencias, Precios, Explotación, Ajustes' : perfilBodega ? 'Inicio, Referencias, Bodega, Inventario, Ajustes' : 'Inicio, Carta, Sala, Bodega, Ajustes'}</dd></div>
+                <div><dt>Ctrl+1-5</dt><dd>{perfilSomm ? 'Inicio, Referencias, Precios, Explotación de bodega, Ajustes' : perfilBodega ? 'Inicio, Referencias, Bodega, Inventario, Ajustes' : 'Inicio, Carta, Sala, Bodega, Ajustes'}</dd></div>
                 <div><dt>?</dt><dd>Ver esta ayuda</dd></div>
               </dl>
             </div>

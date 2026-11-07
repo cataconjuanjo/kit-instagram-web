@@ -67,6 +67,10 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
   const [derivado, setDerivado] = useState({ alquiler: 0, partidas: 0 })
   const [guardado, setGuardado] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  // Perfil Somm: los campos personal/alquileres/otros gastos van en un
+  // bloque plegable "Punto de equilibrio (opcional)". Se abre solo si
+  // ya hay datos cargados del periodo (el usuario tiene algo que ver).
+  const [breakEvenAbierto, setBreakEvenAbierto] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -77,17 +81,21 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
         .eq('periodo', PERIODO_HOY)
         .maybeSingle()
       if (data) {
+        const totalPersonal = calcularTotalPersonal(data).total || 0
+        const totalAlquiler = calcularTotalAlquiler(data.partidas_alquiler || []).total
+        const totalPartidas = calcularTotalGastos(data.partidas_gastos   || []).total
         setForm({
-          // personal_bodega = coste total de personal (nóminas + SS empresa + IRPF + extras)
-          personal_bodega:    calcularTotalPersonal(data).total || '',
+          personal_bodega:    totalPersonal || '',
           beneficio_objetivo: data.beneficio_objetivo || '',
-          // ventas_previstas es NETO (sin IVA) — la fórmula opera sobre márgenes netos
           ventas_previstas:   data.ventas_previstas   || '',
         })
-        setDerivado({
-          alquiler: calcularTotalAlquiler(data.partidas_alquiler || []).total,
-          partidas: calcularTotalGastos(data.partidas_gastos   || []).total,
-        })
+        setDerivado({ alquiler: totalAlquiler, partidas: totalPartidas })
+        // Auto-abrir "Punto de equilibrio" si ya hay valores, para que
+        // el usuario vea qué está detrás del multiplicador. Si no hay
+        // nada, queda plegado — el simulador funciona igual.
+        if (totalPersonal > 0 || totalAlquiler > 0 || totalPartidas > 0) {
+          setBreakEvenAbierto(true)
+        }
       }
     }
     if (restauranteId) cargar()
@@ -130,27 +138,47 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
         <p className={styles.panelSub}>Calcula el multiplicador que necesitas para cubrir tus costes y alcanzar tu objetivo de beneficio.</p>
       </div>
       <div className={styles.panelBody}>
-        <div className={styles.formGrid}>
-          <label className={styles.label}>
-            Personal bodega (nóminas + SS + retenciones + extras)
-            <input className={styles.input} type="text" value={eur(num(form.personal_bodega))} readOnly disabled />
-          </label>
-          <label className={styles.label}>
-            Alquileres del periodo
-            <input className={styles.input} type="text" value={eur(derivado.alquiler)} readOnly disabled />
-          </label>
-          <label className={styles.label}>
-            Otros gastos del periodo
-            <input className={styles.input} type="text" value={eur(derivado.partidas)} readOnly disabled />
-          </label>
-        </div>
-        <p style={{ fontSize: 11, color: '#888', marginTop: -8, marginBottom: 8 }}>
-          Personal, alquileres y partidas se cargan del periodo actual en Explotación.
-        </p>
-
-        <div style={{ margin: '16px 0', padding: '12px 16px', background: 'var(--panel-bg, #f7f5f0)', borderRadius: 4 }}>
-          <strong>Total gastos fijos: {eur(totalGastos)}</strong>
-        </div>
+        {/* Punto de equilibrio (opcional). Agrupa los costes fijos que
+            el Somm no gestiona en su día a día: personal, alquileres y
+            otras partidas. Si está plegado y los tres totales son 0,
+            el multiplicador se calcula solo con beneficio objetivo. */}
+        <details
+          open={breakEvenAbierto}
+          onToggle={e => setBreakEvenAbierto(e.currentTarget.open)}
+          style={{ marginBottom: 12, border: '1px solid #e8e3d8', borderRadius: 6, padding: '10px 14px' }}
+        >
+          <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
+            Punto de equilibrio (opcional)
+            {totalGastos > 0 && (
+              <span style={{ fontWeight: 400, fontSize: 12, color: '#666', marginLeft: 8 }}>
+                — {eur(totalGastos)} de gastos fijos del periodo
+              </span>
+            )}
+          </summary>
+          <p style={{ fontSize: 12, color: '#666', margin: '8px 0 12px' }}>
+            Si quieres que el multiplicador cubra también tus costes fijos
+            (personal, alquileres, otros gastos), introduce estos valores en
+            Explotación. Se recuperan automáticamente aquí. Déjalo en blanco
+            si solo quieres fijar el margen por tramos.
+          </p>
+          <div className={styles.formGrid}>
+            <label className={styles.label}>
+              Personal bodega (nóminas + SS + retenciones + extras)
+              <input className={styles.input} type="text" value={eur(num(form.personal_bodega))} readOnly disabled />
+            </label>
+            <label className={styles.label}>
+              Alquileres del periodo
+              <input className={styles.input} type="text" value={eur(derivado.alquiler)} readOnly disabled />
+            </label>
+            <label className={styles.label}>
+              Otros gastos del periodo
+              <input className={styles.input} type="text" value={eur(derivado.partidas)} readOnly disabled />
+            </label>
+          </div>
+          <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--panel-bg, #f7f5f0)', borderRadius: 4 }}>
+            <strong>Total gastos fijos: {eur(totalGastos)}</strong>
+          </div>
+        </details>
 
         <div className={styles.formGrid}>
           <label className={styles.label}>
@@ -179,7 +207,17 @@ function SimuladorMultiplicador({ restauranteId, ivaVentaPct }) {
           </label>
         </div>
 
-        {multiplicador !== null && (
+        {totalGastos === 0 && num(form.beneficio_objetivo) === 0 && num(form.ventas_previstas) > 0 && (
+          <p style={{ color: '#666', fontSize: 13, marginTop: 12 }}>
+            Sin gastos fijos ni beneficio objetivo no se puede calcular el
+            multiplicador por punto de equilibrio. Despliega{' '}
+            <em>Punto de equilibrio (opcional)</em> e introduce los datos
+            en Explotación, o fija el margen directamente desde los tramos
+            de abajo.
+          </p>
+        )}
+
+        {multiplicador !== null && (totalGastos > 0 || num(form.beneficio_objetivo) > 0) && (
           <div className={styles.statsGrid} style={{ marginTop: 20 }}>
             <StatCard
               value={`×${multiplicador}`}
