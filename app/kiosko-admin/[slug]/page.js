@@ -3338,13 +3338,13 @@ export default function AdminKioskoPage() {
                 <span className={styles.analiticaKpiSub}>{hayDatosTPV ? 'Estimación basada en PVP' : 'Conecta Square para ver'}</span>
               </div>
               <div className={styles.analiticaKpi}>
-                <span className={styles.analiticaKpiNum} title="Metodología actualizada el 2026-11-08: limitada a [0–100 %] y '—' cuando hay <3 recomendaciones en la ventana. Ventas 90 d / recomendaciones 30 d — alineación pendiente.">
+                <span className={styles.analiticaKpiNum} title="Método actualizado el 2026-11-08 · ventana alineada 30 d (ventas y recomendaciones). Indicativo: cuenta todas las ventas TPV del vino, no solo las originadas por la recomendación; '—' cuando hay <3 recomendaciones.">
                   {hayDatosTPV && avgConvPct !== null ? `${avgConvPct}%` : '—'}
                 </span>
-                <span className={styles.analiticaKpiLabel}>Tasa de conversión media</span>
+                <span className={styles.analiticaKpiLabel}>Ventas / recomendaciones (indicativo)</span>
                 <span className={styles.analiticaKpiSub}>
                   {hayDatosTPV && avgConvPct !== null
-                    ? 'Recomendaciones que acaban en venta'
+                    ? 'Ventana 30 d · no es atribución directa'
                     : 'Datos insuficientes · método actualizado 2026-11-08'}
                 </span>
               </div>
@@ -3375,7 +3375,7 @@ export default function AdminKioskoPage() {
                       <th className={styles.rendThNum}>Recomendado</th>
                       <th className={styles.rendThNum}>Al móvil</th>
                       <th className={styles.rendThNum}>Vendido</th>
-                      <th className={styles.rendThNum}>Conversión</th>
+                      <th className={styles.rendThNum} title="Ventas / recomendaciones en los últimos 30 d · indicativo, no es atribución directa">V/R (ind.)</th>
                       <th className={styles.rendThNum}>No capturado</th>
                       <th className={styles.rendThNum}>Causas</th>
                     </tr>

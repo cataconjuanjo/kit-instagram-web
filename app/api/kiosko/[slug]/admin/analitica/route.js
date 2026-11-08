@@ -263,31 +263,36 @@ export async function GET(request, { params }) {
     }
   }
 
-  const ventasPorVino = {}
+  const ventasPorVino = {}      // 90 d — rentabilidad, alertas, tendencia
+  const ventasPorVino30 = {}    // 30 d — motor de conversion (misma ventana que searches)
   const tendenciaPorVino = {}
   const ventasDiarias = {}  // { vino_id: { 'YYYY-MM-DD': unidades } } — zona Europe/Madrid
   const ultimaVentaAt = {}
   let ultimoSyncAt = null
   const NUM_SEMANAS = 8
   const ahoraMs = Date.now()
+  const hace30Ms = ahoraMs - 30 * 24 * 60 * 60 * 1000
   const fmtMadrid = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' })
   for (const log of syncLogs || []) {
     if (!ultimoSyncAt || log.created_at > ultimoSyncAt) ultimoSyncAt = log.created_at
     const logMs = new Date(log.created_at).getTime()
+    const en30 = logMs >= hace30Ms
     const semanasAtras = Math.floor((ahoraMs - logMs) / (7 * 24 * 60 * 60 * 1000))
     const weekIdx = NUM_SEMANAS - 1 - semanasAtras // 7 = esta semana, 0 = hace 8 semanas
     const fechaKey = fmtMadrid.format(new Date(log.created_at))
     for (const linea of log.lineas || []) {
       if (linea.status === 'ok' && linea.vino_id) {
-        const id = linea.vino_id
-        ventasPorVino[id] = (ventasPorVino[id] || 0) + (linea.quantity || 1)
+        const id  = linea.vino_id
+        const uds = (linea.quantity || 1)
+        ventasPorVino[id] = (ventasPorVino[id] || 0) + uds
+        if (en30) ventasPorVino30[id] = (ventasPorVino30[id] || 0) + uds
         if (!ultimaVentaAt[id] || log.created_at > ultimaVentaAt[id]) ultimaVentaAt[id] = log.created_at
         if (weekIdx >= 0 && weekIdx < NUM_SEMANAS) {
           if (!tendenciaPorVino[id]) tendenciaPorVino[id] = Array(NUM_SEMANAS).fill(0)
-          tendenciaPorVino[id][weekIdx] += (linea.quantity || 1)
+          tendenciaPorVino[id][weekIdx] += uds
         }
         if (!ventasDiarias[id]) ventasDiarias[id] = {}
-        ventasDiarias[id][fechaKey] = (ventasDiarias[id][fechaKey] || 0) + (linea.quantity || 1)
+        ventasDiarias[id][fechaKey] = (ventasDiarias[id][fechaKey] || 0) + uds
       }
     }
   }
@@ -300,19 +305,18 @@ export async function GET(request, { params }) {
     if (id && id !== 'null') movilPorVinoId[id] = (movilPorVinoId[id] || 0) + 1
   })
 
-  // P0-1: tasa_conv antes dividia ventas de 90 dias entre recomendaciones del
-  // periodo de searches, lo que producia valores > 100 %. Correcciones en LECTURA
-  // (no reescribe eventos; se aplica cada vez que se consulta la analitica):
-  //   · tasa_conv clamp a [0, 1].
-  //   · si veces < MIN_RECOM_PARA_TASA (3), tasa_conv = null -> UI muestra '—'.
-  //   · fuga ahora coincide con la definicion visual: >=5 recomendaciones y
-  //     tasa_conv conocida < 10 % (incluye fugas con 0 ventas y casi-fugas).
-  //   · metodo = 'v2026-11-08' para que la UI pueda mostrar nota de revision.
-  // Ventana temporal: pendiente de alinear ventas (90d) con searches (30d) en
-  // bloque P1; aqui solo se evitan los numeros claramente incoherentes.
+  // P0-1 RAIZ (fase 2): numerador y denominador comparten ventana de 30 dias.
+  //   · vendido_n ahora lee ventasPorVino30 (ventas Square en los ultimos 30 d).
+  //   · veces sigue siendo recomendaciones en la misma ventana (searches 30 d).
+  //   · tasa_conv clamp [0, 1] y null si veces < MIN_RECOM_PARA_TASA (3).
+  //   · fuga = >=5 recomendaciones y tasa_conv < 0.1.
+  //   · El cruce sigue sin ser atribucion real (toda venta TPV del vino cuenta,
+  //     no solo la originada por la recomendacion); por eso el label del KPI
+  //     es "Ventas / recomendaciones (indicativo)".
+  // Solo lectura. No se recalculan ni reescriben eventos historicos.
   const MIN_RECOM_PARA_TASA = 3
   const conversionPorVino = Object.entries(vinoCount).map(([id, { nombre, veces }]) => {
-    const vendido_n      = ventasPorVino[id] ?? 0
+    const vendido_n      = ventasPorVino30[id] ?? 0   // ventana alineada 30 d
     const movil_n        = movilPorVinoId[id] ?? 0
     const precio_pvp     = precioMap[id] ?? null
     const tasa_conv      = veces >= MIN_RECOM_PARA_TASA
@@ -328,7 +332,7 @@ export async function GET(request, { params }) {
     return { id, nombre, recomendado_n: veces, movil_n, vendido_n, tasa_conv, euros_perdidos, fuga, causas }
   }).sort((a, b) => (b.euros_perdidos ?? 0) - (a.euros_perdidos ?? 0))
 
-  const hayDatosTPV         = Object.keys(ventasPorVino).length > 0
+  const hayDatosTPV         = Object.keys(ventasPorVino30).length > 0
   const fugasCount          = conversionPorVino.filter(v => v.fuga).length
   const totalEurosPerdidos  = conversionPorVino.reduce((s, v) => s + (v.euros_perdidos ?? 0), 0)
   const tasasValidas        = conversionPorVino.filter(v => v.tasa_conv !== null)
@@ -343,9 +347,11 @@ export async function GET(request, { params }) {
       fugasCount,
       avgConvPct,           // puede ser null -> UI debe mostrar '—'
       hayDatosTPV,
-      metodo: 'v2026-11-08', // para badge/tooltip de revision metodologica
-      ventanaVentasDias: 90,
+      metodo: 'v2026-11-08b', // ventanas alineadas 30 d
+      ventanaVentasDias: 30,
       ventanaRecomDias: 30,
+      labelKpi: 'Ventas / recomendaciones (indicativo)',
+      indicativo: true, // no es atribucion, el admin debe mostrar la aclaracion
     },
   }
 
