@@ -2181,8 +2181,10 @@ export default function AdminKioskoPage() {
   // P0-6: formato de importes unificado a es-ES (coma decimal + simbolo euro)
   // tal como ya lo usa el kiosko publico. 'formatPVP' mantiene 2 decimales;
   // 'formatEurRound' para importes agregados sin decimales.
-  const _fmtEur2 = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  const _fmtEur0 = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  // useGrouping:'always' fuerza separador de miles tambien en 4 digitos
+  // (Intl por defecto NO agrupa 1013 -> queremos 1.013 en es-ES).
+  const _fmtEur2 = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' })
+  const _fmtEur0 = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0, useGrouping: 'always' })
   function formatPVP(v)       { return v != null ? _fmtEur2.format(Number(v)) : null }
   function formatEurRound(v)  { return v != null ? _fmtEur0.format(Number(v)) : null }
 
@@ -3994,8 +3996,9 @@ export default function AdminKioskoPage() {
                           className={`${styles.otrosBoolSelect} ${v.apto_cesta === true ? styles.otrosBoolSi : v.apto_cesta === false ? styles.otrosBoolNo : styles.otrosBoolSinDef}`}
                           value={v.apto_cesta === true ? 'si' : v.apto_cesta === false ? 'no' : ''}
                           onChange={e => patchOtro('apto_cesta', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
+                          title="Auto = se infiere por categoría (el kiosko decide)"
                         >
-                          <option value="">Sin definir</option>
+                          <option value="">Auto</option>
                           <option value="si">Sí</option>
                           <option value="no">No</option>
                         </select>
