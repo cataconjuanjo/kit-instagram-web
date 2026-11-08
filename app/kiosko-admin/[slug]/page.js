@@ -2174,7 +2174,13 @@ export default function AdminKioskoPage() {
     }
   }
 
-  function formatPVP(v) { return v != null ? `${Number(v).toFixed(2)} €` : null }
+  // P0-6: formato de importes unificado a es-ES (coma decimal + simbolo euro)
+  // tal como ya lo usa el kiosko publico. 'formatPVP' mantiene 2 decimales;
+  // 'formatEurRound' para importes agregados sin decimales.
+  const _fmtEur2 = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const _fmtEur0 = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  function formatPVP(v)       { return v != null ? _fmtEur2.format(Number(v)) : null }
+  function formatEurRound(v)  { return v != null ? _fmtEur0.format(Number(v)) : null }
 
   function formatSyncDate(iso) {
     if (!iso) return null
@@ -2992,8 +2998,8 @@ export default function AdminKioskoPage() {
                           {v.bodega && <span className={styles.rendBodega}> · {v.bodega}</span>}
                         </td>
                         <td className={styles.rendTdNum}>{v.stock}</td>
-                        <td className={styles.rendTdNum}>{Number(v.precio_pvp).toFixed(2)} €</td>
-                        <td className={styles.rendTdNum}>{(Number(v.stock) * Number(v.precio_pvp)).toFixed(0)} €</td>
+                        <td className={styles.rendTdNum}>{formatPVP(v.precio_pvp)}</td>
+                        <td className={styles.rendTdNum}>{formatEurRound(Number(v.stock) * Number(v.precio_pvp))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -3215,7 +3221,7 @@ export default function AdminKioskoPage() {
                               ? <span className={`${styles.margenBadge} ${f.margen >= 40 ? styles.margenHigh : f.margen >= 25 ? styles.margenMid : styles.margenLow}`}>{f.margen}%</span>
                               : <em className={styles.dash}>—</em>}
                           </td>
-                          <td className={styles.rendTdNum}>{f.pvpVal ? `${f.pvpVal.toFixed(2)} €` : '—'}</td>
+                          <td className={styles.rendTdNum}>{f.pvpVal ? formatPVP(f.pvpVal) : '—'}</td>
                           <td className={styles.rendTdNum}>
                             <span style={{ color: f.stock === 0 ? '#c03030' : f.stock !== null && f.stock <= 3 ? '#d4a636' : '#2e6b47', fontWeight: 600 }}>
                               {f.stock ?? '—'}
@@ -3320,7 +3326,7 @@ export default function AdminKioskoPage() {
               </div>
               <div className={styles.analiticaKpi}>
                 <span className={styles.analiticaKpiNum}>
-                  {hayDatosTPV ? `${totalEurosPerdidos.toFixed(0)} €` : '—'}
+                  {hayDatosTPV ? formatEurRound(totalEurosPerdidos) : '—'}
                 </span>
                 <span className={styles.analiticaKpiLabel}>Euros no capturados</span>
                 <span className={styles.analiticaKpiSub}>{hayDatosTPV ? 'Estimación basada en PVP' : 'Conecta Square para ver'}</span>
@@ -3383,7 +3389,7 @@ export default function AdminKioskoPage() {
                         </td>
                         <td className={styles.rendTdNum}>
                           {v.euros_perdidos !== null && v.euros_perdidos > 0
-                            ? <span style={{ color: '#c03030', fontWeight: 600 }}>{v.euros_perdidos.toFixed(0)} €</span>
+                            ? <span style={{ color: '#c03030', fontWeight: 600 }}>{formatEurRound(v.euros_perdidos)}</span>
                             : <em className={styles.dash}>—</em>}
                         </td>
                         <td className={styles.rendTdNum}>
@@ -3474,7 +3480,7 @@ export default function AdminKioskoPage() {
                               <span style={{ color: '#c03030', fontWeight: 600 }}>{d.ventas}</span>
                             </td>
                             <td className={styles.rendTdNum}>{d.stock_actual ?? '—'}</td>
-                            <td className={styles.rendTdNum}>{d.precio_pvp ? `${Number(d.precio_pvp).toFixed(2)} €` : '—'}</td>
+                            <td className={styles.rendTdNum}>{d.precio_pvp ? formatPVP(d.precio_pvp) : '—'}</td>
                             <td className={styles.rendTd} style={{ fontSize: '.8rem', color: '#666' }}>
                               {d.ultima_venta ? new Date(d.ultima_venta).toLocaleDateString('es-ES') : '—'}
                             </td>
@@ -3628,9 +3634,9 @@ export default function AdminKioskoPage() {
                           <td className={styles.rendTdNum}>
                             <span className={`${styles.margenBadge} ${styles.margenLow}`}>{c.margenPct}%</span>
                           </td>
-                          <td className={styles.rendTdNum}>{c.pvp.toFixed(2)} €</td>
+                          <td className={styles.rendTdNum}>{formatPVP(c.pvp)}</td>
                           <td className={styles.rendTdNum} style={{ fontWeight: 700, color: '#2e6b47' }}>
-                            {c.pvpNew.toFixed(2)} €
+                            {formatPVP(c.pvpNew)}
                             <span style={{ fontSize: '.68rem', color: '#aaa', marginLeft: 3 }}>+{c.delta.toFixed(2)} €</span>
                           </td>
                           <td className={styles.rendTdNum}>
@@ -3684,7 +3690,7 @@ export default function AdminKioskoPage() {
                             <td className={styles.rendTdNum}>
                               <span className={`${styles.margenBadge} ${j.margenPct >= 40 ? styles.margenHigh : styles.margenMid}`}>{j.margenPct}%</span>
                             </td>
-                            <td className={styles.rendTdNum}>{j.pvp.toFixed(2)} €</td>
+                            <td className={styles.rendTdNum}>{formatPVP(j.pvp)}</td>
                             <td className={styles.rendTdNum}>
                               {v?.destacado
                                 ? <span style={{ color: '#2e6b47', fontSize: '.8rem' }}>✓ Sí</span>
@@ -4444,7 +4450,7 @@ export default function AdminKioskoPage() {
                     />
                   ) : (
                     <span className={styles.inlineValue}>
-                      {v.precio_coste ? `${Number(v.precio_coste).toFixed(2)} €` : <em className={styles.dash}>—</em>}
+                      {v.precio_coste ? formatPVP(v.precio_coste) : <em className={styles.dash}>—</em>}
                       <span className={styles.editIcon} role="img" aria-label="Celda editable" title="Haz clic sobre el valor para editarlo">✎</span>
                     </span>
                   )}
