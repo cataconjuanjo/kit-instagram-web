@@ -526,6 +526,8 @@
 .tdEditable {
   cursor: pointer;
   min-width: 90px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .tdEditable:hover .editIcon {
@@ -3707,6 +3709,7 @@
 .otrosBoolSi  { background-color: #d4f0d4; color: #1a6a1a; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231a6a1a'/%3E%3C/svg%3E"); }
 .otrosBoolNo  { background-color: #fce8e8; color: #c44;    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c44'/%3E%3C/svg%3E"); }
 .otrosBoolAlerta { background-color: #fff4d4; color: #8a5a00; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a5a00'/%3E%3C/svg%3E"); }
+.otrosBoolSinDef { background-color: #f3f1ee; color: #8a8580; font-style: italic; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8580'/%3E%3C/svg%3E"); }
 
 
 /* ── Gráfico barras ventas semanales TPV ─────────────────────────────────── */

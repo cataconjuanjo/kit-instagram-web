@@ -3964,11 +3964,12 @@ export default function AdminKioskoPage() {
 
                       <td>
                         <select
-                          className={`${styles.otrosBoolSelect} ${v.apto_cesta === true ? styles.otrosBoolSi : v.apto_cesta === false ? styles.otrosBoolNo : ''}`}
+                          aria-label={`Apto para cesta regalo — ${v.nombre}`}
+                          className={`${styles.otrosBoolSelect} ${v.apto_cesta === true ? styles.otrosBoolSi : v.apto_cesta === false ? styles.otrosBoolNo : styles.otrosBoolSinDef}`}
                           value={v.apto_cesta === true ? 'si' : v.apto_cesta === false ? 'no' : ''}
                           onChange={e => patchOtro('apto_cesta', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
                         >
-                          <option value="">Auto</option>
+                          <option value="">Sin definir</option>
                           <option value="si">Sí</option>
                           <option value="no">No</option>
                         </select>
@@ -3976,11 +3977,12 @@ export default function AdminKioskoPage() {
 
                       <td>
                         <select
-                          className={`${styles.otrosBoolSelect} ${v.es_vegano === true ? styles.otrosBoolSi : v.es_vegano === false ? styles.otrosBoolNo : ''}`}
+                          aria-label={`Vegano — ${v.nombre}`}
+                          className={`${styles.otrosBoolSelect} ${v.es_vegano === true ? styles.otrosBoolSi : v.es_vegano === false ? styles.otrosBoolNo : styles.otrosBoolSinDef}`}
                           value={v.es_vegano === true ? 'si' : v.es_vegano === false ? 'no' : ''}
                           onChange={e => patchOtro('es_vegano', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
                         >
-                          <option value="">—</option>
+                          <option value="">Sin definir</option>
                           <option value="si">Sí</option>
                           <option value="no">No</option>
                         </select>
@@ -3988,11 +3990,12 @@ export default function AdminKioskoPage() {
 
                       <td>
                         <select
-                          className={`${styles.otrosBoolSelect} ${v.con_alcohol === true ? styles.otrosBoolAlerta : v.con_alcohol === false ? styles.otrosBoolSi : ''}`}
+                          aria-label={`Contiene alcohol — ${v.nombre}`}
+                          className={`${styles.otrosBoolSelect} ${v.con_alcohol === true ? styles.otrosBoolAlerta : v.con_alcohol === false ? styles.otrosBoolSi : styles.otrosBoolSinDef}`}
                           value={v.con_alcohol === true ? 'si' : v.con_alcohol === false ? 'no' : ''}
                           onChange={e => patchOtro('con_alcohol', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
                         >
-                          <option value="">—</option>
+                          <option value="">Sin definir</option>
                           <option value="si">Sí</option>
                           <option value="no">No</option>
                         </select>
@@ -4000,11 +4003,12 @@ export default function AdminKioskoPage() {
 
                       <td>
                         <select
-                          className={`${styles.otrosBoolSelect} ${v.sin_gluten === true ? styles.otrosBoolSi : v.sin_gluten === false ? styles.otrosBoolNo : ''}`}
+                          aria-label={`Sin gluten — ${v.nombre}`}
+                          className={`${styles.otrosBoolSelect} ${v.sin_gluten === true ? styles.otrosBoolSi : v.sin_gluten === false ? styles.otrosBoolNo : styles.otrosBoolSinDef}`}
                           value={v.sin_gluten === true ? 'si' : v.sin_gluten === false ? 'no' : ''}
                           onChange={e => patchOtro('sin_gluten', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
                         >
-                          <option value="">—</option>
+                          <option value="">Sin definir</option>
                           <option value="si">Sí</option>
                           <option value="no">No</option>
                         </select>
@@ -4290,6 +4294,7 @@ export default function AdminKioskoPage() {
             <tr>
               <th className={styles.thCheck}>
                 <input type="checkbox"
+                  aria-label="Seleccionar todos los vinos de la página"
                   checked={vinosPaginados.length > 0 && vinosPaginados.every(v => seleccionados.has(v.id))}
                   onChange={toggleSeleccionTodos}
                 />
@@ -4317,7 +4322,10 @@ export default function AdminKioskoPage() {
             {vinosPaginados.map(v => (
               <tr key={v.id} className={`${!v.activo ? styles.rowInactivo : ''} ${seleccionados.has(v.id) ? styles.rowSeleccionado : ''}`}>
                 <td className={styles.tdCheck} onClick={e => e.stopPropagation()}>
-                  <input type="checkbox" checked={seleccionados.has(v.id)} onChange={() => toggleSeleccion(v.id)} />
+                  <input type="checkbox"
+                    aria-label={`Seleccionar ${v.nombre}`}
+                    checked={seleccionados.has(v.id)}
+                    onChange={() => toggleSeleccion(v.id)} />
                 </td>
 
                 {/* Foto */}
