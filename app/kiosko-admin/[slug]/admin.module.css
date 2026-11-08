@@ -408,20 +408,28 @@
 /* ── Table ───────────────────────────────────────────────────────────────── */
 .tableWrap {
   overflow-x: auto;
+  overflow-y: visible;
   padding: 1.25rem 1.75rem 3rem;
+  /* P3-1: alto maximo para activar cabecera sticky al scrollear */
+  max-height: calc(100vh - 220px);
 }
 
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;        /* separate -> sticky th funciona sin fugas de borde */
+  border-spacing: 0;
   font-size: .84rem;
   background: #fff;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 1px 4px rgba(0,0,0,.07);
 }
 
 .table th {
+  /* P3-1: cabecera sticky cuando se hace scroll vertical */
+  position: sticky;
+  top: 0;
+  z-index: 3;
   background: #1a1a2e;
   color: rgba(240,237,232,.65);
   font-size: .7rem;
@@ -432,6 +440,23 @@
   text-align: left;
   white-space: nowrap;
 }
+
+/* P3-1: primera columna (checkbox) sticky izquierda. Es estrecha; asi el
+   usuario no pierde el ancla al hacer scroll horizontal. */
+.table thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: #1a1a2e;
+}
+.table tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+}
+.table tbody tr:hover td:first-child { background: #faf9f6; }
+.table tbody tr.rowSeleccionado td:first-child { background: #fff9eb; }
 
 .thFoto   { width: 68px; }
 .thCenter { text-align: center !important; }
@@ -1874,6 +1899,11 @@
 .statResolved .statNum { color: #2a8a4a; }
 .statResolved:hover { background: #f0faf3; }
 
+/* P3-2: atenuar KPIs informativos (Total / Activos / Destacados / Fichas IA)
+   para que los accionables (Sin foto, Sin PVP, Sin stock...) destaquen. */
+.statInfo .statNum  { color: #777; font-weight: 700; }
+.statInfo .statLabel { color: #aaa; }
+
 /* ── Check progress bar ───────────────────────────────────────────────────── */
 .checkProgressWrap {
   display: flex;
@@ -2086,6 +2116,29 @@
   background: #fff0e8;
   color: #b45309;
 }
+
+/* P3-3: icono visual (✓/!/·) y borde por gravedad del criterio.
+   core = imprescindible (naranja fuerte), optional = opcional (amarillo suave),
+   ok = sin incidencias (verde). */
+.catalogCheckIcon {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .9rem;
+  font-weight: 900;
+  color: #fff;
+}
+.catalogCheckOk { border-left: 3px solid #247a3d; }
+.catalogCheckOk .catalogCheckIcon { background: #247a3d; }
+.catalogCheckWarn { border-left: 3px solid #b45309; }
+.catalogCheckWarn .catalogCheckIcon { background: #b45309; }
+.catalogCheckAviso { border-left: 3px solid #c9a96e; }
+.catalogCheckAviso .catalogCheckIcon { background: #c9a96e; color: #3a2a10; }
+.catalogCheckAviso .catalogCheckCount { background: #fdf6e8; color: #7a5a1a; }
 
 .catalogChecklistFilter {
   margin-top: .75rem;
@@ -2319,6 +2372,29 @@
   text-align: center;
 }
 
+/* P3-6: skeleton placeholder (sustituye los 'Cargando...' en texto plano) */
+.skeletonBlock {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  padding: 1rem 1.75rem;
+}
+.skeletonRow {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0ede8 0%, #f8f6f1 50%, #f0ede8 100%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+.skeletonRow:nth-child(1) { width: 40%; }
+.skeletonRow:nth-child(2) { width: 85%; }
+.skeletonRow:nth-child(3) { width: 70%; }
+.skeletonRow:nth-child(4) { width: 90%; }
+@keyframes skeletonShimmer {
+  0%   { background-position:  200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* ── Sub-tabs Analítica ──────────────────────────────────────────────────── */
 .subTabNav {
   display: flex;
@@ -2331,16 +2407,40 @@
 .subTabBtn {
   background: none;
   border: none;
-  padding: .45rem .9rem;
-  border-radius: 8px;
-  font-size: .82rem;
+  padding: .5rem 1rem;
+  border-radius: 8px 8px 0 0;
+  font-size: .86rem;
   font-weight: 500;
-  color: #888;
+  color: #555;
   cursor: pointer;
-  transition: background .15s, color .15s;
+  transition: background .15s, color .15s, border-color .15s;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
 }
 .subTabBtn:hover { background: #f4f2ef; color: #1a1a2e; }
-.subTabBtnActive { background: #1a1a2e !important; color: #f0ede8 !important; font-weight: 700; }
+.subTabBtnActive {
+  color: #1a1a2e !important;
+  font-weight: 700;
+  border-bottom-color: #c9a96e !important;
+  background: transparent !important;
+}
+/* P3-5: agrupacion visual de subtabs ('Clientes' / 'Tienda') */
+.subTabGroup {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: .35rem;
+  padding: 0 .35rem;
+  border-right: 1px solid #ebe6dc;
+}
+.subTabGroup:last-child { border-right: none; }
+.subTabGroupLabel {
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #999;
+  padding: 0 .3rem .45rem;
+  align-self: flex-end;
+}
 
 /* ── Paginación ──────────────────────────────────────────────────────────── */
 .paginacionBar {

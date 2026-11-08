@@ -2727,29 +2727,47 @@ export default function AdminKioskoPage() {
 
       {tab === 'analitica' && (esPremium || esAdminUsuario) && (
         <div className={styles.analiticaWrap}>
-          {/* Sub-tabs */}
-          <nav className={styles.subTabNav}>
-            {[
-              { id: 'resumen',       label: 'Resumen' },
-              { id: 'busquedas',     label: 'Búsquedas' },
-              { id: 'embudo',        label: 'Embudo' },
-              { id: 'conversion',    label: 'Conversión' },
-              { id: 'precios',       label: 'Precios' },
-              ...(!hideSensitive ? [
-                { id: 'ventas',        label: 'Ventas TPV' },
-                { id: 'rentabilidad',  label: 'Rentabilidad' },
-                { id: 'descuadres',    label: 'Descuadres' },
-              ] : []),
-            ].map(st => (
-              <button key={st.id} type="button"
-                className={`${styles.subTabBtn} ${subTabAnalitica === st.id ? styles.subTabBtnActive : ''}`}
-                onClick={() => setSubTabAnalitica(st.id)}>
-                {st.label}
-              </button>
-            ))}
+          {/* Sub-tabs (P3-5: agrupadas en 'Clientes' y 'Tienda', tamano >=13 px) */}
+          <nav className={styles.subTabNav} aria-label="Subpestañas de analítica">
+            {(() => {
+              const grupos = [
+                { grupo: '', items: [{ id: 'resumen', label: 'Resumen' }] },
+                { grupo: 'Clientes', items: [
+                  { id: 'busquedas',  label: 'Búsquedas' },
+                  { id: 'embudo',     label: 'Embudo' },
+                  { id: 'conversion', label: 'Conversión' },
+                ] },
+                { grupo: 'Tienda', items: [
+                  { id: 'precios', label: 'Precios' },
+                  ...(!hideSensitive ? [
+                    { id: 'ventas',       label: 'Ventas TPV' },
+                    { id: 'rentabilidad', label: 'Rentabilidad' },
+                    { id: 'descuadres',   label: 'Descuadres' },
+                  ] : []),
+                ] },
+              ]
+              return grupos.map((g, gi) => (
+                <span key={gi} className={styles.subTabGroup}>
+                  {g.grupo && <span className={styles.subTabGroupLabel}>{g.grupo}</span>}
+                  {g.items.map(st => (
+                    <button key={st.id} type="button"
+                      aria-current={subTabAnalitica === st.id ? 'page' : undefined}
+                      className={`${styles.subTabBtn} ${subTabAnalitica === st.id ? styles.subTabBtnActive : ''}`}
+                      onClick={() => setSubTabAnalitica(st.id)}>
+                      {st.label}
+                    </button>
+                  ))}
+                </span>
+              ))
+            })()}
           </nav>
 
-          {analiticaLoad && <p className={styles.analiticaLoading}>Cargando datos…</p>}
+          {analiticaLoad && (
+            <div className={styles.skeletonBlock} aria-live="polite" aria-label="Cargando analítica">
+              <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
+              <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
+            </div>
+          )}
           {!analiticaLoad && analitica && (() => {
             const vacio = analitica.vacio
             const SKELETON = [88, 72, 60, 48, 36]
@@ -4034,7 +4052,12 @@ export default function AdminKioskoPage() {
               )}
             </div>
 
-            {leadsLoad && <p className={styles.analiticaLoading}>Cargando leads…</p>}
+            {leadsLoad && (
+              <div className={styles.skeletonBlock} aria-live="polite" aria-label="Cargando leads">
+                <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
+                <div className={styles.skeletonRow} />
+              </div>
+            )}
             {!leadsLoad && leadsError && (
               <div className={styles.analiticaBanner} style={{ margin: '1rem 0 0' }}>
                 <span className={styles.analiticaBannerIcon}>⚠️</span>
@@ -4330,11 +4353,11 @@ export default function AdminKioskoPage() {
 
       {/* Stats strip */}
       <div className={styles.statsStrip}>
-        <div className={styles.statCard}>
+        <div className={`${styles.statCard} ${styles.statInfo}`}>
           <span className={styles.statNum}>{vinosVino.length}</span>
           <span className={styles.statLabel}>Total</span>
         </div>
-        <div className={styles.statCard}>
+        <div className={`${styles.statCard} ${styles.statInfo}`}>
           <span className={styles.statNum}>{nActivos}</span>
           <span className={styles.statLabel}>Activos</span>
         </div>
@@ -4372,11 +4395,11 @@ export default function AdminKioskoPage() {
           <span className={styles.statNum}>{sinStock}</span>
           <span className={styles.statLabel}>Sin stock</span>
         </button>}
-        <div className={`${styles.statCard} ${modoManualDestacados && nDestacadosConStock < 3 ? styles.statWarn : ''}`}>
+        <div className={`${styles.statCard} ${modoManualDestacados && nDestacadosConStock < 3 ? styles.statWarn : styles.statInfo}`}>
           <span className={styles.statNum}>{nDestacados}</span>
           <span className={styles.statLabel}>Destacados</span>
         </div>
-        <div className={styles.statCard}>
+        <div className={`${styles.statCard} ${styles.statInfo}`}>
           <span className={styles.statNum}>{conFichaIA}</span>
           <span className={styles.statLabel}>Fichas IA</span>
         </div>
@@ -4447,21 +4470,35 @@ export default function AdminKioskoPage() {
         </div>
 
         <div className={styles.catalogChecklistGrid}>
-          {catalogoChecklist.checks.map(check => (
-            <button
-              key={check.id}
-              type="button"
-              className={`${styles.catalogCheckCard} ${check.count ? styles.catalogCheckWarn : styles.catalogCheckOk} ${filtroCalidad === check.id ? styles.catalogCheckActive : ''}`}
-              onClick={() => check.count ? aplicarFiltroCalidad(check.id) : undefined}
-              disabled={!check.count}
-            >
-              <span className={styles.catalogCheckBody}>
-                <strong>{check.label}</strong>
-                <small>{check.desc}</small>
-              </span>
-              {check.count > 0 && <span className={styles.catalogCheckCount}>{check.count}</span>}
-            </button>
-          ))}
+          {catalogoChecklist.checks.map(check => {
+            // P3-3: icono visual segun estado (todo OK / aviso leve / aviso fuerte)
+            const sinIncidencias = check.count === 0
+            const esImprescindible = check.kind === 'core'
+            const graveClass = sinIncidencias
+              ? styles.catalogCheckOk
+              : esImprescindible
+              ? styles.catalogCheckWarn
+              : styles.catalogCheckAviso
+            return (
+              <button
+                key={check.id}
+                type="button"
+                className={`${styles.catalogCheckCard} ${graveClass} ${filtroCalidad === check.id ? styles.catalogCheckActive : ''}`}
+                onClick={() => check.count ? aplicarFiltroCalidad(check.id) : undefined}
+                disabled={!check.count}
+                aria-label={sinIncidencias ? `${check.label}: todo correcto` : `${check.label}: ${check.count} por revisar`}
+              >
+                <span className={styles.catalogCheckIcon} aria-hidden="true">
+                  {sinIncidencias ? '✓' : esImprescindible ? '!' : '·'}
+                </span>
+                <span className={styles.catalogCheckBody}>
+                  <strong>{check.label}</strong>
+                  <small>{check.desc}</small>
+                </span>
+                {check.count > 0 && <span className={styles.catalogCheckCount}>{check.count}</span>}
+              </button>
+            )
+          })}
         </div>
 
         {filtroCalidad && (
