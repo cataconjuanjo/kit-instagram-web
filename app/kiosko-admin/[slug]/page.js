@@ -1259,6 +1259,9 @@ export default function AdminKioskoPage() {
   const [porPagina, setPorPagina]         = useState(20)
 
   const [subTabAnalitica, setSubTabAnalitica] = useState('resumen')
+  // P1-5: filtros locales de 'Vinos sin movimiento' (tipo + bodega)
+  const [filtroSinMovTipo, setFiltroSinMovTipo]       = useState('')
+  const [filtroSinMovBodega, setFiltroSinMovBodega]   = useState('')
   const [seleccionados, setSeleccionados]     = useState(new Set())
   // P1-2 batch flow: dialog preview + ejecucion + undo con snapshot.
   // batchDialog: { tipo, valor, soloVacias?, items[], afectadosIds[] }
@@ -3123,23 +3126,59 @@ export default function AdminKioskoPage() {
         )
       })()}
 
-      {/* Vinos sin movimiento */}
+      {/* Vinos sin movimiento (P1-5: filtros + CSV + aviso sin sync 24 h) */}
       {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'ventas' && analitica && (() => {
         const vp = analitica.ventasPorVino || {}
-        const sinMovimiento = vinosVino.filter(v =>
+        const base = vinosVino.filter(v =>
           v.activo && Number(v.precio_pvp) > 0 && Number(v.stock ?? 0) > 0 && !vp[v.id]
-        ).sort((a, b) => Number(b.stock) - Number(a.stock))
-        if (!sinMovimiento.length) return null
+        )
+        if (!base.length) return null
+        const tipos    = [...new Set(base.map(v => v.tipo).filter(Boolean))].sort()
+        const bodegas  = [...new Set(base.map(v => v.bodega).filter(Boolean))].sort()
+        const sinMovimiento = base
+          .filter(v => !filtroSinMovTipo   || v.tipo   === filtroSinMovTipo)
+          .filter(v => !filtroSinMovBodega || v.bodega === filtroSinMovBodega)
+          .sort((a, b) => Number(b.stock) * Number(b.precio_pvp) - Number(a.stock) * Number(a.precio_pvp))
         const valorParado = sinMovimiento.reduce((s, v) => s + Number(v.stock) * Number(v.precio_pvp), 0)
+        const horasSinSync = analitica.ultimoSyncAt
+          ? Math.round((Date.now() - new Date(analitica.ultimoSyncAt).getTime()) / 3600000)
+          : null
+        const sinSyncAviso = horasSinSync != null && horasSinSync >= 24
+        const exportarSinMovCSV = () => {
+          const campos = ['nombre','bodega','tipo','region','stock','precio_pvp','valor_parado']
+          const esc = (v) => { const s = String(v ?? '').replace(/"/g, '""'); return /[,"\n]/.test(s) ? `"${s}"` : s }
+          const filas = [campos.join(','), ...sinMovimiento.map(v => [v.nombre, v.bodega, v.tipo, v.region, v.stock, v.precio_pvp, (Number(v.stock) * Number(v.precio_pvp)).toFixed(2)].map(esc).join(','))].join('\n')
+          const blob = new Blob([filas], { type: 'text/csv;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a'); a.href = url; a.download = `vinos-sin-movimiento-${slug}-${new Date().toISOString().slice(0,10)}.csv`; a.click()
+          URL.revokeObjectURL(url)
+        }
         return (
           <div style={{ padding: '0 1.75rem 1.75rem' }}>
+            {sinSyncAviso && (
+              <div className={styles.analiticaBanner} style={{ marginBottom: '1rem', background: '#fff4d4' }}>
+                <span className={styles.analiticaBannerIcon}>⚠️</span>
+                <span>Sin sincronización TPV desde hace más de {horasSinSync} h · los números pueden estar desactualizados.</span>
+              </div>
+            )}
             <div className={styles.analiticaBloque}>
               <div className={styles.analiticaBloqueHeader}>
                 <div>
                   <h3 className={styles.analiticaBloqueTitle}>Vinos sin movimiento</h3>
                   <p className={styles.analiticaBloqueDesc}>
-                    Activos con stock pero sin ventas en los últimos 90 días · {sinMovimiento.length} vinos · {valorParado.toFixed(0)} € parados en lineal
+                    Activos con stock pero sin ventas en los últimos 90 días · {sinMovimiento.length} de {base.length} vinos · {formatEurRound(valorParado)} parados en lineal
                   </p>
+                </div>
+                <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <select value={filtroSinMovTipo} onChange={e => setFiltroSinMovTipo(e.target.value)} className={styles.filtroSelect} aria-label="Filtrar por tipo">
+                    <option value="">Todos los tipos</option>
+                    {tipos.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <select value={filtroSinMovBodega} onChange={e => setFiltroSinMovBodega(e.target.value)} className={styles.filtroSelect} aria-label="Filtrar por bodega">
+                    <option value="">Todas las bodegas</option>
+                    {bodegas.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                  <button type="button" className={styles.btnSecundario} onClick={exportarSinMovCSV} style={{ padding: '.4rem .8rem', fontSize: '.78rem' }} disabled={!sinMovimiento.length}>↓ CSV</button>
                 </div>
               </div>
               <div style={{ overflowX: 'auto' }}>
@@ -3164,11 +3203,14 @@ export default function AdminKioskoPage() {
                         <td className={styles.rendTdNum}>{formatEurRound(Number(v.stock) * Number(v.precio_pvp))}</td>
                       </tr>
                     ))}
+                    {sinMovimiento.length === 0 && (
+                      <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: '#aaa' }}>Ningún vino coincide con los filtros.</td></tr>
+                    )}
                   </tbody>
                   {sinMovimiento.length > 15 && (
                     <tfoot>
                       <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: '#aaa', fontStyle: 'italic' }}>
-                        +{sinMovimiento.length - 15} más no mostrados
+                        +{sinMovimiento.length - 15} más no mostrados · exporta CSV para la lista completa
                       </td></tr>
                     </tfoot>
                   )}
@@ -3182,6 +3224,39 @@ export default function AdminKioskoPage() {
       {/* Rentabilidad — solo en Premium */}
       {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'rentabilidad' && (
         <div style={{ padding: '0 1.75rem 1.75rem' }}>
+          {/* P1-6: 'Completar coste' encima de la matriz para no distorsionarla */}
+          {(() => {
+            const sinCoste = vinosVino.filter(v => v.activo && Number(v.precio_pvp) > 0 && !v.precio_coste).sort((a, b) => Number(b.precio_pvp) - Number(a.precio_pvp))
+            if (!sinCoste.length) return null
+            return (
+              <div className={styles.analiticaBloque} style={{ marginBottom: '1rem', borderLeft: '3px solid #c9a96e' }}>
+                <div className={styles.analiticaBloqueHeader}>
+                  <div>
+                    <h3 className={styles.analiticaBloqueTitle}>Completar coste</h3>
+                    <p className={styles.analiticaBloqueDesc}>
+                      {sinCoste.length} vino{sinCoste.length === 1 ? '' : 's'} sin precio de coste — se omiten de la matriz hasta completarlo.
+                    </p>
+                  </div>
+                </div>
+                <ul style={{ margin: 0, padding: '0 0 0 1rem', fontSize: '.84rem', lineHeight: 1.7, columns: sinCoste.length > 5 ? 2 : 1 }}>
+                  {sinCoste.slice(0, 20).map(v => (
+                    <li key={v.id}>
+                      <button
+                        type="button"
+                        onClick={() => abrirEditar(v)}
+                        style={{ background: 'none', border: 'none', color: '#1a4f7a', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}
+                      >
+                        {v.nombre}
+                      </button>
+                      {v.bodega && <span style={{ color: '#888' }}> · {v.bodega}</span>}
+                      <span style={{ color: '#888' }}> · PVP {formatPVP(v.precio_pvp)}</span>
+                    </li>
+                  ))}
+                  {sinCoste.length > 20 && <li style={{ color: '#888', fontStyle: 'italic' }}>+{sinCoste.length - 20} más — filtra en el catálogo por &quot;Sin coste&quot;.</li>}
+                </ul>
+              </div>
+            )
+          })()}
           <div className={styles.analiticaBloque}>
             <div className={styles.analiticaBloqueHeader}>
               <div>
@@ -3191,7 +3266,7 @@ export default function AdminKioskoPage() {
                     ? 'Introduce el precio de coste en la columna "Coste €" del Catálogo para activar este análisis. Necesitas al menos 2 vinos con coste.'
                     : rentabilidad.coldStart
                     ? 'El cuadrante se activará cuando se registren al menos 20 unidades vendidas vía TPV. Los datos de margen ya están listos.'
-                    : <>Cruce entre margen bruto y unidades vendidas (TPV Square){!rentabilidad.usandoVentas && ' · usando recomendaciones del kiosko como aproximación'} — umbral margen {rentabilidad.margenMedio}%, umbral ventas {rentabilidad.ventasMedio} ud{rentabilidad.sinCoste > 0 && ` · ${rentabilidad.sinCoste} vino${rentabilidad.sinCoste > 1 ? 's' : ''} sin precio de coste`}</>
+                    : <>Cruce entre margen bruto y unidades vendidas (TPV Square){!rentabilidad.usandoVentas && ' · usando recomendaciones del kiosko como aproximación'} — umbral margen {rentabilidad.margenMedio}%, umbral ventas {rentabilidad.ventasMedio} ud</>
                   }
                 </p>
               </div>
