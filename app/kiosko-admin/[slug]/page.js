@@ -1268,8 +1268,14 @@ export default function AdminKioskoPage() {
   // batchUndo:   { tipo, valor, before: [{id, antes: {...}}] }
   const [batchDialog, setBatchDialog] = useState(null)
   const [batchRunning, setBatchRunning] = useState(false)
+  // Progreso: { hechos, fallidos: [{id, nombre, error}] }
+  const [batchProgreso, setBatchProgreso] = useState(null)
+  // Resumen tras terminar con fallos: { tipo, valor, aplicados, fallidos: [...] }
+  const [batchResumen, setBatchResumen] = useState(null)
   const [batchUndo, setBatchUndo] = useState(null)
   const [batchUndoRunning, setBatchUndoRunning] = useState(false)
+  // F3 B0.3: modal inline para 'Min. stock' y 'Ubicacion' (sustituye window.prompt).
+  const [batchInput, setBatchInput] = useState(null) // { campo, valor, reemplazar? }
 
   const [filtroDestacado, setFiltroDestacado] = useState('todos')
 
@@ -1507,10 +1513,35 @@ export default function AdminKioskoPage() {
     finally { setGuardando(false) }
   }
 
+  // F3 B0.1: borrado individual con type-to-confirm. El borrado masivo se
+  // retira de la barra flotante; el camino en lote para 'retirar vinos' es
+  // 'Desactivar' (reversible con el toast Deshacer).
+  const [eliminarConfirm, setEliminarConfirm] = useState(null) // { id, nombre, input, running }
+  function pedirEliminar(v) {
+    if (!v) return
+    setEliminarConfirm({ id: v.id, nombre: v.nombre || '(sin nombre)', input: '', running: false })
+  }
   async function eliminar(id) {
-    if (!confirm('¿Eliminar este vino?')) return
-    await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
-    setVinos(prev => prev.filter(v => v.id !== id))
+    // Compat: callsites antiguos sin paso por el modal -> abren el modal.
+    const v = vinos.find(w => w.id === id)
+    pedirEliminar(v || { id, nombre: '' })
+  }
+  async function confirmarEliminarVino() {
+    if (!eliminarConfirm) return
+    const { id, nombre, input } = eliminarConfirm
+    if (String(input).trim() !== String(nombre).trim()) return
+    setEliminarConfirm(c => ({ ...c, running: true }))
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j.error || `HTTP ${res.status}`)
+      }
+      setVinos(prev => prev.filter(v => v.id !== id))
+      setEliminarConfirm(null)
+    } catch (e) {
+      setEliminarConfirm(c => c && ({ ...c, running: false, error: e.message || String(e) }))
+    }
   }
 
   // ── Inline edit ────────────────────────────────────────────────────────────
@@ -2211,41 +2242,74 @@ export default function AdminKioskoPage() {
     setBatchDialog({ tipo, valor, soloVacias: !!opts.soloVacias, items, afectadosIds: afectados.map(v => v.id) })
   }
 
-  // Ejecucion: snapshot antes + N PATCHes individuales secuenciales (orden
-  // determinista para que el undo valga uno-a-uno). Si tipo==='eliminar',
-  // se usan DELETEs y el undo no es posible.
+  // F3 B0.2: ejecucion con concurrencia 4 (worker pool), progreso visible,
+  // registro de fallos por vino y resumen final si alguno falla.
+  // El PATCH solo escribe en vinos_tienda (base propia). NO propaga a Square:
+  // confirmado por lectura del endpoint /api/kiosko/[slug]/admin/vinos/[id]
+  // que llama a supabaseAdmin.from('vinos_tienda').update(...) y a un
+  // nullify de ficha_ia_* en segundo plano; no hay fetch a Square. Un commit
+  // de P0-2 fase 2 tambien ignora atributos no-escribibles via
+  // pickWritableVinoFields.
   async function confirmarBatch() {
     if (!batchDialog) return
     const { tipo, valor, afectadosIds } = batchDialog
     if (!afectadosIds.length) { setBatchDialog(null); return }
     setBatchRunning(true)
+    setBatchProgreso({ hechos: 0, total: afectadosIds.length, fallidos: [] })
     const before = []
-    try {
-      for (const id of afectadosIds) {
+    const aplicados = []
+    const fallidos = []
+
+    const conc = afectadosIds.length > 50 ? 4 : 3
+    let cursor = 0
+    const next = () => (cursor < afectadosIds.length ? afectadosIds[cursor++] : null)
+
+    const worker = async () => {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const id = next()
+        if (!id) break
         const v = vinos.find(w => w.id === id)
-        if (!v) continue
-        if (tipo === 'eliminar') {
-          await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
-        } else {
-          const campo = tipo
-          before.push({ id, antes: { [campo]: v[campo] ?? null } })
-          await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
-            method: 'PATCH',
-            headers: { ...authHeaders, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ [campo]: valor }),
-          })
+        const nombre = v?.nombre || `vino ${id}`
+        try {
+          if (tipo === 'eliminar') {
+            const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          } else {
+            const campo = tipo
+            const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
+              method: 'PATCH',
+              headers: { ...authHeaders, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ [campo]: valor }),
+            })
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            if (v) before.push({ id, antes: { [campo]: v[campo] ?? null } })
+          }
+          aplicados.push(id)
+        } catch (err) {
+          fallidos.push({ id, nombre, error: err?.message || String(err) })
+        } finally {
+          setBatchProgreso(p => p && ({ ...p, hechos: p.hechos + 1, fallidos }))
         }
       }
+    }
+
+    try {
+      await Promise.all(Array.from({ length: conc }, worker))
+    } finally {
       await cargar()
-      setSeleccionados(new Set())
+      setBatchRunning(false)
+      setBatchProgreso(null)
       setBatchDialog(null)
-      if (tipo !== 'eliminar') {
+      // El undo solo cubre los aplicados exitosamente (no los fallidos).
+      if (tipo !== 'eliminar' && before.length) {
         setBatchUndo({ tipo, valor, before, ts: Date.now() })
       }
-    } catch (e) {
-      alert('Hubo un error al aplicar el cambio: ' + (e?.message || e))
-    } finally {
-      setBatchRunning(false)
+      if (fallidos.length) {
+        setBatchResumen({ tipo, valor, aplicados: aplicados.length, fallidos })
+      } else {
+        setSeleccionados(new Set())
+      }
     }
   }
 
@@ -5001,24 +5065,78 @@ export default function AdminKioskoPage() {
           <button type="button" className={styles.bulkBtn} onClick={() => abrirBatchDialog('activo', false)}>Desactivar</button>
           <button type="button" className={styles.bulkBtn} onClick={() => abrirBatchDialog('destacado', true)}>★ Destacar</button>
           <button type="button" className={styles.bulkBtn} onClick={() => abrirBatchDialog('destacado', false)}>Quitar destacado</button>
-          <button type="button" className={styles.bulkBtn} onClick={() => {
-            const n = prompt('Stock mínimo para los vinos seleccionados:', '2')
-            if (n === null) return
-            const val = Number(n)
-            if (!Number.isFinite(val) || val < 0) { alert('Valor no válido'); return }
-            abrirBatchDialog('stock_minimo', val)
-          }}>Mín. stock…</button>
-          <button type="button" className={styles.bulkBtn} onClick={() => {
-            const ub = prompt('Ubicación / estantería a asignar:')
-            if (!ub) return
-            const soloVacias = !confirm('¿Reemplazar también las ubicaciones existentes? (Aceptar = reemplazar, Cancelar = rellenar solo los vacíos)')
-            abrirBatchDialog('ubicacion', String(ub).trim(), { soloVacias })
-          }}>Ubicación…</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => setBatchInput({ campo: 'stock_minimo', valor: '2' })}>Mín. stock…</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => setBatchInput({ campo: 'ubicacion', valor: '', reemplazar: false })}>Ubicación…</button>
           <button type="button" className={styles.bulkBtn} onClick={exportarSeleccionCSV}>↓ CSV</button>
-          <button type="button" className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={() => abrirBatchDialog('eliminar', true)}>Eliminar</button>
+          {/* F3 B0.1: 'Eliminar' se retira de la barra masiva. Para retirar en
+              lote usa 'Desactivar' (reversible). El borrado permanente queda
+              solo en la ficha individual con confirmacion por nombre. */}
           <button type="button" className={styles.bulkBtnClose} onClick={() => setSeleccionados(new Set())}>✕</button>
         </div>
       )}
+
+      {/* F3 B0.3: modal inline para pedir el valor (Min. stock / Ubicacion) */}
+      {batchInput && (() => {
+        const { campo, valor, reemplazar } = batchInput
+        const esNumero = campo === 'stock_minimo'
+        const valido = esNumero
+          ? Number.isFinite(Number(valor)) && Number(valor) >= 0 && String(valor).trim() !== ''
+          : String(valor).trim().length > 0
+        const continuar = () => {
+          if (!valido) return
+          const v = esNumero ? Number(valor) : String(valor).trim()
+          const opts = campo === 'ubicacion' ? { soloVacias: !reemplazar } : {}
+          setBatchInput(null)
+          abrirBatchDialog(campo, v, opts)
+        }
+        return (
+          <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget) setBatchInput(null) }}>
+            <div className={styles.modal} style={{ maxWidth: 480 }}>
+              <div className={styles.modalHeader}>
+                <h2>{campo === 'stock_minimo' ? 'Stock mínimo en lote' : 'Ubicación en lote'}</h2>
+                <button type="button" className={styles.modalClose} onClick={() => setBatchInput(null)}>✕</button>
+              </div>
+              <div className={styles.modalBody}>
+                <p style={{ margin: 0, fontSize: '.85rem', color: '#555' }}>
+                  {seleccionados.size} vino{seleccionados.size === 1 ? '' : 's'} seleccionado{seleccionados.size === 1 ? '' : 's'}.
+                  {campo === 'ubicacion' && !reemplazar && ' Por defecto solo se rellenarán los vacíos.'}
+                </p>
+                <p style={{ margin: '.8rem 0 .35rem', fontSize: '.82rem', color: '#555' }}>
+                  {campo === 'stock_minimo' ? 'Nuevo mínimo (unidades):' : 'Nombre de la estantería / zona:'}
+                </p>
+                <input
+                  type={esNumero ? 'number' : 'text'}
+                  min={esNumero ? 0 : undefined}
+                  step={esNumero ? 1 : undefined}
+                  autoFocus
+                  value={valor}
+                  onChange={e => setBatchInput(s => s && ({ ...s, valor: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter' && valido) continuar() }}
+                  className={styles.inlineInput}
+                  style={{ width: '100%', padding: '.55rem .7rem', fontSize: '.9rem' }}
+                  aria-label={campo === 'stock_minimo' ? 'Stock mínimo' : 'Ubicación'}
+                />
+                {campo === 'ubicacion' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', margin: '.75rem 0 0', fontSize: '.82rem', color: '#444' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!reemplazar}
+                      onChange={e => setBatchInput(s => s && ({ ...s, reemplazar: e.target.checked }))}
+                    />
+                    Reemplazar también las ubicaciones existentes
+                  </label>
+                )}
+              </div>
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.btnSecundario} onClick={() => setBatchInput(null)}>Cancelar</button>
+                <button type="button" className={styles.btnPrimario} onClick={continuar} disabled={!valido}>
+                  Vista previa →
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* P1-2: Dialogo preview + confirmacion */}
       {batchDialog && (
@@ -5068,7 +5186,81 @@ export default function AdminKioskoPage() {
                 className={batchDialog.tipo === 'eliminar' ? styles.btnDanger : styles.btnPrimario}
                 onClick={confirmarBatch}
                 disabled={batchRunning || batchDialog.afectadosIds.length === 0}>
-                {batchRunning ? 'Aplicando…' : `Confirmar (${batchDialog.afectadosIds.length})`}
+                {batchRunning
+                  ? `Aplicando… ${batchProgreso?.hechos ?? 0}/${batchProgreso?.total ?? batchDialog.afectadosIds.length}`
+                  : `Confirmar (${batchDialog.afectadosIds.length})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* F3 B0.2: resumen cuando hay fallos parciales */}
+      {batchResumen && (
+        <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget) { setBatchResumen(null); setSeleccionados(new Set()) } }}>
+          <div className={styles.modal} style={{ maxWidth: 520 }}>
+            <div className={styles.modalHeader}>
+              <h2>Resultado</h2>
+              <button type="button" className={styles.modalClose} onClick={() => { setBatchResumen(null); setSeleccionados(new Set()) }}>✕</button>
+            </div>
+            <div className={styles.modalBody}>
+              <p style={{ margin: 0 }}>
+                <strong>{batchResumen.aplicados}</strong> aplicados, <strong style={{ color: '#c44' }}>{batchResumen.fallidos.length}</strong> fallidos. El Deshacer del toast cubre solo los aplicados.
+              </p>
+              <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: '#666' }}>Fallidos:</p>
+              <ul style={{ margin: 0, padding: '0 0 0 1.2rem', fontSize: '.82rem', lineHeight: 1.5, maxHeight: '240px', overflowY: 'auto' }}>
+                {batchResumen.fallidos.slice(0, 50).map(f => (
+                  <li key={f.id}>{f.nombre} — <code>{f.error}</code></li>
+                ))}
+                {batchResumen.fallidos.length > 50 && <li style={{ color: '#888' }}>+{batchResumen.fallidos.length - 50} más…</li>}
+              </ul>
+            </div>
+            <div className={styles.modalFooter}>
+              <button type="button" className={styles.btnPrimario} onClick={() => { setBatchResumen(null); setSeleccionados(new Set()) }}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* F3 B0.1: borrado individual con escritura del nombre */}
+      {eliminarConfirm && (
+        <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget && !eliminarConfirm.running) setEliminarConfirm(null) }}>
+          <div className={styles.modal} style={{ maxWidth: 480 }}>
+            <div className={styles.modalHeader}>
+              <h2>Eliminar vino</h2>
+              <button type="button" className={styles.modalClose} onClick={() => !eliminarConfirm.running && setEliminarConfirm(null)}>✕</button>
+            </div>
+            <div className={styles.modalBody}>
+              <p style={{ margin: 0 }}>
+                Vas a eliminar <strong>{eliminarConfirm.nombre}</strong> permanentemente. Esta acción NO se puede deshacer y no afecta a Square.
+              </p>
+              <p style={{ margin: '.75rem 0 .35rem', fontSize: '.82rem', color: '#555' }}>
+                Para confirmar, escribe el nombre exacto del vino:
+              </p>
+              <input
+                type="text"
+                aria-label="Escribe el nombre del vino para confirmar"
+                className={styles.inlineInput}
+                style={{ width: '100%', padding: '.55rem .7rem', fontSize: '.9rem' }}
+                value={eliminarConfirm.input}
+                onChange={e => setEliminarConfirm(c => c && ({ ...c, input: e.target.value, error: undefined }))}
+                autoFocus
+                disabled={eliminarConfirm.running}
+              />
+              {eliminarConfirm.error && (
+                <p style={{ margin: '.6rem 0 0', color: '#c44', fontSize: '.8rem' }}>
+                  {eliminarConfirm.error}
+                </p>
+              )}
+            </div>
+            <div className={styles.modalFooter}>
+              <button type="button" className={styles.btnSecundario} onClick={() => !eliminarConfirm.running && setEliminarConfirm(null)} disabled={eliminarConfirm.running}>Cancelar</button>
+              <button type="button"
+                className={styles.btnDanger}
+                onClick={confirmarEliminarVino}
+                disabled={eliminarConfirm.running || String(eliminarConfirm.input).trim() !== String(eliminarConfirm.nombre).trim()}
+              >
+                {eliminarConfirm.running ? 'Eliminando…' : 'Eliminar definitivamente'}
               </button>
             </div>
           </div>
