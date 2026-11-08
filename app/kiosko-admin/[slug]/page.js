@@ -1062,12 +1062,14 @@ const VINO_VACIO = {
   foto_url:'', notas_cata:'', descripcion:'', puntuacion:'', destacado:false, activo:true,
 }
 
+// weight 2 = imprescindible para publicar (foto, PVP, stock); weight 1 = opcional.
+// El score global es media PONDERADA por criterio, no union de afectados (P0-3).
 const QUALITY_CHECKS = [
-  { id: 'sin_foto', label: 'Sin foto', desc: 'La tarjeta publica pierde confianza.' },
-  { id: 'sin_pvp', label: 'Sin PVP', desc: 'El cliente vuelve a preguntar precio.' },
-  { id: 'sin_ubicacion', label: 'Sin ubicacion', desc: 'Cuesta encontrarlo en tienda.' },
-  { id: 'sin_stock', label: 'Sin stock', desc: 'No aparece disponible para vender.' },
-  { id: 'sin_texto', label: 'Sin texto de venta', desc: 'Falta descripcion, notas o ficha IA.' },
+  { id: 'sin_foto',      label: 'Sin foto',           desc: 'La tarjeta publica pierde confianza.',          weight: 2, kind: 'core' },
+  { id: 'sin_pvp',       label: 'Sin PVP',            desc: 'El cliente vuelve a preguntar precio.',         weight: 2, kind: 'core' },
+  { id: 'sin_stock',     label: 'Sin stock',          desc: 'No aparece disponible para vender.',            weight: 2, kind: 'core' },
+  { id: 'sin_ubicacion', label: 'Sin ubicación',      desc: 'Cuesta encontrarlo en tienda.',                 weight: 1, kind: 'optional' },
+  { id: 'sin_texto',     label: 'Sin texto de venta', desc: 'Falta descripción, notas o ficha IA.',          weight: 1, kind: 'optional' },
 ]
 
 function hasText(value) {
@@ -1864,15 +1866,25 @@ export default function AdminKioskoPage() {
 
   const catalogoChecklist = useMemo(() => {
     const activos = vinosVino.filter(v => v.activo !== false)
+    const total = activos.length
     const checks = QUALITY_CHECKS.map(check => {
       const afectados = activos.filter(v => vinoTieneQualityIssue(v, check.id))
-      return { ...check, count: afectados.length, afectados }
+      const scoreCheck = total ? Math.max(0, Math.round(((total - afectados.length) / total) * 100)) : 100
+      return { ...check, count: afectados.length, afectados, scoreCheck }
     })
+    // Score global = media ponderada por criterio. Evita que un unico criterio
+    // (p.ej. 'sin_ubicacion' en 177/179 vinos) hunda el %. Nota metodologica
+    // visible en la UI: "metodo actualizado el 2026-11-08".
+    const totalPeso = QUALITY_CHECKS.reduce((s, c) => s + (c.weight || 1), 0)
+    const score = total
+      ? Math.round(
+          checks.reduce((s, c) => s + c.scoreCheck * (c.weight || 1), 0) / totalPeso
+        )
+      : 100
     const pendientesIds = new Set()
     checks.forEach(check => check.afectados.forEach(v => pendientesIds.add(v.id)))
     const pendientes = pendientesIds.size
-    const score = activos.length ? Math.max(0, Math.round(((activos.length - pendientes) / activos.length) * 100)) : 100
-    return { activos: activos.length, checks, pendientes, score }
+    return { activos: total, checks, pendientes, score, metodo: 'ponderado-v2026-11-08' }
   }, [vinosVino])
 
   const vinosPorId = useMemo(() => {
@@ -4150,6 +4162,9 @@ export default function AdminKioskoPage() {
             <p className={styles.catalogChecklistKicker}>Checklist de catálogo</p>
             <h2>Preparado para el kiosko</h2>
             <p>Revisa los campos que más influyen en que el cliente encuentre, entienda y compre el vino sin preguntar.</p>
+            <p style={{ fontSize: '.72rem', color: '#999', margin: '.2rem 0 0' }} title="Media ponderada por criterio. Imprescindibles (foto, PVP, stock) pesan el doble que los opcionales (ubicación, texto de venta).">
+              Método actualizado el 2026-11-08 · media ponderada por criterio
+            </p>
           </div>
           <div className={styles.checkProgressWrap}>
             <span className={styles.checkProgressScore}>{catalogoChecklist.score}%</span>
