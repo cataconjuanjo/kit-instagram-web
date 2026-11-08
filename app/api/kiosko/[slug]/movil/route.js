@@ -5,7 +5,10 @@ import { checkRateLimit } from '../../../../lib/security'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const MAX_IDS = 8
-const RATE_LIMIT = 120
+// F3 B0.4: doble tope. El session_id lo controla el cliente (puede renovarse)
+// asi que ademas aplicamos un tope por IP para proteger el bulk-insert.
+const RATE_LIMIT_SESSION = 120      // por slug + session_id (si viene)
+const RATE_LIMIT_IP = 600           // por slug + IP, siempre
 const RATE_WINDOW_MS = 60 * 60 * 1000
 
 function requestIp(request) {
@@ -88,19 +91,29 @@ export async function POST(request, { params }) {
   try { body = await request.json() } catch {}
   const sessionId = typeof body?.session_id === 'string' ? body.session_id.slice(0, 64) : ''
 
-  // P0-4: rate-limit por slug + session_id del kiosko/movil cuando lo envia el
-  // cliente; en un kiosko fisico varios moviles comparten IP (WiFi tienda)
-  // y antes se cuentaban como una sola clave. Fallback a IP si no hay session.
-  const rateKey = sessionId
-    ? `${slug}:s:${sessionId}`
-    : `${slug}:ip:${requestIp(request) || 'anon'}`
-  const allowed = await checkRateLimit(rateKey, 'kiosko-mobile-intent', {
-    max: RATE_LIMIT,
+  // F3 B0.4: DOS topes de rate-limit, ambos tienen que pasar.
+  //   · session_id (si viene): 120/h -> controla cliente-a-cliente razonable.
+  //   · IP (siempre): 600/h -> techo del servidor; el cliente no lo puede
+  //     saltar generando session_id nuevos. Nunca conocemos al cliente al 100%
+  //     porque puede borrar localStorage o venir de incognito.
+  const ip = requestIp(request) || 'anon'
+  if (sessionId) {
+    const okSession = await checkRateLimit(`${slug}:s:${sessionId}`, 'kiosko-mobile-intent', {
+      max: RATE_LIMIT_SESSION,
+      windowMs: RATE_WINDOW_MS,
+    })
+    if (!okSession) {
+      warnDescarte(slug, 'rate_limit', { keyType: 'session' })
+      return NextResponse.json({ ok: true, skipped: true, limited: true, reason: 'rate_session' })
+    }
+  }
+  const okIp = await checkRateLimit(`${slug}:ip:${ip}`, 'kiosko-mobile-intent-ip', {
+    max: RATE_LIMIT_IP,
     windowMs: RATE_WINDOW_MS,
   })
-  if (!allowed) {
-    warnDescarte(slug, 'rate_limit', { keyType: sessionId ? 'session' : 'ip' })
-    return NextResponse.json({ ok: true, skipped: true, limited: true })
+  if (!okIp) {
+    warnDescarte(slug, 'rate_limit', { keyType: 'ip' })
+    return NextResponse.json({ ok: true, skipped: true, limited: true, reason: 'rate_ip' })
   }
 
   const tienda = await getPublicTienda(slug, { select: 'id, slug, nombre, activo' })

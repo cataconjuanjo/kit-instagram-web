@@ -57,18 +57,34 @@ function MovilContent() {
         setEstado('error')
       })
 
-    // P0-4: tracking del QR escaneado. keepalive para que sobreviva si el
-    // usuario navega de inmediato; session_id persistente para que la rate-limit
-    // del servidor distinga moviles distintos aunque compartan IP (WiFi tienda).
-    // Un fallo deja un warn en consola en vez de perderse silencioso.
+    // F3 B0.4: tracking del QR escaneado. keepalive para que sobreviva si el
+    // usuario navega de inmediato. El session_id ayuda al rate-limit por sesion
+    // (hay ademas un tope por IP a 600/h en el servidor).
+    // Persistencia: localStorage (persiste entre pestanas y sesiones) con
+    // fallback a sessionStorage (solo por pestana) y, si todo falla, UUID
+    // efimero por ejecucion. No es 'persistente por dispositivo' estricto:
+    // el usuario puede borrar storage o venir en incognito.
+    const genId = () => (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : (String(Date.now()) + Math.random().toString(16).slice(2))
     let sessionId = ''
     try {
-      sessionId = window.sessionStorage.getItem('kiosko_movil_sid') || ''
+      sessionId = window.localStorage.getItem('kiosko_movil_sid') || ''
       if (!sessionId) {
-        sessionId = (crypto?.randomUUID?.() || String(Date.now()) + Math.random().toString(16).slice(2))
-        window.sessionStorage.setItem('kiosko_movil_sid', sessionId)
+        sessionId = genId()
+        window.localStorage.setItem('kiosko_movil_sid', sessionId)
       }
-    } catch { /* storage bloqueado -> seguimos sin session_id, cae a IP */ }
+    } catch {
+      try {
+        sessionId = window.sessionStorage.getItem('kiosko_movil_sid') || ''
+        if (!sessionId) {
+          sessionId = genId()
+          window.sessionStorage.setItem('kiosko_movil_sid', sessionId)
+        }
+      } catch {
+        sessionId = genId() // efimero: localStorage y sessionStorage bloqueados
+      }
+    }
     fetch(`/api/kiosko/${slug}/movil`, {
       method: 'POST',
       keepalive: true,
