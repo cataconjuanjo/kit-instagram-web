@@ -378,6 +378,7 @@ export async function GET(request, { params }) {
       })),
     },
     ventasPorVino,
+    ventasPorVino30,   // P1-1: para calculo de dias de cobertura en alertas
     tendenciaPorVino,
     ventasDiarias,
     ayerKey,

@@ -1260,6 +1260,13 @@ export default function AdminKioskoPage() {
 
   const [subTabAnalitica, setSubTabAnalitica] = useState('resumen')
   const [seleccionados, setSeleccionados]     = useState(new Set())
+  // P1-2 batch flow: dialog preview + ejecucion + undo con snapshot.
+  // batchDialog: { tipo, valor, soloVacias?, items[], afectadosIds[] }
+  // batchUndo:   { tipo, valor, before: [{id, antes: {...}}] }
+  const [batchDialog, setBatchDialog] = useState(null)
+  const [batchRunning, setBatchRunning] = useState(false)
+  const [batchUndo, setBatchUndo] = useState(null)
+  const [batchUndoRunning, setBatchUndoRunning] = useState(false)
 
   const [filtroDestacado, setFiltroDestacado] = useState('todos')
 
@@ -2024,6 +2031,13 @@ export default function AdminKioskoPage() {
     // Incluye vinos bajo su mínimo aunque no aparezcan en topVinos (Square)
     const vistos = new Set()
     const alertas = []
+    // P1-1: cobertura = stock / (ventas 30 d / 30). Null si no hay ventas 30 d.
+    const v30 = analitica?.ventasPorVino30 || {}
+    const cobertura = (id, stock) => {
+      const uds30 = Number(v30[String(id)] || 0)
+      if (uds30 <= 0) return null
+      return Math.round((stock * 30) / uds30)
+    }
 
     // 1. Vinos con mínimo configurado que están por debajo
     vinos.forEach(v => {
@@ -2032,7 +2046,14 @@ export default function AdminKioskoPage() {
       const minimo = Number(v.stock_minimo ?? 0)
       if (minimo > 0 && stock <= minimo) {
         vistos.add(String(v.id))
-        alertas.push({ id: v.id, nombre: v.nombre, bodega: v.bodega, stock, minimo, recomendaciones: 0, critico: stock === 0, diasRestantes: null, porMinimo: true })
+        alertas.push({
+          id: v.id, nombre: v.nombre, bodega: v.bodega, stock, minimo,
+          recomendaciones: 0,
+          critico: stock === 0,
+          diasRestantes: null,
+          diasCobertura: cobertura(v.id, stock),
+          porMinimo: true,
+        })
       }
     })
 
@@ -2044,11 +2065,19 @@ export default function AdminKioskoPage() {
         if (!v || !v.activo) return
         const stock = Number(v.stock ?? 0)
         if (stock > 5 && (tv.diasRestantes === null || tv.diasRestantes > 14)) return
-        alertas.push({ id: v.id, nombre: v.nombre, bodega: v.bodega, stock, minimo: Number(v.stock_minimo ?? 0), recomendaciones: tv.veces, critico: stock === 0, diasRestantes: tv.diasRestantes, porMinimo: false })
+        alertas.push({
+          id: v.id, nombre: v.nombre, bodega: v.bodega, stock,
+          minimo: Number(v.stock_minimo ?? 0),
+          recomendaciones: tv.veces,
+          critico: stock === 0,
+          diasRestantes: tv.diasRestantes,
+          diasCobertura: cobertura(v.id, stock),
+          porMinimo: false,
+        })
       })
     }
 
-    return alertas.sort((a, b) => (a.diasRestantes ?? 999) - (b.diasRestantes ?? 999) || b.recomendaciones - a.recomendaciones)
+    return alertas.sort((a, b) => (a.diasCobertura ?? a.diasRestantes ?? 999) - (b.diasCobertura ?? b.diasRestantes ?? 999) || b.recomendaciones - a.recomendaciones)
   }, [vinos, analitica])
 
   const accionesAnalitica = useMemo(() => {
@@ -2157,27 +2186,121 @@ export default function AdminKioskoPage() {
     }
   }
 
-  async function accionMasiva(campo, valor) {
-    const ids = [...seleccionados]
-    await Promise.all(ids.map(id =>
-      fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
-        method: 'PATCH',
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [campo]: valor }),
-      })
-    ))
-    setSeleccionados(new Set())
-    await cargar()
+  // P1-2: label legible por campo/valor para los dialogos y el toast.
+  function describirBatch(tipo, valor) {
+    if (tipo === 'activo')        return valor ? 'Activar'          : 'Desactivar'
+    if (tipo === 'destacado')     return valor ? 'Marcar destacado' : 'Quitar destacado'
+    if (tipo === 'stock_minimo')  return `Fijar stock mínimo = ${valor}`
+    if (tipo === 'ubicacion')     return `Asignar ubicación "${valor}"`
+    if (tipo === 'eliminar')      return 'Eliminar (irreversible)'
+    return tipo
   }
 
-  async function eliminarMasivo() {
-    if (!confirm(`¿Eliminar ${seleccionados.size} vinos? Esta acción no se puede deshacer.`)) return
-    await Promise.all([...seleccionados].map(id =>
-      fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
-    ))
-    setSeleccionados(new Set())
-    await cargar()
+  // Abre el dialogo con vista previa. 'opts' admite { soloVacias } para no
+  // sobrescribir ubicaciones existentes (P1-3 delta previo).
+  function abrirBatchDialog(tipo, valor, opts = {}) {
+    const ids = [...seleccionados]
+    const items = vinos.filter(v => ids.includes(v.id))
+    let afectados = items
+    if (tipo === 'ubicacion' && opts.soloVacias !== false) {
+      afectados = items.filter(v => !String(v.ubicacion_estanteria || '').trim())
+    }
+    setBatchDialog({ tipo, valor, soloVacias: !!opts.soloVacias, items, afectadosIds: afectados.map(v => v.id) })
   }
+
+  // Ejecucion: snapshot antes + N PATCHes individuales secuenciales (orden
+  // determinista para que el undo valga uno-a-uno). Si tipo==='eliminar',
+  // se usan DELETEs y el undo no es posible.
+  async function confirmarBatch() {
+    if (!batchDialog) return
+    const { tipo, valor, afectadosIds } = batchDialog
+    if (!afectadosIds.length) { setBatchDialog(null); return }
+    setBatchRunning(true)
+    const before = []
+    try {
+      for (const id of afectadosIds) {
+        const v = vinos.find(w => w.id === id)
+        if (!v) continue
+        if (tipo === 'eliminar') {
+          await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
+        } else {
+          const campo = tipo
+          before.push({ id, antes: { [campo]: v[campo] ?? null } })
+          await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
+            method: 'PATCH',
+            headers: { ...authHeaders, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [campo]: valor }),
+          })
+        }
+      }
+      await cargar()
+      setSeleccionados(new Set())
+      setBatchDialog(null)
+      if (tipo !== 'eliminar') {
+        setBatchUndo({ tipo, valor, before, ts: Date.now() })
+      }
+    } catch (e) {
+      alert('Hubo un error al aplicar el cambio: ' + (e?.message || e))
+    } finally {
+      setBatchRunning(false)
+    }
+  }
+
+  // Undo: revierte uno-a-uno a los valores de 'antes'. No persiste nada en
+  // base propia: una tabla kiosko_cambios_log aditiva queda propuesta en
+  // supabase/kiosko_cambios_log.sql (sin aplicar). Funciona en sesion.
+  async function deshacerBatch() {
+    if (!batchUndo) return
+    setBatchUndoRunning(true)
+    try {
+      for (const { id, antes } of batchUndo.before) {
+        await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
+          method: 'PATCH',
+          headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify(antes),
+        })
+      }
+      await cargar()
+      setBatchUndo(null)
+    } catch (e) {
+      alert('No se pudo deshacer: ' + (e?.message || e))
+    } finally {
+      setBatchUndoRunning(false)
+    }
+  }
+
+  // Autodismiss del toast a los 10 s (si el usuario no pulso Deshacer).
+  useEffect(() => {
+    if (!batchUndo) return
+    const t = setTimeout(() => setBatchUndo(null), 10000)
+    return () => clearTimeout(t)
+  }, [batchUndo])
+
+  // Exportar SOLO la seleccion a CSV, cliente-side (sin nuevo endpoint).
+  function exportarSeleccionCSV() {
+    const ids = new Set(seleccionados)
+    const sel = vinos.filter(v => ids.has(v.id))
+    if (!sel.length) return
+    const campos = ['nombre','bodega','tipo','region','pais','anada','precio_pvp','precio_coste','precio_oferta','stock','stock_minimo','ubicacion_estanteria','destacado','activo']
+    const esc = (v) => {
+      if (v == null) return ''
+      const s = String(v).replace(/"/g, '""')
+      return /[,"\n]/.test(s) ? `"${s}"` : s
+    }
+    const filas = [campos.join(','), ...sel.map(v => campos.map(c => esc(v[c])).join(','))].join('\n')
+    const blob = new Blob([filas], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `kiosko-${slug}-seleccion-${new Date().toISOString().slice(0,10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Compat con callsites externos (si alguien llamaba a accionMasiva/eliminarMasivo
+  // desde otro componente, pasa ahora por el dialogo).
+  function accionMasiva(campo, valor) { abrirBatchDialog(campo, valor) }
+  function eliminarMasivo()            { abrirBatchDialog('eliminar', true) }
 
   async function exportarCSV() {
     try {
@@ -2687,7 +2810,11 @@ export default function AdminKioskoPage() {
                         <div key={a.id} className={`${styles.alertaItem} ${a.critico ? styles.alertaCritico : styles.alertaBajo}`}>
                           <span className={styles.alertaIcon}>{a.critico ? '🔴' : '🟡'}</span>
                           <span className={styles.alertaNombre}>{a.nombre}{a.bodega ? ` · ${a.bodega}` : ''}</span>
-                          <span className={styles.alertaStats}>{a.recomendaciones}× recomendado · {a.stock === 0 ? 'Sin stock' : `${a.stock} ud.`}{a.diasRestantes !== null && a.diasRestantes !== undefined ? ` · ~${a.diasRestantes}d` : ''}</span>
+                          <span className={styles.alertaStats} title={a.diasCobertura != null ? `Cobertura calculada: stock ${a.stock} / (ventas 30 d / 30)` : 'Sin ventas TPV en 30 d para calcular cobertura'}>
+                            {a.recomendaciones}× recomendado · {a.stock === 0 ? 'Sin stock' : `${a.stock} ud.`}
+                            {a.diasRestantes != null ? ` · ~${a.diasRestantes}d` : ''}
+                            {a.diasCobertura != null && ` · cobertura ${a.diasCobertura} d`}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -4753,16 +4880,97 @@ export default function AdminKioskoPage() {
         )}
       </div>
 
-      {/* Barra de acción masiva */}
+      {/* Barra de acción masiva (P1-2). Toda accion pasa ahora por el dialogo
+          de confirmacion con preview y, si no es eliminar, deja toast de undo. */}
       {seleccionados.size > 0 && (
         <div className={styles.bulkBar}>
           <span className={styles.bulkCount}>{seleccionados.size} seleccionado{seleccionados.size > 1 ? 's' : ''}</span>
-          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('activo', true)}>Activar</button>
-          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('activo', false)}>Desactivar</button>
-          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('destacado', true)}>★ Destacar</button>
-          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('destacado', false)}>Quitar destacado</button>
-          <button type="button" className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={eliminarMasivo}>Eliminar</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => abrirBatchDialog('activo', true)}>Activar</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => abrirBatchDialog('activo', false)}>Desactivar</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => abrirBatchDialog('destacado', true)}>★ Destacar</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => abrirBatchDialog('destacado', false)}>Quitar destacado</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => {
+            const n = prompt('Stock mínimo para los vinos seleccionados:', '2')
+            if (n === null) return
+            const val = Number(n)
+            if (!Number.isFinite(val) || val < 0) { alert('Valor no válido'); return }
+            abrirBatchDialog('stock_minimo', val)
+          }}>Mín. stock…</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => {
+            const ub = prompt('Ubicación / estantería a asignar:')
+            if (!ub) return
+            const soloVacias = !confirm('¿Reemplazar también las ubicaciones existentes? (Aceptar = reemplazar, Cancelar = rellenar solo los vacíos)')
+            abrirBatchDialog('ubicacion', String(ub).trim(), { soloVacias })
+          }}>Ubicación…</button>
+          <button type="button" className={styles.bulkBtn} onClick={exportarSeleccionCSV}>↓ CSV</button>
+          <button type="button" className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={() => abrirBatchDialog('eliminar', true)}>Eliminar</button>
           <button type="button" className={styles.bulkBtnClose} onClick={() => setSeleccionados(new Set())}>✕</button>
+        </div>
+      )}
+
+      {/* P1-2: Dialogo preview + confirmacion */}
+      {batchDialog && (
+        <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget && !batchRunning) setBatchDialog(null) }}>
+          <div className={styles.modal} style={{ maxWidth: 560 }}>
+            <div className={styles.modalHeader}>
+              <h2>{describirBatch(batchDialog.tipo, batchDialog.valor)}</h2>
+              <button type="button" className={styles.modalClose} onClick={() => !batchRunning && setBatchDialog(null)}>✕</button>
+            </div>
+            <div className={styles.modalBody}>
+              <p style={{ margin: 0 }}>
+                Se van a modificar <strong>{batchDialog.afectadosIds.length}</strong> vino{batchDialog.afectadosIds.length === 1 ? '' : 's'}
+                {batchDialog.tipo === 'ubicacion' && batchDialog.soloVacias && ` (sólo los ${batchDialog.afectadosIds.length} que estaban vacíos; los demás ${batchDialog.items.length - batchDialog.afectadosIds.length} se conservan)`}
+                .
+              </p>
+              {batchDialog.afectadosIds.length === 0 ? (
+                <p style={{ margin: '.8rem 0 0', color: '#888' }}>Ningún vino cumple el criterio. Cierra el diálogo y revisa la selección.</p>
+              ) : (
+                <>
+                  <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: '#666' }}>
+                    Muestras (hasta 5):
+                  </p>
+                  <ul style={{ margin: 0, padding: '0 0 0 1.2rem', fontSize: '.82rem', lineHeight: 1.5 }}>
+                    {batchDialog.items.filter(v => batchDialog.afectadosIds.includes(v.id)).slice(0, 5).map(v => {
+                      const campo = batchDialog.tipo
+                      const antes = campo === 'eliminar' ? '(existe)' : (v[campo] ?? '—')
+                      const despues = batchDialog.valor
+                      return (
+                        <li key={v.id}>
+                          {v.nombre}: <code>{String(antes)}</code> → <code>{campo === 'eliminar' ? 'ELIMINADO' : String(despues)}</code>
+                        </li>
+                      )
+                    })}
+                    {batchDialog.afectadosIds.length > 5 && <li>… y {batchDialog.afectadosIds.length - 5} más.</li>}
+                  </ul>
+                </>
+              )}
+              {batchDialog.tipo === 'eliminar' && (
+                <p style={{ margin: '.8rem 0 0', color: '#c44', fontSize: '.8rem' }}>
+                  ⚠ Esta acción no se puede deshacer.
+                </p>
+              )}
+            </div>
+            <div className={styles.modalFooter}>
+              <button type="button" className={styles.btnSecundario} onClick={() => !batchRunning && setBatchDialog(null)} disabled={batchRunning}>Cancelar</button>
+              <button type="button"
+                className={batchDialog.tipo === 'eliminar' ? styles.btnDanger : styles.btnPrimario}
+                onClick={confirmarBatch}
+                disabled={batchRunning || batchDialog.afectadosIds.length === 0}>
+                {batchRunning ? 'Aplicando…' : `Confirmar (${batchDialog.afectadosIds.length})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* P1-2: Toast de deshacer (10 s) */}
+      {batchUndo && (
+        <div className={styles.undoToast}>
+          <span>✓ {describirBatch(batchUndo.tipo, batchUndo.valor)} aplicado a {batchUndo.before.length} vino{batchUndo.before.length === 1 ? '' : 's'}.</span>
+          <button type="button" className={styles.undoBtn} onClick={deshacerBatch} disabled={batchUndoRunning}>
+            {batchUndoRunning ? 'Deshaciendo…' : 'Deshacer'}
+          </button>
+          <button type="button" className={styles.undoClose} onClick={() => setBatchUndo(null)} aria-label="Cerrar aviso">✕</button>
         </div>
       )}
 
