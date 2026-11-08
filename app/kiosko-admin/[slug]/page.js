@@ -1141,6 +1141,7 @@ export default function AdminKioskoPage() {
   const [embudoLoad, setEmbudoLoad] = useState(false)
   const [leads, setLeads]           = useState(null)
   const [leadsLoad, setLeadsLoad]   = useState(false)
+  const [leadsError, setLeadsError] = useState('')
   const [pedidos, setPedidos]       = useState(null)
   const [pedidosLoad, setPedidosLoad] = useState(false)
   const [pedidoMsg, setPedidoMsg]   = useState('')
@@ -1913,14 +1914,30 @@ export default function AdminKioskoPage() {
     finally { setEmbudoLoad(false) }
   }
 
+  // P1-7: carga de leads con timeout 10 s y estado de error.
+  // Antes se quedaba en 'Cargando leads...' indefinido si la query se colgaba
+  // o devolvia !ok, y el error se silenciaba en el catch.
   async function cargarLeads() {
     setLeadsLoad(true)
+    setLeadsError('')
+    const ctrl = new AbortController()
+    const timeout = setTimeout(() => ctrl.abort(), 10000)
     try {
-      const res  = await fetch(`/api/kiosko/${slug}/admin/leads`, { headers: authHeaders })
-      const data = await res.json()
-      setLeads(res.ok ? data.leads : [])
-    } catch { setLeads([]) }
-    finally { setLeadsLoad(false) }
+      const res  = await fetch(`/api/kiosko/${slug}/admin/leads`, { headers: authHeaders, signal: ctrl.signal })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setLeadsError(data?.error || `HTTP ${res.status}`)
+        setLeads(null)
+      } else {
+        setLeads(data.leads || [])
+      }
+    } catch (err) {
+      setLeadsError(err?.name === 'AbortError' ? 'La consulta tardó más de 10 s' : (err?.message || 'Error de red'))
+      setLeads(null)
+    } finally {
+      clearTimeout(timeout)
+      setLeadsLoad(false)
+    }
   }
 
   async function borrarLead(id) {
@@ -3816,13 +3833,24 @@ export default function AdminKioskoPage() {
             </div>
 
             {leadsLoad && <p className={styles.analiticaLoading}>Cargando leads…</p>}
-            {!leadsLoad && leads !== null && leads.length === 0 && (
+            {!leadsLoad && leadsError && (
               <div className={styles.analiticaBanner} style={{ margin: '1rem 0 0' }}>
-                <span className={styles.analiticaBannerIcon}>✉️</span>
-                <span>Todavía sin leads. Aparecerán aquí cuando un cliente deje su email al final de una recomendación.</span>
+                <span className={styles.analiticaBannerIcon}>⚠️</span>
+                <span style={{ flex: 1 }}>
+                  No se han podido cargar los leads: <code>{leadsError}</code>.
+                </span>
+                <button type="button" className={styles.btnSecundario} onClick={cargarLeads} style={{ padding: '.3rem .7rem', fontSize: '.78rem' }}>
+                  Reintentar
+                </button>
               </div>
             )}
-            {!leadsLoad && leads?.length > 0 && (
+            {!leadsLoad && !leadsError && leads !== null && leads.length === 0 && (
+              <div className={styles.analiticaBanner} style={{ margin: '1rem 0 0' }}>
+                <span className={styles.analiticaBannerIcon}>✉️</span>
+                <span>Aún no hay leads: se captan cuando un cliente deja su email tras una recomendación.</span>
+              </div>
+            )}
+            {!leadsLoad && !leadsError && leads?.length > 0 && (
               <div style={{ overflowX: 'auto', marginTop: '.75rem' }}>
                 <table className={styles.rendTable}>
                   <thead>
@@ -3831,6 +3859,7 @@ export default function AdminKioskoPage() {
                       <th className={styles.rendThNum}>Fuente</th>
                       <th className={styles.rendThNum}>Preferencias</th>
                       <th className={styles.rendThNum}>Vinos</th>
+                      <th className={styles.rendThNum} title="Fecha en que el cliente acepto el consentimiento RGPD">Consent.</th>
                       <th className={styles.rendThNum}>Fecha</th>
                       <th className={styles.rendThNum}></th>
                     </tr>
@@ -3846,6 +3875,9 @@ export default function AdminKioskoPage() {
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem' }}>{l.source}</td>
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 160 }}>{prefStr || '—'}</td>
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 180 }}>{vinos || '—'}</td>
+                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }} title={l.consentimiento_at ? `Aceptado el ${new Date(l.consentimiento_at).toLocaleString('es-ES')}` : 'Sin registro de consentimiento'}>
+                            {l.consentimiento_at ? '✔' : <em className={styles.dash}>—</em>}
+                          </td>
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }}>
                             {new Date(l.created_at).toLocaleDateString('es-ES')}
                           </td>
