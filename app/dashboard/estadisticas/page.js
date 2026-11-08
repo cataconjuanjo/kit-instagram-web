@@ -2755,13 +2755,18 @@ export default function Estadisticas() {
 
       {(() => {
         const FILAS_POR_PAGINA = 15
-        const totalPaginasActividad = Math.ceil(statsFiltradas.length / FILAS_POR_PAGINA)
-        const filasPagina = statsFiltradas.slice(
+        const statsOrdenadas = [...statsFiltradas].sort((a, b) => {
+          const tb = new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          if (tb !== 0) return tb
+          return String(b.id).localeCompare(String(a.id))
+        })
+        const totalPaginasActividad = Math.ceil(statsOrdenadas.length / FILAS_POR_PAGINA)
+        const filasPagina = statsOrdenadas.slice(
           (paginaActividad - 1) * FILAS_POR_PAGINA,
           paginaActividad * FILAS_POR_PAGINA
         )
-        const desde = statsFiltradas.length ? (paginaActividad - 1) * FILAS_POR_PAGINA + 1 : 0
-        const hasta = Math.min(paginaActividad * FILAS_POR_PAGINA, statsFiltradas.length)
+        const desde = statsOrdenadas.length ? (paginaActividad - 1) * FILAS_POR_PAGINA + 1 : 0
+        const hasta = Math.min(paginaActividad * FILAS_POR_PAGINA, statsOrdenadas.length)
         return (
           <section className={styles.panel} style={{ marginTop: 16 }}>
             <div className={styles.panelHead}>
