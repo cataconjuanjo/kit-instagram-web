@@ -74,29 +74,54 @@ export async function GET(request, { params }) {
   return NextResponse.json({ tienda, vinos })
 }
 
+// P0-4: logs estructurados para que los descartes dejen de ser silenciosos.
+// Un motivo por linea, sin datos personales (solo slug, codigo, longitudes).
+function warnDescarte(slug, motivo, extra = {}) {
+  console.warn(JSON.stringify({ tag: 'movil_intent_descartado', slug, motivo, ...extra }))
+}
+
 export async function POST(request, { params }) {
   const { slug } = await params
-  const allowed = await checkRateLimit(`${slug}:${requestIp(request) || 'anon'}`, 'kiosko-mobile-intent', {
+
+  // Payload primero (necesitamos session_id para la rate-limit key).
+  let body = {}
+  try { body = await request.json() } catch {}
+  const sessionId = typeof body?.session_id === 'string' ? body.session_id.slice(0, 64) : ''
+
+  // P0-4: rate-limit por slug + session_id del kiosko/movil cuando lo envia el
+  // cliente; en un kiosko fisico varios moviles comparten IP (WiFi tienda)
+  // y antes se cuentaban como una sola clave. Fallback a IP si no hay session.
+  const rateKey = sessionId
+    ? `${slug}:s:${sessionId}`
+    : `${slug}:ip:${requestIp(request) || 'anon'}`
+  const allowed = await checkRateLimit(rateKey, 'kiosko-mobile-intent', {
     max: RATE_LIMIT,
     windowMs: RATE_WINDOW_MS,
   })
   if (!allowed) {
+    warnDescarte(slug, 'rate_limit', { keyType: sessionId ? 'session' : 'ip' })
     return NextResponse.json({ ok: true, skipped: true, limited: true })
   }
 
   const tienda = await getPublicTienda(slug, { select: 'id, slug, nombre, activo' })
-  if (!tienda) return NextResponse.json({ ok: true, skipped: true })
-
-  let body = {}
-  try { body = await request.json() } catch {}
+  if (!tienda) {
+    warnDescarte(slug, 'tienda_no_encontrada')
+    return NextResponse.json({ ok: true, skipped: true, reason: 'no_tienda' })
+  }
 
   const ids = parseIds(body?.ids)
-  if (!ids.length) return NextResponse.json({ ok: true, skipped: true })
+  if (!ids.length) {
+    warnDescarte(slug, 'payload_vacio_o_uuid_invalido', { rawLen: Array.isArray(body?.ids) ? body.ids.length : String(body?.ids || '').length })
+    return NextResponse.json({ ok: true, skipped: true, reason: 'ids_invalidos' })
+  }
 
   const source = String(body?.source || 'qr_opened').slice(0, 40)
   const lang = ['es', 'en', 'fr', 'de'].includes(body?.lang) ? body.lang : 'es'
   const vinos = await getVinos(tienda.id, ids)
-  if (!vinos.length) return NextResponse.json({ ok: true, skipped: true })
+  if (!vinos.length) {
+    warnDescarte(slug, 'vinos_no_match', { idsIn: ids.length })
+    return NextResponse.json({ ok: true, skipped: true, reason: 'no_match' })
+  }
 
   const meta = {
     source,
@@ -116,8 +141,12 @@ export async function POST(request, { params }) {
   )
 
   if (error) {
-    if (migrationPending(error)) return NextResponse.json({ ok: true, pending: true })
+    if (migrationPending(error)) {
+      warnDescarte(slug, 'migracion_pendiente', { code: error.code })
+      return NextResponse.json({ ok: true, pending: true, reason: 'migration_pending' })
+    }
     console.error('[kiosko mobile selection intent]', error)
+    return NextResponse.json({ ok: true, inserted: false, reason: 'db_error' })
   }
 
   return NextResponse.json({ ok: true, count: vinos.length })

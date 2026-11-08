@@ -57,11 +57,31 @@ function MovilContent() {
         setEstado('error')
       })
 
+    // P0-4: tracking del QR escaneado. keepalive para que sobreviva si el
+    // usuario navega de inmediato; session_id persistente para que la rate-limit
+    // del servidor distinga moviles distintos aunque compartan IP (WiFi tienda).
+    // Un fallo deja un warn en consola en vez de perderse silencioso.
+    let sessionId = ''
+    try {
+      sessionId = window.sessionStorage.getItem('kiosko_movil_sid') || ''
+      if (!sessionId) {
+        sessionId = (crypto?.randomUUID?.() || String(Date.now()) + Math.random().toString(16).slice(2))
+        window.sessionStorage.setItem('kiosko_movil_sid', sessionId)
+      }
+    } catch { /* storage bloqueado -> seguimos sin session_id, cae a IP */ }
     fetch(`/api/kiosko/${slug}/movil`, {
       method: 'POST',
+      keepalive: true,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: ids.split(','), source: `qr_${from}`, lang }),
-    }).catch(() => {})
+      body: JSON.stringify({ ids: ids.split(','), source: `qr_${from}`, lang, session_id: sessionId }),
+    })
+      .then(async r => {
+        const j = await r.json().catch(() => ({}))
+        if (j && (j.skipped || j.pending || j.inserted === false)) {
+          console.warn('[kiosko movil] intent no registrado:', j.reason || j)
+        }
+      })
+      .catch(err => { console.warn('[kiosko movil] intent fetch error:', err?.message || err) })
   }, [slug, searchParams])
 
   if (estado === 'cargando') {

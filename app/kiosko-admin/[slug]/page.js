@@ -2630,7 +2630,9 @@ export default function AdminKioskoPage() {
                 {analitica.movil?.pendiente && (
                   <div className={styles.analiticaBanner}>
                     <span className={styles.analiticaBannerIcon}>QR</span>
-                    <span>La métrica Llevar al móvil todavía no está disponible en Supabase. Aplica la migración para activarla.</span>
+                    <span>
+                      Falta aplicar <code>supabase/kiosko_mobile_intents.sql</code>: los datos de &apos;Llevados al móvil&apos; no se están guardando. Mientras tanto los KPIs de Llevar al móvil mostrarán 0.
+                    </span>
                   </div>
                 )}
 
@@ -2705,8 +2707,13 @@ export default function AdminKioskoPage() {
                     <span className={styles.analiticaKpiLabel}>Alertas de stock</span>
                   </div>
                   <div className={styles.analiticaKpi}>
-                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.movil?.total ?? 0}</span>
-                    <span className={styles.analiticaKpiLabel}>Llevados al móvil</span>
+                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente ? styles.kpiEmpty : ''}`}>
+                      {analitica.movil?.pendiente ? '—' : (analitica.movil?.total ?? 0)}
+                    </span>
+                    <span className={styles.analiticaKpiLabel}>
+                      Llevados al móvil
+                      {analitica.movil?.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
+                    </span>
                   </div>
                 </div>
 
@@ -2731,8 +2738,13 @@ export default function AdminKioskoPage() {
                     </span>
                   </div>
                   <div className={styles.analiticaKpi}>
-                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.movil?.total ?? 0}</span>
-                    <span className={styles.analiticaKpiLabel}>Llevados al móvil</span>
+                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente ? styles.kpiEmpty : ''}`}>
+                      {analitica.movil?.pendiente ? '—' : (analitica.movil?.total ?? 0)}
+                    </span>
+                    <span className={styles.analiticaKpiLabel}>
+                      Llevados al móvil
+                      {analitica.movil?.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
+                    </span>
                   </div>
                   <div className={styles.analiticaKpi}>
                     <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.modos?.maridaje ?? 0}</span>
