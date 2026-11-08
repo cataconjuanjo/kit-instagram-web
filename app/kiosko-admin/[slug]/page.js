@@ -1987,7 +1987,11 @@ export default function AdminKioskoPage() {
     }))
     const margenMedio = calculados.reduce((s, v) => s + v.margenPct, 0) / calculados.length
     const totalVentas = calculados.reduce((s, v) => s + v.ventas, 0)
-    if (totalVentas < 20) return { clasificados: [], margenMedio: Math.round(margenMedio), recomMedio: 0, sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length, coldStart: true, usandoVentas: hayVentasSquare }
+    // P0-2: 'sinCoste' debe contar el mismo universo que la KPI del header (solo
+    // vinos, no otros productos ni items de carta). Antes contaba 'vinos' completo
+    // -> 587 en lugar de ~29. Ahora filtra categoria para coincidir con vinosVino.
+    const contarSinCoste = (arr) => arr.filter(v => v.activo && v.categoria !== 'otro' && v.categoria !== 'carta' && v.precio_pvp && !v.precio_coste).length
+    if (totalVentas < 20) return { clasificados: [], margenMedio: Math.round(margenMedio), recomMedio: 0, sinCoste: contarSinCoste(vinos), coldStart: true, usandoVentas: hayVentasSquare }
     const ventasMedio = totalVentas / calculados.length
     const clasificados = calculados.map(v => ({
       ...v,
@@ -1996,7 +2000,7 @@ export default function AdminKioskoPage() {
         : v.margenPct >= margenMedio && v.ventas <  ventasMedio ? 'joya'
         : 'revisar',
     }))
-    return { clasificados, margenMedio: Math.round(margenMedio), ventasMedio: Math.round(ventasMedio), sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length, coldStart: false, usandoVentas: hayVentasSquare }
+    return { clasificados, margenMedio: Math.round(margenMedio), ventasMedio: Math.round(ventasMedio), sinCoste: contarSinCoste(vinos), coldStart: false, usandoVentas: hayVentasSquare }
   }, [vinos, analitica])
 
   const alertasStock = useMemo(() => {
@@ -3332,11 +3336,15 @@ export default function AdminKioskoPage() {
                 <span className={styles.analiticaKpiSub}>{hayDatosTPV ? 'Estimación basada en PVP' : 'Conecta Square para ver'}</span>
               </div>
               <div className={styles.analiticaKpi}>
-                <span className={styles.analiticaKpiNum}>
-                  {hayDatosTPV ? `${avgConvPct}%` : '—'}
+                <span className={styles.analiticaKpiNum} title="Metodología actualizada el 2026-11-08: limitada a [0–100 %] y '—' cuando hay <3 recomendaciones en la ventana. Ventas 90 d / recomendaciones 30 d — alineación pendiente.">
+                  {hayDatosTPV && avgConvPct !== null ? `${avgConvPct}%` : '—'}
                 </span>
                 <span className={styles.analiticaKpiLabel}>Tasa de conversión media</span>
-                <span className={styles.analiticaKpiSub}>Recomendaciones que acaban en venta</span>
+                <span className={styles.analiticaKpiSub}>
+                  {hayDatosTPV && avgConvPct !== null
+                    ? 'Recomendaciones que acaban en venta'
+                    : 'Datos insuficientes · método actualizado 2026-11-08'}
+                </span>
               </div>
             </div>
 
@@ -3381,11 +3389,11 @@ export default function AdminKioskoPage() {
                         <td className={styles.rendTdNum}>{v.movil_n > 0 ? v.movil_n : <em className={styles.dash}>—</em>}</td>
                         <td className={styles.rendTdNum}>{hayDatosTPV ? v.vendido_n : <em className={styles.dash}>—</em>}</td>
                         <td className={styles.rendTdNum}>
-                          {hayDatosTPV
+                          {hayDatosTPV && v.tasa_conv !== null
                             ? <span className={`${styles.margenBadge} ${v.tasa_conv >= 0.3 ? styles.margenHigh : v.tasa_conv >= 0.1 ? styles.margenMid : styles.margenLow}`}>
                                 {Math.round(v.tasa_conv * 100)}%
                               </span>
-                            : <em className={styles.dash}>—</em>}
+                            : <em className={styles.dash} title={v.tasa_conv === null ? 'Datos insuficientes: <3 recomendaciones en la ventana' : undefined}>—</em>}
                         </td>
                         <td className={styles.rendTdNum}>
                           {v.euros_perdidos !== null && v.euros_perdidos > 0

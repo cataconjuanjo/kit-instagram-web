@@ -300,12 +300,25 @@ export async function GET(request, { params }) {
     if (id && id !== 'null') movilPorVinoId[id] = (movilPorVinoId[id] || 0) + 1
   })
 
+  // P0-1: tasa_conv antes dividia ventas de 90 dias entre recomendaciones del
+  // periodo de searches, lo que producia valores > 100 %. Correcciones en LECTURA
+  // (no reescribe eventos; se aplica cada vez que se consulta la analitica):
+  //   · tasa_conv clamp a [0, 1].
+  //   · si veces < MIN_RECOM_PARA_TASA (3), tasa_conv = null -> UI muestra '—'.
+  //   · fuga ahora coincide con la definicion visual: >=5 recomendaciones y
+  //     tasa_conv conocida < 10 % (incluye fugas con 0 ventas y casi-fugas).
+  //   · metodo = 'v2026-11-08' para que la UI pueda mostrar nota de revision.
+  // Ventana temporal: pendiente de alinear ventas (90d) con searches (30d) en
+  // bloque P1; aqui solo se evitan los numeros claramente incoherentes.
+  const MIN_RECOM_PARA_TASA = 3
   const conversionPorVino = Object.entries(vinoCount).map(([id, { nombre, veces }]) => {
     const vendido_n      = ventasPorVino[id] ?? 0
     const movil_n        = movilPorVinoId[id] ?? 0
     const precio_pvp     = precioMap[id] ?? null
-    const fuga           = veces >= 5 && vendido_n === 0
-    const tasa_conv      = veces > 0 ? vendido_n / veces : 0
+    const tasa_conv      = veces >= MIN_RECOM_PARA_TASA
+      ? Math.min(1, Math.max(0, vendido_n / veces))
+      : null
+    const fuga           = veces >= 5 && tasa_conv !== null && tasa_conv < 0.1
     const euros_perdidos = precio_pvp ? Math.max(0, veces - vendido_n) * precio_pvp : null
     const causas = []
     if (!fotoMap[id])       causas.push('sin_foto')
@@ -315,14 +328,26 @@ export async function GET(request, { params }) {
     return { id, nombre, recomendado_n: veces, movil_n, vendido_n, tasa_conv, euros_perdidos, fuga, causas }
   }).sort((a, b) => (b.euros_perdidos ?? 0) - (a.euros_perdidos ?? 0))
 
-  const hayDatosTPV        = Object.keys(ventasPorVino).length > 0
-  const fugasCount         = conversionPorVino.filter(v => v.fuga).length
-  const totalEurosPerdidos = conversionPorVino.reduce((s, v) => s + (v.euros_perdidos ?? 0), 0)
-  const avgConvPct         = conversionPorVino.length
-    ? Math.round((conversionPorVino.reduce((s, v) => s + v.tasa_conv, 0) / conversionPorVino.length) * 100)
-    : 0
+  const hayDatosTPV         = Object.keys(ventasPorVino).length > 0
+  const fugasCount          = conversionPorVino.filter(v => v.fuga).length
+  const totalEurosPerdidos  = conversionPorVino.reduce((s, v) => s + (v.euros_perdidos ?? 0), 0)
+  const tasasValidas        = conversionPorVino.filter(v => v.tasa_conv !== null)
+  const avgConvPct          = tasasValidas.length
+    ? Math.round((tasasValidas.reduce((s, v) => s + v.tasa_conv, 0) / tasasValidas.length) * 100)
+    : null
 
-  const conversion = { porVino: conversionPorVino.slice(0, 30), resumen: { totalEurosPerdidos, fugasCount, avgConvPct, hayDatosTPV } }
+  const conversion = {
+    porVino: conversionPorVino.slice(0, 30),
+    resumen: {
+      totalEurosPerdidos,
+      fugasCount,
+      avgConvPct,           // puede ser null -> UI debe mostrar '—'
+      hayDatosTPV,
+      metodo: 'v2026-11-08', // para badge/tooltip de revision metodologica
+      ventanaVentasDias: 90,
+      ventanaRecomDias: 30,
+    },
+  }
 
   return NextResponse.json({
     vacio: false,
