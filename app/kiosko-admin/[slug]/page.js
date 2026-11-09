@@ -1348,6 +1348,21 @@ export default function AdminKioskoPage() {
   const colVisible = (id) => columnasVisibles.has(id)
   const [columnasMenuOpen, setColumnasMenuOpen] = useState(false)
   const columnasMenuRef = useRef(null)
+  // F6b · ResizeObserver mide la altura real de la toolbar y la escribe en
+  // --k-toolbar-h para que la cabecera sticky se posicione exactamente debajo.
+  const vinosToolbarRef = useRef(null)
+  useEffect(() => {
+    const el = vinosToolbarRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const apply = () => {
+      const h = Math.round(el.getBoundingClientRect().height) || 56
+      document.documentElement.style.setProperty('--k-toolbar-h', h + 'px')
+    }
+    apply()
+    const ro = new ResizeObserver(apply)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [tab])
   useEffect(() => {
     if (!columnasMenuOpen) return
     const onClick = (e) => { if (!columnasMenuRef.current?.contains(e.target)) setColumnasMenuOpen(false) }
@@ -4964,7 +4979,7 @@ export default function AdminKioskoPage() {
         )}
       </section>
 
-      <div className={styles.toolbar}>
+      <div ref={vinosToolbarRef} className={styles.toolbar}>
         <input
           className={styles.busqueda}
           type="search"
@@ -5400,9 +5415,11 @@ export default function AdminKioskoPage() {
                 </td>
                 )}
 
-                {/* Acciones: Editar + menú ⋯ accesible (F5) */}
+                {/* Acciones: Editar + menú ⋯ accesible (F5). F6b: el <td>
+                    permanece como table-cell; el flex vive en el div interno. */}
                 {colVisible('acciones') && (
                 <td className={styles.acciones}>
+                  <div className={styles.accionesInner}>
                   <div className={styles.rowActionsWrap} data-fila-menu={v.id}>
                     <button
                       onClick={() => abrirEditar(v)}
@@ -5468,6 +5485,7 @@ export default function AdminKioskoPage() {
                         </button>
                       </div>
                     )}
+                  </div>
                   </div>
                 </td>
                 )}

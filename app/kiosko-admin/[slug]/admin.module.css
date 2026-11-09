@@ -578,8 +578,9 @@
 .modalFooter .btnSecundario:hover { background: #dedad4; }
 
 /* ── Toolbar ─────────────────────────────────────────────────────────────── */
-/* F6 · toolbar sticky top con fondo sólido. La cabecera de la tabla
-   queda pegada justo debajo usando --k-toolbar-h como offset. */
+/* F6b · toolbar sticky top con fondo sólido (solo ≥1100 px).
+   En <1100 px, overflow-x: auto del .tableWrap rompería sticky: degrada a
+   static (deja la toolbar normal y la th sticky con top: 0 como fallback). */
 .toolbar {
   position: sticky;
   top: 0;
@@ -592,6 +593,9 @@
   border-bottom: 1px solid var(--k-color-border-strong);
   flex-wrap: wrap;
   min-height: var(--k-toolbar-h, 56px);
+}
+@media (max-width: 1099.98px) {
+  .toolbar { position: static; }
 }
 
 /* F5 · búsqueda a 40 px, alineada con el resto de la toolbar */
@@ -632,12 +636,21 @@
 }
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
-/* F6 · contenedor a 100 % de ancho. El scroll vertical es el de la página.
-   Mantengo overflow-x: auto solo para el caso en que la tabla no quepa. */
+/* F6b · contenedor a 100 % de ancho. Sticky requiere que NINGÚN ancestro
+   tenga overflow distinto de 'visible'. En ≥1100 px usamos overflow-x: clip
+   (equivalente visual a 'hidden' pero no rompe sticky). En <1100 px
+   degradamos a overflow-x: auto y DESACTIVAMOS sticky (ver más abajo).
+   Sin padding-top: evita la 'banda blanca' entre la toolbar sticky y
+   la cabecera th sticky cuando se scrollea. */
 .tableWrap {
-  overflow-x: auto;
+  overflow-x: clip;
   overflow-y: visible;
-  padding: var(--k-space-6) var(--k-space-6) var(--k-space-8);
+  padding: 0 var(--k-space-6) var(--k-space-8);
+}
+@media (max-width: 1099.98px) {
+  .tableWrap {
+    overflow-x: auto;
+  }
 }
 
 .table {
@@ -653,10 +666,11 @@
 }
 
 .table th {
-  /* F6 · sticky bajo la toolbar sticky de la página. Offset = altura toolbar. */
+  /* F6b · th sticky con offset = altura real de la toolbar.
+     En <1100 px la toolbar deja de ser sticky; el th degrada a top: 0. */
   position: sticky;
   top: var(--k-toolbar-h, 56px);
-  z-index: 3;
+  z-index: 10;
   background: var(--k-color-ink);
   color: var(--k-color-on-ink-muted);
   font-size: var(--k-fs-xs);
@@ -666,6 +680,9 @@
   padding: 10px 12px;
   text-align: left;
   white-space: nowrap;
+}
+@media (max-width: 1099.98px) {
+  .table th { top: 0; }
 }
 
 /* P3-1: primera columna (checkbox) sticky izquierda. Es estrecha; asi el
@@ -919,16 +936,18 @@
    accesible. El menú ⋯ cubre "Destacar" y "Activar/Desactivar". */
 
 /* ── Acciones ────────────────────────────────────────────────────────────── */
-/* F6 · la celda .acciones hereda el padding, border-bottom y hover de
-   .table td; solo se añade el layout flex de su contenido. Antes el flex
-   se aplicaba al <td> sin padding inherente del .table td — ahora
-   garantizamos padding/vertical-align. */
+/* F6b · la celda .acciones DEBE ser table-cell (no flex) para no romper
+   el modelo de tabla. El layout flex vive en .accionesInner. Así el
+   border-bottom y el hover de la fila cubren la celda hasta el borde
+   derecho como cualquier otra. */
 .acciones {
+  white-space: nowrap;
+}
+.accionesInner {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: var(--k-space-1);
-  white-space: nowrap;
+  gap: var(--k-space-2);
 }
 
 /* F6 · utilidad screen-reader only (visually hidden, accesible) */
