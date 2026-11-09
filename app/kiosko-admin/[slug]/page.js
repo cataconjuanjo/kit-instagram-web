@@ -3399,19 +3399,26 @@ export default function AdminKioskoPage() {
                         <p className={styles.accionesAnaliticaKicker}>Acciones recomendadas</p>
                         <h3>Qué haría ahora</h3>
                       </div>
-                      <span>{accionesAnalitica.length} prioridad{accionesAnalitica.length > 1 ? 'es' : ''}</span>
+                      <span className={styles.kBadge}>{accionesAnalitica.length} prioridad{accionesAnalitica.length > 1 ? 'es' : ''}</span>
                     </div>
                     <div className={styles.accionesAnaliticaGrid}>
-                      {accionesAnalitica.map(accion => (
-                        <article key={accion.key} className={`${styles.accionAnaliticaCard} ${styles[`accionAnalitica_${accion.tone}`] || ''}`}>
-                          <span className={styles.accionAnaliticaBadge}>{accion.badge}</span>
-                          <h4>{accion.title}</h4>
-                          <p>{accion.desc}</p>
-                          <button type="button" onClick={() => ejecutarAccionAnalitica(accion)}>
-                            {accion.cta}
-                          </button>
-                        </article>
-                      ))}
+                      {accionesAnalitica.map(accion => {
+                        /* F9 p3 · badge consume tokens del sistema según tone */
+                        const toneBadge = accion.tone === 'danger' ? styles.kBadgeDanger
+                          : accion.tone === 'warn'   ? styles.kBadgeWarn
+                          : accion.tone === 'ok'     ? styles.kBadgeOk
+                          : styles.kBadgeInfo
+                        return (
+                          <article key={accion.key} className={`${styles.accionAnaliticaCard} ${styles[`accionAnalitica_${accion.tone}`] || ''}`}>
+                            <span className={`${styles.kBadge} ${toneBadge}`}>{accion.badge}</span>
+                            <h4>{accion.title}</h4>
+                            <p>{accion.desc}</p>
+                            <button type="button" className={styles.kBtnSecondary} onClick={() => ejecutarAccionAnalitica(accion)}>
+                              {accion.cta}
+                            </button>
+                          </article>
+                        )
+                      })}
                     </div>
                   </section>
                 )}
@@ -3527,34 +3534,49 @@ export default function AdminKioskoPage() {
                 </div>
 
                 <div className={styles.analiticaGrid}>
-                  {/* Top búsquedas */}
+                  {/* F9 p4 · Top búsquedas como barras horizontales SVG */}
                   <div className={styles.analiticaBloque}>
                     <h3 className={styles.analiticaBloqueTitle}>Qué buscan los clientes</h3>
                     <p className={styles.analiticaBloqueDesc}>Las consultas más frecuentes al asistente en los últimos 30 días</p>
-                    <div className={styles.analiticaList}>
-                      {vacio
-                        ? SKELETON.map((w, i) => <div key={i} className={styles.analiticaSkeleton} style={{ width: `${w}%` }} />)
-                        : analitica.topConsultas.map((c, i) => (
-                            <div key={i} className={styles.analiticaListRow}>
-                              <span className={styles.analiticaRank}>{i + 1}</span>
-                              <span className={styles.analiticaConsulta}>{c.consulta}</span>
-                              <span className={styles.analiticaVeces}>{c.veces}×</span>
+                    {vacio ? (
+                      <div className={styles.kSkeletonBlock}>
+                        <div className={styles.kSkeletonRow} />
+                        <div className={styles.kSkeletonRow} />
+                        <div className={styles.kSkeletonRow} />
+                      </div>
+                    ) : !analitica.topConsultas?.length ? (
+                      <div className={styles.kEmpty}>Aún sin búsquedas suficientes.</div>
+                    ) : (() => {
+                      const max = Math.max(...analitica.topConsultas.map(c => c.veces), 1)
+                      return (
+                        <div className={styles.hBars}>
+                          {analitica.topConsultas.map((c, i) => (
+                            <div key={i} className={styles.hBarRow}>
+                              <span className={styles.hBarRank}>{i + 1}</span>
+                              <span className={styles.hBarLabelTrack}>
+                                <span className={styles.hBarTrack} style={{ width: '100%' }} />
+                                <span className={styles.hBarFill} style={{ width: `${(c.veces / max) * 100}%` }} />
+                                <span className={styles.hBarLabel} title={c.consulta}>{c.consulta}</span>
+                              </span>
+                              <span className={styles.hBarValue}>{c.veces}×</span>
                             </div>
-                          ))
-                      }
-                    </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
 
-                  {/* F3 P1-11: Búsquedas sin resultado (oportunidad de surtido) */}
+                  {/* F9 p6 · Búsquedas sin recomendación (texto libre que no
+                      devolvió vino). Excluye chips de tipo/filtro. */}
                   <div className={styles.analiticaBloque}>
-                    <h3 className={styles.analiticaBloqueTitle}>Búsquedas sin resultado</h3>
-                    <p className={styles.analiticaBloqueDesc}>Lo que pidieron los clientes y el kiosko no pudo recomendar — oportunidad de surtido</p>
+                    <h3 className={styles.analiticaBloqueTitle}>Búsquedas sin recomendación</h3>
+                    <p className={styles.analiticaBloqueDesc}>Consultas de texto libre que no devolvieron ningún vino — oportunidad de surtido. Los chips de tipo o filtro (tinto, blanco, espumoso…) se excluyen.</p>
                     <div className={styles.analiticaList}>
-                      {vacio || !analitica.busquedasSinResultado?.length
+                      {vacio || !(analitica.busquedasSinRecomendacion || analitica.busquedasSinResultado)?.length
                         ? <p style={{ margin: '.3rem 0 0', color: 'var(--k-color-muted)', fontSize: '.78rem' }}>
-                            {vacio ? '—' : 'Todas las búsquedas devolvieron al menos una recomendación.'}
+                            {vacio ? '—' : 'Todas las búsquedas de texto libre devolvieron al menos una recomendación.'}
                           </p>
-                        : analitica.busquedasSinResultado.map((c, i) => (
+                        : (analitica.busquedasSinRecomendacion || analitica.busquedasSinResultado).map((c, i) => (
                             <div key={i} className={styles.analiticaListRow}>
                               <span className={styles.analiticaRank}>{i + 1}</span>
                               <span className={styles.analiticaConsulta}>{c.consulta}</span>
@@ -3585,22 +3607,36 @@ export default function AdminKioskoPage() {
                     </div>
                   </div>
 
-                  {/* Vinos más recomendados */}
+                  {/* F9 p4 · Vinos más recomendados como barras horizontales */}
                   <div className={styles.analiticaBloque}>
                     <h3 className={styles.analiticaBloqueTitle}>Vinos más recomendados</h3>
                     <p className={styles.analiticaBloqueDesc}>Los que el asistente propone con más frecuencia — si no se venden, revisa precio o visibilidad</p>
-                    <div className={styles.analiticaList}>
-                      {vacio
-                        ? SKELETON.map((w, i) => <div key={i} className={styles.analiticaSkeleton} style={{ width: `${w}%` }} />)
-                        : analitica.topVinos.map((v, i) => (
-                            <div key={v.id} className={styles.analiticaListRow}>
-                              <span className={styles.analiticaRank}>{i + 1}</span>
-                              <span className={styles.analiticaConsulta}>{v.nombre}</span>
-                              <span className={styles.analiticaVeces}>{v.veces}×</span>
+                    {vacio ? (
+                      <div className={styles.kSkeletonBlock}>
+                        <div className={styles.kSkeletonRow} />
+                        <div className={styles.kSkeletonRow} />
+                        <div className={styles.kSkeletonRow} />
+                      </div>
+                    ) : !analitica.topVinos?.length ? (
+                      <div className={styles.kEmpty}>Aún sin recomendaciones.</div>
+                    ) : (() => {
+                      const max = Math.max(...analitica.topVinos.map(v => v.veces), 1)
+                      return (
+                        <div className={styles.hBars}>
+                          {analitica.topVinos.map((v, i) => (
+                            <div key={v.id} className={styles.hBarRow}>
+                              <span className={styles.hBarRank}>{i + 1}</span>
+                              <span className={styles.hBarLabelTrack}>
+                                <span className={styles.hBarTrack} style={{ width: '100%' }} />
+                                <span className={styles.hBarFill} style={{ width: `${(v.veces / max) * 100}%` }} />
+                                <span className={styles.hBarLabel} title={v.nombre}>{v.nombre}</span>
+                              </span>
+                              <span className={styles.hBarValue}>{v.veces}×</span>
                             </div>
-                          ))
-                      }
-                    </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Vinos llevados al móvil */}
@@ -3928,10 +3964,10 @@ export default function AdminKioskoPage() {
             </div>
             <div className={styles.bcgGrid}>
               {[
-                { id:'estrella', icon:'⭐', label:'Estrella',          desc:'Alto margen · Alta demanda', color:'#7a5a1a', borde:'#d4a636', fondo:'#fdf8ee' },
-                { id:'joya',     icon:'💎', label:'Joya oculta',       desc:'Alto margen · Baja demanda', color:'var(--k-color-ok)', borde:'#4a9c69', fondo:'#eef7f2' },
-                { id:'caballo',  icon:'🐎', label:'Caballo de batalla',desc:'Bajo margen · Alta demanda', color:'#1a4f7a', borde:'#2e7ab8', fondo:'#eef4fb' },
-                { id:'revisar',  icon:'⚠️', label:'Revisar',           desc:'Bajo margen · Baja demanda', color:'var(--k-color-danger)', borde:'var(--k-color-danger)', fondo:'var(--k-color-danger-soft)' },
+                { id:'estrella', icon:'⭐', label:'Estrella',          desc:'Alto margen · Alta demanda', color:'var(--k-cat-estrella-ink)', borde:'var(--k-cat-estrella)', fondo:'var(--k-cat-estrella-soft)' },
+                { id:'joya',     icon:'💎', label:'Joya oculta',       desc:'Alto margen · Baja demanda', color:'var(--k-cat-joya-ink)',     borde:'var(--k-cat-joya)',     fondo:'var(--k-cat-joya-soft)' },
+                { id:'caballo',  icon:'🐎', label:'Caballo de batalla',desc:'Bajo margen · Alta demanda', color:'var(--k-cat-caballo-ink)',  borde:'var(--k-cat-caballo)',  fondo:'var(--k-cat-caballo-soft)' },
+                { id:'revisar',  icon:'⚠️', label:'Revisar',           desc:'Bajo margen · Baja demanda', color:'var(--k-cat-revisar-ink)',  borde:'var(--k-cat-revisar)',  fondo:'var(--k-cat-revisar-soft)' },
               ].map(cat => {
                 const lista = rentabilidad ? rentabilidad.clasificados.filter(v => v.categoria === cat.id) : []
                 return (
@@ -3965,7 +4001,12 @@ export default function AdminKioskoPage() {
         const dd  = analitica.ventasDiarias || {}
         const fmtMadrid = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' })
         const ayerKey   = analitica.ayerKey || ''
-        const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: 'var(--k-color-danger)' }
+        const catColor = {
+          estrella: 'var(--k-cat-estrella)',
+          joya:     'var(--k-cat-joya)',
+          caballo:  'var(--k-cat-caballo)',
+          revisar:  'var(--k-cat-revisar)',
+        }
         const filas = vinosVino
           .filter(v => vp[v.id])
           .map(v => {

@@ -69,6 +69,25 @@
 
   /* ── Layout (F6) ──────────────────────────────────────────────── */
   --k-toolbar-h: 56px;        /* altura visual real de la toolbar sticky */
+
+  /* ── Colores categoriales BCG / cuadrantes (F9 p7) ──────────────
+     Tokens por cuadrante. Cada uno con 3 variantes: ink (texto),
+     base (borde fuerte / punto), soft (fondo de tarjeta). */
+  --k-cat-estrella:       #d4a636;
+  --k-cat-estrella-ink:   #7a5a1a;
+  --k-cat-estrella-soft:  #fdf8ee;
+
+  --k-cat-joya:           #4a9c69;
+  --k-cat-joya-ink:       #2e6b47;
+  --k-cat-joya-soft:      #eef7f2;
+
+  --k-cat-caballo:        #2e7ab8;
+  --k-cat-caballo-ink:    #1a4f7a;
+  --k-cat-caballo-soft:   #eef4fb;
+
+  --k-cat-revisar:        #c03030;
+  --k-cat-revisar-ink:    #7a2020;
+  --k-cat-revisar-soft:   #fdf0f0;
 }
 
 /* ── Componentes del sistema (clases utilitarias canónicas) ───────────
@@ -2701,25 +2720,35 @@
 .margenMid  { background: #fdf5dc; color: #7a5f00; }
 .margenLow  { background: var(--k-color-danger-soft); color: var(--k-color-danger); }
 
-/* ── Rendimiento por vino ────────────────────────────────────────────────── */
+/* ── F9 p5 · Tablas de Analítica con el mismo lenguaje que la tabla de
+     Vinos: cabecera marino, 44 px densos, números a la derecha, hover. */
 .rendTable {
   width: 100%;
-  border-collapse: collapse;
-  font-size: .82rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--k-fs-sm);
+  font-variant-numeric: tabular-nums;
 }
 .rendThNombre,
 .rendThNum {
-  padding: .45rem .75rem;
-  font-size: .7rem;
-  font-weight: 700;
+  padding: 10px 12px;
+  font-size: var(--k-fs-xs);
+  font-weight: var(--k-fw-bold);
   text-transform: uppercase;
-  letter-spacing: .05em;
-  color: var(--k-color-muted-2);
-  border-bottom: 1px solid var(--k-color-sunken);
+  letter-spacing: var(--k-letter-upper);
+  color: var(--k-color-on-ink-muted);
+  background: var(--k-color-ink);
+  border-bottom: 1px solid var(--k-color-ink);
+  text-align: left;
+  white-space: nowrap;
+  position: sticky;
+  top: calc(var(--k-toolbar-h, 56px) + 48px);
+  z-index: 2;
 }
 .rendThNum { text-align: right; }
-.rendRow { border-bottom: 1px solid #f7f4f0; }
-.rendRow:hover { background: #faf9f7; }
+.rendRow { border-bottom: 1px solid var(--k-color-sunken); }
+.rendRow td { height: 44px; }
+.rendRow:hover { background: var(--k-color-soft); }
 .rendRowFuga { background: #fff8f8; }
 .rendRowFuga:hover { background: #ffeeed; }
 .rendTdNombre {
@@ -2791,50 +2820,65 @@
    Único skeleton del panel: .kSkeletonBlock + .kSkeletonRow (sistema). */
 
 /* ── Sub-tabs Analítica ──────────────────────────────────────────────────── */
+/* F9 p1 · Barra de subpestañas sticky bajo la nav principal del admin;
+   texto 14 px, activa con subrayado dorado, objetivos ≥40 px. */
 .subTabNav {
+  position: sticky;
+  top: var(--k-toolbar-h, 56px);
+  z-index: 15;
   display: flex;
-  gap: .35rem;
-  padding-bottom: .25rem;
-  border-bottom: 2px solid var(--k-color-sunken);
-  margin-bottom: 1.25rem;
+  gap: 4px;
+  padding: 0 var(--k-space-6);
+  background: var(--k-color-surface);
+  border-bottom: 1px solid var(--k-color-border-strong);
+  margin: 0 0 var(--k-space-4);
   flex-wrap: wrap;
+  min-height: 48px;
+  align-items: stretch;
 }
 .subTabBtn {
   background: none;
   border: none;
-  padding: .5rem 1rem;
-  border-radius: 8px 8px 0 0;
-  font-size: .86rem;
-  font-weight: 500;
+  padding: 12px 14px;
+  border-radius: 0;
+  font: inherit;
+  font-size: var(--k-fs-md);         /* 14 px */
+  font-weight: var(--k-fw-regular);
   color: var(--k-color-ink-2);
   cursor: pointer;
-  transition: background .15s, color .15s, border-color .15s;
+  transition: color var(--k-transition), background var(--k-transition), border-color var(--k-transition);
   border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
+  margin-bottom: -1px;               /* cubre el border-bottom del nav */
+  min-height: 40px;
+  white-space: nowrap;
 }
-.subTabBtn:hover { background: #f4f2ef; color: var(--k-color-ink); }
+.subTabBtn:hover         { background: var(--k-color-soft); color: var(--k-color-ink); }
+.subTabBtn:focus-visible { outline: none; box-shadow: var(--k-ring); }
 .subTabBtnActive {
   color: var(--k-color-ink) !important;
-  font-weight: 700;
+  font-weight: var(--k-fw-bold);
   border-bottom-color: var(--k-color-accent) !important;
   background: transparent !important;
 }
-/* P3-5: agrupacion visual de subtabs ('Clientes' / 'Tienda') */
+/* P3-5 · agrupación visual de subtabs ('Clientes' / 'Tienda') */
 .subTabGroup {
   display: inline-flex;
-  align-items: flex-end;
-  gap: .35rem;
-  padding: 0 .35rem;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 var(--k-space-2);
   border-right: 1px solid var(--k-color-border);
 }
-.subTabGroup:last-child { border-right: none; }
+.subTabGroup:last-child  { border-right: none; }
+.subTabGroup:first-child { padding-left: 0; }
 .subTabGroupLabel {
-  font-size: .68rem;
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--k-fs-xs);
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: var(--k-letter-upper);
   color: var(--k-color-muted);
-  padding: 0 .3rem .45rem;
-  align-self: flex-end;
+  padding: 0 var(--k-space-2);
+  font-weight: var(--k-fw-bold);
 }
 
 /* ── Paginación ──────────────────────────────────────────────────────────── */
@@ -3139,42 +3183,46 @@
 }
 
 /* KPI row */
+/* F9 p2 · KPI cards uniformes en TODAS las vistas de analitica. Mismos
+   tamanos/colores que las de Vinos (.kCard). */
 .analiticaKpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--k-space-3);
+  margin: 0 0 var(--k-space-4);
 }
-
 @media (max-width: 900px) {
   .analiticaKpis { grid-template-columns: repeat(2, 1fr); }
 }
 
 .analiticaKpi {
   background: var(--k-color-surface);
-  border-radius: 12px;
-  padding: 1.1rem 1.25rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,.07);
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-md);
+  padding: var(--k-space-3) var(--k-space-4);
+  box-shadow: var(--k-shadow);
   display: flex;
   flex-direction: column;
-  gap: .3rem;
+  gap: var(--k-space-1);
+  min-height: 86px;
 }
-
 .analiticaKpiNum {
-  font-size: 2rem;
-  font-weight: 800;
+  font-size: var(--k-fs-2xl);         /* 24 px */
+  font-weight: var(--k-fw-bold);
   color: var(--k-color-ink);
-  line-height: 1;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
-
 .analiticaKpiLabel {
-  font-size: .75rem;
+  font-size: var(--k-fs-xs);          /* 12 px */
   color: var(--k-color-muted);
-  letter-spacing: .03em;
-  line-height: 1.4;
+  letter-spacing: var(--k-letter-upper);
+  text-transform: uppercase;
+  font-weight: var(--k-fw-bold);
+  line-height: 1.3;
 }
-
 .analiticaKpiSub {
-  font-size: .68rem;
+  font-size: var(--k-fs-xs);
   color: var(--k-color-muted-2);
   line-height: 1.3;
 }
@@ -3193,11 +3241,13 @@
   .analiticaGrid { grid-template-columns: 1fr; }
 }
 
+/* F9 p2/p5 · bloque canonico de analitica alineado con .kCard */
 .analiticaBloque {
   background: var(--k-color-surface);
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,.07);
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-md);
+  padding: var(--k-space-4);
+  box-shadow: var(--k-shadow);
 }
 
 .analiticaBloqueHeader {
@@ -4608,5 +4658,66 @@
   accent-color: var(--k-color-accent);
 }
 
-
+/* ── F9 p4 · Barras horizontales SVG (sin librerías) ───────────────────── */
+.hBars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: var(--k-space-2);
+}
+.hBarRow {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: var(--k-space-2);
+  padding: 4px 0;
+  min-height: 32px;
+}
+.hBarRank {
+  font-size: var(--k-fs-xs);
+  font-weight: var(--k-fw-bold);
+  color: var(--k-color-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.hBarLabelTrack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.hBarTrack {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--k-color-sunken);
+  border-radius: var(--k-radius-sm);
+}
+.hBarFill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--k-color-accent);
+  border-radius: var(--k-radius-sm);
+  opacity: .22;
+}
+.hBarLabel {
+  position: relative;
+  z-index: 1;
+  padding: 0 10px;
+  font-size: var(--k-fs-sm);
+  color: var(--k-color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.hBarValue {
+  font-size: var(--k-fs-sm);
+  font-weight: var(--k-fw-bold);
+  color: var(--k-color-ink-2);
+  font-variant-numeric: tabular-nums;
+}
 

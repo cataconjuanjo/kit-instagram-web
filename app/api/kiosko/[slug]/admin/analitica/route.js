@@ -158,20 +158,49 @@ export async function GET(request, { params }) {
     .sort((a, b) => b[1] - a[1]).slice(0, 10)
     .map(([consulta, veces]) => ({ consulta, veces }))
 
-  // F3 P1-11: busquedas que no devolvieron ningun vino (oportunidad de surtido).
-  // vinos_ids puede ser null o [] cuando no hubo match. Se agrupan con la misma
-  // normalizacion que topConsultas para no inflar con variantes tipograficas.
-  const sinResultadoCount = {}
+  // F3 P1-11 / F9 p6: 'Busquedas sin recomendacion'. ANTES: incluia cualquier
+  // search con vinos_ids=null o []. Pero kiosko_searches guarda vinos_ids=null
+  // tambien cuando el usuario solo activa un chip de filtro (tipo o D.O.) y no
+  // hay texto libre: esos filtros SI devuelven resultados en pantalla aunque
+  // no se persistan los ids. Resultado: aparecian 'blanco', 'tinto', 'espumoso'
+  // en la lista de 'sin resultado', lo cual era falso.
+  // AHORA: se filtran los terminos que son SOLO un tipo de vino o filtro
+  // simple. Si al normalizar la consulta queda una palabra que es tipo/filtro
+  // de un solo token, se excluye. Se mantiene si la consulta tiene varias
+  // palabras o incluye texto que no es un tipo. Renombrado a
+  // 'busquedasSinRecomendacion' para reflejarlo. Legacy 'busquedasSinResultado'
+  // se conserva como alias para no romper lectores antiguos.
+  const TIPOS_Y_FILTROS = new Set([
+    'tinto', 'tintos',
+    'blanco', 'blancos',
+    'rosado', 'rosados',
+    'espumoso', 'espumosos', 'cava', 'cavas', 'champagne', 'champan',
+    'generoso', 'generosos', 'jerez', 'oporto', 'porto',
+    'dulce', 'dulces',
+    'naranja', 'naranjas',
+    'sin alcohol', 'sinalcohol', 'sin_alcohol',
+    'vino', 'vinos',
+    'tipo', 'color',
+    'regalo', 'baratos', 'caros',
+  ])
+  const sinRecomendacionCount = {}
   searches.forEach(s => {
     const ids = s.vinos_ids
     if (Array.isArray(ids) && ids.length > 0) return
     const k = normConsulta(s.consulta)
     if (!k) return
-    sinResultadoCount[k] = (sinResultadoCount[k] || 0) + 1
+    // Excluir consultas de un solo token que sean tipo/filtro.
+    const palabras = k.split(/\s+/)
+    if (palabras.length === 1 && TIPOS_Y_FILTROS.has(palabras[0])) return
+    // Excluir tambien 'sin alcohol' (dos tokens) y combinaciones tipo+tipo.
+    if (TIPOS_Y_FILTROS.has(k)) return
+    sinRecomendacionCount[k] = (sinRecomendacionCount[k] || 0) + 1
   })
-  const busquedasSinResultado = Object.entries(sinResultadoCount)
+  const busquedasSinRecomendacion = Object.entries(sinRecomendacionCount)
     .sort((a, b) => b[1] - a[1]).slice(0, 15)
     .map(([consulta, veces]) => ({ consulta, veces }))
+  // Alias legacy para no romper lectores antiguos.
+  const busquedasSinResultado = busquedasSinRecomendacion
 
   // ── Vinos más recomendados ──────────────────────────────────────────────────
   const vinoCount = {}
@@ -407,8 +436,9 @@ export async function GET(request, { params }) {
     semanaActual,
     semanaAnterior,
     topConsultas,
-    busquedasSinResultado, // F3 P1-11
-    buscadosSinStock,      // F3 P1-11
+    busquedasSinRecomendacion, // F9 p6 · reemplaza busquedasSinResultado
+    busquedasSinResultado,     // alias legacy · misma lista
+    buscadosSinStock,          // F3 P1-11
     topVinos,
     modos: { wizard: totalWizard, maridaje: totalMaridaje, regalo: totalRegalo, explorar: totalExplorar },
     movil: {
