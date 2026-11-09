@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../../../../../lib/supabaseAdmin'
-import { requireKioskoAccess } from '../../../../../_lib/kioskoAuth'
+import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
+import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
 // P1-3: catalogo de ubicaciones por tienda.
 // Degrada con grace: si la tabla aún no existe (SQL kiosko_ubicaciones.sql

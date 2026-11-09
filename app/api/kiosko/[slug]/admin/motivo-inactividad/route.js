@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../../../../../lib/supabaseAdmin'
-import { requireKioskoAccess } from '../../../../../_lib/kioskoAuth'
+import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
+import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
 // P1-4: set del motivo de inactividad via endpoint auxiliar para no tocar el
 // PATCH principal (que podría romperse si la columna no existe). Detecta la
