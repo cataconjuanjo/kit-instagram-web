@@ -143,33 +143,14 @@ export async function GET(request, { params }) {
   }
 
   // ── Top consultas ───────────────────────────────────────────────────────────
-  // F3 P1-11: misma normalizacion que el tracking cliente (lower + sin tildes
-  // + trim + espacios colapsados) para agrupar variantes de la misma consulta.
+  // Normalización: lower + sin tildes + colapsar espacios + trim.
   const normConsulta = (c) => String(c || '')
     .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/\s+/g, ' ').trim()
-  const consultaCount = {}
-  searches.forEach(s => {
-    const k = normConsulta(s.consulta)
-    if (!k) return
-    consultaCount[k] = (consultaCount[k] || 0) + 1
-  })
-  const topConsultas = Object.entries(consultaCount)
-    .sort((a, b) => b[1] - a[1]).slice(0, 10)
-    .map(([consulta, veces]) => ({ consulta, veces }))
 
-  // F3 P1-11 / F9 p6: 'Busquedas sin recomendacion'. ANTES: incluia cualquier
-  // search con vinos_ids=null o []. Pero kiosko_searches guarda vinos_ids=null
-  // tambien cuando el usuario solo activa un chip de filtro (tipo o D.O.) y no
-  // hay texto libre: esos filtros SI devuelven resultados en pantalla aunque
-  // no se persistan los ids. Resultado: aparecian 'blanco', 'tinto', 'espumoso'
-  // en la lista de 'sin resultado', lo cual era falso.
-  // AHORA: se filtran los terminos que son SOLO un tipo de vino o filtro
-  // simple. Si al normalizar la consulta queda una palabra que es tipo/filtro
-  // de un solo token, se excluye. Se mantiene si la consulta tiene varias
-  // palabras o incluye texto que no es un tipo. Renombrado a
-  // 'busquedasSinRecomendacion' para reflejarlo. Legacy 'busquedasSinResultado'
-  // se conserva como alias para no romper lectores antiguos.
+  // F9 p6 / F9b p1 · Tipos de vino y filtros simples a descartar como texto
+  // libre. 'regalo', 'baratos' y 'caros' NO están aquí: son consultas de
+  // intención válida (el usuario escribe "regalo" o "barato" literalmente).
   const TIPOS_Y_FILTROS = new Set([
     'tinto', 'tintos',
     'blanco', 'blancos',
@@ -181,21 +162,64 @@ export async function GET(request, { params }) {
     'sin alcohol', 'sinalcohol', 'sin_alcohol',
     'vino', 'vinos',
     'tipo', 'color',
-    'regalo', 'baratos', 'caros',
   ])
+
+  // F9b p1a · El cliente construye la consulta como "texto · tipo · pais · region".
+  // Al agrupar, quedarnos solo con la parte de texto libre: cualquier segmento
+  // que NO esté en TIPOS_Y_FILTROS. Devuelve '' si al limpiar no queda texto.
+  function stripChipSufijo(norm) {
+    if (!norm) return ''
+    const partes = norm.split(' · ').map(p => p.trim()).filter(Boolean)
+    const textoPartes = partes.filter(p => !TIPOS_Y_FILTROS.has(p))
+    return textoPartes.join(' · ')
+  }
+
+  // F9b p1b · Umbral y ventana para la detección de prefijos (fragmentos de
+  // tecleo). kiosko_searches NO guarda session_id (verificado en F3), así que
+  // agrupamos por tienda (todas las searches de este endpoint ya están
+  // filtradas por tienda_id) y por proximidad temporal: una consulta queda
+  // marcada como prefijo si existe OTRA consulta posterior en los próximos
+  // 2 minutos cuyo texto empieza por ella (strict prefix, misma tienda).
+  const MIN_CHARS = 4
+  const VENTANA_PREFIJO_MS = 2 * 60 * 1000
+
+  const items = searches
+    .map(s => ({
+      ts: new Date(s.created_at).getTime(),
+      txt: stripChipSufijo(normConsulta(s.consulta)),
+      hasIds: Array.isArray(s.vinos_ids) && s.vinos_ids.length > 0,
+    }))
+    // F9b p1 · descarta ya aquí fragmentos muy cortos y strings vacíos.
+    .filter(x => x.txt && x.txt.length >= MIN_CHARS)
+    .sort((a, b) => a.ts - b.ts)
+
+  const esPrefijo = new Array(items.length).fill(false)
+  for (let i = 0; i < items.length; i++) {
+    const a = items[i]
+    for (let j = i + 1; j < items.length; j++) {
+      const b = items[j]
+      if (b.ts - a.ts > VENTANA_PREFIJO_MS) break
+      if (b.txt.length > a.txt.length && b.txt.startsWith(a.txt)) {
+        esPrefijo[i] = true
+        break
+      }
+    }
+  }
+
+  // F9b p1d · MISMA normalización aplicada a 'topConsultas' y a
+  // 'busquedasSinRecomendacion' para que ambos cuadren. Antes topConsultas
+  // contaba todo lo normalizado (incluidos prefijos y chips); ahora comparte
+  // el mismo pipeline.
+  const consultaCount = {}
   const sinRecomendacionCount = {}
-  searches.forEach(s => {
-    const ids = s.vinos_ids
-    if (Array.isArray(ids) && ids.length > 0) return
-    const k = normConsulta(s.consulta)
-    if (!k) return
-    // Excluir consultas de un solo token que sean tipo/filtro.
-    const palabras = k.split(/\s+/)
-    if (palabras.length === 1 && TIPOS_Y_FILTROS.has(palabras[0])) return
-    // Excluir tambien 'sin alcohol' (dos tokens) y combinaciones tipo+tipo.
-    if (TIPOS_Y_FILTROS.has(k)) return
-    sinRecomendacionCount[k] = (sinRecomendacionCount[k] || 0) + 1
+  items.forEach((it, idx) => {
+    if (esPrefijo[idx]) return
+    consultaCount[it.txt] = (consultaCount[it.txt] || 0) + 1
+    if (!it.hasIds) sinRecomendacionCount[it.txt] = (sinRecomendacionCount[it.txt] || 0) + 1
   })
+  const topConsultas = Object.entries(consultaCount)
+    .sort((a, b) => b[1] - a[1]).slice(0, 10)
+    .map(([consulta, veces]) => ({ consulta, veces }))
   const busquedasSinRecomendacion = Object.entries(sinRecomendacionCount)
     .sort((a, b) => b[1] - a[1]).slice(0, 15)
     .map(([consulta, veces]) => ({ consulta, veces }))

@@ -3046,12 +3046,18 @@
   line-height: 1.2;
 }
 
-.accionesAnaliticaHeader > span {
-  color: rgba(248,244,236,.7);
-  font-size: .75rem;
-  font-weight: 800;
-  white-space: nowrap;
+/* F9b p2 · Pastilla del contador de prioridades sobre banda oscura con
+   contraste AA. Reemplaza el texto blanco suelto anterior. Aplica solo
+   cuando el span lleva la clase .kBadge del sistema; el ratio
+   on-ink / ink ≈ 13:1 cumple AA ampliamente. */
+.accionesAnaliticaHeader .kBadge {
+  background: rgba(240, 237, 232, 0.14);
+  color: var(--k-color-on-ink);
+  border: 1px solid rgba(240, 237, 232, 0.22);
+  letter-spacing: var(--k-letter-upper);
+  text-transform: uppercase;
 }
+.accionesAnaliticaHeader .kBadge:empty { display: none; }
 
 .accionesAnaliticaGrid {
   display: grid;
