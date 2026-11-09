@@ -27,8 +27,28 @@ export async function GET(request, { params }) {
       .maybeSingle(),
   ])
 
+  // F3 P3-10: ultimo error de sync (si lo hay). Query separada y en try para
+  // que, si la columna 'error' no existe en square_sync_log, no rompa el
+  // resto de la respuesta. Degradacion: campos se devuelven en null.
+  let ultimoError = null
+  let ultimoErrorAt = null
+  try {
+    const { data: lastErr } = await supabaseAdmin
+      .from('square_sync_log')
+      .select('created_at, error')
+      .eq('tienda_slug', slug)
+      .eq('ok', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    ultimoError = lastErr?.error || null
+    ultimoErrorAt = lastErr?.created_at || null
+  } catch { /* columna error inexistente u otro problema; se omite */ }
+
   return NextResponse.json({
     ultimoPagoAt:     lastPayment?.created_at  || null,
     ultimoCatalogoAt: lastCatalog?.square_last_seen_at || null,
+    ultimoError,
+    ultimoErrorAt,
   })
 }

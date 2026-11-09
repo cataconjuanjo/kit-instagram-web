@@ -1288,6 +1288,9 @@ export default function AdminKioskoPage() {
   // captura y marca dirty; se resetea en onSaved o al salir del tab manualmente.
   const [ajustesDirty, setAjustesDirty] = useState(false)
   const [ajustesSavedToast, setAjustesSavedToast] = useState(null) // 'ok' | 'error'
+  // F3 P3-10: estado de la sincronización manual con Square.
+  const [syncNowRunning, setSyncNowRunning] = useState(false)
+  const [syncNowMsg, setSyncNowMsg] = useState(null) // { tipo: 'ok' | 'error', texto }
 
   const [filtroDestacado, setFiltroDestacado] = useState('todos')
 
@@ -2400,6 +2403,31 @@ export default function AdminKioskoPage() {
   function accionMasiva(campo, valor) { abrirBatchDialog(campo, valor) }
   function eliminarMasivo()            { abrirBatchDialog('eliminar', true) }
 
+  // F3 P3-10: Sincronización manual Square. Reusa POST /admin/square-sync sin
+  // cambiar su lógica. Confirmación previa y bloqueo del botón mientras corre.
+  async function sincronizarAhora() {
+    if (!confirm('¿Lanzar una sincronización manual con Square ahora? Puede tardar hasta 5 min.')) return
+    setSyncNowRunning(true); setSyncNowMsg(null)
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/admin/square-sync`, {
+        method: 'POST', headers: authHeaders,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`)
+      setSyncNowMsg({ tipo: 'ok', texto: 'Sincronización completada' })
+      // Refrescar last-sync tras éxito (sin bloquear la UI).
+      fetch(`/api/kiosko/${slug}/admin/last-sync`, { headers: authHeaders })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => d && setLastSync(d))
+        .catch(() => {})
+    } catch (e) {
+      setSyncNowMsg({ tipo: 'error', texto: e?.message || String(e) })
+    } finally {
+      setSyncNowRunning(false)
+      setTimeout(() => setSyncNowMsg(null), 6000)
+    }
+  }
+
   // F3 B1: CRUD mínimo de kiosko_ubicaciones con degradación.
   async function cargarUbicaciones() {
     setUbicacionesError('')
@@ -2823,6 +2851,43 @@ export default function AdminKioskoPage() {
               </div>
             </>
           )}
+        </section>
+      )}
+      {/* F3 P3-10: Integración Square — estado visible y sincronización manual */}
+      {tab === 'ajustes' && tienda && !hideSensitive && (
+        <section className={styles.ajustesSection} style={{ padding: '0 1.75rem 2rem', maxWidth: 820 }}>
+          <h3 style={{ margin: '0 0 .35rem', fontSize: '1rem' }}>Integración Square</h3>
+          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: '#666' }}>
+            Estado de la sincronización. El token nunca se muestra ni se registra.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.65rem 1rem', fontSize: '.84rem', marginBottom: '.8rem' }}>
+            <div>
+              <div style={{ color: '#888', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último catálogo</div>
+              <div><strong>{lastSync?.ultimoCatalogoAt ? formatSyncDate(lastSync.ultimoCatalogoAt) : '—'}</strong></div>
+            </div>
+            <div>
+              <div style={{ color: '#888', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último pago TPV</div>
+              <div><strong>{lastSync?.ultimoPagoAt ? formatSyncDate(lastSync.ultimoPagoAt) : '—'}</strong></div>
+            </div>
+            {lastSync?.ultimoError && (
+              <div style={{ gridColumn: '1 / -1', padding: '.5rem .75rem', background: '#fdf0f0', border: '1px solid #f1caca', borderRadius: 6, color: '#7a2020' }}>
+                <div style={{ fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em', color: '#b45309' }}>
+                  Último error {lastSync.ultimoErrorAt && `(${formatSyncDate(lastSync.ultimoErrorAt)})`}
+                </div>
+                <div style={{ fontSize: '.78rem', fontFamily: 'monospace', wordBreak: 'break-word' }}>{String(lastSync.ultimoError).slice(0, 400)}</div>
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button type="button" className={styles.btnPrimario} onClick={sincronizarAhora} disabled={syncNowRunning} style={{ padding: '.5rem .9rem', fontSize: '.84rem' }}>
+              {syncNowRunning ? 'Sincronizando…' : 'Sincronizar ahora'}
+            </button>
+            {syncNowMsg && (
+              <span style={{ fontSize: '.8rem', color: syncNowMsg.tipo === 'ok' ? '#2a8a4a' : '#c44' }}>
+                {syncNowMsg.tipo === 'ok' ? '✓' : '⚠'} {syncNowMsg.texto}
+              </span>
+            )}
+          </div>
         </section>
       )}
 
