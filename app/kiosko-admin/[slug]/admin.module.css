@@ -4076,21 +4076,29 @@
   box-shadow: var(--k-ring);
 }
 
-.otrosBoolSi  { background-color: var(--k-color-ok-soft);     color: var(--k-color-ok);     border-color: color-mix(in srgb, var(--k-color-ok) 25%, transparent); }
-.otrosBoolNo  { background-color: var(--k-color-danger-soft); color: var(--k-color-danger); border-color: color-mix(in srgb, var(--k-color-danger) 25%, transparent); }
-.otrosBoolAlerta { background-color: var(--k-color-warn-soft); color: var(--k-color-warn);  border-color: color-mix(in srgb, var(--k-color-warn) 25%, transparent); }
-.otrosBoolSinDef { background-color: var(--k-color-sunken);    color: var(--k-color-muted); font-style: italic; }
+/* F7 retoque a) · En la tabla Otros, "No" se muestra NEUTRO (no rojo):
+   el usuario solo necesita ver cuando algo está marcado positivamente
+   (verde = Sí / ámbar = Alcohol = Sí). El "No" es información de fondo. */
+.otrosBoolSi     { background-color: var(--k-color-ok-soft);   color: var(--k-color-ok);     border-color: color-mix(in srgb, var(--k-color-ok) 25%, transparent); }
+.otrosBoolNo     { background-color: var(--k-color-sunken);    color: var(--k-color-ink-2);  border-color: var(--k-color-border-strong); }
+.otrosBoolAlerta { background-color: var(--k-color-warn-soft); color: var(--k-color-warn);   border-color: color-mix(in srgb, var(--k-color-warn) 25%, transparent); }
+.otrosBoolSinDef { background-color: var(--k-color-sunken);    color: var(--k-color-muted);  font-style: italic; }
 
 /* ── F7 · Leads (lenguaje visual Vinos) ─────────────────────────────────── */
 .leadsWrap {
   padding: var(--k-space-6);
 }
+/* F7 retoque c) · Sin margen inferior: la banda blanca entre la descripción
+   y la cabecera de la tabla desaparece. El aire lo aporta solo el padding
+   del .kCard y el top sticky de la th. */
 .leadsHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--k-space-4);
-  margin-bottom: var(--k-space-4);
+  margin-bottom: 0;
+  padding-bottom: var(--k-space-3);
+  border-bottom: 1px solid var(--k-color-border);
   flex-wrap: wrap;
 }
 .leadsHeaderActions {
@@ -4114,7 +4122,7 @@
 }
 .leadsTableWrap {
   overflow-x: auto;
-  margin-top: var(--k-space-2);
+  margin-top: 0;      /* F7 retoque c): sin aire extra encima de la th */
 }
 .leadsFoot {
   margin: var(--k-space-3) 0 0;

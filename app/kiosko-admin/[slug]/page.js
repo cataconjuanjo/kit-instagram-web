@@ -4608,7 +4608,7 @@ export default function AdminKioskoPage() {
                               onClick={() => borrarLead(l.id)}
                               className={styles.leadsDelete}
                               aria-label={`Eliminar lead ${l.email} (RGPD)`}
-                              title="Eliminar (RGPD)"
+                              title="Eliminar lead (RGPD)"
                             >
                               ×
                             </button>
@@ -4731,8 +4731,14 @@ export default function AdminKioskoPage() {
                       <td className={styles.tdFoto}>
                         <AdminThumbImage src={v.foto_url} className={styles.thumb} fallback={<div className={styles.thumbPlaceholder}>—</div>} />
                       </td>
-                      <td>
-                        <strong className={styles.tdTrunc} style={{ maxWidth: 200 }}>{v.nombre}</strong>
+                      <td style={{ maxWidth: 520 }}>
+                        <strong
+                          className={styles.tdTrunc}
+                          style={{ maxWidth: 520, display: 'inline-block', verticalAlign: 'bottom' }}
+                          title={v.nombre}
+                        >
+                          {v.nombre}
+                        </strong>
                         {v.categoria === 'carta' && <span style={{ marginLeft: 6, fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--k-color-accent)', border: '1px solid #c9a96e55', borderRadius: 4, padding: '1px 5px' }}>Carta</span>}
                       </td>
                       <td className={styles.tdRight}>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : <span className={styles.dash}>—</span>}</td>
