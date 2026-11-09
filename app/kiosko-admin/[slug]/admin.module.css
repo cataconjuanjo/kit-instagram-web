@@ -1,22 +1,216 @@
-/* F3 P3-11: tokens de color del panel admin.
-   Centralizados aquí para poder cambiarlos sin recorrer el archivo. El
-   aspecto no cambia: cada token coincide 1:1 con el valor que ya se usaba.
-   Pendiente ir migrando referencias directas al token (se irá haciendo
-   gradualmente sin tocar lo que ya funcione). */
+/* F4 · Sistema de diseño del panel kiosko-admin.
+   TODO el panel debería consumir estos tokens. Si ves un color/tamaño
+   hardcodeado en este archivo o en page.js, probablemente puede salir.
+   Identidad: marino + dorado + crema. Sobrio, premium, denso.
+*/
 :root {
-  --k-color-bg:         #f4f3f0;
-  --k-color-surface:    #fff;
-  --k-color-soft:       #faf9f6;
-  --k-color-border:     #ebe6dc;
-  --k-color-ink:        #1a1a2e;     /* cabecera oscura */
-  --k-color-ink-soft:   #2a2a3e;
-  --k-color-muted:      #888;
-  --k-color-accent:     #c9a96e;     /* dorado */
+  /* ── Color ────────────────────────────────────────────────────────── */
+  --k-color-bg:         #f4f3f0;   /* crema fondo */
+  --k-color-surface:    #fff;      /* tarjetas / tabla */
+  --k-color-soft:       #faf9f6;   /* hover suave */
+  --k-color-sunken:     #f0ede8;   /* zonas hundidas / bordes finos */
+  --k-color-border:     #ebe6dc;   /* bordes neutros */
+  --k-color-border-strong: #d8d3c6;
+  --k-color-ink:        #1a1a2e;   /* marino cabecera */
+  --k-color-ink-soft:   #2a2a3e;   /* texto principal */
+  --k-color-ink-2:      #555;      /* texto secundario */
+  --k-color-muted:      #888;      /* texto atenuado */
+  --k-color-muted-2:    #aaa;      /* etiquetas débiles */
+  --k-color-accent:     #c9a96e;   /* dorado */
   --k-color-accent-ink: #3a2a10;
+  --k-color-accent-soft:#f3ead5;   /* dorado muy suave */
+
+  /* Estados (texto + fondo suave) */
   --k-color-ok:         #2a8a4a;
+  --k-color-ok-soft:    #eaf7ed;
   --k-color-warn:       #b45309;
-  --k-color-danger:     #c44;
+  --k-color-warn-soft:  #fff0e8;
+  --k-color-danger:     #c03030;
+  --k-color-danger-soft:#fdf0f0;
+  --k-color-info:       #1a4f7a;
+  --k-color-info-soft:  #eef4fb;
+
+  /* Inversas (sobre ink / accent) */
+  --k-color-on-ink:        #f0ede8;
+  --k-color-on-ink-muted:  rgba(240,237,232,.65);
+  --k-color-on-accent:     #1a1a2e;
+
+  /* ── Tipografía ───────────────────────────────────────────────────── */
+  --k-fs-xs:  12px;
+  --k-fs-sm:  13px;
+  --k-fs-md:  14px;   /* base */
+  --k-fs-lg:  16px;
+  --k-fs-xl:  20px;
+  --k-fs-2xl: 24px;
+  --k-fw-regular: 500;
+  --k-fw-bold:    700;
+  --k-letter-upper: .06em;
+
+  /* ── Espaciado (escala 4 px) ─────────────────────────────────────── */
+  --k-space-1:  4px;
+  --k-space-2:  8px;
+  --k-space-3:  12px;
+  --k-space-4:  16px;
+  --k-space-6:  24px;
+  --k-space-8:  32px;
+
+  /* ── Radios + sombra ─────────────────────────────────────────────── */
+  --k-radius-sm: 6px;
+  --k-radius-md: 10px;
+  --k-radius-pill: 999px;
+  --k-shadow:    0 1px 4px rgba(0,0,0,.07);
+  --k-shadow-lg: 0 10px 30px rgba(0,0,0,.18);
+
+  /* ── Focus ring (accesibilidad AA) ─────────────────────────────── */
+  --k-ring: 0 0 0 2px rgba(201,169,110,.45);
+
+  /* ── Transiciones ─────────────────────────────────────────────── */
+  --k-transition: .12s;
 }
+
+/* ── Componentes del sistema (clases utilitarias canónicas) ───────────
+   Reutilizables desde JSX: className={styles.kBtnPrimary} etc.
+   No sustituyen las clases legacy existentes (se conservan para no
+   romper el aspecto); en cambios futuros, usar siempre estas.
+*/
+
+.kBtnPrimary,
+.kBtnSecondary,
+.kBtnGhost,
+.kBtnDangerSoft {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--k-space-2);
+  font: inherit;
+  font-size: var(--k-fs-sm);
+  font-weight: var(--k-fw-bold);
+  line-height: 1;
+  padding: 10px 14px;
+  min-height: 40px;                        /* touch target AA */
+  border-radius: var(--k-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background var(--k-transition), color var(--k-transition), border-color var(--k-transition), box-shadow var(--k-transition);
+}
+.kBtnPrimary {
+  background: var(--k-color-accent);
+  color: var(--k-color-on-accent);
+}
+.kBtnPrimary:hover:not(:disabled) { background: #b89657; }
+.kBtnSecondary {
+  background: transparent;
+  color: var(--k-color-ink);
+  border-color: var(--k-color-border-strong);
+}
+.kBtnSecondary:hover:not(:disabled) { background: var(--k-color-sunken); }
+.kBtnGhost {
+  background: transparent;
+  color: var(--k-color-ink-2);
+  border-color: transparent;
+}
+.kBtnGhost:hover:not(:disabled) { background: var(--k-color-soft); color: var(--k-color-ink); }
+.kBtnDangerSoft {
+  background: transparent;
+  color: var(--k-color-danger);
+  border-color: var(--k-color-danger);
+}
+.kBtnDangerSoft:hover:not(:disabled) { background: var(--k-color-danger-soft); }
+.kBtnPrimary:disabled,
+.kBtnSecondary:disabled,
+.kBtnGhost:disabled,
+.kBtnDangerSoft:disabled { opacity: .5; cursor: not-allowed; }
+.kBtnPrimary:focus-visible,
+.kBtnSecondary:focus-visible,
+.kBtnGhost:focus-visible,
+.kBtnDangerSoft:focus-visible { outline: none; box-shadow: var(--k-ring); }
+
+/* Badges de estado */
+.kBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: var(--k-fs-xs);
+  font-weight: var(--k-fw-bold);
+  line-height: 1.4;
+  border-radius: var(--k-radius-pill);
+  background: var(--k-color-sunken);
+  color: var(--k-color-ink-2);
+  white-space: nowrap;
+}
+.kBadgeOk     { background: var(--k-color-ok-soft);     color: var(--k-color-ok); }
+.kBadgeWarn   { background: var(--k-color-warn-soft);   color: var(--k-color-warn); }
+.kBadgeDanger { background: var(--k-color-danger-soft); color: var(--k-color-danger); }
+.kBadgeInfo   { background: var(--k-color-info-soft);   color: var(--k-color-info); }
+
+/* Tarjeta */
+.kCard {
+  background: var(--k-color-surface);
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-md);
+  padding: var(--k-space-4);
+  box-shadow: var(--k-shadow);
+}
+
+/* Input/Select base */
+.kInput,
+.kSelect {
+  font: inherit;
+  font-size: var(--k-fs-sm);
+  color: var(--k-color-ink);
+  background: var(--k-color-surface);
+  border: 1px solid var(--k-color-border-strong);
+  border-radius: var(--k-radius-sm);
+  padding: 8px 10px;
+  min-height: 40px;
+  transition: border-color var(--k-transition), box-shadow var(--k-transition);
+}
+.kInput:focus,
+.kSelect:focus { outline: none; border-color: var(--k-color-accent); box-shadow: var(--k-ring); }
+
+/* Skeleton y Empty state */
+.kSkeletonBlock { display: flex; flex-direction: column; gap: var(--k-space-2); padding: var(--k-space-4); }
+.kSkeletonRow {
+  height: 14px;
+  border-radius: var(--k-radius-sm);
+  background: linear-gradient(90deg, var(--k-color-sunken) 0%, var(--k-color-soft) 50%, var(--k-color-sunken) 100%);
+  background-size: 200% 100%;
+  animation: kShimmer 1.4s ease-in-out infinite;
+}
+@keyframes kShimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+.kEmpty {
+  padding: var(--k-space-6);
+  text-align: center;
+  color: var(--k-color-muted);
+  font-size: var(--k-fs-sm);
+}
+
+/* Toast canónico (reemplaza inline styles duplicados) */
+.kToast {
+  position: fixed;
+  left: var(--k-space-4);
+  bottom: var(--k-space-4);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-3);
+  background: var(--k-color-ink);
+  color: var(--k-color-on-ink);
+  border: 1px solid rgba(201,169,110,.35);
+  border-left: 3px solid var(--k-color-accent);
+  border-radius: var(--k-radius-md);
+  padding: 12px 14px;
+  box-shadow: var(--k-shadow-lg);
+  font-size: var(--k-fs-sm);
+  max-width: 560px;
+}
+.kToastOk     { border-left-color: var(--k-color-ok); }
+.kToastError  { border-left-color: var(--k-color-danger); }
+@media (prefers-reduced-motion: reduce) {
+  .kSkeletonRow { animation: none; }
+}
+
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
 .admin {
