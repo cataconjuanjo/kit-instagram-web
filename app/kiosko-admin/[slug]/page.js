@@ -304,7 +304,7 @@ function CambiarPassword() {
   )
 }
 
-function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
+function AjustesTab({ slug, tienda, onSaved, esAdmin, catalogoSlot = null, integracionSquareSlot = null }) {
   const esPremium = !tienda?.plan || tienda.plan === 'premium' || tienda.plan === 'trial'
   const [ajustesUpgradeModal, setAjustesUpgradeModal] = useState(null)
   const [squareTokenInput, setSquareTokenInput] = useState('')
@@ -459,22 +459,41 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
   ]
   const [navActiva, setNavActiva] = useState(NAV_SECCIONES[0].id)
   useEffect(() => {
-    const els = NAV_SECCIONES
+    if (typeof IntersectionObserver === 'undefined') return
+    const getEls = () => NAV_SECCIONES
       .map(s => document.getElementById(s.id))
       .filter(Boolean)
-    if (!els.length || typeof IntersectionObserver === 'undefined') return
+    // F8b · Resaltar la sección cuyo título cruza el tercio superior:
+    // rootMargin -33% top / -66% bottom → la 'banda activa' es los primeros
+    // ~33% del viewport. Un elemento es visible aquí si su top ha pasado
+    // por debajo de 0 y aún no llega al fondo de esa banda.
     const io = new IntersectionObserver(
       entries => {
-        // Elegir la sección más cercana al top con intersección positiva.
         const visibles = entries
           .filter(e => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
         if (visibles[0]?.target?.id) setNavActiva(visibles[0].target.id)
       },
-      { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
+      { rootMargin: '-33% 0px -66% 0px', threshold: 0 }
     )
+    const els = getEls()
     els.forEach(el => io.observe(el))
-    return () => io.disconnect()
+
+    // F8b · Al llegar al final de la página marcamos la última (Seguridad):
+    // cuando el usuario llega al bottom puede no haber ninguna sección
+    // cruzando el tercio superior (p.ej. Seguridad es corta).
+    const onScroll = () => {
+      const scrollBottom = window.innerHeight + window.scrollY
+      if (scrollBottom >= document.documentElement.scrollHeight - 2) {
+        const last = NAV_SECCIONES[NAV_SECCIONES.length - 1].id
+        if (document.getElementById(last)) setNavActiva(last)
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      io.disconnect()
+      window.removeEventListener('scroll', onScroll)
+    }
   // NAV_SECCIONES es constante por render; dep vacía para re-crear solo al
   // montar (cuando los ids externos ya se han inyectado).
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -762,6 +781,17 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
 
         </section>
 
+        {/* ─── Sección: Catálogo ─── */}
+        {catalogoSlot && (
+          <section id="ajustes-catalogo" className={styles.ajustesSection} aria-labelledby="ajustes-catalogo-h">
+            <header className={styles.ajustesSectionHeader}>
+              <h3 id="ajustes-catalogo-h" className={styles.ajustesSectionTitle}>Catálogo</h3>
+              <p className={styles.ajustesSectionDesc}>Ubicaciones y estanterías de la tienda. Las fichas siguen usando texto libre; esto solo rellena el autocompletado.</p>
+            </header>
+            {catalogoSlot}
+          </section>
+        )}
+
         {/* ─── Sección: Integraciones ─── */}
         <section id="ajustes-integraciones" className={styles.ajustesSection} aria-labelledby="ajustes-integraciones-h">
           <header className={styles.ajustesSectionHeader}>
@@ -881,6 +911,11 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           {squareMsg && <p style={{ fontSize: '.78rem', marginTop: '.5rem', color: squareMsg.startsWith('✓') ? '#4caf50' : '#e57373' }}>{squareMsg}</p>}
         </div>
 
+        {/* F8b · Slot con el panel de estado Square (sincronizar ahora,
+            último catálogo/pago, último error). Vive fuera del AjustesTab
+            por state propio del padre; se inyecta como children. */}
+        {integracionSquareSlot}
+
         </section>
 
         {/* ─── Sección: Destacados ─── */}
@@ -973,8 +1008,10 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           )}
         </div>
 
-        {/* Guardar */}
-        <div className={styles.ajustesActions}>
+        {/* F8b · Pie de panel con 'Guardar ajustes': cubre todo lo editado en
+            Marca / Kiosko / Tienda / Integraciones / Destacados. Seguridad
+            tiene su propio botón de guardado (CambiarPassword). */}
+        <div className={styles.ajustesFooter}>
           {msg && <span className={msg.startsWith('✓') ? styles.msgOk : styles.msgError}>{msg}</span>}
           <button type="button" className={styles.kBtnPrimary} onClick={guardar} disabled={guardando || subiendoLogo}>
             {guardando ? 'Guardando…' : 'Guardar ajustes'}
@@ -3017,132 +3054,139 @@ export default function AdminKioskoPage() {
       </nav>
 
       {/* Ajustes */}
-      {tab === 'ajustes' && tienda && (
-        <div
-          onInput={() => setAjustesDirty(true)}
-          onChange={() => setAjustesDirty(true)}
-          style={{ paddingBottom: ajustesDirty ? '4.5rem' : 0 }}
-        >
-          <AjustesTab
-            slug={slug}
-            tienda={tienda}
-            onSaved={async () => {
-              try {
-                await cargar()
-                setAjustesDirty(false)
-                setAjustesSavedToast('ok')
-                setTimeout(() => setAjustesSavedToast(null), 2800)
-              } catch {
-                setAjustesSavedToast('error')
-                setTimeout(() => setAjustesSavedToast(null), 4000)
-              }
-            }}
-            esAdmin={esAdminUsuario}
-          />
-        </div>
-      )}
-      {/* F3 B1: CRUD mínimo del catálogo de ubicaciones. Se muestra en Ajustes
-          debajo del formulario principal. Si la tabla no existe, aviso con el
-          nombre del SQL a aplicar. Compat total con el texto libre existente. */}
-      {tab === 'ajustes' && tienda && !hideSensitive && (
-        <section id="ajustes-catalogo" className={styles.ajustesSection} style={{ padding: '1rem 1.75rem 2rem', maxWidth: 820 }}>
-          <h3 style={{ margin: '0 0 .35rem', fontSize: '1rem' }}>Ubicaciones de la tienda</h3>
-          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: 'var(--k-color-ink-2)' }}>
-            Catálogo para sugerir en la columna &quot;Estantería&quot; de los vinos.
-            Añadir aquí no cambia nada en los vinos existentes; solo rellena el
-            autocompletado al escribir en la ficha o en la acción en lote.
-          </p>
-          {ubicacionesPending && (
-            <div className={styles.analiticaBanner} style={{ marginBottom: '1rem' }}>
-              <span className={styles.analiticaBannerIcon}>SQL</span>
-              <span>
-                Catálogo aún no activado. Aplica <code>supabase/kiosko_ubicaciones.sql</code> y
-                opcionalmente <code>supabase/kiosko_ubicaciones_import.sql</code> para poblar con
-                las ubicaciones existentes.
-              </span>
-            </div>
-          )}
-          {ubicacionesError && (
-            <div className={styles.analiticaBanner} style={{ marginBottom: '1rem', background: 'var(--k-color-danger-soft)' }}>
-              <span className={styles.analiticaBannerIcon}>⚠️</span>
-              <span>Error: <code>{ubicacionesError}</code></span>
-              <button type="button" className={styles.btnSecundario} style={{ marginLeft: 'auto', padding: '.3rem .7rem', fontSize: '.78rem' }} onClick={cargarUbicaciones}>Reintentar</button>
-            </div>
-          )}
-          {!ubicacionesPending && (
-            <>
-              <form
-                onSubmit={e => { e.preventDefault(); const fd = new FormData(e.currentTarget); const n = String(fd.get('nombre') || ''); if (n.trim()) { crearUbicacion(n); e.currentTarget.reset() } }}
-                style={{ display: 'flex', gap: '.5rem', marginBottom: '.8rem' }}
-              >
-                <input name="nombre" type="text" placeholder="Nueva ubicación (p. ej. Pasillo B3)" maxLength={80}
-                  style={{ flex: 1, padding: '.5rem .7rem', fontSize: '.88rem', border: '1px solid #ddd', borderRadius: 6 }} />
-                <button type="submit" className={styles.btnPrimario} style={{ padding: '.4rem .9rem', fontSize: '.82rem' }}>+ Añadir</button>
-              </form>
-              <div style={{ border: '1px solid #ebe6dc', borderRadius: 8, maxHeight: 260, overflowY: 'auto' }}>
-                {ubicaciones.length === 0 && (
-                  <p style={{ margin: 0, padding: '1rem', color: 'var(--k-color-muted)', fontSize: '.82rem' }}>
-                    Aún no hay ubicaciones en el catálogo.
-                  </p>
-                )}
-                {ubicaciones.map((u, i) => (
-                  <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', padding: '.45rem .7rem', borderBottom: i < ubicaciones.length - 1 ? '1px solid #f1ede5' : 'none' }}>
-                    <input type="text" value={u.nombre}
-                      onChange={e => setUbicaciones(prev => prev.map(x => x.id === u.id ? { ...x, nombre: e.target.value } : x))}
-                      onBlur={e => { const v = e.target.value.trim(); if (v && v !== u.nombre) patchUbicacion(u.id, { nombre: v }) }}
-                      style={{ flex: 1, padding: '.35rem .55rem', fontSize: '.85rem', border: '1px solid transparent', borderRadius: 4, background: 'transparent' }}
-                      aria-label={`Nombre de la ubicación ${u.nombre}`}
-                    />
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.75rem', color: 'var(--k-color-ink-2)' }}>
-                      <input type="checkbox" checked={u.activa} onChange={e => patchUbicacion(u.id, { activa: e.target.checked })} />
-                      Activa
-                    </label>
-                    <button type="button" onClick={() => borrarUbicacion(u.id)} aria-label={`Eliminar ubicación ${u.nombre}`}
-                      style={{ background: 'none', border: 'none', color: 'var(--k-color-danger)', cursor: 'pointer', fontSize: '.95rem' }}>✕</button>
-                  </div>
-                ))}
+      {tab === 'ajustes' && tienda && (() => {
+        /* F8b · Los bloques de Ubicaciones y Square-estado viven en el
+           padre por state (ubicaciones, lastSync, etc). Se inyectan como
+           slots en AjustesTab para integrarlos en el layout de 3 columnas
+           sin mover su lógica. Mantienen sus handlers y nombres de campos. */
+        const catalogoSlot = !hideSensitive ? (
+          <div className={`${styles.ajustesSec} ${styles.kCard}`}>
+            <p className={styles.ajustesSecTitulo}>Ubicaciones de la tienda</p>
+            <p style={{ margin: 0, fontSize: 'var(--k-fs-sm)', color: 'var(--k-color-ink-2)', lineHeight: 1.5 }}>
+              Catálogo para sugerir en la columna &quot;Estantería&quot; de los vinos.
+              Añadir aquí no cambia nada en los vinos existentes; solo rellena el
+              autocompletado al escribir en la ficha o en la acción en lote.
+            </p>
+            {ubicacionesPending && (
+              <div className={styles.analiticaBanner}>
+                <span className={styles.analiticaBannerIcon}>SQL</span>
+                <span>
+                  Catálogo aún no activado. Aplica <code>supabase/kiosko_ubicaciones.sql</code> y
+                  opcionalmente <code>supabase/kiosko_ubicaciones_import.sql</code> para poblar con
+                  las ubicaciones existentes.
+                </span>
               </div>
-            </>
-          )}
-        </section>
-      )}
-      {/* F3 P3-10: Integración Square — estado visible y sincronización manual */}
-      {tab === 'ajustes' && tienda && !hideSensitive && (
-        <section className={styles.ajustesSection} style={{ padding: '0 1.75rem 2rem', maxWidth: 820 }}>
-          <h3 style={{ margin: '0 0 .35rem', fontSize: '1rem' }}>Integración Square</h3>
-          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: 'var(--k-color-ink-2)' }}>
-            Estado de la sincronización. El token nunca se muestra ni se registra.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.65rem 1rem', fontSize: '.84rem', marginBottom: '.8rem' }}>
-            <div>
-              <div style={{ color: 'var(--k-color-muted)', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último catálogo</div>
-              <div><strong>{lastSync?.ultimoCatalogoAt ? formatSyncDate(lastSync.ultimoCatalogoAt) : '—'}</strong></div>
-            </div>
-            <div>
-              <div style={{ color: 'var(--k-color-muted)', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último pago TPV</div>
-              <div><strong>{lastSync?.ultimoPagoAt ? formatSyncDate(lastSync.ultimoPagoAt) : '—'}</strong></div>
-            </div>
-            {lastSync?.ultimoError && (
-              <div style={{ gridColumn: '1 / -1', padding: '.5rem .75rem', background: 'var(--k-color-danger-soft)', border: '1px solid #f1caca', borderRadius: 6, color: 'var(--k-color-danger)' }}>
-                <div style={{ fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--k-color-warn)' }}>
-                  Último error {lastSync.ultimoErrorAt && `(${formatSyncDate(lastSync.ultimoErrorAt)})`}
+            )}
+            {ubicacionesError && (
+              <div className={styles.analiticaBanner} style={{ background: 'var(--k-color-danger-soft)' }}>
+                <span className={styles.analiticaBannerIcon}>⚠️</span>
+                <span style={{ flex: 1 }}>Error: <code>{ubicacionesError}</code></span>
+                <button type="button" className={styles.kBtnSecondary} onClick={cargarUbicaciones} style={{ minHeight: 36, padding: '6px 12px', fontSize: 'var(--k-fs-xs)' }}>Reintentar</button>
+              </div>
+            )}
+            {!ubicacionesPending && (
+              <>
+                <form
+                  onSubmit={e => { e.preventDefault(); const fd = new FormData(e.currentTarget); const n = String(fd.get('nombre') || ''); if (n.trim()) { crearUbicacion(n); e.currentTarget.reset() } }}
+                  style={{ display: 'flex', gap: 'var(--k-space-2)' }}
+                >
+                  <input name="nombre" type="text" placeholder="Nueva ubicación (p. ej. Pasillo B3)" maxLength={80}
+                    className={styles.kInput}
+                    style={{ flex: 1 }} />
+                  <button type="submit" className={styles.kBtnPrimary}>+ Añadir</button>
+                </form>
+                <div style={{ border: '1px solid var(--k-color-border)', borderRadius: 'var(--k-radius-sm)', maxHeight: 260, overflowY: 'auto' }}>
+                  {ubicaciones.length === 0 && (
+                    <p style={{ margin: 0, padding: 'var(--k-space-4)', color: 'var(--k-color-muted)', fontSize: 'var(--k-fs-sm)' }}>
+                      Aún no hay ubicaciones en el catálogo.
+                    </p>
+                  )}
+                  {ubicaciones.map((u, i) => (
+                    <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--k-space-2)', padding: '6px 10px', borderBottom: i < ubicaciones.length - 1 ? '1px solid var(--k-color-sunken)' : 'none' }}>
+                      <input type="text" value={u.nombre}
+                        onChange={e => setUbicaciones(prev => prev.map(x => x.id === u.id ? { ...x, nombre: e.target.value } : x))}
+                        onBlur={e => { const v = e.target.value.trim(); if (v && v !== u.nombre) patchUbicacion(u.id, { nombre: v }) }}
+                        style={{ flex: 1, padding: '6px 8px', fontSize: 'var(--k-fs-sm)', border: '1px solid transparent', borderRadius: 'var(--k-radius-sm)', background: 'transparent' }}
+                        aria-label={`Nombre de la ubicación ${u.nombre}`}
+                      />
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--k-fs-xs)', color: 'var(--k-color-ink-2)' }}>
+                        <input type="checkbox" checked={u.activa} onChange={e => patchUbicacion(u.id, { activa: e.target.checked })} />
+                        Activa
+                      </label>
+                      <button type="button" onClick={() => borrarUbicacion(u.id)} aria-label={`Eliminar ubicación ${u.nombre}`}
+                        style={{ background: 'none', border: 'none', color: 'var(--k-color-danger)', cursor: 'pointer', fontSize: 'var(--k-fs-md)' }}>✕</button>
+                    </div>
+                  ))}
                 </div>
-                <div style={{ fontSize: '.78rem', fontFamily: 'monospace', wordBreak: 'break-word' }}>{String(lastSync.ultimoError).slice(0, 400)}</div>
+              </>
+            )}
+          </div>
+        ) : null
+
+        const integracionSquareSlot = !hideSensitive ? (
+          <div className={`${styles.ajustesSec} ${styles.kCard}`}>
+            <p className={styles.ajustesSecTitulo}>Estado de sincronización</p>
+            <p style={{ margin: 0, fontSize: 'var(--k-fs-sm)', color: 'var(--k-color-ink-2)', lineHeight: 1.5 }}>
+              El token nunca se muestra ni se registra.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', fontSize: 'var(--k-fs-sm)' }}>
+              <div>
+                <div style={{ color: 'var(--k-color-muted)', fontSize: 'var(--k-fs-xs)', textTransform: 'uppercase', letterSpacing: 'var(--k-letter-upper)' }}>Último catálogo</div>
+                <div><strong>{lastSync?.ultimoCatalogoAt ? formatSyncDate(lastSync.ultimoCatalogoAt) : '—'}</strong></div>
               </div>
-            )}
+              <div>
+                <div style={{ color: 'var(--k-color-muted)', fontSize: 'var(--k-fs-xs)', textTransform: 'uppercase', letterSpacing: 'var(--k-letter-upper)' }}>Último pago TPV</div>
+                <div><strong>{lastSync?.ultimoPagoAt ? formatSyncDate(lastSync.ultimoPagoAt) : '—'}</strong></div>
+              </div>
+              {lastSync?.ultimoError && (
+                <div style={{ gridColumn: '1 / -1', padding: '10px 12px', background: 'var(--k-color-danger-soft)', border: '1px solid color-mix(in srgb, var(--k-color-danger) 25%, transparent)', borderRadius: 'var(--k-radius-sm)', color: 'var(--k-color-danger)' }}>
+                  <div style={{ fontSize: 'var(--k-fs-xs)', textTransform: 'uppercase', letterSpacing: 'var(--k-letter-upper)', color: 'var(--k-color-warn)' }}>
+                    Último error {lastSync.ultimoErrorAt && `(${formatSyncDate(lastSync.ultimoErrorAt)})`}
+                  </div>
+                  <div style={{ fontSize: 'var(--k-fs-xs)', fontFamily: 'monospace', wordBreak: 'break-word' }}>{String(lastSync.ultimoError).slice(0, 400)}</div>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--k-space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" className={styles.kBtnPrimary} onClick={sincronizarAhora} disabled={syncNowRunning}>
+                {syncNowRunning ? 'Sincronizando…' : 'Sincronizar ahora'}
+              </button>
+              {syncNowMsg && (
+                <span style={{ fontSize: 'var(--k-fs-sm)', color: syncNowMsg.tipo === 'ok' ? 'var(--k-color-ok)' : 'var(--k-color-danger)' }}>
+                  {syncNowMsg.tipo === 'ok' ? '✓' : '⚠'} {syncNowMsg.texto}
+                </span>
+              )}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button type="button" className={styles.btnPrimario} onClick={sincronizarAhora} disabled={syncNowRunning} style={{ padding: '.5rem .9rem', fontSize: '.84rem' }}>
-              {syncNowRunning ? 'Sincronizando…' : 'Sincronizar ahora'}
-            </button>
-            {syncNowMsg && (
-              <span style={{ fontSize: '.8rem', color: syncNowMsg.tipo === 'ok' ? 'var(--k-color-ok)' : 'var(--k-color-danger)' }}>
-                {syncNowMsg.tipo === 'ok' ? '✓' : '⚠'} {syncNowMsg.texto}
-              </span>
-            )}
+        ) : null
+
+        return (
+          <div
+            onInput={() => setAjustesDirty(true)}
+            onChange={() => setAjustesDirty(true)}
+            style={{ paddingBottom: ajustesDirty ? '4.5rem' : 0 }}
+          >
+            <AjustesTab
+              slug={slug}
+              tienda={tienda}
+              onSaved={async () => {
+                try {
+                  await cargar()
+                  setAjustesDirty(false)
+                  setAjustesSavedToast('ok')
+                  setTimeout(() => setAjustesSavedToast(null), 2800)
+                } catch {
+                  setAjustesSavedToast('error')
+                  setTimeout(() => setAjustesSavedToast(null), 4000)
+                }
+              }}
+              esAdmin={esAdminUsuario}
+              catalogoSlot={catalogoSlot}
+              integracionSquareSlot={integracionSquareSlot}
+            />
           </div>
-        </section>
-      )}
+        )
+      })()}
 
       {/* Pedidos de mostrador */}
       {tab === 'pedidos' && pedidosMostradorActivos && (
@@ -4717,8 +4761,8 @@ export default function AdminKioskoPage() {
                               type="button"
                               onClick={() => borrarLead(l.id)}
                               className={styles.leadsDelete}
-                              aria-label={`Eliminar lead ${l.email} (RGPD)`}
-                              title="Eliminar lead (RGPD)"
+                              aria-label="Eliminar lead"
+                              title="Eliminar lead"
                             >
                               ×
                             </button>
