@@ -445,14 +445,78 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
   const panelColor = temaClaro ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.08)'
   const fontCss    = FUENTES.find(f => f.id === ajustes.font_family)?.css || FUENTES[0].css
 
+  // F8 · Nav lateral de Ajustes. Las secciones 'catalogo' e 'integraciones'
+  // apuntan a ids inyectados por el componente padre (ubicaciones + Square
+  // viven fuera de AjustesTab en page.js).
+  const NAV_SECCIONES = [
+    { id: 'ajustes-marca',         label: 'Marca' },
+    { id: 'ajustes-kiosko',        label: 'Kiosko' },
+    { id: 'ajustes-tienda',        label: 'Tienda' },
+    { id: 'ajustes-catalogo',      label: 'Catálogo' },
+    { id: 'ajustes-integraciones', label: 'Integraciones' },
+    { id: 'ajustes-destacados',    label: 'Destacados' },
+    { id: 'ajustes-seguridad',     label: 'Seguridad' },
+  ]
+  const [navActiva, setNavActiva] = useState(NAV_SECCIONES[0].id)
+  useEffect(() => {
+    const els = NAV_SECCIONES
+      .map(s => document.getElementById(s.id))
+      .filter(Boolean)
+    if (!els.length || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(
+      entries => {
+        // Elegir la sección más cercana al top con intersección positiva.
+        const visibles = entries
+          .filter(e => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
+        if (visibles[0]?.target?.id) setNavActiva(visibles[0].target.id)
+      },
+      { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
+    )
+    els.forEach(el => io.observe(el))
+    return () => io.disconnect()
+  // NAV_SECCIONES es constante por render; dep vacía para re-crear solo al
+  // montar (cuando los ids externos ya se han inyectado).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  function navClick(id, e) {
+    e?.preventDefault?.()
+    const el = document.getElementById(id)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setNavActiva(id)
+  }
+
   return (
     <>
     <div className={styles.ajustesWrap}>
-      {/* ── Panel izquierdo ── */}
+      {/* F8 · Nav lateral (en <1100 se transforma en horizontal arriba) */}
+      <nav className={styles.ajustesNav} aria-label="Secciones de Ajustes">
+        {NAV_SECCIONES.map(s => (
+          <a
+            key={s.id}
+            href={`#${s.id}`}
+            className={`${styles.ajustesNavLink} ${navActiva === s.id ? styles.ajustesNavLinkActive : ''}`}
+            onClick={e => navClick(s.id, e)}
+            aria-current={navActiva === s.id ? 'true' : undefined}
+          >
+            {s.label}
+          </a>
+        ))}
+      </nav>
+
+      {/* ── Panel izquierdo (secciones) ── */}
       <div className={styles.ajustesPanelLeft}>
 
+        {/* ─── Sección: Marca ─── */}
+        <section id="ajustes-marca" className={styles.ajustesSection} aria-labelledby="ajustes-marca-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-marca-h" className={styles.ajustesSectionTitle}>Marca</h3>
+            <p className={styles.ajustesSectionDesc}>Logo, paleta, tipografía e iconos del kiosko.</p>
+          </header>
+
         {/* Logo */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Logotipo</p>
           <div
             className={`${styles.logoZone} ${logoPreview ? styles.logoZoneHasLogo : ''} ${draggingLogo ? styles.logoZoneDrag : ''}`}
@@ -487,7 +551,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         </div>
 
         {/* Paleta de colores */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Paleta de colores</p>
           <div className={styles.paletas}>
             {PALETAS.map(p => (
@@ -524,7 +588,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         </div>
 
         {/* Tipografía */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Tipografía</p>
           <div className={styles.fuenteGrid}>
             {FUENTES.map(f => (
@@ -541,7 +605,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         </div>
 
         {/* Estilo visual */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Iconos de bienvenida</p>
           <div className={styles.iconStyleGrid}>
             {ICON_STYLE_OPTIONS.map(option => (
@@ -563,12 +627,21 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           </div>
         </div>
 
+        </section>
+
+        {/* ─── Sección: Kiosko ─── */}
+        <section id="ajustes-kiosko" className={styles.ajustesSection} aria-labelledby="ajustes-kiosko-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-kiosko-h" className={styles.ajustesSectionTitle}>Kiosko</h3>
+            <p className={styles.ajustesSectionDesc}>Qué ve el cliente en pantalla: cesta regalo, agotados, modo escaparate y pedido de mostrador.</p>
+          </header>
+
         {/* Cesta regalo (beta) */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>
             Cesta regalo
-            <span className={styles.premiumTag}>Premium</span>
-            <span className={styles.premiumTag} style={{ background: '#e8a020', color: 'var(--k-color-surface)' }}>BETA</span>
+            <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
+            <span className={`${styles.kBadge} ${styles.kBadgeWarn}`} style={{ marginLeft: 6 }}>Beta</span>
           </p>
           <button
             type="button"
@@ -595,7 +668,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         </div>
 
         {/* Vinos agotados */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Vinos agotados</p>
           <button
             type="button"
@@ -617,7 +690,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         </div>
 
         {/* Modo Escaparate */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Modo Escaparate (digital signage)</p>
           <div className={styles.ajustesFormGrid}>
             <div className={styles.ajustesFormField}>
@@ -641,7 +714,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           </p>
         </div>
 
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Pedido de mostrador</p>
           <button
             type="button"
@@ -658,8 +731,17 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           </button>
         </div>
 
+        </section>
+
+        {/* ─── Sección: Tienda ─── */}
+        <section id="ajustes-tienda" className={styles.ajustesSection} aria-labelledby="ajustes-tienda-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-tienda-h" className={styles.ajustesSectionTitle}>Tienda</h3>
+            <p className={styles.ajustesSectionDesc}>Información que aparece en la bienvenida del kiosko.</p>
+          </header>
+
         {/* Info tienda */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Información de la tienda</p>
           <div className={styles.ajustesFormGrid}>
             <div className={styles.ajustesFormField}>
@@ -678,10 +760,21 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           </div>
         </div>
 
+        </section>
+
+        {/* ─── Sección: Integraciones ─── */}
+        <section id="ajustes-integraciones" className={styles.ajustesSection} aria-labelledby="ajustes-integraciones-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-integraciones-h" className={styles.ajustesSectionTitle}>Integraciones</h3>
+            <p className={styles.ajustesSectionDesc}>Square, widget para tu web e informe semanal por email.</p>
+          </header>
+
         {/* Informe semanal */}
         {esPremium ? (
-          <div className={styles.ajustesSec}>
-            <p className={styles.ajustesSecTitulo}>Informe semanal por email <span className={styles.premiumTag}>Premium</span></p>
+          <div className={`${styles.ajustesSec} ${styles.kCard}`}>
+            <p className={styles.ajustesSecTitulo}>
+              Informe semanal por email <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
+            </p>
             <div className={styles.ajustesFormGrid}>
               <div className={styles.ajustesFormField}>
                 <label>Email donde recibir el informe</label>
@@ -703,29 +796,27 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
             )}
           </div>
         ) : (
-          <div style={{ position: 'relative' }}>
-            <div style={{ opacity: .45, pointerEvents: 'none', userSelect: 'none' }}>
-              <div className={styles.ajustesSec}>
-                <p className={styles.ajustesSecTitulo}>Informe semanal por email</p>
-                <div className={styles.ajustesFormGrid}>
-                  <div className={styles.ajustesFormField}>
-                    <label>Email donde recibir el informe</label>
-                    <input type="email" disabled placeholder="Disponible en plan Premium" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button onClick={() => setAjustesUpgradeModal('informe')} style={{
-              position: 'absolute', inset: 0, width: '100%', background: 'transparent',
-              border: 'none', cursor: 'pointer',
-            }} aria-label="Ver plan Premium" />
+          /* F8 · bloqueo Premium legible (AA) con CTA primario */
+          <div className={`${styles.ajustesSec} ${styles.kCard} ${styles.ajustesLocked}`}>
+            <p className={styles.ajustesSecTitulo}>
+              Informe semanal por email <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
+            </p>
+            <p className={styles.ajustesLockedText}>
+              Cada martes a las 8:00 recibirás un resumen con las búsquedas de la semana,
+              los vinos más recomendados y alertas de stock. Disponible en el plan Premium.
+            </p>
+            <button type="button" className={styles.kBtnPrimary} onClick={() => setAjustesUpgradeModal('informe')}>
+              Ver planes
+            </button>
           </div>
         )}
 
         {/* Widget embebible — solo Premium */}
         {esPremium ? (
-          <div className={styles.ajustesSec}>
-            <p className={styles.ajustesSecTitulo}>Widget para tu web <span className={styles.premiumTag}>Premium</span></p>
+          <div className={`${styles.ajustesSec} ${styles.kCard}`}>
+            <p className={styles.ajustesSecTitulo}>
+              Widget para tu web <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
+            </p>
             <p style={{ fontSize: '.78rem', color: 'var(--k-color-muted)', margin: '0 0 .75rem' }}>
               Pega este código en cualquier web para añadir un botón flotante que abre el kiosko en un panel lateral.
             </p>
@@ -744,32 +835,28 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
             })()}
           </div>
         ) : (
-          <div style={{ position: 'relative' }}>
-            <div style={{ opacity: .45, pointerEvents: 'none', userSelect: 'none' }}>
-              <div className={styles.ajustesSec}>
-                <p className={styles.ajustesSecTitulo}>Widget para tu web</p>
-                <p style={{ fontSize: '.78rem', color: 'var(--k-color-muted)', margin: '0 0 .75rem' }}>
-                  Añade el kiosko como botón flotante en tu web. Disponible en plan Premium.
-                </p>
-                <div className={styles.widgetEmbedBox}>
-                  <code className={styles.widgetEmbedCode}>&lt;script src=&quot;...&quot;&gt;&lt;/script&gt;</code>
-                </div>
-              </div>
-            </div>
-            <button onClick={() => setAjustesUpgradeModal('widget')} style={{
-              position: 'absolute', inset: 0, width: '100%', background: 'transparent',
-              border: 'none', cursor: 'pointer',
-            }} aria-label="Ver plan Premium" />
+          /* F8 · bloqueo Premium legible (AA) con CTA primario */
+          <div className={`${styles.ajustesSec} ${styles.kCard} ${styles.ajustesLocked}`}>
+            <p className={styles.ajustesSecTitulo}>
+              Widget para tu web <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
+            </p>
+            <p className={styles.ajustesLockedText}>
+              Añade el kiosko como botón flotante en cualquier web con un simple fragmento
+              de código. Disponible en el plan Premium.
+            </p>
+            <button type="button" className={styles.kBtnPrimary} onClick={() => setAjustesUpgradeModal('widget')}>
+              Ver planes
+            </button>
           </div>
         )}
 
         {/* Square — token por tienda */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>
-            Integración Square
+            Token Square
             {tienda?.has_square_token
-              ? <span style={{ marginLeft: 8, fontSize: '.75rem', color: '#4caf50' }}>✓ Configurado</span>
-              : <span style={{ marginLeft: 8, fontSize: '.75rem', color: 'var(--k-color-muted)' }}>Sin configurar</span>}
+              ? <span className={`${styles.kBadge} ${styles.kBadgeOk}`} style={{ marginLeft: 8 }}>Configurado</span>
+              : <span className={`${styles.kBadge}`} style={{ marginLeft: 8 }}>Sin configurar</span>}
           </p>
           <p style={{ fontSize: '.78rem', color: 'var(--k-color-muted)', margin: '0 0 .75rem' }}>
             Token de acceso de tu cuenta Square. Permite sincronizar el catálogo de esta tienda de forma independiente.
@@ -794,22 +881,35 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           {squareMsg && <p style={{ fontSize: '.78rem', marginTop: '.5rem', color: squareMsg.startsWith('✓') ? '#4caf50' : '#e57373' }}>{squareMsg}</p>}
         </div>
 
+        </section>
+
+        {/* ─── Sección: Destacados ─── */}
+        <section id="ajustes-destacados" className={styles.ajustesSection} aria-labelledby="ajustes-destacados-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-destacados-h" className={styles.ajustesSectionTitle}>Destacados</h3>
+            <p className={styles.ajustesSectionDesc}>Qué vinos aparecen en el carrusel de bienvenida.</p>
+          </header>
+
         {/* ── Destacados automáticos ── */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>
-            Destacados automáticos <span className={styles.premiumTag}>Premium</span>
+            Destacados automáticos <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
           </p>
 
           {!esPremium && (
-            <p style={{ fontSize: '.82rem', color: '#776040', lineHeight: 1.5, margin: '0 0 .75rem',
-              background: 'rgba(201,169,110,.1)', border: '1px solid rgba(201,169,110,.3)',
-              borderRadius: 8, padding: '.6rem .85rem' }}>
-              Disponible en el plan Premium. Mejora tu plan para que tus destacados se actualicen solos según stock y margen.{' '}
-              <button type="button" onClick={() => setAjustesUpgradeModal('autoFeatured')}
-                style={{ background: 'none', border: 'none', color: 'var(--k-color-accent)', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}>
-                Ver planes →
+            <div className={styles.ajustesLockedInline}>
+              <p className={styles.ajustesLockedText}>
+                Mejora al plan Premium para que los destacados se actualicen solos según stock y margen.
+              </p>
+              <button
+                type="button"
+                className={styles.kBtnPrimary}
+                onClick={() => setAjustesUpgradeModal('autoFeatured')}
+                style={{ minHeight: 36, padding: '8px 14px' }}
+              >
+                Ver planes
               </button>
-            </p>
+            </div>
           )}
 
           <button
@@ -876,13 +976,23 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         {/* Guardar */}
         <div className={styles.ajustesActions}>
           {msg && <span className={msg.startsWith('✓') ? styles.msgOk : styles.msgError}>{msg}</span>}
-          <button type="button" className={styles.btnPrimario} onClick={guardar} disabled={guardando || subiendoLogo}>
+          <button type="button" className={styles.kBtnPrimary} onClick={guardar} disabled={guardando || subiendoLogo}>
             {guardando ? 'Guardando…' : 'Guardar ajustes'}
           </button>
         </div>
 
-        {/* Cambiar contraseña */}
-        <CambiarPassword />
+        </section>
+
+        {/* ─── Sección: Seguridad ─── */}
+        <section id="ajustes-seguridad" className={styles.ajustesSection} aria-labelledby="ajustes-seguridad-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-seguridad-h" className={styles.ajustesSectionTitle}>Seguridad</h3>
+            <p className={styles.ajustesSectionDesc}>Contraseña de acceso al panel.</p>
+          </header>
+
+          {/* Cambiar contraseña */}
+          <CambiarPassword />
+        </section>
       </div>
 
       {/* ── Preview en vivo ── */}
@@ -2935,7 +3045,7 @@ export default function AdminKioskoPage() {
           debajo del formulario principal. Si la tabla no existe, aviso con el
           nombre del SQL a aplicar. Compat total con el texto libre existente. */}
       {tab === 'ajustes' && tienda && !hideSensitive && (
-        <section className={styles.ajustesSection} style={{ padding: '1rem 1.75rem 2rem', maxWidth: 820 }}>
+        <section id="ajustes-catalogo" className={styles.ajustesSection} style={{ padding: '1rem 1.75rem 2rem', maxWidth: 820 }}>
           <h3 style={{ margin: '0 0 .35rem', fontSize: '1rem' }}>Ubicaciones de la tienda</h3>
           <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: 'var(--k-color-ink-2)' }}>
             Catálogo para sugerir en la columna &quot;Estantería&quot; de los vinos.

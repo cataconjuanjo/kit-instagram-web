@@ -1670,30 +1670,153 @@
   letter-spacing: .04em;
 }
 
-/* ── Ajustes layout ───────────────────────────────────────────────────────── */
+/* ── F8 · Ajustes layout: nav + dos columnas a ancho pleno ────────────────── */
 .ajustesWrap {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 1.75rem;
-  padding: 1.75rem;
+  grid-template-columns: 180px minmax(0, 1fr) 360px;
+  gap: var(--k-space-6);
+  padding: var(--k-space-6);
   align-items: start;
 }
 
-@media (max-width: 900px) {
-  .ajustesWrap { grid-template-columns: 1fr; }
+/* En tablets y móvil: una sola columna; nav horizontal arriba, preview al final. */
+@media (max-width: 1099.98px) {
+  .ajustesWrap {
+    grid-template-columns: 1fr;
+    gap: var(--k-space-4);
+    padding: var(--k-space-4);
+  }
+}
+
+/* F8 · Nav lateral (left column); horizontal scroll en móvil */
+.ajustesNav {
+  position: sticky;
+  top: calc(var(--k-toolbar-h, 56px) + var(--k-space-4));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--k-space-2);
+  background: var(--k-color-surface);
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-md);
+  box-shadow: var(--k-shadow);
+  align-self: start;
+  max-height: calc(100vh - var(--k-toolbar-h, 56px) - var(--k-space-6) * 2);
+  overflow-y: auto;
+}
+@media (max-width: 1099.98px) {
+  .ajustesNav {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: visible;
+    max-height: none;
+    padding: var(--k-space-1);
+  }
+}
+.ajustesNavLink {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: var(--k-fs-sm);
+  font-weight: var(--k-fw-bold);
+  color: var(--k-color-ink-2);
+  text-decoration: none;
+  border-radius: var(--k-radius-sm);
+  border-left: 3px solid transparent;
+  transition: background var(--k-transition), color var(--k-transition), border-color var(--k-transition);
+  white-space: nowrap;
+}
+.ajustesNavLink:hover         { background: var(--k-color-soft); color: var(--k-color-ink); }
+.ajustesNavLink:focus-visible { outline: none; box-shadow: var(--k-ring); }
+.ajustesNavLinkActive {
+  color: var(--k-color-ink);
+  background: var(--k-color-accent-soft);
+  border-left-color: var(--k-color-accent);
+}
+@media (max-width: 1099.98px) {
+  .ajustesNavLink { border-left: none; border-bottom: 3px solid transparent; }
+  .ajustesNavLinkActive { border-bottom-color: var(--k-color-accent); border-left: none; }
 }
 
 .ajustesPanelLeft {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--k-space-6);
+  max-width: 820px;
+  min-width: 0;
 }
 
+/* F8 · Cabecera de cada sección (título + descripción) */
+.ajustesSectionHeader {
+  margin-bottom: var(--k-space-2);
+  padding-bottom: var(--k-space-2);
+  border-bottom: 1px solid var(--k-color-border);
+}
+.ajustesSectionTitle {
+  margin: 0;
+  font-size: var(--k-fs-lg);
+  font-weight: var(--k-fw-bold);
+  color: var(--k-color-ink);
+  letter-spacing: -0.01em;
+}
+.ajustesSectionDesc {
+  margin: var(--k-space-1) 0 0;
+  font-size: var(--k-fs-sm);
+  color: var(--k-color-ink-2);
+  line-height: 1.45;
+  max-width: 580px;
+}
+
+/* F8 · Cada sub-bloque de ajustes es un .kCard: fondo surface, borde,
+   radio, shadow. Se combina con .kCard desde el JSX; esta clase retira
+   solo lo redundante. */
 .ajustesSec {
   background: var(--k-color-surface);
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  border-radius: var(--k-radius-md);
+  padding: var(--k-space-4);
+  box-shadow: var(--k-shadow);
+  border: 1px solid var(--k-color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-3);
+}
+.ajustesSection {
+  /* Offset del scroll para que el h3 no quede tapado por la toolbar sticky
+     al hacer scroll via smooth desde la nav lateral. */
+  scroll-margin-top: calc(var(--k-toolbar-h, 56px) + var(--k-space-3));
+}
+.ajustesSection .ajustesSec + .ajustesSec {
+  margin-top: var(--k-space-3);
+}
+
+/* F8 · Bloqueos Premium legibles (AA) */
+.ajustesLocked {
+  border-color: var(--k-color-border-strong);
+  background: var(--k-color-surface);
+}
+.ajustesLockedText {
+  margin: 0;
+  font-size: var(--k-fs-sm);
+  color: var(--k-color-ink-2);
+  line-height: 1.5;
+  max-width: 560px;
+}
+.ajustesLockedInline {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-3);
+  padding: var(--k-space-3);
+  background: var(--k-color-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--k-color-accent) 40%, transparent);
+  border-radius: var(--k-radius-sm);
+  flex-wrap: wrap;
+}
+.ajustesLockedInline .ajustesLockedText {
+  flex: 1 1 260px;
+  color: var(--k-color-accent-ink);
 }
 
 .ajustesSecTitulo {
@@ -1974,7 +2097,15 @@
 .ajustesActions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 
 /* ── Preview ──────────────────────────────────────────────────────────────── */
-.ajustesPreviewSticky { position: sticky; top: 1.5rem; }
+/* F8 · Vista previa pegada arriba 16 px, debajo de la toolbar sticky. */
+.ajustesPreviewSticky {
+  position: sticky;
+  top: calc(var(--k-toolbar-h, 56px) + var(--k-space-4));
+  align-self: start;
+}
+@media (max-width: 1099.98px) {
+  .ajustesPreviewSticky { position: static; }
+}
 .previewTitle { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--k-color-muted); margin: 0 0 .75rem; }
 
 .previewBox {
