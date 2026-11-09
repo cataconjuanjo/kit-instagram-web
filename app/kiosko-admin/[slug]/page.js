@@ -1281,6 +1281,9 @@ export default function AdminKioskoPage() {
   const [ubicaciones, setUbicaciones] = useState([])
   const [ubicacionesPending, setUbicacionesPending] = useState(false)
   const [ubicacionesError, setUbicacionesError] = useState('')
+  // F3 B2 (P1-4): detección de columna motivo_inactividad; si pending=true
+  // ocultamos el selector de motivo en ficha y en lote.
+  const [motivoPending, setMotivoPending] = useState(false)
 
   const [filtroDestacado, setFiltroDestacado] = useState('todos')
 
@@ -1415,6 +1418,11 @@ export default function AdminKioskoPage() {
         .then(r => r.json().catch(() => ({})))
         .then(d => { setUbicaciones(d?.ubicaciones || []); setUbicacionesPending(!!d?.pending) })
         .catch(() => {})
+      // F3 B2: ping para saber si motivo_inactividad existe.
+      fetch(`/api/kiosko/${slug}/admin/motivo-inactividad`, { headers: requestHeaders })
+        .then(r => r.json().catch(() => ({})))
+        .then(d => setMotivoPending(!!d?.pending))
+        .catch(() => setMotivoPending(true))
     } catch (e) { setError(e.message) }
     finally     { setCargando(false)  }
   }
@@ -4860,6 +4868,12 @@ export default function AdminKioskoPage() {
                 >
                   {v.nombre}
                   {renderQualityBadges(v)}
+                  {!v.activo && v.motivo_inactividad && (
+                    <span style={{ marginLeft: '.4rem', padding: '.1rem .4rem', fontSize: '.65rem', background: '#f0ede8', color: '#777', borderRadius: 4, fontWeight: 500 }}
+                      title={`Motivo de inactividad: ${v.motivo_inactividad}`}>
+                      {v.motivo_inactividad}
+                    </span>
+                  )}
                 </td>
 
                 <td className={styles.tdTrunc}>{v.bodega || <em className={styles.dash}>—</em>}</td>
@@ -5708,6 +5722,41 @@ export default function AdminKioskoPage() {
                       Activo (visible en kiosko)
                     </label>
                   </div>
+                  {/* F3 B2 (P1-4): motivo de inactividad solo cuando desactivado
+                      Y la columna existe en la DB. Si pending, se oculta. */}
+                  {!form.activo && !motivoPending && form.id && (
+                    <div className={`${styles.formField} ${styles.formFieldFull}`}>
+                      <label>Motivo de inactividad</label>
+                      <select
+                        value={form.motivo_inactividad || ''}
+                        onChange={async e => {
+                          const motivo = e.target.value || null
+                          cambiar('motivo_inactividad', motivo)
+                          // Persistencia inmediata via endpoint auxiliar
+                          try {
+                            const res = await fetch(`/api/kiosko/${slug}/admin/motivo-inactividad`, {
+                              method: 'POST',
+                              headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ id: form.id, motivo }),
+                            })
+                            if (!res.ok) {
+                              const j = await res.json().catch(() => ({}))
+                              if (j?.pending) setMotivoPending(true)
+                            } else {
+                              setVinos(prev => prev.map(w => w.id === form.id ? { ...w, motivo_inactividad: motivo } : w))
+                            }
+                          } catch {}
+                        }}
+                      >
+                        <option value="">— sin motivo —</option>
+                        <option value="sin_stock">Sin stock</option>
+                        <option value="retirado">Retirado</option>
+                        <option value="descatalogado">Descatalogado</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                      <small style={{ color: '#888', fontSize: '.72rem' }}>Se guarda al instante.</small>
+                    </div>
+                  )}
                   {modal !== 'nuevo' && form.ficha_ia && (
                     <div className={`${styles.formField} ${styles.formFieldFull}`}>
                       <label style={{ display: 'flex', justifyContent: 'space-between' }}>
