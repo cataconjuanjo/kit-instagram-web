@@ -15,9 +15,9 @@ const COUNTER_ORDERS_IN_DEVELOPMENT = true
 // ── Constantes de personalización ─────────────────────────────────────────────
 
 const PALETAS = [
-  { id: 'clasico',  label: 'Clásico',         primario: '#0d0d1a', acento: '#c9a96e' },
+  { id: 'clasico',  label: 'Clásico',         primario: '#0d0d1a', acento: 'var(--k-color-accent)' },
   { id: 'sibaris',  label: 'Síbaris Gourmet', primario: '#1e1b22', acento: '#c48e10' },
-  { id: 'blanco',   label: 'Blanco elegante',  primario: '#FAFAF8', acento: '#1a1a2e' },
+  { id: 'blanco',   label: 'Blanco elegante',  primario: '#FAFAF8', acento: 'var(--k-color-ink)' },
   { id: 'verde',    label: 'Verde vinoteca',   primario: '#122012', acento: '#7cb87c' },
   { id: 'burdeos',  label: 'Burdeos',          primario: '#1a0408', acento: '#c45069' },
   { id: 'azul',     label: 'Azul pizarra',     primario: '#0f1729', acento: '#7099cf' },
@@ -92,7 +92,7 @@ function Sparkline({ data, width = 72, height = 24 }) {
     return `${x.toFixed(1)},${y}`
   }).join(' ')
   const trend = data[data.length - 1] - data[0]
-  const color = trend > 0 ? '#2ea55a' : trend < 0 ? '#c03030' : '#bbb'
+  const color = trend > 0 ? '#2ea55a' : trend < 0 ? 'var(--k-color-danger)' : 'var(--k-color-muted-2)'
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
       <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
@@ -149,7 +149,7 @@ function PremiumLock({ children, label = 'Premium' }) {
       {children}
       <span style={{
         position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)',
-        background: '#c9a96e', color: '#1a1a2e', fontSize: '.62rem', fontWeight: 800,
+        background: 'var(--k-color-accent)', color: 'var(--k-color-ink)', fontSize: '.62rem', fontWeight: 800,
         padding: '2px 7px', borderRadius: 20, letterSpacing: '.05em',
       }}>{label}</span>
     </div>
@@ -217,14 +217,14 @@ function UpgradeModal({ feature, onClose }) {
         <button onClick={onClose} style={{
           position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.08)',
           border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer',
-          color: '#fff', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--k-color-surface)', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>×</button>
 
         <div style={{ fontSize: '2.4rem', lineHeight: 1, marginBottom: '1rem' }}>{cfg.icon}</div>
-        <div style={{ fontFamily: 'system-ui,sans-serif', fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: '#c9a96e', marginBottom: '.4rem' }}>
+        <div style={{ fontFamily: 'system-ui,sans-serif', fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--k-color-accent)', marginBottom: '.4rem' }}>
           Plan Premium
         </div>
-        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', margin: '0 0 1.25rem', lineHeight: 1.2 }}>
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--k-color-surface)', margin: '0 0 1.25rem', lineHeight: 1.2 }}>
           {cfg.title}
         </h2>
 
@@ -245,7 +245,7 @@ function UpgradeModal({ feature, onClose }) {
         <a href="/planes" target="_blank" rel="noreferrer" onClick={onClose} style={{
           display: 'block', textAlign: 'center', fontFamily: 'system-ui,sans-serif',
           fontWeight: 700, fontSize: '.95rem', color: '#17120f',
-          background: '#c9a96e', borderRadius: 10, padding: '13px 0', textDecoration: 'none',
+          background: 'var(--k-color-accent)', borderRadius: 10, padding: '13px 0', textDecoration: 'none',
           marginBottom: '.85rem',
         }}>
           Ver planes y precios →
@@ -316,7 +316,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
     descripcion:    tienda?.descripcion    || '',
     logo_url:       tienda?.logo_url       || '',
     color_primario: tienda?.color_primario || '#0d0d1a',
-    color_acento:   tienda?.color_acento   || '#c9a96e',
+    color_acento:   tienda?.color_acento   || 'var(--k-color-accent)',
     font_family:    tienda?.font_family    || 'clasica',
     kiosko_icon_style: tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji',
     kiosko_orders_enabled: tienda?.kiosko_orders_enabled === true,
@@ -440,7 +440,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
   }
 
   const temaClaro  = esColorClaro(ajustes.color_primario)
-  const textoColor = temaClaro ? '#141413' : '#f0ede8'
+  const textoColor = temaClaro ? '#141413' : 'var(--k-color-sunken)'
   const textoMedio = temaClaro ? 'rgba(20,20,19,.55)' : 'rgba(240,237,232,.55)'
   const panelColor = temaClaro ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.08)'
   const fontCss    = FUENTES.find(f => f.id === ajustes.font_family)?.css || FUENTES[0].css
@@ -568,7 +568,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           <p className={styles.ajustesSecTitulo}>
             Cesta regalo
             <span className={styles.premiumTag}>Premium</span>
-            <span className={styles.premiumTag} style={{ background: '#e8a020', color: '#fff' }}>BETA</span>
+            <span className={styles.premiumTag} style={{ background: '#e8a020', color: 'var(--k-color-surface)' }}>BETA</span>
           </p>
           <button
             type="button"
@@ -583,7 +583,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
                   : 'Inactiva — el kiosko funciona exactamente igual que hasta ahora, sin cambios.'}
               </small>
               {ajustes.cesta_activa && (
-                <small style={{ color: '#b45309', marginTop: '.2rem' }}>
+                <small style={{ color: 'var(--k-color-warn)', marginTop: '.2rem' }}>
                   Función en fase beta. Actívala solo si has revisado el catálogo de productos gourmet (pestaña Otros).
                 </small>
               )}
@@ -636,7 +636,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
               </select>
             </div>
           </div>
-          <p style={{ fontSize: '.75rem', color: '#aaa', margin: '.5rem 0 0' }}>
+          <p style={{ fontSize: '.75rem', color: 'var(--k-color-muted-2)', margin: '.5rem 0 0' }}>
             Si el kiosko lleva este tiempo sin interacción, entra en carrusel de vinos destacados a pantalla completa. Cualquier toque lo cierra. El modo manual (pulsación larga del logo) no se ve afectado por este ajuste.
           </p>
         </div>
@@ -693,11 +693,11 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
                 />
               </div>
             </div>
-            <p style={{ fontSize: '.75rem', color: '#aaa', margin: '.5rem 0 0' }}>
+            <p style={{ fontSize: '.75rem', color: 'var(--k-color-muted-2)', margin: '.5rem 0 0' }}>
               Cada martes a las 8:00 recibirás un resumen con las búsquedas de la semana, los vinos más recomendados y alertas de stock. Deja el campo vacío para no recibir el informe.
             </p>
             {esAdmin && (
-              <a href={`/kiosko-admin/${slug}/informes`} style={{ display: 'inline-block', marginTop: '.75rem', fontSize: '.78rem', color: '#c9a96e', textDecoration: 'underline' }}>
+              <a href={`/kiosko-admin/${slug}/informes`} style={{ display: 'inline-block', marginTop: '.75rem', fontSize: '.78rem', color: 'var(--k-color-accent)', textDecoration: 'underline' }}>
                 Ver historial de informes →
               </a>
             )}
@@ -726,7 +726,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         {esPremium ? (
           <div className={styles.ajustesSec}>
             <p className={styles.ajustesSecTitulo}>Widget para tu web <span className={styles.premiumTag}>Premium</span></p>
-            <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
+            <p style={{ fontSize: '.78rem', color: 'var(--k-color-muted)', margin: '0 0 .75rem' }}>
               Pega este código en cualquier web para añadir un botón flotante que abre el kiosko en un panel lateral.
             </p>
             {(() => {
@@ -748,7 +748,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
             <div style={{ opacity: .45, pointerEvents: 'none', userSelect: 'none' }}>
               <div className={styles.ajustesSec}>
                 <p className={styles.ajustesSecTitulo}>Widget para tu web</p>
-                <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
+                <p style={{ fontSize: '.78rem', color: 'var(--k-color-muted)', margin: '0 0 .75rem' }}>
                   Añade el kiosko como botón flotante en tu web. Disponible en plan Premium.
                 </p>
                 <div className={styles.widgetEmbedBox}>
@@ -769,9 +769,9 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
             Integración Square
             {tienda?.has_square_token
               ? <span style={{ marginLeft: 8, fontSize: '.75rem', color: '#4caf50' }}>✓ Configurado</span>
-              : <span style={{ marginLeft: 8, fontSize: '.75rem', color: '#888' }}>Sin configurar</span>}
+              : <span style={{ marginLeft: 8, fontSize: '.75rem', color: 'var(--k-color-muted)' }}>Sin configurar</span>}
           </p>
-          <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
+          <p style={{ fontSize: '.78rem', color: 'var(--k-color-muted)', margin: '0 0 .75rem' }}>
             Token de acceso de tu cuenta Square. Permite sincronizar el catálogo de esta tienda de forma independiente.
           </p>
           <div style={{ display: 'flex', gap: '.5rem' }}>
@@ -806,7 +806,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
               borderRadius: 8, padding: '.6rem .85rem' }}>
               Disponible en el plan Premium. Mejora tu plan para que tus destacados se actualicen solos según stock y margen.{' '}
               <button type="button" onClick={() => setAjustesUpgradeModal('autoFeatured')}
-                style={{ background: 'none', border: 'none', color: '#c9a96e', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}>
+                style={{ background: 'none', border: 'none', color: 'var(--k-color-accent)', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}>
                 Ver planes →
               </button>
             </p>
@@ -865,7 +865,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
                   disabled={!esPremium}
                   aria-disabled={!esPremium}
                 />
-                <small style={{ fontSize: '.74rem', color: '#888', display: 'block', marginTop: '.25rem' }}>
+                <small style={{ fontSize: '.74rem', color: 'var(--k-color-muted)', display: 'block', marginTop: '.25rem' }}>
                   Máximo de vinos del mismo tipo (tinto, blanco…) en el carrusel. Evita que un solo tipo acapare todos los huecos.
                 </small>
               </div>
@@ -2613,7 +2613,7 @@ export default function AdminKioskoPage() {
   if (accesoDenegado) return (
     <div className={styles.error}>
       Acceso no autorizado.{' '}
-      <a href="/login" style={{ color: '#c9a96e', textDecoration: 'underline' }}>Iniciar sesión →</a>
+      <a href="/login" style={{ color: 'var(--k-color-accent)', textDecoration: 'underline' }}>Iniciar sesión →</a>
     </div>
   )
   if (error) return <div className={styles.error}>{error}</div>
@@ -2622,31 +2622,31 @@ export default function AdminKioskoPage() {
   // Plan trial nunca pasa por el gate de pago aunque tenga subscription_status='pending' de un intento anterior
   const pendienteDePago = !esAdminUsuario && tienda?.subscription_status === 'pending' && tienda?.plan !== 'trial'
   if (pendienteDePago) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f3f0', padding: 24 }}>
-      <div style={{ background: '#fff', borderRadius: 16, padding: '48px 40px', maxWidth: 460, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,.08)', textAlign: 'center' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--k-color-bg)', padding: 24 }}>
+      <div style={{ background: 'var(--k-color-surface)', borderRadius: 16, padding: '48px 40px', maxWidth: 460, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,.08)', textAlign: 'center' }}>
         {esperandoWebhook ? (
           <>
             <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', margin: '0 0 12px' }}>Activando tu kiosko...</h2>
-            <p style={{ fontSize: 15, color: '#666', lineHeight: 1.6, margin: 0 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--k-color-ink)', margin: '0 0 12px' }}>Activando tu kiosko...</h2>
+            <p style={{ fontSize: 15, color: 'var(--k-color-ink-2)', lineHeight: 1.6, margin: 0 }}>
               Pago recibido. Estamos activando tu acceso, tardará solo unos segundos.
             </p>
           </>
         ) : (
           <>
             <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', margin: '0 0 12px' }}>Activa tu kiosko</h2>
-            <p style={{ fontSize: 15, color: '#666', lineHeight: 1.6, margin: '0 0 32px' }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--k-color-ink)', margin: '0 0 12px' }}>Activa tu kiosko</h2>
+            <p style={{ fontSize: 15, color: 'var(--k-color-ink-2)', lineHeight: 1.6, margin: '0 0 32px' }}>
               Tu cuenta está lista. Para empezar a usar el kiosko de vinos necesitas activar la suscripción.
             </p>
             <button
               onClick={irACheckout}
               disabled={generandoCheckout}
-              style={{ background: '#1a1a2e', color: '#c9a96e', border: 'none', borderRadius: 10, padding: '14px 32px', fontSize: 16, fontWeight: 700, cursor: 'pointer', width: '100%' }}
+              style={{ background: 'var(--k-color-ink)', color: 'var(--k-color-accent)', border: 'none', borderRadius: 10, padding: '14px 32px', fontSize: 16, fontWeight: 700, cursor: 'pointer', width: '100%' }}
             >
               {generandoCheckout ? 'Preparando pago...' : 'Activar suscripción →'}
             </button>
-            <p style={{ fontSize: 12, color: '#aaa', marginTop: 16 }}>
+            <p style={{ fontSize: 12, color: 'var(--k-color-muted-2)', marginTop: 16 }}>
               Pago seguro con Stripe · Cancela cuando quieras
             </p>
           </>
@@ -2757,7 +2757,7 @@ export default function AdminKioskoPage() {
           {alertasStock && alertasStock.length > 0 && (
             <span aria-label={`${alertasStock.length} alertas de reposición`}
               title={`${alertasStock.length} alertas de reposición`}
-              style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#c44', marginLeft: 6, verticalAlign: 'middle' }} />
+              style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--k-color-danger)', marginLeft: 6, verticalAlign: 'middle' }} />
           )}
           {!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
@@ -2768,7 +2768,7 @@ export default function AdminKioskoPage() {
               se muestra solo si leads !== null (ya se cargaron) y son >0. */}
           {leads && leads.length > 0 && (
             <span aria-label={`${leads.length} leads`} title={`${leads.length} leads en total`}
-              style={{ display: 'inline-block', marginLeft: 6, fontSize: '.7rem', background: '#f0ede8', color: '#555', padding: '.08rem .4rem', borderRadius: 10, fontWeight: 600 }}>
+              style={{ display: 'inline-block', marginLeft: 6, fontSize: '.7rem', background: 'var(--k-color-sunken)', color: 'var(--k-color-ink-2)', padding: '.08rem .4rem', borderRadius: 10, fontWeight: 600 }}>
               {leads.length}
             </span>
           )}
@@ -2810,7 +2810,7 @@ export default function AdminKioskoPage() {
       {tab === 'ajustes' && tienda && !hideSensitive && (
         <section className={styles.ajustesSection} style={{ padding: '1rem 1.75rem 2rem', maxWidth: 820 }}>
           <h3 style={{ margin: '0 0 .35rem', fontSize: '1rem' }}>Ubicaciones de la tienda</h3>
-          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: '#666' }}>
+          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: 'var(--k-color-ink-2)' }}>
             Catálogo para sugerir en la columna &quot;Estantería&quot; de los vinos.
             Añadir aquí no cambia nada en los vinos existentes; solo rellena el
             autocompletado al escribir en la ficha o en la acción en lote.
@@ -2826,7 +2826,7 @@ export default function AdminKioskoPage() {
             </div>
           )}
           {ubicacionesError && (
-            <div className={styles.analiticaBanner} style={{ marginBottom: '1rem', background: '#fdf0f0' }}>
+            <div className={styles.analiticaBanner} style={{ marginBottom: '1rem', background: 'var(--k-color-danger-soft)' }}>
               <span className={styles.analiticaBannerIcon}>⚠️</span>
               <span>Error: <code>{ubicacionesError}</code></span>
               <button type="button" className={styles.btnSecundario} style={{ marginLeft: 'auto', padding: '.3rem .7rem', fontSize: '.78rem' }} onClick={cargarUbicaciones}>Reintentar</button>
@@ -2844,7 +2844,7 @@ export default function AdminKioskoPage() {
               </form>
               <div style={{ border: '1px solid #ebe6dc', borderRadius: 8, maxHeight: 260, overflowY: 'auto' }}>
                 {ubicaciones.length === 0 && (
-                  <p style={{ margin: 0, padding: '1rem', color: '#999', fontSize: '.82rem' }}>
+                  <p style={{ margin: 0, padding: '1rem', color: 'var(--k-color-muted)', fontSize: '.82rem' }}>
                     Aún no hay ubicaciones en el catálogo.
                   </p>
                 )}
@@ -2856,12 +2856,12 @@ export default function AdminKioskoPage() {
                       style={{ flex: 1, padding: '.35rem .55rem', fontSize: '.85rem', border: '1px solid transparent', borderRadius: 4, background: 'transparent' }}
                       aria-label={`Nombre de la ubicación ${u.nombre}`}
                     />
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.75rem', color: '#555' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.75rem', color: 'var(--k-color-ink-2)' }}>
                       <input type="checkbox" checked={u.activa} onChange={e => patchUbicacion(u.id, { activa: e.target.checked })} />
                       Activa
                     </label>
                     <button type="button" onClick={() => borrarUbicacion(u.id)} aria-label={`Eliminar ubicación ${u.nombre}`}
-                      style={{ background: 'none', border: 'none', color: '#c44', cursor: 'pointer', fontSize: '.95rem' }}>✕</button>
+                      style={{ background: 'none', border: 'none', color: 'var(--k-color-danger)', cursor: 'pointer', fontSize: '.95rem' }}>✕</button>
                   </div>
                 ))}
               </div>
@@ -2873,21 +2873,21 @@ export default function AdminKioskoPage() {
       {tab === 'ajustes' && tienda && !hideSensitive && (
         <section className={styles.ajustesSection} style={{ padding: '0 1.75rem 2rem', maxWidth: 820 }}>
           <h3 style={{ margin: '0 0 .35rem', fontSize: '1rem' }}>Integración Square</h3>
-          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: '#666' }}>
+          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: 'var(--k-color-ink-2)' }}>
             Estado de la sincronización. El token nunca se muestra ni se registra.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.65rem 1rem', fontSize: '.84rem', marginBottom: '.8rem' }}>
             <div>
-              <div style={{ color: '#888', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último catálogo</div>
+              <div style={{ color: 'var(--k-color-muted)', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último catálogo</div>
               <div><strong>{lastSync?.ultimoCatalogoAt ? formatSyncDate(lastSync.ultimoCatalogoAt) : '—'}</strong></div>
             </div>
             <div>
-              <div style={{ color: '#888', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último pago TPV</div>
+              <div style={{ color: 'var(--k-color-muted)', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último pago TPV</div>
               <div><strong>{lastSync?.ultimoPagoAt ? formatSyncDate(lastSync.ultimoPagoAt) : '—'}</strong></div>
             </div>
             {lastSync?.ultimoError && (
-              <div style={{ gridColumn: '1 / -1', padding: '.5rem .75rem', background: '#fdf0f0', border: '1px solid #f1caca', borderRadius: 6, color: '#7a2020' }}>
-                <div style={{ fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em', color: '#b45309' }}>
+              <div style={{ gridColumn: '1 / -1', padding: '.5rem .75rem', background: 'var(--k-color-danger-soft)', border: '1px solid #f1caca', borderRadius: 6, color: 'var(--k-color-danger)' }}>
+                <div style={{ fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--k-color-warn)' }}>
                   Último error {lastSync.ultimoErrorAt && `(${formatSyncDate(lastSync.ultimoErrorAt)})`}
                 </div>
                 <div style={{ fontSize: '.78rem', fontFamily: 'monospace', wordBreak: 'break-word' }}>{String(lastSync.ultimoError).slice(0, 400)}</div>
@@ -2899,7 +2899,7 @@ export default function AdminKioskoPage() {
               {syncNowRunning ? 'Sincronizando…' : 'Sincronizar ahora'}
             </button>
             {syncNowMsg && (
-              <span style={{ fontSize: '.8rem', color: syncNowMsg.tipo === 'ok' ? '#2a8a4a' : '#c44' }}>
+              <span style={{ fontSize: '.8rem', color: syncNowMsg.tipo === 'ok' ? 'var(--k-color-ok)' : 'var(--k-color-danger)' }}>
                 {syncNowMsg.tipo === 'ok' ? '✓' : '⚠'} {syncNowMsg.texto}
               </span>
             )}
@@ -3103,7 +3103,7 @@ export default function AdminKioskoPage() {
                   </div>
                 )}
                 {!analitica.movil?.pendiente && analitica.movil?.errorMsg && (
-                  <div className={styles.analiticaBanner} style={{ background: '#fdf0f0' }}>
+                  <div className={styles.analiticaBanner} style={{ background: 'var(--k-color-danger-soft)' }}>
                     <span className={styles.analiticaBannerIcon}>⚠️</span>
                     <span>
                       Error al leer datos de móvil: <code>{analitica.movil.errorMsg}</code>
@@ -3270,7 +3270,7 @@ export default function AdminKioskoPage() {
                     <p className={styles.analiticaBloqueDesc}>Lo que pidieron los clientes y el kiosko no pudo recomendar — oportunidad de surtido</p>
                     <div className={styles.analiticaList}>
                       {vacio || !analitica.busquedasSinResultado?.length
-                        ? <p style={{ margin: '.3rem 0 0', color: '#888', fontSize: '.78rem' }}>
+                        ? <p style={{ margin: '.3rem 0 0', color: 'var(--k-color-muted)', fontSize: '.78rem' }}>
                             {vacio ? '—' : 'Todas las búsquedas devolvieron al menos una recomendación.'}
                           </p>
                         : analitica.busquedasSinResultado.map((c, i) => (
@@ -3290,7 +3290,7 @@ export default function AdminKioskoPage() {
                     <p className={styles.analiticaBloqueDesc}>El asistente los recomendó pero están agotados · reabastece primero</p>
                     <div className={styles.analiticaList}>
                       {vacio || !analitica.buscadosSinStock?.length
-                        ? <p style={{ margin: '.3rem 0 0', color: '#888', fontSize: '.78rem' }}>
+                        ? <p style={{ margin: '.3rem 0 0', color: 'var(--k-color-muted)', fontSize: '.78rem' }}>
                             {vacio ? '—' : 'Todos los vinos recomendados tienen stock.'}
                           </p>
                         : analitica.buscadosSinStock.map((v, i) => (
@@ -3375,7 +3375,7 @@ export default function AdminKioskoPage() {
                   <div className={styles.analiticaBloqueHeader}>
                     <h3 className={styles.analiticaBloqueTitle}>Últimas búsquedas</h3>
                     {!vacio && (
-                      <button type="button" className={styles.btnSecundario} onClick={cargarAnalitica} style={{ background: '#f0ede8', color: '#1a1a2e', border: '1px solid #d0cdc8' }}>
+                      <button type="button" className={styles.btnSecundario} onClick={cargarAnalitica} style={{ background: 'var(--k-color-sunken)', color: 'var(--k-color-ink)', border: '1px solid #d0cdc8' }}>
                         Actualizar
                       </button>
                     )}
@@ -3454,10 +3454,10 @@ export default function AdminKioskoPage() {
                     <div key={flow} className={styles.analiticaBloque} style={{ marginBottom: '1.25rem' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.75rem' }}>
                         <h3 className={styles.analiticaBloqueTitle} style={{ margin: 0 }}>{FLOW_LABELS[flow]}</h3>
-                        <span style={{ fontSize: '0.78rem', color: '#888' }}>{total} iniciados · {convRate}% al carrito</span>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--k-color-muted)' }}>{total} iniciados · {convRate}% al carrito</span>
                       </div>
                       {total === 0 ? (
-                        <p style={{ fontSize: '0.82rem', color: '#aaa', margin: 0 }}>Sin datos aún — los intentos aparecen aquí cuando los clientes usen este flujo.</p>
+                        <p style={{ fontSize: '0.82rem', color: 'var(--k-color-muted-2)', margin: 0 }}>Sin datos aún — los intentos aparecen aquí cuando los clientes usen este flujo.</p>
                       ) : (
                         <>
                           {steps.map(step => {
@@ -3467,17 +3467,17 @@ export default function AdminKioskoPage() {
                             return (
                               <div key={step} style={{ marginBottom: '0.45rem' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '0.2rem' }}>
-                                  <span style={{ color: isCarrito ? '#22c55e' : '#ccc' }}>{STEP_LABELS[step] ?? step}</span>
-                                  <span style={{ color: '#aaa' }}>{n} ({pct}%)</span>
+                                  <span style={{ color: isCarrito ? '#22c55e' : 'var(--k-color-muted-2)' }}>{STEP_LABELS[step] ?? step}</span>
+                                  <span style={{ color: 'var(--k-color-muted-2)' }}>{n} ({pct}%)</span>
                                 </div>
                                 <div style={{ height: 8, borderRadius: 4, background: '#1a1a1a', overflow: 'hidden' }}>
-                                  <div style={{ height: '100%', width: `${pct}%`, borderRadius: 4, background: isCarrito ? '#22c55e' : '#555', transition: 'width 0.4s' }} />
+                                  <div style={{ height: '100%', width: `${pct}%`, borderRadius: 4, background: isCarrito ? '#22c55e' : 'var(--k-color-ink-2)', transition: 'width 0.4s' }} />
                                 </div>
                               </div>
                             )
                           })}
                           {fd.abandon.total > 0 && (
-                            <div style={{ marginTop: '0.65rem', fontSize: '0.78rem', color: '#888', display: 'flex', gap: '1.5rem' }}>
+                            <div style={{ marginTop: '0.65rem', fontSize: '0.78rem', color: 'var(--k-color-muted)', display: 'flex', gap: '1.5rem' }}>
                               <span>Abandono: {fd.abandon.total}</span>
                               {fd.abandon.idle_timeout > 0 && <span>⏱ por inactividad: {fd.abandon.idle_timeout}</span>}
                               {fd.abandon.user_exit > 0 && <span>← por back: {fd.abandon.user_exit}</span>}
@@ -3578,12 +3578,12 @@ export default function AdminKioskoPage() {
                       </tr>
                     ))}
                     {sinMovimiento.length === 0 && (
-                      <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: '#aaa' }}>Ningún vino coincide con los filtros.</td></tr>
+                      <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: 'var(--k-color-muted-2)' }}>Ningún vino coincide con los filtros.</td></tr>
                     )}
                   </tbody>
                   {sinMovimiento.length > 15 && (
                     <tfoot>
-                      <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: '#aaa', fontStyle: 'italic' }}>
+                      <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: 'var(--k-color-muted-2)', fontStyle: 'italic' }}>
                         +{sinMovimiento.length - 15} más no mostrados · exporta CSV para la lista completa
                       </td></tr>
                     </tfoot>
@@ -3603,7 +3603,7 @@ export default function AdminKioskoPage() {
             const sinCoste = vinosVino.filter(v => v.activo && Number(v.precio_pvp) > 0 && !v.precio_coste).sort((a, b) => Number(b.precio_pvp) - Number(a.precio_pvp))
             if (!sinCoste.length) return null
             return (
-              <div className={styles.analiticaBloque} style={{ marginBottom: '1rem', borderLeft: '3px solid #c9a96e' }}>
+              <div className={styles.analiticaBloque} style={{ marginBottom: '1rem', borderLeft: '3px solid var(--k-color-accent)' }}>
                 <div className={styles.analiticaBloqueHeader}>
                   <div>
                     <h3 className={styles.analiticaBloqueTitle}>Completar coste</h3>
@@ -3622,11 +3622,11 @@ export default function AdminKioskoPage() {
                       >
                         {v.nombre}
                       </button>
-                      {v.bodega && <span style={{ color: '#888' }}> · {v.bodega}</span>}
-                      <span style={{ color: '#888' }}> · PVP {formatPVP(v.precio_pvp)}</span>
+                      {v.bodega && <span style={{ color: 'var(--k-color-muted)' }}> · {v.bodega}</span>}
+                      <span style={{ color: 'var(--k-color-muted)' }}> · PVP {formatPVP(v.precio_pvp)}</span>
                     </li>
                   ))}
-                  {sinCoste.length > 20 && <li style={{ color: '#888', fontStyle: 'italic' }}>+{sinCoste.length - 20} más — filtra en el catálogo por &quot;Sin coste&quot;.</li>}
+                  {sinCoste.length > 20 && <li style={{ color: 'var(--k-color-muted)', fontStyle: 'italic' }}>+{sinCoste.length - 20} más — filtra en el catálogo por &quot;Sin coste&quot;.</li>}
                 </ul>
               </div>
             )
@@ -3648,9 +3648,9 @@ export default function AdminKioskoPage() {
             <div className={styles.bcgGrid}>
               {[
                 { id:'estrella', icon:'⭐', label:'Estrella',          desc:'Alto margen · Alta demanda', color:'#7a5a1a', borde:'#d4a636', fondo:'#fdf8ee' },
-                { id:'joya',     icon:'💎', label:'Joya oculta',       desc:'Alto margen · Baja demanda', color:'#2e6b47', borde:'#4a9c69', fondo:'#eef7f2' },
+                { id:'joya',     icon:'💎', label:'Joya oculta',       desc:'Alto margen · Baja demanda', color:'var(--k-color-ok)', borde:'#4a9c69', fondo:'#eef7f2' },
                 { id:'caballo',  icon:'🐎', label:'Caballo de batalla',desc:'Bajo margen · Alta demanda', color:'#1a4f7a', borde:'#2e7ab8', fondo:'#eef4fb' },
-                { id:'revisar',  icon:'⚠️', label:'Revisar',           desc:'Bajo margen · Baja demanda', color:'#7a2020', borde:'#c03030', fondo:'#fdf0f0' },
+                { id:'revisar',  icon:'⚠️', label:'Revisar',           desc:'Bajo margen · Baja demanda', color:'var(--k-color-danger)', borde:'var(--k-color-danger)', fondo:'var(--k-color-danger-soft)' },
               ].map(cat => {
                 const lista = rentabilidad ? rentabilidad.clasificados.filter(v => v.categoria === cat.id) : []
                 return (
@@ -3684,7 +3684,7 @@ export default function AdminKioskoPage() {
         const dd  = analitica.ventasDiarias || {}
         const fmtMadrid = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' })
         const ayerKey   = analitica.ayerKey || ''
-        const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: '#c03030' }
+        const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: 'var(--k-color-danger)' }
         const filas = vinosVino
           .filter(v => vp[v.id])
           .map(v => {
@@ -3813,16 +3813,16 @@ export default function AdminKioskoPage() {
                           style={{ cursor: 'pointer' }}
                         >
                           <td className={styles.rendTdNombre}>
-                            <span style={{ fontSize: '0.55rem', color: '#ccc', marginRight: '0.2rem', display: 'inline-block', transition: 'transform 0.15s', transform: expanded ? 'rotate(90deg)' : 'none' }}>▶</span>
+                            <span style={{ fontSize: '0.55rem', color: 'var(--k-color-muted-2)', marginRight: '0.2rem', display: 'inline-block', transition: 'transform 0.15s', transform: expanded ? 'rotate(90deg)' : 'none' }}>▶</span>
                             {f.categoria && (
                               <span className={styles.rendDot} style={{ background: catColor[f.categoria] }} title={f.categoria} />
                             )}
                             <span className={styles.rendVinoNombre}>{f.nombre}</span>
                             {f.bodega && <span className={styles.rendBodega}> · {f.bodega}</span>}
-                            {f.agotado && <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#999', fontWeight: 400, letterSpacing: '0.02em' }}>agotado</span>}
+                            {f.agotado && <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: 'var(--k-color-muted)', fontWeight: 400, letterSpacing: '0.02em' }}>agotado</span>}
                           </td>
                           <td className={styles.rendTdNum}>{f.uds}</td>
-                          <td className={styles.rendTdNum} style={{ color: f.ayerUds > 0 ? '#2e6b47' : undefined, fontWeight: f.ayerUds > 0 ? 600 : undefined }}>
+                          <td className={styles.rendTdNum} style={{ color: f.ayerUds > 0 ? 'var(--k-color-ok)' : undefined, fontWeight: f.ayerUds > 0 ? 600 : undefined }}>
                             {f.ayerUds > 0 ? f.ayerUds : <em className={styles.dash}>—</em>}
                           </td>
                           <td className={styles.rendTdNum}>{f.ingresos > 0 ? `${f.ingresos.toFixed(0)} €` : '—'}</td>
@@ -3834,12 +3834,12 @@ export default function AdminKioskoPage() {
                           </td>
                           <td className={styles.rendTdNum}>{f.pvpVal ? formatPVP(f.pvpVal) : '—'}</td>
                           <td className={styles.rendTdNum}>
-                            <span style={{ color: f.stock === 0 ? '#c03030' : f.stock !== null && f.stock <= 3 ? '#d4a636' : '#2e6b47', fontWeight: 600 }}>
+                            <span style={{ color: f.stock === 0 ? 'var(--k-color-danger)' : f.stock !== null && f.stock <= 3 ? '#d4a636' : 'var(--k-color-ok)', fontWeight: 600 }}>
                               {f.stock ?? '—'}
                             </span>
                           </td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '0.78rem', color: '#888' }}>{f.ultimaVentaFecha || '—'}</td>
-                          <td className={styles.rendTdNum} style={{ color: '#888' }}>
+                          <td className={styles.rendTdNum} style={{ fontSize: '0.78rem', color: 'var(--k-color-muted)' }}>{f.ultimaVentaFecha || '—'}</td>
+                          <td className={styles.rendTdNum} style={{ color: 'var(--k-color-muted)' }}>
                             {f.diasSinVender !== null ? `${f.diasSinVender}d` : '—'}
                           </td>
                         </tr>
@@ -3871,7 +3871,7 @@ export default function AdminKioskoPage() {
                                           className={styles.ventasChartBar}
                                           style={{
                                             height: `${Math.round((d.uds / maxDia) * 100)}%`,
-                                            background: d.key === ayerKey ? '#7a6a5a' : '#c9a96e',
+                                            background: d.key === ayerKey ? '#7a6a5a' : 'var(--k-color-accent)',
                                             opacity: d.uds > 0 ? 1 : 0.1,
                                             minHeight: '2px',
                                           }}
@@ -3929,7 +3929,7 @@ export default function AdminKioskoPage() {
             {/* KPIs */}
             <div className={styles.analiticaKpis} style={{ marginBottom: '1.25rem' }}>
               <div className={styles.analiticaKpi}>
-                <span className={styles.analiticaKpiNum} style={{ color: fugasCount > 0 ? '#c03030' : '#2e6b47' }}>
+                <span className={styles.analiticaKpiNum} style={{ color: fugasCount > 0 ? 'var(--k-color-danger)' : 'var(--k-color-ok)' }}>
                   {fugasCount}
                 </span>
                 <span className={styles.analiticaKpiLabel}>Fugas detectadas</span>
@@ -3989,7 +3989,7 @@ export default function AdminKioskoPage() {
                     {porVino.map(v => (
                       <tr key={v.id} className={`${styles.rendRow} ${v.fuga ? styles.rendRowFuga : ''}`}>
                         <td className={styles.rendTdNombre}>
-                          {v.fuga && <span className={styles.rendDot} style={{ background: '#c03030' }} title="Fuga: recomendado sin venta" />}
+                          {v.fuga && <span className={styles.rendDot} style={{ background: 'var(--k-color-danger)' }} title="Fuga: recomendado sin venta" />}
                           <span className={styles.rendVinoNombre}>{v.nombre}</span>
                         </td>
                         <td className={styles.rendTdNum}>{v.recomendado_n}</td>
@@ -4004,12 +4004,12 @@ export default function AdminKioskoPage() {
                         </td>
                         <td className={styles.rendTdNum}>
                           {v.euros_perdidos !== null && v.euros_perdidos > 0
-                            ? <span style={{ color: '#c03030', fontWeight: 600 }}>{formatEurRound(v.euros_perdidos)}</span>
+                            ? <span style={{ color: 'var(--k-color-danger)', fontWeight: 600 }}>{formatEurRound(v.euros_perdidos)}</span>
                             : <em className={styles.dash}>—</em>}
                         </td>
                         <td className={styles.rendTdNum}>
                           {v.causas.length > 0
-                            ? <span style={{ color: '#b06000', fontSize: '.75rem' }}>{v.causas.map(c => causaLabel[c] || c).join(', ')}</span>
+                            ? <span style={{ color: 'var(--k-color-warn)', fontSize: '.75rem' }}>{v.causas.map(c => causaLabel[c] || c).join(', ')}</span>
                             : <em className={styles.dash}>—</em>}
                         </td>
                       </tr>
@@ -4046,21 +4046,21 @@ export default function AdminKioskoPage() {
                   style={{
                     display: 'inline-flex', alignItems: 'center', width: 36, height: 20,
                     borderRadius: 999, padding: 2, border: 'none', cursor: 'pointer',
-                    background: descuadresIncluirOtros ? '#c9a96e' : '#d6d0c6',
+                    background: descuadresIncluirOtros ? 'var(--k-color-accent)' : '#d6d0c6',
                     transition: 'background .15s', flexShrink: 0,
                   }}
                 >
                   <span style={{
                     display: 'block', width: 16, height: 16, borderRadius: '50%',
-                    background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.18)',
+                    background: 'var(--k-color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,.18)',
                     transform: descuadresIncluirOtros ? 'translateX(16px)' : 'translateX(0)',
                     transition: 'transform .15s',
                   }} />
                 </button>
-                <span style={{ fontSize: '.82rem', color: '#666', userSelect: 'none' }}>
+                <span style={{ fontSize: '.82rem', color: 'var(--k-color-ink-2)', userSelect: 'none' }}>
                   Incluir otros productos
                   {ocultos > 0 && !descuadresIncluirOtros && (
-                    <span style={{ marginLeft: '.35rem', color: '#999' }}>({ocultos} ocultos)</span>
+                    <span style={{ marginLeft: '.35rem', color: 'var(--k-color-muted)' }}>({ocultos} ocultos)</span>
                   )}
                 </span>
               </div>
@@ -4085,18 +4085,18 @@ export default function AdminKioskoPage() {
                             <td className={styles.rendTd}>
                               <span style={{ fontWeight: 500 }}>{d.nombre}</span>
                               {d.activo === false && (
-                                <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: '#c03030', fontWeight: 600 }}>OCULTO</span>
+                                <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: 'var(--k-color-danger)', fontWeight: 600 }}>OCULTO</span>
                               )}
                               {d.categoria === 'otro' && (
-                                <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: '#999' }}>otro</span>
+                                <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: 'var(--k-color-muted)' }}>otro</span>
                               )}
                             </td>
                             <td className={styles.rendTdNum}>
-                              <span style={{ color: '#c03030', fontWeight: 600 }}>{d.ventas}</span>
+                              <span style={{ color: 'var(--k-color-danger)', fontWeight: 600 }}>{d.ventas}</span>
                             </td>
                             <td className={styles.rendTdNum}>{d.stock_actual ?? '—'}</td>
                             <td className={styles.rendTdNum}>{d.precio_pvp ? formatPVP(d.precio_pvp) : '—'}</td>
-                            <td className={styles.rendTd} style={{ fontSize: '.8rem', color: '#666' }}>
+                            <td className={styles.rendTd} style={{ fontSize: '.8rem', color: 'var(--k-color-ink-2)' }}>
                               {d.ultima_venta ? new Date(d.ultima_venta).toLocaleDateString('es-ES') : '—'}
                             </td>
                             <td className={styles.rendTd}>
@@ -4125,7 +4125,7 @@ export default function AdminKioskoPage() {
                                     Aplicar
                                   </button>
                                 </span>
-                              ) : <em style={{ color: '#999', fontSize: '.8rem' }}>sin ID</em>}
+                              ) : <em style={{ color: 'var(--k-color-muted)', fontSize: '.8rem' }}>sin ID</em>}
                             </td>
                           </tr>
                         ))}
@@ -4196,7 +4196,7 @@ export default function AdminKioskoPage() {
             {/* KPIs */}
             <div className={styles.analiticaKpis} style={{ marginBottom: '1.25rem' }}>
               <div className={styles.analiticaKpi}>
-                <span className={styles.analiticaKpiNum} style={{ color: caballos.length > 0 ? '#b06000' : '#2e6b47' }}>
+                <span className={styles.analiticaKpiNum} style={{ color: caballos.length > 0 ? 'var(--k-color-warn)' : 'var(--k-color-ok)' }}>
                   {caballos.length}
                 </span>
                 <span className={styles.analiticaKpiLabel}>Caballos de batalla</span>
@@ -4208,7 +4208,7 @@ export default function AdminKioskoPage() {
                 <span className={styles.analiticaKpiSub}>Alto margen, poca visibilidad</span>
               </div>
               <div className={styles.analiticaKpi}>
-                <span className={styles.analiticaKpiNum} style={{ color: totalOportunidad > 0 ? '#2e6b47' : '#aaa' }}>
+                <span className={styles.analiticaKpiNum} style={{ color: totalOportunidad > 0 ? 'var(--k-color-ok)' : 'var(--k-color-muted-2)' }}>
                   {totalOportunidad > 0 ? `${totalOportunidad.toLocaleString('es-ES', { useGrouping: true })} €` : '—'}
                 </span>
                 <span className={styles.analiticaKpiLabel}>Oportunidad estimada/año</span>
@@ -4250,14 +4250,14 @@ export default function AdminKioskoPage() {
                             <span className={`${styles.margenBadge} ${styles.margenLow}`}>{c.margenPct}%</span>
                           </td>
                           <td className={styles.rendTdNum}>{formatPVP(c.pvp)}</td>
-                          <td className={styles.rendTdNum} style={{ fontWeight: 700, color: '#2e6b47' }}>
+                          <td className={styles.rendTdNum} style={{ fontWeight: 700, color: 'var(--k-color-ok)' }}>
                             {formatPVP(c.pvpNew)}
-                            <span style={{ fontSize: '.68rem', color: '#aaa', marginLeft: 3 }}>+{c.delta.toFixed(2)} €</span>
+                            <span style={{ fontSize: '.68rem', color: 'var(--k-color-muted-2)', marginLeft: 3 }}>+{c.delta.toFixed(2)} €</span>
                           </td>
                           <td className={styles.rendTdNum}>
                             <span className={`${styles.margenBadge} ${c.margenNew >= 40 ? styles.margenHigh : styles.margenMid}`}>{c.margenNew}%</span>
                           </td>
-                          <td className={styles.rendTdNum} style={{ fontWeight: 600, color: '#2e6b47' }}>
+                          <td className={styles.rendTdNum} style={{ fontWeight: 600, color: 'var(--k-color-ok)' }}>
                             ~{c.impacto.toLocaleString('es-ES', { useGrouping: true })} €
                           </td>
                         </tr>
@@ -4265,7 +4265,7 @@ export default function AdminKioskoPage() {
                     </tbody>
                   </table>
                 </div>
-                <p style={{ margin: '.6rem 0 0', fontSize: '.72rem', color: '#bbb', padding: '0 .5rem' }}>
+                <p style={{ margin: '.6rem 0 0', fontSize: '.72rem', color: 'var(--k-color-muted-2)', padding: '0 .5rem' }}>
                   Sugerencia: +7% redondeado a 0,50 € · impacto anualizado basado en el ritmo de ventas actual · solo una sugerencia, tú decides.
                 </p>
               </div>
@@ -4308,10 +4308,10 @@ export default function AdminKioskoPage() {
                             <td className={styles.rendTdNum}>{formatPVP(j.pvp)}</td>
                             <td className={styles.rendTdNum}>
                               {v?.destacado
-                                ? <span style={{ color: '#2e6b47', fontSize: '.8rem' }}>✓ Sí</span>
-                                : <span style={{ color: '#c03030', fontSize: '.8rem' }}>✗ No — destácalo</span>}
+                                ? <span style={{ color: 'var(--k-color-ok)', fontSize: '.8rem' }}>✓ Sí</span>
+                                : <span style={{ color: 'var(--k-color-danger)', fontSize: '.8rem' }}>✗ No — destácalo</span>}
                             </td>
-                            <td className={styles.rendTdNum} style={{ fontWeight: 600, color: '#666' }}>
+                            <td className={styles.rendTdNum} style={{ fontWeight: 600, color: 'var(--k-color-ink-2)' }}>
                               {j.impacto > 0 ? `~${j.impacto.toLocaleString('es-ES', { useGrouping: true })} €` : '—'}
                             </td>
                           </tr>
@@ -4357,7 +4357,7 @@ export default function AdminKioskoPage() {
                           </td>
                           <td className={styles.rendTdNum}>{r.pvp.toFixed(2)} €</td>
                           <td className={styles.rendTdNum}>{r.ventas} ud.</td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.75rem', color: '#b06000' }}>
+                          <td className={styles.rendTdNum} style={{ fontSize: '.75rem', color: 'var(--k-color-warn)' }}>
                             Baja precio o retira
                           </td>
                         </tr>
@@ -4458,8 +4458,8 @@ export default function AdminKioskoPage() {
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 180 }}>{vinos || '—'}</td>
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }} title={l.consentimiento_at ? `Aceptado el ${new Date(l.consentimiento_at).toLocaleString('es-ES')}` : 'No hay fecha de aceptación guardada para este lead'}>
                             {l.consentimiento_at
-                              ? <span style={{ color: '#2a8a4a' }} aria-label="Consentimiento registrado">✔</span>
-                              : <span style={{ color: '#b45309', fontStyle: 'italic' }} aria-label="Sin consentimiento registrado">Sin registrar</span>}
+                              ? <span style={{ color: 'var(--k-color-ok)' }} aria-label="Consentimiento registrado">✔</span>
+                              : <span style={{ color: 'var(--k-color-warn)', fontStyle: 'italic' }} aria-label="Sin consentimiento registrado">Sin registrar</span>}
                           </td>
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }}>
                             {new Date(l.created_at).toLocaleDateString('es-ES')}
@@ -4468,7 +4468,7 @@ export default function AdminKioskoPage() {
                             <button
                               type="button"
                               onClick={() => borrarLead(l.id)}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c44', fontSize: '.72rem', padding: '2px 6px' }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--k-color-danger)', fontSize: '.72rem', padding: '2px 6px' }}
                               title="Eliminar (RGPD)"
                             >
                               ×
@@ -4479,7 +4479,7 @@ export default function AdminKioskoPage() {
                     })}
                   </tbody>
                 </table>
-                <p style={{ margin: '.75rem 0 0', fontSize: '.72rem', color: '#bbb' }}>
+                <p style={{ margin: '.75rem 0 0', fontSize: '.72rem', color: 'var(--k-color-muted-2)' }}>
                   Los emails se eliminan permanentemente al hacer clic en × (derecho de supresión RGPD).
                 </p>
               </div>
@@ -4503,7 +4503,7 @@ export default function AdminKioskoPage() {
 
       {/* Otros productos (Square) */}
       {tab === 'otros' && <>
-        <p style={{ padding: '.85rem 1.75rem 0', color: '#999', fontSize: '.8rem' }}>
+        <p style={{ padding: '.85rem 1.75rem 0', color: 'var(--k-color-muted)', fontSize: '.8rem' }}>
           Productos importados de Square que no son vinos. Configura qué aparece en la cesta regalo y sus atributos.
         </p>
 
@@ -4594,7 +4594,7 @@ export default function AdminKioskoPage() {
                       </td>
                       <td>
                         <strong className={styles.tdTrunc} style={{ maxWidth: 200 }}>{v.nombre}</strong>
-                        {v.categoria === 'carta' && <span style={{ marginLeft: 6, fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#c9a96e', border: '1px solid #c9a96e55', borderRadius: 4, padding: '1px 5px' }}>Carta</span>}
+                        {v.categoria === 'carta' && <span style={{ marginLeft: 6, fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--k-color-accent)', border: '1px solid #c9a96e55', borderRadius: 4, padding: '1px 5px' }}>Carta</span>}
                       </td>
                       <td>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : <span className={styles.dash}>—</span>}</td>
                       <td>
@@ -4779,7 +4779,7 @@ export default function AdminKioskoPage() {
                 <button
                   type="button"
                   onClick={() => setTab('ajustes')}
-                  style={{ background: 'none', border: 'none', color: '#b45309', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}
+                  style={{ background: 'none', border: 'none', color: 'var(--k-color-warn)', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}
                 >
                   Ver ajustes →
                 </button>
@@ -4790,12 +4790,12 @@ export default function AdminKioskoPage() {
       )}
 
       {lastSync && (lastSync.ultimoPagoAt || lastSync.ultimoCatalogoAt) && (
-        <div style={{ padding: '.55rem 1.75rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '.78rem', color: '#999', borderBottom: '1px solid rgba(0,0,0,.06)' }}>
+        <div style={{ padding: '.55rem 1.75rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '.78rem', color: 'var(--k-color-muted)', borderBottom: '1px solid rgba(0,0,0,.06)' }}>
           {lastSync.ultimoCatalogoAt && (
-            <span>Catálogo Square sincronizado: <strong style={{ color: '#555' }}>{formatSyncDate(lastSync.ultimoCatalogoAt)}</strong></span>
+            <span>Catálogo Square sincronizado: <strong style={{ color: 'var(--k-color-ink-2)' }}>{formatSyncDate(lastSync.ultimoCatalogoAt)}</strong></span>
           )}
           {lastSync.ultimoPagoAt && (
-            <span>Último pago TPV registrado: <strong style={{ color: '#555' }}>{formatSyncDate(lastSync.ultimoPagoAt)}</strong></span>
+            <span>Último pago TPV registrado: <strong style={{ color: 'var(--k-color-ink-2)' }}>{formatSyncDate(lastSync.ultimoPagoAt)}</strong></span>
           )}
         </div>
       )}
@@ -4806,7 +4806,7 @@ export default function AdminKioskoPage() {
             <p className={styles.catalogChecklistKicker}>Checklist de catálogo</p>
             <h2>Preparado para el kiosko</h2>
             <p>Revisa los campos que más influyen en que el cliente encuentre, entienda y compre el vino sin preguntar.</p>
-            <p style={{ fontSize: '.72rem', color: '#999', margin: '.2rem 0 0' }} title="Media ponderada por criterio. Imprescindibles (foto, PVP, stock) pesan el doble que los opcionales (ubicación, texto de venta).">
+            <p style={{ fontSize: '.72rem', color: 'var(--k-color-muted)', margin: '.2rem 0 0' }} title="Media ponderada por criterio. Imprescindibles (foto, PVP, stock) pesan el doble que los opcionales (ubicación, texto de venta).">
               Método actualizado el 2026-11-08 · media ponderada por criterio
             </p>
           </div>
@@ -4817,7 +4817,7 @@ export default function AdminKioskoPage() {
                 className={styles.checkProgressBarFill}
                 style={{
                   width: `${catalogoChecklist.score}%`,
-                  background: catalogoChecklist.score >= 80 ? '#2a8a4a' : catalogoChecklist.score >= 50 ? '#c9a96e' : '#c44',
+                  background: catalogoChecklist.score >= 80 ? 'var(--k-color-ok)' : catalogoChecklist.score >= 50 ? 'var(--k-color-accent)' : 'var(--k-color-danger)',
                 }}
               />
             </div>
@@ -5023,7 +5023,7 @@ export default function AdminKioskoPage() {
                   {v.nombre}
                   {renderQualityBadges(v)}
                   {!v.activo && v.motivo_inactividad && (
-                    <span style={{ marginLeft: '.4rem', padding: '.1rem .4rem', fontSize: '.65rem', background: '#f0ede8', color: '#777', borderRadius: 4, fontWeight: 500 }}
+                    <span style={{ marginLeft: '.4rem', padding: '.1rem .4rem', fontSize: '.65rem', background: 'var(--k-color-sunken)', color: 'var(--k-color-ink-2)', borderRadius: 4, fontWeight: 500 }}
                       title={`Motivo de inactividad: ${v.motivo_inactividad}`}>
                       {v.motivo_inactividad}
                     </span>
@@ -5401,11 +5401,11 @@ export default function AdminKioskoPage() {
                 <button type="button" className={styles.modalClose} onClick={() => setBatchInput(null)}>✕</button>
               </div>
               <div className={styles.modalBody}>
-                <p style={{ margin: 0, fontSize: '.85rem', color: '#555' }}>
+                <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--k-color-ink-2)' }}>
                   {seleccionados.size} vino{seleccionados.size === 1 ? '' : 's'} seleccionado{seleccionados.size === 1 ? '' : 's'}.
                   {campo === 'ubicacion' && !reemplazar && ' Por defecto solo se rellenarán los vacíos.'}
                 </p>
-                <p style={{ margin: '.8rem 0 .35rem', fontSize: '.82rem', color: '#555' }}>
+                <p style={{ margin: '.8rem 0 .35rem', fontSize: '.82rem', color: 'var(--k-color-ink-2)' }}>
                   {campo === 'stock_minimo' ? 'Nuevo mínimo (unidades):' : 'Nombre de la estantería / zona:'}
                 </p>
                 <input
@@ -5427,7 +5427,7 @@ export default function AdminKioskoPage() {
                   </datalist>
                 )}
                 {campo === 'ubicacion' && ubicacionesPending && (
-                  <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: '#888' }}>
+                  <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: 'var(--k-color-muted)' }}>
                     Catálogo de ubicaciones aún no activado · pendiente de aplicar <code>supabase/kiosko_ubicaciones.sql</code>.
                   </p>
                 )}
@@ -5468,10 +5468,10 @@ export default function AdminKioskoPage() {
                 .
               </p>
               {batchDialog.afectadosIds.length === 0 ? (
-                <p style={{ margin: '.8rem 0 0', color: '#888' }}>Ningún vino cumple el criterio. Cierra el diálogo y revisa la selección.</p>
+                <p style={{ margin: '.8rem 0 0', color: 'var(--k-color-muted)' }}>Ningún vino cumple el criterio. Cierra el diálogo y revisa la selección.</p>
               ) : (
                 <>
-                  <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: '#666' }}>
+                  <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: 'var(--k-color-ink-2)' }}>
                     Muestras (hasta 5):
                   </p>
                   <ul style={{ margin: 0, padding: '0 0 0 1.2rem', fontSize: '.82rem', lineHeight: 1.5 }}>
@@ -5490,7 +5490,7 @@ export default function AdminKioskoPage() {
                 </>
               )}
               {batchDialog.tipo === 'eliminar' && (
-                <p style={{ margin: '.8rem 0 0', color: '#c44', fontSize: '.8rem' }}>
+                <p style={{ margin: '.8rem 0 0', color: 'var(--k-color-danger)', fontSize: '.8rem' }}>
                   ⚠ Esta acción no se puede deshacer.
                 </p>
               )}
@@ -5520,14 +5520,14 @@ export default function AdminKioskoPage() {
             </div>
             <div className={styles.modalBody}>
               <p style={{ margin: 0 }}>
-                <strong>{batchResumen.aplicados}</strong> aplicados, <strong style={{ color: '#c44' }}>{batchResumen.fallidos.length}</strong> fallidos. El Deshacer del toast cubre solo los aplicados.
+                <strong>{batchResumen.aplicados}</strong> aplicados, <strong style={{ color: 'var(--k-color-danger)' }}>{batchResumen.fallidos.length}</strong> fallidos. El Deshacer del toast cubre solo los aplicados.
               </p>
-              <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: '#666' }}>Fallidos:</p>
+              <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: 'var(--k-color-ink-2)' }}>Fallidos:</p>
               <ul style={{ margin: 0, padding: '0 0 0 1.2rem', fontSize: '.82rem', lineHeight: 1.5, maxHeight: '240px', overflowY: 'auto' }}>
                 {batchResumen.fallidos.slice(0, 50).map(f => (
                   <li key={f.id}>{f.nombre} — <code>{f.error}</code></li>
                 ))}
-                {batchResumen.fallidos.length > 50 && <li style={{ color: '#888' }}>+{batchResumen.fallidos.length - 50} más…</li>}
+                {batchResumen.fallidos.length > 50 && <li style={{ color: 'var(--k-color-muted)' }}>+{batchResumen.fallidos.length - 50} más…</li>}
               </ul>
             </div>
             <div className={styles.modalFooter}>
@@ -5541,8 +5541,8 @@ export default function AdminKioskoPage() {
       {tab === 'ajustes' && ajustesDirty && (
         <div style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 250,
-          background: '#1a1a2e', color: '#f0ede8',
-          borderTop: '3px solid #c9a96e',
+          background: 'var(--k-color-ink)', color: 'var(--k-color-sunken)',
+          borderTop: '3px solid var(--k-color-accent)',
           padding: '.75rem 1.5rem',
           display: 'flex', alignItems: 'center', gap: '1rem',
           boxShadow: '0 -4px 20px rgba(0,0,0,.18)',
@@ -5556,7 +5556,7 @@ export default function AdminKioskoPage() {
 
       {/* F3 P1-9: toast éxito/error tras guardar Ajustes */}
       {ajustesSavedToast && (
-        <div className={styles.undoToast} style={{ borderLeftColor: ajustesSavedToast === 'ok' ? '#2a8a4a' : '#c44' }}>
+        <div className={styles.undoToast} style={{ borderLeftColor: ajustesSavedToast === 'ok' ? 'var(--k-color-ok)' : 'var(--k-color-danger)' }}>
           <span>{ajustesSavedToast === 'ok' ? '✓ Ajustes guardados correctamente' : '⚠ Hubo un problema al guardar los ajustes'}</span>
           <button type="button" className={styles.undoClose} onClick={() => setAjustesSavedToast(null)} aria-label="Cerrar aviso">✕</button>
         </div>
@@ -5574,7 +5574,7 @@ export default function AdminKioskoPage() {
               <p style={{ margin: 0 }}>
                 Vas a eliminar <strong>{eliminarConfirm.nombre}</strong> permanentemente. Esta acción NO se puede deshacer y no afecta a Square.
               </p>
-              <p style={{ margin: '.75rem 0 .35rem', fontSize: '.82rem', color: '#555' }}>
+              <p style={{ margin: '.75rem 0 .35rem', fontSize: '.82rem', color: 'var(--k-color-ink-2)' }}>
                 Para confirmar, escribe el nombre exacto del vino:
               </p>
               <input
@@ -5588,7 +5588,7 @@ export default function AdminKioskoPage() {
                 disabled={eliminarConfirm.running}
               />
               {eliminarConfirm.error && (
-                <p style={{ margin: '.6rem 0 0', color: '#c44', fontSize: '.8rem' }}>
+                <p style={{ margin: '.6rem 0 0', color: 'var(--k-color-danger)', fontSize: '.8rem' }}>
                   {eliminarConfirm.error}
                 </p>
               )}
@@ -5723,7 +5723,7 @@ export default function AdminKioskoPage() {
                   <p className={styles.importOk}>✓ Importación completada</p>
                   {resultImport.insertados > 0 && <p>{resultImport.insertados} vinos importados correctamente</p>}
                   {resultImport.actualizados > 0 && <p>{resultImport.actualizados} vinos actualizados</p>}
-                  {resultImport.sinCambios > 0 && <p style={{ color: '#aaa' }}>{resultImport.sinCambios} vinos no encontrados (omitidos)</p>}
+                  {resultImport.sinCambios > 0 && <p style={{ color: 'var(--k-color-muted-2)' }}>{resultImport.sinCambios} vinos no encontrados (omitidos)</p>}
                   {resultImport.omitidos > 0 && (
                     <p className={styles.importWarn}>{resultImport.omitidos} filas sin nombre omitidas</p>
                   )}
@@ -5937,20 +5937,20 @@ export default function AdminKioskoPage() {
                         <option value="descatalogado">Descatalogado</option>
                         <option value="otro">Otro</option>
                       </select>
-                      <small style={{ color: '#888', fontSize: '.72rem' }}>Se guarda al instante.</small>
+                      <small style={{ color: 'var(--k-color-muted)', fontSize: '.72rem' }}>Se guarda al instante.</small>
                     </div>
                   )}
                   {modal !== 'nuevo' && form.ficha_ia && (
                     <div className={`${styles.formField} ${styles.formFieldFull}`}>
                       <label style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>Ficha IA</span>
-                        <span style={{ fontSize: '.72rem', color: '#aaa', fontWeight: 400 }}>Solo lectura</span>
+                        <span style={{ fontSize: '.72rem', color: 'var(--k-color-muted-2)', fontWeight: 400 }}>Solo lectura</span>
                       </label>
                       <textarea
                         readOnly
                         rows={4}
                         value={typeof form.ficha_ia === 'string' ? form.ficha_ia : JSON.stringify(form.ficha_ia, null, 2)}
-                        style={{ resize: 'vertical', background: 'rgba(255,255,255,.04)', color: '#bbb', cursor: 'default', fontSize: '.8rem' }}
+                        style={{ resize: 'vertical', background: 'rgba(255,255,255,.04)', color: 'var(--k-color-muted-2)', cursor: 'default', fontSize: '.8rem' }}
                       />
                     </div>
                   )}
