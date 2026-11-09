@@ -1348,6 +1348,25 @@ export default function AdminKioskoPage() {
   const colVisible = (id) => columnasVisibles.has(id)
   const [columnasMenuOpen, setColumnasMenuOpen] = useState(false)
   const columnasMenuRef = useRef(null)
+  // F6c · globals.css:10698 declara `html, body { overflow-x: hidden }`
+  // (max-width:100vw), que convierte al <body> en scroll container y rompe
+  // position:sticky en th y toolbar. No tocamos la regla global: durante el
+  // montaje del panel sustituimos localmente overflow-x por 'clip' (no es
+  // scroll container pero sigue clippeando desbordes laterales) y lo
+  // restauramos al desmontar. Solo mientras estemos en kiosko-admin.
+  useEffect(() => {
+    const htmlEl = document.documentElement
+    const bodyEl = document.body
+    const prevHtml = htmlEl.style.overflowX
+    const prevBody = bodyEl.style.overflowX
+    htmlEl.style.overflowX = 'clip'
+    bodyEl.style.overflowX = 'clip'
+    return () => {
+      htmlEl.style.overflowX = prevHtml
+      bodyEl.style.overflowX = prevBody
+    }
+  }, [])
+
   // F6b · ResizeObserver mide la altura real de la toolbar y la escribe en
   // --k-toolbar-h para que la cabecera sticky se posicione exactamente debajo.
   const vinosToolbarRef = useRef(null)
