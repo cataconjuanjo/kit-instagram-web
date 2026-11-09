@@ -1284,6 +1284,10 @@ export default function AdminKioskoPage() {
   // F3 B2 (P1-4): detección de columna motivo_inactividad; si pending=true
   // ocultamos el selector de motivo en ficha y en lote.
   const [motivoPending, setMotivoPending] = useState(false)
+  // F3 P1-9: 'cambios sin guardar' en Ajustes. Wrapper capta input/change en
+  // captura y marca dirty; se resetea en onSaved o al salir del tab manualmente.
+  const [ajustesDirty, setAjustesDirty] = useState(false)
+  const [ajustesSavedToast, setAjustesSavedToast] = useState(null) // 'ok' | 'error'
 
   const [filtroDestacado, setFiltroDestacado] = useState('todos')
 
@@ -2362,6 +2366,14 @@ export default function AdminKioskoPage() {
     return () => clearTimeout(t)
   }, [batchUndo])
 
+  // F3 P1-9: avisar al cerrar la pestaña/ventana con cambios pendientes en Ajustes.
+  useEffect(() => {
+    if (tab !== 'ajustes' || !ajustesDirty) return
+    const onBeforeUnload = (e) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [tab, ajustesDirty])
+
   // Exportar SOLO la seleccion a CSV, cliente-side (sin nuevo endpoint).
   function exportarSeleccionCSV() {
     const ids = new Set(seleccionados)
@@ -2725,7 +2737,28 @@ export default function AdminKioskoPage() {
 
       {/* Ajustes */}
       {tab === 'ajustes' && tienda && (
-        <AjustesTab slug={slug} tienda={tienda} onSaved={cargar} esAdmin={esAdminUsuario} />
+        <div
+          onInput={() => setAjustesDirty(true)}
+          onChange={() => setAjustesDirty(true)}
+          style={{ paddingBottom: ajustesDirty ? '4.5rem' : 0 }}
+        >
+          <AjustesTab
+            slug={slug}
+            tienda={tienda}
+            onSaved={async () => {
+              try {
+                await cargar()
+                setAjustesDirty(false)
+                setAjustesSavedToast('ok')
+                setTimeout(() => setAjustesSavedToast(null), 2800)
+              } catch {
+                setAjustesSavedToast('error')
+                setTimeout(() => setAjustesSavedToast(null), 4000)
+              }
+            }}
+            esAdmin={esAdminUsuario}
+          />
+        </div>
       )}
       {/* F3 B1: CRUD mínimo del catálogo de ubicaciones. Se muestra en Ajustes
           debajo del formulario principal. Si la tabla no existe, aviso con el
@@ -3144,6 +3177,46 @@ export default function AdminKioskoPage() {
                               <span className={styles.analiticaRank}>{i + 1}</span>
                               <span className={styles.analiticaConsulta}>{c.consulta}</span>
                               <span className={styles.analiticaVeces}>{c.veces}×</span>
+                            </div>
+                          ))
+                      }
+                    </div>
+                  </div>
+
+                  {/* F3 P1-11: Búsquedas sin resultado (oportunidad de surtido) */}
+                  <div className={styles.analiticaBloque}>
+                    <h3 className={styles.analiticaBloqueTitle}>Búsquedas sin resultado</h3>
+                    <p className={styles.analiticaBloqueDesc}>Lo que pidieron los clientes y el kiosko no pudo recomendar — oportunidad de surtido</p>
+                    <div className={styles.analiticaList}>
+                      {vacio || !analitica.busquedasSinResultado?.length
+                        ? <p style={{ margin: '.3rem 0 0', color: '#888', fontSize: '.78rem' }}>
+                            {vacio ? '—' : 'Todas las búsquedas devolvieron al menos una recomendación.'}
+                          </p>
+                        : analitica.busquedasSinResultado.map((c, i) => (
+                            <div key={i} className={styles.analiticaListRow}>
+                              <span className={styles.analiticaRank}>{i + 1}</span>
+                              <span className={styles.analiticaConsulta}>{c.consulta}</span>
+                              <span className={styles.analiticaVeces}>{c.veces}×</span>
+                            </div>
+                          ))
+                      }
+                    </div>
+                  </div>
+
+                  {/* F3 P1-11: Más buscados sin stock */}
+                  <div className={styles.analiticaBloque}>
+                    <h3 className={styles.analiticaBloqueTitle}>Más buscados sin stock</h3>
+                    <p className={styles.analiticaBloqueDesc}>El asistente los recomendó pero están agotados · reabastece primero</p>
+                    <div className={styles.analiticaList}>
+                      {vacio || !analitica.buscadosSinStock?.length
+                        ? <p style={{ margin: '.3rem 0 0', color: '#888', fontSize: '.78rem' }}>
+                            {vacio ? '—' : 'Todos los vinos recomendados tienen stock.'}
+                          </p>
+                        : analitica.buscadosSinStock.map((v, i) => (
+                            <div key={v.id} className={styles.analiticaListRow}>
+                              <span className={styles.analiticaRank}>{i + 1}</span>
+                              <span className={styles.analiticaConsulta}>{v.nombre}</span>
+                              <span className={styles.analiticaVeces}>{v.veces}×</span>
                             </div>
                           ))
                       }
@@ -5376,6 +5449,31 @@ export default function AdminKioskoPage() {
               <button type="button" className={styles.btnPrimario} onClick={() => { setBatchResumen(null); setSeleccionados(new Set()) }}>Cerrar</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* F3 P1-9: barra sticky de cambios sin guardar en Ajustes */}
+      {tab === 'ajustes' && ajustesDirty && (
+        <div style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 250,
+          background: '#1a1a2e', color: '#f0ede8',
+          borderTop: '3px solid #c9a96e',
+          padding: '.75rem 1.5rem',
+          display: 'flex', alignItems: 'center', gap: '1rem',
+          boxShadow: '0 -4px 20px rgba(0,0,0,.18)',
+          fontSize: '.85rem',
+        }}>
+          <span style={{ flex: 1 }}>
+            ⚠ Tienes cambios sin guardar. Usa el botón &quot;Guardar&quot; dentro de cada sección para persistirlos.
+          </span>
+        </div>
+      )}
+
+      {/* F3 P1-9: toast éxito/error tras guardar Ajustes */}
+      {ajustesSavedToast && (
+        <div className={styles.undoToast} style={{ borderLeftColor: ajustesSavedToast === 'ok' ? '#2a8a4a' : '#c44' }}>
+          <span>{ajustesSavedToast === 'ok' ? '✓ Ajustes guardados correctamente' : '⚠ Hubo un problema al guardar los ajustes'}</span>
+          <button type="button" className={styles.undoClose} onClick={() => setAjustesSavedToast(null)} aria-label="Cerrar aviso">✕</button>
         </div>
       )}
 

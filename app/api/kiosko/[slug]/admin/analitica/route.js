@@ -143,13 +143,34 @@ export async function GET(request, { params }) {
   }
 
   // ── Top consultas ───────────────────────────────────────────────────────────
+  // F3 P1-11: misma normalizacion que el tracking cliente (lower + sin tildes
+  // + trim + espacios colapsados) para agrupar variantes de la misma consulta.
+  const normConsulta = (c) => String(c || '')
+    .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ').trim()
   const consultaCount = {}
   searches.forEach(s => {
-    const k = s.consulta.toLowerCase().trim()
+    const k = normConsulta(s.consulta)
+    if (!k) return
     consultaCount[k] = (consultaCount[k] || 0) + 1
   })
   const topConsultas = Object.entries(consultaCount)
     .sort((a, b) => b[1] - a[1]).slice(0, 10)
+    .map(([consulta, veces]) => ({ consulta, veces }))
+
+  // F3 P1-11: busquedas que no devolvieron ningun vino (oportunidad de surtido).
+  // vinos_ids puede ser null o [] cuando no hubo match. Se agrupan con la misma
+  // normalizacion que topConsultas para no inflar con variantes tipograficas.
+  const sinResultadoCount = {}
+  searches.forEach(s => {
+    const ids = s.vinos_ids
+    if (Array.isArray(ids) && ids.length > 0) return
+    const k = normConsulta(s.consulta)
+    if (!k) return
+    sinResultadoCount[k] = (sinResultadoCount[k] || 0) + 1
+  })
+  const busquedasSinResultado = Object.entries(sinResultadoCount)
+    .sort((a, b) => b[1] - a[1]).slice(0, 15)
     .map(([consulta, veces]) => ({ consulta, veces }))
 
   // ── Vinos más recomendados ──────────────────────────────────────────────────
@@ -194,6 +215,14 @@ export async function GET(request, { params }) {
       : null
     return { id, nombre, veces, stock, diasRestantes }
   })
+
+  // F3 P1-11: vinos recomendados (>=3 veces en 30 d) que estan sin stock.
+  // Oportunidad: cliente los pide pero no se pueden vender.
+  const buscadosSinStock = Object.entries(vinoCount)
+    .filter(([id, { veces }]) => veces >= 3 && (stockMap[id] ?? 0) === 0)
+    .sort((a, b) => b[1].veces - a[1].veces)
+    .slice(0, 15)
+    .map(([id, { nombre, veces }]) => ({ id, nombre, veces }))
 
   // ── Distribución por modo ──────────────────────────────────────────────────
   const totalWizard   = searches.filter(s => s.mode === 'wizard').length
@@ -378,6 +407,8 @@ export async function GET(request, { params }) {
     semanaActual,
     semanaAnterior,
     topConsultas,
+    busquedasSinResultado, // F3 P1-11
+    buscadosSinStock,      // F3 P1-11
     topVinos,
     modos: { wizard: totalWizard, maridaje: totalMaridaje, regalo: totalRegalo, explorar: totalExplorar },
     movil: {
