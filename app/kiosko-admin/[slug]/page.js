@@ -2752,11 +2752,27 @@ export default function AdminKioskoPage() {
         )}
         <button type="button" className={`${styles.tabBtn} ${tab === 'analitica' ? styles.tabBtnActive : ''}`}
           onClick={() => { if (!esPremium && !esAdminUsuario) { setUpgradeModal('analitica'); return } setTab('analitica'); if (!analitica && !analiticaLoad) cargarAnalitica(); if (!embudo && !embudoLoad) cargarEmbudo() }}>
-          Analítica{!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
+          Analítica
+          {/* F3 P3-4: punto rojo si hay alertas de reposición */}
+          {alertasStock && alertasStock.length > 0 && (
+            <span aria-label={`${alertasStock.length} alertas de reposición`}
+              title={`${alertasStock.length} alertas de reposición`}
+              style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#c44', marginLeft: 6, verticalAlign: 'middle' }} />
+          )}
+          {!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'leads' ? styles.tabBtnActive : ''}`}
           onClick={() => { if (!esPremium && !esAdminUsuario) { setUpgradeModal('leads'); return } setTab('leads'); if (!leads && !leadsLoad) cargarLeads() }}>
-          Leads{!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
+          Leads
+          {/* F3 P3-4: contador de leads cargados cuando aún no se ha visitado el tab;
+              se muestra solo si leads !== null (ya se cargaron) y son >0. */}
+          {leads && leads.length > 0 && (
+            <span aria-label={`${leads.length} leads`} title={`${leads.length} leads en total`}
+              style={{ display: 'inline-block', marginLeft: 6, fontSize: '.7rem', background: '#f0ede8', color: '#555', padding: '.08rem .4rem', borderRadius: 10, fontWeight: 600 }}>
+              {leads.length}
+            </span>
+          )}
+          {!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'ajustes' ? styles.tabBtnActive : ''}`} onClick={() => setTab('ajustes')}>
           Ajustes
@@ -5209,7 +5225,11 @@ export default function AdminKioskoPage() {
                     />
                   ) : (
                     <span className={styles.inlineValue}>
-                      {v.ubicacion_estanteria ?? <em className={styles.dash}>—</em>}
+                      {v.ubicacion_estanteria
+                        ? <span title={v.ubicacion_estanteria} style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', verticalAlign: 'bottom' }}>
+                            {v.ubicacion_estanteria}
+                          </span>
+                        : <em className={styles.dash}>—</em>}
                       <span className={styles.editIcon} role="img" aria-label="Celda editable" title="Haz clic sobre el valor para editarlo">✎</span>
                     </span>
                   )}

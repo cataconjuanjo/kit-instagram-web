@@ -1,10 +1,30 @@
+/* F3 P3-11: tokens de color del panel admin.
+   Centralizados aquí para poder cambiarlos sin recorrer el archivo. El
+   aspecto no cambia: cada token coincide 1:1 con el valor que ya se usaba.
+   Pendiente ir migrando referencias directas al token (se irá haciendo
+   gradualmente sin tocar lo que ya funcione). */
+:root {
+  --k-color-bg:         #f4f3f0;
+  --k-color-surface:    #fff;
+  --k-color-soft:       #faf9f6;
+  --k-color-border:     #ebe6dc;
+  --k-color-ink:        #1a1a2e;     /* cabecera oscura */
+  --k-color-ink-soft:   #2a2a3e;
+  --k-color-muted:      #888;
+  --k-color-accent:     #c9a96e;     /* dorado */
+  --k-color-accent-ink: #3a2a10;
+  --k-color-ok:         #2a8a4a;
+  --k-color-warn:       #b45309;
+  --k-color-danger:     #c44;
+}
+
 /* ── Base ────────────────────────────────────────────────────────────────── */
 .admin {
   min-height: 100vh;
-  background: #f4f3f0;
+  background: var(--k-color-bg);
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 14px;
-  color: #1a1a2e;
+  color: var(--k-color-ink);
 }
 
 .loading,
@@ -466,6 +486,9 @@
   border-bottom: 1px solid #f0ede8;
   vertical-align: middle;
   color: #2a2a3e;
+  /* F3 P3-8: numeros tabulares en toda la tabla para que las columnas
+     numericas alineadas a la derecha no bailen entre filas. */
+  font-variant-numeric: tabular-nums;
 }
 
 .table tr:last-child td { border-bottom: none; }
