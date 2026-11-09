@@ -2860,6 +2860,14 @@ export default function AdminKioskoPage() {
                     </span>
                   </div>
                 )}
+                {!analitica.movil?.pendiente && analitica.movil?.errorMsg && (
+                  <div className={styles.analiticaBanner} style={{ background: '#fdf0f0' }}>
+                    <span className={styles.analiticaBannerIcon}>⚠️</span>
+                    <span>
+                      Error al leer datos de móvil: <code>{analitica.movil.errorMsg}</code>
+                    </span>
+                  </div>
+                )}
 
                 {!vacio && accionesAnalitica.length > 0 && (
                   <section className={styles.accionesAnalitica}>
@@ -2936,12 +2944,13 @@ export default function AdminKioskoPage() {
                     <span className={styles.analiticaKpiLabel}>Alertas de stock</span>
                   </div>
                   <div className={styles.analiticaKpi}>
-                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente ? styles.kpiEmpty : ''}`}>
-                      {analitica.movil?.pendiente ? '—' : (analitica.movil?.total ?? 0)}
+                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente || analitica.movil?.errorMsg ? styles.kpiEmpty : ''}`}>
+                      {analitica.movil?.pendiente || analitica.movil?.errorMsg ? '—' : (analitica.movil?.total ?? 0)}
                     </span>
                     <span className={styles.analiticaKpiLabel}>
                       Llevados al móvil
                       {analitica.movil?.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
+                      {!analitica.movil?.pendiente && analitica.movil?.errorMsg && <em title={`Error: ${analitica.movil.errorMsg}`}> ⚠</em>}
                     </span>
                   </div>
                 </div>
@@ -2967,12 +2976,13 @@ export default function AdminKioskoPage() {
                     </span>
                   </div>
                   <div className={styles.analiticaKpi}>
-                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente ? styles.kpiEmpty : ''}`}>
-                      {analitica.movil?.pendiente ? '—' : (analitica.movil?.total ?? 0)}
+                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente || analitica.movil?.errorMsg ? styles.kpiEmpty : ''}`}>
+                      {analitica.movil?.pendiente || analitica.movil?.errorMsg ? '—' : (analitica.movil?.total ?? 0)}
                     </span>
                     <span className={styles.analiticaKpiLabel}>
                       Llevados al móvil
                       {analitica.movil?.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
+                      {!analitica.movil?.pendiente && analitica.movil?.errorMsg && <em title={`Error: ${analitica.movil.errorMsg}`}> ⚠</em>}
                     </span>
                   </div>
                   <div className={styles.analiticaKpi}>
@@ -4164,8 +4174,10 @@ export default function AdminKioskoPage() {
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem' }}>{l.source}</td>
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 160 }}>{prefStr || '—'}</td>
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 180 }}>{vinos || '—'}</td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }} title={l.consentimiento_at ? `Aceptado el ${new Date(l.consentimiento_at).toLocaleString('es-ES')}` : 'Sin registro de consentimiento'}>
-                            {l.consentimiento_at ? '✔' : <em className={styles.dash}>—</em>}
+                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }} title={l.consentimiento_at ? `Aceptado el ${new Date(l.consentimiento_at).toLocaleString('es-ES')}` : 'No hay fecha de aceptación guardada para este lead'}>
+                            {l.consentimiento_at
+                              ? <span style={{ color: '#2a8a4a' }} aria-label="Consentimiento registrado">✔</span>
+                              : <span style={{ color: '#b45309', fontStyle: 'italic' }} aria-label="Sin consentimiento registrado">Sin registrar</span>}
                           </td>
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }}>
                             {new Date(l.created_at).toLocaleDateString('es-ES')}

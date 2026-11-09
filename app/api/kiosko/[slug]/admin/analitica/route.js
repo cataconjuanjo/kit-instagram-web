@@ -2,9 +2,19 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
+// F3 B0.5: la tabla kiosko_mobile_intents YA existe en producción. Antes la
+// deteccion era demasiado amplia (cualquier error con 'pgrst' o 'schema cache'
+// disparaba el aviso 'Falta aplicar migración'), lo que ocultaba errores
+// reales. Ahora solo marca 'migración pendiente' si el error indica
+// explicitamente que la tabla no existe: PostgreSQL 42P01 (undefined_table)
+// o PostgREST 'relation ... does not exist'.
 function migrationPending(error) {
-  const text = `${error?.code || ''} ${error?.message || ''}`.toLowerCase()
-  return text.includes('kiosko_mobile_intents') || text.includes('schema cache') || text.includes('pgrst')
+  if (!error) return false
+  const code = String(error.code || '').toUpperCase()
+  const msg  = String(error.message || '').toLowerCase()
+  if (code === '42P01') return true
+  if (msg.includes('relation') && msg.includes('does not exist') && msg.includes('kiosko_mobile_intents')) return true
+  return false
 }
 
 export async function GET(request, { params }) {
@@ -28,6 +38,7 @@ export async function GET(request, { params }) {
   const searches = searchesData || []
 
   let mobilePendiente = false
+  let mobileErrorMsg = null
   let mobileIntents = []
   const { data: mobileData, error: mobileError } = await supabaseAdmin
     .from('kiosko_mobile_intents')
@@ -37,8 +48,14 @@ export async function GET(request, { params }) {
     .order('created_at', { ascending: false })
 
   if (mobileError) {
-    if (migrationPending(mobileError)) mobilePendiente = true
-    else console.error('[kiosko mobile analytics]', mobileError)
+    if (migrationPending(mobileError)) {
+      mobilePendiente = true
+    } else {
+      // Error real (no es tabla inexistente). Se expone al admin para que
+      // pueda verlo en vez de mostrar 0 sin explicación.
+      mobileErrorMsg = mobileError.message || String(mobileError)
+      console.error('[kiosko mobile analytics]', mobileError)
+    }
   } else {
     mobileIntents = mobileData || []
   }
@@ -367,6 +384,7 @@ export async function GET(request, { params }) {
       total: mobileIntents.length,
       semanaActual: mobileSemanaActual,
       pendiente: mobilePendiente,
+      errorMsg: mobileErrorMsg, // F3 B0.5: null salvo error real de lectura
       topVinos: topMobileVinos,
       recientes: mobileIntents.slice(0, 12).map(m => ({
         vinoId: m.vino_id,

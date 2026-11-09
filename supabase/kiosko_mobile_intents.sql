@@ -1,34 +1,40 @@
--- Intents de "llevar al móvil" del kiosko (QR escaneado por el cliente)
--- Cada fila = un vino incluido en una lectura de QR, por tienda.
--- Escritura: supabaseAdmin (service_role) desde app/api/kiosko/[slug]/movil/route.js
--- Lectura:   supabaseAdmin desde app/api/kiosko/[slug]/admin/analitica/route.js
--- Aditivo. CREATE TABLE IF NOT EXISTS. No destruye nada si ya existe.
--- Aplica con: supabase db push  o  ejecutar en SQL editor
-CREATE TABLE IF NOT EXISTS kiosko_mobile_intents (
-  id           BIGSERIAL    PRIMARY KEY,
-  tienda_id    UUID         NOT NULL REFERENCES tiendas(id) ON DELETE CASCADE,
-  vino_id      UUID,
-  vino_nombre  TEXT,
-  vino_bodega  TEXT,
-  source       TEXT,         -- 'qr_selection' | 'qr_wizard' | 'qr_pairing' | 'qr_cesta' | ...
-  lang         TEXT,         -- 'es' | 'en' | 'fr' | 'de'
-  user_agent   TEXT,
-  ip           TEXT,
-  created_at   TIMESTAMPTZ   NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_kiosko_mobile_intents_tienda_created
-  ON kiosko_mobile_intents(tienda_id, created_at DESC);
-
-CREATE INDEX IF NOT EXISTS idx_kiosko_mobile_intents_vino
-  ON kiosko_mobile_intents(vino_id)
-  WHERE vino_id IS NOT NULL;
-
--- RLS: coherente con kiosko_funnel_events (service_role bypassa RLS).
--- Se habilita para que, si alguna otra ruta accediera con anon/auth, no lea
--- estos eventos. Los endpoints oficiales usan supabaseAdmin (service_role).
-ALTER TABLE kiosko_mobile_intents ENABLE ROW LEVEL SECURITY;
-
--- No policies por defecto -> solo service_role puede leer/escribir.
--- Si en el futuro se expone un dashboard con auth, añadir policy SELECT
--- condicionada a que la tienda_id pertenezca al usuario autenticado.
+-- ⚠ TABLA YA EXISTENTE EN PRODUCCIÓN — ESTE ARCHIVO ES SOLO DOCUMENTACIÓN.
+-- NO APLICAR. Verificado en producción el 2026-11-08 (42 filas totales).
+--
+-- Esquema real (para que el código del admin y de /api/kiosko/[slug]/movil
+-- se mantenga consistente con lo que hay):
+--
+--   CREATE TABLE kiosko_mobile_intents (
+--     id          uuid         PRIMARY KEY,
+--     tienda_id   uuid         NOT NULL REFERENCES tiendas(id) ON DELETE CASCADE,
+--     vino_id     uuid,                            -- puede ser null si no se resuelve
+--     vino_nombre text,
+--     vino_bodega text,
+--     source      text,                            -- 'qr_selection' | 'qr_cesta'
+--                                                  -- | 'qr_opened' | 'qr_detail' | ...
+--     lang        text,                            -- 'es' | 'en' | 'fr' | 'de'
+--     user_agent  text,
+--     ip          text,                            -- dato personal: NO se expone
+--                                                  -- en panel ni CSV
+--     created_at  timestamptz  NOT NULL DEFAULT now()
+--   );
+--
+-- Notas de uso:
+-- - Escritura: service_role vía supabaseAdmin desde
+--   app/api/kiosko/[slug]/movil/route.js (POST).
+-- - Lectura:   service_role desde
+--   app/api/kiosko/[slug]/admin/analitica/route.js, ventana 30 d por
+--   tienda_id y created_at.
+-- - session_id (presente en el payload del cliente a efectos de rate-limit)
+--   NO se persiste aquí: se consume solo en memoria en checkRateLimit.
+-- - RLS: habilitada en producción; sin policies específicas (service_role
+--   bypassea). Si en el futuro se expone el log a usuarios autenticados,
+--   añadir policy SELECT con tienda_id del usuario.
+--
+-- Datos actuales (2026-11-08, 42 filas totales):
+--   qr_selection  12   (28/07 → 06/09/2026)
+--   qr_cesta       3   (solo 19/08/2026)
+--   qr_opened     26   (solo 27/07/2026)
+--   qr_detail      1   (27/07/2026)
+--   Ninguna fila posterior a 06/09/2026. La ventana 30 d actual devuelve 0
+--   por datos, no por regresión de código (ver informe f3 B0.5).
