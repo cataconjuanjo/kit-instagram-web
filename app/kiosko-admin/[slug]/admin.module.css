@@ -2639,28 +2639,8 @@
   text-align: center;
 }
 
-/* P3-6: skeleton placeholder (sustituye los 'Cargando...' en texto plano) */
-.skeletonBlock {
-  display: flex;
-  flex-direction: column;
-  gap: .6rem;
-  padding: 1rem 1.75rem;
-}
-.skeletonRow {
-  height: 14px;
-  border-radius: 6px;
-  background: linear-gradient(90deg, var(--k-color-sunken) 0%, #f8f6f1 50%, var(--k-color-sunken) 100%);
-  background-size: 200% 100%;
-  animation: skeletonShimmer 1.4s ease-in-out infinite;
-}
-.skeletonRow:nth-child(1) { width: 40%; }
-.skeletonRow:nth-child(2) { width: 85%; }
-.skeletonRow:nth-child(3) { width: 70%; }
-.skeletonRow:nth-child(4) { width: 90%; }
-@keyframes skeletonShimmer {
-  0%   { background-position:  200% 0; }
-  100% { background-position: -200% 0; }
-}
+/* F7 · legacy .skeletonBlock/.skeletonRow eliminados.
+   Único skeleton del panel: .kSkeletonBlock + .kSkeletonRow (sistema). */
 
 /* ── Sub-tabs Analítica ──────────────────────────────────────────────────── */
 .subTabNav {
@@ -4064,44 +4044,100 @@
 }
 
 /* ── Otros (gourmet) table ───────────────────────────────────────────────── */
-.otrosCatSelect {
-  appearance: none;
-  -webkit-appearance: none;
-  border: 1px solid #ddd8d0;
-  border-radius: 20px;
-  font-size: .7rem;
-  font-weight: 700;
-  background: var(--k-color-sunken) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237a6a5a'/%3E%3C/svg%3E") no-repeat right .45rem center;
-  color: #7a6a5a;
-  white-space: nowrap;
-  letter-spacing: .02em;
-  padding: .13rem 1.4rem .13rem .5rem;
-  cursor: pointer;
-  max-width: 140px;
-}
-.otrosCatSelect:focus { outline: none; border-color: var(--k-color-muted-2); }
-
+/* F7 · Selects compactos de la tabla Otros, en línea con .kSelect del
+   sistema pero con menos padding y borde-radius generoso (chip). Estados
+   consumidos como variantes: ok (Sí), danger-soft (No), warn-soft
+   (Alcohol = Sí), neutro (Sin definir / Auto). */
+.otrosCatSelect,
 .otrosBoolSelect {
   appearance: none;
   -webkit-appearance: none;
-  border: 1px solid #ddd8d0;
-  border-radius: 20px;
-  font-size: .72rem;
-  font-weight: 700;
-  padding: .18rem 1.3rem .18rem .55rem;
+  border: 1px solid var(--k-color-border-strong);
+  border-radius: var(--k-radius-pill);
+  font: inherit;
+  font-size: var(--k-fs-xs);
+  font-weight: var(--k-fw-bold);
+  padding: 6px 24px 6px 10px;
+  min-height: 32px;
   cursor: pointer;
-  min-width: 58px;
-  background-color: #eeeae4;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
+  background-color: var(--k-color-sunken);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888888'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right .4rem center;
+  background-position: right 8px center;
+  color: var(--k-color-ink-2);
+  transition: border-color var(--k-transition), box-shadow var(--k-transition);
+}
+.otrosCatSelect { max-width: 160px; }
+.otrosBoolSelect { min-width: 76px; }
+.otrosCatSelect:focus-visible,
+.otrosBoolSelect:focus-visible {
+  outline: none;
+  border-color: var(--k-color-accent);
+  box-shadow: var(--k-ring);
+}
+
+.otrosBoolSi  { background-color: var(--k-color-ok-soft);     color: var(--k-color-ok);     border-color: color-mix(in srgb, var(--k-color-ok) 25%, transparent); }
+.otrosBoolNo  { background-color: var(--k-color-danger-soft); color: var(--k-color-danger); border-color: color-mix(in srgb, var(--k-color-danger) 25%, transparent); }
+.otrosBoolAlerta { background-color: var(--k-color-warn-soft); color: var(--k-color-warn);  border-color: color-mix(in srgb, var(--k-color-warn) 25%, transparent); }
+.otrosBoolSinDef { background-color: var(--k-color-sunken);    color: var(--k-color-muted); font-style: italic; }
+
+/* ── F7 · Leads (lenguaje visual Vinos) ─────────────────────────────────── */
+.leadsWrap {
+  padding: var(--k-space-6);
+}
+.leadsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--k-space-4);
+  margin-bottom: var(--k-space-4);
+  flex-wrap: wrap;
+}
+.leadsHeaderActions {
+  display: flex;
+  gap: var(--k-space-2);
+  flex-wrap: wrap;
+}
+.leadsTitle {
+  margin: 0;
+  color: var(--k-color-ink);
+  font-size: var(--k-fs-lg);
+  font-weight: var(--k-fw-bold);
+  letter-spacing: -0.01em;
+}
+.leadsDesc {
+  margin: var(--k-space-1) 0 0;
+  color: var(--k-color-ink-2);
+  font-size: var(--k-fs-sm);
+  line-height: 1.45;
+  max-width: 580px;
+}
+.leadsTableWrap {
+  overflow-x: auto;
+  margin-top: var(--k-space-2);
+}
+.leadsFoot {
+  margin: var(--k-space-3) 0 0;
+  font-size: var(--k-fs-xs);
   color: var(--k-color-muted);
 }
-.otrosBoolSelect:focus { outline: none; border-color: var(--k-color-muted-2); }
-.otrosBoolSi  { background-color: var(--k-color-ok-soft); color: var(--k-color-ok); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%231a6a1a'/%3E%3C/svg%3E"); }
-.otrosBoolNo  { background-color: var(--k-color-danger-soft); color: var(--k-color-danger);    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c44'/%3E%3C/svg%3E"); }
-.otrosBoolAlerta { background-color: #fff4d4; color: #8a5a00; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a5a00'/%3E%3C/svg%3E"); }
-.otrosBoolSinDef { background-color: #f3f1ee; color: #8a8580; font-style: italic; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8580'/%3E%3C/svg%3E"); }
+.leadsDelete {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--k-color-danger);
+  border-radius: var(--k-radius-sm);
+  font-size: var(--k-fs-lg);
+  cursor: pointer;
+  transition: background var(--k-transition), border-color var(--k-transition);
+}
+.leadsDelete:hover         { background: var(--k-color-danger-soft); border-color: var(--k-color-danger); }
+.leadsDelete:focus-visible { outline: none; box-shadow: var(--k-ring); border-color: var(--k-color-danger); }
+
 
 
 /* ── Gráfico barras ventas semanales TPV ─────────────────────────────────── */

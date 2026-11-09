@@ -1369,9 +1369,9 @@ export default function AdminKioskoPage() {
 
   // F6b · ResizeObserver mide la altura real de la toolbar y la escribe en
   // --k-toolbar-h para que la cabecera sticky se posicione exactamente debajo.
-  const vinosToolbarRef = useRef(null)
+  const toolbarStickyRef = useRef(null)
   useEffect(() => {
-    const el = vinosToolbarRef.current
+    const el = toolbarStickyRef.current
     if (!el || typeof ResizeObserver === 'undefined') return
     const apply = () => {
       const h = Math.round(el.getBoundingClientRect().height) || 56
@@ -3196,9 +3196,9 @@ export default function AdminKioskoPage() {
           </nav>
 
           {analiticaLoad && (
-            <div className={styles.skeletonBlock} aria-live="polite" aria-label="Cargando analítica">
-              <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
-              <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
+            <div className={styles.kSkeletonBlock} aria-live="polite" aria-label="Cargando analítica">
+              <div className={styles.kSkeletonRow} /><div className={styles.kSkeletonRow} />
+              <div className={styles.kSkeletonRow} /><div className={styles.kSkeletonRow} />
             </div>
           )}
           {!analiticaLoad && analitica && (() => {
@@ -4507,69 +4507,80 @@ export default function AdminKioskoPage() {
 
       {/* Leads CRM */}
       {tab === 'leads' && (esPremium || esAdminUsuario) && (
-        <div style={{ padding: '0 1.75rem 1.75rem' }}>
-          <div className={styles.analiticaBloque}>
-            <div className={styles.analiticaBloqueHeader}>
+        <div className={styles.leadsWrap}>
+          {/* F7 · Tarjeta kCard con título + descripción + acciones (reintentar/CSV)
+              alineadas a la derecha. */}
+          <div className={styles.kCard}>
+            <div className={styles.leadsHeader}>
               <div>
-                <h3 className={styles.analiticaBloqueTitle}>Leads captados</h3>
-                <p className={styles.analiticaBloqueDesc}>
+                <h3 className={styles.leadsTitle}>Leads captados</h3>
+                <p className={styles.leadsDesc}>
                   Clientes que dieron su email tras una recomendación, con consentimiento explícito.
                 </p>
               </div>
-              {leads?.length > 0 && (
-                <button
-                  type="button"
-                  className={styles.btnSecundario}
-                  style={{ padding: '.45rem .9rem', fontSize: '.78rem' }}
-                  onClick={async () => {
-                    const res = await fetch(`/api/kiosko/${slug}/admin/leads?formato=csv`, { headers: authHeaders })
-                    const blob = await res.blob()
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url; a.download = `leads-${slug}.csv`; a.click()
-                    URL.revokeObjectURL(url)
-                  }}
-                >
-                  Exportar CSV
-                </button>
-              )}
+              <div className={styles.leadsHeaderActions}>
+                {!leadsLoad && leadsError && (
+                  <button type="button" className={styles.kBtnSecondary} onClick={cargarLeads}>
+                    Reintentar
+                  </button>
+                )}
+                {leads?.length > 0 && (
+                  <button
+                    type="button"
+                    className={styles.kBtnSecondary}
+                    onClick={async () => {
+                      const res = await fetch(`/api/kiosko/${slug}/admin/leads?formato=csv`, { headers: authHeaders })
+                      const blob = await res.blob()
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url; a.download = `leads-${slug}.csv`; a.click()
+                      URL.revokeObjectURL(url)
+                    }}
+                  >
+                    ↓ CSV
+                  </button>
+                )}
+              </div>
             </div>
 
             {leadsLoad && (
-              <div className={styles.skeletonBlock} aria-live="polite" aria-label="Cargando leads">
-                <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
-                <div className={styles.skeletonRow} />
+              <div className={styles.kSkeletonBlock} aria-live="polite" aria-label="Cargando leads">
+                <div className={styles.kSkeletonRow} />
+                <div className={styles.kSkeletonRow} />
+                <div className={styles.kSkeletonRow} />
               </div>
             )}
+
             {!leadsLoad && leadsError && (
-              <div className={styles.analiticaBanner} style={{ margin: '1rem 0 0' }}>
-                <span className={styles.analiticaBannerIcon}>⚠️</span>
-                <span style={{ flex: 1 }}>
-                  No se han podido cargar los leads: <code>{leadsError}</code>.
-                </span>
-                <button type="button" className={styles.btnSecundario} onClick={cargarLeads} style={{ padding: '.3rem .7rem', fontSize: '.78rem' }}>
-                  Reintentar
-                </button>
+              <div className={styles.kEmpty} role="alert">
+                <div style={{ fontSize: 'var(--k-fs-xl)', marginBottom: 'var(--k-space-2)' }} aria-hidden="true">⚠️</div>
+                <strong style={{ color: 'var(--k-color-danger)' }}>No se han podido cargar los leads</strong>
+                <div style={{ marginTop: 'var(--k-space-2)' }}><code>{leadsError}</code></div>
               </div>
             )}
+
             {!leadsLoad && !leadsError && leads !== null && leads.length === 0 && (
-              <div className={styles.analiticaBanner} style={{ margin: '1rem 0 0' }}>
-                <span className={styles.analiticaBannerIcon}>✉️</span>
-                <span>Aún no hay leads: se captan cuando un cliente deja su email tras una recomendación.</span>
+              <div className={styles.kEmpty}>
+                <div style={{ fontSize: 'var(--k-fs-2xl)', marginBottom: 'var(--k-space-2)' }} aria-hidden="true">✉️</div>
+                <strong>Aún no hay leads</strong>
+                <div style={{ marginTop: 'var(--k-space-2)' }}>
+                  Se captan cuando un cliente deja su email tras una recomendación en el kiosko.
+                </div>
               </div>
             )}
+
             {!leadsLoad && !leadsError && leads?.length > 0 && (
-              <div style={{ overflowX: 'auto', marginTop: '.75rem' }}>
-                <table className={styles.rendTable}>
+              <div className={styles.leadsTableWrap}>
+                <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th className={styles.rendThNombre}>Email</th>
-                      <th className={styles.rendThNum}>Fuente</th>
-                      <th className={styles.rendThNum}>Preferencias</th>
-                      <th className={styles.rendThNum}>Vinos</th>
-                      <th className={styles.rendThNum} title="Fecha en que el cliente acepto el consentimiento RGPD">Consent.</th>
-                      <th className={styles.rendThNum}>Fecha</th>
-                      <th className={styles.rendThNum}></th>
+                      <th style={{ minWidth: 220 }}>Email</th>
+                      <th style={{ width: 120 }}>Fuente</th>
+                      <th style={{ width: 200 }}>Preferencias</th>
+                      <th style={{ width: 220 }}>Vinos</th>
+                      <th style={{ width: 140 }} title="Estado del consentimiento RGPD">Consent.</th>
+                      <th className={styles.thRight} style={{ width: 110 }}>Fecha</th>
+                      <th style={{ width: 56 }}><span className={styles.srOnly}>Eliminar</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4578,24 +4589,25 @@ export default function AdminKioskoPage() {
                       const vinos = (l.vinos_recomendados || []).map(v => v.nombre).join(', ')
                       const prefStr = [p.ocasion, p.estilo, p.presupuesto ? `${p.presupuesto}€` : '', p.consulta].filter(Boolean).join(' · ')
                       return (
-                        <tr key={l.id} className={styles.rendRow}>
-                          <td className={styles.rendTdNombre}><span className={styles.rendVinoNombre}>{l.email}</span></td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem' }}>{l.source}</td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 160 }}>{prefStr || '—'}</td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 180 }}>{vinos || '—'}</td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }} title={l.consentimiento_at ? `Aceptado el ${new Date(l.consentimiento_at).toLocaleString('es-ES')}` : 'No hay fecha de aceptación guardada para este lead'}>
+                        <tr key={l.id}>
+                          <td><strong style={{ fontWeight: 'var(--k-fw-bold)' }}>{l.email}</strong></td>
+                          <td style={{ color: 'var(--k-color-ink-2)' }}>{l.source}</td>
+                          <td style={{ color: 'var(--k-color-ink-2)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={prefStr}>{prefStr || '—'}</td>
+                          <td style={{ color: 'var(--k-color-ink-2)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={vinos}>{vinos || '—'}</td>
+                          <td title={l.consentimiento_at ? `Aceptado el ${new Date(l.consentimiento_at).toLocaleString('es-ES')}` : 'No hay fecha de aceptación guardada para este lead'}>
                             {l.consentimiento_at
-                              ? <span style={{ color: 'var(--k-color-ok)' }} aria-label="Consentimiento registrado">✔</span>
-                              : <span style={{ color: 'var(--k-color-warn)', fontStyle: 'italic' }} aria-label="Sin consentimiento registrado">Sin registrar</span>}
+                              ? <span className={`${styles.kBadge} ${styles.kBadgeOk}`} aria-label="Consentimiento registrado">Registrado</span>
+                              : <span className={`${styles.kBadge} ${styles.kBadgeWarn}`} aria-label="Sin consentimiento registrado">Sin registrar</span>}
                           </td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }}>
+                          <td className={styles.tdRight} style={{ whiteSpace: 'nowrap' }}>
                             {new Date(l.created_at).toLocaleDateString('es-ES')}
                           </td>
-                          <td className={styles.rendTdNum}>
+                          <td>
                             <button
                               type="button"
                               onClick={() => borrarLead(l.id)}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--k-color-danger)', fontSize: '.72rem', padding: '2px 6px' }}
+                              className={styles.leadsDelete}
+                              aria-label={`Eliminar lead ${l.email} (RGPD)`}
                               title="Eliminar (RGPD)"
                             >
                               ×
@@ -4606,7 +4618,7 @@ export default function AdminKioskoPage() {
                     })}
                   </tbody>
                 </table>
-                <p style={{ margin: '.75rem 0 0', fontSize: '.72rem', color: 'var(--k-color-muted-2)' }}>
+                <p className={styles.leadsFoot}>
                   Los emails se eliminan permanentemente al hacer clic en × (derecho de supresión RGPD).
                 </p>
               </div>
@@ -4634,7 +4646,7 @@ export default function AdminKioskoPage() {
           Productos importados de Square que no son vinos. Configura qué aparece en la cesta regalo y sus atributos.
         </p>
 
-        <div className={styles.toolbar}>
+        <div ref={toolbarStickyRef} className={styles.toolbar}>
           <input
             className={styles.busqueda}
             type="search"
@@ -4688,15 +4700,15 @@ export default function AdminKioskoPage() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th className={styles.thFoto}>Foto</th>
-                  <th>Nombre</th>
-                  <th>PVP</th>
-                  <th title="Categoría detectada automáticamente por el nombre. Selecciona '→ Vinos' para mover al catálogo principal.">Categoría</th>
-                  <th title="¿Aparece en la cesta regalo? Auto = detectado por nombre">En cesta</th>
-                  <th title="¿Es apto para veganos?">Vegano</th>
-                  <th title="¿Contiene alcohol?">Alcohol</th>
-                  <th title="¿Es sin gluten?">Sin gluten</th>
-                  <th>Stock</th>
+                  <th className={styles.thFoto} style={{ width: 56 }}>Foto</th>
+                  <th style={{ minWidth: 220 }}>Nombre</th>
+                  <th className={styles.thRight} style={{ width: 96 }}>PVP</th>
+                  <th style={{ width: 170 }} title="Categoría detectada automáticamente por el nombre. Selecciona '→ Vinos' para mover al catálogo principal.">Categoría</th>
+                  <th style={{ width: 110 }} title="¿Aparece en la cesta regalo? Auto = detectado por nombre">En cesta</th>
+                  <th style={{ width: 110 }} title="¿Es apto para veganos?">Vegano</th>
+                  <th style={{ width: 110 }} title="¿Contiene alcohol?">Alcohol</th>
+                  <th style={{ width: 110 }} title="¿Es sin gluten?">Sin gluten</th>
+                  <th className={styles.thRight} style={{ width: 80 }}>Stock</th>
                 </tr>
               </thead>
               <tbody>
@@ -4723,7 +4735,7 @@ export default function AdminKioskoPage() {
                         <strong className={styles.tdTrunc} style={{ maxWidth: 200 }}>{v.nombre}</strong>
                         {v.categoria === 'carta' && <span style={{ marginLeft: 6, fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--k-color-accent)', border: '1px solid #c9a96e55', borderRadius: 4, padding: '1px 5px' }}>Carta</span>}
                       </td>
-                      <td>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : <span className={styles.dash}>—</span>}</td>
+                      <td className={styles.tdRight}>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : <span className={styles.dash}>—</span>}</td>
                       <td>
                         <select
                           className={styles.otrosCatSelect}
@@ -4797,7 +4809,7 @@ export default function AdminKioskoPage() {
                         </select>
                       </td>
 
-                      <td>{v.stock ?? <span className={styles.dash}>—</span>}</td>
+                      <td className={styles.tdRight}>{v.stock ?? <span className={styles.dash}>—</span>}</td>
                     </tr>
                   )
                 })}
@@ -4998,7 +5010,7 @@ export default function AdminKioskoPage() {
         )}
       </section>
 
-      <div ref={vinosToolbarRef} className={styles.toolbar}>
+      <div ref={toolbarStickyRef} className={styles.toolbar}>
         <input
           className={styles.busqueda}
           type="search"
