@@ -1276,6 +1276,11 @@ export default function AdminKioskoPage() {
   const [batchUndoRunning, setBatchUndoRunning] = useState(false)
   // F3 B0.3: modal inline para 'Min. stock' y 'Ubicacion' (sustituye window.prompt).
   const [batchInput, setBatchInput] = useState(null) // { campo, valor, reemplazar? }
+  // F3 B1 (P1-3): catálogo de ubicaciones. Si la tabla aún no existe,
+  // ubicacionesPending = true y la UI se degrada al input de texto libre.
+  const [ubicaciones, setUbicaciones] = useState([])
+  const [ubicacionesPending, setUbicacionesPending] = useState(false)
+  const [ubicacionesError, setUbicacionesError] = useState('')
 
   const [filtroDestacado, setFiltroDestacado] = useState('todos')
 
@@ -1404,6 +1409,12 @@ export default function AdminKioskoPage() {
       if (r3.ok) { const ls = await r3.json(); setLastSync(ls) }
       setTienda({ ...meta.tienda, _token: session.access_token })
       setVinos(dv.vinos || [])
+      // F3 B1: carga del catálogo de ubicaciones en paralelo con el resto.
+      // Falla silenciosa (degrada a texto libre) si todavía no existe la tabla.
+      fetch(`/api/kiosko/${slug}/admin/ubicaciones`, { headers: requestHeaders })
+        .then(r => r.json().catch(() => ({})))
+        .then(d => { setUbicaciones(d?.ubicaciones || []); setUbicacionesPending(!!d?.pending) })
+        .catch(() => {})
     } catch (e) { setError(e.message) }
     finally     { setCargando(false)  }
   }
@@ -2369,6 +2380,50 @@ export default function AdminKioskoPage() {
   function accionMasiva(campo, valor) { abrirBatchDialog(campo, valor) }
   function eliminarMasivo()            { abrirBatchDialog('eliminar', true) }
 
+  // F3 B1: CRUD mínimo de kiosko_ubicaciones con degradación.
+  async function cargarUbicaciones() {
+    setUbicacionesError('')
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/admin/ubicaciones`, { headers: authHeaders })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setUbicacionesError(data.error || `HTTP ${res.status}`); return }
+      setUbicaciones(data.ubicaciones || [])
+      setUbicacionesPending(!!data.pending)
+    } catch (e) { setUbicacionesError(e?.message || String(e)) }
+  }
+  async function crearUbicacion(nombre) {
+    const n = String(nombre || '').trim()
+    if (!n) return
+    const res = await fetch(`/api/kiosko/${slug}/admin/ubicaciones`, {
+      method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: n }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { setUbicacionesError(data.error || `HTTP ${res.status}`); return }
+    setUbicaciones(prev => [...prev, data.ubicacion].sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre)))
+  }
+  async function patchUbicacion(id, patch) {
+    const res = await fetch(`/api/kiosko/${slug}/admin/ubicaciones`, {
+      method: 'PATCH', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...patch }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { setUbicacionesError(data.error || `HTTP ${res.status}`); return }
+    setUbicaciones(prev => prev.map(u => u.id === id ? data.ubicacion : u))
+  }
+  async function borrarUbicacion(id) {
+    if (!confirm('¿Eliminar esta ubicación del catálogo? No modifica los vinos que ya la tengan asignada como texto.')) return
+    const res = await fetch(`/api/kiosko/${slug}/admin/ubicaciones?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE', headers: authHeaders,
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setUbicacionesError(data.error || `HTTP ${res.status}`)
+      return
+    }
+    setUbicaciones(prev => prev.filter(u => u.id !== id))
+  }
+
   async function exportarCSV() {
     try {
       const res = await fetch(`/api/kiosko/${slug}/admin/exportar`, { headers: authHeaders })
@@ -2663,6 +2718,71 @@ export default function AdminKioskoPage() {
       {/* Ajustes */}
       {tab === 'ajustes' && tienda && (
         <AjustesTab slug={slug} tienda={tienda} onSaved={cargar} esAdmin={esAdminUsuario} />
+      )}
+      {/* F3 B1: CRUD mínimo del catálogo de ubicaciones. Se muestra en Ajustes
+          debajo del formulario principal. Si la tabla no existe, aviso con el
+          nombre del SQL a aplicar. Compat total con el texto libre existente. */}
+      {tab === 'ajustes' && tienda && !hideSensitive && (
+        <section className={styles.ajustesSection} style={{ padding: '1rem 1.75rem 2rem', maxWidth: 820 }}>
+          <h3 style={{ margin: '0 0 .35rem', fontSize: '1rem' }}>Ubicaciones de la tienda</h3>
+          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: '#666' }}>
+            Catálogo para sugerir en la columna &quot;Estantería&quot; de los vinos.
+            Añadir aquí no cambia nada en los vinos existentes; solo rellena el
+            autocompletado al escribir en la ficha o en la acción en lote.
+          </p>
+          {ubicacionesPending && (
+            <div className={styles.analiticaBanner} style={{ marginBottom: '1rem' }}>
+              <span className={styles.analiticaBannerIcon}>SQL</span>
+              <span>
+                Catálogo aún no activado. Aplica <code>supabase/kiosko_ubicaciones.sql</code> y
+                opcionalmente <code>supabase/kiosko_ubicaciones_import.sql</code> para poblar con
+                las ubicaciones existentes.
+              </span>
+            </div>
+          )}
+          {ubicacionesError && (
+            <div className={styles.analiticaBanner} style={{ marginBottom: '1rem', background: '#fdf0f0' }}>
+              <span className={styles.analiticaBannerIcon}>⚠️</span>
+              <span>Error: <code>{ubicacionesError}</code></span>
+              <button type="button" className={styles.btnSecundario} style={{ marginLeft: 'auto', padding: '.3rem .7rem', fontSize: '.78rem' }} onClick={cargarUbicaciones}>Reintentar</button>
+            </div>
+          )}
+          {!ubicacionesPending && (
+            <>
+              <form
+                onSubmit={e => { e.preventDefault(); const fd = new FormData(e.currentTarget); const n = String(fd.get('nombre') || ''); if (n.trim()) { crearUbicacion(n); e.currentTarget.reset() } }}
+                style={{ display: 'flex', gap: '.5rem', marginBottom: '.8rem' }}
+              >
+                <input name="nombre" type="text" placeholder="Nueva ubicación (p. ej. Pasillo B3)" maxLength={80}
+                  style={{ flex: 1, padding: '.5rem .7rem', fontSize: '.88rem', border: '1px solid #ddd', borderRadius: 6 }} />
+                <button type="submit" className={styles.btnPrimario} style={{ padding: '.4rem .9rem', fontSize: '.82rem' }}>+ Añadir</button>
+              </form>
+              <div style={{ border: '1px solid #ebe6dc', borderRadius: 8, maxHeight: 260, overflowY: 'auto' }}>
+                {ubicaciones.length === 0 && (
+                  <p style={{ margin: 0, padding: '1rem', color: '#999', fontSize: '.82rem' }}>
+                    Aún no hay ubicaciones en el catálogo.
+                  </p>
+                )}
+                {ubicaciones.map((u, i) => (
+                  <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', padding: '.45rem .7rem', borderBottom: i < ubicaciones.length - 1 ? '1px solid #f1ede5' : 'none' }}>
+                    <input type="text" value={u.nombre}
+                      onChange={e => setUbicaciones(prev => prev.map(x => x.id === u.id ? { ...x, nombre: e.target.value } : x))}
+                      onBlur={e => { const v = e.target.value.trim(); if (v && v !== u.nombre) patchUbicacion(u.id, { nombre: v }) }}
+                      style={{ flex: 1, padding: '.35rem .55rem', fontSize: '.85rem', border: '1px solid transparent', borderRadius: 4, background: 'transparent' }}
+                      aria-label={`Nombre de la ubicación ${u.nombre}`}
+                    />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.75rem', color: '#555' }}>
+                      <input type="checkbox" checked={u.activa} onChange={e => patchUbicacion(u.id, { activa: e.target.checked })} />
+                      Activa
+                    </label>
+                    <button type="button" onClick={() => borrarUbicacion(u.id)} aria-label={`Eliminar ubicación ${u.nombre}`}
+                      style={{ background: 'none', border: 'none', color: '#c44', cursor: 'pointer', fontSize: '.95rem' }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
       )}
 
       {/* Pedidos de mostrador */}
@@ -5127,7 +5247,18 @@ export default function AdminKioskoPage() {
                   className={styles.inlineInput}
                   style={{ width: '100%', padding: '.55rem .7rem', fontSize: '.9rem' }}
                   aria-label={campo === 'stock_minimo' ? 'Stock mínimo' : 'Ubicación'}
+                  list={campo === 'ubicacion' ? 'kiosko-ubicaciones-list-batch' : undefined}
                 />
+                {campo === 'ubicacion' && ubicaciones.length > 0 && (
+                  <datalist id="kiosko-ubicaciones-list-batch">
+                    {ubicaciones.filter(u => u.activa).map(u => <option key={u.id} value={u.nombre} />)}
+                  </datalist>
+                )}
+                {campo === 'ubicacion' && ubicacionesPending && (
+                  <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: '#888' }}>
+                    Catálogo de ubicaciones aún no activado · pendiente de aplicar <code>supabase/kiosko_ubicaciones.sql</code>.
+                  </p>
+                )}
                 {campo === 'ubicacion' && (
                   <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', margin: '.75rem 0 0', fontSize: '.82rem', color: '#444' }}>
                     <input
@@ -5543,7 +5674,17 @@ export default function AdminKioskoPage() {
                   </div>}
                   {!hideSensitive && <div className={styles.formField}>
                     <label>Estantería</label>
-                    <input value={form.ubicacion_estanteria} onChange={e => cambiar('ubicacion_estanteria', e.target.value)} placeholder="Pasillo B3…" />
+                    <input
+                      value={form.ubicacion_estanteria}
+                      onChange={e => cambiar('ubicacion_estanteria', e.target.value)}
+                      placeholder="Pasillo B3…"
+                      list="kiosko-ubicaciones-list"
+                    />
+                    {ubicaciones.length > 0 && (
+                      <datalist id="kiosko-ubicaciones-list">
+                        {ubicaciones.filter(u => u.activa).map(u => <option key={u.id} value={u.nombre} />)}
+                      </datalist>
+                    )}
                   </div>}
                   <div className={styles.formField}>
                     <label>Puntuación</label>
