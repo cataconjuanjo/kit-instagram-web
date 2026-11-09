@@ -623,16 +623,22 @@
 }
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
+/* F5+ · contenedor centrado, max 1200 px. El scroll horizontal queda dentro
+   del propio wrap, no en la página. Padding-bottom extra (88 px) cuando
+   hay selección se añade inline desde JSX para dejar sitio a la barra
+   flotante y que no tape la última fila. */
 .tableWrap {
   overflow-x: auto;
   overflow-y: visible;
   padding: 1.25rem 1.75rem 3rem;
-  /* P3-1: alto maximo para activar cabecera sticky al scrollear */
+  max-width: 1200px;
+  margin: 0 auto;
   max-height: calc(100vh - 220px);
 }
 
 .table {
   width: 100%;
+  table-layout: fixed;              /* F5+ anchos predecibles por columna */
   border-collapse: separate;        /* separate -> sticky th funciona sin fugas de borde */
   border-spacing: 0;
   font-size: .84rem;
@@ -4276,5 +4282,96 @@
 
 /* En 390 ya se usa .mobileCatalogList (CSS existente); la tabla queda
    oculta por el breakpoint mobile previo. Nada que añadir aquí. */
+
+/* ── F5+ · Ajuste fino de columnas (table-layout: fixed) ────────────────── */
+/* Checkbox */
+.table .thCheck, .table .tdCheck { width: 40px; }
+/* Foto */
+.table .thFoto, .table .tdFoto   { width: 56px; }
+/* Resto por posición: las columnas son dinámicas (se ocultan desde el menú
+   "Columnas") así que fijamos las fijas por clase y las dinámicas por
+   data-attr en el <th> / <td> (se simula con nth-child selectivo no es
+   fiable con condicionales; mejor: aplicamos anchos específicos a las
+   clases ya existentes). */
+.table .thSortable, .table th { }
+
+/* Anchos finos para el preset por defecto (Foto · Nombre · Tipo · PVP ·
+   Margen · Stock · Estado · Acciones). Si el usuario activa columnas
+   opcionales, table-layout reparte el sobrante conservando las fijas. */
+.table col-tipo,
+.table .colTipo       { width: 96px; }
+/* En vez de <col>, usamos data-col en los <th>/<td> para marcar ancho.
+   Más simple: añadimos width via atributo style inline en los cambios
+   JSX. Aquí solo definimos las clases que SÍ existen ya. */
+
+/* Celda Nombre flexible — mínimo 260 px (sin max para que absorba
+   anchura cuando sobran columnas) */
+.table .tdNombre       { min-width: 260px; }
+
+/* Columnas numéricas: alineación derecha también en cabecera */
+.table th.thNum,
+.table td.tdNum,
+.table th.thRight,
+.table td.tdRight { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── F5+ · Avisos de fila como puntos de color 8 px ─────────────────────── */
+.qualityDots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: var(--k-space-2);
+  vertical-align: middle;
+}
+.qualityDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+  display: inline-block;
+}
+.qualityDotMore {
+  font-size: var(--k-fs-xs);
+  color: var(--k-color-muted);
+  margin-left: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── F5+ · Menú "Columnas": items 32 px, max-height 320 + Restablecer fijo ─ */
+.columnasMenu {
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  max-height: 320px;
+}
+.columnasMenuScroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--k-space-1) 0;
+}
+.columnasMenuFooter {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--k-color-border);
+  padding: var(--k-space-2);
+  background: var(--k-color-surface);
+}
+/* Items compactos de 32 px */
+.columnasMenuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-2);
+  padding: 4px 10px;
+  font-size: var(--k-fs-sm);
+  color: var(--k-color-ink);
+  cursor: pointer;
+  border-radius: var(--k-radius-sm);
+  min-height: 32px;
+}
+.columnasMenuItem:hover { background: var(--k-color-soft); }
+.columnasMenuItem input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--k-color-accent);
+}
+
 
 

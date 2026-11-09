@@ -2584,12 +2584,27 @@ export default function AdminKioskoPage() {
   function renderQualityBadges(v, max = 3) {
     const issues = qualityIssuesForVino(v)
     if (!issues.length) return null
+    // F5+: 'sin_ubicacion' se retira de la fila (queda solo en el checklist).
+    // Los demás avisos pasan a puntos de color (8 px) con tooltip.
+    const visibles = issues.filter(i => i.id !== 'sin_ubicacion')
+    if (!visibles.length) return null
+    const colorByKind = { core: 'var(--k-color-warn)', optional: 'var(--k-color-accent)' }
     return (
-      <span className={styles.qualityBadges}>
-        {issues.slice(0, max).map(issue => (
-          <span key={issue.id}>{issue.label}</span>
+      <span className={styles.qualityDots} aria-label={`Avisos: ${visibles.map(i => i.label).join(', ')}`}>
+        {visibles.slice(0, max).map(issue => (
+          <span
+            key={issue.id}
+            className={styles.qualityDot}
+            style={{ background: colorByKind[issue.kind] || 'var(--k-color-warn)' }}
+            title={issue.label}
+            aria-hidden="true"
+          />
         ))}
-        {issues.length > max && <span>+{issues.length - max}</span>}
+        {visibles.length > max && (
+          <span className={styles.qualityDotMore} title={`${visibles.length - max} aviso${visibles.length - max === 1 ? '' : 's'} más`}>
+            +{visibles.length - max}
+          </span>
+        )}
       </span>
     )
   }
@@ -5041,18 +5056,21 @@ export default function AdminKioskoPage() {
             Columnas
           </button>
           {columnasMenuOpen && (
-            <div role="menu" className={styles.filtrosPanel} style={{ minWidth: 220 }}>
-              {COLUMNAS_TODAS.filter(c => !c.fijo).filter(c => !c.sensible || !hideSensitive).map(c => (
-                <label key={c.id} className={styles.columnasMenuItem}>
-                  <input
-                    type="checkbox"
-                    checked={colVisible(c.id)}
-                    onChange={() => toggleColumna(c.id)}
-                  />
-                  <span>{c.label}</span>
-                </label>
-              ))}
-              <div style={{ borderTop: '1px solid var(--k-color-border)', marginTop: 'var(--k-space-2)', paddingTop: 'var(--k-space-2)' }}>
+            <div role="menu" className={`${styles.filtrosPanel} ${styles.columnasMenu}`}>
+              {/* Scroll interno; el footer con "Restablecer" queda siempre visible */}
+              <div className={styles.columnasMenuScroll}>
+                {COLUMNAS_TODAS.filter(c => !c.fijo).filter(c => !c.sensible || !hideSensitive).map(c => (
+                  <label key={c.id} className={styles.columnasMenuItem}>
+                    <input
+                      type="checkbox"
+                      checked={colVisible(c.id)}
+                      onChange={() => toggleColumna(c.id)}
+                    />
+                    <span>{c.label}</span>
+                  </label>
+                ))}
+              </div>
+              <div className={styles.columnasMenuFooter}>
                 <button
                   type="button"
                   className={styles.kBtnGhost}
@@ -5073,7 +5091,8 @@ export default function AdminKioskoPage() {
       </div>
 
       {/* Tabla */}
-      <div className={styles.tableWrap}>
+      {/* F5+ · padding-bottom 88 px cuando hay seleccion para no tapar la ultima fila con la barra flotante */}
+      <div className={styles.tableWrap} style={seleccionados.size > 0 ? { paddingBottom: 88 } : undefined}>
         <table className={styles.table}>
           <thead>
             <tr>
@@ -5084,21 +5103,21 @@ export default function AdminKioskoPage() {
                   onChange={toggleSeleccionTodos}
                 />
               </th>
-              {colVisible('foto')          && <th className={styles.thFoto}>Foto</th>}
-              {colVisible('nombre_bodega') && <th className={styles.thSortable} onClick={() => sortHead('nombre')}>Nombre{sortArrow('nombre')}</th>}
-              {colVisible('tipo')          && <th>Tipo</th>}
+              {colVisible('foto')          && <th className={styles.thFoto} style={{ width: 56 }}>Foto</th>}
+              {colVisible('nombre_bodega') && <th className={styles.thSortable} style={{ minWidth: 260 }} onClick={() => sortHead('nombre')}>Nombre{sortArrow('nombre')}</th>}
+              {colVisible('tipo')          && <th style={{ width: 96 }}>Tipo</th>}
               {colVisible('region')        && <th className={styles.thSortable} onClick={() => sortHead('region')}>D.O.{sortArrow('region')}</th>}
               {colVisible('uva')           && <th className={styles.thSortable} onClick={() => sortHead('uva')}>Uva{sortArrow('uva')}</th>}
               {colVisible('anada')         && <th className={styles.thSortable} onClick={() => sortHead('anada')}>Añada{sortArrow('anada')}</th>}
-              {colVisible('pvp')           && <th className={styles.thSortable} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>}
-              {!hideSensitive && colVisible('coste')  && <th className={styles.thSortable} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>}
-              {!hideSensitive && colVisible('margen') && <th className={styles.thSortable} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>}
-              {colVisible('oferta')        && <th className={styles.thSortable} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>}
-              {!hideSensitive && colVisible('stock')        && <th className={styles.thSortable} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>}
-              {!hideSensitive && colVisible('stock_minimo') && <th title="Stock mínimo — alerta si stock ≤ este valor">Mín.</th>}
+              {colVisible('pvp')           && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 96 }} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>}
+              {!hideSensitive && colVisible('coste')  && <th className={`${styles.thSortable} ${styles.thRight}`} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>}
+              {!hideSensitive && colVisible('margen') && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 80 }} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>}
+              {colVisible('oferta')        && <th className={`${styles.thSortable} ${styles.thRight}`} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>}
+              {!hideSensitive && colVisible('stock')        && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 72 }} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>}
+              {!hideSensitive && colVisible('stock_minimo') && <th className={styles.thRight} title="Stock mínimo — alerta si stock ≤ este valor">Mín.</th>}
               {!hideSensitive && colVisible('estanteria')   && <th>Estantería</th>}
-              {colVisible('estado')        && <th className={styles.thCenter}>Estado</th>}
-              {colVisible('acciones')      && <th className={styles.thCenter}></th>}
+              {colVisible('estado')        && <th className={styles.thCenter} style={{ width: 110 }}>Estado</th>}
+              {colVisible('acciones')      && <th className={styles.thCenter} style={{ width: 120 }}></th>}
             </tr>
           </thead>
           <tbody>
@@ -5192,7 +5211,7 @@ export default function AdminKioskoPage() {
                 {/* PVP inline */}
                 {colVisible('pvp') && (
                 <td
-                  className={styles.tdEditable}
+                  className={`${styles.tdEditable} ${styles.tdRight}`}
                   onClick={e => startInline(v.id, 'precio_pvp', v.precio_pvp, e)}
                 >
                   {inlineEdit?.id === v.id && inlineEdit.campo === 'precio_pvp' ? (
@@ -5216,7 +5235,7 @@ export default function AdminKioskoPage() {
                 )}
 
                 {/* Coste inline */}
-                {!hideSensitive && colVisible('coste') && <td className={styles.tdEditable} onClick={e => startInline(v.id, 'precio_coste', v.precio_coste, e)}>
+                {!hideSensitive && colVisible('coste') && <td className={`${styles.tdEditable} ${styles.tdRight}`} onClick={e => startInline(v.id, 'precio_coste', v.precio_coste, e)}>
                   {inlineEdit?.id === v.id && inlineEdit.campo === 'precio_coste' ? (
                     <input
                       className={styles.inlineInput}
@@ -5237,7 +5256,7 @@ export default function AdminKioskoPage() {
                 </td>}
 
                 {/* Margen */}
-                {!hideSensitive && colVisible('margen') && <td>
+                {!hideSensitive && colVisible('margen') && <td className={styles.tdRight}>
                   {Number(v.precio_pvp) > 0 && Number(v.precio_coste) > 0
                     ? (() => { const m = Math.round(((Number(v.precio_pvp) - Number(v.precio_coste)) / Number(v.precio_pvp)) * 100); return <span className={`${styles.margenBadge} ${m >= 40 ? styles.margenHigh : m >= 25 ? styles.margenMid : styles.margenLow}`}>{m}%</span> })()
                     : <em className={styles.dash}>—</em>}
@@ -5246,7 +5265,7 @@ export default function AdminKioskoPage() {
                 {/* Oferta inline */}
                 {colVisible('oferta') && (
                 <td
-                  className={styles.tdEditable}
+                  className={`${styles.tdEditable} ${styles.tdRight}`}
                   onClick={e => startInline(v.id, 'precio_oferta', v.precio_oferta, e)}
                 >
                   {inlineEdit?.id === v.id && inlineEdit.campo === 'precio_oferta' ? (
@@ -5273,7 +5292,7 @@ export default function AdminKioskoPage() {
 
                 {/* Stock inline */}
                 {!hideSensitive && colVisible('stock') && <td
-                  className={`${styles.tdEditable} ${v.stock === 0 ? styles.stockCero : ''}`}
+                  className={`${styles.tdEditable} ${styles.tdRight} ${v.stock === 0 ? styles.stockCero : ''}`}
                   onClick={stockPending?.id === v.id ? undefined : e => startInline(v.id, 'stock', v.stock, e)}
                 >
                   {stockPending?.id === v.id ? (
@@ -5308,7 +5327,7 @@ export default function AdminKioskoPage() {
 
                 {/* Stock mínimo inline */}
                 {!hideSensitive && colVisible('stock_minimo') && <td
-                  className={`${styles.tdEditable} ${Number(v.stock ?? 0) <= Number(v.stock_minimo ?? 0) && Number(v.stock_minimo ?? 0) > 0 ? styles.stockBajoMinimo : ''}`}
+                  className={`${styles.tdEditable} ${styles.tdRight} ${Number(v.stock ?? 0) <= Number(v.stock_minimo ?? 0) && Number(v.stock_minimo ?? 0) > 0 ? styles.stockBajoMinimo : ''}`}
                   onClick={e => startInline(v.id, 'stock_minimo', v.stock_minimo ?? 0, e)}
                 >
                   {inlineEdit?.id === v.id && inlineEdit.campo === 'stock_minimo' ? (
