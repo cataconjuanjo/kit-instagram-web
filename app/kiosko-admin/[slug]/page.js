@@ -1316,8 +1316,14 @@ export default function AdminKioskoPage() {
     { id: 'estado',        label: 'Estado',         fijo: true },
     { id: 'acciones',      label: 'Acciones',       fijo: true },
   ]
-  const COLUMNAS_DEFAULT = ['foto', 'nombre_bodega', 'tipo', 'pvp', 'margen', 'stock', 'estado', 'acciones']
-  const LS_COLUMNAS_KEY = 'kiosko_admin_columnas_vinos_v1'
+  // F6 · default vuelve al set completo. Se cambia la clave a _v2 para
+  // ignorar valores guardados por la versión anterior (que ocultaba columnas).
+  const COLUMNAS_DEFAULT = [
+    'foto', 'nombre_bodega', 'tipo', 'region', 'uva', 'anada',
+    'pvp', 'coste', 'margen', 'oferta', 'stock', 'stock_minimo',
+    'estanteria', 'estado', 'acciones',
+  ]
+  const LS_COLUMNAS_KEY = 'kiosko_admin_columnas_vinos_v2'
   const [columnasVisibles, setColumnasVisibles] = useState(() => {
     try {
       const raw = typeof window !== 'undefined' && window.localStorage?.getItem(LS_COLUMNAS_KEY)
@@ -2743,7 +2749,7 @@ export default function AdminKioskoPage() {
   )
 
   return (
-    <div className={styles.admin}>
+    <div className={styles.admin} style={seleccionados.size > 0 ? { paddingBottom: 96 } : undefined}>
       {/* Inputs ocultos */}
       <input
         ref={fotoInputFilaRef} type="file" accept="image/jpeg,image/png,image/webp"
@@ -5091,8 +5097,7 @@ export default function AdminKioskoPage() {
       </div>
 
       {/* Tabla */}
-      {/* F5+ · padding-bottom 88 px cuando hay seleccion para no tapar la ultima fila con la barra flotante */}
-      <div className={styles.tableWrap} style={seleccionados.size > 0 ? { paddingBottom: 88 } : undefined}>
+      <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
             <tr>
@@ -5108,16 +5113,16 @@ export default function AdminKioskoPage() {
               {colVisible('tipo')          && <th style={{ width: 96 }}>Tipo</th>}
               {colVisible('region')        && <th className={styles.thSortable} onClick={() => sortHead('region')}>D.O.{sortArrow('region')}</th>}
               {colVisible('uva')           && <th className={styles.thSortable} onClick={() => sortHead('uva')}>Uva{sortArrow('uva')}</th>}
-              {colVisible('anada')         && <th className={styles.thSortable} onClick={() => sortHead('anada')}>Añada{sortArrow('anada')}</th>}
+              {colVisible('anada')         && <th className={styles.thSortable} style={{ width: 80 }} onClick={() => sortHead('anada')}>Añada{sortArrow('anada')}</th>}
               {colVisible('pvp')           && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 96 }} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>}
-              {!hideSensitive && colVisible('coste')  && <th className={`${styles.thSortable} ${styles.thRight}`} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>}
-              {!hideSensitive && colVisible('margen') && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 80 }} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>}
-              {colVisible('oferta')        && <th className={`${styles.thSortable} ${styles.thRight}`} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>}
-              {!hideSensitive && colVisible('stock')        && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 72 }} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>}
-              {!hideSensitive && colVisible('stock_minimo') && <th className={styles.thRight} title="Stock mínimo — alerta si stock ≤ este valor">Mín.</th>}
+              {!hideSensitive && colVisible('coste')  && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 96 }} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>}
+              {!hideSensitive && colVisible('margen') && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 88 }} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>}
+              {colVisible('oferta')        && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 96 }} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>}
+              {!hideSensitive && colVisible('stock')        && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 80 }} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>}
+              {!hideSensitive && colVisible('stock_minimo') && <th className={styles.thRight} style={{ width: 80 }} title="Stock mínimo — alerta si stock ≤ este valor">Mín.</th>}
               {!hideSensitive && colVisible('estanteria')   && <th>Estantería</th>}
               {colVisible('estado')        && <th className={styles.thCenter} style={{ width: 110 }}>Estado</th>}
-              {colVisible('acciones')      && <th className={styles.thCenter} style={{ width: 120 }}></th>}
+              {colVisible('acciones')      && <th className={styles.thCenter} style={{ width: 120 }}><span className={styles.srOnly}>Acciones</span></th>}
             </tr>
           </thead>
           <tbody>

@@ -66,6 +66,9 @@
 
   /* ── Transiciones ─────────────────────────────────────────────── */
   --k-transition: .12s;
+
+  /* ── Layout (F6) ──────────────────────────────────────────────── */
+  --k-toolbar-h: 56px;        /* altura visual real de la toolbar sticky */
 }
 
 /* ── Componentes del sistema (clases utilitarias canónicas) ───────────
@@ -575,14 +578,20 @@
 .modalFooter .btnSecundario:hover { background: #dedad4; }
 
 /* ── Toolbar ─────────────────────────────────────────────────────────────── */
+/* F6 · toolbar sticky top con fondo sólido. La cabecera de la tabla
+   queda pegada justo debajo usando --k-toolbar-h como offset. */
 .toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
-  gap: .75rem;
-  padding: .85rem 1.75rem;
+  gap: var(--k-space-3);
+  padding: var(--k-space-3) var(--k-space-6);
   background: var(--k-color-surface);
   border-bottom: 1px solid var(--k-color-border-strong);
   flex-wrap: wrap;
+  min-height: var(--k-toolbar-h, 56px);
 }
 
 /* F5 · búsqueda a 40 px, alineada con el resto de la toolbar */
@@ -623,43 +632,38 @@
 }
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
-/* F5+ · contenedor centrado, max 1200 px. El scroll horizontal queda dentro
-   del propio wrap, no en la página. Padding-bottom extra (88 px) cuando
-   hay selección se añade inline desde JSX para dejar sitio a la barra
-   flotante y que no tape la última fila. */
+/* F6 · contenedor a 100 % de ancho. El scroll vertical es el de la página.
+   Mantengo overflow-x: auto solo para el caso en que la tabla no quepa. */
 .tableWrap {
   overflow-x: auto;
   overflow-y: visible;
-  padding: 1.25rem 1.75rem 3rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  max-height: calc(100vh - 220px);
+  padding: var(--k-space-6) var(--k-space-6) var(--k-space-8);
 }
 
 .table {
   width: 100%;
-  table-layout: fixed;              /* F5+ anchos predecibles por columna */
-  border-collapse: separate;        /* separate -> sticky th funciona sin fugas de borde */
+  table-layout: auto;               /* F6 · auto con min-widths */
+  border-collapse: separate;        /* separate -> sticky th sin fugas de borde */
   border-spacing: 0;
-  font-size: .84rem;
+  font-size: var(--k-fs-sm);
   background: var(--k-color-surface);
-  border-radius: 12px;
+  border-radius: var(--k-radius-md);
   overflow: visible;
-  box-shadow: 0 1px 4px rgba(0,0,0,.07);
+  box-shadow: var(--k-shadow);
 }
 
 .table th {
-  /* P3-1: cabecera sticky cuando se hace scroll vertical */
+  /* F6 · sticky bajo la toolbar sticky de la página. Offset = altura toolbar. */
   position: sticky;
-  top: 0;
+  top: var(--k-toolbar-h, 56px);
   z-index: 3;
   background: var(--k-color-ink);
-  color: rgba(240,237,232,.65);
-  font-size: .7rem;
-  font-weight: 700;
-  letter-spacing: .07em;
+  color: var(--k-color-on-ink-muted);
+  font-size: var(--k-fs-xs);
+  font-weight: var(--k-fw-bold);
+  letter-spacing: var(--k-letter-upper);
   text-transform: uppercase;
-  padding: .65rem .8rem;
+  padding: 10px 12px;
   text-align: left;
   white-space: nowrap;
 }
@@ -915,10 +919,25 @@
    accesible. El menú ⋯ cubre "Destacar" y "Activar/Desactivar". */
 
 /* ── Acciones ────────────────────────────────────────────────────────────── */
+/* F6 · la celda .acciones hereda el padding, border-bottom y hover de
+   .table td; solo se añade el layout flex de su contenido. Antes el flex
+   se aplicaba al <td> sin padding inherente del .table td — ahora
+   garantizamos padding/vertical-align. */
 .acciones {
   display: flex;
-  gap: .35rem;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--k-space-1);
   white-space: nowrap;
+}
+
+/* F6 · utilidad screen-reader only (visually hidden, accesible) */
+.srOnly {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
 }
 
 .btnEdit,
@@ -4336,23 +4355,29 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── F5+ · Menú "Columnas": items 32 px, max-height 320 + Restablecer fijo ─ */
+/* ── F6 · Menú "Columnas": items 32 px, scroll SOLO si no caben;
+     footer "Restablecer" siempre visible; z-index por encima de la
+     cabecera sticky de la tabla. ────────────────────────────────────── */
 .columnasMenu {
   display: flex;
   flex-direction: column;
   min-width: 220px;
-  max-height: 320px;
+  max-height: 320px;        /* tope duro; si no se alcanza, el scroll no aparece */
+  z-index: 50;              /* > .table th (z-index 3) y > .toolbar (20) */
 }
 .columnasMenuScroll {
-  flex: 1 1 auto;
+  flex: 0 1 auto;           /* no fuerza altura; permite al contenido crecer hasta 320 */
   overflow-y: auto;
   padding: var(--k-space-1) 0;
+  min-height: 0;
 }
 .columnasMenuFooter {
   flex: 0 0 auto;
   border-top: 1px solid var(--k-color-border);
   padding: var(--k-space-2);
   background: var(--k-color-surface);
+  position: sticky;
+  bottom: 0;
 }
 /* Items compactos de 32 px */
 .columnasMenuItem {
