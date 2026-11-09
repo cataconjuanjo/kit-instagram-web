@@ -585,19 +585,22 @@
   flex-wrap: wrap;
 }
 
+/* F5 · búsqueda a 40 px, alineada con el resto de la toolbar */
 .busqueda {
   flex: 1;
   min-width: 180px;
   max-width: 360px;
+  min-height: 40px;
   border: 1px solid var(--k-color-border-strong);
-  border-radius: 8px;
-  font-size: .9rem;
-  padding: .5rem .85rem;
+  border-radius: var(--k-radius-sm);
+  font-size: var(--k-fs-sm);
+  padding: 8px 12px;
   outline: none;
-  background: var(--k-color-soft);
+  background: var(--k-color-surface);
+  transition: border-color var(--k-transition), box-shadow var(--k-transition);
 }
 
-.busqueda:focus { border-color: var(--k-color-accent); background: var(--k-color-surface); }
+.busqueda:focus { border-color: var(--k-color-accent); box-shadow: var(--k-ring); }
 
 .filtroSelect {
   border: 1px solid var(--k-color-border-strong);
@@ -2067,58 +2070,80 @@
 }
 
 /* ── Stats strip ─────────────────────────────────────────────────────────── */
+/* F5 · KPI cards unificadas: fila de tarjetas iguales con número 24 px y
+   etiqueta 12 px en mayúsculas. Los accionables (sin foto / sin coste /
+   sin stock) llevan badge de estado (Warn) y clic para filtrar. Los
+   informativos (Total, Activos, Destacados, Fichas IA) van atenuados. */
 .statsStrip {
-  display: flex;
-  gap: 0;
-  background: var(--k-color-surface);
-  border-bottom: 1px solid var(--k-color-border-strong);
-  overflow-x: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--k-space-3);
+  background: var(--k-color-bg);
+  padding: var(--k-space-4) var(--k-space-6);
+  border-bottom: 1px solid var(--k-color-border);
 }
 
 .statCard {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: .7rem 1.4rem;
-  border-right: 1px solid var(--k-color-sunken);
-  min-width: 80px;
+  align-items: flex-start;
+  gap: var(--k-space-1);
+  background: var(--k-color-surface);
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-md);
+  padding: var(--k-space-3) var(--k-space-4);
+  min-width: 0;
+  min-height: 80px;
   cursor: default;
-  transition: background .12s;
+  box-shadow: var(--k-shadow);
+  transition: border-color var(--k-transition), background var(--k-transition);
+  text-align: left;
 }
 
-.statCard:hover { background: var(--k-color-soft); }
-.statCard:last-child { border-right: none; }
+.statCard:hover { border-color: var(--k-color-border-strong); }
 
 .statNum {
-  font-size: 1.45rem;
-  font-weight: 800;
+  font-size: var(--k-fs-2xl);
+  font-weight: var(--k-fw-bold);
   color: var(--k-color-ink);
-  line-height: 1;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .statLabel {
-  font-size: .68rem;
+  font-size: var(--k-fs-xs);
   color: var(--k-color-muted);
-  letter-spacing: .04em;
+  letter-spacing: var(--k-letter-upper);
   text-transform: uppercase;
-  margin-top: .25rem;
+  font-weight: var(--k-fw-bold);
 }
 
-.statWarn .statNum { color: var(--k-color-danger); }
+.statWarn {
+  border-color: var(--k-color-danger);
+  background: var(--k-color-danger-soft);
+}
+.statWarn .statNum   { color: var(--k-color-danger); }
+.statWarn .statLabel { color: var(--k-color-danger); }
 
 .statCardClickable {
   cursor: pointer;
-  border: none;
-  background: transparent;
+  border: 1px solid var(--k-color-border);
+  background: var(--k-color-surface);
   font-family: inherit;
 }
+.statCardClickable:focus-visible { outline: none; box-shadow: var(--k-ring); border-color: var(--k-color-accent); }
 
-.statResolved .statNum { color: var(--k-color-ok); }
-.statResolved:hover { background: #f0faf3; }
+.statResolved {
+  border-color: var(--k-color-ok);
+  background: var(--k-color-ok-soft);
+}
+.statResolved .statNum   { color: var(--k-color-ok); }
+.statResolved .statLabel { color: var(--k-color-ok); }
+.statResolved:hover { border-color: var(--k-color-ok); }
 
-/* P3-2: atenuar KPIs informativos (Total / Activos / Destacados / Fichas IA)
-   para que los accionables (Sin foto, Sin PVP, Sin stock...) destaquen. */
-.statInfo .statNum  { color: var(--k-color-ink-2); font-weight: 700; }
+/* Informativos atenuados (P3-2 / F5) */
+.statInfo { background: var(--k-color-bg); border-color: var(--k-color-border); }
+.statInfo .statNum   { color: var(--k-color-ink-2); }
 .statInfo .statLabel { color: var(--k-color-muted-2); }
 
 /* ── Check progress bar ───────────────────────────────────────────────────── */
@@ -2160,18 +2185,24 @@
   transition: width .4s ease, background-color .4s;
 }
 
+/* F5 · Checklist unificado en una sola tarjeta: 5 chips en línea + barra
+   fina + % a la derecha. Ya no es un grid grande de 5 tarjetas, sino chips
+   compactos dentro de una tarjeta .kCard. */
 .catalogChecklist {
   background: var(--k-color-surface);
-  border-bottom: 1px solid var(--k-color-border-strong);
-  padding: 1rem 1.75rem 1.15rem;
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-md);
+  box-shadow: var(--k-shadow);
+  margin: var(--k-space-3) var(--k-space-6) var(--k-space-4);
+  padding: var(--k-space-4);
 }
 
 .catalogChecklistHeader {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 1.25rem;
-  margin-bottom: .85rem;
+  align-items: flex-start;
+  gap: var(--k-space-4);
+  margin-bottom: var(--k-space-3);
 }
 
 .catalogChecklistKicker {
@@ -2233,33 +2264,35 @@
   white-space: nowrap;
 }
 
+/* F5 · 5 chips en línea (no 5 tarjetas) */
 .catalogChecklistGrid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: .65rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--k-space-2);
 }
 
 .catalogCheckCard {
-  min-height: 72px;
-  display: flex;
+  min-height: 40px;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: .65rem;
+  gap: var(--k-space-2);
   border: 1px solid var(--k-color-border);
-  border-radius: 10px;
-  background: var(--k-color-soft);
+  border-radius: var(--k-radius-pill);
+  background: var(--k-color-surface);
   color: var(--k-color-ink);
-  padding: .7rem .75rem;
+  padding: 6px 12px 6px 6px;
   text-align: left;
   cursor: pointer;
-  transition: border-color .12s, background .12s, transform .12s;
+  transition: border-color var(--k-transition), background var(--k-transition);
+  font: inherit;
+  font-size: var(--k-fs-sm);
 }
 
 .catalogCheckCard:hover {
   border-color: var(--k-color-accent);
-  background: #fffdf8;
-  transform: translateY(-1px);
+  background: var(--k-color-accent-soft);
 }
+.catalogCheckCard:focus-visible { outline: none; box-shadow: var(--k-ring); border-color: var(--k-color-accent); }
 
 .catalogCheckCard:disabled {
   cursor: default;
@@ -2267,8 +2300,7 @@
 
 .catalogCheckCard:disabled:hover {
   border-color: var(--k-color-border);
-  background: var(--k-color-soft);
-  transform: none;
+  background: var(--k-color-surface);
 }
 
 .catalogCheckActive {
@@ -2297,36 +2329,36 @@
   color: var(--k-color-ok);
 }
 
+/* F5 · chip compacto: strong en línea, small oculto (el tooltip ya lo cubre) */
 .catalogCheckBody {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: .15rem;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-1);
 }
 
 .catalogCheckBody strong {
   color: var(--k-color-ink);
-  font-size: .84rem;
+  font-size: var(--k-fs-sm);
+  font-weight: var(--k-fw-bold);
   line-height: 1.2;
 }
 
-.catalogCheckBody small {
-  color: var(--k-color-muted);
-  font-size: .7rem;
-  line-height: 1.3;
-}
+.catalogCheckBody small { display: none; }
 
 .catalogCheckCount {
-  min-width: 28px;
-  height: 28px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: var(--k-radius-pill);
   background: var(--k-color-sunken);
   color: var(--k-color-ink);
-  font-size: .82rem;
-  font-weight: 900;
+  font-size: var(--k-fs-xs);
+  font-weight: var(--k-fw-bold);
+  font-variant-numeric: tabular-nums;
 }
 
 .catalogCheckWarn .catalogCheckCount {
@@ -2337,25 +2369,25 @@
 /* P3-3: icono visual (✓/!/·) y borde por gravedad del criterio.
    core = imprescindible (naranja fuerte), optional = opcional (amarillo suave),
    ok = sin incidencias (verde). */
+/* F5 · icono compacto dentro del chip */
 .catalogCheckIcon {
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: .9rem;
-  font-weight: 900;
+  font-size: var(--k-fs-xs);
+  font-weight: var(--k-fw-bold);
   color: var(--k-color-surface);
 }
-.catalogCheckOk { border-left: 3px solid var(--k-color-ok); }
-.catalogCheckOk .catalogCheckIcon { background: var(--k-color-ok); }
-.catalogCheckWarn { border-left: 3px solid var(--k-color-warn); }
-.catalogCheckWarn .catalogCheckIcon { background: var(--k-color-warn); }
-.catalogCheckAviso { border-left: 3px solid var(--k-color-accent); }
-.catalogCheckAviso .catalogCheckIcon { background: var(--k-color-accent); color: #3a2a10; }
-.catalogCheckAviso .catalogCheckCount { background: #fdf6e8; color: var(--k-color-accent-ink); }
+/* F5 · color del icono sigue por gravedad; el borde del chip no cambia
+   (el color va solo en el icono y en el count, para no romper la línea). */
+.catalogCheckOk    .catalogCheckIcon { background: var(--k-color-ok); }
+.catalogCheckWarn  .catalogCheckIcon { background: var(--k-color-warn); }
+.catalogCheckAviso .catalogCheckIcon { background: var(--k-color-accent); color: var(--k-color-accent-ink); }
+.catalogCheckAviso .catalogCheckCount { background: var(--k-color-accent-soft); color: var(--k-color-accent-ink); }
 
 .catalogChecklistFilter {
   margin-top: .75rem;
@@ -2697,44 +2729,66 @@
 }
 .rowSeleccionado { background: #f0f4ff !important; }
 
+/* F5 · Barra flotante de lote: marino, centrada abajo, con sombra grande */
 .bulkBar {
-  position: sticky;
-  bottom: 0;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: var(--k-space-4);
   z-index: 50;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: .5rem;
-  padding: .75rem 1.75rem;
+  gap: var(--k-space-2);
+  padding: var(--k-space-2) var(--k-space-4);
   background: var(--k-color-ink);
-  color: var(--k-color-sunken);
-  box-shadow: 0 -4px 20px rgba(0,0,0,.18);
-  flex-wrap: wrap;
+  color: var(--k-color-on-ink);
+  box-shadow: var(--k-shadow-lg);
+  border: 1px solid rgba(201,169,110,.3);
+  border-radius: var(--k-radius-md);
+  max-width: calc(100vw - 2rem);
+  overflow-x: auto;
 }
-.bulkCount { font-size: .82rem; font-weight: 700; margin-right: .5rem; }
+.bulkCount {
+  font-size: var(--k-fs-xs);
+  font-weight: var(--k-fw-bold);
+  color: var(--k-color-on-ink);
+  margin-right: var(--k-space-2);
+  white-space: nowrap;
+}
 .bulkBtn {
-  padding: .35rem .85rem;
-  border: 1px solid rgba(255,255,255,.25);
-  background: rgba(255,255,255,.1);
-  color: var(--k-color-sunken);
-  border-radius: 6px;
-  font-size: .78rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-1);
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--k-color-on-ink);
+  border-radius: var(--k-radius-sm);
+  font: inherit;
+  font-size: var(--k-fs-xs);
+  font-weight: var(--k-fw-bold);
   cursor: pointer;
-  transition: background .12s;
+  transition: background var(--k-transition), border-color var(--k-transition);
+  white-space: nowrap;
 }
-.bulkBtn:hover { background: rgba(255,255,255,.2); }
-.bulkBtnDanger { border-color: var(--k-color-danger); color: #f08080; }
+.bulkBtn:hover  { background: rgba(255,255,255,.08); }
+.bulkBtn:focus-visible { outline: none; box-shadow: var(--k-ring); }
+.bulkBtnDanger  { color: #e8a0a0; border-color: rgba(204,68,68,.4); }
 .bulkBtnDanger:hover { background: rgba(204,68,68,.25); }
 .bulkBtnClose {
-  margin-left: auto;
+  margin-left: var(--k-space-2);
   background: none;
   border: none;
-  color: rgba(240,237,232,.5);
-  font-size: 1rem;
+  color: rgba(240,237,232,.6);
+  font-size: var(--k-fs-md);
   cursor: pointer;
-  padding: .25rem .5rem;
+  padding: 4px 8px;
+  min-height: 32px;
+  border-radius: var(--k-radius-sm);
 }
-.bulkBtnClose:hover { color: var(--k-color-sunken); }
+.bulkBtnClose:hover { color: var(--k-color-on-ink); background: rgba(255,255,255,.08); }
+.bulkBtnClose:focus-visible { outline: none; box-shadow: var(--k-ring); }
 
 .syncChip {
   display: inline-flex;
@@ -3897,27 +3951,30 @@
   position: relative;
 }
 
+/* F5 · toolbar unificada a 40 px */
 .filtrosBtn {
   display: inline-flex;
   align-items: center;
-  gap: .4rem;
+  gap: var(--k-space-1);
+  min-height: 40px;
   border: 1px solid var(--k-color-border-strong);
-  border-radius: 8px;
-  background: var(--k-color-soft);
+  border-radius: var(--k-radius-sm);
+  background: var(--k-color-surface);
   color: var(--k-color-ink);
-  font-size: .85rem;
-  font-weight: 600;
-  padding: .5rem .75rem;
+  font-size: var(--k-fs-sm);
+  font-weight: var(--k-fw-bold);
+  padding: 8px 12px;
   cursor: pointer;
-  transition: border-color .12s;
+  transition: border-color var(--k-transition), box-shadow var(--k-transition);
   white-space: nowrap;
 }
 
 .filtrosBtn:hover { border-color: var(--k-color-accent); }
+.filtrosBtn:focus-visible { outline: none; box-shadow: var(--k-ring); border-color: var(--k-color-accent); }
 
 .filtrosBtnActivo {
   border-color: var(--k-color-accent);
-  background: #fffdf8;
+  background: var(--k-color-accent-soft);
 }
 
 .filtrosBadge {
@@ -4111,4 +4168,140 @@
   line-height: 1;
 }
 .undoClose:hover { color: var(--k-color-sunken); }
+
+/* ── F5 · Tabla Vinos refinada ──────────────────────────────────────────── */
+/* Fila uniforme 56 px */
+.table tbody td {
+  height: 56px;
+}
+/* Nombre + bodega en 2 líneas */
+.tdNombreBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tdNombreTop {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-1);
+  font-weight: var(--k-fw-bold);
+  font-size: var(--k-fs-sm);
+  color: var(--k-color-ink);
+  line-height: 1.2;
+}
+.tdNombreSub {
+  font-size: var(--k-fs-xs);
+  color: var(--k-color-muted);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+/* ── F5 · Acciones por fila: Editar + menú ⋯ ─────────────────────────────── */
+.rowActionsWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-space-1);
+}
+.rowMenuBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-sm);
+  font-size: var(--k-fs-lg);
+  color: var(--k-color-ink-2);
+  cursor: pointer;
+  line-height: 1;
+  transition: background var(--k-transition), border-color var(--k-transition);
+}
+.rowMenuBtn:hover         { background: var(--k-color-sunken); border-color: var(--k-color-border-strong); }
+.rowMenuBtn:focus-visible { outline: none; box-shadow: var(--k-ring); border-color: var(--k-color-accent); }
+.rowMenuBtn[aria-expanded="true"] { background: var(--k-color-sunken); }
+
+.rowMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 60;
+  min-width: 180px;
+  background: var(--k-color-surface);
+  border: 1px solid var(--k-color-border-strong);
+  border-radius: var(--k-radius-sm);
+  box-shadow: var(--k-shadow-lg);
+  padding: var(--k-space-1) 0;
+  display: flex;
+  flex-direction: column;
+}
+.rowMenuItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: var(--k-fs-sm);
+  color: var(--k-color-ink);
+  cursor: pointer;
+  min-height: 40px;
+}
+.rowMenuItem:hover         { background: var(--k-color-soft); }
+.rowMenuItem:focus-visible { outline: none; background: var(--k-color-soft); box-shadow: inset 0 0 0 2px var(--k-color-accent); }
+.rowMenuItemDanger         { color: var(--k-color-danger); }
+.rowMenuItemDanger:hover   { background: var(--k-color-danger-soft); }
+.rowMenuDivider {
+  height: 1px;
+  background: var(--k-color-border);
+  margin: var(--k-space-1) 0;
+}
+
+/* ── F5 · Menú "Columnas" con checkboxes ────────────────────────────────── */
+.columnasMenuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--k-space-2);
+  padding: 8px 10px;
+  font-size: var(--k-fs-sm);
+  color: var(--k-color-ink);
+  cursor: pointer;
+  border-radius: var(--k-radius-sm);
+  min-height: 36px;
+}
+.columnasMenuItem:hover { background: var(--k-color-soft); }
+.columnasMenuItem input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--k-color-accent);
+}
+
+/* ── F5 · Focus visible AA en botones legacy que quedan ─────────────────── */
+.thSortable:focus-visible,
+.tdEditable:focus-visible,
+.toggleStar:focus-visible,
+.btnPrimario:focus-visible,
+.btnSecundario:focus-visible,
+.btnDanger:focus-visible,
+.bulkBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--k-ring);
+}
+
+/* ── F5 · Responsive · breakpoint 1024 (tablet) ──────────────────────────
+   En tablet oculto columnas secundarias aunque el usuario no las haya
+   desmarcado en el menú. El menú "Columnas" sigue operativo para añadir. */
+@media (max-width: 1024px) {
+  .table .tdNombreSub { max-width: 160px; }
+}
+
+/* En 390 ya se usa .mobileCatalogList (CSS existente); la tabla queda
+   oculta por el breakpoint mobile previo. Nada que añadir aquí. */
+
 

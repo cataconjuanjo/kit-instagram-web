@@ -1294,6 +1294,78 @@ export default function AdminKioskoPage() {
 
   const [filtroDestacado, setFiltroDestacado] = useState('todos')
 
+  // F5 · Columnas visibles de la tabla Vinos.
+  // Por defecto: foto, nombre_bodega (1 columna con 2 líneas), tipo, pvp,
+  // margen, stock, estado, acciones. Todo lo demás, oculto; se muestra via
+  // menú "Columnas". Persistido en localStorage (try/catch; sin localStorage
+  // el default se aplica cada carga).
+  const COLUMNAS_TODAS = [
+    { id: 'foto',          label: 'Foto',          fijo: true },
+    { id: 'nombre_bodega', label: 'Nombre',        fijo: true },
+    { id: 'tipo',          label: 'Tipo' },
+    { id: 'region',        label: 'D.O. / Región' },
+    { id: 'uva',           label: 'Uva' },
+    { id: 'anada',         label: 'Añada' },
+    { id: 'pvp',           label: 'PVP' },
+    { id: 'coste',         label: 'Coste',          sensible: true },
+    { id: 'margen',        label: 'Margen',         sensible: true },
+    { id: 'oferta',        label: 'Oferta' },
+    { id: 'stock',         label: 'Stock',          sensible: true },
+    { id: 'stock_minimo',  label: 'Mín.',           sensible: true },
+    { id: 'estanteria',    label: 'Estantería',     sensible: true },
+    { id: 'estado',        label: 'Estado',         fijo: true },
+    { id: 'acciones',      label: 'Acciones',       fijo: true },
+  ]
+  const COLUMNAS_DEFAULT = ['foto', 'nombre_bodega', 'tipo', 'pvp', 'margen', 'stock', 'estado', 'acciones']
+  const LS_COLUMNAS_KEY = 'kiosko_admin_columnas_vinos_v1'
+  const [columnasVisibles, setColumnasVisibles] = useState(() => {
+    try {
+      const raw = typeof window !== 'undefined' && window.localStorage?.getItem(LS_COLUMNAS_KEY)
+      if (raw) {
+        const arr = JSON.parse(raw)
+        if (Array.isArray(arr) && arr.length) return new Set(arr)
+      }
+    } catch {}
+    return new Set(COLUMNAS_DEFAULT)
+  })
+  function toggleColumna(id) {
+    setColumnasVisibles(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      // Las columnas fijas no se pueden ocultar
+      const fijos = COLUMNAS_TODAS.filter(c => c.fijo).map(c => c.id)
+      for (const f of fijos) next.add(f)
+      try { window.localStorage?.setItem(LS_COLUMNAS_KEY, JSON.stringify([...next])) } catch {}
+      return next
+    })
+  }
+  const colVisible = (id) => columnasVisibles.has(id)
+  const [columnasMenuOpen, setColumnasMenuOpen] = useState(false)
+  const columnasMenuRef = useRef(null)
+  useEffect(() => {
+    if (!columnasMenuOpen) return
+    const onClick = (e) => { if (!columnasMenuRef.current?.contains(e.target)) setColumnasMenuOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setColumnasMenuOpen(false) }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey) }
+  }, [columnasMenuOpen])
+
+  // F5 · Menú ⋯ de acciones por fila. Un único id abierto a la vez; se cierra
+  // con Escape o click fuera.
+  const [filaMenuOpen, setFilaMenuOpen] = useState(null) // id del vino
+  useEffect(() => {
+    if (!filaMenuOpen) return
+    const onKey = (e) => { if (e.key === 'Escape') setFilaMenuOpen(null) }
+    const onClick = (e) => {
+      // dejamos que el click dentro del menú cierre via los handlers del item
+      if (!e.target.closest?.(`[data-fila-menu="${filaMenuOpen}"]`)) setFilaMenuOpen(null)
+    }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey) }
+  }, [filaMenuOpen])
+
   const [modalImport, setModalImport]     = useState(false)
   const [archivoImport, setArchivoImport] = useState(null)
   const [modoImport, setModoImport]       = useState('añadir')
@@ -4957,6 +5029,46 @@ export default function AdminKioskoPage() {
             {verInactivos ? 'Ocultar inactivos' : `Inactivos (${nInactivos})`}
           </button>
         )}
+        {/* F5 · Menú "Columnas" con casillas (persistido en localStorage) */}
+        <div className={styles.filtrosBtnWrap} ref={columnasMenuRef}>
+          <button
+            type="button"
+            className={styles.filtrosBtn}
+            aria-haspopup="menu"
+            aria-expanded={columnasMenuOpen}
+            onClick={() => setColumnasMenuOpen(o => !o)}
+          >
+            Columnas
+          </button>
+          {columnasMenuOpen && (
+            <div role="menu" className={styles.filtrosPanel} style={{ minWidth: 220 }}>
+              {COLUMNAS_TODAS.filter(c => !c.fijo).filter(c => !c.sensible || !hideSensitive).map(c => (
+                <label key={c.id} className={styles.columnasMenuItem}>
+                  <input
+                    type="checkbox"
+                    checked={colVisible(c.id)}
+                    onChange={() => toggleColumna(c.id)}
+                  />
+                  <span>{c.label}</span>
+                </label>
+              ))}
+              <div style={{ borderTop: '1px solid var(--k-color-border)', marginTop: 'var(--k-space-2)', paddingTop: 'var(--k-space-2)' }}>
+                <button
+                  type="button"
+                  className={styles.kBtnGhost}
+                  style={{ width: '100%', minHeight: 32, padding: '6px 10px', fontSize: 'var(--k-fs-xs)' }}
+                  onClick={() => {
+                    const next = new Set(COLUMNAS_DEFAULT)
+                    setColumnasVisibles(next)
+                    try { window.localStorage?.setItem(LS_COLUMNAS_KEY, JSON.stringify([...next])) } catch {}
+                  }}
+                >
+                  Restablecer
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <span className={styles.total}>{vinosFiltrados.length} / {vinosVino.length} vinos</span>
       </div>
 
@@ -4972,23 +5084,21 @@ export default function AdminKioskoPage() {
                   onChange={toggleSeleccionTodos}
                 />
               </th>
-              <th className={styles.thFoto}>Foto</th>
-              <th className={styles.thSortable} onClick={() => sortHead('nombre')}>Nombre{sortArrow('nombre')}</th>
-              <th className={styles.thSortable} onClick={() => sortHead('bodega')}>Bodega{sortArrow('bodega')}</th>
-              <th>Tipo</th>
-              <th className={styles.thSortable} onClick={() => sortHead('region')}>D.O.{sortArrow('region')}</th>
-              <th className={styles.thSortable} onClick={() => sortHead('uva')}>Uva{sortArrow('uva')}</th>
-              <th className={styles.thSortable} onClick={() => sortHead('anada')}>Añada{sortArrow('anada')}</th>
-              <th className={styles.thSortable} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>
-              {!hideSensitive && <th className={styles.thSortable} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>}
-              {!hideSensitive && <th className={styles.thSortable} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>}
-              <th className={styles.thSortable} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>
-              {!hideSensitive && <th className={styles.thSortable} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>}
-              {!hideSensitive && <th title="Stock mínimo — alerta si stock ≤ este valor">Mín.</th>}
-              {!hideSensitive && <th>Estantería</th>}
-              <th className={styles.thCenter}>★</th>
-              <th className={styles.thCenter}>Estado</th>
-              <th></th>
+              {colVisible('foto')          && <th className={styles.thFoto}>Foto</th>}
+              {colVisible('nombre_bodega') && <th className={styles.thSortable} onClick={() => sortHead('nombre')}>Nombre{sortArrow('nombre')}</th>}
+              {colVisible('tipo')          && <th>Tipo</th>}
+              {colVisible('region')        && <th className={styles.thSortable} onClick={() => sortHead('region')}>D.O.{sortArrow('region')}</th>}
+              {colVisible('uva')           && <th className={styles.thSortable} onClick={() => sortHead('uva')}>Uva{sortArrow('uva')}</th>}
+              {colVisible('anada')         && <th className={styles.thSortable} onClick={() => sortHead('anada')}>Añada{sortArrow('anada')}</th>}
+              {colVisible('pvp')           && <th className={styles.thSortable} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>}
+              {!hideSensitive && colVisible('coste')  && <th className={styles.thSortable} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>}
+              {!hideSensitive && colVisible('margen') && <th className={styles.thSortable} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>}
+              {colVisible('oferta')        && <th className={styles.thSortable} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>}
+              {!hideSensitive && colVisible('stock')        && <th className={styles.thSortable} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>}
+              {!hideSensitive && colVisible('stock_minimo') && <th title="Stock mínimo — alerta si stock ≤ este valor">Mín.</th>}
+              {!hideSensitive && colVisible('estanteria')   && <th>Estantería</th>}
+              {colVisible('estado')        && <th className={styles.thCenter}>Estado</th>}
+              {colVisible('acciones')      && <th className={styles.thCenter}></th>}
             </tr>
           </thead>
           <tbody>
@@ -5002,6 +5112,7 @@ export default function AdminKioskoPage() {
                 </td>
 
                 {/* Foto */}
+                {colVisible('foto') && (
                 <td className={styles.tdFoto} onClick={() => abrirFotoFila(v.id)} title="Clic para cambiar foto">
                   {subiendoFoto === v.id ? (
                     <div className={styles.thumbSpinner} />
@@ -5013,25 +5124,31 @@ export default function AdminKioskoPage() {
                     />
                   )}
                 </td>
+                )}
 
-                {/* Nombre clicable → abre modal edición */}
+                {/* Nombre + bodega en 2 líneas (F5) */}
+                {colVisible('nombre_bodega') && (
                 <td
                   className={`${styles.tdNombre} ${styles.tdLink}`}
                   onClick={() => abrirEditar(v)}
                   title="Clic para editar"
                 >
-                  {v.nombre}
-                  {renderQualityBadges(v)}
-                  {!v.activo && v.motivo_inactividad && (
-                    <span style={{ marginLeft: '.4rem', padding: '.1rem .4rem', fontSize: '.65rem', background: 'var(--k-color-sunken)', color: 'var(--k-color-ink-2)', borderRadius: 4, fontWeight: 500 }}
-                      title={`Motivo de inactividad: ${v.motivo_inactividad}`}>
-                      {v.motivo_inactividad}
+                  <div className={styles.tdNombreBody}>
+                    <span className={styles.tdNombreTop}>
+                      {v.nombre}
+                      {renderQualityBadges(v)}
+                      {!v.activo && v.motivo_inactividad && (
+                        <span className={`${styles.kBadge}`} title={`Motivo de inactividad: ${v.motivo_inactividad}`} style={{ marginLeft: 'var(--k-space-2)' }}>
+                          {v.motivo_inactividad}
+                        </span>
+                      )}
                     </span>
-                  )}
+                    {v.bodega && <span className={styles.tdNombreSub}>{v.bodega}</span>}
+                  </div>
                 </td>
+                )}
 
-                <td className={styles.tdTrunc}>{v.bodega || <em className={styles.dash}>—</em>}</td>
-
+                {colVisible('tipo') && (
                 <td>
                   {v.tipo
                     ? <span className={`${styles.tipoBadge} ${styles['tipo_' + v.tipo]}`}>
@@ -5040,11 +5157,13 @@ export default function AdminKioskoPage() {
                     : <em className={styles.dash}>—</em>
                   }
                 </td>
+                )}
 
-                <td className={styles.tdTrunc}>{v.region || <em className={styles.dash}>—</em>}</td>
-                <td className={styles.tdTrunc}>{v.uva    || <em className={styles.dash}>—</em>}</td>
+                {colVisible('region') && <td className={styles.tdTrunc}>{v.region || <em className={styles.dash}>—</em>}</td>}
+                {colVisible('uva')    && <td className={styles.tdTrunc}>{v.uva    || <em className={styles.dash}>—</em>}</td>}
 
                 {/* Añada inline */}
+                {colVisible('anada') && (
                 <td
                   className={styles.tdEditable}
                   onClick={e => startInline(v.id, 'anada', v.anada, e)}
@@ -5068,8 +5187,10 @@ export default function AdminKioskoPage() {
                     </span>
                   )}
                 </td>
+                )}
 
                 {/* PVP inline */}
+                {colVisible('pvp') && (
                 <td
                   className={styles.tdEditable}
                   onClick={e => startInline(v.id, 'precio_pvp', v.precio_pvp, e)}
@@ -5092,9 +5213,10 @@ export default function AdminKioskoPage() {
                     </span>
                   )}
                 </td>
+                )}
 
                 {/* Coste inline */}
-                {!hideSensitive && <td className={styles.tdEditable} onClick={e => startInline(v.id, 'precio_coste', v.precio_coste, e)}>
+                {!hideSensitive && colVisible('coste') && <td className={styles.tdEditable} onClick={e => startInline(v.id, 'precio_coste', v.precio_coste, e)}>
                   {inlineEdit?.id === v.id && inlineEdit.campo === 'precio_coste' ? (
                     <input
                       className={styles.inlineInput}
@@ -5115,13 +5237,14 @@ export default function AdminKioskoPage() {
                 </td>}
 
                 {/* Margen */}
-                {!hideSensitive && <td>
+                {!hideSensitive && colVisible('margen') && <td>
                   {Number(v.precio_pvp) > 0 && Number(v.precio_coste) > 0
                     ? (() => { const m = Math.round(((Number(v.precio_pvp) - Number(v.precio_coste)) / Number(v.precio_pvp)) * 100); return <span className={`${styles.margenBadge} ${m >= 40 ? styles.margenHigh : m >= 25 ? styles.margenMid : styles.margenLow}`}>{m}%</span> })()
                     : <em className={styles.dash}>—</em>}
                 </td>}
 
                 {/* Oferta inline */}
+                {colVisible('oferta') && (
                 <td
                   className={styles.tdEditable}
                   onClick={e => startInline(v.id, 'precio_oferta', v.precio_oferta, e)}
@@ -5146,9 +5269,10 @@ export default function AdminKioskoPage() {
                     </span>
                   )}
                 </td>
+                )}
 
                 {/* Stock inline */}
-                {!hideSensitive && <td
+                {!hideSensitive && colVisible('stock') && <td
                   className={`${styles.tdEditable} ${v.stock === 0 ? styles.stockCero : ''}`}
                   onClick={stockPending?.id === v.id ? undefined : e => startInline(v.id, 'stock', v.stock, e)}
                 >
@@ -5183,7 +5307,7 @@ export default function AdminKioskoPage() {
                 </td>}
 
                 {/* Stock mínimo inline */}
-                {!hideSensitive && <td
+                {!hideSensitive && colVisible('stock_minimo') && <td
                   className={`${styles.tdEditable} ${Number(v.stock ?? 0) <= Number(v.stock_minimo ?? 0) && Number(v.stock_minimo ?? 0) > 0 ? styles.stockBajoMinimo : ''}`}
                   onClick={e => startInline(v.id, 'stock_minimo', v.stock_minimo ?? 0, e)}
                 >
@@ -5208,7 +5332,7 @@ export default function AdminKioskoPage() {
                 </td>}
 
                 {/* Estantería inline */}
-                {!hideSensitive && <td
+                {!hideSensitive && colVisible('estanteria') && <td
                   className={styles.tdEditable}
                   onClick={e => startInline(v.id, 'ubicacion_estanteria', v.ubicacion_estanteria, e)}
                 >
@@ -5235,46 +5359,94 @@ export default function AdminKioskoPage() {
                   )}
                 </td>}
 
-                {/* Destacado toggle */}
+                {/* Estado (badge + clic para alternar) */}
+                {colVisible('estado') && (
                 <td className={styles.tdCenter}>
                   <button
-                    className={`${styles.toggleStar} ${v.destacado ? styles.toggleStarOn : ''}`}
-                    onClick={() => toggleCampo(v.id, 'destacado', v.destacado)}
-                    title={v.destacado ? 'Quitar destacado' : 'Marcar como destacado'}
-                  >
-                    {v.destacado ? '★' : '☆'}
-                  </button>
-                </td>
-
-                {/* Activo toggle */}
-                <td className={styles.tdCenter}>
-                  <button
-                    className={`${styles.toggleEstado} ${v.activo ? styles.estadoActivo : styles.estadoInactivo}`}
+                    type="button"
                     onClick={() => toggleCampo(v.id, 'activo', v.activo)}
+                    className={`${styles.kBadge} ${v.activo ? styles.kBadgeOk : styles.kBadgeDanger}`}
+                    style={{ border: 'none', cursor: 'pointer' }}
+                    aria-label={v.activo ? 'Desactivar vino' : 'Activar vino'}
+                    title={v.activo ? 'Clic para desactivar' : 'Clic para activar'}
                   >
+                    {v.destacado && <span aria-hidden="true" style={{ color: 'var(--k-color-accent)', marginRight: 4 }}>★</span>}
                     {v.activo ? 'Activo' : 'Inactivo'}
                   </button>
                 </td>
+                )}
 
-                {/* Acciones */}
+                {/* Acciones: Editar + menú ⋯ accesible (F5) */}
+                {colVisible('acciones') && (
                 <td className={styles.acciones}>
-                  <button onClick={() => abrirEditar(v)} type="button" className={styles.btnEdit}>Editar</button>
-                  <button
-                    onClick={async () => {
-                      if (!window.confirm(`¿Mover "${v.nombre}" a Otros productos? Dejará de aparecer en el catálogo de vinos.`)) return
-                      await fetch(`/api/kiosko/${slug}/admin/vinos/${v.id}`, {
-                        method: 'PATCH',
-                        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ categoria: 'otro' }),
-                      })
-                      await cargar()
-                    }}
-                    type="button"
-                    className={styles.btnEdit}
-                    title="Mover a Otros productos"
-                  >→ Otros</button>
-                  <button onClick={() => eliminar(v.id)} type="button" className={styles.btnDelete}>✕</button>
+                  <div className={styles.rowActionsWrap} data-fila-menu={v.id}>
+                    <button
+                      onClick={() => abrirEditar(v)}
+                      type="button"
+                      className={styles.kBtnSecondary}
+                      style={{ minHeight: 32, padding: '6px 10px', fontSize: 'var(--k-fs-xs)' }}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.rowMenuBtn}
+                      aria-haspopup="menu"
+                      aria-expanded={filaMenuOpen === v.id}
+                      aria-label={`Más acciones para ${v.nombre}`}
+                      onClick={() => setFilaMenuOpen(prev => prev === v.id ? null : v.id)}
+                    >
+                      ⋯
+                    </button>
+                    {filaMenuOpen === v.id && (
+                      <div role="menu" className={styles.rowMenu}>
+                        <button
+                          role="menuitem"
+                          type="button"
+                          className={styles.rowMenuItem}
+                          onClick={() => { toggleCampo(v.id, 'destacado', v.destacado); setFilaMenuOpen(null) }}
+                        >
+                          {v.destacado ? 'Quitar destacado' : '★ Destacar'}
+                        </button>
+                        <button
+                          role="menuitem"
+                          type="button"
+                          className={styles.rowMenuItem}
+                          onClick={() => { toggleCampo(v.id, 'activo', v.activo); setFilaMenuOpen(null) }}
+                        >
+                          {v.activo ? 'Desactivar' : 'Activar'}
+                        </button>
+                        <button
+                          role="menuitem"
+                          type="button"
+                          className={styles.rowMenuItem}
+                          onClick={async () => {
+                            setFilaMenuOpen(null)
+                            if (!window.confirm(`¿Mover "${v.nombre}" a Otros productos? Dejará de aparecer en el catálogo de vinos.`)) return
+                            await fetch(`/api/kiosko/${slug}/admin/vinos/${v.id}`, {
+                              method: 'PATCH',
+                              headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ categoria: 'otro' }),
+                            })
+                            await cargar()
+                          }}
+                        >
+                          Mover a Otros
+                        </button>
+                        <div className={styles.rowMenuDivider} />
+                        <button
+                          role="menuitem"
+                          type="button"
+                          className={`${styles.rowMenuItem} ${styles.rowMenuItemDanger}`}
+                          onClick={() => { setFilaMenuOpen(null); eliminar(v.id) }}
+                        >
+                          Eliminar…
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </td>
+                )}
               </tr>
             ))}
             {vinosFiltrados.length === 0 && (
