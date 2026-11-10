@@ -3644,12 +3644,11 @@ export default function KioskoPage() {
           {/* Cabecera: logo, nombre, descripción */}
           <div className={styles.welcomeContent}>
             {tienda?.logo_url ? (
-              // F5b · Welcome logo: pre-F5 sin atributos. Con flag ON eager + high.
+              // F5c · Welcome idéntico a hoy con cualquier flag: sin atributos extra.
               <SafeImage
                 src={tienda.logo_url}
                 alt={tienda?.nombre}
                 className={styles.welcomeLogoHero}
-                {...(uxV2 ? { loading: 'eager', decoding: 'async', fetchPriority: 'high' } : {})}
                 fallback={<LogoFallback nombre={tienda?.nombre} />}
               />
             ) : (
@@ -3782,16 +3781,18 @@ export default function KioskoPage() {
                 <div className={styles.featuredStrip} ref={stripRef}>
                   {vinosDestacadosEfectivos.map((v, i) => (
                     <button key={v.id} className={styles.featuredCard} onClick={() => abrirDetalle(v)} type="button">
-                      {/* F5b · Pre-F5 esta img tenia solo loading='lazy'. Con flag OFF
-                          se mantiene identico; con flag ON se anade decoding y dimensiones,
-                          mas eager para las primeras 3. */}
+                      {/* F5c · Decisión del dueño: el welcome debe quedar EXACTO
+                          a hoy también con ux_v2. width/height/eager/decoding
+                          podían reservar aspect-ratio y desplazar el bloque de
+                          destacados; se retiran de esta sección. Se mantiene
+                          SOLO el fallback con BottleV2 (no afecta al layout: es
+                          el mismo contenedor .featuredPhotoPlaceholder; solo
+                          cambia el SVG interno cuando no hay foto). */}
                       <SafeImage
                         src={v.foto_url}
                         alt={v.nombre}
                         className={styles.featuredPhoto}
-                        {...(uxV2
-                          ? { loading: i < 3 ? 'eager' : 'lazy', decoding: 'async', width: '200', height: '200' }
-                          : { loading: 'lazy' })}
+                        loading="lazy"
                         fallback={
                           uxV2
                             ? <div className={styles.featuredPhotoPlaceholder} style={{ background: `linear-gradient(135deg, ${TIPO_COLORS[v.tipo] || '#333'}22, ${TIPO_COLORS[v.tipo] || '#333'}55)` }}>
