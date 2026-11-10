@@ -3054,6 +3054,14 @@ export default function KioskoPage() {
   const searchParams   = useSearchParams()
   const modoMostrador  = searchParams.get('mostrador') === '1'
 
+  // F5 · Flag ux_v2 (OFF por defecto). Dos fuentes, en orden:
+  //  1) Override cliente ?ux=v2 (ON) o ?ux=v1 (OFF explícito).
+  //  2) tienda.features.ux_v2 === true (persistido vía SQL en features).
+  // Con ambas vacías, resuelve a OFF → kiosko público idéntico a hoy.
+  // Usado por los ítems visuales de F5 (welcome, botella SVG, badge
+  // Últimas unidades, contraste tipos AA, carrusel filtrado, lazy).
+  // No se persiste el override; solo vive en la sesión actual.
+
   const [tienda, setTienda]         = useState(null)
   const [vinos, setVinos]           = useState([])
   const [gourmet, setGourmet]       = useState([])
@@ -3425,6 +3433,14 @@ export default function KioskoPage() {
 
   const colorPrimario = tienda?.color_primario || '#0d0d1a'
   const colorAcento   = tienda?.color_acento   || '#c9a96e'
+
+  // F5 · Resolución del flag ux_v2.
+  const uxParam = searchParams.get('ux')
+  const uxV2 = uxParam === 'v2'
+    ? true
+    : uxParam === 'v1'
+      ? false
+      : tienda?.features?.ux_v2 === true
   const temaClaro     = esColorClaro(colorPrimario)
   const fontCss       = FONT_CSS[tienda?.font_family]?.css || FONT_CSS.clasica.css
   const iconStyle      = tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji'

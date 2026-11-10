@@ -1,0 +1,46 @@
+-- F5 · Flag ux_v2 del kiosko público
+-- ================================================================
+-- Rediseño visual del kiosko público (botella SVG por tipo, badge
+-- 'Últimas unidades', contraste AA en etiquetas de tipo, carrusel
+-- escaparate filtrado, lazy-loading de imágenes, cabecera welcome
+-- compacta). Todo DETRÁS de este flag.
+--
+-- Persistencia: el flag vive en tiendas.features (jsonb ya existente;
+-- getPublicTienda ya lo expone), por lo que NO hay ALTER TABLE.
+-- Con features.ux_v2 ausente o false, el kiosko público se ve y se
+-- comporta EXACTAMENTE igual que hoy.
+--
+-- Esta migración es solo DOCUMENTACIÓN. NO aplicar en producción
+-- sin leer la nota final.
+-- ================================================================
+
+-- A) Activar ux_v2 para una tienda concreta (recomendado tras
+--    verificarlo en preview con ?ux=v2):
+--
+--      UPDATE tiendas
+--      SET features = COALESCE(features, '{}'::jsonb) || jsonb_build_object('ux_v2', true)
+--      WHERE slug = 'sibaris-gourmet';
+--
+-- B) Volver a desactivarlo (OFF explícito):
+--
+--      UPDATE tiendas
+--      SET features = COALESCE(features, '{}'::jsonb) - 'ux_v2'
+--      WHERE slug = 'sibaris-gourmet';
+--
+-- C) Ver estado actual:
+--
+--      SELECT slug, features ? 'ux_v2' AS ux_v2_seteado,
+--             (features->>'ux_v2')::boolean AS ux_v2_valor
+--      FROM tiendas WHERE slug = 'sibaris-gourmet';
+--
+-- NOTAS
+-- · Si tu instalación aún no tiene la columna `features` en tiendas
+--   (versión muy antigua), este cambio no funciona. getPublicTienda
+--   la selecciona hoy, así que se asume que existe en tu entorno.
+-- · El endpoint /api/kiosko/[slug]/admin/ajustes NO permite escribir
+--   en 'features' a día de hoy (allowlist estricta), por lo que el
+--   toggle no se expone en el panel. Se persiste SOLO vía SQL (o
+--   ampliando el endpoint en una fase futura). Mientras tanto, para
+--   previsualizar la UX sin tocar la base, usa el parámetro de URL
+--   ?ux=v2 (y ?ux=v1 para forzar OFF). No se persiste; solo override
+--   por pestaña.
