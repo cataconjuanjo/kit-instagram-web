@@ -975,6 +975,10 @@ function WineCardPlaceholder({ tipo, catGourmet, nombre, uxV2 = false, colorAcen
 
 function WineCard({ vino, onClick, ocultarAgotados = true, uxV2 = false, colorAcento, eager = false }) {
   const sinStock = !ocultarAgotados && Number(vino.stock) <= 0
+  // F5 (3/N) · Badge 'Últimas unidades' solo con ux_v2 y stock en [1,2].
+  // Respeta el ajuste 'ocultarAgotados': si stock<=0 hoy no se muestra nada,
+  // mañana con stock=0 tampoco. El badge aparece solo con stock>0.
+  const ultimasUnidades = uxV2 && Number(vino.stock) > 0 && Number(vino.stock) <= 2
   return (
     <button className={styles.wineCard} onClick={() => onClick(vino)} type="button">
       <div className={styles.cardImg}>
@@ -990,6 +994,7 @@ function WineCard({ vino, onClick, ocultarAgotados = true, uxV2 = false, colorAc
         />
         {vino.destacado && <span className={styles.cardDestacado}>★ Destacado</span>}
         {sinStock && <span className={styles.cardAgotado}>Consultar disponibilidad</span>}
+        {ultimasUnidades && <span className={styles.cardUltimas}>Últimas unidades</span>}
       </div>
       <div className={styles.cardBody}>
         <div className={styles.cardTop}>
