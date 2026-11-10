@@ -4682,3 +4682,82 @@
   margin: 0;
   max-width: 280px;
 }
+
+/* ====================================================================== */
+/* F5 · UX v2 del kiosko público (SOLO con data-ux="v2")                  */
+/* Overrides acotados al welcomeView rediseñado. Si data-ux no es "v2",  */
+/* todas estas reglas quedan inertes y el kiosko se ve EXACTO como hoy.  */
+/* ====================================================================== */
+
+/* Welcome v2: idiomas arriba-derecha como selector compacto */
+.welcomeView[data-ux="v2"] {
+  position: relative;
+}
+.welcomeView[data-ux="v2"] .langSelector {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  margin: 0;
+  z-index: 3;
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--sup1);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+}
+.welcomeView[data-ux="v2"] .langBtn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-width: 2px;
+  border-color: transparent;
+  background: transparent;
+}
+.welcomeView[data-ux="v2"] .langBtnActive {
+  border-color: var(--color-acento);
+  background: var(--sup2);
+}
+.welcomeView[data-ux="v2"] .langBtn:focus-visible {
+  outline: 2px solid var(--color-acento);
+  outline-offset: 2px;
+}
+
+/* Fullscreen v2: esquina inferior izquierda discreta */
+.welcomeView[data-ux="v2"] .fullscreenBtn {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  margin: 0;
+  align-self: unset;
+  width: 40px;
+  height: 40px;
+  opacity: .55;
+  z-index: 3;
+}
+.welcomeView[data-ux="v2"] .fullscreenBtn:hover,
+.welcomeView[data-ux="v2"] .fullscreenBtn:focus-visible {
+  opacity: 1;
+}
+
+/* Credito v2: tamaño legible 11 px, fuera del flujo central (esquina
+   inferior derecha), mismo texto/comportamiento. */
+.welcomeView[data-ux="v2"] .kioskoCredit {
+  position: absolute;
+  bottom: 18px;
+  right: 16px;
+  margin: 0;
+  align-self: unset;
+  font-size: 11px;
+  letter-spacing: .08em;
+  opacity: .7;
+  z-index: 2;
+}
+
+@media (max-width: 480px) {
+  .welcomeView[data-ux="v2"] .langSelector { top: 10px; right: 10px; }
+  .welcomeView[data-ux="v2"] .fullscreenBtn { bottom: 10px; left: 10px; }
+  .welcomeView[data-ux="v2"] .kioskoCredit { bottom: 12px; right: 10px; font-size: 11px; }
+}
+

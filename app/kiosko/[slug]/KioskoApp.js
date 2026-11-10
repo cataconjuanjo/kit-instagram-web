@@ -3523,7 +3523,7 @@ export default function KioskoPage() {
 
       {/* BIENVENIDA */}
       {view === VIEWS.WELCOME && (
-        <div className={styles.welcomeView}>
+        <div className={styles.welcomeView} data-ux={uxV2 ? 'v2' : undefined}>
           {/* Cabecera: logo, nombre, descripción */}
           <div className={styles.welcomeContent}>
             {tienda?.logo_url ? (
