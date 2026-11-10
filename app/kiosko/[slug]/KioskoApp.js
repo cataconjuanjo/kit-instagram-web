@@ -878,6 +878,51 @@ function BottleMark({ className }) {
   )
 }
 
+/* F5 (2/N) · botella SVG por tipo para fallback de foto en el kiosko
+   público (tras flag ux_v2). Silueta rellena con el TIPO_COLORS del vino
+   y trazo con el color acento de la tienda. 4 formas:
+   - 'burd' (tinto/default): hombros rectos, botella burdeos clásica
+   - 'rena' (blanco/rosado): hombros suaves, botella renana
+   - 'champ' (espumoso/cava): hombros redondos + base ancha
+   - 'jerez' (generoso/jerez/oporto): cuello corto, cuerpo recto
+   Cada variante dibuja una silueta diferenciable sin tipografía ni
+   librerías. */
+function BottleV2({ tipo, nombre, colorAcento = 'currentColor', className, style }) {
+  const fill = TIPO_COLORS[tipo] || '#4a2626'
+  const shape = tipo === 'espumoso' || tipo === 'cava'
+    ? 'champ'
+    : (tipo === 'blanco' || tipo === 'rosado')
+      ? 'rena'
+      : (tipo === 'generoso' || tipo === 'jerez' || tipo === 'oporto' || tipo === 'dulce')
+        ? 'jerez'
+        : 'burd'
+  const d = {
+    burd:  'M28 6h-8v4l-2 2v6l-3 5v29h18V23l-3-5v-6l-2-2V6z',
+    rena:  'M27 6h-6v3l-1 2-4 10v29h16V21l-4-10-1-2V6z',
+    champ: 'M27 6h-6v4l-1 2-5 10c-1 2-1 3-1 5v23h20V27c0-2 0-3-1-5l-5-10-1-2V6z',
+    jerez: 'M28 6h-8v6l-2 3v30h12V15l-2-3V6z',
+  }[shape]
+  const labelY = { burd: 32, rena: 30, champ: 33, jerez: 30 }[shape]
+  const alt = `Botella de vino${tipo ? ` (${TIPO_LABELS[tipo] || tipo})` : ''}${nombre ? ` — ${nombre}` : ''}`
+  return (
+    <svg
+      viewBox="0 0 48 52"
+      className={className}
+      style={style}
+      role="img"
+      aria-label={alt}
+    >
+      <title>{alt}</title>
+      {/* cuerpo */}
+      <path d={d} fill={fill} stroke={colorAcento} strokeWidth="1.2" strokeLinejoin="round" />
+      {/* etiqueta */}
+      <rect x="17" y={labelY} width="14" height="9" rx="1" fill="rgba(255,255,255,.72)" />
+      <line x1="19" y1={labelY + 3} x2="29" y2={labelY + 3} stroke={colorAcento} strokeOpacity=".55" strokeWidth="1" />
+      <line x1="19" y1={labelY + 6} x2="27" y2={labelY + 6} stroke={colorAcento} strokeOpacity=".4" strokeWidth="1" />
+    </svg>
+  )
+}
+
 function LocationMark({ className }) {
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
@@ -904,15 +949,23 @@ const CAT_SILHOUETTE = {
   'Aceite·AOVE': '/assets/eci-gourmet-demo/products/silhouette-aove.svg',
 }
 
-function WineCardPlaceholder({ tipo, catGourmet }) {
+function WineCardPlaceholder({ tipo, catGourmet, nombre, uxV2 = false, colorAcento }) {
   if (catGourmet && CAT_SILHOUETTE[catGourmet]) {
     return (
       <div className={styles.cardImgPlaceholder}>
-        <img src={CAT_SILHOUETTE[catGourmet]} alt="" width="80" height="80" style={{ opacity: 0.6 }} />
+        <img src={CAT_SILHOUETTE[catGourmet]} alt="" width="80" height="80" style={{ opacity: 0.6 }} loading="lazy" decoding="async" />
       </div>
     )
   }
   const color = TIPO_COLORS[tipo] || '#2a2a2a'
+  // F5 (2/N) · botella SVG por tipo cuando ux_v2 está activo.
+  if (uxV2) {
+    return (
+      <div className={styles.cardImgPlaceholder} style={{ background: `linear-gradient(135deg, ${color}22, ${color}55)` }}>
+        <BottleV2 tipo={tipo} nombre={nombre} colorAcento={colorAcento || '#c9a96e'} className={styles.cardImgIcon} />
+      </div>
+    )
+  }
   return (
     <div className={styles.cardImgPlaceholder} style={{ background: `linear-gradient(135deg, ${color}33, ${color}88)` }}>
       <BottleMark className={styles.cardImgIcon} />
@@ -920,7 +973,7 @@ function WineCardPlaceholder({ tipo, catGourmet }) {
   )
 }
 
-function WineCard({ vino, onClick, ocultarAgotados = true }) {
+function WineCard({ vino, onClick, ocultarAgotados = true, uxV2 = false, colorAcento, eager = false }) {
   const sinStock = !ocultarAgotados && Number(vino.stock) <= 0
   return (
     <button className={styles.wineCard} onClick={() => onClick(vino)} type="button">
@@ -929,8 +982,11 @@ function WineCard({ vino, onClick, ocultarAgotados = true }) {
           src={vino.foto_url}
           alt={vino.nombre}
           className={styles.cardImgPhoto}
-          loading="lazy"
-          fallback={<WineCardPlaceholder tipo={vino.tipo} catGourmet={vino.cat_gourmet} />}
+          loading={eager ? 'eager' : 'lazy'}
+          decoding="async"
+          width="240"
+          height="240"
+          fallback={<WineCardPlaceholder tipo={vino.tipo} catGourmet={vino.cat_gourmet} nombre={vino.nombre} uxV2={uxV2} colorAcento={colorAcento} />}
         />
         {vino.destacado && <span className={styles.cardDestacado}>★ Destacado</span>}
         {sinStock && <span className={styles.cardAgotado}>Consultar disponibilidad</span>}
@@ -2754,7 +2810,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
 
 // ── Vista Browse ──────────────────────────────────────────────────────────────
 
-function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es', tienda }) {
+function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es', tienda, uxV2 = false }) {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroPais, setFiltroPais] = useState('')
@@ -2894,7 +2950,7 @@ function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es
       <div className={styles.browseResults}>
         {vinosFiltrados.length === 0
           ? <div className={styles.noResults}><p>{T[lang].sinResultados}</p><button onClick={limpiar} style={{ color: colorAcento }} type="button">{T[lang].limpiarFiltros}</button></div>
-          : <div className={styles.wineGrid}>{vinosFiltrados.map(v => <WineCard key={v.id} vino={v} onClick={onWineSelect} ocultarAgotados={tienda?.ocultar_agotados !== false} />)}</div>
+          : <div className={styles.wineGrid}>{vinosFiltrados.map((v, i) => <WineCard key={v.id} vino={v} onClick={onWineSelect} ocultarAgotados={tienda?.ocultar_agotados !== false} uxV2={uxV2} colorAcento={colorAcento} eager={i < 8} />)}</div>
         }
       </div>
     </div>
@@ -3661,14 +3717,23 @@ export default function KioskoPage() {
               <div className={styles.featuredStripWrap}>
                 <button className={styles.featuredArrowBtn} onClick={() => stripRef.current?.scrollBy({ left: -280, behavior: 'smooth' })} type="button" aria-label="Anterior">‹</button>
                 <div className={styles.featuredStrip} ref={stripRef}>
-                  {vinosDestacadosEfectivos.map(v => (
+                  {vinosDestacadosEfectivos.map((v, i) => (
                     <button key={v.id} className={styles.featuredCard} onClick={() => abrirDetalle(v)} type="button">
                       <SafeImage
                         src={v.foto_url}
                         alt={v.nombre}
                         className={styles.featuredPhoto}
-                        loading="lazy"
-                        fallback={<div className={styles.featuredPhotoPlaceholder} style={{ background: `${TIPO_COLORS[v.tipo] || '#333'}88` }}><BottleMark className={styles.featuredPhotoIcon} /></div>}
+                        loading={i < 3 ? 'eager' : 'lazy'}
+                        decoding="async"
+                        width="200"
+                        height="200"
+                        fallback={
+                          uxV2
+                            ? <div className={styles.featuredPhotoPlaceholder} style={{ background: `linear-gradient(135deg, ${TIPO_COLORS[v.tipo] || '#333'}22, ${TIPO_COLORS[v.tipo] || '#333'}55)` }}>
+                                <BottleV2 tipo={v.tipo} nombre={v.nombre} colorAcento={colorAcento} className={styles.featuredPhotoIcon} />
+                              </div>
+                            : <div className={styles.featuredPhotoPlaceholder} style={{ background: `${TIPO_COLORS[v.tipo] || '#333'}88` }}><BottleMark className={styles.featuredPhotoIcon} /></div>
+                        }
                       />
                       <p className={styles.featuredNombre}>{v.nombre}</p>
                       {v.precio_pvp && <p className={styles.featuredPrecio} style={{ color: colorAcento }}>{formatPrecio(v.precio_pvp)}</p>}
@@ -3696,7 +3761,7 @@ export default function KioskoPage() {
       {/* EXPLORAR */}
       {view === VIEWS.BROWSE && (
         <BrowseView slug={slug} vinos={vinos} colorAcento={colorAcento}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} />
+          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} uxV2={uxV2} />
       )}
 
       {/* MARIDAJE */}
