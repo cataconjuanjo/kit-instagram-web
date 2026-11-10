@@ -1104,6 +1104,11 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
               src={vino.foto_url}
               alt={vino.nombre}
               className={styles.detailPhoto}
+              loading="eager"
+              decoding="async"
+              width="440"
+              height="440"
+              fetchPriority="high"
               fallback={
                 <div className={styles.detailPhotoPlaceholder} style={{ background: `linear-gradient(135deg, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}44, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}99)` }}>
                   <BottleMark className={styles.detailPhotoIcon} />
@@ -2479,6 +2484,10 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
                     src={vino.foto_url}
                     alt={vino.nombre}
                     className={styles.pairingWinePhoto}
+                    loading="lazy"
+                    decoding="async"
+                    width="200"
+                    height="240"
                     fallback={<div className={styles.pairingWinePhotoPlaceholder} style={{ background: `${TIPO_COLORS[vino.tipo] || '#333'}66` }}><BottleMark className={styles.pairingWineIcon} /></div>}
                   />
                 </div>
@@ -2634,6 +2643,9 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
           src={vino.foto_url}
           alt={vino.nombre}
           className={styles.showcaseBgImg}
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
           fallback={
             <div className={styles.showcaseBgFallback} style={{ background: `radial-gradient(circle at 50% 30%, ${TIPO_COLORS[vino.tipo] || '#333'}55, transparent 42%), linear-gradient(135deg, #11111a, #050506)` }}>
               <BottleMark className={styles.showcaseBgIcon} />
@@ -2797,6 +2809,10 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
                     src={vino.foto_url}
                     alt={vino.nombre}
                     className={styles.pairingWinePhoto}
+                    loading="lazy"
+                    decoding="async"
+                    width="200"
+                    height="240"
                     fallback={<div className={styles.pairingWinePhotoPlaceholder} style={{ background: `${TIPO_COLORS[vino.tipo] || '#333'}66` }}><BottleMark className={styles.pairingWineIcon} /></div>}
                   />
                 </div>
@@ -3094,6 +3110,10 @@ function WineFoodPanel({ vino, resultados, onClose, lang, qrOrderEnabled }) {
                   src={g.foto_url}
                   alt={g.nombre}
                   className={styles.wineFoodCardPhoto}
+                  loading="lazy"
+                  decoding="async"
+                  width="200"
+                  height="200"
                   fallback={
                     <img
                       src={CAT_SILHOUETTE[g.cat_gourmet] || '/assets/eci-gourmet-demo/products/silhouette-conserva.svg'}
@@ -3630,6 +3650,9 @@ export default function KioskoPage() {
                 src={tienda.logo_url}
                 alt={tienda?.nombre}
                 className={styles.welcomeLogoHero}
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
                 fallback={<LogoFallback nombre={tienda?.nombre} />}
               />
             ) : (
