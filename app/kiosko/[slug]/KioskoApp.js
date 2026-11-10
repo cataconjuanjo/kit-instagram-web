@@ -3343,6 +3343,27 @@ export default function KioskoPage() {
   // Errores de red: silenciados (console.warn), nunca rompen la UI.
   // El fetch de sondeo no genera eventos de usuario, así que nunca
   // cuenta como interacción.
+
+  // Resolución del flag auto_update (idéntico mecanismo que ux_v2).
+  // ?autoupdate=1 fuerza ON, ?autoupdate=0 fuerza OFF, por defecto lee
+  // el jsonb tienda.features.auto_update. Flag OFF → el kiosko público
+  // se comporta exactamente como hoy (sin sondeo, sin recargas).
+  // Debe declararse ANTES del useEffect del hook: el hook lo usa en su
+  // array de dependencias y en el cuerpo, y un const más abajo caería
+  // en la zona muerta temporal (TDZ) durante el render.
+  const autoUpdateParam = searchParams.get('autoupdate')
+  const autoUpdate = autoUpdateParam === '1'
+    ? true
+    : autoUpdateParam === '0'
+      ? false
+      : tienda?.features?.auto_update === true
+  // Debug: ?poll=N baja el intervalo a N segundos y acorta la inactividad
+  // mínima a ~6s. SOLO se honra si ?autoupdate=1 está presente en la URL
+  // (modo preview); nunca cambia los valores en producción real.
+  const autoUpdatePollDebug = autoUpdateParam === '1'
+    ? Math.max(5, Number(searchParams.get('poll') || 0))
+    : 0
+
   const viewRef            = useRef(view)
   const vinoDetalleRef     = useRef(vinoDetalle)
   const mobileSelectionRef = useRef(mobileSelection)
@@ -3657,23 +3678,8 @@ export default function KioskoPage() {
     : uxParam === 'v1'
       ? false
       : tienda?.features?.ux_v2 === true
-
-  // F6 · Resolución del flag auto_update (idéntico mecanismo que ux_v2).
-  // ?autoupdate=1 fuerza ON, ?autoupdate=0 fuerza OFF, por defecto lee el
-  // jsonb tienda.features.auto_update. Flag OFF → el kiosko público se
-  // comporta exactamente como hoy (sin sondeo, sin recargas automáticas).
-  const autoUpdateParam = searchParams.get('autoupdate')
-  const autoUpdate = autoUpdateParam === '1'
-    ? true
-    : autoUpdateParam === '0'
-      ? false
-      : tienda?.features?.auto_update === true
-  // Debug: ?poll=N baja el intervalo a N segundos y acorta la inactividad
-  // mínima a ~6s. SOLO se honra si ?autoupdate=1 está presente en la URL
-  // (modo preview); nunca cambia los valores en producción real.
-  const autoUpdatePollDebug = autoUpdateParam === '1'
-    ? Math.max(5, Number(searchParams.get('poll') || 0))
-    : 0
+  // F6 · autoUpdate/autoUpdatePollDebug declarados arriba (sección F6 hook)
+  // para evitar TDZ al ser referenciados por el useEffect del auto-update.
   const temaClaro     = esColorClaro(colorPrimario)
   const fontCss       = FONT_CSS[tienda?.font_family]?.css || FONT_CSS.clasica.css
   const iconStyle      = tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji'
