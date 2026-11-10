@@ -4711,26 +4711,22 @@
 /* todas estas reglas quedan inertes y el kiosko se ve EXACTO como hoy.  */
 /* ====================================================================== */
 
-/* Welcome v2: idiomas arriba-derecha como selector compacto. F5b: 12 px
-   al borde de pantalla (no 16), gap y padding robustos para touch AA,
-   y uso de env(safe-area-inset-*) para no solaparse con scrollbars ni
-   notches. Cada bandera tiene area tactil >= 40x40 px. */
+/* Welcome v2: idiomas arriba-derecha como selector compacto */
 .welcomeView[data-ux="v2"] {
   position: relative;
 }
 .welcomeView[data-ux="v2"] .langSelector {
   position: absolute;
-  top: calc(12px + env(safe-area-inset-top, 0px));
-  right: calc(12px + env(safe-area-inset-right, 0px));
+  top: 16px;
+  right: 16px;
   margin: 0;
   z-index: 3;
   display: inline-flex;
   gap: 4px;
-  padding: 6px;
-  background: var(--sup2);
+  padding: 4px;
+  background: var(--sup1);
   border: 1px solid var(--borde);
   border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, .12);
 }
 .welcomeView[data-ux="v2"] .langBtn {
   width: 40px;
@@ -4740,31 +4736,25 @@
   border-width: 2px;
   border-color: transparent;
   background: transparent;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 .welcomeView[data-ux="v2"] .langBtnActive {
   border-color: var(--color-acento);
-  background: var(--sup1);
+  background: var(--sup2);
 }
 .welcomeView[data-ux="v2"] .langBtn:focus-visible {
   outline: 2px solid var(--color-acento);
   outline-offset: 2px;
 }
 
-/* Fullscreen v2: esquina inferior izquierda discreta, misma distancia 12. */
+/* Fullscreen v2: esquina inferior izquierda discreta */
 .welcomeView[data-ux="v2"] .fullscreenBtn {
   position: absolute;
-  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  left: calc(12px + env(safe-area-inset-left, 0px));
+  bottom: 16px;
+  left: 16px;
   margin: 0;
   align-self: unset;
   width: 40px;
   height: 40px;
-  min-width: 40px;
-  min-height: 40px;
   opacity: .55;
   z-index: 3;
 }
@@ -4773,25 +4763,23 @@
   opacity: 1;
 }
 
-/* Credito v2: legible 11 px (minimo 11), fuera del flujo central. */
+/* Credito v2: tamaño legible 11 px, fuera del flujo central (esquina
+   inferior derecha), mismo texto/comportamiento. */
 .welcomeView[data-ux="v2"] .kioskoCredit {
   position: absolute;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  right: calc(12px + env(safe-area-inset-right, 0px));
+  bottom: 18px;
+  right: 16px;
   margin: 0;
   align-self: unset;
   font-size: 11px;
   letter-spacing: .08em;
   opacity: .7;
   z-index: 2;
-  max-width: 220px;
-  text-align: right;
 }
 
-/* En moviles muy pequenos se mantiene el mismo margen de 12; los env()
-   amplian si hay notch/safe-area. El pie reserva espacio para el
-   fullscreen a su izquierda. */
 @media (max-width: 480px) {
-  .welcomeView[data-ux="v2"] .kioskoCredit { max-width: calc(100% - 72px); }
+  .welcomeView[data-ux="v2"] .langSelector { top: 10px; right: 10px; }
+  .welcomeView[data-ux="v2"] .fullscreenBtn { bottom: 10px; left: 10px; }
+  .welcomeView[data-ux="v2"] .kioskoCredit { bottom: 12px; right: 10px; font-size: 11px; }
 }
 
