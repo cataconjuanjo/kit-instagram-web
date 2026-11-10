@@ -3328,6 +3328,126 @@ export default function KioskoPage() {
     return () => events.forEach(e => window.removeEventListener(e, resetIdle))
   }, [resetIdle])
 
+  // F6 · Auto-update del kiosko (solo con flag auto_update ON).
+  // Sondea GET /api/kiosko/{slug}/version cada 5 min. Si build, flags o
+  // catalogo cambian respecto al snapshot inicial, programa un reload
+  // que SOLO se ejecuta cuando TODAS estas condiciones se cumplen:
+  //  · vista en WELCOME, o en SHOWCASE AUTOMÁTICO (no manual)
+  //  · ningún modal abierto (vinoDetalle, mobileSelection, wineFoodVino)
+  //  · ≥ 3 min sin interacción táctil/teclado
+  //  · pestaña visible (document.visibilityState)
+  // Decisión (Opción A): durante escaparate MANUAL (longpress o
+  // ?mostrador=1) NO se recarga aunque haya cambios — se pospone al
+  // siguiente tick, porque el modo manual activado por longpress no
+  // tiene marcador en URL y se perdería tras el reload.
+  // Errores de red: silenciados (console.warn), nunca rompen la UI.
+  // El fetch de sondeo no genera eventos de usuario, así que nunca
+  // cuenta como interacción.
+
+  // Resolución del flag auto_update (idéntico mecanismo que ux_v2).
+  // ?autoupdate=1 fuerza ON, ?autoupdate=0 fuerza OFF, por defecto lee
+  // el jsonb tienda.features.auto_update. Flag OFF → el kiosko público
+  // se comporta exactamente como hoy (sin sondeo, sin recargas).
+  // Debe declararse ANTES del useEffect del hook: el hook lo usa en su
+  // array de dependencias y en el cuerpo, y un const más abajo caería
+  // en la zona muerta temporal (TDZ) durante el render.
+  const autoUpdateParam = searchParams.get('autoupdate')
+  const autoUpdate = autoUpdateParam === '1'
+    ? true
+    : autoUpdateParam === '0'
+      ? false
+      : tienda?.features?.auto_update === true
+  // Debug: ?poll=N baja el intervalo a N segundos y acorta la inactividad
+  // mínima a ~6s. SOLO se honra si ?autoupdate=1 está presente en la URL
+  // (modo preview); nunca cambia los valores en producción real.
+  const autoUpdatePollDebug = autoUpdateParam === '1'
+    ? Math.max(5, Number(searchParams.get('poll') || 0))
+    : 0
+
+  const viewRef            = useRef(view)
+  const vinoDetalleRef     = useRef(vinoDetalle)
+  const mobileSelectionRef = useRef(mobileSelection)
+  const wineFoodVinoRef    = useRef(wineFoodVino)
+  useEffect(() => { viewRef.current = view }, [view])
+  useEffect(() => { vinoDetalleRef.current = vinoDetalle }, [vinoDetalle])
+  useEffect(() => { mobileSelectionRef.current = mobileSelection }, [mobileSelection])
+  useEffect(() => { wineFoodVinoRef.current = wineFoodVino }, [wineFoodVino])
+
+  useEffect(() => {
+    if (!autoUpdate || !slug) return
+
+    const pollMs = autoUpdatePollDebug > 0
+      ? autoUpdatePollDebug * 1000
+      : 5 * 60 * 1000
+    const inactivityMs = autoUpdatePollDebug > 0
+      ? 6 * 1000
+      : 3 * 60 * 1000
+
+    const lastInteractionRef = { current: Date.now() }
+    const bump = () => { lastInteractionRef.current = Date.now() }
+    const events = ['touchstart','touchmove','click','keydown','mousemove']
+    events.forEach(e => window.addEventListener(e, bump, { passive: true }))
+
+    let baseline = null
+    let pendingReload = false
+    let cancelled = false
+    let intervalId = null
+
+    const fetchVersion = async () => {
+      try {
+        const res = await fetch(`/api/kiosko/${slug}/version`, { cache: 'no-store' })
+        if (!res.ok) return null
+        const json = await res.json()
+        if (json && json.skipped) return null
+        return json
+      } catch (err) {
+        console.warn('[auto_update] version fetch failed:', err?.message || err)
+        return null
+      }
+    }
+
+    const canReload = () => {
+      if (document.visibilityState !== 'visible') return false
+      const v = viewRef.current
+      if (v !== VIEWS.WELCOME && v !== VIEWS.SHOWCASE) return false
+      if (v === VIEWS.SHOWCASE && showcaseManualRef.current) return false
+      if (vinoDetalleRef.current) return false
+      if (mobileSelectionRef.current) return false
+      if (wineFoodVinoRef.current) return false
+      if (Date.now() - lastInteractionRef.current < inactivityMs) return false
+      return true
+    }
+
+    const tick = async () => {
+      if (cancelled) return
+      const now = await fetchVersion()
+      if (!now) return
+      if (!baseline) {
+        baseline = now
+        return
+      }
+      const changed = (
+        (now.build != null && now.build !== baseline.build) ||
+        (now.flags != null && now.flags !== baseline.flags) ||
+        (now.catalogo != null && now.catalogo !== baseline.catalogo)
+      )
+      if (changed) pendingReload = true
+      if (pendingReload && canReload()) {
+        window.location.reload()
+      }
+    }
+
+    // Snapshot inicial inmediato y después polling periódico.
+    tick()
+    intervalId = setInterval(tick, pollMs)
+
+    return () => {
+      cancelled = true
+      if (intervalId) clearInterval(intervalId)
+      events.forEach(e => window.removeEventListener(e, bump))
+    }
+  }, [autoUpdate, autoUpdatePollDebug, slug])
+
   // Vinos efectivos del carrusel: auto_featured_ids (ordenados por margen, calculados en servidor)
   // cuando el modo automático está activo, o los favoritos manuales en caso contrario.
   // Se cruzan con el array de vinos descargado para descartar huecos por caché o stock cambiado.
@@ -3558,6 +3678,8 @@ export default function KioskoPage() {
     : uxParam === 'v1'
       ? false
       : tienda?.features?.ux_v2 === true
+  // F6 · autoUpdate/autoUpdatePollDebug declarados arriba (sección F6 hook)
+  // para evitar TDZ al ser referenciados por el useEffect del auto-update.
   const temaClaro     = esColorClaro(colorPrimario)
   const fontCss       = FONT_CSS[tienda?.font_family]?.css || FONT_CSS.clasica.css
   const iconStyle      = tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji'
