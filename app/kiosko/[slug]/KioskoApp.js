@@ -2535,14 +2535,30 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
 
 // ── Modo Mostrador ─────────────────────────────────────────────────────────────
 
-function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang = 'es' }) {
+function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang = 'es', uxV2 = false }) {
   const [idx, setIdx] = useState(0)
   const [fade, setFade] = useState(true)
   const [hora, setHora] = useState('')
   const [vpIdx, setVpIdx] = useState(0)
   const [vpFade, setVpFade] = useState(true)
 
+  /* F5 (5/N) · con ux_v2, el carrusel evita vinos agotados y sin foto.
+     Respeta el ajuste tienda.ocultar_agotados: si stock=0 y la tienda
+     oculta agotados, se excluye del carrusel.
+     Fallback explícito: si tras filtrar quedan <3, se mantiene EL
+     COMPORTAMIENTO ACTUAL (no romper la vista si los datos son pobres). */
+  const ocultarAgotados = tienda?.ocultar_agotados !== false
   const lista = useMemo(() => {
+    if (uxV2) {
+      const vinosConFoto = vinos.filter(v => v.foto_url)
+      const disponibles = ocultarAgotados
+        ? vinosConFoto.filter(v => Number(v.stock ?? 0) > 0)
+        : vinosConFoto
+      const destDisp = disponibles.filter(v => v.destacado)
+      if (destDisp.length >= 3) return destDisp.slice(0, 12)
+      if (disponibles.length >= 3) return disponibles.slice(0, 12)
+      // Caer al comportamiento actual cuando no hay material suficiente.
+    }
     const dest = vinos.filter(v => v.destacado && v.foto_url)
     if (dest.length >= 3) return dest
     const withFoto = vinos.filter(v => v.foto_url).slice(0, 12)
@@ -2550,7 +2566,7 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
     // Sin fotos: usar destacados para que el showcase funcione con el fallback de gradiente
     const sinFoto = vinos.filter(v => v.destacado)
     return sinFoto.length >= 2 ? sinFoto.slice(0, 8) : vinos.slice(0, 8)
-  }, [vinos])
+  }, [vinos, uxV2, ocultarAgotados])
 
   const valuePropsList = useMemo(
     () => (SHOWCASE_VALUE_PROPS[lang] ?? SHOWCASE_VALUE_PROPS.es)(vinos.length),
@@ -3601,7 +3617,7 @@ export default function KioskoPage() {
       {/* MODO MOSTRADOR */}
       {view === VIEWS.SHOWCASE && (
         <ShowcaseView vinos={vinos} tienda={tienda} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          lang={lang} onExit={() => { showcaseManualRef.current = false; setView(VIEWS.WELCOME) }} />
+          lang={lang} onExit={() => { showcaseManualRef.current = false; setView(VIEWS.WELCOME) }} uxV2={uxV2} />
       )}
 
       {/* BIENVENIDA */}
