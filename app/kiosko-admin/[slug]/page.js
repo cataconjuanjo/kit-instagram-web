@@ -3774,27 +3774,44 @@ export default function AdminKioskoPage() {
                         <span style={{ fontSize: '0.78rem', color: 'var(--k-color-muted)' }}>{total} iniciados · {convRate}% al carrito</span>
                       </div>
                       {total === 0 ? (
-                        <p style={{ fontSize: '0.82rem', color: 'var(--k-color-muted-2)', margin: 0 }}>Sin datos aún — los intentos aparecen aquí cuando los clientes usen este flujo.</p>
+                        <p className={styles.kEmpty} style={{ padding: 'var(--k-space-3) 0 0' }}>
+                          Sin datos aún — los intentos aparecen aquí cuando los clientes usen este flujo.
+                        </p>
                       ) : (
                         <>
-                          {steps.map(step => {
-                            const n = fd.steps[step] || 0
-                            const pct = total > 0 ? Math.round((n / total) * 100) : 0
-                            const isCarrito = step === 'carrito'
-                            return (
-                              <div key={step} style={{ marginBottom: '0.45rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '0.2rem' }}>
-                                  <span style={{ color: isCarrito ? '#22c55e' : 'var(--k-color-muted-2)' }}>{STEP_LABELS[step] ?? step}</span>
-                                  <span style={{ color: 'var(--k-color-muted-2)' }}>{n} ({pct}%)</span>
+                          <div className={styles.funnelSteps}>
+                            {steps.map((step, idx) => {
+                              const n = fd.steps[step] || 0
+                              const pct = total > 0 ? Math.round((n / total) * 100) : 0
+                              const isCarrito = step === 'carrito'
+                              const label = STEP_LABELS[step] ?? step
+                              return (
+                                <div key={step} className={styles.funnelStep}>
+                                  <div className={styles.funnelStepHead}>
+                                    <span className={`${styles.funnelStepLabel} ${isCarrito ? styles.funnelStepLabelOk : ''}`}>{label}</span>
+                                    <span className={styles.funnelStepValue}>{n} ({pct}%)</span>
+                                  </div>
+                                  <div
+                                    className={styles.funnelTrack}
+                                    role="progressbar"
+                                    aria-valuenow={pct}
+                                    aria-valuemin={0}
+                                    aria-valuemax={100}
+                                    aria-label={`${label}: ${idx + 1} de ${steps.length}`}
+                                  >
+                                    {pct > 0 && (
+                                      <div
+                                        className={`${styles.funnelFill} ${isCarrito ? styles.funnelFillOk : ''}`}
+                                        style={{ width: `${pct}%` }}
+                                      />
+                                    )}
+                                  </div>
                                 </div>
-                                <div style={{ height: 8, borderRadius: 4, background: '#1a1a1a', overflow: 'hidden' }}>
-                                  <div style={{ height: '100%', width: `${pct}%`, borderRadius: 4, background: isCarrito ? '#22c55e' : 'var(--k-color-ink-2)', transition: 'width 0.4s' }} />
-                                </div>
-                              </div>
-                            )
-                          })}
+                              )
+                            })}
+                          </div>
                           {fd.abandon.total > 0 && (
-                            <div style={{ marginTop: '0.65rem', fontSize: '0.78rem', color: 'var(--k-color-muted)', display: 'flex', gap: '1.5rem' }}>
+                            <div className={styles.funnelAbandon}>
                               <span>Abandono: {fd.abandon.total}</span>
                               {fd.abandon.idle_timeout > 0 && <span>⏱ por inactividad: {fd.abandon.idle_timeout}</span>}
                               {fd.abandon.user_exit > 0 && <span>← por back: {fd.abandon.user_exit}</span>}

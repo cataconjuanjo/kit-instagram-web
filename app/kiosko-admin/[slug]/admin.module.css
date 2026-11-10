@@ -4727,3 +4727,76 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ── F9c · Embudo de conversión: barras propias (sin <progress>) ─────────── */
+.funnelSteps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-space-2);
+  margin-top: var(--k-space-2);
+}
+.funnelStep {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.funnelStepHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--k-space-2);
+  min-width: 0;
+}
+.funnelStepLabel {
+  font-size: var(--k-fs-sm);          /* 13 px */
+  color: var(--k-color-ink-2);
+  font-weight: var(--k-fw-regular);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.funnelStepLabelOk {
+  color: var(--k-color-ok);
+  font-weight: var(--k-fw-bold);
+}
+.funnelStepValue {
+  font-size: var(--k-fs-sm);
+  color: var(--k-color-ink-2);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+/* Pista: fondo claro, borde sutil, altura 8 px, radio 4 px. */
+.funnelTrack {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--k-color-soft);
+  border: 1px solid var(--k-color-border);
+  overflow: hidden;
+}
+/* Relleno: dorado por defecto; verde en Carrito ✓. Si pct=0 no se pinta
+   (el JSX no renderiza el div). */
+.funnelFill {
+  height: 100%;
+  background: var(--k-color-accent);
+  border-radius: 4px;
+  transition: width .4s ease;
+}
+.funnelFillOk {
+  background: var(--k-color-ok);
+}
+/* Línea de abandono: muted, flex con gap, se envuelve en móvil. */
+.funnelAbandon {
+  margin-top: var(--k-space-3);
+  padding-top: var(--k-space-2);
+  border-top: 1px solid var(--k-color-border);
+  font-size: var(--k-fs-sm);
+  color: var(--k-color-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--k-space-4);
+}
+@media (max-width: 640px) {
+  .funnelAbandon { gap: var(--k-space-2); }
+}
+
+
