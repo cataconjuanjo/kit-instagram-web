@@ -932,9 +932,31 @@ function LocationMark({ className }) {
   )
 }
 
-function TipoChip({ tipo, size = 'sm' }) {
+/* F5 (4/N) · Contraste AA de las etiquetas de tipo cuando ux_v2 está ON.
+   Tabla de ratios con texto blanco (original) vs tras el ajuste:
+     tinto        #8B1A1A / #fff → 9.29  ✓ AA
+     blanco       #C4A843 / #111 → 8.12  ✓ AA (antes 2.33 ✗ con blanco)
+     rosado       #D4756A / #111 → 5.89  ✓ AA (antes 3.21 ✗)
+     espumoso     #7AB5C8 / #111 → 8.34  ✓ AA (antes 2.27 ✗)
+     generoso    #B47C3C / #111 → 5.30  ✓ AA (antes 3.57 ✗)
+     dulce        #9E2E58 / #fff → 7.03  ✓ AA (bg oscurecido; antes 4.23 ✗)
+     naranja      #C4843C / #111 → 6.04  ✓ AA (antes 3.13 ✗)
+     sin_alcohol  #5C9C5C / #111 → 5.72  ✓ AA (antes 3.30 ✗)
+   Solo 'dulce' requiere oscurecer el fondo; el resto se corrige con
+   texto adaptativo. Con ux_v2 OFF se conserva el aspecto actual. */
+const TIPO_COLORS_V2 = { ...TIPO_COLORS, dulce: '#9E2E58' }
+const TIPO_FG_V2 = {
+  tinto: '#ffffff', blanco: '#111111', rosado: '#111111', espumoso: '#111111',
+  generoso: '#111111', dulce: '#ffffff', naranja: '#111111', sin_alcohol: '#111111',
+}
+function TipoChip({ tipo, size = 'sm', uxV2 = false }) {
+  const bg = (uxV2 ? TIPO_COLORS_V2 : TIPO_COLORS)[tipo] || '#666'
+  const fg = uxV2 ? (TIPO_FG_V2[tipo] || '#ffffff') : undefined
   return (
-    <span className={`${styles.tipoChip} ${size === 'lg' ? styles.tipoChipLg : ''}`} style={{ background: TIPO_COLORS[tipo] || '#666' }}>
+    <span
+      className={`${styles.tipoChip} ${size === 'lg' ? styles.tipoChipLg : ''}`}
+      style={fg ? { background: bg, color: fg } : { background: bg }}
+    >
       {TIPO_LABELS[tipo] || tipo}
     </span>
   )
@@ -998,7 +1020,7 @@ function WineCard({ vino, onClick, ocultarAgotados = true, uxV2 = false, colorAc
       </div>
       <div className={styles.cardBody}>
         <div className={styles.cardTop}>
-          {vino.tipo && <TipoChip tipo={vino.tipo} />}
+          {vino.tipo && <TipoChip tipo={vino.tipo} uxV2={uxV2} />}
           {vino.puntuacion && <span className={styles.cardPuntuacion}>{vino.puntuacion} pts</span>}
         </div>
         <p className={styles.cardNombre}>{vino.nombre}</p>
