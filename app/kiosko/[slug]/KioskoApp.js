@@ -172,6 +172,7 @@ const MARIDAJE_ICONOS = [
 
 const T = {
   es: {
+    ultimaUnidad: 'Última unidad',
     explorar: 'Explorar vinos', elegir: 'Ayúdame\na elegir', maridaje: '¿Con qué\nlo tomo?', cesta: 'Cesta\nregalo', duelo: 'Duelo\na ciegas',
     volver: '← Volver', inicio: 'Inicio', atras: 'Atrás', nuevaBusqueda: 'Empezar de nuevo',
     referencias: n => `${n} referencias`, disponibles: n => `${n} disponibles`, destacados: '★ Destacados',
@@ -225,6 +226,7 @@ const T = {
     tapToExplore: 'Toca para explorar',
   },
   en: {
+    ultimaUnidad: 'Last bottle',
     explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?', cesta: 'Gift\nbasket', duelo: 'Blind\nduel',
     volver: '← Back', inicio: 'Home', atras: 'Back', nuevaBusqueda: 'Start over',
     referencias: n => `${n} wines`, disponibles: n => `${n} available`, destacados: '★ Featured',
@@ -278,6 +280,7 @@ const T = {
     tapToExplore: 'Tap to explore',
   },
   fr: {
+    ultimaUnidad: 'Dernière bouteille',
     explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?', cesta: 'Panier\ncadeau', duelo: 'Duel à\nl\'aveugle',
     volver: '← Retour', inicio: 'Accueil', atras: 'Retour', nuevaBusqueda: 'Recommencer',
     referencias: n => `${n} vins`, disponibles: n => `${n} disponibles`, destacados: '★ En vedette',
@@ -331,6 +334,7 @@ const T = {
     tapToExplore: 'Touchez pour explorer',
   },
   de: {
+    ultimaUnidad: 'Letzte Flasche',
     explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?', cesta: 'Geschenk-\nkorb', duelo: 'Blind-\nduell',
     volver: '← Zurück', inicio: 'Start', atras: 'Zurück', nuevaBusqueda: 'Neu starten',
     referencias: n => `${n} Weine`, disponibles: n => `${n} verfügbar`, destacados: '★ Empfohlen',
@@ -995,12 +999,12 @@ function WineCardPlaceholder({ tipo, catGourmet, nombre, uxV2 = false, colorAcen
   )
 }
 
-function WineCard({ vino, onClick, ocultarAgotados = true, uxV2 = false, colorAcento, eager = false }) {
+function WineCard({ vino, onClick, ocultarAgotados = true, uxV2 = false, colorAcento, eager = false, lang = 'es' }) {
   const sinStock = !ocultarAgotados && Number(vino.stock) <= 0
-  // F5 (3/N) · Badge 'Últimas unidades' solo con ux_v2 y stock en [1,2].
-  // Respeta el ajuste 'ocultarAgotados': si stock<=0 hoy no se muestra nada,
-  // mañana con stock=0 tampoco. El badge aparece solo con stock>0.
-  const ultimasUnidades = uxV2 && Number(vino.stock) > 0 && Number(vino.stock) <= 2
+  // F5b · Badge 'Última unidad' SOLO con stock EXACTO = 1 (antes <=2, que
+  // marcaba ~93 de 180 vinos de Síbaris; irrelevante). i18n via T[lang].
+  const ultimaUnidad = uxV2 && Number(vino.stock) === 1
+  const ultimaUnidadLabel = (T[lang] || T.es).ultimaUnidad || T.es.ultimaUnidad
   return (
     <button className={styles.wineCard} onClick={() => onClick(vino)} type="button">
       <div className={styles.cardImg}>
@@ -1016,7 +1020,7 @@ function WineCard({ vino, onClick, ocultarAgotados = true, uxV2 = false, colorAc
         />
         {vino.destacado && <span className={styles.cardDestacado}>★ Destacado</span>}
         {sinStock && <span className={styles.cardAgotado}>Consultar disponibilidad</span>}
-        {ultimasUnidades && <span className={styles.cardUltimas}>Últimas unidades</span>}
+        {ultimaUnidad && <span className={styles.cardUltimas}>{ultimaUnidadLabel}</span>}
       </div>
       <div className={styles.cardBody}>
         <div className={styles.cardTop}>
@@ -3009,7 +3013,7 @@ function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es
       <div className={styles.browseResults}>
         {vinosFiltrados.length === 0
           ? <div className={styles.noResults}><p>{T[lang].sinResultados}</p><button onClick={limpiar} style={{ color: colorAcento }} type="button">{T[lang].limpiarFiltros}</button></div>
-          : <div className={styles.wineGrid}>{vinosFiltrados.map((v, i) => <WineCard key={v.id} vino={v} onClick={onWineSelect} ocultarAgotados={tienda?.ocultar_agotados !== false} uxV2={uxV2} colorAcento={colorAcento} eager={i < 8} />)}</div>
+          : <div className={styles.wineGrid}>{vinosFiltrados.map((v, i) => <WineCard key={v.id} vino={v} onClick={onWineSelect} ocultarAgotados={tienda?.ocultar_agotados !== false} uxV2={uxV2} colorAcento={colorAcento} eager={i < 8} lang={lang} />)}</div>
         }
       </div>
     </div>
