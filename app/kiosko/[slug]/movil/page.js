@@ -57,11 +57,47 @@ function MovilContent() {
         setEstado('error')
       })
 
+    // F3 B0.4: tracking del QR escaneado. keepalive para que sobreviva si el
+    // usuario navega de inmediato. El session_id ayuda al rate-limit por sesion
+    // (hay ademas un tope por IP a 600/h en el servidor).
+    // Persistencia: localStorage (persiste entre pestanas y sesiones) con
+    // fallback a sessionStorage (solo por pestana) y, si todo falla, UUID
+    // efimero por ejecucion. No es 'persistente por dispositivo' estricto:
+    // el usuario puede borrar storage o venir en incognito.
+    const genId = () => (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : (String(Date.now()) + Math.random().toString(16).slice(2))
+    let sessionId = ''
+    try {
+      sessionId = window.localStorage.getItem('kiosko_movil_sid') || ''
+      if (!sessionId) {
+        sessionId = genId()
+        window.localStorage.setItem('kiosko_movil_sid', sessionId)
+      }
+    } catch {
+      try {
+        sessionId = window.sessionStorage.getItem('kiosko_movil_sid') || ''
+        if (!sessionId) {
+          sessionId = genId()
+          window.sessionStorage.setItem('kiosko_movil_sid', sessionId)
+        }
+      } catch {
+        sessionId = genId() // efimero: localStorage y sessionStorage bloqueados
+      }
+    }
     fetch(`/api/kiosko/${slug}/movil`, {
       method: 'POST',
+      keepalive: true,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: ids.split(','), source: `qr_${from}`, lang }),
-    }).catch(() => {})
+      body: JSON.stringify({ ids: ids.split(','), source: `qr_${from}`, lang, session_id: sessionId }),
+    })
+      .then(async r => {
+        const j = await r.json().catch(() => ({}))
+        if (j && (j.skipped || j.pending || j.inserted === false)) {
+          console.warn('[kiosko movil] intent no registrado:', j.reason || j)
+        }
+      })
+      .catch(err => { console.warn('[kiosko movil] intent fetch error:', err?.message || err) })
   }, [slug, searchParams])
 
   if (estado === 'cargando') {

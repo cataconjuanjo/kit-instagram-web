@@ -1062,12 +1062,14 @@ const VINO_VACIO = {
   foto_url:'', notas_cata:'', descripcion:'', puntuacion:'', destacado:false, activo:true,
 }
 
+// weight 2 = imprescindible para publicar (foto, PVP, stock); weight 1 = opcional.
+// El score global es media PONDERADA por criterio, no union de afectados (P0-3).
 const QUALITY_CHECKS = [
-  { id: 'sin_foto', label: 'Sin foto', desc: 'La tarjeta publica pierde confianza.' },
-  { id: 'sin_pvp', label: 'Sin PVP', desc: 'El cliente vuelve a preguntar precio.' },
-  { id: 'sin_ubicacion', label: 'Sin ubicacion', desc: 'Cuesta encontrarlo en tienda.' },
-  { id: 'sin_stock', label: 'Sin stock', desc: 'No aparece disponible para vender.' },
-  { id: 'sin_texto', label: 'Sin texto de venta', desc: 'Falta descripcion, notas o ficha IA.' },
+  { id: 'sin_foto',      label: 'Sin foto',           desc: 'La tarjeta publica pierde confianza.',          weight: 2, kind: 'core' },
+  { id: 'sin_pvp',       label: 'Sin PVP',            desc: 'El cliente vuelve a preguntar precio.',         weight: 2, kind: 'core' },
+  { id: 'sin_stock',     label: 'Sin stock',          desc: 'No aparece disponible para vender.',            weight: 2, kind: 'core' },
+  { id: 'sin_ubicacion', label: 'Sin ubicación',      desc: 'Cuesta encontrarlo en tienda.',                 weight: 1, kind: 'optional' },
+  { id: 'sin_texto',     label: 'Sin texto de venta', desc: 'Falta descripción, notas o ficha IA.',          weight: 1, kind: 'optional' },
 ]
 
 function hasText(value) {
@@ -1139,6 +1141,7 @@ export default function AdminKioskoPage() {
   const [embudoLoad, setEmbudoLoad] = useState(false)
   const [leads, setLeads]           = useState(null)
   const [leadsLoad, setLeadsLoad]   = useState(false)
+  const [leadsError, setLeadsError] = useState('')
   const [pedidos, setPedidos]       = useState(null)
   const [pedidosLoad, setPedidosLoad] = useState(false)
   const [pedidoMsg, setPedidoMsg]   = useState('')
@@ -1256,7 +1259,38 @@ export default function AdminKioskoPage() {
   const [porPagina, setPorPagina]         = useState(20)
 
   const [subTabAnalitica, setSubTabAnalitica] = useState('resumen')
+  // P1-5: filtros locales de 'Vinos sin movimiento' (tipo + bodega)
+  const [filtroSinMovTipo, setFiltroSinMovTipo]       = useState('')
+  const [filtroSinMovBodega, setFiltroSinMovBodega]   = useState('')
   const [seleccionados, setSeleccionados]     = useState(new Set())
+  // P1-2 batch flow: dialog preview + ejecucion + undo con snapshot.
+  // batchDialog: { tipo, valor, soloVacias?, items[], afectadosIds[] }
+  // batchUndo:   { tipo, valor, before: [{id, antes: {...}}] }
+  const [batchDialog, setBatchDialog] = useState(null)
+  const [batchRunning, setBatchRunning] = useState(false)
+  // Progreso: { hechos, fallidos: [{id, nombre, error}] }
+  const [batchProgreso, setBatchProgreso] = useState(null)
+  // Resumen tras terminar con fallos: { tipo, valor, aplicados, fallidos: [...] }
+  const [batchResumen, setBatchResumen] = useState(null)
+  const [batchUndo, setBatchUndo] = useState(null)
+  const [batchUndoRunning, setBatchUndoRunning] = useState(false)
+  // F3 B0.3: modal inline para 'Min. stock' y 'Ubicacion' (sustituye window.prompt).
+  const [batchInput, setBatchInput] = useState(null) // { campo, valor, reemplazar? }
+  // F3 B1 (P1-3): catálogo de ubicaciones. Si la tabla aún no existe,
+  // ubicacionesPending = true y la UI se degrada al input de texto libre.
+  const [ubicaciones, setUbicaciones] = useState([])
+  const [ubicacionesPending, setUbicacionesPending] = useState(false)
+  const [ubicacionesError, setUbicacionesError] = useState('')
+  // F3 B2 (P1-4): detección de columna motivo_inactividad; si pending=true
+  // ocultamos el selector de motivo en ficha y en lote.
+  const [motivoPending, setMotivoPending] = useState(false)
+  // F3 P1-9: 'cambios sin guardar' en Ajustes. Wrapper capta input/change en
+  // captura y marca dirty; se resetea en onSaved o al salir del tab manualmente.
+  const [ajustesDirty, setAjustesDirty] = useState(false)
+  const [ajustesSavedToast, setAjustesSavedToast] = useState(null) // 'ok' | 'error'
+  // F3 P3-10: estado de la sincronización manual con Square.
+  const [syncNowRunning, setSyncNowRunning] = useState(false)
+  const [syncNowMsg, setSyncNowMsg] = useState(null) // { tipo: 'ok' | 'error', texto }
 
   const [filtroDestacado, setFiltroDestacado] = useState('todos')
 
@@ -1385,6 +1419,17 @@ export default function AdminKioskoPage() {
       if (r3.ok) { const ls = await r3.json(); setLastSync(ls) }
       setTienda({ ...meta.tienda, _token: session.access_token })
       setVinos(dv.vinos || [])
+      // F3 B1: carga del catálogo de ubicaciones en paralelo con el resto.
+      // Falla silenciosa (degrada a texto libre) si todavía no existe la tabla.
+      fetch(`/api/kiosko/${slug}/admin/ubicaciones`, { headers: requestHeaders })
+        .then(r => r.json().catch(() => ({})))
+        .then(d => { setUbicaciones(d?.ubicaciones || []); setUbicacionesPending(!!d?.pending) })
+        .catch(() => {})
+      // F3 B2: ping para saber si motivo_inactividad existe.
+      fetch(`/api/kiosko/${slug}/admin/motivo-inactividad`, { headers: requestHeaders })
+        .then(r => r.json().catch(() => ({})))
+        .then(d => setMotivoPending(!!d?.pending))
+        .catch(() => setMotivoPending(true))
     } catch (e) { setError(e.message) }
     finally     { setCargando(false)  }
   }
@@ -1494,10 +1539,35 @@ export default function AdminKioskoPage() {
     finally { setGuardando(false) }
   }
 
+  // F3 B0.1: borrado individual con type-to-confirm. El borrado masivo se
+  // retira de la barra flotante; el camino en lote para 'retirar vinos' es
+  // 'Desactivar' (reversible con el toast Deshacer).
+  const [eliminarConfirm, setEliminarConfirm] = useState(null) // { id, nombre, input, running }
+  function pedirEliminar(v) {
+    if (!v) return
+    setEliminarConfirm({ id: v.id, nombre: v.nombre || '(sin nombre)', input: '', running: false })
+  }
   async function eliminar(id) {
-    if (!confirm('¿Eliminar este vino?')) return
-    await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
-    setVinos(prev => prev.filter(v => v.id !== id))
+    // Compat: callsites antiguos sin paso por el modal -> abren el modal.
+    const v = vinos.find(w => w.id === id)
+    pedirEliminar(v || { id, nombre: '' })
+  }
+  async function confirmarEliminarVino() {
+    if (!eliminarConfirm) return
+    const { id, nombre, input } = eliminarConfirm
+    if (String(input).trim() !== String(nombre).trim()) return
+    setEliminarConfirm(c => ({ ...c, running: true }))
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j.error || `HTTP ${res.status}`)
+      }
+      setVinos(prev => prev.filter(v => v.id !== id))
+      setEliminarConfirm(null)
+    } catch (e) {
+      setEliminarConfirm(c => c && ({ ...c, running: false, error: e.message || String(e) }))
+    }
   }
 
   // ── Inline edit ────────────────────────────────────────────────────────────
@@ -1864,15 +1934,25 @@ export default function AdminKioskoPage() {
 
   const catalogoChecklist = useMemo(() => {
     const activos = vinosVino.filter(v => v.activo !== false)
+    const total = activos.length
     const checks = QUALITY_CHECKS.map(check => {
       const afectados = activos.filter(v => vinoTieneQualityIssue(v, check.id))
-      return { ...check, count: afectados.length, afectados }
+      const scoreCheck = total ? Math.max(0, Math.round(((total - afectados.length) / total) * 100)) : 100
+      return { ...check, count: afectados.length, afectados, scoreCheck }
     })
+    // Score global = media ponderada por criterio. Evita que un unico criterio
+    // (p.ej. 'sin_ubicacion' en 177/179 vinos) hunda el %. Nota metodologica
+    // visible en la UI: "metodo actualizado el 2026-11-08".
+    const totalPeso = QUALITY_CHECKS.reduce((s, c) => s + (c.weight || 1), 0)
+    const score = total
+      ? Math.round(
+          checks.reduce((s, c) => s + c.scoreCheck * (c.weight || 1), 0) / totalPeso
+        )
+      : 100
     const pendientesIds = new Set()
     checks.forEach(check => check.afectados.forEach(v => pendientesIds.add(v.id)))
     const pendientes = pendientesIds.size
-    const score = activos.length ? Math.max(0, Math.round(((activos.length - pendientes) / activos.length) * 100)) : 100
-    return { activos: activos.length, checks, pendientes, score }
+    return { activos: total, checks, pendientes, score, metodo: 'ponderado-v2026-11-08' }
   }, [vinosVino])
 
   const vinosPorId = useMemo(() => {
@@ -1901,14 +1981,30 @@ export default function AdminKioskoPage() {
     finally { setEmbudoLoad(false) }
   }
 
+  // P1-7: carga de leads con timeout 10 s y estado de error.
+  // Antes se quedaba en 'Cargando leads...' indefinido si la query se colgaba
+  // o devolvia !ok, y el error se silenciaba en el catch.
   async function cargarLeads() {
     setLeadsLoad(true)
+    setLeadsError('')
+    const ctrl = new AbortController()
+    const timeout = setTimeout(() => ctrl.abort(), 10000)
     try {
-      const res  = await fetch(`/api/kiosko/${slug}/admin/leads`, { headers: authHeaders })
-      const data = await res.json()
-      setLeads(res.ok ? data.leads : [])
-    } catch { setLeads([]) }
-    finally { setLeadsLoad(false) }
+      const res  = await fetch(`/api/kiosko/${slug}/admin/leads`, { headers: authHeaders, signal: ctrl.signal })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setLeadsError(data?.error || `HTTP ${res.status}`)
+        setLeads(null)
+      } else {
+        setLeads(data.leads || [])
+      }
+    } catch (err) {
+      setLeadsError(err?.name === 'AbortError' ? 'La consulta tardó más de 10 s' : (err?.message || 'Error de red'))
+      setLeads(null)
+    } finally {
+      clearTimeout(timeout)
+      setLeadsLoad(false)
+    }
   }
 
   async function borrarLead(id) {
@@ -1975,7 +2071,11 @@ export default function AdminKioskoPage() {
     }))
     const margenMedio = calculados.reduce((s, v) => s + v.margenPct, 0) / calculados.length
     const totalVentas = calculados.reduce((s, v) => s + v.ventas, 0)
-    if (totalVentas < 20) return { clasificados: [], margenMedio: Math.round(margenMedio), recomMedio: 0, sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length, coldStart: true, usandoVentas: hayVentasSquare }
+    // P0-2: 'sinCoste' debe contar el mismo universo que la KPI del header (solo
+    // vinos, no otros productos ni items de carta). Antes contaba 'vinos' completo
+    // -> 587 en lugar de ~29. Ahora filtra categoria para coincidir con vinosVino.
+    const contarSinCoste = (arr) => arr.filter(v => v.activo && v.categoria !== 'otro' && v.categoria !== 'carta' && v.precio_pvp && !v.precio_coste).length
+    if (totalVentas < 20) return { clasificados: [], margenMedio: Math.round(margenMedio), recomMedio: 0, sinCoste: contarSinCoste(vinos), coldStart: true, usandoVentas: hayVentasSquare }
     const ventasMedio = totalVentas / calculados.length
     const clasificados = calculados.map(v => ({
       ...v,
@@ -1984,13 +2084,20 @@ export default function AdminKioskoPage() {
         : v.margenPct >= margenMedio && v.ventas <  ventasMedio ? 'joya'
         : 'revisar',
     }))
-    return { clasificados, margenMedio: Math.round(margenMedio), ventasMedio: Math.round(ventasMedio), sinCoste: vinos.filter(v => v.activo && v.precio_pvp && !v.precio_coste).length, coldStart: false, usandoVentas: hayVentasSquare }
+    return { clasificados, margenMedio: Math.round(margenMedio), ventasMedio: Math.round(ventasMedio), sinCoste: contarSinCoste(vinos), coldStart: false, usandoVentas: hayVentasSquare }
   }, [vinos, analitica])
 
   const alertasStock = useMemo(() => {
     // Incluye vinos bajo su mínimo aunque no aparezcan en topVinos (Square)
     const vistos = new Set()
     const alertas = []
+    // P1-1: cobertura = stock / (ventas 30 d / 30). Null si no hay ventas 30 d.
+    const v30 = analitica?.ventasPorVino30 || {}
+    const cobertura = (id, stock) => {
+      const uds30 = Number(v30[String(id)] || 0)
+      if (uds30 <= 0) return null
+      return Math.round((stock * 30) / uds30)
+    }
 
     // 1. Vinos con mínimo configurado que están por debajo
     vinos.forEach(v => {
@@ -1999,7 +2106,14 @@ export default function AdminKioskoPage() {
       const minimo = Number(v.stock_minimo ?? 0)
       if (minimo > 0 && stock <= minimo) {
         vistos.add(String(v.id))
-        alertas.push({ id: v.id, nombre: v.nombre, bodega: v.bodega, stock, minimo, recomendaciones: 0, critico: stock === 0, diasRestantes: null, porMinimo: true })
+        alertas.push({
+          id: v.id, nombre: v.nombre, bodega: v.bodega, stock, minimo,
+          recomendaciones: 0,
+          critico: stock === 0,
+          diasRestantes: null,
+          diasCobertura: cobertura(v.id, stock),
+          porMinimo: true,
+        })
       }
     })
 
@@ -2011,11 +2125,19 @@ export default function AdminKioskoPage() {
         if (!v || !v.activo) return
         const stock = Number(v.stock ?? 0)
         if (stock > 5 && (tv.diasRestantes === null || tv.diasRestantes > 14)) return
-        alertas.push({ id: v.id, nombre: v.nombre, bodega: v.bodega, stock, minimo: Number(v.stock_minimo ?? 0), recomendaciones: tv.veces, critico: stock === 0, diasRestantes: tv.diasRestantes, porMinimo: false })
+        alertas.push({
+          id: v.id, nombre: v.nombre, bodega: v.bodega, stock,
+          minimo: Number(v.stock_minimo ?? 0),
+          recomendaciones: tv.veces,
+          critico: stock === 0,
+          diasRestantes: tv.diasRestantes,
+          diasCobertura: cobertura(v.id, stock),
+          porMinimo: false,
+        })
       })
     }
 
-    return alertas.sort((a, b) => (a.diasRestantes ?? 999) - (b.diasRestantes ?? 999) || b.recomendaciones - a.recomendaciones)
+    return alertas.sort((a, b) => (a.diasCobertura ?? a.diasRestantes ?? 999) - (b.diasCobertura ?? b.diasRestantes ?? 999) || b.recomendaciones - a.recomendaciones)
   }, [vinos, analitica])
 
   const accionesAnalitica = useMemo(() => {
@@ -2124,26 +2246,230 @@ export default function AdminKioskoPage() {
     }
   }
 
-  async function accionMasiva(campo, valor) {
-    const ids = [...seleccionados]
-    await Promise.all(ids.map(id =>
-      fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
-        method: 'PATCH',
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [campo]: valor }),
-      })
-    ))
-    setSeleccionados(new Set())
-    await cargar()
+  // P1-2: label legible por campo/valor para los dialogos y el toast.
+  function describirBatch(tipo, valor) {
+    if (tipo === 'activo')        return valor ? 'Activar'          : 'Desactivar'
+    if (tipo === 'destacado')     return valor ? 'Marcar destacado' : 'Quitar destacado'
+    if (tipo === 'stock_minimo')  return `Fijar stock mínimo = ${valor}`
+    if (tipo === 'ubicacion')     return `Asignar ubicación "${valor}"`
+    if (tipo === 'eliminar')      return 'Eliminar (irreversible)'
+    return tipo
   }
 
-  async function eliminarMasivo() {
-    if (!confirm(`¿Eliminar ${seleccionados.size} vinos? Esta acción no se puede deshacer.`)) return
-    await Promise.all([...seleccionados].map(id =>
-      fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
-    ))
-    setSeleccionados(new Set())
-    await cargar()
+  // Abre el dialogo con vista previa. 'opts' admite { soloVacias } para no
+  // sobrescribir ubicaciones existentes (P1-3 delta previo).
+  function abrirBatchDialog(tipo, valor, opts = {}) {
+    const ids = [...seleccionados]
+    const items = vinos.filter(v => ids.includes(v.id))
+    let afectados = items
+    if (tipo === 'ubicacion' && opts.soloVacias !== false) {
+      afectados = items.filter(v => !String(v.ubicacion_estanteria || '').trim())
+    }
+    setBatchDialog({ tipo, valor, soloVacias: !!opts.soloVacias, items, afectadosIds: afectados.map(v => v.id) })
+  }
+
+  // F3 B0.2: ejecucion con concurrencia 4 (worker pool), progreso visible,
+  // registro de fallos por vino y resumen final si alguno falla.
+  // El PATCH solo escribe en vinos_tienda (base propia). NO propaga a Square:
+  // confirmado por lectura del endpoint /api/kiosko/[slug]/admin/vinos/[id]
+  // que llama a supabaseAdmin.from('vinos_tienda').update(...) y a un
+  // nullify de ficha_ia_* en segundo plano; no hay fetch a Square. Un commit
+  // de P0-2 fase 2 tambien ignora atributos no-escribibles via
+  // pickWritableVinoFields.
+  async function confirmarBatch() {
+    if (!batchDialog) return
+    const { tipo, valor, afectadosIds } = batchDialog
+    if (!afectadosIds.length) { setBatchDialog(null); return }
+    setBatchRunning(true)
+    setBatchProgreso({ hechos: 0, total: afectadosIds.length, fallidos: [] })
+    const before = []
+    const aplicados = []
+    const fallidos = []
+
+    const conc = afectadosIds.length > 50 ? 4 : 3
+    let cursor = 0
+    const next = () => (cursor < afectadosIds.length ? afectadosIds[cursor++] : null)
+
+    const worker = async () => {
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const id = next()
+        if (!id) break
+        const v = vinos.find(w => w.id === id)
+        const nombre = v?.nombre || `vino ${id}`
+        try {
+          if (tipo === 'eliminar') {
+            const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, { method: 'DELETE', headers: authHeaders })
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          } else {
+            const campo = tipo
+            const res = await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
+              method: 'PATCH',
+              headers: { ...authHeaders, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ [campo]: valor }),
+            })
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            if (v) before.push({ id, antes: { [campo]: v[campo] ?? null } })
+          }
+          aplicados.push(id)
+        } catch (err) {
+          fallidos.push({ id, nombre, error: err?.message || String(err) })
+        } finally {
+          setBatchProgreso(p => p && ({ ...p, hechos: p.hechos + 1, fallidos }))
+        }
+      }
+    }
+
+    try {
+      await Promise.all(Array.from({ length: conc }, worker))
+    } finally {
+      await cargar()
+      setBatchRunning(false)
+      setBatchProgreso(null)
+      setBatchDialog(null)
+      // El undo solo cubre los aplicados exitosamente (no los fallidos).
+      if (tipo !== 'eliminar' && before.length) {
+        setBatchUndo({ tipo, valor, before, ts: Date.now() })
+      }
+      if (fallidos.length) {
+        setBatchResumen({ tipo, valor, aplicados: aplicados.length, fallidos })
+      } else {
+        setSeleccionados(new Set())
+      }
+    }
+  }
+
+  // Undo: revierte uno-a-uno a los valores de 'antes'. No persiste nada en
+  // base propia: una tabla kiosko_cambios_log aditiva queda propuesta en
+  // supabase/kiosko_cambios_log.sql (sin aplicar). Funciona en sesion.
+  async function deshacerBatch() {
+    if (!batchUndo) return
+    setBatchUndoRunning(true)
+    try {
+      for (const { id, antes } of batchUndo.before) {
+        await fetch(`/api/kiosko/${slug}/admin/vinos/${id}`, {
+          method: 'PATCH',
+          headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify(antes),
+        })
+      }
+      await cargar()
+      setBatchUndo(null)
+    } catch (e) {
+      alert('No se pudo deshacer: ' + (e?.message || e))
+    } finally {
+      setBatchUndoRunning(false)
+    }
+  }
+
+  // Autodismiss del toast a los 10 s (si el usuario no pulso Deshacer).
+  useEffect(() => {
+    if (!batchUndo) return
+    const t = setTimeout(() => setBatchUndo(null), 10000)
+    return () => clearTimeout(t)
+  }, [batchUndo])
+
+  // F3 P1-9: avisar al cerrar la pestaña/ventana con cambios pendientes en Ajustes.
+  useEffect(() => {
+    if (tab !== 'ajustes' || !ajustesDirty) return
+    const onBeforeUnload = (e) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [tab, ajustesDirty])
+
+  // Exportar SOLO la seleccion a CSV, cliente-side (sin nuevo endpoint).
+  function exportarSeleccionCSV() {
+    const ids = new Set(seleccionados)
+    const sel = vinos.filter(v => ids.has(v.id))
+    if (!sel.length) return
+    const campos = ['nombre','bodega','tipo','region','pais','anada','precio_pvp','precio_coste','precio_oferta','stock','stock_minimo','ubicacion_estanteria','destacado','activo']
+    const esc = (v) => {
+      if (v == null) return ''
+      const s = String(v).replace(/"/g, '""')
+      return /[,"\n]/.test(s) ? `"${s}"` : s
+    }
+    const filas = [campos.join(','), ...sel.map(v => campos.map(c => esc(v[c])).join(','))].join('\n')
+    const blob = new Blob([filas], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `kiosko-${slug}-seleccion-${new Date().toISOString().slice(0,10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Compat con callsites externos (si alguien llamaba a accionMasiva/eliminarMasivo
+  // desde otro componente, pasa ahora por el dialogo).
+  function accionMasiva(campo, valor) { abrirBatchDialog(campo, valor) }
+  function eliminarMasivo()            { abrirBatchDialog('eliminar', true) }
+
+  // F3 P3-10: Sincronización manual Square. Reusa POST /admin/square-sync sin
+  // cambiar su lógica. Confirmación previa y bloqueo del botón mientras corre.
+  async function sincronizarAhora() {
+    if (!confirm('¿Lanzar una sincronización manual con Square ahora? Puede tardar hasta 5 min.')) return
+    setSyncNowRunning(true); setSyncNowMsg(null)
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/admin/square-sync`, {
+        method: 'POST', headers: authHeaders,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`)
+      setSyncNowMsg({ tipo: 'ok', texto: 'Sincronización completada' })
+      // Refrescar last-sync tras éxito (sin bloquear la UI).
+      fetch(`/api/kiosko/${slug}/admin/last-sync`, { headers: authHeaders })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => d && setLastSync(d))
+        .catch(() => {})
+    } catch (e) {
+      setSyncNowMsg({ tipo: 'error', texto: e?.message || String(e) })
+    } finally {
+      setSyncNowRunning(false)
+      setTimeout(() => setSyncNowMsg(null), 6000)
+    }
+  }
+
+  // F3 B1: CRUD mínimo de kiosko_ubicaciones con degradación.
+  async function cargarUbicaciones() {
+    setUbicacionesError('')
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/admin/ubicaciones`, { headers: authHeaders })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { setUbicacionesError(data.error || `HTTP ${res.status}`); return }
+      setUbicaciones(data.ubicaciones || [])
+      setUbicacionesPending(!!data.pending)
+    } catch (e) { setUbicacionesError(e?.message || String(e)) }
+  }
+  async function crearUbicacion(nombre) {
+    const n = String(nombre || '').trim()
+    if (!n) return
+    const res = await fetch(`/api/kiosko/${slug}/admin/ubicaciones`, {
+      method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre: n }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { setUbicacionesError(data.error || `HTTP ${res.status}`); return }
+    setUbicaciones(prev => [...prev, data.ubicacion].sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre)))
+  }
+  async function patchUbicacion(id, patch) {
+    const res = await fetch(`/api/kiosko/${slug}/admin/ubicaciones`, {
+      method: 'PATCH', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...patch }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) { setUbicacionesError(data.error || `HTTP ${res.status}`); return }
+    setUbicaciones(prev => prev.map(u => u.id === id ? data.ubicacion : u))
+  }
+  async function borrarUbicacion(id) {
+    if (!confirm('¿Eliminar esta ubicación del catálogo? No modifica los vinos que ya la tengan asignada como texto.')) return
+    const res = await fetch(`/api/kiosko/${slug}/admin/ubicaciones?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE', headers: authHeaders,
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setUbicacionesError(data.error || `HTTP ${res.status}`)
+      return
+    }
+    setUbicaciones(prev => prev.filter(u => u.id !== id))
   }
 
   async function exportarCSV() {
@@ -2162,7 +2488,15 @@ export default function AdminKioskoPage() {
     }
   }
 
-  function formatPVP(v) { return v != null ? `${Number(v).toFixed(2)} €` : null }
+  // P0-6: formato de importes unificado a es-ES (coma decimal + simbolo euro)
+  // tal como ya lo usa el kiosko publico. 'formatPVP' mantiene 2 decimales;
+  // 'formatEurRound' para importes agregados sin decimales.
+  // useGrouping:'always' fuerza separador de miles tambien en 4 digitos
+  // (Intl por defecto NO agrupa 1013 -> queremos 1.013 en es-ES).
+  const _fmtEur2 = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' })
+  const _fmtEur0 = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0, useGrouping: 'always' })
+  function formatPVP(v)       { return v != null ? _fmtEur2.format(Number(v)) : null }
+  function formatEurRound(v)  { return v != null ? _fmtEur0.format(Number(v)) : null }
 
   function formatSyncDate(iso) {
     if (!iso) return null
@@ -2418,11 +2752,27 @@ export default function AdminKioskoPage() {
         )}
         <button type="button" className={`${styles.tabBtn} ${tab === 'analitica' ? styles.tabBtnActive : ''}`}
           onClick={() => { if (!esPremium && !esAdminUsuario) { setUpgradeModal('analitica'); return } setTab('analitica'); if (!analitica && !analiticaLoad) cargarAnalitica(); if (!embudo && !embudoLoad) cargarEmbudo() }}>
-          Analítica{!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
+          Analítica
+          {/* F3 P3-4: punto rojo si hay alertas de reposición */}
+          {alertasStock && alertasStock.length > 0 && (
+            <span aria-label={`${alertasStock.length} alertas de reposición`}
+              title={`${alertasStock.length} alertas de reposición`}
+              style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#c44', marginLeft: 6, verticalAlign: 'middle' }} />
+          )}
+          {!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'leads' ? styles.tabBtnActive : ''}`}
           onClick={() => { if (!esPremium && !esAdminUsuario) { setUpgradeModal('leads'); return } setTab('leads'); if (!leads && !leadsLoad) cargarLeads() }}>
-          Leads{!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
+          Leads
+          {/* F3 P3-4: contador de leads cargados cuando aún no se ha visitado el tab;
+              se muestra solo si leads !== null (ya se cargaron) y son >0. */}
+          {leads && leads.length > 0 && (
+            <span aria-label={`${leads.length} leads`} title={`${leads.length} leads en total`}
+              style={{ display: 'inline-block', marginLeft: 6, fontSize: '.7rem', background: '#f0ede8', color: '#555', padding: '.08rem .4rem', borderRadius: 10, fontWeight: 600 }}>
+              {leads.length}
+            </span>
+          )}
+          {!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
         <button type="button" className={`${styles.tabBtn} ${tab === 'ajustes' ? styles.tabBtnActive : ''}`} onClick={() => setTab('ajustes')}>
           Ajustes
@@ -2431,7 +2781,130 @@ export default function AdminKioskoPage() {
 
       {/* Ajustes */}
       {tab === 'ajustes' && tienda && (
-        <AjustesTab slug={slug} tienda={tienda} onSaved={cargar} esAdmin={esAdminUsuario} />
+        <div
+          onInput={() => setAjustesDirty(true)}
+          onChange={() => setAjustesDirty(true)}
+          style={{ paddingBottom: ajustesDirty ? '4.5rem' : 0 }}
+        >
+          <AjustesTab
+            slug={slug}
+            tienda={tienda}
+            onSaved={async () => {
+              try {
+                await cargar()
+                setAjustesDirty(false)
+                setAjustesSavedToast('ok')
+                setTimeout(() => setAjustesSavedToast(null), 2800)
+              } catch {
+                setAjustesSavedToast('error')
+                setTimeout(() => setAjustesSavedToast(null), 4000)
+              }
+            }}
+            esAdmin={esAdminUsuario}
+          />
+        </div>
+      )}
+      {/* F3 B1: CRUD mínimo del catálogo de ubicaciones. Se muestra en Ajustes
+          debajo del formulario principal. Si la tabla no existe, aviso con el
+          nombre del SQL a aplicar. Compat total con el texto libre existente. */}
+      {tab === 'ajustes' && tienda && !hideSensitive && (
+        <section className={styles.ajustesSection} style={{ padding: '1rem 1.75rem 2rem', maxWidth: 820 }}>
+          <h3 style={{ margin: '0 0 .35rem', fontSize: '1rem' }}>Ubicaciones de la tienda</h3>
+          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: '#666' }}>
+            Catálogo para sugerir en la columna &quot;Estantería&quot; de los vinos.
+            Añadir aquí no cambia nada en los vinos existentes; solo rellena el
+            autocompletado al escribir en la ficha o en la acción en lote.
+          </p>
+          {ubicacionesPending && (
+            <div className={styles.analiticaBanner} style={{ marginBottom: '1rem' }}>
+              <span className={styles.analiticaBannerIcon}>SQL</span>
+              <span>
+                Catálogo aún no activado. Aplica <code>supabase/kiosko_ubicaciones.sql</code> y
+                opcionalmente <code>supabase/kiosko_ubicaciones_import.sql</code> para poblar con
+                las ubicaciones existentes.
+              </span>
+            </div>
+          )}
+          {ubicacionesError && (
+            <div className={styles.analiticaBanner} style={{ marginBottom: '1rem', background: '#fdf0f0' }}>
+              <span className={styles.analiticaBannerIcon}>⚠️</span>
+              <span>Error: <code>{ubicacionesError}</code></span>
+              <button type="button" className={styles.btnSecundario} style={{ marginLeft: 'auto', padding: '.3rem .7rem', fontSize: '.78rem' }} onClick={cargarUbicaciones}>Reintentar</button>
+            </div>
+          )}
+          {!ubicacionesPending && (
+            <>
+              <form
+                onSubmit={e => { e.preventDefault(); const fd = new FormData(e.currentTarget); const n = String(fd.get('nombre') || ''); if (n.trim()) { crearUbicacion(n); e.currentTarget.reset() } }}
+                style={{ display: 'flex', gap: '.5rem', marginBottom: '.8rem' }}
+              >
+                <input name="nombre" type="text" placeholder="Nueva ubicación (p. ej. Pasillo B3)" maxLength={80}
+                  style={{ flex: 1, padding: '.5rem .7rem', fontSize: '.88rem', border: '1px solid #ddd', borderRadius: 6 }} />
+                <button type="submit" className={styles.btnPrimario} style={{ padding: '.4rem .9rem', fontSize: '.82rem' }}>+ Añadir</button>
+              </form>
+              <div style={{ border: '1px solid #ebe6dc', borderRadius: 8, maxHeight: 260, overflowY: 'auto' }}>
+                {ubicaciones.length === 0 && (
+                  <p style={{ margin: 0, padding: '1rem', color: '#999', fontSize: '.82rem' }}>
+                    Aún no hay ubicaciones en el catálogo.
+                  </p>
+                )}
+                {ubicaciones.map((u, i) => (
+                  <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', padding: '.45rem .7rem', borderBottom: i < ubicaciones.length - 1 ? '1px solid #f1ede5' : 'none' }}>
+                    <input type="text" value={u.nombre}
+                      onChange={e => setUbicaciones(prev => prev.map(x => x.id === u.id ? { ...x, nombre: e.target.value } : x))}
+                      onBlur={e => { const v = e.target.value.trim(); if (v && v !== u.nombre) patchUbicacion(u.id, { nombre: v }) }}
+                      style={{ flex: 1, padding: '.35rem .55rem', fontSize: '.85rem', border: '1px solid transparent', borderRadius: 4, background: 'transparent' }}
+                      aria-label={`Nombre de la ubicación ${u.nombre}`}
+                    />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.75rem', color: '#555' }}>
+                      <input type="checkbox" checked={u.activa} onChange={e => patchUbicacion(u.id, { activa: e.target.checked })} />
+                      Activa
+                    </label>
+                    <button type="button" onClick={() => borrarUbicacion(u.id)} aria-label={`Eliminar ubicación ${u.nombre}`}
+                      style={{ background: 'none', border: 'none', color: '#c44', cursor: 'pointer', fontSize: '.95rem' }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+      {/* F3 P3-10: Integración Square — estado visible y sincronización manual */}
+      {tab === 'ajustes' && tienda && !hideSensitive && (
+        <section className={styles.ajustesSection} style={{ padding: '0 1.75rem 2rem', maxWidth: 820 }}>
+          <h3 style={{ margin: '0 0 .35rem', fontSize: '1rem' }}>Integración Square</h3>
+          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: '#666' }}>
+            Estado de la sincronización. El token nunca se muestra ni se registra.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.65rem 1rem', fontSize: '.84rem', marginBottom: '.8rem' }}>
+            <div>
+              <div style={{ color: '#888', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último catálogo</div>
+              <div><strong>{lastSync?.ultimoCatalogoAt ? formatSyncDate(lastSync.ultimoCatalogoAt) : '—'}</strong></div>
+            </div>
+            <div>
+              <div style={{ color: '#888', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último pago TPV</div>
+              <div><strong>{lastSync?.ultimoPagoAt ? formatSyncDate(lastSync.ultimoPagoAt) : '—'}</strong></div>
+            </div>
+            {lastSync?.ultimoError && (
+              <div style={{ gridColumn: '1 / -1', padding: '.5rem .75rem', background: '#fdf0f0', border: '1px solid #f1caca', borderRadius: 6, color: '#7a2020' }}>
+                <div style={{ fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em', color: '#b45309' }}>
+                  Último error {lastSync.ultimoErrorAt && `(${formatSyncDate(lastSync.ultimoErrorAt)})`}
+                </div>
+                <div style={{ fontSize: '.78rem', fontFamily: 'monospace', wordBreak: 'break-word' }}>{String(lastSync.ultimoError).slice(0, 400)}</div>
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button type="button" className={styles.btnPrimario} onClick={sincronizarAhora} disabled={syncNowRunning} style={{ padding: '.5rem .9rem', fontSize: '.84rem' }}>
+              {syncNowRunning ? 'Sincronizando…' : 'Sincronizar ahora'}
+            </button>
+            {syncNowMsg && (
+              <span style={{ fontSize: '.8rem', color: syncNowMsg.tipo === 'ok' ? '#2a8a4a' : '#c44' }}>
+                {syncNowMsg.tipo === 'ok' ? '✓' : '⚠'} {syncNowMsg.texto}
+              </span>
+            )}
+          </div>
+        </section>
       )}
 
       {/* Pedidos de mostrador */}
@@ -2560,29 +3033,47 @@ export default function AdminKioskoPage() {
 
       {tab === 'analitica' && (esPremium || esAdminUsuario) && (
         <div className={styles.analiticaWrap}>
-          {/* Sub-tabs */}
-          <nav className={styles.subTabNav}>
-            {[
-              { id: 'resumen',       label: 'Resumen' },
-              { id: 'busquedas',     label: 'Búsquedas' },
-              { id: 'embudo',        label: 'Embudo' },
-              { id: 'conversion',    label: 'Conversión' },
-              { id: 'precios',       label: 'Precios' },
-              ...(!hideSensitive ? [
-                { id: 'ventas',        label: 'Ventas TPV' },
-                { id: 'rentabilidad',  label: 'Rentabilidad' },
-                { id: 'descuadres',    label: 'Descuadres' },
-              ] : []),
-            ].map(st => (
-              <button key={st.id} type="button"
-                className={`${styles.subTabBtn} ${subTabAnalitica === st.id ? styles.subTabBtnActive : ''}`}
-                onClick={() => setSubTabAnalitica(st.id)}>
-                {st.label}
-              </button>
-            ))}
+          {/* Sub-tabs (P3-5: agrupadas en 'Clientes' y 'Tienda', tamano >=13 px) */}
+          <nav className={styles.subTabNav} aria-label="Subpestañas de analítica">
+            {(() => {
+              const grupos = [
+                { grupo: '', items: [{ id: 'resumen', label: 'Resumen' }] },
+                { grupo: 'Clientes', items: [
+                  { id: 'busquedas',  label: 'Búsquedas' },
+                  { id: 'embudo',     label: 'Embudo' },
+                  { id: 'conversion', label: 'Conversión' },
+                ] },
+                { grupo: 'Tienda', items: [
+                  { id: 'precios', label: 'Precios' },
+                  ...(!hideSensitive ? [
+                    { id: 'ventas',       label: 'Ventas TPV' },
+                    { id: 'rentabilidad', label: 'Rentabilidad' },
+                    { id: 'descuadres',   label: 'Descuadres' },
+                  ] : []),
+                ] },
+              ]
+              return grupos.map((g, gi) => (
+                <span key={gi} className={styles.subTabGroup}>
+                  {g.grupo && <span className={styles.subTabGroupLabel}>{g.grupo}</span>}
+                  {g.items.map(st => (
+                    <button key={st.id} type="button"
+                      aria-current={subTabAnalitica === st.id ? 'page' : undefined}
+                      className={`${styles.subTabBtn} ${subTabAnalitica === st.id ? styles.subTabBtnActive : ''}`}
+                      onClick={() => setSubTabAnalitica(st.id)}>
+                      {st.label}
+                    </button>
+                  ))}
+                </span>
+              ))
+            })()}
           </nav>
 
-          {analiticaLoad && <p className={styles.analiticaLoading}>Cargando datos…</p>}
+          {analiticaLoad && (
+            <div className={styles.skeletonBlock} aria-live="polite" aria-label="Cargando analítica">
+              <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
+              <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
+            </div>
+          )}
           {!analiticaLoad && analitica && (() => {
             const vacio = analitica.vacio
             const SKELETON = [88, 72, 60, 48, 36]
@@ -2606,7 +3097,17 @@ export default function AdminKioskoPage() {
                 {analitica.movil?.pendiente && (
                   <div className={styles.analiticaBanner}>
                     <span className={styles.analiticaBannerIcon}>QR</span>
-                    <span>La métrica Llevar al móvil todavía no está disponible en Supabase. Aplica la migración para activarla.</span>
+                    <span>
+                      Falta aplicar <code>supabase/kiosko_mobile_intents.sql</code>: los datos de &apos;Llevados al móvil&apos; no se están guardando. Mientras tanto los KPIs de Llevar al móvil mostrarán 0.
+                    </span>
+                  </div>
+                )}
+                {!analitica.movil?.pendiente && analitica.movil?.errorMsg && (
+                  <div className={styles.analiticaBanner} style={{ background: '#fdf0f0' }}>
+                    <span className={styles.analiticaBannerIcon}>⚠️</span>
+                    <span>
+                      Error al leer datos de móvil: <code>{analitica.movil.errorMsg}</code>
+                    </span>
                   </div>
                 )}
 
@@ -2644,7 +3145,11 @@ export default function AdminKioskoPage() {
                         <div key={a.id} className={`${styles.alertaItem} ${a.critico ? styles.alertaCritico : styles.alertaBajo}`}>
                           <span className={styles.alertaIcon}>{a.critico ? '🔴' : '🟡'}</span>
                           <span className={styles.alertaNombre}>{a.nombre}{a.bodega ? ` · ${a.bodega}` : ''}</span>
-                          <span className={styles.alertaStats}>{a.recomendaciones}× recomendado · {a.stock === 0 ? 'Sin stock' : `${a.stock} ud.`}{a.diasRestantes !== null && a.diasRestantes !== undefined ? ` · ~${a.diasRestantes}d` : ''}</span>
+                          <span className={styles.alertaStats} title={a.diasCobertura != null ? `Cobertura calculada: stock ${a.stock} / (ventas 30 d / 30)` : 'Sin ventas TPV en 30 d para calcular cobertura'}>
+                            {a.recomendaciones}× recomendado · {a.stock === 0 ? 'Sin stock' : `${a.stock} ud.`}
+                            {a.diasRestantes != null ? ` · ~${a.diasRestantes}d` : ''}
+                            {a.diasCobertura != null && ` · cobertura ${a.diasCobertura} d`}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -2681,8 +3186,14 @@ export default function AdminKioskoPage() {
                     <span className={styles.analiticaKpiLabel}>Alertas de stock</span>
                   </div>
                   <div className={styles.analiticaKpi}>
-                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.movil?.total ?? 0}</span>
-                    <span className={styles.analiticaKpiLabel}>Llevados al móvil</span>
+                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente || analitica.movil?.errorMsg ? styles.kpiEmpty : ''}`}>
+                      {analitica.movil?.pendiente || analitica.movil?.errorMsg ? '—' : (analitica.movil?.total ?? 0)}
+                    </span>
+                    <span className={styles.analiticaKpiLabel}>
+                      Llevados al móvil
+                      {analitica.movil?.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
+                      {!analitica.movil?.pendiente && analitica.movil?.errorMsg && <em title={`Error: ${analitica.movil.errorMsg}`}> ⚠</em>}
+                    </span>
                   </div>
                 </div>
 
@@ -2707,8 +3218,14 @@ export default function AdminKioskoPage() {
                     </span>
                   </div>
                   <div className={styles.analiticaKpi}>
-                    <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.movil?.total ?? 0}</span>
-                    <span className={styles.analiticaKpiLabel}>Llevados al móvil</span>
+                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente || analitica.movil?.errorMsg ? styles.kpiEmpty : ''}`}>
+                      {analitica.movil?.pendiente || analitica.movil?.errorMsg ? '—' : (analitica.movil?.total ?? 0)}
+                    </span>
+                    <span className={styles.analiticaKpiLabel}>
+                      Llevados al móvil
+                      {analitica.movil?.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
+                      {!analitica.movil?.pendiente && analitica.movil?.errorMsg && <em title={`Error: ${analitica.movil.errorMsg}`}> ⚠</em>}
+                    </span>
                   </div>
                   <div className={styles.analiticaKpi}>
                     <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.modos?.maridaje ?? 0}</span>
@@ -2741,6 +3258,46 @@ export default function AdminKioskoPage() {
                               <span className={styles.analiticaRank}>{i + 1}</span>
                               <span className={styles.analiticaConsulta}>{c.consulta}</span>
                               <span className={styles.analiticaVeces}>{c.veces}×</span>
+                            </div>
+                          ))
+                      }
+                    </div>
+                  </div>
+
+                  {/* F3 P1-11: Búsquedas sin resultado (oportunidad de surtido) */}
+                  <div className={styles.analiticaBloque}>
+                    <h3 className={styles.analiticaBloqueTitle}>Búsquedas sin resultado</h3>
+                    <p className={styles.analiticaBloqueDesc}>Lo que pidieron los clientes y el kiosko no pudo recomendar — oportunidad de surtido</p>
+                    <div className={styles.analiticaList}>
+                      {vacio || !analitica.busquedasSinResultado?.length
+                        ? <p style={{ margin: '.3rem 0 0', color: '#888', fontSize: '.78rem' }}>
+                            {vacio ? '—' : 'Todas las búsquedas devolvieron al menos una recomendación.'}
+                          </p>
+                        : analitica.busquedasSinResultado.map((c, i) => (
+                            <div key={i} className={styles.analiticaListRow}>
+                              <span className={styles.analiticaRank}>{i + 1}</span>
+                              <span className={styles.analiticaConsulta}>{c.consulta}</span>
+                              <span className={styles.analiticaVeces}>{c.veces}×</span>
+                            </div>
+                          ))
+                      }
+                    </div>
+                  </div>
+
+                  {/* F3 P1-11: Más buscados sin stock */}
+                  <div className={styles.analiticaBloque}>
+                    <h3 className={styles.analiticaBloqueTitle}>Más buscados sin stock</h3>
+                    <p className={styles.analiticaBloqueDesc}>El asistente los recomendó pero están agotados · reabastece primero</p>
+                    <div className={styles.analiticaList}>
+                      {vacio || !analitica.buscadosSinStock?.length
+                        ? <p style={{ margin: '.3rem 0 0', color: '#888', fontSize: '.78rem' }}>
+                            {vacio ? '—' : 'Todos los vinos recomendados tienen stock.'}
+                          </p>
+                        : analitica.buscadosSinStock.map((v, i) => (
+                            <div key={v.id} className={styles.analiticaListRow}>
+                              <span className={styles.analiticaRank}>{i + 1}</span>
+                              <span className={styles.analiticaConsulta}>{v.nombre}</span>
+                              <span className={styles.analiticaVeces}>{v.veces}×</span>
                             </div>
                           ))
                       }
@@ -2943,23 +3500,59 @@ export default function AdminKioskoPage() {
         )
       })()}
 
-      {/* Vinos sin movimiento */}
+      {/* Vinos sin movimiento (P1-5: filtros + CSV + aviso sin sync 24 h) */}
       {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'ventas' && analitica && (() => {
         const vp = analitica.ventasPorVino || {}
-        const sinMovimiento = vinosVino.filter(v =>
+        const base = vinosVino.filter(v =>
           v.activo && Number(v.precio_pvp) > 0 && Number(v.stock ?? 0) > 0 && !vp[v.id]
-        ).sort((a, b) => Number(b.stock) - Number(a.stock))
-        if (!sinMovimiento.length) return null
+        )
+        if (!base.length) return null
+        const tipos    = [...new Set(base.map(v => v.tipo).filter(Boolean))].sort()
+        const bodegas  = [...new Set(base.map(v => v.bodega).filter(Boolean))].sort()
+        const sinMovimiento = base
+          .filter(v => !filtroSinMovTipo   || v.tipo   === filtroSinMovTipo)
+          .filter(v => !filtroSinMovBodega || v.bodega === filtroSinMovBodega)
+          .sort((a, b) => Number(b.stock) * Number(b.precio_pvp) - Number(a.stock) * Number(a.precio_pvp))
         const valorParado = sinMovimiento.reduce((s, v) => s + Number(v.stock) * Number(v.precio_pvp), 0)
+        const horasSinSync = analitica.ultimoSyncAt
+          ? Math.round((Date.now() - new Date(analitica.ultimoSyncAt).getTime()) / 3600000)
+          : null
+        const sinSyncAviso = horasSinSync != null && horasSinSync >= 24
+        const exportarSinMovCSV = () => {
+          const campos = ['nombre','bodega','tipo','region','stock','precio_pvp','valor_parado']
+          const esc = (v) => { const s = String(v ?? '').replace(/"/g, '""'); return /[,"\n]/.test(s) ? `"${s}"` : s }
+          const filas = [campos.join(','), ...sinMovimiento.map(v => [v.nombre, v.bodega, v.tipo, v.region, v.stock, v.precio_pvp, (Number(v.stock) * Number(v.precio_pvp)).toFixed(2)].map(esc).join(','))].join('\n')
+          const blob = new Blob([filas], { type: 'text/csv;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a'); a.href = url; a.download = `vinos-sin-movimiento-${slug}-${new Date().toISOString().slice(0,10)}.csv`; a.click()
+          URL.revokeObjectURL(url)
+        }
         return (
           <div style={{ padding: '0 1.75rem 1.75rem' }}>
+            {sinSyncAviso && (
+              <div className={styles.analiticaBanner} style={{ marginBottom: '1rem', background: '#fff4d4' }}>
+                <span className={styles.analiticaBannerIcon}>⚠️</span>
+                <span>Sin sincronización TPV desde hace más de {horasSinSync} h · los números pueden estar desactualizados.</span>
+              </div>
+            )}
             <div className={styles.analiticaBloque}>
               <div className={styles.analiticaBloqueHeader}>
                 <div>
                   <h3 className={styles.analiticaBloqueTitle}>Vinos sin movimiento</h3>
                   <p className={styles.analiticaBloqueDesc}>
-                    Activos con stock pero sin ventas en los últimos 90 días · {sinMovimiento.length} vinos · {valorParado.toFixed(0)} € parados en lineal
+                    Activos con stock pero sin ventas en los últimos 90 días · {sinMovimiento.length} de {base.length} vinos · {formatEurRound(valorParado)} parados en lineal
                   </p>
+                </div>
+                <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <select value={filtroSinMovTipo} onChange={e => setFiltroSinMovTipo(e.target.value)} className={styles.filtroSelect} aria-label="Filtrar por tipo">
+                    <option value="">Todos los tipos</option>
+                    {tipos.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <select value={filtroSinMovBodega} onChange={e => setFiltroSinMovBodega(e.target.value)} className={styles.filtroSelect} aria-label="Filtrar por bodega">
+                    <option value="">Todas las bodegas</option>
+                    {bodegas.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                  <button type="button" className={styles.btnSecundario} onClick={exportarSinMovCSV} style={{ padding: '.4rem .8rem', fontSize: '.78rem' }} disabled={!sinMovimiento.length}>↓ CSV</button>
                 </div>
               </div>
               <div style={{ overflowX: 'auto' }}>
@@ -2980,15 +3573,18 @@ export default function AdminKioskoPage() {
                           {v.bodega && <span className={styles.rendBodega}> · {v.bodega}</span>}
                         </td>
                         <td className={styles.rendTdNum}>{v.stock}</td>
-                        <td className={styles.rendTdNum}>{Number(v.precio_pvp).toFixed(2)} €</td>
-                        <td className={styles.rendTdNum}>{(Number(v.stock) * Number(v.precio_pvp)).toFixed(0)} €</td>
+                        <td className={styles.rendTdNum}>{formatPVP(v.precio_pvp)}</td>
+                        <td className={styles.rendTdNum}>{formatEurRound(Number(v.stock) * Number(v.precio_pvp))}</td>
                       </tr>
                     ))}
+                    {sinMovimiento.length === 0 && (
+                      <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: '#aaa' }}>Ningún vino coincide con los filtros.</td></tr>
+                    )}
                   </tbody>
                   {sinMovimiento.length > 15 && (
                     <tfoot>
                       <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: '#aaa', fontStyle: 'italic' }}>
-                        +{sinMovimiento.length - 15} más no mostrados
+                        +{sinMovimiento.length - 15} más no mostrados · exporta CSV para la lista completa
                       </td></tr>
                     </tfoot>
                   )}
@@ -3002,6 +3598,39 @@ export default function AdminKioskoPage() {
       {/* Rentabilidad — solo en Premium */}
       {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'rentabilidad' && (
         <div style={{ padding: '0 1.75rem 1.75rem' }}>
+          {/* P1-6: 'Completar coste' encima de la matriz para no distorsionarla */}
+          {(() => {
+            const sinCoste = vinosVino.filter(v => v.activo && Number(v.precio_pvp) > 0 && !v.precio_coste).sort((a, b) => Number(b.precio_pvp) - Number(a.precio_pvp))
+            if (!sinCoste.length) return null
+            return (
+              <div className={styles.analiticaBloque} style={{ marginBottom: '1rem', borderLeft: '3px solid #c9a96e' }}>
+                <div className={styles.analiticaBloqueHeader}>
+                  <div>
+                    <h3 className={styles.analiticaBloqueTitle}>Completar coste</h3>
+                    <p className={styles.analiticaBloqueDesc}>
+                      {sinCoste.length} vino{sinCoste.length === 1 ? '' : 's'} sin precio de coste — se omiten de la matriz hasta completarlo.
+                    </p>
+                  </div>
+                </div>
+                <ul style={{ margin: 0, padding: '0 0 0 1rem', fontSize: '.84rem', lineHeight: 1.7, columns: sinCoste.length > 5 ? 2 : 1 }}>
+                  {sinCoste.slice(0, 20).map(v => (
+                    <li key={v.id}>
+                      <button
+                        type="button"
+                        onClick={() => abrirEditar(v)}
+                        style={{ background: 'none', border: 'none', color: '#1a4f7a', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}
+                      >
+                        {v.nombre}
+                      </button>
+                      {v.bodega && <span style={{ color: '#888' }}> · {v.bodega}</span>}
+                      <span style={{ color: '#888' }}> · PVP {formatPVP(v.precio_pvp)}</span>
+                    </li>
+                  ))}
+                  {sinCoste.length > 20 && <li style={{ color: '#888', fontStyle: 'italic' }}>+{sinCoste.length - 20} más — filtra en el catálogo por &quot;Sin coste&quot;.</li>}
+                </ul>
+              </div>
+            )
+          })()}
           <div className={styles.analiticaBloque}>
             <div className={styles.analiticaBloqueHeader}>
               <div>
@@ -3011,7 +3640,7 @@ export default function AdminKioskoPage() {
                     ? 'Introduce el precio de coste en la columna "Coste €" del Catálogo para activar este análisis. Necesitas al menos 2 vinos con coste.'
                     : rentabilidad.coldStart
                     ? 'El cuadrante se activará cuando se registren al menos 20 unidades vendidas vía TPV. Los datos de margen ya están listos.'
-                    : <>Cruce entre margen bruto y unidades vendidas (TPV Square){!rentabilidad.usandoVentas && ' · usando recomendaciones del kiosko como aproximación'} — umbral margen {rentabilidad.margenMedio}%, umbral ventas {rentabilidad.ventasMedio} ud{rentabilidad.sinCoste > 0 && ` · ${rentabilidad.sinCoste} vino${rentabilidad.sinCoste > 1 ? 's' : ''} sin precio de coste`}</>
+                    : <>Cruce entre margen bruto y unidades vendidas (TPV Square){!rentabilidad.usandoVentas && ' · usando recomendaciones del kiosko como aproximación'} — umbral margen {rentabilidad.margenMedio}%, umbral ventas {rentabilidad.ventasMedio} ud</>
                   }
                 </p>
               </div>
@@ -3203,7 +3832,7 @@ export default function AdminKioskoPage() {
                               ? <span className={`${styles.margenBadge} ${f.margen >= 40 ? styles.margenHigh : f.margen >= 25 ? styles.margenMid : styles.margenLow}`}>{f.margen}%</span>
                               : <em className={styles.dash}>—</em>}
                           </td>
-                          <td className={styles.rendTdNum}>{f.pvpVal ? `${f.pvpVal.toFixed(2)} €` : '—'}</td>
+                          <td className={styles.rendTdNum}>{f.pvpVal ? formatPVP(f.pvpVal) : '—'}</td>
                           <td className={styles.rendTdNum}>
                             <span style={{ color: f.stock === 0 ? '#c03030' : f.stock !== null && f.stock <= 3 ? '#d4a636' : '#2e6b47', fontWeight: 600 }}>
                               {f.stock ?? '—'}
@@ -3308,17 +3937,21 @@ export default function AdminKioskoPage() {
               </div>
               <div className={styles.analiticaKpi}>
                 <span className={styles.analiticaKpiNum}>
-                  {hayDatosTPV ? `${totalEurosPerdidos.toFixed(0)} €` : '—'}
+                  {hayDatosTPV ? formatEurRound(totalEurosPerdidos) : '—'}
                 </span>
                 <span className={styles.analiticaKpiLabel}>Euros no capturados</span>
                 <span className={styles.analiticaKpiSub}>{hayDatosTPV ? 'Estimación basada en PVP' : 'Conecta Square para ver'}</span>
               </div>
               <div className={styles.analiticaKpi}>
-                <span className={styles.analiticaKpiNum}>
-                  {hayDatosTPV ? `${avgConvPct}%` : '—'}
+                <span className={styles.analiticaKpiNum} title="Método actualizado el 2026-11-08 · ventana alineada 30 d (ventas y recomendaciones). Indicativo: cuenta todas las ventas TPV del vino, no solo las originadas por la recomendación; '—' cuando hay <3 recomendaciones.">
+                  {hayDatosTPV && avgConvPct !== null ? `${avgConvPct}%` : '—'}
                 </span>
-                <span className={styles.analiticaKpiLabel}>Tasa de conversión media</span>
-                <span className={styles.analiticaKpiSub}>Recomendaciones que acaban en venta</span>
+                <span className={styles.analiticaKpiLabel}>Ventas / recomendaciones (indicativo)</span>
+                <span className={styles.analiticaKpiSub}>
+                  {hayDatosTPV && avgConvPct !== null
+                    ? 'Ventana 30 d · no es atribución directa'
+                    : 'Datos insuficientes · método actualizado 2026-11-08'}
+                </span>
               </div>
             </div>
 
@@ -3347,7 +3980,7 @@ export default function AdminKioskoPage() {
                       <th className={styles.rendThNum}>Recomendado</th>
                       <th className={styles.rendThNum}>Al móvil</th>
                       <th className={styles.rendThNum}>Vendido</th>
-                      <th className={styles.rendThNum}>Conversión</th>
+                      <th className={styles.rendThNum} title="Ventas / recomendaciones en los últimos 30 d · indicativo, no es atribución directa">V/R (ind.)</th>
                       <th className={styles.rendThNum}>No capturado</th>
                       <th className={styles.rendThNum}>Causas</th>
                     </tr>
@@ -3363,15 +3996,15 @@ export default function AdminKioskoPage() {
                         <td className={styles.rendTdNum}>{v.movil_n > 0 ? v.movil_n : <em className={styles.dash}>—</em>}</td>
                         <td className={styles.rendTdNum}>{hayDatosTPV ? v.vendido_n : <em className={styles.dash}>—</em>}</td>
                         <td className={styles.rendTdNum}>
-                          {hayDatosTPV
+                          {hayDatosTPV && v.tasa_conv !== null
                             ? <span className={`${styles.margenBadge} ${v.tasa_conv >= 0.3 ? styles.margenHigh : v.tasa_conv >= 0.1 ? styles.margenMid : styles.margenLow}`}>
                                 {Math.round(v.tasa_conv * 100)}%
                               </span>
-                            : <em className={styles.dash}>—</em>}
+                            : <em className={styles.dash} title={v.tasa_conv === null ? 'Datos insuficientes: <3 recomendaciones en la ventana' : undefined}>—</em>}
                         </td>
                         <td className={styles.rendTdNum}>
                           {v.euros_perdidos !== null && v.euros_perdidos > 0
-                            ? <span style={{ color: '#c03030', fontWeight: 600 }}>{v.euros_perdidos.toFixed(0)} €</span>
+                            ? <span style={{ color: '#c03030', fontWeight: 600 }}>{formatEurRound(v.euros_perdidos)}</span>
                             : <em className={styles.dash}>—</em>}
                         </td>
                         <td className={styles.rendTdNum}>
@@ -3462,7 +4095,7 @@ export default function AdminKioskoPage() {
                               <span style={{ color: '#c03030', fontWeight: 600 }}>{d.ventas}</span>
                             </td>
                             <td className={styles.rendTdNum}>{d.stock_actual ?? '—'}</td>
-                            <td className={styles.rendTdNum}>{d.precio_pvp ? `${Number(d.precio_pvp).toFixed(2)} €` : '—'}</td>
+                            <td className={styles.rendTdNum}>{d.precio_pvp ? formatPVP(d.precio_pvp) : '—'}</td>
                             <td className={styles.rendTd} style={{ fontSize: '.8rem', color: '#666' }}>
                               {d.ultima_venta ? new Date(d.ultima_venta).toLocaleDateString('es-ES') : '—'}
                             </td>
@@ -3616,9 +4249,9 @@ export default function AdminKioskoPage() {
                           <td className={styles.rendTdNum}>
                             <span className={`${styles.margenBadge} ${styles.margenLow}`}>{c.margenPct}%</span>
                           </td>
-                          <td className={styles.rendTdNum}>{c.pvp.toFixed(2)} €</td>
+                          <td className={styles.rendTdNum}>{formatPVP(c.pvp)}</td>
                           <td className={styles.rendTdNum} style={{ fontWeight: 700, color: '#2e6b47' }}>
-                            {c.pvpNew.toFixed(2)} €
+                            {formatPVP(c.pvpNew)}
                             <span style={{ fontSize: '.68rem', color: '#aaa', marginLeft: 3 }}>+{c.delta.toFixed(2)} €</span>
                           </td>
                           <td className={styles.rendTdNum}>
@@ -3672,7 +4305,7 @@ export default function AdminKioskoPage() {
                             <td className={styles.rendTdNum}>
                               <span className={`${styles.margenBadge} ${j.margenPct >= 40 ? styles.margenHigh : styles.margenMid}`}>{j.margenPct}%</span>
                             </td>
-                            <td className={styles.rendTdNum}>{j.pvp.toFixed(2)} €</td>
+                            <td className={styles.rendTdNum}>{formatPVP(j.pvp)}</td>
                             <td className={styles.rendTdNum}>
                               {v?.destacado
                                 ? <span style={{ color: '#2e6b47', fontSize: '.8rem' }}>✓ Sí</span>
@@ -3775,14 +4408,30 @@ export default function AdminKioskoPage() {
               )}
             </div>
 
-            {leadsLoad && <p className={styles.analiticaLoading}>Cargando leads…</p>}
-            {!leadsLoad && leads !== null && leads.length === 0 && (
-              <div className={styles.analiticaBanner} style={{ margin: '1rem 0 0' }}>
-                <span className={styles.analiticaBannerIcon}>✉️</span>
-                <span>Todavía sin leads. Aparecerán aquí cuando un cliente deje su email al final de una recomendación.</span>
+            {leadsLoad && (
+              <div className={styles.skeletonBlock} aria-live="polite" aria-label="Cargando leads">
+                <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
+                <div className={styles.skeletonRow} />
               </div>
             )}
-            {!leadsLoad && leads?.length > 0 && (
+            {!leadsLoad && leadsError && (
+              <div className={styles.analiticaBanner} style={{ margin: '1rem 0 0' }}>
+                <span className={styles.analiticaBannerIcon}>⚠️</span>
+                <span style={{ flex: 1 }}>
+                  No se han podido cargar los leads: <code>{leadsError}</code>.
+                </span>
+                <button type="button" className={styles.btnSecundario} onClick={cargarLeads} style={{ padding: '.3rem .7rem', fontSize: '.78rem' }}>
+                  Reintentar
+                </button>
+              </div>
+            )}
+            {!leadsLoad && !leadsError && leads !== null && leads.length === 0 && (
+              <div className={styles.analiticaBanner} style={{ margin: '1rem 0 0' }}>
+                <span className={styles.analiticaBannerIcon}>✉️</span>
+                <span>Aún no hay leads: se captan cuando un cliente deja su email tras una recomendación.</span>
+              </div>
+            )}
+            {!leadsLoad && !leadsError && leads?.length > 0 && (
               <div style={{ overflowX: 'auto', marginTop: '.75rem' }}>
                 <table className={styles.rendTable}>
                   <thead>
@@ -3791,6 +4440,7 @@ export default function AdminKioskoPage() {
                       <th className={styles.rendThNum}>Fuente</th>
                       <th className={styles.rendThNum}>Preferencias</th>
                       <th className={styles.rendThNum}>Vinos</th>
+                      <th className={styles.rendThNum} title="Fecha en que el cliente acepto el consentimiento RGPD">Consent.</th>
                       <th className={styles.rendThNum}>Fecha</th>
                       <th className={styles.rendThNum}></th>
                     </tr>
@@ -3806,6 +4456,11 @@ export default function AdminKioskoPage() {
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem' }}>{l.source}</td>
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 160 }}>{prefStr || '—'}</td>
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 180 }}>{vinos || '—'}</td>
+                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }} title={l.consentimiento_at ? `Aceptado el ${new Date(l.consentimiento_at).toLocaleString('es-ES')}` : 'No hay fecha de aceptación guardada para este lead'}>
+                            {l.consentimiento_at
+                              ? <span style={{ color: '#2a8a4a' }} aria-label="Consentimiento registrado">✔</span>
+                              : <span style={{ color: '#b45309', fontStyle: 'italic' }} aria-label="Sin consentimiento registrado">Sin registrar</span>}
+                          </td>
                           <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }}>
                             {new Date(l.created_at).toLocaleDateString('es-ES')}
                           </td>
@@ -3964,9 +4619,11 @@ export default function AdminKioskoPage() {
 
                       <td>
                         <select
-                          className={`${styles.otrosBoolSelect} ${v.apto_cesta === true ? styles.otrosBoolSi : v.apto_cesta === false ? styles.otrosBoolNo : ''}`}
+                          aria-label={`Apto para cesta regalo — ${v.nombre}`}
+                          className={`${styles.otrosBoolSelect} ${v.apto_cesta === true ? styles.otrosBoolSi : v.apto_cesta === false ? styles.otrosBoolNo : styles.otrosBoolSinDef}`}
                           value={v.apto_cesta === true ? 'si' : v.apto_cesta === false ? 'no' : ''}
                           onChange={e => patchOtro('apto_cesta', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
+                          title="Auto = se infiere por categoría (el kiosko decide)"
                         >
                           <option value="">Auto</option>
                           <option value="si">Sí</option>
@@ -3976,11 +4633,12 @@ export default function AdminKioskoPage() {
 
                       <td>
                         <select
-                          className={`${styles.otrosBoolSelect} ${v.es_vegano === true ? styles.otrosBoolSi : v.es_vegano === false ? styles.otrosBoolNo : ''}`}
+                          aria-label={`Vegano — ${v.nombre}`}
+                          className={`${styles.otrosBoolSelect} ${v.es_vegano === true ? styles.otrosBoolSi : v.es_vegano === false ? styles.otrosBoolNo : styles.otrosBoolSinDef}`}
                           value={v.es_vegano === true ? 'si' : v.es_vegano === false ? 'no' : ''}
                           onChange={e => patchOtro('es_vegano', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
                         >
-                          <option value="">—</option>
+                          <option value="">Sin definir</option>
                           <option value="si">Sí</option>
                           <option value="no">No</option>
                         </select>
@@ -3988,11 +4646,12 @@ export default function AdminKioskoPage() {
 
                       <td>
                         <select
-                          className={`${styles.otrosBoolSelect} ${v.con_alcohol === true ? styles.otrosBoolAlerta : v.con_alcohol === false ? styles.otrosBoolSi : ''}`}
+                          aria-label={`Contiene alcohol — ${v.nombre}`}
+                          className={`${styles.otrosBoolSelect} ${v.con_alcohol === true ? styles.otrosBoolAlerta : v.con_alcohol === false ? styles.otrosBoolSi : styles.otrosBoolSinDef}`}
                           value={v.con_alcohol === true ? 'si' : v.con_alcohol === false ? 'no' : ''}
                           onChange={e => patchOtro('con_alcohol', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
                         >
-                          <option value="">—</option>
+                          <option value="">Sin definir</option>
                           <option value="si">Sí</option>
                           <option value="no">No</option>
                         </select>
@@ -4000,11 +4659,12 @@ export default function AdminKioskoPage() {
 
                       <td>
                         <select
-                          className={`${styles.otrosBoolSelect} ${v.sin_gluten === true ? styles.otrosBoolSi : v.sin_gluten === false ? styles.otrosBoolNo : ''}`}
+                          aria-label={`Sin gluten — ${v.nombre}`}
+                          className={`${styles.otrosBoolSelect} ${v.sin_gluten === true ? styles.otrosBoolSi : v.sin_gluten === false ? styles.otrosBoolNo : styles.otrosBoolSinDef}`}
                           value={v.sin_gluten === true ? 'si' : v.sin_gluten === false ? 'no' : ''}
                           onChange={e => patchOtro('sin_gluten', e.target.value === 'si' ? true : e.target.value === 'no' ? false : null)}
                         >
-                          <option value="">—</option>
+                          <option value="">Sin definir</option>
                           <option value="si">Sí</option>
                           <option value="no">No</option>
                         </select>
@@ -4051,11 +4711,11 @@ export default function AdminKioskoPage() {
 
       {/* Stats strip */}
       <div className={styles.statsStrip}>
-        <div className={styles.statCard}>
+        <div className={`${styles.statCard} ${styles.statInfo}`}>
           <span className={styles.statNum}>{vinosVino.length}</span>
           <span className={styles.statLabel}>Total</span>
         </div>
-        <div className={styles.statCard}>
+        <div className={`${styles.statCard} ${styles.statInfo}`}>
           <span className={styles.statNum}>{nActivos}</span>
           <span className={styles.statLabel}>Activos</span>
         </div>
@@ -4093,11 +4753,11 @@ export default function AdminKioskoPage() {
           <span className={styles.statNum}>{sinStock}</span>
           <span className={styles.statLabel}>Sin stock</span>
         </button>}
-        <div className={`${styles.statCard} ${modoManualDestacados && nDestacadosConStock < 3 ? styles.statWarn : ''}`}>
+        <div className={`${styles.statCard} ${modoManualDestacados && nDestacadosConStock < 3 ? styles.statWarn : styles.statInfo}`}>
           <span className={styles.statNum}>{nDestacados}</span>
           <span className={styles.statLabel}>Destacados</span>
         </div>
-        <div className={styles.statCard}>
+        <div className={`${styles.statCard} ${styles.statInfo}`}>
           <span className={styles.statNum}>{conFichaIA}</span>
           <span className={styles.statLabel}>Fichas IA</span>
         </div>
@@ -4146,6 +4806,9 @@ export default function AdminKioskoPage() {
             <p className={styles.catalogChecklistKicker}>Checklist de catálogo</p>
             <h2>Preparado para el kiosko</h2>
             <p>Revisa los campos que más influyen en que el cliente encuentre, entienda y compre el vino sin preguntar.</p>
+            <p style={{ fontSize: '.72rem', color: '#999', margin: '.2rem 0 0' }} title="Media ponderada por criterio. Imprescindibles (foto, PVP, stock) pesan el doble que los opcionales (ubicación, texto de venta).">
+              Método actualizado el 2026-11-08 · media ponderada por criterio
+            </p>
           </div>
           <div className={styles.checkProgressWrap}>
             <span className={styles.checkProgressScore}>{catalogoChecklist.score}%</span>
@@ -4165,21 +4828,35 @@ export default function AdminKioskoPage() {
         </div>
 
         <div className={styles.catalogChecklistGrid}>
-          {catalogoChecklist.checks.map(check => (
-            <button
-              key={check.id}
-              type="button"
-              className={`${styles.catalogCheckCard} ${check.count ? styles.catalogCheckWarn : styles.catalogCheckOk} ${filtroCalidad === check.id ? styles.catalogCheckActive : ''}`}
-              onClick={() => check.count ? aplicarFiltroCalidad(check.id) : undefined}
-              disabled={!check.count}
-            >
-              <span className={styles.catalogCheckBody}>
-                <strong>{check.label}</strong>
-                <small>{check.desc}</small>
-              </span>
-              {check.count > 0 && <span className={styles.catalogCheckCount}>{check.count}</span>}
-            </button>
-          ))}
+          {catalogoChecklist.checks.map(check => {
+            // P3-3: icono visual segun estado (todo OK / aviso leve / aviso fuerte)
+            const sinIncidencias = check.count === 0
+            const esImprescindible = check.kind === 'core'
+            const graveClass = sinIncidencias
+              ? styles.catalogCheckOk
+              : esImprescindible
+              ? styles.catalogCheckWarn
+              : styles.catalogCheckAviso
+            return (
+              <button
+                key={check.id}
+                type="button"
+                className={`${styles.catalogCheckCard} ${graveClass} ${filtroCalidad === check.id ? styles.catalogCheckActive : ''}`}
+                onClick={() => check.count ? aplicarFiltroCalidad(check.id) : undefined}
+                disabled={!check.count}
+                aria-label={sinIncidencias ? `${check.label}: todo correcto` : `${check.label}: ${check.count} por revisar`}
+              >
+                <span className={styles.catalogCheckIcon} aria-hidden="true">
+                  {sinIncidencias ? '✓' : esImprescindible ? '!' : '·'}
+                </span>
+                <span className={styles.catalogCheckBody}>
+                  <strong>{check.label}</strong>
+                  <small>{check.desc}</small>
+                </span>
+                {check.count > 0 && <span className={styles.catalogCheckCount}>{check.count}</span>}
+              </button>
+            )
+          })}
         </div>
 
         {filtroCalidad && (
@@ -4290,6 +4967,7 @@ export default function AdminKioskoPage() {
             <tr>
               <th className={styles.thCheck}>
                 <input type="checkbox"
+                  aria-label="Seleccionar todos los vinos de la página"
                   checked={vinosPaginados.length > 0 && vinosPaginados.every(v => seleccionados.has(v.id))}
                   onChange={toggleSeleccionTodos}
                 />
@@ -4317,7 +4995,10 @@ export default function AdminKioskoPage() {
             {vinosPaginados.map(v => (
               <tr key={v.id} className={`${!v.activo ? styles.rowInactivo : ''} ${seleccionados.has(v.id) ? styles.rowSeleccionado : ''}`}>
                 <td className={styles.tdCheck} onClick={e => e.stopPropagation()}>
-                  <input type="checkbox" checked={seleccionados.has(v.id)} onChange={() => toggleSeleccion(v.id)} />
+                  <input type="checkbox"
+                    aria-label={`Seleccionar ${v.nombre}`}
+                    checked={seleccionados.has(v.id)}
+                    onChange={() => toggleSeleccion(v.id)} />
                 </td>
 
                 {/* Foto */}
@@ -4341,6 +5022,12 @@ export default function AdminKioskoPage() {
                 >
                   {v.nombre}
                   {renderQualityBadges(v)}
+                  {!v.activo && v.motivo_inactividad && (
+                    <span style={{ marginLeft: '.4rem', padding: '.1rem .4rem', fontSize: '.65rem', background: '#f0ede8', color: '#777', borderRadius: 4, fontWeight: 500 }}
+                      title={`Motivo de inactividad: ${v.motivo_inactividad}`}>
+                      {v.motivo_inactividad}
+                    </span>
+                  )}
                 </td>
 
                 <td className={styles.tdTrunc}>{v.bodega || <em className={styles.dash}>—</em>}</td>
@@ -4421,7 +5108,7 @@ export default function AdminKioskoPage() {
                     />
                   ) : (
                     <span className={styles.inlineValue}>
-                      {v.precio_coste ? `${Number(v.precio_coste).toFixed(2)} €` : <em className={styles.dash}>—</em>}
+                      {v.precio_coste ? formatPVP(v.precio_coste) : <em className={styles.dash}>—</em>}
                       <span className={styles.editIcon} role="img" aria-label="Celda editable" title="Haz clic sobre el valor para editarlo">✎</span>
                     </span>
                   )}
@@ -4538,7 +5225,11 @@ export default function AdminKioskoPage() {
                     />
                   ) : (
                     <span className={styles.inlineValue}>
-                      {v.ubicacion_estanteria ?? <em className={styles.dash}>—</em>}
+                      {v.ubicacion_estanteria
+                        ? <span title={v.ubicacion_estanteria} style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', verticalAlign: 'bottom' }}>
+                            {v.ubicacion_estanteria}
+                          </span>
+                        : <em className={styles.dash}>—</em>}
                       <span className={styles.editIcon} role="img" aria-label="Celda editable" title="Haz clic sobre el valor para editarlo">✎</span>
                     </span>
                   )}
@@ -4669,16 +5360,261 @@ export default function AdminKioskoPage() {
         )}
       </div>
 
-      {/* Barra de acción masiva */}
+      {/* Barra de acción masiva (P1-2). Toda accion pasa ahora por el dialogo
+          de confirmacion con preview y, si no es eliminar, deja toast de undo. */}
       {seleccionados.size > 0 && (
         <div className={styles.bulkBar}>
           <span className={styles.bulkCount}>{seleccionados.size} seleccionado{seleccionados.size > 1 ? 's' : ''}</span>
-          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('activo', true)}>Activar</button>
-          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('activo', false)}>Desactivar</button>
-          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('destacado', true)}>★ Destacar</button>
-          <button type="button" className={styles.bulkBtn} onClick={() => accionMasiva('destacado', false)}>Quitar destacado</button>
-          <button type="button" className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={eliminarMasivo}>Eliminar</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => abrirBatchDialog('activo', true)}>Activar</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => abrirBatchDialog('activo', false)}>Desactivar</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => abrirBatchDialog('destacado', true)}>★ Destacar</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => abrirBatchDialog('destacado', false)}>Quitar destacado</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => setBatchInput({ campo: 'stock_minimo', valor: '2' })}>Mín. stock…</button>
+          <button type="button" className={styles.bulkBtn} onClick={() => setBatchInput({ campo: 'ubicacion', valor: '', reemplazar: false })}>Ubicación…</button>
+          <button type="button" className={styles.bulkBtn} onClick={exportarSeleccionCSV}>↓ CSV</button>
+          {/* F3 B0.1: 'Eliminar' se retira de la barra masiva. Para retirar en
+              lote usa 'Desactivar' (reversible). El borrado permanente queda
+              solo en la ficha individual con confirmacion por nombre. */}
           <button type="button" className={styles.bulkBtnClose} onClick={() => setSeleccionados(new Set())}>✕</button>
+        </div>
+      )}
+
+      {/* F3 B0.3: modal inline para pedir el valor (Min. stock / Ubicacion) */}
+      {batchInput && (() => {
+        const { campo, valor, reemplazar } = batchInput
+        const esNumero = campo === 'stock_minimo'
+        const valido = esNumero
+          ? Number.isFinite(Number(valor)) && Number(valor) >= 0 && String(valor).trim() !== ''
+          : String(valor).trim().length > 0
+        const continuar = () => {
+          if (!valido) return
+          const v = esNumero ? Number(valor) : String(valor).trim()
+          const opts = campo === 'ubicacion' ? { soloVacias: !reemplazar } : {}
+          setBatchInput(null)
+          abrirBatchDialog(campo, v, opts)
+        }
+        return (
+          <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget) setBatchInput(null) }}>
+            <div className={styles.modal} style={{ maxWidth: 480 }}>
+              <div className={styles.modalHeader}>
+                <h2>{campo === 'stock_minimo' ? 'Stock mínimo en lote' : 'Ubicación en lote'}</h2>
+                <button type="button" className={styles.modalClose} onClick={() => setBatchInput(null)}>✕</button>
+              </div>
+              <div className={styles.modalBody}>
+                <p style={{ margin: 0, fontSize: '.85rem', color: '#555' }}>
+                  {seleccionados.size} vino{seleccionados.size === 1 ? '' : 's'} seleccionado{seleccionados.size === 1 ? '' : 's'}.
+                  {campo === 'ubicacion' && !reemplazar && ' Por defecto solo se rellenarán los vacíos.'}
+                </p>
+                <p style={{ margin: '.8rem 0 .35rem', fontSize: '.82rem', color: '#555' }}>
+                  {campo === 'stock_minimo' ? 'Nuevo mínimo (unidades):' : 'Nombre de la estantería / zona:'}
+                </p>
+                <input
+                  type={esNumero ? 'number' : 'text'}
+                  min={esNumero ? 0 : undefined}
+                  step={esNumero ? 1 : undefined}
+                  autoFocus
+                  value={valor}
+                  onChange={e => setBatchInput(s => s && ({ ...s, valor: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter' && valido) continuar() }}
+                  className={styles.inlineInput}
+                  style={{ width: '100%', padding: '.55rem .7rem', fontSize: '.9rem' }}
+                  aria-label={campo === 'stock_minimo' ? 'Stock mínimo' : 'Ubicación'}
+                  list={campo === 'ubicacion' ? 'kiosko-ubicaciones-list-batch' : undefined}
+                />
+                {campo === 'ubicacion' && ubicaciones.length > 0 && (
+                  <datalist id="kiosko-ubicaciones-list-batch">
+                    {ubicaciones.filter(u => u.activa).map(u => <option key={u.id} value={u.nombre} />)}
+                  </datalist>
+                )}
+                {campo === 'ubicacion' && ubicacionesPending && (
+                  <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: '#888' }}>
+                    Catálogo de ubicaciones aún no activado · pendiente de aplicar <code>supabase/kiosko_ubicaciones.sql</code>.
+                  </p>
+                )}
+                {campo === 'ubicacion' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', margin: '.75rem 0 0', fontSize: '.82rem', color: '#444' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!reemplazar}
+                      onChange={e => setBatchInput(s => s && ({ ...s, reemplazar: e.target.checked }))}
+                    />
+                    Reemplazar también las ubicaciones existentes
+                  </label>
+                )}
+              </div>
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.btnSecundario} onClick={() => setBatchInput(null)}>Cancelar</button>
+                <button type="button" className={styles.btnPrimario} onClick={continuar} disabled={!valido}>
+                  Vista previa →
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* P1-2: Dialogo preview + confirmacion */}
+      {batchDialog && (
+        <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget && !batchRunning) setBatchDialog(null) }}>
+          <div className={styles.modal} style={{ maxWidth: 560 }}>
+            <div className={styles.modalHeader}>
+              <h2>{describirBatch(batchDialog.tipo, batchDialog.valor)}</h2>
+              <button type="button" className={styles.modalClose} onClick={() => !batchRunning && setBatchDialog(null)}>✕</button>
+            </div>
+            <div className={styles.modalBody}>
+              <p style={{ margin: 0 }}>
+                Se van a modificar <strong>{batchDialog.afectadosIds.length}</strong> vino{batchDialog.afectadosIds.length === 1 ? '' : 's'}
+                {batchDialog.tipo === 'ubicacion' && batchDialog.soloVacias && ` (sólo los ${batchDialog.afectadosIds.length} que estaban vacíos; los demás ${batchDialog.items.length - batchDialog.afectadosIds.length} se conservan)`}
+                .
+              </p>
+              {batchDialog.afectadosIds.length === 0 ? (
+                <p style={{ margin: '.8rem 0 0', color: '#888' }}>Ningún vino cumple el criterio. Cierra el diálogo y revisa la selección.</p>
+              ) : (
+                <>
+                  <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: '#666' }}>
+                    Muestras (hasta 5):
+                  </p>
+                  <ul style={{ margin: 0, padding: '0 0 0 1.2rem', fontSize: '.82rem', lineHeight: 1.5 }}>
+                    {batchDialog.items.filter(v => batchDialog.afectadosIds.includes(v.id)).slice(0, 5).map(v => {
+                      const campo = batchDialog.tipo
+                      const antes = campo === 'eliminar' ? '(existe)' : (v[campo] ?? '—')
+                      const despues = batchDialog.valor
+                      return (
+                        <li key={v.id}>
+                          {v.nombre}: <code>{String(antes)}</code> → <code>{campo === 'eliminar' ? 'ELIMINADO' : String(despues)}</code>
+                        </li>
+                      )
+                    })}
+                    {batchDialog.afectadosIds.length > 5 && <li>… y {batchDialog.afectadosIds.length - 5} más.</li>}
+                  </ul>
+                </>
+              )}
+              {batchDialog.tipo === 'eliminar' && (
+                <p style={{ margin: '.8rem 0 0', color: '#c44', fontSize: '.8rem' }}>
+                  ⚠ Esta acción no se puede deshacer.
+                </p>
+              )}
+            </div>
+            <div className={styles.modalFooter}>
+              <button type="button" className={styles.btnSecundario} onClick={() => !batchRunning && setBatchDialog(null)} disabled={batchRunning}>Cancelar</button>
+              <button type="button"
+                className={batchDialog.tipo === 'eliminar' ? styles.btnDanger : styles.btnPrimario}
+                onClick={confirmarBatch}
+                disabled={batchRunning || batchDialog.afectadosIds.length === 0}>
+                {batchRunning
+                  ? `Aplicando… ${batchProgreso?.hechos ?? 0}/${batchProgreso?.total ?? batchDialog.afectadosIds.length}`
+                  : `Confirmar (${batchDialog.afectadosIds.length})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* F3 B0.2: resumen cuando hay fallos parciales */}
+      {batchResumen && (
+        <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget) { setBatchResumen(null); setSeleccionados(new Set()) } }}>
+          <div className={styles.modal} style={{ maxWidth: 520 }}>
+            <div className={styles.modalHeader}>
+              <h2>Resultado</h2>
+              <button type="button" className={styles.modalClose} onClick={() => { setBatchResumen(null); setSeleccionados(new Set()) }}>✕</button>
+            </div>
+            <div className={styles.modalBody}>
+              <p style={{ margin: 0 }}>
+                <strong>{batchResumen.aplicados}</strong> aplicados, <strong style={{ color: '#c44' }}>{batchResumen.fallidos.length}</strong> fallidos. El Deshacer del toast cubre solo los aplicados.
+              </p>
+              <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: '#666' }}>Fallidos:</p>
+              <ul style={{ margin: 0, padding: '0 0 0 1.2rem', fontSize: '.82rem', lineHeight: 1.5, maxHeight: '240px', overflowY: 'auto' }}>
+                {batchResumen.fallidos.slice(0, 50).map(f => (
+                  <li key={f.id}>{f.nombre} — <code>{f.error}</code></li>
+                ))}
+                {batchResumen.fallidos.length > 50 && <li style={{ color: '#888' }}>+{batchResumen.fallidos.length - 50} más…</li>}
+              </ul>
+            </div>
+            <div className={styles.modalFooter}>
+              <button type="button" className={styles.btnPrimario} onClick={() => { setBatchResumen(null); setSeleccionados(new Set()) }}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* F3 P1-9: barra sticky de cambios sin guardar en Ajustes */}
+      {tab === 'ajustes' && ajustesDirty && (
+        <div style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 250,
+          background: '#1a1a2e', color: '#f0ede8',
+          borderTop: '3px solid #c9a96e',
+          padding: '.75rem 1.5rem',
+          display: 'flex', alignItems: 'center', gap: '1rem',
+          boxShadow: '0 -4px 20px rgba(0,0,0,.18)',
+          fontSize: '.85rem',
+        }}>
+          <span style={{ flex: 1 }}>
+            ⚠ Tienes cambios sin guardar. Usa el botón &quot;Guardar&quot; dentro de cada sección para persistirlos.
+          </span>
+        </div>
+      )}
+
+      {/* F3 P1-9: toast éxito/error tras guardar Ajustes */}
+      {ajustesSavedToast && (
+        <div className={styles.undoToast} style={{ borderLeftColor: ajustesSavedToast === 'ok' ? '#2a8a4a' : '#c44' }}>
+          <span>{ajustesSavedToast === 'ok' ? '✓ Ajustes guardados correctamente' : '⚠ Hubo un problema al guardar los ajustes'}</span>
+          <button type="button" className={styles.undoClose} onClick={() => setAjustesSavedToast(null)} aria-label="Cerrar aviso">✕</button>
+        </div>
+      )}
+
+      {/* F3 B0.1: borrado individual con escritura del nombre */}
+      {eliminarConfirm && (
+        <div className={styles.overlay} onClick={e => { if (e.target === e.currentTarget && !eliminarConfirm.running) setEliminarConfirm(null) }}>
+          <div className={styles.modal} style={{ maxWidth: 480 }}>
+            <div className={styles.modalHeader}>
+              <h2>Eliminar vino</h2>
+              <button type="button" className={styles.modalClose} onClick={() => !eliminarConfirm.running && setEliminarConfirm(null)}>✕</button>
+            </div>
+            <div className={styles.modalBody}>
+              <p style={{ margin: 0 }}>
+                Vas a eliminar <strong>{eliminarConfirm.nombre}</strong> permanentemente. Esta acción NO se puede deshacer y no afecta a Square.
+              </p>
+              <p style={{ margin: '.75rem 0 .35rem', fontSize: '.82rem', color: '#555' }}>
+                Para confirmar, escribe el nombre exacto del vino:
+              </p>
+              <input
+                type="text"
+                aria-label="Escribe el nombre del vino para confirmar"
+                className={styles.inlineInput}
+                style={{ width: '100%', padding: '.55rem .7rem', fontSize: '.9rem' }}
+                value={eliminarConfirm.input}
+                onChange={e => setEliminarConfirm(c => c && ({ ...c, input: e.target.value, error: undefined }))}
+                autoFocus
+                disabled={eliminarConfirm.running}
+              />
+              {eliminarConfirm.error && (
+                <p style={{ margin: '.6rem 0 0', color: '#c44', fontSize: '.8rem' }}>
+                  {eliminarConfirm.error}
+                </p>
+              )}
+            </div>
+            <div className={styles.modalFooter}>
+              <button type="button" className={styles.btnSecundario} onClick={() => !eliminarConfirm.running && setEliminarConfirm(null)} disabled={eliminarConfirm.running}>Cancelar</button>
+              <button type="button"
+                className={styles.btnDanger}
+                onClick={confirmarEliminarVino}
+                disabled={eliminarConfirm.running || String(eliminarConfirm.input).trim() !== String(eliminarConfirm.nombre).trim()}
+              >
+                {eliminarConfirm.running ? 'Eliminando…' : 'Eliminar definitivamente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* P1-2: Toast de deshacer (10 s) */}
+      {batchUndo && (
+        <div className={styles.undoToast}>
+          <span>✓ {describirBatch(batchUndo.tipo, batchUndo.valor)} aplicado a {batchUndo.before.length} vino{batchUndo.before.length === 1 ? '' : 's'}.</span>
+          <button type="button" className={styles.undoBtn} onClick={deshacerBatch} disabled={batchUndoRunning}>
+            {batchUndoRunning ? 'Deshaciendo…' : 'Deshacer'}
+          </button>
+          <button type="button" className={styles.undoClose} onClick={() => setBatchUndo(null)} aria-label="Cerrar aviso">✕</button>
         </div>
       )}
 
@@ -4935,7 +5871,17 @@ export default function AdminKioskoPage() {
                   </div>}
                   {!hideSensitive && <div className={styles.formField}>
                     <label>Estantería</label>
-                    <input value={form.ubicacion_estanteria} onChange={e => cambiar('ubicacion_estanteria', e.target.value)} placeholder="Pasillo B3…" />
+                    <input
+                      value={form.ubicacion_estanteria}
+                      onChange={e => cambiar('ubicacion_estanteria', e.target.value)}
+                      placeholder="Pasillo B3…"
+                      list="kiosko-ubicaciones-list"
+                    />
+                    {ubicaciones.length > 0 && (
+                      <datalist id="kiosko-ubicaciones-list">
+                        {ubicaciones.filter(u => u.activa).map(u => <option key={u.id} value={u.nombre} />)}
+                      </datalist>
+                    )}
                   </div>}
                   <div className={styles.formField}>
                     <label>Puntuación</label>
@@ -4959,6 +5905,41 @@ export default function AdminKioskoPage() {
                       Activo (visible en kiosko)
                     </label>
                   </div>
+                  {/* F3 B2 (P1-4): motivo de inactividad solo cuando desactivado
+                      Y la columna existe en la DB. Si pending, se oculta. */}
+                  {!form.activo && !motivoPending && form.id && (
+                    <div className={`${styles.formField} ${styles.formFieldFull}`}>
+                      <label>Motivo de inactividad</label>
+                      <select
+                        value={form.motivo_inactividad || ''}
+                        onChange={async e => {
+                          const motivo = e.target.value || null
+                          cambiar('motivo_inactividad', motivo)
+                          // Persistencia inmediata via endpoint auxiliar
+                          try {
+                            const res = await fetch(`/api/kiosko/${slug}/admin/motivo-inactividad`, {
+                              method: 'POST',
+                              headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ id: form.id, motivo }),
+                            })
+                            if (!res.ok) {
+                              const j = await res.json().catch(() => ({}))
+                              if (j?.pending) setMotivoPending(true)
+                            } else {
+                              setVinos(prev => prev.map(w => w.id === form.id ? { ...w, motivo_inactividad: motivo } : w))
+                            }
+                          } catch {}
+                        }}
+                      >
+                        <option value="">— sin motivo —</option>
+                        <option value="sin_stock">Sin stock</option>
+                        <option value="retirado">Retirado</option>
+                        <option value="descatalogado">Descatalogado</option>
+                        <option value="otro">Otro</option>
+                      </select>
+                      <small style={{ color: '#888', fontSize: '.72rem' }}>Se guarda al instante.</small>
+                    </div>
+                  )}
                   {modal !== 'nuevo' && form.ficha_ia && (
                     <div className={`${styles.formField} ${styles.formFieldFull}`}>
                       <label style={{ display: 'flex', justifyContent: 'space-between' }}>

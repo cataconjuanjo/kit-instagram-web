@@ -1,0 +1,40 @@
+-- ⚠ TABLA YA EXISTENTE EN PRODUCCIÓN — ESTE ARCHIVO ES SOLO DOCUMENTACIÓN.
+-- NO APLICAR. Verificado en producción el 2026-11-08 (42 filas totales).
+--
+-- Esquema real (para que el código del admin y de /api/kiosko/[slug]/movil
+-- se mantenga consistente con lo que hay):
+--
+--   CREATE TABLE kiosko_mobile_intents (
+--     id          uuid         PRIMARY KEY,
+--     tienda_id   uuid         NOT NULL REFERENCES tiendas(id) ON DELETE CASCADE,
+--     vino_id     uuid,                            -- puede ser null si no se resuelve
+--     vino_nombre text,
+--     vino_bodega text,
+--     source      text,                            -- 'qr_selection' | 'qr_cesta'
+--                                                  -- | 'qr_opened' | 'qr_detail' | ...
+--     lang        text,                            -- 'es' | 'en' | 'fr' | 'de'
+--     user_agent  text,
+--     ip          text,                            -- dato personal: NO se expone
+--                                                  -- en panel ni CSV
+--     created_at  timestamptz  NOT NULL DEFAULT now()
+--   );
+--
+-- Notas de uso:
+-- - Escritura: service_role vía supabaseAdmin desde
+--   app/api/kiosko/[slug]/movil/route.js (POST).
+-- - Lectura:   service_role desde
+--   app/api/kiosko/[slug]/admin/analitica/route.js, ventana 30 d por
+--   tienda_id y created_at.
+-- - session_id (presente en el payload del cliente a efectos de rate-limit)
+--   NO se persiste aquí: se consume solo en memoria en checkRateLimit.
+-- - RLS: habilitada en producción; sin policies específicas (service_role
+--   bypassea). Si en el futuro se expone el log a usuarios autenticados,
+--   añadir policy SELECT con tienda_id del usuario.
+--
+-- Datos actuales (2026-11-08, 42 filas totales):
+--   qr_selection  12   (28/07 → 06/09/2026)
+--   qr_cesta       3   (solo 19/08/2026)
+--   qr_opened     26   (solo 27/07/2026)
+--   qr_detail      1   (27/07/2026)
+--   Ninguna fila posterior a 06/09/2026. La ventana 30 d actual devuelve 0
+--   por datos, no por regresión de código (ver informe f3 B0.5).

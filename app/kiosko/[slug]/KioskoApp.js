@@ -2763,17 +2763,23 @@ function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es
   const _lastTracked = useRef('')
 
   useEffect(() => {
-    const hasText = busqueda.length >= 3
+    // P0-7: debounce 800 ms + normalizacion para reducir ruido de teclado.
+    // La busqueda solo se registra si el texto tiene >=4 chars (menos partials
+    // tipo 'ca', 'te') o si hay algun chip de filtro activo. La consulta se
+    // normaliza (lowercase + sin tildes + trim) antes de comparar y enviar,
+    // asi 'Cana' y 'cana' cuentan como el mismo intento.
+    const textoRaw = (busqueda || '').trim()
+    const hasText = textoRaw.length >= 4
     const hasChip = filtroTipo !== 'todos' || !!filtroPais || !!filtroRegion
     if (!hasText && !hasChip) {
       clearTimeout(_trackTimer.current)
       return
     }
     const parts = []
-    if (busqueda) parts.push(busqueda)
+    if (textoRaw) parts.push(normalizarTexto(textoRaw))
     if (filtroTipo !== 'todos') parts.push(filtroTipo)
-    if (filtroPais)   parts.push(filtroPais)
-    if (filtroRegion) parts.push(filtroRegion)
+    if (filtroPais)   parts.push(normalizarTexto(filtroPais))
+    if (filtroRegion) parts.push(normalizarTexto(filtroRegion))
     const consulta = parts.join(' · ')
     if (consulta === _lastTracked.current) return
     clearTimeout(_trackTimer.current)

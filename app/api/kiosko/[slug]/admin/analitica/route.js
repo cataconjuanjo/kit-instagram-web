@@ -2,9 +2,19 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
+// F3 B0.5: la tabla kiosko_mobile_intents YA existe en producción. Antes la
+// deteccion era demasiado amplia (cualquier error con 'pgrst' o 'schema cache'
+// disparaba el aviso 'Falta aplicar migración'), lo que ocultaba errores
+// reales. Ahora solo marca 'migración pendiente' si el error indica
+// explicitamente que la tabla no existe: PostgreSQL 42P01 (undefined_table)
+// o PostgREST 'relation ... does not exist'.
 function migrationPending(error) {
-  const text = `${error?.code || ''} ${error?.message || ''}`.toLowerCase()
-  return text.includes('kiosko_mobile_intents') || text.includes('schema cache') || text.includes('pgrst')
+  if (!error) return false
+  const code = String(error.code || '').toUpperCase()
+  const msg  = String(error.message || '').toLowerCase()
+  if (code === '42P01') return true
+  if (msg.includes('relation') && msg.includes('does not exist') && msg.includes('kiosko_mobile_intents')) return true
+  return false
 }
 
 export async function GET(request, { params }) {
@@ -28,6 +38,7 @@ export async function GET(request, { params }) {
   const searches = searchesData || []
 
   let mobilePendiente = false
+  let mobileErrorMsg = null
   let mobileIntents = []
   const { data: mobileData, error: mobileError } = await supabaseAdmin
     .from('kiosko_mobile_intents')
@@ -37,8 +48,14 @@ export async function GET(request, { params }) {
     .order('created_at', { ascending: false })
 
   if (mobileError) {
-    if (migrationPending(mobileError)) mobilePendiente = true
-    else console.error('[kiosko mobile analytics]', mobileError)
+    if (migrationPending(mobileError)) {
+      mobilePendiente = true
+    } else {
+      // Error real (no es tabla inexistente). Se expone al admin para que
+      // pueda verlo en vez de mostrar 0 sin explicación.
+      mobileErrorMsg = mobileError.message || String(mobileError)
+      console.error('[kiosko mobile analytics]', mobileError)
+    }
   } else {
     mobileIntents = mobileData || []
   }
@@ -126,13 +143,34 @@ export async function GET(request, { params }) {
   }
 
   // ── Top consultas ───────────────────────────────────────────────────────────
+  // F3 P1-11: misma normalizacion que el tracking cliente (lower + sin tildes
+  // + trim + espacios colapsados) para agrupar variantes de la misma consulta.
+  const normConsulta = (c) => String(c || '')
+    .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ').trim()
   const consultaCount = {}
   searches.forEach(s => {
-    const k = s.consulta.toLowerCase().trim()
+    const k = normConsulta(s.consulta)
+    if (!k) return
     consultaCount[k] = (consultaCount[k] || 0) + 1
   })
   const topConsultas = Object.entries(consultaCount)
     .sort((a, b) => b[1] - a[1]).slice(0, 10)
+    .map(([consulta, veces]) => ({ consulta, veces }))
+
+  // F3 P1-11: busquedas que no devolvieron ningun vino (oportunidad de surtido).
+  // vinos_ids puede ser null o [] cuando no hubo match. Se agrupan con la misma
+  // normalizacion que topConsultas para no inflar con variantes tipograficas.
+  const sinResultadoCount = {}
+  searches.forEach(s => {
+    const ids = s.vinos_ids
+    if (Array.isArray(ids) && ids.length > 0) return
+    const k = normConsulta(s.consulta)
+    if (!k) return
+    sinResultadoCount[k] = (sinResultadoCount[k] || 0) + 1
+  })
+  const busquedasSinResultado = Object.entries(sinResultadoCount)
+    .sort((a, b) => b[1] - a[1]).slice(0, 15)
     .map(([consulta, veces]) => ({ consulta, veces }))
 
   // ── Vinos más recomendados ──────────────────────────────────────────────────
@@ -177,6 +215,14 @@ export async function GET(request, { params }) {
       : null
     return { id, nombre, veces, stock, diasRestantes }
   })
+
+  // F3 P1-11: vinos recomendados (>=3 veces en 30 d) que estan sin stock.
+  // Oportunidad: cliente los pide pero no se pueden vender.
+  const buscadosSinStock = Object.entries(vinoCount)
+    .filter(([id, { veces }]) => veces >= 3 && (stockMap[id] ?? 0) === 0)
+    .sort((a, b) => b[1].veces - a[1].veces)
+    .slice(0, 15)
+    .map(([id, { nombre, veces }]) => ({ id, nombre, veces }))
 
   // ── Distribución por modo ──────────────────────────────────────────────────
   const totalWizard   = searches.filter(s => s.mode === 'wizard').length
@@ -263,31 +309,36 @@ export async function GET(request, { params }) {
     }
   }
 
-  const ventasPorVino = {}
+  const ventasPorVino = {}      // 90 d — rentabilidad, alertas, tendencia
+  const ventasPorVino30 = {}    // 30 d — motor de conversion (misma ventana que searches)
   const tendenciaPorVino = {}
   const ventasDiarias = {}  // { vino_id: { 'YYYY-MM-DD': unidades } } — zona Europe/Madrid
   const ultimaVentaAt = {}
   let ultimoSyncAt = null
   const NUM_SEMANAS = 8
   const ahoraMs = Date.now()
+  const hace30Ms = ahoraMs - 30 * 24 * 60 * 60 * 1000
   const fmtMadrid = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' })
   for (const log of syncLogs || []) {
     if (!ultimoSyncAt || log.created_at > ultimoSyncAt) ultimoSyncAt = log.created_at
     const logMs = new Date(log.created_at).getTime()
+    const en30 = logMs >= hace30Ms
     const semanasAtras = Math.floor((ahoraMs - logMs) / (7 * 24 * 60 * 60 * 1000))
     const weekIdx = NUM_SEMANAS - 1 - semanasAtras // 7 = esta semana, 0 = hace 8 semanas
     const fechaKey = fmtMadrid.format(new Date(log.created_at))
     for (const linea of log.lineas || []) {
       if (linea.status === 'ok' && linea.vino_id) {
-        const id = linea.vino_id
-        ventasPorVino[id] = (ventasPorVino[id] || 0) + (linea.quantity || 1)
+        const id  = linea.vino_id
+        const uds = (linea.quantity || 1)
+        ventasPorVino[id] = (ventasPorVino[id] || 0) + uds
+        if (en30) ventasPorVino30[id] = (ventasPorVino30[id] || 0) + uds
         if (!ultimaVentaAt[id] || log.created_at > ultimaVentaAt[id]) ultimaVentaAt[id] = log.created_at
         if (weekIdx >= 0 && weekIdx < NUM_SEMANAS) {
           if (!tendenciaPorVino[id]) tendenciaPorVino[id] = Array(NUM_SEMANAS).fill(0)
-          tendenciaPorVino[id][weekIdx] += (linea.quantity || 1)
+          tendenciaPorVino[id][weekIdx] += uds
         }
         if (!ventasDiarias[id]) ventasDiarias[id] = {}
-        ventasDiarias[id][fechaKey] = (ventasDiarias[id][fechaKey] || 0) + (linea.quantity || 1)
+        ventasDiarias[id][fechaKey] = (ventasDiarias[id][fechaKey] || 0) + uds
       }
     }
   }
@@ -300,12 +351,24 @@ export async function GET(request, { params }) {
     if (id && id !== 'null') movilPorVinoId[id] = (movilPorVinoId[id] || 0) + 1
   })
 
+  // P0-1 RAIZ (fase 2): numerador y denominador comparten ventana de 30 dias.
+  //   · vendido_n ahora lee ventasPorVino30 (ventas Square en los ultimos 30 d).
+  //   · veces sigue siendo recomendaciones en la misma ventana (searches 30 d).
+  //   · tasa_conv clamp [0, 1] y null si veces < MIN_RECOM_PARA_TASA (3).
+  //   · fuga = >=5 recomendaciones y tasa_conv < 0.1.
+  //   · El cruce sigue sin ser atribucion real (toda venta TPV del vino cuenta,
+  //     no solo la originada por la recomendacion); por eso el label del KPI
+  //     es "Ventas / recomendaciones (indicativo)".
+  // Solo lectura. No se recalculan ni reescriben eventos historicos.
+  const MIN_RECOM_PARA_TASA = 3
   const conversionPorVino = Object.entries(vinoCount).map(([id, { nombre, veces }]) => {
-    const vendido_n      = ventasPorVino[id] ?? 0
+    const vendido_n      = ventasPorVino30[id] ?? 0   // ventana alineada 30 d
     const movil_n        = movilPorVinoId[id] ?? 0
     const precio_pvp     = precioMap[id] ?? null
-    const fuga           = veces >= 5 && vendido_n === 0
-    const tasa_conv      = veces > 0 ? vendido_n / veces : 0
+    const tasa_conv      = veces >= MIN_RECOM_PARA_TASA
+      ? Math.min(1, Math.max(0, vendido_n / veces))
+      : null
+    const fuga           = veces >= 5 && tasa_conv !== null && tasa_conv < 0.1
     const euros_perdidos = precio_pvp ? Math.max(0, veces - vendido_n) * precio_pvp : null
     const causas = []
     if (!fotoMap[id])       causas.push('sin_foto')
@@ -315,14 +378,28 @@ export async function GET(request, { params }) {
     return { id, nombre, recomendado_n: veces, movil_n, vendido_n, tasa_conv, euros_perdidos, fuga, causas }
   }).sort((a, b) => (b.euros_perdidos ?? 0) - (a.euros_perdidos ?? 0))
 
-  const hayDatosTPV        = Object.keys(ventasPorVino).length > 0
-  const fugasCount         = conversionPorVino.filter(v => v.fuga).length
-  const totalEurosPerdidos = conversionPorVino.reduce((s, v) => s + (v.euros_perdidos ?? 0), 0)
-  const avgConvPct         = conversionPorVino.length
-    ? Math.round((conversionPorVino.reduce((s, v) => s + v.tasa_conv, 0) / conversionPorVino.length) * 100)
-    : 0
+  const hayDatosTPV         = Object.keys(ventasPorVino30).length > 0
+  const fugasCount          = conversionPorVino.filter(v => v.fuga).length
+  const totalEurosPerdidos  = conversionPorVino.reduce((s, v) => s + (v.euros_perdidos ?? 0), 0)
+  const tasasValidas        = conversionPorVino.filter(v => v.tasa_conv !== null)
+  const avgConvPct          = tasasValidas.length
+    ? Math.round((tasasValidas.reduce((s, v) => s + v.tasa_conv, 0) / tasasValidas.length) * 100)
+    : null
 
-  const conversion = { porVino: conversionPorVino.slice(0, 30), resumen: { totalEurosPerdidos, fugasCount, avgConvPct, hayDatosTPV } }
+  const conversion = {
+    porVino: conversionPorVino.slice(0, 30),
+    resumen: {
+      totalEurosPerdidos,
+      fugasCount,
+      avgConvPct,           // puede ser null -> UI debe mostrar '—'
+      hayDatosTPV,
+      metodo: 'v2026-11-08b', // ventanas alineadas 30 d
+      ventanaVentasDias: 30,
+      ventanaRecomDias: 30,
+      labelKpi: 'Ventas / recomendaciones (indicativo)',
+      indicativo: true, // no es atribucion, el admin debe mostrar la aclaracion
+    },
+  }
 
   return NextResponse.json({
     vacio: false,
@@ -330,12 +407,15 @@ export async function GET(request, { params }) {
     semanaActual,
     semanaAnterior,
     topConsultas,
+    busquedasSinResultado, // F3 P1-11
+    buscadosSinStock,      // F3 P1-11
     topVinos,
     modos: { wizard: totalWizard, maridaje: totalMaridaje, regalo: totalRegalo, explorar: totalExplorar },
     movil: {
       total: mobileIntents.length,
       semanaActual: mobileSemanaActual,
       pendiente: mobilePendiente,
+      errorMsg: mobileErrorMsg, // F3 B0.5: null salvo error real de lectura
       topVinos: topMobileVinos,
       recientes: mobileIntents.slice(0, 12).map(m => ({
         vinoId: m.vino_id,
@@ -347,6 +427,7 @@ export async function GET(request, { params }) {
       })),
     },
     ventasPorVino,
+    ventasPorVino30,   // P1-1: para calculo de dias de cobertura en alertas
     tendenciaPorVino,
     ventasDiarias,
     ayerKey,
