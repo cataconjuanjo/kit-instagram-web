@@ -421,6 +421,55 @@ function precioActual(vino) {
 function extraerValoresUnicos(vinos, campo) {
   return [...new Set(vinos.map(v => v[campo]).filter(Boolean))].sort()
 }
+
+// FB · normalizarClave: clave canónica para agrupar variantes ("D.O.Ca. Rioja"
+// ↔ "DO Rioja" ↔ "Rioja" ↔ "RIOJA"). Minúsculas, sin tildes, sin prefijos
+// "D.O.", "DOCa", "DO", "IGP", "AOC"…, puntos pasados a espacio, espacios
+// colapsados. No modifica datos: solo sirve para agrupar valores y escoger
+// la etiqueta más frecuente que se muestra en los filtros.
+const PREFIJOS_CANONICOS = /^(d\s*o\s*c\s*a|d\s*o\s*c\s*g|d\s*o\s*c|d\s*o|igp|igt|vt|vino de la tierra|vino de pago|vdp|appellation|aop|aoc|ao)\b\s*/i
+function normalizarClave(t = '') {
+  if (t == null) return ''
+  return String(t).toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\./g, ' ')
+    .trim()
+    .replace(PREFIJOS_CANONICOS, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// FB · agruparPorClave: agrupa un array de valores (p. ej. todos los
+// vino.region del catálogo) por normalizarClave y devuelve, por grupo,
+// { clave, label, count, variantes }. `label` es la variante más frecuente
+// (desempate: la más corta). El resultado viene ordenado por count desc,
+// y por label alfabético como desempate.
+function agruparPorClave(valores) {
+  const grupos = new Map()
+  for (const raw of valores) {
+    if (raw == null) continue
+    const v = String(raw).trim()
+    if (!v) continue
+    const k = normalizarClave(v)
+    if (!k) continue
+    let g = grupos.get(k)
+    if (!g) { g = { clave: k, count: 0, variantes: new Map() }; grupos.set(k, g) }
+    g.count += 1
+    g.variantes.set(v, (g.variantes.get(v) || 0) + 1)
+  }
+  const out = []
+  for (const g of grupos.values()) {
+    let label = '', labelCount = -1
+    for (const [val, c] of g.variantes) {
+      if (c > labelCount || (c === labelCount && val.length < label.length)) {
+        label = val; labelCount = c
+      }
+    }
+    out.push({ clave: g.clave, label, count: g.count, variantes: [...g.variantes.keys()] })
+  }
+  out.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'es'))
+  return out
+}
 function esColorClaro(hex) {
   if (!hex || hex[0] !== '#' || hex.length < 7) return false
   const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
