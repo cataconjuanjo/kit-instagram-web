@@ -172,6 +172,7 @@ const MARIDAJE_ICONOS = [
 
 const T = {
   es: {
+    ultimaUnidad: 'Última unidad',
     explorar: 'Explorar vinos', elegir: 'Ayúdame\na elegir', maridaje: '¿Con qué\nlo tomo?', cesta: 'Cesta\nregalo', duelo: 'Duelo\na ciegas',
     volver: '← Volver', inicio: 'Inicio', atras: 'Atrás', nuevaBusqueda: 'Empezar de nuevo',
     referencias: n => `${n} referencias`, disponibles: n => `${n} disponibles`, destacados: '★ Destacados',
@@ -225,6 +226,7 @@ const T = {
     tapToExplore: 'Toca para explorar',
   },
   en: {
+    ultimaUnidad: 'Last bottle',
     explorar: 'Explore wines', elegir: 'Help me\nchoose', maridaje: 'What goes\nwith it?', cesta: 'Gift\nbasket', duelo: 'Blind\nduel',
     volver: '← Back', inicio: 'Home', atras: 'Back', nuevaBusqueda: 'Start over',
     referencias: n => `${n} wines`, disponibles: n => `${n} available`, destacados: '★ Featured',
@@ -278,6 +280,7 @@ const T = {
     tapToExplore: 'Tap to explore',
   },
   fr: {
+    ultimaUnidad: 'Dernière bouteille',
     explorar: 'Explorer les vins', elegir: 'Aidez-moi\nà choisir', maridaje: 'Avec quoi\nle servir ?', cesta: 'Panier\ncadeau', duelo: 'Duel à\nl\'aveugle',
     volver: '← Retour', inicio: 'Accueil', atras: 'Retour', nuevaBusqueda: 'Recommencer',
     referencias: n => `${n} vins`, disponibles: n => `${n} disponibles`, destacados: '★ En vedette',
@@ -331,6 +334,7 @@ const T = {
     tapToExplore: 'Touchez pour explorer',
   },
   de: {
+    ultimaUnidad: 'Letzte Flasche',
     explorar: 'Weine entdecken', elegir: 'Hilf mir\nwählen', maridaje: 'Womit\nkombinieren?', cesta: 'Geschenk-\nkorb', duelo: 'Blind-\nduell',
     volver: '← Zurück', inicio: 'Start', atras: 'Zurück', nuevaBusqueda: 'Neu starten',
     referencias: n => `${n} Weine`, disponibles: n => `${n} verfügbar`, destacados: '★ Empfohlen',
@@ -878,6 +882,51 @@ function BottleMark({ className }) {
   )
 }
 
+/* F5 (2/N) · botella SVG por tipo para fallback de foto en el kiosko
+   público (tras flag ux_v2). Silueta rellena con el TIPO_COLORS del vino
+   y trazo con el color acento de la tienda. 4 formas:
+   - 'burd' (tinto/default): hombros rectos, botella burdeos clásica
+   - 'rena' (blanco/rosado): hombros suaves, botella renana
+   - 'champ' (espumoso/cava): hombros redondos + base ancha
+   - 'jerez' (generoso/jerez/oporto): cuello corto, cuerpo recto
+   Cada variante dibuja una silueta diferenciable sin tipografía ni
+   librerías. */
+function BottleV2({ tipo, nombre, colorAcento = 'currentColor', className, style }) {
+  const fill = TIPO_COLORS[tipo] || '#4a2626'
+  const shape = tipo === 'espumoso' || tipo === 'cava'
+    ? 'champ'
+    : (tipo === 'blanco' || tipo === 'rosado')
+      ? 'rena'
+      : (tipo === 'generoso' || tipo === 'jerez' || tipo === 'oporto' || tipo === 'dulce')
+        ? 'jerez'
+        : 'burd'
+  const d = {
+    burd:  'M28 6h-8v4l-2 2v6l-3 5v29h18V23l-3-5v-6l-2-2V6z',
+    rena:  'M27 6h-6v3l-1 2-4 10v29h16V21l-4-10-1-2V6z',
+    champ: 'M27 6h-6v4l-1 2-5 10c-1 2-1 3-1 5v23h20V27c0-2 0-3-1-5l-5-10-1-2V6z',
+    jerez: 'M28 6h-8v6l-2 3v30h12V15l-2-3V6z',
+  }[shape]
+  const labelY = { burd: 32, rena: 30, champ: 33, jerez: 30 }[shape]
+  const alt = `Botella de vino${tipo ? ` (${TIPO_LABELS[tipo] || tipo})` : ''}${nombre ? ` — ${nombre}` : ''}`
+  return (
+    <svg
+      viewBox="0 0 48 52"
+      className={className}
+      style={style}
+      role="img"
+      aria-label={alt}
+    >
+      <title>{alt}</title>
+      {/* cuerpo */}
+      <path d={d} fill={fill} stroke={colorAcento} strokeWidth="1.2" strokeLinejoin="round" />
+      {/* etiqueta */}
+      <rect x="17" y={labelY} width="14" height="9" rx="1" fill="rgba(255,255,255,.72)" />
+      <line x1="19" y1={labelY + 3} x2="29" y2={labelY + 3} stroke={colorAcento} strokeOpacity=".55" strokeWidth="1" />
+      <line x1="19" y1={labelY + 6} x2="27" y2={labelY + 6} stroke={colorAcento} strokeOpacity=".4" strokeWidth="1" />
+    </svg>
+  )
+}
+
 function LocationMark({ className }) {
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
@@ -887,9 +936,31 @@ function LocationMark({ className }) {
   )
 }
 
-function TipoChip({ tipo, size = 'sm' }) {
+/* F5 (4/N) · Contraste AA de las etiquetas de tipo cuando ux_v2 está ON.
+   Tabla de ratios con texto blanco (original) vs tras el ajuste:
+     tinto        #8B1A1A / #fff → 9.29  ✓ AA
+     blanco       #C4A843 / #111 → 8.12  ✓ AA (antes 2.33 ✗ con blanco)
+     rosado       #D4756A / #111 → 5.89  ✓ AA (antes 3.21 ✗)
+     espumoso     #7AB5C8 / #111 → 8.34  ✓ AA (antes 2.27 ✗)
+     generoso    #B47C3C / #111 → 5.30  ✓ AA (antes 3.57 ✗)
+     dulce        #9E2E58 / #fff → 7.03  ✓ AA (bg oscurecido; antes 4.23 ✗)
+     naranja      #C4843C / #111 → 6.04  ✓ AA (antes 3.13 ✗)
+     sin_alcohol  #5C9C5C / #111 → 5.72  ✓ AA (antes 3.30 ✗)
+   Solo 'dulce' requiere oscurecer el fondo; el resto se corrige con
+   texto adaptativo. Con ux_v2 OFF se conserva el aspecto actual. */
+const TIPO_COLORS_V2 = { ...TIPO_COLORS, dulce: '#9E2E58' }
+const TIPO_FG_V2 = {
+  tinto: '#ffffff', blanco: '#111111', rosado: '#111111', espumoso: '#111111',
+  generoso: '#111111', dulce: '#ffffff', naranja: '#111111', sin_alcohol: '#111111',
+}
+function TipoChip({ tipo, size = 'sm', uxV2 = false }) {
+  const bg = (uxV2 ? TIPO_COLORS_V2 : TIPO_COLORS)[tipo] || '#666'
+  const fg = uxV2 ? (TIPO_FG_V2[tipo] || '#ffffff') : undefined
   return (
-    <span className={`${styles.tipoChip} ${size === 'lg' ? styles.tipoChipLg : ''}`} style={{ background: TIPO_COLORS[tipo] || '#666' }}>
+    <span
+      className={`${styles.tipoChip} ${size === 'lg' ? styles.tipoChipLg : ''}`}
+      style={fg ? { background: bg, color: fg } : { background: bg }}
+    >
       {TIPO_LABELS[tipo] || tipo}
     </span>
   )
@@ -904,15 +975,25 @@ const CAT_SILHOUETTE = {
   'Aceite·AOVE': '/assets/eci-gourmet-demo/products/silhouette-aove.svg',
 }
 
-function WineCardPlaceholder({ tipo, catGourmet }) {
+function WineCardPlaceholder({ tipo, catGourmet, nombre, uxV2 = false, colorAcento }) {
   if (catGourmet && CAT_SILHOUETTE[catGourmet]) {
+    // F5b · lazy/decoding solo con ux_v2 (antes de F5 no estaban).
+    const silhouetteAttrs = uxV2 ? { loading: 'lazy', decoding: 'async' } : {}
     return (
       <div className={styles.cardImgPlaceholder}>
-        <img src={CAT_SILHOUETTE[catGourmet]} alt="" width="80" height="80" style={{ opacity: 0.6 }} />
+        <img src={CAT_SILHOUETTE[catGourmet]} alt="" width="80" height="80" style={{ opacity: 0.6 }} {...silhouetteAttrs} />
       </div>
     )
   }
   const color = TIPO_COLORS[tipo] || '#2a2a2a'
+  // F5 (2/N) · botella SVG por tipo cuando ux_v2 está activo.
+  if (uxV2) {
+    return (
+      <div className={styles.cardImgPlaceholder} style={{ background: `linear-gradient(135deg, ${color}22, ${color}55)` }}>
+        <BottleV2 tipo={tipo} nombre={nombre} colorAcento={colorAcento || '#c9a96e'} className={styles.cardImgIcon} />
+      </div>
+    )
+  }
   return (
     <div className={styles.cardImgPlaceholder} style={{ background: `linear-gradient(135deg, ${color}33, ${color}88)` }}>
       <BottleMark className={styles.cardImgIcon} />
@@ -920,24 +1001,34 @@ function WineCardPlaceholder({ tipo, catGourmet }) {
   )
 }
 
-function WineCard({ vino, onClick, ocultarAgotados = true }) {
+function WineCard({ vino, onClick, ocultarAgotados = true, uxV2 = false, colorAcento, eager = false, lang = 'es' }) {
   const sinStock = !ocultarAgotados && Number(vino.stock) <= 0
+  // F5b · Badge 'Última unidad' SOLO con stock EXACTO = 1 (antes <=2, que
+  // marcaba ~93 de 180 vinos de Síbaris; irrelevante). i18n via T[lang].
+  const ultimaUnidad = uxV2 && Number(vino.stock) === 1
+  const ultimaUnidadLabel = (T[lang] || T.es).ultimaUnidad || T.es.ultimaUnidad
   return (
     <button className={styles.wineCard} onClick={() => onClick(vino)} type="button">
+      {/* F5b · Pre-F5 esta img tenia solo loading='lazy'. Mantenemos ese
+          comportamiento identico con flag OFF; con flag ON anadimos
+          decoding + width/height + eager para las primeras 8. */}
       <div className={styles.cardImg}>
         <SafeImage
           src={vino.foto_url}
           alt={vino.nombre}
           className={styles.cardImgPhoto}
-          loading="lazy"
-          fallback={<WineCardPlaceholder tipo={vino.tipo} catGourmet={vino.cat_gourmet} />}
+          {...(uxV2
+            ? { loading: eager ? 'eager' : 'lazy', decoding: 'async', width: '240', height: '240' }
+            : { loading: 'lazy' })}
+          fallback={<WineCardPlaceholder tipo={vino.tipo} catGourmet={vino.cat_gourmet} nombre={vino.nombre} uxV2={uxV2} colorAcento={colorAcento} />}
         />
         {vino.destacado && <span className={styles.cardDestacado}>★ Destacado</span>}
         {sinStock && <span className={styles.cardAgotado}>Consultar disponibilidad</span>}
+        {ultimaUnidad && <span className={styles.cardUltimas}>{ultimaUnidadLabel}</span>}
       </div>
       <div className={styles.cardBody}>
         <div className={styles.cardTop}>
-          {vino.tipo && <TipoChip tipo={vino.tipo} />}
+          {vino.tipo && <TipoChip tipo={vino.tipo} uxV2={uxV2} />}
           {vino.puntuacion && <span className={styles.cardPuntuacion}>{vino.puntuacion} pts</span>}
         </div>
         <p className={styles.cardNombre}>{vino.nombre}</p>
@@ -968,7 +1059,7 @@ function WineCard({ vino, onClick, ocultarAgotados = true }) {
 
 // ── Ficha de vino enriquecida ─────────────────────────────────────────────────
 
-function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', tienda, onWineFood }) {
+function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', tienda, onWineFood, uxV2 = false }) {
   const isEci = tienda?.theme_preset === 'eci'
   const [qrItem, setQrItem] = useState(null)
 
@@ -1017,10 +1108,12 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
         <button className={`${styles.detailClose} ${styles.detailCloseDesktop}`} onClick={onClose} type="button" aria-label="Cerrar">✕</button>
         <div className={styles.detailContent}>
           <div className={styles.detailLeft}>
+            {/* F5b · Pre-F5 sin atributos de perf. Con flag ON los anadimos. */}
             <SafeImage
               src={vino.foto_url}
               alt={vino.nombre}
               className={styles.detailPhoto}
+              {...(uxV2 ? { loading: 'eager', decoding: 'async', width: '440', height: '440', fetchPriority: 'high' } : {})}
               fallback={
                 <div className={styles.detailPhotoPlaceholder} style={{ background: `linear-gradient(135deg, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}44, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}99)` }}>
                   <BottleMark className={styles.detailPhotoIcon} />
@@ -1032,7 +1125,7 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
 
           <div className={styles.detailRight}>
             <div className={styles.detailHeader}>
-              {vino.tipo && <TipoChip tipo={vino.tipo} size="lg" />}
+              {vino.tipo && <TipoChip tipo={vino.tipo} size="lg" uxV2={uxV2} />}
               {vino.puntuacion && <span className={styles.detailPuntuacion} style={{ color: colorAcento }}>{vino.puntuacion} pts</span>}
             </div>
             <h2 className={styles.detailNombre}>{vino.nombre}</h2>
@@ -2196,7 +2289,7 @@ function LeadCapture({ slug, source, preferencias, vinosRecomendados, gourmet = 
 
 // ── Wizard "Ayúdame a elegir" ─────────────────────────────────────────────────
 
-function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, onFunnelStep, vinos = [], gourmet = [], lang = 'es', iconStyle = 'emoji' }) {
+function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, onFunnelStep, vinos = [], gourmet = [], lang = 'es', iconStyle = 'emoji', uxV2 = false }) {
   const [step, setStep]       = useState(0)
   const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '', soloRegion: true })
   const [cargando, setCargando] = useState(false)
@@ -2392,16 +2485,18 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
             {resultado.recomendaciones.map(vino => (
               <article key={vino.id} className={styles.pairingWineCard}>
                 <div className={styles.pairingWineLeft}>
+                  {/* F5b · Pre-F5 sin atributos; con flag ON lazy + decoding + dimensiones */}
                   <SafeImage
                     src={vino.foto_url}
                     alt={vino.nombre}
                     className={styles.pairingWinePhoto}
+                    {...(uxV2 ? { loading: 'lazy', decoding: 'async', width: '200', height: '240' } : {})}
                     fallback={<div className={styles.pairingWinePhotoPlaceholder} style={{ background: `${TIPO_COLORS[vino.tipo] || '#333'}66` }}><BottleMark className={styles.pairingWineIcon} /></div>}
                   />
                 </div>
                 <div className={styles.pairingWineInfo}>
                   <div className={styles.pairingWineTop}>
-                    {vino.tipo && <TipoChip tipo={vino.tipo} />}
+                    {vino.tipo && <TipoChip tipo={vino.tipo} uxV2={uxV2} />}
                     {vino.precio_pvp && <span className={styles.pairingWinePrecio}>{formatPrecio(vino.precio_pvp)}</span>}
                   </div>
                   <p className={styles.pairingWineNombre}>{vino.nombre}</p>
@@ -2452,14 +2547,30 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
 
 // ── Modo Mostrador ─────────────────────────────────────────────────────────────
 
-function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang = 'es' }) {
+function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang = 'es', uxV2 = false }) {
   const [idx, setIdx] = useState(0)
   const [fade, setFade] = useState(true)
   const [hora, setHora] = useState('')
   const [vpIdx, setVpIdx] = useState(0)
   const [vpFade, setVpFade] = useState(true)
 
+  /* F5 (5/N) · con ux_v2, el carrusel evita vinos agotados y sin foto.
+     Respeta el ajuste tienda.ocultar_agotados: si stock=0 y la tienda
+     oculta agotados, se excluye del carrusel.
+     Fallback explícito: si tras filtrar quedan <3, se mantiene EL
+     COMPORTAMIENTO ACTUAL (no romper la vista si los datos son pobres). */
+  const ocultarAgotados = tienda?.ocultar_agotados !== false
   const lista = useMemo(() => {
+    if (uxV2) {
+      const vinosConFoto = vinos.filter(v => v.foto_url)
+      const disponibles = ocultarAgotados
+        ? vinosConFoto.filter(v => Number(v.stock ?? 0) > 0)
+        : vinosConFoto
+      const destDisp = disponibles.filter(v => v.destacado)
+      if (destDisp.length >= 3) return destDisp.slice(0, 12)
+      if (disponibles.length >= 3) return disponibles.slice(0, 12)
+      // Caer al comportamiento actual cuando no hay material suficiente.
+    }
     const dest = vinos.filter(v => v.destacado && v.foto_url)
     if (dest.length >= 3) return dest
     const withFoto = vinos.filter(v => v.foto_url).slice(0, 12)
@@ -2467,7 +2578,7 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
     // Sin fotos: usar destacados para que el showcase funcione con el fallback de gradiente
     const sinFoto = vinos.filter(v => v.destacado)
     return sinFoto.length >= 2 ? sinFoto.slice(0, 8) : vinos.slice(0, 8)
-  }, [vinos])
+  }, [vinos, uxV2, ocultarAgotados])
 
   const valuePropsList = useMemo(
     () => (SHOWCASE_VALUE_PROPS[lang] ?? SHOWCASE_VALUE_PROPS.es)(vinos.length),
@@ -2531,10 +2642,12 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
     <div className={styles.showcaseView} onClick={onExit} style={{ '--acento': colorAcento, '--primario': colorPrimario }}>
       {/* Fondo con foto */}
       <div className={`${styles.showcaseBg} ${fade ? styles.showcaseFadeIn : styles.showcaseFadeOut}`}>
+        {/* F5b · Showcase bg: pre-F5 sin atributos. Con flag ON eager + high priority. */}
         <SafeImage
           src={vino.foto_url}
           alt={vino.nombre}
           className={styles.showcaseBgImg}
+          {...(uxV2 ? { loading: 'eager', decoding: 'async', fetchPriority: 'high' } : {})}
           fallback={
             <div className={styles.showcaseBgFallback} style={{ background: `radial-gradient(circle at 50% 30%, ${TIPO_COLORS[vino.tipo] || '#333'}55, transparent 42%), linear-gradient(135deg, #11111a, #050506)` }}>
               <BottleMark className={styles.showcaseBgIcon} />
@@ -2606,7 +2719,7 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
 
 // ── Vista Pairing ─────────────────────────────────────────────────────────────
 
-function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWineSelect, onMobile, onBack, onFunnelStep, lang = 'es', iconStyle = 'emoji' }) {
+function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWineSelect, onMobile, onBack, onFunnelStep, lang = 'es', iconStyle = 'emoji', uxV2 = false }) {
   const [consulta, setConsulta] = useState('')
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
@@ -2694,16 +2807,18 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
             {resultado.recomendaciones.map(vino => (
               <article key={vino.id} className={styles.pairingWineCard}>
                 <div className={styles.pairingWineLeft}>
+                  {/* F5b · Pre-F5 sin atributos; con flag ON lazy + decoding + dimensiones */}
                   <SafeImage
                     src={vino.foto_url}
                     alt={vino.nombre}
                     className={styles.pairingWinePhoto}
+                    {...(uxV2 ? { loading: 'lazy', decoding: 'async', width: '200', height: '240' } : {})}
                     fallback={<div className={styles.pairingWinePhotoPlaceholder} style={{ background: `${TIPO_COLORS[vino.tipo] || '#333'}66` }}><BottleMark className={styles.pairingWineIcon} /></div>}
                   />
                 </div>
                 <div className={styles.pairingWineInfo}>
                   <div className={styles.pairingWineTop}>
-                    {vino.tipo && <TipoChip tipo={vino.tipo} />}
+                    {vino.tipo && <TipoChip tipo={vino.tipo} uxV2={uxV2} />}
                     {vino.precio_pvp && <span className={styles.pairingWinePrecio}>{formatPrecio(vino.precio_pvp)}</span>}
                   </div>
                   <p className={styles.pairingWineNombre}>{vino.nombre}</p>
@@ -2754,7 +2869,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
 
 // ── Vista Browse ──────────────────────────────────────────────────────────────
 
-function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es', tienda }) {
+function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es', tienda, uxV2 = false }) {
   const [busqueda, setBusqueda] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroPais, setFiltroPais] = useState('')
@@ -2894,7 +3009,7 @@ function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es
       <div className={styles.browseResults}>
         {vinosFiltrados.length === 0
           ? <div className={styles.noResults}><p>{T[lang].sinResultados}</p><button onClick={limpiar} style={{ color: colorAcento }} type="button">{T[lang].limpiarFiltros}</button></div>
-          : <div className={styles.wineGrid}>{vinosFiltrados.map(v => <WineCard key={v.id} vino={v} onClick={onWineSelect} ocultarAgotados={tienda?.ocultar_agotados !== false} />)}</div>
+          : <div className={styles.wineGrid}>{vinosFiltrados.map((v, i) => <WineCard key={v.id} vino={v} onClick={onWineSelect} ocultarAgotados={tienda?.ocultar_agotados !== false} uxV2={uxV2} colorAcento={colorAcento} eager={i < 8} lang={lang} />)}</div>
         }
       </div>
     </div>
@@ -2958,7 +3073,7 @@ function QrOrderModal({ item, lang, onClose }) {
   )
 }
 
-function WineFoodPanel({ vino, resultados, onClose, lang, qrOrderEnabled }) {
+function WineFoodPanel({ vino, resultados, onClose, lang, qrOrderEnabled, uxV2 = false }) {
   const T_WF = {
     es: { titulo: '¿Qué como con este vino?', cargando: 'Buscando maridajes...', vacio: 'No encontramos maridajes en el catálogo.', pedir: 'Pedir en El Corte Inglés' },
     en: { titulo: 'What to eat with this wine?', cargando: 'Finding pairings...', vacio: 'No pairings found in catalogue.', pedir: 'Order at El Corte Inglés' },
@@ -2991,10 +3106,12 @@ function WineFoodPanel({ vino, resultados, onClose, lang, qrOrderEnabled }) {
           {resultados.map(g => (
             <div key={g.id} className={styles.wineFoodCard}>
               <div className={styles.wineFoodCardImg}>
+                {/* F5b · Pre-F5 sin atributos; con flag ON lazy + decoding + dims */}
                 <SafeImage
                   src={g.foto_url}
                   alt={g.nombre}
                   className={styles.wineFoodCardPhoto}
+                  {...(uxV2 ? { loading: 'lazy', decoding: 'async', width: '200', height: '200' } : {})}
                   fallback={
                     <img
                       src={CAT_SILHOUETTE[g.cat_gourmet] || '/assets/eci-gourmet-demo/products/silhouette-conserva.svg'}
@@ -3053,6 +3170,14 @@ export default function KioskoPage() {
   const { slug }       = useParams()
   const searchParams   = useSearchParams()
   const modoMostrador  = searchParams.get('mostrador') === '1'
+
+  // F5 · Flag ux_v2 (OFF por defecto). Dos fuentes, en orden:
+  //  1) Override cliente ?ux=v2 (ON) o ?ux=v1 (OFF explícito).
+  //  2) tienda.features.ux_v2 === true (persistido vía SQL en features).
+  // Con ambas vacías, resuelve a OFF → kiosko público idéntico a hoy.
+  // Usado por los ítems visuales de F5 (welcome, botella SVG, badge
+  // Últimas unidades, contraste tipos AA, carrusel filtrado, lazy).
+  // No se persiste el override; solo vive en la sesión actual.
 
   const [tienda, setTienda]         = useState(null)
   const [vinos, setVinos]           = useState([])
@@ -3425,6 +3550,14 @@ export default function KioskoPage() {
 
   const colorPrimario = tienda?.color_primario || '#0d0d1a'
   const colorAcento   = tienda?.color_acento   || '#c9a96e'
+
+  // F5 · Resolución del flag ux_v2.
+  const uxParam = searchParams.get('ux')
+  const uxV2 = uxParam === 'v2'
+    ? true
+    : uxParam === 'v1'
+      ? false
+      : tienda?.features?.ux_v2 === true
   const temaClaro     = esColorClaro(colorPrimario)
   const fontCss       = FONT_CSS[tienda?.font_family]?.css || FONT_CSS.clasica.css
   const iconStyle      = tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji'
@@ -3502,7 +3635,7 @@ export default function KioskoPage() {
       {/* MODO MOSTRADOR */}
       {view === VIEWS.SHOWCASE && (
         <ShowcaseView vinos={vinos} tienda={tienda} colorAcento={colorAcento} colorPrimario={colorPrimario}
-          lang={lang} onExit={() => { showcaseManualRef.current = false; setView(VIEWS.WELCOME) }} />
+          lang={lang} onExit={() => { showcaseManualRef.current = false; setView(VIEWS.WELCOME) }} uxV2={uxV2} />
       )}
 
       {/* BIENVENIDA */}
@@ -3511,6 +3644,7 @@ export default function KioskoPage() {
           {/* Cabecera: logo, nombre, descripción */}
           <div className={styles.welcomeContent}>
             {tienda?.logo_url ? (
+              // F5c · Welcome idéntico a hoy con cualquier flag: sin atributos extra.
               <SafeImage
                 src={tienda.logo_url}
                 alt={tienda?.nombre}
@@ -3645,14 +3779,27 @@ export default function KioskoPage() {
               <div className={styles.featuredStripWrap}>
                 <button className={styles.featuredArrowBtn} onClick={() => stripRef.current?.scrollBy({ left: -280, behavior: 'smooth' })} type="button" aria-label="Anterior">‹</button>
                 <div className={styles.featuredStrip} ref={stripRef}>
-                  {vinosDestacadosEfectivos.map(v => (
+                  {vinosDestacadosEfectivos.map((v, i) => (
                     <button key={v.id} className={styles.featuredCard} onClick={() => abrirDetalle(v)} type="button">
+                      {/* F5c · Decisión del dueño: el welcome debe quedar EXACTO
+                          a hoy también con ux_v2. width/height/eager/decoding
+                          podían reservar aspect-ratio y desplazar el bloque de
+                          destacados; se retiran de esta sección. Se mantiene
+                          SOLO el fallback con BottleV2 (no afecta al layout: es
+                          el mismo contenedor .featuredPhotoPlaceholder; solo
+                          cambia el SVG interno cuando no hay foto). */}
                       <SafeImage
                         src={v.foto_url}
                         alt={v.nombre}
                         className={styles.featuredPhoto}
                         loading="lazy"
-                        fallback={<div className={styles.featuredPhotoPlaceholder} style={{ background: `${TIPO_COLORS[v.tipo] || '#333'}88` }}><BottleMark className={styles.featuredPhotoIcon} /></div>}
+                        fallback={
+                          uxV2
+                            ? <div className={styles.featuredPhotoPlaceholder} style={{ background: `linear-gradient(135deg, ${TIPO_COLORS[v.tipo] || '#333'}22, ${TIPO_COLORS[v.tipo] || '#333'}55)` }}>
+                                <BottleV2 tipo={v.tipo} nombre={v.nombre} colorAcento={colorAcento} className={styles.featuredPhotoIcon} />
+                              </div>
+                            : <div className={styles.featuredPhotoPlaceholder} style={{ background: `${TIPO_COLORS[v.tipo] || '#333'}88` }}><BottleMark className={styles.featuredPhotoIcon} /></div>
+                        }
                       />
                       <p className={styles.featuredNombre}>{v.nombre}</p>
                       {v.precio_pvp && <p className={styles.featuredPrecio} style={{ color: colorAcento }}>{formatPrecio(v.precio_pvp)}</p>}
@@ -3674,13 +3821,13 @@ export default function KioskoPage() {
           onWineSelect={abrirDetalle} onMobile={abrirMobileQr}
           onBack={() => { abandonFunnel('user_exit'); setView(VIEWS.WELCOME) }}
           onFunnelStep={step => trackFunnelStep('wizard', step)}
-          vinos={vinos} gourmet={gourmet} lang={lang} iconStyle={iconStyle} />
+          vinos={vinos} gourmet={gourmet} lang={lang} iconStyle={iconStyle} uxV2={uxV2} />
       )}
 
       {/* EXPLORAR */}
       {view === VIEWS.BROWSE && (
         <BrowseView slug={slug} vinos={vinos} colorAcento={colorAcento}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} />
+          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} uxV2={uxV2} />
       )}
 
       {/* MARIDAJE */}
@@ -3689,7 +3836,7 @@ export default function KioskoPage() {
           onWineSelect={abrirDetalle} onMobile={abrirMobileQr}
           onBack={() => { abandonFunnel('user_exit'); setView(VIEWS.WELCOME) }}
           onFunnelStep={step => trackFunnelStep('pairing', step)}
-          lang={lang} iconStyle={iconStyle} />
+          lang={lang} iconStyle={iconStyle} uxV2={uxV2} />
       )}
 
       {/* DUELO A CIEGAS — solo si la tienda lo tiene activado en ajustes */}
@@ -3718,7 +3865,7 @@ export default function KioskoPage() {
       {vinoDetalle && (
         <WineDetail vino={vinoDetalle} slug={slug} colorAcento={colorAcento}
           onClose={cerrarDetalle} onMobile={abrirMobileQr} lang={lang}
-          tienda={tienda} onWineFood={wineFoodEnabled ? buscarWineFood : undefined} />
+          tienda={tienda} onWineFood={wineFoodEnabled ? buscarWineFood : undefined} uxV2={uxV2} />
       )}
 
       {/* WINE → FOOD panel — overlay sobre el detalle cuando está activo */}
@@ -3729,6 +3876,7 @@ export default function KioskoPage() {
           onClose={() => { setWineFoodVino(null); setWineFoodResultados(null) }}
           lang={lang}
           qrOrderEnabled={tienda?.features?.qr_order === true}
+          uxV2={uxV2}
         />
       )}
     </div>

@@ -891,6 +891,28 @@
   letter-spacing: .03em;
 }
 
+/* F5 (3/N) · Badge 'Últimas unidades' (solo con ux_v2 ON y stock>0 y <=2).
+   Mismo estilo que .cardDestacado pero color ámbar para transmitir urgencia
+   sin alarma; esquina inferior izquierda para no colisionar con el
+   destacado (esquina superior derecha) ni con el aviso de agotado
+   (banner inferior). Ratio AA contra fondo claro de la foto cuando el
+   texto es blanco sobre naranja fuerte. */
+.cardUltimas {
+  position: absolute;
+  bottom: .6rem;
+  left: .6rem;
+  background: #b45309;
+  color: #fff;
+  font-family: var(--font-family);
+  font-size: .68rem;
+  font-weight: 800;
+  padding: .2rem .55rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+}
+
 .cardBody {
   flex: 1;
   padding: 1rem;
