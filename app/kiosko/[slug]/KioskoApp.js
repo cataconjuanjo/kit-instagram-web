@@ -1055,7 +1055,7 @@ function WineCard({ vino, onClick, ocultarAgotados = true, uxV2 = false, colorAc
 
 // ── Ficha de vino enriquecida ─────────────────────────────────────────────────
 
-function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', tienda, onWineFood }) {
+function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', tienda, onWineFood, uxV2 = false }) {
   const isEci = tienda?.theme_preset === 'eci'
   const [qrItem, setQrItem] = useState(null)
 
@@ -1124,7 +1124,7 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
 
           <div className={styles.detailRight}>
             <div className={styles.detailHeader}>
-              {vino.tipo && <TipoChip tipo={vino.tipo} size="lg" />}
+              {vino.tipo && <TipoChip tipo={vino.tipo} size="lg" uxV2={uxV2} />}
               {vino.puntuacion && <span className={styles.detailPuntuacion} style={{ color: colorAcento }}>{vino.puntuacion} pts</span>}
             </div>
             <h2 className={styles.detailNombre}>{vino.nombre}</h2>
@@ -2288,7 +2288,7 @@ function LeadCapture({ slug, source, preferencias, vinosRecomendados, gourmet = 
 
 // ── Wizard "Ayúdame a elegir" ─────────────────────────────────────────────────
 
-function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, onFunnelStep, vinos = [], gourmet = [], lang = 'es', iconStyle = 'emoji' }) {
+function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, onMobile, onBack, onFunnelStep, vinos = [], gourmet = [], lang = 'es', iconStyle = 'emoji', uxV2 = false }) {
   const [step, setStep]       = useState(0)
   const [wizard, setWizard]   = useState({ ocasion: '', estilo: '', presupuesto: '', soloRegion: true })
   const [cargando, setCargando] = useState(false)
@@ -2497,7 +2497,7 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
                 </div>
                 <div className={styles.pairingWineInfo}>
                   <div className={styles.pairingWineTop}>
-                    {vino.tipo && <TipoChip tipo={vino.tipo} />}
+                    {vino.tipo && <TipoChip tipo={vino.tipo} uxV2={uxV2} />}
                     {vino.precio_pvp && <span className={styles.pairingWinePrecio}>{formatPrecio(vino.precio_pvp)}</span>}
                   </div>
                   <p className={styles.pairingWineNombre}>{vino.nombre}</p>
@@ -2721,7 +2721,7 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
 
 // ── Vista Pairing ─────────────────────────────────────────────────────────────
 
-function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWineSelect, onMobile, onBack, onFunnelStep, lang = 'es', iconStyle = 'emoji' }) {
+function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWineSelect, onMobile, onBack, onFunnelStep, lang = 'es', iconStyle = 'emoji', uxV2 = false }) {
   const [consulta, setConsulta] = useState('')
   const [cargando, setCargando] = useState(false)
   const [resultado, setResultado] = useState(null)
@@ -2822,7 +2822,7 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
                 </div>
                 <div className={styles.pairingWineInfo}>
                   <div className={styles.pairingWineTop}>
-                    {vino.tipo && <TipoChip tipo={vino.tipo} />}
+                    {vino.tipo && <TipoChip tipo={vino.tipo} uxV2={uxV2} />}
                     {vino.precio_pvp && <span className={styles.pairingWinePrecio}>{formatPrecio(vino.precio_pvp)}</span>}
                   </div>
                   <p className={styles.pairingWineNombre}>{vino.nombre}</p>
@@ -3825,7 +3825,7 @@ export default function KioskoPage() {
           onWineSelect={abrirDetalle} onMobile={abrirMobileQr}
           onBack={() => { abandonFunnel('user_exit'); setView(VIEWS.WELCOME) }}
           onFunnelStep={step => trackFunnelStep('wizard', step)}
-          vinos={vinos} gourmet={gourmet} lang={lang} iconStyle={iconStyle} />
+          vinos={vinos} gourmet={gourmet} lang={lang} iconStyle={iconStyle} uxV2={uxV2} />
       )}
 
       {/* EXPLORAR */}
@@ -3840,7 +3840,7 @@ export default function KioskoPage() {
           onWineSelect={abrirDetalle} onMobile={abrirMobileQr}
           onBack={() => { abandonFunnel('user_exit'); setView(VIEWS.WELCOME) }}
           onFunnelStep={step => trackFunnelStep('pairing', step)}
-          lang={lang} iconStyle={iconStyle} />
+          lang={lang} iconStyle={iconStyle} uxV2={uxV2} />
       )}
 
       {/* DUELO A CIEGAS — solo si la tienda lo tiene activado en ajustes */}
@@ -3869,7 +3869,7 @@ export default function KioskoPage() {
       {vinoDetalle && (
         <WineDetail vino={vinoDetalle} slug={slug} colorAcento={colorAcento}
           onClose={cerrarDetalle} onMobile={abrirMobileQr} lang={lang}
-          tienda={tienda} onWineFood={wineFoodEnabled ? buscarWineFood : undefined} />
+          tienda={tienda} onWineFood={wineFoodEnabled ? buscarWineFood : undefined} uxV2={uxV2} />
       )}
 
       {/* WINE → FOOD panel — overlay sobre el detalle cuando está activo */}
