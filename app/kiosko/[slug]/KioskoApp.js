@@ -977,9 +977,11 @@ const CAT_SILHOUETTE = {
 
 function WineCardPlaceholder({ tipo, catGourmet, nombre, uxV2 = false, colorAcento }) {
   if (catGourmet && CAT_SILHOUETTE[catGourmet]) {
+    // F5b · lazy/decoding solo con ux_v2 (antes de F5 no estaban).
+    const silhouetteAttrs = uxV2 ? { loading: 'lazy', decoding: 'async' } : {}
     return (
       <div className={styles.cardImgPlaceholder}>
-        <img src={CAT_SILHOUETTE[catGourmet]} alt="" width="80" height="80" style={{ opacity: 0.6 }} loading="lazy" decoding="async" />
+        <img src={CAT_SILHOUETTE[catGourmet]} alt="" width="80" height="80" style={{ opacity: 0.6 }} {...silhouetteAttrs} />
       </div>
     )
   }
@@ -1007,15 +1009,17 @@ function WineCard({ vino, onClick, ocultarAgotados = true, uxV2 = false, colorAc
   const ultimaUnidadLabel = (T[lang] || T.es).ultimaUnidad || T.es.ultimaUnidad
   return (
     <button className={styles.wineCard} onClick={() => onClick(vino)} type="button">
+      {/* F5b · Pre-F5 esta img tenia solo loading='lazy'. Mantenemos ese
+          comportamiento identico con flag OFF; con flag ON anadimos
+          decoding + width/height + eager para las primeras 8. */}
       <div className={styles.cardImg}>
         <SafeImage
           src={vino.foto_url}
           alt={vino.nombre}
           className={styles.cardImgPhoto}
-          loading={eager ? 'eager' : 'lazy'}
-          decoding="async"
-          width="240"
-          height="240"
+          {...(uxV2
+            ? { loading: eager ? 'eager' : 'lazy', decoding: 'async', width: '240', height: '240' }
+            : { loading: 'lazy' })}
           fallback={<WineCardPlaceholder tipo={vino.tipo} catGourmet={vino.cat_gourmet} nombre={vino.nombre} uxV2={uxV2} colorAcento={colorAcento} />}
         />
         {vino.destacado && <span className={styles.cardDestacado}>★ Destacado</span>}
@@ -1104,15 +1108,12 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
         <button className={`${styles.detailClose} ${styles.detailCloseDesktop}`} onClick={onClose} type="button" aria-label="Cerrar">✕</button>
         <div className={styles.detailContent}>
           <div className={styles.detailLeft}>
+            {/* F5b · Pre-F5 sin atributos de perf. Con flag ON los anadimos. */}
             <SafeImage
               src={vino.foto_url}
               alt={vino.nombre}
               className={styles.detailPhoto}
-              loading="eager"
-              decoding="async"
-              width="440"
-              height="440"
-              fetchPriority="high"
+              {...(uxV2 ? { loading: 'eager', decoding: 'async', width: '440', height: '440', fetchPriority: 'high' } : {})}
               fallback={
                 <div className={styles.detailPhotoPlaceholder} style={{ background: `linear-gradient(135deg, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}44, ${TIPO_COLORS[vino.tipo] || '#2a2a2a'}99)` }}>
                   <BottleMark className={styles.detailPhotoIcon} />
@@ -2484,14 +2485,12 @@ function WizardView({ slug, tienda, colorAcento, colorPrimario, onWineSelect, on
             {resultado.recomendaciones.map(vino => (
               <article key={vino.id} className={styles.pairingWineCard}>
                 <div className={styles.pairingWineLeft}>
+                  {/* F5b · Pre-F5 sin atributos; con flag ON lazy + decoding + dimensiones */}
                   <SafeImage
                     src={vino.foto_url}
                     alt={vino.nombre}
                     className={styles.pairingWinePhoto}
-                    loading="lazy"
-                    decoding="async"
-                    width="200"
-                    height="240"
+                    {...(uxV2 ? { loading: 'lazy', decoding: 'async', width: '200', height: '240' } : {})}
                     fallback={<div className={styles.pairingWinePhotoPlaceholder} style={{ background: `${TIPO_COLORS[vino.tipo] || '#333'}66` }}><BottleMark className={styles.pairingWineIcon} /></div>}
                   />
                 </div>
@@ -2643,13 +2642,12 @@ function ShowcaseView({ vinos, tienda, colorAcento, colorPrimario, onExit, lang 
     <div className={styles.showcaseView} onClick={onExit} style={{ '--acento': colorAcento, '--primario': colorPrimario }}>
       {/* Fondo con foto */}
       <div className={`${styles.showcaseBg} ${fade ? styles.showcaseFadeIn : styles.showcaseFadeOut}`}>
+        {/* F5b · Showcase bg: pre-F5 sin atributos. Con flag ON eager + high priority. */}
         <SafeImage
           src={vino.foto_url}
           alt={vino.nombre}
           className={styles.showcaseBgImg}
-          loading="eager"
-          decoding="async"
-          fetchPriority="high"
+          {...(uxV2 ? { loading: 'eager', decoding: 'async', fetchPriority: 'high' } : {})}
           fallback={
             <div className={styles.showcaseBgFallback} style={{ background: `radial-gradient(circle at 50% 30%, ${TIPO_COLORS[vino.tipo] || '#333'}55, transparent 42%), linear-gradient(135deg, #11111a, #050506)` }}>
               <BottleMark className={styles.showcaseBgIcon} />
@@ -2809,14 +2807,12 @@ function PairingView({ tienda, slug, colorAcento, vinos = [], gourmet = [], onWi
             {resultado.recomendaciones.map(vino => (
               <article key={vino.id} className={styles.pairingWineCard}>
                 <div className={styles.pairingWineLeft}>
+                  {/* F5b · Pre-F5 sin atributos; con flag ON lazy + decoding + dimensiones */}
                   <SafeImage
                     src={vino.foto_url}
                     alt={vino.nombre}
                     className={styles.pairingWinePhoto}
-                    loading="lazy"
-                    decoding="async"
-                    width="200"
-                    height="240"
+                    {...(uxV2 ? { loading: 'lazy', decoding: 'async', width: '200', height: '240' } : {})}
                     fallback={<div className={styles.pairingWinePhotoPlaceholder} style={{ background: `${TIPO_COLORS[vino.tipo] || '#333'}66` }}><BottleMark className={styles.pairingWineIcon} /></div>}
                   />
                 </div>
@@ -3077,7 +3073,7 @@ function QrOrderModal({ item, lang, onClose }) {
   )
 }
 
-function WineFoodPanel({ vino, resultados, onClose, lang, qrOrderEnabled }) {
+function WineFoodPanel({ vino, resultados, onClose, lang, qrOrderEnabled, uxV2 = false }) {
   const T_WF = {
     es: { titulo: '¿Qué como con este vino?', cargando: 'Buscando maridajes...', vacio: 'No encontramos maridajes en el catálogo.', pedir: 'Pedir en El Corte Inglés' },
     en: { titulo: 'What to eat with this wine?', cargando: 'Finding pairings...', vacio: 'No pairings found in catalogue.', pedir: 'Order at El Corte Inglés' },
@@ -3110,14 +3106,12 @@ function WineFoodPanel({ vino, resultados, onClose, lang, qrOrderEnabled }) {
           {resultados.map(g => (
             <div key={g.id} className={styles.wineFoodCard}>
               <div className={styles.wineFoodCardImg}>
+                {/* F5b · Pre-F5 sin atributos; con flag ON lazy + decoding + dims */}
                 <SafeImage
                   src={g.foto_url}
                   alt={g.nombre}
                   className={styles.wineFoodCardPhoto}
-                  loading="lazy"
-                  decoding="async"
-                  width="200"
-                  height="200"
+                  {...(uxV2 ? { loading: 'lazy', decoding: 'async', width: '200', height: '200' } : {})}
                   fallback={
                     <img
                       src={CAT_SILHOUETTE[g.cat_gourmet] || '/assets/eci-gourmet-demo/products/silhouette-conserva.svg'}
@@ -3650,13 +3644,12 @@ export default function KioskoPage() {
           {/* Cabecera: logo, nombre, descripción */}
           <div className={styles.welcomeContent}>
             {tienda?.logo_url ? (
+              // F5b · Welcome logo: pre-F5 sin atributos. Con flag ON eager + high.
               <SafeImage
                 src={tienda.logo_url}
                 alt={tienda?.nombre}
                 className={styles.welcomeLogoHero}
-                loading="eager"
-                decoding="async"
-                fetchPriority="high"
+                {...(uxV2 ? { loading: 'eager', decoding: 'async', fetchPriority: 'high' } : {})}
                 fallback={<LogoFallback nombre={tienda?.nombre} />}
               />
             ) : (
@@ -3789,14 +3782,16 @@ export default function KioskoPage() {
                 <div className={styles.featuredStrip} ref={stripRef}>
                   {vinosDestacadosEfectivos.map((v, i) => (
                     <button key={v.id} className={styles.featuredCard} onClick={() => abrirDetalle(v)} type="button">
+                      {/* F5b · Pre-F5 esta img tenia solo loading='lazy'. Con flag OFF
+                          se mantiene identico; con flag ON se anade decoding y dimensiones,
+                          mas eager para las primeras 3. */}
                       <SafeImage
                         src={v.foto_url}
                         alt={v.nombre}
                         className={styles.featuredPhoto}
-                        loading={i < 3 ? 'eager' : 'lazy'}
-                        decoding="async"
-                        width="200"
-                        height="200"
+                        {...(uxV2
+                          ? { loading: i < 3 ? 'eager' : 'lazy', decoding: 'async', width: '200', height: '200' }
+                          : { loading: 'lazy' })}
                         fallback={
                           uxV2
                             ? <div className={styles.featuredPhotoPlaceholder} style={{ background: `linear-gradient(135deg, ${TIPO_COLORS[v.tipo] || '#333'}22, ${TIPO_COLORS[v.tipo] || '#333'}55)` }}>
@@ -3880,6 +3875,7 @@ export default function KioskoPage() {
           onClose={() => { setWineFoodVino(null); setWineFoodResultados(null) }}
           lang={lang}
           qrOrderEnabled={tienda?.features?.qr_order === true}
+          uxV2={uxV2}
         />
       )}
     </div>
