@@ -15,9 +15,9 @@ const COUNTER_ORDERS_IN_DEVELOPMENT = true
 // ── Constantes de personalización ─────────────────────────────────────────────
 
 const PALETAS = [
-  { id: 'clasico',  label: 'Clásico',         primario: '#0d0d1a', acento: '#c9a96e' },
+  { id: 'clasico',  label: 'Clásico',         primario: '#0d0d1a', acento: 'var(--k-color-accent)' },
   { id: 'sibaris',  label: 'Síbaris Gourmet', primario: '#1e1b22', acento: '#c48e10' },
-  { id: 'blanco',   label: 'Blanco elegante',  primario: '#FAFAF8', acento: '#1a1a2e' },
+  { id: 'blanco',   label: 'Blanco elegante',  primario: '#FAFAF8', acento: 'var(--k-color-ink)' },
   { id: 'verde',    label: 'Verde vinoteca',   primario: '#122012', acento: '#7cb87c' },
   { id: 'burdeos',  label: 'Burdeos',          primario: '#1a0408', acento: '#c45069' },
   { id: 'azul',     label: 'Azul pizarra',     primario: '#0f1729', acento: '#7099cf' },
@@ -92,7 +92,7 @@ function Sparkline({ data, width = 72, height = 24 }) {
     return `${x.toFixed(1)},${y}`
   }).join(' ')
   const trend = data[data.length - 1] - data[0]
-  const color = trend > 0 ? '#2ea55a' : trend < 0 ? '#c03030' : '#bbb'
+  const color = trend > 0 ? '#2ea55a' : trend < 0 ? 'var(--k-color-danger)' : 'var(--k-color-muted-2)'
   return (
     <svg width={width} height={height} style={{ display: 'block', overflow: 'visible' }}>
       <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
@@ -149,7 +149,7 @@ function PremiumLock({ children, label = 'Premium' }) {
       {children}
       <span style={{
         position: 'absolute', top: '50%', right: 8, transform: 'translateY(-50%)',
-        background: '#c9a96e', color: '#1a1a2e', fontSize: '.62rem', fontWeight: 800,
+        background: 'var(--k-color-accent)', color: 'var(--k-color-ink)', fontSize: '.62rem', fontWeight: 800,
         padding: '2px 7px', borderRadius: 20, letterSpacing: '.05em',
       }}>{label}</span>
     </div>
@@ -217,14 +217,14 @@ function UpgradeModal({ feature, onClose }) {
         <button onClick={onClose} style={{
           position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,.08)',
           border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer',
-          color: '#fff', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--k-color-surface)', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>×</button>
 
         <div style={{ fontSize: '2.4rem', lineHeight: 1, marginBottom: '1rem' }}>{cfg.icon}</div>
-        <div style={{ fontFamily: 'system-ui,sans-serif', fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: '#c9a96e', marginBottom: '.4rem' }}>
+        <div style={{ fontFamily: 'system-ui,sans-serif', fontSize: '.68rem', fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--k-color-accent)', marginBottom: '.4rem' }}>
           Plan Premium
         </div>
-        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', margin: '0 0 1.25rem', lineHeight: 1.2 }}>
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--k-color-surface)', margin: '0 0 1.25rem', lineHeight: 1.2 }}>
           {cfg.title}
         </h2>
 
@@ -245,7 +245,7 @@ function UpgradeModal({ feature, onClose }) {
         <a href="/planes" target="_blank" rel="noreferrer" onClick={onClose} style={{
           display: 'block', textAlign: 'center', fontFamily: 'system-ui,sans-serif',
           fontWeight: 700, fontSize: '.95rem', color: '#17120f',
-          background: '#c9a96e', borderRadius: 10, padding: '13px 0', textDecoration: 'none',
+          background: 'var(--k-color-accent)', borderRadius: 10, padding: '13px 0', textDecoration: 'none',
           marginBottom: '.85rem',
         }}>
           Ver planes y precios →
@@ -304,7 +304,7 @@ function CambiarPassword() {
   )
 }
 
-function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
+function AjustesTab({ slug, tienda, onSaved, esAdmin, catalogoSlot = null, integracionSquareSlot = null }) {
   const esPremium = !tienda?.plan || tienda.plan === 'premium' || tienda.plan === 'trial'
   const [ajustesUpgradeModal, setAjustesUpgradeModal] = useState(null)
   const [squareTokenInput, setSquareTokenInput] = useState('')
@@ -316,7 +316,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
     descripcion:    tienda?.descripcion    || '',
     logo_url:       tienda?.logo_url       || '',
     color_primario: tienda?.color_primario || '#0d0d1a',
-    color_acento:   tienda?.color_acento   || '#c9a96e',
+    color_acento:   tienda?.color_acento   || 'var(--k-color-accent)',
     font_family:    tienda?.font_family    || 'clasica',
     kiosko_icon_style: tienda?.kiosko_icon_style === 'lineal' ? 'lineal' : 'emoji',
     kiosko_orders_enabled: tienda?.kiosko_orders_enabled === true,
@@ -440,19 +440,102 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
   }
 
   const temaClaro  = esColorClaro(ajustes.color_primario)
-  const textoColor = temaClaro ? '#141413' : '#f0ede8'
+  const textoColor = temaClaro ? '#141413' : 'var(--k-color-sunken)'
   const textoMedio = temaClaro ? 'rgba(20,20,19,.55)' : 'rgba(240,237,232,.55)'
   const panelColor = temaClaro ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.08)'
   const fontCss    = FUENTES.find(f => f.id === ajustes.font_family)?.css || FUENTES[0].css
 
+  // F8 · Nav lateral de Ajustes. Las secciones 'catalogo' e 'integraciones'
+  // apuntan a ids inyectados por el componente padre (ubicaciones + Square
+  // viven fuera de AjustesTab en page.js).
+  const NAV_SECCIONES = [
+    { id: 'ajustes-marca',         label: 'Marca' },
+    { id: 'ajustes-kiosko',        label: 'Kiosko' },
+    { id: 'ajustes-tienda',        label: 'Tienda' },
+    { id: 'ajustes-catalogo',      label: 'Catálogo' },
+    { id: 'ajustes-integraciones', label: 'Integraciones' },
+    { id: 'ajustes-destacados',    label: 'Destacados' },
+    { id: 'ajustes-seguridad',     label: 'Seguridad' },
+  ]
+  const [navActiva, setNavActiva] = useState(NAV_SECCIONES[0].id)
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+    const getEls = () => NAV_SECCIONES
+      .map(s => document.getElementById(s.id))
+      .filter(Boolean)
+    // F8b · Resaltar la sección cuyo título cruza el tercio superior:
+    // rootMargin -33% top / -66% bottom → la 'banda activa' es los primeros
+    // ~33% del viewport. Un elemento es visible aquí si su top ha pasado
+    // por debajo de 0 y aún no llega al fondo de esa banda.
+    const io = new IntersectionObserver(
+      entries => {
+        const visibles = entries
+          .filter(e => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
+        if (visibles[0]?.target?.id) setNavActiva(visibles[0].target.id)
+      },
+      { rootMargin: '-33% 0px -66% 0px', threshold: 0 }
+    )
+    const els = getEls()
+    els.forEach(el => io.observe(el))
+
+    // F8b · Al llegar al final de la página marcamos la última (Seguridad):
+    // cuando el usuario llega al bottom puede no haber ninguna sección
+    // cruzando el tercio superior (p.ej. Seguridad es corta).
+    const onScroll = () => {
+      const scrollBottom = window.innerHeight + window.scrollY
+      if (scrollBottom >= document.documentElement.scrollHeight - 2) {
+        const last = NAV_SECCIONES[NAV_SECCIONES.length - 1].id
+        if (document.getElementById(last)) setNavActiva(last)
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      io.disconnect()
+      window.removeEventListener('scroll', onScroll)
+    }
+  // NAV_SECCIONES es constante por render; dep vacía para re-crear solo al
+  // montar (cuando los ids externos ya se han inyectado).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  function navClick(id, e) {
+    e?.preventDefault?.()
+    const el = document.getElementById(id)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setNavActiva(id)
+  }
+
   return (
     <>
     <div className={styles.ajustesWrap}>
-      {/* ── Panel izquierdo ── */}
+      {/* F8 · Nav lateral (en <1100 se transforma en horizontal arriba) */}
+      <nav className={styles.ajustesNav} aria-label="Secciones de Ajustes">
+        {NAV_SECCIONES.map(s => (
+          <a
+            key={s.id}
+            href={`#${s.id}`}
+            className={`${styles.ajustesNavLink} ${navActiva === s.id ? styles.ajustesNavLinkActive : ''}`}
+            onClick={e => navClick(s.id, e)}
+            aria-current={navActiva === s.id ? 'true' : undefined}
+          >
+            {s.label}
+          </a>
+        ))}
+      </nav>
+
+      {/* ── Panel izquierdo (secciones) ── */}
       <div className={styles.ajustesPanelLeft}>
 
+        {/* ─── Sección: Marca ─── */}
+        <section id="ajustes-marca" className={styles.ajustesSection} aria-labelledby="ajustes-marca-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-marca-h" className={styles.ajustesSectionTitle}>Marca</h3>
+            <p className={styles.ajustesSectionDesc}>Logo, paleta, tipografía e iconos del kiosko.</p>
+          </header>
+
         {/* Logo */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Logotipo</p>
           <div
             className={`${styles.logoZone} ${logoPreview ? styles.logoZoneHasLogo : ''} ${draggingLogo ? styles.logoZoneDrag : ''}`}
@@ -487,7 +570,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         </div>
 
         {/* Paleta de colores */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Paleta de colores</p>
           <div className={styles.paletas}>
             {PALETAS.map(p => (
@@ -524,7 +607,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         </div>
 
         {/* Tipografía */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Tipografía</p>
           <div className={styles.fuenteGrid}>
             {FUENTES.map(f => (
@@ -541,7 +624,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         </div>
 
         {/* Estilo visual */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Iconos de bienvenida</p>
           <div className={styles.iconStyleGrid}>
             {ICON_STYLE_OPTIONS.map(option => (
@@ -563,12 +646,21 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           </div>
         </div>
 
+        </section>
+
+        {/* ─── Sección: Kiosko ─── */}
+        <section id="ajustes-kiosko" className={styles.ajustesSection} aria-labelledby="ajustes-kiosko-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-kiosko-h" className={styles.ajustesSectionTitle}>Kiosko</h3>
+            <p className={styles.ajustesSectionDesc}>Qué ve el cliente en pantalla: cesta regalo, agotados, modo escaparate y pedido de mostrador.</p>
+          </header>
+
         {/* Cesta regalo (beta) */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>
             Cesta regalo
-            <span className={styles.premiumTag}>Premium</span>
-            <span className={styles.premiumTag} style={{ background: '#e8a020', color: '#fff' }}>BETA</span>
+            <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
+            <span className={`${styles.kBadge} ${styles.kBadgeWarn}`} style={{ marginLeft: 6 }}>Beta</span>
           </p>
           <button
             type="button"
@@ -583,7 +675,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
                   : 'Inactiva — el kiosko funciona exactamente igual que hasta ahora, sin cambios.'}
               </small>
               {ajustes.cesta_activa && (
-                <small style={{ color: '#b45309', marginTop: '.2rem' }}>
+                <small style={{ color: 'var(--k-color-warn)', marginTop: '.2rem' }}>
                   Función en fase beta. Actívala solo si has revisado el catálogo de productos gourmet (pestaña Otros).
                 </small>
               )}
@@ -595,7 +687,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         </div>
 
         {/* Vinos agotados */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Vinos agotados</p>
           <button
             type="button"
@@ -617,7 +709,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
         </div>
 
         {/* Modo Escaparate */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Modo Escaparate (digital signage)</p>
           <div className={styles.ajustesFormGrid}>
             <div className={styles.ajustesFormField}>
@@ -636,12 +728,12 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
               </select>
             </div>
           </div>
-          <p style={{ fontSize: '.75rem', color: '#aaa', margin: '.5rem 0 0' }}>
+          <p style={{ fontSize: '.75rem', color: 'var(--k-color-muted-2)', margin: '.5rem 0 0' }}>
             Si el kiosko lleva este tiempo sin interacción, entra en carrusel de vinos destacados a pantalla completa. Cualquier toque lo cierra. El modo manual (pulsación larga del logo) no se ve afectado por este ajuste.
           </p>
         </div>
 
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Pedido de mostrador</p>
           <button
             type="button"
@@ -658,8 +750,17 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           </button>
         </div>
 
+        </section>
+
+        {/* ─── Sección: Tienda ─── */}
+        <section id="ajustes-tienda" className={styles.ajustesSection} aria-labelledby="ajustes-tienda-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-tienda-h" className={styles.ajustesSectionTitle}>Tienda</h3>
+            <p className={styles.ajustesSectionDesc}>Información que aparece en la bienvenida del kiosko.</p>
+          </header>
+
         {/* Info tienda */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>Información de la tienda</p>
           <div className={styles.ajustesFormGrid}>
             <div className={styles.ajustesFormField}>
@@ -678,10 +779,32 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           </div>
         </div>
 
+        </section>
+
+        {/* ─── Sección: Catálogo ─── */}
+        {catalogoSlot && (
+          <section id="ajustes-catalogo" className={styles.ajustesSection} aria-labelledby="ajustes-catalogo-h">
+            <header className={styles.ajustesSectionHeader}>
+              <h3 id="ajustes-catalogo-h" className={styles.ajustesSectionTitle}>Catálogo</h3>
+              <p className={styles.ajustesSectionDesc}>Ubicaciones y estanterías de la tienda. Las fichas siguen usando texto libre; esto solo rellena el autocompletado.</p>
+            </header>
+            {catalogoSlot}
+          </section>
+        )}
+
+        {/* ─── Sección: Integraciones ─── */}
+        <section id="ajustes-integraciones" className={styles.ajustesSection} aria-labelledby="ajustes-integraciones-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-integraciones-h" className={styles.ajustesSectionTitle}>Integraciones</h3>
+            <p className={styles.ajustesSectionDesc}>Square, widget para tu web e informe semanal por email.</p>
+          </header>
+
         {/* Informe semanal */}
         {esPremium ? (
-          <div className={styles.ajustesSec}>
-            <p className={styles.ajustesSecTitulo}>Informe semanal por email <span className={styles.premiumTag}>Premium</span></p>
+          <div className={`${styles.ajustesSec} ${styles.kCard}`}>
+            <p className={styles.ajustesSecTitulo}>
+              Informe semanal por email <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
+            </p>
             <div className={styles.ajustesFormGrid}>
               <div className={styles.ajustesFormField}>
                 <label>Email donde recibir el informe</label>
@@ -693,40 +816,38 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
                 />
               </div>
             </div>
-            <p style={{ fontSize: '.75rem', color: '#aaa', margin: '.5rem 0 0' }}>
+            <p style={{ fontSize: '.75rem', color: 'var(--k-color-muted-2)', margin: '.5rem 0 0' }}>
               Cada martes a las 8:00 recibirás un resumen con las búsquedas de la semana, los vinos más recomendados y alertas de stock. Deja el campo vacío para no recibir el informe.
             </p>
             {esAdmin && (
-              <a href={`/kiosko-admin/${slug}/informes`} style={{ display: 'inline-block', marginTop: '.75rem', fontSize: '.78rem', color: '#c9a96e', textDecoration: 'underline' }}>
+              <a href={`/kiosko-admin/${slug}/informes`} style={{ display: 'inline-block', marginTop: '.75rem', fontSize: '.78rem', color: 'var(--k-color-accent)', textDecoration: 'underline' }}>
                 Ver historial de informes →
               </a>
             )}
           </div>
         ) : (
-          <div style={{ position: 'relative' }}>
-            <div style={{ opacity: .45, pointerEvents: 'none', userSelect: 'none' }}>
-              <div className={styles.ajustesSec}>
-                <p className={styles.ajustesSecTitulo}>Informe semanal por email</p>
-                <div className={styles.ajustesFormGrid}>
-                  <div className={styles.ajustesFormField}>
-                    <label>Email donde recibir el informe</label>
-                    <input type="email" disabled placeholder="Disponible en plan Premium" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button onClick={() => setAjustesUpgradeModal('informe')} style={{
-              position: 'absolute', inset: 0, width: '100%', background: 'transparent',
-              border: 'none', cursor: 'pointer',
-            }} aria-label="Ver plan Premium" />
+          /* F8 · bloqueo Premium legible (AA) con CTA primario */
+          <div className={`${styles.ajustesSec} ${styles.kCard} ${styles.ajustesLocked}`}>
+            <p className={styles.ajustesSecTitulo}>
+              Informe semanal por email <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
+            </p>
+            <p className={styles.ajustesLockedText}>
+              Cada martes a las 8:00 recibirás un resumen con las búsquedas de la semana,
+              los vinos más recomendados y alertas de stock. Disponible en el plan Premium.
+            </p>
+            <button type="button" className={styles.kBtnPrimary} onClick={() => setAjustesUpgradeModal('informe')}>
+              Ver planes
+            </button>
           </div>
         )}
 
         {/* Widget embebible — solo Premium */}
         {esPremium ? (
-          <div className={styles.ajustesSec}>
-            <p className={styles.ajustesSecTitulo}>Widget para tu web <span className={styles.premiumTag}>Premium</span></p>
-            <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
+          <div className={`${styles.ajustesSec} ${styles.kCard}`}>
+            <p className={styles.ajustesSecTitulo}>
+              Widget para tu web <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
+            </p>
+            <p style={{ fontSize: '.78rem', color: 'var(--k-color-muted)', margin: '0 0 .75rem' }}>
               Pega este código en cualquier web para añadir un botón flotante que abre el kiosko en un panel lateral.
             </p>
             {(() => {
@@ -744,34 +865,30 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
             })()}
           </div>
         ) : (
-          <div style={{ position: 'relative' }}>
-            <div style={{ opacity: .45, pointerEvents: 'none', userSelect: 'none' }}>
-              <div className={styles.ajustesSec}>
-                <p className={styles.ajustesSecTitulo}>Widget para tu web</p>
-                <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
-                  Añade el kiosko como botón flotante en tu web. Disponible en plan Premium.
-                </p>
-                <div className={styles.widgetEmbedBox}>
-                  <code className={styles.widgetEmbedCode}>&lt;script src=&quot;...&quot;&gt;&lt;/script&gt;</code>
-                </div>
-              </div>
-            </div>
-            <button onClick={() => setAjustesUpgradeModal('widget')} style={{
-              position: 'absolute', inset: 0, width: '100%', background: 'transparent',
-              border: 'none', cursor: 'pointer',
-            }} aria-label="Ver plan Premium" />
+          /* F8 · bloqueo Premium legible (AA) con CTA primario */
+          <div className={`${styles.ajustesSec} ${styles.kCard} ${styles.ajustesLocked}`}>
+            <p className={styles.ajustesSecTitulo}>
+              Widget para tu web <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
+            </p>
+            <p className={styles.ajustesLockedText}>
+              Añade el kiosko como botón flotante en cualquier web con un simple fragmento
+              de código. Disponible en el plan Premium.
+            </p>
+            <button type="button" className={styles.kBtnPrimary} onClick={() => setAjustesUpgradeModal('widget')}>
+              Ver planes
+            </button>
           </div>
         )}
 
         {/* Square — token por tienda */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>
-            Integración Square
+            Token Square
             {tienda?.has_square_token
-              ? <span style={{ marginLeft: 8, fontSize: '.75rem', color: '#4caf50' }}>✓ Configurado</span>
-              : <span style={{ marginLeft: 8, fontSize: '.75rem', color: '#888' }}>Sin configurar</span>}
+              ? <span className={`${styles.kBadge} ${styles.kBadgeOk}`} style={{ marginLeft: 8 }}>Configurado</span>
+              : <span className={`${styles.kBadge}`} style={{ marginLeft: 8 }}>Sin configurar</span>}
           </p>
-          <p style={{ fontSize: '.78rem', color: '#888', margin: '0 0 .75rem' }}>
+          <p style={{ fontSize: '.78rem', color: 'var(--k-color-muted)', margin: '0 0 .75rem' }}>
             Token de acceso de tu cuenta Square. Permite sincronizar el catálogo de esta tienda de forma independiente.
           </p>
           <div style={{ display: 'flex', gap: '.5rem' }}>
@@ -794,22 +911,40 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           {squareMsg && <p style={{ fontSize: '.78rem', marginTop: '.5rem', color: squareMsg.startsWith('✓') ? '#4caf50' : '#e57373' }}>{squareMsg}</p>}
         </div>
 
+        {/* F8b · Slot con el panel de estado Square (sincronizar ahora,
+            último catálogo/pago, último error). Vive fuera del AjustesTab
+            por state propio del padre; se inyecta como children. */}
+        {integracionSquareSlot}
+
+        </section>
+
+        {/* ─── Sección: Destacados ─── */}
+        <section id="ajustes-destacados" className={styles.ajustesSection} aria-labelledby="ajustes-destacados-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-destacados-h" className={styles.ajustesSectionTitle}>Destacados</h3>
+            <p className={styles.ajustesSectionDesc}>Qué vinos aparecen en el carrusel de bienvenida.</p>
+          </header>
+
         {/* ── Destacados automáticos ── */}
-        <div className={styles.ajustesSec}>
+        <div className={`${styles.ajustesSec} ${styles.kCard}`}>
           <p className={styles.ajustesSecTitulo}>
-            Destacados automáticos <span className={styles.premiumTag}>Premium</span>
+            Destacados automáticos <span className={`${styles.kBadge} ${styles.kBadgeInfo}`} style={{ marginLeft: 8 }}>Premium</span>
           </p>
 
           {!esPremium && (
-            <p style={{ fontSize: '.82rem', color: '#776040', lineHeight: 1.5, margin: '0 0 .75rem',
-              background: 'rgba(201,169,110,.1)', border: '1px solid rgba(201,169,110,.3)',
-              borderRadius: 8, padding: '.6rem .85rem' }}>
-              Disponible en el plan Premium. Mejora tu plan para que tus destacados se actualicen solos según stock y margen.{' '}
-              <button type="button" onClick={() => setAjustesUpgradeModal('autoFeatured')}
-                style={{ background: 'none', border: 'none', color: '#c9a96e', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}>
-                Ver planes →
+            <div className={styles.ajustesLockedInline}>
+              <p className={styles.ajustesLockedText}>
+                Mejora al plan Premium para que los destacados se actualicen solos según stock y margen.
+              </p>
+              <button
+                type="button"
+                className={styles.kBtnPrimary}
+                onClick={() => setAjustesUpgradeModal('autoFeatured')}
+                style={{ minHeight: 36, padding: '8px 14px' }}
+              >
+                Ver planes
               </button>
-            </p>
+            </div>
           )}
 
           <button
@@ -865,7 +1000,7 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
                   disabled={!esPremium}
                   aria-disabled={!esPremium}
                 />
-                <small style={{ fontSize: '.74rem', color: '#888', display: 'block', marginTop: '.25rem' }}>
+                <small style={{ fontSize: '.74rem', color: 'var(--k-color-muted)', display: 'block', marginTop: '.25rem' }}>
                   Máximo de vinos del mismo tipo (tinto, blanco…) en el carrusel. Evita que un solo tipo acapare todos los huecos.
                 </small>
               </div>
@@ -873,16 +1008,28 @@ function AjustesTab({ slug, tienda, onSaved, esAdmin }) {
           )}
         </div>
 
-        {/* Guardar */}
-        <div className={styles.ajustesActions}>
+        {/* F8b · Pie de panel con 'Guardar ajustes': cubre todo lo editado en
+            Marca / Kiosko / Tienda / Integraciones / Destacados. Seguridad
+            tiene su propio botón de guardado (CambiarPassword). */}
+        <div className={styles.ajustesFooter}>
           {msg && <span className={msg.startsWith('✓') ? styles.msgOk : styles.msgError}>{msg}</span>}
-          <button type="button" className={styles.btnPrimario} onClick={guardar} disabled={guardando || subiendoLogo}>
+          <button type="button" className={styles.kBtnPrimary} onClick={guardar} disabled={guardando || subiendoLogo}>
             {guardando ? 'Guardando…' : 'Guardar ajustes'}
           </button>
         </div>
 
-        {/* Cambiar contraseña */}
-        <CambiarPassword />
+        </section>
+
+        {/* ─── Sección: Seguridad ─── */}
+        <section id="ajustes-seguridad" className={styles.ajustesSection} aria-labelledby="ajustes-seguridad-h">
+          <header className={styles.ajustesSectionHeader}>
+            <h3 id="ajustes-seguridad-h" className={styles.ajustesSectionTitle}>Seguridad</h3>
+            <p className={styles.ajustesSectionDesc}>Contraseña de acceso al panel.</p>
+          </header>
+
+          {/* Cambiar contraseña */}
+          <CambiarPassword />
+        </section>
       </div>
 
       {/* ── Preview en vivo ── */}
@@ -1293,6 +1440,118 @@ export default function AdminKioskoPage() {
   const [syncNowMsg, setSyncNowMsg] = useState(null) // { tipo: 'ok' | 'error', texto }
 
   const [filtroDestacado, setFiltroDestacado] = useState('todos')
+
+  // F5 · Columnas visibles de la tabla Vinos.
+  // Por defecto: foto, nombre_bodega (1 columna con 2 líneas), tipo, pvp,
+  // margen, stock, estado, acciones. Todo lo demás, oculto; se muestra via
+  // menú "Columnas". Persistido en localStorage (try/catch; sin localStorage
+  // el default se aplica cada carga).
+  const COLUMNAS_TODAS = [
+    { id: 'foto',          label: 'Foto',          fijo: true },
+    { id: 'nombre_bodega', label: 'Nombre',        fijo: true },
+    { id: 'tipo',          label: 'Tipo' },
+    { id: 'region',        label: 'D.O. / Región' },
+    { id: 'uva',           label: 'Uva' },
+    { id: 'anada',         label: 'Añada' },
+    { id: 'pvp',           label: 'PVP' },
+    { id: 'coste',         label: 'Coste',          sensible: true },
+    { id: 'margen',        label: 'Margen',         sensible: true },
+    { id: 'oferta',        label: 'Oferta' },
+    { id: 'stock',         label: 'Stock',          sensible: true },
+    { id: 'stock_minimo',  label: 'Mín.',           sensible: true },
+    { id: 'estanteria',    label: 'Estantería',     sensible: true },
+    { id: 'estado',        label: 'Estado',         fijo: true },
+    { id: 'acciones',      label: 'Acciones',       fijo: true },
+  ]
+  // F6 · default vuelve al set completo. Se cambia la clave a _v2 para
+  // ignorar valores guardados por la versión anterior (que ocultaba columnas).
+  const COLUMNAS_DEFAULT = [
+    'foto', 'nombre_bodega', 'tipo', 'region', 'uva', 'anada',
+    'pvp', 'coste', 'margen', 'oferta', 'stock', 'stock_minimo',
+    'estanteria', 'estado', 'acciones',
+  ]
+  const LS_COLUMNAS_KEY = 'kiosko_admin_columnas_vinos_v2'
+  const [columnasVisibles, setColumnasVisibles] = useState(() => {
+    try {
+      const raw = typeof window !== 'undefined' && window.localStorage?.getItem(LS_COLUMNAS_KEY)
+      if (raw) {
+        const arr = JSON.parse(raw)
+        if (Array.isArray(arr) && arr.length) return new Set(arr)
+      }
+    } catch {}
+    return new Set(COLUMNAS_DEFAULT)
+  })
+  function toggleColumna(id) {
+    setColumnasVisibles(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      // Las columnas fijas no se pueden ocultar
+      const fijos = COLUMNAS_TODAS.filter(c => c.fijo).map(c => c.id)
+      for (const f of fijos) next.add(f)
+      try { window.localStorage?.setItem(LS_COLUMNAS_KEY, JSON.stringify([...next])) } catch {}
+      return next
+    })
+  }
+  const colVisible = (id) => columnasVisibles.has(id)
+  const [columnasMenuOpen, setColumnasMenuOpen] = useState(false)
+  const columnasMenuRef = useRef(null)
+  // F6c · globals.css:10698 declara `html, body { overflow-x: hidden }`
+  // (max-width:100vw), que convierte al <body> en scroll container y rompe
+  // position:sticky en th y toolbar. No tocamos la regla global: durante el
+  // montaje del panel sustituimos localmente overflow-x por 'clip' (no es
+  // scroll container pero sigue clippeando desbordes laterales) y lo
+  // restauramos al desmontar. Solo mientras estemos en kiosko-admin.
+  useEffect(() => {
+    const htmlEl = document.documentElement
+    const bodyEl = document.body
+    const prevHtml = htmlEl.style.overflowX
+    const prevBody = bodyEl.style.overflowX
+    htmlEl.style.overflowX = 'clip'
+    bodyEl.style.overflowX = 'clip'
+    return () => {
+      htmlEl.style.overflowX = prevHtml
+      bodyEl.style.overflowX = prevBody
+    }
+  }, [])
+
+  // F6b · ResizeObserver mide la altura real de la toolbar y la escribe en
+  // --k-toolbar-h para que la cabecera sticky se posicione exactamente debajo.
+  const toolbarStickyRef = useRef(null)
+  useEffect(() => {
+    const el = toolbarStickyRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const apply = () => {
+      const h = Math.round(el.getBoundingClientRect().height) || 56
+      document.documentElement.style.setProperty('--k-toolbar-h', h + 'px')
+    }
+    apply()
+    const ro = new ResizeObserver(apply)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [tab])
+  useEffect(() => {
+    if (!columnasMenuOpen) return
+    const onClick = (e) => { if (!columnasMenuRef.current?.contains(e.target)) setColumnasMenuOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setColumnasMenuOpen(false) }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey) }
+  }, [columnasMenuOpen])
+
+  // F5 · Menú ⋯ de acciones por fila. Un único id abierto a la vez; se cierra
+  // con Escape o click fuera.
+  const [filaMenuOpen, setFilaMenuOpen] = useState(null) // id del vino
+  useEffect(() => {
+    if (!filaMenuOpen) return
+    const onKey = (e) => { if (e.key === 'Escape') setFilaMenuOpen(null) }
+    const onClick = (e) => {
+      // dejamos que el click dentro del menú cierre via los handlers del item
+      if (!e.target.closest?.(`[data-fila-menu="${filaMenuOpen}"]`)) setFilaMenuOpen(null)
+    }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey) }
+  }, [filaMenuOpen])
 
   const [modalImport, setModalImport]     = useState(false)
   const [archivoImport, setArchivoImport] = useState(null)
@@ -2512,12 +2771,27 @@ export default function AdminKioskoPage() {
   function renderQualityBadges(v, max = 3) {
     const issues = qualityIssuesForVino(v)
     if (!issues.length) return null
+    // F5+: 'sin_ubicacion' se retira de la fila (queda solo en el checklist).
+    // Los demás avisos pasan a puntos de color (8 px) con tooltip.
+    const visibles = issues.filter(i => i.id !== 'sin_ubicacion')
+    if (!visibles.length) return null
+    const colorByKind = { core: 'var(--k-color-warn)', optional: 'var(--k-color-accent)' }
     return (
-      <span className={styles.qualityBadges}>
-        {issues.slice(0, max).map(issue => (
-          <span key={issue.id}>{issue.label}</span>
+      <span className={styles.qualityDots} aria-label={`Avisos: ${visibles.map(i => i.label).join(', ')}`}>
+        {visibles.slice(0, max).map(issue => (
+          <span
+            key={issue.id}
+            className={styles.qualityDot}
+            style={{ background: colorByKind[issue.kind] || 'var(--k-color-warn)' }}
+            title={issue.label}
+            aria-hidden="true"
+          />
         ))}
-        {issues.length > max && <span>+{issues.length - max}</span>}
+        {visibles.length > max && (
+          <span className={styles.qualityDotMore} title={`${visibles.length - max} aviso${visibles.length - max === 1 ? '' : 's'} más`}>
+            +{visibles.length - max}
+          </span>
+        )}
       </span>
     )
   }
@@ -2613,7 +2887,7 @@ export default function AdminKioskoPage() {
   if (accesoDenegado) return (
     <div className={styles.error}>
       Acceso no autorizado.{' '}
-      <a href="/login" style={{ color: '#c9a96e', textDecoration: 'underline' }}>Iniciar sesión →</a>
+      <a href="/login" style={{ color: 'var(--k-color-accent)', textDecoration: 'underline' }}>Iniciar sesión →</a>
     </div>
   )
   if (error) return <div className={styles.error}>{error}</div>
@@ -2622,31 +2896,31 @@ export default function AdminKioskoPage() {
   // Plan trial nunca pasa por el gate de pago aunque tenga subscription_status='pending' de un intento anterior
   const pendienteDePago = !esAdminUsuario && tienda?.subscription_status === 'pending' && tienda?.plan !== 'trial'
   if (pendienteDePago) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f3f0', padding: 24 }}>
-      <div style={{ background: '#fff', borderRadius: 16, padding: '48px 40px', maxWidth: 460, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,.08)', textAlign: 'center' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--k-color-bg)', padding: 24 }}>
+      <div style={{ background: 'var(--k-color-surface)', borderRadius: 16, padding: '48px 40px', maxWidth: 460, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,.08)', textAlign: 'center' }}>
         {esperandoWebhook ? (
           <>
             <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', margin: '0 0 12px' }}>Activando tu kiosko...</h2>
-            <p style={{ fontSize: 15, color: '#666', lineHeight: 1.6, margin: 0 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--k-color-ink)', margin: '0 0 12px' }}>Activando tu kiosko...</h2>
+            <p style={{ fontSize: 15, color: 'var(--k-color-ink-2)', lineHeight: 1.6, margin: 0 }}>
               Pago recibido. Estamos activando tu acceso, tardará solo unos segundos.
             </p>
           </>
         ) : (
           <>
             <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', margin: '0 0 12px' }}>Activa tu kiosko</h2>
-            <p style={{ fontSize: 15, color: '#666', lineHeight: 1.6, margin: '0 0 32px' }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--k-color-ink)', margin: '0 0 12px' }}>Activa tu kiosko</h2>
+            <p style={{ fontSize: 15, color: 'var(--k-color-ink-2)', lineHeight: 1.6, margin: '0 0 32px' }}>
               Tu cuenta está lista. Para empezar a usar el kiosko de vinos necesitas activar la suscripción.
             </p>
             <button
               onClick={irACheckout}
               disabled={generandoCheckout}
-              style={{ background: '#1a1a2e', color: '#c9a96e', border: 'none', borderRadius: 10, padding: '14px 32px', fontSize: 16, fontWeight: 700, cursor: 'pointer', width: '100%' }}
+              style={{ background: 'var(--k-color-ink)', color: 'var(--k-color-accent)', border: 'none', borderRadius: 10, padding: '14px 32px', fontSize: 16, fontWeight: 700, cursor: 'pointer', width: '100%' }}
             >
               {generandoCheckout ? 'Preparando pago...' : 'Activar suscripción →'}
             </button>
-            <p style={{ fontSize: 12, color: '#aaa', marginTop: 16 }}>
+            <p style={{ fontSize: 12, color: 'var(--k-color-muted-2)', marginTop: 16 }}>
               Pago seguro con Stripe · Cancela cuando quieras
             </p>
           </>
@@ -2656,7 +2930,7 @@ export default function AdminKioskoPage() {
   )
 
   return (
-    <div className={styles.admin}>
+    <div className={styles.admin} style={seleccionados.size > 0 ? { paddingBottom: 96 } : undefined}>
       {/* Inputs ocultos */}
       <input
         ref={fotoInputFilaRef} type="file" accept="image/jpeg,image/png,image/webp"
@@ -2757,7 +3031,7 @@ export default function AdminKioskoPage() {
           {alertasStock && alertasStock.length > 0 && (
             <span aria-label={`${alertasStock.length} alertas de reposición`}
               title={`${alertasStock.length} alertas de reposición`}
-              style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#c44', marginLeft: 6, verticalAlign: 'middle' }} />
+              style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--k-color-danger)', marginLeft: 6, verticalAlign: 'middle' }} />
           )}
           {!esPremium && !esAdminUsuario && <span className={styles.tabPremiumBadge}>★</span>}
         </button>
@@ -2768,7 +3042,7 @@ export default function AdminKioskoPage() {
               se muestra solo si leads !== null (ya se cargaron) y son >0. */}
           {leads && leads.length > 0 && (
             <span aria-label={`${leads.length} leads`} title={`${leads.length} leads en total`}
-              style={{ display: 'inline-block', marginLeft: 6, fontSize: '.7rem', background: '#f0ede8', color: '#555', padding: '.08rem .4rem', borderRadius: 10, fontWeight: 600 }}>
+              style={{ display: 'inline-block', marginLeft: 6, fontSize: '.7rem', background: 'var(--k-color-sunken)', color: 'var(--k-color-ink-2)', padding: '.08rem .4rem', borderRadius: 10, fontWeight: 600 }}>
               {leads.length}
             </span>
           )}
@@ -2780,132 +3054,139 @@ export default function AdminKioskoPage() {
       </nav>
 
       {/* Ajustes */}
-      {tab === 'ajustes' && tienda && (
-        <div
-          onInput={() => setAjustesDirty(true)}
-          onChange={() => setAjustesDirty(true)}
-          style={{ paddingBottom: ajustesDirty ? '4.5rem' : 0 }}
-        >
-          <AjustesTab
-            slug={slug}
-            tienda={tienda}
-            onSaved={async () => {
-              try {
-                await cargar()
-                setAjustesDirty(false)
-                setAjustesSavedToast('ok')
-                setTimeout(() => setAjustesSavedToast(null), 2800)
-              } catch {
-                setAjustesSavedToast('error')
-                setTimeout(() => setAjustesSavedToast(null), 4000)
-              }
-            }}
-            esAdmin={esAdminUsuario}
-          />
-        </div>
-      )}
-      {/* F3 B1: CRUD mínimo del catálogo de ubicaciones. Se muestra en Ajustes
-          debajo del formulario principal. Si la tabla no existe, aviso con el
-          nombre del SQL a aplicar. Compat total con el texto libre existente. */}
-      {tab === 'ajustes' && tienda && !hideSensitive && (
-        <section className={styles.ajustesSection} style={{ padding: '1rem 1.75rem 2rem', maxWidth: 820 }}>
-          <h3 style={{ margin: '0 0 .35rem', fontSize: '1rem' }}>Ubicaciones de la tienda</h3>
-          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: '#666' }}>
-            Catálogo para sugerir en la columna &quot;Estantería&quot; de los vinos.
-            Añadir aquí no cambia nada en los vinos existentes; solo rellena el
-            autocompletado al escribir en la ficha o en la acción en lote.
-          </p>
-          {ubicacionesPending && (
-            <div className={styles.analiticaBanner} style={{ marginBottom: '1rem' }}>
-              <span className={styles.analiticaBannerIcon}>SQL</span>
-              <span>
-                Catálogo aún no activado. Aplica <code>supabase/kiosko_ubicaciones.sql</code> y
-                opcionalmente <code>supabase/kiosko_ubicaciones_import.sql</code> para poblar con
-                las ubicaciones existentes.
-              </span>
-            </div>
-          )}
-          {ubicacionesError && (
-            <div className={styles.analiticaBanner} style={{ marginBottom: '1rem', background: '#fdf0f0' }}>
-              <span className={styles.analiticaBannerIcon}>⚠️</span>
-              <span>Error: <code>{ubicacionesError}</code></span>
-              <button type="button" className={styles.btnSecundario} style={{ marginLeft: 'auto', padding: '.3rem .7rem', fontSize: '.78rem' }} onClick={cargarUbicaciones}>Reintentar</button>
-            </div>
-          )}
-          {!ubicacionesPending && (
-            <>
-              <form
-                onSubmit={e => { e.preventDefault(); const fd = new FormData(e.currentTarget); const n = String(fd.get('nombre') || ''); if (n.trim()) { crearUbicacion(n); e.currentTarget.reset() } }}
-                style={{ display: 'flex', gap: '.5rem', marginBottom: '.8rem' }}
-              >
-                <input name="nombre" type="text" placeholder="Nueva ubicación (p. ej. Pasillo B3)" maxLength={80}
-                  style={{ flex: 1, padding: '.5rem .7rem', fontSize: '.88rem', border: '1px solid #ddd', borderRadius: 6 }} />
-                <button type="submit" className={styles.btnPrimario} style={{ padding: '.4rem .9rem', fontSize: '.82rem' }}>+ Añadir</button>
-              </form>
-              <div style={{ border: '1px solid #ebe6dc', borderRadius: 8, maxHeight: 260, overflowY: 'auto' }}>
-                {ubicaciones.length === 0 && (
-                  <p style={{ margin: 0, padding: '1rem', color: '#999', fontSize: '.82rem' }}>
-                    Aún no hay ubicaciones en el catálogo.
-                  </p>
-                )}
-                {ubicaciones.map((u, i) => (
-                  <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', padding: '.45rem .7rem', borderBottom: i < ubicaciones.length - 1 ? '1px solid #f1ede5' : 'none' }}>
-                    <input type="text" value={u.nombre}
-                      onChange={e => setUbicaciones(prev => prev.map(x => x.id === u.id ? { ...x, nombre: e.target.value } : x))}
-                      onBlur={e => { const v = e.target.value.trim(); if (v && v !== u.nombre) patchUbicacion(u.id, { nombre: v }) }}
-                      style={{ flex: 1, padding: '.35rem .55rem', fontSize: '.85rem', border: '1px solid transparent', borderRadius: 4, background: 'transparent' }}
-                      aria-label={`Nombre de la ubicación ${u.nombre}`}
-                    />
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.75rem', color: '#555' }}>
-                      <input type="checkbox" checked={u.activa} onChange={e => patchUbicacion(u.id, { activa: e.target.checked })} />
-                      Activa
-                    </label>
-                    <button type="button" onClick={() => borrarUbicacion(u.id)} aria-label={`Eliminar ubicación ${u.nombre}`}
-                      style={{ background: 'none', border: 'none', color: '#c44', cursor: 'pointer', fontSize: '.95rem' }}>✕</button>
-                  </div>
-                ))}
+      {tab === 'ajustes' && tienda && (() => {
+        /* F8b · Los bloques de Ubicaciones y Square-estado viven en el
+           padre por state (ubicaciones, lastSync, etc). Se inyectan como
+           slots en AjustesTab para integrarlos en el layout de 3 columnas
+           sin mover su lógica. Mantienen sus handlers y nombres de campos. */
+        const catalogoSlot = !hideSensitive ? (
+          <div className={`${styles.ajustesSec} ${styles.kCard}`}>
+            <p className={styles.ajustesSecTitulo}>Ubicaciones de la tienda</p>
+            <p style={{ margin: 0, fontSize: 'var(--k-fs-sm)', color: 'var(--k-color-ink-2)', lineHeight: 1.5 }}>
+              Catálogo para sugerir en la columna &quot;Estantería&quot; de los vinos.
+              Añadir aquí no cambia nada en los vinos existentes; solo rellena el
+              autocompletado al escribir en la ficha o en la acción en lote.
+            </p>
+            {ubicacionesPending && (
+              <div className={styles.analiticaBanner}>
+                <span className={styles.analiticaBannerIcon}>SQL</span>
+                <span>
+                  Catálogo aún no activado. Aplica <code>supabase/kiosko_ubicaciones.sql</code> y
+                  opcionalmente <code>supabase/kiosko_ubicaciones_import.sql</code> para poblar con
+                  las ubicaciones existentes.
+                </span>
               </div>
-            </>
-          )}
-        </section>
-      )}
-      {/* F3 P3-10: Integración Square — estado visible y sincronización manual */}
-      {tab === 'ajustes' && tienda && !hideSensitive && (
-        <section className={styles.ajustesSection} style={{ padding: '0 1.75rem 2rem', maxWidth: 820 }}>
-          <h3 style={{ margin: '0 0 .35rem', fontSize: '1rem' }}>Integración Square</h3>
-          <p style={{ margin: '0 0 .9rem', fontSize: '.82rem', color: '#666' }}>
-            Estado de la sincronización. El token nunca se muestra ni se registra.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.65rem 1rem', fontSize: '.84rem', marginBottom: '.8rem' }}>
-            <div>
-              <div style={{ color: '#888', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último catálogo</div>
-              <div><strong>{lastSync?.ultimoCatalogoAt ? formatSyncDate(lastSync.ultimoCatalogoAt) : '—'}</strong></div>
-            </div>
-            <div>
-              <div style={{ color: '#888', fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Último pago TPV</div>
-              <div><strong>{lastSync?.ultimoPagoAt ? formatSyncDate(lastSync.ultimoPagoAt) : '—'}</strong></div>
-            </div>
-            {lastSync?.ultimoError && (
-              <div style={{ gridColumn: '1 / -1', padding: '.5rem .75rem', background: '#fdf0f0', border: '1px solid #f1caca', borderRadius: 6, color: '#7a2020' }}>
-                <div style={{ fontSize: '.72rem', textTransform: 'uppercase', letterSpacing: '.05em', color: '#b45309' }}>
-                  Último error {lastSync.ultimoErrorAt && `(${formatSyncDate(lastSync.ultimoErrorAt)})`}
+            )}
+            {ubicacionesError && (
+              <div className={styles.analiticaBanner} style={{ background: 'var(--k-color-danger-soft)' }}>
+                <span className={styles.analiticaBannerIcon}>⚠️</span>
+                <span style={{ flex: 1 }}>Error: <code>{ubicacionesError}</code></span>
+                <button type="button" className={styles.kBtnSecondary} onClick={cargarUbicaciones} style={{ minHeight: 36, padding: '6px 12px', fontSize: 'var(--k-fs-xs)' }}>Reintentar</button>
+              </div>
+            )}
+            {!ubicacionesPending && (
+              <>
+                <form
+                  onSubmit={e => { e.preventDefault(); const fd = new FormData(e.currentTarget); const n = String(fd.get('nombre') || ''); if (n.trim()) { crearUbicacion(n); e.currentTarget.reset() } }}
+                  style={{ display: 'flex', gap: 'var(--k-space-2)' }}
+                >
+                  <input name="nombre" type="text" placeholder="Nueva ubicación (p. ej. Pasillo B3)" maxLength={80}
+                    className={styles.kInput}
+                    style={{ flex: 1 }} />
+                  <button type="submit" className={styles.kBtnPrimary}>+ Añadir</button>
+                </form>
+                <div style={{ border: '1px solid var(--k-color-border)', borderRadius: 'var(--k-radius-sm)', maxHeight: 260, overflowY: 'auto' }}>
+                  {ubicaciones.length === 0 && (
+                    <p style={{ margin: 0, padding: 'var(--k-space-4)', color: 'var(--k-color-muted)', fontSize: 'var(--k-fs-sm)' }}>
+                      Aún no hay ubicaciones en el catálogo.
+                    </p>
+                  )}
+                  {ubicaciones.map((u, i) => (
+                    <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--k-space-2)', padding: '6px 10px', borderBottom: i < ubicaciones.length - 1 ? '1px solid var(--k-color-sunken)' : 'none' }}>
+                      <input type="text" value={u.nombre}
+                        onChange={e => setUbicaciones(prev => prev.map(x => x.id === u.id ? { ...x, nombre: e.target.value } : x))}
+                        onBlur={e => { const v = e.target.value.trim(); if (v && v !== u.nombre) patchUbicacion(u.id, { nombre: v }) }}
+                        style={{ flex: 1, padding: '6px 8px', fontSize: 'var(--k-fs-sm)', border: '1px solid transparent', borderRadius: 'var(--k-radius-sm)', background: 'transparent' }}
+                        aria-label={`Nombre de la ubicación ${u.nombre}`}
+                      />
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--k-fs-xs)', color: 'var(--k-color-ink-2)' }}>
+                        <input type="checkbox" checked={u.activa} onChange={e => patchUbicacion(u.id, { activa: e.target.checked })} />
+                        Activa
+                      </label>
+                      <button type="button" onClick={() => borrarUbicacion(u.id)} aria-label={`Eliminar ubicación ${u.nombre}`}
+                        style={{ background: 'none', border: 'none', color: 'var(--k-color-danger)', cursor: 'pointer', fontSize: 'var(--k-fs-md)' }}>✕</button>
+                    </div>
+                  ))}
                 </div>
-                <div style={{ fontSize: '.78rem', fontFamily: 'monospace', wordBreak: 'break-word' }}>{String(lastSync.ultimoError).slice(0, 400)}</div>
+              </>
+            )}
+          </div>
+        ) : null
+
+        const integracionSquareSlot = !hideSensitive ? (
+          <div className={`${styles.ajustesSec} ${styles.kCard}`}>
+            <p className={styles.ajustesSecTitulo}>Estado de sincronización</p>
+            <p style={{ margin: 0, fontSize: 'var(--k-fs-sm)', color: 'var(--k-color-ink-2)', lineHeight: 1.5 }}>
+              El token nunca se muestra ni se registra.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px', fontSize: 'var(--k-fs-sm)' }}>
+              <div>
+                <div style={{ color: 'var(--k-color-muted)', fontSize: 'var(--k-fs-xs)', textTransform: 'uppercase', letterSpacing: 'var(--k-letter-upper)' }}>Último catálogo</div>
+                <div><strong>{lastSync?.ultimoCatalogoAt ? formatSyncDate(lastSync.ultimoCatalogoAt) : '—'}</strong></div>
               </div>
-            )}
+              <div>
+                <div style={{ color: 'var(--k-color-muted)', fontSize: 'var(--k-fs-xs)', textTransform: 'uppercase', letterSpacing: 'var(--k-letter-upper)' }}>Último pago TPV</div>
+                <div><strong>{lastSync?.ultimoPagoAt ? formatSyncDate(lastSync.ultimoPagoAt) : '—'}</strong></div>
+              </div>
+              {lastSync?.ultimoError && (
+                <div style={{ gridColumn: '1 / -1', padding: '10px 12px', background: 'var(--k-color-danger-soft)', border: '1px solid color-mix(in srgb, var(--k-color-danger) 25%, transparent)', borderRadius: 'var(--k-radius-sm)', color: 'var(--k-color-danger)' }}>
+                  <div style={{ fontSize: 'var(--k-fs-xs)', textTransform: 'uppercase', letterSpacing: 'var(--k-letter-upper)', color: 'var(--k-color-warn)' }}>
+                    Último error {lastSync.ultimoErrorAt && `(${formatSyncDate(lastSync.ultimoErrorAt)})`}
+                  </div>
+                  <div style={{ fontSize: 'var(--k-fs-xs)', fontFamily: 'monospace', wordBreak: 'break-word' }}>{String(lastSync.ultimoError).slice(0, 400)}</div>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--k-space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" className={styles.kBtnPrimary} onClick={sincronizarAhora} disabled={syncNowRunning}>
+                {syncNowRunning ? 'Sincronizando…' : 'Sincronizar ahora'}
+              </button>
+              {syncNowMsg && (
+                <span style={{ fontSize: 'var(--k-fs-sm)', color: syncNowMsg.tipo === 'ok' ? 'var(--k-color-ok)' : 'var(--k-color-danger)' }}>
+                  {syncNowMsg.tipo === 'ok' ? '✓' : '⚠'} {syncNowMsg.texto}
+                </span>
+              )}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button type="button" className={styles.btnPrimario} onClick={sincronizarAhora} disabled={syncNowRunning} style={{ padding: '.5rem .9rem', fontSize: '.84rem' }}>
-              {syncNowRunning ? 'Sincronizando…' : 'Sincronizar ahora'}
-            </button>
-            {syncNowMsg && (
-              <span style={{ fontSize: '.8rem', color: syncNowMsg.tipo === 'ok' ? '#2a8a4a' : '#c44' }}>
-                {syncNowMsg.tipo === 'ok' ? '✓' : '⚠'} {syncNowMsg.texto}
-              </span>
-            )}
+        ) : null
+
+        return (
+          <div
+            onInput={() => setAjustesDirty(true)}
+            onChange={() => setAjustesDirty(true)}
+            style={{ paddingBottom: ajustesDirty ? '4.5rem' : 0 }}
+          >
+            <AjustesTab
+              slug={slug}
+              tienda={tienda}
+              onSaved={async () => {
+                try {
+                  await cargar()
+                  setAjustesDirty(false)
+                  setAjustesSavedToast('ok')
+                  setTimeout(() => setAjustesSavedToast(null), 2800)
+                } catch {
+                  setAjustesSavedToast('error')
+                  setTimeout(() => setAjustesSavedToast(null), 4000)
+                }
+              }}
+              esAdmin={esAdminUsuario}
+              catalogoSlot={catalogoSlot}
+              integracionSquareSlot={integracionSquareSlot}
+            />
           </div>
-        </section>
-      )}
+        )
+      })()}
 
       {/* Pedidos de mostrador */}
       {tab === 'pedidos' && pedidosMostradorActivos && (
@@ -3069,9 +3350,9 @@ export default function AdminKioskoPage() {
           </nav>
 
           {analiticaLoad && (
-            <div className={styles.skeletonBlock} aria-live="polite" aria-label="Cargando analítica">
-              <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
-              <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
+            <div className={styles.kSkeletonBlock} aria-live="polite" aria-label="Cargando analítica">
+              <div className={styles.kSkeletonRow} /><div className={styles.kSkeletonRow} />
+              <div className={styles.kSkeletonRow} /><div className={styles.kSkeletonRow} />
             </div>
           )}
           {!analiticaLoad && analitica && (() => {
@@ -3103,7 +3384,7 @@ export default function AdminKioskoPage() {
                   </div>
                 )}
                 {!analitica.movil?.pendiente && analitica.movil?.errorMsg && (
-                  <div className={styles.analiticaBanner} style={{ background: '#fdf0f0' }}>
+                  <div className={styles.analiticaBanner} style={{ background: 'var(--k-color-danger-soft)' }}>
                     <span className={styles.analiticaBannerIcon}>⚠️</span>
                     <span>
                       Error al leer datos de móvil: <code>{analitica.movil.errorMsg}</code>
@@ -3118,19 +3399,26 @@ export default function AdminKioskoPage() {
                         <p className={styles.accionesAnaliticaKicker}>Acciones recomendadas</p>
                         <h3>Qué haría ahora</h3>
                       </div>
-                      <span>{accionesAnalitica.length} prioridad{accionesAnalitica.length > 1 ? 'es' : ''}</span>
+                      <span className={styles.kBadge}>{accionesAnalitica.length} prioridad{accionesAnalitica.length > 1 ? 'es' : ''}</span>
                     </div>
                     <div className={styles.accionesAnaliticaGrid}>
-                      {accionesAnalitica.map(accion => (
-                        <article key={accion.key} className={`${styles.accionAnaliticaCard} ${styles[`accionAnalitica_${accion.tone}`] || ''}`}>
-                          <span className={styles.accionAnaliticaBadge}>{accion.badge}</span>
-                          <h4>{accion.title}</h4>
-                          <p>{accion.desc}</p>
-                          <button type="button" onClick={() => ejecutarAccionAnalitica(accion)}>
-                            {accion.cta}
-                          </button>
-                        </article>
-                      ))}
+                      {accionesAnalitica.map(accion => {
+                        /* F9 p3 · badge consume tokens del sistema según tone */
+                        const toneBadge = accion.tone === 'danger' ? styles.kBadgeDanger
+                          : accion.tone === 'warn'   ? styles.kBadgeWarn
+                          : accion.tone === 'ok'     ? styles.kBadgeOk
+                          : styles.kBadgeInfo
+                        return (
+                          <article key={accion.key} className={`${styles.accionAnaliticaCard} ${styles[`accionAnalitica_${accion.tone}`] || ''}`}>
+                            <span className={`${styles.kBadge} ${toneBadge}`}>{accion.badge}</span>
+                            <h4>{accion.title}</h4>
+                            <p>{accion.desc}</p>
+                            <button type="button" className={styles.kBtnSecondary} onClick={() => ejecutarAccionAnalitica(accion)}>
+                              {accion.cta}
+                            </button>
+                          </article>
+                        )
+                      })}
                     </div>
                   </section>
                 )}
@@ -3246,34 +3534,49 @@ export default function AdminKioskoPage() {
                 </div>
 
                 <div className={styles.analiticaGrid}>
-                  {/* Top búsquedas */}
+                  {/* F9 p4 · Top búsquedas como barras horizontales SVG */}
                   <div className={styles.analiticaBloque}>
                     <h3 className={styles.analiticaBloqueTitle}>Qué buscan los clientes</h3>
                     <p className={styles.analiticaBloqueDesc}>Las consultas más frecuentes al asistente en los últimos 30 días</p>
-                    <div className={styles.analiticaList}>
-                      {vacio
-                        ? SKELETON.map((w, i) => <div key={i} className={styles.analiticaSkeleton} style={{ width: `${w}%` }} />)
-                        : analitica.topConsultas.map((c, i) => (
-                            <div key={i} className={styles.analiticaListRow}>
-                              <span className={styles.analiticaRank}>{i + 1}</span>
-                              <span className={styles.analiticaConsulta}>{c.consulta}</span>
-                              <span className={styles.analiticaVeces}>{c.veces}×</span>
+                    {vacio ? (
+                      <div className={styles.kSkeletonBlock}>
+                        <div className={styles.kSkeletonRow} />
+                        <div className={styles.kSkeletonRow} />
+                        <div className={styles.kSkeletonRow} />
+                      </div>
+                    ) : !analitica.topConsultas?.length ? (
+                      <div className={styles.kEmpty}>Aún sin búsquedas suficientes.</div>
+                    ) : (() => {
+                      const max = Math.max(...analitica.topConsultas.map(c => c.veces), 1)
+                      return (
+                        <div className={styles.hBars}>
+                          {analitica.topConsultas.map((c, i) => (
+                            <div key={i} className={styles.hBarRow}>
+                              <span className={styles.hBarRank}>{i + 1}</span>
+                              <span className={styles.hBarLabelTrack}>
+                                <span className={styles.hBarTrack} style={{ width: '100%' }} />
+                                <span className={styles.hBarFill} style={{ width: `${(c.veces / max) * 100}%` }} />
+                                <span className={styles.hBarLabel} title={c.consulta}>{c.consulta}</span>
+                              </span>
+                              <span className={styles.hBarValue}>{c.veces}×</span>
                             </div>
-                          ))
-                      }
-                    </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
 
-                  {/* F3 P1-11: Búsquedas sin resultado (oportunidad de surtido) */}
+                  {/* F9 p6 · Búsquedas sin recomendación (texto libre que no
+                      devolvió vino). Excluye chips de tipo/filtro. */}
                   <div className={styles.analiticaBloque}>
-                    <h3 className={styles.analiticaBloqueTitle}>Búsquedas sin resultado</h3>
-                    <p className={styles.analiticaBloqueDesc}>Lo que pidieron los clientes y el kiosko no pudo recomendar — oportunidad de surtido</p>
+                    <h3 className={styles.analiticaBloqueTitle}>Búsquedas sin recomendación</h3>
+                    <p className={styles.analiticaBloqueDesc}>Consultas de texto libre que no devolvieron ningún vino — oportunidad de surtido. Los chips de tipo o filtro (tinto, blanco, espumoso…) se excluyen.</p>
                     <div className={styles.analiticaList}>
-                      {vacio || !analitica.busquedasSinResultado?.length
-                        ? <p style={{ margin: '.3rem 0 0', color: '#888', fontSize: '.78rem' }}>
-                            {vacio ? '—' : 'Todas las búsquedas devolvieron al menos una recomendación.'}
+                      {vacio || !(analitica.busquedasSinRecomendacion || analitica.busquedasSinResultado)?.length
+                        ? <p style={{ margin: '.3rem 0 0', color: 'var(--k-color-muted)', fontSize: '.78rem' }}>
+                            {vacio ? '—' : 'Todas las búsquedas de texto libre devolvieron al menos una recomendación.'}
                           </p>
-                        : analitica.busquedasSinResultado.map((c, i) => (
+                        : (analitica.busquedasSinRecomendacion || analitica.busquedasSinResultado).map((c, i) => (
                             <div key={i} className={styles.analiticaListRow}>
                               <span className={styles.analiticaRank}>{i + 1}</span>
                               <span className={styles.analiticaConsulta}>{c.consulta}</span>
@@ -3290,7 +3593,7 @@ export default function AdminKioskoPage() {
                     <p className={styles.analiticaBloqueDesc}>El asistente los recomendó pero están agotados · reabastece primero</p>
                     <div className={styles.analiticaList}>
                       {vacio || !analitica.buscadosSinStock?.length
-                        ? <p style={{ margin: '.3rem 0 0', color: '#888', fontSize: '.78rem' }}>
+                        ? <p style={{ margin: '.3rem 0 0', color: 'var(--k-color-muted)', fontSize: '.78rem' }}>
                             {vacio ? '—' : 'Todos los vinos recomendados tienen stock.'}
                           </p>
                         : analitica.buscadosSinStock.map((v, i) => (
@@ -3304,22 +3607,36 @@ export default function AdminKioskoPage() {
                     </div>
                   </div>
 
-                  {/* Vinos más recomendados */}
+                  {/* F9 p4 · Vinos más recomendados como barras horizontales */}
                   <div className={styles.analiticaBloque}>
                     <h3 className={styles.analiticaBloqueTitle}>Vinos más recomendados</h3>
                     <p className={styles.analiticaBloqueDesc}>Los que el asistente propone con más frecuencia — si no se venden, revisa precio o visibilidad</p>
-                    <div className={styles.analiticaList}>
-                      {vacio
-                        ? SKELETON.map((w, i) => <div key={i} className={styles.analiticaSkeleton} style={{ width: `${w}%` }} />)
-                        : analitica.topVinos.map((v, i) => (
-                            <div key={v.id} className={styles.analiticaListRow}>
-                              <span className={styles.analiticaRank}>{i + 1}</span>
-                              <span className={styles.analiticaConsulta}>{v.nombre}</span>
-                              <span className={styles.analiticaVeces}>{v.veces}×</span>
+                    {vacio ? (
+                      <div className={styles.kSkeletonBlock}>
+                        <div className={styles.kSkeletonRow} />
+                        <div className={styles.kSkeletonRow} />
+                        <div className={styles.kSkeletonRow} />
+                      </div>
+                    ) : !analitica.topVinos?.length ? (
+                      <div className={styles.kEmpty}>Aún sin recomendaciones.</div>
+                    ) : (() => {
+                      const max = Math.max(...analitica.topVinos.map(v => v.veces), 1)
+                      return (
+                        <div className={styles.hBars}>
+                          {analitica.topVinos.map((v, i) => (
+                            <div key={v.id} className={styles.hBarRow}>
+                              <span className={styles.hBarRank}>{i + 1}</span>
+                              <span className={styles.hBarLabelTrack}>
+                                <span className={styles.hBarTrack} style={{ width: '100%' }} />
+                                <span className={styles.hBarFill} style={{ width: `${(v.veces / max) * 100}%` }} />
+                                <span className={styles.hBarLabel} title={v.nombre}>{v.nombre}</span>
+                              </span>
+                              <span className={styles.hBarValue}>{v.veces}×</span>
                             </div>
-                          ))
-                      }
-                    </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Vinos llevados al móvil */}
@@ -3375,7 +3692,7 @@ export default function AdminKioskoPage() {
                   <div className={styles.analiticaBloqueHeader}>
                     <h3 className={styles.analiticaBloqueTitle}>Últimas búsquedas</h3>
                     {!vacio && (
-                      <button type="button" className={styles.btnSecundario} onClick={cargarAnalitica} style={{ background: '#f0ede8', color: '#1a1a2e', border: '1px solid #d0cdc8' }}>
+                      <button type="button" className={styles.btnSecundario} onClick={cargarAnalitica} style={{ background: 'var(--k-color-sunken)', color: 'var(--k-color-ink)', border: '1px solid #d0cdc8' }}>
                         Actualizar
                       </button>
                     )}
@@ -3454,30 +3771,47 @@ export default function AdminKioskoPage() {
                     <div key={flow} className={styles.analiticaBloque} style={{ marginBottom: '1.25rem' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.75rem' }}>
                         <h3 className={styles.analiticaBloqueTitle} style={{ margin: 0 }}>{FLOW_LABELS[flow]}</h3>
-                        <span style={{ fontSize: '0.78rem', color: '#888' }}>{total} iniciados · {convRate}% al carrito</span>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--k-color-muted)' }}>{total} iniciados · {convRate}% al carrito</span>
                       </div>
                       {total === 0 ? (
-                        <p style={{ fontSize: '0.82rem', color: '#aaa', margin: 0 }}>Sin datos aún — los intentos aparecen aquí cuando los clientes usen este flujo.</p>
+                        <p className={styles.kEmpty} style={{ padding: 'var(--k-space-3) 0 0' }}>
+                          Sin datos aún — los intentos aparecen aquí cuando los clientes usen este flujo.
+                        </p>
                       ) : (
                         <>
-                          {steps.map(step => {
-                            const n = fd.steps[step] || 0
-                            const pct = total > 0 ? Math.round((n / total) * 100) : 0
-                            const isCarrito = step === 'carrito'
-                            return (
-                              <div key={step} style={{ marginBottom: '0.45rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '0.2rem' }}>
-                                  <span style={{ color: isCarrito ? '#22c55e' : '#ccc' }}>{STEP_LABELS[step] ?? step}</span>
-                                  <span style={{ color: '#aaa' }}>{n} ({pct}%)</span>
+                          <div className={styles.funnelSteps}>
+                            {steps.map((step, idx) => {
+                              const n = fd.steps[step] || 0
+                              const pct = total > 0 ? Math.round((n / total) * 100) : 0
+                              const isCarrito = step === 'carrito'
+                              const label = STEP_LABELS[step] ?? step
+                              return (
+                                <div key={step} className={styles.funnelStep}>
+                                  <div className={styles.funnelStepHead}>
+                                    <span className={`${styles.funnelStepLabel} ${isCarrito ? styles.funnelStepLabelOk : ''}`}>{label}</span>
+                                    <span className={styles.funnelStepValue}>{n} ({pct}%)</span>
+                                  </div>
+                                  <div
+                                    className={styles.funnelTrack}
+                                    role="progressbar"
+                                    aria-valuenow={pct}
+                                    aria-valuemin={0}
+                                    aria-valuemax={100}
+                                    aria-label={`${label}: ${idx + 1} de ${steps.length}`}
+                                  >
+                                    {pct > 0 && (
+                                      <div
+                                        className={`${styles.funnelFill} ${isCarrito ? styles.funnelFillOk : ''}`}
+                                        style={{ width: `${pct}%` }}
+                                      />
+                                    )}
+                                  </div>
                                 </div>
-                                <div style={{ height: 8, borderRadius: 4, background: '#1a1a1a', overflow: 'hidden' }}>
-                                  <div style={{ height: '100%', width: `${pct}%`, borderRadius: 4, background: isCarrito ? '#22c55e' : '#555', transition: 'width 0.4s' }} />
-                                </div>
-                              </div>
-                            )
-                          })}
+                              )
+                            })}
+                          </div>
                           {fd.abandon.total > 0 && (
-                            <div style={{ marginTop: '0.65rem', fontSize: '0.78rem', color: '#888', display: 'flex', gap: '1.5rem' }}>
+                            <div className={styles.funnelAbandon}>
                               <span>Abandono: {fd.abandon.total}</span>
                               {fd.abandon.idle_timeout > 0 && <span>⏱ por inactividad: {fd.abandon.idle_timeout}</span>}
                               {fd.abandon.user_exit > 0 && <span>← por back: {fd.abandon.user_exit}</span>}
@@ -3578,12 +3912,12 @@ export default function AdminKioskoPage() {
                       </tr>
                     ))}
                     {sinMovimiento.length === 0 && (
-                      <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: '#aaa' }}>Ningún vino coincide con los filtros.</td></tr>
+                      <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: 'var(--k-color-muted-2)' }}>Ningún vino coincide con los filtros.</td></tr>
                     )}
                   </tbody>
                   {sinMovimiento.length > 15 && (
                     <tfoot>
-                      <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: '#aaa', fontStyle: 'italic' }}>
+                      <tr><td colSpan={4} className={styles.rendTdNombre} style={{ color: 'var(--k-color-muted-2)', fontStyle: 'italic' }}>
                         +{sinMovimiento.length - 15} más no mostrados · exporta CSV para la lista completa
                       </td></tr>
                     </tfoot>
@@ -3603,7 +3937,7 @@ export default function AdminKioskoPage() {
             const sinCoste = vinosVino.filter(v => v.activo && Number(v.precio_pvp) > 0 && !v.precio_coste).sort((a, b) => Number(b.precio_pvp) - Number(a.precio_pvp))
             if (!sinCoste.length) return null
             return (
-              <div className={styles.analiticaBloque} style={{ marginBottom: '1rem', borderLeft: '3px solid #c9a96e' }}>
+              <div className={styles.analiticaBloque} style={{ marginBottom: '1rem', borderLeft: '3px solid var(--k-color-accent)' }}>
                 <div className={styles.analiticaBloqueHeader}>
                   <div>
                     <h3 className={styles.analiticaBloqueTitle}>Completar coste</h3>
@@ -3622,11 +3956,11 @@ export default function AdminKioskoPage() {
                       >
                         {v.nombre}
                       </button>
-                      {v.bodega && <span style={{ color: '#888' }}> · {v.bodega}</span>}
-                      <span style={{ color: '#888' }}> · PVP {formatPVP(v.precio_pvp)}</span>
+                      {v.bodega && <span style={{ color: 'var(--k-color-muted)' }}> · {v.bodega}</span>}
+                      <span style={{ color: 'var(--k-color-muted)' }}> · PVP {formatPVP(v.precio_pvp)}</span>
                     </li>
                   ))}
-                  {sinCoste.length > 20 && <li style={{ color: '#888', fontStyle: 'italic' }}>+{sinCoste.length - 20} más — filtra en el catálogo por &quot;Sin coste&quot;.</li>}
+                  {sinCoste.length > 20 && <li style={{ color: 'var(--k-color-muted)', fontStyle: 'italic' }}>+{sinCoste.length - 20} más — filtra en el catálogo por &quot;Sin coste&quot;.</li>}
                 </ul>
               </div>
             )
@@ -3647,10 +3981,10 @@ export default function AdminKioskoPage() {
             </div>
             <div className={styles.bcgGrid}>
               {[
-                { id:'estrella', icon:'⭐', label:'Estrella',          desc:'Alto margen · Alta demanda', color:'#7a5a1a', borde:'#d4a636', fondo:'#fdf8ee' },
-                { id:'joya',     icon:'💎', label:'Joya oculta',       desc:'Alto margen · Baja demanda', color:'#2e6b47', borde:'#4a9c69', fondo:'#eef7f2' },
-                { id:'caballo',  icon:'🐎', label:'Caballo de batalla',desc:'Bajo margen · Alta demanda', color:'#1a4f7a', borde:'#2e7ab8', fondo:'#eef4fb' },
-                { id:'revisar',  icon:'⚠️', label:'Revisar',           desc:'Bajo margen · Baja demanda', color:'#7a2020', borde:'#c03030', fondo:'#fdf0f0' },
+                { id:'estrella', icon:'⭐', label:'Estrella',          desc:'Alto margen · Alta demanda', color:'var(--k-cat-estrella-ink)', borde:'var(--k-cat-estrella)', fondo:'var(--k-cat-estrella-soft)' },
+                { id:'joya',     icon:'💎', label:'Joya oculta',       desc:'Alto margen · Baja demanda', color:'var(--k-cat-joya-ink)',     borde:'var(--k-cat-joya)',     fondo:'var(--k-cat-joya-soft)' },
+                { id:'caballo',  icon:'🐎', label:'Caballo de batalla',desc:'Bajo margen · Alta demanda', color:'var(--k-cat-caballo-ink)',  borde:'var(--k-cat-caballo)',  fondo:'var(--k-cat-caballo-soft)' },
+                { id:'revisar',  icon:'⚠️', label:'Revisar',           desc:'Bajo margen · Baja demanda', color:'var(--k-cat-revisar-ink)',  borde:'var(--k-cat-revisar)',  fondo:'var(--k-cat-revisar-soft)' },
               ].map(cat => {
                 const lista = rentabilidad ? rentabilidad.clasificados.filter(v => v.categoria === cat.id) : []
                 return (
@@ -3684,7 +4018,12 @@ export default function AdminKioskoPage() {
         const dd  = analitica.ventasDiarias || {}
         const fmtMadrid = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' })
         const ayerKey   = analitica.ayerKey || ''
-        const catColor = { estrella: '#d4a636', joya: '#4a9c69', caballo: '#2e7ab8', revisar: '#c03030' }
+        const catColor = {
+          estrella: 'var(--k-cat-estrella)',
+          joya:     'var(--k-cat-joya)',
+          caballo:  'var(--k-cat-caballo)',
+          revisar:  'var(--k-cat-revisar)',
+        }
         const filas = vinosVino
           .filter(v => vp[v.id])
           .map(v => {
@@ -3813,16 +4152,16 @@ export default function AdminKioskoPage() {
                           style={{ cursor: 'pointer' }}
                         >
                           <td className={styles.rendTdNombre}>
-                            <span style={{ fontSize: '0.55rem', color: '#ccc', marginRight: '0.2rem', display: 'inline-block', transition: 'transform 0.15s', transform: expanded ? 'rotate(90deg)' : 'none' }}>▶</span>
+                            <span style={{ fontSize: '0.55rem', color: 'var(--k-color-muted-2)', marginRight: '0.2rem', display: 'inline-block', transition: 'transform 0.15s', transform: expanded ? 'rotate(90deg)' : 'none' }}>▶</span>
                             {f.categoria && (
                               <span className={styles.rendDot} style={{ background: catColor[f.categoria] }} title={f.categoria} />
                             )}
                             <span className={styles.rendVinoNombre}>{f.nombre}</span>
                             {f.bodega && <span className={styles.rendBodega}> · {f.bodega}</span>}
-                            {f.agotado && <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#999', fontWeight: 400, letterSpacing: '0.02em' }}>agotado</span>}
+                            {f.agotado && <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: 'var(--k-color-muted)', fontWeight: 400, letterSpacing: '0.02em' }}>agotado</span>}
                           </td>
                           <td className={styles.rendTdNum}>{f.uds}</td>
-                          <td className={styles.rendTdNum} style={{ color: f.ayerUds > 0 ? '#2e6b47' : undefined, fontWeight: f.ayerUds > 0 ? 600 : undefined }}>
+                          <td className={styles.rendTdNum} style={{ color: f.ayerUds > 0 ? 'var(--k-color-ok)' : undefined, fontWeight: f.ayerUds > 0 ? 600 : undefined }}>
                             {f.ayerUds > 0 ? f.ayerUds : <em className={styles.dash}>—</em>}
                           </td>
                           <td className={styles.rendTdNum}>{f.ingresos > 0 ? `${f.ingresos.toFixed(0)} €` : '—'}</td>
@@ -3834,12 +4173,12 @@ export default function AdminKioskoPage() {
                           </td>
                           <td className={styles.rendTdNum}>{f.pvpVal ? formatPVP(f.pvpVal) : '—'}</td>
                           <td className={styles.rendTdNum}>
-                            <span style={{ color: f.stock === 0 ? '#c03030' : f.stock !== null && f.stock <= 3 ? '#d4a636' : '#2e6b47', fontWeight: 600 }}>
+                            <span style={{ color: f.stock === 0 ? 'var(--k-color-danger)' : f.stock !== null && f.stock <= 3 ? '#d4a636' : 'var(--k-color-ok)', fontWeight: 600 }}>
                               {f.stock ?? '—'}
                             </span>
                           </td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '0.78rem', color: '#888' }}>{f.ultimaVentaFecha || '—'}</td>
-                          <td className={styles.rendTdNum} style={{ color: '#888' }}>
+                          <td className={styles.rendTdNum} style={{ fontSize: '0.78rem', color: 'var(--k-color-muted)' }}>{f.ultimaVentaFecha || '—'}</td>
+                          <td className={styles.rendTdNum} style={{ color: 'var(--k-color-muted)' }}>
                             {f.diasSinVender !== null ? `${f.diasSinVender}d` : '—'}
                           </td>
                         </tr>
@@ -3871,7 +4210,7 @@ export default function AdminKioskoPage() {
                                           className={styles.ventasChartBar}
                                           style={{
                                             height: `${Math.round((d.uds / maxDia) * 100)}%`,
-                                            background: d.key === ayerKey ? '#7a6a5a' : '#c9a96e',
+                                            background: d.key === ayerKey ? '#7a6a5a' : 'var(--k-color-accent)',
                                             opacity: d.uds > 0 ? 1 : 0.1,
                                             minHeight: '2px',
                                           }}
@@ -3929,7 +4268,7 @@ export default function AdminKioskoPage() {
             {/* KPIs */}
             <div className={styles.analiticaKpis} style={{ marginBottom: '1.25rem' }}>
               <div className={styles.analiticaKpi}>
-                <span className={styles.analiticaKpiNum} style={{ color: fugasCount > 0 ? '#c03030' : '#2e6b47' }}>
+                <span className={styles.analiticaKpiNum} style={{ color: fugasCount > 0 ? 'var(--k-color-danger)' : 'var(--k-color-ok)' }}>
                   {fugasCount}
                 </span>
                 <span className={styles.analiticaKpiLabel}>Fugas detectadas</span>
@@ -3989,7 +4328,7 @@ export default function AdminKioskoPage() {
                     {porVino.map(v => (
                       <tr key={v.id} className={`${styles.rendRow} ${v.fuga ? styles.rendRowFuga : ''}`}>
                         <td className={styles.rendTdNombre}>
-                          {v.fuga && <span className={styles.rendDot} style={{ background: '#c03030' }} title="Fuga: recomendado sin venta" />}
+                          {v.fuga && <span className={styles.rendDot} style={{ background: 'var(--k-color-danger)' }} title="Fuga: recomendado sin venta" />}
                           <span className={styles.rendVinoNombre}>{v.nombre}</span>
                         </td>
                         <td className={styles.rendTdNum}>{v.recomendado_n}</td>
@@ -4004,12 +4343,12 @@ export default function AdminKioskoPage() {
                         </td>
                         <td className={styles.rendTdNum}>
                           {v.euros_perdidos !== null && v.euros_perdidos > 0
-                            ? <span style={{ color: '#c03030', fontWeight: 600 }}>{formatEurRound(v.euros_perdidos)}</span>
+                            ? <span style={{ color: 'var(--k-color-danger)', fontWeight: 600 }}>{formatEurRound(v.euros_perdidos)}</span>
                             : <em className={styles.dash}>—</em>}
                         </td>
                         <td className={styles.rendTdNum}>
                           {v.causas.length > 0
-                            ? <span style={{ color: '#b06000', fontSize: '.75rem' }}>{v.causas.map(c => causaLabel[c] || c).join(', ')}</span>
+                            ? <span style={{ color: 'var(--k-color-warn)', fontSize: '.75rem' }}>{v.causas.map(c => causaLabel[c] || c).join(', ')}</span>
                             : <em className={styles.dash}>—</em>}
                         </td>
                       </tr>
@@ -4046,21 +4385,21 @@ export default function AdminKioskoPage() {
                   style={{
                     display: 'inline-flex', alignItems: 'center', width: 36, height: 20,
                     borderRadius: 999, padding: 2, border: 'none', cursor: 'pointer',
-                    background: descuadresIncluirOtros ? '#c9a96e' : '#d6d0c6',
+                    background: descuadresIncluirOtros ? 'var(--k-color-accent)' : '#d6d0c6',
                     transition: 'background .15s', flexShrink: 0,
                   }}
                 >
                   <span style={{
                     display: 'block', width: 16, height: 16, borderRadius: '50%',
-                    background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.18)',
+                    background: 'var(--k-color-surface)', boxShadow: '0 1px 4px rgba(0,0,0,.18)',
                     transform: descuadresIncluirOtros ? 'translateX(16px)' : 'translateX(0)',
                     transition: 'transform .15s',
                   }} />
                 </button>
-                <span style={{ fontSize: '.82rem', color: '#666', userSelect: 'none' }}>
+                <span style={{ fontSize: '.82rem', color: 'var(--k-color-ink-2)', userSelect: 'none' }}>
                   Incluir otros productos
                   {ocultos > 0 && !descuadresIncluirOtros && (
-                    <span style={{ marginLeft: '.35rem', color: '#999' }}>({ocultos} ocultos)</span>
+                    <span style={{ marginLeft: '.35rem', color: 'var(--k-color-muted)' }}>({ocultos} ocultos)</span>
                   )}
                 </span>
               </div>
@@ -4085,18 +4424,18 @@ export default function AdminKioskoPage() {
                             <td className={styles.rendTd}>
                               <span style={{ fontWeight: 500 }}>{d.nombre}</span>
                               {d.activo === false && (
-                                <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: '#c03030', fontWeight: 600 }}>OCULTO</span>
+                                <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: 'var(--k-color-danger)', fontWeight: 600 }}>OCULTO</span>
                               )}
                               {d.categoria === 'otro' && (
-                                <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: '#999' }}>otro</span>
+                                <span style={{ marginLeft: '.4rem', fontSize: '.7rem', color: 'var(--k-color-muted)' }}>otro</span>
                               )}
                             </td>
                             <td className={styles.rendTdNum}>
-                              <span style={{ color: '#c03030', fontWeight: 600 }}>{d.ventas}</span>
+                              <span style={{ color: 'var(--k-color-danger)', fontWeight: 600 }}>{d.ventas}</span>
                             </td>
                             <td className={styles.rendTdNum}>{d.stock_actual ?? '—'}</td>
                             <td className={styles.rendTdNum}>{d.precio_pvp ? formatPVP(d.precio_pvp) : '—'}</td>
-                            <td className={styles.rendTd} style={{ fontSize: '.8rem', color: '#666' }}>
+                            <td className={styles.rendTd} style={{ fontSize: '.8rem', color: 'var(--k-color-ink-2)' }}>
                               {d.ultima_venta ? new Date(d.ultima_venta).toLocaleDateString('es-ES') : '—'}
                             </td>
                             <td className={styles.rendTd}>
@@ -4125,7 +4464,7 @@ export default function AdminKioskoPage() {
                                     Aplicar
                                   </button>
                                 </span>
-                              ) : <em style={{ color: '#999', fontSize: '.8rem' }}>sin ID</em>}
+                              ) : <em style={{ color: 'var(--k-color-muted)', fontSize: '.8rem' }}>sin ID</em>}
                             </td>
                           </tr>
                         ))}
@@ -4196,7 +4535,7 @@ export default function AdminKioskoPage() {
             {/* KPIs */}
             <div className={styles.analiticaKpis} style={{ marginBottom: '1.25rem' }}>
               <div className={styles.analiticaKpi}>
-                <span className={styles.analiticaKpiNum} style={{ color: caballos.length > 0 ? '#b06000' : '#2e6b47' }}>
+                <span className={styles.analiticaKpiNum} style={{ color: caballos.length > 0 ? 'var(--k-color-warn)' : 'var(--k-color-ok)' }}>
                   {caballos.length}
                 </span>
                 <span className={styles.analiticaKpiLabel}>Caballos de batalla</span>
@@ -4208,7 +4547,7 @@ export default function AdminKioskoPage() {
                 <span className={styles.analiticaKpiSub}>Alto margen, poca visibilidad</span>
               </div>
               <div className={styles.analiticaKpi}>
-                <span className={styles.analiticaKpiNum} style={{ color: totalOportunidad > 0 ? '#2e6b47' : '#aaa' }}>
+                <span className={styles.analiticaKpiNum} style={{ color: totalOportunidad > 0 ? 'var(--k-color-ok)' : 'var(--k-color-muted-2)' }}>
                   {totalOportunidad > 0 ? `${totalOportunidad.toLocaleString('es-ES', { useGrouping: true })} €` : '—'}
                 </span>
                 <span className={styles.analiticaKpiLabel}>Oportunidad estimada/año</span>
@@ -4250,14 +4589,14 @@ export default function AdminKioskoPage() {
                             <span className={`${styles.margenBadge} ${styles.margenLow}`}>{c.margenPct}%</span>
                           </td>
                           <td className={styles.rendTdNum}>{formatPVP(c.pvp)}</td>
-                          <td className={styles.rendTdNum} style={{ fontWeight: 700, color: '#2e6b47' }}>
+                          <td className={styles.rendTdNum} style={{ fontWeight: 700, color: 'var(--k-color-ok)' }}>
                             {formatPVP(c.pvpNew)}
-                            <span style={{ fontSize: '.68rem', color: '#aaa', marginLeft: 3 }}>+{c.delta.toFixed(2)} €</span>
+                            <span style={{ fontSize: '.68rem', color: 'var(--k-color-muted-2)', marginLeft: 3 }}>+{c.delta.toFixed(2)} €</span>
                           </td>
                           <td className={styles.rendTdNum}>
                             <span className={`${styles.margenBadge} ${c.margenNew >= 40 ? styles.margenHigh : styles.margenMid}`}>{c.margenNew}%</span>
                           </td>
-                          <td className={styles.rendTdNum} style={{ fontWeight: 600, color: '#2e6b47' }}>
+                          <td className={styles.rendTdNum} style={{ fontWeight: 600, color: 'var(--k-color-ok)' }}>
                             ~{c.impacto.toLocaleString('es-ES', { useGrouping: true })} €
                           </td>
                         </tr>
@@ -4265,7 +4604,7 @@ export default function AdminKioskoPage() {
                     </tbody>
                   </table>
                 </div>
-                <p style={{ margin: '.6rem 0 0', fontSize: '.72rem', color: '#bbb', padding: '0 .5rem' }}>
+                <p style={{ margin: '.6rem 0 0', fontSize: '.72rem', color: 'var(--k-color-muted-2)', padding: '0 .5rem' }}>
                   Sugerencia: +7% redondeado a 0,50 € · impacto anualizado basado en el ritmo de ventas actual · solo una sugerencia, tú decides.
                 </p>
               </div>
@@ -4308,10 +4647,10 @@ export default function AdminKioskoPage() {
                             <td className={styles.rendTdNum}>{formatPVP(j.pvp)}</td>
                             <td className={styles.rendTdNum}>
                               {v?.destacado
-                                ? <span style={{ color: '#2e6b47', fontSize: '.8rem' }}>✓ Sí</span>
-                                : <span style={{ color: '#c03030', fontSize: '.8rem' }}>✗ No — destácalo</span>}
+                                ? <span style={{ color: 'var(--k-color-ok)', fontSize: '.8rem' }}>✓ Sí</span>
+                                : <span style={{ color: 'var(--k-color-danger)', fontSize: '.8rem' }}>✗ No — destácalo</span>}
                             </td>
-                            <td className={styles.rendTdNum} style={{ fontWeight: 600, color: '#666' }}>
+                            <td className={styles.rendTdNum} style={{ fontWeight: 600, color: 'var(--k-color-ink-2)' }}>
                               {j.impacto > 0 ? `~${j.impacto.toLocaleString('es-ES', { useGrouping: true })} €` : '—'}
                             </td>
                           </tr>
@@ -4357,7 +4696,7 @@ export default function AdminKioskoPage() {
                           </td>
                           <td className={styles.rendTdNum}>{r.pvp.toFixed(2)} €</td>
                           <td className={styles.rendTdNum}>{r.ventas} ud.</td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.75rem', color: '#b06000' }}>
+                          <td className={styles.rendTdNum} style={{ fontSize: '.75rem', color: 'var(--k-color-warn)' }}>
                             Baja precio o retira
                           </td>
                         </tr>
@@ -4380,69 +4719,80 @@ export default function AdminKioskoPage() {
 
       {/* Leads CRM */}
       {tab === 'leads' && (esPremium || esAdminUsuario) && (
-        <div style={{ padding: '0 1.75rem 1.75rem' }}>
-          <div className={styles.analiticaBloque}>
-            <div className={styles.analiticaBloqueHeader}>
+        <div className={styles.leadsWrap}>
+          {/* F7 · Tarjeta kCard con título + descripción + acciones (reintentar/CSV)
+              alineadas a la derecha. */}
+          <div className={styles.kCard}>
+            <div className={styles.leadsHeader}>
               <div>
-                <h3 className={styles.analiticaBloqueTitle}>Leads captados</h3>
-                <p className={styles.analiticaBloqueDesc}>
+                <h3 className={styles.leadsTitle}>Leads captados</h3>
+                <p className={styles.leadsDesc}>
                   Clientes que dieron su email tras una recomendación, con consentimiento explícito.
                 </p>
               </div>
-              {leads?.length > 0 && (
-                <button
-                  type="button"
-                  className={styles.btnSecundario}
-                  style={{ padding: '.45rem .9rem', fontSize: '.78rem' }}
-                  onClick={async () => {
-                    const res = await fetch(`/api/kiosko/${slug}/admin/leads?formato=csv`, { headers: authHeaders })
-                    const blob = await res.blob()
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url; a.download = `leads-${slug}.csv`; a.click()
-                    URL.revokeObjectURL(url)
-                  }}
-                >
-                  Exportar CSV
-                </button>
-              )}
+              <div className={styles.leadsHeaderActions}>
+                {!leadsLoad && leadsError && (
+                  <button type="button" className={styles.kBtnSecondary} onClick={cargarLeads}>
+                    Reintentar
+                  </button>
+                )}
+                {leads?.length > 0 && (
+                  <button
+                    type="button"
+                    className={styles.kBtnSecondary}
+                    onClick={async () => {
+                      const res = await fetch(`/api/kiosko/${slug}/admin/leads?formato=csv`, { headers: authHeaders })
+                      const blob = await res.blob()
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url; a.download = `leads-${slug}.csv`; a.click()
+                      URL.revokeObjectURL(url)
+                    }}
+                  >
+                    ↓ CSV
+                  </button>
+                )}
+              </div>
             </div>
 
             {leadsLoad && (
-              <div className={styles.skeletonBlock} aria-live="polite" aria-label="Cargando leads">
-                <div className={styles.skeletonRow} /><div className={styles.skeletonRow} />
-                <div className={styles.skeletonRow} />
+              <div className={styles.kSkeletonBlock} aria-live="polite" aria-label="Cargando leads">
+                <div className={styles.kSkeletonRow} />
+                <div className={styles.kSkeletonRow} />
+                <div className={styles.kSkeletonRow} />
               </div>
             )}
+
             {!leadsLoad && leadsError && (
-              <div className={styles.analiticaBanner} style={{ margin: '1rem 0 0' }}>
-                <span className={styles.analiticaBannerIcon}>⚠️</span>
-                <span style={{ flex: 1 }}>
-                  No se han podido cargar los leads: <code>{leadsError}</code>.
-                </span>
-                <button type="button" className={styles.btnSecundario} onClick={cargarLeads} style={{ padding: '.3rem .7rem', fontSize: '.78rem' }}>
-                  Reintentar
-                </button>
+              <div className={styles.kEmpty} role="alert">
+                <div style={{ fontSize: 'var(--k-fs-xl)', marginBottom: 'var(--k-space-2)' }} aria-hidden="true">⚠️</div>
+                <strong style={{ color: 'var(--k-color-danger)' }}>No se han podido cargar los leads</strong>
+                <div style={{ marginTop: 'var(--k-space-2)' }}><code>{leadsError}</code></div>
               </div>
             )}
+
             {!leadsLoad && !leadsError && leads !== null && leads.length === 0 && (
-              <div className={styles.analiticaBanner} style={{ margin: '1rem 0 0' }}>
-                <span className={styles.analiticaBannerIcon}>✉️</span>
-                <span>Aún no hay leads: se captan cuando un cliente deja su email tras una recomendación.</span>
+              <div className={styles.kEmpty}>
+                <div style={{ fontSize: 'var(--k-fs-2xl)', marginBottom: 'var(--k-space-2)' }} aria-hidden="true">✉️</div>
+                <strong>Aún no hay leads</strong>
+                <div style={{ marginTop: 'var(--k-space-2)' }}>
+                  Se captan cuando un cliente deja su email tras una recomendación en el kiosko.
+                </div>
               </div>
             )}
+
             {!leadsLoad && !leadsError && leads?.length > 0 && (
-              <div style={{ overflowX: 'auto', marginTop: '.75rem' }}>
-                <table className={styles.rendTable}>
+              <div className={styles.leadsTableWrap}>
+                <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th className={styles.rendThNombre}>Email</th>
-                      <th className={styles.rendThNum}>Fuente</th>
-                      <th className={styles.rendThNum}>Preferencias</th>
-                      <th className={styles.rendThNum}>Vinos</th>
-                      <th className={styles.rendThNum} title="Fecha en que el cliente acepto el consentimiento RGPD">Consent.</th>
-                      <th className={styles.rendThNum}>Fecha</th>
-                      <th className={styles.rendThNum}></th>
+                      <th style={{ minWidth: 220 }}>Email</th>
+                      <th style={{ width: 120 }}>Fuente</th>
+                      <th style={{ width: 200 }}>Preferencias</th>
+                      <th style={{ width: 220 }}>Vinos</th>
+                      <th style={{ width: 140 }} title="Estado del consentimiento RGPD">Consent.</th>
+                      <th className={styles.thRight} style={{ width: 110 }}>Fecha</th>
+                      <th style={{ width: 56 }}><span className={styles.srOnly}>Eliminar</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4451,25 +4801,26 @@ export default function AdminKioskoPage() {
                       const vinos = (l.vinos_recomendados || []).map(v => v.nombre).join(', ')
                       const prefStr = [p.ocasion, p.estilo, p.presupuesto ? `${p.presupuesto}€` : '', p.consulta].filter(Boolean).join(' · ')
                       return (
-                        <tr key={l.id} className={styles.rendRow}>
-                          <td className={styles.rendTdNombre}><span className={styles.rendVinoNombre}>{l.email}</span></td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem' }}>{l.source}</td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 160 }}>{prefStr || '—'}</td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', maxWidth: 180 }}>{vinos || '—'}</td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }} title={l.consentimiento_at ? `Aceptado el ${new Date(l.consentimiento_at).toLocaleString('es-ES')}` : 'No hay fecha de aceptación guardada para este lead'}>
+                        <tr key={l.id}>
+                          <td><strong style={{ fontWeight: 'var(--k-fw-bold)' }}>{l.email}</strong></td>
+                          <td style={{ color: 'var(--k-color-ink-2)' }}>{l.source}</td>
+                          <td style={{ color: 'var(--k-color-ink-2)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={prefStr}>{prefStr || '—'}</td>
+                          <td style={{ color: 'var(--k-color-ink-2)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={vinos}>{vinos || '—'}</td>
+                          <td title={l.consentimiento_at ? `Aceptado el ${new Date(l.consentimiento_at).toLocaleString('es-ES')}` : 'No hay fecha de aceptación guardada para este lead'}>
                             {l.consentimiento_at
-                              ? <span style={{ color: '#2a8a4a' }} aria-label="Consentimiento registrado">✔</span>
-                              : <span style={{ color: '#b45309', fontStyle: 'italic' }} aria-label="Sin consentimiento registrado">Sin registrar</span>}
+                              ? <span className={`${styles.kBadge} ${styles.kBadgeOk}`} aria-label="Consentimiento registrado">Registrado</span>
+                              : <span className={`${styles.kBadge} ${styles.kBadgeWarn}`} aria-label="Sin consentimiento registrado">Sin registrar</span>}
                           </td>
-                          <td className={styles.rendTdNum} style={{ fontSize: '.73rem', whiteSpace: 'nowrap' }}>
+                          <td className={styles.tdRight} style={{ whiteSpace: 'nowrap' }}>
                             {new Date(l.created_at).toLocaleDateString('es-ES')}
                           </td>
-                          <td className={styles.rendTdNum}>
+                          <td>
                             <button
                               type="button"
                               onClick={() => borrarLead(l.id)}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#c44', fontSize: '.72rem', padding: '2px 6px' }}
-                              title="Eliminar (RGPD)"
+                              className={styles.leadsDelete}
+                              aria-label="Eliminar lead"
+                              title="Eliminar lead"
                             >
                               ×
                             </button>
@@ -4479,7 +4830,7 @@ export default function AdminKioskoPage() {
                     })}
                   </tbody>
                 </table>
-                <p style={{ margin: '.75rem 0 0', fontSize: '.72rem', color: '#bbb' }}>
+                <p className={styles.leadsFoot}>
                   Los emails se eliminan permanentemente al hacer clic en × (derecho de supresión RGPD).
                 </p>
               </div>
@@ -4503,11 +4854,11 @@ export default function AdminKioskoPage() {
 
       {/* Otros productos (Square) */}
       {tab === 'otros' && <>
-        <p style={{ padding: '.85rem 1.75rem 0', color: '#999', fontSize: '.8rem' }}>
+        <p style={{ padding: '.85rem 1.75rem 0', color: 'var(--k-color-muted)', fontSize: '.8rem' }}>
           Productos importados de Square que no son vinos. Configura qué aparece en la cesta regalo y sus atributos.
         </p>
 
-        <div className={styles.toolbar}>
+        <div ref={toolbarStickyRef} className={styles.toolbar}>
           <input
             className={styles.busqueda}
             type="search"
@@ -4561,15 +4912,15 @@ export default function AdminKioskoPage() {
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th className={styles.thFoto}>Foto</th>
-                  <th>Nombre</th>
-                  <th>PVP</th>
-                  <th title="Categoría detectada automáticamente por el nombre. Selecciona '→ Vinos' para mover al catálogo principal.">Categoría</th>
-                  <th title="¿Aparece en la cesta regalo? Auto = detectado por nombre">En cesta</th>
-                  <th title="¿Es apto para veganos?">Vegano</th>
-                  <th title="¿Contiene alcohol?">Alcohol</th>
-                  <th title="¿Es sin gluten?">Sin gluten</th>
-                  <th>Stock</th>
+                  <th className={styles.thFoto} style={{ width: 56 }}>Foto</th>
+                  <th style={{ minWidth: 220 }}>Nombre</th>
+                  <th className={styles.thRight} style={{ width: 96 }}>PVP</th>
+                  <th style={{ width: 170 }} title="Categoría detectada automáticamente por el nombre. Selecciona '→ Vinos' para mover al catálogo principal.">Categoría</th>
+                  <th style={{ width: 110 }} title="¿Aparece en la cesta regalo? Auto = detectado por nombre">En cesta</th>
+                  <th style={{ width: 110 }} title="¿Es apto para veganos?">Vegano</th>
+                  <th style={{ width: 110 }} title="¿Contiene alcohol?">Alcohol</th>
+                  <th style={{ width: 110 }} title="¿Es sin gluten?">Sin gluten</th>
+                  <th className={styles.thRight} style={{ width: 80 }}>Stock</th>
                 </tr>
               </thead>
               <tbody>
@@ -4592,11 +4943,17 @@ export default function AdminKioskoPage() {
                       <td className={styles.tdFoto}>
                         <AdminThumbImage src={v.foto_url} className={styles.thumb} fallback={<div className={styles.thumbPlaceholder}>—</div>} />
                       </td>
-                      <td>
-                        <strong className={styles.tdTrunc} style={{ maxWidth: 200 }}>{v.nombre}</strong>
-                        {v.categoria === 'carta' && <span style={{ marginLeft: 6, fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#c9a96e', border: '1px solid #c9a96e55', borderRadius: 4, padding: '1px 5px' }}>Carta</span>}
+                      <td style={{ maxWidth: 520 }}>
+                        <strong
+                          className={styles.tdTrunc}
+                          style={{ maxWidth: 520, display: 'inline-block', verticalAlign: 'bottom' }}
+                          title={v.nombre}
+                        >
+                          {v.nombre}
+                        </strong>
+                        {v.categoria === 'carta' && <span style={{ marginLeft: 6, fontSize: '.65rem', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--k-color-accent)', border: '1px solid #c9a96e55', borderRadius: 4, padding: '1px 5px' }}>Carta</span>}
                       </td>
-                      <td>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : <span className={styles.dash}>—</span>}</td>
+                      <td className={styles.tdRight}>{v.precio_pvp ? `${Number(v.precio_pvp).toFixed(2)} €` : <span className={styles.dash}>—</span>}</td>
                       <td>
                         <select
                           className={styles.otrosCatSelect}
@@ -4670,7 +5027,7 @@ export default function AdminKioskoPage() {
                         </select>
                       </td>
 
-                      <td>{v.stock ?? <span className={styles.dash}>—</span>}</td>
+                      <td className={styles.tdRight}>{v.stock ?? <span className={styles.dash}>—</span>}</td>
                     </tr>
                   )
                 })}
@@ -4779,7 +5136,7 @@ export default function AdminKioskoPage() {
                 <button
                   type="button"
                   onClick={() => setTab('ajustes')}
-                  style={{ background: 'none', border: 'none', color: '#b45309', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}
+                  style={{ background: 'none', border: 'none', color: 'var(--k-color-warn)', textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit', padding: 0 }}
                 >
                   Ver ajustes →
                 </button>
@@ -4790,12 +5147,12 @@ export default function AdminKioskoPage() {
       )}
 
       {lastSync && (lastSync.ultimoPagoAt || lastSync.ultimoCatalogoAt) && (
-        <div style={{ padding: '.55rem 1.75rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '.78rem', color: '#999', borderBottom: '1px solid rgba(0,0,0,.06)' }}>
+        <div style={{ padding: '.55rem 1.75rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '.78rem', color: 'var(--k-color-muted)', borderBottom: '1px solid rgba(0,0,0,.06)' }}>
           {lastSync.ultimoCatalogoAt && (
-            <span>Catálogo Square sincronizado: <strong style={{ color: '#555' }}>{formatSyncDate(lastSync.ultimoCatalogoAt)}</strong></span>
+            <span>Catálogo Square sincronizado: <strong style={{ color: 'var(--k-color-ink-2)' }}>{formatSyncDate(lastSync.ultimoCatalogoAt)}</strong></span>
           )}
           {lastSync.ultimoPagoAt && (
-            <span>Último pago TPV registrado: <strong style={{ color: '#555' }}>{formatSyncDate(lastSync.ultimoPagoAt)}</strong></span>
+            <span>Último pago TPV registrado: <strong style={{ color: 'var(--k-color-ink-2)' }}>{formatSyncDate(lastSync.ultimoPagoAt)}</strong></span>
           )}
         </div>
       )}
@@ -4806,7 +5163,7 @@ export default function AdminKioskoPage() {
             <p className={styles.catalogChecklistKicker}>Checklist de catálogo</p>
             <h2>Preparado para el kiosko</h2>
             <p>Revisa los campos que más influyen en que el cliente encuentre, entienda y compre el vino sin preguntar.</p>
-            <p style={{ fontSize: '.72rem', color: '#999', margin: '.2rem 0 0' }} title="Media ponderada por criterio. Imprescindibles (foto, PVP, stock) pesan el doble que los opcionales (ubicación, texto de venta).">
+            <p style={{ fontSize: '.72rem', color: 'var(--k-color-muted)', margin: '.2rem 0 0' }} title="Media ponderada por criterio. Imprescindibles (foto, PVP, stock) pesan el doble que los opcionales (ubicación, texto de venta).">
               Método actualizado el 2026-11-08 · media ponderada por criterio
             </p>
           </div>
@@ -4817,7 +5174,7 @@ export default function AdminKioskoPage() {
                 className={styles.checkProgressBarFill}
                 style={{
                   width: `${catalogoChecklist.score}%`,
-                  background: catalogoChecklist.score >= 80 ? '#2a8a4a' : catalogoChecklist.score >= 50 ? '#c9a96e' : '#c44',
+                  background: catalogoChecklist.score >= 80 ? 'var(--k-color-ok)' : catalogoChecklist.score >= 50 ? 'var(--k-color-accent)' : 'var(--k-color-danger)',
                 }}
               />
             </div>
@@ -4871,7 +5228,7 @@ export default function AdminKioskoPage() {
         )}
       </section>
 
-      <div className={styles.toolbar}>
+      <div ref={toolbarStickyRef} className={styles.toolbar}>
         <input
           className={styles.busqueda}
           type="search"
@@ -4957,6 +5314,49 @@ export default function AdminKioskoPage() {
             {verInactivos ? 'Ocultar inactivos' : `Inactivos (${nInactivos})`}
           </button>
         )}
+        {/* F5 · Menú "Columnas" con casillas (persistido en localStorage) */}
+        <div className={styles.filtrosBtnWrap} ref={columnasMenuRef}>
+          <button
+            type="button"
+            className={styles.filtrosBtn}
+            aria-haspopup="menu"
+            aria-expanded={columnasMenuOpen}
+            onClick={() => setColumnasMenuOpen(o => !o)}
+          >
+            Columnas
+          </button>
+          {columnasMenuOpen && (
+            <div role="menu" className={`${styles.filtrosPanel} ${styles.columnasMenu}`}>
+              {/* Scroll interno; el footer con "Restablecer" queda siempre visible */}
+              <div className={styles.columnasMenuScroll}>
+                {COLUMNAS_TODAS.filter(c => !c.fijo).filter(c => !c.sensible || !hideSensitive).map(c => (
+                  <label key={c.id} className={styles.columnasMenuItem}>
+                    <input
+                      type="checkbox"
+                      checked={colVisible(c.id)}
+                      onChange={() => toggleColumna(c.id)}
+                    />
+                    <span>{c.label}</span>
+                  </label>
+                ))}
+              </div>
+              <div className={styles.columnasMenuFooter}>
+                <button
+                  type="button"
+                  className={styles.kBtnGhost}
+                  style={{ width: '100%', minHeight: 32, padding: '6px 10px', fontSize: 'var(--k-fs-xs)' }}
+                  onClick={() => {
+                    const next = new Set(COLUMNAS_DEFAULT)
+                    setColumnasVisibles(next)
+                    try { window.localStorage?.setItem(LS_COLUMNAS_KEY, JSON.stringify([...next])) } catch {}
+                  }}
+                >
+                  Restablecer
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         <span className={styles.total}>{vinosFiltrados.length} / {vinosVino.length} vinos</span>
       </div>
 
@@ -4972,23 +5372,21 @@ export default function AdminKioskoPage() {
                   onChange={toggleSeleccionTodos}
                 />
               </th>
-              <th className={styles.thFoto}>Foto</th>
-              <th className={styles.thSortable} onClick={() => sortHead('nombre')}>Nombre{sortArrow('nombre')}</th>
-              <th className={styles.thSortable} onClick={() => sortHead('bodega')}>Bodega{sortArrow('bodega')}</th>
-              <th>Tipo</th>
-              <th className={styles.thSortable} onClick={() => sortHead('region')}>D.O.{sortArrow('region')}</th>
-              <th className={styles.thSortable} onClick={() => sortHead('uva')}>Uva{sortArrow('uva')}</th>
-              <th className={styles.thSortable} onClick={() => sortHead('anada')}>Añada{sortArrow('anada')}</th>
-              <th className={styles.thSortable} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>
-              {!hideSensitive && <th className={styles.thSortable} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>}
-              {!hideSensitive && <th className={styles.thSortable} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>}
-              <th className={styles.thSortable} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>
-              {!hideSensitive && <th className={styles.thSortable} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>}
-              {!hideSensitive && <th title="Stock mínimo — alerta si stock ≤ este valor">Mín.</th>}
-              {!hideSensitive && <th>Estantería</th>}
-              <th className={styles.thCenter}>★</th>
-              <th className={styles.thCenter}>Estado</th>
-              <th></th>
+              {colVisible('foto')          && <th className={styles.thFoto} style={{ width: 56 }}>Foto</th>}
+              {colVisible('nombre_bodega') && <th className={styles.thSortable} style={{ minWidth: 260 }} onClick={() => sortHead('nombre')}>Nombre{sortArrow('nombre')}</th>}
+              {colVisible('tipo')          && <th style={{ width: 96 }}>Tipo</th>}
+              {colVisible('region')        && <th className={styles.thSortable} onClick={() => sortHead('region')}>D.O.{sortArrow('region')}</th>}
+              {colVisible('uva')           && <th className={styles.thSortable} onClick={() => sortHead('uva')}>Uva{sortArrow('uva')}</th>}
+              {colVisible('anada')         && <th className={styles.thSortable} style={{ width: 80 }} onClick={() => sortHead('anada')}>Añada{sortArrow('anada')}</th>}
+              {colVisible('pvp')           && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 96 }} onClick={() => sortHead('precio_pvp')}>PVP €{sortArrow('precio_pvp')}</th>}
+              {!hideSensitive && colVisible('coste')  && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 96 }} onClick={() => sortHead('precio_coste')}>Coste €{sortArrow('precio_coste')}</th>}
+              {!hideSensitive && colVisible('margen') && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 88 }} onClick={() => sortHead('margen')}>Margen{sortArrow('margen')}</th>}
+              {colVisible('oferta')        && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 96 }} onClick={() => sortHead('precio_oferta')}>Oferta €{sortArrow('precio_oferta')}</th>}
+              {!hideSensitive && colVisible('stock')        && <th className={`${styles.thSortable} ${styles.thRight}`} style={{ width: 80 }} onClick={() => sortHead('stock')}>Stock{sortArrow('stock')}</th>}
+              {!hideSensitive && colVisible('stock_minimo') && <th className={styles.thRight} style={{ width: 80 }} title="Stock mínimo — alerta si stock ≤ este valor">Mín.</th>}
+              {!hideSensitive && colVisible('estanteria')   && <th>Estantería</th>}
+              {colVisible('estado')        && <th className={styles.thCenter} style={{ width: 110 }}>Estado</th>}
+              {colVisible('acciones')      && <th className={styles.thCenter} style={{ width: 120 }}><span className={styles.srOnly}>Acciones</span></th>}
             </tr>
           </thead>
           <tbody>
@@ -5002,6 +5400,7 @@ export default function AdminKioskoPage() {
                 </td>
 
                 {/* Foto */}
+                {colVisible('foto') && (
                 <td className={styles.tdFoto} onClick={() => abrirFotoFila(v.id)} title="Clic para cambiar foto">
                   {subiendoFoto === v.id ? (
                     <div className={styles.thumbSpinner} />
@@ -5013,25 +5412,31 @@ export default function AdminKioskoPage() {
                     />
                   )}
                 </td>
+                )}
 
-                {/* Nombre clicable → abre modal edición */}
+                {/* Nombre + bodega en 2 líneas (F5) */}
+                {colVisible('nombre_bodega') && (
                 <td
                   className={`${styles.tdNombre} ${styles.tdLink}`}
                   onClick={() => abrirEditar(v)}
                   title="Clic para editar"
                 >
-                  {v.nombre}
-                  {renderQualityBadges(v)}
-                  {!v.activo && v.motivo_inactividad && (
-                    <span style={{ marginLeft: '.4rem', padding: '.1rem .4rem', fontSize: '.65rem', background: '#f0ede8', color: '#777', borderRadius: 4, fontWeight: 500 }}
-                      title={`Motivo de inactividad: ${v.motivo_inactividad}`}>
-                      {v.motivo_inactividad}
+                  <div className={styles.tdNombreBody}>
+                    <span className={styles.tdNombreTop}>
+                      {v.nombre}
+                      {renderQualityBadges(v)}
+                      {!v.activo && v.motivo_inactividad && (
+                        <span className={`${styles.kBadge}`} title={`Motivo de inactividad: ${v.motivo_inactividad}`} style={{ marginLeft: 'var(--k-space-2)' }}>
+                          {v.motivo_inactividad}
+                        </span>
+                      )}
                     </span>
-                  )}
+                    {v.bodega && <span className={styles.tdNombreSub}>{v.bodega}</span>}
+                  </div>
                 </td>
+                )}
 
-                <td className={styles.tdTrunc}>{v.bodega || <em className={styles.dash}>—</em>}</td>
-
+                {colVisible('tipo') && (
                 <td>
                   {v.tipo
                     ? <span className={`${styles.tipoBadge} ${styles['tipo_' + v.tipo]}`}>
@@ -5040,11 +5445,13 @@ export default function AdminKioskoPage() {
                     : <em className={styles.dash}>—</em>
                   }
                 </td>
+                )}
 
-                <td className={styles.tdTrunc}>{v.region || <em className={styles.dash}>—</em>}</td>
-                <td className={styles.tdTrunc}>{v.uva    || <em className={styles.dash}>—</em>}</td>
+                {colVisible('region') && <td className={styles.tdTrunc}>{v.region || <em className={styles.dash}>—</em>}</td>}
+                {colVisible('uva')    && <td className={styles.tdTrunc}>{v.uva    || <em className={styles.dash}>—</em>}</td>}
 
                 {/* Añada inline */}
+                {colVisible('anada') && (
                 <td
                   className={styles.tdEditable}
                   onClick={e => startInline(v.id, 'anada', v.anada, e)}
@@ -5068,10 +5475,12 @@ export default function AdminKioskoPage() {
                     </span>
                   )}
                 </td>
+                )}
 
                 {/* PVP inline */}
+                {colVisible('pvp') && (
                 <td
-                  className={styles.tdEditable}
+                  className={`${styles.tdEditable} ${styles.tdRight}`}
                   onClick={e => startInline(v.id, 'precio_pvp', v.precio_pvp, e)}
                 >
                   {inlineEdit?.id === v.id && inlineEdit.campo === 'precio_pvp' ? (
@@ -5092,9 +5501,10 @@ export default function AdminKioskoPage() {
                     </span>
                   )}
                 </td>
+                )}
 
                 {/* Coste inline */}
-                {!hideSensitive && <td className={styles.tdEditable} onClick={e => startInline(v.id, 'precio_coste', v.precio_coste, e)}>
+                {!hideSensitive && colVisible('coste') && <td className={`${styles.tdEditable} ${styles.tdRight}`} onClick={e => startInline(v.id, 'precio_coste', v.precio_coste, e)}>
                   {inlineEdit?.id === v.id && inlineEdit.campo === 'precio_coste' ? (
                     <input
                       className={styles.inlineInput}
@@ -5115,15 +5525,16 @@ export default function AdminKioskoPage() {
                 </td>}
 
                 {/* Margen */}
-                {!hideSensitive && <td>
+                {!hideSensitive && colVisible('margen') && <td className={styles.tdRight}>
                   {Number(v.precio_pvp) > 0 && Number(v.precio_coste) > 0
                     ? (() => { const m = Math.round(((Number(v.precio_pvp) - Number(v.precio_coste)) / Number(v.precio_pvp)) * 100); return <span className={`${styles.margenBadge} ${m >= 40 ? styles.margenHigh : m >= 25 ? styles.margenMid : styles.margenLow}`}>{m}%</span> })()
                     : <em className={styles.dash}>—</em>}
                 </td>}
 
                 {/* Oferta inline */}
+                {colVisible('oferta') && (
                 <td
-                  className={styles.tdEditable}
+                  className={`${styles.tdEditable} ${styles.tdRight}`}
                   onClick={e => startInline(v.id, 'precio_oferta', v.precio_oferta, e)}
                 >
                   {inlineEdit?.id === v.id && inlineEdit.campo === 'precio_oferta' ? (
@@ -5146,10 +5557,11 @@ export default function AdminKioskoPage() {
                     </span>
                   )}
                 </td>
+                )}
 
                 {/* Stock inline */}
-                {!hideSensitive && <td
-                  className={`${styles.tdEditable} ${v.stock === 0 ? styles.stockCero : ''}`}
+                {!hideSensitive && colVisible('stock') && <td
+                  className={`${styles.tdEditable} ${styles.tdRight} ${v.stock === 0 ? styles.stockCero : ''}`}
                   onClick={stockPending?.id === v.id ? undefined : e => startInline(v.id, 'stock', v.stock, e)}
                 >
                   {stockPending?.id === v.id ? (
@@ -5183,8 +5595,8 @@ export default function AdminKioskoPage() {
                 </td>}
 
                 {/* Stock mínimo inline */}
-                {!hideSensitive && <td
-                  className={`${styles.tdEditable} ${Number(v.stock ?? 0) <= Number(v.stock_minimo ?? 0) && Number(v.stock_minimo ?? 0) > 0 ? styles.stockBajoMinimo : ''}`}
+                {!hideSensitive && colVisible('stock_minimo') && <td
+                  className={`${styles.tdEditable} ${styles.tdRight} ${Number(v.stock ?? 0) <= Number(v.stock_minimo ?? 0) && Number(v.stock_minimo ?? 0) > 0 ? styles.stockBajoMinimo : ''}`}
                   onClick={e => startInline(v.id, 'stock_minimo', v.stock_minimo ?? 0, e)}
                 >
                   {inlineEdit?.id === v.id && inlineEdit.campo === 'stock_minimo' ? (
@@ -5208,7 +5620,7 @@ export default function AdminKioskoPage() {
                 </td>}
 
                 {/* Estantería inline */}
-                {!hideSensitive && <td
+                {!hideSensitive && colVisible('estanteria') && <td
                   className={styles.tdEditable}
                   onClick={e => startInline(v.id, 'ubicacion_estanteria', v.ubicacion_estanteria, e)}
                 >
@@ -5235,46 +5647,97 @@ export default function AdminKioskoPage() {
                   )}
                 </td>}
 
-                {/* Destacado toggle */}
+                {/* Estado (badge + clic para alternar) */}
+                {colVisible('estado') && (
                 <td className={styles.tdCenter}>
                   <button
-                    className={`${styles.toggleStar} ${v.destacado ? styles.toggleStarOn : ''}`}
-                    onClick={() => toggleCampo(v.id, 'destacado', v.destacado)}
-                    title={v.destacado ? 'Quitar destacado' : 'Marcar como destacado'}
-                  >
-                    {v.destacado ? '★' : '☆'}
-                  </button>
-                </td>
-
-                {/* Activo toggle */}
-                <td className={styles.tdCenter}>
-                  <button
-                    className={`${styles.toggleEstado} ${v.activo ? styles.estadoActivo : styles.estadoInactivo}`}
+                    type="button"
                     onClick={() => toggleCampo(v.id, 'activo', v.activo)}
+                    className={`${styles.kBadge} ${v.activo ? styles.kBadgeOk : styles.kBadgeDanger}`}
+                    style={{ border: 'none', cursor: 'pointer' }}
+                    aria-label={v.activo ? 'Desactivar vino' : 'Activar vino'}
+                    title={v.activo ? 'Clic para desactivar' : 'Clic para activar'}
                   >
+                    {v.destacado && <span aria-hidden="true" style={{ color: 'var(--k-color-accent)', marginRight: 4 }}>★</span>}
                     {v.activo ? 'Activo' : 'Inactivo'}
                   </button>
                 </td>
+                )}
 
-                {/* Acciones */}
+                {/* Acciones: Editar + menú ⋯ accesible (F5). F6b: el <td>
+                    permanece como table-cell; el flex vive en el div interno. */}
+                {colVisible('acciones') && (
                 <td className={styles.acciones}>
-                  <button onClick={() => abrirEditar(v)} type="button" className={styles.btnEdit}>Editar</button>
-                  <button
-                    onClick={async () => {
-                      if (!window.confirm(`¿Mover "${v.nombre}" a Otros productos? Dejará de aparecer en el catálogo de vinos.`)) return
-                      await fetch(`/api/kiosko/${slug}/admin/vinos/${v.id}`, {
-                        method: 'PATCH',
-                        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ categoria: 'otro' }),
-                      })
-                      await cargar()
-                    }}
-                    type="button"
-                    className={styles.btnEdit}
-                    title="Mover a Otros productos"
-                  >→ Otros</button>
-                  <button onClick={() => eliminar(v.id)} type="button" className={styles.btnDelete}>✕</button>
+                  <div className={styles.accionesInner}>
+                  <div className={styles.rowActionsWrap} data-fila-menu={v.id}>
+                    <button
+                      onClick={() => abrirEditar(v)}
+                      type="button"
+                      className={styles.kBtnSecondary}
+                      style={{ minHeight: 32, padding: '6px 10px', fontSize: 'var(--k-fs-xs)' }}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.rowMenuBtn}
+                      aria-haspopup="menu"
+                      aria-expanded={filaMenuOpen === v.id}
+                      aria-label={`Más acciones para ${v.nombre}`}
+                      onClick={() => setFilaMenuOpen(prev => prev === v.id ? null : v.id)}
+                    >
+                      ⋯
+                    </button>
+                    {filaMenuOpen === v.id && (
+                      <div role="menu" className={styles.rowMenu}>
+                        <button
+                          role="menuitem"
+                          type="button"
+                          className={styles.rowMenuItem}
+                          onClick={() => { toggleCampo(v.id, 'destacado', v.destacado); setFilaMenuOpen(null) }}
+                        >
+                          {v.destacado ? 'Quitar destacado' : '★ Destacar'}
+                        </button>
+                        <button
+                          role="menuitem"
+                          type="button"
+                          className={styles.rowMenuItem}
+                          onClick={() => { toggleCampo(v.id, 'activo', v.activo); setFilaMenuOpen(null) }}
+                        >
+                          {v.activo ? 'Desactivar' : 'Activar'}
+                        </button>
+                        <button
+                          role="menuitem"
+                          type="button"
+                          className={styles.rowMenuItem}
+                          onClick={async () => {
+                            setFilaMenuOpen(null)
+                            if (!window.confirm(`¿Mover "${v.nombre}" a Otros productos? Dejará de aparecer en el catálogo de vinos.`)) return
+                            await fetch(`/api/kiosko/${slug}/admin/vinos/${v.id}`, {
+                              method: 'PATCH',
+                              headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ categoria: 'otro' }),
+                            })
+                            await cargar()
+                          }}
+                        >
+                          Mover a Otros
+                        </button>
+                        <div className={styles.rowMenuDivider} />
+                        <button
+                          role="menuitem"
+                          type="button"
+                          className={`${styles.rowMenuItem} ${styles.rowMenuItemDanger}`}
+                          onClick={() => { setFilaMenuOpen(null); eliminar(v.id) }}
+                        >
+                          Eliminar…
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  </div>
                 </td>
+                )}
               </tr>
             ))}
             {vinosFiltrados.length === 0 && (
@@ -5401,11 +5864,11 @@ export default function AdminKioskoPage() {
                 <button type="button" className={styles.modalClose} onClick={() => setBatchInput(null)}>✕</button>
               </div>
               <div className={styles.modalBody}>
-                <p style={{ margin: 0, fontSize: '.85rem', color: '#555' }}>
+                <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--k-color-ink-2)' }}>
                   {seleccionados.size} vino{seleccionados.size === 1 ? '' : 's'} seleccionado{seleccionados.size === 1 ? '' : 's'}.
                   {campo === 'ubicacion' && !reemplazar && ' Por defecto solo se rellenarán los vacíos.'}
                 </p>
-                <p style={{ margin: '.8rem 0 .35rem', fontSize: '.82rem', color: '#555' }}>
+                <p style={{ margin: '.8rem 0 .35rem', fontSize: '.82rem', color: 'var(--k-color-ink-2)' }}>
                   {campo === 'stock_minimo' ? 'Nuevo mínimo (unidades):' : 'Nombre de la estantería / zona:'}
                 </p>
                 <input
@@ -5427,7 +5890,7 @@ export default function AdminKioskoPage() {
                   </datalist>
                 )}
                 {campo === 'ubicacion' && ubicacionesPending && (
-                  <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: '#888' }}>
+                  <p style={{ margin: '.5rem 0 0', fontSize: '.72rem', color: 'var(--k-color-muted)' }}>
                     Catálogo de ubicaciones aún no activado · pendiente de aplicar <code>supabase/kiosko_ubicaciones.sql</code>.
                   </p>
                 )}
@@ -5468,10 +5931,10 @@ export default function AdminKioskoPage() {
                 .
               </p>
               {batchDialog.afectadosIds.length === 0 ? (
-                <p style={{ margin: '.8rem 0 0', color: '#888' }}>Ningún vino cumple el criterio. Cierra el diálogo y revisa la selección.</p>
+                <p style={{ margin: '.8rem 0 0', color: 'var(--k-color-muted)' }}>Ningún vino cumple el criterio. Cierra el diálogo y revisa la selección.</p>
               ) : (
                 <>
-                  <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: '#666' }}>
+                  <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: 'var(--k-color-ink-2)' }}>
                     Muestras (hasta 5):
                   </p>
                   <ul style={{ margin: 0, padding: '0 0 0 1.2rem', fontSize: '.82rem', lineHeight: 1.5 }}>
@@ -5490,7 +5953,7 @@ export default function AdminKioskoPage() {
                 </>
               )}
               {batchDialog.tipo === 'eliminar' && (
-                <p style={{ margin: '.8rem 0 0', color: '#c44', fontSize: '.8rem' }}>
+                <p style={{ margin: '.8rem 0 0', color: 'var(--k-color-danger)', fontSize: '.8rem' }}>
                   ⚠ Esta acción no se puede deshacer.
                 </p>
               )}
@@ -5520,14 +5983,14 @@ export default function AdminKioskoPage() {
             </div>
             <div className={styles.modalBody}>
               <p style={{ margin: 0 }}>
-                <strong>{batchResumen.aplicados}</strong> aplicados, <strong style={{ color: '#c44' }}>{batchResumen.fallidos.length}</strong> fallidos. El Deshacer del toast cubre solo los aplicados.
+                <strong>{batchResumen.aplicados}</strong> aplicados, <strong style={{ color: 'var(--k-color-danger)' }}>{batchResumen.fallidos.length}</strong> fallidos. El Deshacer del toast cubre solo los aplicados.
               </p>
-              <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: '#666' }}>Fallidos:</p>
+              <p style={{ margin: '.8rem 0 .4rem', fontSize: '.8rem', color: 'var(--k-color-ink-2)' }}>Fallidos:</p>
               <ul style={{ margin: 0, padding: '0 0 0 1.2rem', fontSize: '.82rem', lineHeight: 1.5, maxHeight: '240px', overflowY: 'auto' }}>
                 {batchResumen.fallidos.slice(0, 50).map(f => (
                   <li key={f.id}>{f.nombre} — <code>{f.error}</code></li>
                 ))}
-                {batchResumen.fallidos.length > 50 && <li style={{ color: '#888' }}>+{batchResumen.fallidos.length - 50} más…</li>}
+                {batchResumen.fallidos.length > 50 && <li style={{ color: 'var(--k-color-muted)' }}>+{batchResumen.fallidos.length - 50} más…</li>}
               </ul>
             </div>
             <div className={styles.modalFooter}>
@@ -5541,8 +6004,8 @@ export default function AdminKioskoPage() {
       {tab === 'ajustes' && ajustesDirty && (
         <div style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 250,
-          background: '#1a1a2e', color: '#f0ede8',
-          borderTop: '3px solid #c9a96e',
+          background: 'var(--k-color-ink)', color: 'var(--k-color-sunken)',
+          borderTop: '3px solid var(--k-color-accent)',
           padding: '.75rem 1.5rem',
           display: 'flex', alignItems: 'center', gap: '1rem',
           boxShadow: '0 -4px 20px rgba(0,0,0,.18)',
@@ -5556,7 +6019,7 @@ export default function AdminKioskoPage() {
 
       {/* F3 P1-9: toast éxito/error tras guardar Ajustes */}
       {ajustesSavedToast && (
-        <div className={styles.undoToast} style={{ borderLeftColor: ajustesSavedToast === 'ok' ? '#2a8a4a' : '#c44' }}>
+        <div className={styles.undoToast} style={{ borderLeftColor: ajustesSavedToast === 'ok' ? 'var(--k-color-ok)' : 'var(--k-color-danger)' }}>
           <span>{ajustesSavedToast === 'ok' ? '✓ Ajustes guardados correctamente' : '⚠ Hubo un problema al guardar los ajustes'}</span>
           <button type="button" className={styles.undoClose} onClick={() => setAjustesSavedToast(null)} aria-label="Cerrar aviso">✕</button>
         </div>
@@ -5574,7 +6037,7 @@ export default function AdminKioskoPage() {
               <p style={{ margin: 0 }}>
                 Vas a eliminar <strong>{eliminarConfirm.nombre}</strong> permanentemente. Esta acción NO se puede deshacer y no afecta a Square.
               </p>
-              <p style={{ margin: '.75rem 0 .35rem', fontSize: '.82rem', color: '#555' }}>
+              <p style={{ margin: '.75rem 0 .35rem', fontSize: '.82rem', color: 'var(--k-color-ink-2)' }}>
                 Para confirmar, escribe el nombre exacto del vino:
               </p>
               <input
@@ -5588,7 +6051,7 @@ export default function AdminKioskoPage() {
                 disabled={eliminarConfirm.running}
               />
               {eliminarConfirm.error && (
-                <p style={{ margin: '.6rem 0 0', color: '#c44', fontSize: '.8rem' }}>
+                <p style={{ margin: '.6rem 0 0', color: 'var(--k-color-danger)', fontSize: '.8rem' }}>
                   {eliminarConfirm.error}
                 </p>
               )}
@@ -5723,7 +6186,7 @@ export default function AdminKioskoPage() {
                   <p className={styles.importOk}>✓ Importación completada</p>
                   {resultImport.insertados > 0 && <p>{resultImport.insertados} vinos importados correctamente</p>}
                   {resultImport.actualizados > 0 && <p>{resultImport.actualizados} vinos actualizados</p>}
-                  {resultImport.sinCambios > 0 && <p style={{ color: '#aaa' }}>{resultImport.sinCambios} vinos no encontrados (omitidos)</p>}
+                  {resultImport.sinCambios > 0 && <p style={{ color: 'var(--k-color-muted-2)' }}>{resultImport.sinCambios} vinos no encontrados (omitidos)</p>}
                   {resultImport.omitidos > 0 && (
                     <p className={styles.importWarn}>{resultImport.omitidos} filas sin nombre omitidas</p>
                   )}
@@ -5937,20 +6400,20 @@ export default function AdminKioskoPage() {
                         <option value="descatalogado">Descatalogado</option>
                         <option value="otro">Otro</option>
                       </select>
-                      <small style={{ color: '#888', fontSize: '.72rem' }}>Se guarda al instante.</small>
+                      <small style={{ color: 'var(--k-color-muted)', fontSize: '.72rem' }}>Se guarda al instante.</small>
                     </div>
                   )}
                   {modal !== 'nuevo' && form.ficha_ia && (
                     <div className={`${styles.formField} ${styles.formFieldFull}`}>
                       <label style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>Ficha IA</span>
-                        <span style={{ fontSize: '.72rem', color: '#aaa', fontWeight: 400 }}>Solo lectura</span>
+                        <span style={{ fontSize: '.72rem', color: 'var(--k-color-muted-2)', fontWeight: 400 }}>Solo lectura</span>
                       </label>
                       <textarea
                         readOnly
                         rows={4}
                         value={typeof form.ficha_ia === 'string' ? form.ficha_ia : JSON.stringify(form.ficha_ia, null, 2)}
-                        style={{ resize: 'vertical', background: 'rgba(255,255,255,.04)', color: '#bbb', cursor: 'default', fontSize: '.8rem' }}
+                        style={{ resize: 'vertical', background: 'rgba(255,255,255,.04)', color: 'var(--k-color-muted-2)', cursor: 'default', fontSize: '.8rem' }}
                       />
                     </div>
                   )}

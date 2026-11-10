@@ -143,35 +143,88 @@ export async function GET(request, { params }) {
   }
 
   // ── Top consultas ───────────────────────────────────────────────────────────
-  // F3 P1-11: misma normalizacion que el tracking cliente (lower + sin tildes
-  // + trim + espacios colapsados) para agrupar variantes de la misma consulta.
+  // Normalización: lower + sin tildes + colapsar espacios + trim.
   const normConsulta = (c) => String(c || '')
     .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/\s+/g, ' ').trim()
+
+  // F9 p6 / F9b p1 · Tipos de vino y filtros simples a descartar como texto
+  // libre. 'regalo', 'baratos' y 'caros' NO están aquí: son consultas de
+  // intención válida (el usuario escribe "regalo" o "barato" literalmente).
+  const TIPOS_Y_FILTROS = new Set([
+    'tinto', 'tintos',
+    'blanco', 'blancos',
+    'rosado', 'rosados',
+    'espumoso', 'espumosos', 'cava', 'cavas', 'champagne', 'champan',
+    'generoso', 'generosos', 'jerez', 'oporto', 'porto',
+    'dulce', 'dulces',
+    'naranja', 'naranjas',
+    'sin alcohol', 'sinalcohol', 'sin_alcohol',
+    'vino', 'vinos',
+    'tipo', 'color',
+  ])
+
+  // F9b p1a · El cliente construye la consulta como "texto · tipo · pais · region".
+  // Al agrupar, quedarnos solo con la parte de texto libre: cualquier segmento
+  // que NO esté en TIPOS_Y_FILTROS. Devuelve '' si al limpiar no queda texto.
+  function stripChipSufijo(norm) {
+    if (!norm) return ''
+    const partes = norm.split(' · ').map(p => p.trim()).filter(Boolean)
+    const textoPartes = partes.filter(p => !TIPOS_Y_FILTROS.has(p))
+    return textoPartes.join(' · ')
+  }
+
+  // F9b p1b · Umbral y ventana para la detección de prefijos (fragmentos de
+  // tecleo). kiosko_searches NO guarda session_id (verificado en F3), así que
+  // agrupamos por tienda (todas las searches de este endpoint ya están
+  // filtradas por tienda_id) y por proximidad temporal: una consulta queda
+  // marcada como prefijo si existe OTRA consulta posterior en los próximos
+  // 2 minutos cuyo texto empieza por ella (strict prefix, misma tienda).
+  const MIN_CHARS = 4
+  const VENTANA_PREFIJO_MS = 2 * 60 * 1000
+
+  const items = searches
+    .map(s => ({
+      ts: new Date(s.created_at).getTime(),
+      txt: stripChipSufijo(normConsulta(s.consulta)),
+      hasIds: Array.isArray(s.vinos_ids) && s.vinos_ids.length > 0,
+    }))
+    // F9b p1 · descarta ya aquí fragmentos muy cortos y strings vacíos.
+    .filter(x => x.txt && x.txt.length >= MIN_CHARS)
+    .sort((a, b) => a.ts - b.ts)
+
+  const esPrefijo = new Array(items.length).fill(false)
+  for (let i = 0; i < items.length; i++) {
+    const a = items[i]
+    for (let j = i + 1; j < items.length; j++) {
+      const b = items[j]
+      if (b.ts - a.ts > VENTANA_PREFIJO_MS) break
+      if (b.txt.length > a.txt.length && b.txt.startsWith(a.txt)) {
+        esPrefijo[i] = true
+        break
+      }
+    }
+  }
+
+  // F9b p1d · MISMA normalización aplicada a 'topConsultas' y a
+  // 'busquedasSinRecomendacion' para que ambos cuadren. Antes topConsultas
+  // contaba todo lo normalizado (incluidos prefijos y chips); ahora comparte
+  // el mismo pipeline.
   const consultaCount = {}
-  searches.forEach(s => {
-    const k = normConsulta(s.consulta)
-    if (!k) return
-    consultaCount[k] = (consultaCount[k] || 0) + 1
+  const sinRecomendacionCount = {}
+  items.forEach((it, idx) => {
+    if (esPrefijo[idx]) return
+    consultaCount[it.txt] = (consultaCount[it.txt] || 0) + 1
+    if (!it.hasIds) sinRecomendacionCount[it.txt] = (sinRecomendacionCount[it.txt] || 0) + 1
   })
   const topConsultas = Object.entries(consultaCount)
     .sort((a, b) => b[1] - a[1]).slice(0, 10)
     .map(([consulta, veces]) => ({ consulta, veces }))
-
-  // F3 P1-11: busquedas que no devolvieron ningun vino (oportunidad de surtido).
-  // vinos_ids puede ser null o [] cuando no hubo match. Se agrupan con la misma
-  // normalizacion que topConsultas para no inflar con variantes tipograficas.
-  const sinResultadoCount = {}
-  searches.forEach(s => {
-    const ids = s.vinos_ids
-    if (Array.isArray(ids) && ids.length > 0) return
-    const k = normConsulta(s.consulta)
-    if (!k) return
-    sinResultadoCount[k] = (sinResultadoCount[k] || 0) + 1
-  })
-  const busquedasSinResultado = Object.entries(sinResultadoCount)
+  const busquedasSinRecomendacion = Object.entries(sinRecomendacionCount)
     .sort((a, b) => b[1] - a[1]).slice(0, 15)
     .map(([consulta, veces]) => ({ consulta, veces }))
+  // Alias legacy para no romper lectores antiguos.
+  const busquedasSinResultado = busquedasSinRecomendacion
 
   // ── Vinos más recomendados ──────────────────────────────────────────────────
   const vinoCount = {}
@@ -407,8 +460,9 @@ export async function GET(request, { params }) {
     semanaActual,
     semanaAnterior,
     topConsultas,
-    busquedasSinResultado, // F3 P1-11
-    buscadosSinStock,      // F3 P1-11
+    busquedasSinRecomendacion, // F9 p6 · reemplaza busquedasSinResultado
+    busquedasSinResultado,     // alias legacy · misma lista
+    buscadosSinStock,          // F3 P1-11
     topVinos,
     modos: { wizard: totalWizard, maridaje: totalMaridaje, regalo: totalRegalo, explorar: totalExplorar },
     movil: {
