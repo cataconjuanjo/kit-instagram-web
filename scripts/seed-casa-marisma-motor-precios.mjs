@@ -64,7 +64,7 @@ const periodoActual = `${hoyY}-${String(hoyM).padStart(2,'0')}`
 const mesesCompletos = (hist || []).filter(r => !(r.anio === hoyY && r.mes === hoyM)).slice(0, 12)
 const avgIngresos = mesesCompletos.length
   ? mesesCompletos.reduce((s, r) => s + Number(r.ingresos), 0) / mesesCompletos.length
-  : 46000
+  : 9700  // fallback a escala de vino de la demo (coherente con Bloque 6)
 const ventasPrevistasSinIVA = r2(avgIngresos / 1.10)
 
 // Beneficio objetivo realista: 8% sobre ventas previstas anuales.

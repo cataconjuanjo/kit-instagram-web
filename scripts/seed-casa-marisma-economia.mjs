@@ -91,27 +91,26 @@ const yaEstaActual = mesesHist.some(r => r.anio === hoyY && r.mes === hoyM)
 // Si no hay histórico, el Bloque 6 lo generará. Aquí solo rellenamos sobre lo
 // que exista, para quedar coherente con Analítica.
 if (mesesHist.length === 0) {
-  console.warn('AVISO: historico_mensual vacío para la demo. Ejecuta primero el seed del Bloque 6 (analitica/bonus) para tener base histórica.')
+  console.warn('AVISO: historico_mensual vacío para la demo. Ejecuta primero el seed del Bloque 6 (seed-casa-marisma-historico.mjs --apply) para tener base histórica. Saltando sin escribir.')
+  process.exit(0)
 }
 
-// Mes en curso parcial: extrapolación proporcional al día del mes.
-// Si el histórico ya contiene el mes en curso lo respetamos tal cual.
-function filaMesActualParcial() {
-  const diaHoy = Number(hoy.split('-')[2])
-  const diasMes = new Date(Date.UTC(hoyY, hoyM, 0)).getUTCDate()
-  const factor = Math.max(1, diaHoy - 1) / diasMes // "hasta ayer"
-  // Usa la media de los últimos 3 meses previos si existen; si no, valores razonables.
-  const prev = mesesHist.filter(r => !(r.anio === hoyY && r.mes === hoyM)).slice(-3)
-  const base = prev.length
-    ? { ingresos: prev.reduce((s, r) => s + r.ingresos, 0) / prev.length,
-        consumo_mp: prev.reduce((s, r) => s + r.consumo_mp, 0) / prev.length,
-        gastos_fijos: prev.reduce((s, r) => s + r.gastos_fijos, 0) / prev.length }
-    : { ingresos: 46000, consumo_mp: 14500, gastos_fijos: 23000 }
-  return { anio: hoyY, mes: hoyM, ingresos: r2(base.ingresos * factor), consumo_mp: r2(base.consumo_mp * factor), gastos_fijos: r2(base.gastos_fijos * factor) }
+// Única fuente de verdad: historico_mensual. El mes en curso DEBE estar
+// presente en el histórico (Bloque 6 lo deja como parcial). Si no está,
+// no inventamos: avisa y sale sin escribir para no desacoplar las vistas
+// de Analítica y Explotación.
+if (!yaEstaActual) {
+  console.warn(`AVISO: historico_mensual no tiene el mes en curso ${periodoActual}. Lanza primero scripts/seed-casa-marisma-historico.mjs --apply. Saltando sin escribir.`)
+  process.exit(0)
 }
 
+// Todas las filas provienen del histórico. Facturación, consumo_mp y
+// gastos_fijos se usan exactamente como están; el desglose de personal,
+// alquileres, bancarios y operativos se deriva proporcionalmente de
+// gastos_fijos. Resultado: la facturación del mes en curso en
+// parametros_explotacion será idéntica al "ingresos" parcial del mismo
+// mes en historico_mensual.
 const mesesDestino = [...mesesHist]
-if (!yaEstaActual) mesesDestino.push(filaMesActualParcial())
 
 // ── 2. Construye filas de parametros_explotacion ─────────────────────────────
 function desglosarParametros(fila) {
@@ -236,7 +235,7 @@ for (const mes of mesesUltimos(6)) {
 console.log(`\n[seed Economía Casa Marisma] destino: ${rest.nombre} (${TARGET_ID})`)
 console.log(`Modo: ${APPLY ? 'APPLY (escribe)' : 'DRY-RUN (no escribe)'}`)
 console.log(`Hoy (Madrid): ${hoy}  |  Ayer: ${ayerMadrid()}`)
-console.log(`Meses histórico leídos: ${mesesHist.length}  |  Mes en curso incluido: ${yaEstaActual ? 'sí (tomado de histórico)' : 'sí (parcial calculado)'}`)
+console.log(`Meses histórico leídos: ${mesesHist.length}  |  Mes en curso tomado de historico_mensual (parcial)`)
 console.log(`parametros_explotacion: ${filasParametros.length} filas a upsert`)
 console.log(`libro_compras:          ${filasCompras.length} filas a upsert (${PROVEEDORES_DEMO.length} proveedores × 6 meses)`)
 

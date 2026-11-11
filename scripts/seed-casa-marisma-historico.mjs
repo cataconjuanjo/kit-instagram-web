@@ -60,9 +60,10 @@ const PERFIL_ESTACIONAL = {
   7: 1.32, 8: 1.38, 9: 1.22, 10: 1.00, 11: 0.88, 12: 1.12,
 }
 
-// Ingresos medios mensuales objetivo (sin IVA no — trabajamos con bruto en
-// la tabla). Ajustado a un restaurante de ticket medio-alto.
-const INGRESOS_MEDIOS_MES = { [hoyY - 1]: 44000, [hoyY]: 48500 } // crecimiento ~10% YoY
+// Ingresos medios mensuales objetivo en escala de VINO (no facturación
+// total del restaurante). Coherente con el volumen real de ventas de
+// vino de la demo Casa Marisma; crecimiento ~10% YoY.
+const INGRESOS_MEDIOS_MES = { [hoyY - 1]: 8800, [hoyY]: 9700 }
 
 // Mix de costes sobre ingresos:
 //   consumo_mp ≈ 32% ingresos
@@ -152,6 +153,53 @@ console.log(`  mes en curso (parcial hasta día ${hoyD - 1}): ingresos=${mesParc
 console.log(`presupuesto_mensual: ${presupuestoAnio.length} filas (YoY ${hoyY}, base=${hoyY-1}, +10%)`)
 console.log(`configuracion_bonus: umbral=10% bonus=5% activo=${bonusConfig.activo}`)
 if (avisos > 0) console.log(`⚠ ${avisos} aviso(s) de margen. Revisa antes de --apply.`)
+
+// ── Contraste con ventas reales ─────────────────────────────────────────────
+// Suma PVP (importe_vino_estimado) de las ventas 'vendida' de la demo en su
+// ventana disponible, normalizada a 30 días. Es la mejor aproximación al
+// run-rate mensual real de vino.
+try {
+  const { data: ventasReales } = await supa
+    .from('estadisticas')
+    .select('created_at, detalle')
+    .eq('restaurante_id', TARGET_ID)
+    .eq('tipo', 'venta')
+  const importes = []
+  let minFecha = null, maxFecha = null
+  for (const row of (ventasReales || [])) {
+    let det = row.detalle
+    if (typeof det === 'string') { try { det = JSON.parse(det) } catch { det = {} } }
+    if (!det || det.resultado && det.resultado !== 'vendida') continue
+    const imp = Number(det.importe_vino_estimado) || 0
+    if (imp > 0) importes.push(imp)
+    const f = (row.created_at || '').slice(0, 10)
+    if (f) {
+      if (!minFecha || f < minFecha) minFecha = f
+      if (!maxFecha || f > maxFecha) maxFecha = f
+    }
+  }
+  if (importes.length > 0 && minFecha && maxFecha) {
+    const total = importes.reduce((s, x) => s + x, 0)
+    const dias  = Math.max(1, Math.round((Date.parse(maxFecha) - Date.parse(minFecha)) / 86400000) + 1)
+    const runRate30d = r2((total / dias) * 30)
+    const ultimoMesSinIVA = r2(ultimoCerrado.ingresos / 1.10)
+    const delta = runRate30d > 0 ? Math.abs(ultimoMesSinIVA - runRate30d) / runRate30d : 0
+    console.log(`\nContraste con ventas reales (tipo='venta', resultado='vendida'):`)
+    console.log(`  ventana real:        ${minFecha} → ${maxFecha} (${dias} días, ${importes.length} ventas)`)
+    console.log(`  run-rate 30d PVP:    ${runRate30d} €`)
+    console.log(`  último mes cerrado (sin IVA /1.10): ${ultimoMesSinIVA} €`)
+    console.log(`  desviación:          ${(delta * 100).toFixed(1)}%`)
+    if (delta > 0.25) {
+      console.log(`  ⚠ AVISO: desviación > 25 %. Revisa INGRESOS_MEDIOS_MES[${hoyY}] antes de --apply.`)
+    } else {
+      console.log(`  ✓ dentro del margen esperado (≤ 25 %).`)
+    }
+  } else {
+    console.log(`\nContraste con ventas reales: sin datos suficientes en estadisticas. Saltado.`)
+  }
+} catch (err) {
+  console.log(`\nContraste con ventas reales: no se pudo calcular (${err.message}).`)
+}
 
 if (!APPLY) {
   console.log('\nDry-run: no se escribe nada. Añade --apply para ejecutar.')
