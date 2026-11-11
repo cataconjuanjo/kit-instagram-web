@@ -3109,6 +3109,7 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
   const [filtroUva, setFiltroUva] = useState('')          // clave normalizada
   const [filtroPrecio, setFiltroPrecio] = useState('todos')
   const [soloDisponibles, setSoloDisponibles] = useState(false)
+  const [orden, setOrden] = useState('relevancia')
 
   const _trackTimer  = useRef(null)
   const _lastTracked = useRef('')
@@ -3197,17 +3198,23 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
     return totals
   }, [vinos, busqueda, filtroTipo, filtroPais, filtroRegion, filtroUva, soloDisponibles, chipsPrecio])
 
-  const vinosFiltrados = useMemo(
-    () => vinos.filter(v => matchAll(v, null)),
-    [vinos, busqueda, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio]
-  )
+  const vinosFiltrados = useMemo(() => {
+    const arr = vinos.filter(v => matchAll(v, null))
+    const precioDe = v => Number(v.precio_oferta || v.precio_pvp || 0)
+    if (orden === 'precio_asc')  arr.sort((a, b) => precioDe(a) - precioDe(b))
+    else if (orden === 'precio_desc') arr.sort((a, b) => precioDe(b) - precioDe(a))
+    else if (orden === 'nombre') arr.sort((a, b) =>
+      normalizarTexto(a.nombre || '').localeCompare(normalizarTexto(b.nombre || ''), 'es'))
+    // 'relevancia' = orden original del array `vinos` (como lo devuelve el servidor)
+    return arr
+  }, [vinos, busqueda, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio, orden])
 
   function limpiar() {
     setBusqueda(''); setFiltroTipo('todos'); setFiltroPais(''); setFiltroRegion('')
-    setFiltroUva(''); setFiltroPrecio('todos'); setSoloDisponibles(false)
+    setFiltroUva(''); setFiltroPrecio('todos'); setSoloDisponibles(false); setOrden('relevancia')
   }
   const filtroActivo = busqueda || filtroTipo !== 'todos' || filtroPais || filtroRegion ||
-                       filtroUva || filtroPrecio !== 'todos' || soloDisponibles
+                       filtroUva || filtroPrecio !== 'todos' || soloDisponibles || orden !== 'relevancia'
 
   const labelDeClave = (grupos, clave) => grupos.find(g => g.clave === clave)?.label || clave
 
@@ -3230,6 +3237,12 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
             {busqueda && <button className={styles.searchClear} onClick={() => setBusqueda('')} type="button">✕</button>}
           </div>
           <span className={styles.resultCount}>{T[lang].vinos(vinosFiltrados.length)}</span>
+          <select className={styles.ordenSelect} value={orden} onChange={e => setOrden(e.target.value)} aria-label={T[lang].orden}>
+            <option value="relevancia">{T[lang].ordenRelevancia}</option>
+            <option value="precio_asc">{T[lang].ordenPrecioAsc}</option>
+            <option value="precio_desc">{T[lang].ordenPrecioDesc}</option>
+            <option value="nombre">{T[lang].ordenNombre}</option>
+          </select>
         </div>
 
         <div className={styles.tipoBarWrap}>
