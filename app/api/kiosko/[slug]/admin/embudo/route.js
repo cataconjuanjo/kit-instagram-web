@@ -2,10 +2,16 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../../lib/supabaseAdmin'
 import { requireKioskoAccess } from '../../../../_lib/kioskoAuth'
 
+// FC (C2) · 'explorar' es un flujo recién añadido. Para sesiones anteriores al
+// deploy, no existen filas con flow='explorar' en kiosko_funnel_events, por lo
+// que la entrada queda a 0. Es ADITIVO: no afecta al histórico de los otros
+// flujos. Solo dos pasos: 'start' (al entrar a Explorar desde la portada) y
+// 'carrito' (cuando el usuario genera el QR o añade un vino al carrito).
 const STEP_ORDER = {
-  wizard:  ['start', 'estilo', 'presupuesto', 'resultado', 'carrito'],
-  cesta:   ['start', 'presupuesto', 'prefs', 'resultado', 'carrito'],
-  pairing: ['start', 'consulta', 'resultado', 'carrito'],
+  wizard:   ['start', 'estilo', 'presupuesto', 'resultado', 'carrito'],
+  cesta:    ['start', 'presupuesto', 'prefs', 'resultado', 'carrito'],
+  pairing:  ['start', 'consulta', 'resultado', 'carrito'],
+  explorar: ['start', 'carrito'],
 }
 
 function isMigrationMissing(error) {

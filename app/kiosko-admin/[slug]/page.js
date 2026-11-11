@@ -3474,14 +3474,34 @@ export default function AdminKioskoPage() {
                     <span className={styles.analiticaKpiLabel}>Alertas de stock</span>
                   </div>
                   <div className={styles.analiticaKpi}>
-                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente || analitica.movil?.errorMsg ? styles.kpiEmpty : ''}`}>
-                      {analitica.movil?.pendiente || analitica.movil?.errorMsg ? '—' : (analitica.movil?.total ?? 0)}
-                    </span>
-                    <span className={styles.analiticaKpiLabel}>
-                      Llevados al móvil
-                      {analitica.movil?.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
-                      {!analitica.movil?.pendiente && analitica.movil?.errorMsg && <em title={`Error: ${analitica.movil.errorMsg}`}> ⚠</em>}
-                    </span>
+                    {(() => {
+                      // FC (C3 fix) · Etiquetas correctas. Las inserciones en
+                      // kiosko_mobile_intents las hace SIEMPRE el movil del
+                      // cliente, no el kiosko. El KPI principal cuenta cuantos
+                      // vinos han llegado al movil al escanear el QR
+                      // (source != 'qr_opened'). El subrotulo opcional indica
+                      // cuantas fichas individuales se han abierto despues
+                      // (source == 'qr_opened'). `total` del payload mezcla
+                      // ambos y por eso NO es la cifra principal.
+                      const m = analitica.movil || {}
+                      const bloqueado = m.pendiente || m.errorMsg
+                      const tieneDesglose = typeof m.llevados === 'number'
+                      const num = bloqueado ? '—' : (tieneDesglose ? m.llevados : (m.total ?? 0))
+                      const nFichas = bloqueado || !tieneDesglose ? null : m.fichas_abiertas
+                      return <>
+                        <span className={`${styles.analiticaKpiNum} ${vacio || bloqueado ? styles.kpiEmpty : ''}`}>{num}</span>
+                        <span className={styles.analiticaKpiLabel}>
+                          Llevados al móvil
+                          {m.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
+                          {!m.pendiente && m.errorMsg && <em title={`Error: ${m.errorMsg}`}> ⚠</em>}
+                          {nFichas !== null && nFichas > 0 && (
+                            <em style={{ display: 'block', marginTop: 4, fontSize: '.72rem', color: 'var(--k-color-muted)', fontStyle: 'normal' }}>
+                              + {nFichas} {nFichas === 1 ? 'ficha abierta' : 'fichas abiertas'} en móvil
+                            </em>
+                          )}
+                        </span>
+                      </>
+                    })()}
                   </div>
                 </div>
 
@@ -3506,14 +3526,34 @@ export default function AdminKioskoPage() {
                     </span>
                   </div>
                   <div className={styles.analiticaKpi}>
-                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente || analitica.movil?.errorMsg ? styles.kpiEmpty : ''}`}>
-                      {analitica.movil?.pendiente || analitica.movil?.errorMsg ? '—' : (analitica.movil?.total ?? 0)}
-                    </span>
-                    <span className={styles.analiticaKpiLabel}>
-                      Llevados al móvil
-                      {analitica.movil?.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
-                      {!analitica.movil?.pendiente && analitica.movil?.errorMsg && <em title={`Error: ${analitica.movil.errorMsg}`}> ⚠</em>}
-                    </span>
+                    {(() => {
+                      // FC (C3 fix) · Etiquetas correctas. Las inserciones en
+                      // kiosko_mobile_intents las hace SIEMPRE el movil del
+                      // cliente, no el kiosko. El KPI principal cuenta cuantos
+                      // vinos han llegado al movil al escanear el QR
+                      // (source != 'qr_opened'). El subrotulo opcional indica
+                      // cuantas fichas individuales se han abierto despues
+                      // (source == 'qr_opened'). `total` del payload mezcla
+                      // ambos y por eso NO es la cifra principal.
+                      const m = analitica.movil || {}
+                      const bloqueado = m.pendiente || m.errorMsg
+                      const tieneDesglose = typeof m.llevados === 'number'
+                      const num = bloqueado ? '—' : (tieneDesglose ? m.llevados : (m.total ?? 0))
+                      const nFichas = bloqueado || !tieneDesglose ? null : m.fichas_abiertas
+                      return <>
+                        <span className={`${styles.analiticaKpiNum} ${vacio || bloqueado ? styles.kpiEmpty : ''}`}>{num}</span>
+                        <span className={styles.analiticaKpiLabel}>
+                          Llevados al móvil
+                          {m.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
+                          {!m.pendiente && m.errorMsg && <em title={`Error: ${m.errorMsg}`}> ⚠</em>}
+                          {nFichas !== null && nFichas > 0 && (
+                            <em style={{ display: 'block', marginTop: 4, fontSize: '.72rem', color: 'var(--k-color-muted)', fontStyle: 'normal' }}>
+                              + {nFichas} {nFichas === 1 ? 'ficha abierta' : 'fichas abiertas'} en móvil
+                            </em>
+                          )}
+                        </span>
+                      </>
+                    })()}
                   </div>
                   <div className={styles.analiticaKpi}>
                     <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.modos?.maridaje ?? 0}</span>
@@ -3737,15 +3777,19 @@ export default function AdminKioskoPage() {
 
       {/* Embudo de conversión */}
       {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'embudo' && (() => {
-        const FLOW_LABELS = { wizard: 'Asistente', cesta: 'Cesta Regalo', pairing: 'Maridaje' }
+        const FLOW_LABELS = { wizard: 'Asistente', cesta: 'Cesta Regalo', pairing: 'Maridaje', explorar: 'Explorar' }
         const STEP_LABELS = {
           start: 'Inicio', ocasion: 'Ocasión', estilo: 'Estilo', presupuesto: 'Presupuesto',
           prefs: 'Preferencias', resultado: 'Resultado', consulta: 'Consulta', carrito: 'Carrito ✓',
         }
         const FLOW_STEPS = {
-          wizard:  ['start', 'estilo', 'presupuesto', 'resultado', 'carrito'],
-          cesta:   ['start', 'presupuesto', 'prefs', 'resultado', 'carrito'],
-          pairing: ['start', 'consulta', 'resultado', 'carrito'],
+          wizard:   ['start', 'estilo', 'presupuesto', 'resultado', 'carrito'],
+          cesta:    ['start', 'presupuesto', 'prefs', 'resultado', 'carrito'],
+          pairing:  ['start', 'consulta', 'resultado', 'carrito'],
+          // FC (C2): flujo nuevo. Sin datos previos al deploy, por lo que las
+          // conversiones históricas desde Explorar NO retroceden; el panel
+          // empezará a reflejarlas a partir de esta fecha.
+          explorar: ['start', 'carrito'],
         }
         return (
           <div style={{ padding: '0 1.5rem 1.5rem' }}>

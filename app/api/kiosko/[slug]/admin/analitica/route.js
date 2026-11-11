@@ -315,6 +315,31 @@ export async function GET(request, { params }) {
     .slice(0, 10)
   const mobileSemanaActual = mobileIntents.filter(m => m.created_at >= desde7).length
 
+  // FC (C3 fix) · AMBAS inserciones las hace el movil del cliente, no el
+  // kiosko:
+  //   · /kiosko/<slug>/movil/page.js (al cargar la lista escaneada) hace
+  //     POST /api/kiosko/<slug>/movil con source='qr_<detail|wizard|
+  //     pairing|selection|cesta>' insertando una fila por vino.
+  //   · /kiosko/<slug>/movil/<id>/page.js (al abrir la ficha de un vino
+  //     individual en el movil) hace POST /api/kiosko/<slug>/movil/<id>
+  //     con source='qr_opened' insertando una unica fila.
+  // El kiosko fisico solo construye la URL del QR: no hay "evento de
+  // envio". Por eso renombramos los campos y las etiquetas para
+  // reflejar la verdad:
+  //   llevados         = filas con source != 'qr_opened' = vinos que
+  //                      llegaron al movil al escanear el QR.
+  //   fichas_abiertas  = filas con source === 'qr_opened' = fichas que
+  //                      el cliente abrio en el movil tras escanear.
+  // `total` = mobileIntents.length se mantiene para no romper consumidores
+  // antiguos del endpoint, pero NO deberia ser la cifra principal: mezcla
+  // los dos conceptos (una sesion con 3 vinos escaneados + 2 fichas
+  // abiertas suma 5 en `total`).
+  const esAbierto = (m) => m.source === 'qr_opened'
+  const mobileLlevados    = mobileIntents.filter(m => !esAbierto(m)).length
+  const mobileFichasAb    = mobileIntents.filter(esAbierto).length
+  const mobileLlevados7   = mobileIntents.filter(m => !esAbierto(m) && m.created_at >= desde7).length
+  const mobileFichasAb7   = mobileIntents.filter(m =>  esAbierto(m) && m.created_at >= desde7).length
+
   // ── Tendencias semanales (últimas 8 semanas) ────────────────────────────────
   const ahora = Date.now()
   const tendencias = Array.from({ length: 8 }, (_, i) => {
@@ -467,6 +492,13 @@ export async function GET(request, { params }) {
     modos: { wizard: totalWizard, maridaje: totalMaridaje, regalo: totalRegalo, explorar: totalExplorar },
     movil: {
       total: mobileIntents.length,
+      // FC (C3 fix) · nuevos campos con nombres honestos. Consumidores
+      // antiguos leen `total` (mezcla ambos conceptos) y siguen
+      // funcionando; la UI nueva lee llevados / fichas_abiertas.
+      llevados: mobileLlevados,
+      fichas_abiertas: mobileFichasAb,
+      llevados7: mobileLlevados7,
+      fichas_abiertas7: mobileFichasAb7,
       semanaActual: mobileSemanaActual,
       pendiente: mobilePendiente,
       errorMsg: mobileErrorMsg, // F3 B0.5: null salvo error real de lectura

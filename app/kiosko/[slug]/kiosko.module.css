@@ -1289,6 +1289,42 @@
 .mobileCarryBtn:hover { filter: brightness(1.03); }
 .mobileCarryBtn:active { transform: scale(.98); }
 
+/* FC (C4) · Estados nuevos de la CTA de la ficha con ux_v2.
+   - ctaRowV2 envuelve "Añadir" + "Ver carrito" en fila (wrap en movil).
+   - mobileCarryBtnDone usa fondo transparente y borde del acento para
+     indicar "ya en tu carrito" sin perder presencia tactil (sigue 58 px).
+   - verCarritoBtn es el secundario: borde fino, mismo tamano tactil. */
+.ctaRowV2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  align-items: center;
+}
+.mobileCarryBtnDone {
+  background: transparent;
+  color: var(--color-acento);
+}
+.mobileCarryBtnDone:hover { filter: none; background: rgba(0, 0, 0, .03); }
+.verCarritoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 58px;
+  padding: .85rem 1.35rem;
+  background: transparent;
+  border: 2px solid var(--color-acento);
+  border-radius: 10px;
+  font-family: var(--font-family);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform .12s, background .12s;
+}
+.verCarritoBtn:active { transform: scale(.98); }
+.verCarritoBtn:hover { background: rgba(0, 0, 0, .03); }
+
 .mobileCarryBtn span {
   display: inline-flex;
   align-items: center;
