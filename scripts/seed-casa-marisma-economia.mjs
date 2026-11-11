@@ -133,17 +133,23 @@ function desglosarParametros(fila) {
   const datMan   = r2(bancarios * 0.20)
   const resCom   = r2(bancarios - datCom - datMan)
   const operativos = r2(g * 0.23)
-  // partidas_gastos JSONB array con amortización repartida
+  // partidas_gastos: forma EXACTA que espera la UI (ver
+  // app/lib/sommExplotacion.js:CATEGORIAS_GASTOS_PRESET). Claves:
+  //   { id, categoria, importe, amortizar_meses }
+  // Los ids deben venir del preset (sin prefijo 'custom_') para que la
+  // UI los reconozca y no los trate como personalizados.
   const partidas_gastos = [
-    { categoria: 'Suministros (luz, agua, gas)', importe: r2(operativos * 0.40), amortizacion: 0 },
-    { categoria: 'Limpieza y menaje',             importe: r2(operativos * 0.20), amortizacion: 0 },
-    { categoria: 'Marketing y comunicación',      importe: r2(operativos * 0.18), amortizacion: 0 },
-    { categoria: 'Gestoría y seguros',            importe: r2(operativos * 0.14), amortizacion: 0 },
-    { categoria: 'Mantenimiento maquinaria',      importe: r2(operativos * 0.08), amortizacion: 0 },
+    { id: 'luz',           categoria: 'Luz / Electricidad',          importe: r2(operativos * 0.40), amortizar_meses: 1 },
+    { id: 'limpieza',      categoria: 'Limpieza',                    importe: r2(operativos * 0.20), amortizar_meses: 1 },
+    { id: 'marketing',     categoria: 'Marketing y publicidad',      importe: r2(operativos * 0.18), amortizar_meses: 1 },
+    { id: 'gestoria',      categoria: 'Gestoría / Asesoría',         importe: r2(operativos * 0.14), amortizar_meses: 1 },
+    { id: 'mantenimiento', categoria: 'Mantenimiento instalaciones', importe: r2(operativos * 0.08), amortizar_meses: 1 },
   ]
+  // partidas_alquiler: la UI usa { id, concepto, importe } con ids por
+  // defecto alq_local / alq_almacen / alq_otros (ver page.js:458-462).
   const partidas_alquiler = [
-    { categoria: 'Local (sala y cocina)', importe: alqLocal },
-    { categoria: 'Almacén / bodega',      importe: alqAlm },
+    { id: 'alq_local',   concepto: 'Local',   importe: alqLocal },
+    { id: 'alq_almacen', concepto: 'Almacén', importe: alqAlm },
   ]
   // Mix de canales — "copa/barra", "botella/mesa", "grupos/eventos", "para llevar".
   const canales_negocio = {

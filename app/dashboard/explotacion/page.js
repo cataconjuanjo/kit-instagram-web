@@ -248,7 +248,7 @@ function SeccionGastos({ partidas, onChange }) {
                 return (
                   <tr key={p.id} style={{ borderBottom: '1px solid #f5f2ec' }}>
                     <td style={{ padding: '4px 8px' }}>
-                      {p.id.startsWith('custom_') ? (
+                      {(p.id || '').startsWith('custom_') ? (
                         <input className={styles.input} value={p.categoria} onChange={e => actualizarPartida(p.id, 'categoria', e.target.value)} placeholder="Nombre gasto" style={{ width: '100%' }} />
                       ) : (
                         <span style={{ color: num(p.importe) > 0 ? '#2a2723' : '#bbb' }}>{p.categoria}</span>
@@ -264,7 +264,7 @@ function SeccionGastos({ partidas, onChange }) {
                       {num(p.importe) > 0 ? eur(mensual, 0) : '—'}
                     </td>
                     <td style={{ padding: '4px 8px' }}>
-                      {p.id.startsWith('custom_') && (
+                      {(p.id || '').startsWith('custom_') && (
                         <button type="button" className={styles.danger} onClick={() => eliminar(p.id)} style={{ fontSize: 11, padding: '3px 8px' }}>✕</button>
                       )}
                     </td>
