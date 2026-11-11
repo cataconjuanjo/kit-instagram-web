@@ -504,6 +504,50 @@ function agruparPorClave(valores) {
   out.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'es'))
   return out
 }
+
+// FB extra · parseExplorarZona: lee tienda.features.explorar_zona de forma
+// defensiva y devuelve { etiqueta, claves } con la etiqueta localizada al
+// idioma pedido (fallback a `etiqueta` si no hay localización). Devuelve
+// null si falta la configuración, está mal formada o `claves` queda vacío
+// — en ese caso el interruptor no se renderiza y el comportamiento de
+// Explorar es el habitual.
+function parseExplorarZona(ez, lang) {
+  if (!ez || typeof ez !== 'object' || Array.isArray(ez)) return null
+  const rawClaves = Array.isArray(ez.claves) ? ez.claves : null
+  if (!rawClaves) return null
+  const claves = []
+  for (const k of rawClaves) {
+    if (typeof k !== 'string') continue
+    const s = k.trim()
+    if (!s) continue
+    claves.push(s)
+    if (claves.length >= 100) break
+  }
+  if (!claves.length) return null
+  const base = typeof ez.etiqueta === 'string' && ez.etiqueta.trim() ? ez.etiqueta.trim() : null
+  if (!base) return null
+  const key = `etiqueta_${lang}`
+  const localized = typeof ez[key] === 'string' && ez[key].trim() ? ez[key].trim() : base
+  return { etiqueta: localized, claves }
+}
+
+// FB extra · enZona: true si la clave canónica de `vino.region` incluye alguna
+// de las claves configuradas (ya normalizadas). Compara con límites de palabra
+// para que "la palma" no case dentro de otra palabra ni dentro de "las
+// palmas". Los guiones cuentan como separadores de palabra porque `\b` los
+// trata como límite entre word char y non-word char.
+function enZona(vino, claves) {
+  if (!Array.isArray(claves) || claves.length === 0) return false
+  const t = normalizarClave(vino?.region || '')
+  if (!t) return false
+  for (const k of claves) {
+    if (typeof k !== 'string' || !k) continue
+    const esc = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const re = new RegExp(`\\b${esc}\\b`)
+    if (re.test(t)) return true
+  }
+  return false
+}
 function esColorClaro(hex) {
   if (!hex || hex[0] !== '#' || hex.length < 7) return false
   const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
@@ -3137,6 +3181,7 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
   const [filtroUva, setFiltroUva] = useState(persisted?.uva || '')           // clave normalizada
   const [filtroPrecio, setFiltroPrecio] = useState(persisted?.precio || 'todos')
   const [soloDisponibles, setSoloDisponibles] = useState(persisted?.disp === true)
+  const [soloZona, setSoloZona] = useState(persisted?.zona === true)
   const [orden, setOrden] = useState(persisted?.orden || 'relevancia')
 
   useEffect(() => {
@@ -3144,10 +3189,11 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
     try {
       window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
         busqueda, tipo: filtroTipo, pais: filtroPais, region: filtroRegion,
-        uva: filtroUva, precio: filtroPrecio, disp: soloDisponibles, orden,
+        uva: filtroUva, precio: filtroPrecio, disp: soloDisponibles,
+        zona: soloZona, orden,
       }))
     } catch { /* storage lleno o modo privado: ignorar */ }
-  }, [STORAGE_KEY, busqueda, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, orden])
+  }, [STORAGE_KEY, busqueda, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, soloZona, orden])
 
   const _trackTimer  = useRef(null)
   const _lastTracked = useRef('')
@@ -3184,6 +3230,15 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
   const gruposRegion = useMemo(() => agruparPorClave(vinos.map(v => v.region)), [vinos])
   const gruposUva    = useMemo(() => agruparPorClave(vinos.map(v => v.uva)),    [vinos])
 
+  // FB extra · interruptor opcional de "zona destacada". La configuracion vive
+  // en tienda.features.explorar_zona (jsonb). Si falta, esta mal formada o
+  // las claves estan vacias, zonaCfg es null y NO se renderiza nada. Mantiene
+  // la retrocompatibilidad con tiendas que no la hayan activado.
+  const zonaCfg = useMemo(
+    () => parseExplorarZona(tienda?.features?.explorar_zona, lang),
+    [tienda?.features?.explorar_zona, lang]
+  )
+
   // Chips rápidos de precio ajustados a la distribución real del catálogo
   // (p25≈18.5€, p50≈23.5€, p75≈32€, p90≈45€ en el catálogo de Sibaris).
   const chipsPrecio = useMemo(() => ([
@@ -3204,6 +3259,7 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
       if (!chip || !chip.test(p)) return false
     }
     if (skip !== 'disp'     && soloDisponibles && !(Number(v.stock) > 0)) return false
+    if (skip !== 'zona'     && soloZona && zonaCfg && !enZona(v, zonaCfg.claves)) return false
     if (skip !== 'busqueda' && busquedaFiltro) {
       const q = normalizarTexto(busquedaFiltro)
       const txt = normalizarTexto([v.nombre, v.bodega, v.uva, v.region].filter(Boolean).join(' '))
@@ -3222,10 +3278,10 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
     }
     return map
   }
-  const countTipo    = useMemo(() => contar('tipo',    v => v.tipo),                      [vinos, busquedaFiltro, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
-  const countPais    = useMemo(() => contar('pais',    v => normalizarClave(v.pais)),     [vinos, busquedaFiltro, filtroTipo, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
-  const countRegion  = useMemo(() => contar('region',  v => normalizarClave(v.region)),   [vinos, busquedaFiltro, filtroTipo, filtroPais,   filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
-  const countUva     = useMemo(() => contar('uva',     v => normalizarClave(v.uva)),      [vinos, busquedaFiltro, filtroTipo, filtroPais,   filtroRegion, filtroPrecio, soloDisponibles, chipsPrecio])
+  const countTipo    = useMemo(() => contar('tipo',    v => v.tipo),                      [vinos, busquedaFiltro, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, soloZona, zonaCfg, chipsPrecio])
+  const countPais    = useMemo(() => contar('pais',    v => normalizarClave(v.pais)),     [vinos, busquedaFiltro, filtroTipo, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, soloZona, zonaCfg, chipsPrecio])
+  const countRegion  = useMemo(() => contar('region',  v => normalizarClave(v.region)),   [vinos, busquedaFiltro, filtroTipo, filtroPais,   filtroUva, filtroPrecio, soloDisponibles, soloZona, zonaCfg, chipsPrecio])
+  const countUva     = useMemo(() => contar('uva',     v => normalizarClave(v.uva)),      [vinos, busquedaFiltro, filtroTipo, filtroPais,   filtroRegion, filtroPrecio, soloDisponibles, soloZona, zonaCfg, chipsPrecio])
   const countPrecio  = useMemo(() => {
     const totals = { hasta20: 0, '20-30': 0, '30-45': 0, mas45: 0 }
     for (const v of vinos) {
@@ -3234,7 +3290,20 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
       for (const c of chipsPrecio) if (c.test(p)) totals[c.id] += 1
     }
     return totals
-  }, [vinos, busquedaFiltro, filtroTipo, filtroPais, filtroRegion, filtroUva, soloDisponibles, chipsPrecio])
+  }, [vinos, busquedaFiltro, filtroTipo, filtroPais, filtroRegion, filtroUva, soloDisponibles, soloZona, zonaCfg, chipsPrecio])
+
+  // Recuento de "zona destacada" (con todos los demás filtros aplicados excepto
+  // el propio toggle). Se usa para la etiqueta del chip y para ocultarlo cuando
+  // está desactivado y el recuento es 0.
+  const countZona = useMemo(() => {
+    if (!zonaCfg) return 0
+    let n = 0
+    for (const v of vinos) {
+      if (!matchAll(v, 'zona')) continue
+      if (enZona(v, zonaCfg.claves)) n += 1
+    }
+    return n
+  }, [vinos, busquedaFiltro, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, zonaCfg, chipsPrecio])
 
   const vinosFiltrados = useMemo(() => {
     const arr = vinos.filter(v => matchAll(v, null))
@@ -3245,14 +3314,16 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
       normalizarTexto(a.nombre || '').localeCompare(normalizarTexto(b.nombre || ''), 'es'))
     // 'relevancia' = orden original del array `vinos` (como lo devuelve el servidor)
     return arr
-  }, [vinos, busquedaFiltro, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio, orden])
+  }, [vinos, busquedaFiltro, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, soloZona, zonaCfg, chipsPrecio, orden])
 
   function limpiar() {
     setBusqueda(''); setFiltroTipo('todos'); setFiltroPais(''); setFiltroRegion('')
-    setFiltroUva(''); setFiltroPrecio('todos'); setSoloDisponibles(false); setOrden('relevancia')
+    setFiltroUva(''); setFiltroPrecio('todos'); setSoloDisponibles(false); setSoloZona(false)
+    setOrden('relevancia')
   }
   const filtroActivo = busqueda || filtroTipo !== 'todos' || filtroPais || filtroRegion ||
-                       filtroUva || filtroPrecio !== 'todos' || soloDisponibles || orden !== 'relevancia'
+                       filtroUva || filtroPrecio !== 'todos' || soloDisponibles ||
+                       (zonaCfg && soloZona) || orden !== 'relevancia'
 
   const labelDeClave = (grupos, clave) => grupos.find(g => g.clave === clave)?.label || clave
 
@@ -3263,6 +3334,7 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
   if (filtroUva)    chipsActivos.push({ id:'uva',    label: labelDeClave(gruposUva, filtroUva),       onClear: () => setFiltroUva('') })
   if (filtroPrecio !== 'todos') chipsActivos.push({ id:'precio', label: chipsPrecio.find(c => c.id === filtroPrecio)?.label || '', onClear: () => setFiltroPrecio('todos') })
   if (soloDisponibles) chipsActivos.push({ id:'disp', label: T[lang].soloDisponibles, onClear: () => setSoloDisponibles(false) })
+  if (zonaCfg && soloZona) chipsActivos.push({ id:'zona', label: zonaCfg.etiqueta, onClear: () => setSoloZona(false) })
 
   return (
     <div className={styles.browseView}>
@@ -3357,6 +3429,12 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
             <input type="checkbox" checked={soloDisponibles} onChange={e => setSoloDisponibles(e.target.checked)} />
             <span>{T[lang].soloDisponibles}</span>
           </label>
+          {zonaCfg && (soloZona || countZona > 0) && (
+            <label className={styles.dispToggle}>
+              <input type="checkbox" checked={soloZona} onChange={e => setSoloZona(e.target.checked)} />
+              <span>{zonaCfg.etiqueta} <span className={styles.chipCount}>({countZona})</span></span>
+            </label>
+          )}
         </div>
 
         {chipsActivos.length > 0 && (
