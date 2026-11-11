@@ -190,6 +190,14 @@ const T = {
     browseInicio: '← Inicio', buscarPlaceholder: 'Buscar vino, bodega, uva…',
     vinos: n => `${n} vinos`, todos: 'Todos', pais: 'País', region: 'D.O.', precio: 'Precio',
     sinResultados: 'No hay vinos con estos filtros.', limpiarFiltros: 'Limpiar filtros', limpiar: 'Limpiar',
+    // FB · Explorar ux_v2
+    uvaFiltro: 'Uva', limpiarTodo: 'Limpiar todo', soloDisponibles: 'Solo disponibles',
+    precioHasta: n => `Hasta ${n}€`, precioMas: n => `+${n}€`, precioTodos: 'Todos',
+    orden: 'Ordenar', ordenRelevancia: 'Destacados', ordenPrecioAsc: 'Precio ↑',
+    ordenPrecioDesc: 'Precio ↓', ordenNombre: 'Nombre A–Z',
+    sinResultadosTitulo: 'No encontramos vinos con estos filtros',
+    sinResultadosSub: 'Prueba quitar algún filtro o ampliar el rango de precio.',
+    quitarFiltros: 'Quitar filtros',
     destacado: '★ Vino destacado', uva: 'Uva', anada: 'Añada', do: 'D.O.', paisLabel: 'País',
     encuentraEn: 'Encuéntralo en', maridaCon: 'Marida con',
     tipoLabels: { tinto:'Tinto', blanco:'Blanco', rosado:'Rosado', espumoso:'Espumoso', generoso:'Generoso', dulce:'Dulce', naranja:'Naranja', sin_alcohol:'Sin alcohol' },
@@ -244,6 +252,13 @@ const T = {
     browseInicio: '← Home', buscarPlaceholder: 'Search wine, winery, grape…',
     vinos: n => `${n} wines`, todos: 'All', pais: 'Country', region: 'Region', precio: 'Price',
     sinResultados: 'No wines match these filters.', limpiarFiltros: 'Clear filters', limpiar: 'Clear',
+    uvaFiltro: 'Grape', limpiarTodo: 'Clear all', soloDisponibles: 'In stock only',
+    precioHasta: n => `Up to €${n}`, precioMas: n => `€${n}+`, precioTodos: 'All',
+    orden: 'Sort', ordenRelevancia: 'Featured', ordenPrecioAsc: 'Price ↑',
+    ordenPrecioDesc: 'Price ↓', ordenNombre: 'Name A–Z',
+    sinResultadosTitulo: 'No wines match these filters',
+    sinResultadosSub: 'Try removing a filter or widening the price range.',
+    quitarFiltros: 'Remove filters',
     destacado: '★ Featured wine', uva: 'Grape', anada: 'Vintage', do: 'Region', paisLabel: 'Country',
     encuentraEn: 'Find it at', maridaCon: 'Pairs with',
     tipoLabels: { tinto:'Red', blanco:'White', rosado:'Rosé', espumoso:'Sparkling', generoso:'Fortified', dulce:'Sweet', naranja:'Orange', sin_alcohol:'Alcohol-free' },
@@ -298,6 +313,13 @@ const T = {
     browseInicio: '← Accueil', buscarPlaceholder: 'Chercher vin, domaine, cépage…',
     vinos: n => `${n} vins`, todos: 'Tous', pais: 'Pays', region: 'Région', precio: 'Prix',
     sinResultados: 'Aucun vin ne correspond à ces filtres.', limpiarFiltros: 'Effacer les filtres', limpiar: 'Effacer',
+    uvaFiltro: 'Cépage', limpiarTodo: 'Tout effacer', soloDisponibles: 'Disponibles uniquement',
+    precioHasta: n => `Jusqu'à ${n}€`, precioMas: n => `+${n}€`, precioTodos: 'Tous',
+    orden: 'Trier', ordenRelevancia: 'En avant', ordenPrecioAsc: 'Prix ↑',
+    ordenPrecioDesc: 'Prix ↓', ordenNombre: 'Nom A–Z',
+    sinResultadosTitulo: 'Aucun vin ne correspond à ces filtres',
+    sinResultadosSub: 'Essayez de retirer un filtre ou d\'élargir la fourchette de prix.',
+    quitarFiltros: 'Retirer les filtres',
     destacado: '★ Vin vedette', uva: 'Cépage', anada: 'Millésime', do: 'Région', paisLabel: 'Pays',
     encuentraEn: 'Trouvez-le au', maridaCon: 'S\'accompagne avec',
     tipoLabels: { tinto:'Rouge', blanco:'Blanc', rosado:'Rosé', espumoso:'Pétillant', generoso:'Fortifié', dulce:'Doux', naranja:'Orange', sin_alcohol:'Sans alcool' },
@@ -352,6 +374,13 @@ const T = {
     browseInicio: '← Start', buscarPlaceholder: 'Wein, Weingut, Traube suchen…',
     vinos: n => `${n} Weine`, todos: 'Alle', pais: 'Land', region: 'Region', precio: 'Preis',
     sinResultados: 'Keine Weine mit diesen Filtern.', limpiarFiltros: 'Filter löschen', limpiar: 'Löschen',
+    uvaFiltro: 'Traube', limpiarTodo: 'Alle löschen', soloDisponibles: 'Nur vorrätig',
+    precioHasta: n => `Bis ${n}€`, precioMas: n => `${n}€+`, precioTodos: 'Alle',
+    orden: 'Sortieren', ordenRelevancia: 'Hervorgehoben', ordenPrecioAsc: 'Preis ↑',
+    ordenPrecioDesc: 'Preis ↓', ordenNombre: 'Name A–Z',
+    sinResultadosTitulo: 'Keine Weine mit diesen Filtern',
+    sinResultadosSub: 'Entfernen Sie einen Filter oder erweitern Sie den Preisrahmen.',
+    quitarFiltros: 'Filter entfernen',
     destacado: '★ Empfohlener Wein', uva: 'Traube', anada: 'Jahrgang', do: 'Region', paisLabel: 'Land',
     encuentraEn: 'Finden Sie es bei', maridaCon: 'Passt zu',
     tipoLabels: { tinto:'Rotwein', blanco:'Weißwein', rosado:'Rosé', espumoso:'Schaumwein', generoso:'Likörwein', dulce:'Süßwein', naranja:'Orangenwein', sin_alcohol:'Alkoholfrei' },
@@ -420,6 +449,104 @@ function precioActual(vino) {
 }
 function extraerValoresUnicos(vinos, campo) {
   return [...new Set(vinos.map(v => v[campo]).filter(Boolean))].sort()
+}
+
+// FB · normalizarClave: clave canónica para agrupar variantes ("D.O.Ca. Rioja"
+// ↔ "DO Rioja" ↔ "Rioja" ↔ "RIOJA"). Minúsculas, sin tildes, sin prefijos
+// "D.O.", "DOCa", "DO", "IGP", "AOC"…, puntos pasados a espacio, espacios
+// colapsados. No modifica datos: solo sirve para agrupar valores y escoger
+// la etiqueta más frecuente que se muestra en los filtros.
+// Prefijos ordenados de mas especifico a menos especifico: las alternancias
+// en ERE se prueban de izquierda a derecha y si "d\s*o" ganase primero
+// contra "DOP Jumilla", la "P" no cerraria limite \b y el prefijo quedaria
+// sin tocar. Por eso DOCa/DOCG/DOC/DOP/DOQ van antes que DO.
+const PREFIJOS_CANONICOS = /^(d\s*o\s*c\s*a|d\s*o\s*c\s*g|d\s*o\s*c|d\s*o\s*p|d\s*o\s*q|d\s*o|igp|igt|vt|vino de la tierra|vino de pago|vdp|appellation|aop|aoc|ao)\b\s*/i
+function normalizarClave(t = '') {
+  if (t == null) return ''
+  return String(t).toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\./g, ' ')
+    .trim()
+    .replace(PREFIJOS_CANONICOS, '')
+    .replace(/\s*-\s*/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// FB · agruparPorClave: agrupa un array de valores (p. ej. todos los
+// vino.region del catálogo) por normalizarClave y devuelve, por grupo,
+// { clave, label, count, variantes }. `label` es la variante más frecuente
+// (desempate: la más corta). El resultado viene ordenado por count desc,
+// y por label alfabético como desempate.
+function agruparPorClave(valores) {
+  const grupos = new Map()
+  for (const raw of valores) {
+    if (raw == null) continue
+    const v = String(raw).trim()
+    if (!v) continue
+    const k = normalizarClave(v)
+    if (!k) continue
+    let g = grupos.get(k)
+    if (!g) { g = { clave: k, count: 0, variantes: new Map() }; grupos.set(k, g) }
+    g.count += 1
+    g.variantes.set(v, (g.variantes.get(v) || 0) + 1)
+  }
+  const out = []
+  for (const g of grupos.values()) {
+    let label = '', labelCount = -1
+    for (const [val, c] of g.variantes) {
+      if (c > labelCount || (c === labelCount && val.length < label.length)) {
+        label = val; labelCount = c
+      }
+    }
+    out.push({ clave: g.clave, label, count: g.count, variantes: [...g.variantes.keys()] })
+  }
+  out.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'es'))
+  return out
+}
+
+// FB extra · parseExplorarZona: lee tienda.features.explorar_zona de forma
+// defensiva y devuelve { etiqueta, claves } con la etiqueta localizada al
+// idioma pedido (fallback a `etiqueta` si no hay localización). Devuelve
+// null si falta la configuración, está mal formada o `claves` queda vacío
+// — en ese caso el interruptor no se renderiza y el comportamiento de
+// Explorar es el habitual.
+function parseExplorarZona(ez, lang) {
+  if (!ez || typeof ez !== 'object' || Array.isArray(ez)) return null
+  const rawClaves = Array.isArray(ez.claves) ? ez.claves : null
+  if (!rawClaves) return null
+  const claves = []
+  for (const k of rawClaves) {
+    if (typeof k !== 'string') continue
+    const s = k.trim()
+    if (!s) continue
+    claves.push(s)
+    if (claves.length >= 100) break
+  }
+  if (!claves.length) return null
+  const base = typeof ez.etiqueta === 'string' && ez.etiqueta.trim() ? ez.etiqueta.trim() : null
+  if (!base) return null
+  const key = `etiqueta_${lang}`
+  const localized = typeof ez[key] === 'string' && ez[key].trim() ? ez[key].trim() : base
+  return { etiqueta: localized, claves }
+}
+
+// FB extra · enZona: true si la clave canónica de `vino.region` incluye alguna
+// de las claves configuradas (ya normalizadas). Compara con límites de palabra
+// para que "la palma" no case dentro de otra palabra ni dentro de "las
+// palmas". Los guiones cuentan como separadores de palabra porque `\b` los
+// trata como límite entre word char y non-word char.
+function enZona(vino, claves) {
+  if (!Array.isArray(claves) || claves.length === 0) return false
+  const t = normalizarClave(vino?.region || '')
+  if (!t) return false
+  for (const k of claves) {
+    if (typeof k !== 'string' || !k) continue
+    const esc = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const re = new RegExp(`\\b${esc}\\b`)
+    if (re.test(t)) return true
+  }
+  return false
 }
 function esColorClaro(hex) {
   if (!hex || hex[0] !== '#' || hex.length < 7) return false
@@ -3016,6 +3143,332 @@ function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es
   )
 }
 
+// ── Explorar ux_v2 ────────────────────────────────────────────────────────────
+// FB · B3: BrowseViewV2 reemplaza a BrowseView SOLO con el flag ux_v2 activo.
+// Añade: selectores de País/D.O./Uva con claves normalizadas (agruparPorClave),
+// chips rápidos de precio ajustados al catálogo, toggle "solo disponibles",
+// chips de filtros activos y botón "Limpiar todo". Conserva el mismo evento
+// de tracking (nombre y payload) que la versión v1 — sólo se amplían los
+// disparadores internos, no el contrato del endpoint.
+function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es', tienda }) {
+  // Persistencia de filtros/orden en sessionStorage por slug (B5). Se restaura
+  // una sola vez al montar; sobrevive a abrir una ficha y volver (de hecho ya
+  // persiste porque BrowseViewV2 no se desmonta al abrir el modal de detalle)
+  // y a recargas suaves del kiosko (auto-update F6) mientras dura la sesion.
+  const STORAGE_KEY = `kiosko.explorar.v2.${slug}`
+  const persisted = (() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = window.sessionStorage.getItem(STORAGE_KEY)
+      if (!raw) return null
+      const o = JSON.parse(raw)
+      return (o && typeof o === 'object') ? o : null
+    } catch { return null }
+  })()
+  const [busqueda, setBusqueda] = useState(persisted?.busqueda || '')
+  // B6 · Debounce del input SOLO para el filtrado visual: el texto escrito
+  // se refleja al instante en el input (controlado) y en los chips activos,
+  // pero el recalculo del grid espera ~160 ms sin pulsaciones. No afecta
+  // al tracking (que ya tiene su propio debounce de 800 ms independiente).
+  const [busquedaFiltro, setBusquedaFiltro] = useState(persisted?.busqueda || '')
+  useEffect(() => {
+    const t = setTimeout(() => setBusquedaFiltro(busqueda), 160)
+    return () => clearTimeout(t)
+  }, [busqueda])
+  const [filtroTipo, setFiltroTipo] = useState(persisted?.tipo || 'todos')
+  const [filtroPais, setFiltroPais] = useState(persisted?.pais || '')        // clave normalizada
+  const [filtroRegion, setFiltroRegion] = useState(persisted?.region || '')  // clave normalizada
+  const [filtroUva, setFiltroUva] = useState(persisted?.uva || '')           // clave normalizada
+  const [filtroPrecio, setFiltroPrecio] = useState(persisted?.precio || 'todos')
+  const [soloDisponibles, setSoloDisponibles] = useState(persisted?.disp === true)
+  const [soloZona, setSoloZona] = useState(persisted?.zona === true)
+  const [orden, setOrden] = useState(persisted?.orden || 'relevancia')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        busqueda, tipo: filtroTipo, pais: filtroPais, region: filtroRegion,
+        uva: filtroUva, precio: filtroPrecio, disp: soloDisponibles,
+        zona: soloZona, orden,
+      }))
+    } catch { /* storage lleno o modo privado: ignorar */ }
+  }, [STORAGE_KEY, busqueda, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, soloZona, orden])
+
+  const _trackTimer  = useRef(null)
+  const _lastTracked = useRef('')
+
+  useEffect(() => {
+    // Tracking IDENTICO a BrowseView (mismo evento, mismo payload "consulta").
+    // Si añadimos chips nuevos (uva, precio, disponibles) NO los incluimos en el
+    // payload para no cambiar el contrato analítico ya en producción.
+    const textoRaw = (busqueda || '').trim()
+    const hasText = textoRaw.length >= 4
+    const hasChip = filtroTipo !== 'todos' || !!filtroPais || !!filtroRegion
+    if (!hasText && !hasChip) { clearTimeout(_trackTimer.current); return }
+    const parts = []
+    if (textoRaw) parts.push(normalizarTexto(textoRaw))
+    if (filtroTipo !== 'todos') parts.push(filtroTipo)
+    if (filtroPais)   parts.push(normalizarTexto(filtroPais))
+    if (filtroRegion) parts.push(normalizarTexto(filtroRegion))
+    const consulta = parts.join(' · ')
+    if (consulta === _lastTracked.current) return
+    clearTimeout(_trackTimer.current)
+    _trackTimer.current = setTimeout(() => {
+      _lastTracked.current = consulta
+      fetch(`/api/kiosko/${slug}/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'explorar', consulta }),
+      }).catch(() => {})
+    }, 800)
+    return () => clearTimeout(_trackTimer.current)
+  }, [busqueda, filtroTipo, filtroPais, filtroRegion, slug])
+
+  const tipos = useMemo(() => TIPO_ORDER.filter(t => vinos.some(v => v.tipo === t)), [vinos])
+  const gruposPais   = useMemo(() => agruparPorClave(vinos.map(v => v.pais)),   [vinos])
+  const gruposRegion = useMemo(() => agruparPorClave(vinos.map(v => v.region)), [vinos])
+  const gruposUva    = useMemo(() => agruparPorClave(vinos.map(v => v.uva)),    [vinos])
+
+  // FB extra · interruptor opcional de "zona destacada". La configuracion vive
+  // en tienda.features.explorar_zona (jsonb). Si falta, esta mal formada o
+  // las claves estan vacias, zonaCfg es null y NO se renderiza nada. Mantiene
+  // la retrocompatibilidad con tiendas que no la hayan activado.
+  const zonaCfg = useMemo(
+    () => parseExplorarZona(tienda?.features?.explorar_zona, lang),
+    [tienda?.features?.explorar_zona, lang]
+  )
+
+  // Chips rápidos de precio ajustados a la distribución real del catálogo
+  // (p25≈18.5€, p50≈23.5€, p75≈32€, p90≈45€ en el catálogo de Sibaris).
+  const chipsPrecio = useMemo(() => ([
+    { id: 'hasta20', label: T[lang].precioHasta(20),       test: p => p > 0 && p <= 20 },
+    { id: '20-30',   label: '20–30€',                      test: p => p > 20 && p <= 30 },
+    { id: '30-45',   label: '30–45€',                      test: p => p > 30 && p <= 45 },
+    { id: 'mas45',   label: T[lang].precioMas(45),         test: p => p > 45 },
+  ]), [lang])
+
+  function matchAll(v, skip) {
+    if (skip !== 'tipo'     && filtroTipo   !== 'todos' && v.tipo !== filtroTipo) return false
+    if (skip !== 'pais'     && filtroPais   && normalizarClave(v.pais)   !== filtroPais)   return false
+    if (skip !== 'region'   && filtroRegion && normalizarClave(v.region) !== filtroRegion) return false
+    if (skip !== 'uva'      && filtroUva    && normalizarClave(v.uva)    !== filtroUva)    return false
+    if (skip !== 'precio'   && filtroPrecio !== 'todos') {
+      const p = Number(v.precio_oferta || v.precio_pvp || 0)
+      const chip = chipsPrecio.find(c => c.id === filtroPrecio)
+      if (!chip || !chip.test(p)) return false
+    }
+    if (skip !== 'disp'     && soloDisponibles && !(Number(v.stock) > 0)) return false
+    if (skip !== 'zona'     && soloZona && zonaCfg && !enZona(v, zonaCfg.claves)) return false
+    if (skip !== 'busqueda' && busquedaFiltro) {
+      const q = normalizarTexto(busquedaFiltro)
+      const txt = normalizarTexto([v.nombre, v.bodega, v.uva, v.region].filter(Boolean).join(' '))
+      if (!txt.includes(q)) return false
+    }
+    return true
+  }
+
+  // Recuento por opción (intersección con los demás filtros)
+  function contar(skip, claveFn) {
+    const map = new Map()
+    for (const v of vinos) {
+      if (!matchAll(v, skip)) continue
+      const k = claveFn(v); if (!k) continue
+      map.set(k, (map.get(k) || 0) + 1)
+    }
+    return map
+  }
+  const countTipo    = useMemo(() => contar('tipo',    v => v.tipo),                      [vinos, busquedaFiltro, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, soloZona, zonaCfg, chipsPrecio])
+  const countPais    = useMemo(() => contar('pais',    v => normalizarClave(v.pais)),     [vinos, busquedaFiltro, filtroTipo, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, soloZona, zonaCfg, chipsPrecio])
+  const countRegion  = useMemo(() => contar('region',  v => normalizarClave(v.region)),   [vinos, busquedaFiltro, filtroTipo, filtroPais,   filtroUva, filtroPrecio, soloDisponibles, soloZona, zonaCfg, chipsPrecio])
+  const countUva     = useMemo(() => contar('uva',     v => normalizarClave(v.uva)),      [vinos, busquedaFiltro, filtroTipo, filtroPais,   filtroRegion, filtroPrecio, soloDisponibles, soloZona, zonaCfg, chipsPrecio])
+  const countPrecio  = useMemo(() => {
+    const totals = { hasta20: 0, '20-30': 0, '30-45': 0, mas45: 0 }
+    for (const v of vinos) {
+      if (!matchAll(v, 'precio')) continue
+      const p = Number(v.precio_oferta || v.precio_pvp || 0)
+      for (const c of chipsPrecio) if (c.test(p)) totals[c.id] += 1
+    }
+    return totals
+  }, [vinos, busquedaFiltro, filtroTipo, filtroPais, filtroRegion, filtroUva, soloDisponibles, soloZona, zonaCfg, chipsPrecio])
+
+  // Recuento de "zona destacada" (con todos los demás filtros aplicados excepto
+  // el propio toggle). Se usa para la etiqueta del chip y para ocultarlo cuando
+  // está desactivado y el recuento es 0.
+  const countZona = useMemo(() => {
+    if (!zonaCfg) return 0
+    let n = 0
+    for (const v of vinos) {
+      if (!matchAll(v, 'zona')) continue
+      if (enZona(v, zonaCfg.claves)) n += 1
+    }
+    return n
+  }, [vinos, busquedaFiltro, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, zonaCfg, chipsPrecio])
+
+  const vinosFiltrados = useMemo(() => {
+    const arr = vinos.filter(v => matchAll(v, null))
+    const precioDe = v => Number(v.precio_oferta || v.precio_pvp || 0)
+    if (orden === 'precio_asc')  arr.sort((a, b) => precioDe(a) - precioDe(b))
+    else if (orden === 'precio_desc') arr.sort((a, b) => precioDe(b) - precioDe(a))
+    else if (orden === 'nombre') arr.sort((a, b) =>
+      normalizarTexto(a.nombre || '').localeCompare(normalizarTexto(b.nombre || ''), 'es'))
+    // 'relevancia' = orden original del array `vinos` (como lo devuelve el servidor)
+    return arr
+  }, [vinos, busquedaFiltro, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, soloZona, zonaCfg, chipsPrecio, orden])
+
+  function limpiar() {
+    setBusqueda(''); setFiltroTipo('todos'); setFiltroPais(''); setFiltroRegion('')
+    setFiltroUva(''); setFiltroPrecio('todos'); setSoloDisponibles(false); setSoloZona(false)
+    setOrden('relevancia')
+  }
+  const filtroActivo = busqueda || filtroTipo !== 'todos' || filtroPais || filtroRegion ||
+                       filtroUva || filtroPrecio !== 'todos' || soloDisponibles ||
+                       (zonaCfg && soloZona) || orden !== 'relevancia'
+
+  const labelDeClave = (grupos, clave) => grupos.find(g => g.clave === clave)?.label || clave
+
+  const chipsActivos = []
+  if (filtroTipo !== 'todos') chipsActivos.push({ id:'tipo',   label: T[lang].tipoLabels[filtroTipo] || filtroTipo, onClear: () => setFiltroTipo('todos') })
+  if (filtroPais)   chipsActivos.push({ id:'pais',   label: labelDeClave(gruposPais, filtroPais),     onClear: () => setFiltroPais('') })
+  if (filtroRegion) chipsActivos.push({ id:'region', label: labelDeClave(gruposRegion, filtroRegion), onClear: () => setFiltroRegion('') })
+  if (filtroUva)    chipsActivos.push({ id:'uva',    label: labelDeClave(gruposUva, filtroUva),       onClear: () => setFiltroUva('') })
+  if (filtroPrecio !== 'todos') chipsActivos.push({ id:'precio', label: chipsPrecio.find(c => c.id === filtroPrecio)?.label || '', onClear: () => setFiltroPrecio('todos') })
+  if (soloDisponibles) chipsActivos.push({ id:'disp', label: T[lang].soloDisponibles, onClear: () => setSoloDisponibles(false) })
+  if (zonaCfg && soloZona) chipsActivos.push({ id:'zona', label: zonaCfg.etiqueta, onClear: () => setSoloZona(false) })
+
+  return (
+    <div className={styles.browseView}>
+      <div className={styles.browseTopBar}>
+        <div className={styles.browseTopRow}>
+          <button className={styles.backBtn} onClick={onBack} type="button">{T[lang].browseInicio}</button>
+          <div className={styles.searchWrap}>
+            <input className={styles.searchInput} type="search" value={busqueda}
+              onChange={e => setBusqueda(e.target.value)} placeholder={T[lang].buscarPlaceholder} />
+            {busqueda && <button className={styles.searchClear} onClick={() => setBusqueda('')} type="button">✕</button>}
+          </div>
+          <span className={styles.resultCount}>{T[lang].vinos(vinosFiltrados.length)}</span>
+          <select className={styles.ordenSelect} value={orden} onChange={e => setOrden(e.target.value)} aria-label={T[lang].orden}>
+            <option value="relevancia">{T[lang].ordenRelevancia}</option>
+            <option value="precio_asc">{T[lang].ordenPrecioAsc}</option>
+            <option value="precio_desc">{T[lang].ordenPrecioDesc}</option>
+            <option value="nombre">{T[lang].ordenNombre}</option>
+          </select>
+        </div>
+
+        <div className={styles.tipoBarWrap}>
+          <div className={styles.tipoBar}>
+            <button className={`${styles.tipoChipBtn} ${filtroTipo === 'todos' ? styles.tipoChipBtnActive : ''}`}
+              onClick={() => setFiltroTipo('todos')}
+              style={filtroTipo === 'todos' ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}
+              type="button">{T[lang].todos}</button>
+            {tipos.map(tipo => {
+              const n = countTipo.get(tipo) || 0
+              if (n === 0 && filtroTipo !== tipo) return null
+              return (
+                <button key={tipo} className={`${styles.tipoChipBtn} ${filtroTipo === tipo ? styles.tipoChipBtnActive : ''}`}
+                  onClick={() => setFiltroTipo(tipo === filtroTipo ? 'todos' : tipo)}
+                  style={filtroTipo === tipo ? { background: TIPO_COLORS[tipo], borderColor: TIPO_COLORS[tipo], color: '#fff' } : {}}
+                  type="button">{T[lang].tipoLabels[tipo] || tipo} <span className={styles.chipCount}>({n})</span></button>
+              )
+            })}
+
+            {gruposPais.length > 1 && (
+              <select className={styles.paisSelect} value={filtroPais} onChange={e => setFiltroPais(e.target.value)}>
+                <option value="">{T[lang].pais}</option>
+                {gruposPais.map(g => {
+                  const n = countPais.get(g.clave) || 0
+                  if (n === 0 && filtroPais !== g.clave) return null
+                  return <option key={g.clave} value={g.clave}>{g.label} ({n})</option>
+                })}
+              </select>
+            )}
+            {gruposRegion.length > 1 && (
+              <select className={styles.doSelect} value={filtroRegion} onChange={e => setFiltroRegion(e.target.value)}>
+                <option value="">{T[lang].region}</option>
+                {gruposRegion.map(g => {
+                  const n = countRegion.get(g.clave) || 0
+                  if (n === 0 && filtroRegion !== g.clave) return null
+                  return <option key={g.clave} value={g.clave}>{g.label} ({n})</option>
+                })}
+              </select>
+            )}
+            {gruposUva.length > 1 && (
+              <select className={styles.doSelect} value={filtroUva} onChange={e => setFiltroUva(e.target.value)}>
+                <option value="">{T[lang].uvaFiltro}</option>
+                {gruposUva.map(g => {
+                  const n = countUva.get(g.clave) || 0
+                  if (n === 0 && filtroUva !== g.clave) return null
+                  return <option key={g.clave} value={g.clave}>{g.label} ({n})</option>
+                })}
+              </select>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.priceChipsRow}>
+          <span className={styles.priceRowLabel}>{T[lang].precio}</span>
+          <div className={styles.priceChipsBar}>
+            <button type="button"
+              className={`${styles.priceChipBtn} ${filtroPrecio === 'todos' ? styles.priceChipBtnActive : ''}`}
+              style={filtroPrecio === 'todos' ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}
+              onClick={() => setFiltroPrecio('todos')}>{T[lang].precioTodos}</button>
+            {chipsPrecio.map(c => {
+              const n = countPrecio[c.id] || 0
+              if (n === 0 && filtroPrecio !== c.id) return null
+              return (
+                <button key={c.id} type="button"
+                  className={`${styles.priceChipBtn} ${filtroPrecio === c.id ? styles.priceChipBtnActive : ''}`}
+                  style={filtroPrecio === c.id ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}
+                  onClick={() => setFiltroPrecio(c.id === filtroPrecio ? 'todos' : c.id)}>
+                  {c.label} <span className={styles.chipCount}>({n})</span>
+                </button>
+              )
+            })}
+          </div>
+          <label className={styles.dispToggle}>
+            <input type="checkbox" checked={soloDisponibles} onChange={e => setSoloDisponibles(e.target.checked)} />
+            <span>{T[lang].soloDisponibles}</span>
+          </label>
+          {zonaCfg && (soloZona || countZona > 0) && (
+            <label className={styles.dispToggle}>
+              <input type="checkbox" checked={soloZona} onChange={e => setSoloZona(e.target.checked)} />
+              <span>{zonaCfg.etiqueta} <span className={styles.chipCount}>({countZona})</span></span>
+            </label>
+          )}
+        </div>
+
+        {chipsActivos.length > 0 && (
+          <div className={styles.activeChipsRow}>
+            {chipsActivos.map(c => (
+              <button key={c.id} type="button" className={styles.activeChip} onClick={c.onClear}>
+                {c.label} <span aria-hidden>✕</span>
+              </button>
+            ))}
+            <button type="button" className={styles.clearAllBtn} onClick={limpiar}>{T[lang].limpiarTodo}</button>
+          </div>
+        )}
+      </div>
+
+      <div className={styles.browseResults}>
+        {vinosFiltrados.length === 0
+          ? (
+            <div className={styles.noResultsV2}>
+              <p className={styles.noResultsTitle}>{T[lang].sinResultadosTitulo}</p>
+              <p className={styles.noResultsSub}>{T[lang].sinResultadosSub}</p>
+              {filtroActivo && (
+                <button type="button" className={styles.noResultsBtn} onClick={limpiar} style={{ background: colorAcento }}>
+                  {T[lang].quitarFiltros}
+                </button>
+              )}
+            </div>
+          )
+          : <div className={styles.wineGrid}>{vinosFiltrados.map((v, i) => <WineCard key={v.id} vino={v} onClick={onWineSelect} ocultarAgotados={tienda?.ocultar_agotados !== false} uxV2 colorAcento={colorAcento} eager={i < 8} lang={lang} />)}</div>
+        }
+      </div>
+    </div>
+  )
+}
+
 // ── Wine → Food panel ─────────────────────────────────────────────────────────
 
 function QrOrderModal({ item, lang, onClose }) {
@@ -3947,9 +4400,11 @@ export default function KioskoPage() {
       )}
 
       {/* EXPLORAR */}
-      {view === VIEWS.BROWSE && (
-        <BrowseView slug={slug} vinos={vinos} colorAcento={colorAcento}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} uxV2={uxV2} />
+      {view === VIEWS.BROWSE && (uxV2
+        ? <BrowseViewV2 slug={slug} vinos={vinos} colorAcento={colorAcento}
+            onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} />
+        : <BrowseView slug={slug} vinos={vinos} colorAcento={colorAcento}
+            onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} uxV2={uxV2} />
       )}
 
       {/* MARIDAJE */}
