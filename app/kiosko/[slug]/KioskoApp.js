@@ -3117,6 +3117,15 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
     } catch { return null }
   })()
   const [busqueda, setBusqueda] = useState(persisted?.busqueda || '')
+  // B6 · Debounce del input SOLO para el filtrado visual: el texto escrito
+  // se refleja al instante en el input (controlado) y en los chips activos,
+  // pero el recalculo del grid espera ~160 ms sin pulsaciones. No afecta
+  // al tracking (que ya tiene su propio debounce de 800 ms independiente).
+  const [busquedaFiltro, setBusquedaFiltro] = useState(persisted?.busqueda || '')
+  useEffect(() => {
+    const t = setTimeout(() => setBusquedaFiltro(busqueda), 160)
+    return () => clearTimeout(t)
+  }, [busqueda])
   const [filtroTipo, setFiltroTipo] = useState(persisted?.tipo || 'todos')
   const [filtroPais, setFiltroPais] = useState(persisted?.pais || '')        // clave normalizada
   const [filtroRegion, setFiltroRegion] = useState(persisted?.region || '')  // clave normalizada
@@ -3190,8 +3199,8 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
       if (!chip || !chip.test(p)) return false
     }
     if (skip !== 'disp'     && soloDisponibles && !(Number(v.stock) > 0)) return false
-    if (skip !== 'busqueda' && busqueda) {
-      const q = normalizarTexto(busqueda)
+    if (skip !== 'busqueda' && busquedaFiltro) {
+      const q = normalizarTexto(busquedaFiltro)
       const txt = normalizarTexto([v.nombre, v.bodega, v.uva, v.region].filter(Boolean).join(' '))
       if (!txt.includes(q)) return false
     }
@@ -3208,10 +3217,10 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
     }
     return map
   }
-  const countTipo    = useMemo(() => contar('tipo',    v => v.tipo),                      [vinos, busqueda, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
-  const countPais    = useMemo(() => contar('pais',    v => normalizarClave(v.pais)),     [vinos, busqueda, filtroTipo, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
-  const countRegion  = useMemo(() => contar('region',  v => normalizarClave(v.region)),   [vinos, busqueda, filtroTipo, filtroPais,   filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
-  const countUva     = useMemo(() => contar('uva',     v => normalizarClave(v.uva)),      [vinos, busqueda, filtroTipo, filtroPais,   filtroRegion, filtroPrecio, soloDisponibles, chipsPrecio])
+  const countTipo    = useMemo(() => contar('tipo',    v => v.tipo),                      [vinos, busquedaFiltro, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
+  const countPais    = useMemo(() => contar('pais',    v => normalizarClave(v.pais)),     [vinos, busquedaFiltro, filtroTipo, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
+  const countRegion  = useMemo(() => contar('region',  v => normalizarClave(v.region)),   [vinos, busquedaFiltro, filtroTipo, filtroPais,   filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
+  const countUva     = useMemo(() => contar('uva',     v => normalizarClave(v.uva)),      [vinos, busquedaFiltro, filtroTipo, filtroPais,   filtroRegion, filtroPrecio, soloDisponibles, chipsPrecio])
   const countPrecio  = useMemo(() => {
     const totals = { hasta20: 0, '20-30': 0, '30-45': 0, mas45: 0 }
     for (const v of vinos) {
@@ -3220,7 +3229,7 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
       for (const c of chipsPrecio) if (c.test(p)) totals[c.id] += 1
     }
     return totals
-  }, [vinos, busqueda, filtroTipo, filtroPais, filtroRegion, filtroUva, soloDisponibles, chipsPrecio])
+  }, [vinos, busquedaFiltro, filtroTipo, filtroPais, filtroRegion, filtroUva, soloDisponibles, chipsPrecio])
 
   const vinosFiltrados = useMemo(() => {
     const arr = vinos.filter(v => matchAll(v, null))
@@ -3231,7 +3240,7 @@ function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = '
       normalizarTexto(a.nombre || '').localeCompare(normalizarTexto(b.nombre || ''), 'es'))
     // 'relevancia' = orden original del array `vinos` (como lo devuelve el servidor)
     return arr
-  }, [vinos, busqueda, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio, orden])
+  }, [vinos, busquedaFiltro, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio, orden])
 
   function limpiar() {
     setBusqueda(''); setFiltroTipo('todos'); setFiltroPais(''); setFiltroRegion('')
