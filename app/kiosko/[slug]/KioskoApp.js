@@ -234,6 +234,15 @@ const T = {
     // FC (C4) · textos aditivos para la ficha con ux_v2
     enTuCarrito: 'Ya en tu carrito',
     verCarrito: n => `Ver carrito (${n})`,
+    // FD (D2) · Feedback v2
+    fdPregunta: '¿Cómo ha sido tu experiencia?',
+    fdQueMejorar: '¿Qué podría mejorar? (opcional)',
+    fdPlaceholder: 'Cuéntanos tu experiencia…',
+    fdPrivacidad: 'No incluyas datos personales (nombre, email, teléfono).',
+    fdOmitir: 'Omitir',
+    fdEnviar: 'Enviar',
+    fdEnviando: 'Enviando…',
+    fdGracias: '¡Gracias por tu opinión! 🙏',
     tapToExplore: 'Toca para explorar',
   },
   en: {
@@ -297,6 +306,14 @@ const T = {
     addToCart: 'Add to cart',
     enTuCarrito: 'Already in your cart',
     verCarrito: n => `View cart (${n})`,
+    fdPregunta: 'How was your experience?',
+    fdQueMejorar: 'What could be better? (optional)',
+    fdPlaceholder: 'Tell us about your experience…',
+    fdPrivacidad: "Please don't include personal data (name, email, phone).",
+    fdOmitir: 'Skip',
+    fdEnviar: 'Send',
+    fdEnviando: 'Sending…',
+    fdGracias: 'Thanks for your feedback! 🙏',
     tapToExplore: 'Tap to explore',
   },
   fr: {
@@ -360,6 +377,14 @@ const T = {
     addToCart: 'Ajouter au panier',
     enTuCarrito: 'Déjà dans votre panier',
     verCarrito: n => `Voir le panier (${n})`,
+    fdPregunta: 'Comment s\'est passée votre expérience ?',
+    fdQueMejorar: 'Qu\'est-ce qui pourrait être mieux ? (facultatif)',
+    fdPlaceholder: 'Parlez-nous de votre expérience…',
+    fdPrivacidad: 'N\'incluez pas de données personnelles (nom, email, téléphone).',
+    fdOmitir: 'Ignorer',
+    fdEnviar: 'Envoyer',
+    fdEnviando: 'Envoi…',
+    fdGracias: 'Merci pour votre avis ! 🙏',
     tapToExplore: 'Touchez pour explorer',
   },
   de: {
@@ -423,6 +448,14 @@ const T = {
     addToCart: 'In den Warenkorb',
     enTuCarrito: 'Bereits im Warenkorb',
     verCarrito: n => `Warenkorb ansehen (${n})`,
+    fdPregunta: 'Wie war Ihr Erlebnis?',
+    fdQueMejorar: 'Was könnte besser sein? (optional)',
+    fdPlaceholder: 'Erzählen Sie uns von Ihrem Erlebnis…',
+    fdPrivacidad: 'Keine persönlichen Daten angeben (Name, E-Mail, Telefon).',
+    fdOmitir: 'Überspringen',
+    fdEnviar: 'Senden',
+    fdEnviando: 'Sende…',
+    fdGracias: 'Danke für Ihr Feedback! 🙏',
     tapToExplore: 'Tippen zum Erkunden',
   },
 }
@@ -591,7 +624,7 @@ const FEEDBACK_EMOJIS = [
   { emoji: '😄', label: 'Excelente'  },
 ]
 
-function FeedbackWidget({ slug }) {
+function FeedbackWidget({ slug, uxV2 = false, lang = 'es' }) {
   const [rating,      setRating]      = useState(null)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [sugerencia,  setSugerencia]  = useState('')
@@ -616,6 +649,10 @@ function FeedbackWidget({ slug }) {
     if (r <= 2) { setMostrarForm(true) }
     else { await enviar(r, '') }
   }
+
+  if (uxV2) return (
+    <FeedbackWidgetV2 slug={slug} lang={lang} />
+  )
 
   if (enviado) return (
     <div className={styles.feedbackThanks}>¡Gracias por tu opinión! 🙏</div>
@@ -659,6 +696,149 @@ function FeedbackWidget({ slug }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// FD (D2) · FeedbackWidgetV2: la nota se envía al instante al pulsar la
+// carita (mismo endpoint, mismo payload que FeedbackWidget). Si la nota
+// es baja (1 ó 2), después se muestra un campo opcional de comentario
+// (280 car.) con botón Enviar y opción Omitir. El comentario viaja en
+// un POST aparte (/feedback/comentario) asociado a la valoracion_id que
+// devuelve el primer POST. Si el servidor aún no devuelve id (SQL sin
+// aplicar) o el usuario omite, no pasa nada: la nota ya está guardada.
+// Cierre automático tras 20 s sin tocar el campo para no dejar la tablet
+// con texto a medias en un puesto compartido.
+const FEEDBACK_IDLE_MS = 20000
+const COMENTARIO_MAX   = 280
+function FeedbackWidgetV2({ slug, lang }) {
+  const [rating,      setRating]      = useState(null)
+  const [valoracionId, setValoracionId] = useState(null)
+  const [fase,        setFase]        = useState('idle')  // 'idle' | 'comentario' | 'done'
+  const [texto,       setTexto]       = useState('')
+  const [enviando,    setEnviando]    = useState(false)
+  const [ocultoPorIdle, setOcultoPorIdle] = useState(false)
+  const idleTimerRef = useRef(null)
+
+  function resetIdle() {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    idleTimerRef.current = setTimeout(() => {
+      // Si el usuario no ha enviado, cerramos silenciosamente. La nota ya
+      // está guardada; el comentario se descarta.
+      setFase(f => (f === 'comentario' ? 'done' : f))
+      setOcultoPorIdle(true)
+    }, FEEDBACK_IDLE_MS)
+  }
+
+  useEffect(() => () => { if (idleTimerRef.current) clearTimeout(idleTimerRef.current) }, [])
+
+  async function votar(r) {
+    setRating(r)
+    // 1) POST nota (igual que hoy). Leemos valoracion_id si viene (servidor
+    //    actualizado + SQL aplicado); si no (newId = null), para notas bajas
+    //    caemos al flujo v1: textarea con sugerencia enviada por el mismo
+    //    endpoint. Asi no perdemos sugerencias aunque el SQL no este
+    //    aplicado todavia.
+    let newId = null
+    try {
+      const res = await fetch(`/api/kiosko/${slug}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: r, sugerencia: '' }),
+      })
+      if (res.ok) {
+        const j = await res.json().catch(() => ({}))
+        if (j?.valoracion_id && typeof j.valoracion_id === 'string') newId = j.valoracion_id
+      }
+    } catch { /* red caida: la nota se pierde, igual que en v1 */ }
+    setValoracionId(newId)
+    if (r <= 2) {
+      // Siempre mostrar el textarea en nota baja. Si hay id, el envio ira a
+      // /feedback/comentario (flujo nuevo); si no, a /feedback con
+      // sugerencia (flujo v1). resetIdle unifica el cierre automatico.
+      setFase('comentario')
+      resetIdle()
+    } else {
+      setFase('done')
+    }
+  }
+
+  async function enviarComentario() {
+    const c = texto.trim().slice(0, COMENTARIO_MAX)
+    if (!c) { setFase('done'); return }
+    setEnviando(true)
+    if (valoracionId) {
+      // Flujo nuevo (SQL aplicado + servidor devolvio id): endpoint aparte.
+      try {
+        await fetch(`/api/kiosko/${slug}/feedback/comentario`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ valoracion_id: valoracionId, comentario: c, lang }),
+        })
+      } catch { /* silencioso: la nota ya esta */ }
+    } else if (rating != null) {
+      // FD fix · Fallback v1: segundo POST /feedback con sugerencia. Mismo
+      // endpoint y mismo payload que el widget v1 enviaba historicamente.
+      // Con ux_v2 ON y SIN el SQL aplicado, la sugerencia no se pierde
+      // (sale por email como siempre).
+      try {
+        await fetch(`/api/kiosko/${slug}/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rating, sugerencia: c }),
+        })
+      } catch { /* silencioso */ }
+    }
+    setEnviando(false)
+    setFase('done')
+  }
+
+  if (ocultoPorIdle) return null
+
+  if (fase === 'done') return (
+    <div className={styles.feedbackThanks}>{T[lang]?.fdGracias ?? T.es.fdGracias}</div>
+  )
+
+  if (fase === 'comentario') return (
+    <div className={styles.feedbackWidget}>
+      <p className={styles.feedbackFormTitle}>{T[lang]?.fdQueMejorar ?? T.es.fdQueMejorar}</p>
+      <p className={styles.feedbackPrivacidad}>{T[lang]?.fdPrivacidad ?? T.es.fdPrivacidad}</p>
+      <textarea
+        className={styles.feedbackTextarea}
+        value={texto}
+        maxLength={COMENTARIO_MAX}
+        onChange={e => { setTexto(e.target.value); resetIdle() }}
+        onFocus={resetIdle}
+        placeholder={T[lang]?.fdPlaceholder ?? T.es.fdPlaceholder}
+        rows={3}
+      />
+      <div className={styles.feedbackCounter}>{texto.length}/{COMENTARIO_MAX}</div>
+      <div className={styles.feedbackFormBtns}>
+        <button type="button" className={styles.feedbackCancel}
+          style={{ minHeight: 44, padding: '.6rem 1.1rem' }}
+          onClick={() => setFase('done')}>
+          {T[lang]?.fdOmitir ?? T.es.fdOmitir}
+        </button>
+        <button type="button" className={styles.feedbackSubmit}
+          style={{ minHeight: 44, padding: '.6rem 1.1rem' }}
+          disabled={enviando || !texto.trim()} onClick={enviarComentario}>
+          {enviando ? (T[lang]?.fdEnviando ?? T.es.fdEnviando) : (T[lang]?.fdEnviar ?? T.es.fdEnviar)}
+        </button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className={styles.feedbackWidget}>
+      <p className={styles.feedbackLabel}>{T[lang]?.fdPregunta ?? T.es.fdPregunta}</p>
+      <div className={styles.feedbackEmojis}>
+        {FEEDBACK_EMOJIS.map((f, i) => (
+          <button key={i} type="button" className={styles.feedbackEmoji}
+            onClick={() => votar(i + 1)} title={f.label} aria-label={f.label}>
+            {f.emoji}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -4425,7 +4605,7 @@ export default function KioskoPage() {
             </div>
           )}
 
-          <FeedbackWidget slug={slug} />
+          <FeedbackWidget slug={slug} uxV2={uxV2} lang={lang} />
         </div>
       )}
 

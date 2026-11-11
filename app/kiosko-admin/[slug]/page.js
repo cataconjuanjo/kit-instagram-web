@@ -1286,6 +1286,10 @@ export default function AdminKioskoPage() {
   const [analiticaLoad, setAnaliticaLoad] = useState(false)
   const [embudo, setEmbudo]         = useState(null)
   const [embudoLoad, setEmbudoLoad] = useState(false)
+  // FD (D4): estado para el bloque Valoraciones. Carga diferida igual que
+  // embudo para no gastar queries si el admin no visita la pestana.
+  const [valoraciones, setValoraciones]         = useState(null)
+  const [valoracionesLoad, setValoracionesLoad] = useState(false)
   const [leads, setLeads]           = useState(null)
   const [leadsLoad, setLeadsLoad]   = useState(false)
   const [leadsError, setLeadsError] = useState('')
@@ -2238,6 +2242,17 @@ export default function AdminKioskoPage() {
       setEmbudo(res.ok ? data : null)
     } catch { setEmbudo(null) }
     finally { setEmbudoLoad(false) }
+  }
+
+  // FD (D4)
+  async function cargarValoraciones() {
+    setValoracionesLoad(true)
+    try {
+      const res  = await fetch(`/api/kiosko/${slug}/admin/valoraciones`, { headers: authHeaders })
+      const data = await res.json()
+      setValoraciones(res.ok ? data : null)
+    } catch { setValoraciones(null) }
+    finally { setValoracionesLoad(false) }
   }
 
   // P1-7: carga de leads con timeout 10 s y estado de error.
@@ -3320,9 +3335,11 @@ export default function AdminKioskoPage() {
               const grupos = [
                 { grupo: '', items: [{ id: 'resumen', label: 'Resumen' }] },
                 { grupo: 'Clientes', items: [
-                  { id: 'busquedas',  label: 'Búsquedas' },
-                  { id: 'embudo',     label: 'Embudo' },
-                  { id: 'conversion', label: 'Conversión' },
+                  { id: 'busquedas',    label: 'Búsquedas' },
+                  { id: 'embudo',       label: 'Embudo' },
+                  { id: 'conversion',   label: 'Conversión' },
+                  // FD (D4): nueva sub-pestana "Valoraciones".
+                  { id: 'valoraciones', label: 'Valoraciones' },
                 ] },
                 { grupo: 'Tienda', items: [
                   { id: 'precios', label: 'Precios' },
@@ -3340,7 +3357,11 @@ export default function AdminKioskoPage() {
                     <button key={st.id} type="button"
                       aria-current={subTabAnalitica === st.id ? 'page' : undefined}
                       className={`${styles.subTabBtn} ${subTabAnalitica === st.id ? styles.subTabBtnActive : ''}`}
-                      onClick={() => setSubTabAnalitica(st.id)}>
+                      onClick={() => {
+                        setSubTabAnalitica(st.id)
+                        // FD (D4): carga diferida de Valoraciones al entrar.
+                        if (st.id === 'valoraciones' && !valoraciones && !valoracionesLoad) cargarValoraciones()
+                      }}>
                       {st.label}
                     </button>
                   ))}
@@ -3872,6 +3893,121 @@ export default function AdminKioskoPage() {
               <div className={styles.analiticaBanner}>
                 <span className={styles.analiticaBannerIcon}>⚠️</span>
                 <span>No se pudieron cargar los datos del embudo.</span>
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* FD (D4) · Valoraciones */}
+      {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'valoraciones' && (() => {
+        const LANG_LABEL = { es: 'ES', en: 'EN', fr: 'FR', de: 'DE' }
+        const EMOJIS = ['😢','😟','😐','🙂','😄']
+        const fmtFecha = (iso) => {
+          if (!iso) return ''
+          const d = new Date(iso)
+          return d.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+        }
+        return (
+          <div style={{ padding: '0 1.5rem 1.5rem' }}>
+            {valoracionesLoad && <p className={styles.analiticaLoading}>Cargando valoraciones…</p>}
+            {!valoracionesLoad && valoraciones?.pendiente && (
+              <div className={styles.analiticaBanner}>
+                <span className={styles.analiticaBannerIcon}>📊</span>
+                <span>Aplica la migración <code>supabase/kiosko_valoraciones_comentario.sql</code> para activar el bloque de valoraciones.</span>
+              </div>
+            )}
+            {!valoracionesLoad && valoraciones && !valoraciones.pendiente && (() => {
+              const total  = valoraciones.total || 0
+              const media  = valoraciones.media || 0
+              const dist   = valoraciones.distribucion || { 1:0,2:0,3:0,4:0,5:0 }
+              const maxV   = Math.max(1, dist[1], dist[2], dist[3], dist[4], dist[5])
+              const comentarios = Array.isArray(valoraciones.comentarios) ? valoraciones.comentarios : []
+              return (
+                <>
+                  <p className={styles.analiticaBloqueDesc} style={{ marginBottom: '1.25rem' }}>
+                    Valoraciones · últimos {valoraciones.dias} días
+                  </p>
+                  <div className={styles.analiticaKpis} style={{ marginBottom: '1rem' }}>
+                    <div className={styles.analiticaKpi}>
+                      <span className={`${styles.analiticaKpiNum} ${total === 0 ? styles.kpiEmpty : ''}`}>{media.toFixed(2)}</span>
+                      <span className={styles.analiticaKpiLabel}>Nota media (sobre 5)</span>
+                    </div>
+                    <div className={styles.analiticaKpi}>
+                      <span className={`${styles.analiticaKpiNum} ${total === 0 ? styles.kpiEmpty : ''}`}>{total}</span>
+                      <span className={styles.analiticaKpiLabel}>Valoraciones</span>
+                    </div>
+                    <div className={styles.analiticaKpi}>
+                      <span className={`${styles.analiticaKpiNum} ${total === 0 ? styles.kpiEmpty : ''}`}>{comentarios.length}</span>
+                      <span className={styles.analiticaKpiLabel}>Con comentario</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.analiticaBloque} style={{ marginBottom: '1.25rem' }}>
+                    <h3 className={styles.analiticaBloqueTitle} style={{ margin: '0 0 .75rem' }}>Distribución por nota</h3>
+                    {total === 0 ? (
+                      <p className={styles.kEmpty} style={{ padding: 'var(--k-space-3) 0 0' }}>Sin valoraciones aún — las caritas del kiosko se recogen en este bloque.</p>
+                    ) : (
+                      <div className={styles.funnelSteps}>
+                        {[1,2,3,4,5].map(k => {
+                          const n = dist[k] || 0
+                          const pct = total > 0 ? Math.round((n / total) * 100) : 0
+                          const widthPct = Math.round((n / maxV) * 100)
+                          return (
+                            <div key={k} className={styles.funnelStep}>
+                              <div className={styles.funnelStepHead}>
+                                <span className={styles.funnelStepLabel}>{EMOJIS[k-1]} {k}</span>
+                                <span className={styles.funnelStepValue}>{n} ({pct}%)</span>
+                              </div>
+                              <div className={styles.funnelTrack}
+                                role="progressbar"
+                                aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}
+                                aria-label={`Nota ${k}: ${n} valoraciones`}>
+                                {widthPct > 0 && (
+                                  <div className={styles.funnelFill} style={{ width: `${widthPct}%` }} />
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className={styles.analiticaBloque}>
+                    <h3 className={styles.analiticaBloqueTitle} style={{ margin: '0 0 .75rem' }}>Comentarios recientes</h3>
+                    {comentarios.length === 0 ? (
+                      <p className={styles.kEmpty} style={{ padding: 'var(--k-space-3) 0 0' }}>Sin comentarios aún.</p>
+                    ) : (
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 'var(--k-space-2)' }}>
+                        {comentarios.map(c => (
+                          <li key={c.id} className={styles.kCard} style={{ padding: 'var(--k-space-3)' }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '.6rem', marginBottom: '.35rem', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '1.05rem' }}>{EMOJIS[(c.rating || 1) - 1]}</span>
+                              <strong style={{ fontSize: '.85rem', color: 'var(--k-color-ink-1)' }}>{c.rating}/5</strong>
+                              {c.lang && (
+                                <span className={styles.kBadge} style={{ fontSize: '.7rem' }}>{LANG_LABEL[c.lang] || c.lang.toUpperCase()}</span>
+                              )}
+                              <span style={{ marginLeft: 'auto', fontSize: '.72rem', color: 'var(--k-color-muted)' }}>
+                                {fmtFecha(c.fecha)}
+                              </span>
+                            </div>
+                            {/* Texto pintado via React (equivalente a textContent): nunca innerHTML */}
+                            <p style={{ margin: 0, color: 'var(--k-color-ink-2)', lineHeight: 1.45, fontSize: '.88rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                              {c.texto}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </>
+              )
+            })()}
+            {!valoracionesLoad && !valoraciones && (
+              <div className={styles.analiticaBanner}>
+                <span className={styles.analiticaBannerIcon}>⚠️</span>
+                <span>No se pudieron cargar las valoraciones.</span>
               </div>
             )}
           </div>

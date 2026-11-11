@@ -418,6 +418,21 @@
 
 .feedbackTextarea::placeholder { color: var(--texto-d); }
 
+/* FD (D2) · aviso de privacidad + contador del campo de comentario en ux_v2 */
+.feedbackPrivacidad {
+  font-size: .68rem;
+  color: var(--texto-d);
+  margin: 0 0 .4rem;
+  font-style: italic;
+}
+.feedbackCounter {
+  text-align: right;
+  font-size: .68rem;
+  color: var(--texto-d);
+  margin-top: -.25rem;
+  margin-bottom: .4rem;
+}
+
 .feedbackFormBtns {
   display: flex;
   gap: .5rem;

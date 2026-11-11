@@ -20,6 +20,19 @@ function requestIp(request) {
   )
 }
 
+// FD (D3) · Deteccion de "tabla aun no creada" para degradacion segura.
+// Mismo patron que isMigrationMissing en otros endpoints: si la tabla
+// kiosko_valoraciones no existe (PostgreSQL 42P01 o relation does not
+// exist) devolvemos silenciosamente sin romper el envio de email.
+function missingValoracionesTable(error) {
+  if (!error) return false
+  const code = String(error.code || '').toUpperCase()
+  const msg  = String(error.message || '').toLowerCase()
+  if (code === '42P01') return true
+  if (msg.includes('relation') && msg.includes('kiosko_valoraciones') && msg.includes('does not exist')) return true
+  return false
+}
+
 export async function POST(request, { params }) {
   const { slug } = await params
   const allowed = await checkRateLimit(`${slug}:${requestIp(request)}`, 'kiosko-feedback', {
@@ -43,12 +56,45 @@ export async function POST(request, { params }) {
   }
 
   const { data: tienda } = await supabaseAdmin
-    .from('tiendas').select('nombre, ciudad, activo, subscription_status, billing_grace_until, plan, trial_used_seconds').eq('slug', slug).eq('activo', true).single()
+    .from('tiendas').select('id, nombre, ciudad, activo, subscription_status, billing_grace_until, plan, trial_used_seconds').eq('slug', slug).eq('activo', true).single()
 
   if (!tienda || !isTiendaAccesible(tienda)) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 })
 
   const nombreTienda = tienda?.nombre || slug
   const ciudadTienda = tienda?.ciudad ? ` (${tienda.ciudad})` : ''
+
+  // FD (D3) · Persistencia aditiva. Si la tabla aun no existe, se ignora
+  // silenciosamente y el email sigue saliendo como siempre. No afectamos
+  // al flujo actual: la nota se "envia" aunque este insert falle.
+  let valoracion_id = null
+  const sessionId = typeof body?.session_id === 'string' ? body.session_id.slice(0, 64) : null
+  const lang = ['es','en','fr','de'].includes(body?.lang) ? body.lang : null
+  try {
+    // FD fix: no persistir IP (rate limit ya la gestiona en public.rate_limits
+    // con TTL corto y solo para control de abuso). user_agent capado a 200.
+    const ua = (request.headers.get('user-agent') || '').slice(0, 200) || null
+    const { data: ins, error: insErr } = await supabaseAdmin
+      .from('kiosko_valoraciones')
+      .insert({
+        tienda_id: tienda.id,
+        rating,
+        sugerencia: sugerencia || null,
+        lang,
+        session_id: sessionId,
+        user_agent: ua,
+      })
+      .select('id')
+      .single()
+    if (insErr) {
+      if (!missingValoracionesTable(insErr)) {
+        console.error('[feedback insert]', insErr.message, insErr.code)
+      }
+    } else {
+      valoracion_id = ins?.id || null
+    }
+  } catch (e) {
+    console.error('[feedback insert exception]', e?.message || e)
+  }
 
   try {
     await resend.emails.send({
@@ -78,5 +124,5 @@ export async function POST(request, { params }) {
     console.error('[feedback email]', err)
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, valoracion_id })
 }
