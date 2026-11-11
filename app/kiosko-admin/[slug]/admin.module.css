@@ -2741,9 +2741,15 @@
   border-bottom: 1px solid var(--k-color-ink);
   text-align: left;
   white-space: nowrap;
-  position: sticky;
-  top: calc(var(--k-toolbar-h, 56px) + 48px);
-  z-index: 2;
+  /* Nota: position:sticky retirado. Los 7 usos de .rendTable estan envueltos
+     en <div style={{ overflowX:'auto' }}> (Analitica: Ventas TPV x2,
+     Conversion, Descuadres, Precios x3). Con overflow-x:auto el div se
+     convierte en contenedor de scroll vertical tambien, por lo que el
+     sticky desplaza la cabecera top px dentro de la tabla y pisa las
+     filas. Como estas tablas son cortas (<30 filas) no necesitan sticky;
+     desactivarlo es la correccion minima y el header se comporta como
+     cabecera normal. La tabla larga de Vinos usa .table en .tableWrap
+     (overflow-x:clip en desktop) y mantiene su sticky intacto. */
 }
 .rendThNum { text-align: right; }
 .rendRow { border-bottom: 1px solid var(--k-color-sunken); }
