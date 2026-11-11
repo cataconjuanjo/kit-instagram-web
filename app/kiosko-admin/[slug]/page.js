@@ -3474,14 +3474,30 @@ export default function AdminKioskoPage() {
                     <span className={styles.analiticaKpiLabel}>Alertas de stock</span>
                   </div>
                   <div className={styles.analiticaKpi}>
-                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente || analitica.movil?.errorMsg ? styles.kpiEmpty : ''}`}>
-                      {analitica.movil?.pendiente || analitica.movil?.errorMsg ? '—' : (analitica.movil?.total ?? 0)}
-                    </span>
-                    <span className={styles.analiticaKpiLabel}>
-                      Llevados al móvil
-                      {analitica.movil?.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
-                      {!analitica.movil?.pendiente && analitica.movil?.errorMsg && <em title={`Error: ${analitica.movil.errorMsg}`}> ⚠</em>}
-                    </span>
+                    {(() => {
+                      // FC (C3) · "Enviados" vs "Abiertos". Si el endpoint ya
+                      // devuelve los campos nuevos, mostramos los dos; si no
+                      // (payload antiguo o servidor no actualizado), seguimos
+                      // mostrando el total como hasta ahora.
+                      const m = analitica.movil || {}
+                      const bloqueado = m.pendiente || m.errorMsg
+                      const tieneDesglose = typeof m.enviados === 'number'
+                      const numEnv = bloqueado ? '—' : (tieneDesglose ? m.enviados : (m.total ?? 0))
+                      const numAbi = bloqueado || !tieneDesglose ? null : m.abiertos
+                      return <>
+                        <span className={`${styles.analiticaKpiNum} ${vacio || bloqueado ? styles.kpiEmpty : ''}`}>{numEnv}</span>
+                        <span className={styles.analiticaKpiLabel}>
+                          Llevados al móvil
+                          {m.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
+                          {!m.pendiente && m.errorMsg && <em title={`Error: ${m.errorMsg}`}> ⚠</em>}
+                          {numAbi !== null && (
+                            <em style={{ display: 'block', marginTop: 4, fontSize: '.72rem', color: 'var(--k-color-muted)', fontStyle: 'normal' }}>
+                              {numEnv} enviados · {numAbi} abiertos
+                            </em>
+                          )}
+                        </span>
+                      </>
+                    })()}
                   </div>
                 </div>
 
@@ -3506,14 +3522,30 @@ export default function AdminKioskoPage() {
                     </span>
                   </div>
                   <div className={styles.analiticaKpi}>
-                    <span className={`${styles.analiticaKpiNum} ${vacio || analitica.movil?.pendiente || analitica.movil?.errorMsg ? styles.kpiEmpty : ''}`}>
-                      {analitica.movil?.pendiente || analitica.movil?.errorMsg ? '—' : (analitica.movil?.total ?? 0)}
-                    </span>
-                    <span className={styles.analiticaKpiLabel}>
-                      Llevados al móvil
-                      {analitica.movil?.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
-                      {!analitica.movil?.pendiente && analitica.movil?.errorMsg && <em title={`Error: ${analitica.movil.errorMsg}`}> ⚠</em>}
-                    </span>
+                    {(() => {
+                      // FC (C3) · "Enviados" vs "Abiertos". Si el endpoint ya
+                      // devuelve los campos nuevos, mostramos los dos; si no
+                      // (payload antiguo o servidor no actualizado), seguimos
+                      // mostrando el total como hasta ahora.
+                      const m = analitica.movil || {}
+                      const bloqueado = m.pendiente || m.errorMsg
+                      const tieneDesglose = typeof m.enviados === 'number'
+                      const numEnv = bloqueado ? '—' : (tieneDesglose ? m.enviados : (m.total ?? 0))
+                      const numAbi = bloqueado || !tieneDesglose ? null : m.abiertos
+                      return <>
+                        <span className={`${styles.analiticaKpiNum} ${vacio || bloqueado ? styles.kpiEmpty : ''}`}>{numEnv}</span>
+                        <span className={styles.analiticaKpiLabel}>
+                          Llevados al móvil
+                          {m.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
+                          {!m.pendiente && m.errorMsg && <em title={`Error: ${m.errorMsg}`}> ⚠</em>}
+                          {numAbi !== null && (
+                            <em style={{ display: 'block', marginTop: 4, fontSize: '.72rem', color: 'var(--k-color-muted)', fontStyle: 'normal' }}>
+                              {numEnv} enviados · {numAbi} abiertos
+                            </em>
+                          )}
+                        </span>
+                      </>
+                    })()}
                   </div>
                   <div className={styles.analiticaKpi}>
                     <span className={`${styles.analiticaKpiNum} ${vacio ? styles.kpiEmpty : ''}`}>{analitica.modos?.maridaje ?? 0}</span>

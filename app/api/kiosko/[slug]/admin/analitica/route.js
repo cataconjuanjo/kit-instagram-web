@@ -315,6 +315,22 @@ export async function GET(request, { params }) {
     .slice(0, 10)
   const mobileSemanaActual = mobileIntents.filter(m => m.created_at >= desde7).length
 
+  // FC (C3) · "Enviados" vs "Abiertos". Sin SQL: usamos el campo `source` que
+  // ya existe. El kiosko inserta un intent con source='qr_<origen>' cuando
+  // genera el enlace / QR; el móvil del cliente inserta OTRA fila con
+  // source='qr_opened' al abrir /kiosko/<slug>/movil/<id>. Son dos filas
+  // separadas en la misma tabla.
+  //   enviados: filas con source distinto de 'qr_opened'
+  //   abiertos: filas con source === 'qr_opened'
+  // `total` sigue siendo mobileIntents.length para no romper historicos ni
+  // consumidores externos; en la UI representaremos "Enviados" como KPI
+  // principal y "Abiertos" como KPI secundario.
+  const esAbierto = (m) => m.source === 'qr_opened'
+  const mobileEnviados     = mobileIntents.filter(m => !esAbierto(m)).length
+  const mobileAbiertos     = mobileIntents.filter(esAbierto).length
+  const mobileEnv7         = mobileIntents.filter(m => !esAbierto(m) && m.created_at >= desde7).length
+  const mobileAbi7         = mobileIntents.filter(m =>  esAbierto(m) && m.created_at >= desde7).length
+
   // ── Tendencias semanales (últimas 8 semanas) ────────────────────────────────
   const ahora = Date.now()
   const tendencias = Array.from({ length: 8 }, (_, i) => {
@@ -467,6 +483,12 @@ export async function GET(request, { params }) {
     modos: { wizard: totalWizard, maridaje: totalMaridaje, regalo: totalRegalo, explorar: totalExplorar },
     movil: {
       total: mobileIntents.length,
+      // FC (C3) · nuevos campos aditivos. Consumidores viejos leen `total`
+      // y siguen funcionando; los nuevos leen enviados/abiertos.
+      enviados: mobileEnviados,
+      abiertos: mobileAbiertos,
+      enviados7: mobileEnv7,
+      abiertos7: mobileAbi7,
       semanaActual: mobileSemanaActual,
       pendiente: mobilePendiente,
       errorMsg: mobileErrorMsg, // F3 B0.5: null salvo error real de lectura
