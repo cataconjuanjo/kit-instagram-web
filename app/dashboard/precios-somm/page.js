@@ -12,6 +12,7 @@ import { FeatureGate, LoadingState, ModuleShell, StatCard } from '../moduleCompo
 import styles from '../module.module.css'
 import { redondear, anadirIva } from '../../lib/wineEconomics'
 import { normalizarAjustesPrecios, calcularPreciosSugeridos } from '../../lib/pricingUtils'
+import { esPerfilSomm } from '../../lib/plans'
 import {
   PLANTILLAS_TRAMOS,
   calcularPvpConTramos,
@@ -960,7 +961,7 @@ export default function PreciosSommPage() {
     <FeatureGate restaurante={restaurante} feature="somm_simulador_mult" title="Motor de Precios Somm">
       <ModuleShell
         restaurante={restaurante}
-        eyebrow="Carta Viva Somm"
+        eyebrow={esPerfilSomm(restaurante) ? 'Carta Viva Somm' : 'Economía'}
         title="Motor de Precios"
         subtitle="Simulador de multiplicador, tramos configurables, método de descorche y análisis de impacto."
         help={{

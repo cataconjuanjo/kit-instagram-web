@@ -724,7 +724,7 @@ function ExplotacionContent() {
     <FeatureGate restaurante={restaurante} feature="somm_explotacion" title="Cuenta de Explotación Somm">
       <ModuleShell
         restaurante={restaurante}
-        eyebrow="Carta Viva Somm"
+        eyebrow={esSomm ? 'Carta Viva Somm' : 'Economía'}
         title={esSomm ? 'Explotación de bodega' : 'Cuenta de Explotación'}
         subtitle={esSomm
           ? 'Ventas de vino, consumo de materia prima, margen bruto y merma. Solo métricas de bodega.'

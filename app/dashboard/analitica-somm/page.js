@@ -847,7 +847,7 @@ export default function AnaliticaSommPage() {
     <FeatureGate restaurante={restaurante} feature="somm_historico" title="Analítica Somm">
       <ModuleShell
         restaurante={restaurante}
-        eyebrow="Carta Viva Somm"
+        eyebrow={esPerfilSomm(restaurante) ? 'Carta Viva Somm' : 'Economía'}
         title="Analítica y Bonus"
         subtitle="Dashboard histórico multianual, presupuesto con modo YoY automático y sistema de remuneración variable."
         help={{
