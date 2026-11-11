@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { abrirPortalStripe, crearCheckoutStripe } from '../lib/billingClient'
 import { PLANES } from '../lib/plans'
+import { esRestauranteDemo } from '../lib/demoRestaurants'
 import styles from './module.module.css'
 
 const STATUS_LABEL = {
@@ -119,7 +120,9 @@ export default function BillingPanel({ restaurante, compact = false }) {
               {estado === 'trialing' && trialEnd ? ` · prueba hasta ${trialEnd}` : ''}
             </p>
           </div>
-          <span className={styles.badge}>{precioPlan(planActual) || 'Plan'}</span>
+          {!esRestauranteDemo(restaurante) && (
+            <span className={styles.badge}>{precioPlan(planActual) || 'Plan'}</span>
+          )}
         </div>
       </div>
 
