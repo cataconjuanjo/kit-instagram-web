@@ -146,16 +146,50 @@ if (paramExist) {
 }
 
 // Tramos: borra los existentes de ESTE restaurante e inserta los nuevos.
-const { error: errDel } = await supa.from('tramos_multiplicador').delete().eq('restaurante_id', TARGET_ID)
+// Usamos .select() tras cada escritura para verificar qué filas devolvió
+// Supabase (si un trigger o RLS filtra, lo detectamos aquí en vez de
+// reportar engañosamente "5 reinsertadas").
+const { data: borradas, error: errDel } = await supa
+  .from('tramos_multiplicador')
+  .delete({ count: 'exact' })
+  .eq('restaurante_id', TARGET_ID)
+  .select('id')
 if (errDel) { console.error('ERROR delete tramos_multiplicador:', errDel.message); process.exit(1) }
-const { error: errIns } = await supa.from('tramos_multiplicador').insert(tramosDemo)
-if (errIns) { console.error('ERROR insert tramos_multiplicador:', errIns.message); process.exit(1) }
-console.log(`✓ tramos_multiplicador: ${tramosDemo.length} filas reinsertadas.`)
+console.log(`  ↷ tramos_multiplicador: ${borradas?.length ?? 0} filas previas borradas.`)
 
-const { error: errPr } = await supa
+const { data: insertadas, error: errIns } = await supa
+  .from('tramos_multiplicador')
+  .insert(tramosDemo)
+  .select('id, orden, coste_min, coste_max, factor')
+if (errIns) { console.error('ERROR insert tramos_multiplicador:', errIns.message); process.exit(1) }
+if (!insertadas || insertadas.length !== tramosDemo.length) {
+  console.error(`ERROR: insert devolvió ${insertadas?.length ?? 0}/${tramosDemo.length} filas.`)
+  console.error('  Posible causa: la clave SUPABASE_SERVICE_ROLE_KEY no es realmente service_role')
+  console.error('  (anon no puede saltarse RLS), o un trigger está filtrando filas. Comprueba .env.local.')
+  process.exit(1)
+}
+console.log(`✓ tramos_multiplicador: ${insertadas.length}/${tramosDemo.length} filas devueltas por el servidor.`)
+
+// Doble chequeo: re-lectura para confirmar visibilidad (debería ser N).
+const { count: countReread } = await supa
+  .from('tramos_multiplicador')
+  .select('*', { count: 'exact', head: true })
+  .eq('restaurante_id', TARGET_ID)
+if (countReread !== tramosDemo.length) {
+  console.error(`ERROR: re-lectura ve ${countReread} tramos, se esperaban ${tramosDemo.length}.`)
+  process.exit(1)
+}
+console.log(`✓ tramos_multiplicador: re-lectura confirma ${countReread} filas visibles.`)
+
+const { data: configRows, error: errPr } = await supa
   .from('configuracion_pricing')
   .upsert(configPricing, { onConflict: 'restaurante_id' })
+  .select('restaurante_id, metodo_pvp, descorche_fijo')
 if (errPr) { console.error('ERROR upsert configuracion_pricing:', errPr.message); process.exit(1) }
-console.log('✓ configuracion_pricing: upsert ok.')
+if (!configRows || configRows.length === 0) {
+  console.error('ERROR: upsert configuracion_pricing devolvió 0 filas (RLS/trigger?).')
+  process.exit(1)
+}
+console.log(`✓ configuracion_pricing: upsert devolvió ${configRows.length} fila(s). metodo=${configRows[0].metodo_pvp}`)
 
 console.log('\n[seed Motor de Precios Casa Marisma] completado.')
