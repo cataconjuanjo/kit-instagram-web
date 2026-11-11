@@ -231,6 +231,9 @@ const T = {
       capricho:    ['Porque tú también te lo mereces', 'Para el placer sin excusas', 'Tu momento, tu selección'],
     },
     addToCart: 'Añadir al carrito',
+    // FC (C4) · textos aditivos para la ficha con ux_v2
+    enTuCarrito: 'Ya en tu carrito',
+    verCarrito: n => `Ver carrito (${n})`,
     tapToExplore: 'Toca para explorar',
   },
   en: {
@@ -292,6 +295,8 @@ const T = {
       capricho:    ['Because you deserve it too', 'Pleasure, no excuses', 'Your moment, your selection'],
     },
     addToCart: 'Add to cart',
+    enTuCarrito: 'Already in your cart',
+    verCarrito: n => `View cart (${n})`,
     tapToExplore: 'Tap to explore',
   },
   fr: {
@@ -353,6 +358,8 @@ const T = {
       capricho:    ['Parce que vous le méritez aussi', 'Le plaisir sans excuses', 'Votre moment, votre sélection'],
     },
     addToCart: 'Ajouter au panier',
+    enTuCarrito: 'Déjà dans votre panier',
+    verCarrito: n => `Voir le panier (${n})`,
     tapToExplore: 'Touchez pour explorer',
   },
   de: {
@@ -414,6 +421,8 @@ const T = {
       capricho:    ['Denn Sie haben es sich verdient', 'Genuss ohne Ausreden', 'Ihr Moment, Ihre Auswahl'],
     },
     addToCart: 'In den Warenkorb',
+    enTuCarrito: 'Bereits im Warenkorb',
+    verCarrito: n => `Warenkorb ansehen (${n})`,
     tapToExplore: 'Tippen zum Erkunden',
   },
 }
@@ -1186,7 +1195,7 @@ function WineCard({ vino, onClick, ocultarAgotados = true, uxV2 = false, colorAc
 
 // ── Ficha de vino enriquecida ─────────────────────────────────────────────────
 
-function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', tienda, onWineFood, uxV2 = false }) {
+function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', tienda, onWineFood, uxV2 = false, enCarrito = false, carritoCount = 0, onVerCarrito }) {
   const isEci = tienda?.theme_preset === 'eci'
   const [qrItem, setQrItem] = useState(null)
 
@@ -1287,6 +1296,27 @@ function WineDetail({ vino, slug, colorAcento, onClose, onMobile, lang = 'es', t
               <button className={styles.qrOrderBtn} type="button" onClick={() => setQrItem(vino)} style={{ '--acento': colorAcento }}>
                 Pedir en El Corte Inglés
               </button>
+            ) : uxV2 ? (
+              // FC (C4) · Doble CTA en ux_v2: añadir y, si ya hay vinos en el
+              // carrito, acceso directo para ver el carrito sin cerrar la
+              // ficha. Cuando este vino YA está en el carrito, el botón muestra
+              // el estado "ya en tu carrito" (sigue siendo pulsable: vuelve a
+              // disparar onMobile y onMobile es idempotente al detectarlo).
+              <div className={styles.ctaRowV2}>
+                <button
+                  className={`${styles.mobileCarryBtn} ${enCarrito ? styles.mobileCarryBtnDone : ''}`}
+                  type="button" onClick={() => onMobile?.(vino, 'detail')}
+                  aria-pressed={enCarrito}>
+                  <span aria-hidden="true">{enCarrito ? '✓' : '+'}</span>
+                  {enCarrito ? (T[lang]?.enTuCarrito ?? T.es.enTuCarrito) : (T[lang]?.addToCart ?? T.es.addToCart)}
+                </button>
+                {carritoCount > 0 && onVerCarrito && (
+                  <button className={styles.verCarritoBtn} type="button" onClick={onVerCarrito}
+                    style={{ borderColor: colorAcento, color: colorAcento }}>
+                    {(T[lang]?.verCarrito ?? T.es.verCarrito)(carritoCount)}
+                  </button>
+                )}
+              </div>
             ) : (
               <button className={styles.mobileCarryBtn} type="button" onClick={() => onMobile?.(vino, 'detail')}>
                 <span aria-hidden="true">+</span>
@@ -4451,7 +4481,10 @@ export default function KioskoPage() {
       {vinoDetalle && (
         <WineDetail vino={vinoDetalle} slug={slug} colorAcento={colorAcento}
           onClose={cerrarDetalle} onMobile={abrirMobileQr} lang={lang}
-          tienda={tienda} onWineFood={wineFoodEnabled ? buscarWineFood : undefined} uxV2={uxV2} />
+          tienda={tienda} onWineFood={wineFoodEnabled ? buscarWineFood : undefined} uxV2={uxV2}
+          enCarrito={mobileVinos.some(v => v.id === vinoDetalle.id)}
+          carritoCount={mobileVinos.length}
+          onVerCarrito={() => { cerrarDetalle(); abrirMobileQrLista(mobileVinos, 'selection') }} />
       )}
 
       {/* WINE → FOOD panel — overlay sobre el detalle cuando está activo */}
