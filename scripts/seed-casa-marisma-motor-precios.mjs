@@ -67,8 +67,10 @@ const avgIngresos = mesesCompletos.length
   : 9700  // fallback a escala de vino de la demo (coherente con Bloque 6)
 const ventasPrevistasSinIVA = r2(avgIngresos / 1.10)
 
-// Beneficio objetivo realista: 8% sobre ventas previstas anuales.
-const beneficioObjetivo = r2(ventasPrevistasSinIVA * 12 * 0.08)
+// Beneficio neto objetivo (€/mes): 10% de las ventas previstas mensuales.
+// El campo en la UI se llama "Beneficio neto objetivo (€/mes)" y ventas_previstas
+// también es mensual; ambos deben estar en la misma unidad temporal.
+const beneficioObjetivo = r2(ventasPrevistasSinIVA * 0.10)
 
 // ── 2. Upsert en parametros_explotacion para el periodo actual ──────────────
 // Solo toca estas 2 columnas; el resto lo rellenó el Bloque 2.
@@ -103,8 +105,8 @@ console.log(`\n[seed Motor de Precios Casa Marisma] destino: ${rest.nombre} (${T
 console.log(`Modo: ${APPLY ? 'APPLY (escribe)' : 'DRY-RUN (no escribe)'}`)
 console.log(`Base: ${mesesCompletos.length} meses de histórico leídos (media mensual = ${r2(avgIngresos)} €)`)
 console.log(`\nparametros_explotacion @ ${periodoActual} (merge parcial):`)
-console.log(`  ventas_previstas:   ${ventasPrevistasSinIVA} € (sin IVA, media mensual del histórico)`)
-console.log(`  beneficio_objetivo: ${beneficioObjetivo} € (8% sobre ventas anuales)`)
+console.log(`  ventas_previstas:   ${ventasPrevistasSinIVA} €/mes (sin IVA, media mensual del histórico)`)
+console.log(`  beneficio_objetivo: ${beneficioObjetivo} €/mes (10% sobre ventas_previstas mensuales)`)
 console.log(`\ntramos_multiplicador: ${tramosDemo.length} tramos a reinsertar`)
 for (const t of tramosDemo) {
   console.log(`  [${t.orden}] ${t.coste_min.toFixed(2)}–${t.coste_max === null ? '∞' : t.coste_max.toFixed(2)} €  ×${t.factor.toFixed(3)}  PVP mín ${t.pvp_minimo_carta} €`)

@@ -175,10 +175,23 @@ function desglosarParametros(fila) {
 const filasParametros = mesesDestino.map(desglosarParametros)
 
 // ── 3. Libro de compras: 6 meses, 4 proveedores ──────────────────────────────
-const PROVEEDORES_DEMO = ['Bodegas Mar Málaga', 'Exclusivas Soto', 'Sommeliervinos', 'Vins Des Dieux']
+// Total mensual ≈ consumo_mp del mismo mes × 1,10, con ±10 % de variación
+// estable por periodo, repartido entre 4 proveedores con pesos 35/26/21/18 %
+// y 2–3 facturas por proveedor/mes. Para el mes en curso el consumo_mp del
+// histórico ya viene parcial (hasta ayer), por lo que las compras heredan
+// esa proporcionalidad; además limitamos las fechas de factura a <= ayer.
+const PROVEEDORES_DEMO = [
+  { nombre: 'Bodegas Mar Málaga', peso: 0.35 },
+  { nombre: 'Exclusivas Soto',    peso: 0.26 },
+  { nombre: 'Sommeliervinos',     peso: 0.21 },
+  { nombre: 'Vins Des Dieux',     peso: 0.18 },
+]
+
+const consumoPorPeriodo = Object.fromEntries(
+  mesesHist.map(r => [periodoDe(r.anio, r.mes), r.consumo_mp])
+)
 
 function mesesUltimos(n) {
-  // Devuelve [{anio, mes}] de los últimos n meses incluyendo el actual.
   const res = []
   let y = hoyY, m = hoyM
   for (let i = 0; i < n; i++) {
@@ -189,46 +202,85 @@ function mesesUltimos(n) {
   return res
 }
 
-function facturasProveedorMes(prov, mes) {
-  // Dos a tres facturas por mes/proveedor con importes verosímiles.
-  // Semilla por (prov+periodo) para que el dry-run sea estable entre ejecuciones.
-  const seed = (prov + ' ' + periodoDe(mes.anio, mes.mes)).split('').reduce((s, c) => s + c.charCodeAt(0), 0)
-  function psr() { // pseudo random 0..1
-    const x = Math.sin(seedN++) * 10000
+function psrFactory(seedText) {
+  let seedN = seedText.split('').reduce((s, c) => s + c.charCodeAt(0), 0)
+  return function psr() {
+    const x = Math.sin(++seedN) * 10000
     return x - Math.floor(x)
   }
-  let seedN = seed
-  const diasMes = new Date(Date.UTC(mes.anio, mes.mes, 0)).getUTCDate()
+}
+
+function facturasProveedorMes(prov, mes, totalProv, diaCorte) {
+  // 2 o 3 facturas con suma exactamente totalProv (redondeada) y fechas
+  // repartidas dentro del mes (<= diaCorte si el mes en curso es parcial).
+  const psr = psrFactory(prov.nombre + ' ' + periodoDe(mes.anio, mes.mes))
   const n = 2 + Math.floor(psr() * 2) // 2 o 3
+  // Pesos aleatorios por factura, normalizados para sumar totalProv.
+  const pesos = Array.from({ length: n }, () => 0.75 + psr() * 0.5)
+  const sumaPesos = pesos.reduce((s, x) => s + x, 0)
+  const importes = pesos.map(p => r2((p / sumaPesos) * totalProv))
+  // Ajuste de redondeo para que la suma cuadre con totalProv.
+  const diff = r2(totalProv - importes.reduce((s, x) => s + x, 0))
+  importes[importes.length - 1] = r2(importes[importes.length - 1] + diff)
+
   const facturas = []
-  const baseImporte = {
-    'Bodegas Mar Málaga': 1600,
-    'Exclusivas Soto':    1200,
-    'Sommeliervinos':      950,
-    'Vins Des Dieux':      780,
-  }[prov] || 900
   for (let i = 0; i < n; i++) {
-    const dia = Math.min(diasMes, 2 + Math.floor(psr() * (diasMes - 3)))
-    const imp = r2(baseImporte * (0.65 + psr() * 0.75))
+    const dia = Math.min(diaCorte, 2 + Math.floor(psr() * Math.max(1, diaCorte - 3)))
     facturas.push({
       fecha: `${mes.anio}-${String(mes.mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`,
-      importe: imp,
-      albaran: `${prov.slice(0, 3).toUpperCase()}-${mes.anio}${String(mes.mes).padStart(2, '0')}-${1000 + i}`,
+      importe: importes[i],
+      albaran: `${prov.nombre.slice(0, 3).toUpperCase()}-${mes.anio}${String(mes.mes).padStart(2, '0')}-${1000 + i}`,
     })
   }
   return facturas.sort((a, b) => a.fecha.localeCompare(b.fecha))
 }
 
 const filasCompras = []
+const resumenPorMes = []  // para el dry-run
+const hoyDia = Number(hoy.split('-')[2])
+
 for (const mes of mesesUltimos(6)) {
-  for (const prov of PROVEEDORES_DEMO) {
+  const periodo = periodoDe(mes.anio, mes.mes)
+  const consumoMes = consumoPorPeriodo[periodo] || 0
+  if (consumoMes <= 0) {
+    // sin histórico del mes → no generamos compras: evita inventar.
+    resumenPorMes.push({ periodo, consumo: 0, compras: 0, ratio: null, nota: 'sin histórico' })
+    continue
+  }
+  // Variación estable por periodo: ±10 % sobre la base 1,10×consumo.
+  const varPsr = psrFactory('VAR ' + periodo)
+  const factor = 1.10 * (0.90 + varPsr() * 0.20)  // 0.99 .. 1.21 sobre consumo
+  const totalMes = r2(consumoMes * factor)
+
+  // Día corte: completo para meses anteriores; "ayer" para el mes en curso.
+  const esMesEnCurso = (mes.anio === hoyY && mes.mes === hoyM)
+  const diasMes = new Date(Date.UTC(mes.anio, mes.mes, 0)).getUTCDate()
+  const diaCorte = esMesEnCurso ? Math.max(1, hoyDia - 1) : diasMes
+
+  // Reparto por proveedor con ajuste de redondeo al último.
+  const importesProv = PROVEEDORES_DEMO.map(p => r2(totalMes * p.peso))
+  const ajuste = r2(totalMes - importesProv.reduce((s, x) => s + x, 0))
+  importesProv[importesProv.length - 1] = r2(importesProv[importesProv.length - 1] + ajuste)
+
+  let totalGenerado = 0
+  for (let i = 0; i < PROVEEDORES_DEMO.length; i++) {
+    const prov = PROVEEDORES_DEMO[i]
+    const facturas = facturasProveedorMes(prov, mes, importesProv[i], diaCorte)
+    totalGenerado += facturas.reduce((s, f) => s + f.importe, 0)
     filasCompras.push({
       restaurante_id: TARGET_ID,
-      periodo: periodoDe(mes.anio, mes.mes),
-      proveedor: prov,
-      facturas: facturasProveedorMes(prov, mes),
+      periodo,
+      proveedor: prov.nombre,
+      facturas,
     })
   }
+  resumenPorMes.push({
+    periodo,
+    consumo: consumoMes,
+    compras: r2(totalGenerado),
+    ratio: consumoMes > 0 ? r2(totalGenerado / consumoMes) : null,
+    nota: esMesEnCurso ? `parcial hasta día ${diaCorte}` : null,
+  })
 }
 
 // ── 4. Resumen ────────────────────────────────────────────────────────────────
@@ -245,8 +297,18 @@ if (filasParametros.length > 0) {
   console.log(`  ejemplo mes actual:`, JSON.stringify(filasParametros.find(r => r.periodo === periodoActual) || ultimo, null, 2))
 }
 if (filasCompras.length > 0) {
+  console.log(`  compras por mes:`)
+  console.log(`    ${'periodo'.padEnd(10)} ${'consumo_mp'.padStart(12)} ${'compras'.padStart(11)} ${'ratio'.padStart(7)}   nota`)
+  for (const r of resumenPorMes) {
+    const periodo = r.periodo.padEnd(10)
+    const consumo = `${r.consumo.toFixed(2)} €`.padStart(12)
+    const compras = `${r.compras.toFixed(2)} €`.padStart(11)
+    const ratio   = r.ratio == null ? '   —  '.padStart(7) : `×${r.ratio.toFixed(3)}`.padStart(7)
+    const nota    = r.nota ? `  (${r.nota})` : ''
+    console.log(`    ${periodo} ${consumo} ${compras} ${ratio}${nota}`)
+  }
   const total6m = filasCompras.reduce((s, r) => s + r.facturas.reduce((a, f) => a + f.importe, 0), 0)
-  console.log(`  total compras últimos 6 meses: ${r2(total6m)} €`)
+  console.log(`  total compras últimos 6 meses: ${r2(total6m)} € (esperado ≈ 20.000–25.000 €)`)
 }
 
 if (!APPLY) {
