@@ -735,7 +735,10 @@ function FeedbackWidgetV2({ slug, lang }) {
   async function votar(r) {
     setRating(r)
     // 1) POST nota (igual que hoy). Leemos valoracion_id si viene (servidor
-    //    actualizado + SQL aplicado); si no, seguimos sin comentario.
+    //    actualizado + SQL aplicado); si no (newId = null), para notas bajas
+    //    caemos al flujo v1: textarea con sugerencia enviada por el mismo
+    //    endpoint. Asi no perdemos sugerencias aunque el SQL no este
+    //    aplicado todavia.
     let newId = null
     try {
       const res = await fetch(`/api/kiosko/${slug}/feedback`, {
@@ -749,7 +752,10 @@ function FeedbackWidgetV2({ slug, lang }) {
       }
     } catch { /* red caida: la nota se pierde, igual que en v1 */ }
     setValoracionId(newId)
-    if (r <= 2 && newId) {
+    if (r <= 2) {
+      // Siempre mostrar el textarea en nota baja. Si hay id, el envio ira a
+      // /feedback/comentario (flujo nuevo); si no, a /feedback con
+      // sugerencia (flujo v1). resetIdle unifica el cierre automatico.
       setFase('comentario')
       resetIdle()
     } else {
@@ -759,15 +765,30 @@ function FeedbackWidgetV2({ slug, lang }) {
 
   async function enviarComentario() {
     const c = texto.trim().slice(0, COMENTARIO_MAX)
-    if (!c || !valoracionId) { setFase('done'); return }
+    if (!c) { setFase('done'); return }
     setEnviando(true)
-    try {
-      await fetch(`/api/kiosko/${slug}/feedback/comentario`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ valoracion_id: valoracionId, comentario: c, lang }),
-      })
-    } catch { /* silencioso: la nota ya está */ }
+    if (valoracionId) {
+      // Flujo nuevo (SQL aplicado + servidor devolvio id): endpoint aparte.
+      try {
+        await fetch(`/api/kiosko/${slug}/feedback/comentario`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ valoracion_id: valoracionId, comentario: c, lang }),
+        })
+      } catch { /* silencioso: la nota ya esta */ }
+    } else if (rating != null) {
+      // FD fix · Fallback v1: segundo POST /feedback con sugerencia. Mismo
+      // endpoint y mismo payload que el widget v1 enviaba historicamente.
+      // Con ux_v2 ON y SIN el SQL aplicado, la sugerencia no se pierde
+      // (sale por email como siempre).
+      try {
+        await fetch(`/api/kiosko/${slug}/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rating, sugerencia: c }),
+        })
+      } catch { /* silencioso */ }
+    }
     setEnviando(false)
     setFase('done')
   }

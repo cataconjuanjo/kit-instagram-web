@@ -70,6 +70,9 @@ export async function POST(request, { params }) {
   const sessionId = typeof body?.session_id === 'string' ? body.session_id.slice(0, 64) : null
   const lang = ['es','en','fr','de'].includes(body?.lang) ? body.lang : null
   try {
+    // FD fix: no persistir IP (rate limit ya la gestiona en public.rate_limits
+    // con TTL corto y solo para control de abuso). user_agent capado a 200.
+    const ua = (request.headers.get('user-agent') || '').slice(0, 200) || null
     const { data: ins, error: insErr } = await supabaseAdmin
       .from('kiosko_valoraciones')
       .insert({
@@ -78,8 +81,7 @@ export async function POST(request, { params }) {
         sugerencia: sugerencia || null,
         lang,
         session_id: sessionId,
-        user_agent: request.headers.get('user-agent') || null,
-        ip: requestIp(request),
+        user_agent: ua,
       })
       .select('id')
       .single()

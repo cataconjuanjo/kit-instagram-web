@@ -42,8 +42,11 @@ CREATE TABLE IF NOT EXISTS public.kiosko_valoraciones (
   -- session_id lo pone el cliente (localStorage o efimero). Nunca se
   -- muestra al publico.
   session_id      TEXT,
-  user_agent      TEXT,
-  ip              TEXT,
+  -- FD fix: user_agent capado a 200 car. para no guardar strings
+  -- enormes de bots. La IP del cliente NO se persiste aqui: el
+  -- control de abuso sigue haciendose via public.rate_limits
+  -- (que ya guarda IP con su propio TTL corto, no por tienda).
+  user_agent      TEXT         CHECK (user_agent IS NULL OR char_length(user_agent) <= 200),
   created_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
