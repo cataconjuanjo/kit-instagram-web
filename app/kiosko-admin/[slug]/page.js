@@ -3475,24 +3475,28 @@ export default function AdminKioskoPage() {
                   </div>
                   <div className={styles.analiticaKpi}>
                     {(() => {
-                      // FC (C3) · "Enviados" vs "Abiertos". Si el endpoint ya
-                      // devuelve los campos nuevos, mostramos los dos; si no
-                      // (payload antiguo o servidor no actualizado), seguimos
-                      // mostrando el total como hasta ahora.
+                      // FC (C3 fix) · Etiquetas correctas. Las inserciones en
+                      // kiosko_mobile_intents las hace SIEMPRE el movil del
+                      // cliente, no el kiosko. El KPI principal cuenta cuantos
+                      // vinos han llegado al movil al escanear el QR
+                      // (source != 'qr_opened'). El subrotulo opcional indica
+                      // cuantas fichas individuales se han abierto despues
+                      // (source == 'qr_opened'). `total` del payload mezcla
+                      // ambos y por eso NO es la cifra principal.
                       const m = analitica.movil || {}
                       const bloqueado = m.pendiente || m.errorMsg
-                      const tieneDesglose = typeof m.enviados === 'number'
-                      const numEnv = bloqueado ? '—' : (tieneDesglose ? m.enviados : (m.total ?? 0))
-                      const numAbi = bloqueado || !tieneDesglose ? null : m.abiertos
+                      const tieneDesglose = typeof m.llevados === 'number'
+                      const num = bloqueado ? '—' : (tieneDesglose ? m.llevados : (m.total ?? 0))
+                      const nFichas = bloqueado || !tieneDesglose ? null : m.fichas_abiertas
                       return <>
-                        <span className={`${styles.analiticaKpiNum} ${vacio || bloqueado ? styles.kpiEmpty : ''}`}>{numEnv}</span>
+                        <span className={`${styles.analiticaKpiNum} ${vacio || bloqueado ? styles.kpiEmpty : ''}`}>{num}</span>
                         <span className={styles.analiticaKpiLabel}>
                           Llevados al móvil
                           {m.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
                           {!m.pendiente && m.errorMsg && <em title={`Error: ${m.errorMsg}`}> ⚠</em>}
-                          {numAbi !== null && (
+                          {nFichas !== null && nFichas > 0 && (
                             <em style={{ display: 'block', marginTop: 4, fontSize: '.72rem', color: 'var(--k-color-muted)', fontStyle: 'normal' }}>
-                              {numEnv} enviados · {numAbi} abiertos
+                              + {nFichas} {nFichas === 1 ? 'ficha abierta' : 'fichas abiertas'} en móvil
                             </em>
                           )}
                         </span>
@@ -3523,24 +3527,28 @@ export default function AdminKioskoPage() {
                   </div>
                   <div className={styles.analiticaKpi}>
                     {(() => {
-                      // FC (C3) · "Enviados" vs "Abiertos". Si el endpoint ya
-                      // devuelve los campos nuevos, mostramos los dos; si no
-                      // (payload antiguo o servidor no actualizado), seguimos
-                      // mostrando el total como hasta ahora.
+                      // FC (C3 fix) · Etiquetas correctas. Las inserciones en
+                      // kiosko_mobile_intents las hace SIEMPRE el movil del
+                      // cliente, no el kiosko. El KPI principal cuenta cuantos
+                      // vinos han llegado al movil al escanear el QR
+                      // (source != 'qr_opened'). El subrotulo opcional indica
+                      // cuantas fichas individuales se han abierto despues
+                      // (source == 'qr_opened'). `total` del payload mezcla
+                      // ambos y por eso NO es la cifra principal.
                       const m = analitica.movil || {}
                       const bloqueado = m.pendiente || m.errorMsg
-                      const tieneDesglose = typeof m.enviados === 'number'
-                      const numEnv = bloqueado ? '—' : (tieneDesglose ? m.enviados : (m.total ?? 0))
-                      const numAbi = bloqueado || !tieneDesglose ? null : m.abiertos
+                      const tieneDesglose = typeof m.llevados === 'number'
+                      const num = bloqueado ? '—' : (tieneDesglose ? m.llevados : (m.total ?? 0))
+                      const nFichas = bloqueado || !tieneDesglose ? null : m.fichas_abiertas
                       return <>
-                        <span className={`${styles.analiticaKpiNum} ${vacio || bloqueado ? styles.kpiEmpty : ''}`}>{numEnv}</span>
+                        <span className={`${styles.analiticaKpiNum} ${vacio || bloqueado ? styles.kpiEmpty : ''}`}>{num}</span>
                         <span className={styles.analiticaKpiLabel}>
                           Llevados al móvil
                           {m.pendiente && <em title="Falta aplicar supabase/kiosko_mobile_intents.sql"> ⚠</em>}
                           {!m.pendiente && m.errorMsg && <em title={`Error: ${m.errorMsg}`}> ⚠</em>}
-                          {numAbi !== null && (
+                          {nFichas !== null && nFichas > 0 && (
                             <em style={{ display: 'block', marginTop: 4, fontSize: '.72rem', color: 'var(--k-color-muted)', fontStyle: 'normal' }}>
-                              {numEnv} enviados · {numAbi} abiertos
+                              + {nFichas} {nFichas === 1 ? 'ficha abierta' : 'fichas abiertas'} en móvil
                             </em>
                           )}
                         </span>
