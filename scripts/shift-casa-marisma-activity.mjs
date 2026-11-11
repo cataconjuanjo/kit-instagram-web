@@ -5,8 +5,9 @@
  * Diseñado para lanzarse el día de la demo (domingo noche o lunes 16/11
  * antes de las 9:00).
  *
- * Requisito previo: aplicar la migración sql/0011_shift_demo_activity.sql
- * en la base de datos (crea tabla de log + función RPC).
+ * Requisito previo: aplicar sql/0011_shift_demo_activity.sql (tabla de log
+ * + función RPC) y luego sql/0014_shift_demo_activity_v2.sql (v2 que
+ * excluye libro_compras por el desacople periodo ↔ facturas[].fecha).
  *
  * Uso:
  *   node --env-file=.env.local scripts/shift-casa-marisma-activity.mjs             # dry-run
@@ -126,6 +127,15 @@ if (errRpc) { console.error('ERROR RPC shift_demo_activity_dates:', errRpc.messa
 
 console.log('\nResultado RPC:')
 console.log(JSON.stringify(rpcOut, null, 2))
+
+// v2: libro_compras queda intencionalmente FUERA del shift para evitar
+// desacoplar `periodo` (YYYY-MM) de `facturas[].fecha`. El seed del
+// Bloque 2 ya lo dejó con fechas verosímiles dentro de cada periodo
+// de los últimos 6 meses. Si en la UI ves un aviso de "futuro" en el
+// Libro de Compras, significa que estás ejecutando la v1 (0011 sin 0014):
+// aplica sql/0014_shift_demo_activity_v2.sql para corregirlo.
+const lcNote = rpcOut?.notes?.libro_compras
+if (lcNote) console.log(`\nNota libro_compras: ${lcNote}`)
 
 if (!APPLY) {
   console.log('\nDry-run: no se escribe nada. Añade --apply para ejecutar.')
