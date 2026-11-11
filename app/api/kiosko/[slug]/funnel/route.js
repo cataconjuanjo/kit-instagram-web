@@ -2,9 +2,23 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { isTiendaAccesible } from '../../../_lib/kioskoAuth'
 
-const VALID_FLOWS  = new Set(['wizard', 'cesta', 'pairing', 'duelo'])
+// FC fix · 'explorar' es el flujo aditivo introducido en el commit 96c69b81.
+// La tabla kiosko_funnel_events.flow es TEXT sin CHECK constraint ni enum
+// (ver supabase/kiosko_funnel_events.sql:8), por lo que basta con permitir
+// el nombre en la whitelist del endpoint; no hay SQL que aplicar. Los
+// pasos validos para 'explorar' son un subconjunto de los ya existentes
+// (start, carrito, abandon) y entran por la whitelist de VALID_STEPS.
+const VALID_FLOWS  = new Set(['wizard', 'cesta', 'pairing', 'duelo', 'explorar'])
 const VALID_STEPS  = new Set(['start', 'ocasion', 'estilo', 'presupuesto', 'prefs', 'resultado', 'consulta', 'carrito', 'abandon', 'regenerar', 'reiniciar'])
 const VALID_REASONS = new Set(['idle_timeout', 'user_exit'])
+
+// FC fix · Postgres check_violation (23514) en caso de que alguien aniada
+// en el futuro un CHECK sobre flow/step: no debe romper el kiosko ni los
+// demas flujos. Se trata como "pendiente" (no bloquea la UX).
+function isConstraintViolation(error) {
+  const code = String(error?.code || '')
+  return code === '23514'
+}
 
 function isMigrationMissing(error) {
   const t = `${error?.code || ''} ${error?.message || ''}`.toLowerCase()
@@ -46,6 +60,13 @@ export async function POST(request, { params }) {
 
   if (error) {
     if (isMigrationMissing(error)) return NextResponse.json({ ok: true, pendiente: true })
+    if (isConstraintViolation(error)) {
+      // Degradacion segura ante un CHECK futuro que rechace un valor nuevo
+      // (p. ej. una restriccion sobre flow/step). El evento se descarta pero
+      // la UI no se entera, y wizard/cesta/pairing siguen funcionando.
+      console.warn('[funnel] check_violation descartado:', error.message)
+      return NextResponse.json({ ok: true, pendiente: true, reason: 'constraint' })
+    }
     console.error('[funnel]', error.message)
     return NextResponse.json({ ok: false }, { status: 500 })
   }
