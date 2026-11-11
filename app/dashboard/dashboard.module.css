@@ -3609,6 +3609,14 @@
   font-size: 13px;
 }
 
+.heroKpiUnitInline {
+  font-family: inherit;
+  font-size: 0.42em;
+  font-weight: 500;
+  color: #6b5a56;
+  margin-left: 2px;
+}
+
 .heroKpiSecGroup {
   padding-bottom: 6px;
 }
