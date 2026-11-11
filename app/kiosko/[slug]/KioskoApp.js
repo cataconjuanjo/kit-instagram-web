@@ -3102,14 +3102,38 @@ function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es
 // de tracking (nombre y payload) que la versión v1 — sólo se amplían los
 // disparadores internos, no el contrato del endpoint.
 function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es', tienda }) {
-  const [busqueda, setBusqueda] = useState('')
-  const [filtroTipo, setFiltroTipo] = useState('todos')
-  const [filtroPais, setFiltroPais] = useState('')        // clave normalizada
-  const [filtroRegion, setFiltroRegion] = useState('')    // clave normalizada
-  const [filtroUva, setFiltroUva] = useState('')          // clave normalizada
-  const [filtroPrecio, setFiltroPrecio] = useState('todos')
-  const [soloDisponibles, setSoloDisponibles] = useState(false)
-  const [orden, setOrden] = useState('relevancia')
+  // Persistencia de filtros/orden en sessionStorage por slug (B5). Se restaura
+  // una sola vez al montar; sobrevive a abrir una ficha y volver (de hecho ya
+  // persiste porque BrowseViewV2 no se desmonta al abrir el modal de detalle)
+  // y a recargas suaves del kiosko (auto-update F6) mientras dura la sesion.
+  const STORAGE_KEY = `kiosko.explorar.v2.${slug}`
+  const persisted = (() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = window.sessionStorage.getItem(STORAGE_KEY)
+      if (!raw) return null
+      const o = JSON.parse(raw)
+      return (o && typeof o === 'object') ? o : null
+    } catch { return null }
+  })()
+  const [busqueda, setBusqueda] = useState(persisted?.busqueda || '')
+  const [filtroTipo, setFiltroTipo] = useState(persisted?.tipo || 'todos')
+  const [filtroPais, setFiltroPais] = useState(persisted?.pais || '')        // clave normalizada
+  const [filtroRegion, setFiltroRegion] = useState(persisted?.region || '')  // clave normalizada
+  const [filtroUva, setFiltroUva] = useState(persisted?.uva || '')           // clave normalizada
+  const [filtroPrecio, setFiltroPrecio] = useState(persisted?.precio || 'todos')
+  const [soloDisponibles, setSoloDisponibles] = useState(persisted?.disp === true)
+  const [orden, setOrden] = useState(persisted?.orden || 'relevancia')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        busqueda, tipo: filtroTipo, pais: filtroPais, region: filtroRegion,
+        uva: filtroUva, precio: filtroPrecio, disp: soloDisponibles, orden,
+      }))
+    } catch { /* storage lleno o modo privado: ignorar */ }
+  }, [STORAGE_KEY, busqueda, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, orden])
 
   const _trackTimer  = useRef(null)
   const _lastTracked = useRef('')
