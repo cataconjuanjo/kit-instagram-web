@@ -155,47 +155,121 @@ console.log(`configuracion_bonus: umbral=10% bonus=5% activo=${bonusConfig.activ
 if (avisos > 0) console.log(`⚠ ${avisos} aviso(s) de margen. Revisa antes de --apply.`)
 
 // ── Contraste con ventas reales ─────────────────────────────────────────────
-// Suma PVP (importe_vino_estimado) de las ventas 'vendida' de la demo en su
-// ventana disponible, normalizada a 30 días. Es la mejor aproximación al
-// run-rate mensual real de vino.
+// 1) Localiza la última venta (max created_at, hora Madrid) de tipo='venta'
+//    y resultado='vendida'.
+// 2) Pagina con .range() para sumar importe_vino_estimado en los 30 y 90
+//    días anteriores a esa fecha (sin tope de 1 000 filas de PostgREST).
+// 3) Compara con el último mes cerrado del histórico sin IVA (/1.10) y
+//    avisa si la desviación supera el 25 %.
 try {
-  const { data: ventasReales } = await supa
-    .from('estadisticas')
-    .select('created_at, detalle')
-    .eq('restaurante_id', TARGET_ID)
-    .eq('tipo', 'venta')
-  const importes = []
-  let minFecha = null, maxFecha = null
-  for (const row of (ventasReales || [])) {
-    let det = row.detalle
-    if (typeof det === 'string') { try { det = JSON.parse(det) } catch { det = {} } }
-    if (!det || det.resultado && det.resultado !== 'vendida') continue
-    const imp = Number(det.importe_vino_estimado) || 0
-    if (imp > 0) importes.push(imp)
-    const f = (row.created_at || '').slice(0, 10)
-    if (f) {
-      if (!minFecha || f < minFecha) minFecha = f
-      if (!maxFecha || f > maxFecha) maxFecha = f
+  function fechaMadridIso(iso) {
+    const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid', year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(new Date(iso))
+    return `${p.find(x=>x.type==='year').value}-${p.find(x=>x.type==='month').value}-${p.find(x=>x.type==='day').value}`
+  }
+  function restarDias(fechaYmd, n) {
+    const [y, m, d] = fechaYmd.split('-').map(Number)
+    const dt = new Date(Date.UTC(y, m - 1, d - n, 12))
+    return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth()+1).padStart(2,'0')}-${String(dt.getUTCDate()).padStart(2,'0')}`
+  }
+
+  // 1) Última venta vendida. Pagina hasta encontrar una.
+  let ultimaFechaMadrid = null
+  {
+    const PAGE = 1000
+    let offset = 0
+    while (!ultimaFechaMadrid) {
+      const { data, error } = await supa
+        .from('estadisticas')
+        .select('created_at, detalle')
+        .eq('restaurante_id', TARGET_ID)
+        .eq('tipo', 'venta')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + PAGE - 1)
+      if (error) throw error
+      if (!data || data.length === 0) break
+      for (const row of data) {
+        let det = row.detalle
+        if (typeof det === 'string') { try { det = JSON.parse(det) } catch { det = {} } }
+        if (!det || (det.resultado && det.resultado !== 'vendida')) continue
+        ultimaFechaMadrid = fechaMadridIso(row.created_at)
+        break
+      }
+      if (data.length < PAGE) break
+      offset += PAGE
     }
   }
-  if (importes.length > 0 && minFecha && maxFecha) {
-    const total = importes.reduce((s, x) => s + x, 0)
-    const dias  = Math.max(1, Math.round((Date.parse(maxFecha) - Date.parse(minFecha)) / 86400000) + 1)
-    const runRate30d = r2((total / dias) * 30)
-    const ultimoMesSinIVA = r2(ultimoCerrado.ingresos / 1.10)
-    const delta = runRate30d > 0 ? Math.abs(ultimoMesSinIVA - runRate30d) / runRate30d : 0
-    console.log(`\nContraste con ventas reales (tipo='venta', resultado='vendida'):`)
-    console.log(`  ventana real:        ${minFecha} → ${maxFecha} (${dias} días, ${importes.length} ventas)`)
-    console.log(`  run-rate 30d PVP:    ${runRate30d} €`)
-    console.log(`  último mes cerrado (sin IVA /1.10): ${ultimoMesSinIVA} €`)
-    console.log(`  desviación:          ${(delta * 100).toFixed(1)}%`)
-    if (delta > 0.25) {
-      console.log(`  ⚠ AVISO: desviación > 25 %. Revisa INGRESOS_MEDIOS_MES[${hoyY}] antes de --apply.`)
-    } else {
-      console.log(`  ✓ dentro del margen esperado (≤ 25 %).`)
-    }
+
+  if (!ultimaFechaMadrid) {
+    console.log(`\nContraste con ventas reales: no hay ventas 'vendida' en estadisticas. Saltado.`)
   } else {
-    console.log(`\nContraste con ventas reales: sin datos suficientes en estadisticas. Saltado.`)
+    // 2) Suma paginada en una ventana [fechaInicioIso, fechaFinExclusivoIso).
+    async function sumarVentana(fechaInicioYmd, fechaFinExclYmd) {
+      // fechas en YYYY-MM-DD; created_at se compara como ISO; incluimos todo
+      // el día de inicio y excluimos el día fin.
+      const desde = `${fechaInicioYmd}T00:00:00+00:00`
+      const hasta = `${fechaFinExclYmd}T00:00:00+00:00`
+      const PAGE = 1000
+      let offset = 0
+      let total = 0
+      let n = 0
+      while (true) {
+        const { data, error } = await supa
+          .from('estadisticas')
+          .select('created_at, detalle')
+          .eq('restaurante_id', TARGET_ID)
+          .eq('tipo', 'venta')
+          .gte('created_at', desde)
+          .lt('created_at', hasta)
+          .order('created_at', { ascending: true })
+          .range(offset, offset + PAGE - 1)
+        if (error) throw error
+        if (!data || data.length === 0) break
+        for (const row of data) {
+          let det = row.detalle
+          if (typeof det === 'string') { try { det = JSON.parse(det) } catch { det = {} } }
+          if (!det || (det.resultado && det.resultado !== 'vendida')) continue
+          const imp = Number(det.importe_vino_estimado) || 0
+          if (imp > 0) { total += imp; n += 1 }
+        }
+        if (data.length < PAGE) break
+        offset += PAGE
+      }
+      return { total: r2(total), n }
+    }
+
+    // Ventana 30d: (última - 30, última]. Usamos [última-30, última+1) para
+    // incluir la última venta completa en UTC.
+    const fin30Excl = restarDias(ultimaFechaMadrid, -1)   // última + 1 día
+    const ini30     = restarDias(ultimaFechaMadrid, 30)
+    const ini90     = restarDias(ultimaFechaMadrid, 90)
+
+    const w30 = await sumarVentana(ini30, fin30Excl)
+    const w90 = await sumarVentana(ini90, fin30Excl)
+
+    const runRate30d_de30  = w30.total                                    // ya son 30 días
+    const runRate30d_de90  = r2((w90.total / 90) * 30)
+    const ultimoMesSinIVA  = r2(ultimoCerrado.ingresos / 1.10)
+    const delta30 = runRate30d_de30 > 0 ? Math.abs(ultimoMesSinIVA - runRate30d_de30) / runRate30d_de30 : 0
+    const delta90 = runRate30d_de90 > 0 ? Math.abs(ultimoMesSinIVA - runRate30d_de90) / runRate30d_de90 : 0
+
+    console.log(`\nContraste con ventas reales (tipo='venta', resultado='vendida'):`)
+    console.log(`  última venta (Madrid):             ${ultimaFechaMadrid}`)
+    console.log(`  ventana 30 días (${ini30} → ${ultimaFechaMadrid}):`)
+    console.log(`    ventas contadas:                 ${w30.n}`)
+    console.log(`    suma PVP:                        ${w30.total} €`)
+    console.log(`    run-rate 30d:                    ${runRate30d_de30} €`)
+    console.log(`  ventana 90 días (${ini90} → ${ultimaFechaMadrid}) normalizada a 30:`)
+    console.log(`    ventas contadas:                 ${w90.n}`)
+    console.log(`    suma PVP:                        ${w90.total} €`)
+    console.log(`    run-rate 30d (sum/90*30):        ${runRate30d_de90} €`)
+    console.log(`  último mes cerrado histórico sin IVA (/1.10): ${ultimoMesSinIVA} €`)
+    console.log(`  desviación vs 30d:                 ${(delta30 * 100).toFixed(1)}%`)
+    console.log(`  desviación vs 90d normalizado:     ${(delta90 * 100).toFixed(1)}%  (orientativo: mitiga estacionalidad)`)
+    if (delta30 > 0.25) {
+      console.log(`  ⚠ AVISO: desviación 30d > 25 %. Revisa INGRESOS_MEDIOS_MES[${hoyY}] antes de --apply.`)
+    } else {
+      console.log(`  ✓ 30d dentro del margen esperado (≤ 25 %).`)
+    }
   }
 } catch (err) {
   console.log(`\nContraste con ventas reales: no se pudo calcular (${err.message}).`)
