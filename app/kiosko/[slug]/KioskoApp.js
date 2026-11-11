@@ -190,6 +190,14 @@ const T = {
     browseInicio: '← Inicio', buscarPlaceholder: 'Buscar vino, bodega, uva…',
     vinos: n => `${n} vinos`, todos: 'Todos', pais: 'País', region: 'D.O.', precio: 'Precio',
     sinResultados: 'No hay vinos con estos filtros.', limpiarFiltros: 'Limpiar filtros', limpiar: 'Limpiar',
+    // FB · Explorar ux_v2
+    uvaFiltro: 'Uva', limpiarTodo: 'Limpiar todo', soloDisponibles: 'Solo disponibles',
+    precioHasta: n => `Hasta ${n}€`, precioMas: n => `+${n}€`, precioTodos: 'Todos',
+    orden: 'Ordenar', ordenRelevancia: 'Destacados', ordenPrecioAsc: 'Precio ↑',
+    ordenPrecioDesc: 'Precio ↓', ordenNombre: 'Nombre A–Z',
+    sinResultadosTitulo: 'No encontramos vinos con estos filtros',
+    sinResultadosSub: 'Prueba quitar algún filtro o ampliar el rango de precio.',
+    quitarFiltros: 'Quitar filtros',
     destacado: '★ Vino destacado', uva: 'Uva', anada: 'Añada', do: 'D.O.', paisLabel: 'País',
     encuentraEn: 'Encuéntralo en', maridaCon: 'Marida con',
     tipoLabels: { tinto:'Tinto', blanco:'Blanco', rosado:'Rosado', espumoso:'Espumoso', generoso:'Generoso', dulce:'Dulce', naranja:'Naranja', sin_alcohol:'Sin alcohol' },
@@ -244,6 +252,13 @@ const T = {
     browseInicio: '← Home', buscarPlaceholder: 'Search wine, winery, grape…',
     vinos: n => `${n} wines`, todos: 'All', pais: 'Country', region: 'Region', precio: 'Price',
     sinResultados: 'No wines match these filters.', limpiarFiltros: 'Clear filters', limpiar: 'Clear',
+    uvaFiltro: 'Grape', limpiarTodo: 'Clear all', soloDisponibles: 'In stock only',
+    precioHasta: n => `Up to €${n}`, precioMas: n => `€${n}+`, precioTodos: 'All',
+    orden: 'Sort', ordenRelevancia: 'Featured', ordenPrecioAsc: 'Price ↑',
+    ordenPrecioDesc: 'Price ↓', ordenNombre: 'Name A–Z',
+    sinResultadosTitulo: 'No wines match these filters',
+    sinResultadosSub: 'Try removing a filter or widening the price range.',
+    quitarFiltros: 'Remove filters',
     destacado: '★ Featured wine', uva: 'Grape', anada: 'Vintage', do: 'Region', paisLabel: 'Country',
     encuentraEn: 'Find it at', maridaCon: 'Pairs with',
     tipoLabels: { tinto:'Red', blanco:'White', rosado:'Rosé', espumoso:'Sparkling', generoso:'Fortified', dulce:'Sweet', naranja:'Orange', sin_alcohol:'Alcohol-free' },
@@ -298,6 +313,13 @@ const T = {
     browseInicio: '← Accueil', buscarPlaceholder: 'Chercher vin, domaine, cépage…',
     vinos: n => `${n} vins`, todos: 'Tous', pais: 'Pays', region: 'Région', precio: 'Prix',
     sinResultados: 'Aucun vin ne correspond à ces filtres.', limpiarFiltros: 'Effacer les filtres', limpiar: 'Effacer',
+    uvaFiltro: 'Cépage', limpiarTodo: 'Tout effacer', soloDisponibles: 'Disponibles uniquement',
+    precioHasta: n => `Jusqu'à ${n}€`, precioMas: n => `+${n}€`, precioTodos: 'Tous',
+    orden: 'Trier', ordenRelevancia: 'En avant', ordenPrecioAsc: 'Prix ↑',
+    ordenPrecioDesc: 'Prix ↓', ordenNombre: 'Nom A–Z',
+    sinResultadosTitulo: 'Aucun vin ne correspond à ces filtres',
+    sinResultadosSub: 'Essayez de retirer un filtre ou d\'élargir la fourchette de prix.',
+    quitarFiltros: 'Retirer les filtres',
     destacado: '★ Vin vedette', uva: 'Cépage', anada: 'Millésime', do: 'Région', paisLabel: 'Pays',
     encuentraEn: 'Trouvez-le au', maridaCon: 'S\'accompagne avec',
     tipoLabels: { tinto:'Rouge', blanco:'Blanc', rosado:'Rosé', espumoso:'Pétillant', generoso:'Fortifié', dulce:'Doux', naranja:'Orange', sin_alcohol:'Sans alcool' },
@@ -352,6 +374,13 @@ const T = {
     browseInicio: '← Start', buscarPlaceholder: 'Wein, Weingut, Traube suchen…',
     vinos: n => `${n} Weine`, todos: 'Alle', pais: 'Land', region: 'Region', precio: 'Preis',
     sinResultados: 'Keine Weine mit diesen Filtern.', limpiarFiltros: 'Filter löschen', limpiar: 'Löschen',
+    uvaFiltro: 'Traube', limpiarTodo: 'Alle löschen', soloDisponibles: 'Nur vorrätig',
+    precioHasta: n => `Bis ${n}€`, precioMas: n => `${n}€+`, precioTodos: 'Alle',
+    orden: 'Sortieren', ordenRelevancia: 'Hervorgehoben', ordenPrecioAsc: 'Preis ↑',
+    ordenPrecioDesc: 'Preis ↓', ordenNombre: 'Name A–Z',
+    sinResultadosTitulo: 'Keine Weine mit diesen Filtern',
+    sinResultadosSub: 'Entfernen Sie einen Filter oder erweitern Sie den Preisrahmen.',
+    quitarFiltros: 'Filter entfernen',
     destacado: '★ Empfohlener Wein', uva: 'Traube', anada: 'Jahrgang', do: 'Region', paisLabel: 'Land',
     encuentraEn: 'Finden Sie es bei', maridaCon: 'Passt zu',
     tipoLabels: { tinto:'Rotwein', blanco:'Weißwein', rosado:'Rosé', espumoso:'Schaumwein', generoso:'Likörwein', dulce:'Süßwein', naranja:'Orangenwein', sin_alcohol:'Alkoholfrei' },
@@ -3065,6 +3094,252 @@ function BrowseView({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es
   )
 }
 
+// ── Explorar ux_v2 ────────────────────────────────────────────────────────────
+// FB · B3: BrowseViewV2 reemplaza a BrowseView SOLO con el flag ux_v2 activo.
+// Añade: selectores de País/D.O./Uva con claves normalizadas (agruparPorClave),
+// chips rápidos de precio ajustados al catálogo, toggle "solo disponibles",
+// chips de filtros activos y botón "Limpiar todo". Conserva el mismo evento
+// de tracking (nombre y payload) que la versión v1 — sólo se amplían los
+// disparadores internos, no el contrato del endpoint.
+function BrowseViewV2({ slug, vinos, colorAcento, onWineSelect, onBack, lang = 'es', tienda }) {
+  const [busqueda, setBusqueda] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('todos')
+  const [filtroPais, setFiltroPais] = useState('')        // clave normalizada
+  const [filtroRegion, setFiltroRegion] = useState('')    // clave normalizada
+  const [filtroUva, setFiltroUva] = useState('')          // clave normalizada
+  const [filtroPrecio, setFiltroPrecio] = useState('todos')
+  const [soloDisponibles, setSoloDisponibles] = useState(false)
+
+  const _trackTimer  = useRef(null)
+  const _lastTracked = useRef('')
+
+  useEffect(() => {
+    // Tracking IDENTICO a BrowseView (mismo evento, mismo payload "consulta").
+    // Si añadimos chips nuevos (uva, precio, disponibles) NO los incluimos en el
+    // payload para no cambiar el contrato analítico ya en producción.
+    const textoRaw = (busqueda || '').trim()
+    const hasText = textoRaw.length >= 4
+    const hasChip = filtroTipo !== 'todos' || !!filtroPais || !!filtroRegion
+    if (!hasText && !hasChip) { clearTimeout(_trackTimer.current); return }
+    const parts = []
+    if (textoRaw) parts.push(normalizarTexto(textoRaw))
+    if (filtroTipo !== 'todos') parts.push(filtroTipo)
+    if (filtroPais)   parts.push(normalizarTexto(filtroPais))
+    if (filtroRegion) parts.push(normalizarTexto(filtroRegion))
+    const consulta = parts.join(' · ')
+    if (consulta === _lastTracked.current) return
+    clearTimeout(_trackTimer.current)
+    _trackTimer.current = setTimeout(() => {
+      _lastTracked.current = consulta
+      fetch(`/api/kiosko/${slug}/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'explorar', consulta }),
+      }).catch(() => {})
+    }, 800)
+    return () => clearTimeout(_trackTimer.current)
+  }, [busqueda, filtroTipo, filtroPais, filtroRegion, slug])
+
+  const tipos = useMemo(() => TIPO_ORDER.filter(t => vinos.some(v => v.tipo === t)), [vinos])
+  const gruposPais   = useMemo(() => agruparPorClave(vinos.map(v => v.pais)),   [vinos])
+  const gruposRegion = useMemo(() => agruparPorClave(vinos.map(v => v.region)), [vinos])
+  const gruposUva    = useMemo(() => agruparPorClave(vinos.map(v => v.uva)),    [vinos])
+
+  // Chips rápidos de precio ajustados a la distribución real del catálogo
+  // (p25≈18.5€, p50≈23.5€, p75≈32€, p90≈45€ en el catálogo de Sibaris).
+  const chipsPrecio = useMemo(() => ([
+    { id: 'hasta20', label: T[lang].precioHasta(20),       test: p => p > 0 && p <= 20 },
+    { id: '20-30',   label: '20–30€',                      test: p => p > 20 && p <= 30 },
+    { id: '30-45',   label: '30–45€',                      test: p => p > 30 && p <= 45 },
+    { id: 'mas45',   label: T[lang].precioMas(45),         test: p => p > 45 },
+  ]), [lang])
+
+  function matchAll(v, skip) {
+    if (skip !== 'tipo'     && filtroTipo   !== 'todos' && v.tipo !== filtroTipo) return false
+    if (skip !== 'pais'     && filtroPais   && normalizarClave(v.pais)   !== filtroPais)   return false
+    if (skip !== 'region'   && filtroRegion && normalizarClave(v.region) !== filtroRegion) return false
+    if (skip !== 'uva'      && filtroUva    && normalizarClave(v.uva)    !== filtroUva)    return false
+    if (skip !== 'precio'   && filtroPrecio !== 'todos') {
+      const p = Number(v.precio_oferta || v.precio_pvp || 0)
+      const chip = chipsPrecio.find(c => c.id === filtroPrecio)
+      if (!chip || !chip.test(p)) return false
+    }
+    if (skip !== 'disp'     && soloDisponibles && !(Number(v.stock) > 0)) return false
+    if (skip !== 'busqueda' && busqueda) {
+      const q = normalizarTexto(busqueda)
+      const txt = normalizarTexto([v.nombre, v.bodega, v.uva, v.region].filter(Boolean).join(' '))
+      if (!txt.includes(q)) return false
+    }
+    return true
+  }
+
+  // Recuento por opción (intersección con los demás filtros)
+  function contar(skip, claveFn) {
+    const map = new Map()
+    for (const v of vinos) {
+      if (!matchAll(v, skip)) continue
+      const k = claveFn(v); if (!k) continue
+      map.set(k, (map.get(k) || 0) + 1)
+    }
+    return map
+  }
+  const countTipo    = useMemo(() => contar('tipo',    v => v.tipo),                      [vinos, busqueda, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
+  const countPais    = useMemo(() => contar('pais',    v => normalizarClave(v.pais)),     [vinos, busqueda, filtroTipo, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
+  const countRegion  = useMemo(() => contar('region',  v => normalizarClave(v.region)),   [vinos, busqueda, filtroTipo, filtroPais,   filtroUva, filtroPrecio, soloDisponibles, chipsPrecio])
+  const countUva     = useMemo(() => contar('uva',     v => normalizarClave(v.uva)),      [vinos, busqueda, filtroTipo, filtroPais,   filtroRegion, filtroPrecio, soloDisponibles, chipsPrecio])
+  const countPrecio  = useMemo(() => {
+    const totals = { hasta20: 0, '20-30': 0, '30-45': 0, mas45: 0 }
+    for (const v of vinos) {
+      if (!matchAll(v, 'precio')) continue
+      const p = Number(v.precio_oferta || v.precio_pvp || 0)
+      for (const c of chipsPrecio) if (c.test(p)) totals[c.id] += 1
+    }
+    return totals
+  }, [vinos, busqueda, filtroTipo, filtroPais, filtroRegion, filtroUva, soloDisponibles, chipsPrecio])
+
+  const vinosFiltrados = useMemo(
+    () => vinos.filter(v => matchAll(v, null)),
+    [vinos, busqueda, filtroTipo, filtroPais, filtroRegion, filtroUva, filtroPrecio, soloDisponibles, chipsPrecio]
+  )
+
+  function limpiar() {
+    setBusqueda(''); setFiltroTipo('todos'); setFiltroPais(''); setFiltroRegion('')
+    setFiltroUva(''); setFiltroPrecio('todos'); setSoloDisponibles(false)
+  }
+  const filtroActivo = busqueda || filtroTipo !== 'todos' || filtroPais || filtroRegion ||
+                       filtroUva || filtroPrecio !== 'todos' || soloDisponibles
+
+  const labelDeClave = (grupos, clave) => grupos.find(g => g.clave === clave)?.label || clave
+
+  const chipsActivos = []
+  if (filtroTipo !== 'todos') chipsActivos.push({ id:'tipo',   label: T[lang].tipoLabels[filtroTipo] || filtroTipo, onClear: () => setFiltroTipo('todos') })
+  if (filtroPais)   chipsActivos.push({ id:'pais',   label: labelDeClave(gruposPais, filtroPais),     onClear: () => setFiltroPais('') })
+  if (filtroRegion) chipsActivos.push({ id:'region', label: labelDeClave(gruposRegion, filtroRegion), onClear: () => setFiltroRegion('') })
+  if (filtroUva)    chipsActivos.push({ id:'uva',    label: labelDeClave(gruposUva, filtroUva),       onClear: () => setFiltroUva('') })
+  if (filtroPrecio !== 'todos') chipsActivos.push({ id:'precio', label: chipsPrecio.find(c => c.id === filtroPrecio)?.label || '', onClear: () => setFiltroPrecio('todos') })
+  if (soloDisponibles) chipsActivos.push({ id:'disp', label: T[lang].soloDisponibles, onClear: () => setSoloDisponibles(false) })
+
+  return (
+    <div className={styles.browseView}>
+      <div className={styles.browseTopBar}>
+        <div className={styles.browseTopRow}>
+          <button className={styles.backBtn} onClick={onBack} type="button">{T[lang].browseInicio}</button>
+          <div className={styles.searchWrap}>
+            <input className={styles.searchInput} type="search" value={busqueda}
+              onChange={e => setBusqueda(e.target.value)} placeholder={T[lang].buscarPlaceholder} />
+            {busqueda && <button className={styles.searchClear} onClick={() => setBusqueda('')} type="button">✕</button>}
+          </div>
+          <span className={styles.resultCount}>{T[lang].vinos(vinosFiltrados.length)}</span>
+        </div>
+
+        <div className={styles.tipoBarWrap}>
+          <div className={styles.tipoBar}>
+            <button className={`${styles.tipoChipBtn} ${filtroTipo === 'todos' ? styles.tipoChipBtnActive : ''}`}
+              onClick={() => setFiltroTipo('todos')}
+              style={filtroTipo === 'todos' ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}
+              type="button">{T[lang].todos}</button>
+            {tipos.map(tipo => {
+              const n = countTipo.get(tipo) || 0
+              if (n === 0 && filtroTipo !== tipo) return null
+              return (
+                <button key={tipo} className={`${styles.tipoChipBtn} ${filtroTipo === tipo ? styles.tipoChipBtnActive : ''}`}
+                  onClick={() => setFiltroTipo(tipo === filtroTipo ? 'todos' : tipo)}
+                  style={filtroTipo === tipo ? { background: TIPO_COLORS[tipo], borderColor: TIPO_COLORS[tipo], color: '#fff' } : {}}
+                  type="button">{T[lang].tipoLabels[tipo] || tipo} <span className={styles.chipCount}>({n})</span></button>
+              )
+            })}
+
+            {gruposPais.length > 1 && (
+              <select className={styles.paisSelect} value={filtroPais} onChange={e => setFiltroPais(e.target.value)}>
+                <option value="">{T[lang].pais}</option>
+                {gruposPais.map(g => {
+                  const n = countPais.get(g.clave) || 0
+                  if (n === 0 && filtroPais !== g.clave) return null
+                  return <option key={g.clave} value={g.clave}>{g.label} ({n})</option>
+                })}
+              </select>
+            )}
+            {gruposRegion.length > 1 && (
+              <select className={styles.doSelect} value={filtroRegion} onChange={e => setFiltroRegion(e.target.value)}>
+                <option value="">{T[lang].region}</option>
+                {gruposRegion.map(g => {
+                  const n = countRegion.get(g.clave) || 0
+                  if (n === 0 && filtroRegion !== g.clave) return null
+                  return <option key={g.clave} value={g.clave}>{g.label} ({n})</option>
+                })}
+              </select>
+            )}
+            {gruposUva.length > 1 && (
+              <select className={styles.doSelect} value={filtroUva} onChange={e => setFiltroUva(e.target.value)}>
+                <option value="">{T[lang].uvaFiltro}</option>
+                {gruposUva.map(g => {
+                  const n = countUva.get(g.clave) || 0
+                  if (n === 0 && filtroUva !== g.clave) return null
+                  return <option key={g.clave} value={g.clave}>{g.label} ({n})</option>
+                })}
+              </select>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.priceChipsRow}>
+          <span className={styles.priceRowLabel}>{T[lang].precio}</span>
+          <div className={styles.priceChipsBar}>
+            <button type="button"
+              className={`${styles.priceChipBtn} ${filtroPrecio === 'todos' ? styles.priceChipBtnActive : ''}`}
+              style={filtroPrecio === 'todos' ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}
+              onClick={() => setFiltroPrecio('todos')}>{T[lang].precioTodos}</button>
+            {chipsPrecio.map(c => {
+              const n = countPrecio[c.id] || 0
+              if (n === 0 && filtroPrecio !== c.id) return null
+              return (
+                <button key={c.id} type="button"
+                  className={`${styles.priceChipBtn} ${filtroPrecio === c.id ? styles.priceChipBtnActive : ''}`}
+                  style={filtroPrecio === c.id ? { background: colorAcento, borderColor: colorAcento, color: '#fff' } : {}}
+                  onClick={() => setFiltroPrecio(c.id === filtroPrecio ? 'todos' : c.id)}>
+                  {c.label} <span className={styles.chipCount}>({n})</span>
+                </button>
+              )
+            })}
+          </div>
+          <label className={styles.dispToggle}>
+            <input type="checkbox" checked={soloDisponibles} onChange={e => setSoloDisponibles(e.target.checked)} />
+            <span>{T[lang].soloDisponibles}</span>
+          </label>
+        </div>
+
+        {chipsActivos.length > 0 && (
+          <div className={styles.activeChipsRow}>
+            {chipsActivos.map(c => (
+              <button key={c.id} type="button" className={styles.activeChip} onClick={c.onClear}>
+                {c.label} <span aria-hidden>✕</span>
+              </button>
+            ))}
+            <button type="button" className={styles.clearAllBtn} onClick={limpiar}>{T[lang].limpiarTodo}</button>
+          </div>
+        )}
+      </div>
+
+      <div className={styles.browseResults}>
+        {vinosFiltrados.length === 0
+          ? (
+            <div className={styles.noResultsV2}>
+              <p className={styles.noResultsTitle}>{T[lang].sinResultadosTitulo}</p>
+              <p className={styles.noResultsSub}>{T[lang].sinResultadosSub}</p>
+              {filtroActivo && (
+                <button type="button" className={styles.noResultsBtn} onClick={limpiar} style={{ background: colorAcento }}>
+                  {T[lang].quitarFiltros}
+                </button>
+              )}
+            </div>
+          )
+          : <div className={styles.wineGrid}>{vinosFiltrados.map((v, i) => <WineCard key={v.id} vino={v} onClick={onWineSelect} ocultarAgotados={tienda?.ocultar_agotados !== false} uxV2 colorAcento={colorAcento} eager={i < 8} lang={lang} />)}</div>
+        }
+      </div>
+    </div>
+  )
+}
+
 // ── Wine → Food panel ─────────────────────────────────────────────────────────
 
 function QrOrderModal({ item, lang, onClose }) {
@@ -3996,9 +4271,11 @@ export default function KioskoPage() {
       )}
 
       {/* EXPLORAR */}
-      {view === VIEWS.BROWSE && (
-        <BrowseView slug={slug} vinos={vinos} colorAcento={colorAcento}
-          onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} uxV2={uxV2} />
+      {view === VIEWS.BROWSE && (uxV2
+        ? <BrowseViewV2 slug={slug} vinos={vinos} colorAcento={colorAcento}
+            onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} />
+        : <BrowseView slug={slug} vinos={vinos} colorAcento={colorAcento}
+            onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} uxV2={uxV2} />
       )}
 
       {/* MARIDAJE */}

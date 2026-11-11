@@ -4704,3 +4704,126 @@
   margin: 0;
   max-width: 280px;
 }
+
+/* ── FB · Explorar ux_v2: filtros avanzados y estado vacio ──────────────── */
+.chipCount {
+  font-size: .72em;
+  font-weight: 600;
+  opacity: .72;
+  margin-left: .2rem;
+}
+
+.priceChipsRow {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+  padding: .35rem .25rem .25rem;
+}
+.priceChipsBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  flex: 1 1 auto;
+}
+.priceChipBtn {
+  min-height: 44px;
+  background: var(--sup1);
+  border: 1.5px solid var(--borde);
+  border-radius: 22px;
+  color: var(--texto-m);
+  padding: .4rem .85rem;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .08s;
+}
+.priceChipBtn:active { transform: scale(.96); }
+.priceChipBtnActive { color: #fff; }
+
+.dispToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 44px;
+  padding: 0 .5rem;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--texto);
+  cursor: pointer;
+  user-select: none;
+}
+.dispToggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-acento);
+  cursor: pointer;
+}
+
+.activeChipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  padding: .35rem .25rem .1rem;
+  align-items: center;
+}
+.activeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 36px;
+  background: var(--sup2);
+  border: 1.5px solid var(--borde);
+  border-radius: 999px;
+  color: var(--texto);
+  padding: .3rem .7rem;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.activeChip:hover { border-color: var(--color-acento); }
+.clearAllBtn {
+  min-height: 36px;
+  background: transparent;
+  border: 0;
+  color: var(--color-acento);
+  padding: .3rem .5rem;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.noResultsV2 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+.noResultsTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--texto);
+  margin: 0;
+}
+.noResultsSub {
+  font-size: .85rem;
+  color: var(--texto-m);
+  margin: 0;
+  max-width: 420px;
+}
+.noResultsBtn {
+  min-height: 44px;
+  margin-top: .5rem;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  padding: .6rem 1.4rem;
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.noResultsBtn:active { transform: scale(.98); }
