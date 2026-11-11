@@ -456,7 +456,11 @@ function extraerValoresUnicos(vinos, campo) {
 // "D.O.", "DOCa", "DO", "IGP", "AOC"…, puntos pasados a espacio, espacios
 // colapsados. No modifica datos: solo sirve para agrupar valores y escoger
 // la etiqueta más frecuente que se muestra en los filtros.
-const PREFIJOS_CANONICOS = /^(d\s*o\s*c\s*a|d\s*o\s*c\s*g|d\s*o\s*c|d\s*o|igp|igt|vt|vino de la tierra|vino de pago|vdp|appellation|aop|aoc|ao)\b\s*/i
+// Prefijos ordenados de mas especifico a menos especifico: las alternancias
+// en ERE se prueban de izquierda a derecha y si "d\s*o" ganase primero
+// contra "DOP Jumilla", la "P" no cerraria limite \b y el prefijo quedaria
+// sin tocar. Por eso DOCa/DOCG/DOC/DOP/DOQ van antes que DO.
+const PREFIJOS_CANONICOS = /^(d\s*o\s*c\s*a|d\s*o\s*c\s*g|d\s*o\s*c|d\s*o\s*p|d\s*o\s*q|d\s*o|igp|igt|vt|vino de la tierra|vino de pago|vdp|appellation|aop|aoc|ao)\b\s*/i
 function normalizarClave(t = '') {
   if (t == null) return ''
   return String(t).toLowerCase()
@@ -464,6 +468,7 @@ function normalizarClave(t = '') {
     .replace(/\./g, ' ')
     .trim()
     .replace(PREFIJOS_CANONICOS, '')
+    .replace(/\s*-\s*/g, '-')
     .replace(/\s+/g, ' ')
     .trim()
 }
