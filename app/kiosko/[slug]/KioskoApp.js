@@ -4038,6 +4038,12 @@ export default function KioskoPage() {
   }
   function abrirMobileQrLista(lista = mobileVinos, source = 'selection', reason = '') {
     if (source === 'cesta') completeFunnel('cesta')
+    // FC (C2) · Si el usuario llegó a la selección colectiva desde Explorar
+    // (flow activo 'explorar'), también se contabiliza el paso 'carrito' para
+    // que el embudo del panel refleje las conversiones desde la portada de
+    // Explorar. completeFunnel es idempotente y solo dispara si el flow activo
+    // coincide, por lo que no hay doble conteo con cesta.
+    else if (funnelFlowRef.current === 'explorar') completeFunnel('explorar')
     const seleccion = normalizarMobileVinos(lista)
     if (!seleccion.length) return
     setMobileVinos(seleccion)
@@ -4046,6 +4052,9 @@ export default function KioskoPage() {
   }
   function abrirMobileQr(vino, source) {
     if (source === 'wizard' || source === 'pairing') completeFunnel(source)
+    // FC (C2) · Añadido desde la ficha (source='detail') dentro del flow
+    // 'explorar' también cuenta como carrito. Mismo razonamiento que arriba.
+    else if (funnelFlowRef.current === 'explorar') completeFunnel('explorar')
     const estaba = mobileVinos.some(v => v.id === vino.id)
     const seleccion = normalizarMobileVinos([...mobileVinos, vino])
     setMobileVinos(seleccion)
@@ -4259,7 +4268,7 @@ export default function KioskoPage() {
                 <span className={styles.eciActionSub}>Para cada ocasión</span>
               </button>
               <button className={`${styles.welcomeActionCard} ${styles.welcomeActionCardEci}`}
-                onClick={() => setView(VIEWS.BROWSE)} type="button">
+                onClick={() => { startFunnel('explorar'); setView(VIEWS.BROWSE) }} type="button">
                 <span className={styles.eciActionLabel}>Explorar vinos</span>
                 <span className={styles.eciActionSub}>{vinos.length} referencias</span>
               </button>
@@ -4271,7 +4280,7 @@ export default function KioskoPage() {
             </div>
           ) : (
             <div className={styles.welcomeActions}>
-              <button className={styles.welcomeActionCard} onClick={() => setView(VIEWS.BROWSE)} type="button"
+              <button className={styles.welcomeActionCard} onClick={() => { startFunnel('explorar'); setView(VIEWS.BROWSE) }} type="button"
                 style={{ '--acento': colorAcento }}>
                 <span className={`${styles.welcomeActionIcon} ${iconStyle === 'emoji' ? styles.welcomeActionIconEmoji : ''}`}>
                   <WelcomeActionIcon name="browse" variant={iconStyle} />
@@ -4402,9 +4411,9 @@ export default function KioskoPage() {
       {/* EXPLORAR */}
       {view === VIEWS.BROWSE && (uxV2
         ? <BrowseViewV2 slug={slug} vinos={vinos} colorAcento={colorAcento}
-            onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} />
+            onWineSelect={abrirDetalle} onBack={() => { abandonFunnel('user_exit'); setView(VIEWS.WELCOME) }} lang={lang} tienda={tienda} />
         : <BrowseView slug={slug} vinos={vinos} colorAcento={colorAcento}
-            onWineSelect={abrirDetalle} onBack={() => setView(VIEWS.WELCOME)} lang={lang} tienda={tienda} uxV2={uxV2} />
+            onWineSelect={abrirDetalle} onBack={() => { abandonFunnel('user_exit'); setView(VIEWS.WELCOME) }} lang={lang} tienda={tienda} uxV2={uxV2} />
       )}
 
       {/* MARIDAJE */}

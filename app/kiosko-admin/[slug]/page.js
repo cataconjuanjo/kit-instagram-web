@@ -3737,15 +3737,19 @@ export default function AdminKioskoPage() {
 
       {/* Embudo de conversión */}
       {tab === 'analitica' && (esPremium || esAdminUsuario) && subTabAnalitica === 'embudo' && (() => {
-        const FLOW_LABELS = { wizard: 'Asistente', cesta: 'Cesta Regalo', pairing: 'Maridaje' }
+        const FLOW_LABELS = { wizard: 'Asistente', cesta: 'Cesta Regalo', pairing: 'Maridaje', explorar: 'Explorar' }
         const STEP_LABELS = {
           start: 'Inicio', ocasion: 'Ocasión', estilo: 'Estilo', presupuesto: 'Presupuesto',
           prefs: 'Preferencias', resultado: 'Resultado', consulta: 'Consulta', carrito: 'Carrito ✓',
         }
         const FLOW_STEPS = {
-          wizard:  ['start', 'estilo', 'presupuesto', 'resultado', 'carrito'],
-          cesta:   ['start', 'presupuesto', 'prefs', 'resultado', 'carrito'],
-          pairing: ['start', 'consulta', 'resultado', 'carrito'],
+          wizard:   ['start', 'estilo', 'presupuesto', 'resultado', 'carrito'],
+          cesta:    ['start', 'presupuesto', 'prefs', 'resultado', 'carrito'],
+          pairing:  ['start', 'consulta', 'resultado', 'carrito'],
+          // FC (C2): flujo nuevo. Sin datos previos al deploy, por lo que las
+          // conversiones históricas desde Explorar NO retroceden; el panel
+          // empezará a reflejarlas a partir de esta fecha.
+          explorar: ['start', 'carrito'],
         }
         return (
           <div style={{ padding: '0 1.5rem 1.5rem' }}>
