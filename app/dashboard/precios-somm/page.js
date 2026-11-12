@@ -934,7 +934,7 @@ export default function PreciosSommPage() {
       setRestaurante(rest)
 
       const [vinosRes, tramosRes, configRes] = await Promise.all([
-        supabase.from('vinos').select(`${SELECT_CLIENT_VINO_DASHBOARD}, ml, usa_coravin`).eq('restaurante_id', rest.id).eq('activo', true),
+        supabase.from('vinos').select(`${SELECT_CLIENT_VINO_DASHBOARD}, ml, usa_coravin`).eq('restaurante_id', rest.id).or('activo.eq.true,activo.is.null'),
         supabase.from('tramos_multiplicador').select('*').eq('restaurante_id', rest.id).order('orden'),
         supabase.from('configuracion_pricing').select('*').eq('restaurante_id', rest.id).maybeSingle(),
       ])
@@ -1021,7 +1021,7 @@ export default function PreciosSommPage() {
               ajustes={ajustes}
               restauranteId={restaurante?.id}
               onVinosActualizados={() => {
-                supabase.from('vinos').select(`${SELECT_CLIENT_VINO_DASHBOARD}, ml, usa_coravin`).eq('restaurante_id', restaurante.id).eq('activo', true)
+                supabase.from('vinos').select(`${SELECT_CLIENT_VINO_DASHBOARD}, ml, usa_coravin`).eq('restaurante_id', restaurante.id).or('activo.eq.true,activo.is.null')
                   .then(({ data, error }) => {
                     if (error) console.error('[precios-somm] recarga vinos:', error)
                     setVinos(data || [])
