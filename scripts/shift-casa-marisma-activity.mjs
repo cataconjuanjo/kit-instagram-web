@@ -142,63 +142,14 @@ if (!APPLY) {
   process.exit(0)
 }
 
-// ── 3. Reescala filas de historico_mensual afectadas ────────────────────────
-// Tras el shift, el mes-en-curso debe seguir siendo parcial hasta "ayer".
-// Si el shift cruza un fin de mes, el mes anterior puede haber quedado
-// con datos reales incompletos. Aquí NO leemos ventas; reescalamos el
-// agregado proporcional al día del mes para que cuadre visualmente.
-
-const PERFIL = { 1:0.78,2:0.80,3:0.92,4:1.02,5:1.08,6:1.18,7:1.32,8:1.38,9:1.22,10:1.00,11:0.88,12:1.12 }
-const INGRESOS_MEDIOS_MES = 48500   // mismo valor que Block 6 para hoyY
-const RATIO_MP = 0.32, RATIO_FIJOS = 0.48
-
-function filaParcialHistorico(anio, mes, diaCorte) {
-  const factor = PERFIL[mes] ?? 1
-  const ingresosMes = INGRESOS_MEDIOS_MES * factor
-  const diasMes = new Date(Date.UTC(anio, mes, 0)).getUTCDate()
-  const prop = Math.max(0, Math.min(1, (diaCorte - 1) / diasMes))
-  return {
-    restaurante_id: TARGET_ID, anio, mes,
-    ingresos:     r2(ingresosMes * prop),
-    consumo_mp:   r2(ingresosMes * RATIO_MP * prop),
-    gastos_fijos: r2(ingresosMes * RATIO_FIJOS * prop),
-  }
-}
-
-// Mes en curso parcial hasta día (hoyD - 1) = ayer.
-const filaActual = filaParcialHistorico(hoyY, hoyM, hoyD)
-
-// Mes anterior: lo dejamos COMPLETO si ya está cerrado (día 1 del mes actual
-// implica que el mes anterior está entero). Si delta ha desplazado datos
-// al mes anterior parcialmente no lo tocamos aquí: se mantiene lo que
-// pusiera el seed Block 6 (cerrado completo).
-
-const { error: errHist } = await supa
-  .from('historico_mensual')
-  .upsert([filaActual], { onConflict: 'restaurante_id,anio,mes' })
-if (errHist) { console.error('ERROR upsert historico_mensual (mes en curso):', errHist.message); process.exit(1) }
-console.log(`\n✓ historico_mensual[${hoyY}-${String(hoyM).padStart(2,'0')}] reescalado a parcial (día ${hoyD - 1}).`)
-
-// Reescala también parametros_explotacion[mes en curso] proporcional.
-const { data: paramRow } = await supa
-  .from('parametros_explotacion')
-  .select('id, facturacion_total, consumo_mp')
-  .eq('restaurante_id', TARGET_ID)
-  .eq('periodo', `${hoyY}-${String(hoyM).padStart(2,'0')}`)
-  .maybeSingle()
-
-if (paramRow) {
-  const diasMes = new Date(Date.UTC(hoyY, hoyM, 0)).getUTCDate()
-  const prop = Math.max(0, Math.min(1, (hoyD - 1) / diasMes))
-  const facMes = r2(INGRESOS_MEDIOS_MES * (PERFIL[hoyM] ?? 1) * prop)
-  const consMes = r2(INGRESOS_MEDIOS_MES * (PERFIL[hoyM] ?? 1) * RATIO_MP * prop)
-  const { error: errP } = await supa
-    .from('parametros_explotacion')
-    .update({ facturacion_total: facMes, consumo_mp: consMes })
-    .eq('restaurante_id', TARGET_ID)
-    .eq('periodo', `${hoyY}-${String(hoyM).padStart(2,'0')}`)
-  if (errP) console.warn('(aviso) no se pudo reescalar parametros_explotacion:', errP.message)
-  else console.log(`✓ parametros_explotacion[${hoyY}-${String(hoyM).padStart(2,'0')}] reescalado parcial.`)
-}
-
-console.log('\n[shift Casa Marisma] completado. Log en public.demo_activity_shift_log.')
+// El shift solo mueve actividad. La reescalada del mes en curso de
+// historico_mensual y parametros_explotacion la hacen (coherentemente
+// con hoy Madrid, escala de vino y perfil estacional) los seeds:
+//   - scripts/seed-casa-marisma-historico.mjs  → historico_mensual + presupuesto + bonus
+//   - scripts/seed-casa-marisma-economia.mjs   → parametros_explotacion + libro_compras
+// Ambos son upsert por clave natural, idempotentes para el mismo día.
+// Lánzalos tras este shift, en este orden:
+console.log('\n[shift Casa Marisma] actividad desplazada. Log en public.demo_activity_shift_log.')
+console.log('\nSiguientes pasos (recalculan el parcial a partir de hoy, Europe/Madrid):')
+console.log('  node --env-file=.env.local scripts/seed-casa-marisma-historico.mjs --apply')
+console.log('  node --env-file=.env.local scripts/seed-casa-marisma-economia.mjs  --apply')
